@@ -4,10 +4,7 @@
 
 ## Verification
 
-- [ ] `node tests/run-tests.js`
-- [ ] `node --check episode-model.js`
-- [ ] `node --check storage-adapter.js`
-- [ ] `node --check app.js`
+- [ ] `./scripts/verify.sh`
 - [ ] Manual browser check completed, if UI behavior changed
 
 ## Data Compatibility

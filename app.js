@@ -30,6 +30,7 @@
     importExportStatus: document.querySelector("#importExportStatus"),
     importInput: document.querySelector("#importJsonInput"),
     appStatus: document.querySelector("#appStatus"),
+    appVersion: document.querySelector("#appVersion"),
   };
 
   const boardFilters = [
@@ -43,6 +44,8 @@
   let activeCompletionTaskId = "";
   let completionTaskOverride = null;
   let editingSessionId = "";
+
+  els.appVersion.textContent = `v${model.APP_VERSION.replace(/\.0$/, "")}`;
 
   if (!state.episodes.length) {
     const starter = model.createEpisode({

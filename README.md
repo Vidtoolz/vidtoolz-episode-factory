@@ -1,12 +1,14 @@
 # VIDTOOLZ Episode Factory
 
-VIDTOOLZ Episode Factory is a local-first static web app for turning rough YouTube ideas into complete production packages.
+VIDTOOLZ Episode Factory v1.0 is a local-first static web app for turning rough YouTube ideas into complete production packages and running a stable weekly creator workflow.
 
 The purpose is practical creator discipline: keep the topic, promise, title options, thumbnail concept, hook, script outline, structured production checklists, Shorts extraction checks, publish checks, and notes in one compact place before a solo creator starts shooting.
 
 It has no backend, no authentication, and no external API integrations. Episode data is saved in browser `localStorage` under `vidtoolz-episode-factory-v1`.
 
-## Features
+Important: browser `localStorage` is not a durable backup system. Export JSON regularly, especially before browser cleanup, import testing, or release work.
+
+## v1.0 Features
 
 - Create, edit, delete, and duplicate episodes
 - Manage episodes on a compact status board
@@ -53,30 +55,19 @@ Opening `index.html` directly also works for normal editing. Clipboard permissio
 
 ## Verification
 
-Run dependency-free model tests:
+Run the full verification set:
 
 ```sh
-node tests/run-tests.js
+./scripts/verify.sh
 ```
 
-Run JavaScript syntax checks:
+This runs dependency-free model tests and JavaScript syntax checks.
 
-```sh
-node --check episode-model.js
-node --check storage-adapter.js
-node --check app.js
-```
+## Smoke Test
 
-Run the full verification set before treating a change as complete:
+After automated verification, run the manual browser checklist in [docs/smoke-test.md](docs/smoke-test.md).
 
-```sh
-node tests/run-tests.js
-node --check episode-model.js
-node --check storage-adapter.js
-node --check app.js
-```
-
-Manual browser checks:
+High-level browser checks:
 
 - Create a new episode and confirm it appears under Idea.
 - Edit every detail field and refresh the page to confirm localStorage persistence.
@@ -102,8 +93,6 @@ Manual browser checks:
 - Create a demo episode and confirm existing episodes remain.
 - Import invalid JSON and confirm the current browser state remains unchanged.
 
-See [docs/smoke-test.md](docs/smoke-test.md) for the manual end-to-end checklist.
-
 ## File Structure
 
 - `index.html` defines the static app shell.
@@ -113,9 +102,13 @@ See [docs/smoke-test.md](docs/smoke-test.md) for the manual end-to-end checklist
 - `app.js` renders the board and detail view, wires editing, persistence, duplication, deletion, JSON export/import, and clipboard actions.
 - `tests/run-tests.js` verifies core model behavior without browser dependencies.
 - `scripts/serve-local.sh` starts a local static server.
+- `scripts/verify.sh` runs all automated tests and syntax checks.
+- `CHANGELOG.md` documents release history.
 - `docs/data-model.md` documents the episode state shape and status flow.
 - `docs/smoke-test.md` documents the manual smoke test.
 - `docs/weekly-review.md` documents the weekly review workflow.
+- `docs/release-checklist.md` documents release testing, tagging, backup, and publishing steps.
+- `docs/known-limitations.md` documents v1.0 limits.
 - `docs/episode-workflow.md` documents the intended YouTube workflow.
 - `docs/packaging-gate.md` documents the gate criteria.
 

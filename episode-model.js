@@ -4,7 +4,7 @@
   const STORAGE_KEY = "vidtoolz-episode-factory-v1";
   const ACTIVE_SESSION_KEY = "vidtoolz-episode-factory-active-session-v1";
   const BACKUP_STATUS_KEY = "vidtoolz-episode-factory-backup-status-v1";
-  const APP_VERSION = "0.9.0";
+  const APP_VERSION = "1.0.0";
   const EXPORT_SCHEMA_VERSION = 1;
   const MAX_IMPORT_EPISODES = 500;
 

@@ -2,6 +2,12 @@
 
 Run this checklist in a browser after the automated verification passes.
 
+Automated verification:
+
+```sh
+./scripts/verify.sh
+```
+
 ## Setup
 
 - Start the local server from the project root:
@@ -12,12 +18,14 @@ Run this checklist in a browser after the automated verification passes.
 
 - Open the local URL printed by the script.
 - Confirm the app loads with no console errors.
+- Confirm the header shows `v1.0`.
 
 ## Status And Backup Visibility
 
 - Confirm the status strip shows total episodes and total work sessions.
 - Export JSON.
 - Confirm the last JSON export timestamp changes from `Never` to a local date/time.
+- Confirm the exported JSON includes `appVersion: "1.0.0"`.
 - Import the exported JSON.
 - Confirm the last JSON import timestamp changes.
 - Confirm invalid JSON import still leaves the current episode data unchanged.

@@ -26,13 +26,10 @@ VIDTOOLZ Episode Factory is a dependency-free, local-first static web app for a 
 
 ## Required Verification
 
-Always run these commands before reporting implementation complete:
+Always run this command before reporting implementation complete:
 
 ```sh
-node tests/run-tests.js
-node --check episode-model.js
-node --check storage-adapter.js
-node --check app.js
+./scripts/verify.sh
 ```
 
 If a command cannot be run, report why and what risk remains.
