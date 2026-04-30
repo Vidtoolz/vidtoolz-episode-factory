@@ -420,6 +420,7 @@ label > span,
 }
 
 .readiness-panel,
+.sessions-panel,
 .checklists-panel,
 .copy-panel {
   border-top: 1px solid var(--border);
@@ -468,6 +469,36 @@ label > span,
   display: grid;
   gap: 12px;
   margin-top: 10px;
+}
+
+.work-sessions {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.session-item {
+  background: #fafaf8;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+}
+
+.session-main {
+  display: grid;
+  gap: 5px;
+}
+
+.session-main span,
+.session-main small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.session-main p {
+  overflow-wrap: anywhere;
 }
 
 .checklist-group {

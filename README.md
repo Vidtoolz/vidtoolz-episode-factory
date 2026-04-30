@@ -14,6 +14,7 @@ It has no backend, no authentication, and no external API integrations. Episode 
 - Use structured checkbox groups for Packaging Gate, production, editing, Shorts extraction, and publishing
 - See readiness scoring for packaging, script, production, publish, and overall readiness
 - Use the Execution Queue to pick the next 30-minute task across active episodes
+- Complete queue tasks, record work sessions, and keep episode history
 - Filter the board by All, Packaging blocked, Ready to shoot, Ready to publish, and Published
 - Copy single-episode exports for Markdown, Hermes, Linear, production, YouTube, and Codex
 - Download the selected episode as a full Markdown package
@@ -77,6 +78,7 @@ Manual browser checks:
 - Toggle structured checklist items and confirm readiness scores update.
 - Use each board filter and confirm the visible cards match the filter.
 - Copy each Execution Queue task package format.
+- Complete a queue task and confirm selected checklist items, session history, and next action update.
 - Duplicate and delete an episode.
 - Use each copy button through a local server page.
 - Download a Markdown package and confirm it includes readiness scores and checklist states.
@@ -88,7 +90,7 @@ Manual browser checks:
 
 - `index.html` defines the static app shell.
 - `styles.css` contains the compact responsive UI.
-- `episode-model.js` owns statuses, field definitions, checklist definitions, normalization, duplication, readiness scoring, execution queue generation, and package export builders.
+- `episode-model.js` owns statuses, field definitions, checklist definitions, normalization, duplication, readiness scoring, execution queue generation, work sessions, and package export builders.
 - `storage-adapter.js` wraps `localStorage` behind a small interface for later storage changes.
 - `app.js` renders the board and detail view, wires editing, persistence, duplication, deletion, JSON export/import, and clipboard actions.
 - `tests/run-tests.js` verifies core model behavior without browser dependencies.
@@ -134,3 +136,7 @@ The Execution Queue generates one recommended 30-minute task per active episode 
 5. Ready to publish
 
 Each task includes a title, episode title, reason, source blocker, concrete steps, success criteria, and copy buttons for Human, Hermes, Linear, and Codex task packages.
+
+Completing a task records a work session on the episode. The completion flow asks for actual minutes, result, remaining blocker, notes, next action, and selected checklist items to mark complete. Checklist items are never marked complete unless selected by the user.
+
+Recent sessions can be copied as Hermes session updates, Linear progress comments, Codex follow-up prompts, or episode history markdown.

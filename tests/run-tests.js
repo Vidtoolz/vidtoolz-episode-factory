@@ -374,6 +374,94 @@ test("task package copy builders include steps and success criteria", () => {
   assert.match(model.buildTaskPackagePayload("codex", task), /30-minute VIDTOOLZ/);
 });
 
+test("old episodes receive empty work session history", () => {
+  const episode = model.normalizeEpisode({ workingTitle: "Old Session Episode" });
+
+  assert.deepEqual(episode.workSessions, []);
+});
+
+test("work session normalization fills required defaults", () => {
+  const session = model.normalizeWorkSession({
+    taskTitle: "Do the work",
+    actualMinutes: "42",
+    completedChecklistItems: [{ groupKey: "productionChecklist", item: "Audio setup is checked" }],
+  });
+
+  assert.match(session.id, /^session-/);
+  assert.equal(session.taskTitle, "Do the work");
+  assert.equal(session.estimatedMinutes, 30);
+  assert.equal(session.actualMinutes, 42);
+  assert.equal(session.completedChecklistItems.length, 1);
+});
+
+test("adding a session stores history updates next action and selected checklist items", () => {
+  const episode = readyScriptEpisode({
+    checklists: completeChecklistExcept({
+      productionChecklist: ["Audio setup is checked"],
+    }),
+  });
+  const updated = model.addWorkSession(episode, {
+    taskTitle: "Check audio",
+    taskType: "readyToShoot",
+    estimatedMinutes: 30,
+    actualMinutes: 25,
+    result: "Audio chain tested.",
+    completedChecklistItems: [{ groupKey: "productionChecklist", item: "Audio setup is checked" }],
+    notes: "No blocker.",
+    nextActionAfterSession: "Record A-roll",
+  });
+
+  assert.equal(updated.workSessions.length, 1);
+  assert.equal(updated.workSessions[0].result, "Audio chain tested.");
+  assert.equal(updated.nextAction, "Record A-roll");
+  assert.equal(updated.checklists.productionChecklist["Audio setup is checked"].passed, true);
+});
+
+test("selected checklist updates do not complete unselected items", () => {
+  const episode = readyScriptEpisode({
+    checklists: completeChecklistExcept({
+      editingChecklist: ["Main timeline assembled", "Dead space removed"],
+    }),
+  });
+  const updated = model.updateChecklistItems(episode, [
+    { groupKey: "editingChecklist", item: "Main timeline assembled" },
+  ]);
+
+  assert.equal(updated.checklists.editingChecklist["Main timeline assembled"].passed, true);
+  assert.equal(updated.checklists.editingChecklist["Dead space removed"].passed, false);
+});
+
+test("session export payload builders include session progress context", () => {
+  const episode = model.addWorkSession(readyScriptEpisode({ workingTitle: "Session Export" }), {
+    taskTitle: "Finish edit pass",
+    taskType: "editingIncomplete",
+    actualMinutes: 31,
+    result: "Timeline assembled.",
+    completedChecklistItems: [{ groupKey: "editingChecklist", item: "Main timeline assembled" }],
+    notes: "Needs captions.",
+    nextActionAfterSession: "Add captions",
+  });
+  const session = episode.workSessions[0];
+
+  assert.match(model.buildSessionExportPayload("hermes", episode, session), /Hermes session update/);
+  assert.match(model.buildSessionExportPayload("linear", episode, session), /## Progress/);
+  assert.match(model.buildSessionExportPayload("codex", episode, session), /continue a VIDTOOLZ/);
+  assert.match(model.buildSessionExportPayload("history", episode, session), /Work Session History/);
+});
+
+test("JSON export and import preserve work sessions", () => {
+  const episode = model.addWorkSession(readyScriptEpisode({ id: "session-roundtrip" }), {
+    taskTitle: "Round trip task",
+    result: "Done",
+  });
+  const payload = model.buildExportPayload({ selectedId: episode.id, episodes: [episode] });
+  const imported = model.validateImportPayload(payload);
+
+  assert.equal(imported.ok, true);
+  assert.equal(imported.state.episodes[0].workSessions.length, 1);
+  assert.equal(imported.state.episodes[0].workSessions[0].taskTitle, "Round trip task");
+});
+
 test("state normalization accepts raw episode arrays", () => {
   const state = model.normalizeState({
     episodes: [{ id: "one", workingTitle: "One" }],

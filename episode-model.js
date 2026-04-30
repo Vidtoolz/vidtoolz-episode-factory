@@ -2,7 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "vidtoolz-episode-factory-v1";
-  const APP_VERSION = "0.4.0";
+  const APP_VERSION = "0.5.0";
   const EXPORT_SCHEMA_VERSION = 1;
   const MAX_IMPORT_EPISODES = 500;
 
@@ -206,6 +206,9 @@
       updatedAt,
       version: 1,
       checklists: normalizeChecklists(input),
+      workSessions: Array.isArray(input.workSessions)
+        ? input.workSessions.map(normalizeWorkSession)
+        : [],
     };
     episode.packagingGate = episode.checklists.packagingGate;
 
@@ -218,6 +221,38 @@
     });
 
     return episode;
+  }
+
+  function normalizeCompletedChecklistItems(items) {
+    if (!Array.isArray(items)) return [];
+    return items
+      .filter((item) => item && typeof item === "object")
+      .map((item) => ({
+        groupKey: cleanString(item.groupKey),
+        item: cleanString(item.item),
+      }))
+      .filter((item) => item.groupKey && item.item);
+  }
+
+  function normalizeMinutes(value, fallback = 30) {
+    const number = Number(value);
+    return Number.isFinite(number) && number >= 0 ? Math.round(number) : fallback;
+  }
+
+  function normalizeWorkSession(input = {}) {
+    const createdAt = cleanString(input.createdAt) || nowIso();
+    return {
+      id: cleanString(input.id) || createId("session"),
+      createdAt,
+      taskTitle: cleanString(input.taskTitle) || "Untitled task",
+      taskType: cleanString(input.taskType) || "manual",
+      estimatedMinutes: normalizeMinutes(input.estimatedMinutes, 30),
+      actualMinutes: normalizeMinutes(input.actualMinutes, 0),
+      result: cleanString(input.result),
+      completedChecklistItems: normalizeCompletedChecklistItems(input.completedChecklistItems),
+      notes: cleanString(input.notes),
+      nextActionAfterSession: cleanString(input.nextActionAfterSession),
+    };
   }
 
   function createEpisode(seed = {}) {
@@ -353,6 +388,14 @@
     return null;
   }
 
+  function getUncheckedChecklistItems(episode, groupKeys) {
+    return groupKeys.flatMap((groupKey) =>
+      getChecklistSummary(episode, groupKey).items
+        .filter((item) => !item.passed)
+        .map((item) => ({ groupKey, groupLabel: groupLabel(groupKey), item: item.label }))
+    );
+  }
+
   function groupLabel(groupKey) {
     const group = CHECKLIST_GROUPS.find((entry) => entry.key === groupKey);
     return group ? group.label : groupKey;
@@ -379,6 +422,9 @@
         ? ["The manual next action is completed or rewritten into the next concrete task."]
         : config.successCriteria,
       sourceBlocker: override ? "Manual nextAction override" : config.sourceBlocker,
+      relevantChecklistItems: override
+        ? []
+        : getUncheckedChecklistItems(normalized, config.relevantChecklistGroups || []).slice(0, 8),
     };
     return task;
   }
@@ -407,6 +453,7 @@
         ],
         successCriteria: ["Packaging readiness is at least 80%.", "The next blocker is visible in the episode notes or checklist."],
         sourceBlocker: packagingBlocker ? `${packagingBlocker.groupLabel}: ${packagingBlocker.item}` : "Packaging readiness below 80%",
+        relevantChecklistGroups: ["packagingGate"],
       });
     }
 
@@ -422,6 +469,7 @@
         ],
         successCriteria: ["Script readiness is at least 80%.", "The episode has enough structure to shoot without rethinking the premise."],
         sourceBlocker: scriptMissing[0] || "Script readiness below 80%",
+        relevantChecklistGroups: [],
       });
     }
 
@@ -438,6 +486,7 @@
         ],
         successCriteria: ["The episode can be recorded in one focused session.", "Production readiness is at least 80%."],
         sourceBlocker: blocker ? `${blocker.groupLabel}: ${blocker.item}` : "Production readiness below 80%",
+        relevantChecklistGroups: ["productionChecklist", "shortsChecklist"],
       });
     }
 
@@ -453,6 +502,7 @@
         ],
         successCriteria: ["The named editing blocker is complete.", "The edit is closer to publish-ready than when the session started."],
         sourceBlocker: `${editingBlocker.groupLabel}: ${editingBlocker.item}`,
+        relevantChecklistGroups: ["editingChecklist"],
       });
     }
 
@@ -468,6 +518,7 @@
         ],
         successCriteria: ["Publish readiness is 100% or the remaining blocker is explicit.", "Upload prep can proceed without hunting for missing assets."],
         sourceBlocker: publishBlocker ? `${publishBlocker.groupLabel}: ${publishBlocker.item}` : "Publish readiness below 100%",
+        relevantChecklistGroups: ["publishChecklist"],
       });
     }
 
@@ -479,6 +530,7 @@
         concreteSteps: ["Open the YouTube publish package.", "Upload, schedule, or mark the episode Published.", "Record any final publishing notes."],
         successCriteria: ["The episode is published, scheduled, or has one explicit blocker recorded."],
         sourceBlocker: "Ready to Publish follow-through",
+        relevantChecklistGroups: ["publishChecklist"],
       });
     }
 
@@ -490,6 +542,40 @@
       .map(generateNextActionTask)
       .filter(Boolean)
       .sort((a, b) => a.priority - b.priority || a.episodeTitle.localeCompare(b.episodeTitle));
+  }
+
+  function updateChecklistItems(episode, selectedItems) {
+    const normalized = normalizeEpisode(episode);
+    const selections = normalizeCompletedChecklistItems(selectedItems);
+    if (!selections.length) return normalized;
+
+    const nextChecklists = { ...normalized.checklists };
+    selections.forEach((selection) => {
+      const group = normalizeChecklistGroup(selection.groupKey, nextChecklists[selection.groupKey]);
+      if (!group.length) return;
+      nextChecklists[selection.groupKey] = checklistToObject(
+        group.map((item) =>
+          item.label === selection.item ? { ...item, passed: true } : item
+        )
+      );
+    });
+
+    return normalizeEpisode({
+      ...normalized,
+      checklists: nextChecklists,
+      updatedAt: nowIso(),
+    });
+  }
+
+  function addWorkSession(episode, sessionInput = {}) {
+    const normalized = updateChecklistItems(episode, sessionInput.completedChecklistItems);
+    const session = normalizeWorkSession(sessionInput);
+    return normalizeEpisode({
+      ...normalized,
+      nextAction: session.nextActionAfterSession,
+      workSessions: [session, ...normalized.workSessions],
+      updatedAt: nowIso(),
+    });
   }
 
   function markdownValue(value, fallback = "Not set.") {
@@ -822,6 +908,99 @@
     return "";
   }
 
+  function buildHermesSessionUpdate(episode, session) {
+    const normalized = normalizeEpisode(episode);
+    const workSession = normalizeWorkSession(session);
+    return [
+      `Hermes session update: ${normalized.workingTitle || "Untitled episode"}`,
+      `Task: ${workSession.taskTitle}`,
+      `Type: ${workSession.taskType}`,
+      `Time: ${workSession.actualMinutes}/${workSession.estimatedMinutes} minutes`,
+      `Result: ${workSession.result || "No result recorded."}`,
+      `Completed checklist items: ${workSession.completedChecklistItems.map((item) => `${item.groupKey}: ${item.item}`).join(" | ") || "None"}`,
+      `Next action: ${workSession.nextActionAfterSession || "No next action recorded."}`,
+      `Notes: ${workSession.notes || "No notes."}`,
+    ].join("\n");
+  }
+
+  function buildLinearSessionComment(episode, session) {
+    const normalized = normalizeEpisode(episode);
+    const workSession = normalizeWorkSession(session);
+    return [
+      `## Progress: ${workSession.taskTitle}`,
+      "",
+      `Episode: ${normalized.workingTitle || "Untitled episode"}`,
+      `Actual minutes: ${workSession.actualMinutes}`,
+      "",
+      "### Result",
+      workSession.result || "No result recorded.",
+      "",
+      "### Checklist Items Completed",
+      workSession.completedChecklistItems.length
+        ? workSession.completedChecklistItems.map((item) => `- ${item.groupKey}: ${item.item}`).join("\n")
+        : "- None",
+      "",
+      "### Still Blocked / Notes",
+      workSession.notes || "No notes.",
+      "",
+      "### Next Action",
+      workSession.nextActionAfterSession || "No next action recorded.",
+    ].join("\n");
+  }
+
+  function buildCodexSessionPrompt(episode, session) {
+    const normalized = normalizeEpisode(episode);
+    const workSession = normalizeWorkSession(session);
+    return [
+      "You are helping continue a VIDTOOLZ Episode Factory work session.",
+      "",
+      `Episode: ${normalized.workingTitle || "Untitled episode"}`,
+      `Completed task: ${workSession.taskTitle}`,
+      `Result: ${workSession.result || "No result recorded."}`,
+      `Notes/blockers: ${workSession.notes || "No notes."}`,
+      `Next action: ${workSession.nextActionAfterSession || "Infer the best next action."}`,
+      "",
+      "Return the next concrete 30-minute task and any episode fields or checklist items that should be updated.",
+    ].join("\n");
+  }
+
+  function buildEpisodeHistoryMarkdown(episode) {
+    const normalized = normalizeEpisode(episode);
+    return [
+      `# Work Session History: ${normalized.workingTitle || "Untitled episode"}`,
+      "",
+      normalized.workSessions.length
+        ? normalized.workSessions
+            .map((session) =>
+              [
+                `## ${session.createdAt} - ${session.taskTitle}`,
+                `Type: ${session.taskType}`,
+                `Time: ${session.actualMinutes}/${session.estimatedMinutes} minutes`,
+                "",
+                `Result: ${session.result || "No result recorded."}`,
+                "",
+                "Completed checklist items:",
+                session.completedChecklistItems.length
+                  ? session.completedChecklistItems.map((item) => `- ${item.groupKey}: ${item.item}`).join("\n")
+                  : "- None",
+                "",
+                `Notes: ${session.notes || "No notes."}`,
+                `Next action: ${session.nextActionAfterSession || "None recorded."}`,
+              ].join("\n")
+            )
+            .join("\n\n")
+        : "No work sessions recorded.",
+    ].join("\n");
+  }
+
+  function buildSessionExportPayload(type, episode, session) {
+    if (type === "hermes") return buildHermesSessionUpdate(episode, session);
+    if (type === "linear") return buildLinearSessionComment(episode, session);
+    if (type === "codex") return buildCodexSessionPrompt(episode, session);
+    if (type === "history") return buildEpisodeHistoryMarkdown(episode);
+    return "";
+  }
+
   function normalizeState(payload) {
     const source = payload && typeof payload === "object" ? payload : {};
     const episodes = Array.isArray(source.episodes) ? source.episodes.map(normalizeEpisode) : [];
@@ -936,6 +1115,7 @@
     createEpisode,
     duplicateEpisode,
     normalizeEpisode,
+    normalizeWorkSession,
     normalizeState,
     normalizeChecklistGroup,
     normalizeChecklists,
@@ -949,12 +1129,19 @@
     getNextAction,
     generateNextActionTask,
     buildExecutionQueue,
+    updateChecklistItems,
+    addWorkSession,
     buildCopyPayload,
     buildTaskPackagePayload,
     buildHumanTaskPackage,
     buildHermesTaskPackage,
     buildLinearTaskIssueBody,
     buildCodexTaskPrompt,
+    buildSessionExportPayload,
+    buildHermesSessionUpdate,
+    buildLinearSessionComment,
+    buildCodexSessionPrompt,
+    buildEpisodeHistoryMarkdown,
     buildEpisodeExportPayload,
     buildFullEpisodeMarkdownPackage,
     buildHermesMemoryUpdate,

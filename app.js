@@ -15,6 +15,7 @@
     boardFilters: document.querySelector("#boardFilters"),
     queue: document.querySelector("#executionQueue"),
     taskCopyStatus: document.querySelector("#taskCopyStatus"),
+    sessions: document.querySelector("#workSessions"),
     checklists: document.querySelector("#checklistGroups"),
     readinessGrid: document.querySelector("#readinessGrid"),
     readinessSummary: document.querySelector("#readinessSummary"),
@@ -167,6 +168,7 @@
           <button type="button" data-task-copy="hermes" data-task-id="${escapeHtml(task.id)}">Hermes</button>
           <button type="button" data-task-copy="linear" data-task-id="${escapeHtml(task.id)}">Linear</button>
           <button type="button" data-task-copy="codex" data-task-id="${escapeHtml(task.id)}">Codex</button>
+          <button type="button" data-task-complete="${escapeHtml(task.id)}">Complete</button>
         </div>
       `;
       els.queue.append(item);
@@ -208,6 +210,7 @@
     });
 
     renderReadiness(episode);
+    renderSessions(episode);
     renderChecklists(episode);
   }
 
@@ -260,6 +263,35 @@
       });
       group.append(list);
       els.checklists.append(group);
+    });
+  }
+
+  function renderSessions(episode) {
+    const sessions = (episode.workSessions || []).slice(0, 5);
+    els.sessions.innerHTML = "";
+    if (!sessions.length) {
+      els.sessions.innerHTML = `<p class="muted">No completed work sessions yet.</p>`;
+      return;
+    }
+
+    sessions.forEach((session) => {
+      const item = document.createElement("article");
+      item.className = "session-item";
+      item.innerHTML = `
+        <div class="session-main">
+          <h3>${escapeHtml(session.taskTitle)}</h3>
+          <span>${escapeHtml(session.createdAt)} · ${session.actualMinutes}/${session.estimatedMinutes} min</span>
+          <p>${escapeHtml(session.result || "No result recorded.")}</p>
+          <small>Next: ${escapeHtml(session.nextActionAfterSession || "None recorded.")}</small>
+        </div>
+        <div class="queue-actions">
+          <button type="button" data-session-copy="hermes" data-session-id="${escapeHtml(session.id)}">Hermes</button>
+          <button type="button" data-session-copy="linear" data-session-id="${escapeHtml(session.id)}">Linear</button>
+          <button type="button" data-session-copy="codex" data-session-id="${escapeHtml(session.id)}">Codex</button>
+          <button type="button" data-session-copy="history" data-session-id="${escapeHtml(session.id)}">History</button>
+        </div>
+      `;
+      els.sessions.append(item);
     });
   }
 
@@ -394,6 +426,74 @@
     }
   }
 
+  async function copySessionOutput(type, sessionId) {
+    const episode = currentEpisode();
+    if (!episode) return;
+    const session = (episode.workSessions || []).find((item) => item.id === sessionId) || episode.workSessions[0];
+    if (!session) return;
+    const payload = model.buildSessionExportPayload(type, episode, session);
+    try {
+      await navigator.clipboard.writeText(payload);
+      els.copyStatus.textContent = "Session output copied.";
+    } catch (error) {
+      window.prompt("Copy this session output:", payload);
+      els.copyStatus.textContent = "Clipboard blocked. Session output opened for manual copy.";
+    }
+  }
+
+  function parseSelectedChecklistItems(task, rawSelection) {
+    const choices = String(rawSelection || "")
+      .split(",")
+      .map((value) => Number(value.trim()))
+      .filter((value) => Number.isInteger(value) && value > 0);
+    return choices
+      .map((number) => task.relevantChecklistItems[number - 1])
+      .filter(Boolean)
+      .map((item) => ({ groupKey: item.groupKey, item: item.item }));
+  }
+
+  function completeTask(taskId) {
+    const task = model.buildExecutionQueue(state.episodes).find((item) => item.id === taskId);
+    if (!task) return;
+    const episodeIndex = state.episodes.findIndex((episode) => episode.id === task.episodeId);
+    if (episodeIndex < 0) return;
+
+    const actualMinutes = window.prompt("Actual minutes spent:", String(task.estimatedMinutes));
+    if (actualMinutes === null) return;
+    const result = window.prompt("What was completed?", "");
+    if (result === null) return;
+    const blocked = window.prompt("What is still blocked?", "");
+    if (blocked === null) return;
+    const notes = window.prompt("Notes:", "");
+    if (notes === null) return;
+    const nextAction = window.prompt("Next action after this session:", "");
+    if (nextAction === null) return;
+
+    let completedChecklistItems = [];
+    if (task.relevantChecklistItems.length) {
+      const options = task.relevantChecklistItems
+        .map((item, index) => `${index + 1}. ${item.groupLabel}: ${item.item}`)
+        .join("\n");
+      const selection = window.prompt(`Mark completed checklist items by number, comma-separated:\n${options}`, "");
+      if (selection === null) return;
+      completedChecklistItems = parseSelectedChecklistItems(task, selection);
+    }
+
+    state.episodes[episodeIndex] = model.addWorkSession(state.episodes[episodeIndex], {
+      taskTitle: task.taskTitle,
+      taskType: task.type,
+      estimatedMinutes: task.estimatedMinutes,
+      actualMinutes,
+      result,
+      completedChecklistItems,
+      notes: [`Still blocked: ${blocked || "None recorded."}`, notes].filter(Boolean).join("\n"),
+      nextActionAfterSession: nextAction,
+    });
+    state.selectedId = state.episodes[episodeIndex].id;
+    persist();
+    render();
+  }
+
   function escapeHtml(value) {
     return String(value)
       .replaceAll("&", "&amp;")
@@ -437,8 +537,13 @@
     }
 
     const copyButton = event.target.closest("[data-task-copy]");
-    if (!copyButton) return;
-    copyTaskOutput(copyButton.dataset.taskCopy, copyButton.dataset.taskId);
+    if (copyButton) {
+      copyTaskOutput(copyButton.dataset.taskCopy, copyButton.dataset.taskId);
+      return;
+    }
+
+    const completeButton = event.target.closest("[data-task-complete]");
+    if (completeButton) completeTask(completeButton.dataset.taskComplete);
   });
 
   els.boardFilters.addEventListener("click", (event) => {
@@ -475,6 +580,12 @@
       [groupKey]: model.checklistToObject(nextGroup),
     };
     updateEpisode(episode.id, { checklists: nextChecklists }, "checklists");
+  });
+
+  els.sessions.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-session-copy]");
+    if (!button) return;
+    copySessionOutput(button.dataset.sessionCopy, button.dataset.sessionId);
   });
 
   document.querySelector(".copy-grid").addEventListener("click", (event) => {

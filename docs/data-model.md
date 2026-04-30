@@ -41,6 +41,7 @@ Each episode is normalized by `episode-model.js`.
   hook: "",
   scriptOutline: "",
   nextAction: "",
+  workSessions: [],
   productionChecklist: "",
   editingChecklist: "",
   shortsPlan: "",
@@ -66,6 +67,31 @@ Legacy date aliases `created_at` and `updated_at` are accepted during normalizat
 The legacy text fields `productionChecklist`, `editingChecklist`, `shortsPlan`, and `publishChecklist` are preserved for v0.1 compatibility. The v0.2 UI uses the structured `checklists` object instead.
 
 `nextAction` is an optional user override for the generated task title. Empty old episodes normalize to `nextAction: ""`.
+
+`workSessions` stores completed execution history. Empty old episodes normalize to `workSessions: []`.
+
+## Work Session Object
+
+```js
+{
+  id: "session-...",
+  createdAt: "2026-04-30T00:00:00.000Z",
+  taskTitle: "Repair the episode package",
+  taskType: "packagingBlocked",
+  estimatedMinutes: 30,
+  actualMinutes: 28,
+  result: "Clarified promise and title options.",
+  completedChecklistItems: [
+    { groupKey: "packagingGate", item: "Core promise is concrete" }
+  ],
+  notes: "Still blocked: thumbnail needs a stronger visual.",
+  nextActionAfterSession: "Sketch two thumbnail concepts"
+}
+```
+
+Work sessions are stored on the episode so JSON export/import keeps execution history with the episode package.
+
+Checklist items listed in `completedChecklistItems` are marked complete only when the user selects them during task completion.
 
 `packagingGate` remains as a top-level alias of `checklists.packagingGate` for compatibility with v0.1 data and copy/export flows.
 
@@ -156,7 +182,7 @@ Export creates a JSON object with metadata plus the normalized state:
 ```js
 {
   app: "VIDTOOLZ Episode Factory",
-  appVersion: "0.4.0",
+  appVersion: "0.5.0",
   schemaVersion: 1,
   storageKey: "vidtoolz-episode-factory-v1",
   exportedAt: "...",
