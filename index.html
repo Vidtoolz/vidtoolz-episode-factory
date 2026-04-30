@@ -29,6 +29,7 @@
             <h2>Board</h2>
             <span id="episodeCount" class="muted"></span>
           </div>
+          <div id="boardFilters" class="filter-row" aria-label="Board filters"></div>
           <div id="board" class="board"></div>
         </section>
 
@@ -52,14 +53,24 @@
 
             <div id="fieldGrid" class="field-grid"></div>
 
-            <section class="gate-panel">
+            <section class="readiness-panel">
               <div class="section-heading">
                 <div>
-                  <h2>Packaging Gate</h2>
-                  <p id="gateSummary" class="muted"></p>
+                  <h2>Readiness</h2>
+                  <p id="readinessSummary" class="muted"></p>
                 </div>
               </div>
-              <div id="gateList" class="gate-list"></div>
+              <div id="readinessGrid" class="readiness-grid"></div>
+            </section>
+
+            <section class="checklists-panel">
+              <div class="section-heading">
+                <div>
+                  <h2>Structured Checklists</h2>
+                  <p class="muted">Track the package, shoot, edit, Shorts, and publish path.</p>
+                </div>
+              </div>
+              <div id="checklistGroups" class="checklist-groups"></div>
             </section>
 
             <section class="copy-panel">

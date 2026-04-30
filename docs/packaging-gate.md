@@ -6,13 +6,14 @@ It exists to prevent a solo creator from spending recording and editing energy o
 
 ## Checks
 
-- Viewer and problem are specific.
-- Promise is useful and believable.
-- At least three title options exist.
-- Thumbnail concept can be read quickly.
-- Hook creates immediate tension or curiosity.
-- Script outline supports the promise.
-- Production and editing needs are clear.
+- Viewer problem is clear.
+- Target viewer is specific.
+- Core promise is concrete.
+- Title is specific.
+- Hook works in the first 5 seconds.
+- Thumbnail concept is understandable without reading the title.
+- Topic is narrow enough for a 10-14 minute video.
+- Episode can produce at least 3 Shorts.
 
 ## How To Use It
 
@@ -26,8 +27,10 @@ Each gate item stores a boolean `passed` value inside the episode object:
 
 ```js
 packagingGate: {
-  "Viewer and problem are specific": { passed: true }
+  "Viewer problem is clear": { passed: true }
 }
 ```
 
-The board card shows the gate count, such as `Gate 4/7`, so weak packages remain visible without opening the full detail view.
+The checklist group shows the gate count, such as `4/8`, so weak packages remain visible inside the episode detail view.
+
+In v0.2 the board card also shows readiness percentages. Packaging readiness is the Packaging Gate completion percentage.

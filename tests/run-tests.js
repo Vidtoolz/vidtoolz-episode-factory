@@ -13,6 +13,7 @@ test("creates a normalized episode with required defaults", () => {
   assert.equal(episode.workingTitle, "Test episode");
   assert.equal(episode.status, "Idea");
   assert.equal(model.getGateSummary(episode).total, model.PACKAGING_GATE.length);
+  assert.equal(model.getChecklistSummary(episode, "productionChecklist").total, 7);
   assert.match(episode.productionChecklist, /Record A-roll/);
 });
 
@@ -38,15 +39,116 @@ test("duplicates reset status and preserve package fields", () => {
 
 test("packaging gate reports pass fail state", () => {
   const episode = model.createEpisode({
-    packagingGate: {
-      "Viewer and problem are specific": true,
-      "Promise is useful and believable": { passed: true },
+    checklists: {
+      packagingGate: {
+        "Viewer problem is clear": true,
+        "Target viewer is specific": { passed: true },
+      },
     },
   });
   const summary = model.getGateSummary(episode);
 
   assert.equal(summary.passed, 2);
   assert.equal(summary.isComplete, false);
+});
+
+test("checklist normalization creates every v0.2 group with default items", () => {
+  const episode = model.normalizeEpisode({ workingTitle: "Checklist test" });
+
+  assert.equal(model.CHECKLIST_GROUPS.length, 5);
+  assert.equal(Object.keys(episode.checklists).length, 5);
+  assert.equal(model.getChecklistSummary(episode, "packagingGate").total, 8);
+  assert.equal(model.getChecklistSummary(episode, "shortsChecklist").total, 5);
+});
+
+test("old episode data keeps legacy text and receives structured checklist defaults", () => {
+  const episode = model.normalizeEpisode({
+    id: "old-one",
+    workingTitle: "Old One",
+    productionChecklist: "- Custom old production note",
+    editingChecklist: "- Custom old edit note",
+    publishChecklist: "- Custom old publish note",
+  });
+
+  assert.equal(episode.productionChecklist, "- Custom old production note");
+  assert.equal(episode.editingChecklist, "- Custom old edit note");
+  assert.equal(episode.publishChecklist, "- Custom old publish note");
+  assert.equal(model.getChecklistSummary(episode, "productionChecklist").passed, 0);
+  assert.equal(model.getReadinessScores(episode).production, 0);
+});
+
+test("old packaging gate labels migrate to v0.2 checklist labels", () => {
+  const episode = model.normalizeEpisode({
+    packagingGate: {
+      "Viewer and problem are specific": true,
+      "Promise is useful and believable": { passed: true },
+    },
+  });
+  const summary = model.getChecklistSummary(episode, "packagingGate");
+
+  assert.equal(summary.passed, 3);
+  assert.equal(episode.checklists.packagingGate["Viewer problem is clear"].passed, true);
+  assert.equal(episode.checklists.packagingGate["Target viewer is specific"].passed, true);
+  assert.equal(episode.checklists.packagingGate["Core promise is concrete"].passed, true);
+});
+
+test("readiness scoring combines checklist and script readiness", () => {
+  const fullChecklist = model.CHECKLIST_GROUPS.reduce((result, group) => {
+    result[group.key] = model.checklistToObject(group.items.map((label) => ({ label, passed: true })));
+    return result;
+  }, {});
+  const episode = model.normalizeEpisode({
+    topic: "Focused topic",
+    workingTitle: "Specific title",
+    targetViewer: "Solo creator",
+    viewerProblem: "Workflow is unclear",
+    corePromise: "A practical production system",
+    titleOptions: "- One\n- Two\n- Three",
+    thumbnailConcept: "Clear before/after visual",
+    hook: "Stop losing good ideas.",
+    scriptOutline: "- Setup\n- Process\n- Payoff",
+    checklists: fullChecklist,
+  });
+  const scores = model.getReadinessScores(episode);
+
+  assert.deepEqual(scores, {
+    packaging: 100,
+    script: 100,
+    production: 100,
+    publish: 100,
+    overall: 100,
+  });
+});
+
+test("partial readiness scoring is percentage based", () => {
+  const episode = model.normalizeEpisode({
+    checklists: {
+      packagingGate: model.checklistToObject([
+        { label: "Viewer problem is clear", passed: true },
+        { label: "Target viewer is specific", passed: true },
+      ]),
+    },
+  });
+
+  assert.equal(model.getReadinessScores(episode).packaging, 25);
+  assert.ok(model.getReadinessScores(episode).overall < 100);
+});
+
+test("duplication preserves structured checklist state while resetting status", () => {
+  const original = model.normalizeEpisode({
+    workingTitle: "Original Checklist",
+    status: "Editing",
+    checklists: {
+      publishChecklist: {
+        "Final title selected": { passed: true },
+      },
+    },
+  });
+  const copy = model.duplicateEpisode(original);
+
+  assert.equal(copy.status, "Idea");
+  assert.equal(model.getChecklistSummary(copy, "publishChecklist").passed, 1);
+  assert.notEqual(copy.id, original.id);
 });
 
 test("copy payloads include integration-ready context", () => {

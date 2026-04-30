@@ -203,6 +203,25 @@ textarea {
   margin-bottom: 12px;
 }
 
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.filter-chip {
+  color: var(--muted);
+  min-height: 30px;
+  padding: 5px 9px;
+}
+
+.filter-chip.active {
+  background: var(--text);
+  border-color: var(--text);
+  color: #fff;
+}
+
 .board {
   display: grid;
   grid-template-columns: repeat(4, minmax(168px, 1fr));
@@ -267,6 +286,22 @@ textarea {
   font-size: 12px;
 }
 
+.mini-readiness {
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 2px;
+}
+
+.mini-readiness span {
+  background: var(--panel-soft);
+  border-radius: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+  padding: 4px 5px;
+}
+
 .empty-state {
   display: grid;
   gap: 8px;
@@ -319,10 +354,76 @@ label > span,
   grid-column: span 2;
 }
 
-.gate-panel,
+.readiness-panel,
+.checklists-panel,
 .copy-panel {
   border-top: 1px solid var(--border);
   padding-top: 14px;
+}
+
+.readiness-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 10px;
+}
+
+.readiness-item {
+  background: #fafaf8;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+}
+
+.readiness-item span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.readiness-item strong {
+  font-size: 18px;
+}
+
+.readiness-bar {
+  background: var(--panel-soft);
+  border-radius: 999px;
+  height: 5px;
+  overflow: hidden;
+}
+
+.readiness-bar span {
+  background: var(--accent);
+  display: block;
+  height: 100%;
+}
+
+.checklist-groups {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.checklist-group {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.checklist-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.checklist-heading span {
+  background: var(--panel-soft);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 3px 8px;
 }
 
 .gate-list {
@@ -403,6 +504,7 @@ label > span,
   }
 
   .field-grid,
+  .readiness-grid,
   .gate-list,
   .copy-grid {
     grid-template-columns: 1fr;

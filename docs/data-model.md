@@ -45,13 +45,61 @@ Each episode is normalized by `episode-model.js`.
   shortsPlan: "",
   publishChecklist: "",
   notes: "",
+  checklists: {
+    packagingGate: {
+      "Viewer problem is clear": { passed: false }
+    },
+    productionChecklist: {},
+    editingChecklist: {},
+    shortsChecklist: {},
+    publishChecklist: {}
+  },
   packagingGate: {
-    "Viewer and problem are specific": { passed: false }
+    "Viewer problem is clear": { passed: false }
   }
 }
 ```
 
 Legacy date aliases `created_at` and `updated_at` are accepted during normalization and converted to `createdAt` and `updatedAt`.
+
+The legacy text fields `productionChecklist`, `editingChecklist`, `shortsPlan`, and `publishChecklist` are preserved for v0.1 compatibility. The v0.2 UI uses the structured `checklists` object instead.
+
+`packagingGate` remains as a top-level alias of `checklists.packagingGate` for compatibility with v0.1 data and copy/export flows.
+
+## Checklist Object
+
+Each checklist group stores item labels as object keys. Each value has a `passed` boolean:
+
+```js
+checklists: {
+  productionChecklist: {
+    "Screen recording plan is clear": { passed: true },
+    "Talking points are ready": { passed: false }
+  }
+}
+```
+
+The checklist groups are:
+
+- `packagingGate`
+- `productionChecklist`
+- `editingChecklist`
+- `shortsChecklist`
+- `publishChecklist`
+
+When old episodes are loaded, normalization adds every checklist group with default items and `passed: false` unless compatible structured state already exists.
+
+## Readiness Scores
+
+Readiness scores are calculated in `episode-model.js` and are not stored as separate source-of-truth fields.
+
+- `packaging`: percentage of Packaging Gate items passed.
+- `script`: percentage of required script/package fields that have usable content.
+- `production`: average of Production Checklist, Editing Checklist, and Shorts Extraction Checklist completion.
+- `publish`: percentage of Publish Checklist items passed.
+- `overall`: average of packaging, script, production, and publish scores.
+
+Scores are rounded integers from `0` to `100`.
 
 ## Status Flow
 
@@ -75,7 +123,7 @@ Export creates a JSON object with metadata plus the normalized state:
 ```js
 {
   app: "VIDTOOLZ Episode Factory",
-  appVersion: "0.1.0",
+  appVersion: "0.2.0",
   schemaVersion: 1,
   storageKey: "vidtoolz-episode-factory-v1",
   exportedAt: "...",

@@ -2,7 +2,7 @@
 
 VIDTOOLZ Episode Factory is a local-first static web app for turning rough YouTube ideas into complete production packages.
 
-The purpose is practical creator discipline: keep the topic, promise, title options, thumbnail concept, hook, script outline, production checklists, Shorts plan, publish checklist, and notes in one compact place before a solo creator starts shooting.
+The purpose is practical creator discipline: keep the topic, promise, title options, thumbnail concept, hook, script outline, structured production checklists, Shorts extraction checks, publish checks, and notes in one compact place before a solo creator starts shooting.
 
 It has no backend, no authentication, and no external API integrations. Episode data is saved in browser `localStorage` under `vidtoolz-episode-factory-v1`.
 
@@ -11,7 +11,9 @@ It has no backend, no authentication, and no external API integrations. Episode 
 - Create, edit, delete, and duplicate episodes
 - Manage episodes on a compact status board
 - Track packaging, scripting, production, editing, shorts, publishing, and notes in one detail view
-- Use a pass/fail Packaging Gate checklist
+- Use structured checkbox groups for Packaging Gate, production, editing, Shorts extraction, and publishing
+- See readiness scoring for packaging, script, production, publish, and overall readiness
+- Filter the board by All, Packaging blocked, Ready to shoot, Ready to publish, and Published
 - Copy prepared outputs for Linear, Codex, Hermes, and YouTube descriptions
 - Export all stored episode data as JSON
 - Import JSON backups after validation
@@ -70,7 +72,8 @@ Manual browser checks:
 - Create a new episode and confirm it appears under Idea.
 - Edit every detail field and refresh the page to confirm localStorage persistence.
 - Move an episode through each board status.
-- Toggle Packaging Gate items and confirm the pass count updates.
+- Toggle structured checklist items and confirm readiness scores update.
+- Use each board filter and confirm the visible cards match the filter.
 - Duplicate and delete an episode.
 - Use each copy button through a local server page.
 - Export JSON and confirm the file contains an `episodes` array.
@@ -81,7 +84,7 @@ Manual browser checks:
 
 - `index.html` defines the static app shell.
 - `styles.css` contains the compact responsive UI.
-- `episode-model.js` owns statuses, field definitions, normalization, duplication, gate state, and copy payload builders.
+- `episode-model.js` owns statuses, field definitions, checklist definitions, normalization, duplication, readiness scoring, and copy payload builders.
 - `storage-adapter.js` wraps `localStorage` behind a small interface for later storage changes.
 - `app.js` renders the board and detail view, wires editing, persistence, duplication, deletion, JSON export/import, and clipboard actions.
 - `tests/run-tests.js` verifies core model behavior without browser dependencies.
@@ -97,7 +100,7 @@ Manual browser checks:
 - No backend, account sync, collaboration, or cloud backup.
 - No Linear, GitHub, Hermes, or YouTube API integration yet.
 - No drag-and-drop between board columns yet.
-- Checklist fields are plain text, except for the Packaging Gate.
+- Legacy text checklist fields are still stored for compatibility, but the UI uses structured checklist groups.
 
 ## Integration Path
 

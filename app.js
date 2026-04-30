@@ -12,13 +12,24 @@
     empty: document.querySelector("#emptyState"),
     fields: document.querySelector("#fieldGrid"),
     status: document.querySelector("#statusSelect"),
-    gate: document.querySelector("#gateList"),
-    gateSummary: document.querySelector("#gateSummary"),
+    boardFilters: document.querySelector("#boardFilters"),
+    checklists: document.querySelector("#checklistGroups"),
+    readinessGrid: document.querySelector("#readinessGrid"),
+    readinessSummary: document.querySelector("#readinessSummary"),
     search: document.querySelector("#searchInput"),
     copyStatus: document.querySelector("#copyStatus"),
     importExportStatus: document.querySelector("#importExportStatus"),
     importInput: document.querySelector("#importJsonInput"),
   };
+
+  const boardFilters = [
+    { key: "all", label: "All" },
+    { key: "packagingBlocked", label: "Packaging blocked" },
+    { key: "readyToShoot", label: "Ready to shoot" },
+    { key: "readyToPublish", label: "Ready to publish" },
+    { key: "published", label: "Published" },
+  ];
+  let activeFilter = "all";
 
   if (!state.episodes.length) {
     const starter = model.createEpisode({
@@ -56,9 +67,10 @@
     persist();
     if (renderMode === "board") {
       renderBoard();
-    } else if (renderMode === "gate") {
+    } else if (renderMode === "checklists") {
       renderBoard();
-      renderGate(state.episodes[index]);
+      renderReadiness(state.episodes[index]);
+      renderChecklists(state.episodes[index]);
     } else {
       render();
     }
@@ -72,10 +84,24 @@
     );
   }
 
+  function matchesFilter(episode) {
+    const scores = model.getReadinessScores(episode);
+    if (activeFilter === "packagingBlocked") return scores.packaging < 100;
+    if (activeFilter === "readyToShoot") return scores.packaging === 100 && scores.script === 100;
+    if (activeFilter === "readyToPublish") return episode.status === "Ready to Publish" || scores.publish === 100;
+    if (activeFilter === "published") return episode.status === "Published";
+    return true;
+  }
+
+  function visibleEpisodes() {
+    return state.episodes.filter((episode) => matchesSearch(episode) && matchesFilter(episode));
+  }
+
   function renderBoard() {
-    const visible = state.episodes.filter(matchesSearch);
+    const visible = visibleEpisodes();
     els.count.textContent = `${visible.length} shown / ${state.episodes.length} total`;
     els.board.innerHTML = "";
+    renderFilters();
 
     model.STATUSES.forEach((status) => {
       const column = document.createElement("article");
@@ -91,7 +117,7 @@
       const list = document.createElement("div");
       list.className = "episode-list";
       episodes.forEach((episode) => {
-        const gate = model.getGateSummary(episode);
+        const scores = model.getReadinessScores(episode);
         const card = document.createElement("button");
         card.type = "button";
         card.className = episode.id === state.selectedId ? "episode-card selected" : "episode-card";
@@ -99,12 +125,30 @@
         card.innerHTML = `
           <strong>${escapeHtml(episode.workingTitle || "Untitled episode")}</strong>
           <span>${escapeHtml(episode.topic || "No topic yet")}</span>
-          <small>Gate ${gate.passed}/${gate.total}</small>
+          <small>Overall ${scores.overall}%</small>
+          <div class="mini-readiness" aria-label="Readiness summary">
+            <span>P ${scores.packaging}%</span>
+            <span>S ${scores.script}%</span>
+            <span>Prod ${scores.production}%</span>
+            <span>Pub ${scores.publish}%</span>
+          </div>
         `;
         list.append(card);
       });
       column.append(list);
       els.board.append(column);
+    });
+  }
+
+  function renderFilters() {
+    els.boardFilters.innerHTML = "";
+    boardFilters.forEach((filter) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = filter.key === activeFilter ? "filter-chip active" : "filter-chip";
+      button.dataset.filter = filter.key;
+      button.textContent = filter.label;
+      els.boardFilters.append(button);
     });
   }
 
@@ -130,24 +174,59 @@
       els.fields.append(wrapper);
     });
 
-    renderGate(episode);
+    renderReadiness(episode);
+    renderChecklists(episode);
   }
 
-  function renderGate(episode) {
-    const gate = model.getGateSummary(episode);
-    els.gateSummary.textContent = gate.isComplete
-      ? "Pass: packaging is ready to move forward."
-      : `${gate.passed}/${gate.total} checks passed`;
-    els.gate.innerHTML = "";
-    gate.items.forEach((item) => {
-      const id = `gate-${slugify(item.label)}`;
-      const label = document.createElement("label");
-      label.className = item.passed ? "gate-item passed" : "gate-item";
-      label.innerHTML = `
-        <input id="${id}" type="checkbox" data-gate="${escapeHtml(item.label)}" ${item.passed ? "checked" : ""} />
-        <span>${escapeHtml(item.label)}</span>
+  function renderReadiness(episode) {
+    const scores = model.getReadinessScores(episode);
+    els.readinessSummary.textContent = `Overall readiness ${scores.overall}%`;
+    els.readinessGrid.innerHTML = "";
+    [
+      ["Packaging", scores.packaging],
+      ["Script", scores.script],
+      ["Production", scores.production],
+      ["Publish", scores.publish],
+      ["Overall", scores.overall],
+    ].forEach(([label, score]) => {
+      const item = document.createElement("div");
+      item.className = "readiness-item";
+      item.innerHTML = `
+        <span>${label}</span>
+        <strong>${score}%</strong>
+        <div class="readiness-bar"><span style="width: ${score}%"></span></div>
       `;
-      els.gate.append(label);
+      els.readinessGrid.append(item);
+    });
+  }
+
+  function renderChecklists(episode) {
+    const summaries = model.getChecklistSummaries(episode);
+    els.checklists.innerHTML = "";
+    summaries.forEach((summary) => {
+      const group = document.createElement("section");
+      group.className = "checklist-group";
+      group.innerHTML = `
+        <div class="checklist-heading">
+          <h3>${escapeHtml(summary.label)}</h3>
+          <span>${summary.passed}/${summary.total}</span>
+        </div>
+      `;
+
+      const list = document.createElement("div");
+      list.className = "gate-list";
+      summary.items.forEach((item) => {
+        const id = `checklist-${summary.key}-${slugify(item.label)}`;
+        const label = document.createElement("label");
+        label.className = item.passed ? "gate-item passed" : "gate-item";
+        label.innerHTML = `
+          <input id="${id}" type="checkbox" data-checklist="${escapeHtml(summary.key)}" data-item="${escapeHtml(item.label)}" ${item.passed ? "checked" : ""} />
+          <span>${escapeHtml(item.label)}</span>
+        `;
+        list.append(label);
+      });
+      group.append(list);
+      els.checklists.append(group);
     });
   }
 
@@ -279,6 +358,13 @@
     render();
   });
 
+  els.boardFilters.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-filter]");
+    if (!button) return;
+    activeFilter = button.dataset.filter;
+    renderBoard();
+  });
+
   els.status.addEventListener("change", () => {
     const episode = currentEpisode();
     if (!episode) return;
@@ -292,14 +378,20 @@
     updateEpisode(episode.id, { [field]: event.target.value }, "board");
   });
 
-  els.gate.addEventListener("change", (event) => {
+  els.checklists.addEventListener("change", (event) => {
     const episode = currentEpisode();
-    if (!episode || !event.target.dataset.gate) return;
-    const gate = model.normalizePackagingGate(episode.packagingGate);
-    const nextGate = gate.map((item) =>
-      item.label === event.target.dataset.gate ? { ...item, passed: event.target.checked } : item
+    const groupKey = event.target.dataset.checklist;
+    const itemLabel = event.target.dataset.item;
+    if (!episode || !groupKey || !itemLabel) return;
+    const group = model.normalizeChecklistGroup(groupKey, episode.checklists[groupKey]);
+    const nextGroup = group.map((item) =>
+      item.label === itemLabel ? { ...item, passed: event.target.checked } : item
     );
-    updateEpisode(episode.id, { packagingGate: model.gateToObject(nextGate) }, "gate");
+    const nextChecklists = {
+      ...episode.checklists,
+      [groupKey]: model.checklistToObject(nextGroup),
+    };
+    updateEpisode(episode.id, { checklists: nextChecklists }, "checklists");
   });
 
   document.querySelector(".copy-grid").addEventListener("click", (event) => {
