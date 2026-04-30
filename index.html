@@ -31,6 +31,21 @@
             <h2>Board</h2>
             <span id="episodeCount" class="muted"></span>
           </div>
+          <section class="weekly-panel" aria-label="Weekly review dashboard">
+            <div class="section-heading">
+              <div>
+                <h2>Weekly Review</h2>
+                <p class="muted">Progress, blockers, publish candidates, and the next focus session.</p>
+              </div>
+            </div>
+            <div id="weeklyDashboard" class="weekly-dashboard"></div>
+            <div class="weekly-actions">
+              <button type="button" data-weekly-copy="hermes">Copy Hermes weekly update</button>
+              <button type="button" data-weekly-copy="linear">Copy Linear weekly summary</button>
+              <button type="button" data-weekly-copy="markdown">Copy creator review</button>
+            </div>
+            <p id="weeklyCopyStatus" class="copy-status" role="status"></p>
+          </section>
           <section class="queue-panel" aria-label="Execution queue">
             <div class="section-heading">
               <div>

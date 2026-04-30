@@ -15,6 +15,8 @@
     fields: document.querySelector("#fieldGrid"),
     status: document.querySelector("#statusSelect"),
     boardFilters: document.querySelector("#boardFilters"),
+    weeklyDashboard: document.querySelector("#weeklyDashboard"),
+    weeklyCopyStatus: document.querySelector("#weeklyCopyStatus"),
     queue: document.querySelector("#executionQueue"),
     activeSessionPanel: document.querySelector("#activeSessionPanel"),
     completionDrawer: document.querySelector("#completionDrawer"),
@@ -83,9 +85,11 @@
     if (renderMode === "board") {
       renderBoard();
       renderQueue();
+      renderWeeklyDashboard();
     } else if (renderMode === "checklists") {
       renderBoard();
       renderQueue();
+      renderWeeklyDashboard();
       renderReadiness(state.episodes[index]);
       renderChecklists(state.episodes[index]);
     } else {
@@ -482,9 +486,73 @@
 
   function render() {
     renderAppStatus();
+    renderWeeklyDashboard();
     renderQueue();
     renderBoard();
     renderForm();
+  }
+
+  function renderWeeklyDashboard() {
+    const review = model.buildWeeklyReview(state);
+    const counts = model.STATUSES.map(
+      (status) => `
+        <div class="pipeline-count">
+          <span>${escapeHtml(status)}</span>
+          <strong>${review.pipelineCounts[status] || 0}</strong>
+        </div>
+      `
+    ).join("");
+    const blockers = review.blockedEpisodes.slice(0, 4).map(
+      (episode) => `
+        <li>
+          <button class="inline-link" type="button" data-weekly-select="${escapeHtml(episode.id)}">${escapeHtml(episode.title)}</button>
+          <span>${episode.blockers.map((blocker) => `${blocker.type} ${blocker.score}%`).join(", ")}</span>
+        </li>
+      `
+    ).join("");
+    const publish = review.closestToPublish.slice(0, 4).map(
+      (episode) => `
+        <li>
+          <button class="inline-link" type="button" data-weekly-select="${escapeHtml(episode.id)}">${escapeHtml(episode.title)}</button>
+          <span>${escapeHtml(episode.status)} · publish ${episode.scores.publish}% · overall ${episode.scores.overall}%</span>
+        </li>
+      `
+    ).join("");
+    const task = review.recommendedNextFocusSession;
+    els.weeklyDashboard.innerHTML = `
+      <div class="weekly-metrics">
+        <div><span>Sessions</span><strong>${review.weeklySummary.completedSessions}</strong></div>
+        <div><span>Focused minutes</span><strong>${review.weeklySummary.totalFocusedMinutes}</strong></div>
+        <div><span>Episodes touched</span><strong>${review.weeklySummary.episodesTouched}</strong></div>
+        <div><span>Most recent</span><strong>${escapeHtml(review.weeklySummary.mostRecentSession ? review.weeklySummary.mostRecentSession.taskTitle : "None")}</strong></div>
+      </div>
+      <div class="pipeline-grid">${counts}</div>
+      <div class="weekly-lists">
+        <div>
+          <h3>Blocked Episodes</h3>
+          <ul>${blockers || "<li><span>No active blockers.</span></li>"}</ul>
+        </div>
+        <div>
+          <h3>Closest To Publish</h3>
+          <ul>${publish || "<li><span>No active episodes.</span></li>"}</ul>
+        </div>
+      </div>
+      <article class="weekly-next">
+        <h3>Recommended Next Focus Session</h3>
+        ${
+          task
+            ? `
+              <p><strong>${escapeHtml(task.taskTitle)}</strong></p>
+              <p class="muted">${escapeHtml(task.episodeTitle)} · ${escapeHtml(task.reason)}</p>
+              <div class="queue-actions">
+                <button type="button" data-weekly-select="${escapeHtml(task.episodeId)}">Open Episode</button>
+                <button class="primary-btn" type="button" data-weekly-start="${escapeHtml(task.id)}">Start Session</button>
+              </div>
+            `
+            : `<p class="muted">No active blocker task available.</p>`
+        }
+      </article>
+    `;
   }
 
   function formatOptionalTimestamp(value) {
@@ -657,6 +725,17 @@
     } catch (error) {
       window.prompt("Copy this session output:", payload);
       els.copyStatus.textContent = "Clipboard blocked. Session output opened for manual copy.";
+    }
+  }
+
+  async function copyWeeklyOutput(type) {
+    const payload = model.buildWeeklyExportPayload(type, state);
+    try {
+      await navigator.clipboard.writeText(payload);
+      els.weeklyCopyStatus.textContent = "Weekly review copied.";
+    } catch (error) {
+      window.prompt("Copy this weekly review:", payload);
+      els.weeklyCopyStatus.textContent = "Clipboard blocked. Weekly review opened for manual copy.";
     }
   }
 
@@ -842,6 +921,26 @@
       activeCompletionTaskId = completeButton.dataset.taskComplete;
       renderCompletionDrawer();
     }
+  });
+
+  els.weeklyDashboard.addEventListener("click", (event) => {
+    const selectButton = event.target.closest("[data-weekly-select]");
+    if (selectButton) {
+      state.selectedId = selectButton.dataset.weeklySelect;
+      persist();
+      render();
+      return;
+    }
+
+    const startButton = event.target.closest("[data-weekly-start]");
+    if (startButton) {
+      startFocusSession(startButton.dataset.weeklyStart);
+    }
+  });
+
+  document.querySelector(".weekly-actions").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-weekly-copy]");
+    if (button) copyWeeklyOutput(button.dataset.weeklyCopy);
   });
 
   els.completionDrawer.addEventListener("submit", (event) => {

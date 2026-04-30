@@ -721,6 +721,136 @@ test("demo episode creation adds realistic sample data without overwriting exist
   assert.equal(model.getChecklistSummary(demo, "packagingGate").isComplete, true);
 });
 
+test("pipeline counts include every production status", () => {
+  const counts = model.getPipelineCounts([
+    model.normalizeEpisode({ status: "Idea" }),
+    model.normalizeEpisode({ status: "Editing" }),
+    model.normalizeEpisode({ status: "Editing" }),
+    model.normalizeEpisode({ status: "Published" }),
+  ]);
+
+  assert.equal(counts.Idea, 1);
+  assert.equal(counts.Editing, 2);
+  assert.equal(counts.Published, 1);
+  assert.equal(counts.Archived, 0);
+  assert.deepEqual(Object.keys(counts), model.STATUSES);
+});
+
+test("weekly summary filters sessions from the last 7 days", () => {
+  const now = Date.parse("2026-04-30T12:00:00.000Z");
+  const episode = model.normalizeEpisode({
+    id: "weekly-one",
+    workingTitle: "Weekly One",
+    workSessions: [
+      {
+        taskTitle: "Recent ended",
+        actualMinutes: 20,
+        createdAt: "2026-04-29T09:00:00.000Z",
+        endedAt: "2026-04-29T09:20:00.000Z",
+      },
+      {
+        taskTitle: "Old ended",
+        actualMinutes: 50,
+        createdAt: "2026-04-20T09:00:00.000Z",
+        endedAt: "2026-04-20T09:50:00.000Z",
+      },
+    ],
+  });
+  const summary = model.getWeeklyWorkSummary([episode], now);
+
+  assert.equal(summary.completedSessions, 1);
+  assert.equal(summary.totalFocusedMinutes, 20);
+  assert.equal(summary.episodesTouched, 1);
+  assert.equal(summary.mostRecentSession.taskTitle, "Recent ended");
+});
+
+test("weekly summary counts old sessions by createdAt when endedAt is missing", () => {
+  const now = Date.parse("2026-04-30T12:00:00.000Z");
+  const episode = model.normalizeEpisode({
+    id: "weekly-old-session",
+    workingTitle: "Weekly Old Session",
+    workSessions: [
+      {
+        taskTitle: "Legacy session",
+        actualMinutes: 15,
+        createdAt: "2026-04-29T09:00:00.000Z",
+      },
+    ],
+  });
+  const summary = model.getWeeklyWorkSummary([episode], now);
+
+  assert.equal(summary.completedSessions, 1);
+  assert.equal(summary.totalFocusedMinutes, 15);
+  assert.equal(summary.mostRecentSession.completedAt, "2026-04-29T09:00:00.000Z");
+});
+
+test("weekly review generation combines pipeline work blockers publish ranking and next focus", () => {
+  const now = Date.parse("2026-04-30T12:00:00.000Z");
+  const blocked = model.normalizeEpisode({
+    id: "blocked-weekly",
+    workingTitle: "Blocked Weekly",
+    checklists: { packagingGate: {} },
+  });
+  const active = model.normalizeEpisode({
+    id: "active-weekly",
+    workingTitle: "Active Weekly",
+    status: "Ready to Publish",
+    checklists: completeChecklistExcept({ publishChecklist: ["Final title selected"] }),
+    workSessions: [{ taskTitle: "Publish prep", actualMinutes: 30, createdAt: "2026-04-29T10:00:00.000Z" }],
+  });
+  const review = model.buildWeeklyReview({ selectedId: active.id, episodes: [blocked, active] }, now);
+
+  assert.equal(review.pipelineCounts.Idea, 1);
+  assert.equal(review.pipelineCounts["Ready to Publish"], 1);
+  assert.equal(review.weeklySummary.completedSessions, 1);
+  assert.equal(review.blockedEpisodes[0].id, "blocked-weekly");
+  assert.equal(review.closestToPublish[0].id, "active-weekly");
+  assert.equal(review.recommendedNextFocusSession.type, "packagingBlocked");
+});
+
+test("blocked episode detection names readiness blockers", () => {
+  const episode = model.normalizeEpisode({
+    id: "blocked-detect",
+    workingTitle: "Blocked Detect",
+    checklists: { packagingGate: {} },
+  });
+  const blocked = model.getBlockedEpisodes([episode]);
+
+  assert.equal(blocked.length, 1);
+  assert.equal(blocked[0].id, "blocked-detect");
+  assert.ok(blocked[0].blockers.some((blocker) => blocker.type === "packaging"));
+  assert.ok(blocked[0].blockers.some((blocker) => blocker.type === "script"));
+  assert.ok(blocked[0].blockers.some((blocker) => blocker.type === "publish"));
+});
+
+test("closest-to-publish ranking favors later pipeline stages", () => {
+  const idea = readyScriptEpisode({ id: "idea-rank", workingTitle: "Idea Rank", status: "Idea" });
+  const editing = readyScriptEpisode({ id: "editing-rank", workingTitle: "Editing Rank", status: "Editing" });
+  const ready = readyScriptEpisode({
+    id: "ready-rank",
+    workingTitle: "Ready Rank",
+    status: "Ready to Publish",
+  });
+  const ranked = model.getClosestToPublish([idea, editing, ready]);
+
+  assert.deepEqual(ranked.map((episode) => episode.id), ["ready-rank", "editing-rank", "idea-rank"]);
+});
+
+test("weekly export builders produce review outputs", () => {
+  const now = Date.parse("2026-04-30T12:00:00.000Z");
+  const episode = model.normalizeEpisode({
+    id: "weekly-export",
+    workingTitle: "Weekly Export",
+    workSessions: [{ taskTitle: "Review work", actualMinutes: 12, createdAt: "2026-04-29T10:00:00.000Z" }],
+  });
+  const state = { selectedId: episode.id, episodes: [episode] };
+
+  assert.match(model.buildWeeklyExportPayload("hermes", state, now), /weekly memory update/i);
+  assert.match(model.buildWeeklyExportPayload("linear", state, now), /Weekly VIDTOOLZ Progress Summary/);
+  assert.match(model.buildWeeklyExportPayload("markdown", state, now), /# Weekly Creator Review/);
+  assert.match(model.buildWeeklyCreatorReviewMarkdown(state, now), /Completed sessions: 1/);
+});
+
 test("abandoning an active session clears the draft", () => {
   const task = model.generateNextActionTask(model.normalizeEpisode({ workingTitle: "Abandon Active" }));
   const active = model.startActiveSession(task, 0);

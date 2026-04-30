@@ -246,6 +246,105 @@ textarea {
   padding-bottom: 12px;
 }
 
+.weekly-panel {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+}
+
+.weekly-dashboard {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.weekly-metrics,
+.pipeline-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.weekly-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pipeline-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.weekly-metrics div,
+.pipeline-count,
+.weekly-next {
+  background: #fafaf8;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+}
+
+.weekly-metrics span,
+.pipeline-count span,
+.weekly-lists span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.weekly-metrics strong,
+.pipeline-count strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weekly-lists {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.weekly-lists ul {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 7px 0 0;
+  padding: 0;
+}
+
+.weekly-lists li {
+  display: grid;
+  gap: 2px;
+}
+
+.inline-link {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  justify-self: start;
+  min-height: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.inline-link:hover {
+  background: transparent;
+  color: var(--accent);
+}
+
+.weekly-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.weekly-actions button {
+  font-size: 12px;
+  min-height: 30px;
+  padding: 5px 8px;
+}
+
 .execution-queue {
   display: grid;
   gap: 8px;
@@ -746,6 +845,9 @@ label > span,
   .app-status,
   .readiness-grid,
   .active-session-grid,
+  .weekly-metrics,
+  .pipeline-grid,
+  .weekly-lists,
   .completion-grid,
   .gate-list,
   .copy-grid {

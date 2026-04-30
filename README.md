@@ -13,6 +13,7 @@ It has no backend, no authentication, and no external API integrations. Episode 
 - Track packaging, scripting, production, editing, shorts, publishing, and notes in one detail view
 - Use structured checkbox groups for Packaging Gate, production, editing, Shorts extraction, and publishing
 - See readiness scoring for packaging, script, production, publish, and overall readiness
+- Use the Weekly Review dashboard to see pipeline counts, recent work, blockers, publish candidates, and the next focus session
 - Use the Execution Queue to pick the next 30-minute task across active episodes
 - Run a single active focus session with elapsed time tracking
 - See active focus session progress against the task estimate
@@ -20,6 +21,7 @@ It has no backend, no authentication, and no external API integrations. Episode 
 - See app and backup status: total episodes, total work sessions, last JSON export, last JSON import, and active session state
 - Filter the board by All, Packaging blocked, Ready to shoot, Ready to publish, and Published
 - Copy single-episode exports for Markdown, Hermes, Linear, production, YouTube, and Codex
+- Copy weekly review outputs for Hermes, Linear, and creator review markdown
 - Download the selected episode as a full Markdown package
 - Export all stored episode data as JSON
 - Import JSON backups after validation
@@ -81,6 +83,8 @@ Manual browser checks:
 - Move an episode through each board status.
 - Toggle structured checklist items and confirm readiness scores update.
 - Use each board filter and confirm the visible cards match the filter.
+- Confirm the Weekly Review dashboard updates after status, checklist, and work-session changes.
+- Copy each Weekly Review output.
 - Copy each Execution Queue task package format.
 - Start, pause, reset, complete, and abandon an active focus session.
 - Confirm the active focus session progress bar moves against the estimated minutes.
@@ -98,19 +102,20 @@ Manual browser checks:
 - Create a demo episode and confirm existing episodes remain.
 - Import invalid JSON and confirm the current browser state remains unchanged.
 
-See [docs/smoke-test.md](docs/smoke-test.md) for the v0.8 manual end-to-end checklist.
+See [docs/smoke-test.md](docs/smoke-test.md) for the manual end-to-end checklist.
 
 ## File Structure
 
 - `index.html` defines the static app shell.
 - `styles.css` contains the compact responsive UI.
-- `episode-model.js` owns statuses, field definitions, checklist definitions, normalization, duplication, readiness scoring, execution queue generation, work sessions, and package export builders.
+- `episode-model.js` owns statuses, field definitions, checklist definitions, normalization, duplication, readiness scoring, weekly review generation, execution queue generation, work sessions, and package export builders.
 - `storage-adapter.js` wraps `localStorage` behind a small interface for later storage changes.
 - `app.js` renders the board and detail view, wires editing, persistence, duplication, deletion, JSON export/import, and clipboard actions.
 - `tests/run-tests.js` verifies core model behavior without browser dependencies.
 - `scripts/serve-local.sh` starts a local static server.
 - `docs/data-model.md` documents the episode state shape and status flow.
-- `docs/smoke-test.md` documents the manual v0.8 smoke test.
+- `docs/smoke-test.md` documents the manual smoke test.
+- `docs/weekly-review.md` documents the weekly review workflow.
 - `docs/episode-workflow.md` documents the intended YouTube workflow.
 - `docs/packaging-gate.md` documents the gate criteria.
 
@@ -157,6 +162,16 @@ Completing a task opens an inline form on the queue. It records a work session o
 Recent sessions can be copied as Hermes session updates, Linear progress comments, Codex follow-up prompts, or episode history markdown.
 
 Recent sessions can also be edited, deleted after confirmation, resumed from the recorded blocker, or repeated as a fresh task package.
+
+## Weekly Review Dashboard
+
+The Weekly Review dashboard summarizes the full local episode library without storing new source-of-truth records. It shows pipeline counts by status, completed sessions from the last 7 days, focused minutes, episodes touched, the most recent completed session, blocked episodes, closest-to-publish episodes, and the top Execution Queue task as the recommended next focus session.
+
+Weekly copy outputs are local clipboard text only:
+
+- Hermes weekly memory update
+- Linear weekly progress summary
+- Creator review markdown
 
 ## Focus Session Runner
 

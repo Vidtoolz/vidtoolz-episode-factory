@@ -1,4 +1,4 @@
-# v0.8 Smoke Test
+# Smoke Test
 
 Run this checklist in a browser after the automated verification passes.
 
@@ -21,6 +21,16 @@ Run this checklist in a browser after the automated verification passes.
 - Import the exported JSON.
 - Confirm the last JSON import timestamp changes.
 - Confirm invalid JSON import still leaves the current episode data unchanged.
+
+## Weekly Review
+
+- Confirm the Weekly Review dashboard shows pipeline counts for every status.
+- Complete or edit a work session and confirm completed sessions, focused minutes, and episodes touched update.
+- Confirm blocked episodes list readiness blockers.
+- Confirm closest-to-publish shows active episodes near the publishing end of the pipeline.
+- Confirm the recommended next focus session matches the first Execution Queue task.
+- Copy Hermes weekly update, Linear weekly summary, and creator review markdown.
+- Start a session from the Weekly Review recommended next focus session.
 
 ## Demo Episode
 

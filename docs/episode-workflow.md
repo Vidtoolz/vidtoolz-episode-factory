@@ -55,6 +55,19 @@ It scans active episodes and generates one 30-minute task per episode when there
 
 Use the Human task package when sitting down to work. Use the Hermes package for memory/context updates, the Linear body when turning a task into an issue, and the Codex prompt when asking for focused help on the next blocker. These are copy-only text packages, not API integrations.
 
+## Weekly Review
+
+Use the Weekly Review dashboard before choosing the next session or at the end of the week.
+
+It answers four operating questions:
+
+- What moved through the production pipeline?
+- What work was completed in the last 7 days?
+- Which active episodes are blocked?
+- Which episode is closest to publish?
+
+The recommended next focus session is the top item from the Execution Queue, so weekly review and daily execution use the same priority logic. The weekly copy buttons produce local text summaries for Hermes memory, Linear progress reporting, or a creator review markdown note.
+
 ## Focus Session Runner
 
 Use `Start Session` to commit to one queue task. The active session panel shows the task context, elapsed time, task steps, success criteria, source blocker, and related checklist items.

@@ -219,6 +219,54 @@ The app status display is derived from state, active session draft, and backup s
 - Last JSON import: `backupStatus.lastImportAt`
 - Active session: none, paused, or running with the current task title
 
+## Weekly Review
+
+Weekly review data is derived from the normalized state and is not stored separately.
+
+```js
+{
+  generatedAt: "2026-04-30T12:00:00.000Z",
+  pipelineCounts: {
+    Idea: 1,
+    Packaging: 0,
+    Script: 0,
+    "Ready to Shoot": 0,
+    Editing: 1,
+    "Ready to Publish": 1,
+    Published: 0,
+    Archived: 0
+  },
+  weeklySummary: {
+    completedSessions: 2,
+    totalFocusedMinutes: 58,
+    episodesTouched: 2,
+    touchedEpisodes: [],
+    mostRecentSession: {},
+    sessions: []
+  },
+  blockedEpisodes: [],
+  closestToPublish: [],
+  recommendedNextFocusSession: {}
+}
+```
+
+`pipelineCounts` includes every status even when its count is zero.
+
+`weeklySummary` uses work sessions completed in the last 7 days. A session's completion date is `endedAt` when present, otherwise `createdAt` for compatibility with old sessions.
+
+`blockedEpisodes` includes active episodes whose readiness is below the dashboard thresholds:
+
+- packaging below `80`
+- script below `80`
+- production below `80`
+- publish below `100`
+
+Published and archived episodes are excluded from blocked and closest-to-publish lists.
+
+`closestToPublish` ranks active episodes by pipeline stage first, then publish, production, script, packaging, and overall readiness.
+
+`recommendedNextFocusSession` is the first item from the existing Execution Queue sort order.
+
 ## Status Flow
 
 Episodes use these statuses:
@@ -241,7 +289,7 @@ Export creates a JSON object with metadata plus the normalized state:
 ```js
 {
   app: "VIDTOOLZ Episode Factory",
-  appVersion: "0.8.0",
+  appVersion: "0.9.0",
   schemaVersion: 1,
   storageKey: "vidtoolz-episode-factory-v1",
   exportedAt: "...",

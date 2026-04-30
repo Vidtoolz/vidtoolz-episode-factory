@@ -4,7 +4,7 @@
   const STORAGE_KEY = "vidtoolz-episode-factory-v1";
   const ACTIVE_SESSION_KEY = "vidtoolz-episode-factory-active-session-v1";
   const BACKUP_STATUS_KEY = "vidtoolz-episode-factory-backup-status-v1";
-  const APP_VERSION = "0.8.0";
+  const APP_VERSION = "0.9.0";
   const EXPORT_SCHEMA_VERSION = 1;
   const MAX_IMPORT_EPISODES = 500;
 
@@ -439,6 +439,140 @@
             elapsedSeconds: 0,
             progressPercent: 0,
           },
+    };
+  }
+
+  function getPipelineCounts(episodes = []) {
+    const counts = STATUSES.reduce((result, status) => {
+      result[status] = 0;
+      return result;
+    }, {});
+    (Array.isArray(episodes) ? episodes : []).forEach((episode) => {
+      const normalized = normalizeEpisode(episode);
+      counts[normalized.status] += 1;
+    });
+    return counts;
+  }
+
+  function getWorkSessionCompletedAt(session) {
+    const normalized = normalizeWorkSession(session);
+    return normalizeIsoTimestamp(normalized.endedAt || normalized.createdAt);
+  }
+
+  function getWeeklyWorkSummary(episodes = [], now = Date.now()) {
+    const cutoff = now - 7 * 24 * 60 * 60 * 1000;
+    const sessions = [];
+    (Array.isArray(episodes) ? episodes : []).forEach((episode) => {
+      const normalized = normalizeEpisode(episode);
+      normalized.workSessions.forEach((session) => {
+        const completedAt = getWorkSessionCompletedAt(session);
+        const completedTime = completedAt ? new Date(completedAt).getTime() : NaN;
+        if (!Number.isNaN(completedTime) && completedTime >= cutoff && completedTime <= now) {
+          sessions.push({
+            ...session,
+            completedAt,
+            episodeId: normalized.id,
+            episodeTitle: normalized.workingTitle || "Untitled episode",
+          });
+        }
+      });
+    });
+
+    sessions.sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
+    const touched = new Map();
+    sessions.forEach((session) => {
+      if (!touched.has(session.episodeId)) touched.set(session.episodeId, session.episodeTitle);
+    });
+
+    return {
+      completedSessions: sessions.length,
+      totalFocusedMinutes: sessions.reduce((sum, session) => sum + normalizeMinutes(session.actualMinutes, 0), 0),
+      episodesTouched: touched.size,
+      touchedEpisodes: Array.from(touched, ([id, title]) => ({ id, title })),
+      mostRecentSession: sessions[0] || null,
+      sessions,
+    };
+  }
+
+  function getBlockedEpisodes(episodes = []) {
+    return (Array.isArray(episodes) ? episodes : [])
+      .map(normalizeEpisode)
+      .filter((episode) => !["Published", "Archived"].includes(episode.status))
+      .map((episode) => {
+        const scores = getReadinessScores(episode);
+        const blockers = [
+          scores.packaging < 80
+            ? { type: "packaging", label: "Packaging readiness below 80%", score: scores.packaging, threshold: 80 }
+            : null,
+          scores.script < 80
+            ? { type: "script", label: "Script readiness below 80%", score: scores.script, threshold: 80 }
+            : null,
+          scores.production < 80
+            ? { type: "production", label: "Production readiness below 80%", score: scores.production, threshold: 80 }
+            : null,
+          scores.publish < 100
+            ? { type: "publish", label: "Publish readiness below 100%", score: scores.publish, threshold: 100 }
+            : null,
+        ].filter(Boolean);
+        return {
+          id: episode.id,
+          title: episode.workingTitle || "Untitled episode",
+          status: episode.status,
+          scores,
+          blockers,
+        };
+      })
+      .filter((episode) => episode.blockers.length)
+      .sort((a, b) => a.scores.overall - b.scores.overall || a.title.localeCompare(b.title));
+  }
+
+  function statusPublishRank(status) {
+    return {
+      "Ready to Publish": 70,
+      Editing: 60,
+      "Ready to Shoot": 50,
+      Script: 40,
+      Packaging: 30,
+      Idea: 20,
+      Published: 10,
+      Archived: 0,
+    }[status] || 0;
+  }
+
+  function getClosestToPublish(episodes = [], limit = 5) {
+    return (Array.isArray(episodes) ? episodes : [])
+      .map(normalizeEpisode)
+      .filter((episode) => !["Published", "Archived"].includes(episode.status))
+      .map((episode) => ({
+        id: episode.id,
+        title: episode.workingTitle || "Untitled episode",
+        status: episode.status,
+        scores: getReadinessScores(episode),
+        nextAction: getNextAction(episode),
+      }))
+      .sort(
+        (a, b) =>
+          statusPublishRank(b.status) - statusPublishRank(a.status) ||
+          b.scores.publish - a.scores.publish ||
+          b.scores.production - a.scores.production ||
+          b.scores.script - a.scores.script ||
+          b.scores.packaging - a.scores.packaging ||
+          b.scores.overall - a.scores.overall ||
+          a.title.localeCompare(b.title)
+      )
+      .slice(0, Math.max(0, normalizeMinutes(limit, 5)));
+  }
+
+  function buildWeeklyReview(state, now = Date.now()) {
+    const normalized = normalizeState(state);
+    const queue = buildExecutionQueue(normalized.episodes);
+    return {
+      generatedAt: new Date(now).toISOString(),
+      pipelineCounts: getPipelineCounts(normalized.episodes),
+      weeklySummary: getWeeklyWorkSummary(normalized.episodes, now),
+      blockedEpisodes: getBlockedEpisodes(normalized.episodes),
+      closestToPublish: getClosestToPublish(normalized.episodes),
+      recommendedNextFocusSession: queue[0] || null,
     };
   }
 
@@ -1327,6 +1461,117 @@
     return "";
   }
 
+  function pipelineCountsMarkdown(counts) {
+    return STATUSES.map((status) => `- ${status}: ${counts[status] || 0}`).join("\n");
+  }
+
+  function weeklySessionLine(session) {
+    if (!session) return "None recorded.";
+    return `${session.completedAt} - ${session.episodeTitle}: ${session.taskTitle} (${session.actualMinutes} min)`;
+  }
+
+  function buildWeeklyCreatorReviewMarkdown(state, now = Date.now()) {
+    const review = buildWeeklyReview(state, now);
+    return [
+      "# Weekly Creator Review",
+      "",
+      `Generated: ${review.generatedAt}`,
+      "",
+      "## Pipeline Counts",
+      pipelineCountsMarkdown(review.pipelineCounts),
+      "",
+      "## Work This Week",
+      `- Completed sessions: ${review.weeklySummary.completedSessions}`,
+      `- Total focused minutes: ${review.weeklySummary.totalFocusedMinutes}`,
+      `- Episodes touched: ${review.weeklySummary.episodesTouched}`,
+      `- Most recent completed session: ${weeklySessionLine(review.weeklySummary.mostRecentSession)}`,
+      "",
+      "## Blocked Episodes",
+      review.blockedEpisodes.length
+        ? review.blockedEpisodes
+            .map((episode) => `- ${episode.title} (${episode.status}): ${episode.blockers.map((blocker) => `${blocker.type} ${blocker.score}%`).join(", ")}`)
+            .join("\n")
+        : "- None",
+      "",
+      "## Closest To Publish",
+      review.closestToPublish.length
+        ? review.closestToPublish
+            .map((episode) => `- ${episode.title} (${episode.status}): publish ${episode.scores.publish}%, overall ${episode.scores.overall}%`)
+            .join("\n")
+        : "- None",
+      "",
+      "## Recommended Next Focus Session",
+      review.recommendedNextFocusSession
+        ? [
+            `Task: ${review.recommendedNextFocusSession.taskTitle}`,
+            `Episode: ${review.recommendedNextFocusSession.episodeTitle}`,
+            `Reason: ${review.recommendedNextFocusSession.reason}`,
+            `Source blocker: ${review.recommendedNextFocusSession.sourceBlocker}`,
+          ].join("\n")
+        : "No active blocker task available.",
+    ].join("\n");
+  }
+
+  function buildWeeklyHermesMemoryUpdate(state, now = Date.now()) {
+    const review = buildWeeklyReview(state, now);
+    return [
+      "VIDTOOLZ Episode Factory weekly memory update",
+      `Generated: ${review.generatedAt}`,
+      `Completed sessions this week: ${review.weeklySummary.completedSessions}`,
+      `Focused minutes this week: ${review.weeklySummary.totalFocusedMinutes}`,
+      `Episodes touched this week: ${review.weeklySummary.episodesTouched}`,
+      `Most recent session: ${weeklySessionLine(review.weeklySummary.mostRecentSession)}`,
+      `Blocked episodes: ${review.blockedEpisodes.map((episode) => `${episode.title} (${episode.blockers.map((blocker) => blocker.type).join(", ")})`).join(" | ") || "None"}`,
+      `Closest to publish: ${review.closestToPublish.map((episode) => `${episode.title} (${episode.status}, publish ${episode.scores.publish}%)`).join(" | ") || "None"}`,
+      `Recommended next focus session: ${
+        review.recommendedNextFocusSession
+          ? `${review.recommendedNextFocusSession.taskTitle} for ${review.recommendedNextFocusSession.episodeTitle}`
+          : "None"
+      }`,
+    ].join("\n");
+  }
+
+  function buildWeeklyLinearProgressSummary(state, now = Date.now()) {
+    const review = buildWeeklyReview(state, now);
+    return [
+      "## Weekly VIDTOOLZ Progress Summary",
+      "",
+      `Generated: ${review.generatedAt}`,
+      "",
+      "### Work Completed",
+      `- Completed sessions: ${review.weeklySummary.completedSessions}`,
+      `- Focused minutes: ${review.weeklySummary.totalFocusedMinutes}`,
+      `- Episodes touched: ${review.weeklySummary.episodesTouched}`,
+      "",
+      "### Pipeline",
+      pipelineCountsMarkdown(review.pipelineCounts),
+      "",
+      "### Blocked",
+      review.blockedEpisodes.length
+        ? review.blockedEpisodes
+            .map((episode) => `- ${episode.title}: ${episode.blockers.map((blocker) => blocker.label).join("; ")}`)
+            .join("\n")
+        : "- None",
+      "",
+      "### Closest To Publish",
+      review.closestToPublish.length
+        ? review.closestToPublish.map((episode) => `- ${episode.title}: ${episode.status}, publish ${episode.scores.publish}%`).join("\n")
+        : "- None",
+      "",
+      "### Next Focus Session",
+      review.recommendedNextFocusSession
+        ? `- ${review.recommendedNextFocusSession.taskTitle} (${review.recommendedNextFocusSession.episodeTitle})`
+        : "- None",
+    ].join("\n");
+  }
+
+  function buildWeeklyExportPayload(type, state, now = Date.now()) {
+    if (type === "hermes") return buildWeeklyHermesMemoryUpdate(state, now);
+    if (type === "linear") return buildWeeklyLinearProgressSummary(state, now);
+    if (type === "markdown") return buildWeeklyCreatorReviewMarkdown(state, now);
+    return "";
+  }
+
   function normalizeState(payload) {
     const source = payload && typeof payload === "object" ? payload : {};
     const episodes = Array.isArray(source.episodes) ? source.episodes.map(normalizeEpisode) : [];
@@ -1459,6 +1704,11 @@
     getReadinessScores,
     getNextAction,
     getAppStatus,
+    getPipelineCounts,
+    getWeeklyWorkSummary,
+    getBlockedEpisodes,
+    getClosestToPublish,
+    buildWeeklyReview,
     generateNextActionTask,
     buildExecutionQueue,
     updateChecklistItems,
@@ -1487,6 +1737,10 @@
     buildLinearSessionComment,
     buildCodexSessionPrompt,
     buildEpisodeHistoryMarkdown,
+    buildWeeklyExportPayload,
+    buildWeeklyCreatorReviewMarkdown,
+    buildWeeklyHermesMemoryUpdate,
+    buildWeeklyLinearProgressSummary,
     buildEpisodeExportPayload,
     buildFullEpisodeMarkdownPackage,
     buildHermesMemoryUpdate,
