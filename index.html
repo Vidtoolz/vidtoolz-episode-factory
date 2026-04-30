@@ -15,9 +15,13 @@
         </div>
         <div class="topbar-actions">
           <input id="searchInput" class="search" type="search" placeholder="Search episodes" />
+          <button id="exportJsonBtn" type="button">Export JSON</button>
+          <button id="importJsonBtn" type="button">Import JSON</button>
+          <input id="importJsonInput" class="visually-hidden" type="file" accept="application/json,.json" />
           <button id="newEpisodeBtn" class="primary-btn" type="button">New episode</button>
         </div>
       </header>
+      <p id="importExportStatus" class="global-status" role="status"></p>
 
       <main class="workspace">
         <section class="board-panel" aria-label="Episode board">

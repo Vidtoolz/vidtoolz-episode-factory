@@ -77,6 +77,31 @@ button:hover {
   max-width: 1640px;
 }
 
+.global-status {
+  color: var(--muted);
+  margin: -8px auto 12px;
+  max-width: 1640px;
+  min-height: 20px;
+}
+
+.global-status.success {
+  color: var(--accent);
+}
+
+.global-status.error {
+  color: var(--danger);
+}
+
+.visually-hidden {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
 .eyebrow,
 .muted {
   color: var(--muted);

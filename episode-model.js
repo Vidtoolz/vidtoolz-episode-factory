@@ -2,7 +2,9 @@
   "use strict";
 
   const STORAGE_KEY = "vidtoolz-episode-factory-v1";
-  const APP_VERSION = "1.0.0";
+  const APP_VERSION = "0.1.0";
+  const EXPORT_SCHEMA_VERSION = 1;
+  const MAX_IMPORT_EPISODES = 500;
 
   const STATUSES = [
     "Idea",
@@ -235,13 +237,107 @@
     const episodes = Array.isArray(source.episodes) ? source.episodes.map(normalizeEpisode) : [];
     return {
       version: 1,
-      selectedId: cleanString(source.selectedId) || (episodes[0] && episodes[0].id) || "",
+      selectedId: chooseSelectedId(cleanString(source.selectedId), episodes),
       episodes,
+    };
+  }
+
+  function chooseSelectedId(selectedId, episodes) {
+    if (selectedId && episodes.some((episode) => episode.id === selectedId)) return selectedId;
+    return (episodes[0] && episodes[0].id) || "";
+  }
+
+  function buildExportPayload(state) {
+    const normalized = normalizeState(state);
+    return {
+      app: "VIDTOOLZ Episode Factory",
+      appVersion: APP_VERSION,
+      schemaVersion: EXPORT_SCHEMA_VERSION,
+      storageKey: STORAGE_KEY,
+      exportedAt: nowIso(),
+      version: normalized.version,
+      selectedId: normalized.selectedId,
+      counts: {
+        episodes: normalized.episodes.length,
+      },
+      episodes: normalized.episodes,
+    };
+  }
+
+  function parseImportJson(jsonText) {
+    try {
+      return validateImportPayload(JSON.parse(jsonText));
+    } catch (error) {
+      return {
+        ok: false,
+        error: "Import failed: the selected file is not valid JSON.",
+      };
+    }
+  }
+
+  function validateImportPayload(payload) {
+    if (!payload || typeof payload !== "object") {
+      return {
+        ok: false,
+        error: "Import failed: the JSON must be an object with an episodes array.",
+      };
+    }
+
+    const episodes = Array.isArray(payload) ? payload : payload.episodes;
+    if (!Array.isArray(episodes)) {
+      return {
+        ok: false,
+        error: "Import failed: no episodes array was found.",
+      };
+    }
+
+    if (episodes.length > MAX_IMPORT_EPISODES) {
+      return {
+        ok: false,
+        error: `Import failed: episode limit is ${MAX_IMPORT_EPISODES}.`,
+      };
+    }
+
+    const normalizedEpisodes = [];
+    const seenIds = new Set();
+    for (const rawEpisode of episodes) {
+      if (!rawEpisode || typeof rawEpisode !== "object" || Array.isArray(rawEpisode)) {
+        return {
+          ok: false,
+          error: "Import failed: every episode must be an object.",
+        };
+      }
+
+      const episode = normalizeEpisode(rawEpisode);
+      if (seenIds.has(episode.id)) {
+        episode.id = createId();
+      }
+      seenIds.add(episode.id);
+      normalizedEpisodes.push(episode);
+    }
+
+    const selectedId = Array.isArray(payload)
+      ? chooseSelectedId("", normalizedEpisodes)
+      : chooseSelectedId(cleanString(payload.selectedId), normalizedEpisodes);
+
+    return {
+      ok: true,
+      state: {
+        version: 1,
+        selectedId,
+        episodes: normalizedEpisodes,
+      },
+      summary: {
+        episodes: normalizedEpisodes.length,
+        selectedId,
+      },
     };
   }
 
   const api = {
     APP_VERSION,
+    EXPORT_SCHEMA_VERSION,
+    MAX_IMPORT_EPISODES,
     STORAGE_KEY,
     STATUSES,
     FIELD_DEFINITIONS,
@@ -254,6 +350,9 @@
     gateToObject,
     getGateSummary,
     buildCopyPayload,
+    buildExportPayload,
+    parseImportJson,
+    validateImportPayload,
   };
 
   if (typeof module !== "undefined" && module.exports) {

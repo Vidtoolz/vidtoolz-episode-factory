@@ -72,6 +72,91 @@ test("state normalization accepts raw episode arrays", () => {
   assert.equal(state.selectedId, "one");
 });
 
+test("export payload includes all stored episode data and metadata", () => {
+  const episode = model.normalizeEpisode({
+    id: "export-one",
+    workingTitle: "Export One",
+    status: "Packaging",
+  });
+  const payload = model.buildExportPayload({
+    version: 1,
+    selectedId: episode.id,
+    episodes: [episode],
+  });
+
+  assert.equal(payload.app, "VIDTOOLZ Episode Factory");
+  assert.equal(payload.schemaVersion, model.EXPORT_SCHEMA_VERSION);
+  assert.equal(payload.storageKey, model.STORAGE_KEY);
+  assert.equal(payload.selectedId, episode.id);
+  assert.equal(payload.counts.episodes, 1);
+  assert.equal(payload.episodes[0].workingTitle, "Export One");
+});
+
+test("import accepts exported payload and returns replacement state", () => {
+  const episode = model.normalizeEpisode({
+    id: "import-one",
+    workingTitle: "Import One",
+    status: "Ready to Shoot",
+  });
+  const payload = model.buildExportPayload({
+    selectedId: episode.id,
+    episodes: [episode],
+  });
+  const result = model.validateImportPayload(payload);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.state.episodes.length, 1);
+  assert.equal(result.state.episodes[0].status, "Ready to Shoot");
+  assert.equal(result.state.selectedId, "import-one");
+});
+
+test("import accepts legacy raw episode arrays", () => {
+  const result = model.validateImportPayload([
+    {
+      id: "legacy-one",
+      workingTitle: "Legacy One",
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-02T00:00:00.000Z",
+    },
+  ]);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.state.episodes.length, 1);
+  assert.equal(result.state.episodes[0].createdAt, "2026-01-01T00:00:00.000Z");
+});
+
+test("import rejects invalid JSON and missing episodes", () => {
+  const invalidJson = model.parseImportJson("{nope");
+  const missingEpisodes = model.validateImportPayload({ prompts: [] });
+
+  assert.equal(invalidJson.ok, false);
+  assert.match(invalidJson.error, /valid JSON/);
+  assert.equal(missingEpisodes.ok, false);
+  assert.match(missingEpisodes.error, /episodes array/);
+});
+
+test("import rejects non-object episode entries", () => {
+  const result = model.validateImportPayload({ episodes: ["not an episode"] });
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /every episode/);
+});
+
+test("import repairs duplicate episode ids", () => {
+  const result = model.validateImportPayload({
+    selectedId: "same-id",
+    episodes: [
+      { id: "same-id", workingTitle: "One" },
+      { id: "same-id", workingTitle: "Two" },
+    ],
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.state.episodes.length, 2);
+  assert.notEqual(result.state.episodes[0].id, result.state.episodes[1].id);
+  assert.equal(result.state.selectedId, "same-id");
+});
+
 let passed = 0;
 for (const item of tests) {
   try {

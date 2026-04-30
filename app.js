@@ -16,6 +16,8 @@
     gateSummary: document.querySelector("#gateSummary"),
     search: document.querySelector("#searchInput"),
     copyStatus: document.querySelector("#copyStatus"),
+    importExportStatus: document.querySelector("#importExportStatus"),
+    importInput: document.querySelector("#importJsonInput"),
   };
 
   if (!state.episodes.length) {
@@ -183,6 +185,55 @@
     render();
   }
 
+  function showImportExportStatus(message, type = "") {
+    els.importExportStatus.textContent = message;
+    els.importExportStatus.className = `global-status ${type}`.trim();
+  }
+
+  function exportJson() {
+    const payload = model.buildExportPayload(state);
+    const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], {
+      type: "application/json",
+    });
+    const date = new Date().toISOString().slice(0, 10);
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = `vidtoolz-episode-factory-${date}.json`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showImportExportStatus(`Exported ${payload.counts.episodes} episodes.`, "success");
+  }
+
+  function replaceState(nextState) {
+    state.version = nextState.version;
+    state.selectedId = nextState.selectedId;
+    state.episodes = nextState.episodes;
+    persist();
+    render();
+  }
+
+  function importJsonFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      const result = model.parseImportJson(String(reader.result || ""));
+      if (!result.ok) {
+        showImportExportStatus(result.error, "error");
+        return;
+      }
+
+      replaceState(result.state);
+      showImportExportStatus(`Imported ${result.summary.episodes} episodes. Existing local data was replaced.`, "success");
+    });
+    reader.addEventListener("error", () => {
+      showImportExportStatus("Import failed: the selected file could not be read.", "error");
+    });
+    reader.readAsText(file);
+  }
+
   async function copyOutput(type) {
     const episode = currentEpisode();
     if (!episode) return;
@@ -211,6 +262,12 @@
   document.querySelector("#newEpisodeBtn").addEventListener("click", createEpisode);
   document.querySelector("#duplicateBtn").addEventListener("click", duplicateCurrent);
   document.querySelector("#deleteBtn").addEventListener("click", deleteCurrent);
+  document.querySelector("#exportJsonBtn").addEventListener("click", exportJson);
+  document.querySelector("#importJsonBtn").addEventListener("click", () => els.importInput.click());
+  els.importInput.addEventListener("change", (event) => {
+    importJsonFile(event.target.files[0]);
+    event.target.value = "";
+  });
   els.form.addEventListener("submit", (event) => event.preventDefault());
   els.search.addEventListener("input", renderBoard);
 
