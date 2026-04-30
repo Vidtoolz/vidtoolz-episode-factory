@@ -556,6 +556,65 @@ test("JSON round trip preserves edited work sessions", () => {
   assert.equal(imported.state.episodes[0].workSessions[0].actualMinutes, 12);
 });
 
+test("active session normalization handles old or missing data", () => {
+  assert.equal(model.normalizeActiveSession(null), null);
+  const task = model.generateNextActionTask(model.normalizeEpisode({ workingTitle: "Active Compat" }));
+  const active = model.normalizeActiveSession({ task, elapsedSeconds: "12", isRunning: true }, 1000);
+
+  assert.match(active.id, /^active-/);
+  assert.equal(active.task.taskTitle, task.taskTitle);
+  assert.equal(active.elapsedSeconds, 12);
+  assert.equal(active.isRunning, true);
+});
+
+test("starting a session creates one running active session", () => {
+  const task = model.generateNextActionTask(model.normalizeEpisode({ workingTitle: "Start Active" }));
+  const active = model.startActiveSession(task, 1000);
+
+  assert.equal(active.task.id, task.id);
+  assert.equal(active.episodeId, task.episodeId);
+  assert.equal(active.startedAt, 1000);
+  assert.equal(active.isRunning, true);
+});
+
+test("active session pause resume and elapsed time are testable", () => {
+  const task = model.generateNextActionTask(model.normalizeEpisode({ workingTitle: "Timer Active" }));
+  const active = model.startActiveSession(task, 1000);
+  assert.equal(model.getActiveSessionElapsedSeconds(active, 31000), 30);
+
+  const paused = model.pauseActiveSession(active, 31000);
+  assert.equal(paused.elapsedSeconds, 30);
+  assert.equal(paused.isRunning, false);
+  assert.equal(model.getActiveSessionElapsedSeconds(paused, 91000), 30);
+
+  const resumed = model.resumeActiveSession(paused, 91000);
+  assert.equal(model.getActiveSessionElapsedSeconds(resumed, 121000), 60);
+});
+
+test("completing an active session can become a work session with elapsed minutes", () => {
+  const episode = model.normalizeEpisode({ workingTitle: "Complete Active" });
+  const task = model.generateNextActionTask(episode);
+  const active = model.startActiveSession(task, 0);
+  const completion = model.buildCompletionDataFromActiveSession(
+    active,
+    { result: "Completed active work." },
+    125000
+  );
+  const updated = model.addWorkSession(episode, completion);
+
+  assert.equal(completion.actualMinutes, 3);
+  assert.equal(updated.workSessions.length, 1);
+  assert.equal(updated.workSessions[0].taskTitle, task.taskTitle);
+});
+
+test("abandoning an active session clears the draft", () => {
+  const task = model.generateNextActionTask(model.normalizeEpisode({ workingTitle: "Abandon Active" }));
+  const active = model.startActiveSession(task, 0);
+
+  assert.ok(active);
+  assert.equal(model.abandonActiveSession(active), null);
+});
+
 test("state normalization accepts raw episode arrays", () => {
   const state = model.normalizeState({
     episodes: [{ id: "one", workingTitle: "One" }],

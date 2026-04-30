@@ -6,6 +6,12 @@ Episode Factory stores one state object in browser `localStorage` under:
 vidtoolz-episode-factory-v1
 ```
 
+The active focus session draft is stored separately under:
+
+```text
+vidtoolz-episode-factory-active-session-v1
+```
+
 ## State Object
 
 ```js
@@ -159,6 +165,24 @@ Task types sort in this order:
 4. `editingIncomplete`
 5. `readyToPublish`
 6. `maintenance`
+
+## Active Session Draft
+
+Active sessions are app-level drafts, not episode records, and are not included in episode JSON export.
+
+```js
+{
+  id: "active-...",
+  task: {},
+  episodeId: "episode-id",
+  startedAt: 1760000000000,
+  updatedAt: 1760000000000,
+  elapsedSeconds: 0,
+  isRunning: true
+}
+```
+
+When completed, the active draft is converted into a normal `workSessions` entry on the episode and the active session key is cleared.
 
 ## Status Flow
 

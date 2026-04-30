@@ -4,6 +4,7 @@
   const model = window.EpisodeFactoryModel;
   const storage = window.EpisodeFactoryStorage;
   const state = storage.loadState();
+  let activeSession = storage.loadActiveSession();
 
   const els = {
     board: document.querySelector("#board"),
@@ -14,6 +15,7 @@
     status: document.querySelector("#statusSelect"),
     boardFilters: document.querySelector("#boardFilters"),
     queue: document.querySelector("#executionQueue"),
+    activeSessionPanel: document.querySelector("#activeSessionPanel"),
     completionDrawer: document.querySelector("#completionDrawer"),
     taskCopyStatus: document.querySelector("#taskCopyStatus"),
     sessions: document.querySelector("#workSessions"),
@@ -35,6 +37,7 @@
   ];
   let activeFilter = "all";
   let activeCompletionTaskId = "";
+  let completionTaskOverride = null;
   let editingSessionId = "";
 
   if (!state.episodes.length) {
@@ -56,6 +59,10 @@
 
   function persist() {
     storage.saveState(state);
+  }
+
+  function persistActiveSession() {
+    storage.saveActiveSession(activeSession);
   }
 
   function currentEpisode() {
@@ -153,6 +160,8 @@
     els.queue.innerHTML = "";
     if (!tasks.length) {
       els.queue.innerHTML = `<p class="muted">No active blocker tasks. Pick an episode or create the next idea.</p>`;
+      renderActiveSessionPanel();
+      renderCompletionDrawer();
       return;
     }
 
@@ -171,16 +180,77 @@
           <button type="button" data-task-copy="hermes" data-task-id="${escapeHtml(task.id)}">Hermes</button>
           <button type="button" data-task-copy="linear" data-task-id="${escapeHtml(task.id)}">Linear</button>
           <button type="button" data-task-copy="codex" data-task-id="${escapeHtml(task.id)}">Codex</button>
+          <button type="button" data-task-start="${escapeHtml(task.id)}">Start Session</button>
           <button type="button" data-task-complete="${escapeHtml(task.id)}">Complete</button>
         </div>
       `;
       els.queue.append(item);
     });
+    renderActiveSessionPanel();
     renderCompletionDrawer();
   }
 
+  function formatSeconds(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  function renderActiveSessionPanel() {
+    const session = model.normalizeActiveSession(activeSession);
+    els.activeSessionPanel.innerHTML = "";
+    if (!session) {
+      els.activeSessionPanel.innerHTML = `<p class="muted">No active focus session.</p>`;
+      return;
+    }
+
+    const elapsed = model.getActiveSessionElapsedSeconds(session);
+    const checklistMarkup = session.task.relevantChecklistItems.length
+      ? session.task.relevantChecklistItems
+          .map((item) => `<li>${escapeHtml(item.groupLabel)}: ${escapeHtml(item.item)}</li>`)
+          .join("")
+      : "<li>No task-specific checklist items.</li>";
+    els.activeSessionPanel.innerHTML = `
+      <article class="active-session-card">
+        <div class="section-heading">
+          <div>
+            <h2>Active Session</h2>
+            <p class="muted">${escapeHtml(session.task.episodeTitle)} · ${escapeHtml(session.task.type)}</p>
+          </div>
+          <strong class="timer-readout">${formatSeconds(elapsed)}</strong>
+        </div>
+        <h3>${escapeHtml(session.task.taskTitle)}</h3>
+        <p>${escapeHtml(session.task.reason)}</p>
+        <p class="muted">Estimate: ${session.task.estimatedMinutes} min · Source: ${escapeHtml(session.task.sourceBlocker)}</p>
+        <div class="active-session-grid">
+          <div>
+            <h3>Steps</h3>
+            <ul>${session.task.concreteSteps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ul>
+          </div>
+          <div>
+            <h3>Success Criteria</h3>
+            <ul>${session.task.successCriteria.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+          </div>
+          <div>
+            <h3>Relevant Checklist Items</h3>
+            <ul>${checklistMarkup}</ul>
+          </div>
+        </div>
+        <div class="queue-actions">
+          <button type="button" data-active-control="start">${session.isRunning ? "Resume" : "Start"}</button>
+          <button type="button" data-active-control="pause">Pause</button>
+          <button type="button" data-active-control="reset">Reset</button>
+          <button class="primary-btn" type="button" data-active-control="complete">Complete Session</button>
+          <button type="button" data-active-control="abandon">Abandon Session</button>
+        </div>
+      </article>
+    `;
+  }
+
   function renderCompletionDrawer() {
-    const task = model.buildExecutionQueue(state.episodes).find((item) => item.id === activeCompletionTaskId);
+    const task =
+      completionTaskOverride ||
+      model.buildExecutionQueue(state.episodes).find((item) => item.id === activeCompletionTaskId);
     els.completionDrawer.classList.toggle("hidden", !task);
     els.completionDrawer.innerHTML = "";
     if (!task) return;
@@ -198,6 +268,9 @@
           .join("")
       : `<p class="muted">No checklist items are tied to this task.</p>`;
 
+    const actualMinutes = completionTaskOverride
+      ? Math.ceil(model.getActiveSessionElapsedSeconds(activeSession) / 60)
+      : task.estimatedMinutes;
     els.completionDrawer.innerHTML = `
       <form id="completionForm" class="completion-form">
         <div class="section-heading">
@@ -209,7 +282,7 @@
         <div class="completion-grid">
           <label class="field">
             <span>Actual minutes</span>
-            <input name="actualMinutes" type="number" min="0" value="${task.estimatedMinutes}" required />
+            <input name="actualMinutes" type="number" min="0" value="${actualMinutes}" required />
           </label>
           <label class="field span-2">
             <span>What was completed</span>
@@ -562,7 +635,9 @@
   }
 
   function saveCompletedTask(taskId, form) {
-    const task = model.buildExecutionQueue(state.episodes).find((item) => item.id === taskId);
+    const task =
+      completionTaskOverride ||
+      model.buildExecutionQueue(state.episodes).find((item) => item.id === taskId);
     if (!task) return false;
     const episodeIndex = state.episodes.findIndex((episode) => episode.id === task.episodeId);
     if (episodeIndex < 0) return false;
@@ -586,6 +661,11 @@
     );
     state.selectedId = state.episodes[episodeIndex].id;
     activeCompletionTaskId = "";
+    completionTaskOverride = null;
+    if (activeSession && activeSession.task && activeSession.task.id === task.id) {
+      activeSession = null;
+      persistActiveSession();
+    }
     persist();
     render();
     return true;
@@ -601,6 +681,45 @@
     editingSessionId = "";
     persist();
     render();
+  }
+
+  function startFocusSession(taskId) {
+    const task = model.buildExecutionQueue(state.episodes).find((item) => item.id === taskId);
+    if (!task) return;
+    if (activeSession && !window.confirm("A focus session is already active. Abandon it and start this one?")) {
+      return;
+    }
+    activeSession = model.startActiveSession(task);
+    activeCompletionTaskId = "";
+    completionTaskOverride = null;
+    state.selectedId = task.episodeId;
+    persistActiveSession();
+    persist();
+    render();
+  }
+
+  function activeSessionControl(action) {
+    if (!activeSession) return;
+    if (action === "start") activeSession = model.resumeActiveSession(activeSession);
+    if (action === "pause") activeSession = model.pauseActiveSession(activeSession);
+    if (action === "reset") activeSession = model.resetActiveSession(activeSession);
+    if (action === "complete") {
+      activeSession = model.pauseActiveSession(activeSession);
+      completionTaskOverride = activeSession.task;
+      activeCompletionTaskId = activeSession.task.id;
+      persistActiveSession();
+      renderActiveSessionPanel();
+      renderCompletionDrawer();
+      return;
+    }
+    if (action === "abandon") {
+      if (!window.confirm("Abandon the active focus session?")) return;
+      activeSession = model.abandonActiveSession();
+      activeCompletionTaskId = "";
+      completionTaskOverride = null;
+    }
+    persistActiveSession();
+    renderActiveSessionPanel();
   }
 
   async function copyGeneratedTask(task) {
@@ -666,6 +785,12 @@
       return;
     }
 
+    const startButton = event.target.closest("[data-task-start]");
+    if (startButton) {
+      startFocusSession(startButton.dataset.taskStart);
+      return;
+    }
+
     const completeButton = event.target.closest("[data-task-complete]");
     if (completeButton) {
       activeCompletionTaskId = completeButton.dataset.taskComplete;
@@ -681,7 +806,14 @@
   els.completionDrawer.addEventListener("click", (event) => {
     if (!event.target.closest("[data-completion-cancel]")) return;
     activeCompletionTaskId = "";
+    completionTaskOverride = null;
     renderCompletionDrawer();
+  });
+
+  els.activeSessionPanel.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-active-control]");
+    if (!button) return;
+    activeSessionControl(button.dataset.activeControl);
   });
 
   els.boardFilters.addEventListener("click", (event) => {
@@ -774,4 +906,9 @@
   });
 
   render();
+
+  window.setInterval(() => {
+    if (!activeSession || !activeSession.isRunning) return;
+    renderActiveSessionPanel();
+  }, 1000);
 })();

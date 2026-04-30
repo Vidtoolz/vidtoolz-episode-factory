@@ -232,6 +232,39 @@ textarea {
   padding: 10px;
 }
 
+.active-session-panel {
+  margin-top: 10px;
+}
+
+.active-session-card {
+  background: #eef6f1;
+  border: 1px solid rgba(35, 97, 74, 0.35);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.timer-readout {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.active-session-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.active-session-grid ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.active-session-grid li {
+  margin-bottom: 4px;
+}
+
 .completion-form,
 .session-edit-form {
   display: grid;
@@ -655,6 +688,7 @@ label > span,
 
   .field-grid,
   .readiness-grid,
+  .active-session-grid,
   .completion-grid,
   .gate-list,
   .copy-grid {

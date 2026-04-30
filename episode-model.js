@@ -2,7 +2,8 @@
   "use strict";
 
   const STORAGE_KEY = "vidtoolz-episode-factory-v1";
-  const APP_VERSION = "0.6.0";
+  const ACTIVE_SESSION_KEY = "vidtoolz-episode-factory-active-session-v1";
+  const APP_VERSION = "0.7.0";
   const EXPORT_SCHEMA_VERSION = 1;
   const MAX_IMPORT_EPISODES = 500;
 
@@ -239,6 +240,11 @@
     return Number.isFinite(number) && number >= 0 ? Math.round(number) : fallback;
   }
 
+  function normalizeTimestamp(value, fallback = Date.now()) {
+    const number = Number(value);
+    return Number.isFinite(number) && number >= 0 ? number : fallback;
+  }
+
   function normalizeWorkSession(input = {}) {
     const createdAt = cleanString(input.createdAt) || nowIso();
     return {
@@ -268,6 +274,111 @@
       notes: [`Still blocked: ${blocked || "None recorded."}`, notes].filter(Boolean).join("\n"),
       nextActionAfterSession: cleanString(input.nextActionAfterSession),
     };
+  }
+
+  function normalizeActiveSession(input = {}, now = Date.now()) {
+    if (!input || typeof input !== "object" || !input.task) return null;
+    const task = {
+      ...input.task,
+      estimatedMinutes: normalizeMinutes(input.task.estimatedMinutes, 30),
+      concreteSteps: Array.isArray(input.task.concreteSteps) ? input.task.concreteSteps.map(cleanString) : [],
+      successCriteria: Array.isArray(input.task.successCriteria) ? input.task.successCriteria.map(cleanString) : [],
+      relevantChecklistItems: Array.isArray(input.task.relevantChecklistItems)
+        ? input.task.relevantChecklistItems.map((item) => ({
+            groupKey: cleanString(item.groupKey),
+            groupLabel: cleanString(item.groupLabel),
+            item: cleanString(item.item),
+          }))
+        : [],
+    };
+    return {
+      id: cleanString(input.id) || createId("active"),
+      task,
+      episodeId: cleanString(input.episodeId) || cleanString(task.episodeId),
+      startedAt: normalizeTimestamp(input.startedAt, now),
+      updatedAt: normalizeTimestamp(input.updatedAt, now),
+      elapsedSeconds: normalizeMinutes(input.elapsedSeconds, 0),
+      isRunning: Boolean(input.isRunning),
+    };
+  }
+
+  function getActiveSessionElapsedSeconds(activeSession, now = Date.now()) {
+    const session = normalizeActiveSession(activeSession, now);
+    if (!session) return 0;
+    const runningSeconds = session.isRunning
+      ? Math.max(0, Math.floor((now - session.updatedAt) / 1000))
+      : 0;
+    return session.elapsedSeconds + runningSeconds;
+  }
+
+  function startActiveSession(task, now = Date.now()) {
+    if (!task) return null;
+    return normalizeActiveSession(
+      {
+        id: createId("active"),
+        task,
+        episodeId: task.episodeId,
+        startedAt: now,
+        updatedAt: now,
+        elapsedSeconds: 0,
+        isRunning: true,
+      },
+      now
+    );
+  }
+
+  function pauseActiveSession(activeSession, now = Date.now()) {
+    const session = normalizeActiveSession(activeSession, now);
+    if (!session || !session.isRunning) return session;
+    return normalizeActiveSession(
+      {
+        ...session,
+        elapsedSeconds: getActiveSessionElapsedSeconds(session, now),
+        updatedAt: now,
+        isRunning: false,
+      },
+      now
+    );
+  }
+
+  function resumeActiveSession(activeSession, now = Date.now()) {
+    const session = normalizeActiveSession(activeSession, now);
+    if (!session) return null;
+    return normalizeActiveSession({ ...session, updatedAt: now, isRunning: true }, now);
+  }
+
+  function resetActiveSession(activeSession, now = Date.now()) {
+    const session = normalizeActiveSession(activeSession, now);
+    if (!session) return null;
+    return normalizeActiveSession(
+      {
+        ...session,
+        startedAt: now,
+        updatedAt: now,
+        elapsedSeconds: 0,
+        isRunning: false,
+      },
+      now
+    );
+  }
+
+  function abandonActiveSession() {
+    return null;
+  }
+
+  function buildCompletionDataFromActiveSession(activeSession, input = {}, now = Date.now()) {
+    const session = normalizeActiveSession(activeSession, now);
+    if (!session) return normalizeCompletionFormData(input);
+    return normalizeCompletionFormData(
+      {
+        ...input,
+        actualMinutes:
+          input.actualMinutes !== undefined
+            ? input.actualMinutes
+            : Math.ceil(getActiveSessionElapsedSeconds(session, now) / 60),
+      },
+      session.task
+    );
   }
 
   function createEpisode(seed = {}) {
@@ -1205,6 +1316,7 @@
 
   const api = {
     APP_VERSION,
+    ACTIVE_SESSION_KEY,
     EXPORT_SCHEMA_VERSION,
     MAX_IMPORT_EPISODES,
     STORAGE_KEY,
@@ -1217,6 +1329,7 @@
     normalizeEpisode,
     normalizeWorkSession,
     normalizeCompletionFormData,
+    normalizeActiveSession,
     normalizeState,
     normalizeChecklistGroup,
     normalizeChecklists,
@@ -1236,6 +1349,13 @@
     deleteWorkSession,
     buildResumeBlockerTask,
     buildRepeatTaskFromSession,
+    startActiveSession,
+    pauseActiveSession,
+    resumeActiveSession,
+    resetActiveSession,
+    abandonActiveSession,
+    getActiveSessionElapsedSeconds,
+    buildCompletionDataFromActiveSession,
     buildCopyPayload,
     buildTaskPackagePayload,
     buildHumanTaskPackage,

@@ -55,6 +55,20 @@ It scans active episodes and generates one 30-minute task per episode when there
 
 Use the Human task package when sitting down to work. Use the Hermes package for memory/context updates, the Linear body when turning a task into an issue, and the Codex prompt when asking for focused help on the next blocker. These are copy-only text packages, not API integrations.
 
+## Focus Session Runner
+
+Use `Start Session` to commit to one queue task. The active session panel shows the task context, elapsed time, task steps, success criteria, source blocker, and related checklist items.
+
+Controls are intentionally simple:
+
+- `Start`: start or resume the timer.
+- `Pause`: freeze elapsed time.
+- `Reset`: clear elapsed time for the same task.
+- `Complete Session`: open the completion form with elapsed minutes prefilled.
+- `Abandon Session`: clear the active draft after confirmation.
+
+Only one active session can exist at a time. Starting a different session requires abandoning the current one.
+
 ## Closing The Loop
 
 When choosing `Complete`, the app opens an inline completion form instead of browser prompts. Record:
