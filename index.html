@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VIDTOOLZ Episode Factory</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">VIDTOOLZ</p>
+          <h1>Episode Factory</h1>
+        </div>
+        <div class="topbar-actions">
+          <input id="searchInput" class="search" type="search" placeholder="Search episodes" />
+          <button id="newEpisodeBtn" class="primary-btn" type="button">New episode</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="board-panel" aria-label="Episode board">
+          <div class="panel-heading">
+            <h2>Board</h2>
+            <span id="episodeCount" class="muted"></span>
+          </div>
+          <div id="board" class="board"></div>
+        </section>
+
+        <section class="detail-panel" aria-label="Episode detail">
+          <div id="emptyState" class="empty-state">
+            <h2>No episode selected</h2>
+            <p>Create an episode to start packaging an idea into a publish-ready production package.</p>
+          </div>
+
+          <form id="episodeForm" class="episode-form hidden">
+            <div class="detail-header">
+              <div>
+                <label for="statusSelect">Status</label>
+                <select id="statusSelect" name="status"></select>
+              </div>
+              <div class="detail-actions">
+                <button id="duplicateBtn" type="button">Duplicate</button>
+                <button id="deleteBtn" class="danger-btn" type="button">Delete</button>
+              </div>
+            </div>
+
+            <div id="fieldGrid" class="field-grid"></div>
+
+            <section class="gate-panel">
+              <div class="section-heading">
+                <div>
+                  <h2>Packaging Gate</h2>
+                  <p id="gateSummary" class="muted"></p>
+                </div>
+              </div>
+              <div id="gateList" class="gate-list"></div>
+            </section>
+
+            <section class="copy-panel">
+              <div class="section-heading">
+                <div>
+                  <h2>Copy Outputs</h2>
+                  <p class="muted">Prepared for later Linear, GitHub, Codex, and Hermes workflows.</p>
+                </div>
+              </div>
+              <div class="copy-grid">
+                <button data-copy="linear" type="button">Copy Linear issue body</button>
+                <button data-copy="codex" type="button">Copy Codex task prompt</button>
+                <button data-copy="hermes" type="button">Copy Hermes memory update</button>
+                <button data-copy="youtube" type="button">Copy YouTube description draft</button>
+              </div>
+              <p id="copyStatus" class="copy-status" role="status"></p>
+            </section>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script src="episode-model.js"></script>
+    <script src="storage-adapter.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
