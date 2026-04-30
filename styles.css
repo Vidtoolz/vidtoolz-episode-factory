@@ -224,6 +224,51 @@ textarea {
   overflow: auto;
 }
 
+.completion-drawer {
+  background: #fafaf8;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  margin-top: 10px;
+  padding: 10px;
+}
+
+.completion-form,
+.session-edit-form {
+  display: grid;
+  gap: 10px;
+}
+
+.completion-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.completion-checks {
+  display: grid;
+  gap: 7px;
+}
+
+.completion-check {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  display: flex;
+  gap: 8px;
+  padding: 7px 9px;
+}
+
+.completion-check input {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.form-error {
+  color: var(--danger);
+  min-height: 20px;
+}
+
 .queue-item {
   background: #fafaf8;
   border: 1px solid var(--border);
@@ -486,6 +531,15 @@ label > span,
   padding: 9px;
 }
 
+.session-item::before {
+  background: var(--accent);
+  border-radius: 999px;
+  content: "";
+  display: block;
+  height: 8px;
+  width: 8px;
+}
+
 .session-main {
   display: grid;
   gap: 5px;
@@ -601,6 +655,7 @@ label > span,
 
   .field-grid,
   .readiness-grid,
+  .completion-grid,
   .gate-list,
   .copy-grid {
     grid-template-columns: 1fr;

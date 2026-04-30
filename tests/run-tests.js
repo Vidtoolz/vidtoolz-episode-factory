@@ -462,6 +462,100 @@ test("JSON export and import preserve work sessions", () => {
   assert.equal(imported.state.episodes[0].workSessions[0].taskTitle, "Round trip task");
 });
 
+test("completion form data normalization builds session input without completing text-derived checklist items", () => {
+  const task = model.generateNextActionTask(model.normalizeEpisode({ workingTitle: "Form Data" }));
+  const data = model.normalizeCompletionFormData(
+    {
+      actualMinutes: "37",
+      result: "Clarified the promise.",
+      blocked: "Thumbnail is still weak.",
+      notes: "Need visual comparison.",
+      nextActionAfterSession: "Sketch thumbnail",
+      completedChecklistItems: [],
+    },
+    task
+  );
+
+  assert.equal(data.taskTitle, task.taskTitle);
+  assert.equal(data.actualMinutes, 37);
+  assert.match(data.notes, /Still blocked: Thumbnail is still weak/);
+  assert.deepEqual(data.completedChecklistItems, []);
+});
+
+test("editing a work session updates session fields and next action", () => {
+  const episode = model.addWorkSession(readyScriptEpisode({ workingTitle: "Edit Session" }), {
+    taskTitle: "Original",
+    result: "Old result",
+    nextActionAfterSession: "Old next",
+  });
+  const sessionId = episode.workSessions[0].id;
+  const updated = model.editWorkSession(episode, sessionId, {
+    result: "New result",
+    actualMinutes: 44,
+    nextActionAfterSession: "New next",
+  });
+
+  assert.equal(updated.workSessions[0].result, "New result");
+  assert.equal(updated.workSessions[0].actualMinutes, 44);
+  assert.equal(updated.nextAction, "New next");
+});
+
+test("deleting a work session removes only that session", () => {
+  const first = model.addWorkSession(readyScriptEpisode({ workingTitle: "Delete Session" }), {
+    taskTitle: "First",
+  });
+  const second = model.addWorkSession(first, {
+    taskTitle: "Second",
+  });
+  const deleted = model.deleteWorkSession(second, second.workSessions[0].id);
+
+  assert.equal(deleted.workSessions.length, 1);
+  assert.equal(deleted.workSessions[0].taskTitle, "First");
+});
+
+test("resume blocker task generation uses still blocked session text", () => {
+  const episode = model.addWorkSession(readyScriptEpisode({ workingTitle: "Resume Session" }), {
+    taskTitle: "Work",
+    notes: "Still blocked: Need cleaner hook\nOther note",
+  });
+  const task = model.buildResumeBlockerTask(episode, episode.workSessions[0]);
+
+  assert.equal(task.type, "resumeBlocker");
+  assert.match(task.taskTitle, /Need cleaner hook/);
+  assert.match(task.reason, /still blocked/i);
+});
+
+test("repeat task generation uses previous session task title and type", () => {
+  const episode = model.addWorkSession(readyScriptEpisode({ workingTitle: "Repeat Session" }), {
+    taskTitle: "Tighten hook",
+    taskType: "scriptNotReady",
+    estimatedMinutes: 25,
+  });
+  const task = model.buildRepeatTaskFromSession(episode, episode.workSessions[0]);
+
+  assert.equal(task.type, "scriptNotReady");
+  assert.equal(task.estimatedMinutes, 25);
+  assert.match(task.taskTitle, /Tighten hook/);
+});
+
+test("JSON round trip preserves edited work sessions", () => {
+  const episode = model.addWorkSession(readyScriptEpisode({ id: "edited-roundtrip" }), {
+    taskTitle: "Before edit",
+    result: "Before",
+  });
+  const edited = model.editWorkSession(episode, episode.workSessions[0].id, {
+    result: "After",
+    actualMinutes: 12,
+  });
+  const imported = model.validateImportPayload(
+    model.buildExportPayload({ selectedId: edited.id, episodes: [edited] })
+  );
+
+  assert.equal(imported.ok, true);
+  assert.equal(imported.state.episodes[0].workSessions[0].result, "After");
+  assert.equal(imported.state.episodes[0].workSessions[0].actualMinutes, 12);
+});
+
 test("state normalization accepts raw episode arrays", () => {
   const state = model.normalizeState({
     episodes: [{ id: "one", workingTitle: "One" }],

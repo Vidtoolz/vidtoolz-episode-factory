@@ -14,7 +14,7 @@ It has no backend, no authentication, and no external API integrations. Episode 
 - Use structured checkbox groups for Packaging Gate, production, editing, Shorts extraction, and publishing
 - See readiness scoring for packaging, script, production, publish, and overall readiness
 - Use the Execution Queue to pick the next 30-minute task across active episodes
-- Complete queue tasks, record work sessions, and keep episode history
+- Complete queue tasks with an inline form, record work sessions, and keep episode history
 - Filter the board by All, Packaging blocked, Ready to shoot, Ready to publish, and Published
 - Copy single-episode exports for Markdown, Hermes, Linear, production, YouTube, and Codex
 - Download the selected episode as a full Markdown package
@@ -79,6 +79,8 @@ Manual browser checks:
 - Use each board filter and confirm the visible cards match the filter.
 - Copy each Execution Queue task package format.
 - Complete a queue task and confirm selected checklist items, session history, and next action update.
+- Edit and delete a recent work session.
+- Use Resume blocker and Repeat task from a recent session.
 - Duplicate and delete an episode.
 - Use each copy button through a local server page.
 - Download a Markdown package and confirm it includes readiness scores and checklist states.
@@ -137,6 +139,8 @@ The Execution Queue generates one recommended 30-minute task per active episode 
 
 Each task includes a title, episode title, reason, source blocker, concrete steps, success criteria, and copy buttons for Human, Hermes, Linear, and Codex task packages.
 
-Completing a task records a work session on the episode. The completion flow asks for actual minutes, result, remaining blocker, notes, next action, and selected checklist items to mark complete. Checklist items are never marked complete unless selected by the user.
+Completing a task opens an inline form on the queue. It records a work session on the episode and asks for actual minutes, result, remaining blocker, notes, next action, and selected checklist items to mark complete. Checklist items are never marked complete unless selected by the user.
 
 Recent sessions can be copied as Hermes session updates, Linear progress comments, Codex follow-up prompts, or episode history markdown.
+
+Recent sessions can also be edited, deleted after confirmation, resumed from the recorded blocker, or repeated as a fresh task package.

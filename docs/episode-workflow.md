@@ -45,7 +45,7 @@ The export buttons produce practical text artifacts for the selected episode:
 
 Use the Markdown download when you want a durable file outside browser storage. Use copy buttons when moving the selected package into Hermes, Linear, Codex, or a YouTube upload prep note.
 
-These are copy/download-only in v0.5. No external API calls are made.
+These are copy/download-only in v0.6. No external API calls are made.
 
 ## Execution Queue
 
@@ -57,7 +57,7 @@ Use the Human task package when sitting down to work. Use the Hermes package for
 
 ## Closing The Loop
 
-After doing a queue task, use `Complete` on that task. Record:
+When choosing `Complete`, the app opens an inline completion form instead of browser prompts. Record:
 
 - actual minutes spent
 - what was completed
@@ -74,3 +74,5 @@ Recent sessions can be copied as:
 - Linear progress comment
 - Codex follow-up prompt
 - Episode history markdown
+
+Recent sessions can be edited or deleted. `Resume blocker` creates a fresh task package from the most recent `Still blocked:` note. `Repeat task` creates a new task package from the previous session's task title and task type.

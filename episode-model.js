@@ -2,7 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "vidtoolz-episode-factory-v1";
-  const APP_VERSION = "0.5.0";
+  const APP_VERSION = "0.6.0";
   const EXPORT_SCHEMA_VERSION = 1;
   const MAX_IMPORT_EPISODES = 500;
 
@@ -251,6 +251,21 @@
       result: cleanString(input.result),
       completedChecklistItems: normalizeCompletedChecklistItems(input.completedChecklistItems),
       notes: cleanString(input.notes),
+      nextActionAfterSession: cleanString(input.nextActionAfterSession),
+    };
+  }
+
+  function normalizeCompletionFormData(input = {}, task = {}) {
+    const blocked = cleanString(input.blocked);
+    const notes = cleanString(input.notes);
+    return {
+      taskTitle: cleanString(input.taskTitle) || cleanString(task.taskTitle) || "Untitled task",
+      taskType: cleanString(input.taskType) || cleanString(task.type) || "manual",
+      estimatedMinutes: normalizeMinutes(input.estimatedMinutes, task.estimatedMinutes || 30),
+      actualMinutes: normalizeMinutes(input.actualMinutes, 0),
+      result: cleanString(input.result),
+      completedChecklistItems: normalizeCompletedChecklistItems(input.completedChecklistItems),
+      notes: [`Still blocked: ${blocked || "None recorded."}`, notes].filter(Boolean).join("\n"),
       nextActionAfterSession: cleanString(input.nextActionAfterSession),
     };
   }
@@ -576,6 +591,91 @@
       workSessions: [session, ...normalized.workSessions],
       updatedAt: nowIso(),
     });
+  }
+
+  function editWorkSession(episode, sessionId, patch = {}) {
+    const normalized = normalizeEpisode(episode);
+    const sessions = normalized.workSessions.map((session) =>
+      session.id === sessionId
+        ? normalizeWorkSession({ ...session, ...patch, id: session.id, createdAt: session.createdAt })
+        : session
+    );
+    const edited = sessions.find((session) => session.id === sessionId);
+    return normalizeEpisode({
+      ...normalized,
+      nextAction: edited ? edited.nextActionAfterSession : normalized.nextAction,
+      workSessions: sessions,
+      updatedAt: nowIso(),
+    });
+  }
+
+  function deleteWorkSession(episode, sessionId) {
+    const normalized = normalizeEpisode(episode);
+    return normalizeEpisode({
+      ...normalized,
+      workSessions: normalized.workSessions.filter((session) => session.id !== sessionId),
+      updatedAt: nowIso(),
+    });
+  }
+
+  function extractBlockedText(session) {
+    const normalized = normalizeWorkSession(session);
+    const line = normalized.notes
+      .split("\n")
+      .find((entry) => entry.toLowerCase().startsWith("still blocked:"));
+    if (!line) return "";
+    const value = line.replace(/^still blocked:\s*/i, "").trim();
+    return value === "None recorded." ? "" : value;
+  }
+
+  function buildResumeBlockerTask(episode, session) {
+    const normalized = normalizeEpisode(episode);
+    const workSession = normalizeWorkSession(session);
+    const blocker = extractBlockedText(workSession);
+    if (!blocker) return null;
+    return {
+      id: `${normalized.id}-resume-${workSession.id}`,
+      type: "resumeBlocker",
+      priority: TASK_PRIORITY.maintenance,
+      taskTitle: `Resume blocker: ${blocker}`,
+      episodeId: normalized.id,
+      episodeTitle: normalized.workingTitle || "Untitled episode",
+      status: normalized.status,
+      reason: `Previous session still blocked: ${blocker}`,
+      estimatedMinutes: 30,
+      concreteSteps: [
+        "Review the previous session result and notes.",
+        `Resolve or reduce the blocker: ${blocker}`,
+        "Record the next state as a new work session.",
+      ],
+      successCriteria: ["The blocker is resolved, reduced, or rewritten as a more specific next action."],
+      sourceBlocker: blocker,
+      relevantChecklistItems: [],
+    };
+  }
+
+  function buildRepeatTaskFromSession(episode, session) {
+    const normalized = normalizeEpisode(episode);
+    const workSession = normalizeWorkSession(session);
+    return {
+      id: `${normalized.id}-repeat-${workSession.id}`,
+      type: workSession.taskType || "manual",
+      priority: TASK_PRIORITY[workSession.taskType] || TASK_PRIORITY.maintenance,
+      taskTitle: `Repeat task: ${workSession.taskTitle}`,
+      episodeId: normalized.id,
+      episodeTitle: normalized.workingTitle || "Untitled episode",
+      status: normalized.status,
+      reason: `Repeat or continue a previous task from ${workSession.createdAt}.`,
+      estimatedMinutes: workSession.estimatedMinutes || 30,
+      concreteSteps: [
+        "Review the previous session result.",
+        "Repeat the useful part of the task or continue from the last checkpoint.",
+        "Record a new work session when done.",
+      ],
+      successCriteria: ["A new work session captures what changed since the previous task."],
+      sourceBlocker: workSession.taskTitle,
+      relevantChecklistItems: [],
+    };
   }
 
   function markdownValue(value, fallback = "Not set.") {
@@ -1116,6 +1216,7 @@
     duplicateEpisode,
     normalizeEpisode,
     normalizeWorkSession,
+    normalizeCompletionFormData,
     normalizeState,
     normalizeChecklistGroup,
     normalizeChecklists,
@@ -1131,6 +1232,10 @@
     buildExecutionQueue,
     updateChecklistItems,
     addWorkSession,
+    editWorkSession,
+    deleteWorkSession,
+    buildResumeBlockerTask,
+    buildRepeatTaskFromSession,
     buildCopyPayload,
     buildTaskPackagePayload,
     buildHumanTaskPackage,

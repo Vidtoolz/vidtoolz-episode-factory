@@ -14,6 +14,7 @@
     status: document.querySelector("#statusSelect"),
     boardFilters: document.querySelector("#boardFilters"),
     queue: document.querySelector("#executionQueue"),
+    completionDrawer: document.querySelector("#completionDrawer"),
     taskCopyStatus: document.querySelector("#taskCopyStatus"),
     sessions: document.querySelector("#workSessions"),
     checklists: document.querySelector("#checklistGroups"),
@@ -33,6 +34,8 @@
     { key: "published", label: "Published" },
   ];
   let activeFilter = "all";
+  let activeCompletionTaskId = "";
+  let editingSessionId = "";
 
   if (!state.episodes.length) {
     const starter = model.createEpisode({
@@ -173,6 +176,69 @@
       `;
       els.queue.append(item);
     });
+    renderCompletionDrawer();
+  }
+
+  function renderCompletionDrawer() {
+    const task = model.buildExecutionQueue(state.episodes).find((item) => item.id === activeCompletionTaskId);
+    els.completionDrawer.classList.toggle("hidden", !task);
+    els.completionDrawer.innerHTML = "";
+    if (!task) return;
+
+    const checklistMarkup = task.relevantChecklistItems.length
+      ? task.relevantChecklistItems
+          .map(
+            (item, index) => `
+              <label class="completion-check">
+                <input type="checkbox" name="completedChecklistItems" value="${index}" />
+                <span>${escapeHtml(item.groupLabel)}: ${escapeHtml(item.item)}</span>
+              </label>
+            `
+          )
+          .join("")
+      : `<p class="muted">No checklist items are tied to this task.</p>`;
+
+    els.completionDrawer.innerHTML = `
+      <form id="completionForm" class="completion-form">
+        <div class="section-heading">
+          <div>
+            <h2>Complete Task</h2>
+            <p class="muted">${escapeHtml(task.taskTitle)} · ${escapeHtml(task.episodeTitle)}</p>
+          </div>
+        </div>
+        <div class="completion-grid">
+          <label class="field">
+            <span>Actual minutes</span>
+            <input name="actualMinutes" type="number" min="0" value="${task.estimatedMinutes}" required />
+          </label>
+          <label class="field span-2">
+            <span>What was completed</span>
+            <textarea name="result" rows="3" required></textarea>
+          </label>
+          <label class="field span-2">
+            <span>What is still blocked</span>
+            <textarea name="blocked" rows="3"></textarea>
+          </label>
+          <label class="field span-2">
+            <span>Notes</span>
+            <textarea name="notes" rows="3"></textarea>
+          </label>
+          <label class="field span-2">
+            <span>Next action</span>
+            <textarea name="nextActionAfterSession" rows="3"></textarea>
+          </label>
+        </div>
+        <div class="completion-checks">
+          <h3>Mark completed checklist items</h3>
+          ${checklistMarkup}
+        </div>
+        <p id="completionError" class="form-error"></p>
+        <div class="detail-actions">
+          <button type="submit" class="primary-btn">Save session</button>
+          <button type="button" data-completion-cancel>Cancel</button>
+        </div>
+      </form>
+    `;
   }
 
   function renderFilters() {
@@ -275,6 +341,38 @@
     }
 
     sessions.forEach((session) => {
+      if (session.id === editingSessionId) {
+        const editItem = document.createElement("article");
+        editItem.className = "session-item";
+        editItem.innerHTML = `
+          <form class="session-edit-form" data-session-edit-form="${escapeHtml(session.id)}">
+            <div class="completion-grid">
+              <label class="field">
+                <span>Actual minutes</span>
+                <input name="actualMinutes" type="number" min="0" value="${session.actualMinutes}" required />
+              </label>
+              <label class="field span-2">
+                <span>What was completed</span>
+                <textarea name="result" rows="3" required>${escapeHtml(session.result)}</textarea>
+              </label>
+              <label class="field span-2">
+                <span>Notes / blockers</span>
+                <textarea name="notes" rows="3">${escapeHtml(session.notes)}</textarea>
+              </label>
+              <label class="field span-2">
+                <span>Next action</span>
+                <textarea name="nextActionAfterSession" rows="3">${escapeHtml(session.nextActionAfterSession)}</textarea>
+              </label>
+            </div>
+            <div class="detail-actions">
+              <button class="primary-btn" type="submit">Save edits</button>
+              <button type="button" data-session-edit-cancel>Cancel</button>
+            </div>
+          </form>
+        `;
+        els.sessions.append(editItem);
+        return;
+      }
       const item = document.createElement("article");
       item.className = "session-item";
       item.innerHTML = `
@@ -289,6 +387,10 @@
           <button type="button" data-session-copy="linear" data-session-id="${escapeHtml(session.id)}">Linear</button>
           <button type="button" data-session-copy="codex" data-session-id="${escapeHtml(session.id)}">Codex</button>
           <button type="button" data-session-copy="history" data-session-id="${escapeHtml(session.id)}">History</button>
+          <button type="button" data-session-resume="${escapeHtml(session.id)}">Resume blocker</button>
+          <button type="button" data-session-repeat="${escapeHtml(session.id)}">Repeat task</button>
+          <button type="button" data-session-edit="${escapeHtml(session.id)}">Edit</button>
+          <button type="button" data-session-delete="${escapeHtml(session.id)}">Delete</button>
         </div>
       `;
       els.sessions.append(item);
@@ -452,46 +554,68 @@
       .map((item) => ({ groupKey: item.groupKey, item: item.item }));
   }
 
-  function completeTask(taskId) {
+  function selectedChecklistItemsFromForm(task, form) {
+    return Array.from(form.querySelectorAll('[name="completedChecklistItems"]:checked'))
+      .map((input) => task.relevantChecklistItems[Number(input.value)])
+      .filter(Boolean)
+      .map((item) => ({ groupKey: item.groupKey, item: item.item }));
+  }
+
+  function saveCompletedTask(taskId, form) {
     const task = model.buildExecutionQueue(state.episodes).find((item) => item.id === taskId);
-    if (!task) return;
+    if (!task) return false;
     const episodeIndex = state.episodes.findIndex((episode) => episode.id === task.episodeId);
-    if (episodeIndex < 0) return;
+    if (episodeIndex < 0) return false;
 
-    const actualMinutes = window.prompt("Actual minutes spent:", String(task.estimatedMinutes));
-    if (actualMinutes === null) return;
-    const result = window.prompt("What was completed?", "");
-    if (result === null) return;
-    const blocked = window.prompt("What is still blocked?", "");
-    if (blocked === null) return;
-    const notes = window.prompt("Notes:", "");
-    if (notes === null) return;
-    const nextAction = window.prompt("Next action after this session:", "");
-    if (nextAction === null) return;
-
-    let completedChecklistItems = [];
-    if (task.relevantChecklistItems.length) {
-      const options = task.relevantChecklistItems
-        .map((item, index) => `${index + 1}. ${item.groupLabel}: ${item.item}`)
-        .join("\n");
-      const selection = window.prompt(`Mark completed checklist items by number, comma-separated:\n${options}`, "");
-      if (selection === null) return;
-      completedChecklistItems = parseSelectedChecklistItems(task, selection);
+    const data = Object.fromEntries(new FormData(form).entries());
+    const error = form.querySelector("#completionError");
+    if (!String(data.result || "").trim()) {
+      error.textContent = "What was completed is required.";
+      return false;
     }
 
-    state.episodes[episodeIndex] = model.addWorkSession(state.episodes[episodeIndex], {
-      taskTitle: task.taskTitle,
-      taskType: task.type,
-      estimatedMinutes: task.estimatedMinutes,
-      actualMinutes,
-      result,
-      completedChecklistItems,
-      notes: [`Still blocked: ${blocked || "None recorded."}`, notes].filter(Boolean).join("\n"),
-      nextActionAfterSession: nextAction,
-    });
+    state.episodes[episodeIndex] = model.addWorkSession(
+      state.episodes[episodeIndex],
+      model.normalizeCompletionFormData(
+        {
+          ...data,
+          completedChecklistItems: selectedChecklistItemsFromForm(task, form),
+        },
+        task
+      )
+    );
     state.selectedId = state.episodes[episodeIndex].id;
+    activeCompletionTaskId = "";
     persist();
     render();
+    return true;
+  }
+
+  function editSession(sessionId, form) {
+    const episode = currentEpisode();
+    if (!episode) return;
+    const index = state.episodes.findIndex((item) => item.id === episode.id);
+    const data = Object.fromEntries(new FormData(form).entries());
+    if (!String(data.result || "").trim()) return;
+    state.episodes[index] = model.editWorkSession(episode, sessionId, data);
+    editingSessionId = "";
+    persist();
+    render();
+  }
+
+  async function copyGeneratedTask(task) {
+    if (!task) {
+      els.copyStatus.textContent = "No blocker task available for that session.";
+      return;
+    }
+    const payload = model.buildTaskPackagePayload("human", task);
+    try {
+      await navigator.clipboard.writeText(payload);
+      els.copyStatus.textContent = "Generated task package copied.";
+    } catch (error) {
+      window.prompt("Copy this generated task:", payload);
+      els.copyStatus.textContent = "Clipboard blocked. Generated task opened for manual copy.";
+    }
   }
 
   function escapeHtml(value) {
@@ -543,7 +667,21 @@
     }
 
     const completeButton = event.target.closest("[data-task-complete]");
-    if (completeButton) completeTask(completeButton.dataset.taskComplete);
+    if (completeButton) {
+      activeCompletionTaskId = completeButton.dataset.taskComplete;
+      renderCompletionDrawer();
+    }
+  });
+
+  els.completionDrawer.addEventListener("submit", (event) => {
+    event.preventDefault();
+    saveCompletedTask(activeCompletionTaskId, event.target);
+  });
+
+  els.completionDrawer.addEventListener("click", (event) => {
+    if (!event.target.closest("[data-completion-cancel]")) return;
+    activeCompletionTaskId = "";
+    renderCompletionDrawer();
   });
 
   els.boardFilters.addEventListener("click", (event) => {
@@ -583,9 +721,51 @@
   });
 
   els.sessions.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-session-copy]");
-    if (!button) return;
-    copySessionOutput(button.dataset.sessionCopy, button.dataset.sessionId);
+    const episode = currentEpisode();
+    if (!episode) return;
+    const copyButton = event.target.closest("[data-session-copy]");
+    if (copyButton) {
+      copySessionOutput(copyButton.dataset.sessionCopy, copyButton.dataset.sessionId);
+      return;
+    }
+    const editButton = event.target.closest("[data-session-edit]");
+    if (editButton) {
+      editingSessionId = editButton.dataset.sessionEdit;
+      renderSessions(episode);
+      return;
+    }
+    if (event.target.closest("[data-session-edit-cancel]")) {
+      editingSessionId = "";
+      renderSessions(episode);
+      return;
+    }
+    const deleteButton = event.target.closest("[data-session-delete]");
+    if (deleteButton) {
+      if (!window.confirm("Delete this work session?")) return;
+      const index = state.episodes.findIndex((item) => item.id === episode.id);
+      state.episodes[index] = model.deleteWorkSession(episode, deleteButton.dataset.sessionDelete);
+      persist();
+      render();
+      return;
+    }
+    const resumeButton = event.target.closest("[data-session-resume]");
+    if (resumeButton) {
+      const session = episode.workSessions.find((item) => item.id === resumeButton.dataset.sessionResume);
+      copyGeneratedTask(model.buildResumeBlockerTask(episode, session));
+      return;
+    }
+    const repeatButton = event.target.closest("[data-session-repeat]");
+    if (repeatButton) {
+      const session = episode.workSessions.find((item) => item.id === repeatButton.dataset.sessionRepeat);
+      copyGeneratedTask(model.buildRepeatTaskFromSession(episode, session));
+    }
+  });
+
+  els.sessions.addEventListener("submit", (event) => {
+    const form = event.target.closest("[data-session-edit-form]");
+    if (!form) return;
+    event.preventDefault();
+    editSession(form.dataset.sessionEditForm, form);
   });
 
   document.querySelector(".copy-grid").addEventListener("click", (event) => {
