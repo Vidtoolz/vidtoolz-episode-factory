@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.1.0 - Safer JSON Import Preview And Merge
+
+- Added JSON import preview before any local data is replaced or merged.
+- Added Replace library, Merge new episodes only, and Merge and update matching episodes import modes.
+- Added same-id/same-title matching, same-id/different-title conflicts, and different-id/same-title possible duplicate detection.
+- Kept merge modes non-destructive for conflicts and possible duplicates.
+- Preserved v1.0 exported object imports and legacy raw episode array imports.
+- Bumped visible app metadata to `v1.1.0`.
+
 ## v1.0.0 - Stable Local-First Release Candidate
 
 - Added a single verification script at `scripts/verify.sh`.

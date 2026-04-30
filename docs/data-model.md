@@ -289,7 +289,7 @@ Export creates a JSON object with metadata plus the normalized state:
 ```js
 {
   app: "VIDTOOLZ Episode Factory",
-  appVersion: "1.0.0",
+  appVersion: "1.1.0",
   schemaVersion: 1,
   storageKey: "vidtoolz-episode-factory-v1",
   exportedAt: "...",
@@ -308,4 +308,21 @@ Import accepts:
 - A compatible object with an `episodes` array.
 - A raw array of episode objects for simple legacy backups.
 
-Import validation happens before replacement. If validation fails, the current local data is left unchanged. If validation succeeds, the full current local episode library is replaced.
+Import validation happens before any local data changes. If validation fails, the current local data is left unchanged.
+
+After validation, the app builds an import preview against the current local state. The preview reports current episode count, imported episode count, new episodes, matching episodes, changed matching episodes, duplicate or conflicting episodes, skipped episodes, and imported work session count.
+
+Matching rules:
+
+- Episode `id` is checked first.
+- Same `id` and same exact `workingTitle` is treated as the same episode.
+- Same `id` with a different `workingTitle` is treated as a conflict.
+- Different `id` with the same exact `workingTitle` is treated as a possible duplicate.
+
+Import modes:
+
+- Replace library: applies the validated import state as the full local episode library after explicit confirmation.
+- Merge new episodes only: adds imported episodes that have no matching current `id` and are not possible duplicates or conflicts. Existing episodes are not overwritten.
+- Merge and update matching episodes: adds safe new episodes and replaces same-id/same-title matching episodes with the imported episode data, including work sessions, checklists, notes, readiness-relevant fields, and export-relevant fields.
+
+Conflicts and possible duplicates are skipped in merge modes so current local episodes are not overwritten. Raw legacy episode arrays and v1.0 exported objects remain accepted import formats.

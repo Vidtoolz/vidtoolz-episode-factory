@@ -1,6 +1,6 @@
 # Known Limitations
 
-Episode Factory v1.0 is intentionally local-first and dependency-free.
+Episode Factory v1.1 is intentionally local-first and dependency-free.
 
 ## localStorage-Only Storage
 
@@ -16,9 +16,9 @@ There is no server, account system, sync, collaboration, or cloud backup.
 
 Hermes, Linear, GitHub, Codex, and YouTube outputs are copy-only text packages. The app does not call external APIs.
 
-## Import Replaces The Full Library
+## Import Conflict Resolution Is Manual
 
-JSON import validates the selected file, then replaces the current local episode library. There is no merge or preview flow in v1.0.
+JSON import now shows a preview and supports replace, merge-new-only, and merge-and-update modes. Same-id/different-title conflicts and different-id/same-title possible duplicates are shown in the preview and skipped by merge modes. The app does not yet provide per-episode conflict resolution.
 
 ## Active Session Not Included In JSON Export
 

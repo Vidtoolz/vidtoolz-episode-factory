@@ -92,6 +92,90 @@ button:hover {
   color: var(--danger);
 }
 
+.hidden {
+  display: none !important;
+}
+
+.import-preview {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 12px;
+  margin: -4px auto 14px;
+  max-width: 1640px;
+  padding: 12px;
+}
+
+.import-preview-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.import-preview-grid div {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.import-preview-grid span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.import-preview-grid strong {
+  font-size: 16px;
+}
+
+.import-preview-details {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.import-preview-details ul {
+  color: var(--muted);
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.import-mode-group {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 0;
+  padding: 10px;
+}
+
+.import-mode-group legend {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+.import-mode-group label {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.import-mode-group input {
+  width: auto;
+}
+
+.import-preview-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .app-status {
   display: grid;
   gap: 8px;
@@ -863,6 +947,8 @@ label > span,
   .weekly-lists,
   .completion-grid,
   .gate-list,
+  .import-preview-grid,
+  .import-preview-details,
   .copy-grid {
     grid-template-columns: 1fr;
   }

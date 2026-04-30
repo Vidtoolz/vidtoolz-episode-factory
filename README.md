@@ -1,6 +1,6 @@
 # VIDTOOLZ Episode Factory
 
-VIDTOOLZ Episode Factory v1.0 is a local-first static web app for turning rough YouTube ideas into complete production packages and running a stable weekly creator workflow.
+VIDTOOLZ Episode Factory v1.1 is a local-first static web app for turning rough YouTube ideas into complete production packages and running a stable weekly creator workflow.
 
 The purpose is practical creator discipline: keep the topic, promise, title options, thumbnail concept, hook, script outline, structured production checklists, Shorts extraction checks, publish checks, and notes in one compact place before a solo creator starts shooting.
 
@@ -8,7 +8,7 @@ It has no backend, no authentication, and no external API integrations. Episode 
 
 Important: browser `localStorage` is not a durable backup system. Export JSON regularly, especially before browser cleanup, import testing, or release work.
 
-## v1.0 Features
+## v1.1 Features
 
 - Create, edit, delete, and duplicate episodes
 - Manage episodes on a compact status board
@@ -26,7 +26,8 @@ Important: browser `localStorage` is not a durable backup system. Export JSON re
 - Copy weekly review outputs for Hermes, Linear, and creator review markdown
 - Download the selected episode as a full Markdown package
 - Export all stored episode data as JSON
-- Import JSON backups after validation
+- Preview JSON imports before local data changes
+- Import by replacing the library, merging new episodes only, or merging and updating matching episodes
 - Create a realistic VIDTOOLZ/DaVinci Resolve demo episode for manual testing without replacing existing data
 - Run as plain HTML, CSS, and JavaScript with no build step
 
@@ -88,7 +89,7 @@ High-level browser checks:
 - Download a Markdown package and confirm it includes readiness scores and checklist states.
 - Export JSON and confirm the file contains an `episodes` array.
 - Confirm the status strip updates the last JSON export timestamp.
-- Import a valid backup and confirm it replaces the current browser state.
+- Import a valid backup, review the preview, and confirm each import mode changes the current browser state as expected.
 - Confirm the status strip updates the last JSON import timestamp.
 - Create a demo episode and confirm existing episodes remain.
 - Import invalid JSON and confirm the current browser state remains unchanged.
@@ -108,14 +109,14 @@ High-level browser checks:
 - `docs/smoke-test.md` documents the manual smoke test.
 - `docs/weekly-review.md` documents the weekly review workflow.
 - `docs/release-checklist.md` documents release testing, tagging, backup, and publishing steps.
-- `docs/known-limitations.md` documents v1.0 limits.
+- `docs/known-limitations.md` documents current limits.
 - `docs/episode-workflow.md` documents the intended YouTube workflow.
 - `docs/packaging-gate.md` documents the gate criteria.
 
 ## Current Limitations
 
 - Data is local to the current browser profile unless exported and imported elsewhere.
-- Import replaces the full local episode library after validation; there is no merge flow yet.
+- JSON import now requires preview and explicit confirmation before replacing or merging local data.
 - No backend, account sync, collaboration, or cloud backup.
 - No Linear, GitHub, Hermes, or YouTube API integration yet.
 - No drag-and-drop between board columns yet.

@@ -6,6 +6,7 @@
   const state = storage.loadState();
   let activeSession = storage.loadActiveSession();
   let backupStatus = storage.loadBackupStatus();
+  let pendingImport = null;
 
   const els = {
     board: document.querySelector("#board"),
@@ -28,6 +29,7 @@
     search: document.querySelector("#searchInput"),
     copyStatus: document.querySelector("#copyStatus"),
     importExportStatus: document.querySelector("#importExportStatus"),
+    importPreviewPanel: document.querySelector("#importPreviewPanel"),
     importInput: document.querySelector("#importJsonInput"),
     appStatus: document.querySelector("#appStatus"),
     appVersion: document.querySelector("#appVersion"),
@@ -45,7 +47,7 @@
   let completionTaskOverride = null;
   let editingSessionId = "";
 
-  els.appVersion.textContent = `v${model.APP_VERSION.replace(/\.0$/, "")}`;
+  els.appVersion.textContent = `v${model.APP_VERSION}`;
 
   if (!state.episodes.length) {
     const starter = model.createEpisode({
@@ -669,6 +671,85 @@
     render();
   }
 
+  function clearImportPreview() {
+    pendingImport = null;
+    els.importPreviewPanel.classList.add("hidden");
+    els.importPreviewPanel.innerHTML = "";
+  }
+
+  function importItemLabel(item) {
+    if (item.type === "conflict") {
+      return `${item.title || "Untitled"} conflicts with current title "${item.currentTitle || "Untitled"}"`;
+    }
+    if (item.type === "possible-duplicate") {
+      return `${item.title || "Untitled"} may duplicate an existing episode title`;
+    }
+    if (item.type === "changed-match") return `${item.title || "Untitled"} will update a matching episode`;
+    if (item.type === "match") return `${item.title || "Untitled"} already matches`;
+    return `${item.title || "Untitled"} is new`;
+  }
+
+  function renderImportPreview(result) {
+    const preview = model.buildImportPreview(state, result.state);
+    pendingImport = {
+      state: result.state,
+      preview,
+    };
+    const counts = preview.counts;
+    const flaggedItems = preview.items.filter((item) => item.type === "conflict" || item.type === "possible-duplicate");
+    const changedItems = preview.items.filter((item) => item.type === "changed-match").slice(0, 5);
+    const flaggedMarkup = flaggedItems.length
+      ? flaggedItems
+          .slice(0, 6)
+          .map((item) => `<li>${escapeHtml(importItemLabel(item))}</li>`)
+          .join("")
+      : "<li>No conflicts or possible duplicates found.</li>";
+    const changedMarkup = changedItems.length
+      ? changedItems.map((item) => `<li>${escapeHtml(importItemLabel(item))}</li>`).join("")
+      : "<li>No changed matching episodes found.</li>";
+
+    els.importPreviewPanel.innerHTML = `
+      <div class="section-heading">
+        <div>
+          <h2>Import Preview</h2>
+          <p class="muted">Review the JSON file before changing local episode data.</p>
+        </div>
+      </div>
+      <div class="import-preview-grid">
+        <div><span>Current episodes</span><strong>${counts.currentEpisodes}</strong></div>
+        <div><span>Imported episodes</span><strong>${counts.importedEpisodes}</strong></div>
+        <div><span>New episodes</span><strong>${counts.newEpisodes}</strong></div>
+        <div><span>Matching episodes</span><strong>${counts.matchingEpisodes}</strong></div>
+        <div><span>Changed matches</span><strong>${counts.changedMatchingEpisodes}</strong></div>
+        <div><span>Duplicates/conflicts</span><strong>${counts.possibleDuplicateEpisodes + counts.conflictingEpisodes}</strong></div>
+        <div><span>Skipped in merge</span><strong>${counts.skippedEpisodes}</strong></div>
+        <div><span>Imported work sessions</span><strong>${counts.importedWorkSessions}</strong></div>
+      </div>
+      <div class="import-preview-details">
+        <div>
+          <h3>Conflicts and possible duplicates</h3>
+          <ul>${flaggedMarkup}</ul>
+        </div>
+        <div>
+          <h3>Changed matching episodes</h3>
+          <ul>${changedMarkup}</ul>
+        </div>
+      </div>
+      <fieldset class="import-mode-group">
+        <legend>Import mode</legend>
+        <label><input type="radio" name="importMode" value="merge-new" checked /> Merge new episodes only</label>
+        <label><input type="radio" name="importMode" value="merge-update" /> Merge and update matching episodes</label>
+        <label><input type="radio" name="importMode" value="replace" /> Replace library</label>
+      </fieldset>
+      <div class="import-preview-actions">
+        <button id="confirmImportBtn" class="primary-btn" type="button">Confirm import</button>
+        <button id="cancelImportBtn" type="button">Cancel</button>
+      </div>
+    `;
+    els.importPreviewPanel.classList.remove("hidden");
+    showImportExportStatus("Import preview ready. Choose a mode and confirm to change local data.", "");
+  }
+
   function importJsonFile(file) {
     if (!file) return;
     const reader = new FileReader();
@@ -679,15 +760,38 @@
         return;
       }
 
-      replaceState(result.state);
-      backupStatus = storage.recordBackupTimestamp("import");
-      showImportExportStatus(`Imported ${result.summary.episodes} episodes. Existing local data was replaced.`, "success");
-      renderAppStatus();
+      renderImportPreview(result);
     });
     reader.addEventListener("error", () => {
       showImportExportStatus("Import failed: the selected file could not be read.", "error");
     });
     reader.readAsText(file);
+  }
+
+  function confirmPendingImport() {
+    if (!pendingImport) return;
+    const selectedMode = els.importPreviewPanel.querySelector("input[name='importMode']:checked");
+    const mode = selectedMode ? selectedMode.value : "merge-new";
+    const counts = pendingImport.preview.counts;
+    let nextState;
+    let message;
+
+    if (mode === "replace") {
+      nextState = model.applyReplaceImport(state, pendingImport.state);
+      message = `Import complete: replaced local library with ${nextState.episodes.length} episodes.`;
+    } else if (mode === "merge-update") {
+      nextState = model.applyMergeAndUpdateImport(state, pendingImport.state);
+      message = `Import complete: added ${counts.newEpisodes} new episodes and updated ${counts.changedMatchingEpisodes} matching episodes. Skipped ${counts.skippedEpisodes} conflicts or possible duplicates.`;
+    } else {
+      nextState = model.applyMergeNewOnlyImport(state, pendingImport.state);
+      message = `Import complete: added ${counts.newEpisodes} new episodes. Skipped ${counts.matchingEpisodes + counts.skippedEpisodes} matching, conflicting, or possible duplicate episodes.`;
+    }
+
+    replaceState(nextState);
+    backupStatus = storage.recordBackupTimestamp("import");
+    clearImportPreview();
+    showImportExportStatus(message, "success");
+    renderAppStatus();
   }
 
   async function copyOutput(type) {
@@ -886,6 +990,13 @@
   els.importInput.addEventListener("change", (event) => {
     importJsonFile(event.target.files[0]);
     event.target.value = "";
+  });
+  els.importPreviewPanel.addEventListener("click", (event) => {
+    if (event.target.closest("#confirmImportBtn")) confirmPendingImport();
+    if (event.target.closest("#cancelImportBtn")) {
+      clearImportPreview();
+      showImportExportStatus("Import canceled. Local data was not changed.", "");
+    }
   });
   els.form.addEventListener("submit", (event) => event.preventDefault());
   els.search.addEventListener("input", renderBoard);

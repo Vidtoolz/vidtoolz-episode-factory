@@ -4,7 +4,7 @@
   const STORAGE_KEY = "vidtoolz-episode-factory-v1";
   const ACTIVE_SESSION_KEY = "vidtoolz-episode-factory-active-session-v1";
   const BACKUP_STATUS_KEY = "vidtoolz-episode-factory-backup-status-v1";
-  const APP_VERSION = "1.0.0";
+  const APP_VERSION = "1.1.0";
   const EXPORT_SCHEMA_VERSION = 1;
   const MAX_IMPORT_EPISODES = 500;
 
@@ -1674,6 +1674,178 @@
     };
   }
 
+  function episodeTitle(episode) {
+    return cleanString((episode && episode.workingTitle) || "");
+  }
+
+  function episodesAreEquivalent(first, second) {
+    return JSON.stringify(normalizeEpisode(first)) === JSON.stringify(normalizeEpisode(second));
+  }
+
+  function buildImportMergePlan(currentState, importedState) {
+    const current = normalizeState(currentState);
+    const imported = normalizeState(importedState);
+    const currentById = new Map(current.episodes.map((episode) => [episode.id, episode]));
+    const currentByTitle = new Map();
+    current.episodes.forEach((episode) => {
+      const title = episodeTitle(episode);
+      if (!title) return;
+      if (!currentByTitle.has(title)) currentByTitle.set(title, []);
+      currentByTitle.get(title).push(episode);
+    });
+
+    const items = imported.episodes.map((episode) => {
+      const idMatch = currentById.get(episode.id) || null;
+      const titleMatches = currentByTitle.get(episodeTitle(episode)) || [];
+      const possibleDuplicates = titleMatches.filter((match) => match.id !== episode.id);
+      const importedWorkSessionCount = episode.workSessions.length;
+
+      if (idMatch && episodeTitle(idMatch) !== episodeTitle(episode)) {
+        return {
+          type: "conflict",
+          episode,
+          currentEpisode: idMatch,
+          possibleDuplicates,
+          importedWorkSessionCount,
+          reason: "same-id-different-title",
+        };
+      }
+
+      if (idMatch) {
+        const changed = !episodesAreEquivalent(idMatch, episode);
+        return {
+          type: changed ? "changed-match" : "match",
+          episode,
+          currentEpisode: idMatch,
+          possibleDuplicates,
+          importedWorkSessionCount,
+          reason: changed ? "same-id-same-title-changed" : "same-id-same-title",
+        };
+      }
+
+      if (possibleDuplicates.length) {
+        return {
+          type: "possible-duplicate",
+          episode,
+          currentEpisode: null,
+          possibleDuplicates,
+          importedWorkSessionCount,
+          reason: "different-id-same-title",
+        };
+      }
+
+      return {
+        type: "new",
+        episode,
+        currentEpisode: null,
+        possibleDuplicates,
+        importedWorkSessionCount,
+        reason: "new-id-and-title",
+      };
+    });
+
+    const counts = items.reduce(
+      (summary, item) => {
+        summary.importedWorkSessions += item.importedWorkSessionCount;
+        if (item.type === "new") summary.newEpisodes += 1;
+        if (item.type === "match" || item.type === "changed-match") summary.matchingEpisodes += 1;
+        if (item.type === "changed-match") summary.changedMatchingEpisodes += 1;
+        if (item.type === "conflict") summary.conflictingEpisodes += 1;
+        if (item.type === "possible-duplicate") summary.possibleDuplicateEpisodes += 1;
+        if (item.type === "conflict" || item.type === "possible-duplicate") summary.skippedEpisodes += 1;
+        return summary;
+      },
+      {
+        currentEpisodes: current.episodes.length,
+        importedEpisodes: imported.episodes.length,
+        newEpisodes: 0,
+        matchingEpisodes: 0,
+        changedMatchingEpisodes: 0,
+        conflictingEpisodes: 0,
+        possibleDuplicateEpisodes: 0,
+        skippedEpisodes: 0,
+        importedWorkSessions: 0,
+      },
+    );
+
+    return {
+      current,
+      imported,
+      items,
+      counts,
+    };
+  }
+
+  function buildImportPreview(currentState, importedState) {
+    const plan = buildImportMergePlan(currentState, importedState);
+    return {
+      ok: true,
+      plan,
+      counts: plan.counts,
+      items: plan.items.map((item) => ({
+        type: item.type,
+        reason: item.reason,
+        id: item.episode.id,
+        title: item.episode.workingTitle,
+        currentTitle: item.currentEpisode ? item.currentEpisode.workingTitle : "",
+        duplicateTitles: item.possibleDuplicates.map((episode) => episode.workingTitle),
+        importedWorkSessionCount: item.importedWorkSessionCount,
+      })),
+    };
+  }
+
+  function detectImportConflicts(currentState, importedState) {
+    return buildImportMergePlan(currentState, importedState).items.filter(
+      (item) => item.type === "conflict" || item.type === "possible-duplicate",
+    );
+  }
+
+  function applyReplaceImport(currentState, importedState) {
+    return normalizeState(importedState);
+  }
+
+  function chooseMergedSelectedId(current, imported, episodes) {
+    if (current.selectedId && episodes.some((episode) => episode.id === current.selectedId)) {
+      return current.selectedId;
+    }
+    if (imported.selectedId && episodes.some((episode) => episode.id === imported.selectedId)) {
+      return imported.selectedId;
+    }
+    return chooseSelectedId("", episodes);
+  }
+
+  function applyMergeNewOnlyImport(currentState, importedState) {
+    const plan = buildImportMergePlan(currentState, importedState);
+    const episodes = [
+      ...plan.current.episodes,
+      ...plan.items.filter((item) => item.type === "new").map((item) => item.episode),
+    ];
+    return {
+      version: 1,
+      selectedId: chooseMergedSelectedId(plan.current, plan.imported, episodes),
+      episodes,
+    };
+  }
+
+  function applyMergeAndUpdateImport(currentState, importedState) {
+    const plan = buildImportMergePlan(currentState, importedState);
+    const importedById = new Map(
+      plan.items
+        .filter((item) => item.type === "changed-match" || item.type === "match")
+        .map((item) => [item.episode.id, item.episode]),
+    );
+    const episodes = plan.current.episodes.map((episode) => importedById.get(episode.id) || episode);
+    plan.items.forEach((item) => {
+      if (item.type === "new") episodes.push(item.episode);
+    });
+
+    return {
+      version: 1,
+      selectedId: chooseMergedSelectedId(plan.current, plan.imported, episodes),
+      episodes,
+    };
+  }
+
   const api = {
     APP_VERSION,
     ACTIVE_SESSION_KEY,
@@ -1751,6 +1923,12 @@
     buildExportPayload,
     parseImportJson,
     validateImportPayload,
+    buildImportPreview,
+    buildImportMergePlan,
+    applyReplaceImport,
+    applyMergeNewOnlyImport,
+    applyMergeAndUpdateImport,
+    detectImportConflicts,
   };
 
   if (typeof module !== "undefined" && module.exports) {

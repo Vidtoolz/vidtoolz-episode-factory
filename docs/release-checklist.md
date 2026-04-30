@@ -22,7 +22,7 @@ Use this checklist before tagging or publishing a release.
 
 ## 3. Review Release Scope
 
-- Confirm no backend, API integration, drag-and-drop, or import merge work slipped into the release.
+- Confirm no backend, API integration, drag-and-drop, or unrelated workflow work slipped into the release.
 - Confirm JSON import/export behavior still matches [docs/data-model.md](data-model.md).
 - Confirm known limitations are current in [docs/known-limitations.md](known-limitations.md).
 - Confirm [CHANGELOG.md](../CHANGELOG.md) includes the release.
@@ -40,19 +40,19 @@ git diff --stat
 - Tag the release:
 
 ```sh
-git tag v1.0.0
+git tag v1.1.0
 ```
 
 - Push the branch and tag when ready:
 
 ```sh
 git push
-git push origin v1.0.0
+git push origin v1.1.0
 ```
 
 ## 5. GitHub Publishing
 
-- Open or update the GitHub release from tag `v1.0.0`.
+- Open or update the GitHub release from tag `v1.1.0`.
 - Include the changelog summary.
 - Mention that data is browser-local and users should export JSON backups.
 - Link the smoke test and known limitations docs.

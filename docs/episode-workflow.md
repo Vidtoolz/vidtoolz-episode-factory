@@ -45,7 +45,7 @@ The export buttons produce practical text artifacts for the selected episode:
 
 Use the Markdown download when you want a durable file outside browser storage. Use copy buttons when moving the selected package into Hermes, Linear, Codex, or a YouTube upload prep note.
 
-These are copy/download-only in v1.0. No external API calls are made.
+These are copy/download-only in v1.1. No external API calls are made.
 
 ## Execution Queue
 

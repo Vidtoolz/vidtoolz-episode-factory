@@ -954,6 +954,202 @@ test("import repairs duplicate episode ids", () => {
   assert.equal(result.state.selectedId, "same-id");
 });
 
+test("import preview generation summarizes new matching changed duplicate conflict and sessions", () => {
+  const current = {
+    selectedId: "same",
+    episodes: [
+      model.normalizeEpisode({ id: "same", workingTitle: "Same Title", notes: "old" }),
+      model.normalizeEpisode({ id: "conflict", workingTitle: "Current Title" }),
+      model.normalizeEpisode({ id: "dupe-current", workingTitle: "Duplicate Title" }),
+    ],
+  };
+  const importedEpisode = model.normalizeEpisode({
+    id: "new-one",
+    workingTitle: "New One",
+    workSessions: [{ id: "session-one", taskTitle: "Imported session" }],
+  });
+  const imported = {
+    selectedId: "new-one",
+    episodes: [
+      importedEpisode,
+      model.normalizeEpisode({ ...current.episodes[0], notes: "new" }),
+      model.normalizeEpisode({ id: "conflict", workingTitle: "Imported Title" }),
+      model.normalizeEpisode({ id: "dupe-import", workingTitle: "Duplicate Title" }),
+    ],
+  };
+
+  const preview = model.buildImportPreview(current, imported);
+
+  assert.equal(preview.counts.currentEpisodes, 3);
+  assert.equal(preview.counts.importedEpisodes, 4);
+  assert.equal(preview.counts.newEpisodes, 1);
+  assert.equal(preview.counts.matchingEpisodes, 1);
+  assert.equal(preview.counts.changedMatchingEpisodes, 1);
+  assert.equal(preview.counts.conflictingEpisodes, 1);
+  assert.equal(preview.counts.possibleDuplicateEpisodes, 1);
+  assert.equal(preview.counts.skippedEpisodes, 2);
+  assert.equal(preview.counts.importedWorkSessions, 1);
+});
+
+test("replace import applies the imported state after preview", () => {
+  const current = { selectedId: "old", episodes: [model.normalizeEpisode({ id: "old", workingTitle: "Old" })] };
+  const imported = { selectedId: "new", episodes: [model.normalizeEpisode({ id: "new", workingTitle: "New" })] };
+
+  const result = model.applyReplaceImport(current, imported);
+
+  assert.equal(result.episodes.length, 1);
+  assert.equal(result.episodes[0].id, "new");
+  assert.equal(result.selectedId, "new");
+});
+
+test("merge new episodes only adds safe new episodes and skips matches conflicts and duplicates", () => {
+  const current = {
+    selectedId: "same",
+    episodes: [
+      model.normalizeEpisode({ id: "same", workingTitle: "Same" }),
+      model.normalizeEpisode({ id: "conflict", workingTitle: "Current" }),
+      model.normalizeEpisode({ id: "dupe-current", workingTitle: "Duplicate" }),
+    ],
+  };
+  const imported = {
+    selectedId: "new",
+    episodes: [
+      model.normalizeEpisode({ id: "new", workingTitle: "New" }),
+      model.normalizeEpisode({ ...current.episodes[0], notes: "changed" }),
+      model.normalizeEpisode({ id: "conflict", workingTitle: "Different" }),
+      model.normalizeEpisode({ id: "dupe-import", workingTitle: "Duplicate" }),
+    ],
+  };
+
+  const result = model.applyMergeNewOnlyImport(current, imported);
+
+  assert.deepEqual(
+    result.episodes.map((episode) => episode.id),
+    ["same", "conflict", "dupe-current", "new"],
+  );
+  assert.equal(result.episodes.find((episode) => episode.id === "same").notes, "");
+});
+
+test("merge and update matching episodes adds new episodes and updates same-id same-title matches", () => {
+  const current = {
+    selectedId: "same",
+    episodes: [
+      model.normalizeEpisode({ id: "same", workingTitle: "Same", notes: "old" }),
+      model.normalizeEpisode({ id: "conflict", workingTitle: "Current", notes: "keep" }),
+    ],
+  };
+  const imported = {
+    selectedId: "new",
+    episodes: [
+      model.normalizeEpisode({ id: "same", workingTitle: "Same", notes: "updated" }),
+      model.normalizeEpisode({ id: "new", workingTitle: "New" }),
+      model.normalizeEpisode({ id: "conflict", workingTitle: "Different", notes: "skip" }),
+    ],
+  };
+
+  const result = model.applyMergeAndUpdateImport(current, imported);
+
+  assert.equal(result.episodes.length, 3);
+  assert.equal(result.episodes.find((episode) => episode.id === "same").notes, "updated");
+  assert.equal(result.episodes.find((episode) => episode.id === "conflict").notes, "keep");
+  assert.equal(result.episodes.find((episode) => episode.id === "new").workingTitle, "New");
+});
+
+test("same-id same-title imports are matching episodes", () => {
+  const episode = model.normalizeEpisode({ id: "same-id", workingTitle: "Same Title" });
+  const preview = model.buildImportPreview({ episodes: [episode] }, { episodes: [episode] });
+
+  assert.equal(preview.counts.matchingEpisodes, 1);
+  assert.equal(preview.items[0].type, "match");
+});
+
+test("same-id different-title imports are conflicts", () => {
+  const preview = model.buildImportPreview(
+    { episodes: [model.normalizeEpisode({ id: "same-id", workingTitle: "Current" })] },
+    { episodes: [model.normalizeEpisode({ id: "same-id", workingTitle: "Imported" })] },
+  );
+  const conflicts = model.detectImportConflicts(
+    { episodes: [model.normalizeEpisode({ id: "same-id", workingTitle: "Current" })] },
+    { episodes: [model.normalizeEpisode({ id: "same-id", workingTitle: "Imported" })] },
+  );
+
+  assert.equal(preview.counts.conflictingEpisodes, 1);
+  assert.equal(preview.items[0].type, "conflict");
+  assert.equal(conflicts.length, 1);
+});
+
+test("different-id same-title imports are possible duplicates and skipped by merge modes", () => {
+  const current = { episodes: [model.normalizeEpisode({ id: "current", workingTitle: "Same Title" })] };
+  const imported = { episodes: [model.normalizeEpisode({ id: "imported", workingTitle: "Same Title" })] };
+
+  const preview = model.buildImportPreview(current, imported);
+  const merged = model.applyMergeNewOnlyImport(current, imported);
+
+  assert.equal(preview.counts.possibleDuplicateEpisodes, 1);
+  assert.equal(preview.items[0].type, "possible-duplicate");
+  assert.equal(merged.episodes.length, 1);
+  assert.equal(merged.episodes[0].id, "current");
+});
+
+test("merge and update preserves imported work sessions and export fields", () => {
+  const current = {
+    episodes: [
+      model.normalizeEpisode({
+        id: "session-episode",
+        workingTitle: "Session Episode",
+        notes: "old",
+        workSessions: [{ id: "old-session", taskTitle: "Old task" }],
+      }),
+    ],
+  };
+  const imported = {
+    episodes: [
+      model.normalizeEpisode({
+        id: "session-episode",
+        workingTitle: "Session Episode",
+        notes: "imported notes",
+        readiness: { packaging: 100 },
+        checklists: { packagingGate: { "Viewer problem is clear": true } },
+        workSessions: [{ id: "new-session", taskTitle: "New task", result: "Done" }],
+      }),
+    ],
+  };
+
+  const result = model.applyMergeAndUpdateImport(current, imported);
+  const episode = result.episodes[0];
+
+  assert.equal(episode.notes, "imported notes");
+  assert.equal(episode.workSessions.length, 1);
+  assert.equal(episode.workSessions[0].taskTitle, "New task");
+  assert.equal(model.getGateSummary(episode).passed, 1);
+});
+
+test("malformed import rejection still prevents preview planning", () => {
+  const result = model.validateImportPayload({ episodes: ["bad"] });
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /every episode/);
+});
+
+test("old v1.0 import compatibility keeps exported object and raw array imports working", () => {
+  const exported = {
+    app: "VIDTOOLZ Episode Factory",
+    appVersion: "1.0.0",
+    schemaVersion: 1,
+    selectedId: "old-export",
+    episodes: [{ id: "old-export", workingTitle: "Old Export" }],
+  };
+  const rawArray = [{ id: "raw-old", workingTitle: "Raw Old" }];
+
+  const exportedResult = model.validateImportPayload(exported);
+  const rawResult = model.validateImportPayload(rawArray);
+
+  assert.equal(exportedResult.ok, true);
+  assert.equal(exportedResult.state.selectedId, "old-export");
+  assert.equal(rawResult.ok, true);
+  assert.equal(rawResult.state.episodes[0].workingTitle, "Raw Old");
+});
+
 let passed = 0;
 for (const item of tests) {
   try {
