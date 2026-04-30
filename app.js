@@ -5,6 +5,7 @@
   const storage = window.EpisodeFactoryStorage;
   const state = storage.loadState();
   let activeSession = storage.loadActiveSession();
+  let backupStatus = storage.loadBackupStatus();
 
   const els = {
     board: document.querySelector("#board"),
@@ -26,6 +27,7 @@
     copyStatus: document.querySelector("#copyStatus"),
     importExportStatus: document.querySelector("#importExportStatus"),
     importInput: document.querySelector("#importJsonInput"),
+    appStatus: document.querySelector("#appStatus"),
   };
 
   const boardFilters = [
@@ -205,6 +207,7 @@
     }
 
     const elapsed = model.getActiveSessionElapsedSeconds(session);
+    const progress = model.getActiveSessionProgressPercent(session);
     const checklistMarkup = session.task.relevantChecklistItems.length
       ? session.task.relevantChecklistItems
           .map((item) => `<li>${escapeHtml(item.groupLabel)}: ${escapeHtml(item.item)}</li>`)
@@ -222,6 +225,13 @@
         <h3>${escapeHtml(session.task.taskTitle)}</h3>
         <p>${escapeHtml(session.task.reason)}</p>
         <p class="muted">Estimate: ${session.task.estimatedMinutes} min · Source: ${escapeHtml(session.task.sourceBlocker)}</p>
+        <div class="active-progress" aria-label="Active session progress">
+          <div class="active-progress-meta">
+            <span>${progress}% of estimate</span>
+            <span>${formatSeconds(elapsed)} / ${session.task.estimatedMinutes} min</span>
+          </div>
+          <div class="active-progress-bar"><span style="width: ${progress}%"></span></div>
+        </div>
         <div class="active-session-grid">
           <div>
             <h3>Steps</h3>
@@ -471,9 +481,30 @@
   }
 
   function render() {
+    renderAppStatus();
     renderQueue();
     renderBoard();
     renderForm();
+  }
+
+  function formatOptionalTimestamp(value) {
+    if (!value) return "Never";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  }
+
+  function renderAppStatus() {
+    const status = model.getAppStatus(state, activeSession, backupStatus);
+    const activeText = status.activeSession.isActive
+      ? `${status.activeSession.isRunning ? "Running" : "Paused"}: ${status.activeSession.taskTitle}`
+      : "None";
+    els.appStatus.innerHTML = `
+      <div><span>Total episodes</span><strong>${status.totalEpisodes}</strong></div>
+      <div><span>Total work sessions</span><strong>${status.totalWorkSessions}</strong></div>
+      <div><span>Last JSON export</span><strong>${escapeHtml(formatOptionalTimestamp(status.lastExportAt))}</strong></div>
+      <div><span>Last JSON import</span><strong>${escapeHtml(formatOptionalTimestamp(status.lastImportAt))}</strong></div>
+      <div><span>Active session</span><strong>${escapeHtml(activeText)}</strong></div>
+    `;
   }
 
   function createEpisode() {
@@ -481,6 +512,15 @@
     state.episodes.unshift(episode);
     state.selectedId = episode.id;
     persist();
+    render();
+  }
+
+  function createDemoEpisode() {
+    const episode = model.createDemoEpisode(state.episodes);
+    state.episodes.unshift(episode);
+    state.selectedId = episode.id;
+    persist();
+    showImportExportStatus("Demo episode created without replacing existing episodes.", "success");
     render();
   }
 
@@ -524,7 +564,9 @@
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+    backupStatus = storage.recordBackupTimestamp("export");
     showImportExportStatus(`Exported ${payload.counts.episodes} episodes.`, "success");
+    renderAppStatus();
   }
 
   function downloadTextFile(filename, text, mimeType = "text/plain") {
@@ -567,7 +609,9 @@
       }
 
       replaceState(result.state);
+      backupStatus = storage.recordBackupTimestamp("import");
       showImportExportStatus(`Imported ${result.summary.episodes} episodes. Existing local data was replaced.`, "success");
+      renderAppStatus();
     });
     reader.addEventListener("error", () => {
       showImportExportStatus("Import failed: the selected file could not be read.", "error");
@@ -649,16 +693,15 @@
       return false;
     }
 
-    state.episodes[episodeIndex] = model.addWorkSession(
-      state.episodes[episodeIndex],
-      model.normalizeCompletionFormData(
-        {
-          ...data,
-          completedChecklistItems: selectedChecklistItemsFromForm(task, form),
-        },
-        task
-      )
-    );
+    const completionInput = {
+      ...data,
+      completedChecklistItems: selectedChecklistItemsFromForm(task, form),
+    };
+    const sessionData =
+      activeSession && activeSession.task && activeSession.task.id === task.id
+        ? model.buildCompletionDataFromActiveSession(activeSession, completionInput)
+        : model.normalizeCompletionFormData(completionInput, task);
+    state.episodes[episodeIndex] = model.addWorkSession(state.episodes[episodeIndex], sessionData);
     state.selectedId = state.episodes[episodeIndex].id;
     activeCompletionTaskId = "";
     completionTaskOverride = null;
@@ -710,6 +753,7 @@
       persistActiveSession();
       renderActiveSessionPanel();
       renderCompletionDrawer();
+      renderAppStatus();
       return;
     }
     if (action === "abandon") {
@@ -720,6 +764,7 @@
     }
     persistActiveSession();
     renderActiveSessionPanel();
+    renderAppStatus();
   }
 
   async function copyGeneratedTask(task) {
@@ -750,6 +795,7 @@
   }
 
   document.querySelector("#newEpisodeBtn").addEventListener("click", createEpisode);
+  document.querySelector("#demoEpisodeBtn").addEventListener("click", createDemoEpisode);
   document.querySelector("#duplicateBtn").addEventListener("click", duplicateCurrent);
   document.querySelector("#deleteBtn").addEventListener("click", deleteCurrent);
   document.querySelector("#exportJsonBtn").addEventListener("click", exportJson);

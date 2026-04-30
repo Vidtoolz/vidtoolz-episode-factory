@@ -35,6 +35,12 @@
       : "vidtoolz-episode-factory-active-session-v1";
   }
 
+  function getBackupStatusKey() {
+    return globalScope.EpisodeFactoryModel
+      ? globalScope.EpisodeFactoryModel.BACKUP_STATUS_KEY
+      : "vidtoolz-episode-factory-backup-status-v1";
+  }
+
   function loadActiveSession(options = {}) {
     const storage = options.storage || globalScope.localStorage;
     const model = options.model || globalScope.EpisodeFactoryModel;
@@ -59,6 +65,37 @@
     return true;
   }
 
+  function loadBackupStatus(options = {}) {
+    const storage = options.storage || globalScope.localStorage;
+    const model = options.model || globalScope.EpisodeFactoryModel;
+    if (!storage || !model) return { lastExportAt: "", lastImportAt: "" };
+    try {
+      const raw = storage.getItem(getBackupStatusKey());
+      return model.normalizeBackupStatus(raw ? JSON.parse(raw) : {});
+    } catch (error) {
+      console.warn("Episode Factory could not load backup status.", error);
+      return model.normalizeBackupStatus({});
+    }
+  }
+
+  function saveBackupStatus(backupStatus, options = {}) {
+    const storage = options.storage || globalScope.localStorage;
+    const model = options.model || globalScope.EpisodeFactoryModel;
+    if (!storage || !model) return false;
+    storage.setItem(getBackupStatusKey(), JSON.stringify(model.normalizeBackupStatus(backupStatus)));
+    return true;
+  }
+
+  function recordBackupTimestamp(type, timestamp = new Date().toISOString(), options = {}) {
+    const current = loadBackupStatus(options);
+    const next = {
+      ...current,
+      ...(type === "import" ? { lastImportAt: timestamp } : {}),
+      ...(type === "export" ? { lastExportAt: timestamp } : {}),
+    };
+    return saveBackupStatus(next, options) ? next : current;
+  }
+
   const api = {
     getStorageKey,
     loadState,
@@ -66,6 +103,10 @@
     getActiveSessionKey,
     loadActiveSession,
     saveActiveSession,
+    getBackupStatusKey,
+    loadBackupStatus,
+    saveBackupStatus,
+    recordBackupTimestamp,
   };
 
   if (typeof module !== "undefined" && module.exports) {

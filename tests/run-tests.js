@@ -1,10 +1,26 @@
 const assert = require("node:assert/strict");
 const model = require("../episode-model.js");
+const storage = require("../storage-adapter.js");
 
 const tests = [];
 
 function test(name, fn) {
   tests.push({ name, fn });
+}
+
+function createMemoryStorage() {
+  const data = new Map();
+  return {
+    getItem(key) {
+      return data.has(key) ? data.get(key) : null;
+    },
+    setItem(key, value) {
+      data.set(key, String(value));
+    },
+    removeItem(key) {
+      data.delete(key);
+    },
+  };
 }
 
 test("creates a normalized episode with required defaults", () => {
@@ -394,6 +410,17 @@ test("work session normalization fills required defaults", () => {
   assert.equal(session.completedChecklistItems.length, 1);
 });
 
+test("old work sessions remain compatible without start and end timestamps", () => {
+  const session = model.normalizeWorkSession({
+    taskTitle: "Legacy work",
+    createdAt: "2026-04-01T10:00:00.000Z",
+  });
+
+  assert.equal(session.createdAt, "2026-04-01T10:00:00.000Z");
+  assert.equal(session.startedAt, "");
+  assert.equal(session.endedAt, "");
+});
+
 test("adding a session stores history updates next action and selected checklist items", () => {
   const episode = readyScriptEpisode({
     checklists: completeChecklistExcept({
@@ -603,8 +630,95 @@ test("completing an active session can become a work session with elapsed minute
   const updated = model.addWorkSession(episode, completion);
 
   assert.equal(completion.actualMinutes, 3);
+  assert.equal(completion.startedAt, "1970-01-01T00:00:00.000Z");
+  assert.equal(completion.endedAt, "1970-01-01T00:02:05.000Z");
   assert.equal(updated.workSessions.length, 1);
   assert.equal(updated.workSessions[0].taskTitle, task.taskTitle);
+  assert.equal(updated.workSessions[0].startedAt, "1970-01-01T00:00:00.000Z");
+});
+
+test("active session progress percentage is capped against estimated minutes", () => {
+  const task = {
+    id: "task-progress",
+    episodeId: "episode-progress",
+    episodeTitle: "Progress",
+    taskTitle: "Timed task",
+    type: "manual",
+    estimatedMinutes: 30,
+  };
+  const active = model.startActiveSession(task, 0);
+
+  assert.equal(model.getActiveSessionProgressPercent(active, 15 * 60 * 1000), 50);
+  assert.equal(model.getActiveSessionProgressPercent(active, 45 * 60 * 1000), 100);
+});
+
+test("backup status normalization accepts missing or invalid input", () => {
+  assert.deepEqual(model.normalizeBackupStatus(null), {
+    lastExportAt: "",
+    lastImportAt: "",
+  });
+  assert.deepEqual(
+    model.normalizeBackupStatus({
+      lastExportAt: "2026-04-30T10:00:00.000Z",
+      lastImportAt: "not a timestamp",
+    }),
+    {
+      lastExportAt: "2026-04-30T10:00:00.000Z",
+      lastImportAt: "",
+    }
+  );
+});
+
+test("last export and import timestamp helpers persist to localStorage", () => {
+  const memoryStorage = createMemoryStorage();
+  const options = { storage: memoryStorage, model };
+
+  storage.recordBackupTimestamp("export", "2026-04-30T10:00:00.000Z", options);
+  storage.recordBackupTimestamp("import", "2026-04-30T11:00:00.000Z", options);
+  const status = storage.loadBackupStatus(options);
+
+  assert.equal(status.lastExportAt, "2026-04-30T10:00:00.000Z");
+  assert.equal(status.lastImportAt, "2026-04-30T11:00:00.000Z");
+});
+
+test("app status counts episodes sessions backup timestamps and active session", () => {
+  const episode = model.addWorkSession(model.normalizeEpisode({ workingTitle: "Status Count" }), {
+    taskTitle: "Count this",
+    result: "Done",
+  });
+  const task = model.generateNextActionTask(episode);
+  const active = model.startActiveSession(task, 0);
+  const status = model.getAppStatus(
+    { selectedId: episode.id, episodes: [episode] },
+    active,
+    { lastExportAt: "2026-04-30T10:00:00.000Z" },
+    60000
+  );
+
+  assert.equal(status.totalEpisodes, 1);
+  assert.equal(status.totalWorkSessions, 1);
+  assert.equal(status.lastExportAt, "2026-04-30T10:00:00.000Z");
+  assert.equal(status.activeSession.isActive, true);
+  assert.equal(status.activeSession.elapsedSeconds, 60);
+});
+
+test("demo episode creation adds realistic sample data without overwriting existing data", () => {
+  const existing = model.normalizeEpisode({
+    id: "existing-demo",
+    workingTitle: "Existing Episode",
+  });
+  const demo = model.createDemoEpisode([existing]);
+  const state = model.normalizeState({
+    selectedId: demo.id,
+    episodes: [demo, existing],
+  });
+
+  assert.equal(state.episodes.length, 2);
+  assert.equal(state.episodes[1].id, "existing-demo");
+  assert.notEqual(demo.id, existing.id);
+  assert.match(demo.workingTitle, /DaVinci Resolve/);
+  assert.match(demo.notes, /Demo episode/);
+  assert.equal(model.getChecklistSummary(demo, "packagingGate").isComplete, true);
 });
 
 test("abandoning an active session clears the draft", () => {

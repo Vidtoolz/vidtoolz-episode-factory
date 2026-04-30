@@ -3,7 +3,8 @@
 
   const STORAGE_KEY = "vidtoolz-episode-factory-v1";
   const ACTIVE_SESSION_KEY = "vidtoolz-episode-factory-active-session-v1";
-  const APP_VERSION = "0.7.0";
+  const BACKUP_STATUS_KEY = "vidtoolz-episode-factory-backup-status-v1";
+  const APP_VERSION = "0.8.0";
   const EXPORT_SCHEMA_VERSION = 1;
   const MAX_IMPORT_EPISODES = 500;
 
@@ -245,11 +246,19 @@
     return Number.isFinite(number) && number >= 0 ? number : fallback;
   }
 
+  function normalizeIsoTimestamp(value) {
+    const text = cleanString(value);
+    if (!text) return "";
+    return Number.isNaN(new Date(text).getTime()) ? "" : text;
+  }
+
   function normalizeWorkSession(input = {}) {
     const createdAt = cleanString(input.createdAt) || nowIso();
     return {
       id: cleanString(input.id) || createId("session"),
       createdAt,
+      startedAt: normalizeIsoTimestamp(input.startedAt),
+      endedAt: normalizeIsoTimestamp(input.endedAt),
       taskTitle: cleanString(input.taskTitle) || "Untitled task",
       taskType: cleanString(input.taskType) || "manual",
       estimatedMinutes: normalizeMinutes(input.estimatedMinutes, 30),
@@ -261,10 +270,12 @@
     };
   }
 
-  function normalizeCompletionFormData(input = {}, task = {}) {
+  function normalizeCompletionFormData(input = {}, task = {}, now = Date.now()) {
     const blocked = cleanString(input.blocked);
     const notes = cleanString(input.notes);
     return {
+      startedAt: normalizeIsoTimestamp(input.startedAt),
+      endedAt: normalizeIsoTimestamp(input.endedAt) || new Date(now).toISOString(),
       taskTitle: cleanString(input.taskTitle) || cleanString(task.taskTitle) || "Untitled task",
       taskType: cleanString(input.taskType) || cleanString(task.type) || "manual",
       estimatedMinutes: normalizeMinutes(input.estimatedMinutes, task.estimatedMinutes || 30),
@@ -309,6 +320,13 @@
       ? Math.max(0, Math.floor((now - session.updatedAt) / 1000))
       : 0;
     return session.elapsedSeconds + runningSeconds;
+  }
+
+  function getActiveSessionProgressPercent(activeSession, now = Date.now()) {
+    const session = normalizeActiveSession(activeSession, now);
+    if (!session) return 0;
+    const estimatedSeconds = Math.max(1, normalizeMinutes(session.task.estimatedMinutes, 30) * 60);
+    return Math.min(100, Math.round((getActiveSessionElapsedSeconds(session, now) / estimatedSeconds) * 100));
   }
 
   function startActiveSession(task, now = Date.now()) {
@@ -372,13 +390,110 @@
     return normalizeCompletionFormData(
       {
         ...input,
+        startedAt: new Date(session.startedAt).toISOString(),
+        endedAt: new Date(now).toISOString(),
         actualMinutes:
           input.actualMinutes !== undefined
             ? input.actualMinutes
             : Math.ceil(getActiveSessionElapsedSeconds(session, now) / 60),
       },
-      session.task
+      session.task,
+      now
     );
+  }
+
+  function normalizeBackupStatus(input = {}) {
+    const source = input && typeof input === "object" ? input : {};
+    return {
+      lastExportAt: normalizeIsoTimestamp(source.lastExportAt),
+      lastImportAt: normalizeIsoTimestamp(source.lastImportAt),
+    };
+  }
+
+  function getAppStatus(state, activeSession = null, backupStatus = {}, now = Date.now()) {
+    const normalized = normalizeState(state);
+    const backup = normalizeBackupStatus(backupStatus);
+    const session = normalizeActiveSession(activeSession, now);
+    return {
+      totalEpisodes: normalized.episodes.length,
+      totalWorkSessions: normalized.episodes.reduce(
+        (count, episode) => count + normalizeEpisode(episode).workSessions.length,
+        0
+      ),
+      lastExportAt: backup.lastExportAt,
+      lastImportAt: backup.lastImportAt,
+      activeSession: session
+        ? {
+            isActive: true,
+            isRunning: session.isRunning,
+            taskTitle: session.task.taskTitle,
+            episodeTitle: session.task.episodeTitle,
+            elapsedSeconds: getActiveSessionElapsedSeconds(session, now),
+            progressPercent: getActiveSessionProgressPercent(session, now),
+          }
+        : {
+            isActive: false,
+            isRunning: false,
+            taskTitle: "",
+            episodeTitle: "",
+            elapsedSeconds: 0,
+            progressPercent: 0,
+          },
+    };
+  }
+
+  function createDemoEpisode(existingEpisodes = []) {
+    const existingIds = new Set((Array.isArray(existingEpisodes) ? existingEpisodes : []).map((episode) => episode && episode.id));
+    let demo = createEpisode({
+      id: "demo-vidtoolz-resolve-workflow",
+      status: "Ready to Shoot",
+      topic: "DaVinci Resolve editing workflow for solo YouTube creators",
+      workingTitle: "My 30-Minute DaVinci Resolve Edit Prep System",
+      targetViewer: "Solo creator editing tutorial and workflow videos in DaVinci Resolve",
+      viewerProblem: "They waste editing time because footage, timeline cleanup, Shorts candidates, and publish notes are scattered.",
+      corePromise: "A practical VIDTOOLZ system for preparing a Resolve timeline, finding Shorts moments, and leaving a clean publish handoff.",
+      titleOptions: "- My 30-Minute DaVinci Resolve Edit Prep System\n- Stop Losing Time Before You Edit in Resolve\n- A Simple Resolve Workflow for Solo Creators",
+      thumbnailConcept: "DaVinci Resolve timeline with three labeled lanes: Main Edit, Shorts, Publish.",
+      hook: "Before I touch the timeline, I do this 30-minute prep pass so the edit does not sprawl.",
+      scriptOutline: "- Show the messy starting point in Resolve\n- Create bins for A-roll, screen capture, B-roll, music, and exports\n- Mark the strongest hook and three Shorts candidates\n- Build a rough timeline skeleton\n- Save a publish handoff note",
+      productionChecklist: "- Record Resolve screen capture\n- Capture intro A-roll\n- Prepare sample project footage",
+      editingChecklist: "- Rough cut\n- Timeline cleanup\n- Audio polish\n- Add callouts",
+      shortsPlan: "- Short 1: timeline prep before editing\n- Short 2: how to mark Shorts candidates in Resolve\n- Short 3: publish handoff note",
+      publishChecklist: "- Final title selected\n- Thumbnail exported\n- Description checked",
+      notes: "Demo episode for manual testing. It is realistic sample data and can be deleted.",
+      checklists: {
+        packagingGate: checklistToObject(PACKAGING_GATE.map((label) => ({ label, passed: true }))),
+        productionChecklist: checklistToObject(
+          CHECKLIST_GROUPS.find((group) => group.key === "productionChecklist").items.map((label, index) => ({
+            label,
+            passed: index < 4,
+          }))
+        ),
+        editingChecklist: checklistToObject(
+          CHECKLIST_GROUPS.find((group) => group.key === "editingChecklist").items.map((label) => ({
+            label,
+            passed: false,
+          }))
+        ),
+        shortsChecklist: checklistToObject(
+          CHECKLIST_GROUPS.find((group) => group.key === "shortsChecklist").items.map((label, index) => ({
+            label,
+            passed: index < 2,
+          }))
+        ),
+        publishChecklist: checklistToObject(
+          CHECKLIST_GROUPS.find((group) => group.key === "publishChecklist").items.map((label) => ({
+            label,
+            passed: false,
+          }))
+        ),
+      },
+    });
+
+    while (existingIds.has(demo.id)) {
+      demo = normalizeEpisode({ ...demo, id: createId("demo") });
+    }
+    return demo;
   }
 
   function createEpisode(seed = {}) {
@@ -1317,6 +1432,7 @@
   const api = {
     APP_VERSION,
     ACTIVE_SESSION_KEY,
+    BACKUP_STATUS_KEY,
     EXPORT_SCHEMA_VERSION,
     MAX_IMPORT_EPISODES,
     STORAGE_KEY,
@@ -1330,6 +1446,7 @@
     normalizeWorkSession,
     normalizeCompletionFormData,
     normalizeActiveSession,
+    normalizeBackupStatus,
     normalizeState,
     normalizeChecklistGroup,
     normalizeChecklists,
@@ -1341,6 +1458,7 @@
     getChecklistSummaries,
     getReadinessScores,
     getNextAction,
+    getAppStatus,
     generateNextActionTask,
     buildExecutionQueue,
     updateChecklistItems,
@@ -1355,7 +1473,9 @@
     resetActiveSession,
     abandonActiveSession,
     getActiveSessionElapsedSeconds,
+    getActiveSessionProgressPercent,
     buildCompletionDataFromActiveSession,
+    createDemoEpisode,
     buildCopyPayload,
     buildTaskPackagePayload,
     buildHumanTaskPackage,

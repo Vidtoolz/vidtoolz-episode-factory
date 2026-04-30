@@ -15,12 +15,15 @@ It has no backend, no authentication, and no external API integrations. Episode 
 - See readiness scoring for packaging, script, production, publish, and overall readiness
 - Use the Execution Queue to pick the next 30-minute task across active episodes
 - Run a single active focus session with elapsed time tracking
+- See active focus session progress against the task estimate
 - Complete queue tasks with an inline form, record work sessions, and keep episode history
+- See app and backup status: total episodes, total work sessions, last JSON export, last JSON import, and active session state
 - Filter the board by All, Packaging blocked, Ready to shoot, Ready to publish, and Published
 - Copy single-episode exports for Markdown, Hermes, Linear, production, YouTube, and Codex
 - Download the selected episode as a full Markdown package
 - Export all stored episode data as JSON
 - Import JSON backups after validation
+- Create a realistic VIDTOOLZ/DaVinci Resolve demo episode for manual testing without replacing existing data
 - Run as plain HTML, CSS, and JavaScript with no build step
 
 ## Run Locally
@@ -80,15 +83,22 @@ Manual browser checks:
 - Use each board filter and confirm the visible cards match the filter.
 - Copy each Execution Queue task package format.
 - Start, pause, reset, complete, and abandon an active focus session.
+- Confirm the active focus session progress bar moves against the estimated minutes.
 - Complete a queue task and confirm selected checklist items, session history, and next action update.
+- Confirm completed active sessions record start and end timestamps.
 - Edit and delete a recent work session.
 - Use Resume blocker and Repeat task from a recent session.
 - Duplicate and delete an episode.
 - Use each copy button through a local server page.
 - Download a Markdown package and confirm it includes readiness scores and checklist states.
 - Export JSON and confirm the file contains an `episodes` array.
+- Confirm the status strip updates the last JSON export timestamp.
 - Import a valid backup and confirm it replaces the current browser state.
+- Confirm the status strip updates the last JSON import timestamp.
+- Create a demo episode and confirm existing episodes remain.
 - Import invalid JSON and confirm the current browser state remains unchanged.
+
+See [docs/smoke-test.md](docs/smoke-test.md) for the v0.8 manual end-to-end checklist.
 
 ## File Structure
 
@@ -100,6 +110,7 @@ Manual browser checks:
 - `tests/run-tests.js` verifies core model behavior without browser dependencies.
 - `scripts/serve-local.sh` starts a local static server.
 - `docs/data-model.md` documents the episode state shape and status flow.
+- `docs/smoke-test.md` documents the manual v0.8 smoke test.
 - `docs/episode-workflow.md` documents the intended YouTube workflow.
 - `docs/packaging-gate.md` documents the gate criteria.
 
@@ -152,3 +163,9 @@ Recent sessions can also be edited, deleted after confirmation, resumed from the
 Use `Start Session` on a queue task to create one active focus session. The runner shows the episode, task, type, reason, estimate, elapsed time, steps, success criteria, source blocker, and relevant checklist items.
 
 The active session draft is stored separately in `localStorage` under `vidtoolz-episode-factory-active-session-v1`, so refreshing the page does not lose the timer state. Active sessions are app-level drafts and are not included in episode JSON exports. Completing an active session opens the same completion form and turns the work into a normal episode `workSessions` entry.
+
+The runner shows a progress bar capped at 100% against the task estimate. Completing an active session carries the active session start time into the completed work session and records an end time.
+
+## Backup And App Status
+
+The status strip shows total episodes, total work sessions, last JSON export, last JSON import, and active session state. Export/import timestamps are stored separately in `localStorage` under `vidtoolz-episode-factory-backup-status-v1`; they are local browser metadata and do not change the JSON backup payload.

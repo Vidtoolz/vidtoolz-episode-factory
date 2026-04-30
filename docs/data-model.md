@@ -12,6 +12,12 @@ The active focus session draft is stored separately under:
 vidtoolz-episode-factory-active-session-v1
 ```
 
+Backup visibility metadata is stored separately under:
+
+```text
+vidtoolz-episode-factory-backup-status-v1
+```
+
 ## State Object
 
 ```js
@@ -82,6 +88,8 @@ The legacy text fields `productionChecklist`, `editingChecklist`, `shortsPlan`, 
 {
   id: "session-...",
   createdAt: "2026-04-30T00:00:00.000Z",
+  startedAt: "2026-04-30T11:00:00.000Z",
+  endedAt: "2026-04-30T11:28:00.000Z",
   taskTitle: "Repair the episode package",
   taskType: "packagingBlocked",
   estimatedMinutes: 30,
@@ -98,6 +106,8 @@ The legacy text fields `productionChecklist`, `editingChecklist`, `shortsPlan`, 
 Work sessions are stored on the episode so JSON export/import keeps execution history with the episode package.
 
 Checklist items listed in `completedChecklistItems` are marked complete only when the user selects them during task completion.
+
+`startedAt` and `endedAt` are optional ISO timestamp strings. Old work sessions that do not have these fields normalize to empty strings, so legacy backups remain valid. Completing an active focus session records `startedAt` from the active session draft and `endedAt` from the completion time. Completing a queue task without an active focus session records `endedAt` when possible and leaves `startedAt` empty.
 
 `packagingGate` remains as a top-level alias of `checklists.packagingGate` for compatibility with v0.1 data and copy/export flows.
 
@@ -184,6 +194,31 @@ Active sessions are app-level drafts, not episode records, and are not included 
 
 When completed, the active draft is converted into a normal `workSessions` entry on the episode and the active session key is cleared.
 
+Active session progress is computed, not stored. It is the elapsed seconds divided by `task.estimatedMinutes * 60`, rounded to an integer and capped at `100`.
+
+## Backup Status
+
+Backup status is local browser metadata:
+
+```js
+{
+  lastExportAt: "2026-04-30T12:00:00.000Z",
+  lastImportAt: "2026-04-30T12:10:00.000Z"
+}
+```
+
+The fields normalize to empty strings when missing or invalid. Export updates `lastExportAt`; import updates `lastImportAt`. This metadata is not part of the episode JSON export and does not affect import validation.
+
+## App Status
+
+The app status display is derived from state, active session draft, and backup status:
+
+- Total episodes: `state.episodes.length`
+- Total work sessions: sum of each episode's `workSessions.length`
+- Last JSON export: `backupStatus.lastExportAt`
+- Last JSON import: `backupStatus.lastImportAt`
+- Active session: none, paused, or running with the current task title
+
 ## Status Flow
 
 Episodes use these statuses:
@@ -206,7 +241,7 @@ Export creates a JSON object with metadata plus the normalized state:
 ```js
 {
   app: "VIDTOOLZ Episode Factory",
-  appVersion: "0.6.0",
+  appVersion: "0.8.0",
   schemaVersion: 1,
   storageKey: "vidtoolz-episode-factory-v1",
   exportedAt: "...",
