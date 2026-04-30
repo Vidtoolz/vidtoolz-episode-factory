@@ -2,7 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "vidtoolz-episode-factory-v1";
-  const APP_VERSION = "0.3.0";
+  const APP_VERSION = "0.4.0";
   const EXPORT_SCHEMA_VERSION = 1;
   const MAX_IMPORT_EPISODES = 500;
 
@@ -27,8 +27,18 @@
     { key: "thumbnailConcept", label: "Thumbnail concept", type: "textarea" },
     { key: "hook", label: "Hook", type: "textarea" },
     { key: "scriptOutline", label: "Script outline", type: "textarea" },
+    { key: "nextAction", label: "Next action override", type: "textarea" },
     { key: "notes", label: "Notes", type: "textarea" },
   ];
+
+  const TASK_PRIORITY = {
+    packagingBlocked: 10,
+    scriptNotReady: 20,
+    readyToShoot: 30,
+    editingIncomplete: 40,
+    readyToPublish: 50,
+    maintenance: 90,
+  };
 
   const CHECKLIST_GROUPS = [
     {
@@ -318,6 +328,170 @@
     };
   }
 
+  function getMissingScriptFields(episode) {
+    const normalized = normalizeEpisode(episode);
+    const checks = [
+      ["Topic", hasText(normalized.topic)],
+      ["Working title", hasText(normalized.workingTitle) && normalized.workingTitle !== "Untitled episode"],
+      ["Target viewer", hasText(normalized.targetViewer)],
+      ["Viewer problem", hasText(normalized.viewerProblem)],
+      ["Core promise", hasText(normalized.corePromise)],
+      ["At least 3 title options", countTitleOptions(normalized.titleOptions) >= 3],
+      ["Thumbnail concept", hasText(normalized.thumbnailConcept)],
+      ["Hook", hasText(normalized.hook)],
+      ["Script outline", hasText(normalized.scriptOutline)],
+    ];
+    return checks.filter(([, passed]) => !passed).map(([label]) => label);
+  }
+
+  function firstUnchecked(episode, groupKeys) {
+    for (const groupKey of groupKeys) {
+      const summary = getChecklistSummary(episode, groupKey);
+      const item = summary.items.find((entry) => !entry.passed);
+      if (item) return { groupKey, groupLabel: groupLabel(groupKey), item: item.label };
+    }
+    return null;
+  }
+
+  function groupLabel(groupKey) {
+    const group = CHECKLIST_GROUPS.find((entry) => entry.key === groupKey);
+    return group ? group.label : groupKey;
+  }
+
+  function createTaskPackage(episode, config) {
+    const normalized = normalizeEpisode(episode);
+    const override = cleanString(normalized.nextAction).trim();
+    const title = override || config.title;
+    const task = {
+      id: `${normalized.id}-${config.type}`,
+      type: config.type,
+      priority: TASK_PRIORITY[config.type] || TASK_PRIORITY.maintenance,
+      taskTitle: title,
+      episodeId: normalized.id,
+      episodeTitle: normalized.workingTitle || "Untitled episode",
+      status: normalized.status,
+      reason: override ? `Manual next-action override. Inferred reason: ${config.reason}` : config.reason,
+      estimatedMinutes: 30,
+      concreteSteps: override
+        ? ["Clarify the override into one concrete deliverable.", "Do the smallest useful version in 30 minutes.", "Update the episode notes or checklist state when done."]
+        : config.concreteSteps,
+      successCriteria: override
+        ? ["The manual next action is completed or rewritten into the next concrete task."]
+        : config.successCriteria,
+      sourceBlocker: override ? "Manual nextAction override" : config.sourceBlocker,
+    };
+    return task;
+  }
+
+  function generateNextActionTask(episode) {
+    const normalized = normalizeEpisode(episode);
+    if (normalized.status === "Archived" || normalized.status === "Published") return null;
+
+    const scores = getReadinessScores(normalized);
+    const packagingBlocker = firstUnchecked(normalized, ["packagingGate"]);
+    const scriptMissing = getMissingScriptFields(normalized);
+    const productionBlocker = firstUnchecked(normalized, ["productionChecklist"]);
+    const editingBlocker = firstUnchecked(normalized, ["editingChecklist"]);
+    const shortsBlocker = firstUnchecked(normalized, ["shortsChecklist"]);
+    const publishBlocker = firstUnchecked(normalized, ["publishChecklist"]);
+
+    if (scores.packaging < 80) {
+      return createTaskPackage(normalized, {
+        type: "packagingBlocked",
+        title: "Repair the episode package",
+        reason: `Packaging readiness is ${scores.packaging}%.`,
+        concreteSteps: [
+          "Open the viewer problem, target viewer, promise, title options, thumbnail concept, and hook.",
+          `Fix the first packaging blocker: ${packagingBlocker ? packagingBlocker.item : "Packaging Gate item"}.`,
+          "Update the Packaging Gate checkboxes that are now true.",
+        ],
+        successCriteria: ["Packaging readiness is at least 80%.", "The next blocker is visible in the episode notes or checklist."],
+        sourceBlocker: packagingBlocker ? `${packagingBlocker.groupLabel}: ${packagingBlocker.item}` : "Packaging readiness below 80%",
+      });
+    }
+
+    if (scores.script < 80) {
+      return createTaskPackage(normalized, {
+        type: "scriptNotReady",
+        title: "Complete the script package",
+        reason: `Script readiness is ${scores.script}%. Missing: ${scriptMissing.join(", ") || "script package fields"}.`,
+        concreteSteps: [
+          "Fill the most important missing script/package field.",
+          "Tighten the hook and script outline around the core promise.",
+          "Leave one clear production note for the next work session.",
+        ],
+        successCriteria: ["Script readiness is at least 80%.", "The episode has enough structure to shoot without rethinking the premise."],
+        sourceBlocker: scriptMissing[0] || "Script readiness below 80%",
+      });
+    }
+
+    if (scores.production < 80 && !["Editing", "Ready to Publish"].includes(normalized.status)) {
+      const blocker = productionBlocker || shortsBlocker || editingBlocker;
+      return createTaskPackage(normalized, {
+        type: "readyToShoot",
+        title: "Prepare the next shoot session",
+        reason: `Production readiness is ${scores.production}% and the episode is not in editing yet.`,
+        concreteSteps: [
+          "Make the recording plan specific enough for one session.",
+          `Resolve the first production blocker: ${blocker ? blocker.item : "production checklist item"}.`,
+          "Mark any completed production or Shorts checklist items.",
+        ],
+        successCriteria: ["The episode can be recorded in one focused session.", "Production readiness is at least 80%."],
+        sourceBlocker: blocker ? `${blocker.groupLabel}: ${blocker.item}` : "Production readiness below 80%",
+      });
+    }
+
+    if (editingBlocker) {
+      return createTaskPackage(normalized, {
+        type: "editingIncomplete",
+        title: "Complete the next edit pass",
+        reason: `Editing checklist is incomplete: ${editingBlocker.item}.`,
+        concreteSteps: [
+          "Open the edit and complete the named editing blocker.",
+          "Export or save a visible checkpoint.",
+          "Update the editing checklist and notes.",
+        ],
+        successCriteria: ["The named editing blocker is complete.", "The edit is closer to publish-ready than when the session started."],
+        sourceBlocker: `${editingBlocker.groupLabel}: ${editingBlocker.item}`,
+      });
+    }
+
+    if (scores.publish < 100) {
+      return createTaskPackage(normalized, {
+        type: "readyToPublish",
+        title: "Prepare the publish package",
+        reason: `Publish readiness is ${scores.publish}%.`,
+        concreteSteps: [
+          "Resolve the first publish checklist blocker.",
+          "Check title, thumbnail, description, metadata, and repurpose notes.",
+          "Update the publish checklist.",
+        ],
+        successCriteria: ["Publish readiness is 100% or the remaining blocker is explicit.", "Upload prep can proceed without hunting for missing assets."],
+        sourceBlocker: publishBlocker ? `${publishBlocker.groupLabel}: ${publishBlocker.item}` : "Publish readiness below 100%",
+      });
+    }
+
+    if (normalized.status === "Ready to Publish") {
+      return createTaskPackage(normalized, {
+        type: "maintenance",
+        title: "Publish or schedule the episode",
+        reason: "The package appears ready and the episode is marked Ready to Publish.",
+        concreteSteps: ["Open the YouTube publish package.", "Upload, schedule, or mark the episode Published.", "Record any final publishing notes."],
+        successCriteria: ["The episode is published, scheduled, or has one explicit blocker recorded."],
+        sourceBlocker: "Ready to Publish follow-through",
+      });
+    }
+
+    return null;
+  }
+
+  function buildExecutionQueue(episodes) {
+    return (Array.isArray(episodes) ? episodes : [])
+      .map(generateNextActionTask)
+      .filter(Boolean)
+      .sort((a, b) => a.priority - b.priority || a.episodeTitle.localeCompare(b.episodeTitle));
+  }
+
   function markdownValue(value, fallback = "Not set.") {
     const text = cleanString(value).trim();
     return text || fallback;
@@ -342,14 +516,12 @@
   }
 
   function getNextAction(episode) {
+    const task = generateNextActionTask(episode);
+    if (task) return task.taskTitle;
     const normalized = normalizeEpisode(episode);
-    const scores = getReadinessScores(normalized);
     if (normalized.status === "Published") return "Review performance and archive learnings.";
-    if (scores.packaging < 100) return "Finish the Packaging Gate before committing production time.";
-    if (scores.script < 100) return "Tighten the script package: viewer, promise, title, hook, and outline.";
-    if (scores.production < 100) return "Complete production, editing, and Shorts extraction checklist items.";
-    if (scores.publish < 100) return "Finish publish checklist and prepare upload assets.";
-    return "Move the episode to Ready to Publish or Published.";
+    if (normalized.status === "Archived") return "No active next action.";
+    return "No blocker task needed.";
   }
 
   function buildFullEpisodeMarkdownPackage(episode) {
@@ -567,6 +739,89 @@
     return buildEpisodeExportPayload(type, episode);
   }
 
+  function buildHumanTaskPackage(task) {
+    if (!task) return "";
+    return [
+      `# ${task.taskTitle}`,
+      "",
+      `Episode: ${task.episodeTitle}`,
+      `Status: ${task.status}`,
+      `Estimated time: ${task.estimatedMinutes} minutes`,
+      `Reason: ${task.reason}`,
+      `Source blocker: ${task.sourceBlocker}`,
+      "",
+      "## Steps",
+      task.concreteSteps.map((step) => `- ${step}`).join("\n"),
+      "",
+      "## Success Criteria",
+      task.successCriteria.map((item) => `- ${item}`).join("\n"),
+    ].join("\n");
+  }
+
+  function buildHermesTaskPackage(task) {
+    if (!task) return "";
+    return [
+      `Hermes task package: ${task.taskTitle}`,
+      `Episode: ${task.episodeTitle}`,
+      `Priority type: ${task.type}`,
+      `Estimated time: ${task.estimatedMinutes} minutes`,
+      `Reason: ${task.reason}`,
+      `Source blocker: ${task.sourceBlocker}`,
+      `Success criteria: ${task.successCriteria.join(" | ")}`,
+    ].join("\n");
+  }
+
+  function buildLinearTaskIssueBody(task) {
+    if (!task) return "";
+    return [
+      `# ${task.taskTitle}`,
+      "",
+      `Episode: ${task.episodeTitle}`,
+      `Estimated minutes: ${task.estimatedMinutes}`,
+      `Queue type: ${task.type}`,
+      "",
+      "## Reason",
+      task.reason,
+      "",
+      "## Source Blocker",
+      task.sourceBlocker,
+      "",
+      "## Steps",
+      task.concreteSteps.map((step) => `- ${step}`).join("\n"),
+      "",
+      "## Done When",
+      task.successCriteria.map((item) => `- ${item}`).join("\n"),
+    ].join("\n");
+  }
+
+  function buildCodexTaskPrompt(task) {
+    if (!task) return "";
+    return [
+      "You are helping execute one 30-minute VIDTOOLZ Episode Factory task.",
+      "",
+      `Task: ${task.taskTitle}`,
+      `Episode: ${task.episodeTitle}`,
+      `Reason: ${task.reason}`,
+      `Source blocker: ${task.sourceBlocker}`,
+      "",
+      "Steps:",
+      task.concreteSteps.map((step) => `- ${step}`).join("\n"),
+      "",
+      "Success criteria:",
+      task.successCriteria.map((item) => `- ${item}`).join("\n"),
+      "",
+      "Return a concise execution plan and the exact episode fields or checklist items to update.",
+    ].join("\n");
+  }
+
+  function buildTaskPackagePayload(type, task) {
+    if (type === "human") return buildHumanTaskPackage(task);
+    if (type === "hermes") return buildHermesTaskPackage(task);
+    if (type === "linear") return buildLinearTaskIssueBody(task);
+    if (type === "codex") return buildCodexTaskPrompt(task);
+    return "";
+  }
+
   function normalizeState(payload) {
     const source = payload && typeof payload === "object" ? payload : {};
     const episodes = Array.isArray(source.episodes) ? source.episodes.map(normalizeEpisode) : [];
@@ -692,7 +947,14 @@
     getChecklistSummaries,
     getReadinessScores,
     getNextAction,
+    generateNextActionTask,
+    buildExecutionQueue,
     buildCopyPayload,
+    buildTaskPackagePayload,
+    buildHumanTaskPackage,
+    buildHermesTaskPackage,
+    buildLinearTaskIssueBody,
+    buildCodexTaskPrompt,
     buildEpisodeExportPayload,
     buildFullEpisodeMarkdownPackage,
     buildHermesMemoryUpdate,

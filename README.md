@@ -13,6 +13,7 @@ It has no backend, no authentication, and no external API integrations. Episode 
 - Track packaging, scripting, production, editing, shorts, publishing, and notes in one detail view
 - Use structured checkbox groups for Packaging Gate, production, editing, Shorts extraction, and publishing
 - See readiness scoring for packaging, script, production, publish, and overall readiness
+- Use the Execution Queue to pick the next 30-minute task across active episodes
 - Filter the board by All, Packaging blocked, Ready to shoot, Ready to publish, and Published
 - Copy single-episode exports for Markdown, Hermes, Linear, production, YouTube, and Codex
 - Download the selected episode as a full Markdown package
@@ -75,6 +76,7 @@ Manual browser checks:
 - Move an episode through each board status.
 - Toggle structured checklist items and confirm readiness scores update.
 - Use each board filter and confirm the visible cards match the filter.
+- Copy each Execution Queue task package format.
 - Duplicate and delete an episode.
 - Use each copy button through a local server page.
 - Download a Markdown package and confirm it includes readiness scores and checklist states.
@@ -86,7 +88,7 @@ Manual browser checks:
 
 - `index.html` defines the static app shell.
 - `styles.css` contains the compact responsive UI.
-- `episode-model.js` owns statuses, field definitions, checklist definitions, normalization, duplication, readiness scoring, and package export builders.
+- `episode-model.js` owns statuses, field definitions, checklist definitions, normalization, duplication, readiness scoring, execution queue generation, and package export builders.
 - `storage-adapter.js` wraps `localStorage` behind a small interface for later storage changes.
 - `app.js` renders the board and detail view, wires editing, persistence, duplication, deletion, JSON export/import, and clipboard actions.
 - `tests/run-tests.js` verifies core model behavior without browser dependencies.
@@ -120,3 +122,15 @@ The selected episode can produce:
 - Codex follow-up task: prompt for the next useful production/package improvement.
 
 These are local copy/download actions only. They do not call Linear, GitHub, Hermes, Codex, or YouTube APIs.
+
+## Execution Queue
+
+The Execution Queue generates one recommended 30-minute task per active episode when useful. Tasks are sorted by practical urgency:
+
+1. Packaging blocked
+2. Script not ready
+3. Ready to shoot
+4. Editing incomplete
+5. Ready to publish
+
+Each task includes a title, episode title, reason, source blocker, concrete steps, success criteria, and copy buttons for Human, Hermes, Linear, and Codex task packages.

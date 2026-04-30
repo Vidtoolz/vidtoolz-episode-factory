@@ -25,6 +25,7 @@ Episode Factory is designed for a solo YouTube creator who needs to move from ro
 - `Thumbnail concept`: simple visual promise for the thumbnail.
 - `Hook`: first moments of the video.
 - `Script outline`: beat-level structure.
+- `Next action override`: optional manual override for the generated queue task.
 - `Production checklist`: recording and asset capture tasks.
 - `Editing checklist`: edit tasks.
 - `Shorts extraction plan`: clips or ideas to pull from the main episode.
@@ -44,4 +45,12 @@ The export buttons produce practical text artifacts for the selected episode:
 
 Use the Markdown download when you want a durable file outside browser storage. Use copy buttons when moving the selected package into Hermes, Linear, Codex, or a YouTube upload prep note.
 
-These are copy/download-only in v0.3. No external API calls are made.
+These are copy/download-only in v0.4. No external API calls are made.
+
+## Execution Queue
+
+The Execution Queue answers the work-session question: what should be done next?
+
+It scans active episodes and generates one 30-minute task per episode when there is a useful blocker. The queue prioritizes packaging blockers first, then script gaps, shoot preparation, editing completion, and publish preparation.
+
+Use the Human task package when sitting down to work. Use the Hermes package for memory/context updates, the Linear body when turning a task into an issue, and the Codex prompt when asking for focused help on the next blocker. These are copy-only text packages, not API integrations.

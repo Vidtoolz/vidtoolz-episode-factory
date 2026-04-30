@@ -224,6 +224,156 @@ test("single episode export builders produce the expected package types", () => 
   assert.match(model.buildEpisodeExportPayload("codex", episode), /follow-up task/i);
 });
 
+function completeChecklistExcept(exceptions = {}) {
+  return model.CHECKLIST_GROUPS.reduce((result, group) => {
+    result[group.key] = model.checklistToObject(
+      group.items.map((label) => ({
+        label,
+        passed: !(exceptions[group.key] || []).includes(label),
+      }))
+    );
+    return result;
+  }, {});
+}
+
+function readyScriptEpisode(seed = {}) {
+  return model.normalizeEpisode({
+    topic: "Task workflow",
+    workingTitle: "Task Workflow",
+    targetViewer: "Solo creator",
+    viewerProblem: "Does not know what to do next",
+    corePromise: "A clear next task",
+    titleOptions: "- One\n- Two\n- Three",
+    thumbnailConcept: "Queue with one task",
+    hook: "Do this next.",
+    scriptOutline: "- Setup\n- Work\n- Done",
+    ...seed,
+  });
+}
+
+test("next-action generation creates a packaging repair task below 80 percent", () => {
+  const episode = readyScriptEpisode({
+    status: "Packaging",
+    checklists: {
+      packagingGate: model.checklistToObject([
+        { label: "Viewer problem is clear", passed: true },
+      ]),
+    },
+  });
+  const task = model.generateNextActionTask(episode);
+
+  assert.equal(task.type, "packagingBlocked");
+  assert.equal(task.estimatedMinutes, 30);
+  assert.match(task.taskTitle, /Repair/);
+  assert.match(task.sourceBlocker, /Packaging Gate/);
+});
+
+test("next-action generation creates a script task when package passes but script is thin", () => {
+  const episode = model.normalizeEpisode({
+    workingTitle: "Thin Script",
+    checklists: completeChecklistExcept(),
+  });
+  const task = model.generateNextActionTask(episode);
+
+  assert.equal(task.type, "scriptNotReady");
+  assert.match(task.reason, /Script readiness/);
+  assert.match(task.sourceBlocker, /Topic|Target viewer|Viewer problem|Core promise|title/i);
+});
+
+test("next-action generation creates shoot prep editing and publish tasks", () => {
+  const shoot = readyScriptEpisode({
+    status: "Ready to Shoot",
+    checklists: completeChecklistExcept({
+      productionChecklist: [
+        "Screen recording plan is clear",
+        "Talking points are ready",
+        "Needed assets are listed",
+        "Example footage or project files are ready",
+        "Audio setup is checked",
+      ],
+    }),
+  });
+  const editing = readyScriptEpisode({
+    status: "Editing",
+    checklists: completeChecklistExcept({
+      editingChecklist: ["Main timeline assembled"],
+    }),
+  });
+  const publish = readyScriptEpisode({
+    status: "Ready to Publish",
+    checklists: completeChecklistExcept({
+      publishChecklist: ["Final title selected"],
+    }),
+  });
+
+  assert.equal(model.generateNextActionTask(shoot).type, "readyToShoot");
+  assert.equal(model.generateNextActionTask(editing).type, "editingIncomplete");
+  assert.equal(model.generateNextActionTask(publish).type, "readyToPublish");
+});
+
+test("execution queue sorts by practical urgency", () => {
+  const queue = model.buildExecutionQueue([
+    readyScriptEpisode({
+      id: "publish",
+      workingTitle: "Publish",
+      status: "Ready to Publish",
+      checklists: completeChecklistExcept({ publishChecklist: ["Final title selected"] }),
+    }),
+    readyScriptEpisode({
+      id: "package",
+      workingTitle: "Package",
+      checklists: { packagingGate: {} },
+    }),
+    model.normalizeEpisode({
+      id: "script",
+      workingTitle: "Script",
+      checklists: completeChecklistExcept(),
+    }),
+  ]);
+
+  assert.deepEqual(queue.map((task) => task.type), [
+    "packagingBlocked",
+    "scriptNotReady",
+    "readyToPublish",
+  ]);
+});
+
+test("published and archived complete episodes do not produce blocker tasks", () => {
+  const published = readyScriptEpisode({
+    status: "Published",
+    checklists: completeChecklistExcept(),
+  });
+  const archived = readyScriptEpisode({
+    status: "Archived",
+    checklists: completeChecklistExcept(),
+  });
+
+  assert.equal(model.generateNextActionTask(published), null);
+  assert.equal(model.generateNextActionTask(archived), null);
+});
+
+test("old episodes receive nextAction compatibility and can override inferred task", () => {
+  const oldEpisode = model.normalizeEpisode({ workingTitle: "Old Task" });
+  const override = model.normalizeEpisode({
+    workingTitle: "Override Task",
+    nextAction: "Record the missing B-roll",
+  });
+  const task = model.generateNextActionTask(override);
+
+  assert.equal(oldEpisode.nextAction, "");
+  assert.equal(task.taskTitle, "Record the missing B-roll");
+  assert.equal(task.sourceBlocker, "Manual nextAction override");
+});
+
+test("task package copy builders include steps and success criteria", () => {
+  const task = model.generateNextActionTask(model.normalizeEpisode({ workingTitle: "Copy Task" }));
+
+  assert.match(model.buildTaskPackagePayload("human", task), /## Steps/);
+  assert.match(model.buildTaskPackagePayload("hermes", task), /Hermes task package/);
+  assert.match(model.buildTaskPackagePayload("linear", task), /## Done When/);
+  assert.match(model.buildTaskPackagePayload("codex", task), /30-minute VIDTOOLZ/);
+});
+
 test("state normalization accepts raw episode arrays", () => {
   const state = model.normalizeState({
     episodes: [{ id: "one", workingTitle: "One" }],

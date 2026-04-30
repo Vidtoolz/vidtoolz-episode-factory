@@ -210,6 +210,71 @@ textarea {
   margin-bottom: 12px;
 }
 
+.queue-panel {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+}
+
+.execution-queue {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.queue-item {
+  background: #fafaf8;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+}
+
+.queue-main {
+  display: grid;
+  gap: 4px;
+}
+
+.queue-title {
+  border: 0;
+  background: transparent;
+  font-weight: 700;
+  justify-self: start;
+  min-height: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.queue-title:hover {
+  background: transparent;
+  color: var(--accent);
+}
+
+.queue-main span,
+.queue-main small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.queue-main small {
+  font-size: 12px;
+}
+
+.queue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.queue-actions button {
+  font-size: 12px;
+  min-height: 28px;
+  padding: 4px 7px;
+}
+
 .filter-chip {
   color: var(--muted);
   min-height: 30px;

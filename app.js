@@ -13,6 +13,8 @@
     fields: document.querySelector("#fieldGrid"),
     status: document.querySelector("#statusSelect"),
     boardFilters: document.querySelector("#boardFilters"),
+    queue: document.querySelector("#executionQueue"),
+    taskCopyStatus: document.querySelector("#taskCopyStatus"),
     checklists: document.querySelector("#checklistGroups"),
     readinessGrid: document.querySelector("#readinessGrid"),
     readinessSummary: document.querySelector("#readinessSummary"),
@@ -67,8 +69,10 @@
     persist();
     if (renderMode === "board") {
       renderBoard();
+      renderQueue();
     } else if (renderMode === "checklists") {
       renderBoard();
+      renderQueue();
       renderReadiness(state.episodes[index]);
       renderChecklists(state.episodes[index]);
     } else {
@@ -137,6 +141,35 @@
       });
       column.append(list);
       els.board.append(column);
+    });
+  }
+
+  function renderQueue() {
+    const tasks = model.buildExecutionQueue(state.episodes);
+    els.queue.innerHTML = "";
+    if (!tasks.length) {
+      els.queue.innerHTML = `<p class="muted">No active blocker tasks. Pick an episode or create the next idea.</p>`;
+      return;
+    }
+
+    tasks.slice(0, 8).forEach((task) => {
+      const item = document.createElement("article");
+      item.className = "queue-item";
+      item.innerHTML = `
+        <div class="queue-main">
+          <button class="queue-title" type="button" data-select-episode="${escapeHtml(task.episodeId)}">${escapeHtml(task.taskTitle)}</button>
+          <span>${escapeHtml(task.episodeTitle)} · ${task.estimatedMinutes} min</span>
+          <small>${escapeHtml(task.reason)}</small>
+          <small>Blocker: ${escapeHtml(task.sourceBlocker)}</small>
+        </div>
+        <div class="queue-actions">
+          <button type="button" data-task-copy="human" data-task-id="${escapeHtml(task.id)}">Human</button>
+          <button type="button" data-task-copy="hermes" data-task-id="${escapeHtml(task.id)}">Hermes</button>
+          <button type="button" data-task-copy="linear" data-task-id="${escapeHtml(task.id)}">Linear</button>
+          <button type="button" data-task-copy="codex" data-task-id="${escapeHtml(task.id)}">Codex</button>
+        </div>
+      `;
+      els.queue.append(item);
     });
   }
 
@@ -231,6 +264,7 @@
   }
 
   function render() {
+    renderQueue();
     renderBoard();
     renderForm();
   }
@@ -347,6 +381,19 @@
     }
   }
 
+  async function copyTaskOutput(type, taskId) {
+    const task = model.buildExecutionQueue(state.episodes).find((item) => item.id === taskId);
+    if (!task) return;
+    const payload = model.buildTaskPackagePayload(type, task);
+    try {
+      await navigator.clipboard.writeText(payload);
+      els.taskCopyStatus.textContent = "Task package copied.";
+    } catch (error) {
+      window.prompt("Copy this task package:", payload);
+      els.taskCopyStatus.textContent = "Clipboard blocked. Task package opened for manual copy.";
+    }
+  }
+
   function escapeHtml(value) {
     return String(value)
       .replaceAll("&", "&amp;")
@@ -378,6 +425,20 @@
     state.selectedId = card.dataset.id;
     persist();
     render();
+  });
+
+  els.queue.addEventListener("click", (event) => {
+    const selectButton = event.target.closest("[data-select-episode]");
+    if (selectButton) {
+      state.selectedId = selectButton.dataset.selectEpisode;
+      persist();
+      render();
+      return;
+    }
+
+    const copyButton = event.target.closest("[data-task-copy]");
+    if (!copyButton) return;
+    copyTaskOutput(copyButton.dataset.taskCopy, copyButton.dataset.taskId);
   });
 
   els.boardFilters.addEventListener("click", (event) => {

@@ -40,6 +40,7 @@ Each episode is normalized by `episode-model.js`.
   thumbnailConcept: "",
   hook: "",
   scriptOutline: "",
+  nextAction: "",
   productionChecklist: "",
   editingChecklist: "",
   shortsPlan: "",
@@ -63,6 +64,8 @@ Each episode is normalized by `episode-model.js`.
 Legacy date aliases `created_at` and `updated_at` are accepted during normalization and converted to `createdAt` and `updatedAt`.
 
 The legacy text fields `productionChecklist`, `editingChecklist`, `shortsPlan`, and `publishChecklist` are preserved for v0.1 compatibility. The v0.2 UI uses the structured `checklists` object instead.
+
+`nextAction` is an optional user override for the generated task title. Empty old episodes normalize to `nextAction: ""`.
 
 `packagingGate` remains as a top-level alias of `checklists.packagingGate` for compatibility with v0.1 data and copy/export flows.
 
@@ -101,6 +104,36 @@ Readiness scores are calculated in `episode-model.js` and are not stored as sepa
 
 Scores are rounded integers from `0` to `100`.
 
+## Execution Queue Tasks
+
+Queue tasks are generated from episode data and are not stored as separate records.
+
+```js
+{
+  id: "episode-id-packagingBlocked",
+  type: "packagingBlocked",
+  priority: 10,
+  taskTitle: "Repair the episode package",
+  episodeId: "episode-id",
+  episodeTitle: "Episode title",
+  status: "Packaging",
+  reason: "Packaging readiness is 25%.",
+  estimatedMinutes: 30,
+  concreteSteps: [],
+  successCriteria: [],
+  sourceBlocker: "Packaging Gate: Viewer problem is clear"
+}
+```
+
+Task types sort in this order:
+
+1. `packagingBlocked`
+2. `scriptNotReady`
+3. `readyToShoot`
+4. `editingIncomplete`
+5. `readyToPublish`
+6. `maintenance`
+
 ## Status Flow
 
 Episodes use these statuses:
@@ -123,7 +156,7 @@ Export creates a JSON object with metadata plus the normalized state:
 ```js
 {
   app: "VIDTOOLZ Episode Factory",
-  appVersion: "0.3.0",
+  appVersion: "0.4.0",
   schemaVersion: 1,
   storageKey: "vidtoolz-episode-factory-v1",
   exportedAt: "...",
