@@ -160,8 +160,68 @@ test("copy payloads include integration-ready context", () => {
 
   assert.match(model.buildCopyPayload("linear", episode), /# Workflow video/);
   assert.match(model.buildCopyPayload("codex", episode), /VIDTOOLZ/);
-  assert.match(model.buildCopyPayload("hermes", episode), /Packaging gate/);
+  assert.match(model.buildCopyPayload("hermes", episode), /Readiness/);
   assert.match(model.buildCopyPayload("youtube", episode), /Build faster packages/);
+});
+
+test("full markdown package includes readiness checklist states and next action", () => {
+  const episode = model.normalizeEpisode({
+    workingTitle: "Full Package",
+    status: "Packaging",
+    targetViewer: "Solo creator",
+    viewerProblem: "Packaging is scattered",
+    corePromise: "One complete package",
+    hook: "Do not shoot until this is clear.",
+    titleOptions: "- One\n- Two\n- Three",
+    thumbnailConcept: "Before and after board",
+    scriptOutline: "- Setup\n- Build\n- Ship",
+    productionChecklist: "- Legacy production note",
+    editingChecklist: "- Legacy editing note",
+    shortsPlan: "- Short one",
+    publishChecklist: "- Legacy publish note",
+    checklists: {
+      packagingGate: {
+        "Viewer problem is clear": { passed: true },
+      },
+    },
+  });
+  const markdown = model.buildFullEpisodeMarkdownPackage(episode);
+
+  assert.match(markdown, /^# Full Package/);
+  assert.match(markdown, /Status: Packaging/);
+  assert.match(markdown, /Target viewer: Solo creator/);
+  assert.match(markdown, /Packaging readiness: 13%/);
+  assert.match(markdown, /- \[x\] Viewer problem is clear/);
+  assert.match(markdown, /- \[ \] Target viewer is specific/);
+  assert.match(markdown, /## Production Notes\n- Legacy production note/);
+  assert.match(markdown, /## Shorts Extraction Plan\n- Short one/);
+  assert.match(markdown, /## Next Action/);
+});
+
+test("single episode export builders produce the expected package types", () => {
+  const fullChecklist = model.CHECKLIST_GROUPS.reduce((result, group) => {
+    result[group.key] = model.checklistToObject(group.items.map((label) => ({ label, passed: true })));
+    return result;
+  }, {});
+  const episode = model.normalizeEpisode({
+    topic: "Export workflow",
+    workingTitle: "Package Export",
+    targetViewer: "Solo creator",
+    viewerProblem: "Needs reusable packages",
+    corePromise: "Export the right package for each tool",
+    hook: "The package is the handoff.",
+    titleOptions: "- Package Export\n- Export Better\n- One Episode Package",
+    thumbnailConcept: "One package split into tools",
+    scriptOutline: "- Why\n- Build\n- Use",
+    checklists: fullChecklist,
+  });
+
+  assert.match(model.buildEpisodeExportPayload("markdown", episode), /# Package Export/);
+  assert.match(model.buildEpisodeExportPayload("hermes", episode), /memory update/i);
+  assert.match(model.buildEpisodeExportPayload("linear", episode), /## Remaining Checklist/);
+  assert.match(model.buildEpisodeExportPayload("production", episode), /# Production Brief/);
+  assert.match(model.buildEpisodeExportPayload("youtube", episode), /# YouTube Publish Package/);
+  assert.match(model.buildEpisodeExportPayload("codex", episode), /follow-up task/i);
 });
 
 test("state normalization accepts raw episode arrays", () => {

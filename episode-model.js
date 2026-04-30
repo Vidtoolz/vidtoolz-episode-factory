@@ -2,7 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "vidtoolz-episode-factory-v1";
-  const APP_VERSION = "0.2.0";
+  const APP_VERSION = "0.3.0";
   const EXPORT_SCHEMA_VERSION = 1;
   const MAX_IMPORT_EPISODES = 500;
 
@@ -318,79 +318,221 @@
     };
   }
 
-  function buildLinearIssueBody(episode) {
-    const gate = getGateSummary(episode);
+  function markdownValue(value, fallback = "Not set.") {
+    const text = cleanString(value).trim();
+    return text || fallback;
+  }
+
+  function checklistMarkdown(episode, groupKey) {
+    const summary = getChecklistSummary(episode, groupKey);
+    return summary.items
+      .map((item) => `- [${item.passed ? "x" : " "}] ${item.label}`)
+      .join("\n");
+  }
+
+  function readinessMarkdown(episode) {
+    const scores = getReadinessScores(episode);
     return [
-      `# ${episode.workingTitle || "Untitled episode"}`,
+      `- Packaging readiness: ${scores.packaging}%`,
+      `- Script readiness: ${scores.script}%`,
+      `- Production readiness: ${scores.production}%`,
+      `- Publish readiness: ${scores.publish}%`,
+      `- Overall readiness: ${scores.overall}%`,
+    ].join("\n");
+  }
+
+  function getNextAction(episode) {
+    const normalized = normalizeEpisode(episode);
+    const scores = getReadinessScores(normalized);
+    if (normalized.status === "Published") return "Review performance and archive learnings.";
+    if (scores.packaging < 100) return "Finish the Packaging Gate before committing production time.";
+    if (scores.script < 100) return "Tighten the script package: viewer, promise, title, hook, and outline.";
+    if (scores.production < 100) return "Complete production, editing, and Shorts extraction checklist items.";
+    if (scores.publish < 100) return "Finish publish checklist and prepare upload assets.";
+    return "Move the episode to Ready to Publish or Published.";
+  }
+
+  function buildFullEpisodeMarkdownPackage(episode) {
+    const normalized = normalizeEpisode(episode);
+    return [
+      `# ${markdownValue(normalized.workingTitle, "Untitled episode")}`,
       "",
-      `Status: ${episode.status}`,
-      `Topic: ${episode.topic}`,
+      `Status: ${normalized.status}`,
       "",
-      "## Viewer",
-      `Target viewer: ${episode.targetViewer}`,
-      `Problem: ${episode.viewerProblem}`,
-      `Promise: ${episode.corePromise}`,
+      "## Viewer Package",
+      `Target viewer: ${markdownValue(normalized.targetViewer)}`,
+      `Viewer problem: ${markdownValue(normalized.viewerProblem)}`,
+      `Core promise: ${markdownValue(normalized.corePromise)}`,
       "",
-      "## Packaging",
-      `Gate: ${gate.passed}/${gate.total} passed`,
-      `Title options:\n${episode.titleOptions}`,
-      `Thumbnail concept:\n${episode.thumbnailConcept}`,
-      `Hook:\n${episode.hook}`,
+      "## Hook And Packaging",
+      `Hook:\n${markdownValue(normalized.hook)}`,
       "",
-      "## Production",
-      `Script outline:\n${episode.scriptOutline}`,
-      `Production checklist:\n${episode.productionChecklist}`,
-      `Editing checklist:\n${episode.editingChecklist}`,
-      `Publish checklist:\n${episode.publishChecklist}`,
+      `Title options:\n${markdownValue(normalized.titleOptions)}`,
       "",
-      "## Shorts",
-      episode.shortsPlan,
+      `Thumbnail concept:\n${markdownValue(normalized.thumbnailConcept)}`,
+      "",
+      "## Readiness Scores",
+      readinessMarkdown(normalized),
+      "",
+      "## Checklists",
+      "### Packaging Gate",
+      checklistMarkdown(normalized, "packagingGate"),
+      "",
+      "### Production Checklist",
+      checklistMarkdown(normalized, "productionChecklist"),
+      "",
+      "### Editing Checklist",
+      checklistMarkdown(normalized, "editingChecklist"),
+      "",
+      "### Shorts Extraction Checklist",
+      checklistMarkdown(normalized, "shortsChecklist"),
+      "",
+      "### Publish Checklist",
+      checklistMarkdown(normalized, "publishChecklist"),
+      "",
+      "## Script Outline",
+      markdownValue(normalized.scriptOutline),
+      "",
+      "## Production Notes",
+      markdownValue(normalized.productionChecklist),
+      "",
+      "## Editing Notes",
+      markdownValue(normalized.editingChecklist),
+      "",
+      "## Shorts Extraction Plan",
+      markdownValue(normalized.shortsPlan),
+      "",
+      "## Publish Checklist Notes",
+      markdownValue(normalized.publishChecklist),
       "",
       "## Notes",
-      episode.notes,
+      markdownValue(normalized.notes),
+      "",
+      "## Next Action",
+      getNextAction(normalized),
+    ].join("\n");
+  }
+
+  function buildLinearIssueBody(episode) {
+    const normalized = normalizeEpisode(episode);
+    const scores = getReadinessScores(normalized);
+    return [
+      `# ${normalized.workingTitle || "Untitled episode"}`,
+      "",
+      `Status: ${normalized.status}`,
+      `Topic: ${normalized.topic}`,
+      `Overall readiness: ${scores.overall}%`,
+      `Next action: ${getNextAction(normalized)}`,
+      "",
+      "## Viewer",
+      `Target viewer: ${normalized.targetViewer}`,
+      `Problem: ${normalized.viewerProblem}`,
+      `Promise: ${normalized.corePromise}`,
+      "",
+      "## Packaging",
+      readinessMarkdown(normalized),
+      `Title options:\n${normalized.titleOptions}`,
+      `Thumbnail concept:\n${normalized.thumbnailConcept}`,
+      `Hook:\n${normalized.hook}`,
+      "",
+      "## Remaining Checklist",
+      getChecklistSummaries(normalized)
+        .map((summary) => {
+          const remaining = summary.items.filter((item) => !item.passed);
+          return [`### ${summary.label}`, remaining.length ? remaining.map((item) => `- ${item.label}`).join("\n") : "- Complete"].join("\n");
+        })
+        .join("\n\n"),
+      "",
+      "## Script Outline",
+      normalized.scriptOutline,
+      "",
+      "## Notes",
+      normalized.notes,
     ].join("\n");
   }
 
   function buildCodexPrompt(episode) {
+    const normalized = normalizeEpisode(episode);
     return [
-      "You are helping package and prepare a YouTube episode for VIDTOOLZ.",
+      "You are helping improve a VIDTOOLZ YouTube episode package.",
       "",
-      `Episode: ${episode.workingTitle || "Untitled episode"}`,
-      `Topic: ${episode.topic}`,
-      `Target viewer: ${episode.targetViewer}`,
-      `Viewer problem: ${episode.viewerProblem}`,
-      `Core promise: ${episode.corePromise}`,
+      `Episode: ${normalized.workingTitle || "Untitled episode"}`,
+      `Status: ${normalized.status}`,
+      `Topic: ${normalized.topic}`,
+      `Target viewer: ${normalized.targetViewer}`,
+      `Viewer problem: ${normalized.viewerProblem}`,
+      `Core promise: ${normalized.corePromise}`,
+      `Next action: ${getNextAction(normalized)}`,
       "",
-      "Use the current package below. Improve only what is weak, preserve useful intent, and return practical next-step output.",
+      "Use the package below. Preserve useful intent, identify the weakest production blocker, and return a practical follow-up task with exact edits or next actions.",
       "",
-      `Title options:\n${episode.titleOptions}`,
-      `Thumbnail concept:\n${episode.thumbnailConcept}`,
-      `Hook:\n${episode.hook}`,
-      `Script outline:\n${episode.scriptOutline}`,
-      `Shorts extraction plan:\n${episode.shortsPlan}`,
+      buildFullEpisodeMarkdownPackage(normalized),
     ].join("\n");
   }
 
   function buildHermesMemoryUpdate(episode) {
-    const gate = getGateSummary(episode);
+    const normalized = normalizeEpisode(episode);
+    const scores = getReadinessScores(normalized);
     return [
-      `VIDTOOLZ Episode Factory update: ${episode.workingTitle || "Untitled episode"}`,
-      `Status: ${episode.status}`,
-      `Topic: ${episode.topic}`,
-      `Packaging gate: ${gate.passed}/${gate.total} passed`,
-      `Current promise: ${episode.corePromise}`,
-      `Next production focus: ${episode.notes || "No note recorded."}`,
+      `VIDTOOLZ Episode Factory memory update: ${normalized.workingTitle || "Untitled episode"}`,
+      `Status: ${normalized.status}`,
+      `Topic: ${normalized.topic}`,
+      `Target viewer: ${normalized.targetViewer}`,
+      `Current promise: ${normalized.corePromise}`,
+      `Readiness: packaging ${scores.packaging}%, script ${scores.script}%, production ${scores.production}%, publish ${scores.publish}%, overall ${scores.overall}%.`,
+      `Next action: ${getNextAction(normalized)}`,
+      `Notes: ${normalized.notes || "No note recorded."}`,
     ].join("\n");
   }
 
-  function buildYoutubeDescription(episode) {
+  function buildProductionBrief(episode) {
+    const normalized = normalizeEpisode(episode);
     return [
-      episode.corePromise || episode.workingTitle || "New VIDTOOLZ episode.",
+      `# Production Brief: ${normalized.workingTitle || "Untitled episode"}`,
       "",
-      `In this video: ${episode.topic}`,
+      `Status: ${normalized.status}`,
+      `Next action: ${getNextAction(normalized)}`,
+      "",
+      "## Shoot Context",
+      `Target viewer: ${markdownValue(normalized.targetViewer)}`,
+      `Viewer problem: ${markdownValue(normalized.viewerProblem)}`,
+      `Core promise: ${markdownValue(normalized.corePromise)}`,
+      `Hook: ${markdownValue(normalized.hook)}`,
+      "",
+      "## Script Outline",
+      markdownValue(normalized.scriptOutline),
+      "",
+      "## Production Checklist",
+      checklistMarkdown(normalized, "productionChecklist"),
+      "",
+      "## Production Notes",
+      markdownValue(normalized.productionChecklist),
+      "",
+      "## Editing Checklist",
+      checklistMarkdown(normalized, "editingChecklist"),
+      "",
+      "## Editing Notes",
+      markdownValue(normalized.editingChecklist),
+    ].join("\n");
+  }
+
+  function buildYoutubePublishPackage(episode) {
+    const normalized = normalizeEpisode(episode);
+    return [
+      `# YouTube Publish Package: ${normalized.workingTitle || "Untitled episode"}`,
+      "",
+      "## Final Packaging",
+      `Title options:\n${markdownValue(normalized.titleOptions)}`,
+      "",
+      `Thumbnail concept:\n${markdownValue(normalized.thumbnailConcept)}`,
+      "",
+      "## Description Draft",
+      markdownValue(normalized.corePromise, normalized.workingTitle || "New VIDTOOLZ episode."),
+      "",
+      `In this video: ${markdownValue(normalized.topic, "Not set.")}`,
       "",
       "What this helps with:",
-      episode.viewerProblem ? `- ${episode.viewerProblem}` : "- A practical creator workflow problem",
+      normalized.viewerProblem ? `- ${normalized.viewerProblem}` : "- A practical creator workflow problem",
       "",
       "Resources and links:",
       "- ",
@@ -399,15 +541,30 @@
       "00:00 Intro",
       "",
       "#vidtoolz #youtubecreator #creatorworkflow",
+      "",
+      "## Publish Checklist",
+      checklistMarkdown(normalized, "publishChecklist"),
+      "",
+      "## Shorts Extraction Plan",
+      markdownValue(normalized.shortsPlan),
+      "",
+      "## Shorts Checklist",
+      checklistMarkdown(normalized, "shortsChecklist"),
     ].join("\n");
   }
 
-  function buildCopyPayload(type, episode) {
-    if (type === "linear") return buildLinearIssueBody(episode);
-    if (type === "codex") return buildCodexPrompt(episode);
+  function buildEpisodeExportPayload(type, episode) {
+    if (type === "markdown") return buildFullEpisodeMarkdownPackage(episode);
     if (type === "hermes") return buildHermesMemoryUpdate(episode);
-    if (type === "youtube") return buildYoutubeDescription(episode);
+    if (type === "linear") return buildLinearIssueBody(episode);
+    if (type === "production") return buildProductionBrief(episode);
+    if (type === "youtube") return buildYoutubePublishPackage(episode);
+    if (type === "codex") return buildCodexPrompt(episode);
     return "";
+  }
+
+  function buildCopyPayload(type, episode) {
+    return buildEpisodeExportPayload(type, episode);
   }
 
   function normalizeState(payload) {
@@ -534,7 +691,15 @@
     getChecklistSummary,
     getChecklistSummaries,
     getReadinessScores,
+    getNextAction,
     buildCopyPayload,
+    buildEpisodeExportPayload,
+    buildFullEpisodeMarkdownPackage,
+    buildHermesMemoryUpdate,
+    buildLinearIssueBody,
+    buildProductionBrief,
+    buildYoutubePublishPackage,
+    buildCodexPrompt,
     buildExportPayload,
     parseImportJson,
     validateImportPayload,

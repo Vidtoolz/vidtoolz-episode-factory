@@ -76,15 +76,18 @@
             <section class="copy-panel">
               <div class="section-heading">
                 <div>
-                  <h2>Copy Outputs</h2>
-                  <p class="muted">Prepared for later Linear, GitHub, Codex, and Hermes workflows.</p>
+                  <h2>Episode Package Export</h2>
+                  <p class="muted">Copy or download the selected episode package for production workflows.</p>
                 </div>
               </div>
               <div class="copy-grid">
-                <button data-copy="linear" type="button">Copy Linear issue body</button>
-                <button data-copy="codex" type="button">Copy Codex task prompt</button>
+                <button data-copy="markdown" type="button">Copy full Markdown package</button>
                 <button data-copy="hermes" type="button">Copy Hermes memory update</button>
-                <button data-copy="youtube" type="button">Copy YouTube description draft</button>
+                <button data-copy="linear" type="button">Copy Linear issue body</button>
+                <button data-copy="production" type="button">Copy production brief</button>
+                <button data-copy="youtube" type="button">Copy YouTube publish package</button>
+                <button data-copy="codex" type="button">Copy Codex follow-up task</button>
+                <button id="downloadMarkdownBtn" class="primary-btn" type="button">Download Markdown</button>
               </div>
               <p id="copyStatus" class="copy-status" role="status"></p>
             </section>

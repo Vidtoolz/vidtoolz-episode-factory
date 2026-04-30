@@ -286,6 +286,27 @@
     showImportExportStatus(`Exported ${payload.counts.episodes} episodes.`, "success");
   }
 
+  function downloadTextFile(filename, text, mimeType = "text/plain") {
+    const blob = new Blob([`${text}\n`], { type: mimeType });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = filename;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadMarkdownPackage() {
+    const episode = currentEpisode();
+    if (!episode) return;
+    const filename = `${slugify(episode.workingTitle || "episode-package") || "episode-package"}.md`;
+    const markdown = model.buildFullEpisodeMarkdownPackage(episode);
+    downloadTextFile(filename, markdown, "text/markdown");
+    els.copyStatus.textContent = "Markdown package downloaded.";
+  }
+
   function replaceState(nextState) {
     state.version = nextState.version;
     state.selectedId = nextState.selectedId;
@@ -343,6 +364,7 @@
   document.querySelector("#deleteBtn").addEventListener("click", deleteCurrent);
   document.querySelector("#exportJsonBtn").addEventListener("click", exportJson);
   document.querySelector("#importJsonBtn").addEventListener("click", () => els.importInput.click());
+  document.querySelector("#downloadMarkdownBtn").addEventListener("click", downloadMarkdownPackage);
   els.importInput.addEventListener("change", (event) => {
     importJsonFile(event.target.files[0]);
     event.target.value = "";

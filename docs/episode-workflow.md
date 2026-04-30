@@ -31,13 +31,17 @@ Episode Factory is designed for a solo YouTube creator who needs to move from ro
 - `Publish checklist`: final upload checks.
 - `Notes`: loose context, blockers, decisions, or next actions.
 
-## Copy Outputs
+## Episode Package Export
 
-The copy buttons produce practical text artifacts:
+The export buttons produce practical text artifacts for the selected episode:
 
-- Linear issue body: complete episode package for future task tracking.
-- Codex task prompt: focused prompt for packaging or production help.
-- Hermes memory update: compact project memory summary.
-- YouTube description draft: starter description for upload prep.
+- Full Episode Markdown Package: the canonical portable package. Use it as the inspectable artifact before handoff, review, or publishing.
+- Hermes memory update: a compact state update for project memory and continuity.
+- Linear issue body: a task-ready issue body with readiness scores and remaining checklist work.
+- Production brief: the practical shoot/edit handoff for recording and editing sessions.
+- YouTube publish package: title options, thumbnail concept, description draft, Shorts plan, and publish checklist.
+- Codex follow-up task: a focused prompt for asking Codex to improve the next weakest part of the episode package.
 
-These are copy-only in v0.1. No external API calls are made.
+Use the Markdown download when you want a durable file outside browser storage. Use copy buttons when moving the selected package into Hermes, Linear, Codex, or a YouTube upload prep note.
+
+These are copy/download-only in v0.3. No external API calls are made.

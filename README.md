@@ -14,7 +14,8 @@ It has no backend, no authentication, and no external API integrations. Episode 
 - Use structured checkbox groups for Packaging Gate, production, editing, Shorts extraction, and publishing
 - See readiness scoring for packaging, script, production, publish, and overall readiness
 - Filter the board by All, Packaging blocked, Ready to shoot, Ready to publish, and Published
-- Copy prepared outputs for Linear, Codex, Hermes, and YouTube descriptions
+- Copy single-episode exports for Markdown, Hermes, Linear, production, YouTube, and Codex
+- Download the selected episode as a full Markdown package
 - Export all stored episode data as JSON
 - Import JSON backups after validation
 - Run as plain HTML, CSS, and JavaScript with no build step
@@ -76,6 +77,7 @@ Manual browser checks:
 - Use each board filter and confirm the visible cards match the filter.
 - Duplicate and delete an episode.
 - Use each copy button through a local server page.
+- Download a Markdown package and confirm it includes readiness scores and checklist states.
 - Export JSON and confirm the file contains an `episodes` array.
 - Import a valid backup and confirm it replaces the current browser state.
 - Import invalid JSON and confirm the current browser state remains unchanged.
@@ -84,7 +86,7 @@ Manual browser checks:
 
 - `index.html` defines the static app shell.
 - `styles.css` contains the compact responsive UI.
-- `episode-model.js` owns statuses, field definitions, checklist definitions, normalization, duplication, readiness scoring, and copy payload builders.
+- `episode-model.js` owns statuses, field definitions, checklist definitions, normalization, duplication, readiness scoring, and package export builders.
 - `storage-adapter.js` wraps `localStorage` behind a small interface for later storage changes.
 - `app.js` renders the board and detail view, wires editing, persistence, duplication, deletion, JSON export/import, and clipboard actions.
 - `tests/run-tests.js` verifies core model behavior without browser dependencies.
@@ -104,4 +106,17 @@ Manual browser checks:
 
 ## Integration Path
 
-The app intentionally keeps integration-ready text generation inside `episode-model.js`. Later Linear, GitHub, and Hermes integrations can call the same copy payload builders or replace copy buttons with API-backed actions without changing the core episode shape.
+The app intentionally keeps integration-ready text generation inside `episode-model.js`. Later Linear, GitHub, and Hermes integrations can call the same package builders or replace copy buttons with API-backed actions without changing the core episode shape.
+
+## Episode Package Exports
+
+The selected episode can produce:
+
+- Full Episode Markdown Package: complete portable episode artifact.
+- Hermes memory update: compact state summary for project memory.
+- Linear issue body: task-ready issue text with readiness and remaining work.
+- Production brief: shoot/edit focused handoff.
+- YouTube publish package: title, thumbnail, description, Shorts, and publish checklist.
+- Codex follow-up task: prompt for the next useful production/package improvement.
+
+These are local copy/download actions only. They do not call Linear, GitHub, Hermes, Codex, or YouTube APIs.
