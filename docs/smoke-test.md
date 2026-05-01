@@ -18,14 +18,17 @@ Automated verification:
 
 - Open the local URL printed by the script.
 - Confirm the app loads with no console errors.
-- Confirm the header shows `v1.1.0`.
+- Confirm the header shows `v1.2.0`.
 
 ## Status And Backup Visibility
 
-- Confirm the status strip shows total episodes and total work sessions.
+- Confirm the status strip shows total episodes, total work sessions, and backup health.
+- In a fresh/no-export browser state, confirm backup health shows `Never exported` and `Export recommended`.
 - Export JSON.
 - Confirm the last JSON export timestamp changes from `Never` to a local date/time.
-- Confirm the exported JSON includes `appVersion: "1.1.0"`.
+- Confirm backup health changes to `Exported today`.
+- Confirm the exported JSON includes `appVersion: "1.2.0"`.
+- Start an active session, export JSON, and confirm the export status explains that the active session draft is not included in JSON export.
 - Import the exported JSON.
 - Confirm the import preview shows current episode count, imported episode count, matching episodes, skipped episodes, and imported work session count.
 - Cancel the preview and confirm local data is unchanged.
@@ -33,6 +36,7 @@ Automated verification:
 - Import a backup with a new episode and confirm Merge new episodes only adds it.
 - Import a backup with a same-id/same-title edited episode and confirm Merge and update matching episodes updates it.
 - Import a backup with a same-id/different-title episode and confirm the preview shows a conflict that merge modes skip.
+- With no recent export, confirm Replace library and Merge and update matching episodes warn before changing local data.
 - Confirm Replace library only runs after preview confirmation.
 - Confirm the last JSON import timestamp changes.
 - Confirm invalid JSON import still leaves the current episode data unchanged.

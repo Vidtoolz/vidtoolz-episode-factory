@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.0 - Backup Safety Guardrails
+
+- Added backup health messaging for never exported, exported today, export age, and export recommended states.
+- Added compact backup recommendations after meaningful local changes when no recent export exists.
+- Added warnings before risky replace and merge-update import modes when no recent export exists.
+- Added export feedback when an active focus session draft exists because active drafts are not included in JSON backups.
+- Kept storage local-first with no backend, authentication, cloud sync, or new dependencies.
+- Bumped visible app metadata to `v1.2.0`.
+
 ## v1.1.0 - Safer JSON Import Preview And Merge
 
 - Added JSON import preview before any local data is replaced or merged.

@@ -4,9 +4,11 @@
   const STORAGE_KEY = "vidtoolz-episode-factory-v1";
   const ACTIVE_SESSION_KEY = "vidtoolz-episode-factory-active-session-v1";
   const BACKUP_STATUS_KEY = "vidtoolz-episode-factory-backup-status-v1";
-  const APP_VERSION = "1.1.0";
+  const APP_VERSION = "1.2.0";
   const EXPORT_SCHEMA_VERSION = 1;
   const MAX_IMPORT_EPISODES = 500;
+  const RECENT_EXPORT_DAYS = 7;
+  const DAY_MS = 24 * 60 * 60 * 1000;
 
   const STATUSES = [
     "Idea",
@@ -410,9 +412,42 @@
     };
   }
 
+  function startOfLocalDay(value) {
+    const date = new Date(value);
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  }
+
+  function getBackupHealth(backupStatus = {}, now = Date.now()) {
+    const backup = normalizeBackupStatus(backupStatus);
+    if (!backup.lastExportAt) {
+      return {
+        state: "never-exported",
+        label: "Never exported",
+        recommendation: "Export recommended",
+        daysSinceExport: null,
+        hasRecentExport: false,
+        needsExport: true,
+      };
+    }
+
+    const exportTime = new Date(backup.lastExportAt).getTime();
+    const nowTime = Number(now);
+    const dayDelta = Math.max(0, Math.round((startOfLocalDay(nowTime) - startOfLocalDay(exportTime)) / DAY_MS));
+    const hasRecentExport = dayDelta <= RECENT_EXPORT_DAYS;
+    return {
+      state: dayDelta === 0 ? "exported-today" : hasRecentExport ? "export-age" : "export-recommended",
+      label: dayDelta === 0 ? "Exported today" : `Export is ${dayDelta} day${dayDelta === 1 ? "" : "s"} old`,
+      recommendation: hasRecentExport ? "" : "Export recommended",
+      daysSinceExport: dayDelta,
+      hasRecentExport,
+      needsExport: !hasRecentExport,
+    };
+  }
+
   function getAppStatus(state, activeSession = null, backupStatus = {}, now = Date.now()) {
     const normalized = normalizeState(state);
     const backup = normalizeBackupStatus(backupStatus);
+    const backupHealth = getBackupHealth(backup, now);
     const session = normalizeActiveSession(activeSession, now);
     return {
       totalEpisodes: normalized.episodes.length,
@@ -422,6 +457,7 @@
       ),
       lastExportAt: backup.lastExportAt,
       lastImportAt: backup.lastImportAt,
+      backupHealth,
       activeSession: session
         ? {
             isActive: true,
@@ -1864,6 +1900,7 @@
     normalizeCompletionFormData,
     normalizeActiveSession,
     normalizeBackupStatus,
+    getBackupHealth,
     normalizeState,
     normalizeChecklistGroup,
     normalizeChecklists,

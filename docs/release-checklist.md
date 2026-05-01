@@ -40,19 +40,19 @@ git diff --stat
 - Tag the release:
 
 ```sh
-git tag v1.1.0
+git tag v1.2.0
 ```
 
 - Push the branch and tag when ready:
 
 ```sh
 git push
-git push origin v1.1.0
+git push origin v1.2.0
 ```
 
 ## 5. GitHub Publishing
 
-- Open or update the GitHub release from tag `v1.1.0`.
+- Open or update the GitHub release from tag `v1.2.0`.
 - Include the changelog summary.
 - Mention that data is browser-local and users should export JSON backups.
 - Link the smoke test and known limitations docs.
