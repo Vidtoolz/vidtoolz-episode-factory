@@ -222,6 +222,19 @@
           .map((item) => `<li>${escapeHtml(item.groupLabel)}: ${escapeHtml(item.item)}</li>`)
           .join("")
       : "<li>No task-specific checklist items.</li>";
+    const controls = session.isRunning
+      ? `
+          <button type="button" data-active-control="pause">Pause</button>
+          <button type="button" data-active-control="reset">Reset</button>
+          <button class="primary-btn" type="button" data-active-control="complete">Complete Session</button>
+          <button type="button" data-active-control="abandon">Abandon Session</button>
+        `
+      : `
+          <button type="button" data-active-control="resume">Resume</button>
+          <button type="button" data-active-control="reset">Reset</button>
+          <button class="primary-btn" type="button" data-active-control="complete">Complete Session</button>
+          <button type="button" data-active-control="abandon">Abandon Session</button>
+        `;
     els.activeSessionPanel.innerHTML = `
       <article class="active-session-card">
         <div class="section-heading">
@@ -256,11 +269,7 @@
           </div>
         </div>
         <div class="queue-actions">
-          <button type="button" data-active-control="start">${session.isRunning ? "Resume" : "Start"}</button>
-          <button type="button" data-active-control="pause">Pause</button>
-          <button type="button" data-active-control="reset">Reset</button>
-          <button class="primary-btn" type="button" data-active-control="complete">Complete Session</button>
-          <button type="button" data-active-control="abandon">Abandon Session</button>
+          ${controls}
         </div>
       </article>
     `;
@@ -820,6 +829,10 @@
     }
   }
 
+  function showTaskStatus(message) {
+    els.taskCopyStatus.textContent = message;
+  }
+
   async function copySessionOutput(type, sessionId) {
     const episode = currentEpisode();
     if (!episode) return;
@@ -925,13 +938,24 @@
     persistActiveSession();
     persist();
     render();
+    showTaskStatus("Focus session started.");
   }
 
   function activeSessionControl(action) {
     if (!activeSession) return;
-    if (action === "start") activeSession = model.resumeActiveSession(activeSession);
-    if (action === "pause") activeSession = model.pauseActiveSession(activeSession);
-    if (action === "reset") activeSession = model.resetActiveSession(activeSession);
+    let message = "";
+    if (action === "resume") {
+      activeSession = model.resumeActiveSession(activeSession);
+      message = "Focus session resumed.";
+    }
+    if (action === "pause") {
+      activeSession = model.pauseActiveSession(activeSession);
+      message = "Focus session paused.";
+    }
+    if (action === "reset") {
+      activeSession = model.resetActiveSession(activeSession);
+      message = "Focus session timer reset.";
+    }
     if (action === "complete") {
       activeSession = model.pauseActiveSession(activeSession);
       completionTaskOverride = activeSession.task;
@@ -940,6 +964,7 @@
       renderActiveSessionPanel();
       renderCompletionDrawer();
       renderAppStatus();
+      showTaskStatus("Complete the session details to save it.");
       return;
     }
     if (action === "abandon") {
@@ -947,10 +972,12 @@
       activeSession = model.abandonActiveSession();
       activeCompletionTaskId = "";
       completionTaskOverride = null;
+      message = "Focus session abandoned.";
     }
     persistActiveSession();
     renderActiveSessionPanel();
     renderAppStatus();
+    showTaskStatus(message);
   }
 
   async function copyGeneratedTask(task) {

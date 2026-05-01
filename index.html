@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Episode Factory</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=1.1.0" />
   </head>
   <body>
     <div class="app-shell">
@@ -17,7 +17,7 @@
           <input id="searchInput" class="search" type="search" placeholder="Search episodes" />
           <button id="exportJsonBtn" type="button">Export JSON</button>
           <button id="importJsonBtn" type="button">Import JSON</button>
-          <input id="importJsonInput" class="visually-hidden" type="file" accept="application/json,.json" />
+          <input id="importJsonInput" type="file" accept="application/json,.json" hidden tabindex="-1" aria-hidden="true" />
           <button id="demoEpisodeBtn" type="button">Create demo episode</button>
           <button id="newEpisodeBtn" class="primary-btn" type="button">New episode</button>
         </div>
@@ -136,8 +136,8 @@
       </main>
     </div>
 
-    <script src="episode-model.js"></script>
-    <script src="storage-adapter.js"></script>
-    <script src="app.js"></script>
+    <script src="episode-model.js?v=1.1.0"></script>
+    <script src="storage-adapter.js?v=1.1.0"></script>
+    <script src="app.js?v=1.1.0"></script>
   </body>
 </html>

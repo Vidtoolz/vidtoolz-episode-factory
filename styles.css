@@ -291,7 +291,7 @@ textarea {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(420px, 0.95fr) minmax(480px, 1.05fr);
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
   gap: 14px;
   max-width: 1640px;
   margin: 0 auto;
@@ -304,6 +304,7 @@ textarea {
   border-radius: 8px;
   box-shadow: var(--shadow);
   min-height: calc(100vh - 96px);
+  min-width: 0;
 }
 
 .board-panel {
@@ -619,10 +620,11 @@ textarea {
 
 .board {
   display: grid;
-  grid-template-columns: repeat(4, minmax(168px, 1fr));
+  grid-template-columns: repeat(4, minmax(132px, 1fr));
   gap: 10px;
   overflow: auto;
   padding-bottom: 6px;
+  width: 100%;
 }
 
 .status-column {
@@ -630,6 +632,7 @@ textarea {
   border: 1px solid var(--border);
   border-radius: 8px;
   min-height: 220px;
+  min-width: 0;
   padding: 9px;
 }
 
@@ -935,7 +938,7 @@ label > span,
   }
 
   .board {
-    grid-template-columns: minmax(220px, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .field-grid,
