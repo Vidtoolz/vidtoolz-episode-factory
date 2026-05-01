@@ -1,12 +1,12 @@
 # Known Limitations
 
-Episode Factory v1.1 is intentionally local-first and dependency-free.
+Episode Factory v1.2 is intentionally local-first and dependency-free.
 
 ## localStorage-Only Storage
 
 Episode data is stored in the current browser profile under `vidtoolz-episode-factory-v1`. Clearing browser storage, changing profiles, or using another browser can make the data unavailable unless a JSON backup exists.
 
-Export JSON backups regularly.
+Export JSON backups regularly. The app shows backup health, recommends export when a recent JSON backup is missing, and warns before risky import modes when no recent export exists.
 
 ## No Backend
 
@@ -23,6 +23,8 @@ JSON import now shows a preview and supports replace, merge-new-only, and merge-
 ## Active Session Not Included In JSON Export
 
 The active focus session draft is stored separately under `vidtoolz-episode-factory-active-session-v1`. It is not included in JSON exports. Complete or abandon an active session before relying on a JSON backup as the full work record.
+
+JSON export shows a warning in the export status when an active focus session exists, but the active draft remains excluded from the backup payload.
 
 ## Browser Clipboard Constraints
 

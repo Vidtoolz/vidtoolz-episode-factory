@@ -87,6 +87,7 @@
       updatedAt: new Date().toISOString(),
     });
     persist();
+    showBackupRecommendation();
     if (renderMode === "board") {
       renderBoard();
       renderQueue();
@@ -580,13 +581,23 @@
     const activeText = status.activeSession.isActive
       ? `${status.activeSession.isRunning ? "Running" : "Paused"}: ${status.activeSession.taskTitle}`
       : "None";
+    const backupNote = status.backupHealth.recommendation
+      ? `<small>${escapeHtml(status.backupHealth.recommendation)}</small>`
+      : "";
     els.appStatus.innerHTML = `
       <div><span>Total episodes</span><strong>${status.totalEpisodes}</strong></div>
       <div><span>Total work sessions</span><strong>${status.totalWorkSessions}</strong></div>
+      <div><span>Backup health</span><strong>${escapeHtml(status.backupHealth.label)}</strong>${backupNote}</div>
       <div><span>Last JSON export</span><strong>${escapeHtml(formatOptionalTimestamp(status.lastExportAt))}</strong></div>
       <div><span>Last JSON import</span><strong>${escapeHtml(formatOptionalTimestamp(status.lastImportAt))}</strong></div>
       <div><span>Active session</span><strong>${escapeHtml(activeText)}</strong></div>
     `;
+  }
+
+  function showBackupRecommendation() {
+    const health = model.getBackupHealth(backupStatus);
+    if (!health.needsExport) return;
+    showImportExportStatus("Backup recommended: export JSON after local changes.", "");
   }
 
   function createEpisode() {
@@ -594,6 +605,7 @@
     state.episodes.unshift(episode);
     state.selectedId = episode.id;
     persist();
+    showBackupRecommendation();
     render();
   }
 
@@ -602,7 +614,12 @@
     state.episodes.unshift(episode);
     state.selectedId = episode.id;
     persist();
-    showImportExportStatus("Demo episode created without replacing existing episodes.", "success");
+    showImportExportStatus(
+      model.getBackupHealth(backupStatus).needsExport
+        ? "Demo episode created. Backup recommended: export JSON after local changes."
+        : "Demo episode created without replacing existing episodes.",
+      "success"
+    );
     render();
   }
 
@@ -613,6 +630,7 @@
     state.episodes.unshift(copy);
     state.selectedId = copy.id;
     persist();
+    showBackupRecommendation();
     render();
   }
 
@@ -624,6 +642,7 @@
     state.episodes = state.episodes.filter((item) => item.id !== episode.id);
     state.selectedId = state.episodes[0] ? state.episodes[0].id : "";
     persist();
+    showBackupRecommendation();
     render();
   }
 
@@ -647,7 +666,12 @@
     link.remove();
     URL.revokeObjectURL(url);
     backupStatus = storage.recordBackupTimestamp("export");
-    showImportExportStatus(`Exported ${payload.counts.episodes} episodes.`, "success");
+    showImportExportStatus(
+      activeSession
+        ? `Exported ${payload.counts.episodes} episodes. Active session draft is not included in JSON export. Complete or abandon it before relying on this backup as the full work record.`
+        : `Exported ${payload.counts.episodes} episodes.`,
+      "success"
+    );
     renderAppStatus();
   }
 
@@ -782,6 +806,16 @@
     const selectedMode = els.importPreviewPanel.querySelector("input[name='importMode']:checked");
     const mode = selectedMode ? selectedMode.value : "merge-new";
     const counts = pendingImport.preview.counts;
+    const isRiskyMode = mode === "replace" || mode === "merge-update";
+    if (isRiskyMode && !model.getBackupHealth(backupStatus).hasRecentExport) {
+      const confirmed = window.confirm(
+        "Export recommended before this import mode. Replace library and merge-and-update can overwrite local episode data. Continue without a recent JSON export?"
+      );
+      if (!confirmed) {
+        showImportExportStatus("Import paused. Export JSON before using this import mode.", "");
+        return;
+      }
+    }
     let nextState;
     let message;
 
@@ -909,6 +943,7 @@
       persistActiveSession();
     }
     persist();
+    showBackupRecommendation();
     render();
     return true;
   }
@@ -922,6 +957,7 @@
     state.episodes[index] = model.editWorkSession(episode, sessionId, data);
     editingSessionId = "";
     persist();
+    showBackupRecommendation();
     render();
   }
 
@@ -1163,6 +1199,7 @@
       const index = state.episodes.findIndex((item) => item.id === episode.id);
       state.episodes[index] = model.deleteWorkSession(episode, deleteButton.dataset.sessionDelete);
       persist();
+      showBackupRecommendation();
       render();
       return;
     }

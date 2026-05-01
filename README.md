@@ -1,14 +1,14 @@
 # VIDTOOLZ Episode Factory
 
-VIDTOOLZ Episode Factory v1.1 is a local-first static web app for turning rough YouTube ideas into complete production packages and running a stable weekly creator workflow.
+VIDTOOLZ Episode Factory v1.2 is a local-first static web app for turning rough YouTube ideas into complete production packages and running a stable weekly creator workflow.
 
 The purpose is practical creator discipline: keep the topic, promise, title options, thumbnail concept, hook, script outline, structured production checklists, Shorts extraction checks, publish checks, and notes in one compact place before a solo creator starts shooting.
 
 It has no backend, no authentication, and no external API integrations. Episode data is saved in browser `localStorage` under `vidtoolz-episode-factory-v1`.
 
-Important: browser `localStorage` is not a durable backup system. Export JSON regularly, especially before browser cleanup, import testing, or release work.
+Important: browser `localStorage` is not a durable backup system. Export JSON regularly, especially before browser cleanup, import testing, or release work. The app shows backup health and recommends export when a recent JSON backup is missing.
 
-## v1.1 Features
+## v1.2 Features
 
 - Create, edit, delete, and duplicate episodes
 - Manage episodes on a compact status board
@@ -20,14 +20,17 @@ Important: browser `localStorage` is not a durable backup system. Export JSON re
 - Run a single active focus session with elapsed time tracking
 - See active focus session progress against the task estimate
 - Complete queue tasks with an inline form, record work sessions, and keep episode history
-- See app and backup status: total episodes, total work sessions, last JSON export, last JSON import, and active session state
+- See app and backup status: total episodes, total work sessions, backup health, last JSON export, last JSON import, and active session state
+- See compact backup recommendations after meaningful local changes when no recent export exists
 - Filter the board by All, Packaging blocked, Ready to shoot, Ready to publish, and Published
 - Copy single-episode exports for Markdown, Hermes, Linear, production, YouTube, and Codex
 - Copy weekly review outputs for Hermes, Linear, and creator review markdown
 - Download the selected episode as a full Markdown package
 - Export all stored episode data as JSON
+- See an active-session warning when exporting while a focus session draft exists
 - Preview JSON imports before local data changes
 - Import by replacing the library, merging new episodes only, or merging and updating matching episodes
+- Confirm risky import modes when no recent JSON export exists
 - Create a realistic VIDTOOLZ/DaVinci Resolve demo episode for manual testing without replacing existing data
 - Run as plain HTML, CSS, and JavaScript with no build step
 
@@ -178,3 +181,5 @@ The runner shows a progress bar capped at 100% against the task estimate. Comple
 ## Backup And App Status
 
 The status strip shows total episodes, total work sessions, last JSON export, last JSON import, and active session state. Export/import timestamps are stored separately in `localStorage` under `vidtoolz-episode-factory-backup-status-v1`; they are local browser metadata and do not change the JSON backup payload.
+
+Backup health reports whether the library has never been exported, was exported today, how many days old the last export is, or whether export is recommended. Replace and merge-update import modes warn when there is no recent export. JSON export still excludes active focus session drafts, and the export status calls that out when a session is active.

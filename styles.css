@@ -179,7 +179,7 @@ button:hover {
 .app-status {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   margin: -4px auto 14px;
   max-width: 1640px;
 }
@@ -201,6 +201,14 @@ button:hover {
 
 .app-status strong {
   font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-status small {
+  color: var(--accent);
+  font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -669,6 +669,38 @@ test("backup status normalization accepts missing or invalid input", () => {
   );
 });
 
+test("backup health recommends export when no export exists", () => {
+  const health = model.getBackupHealth({}, new Date("2026-05-01T12:00:00.000Z").getTime());
+
+  assert.equal(health.label, "Never exported");
+  assert.equal(health.recommendation, "Export recommended");
+  assert.equal(health.hasRecentExport, false);
+  assert.equal(health.needsExport, true);
+});
+
+test("backup health reports today and day age for recent exports", () => {
+  const now = new Date("2026-05-01T12:00:00.000Z").getTime();
+
+  const today = model.getBackupHealth({ lastExportAt: "2026-05-01T08:00:00.000Z" }, now);
+  const yesterday = model.getBackupHealth({ lastExportAt: "2026-04-30T08:00:00.000Z" }, now);
+
+  assert.equal(today.label, "Exported today");
+  assert.equal(today.hasRecentExport, true);
+  assert.equal(today.needsExport, false);
+  assert.equal(yesterday.label, "Export is 1 day old");
+  assert.equal(yesterday.hasRecentExport, true);
+});
+
+test("backup health recommends export when export is stale", () => {
+  const now = new Date("2026-05-10T12:00:00.000Z").getTime();
+  const health = model.getBackupHealth({ lastExportAt: "2026-05-01T08:00:00.000Z" }, now);
+
+  assert.equal(health.label, "Export is 9 days old");
+  assert.equal(health.recommendation, "Export recommended");
+  assert.equal(health.hasRecentExport, false);
+  assert.equal(health.needsExport, true);
+});
+
 test("last export and import timestamp helpers persist to localStorage", () => {
   const memoryStorage = createMemoryStorage();
   const options = { storage: memoryStorage, model };
@@ -682,22 +714,25 @@ test("last export and import timestamp helpers persist to localStorage", () => {
 });
 
 test("app status counts episodes sessions backup timestamps and active session", () => {
+  const now = new Date("2026-05-01T10:01:00.000Z").getTime();
   const episode = model.addWorkSession(model.normalizeEpisode({ workingTitle: "Status Count" }), {
     taskTitle: "Count this",
     result: "Done",
   });
   const task = model.generateNextActionTask(episode);
-  const active = model.startActiveSession(task, 0);
+  const active = model.startActiveSession(task, now - 60000);
   const status = model.getAppStatus(
     { selectedId: episode.id, episodes: [episode] },
     active,
     { lastExportAt: "2026-04-30T10:00:00.000Z" },
-    60000
+    now
   );
 
   assert.equal(status.totalEpisodes, 1);
   assert.equal(status.totalWorkSessions, 1);
   assert.equal(status.lastExportAt, "2026-04-30T10:00:00.000Z");
+  assert.equal(status.backupHealth.label, "Export is 1 day old");
+  assert.equal(status.backupHealth.needsExport, false);
   assert.equal(status.activeSession.isActive, true);
   assert.equal(status.activeSession.elapsedSeconds, 60);
 });
