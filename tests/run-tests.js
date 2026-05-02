@@ -238,6 +238,66 @@ test("single episode export builders produce the expected package types", () => 
   assert.match(model.buildEpisodeExportPayload("production", episode), /# Production Brief/);
   assert.match(model.buildEpisodeExportPayload("youtube", episode), /# YouTube Publish Package/);
   assert.match(model.buildEpisodeExportPayload("codex", episode), /follow-up task/i);
+  assert.match(model.buildEpisodeExportPayload("creator-qa-json", episode), /"viewerPayoff"/);
+  assert.match(model.buildEpisodeExportPayload("creator-qa-markdown", episode), /# Viewer Payoff/);
+});
+
+test("creator qa json export includes expected keys", () => {
+  const episode = model.normalizeEpisode({
+    topic: "Resolve export workflow",
+    workingTitle: "Fix Flat DaVinci Resolve Exports",
+    targetViewer: "Resolve editor",
+    viewerProblem: "Exports look flat",
+    corePromise: "Fix flat exports",
+    thumbnailConcept: "Before after export frame",
+    hook: "Your export should not look worse than the timeline.",
+    scriptOutline: "- Hook\n- Problem\n- Steps\n- Payoff",
+    notes: "Check Resolve terms before publish.",
+  });
+  const payload = model.buildCreatorQaJsonObject(episode);
+
+  model.CREATOR_QA_JSON_KEYS.forEach((key) => assert.ok(Object.hasOwn(payload, key), key));
+  assert.equal(payload.title, "Fix Flat DaVinci Resolve Exports");
+  assert.equal(payload.thumbnailConcept, "Before after export frame");
+  assert.equal(payload.viewerPayoff, "Fix flat exports");
+  assert.equal(payload.status, "Idea");
+  assert.ok(Array.isArray(payload.factualClaims));
+  assert.ok(Array.isArray(payload.sourceNotes));
+  assert.ok(Array.isArray(payload.checklist));
+  assert.ok(Array.isArray(payload.shortsIdeas));
+});
+
+test("creator qa markdown export includes expected sections", () => {
+  const episode = model.normalizeEpisode({
+    workingTitle: "Creator QA Markdown",
+    corePromise: "A usable QA package",
+    thumbnailConcept: "QA checklist",
+    hook: "Do not publish before QA.",
+    scriptOutline: "- Check\n- Fix\n- Rerun",
+  });
+  const markdown = model.buildCreatorQaMarkdownPackage(episode);
+
+  [
+    "# Title",
+    "# Thumbnail",
+    "# Hook",
+    "# Viewer Payoff",
+    "# Script",
+    "# Factual Claims / Source Notes",
+    "# Resolve Terminology Used",
+    "# Notes",
+  ].forEach((section) => assert.match(markdown, new RegExp(section.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))));
+});
+
+test("creator qa exports tolerate missing optional fields", () => {
+  const episode = model.normalizeEpisode({});
+  const payload = model.buildCreatorQaJsonObject(episode);
+  const markdown = model.buildCreatorQaMarkdownPackage(episode);
+
+  model.CREATOR_QA_JSON_KEYS.forEach((key) => assert.ok(Object.hasOwn(payload, key), key));
+  assert.doesNotThrow(() => JSON.parse(model.buildCreatorQaJsonExport(episode)));
+  assert.match(markdown, /# Title/);
+  assert.match(markdown, /# Notes/);
 });
 
 function completeChecklistExcept(exceptions = {}) {

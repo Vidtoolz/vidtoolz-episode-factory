@@ -696,6 +696,22 @@
     els.copyStatus.textContent = "Markdown package downloaded.";
   }
 
+  function downloadCreatorQaJson() {
+    const episode = currentEpisode();
+    if (!episode) return;
+    const filename = `${slugify(episode.workingTitle || "creator-qa-package") || "creator-qa-package"}-creator-qa.json`;
+    downloadTextFile(filename, model.buildCreatorQaJsonExport(episode), "application/json");
+    els.copyStatus.textContent = "Creator QA JSON downloaded.";
+  }
+
+  function downloadCreatorQaMarkdown() {
+    const episode = currentEpisode();
+    if (!episode) return;
+    const filename = `${slugify(episode.workingTitle || "creator-qa-package") || "creator-qa-package"}-creator-qa.md`;
+    downloadTextFile(filename, model.buildCreatorQaMarkdownPackage(episode), "text/markdown");
+    els.copyStatus.textContent = "Creator QA Markdown downloaded.";
+  }
+
   function replaceState(nextState) {
     state.version = nextState.version;
     state.selectedId = nextState.selectedId;
@@ -1050,6 +1066,8 @@
   document.querySelector("#exportJsonBtn").addEventListener("click", exportJson);
   document.querySelector("#importJsonBtn").addEventListener("click", () => els.importInput.click());
   document.querySelector("#downloadMarkdownBtn").addEventListener("click", downloadMarkdownPackage);
+  document.querySelector("#downloadCreatorQaJsonBtn").addEventListener("click", downloadCreatorQaJson);
+  document.querySelector("#downloadCreatorQaMarkdownBtn").addEventListener("click", downloadCreatorQaMarkdown);
   els.importInput.addEventListener("change", (event) => {
     importJsonFile(event.target.files[0]);
     event.target.value = "";

@@ -24,8 +24,10 @@ Important: browser `localStorage` is not a durable backup system. Export JSON re
 - See compact backup recommendations after meaningful local changes when no recent export exists
 - Filter the board by All, Packaging blocked, Ready to shoot, Ready to publish, and Published
 - Copy single-episode exports for Markdown, Hermes, Linear, production, YouTube, and Codex
+- Copy selected-episode exports for Creator QA JSON and Creator QA Markdown
 - Copy weekly review outputs for Hermes, Linear, and creator review markdown
 - Download the selected episode as a full Markdown package
+- Download the selected episode as Creator QA JSON or Creator QA Markdown
 - Export all stored episode data as JSON
 - See an active-session warning when exporting while a focus session draft exists
 - Preview JSON imports before local data changes
@@ -115,6 +117,7 @@ High-level browser checks:
 - `docs/known-limitations.md` documents current limits.
 - `docs/episode-workflow.md` documents the intended YouTube workflow.
 - `docs/packaging-gate.md` documents the gate criteria.
+- `docs/creator-qa-export.md` documents the Creator QA export mapping.
 
 ## Current Limitations
 
@@ -139,8 +142,30 @@ The selected episode can produce:
 - Production brief: shoot/edit focused handoff.
 - YouTube publish package: title, thumbnail, description, Shorts, and publish checklist.
 - Codex follow-up task: prompt for the next useful production/package improvement.
+- Creator QA JSON: selected episode export for `creator-qa check-episode-json`.
+- Creator QA Markdown Package: selected episode export for `creator-qa check`.
 
 These are local copy/download actions only. They do not call Linear, GitHub, Hermes, Codex, or YouTube APIs.
+
+## Creator QA Export
+
+Use `Copy Creator QA JSON` or `Download Creator QA JSON` when the selected episode should be checked by Vidtoolz Creator QA v0.5:
+
+```sh
+cd /home/vidtoolz/vidtoolz-creator-qa
+source .venv/bin/activate
+creator-qa check-episode-json /path/to/export.json --hermes-report
+```
+
+Use `Copy Creator QA Markdown` or `Download Creator QA Markdown` when the package should be inspected or edited as Markdown first:
+
+```sh
+cd /home/vidtoolz/vidtoolz-creator-qa
+source .venv/bin/activate
+creator-qa check /path/to/export.md --hermes-report
+```
+
+Creator QA export mapping is documented in [docs/creator-qa-export.md](docs/creator-qa-export.md).
 
 ## Execution Queue
 

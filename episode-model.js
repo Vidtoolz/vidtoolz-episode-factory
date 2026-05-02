@@ -130,6 +130,25 @@
     publishChecklist: "- Final title selected\n- Thumbnail exported\n- Description checked\n- End screen/cards added",
   };
 
+  const CREATOR_QA_JSON_KEYS = [
+    "title",
+    "thumbnailConcept",
+    "thumbnailText",
+    "hook",
+    "promise",
+    "viewerPayoff",
+    "scriptOutline",
+    "script",
+    "notes",
+    "factualClaims",
+    "sourceNotes",
+    "status",
+    "packagingGate",
+    "checklist",
+    "shortsIdeas",
+    "nextAction",
+  ];
+
   function nowIso() {
     return new Date().toISOString();
   }
@@ -1079,6 +1098,104 @@
     return text || fallback;
   }
 
+  function textLines(value) {
+    return cleanString(value)
+      .split("\n")
+      .map((line) => line.replace(/^[-*0-9.\s]+/, "").trim())
+      .filter(Boolean);
+  }
+
+  function firstTextLine(value) {
+    return textLines(value)[0] || "";
+  }
+
+  function checklistSummaryForExport(episode, groupKey) {
+    const summary = getChecklistSummary(episode, groupKey);
+    return {
+      group: summary.label,
+      passed: summary.passed,
+      total: summary.total,
+      items: summary.items.map((item) => ({
+        label: item.label,
+        passed: item.passed,
+      })),
+    };
+  }
+
+  function allChecklistLines(episode) {
+    return getChecklistSummaries(episode).flatMap((summary) =>
+      summary.items.map((item) => `${summary.label}: ${item.passed ? "done" : "todo"} - ${item.label}`)
+    );
+  }
+
+  function buildCreatorQaJsonObject(episode) {
+    const normalized = normalizeEpisode(episode);
+    return {
+      title: normalized.workingTitle || firstTextLine(normalized.titleOptions),
+      thumbnailConcept: normalized.thumbnailConcept,
+      thumbnailText: "",
+      hook: normalized.hook,
+      promise: normalized.corePromise,
+      viewerPayoff: normalized.corePromise,
+      scriptOutline: normalized.scriptOutline,
+      script: "",
+      notes: normalized.notes,
+      factualClaims: [],
+      sourceNotes: [],
+      status: normalized.status,
+      packagingGate: checklistSummaryForExport(normalized, "packagingGate"),
+      checklist: allChecklistLines(normalized),
+      shortsIdeas: textLines(normalized.shortsPlan),
+      nextAction: getNextAction(normalized),
+    };
+  }
+
+  function buildCreatorQaJsonExport(episode) {
+    return `${JSON.stringify(buildCreatorQaJsonObject(episode), null, 2)}\n`;
+  }
+
+  function buildCreatorQaMarkdownPackage(episode) {
+    const normalized = normalizeEpisode(episode);
+    const payload = buildCreatorQaJsonObject(normalized);
+    return [
+      `# Title`,
+      markdownValue(payload.title),
+      "",
+      "# Thumbnail",
+      markdownValue(payload.thumbnailText || payload.thumbnailConcept),
+      "",
+      "# Hook",
+      markdownValue(payload.hook),
+      "",
+      "# Viewer Payoff",
+      markdownValue(payload.viewerPayoff || payload.promise),
+      "",
+      "# Script",
+      markdownValue(payload.script || payload.scriptOutline),
+      "",
+      "# Factual Claims / Source Notes",
+      "Factual claims needing source:",
+      payload.factualClaims.length ? payload.factualClaims.map((item) => `- ${item}`).join("\n") : "- None recorded.",
+      "",
+      "Source notes:",
+      payload.sourceNotes.length ? payload.sourceNotes.map((item) => `- ${item}`).join("\n") : "- None recorded.",
+      "",
+      "# Resolve Terminology Used",
+      "- Not recorded in Episode Factory yet.",
+      "",
+      "# Notes",
+      [
+        `Status: ${normalized.status}`,
+        `Topic: ${markdownValue(normalized.topic)}`,
+        `Target viewer: ${markdownValue(normalized.targetViewer)}`,
+        `Viewer problem: ${markdownValue(normalized.viewerProblem)}`,
+        `Next action: ${payload.nextAction}`,
+        "",
+        markdownValue(normalized.notes),
+      ].join("\n"),
+    ].join("\n");
+  }
+
   function checklistMarkdown(episode, groupKey) {
     const summary = getChecklistSummary(episode, groupKey);
     return summary.items
@@ -1314,6 +1431,8 @@
     if (type === "production") return buildProductionBrief(episode);
     if (type === "youtube") return buildYoutubePublishPackage(episode);
     if (type === "codex") return buildCodexPrompt(episode);
+    if (type === "creator-qa-json") return buildCreatorQaJsonExport(episode);
+    if (type === "creator-qa-markdown") return buildCreatorQaMarkdownPackage(episode);
     return "";
   }
 
@@ -1893,6 +2012,7 @@
     FIELD_DEFINITIONS,
     PACKAGING_GATE,
     CHECKLIST_GROUPS,
+    CREATOR_QA_JSON_KEYS,
     createEpisode,
     duplicateEpisode,
     normalizeEpisode,
@@ -1957,6 +2077,9 @@
     buildProductionBrief,
     buildYoutubePublishPackage,
     buildCodexPrompt,
+    buildCreatorQaJsonObject,
+    buildCreatorQaJsonExport,
+    buildCreatorQaMarkdownPackage,
     buildExportPayload,
     parseImportJson,
     validateImportPayload,

@@ -14,6 +14,10 @@ VIDTOOLZ Episode Factory is a dependency-free, local-first static web app for a 
 - Keep the UI compact and practical. Avoid broad redesigns for narrow feature work.
 - Preserve compatibility with the existing `localStorage` key: `vidtoolz-episode-factory-v1`.
 - Preserve compatibility with the current episode object shape unless a migration path is added.
+- Do not break existing Markdown package exports.
+- Keep Creator QA JSON exports tolerant of missing optional fields.
+- Every Episode Factory to Creator QA field mapping must be documented.
+- Every new input or export shape needs tests.
 
 ## Engineering Rules
 
