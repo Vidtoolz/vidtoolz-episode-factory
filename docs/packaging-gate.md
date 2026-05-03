@@ -4,6 +4,14 @@ The Packaging Gate is the pass/fail check before a rough episode idea should mov
 
 It exists to prevent a solo creator from spending recording and editing energy on an unclear package.
 
+The CLI review returns concrete warnings for title clarity, audience fit, thumbnail clarity, promise-to-outline match, claim verification risk, and missing next action:
+
+```sh
+node scripts/episode-factory.js check-packaging
+```
+
+The review is local only. It does not publish, score trends, or call external APIs.
+
 ## Checks
 
 - Viewer problem is clear.

@@ -8,6 +8,8 @@ It has no backend, no authentication, and no external API integrations. Episode 
 
 Important: browser `localStorage` is not a durable backup system. Export JSON regularly, especially before browser cleanup, import testing, or release work. The app shows backup health and recommends export when a recent JSON backup is missing.
 
+For terminal-first work, the dependency-free CLI can also store inspectable episode JSON in `data/episodes.json` and write outline artifacts under `episodes/`. This is separate from browser `localStorage` until you import/export JSON manually.
+
 ## v1.2 Features
 
 - Create, edit, delete, and duplicate episodes
@@ -35,6 +37,7 @@ Important: browser `localStorage` is not a durable backup system. Export JSON re
 - Confirm risky import modes when no recent JSON export exists
 - Create a realistic VIDTOOLZ/DaVinci Resolve demo episode for manual testing without replacing existing data
 - Run as plain HTML, CSS, and JavaScript with no build step
+- Use a small local CLI for file-backed episode records, next-action review, packaging checks, and outline artifact generation
 
 ## Run Locally
 
@@ -58,6 +61,199 @@ You can also run:
 ```
 
 Opening `index.html` directly also works for normal editing. Clipboard permissions are usually more reliable through the local server.
+
+Open the isolated Package Engine review UI:
+
+```text
+http://localhost:8010/package-engine.html
+```
+
+Create a local Package Engine run folder and prompt:
+
+```sh
+node scripts/package-engine-new-run.js "AI video idea filter"
+```
+
+Then review that run:
+
+```text
+http://localhost:8010/package-engine.html?run=YYYY-MM-DD-ai-video-idea-filter
+```
+
+Run prep reads the Hermes workflow at
+`/home/vidtoolz/hermes-organiser/brain/workflows/vidtoolz-package-engine.md`,
+creates a local `package-runs/` folder, and prepares a paste-ready prompt. It
+does not call AI APIs, write into Hermes brain, or create Episode Factory
+episodes.
+
+After selecting a winning package and saving `selected-package.json` or
+`selected-package.md` into the run folder, create the outline prompt:
+
+```sh
+node scripts/package-engine-new-outline.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `outline-prompt.md`, `outlines.md`, and `final-outline.md` for a
+manual three-outline drafting loop.
+
+## CLI Episode Workflow
+
+Initialize local CLI storage on a fresh checkout:
+
+```sh
+node scripts/episode-factory.js init
+```
+
+This creates `data/episodes.json` using the same JSON export shape as browser/CLI import and export, with an empty `episodes` array. It creates the `data/` directory when needed and refuses to overwrite existing storage by default. If you intentionally want to replace only `data/episodes.json` with a fresh empty library, use:
+
+```sh
+node scripts/episode-factory.js init --force
+```
+
+Before init, `doctor` treats the missing default CLI library as a normal first-run state, prints “No episode library found yet,” suggests `init`, and exits `0`. Missing files passed with `doctor --file path/to/file.json` are still real errors and exit non-zero.
+
+Recommended fresh CLI workflow:
+
+1. `node scripts/episode-factory.js init`
+2. `node scripts/episode-factory.js doctor`
+3. `node scripts/episode-factory.js create --title "Fix flat DaVinci Resolve exports" --format long`
+4. `node scripts/episode-factory.js block plan --episode "Fix flat DaVinci Resolve exports"`
+5. `node scripts/episode-factory.js block next`
+
+Create a file-backed episode record:
+
+```sh
+node scripts/episode-factory.js create \
+  --title "Fix flat DaVinci Resolve exports" \
+  --topic "Resolve export color workflow" \
+  --format long \
+  --audience "Solo creators editing in DaVinci Resolve" \
+  --premise "A practical checklist for avoiding flat-looking exports"
+```
+
+List local file-backed episodes:
+
+```sh
+node scripts/episode-factory.js list
+```
+
+Show the next 30-minute task package:
+
+```sh
+node scripts/episode-factory.js next
+```
+
+Run the YouTube packaging gate:
+
+```sh
+node scripts/episode-factory.js check-packaging
+```
+
+Write a structured outline artifact:
+
+```sh
+node scripts/episode-factory.js outline
+```
+
+Export the CLI library for browser import:
+
+```sh
+node scripts/episode-factory.js export --out exports/episode-library.json
+```
+
+Import a browser export into the CLI library:
+
+```sh
+node scripts/episode-factory.js import exports/episode-library.json
+```
+
+The default CLI import mode is `merge-new`: it adds new episodes and skips matching, conflicting, or possible duplicate episodes. Use `--mode merge-update` to update same-id/same-title matches, or `--mode replace --yes` when you intentionally want to replace the CLI library.
+
+By default the CLI writes `data/episodes.json` and `episodes/YYYY-MM-DD-title/outline.md`. Use `--data path/to/episodes.json` to keep a separate working set.
+
+Check local data before it creates workflow friction:
+
+```sh
+node scripts/episode-factory.js doctor
+node scripts/episode-factory.js doctor --file exports/episode-library.json
+node scripts/episode-factory.js doctor --json
+```
+
+Use `doctor` before importing browser JSON, after manual edits to `data/episodes.json`, or when browser/CLI data looks wrong. It is read-only by default. Exit code is `0` when there are no serious errors, including the first-run “not initialized yet” state for the default CLI storage. It exits non-zero when an explicit file cannot be read, JSON is invalid, or the file cannot be safely used or imported. Warnings mean the data is usable but needs attention.
+
+## 30-Minute Work Blocks
+
+Work blocks are persisted inside each episode and are included in normal CLI/browser JSON export and import. The CLI is the primary work-block interface for now.
+
+The browser app also shows work blocks for the selected episode. Use it to review planned blocks, add a custom block, plan starter blocks, start a block, mark it done, skip it, and edit block notes while reviewing the broader episode package.
+
+Plan starter blocks for an episode:
+
+```sh
+node scripts/episode-factory.js block plan --episode "Fix flat DaVinci Resolve exports"
+```
+
+Add a custom block:
+
+```sh
+node scripts/episode-factory.js block add \
+  --episode "Fix flat DaVinci Resolve exports" \
+  --category publish \
+  --objective "Finalize title and thumbnail promise" \
+  --inputs "Title ideas|Thumbnail concept|Outline" \
+  --steps "Pick strongest promise|Check promise against outline|Write final shortlist" \
+  --done "Title shortlist is ready for review"
+```
+
+Pick the next focused block:
+
+```sh
+node scripts/episode-factory.js block next
+```
+
+Start, complete, or skip a block:
+
+```sh
+node scripts/episode-factory.js block start block-id
+node scripts/episode-factory.js block done block-id --notes "Finished title shortlist"
+node scripts/episode-factory.js block skip block-id --notes "Blocked until footage exists"
+node scripts/episode-factory.js block list
+```
+
+Priority order is deterministic and local: `publish`, then `close-loop`, then `system`, then `admin`. Done and skipped blocks are ignored. Within a category, active blocks come first, then open blocks, then older `createdAt`.
+
+Recommended daily use:
+
+1. `node scripts/episode-factory.js block next`
+2. Do the work for 30 minutes.
+3. Use the browser when you want to review or edit the episode plan and work blocks visually.
+4. `node scripts/episode-factory.js block done <block-id> --notes "..."`
+5. Export/import JSON when switching between CLI and browser storage.
+6. Repeat if energy and time remain.
+
+## Browser And CLI Storage
+
+The browser app stores its working library in `localStorage` under `vidtoolz-episode-factory-v1`. The CLI stores an inspectable JSON library at `data/episodes.json`. Both surfaces use the same export shape:
+
+```js
+{
+  app: "VIDTOOLZ Episode Factory",
+  appVersion: "1.2.0",
+  schemaVersion: 1,
+  storageKey: "vidtoolz-episode-factory-v1",
+  exportedAt: "...",
+  version: 1,
+  selectedId: "episode-id",
+  counts: { episodes: 1 },
+  episodes: []
+}
+```
+
+Recommended Vidtoolz workflow:
+
+- Use the CLI for quick capture, next-action checks, packaging review, and outline file generation.
+- Use the browser UI when visual board review, work-block review/editing, checklist editing, work sessions, or copy/download package actions are useful.
+- Export/import JSON when switching surfaces. Browser `Export JSON` can be imported by the CLI, and CLI `export --out` can be imported by the browser.
 
 ## Verification
 
@@ -104,6 +300,7 @@ High-level browser checks:
 - `index.html` defines the static app shell.
 - `styles.css` contains the compact responsive UI.
 - `episode-model.js` owns statuses, field definitions, checklist definitions, normalization, duplication, readiness scoring, weekly review generation, execution queue generation, work sessions, and package export builders.
+- `scripts/episode-factory.js` provides the local file-backed CLI.
 - `storage-adapter.js` wraps `localStorage` behind a small interface for later storage changes.
 - `app.js` renders the board and detail view, wires editing, persistence, duplication, deletion, JSON export/import, and clipboard actions.
 - `tests/run-tests.js` verifies core model behavior without browser dependencies.

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VIDTOOLZ Package Engine</title>
+    <link rel="stylesheet" href="styles.css?v=1.2.0" />
+  </head>
+  <body>
+    <div class="app-shell package-engine-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">VIDTOOLZ</p>
+          <h1>Package Engine <span class="version-badge">Review UI v1</span></h1>
+        </div>
+        <div class="topbar-actions">
+          <a class="nav-link-button" href="index.html">Episode Factory</a>
+          <button id="downloadJsonBtn" class="primary-btn" type="button" disabled>Download selected JSON</button>
+          <button id="downloadMarkdownBtn" type="button" disabled>Download selected Markdown</button>
+        </div>
+      </header>
+
+      <p id="packageStatus" class="global-status" role="status"></p>
+
+      <main class="package-engine-workspace">
+        <section class="package-controls" aria-label="Package controls">
+          <div>
+            <h2>Candidate Review</h2>
+            <p class="muted">Review 10 structured package candidates, select one winner, then export it.</p>
+          </div>
+          <label>
+            <span>Sort</span>
+            <select id="sortSelect">
+              <option value="score-desc">Score high to low</option>
+              <option value="score-asc">Score low to high</option>
+              <option value="number">Package number</option>
+            </select>
+          </label>
+          <label>
+            <span>Recommendation</span>
+            <select id="recommendationFilter">
+              <option value="All">All</option>
+              <option value="Make">Make</option>
+              <option value="Maybe">Maybe</option>
+              <option value="Reject">Reject</option>
+            </select>
+          </label>
+          <div class="package-summary">
+            <span id="candidateCount">0 candidates</span>
+            <strong id="selectedSummary">No winner selected</strong>
+          </div>
+        </section>
+
+        <section id="packageGrid" class="package-grid" aria-label="Package candidate cards"></section>
+      </main>
+    </div>
+
+    <script src="package-engine-run.js?v=1.0.0"></script>
+    <script src="package-engine-model.js?v=1.0.0"></script>
+    <script src="package-engine.js?v=1.0.0"></script>
+  </body>
+</html>

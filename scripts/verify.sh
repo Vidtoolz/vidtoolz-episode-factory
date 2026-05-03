@@ -7,3 +7,9 @@ node tests/run-tests.js
 node --check episode-model.js
 node --check storage-adapter.js
 node --check app.js
+node --check package-engine-model.js
+node --check package-engine-run.js
+node --check package-engine.js
+node --check scripts/episode-factory.js
+node --check scripts/package-engine-new-run.js
+node --check scripts/package-engine-new-outline.js

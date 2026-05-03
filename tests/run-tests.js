@@ -1,6 +1,14 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const model = require("../episode-model.js");
 const storage = require("../storage-adapter.js");
+const packageEngine = require("../package-engine-model.js");
+const packageRun = require("../package-engine-run.js");
+const packageRunScript = require("../scripts/package-engine-new-run.js");
+const packageOutlineScript = require("../scripts/package-engine-new-outline.js");
+const episodeFactoryCli = require("../scripts/episode-factory.js");
 
 const tests = [];
 
@@ -28,9 +36,29 @@ test("creates a normalized episode with required defaults", () => {
 
   assert.equal(episode.workingTitle, "Test episode");
   assert.equal(episode.status, "Idea");
+  assert.equal(episode.format, "long");
+  assert.equal(episode.sourceNotes, "");
+  assert.equal(episode.scriptPath, "");
   assert.equal(model.getGateSummary(episode).total, model.PACKAGING_GATE.length);
   assert.equal(model.getChecklistSummary(episode, "productionChecklist").total, 7);
   assert.match(episode.productionChecklist, /Record A-roll/);
+});
+
+test("normalization preserves unknown harmless episode fields", () => {
+  const episode = model.normalizeEpisode({
+    workingTitle: "Unknown Fields",
+    externalToolId: "abc-123",
+    editorialFlags: { needsReview: true },
+  });
+
+  assert.equal(episode.externalToolId, "abc-123");
+  assert.deepEqual(episode.editorialFlags, { needsReview: true });
+});
+
+test("invalid episode format normalizes to long", () => {
+  const episode = model.normalizeEpisode({ format: "feature-film" });
+
+  assert.equal(episode.format, "long");
 });
 
 test("normalizes invalid status back to Idea", () => {
@@ -300,6 +328,38 @@ test("creator qa exports tolerate missing optional fields", () => {
   assert.match(markdown, /# Notes/);
 });
 
+test("packaging review returns actionable warnings", () => {
+  const episode = model.normalizeEpisode({
+    workingTitle: "The Best Resolve Workflow",
+    titleOptions: "- The Best Resolve Workflow",
+    corePromise: "The fastest editing workflow",
+    scriptOutline: "- Setup\n- Export",
+  });
+  const review = model.buildPackagingReview(episode);
+  const markdown = model.buildPackagingReviewMarkdown(episode);
+
+  assert.equal(review.ok, false);
+  assert.ok(review.warnings.some((warning) => warning.code === "title-options-thin"));
+  assert.ok(review.warnings.some((warning) => warning.code === "audience-missing"));
+  assert.ok(review.warnings.some((warning) => warning.code === "claims-need-verification"));
+  assert.match(markdown, /Action:/);
+});
+
+test("structured outline export includes grounding checklist", () => {
+  const markdown = model.buildStructuredOutlineMarkdown(
+    model.normalizeEpisode({
+      workingTitle: "Outline Test",
+      format: "newsletter",
+      corePromise: "A grounded outline",
+    })
+  );
+
+  assert.match(markdown, /^# Outline: Outline Test/);
+  assert.match(markdown, /Format: newsletter/);
+  assert.match(markdown, /## Factual \/ Grounding Checklist/);
+  assert.match(markdown, /claims are based/i);
+});
+
 function completeChecklistExcept(exceptions = {}) {
   return model.CHECKLIST_GROUPS.reduce((result, group) => {
     result[group.key] = model.checklistToObject(
@@ -342,6 +402,323 @@ test("next-action generation creates a packaging repair task below 80 percent", 
   assert.equal(task.estimatedMinutes, 30);
   assert.match(task.taskTitle, /Repair/);
   assert.match(task.sourceBlocker, /Packaging Gate/);
+});
+
+test("work block creation stores required defaults on the episode", () => {
+  const episode = model.normalizeEpisode({ id: "block-episode", workingTitle: "Block Episode" });
+  const updated = model.addWorkBlock(episode, {
+    category: "publish",
+    objective: "Finalize title and thumbnail promise",
+    inputsNeeded: ["Title ideas"],
+    steps: ["Pick strongest promise"],
+    doneCondition: "Title shortlist is ready.",
+  });
+  const block = updated.workBlocks[0];
+
+  assert.match(block.id, /^block-/);
+  assert.equal(block.episodeId, "block-episode");
+  assert.equal(block.category, "publish");
+  assert.equal(block.status, "open");
+  assert.equal(block.estimatedMinutes, 30);
+  assert.deepEqual(block.inputsNeeded, ["Title ideas"]);
+  assert.deepEqual(block.steps, ["Pick strongest promise"]);
+});
+
+test("starter work block planning creates practical 30-minute blocks", () => {
+  const episode = model.normalizeEpisode({ id: "starter-episode", workingTitle: "Starter Episode" });
+  const planned = model.addStarterWorkBlocks(episode);
+
+  assert.equal(planned.workBlocks.length, 7);
+  assert.ok(planned.workBlocks.every((block) => block.estimatedMinutes === 30));
+  assert.ok(planned.workBlocks.some((block) => block.objective === "Clarify premise and audience"));
+  assert.ok(planned.workBlocks.some((block) => block.objective === "Prepare Resolve/media checklist"));
+  assert.ok(planned.workBlocks.every((block) => block.steps.length > 0));
+  assert.ok(planned.workBlocks.every((block) => block.doneCondition));
+});
+
+test("starter work block planning does not duplicate existing objectives", () => {
+  const episode = model.normalizeEpisode({
+    id: "starter-no-duplicate",
+    workingTitle: "Starter No Duplicate",
+    workBlocks: [
+      {
+        id: "existing-clarify",
+        category: "close-loop",
+        objective: "Clarify premise and audience",
+        status: "open",
+      },
+    ],
+  });
+  const planned = model.addStarterWorkBlocks(episode);
+
+  assert.equal(
+    planned.workBlocks.filter((block) => block.objective === "Clarify premise and audience").length,
+    1
+  );
+  assert.equal(planned.workBlocks.length, 7);
+});
+
+test("work block queue follows operational priority order", () => {
+  const episode = model.normalizeEpisode({
+    id: "priority-episode",
+    workingTitle: "Priority Episode",
+    workBlocks: [
+      {
+        id: "admin-new",
+        category: "admin",
+        objective: "Admin task",
+        status: "open",
+        createdAt: "2026-05-02T10:00:00.000Z",
+      },
+      {
+        id: "publish-new",
+        category: "publish",
+        objective: "Publish task",
+        status: "open",
+        createdAt: "2026-05-02T11:00:00.000Z",
+      },
+      {
+        id: "close-old",
+        category: "close-loop",
+        objective: "Close loop task",
+        status: "open",
+        createdAt: "2026-05-02T09:00:00.000Z",
+      },
+    ],
+  });
+  const queue = model.buildWorkBlockQueue([episode]);
+
+  assert.deepEqual(queue.map((block) => block.id), ["publish-new", "close-old", "admin-new"]);
+});
+
+test("work block queue prefers active and older blocks within the same category", () => {
+  const episode = model.normalizeEpisode({
+    id: "same-category",
+    workingTitle: "Same Category",
+    workBlocks: [
+      {
+        id: "open-old",
+        category: "system",
+        objective: "Open old",
+        status: "open",
+        createdAt: "2026-05-02T09:00:00.000Z",
+      },
+      {
+        id: "open-new",
+        category: "system",
+        objective: "Open new",
+        status: "open",
+        createdAt: "2026-05-02T10:00:00.000Z",
+      },
+      {
+        id: "active-new",
+        category: "system",
+        objective: "Active new",
+        status: "active",
+        createdAt: "2026-05-02T11:00:00.000Z",
+      },
+    ],
+  });
+  const queue = model.buildWorkBlockQueue([episode]);
+
+  assert.deepEqual(queue.map((block) => block.id), ["active-new", "open-old", "open-new"]);
+});
+
+test("starting completing and skipping work blocks updates status timestamps and notes", () => {
+  const episode = model.addWorkBlock(model.normalizeEpisode({ id: "status-blocks" }), {
+    objective: "Do the block",
+  });
+  const blockId = episode.workBlocks[0].id;
+  const started = model.startWorkBlock(episode, blockId);
+  const done = model.completeWorkBlock(started, blockId, "Finished title shortlist");
+  const skippedSource = model.addWorkBlock(done, { objective: "Blocked work" });
+  const skippedId = skippedSource.workBlocks[1].id;
+  const skipped = model.skipWorkBlock(skippedSource, skippedId, "Blocked until footage exists");
+
+  assert.equal(started.workBlocks[0].status, "active");
+  assert.equal(done.workBlocks[0].status, "done");
+  assert.match(done.workBlocks[0].completedAt, /T/);
+  assert.equal(done.workBlocks[0].notes, "Finished title shortlist");
+  assert.equal(skipped.workBlocks[1].status, "skipped");
+  assert.equal(skipped.workBlocks[1].notes, "Blocked until footage exists");
+});
+
+test("work block next ignores done and skipped blocks", () => {
+  const episode = model.normalizeEpisode({
+    id: "ignore-complete",
+    workingTitle: "Ignore Complete",
+    workBlocks: [
+      { id: "done-block", category: "publish", objective: "Done", status: "done" },
+      { id: "skipped-block", category: "publish", objective: "Skipped", status: "skipped" },
+      { id: "open-block", category: "system", objective: "Open", status: "open" },
+    ],
+  });
+  const queue = model.buildWorkBlockQueue([episode]);
+
+  assert.deepEqual(queue.map((block) => block.id), ["open-block"]);
+  assert.match(model.buildWorkBlockCard(queue[0]), /block done open-block/);
+});
+
+test("import and export preserve work blocks", () => {
+  const episode = model.addWorkBlock(model.normalizeEpisode({ id: "block-roundtrip", workingTitle: "Block Roundtrip" }), {
+    category: "publish",
+    objective: "Publish block",
+    sourceTool: "test",
+  });
+  const payload = model.exportEpisodeCollectionJson({ selectedId: episode.id, episodes: [episode] });
+  const imported = model.importEpisodeCollectionJson(payload);
+
+  assert.equal(imported.ok, true);
+  assert.equal(imported.state.episodes[0].workBlocks.length, 1);
+  assert.equal(imported.state.episodes[0].workBlocks[0].objective, "Publish block");
+});
+
+test("browser localStorage shaped episode data with work blocks normalizes correctly", () => {
+  const result = model.validateImportPayload({
+    version: 1,
+    selectedId: "browser-blocks",
+    episodes: [
+      {
+        id: "browser-blocks",
+        workingTitle: "Browser Blocks",
+        workBlocks: [
+          {
+            id: "browser-block-one",
+            category: "publish",
+            objective: "Review browser block",
+            inputsNeeded: ["Episode plan"],
+            steps: ["Open browser UI", "Review block"],
+            doneCondition: "Block is visible and editable.",
+            status: "active",
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.state.episodes[0].workBlocks.length, 1);
+  assert.equal(result.state.episodes[0].workBlocks[0].status, "active");
+  assert.equal(result.state.episodes[0].workBlocks[0].estimatedMinutes, 30);
+  assert.deepEqual(result.state.episodes[0].workBlocks[0].inputsNeeded, ["Episode plan"]);
+});
+
+test("doctor audit returns ok for clean current-style data", () => {
+  const episode = model.addWorkBlock(
+    model.normalizeEpisode({
+      id: "doctor-clean",
+      workingTitle: "Doctor Clean",
+      status: "Idea",
+      format: "long",
+    }),
+    {
+      category: "publish",
+      objective: "Check clean data",
+    }
+  );
+  const report = model.auditEpisodeCollectionJson(
+    model.exportEpisodeCollectionJson({ selectedId: episode.id, episodes: [episode] }),
+    { storagePath: "/tmp/episodes.json" }
+  );
+
+  assert.equal(report.ok, true);
+  assert.equal(report.storagePath, "/tmp/episodes.json");
+  assert.equal(report.summary.episodes, 1);
+  assert.equal(report.summary.workBlocks, 1);
+  assert.equal(report.summary.workBlockStatuses.open, 1);
+  assert.deepEqual(report.errors, []);
+});
+
+test("doctor audit reports duplicate episode ids as errors", () => {
+  const report = model.auditEpisodeCollectionJson(
+    JSON.stringify({
+      schemaVersion: model.EXPORT_SCHEMA_VERSION,
+      selectedId: "duplicate",
+      episodes: [
+        { id: "duplicate", workingTitle: "One", status: "Idea", format: "long" },
+        { id: "duplicate", workingTitle: "Two", status: "Idea", format: "long" },
+      ],
+    })
+  );
+
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some((issue) => issue.code === "duplicate-episode-id"));
+});
+
+test("doctor audit reports duplicate work block ids as errors", () => {
+  const report = model.auditEpisodeCollectionJson(
+    JSON.stringify({
+      schemaVersion: model.EXPORT_SCHEMA_VERSION,
+      episodes: [
+        {
+          id: "block-dup-episode",
+          workingTitle: "Block Dup",
+          status: "Idea",
+          format: "long",
+          workBlocks: [
+            { id: "same-block", episodeId: "block-dup-episode", category: "publish", status: "open", objective: "One", estimatedMinutes: 30 },
+            { id: "same-block", episodeId: "block-dup-episode", category: "publish", status: "open", objective: "Two", estimatedMinutes: 30 },
+          ],
+        },
+      ],
+    })
+  );
+
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some((issue) => issue.code === "duplicate-work-block-id"));
+});
+
+test("doctor audit reports invalid work block status and category", () => {
+  const report = model.auditEpisodeCollectionJson(
+    JSON.stringify({
+      schemaVersion: model.EXPORT_SCHEMA_VERSION,
+      episodes: [
+        {
+          id: "bad-block-episode",
+          workingTitle: "Bad Block",
+          status: "Idea",
+          format: "long",
+          workBlocks: [
+            {
+              id: "bad-block",
+              episodeId: "bad-block-episode",
+              category: "random",
+              status: "paused",
+              objective: "Bad block",
+              estimatedMinutes: 0,
+            },
+          ],
+        },
+      ],
+    })
+  );
+
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some((issue) => issue.code === "invalid-work-block-status"));
+  assert.ok(report.errors.some((issue) => issue.code === "invalid-work-block-category"));
+  assert.ok(report.warnings.some((issue) => issue.code === "invalid-work-block-estimate"));
+});
+
+test("doctor audit reports invalid selectedId and missing required episode fields", () => {
+  const report = model.auditEpisodeCollectionJson(
+    JSON.stringify({
+      schemaVersion: model.EXPORT_SCHEMA_VERSION,
+      selectedId: "missing",
+      episodes: [{ id: "thin-episode" }],
+    })
+  );
+
+  assert.equal(report.ok, true);
+  assert.ok(report.warnings.some((issue) => issue.code === "invalid-selected-id"));
+  assert.ok(report.warnings.some((issue) => issue.code === "missing-required-episode-field"));
+});
+
+test("doctor audit reports invalid JSON", () => {
+  const report = model.auditEpisodeCollectionJson("{nope");
+
+  assert.equal(report.ok, false);
+  assert.equal(report.errors[0].code, "invalid-json");
+  assert.match(report.suggestedFixes[0], /JSON syntax/);
 });
 
 test("next-action generation creates a script task when package passes but script is thin", () => {
@@ -960,6 +1337,7 @@ test("state normalization accepts raw episode arrays", () => {
     selectedId: "one",
   });
 
+  assert.equal(state.schemaVersion, model.EXPORT_SCHEMA_VERSION);
   assert.equal(state.episodes.length, 1);
   assert.equal(state.selectedId, "one");
 });
@@ -984,6 +1362,31 @@ test("export payload includes all stored episode data and metadata", () => {
   assert.equal(payload.episodes[0].workingTitle, "Export One");
 });
 
+test("shared collection JSON helpers round trip new fields and unknown fields", () => {
+  const episode = model.normalizeEpisode({
+    id: "shared-one",
+    workingTitle: "Shared One",
+    format: "mixed",
+    sourceNotes: "- Verify Resolve version",
+    scriptPath: "episodes/shared-one/outline.md",
+    description: "A shared storage test.",
+    tags: "vidtoolz, resolve",
+    externalToolId: "keep-me",
+  });
+  const json = model.exportEpisodeCollectionJson({ selectedId: episode.id, episodes: [episode] });
+  const result = model.importEpisodeCollectionJson(json);
+
+  assert.equal(result.ok, true);
+  assert.equal(JSON.parse(json).schemaVersion, model.EXPORT_SCHEMA_VERSION);
+  assert.equal(result.state.schemaVersion, model.EXPORT_SCHEMA_VERSION);
+  assert.equal(result.state.episodes[0].format, "mixed");
+  assert.equal(result.state.episodes[0].sourceNotes, "- Verify Resolve version");
+  assert.equal(result.state.episodes[0].scriptPath, "episodes/shared-one/outline.md");
+  assert.equal(result.state.episodes[0].description, "A shared storage test.");
+  assert.equal(result.state.episodes[0].tags, "vidtoolz, resolve");
+  assert.equal(result.state.episodes[0].externalToolId, "keep-me");
+});
+
 test("import accepts exported payload and returns replacement state", () => {
   const episode = model.normalizeEpisode({
     id: "import-one",
@@ -997,6 +1400,7 @@ test("import accepts exported payload and returns replacement state", () => {
   const result = model.validateImportPayload(payload);
 
   assert.equal(result.ok, true);
+  assert.equal(result.state.schemaVersion, model.EXPORT_SCHEMA_VERSION);
   assert.equal(result.state.episodes.length, 1);
   assert.equal(result.state.episodes[0].status, "Ready to Shoot");
   assert.equal(result.state.selectedId, "import-one");
@@ -1017,6 +1421,33 @@ test("import accepts legacy raw episode arrays", () => {
   assert.equal(result.state.episodes[0].createdAt, "2026-01-01T00:00:00.000Z");
 });
 
+test("import accepts unversioned browser localStorage shaped data", () => {
+  const result = model.validateImportPayload({
+    version: 1,
+    selectedId: "browser-one",
+    episodes: [
+      {
+        id: "browser-one",
+        workingTitle: "Browser One",
+        format: "newsletter",
+        sourceNotes: "- Browser source",
+        scriptPath: "episodes/browser-one/outline.md",
+        description: "Browser export compatible.",
+        tags: "newsletter, vidtoolz",
+      },
+    ],
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.state.schemaVersion, model.EXPORT_SCHEMA_VERSION);
+  assert.equal(result.state.selectedId, "browser-one");
+  assert.equal(result.state.episodes[0].format, "newsletter");
+  assert.equal(result.state.episodes[0].sourceNotes, "- Browser source");
+  assert.equal(result.state.episodes[0].scriptPath, "episodes/browser-one/outline.md");
+  assert.equal(result.state.episodes[0].description, "Browser export compatible.");
+  assert.equal(result.state.episodes[0].tags, "newsletter, vidtoolz");
+});
+
 test("import rejects invalid JSON and missing episodes", () => {
   const invalidJson = model.parseImportJson("{nope");
   const missingEpisodes = model.validateImportPayload({ prompts: [] });
@@ -1025,6 +1456,17 @@ test("import rejects invalid JSON and missing episodes", () => {
   assert.match(invalidJson.error, /valid JSON/);
   assert.equal(missingEpisodes.ok, false);
   assert.match(missingEpisodes.error, /episodes array/);
+});
+
+test("import rejects unsupported schema versions with actionable errors", () => {
+  const result = model.validateImportPayload({
+    schemaVersion: model.EXPORT_SCHEMA_VERSION + 1,
+    episodes: [],
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /unsupported schemaVersion/);
+  assert.match(result.error, new RegExp(String(model.EXPORT_SCHEMA_VERSION)));
 });
 
 test("import rejects non-object episode entries", () => {
@@ -1243,6 +1685,519 @@ test("old v1.0 import compatibility keeps exported object and raw array imports 
   assert.equal(exportedResult.state.selectedId, "old-export");
   assert.equal(rawResult.ok, true);
   assert.equal(rawResult.state.episodes[0].workingTitle, "Raw Old");
+});
+
+test("package engine normalizes candidate fields and strategic fields", () => {
+  const candidate = packageEngine.normalizePackageCandidate(
+    {
+      package_number: 3,
+      score: 101,
+      recommendation: "make",
+      title: "Package Title",
+      thumbnail_concept: "Thumbnail",
+      on_thumbnail_text: "TEXT",
+      viewer_promise: "Promise",
+      target_viewer: "Creator",
+      production_difficulty: "high",
+      main_risk: "Risk",
+      shorts_ideas: ["One", "Two"],
+      why_this_matters_now: "Timely",
+    },
+    2
+  );
+
+  assert.equal(candidate.packageNumber, 3);
+  assert.equal(candidate.score, 100);
+  assert.equal(candidate.recommendation, "Make");
+  assert.equal(candidate.proposedTitle, "Package Title");
+  assert.equal(candidate.productionDifficulty, "High");
+  assert.equal(candidate.shortsIdeas.length, 5);
+  assert.equal(candidate.why_this_matters_now, "Timely");
+});
+
+test("package engine validates candidate sets", () => {
+  const result = packageEngine.validatePackageCandidateSet({
+    project: "VIDTOOLZ Package Engine",
+    candidates: [{ packageNumber: 1, proposedTitle: "One" }],
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data.candidates.length, 1);
+  assert.equal(packageEngine.validatePackageCandidateSet({ candidates: [] }).ok, false);
+});
+
+test("package engine sorts by score and filters by recommendation", () => {
+  const candidates = [
+    { packageNumber: 1, score: 50, recommendation: "Reject", proposedTitle: "Low" },
+    { packageNumber: 2, score: 95, recommendation: "Make", proposedTitle: "High" },
+    { packageNumber: 3, score: 70, recommendation: "Maybe", proposedTitle: "Mid" },
+  ];
+
+  assert.deepEqual(
+    packageEngine.sortPackageCandidates(candidates).map((candidate) => candidate.packageNumber),
+    [2, 3, 1]
+  );
+  assert.deepEqual(
+    packageEngine.filterPackageCandidates(candidates, "Make").map((candidate) => candidate.proposedTitle),
+    ["High"]
+  );
+});
+
+test("package engine exports selected package json and markdown", () => {
+  const candidate = packageEngine.normalizePackageCandidate({
+    packageNumber: 7,
+    score: 88,
+    recommendation: "Make",
+    proposedTitle: "Selected Package",
+    idea: "Review a package.",
+    shortsIdeas: ["Short one", "Short two", "Short three", "Short four", "Short five"],
+    why_this_fits_vidtoolz: "It fits.",
+    suggested_production_approach: "Screen recording.",
+  });
+  const json = packageEngine.buildSelectedPackageJson(candidate);
+  const markdown = packageEngine.buildSelectedPackageMarkdown(candidate);
+
+  assert.equal(json.package.proposedTitle, "Selected Package");
+  assert.match(markdown, /# Selected Package 7: Selected Package/);
+  assert.match(markdown, /## Why This Fits Vidtoolz/);
+  assert.match(markdown, /## Suggested Production Approach/);
+  assert.match(markdown, /Short one/);
+});
+
+test("package run helpers build stable folder names and candidate source paths", () => {
+  assert.equal(packageRun.slugifyTopic("AI Video Idea Filter"), "ai-video-idea-filter");
+  assert.equal(packageRun.buildRunFolderName("AI Video Idea Filter", "2026-05-02"), "2026-05-02-ai-video-idea-filter");
+  assert.equal(
+    packageRun.candidateSourceFromLocation("?run=2026-05-02-ai-video-idea-filter"),
+    "package-runs/2026-05-02-ai-video-idea-filter/package-candidates.json"
+  );
+  assert.equal(packageRun.candidateSourceFromLocation(""), "package-candidates.json");
+});
+
+test("package run generation prompt includes workflow topic schema and guardrails", () => {
+  const prompt = packageRun.buildGenerationPrompt({
+    topic: "AI video idea filter",
+    workflowPath: "/workflow.md",
+    workflowText: "# VIDTOOLZ Package Engine\n\nWorkflow body",
+  });
+
+  assert.match(prompt, /AI video idea filter/);
+  assert.match(prompt, /# VIDTOOLZ Package Engine/);
+  assert.match(prompt, /valid JSON only/);
+  assert.match(prompt, /exactly 10 ranked YouTube package candidates/);
+  assert.match(prompt, /Do not create outlines, scripts, descriptions, chapters, pinned comments, publishing assets/);
+  assert.match(prompt, /why_this_matters_now/);
+  assert.match(prompt, /package-candidates\.json shape/);
+});
+
+test("package run placeholder candidates create 10 inspectable candidates", () => {
+  const payload = packageRun.buildPlaceholderCandidates("AI video idea filter");
+
+  assert.equal(payload.topic, "AI video idea filter");
+  assert.equal(payload.candidates.length, 10);
+  assert.equal(payload.candidates[0].id, "pkg-001");
+  assert.equal(payload.candidates[9].packageNumber, 10);
+  assert.equal(payload.candidates[0].shortsIdeas.length, 5);
+});
+
+test("package run cli argument parsing accepts topic workflow and date", () => {
+  const parsed = packageRunScript.parseArgs(["AI", "video", "ideas", "--workflow", "/tmp/workflow.md", "--date", "2026-05-02"]);
+
+  assert.equal(parsed.topic, "AI video ideas");
+  assert.equal(parsed.workflowPath, "/tmp/workflow.md");
+  assert.equal(parsed.date, "2026-05-02");
+});
+
+test("outline prep extracts selected package from exported json shape", () => {
+  const selected = packageRun.selectedPackageFromJsonPayload({
+    selectedAt: "2026-05-02T00:00:00.000Z",
+    package: {
+      proposedTitle: "Selected Package",
+      idea: "A clear package.",
+    },
+  });
+
+  assert.equal(selected.proposedTitle, "Selected Package");
+  assert.equal(packageRun.selectedPackageFromJsonPayload({ package: {} }), null);
+});
+
+test("outline prompt includes selected package workflow structures and guardrails", () => {
+  const selectedPackageText = packageRun.selectedPackageToMarkdown({
+    packageNumber: 1,
+    score: 90,
+    recommendation: "Make",
+    proposedTitle: "Selected Package",
+    idea: "A clear package.",
+    viewerPromise: "A practical payoff.",
+  });
+  const prompt = packageRun.buildOutlinePrompt({
+    selectedPackageText,
+    workflowText: "# VIDTOOLZ Package Engine\n\nWorkflow body",
+    workflowPath: "/workflow.md",
+    runId: "2026-05-02-selected-package",
+  });
+
+  assert.match(prompt, /Selected Package/);
+  assert.match(prompt, /# VIDTOOLZ Package Engine/);
+  assert.match(prompt, /exactly three structurally different YouTube script outlines/);
+  assert.match(prompt, /Practical tutorial \/ workflow version/);
+  assert.match(prompt, /Critical test \/ myth-busting version/);
+  assert.match(prompt, /Strategic framework \/ workflow architect version/);
+  assert.match(prompt, /Do not write the full script yet/);
+  assert.match(prompt, /Do not create descriptions, chapters, pinned comments, Shorts scripts, or publishing assets yet/);
+  assert.match(prompt, /Do not change the selected package unless you find a contradiction/);
+  assert.match(prompt, /Package Verification Reminder/);
+});
+
+test("outline placeholders include the three required outline sections", () => {
+  const outlines = packageRun.buildOutlinesPlaceholderMarkdown("run-id");
+  const final = packageRun.buildFinalOutlinePlaceholderMarkdown("run-id");
+
+  assert.match(outlines, /Practical tutorial \/ workflow version/);
+  assert.match(outlines, /Critical test \/ myth-busting version/);
+  assert.match(outlines, /Strategic framework \/ workflow architect version/);
+  assert.match(final, /Final Edited Outline/);
+});
+
+test("outline cli argument parsing accepts run folder selected and workflow", () => {
+  const parsed = packageOutlineScript.parseArgs([
+    "package-runs/run-id",
+    "--selected",
+    "selected-package.json",
+    "--workflow",
+    "/workflow.md",
+  ]);
+
+  assert.equal(parsed.runFolder, "package-runs/run-id");
+  assert.equal(parsed.selectedPath, "selected-package.json");
+  assert.equal(parsed.workflowPath, "/workflow.md");
+});
+
+test("episode factory CLI creates file-backed episodes and reports next task", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-"));
+  const dataFile = path.join(tempDir, "episodes.json");
+  const exportFile = path.join(tempDir, "export.json");
+  const importFile = path.join(tempDir, "imported.json");
+
+  const created = episodeFactoryCli.main([
+    "create",
+    "--data",
+    dataFile,
+    "--title",
+    "CLI Episode",
+    "--topic",
+    "Local workflow",
+    "--format",
+    "mixed",
+    "--audience",
+    "Solo creator",
+    "--premise",
+    "A practical local workflow",
+  ]);
+  const listed = episodeFactoryCli.main(["list", "--data", dataFile]);
+  const next = episodeFactoryCli.main(["next", "--data", dataFile]);
+  const review = episodeFactoryCli.main(["check-packaging", "--data", dataFile]);
+  const outline = episodeFactoryCli.main([
+    "outline",
+    "--data",
+    dataFile,
+    "--episodes-dir",
+    path.join(tempDir, "episodes"),
+  ]);
+  const exported = episodeFactoryCli.main(["export", "--data", dataFile, "--out", exportFile]);
+  const exportedPayload = JSON.parse(fs.readFileSync(exportFile, "utf8"));
+  const imported = episodeFactoryCli.main(["import", exportFile, "--data", importFile]);
+  const importedState = episodeFactoryCli.readState(importFile);
+  const state = episodeFactoryCli.readState(dataFile);
+
+  assert.match(created, /Created episode-/);
+  assert.match(listed, /CLI Episode/);
+  assert.match(listed, /mixed/);
+  assert.match(next, /# Repair the episode package|# Complete the script package/);
+  assert.match(review, /# Packaging Review: CLI Episode/);
+  assert.match(outline, /Wrote .*outline\.md/);
+  assert.match(state.episodes[0].scriptPath, /outline\.md/);
+  assert.match(exported, /Exported 1 episodes/);
+  assert.equal(exportedPayload.schemaVersion, model.EXPORT_SCHEMA_VERSION);
+  assert.match(imported, /added 1 new episodes/);
+  assert.equal(importedState.episodes.length, 1);
+  assert.equal(importedState.episodes[0].format, "mixed");
+  assert.match(importedState.episodes[0].scriptPath, /outline\.md/);
+});
+
+test("episode factory CLI import merge-new skips existing matches without overwriting", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-import-"));
+  const dataFile = path.join(tempDir, "episodes.json");
+  const importFile = path.join(tempDir, "import.json");
+  const original = model.normalizeEpisode({
+    id: "same-cli",
+    workingTitle: "Same CLI",
+    description: "Keep original.",
+  });
+  const changed = model.normalizeEpisode({
+    ...original,
+    description: "Imported change.",
+  });
+
+  episodeFactoryCli.writeState(dataFile, { selectedId: original.id, episodes: [original] });
+  fs.writeFileSync(importFile, model.exportEpisodeCollectionJson({ selectedId: changed.id, episodes: [changed] }));
+
+  const output = episodeFactoryCli.main(["import", importFile, "--data", dataFile]);
+  const state = episodeFactoryCli.readState(dataFile);
+
+  assert.match(output, /added 0 new episodes/);
+  assert.match(output, /Skipped 1/);
+  assert.equal(state.episodes.length, 1);
+  assert.equal(state.episodes[0].description, "Keep original.");
+});
+
+test("episode factory CLI init creates valid empty storage", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-init-"));
+  const dataFile = path.join(tempDir, "data", "episodes.json");
+
+  const output = episodeFactoryCli.main(["init", "--data", dataFile]);
+  const payload = JSON.parse(fs.readFileSync(dataFile, "utf8"));
+  const importResult = model.importEpisodeCollectionJson(fs.readFileSync(dataFile, "utf8"));
+
+  assert.match(output, /Initialized Episode Factory CLI storage/);
+  assert.equal(payload.app, "VIDTOOLZ Episode Factory");
+  assert.equal(payload.appVersion, model.APP_VERSION);
+  assert.equal(payload.schemaVersion, model.EXPORT_SCHEMA_VERSION);
+  assert.equal(payload.storageKey, model.STORAGE_KEY);
+  assert.equal(payload.version, 1);
+  assert.equal(payload.selectedId, "");
+  assert.deepEqual(payload.episodes, []);
+  assert.equal(payload.counts.episodes, 0);
+  assert.ok(payload.exportedAt);
+  assert.equal(importResult.ok, true);
+  assert.equal(importResult.state.episodes.length, 0);
+});
+
+test("episode factory CLI init refuses to overwrite existing storage by default", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-init-existing-"));
+  const dataFile = path.join(tempDir, "episodes.json");
+  const episode = model.normalizeEpisode({ id: "keep-me", workingTitle: "Keep Me" });
+  episodeFactoryCli.writeState(dataFile, { selectedId: episode.id, episodes: [episode] });
+  const before = fs.readFileSync(dataFile, "utf8");
+
+  assert.throws(
+    () => episodeFactoryCli.main(["init", "--data", dataFile]),
+    /Episode storage already exists/
+  );
+  assert.equal(fs.readFileSync(dataFile, "utf8"), before);
+});
+
+test("episode factory CLI init force overwrites only the intended storage file", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-init-force-"));
+  const dataFile = path.join(tempDir, "episodes.json");
+  const otherFile = path.join(tempDir, "other.json");
+  const episode = model.normalizeEpisode({ id: "replace-me", workingTitle: "Replace Me" });
+  episodeFactoryCli.writeState(dataFile, { selectedId: episode.id, episodes: [episode] });
+  fs.writeFileSync(otherFile, "{\"keep\":true}\n");
+
+  const output = episodeFactoryCli.main(["init", "--data", dataFile, "--force"]);
+  const payload = JSON.parse(fs.readFileSync(dataFile, "utf8"));
+
+  assert.match(output, /Reinitialized Episode Factory CLI storage/);
+  assert.equal(payload.episodes.length, 0);
+  assert.equal(fs.readFileSync(otherFile, "utf8"), "{\"keep\":true}\n");
+});
+
+test("episode factory CLI doctor guides first run when default storage is missing", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-doctor-first-run-"));
+  const dataFile = path.join(tempDir, "episodes.json");
+  const originalExitCode = process.exitCode;
+  process.exitCode = 0;
+
+  const output = episodeFactoryCli.main(["doctor", "--data", dataFile]);
+  const exitCode = process.exitCode;
+  process.exitCode = originalExitCode;
+
+  assert.match(output, /No episode library found yet/);
+  assert.match(output, /node scripts\/episode-factory\.js init/);
+  assert.doesNotMatch(output, /file-read-failed|Could not read/);
+  assert.equal(exitCode, 0);
+});
+
+test("episode factory CLI doctor json guides first run when default storage is missing", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-doctor-first-run-json-"));
+  const dataFile = path.join(tempDir, "episodes.json");
+  const output = episodeFactoryCli.main(["doctor", "--data", dataFile, "--json"]);
+  const report = JSON.parse(output);
+
+  assert.equal(report.ok, true);
+  assert.equal(report.initialized, false);
+  assert.equal(report.storagePath, dataFile);
+  assert.equal(report.summary.episodes, 0);
+  assert.equal(report.summary.message, "No episode library found yet.");
+  assert.deepEqual(report.errors, []);
+  assert.deepEqual(report.warnings, []);
+  assert.match(report.suggestedFixes.join("\n"), /node scripts\/episode-factory\.js init/);
+});
+
+test("episode factory CLI doctor file missing path stays a real error", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-doctor-file-missing-"));
+  const filePath = path.join(tempDir, "missing.json");
+  const originalExitCode = process.exitCode;
+  process.exitCode = 0;
+
+  const output = episodeFactoryCli.main(["doctor", "--file", filePath, "--json"]);
+  const report = JSON.parse(output);
+  const exitCode = process.exitCode;
+  process.exitCode = originalExitCode;
+
+  assert.equal(report.ok, false);
+  assert.equal(report.initialized, false);
+  assert.equal(report.errors[0].code, "file-read-failed");
+  assert.equal(exitCode, 1);
+});
+
+test("episode factory CLI doctor passes after init", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-doctor-after-init-"));
+  const dataFile = path.join(tempDir, "episodes.json");
+  episodeFactoryCli.main(["init", "--data", dataFile]);
+
+  const output = episodeFactoryCli.main(["doctor", "--data", dataFile, "--json"]);
+  const report = JSON.parse(output);
+
+  assert.equal(report.ok, true);
+  assert.equal(report.initialized, true);
+  assert.equal(report.summary.episodes, 0);
+  assert.deepEqual(report.errors, []);
+});
+
+test("episode factory CLI init followed by create list and block plan works", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-init-flow-"));
+  const dataFile = path.join(tempDir, "episodes.json");
+
+  episodeFactoryCli.main(["init", "--data", dataFile]);
+  const created = episodeFactoryCli.main(["create", "--data", dataFile, "--title", "Initialized Flow"]);
+  const listed = episodeFactoryCli.main(["list", "--data", dataFile]);
+  const planned = episodeFactoryCli.main(["block", "plan", "--data", dataFile, "--episode", "Initialized Flow"]);
+  const next = episodeFactoryCli.main(["block", "next", "--data", dataFile]);
+  const state = episodeFactoryCli.readState(dataFile);
+
+  assert.match(created, /Created episode-/);
+  assert.match(listed, /Initialized Flow/);
+  assert.match(planned, /Planned 7 starter blocks/);
+  assert.match(next, /block done/);
+  assert.equal(state.episodes.length, 1);
+  assert.equal(state.episodes[0].workBlocks.length, 7);
+});
+
+test("episode factory CLI manages work block lifecycle", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-block-"));
+  const dataFile = path.join(tempDir, "episodes.json");
+  episodeFactoryCli.main([
+    "create",
+    "--data",
+    dataFile,
+    "--title",
+    "Block CLI Episode",
+    "--topic",
+    "Workflow",
+  ]);
+  const planned = episodeFactoryCli.main(["block", "plan", "--data", dataFile, "--episode", "Block CLI Episode"]);
+  const listed = episodeFactoryCli.main(["block", "list", "--data", dataFile]);
+  const next = episodeFactoryCli.main(["block", "next", "--data", dataFile]);
+  const state = episodeFactoryCli.readState(dataFile);
+  const blockId = state.episodes[0].workBlocks[0].id;
+  const started = episodeFactoryCli.main(["block", "start", blockId, "--data", dataFile]);
+  const done = episodeFactoryCli.main([
+    "block",
+    "done",
+    blockId,
+    "--data",
+    dataFile,
+    "--notes",
+    "Finished title shortlist",
+  ]);
+  const afterDone = episodeFactoryCli.readState(dataFile);
+  const secondBlock = afterDone.episodes[0].workBlocks[1].id;
+  const skipped = episodeFactoryCli.main([
+    "block",
+    "skip",
+    secondBlock,
+    "--data",
+    dataFile,
+    "--notes",
+    "Blocked until footage exists",
+  ]);
+  const finalState = episodeFactoryCli.readState(dataFile);
+
+  assert.match(planned, /Planned 7 starter blocks/);
+  assert.match(listed, /Clarify premise and audience/);
+  assert.match(next, /# Write hook and promise|# Review packaging|# Define next publish action/);
+  assert.match(next, /block done/);
+  assert.match(started, /Started block-/);
+  assert.match(done, /Completed block-/);
+  assert.match(skipped, /Skipped block-/);
+  assert.equal(finalState.episodes[0].workBlocks[0].status, "done");
+  assert.equal(finalState.episodes[0].workBlocks[0].notes, "Finished title shortlist");
+  assert.equal(finalState.episodes[0].workBlocks[1].status, "skipped");
+});
+
+test("episode factory CLI block add fails on invalid episode references", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-block-invalid-"));
+  const dataFile = path.join(tempDir, "episodes.json");
+  episodeFactoryCli.main(["create", "--data", dataFile, "--title", "Known Episode"]);
+
+  assert.throws(
+    () =>
+      episodeFactoryCli.main([
+        "block",
+        "add",
+        "--data",
+        dataFile,
+        "--episode",
+        "Missing Episode",
+        "--objective",
+        "Do work",
+      ]),
+    /episode not found: Missing Episode/
+  );
+});
+
+test("episode factory CLI doctor json output is parseable and read only", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-doctor-"));
+  const dataFile = path.join(tempDir, "episodes.json");
+  const episode = model.addWorkBlock(
+    model.normalizeEpisode({
+      id: "doctor-cli",
+      workingTitle: "Doctor CLI",
+      status: "Idea",
+      format: "long",
+    }),
+    { category: "publish", objective: "Check doctor" }
+  );
+  episodeFactoryCli.writeState(dataFile, { selectedId: episode.id, episodes: [episode] });
+  const before = fs.readFileSync(dataFile, "utf8");
+  const output = episodeFactoryCli.main(["doctor", "--data", dataFile, "--json"]);
+  const after = fs.readFileSync(dataFile, "utf8");
+  const report = JSON.parse(output);
+
+  assert.equal(report.ok, true);
+  assert.equal(report.storagePath, dataFile);
+  assert.equal(report.summary.episodes, 1);
+  assert.equal(report.summary.workBlocks, 1);
+  assert.equal(before, after);
+});
+
+test("episode factory CLI doctor file reports invalid JSON without importing", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-doctor-bad-"));
+  const filePath = path.join(tempDir, "bad.json");
+  fs.writeFileSync(filePath, "{nope");
+
+  const originalExitCode = process.exitCode;
+  process.exitCode = 0;
+  const output = episodeFactoryCli.main(["doctor", "--file", filePath, "--json"]);
+  const report = JSON.parse(output);
+  const exitCode = process.exitCode;
+  process.exitCode = originalExitCode;
+
+  assert.equal(report.ok, false);
+  assert.equal(report.errors[0].code, "invalid-json");
+  assert.equal(exitCode, 1);
 });
 
 let passed = 0;

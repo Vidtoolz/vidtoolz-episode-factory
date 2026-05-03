@@ -24,16 +24,30 @@
   const FIELD_DEFINITIONS = [
     { key: "topic", label: "Topic", type: "input" },
     { key: "workingTitle", label: "Working title", type: "input" },
+    { key: "format", label: "Format", type: "input" },
     { key: "targetViewer", label: "Target viewer", type: "input" },
     { key: "viewerProblem", label: "Viewer problem", type: "textarea" },
     { key: "corePromise", label: "Core promise", type: "textarea" },
+    { key: "sourceNotes", label: "Source notes", type: "textarea" },
+    { key: "scriptPath", label: "Script or outline path", type: "input" },
     { key: "titleOptions", label: "Title options", type: "textarea" },
     { key: "thumbnailConcept", label: "Thumbnail concept", type: "textarea" },
+    { key: "description", label: "Description", type: "textarea" },
+    { key: "tags", label: "Tags", type: "input" },
     { key: "hook", label: "Hook", type: "textarea" },
     { key: "scriptOutline", label: "Script outline", type: "textarea" },
     { key: "nextAction", label: "Next action override", type: "textarea" },
     { key: "notes", label: "Notes", type: "textarea" },
   ];
+  const EPISODE_FORMATS = ["long", "short", "newsletter", "poll", "mixed"];
+  const WORK_BLOCK_CATEGORIES = ["publish", "close-loop", "system", "admin"];
+  const WORK_BLOCK_STATUSES = ["open", "active", "done", "skipped"];
+  const WORK_BLOCK_CATEGORY_PRIORITY = {
+    publish: 10,
+    "close-loop": 20,
+    system: 30,
+    admin: 40,
+  };
 
   const TASK_PRIORITY = {
     packagingBlocked: 10,
@@ -129,6 +143,21 @@
     shortsPlan: "- Short 1:\n- Short 2:",
     publishChecklist: "- Final title selected\n- Thumbnail exported\n- Description checked\n- End screen/cards added",
   };
+  const NORMALIZED_EPISODE_KEYS = new Set([
+    "id",
+    "status",
+    "createdAt",
+    "created_at",
+    "updatedAt",
+    "updated_at",
+    "version",
+    "checklists",
+    "packagingGate",
+    "workSessions",
+    "workBlocks",
+    ...FIELD_DEFINITIONS.map((field) => field.key),
+    ...Object.keys(LEGACY_TEXT_FIELDS),
+  ]);
 
   const CREATOR_QA_JSON_KEYS = [
     "title",
@@ -159,6 +188,17 @@
 
   function cleanString(value) {
     return typeof value === "string" ? value : "";
+  }
+
+  function copyUnknownEpisodeFields(input = {}) {
+    if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+    return Object.entries(input).reduce((result, [key, value]) => {
+      if (NORMALIZED_EPISODE_KEYS.has(key)) return result;
+      if (key === "__proto__" || key === "constructor" || key === "prototype") return result;
+      if (typeof value === "undefined" || typeof value === "function") return result;
+      result[key] = value;
+      return result;
+    }, {});
   }
 
   function normalizeChecklistGroup(groupKey, value) {
@@ -223,6 +263,7 @@
     const updatedAt = cleanString(input.updatedAt) || cleanString(input.updated_at) || createdAt;
     const status = STATUSES.includes(input.status) ? input.status : "Idea";
     const episode = {
+      ...copyUnknownEpisodeFields(input),
       id: cleanString(input.id) || createId(),
       status,
       createdAt,
@@ -232,12 +273,15 @@
       workSessions: Array.isArray(input.workSessions)
         ? input.workSessions.map(normalizeWorkSession)
         : [],
+      workBlocks: [],
     };
+    episode.workBlocks = normalizeWorkBlocks(input.workBlocks, episode.id);
     episode.packagingGate = episode.checklists.packagingGate;
 
     FIELD_DEFINITIONS.forEach((field) => {
       episode[field.key] = cleanString(input[field.key]);
     });
+    episode.format = EPISODE_FORMATS.includes(episode.format) ? episode.format : "long";
 
     Object.entries(LEGACY_TEXT_FIELDS).forEach(([key, value]) => {
       episode[key] = cleanString(input[key]) || value;
@@ -262,6 +306,16 @@
     return Number.isFinite(number) && number >= 0 ? Math.round(number) : fallback;
   }
 
+  function normalizeTextList(value) {
+    if (Array.isArray(value)) {
+      return value.map(cleanString).map((item) => item.trim()).filter(Boolean);
+    }
+    return cleanString(value)
+      .split("\n")
+      .map((line) => line.replace(/^[-*0-9.\s]+/, "").trim())
+      .filter(Boolean);
+  }
+
   function normalizeTimestamp(value, fallback = Date.now()) {
     const number = Number(value);
     return Number.isFinite(number) && number >= 0 ? number : fallback;
@@ -271,6 +325,33 @@
     const text = cleanString(value);
     if (!text) return "";
     return Number.isNaN(new Date(text).getTime()) ? "" : text;
+  }
+
+  function normalizeWorkBlock(input = {}, fallbackEpisodeId = "") {
+    const source = input && typeof input === "object" ? input : {};
+    const category = WORK_BLOCK_CATEGORIES.includes(source.category) ? source.category : "close-loop";
+    const status = WORK_BLOCK_STATUSES.includes(source.status) ? source.status : "open";
+    const priorityNumber = Number(source.priority);
+    return {
+      id: cleanString(source.id) || createId("block"),
+      episodeId: cleanString(source.episodeId) || cleanString(fallbackEpisodeId),
+      priority: Number.isFinite(priorityNumber) ? priorityNumber : WORK_BLOCK_CATEGORY_PRIORITY[category],
+      category,
+      objective: cleanString(source.objective),
+      inputsNeeded: normalizeTextList(source.inputsNeeded),
+      steps: normalizeTextList(source.steps),
+      doneCondition: cleanString(source.doneCondition),
+      estimatedMinutes: normalizeMinutes(source.estimatedMinutes, 30) || 30,
+      status,
+      createdAt: cleanString(source.createdAt) || nowIso(),
+      completedAt: status === "done" || status === "skipped" ? normalizeIsoTimestamp(source.completedAt) : "",
+      notes: cleanString(source.notes),
+    };
+  }
+
+  function normalizeWorkBlocks(blocks, episodeId = "") {
+    if (!Array.isArray(blocks)) return [];
+    return blocks.map((block) => normalizeWorkBlock(block, episodeId));
   }
 
   function normalizeWorkSession(input = {}) {
@@ -643,6 +724,10 @@
       corePromise: "A practical VIDTOOLZ system for preparing a Resolve timeline, finding Shorts moments, and leaving a clean publish handoff.",
       titleOptions: "- My 30-Minute DaVinci Resolve Edit Prep System\n- Stop Losing Time Before You Edit in Resolve\n- A Simple Resolve Workflow for Solo Creators",
       thumbnailConcept: "DaVinci Resolve timeline with three labeled lanes: Main Edit, Shorts, Publish.",
+      description: "A practical Resolve prep workflow for solo creators who need a cleaner path from recording to publish.",
+      tags: "vidtoolz, davinci resolve, creator workflow",
+      sourceNotes: "- Verify current DaVinci Resolve menu names before publishing.",
+      scriptPath: "",
       hook: "Before I touch the timeline, I do this 30-minute prep pass so the edit does not sprawl.",
       scriptOutline: "- Show the messy starting point in Resolve\n- Create bins for A-roll, screen capture, B-roll, music, and exports\n- Mark the strongest hook and three Shorts candidates\n- Build a rough timeline skeleton\n- Save a publish handoff note",
       productionChecklist: "- Record Resolve screen capture\n- Capture intro A-roll\n- Prepare sample project footage",
@@ -689,6 +774,7 @@
     const base = normalizeEpisode({
       topic: "",
       workingTitle: "Untitled episode",
+      format: "long",
       titleOptions: "- ",
       thumbnailConcept: "",
       scriptOutline: "- Setup\n- Main beats\n- Payoff",
@@ -807,6 +893,120 @@
       ["Script outline", hasText(normalized.scriptOutline)],
     ];
     return checks.filter(([, passed]) => !passed).map(([label]) => label);
+  }
+
+  function buildPackagingReview(episode) {
+    const normalized = normalizeEpisode(episode);
+    const warnings = [];
+    const titleCount = countTitleOptions(normalized.titleOptions);
+    const scores = getReadinessScores(normalized);
+    const sourceContext = `${normalized.sourceNotes}\n${normalized.notes}`.toLowerCase();
+    const claimHeavyText = `${normalized.workingTitle}\n${normalized.titleOptions}\n${normalized.corePromise}\n${normalized.scriptOutline}`;
+
+    function warn(code, message, action) {
+      warnings.push({ code, message, action });
+    }
+
+    if (!hasText(normalized.workingTitle) || normalized.workingTitle === "Untitled episode") {
+      warn("title-missing", "No working title is set.", "Write one plain-language title before packaging.");
+    }
+    if (titleCount < 3) {
+      warn("title-options-thin", `Only ${titleCount} title option(s) found.`, "Add at least three title ideas with different angles.");
+    }
+    if (!hasText(normalized.targetViewer)) {
+      warn("audience-missing", "Target audience is missing.", "Name the viewer role and situation, not just a broad niche.");
+    }
+    if (!hasText(normalized.thumbnailConcept)) {
+      warn("thumbnail-missing", "Thumbnail concept is missing.", "Describe the visual contrast or object a viewer can understand without reading the title.");
+    }
+    if (!hasText(normalized.corePromise)) {
+      warn("promise-missing", "Core promise is missing.", "State what the viewer can do or understand after watching.");
+    }
+    if (hasText(normalized.corePromise) && hasText(normalized.scriptOutline)) {
+      const promiseWords = normalized.corePromise
+        .replace(/[,.!?;:]/g, " ")
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((word) => word.length > 4);
+      const outline = normalized.scriptOutline.toLowerCase();
+      if (promiseWords.length && !promiseWords.some((word) => outline.includes(word))) {
+        warn("promise-outline-mismatch", "The outline does not visibly support the core promise.", "Add at least one body beat that directly proves or delivers the promise.");
+      }
+    }
+    if (/\b(best|only|always|never|guarantee|proven|official|newest|latest|fastest|cheapest|first|everyone|nobody)\b/i.test(claimHeavyText) && !sourceContext.includes("verify")) {
+      warn("claims-need-verification", "Packaging uses claim-heavy wording without a verification note.", "Add source notes or rewrite the claim so it is clearly experience-based.");
+    }
+    if (!hasText(normalized.nextAction) && scores.overall < 100) {
+      warn("next-action-missing", "No manual next action is recorded.", "Use the generated queue task or write the next concrete 30-minute action.");
+    }
+
+    return {
+      ok: warnings.length === 0,
+      warningCount: warnings.length,
+      warnings,
+      scores,
+      nextAction: getNextAction(normalized),
+    };
+  }
+
+  function buildPackagingReviewMarkdown(episode) {
+    const normalized = normalizeEpisode(episode);
+    const review = buildPackagingReview(normalized);
+    return [
+      `# Packaging Review: ${normalized.workingTitle || "Untitled episode"}`,
+      "",
+      `Result: ${review.ok ? "Pass" : "Needs work"}`,
+      `Warnings: ${review.warningCount}`,
+      `Next action: ${review.nextAction}`,
+      "",
+      "## Readiness",
+      `- Packaging: ${review.scores.packaging}%`,
+      `- Script: ${review.scores.script}%`,
+      `- Production: ${review.scores.production}%`,
+      `- Publish: ${review.scores.publish}%`,
+      `- Overall: ${review.scores.overall}%`,
+      "",
+      "## Warnings",
+      review.warnings.length
+        ? review.warnings.map((item) => `- ${item.code}: ${item.message} Action: ${item.action}`).join("\n")
+        : "- None.",
+    ].join("\n");
+  }
+
+  function buildStructuredOutlineMarkdown(episode) {
+    const normalized = normalizeEpisode(episode);
+    return [
+      `# Outline: ${markdownValue(normalized.workingTitle, "Untitled episode")}`,
+      "",
+      `Format: ${normalized.format}`,
+      `Topic: ${markdownValue(normalized.topic)}`,
+      `Target audience: ${markdownValue(normalized.targetViewer)}`,
+      `Premise: ${markdownValue(normalized.corePromise)}`,
+      "",
+      "## Hook",
+      markdownValue(normalized.hook, "- "),
+      "",
+      "## Promise",
+      markdownValue(normalized.corePromise, "- "),
+      "",
+      "## Body Beats",
+      markdownValue(normalized.scriptOutline, "- Beat 1\n- Beat 2\n- Beat 3"),
+      "",
+      "## Proof / Examples",
+      "- Example or screen evidence:",
+      "- Source note:",
+      "- Viewer-visible result:",
+      "",
+      "## CTA",
+      "- YouTube CTA:",
+      "- Newsletter CTA:",
+      "",
+      "## Factual / Grounding Checklist",
+      "- [ ] Claims are based on recorded experience, cited sources, or visible proof.",
+      "- [ ] Tool names, versions, UI labels, and dates are checked before publishing.",
+      "- [ ] Any uncertain claim is marked for verification in source notes.",
+      "- [ ] The title and thumbnail promise is delivered by the outline.",
+    ].join("\n");
   }
 
   function firstUnchecked(episode, groupKeys) {
@@ -972,6 +1172,232 @@
       .map(generateNextActionTask)
       .filter(Boolean)
       .sort((a, b) => a.priority - b.priority || a.episodeTitle.localeCompare(b.episodeTitle));
+  }
+
+  function createWorkBlock(episode, input = {}) {
+    const normalized = normalizeEpisode(episode);
+    return normalizeWorkBlock(
+      {
+        status: "open",
+        estimatedMinutes: 30,
+        ...input,
+        episodeId: normalized.id,
+      },
+      normalized.id
+    );
+  }
+
+  function addWorkBlock(episode, input = {}) {
+    const normalized = normalizeEpisode(episode);
+    const block = createWorkBlock(normalized, input);
+    return normalizeEpisode({
+      ...normalized,
+      workBlocks: [...normalized.workBlocks, block],
+      updatedAt: nowIso(),
+    });
+  }
+
+  function starterWorkBlockInputs(episode) {
+    const normalized = normalizeEpisode(episode);
+    const title = normalized.workingTitle || "this episode";
+    return [
+      {
+        category: "close-loop",
+        objective: "Clarify premise and audience",
+        inputsNeeded: ["Working title", "Topic notes", "Target viewer guess"],
+        steps: [
+          "Write the viewer in one concrete sentence.",
+          "Write the problem or desire the episode addresses.",
+          "Rewrite the core promise so it can be judged after watching.",
+        ],
+        doneCondition: "Target viewer, viewer problem, and core promise are specific enough to reject weak titles.",
+      },
+      {
+        category: "close-loop",
+        objective: "Gather source notes and production assets",
+        inputsNeeded: ["Source links or personal notes", "Resolve/media assets", "Any claims needing verification"],
+        steps: [
+          "List the sources, examples, footage, screenshots, or project files needed.",
+          "Mark any factual claims that need verification.",
+          "Record missing assets as notes instead of keeping them in memory.",
+        ],
+        doneCondition: "Source notes and missing assets are visible in the episode record.",
+      },
+      {
+        category: "close-loop",
+        objective: "Draft the structured outline",
+        inputsNeeded: ["Premise", "Hook idea", "Body beats"],
+        steps: [
+          "Draft hook, promise, body beats, proof/examples, and CTA.",
+          "Keep the outline inspectable rather than writing a full script.",
+          "Mark uncertain claims in the grounding checklist.",
+        ],
+        doneCondition: `A usable outline exists for ${title} and the next missing proof/example is clear.`,
+      },
+      {
+        category: "publish",
+        objective: "Write hook and promise",
+        inputsNeeded: ["Viewer problem", "Core promise", "First 5 seconds idea"],
+        steps: [
+          "Write one hook that creates immediate context or tension.",
+          "Write the promise in plain language.",
+          "Check that the first body beat delivers on that promise.",
+        ],
+        doneCondition: "The hook and promise can be read aloud without re-explaining the episode.",
+      },
+      {
+        category: "publish",
+        objective: "Review packaging",
+        inputsNeeded: ["Title ideas", "Thumbnail concept", "Outline", "Source notes"],
+        steps: [
+          "Run or read the packaging review.",
+          "Fix the highest-impact warning.",
+          "Leave the next warning as a concrete follow-up block if needed.",
+        ],
+        doneCondition: "Packaging warnings are reduced or the remaining warning is written as the next action.",
+      },
+      {
+        category: "system",
+        objective: "Prepare Resolve/media checklist",
+        inputsNeeded: ["Footage plan", "Screen recording plan", "Assets list"],
+        steps: [
+          "List the required A-roll, screen recordings, B-roll, and still assets.",
+          "Check audio, project, and export setup needs.",
+          "Mark production checklist items that are actually ready.",
+        ],
+        doneCondition: "The shoot or edit can start without hunting for media or setup decisions.",
+      },
+      {
+        category: "publish",
+        objective: "Define next publish action",
+        inputsNeeded: ["Current episode status", "Readiness scores", "Publish checklist"],
+        steps: [
+          "Identify the smallest action that moves the episode closer to published.",
+          "Write the command, file, or checklist item needed next.",
+          "Set or update the episode next action.",
+        ],
+        doneCondition: "There is one obvious next publish action for the next 30-minute block.",
+      },
+    ];
+  }
+
+  function planStarterWorkBlocks(episode) {
+    const normalized = normalizeEpisode(episode);
+    return starterWorkBlockInputs(normalized).map((input) => createWorkBlock(normalized, input));
+  }
+
+  function addStarterWorkBlocks(episode) {
+    const normalized = normalizeEpisode(episode);
+    const existingObjectives = new Set(normalized.workBlocks.map((block) => block.objective.toLowerCase()));
+    const newBlocks = planStarterWorkBlocks(normalized).filter(
+      (block) => !existingObjectives.has(block.objective.toLowerCase())
+    );
+    return normalizeEpisode({
+      ...normalized,
+      workBlocks: [...normalized.workBlocks, ...newBlocks],
+      updatedAt: nowIso(),
+    });
+  }
+
+  function flattenWorkBlocks(episodes) {
+    return (Array.isArray(episodes) ? episodes : []).flatMap((episode) => {
+      const normalized = normalizeEpisode(episode);
+      return normalized.workBlocks.map((block) => ({
+        ...block,
+        episodeTitle: normalized.workingTitle || "Untitled episode",
+      }));
+    });
+  }
+
+  function workBlockStatusPriority(status) {
+    if (status === "active") return 0;
+    if (status === "open") return 1;
+    return 9;
+  }
+
+  function buildWorkBlockQueue(episodes) {
+    return flattenWorkBlocks(episodes)
+      .filter((block) => block.status !== "done" && block.status !== "skipped")
+      .sort(
+        (a, b) =>
+          WORK_BLOCK_CATEGORY_PRIORITY[a.category] - WORK_BLOCK_CATEGORY_PRIORITY[b.category] ||
+          workBlockStatusPriority(a.status) - workBlockStatusPriority(b.status) ||
+          a.priority - b.priority ||
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+          a.objective.localeCompare(b.objective)
+      );
+  }
+
+  function findWorkBlock(episodes, blockId) {
+    const id = cleanString(blockId);
+    for (const episode of Array.isArray(episodes) ? episodes : []) {
+      const normalized = normalizeEpisode(episode);
+      const block = normalized.workBlocks.find((item) => item.id === id);
+      if (block) return { episode: normalized, block };
+    }
+    return null;
+  }
+
+  function updateWorkBlock(episode, blockId, patch = {}) {
+    const normalized = normalizeEpisode(episode);
+    const id = cleanString(blockId);
+    let found = false;
+    const workBlocks = normalized.workBlocks.map((block) => {
+      if (block.id !== id) return block;
+      found = true;
+      return normalizeWorkBlock({ ...block, ...patch, id: block.id, episodeId: normalized.id }, normalized.id);
+    });
+    if (!found) return normalized;
+    return normalizeEpisode({
+      ...normalized,
+      workBlocks,
+      updatedAt: nowIso(),
+    });
+  }
+
+  function startWorkBlock(episode, blockId) {
+    return updateWorkBlock(episode, blockId, { status: "active", completedAt: "" });
+  }
+
+  function completeWorkBlock(episode, blockId, notes = "") {
+    return updateWorkBlock(episode, blockId, {
+      status: "done",
+      completedAt: nowIso(),
+      notes,
+    });
+  }
+
+  function skipWorkBlock(episode, blockId, notes = "") {
+    return updateWorkBlock(episode, blockId, {
+      status: "skipped",
+      completedAt: nowIso(),
+      notes,
+    });
+  }
+
+  function buildWorkBlockCard(block) {
+    const normalized = normalizeWorkBlock(block);
+    const episodeTitle = cleanString(block && block.episodeTitle);
+    return [
+      `# ${normalized.objective || "Untitled work block"}`,
+      "",
+      `Episode: ${episodeTitle || normalized.episodeId || "Unknown episode"}`,
+      `Category: ${normalized.category}`,
+      `Status: ${normalized.status}`,
+      `Estimated time: ${normalized.estimatedMinutes} minutes`,
+      "",
+      "## Inputs Needed",
+      normalized.inputsNeeded.length ? normalized.inputsNeeded.map((item) => `- ${item}`).join("\n") : "- None recorded.",
+      "",
+      "## Steps",
+      normalized.steps.length ? normalized.steps.map((step) => `- ${step}`).join("\n") : "- Do the smallest useful version of the objective.",
+      "",
+      "## Done Condition",
+      markdownValue(normalized.doneCondition),
+      "",
+      "## Mark Done",
+      `node scripts/episode-factory.js block done ${normalized.id} --notes "what changed"`,
+    ].join("\n");
   }
 
   function updateChecklistItems(episode, selectedItems) {
@@ -1141,7 +1567,7 @@
       script: "",
       notes: normalized.notes,
       factualClaims: [],
-      sourceNotes: [],
+      sourceNotes: textLines(normalized.sourceNotes),
       status: normalized.status,
       packagingGate: checklistSummaryForExport(normalized, "packagingGate"),
       checklist: allChecklistLines(normalized),
@@ -1241,6 +1667,12 @@
       `Title options:\n${markdownValue(normalized.titleOptions)}`,
       "",
       `Thumbnail concept:\n${markdownValue(normalized.thumbnailConcept)}`,
+      "",
+      `Description:\n${markdownValue(normalized.description)}`,
+      "",
+      `Tags: ${markdownValue(normalized.tags)}`,
+      "",
+      `Source notes:\n${markdownValue(normalized.sourceNotes)}`,
       "",
       "## Readiness Scores",
       readinessMarkdown(normalized),
@@ -1397,8 +1829,10 @@
       "",
       `Thumbnail concept:\n${markdownValue(normalized.thumbnailConcept)}`,
       "",
+      `Tags: ${markdownValue(normalized.tags)}`,
+      "",
       "## Description Draft",
-      markdownValue(normalized.corePromise, normalized.workingTitle || "New VIDTOOLZ episode."),
+      markdownValue(normalized.description, normalized.corePromise || normalized.workingTitle || "New VIDTOOLZ episode."),
       "",
       `In this video: ${markdownValue(normalized.topic, "Not set.")}`,
       "",
@@ -1731,6 +2165,7 @@
     const source = payload && typeof payload === "object" ? payload : {};
     const episodes = Array.isArray(source.episodes) ? source.episodes.map(normalizeEpisode) : [];
     return {
+      schemaVersion: EXPORT_SCHEMA_VERSION,
       version: 1,
       selectedId: chooseSelectedId(cleanString(source.selectedId), episodes),
       episodes,
@@ -1759,6 +2194,10 @@
     };
   }
 
+  function exportEpisodeCollectionJson(state) {
+    return `${JSON.stringify(buildExportPayload(state), null, 2)}\n`;
+  }
+
   function parseImportJson(jsonText) {
     try {
       return validateImportPayload(JSON.parse(jsonText));
@@ -1770,11 +2209,24 @@
     }
   }
 
+  function hasUnsupportedSchemaVersion(payload) {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+    if (!Object.prototype.hasOwnProperty.call(payload, "schemaVersion")) return false;
+    return !Number.isInteger(payload.schemaVersion) || payload.schemaVersion > EXPORT_SCHEMA_VERSION;
+  }
+
   function validateImportPayload(payload) {
     if (!payload || typeof payload !== "object") {
       return {
         ok: false,
         error: "Import failed: the JSON must be an object with an episodes array.",
+      };
+    }
+
+    if (hasUnsupportedSchemaVersion(payload)) {
+      return {
+        ok: false,
+        error: `Import failed: unsupported schemaVersion. This app supports schemaVersion ${EXPORT_SCHEMA_VERSION}.`,
       };
     }
 
@@ -1818,6 +2270,7 @@
     return {
       ok: true,
       state: {
+        schemaVersion: EXPORT_SCHEMA_VERSION,
         version: 1,
         selectedId,
         episodes: normalizedEpisodes,
@@ -1827,6 +2280,241 @@
         selectedId,
       },
     };
+  }
+
+  const normalizeEpisodeCollection = normalizeState;
+  const buildEpisodeCollectionPayload = buildExportPayload;
+  const importEpisodeCollectionJson = parseImportJson;
+  const validateEpisodeCollectionPayload = validateImportPayload;
+
+  function createAuditIssue(code, message, path = "", severity = "error", suggestedFix = "") {
+    return { code, message, path, severity, suggestedFix };
+  }
+
+  function isPlainObject(value) {
+    return Boolean(value && typeof value === "object" && !Array.isArray(value));
+  }
+
+  function parseEpisodeCollectionForAudit(jsonText) {
+    try {
+      return { ok: true, payload: JSON.parse(jsonText) };
+    } catch (error) {
+      return {
+        ok: false,
+        error: createAuditIssue(
+          "invalid-json",
+          "The file is not valid JSON.",
+          "",
+          "error",
+          "Export the data again or fix the JSON syntax before importing."
+        ),
+      };
+    }
+  }
+
+  function auditEpisodeCollectionPayload(payload, options = {}) {
+    const storagePath = cleanString(options.storagePath);
+    const baseDir = cleanString(options.baseDir);
+    const errors = [];
+    const warnings = [];
+    const suggestedFixes = [];
+
+    function addIssue(issue) {
+      if (issue.severity === "warning") warnings.push(issue);
+      else errors.push(issue);
+      if (issue.suggestedFix && !suggestedFixes.includes(issue.suggestedFix)) {
+        suggestedFixes.push(issue.suggestedFix);
+      }
+    }
+
+    if (!payload || typeof payload !== "object") {
+      addIssue(createAuditIssue("invalid-root", "The root JSON value must be an object or an episode array.", "", "error", "Use a normal Episode Factory JSON export."));
+      return buildAuditReport({ storagePath, payload, errors, warnings, suggestedFixes });
+    }
+
+    if (hasUnsupportedSchemaVersion(payload)) {
+      addIssue(
+        createAuditIssue(
+          "unsupported-schema-version",
+          `Unsupported schemaVersion. This app supports schemaVersion ${EXPORT_SCHEMA_VERSION}.`,
+          "schemaVersion",
+          "error",
+          "Use a compatible Episode Factory version or export an older compatible schema."
+        )
+      );
+    }
+
+    const episodes = Array.isArray(payload) ? payload : payload.episodes;
+    if (!Array.isArray(episodes)) {
+      addIssue(createAuditIssue("missing-episodes-array", "No episodes array was found.", "episodes", "error", "Use an export with an episodes array."));
+      return buildAuditReport({ storagePath, payload, errors, warnings, suggestedFixes });
+    }
+
+    const episodeIds = new Set();
+    const blockIds = new Set();
+    const selectedId = Array.isArray(payload) ? "" : cleanString(payload.selectedId);
+    let workBlockCount = 0;
+    const workBlockStatuses = WORK_BLOCK_STATUSES.reduce((result, status) => {
+      result[status] = 0;
+      return result;
+    }, {});
+
+    episodes.forEach((episode, index) => {
+      const episodePath = `episodes[${index}]`;
+      if (!isPlainObject(episode)) {
+        addIssue(createAuditIssue("invalid-episode", "Every episode must be an object.", episodePath, "error", "Remove invalid episode entries or re-export the library."));
+        return;
+      }
+
+      const id = cleanString(episode.id);
+      if (!id) {
+        addIssue(createAuditIssue("missing-episode-id", "Episode is missing an id.", `${episodePath}.id`, "error", "Add a stable episode id or recreate the episode through the app."));
+      } else if (episodeIds.has(id)) {
+        addIssue(createAuditIssue("duplicate-episode-id", `Duplicate episode id: ${id}.`, `${episodePath}.id`, "error", "Import with merge-new from a clean export or manually give one duplicate a unique id."));
+      } else {
+        episodeIds.add(id);
+      }
+
+      ["workingTitle", "status", "format"].forEach((field) => {
+        if (!Object.prototype.hasOwnProperty.call(episode, field)) {
+          addIssue(createAuditIssue("missing-required-episode-field", `Episode is missing ${field}.`, `${episodePath}.${field}`, "warning", "Open and save the episode in Episode Factory to normalize missing fields."));
+        }
+      });
+
+      if (Object.prototype.hasOwnProperty.call(episode, "format") && !EPISODE_FORMATS.includes(episode.format)) {
+        addIssue(createAuditIssue("invalid-episode-format", `Invalid episode format: ${String(episode.format)}.`, `${episodePath}.format`, "warning", "Use one of: long, short, newsletter, poll, mixed."));
+      }
+
+      ["titleOptions", "thumbnailConcept", "description", "tags", "sourceNotes", "scriptPath"].forEach((field) => {
+        if (Object.prototype.hasOwnProperty.call(episode, field) && typeof episode[field] !== "string") {
+          addIssue(createAuditIssue("invalid-packaging-field-type", `${field} should be a string.`, `${episodePath}.${field}`, "warning", "Convert packaging fields to plain text before importing."));
+        }
+      });
+
+      const scriptPath = cleanString(episode.scriptPath);
+      if (scriptPath && baseDir && !scriptPath.includes("://")) {
+        const resolvedPath = scriptPath.startsWith("/") ? scriptPath : `${baseDir.replace(/\/$/, "")}/${scriptPath}`;
+        if (typeof require === "function") {
+          try {
+            const fs = require("node:fs");
+            if (!fs.existsSync(resolvedPath)) {
+              addIssue(createAuditIssue("missing-script-path", `scriptPath does not exist: ${scriptPath}.`, `${episodePath}.scriptPath`, "warning", "Regenerate the outline or update scriptPath to an existing local file."));
+            }
+          } catch (error) {
+            // Browser audits skip filesystem checks.
+          }
+        }
+      }
+
+      if (Object.prototype.hasOwnProperty.call(episode, "workBlocks") && !Array.isArray(episode.workBlocks)) {
+        addIssue(createAuditIssue("invalid-work-blocks-array", "workBlocks must be an array when present.", `${episodePath}.workBlocks`, "error", "Replace workBlocks with an array or remove the field."));
+        return;
+      }
+
+      const blocks = Array.isArray(episode.workBlocks) ? episode.workBlocks : [];
+      blocks.forEach((block, blockIndex) => {
+        const blockPath = `${episodePath}.workBlocks[${blockIndex}]`;
+        workBlockCount += 1;
+        if (!isPlainObject(block)) {
+          addIssue(createAuditIssue("invalid-work-block", "Every work block must be an object.", blockPath, "error", "Remove invalid work block entries."));
+          return;
+        }
+
+        const blockId = cleanString(block.id);
+        if (!blockId) {
+          addIssue(createAuditIssue("missing-work-block-id", "Work block is missing an id.", `${blockPath}.id`, "error", "Recreate the block through the app or add a unique block id."));
+        } else if (blockIds.has(blockId)) {
+          addIssue(createAuditIssue("duplicate-work-block-id", `Duplicate work block id: ${blockId}.`, `${blockPath}.id`, "error", "Give each work block a unique id."));
+        } else {
+          blockIds.add(blockId);
+        }
+
+        if (cleanString(block.episodeId) && id && block.episodeId !== id) {
+          addIssue(createAuditIssue("work-block-episode-mismatch", `Block episodeId ${block.episodeId} does not match episode id ${id}.`, `${blockPath}.episodeId`, "error", "Set the block episodeId to match its containing episode."));
+        }
+        if (!WORK_BLOCK_STATUSES.includes(block.status)) {
+          addIssue(createAuditIssue("invalid-work-block-status", `Invalid work block status: ${String(block.status)}.`, `${blockPath}.status`, "error", "Use one of: open, active, done, skipped."));
+        } else {
+          workBlockStatuses[block.status] += 1;
+        }
+        if (!WORK_BLOCK_CATEGORIES.includes(block.category)) {
+          addIssue(createAuditIssue("invalid-work-block-category", `Invalid work block category: ${String(block.category)}.`, `${blockPath}.category`, "error", "Use one of: publish, close-loop, system, admin."));
+        }
+        if (!cleanString(block.objective).trim()) {
+          addIssue(createAuditIssue("missing-work-block-objective", "Work block objective is missing.", `${blockPath}.objective`, "warning", "Write one concrete objective for the 30-minute block."));
+        }
+        const minutes = Number(block.estimatedMinutes);
+        if (!Number.isFinite(minutes) || minutes <= 0) {
+          addIssue(createAuditIssue("invalid-work-block-estimate", "estimatedMinutes must be a positive number.", `${blockPath}.estimatedMinutes`, "warning", "Set estimatedMinutes to 30 unless there is a specific reason."));
+        }
+      });
+    });
+
+    if (selectedId && !episodeIds.has(selectedId)) {
+      addIssue(createAuditIssue("invalid-selected-id", `selectedId does not match any episode: ${selectedId}.`, "selectedId", "warning", "Select an existing episode or let Episode Factory choose the first episode on import."));
+    }
+
+    return buildAuditReport({
+      storagePath,
+      payload,
+      errors,
+      warnings,
+      suggestedFixes,
+      summaryOverride: {
+        episodes: episodes.length,
+        workBlocks: workBlockCount,
+        workBlockStatuses,
+      },
+    });
+  }
+
+  function buildAuditReport({ storagePath, payload, errors, warnings, suggestedFixes, summaryOverride = null }) {
+    const normalized = payload && typeof payload === "object" ? normalizeState(Array.isArray(payload) ? { episodes: payload } : payload) : normalizeState({});
+    const blocks = summaryOverride ? [] : flattenWorkBlocks(normalized.episodes);
+    const workBlockStatuses = summaryOverride
+      ? summaryOverride.workBlockStatuses
+      : WORK_BLOCK_STATUSES.reduce((result, status) => {
+          result[status] = blocks.filter((block) => block.status === status).length;
+          return result;
+        }, {});
+    return {
+      ok: errors.length === 0,
+      storagePath,
+      appVersion: payload && typeof payload === "object" && !Array.isArray(payload) ? cleanString(payload.appVersion) : "",
+      schemaVersion: payload && typeof payload === "object" && !Array.isArray(payload) ? payload.schemaVersion || null : null,
+      summary: {
+        episodes: summaryOverride ? summaryOverride.episodes : normalized.episodes.length,
+        selectedId: normalized.selectedId,
+        workBlocks: summaryOverride ? summaryOverride.workBlocks : blocks.length,
+        workBlockStatuses,
+      },
+      errors,
+      warnings,
+      suggestedFixes,
+    };
+  }
+
+  function auditEpisodeCollectionJson(jsonText, options = {}) {
+    const parsed = parseEpisodeCollectionForAudit(jsonText);
+    if (!parsed.ok) {
+      return {
+        ok: false,
+        storagePath: cleanString(options.storagePath),
+        summary: {
+          episodes: 0,
+          selectedId: "",
+          workBlocks: 0,
+          workBlockStatuses: WORK_BLOCK_STATUSES.reduce((result, status) => {
+            result[status] = 0;
+            return result;
+          }, {}),
+        },
+        errors: [parsed.error],
+        warnings: [],
+        suggestedFixes: [parsed.error.suggestedFix],
+      };
+    }
+    return auditEpisodeCollectionPayload(parsed.payload, options);
   }
 
   function episodeTitle(episode) {
@@ -1976,6 +2664,7 @@
       ...plan.items.filter((item) => item.type === "new").map((item) => item.episode),
     ];
     return {
+      schemaVersion: EXPORT_SCHEMA_VERSION,
       version: 1,
       selectedId: chooseMergedSelectedId(plan.current, plan.imported, episodes),
       episodes,
@@ -1995,6 +2684,7 @@
     });
 
     return {
+      schemaVersion: EXPORT_SCHEMA_VERSION,
       version: 1,
       selectedId: chooseMergedSelectedId(plan.current, plan.imported, episodes),
       episodes,
@@ -2010,18 +2700,25 @@
     STORAGE_KEY,
     STATUSES,
     FIELD_DEFINITIONS,
+    EPISODE_FORMATS,
+    WORK_BLOCK_CATEGORIES,
+    WORK_BLOCK_STATUSES,
+    WORK_BLOCK_CATEGORY_PRIORITY,
     PACKAGING_GATE,
     CHECKLIST_GROUPS,
     CREATOR_QA_JSON_KEYS,
     createEpisode,
     duplicateEpisode,
     normalizeEpisode,
+    normalizeWorkBlock,
+    normalizeWorkBlocks,
     normalizeWorkSession,
     normalizeCompletionFormData,
     normalizeActiveSession,
     normalizeBackupStatus,
     getBackupHealth,
     normalizeState,
+    normalizeEpisodeCollection,
     normalizeChecklistGroup,
     normalizeChecklists,
     normalizePackagingGate,
@@ -2031,6 +2728,9 @@
     getChecklistSummary,
     getChecklistSummaries,
     getReadinessScores,
+    buildPackagingReview,
+    buildPackagingReviewMarkdown,
+    buildStructuredOutlineMarkdown,
     getNextAction,
     getAppStatus,
     getPipelineCounts,
@@ -2040,6 +2740,19 @@
     buildWeeklyReview,
     generateNextActionTask,
     buildExecutionQueue,
+    createWorkBlock,
+    addWorkBlock,
+    starterWorkBlockInputs,
+    planStarterWorkBlocks,
+    addStarterWorkBlocks,
+    flattenWorkBlocks,
+    buildWorkBlockQueue,
+    findWorkBlock,
+    updateWorkBlock,
+    startWorkBlock,
+    completeWorkBlock,
+    skipWorkBlock,
+    buildWorkBlockCard,
     updateChecklistItems,
     addWorkSession,
     editWorkSession,
@@ -2081,8 +2794,14 @@
     buildCreatorQaJsonExport,
     buildCreatorQaMarkdownPackage,
     buildExportPayload,
+    buildEpisodeCollectionPayload,
+    exportEpisodeCollectionJson,
     parseImportJson,
+    importEpisodeCollectionJson,
     validateImportPayload,
+    validateEpisodeCollectionPayload,
+    auditEpisodeCollectionJson,
+    auditEpisodeCollectionPayload,
     buildImportPreview,
     buildImportMergePlan,
     applyReplaceImport,

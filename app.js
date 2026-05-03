@@ -19,10 +19,14 @@
     weeklyDashboard: document.querySelector("#weeklyDashboard"),
     weeklyCopyStatus: document.querySelector("#weeklyCopyStatus"),
     queue: document.querySelector("#executionQueue"),
+    nextWorkBlock: document.querySelector("#nextWorkBlock"),
     activeSessionPanel: document.querySelector("#activeSessionPanel"),
     completionDrawer: document.querySelector("#completionDrawer"),
     taskCopyStatus: document.querySelector("#taskCopyStatus"),
     sessions: document.querySelector("#workSessions"),
+    workBlocks: document.querySelector("#workBlocks"),
+    workBlockForm: document.querySelector("#workBlockForm"),
+    planWorkBlocksBtn: document.querySelector("#planWorkBlocksBtn"),
     checklists: document.querySelector("#checklistGroups"),
     readinessGrid: document.querySelector("#readinessGrid"),
     readinessSummary: document.querySelector("#readinessSummary"),
@@ -98,6 +102,11 @@
       renderWeeklyDashboard();
       renderReadiness(state.episodes[index]);
       renderChecklists(state.episodes[index]);
+    } else if (renderMode === "workBlocks") {
+      renderBoard();
+      renderQueue();
+      renderWeeklyDashboard();
+      renderWorkBlocks(state.episodes[index]);
     } else {
       render();
     }
@@ -172,6 +181,7 @@
     els.queue.innerHTML = "";
     if (!tasks.length) {
       els.queue.innerHTML = `<p class="muted">No active blocker tasks. Pick an episode or create the next idea.</p>`;
+      renderNextWorkBlock();
       renderActiveSessionPanel();
       renderCompletionDrawer();
       return;
@@ -198,8 +208,53 @@
       `;
       els.queue.append(item);
     });
+    renderNextWorkBlock();
     renderActiveSessionPanel();
     renderCompletionDrawer();
+  }
+
+  function listMarkup(items) {
+    return items && items.length
+      ? items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
+      : "<li>None recorded.</li>";
+  }
+
+  function renderNextWorkBlock() {
+    const block = model.buildWorkBlockQueue(state.episodes)[0];
+    els.nextWorkBlock.innerHTML = "";
+    if (!block) {
+      els.nextWorkBlock.innerHTML = `<p class="muted">No open work blocks. Plan starter blocks on an episode or add one in the detail view.</p>`;
+      return;
+    }
+    els.nextWorkBlock.innerHTML = `
+      <article class="work-block-card next-block-card">
+        <div class="section-heading">
+          <div>
+            <h2>Next 30-Minute Work Block</h2>
+            <p class="muted">${escapeHtml(block.episodeTitle)} · ${escapeHtml(block.category)} · ${block.estimatedMinutes} min</p>
+          </div>
+          <span class="status-pill">${escapeHtml(block.status)}</span>
+        </div>
+        <h3>${escapeHtml(block.objective || "Untitled work block")}</h3>
+        <div class="work-block-grid">
+          <div>
+            <h4>Inputs</h4>
+            <ul>${listMarkup(block.inputsNeeded)}</ul>
+          </div>
+          <div>
+            <h4>Steps</h4>
+            <ul>${listMarkup(block.steps)}</ul>
+          </div>
+        </div>
+        <p><strong>Done:</strong> ${escapeHtml(block.doneCondition || "No done condition recorded.")}</p>
+        <div class="queue-actions">
+          <button type="button" data-block-open="${escapeHtml(block.episodeId)}">Open Episode</button>
+          <button type="button" data-block-start="${escapeHtml(block.id)}">Start</button>
+          <button class="primary-btn" type="button" data-block-done="${escapeHtml(block.id)}">Done</button>
+          <button type="button" data-block-skip="${escapeHtml(block.id)}">Skip</button>
+        </div>
+      </article>
+    `;
   }
 
   function formatSeconds(totalSeconds) {
@@ -379,6 +434,7 @@
 
     renderReadiness(episode);
     renderSessions(episode);
+    renderWorkBlocks(episode);
     renderChecklists(episode);
   }
 
@@ -497,6 +553,123 @@
       `;
       els.sessions.append(item);
     });
+  }
+
+  function renderWorkBlocks(episode) {
+    const blocks = model.normalizeWorkBlocks(episode.workBlocks, episode.id);
+    els.workBlocks.innerHTML = "";
+    if (!blocks.length) {
+      els.workBlocks.innerHTML = `<p class="muted">No work blocks yet. Plan starter blocks or add one custom block.</p>`;
+      return;
+    }
+
+    blocks.forEach((block) => {
+      const item = document.createElement("article");
+      item.className = `work-block-card ${block.status}`;
+      item.innerHTML = `
+        <div class="work-block-heading">
+          <div>
+            <h3>${escapeHtml(block.objective || "Untitled work block")}</h3>
+            <span>${escapeHtml(block.category)} · ${escapeHtml(block.status)} · ${block.estimatedMinutes} min</span>
+          </div>
+          <span class="status-pill">${escapeHtml(block.status)}</span>
+        </div>
+        <div class="work-block-grid">
+          <div>
+            <h4>Inputs</h4>
+            <ul>${listMarkup(block.inputsNeeded)}</ul>
+          </div>
+          <div>
+            <h4>Steps</h4>
+            <ul>${listMarkup(block.steps)}</ul>
+          </div>
+        </div>
+        <p><strong>Done:</strong> ${escapeHtml(block.doneCondition || "No done condition recorded.")}</p>
+        <p class="muted">Created: ${escapeHtml(formatOptionalTimestamp(block.createdAt))}${block.completedAt ? ` · Completed: ${escapeHtml(formatOptionalTimestamp(block.completedAt))}` : ""}</p>
+        <label class="field">
+          <span>Notes</span>
+          <textarea data-block-notes="${escapeHtml(block.id)}" rows="2">${escapeHtml(block.notes)}</textarea>
+        </label>
+        <div class="queue-actions">
+          <button type="button" data-block-start="${escapeHtml(block.id)}">Start</button>
+          <button class="primary-btn" type="button" data-block-done="${escapeHtml(block.id)}">Done</button>
+          <button type="button" data-block-skip="${escapeHtml(block.id)}">Skip</button>
+        </div>
+      `;
+      els.workBlocks.append(item);
+    });
+  }
+
+  function parseLines(value) {
+    return String(value || "")
+      .split("\n")
+      .map((line) => line.replace(/^[-*0-9.\s]+/, "").trim())
+      .filter(Boolean);
+  }
+
+  function replaceEpisodeInState(episode) {
+    const index = state.episodes.findIndex((item) => item.id === episode.id);
+    if (index < 0) return;
+    state.episodes[index] = model.normalizeEpisode(episode);
+    persist();
+    showBackupRecommendation();
+    render();
+  }
+
+  function findBlockContext(blockId) {
+    return model.findWorkBlock(state.episodes, blockId);
+  }
+
+  function updateBlockStatus(blockId, action) {
+    const context = findBlockContext(blockId);
+    if (!context) return;
+    const block = context.block;
+    let updated;
+    if (action === "start") {
+      updated = model.startWorkBlock(context.episode, blockId);
+    } else if (action === "done") {
+      updated = model.completeWorkBlock(context.episode, blockId, block.notes);
+    } else if (action === "skip") {
+      updated = model.skipWorkBlock(context.episode, blockId, block.notes);
+    }
+    if (updated) replaceEpisodeInState(updated);
+  }
+
+  function updateBlockNotes(blockId, notes) {
+    const context = findBlockContext(blockId);
+    if (!context) return;
+    replaceEpisodeInState(model.updateWorkBlock(context.episode, blockId, { notes }));
+  }
+
+  function formControlValue(container, name) {
+    const control = container.querySelector(`[name="${name}"]`);
+    return control ? control.value : "";
+  }
+
+  function addCustomWorkBlock(container) {
+    const episode = currentEpisode();
+    if (!episode) return;
+    const objective = formControlValue(container, "objective").trim();
+    if (!objective) return;
+    const updated = model.addWorkBlock(episode, {
+      category: formControlValue(container, "category") || "close-loop",
+      objective,
+      inputsNeeded: parseLines(formControlValue(container, "inputsNeeded")),
+      steps: parseLines(formControlValue(container, "steps")),
+      doneCondition: formControlValue(container, "doneCondition").trim(),
+    });
+    container.querySelectorAll("input, textarea").forEach((control) => {
+      control.value = "";
+    });
+    const category = container.querySelector('[name="category"]');
+    if (category) category.value = "publish";
+    replaceEpisodeInState(updated);
+  }
+
+  function planStarterBlocksForCurrentEpisode() {
+    const episode = currentEpisode();
+    if (!episode) return;
+    replaceEpisodeInState(model.addStarterWorkBlocks(episode));
   }
 
   function render() {
@@ -653,7 +826,7 @@
 
   function exportJson() {
     const payload = model.buildExportPayload(state);
-    const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], {
+    const blob = new Blob([model.exportEpisodeCollectionJson(state)], {
       type: "application/json",
     });
     const date = new Date().toISOString().slice(0, 10);
@@ -713,6 +886,7 @@
   }
 
   function replaceState(nextState) {
+    state.schemaVersion = nextState.schemaVersion;
     state.version = nextState.version;
     state.selectedId = nextState.selectedId;
     state.episodes = nextState.episodes;
@@ -803,7 +977,7 @@
     if (!file) return;
     const reader = new FileReader();
     reader.addEventListener("load", () => {
-      const result = model.parseImportJson(String(reader.result || ""));
+      const result = model.importEpisodeCollectionJson(String(reader.result || ""));
       if (!result.ok) {
         showImportExportStatus(result.error, "error");
         return;
@@ -1156,6 +1330,30 @@
     activeSessionControl(button.dataset.activeControl);
   });
 
+  els.nextWorkBlock.addEventListener("click", (event) => {
+    const openButton = event.target.closest("[data-block-open]");
+    if (openButton) {
+      state.selectedId = openButton.dataset.blockOpen;
+      persist();
+      render();
+      return;
+    }
+    const startButton = event.target.closest("[data-block-start]");
+    if (startButton) {
+      updateBlockStatus(startButton.dataset.blockStart, "start");
+      return;
+    }
+    const doneButton = event.target.closest("[data-block-done]");
+    if (doneButton) {
+      updateBlockStatus(doneButton.dataset.blockDone, "done");
+      return;
+    }
+    const skipButton = event.target.closest("[data-block-skip]");
+    if (skipButton) {
+      updateBlockStatus(skipButton.dataset.blockSkip, "skip");
+    }
+  });
+
   els.boardFilters.addEventListener("click", (event) => {
     const button = event.target.closest("[data-filter]");
     if (!button) return;
@@ -1190,6 +1388,36 @@
       [groupKey]: model.checklistToObject(nextGroup),
     };
     updateEpisode(episode.id, { checklists: nextChecklists }, "checklists");
+  });
+
+  els.planWorkBlocksBtn.addEventListener("click", planStarterBlocksForCurrentEpisode);
+
+  els.workBlockForm.addEventListener("click", (event) => {
+    if (!event.target.closest("[data-block-add]")) return;
+    addCustomWorkBlock(els.workBlockForm);
+  });
+
+  els.workBlocks.addEventListener("click", (event) => {
+    const startButton = event.target.closest("[data-block-start]");
+    if (startButton) {
+      updateBlockStatus(startButton.dataset.blockStart, "start");
+      return;
+    }
+    const doneButton = event.target.closest("[data-block-done]");
+    if (doneButton) {
+      updateBlockStatus(doneButton.dataset.blockDone, "done");
+      return;
+    }
+    const skipButton = event.target.closest("[data-block-skip]");
+    if (skipButton) {
+      updateBlockStatus(skipButton.dataset.blockSkip, "skip");
+    }
+  });
+
+  els.workBlocks.addEventListener("change", (event) => {
+    const blockId = event.target.dataset.blockNotes;
+    if (!blockId) return;
+    updateBlockNotes(blockId, event.target.value);
   });
 
   els.sessions.addEventListener("click", (event) => {
