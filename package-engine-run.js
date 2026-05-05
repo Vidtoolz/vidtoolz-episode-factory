@@ -588,10 +588,12 @@ Not finalized yet.
     const cleaned = cleanString(line);
     const lower = cleaned.toLowerCase();
     if (!cleaned) return false;
+    if (/^[-–]\s+/.test(cleaned)) return false;
     if (/^#{1,6}\s+/.test(cleaned)) return false;
     if (/^[-*]?\s*\[[ xX]\]/.test(cleaned)) return false;
     if (/^source files:?$/i.test(cleaned)) return false;
     if (/^run:|^status:/i.test(cleaned)) return false;
+    if (/^\d+\.\s+\*\*[^*]+\*\*\s*$/i.test(cleaned)) return false;
     if (/not prepared yet|not specified|fill this|paste the generated/i.test(cleaned)) return false;
     if (/packaging still needs verification|before finalization/i.test(cleaned)) return false;
     if (/production prep v\d|generated locally|review before|review final/i.test(cleaned)) return false;
@@ -600,6 +602,19 @@ Not finalized yet.
     if (/^[-*]?\s*(hook|promise setup|demo explanations|ending payoff|cta)$/i.test(cleaned)) return false;
     if (/workflow source|package verification reminder|expected outline output format/i.test(lower)) return false;
     return true;
+  }
+
+  function isConcreteCaptureTaskLine(line) {
+    const cleaned = cleanString(line);
+    const lower = cleaned.toLowerCase();
+    if (!isUsableProductionTaskLine(cleaned)) return false;
+    if (/^by the end\b|^you (will|can|should)\b|^you'll\b|^so you can\b/.test(lower)) return false;
+    if (/^if you want\b|^try\b|subscribe|comment|like|download|grab|watch next/.test(lower)) return false;
+    if (/^ask whether\b|^ask:\b|^the point is\b|^remember\b|^in short\b/.test(lower)) return false;
+    if (/^\d+\.\s+/.test(cleaned)) return false;
+    if (/^[-–]\s+/.test(cleaned)) return false;
+    if (/^record the hook\b/.test(lower)) return false;
+    return /\b(capture|screen recording|show on screen|table|comparison|before\/after|before and after|demo|visual|b-roll|screen capture)\b/.test(lower);
   }
 
   const AI_IDEA_FILTER_CAPTURE_TASKS = [
@@ -633,7 +648,7 @@ Not finalized yet.
     return [...primaryTasks, ...extractedTasks]
       .map(cleanString)
       .filter(Boolean)
-      .filter(isUsableProductionTaskLine)
+      .filter(isConcreteCaptureTaskLine)
       .filter((item) => {
         const key = item.toLowerCase();
         if (seen.has(key)) return false;
@@ -983,6 +998,7 @@ ${markdownBulletList(shortsLines, "Add five Shorts candidates from the hook, str
     buildFinalScriptPlaceholderMarkdown,
     buildProductionNotesPlaceholderMarkdown,
     isUsableProductionTaskLine,
+    isConcreteCaptureTaskLine,
     isAiIdeaFilterWorkflow,
     mergeCaptureTasks,
     buildProductionBriefMarkdown,

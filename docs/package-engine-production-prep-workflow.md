@@ -65,6 +65,11 @@ B-roll tasks. Markdown headings, placeholder text, checklist metadata,
 generated workflow notes, source-file lists, and generic verification reminders
 are ignored so they do not become fake capture instructions.
 
+Capture sections also reject viewer promises, CTAs, outline numbering, generic
+advice, and narration-only lines. Extracted tasks must point to a concrete
+visual action such as a capture, screen recording, on-screen table, comparison,
+before/after, demo, visual, or B-roll item.
+
 For AI idea-filter packages, Production Prep adds deterministic default capture
 tasks:
 

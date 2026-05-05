@@ -1996,7 +1996,12 @@ test("production prep builders create the seven required local planning artifact
     finalScriptText: [
       "# Final Script",
       "",
+      "By the end of this video, you will have a practical idea filter.",
       "Record the hook, show the screen demo, then deliver the payoff.",
+      "If you want, try this on your next video idea before scripting.",
+      "Try the four-part filter before you shoot.",
+      "- - Show examples from the AI output.",
+      "3. **Before-and-after example**",
       "Ask an AI tool for 10 generic video ideas, then score one weak idea through audience demand, expertise fit, production fit, and better-than-competitors.",
       "Revise the weak AI idea into a stronger package and compare final title plus thumbnail.",
     ].join("\n"),
@@ -2044,6 +2049,7 @@ test("production prep builders create the seven required local planning artifact
   assert.match(screenCaptures, /Capture final title \+ thumbnail comparison\./);
   assert.doesNotMatch(screenCaptures, /## Shoot List|## Demo Moments|### Suggested demonstrations or screen recordings/);
   assert.doesNotMatch(screenCaptures, /Packaging still needs verification before finalization|Production Prep v1 generated locally|Checklist metadata/);
+  assert.doesNotMatch(screenCaptures, /By the end of this video|If you want, try this|Try the four-part filter|- Show examples|Before-and-after example|Record the hook/);
   assert.match(broll, /# B-Roll List/);
   assert.match(requiredBroll, /Capture AI tool generating 10 generic video ideas\./);
   assert.match(requiredBroll, /Capture the four-part filter as a table: audience demand, expertise fit, production fit, better-than-competitors\./);
@@ -2053,6 +2059,7 @@ test("production prep builders create the seven required local planning artifact
   assert.match(requiredBroll, /Capture the UI timeline/);
   assert.doesNotMatch(requiredBroll, /## Shoot List|## Demo Moments|### Suggested demonstrations or screen recordings|## Visual \/ B-roll Notes/);
   assert.doesNotMatch(requiredBroll, /Packaging still needs verification before finalization|Production Prep v1 generated locally|Checklist metadata/);
+  assert.doesNotMatch(requiredBroll, /By the end of this video|If you want, try this|Try the four-part filter|- Show examples|Before-and-after example|Record the hook/);
   assert.match(graphics, /# Graphics List/);
   assert.match(resolve, /# Resolve Edit Checklist/);
   assert.match(thumbnail, /# Thumbnail Title Check/);
@@ -2586,7 +2593,7 @@ test("visible app version and html cache busters use current release", () => {
   const htmlFiles = ["index.html", "package-engine.html", "package-runs-dashboard.html"];
   const expectedCacheBuster = new RegExp(`v=${model.APP_VERSION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
 
-  assert.equal(model.APP_VERSION, "1.7.3");
+  assert.equal(model.APP_VERSION, "1.7.4");
   htmlFiles.forEach((filename) => {
     const html = fs.readFileSync(path.join(__dirname, "..", filename), "utf8");
     assert.match(html, expectedCacheBuster);
