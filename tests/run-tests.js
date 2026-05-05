@@ -2171,6 +2171,10 @@ test("package runs index classifies workflow status from detected files", () => 
     files[packageRunsIndexScript.fileKey(filename)] = true;
   });
   assert.equal(packageRunsIndexScript.classifyRunStatus(files), "Ready to shoot");
+  assert.equal(packageRunsIndexScript.classifyRunStatus(files, "not run"), "Ready to shoot");
+  assert.equal(packageRunsIndexScript.classifyRunStatus(files, "FAIL"), "Production prep ready");
+  assert.equal(packageRunsIndexScript.workflowBucket("Production prep ready", "FAIL"), "Needs QA repair");
+  assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "not run"), "QA not run");
 });
 
 test("package runs index scans package-runs folders and writes index json", () => {
@@ -2178,8 +2182,12 @@ test("package runs index scans package-runs folders and writes index json", () =
   const runsDir = path.join(tempRoot, "package-runs");
   const ideaDir = path.join(runsDir, "2026-05-01-idea");
   const shootDir = path.join(runsDir, "2026-05-02-ready");
+  const qaMissingDir = path.join(runsDir, "2026-05-03-qa-missing");
+  const qaFailDir = path.join(runsDir, "2026-05-04-qa-fail");
   fs.mkdirSync(ideaDir, { recursive: true });
   fs.mkdirSync(shootDir, { recursive: true });
+  fs.mkdirSync(qaMissingDir, { recursive: true });
+  fs.mkdirSync(qaFailDir, { recursive: true });
   fs.writeFileSync(path.join(ideaDir, "package-candidates.json"), "{\"candidates\":[]}\n");
   fs.writeFileSync(
     path.join(shootDir, "selected-package.json"),
@@ -2202,26 +2210,43 @@ test("package runs index scans package-runs folders and writes index json", () =
     "publish-pack.md",
   ].forEach((filename) => {
     if (filename !== "package-candidates.json") fs.writeFileSync(path.join(shootDir, filename), `${filename}\n`);
+    if (filename !== "package-candidates.json") fs.writeFileSync(path.join(qaMissingDir, filename), `${filename}\n`);
+    if (filename !== "package-candidates.json") fs.writeFileSync(path.join(qaFailDir, filename), `${filename}\n`);
   });
+  fs.writeFileSync(
+    path.join(qaFailDir, "selected-package.json"),
+    JSON.stringify({ package: { proposedTitle: "Failed QA Package" } })
+  );
+  fs.writeFileSync(path.join(qaFailDir, "creator-qa-report.json"), JSON.stringify({ overall_result: "FAIL" }));
+  fs.writeFileSync(path.join(qaFailDir, "creator-qa-report.md"), "# Creator QA Report\n\nOverall: FAIL\n");
 
   const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
   const outFile = path.join(tempRoot, "package-runs-index.json");
   const output = packageRunsIndexScript.main(["--runs-dir", runsDir, "--out", outFile]);
   const written = JSON.parse(fs.readFileSync(outFile, "utf8"));
 
-  assert.equal(index.count, 2);
-  assert.equal(index.runs[0].runId, "2026-05-02-ready");
-  assert.equal(index.runs[0].status, "Ready to shoot");
-  assert.equal(index.runs[0].workflowBucket, "Ready to shoot");
-  assert.equal(index.runs[0].creatorQaStatus, "NEEDS WORK");
-  assert.equal(index.runs[0].files.creator_qa_report, true);
-  assert.equal(index.runs[0].files.creator_qa_report_json, true);
-  assert.equal(index.runs[0].title, "Ready Package");
-  assert.equal(index.runs[1].status, "Idea run");
-  assert.equal(index.runs[1].creatorQaStatus, "not run");
-  assert.equal(index.runs[1].workflowBucket, "Needs package selection");
-  assert.equal(written.count, 2);
-  assert.equal(written.statuses["Ready to shoot"], 1);
+  const byRunId = Object.fromEntries(index.runs.map((run) => [run.runId, run]));
+
+  assert.equal(index.count, 4);
+  assert.equal(byRunId["2026-05-02-ready"].status, "Ready to shoot");
+  assert.equal(byRunId["2026-05-02-ready"].workflowBucket, "Ready to shoot");
+  assert.equal(byRunId["2026-05-02-ready"].creatorQaStatus, "NEEDS WORK");
+  assert.equal(byRunId["2026-05-02-ready"].files.creator_qa_report, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.creator_qa_report_json, true);
+  assert.equal(byRunId["2026-05-02-ready"].title, "Ready Package");
+  assert.equal(byRunId["2026-05-03-qa-missing"].status, "Ready to shoot");
+  assert.equal(byRunId["2026-05-03-qa-missing"].workflowBucket, "QA not run");
+  assert.equal(byRunId["2026-05-03-qa-missing"].nextRecommendedCommand, "node scripts/package-run-creator-qa.js package-runs/2026-05-03-qa-missing");
+  assert.equal(byRunId["2026-05-04-qa-fail"].status, "Production prep ready");
+  assert.equal(byRunId["2026-05-04-qa-fail"].workflowBucket, "Needs QA repair");
+  assert.equal(byRunId["2026-05-04-qa-fail"].creatorQaStatus, "FAIL");
+  assert.equal(byRunId["2026-05-04-qa-fail"].nextRecommendedCommand, "Review creator-qa-report.md and repair package/script before shooting.");
+  assert.equal(byRunId["2026-05-01-idea"].status, "Idea run");
+  assert.equal(byRunId["2026-05-01-idea"].creatorQaStatus, "not run");
+  assert.equal(byRunId["2026-05-01-idea"].workflowBucket, "Needs package selection");
+  assert.equal(written.count, 4);
+  assert.equal(written.statuses["Ready to shoot"], 2);
+  assert.equal(written.statuses["Production prep ready"], 1);
   assert.equal(output, 0);
 });
 
@@ -2238,9 +2263,19 @@ test("package runs index recommends deterministic next local commands", () => {
     packageRunsIndexScript.nextRecommendedCommand("Final script ready", "package-runs/run-id"),
     "node scripts/package-engine-new-production.js package-runs/run-id"
   );
-  assert.equal(packageRunsIndexScript.nextRecommendedCommand("Ready to shoot", "package-runs/run-id"), "");
+  assert.equal(
+    packageRunsIndexScript.nextRecommendedCommand("Ready to shoot", "package-runs/run-id", "not run"),
+    "node scripts/package-run-creator-qa.js package-runs/run-id"
+  );
+  assert.equal(
+    packageRunsIndexScript.nextRecommendedCommand("Ready to shoot", "package-runs/run-id", "FAIL"),
+    "Review creator-qa-report.md and repair package/script before shooting."
+  );
+  assert.equal(packageRunsIndexScript.nextRecommendedCommand("Ready to shoot", "package-runs/run-id", "PASS"), "");
   assert.equal(packageRunsIndexScript.workflowBucket("Script prep ready"), "Needs script");
   assert.equal(packageRunsIndexScript.workflowBucket("Production prep ready"), "Needs production prep");
+  assert.equal(packageRunsIndexScript.workflowBucket("Production prep ready", "FAIL"), "Needs QA repair");
+  assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "not run"), "QA not run");
 });
 
 test("package runs dashboard launch helper writes index and prints local launch instructions", () => {
@@ -2292,19 +2327,44 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
         nextRecommendedCommand: "node scripts/package-engine-new-script.js package-runs/2026-05-03-c",
         files: { final_outline: true },
       },
+      {
+        runId: "2026-05-04-d",
+        path: "package-runs/2026-05-04-d",
+        title: "Failed QA Package",
+        status: "Production prep ready",
+        workflowBucket: "Needs QA repair",
+        creatorQaStatus: "FAIL",
+        nextRecommendedCommand: "Review creator-qa-report.md and repair package/script before shooting.",
+        files: { final_script: true, production_brief: true, creator_qa_report: true, creator_qa_report_json: true },
+      },
+      {
+        runId: "2026-05-05-e",
+        path: "package-runs/2026-05-05-e",
+        title: "QA Missing Package",
+        status: "Ready to shoot",
+        creatorQaStatus: "not run",
+        nextRecommendedCommand: "node scripts/package-run-creator-qa.js package-runs/2026-05-05-e",
+        files: { final_script: true, production_brief: true },
+      },
     ],
   };
   const index = packageRunsDashboard.normalizeIndex(payload);
   const filtered = packageRunsDashboard.filterAndSortRuns(index.runs, "Ready to shoot", "run-desc");
   const needsScript = packageRunsDashboard.filterAndSortRuns(index.runs, "Needs script", "run-desc");
+  const needsQaRepair = packageRunsDashboard.filterAndSortRuns(index.runs, "Needs QA repair", "run-desc");
+  const qaNotRun = packageRunsDashboard.filterAndSortRuns(index.runs, "QA not run", "run-desc");
   const card = packageRunsDashboard.renderRunCard(filtered[0]);
   const scriptCard = packageRunsDashboard.renderRunCard(needsScript[0]);
+  const failedQaCard = packageRunsDashboard.renderRunCard(needsQaRepair[0]);
+  const qaMissingCard = packageRunsDashboard.renderRunCard(qaNotRun[0]);
   const stats = packageRunsDashboard.renderWorkflowStats(index.runs);
 
-  assert.equal(index.count, 3);
+  assert.equal(index.count, 5);
   assert.equal(filtered.length, 1);
   assert.equal(filtered[0].runId, "2026-05-02-b");
   assert.equal(needsScript.length, 1);
+  assert.equal(needsQaRepair.length, 1);
+  assert.equal(qaNotRun.length, 1);
   assert.match(card, /Ready Package/);
   assert.match(card, /Ready to shoot/);
   assert.match(card, /package-runs\/2026-05-02-b\//);
@@ -2316,8 +2376,16 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
   assert.match(scriptCard, /node scripts\/package-engine-new-script\.js package-runs\/2026-05-03-c/);
   assert.match(scriptCard, /not run/);
   assert.match(scriptCard, /Needs script/);
+  assert.match(failedQaCard, /qa-blocked/);
+  assert.match(failedQaCard, /Creator QA blocker/);
+  assert.match(failedQaCard, /FAIL/);
+  assert.match(failedQaCard, /Review creator-qa-report\.md and repair package\/script before shooting\./);
+  assert.match(qaMissingCard, /QA not run/);
+  assert.match(qaMissingCard, /node scripts\/package-run-creator-qa\.js package-runs\/2026-05-05-e/);
   assert.match(stats, /Ready to shoot/);
   assert.match(stats, /Needs production prep/);
+  assert.match(stats, /Needs QA repair/);
+  assert.match(stats, /QA not run/);
 });
 
 test("package runs dashboard renders a safe markdown preview subset", () => {
@@ -2347,7 +2415,7 @@ test("visible app version and html cache busters use current release", () => {
   const htmlFiles = ["index.html", "package-engine.html", "package-runs-dashboard.html"];
   const expectedCacheBuster = new RegExp(`v=${model.APP_VERSION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
 
-  assert.equal(model.APP_VERSION, "1.7.0");
+  assert.equal(model.APP_VERSION, "1.7.1");
   htmlFiles.forEach((filename) => {
     const html = fs.readFileSync(path.join(__dirname, "..", filename), "utf8");
     assert.match(html, expectedCacheBuster);

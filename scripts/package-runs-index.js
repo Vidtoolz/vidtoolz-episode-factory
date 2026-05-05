@@ -70,9 +70,15 @@ function hasSelectedPackage(files) {
   return Boolean(files.selected_package_json || files.selected_package_md);
 }
 
-function classifyRunStatus(files = {}) {
-  const hasAllProductionArtifacts = PRODUCTION_ARTIFACTS.every((filename) => files[fileKey(filename)]);
-  if (hasAllProductionArtifacts) return "Ready to shoot";
+function hasAllProductionArtifacts(files = {}) {
+  return PRODUCTION_ARTIFACTS.every((filename) => files[fileKey(filename)]);
+}
+
+function classifyRunStatus(files = {}, creatorQaStatus = "not run") {
+  const productionComplete = hasAllProductionArtifacts(files);
+  const qaFailed = String(creatorQaStatus || "").toUpperCase() === "FAIL";
+  if (productionComplete && !qaFailed) return "Ready to shoot";
+  if (productionComplete && qaFailed) return "Production prep ready";
   if (files.production_brief) return "Production prep ready";
   if (files.final_script) return "Final script ready";
   if (files.script_prompt) return "Script prep ready";
@@ -96,8 +102,15 @@ function nextExpectedFile(status) {
   return nextByStatus[status] || "";
 }
 
-function nextRecommendedCommand(status, runPath) {
+function nextRecommendedCommand(status, runPath, creatorQaStatus = "not run") {
   const target = runPath || "package-runs/YYYY-MM-DD-topic-slug";
+  const qaStatus = String(creatorQaStatus || "");
+  if (qaStatus.toUpperCase() === "FAIL") {
+    return "Review creator-qa-report.md and repair package/script before shooting.";
+  }
+  if (qaStatus.toLowerCase() === "not run" && status === "Ready to shoot") {
+    return `node scripts/package-run-creator-qa.js ${target}`;
+  }
   const commandByStatus = {
     "Idea run": "",
     "Package selected": `node scripts/package-engine-new-outline.js ${target}`,
@@ -111,7 +124,10 @@ function nextRecommendedCommand(status, runPath) {
   return commandByStatus[status] || "";
 }
 
-function workflowBucket(status) {
+function workflowBucket(status, creatorQaStatus = "not run") {
+  const qaStatus = String(creatorQaStatus || "");
+  if (qaStatus.toUpperCase() === "FAIL") return "Needs QA repair";
+  if (status === "Ready to shoot" && qaStatus.toLowerCase() === "not run") return "QA not run";
   const bucketByStatus = {
     "Idea run": "Needs package selection",
     "Package selected": "Needs outline",
@@ -180,16 +196,17 @@ function scanRun(runDir, repoRoot = process.cwd()) {
   DETECTED_FILES.forEach((filename) => {
     files[fileKey(filename)] = fs.existsSync(path.join(runDir, filename));
   });
-  const status = classifyRunStatus(files);
+  const creatorQaStatus = readCreatorQaStatus(runDir);
+  const status = classifyRunStatus(files, creatorQaStatus);
   return {
     runId,
     path: runPath,
     title: readPackageTitle(runDir),
     status,
-    workflowBucket: workflowBucket(status),
-    creatorQaStatus: readCreatorQaStatus(runDir),
+    workflowBucket: workflowBucket(status, creatorQaStatus),
+    creatorQaStatus,
     nextExpectedFile: nextExpectedFile(status),
-    nextRecommendedCommand: nextRecommendedCommand(status, runPath),
+    nextRecommendedCommand: nextRecommendedCommand(status, runPath, creatorQaStatus),
     updatedAt: latestMtimeIso(runDir, DETECTED_FILES),
     files,
   };
@@ -251,6 +268,7 @@ module.exports = {
   PRODUCTION_ARTIFACTS,
   parseArgs,
   fileKey,
+  hasAllProductionArtifacts,
   classifyRunStatus,
   nextExpectedFile,
   nextRecommendedCommand,

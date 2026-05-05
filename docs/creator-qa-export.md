@@ -69,4 +69,4 @@ creator-qa check /path/to/export.md --hermes-report
 
 - Episode Factory does not yet have dedicated fields for thumbnail text, final script, factual claims, source notes, or Resolve terminology.
 - Creator QA may flag empty/default mapped fields as issues. That is expected and should be fixed in the episode package, not hidden by the export layer.
-- Running Creator QA is still a manual command in v1.7.0; Episode Factory only prepares compatible files.
+- Running Creator QA is still a manual command in v1.7.1; Episode Factory only prepares compatible files.

@@ -69,3 +69,17 @@ Creator QA: PASS / NEEDS WORK / FAIL / not run
 
 When `creator-qa-report.md` exists, the dashboard links to it and can preview it
 inside the artifact preview panel.
+
+Creator QA `FAIL` blocks the dashboard ready-to-shoot bucket. The run moves to
+`Needs QA repair` and the recommended action is:
+
+```text
+Review creator-qa-report.md and repair package/script before shooting.
+```
+
+When all Production Prep artifacts exist but Creator QA has not run, the run is
+grouped as `QA not run` and shows:
+
+```sh
+node scripts/package-run-creator-qa.js package-runs/YYYY-MM-DD-topic-slug
+```

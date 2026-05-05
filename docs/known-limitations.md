@@ -1,6 +1,6 @@
 # Known Limitations
 
-Episode Factory v1.7.0 is intentionally local-first and dependency-free.
+Episode Factory v1.7.1 is intentionally local-first and dependency-free.
 
 ## localStorage-Only Storage
 

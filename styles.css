@@ -1109,6 +1109,13 @@ label > span,
     var(--shadow);
 }
 
+.package-run-card.qa-blocked {
+  border-color: #efc4bf;
+  box-shadow:
+    inset 4px 0 0 var(--danger),
+    var(--shadow);
+}
+
 .package-card h2,
 .package-card h3,
 .package-card h4,
@@ -1200,6 +1207,16 @@ label > span,
   color: var(--accent-strong);
 }
 
+.run-status-needs-qa-repair {
+  background: #fbecea;
+  color: var(--danger);
+}
+
+.run-status-qa-not-run {
+  background: #fff6df;
+  color: #76540b;
+}
+
 .package-card-grid,
 .strategic-grid {
   display: grid;
@@ -1274,6 +1291,11 @@ label > span,
 .run-command.done {
   background: var(--panel-soft);
   border-color: var(--border);
+}
+
+.run-command.blocking {
+  background: #fbecea;
+  border-color: #efc4bf;
 }
 
 .run-command span {

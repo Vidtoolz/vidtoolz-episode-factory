@@ -13,10 +13,12 @@
   ];
 
   const WORKFLOW_FILTERS = [
+    "Needs QA repair",
     "Needs package selection",
     "Needs outline",
     "Needs script",
     "Needs production prep",
+    "QA not run",
     "Ready to shoot",
   ];
 
@@ -62,18 +64,34 @@
       runsDir: source.runsDir || "package-runs",
       count: Number.isFinite(source.count) ? source.count : runs.length,
       statuses: source.statuses && typeof source.statuses === "object" ? source.statuses : {},
-      runs: runs.map((run) => ({
-        runId: String(run.runId || ""),
-        path: String(run.path || ""),
-        title: String(run.title || ""),
-        status: String(run.status || "Idea run"),
-        workflowBucket: String(run.workflowBucket || workflowBucketForStatus(run.status || "Idea run")),
-        creatorQaStatus: String(run.creatorQaStatus || "not run"),
-        nextExpectedFile: String(run.nextExpectedFile || ""),
-        nextRecommendedCommand: String(run.nextRecommendedCommand || ""),
-        updatedAt: String(run.updatedAt || ""),
-        files: run.files && typeof run.files === "object" ? run.files : {},
-      })),
+      runs: runs.map((run) => {
+        const status = String(run.status || "Idea run");
+        const creatorQaStatus = String(run.creatorQaStatus || "not run");
+        const qaFailed = creatorQaStatus.toUpperCase() === "FAIL";
+        const qaNotRun = creatorQaStatus.toLowerCase() === "not run";
+        const workflowBucket =
+          qaFailed || (status === "Ready to shoot" && qaNotRun)
+            ? workflowBucketForStatus(status, creatorQaStatus)
+            : String(run.workflowBucket || workflowBucketForStatus(status, creatorQaStatus));
+        let nextRecommendedCommand = String(run.nextRecommendedCommand || "");
+        if (!nextRecommendedCommand && qaFailed) {
+          nextRecommendedCommand = "Review creator-qa-report.md and repair package/script before shooting.";
+        } else if (!nextRecommendedCommand && status === "Ready to shoot" && qaNotRun) {
+          nextRecommendedCommand = `node scripts/package-run-creator-qa.js ${run.path || "package-runs/YYYY-MM-DD-topic-slug"}`;
+        }
+        return {
+          runId: String(run.runId || ""),
+          path: String(run.path || ""),
+          title: String(run.title || ""),
+          status,
+          creatorQaStatus,
+          workflowBucket,
+          nextExpectedFile: String(run.nextExpectedFile || ""),
+          nextRecommendedCommand,
+          updatedAt: String(run.updatedAt || ""),
+          files: run.files && typeof run.files === "object" ? run.files : {},
+        };
+      }),
     };
   }
 
@@ -81,7 +99,9 @@
     const filtered =
       statusFilter === "All"
         ? [...runs]
-        : runs.filter((run) => run.workflowBucket === statusFilter || run.status === statusFilter);
+        : WORKFLOW_FILTERS.includes(statusFilter)
+          ? runs.filter((run) => run.workflowBucket === statusFilter)
+          : runs.filter((run) => run.workflowBucket === statusFilter || run.status === statusFilter);
     return filtered.sort((a, b) => {
       if (sortMode === "run-asc") return a.runId.localeCompare(b.runId);
       if (sortMode === "status") return statusRank(a.status) - statusRank(b.status) || b.runId.localeCompare(a.runId);
@@ -93,7 +113,10 @@
     return `run-status-${String(status || "idea").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   }
 
-  function workflowBucketForStatus(status) {
+  function workflowBucketForStatus(status, creatorQaStatus = "not run") {
+    const qaStatus = String(creatorQaStatus || "");
+    if (qaStatus.toUpperCase() === "FAIL") return "Needs QA repair";
+    if (status === "Ready to shoot" && qaStatus.toLowerCase() === "not run") return "QA not run";
     const bucketByStatus = {
       "Idea run": "Needs package selection",
       "Package selected": "Needs outline",
@@ -218,7 +241,8 @@
     if (!run.nextRecommendedCommand) {
       return `<div class="run-command done"><span>Next command</span><code>${run.status === "Ready to shoot" ? "Shoot the video." : "Manual review or file edit needed."}</code></div>`;
     }
-    return `<div class="run-command"><span>Next command</span><code>${escapeHtml(run.nextRecommendedCommand)}</code></div>`;
+    const blocking = run.workflowBucket === "Needs QA repair" ? " blocking" : "";
+    return `<div class="run-command${blocking}"><span>Next command</span><code>${escapeHtml(run.nextRecommendedCommand)}</code></div>`;
   }
 
   function creatorQaClass(status) {
@@ -227,11 +251,24 @@
 
   function renderCreatorQaStatus(run) {
     const status = run.creatorQaStatus || "not run";
+    const qaFailed = String(status).toUpperCase() === "FAIL";
+    const qaNotRun = String(status).toLowerCase() === "not run";
     const reportHref = run.files && run.files.creator_qa_report ? fileHref(run, "creator-qa-report.md") : "";
-    const report = reportHref
+    const reportLink = reportHref
       ? `<a href="${escapeHtml(reportHref)}" data-preview-artifact="${escapeHtml(reportHref)}" data-artifact-title="Creator QA report" data-run-id="${escapeHtml(run.runId)}">preview report</a>`
-      : "Run Creator QA before shooting or publishing.";
-    return `<div class="creator-qa-status ${creatorQaClass(status)}"><span>Creator QA</span><strong>${escapeHtml(status)}</strong><small>${report}</small></div>`;
+      : "";
+    let note = "Run Creator QA before shooting or publishing.";
+    if (qaFailed) {
+      note = reportLink
+        ? `Blocking: ${reportLink} and repair package/script before shooting.`
+        : "Blocking: repair package/script before shooting.";
+    } else if (reportLink) {
+      note = reportLink;
+    } else if (qaNotRun) {
+      note = "QA not run. Run Creator QA before shooting or publishing.";
+    }
+    const label = qaFailed ? "Creator QA blocker" : "Creator QA";
+    return `<div class="creator-qa-status ${creatorQaClass(status)}"><span>${label}</span><strong>${escapeHtml(status)}</strong><small>${note}</small></div>`;
   }
 
   function renderRunCard(run) {
@@ -239,8 +276,9 @@
     const next = run.nextExpectedFile ? `<p class="muted">Next: ${escapeHtml(run.nextExpectedFile)}</p>` : `<p class="muted">Next: shoot the video.</p>`;
     const updated = run.updatedAt ? new Date(run.updatedAt).toLocaleString() : "No tracked files yet";
     const runHref = run.path ? `${run.path}/` : "#";
+    const cardClass = run.workflowBucket === "Needs QA repair" ? "package-run-card qa-blocked" : "package-run-card";
     return `
-      <article class="package-run-card">
+      <article class="${cardClass}">
         <div class="package-card-top">
           <span class="package-number">${escapeHtml(run.runId)}</span>
           <span class="run-status-pill ${statusClass(run.status)}">${escapeHtml(run.status)}</span>
@@ -272,7 +310,7 @@
       return result;
     }, {});
     runs.forEach((run) => {
-      const bucket = run.workflowBucket || workflowBucketForStatus(run.status);
+      const bucket = run.workflowBucket || workflowBucketForStatus(run.status, run.creatorQaStatus);
       counts[bucket] = (counts[bucket] || 0) + 1;
     });
     return WORKFLOW_FILTERS.map((label) => `<div><span>${escapeHtml(label)}</span><strong>${counts[label] || 0}</strong></div>`).join("");

@@ -90,6 +90,12 @@ When `creator-qa-report.md` exists, the report is available as a preview link.
 Regenerate the index after running Creator QA so the dashboard sees the new
 status.
 
+Creator QA `FAIL` is a blocking dashboard state. A run with complete Production
+Prep artifacts and a failed Creator QA report is grouped under `Needs QA repair`
+instead of `Ready to shoot`. A run with complete Production Prep artifacts and
+no Creator QA report is still artifact-ready, but it is grouped under
+`QA not run` and shows the local Creator QA command.
+
 ## Artifact Preview
 
 The preview panel renders a small safe Markdown subset:
@@ -119,7 +125,8 @@ The status is the highest completed workflow milestone:
 - `Script prep ready`: `script-prompt.md` exists
 - `Final script ready`: `final-script.md` exists
 - `Production prep ready`: `production-brief.md` exists
-- `Ready to shoot`: all Production Prep artifacts exist
+- `Ready to shoot`: all Production Prep artifacts exist and Creator QA has not
+  failed
 
 ## Daily Filters
 
@@ -129,7 +136,10 @@ The dashboard groups runs into daily workflow filters:
 - `Needs outline`: selected package exists, but final outline is not complete
 - `Needs script`: final outline exists, but final script is not complete
 - `Needs production prep`: final script exists, but full Production Prep is not complete
-- `Ready to shoot`: all Production Prep artifacts exist
+- `Needs QA repair`: Creator QA returned `FAIL`
+- `QA not run`: all Production Prep artifacts exist, but Creator QA has not run
+- `Ready to shoot`: all Production Prep artifacts exist and Creator QA is not
+  `FAIL`
 
 ## Recommended Commands
 
@@ -140,10 +150,17 @@ exact command:
 node scripts/package-engine-new-outline.js package-runs/YYYY-MM-DD-topic-slug
 node scripts/package-engine-new-script.js package-runs/YYYY-MM-DD-topic-slug
 node scripts/package-engine-new-production.js package-runs/YYYY-MM-DD-topic-slug
+node scripts/package-run-creator-qa.js package-runs/YYYY-MM-DD-topic-slug
 ```
 
 When the next step is manual review or writing, the card shows the next expected
 file instead.
+
+If Creator QA returned `FAIL`, the next action is:
+
+```text
+Review creator-qa-report.md and repair package/script before shooting.
+```
 
 ## Finish Test
 
