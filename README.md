@@ -1,6 +1,6 @@
 # VIDTOOLZ Episode Factory
 
-VIDTOOLZ Episode Factory v1.6.1 is a local-first static web app for turning rough YouTube ideas into complete production packages and running a stable weekly creator workflow.
+VIDTOOLZ Episode Factory v1.7.0 is a local-first static web app for turning rough YouTube ideas into complete production packages and running a stable weekly creator workflow.
 
 The purpose is practical creator discipline: keep the topic, promise, title options, thumbnail concept, hook, script outline, structured production checklists, Shorts extraction checks, publish checks, and notes in one compact place before a solo creator starts shooting.
 
@@ -10,7 +10,7 @@ Important: browser `localStorage` is not a durable backup system. Export JSON re
 
 For terminal-first work, the dependency-free CLI can also store inspectable episode JSON in `data/episodes.json` and write outline artifacts under `episodes/`. This is separate from browser `localStorage` until you import/export JSON manually.
 
-## v1.6.1 Features
+## v1.7.0 Features
 
 - Create, edit, delete, and duplicate episodes
 - Manage episodes on a compact status board
@@ -135,6 +135,17 @@ This writes `production-brief.md`, `shooting-plan.md`, `b-roll-list.md`,
 `graphics-list.md`, `resolve-edit-checklist.md`, `thumbnail-title-check.md`,
 and `publish-pack.md`. Existing human-edited artifacts are skipped instead of
 overwritten.
+
+Run local Creator QA against a package run before shooting or publishing:
+
+```sh
+node scripts/package-run-creator-qa.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `creator-qa-package.md`, `creator-qa-report.md`, and
+`creator-qa-report.json` into the run folder. It uses the local
+`/home/vidtoolz/vidtoolz-creator-qa` CLI and does not approve or publish
+anything automatically.
 
 ## CLI Episode Workflow
 
@@ -278,7 +289,7 @@ The browser app stores its working library in `localStorage` under `vidtoolz-epi
 ```js
 {
   app: "VIDTOOLZ Episode Factory",
-  appVersion: "1.6.1",
+  appVersion: "1.7.0",
   schemaVersion: 1,
   storageKey: "vidtoolz-episode-factory-v1",
   exportedAt: "...",
@@ -343,6 +354,7 @@ High-level browser checks:
 - `scripts/episode-factory.js` provides the local file-backed CLI.
 - `scripts/package-engine-new-script.js` creates local Script Prep artifacts from a selected package and final outline.
 - `scripts/package-engine-new-production.js` creates local Production Prep artifacts from a selected package, final outline, and final script.
+- `scripts/package-run-creator-qa.js` runs local Creator QA over Package Engine run artifacts.
 - `scripts/package-runs-index.js` generates the local Package Runs dashboard index.
 - `scripts/package-runs-dashboard-launch.js` regenerates the Package Runs index and prints the local dashboard launch command.
 - `package-runs-dashboard.html` and `package-runs-dashboard.js` render the static Package Runs dashboard.
@@ -360,6 +372,7 @@ High-level browser checks:
 - `docs/episode-workflow.md` documents the intended YouTube workflow.
 - `docs/package-engine-script-prep-workflow.md` documents the Script Prep workflow.
 - `docs/package-engine-production-prep-workflow.md` documents the Production Prep workflow.
+- `docs/package-run-creator-qa-workflow.md` documents the Package Run Creator QA workflow.
 - `docs/package-runs-dashboard-workflow.md` documents the Package Runs dashboard workflow.
 - `docs/packaging-gate.md` documents the gate criteria.
 - `docs/creator-qa-export.md` documents the Creator QA export mapping.

@@ -10,6 +10,7 @@ const packageRunScript = require("../scripts/package-engine-new-run.js");
 const packageOutlineScript = require("../scripts/package-engine-new-outline.js");
 const packageScriptPrepScript = require("../scripts/package-engine-new-script.js");
 const packageProductionPrepScript = require("../scripts/package-engine-new-production.js");
+const packageRunCreatorQaScript = require("../scripts/package-run-creator-qa.js");
 const packageRunsIndexScript = require("../scripts/package-runs-index.js");
 const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashboard-launch.js");
 const packageRunsDashboard = require("../package-runs-dashboard.js");
@@ -2061,6 +2062,92 @@ test("production prep cli writes seven artifacts and preserves existing human ed
   assert.match(fs.readFileSync(path.join(runDir, "shooting-plan.md"), "utf8"), /Do not overwrite/);
 });
 
+test("package run creator qa builds package and guards existing artifacts", () => {
+  const selected = {
+    markdown: packageRun.selectedPackageToMarkdown({
+      proposedTitle: "Creator QA Package",
+      onThumbnailText: "Check It",
+      viewerPromise: "The viewer can verify the package before shooting.",
+    }),
+    data: {
+      proposedTitle: "Creator QA Package",
+      onThumbnailText: "Check It",
+      viewerPromise: "The viewer can verify the package before shooting.",
+    },
+  };
+  const markdown = packageRunCreatorQaScript.buildCreatorQaPackage({
+    selected,
+    finalOutlineText: "# Final Outline\n\n## Hook\nShow the problem.",
+    finalScriptText: "# Final Script\n\nIn this video you will check the package before shooting.",
+    productionBriefText: "# Production Brief\n\nShoot the demo.",
+  });
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-qa-guard-"));
+
+  assert.match(markdown, /# Title\nCreator QA Package/);
+  assert.match(markdown, /# Thumbnail\nCheck It/);
+  assert.match(markdown, /# Viewer Payoff\nThe viewer can verify the package before shooting/);
+  assert.match(markdown, /# Script/);
+
+  fs.writeFileSync(path.join(tempDir, "creator-qa-package.md"), "Human QA package\n");
+  assert.throws(
+    () => packageRunCreatorQaScript.assertCanWriteOutputs(tempDir, markdown, false),
+    /creator-qa-package\.md already exists/
+  );
+  assert.doesNotThrow(() => packageRunCreatorQaScript.assertCanWriteOutputs(tempDir, markdown, true));
+});
+
+test("package run creator qa cli writes local qa artifacts using creator qa root", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-qa-cli-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-02-qa");
+  const creatorQaRoot = path.join(tempRoot, "creator-qa");
+  fs.mkdirSync(path.join(creatorQaRoot, "src", "creator_qa"), { recursive: true });
+  fs.writeFileSync(path.join(creatorQaRoot, "src", "creator_qa", "__init__.py"), "");
+  fs.writeFileSync(
+    path.join(creatorQaRoot, "src", "creator_qa", "cli.py"),
+    `import argparse, json, pathlib, sys
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("command")
+    parser.add_argument("input")
+    parser.add_argument("--profile")
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--report")
+    args = parser.parse_args()
+    pathlib.Path(args.report).write_text("# Creator QA Report\\n\\nOverall: PASS\\n", encoding="utf-8")
+    print(json.dumps({"overall_result": "PASS", "total_score": 35}))
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+`,
+    "utf8"
+  );
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({
+      package: {
+        proposedTitle: "Creator QA CLI Package",
+        onThumbnailText: "QA Gate",
+        viewerPromise: "The viewer gets a checked package.",
+      },
+    })
+  );
+  fs.writeFileSync(path.join(runDir, "final-outline.md"), "# Final Outline\n\n## Hook\nCheck the package.\n");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n\nIn this video you will check the package before shooting.\n");
+
+  const output = packageRunCreatorQaScript.main([runDir, "--creator-qa-root", creatorQaRoot]);
+  const report = JSON.parse(fs.readFileSync(path.join(runDir, "creator-qa-report.json"), "utf8"));
+
+  assert.equal(output, 0);
+  assert.equal(report.overall_result, "PASS");
+  assert.match(fs.readFileSync(path.join(runDir, "creator-qa-package.md"), "utf8"), /Creator QA CLI Package/);
+  assert.match(fs.readFileSync(path.join(runDir, "creator-qa-report.md"), "utf8"), /Overall: PASS/);
+  assert.equal(packageRunCreatorQaScript.main([runDir, "--creator-qa-root", creatorQaRoot]), 1);
+  assert.equal(packageRunCreatorQaScript.main([runDir, "--creator-qa-root", creatorQaRoot, "--force"]), 0);
+});
+
 test("package runs index classifies workflow status from detected files", () => {
   const files = {};
   packageRunsIndexScript.DETECTED_FILES.forEach((filename) => {
@@ -2098,6 +2185,8 @@ test("package runs index scans package-runs folders and writes index json", () =
     path.join(shootDir, "selected-package.json"),
     JSON.stringify({ package: { proposedTitle: "Ready Package" } })
   );
+  fs.writeFileSync(path.join(shootDir, "creator-qa-report.json"), JSON.stringify({ overall_result: "NEEDS WORK" }));
+  fs.writeFileSync(path.join(shootDir, "creator-qa-report.md"), "# Creator QA Report\n");
   [
     "package-candidates.json",
     "outline-prompt.md",
@@ -2124,8 +2213,12 @@ test("package runs index scans package-runs folders and writes index json", () =
   assert.equal(index.runs[0].runId, "2026-05-02-ready");
   assert.equal(index.runs[0].status, "Ready to shoot");
   assert.equal(index.runs[0].workflowBucket, "Ready to shoot");
+  assert.equal(index.runs[0].creatorQaStatus, "NEEDS WORK");
+  assert.equal(index.runs[0].files.creator_qa_report, true);
+  assert.equal(index.runs[0].files.creator_qa_report_json, true);
   assert.equal(index.runs[0].title, "Ready Package");
   assert.equal(index.runs[1].status, "Idea run");
+  assert.equal(index.runs[1].creatorQaStatus, "not run");
   assert.equal(index.runs[1].workflowBucket, "Needs package selection");
   assert.equal(written.count, 2);
   assert.equal(written.statuses["Ready to shoot"], 1);
@@ -2185,8 +2278,9 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
         title: "Ready Package",
         status: "Ready to shoot",
         workflowBucket: "Ready to shoot",
+        creatorQaStatus: "PASS",
         nextRecommendedCommand: "",
-        files: { final_script: true, production_brief: true },
+        files: { final_script: true, production_brief: true, creator_qa_report: true, creator_qa_report_json: true },
       },
       {
         runId: "2026-05-03-c",
@@ -2194,6 +2288,7 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
         title: "Script Package",
         status: "Final outline ready",
         workflowBucket: "Needs script",
+        creatorQaStatus: "not run",
         nextRecommendedCommand: "node scripts/package-engine-new-script.js package-runs/2026-05-03-c",
         files: { final_outline: true },
       },
@@ -2215,7 +2310,11 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
   assert.match(card, /package-runs\/2026-05-02-b\//);
   assert.match(card, /href="package-runs\/2026-05-02-b\/final-script\.md"/);
   assert.match(card, /data-preview-artifact="package-runs\/2026-05-02-b\/final-script\.md"/);
+  assert.match(card, /Creator QA/);
+  assert.match(card, /PASS/);
+  assert.match(card, /href="package-runs\/2026-05-02-b\/creator-qa-report\.md"/);
   assert.match(scriptCard, /node scripts\/package-engine-new-script\.js package-runs\/2026-05-03-c/);
+  assert.match(scriptCard, /not run/);
   assert.match(scriptCard, /Needs script/);
   assert.match(stats, /Ready to shoot/);
   assert.match(stats, /Needs production prep/);
@@ -2248,7 +2347,7 @@ test("visible app version and html cache busters use current release", () => {
   const htmlFiles = ["index.html", "package-engine.html", "package-runs-dashboard.html"];
   const expectedCacheBuster = new RegExp(`v=${model.APP_VERSION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
 
-  assert.equal(model.APP_VERSION, "1.6.1");
+  assert.equal(model.APP_VERSION, "1.7.0");
   htmlFiles.forEach((filename) => {
     const html = fs.readFileSync(path.join(__dirname, "..", filename), "utf8");
     assert.match(html, expectedCacheBuster);

@@ -22,6 +22,9 @@ const DETECTED_FILES = [
   "resolve-edit-checklist.md",
   "thumbnail-title-check.md",
   "publish-pack.md",
+  "creator-qa-package.md",
+  "creator-qa-report.md",
+  "creator-qa-report.json",
 ];
 
 const PRODUCTION_ARTIFACTS = [
@@ -55,6 +58,9 @@ function parseArgs(argv) {
 }
 
 function fileKey(filename) {
+  if (filename === "selected-package.json") return "selected_package_json";
+  if (filename === "selected-package.md") return "selected_package_md";
+  if (filename === "creator-qa-report.json") return "creator_qa_report_json";
   return filename
     .replace(/\.json$|\.md$/g, "")
     .replace(/-/g, "_");
@@ -152,6 +158,21 @@ function readPackageTitle(runDir) {
   return "";
 }
 
+function readCreatorQaStatus(runDir) {
+  const jsonPath = path.join(runDir, "creator-qa-report.json");
+  if (!fs.existsSync(jsonPath)) return "not run";
+  try {
+    const payload = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+    const status = String(payload.overall_result || payload.status || "").trim().toUpperCase();
+    if (status === "PASS") return "PASS";
+    if (status === "FAIL") return "FAIL";
+    if (status === "NEEDS WORK" || status === "NEEDS_WORK") return "NEEDS WORK";
+    return "not run";
+  } catch (_error) {
+    return "not run";
+  }
+}
+
 function scanRun(runDir, repoRoot = process.cwd()) {
   const runId = path.basename(runDir);
   const runPath = path.relative(repoRoot, runDir).replace(/\\/g, "/");
@@ -166,6 +187,7 @@ function scanRun(runDir, repoRoot = process.cwd()) {
     title: readPackageTitle(runDir),
     status,
     workflowBucket: workflowBucket(status),
+    creatorQaStatus: readCreatorQaStatus(runDir),
     nextExpectedFile: nextExpectedFile(status),
     nextRecommendedCommand: nextRecommendedCommand(status, runPath),
     updatedAt: latestMtimeIso(runDir, DETECTED_FILES),
@@ -233,6 +255,7 @@ module.exports = {
   nextExpectedFile,
   nextRecommendedCommand,
   workflowBucket,
+  readCreatorQaStatus,
   scanRun,
   buildPackageRunsIndex,
   main,

@@ -16,5 +16,6 @@ node --check scripts/package-engine-new-run.js
 node --check scripts/package-engine-new-outline.js
 node --check scripts/package-engine-new-script.js
 node --check scripts/package-engine-new-production.js
+node --check scripts/package-run-creator-qa.js
 node --check scripts/package-runs-index.js
 node --check scripts/package-runs-dashboard-launch.js

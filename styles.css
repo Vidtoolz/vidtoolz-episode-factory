@@ -1288,6 +1288,48 @@ label > span,
   white-space: normal;
 }
 
+.creator-qa-status {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  display: grid;
+  gap: 4px;
+  padding: 9px;
+}
+
+.creator-qa-status span,
+.creator-qa-status small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.creator-qa-status strong {
+  font-size: 15px;
+}
+
+.creator-qa-status a {
+  color: inherit;
+  font-weight: 700;
+}
+
+.creator-qa-pass {
+  background: #eef6f1;
+  border-color: rgba(35, 97, 74, 0.3);
+}
+
+.creator-qa-needs-work {
+  background: #fff6df;
+  border-color: #ead08a;
+}
+
+.creator-qa-fail {
+  background: #fbecea;
+  border-color: #efc4bf;
+}
+
+.creator-qa-not-run {
+  background: var(--panel-soft);
+}
+
 .artifact-preview-panel {
   background: var(--panel);
   border: 1px solid var(--border);

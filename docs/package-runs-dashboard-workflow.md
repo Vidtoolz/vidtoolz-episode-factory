@@ -80,6 +80,16 @@ Available artifacts are rendered as direct local preview links from each run
 card. Clicking one opens the artifact inside the dashboard. The preview panel
 keeps an `Open raw file` link for the original Markdown file.
 
+When `creator-qa-report.json` exists, each card also shows:
+
+```text
+Creator QA: PASS / NEEDS WORK / FAIL / not run
+```
+
+When `creator-qa-report.md` exists, the report is available as a preview link.
+Regenerate the index after running Creator QA so the dashboard sees the new
+status.
+
 ## Artifact Preview
 
 The preview panel renders a small safe Markdown subset:

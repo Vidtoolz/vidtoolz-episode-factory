@@ -18,7 +18,7 @@ Automated verification:
 
 - Open the local URL printed by the script.
 - Confirm the app loads with no console errors.
-- Confirm the header shows `v1.6.1`.
+- Confirm the header shows `v1.7.0`.
 
 ## Status And Backup Visibility
 
@@ -27,7 +27,7 @@ Automated verification:
 - Export JSON.
 - Confirm the last JSON export timestamp changes from `Never` to a local date/time.
 - Confirm backup health changes to `Exported today`.
-- Confirm the exported JSON includes `appVersion: "1.6.1"`.
+- Confirm the exported JSON includes `appVersion: "1.7.0"`.
 - Start an active session, export JSON, and confirm the export status explains that the active session draft is not included in JSON export.
 - Import the exported JSON.
 - Confirm the import preview shows current episode count, imported episode count, matching episodes, skipped episodes, and imported work session count.

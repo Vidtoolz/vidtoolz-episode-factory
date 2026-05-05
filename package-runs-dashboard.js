@@ -35,6 +35,9 @@
     ["resolve_edit_checklist", "resolve-edit-checklist.md", "Resolve checklist"],
     ["thumbnail_title_check", "thumbnail-title-check.md", "Thumbnail/title"],
     ["publish_pack", "publish-pack.md", "Publish pack"],
+    ["creator_qa_package", "creator-qa-package.md", "Creator QA package"],
+    ["creator_qa_report", "creator-qa-report.md", "Creator QA report"],
+    ["creator_qa_report_json", "creator-qa-report.json", "Creator QA JSON"],
   ];
 
   function escapeHtml(value) {
@@ -65,6 +68,7 @@
         title: String(run.title || ""),
         status: String(run.status || "Idea run"),
         workflowBucket: String(run.workflowBucket || workflowBucketForStatus(run.status || "Idea run")),
+        creatorQaStatus: String(run.creatorQaStatus || "not run"),
         nextExpectedFile: String(run.nextExpectedFile || ""),
         nextRecommendedCommand: String(run.nextRecommendedCommand || ""),
         updatedAt: String(run.updatedAt || ""),
@@ -217,6 +221,19 @@
     return `<div class="run-command"><span>Next command</span><code>${escapeHtml(run.nextRecommendedCommand)}</code></div>`;
   }
 
+  function creatorQaClass(status) {
+    return `creator-qa-${String(status || "not-run").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  }
+
+  function renderCreatorQaStatus(run) {
+    const status = run.creatorQaStatus || "not run";
+    const reportHref = run.files && run.files.creator_qa_report ? fileHref(run, "creator-qa-report.md") : "";
+    const report = reportHref
+      ? `<a href="${escapeHtml(reportHref)}" data-preview-artifact="${escapeHtml(reportHref)}" data-artifact-title="Creator QA report" data-run-id="${escapeHtml(run.runId)}">preview report</a>`
+      : "Run Creator QA before shooting or publishing.";
+    return `<div class="creator-qa-status ${creatorQaClass(status)}"><span>Creator QA</span><strong>${escapeHtml(status)}</strong><small>${report}</small></div>`;
+  }
+
   function renderRunCard(run) {
     const title = run.title || run.runId;
     const next = run.nextExpectedFile ? `<p class="muted">Next: ${escapeHtml(run.nextExpectedFile)}</p>` : `<p class="muted">Next: shoot the video.</p>`;
@@ -231,6 +248,7 @@
         </div>
         <h2>${escapeHtml(title)}</h2>
         ${next}
+        ${renderCreatorQaStatus(run)}
         ${renderNextCommand(run)}
         <div class="package-card-grid">
           <div><span>Updated</span><strong>${escapeHtml(updated)}</strong></div>
@@ -369,6 +387,7 @@
     renderFilePills,
     renderMarkdown,
     renderNextCommand,
+    renderCreatorQaStatus,
     renderRunCard,
     renderStats,
     renderWorkflowStats,
