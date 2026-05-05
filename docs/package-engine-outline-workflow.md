@@ -70,3 +70,13 @@ final-outline.md
 3. Save the generated three outlines into `outlines.md`.
 4. Choose or edit one outline into `final-outline.md`.
 5. Do not generate a full script until the final outline is approved.
+
+## Next Step
+
+After `final-outline.md` is approved, create Script Prep files:
+
+```sh
+node scripts/package-engine-new-script.js package-runs/YYYY-MM-DD-topic-slug
+```
+
+See [package-engine-script-prep-workflow.md](package-engine-script-prep-workflow.md).

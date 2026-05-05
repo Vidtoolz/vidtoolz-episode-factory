@@ -90,3 +90,50 @@ final-outline.md
 ```
 
 See [package-engine-outline-workflow.md](package-engine-outline-workflow.md).
+
+## Script Prep
+
+After `final-outline.md` is approved, generate reviewable script preparation
+artifacts:
+
+```sh
+node scripts/package-engine-new-script.js package-runs/YYYY-MM-DD-topic-slug
+```
+
+This creates:
+
+```text
+script-prompt.md
+script-draft.md
+final-script.md
+production-notes.md
+```
+
+See [package-engine-script-prep-workflow.md](package-engine-script-prep-workflow.md).
+
+## Production Prep
+
+After `final-script.md` is approved, generate practical production planning
+artifacts:
+
+```sh
+node scripts/package-engine-new-production.js package-runs/YYYY-MM-DD-topic-slug
+```
+
+This creates:
+
+```text
+production-brief.md
+shooting-plan.md
+b-roll-list.md
+graphics-list.md
+resolve-edit-checklist.md
+thumbnail-title-check.md
+publish-pack.md
+```
+
+The command does not overwrite different existing production artifacts. It
+skips those files and exits with status `2` so the human-edited work can be
+reviewed manually.
+
+See [package-engine-production-prep-workflow.md](package-engine-production-prep-workflow.md).

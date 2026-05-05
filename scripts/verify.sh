@@ -13,3 +13,5 @@ node --check package-engine.js
 node --check scripts/episode-factory.js
 node --check scripts/package-engine-new-run.js
 node --check scripts/package-engine-new-outline.js
+node --check scripts/package-engine-new-script.js
+node --check scripts/package-engine-new-production.js

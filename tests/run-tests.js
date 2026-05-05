@@ -8,6 +8,8 @@ const packageEngine = require("../package-engine-model.js");
 const packageRun = require("../package-engine-run.js");
 const packageRunScript = require("../scripts/package-engine-new-run.js");
 const packageOutlineScript = require("../scripts/package-engine-new-outline.js");
+const packageScriptPrepScript = require("../scripts/package-engine-new-script.js");
+const packageProductionPrepScript = require("../scripts/package-engine-new-production.js");
 const episodeFactoryCli = require("../scripts/episode-factory.js");
 
 const tests = [];
@@ -1871,6 +1873,189 @@ test("outline cli argument parsing accepts run folder selected and workflow", ()
   assert.equal(parsed.runFolder, "package-runs/run-id");
   assert.equal(parsed.selectedPath, "selected-package.json");
   assert.equal(parsed.workflowPath, "/workflow.md");
+});
+
+test("script prep prompt includes package outline and required review sections", () => {
+  const selectedPackageText = packageRun.selectedPackageToMarkdown({
+    packageNumber: 1,
+    score: 90,
+    recommendation: "Make",
+    proposedTitle: "Selected Package",
+    thumbnailConcept: "Before after workflow",
+    onThumbnailText: "Stop Guessing",
+    viewerPromise: "A practical payoff.",
+    shortsIdeas: ["Hook short", "Demo short"],
+  });
+  const prompt = packageRun.buildScriptPrompt({
+    selectedPackageText,
+    finalOutlineText: "# Final Outline\n\n- Hook\n- Demo\n- Payoff",
+    runId: "2026-05-02-selected-package",
+  });
+
+  assert.match(prompt, /Selected Package Summary/);
+  assert.match(prompt, /Selected Package/);
+  assert.match(prompt, /Final Outline/);
+  assert.match(prompt, /Viewer Promise/);
+  assert.match(prompt, /Title \/ Thumbnail Assumptions/);
+  assert.match(prompt, /Hook Requirements/);
+  assert.match(prompt, /Demo Moments/);
+  assert.match(prompt, /Visual \/ B-roll Notes/);
+  assert.match(prompt, /Retention Beats/);
+  assert.match(prompt, /CTA/);
+  assert.match(prompt, /Shorts Extraction Ideas/);
+  assert.match(prompt, /Packaging still needs verification before finalization/);
+  assert.match(prompt, /Do not create episode folders/);
+});
+
+test("script prep placeholders create reviewable draft final and production files", () => {
+  const draft = packageRun.buildScriptDraftPlaceholderMarkdown("run-id");
+  const final = packageRun.buildFinalScriptPlaceholderMarkdown("run-id");
+  const production = packageRun.buildProductionNotesPlaceholderMarkdown("run-id");
+
+  assert.match(draft, /# Script Draft/);
+  assert.match(draft, /Open Verification Questions/);
+  assert.match(final, /# Final Script/);
+  assert.match(final, /Final Packaging Check/);
+  assert.match(production, /# Production Notes/);
+  assert.match(production, /Visual \/ B-roll Notes/);
+  assert.match(production, /Shorts Extraction Ideas/);
+});
+
+test("script prep cli argument parsing accepts run folder selected and outline", () => {
+  const parsed = packageScriptPrepScript.parseArgs([
+    "package-runs/run-id",
+    "--selected",
+    "selected-package.json",
+    "--outline",
+    "final-outline.md",
+  ]);
+
+  assert.equal(parsed.runFolder, "package-runs/run-id");
+  assert.equal(parsed.selectedPath, "selected-package.json");
+  assert.equal(parsed.outlinePath, "final-outline.md");
+});
+
+test("script prep cli writes the four local review artifacts", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-prep-"));
+  const repoRunsDir = path.join(tempRoot, "package-runs");
+  const runDir = path.join(repoRunsDir, "2026-05-02-script-prep");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({
+      package: {
+        proposedTitle: "Script Prep Package",
+        viewerPromise: "A reviewable script prep workflow.",
+      },
+    })
+  );
+  fs.writeFileSync(path.join(runDir, "final-outline.md"), "# Final Outline\n\n- Hook\n- Demo\n- Payoff\n");
+  fs.writeFileSync(path.join(runDir, "notes.md"), "# Package Run Notes\n");
+
+  const output = packageScriptPrepScript.main([runDir]);
+
+  assert.equal(output, 0);
+  assert.match(fs.readFileSync(path.join(runDir, "script-prompt.md"), "utf8"), /Script Prep Package/);
+  assert.match(fs.readFileSync(path.join(runDir, "script-draft.md"), "utf8"), /# Script Draft/);
+  assert.match(fs.readFileSync(path.join(runDir, "final-script.md"), "utf8"), /# Final Script/);
+  assert.match(fs.readFileSync(path.join(runDir, "production-notes.md"), "utf8"), /# Production Notes/);
+  assert.match(fs.readFileSync(path.join(runDir, "notes.md"), "utf8"), /## Script Prep/);
+});
+
+test("production prep builders create the seven required local planning artifacts", () => {
+  const context = {
+    runId: "run-id",
+    selectedPackageText: "# Selected Package: Production Package\n\n## Thumbnail Concept\n\nBefore after workflow\n\n## Viewer Promise\n\nA practical payoff.",
+    finalOutlineText: "# Final Outline\n\n## Demo\n\nShow a before and after comparison.",
+    finalScriptText: "# Final Script\n\nRecord the hook, show the screen demo, then deliver the payoff.",
+    productionNotesText: "# Production Notes\n\n## Visual / B-roll Notes\n\nCapture the UI timeline and score table.",
+  };
+
+  const brief = packageRun.buildProductionBriefMarkdown(context);
+  const shooting = packageRun.buildShootingPlanMarkdown(context);
+  const broll = packageRun.buildBRollListMarkdown(context);
+  const graphics = packageRun.buildGraphicsListMarkdown(context);
+  const resolve = packageRun.buildResolveEditChecklistMarkdown(context);
+  const thumbnail = packageRun.buildThumbnailTitleCheckMarkdown(context);
+  const publish = packageRun.buildPublishPackMarkdown(context);
+
+  assert.match(brief, /# Production Brief/);
+  assert.match(brief, /Production Package/);
+  assert.match(shooting, /# Shooting Plan/);
+  assert.match(shooting, /Screen Recording \/ Demo Captures/);
+  assert.match(broll, /# B-Roll List/);
+  assert.match(broll, /Capture the UI timeline/);
+  assert.match(graphics, /# Graphics List/);
+  assert.match(resolve, /# Resolve Edit Checklist/);
+  assert.match(thumbnail, /# Thumbnail Title Check/);
+  assert.match(thumbnail, /Packaging Gate/);
+  assert.match(publish, /# Publish Pack/);
+  assert.match(publish, /No Episode Factory episode folder was created automatically/);
+});
+
+test("production prep cli argument parsing accepts run folder and explicit inputs", () => {
+  const parsed = packageProductionPrepScript.parseArgs([
+    "package-runs/run-id",
+    "--selected",
+    "selected-package.json",
+    "--outline",
+    "final-outline.md",
+    "--script",
+    "final-script.md",
+    "--notes",
+    "production-notes.md",
+  ]);
+
+  assert.equal(parsed.runFolder, "package-runs/run-id");
+  assert.equal(parsed.selectedPath, "selected-package.json");
+  assert.equal(parsed.outlinePath, "final-outline.md");
+  assert.equal(parsed.scriptPath, "final-script.md");
+  assert.equal(parsed.notesPath, "production-notes.md");
+});
+
+test("production prep cli writes seven artifacts and preserves existing human edits", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-prep-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-02-production-prep");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({
+      package: {
+        proposedTitle: "Production Prep Package",
+        thumbnailConcept: "Before after screen",
+        viewerPromise: "A practical production plan.",
+        shortsIdeas: ["Hook short", "Payoff short"],
+      },
+    })
+  );
+  fs.writeFileSync(path.join(runDir, "final-outline.md"), "# Final Outline\n\n- Show the demo.\n");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n\nRecord the hook and screen demo.\n");
+  fs.writeFileSync(path.join(runDir, "production-notes.md"), "# Production Notes\n\nCapture B-roll of the UI table.\n");
+  fs.writeFileSync(path.join(runDir, "notes.md"), "# Package Run Notes\n");
+
+  const output = packageProductionPrepScript.main([runDir]);
+
+  assert.equal(output, 0);
+  [
+    "production-brief.md",
+    "shooting-plan.md",
+    "b-roll-list.md",
+    "graphics-list.md",
+    "resolve-edit-checklist.md",
+    "thumbnail-title-check.md",
+    "publish-pack.md",
+  ].forEach((filename) => {
+    assert.equal(fs.existsSync(path.join(runDir, filename)), true);
+  });
+  assert.match(fs.readFileSync(path.join(runDir, "production-brief.md"), "utf8"), /Production Prep Package/);
+  assert.match(fs.readFileSync(path.join(runDir, "b-roll-list.md"), "utf8"), /Capture B-roll of the UI table/);
+  assert.match(fs.readFileSync(path.join(runDir, "notes.md"), "utf8"), /## Production Prep/);
+
+  fs.writeFileSync(path.join(runDir, "shooting-plan.md"), "# Human Shooting Plan\n\nDo not overwrite.\n");
+  const skipped = packageProductionPrepScript.main([runDir]);
+
+  assert.equal(skipped, 2);
+  assert.match(fs.readFileSync(path.join(runDir, "shooting-plan.md"), "utf8"), /Do not overwrite/);
 });
 
 test("episode factory CLI creates file-backed episodes and reports next task", () => {

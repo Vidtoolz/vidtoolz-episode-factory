@@ -96,6 +96,27 @@ node scripts/package-engine-new-outline.js package-runs/YYYY-MM-DD-ai-video-idea
 This writes `outline-prompt.md`, `outlines.md`, and `final-outline.md` for a
 manual three-outline drafting loop.
 
+After approving `final-outline.md`, create reviewable script prep artifacts:
+
+```sh
+node scripts/package-engine-new-script.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `script-prompt.md`, `script-draft.md`, `final-script.md`, and
+`production-notes.md`. It does not call AI APIs, write into Hermes brain, or
+create Episode Factory episode folders.
+
+After approving `final-script.md`, create local production prep artifacts:
+
+```sh
+node scripts/package-engine-new-production.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `production-brief.md`, `shooting-plan.md`, `b-roll-list.md`,
+`graphics-list.md`, `resolve-edit-checklist.md`, `thumbnail-title-check.md`,
+and `publish-pack.md`. Existing human-edited artifacts are skipped instead of
+overwritten.
+
 ## CLI Episode Workflow
 
 Initialize local CLI storage on a fresh checkout:
@@ -301,6 +322,8 @@ High-level browser checks:
 - `styles.css` contains the compact responsive UI.
 - `episode-model.js` owns statuses, field definitions, checklist definitions, normalization, duplication, readiness scoring, weekly review generation, execution queue generation, work sessions, and package export builders.
 - `scripts/episode-factory.js` provides the local file-backed CLI.
+- `scripts/package-engine-new-script.js` creates local Script Prep artifacts from a selected package and final outline.
+- `scripts/package-engine-new-production.js` creates local Production Prep artifacts from a selected package, final outline, and final script.
 - `storage-adapter.js` wraps `localStorage` behind a small interface for later storage changes.
 - `app.js` renders the board and detail view, wires editing, persistence, duplication, deletion, JSON export/import, and clipboard actions.
 - `tests/run-tests.js` verifies core model behavior without browser dependencies.
@@ -313,6 +336,8 @@ High-level browser checks:
 - `docs/release-checklist.md` documents release testing, tagging, backup, and publishing steps.
 - `docs/known-limitations.md` documents current limits.
 - `docs/episode-workflow.md` documents the intended YouTube workflow.
+- `docs/package-engine-script-prep-workflow.md` documents the Script Prep workflow.
+- `docs/package-engine-production-prep-workflow.md` documents the Production Prep workflow.
 - `docs/packaging-gate.md` documents the gate criteria.
 - `docs/creator-qa-export.md` documents the Creator QA export mapping.
 

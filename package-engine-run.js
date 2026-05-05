@@ -364,6 +364,532 @@ Not written yet.
 `;
   }
 
+  function buildScriptPrompt({ selectedPackageText, finalOutlineText, runId = "" }) {
+    const selected = cleanString(selectedPackageText);
+    const outline = cleanString(finalOutlineText);
+    return `# VIDTOOLZ Package Engine Script Prep Prompt
+
+Run:
+
+${cleanString(runId) || "Not specified."}
+
+## Task
+
+Use the selected package summary and final outline below to prepare a reviewable VIDTOOLZ script draft.
+
+Do not finalize packaging yet.
+Do not create episode folders, descriptions, chapters, pinned comments, publishing assets, or production files.
+
+## Packaging Verification Warning
+
+Packaging still needs verification before finalization. Before treating this script as final, re-check the title, thumbnail, viewer promise, first-30-seconds proof, and factual claims against the Package Engine gate.
+
+## Selected Package Summary
+
+${selected || "Not specified."}
+
+## Final Outline
+
+${outline || "Not specified."}
+
+## Viewer Promise
+
+Restate the exact viewer promise in one concrete sentence before drafting. If the promise is unclear, flag it before writing the draft.
+
+## Title / Thumbnail Assumptions
+
+- Working title:
+- Thumbnail concept:
+- On-thumbnail text:
+- Assumptions that must be verified:
+
+## Hook Requirements
+
+- Open with a specific viewer problem or stakes.
+- Prove practical value quickly in the first 30 seconds.
+- Avoid generic AI hype and broad creator advice.
+- Make the viewer understand why this video is worth continuing.
+
+## Demo Moments
+
+List the screen recordings, tool tests, before/after moments, or practical demonstrations the script needs.
+
+## Visual / B-roll Notes
+
+Name useful screen captures, UI states, timeline shots, comparison frames, diagrams, or supporting visuals.
+
+## Retention Beats
+
+Add clear retention beats for the opening, each major section, and the ending payoff.
+
+## CTA
+
+Use one grounded CTA that fits the video promise. Do not interrupt the useful part of the video.
+
+## Shorts Extraction Ideas
+
+Identify five Shorts candidates from the strongest hook, demo, contrast, mistake, or payoff moments.
+
+## Expected Script Draft Output
+
+Write a reviewable draft with:
+
+1. Hook
+2. Promise setup
+3. Main sections from the final outline
+4. Demo and visual callouts inline
+5. Retention beats inline
+6. Ending payoff
+7. CTA
+8. Shorts extraction candidates
+9. Open packaging or factual verification questions
+`;
+  }
+
+  function buildScriptDraftPlaceholderMarkdown(runId = "") {
+    return `# Script Draft
+
+- Run: ${cleanString(runId) || "Not specified."}
+- Status: Paste or write the first reviewable script draft here.
+
+## Viewer Promise
+
+Not drafted yet.
+
+## Hook
+
+Not drafted yet.
+
+## Script Body
+
+Not drafted yet.
+
+## Demo / Visual Callouts
+
+- Not drafted yet.
+
+## Retention Beats
+
+- Not drafted yet.
+
+## CTA
+
+Not drafted yet.
+
+## Shorts Extraction Candidates
+
+1. Not drafted yet.
+2. Not drafted yet.
+3. Not drafted yet.
+4. Not drafted yet.
+5. Not drafted yet.
+
+## Open Verification Questions
+
+- Packaging still needs verification before finalization.
+`;
+  }
+
+  function buildFinalScriptPlaceholderMarkdown(runId = "") {
+    return `# Final Script
+
+- Run: ${cleanString(runId) || "Not specified."}
+- Status: Edit the approved script draft here after review.
+
+## Final Packaging Check
+
+- [ ] Title and thumbnail assumptions verified.
+- [ ] Viewer promise is specific and practical.
+- [ ] Hook proves value quickly.
+- [ ] Factual claims and tool behavior checked.
+- [ ] Script is ready for production planning.
+
+## Final Script
+
+Not finalized yet.
+`;
+  }
+
+  function buildProductionNotesPlaceholderMarkdown(runId = "") {
+    return `# Production Notes
+
+- Run: ${cleanString(runId) || "Not specified."}
+- Status: Fill this during script review and pre-production.
+
+## Shoot List
+
+- Not prepared yet.
+
+## Demo Moments
+
+- Not prepared yet.
+
+## Visual / B-roll Notes
+
+- Not prepared yet.
+
+## Retention Beats
+
+- Not prepared yet.
+
+## Shorts Extraction Ideas
+
+1. Not prepared yet.
+2. Not prepared yet.
+3. Not prepared yet.
+4. Not prepared yet.
+5. Not prepared yet.
+
+## Packaging Verification
+
+- Packaging still needs verification before finalization.
+`;
+  }
+
+  function productionContext(input = {}) {
+    return {
+      runId: cleanString(input.runId) || "Not specified.",
+      selectedPackageText: cleanString(input.selectedPackageText) || "Not specified.",
+      finalOutlineText: cleanString(input.finalOutlineText) || "Not specified.",
+      finalScriptText: cleanString(input.finalScriptText) || "Not specified.",
+      productionNotesText: cleanString(input.productionNotesText) || "No production-notes.md found.",
+    };
+  }
+
+  function markdownTitle(markdown, fallback = "Untitled package") {
+    const text = cleanString(markdown);
+    const heading = text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => line.startsWith("# "));
+    if (!heading) return fallback;
+    return heading.replace(/^#\s+/, "").replace(/^Selected Package:\s*/i, "").trim() || fallback;
+  }
+
+  function extractRelevantLines(text, patterns, limit = 12) {
+    const source = cleanString(text);
+    if (!source) return [];
+    const seen = new Set();
+    const matches = [];
+    source.split(/\r?\n/).forEach((line) => {
+      const cleaned = line.replace(/^[-*]\s+/, "").trim();
+      if (!cleaned || cleaned.length < 4 || cleaned.length > 220) return;
+      if (!patterns.some((pattern) => pattern.test(cleaned))) return;
+      const key = cleaned.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      matches.push(cleaned);
+    });
+    return matches.slice(0, limit);
+  }
+
+  function markdownBulletList(items, fallback) {
+    const cleanItems = Array.isArray(items) ? items.map(cleanString).filter(Boolean) : [];
+    if (!cleanItems.length) return `- ${fallback}`;
+    return cleanItems.map((item) => `- ${item}`).join("\n");
+  }
+
+  function buildProductionBriefMarkdown(input = {}) {
+    const context = productionContext(input);
+    const title = markdownTitle(context.selectedPackageText);
+    const demoLines = extractRelevantLines(`${context.finalOutlineText}\n${context.finalScriptText}\n${context.productionNotesText}`, [
+      /demo/i,
+      /screen/i,
+      /record/i,
+      /show/i,
+      /before/i,
+      /after/i,
+    ]);
+    return `# Production Brief
+
+- Run: ${context.runId}
+- Working title: ${title}
+- Status: Production Prep v1 generated locally. Review before shooting.
+
+## Production Goal
+
+Turn the approved final outline and final script into a practical YouTube shoot, edit, thumbnail, and publish package without creating an Episode Factory episode yet.
+
+## Source Files
+
+- selected-package.json or selected-package.md
+- final-outline.md
+- final-script.md
+- production-notes.md if present
+
+## Package Snapshot
+
+${context.selectedPackageText}
+
+## Production Approach
+
+${markdownBulletList(demoLines, "Review final-outline.md, final-script.md, and production-notes.md, then define the concrete shoot and demo approach.")}
+
+## Must-Prove Moments
+
+- [ ] First 30 seconds proves the viewer promise quickly.
+- [ ] Main demo or example is visible, concrete, and not just described.
+- [ ] Title and thumbnail are still aligned with the final script.
+- [ ] Claims that depend on current tool behavior have been checked manually.
+- [ ] The ending delivers the promised practical payoff.
+
+## Open Production Risks
+
+- [ ] Any abstract section has a visual, demo, comparison, or concrete example.
+- [ ] Any required screen recording can be captured cleanly.
+- [ ] Any missing asset is named before editing starts.
+`;
+  }
+
+  function buildShootingPlanMarkdown(input = {}) {
+    const context = productionContext(input);
+    const shootLines = extractRelevantLines(`${context.finalScriptText}\n${context.productionNotesText}`, [
+      /shoot/i,
+      /record/i,
+      /camera/i,
+      /a-roll/i,
+      /voice/i,
+      /screen/i,
+      /demo/i,
+    ]);
+    return `# Shooting Plan
+
+- Run: ${context.runId}
+- Status: Production Prep v1 generated locally. Edit before recording.
+
+## Pre-Shoot Setup
+
+- [ ] Confirm final-script.md is the approved script.
+- [ ] Confirm final-outline.md still matches the final script.
+- [ ] Check microphone, screen recording settings, and project files.
+- [ ] Prepare any browser tabs, app states, or sample files needed for demos.
+
+## A-Roll / Voice Recording
+
+- [ ] Hook
+- [ ] Promise setup
+- [ ] Section intros and transitions
+- [ ] Demo explanations
+- [ ] Ending payoff
+- [ ] CTA
+
+## Screen Recording / Demo Captures
+
+${markdownBulletList(shootLines, "Add exact screen recordings, app states, and demo steps from the final script.")}
+
+## Pickup List
+
+- [ ] Retake unclear hook line.
+- [ ] Retake any section where the visual does not match the narration.
+- [ ] Capture one clean thumbnail frame or source frame.
+- [ ] Capture safety room tone or clean narration patch if needed.
+`;
+  }
+
+  function buildBRollListMarkdown(input = {}) {
+    const context = productionContext(input);
+    const visualLines = extractRelevantLines(`${context.finalOutlineText}\n${context.finalScriptText}\n${context.productionNotesText}`, [
+      /b-roll/i,
+      /visual/i,
+      /screen/i,
+      /timeline/i,
+      /ui/i,
+      /comparison/i,
+      /before/i,
+      /after/i,
+      /example/i,
+    ]);
+    return `# B-Roll List
+
+- Run: ${context.runId}
+- Status: Production Prep v1 generated locally.
+
+## Required B-Roll
+
+${markdownBulletList(visualLines, "Add concrete screen captures, comparison shots, UI states, timeline shots, and examples.")}
+
+## Coverage Checklist
+
+- [ ] Hook visual support
+- [ ] Problem example
+- [ ] Main demo or workflow
+- [ ] Before/after or contrast moment
+- [ ] Proof of final result
+- [ ] Ending payoff visual
+
+## Capture Notes
+
+- [ ] Use readable zoom levels.
+- [ ] Avoid private data and irrelevant browser clutter.
+- [ ] Keep cursor movement deliberate.
+- [ ] Name captured files clearly before editing.
+`;
+  }
+
+  function buildGraphicsListMarkdown(input = {}) {
+    const context = productionContext(input);
+    const graphicsLines = extractRelevantLines(`${context.finalOutlineText}\n${context.finalScriptText}\n${context.productionNotesText}`, [
+      /graphic/i,
+      /diagram/i,
+      /table/i,
+      /score/i,
+      /framework/i,
+      /checklist/i,
+      /title card/i,
+      /lower third/i,
+      /thumbnail/i,
+    ]);
+    return `# Graphics List
+
+- Run: ${context.runId}
+- Status: Production Prep v1 generated locally.
+
+## Required Graphics
+
+${markdownBulletList(graphicsLines, "Add diagrams, tables, labels, scorecards, lower thirds, and title cards needed by the edit.")}
+
+## Standard Graphics Checklist
+
+- [ ] Opening title or promise card if useful
+- [ ] Section labels
+- [ ] Framework or checklist graphic
+- [ ] Before/after labels
+- [ ] Key mistake or warning callout
+- [ ] Final takeaway card
+
+## Design Guardrails
+
+- [ ] Text is readable on mobile.
+- [ ] Graphics support the point instead of restating the full narration.
+- [ ] Visual language matches VIDTOOLZ: practical, clean, non-hype.
+`;
+  }
+
+  function buildResolveEditChecklistMarkdown(input = {}) {
+    const context = productionContext(input);
+    return `# Resolve Edit Checklist
+
+- Run: ${context.runId}
+- Status: Production Prep v1 generated locally.
+
+## Ingest
+
+- [ ] Create Resolve project.
+- [ ] Import A-roll, screen recordings, B-roll, graphics, music, and thumbnail source frames.
+- [ ] Rename bins clearly.
+- [ ] Sync or align audio if needed.
+
+## Rough Cut
+
+- [ ] Build hook and first 30 seconds first.
+- [ ] Remove weak setup and repeated points.
+- [ ] Place demo footage where the script promises proof.
+- [ ] Check pacing at each section transition.
+
+## Visual Pass
+
+- [ ] Add B-roll from b-roll-list.md.
+- [ ] Add graphics from graphics-list.md.
+- [ ] Add readable zooms or callouts for UI details.
+- [ ] Check that visuals do not contradict narration.
+
+## Audio / Color
+
+- [ ] Dialogue is clear and consistent.
+- [ ] Music, if used, stays below narration.
+- [ ] Screen recordings and camera footage look consistent enough.
+- [ ] Loudness and export settings are checked.
+
+## Final Watchdown
+
+- [ ] Viewer promise is delivered.
+- [ ] Title and thumbnail still match the final video.
+- [ ] No private data, dead air, or broken visual references remain.
+- [ ] Export filename and version are clear.
+`;
+  }
+
+  function buildThumbnailTitleCheckMarkdown(input = {}) {
+    const context = productionContext(input);
+    const title = markdownTitle(context.selectedPackageText);
+    const thumbnailLines = extractRelevantLines(context.selectedPackageText, [/thumbnail/i, /title/i, /promise/i, /viewer/i, /risk/i], 10);
+    return `# Thumbnail Title Check
+
+- Run: ${context.runId}
+- Working title: ${title}
+- Status: Production Prep v1 generated locally.
+
+## Source Package Signals
+
+${markdownBulletList(thumbnailLines, "Review selected-package.json or selected-package.md for title, thumbnail, viewer promise, and main risk.")}
+
+## Packaging Gate
+
+- [ ] Title creates a specific curiosity gap.
+- [ ] Thumbnail communicates the idea without needing the title.
+- [ ] On-thumbnail text is short enough to read on mobile.
+- [ ] Viewer promise is practical and specific.
+- [ ] First 30 seconds proves the title/thumbnail promise.
+- [ ] Final edit still matches the package.
+
+## Working Options
+
+1. Title:
+   Thumbnail text:
+   Thumbnail image:
+2. Title:
+   Thumbnail text:
+   Thumbnail image:
+3. Title:
+   Thumbnail text:
+   Thumbnail image:
+`;
+  }
+
+  function buildPublishPackMarkdown(input = {}) {
+    const context = productionContext(input);
+    const shortsLines = extractRelevantLines(`${context.selectedPackageText}\n${context.finalScriptText}\n${context.productionNotesText}`, [
+      /short/i,
+      /hook/i,
+      /mistake/i,
+      /payoff/i,
+      /before/i,
+      /after/i,
+    ]);
+    return `# Publish Pack
+
+- Run: ${context.runId}
+- Status: Production Prep v1 generated locally. Fill after final edit.
+
+## Video Metadata Draft
+
+- Final title:
+- Alternate title:
+- Thumbnail file:
+- Export file:
+- Description draft:
+- Pinned comment:
+
+## Chapters
+
+00:00 Hook
+
+## Shorts Candidates
+
+${markdownBulletList(shortsLines, "Add five Shorts candidates from the hook, strongest demo, mistake, contrast, or payoff moment.")}
+
+## Publish Checklist
+
+- [ ] Final export watched once before upload.
+- [ ] Title and thumbnail checked against final edit.
+- [ ] Description includes the practical viewer payoff.
+- [ ] Chapters are accurate.
+- [ ] Pinned comment is useful and not generic.
+- [ ] Shorts candidates are named for later extraction.
+- [ ] No Episode Factory episode folder was created automatically by this prep step.
+`;
+  }
+
   function candidateSourceFromRun(runId) {
     const cleaned = slugifyTopic(runId);
     return `${RUNS_DIR}/${cleaned}/package-candidates.json`;
@@ -390,6 +916,17 @@ Not written yet.
     buildOutlinePrompt,
     buildOutlinesPlaceholderMarkdown,
     buildFinalOutlinePlaceholderMarkdown,
+    buildScriptPrompt,
+    buildScriptDraftPlaceholderMarkdown,
+    buildFinalScriptPlaceholderMarkdown,
+    buildProductionNotesPlaceholderMarkdown,
+    buildProductionBriefMarkdown,
+    buildShootingPlanMarkdown,
+    buildBRollListMarkdown,
+    buildGraphicsListMarkdown,
+    buildResolveEditChecklistMarkdown,
+    buildThumbnailTitleCheckMarkdown,
+    buildPublishPackMarkdown,
     candidateSourceFromRun,
     candidateSourceFromLocation,
   };
