@@ -4,14 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Package Runs Dashboard</title>
-    <link rel="stylesheet" href="styles.css?v=1.5.0" />
+    <link rel="stylesheet" href="styles.css?v=1.6.0" />
   </head>
   <body>
     <div class="app-shell package-engine-shell">
       <header class="topbar">
         <div>
           <p class="eyebrow">VIDTOOLZ</p>
-          <h1>Package Runs <span class="version-badge">v1.5.0</span></h1>
+          <h1>Package Runs <span class="version-badge">v1.6.0</span></h1>
         </div>
         <div class="topbar-actions">
           <a class="nav-link-button" href="index.html">Episode Factory</a>
@@ -53,10 +53,23 @@
         </section>
 
         <section id="packageRunsStats" class="package-runs-stats" aria-label="Package run status counts"></section>
+        <section id="artifactPreviewPanel" class="artifact-preview-panel hidden" aria-label="Run artifact preview">
+          <div class="artifact-preview-header">
+            <div>
+              <h2 id="artifactPreviewTitle">Artifact Preview</h2>
+              <p id="artifactPreviewMeta" class="muted">Select an artifact from a run card.</p>
+            </div>
+            <div class="artifact-preview-actions">
+              <a id="artifactRawLink" class="nav-link-button" href="#" target="_blank" rel="noopener">Open raw file</a>
+              <button id="artifactPreviewClose" type="button">Close preview</button>
+            </div>
+          </div>
+          <div id="artifactPreviewContent" class="artifact-preview-content"></div>
+        </section>
         <section id="packageRunsGrid" class="package-runs-grid" aria-label="Package run cards"></section>
       </main>
     </div>
 
-    <script src="package-runs-dashboard.js?v=1.5.0"></script>
+    <script src="package-runs-dashboard.js?v=1.6.0"></script>
   </body>
 </html>

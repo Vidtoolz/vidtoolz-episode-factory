@@ -2189,19 +2189,43 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
   assert.match(card, /Ready to shoot/);
   assert.match(card, /package-runs\/2026-05-02-b\//);
   assert.match(card, /href="package-runs\/2026-05-02-b\/final-script\.md"/);
+  assert.match(card, /data-preview-artifact="package-runs\/2026-05-02-b\/final-script\.md"/);
   assert.match(scriptCard, /node scripts\/package-engine-new-script\.js package-runs\/2026-05-03-c/);
   assert.match(scriptCard, /Needs script/);
   assert.match(stats, /Ready to shoot/);
   assert.match(stats, /Needs production prep/);
 });
 
+test("package runs dashboard renders a safe markdown preview subset", () => {
+  const html = packageRunsDashboard.renderMarkdown(`# Title <script>
+
+Paragraph with **bold** and \`code\`.
+
+- Bullet <b>one</b>
+- [x] Done item
+- [ ] Open item
+
+\`\`\`
+const unsafe = "<tag>";
+\`\`\`
+`);
+
+  assert.match(html, /<h1>Title &lt;script&gt;<\/h1>/);
+  assert.match(html, /<p>Paragraph with <strong>bold<\/strong> and <code>code<\/code>\.<\/p>/);
+  assert.match(html, /<li>Bullet &lt;b&gt;one&lt;\/b&gt;<\/li>/);
+  assert.match(html, /type="checkbox" disabled checked/);
+  assert.match(html, /type="checkbox" disabled/);
+  assert.match(html, /&lt;tag&gt;/);
+  assert.doesNotMatch(html, /<script>|<b>one<\/b>/);
+});
+
 test("visible app version and html cache busters use current release", () => {
   const htmlFiles = ["index.html", "package-engine.html", "package-runs-dashboard.html"];
 
-  assert.equal(model.APP_VERSION, "1.5.0");
+  assert.equal(model.APP_VERSION, "1.6.0");
   htmlFiles.forEach((filename) => {
     const html = fs.readFileSync(path.join(__dirname, "..", filename), "utf8");
-    assert.match(html, /v=1\.5\.0/);
+    assert.match(html, /v=1\.6\.0/);
     assert.doesNotMatch(html, /v=1\.2\.0|v=1\.0\.0|v1\.2\.0|Review UI v1|Dashboard v1/);
   });
 });

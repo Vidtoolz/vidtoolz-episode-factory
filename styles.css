@@ -1288,6 +1288,113 @@ label > span,
   white-space: normal;
 }
 
+.artifact-preview-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.artifact-preview-header {
+  align-items: start;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding-bottom: 12px;
+}
+
+.artifact-preview-header h2,
+.artifact-preview-header p {
+  margin: 0;
+}
+
+.artifact-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.artifact-preview-content {
+  display: grid;
+  gap: 10px;
+  line-height: 1.5;
+  max-width: 980px;
+}
+
+.artifact-preview-content h1,
+.artifact-preview-content h2,
+.artifact-preview-content h3,
+.artifact-preview-content h4,
+.artifact-preview-content p,
+.artifact-preview-content ul,
+.artifact-preview-content pre {
+  margin: 0;
+}
+
+.artifact-preview-content h1 {
+  font-size: 24px;
+}
+
+.artifact-preview-content h2 {
+  border-top: 1px solid var(--border);
+  font-size: 19px;
+  padding-top: 12px;
+}
+
+.artifact-preview-content h3,
+.artifact-preview-content h4 {
+  font-size: 16px;
+}
+
+.artifact-preview-content p,
+.artifact-preview-content li {
+  color: var(--text);
+}
+
+.artifact-preview-content ul {
+  display: grid;
+  gap: 6px;
+  padding-left: 22px;
+}
+
+.artifact-preview-content code {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 13px;
+  padding: 1px 4px;
+}
+
+.artifact-preview-content pre {
+  background: #20251f;
+  border-radius: 7px;
+  color: #f5f7f2;
+  overflow: auto;
+  padding: 12px;
+}
+
+.artifact-preview-content pre code {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  padding: 0;
+}
+
+.preview-checkbox {
+  align-items: start;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.preview-checkbox input {
+  margin-top: 3px;
+}
+
 .shorts-list {
   display: grid;
   gap: 6px;
@@ -1333,7 +1440,8 @@ label > span,
 
   .topbar,
   .topbar-actions,
-  .detail-header {
+  .detail-header,
+  .artifact-preview-header {
     align-items: stretch;
     flex-direction: column;
   }

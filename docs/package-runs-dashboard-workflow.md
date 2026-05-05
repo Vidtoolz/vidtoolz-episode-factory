@@ -58,7 +58,27 @@ thumbnail-title-check.md
 publish-pack.md
 ```
 
-Available artifacts are rendered as direct local links from each run card.
+Available artifacts are rendered as direct local preview links from each run
+card. Clicking one opens the artifact inside the dashboard. The preview panel
+keeps an `Open raw file` link for the original Markdown file.
+
+## Artifact Preview
+
+The preview panel renders a small safe Markdown subset:
+
+- headings
+- paragraphs
+- bullet lists
+- disabled checkboxes
+- inline code and bold text
+- fenced code blocks
+
+The dashboard fetches files from the same local static server as the page. If a
+preview fails, serve the repo root and reopen the dashboard:
+
+```sh
+python3 -m http.server 8010
+```
 
 ## Status Rules
 

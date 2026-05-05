@@ -108,6 +108,11 @@
     return base ? `${base}/${filename}` : filename;
   }
 
+  function artifactLabelForFilename(filename) {
+    const match = FILE_LABELS.find(([_key, file]) => file === filename);
+    return match ? match[2] : filename;
+  }
+
   function renderFilePills(run) {
     const files = run.files || {};
     return FILE_LABELS.map(([key, filename, label]) => {
@@ -115,8 +120,94 @@
       if (!present) {
         return `<span class="run-file-pill missing">no ${escapeHtml(label)}</span>`;
       }
-      return `<a class="run-file-pill present" href="${escapeHtml(fileHref(run, filename))}">open ${escapeHtml(label)}</a>`;
+      const href = fileHref(run, filename);
+      return `<a class="run-file-pill present" href="${escapeHtml(href)}" data-preview-artifact="${escapeHtml(href)}" data-artifact-title="${escapeHtml(label)}" data-run-id="${escapeHtml(run.runId)}">preview ${escapeHtml(label)}</a>`;
     }).join("");
+  }
+
+  function flushParagraph(lines, output) {
+    if (!lines.length) return;
+    output.push(`<p>${lines.join(" ")}</p>`);
+    lines.length = 0;
+  }
+
+  function flushList(items, output) {
+    if (!items.length) return;
+    output.push(`<ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>`);
+    items.length = 0;
+  }
+
+  function renderInlineMarkdown(value) {
+    return escapeHtml(value)
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  }
+
+  function renderMarkdown(markdown) {
+    const lines = String(markdown || "").replace(/\r\n/g, "\n").split("\n");
+    const output = [];
+    const paragraph = [];
+    const listItems = [];
+    let inCode = false;
+    let codeLines = [];
+
+    lines.forEach((line) => {
+      if (/^```/.test(line.trim())) {
+        if (inCode) {
+          output.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+          codeLines = [];
+          inCode = false;
+        } else {
+          flushParagraph(paragraph, output);
+          flushList(listItems, output);
+          inCode = true;
+        }
+        return;
+      }
+
+      if (inCode) {
+        codeLines.push(line);
+        return;
+      }
+
+      const heading = line.match(/^(#{1,6})\s+(.+)$/);
+      if (heading) {
+        flushParagraph(paragraph, output);
+        flushList(listItems, output);
+        const level = Math.min(heading[1].length, 4);
+        output.push(`<h${level}>${renderInlineMarkdown(heading[2].trim())}</h${level}>`);
+        return;
+      }
+
+      const checkbox = line.match(/^\s*[-*]\s+\[([ xX])\]\s+(.+)$/);
+      if (checkbox) {
+        flushParagraph(paragraph, output);
+        const checked = checkbox[1].toLowerCase() === "x";
+        listItems.push(`<label class="preview-checkbox"><input type="checkbox" disabled ${checked ? "checked" : ""} /> <span>${renderInlineMarkdown(checkbox[2].trim())}</span></label>`);
+        return;
+      }
+
+      const bullet = line.match(/^\s*[-*]\s+(.+)$/);
+      if (bullet) {
+        flushParagraph(paragraph, output);
+        listItems.push(renderInlineMarkdown(bullet[1].trim()));
+        return;
+      }
+
+      if (!line.trim()) {
+        flushParagraph(paragraph, output);
+        flushList(listItems, output);
+        return;
+      }
+
+      flushList(listItems, output);
+      paragraph.push(renderInlineMarkdown(line.trim()));
+    });
+
+    if (inCode) output.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+    flushParagraph(paragraph, output);
+    flushList(listItems, output);
+    return output.join("\n") || "<p>No previewable content.</p>";
   }
 
   function renderNextCommand(run) {
@@ -177,6 +268,12 @@
       summary: doc.querySelector("#packageRunsSummary"),
       statusFilter: doc.querySelector("#runStatusFilter"),
       sort: doc.querySelector("#runSortSelect"),
+      previewPanel: doc.querySelector("#artifactPreviewPanel"),
+      previewTitle: doc.querySelector("#artifactPreviewTitle"),
+      previewMeta: doc.querySelector("#artifactPreviewMeta"),
+      previewContent: doc.querySelector("#artifactPreviewContent"),
+      rawLink: doc.querySelector("#artifactRawLink"),
+      closePreview: doc.querySelector("#artifactPreviewClose"),
     };
     let index = normalizeIndex({});
 
@@ -211,10 +308,50 @@
         });
     }
 
+    function showPreviewLoading(href, title, runId) {
+      els.previewPanel.classList.remove("hidden");
+      els.previewTitle.textContent = title || artifactLabelForFilename(href.split("/").pop());
+      els.previewMeta.textContent = runId ? `${runId} · ${href}` : href;
+      els.rawLink.href = href;
+      els.previewContent.innerHTML = `<p class="muted">Loading ${escapeHtml(href)}...</p>`;
+      els.previewPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function showPreviewError(href, error) {
+      els.previewContent.innerHTML = `<p class="muted">Could not load ${escapeHtml(href)}. ${escapeHtml(error.message)} The file may require serving this repo root with <code>python3 -m http.server 8010</code>.</p>`;
+    }
+
+    function previewArtifact(link) {
+      const href = link.getAttribute("href");
+      const title = link.dataset.artifactTitle || artifactLabelForFilename(href.split("/").pop());
+      const runId = link.dataset.runId || "";
+      showPreviewLoading(href, title, runId);
+      fetch(href, { cache: "no-store" })
+        .then((response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}.`);
+          return response.text();
+        })
+        .then((text) => {
+          els.previewContent.innerHTML = renderMarkdown(text);
+        })
+        .catch((error) => showPreviewError(href, error));
+    }
+
+    function handleGridClick(event) {
+      const link = event.target.closest("[data-preview-artifact]");
+      if (!link) return;
+      event.preventDefault();
+      previewArtifact(link);
+    }
+
     els.statusFilter.addEventListener("change", render);
     els.sort.addEventListener("change", render);
+    els.grid.addEventListener("click", handleGridClick);
+    els.closePreview.addEventListener("click", () => {
+      els.previewPanel.classList.add("hidden");
+    });
 
-    return { load, render };
+    return { load, render, previewArtifact };
   }
 
   const api = {
@@ -228,7 +365,9 @@
     statusClass,
     workflowBucketForStatus,
     fileHref,
+    artifactLabelForFilename,
     renderFilePills,
+    renderMarkdown,
     renderNextCommand,
     renderRunCard,
     renderStats,
