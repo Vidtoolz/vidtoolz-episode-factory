@@ -11,6 +11,7 @@ const packageOutlineScript = require("../scripts/package-engine-new-outline.js")
 const packageScriptPrepScript = require("../scripts/package-engine-new-script.js");
 const packageProductionPrepScript = require("../scripts/package-engine-new-production.js");
 const packageRunsIndexScript = require("../scripts/package-runs-index.js");
+const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashboard-launch.js");
 const packageRunsDashboard = require("../package-runs-dashboard.js");
 const episodeFactoryCli = require("../scripts/episode-factory.js");
 
@@ -2149,6 +2150,30 @@ test("package runs index recommends deterministic next local commands", () => {
   assert.equal(packageRunsIndexScript.workflowBucket("Production prep ready"), "Needs production prep");
 });
 
+test("package runs dashboard launch helper writes index and prints local launch instructions", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-runs-dashboard-launch-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-02-launch");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "package-candidates.json"), "{\"candidates\":[]}\n");
+
+  const parsed = packageRunsDashboardLaunchScript.parseArgs(["--serve", "--port", "8020", "--bind", "127.0.0.1"]);
+  const result = packageRunsDashboardLaunchScript.writePackageRunsIndex(tempRoot);
+  const message = packageRunsDashboardLaunchScript.buildLaunchMessage(tempRoot);
+  const customMessage = packageRunsDashboardLaunchScript.buildLaunchMessage(tempRoot, parsed);
+  const written = JSON.parse(fs.readFileSync(path.join(tempRoot, "package-runs-index.json"), "utf8"));
+
+  assert.equal(parsed.serve, true);
+  assert.equal(parsed.port, "8020");
+  assert.equal(parsed.host, "127.0.0.1");
+  assert.equal(result.index.count, 1);
+  assert.equal(written.runs[0].runId, "2026-05-02-launch");
+  assert.match(message, /package-runs-index\.json updated/);
+  assert.match(message, new RegExp(`cd ${tempRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+  assert.match(message, /python3 -m http\.server 8010 --bind 127\.0\.0\.1/);
+  assert.match(message, /http:\/\/127\.0\.0\.1:8010\/package-runs-dashboard\.html/);
+  assert.match(customMessage, /python3 -m http\.server 8020 --bind 127\.0\.0\.1/);
+});
+
 test("package runs dashboard normalizes filters and renders run cards", () => {
   const payload = {
     generatedAt: "2026-05-05T00:00:00.000Z",
@@ -2221,11 +2246,12 @@ const unsafe = "<tag>";
 
 test("visible app version and html cache busters use current release", () => {
   const htmlFiles = ["index.html", "package-engine.html", "package-runs-dashboard.html"];
+  const expectedCacheBuster = new RegExp(`v=${model.APP_VERSION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
 
-  assert.equal(model.APP_VERSION, "1.6.0");
+  assert.equal(model.APP_VERSION, "1.6.1");
   htmlFiles.forEach((filename) => {
     const html = fs.readFileSync(path.join(__dirname, "..", filename), "utf8");
-    assert.match(html, /v=1\.6\.0/);
+    assert.match(html, expectedCacheBuster);
     assert.doesNotMatch(html, /v=1\.2\.0|v=1\.0\.0|v1\.2\.0|Review UI v1|Dashboard v1/);
   });
 });

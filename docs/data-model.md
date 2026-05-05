@@ -342,7 +342,7 @@ Export creates a JSON object with metadata plus the normalized state:
 ```js
 {
   app: "VIDTOOLZ Episode Factory",
-  appVersion: "1.6.0",
+  appVersion: "1.6.1",
   schemaVersion: 1,
   storageKey: "vidtoolz-episode-factory-v1",
   exportedAt: "...",
@@ -394,7 +394,7 @@ JSON output shape:
 {
   ok: true,
   storagePath: "data/episodes.json",
-  appVersion: "1.6.0",
+  appVersion: "1.6.1",
   schemaVersion: 1,
   summary: {
     episodes: 1,

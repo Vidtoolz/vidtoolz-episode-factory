@@ -1,6 +1,6 @@
 # VIDTOOLZ Episode Factory
 
-VIDTOOLZ Episode Factory v1.6.0 is a local-first static web app for turning rough YouTube ideas into complete production packages and running a stable weekly creator workflow.
+VIDTOOLZ Episode Factory v1.6.1 is a local-first static web app for turning rough YouTube ideas into complete production packages and running a stable weekly creator workflow.
 
 The purpose is practical creator discipline: keep the topic, promise, title options, thumbnail concept, hook, script outline, structured production checklists, Shorts extraction checks, publish checks, and notes in one compact place before a solo creator starts shooting.
 
@@ -10,7 +10,7 @@ Important: browser `localStorage` is not a durable backup system. Export JSON re
 
 For terminal-first work, the dependency-free CLI can also store inspectable episode JSON in `data/episodes.json` and write outline artifacts under `episodes/`. This is separate from browser `localStorage` until you import/export JSON manually.
 
-## v1.6.0 Features
+## v1.6.1 Features
 
 - Create, edit, delete, and duplicate episodes
 - Manage episodes on a compact status board
@@ -72,6 +72,13 @@ Generate the Package Runs dashboard index:
 
 ```sh
 node scripts/package-runs-index.js
+```
+
+Or regenerate the index and print the exact local server command and dashboard
+URL:
+
+```sh
+node scripts/package-runs-dashboard-launch.js
 ```
 
 Then open the local status dashboard:
@@ -271,7 +278,7 @@ The browser app stores its working library in `localStorage` under `vidtoolz-epi
 ```js
 {
   app: "VIDTOOLZ Episode Factory",
-  appVersion: "1.6.0",
+  appVersion: "1.6.1",
   schemaVersion: 1,
   storageKey: "vidtoolz-episode-factory-v1",
   exportedAt: "...",
@@ -337,6 +344,7 @@ High-level browser checks:
 - `scripts/package-engine-new-script.js` creates local Script Prep artifacts from a selected package and final outline.
 - `scripts/package-engine-new-production.js` creates local Production Prep artifacts from a selected package, final outline, and final script.
 - `scripts/package-runs-index.js` generates the local Package Runs dashboard index.
+- `scripts/package-runs-dashboard-launch.js` regenerates the Package Runs index and prints the local dashboard launch command.
 - `package-runs-dashboard.html` and `package-runs-dashboard.js` render the static Package Runs dashboard.
 - `storage-adapter.js` wraps `localStorage` behind a small interface for later storage changes.
 - `app.js` renders the board and detail view, wires editing, persistence, duplication, deletion, JSON export/import, and clipboard actions.

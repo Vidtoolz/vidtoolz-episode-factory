@@ -14,6 +14,24 @@ Run this from the repo root:
 node scripts/package-runs-index.js
 ```
 
+For daily use, run the launch helper from any current working directory:
+
+```sh
+node /home/vidtoolz/vidtoolz-episode-factory/scripts/package-runs-dashboard-launch.js
+```
+
+It regenerates `package-runs-index.json` and prints:
+
+```text
+package-runs-index.json updated
+cd /home/vidtoolz/vidtoolz-episode-factory
+python3 -m http.server 8010 --bind 127.0.0.1
+http://127.0.0.1:8010/package-runs-dashboard.html
+```
+
+It does not start a server unless `--serve` is passed. With `--serve`, the
+server is started from the repo root.
+
 This scans `package-runs/*` and writes:
 
 ```text
