@@ -2157,6 +2157,30 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
   assert.match(stats, /Ready to shoot/);
 });
 
+test("visible app version and html cache busters use current release", () => {
+  const htmlFiles = ["index.html", "package-engine.html", "package-runs-dashboard.html"];
+
+  assert.equal(model.APP_VERSION, "1.4.1");
+  htmlFiles.forEach((filename) => {
+    const html = fs.readFileSync(path.join(__dirname, "..", filename), "utf8");
+    assert.match(html, /v=1\.4\.1/);
+    assert.doesNotMatch(html, /v=1\.2\.0|v=1\.0\.0|v1\.2\.0|Review UI v1|Dashboard v1/);
+  });
+});
+
+test("browser entry pages link between episode factory package engine and run dashboard", () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const packageEngineHtml = fs.readFileSync(path.join(__dirname, "..", "package-engine.html"), "utf8");
+  const dashboardHtml = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.html"), "utf8");
+
+  assert.match(indexHtml, /href="package-engine\.html"/);
+  assert.match(indexHtml, /href="package-runs-dashboard\.html"/);
+  assert.match(packageEngineHtml, /href="index\.html"/);
+  assert.match(packageEngineHtml, /href="package-runs-dashboard\.html"/);
+  assert.match(dashboardHtml, /href="index\.html"/);
+  assert.match(dashboardHtml, /href="package-engine\.html"/);
+});
+
 test("episode factory CLI creates file-backed episodes and reports next task", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "episode-factory-cli-"));
   const dataFile = path.join(tempDir, "episodes.json");

@@ -1,6 +1,6 @@
 # VIDTOOLZ Episode Factory
 
-VIDTOOLZ Episode Factory v1.2 is a local-first static web app for turning rough YouTube ideas into complete production packages and running a stable weekly creator workflow.
+VIDTOOLZ Episode Factory v1.4.1 is a local-first static web app for turning rough YouTube ideas into complete production packages and running a stable weekly creator workflow.
 
 The purpose is practical creator discipline: keep the topic, promise, title options, thumbnail concept, hook, script outline, structured production checklists, Shorts extraction checks, publish checks, and notes in one compact place before a solo creator starts shooting.
 
@@ -10,7 +10,7 @@ Important: browser `localStorage` is not a durable backup system. Export JSON re
 
 For terminal-first work, the dependency-free CLI can also store inspectable episode JSON in `data/episodes.json` and write outline artifacts under `episodes/`. This is separate from browser `localStorage` until you import/export JSON manually.
 
-## v1.2 Features
+## v1.4.1 Features
 
 - Create, edit, delete, and duplicate episodes
 - Manage episodes on a compact status board
@@ -271,7 +271,7 @@ The browser app stores its working library in `localStorage` under `vidtoolz-epi
 ```js
 {
   app: "VIDTOOLZ Episode Factory",
-  appVersion: "1.2.0",
+  appVersion: "1.4.1",
   schemaVersion: 1,
   storageKey: "vidtoolz-episode-factory-v1",
   exportedAt: "...",
