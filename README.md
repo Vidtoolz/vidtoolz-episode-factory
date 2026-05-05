@@ -1,6 +1,6 @@
 # VIDTOOLZ Episode Factory
 
-VIDTOOLZ Episode Factory v1.7.1 is a local-first static web app for turning rough YouTube ideas into complete production packages and running a stable weekly creator workflow.
+VIDTOOLZ Episode Factory v1.7.2 is a local-first static web app for turning rough YouTube ideas into complete production packages and running a stable weekly creator workflow.
 
 The purpose is practical creator discipline: keep the topic, promise, title options, thumbnail concept, hook, script outline, structured production checklists, Shorts extraction checks, publish checks, and notes in one compact place before a solo creator starts shooting.
 
@@ -10,7 +10,7 @@ Important: browser `localStorage` is not a durable backup system. Export JSON re
 
 For terminal-first work, the dependency-free CLI can also store inspectable episode JSON in `data/episodes.json` and write outline artifacts under `episodes/`. This is separate from browser `localStorage` until you import/export JSON manually.
 
-## v1.7.1 Features
+## v1.7.2 Features
 
 - Create, edit, delete, and duplicate episodes
 - Manage episodes on a compact status board
@@ -148,8 +148,9 @@ node scripts/package-run-creator-qa.js package-runs/YYYY-MM-DD-ai-video-idea-fil
 
 This writes `creator-qa-package.md`, `creator-qa-report.md`, and
 `creator-qa-report.json` into the run folder. It uses the local
-`/home/vidtoolz/vidtoolz-creator-qa` CLI and does not approve or publish
-anything automatically.
+`/home/vidtoolz/vidtoolz-creator-qa` CLI, defaults to the
+`ai_video_breakdown` profile, maps only `final-script.md` into the generated
+`# Script` section, and does not approve or publish anything automatically.
 
 ## CLI Episode Workflow
 
@@ -293,7 +294,7 @@ The browser app stores its working library in `localStorage` under `vidtoolz-epi
 ```js
 {
   app: "VIDTOOLZ Episode Factory",
-  appVersion: "1.7.1",
+  appVersion: "1.7.2",
   schemaVersion: 1,
   storageKey: "vidtoolz-episode-factory-v1",
   exportedAt: "...",

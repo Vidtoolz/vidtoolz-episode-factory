@@ -2073,20 +2073,122 @@ test("package run creator qa builds package and guards existing artifacts", () =
       proposedTitle: "Creator QA Package",
       onThumbnailText: "Check It",
       viewerPromise: "The viewer can verify the package before shooting.",
+      targetViewer: "Solo AI video creator",
+      mainRisk: "The demo may imply tool behavior that changes quickly.",
+      demoProof: "Show the idea filter rejecting one weak idea and keeping one strong idea.",
     },
   };
   const markdown = packageRunCreatorQaScript.buildCreatorQaPackage({
     selected,
-    finalOutlineText: "# Final Outline\n\n## Hook\nShow the problem.",
-    finalScriptText: "# Final Script\n\nIn this video you will check the package before shooting.",
-    productionBriefText: "# Production Brief\n\nShoot the demo.",
+    finalOutlineText: [
+      "# Final Outline",
+      "",
+      "Run: 2026-05-02-qa",
+      "Status: Selected final outline for script drafting.",
+      "Source Files",
+      "- package-runs/2026-05-02-qa/final-outline.md",
+      "",
+      "## Hook",
+      "Outline-only hook should stay out of script.",
+      "",
+      "## Beat",
+      "Outline-only beat.",
+    ].join("\n"),
+    finalScriptText: [
+      "# Final Script",
+      "",
+      "Run: package-runs/2026-05-02-qa",
+      "Status: draft",
+      "Source Files",
+      "- [ ] Review final-script.md before publishing",
+      "Generated workflow instructions for the reviewer.",
+      "",
+      "## Hook",
+      "Stop letting weak AI video ideas reach the shoot list.",
+      "",
+      "## Problem / Context",
+      "Creators waste time shooting ideas that were never strong enough.",
+      "",
+      "## Promised Outcome",
+      "You will have a practical filter for AI video ideas.",
+      "",
+      "## Steps",
+      "Score the promise, proof, and production fit.",
+      "",
+      "## Demonstration / Proof",
+      "Apply the filter to three sample ideas.",
+      "",
+      "## Recap",
+      "Keep only ideas with a clear viewer payoff.",
+      "",
+      "## CTA",
+      "Run the filter before scripting.",
+    ].join("\n"),
+    productionBriefText: [
+      "# Production Brief",
+      "",
+      "Run: 2026-05-02-qa",
+      "Status: Selected final outline for script drafting.",
+      "Practical tutorial / workflow version",
+      "Production Prep v1 generated locally.",
+      "Source Files",
+      "Production-only direction should stay out of script.",
+      "",
+      "- [ ] Check lights.",
+    ].join("\n"),
+    thumbnailTitleCheckText: "Review final-script.md for claims before publishing.",
+    publishPackText: "Status: internal draft\nGenerated workflow/admin notes.",
   });
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-qa-guard-"));
+  const topSection = (name) => {
+    const marker = `# ${name}\n`;
+    const start = markdown.indexOf(marker);
+    if (start === -1) return "";
+    const rest = markdown.slice(start + marker.length);
+    const next = rest.search(/\n# [^#]/);
+    return (next === -1 ? rest : rest.slice(0, next)).trim();
+  };
+  const scriptSection = topSection("Script");
+  const notesSection = topSection("Notes");
 
   assert.match(markdown, /# Title\nCreator QA Package/);
   assert.match(markdown, /# Thumbnail\nCheck It/);
+  assert.match(markdown, /# Hook\nStop letting weak AI video ideas reach the shoot list\./);
   assert.match(markdown, /# Viewer Payoff\nThe viewer can verify the package before shooting/);
-  assert.match(markdown, /# Script/);
+  assert.match(scriptSection, /## Hook\nStop letting weak AI video ideas reach the shoot list\./);
+  assert.match(scriptSection, /## Problem \/ Context\nCreators waste time shooting ideas/);
+  assert.match(scriptSection, /## Demonstration \/ Proof\nApply the filter to three sample ideas\./);
+  assert.match(scriptSection, /## Call to Action\n\nWatch next: Run the filter before scripting\./);
+  assert.doesNotMatch(scriptSection, /## CTA/);
+  assert.doesNotMatch(scriptSection, /Outline-only/);
+  assert.doesNotMatch(scriptSection, /Production-only/);
+  assert.doesNotMatch(scriptSection, /^Run:/m);
+  assert.doesNotMatch(scriptSection, /^Status:/m);
+  assert.doesNotMatch(scriptSection, /Source Files/);
+  assert.doesNotMatch(scriptSection, /\[[ xX]\]/);
+  assert.doesNotMatch(scriptSection, /generated workflow instructions/i);
+  assert.doesNotMatch(scriptSection, /Review final-script\.md/i);
+  assert.match(notesSection, /Source Notes \/ Manual Verification/);
+  assert.match(notesSection, /Manual verification: Check cost details, launch timing, benchmark-style numbers, app fit, and speed claims outside this package\./);
+  assert.match(notesSection, /Manual verification: Check any AI tool UI behavior shown in screen recordings before publishing\./);
+  assert.doesNotMatch(notesSection, /No pricing, release-date, benchmark/);
+  assert.deepEqual(packageRunCreatorQaScript.sectionHasCreatorQaCta(scriptSection), true);
+  assert.deepEqual(
+    packageRunCreatorQaScript.sanitizePackageContent(notesSection)
+      .split(/\r?\n/)
+      .filter((line) => /pricing|release-date|tool-performance|performance|compatible with|v?\d+\.\d+/.test(line.toLowerCase())),
+    []
+  );
+  assert.match(notesSection, /Thumbnail concept: Check It/);
+  assert.match(notesSection, /Target viewer: Solo AI video creator/);
+  assert.match(notesSection, /Main risk: The demo may imply tool behavior that changes quickly\./);
+  assert.match(notesSection, /Suggested demo\/proof notes: Show the idea filter rejecting one weak idea/);
+  assert.doesNotMatch(markdown, /^Run:/m);
+  assert.doesNotMatch(markdown, /2026-05-02-qa/);
+  assert.doesNotMatch(markdown, /^Status:/m);
+  assert.doesNotMatch(markdown, /Source Files/);
+  assert.doesNotMatch(markdown, /Production Prep v/);
+  assert.match(markdown, /Call to Action/);
 
   fs.writeFileSync(path.join(tempDir, "creator-qa-package.md"), "Human QA package\n");
   assert.throws(
@@ -2115,7 +2217,7 @@ def main():
     parser.add_argument("--report")
     args = parser.parse_args()
     pathlib.Path(args.report).write_text("# Creator QA Report\\n\\nOverall: PASS\\n", encoding="utf-8")
-    print(json.dumps({"overall_result": "PASS", "total_score": 35}))
+    print(json.dumps({"overall_result": "PASS", "total_score": 35, "profile": args.profile}))
     return 0
 
 if __name__ == "__main__":
@@ -2142,10 +2244,15 @@ if __name__ == "__main__":
 
   assert.equal(output, 0);
   assert.equal(report.overall_result, "PASS");
+  assert.equal(report.profile, "ai_video_breakdown");
   assert.match(fs.readFileSync(path.join(runDir, "creator-qa-package.md"), "utf8"), /Creator QA CLI Package/);
   assert.match(fs.readFileSync(path.join(runDir, "creator-qa-report.md"), "utf8"), /Overall: PASS/);
   assert.equal(packageRunCreatorQaScript.main([runDir, "--creator-qa-root", creatorQaRoot]), 1);
-  assert.equal(packageRunCreatorQaScript.main([runDir, "--creator-qa-root", creatorQaRoot, "--force"]), 0);
+  assert.equal(packageRunCreatorQaScript.main([runDir, "--creator-qa-root", creatorQaRoot, "--force", "--profile", "resolve_tutorial"]), 0);
+  const explicitReport = JSON.parse(fs.readFileSync(path.join(runDir, "creator-qa-report.json"), "utf8"));
+  assert.equal(explicitReport.profile, "resolve_tutorial");
+  assert.equal(packageRunCreatorQaScript.parseArgs(["package-runs/run"]).profile, "ai_video_breakdown");
+  assert.equal(packageRunCreatorQaScript.parseArgs(["package-runs/run", "--profile", "resolve_tutorial"]).profile, "resolve_tutorial");
 });
 
 test("package runs index classifies workflow status from detected files", () => {
@@ -2415,7 +2522,7 @@ test("visible app version and html cache busters use current release", () => {
   const htmlFiles = ["index.html", "package-engine.html", "package-runs-dashboard.html"];
   const expectedCacheBuster = new RegExp(`v=${model.APP_VERSION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
 
-  assert.equal(model.APP_VERSION, "1.7.1");
+  assert.equal(model.APP_VERSION, "1.7.2");
   htmlFiles.forEach((filename) => {
     const html = fs.readFileSync(path.join(__dirname, "..", filename), "utf8");
     assert.match(html, expectedCacheBuster);

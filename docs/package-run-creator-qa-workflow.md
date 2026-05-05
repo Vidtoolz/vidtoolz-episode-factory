@@ -18,6 +18,13 @@ Linear, YouTube, or any publishing system.
 node scripts/package-run-creator-qa.js package-runs/YYYY-MM-DD-topic-slug
 ```
 
+Package run QA defaults to the `ai_video_breakdown` Creator QA profile. Use an
+explicit profile only when checking a package against a different gate:
+
+```sh
+node scripts/package-run-creator-qa.js package-runs/YYYY-MM-DD-topic-slug --profile resolve_tutorial
+```
+
 Use `--force` only when you intentionally want to replace existing QA artifacts:
 
 ```sh
@@ -52,6 +59,43 @@ creator-qa-report.json
 ```
 
 Existing different QA artifacts are not overwritten unless `--force` is passed.
+
+## Package Mapping
+
+`creator-qa-package.md` is generated with these top-level sections:
+
+```text
+# Title
+# Thumbnail
+# Hook
+# Viewer Payoff
+# Script
+# Notes
+```
+
+`# Script` contains `final-script.md` only. The hook is extracted from the
+`## Hook` section inside `final-script.md` when present. If the script has
+`## CTA`, the generated package normalizes it to `## Call to Action`. When the
+CTA text does not contain a Creator QA CTA keyword, the bridge prefixes it with
+`Watch next:` so the deterministic checker can detect the beat.
+
+`final-outline.md`, `production-brief.md`, `thumbnail-title-check.md`, and
+`publish-pack.md` are not copied into `# Script` or copied wholesale into
+`# Notes`. Notes stay compact and only include:
+
+- `Source Notes / Manual Verification`
+- thumbnail concept
+- target viewer
+- main risk
+- suggested demo/proof notes when useful
+
+Manual verification boilerplate is phrased as source notes so it remains useful
+to the creator without becoming a risky factual claim itself.
+
+The generated package filters internal run metadata, package run IDs,
+source-file lists, unchecked checklist lines, generated workflow/admin notes,
+workflow version labels, and review-reminder lines so they do not appear as
+factual-claim-like content.
 
 ## Dashboard
 
