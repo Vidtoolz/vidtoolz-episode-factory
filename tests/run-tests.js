@@ -1969,10 +1969,50 @@ test("script prep cli writes the four local review artifacts", () => {
 test("production prep builders create the seven required local planning artifacts", () => {
   const context = {
     runId: "run-id",
-    selectedPackageText: "# Selected Package: Production Package\n\n## Thumbnail Concept\n\nBefore after workflow\n\n## Viewer Promise\n\nA practical payoff.",
-    finalOutlineText: "# Final Outline\n\n## Demo\n\nShow a before and after comparison.",
-    finalScriptText: "# Final Script\n\nRecord the hook, show the screen demo, then deliver the payoff.",
-    productionNotesText: "# Production Notes\n\n## Visual / B-roll Notes\n\nCapture the UI timeline and score table.",
+    selectedPackageText: [
+      "# Selected Package: Production Package",
+      "",
+      "## Thumbnail Concept",
+      "",
+      "Before after workflow for an AI idea filter",
+      "",
+      "## Viewer Promise",
+      "",
+      "A practical payoff for filtering AI-generated video ideas.",
+    ].join("\n"),
+    finalOutlineText: [
+      "# Final Outline",
+      "",
+      "### Suggested demonstrations or screen recordings",
+      "",
+      "## Demo",
+      "",
+      "Show an AI idea filter before and after comparison.",
+      "",
+      "## Visual / B-roll Notes",
+      "",
+      "Packaging still needs verification before finalization.",
+    ].join("\n"),
+    finalScriptText: [
+      "# Final Script",
+      "",
+      "Record the hook, show the screen demo, then deliver the payoff.",
+      "Ask an AI tool for 10 generic video ideas, then score one weak idea through audience demand, expertise fit, production fit, and better-than-competitors.",
+      "Revise the weak AI idea into a stronger package and compare final title plus thumbnail.",
+    ].join("\n"),
+    productionNotesText: [
+      "# Production Notes",
+      "",
+      "## Shoot List",
+      "",
+      "## Demo Moments",
+      "",
+      "## Visual / B-roll Notes",
+      "",
+      "Capture the UI timeline and score table.",
+      "- [ ] Checklist metadata should not become a capture task.",
+      "Production Prep v1 generated locally.",
+    ].join("\n"),
   };
 
   const brief = packageRun.buildProductionBriefMarkdown(context);
@@ -1982,13 +2022,37 @@ test("production prep builders create the seven required local planning artifact
   const resolve = packageRun.buildResolveEditChecklistMarkdown(context);
   const thumbnail = packageRun.buildThumbnailTitleCheckMarkdown(context);
   const publish = packageRun.buildPublishPackMarkdown(context);
+  const section = (markdown, heading) => {
+    const marker = `## ${heading}\n`;
+    const start = markdown.indexOf(marker);
+    if (start === -1) return "";
+    const rest = markdown.slice(start + marker.length);
+    const next = rest.search(/\n## /);
+    return (next === -1 ? rest : rest.slice(0, next)).trim();
+  };
+  const screenCaptures = section(shooting, "Screen Recording / Demo Captures");
+  const requiredBroll = section(broll, "Required B-Roll");
 
   assert.match(brief, /# Production Brief/);
   assert.match(brief, /Production Package/);
   assert.match(shooting, /# Shooting Plan/);
   assert.match(shooting, /Screen Recording \/ Demo Captures/);
+  assert.match(screenCaptures, /Capture AI tool generating 10 generic video ideas\./);
+  assert.match(screenCaptures, /Capture the four-part filter as a table: audience demand, expertise fit, production fit, better-than-competitors\./);
+  assert.match(screenCaptures, /Capture one weak AI idea being scored through the filter\./);
+  assert.match(screenCaptures, /Capture the weak idea being revised into a stronger package\./);
+  assert.match(screenCaptures, /Capture final title \+ thumbnail comparison\./);
+  assert.doesNotMatch(screenCaptures, /## Shoot List|## Demo Moments|### Suggested demonstrations or screen recordings/);
+  assert.doesNotMatch(screenCaptures, /Packaging still needs verification before finalization|Production Prep v1 generated locally|Checklist metadata/);
   assert.match(broll, /# B-Roll List/);
-  assert.match(broll, /Capture the UI timeline/);
+  assert.match(requiredBroll, /Capture AI tool generating 10 generic video ideas\./);
+  assert.match(requiredBroll, /Capture the four-part filter as a table: audience demand, expertise fit, production fit, better-than-competitors\./);
+  assert.match(requiredBroll, /Capture one weak AI idea being scored through the filter\./);
+  assert.match(requiredBroll, /Capture the weak idea being revised into a stronger package\./);
+  assert.match(requiredBroll, /Capture final title \+ thumbnail comparison\./);
+  assert.match(requiredBroll, /Capture the UI timeline/);
+  assert.doesNotMatch(requiredBroll, /## Shoot List|## Demo Moments|### Suggested demonstrations or screen recordings|## Visual \/ B-roll Notes/);
+  assert.doesNotMatch(requiredBroll, /Packaging still needs verification before finalization|Production Prep v1 generated locally|Checklist metadata/);
   assert.match(graphics, /# Graphics List/);
   assert.match(resolve, /# Resolve Edit Checklist/);
   assert.match(thumbnail, /# Thumbnail Title Check/);
@@ -2522,7 +2586,7 @@ test("visible app version and html cache busters use current release", () => {
   const htmlFiles = ["index.html", "package-engine.html", "package-runs-dashboard.html"];
   const expectedCacheBuster = new RegExp(`v=${model.APP_VERSION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
 
-  assert.equal(model.APP_VERSION, "1.7.2");
+  assert.equal(model.APP_VERSION, "1.7.3");
   htmlFiles.forEach((filename) => {
     const html = fs.readFileSync(path.join(__dirname, "..", filename), "utf8");
     assert.match(html, expectedCacheBuster);

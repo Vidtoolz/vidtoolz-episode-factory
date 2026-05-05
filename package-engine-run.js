@@ -574,6 +574,7 @@ Not finalized yet.
     source.split(/\r?\n/).forEach((line) => {
       const cleaned = line.replace(/^[-*]\s+/, "").trim();
       if (!cleaned || cleaned.length < 4 || cleaned.length > 220) return;
+      if (!isUsableProductionTaskLine(cleaned)) return;
       if (!patterns.some((pattern) => pattern.test(cleaned))) return;
       const key = cleaned.toLowerCase();
       if (seen.has(key)) return;
@@ -581,6 +582,65 @@ Not finalized yet.
       matches.push(cleaned);
     });
     return matches.slice(0, limit);
+  }
+
+  function isUsableProductionTaskLine(line) {
+    const cleaned = cleanString(line);
+    const lower = cleaned.toLowerCase();
+    if (!cleaned) return false;
+    if (/^#{1,6}\s+/.test(cleaned)) return false;
+    if (/^[-*]?\s*\[[ xX]\]/.test(cleaned)) return false;
+    if (/^source files:?$/i.test(cleaned)) return false;
+    if (/^run:|^status:/i.test(cleaned)) return false;
+    if (/not prepared yet|not specified|fill this|paste the generated/i.test(cleaned)) return false;
+    if (/packaging still needs verification|before finalization/i.test(cleaned)) return false;
+    if (/production prep v\d|generated locally|review before|review final/i.test(cleaned)) return false;
+    if (/suggested demonstrations or screen recordings|visual\s*\/\s*b-roll notes|shoot list|demo moments/i.test(cleaned)) return false;
+    if (/add exact screen recordings|add concrete screen captures/i.test(cleaned)) return false;
+    if (/^[-*]?\s*(hook|promise setup|demo explanations|ending payoff|cta)$/i.test(cleaned)) return false;
+    if (/workflow source|package verification reminder|expected outline output format/i.test(lower)) return false;
+    return true;
+  }
+
+  const AI_IDEA_FILTER_CAPTURE_TASKS = [
+    "Capture AI tool generating 10 generic video ideas.",
+    "Capture the four-part filter as a table: audience demand, expertise fit, production fit, better-than-competitors.",
+    "Capture one weak AI idea being scored through the filter.",
+    "Capture the weak idea being revised into a stronger package.",
+    "Capture final title + thumbnail comparison.",
+  ];
+
+  function isAiIdeaFilterWorkflow(context = {}) {
+    const text = [
+      context.selectedPackageText,
+      context.finalOutlineText,
+      context.finalScriptText,
+      context.productionNotesText,
+    ].join("\n").toLowerCase();
+    return (
+      /\bai\b/.test(text) &&
+      (/idea filter/.test(text) ||
+        /generic video ideas/.test(text) ||
+        /audience demand/.test(text) ||
+        /expertise fit/.test(text) ||
+        /production fit/.test(text) ||
+        /better-than-competitors/.test(text))
+    );
+  }
+
+  function mergeCaptureTasks(primaryTasks, extractedTasks, limit = 12) {
+    const seen = new Set();
+    return [...primaryTasks, ...extractedTasks]
+      .map(cleanString)
+      .filter(Boolean)
+      .filter(isUsableProductionTaskLine)
+      .filter((item) => {
+        const key = item.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, limit);
   }
 
   function markdownBulletList(items, fallback) {
@@ -652,6 +712,7 @@ ${markdownBulletList(demoLines, "Review final-outline.md, final-script.md, and p
       /screen/i,
       /demo/i,
     ]);
+    const captureTasks = mergeCaptureTasks(isAiIdeaFilterWorkflow(context) ? AI_IDEA_FILTER_CAPTURE_TASKS : [], shootLines);
     return `# Shooting Plan
 
 - Run: ${context.runId}
@@ -675,7 +736,7 @@ ${markdownBulletList(demoLines, "Review final-outline.md, final-script.md, and p
 
 ## Screen Recording / Demo Captures
 
-${markdownBulletList(shootLines, "Add exact screen recordings, app states, and demo steps from the final script.")}
+${markdownBulletList(captureTasks, "Record the main screen demo, one concrete example, and a final comparison frame from the approved script.")}
 
 ## Pickup List
 
@@ -699,6 +760,7 @@ ${markdownBulletList(shootLines, "Add exact screen recordings, app states, and d
       /after/i,
       /example/i,
     ]);
+    const captureTasks = mergeCaptureTasks(isAiIdeaFilterWorkflow(context) ? AI_IDEA_FILTER_CAPTURE_TASKS : [], visualLines);
     return `# B-Roll List
 
 - Run: ${context.runId}
@@ -706,7 +768,7 @@ ${markdownBulletList(shootLines, "Add exact screen recordings, app states, and d
 
 ## Required B-Roll
 
-${markdownBulletList(visualLines, "Add concrete screen captures, comparison shots, UI states, timeline shots, and examples.")}
+${markdownBulletList(captureTasks, "Capture the main visual example, comparison frame, and supporting screen states named by the approved script.")}
 
 ## Coverage Checklist
 
@@ -920,6 +982,9 @@ ${markdownBulletList(shortsLines, "Add five Shorts candidates from the hook, str
     buildScriptDraftPlaceholderMarkdown,
     buildFinalScriptPlaceholderMarkdown,
     buildProductionNotesPlaceholderMarkdown,
+    isUsableProductionTaskLine,
+    isAiIdeaFilterWorkflow,
+    mergeCaptureTasks,
     buildProductionBriefMarkdown,
     buildShootingPlanMarkdown,
     buildBRollListMarkdown,

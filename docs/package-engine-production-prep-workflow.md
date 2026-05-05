@@ -58,6 +58,23 @@ Existing files are not overwritten unless the existing content is identical to
 the generated content. If a different existing artifact is found, the command
 skips that file and exits with status `2`.
 
+## Concrete Capture Tasks
+
+Production Prep filters extracted source lines before using them as shoot or
+B-roll tasks. Markdown headings, placeholder text, checklist metadata,
+generated workflow notes, source-file lists, and generic verification reminders
+are ignored so they do not become fake capture instructions.
+
+For AI idea-filter packages, Production Prep adds deterministic default capture
+tasks:
+
+- Capture AI tool generating 10 generic video ideas.
+- Capture the four-part filter as a table: audience demand, expertise fit,
+  production fit, better-than-competitors.
+- Capture one weak AI idea being scored through the filter.
+- Capture the weak idea being revised into a stronger package.
+- Capture final title + thumbnail comparison.
+
 ## Manual Workflow
 
 1. Confirm `final-outline.md` and `final-script.md` are approved.
