@@ -1248,6 +1248,7 @@ label > span,
   font-size: 12px;
   font-weight: 700;
   padding: 6px 8px;
+  text-decoration: none;
 }
 
 .run-file-pill.present {
@@ -1259,6 +1260,32 @@ label > span,
   background: var(--panel-soft);
   color: var(--muted);
   font-weight: 600;
+}
+
+.run-command {
+  background: #f7fbff;
+  border: 1px solid #cfe0f4;
+  border-radius: 7px;
+  display: grid;
+  gap: 4px;
+  padding: 9px;
+}
+
+.run-command.done {
+  background: var(--panel-soft);
+  border-color: var(--border);
+}
+
+.run-command span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.run-command code {
+  color: var(--text);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .shorts-list {

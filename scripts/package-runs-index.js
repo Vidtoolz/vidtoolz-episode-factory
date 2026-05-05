@@ -90,6 +90,35 @@ function nextExpectedFile(status) {
   return nextByStatus[status] || "";
 }
 
+function nextRecommendedCommand(status, runPath) {
+  const target = runPath || "package-runs/YYYY-MM-DD-topic-slug";
+  const commandByStatus = {
+    "Idea run": "",
+    "Package selected": `node scripts/package-engine-new-outline.js ${target}`,
+    "Outline prep ready": "",
+    "Final outline ready": `node scripts/package-engine-new-script.js ${target}`,
+    "Script prep ready": "",
+    "Final script ready": `node scripts/package-engine-new-production.js ${target}`,
+    "Production prep ready": "",
+    "Ready to shoot": "",
+  };
+  return commandByStatus[status] || "";
+}
+
+function workflowBucket(status) {
+  const bucketByStatus = {
+    "Idea run": "Needs package selection",
+    "Package selected": "Needs outline",
+    "Outline prep ready": "Needs outline",
+    "Final outline ready": "Needs script",
+    "Script prep ready": "Needs script",
+    "Final script ready": "Needs production prep",
+    "Production prep ready": "Needs production prep",
+    "Ready to shoot": "Ready to shoot",
+  };
+  return bucketByStatus[status] || "Needs package selection";
+}
+
 function latestMtimeIso(runDir, filenames) {
   const times = filenames
     .map((filename) => path.join(runDir, filename))
@@ -125,6 +154,7 @@ function readPackageTitle(runDir) {
 
 function scanRun(runDir, repoRoot = process.cwd()) {
   const runId = path.basename(runDir);
+  const runPath = path.relative(repoRoot, runDir).replace(/\\/g, "/");
   const files = {};
   DETECTED_FILES.forEach((filename) => {
     files[fileKey(filename)] = fs.existsSync(path.join(runDir, filename));
@@ -132,10 +162,12 @@ function scanRun(runDir, repoRoot = process.cwd()) {
   const status = classifyRunStatus(files);
   return {
     runId,
-    path: path.relative(repoRoot, runDir).replace(/\\/g, "/"),
+    path: runPath,
     title: readPackageTitle(runDir),
     status,
+    workflowBucket: workflowBucket(status),
     nextExpectedFile: nextExpectedFile(status),
+    nextRecommendedCommand: nextRecommendedCommand(status, runPath),
     updatedAt: latestMtimeIso(runDir, DETECTED_FILES),
     files,
   };
@@ -199,6 +231,8 @@ module.exports = {
   fileKey,
   classifyRunStatus,
   nextExpectedFile,
+  nextRecommendedCommand,
+  workflowBucket,
   scanRun,
   buildPackageRunsIndex,
   main,

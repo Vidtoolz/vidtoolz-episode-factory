@@ -12,21 +12,29 @@
     "Ready to shoot",
   ];
 
+  const WORKFLOW_FILTERS = [
+    "Needs package selection",
+    "Needs outline",
+    "Needs script",
+    "Needs production prep",
+    "Ready to shoot",
+  ];
+
   const FILE_LABELS = [
-    ["package_candidates", "Candidates"],
-    ["selected_package_json", "Selected JSON"],
-    ["selected_package_md", "Selected MD"],
-    ["outline_prompt", "Outline prompt"],
-    ["final_outline", "Final outline"],
-    ["script_prompt", "Script prompt"],
-    ["final_script", "Final script"],
-    ["production_brief", "Production brief"],
-    ["shooting_plan", "Shooting plan"],
-    ["b_roll_list", "B-roll list"],
-    ["graphics_list", "Graphics list"],
-    ["resolve_edit_checklist", "Resolve checklist"],
-    ["thumbnail_title_check", "Thumbnail/title"],
-    ["publish_pack", "Publish pack"],
+    ["package_candidates", "package-candidates.json", "Candidates"],
+    ["selected_package_json", "selected-package.json", "Selected JSON"],
+    ["selected_package_md", "selected-package.md", "Selected MD"],
+    ["outline_prompt", "outline-prompt.md", "Outline prompt"],
+    ["final_outline", "final-outline.md", "Final outline"],
+    ["script_prompt", "script-prompt.md", "Script prompt"],
+    ["final_script", "final-script.md", "Final script"],
+    ["production_brief", "production-brief.md", "Production brief"],
+    ["shooting_plan", "shooting-plan.md", "Shooting plan"],
+    ["b_roll_list", "b-roll-list.md", "B-roll list"],
+    ["graphics_list", "graphics-list.md", "Graphics list"],
+    ["resolve_edit_checklist", "resolve-edit-checklist.md", "Resolve checklist"],
+    ["thumbnail_title_check", "thumbnail-title-check.md", "Thumbnail/title"],
+    ["publish_pack", "publish-pack.md", "Publish pack"],
   ];
 
   function escapeHtml(value) {
@@ -56,7 +64,9 @@
         path: String(run.path || ""),
         title: String(run.title || ""),
         status: String(run.status || "Idea run"),
+        workflowBucket: String(run.workflowBucket || workflowBucketForStatus(run.status || "Idea run")),
         nextExpectedFile: String(run.nextExpectedFile || ""),
+        nextRecommendedCommand: String(run.nextRecommendedCommand || ""),
         updatedAt: String(run.updatedAt || ""),
         files: run.files && typeof run.files === "object" ? run.files : {},
       })),
@@ -64,7 +74,10 @@
   }
 
   function filterAndSortRuns(runs, statusFilter = "All", sortMode = "run-desc") {
-    const filtered = statusFilter === "All" ? [...runs] : runs.filter((run) => run.status === statusFilter);
+    const filtered =
+      statusFilter === "All"
+        ? [...runs]
+        : runs.filter((run) => run.workflowBucket === statusFilter || run.status === statusFilter);
     return filtered.sort((a, b) => {
       if (sortMode === "run-asc") return a.runId.localeCompare(b.runId);
       if (sortMode === "status") return statusRank(a.status) - statusRank(b.status) || b.runId.localeCompare(a.runId);
@@ -76,11 +89,41 @@
     return `run-status-${String(status || "idea").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   }
 
-  function renderFilePills(files = {}) {
-    return FILE_LABELS.map(([key, label]) => {
+  function workflowBucketForStatus(status) {
+    const bucketByStatus = {
+      "Idea run": "Needs package selection",
+      "Package selected": "Needs outline",
+      "Outline prep ready": "Needs outline",
+      "Final outline ready": "Needs script",
+      "Script prep ready": "Needs script",
+      "Final script ready": "Needs production prep",
+      "Production prep ready": "Needs production prep",
+      "Ready to shoot": "Ready to shoot",
+    };
+    return bucketByStatus[status] || "Needs package selection";
+  }
+
+  function fileHref(run, filename) {
+    const base = run.path ? run.path.replace(/\/+$/g, "") : "";
+    return base ? `${base}/${filename}` : filename;
+  }
+
+  function renderFilePills(run) {
+    const files = run.files || {};
+    return FILE_LABELS.map(([key, filename, label]) => {
       const present = Boolean(files[key]);
-      return `<span class="run-file-pill ${present ? "present" : "missing"}">${present ? "yes" : "no"} ${escapeHtml(label)}</span>`;
+      if (!present) {
+        return `<span class="run-file-pill missing">no ${escapeHtml(label)}</span>`;
+      }
+      return `<a class="run-file-pill present" href="${escapeHtml(fileHref(run, filename))}">open ${escapeHtml(label)}</a>`;
     }).join("");
+  }
+
+  function renderNextCommand(run) {
+    if (!run.nextRecommendedCommand) {
+      return `<div class="run-command done"><span>Next command</span><code>${run.status === "Ready to shoot" ? "Shoot the video." : "Manual review or file edit needed."}</code></div>`;
+    }
+    return `<div class="run-command"><span>Next command</span><code>${escapeHtml(run.nextRecommendedCommand)}</code></div>`;
   }
 
   function renderRunCard(run) {
@@ -93,14 +136,16 @@
         <div class="package-card-top">
           <span class="package-number">${escapeHtml(run.runId)}</span>
           <span class="run-status-pill ${statusClass(run.status)}">${escapeHtml(run.status)}</span>
+          <span class="run-status-pill ${statusClass(run.workflowBucket)}">${escapeHtml(run.workflowBucket)}</span>
         </div>
         <h2>${escapeHtml(title)}</h2>
         ${next}
+        ${renderNextCommand(run)}
         <div class="package-card-grid">
           <div><span>Updated</span><strong>${escapeHtml(updated)}</strong></div>
           <div><span>Folder</span><strong><a href="${escapeHtml(runHref)}">${escapeHtml(run.path || run.runId)}</a></strong></div>
         </div>
-        <div class="run-file-grid">${renderFilePills(run.files)}</div>
+        <div class="run-file-grid">${renderFilePills(run)}</div>
       </article>
     `;
   }
@@ -110,6 +155,18 @@
       const count = index.statuses[status] || 0;
       return `<div><span>${escapeHtml(status)}</span><strong>${count}</strong></div>`;
     }).join("");
+  }
+
+  function renderWorkflowStats(runs) {
+    const counts = WORKFLOW_FILTERS.reduce((result, label) => {
+      result[label] = 0;
+      return result;
+    }, {});
+    runs.forEach((run) => {
+      const bucket = run.workflowBucket || workflowBucketForStatus(run.status);
+      counts[bucket] = (counts[bucket] || 0) + 1;
+    });
+    return WORKFLOW_FILTERS.map((label) => `<div><span>${escapeHtml(label)}</span><strong>${counts[label] || 0}</strong></div>`).join("");
   }
 
   function createBrowserApp(doc = globalScope.document) {
@@ -128,19 +185,10 @@
       els.status.className = `global-status ${type}`.trim();
     }
 
-    function populateStatusFilter() {
-      STATUS_ORDER.forEach((status) => {
-        const option = doc.createElement("option");
-        option.value = status;
-        option.textContent = status;
-        els.statusFilter.append(option);
-      });
-    }
-
     function render() {
       const visible = filterAndSortRuns(index.runs, els.statusFilter.value, els.sort.value);
       els.summary.innerHTML = `<span>${visible.length} shown / ${index.runs.length} total</span><strong>${escapeHtml(index.generatedAt || "No index loaded")}</strong>`;
-      els.stats.innerHTML = renderStats(index);
+      els.stats.innerHTML = renderWorkflowStats(index.runs);
       els.grid.innerHTML = visible.length
         ? visible.map(renderRunCard).join("")
         : `<p class="muted">No package runs match this filter.</p>`;
@@ -163,7 +211,6 @@
         });
     }
 
-    populateStatusFilter();
     els.statusFilter.addEventListener("change", render);
     els.sort.addEventListener("change", render);
 
@@ -172,15 +219,20 @@
 
   const api = {
     STATUS_ORDER,
+    WORKFLOW_FILTERS,
     FILE_LABELS,
     escapeHtml,
     statusRank,
     normalizeIndex,
     filterAndSortRuns,
     statusClass,
+    workflowBucketForStatus,
+    fileHref,
     renderFilePills,
+    renderNextCommand,
     renderRunCard,
     renderStats,
+    renderWorkflowStats,
     createBrowserApp,
   };
 

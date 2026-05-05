@@ -2122,11 +2122,31 @@ test("package runs index scans package-runs folders and writes index json", () =
   assert.equal(index.count, 2);
   assert.equal(index.runs[0].runId, "2026-05-02-ready");
   assert.equal(index.runs[0].status, "Ready to shoot");
+  assert.equal(index.runs[0].workflowBucket, "Ready to shoot");
   assert.equal(index.runs[0].title, "Ready Package");
   assert.equal(index.runs[1].status, "Idea run");
+  assert.equal(index.runs[1].workflowBucket, "Needs package selection");
   assert.equal(written.count, 2);
   assert.equal(written.statuses["Ready to shoot"], 1);
   assert.equal(output, 0);
+});
+
+test("package runs index recommends deterministic next local commands", () => {
+  assert.equal(
+    packageRunsIndexScript.nextRecommendedCommand("Package selected", "package-runs/run-id"),
+    "node scripts/package-engine-new-outline.js package-runs/run-id"
+  );
+  assert.equal(
+    packageRunsIndexScript.nextRecommendedCommand("Final outline ready", "package-runs/run-id"),
+    "node scripts/package-engine-new-script.js package-runs/run-id"
+  );
+  assert.equal(
+    packageRunsIndexScript.nextRecommendedCommand("Final script ready", "package-runs/run-id"),
+    "node scripts/package-engine-new-production.js package-runs/run-id"
+  );
+  assert.equal(packageRunsIndexScript.nextRecommendedCommand("Ready to shoot", "package-runs/run-id"), "");
+  assert.equal(packageRunsIndexScript.workflowBucket("Script prep ready"), "Needs script");
+  assert.equal(packageRunsIndexScript.workflowBucket("Production prep ready"), "Needs production prep");
 });
 
 test("package runs dashboard normalizes filters and renders run cards", () => {
@@ -2139,31 +2159,49 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
         path: "package-runs/2026-05-02-b",
         title: "Ready Package",
         status: "Ready to shoot",
+        workflowBucket: "Ready to shoot",
+        nextRecommendedCommand: "",
         files: { final_script: true, production_brief: true },
+      },
+      {
+        runId: "2026-05-03-c",
+        path: "package-runs/2026-05-03-c",
+        title: "Script Package",
+        status: "Final outline ready",
+        workflowBucket: "Needs script",
+        nextRecommendedCommand: "node scripts/package-engine-new-script.js package-runs/2026-05-03-c",
+        files: { final_outline: true },
       },
     ],
   };
   const index = packageRunsDashboard.normalizeIndex(payload);
   const filtered = packageRunsDashboard.filterAndSortRuns(index.runs, "Ready to shoot", "run-desc");
+  const needsScript = packageRunsDashboard.filterAndSortRuns(index.runs, "Needs script", "run-desc");
   const card = packageRunsDashboard.renderRunCard(filtered[0]);
-  const stats = packageRunsDashboard.renderStats({ statuses: { "Ready to shoot": 1 } });
+  const scriptCard = packageRunsDashboard.renderRunCard(needsScript[0]);
+  const stats = packageRunsDashboard.renderWorkflowStats(index.runs);
 
-  assert.equal(index.count, 2);
+  assert.equal(index.count, 3);
   assert.equal(filtered.length, 1);
   assert.equal(filtered[0].runId, "2026-05-02-b");
+  assert.equal(needsScript.length, 1);
   assert.match(card, /Ready Package/);
   assert.match(card, /Ready to shoot/);
   assert.match(card, /package-runs\/2026-05-02-b\//);
+  assert.match(card, /href="package-runs\/2026-05-02-b\/final-script\.md"/);
+  assert.match(scriptCard, /node scripts\/package-engine-new-script\.js package-runs\/2026-05-03-c/);
+  assert.match(scriptCard, /Needs script/);
   assert.match(stats, /Ready to shoot/);
+  assert.match(stats, /Needs production prep/);
 });
 
 test("visible app version and html cache busters use current release", () => {
   const htmlFiles = ["index.html", "package-engine.html", "package-runs-dashboard.html"];
 
-  assert.equal(model.APP_VERSION, "1.4.1");
+  assert.equal(model.APP_VERSION, "1.5.0");
   htmlFiles.forEach((filename) => {
     const html = fs.readFileSync(path.join(__dirname, "..", filename), "utf8");
-    assert.match(html, /v=1\.4\.1/);
+    assert.match(html, /v=1\.5\.0/);
     assert.doesNotMatch(html, /v=1\.2\.0|v=1\.0\.0|v1\.2\.0|Review UI v1|Dashboard v1/);
   });
 });

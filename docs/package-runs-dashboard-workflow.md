@@ -1,7 +1,8 @@
 # Package Runs Dashboard Workflow
 
 Package Run Status Dashboard v1 is a local read-only browser view for checking
-where each `package-runs/*` folder is in the Package Engine workflow.
+where each `package-runs/*` folder is in the Package Engine workflow and what
+local command should run next.
 
 The dashboard itself is static. It only reads `package-runs-index.json`.
 
@@ -57,6 +58,8 @@ thumbnail-title-check.md
 publish-pack.md
 ```
 
+Available artifacts are rendered as direct local links from each run card.
+
 ## Status Rules
 
 The status is the highest completed workflow milestone:
@@ -70,6 +73,30 @@ The status is the highest completed workflow milestone:
 - `Production prep ready`: `production-brief.md` exists
 - `Ready to shoot`: all Production Prep artifacts exist
 
+## Daily Filters
+
+The dashboard groups runs into daily workflow filters:
+
+- `Needs package selection`: no selected package exists yet
+- `Needs outline`: selected package exists, but final outline is not complete
+- `Needs script`: final outline exists, but final script is not complete
+- `Needs production prep`: final script exists, but full Production Prep is not complete
+- `Ready to shoot`: all Production Prep artifacts exist
+
+## Recommended Commands
+
+When the next step is a local deterministic generator, each run card shows the
+exact command:
+
+```sh
+node scripts/package-engine-new-outline.js package-runs/YYYY-MM-DD-topic-slug
+node scripts/package-engine-new-script.js package-runs/YYYY-MM-DD-topic-slug
+node scripts/package-engine-new-production.js package-runs/YYYY-MM-DD-topic-slug
+```
+
+When the next step is manual review or writing, the card shows the next expected
+file instead.
+
 ## Finish Test
 
 The dashboard is current when:
@@ -79,3 +106,6 @@ The dashboard is current when:
 - `package-runs-index.json` exists at the repo root.
 - `package-runs-dashboard.html` loads without a missing-index warning.
 - The visible status for each run matches the files present in that run folder.
+- Artifact links open existing local files.
+- The workflow filter and recommended command point to the next practical local
+  action.
