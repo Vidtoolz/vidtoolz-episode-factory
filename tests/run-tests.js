@@ -10,6 +10,8 @@ const packageRunScript = require("../scripts/package-engine-new-run.js");
 const packageOutlineScript = require("../scripts/package-engine-new-outline.js");
 const packageScriptPrepScript = require("../scripts/package-engine-new-script.js");
 const packageProductionPrepScript = require("../scripts/package-engine-new-production.js");
+const packageRunsIndexScript = require("../scripts/package-runs-index.js");
+const packageRunsDashboard = require("../package-runs-dashboard.js");
 const episodeFactoryCli = require("../scripts/episode-factory.js");
 
 const tests = [];
@@ -2056,6 +2058,103 @@ test("production prep cli writes seven artifacts and preserves existing human ed
 
   assert.equal(skipped, 2);
   assert.match(fs.readFileSync(path.join(runDir, "shooting-plan.md"), "utf8"), /Do not overwrite/);
+});
+
+test("package runs index classifies workflow status from detected files", () => {
+  const files = {};
+  packageRunsIndexScript.DETECTED_FILES.forEach((filename) => {
+    files[packageRunsIndexScript.fileKey(filename)] = false;
+  });
+
+  assert.equal(packageRunsIndexScript.classifyRunStatus(files), "Idea run");
+  files.selected_package_json = true;
+  assert.equal(packageRunsIndexScript.classifyRunStatus(files), "Package selected");
+  files.outline_prompt = true;
+  assert.equal(packageRunsIndexScript.classifyRunStatus(files), "Outline prep ready");
+  files.final_outline = true;
+  assert.equal(packageRunsIndexScript.classifyRunStatus(files), "Final outline ready");
+  files.script_prompt = true;
+  assert.equal(packageRunsIndexScript.classifyRunStatus(files), "Script prep ready");
+  files.final_script = true;
+  assert.equal(packageRunsIndexScript.classifyRunStatus(files), "Final script ready");
+  files.production_brief = true;
+  assert.equal(packageRunsIndexScript.classifyRunStatus(files), "Production prep ready");
+  packageRunsIndexScript.PRODUCTION_ARTIFACTS.forEach((filename) => {
+    files[packageRunsIndexScript.fileKey(filename)] = true;
+  });
+  assert.equal(packageRunsIndexScript.classifyRunStatus(files), "Ready to shoot");
+});
+
+test("package runs index scans package-runs folders and writes index json", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-runs-index-"));
+  const runsDir = path.join(tempRoot, "package-runs");
+  const ideaDir = path.join(runsDir, "2026-05-01-idea");
+  const shootDir = path.join(runsDir, "2026-05-02-ready");
+  fs.mkdirSync(ideaDir, { recursive: true });
+  fs.mkdirSync(shootDir, { recursive: true });
+  fs.writeFileSync(path.join(ideaDir, "package-candidates.json"), "{\"candidates\":[]}\n");
+  fs.writeFileSync(
+    path.join(shootDir, "selected-package.json"),
+    JSON.stringify({ package: { proposedTitle: "Ready Package" } })
+  );
+  [
+    "package-candidates.json",
+    "outline-prompt.md",
+    "final-outline.md",
+    "script-prompt.md",
+    "final-script.md",
+    "production-brief.md",
+    "shooting-plan.md",
+    "b-roll-list.md",
+    "graphics-list.md",
+    "resolve-edit-checklist.md",
+    "thumbnail-title-check.md",
+    "publish-pack.md",
+  ].forEach((filename) => {
+    if (filename !== "package-candidates.json") fs.writeFileSync(path.join(shootDir, filename), `${filename}\n`);
+  });
+
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  const outFile = path.join(tempRoot, "package-runs-index.json");
+  const output = packageRunsIndexScript.main(["--runs-dir", runsDir, "--out", outFile]);
+  const written = JSON.parse(fs.readFileSync(outFile, "utf8"));
+
+  assert.equal(index.count, 2);
+  assert.equal(index.runs[0].runId, "2026-05-02-ready");
+  assert.equal(index.runs[0].status, "Ready to shoot");
+  assert.equal(index.runs[0].title, "Ready Package");
+  assert.equal(index.runs[1].status, "Idea run");
+  assert.equal(written.count, 2);
+  assert.equal(written.statuses["Ready to shoot"], 1);
+  assert.equal(output, 0);
+});
+
+test("package runs dashboard normalizes filters and renders run cards", () => {
+  const payload = {
+    generatedAt: "2026-05-05T00:00:00.000Z",
+    runs: [
+      { runId: "2026-05-01-a", path: "package-runs/2026-05-01-a", status: "Idea run", files: {} },
+      {
+        runId: "2026-05-02-b",
+        path: "package-runs/2026-05-02-b",
+        title: "Ready Package",
+        status: "Ready to shoot",
+        files: { final_script: true, production_brief: true },
+      },
+    ],
+  };
+  const index = packageRunsDashboard.normalizeIndex(payload);
+  const filtered = packageRunsDashboard.filterAndSortRuns(index.runs, "Ready to shoot", "run-desc");
+  const card = packageRunsDashboard.renderRunCard(filtered[0]);
+  const stats = packageRunsDashboard.renderStats({ statuses: { "Ready to shoot": 1 } });
+
+  assert.equal(index.count, 2);
+  assert.equal(filtered.length, 1);
+  assert.equal(filtered[0].runId, "2026-05-02-b");
+  assert.match(card, /Ready Package/);
+  assert.match(card, /Ready to shoot/);
+  assert.match(card, /package-runs\/2026-05-02-b\//);
+  assert.match(stats, /Ready to shoot/);
 });
 
 test("episode factory CLI creates file-backed episodes and reports next task", () => {

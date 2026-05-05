@@ -68,6 +68,18 @@ Open the isolated Package Engine review UI:
 http://localhost:8010/package-engine.html
 ```
 
+Generate the Package Runs dashboard index:
+
+```sh
+node scripts/package-runs-index.js
+```
+
+Then open the local status dashboard:
+
+```text
+http://localhost:8010/package-runs-dashboard.html
+```
+
 Create a local Package Engine run folder and prompt:
 
 ```sh
@@ -324,6 +336,8 @@ High-level browser checks:
 - `scripts/episode-factory.js` provides the local file-backed CLI.
 - `scripts/package-engine-new-script.js` creates local Script Prep artifacts from a selected package and final outline.
 - `scripts/package-engine-new-production.js` creates local Production Prep artifacts from a selected package, final outline, and final script.
+- `scripts/package-runs-index.js` generates the local Package Runs dashboard index.
+- `package-runs-dashboard.html` and `package-runs-dashboard.js` render the static Package Runs dashboard.
 - `storage-adapter.js` wraps `localStorage` behind a small interface for later storage changes.
 - `app.js` renders the board and detail view, wires editing, persistence, duplication, deletion, JSON export/import, and clipboard actions.
 - `tests/run-tests.js` verifies core model behavior without browser dependencies.
@@ -338,6 +352,7 @@ High-level browser checks:
 - `docs/episode-workflow.md` documents the intended YouTube workflow.
 - `docs/package-engine-script-prep-workflow.md` documents the Script Prep workflow.
 - `docs/package-engine-production-prep-workflow.md` documents the Production Prep workflow.
+- `docs/package-runs-dashboard-workflow.md` documents the Package Runs dashboard workflow.
 - `docs/packaging-gate.md` documents the gate criteria.
 - `docs/creator-qa-export.md` documents the Creator QA export mapping.
 

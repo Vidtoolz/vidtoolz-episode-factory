@@ -1,0 +1,205 @@
+#!/usr/bin/env node
+"use strict";
+
+const fs = require("node:fs");
+const path = require("node:path");
+
+const DEFAULT_RUNS_DIR = "package-runs";
+const DEFAULT_OUT_FILE = "package-runs-index.json";
+
+const DETECTED_FILES = [
+  "package-candidates.json",
+  "selected-package.json",
+  "selected-package.md",
+  "outline-prompt.md",
+  "final-outline.md",
+  "script-prompt.md",
+  "final-script.md",
+  "production-brief.md",
+  "shooting-plan.md",
+  "b-roll-list.md",
+  "graphics-list.md",
+  "resolve-edit-checklist.md",
+  "thumbnail-title-check.md",
+  "publish-pack.md",
+];
+
+const PRODUCTION_ARTIFACTS = [
+  "production-brief.md",
+  "shooting-plan.md",
+  "b-roll-list.md",
+  "graphics-list.md",
+  "resolve-edit-checklist.md",
+  "thumbnail-title-check.md",
+  "publish-pack.md",
+];
+
+function parseArgs(argv) {
+  const args = [...argv];
+  const result = {
+    runsDir: DEFAULT_RUNS_DIR,
+    outFile: DEFAULT_OUT_FILE,
+    json: false,
+  };
+  while (args.length) {
+    const item = args.shift();
+    if (item === "--runs-dir") {
+      result.runsDir = args.shift() || "";
+    } else if (item === "--out") {
+      result.outFile = args.shift() || "";
+    } else if (item === "--json") {
+      result.json = true;
+    }
+  }
+  return result;
+}
+
+function fileKey(filename) {
+  return filename
+    .replace(/\.json$|\.md$/g, "")
+    .replace(/-/g, "_");
+}
+
+function hasSelectedPackage(files) {
+  return Boolean(files.selected_package_json || files.selected_package_md);
+}
+
+function classifyRunStatus(files = {}) {
+  const hasAllProductionArtifacts = PRODUCTION_ARTIFACTS.every((filename) => files[fileKey(filename)]);
+  if (hasAllProductionArtifacts) return "Ready to shoot";
+  if (files.production_brief) return "Production prep ready";
+  if (files.final_script) return "Final script ready";
+  if (files.script_prompt) return "Script prep ready";
+  if (files.final_outline) return "Final outline ready";
+  if (files.outline_prompt) return "Outline prep ready";
+  if (hasSelectedPackage(files)) return "Package selected";
+  return "Idea run";
+}
+
+function nextExpectedFile(status) {
+  const nextByStatus = {
+    "Idea run": "selected-package.json or selected-package.md",
+    "Package selected": "outline-prompt.md",
+    "Outline prep ready": "final-outline.md",
+    "Final outline ready": "script-prompt.md",
+    "Script prep ready": "final-script.md",
+    "Final script ready": "production-brief.md",
+    "Production prep ready": "remaining production prep artifacts",
+    "Ready to shoot": "",
+  };
+  return nextByStatus[status] || "";
+}
+
+function latestMtimeIso(runDir, filenames) {
+  const times = filenames
+    .map((filename) => path.join(runDir, filename))
+    .filter((filePath) => fs.existsSync(filePath))
+    .map((filePath) => fs.statSync(filePath).mtimeMs);
+  if (!times.length) return "";
+  return new Date(Math.max(...times)).toISOString();
+}
+
+function readPackageTitle(runDir) {
+  const jsonPath = path.join(runDir, "selected-package.json");
+  if (fs.existsSync(jsonPath)) {
+    try {
+      const payload = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+      const candidate = payload && typeof payload === "object" && payload.package ? payload.package : payload;
+      return String(candidate.proposedTitle || candidate.proposed_title || candidate.title || "").trim();
+    } catch (_error) {
+      return "";
+    }
+  }
+
+  const markdownPath = path.join(runDir, "selected-package.md");
+  if (fs.existsSync(markdownPath)) {
+    const heading = fs
+      .readFileSync(markdownPath, "utf8")
+      .split(/\r?\n/)
+      .find((line) => line.trim().startsWith("# "));
+    return heading ? heading.replace(/^#\s+/, "").replace(/^Selected Package:\s*/i, "").trim() : "";
+  }
+
+  return "";
+}
+
+function scanRun(runDir, repoRoot = process.cwd()) {
+  const runId = path.basename(runDir);
+  const files = {};
+  DETECTED_FILES.forEach((filename) => {
+    files[fileKey(filename)] = fs.existsSync(path.join(runDir, filename));
+  });
+  const status = classifyRunStatus(files);
+  return {
+    runId,
+    path: path.relative(repoRoot, runDir).replace(/\\/g, "/"),
+    title: readPackageTitle(runDir),
+    status,
+    nextExpectedFile: nextExpectedFile(status),
+    updatedAt: latestMtimeIso(runDir, DETECTED_FILES),
+    files,
+  };
+}
+
+function buildPackageRunsIndex(options = {}) {
+  const repoRoot = path.resolve(options.repoRoot || process.cwd());
+  const runsDir = path.resolve(repoRoot, options.runsDir || DEFAULT_RUNS_DIR);
+  if (!fs.existsSync(runsDir) || !fs.statSync(runsDir).isDirectory()) {
+    throw new Error(`Package runs directory not found: ${runsDir}`);
+  }
+
+  const runs = fs
+    .readdirSync(runsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => scanRun(path.join(runsDir, entry.name), repoRoot))
+    .sort((a, b) => b.runId.localeCompare(a.runId));
+
+  return {
+    project: "VIDTOOLZ Package Runs",
+    generatedAt: new Date().toISOString(),
+    runsDir: path.relative(repoRoot, runsDir).replace(/\\/g, "/") || ".",
+    count: runs.length,
+    statuses: runs.reduce((counts, item) => {
+      counts[item.status] = (counts[item.status] || 0) + 1;
+      return counts;
+    }, {}),
+    runs,
+  };
+}
+
+function main(argv = process.argv.slice(2)) {
+  const options = parseArgs(argv);
+  const repoRoot = path.resolve(__dirname, "..");
+  const index = buildPackageRunsIndex({ repoRoot, runsDir: options.runsDir });
+  const outPath = path.resolve(repoRoot, options.outFile || DEFAULT_OUT_FILE);
+  fs.writeFileSync(outPath, `${JSON.stringify(index, null, 2)}\n`, "utf8");
+
+  if (options.json) {
+    console.log(JSON.stringify(index, null, 2));
+  } else {
+    console.log(`Wrote ${path.relative(repoRoot, outPath)}`);
+    console.log(`Indexed ${index.count} package runs.`);
+  }
+  return 0;
+}
+
+if (require.main === module) {
+  try {
+    process.exitCode = main();
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
+}
+
+module.exports = {
+  DETECTED_FILES,
+  PRODUCTION_ARTIFACTS,
+  parseArgs,
+  fileKey,
+  classifyRunStatus,
+  nextExpectedFile,
+  scanRun,
+  buildPackageRunsIndex,
+  main,
+};

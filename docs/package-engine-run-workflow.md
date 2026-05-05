@@ -137,3 +137,19 @@ skips those files and exits with status `2` so the human-edited work can be
 reviewed manually.
 
 See [package-engine-production-prep-workflow.md](package-engine-production-prep-workflow.md).
+
+## Run Status Dashboard
+
+To refresh the local dashboard index:
+
+```sh
+node scripts/package-runs-index.js
+```
+
+Then open:
+
+```text
+http://localhost:8010/package-runs-dashboard.html
+```
+
+See [package-runs-dashboard-workflow.md](package-runs-dashboard-workflow.md).
