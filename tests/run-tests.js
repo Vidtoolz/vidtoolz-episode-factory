@@ -3005,6 +3005,51 @@ test("trailer cue artifacts include planning files and six midi stems", () => {
   assert.match(artifacts["test-notes.md"], /Final Sting Strength/);
 });
 
+test("trailer cue dark fairytale preset changes structure maps and text artifacts", () => {
+  const artifacts = trailerCueGenerator.buildCueArtifacts("Red Riding Hood Trailer", {
+    preset: "dark-fairytale-trailer",
+  });
+  const sections = trailerCueGenerator.buildSectionMap({ preset: "dark-fairytale-trailer" });
+  const tempoMap = trailerCueGenerator.buildTempoMap({ preset: "dark-fairytale-trailer" });
+  const markers = artifacts["resolve-markers.csv"];
+
+  assert.equal(sections[0].name, "Forest whisper");
+  assert.equal(sections[5].name, "Teeth in the dark");
+  assert.equal(sections[7].name, "Blood moon sting");
+  assert.match(sections[1].purpose, /stay on the path/);
+  assert.match(sections[4].musicalDirection, /nursery motif/);
+  assert.deepEqual(
+    tempoMap.map((item) => item.bpm),
+    [68, 78, 92, 104, 116, 138, 96, 68]
+  );
+  assert.match(tempoMap[4].feel, /Grandmother's house/);
+  assert.match(markers, /Forest whisper/);
+  assert.match(markers, /Blood moon sting.*Red/);
+  assert.match(artifacts["patch-recommendations.md"], /wolf breath/);
+  assert.match(artifacts["render-checklist.md"], /Red Riding Hood trailer edit/);
+  assert.match(artifacts["test-notes.md"], /Does the cue clearly suggest Red Riding Hood/);
+});
+
+test("trailer cue dark fairytale preset changes midi ranges and rhythm density", () => {
+  const defaultMotif = trailerCueGenerator.buildNotesForPart("motif");
+  const presetMotif = trailerCueGenerator.buildNotesForPart("motif", {
+    preset: "dark-fairytale-trailer",
+  });
+  const defaultPulse = trailerCueGenerator.buildNotesForPart("pulse");
+  const presetPulse = trailerCueGenerator.buildNotesForPart("pulse", {
+    preset: "dark-fairytale-trailer",
+  });
+  const defaultLowestMotif = Math.min(...defaultMotif.map((note) => note[2]));
+  const presetLowestMotif = Math.min(...presetMotif.map((note) => note[2]));
+
+  assert.ok(presetLowestMotif < defaultLowestMotif);
+  assert.ok(presetPulse.length > defaultPulse.length);
+  assert.notEqual(
+    trailerCueGenerator.buildMidiFile("pulse").length,
+    trailerCueGenerator.buildMidiFile("pulse", { preset: "dark-fairytale-trailer" }).length
+  );
+});
+
 test("trailer cue test notes template supports manual validation fields", () => {
   const notes = trailerCueGenerator.buildTestNotesMarkdown("Validation cue");
 
@@ -3057,11 +3102,12 @@ test("trailer cue cli help documents supported options and current limits", () =
   assert.match(output.stdout.join("\n"), /Usage: node scripts\/trailer-cue-new\.js "Trailer cue title"/);
   assert.match(output.stdout.join("\n"), /--out <dir>/);
   assert.match(output.stdout.join("\n"), /--date <date>/);
-  assert.match(output.stdout.join("\n"), /Presets are not implemented yet/);
+  assert.match(output.stdout.join("\n"), /--preset <preset>/);
+  assert.match(output.stdout.join("\n"), /dark-fairytale-trailer/);
   assert.match(output.stdout.join("\n"), /does not call AI APIs/);
 });
 
-test("trailer cue cli rejects unknown options clearly", () => {
+test("trailer cue cli rejects unsupported presets clearly", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "trailer-cue-unknown-"));
   const output = captureConsole(() =>
     trailerCueScript.main([
@@ -3071,14 +3117,43 @@ test("trailer cue cli rejects unknown options clearly", () => {
       "--date",
       "2026-05-06",
       "--preset",
-      "dark-fairytale-trailer",
+      "space-opera-trailer",
     ])
   );
 
   assert.equal(output.result, 1);
-  assert.match(output.stderr.join("\n"), /Unknown option: --preset/);
-  assert.match(output.stderr.join("\n"), /--help/);
+  assert.match(output.stderr.join("\n"), /Unsupported preset: space-opera-trailer/);
+  assert.match(output.stderr.join("\n"), /Supported presets: dark-fairytale-trailer/);
   assert.equal(fs.existsSync(path.join(tempDir, "2026-05-06-dark-fairytale-trailer")), false);
+});
+
+test("trailer cue cli still rejects unknown options clearly", () => {
+  const output = captureConsole(() => trailerCueScript.main(["Cue", "--bogus"]));
+
+  assert.equal(output.result, 1);
+  assert.match(output.stderr.join("\n"), /Unknown option: --bogus/);
+  assert.match(output.stderr.join("\n"), /--help/);
+});
+
+test("trailer cue cli creates dark fairytale preset cue folders", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "trailer-cue-preset-"));
+  const output = captureConsole(() =>
+    trailerCueScript.main([
+      "Red Riding Hood Trailer",
+      "--out",
+      tempDir,
+      "--date",
+      "2026-05-06",
+      "--preset",
+      "dark-fairytale-trailer",
+    ])
+  );
+  const cueDir = path.join(tempDir, "2026-05-06-red-riding-hood-trailer");
+
+  assert.equal(output.result, 0);
+  assert.match(fs.readFileSync(path.join(cueDir, "section-map.md"), "utf8"), /Forest whisper/);
+  assert.match(fs.readFileSync(path.join(cueDir, "tempo-map.md"), "utf8"), /dark-fairytale-trailer/);
+  assert.match(fs.readFileSync(path.join(cueDir, "resolve-markers.csv"), "utf8"), /Blood moon sting/);
 });
 
 test("trailer cue script writes cue folders without overwriting changed files", () => {

@@ -158,8 +158,9 @@ Create a deterministic 2-minute local trailer cue prep folder:
 node scripts/trailer-cue-new.js "AI video workflow trailer"
 ```
 
-Supported options are `--out`, `--date`, and `--help`. Unknown options fail;
-presets are not implemented yet.
+Supported options are `--out`, `--date`, `--preset`, and `--help`. The initial
+v1.1 preset is `dark-fairytale-trailer` for a Red Riding Hood / dark fairytale
+cue. Unsupported presets fail clearly and no cue folder is created.
 
 This writes `section-map.md`, `tempo-map.md`, `resolve-markers.csv`,
 `patch-recommendations.md`, `render-checklist.md`, `test-notes.md`, and

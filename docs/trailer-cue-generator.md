@@ -1,6 +1,6 @@
-# Trailer Cue Generator v1
+# Trailer Cue Generator v1.1
 
-Trailer Cue Generator v1 creates a local, deterministic prep folder for a 2-minute VIDTOOLZ trailer cue.
+Trailer Cue Generator v1.1 creates a local, deterministic prep folder for a 2-minute VIDTOOLZ trailer cue.
 
 It does not call AI APIs, generate audio, control DaVinci Resolve, control a DAW, load plugins, or render stems. It writes inspectable planning files and simple MIDI files that can be imported manually.
 
@@ -22,6 +22,12 @@ Use a fixed date when you need deterministic folder names in tests or repeatable
 node scripts/trailer-cue-new.js "AI video workflow trailer" --date 2026-05-06
 ```
 
+Use the initial v1.1 preset for a Red Riding Hood / dark fairytale trailer cue:
+
+```sh
+node scripts/trailer-cue-new.js "Red Riding Hood trailer" --preset dark-fairytale-trailer
+```
+
 Use `--out` to choose a different output root:
 
 ```sh
@@ -34,7 +40,11 @@ Show supported CLI usage:
 node scripts/trailer-cue-new.js --help
 ```
 
-Current supported options are `--out`, `--date`, and `--help`. Unknown options fail with a clear error and no cue folder is created. Presets are not implemented yet, so commands such as `--preset dark-fairytale-trailer` are rejected.
+Current supported options are `--out`, `--date`, `--preset`, and `--help`. Supported presets:
+
+- `dark-fairytale-trailer`: changes the generic cue into a Red Riding Hood / dark fairytale trailer structure with darker section names, story-specific marker labels, dark fairytale patch recommendations, validation prompts, lower MIDI ranges, and denser chase rhythm.
+
+Unsupported presets fail with a clear error and no cue folder is created.
 
 ## Generated Files
 

@@ -6,17 +6,18 @@ const path = require("node:path");
 
 const generator = require("../trailer-cue-generator.js");
 
-const HELP_TEXT = `Usage: node scripts/trailer-cue-new.js "Trailer cue title" [--out trailer-cues] [--date YYYY-MM-DD]
+const HELP_TEXT = `Usage: node scripts/trailer-cue-new.js "Trailer cue title" [--out trailer-cues] [--date YYYY-MM-DD] [--preset dark-fairytale-trailer]
 
 Create a deterministic local-first 2-minute trailer cue prep folder.
 
 Options:
-  --out <dir>        Output root directory. Default: trailer-cues
-  --date <date>      Date prefix for the cue folder in YYYY-MM-DD format. Default: today
-  --help             Show this help message.
+  --out <dir>          Output root directory. Default: trailer-cues
+  --date <date>        Date prefix for the cue folder in YYYY-MM-DD format. Default: today
+  --preset <preset>    Optional deterministic preset. Supported: dark-fairytale-trailer
+  --help               Show this help message.
 
 Current limits:
-  Presets are not implemented yet.
+  Preset support is deterministic and local.
   This CLI does not call AI APIs, generate audio, control DAWs/plugins, control Resolve, or render stems.`;
 
 function parseArgs(argv) {
@@ -25,6 +26,7 @@ function parseArgs(argv) {
     title: "",
     outDir: generator.CUES_DIR,
     date: new Date(),
+    preset: "",
     help: false,
     error: "",
   };
@@ -47,6 +49,17 @@ function parseArgs(argv) {
         break;
       }
       options.date = value;
+    } else if (item === "--preset") {
+      const value = args.shift() || "";
+      if (!value || value.startsWith("--")) {
+        options.error = `--preset requires a preset value. Supported presets: ${generator.SUPPORTED_PRESETS.join(", ")}`;
+        break;
+      }
+      if (!generator.isSupportedPreset(value)) {
+        options.error = `Unsupported preset: ${value}\nSupported presets: ${generator.SUPPORTED_PRESETS.join(", ")}`;
+        break;
+      }
+      options.preset = value;
     } else if (item.startsWith("-")) {
       options.error = `Unknown option: ${item}`;
       break;
@@ -93,7 +106,7 @@ function main(argv = process.argv.slice(2)) {
   const cueDir = path.join(outRoot, folderName);
   fs.mkdirSync(cueDir, { recursive: true });
 
-  const artifacts = generator.buildCueArtifacts(options.title);
+  const artifacts = generator.buildCueArtifacts(options.title, { preset: options.preset });
   const results = Object.entries(artifacts).map(([filename, content]) => {
     const status = writeFileIfSafe(path.join(cueDir, filename), content);
     return [filename, status];
