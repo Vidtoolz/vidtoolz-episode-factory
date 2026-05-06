@@ -15,6 +15,8 @@ const packageRunsIndexScript = require("../scripts/package-runs-index.js");
 const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashboard-launch.js");
 const packageRunsDashboard = require("../package-runs-dashboard.js");
 const episodeFactoryCli = require("../scripts/episode-factory.js");
+const trailerCueGenerator = require("../trailer-cue-generator.js");
+const trailerCueScript = require("../scripts/trailer-cue-new.js");
 
 const tests = [];
 
@@ -2939,6 +2941,120 @@ test("episode factory CLI doctor file reports invalid JSON without importing", (
   assert.equal(report.ok, false);
   assert.equal(report.errors[0].code, "invalid-json");
   assert.equal(exitCode, 1);
+});
+
+test("trailer cue folder names are deterministic and slugged", () => {
+  assert.equal(
+    trailerCueGenerator.buildCueFolderName("AI Video Workflow Trailer", "2026-05-06"),
+    "2026-05-06-ai-video-workflow-trailer"
+  );
+});
+
+test("trailer cue section and tempo maps cover a two minute trailer", () => {
+  const sections = trailerCueGenerator.buildSectionMap();
+  const tempoMap = trailerCueGenerator.buildTempoMap();
+
+  assert.equal(sections[0].start, 0);
+  assert.equal(sections[sections.length - 1].end, 120);
+  assert.equal(sections.length, 8);
+  assert.deepEqual(
+    tempoMap.map((item) => item.bpm),
+    [72, 84, 96, 108, 120, 132, 112, 72]
+  );
+});
+
+test("trailer cue artifacts include planning files and six midi stems", () => {
+  const artifacts = trailerCueGenerator.buildCueArtifacts("Local trailer cue");
+  const filenames = Object.keys(artifacts).sort();
+
+  assert.deepEqual(filenames, [
+    "climax-hits.mid",
+    "drone.mid",
+    "final-sting.mid",
+    "motif.mid",
+    "patch-recommendations.md",
+    "pulse.mid",
+    "render-checklist.md",
+    "resolve-markers.csv",
+    "riser.mid",
+    "section-map.md",
+    "tempo-map.md",
+    "test-notes.md",
+  ]);
+  assert.match(artifacts["section-map.md"], /Length: 02:00/);
+  assert.match(artifacts["patch-recommendations.md"], /does not load plugins/);
+  assert.match(artifacts["test-notes.md"], /Musical Usability/);
+  assert.match(artifacts["test-notes.md"], /Patch Choices/);
+  assert.match(artifacts["test-notes.md"], /Section Timing/);
+  assert.match(artifacts["test-notes.md"], /Resolve Marker Usefulness/);
+  assert.match(artifacts["test-notes.md"], /Final Sting Strength/);
+});
+
+test("trailer cue test notes template supports manual validation fields", () => {
+  const notes = trailerCueGenerator.buildTestNotesMarkdown("Validation cue");
+
+  assert.match(notes, /DAW:/);
+  assert.match(notes, /Omnisphere \/ UVI \/ Arturia \/ other/);
+  assert.match(notes, /Rendered Stem Check/);
+  assert.match(notes, /Fairlight Assembly Check/);
+  assert.match(notes, /Do not connect this generator to a DAW/);
+});
+
+test("trailer cue validation docs describe the manual real-world pass without automation", () => {
+  const docPath = path.join(__dirname, "..", "docs", "trailer-cue-validation-workflow.md");
+  const doc = fs.readFileSync(docPath, "utf8");
+
+  assert.match(doc, /Import `resolve-markers.csv` into Resolve/);
+  assert.match(doc, /Import these MIDI files into a DAW as separate tracks/);
+  assert.match(doc, /Assign local patches manually/);
+  assert.match(doc, /Omnisphere, UVI, Arturia/);
+  assert.match(doc, /Render separate audio stems manually/);
+  assert.match(doc, /Resolve\/Fairlight/);
+  assert.match(doc, /fill `test-notes.md`/i);
+  assert.match(doc, /does not call AI APIs/);
+  assert.match(doc, /automate DAWs/);
+});
+
+test("trailer cue resolve markers use one hour timecode and section rows", () => {
+  const csv = trailerCueGenerator.buildResolveMarkerCsv();
+  const lines = csv.trim().split("\n");
+
+  assert.equal(lines[0], "Marker Name,Description,Start Timecode,Duration,Color");
+  assert.match(lines[1], /^Cold open,Immediate stakes and sonic identity\.,01:00:00:00,00:12,Blue$/);
+  assert.match(csv, /Final sting,"End card, logo, or hard stop\.",01:01:56:00,00:04,Red/);
+});
+
+test("trailer cue midi files are standard midi buffers with notes", () => {
+  const motif = trailerCueGenerator.buildMidiFile("motif");
+  const pulse = trailerCueGenerator.buildMidiFile("pulse");
+
+  assert.equal(motif.subarray(0, 4).toString("ascii"), "MThd");
+  assert.equal(motif.subarray(14, 18).toString("ascii"), "MTrk");
+  assert.ok(motif.length > 80);
+  assert.ok(pulse.length > motif.length);
+});
+
+test("trailer cue script writes cue folders without overwriting changed files", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "trailer-cue-"));
+  const exitCode = trailerCueScript.main([
+    "Local Trailer Cue",
+    "--out",
+    tempDir,
+    "--date",
+    "2026-05-06",
+  ]);
+  const cueDir = path.join(tempDir, "2026-05-06-local-trailer-cue");
+  const sectionPath = path.join(cueDir, "section-map.md");
+
+  assert.equal(exitCode, 0);
+  assert.equal(fs.existsSync(path.join(cueDir, "motif.mid")), true);
+  assert.equal(fs.existsSync(path.join(cueDir, "test-notes.md")), true);
+  fs.writeFileSync(sectionPath, "human edit", "utf8");
+  assert.equal(
+    trailerCueScript.main(["Local Trailer Cue", "--out", tempDir, "--date", "2026-05-06"]),
+    2
+  );
+  assert.equal(fs.readFileSync(sectionPath, "utf8"), "human edit");
 });
 
 let passed = 0;

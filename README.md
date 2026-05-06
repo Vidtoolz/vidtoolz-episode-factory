@@ -152,6 +152,21 @@ This writes `creator-qa-package.md`, `creator-qa-report.md`, and
 `ai_video_breakdown` profile, maps only `final-script.md` into the generated
 `# Script` section, and does not approve or publish anything automatically.
 
+Create a deterministic 2-minute local trailer cue prep folder:
+
+```sh
+node scripts/trailer-cue-new.js "AI video workflow trailer"
+```
+
+This writes `section-map.md`, `tempo-map.md`, `resolve-markers.csv`,
+`patch-recommendations.md`, `render-checklist.md`, `test-notes.md`, and
+separate MIDI files for motif, drone, pulse, riser, climax hits, and final sting under
+`trailer-cues/YYYY-MM-DD-ai-video-workflow-trailer/`. It does not call AI APIs,
+generate audio, control Resolve, control DAWs, load plugins, or render stems.
+See [docs/trailer-cue-generator.md](docs/trailer-cue-generator.md).
+Use [docs/trailer-cue-validation-workflow.md](docs/trailer-cue-validation-workflow.md)
+for the manual DAW, patch, render, Resolve, and Fairlight validation pass.
+
 ## CLI Episode Workflow
 
 Initialize local CLI storage on a fresh checkout:
@@ -362,6 +377,8 @@ High-level browser checks:
 - `scripts/package-run-creator-qa.js` runs local Creator QA over Package Engine run artifacts.
 - `scripts/package-runs-index.js` generates the local Package Runs dashboard index.
 - `scripts/package-runs-dashboard-launch.js` regenerates the Package Runs index and prints the local dashboard launch command.
+- `scripts/trailer-cue-new.js` creates local deterministic trailer cue prep folders with text maps, Resolve marker CSV, checklists, and MIDI files.
+- `trailer-cue-generator.js` owns the trailer cue section map, tempo map, marker CSV, patch/checklist builders, and dependency-free MIDI writer.
 - `package-runs-dashboard.html` and `package-runs-dashboard.js` render the static Package Runs dashboard.
 - `storage-adapter.js` wraps `localStorage` behind a small interface for later storage changes.
 - `app.js` renders the board and detail view, wires editing, persistence, duplication, deletion, JSON export/import, and clipboard actions.
@@ -379,6 +396,8 @@ High-level browser checks:
 - `docs/package-engine-production-prep-workflow.md` documents the Production Prep workflow.
 - `docs/package-run-creator-qa-workflow.md` documents the Package Run Creator QA workflow.
 - `docs/package-runs-dashboard-workflow.md` documents the Package Runs dashboard workflow.
+- `docs/trailer-cue-generator.md` documents the Trailer Cue Generator workflow and limits.
+- `docs/trailer-cue-validation-workflow.md` documents the manual real-world trailer cue validation pass.
 - `docs/packaging-gate.md` documents the gate criteria.
 - `docs/creator-qa-export.md` documents the Creator QA export mapping.
 
