@@ -6,22 +6,55 @@ const path = require("node:path");
 
 const generator = require("../trailer-cue-generator.js");
 
+const HELP_TEXT = `Usage: node scripts/trailer-cue-new.js "Trailer cue title" [--out trailer-cues] [--date YYYY-MM-DD]
+
+Create a deterministic local-first 2-minute trailer cue prep folder.
+
+Options:
+  --out <dir>        Output root directory. Default: trailer-cues
+  --date <date>      Date prefix for the cue folder in YYYY-MM-DD format. Default: today
+  --help             Show this help message.
+
+Current limits:
+  Presets are not implemented yet.
+  This CLI does not call AI APIs, generate audio, control DAWs/plugins, control Resolve, or render stems.`;
+
 function parseArgs(argv) {
   const args = [...argv];
   const options = {
     title: "",
     outDir: generator.CUES_DIR,
     date: new Date(),
+    help: false,
+    error: "",
   };
 
   while (args.length) {
     const item = args.shift();
-    if (item === "--out") {
-      options.outDir = args.shift() || "";
+    if (item === "--help" || item === "-h") {
+      options.help = true;
+    } else if (item === "--out") {
+      const value = args.shift() || "";
+      if (!value || value.startsWith("--")) {
+        options.error = "--out requires a directory value.";
+        break;
+      }
+      options.outDir = value;
     } else if (item === "--date") {
-      options.date = args.shift() || "";
+      const value = args.shift() || "";
+      if (!value || value.startsWith("--")) {
+        options.error = "--date requires a YYYY-MM-DD value.";
+        break;
+      }
+      options.date = value;
+    } else if (item.startsWith("-")) {
+      options.error = `Unknown option: ${item}`;
+      break;
     } else if (!options.title) {
       options.title = item;
+    } else {
+      options.error = `Unexpected argument: ${item}`;
+      break;
     }
   }
 
@@ -41,8 +74,16 @@ function writeFileIfSafe(filePath, content) {
 
 function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
+  if (options.help) {
+    console.log(HELP_TEXT);
+    return 0;
+  }
+  if (options.error) {
+    console.error(`${options.error}\nRun "node scripts/trailer-cue-new.js --help" for supported usage.`);
+    return 1;
+  }
   if (!options.title) {
-    console.error('Usage: node scripts/trailer-cue-new.js "Trailer cue title" [--out trailer-cues] [--date YYYY-MM-DD]');
+    console.error('Missing trailer cue title.\nRun "node scripts/trailer-cue-new.js --help" for supported usage.');
     return 1;
   }
 
@@ -71,6 +112,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  HELP_TEXT,
   main,
   parseArgs,
   writeFileIfSafe,

@@ -158,6 +158,9 @@ Create a deterministic 2-minute local trailer cue prep folder:
 node scripts/trailer-cue-new.js "AI video workflow trailer"
 ```
 
+Supported options are `--out`, `--date`, and `--help`. Unknown options fail;
+presets are not implemented yet.
+
 This writes `section-map.md`, `tempo-map.md`, `resolve-markers.csv`,
 `patch-recommendations.md`, `render-checklist.md`, `test-notes.md`, and
 separate MIDI files for motif, drone, pulse, riser, climax hits, and final sting under

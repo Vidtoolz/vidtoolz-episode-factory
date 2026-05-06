@@ -24,6 +24,21 @@ function test(name, fn) {
   tests.push({ name, fn });
 }
 
+function captureConsole(fn) {
+  const originalLog = console.log;
+  const originalError = console.error;
+  const output = { stdout: [], stderr: [], result: undefined };
+  console.log = (...args) => output.stdout.push(args.join(" "));
+  console.error = (...args) => output.stderr.push(args.join(" "));
+  try {
+    output.result = fn();
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+  }
+  return output;
+}
+
 function createMemoryStorage() {
   const data = new Map();
   return {
@@ -3034,19 +3049,54 @@ test("trailer cue midi files are standard midi buffers with notes", () => {
   assert.ok(pulse.length > motif.length);
 });
 
+test("trailer cue cli help documents supported options and current limits", () => {
+  const output = captureConsole(() => trailerCueScript.main(["--help"]));
+
+  assert.equal(output.result, 0);
+  assert.equal(output.stderr.length, 0);
+  assert.match(output.stdout.join("\n"), /Usage: node scripts\/trailer-cue-new\.js "Trailer cue title"/);
+  assert.match(output.stdout.join("\n"), /--out <dir>/);
+  assert.match(output.stdout.join("\n"), /--date <date>/);
+  assert.match(output.stdout.join("\n"), /Presets are not implemented yet/);
+  assert.match(output.stdout.join("\n"), /does not call AI APIs/);
+});
+
+test("trailer cue cli rejects unknown options clearly", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "trailer-cue-unknown-"));
+  const output = captureConsole(() =>
+    trailerCueScript.main([
+      "Dark Fairytale Trailer",
+      "--out",
+      tempDir,
+      "--date",
+      "2026-05-06",
+      "--preset",
+      "dark-fairytale-trailer",
+    ])
+  );
+
+  assert.equal(output.result, 1);
+  assert.match(output.stderr.join("\n"), /Unknown option: --preset/);
+  assert.match(output.stderr.join("\n"), /--help/);
+  assert.equal(fs.existsSync(path.join(tempDir, "2026-05-06-dark-fairytale-trailer")), false);
+});
+
 test("trailer cue script writes cue folders without overwriting changed files", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "trailer-cue-"));
-  const exitCode = trailerCueScript.main([
-    "Local Trailer Cue",
-    "--out",
-    tempDir,
-    "--date",
-    "2026-05-06",
-  ]);
+  const output = captureConsole(() =>
+    trailerCueScript.main([
+      "Local Trailer Cue",
+      "--out",
+      tempDir,
+      "--date",
+      "2026-05-06",
+    ])
+  );
   const cueDir = path.join(tempDir, "2026-05-06-local-trailer-cue");
   const sectionPath = path.join(cueDir, "section-map.md");
 
-  assert.equal(exitCode, 0);
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /Created trailer cue files in:/);
   assert.equal(fs.existsSync(path.join(cueDir, "motif.mid")), true);
   assert.equal(fs.existsSync(path.join(cueDir, "test-notes.md")), true);
   fs.writeFileSync(sectionPath, "human edit", "utf8");

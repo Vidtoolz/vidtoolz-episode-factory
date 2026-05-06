@@ -22,6 +22,20 @@ Use a fixed date when you need deterministic folder names in tests or repeatable
 node scripts/trailer-cue-new.js "AI video workflow trailer" --date 2026-05-06
 ```
 
+Use `--out` to choose a different output root:
+
+```sh
+node scripts/trailer-cue-new.js "AI video workflow trailer" --out /tmp/trailer-cues
+```
+
+Show supported CLI usage:
+
+```sh
+node scripts/trailer-cue-new.js --help
+```
+
+Current supported options are `--out`, `--date`, and `--help`. Unknown options fail with a clear error and no cue folder is created. Presets are not implemented yet, so commands such as `--preset dark-fairytale-trailer` are rejected.
+
 ## Generated Files
 
 - `section-map.md`: 02:00 trailer structure with section purpose and musical direction.
