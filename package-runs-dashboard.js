@@ -14,6 +14,7 @@
 
   const WORKFLOW_FILTERS = [
     "Needs QA repair",
+    "Needs proof capture",
     "Needs package selection",
     "Needs outline",
     "Needs script",
@@ -30,6 +31,9 @@
     ["final_outline", "final-outline.md", "Final outline"],
     ["script_prompt", "script-prompt.md", "Script prompt"],
     ["final_script", "final-script.md", "Final script"],
+    ["capture_verification_note", "capture-verification-note.md", "Capture plan"],
+    ["capture_result_note", "capture-result-note.md", "Capture result"],
+    ["capture_transcript", "capture-transcript.md", "Capture transcript"],
     ["production_brief", "production-brief.md", "Production brief"],
     ["shooting_plan", "shooting-plan.md", "Shooting plan"],
     ["b_roll_list", "b-roll-list.md", "B-roll list"],
@@ -66,16 +70,22 @@
       statuses: source.statuses && typeof source.statuses === "object" ? source.statuses : {},
       runs: runs.map((run) => {
         const status = String(run.status || "Idea run");
-        const creatorQaStatus = String(run.creatorQaStatus || "not run");
-        const qaFailed = creatorQaStatus.toUpperCase() === "FAIL";
-        const qaNotRun = creatorQaStatus.toLowerCase() === "not run";
+        const creatorQaStatus = normalizeCreatorQaStatus(run.creatorQaStatus || "not run");
+        const qaBlocking = isCreatorQaBlocking(creatorQaStatus);
+        const qaNotRun = creatorQaStatus === "not run";
+        const evidenceGate = normalizeEvidenceGate(run.evidenceGate);
         const workflowBucket =
-          qaFailed || (status === "Ready to shoot" && qaNotRun)
-            ? workflowBucketForStatus(status, creatorQaStatus)
-            : String(run.workflowBucket || workflowBucketForStatus(status, creatorQaStatus));
+          qaBlocking || (status === "Ready to shoot" && (qaNotRun || evidenceGate.blocksProductionReady))
+            ? workflowBucketForStatus(status, creatorQaStatus, evidenceGate)
+            : String(run.workflowBucket || workflowBucketForStatus(status, creatorQaStatus, evidenceGate));
         let nextRecommendedCommand = String(run.nextRecommendedCommand || "");
-        if (!nextRecommendedCommand && qaFailed) {
-          nextRecommendedCommand = "Review creator-qa-report.md and repair package/script before shooting.";
+        if (!nextRecommendedCommand && qaBlocking) {
+          nextRecommendedCommand =
+            creatorQaStatus === "FAIL"
+              ? "Review creator-qa-report.md and repair package/script before shooting."
+              : `Review Creator QA status ${creatorQaStatus} and repair package/script before shooting.`;
+        } else if (!nextRecommendedCommand && status === "Ready to shoot" && evidenceGate.blocksProductionReady) {
+          nextRecommendedCommand = "Capture or import durable proof evidence before production approval.";
         } else if (!nextRecommendedCommand && status === "Ready to shoot" && qaNotRun) {
           nextRecommendedCommand = `node scripts/package-run-creator-qa.js ${run.path || "package-runs/YYYY-MM-DD-topic-slug"}`;
         }
@@ -85,6 +95,7 @@
           title: String(run.title || ""),
           status,
           creatorQaStatus,
+          evidenceGate,
           workflowBucket,
           nextExpectedFile: String(run.nextExpectedFile || ""),
           nextRecommendedCommand,
@@ -113,10 +124,41 @@
     return `run-status-${String(status || "idea").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   }
 
-  function workflowBucketForStatus(status, creatorQaStatus = "not run") {
-    const qaStatus = String(creatorQaStatus || "");
-    if (qaStatus.toUpperCase() === "FAIL") return "Needs QA repair";
-    if (status === "Ready to shoot" && qaStatus.toLowerCase() === "not run") return "QA not run";
+  function normalizeCreatorQaStatus(value = "not run") {
+    const status = String(value || "").trim().toUpperCase().replace(/_/g, " ");
+    if (!status) return "not run";
+    if (status === "NOT RUN") return "not run";
+    if (status === "PASS") return "PASS";
+    if (status === "FAIL") return "FAIL";
+    if (status === "NEEDS WORK") return "NEEDS WORK";
+    return status;
+  }
+
+  function isCreatorQaBlocking(creatorQaStatus = "not run") {
+    const status = normalizeCreatorQaStatus(creatorQaStatus);
+    return status !== "PASS" && status !== "not run";
+  }
+
+  function normalizeEvidenceGate(evidenceGate) {
+    const source = evidenceGate && typeof evidenceGate === "object" ? evidenceGate : {};
+    return {
+      status: String(source.status || "not evaluated"),
+      warning: String(source.warning || ""),
+      blocksProductionReady: Boolean(source.blocksProductionReady),
+      hasCapturePlan: Boolean(source.hasCapturePlan),
+      hasCaptureResult: Boolean(source.hasCaptureResult),
+      saysNoCapturedOutput: Boolean(source.saysNoCapturedOutput),
+      hasCaptureTranscript: Boolean(source.hasCaptureTranscript),
+      hasVisualCapture: Boolean(source.hasVisualCapture),
+      evidenceReferences: Array.isArray(source.evidenceReferences) ? source.evidenceReferences.map(String) : [],
+    };
+  }
+
+  function workflowBucketForStatus(status, creatorQaStatus = "not run", evidenceGate = {}) {
+    const qaStatus = normalizeCreatorQaStatus(creatorQaStatus);
+    if (isCreatorQaBlocking(qaStatus)) return "Needs QA repair";
+    if (status === "Ready to shoot" && evidenceGate.blocksProductionReady) return "Needs proof capture";
+    if (status === "Ready to shoot" && qaStatus === "not run") return "QA not run";
     const bucketByStatus = {
       "Idea run": "Needs package selection",
       "Package selected": "Needs outline",
@@ -241,24 +283,28 @@
     if (!run.nextRecommendedCommand) {
       return `<div class="run-command done"><span>Next command</span><code>${run.status === "Ready to shoot" ? "Shoot the video." : "Manual review or file edit needed."}</code></div>`;
     }
-    const blocking = run.workflowBucket === "Needs QA repair" ? " blocking" : "";
+    const blocking = run.workflowBucket === "Needs QA repair" || run.workflowBucket === "Needs proof capture" ? " blocking" : "";
     return `<div class="run-command${blocking}"><span>Next command</span><code>${escapeHtml(run.nextRecommendedCommand)}</code></div>`;
   }
 
   function creatorQaClass(status) {
-    return `creator-qa-${String(status || "not-run").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+    const normalized = normalizeCreatorQaStatus(status);
+    if (isCreatorQaBlocking(normalized) && normalized !== "FAIL" && normalized !== "NEEDS WORK") {
+      return "creator-qa-blocking";
+    }
+    return `creator-qa-${String(normalized || "not-run").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   }
 
   function renderCreatorQaStatus(run) {
-    const status = run.creatorQaStatus || "not run";
-    const qaFailed = String(status).toUpperCase() === "FAIL";
-    const qaNotRun = String(status).toLowerCase() === "not run";
+    const status = normalizeCreatorQaStatus(run.creatorQaStatus || "not run");
+    const qaBlocking = isCreatorQaBlocking(status);
+    const qaNotRun = status === "not run";
     const reportHref = run.files && run.files.creator_qa_report ? fileHref(run, "creator-qa-report.md") : "";
     const reportLink = reportHref
       ? `<a href="${escapeHtml(reportHref)}" data-preview-artifact="${escapeHtml(reportHref)}" data-artifact-title="Creator QA report" data-run-id="${escapeHtml(run.runId)}">preview report</a>`
       : "";
     let note = "Run Creator QA before shooting or publishing.";
-    if (qaFailed) {
+    if (qaBlocking) {
       note = reportLink
         ? `Blocking: ${reportLink} and repair package/script before shooting.`
         : "Blocking: repair package/script before shooting.";
@@ -267,8 +313,22 @@
     } else if (qaNotRun) {
       note = "QA not run. Run Creator QA before shooting or publishing.";
     }
-    const label = qaFailed ? "Creator QA blocker" : "Creator QA";
+    const label = qaBlocking ? "Creator QA blocker" : "Creator QA";
     return `<div class="creator-qa-status ${creatorQaClass(status)}"><span>${label}</span><strong>${escapeHtml(status)}</strong><small>${note}</small></div>`;
+  }
+
+  function evidenceGateClass(status) {
+    return `evidence-gate-${String(status || "not-evaluated").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  }
+
+  function renderEvidenceGate(run) {
+    const gate = normalizeEvidenceGate(run.evidenceGate);
+    const references = gate.evidenceReferences.length
+      ? `Evidence refs: ${gate.evidenceReferences.map(escapeHtml).join(", ")}`
+      : "No capture transcript, screenshot, or recording reference detected.";
+    const note = gate.warning || references;
+    const label = gate.blocksProductionReady ? "Evidence Gate blocker" : "Evidence Gate";
+    return `<div class="evidence-gate-status ${evidenceGateClass(gate.status)}"><span>${label}</span><strong>${escapeHtml(gate.status)}</strong><small>${note}</small>${gate.warning ? `<small>${references}</small>` : ""}</div>`;
   }
 
   function renderRunCard(run) {
@@ -276,7 +336,10 @@
     const next = run.nextExpectedFile ? `<p class="muted">Next: ${escapeHtml(run.nextExpectedFile)}</p>` : `<p class="muted">Next: shoot the video.</p>`;
     const updated = run.updatedAt ? new Date(run.updatedAt).toLocaleString() : "No tracked files yet";
     const runHref = run.path ? `${run.path}/` : "#";
-    const cardClass = run.workflowBucket === "Needs QA repair" ? "package-run-card qa-blocked" : "package-run-card";
+    const cardClass =
+      run.workflowBucket === "Needs QA repair" || run.workflowBucket === "Needs proof capture"
+        ? "package-run-card qa-blocked"
+        : "package-run-card";
     return `
       <article class="${cardClass}">
         <div class="package-card-top">
@@ -287,6 +350,7 @@
         <h2>${escapeHtml(title)}</h2>
         ${next}
         ${renderCreatorQaStatus(run)}
+        ${renderEvidenceGate(run)}
         ${renderNextCommand(run)}
         <div class="package-card-grid">
           <div><span>Updated</span><strong>${escapeHtml(updated)}</strong></div>
@@ -419,6 +483,9 @@
     normalizeIndex,
     filterAndSortRuns,
     statusClass,
+    normalizeCreatorQaStatus,
+    isCreatorQaBlocking,
+    normalizeEvidenceGate,
     workflowBucketForStatus,
     fileHref,
     artifactLabelForFilename,
@@ -426,6 +493,8 @@
     renderMarkdown,
     renderNextCommand,
     renderCreatorQaStatus,
+    evidenceGateClass,
+    renderEvidenceGate,
     renderRunCard,
     renderStats,
     renderWorkflowStats,

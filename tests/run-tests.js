@@ -2368,8 +2368,87 @@ test("package runs index classifies workflow status from detected files", () => 
   assert.equal(packageRunsIndexScript.classifyRunStatus(files), "Ready to shoot");
   assert.equal(packageRunsIndexScript.classifyRunStatus(files, "not run"), "Ready to shoot");
   assert.equal(packageRunsIndexScript.classifyRunStatus(files, "FAIL"), "Production prep ready");
+  assert.equal(packageRunsIndexScript.classifyRunStatus(files, "NEEDS WORK"), "Production prep ready");
+  assert.equal(packageRunsIndexScript.classifyRunStatus(files, "REVIEW REQUIRED"), "Production prep ready");
   assert.equal(packageRunsIndexScript.workflowBucket("Production prep ready", "FAIL"), "Needs QA repair");
   assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "not run"), "QA not run");
+});
+
+test("package runs readiness buckets are conservative for creator qa status", () => {
+  const evidenceBlocking = { blocksProductionReady: true };
+
+  assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "PASS"), "Ready to shoot");
+  assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "not run"), "QA not run");
+  assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "FAIL"), "Needs QA repair");
+  assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "NEEDS WORK"), "Needs QA repair");
+  assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "REVIEW REQUIRED"), "Needs QA repair");
+  assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "PASS", evidenceBlocking), "Needs proof capture");
+});
+
+test("package runs index reports conservative evidence gate status", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-gate-"));
+  const planOnlyDir = path.join(tempRoot, "plan-only");
+  const missingDir = path.join(tempRoot, "missing");
+  const transcriptDir = path.join(tempRoot, "transcript");
+  const capturedDir = path.join(tempRoot, "captured");
+  [planOnlyDir, missingDir, transcriptDir, capturedDir].forEach((runDir) => fs.mkdirSync(runDir, { recursive: true }));
+
+  fs.writeFileSync(path.join(planOnlyDir, "capture-verification-note.md"), "# Capture Verification Note\n");
+
+  fs.writeFileSync(path.join(missingDir, "capture-verification-note.md"), "# Capture Verification Note\n");
+  fs.writeFileSync(
+    path.join(missingDir, "capture-result-note.md"),
+    "# Capture Result Note\n\nNo captured output exists.\n"
+  );
+
+  fs.writeFileSync(path.join(transcriptDir, "capture-verification-note.md"), "# Capture Verification Note\n");
+  fs.writeFileSync(
+    path.join(transcriptDir, "capture-result-note.md"),
+    "# Capture Result Note\n\nCaptured transcript available in `capture-transcript.md`.\n"
+  );
+  fs.writeFileSync(path.join(transcriptDir, "capture-transcript.md"), "# Capture Transcript\n");
+
+  fs.writeFileSync(path.join(capturedDir, "capture-verification-note.md"), "# Capture Verification Note\n");
+  fs.writeFileSync(
+    path.join(capturedDir, "capture-result-note.md"),
+    "# Capture Result Note\n\nScreen recording imported as `capture-recording.mp4`.\n"
+  );
+  fs.writeFileSync(path.join(capturedDir, "capture-recording.mp4"), "fake mp4 placeholder\n");
+
+  assert.deepEqual(packageRunsIndexScript.readEvidenceGate(planOnlyDir), {
+    status: "planned proof only",
+    warning: "Not production-ready: proof capture missing",
+    blocksProductionReady: true,
+    hasCapturePlan: true,
+    hasCaptureResult: false,
+    saysNoCapturedOutput: false,
+    hasCaptureTranscript: false,
+    hasVisualCapture: false,
+    evidenceReferences: [],
+  });
+
+  const missingGate = packageRunsIndexScript.readEvidenceGate(missingDir);
+  assert.equal(missingGate.status, "capture missing");
+  assert.equal(missingGate.saysNoCapturedOutput, true);
+  assert.equal(missingGate.blocksProductionReady, true);
+
+  const transcriptGate = packageRunsIndexScript.readEvidenceGate(transcriptDir);
+  assert.equal(transcriptGate.status, "transcript captured; visual proof missing");
+  assert.equal(transcriptGate.hasCaptureTranscript, true);
+  assert.equal(transcriptGate.hasVisualCapture, false);
+  assert.equal(transcriptGate.blocksProductionReady, true);
+  assert.deepEqual(transcriptGate.evidenceReferences, ["capture-transcript.md"]);
+
+  const capturedGate = packageRunsIndexScript.readEvidenceGate(capturedDir);
+  assert.equal(capturedGate.status, "proof captured");
+  assert.equal(capturedGate.hasVisualCapture, true);
+  assert.equal(capturedGate.blocksProductionReady, false);
+  assert.deepEqual(capturedGate.evidenceReferences, ["capture-recording.mp4"]);
+
+  assert.equal(
+    packageRunsIndexScript.workflowBucket("Ready to shoot", "PASS", transcriptGate),
+    "Needs proof capture"
+  );
 });
 
 test("package runs index scans package-runs folders and writes index json", () => {
@@ -2423,9 +2502,13 @@ test("package runs index scans package-runs folders and writes index json", () =
   const byRunId = Object.fromEntries(index.runs.map((run) => [run.runId, run]));
 
   assert.equal(index.count, 4);
-  assert.equal(byRunId["2026-05-02-ready"].status, "Ready to shoot");
-  assert.equal(byRunId["2026-05-02-ready"].workflowBucket, "Ready to shoot");
+  assert.equal(byRunId["2026-05-02-ready"].status, "Production prep ready");
+  assert.equal(byRunId["2026-05-02-ready"].workflowBucket, "Needs QA repair");
   assert.equal(byRunId["2026-05-02-ready"].creatorQaStatus, "NEEDS WORK");
+  assert.equal(
+    byRunId["2026-05-02-ready"].nextRecommendedCommand,
+    "Review Creator QA status NEEDS WORK and repair package/script before shooting."
+  );
   assert.equal(byRunId["2026-05-02-ready"].files.creator_qa_report, true);
   assert.equal(byRunId["2026-05-02-ready"].files.creator_qa_report_json, true);
   assert.equal(byRunId["2026-05-02-ready"].title, "Ready Package");
@@ -2440,8 +2523,8 @@ test("package runs index scans package-runs folders and writes index json", () =
   assert.equal(byRunId["2026-05-01-idea"].creatorQaStatus, "not run");
   assert.equal(byRunId["2026-05-01-idea"].workflowBucket, "Needs package selection");
   assert.equal(written.count, 4);
-  assert.equal(written.statuses["Ready to shoot"], 2);
-  assert.equal(written.statuses["Production prep ready"], 1);
+  assert.equal(written.statuses["Ready to shoot"], 1);
+  assert.equal(written.statuses["Production prep ready"], 2);
   assert.equal(output, 0);
 });
 
@@ -2463,10 +2546,24 @@ test("package runs index recommends deterministic next local commands", () => {
     "node scripts/package-run-creator-qa.js package-runs/run-id"
   );
   assert.equal(
+    packageRunsIndexScript.nextRecommendedCommand("Ready to shoot", "package-runs/run-id", "not run", {
+      blocksProductionReady: true,
+    }),
+    "Capture or import durable proof evidence before production approval."
+  );
+  assert.equal(
     packageRunsIndexScript.nextRecommendedCommand("Ready to shoot", "package-runs/run-id", "FAIL"),
     "Review creator-qa-report.md and repair package/script before shooting."
   );
   assert.equal(packageRunsIndexScript.nextRecommendedCommand("Ready to shoot", "package-runs/run-id", "PASS"), "");
+  assert.equal(
+    packageRunsIndexScript.nextRecommendedCommand("Ready to shoot", "package-runs/run-id", "NEEDS WORK"),
+    "Review Creator QA status NEEDS WORK and repair package/script before shooting."
+  );
+  assert.equal(
+    packageRunsIndexScript.nextRecommendedCommand("Ready to shoot", "package-runs/run-id", "REVIEW REQUIRED"),
+    "Review Creator QA status REVIEW REQUIRED and repair package/script before shooting."
+  );
   assert.equal(packageRunsIndexScript.workflowBucket("Script prep ready"), "Needs script");
   assert.equal(packageRunsIndexScript.workflowBucket("Production prep ready"), "Needs production prep");
   assert.equal(packageRunsIndexScript.workflowBucket("Production prep ready", "FAIL"), "Needs QA repair");
@@ -2541,6 +2638,44 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
         nextRecommendedCommand: "node scripts/package-run-creator-qa.js package-runs/2026-05-05-e",
         files: { final_script: true, production_brief: true },
       },
+      {
+        runId: "2026-05-06-f",
+        path: "package-runs/2026-05-06-f",
+        title: "Proof Missing Package",
+        status: "Ready to shoot",
+        workflowBucket: "Ready to shoot",
+        creatorQaStatus: "PASS",
+        evidenceGate: {
+          status: "capture missing",
+          warning: "Not production-ready: proof capture missing",
+          blocksProductionReady: true,
+          hasCapturePlan: true,
+          hasCaptureResult: true,
+          saysNoCapturedOutput: true,
+          evidenceReferences: [],
+        },
+        files: { final_script: true, production_brief: true, capture_verification_note: true, capture_result_note: true },
+      },
+      {
+        runId: "2026-05-07-g",
+        path: "package-runs/2026-05-07-g",
+        title: "Needs Work Package",
+        status: "Ready to shoot",
+        workflowBucket: "Ready to shoot",
+        creatorQaStatus: "NEEDS WORK",
+        nextRecommendedCommand: "",
+        files: { final_script: true, production_brief: true, creator_qa_report: true, creator_qa_report_json: true },
+      },
+      {
+        runId: "2026-05-08-h",
+        path: "package-runs/2026-05-08-h",
+        title: "Unknown QA Package",
+        status: "Ready to shoot",
+        workflowBucket: "Ready to shoot",
+        creatorQaStatus: "REVIEW REQUIRED",
+        nextRecommendedCommand: "",
+        files: { final_script: true, production_brief: true, creator_qa_report: true, creator_qa_report_json: true },
+      },
     ],
   };
   const index = packageRunsDashboard.normalizeIndex(payload);
@@ -2548,18 +2683,23 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
   const needsScript = packageRunsDashboard.filterAndSortRuns(index.runs, "Needs script", "run-desc");
   const needsQaRepair = packageRunsDashboard.filterAndSortRuns(index.runs, "Needs QA repair", "run-desc");
   const qaNotRun = packageRunsDashboard.filterAndSortRuns(index.runs, "QA not run", "run-desc");
+  const needsProofCapture = packageRunsDashboard.filterAndSortRuns(index.runs, "Needs proof capture", "run-desc");
   const card = packageRunsDashboard.renderRunCard(filtered[0]);
   const scriptCard = packageRunsDashboard.renderRunCard(needsScript[0]);
-  const failedQaCard = packageRunsDashboard.renderRunCard(needsQaRepair[0]);
+  const failedQaCard = packageRunsDashboard.renderRunCard(needsQaRepair.find((run) => run.runId === "2026-05-04-d"));
+  const needsWorkCard = packageRunsDashboard.renderRunCard(needsQaRepair.find((run) => run.runId === "2026-05-07-g"));
+  const unknownQaCard = packageRunsDashboard.renderRunCard(needsQaRepair.find((run) => run.runId === "2026-05-08-h"));
   const qaMissingCard = packageRunsDashboard.renderRunCard(qaNotRun[0]);
+  const proofMissingCard = packageRunsDashboard.renderRunCard(needsProofCapture[0]);
   const stats = packageRunsDashboard.renderWorkflowStats(index.runs);
 
-  assert.equal(index.count, 5);
+  assert.equal(index.count, 8);
   assert.equal(filtered.length, 1);
   assert.equal(filtered[0].runId, "2026-05-02-b");
   assert.equal(needsScript.length, 1);
-  assert.equal(needsQaRepair.length, 1);
+  assert.equal(needsQaRepair.length, 3);
   assert.equal(qaNotRun.length, 1);
+  assert.equal(needsProofCapture.length, 1);
   assert.match(card, /Ready Package/);
   assert.match(card, /Ready to shoot/);
   assert.match(card, /package-runs\/2026-05-02-b\//);
@@ -2575,11 +2715,24 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
   assert.match(failedQaCard, /Creator QA blocker/);
   assert.match(failedQaCard, /FAIL/);
   assert.match(failedQaCard, /Review creator-qa-report\.md and repair package\/script before shooting\./);
+  assert.match(needsWorkCard, /Needs Work Package/);
+  assert.match(needsWorkCard, /Creator QA blocker/);
+  assert.match(needsWorkCard, /NEEDS WORK/);
+  assert.match(needsWorkCard, /Review Creator QA status NEEDS WORK and repair package\/script before shooting\./);
+  assert.match(unknownQaCard, /Unknown QA Package/);
+  assert.match(unknownQaCard, /Creator QA blocker/);
+  assert.match(unknownQaCard, /REVIEW REQUIRED/);
+  assert.match(unknownQaCard, /Review Creator QA status REVIEW REQUIRED and repair package\/script before shooting\./);
   assert.match(qaMissingCard, /QA not run/);
   assert.match(qaMissingCard, /node scripts\/package-run-creator-qa\.js package-runs\/2026-05-05-e/);
+  assert.match(proofMissingCard, /Needs proof capture/);
+  assert.match(proofMissingCard, /Evidence Gate blocker/);
+  assert.match(proofMissingCard, /Not production-ready: proof capture missing/);
+  assert.match(proofMissingCard, /Capture or import durable proof evidence before production approval\./);
   assert.match(stats, /Ready to shoot/);
   assert.match(stats, /Needs production prep/);
   assert.match(stats, /Needs QA repair/);
+  assert.match(stats, /Needs proof capture/);
   assert.match(stats, /QA not run/);
 });
 

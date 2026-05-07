@@ -1207,7 +1207,8 @@ label > span,
   color: var(--accent-strong);
 }
 
-.run-status-needs-qa-repair {
+.run-status-needs-qa-repair,
+.run-status-needs-proof-capture {
   background: #fbecea;
   color: var(--danger);
 }
@@ -1310,7 +1311,8 @@ label > span,
   white-space: normal;
 }
 
-.creator-qa-status {
+.creator-qa-status,
+.evidence-gate-status {
   border: 1px solid var(--border);
   border-radius: 7px;
   display: grid;
@@ -1319,12 +1321,15 @@ label > span,
 }
 
 .creator-qa-status span,
-.creator-qa-status small {
+.creator-qa-status small,
+.evidence-gate-status span,
+.evidence-gate-status small {
   color: var(--muted);
   font-size: 12px;
 }
 
-.creator-qa-status strong {
+.creator-qa-status strong,
+.evidence-gate-status strong {
   font-size: 15px;
 }
 
@@ -1338,18 +1343,27 @@ label > span,
   border-color: rgba(35, 97, 74, 0.3);
 }
 
-.creator-qa-needs-work {
-  background: #fff6df;
-  border-color: #ead08a;
-}
-
-.creator-qa-fail {
+.creator-qa-fail,
+.creator-qa-needs-work,
+.creator-qa-blocking {
   background: #fbecea;
   border-color: #efc4bf;
 }
 
 .creator-qa-not-run {
   background: var(--panel-soft);
+}
+
+.evidence-gate-proof-captured,
+.evidence-gate-not-evaluated {
+  background: var(--panel-soft);
+}
+
+.evidence-gate-planned-proof-only,
+.evidence-gate-capture-missing,
+.evidence-gate-transcript-captured-visual-proof-missing {
+  background: #fbecea;
+  border-color: #efc4bf;
 }
 
 .artifact-preview-panel {

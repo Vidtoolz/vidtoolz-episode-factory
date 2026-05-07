@@ -15,6 +15,9 @@ const DETECTED_FILES = [
   "final-outline.md",
   "script-prompt.md",
   "final-script.md",
+  "capture-verification-note.md",
+  "capture-result-note.md",
+  "capture-transcript.md",
   "production-brief.md",
   "shooting-plan.md",
   "b-roll-list.md",
@@ -36,6 +39,12 @@ const PRODUCTION_ARTIFACTS = [
   "thumbnail-title-check.md",
   "publish-pack.md",
 ];
+
+const CAPTURE_REFERENCE_PATTERN = /\b[\w./-]*(?:transcript|screenshot|screen[-_\s]?recording|recording)[\w./-]*\.(?:md|txt|png|jpe?g|webp|gif|mp4|mov|mkv|webm)\b/gi;
+const CAPTURE_FILE_PATTERN = /(?:^|[-_])(capture[-_])?(transcript|screenshot|screen[-_]?recording|recording)(?:[-_.]|$)/i;
+const VISUAL_CAPTURE_PATTERN = /(screenshot|screen[-_\s]?recording|recording).*\.(png|jpe?g|webp|gif|mp4|mov|mkv|webm)$/i;
+const NO_CAPTURED_OUTPUT_PATTERN =
+  /\b(no|without)\s+(durable\s+)?(captured\s+output|capture\s+output|capture\s+evidence|transcript|screenshot|screen\s+recording|recording)\s+(exists?|available|imported|was\s+imported|is\s+imported)\b/i;
 
 function parseArgs(argv) {
   const args = [...argv];
@@ -74,11 +83,26 @@ function hasAllProductionArtifacts(files = {}) {
   return PRODUCTION_ARTIFACTS.every((filename) => files[fileKey(filename)]);
 }
 
+function normalizeCreatorQaStatus(value = "not run") {
+  const status = String(value || "").trim().toUpperCase().replace(/_/g, " ");
+  if (!status) return "not run";
+  if (status === "NOT RUN") return "not run";
+  if (status === "PASS") return "PASS";
+  if (status === "FAIL") return "FAIL";
+  if (status === "NEEDS WORK") return "NEEDS WORK";
+  return status;
+}
+
+function isCreatorQaBlocking(creatorQaStatus = "not run") {
+  const status = normalizeCreatorQaStatus(creatorQaStatus);
+  return status !== "PASS" && status !== "not run";
+}
+
 function classifyRunStatus(files = {}, creatorQaStatus = "not run") {
   const productionComplete = hasAllProductionArtifacts(files);
-  const qaFailed = String(creatorQaStatus || "").toUpperCase() === "FAIL";
-  if (productionComplete && !qaFailed) return "Ready to shoot";
-  if (productionComplete && qaFailed) return "Production prep ready";
+  const qaBlocking = isCreatorQaBlocking(creatorQaStatus);
+  if (productionComplete && !qaBlocking) return "Ready to shoot";
+  if (productionComplete && qaBlocking) return "Production prep ready";
   if (files.production_brief) return "Production prep ready";
   if (files.final_script) return "Final script ready";
   if (files.script_prompt) return "Script prep ready";
@@ -102,13 +126,17 @@ function nextExpectedFile(status) {
   return nextByStatus[status] || "";
 }
 
-function nextRecommendedCommand(status, runPath, creatorQaStatus = "not run") {
+function nextRecommendedCommand(status, runPath, creatorQaStatus = "not run", evidenceGate = {}) {
   const target = runPath || "package-runs/YYYY-MM-DD-topic-slug";
-  const qaStatus = String(creatorQaStatus || "");
-  if (qaStatus.toUpperCase() === "FAIL") {
-    return "Review creator-qa-report.md and repair package/script before shooting.";
+  const qaStatus = normalizeCreatorQaStatus(creatorQaStatus);
+  if (isCreatorQaBlocking(qaStatus)) {
+    if (qaStatus === "FAIL") return "Review creator-qa-report.md and repair package/script before shooting.";
+    return `Review Creator QA status ${qaStatus} and repair package/script before shooting.`;
   }
-  if (qaStatus.toLowerCase() === "not run" && status === "Ready to shoot") {
+  if (status === "Ready to shoot" && evidenceGate.blocksProductionReady) {
+    return "Capture or import durable proof evidence before production approval.";
+  }
+  if (qaStatus === "not run" && status === "Ready to shoot") {
     return `node scripts/package-run-creator-qa.js ${target}`;
   }
   const commandByStatus = {
@@ -124,10 +152,11 @@ function nextRecommendedCommand(status, runPath, creatorQaStatus = "not run") {
   return commandByStatus[status] || "";
 }
 
-function workflowBucket(status, creatorQaStatus = "not run") {
-  const qaStatus = String(creatorQaStatus || "");
-  if (qaStatus.toUpperCase() === "FAIL") return "Needs QA repair";
-  if (status === "Ready to shoot" && qaStatus.toLowerCase() === "not run") return "QA not run";
+function workflowBucket(status, creatorQaStatus = "not run", evidenceGate = {}) {
+  const qaStatus = normalizeCreatorQaStatus(creatorQaStatus);
+  if (isCreatorQaBlocking(qaStatus)) return "Needs QA repair";
+  if (status === "Ready to shoot" && evidenceGate.blocksProductionReady) return "Needs proof capture";
+  if (status === "Ready to shoot" && qaStatus === "not run") return "QA not run";
   const bucketByStatus = {
     "Idea run": "Needs package selection",
     "Package selected": "Needs outline",
@@ -179,14 +208,65 @@ function readCreatorQaStatus(runDir) {
   if (!fs.existsSync(jsonPath)) return "not run";
   try {
     const payload = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
-    const status = String(payload.overall_result || payload.status || "").trim().toUpperCase();
-    if (status === "PASS") return "PASS";
-    if (status === "FAIL") return "FAIL";
-    if (status === "NEEDS WORK" || status === "NEEDS_WORK") return "NEEDS WORK";
-    return "not run";
+    return normalizeCreatorQaStatus(payload.overall_result || payload.status || "");
   } catch (_error) {
     return "not run";
   }
+}
+
+function listCaptureEvidenceReferences(runDir, resultText = "") {
+  const entries = fs.existsSync(runDir) ? fs.readdirSync(runDir, { withFileTypes: true }) : [];
+  const localFiles = entries
+    .filter((entry) => entry.isFile() && CAPTURE_FILE_PATTERN.test(entry.name))
+    .map((entry) => entry.name);
+  const resultReferences = [...String(resultText || "").matchAll(CAPTURE_REFERENCE_PATTERN)].map((match) =>
+    match[0].replace(/^`|`$/g, "")
+  );
+  return [...new Set([...localFiles, ...resultReferences])].sort();
+}
+
+function readEvidenceGate(runDir) {
+  const verificationNotePath = path.join(runDir, "capture-verification-note.md");
+  const resultNotePath = path.join(runDir, "capture-result-note.md");
+  const hasCapturePlan = fs.existsSync(verificationNotePath);
+  const hasCaptureResult = fs.existsSync(resultNotePath);
+  const resultText = hasCaptureResult ? fs.readFileSync(resultNotePath, "utf8") : "";
+  const evidenceReferences = listCaptureEvidenceReferences(runDir, resultText);
+  const hasCaptureTranscript = evidenceReferences.some((reference) => /transcript/i.test(reference));
+  const hasVisualCapture = evidenceReferences.some((reference) => VISUAL_CAPTURE_PATTERN.test(reference));
+  const saysNoCapturedOutput = NO_CAPTURED_OUTPUT_PATTERN.test(resultText);
+
+  let status = "not evaluated";
+  let warning = "";
+  let blocksProductionReady = false;
+
+  if (hasCapturePlan && !hasCaptureResult) {
+    status = "planned proof only";
+    warning = "Not production-ready: proof capture missing";
+    blocksProductionReady = true;
+  } else if (hasCaptureResult && (saysNoCapturedOutput || evidenceReferences.length === 0)) {
+    status = "capture missing";
+    warning = "Not production-ready: proof capture missing";
+    blocksProductionReady = true;
+  } else if (hasCaptureResult && hasCaptureTranscript && !hasVisualCapture) {
+    status = "transcript captured; visual proof missing";
+    warning = "Not production-ready: visual proof missing";
+    blocksProductionReady = true;
+  } else if (hasCaptureResult && evidenceReferences.length > 0) {
+    status = "proof captured";
+  }
+
+  return {
+    status,
+    warning,
+    blocksProductionReady,
+    hasCapturePlan,
+    hasCaptureResult,
+    saysNoCapturedOutput,
+    hasCaptureTranscript,
+    hasVisualCapture,
+    evidenceReferences,
+  };
 }
 
 function scanRun(runDir, repoRoot = process.cwd()) {
@@ -197,16 +277,18 @@ function scanRun(runDir, repoRoot = process.cwd()) {
     files[fileKey(filename)] = fs.existsSync(path.join(runDir, filename));
   });
   const creatorQaStatus = readCreatorQaStatus(runDir);
+  const evidenceGate = readEvidenceGate(runDir);
   const status = classifyRunStatus(files, creatorQaStatus);
   return {
     runId,
     path: runPath,
     title: readPackageTitle(runDir),
     status,
-    workflowBucket: workflowBucket(status, creatorQaStatus),
+    workflowBucket: workflowBucket(status, creatorQaStatus, evidenceGate),
     creatorQaStatus,
+    evidenceGate,
     nextExpectedFile: nextExpectedFile(status),
-    nextRecommendedCommand: nextRecommendedCommand(status, runPath, creatorQaStatus),
+    nextRecommendedCommand: nextRecommendedCommand(status, runPath, creatorQaStatus, evidenceGate),
     updatedAt: latestMtimeIso(runDir, DETECTED_FILES),
     files,
   };
@@ -269,11 +351,15 @@ module.exports = {
   parseArgs,
   fileKey,
   hasAllProductionArtifacts,
+  normalizeCreatorQaStatus,
+  isCreatorQaBlocking,
   classifyRunStatus,
   nextExpectedFile,
   nextRecommendedCommand,
   workflowBucket,
   readCreatorQaStatus,
+  listCaptureEvidenceReferences,
+  readEvidenceGate,
   scanRun,
   buildPackageRunsIndex,
   main,
