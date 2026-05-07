@@ -17,3 +17,9 @@
 
 - Do not create outlines or scripts until a winning package is selected.
 - Do not create an Episode Factory episode automatically in v1.
+
+## Production Prep
+
+- Production Prep v1 artifacts created or checked locally.
+- Review production-brief.md, shooting-plan.md, b-roll-list.md, graphics-list.md, resolve-edit-checklist.md, thumbnail-title-check.md, and publish-pack.md before shooting or editing.
+- No AI/API calls, Hermes brain writes, GitHub/Linear writes, or episode folders were created by this step.
