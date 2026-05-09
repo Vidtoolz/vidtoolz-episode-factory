@@ -2660,10 +2660,55 @@ test("package engine server exposes thumbnail candidates with browser-loadable i
   });
 
   assert.equal(candidates.length, 3);
-  assert.equal(candidates[0].creator, "gpt-image-2");
+  assert.equal(candidates[0].creator, "placeholder-svg");
   assert.match(candidates[0].id, /^ai-video-idea-filter-1$/);
   assert.match(candidates[0].thumbnailImage, /^data:image\/svg\+xml;base64,/);
   assert.match(candidates[0].prompt, /Creator sorting ideas/);
+});
+
+test("package engine thumbnail response defaults to placeholder provider", async () => {
+  const response = await packageEngineServer.createThumbnailResponse({
+    topic: "AI video idea filter",
+    thumbnailConcept: "Creator sorting ideas",
+    onThumbnailText: "Stop guessing",
+    count: 3,
+  }, { env: {} });
+
+  assert.equal(response.provider, "placeholder");
+  assert.equal(response.model, "local-svg-placeholder");
+  assert.equal(response.candidates.length, 3);
+  assert.match(response.candidates[0].thumbnailImage, /^data:image\/svg\+xml;base64,/);
+});
+
+test("package engine openai thumbnail mode requires an api key", async () => {
+  await assert.rejects(
+    () => packageEngineServer.createThumbnailResponse({
+      topic: "AI video idea filter",
+      thumbnailConcept: "Creator sorting ideas",
+      onThumbnailText: "Stop guessing",
+    }, { env: { THUMBNAIL_PROVIDER: "openai" } }),
+    /OPENAI_API_KEY is required when THUMBNAIL_PROVIDER=openai/
+  );
+});
+
+test("package engine openai prompt builder creates three distinct safe youtube prompts", () => {
+  const prompts = packageEngineServer.buildOpenAIThumbnailPrompts({
+    topic: "AI video idea filter",
+    thumbnailConcept: "Creator comparing video ideas",
+    onThumbnailText: "TEST BEFORE YOU SHOOT",
+    viewerPromise: "Avoid wasting a week on the wrong video",
+    targetViewer: "serious solo creators",
+  });
+
+  assert.equal(prompts.length, 3);
+  assert.equal(new Set(prompts).size, 3);
+  prompts.forEach((prompt) => {
+    assert.match(prompt, /16:9 YouTube thumbnail/);
+    assert.match(prompt, /No fake logos/);
+    assert.match(prompt, /no celebrity or public figure likeness/);
+    assert.match(prompt, /TEST BEFORE YOU SHOOT/);
+    assert.match(prompt, /serious solo creators/);
+  });
 });
 
 test("package runs dashboard normalizes filters and renders run cards", () => {
@@ -3453,20 +3498,24 @@ test("trailer cue script writes cue folders without overwriting changed files", 
   assert.equal(fs.readFileSync(sectionPath, "utf8"), "human edit");
 });
 
-let passed = 0;
-for (const item of tests) {
-  try {
-    item.fn();
-    passed += 1;
-    console.log(`ok - ${item.name}`);
-  } catch (error) {
-    console.error(`not ok - ${item.name}`);
-    console.error(error);
-    process.exitCode = 1;
-    break;
+async function runTests() {
+  let passed = 0;
+  for (const item of tests) {
+    try {
+      await item.fn();
+      passed += 1;
+      console.log(`ok - ${item.name}`);
+    } catch (error) {
+      console.error(`not ok - ${item.name}`);
+      console.error(error);
+      process.exitCode = 1;
+      break;
+    }
+  }
+
+  if (process.exitCode !== 1) {
+    console.log(`${passed}/${tests.length} tests passed`);
   }
 }
 
-if (process.exitCode !== 1) {
-  console.log(`${passed}/${tests.length} tests passed`);
-}
+runTests();

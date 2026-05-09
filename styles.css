@@ -1323,6 +1323,14 @@ label > span,
   overflow-wrap: anywhere;
 }
 
+.generated-thumbnail-creator {
+  color: var(--accent-strong);
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
 .generated-thumbnail-card p {
   color: var(--muted);
   font-size: 12px;

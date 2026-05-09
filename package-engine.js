@@ -23,6 +23,8 @@
   let thumbnailCandidates = [];
   let generatedThumbnailCandidates = [];
   let generatedThumbnailError = "";
+  let generatedThumbnailProvider = "placeholder";
+  let generatedThumbnailModel = "local-svg-placeholder";
   let thumbnailGenerationCount = 0;
   let isGeneratingThumbnails = false;
 
@@ -149,6 +151,9 @@
     const error = generatedThumbnailError
       ? `<p class="generated-thumbnail-error">${escapeHtml(generatedThumbnailError)}</p>`
       : "";
+    const providerNote = generatedThumbnailProvider === "openai"
+      ? `Externally generated thumbnail drafts from ${generatedThumbnailModel || "OpenAI"}.`
+      : "Local placeholder SVG previews for now; these are not final AI or YouTube thumbnails.";
     const items = generatedThumbnailCandidates
       .map((item) => {
         const image = thumbnailCandidateImage(item);
@@ -160,6 +165,7 @@
                 : `<div class="generated-thumbnail-missing">Missing image data</div>`
             }
             <h3>${escapeHtml(item.label || "Generated thumbnail")}</h3>
+            <span class="generated-thumbnail-creator">${escapeHtml(item.creator || generatedThumbnailModel || generatedThumbnailProvider)}</span>
             <p>${escapeHtml(item.prompt || "No prompt returned.")}</p>
           </article>
         `;
@@ -170,7 +176,7 @@
       <div class="generated-thumbnail-header">
         <div>
           <h2>Generated thumbnail candidates</h2>
-          <p>Local placeholder SVG previews for now; these are not final AI or YouTube thumbnails.</p>
+          <p>${escapeHtml(providerNote)}</p>
         </div>
       </div>
       ${error}
@@ -210,13 +216,16 @@
           count: 3,
         }),
       });
+      const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         if (response.status === 404 || response.status === 501) {
           throw new Error("Thumbnail generation endpoint is unavailable. Start the app with ./scripts/serve-local.sh instead of python3 -m http.server 8010.");
         }
-        throw new Error(`Thumbnail generation failed (${response.status})`);
+        const message = payload && payload.error ? payload.error : `Thumbnail generation failed (${response.status})`;
+        throw new Error(message);
       }
-      const payload = await response.json();
+      generatedThumbnailProvider = String(payload.provider || "placeholder");
+      generatedThumbnailModel = String(payload.model || "");
       const additions = Array.isArray(payload.candidates) ? payload.candidates : [];
       const normalized = additions.map((item, index) => ({
         id: String(item.id || `${selected.id}-thumb-${thumbnailGenerationCount + index + 1}`),

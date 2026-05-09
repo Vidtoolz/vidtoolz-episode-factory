@@ -11,6 +11,12 @@ const PORT = Number(process.env.PORT || 8010);
 const HOST = process.env.HOST || '127.0.0.1';
 const API_PREFIX = '/api/package-engine/thumbnails';
 const SERVE_ROOT = ROOT;
+const OPENAI_IMAGES_URL = 'https://api.openai.com/v1/images/generations';
+const DEFAULT_THUMBNAIL_PROVIDER = 'placeholder';
+const DEFAULT_OPENAI_IMAGE_MODEL = 'gpt-image-1';
+const DEFAULT_OPENAI_IMAGE_SIZE = '1536x1024';
+const DEFAULT_OPENAI_IMAGE_QUALITY = 'auto';
+const DEFAULT_OPENAI_IMAGE_FORMAT = 'png';
 
 function send(res, status, body, headers = {}) {
   const data = typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body);
@@ -87,10 +93,152 @@ function createCandidates(payload) {
       id: `${slugify(title)}-${idx + 1}`,
       label,
       prompt: `${payload.thumbnailConcept || title} / ${payload.onThumbnailText || ''}`.trim(),
-      creator: payload.creator || 'gpt-image-2',
+      creator: 'placeholder-svg',
       thumbnailImage: makeDataUrl(label, idx),
     };
   });
+}
+
+function providerConfig(env = process.env) {
+  return {
+    provider: String(env.THUMBNAIL_PROVIDER || DEFAULT_THUMBNAIL_PROVIDER).toLowerCase(),
+    apiKey: env.OPENAI_API_KEY || '',
+    model: env.OPENAI_IMAGE_MODEL || DEFAULT_OPENAI_IMAGE_MODEL,
+    size: env.OPENAI_IMAGE_SIZE || DEFAULT_OPENAI_IMAGE_SIZE,
+    quality: env.OPENAI_IMAGE_QUALITY || DEFAULT_OPENAI_IMAGE_QUALITY,
+    outputFormat: env.OPENAI_IMAGE_FORMAT || DEFAULT_OPENAI_IMAGE_FORMAT,
+  };
+}
+
+function imageMimeType(format = DEFAULT_OPENAI_IMAGE_FORMAT) {
+  const normalized = String(format || DEFAULT_OPENAI_IMAGE_FORMAT).toLowerCase();
+  if (normalized === 'jpg' || normalized === 'jpeg') return 'image/jpeg';
+  if (normalized === 'webp') return 'image/webp';
+  return 'image/png';
+}
+
+function buildOpenAIThumbnailPrompts(payload) {
+  const topic = payload.topic || 'VIDTOOLZ thumbnail';
+  const concept = payload.thumbnailConcept || topic;
+  const onThumbnailText = payload.onThumbnailText || 'Clear creator decision';
+  const viewerPromise = payload.viewerPromise || 'Help serious solo creators make better production decisions';
+  const targetViewer = payload.targetViewer || 'serious solo creators using AI workflow tools';
+  const baseRules = [
+    '16:9 YouTube thumbnail composition, landscape frame.',
+    'Bold readable title text, high contrast, one clear visual idea.',
+    'Practical VIDTOOLZ style: serious solo creator, AI workflow, production decision-making.',
+    'No fake logos, no celebrity or public figure likeness, no misleading screenshot claims.',
+    'Make the image feel useful, grounded, and production-focused rather than hype-driven.',
+  ].join(' ');
+  const angles = [
+    'Show a solo creator comparing competing video ideas before committing to production.',
+    'Show a clear before/after decision board where weak AI suggestions become a stronger video package.',
+    'Show a focused creator rejecting noisy AI outputs and choosing one practical thumbnail/title direction.',
+  ];
+
+  return angles.map((angle, idx) => [
+    `${baseRules}`,
+    `Topic: ${topic}.`,
+    `Thumbnail concept: ${concept}.`,
+    `On-thumbnail text: "${onThumbnailText}".`,
+    `Viewer promise: ${viewerPromise}.`,
+    `Target viewer: ${targetViewer}.`,
+    `Variation ${idx + 1}: ${angle}`,
+  ].join(' '));
+}
+
+function buildOpenAIImageRequest(prompt, config) {
+  const body = {
+    model: config.model,
+    prompt,
+    n: 1,
+    size: config.size,
+  };
+
+  if (config.model.startsWith('gpt-image')) {
+    body.quality = config.quality;
+    body.output_format = config.outputFormat;
+  } else {
+    body.response_format = 'b64_json';
+  }
+
+  return body;
+}
+
+function normalizeOpenAIImageResponse(data, prompt, idx, config, payload) {
+  const image = data && Array.isArray(data.data) ? data.data[0] : null;
+  if (!image) {
+    throw new Error('OpenAI image generation returned no image data.');
+  }
+  const b64 = image.b64_json || image.b64;
+  const url = image.url || '';
+  const thumbnailImage = b64 ? `data:${imageMimeType(config.outputFormat)};base64,${b64}` : url;
+  if (!thumbnailImage) {
+    throw new Error('OpenAI image generation returned an unsupported response shape.');
+  }
+  const title = payload.topic || payload.thumbnailConcept || 'VIDTOOLZ thumbnail';
+  return {
+    id: `${slugify(title)}-openai-${idx + 1}`,
+    label: `${title} OpenAI draft ${idx + 1}`,
+    prompt,
+    creator: `OpenAI / ${config.model}`,
+    thumbnailImage,
+  };
+}
+
+async function createOpenAIThumbnailCandidates(payload, options = {}) {
+  const config = options.config || providerConfig(options.env || process.env);
+  if (!config.apiKey) {
+    const error = new Error('OPENAI_API_KEY is required when THUMBNAIL_PROVIDER=openai.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const fetchImpl = options.fetchImpl || fetch;
+  const prompts = buildOpenAIThumbnailPrompts(payload).slice(0, Number(payload.count || 3));
+  const candidates = [];
+
+  // TODO: Persist generated image files under package-runs/<run-id>/thumbnail-candidates/.
+  for (const [idx, prompt] of prompts.entries()) {
+    const response = await fetchImpl(OPENAI_IMAGES_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify(buildOpenAIImageRequest(prompt, config)),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const message = data && data.error && data.error.message ? data.error.message : `OpenAI image generation failed (${response.status}).`;
+      const error = new Error(message);
+      error.statusCode = response.status;
+      throw error;
+    }
+    candidates.push(normalizeOpenAIImageResponse(data, prompt, idx, config, payload));
+  }
+
+  return candidates;
+}
+
+async function createThumbnailResponse(payload, options = {}) {
+  const config = options.config || providerConfig(options.env || process.env);
+  if (config.provider === 'placeholder') {
+    return {
+      provider: 'placeholder',
+      model: 'local-svg-placeholder',
+      candidates: createCandidates(payload),
+    };
+  }
+  if (config.provider === 'openai') {
+    return {
+      provider: 'openai',
+      model: config.model,
+      candidates: await createOpenAIThumbnailCandidates(payload, { ...options, config }),
+    };
+  }
+  const error = new Error(`Unsupported THUMBNAIL_PROVIDER: ${config.provider}`);
+  error.statusCode = 400;
+  throw error;
 }
 
 function createServer() {
@@ -99,13 +247,13 @@ function createServer() {
     if (req.method === 'POST' && url.pathname === API_PREFIX) {
       let body = '';
       req.on('data', (chunk) => { body += chunk; });
-      req.on('end', () => {
+      req.on('end', async () => {
         try {
           const payload = body ? JSON.parse(body) : {};
-          const candidates = createCandidates(payload);
-          send(res, 200, { candidates });
+          const thumbnailResponse = await createThumbnailResponse(payload);
+          send(res, 200, thumbnailResponse);
         } catch (error) {
-          send(res, 400, { error: error.message });
+          send(res, error.statusCode || 500, { error: error.message });
         }
       });
       return;
@@ -148,9 +296,15 @@ if (require.main === module) {
 
 module.exports = {
   API_PREFIX,
+  buildOpenAIImageRequest,
+  buildOpenAIThumbnailPrompts,
   createCandidates,
+  createOpenAIThumbnailCandidates,
   createServer,
+  createThumbnailResponse,
+  imageMimeType,
   makeDataUrl,
+  providerConfig,
   safeJoin,
   slugify,
 };

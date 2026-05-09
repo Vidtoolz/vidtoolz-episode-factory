@@ -82,6 +82,8 @@ The UI now treats thumbnail images as first-class preview assets:
 - candidate cards can carry both preview image and planning text
 - the Generate thumbnail candidates button calls `POST /api/package-engine/thumbnails`
 - generated thumbnails must be browser-accessible URLs, data URLs, or local static paths
+- the default provider is local placeholder SVG previews
+- optional external OpenAI generation requires `THUMBNAIL_PROVIDER=openai`
 
 Run the UI through `./scripts/serve-local.sh` or the VIDTOOLZ Package Engine
 desktop launcher so the thumbnail API is available on the same origin as
@@ -95,6 +97,34 @@ During generation, the thumbnail buttons are disabled, the page status changes
 to `Generating thumbnail candidates…`, and the thumbnail candidate area shows
 loading placeholders. If the API endpoint is missing, the page shows a visible
 wrong-server message that points back to `./scripts/serve-local.sh`.
+
+### OpenAI Image Provider
+
+Placeholder mode is the safe local default:
+
+```sh
+./scripts/serve-local.sh
+```
+
+Real image generation is opt-in and runs only on the local Node server:
+
+```sh
+THUMBNAIL_PROVIDER=openai OPENAI_API_KEY="$OPENAI_API_KEY" ./scripts/serve-local.sh
+```
+
+Optional settings:
+
+```sh
+OPENAI_IMAGE_MODEL=gpt-image-1
+OPENAI_IMAGE_SIZE=1536x1024
+OPENAI_IMAGE_QUALITY=auto
+OPENAI_IMAGE_FORMAT=png
+```
+
+`1536x1024` is the current landscape GPT Image API size, so it is not exact
+YouTube 16:9. The prompt still asks for 16:9 YouTube thumbnail composition and
+the UI displays the result in 16:9 preview frames. External generation may cost
+money, can take time, and may require OpenAI organization verification.
 
 ## Export Behavior
 
