@@ -53,6 +53,7 @@
       idea: cleanString(source.idea),
       thumbnailConcept: cleanString(source.thumbnailConcept || source.thumbnail_concept),
       onThumbnailText: cleanString(source.onThumbnailText || source.on_thumbnail_text || source.thumbnailText),
+      thumbnailImage: cleanString(source.thumbnailImage || source.thumbnail_image || source.thumbnailImagePath || source.thumbnail_image_path),
       viewerPromise: cleanString(source.viewerPromise || source.viewer_promise),
       targetViewer: cleanString(source.targetViewer || source.target_viewer),
       productionDifficulty: normalizeDifficulty(source.productionDifficulty || source.production_difficulty),
@@ -109,10 +110,30 @@
       .filter((candidate) => candidate.recommendation === normalizedFilter);
   }
 
-  function buildSelectedPackageJson(candidate) {
+  function buildSelectedPackageJson(candidate, options = {}) {
+    const normalized = normalizePackageCandidate(candidate);
+    const source = options && typeof options === "object" ? options : {};
+    const thumbnailImage = cleanString(source.thumbnailImage || normalized.thumbnailImage);
+    const thumbnailCandidates = Array.isArray(source.thumbnailCandidates)
+      ? source.thumbnailCandidates.map((item) => {
+          if (!item || typeof item !== "object") return null;
+          return {
+            id: cleanString(item.id),
+            label: cleanString(item.label),
+            thumbnailImage: cleanString(item.thumbnailImage || item.thumbnail_image || item.thumbnailImagePath || item.thumbnail_image_path),
+            prompt: cleanString(item.prompt),
+            selected: Boolean(item.selected),
+            creator: cleanString(item.creator),
+          };
+        }).filter(Boolean)
+      : [];
     return {
       selectedAt: new Date().toISOString(),
-      package: normalizePackageCandidate(candidate),
+      package: {
+        ...normalized,
+        thumbnailImage,
+        thumbnailCandidates,
+      },
     };
   }
 

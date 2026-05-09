@@ -25,7 +25,7 @@ It regenerates `package-runs-index.json` and prints:
 ```text
 package-runs-index.json updated
 cd /home/vidtoolz/vidtoolz-episode-factory
-python3 -m http.server 8010 --bind 127.0.0.1
+PORT=8010 HOST=127.0.0.1 node package-engine-server.js
 http://127.0.0.1:8010/package-runs-dashboard.html
 ```
 
@@ -46,7 +46,7 @@ Linear, or any episode folder.
 Serve the repo locally:
 
 ```sh
-python3 -m http.server 8010
+./scripts/serve-local.sh
 ```
 
 Then open:
@@ -152,7 +152,7 @@ The dashboard fetches files from the same local static server as the page. If a
 preview fails, serve the repo root and reopen the dashboard:
 
 ```sh
-python3 -m http.server 8010
+./scripts/serve-local.sh
 ```
 
 ## Status Rules

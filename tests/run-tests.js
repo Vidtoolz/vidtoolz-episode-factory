@@ -13,6 +13,7 @@ const packageProductionPrepScript = require("../scripts/package-engine-new-produ
 const packageRunCreatorQaScript = require("../scripts/package-run-creator-qa.js");
 const packageRunsIndexScript = require("../scripts/package-runs-index.js");
 const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashboard-launch.js");
+const packageEngineServer = require("../package-engine-server.js");
 const packageRunsDashboard = require("../package-runs-dashboard.js");
 const episodeFactoryCli = require("../scripts/episode-factory.js");
 const trailerCueGenerator = require("../trailer-cue-generator.js");
@@ -1773,10 +1774,13 @@ test("package engine exports selected package json and markdown", () => {
     recommendation: "Make",
     proposedTitle: "Selected Package",
     idea: "Review a package.",
+    thumbnailImage: "/tmp/selected-package-thumb.png",
     shortsIdeas: ["Short one", "Short two", "Short three", "Short four", "Short five"],
     why_this_fits_vidtoolz: "It fits.",
     suggested_production_approach: "Screen recording.",
   });
+
+  assert.equal(candidate.thumbnailImage, "/tmp/selected-package-thumb.png");
   const json = packageEngine.buildSelectedPackageJson(candidate);
   const markdown = packageEngine.buildSelectedPackageMarkdown(candidate);
 
@@ -2641,9 +2645,25 @@ test("package runs dashboard launch helper writes index and prints local launch 
   assert.equal(written.runs[0].runId, "2026-05-02-launch");
   assert.match(message, /package-runs-index\.json updated/);
   assert.match(message, new RegExp(`cd ${tempRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
-  assert.match(message, /python3 -m http\.server 8010 --bind 127\.0\.0\.1/);
+  assert.match(message, /PORT=8010 HOST=127\.0\.0\.1 node package-engine-server\.js/);
   assert.match(message, /http:\/\/127\.0\.0\.1:8010\/package-runs-dashboard\.html/);
-  assert.match(customMessage, /python3 -m http\.server 8020 --bind 127\.0\.0\.1/);
+  assert.match(customMessage, /PORT=8020 HOST=127\.0\.0\.1 node package-engine-server\.js/);
+});
+
+test("package engine server exposes thumbnail candidates with browser-loadable images", () => {
+  assert.equal(packageEngineServer.API_PREFIX, "/api/package-engine/thumbnails");
+  const candidates = packageEngineServer.createCandidates({
+    topic: "AI video idea filter",
+    thumbnailConcept: "Creator sorting ideas",
+    onThumbnailText: "Stop guessing",
+    count: 3,
+  });
+
+  assert.equal(candidates.length, 3);
+  assert.equal(candidates[0].creator, "gpt-image-2");
+  assert.match(candidates[0].id, /^ai-video-idea-filter-1$/);
+  assert.match(candidates[0].thumbnailImage, /^data:image\/svg\+xml;base64,/);
+  assert.match(candidates[0].prompt, /Creator sorting ideas/);
 });
 
 test("package runs dashboard normalizes filters and renders run cards", () => {

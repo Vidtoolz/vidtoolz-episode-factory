@@ -47,7 +47,7 @@ function buildLaunchMessage(root = repoRoot(), options = {}) {
   return [
     "package-runs-index.json updated",
     `cd ${root}`,
-    `python3 -m http.server ${port} --bind ${host}`,
+    `PORT=${port} HOST=${host} node package-engine-server.js`,
     `http://${host}:${port}/package-runs-dashboard.html`,
   ].join("\n");
 }
@@ -55,8 +55,9 @@ function buildLaunchMessage(root = repoRoot(), options = {}) {
 function startServer(root, options = {}) {
   const port = String(options.port || DEFAULT_PORT);
   const host = String(options.host || DEFAULT_HOST);
-  const child = spawn("python3", ["-m", "http.server", port, "--bind", host], {
+  const child = spawn("node", ["package-engine-server.js"], {
     cwd: root,
+    env: { ...process.env, PORT: port, HOST: host },
     stdio: "inherit",
   });
   child.on("exit", (code, signal) => {

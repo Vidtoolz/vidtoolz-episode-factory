@@ -4,7 +4,7 @@ VIDTOOLZ Episode Factory v1.7.4 is a local-first static web app for turning roug
 
 The purpose is practical creator discipline: keep the topic, promise, title options, thumbnail concept, hook, script outline, structured production checklists, Shorts extraction checks, publish checks, and notes in one compact place before a solo creator starts shooting.
 
-It has no backend, no authentication, and no external API integrations. Episode data is saved in browser `localStorage` under `vidtoolz-episode-factory-v1`.
+It has no backend for the main episode app, no authentication, and no external API integrations. Episode data is saved in browser `localStorage` under `vidtoolz-episode-factory-v1`.
 
 Important: browser `localStorage` is not a durable backup system. Export JSON regularly, especially before browser cleanup, import testing, or release work. The app shows backup health and recommends export when a recent JSON backup is missing.
 
@@ -45,7 +45,7 @@ Serve the app directory:
 
 ```sh
 cd /home/vidtoolz/vidtoolz-episode-factory
-python3 -m http.server 8010
+./scripts/serve-local.sh
 ```
 
 Then open:
@@ -57,10 +57,16 @@ http://localhost:8010
 You can also run:
 
 ```sh
-./scripts/serve-local.sh
+PORT=8020 ./scripts/serve-local.sh
 ```
 
-Opening `index.html` directly also works for normal editing. Clipboard permissions are usually more reliable through the local server.
+The local server also handles Package Engine thumbnail generation. Opening
+`index.html` directly still works for normal editing, but Package Engine
+thumbnail candidates require the local server. Do not use
+`python3 -m http.server 8010` for Package Engine thumbnails; it can serve the
+page, but it cannot handle `POST /api/package-engine/thumbnails`. If an old
+Python static server is occupying `8010`, stop it or run `./scripts/serve-local.sh`
+so the launcher can replace it.
 
 Open the isolated Package Engine review UI:
 
@@ -391,7 +397,8 @@ High-level browser checks:
 - `storage-adapter.js` wraps `localStorage` behind a small interface for later storage changes.
 - `app.js` renders the board and detail view, wires editing, persistence, duplication, deletion, JSON export/import, and clipboard actions.
 - `tests/run-tests.js` verifies core model behavior without browser dependencies.
-- `scripts/serve-local.sh` starts a local static server.
+- `scripts/serve-local.sh` starts the local app server.
+- `package-engine-server.js` serves the local app and the Package Engine thumbnail-generation API.
 - `scripts/verify.sh` runs all automated tests and syntax checks.
 - `CHANGELOG.md` documents release history.
 - `docs/data-model.md` documents the episode state shape and status flow.

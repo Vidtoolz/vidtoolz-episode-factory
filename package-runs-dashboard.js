@@ -449,7 +449,7 @@
     }
 
     function showPreviewError(href, error) {
-      els.previewContent.innerHTML = `<p class="muted">Could not load ${escapeHtml(href)}. ${escapeHtml(error.message)} The file may require serving this repo root with <code>python3 -m http.server 8010</code>.</p>`;
+      els.previewContent.innerHTML = `<p class="muted">Could not load ${escapeHtml(href)}. ${escapeHtml(error.message)} The file may require serving this repo root with the local app server: <code>./scripts/serve-local.sh</code>.</p>`;
     }
 
     function previewArtifact(link) {

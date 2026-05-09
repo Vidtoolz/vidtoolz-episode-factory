@@ -47,8 +47,13 @@ with valid JSON returned by Hermes or ChatGPT.
 Serve the repo:
 
 ```sh
-python3 -m http.server 8010
+./scripts/serve-local.sh
 ```
+
+Do not use `python3 -m http.server 8010` for Package Engine thumbnails. It can
+serve the page, but it cannot handle `POST /api/package-engine/thumbnails`. If
+an old Python static server is occupying `8010`, stop it or let
+`./scripts/serve-local.sh` replace it.
 
 Open:
 
