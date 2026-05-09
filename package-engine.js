@@ -21,6 +21,7 @@
   let selectedId = "";
   let expandedIds = new Set();
   let thumbnailCandidates = [];
+  let generatedThumbnailsByCandidate = {};
   let generatedThumbnailCandidates = [];
   let generatedThumbnailError = "";
   let generatedThumbnailProvider = "placeholder";
@@ -76,9 +77,24 @@
   }
 
   function currentThumbnailCandidates(candidate) {
-    if (thumbnailCandidates.length) return thumbnailCandidates;
     if (!candidate) return [];
+    const generated = generatedThumbnailsByCandidate[candidate.id] || [];
+    if (generated.length) return generated;
     return buildThumbnailCandidates(candidate);
+  }
+
+  function primaryGeneratedThumbnail(candidate) {
+    const generated = generatedThumbnailsByCandidate[candidate.id] || [];
+    return generated.find((item) => item.selected && thumbnailCandidateImage(item)) || generated.find((item) => thumbnailCandidateImage(item)) || null;
+  }
+
+  function primaryGeneratedThumbnailImage(candidate) {
+    const primary = primaryGeneratedThumbnail(candidate);
+    return primary ? thumbnailCandidateImage(primary) : "";
+  }
+
+  function mainThumbnailImage(candidate) {
+    return primaryGeneratedThumbnailImage(candidate) || candidateThumbnailImage(candidate);
   }
 
   function renderThumbnailCandidateStrip(candidate) {
@@ -236,6 +252,10 @@
         thumbnailImage: String(item.thumbnailImage || item.thumbnail_image || item.thumbnailImagePath || item.thumbnail_image_path || ""),
       }));
       if (normalized.length) {
+        generatedThumbnailsByCandidate = {
+          ...generatedThumbnailsByCandidate,
+          [selected.id]: normalized,
+        };
         generatedThumbnailCandidates = normalized;
         thumbnailCandidates = normalized;
         thumbnailGenerationCount += normalized.length;
@@ -276,6 +296,7 @@
       .join("");
     const article = document.createElement("article");
     article.className = selected ? "package-card selected" : "package-card";
+    const mainImage = mainThumbnailImage(candidate);
     article.innerHTML = `
       <div class="package-card-top">
         <span class="package-number">#${candidate.packageNumber}</span>
@@ -287,8 +308,8 @@
       <div class="package-thumbnail-preview">
         <span>Thumbnail image</span>
         ${
-          candidateThumbnailImage(candidate)
-            ? `<img src="${escapeHtml(candidateThumbnailImage(candidate))}" alt="Thumbnail for ${escapeHtml(candidate.proposedTitle || "package")}" />`
+          mainImage
+            ? `<img src="${escapeHtml(mainImage)}" alt="Thumbnail for ${escapeHtml(candidate.proposedTitle || "package")}" />`
             : `<div class="thumbnail-placeholder">${escapeHtml(candidate.thumbnailConcept || "No thumbnail image linked yet.")}</div>`
         }
       </div>
@@ -332,9 +353,6 @@
   function render() {
     const visible = visibleCandidates();
     const selected = selectedCandidate();
-    if (selected && !thumbnailCandidates.length) {
-      thumbnailCandidates = buildThumbnailCandidates(selected).slice(0, 3);
-    }
     els.count.textContent = `${visible.length} shown / ${candidateSet.candidates.length} total`;
     els.selectedSummary.textContent = selected
       ? `Selected #${selected.packageNumber}: ${selected.proposedTitle}`
@@ -367,8 +385,9 @@
   function downloadSelectedJson() {
     const selected = selectedCandidate();
     if (!selected) return;
-    const thumbnailImage = selected.thumbnailImage || selected.thumbnail_image || selected.thumbnailImagePath || selected.thumbnail_image_path || "";
-    downloadTextFile("selected-package.json", JSON.stringify(model.buildSelectedPackageJson(selected, { thumbnailImage, thumbnailCandidates }), null, 2), "application/json");
+    const selectedThumbnailCandidates = generatedThumbnailsByCandidate[selected.id] || thumbnailCandidates;
+    const thumbnailImage = primaryGeneratedThumbnailImage(selected) || selected.thumbnailImage || selected.thumbnail_image || selected.thumbnailImagePath || selected.thumbnail_image_path || "";
+    downloadTextFile("selected-package.json", JSON.stringify(model.buildSelectedPackageJson(selected, { thumbnailImage, thumbnailCandidates: selectedThumbnailCandidates }), null, 2), "application/json");
     showStatus("selected-package.json downloaded.", "success");
   }
 
@@ -397,7 +416,20 @@
     }
     if (thumbSelect) {
       const id = thumbSelect.dataset.thumbSelect;
-      thumbnailCandidates = thumbnailCandidates.map((item) => ({ ...item, selected: item.id === id }));
+      const owner = candidateSet.candidates.find((candidate) =>
+        (generatedThumbnailsByCandidate[candidate.id] || []).some((item) => item.id === id)
+      );
+      if (owner) {
+        const updated = (generatedThumbnailsByCandidate[owner.id] || []).map((item) => ({ ...item, selected: item.id === id }));
+        generatedThumbnailsByCandidate = {
+          ...generatedThumbnailsByCandidate,
+          [owner.id]: updated,
+        };
+        thumbnailCandidates = updated;
+        generatedThumbnailCandidates = updated;
+      } else {
+        thumbnailCandidates = thumbnailCandidates.map((item) => ({ ...item, selected: item.id === id }));
+      }
       render();
       return;
     }
@@ -407,7 +439,6 @@
     }
     if (select) {
       selectedId = select.dataset.select;
-      thumbnailCandidates = selectedCandidate() ? buildThumbnailCandidates(selectedCandidate()).slice(0, 3) : thumbnailCandidates;
       showStatus("Winning package selected. Export JSON or Markdown when ready.", "success");
       render();
     }
@@ -424,7 +455,6 @@
         const validation = model.validatePackageCandidateSet(payload);
         if (!validation.ok) throw new Error(validation.error);
         candidateSet = validation.data;
-        thumbnailCandidates = candidateSet.candidates.length ? buildThumbnailCandidates(candidateSet.candidates[0]).slice(0, 3) : [];
         showStatus(`Loaded ${candidateSet.candidates.length} package candidates from ${candidateSource}.`, "success");
         render();
       })

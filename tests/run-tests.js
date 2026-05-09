@@ -2950,6 +2950,31 @@ const unsafe = "<tag>";
   assert.doesNotMatch(html, /<script>|<b>one<\/b>/);
 });
 
+test("package engine browser code falls back to candidate thumbnail when no generated image exists", () => {
+  const script = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+
+  assert.match(script, /function primaryGeneratedThumbnailImage\(candidate\)/);
+  assert.match(script, /function mainThumbnailImage\(candidate\)/);
+  assert.match(script, /return primaryGeneratedThumbnailImage\(candidate\) \|\| candidateThumbnailImage\(candidate\);/);
+});
+
+test("package engine browser code updates main thumbnail after generation", () => {
+  const script = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+
+  assert.match(script, /let generatedThumbnailsByCandidate = \{\};/);
+  assert.match(script, /\[selected\.id\]: normalized/);
+  assert.match(script, /const mainImage = mainThumbnailImage\(candidate\);/);
+  assert.match(script, /mainImage\s*\?\s*`<img src="\$\{escapeHtml\(mainImage\)\}/);
+});
+
+test("package engine browser code updates only the owning card when selecting generated thumbnails", () => {
+  const script = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+
+  assert.match(script, /const owner = candidateSet\.candidates\.find/);
+  assert.match(script, /\[owner\.id\]: updated/);
+  assert.match(script, /generateMoreThumbnailCandidates\(thumbGenerate\.dataset\.thumbGenerate\)/);
+});
+
 test("visible app version and html cache busters use current release", () => {
   const htmlFiles = ["index.html", "package-engine.html", "package-runs-dashboard.html"];
   const expectedCacheBuster = new RegExp(`v=${model.APP_VERSION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
