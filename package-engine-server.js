@@ -10,6 +10,7 @@ const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
 const HOST = process.env.HOST || '127.0.0.1';
 const API_PREFIX = '/api/package-engine/thumbnails';
+const STATUS_API = '/api/package-engine/status';
 const SERVE_ROOT = ROOT;
 const OPENAI_IMAGES_URL = 'https://api.openai.com/v1/images/generations';
 const DEFAULT_THUMBNAIL_PROVIDER = 'placeholder';
@@ -107,6 +108,16 @@ function providerConfig(env = process.env) {
     size: env.OPENAI_IMAGE_SIZE || DEFAULT_OPENAI_IMAGE_SIZE,
     quality: env.OPENAI_IMAGE_QUALITY || DEFAULT_OPENAI_IMAGE_QUALITY,
     outputFormat: env.OPENAI_IMAGE_FORMAT || DEFAULT_OPENAI_IMAGE_FORMAT,
+  };
+}
+
+function createStatusResponse(env = process.env) {
+  const config = providerConfig(env);
+  return {
+    ok: true,
+    thumbnailProvider: config.provider,
+    model: config.provider === 'openai' ? config.model : 'local-svg-placeholder',
+    api: API_PREFIX,
   };
 }
 
@@ -244,6 +255,11 @@ async function createThumbnailResponse(payload, options = {}) {
 function createServer() {
   return http.createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
+    if (req.method === 'GET' && url.pathname === STATUS_API) {
+      send(res, 200, createStatusResponse());
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === API_PREFIX) {
       let body = '';
       req.on('data', (chunk) => { body += chunk; });
@@ -296,11 +312,13 @@ if (require.main === module) {
 
 module.exports = {
   API_PREFIX,
+  STATUS_API,
   buildOpenAIImageRequest,
   buildOpenAIThumbnailPrompts,
   createCandidates,
   createOpenAIThumbnailCandidates,
   createServer,
+  createStatusResponse,
   createThumbnailResponse,
   imageMimeType,
   makeDataUrl,

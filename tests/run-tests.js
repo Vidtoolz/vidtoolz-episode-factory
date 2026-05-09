@@ -2680,6 +2680,34 @@ test("package engine thumbnail response defaults to placeholder provider", async
   assert.match(response.candidates[0].thumbnailImage, /^data:image\/svg\+xml;base64,/);
 });
 
+test("package engine server status reports provider and model without generation", () => {
+  const placeholder = packageEngineServer.createStatusResponse({});
+  const openai = packageEngineServer.createStatusResponse({
+    THUMBNAIL_PROVIDER: "openai",
+    OPENAI_IMAGE_MODEL: "gpt-image-1",
+  });
+
+  assert.equal(placeholder.ok, true);
+  assert.equal(placeholder.thumbnailProvider, "placeholder");
+  assert.equal(placeholder.model, "local-svg-placeholder");
+  assert.equal(placeholder.api, "/api/package-engine/thumbnails");
+  assert.equal(openai.thumbnailProvider, "openai");
+  assert.equal(openai.model, "gpt-image-1");
+});
+
+test("package engine provider config defaults and respects openai mode", () => {
+  const defaults = packageEngineServer.providerConfig({});
+  const openai = packageEngineServer.providerConfig({
+    THUMBNAIL_PROVIDER: "openai",
+    OPENAI_IMAGE_MODEL: "gpt-image-1",
+  });
+
+  assert.equal(defaults.provider, "placeholder");
+  assert.equal(defaults.model, "gpt-image-1");
+  assert.equal(openai.provider, "openai");
+  assert.equal(openai.model, "gpt-image-1");
+});
+
 test("package engine openai thumbnail mode requires an api key", async () => {
   await assert.rejects(
     () => packageEngineServer.createThumbnailResponse({
