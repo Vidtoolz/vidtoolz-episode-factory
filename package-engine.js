@@ -13,6 +13,7 @@
     downloadJson: document.querySelector("#downloadJsonBtn"),
     downloadMarkdown: document.querySelector("#downloadMarkdownBtn"),
     generateThumbnails: document.querySelector("#generateThumbnailsBtn"),
+    generatedThumbnailPanel: document.querySelector("#generatedThumbnailPanel"),
   };
 
   let candidateSet = { candidates: [] };
@@ -20,6 +21,8 @@
   let selectedId = "";
   let expandedIds = new Set();
   let thumbnailCandidates = [];
+  let generatedThumbnailCandidates = [];
+  let generatedThumbnailError = "";
   let thumbnailGenerationCount = 0;
   let isGeneratingThumbnails = false;
 
@@ -116,6 +119,65 @@
     `;
   }
 
+  function renderGeneratedThumbnailPanel() {
+    if (!els.generatedThumbnailPanel) return;
+    if (!isGeneratingThumbnails && !generatedThumbnailCandidates.length && !generatedThumbnailError) {
+      els.generatedThumbnailPanel.classList.add("hidden");
+      els.generatedThumbnailPanel.innerHTML = "";
+      return;
+    }
+
+    els.generatedThumbnailPanel.classList.remove("hidden");
+    if (isGeneratingThumbnails) {
+      els.generatedThumbnailPanel.innerHTML = `
+        <div class="generated-thumbnail-header">
+          <div>
+            <h2>Generating thumbnail candidates...</h2>
+            <p>Creating local image previews for the selected package.</p>
+          </div>
+          <span class="thumbnail-spinner" aria-hidden="true"></span>
+        </div>
+        <div class="generated-thumbnail-grid" aria-hidden="true">
+          <div class="thumbnail-skeleton-card"><span></span><strong></strong><em></em></div>
+          <div class="thumbnail-skeleton-card"><span></span><strong></strong><em></em></div>
+          <div class="thumbnail-skeleton-card"><span></span><strong></strong><em></em></div>
+        </div>
+      `;
+      return;
+    }
+
+    const error = generatedThumbnailError
+      ? `<p class="generated-thumbnail-error">${escapeHtml(generatedThumbnailError)}</p>`
+      : "";
+    const items = generatedThumbnailCandidates
+      .map((item) => {
+        const image = thumbnailCandidateImage(item);
+        return `
+          <article class="generated-thumbnail-card">
+            ${
+              image
+                ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(item.label || "Generated thumbnail candidate")}" />`
+                : `<div class="generated-thumbnail-missing">Missing image data</div>`
+            }
+            <h3>${escapeHtml(item.label || "Generated thumbnail")}</h3>
+            <p>${escapeHtml(item.prompt || "No prompt returned.")}</p>
+          </article>
+        `;
+      })
+      .join("");
+
+    els.generatedThumbnailPanel.innerHTML = `
+      <div class="generated-thumbnail-header">
+        <div>
+          <h2>Generated thumbnail candidates</h2>
+          <p>Local placeholder SVG previews for now; these are not final AI or YouTube thumbnails.</p>
+        </div>
+      </div>
+      ${error}
+      <div class="generated-thumbnail-grid">${items}</div>
+    `;
+  }
+
   function thumbnailGenerationTarget(candidateId = "") {
     if (candidateId) {
       return candidateSet.candidates.find((candidate) => candidate.id === candidateId) || null;
@@ -131,6 +193,7 @@
       return;
     }
     isGeneratingThumbnails = true;
+    generatedThumbnailError = "";
     showStatus("Generating thumbnail candidates…", "");
     render();
     try {
@@ -164,8 +227,14 @@
         thumbnailImage: String(item.thumbnailImage || item.thumbnail_image || item.thumbnailImagePath || item.thumbnail_image_path || ""),
       }));
       if (normalized.length) {
+        generatedThumbnailCandidates = normalized;
         thumbnailCandidates = normalized;
         thumbnailGenerationCount += normalized.length;
+        if (!normalized.some((item) => thumbnailCandidateImage(item))) {
+          generatedThumbnailError = "Thumbnail generation returned candidates, but none included image data.";
+          showStatus(generatedThumbnailError, "error");
+          return;
+        }
         render();
         showStatus("Thumbnail candidates generated.", "success");
       } else {
@@ -175,6 +244,7 @@
       const message = error && error.message && error.message !== "Failed to fetch"
         ? error.message
         : "Thumbnail generation failed. Check that ./scripts/serve-local.sh is running.";
+      generatedThumbnailError = message;
       showStatus(message, "error");
     } finally {
       isGeneratingThumbnails = false;
@@ -264,6 +334,7 @@
     els.downloadMarkdown.disabled = !selected;
     els.generateThumbnails.disabled = isGeneratingThumbnails || !visible.length;
     els.generateThumbnails.textContent = isGeneratingThumbnails ? "Generating thumbnails…" : "Generate thumbnail candidates";
+    renderGeneratedThumbnailPanel();
     els.grid.innerHTML = "";
     if (!visible.length) {
       els.grid.innerHTML = `<p class="muted">No candidates match this filter.</p>`;
