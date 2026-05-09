@@ -1,12 +1,13 @@
 # Shooting Plan
 
 - Run: 2026-05-06-ai-video-proof-plan
-- Status: Unapproved shooting-plan draft. Human review is still required before recording, and this file does not approve a shoot-now decision.
+- Status: Narrow shooting approved by `narrow-shooting-approval.md`. This file only describes the approved limited recording scope; it does not approve editing, publishing, upload prep, final title, final thumbnail, production readiness, project-state promotion, Hermes brain write, commit, or push.
 
 ## Pre-Shoot Setup
 
-- [ ] Human reviewer confirms whether final-script.md is approved for production.
-- [ ] Confirm final-outline.md still matches the final script.
+- [x] Narrow shooting approval exists in `narrow-shooting-approval.md`.
+- [ ] Confirm recording stays inside the approved narrow scope.
+- [ ] Confirm `final-script.md` and `final-outline.md` still match the approved narrow shooting scope.
 - [ ] Check microphone, screen recording settings, and project files.
 - [ ] Prepare any browser tabs, app states, or sample files needed for demos.
 
@@ -29,9 +30,9 @@
 - Capture working title + working thumbnail fit review; do not present them as final packaging.
 - A proof plan is the visible example, demo, comparison, or result that proves the video promise.
 - What specific demo, example, comparison, or result will prove that promise?
-- For this version, the draft production path is reproduced ChatGPT evidence plus a decision table, pending human review.
+- For this version, the approved narrow shooting path is A-roll, reproduced/controlled ChatGPT evidence, and a decision table within the boundary in `narrow-shooting-approval.md`.
 - Talking-head setup, controlled/reproduced evidence, and one simple proof-plan table.
-- Shooting, editing, publishing, upload prep, final title/thumbnail, project-state promotion, commit/push, and Hermes brain write remain blocked.
+- Narrow shooting is approved only within `narrow-shooting-approval.md`; editing, publishing, upload prep, final title/thumbnail, project-state promotion, commit/push, and Hermes brain write remain blocked.
 
 ## Pickup List
 
