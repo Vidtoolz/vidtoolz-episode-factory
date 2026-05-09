@@ -38,6 +38,14 @@ if command -v ss >/dev/null 2>&1 && ss -ltn | grep -q ":${PORT} "; then
   fi
 fi
 
+if command -v ss >/dev/null 2>&1 && ss -ltn | grep -q ":${PORT} "; then
+  if ! api_ready; then
+    printf 'Port %s is already in use by a server without the Package Engine thumbnail API.\n' "$PORT" >&2
+    printf 'Stop that process or choose another port with PORT=8020 ./scripts/serve-local.sh.\n' >&2
+    exit 1
+  fi
+fi
+
 printf 'Serving VIDTOOLZ Episode Factory at http://%s:%s/\n' "$HOST" "$PORT"
 printf 'Press Ctrl+C to stop.\n'
 

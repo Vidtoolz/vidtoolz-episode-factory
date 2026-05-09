@@ -111,7 +111,7 @@ function createServer() {
       return;
     }
 
-    const filePath = safeJoin(SERVE_ROOT, url.pathname === '/' ? '/package-engine.html' : url.pathname);
+    const filePath = safeJoin(SERVE_ROOT, url.pathname === '/' ? '/index.html' : url.pathname);
     if (!filePath) {
       send(res, 403, 'Forbidden');
       return;
