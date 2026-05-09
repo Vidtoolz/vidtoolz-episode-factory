@@ -5,6 +5,8 @@
 
 ## Verification Before Full Creator QA
 
+- Manual proof capture instructions now live in `proof-capture-pack.md`.
+- Before any production-prep approval, transcript evidence and reproduced visual evidence still need manual review; do not treat the pack itself as captured proof.
 - Capture verification note: `capture-verification-note.md`
 - Capture result note: `capture-result-note.md`
 - Capture transcript: `capture-transcript.md`
@@ -17,7 +19,7 @@
 - If the prepared weak example is used in production, label it as prepared rather than captured.
 - Repaired package title status: `Stop Adding AI Tools Until They Pass This Workflow Test` is a packaging candidate pending title/thumbnail review.
 - Title/thumbnail fit still needs review before production approval.
-- Production prep decision: not ready. Capture evidence exists, but full Creator QA has not been rerun after the script evidence update and title/thumbnail fit remains unresolved.
+- Production prep decision: not ready. Transcript evidence exists, and reproduced visual evidence exists only as planning evidence at `evidence/evidence-index.md`; original transcript visual proof is still missing. Full Creator QA has not been rerun after the script evidence update and title/thumbnail fit remains unresolved.
 
 ## Not Created Yet
 

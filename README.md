@@ -91,6 +91,10 @@ The dashboard shows Creator QA as a workflow gate: `FAIL` moves a run into
 `Needs QA repair`, while complete production prep with no QA report appears as
 `QA not run` with the local QA command.
 
+Use [docs/package-run-state-machine.md](docs/package-run-state-machine.md)
+for the conservative shared status language behind run review. File existence
+does not prove shooting, editing, publishing, or proof-capture readiness.
+
 Create a local Package Engine run folder and prompt:
 
 ```sh

@@ -3,14 +3,14 @@
 - Run: 2026-05-06-ai-video-proof-plan
 - Topic / focus: AI video proof plan before shooting
 - Source idea: A current VIDTOOLZ idea for serious solo creators who use AI in planning but need concrete production proof before committing to a video.
-- Completion status: Real ChatGPT transcript added and capture result note updated. Capture 6 is available as reproduced ChatGPT evidence for production planning only. Production-prep draft files now exist, but remain unapproved drafts and do not create production approval.
+- Completion status: Pasted ChatGPT transcript added and capture result note updated. Capture 6 is available as reproduced ChatGPT evidence for production planning only, not original transcript visual proof. Production-prep draft files now exist, but remain unapproved drafts and do not create production approval.
 
 ## Why this idea fits VIDTOOLZ
 
 - It fits practical video creation in the AI era.
 - It serves serious solo creators.
 - It keeps creator judgment above AI automation.
-- It requires visible production proof instead of AI hype.
+- It requires visible proof planning and careful evidence boundaries instead of AI hype.
 
 ## What was completed
 
@@ -44,6 +44,8 @@
 ## Workflow note
 
 This run follows the local Package Engine pattern at the artifact level: choose one package first, create a final outline, run outline-level QA, repair the outline, draft a first reviewable script, run script-level QA, repair the script, create a capture-verification note, run the planned ChatGPT prompt, and document the actual result without overstating it.
+
+Manual proof capture instructions are packaged in `proof-capture-pack.md`. The pack is an instruction/checklist artifact only and does not itself claim new proof has been captured.
 
 The pasted ChatGPT transcript differs from the prepared weak example. ChatGPT did not generate `10 AI Tools Every Creator Should Try in 2026`; the transcript records more practical workflow ideas and explicitly avoided generic AI-tools listicles. The prepared weak example remains usable only if labeled as prepared.
 

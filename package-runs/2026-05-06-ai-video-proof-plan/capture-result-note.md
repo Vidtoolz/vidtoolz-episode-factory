@@ -2,9 +2,9 @@
 
 - Run: 2026-05-06-ai-video-proof-plan
 - Date of test: 2026-05-06
-- Result status: Captured ChatGPT transcript available in `capture-transcript.md`.
+- Result status: Pasted ChatGPT transcript available in `capture-transcript.md`.
 - Related capture plan: `capture-verification-note.md`
-- Completion status: Capture result documented. Not ready for production prep.
+- Completion status: Transcript result documented. Not ready for production prep.
 
 ## 1. Date of test
 
@@ -22,13 +22,13 @@ Planned prompt:
 
 `Give me 10 YouTube video ideas for solo creators using AI tools in their video workflow. Make the ideas practical and current.`
 
-Actual prompt execution: verified by pasted transcript in `capture-transcript.md`.
+Actual prompt execution: documented by pasted transcript in `capture-transcript.md`; this is not original visual proof.
 
 ## 4. Whether screen recording or screenshot exists
 
-No durable screen recording or screenshot is imported in the run folder.
+At the initial pasted-transcript capture stage, no durable screen recording or screenshot was imported in the run folder. Later reproduced/controlled screenshot evidence is indexed separately in `evidence/evidence-index.md` and must not be treated as original transcript visual proof.
 
-A pasted transcript exists in `capture-transcript.md`. Temporary verification screenshots were taken during the capture session, but the durable evidence in this run is the transcript.
+A pasted transcript exists in `capture-transcript.md`. Later durable reproduced/controlled screenshot evidence exists under `evidence/` and is indexed in `evidence/evidence-index.md`; it is planning evidence only, not original transcript visual proof.
 
 ## 5. Brief summary of actual output
 
@@ -77,7 +77,7 @@ The script should keep `10 AI Tools Every Creator Should Try in 2026` only as a 
 
 - Do not claim ChatGPT generated the exact weak example.
 - Do not claim ChatGPT generated a close weak generic roundup.
-- Do not claim a durable screen recording or screenshot has been imported.
+- Do not claim original transcript visual proof exists. Reproduced/controlled screenshot evidence may be cited only through `evidence/evidence-index.md` and only within its stated planning-evidence boundary.
 - Do not claim ChatGPT always avoids generic AI-tools ideas.
 - Do not repeat ChatGPT's tool-capability claims as facts without separate verification.
 - Do not claim the planned weak example has been verified by capture.
