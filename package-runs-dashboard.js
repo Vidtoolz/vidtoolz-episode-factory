@@ -15,6 +15,7 @@
   const WORKFLOW_FILTERS = [
     "Needs QA repair",
     "Needs proof capture",
+    "Narrow shooting approved",
     "Needs package selection",
     "Needs outline",
     "Needs script",
@@ -75,7 +76,9 @@
         const qaNotRun = creatorQaStatus === "not run";
         const evidenceGate = normalizeEvidenceGate(run.evidenceGate);
         const workflowBucket =
-          qaBlocking || (status === "Ready to shoot" && (qaNotRun || evidenceGate.blocksProductionReady))
+          qaBlocking ||
+          (status === "Ready to shoot" &&
+            (qaNotRun || evidenceGate.blocksProductionReady || evidenceGate.hasNarrowShootingApproval))
             ? workflowBucketForStatus(status, creatorQaStatus, evidenceGate)
             : String(run.workflowBucket || workflowBucketForStatus(status, creatorQaStatus, evidenceGate));
         let nextRecommendedCommand = String(run.nextRecommendedCommand || "");
@@ -84,6 +87,9 @@
             creatorQaStatus === "FAIL"
               ? "Review creator-qa-report.md and repair package/script before shooting."
               : `Review Creator QA status ${creatorQaStatus} and repair package/script before shooting.`;
+        } else if (!nextRecommendedCommand && status === "Ready to shoot" && evidenceGate.hasNarrowShootingApproval) {
+          nextRecommendedCommand =
+            "Shoot only the narrow approved scope; editing, publishing, upload prep, final title, and final thumbnail remain blocked.";
         } else if (!nextRecommendedCommand && status === "Ready to shoot" && evidenceGate.blocksProductionReady) {
           nextRecommendedCommand = "Capture or import durable proof evidence before production approval.";
         } else if (!nextRecommendedCommand && status === "Ready to shoot" && qaNotRun) {
@@ -151,12 +157,17 @@
       hasCaptureTranscript: Boolean(source.hasCaptureTranscript),
       hasVisualCapture: Boolean(source.hasVisualCapture),
       evidenceReferences: Array.isArray(source.evidenceReferences) ? source.evidenceReferences.map(String) : [],
+      hasNarrowShootingApproval: Boolean(source.hasNarrowShootingApproval),
+      approvedActions: Array.isArray(source.approvedActions) ? source.approvedActions.map(String) : [],
+      blockedActions: Array.isArray(source.blockedActions) ? source.blockedActions.map(String) : [],
+      approvalReference: String(source.approvalReference || ""),
     };
   }
 
   function workflowBucketForStatus(status, creatorQaStatus = "not run", evidenceGate = {}) {
     const qaStatus = normalizeCreatorQaStatus(creatorQaStatus);
     if (isCreatorQaBlocking(qaStatus)) return "Needs QA repair";
+    if (status === "Ready to shoot" && evidenceGate.hasNarrowShootingApproval) return "Narrow shooting approved";
     if (status === "Ready to shoot" && evidenceGate.blocksProductionReady) return "Needs proof capture";
     if (status === "Ready to shoot" && qaStatus === "not run") return "QA not run";
     const bucketByStatus = {

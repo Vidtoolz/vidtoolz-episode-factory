@@ -25,6 +25,7 @@ const DETECTED_FILES = [
   "resolve-edit-checklist.md",
   "thumbnail-title-check.md",
   "publish-pack.md",
+  "narrow-shooting-approval.md",
   "creator-qa-package.md",
   "creator-qa-report.md",
   "creator-qa-report.json",
@@ -45,6 +46,20 @@ const CAPTURE_FILE_PATTERN = /(?:^|[-_])(capture[-_])?(transcript|screenshot|scr
 const VISUAL_CAPTURE_PATTERN = /(screenshot|screen[-_\s]?recording|recording).*\.(png|jpe?g|webp|gif|mp4|mov|mkv|webm)$/i;
 const NO_CAPTURED_OUTPUT_PATTERN =
   /\b(no|without)\s+(durable\s+)?(captured\s+output|capture\s+output|capture\s+evidence|transcript|screenshot|screen\s+recording|recording)\s+(exists?|available|imported|was\s+imported|is\s+imported)\b/i;
+const NARROW_SHOOTING_APPROVAL_FILE = "narrow-shooting-approval.md";
+const NARROW_SHOOTING_APPROVAL_PATTERN = /\bapproved\s+for\s+narrow\s+shooting\s+only\b|\bnarrow\s+shooting\s+approved\b/i;
+const DOWNSTREAM_BLOCKED_ACTIONS = [
+  "editing",
+  "publishing",
+  "upload prep",
+  "final title",
+  "final thumbnail",
+  "production readiness",
+  "project-state promotion",
+  "Hermes brain write",
+  "commit",
+  "push",
+];
 
 function parseArgs(argv) {
   const args = [...argv];
@@ -133,6 +148,9 @@ function nextRecommendedCommand(status, runPath, creatorQaStatus = "not run", ev
     if (qaStatus === "FAIL") return "Review creator-qa-report.md and repair package/script before shooting.";
     return `Review Creator QA status ${qaStatus} and repair package/script before shooting.`;
   }
+  if (status === "Ready to shoot" && evidenceGate.hasNarrowShootingApproval) {
+    return "Shoot only the narrow approved scope; editing, publishing, upload prep, final title, and final thumbnail remain blocked.";
+  }
   if (status === "Ready to shoot" && evidenceGate.blocksProductionReady) {
     return "Capture or import durable proof evidence before production approval.";
   }
@@ -155,6 +173,7 @@ function nextRecommendedCommand(status, runPath, creatorQaStatus = "not run", ev
 function workflowBucket(status, creatorQaStatus = "not run", evidenceGate = {}) {
   const qaStatus = normalizeCreatorQaStatus(creatorQaStatus);
   if (isCreatorQaBlocking(qaStatus)) return "Needs QA repair";
+  if (status === "Ready to shoot" && evidenceGate.hasNarrowShootingApproval) return "Narrow shooting approved";
   if (status === "Ready to shoot" && evidenceGate.blocksProductionReady) return "Needs proof capture";
   if (status === "Ready to shoot" && qaStatus === "not run") return "QA not run";
   const bucketByStatus = {
@@ -225,6 +244,26 @@ function listCaptureEvidenceReferences(runDir, resultText = "") {
   return [...new Set([...localFiles, ...resultReferences])].sort();
 }
 
+function readNarrowShootingApproval(runDir) {
+  const approvalPath = path.join(runDir, NARROW_SHOOTING_APPROVAL_FILE);
+  if (!fs.existsSync(approvalPath)) {
+    return {
+      hasNarrowShootingApproval: false,
+      approvedActions: [],
+      blockedActions: [],
+      approvalReference: "",
+    };
+  }
+  const text = fs.readFileSync(approvalPath, "utf8");
+  const approved = NARROW_SHOOTING_APPROVAL_PATTERN.test(text);
+  return {
+    hasNarrowShootingApproval: approved,
+    approvedActions: approved ? ["narrow shooting"] : [],
+    blockedActions: approved ? DOWNSTREAM_BLOCKED_ACTIONS : [],
+    approvalReference: NARROW_SHOOTING_APPROVAL_FILE,
+  };
+}
+
 function readEvidenceGate(runDir) {
   const verificationNotePath = path.join(runDir, "capture-verification-note.md");
   const resultNotePath = path.join(runDir, "capture-result-note.md");
@@ -235,6 +274,7 @@ function readEvidenceGate(runDir) {
   const hasCaptureTranscript = evidenceReferences.some((reference) => /transcript/i.test(reference));
   const hasVisualCapture = evidenceReferences.some((reference) => VISUAL_CAPTURE_PATTERN.test(reference));
   const saysNoCapturedOutput = NO_CAPTURED_OUTPUT_PATTERN.test(resultText);
+  const shootingApproval = readNarrowShootingApproval(runDir);
 
   let status = "not evaluated";
   let warning = "";
@@ -256,6 +296,13 @@ function readEvidenceGate(runDir) {
     status = "proof captured";
   }
 
+  if (shootingApproval.hasNarrowShootingApproval) {
+    status = `${status}; narrow shooting approved`;
+    warning =
+      "Not production-ready: narrow shooting only; editing, publishing, upload prep, final title, and final thumbnail remain blocked";
+    blocksProductionReady = true;
+  }
+
   return {
     status,
     warning,
@@ -266,6 +313,10 @@ function readEvidenceGate(runDir) {
     hasCaptureTranscript,
     hasVisualCapture,
     evidenceReferences,
+    hasNarrowShootingApproval: shootingApproval.hasNarrowShootingApproval,
+    approvedActions: shootingApproval.approvedActions,
+    blockedActions: shootingApproval.blockedActions,
+    approvalReference: shootingApproval.approvalReference,
   };
 }
 
@@ -359,6 +410,7 @@ module.exports = {
   workflowBucket,
   readCreatorQaStatus,
   listCaptureEvidenceReferences,
+  readNarrowShootingApproval,
   readEvidenceGate,
   scanRun,
   buildPackageRunsIndex,

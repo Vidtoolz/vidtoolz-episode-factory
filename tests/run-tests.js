@@ -2376,6 +2376,7 @@ test("package runs index classifies workflow status from detected files", () => 
 
 test("package runs readiness buckets are conservative for creator qa status", () => {
   const evidenceBlocking = { blocksProductionReady: true };
+  const narrowApproval = { blocksProductionReady: true, hasNarrowShootingApproval: true };
 
   assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "PASS"), "Ready to shoot");
   assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "not run"), "QA not run");
@@ -2383,6 +2384,7 @@ test("package runs readiness buckets are conservative for creator qa status", ()
   assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "NEEDS WORK"), "Needs QA repair");
   assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "REVIEW REQUIRED"), "Needs QA repair");
   assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "PASS", evidenceBlocking), "Needs proof capture");
+  assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "not run", narrowApproval), "Narrow shooting approved");
 });
 
 test("package runs index reports conservative evidence gate status", () => {
@@ -2391,7 +2393,8 @@ test("package runs index reports conservative evidence gate status", () => {
   const missingDir = path.join(tempRoot, "missing");
   const transcriptDir = path.join(tempRoot, "transcript");
   const capturedDir = path.join(tempRoot, "captured");
-  [planOnlyDir, missingDir, transcriptDir, capturedDir].forEach((runDir) => fs.mkdirSync(runDir, { recursive: true }));
+  const narrowDir = path.join(tempRoot, "narrow");
+  [planOnlyDir, missingDir, transcriptDir, capturedDir, narrowDir].forEach((runDir) => fs.mkdirSync(runDir, { recursive: true }));
 
   fs.writeFileSync(path.join(planOnlyDir, "capture-verification-note.md"), "# Capture Verification Note\n");
 
@@ -2415,6 +2418,17 @@ test("package runs index reports conservative evidence gate status", () => {
   );
   fs.writeFileSync(path.join(capturedDir, "capture-recording.mp4"), "fake mp4 placeholder\n");
 
+  fs.writeFileSync(path.join(narrowDir, "capture-verification-note.md"), "# Capture Verification Note\n");
+  fs.writeFileSync(
+    path.join(narrowDir, "capture-result-note.md"),
+    "# Capture Result Note\n\nCaptured transcript available in `capture-transcript.md`.\n"
+  );
+  fs.writeFileSync(path.join(narrowDir, "capture-transcript.md"), "# Capture Transcript\n");
+  fs.writeFileSync(
+    path.join(narrowDir, "narrow-shooting-approval.md"),
+    "# Narrow Shooting Approval\n\n- Status: approved for narrow shooting only\n\nThis approval does not approve editing, publishing, upload prep, final title, final thumbnail, production readiness, project-state promotion, Hermes brain write, commit, or push.\n"
+  );
+
   assert.deepEqual(packageRunsIndexScript.readEvidenceGate(planOnlyDir), {
     status: "planned proof only",
     warning: "Not production-ready: proof capture missing",
@@ -2425,6 +2439,10 @@ test("package runs index reports conservative evidence gate status", () => {
     hasCaptureTranscript: false,
     hasVisualCapture: false,
     evidenceReferences: [],
+    hasNarrowShootingApproval: false,
+    approvedActions: [],
+    blockedActions: [],
+    approvalReference: "",
   });
 
   const missingGate = packageRunsIndexScript.readEvidenceGate(missingDir);
@@ -2444,6 +2462,26 @@ test("package runs index reports conservative evidence gate status", () => {
   assert.equal(capturedGate.hasVisualCapture, true);
   assert.equal(capturedGate.blocksProductionReady, false);
   assert.deepEqual(capturedGate.evidenceReferences, ["capture-recording.mp4"]);
+
+  const narrowGate = packageRunsIndexScript.readEvidenceGate(narrowDir);
+  assert.equal(narrowGate.status, "transcript captured; visual proof missing; narrow shooting approved");
+  assert.equal(narrowGate.blocksProductionReady, true);
+  assert.equal(narrowGate.hasNarrowShootingApproval, true);
+  assert.deepEqual(narrowGate.approvedActions, ["narrow shooting"]);
+  assert.deepEqual(narrowGate.blockedActions, [
+    "editing",
+    "publishing",
+    "upload prep",
+    "final title",
+    "final thumbnail",
+    "production readiness",
+    "project-state promotion",
+    "Hermes brain write",
+    "commit",
+    "push",
+  ]);
+  assert.equal(narrowGate.approvalReference, "narrow-shooting-approval.md");
+  assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "not run", narrowGate), "Narrow shooting approved");
 
   assert.equal(
     packageRunsIndexScript.workflowBucket("Ready to shoot", "PASS", transcriptGate),
@@ -2552,6 +2590,13 @@ test("package runs index recommends deterministic next local commands", () => {
     "Capture or import durable proof evidence before production approval."
   );
   assert.equal(
+    packageRunsIndexScript.nextRecommendedCommand("Ready to shoot", "package-runs/run-id", "not run", {
+      blocksProductionReady: true,
+      hasNarrowShootingApproval: true,
+    }),
+    "Shoot only the narrow approved scope; editing, publishing, upload prep, final title, and final thumbnail remain blocked."
+  );
+  assert.equal(
     packageRunsIndexScript.nextRecommendedCommand("Ready to shoot", "package-runs/run-id", "FAIL"),
     "Review creator-qa-report.md and repair package/script before shooting."
   );
@@ -2568,6 +2613,13 @@ test("package runs index recommends deterministic next local commands", () => {
   assert.equal(packageRunsIndexScript.workflowBucket("Production prep ready"), "Needs production prep");
   assert.equal(packageRunsIndexScript.workflowBucket("Production prep ready", "FAIL"), "Needs QA repair");
   assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "not run"), "QA not run");
+  assert.equal(
+    packageRunsIndexScript.workflowBucket("Ready to shoot", "not run", {
+      blocksProductionReady: true,
+      hasNarrowShootingApproval: true,
+    }),
+    "Narrow shooting approved"
+  );
 });
 
 test("package runs dashboard launch helper writes index and prints local launch instructions", () => {
@@ -2676,6 +2728,42 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
         nextRecommendedCommand: "",
         files: { final_script: true, production_brief: true, creator_qa_report: true, creator_qa_report_json: true },
       },
+      {
+        runId: "2026-05-09-i",
+        path: "package-runs/2026-05-09-i",
+        title: "Narrow Approved Package",
+        status: "Ready to shoot",
+        workflowBucket: "Needs proof capture",
+        creatorQaStatus: "not run",
+        nextRecommendedCommand: "",
+        evidenceGate: {
+          status: "transcript captured; visual proof missing; narrow shooting approved",
+          warning:
+            "Not production-ready: narrow shooting only; editing, publishing, upload prep, final title, and final thumbnail remain blocked",
+          blocksProductionReady: true,
+          hasCapturePlan: true,
+          hasCaptureResult: true,
+          hasCaptureTranscript: true,
+          hasVisualCapture: false,
+          hasNarrowShootingApproval: true,
+          approvedActions: ["narrow shooting"],
+          blockedActions: [
+            "editing",
+            "publishing",
+            "upload prep",
+            "final title",
+            "final thumbnail",
+            "production readiness",
+            "project-state promotion",
+            "Hermes brain write",
+            "commit",
+            "push",
+          ],
+          approvalReference: "narrow-shooting-approval.md",
+          evidenceReferences: ["capture-transcript.md"],
+        },
+        files: { final_script: true, production_brief: true, narrow_shooting_approval: true },
+      },
     ],
   };
   const index = packageRunsDashboard.normalizeIndex(payload);
@@ -2684,6 +2772,7 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
   const needsQaRepair = packageRunsDashboard.filterAndSortRuns(index.runs, "Needs QA repair", "run-desc");
   const qaNotRun = packageRunsDashboard.filterAndSortRuns(index.runs, "QA not run", "run-desc");
   const needsProofCapture = packageRunsDashboard.filterAndSortRuns(index.runs, "Needs proof capture", "run-desc");
+  const narrowShootingApproved = packageRunsDashboard.filterAndSortRuns(index.runs, "Narrow shooting approved", "run-desc");
   const card = packageRunsDashboard.renderRunCard(filtered[0]);
   const scriptCard = packageRunsDashboard.renderRunCard(needsScript[0]);
   const failedQaCard = packageRunsDashboard.renderRunCard(needsQaRepair.find((run) => run.runId === "2026-05-04-d"));
@@ -2691,15 +2780,18 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
   const unknownQaCard = packageRunsDashboard.renderRunCard(needsQaRepair.find((run) => run.runId === "2026-05-08-h"));
   const qaMissingCard = packageRunsDashboard.renderRunCard(qaNotRun[0]);
   const proofMissingCard = packageRunsDashboard.renderRunCard(needsProofCapture[0]);
+  const narrowApprovedCard = packageRunsDashboard.renderRunCard(narrowShootingApproved[0]);
   const stats = packageRunsDashboard.renderWorkflowStats(index.runs);
 
-  assert.equal(index.count, 8);
+  assert.equal(index.count, 9);
   assert.equal(filtered.length, 1);
   assert.equal(filtered[0].runId, "2026-05-02-b");
   assert.equal(needsScript.length, 1);
   assert.equal(needsQaRepair.length, 3);
   assert.equal(qaNotRun.length, 1);
   assert.equal(needsProofCapture.length, 1);
+  assert.equal(narrowShootingApproved.length, 1);
+  assert.equal(narrowShootingApproved[0].runId, "2026-05-09-i");
   assert.match(card, /Ready Package/);
   assert.match(card, /Ready to shoot/);
   assert.match(card, /package-runs\/2026-05-02-b\//);
@@ -2729,10 +2821,16 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
   assert.match(proofMissingCard, /Evidence Gate blocker/);
   assert.match(proofMissingCard, /Not production-ready: proof capture missing/);
   assert.match(proofMissingCard, /Capture or import durable proof evidence before production approval\./);
+  assert.match(narrowApprovedCard, /Narrow shooting approved/);
+  assert.match(
+    narrowApprovedCard,
+    /Shoot only the narrow approved scope; editing, publishing, upload prep, final title, and final thumbnail remain blocked\./
+  );
   assert.match(stats, /Ready to shoot/);
   assert.match(stats, /Needs production prep/);
   assert.match(stats, /Needs QA repair/);
   assert.match(stats, /Needs proof capture/);
+  assert.match(stats, /Narrow shooting approved/);
   assert.match(stats, /QA not run/);
 });
 
