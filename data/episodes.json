@@ -1,0 +1,194 @@
+{
+  "app": "VIDTOOLZ Episode Factory",
+  "appVersion": "1.7.4",
+  "schemaVersion": 1,
+  "storageKey": "vidtoolz-episode-factory-v1",
+  "exportedAt": "2026-05-10T14:17:01.007Z",
+  "version": 1,
+  "selectedId": "episode-mozuwspb-ankz7q",
+  "counts": {
+    "episodes": 1
+  },
+  "episodes": [
+    {
+      "id": "episode-mozuwspb-ankz7q",
+      "status": "Idea",
+      "createdAt": "2026-05-10T14:17:01.007Z",
+      "updatedAt": "2026-05-10T14:17:01.007Z",
+      "version": 1,
+      "checklists": {
+        "packagingGate": {
+          "Viewer problem is clear": {
+            "passed": false
+          },
+          "Target viewer is specific": {
+            "passed": false
+          },
+          "Core promise is concrete": {
+            "passed": false
+          },
+          "Title is specific": {
+            "passed": false
+          },
+          "Hook works in the first 5 seconds": {
+            "passed": false
+          },
+          "Thumbnail concept is understandable without reading the title": {
+            "passed": false
+          },
+          "Topic is narrow enough for a 10-14 minute video": {
+            "passed": false
+          },
+          "Episode can produce at least 3 Shorts": {
+            "passed": false
+          }
+        },
+        "productionChecklist": {
+          "Screen recording plan is clear": {
+            "passed": false
+          },
+          "Talking points are ready": {
+            "passed": false
+          },
+          "Needed assets are listed": {
+            "passed": false
+          },
+          "Example footage or project files are ready": {
+            "passed": false
+          },
+          "Audio setup is checked": {
+            "passed": false
+          },
+          "Camera/screen setup is checked": {
+            "passed": false
+          },
+          "Shoot can be completed in one session": {
+            "passed": false
+          }
+        },
+        "editingChecklist": {
+          "Main timeline assembled": {
+            "passed": false
+          },
+          "Dead space removed": {
+            "passed": false
+          },
+          "Visual examples added": {
+            "passed": false
+          },
+          "Audio cleaned": {
+            "passed": false
+          },
+          "Captions or key text added where useful": {
+            "passed": false
+          },
+          "Intro hook tightened": {
+            "passed": false
+          },
+          "Ending/call-to-action checked": {
+            "passed": false
+          }
+        },
+        "shortsChecklist": {
+          "At least 3 Shorts candidates identified": {
+            "passed": false
+          },
+          "Each Short has a clear hook": {
+            "passed": false
+          },
+          "Each Short has one idea only": {
+            "passed": false
+          },
+          "Vertical framing considered": {
+            "passed": false
+          },
+          "Captions/text plan noted": {
+            "passed": false
+          }
+        },
+        "publishChecklist": {
+          "Final title selected": {
+            "passed": false
+          },
+          "Thumbnail selected": {
+            "passed": false
+          },
+          "Description drafted": {
+            "passed": false
+          },
+          "Chapters drafted if needed": {
+            "passed": false
+          },
+          "Tags/metadata checked": {
+            "passed": false
+          },
+          "End screen/cards checked": {
+            "passed": false
+          },
+          "Newsletter/social repurpose note drafted": {
+            "passed": false
+          }
+        }
+      },
+      "workSessions": [],
+      "workBlocks": [],
+      "packagingGate": {
+        "Viewer problem is clear": {
+          "passed": false
+        },
+        "Target viewer is specific": {
+          "passed": false
+        },
+        "Core promise is concrete": {
+          "passed": false
+        },
+        "Title is specific": {
+          "passed": false
+        },
+        "Hook works in the first 5 seconds": {
+          "passed": false
+        },
+        "Thumbnail concept is understandable without reading the title": {
+          "passed": false
+        },
+        "Topic is narrow enough for a 10-14 minute video": {
+          "passed": false
+        },
+        "Episode can produce at least 3 Shorts": {
+          "passed": false
+        }
+      },
+      "topic": "DaVinci Resolve playback lag diagnosis",
+      "workingTitle": "Diagnose Resolve Playback Lag Before You Change Settings",
+      "format": "long",
+      "targetViewer": "Serious solo video creators editing in DaVinci Resolve",
+      "viewerProblem": "Resolve playback lag feels random, so solo creators often change settings, blame hardware, or buy upgrades before proving whether the real bottleneck is media, cache, timeline effects, disk, GPU/VRAM, NAS media, or background system load.",
+      "corePromise": "Run a repeatable Resolve playback-lag diagnostic and identify the most likely bottleneck before changing random settings, buying hardware, or blaming Resolve.",
+      "sourceNotes": "Source: topic scan refined card /home/vidtoolz/outputs/topic-scans/refined-cards/2026-05-10-resolve-playback-lag-refined-episode-candidate.md\nSource type: topic scan refined card\nProduction approval: no\nPackage run approved: no\nShooting approved: no\nProof required before production: yes\nVIDTOOLZ angle: diagnose Resolve playback problems with evidence before changing hardware or settings.\nTop evidence videos:\n- How to Fix Laggy Playback in DaVinci Resolve - Kevin Stratvert - 51,336 views - https://www.youtube.com/watch?v=MGaQfYONEtg\n- Solve Your LAG Issues! - DaVinci Resolve - Daniel Batal - 353,986 views - https://www.youtube.com/watch?v=n1DFyINLLbY\n- Is Your Project LAGGING? Try This! - DaVinci Resolve for NOOBS! - Daniel Batal - 464,281 views - https://www.youtube.com/watch?v=-SUogkvMzbI\n- How To FIX Laggy Playback In Davinci Resolve - Molin Guides - 102,246 views - https://www.youtube.com/watch?v=RXI-AM7a70M\n- How to fix playback lag in DaVinci Resolve - RESO\\\\VED - 136,349 views - https://www.youtube.com/watch?v=iuwqBpm-VWE",
+      "scriptPath": "",
+      "titleOptions": "1. Diagnose Resolve Playback Lag Before You Change Settings\n2. Find the Real Reason Your Resolve Timeline Is Stuttering\n3. Stop Guessing: Classify Resolve Playback Lag in 10 Minutes\n4. Is Resolve Lagging, or Is Your Media the Bottleneck?\n5. The Resolve Playback Lag Checklist for Solo Creators\n6. Cache, Codec, Disk, or GPU? Find the Resolve Bottleneck\n7. Why Your Resolve Timeline Stutters Even on a Strong PC\n8. Resolve Playback Lag: A Practical Diagnostic Workflow",
+      "thumbnailConcept": "STOP GUESSING - Resolve timeline beside Task Manager/Resource Monitor proof panel",
+      "description": "Draft planning entry only. Publish metadata is not approved and should not be used for upload prep.",
+      "tags": "",
+      "hook": "Show a Resolve timeline stuttering, then Task Manager or Resource Monitor beside it: This is where most lag tutorials go wrong. They jump to settings before proving what is actually slow.",
+      "scriptOutline": "1. The Real Problem: Lag Is a Symptom\nViewer purpose: reframe playback lag as a diagnosis problem, not a settings problem.\nProof/evidence: one stuttering playback example and possible bottleneck classes.\nScreen capture requirement: Resolve playback stutter plus visible timeline/playback context.\n\n2. Set Up a Repeatable Lag Test\nViewer purpose: prevent false conclusions from inconsistent testing.\nProof/evidence: one timeline section, one clip, one playback mode, and one timestamped test.\nScreen capture requirement: timeline section, playback resolution setting, clip/media details.\n\n3. Check Media and Codec First\nViewer purpose: show why source media can be harder to play than the edit looks.\nProof/evidence: codec/container/media location comparison.\nScreen capture requirement: media file properties, Resolve Media Pool, storage location.\n\n4. Watch the System During the Stutter\nViewer purpose: teach signal capture while the problem happens.\nProof/evidence: disk, CPU, GPU/VRAM, and memory observations during playback.\nScreen capture requirement: Resolve visible with Task Manager/Resource Monitor beside it.\n\n5. Test Cache, Proxies, or Optimized Media\nViewer purpose: show one targeted workflow fix after evidence points toward decoding/timeline load.\nProof/evidence: before/after playback on the same timeline section.\nScreen capture requirement: Resolve cache/proxy/optimized media settings and playback result.\n\n6. Separate Timeline Effects From Media Problems\nViewer purpose: avoid blaming media when Fusion, noise reduction, color nodes, or effects are the load.\nProof/evidence: toggle heavy effects or test a clean timeline segment.\nScreen capture requirement: effects/color/Fusion state and comparison playback test.\n\n7. Build the VIDTOOLZ Playback-Lag Checklist\nViewer purpose: give a reusable decision path.\nProof/evidence: checklist for media, location, cache, timeline effects, disk, GPU, background I/O.\nScreen capture requirement: checklist overlay or markdown note plus Resolve context.\n\n8. When to Stop and Escalate\nViewer purpose: define when evidence justifies hardware, driver, or project strategy changes.\nProof/evidence: examples of signals that justify next steps and examples that do not.\nScreen capture requirement: summary screen with diagnostic outcomes and next actions.",
+      "nextAction": "Capture or design the controlled Resolve playback-lag proof test before any script or production prep.",
+      "notes": "Status: idea/draft, not ready to shoot.\nProduction approval: no.\nPackage run approved: no.\nShooting approved: no.\nProof required before production: yes.\n\nProof plan summary:\n- Capture Resolve timeline playback stutter with visible timeline context.\n- Capture the same timeline after one targeted improvement.\n- Capture Project Settings and Timeline Settings relevant to playback resolution, optimized media/cache, and timeline resolution.\n- Capture media location and file properties.\n- Capture Task Manager Performance and Resource Monitor Disk during playback.\n- Capture GPU/VRAM usage during playback if available.\n- Capture Resolve cache/proxy/optimized media state before and after the test.\n\nMust not claim without proof:\n- One setting fixes all Resolve lag.\n- PRESTO hardware is the cause.\n- GPU, disk, codec, NAS, or cache is the bottleneck without matching evidence.\n- Buying hardware is the next step before workflow/media/cache tests.\n- Before/after improvement if timeline conditions differ.\n\nRejection risks:\n- No captured Resolve lag case is available.\n- The same test cannot be reproduced before and after a targeted change.\n- Monitoring data is too ambiguous to support a clear diagnosis.\n- The episode becomes a generic settings roundup instead of an evidence-led workflow.\n- The topic overlaps existing tutorials unless the VIDTOOLZ diagnostic framing is clear.\n\nSuggested next action: Capture or design the controlled Resolve playback-lag proof test before any script or production prep.",
+      "topicScanDraftBoundary": {
+        "source": "topic scan refined card",
+        "sourcePath": "/home/vidtoolz/outputs/topic-scans/refined-cards/2026-05-10-resolve-playback-lag-refined-episode-candidate.md",
+        "productionApproval": false,
+        "packageRunApproved": false,
+        "shootingApproved": false,
+        "proofRequiredBeforeProduction": true,
+        "mayEnterEpisodeFactory": false,
+        "needsMikkoApprovalBeforeProduction": true,
+        "needsMikkoApprovalBeforePackageRun": true
+      },
+      "productionChecklist": "NOT APPROVED FOR PRODUCTION PREP.\nProof required before production:\n- Controlled Resolve playback-lag test designed.\n- Before/after capture plan reviewed.\n- Disk, GPU/VRAM, CPU, memory, media location, cache/proxy state capture plan reviewed.\n- Claims restricted to what the captured evidence proves.",
+      "editingChecklist": "- Rough cut\n- Tighten pacing\n- Add captions and callouts\n- Audio polish",
+      "shortsPlan": "- Short 1:\n- Short 2:",
+      "publishChecklist": "Publish metadata not created. Publishing is out of scope for this idea/draft entry."
+    }
+  ]
+}
