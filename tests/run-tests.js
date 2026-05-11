@@ -4560,6 +4560,23 @@ test("broll prompt generator creates prompt artifacts from approved script and p
   assert.match(fs.readFileSync(path.join(runDir, "graphics-prompt-pack.md"), "utf8"), /Before\/after idea filter matrix/);
 });
 
+test("broll prompt generator treats selected package json and markdown as alternate inputs", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-broll-selected-json-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-broll-selected-json");
+  writeBrollPromptRun(runDir);
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({ package: { proposedTitle: "AI video idea filter" } }),
+    "utf8"
+  );
+
+  assert.equal(packageBrollPromptsScript.main([runDir]), 0);
+  const pack = brollPromptPackText(runDir);
+
+  assert.doesNotMatch(pack, /Missing selected-package\.md/);
+  assert.doesNotMatch(pack, /Missing selected-package\.json or selected-package\.md/);
+});
+
 test("broll prompt generator filters headers placeholders checkboxes and artifact leaks", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-broll-clean-extraction-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-broll-clean-extraction");
@@ -4614,7 +4631,7 @@ test("broll prompt generator filters headers placeholders checkboxes and artifac
   const combined = packageBrollPromptsScript.TARGET_FILES.map((filename) => fs.readFileSync(path.join(runDir, filename), "utf8")).join("\n");
 
   assert.match(combined, /Film a concise visual of Scorecard proof over the selected package/);
-  assert.match(combined, /scorecard selected package/);
+  assert.match(combined, /content ideation scorecard/);
   assert.match(combined, /Create a scorecard for Before and after package scorecard/);
   assert.doesNotMatch(combined, /b-roll item \/ reason \/ source \/ status/i);
   assert.doesNotMatch(combined, /\| TODO \|/i);
@@ -4687,6 +4704,45 @@ test("broll prompt generator falls back to script when planning rows are placeho
     assert.equal(query.split(/\s+/).length <= 6, true);
     assert.doesNotMatch(query, /\.\.\.|[.!?]$/);
   });
+});
+
+test("broll prompt generator stock queries are short filler-free phrases", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-broll-stock-clean-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-broll-stock-clean");
+  writeBrollPromptRun(runDir);
+  fs.writeFileSync(
+    path.join(runDir, "final-script.md"),
+    [
+      "# Final Script",
+      "",
+      "A serious solo creator experimenting with tools but keeping strategy human-owned.",
+      "The video shows planning constraints, a screen recording workflow, and the editing workspace.",
+    ].join("\n"),
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "shot-list.md"),
+    [
+      "# Shot List",
+      "",
+      "| shot | reason | priority | status |",
+      "| --- | --- | --- | --- |",
+      "| TODO | TODO | TODO | TODO |",
+      "| Placeholder shot | not assessed | high | open |",
+    ].join("\n"),
+    "utf8"
+  );
+
+  assert.equal(packageBrollPromptsScript.main([runDir, "--overwrite"]), 0);
+  const stock = fs.readFileSync(path.join(runDir, "stock-search-queries.md"), "utf8");
+  const queries = markdownDataRows(stock, "# Stock Search Queries").map((row) => row.split("|")[1].trim());
+
+  assert.equal(queries.length >= 2, true);
+  queries.forEach((query) => {
+    assert.equal(query.split(/\s+/).length <= 5, true);
+    assert.doesNotMatch(query, /\b(?:but|and|or|without|with|the|a|an|to|of|for|from|into)\b/i);
+  });
+  assert.match(queries.join("\n"), /solo creator AI workflow|video strategy planning|screen recording workflow|content ideation scorecard|creator editing workspace/);
 });
 
 test("broll prompt generator preserves manual files unless overwrite is explicit", () => {

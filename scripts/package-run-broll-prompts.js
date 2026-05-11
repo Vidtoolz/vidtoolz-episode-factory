@@ -224,7 +224,15 @@ function determineStatus(context) {
 }
 
 function inputWarnings(context) {
-  return INPUT_FILES.filter((filename) => !context.files[filename]).map((filename) => `Missing ${filename}.`);
+  const warnings = [];
+  INPUT_FILES.forEach((filename) => {
+    if (filename === "selected-package.json" || filename === "selected-package.md") return;
+    if (!context.files[filename]) warnings.push(`Missing ${filename}.`);
+  });
+  if (!context.files["selected-package.json"] && !context.files["selected-package.md"]) {
+    warnings.push("Missing selected-package.json or selected-package.md.");
+  }
+  return warnings;
 }
 
 function isCleanSourceLine(line) {
@@ -403,15 +411,76 @@ function conciseBrief(line, maxLength = 96) {
   return `${clipped || text.slice(0, maxLength - 3).trim()}...`;
 }
 
+const STOCK_QUERY_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "after",
+  "against",
+  "are",
+  "as",
+  "at",
+  "be",
+  "before",
+  "beside",
+  "but",
+  "by",
+  "capture",
+  "create",
+  "end",
+  "film",
+  "for",
+  "from",
+  "how",
+  "in",
+  "into",
+  "is",
+  "near",
+  "next",
+  "of",
+  "on",
+  "open",
+  "or",
+  "over",
+  "record",
+  "show",
+  "that",
+  "the",
+  "this",
+  "to",
+  "under",
+  "use",
+  "using",
+  "what",
+  "while",
+  "why",
+  "with",
+  "without",
+]);
+
+const STOCK_QUERY_FALLBACKS = [
+  "solo creator AI workflow",
+  "video strategy planning",
+  "screen recording workflow",
+  "content ideation scorecard",
+  "creator editing workspace",
+];
+
 function stockQuery(line) {
-  const words = conciseBrief(line, 120)
-    .toLowerCase()
+  const source = conciseBrief(line, 140).toLowerCase();
+  if (/\b(?:screen|recording|capture|browser|app|demo)\b/.test(source)) return "screen recording workflow";
+  if (/\b(?:scorecard|ideation|idea|ideas|package|filter|matrix)\b/.test(source)) return "content ideation scorecard";
+  if (/\b(?:edit|editing|workspace|timeline)\b/.test(source)) return "creator editing workspace";
+  if (/\b(?:strategy|planning|plan|positioning|constraints?)\b/.test(source)) return "video strategy planning";
+  if (/\b(?:creator|ai|workflow|tools?)\b/.test(source)) return "solo creator AI workflow";
+
+  const words = source
     .replace(/[^a-z0-9\s-]/g, " ")
     .split(/\s+/)
     .filter(Boolean)
-    .filter((word) => !/^(?:show|capture|record|film|create|open|end|the|and|with|against|into|from|that|this|how|why|what|for|over|under|beside|next|near|using|use|without|before|after)$/i.test(word))
+    .filter((word) => !STOCK_QUERY_STOP_WORDS.has(word))
     .filter((word) => word.length > 2)
-    .slice(0, 6);
+    .slice(0, 5);
   const text = words
     .join(" ")
     .replace(/\s+/g, " ")
@@ -448,8 +517,21 @@ function stockQueryRows(context, verdict) {
     return "| Not assessed. | Missing approved source material. | blocked |";
   }
   const lines = planningLines(context, "shot-list.md", [/workflow|creator|editing|screen|planning|proof/i], 5, 2);
-  return lines
-    .map((line) => `| ${tableCell(stockQuery(line))} | Use only rights-clear stock or locally captured footage. | ${promptStatus(verdict)} |`)
+  const seen = new Set();
+  const queries = [];
+  lines.forEach((line) => {
+    const query = stockQuery(line);
+    if (seen.has(query)) return;
+    seen.add(query);
+    queries.push(query);
+  });
+  STOCK_QUERY_FALLBACKS.forEach((query) => {
+    if (queries.length >= 2 || seen.has(query)) return;
+    seen.add(query);
+    queries.push(query);
+  });
+  return queries
+    .map((query) => `| ${tableCell(query)} | Use only rights-clear stock or locally captured footage. | ${promptStatus(verdict)} |`)
     .join("\n");
 }
 
