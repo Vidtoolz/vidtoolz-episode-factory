@@ -4891,6 +4891,181 @@ test("research evidence placeholder rows do not pass", () => {
   assert.equal(evaluation.objectionCount, 0);
 });
 
+test("research evidence to-verify source rows do not count as concrete sources", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-source-status-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-source-status");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Source Status" } }));
+  fs.writeFileSync(
+    path.join(runDir, "source-support-map.md"),
+    `# Source Support Map
+
+| source/reference | claim supported | evidence type | reliability note | status |
+| --- | --- | --- | --- | --- |
+| local-notes/package-review.md | Local package decision exists for the episode premise. | local artifact | Human-created run artifact. | review-needed |
+| Manual external source candidate: YouTube Creator Academy page to find later | External guidance may support the packaging claim. | external candidate | Not verified yet. | to-verify |
+`,
+    "utf8"
+  );
+
+  const evaluation = packageResearchEvidenceScript.evaluateResearchEvidence(runDir);
+
+  assert.equal(evaluation.sourceCount, 1);
+  assert.equal(evaluation.status, "NEEDS EVIDENCE");
+});
+
+test("research evidence planned proof rows do not count as concrete proof", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-proof-status-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-proof-status");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Proof Status" } }));
+  fs.writeFileSync(
+    path.join(runDir, "proof-capture-plan.md"),
+    `# Proof Capture Plan
+
+| proof item | what it proves | local capture method | file/app/source | status |
+| --- | --- | --- | --- | --- |
+| Raw AI suggestions vs selected package | Shows the local selection workflow. | Capture screenshots later. | local package-run workspace | planned |
+`,
+    "utf8"
+  );
+
+  const evaluation = packageResearchEvidenceScript.evaluateResearchEvidence(runDir);
+
+  assert.equal(evaluation.proofCount, 0);
+  assert.equal(evaluation.status, "NEEDS EVIDENCE");
+});
+
+test("research evidence current real-run pattern remains needs evidence", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-real-pattern-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-real-pattern");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Real Pattern" } }));
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PARTIAL\n- Reason: source list is TODO\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-evidence.md"),
+    `# Research Evidence
+
+- External source candidates must still be manually verified before being treated as factual support.
+
+- Research approval: TODO
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "source-support-map.md"),
+    `# Source Support Map
+
+| source/reference | claim supported | evidence type | reliability note | status |
+| --- | --- | --- | --- | --- |
+| selected-package.json | The local run selected a package about using AI for faster video ideation while keeping creator judgment in control. | local package record | Concrete local artifact, but it does not verify external audience demand. | review-needed |
+| Manual external source candidate: YouTube Creator Academy, YouTube Help, or Creator Insider guidance | Creator-owned packaging and audience judgment should be considered separately from raw idea generation. | external reference candidate | To verify manually before use. | to-verify |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "proof-capture-plan.md"),
+    `# Proof Capture Plan
+
+| proof item | what it proves | local capture method | file/app/source | status |
+| --- | --- | --- | --- | --- |
+| Raw AI suggestions vs package scorecard vs selected package vs rejected generic suggestion | Shows the practical workflow boundary. | Screen-record the local package-run workflow later. | local package-run artifacts and AI ideation workspace | planned |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-objections.md"),
+    `# Research Objections
+
+| objection/counterexample | why it matters | evidence needed | response plan | status |
+| --- | --- | --- | --- | --- |
+| AI can help expand options, reveal angles, and speed up ideation; the issue is outsourcing final strategy, taste, and positioning. | Prevents the episode from becoming an anti-AI strawman. | Local example where AI suggestions include at least one useful angle. | Frame the recommendation as human-owned final judgment after AI-assisted exploration. | review-needed |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    `# Research Sufficiency Review
+
+| blocker | why it matters | required fix | status |
+| --- | --- | --- | --- |
+| No blockers detected. | Evidence is ready for review. | Keep sources attached. | closed |
+`,
+    "utf8"
+  );
+
+  const evaluation = packageResearchEvidenceScript.evaluateResearchEvidence(runDir);
+  const doctor = packageRunDoctorScript.buildDoctorReport(runDir);
+
+  assert.equal(evaluation.sourceCount, 1);
+  assert.equal(evaluation.proofCount, 0);
+  assert.equal(evaluation.objectionCount, 1);
+  assert.equal(evaluation.status, "NEEDS EVIDENCE");
+  assert.equal(doctor.lifecycleGate.researchSufficiencyReviewStatus, "NEEDS EVIDENCE");
+  assert.match(doctor.nextRecommendedCommand, /package-run-research-evidence\.js/);
+  assert.match(doctor.firstBlockerReason, /Research evidence review is NEEDS EVIDENCE/);
+});
+
+test("research evidence captured or review-needed proof can be ready without approval", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-review-proof-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-review-proof");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Review Proof" } }));
+  fs.writeFileSync(
+    path.join(runDir, "source-support-map.md"),
+    `# Source Support Map
+
+| source/reference | claim supported | evidence type | reliability note | status |
+| --- | --- | --- | --- | --- |
+| selected-package.json | The local package decision exists and names the viewer promise. | local artifact | Local package-run artifact. | review-needed |
+| package-candidates.json | The candidate pool contains raw options before selection. | local artifact | Local package-run artifact. | review-needed |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "proof-capture-plan.md"),
+    `# Proof Capture Plan
+
+| proof item | what it proves | local capture method | file/app/source | status |
+| --- | --- | --- | --- | --- |
+| captured-ai-idea-comparison.png | Shows raw AI options beside the selected package. | Screenshot captured locally. | captured-ai-idea-comparison.png | captured |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-objections.md"),
+    `# Research Objections
+
+| objection/counterexample | why it matters | evidence needed | response plan | status |
+| --- | --- | --- | --- | --- |
+| AI may surface useful options even if final strategy remains human-owned. | Keeps the argument from becoming anti-AI. | Compare useful AI option with rejected generic option. | Frame AI as exploration support, not final authority. | review-needed |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    `# Research Sufficiency Review
+
+| blocker | why it matters | required fix | status |
+| --- | --- | --- | --- |
+| No blockers detected. | Evidence is ready for review. | Keep sources attached. | closed |
+`,
+    "utf8"
+  );
+
+  const evaluation = packageResearchEvidenceScript.evaluateResearchEvidence(runDir);
+
+  assert.equal(evaluation.status, "READY FOR RESEARCH REVIEW");
+  assert.equal(evaluation.approval, false);
+  assert.equal(evaluation.sourceCount, 2);
+  assert.equal(evaluation.proofCount, 1);
+  assert.equal(evaluation.objectionCount, 1);
+});
+
 function writeConcreteResearchEvidence(runDir, approval = "") {
   fs.writeFileSync(
     path.join(runDir, "source-support-map.md"),

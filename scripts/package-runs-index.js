@@ -3,6 +3,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const researchEvidenceTool = require("./package-run-research-evidence.js");
 
 const DEFAULT_RUNS_DIR = "package-runs";
 const DEFAULT_OUT_FILE = "package-runs-index.json";
@@ -253,6 +254,12 @@ function countValue(markdown = "", label = "") {
 function readLifecycleGate(runDir, files = {}) {
   const researchPack = readOptionalText(runDir, "research-pack.md");
   const researchSufficiencyReview = readOptionalText(runDir, "research-sufficiency-review.md");
+  const hasResearchEvidenceInputs = Boolean(
+    files.research_evidence || files.source_support_map || files.proof_capture_plan || files.research_objections
+  );
+  const researchEvidenceEvaluation = hasResearchEvidenceInputs
+    ? researchEvidenceTool.evaluateResearchEvidence(runDir)
+    : null;
   const scriptStructure = readOptionalText(runDir, "script-structure.md");
   const scriptReview = readOptionalText(runDir, "script-review.md");
   const productionPlan = readOptionalText(runDir, "production-plan.md");
@@ -268,11 +275,17 @@ function readLifecycleGate(runDir, files = {}) {
   return {
     researchGateStatus: gateStatus(researchPack, "Status"),
     researchSufficiencyReviewStatus:
-      gateStatus(researchSufficiencyReview, "Research sufficiency status") || gateStatus(researchSufficiencyReview),
-    researchSourceReferenceCount: countValue(researchSufficiencyReview, "Source references"),
-    researchProductionProofCount: countValue(researchSufficiencyReview, "Production-proof items"),
-    researchObjectionCount: countValue(researchSufficiencyReview, "Objections/counterexamples"),
-    researchApprovalMarker: lineValue(researchSufficiencyReview, "Research approval marker"),
+      researchEvidenceEvaluation?.status ||
+      gateStatus(researchSufficiencyReview, "Research sufficiency status") ||
+      gateStatus(researchSufficiencyReview),
+    researchSourceReferenceCount:
+      researchEvidenceEvaluation?.sourceCount ?? countValue(researchSufficiencyReview, "Source references"),
+    researchProductionProofCount:
+      researchEvidenceEvaluation?.proofCount ?? countValue(researchSufficiencyReview, "Production-proof items"),
+    researchObjectionCount:
+      researchEvidenceEvaluation?.objectionCount ?? countValue(researchSufficiencyReview, "Objections/counterexamples"),
+    researchApprovalMarker:
+      researchEvidenceEvaluation ? (researchEvidenceEvaluation.approval ? "PASS" : "missing") : lineValue(researchSufficiencyReview, "Research approval marker"),
     scriptStructureStatus: gateStatus(scriptStructure, "Script structure status") || gateStatus(scriptStructure),
     readyToDraft: readyYes(scriptStructure, "Ready to draft"),
     scriptReviewStatus: gateStatus(scriptReview, "Script review status") || gateStatus(scriptReview),

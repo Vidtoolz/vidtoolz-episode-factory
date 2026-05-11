@@ -17,6 +17,11 @@ const TARGET_FILES = [
 const PLACEHOLDER_PATTERN = /\b(?:TODO|TBD|placeholder|not assessed|not applicable|n\/a|none|unknown|fill this|example source|source needed)\b/i;
 const OPEN_BLOCKER_PATTERN = /\|\s*[^|\n]+\s*\|\s*[^|\n]+\s*\|\s*[^|\n]+\s*\|\s*(?:open|blocked)\s*\|/i;
 const APPROVAL_PATTERN = /^\s*(?:[-*]\s*)?(?:Research approval|Manual research approval):\s*PASS\s*$/im;
+const SOURCE_NOT_READY_STATUSES = new Set(["todo", "open", "blocked", "planned", "to-verify"]);
+const PROOF_NOT_READY_STATUSES = new Set(["todo", "open", "blocked", "planned", "to-verify"]);
+const OBJECTION_NOT_READY_STATUSES = new Set(["todo", "open", "blocked"]);
+const CONCRETE_REFERENCE_PATTERN =
+  /\b(?:https?:\/\/\S+|[\w./-]+\.(?:md|json|txt|csv|pdf|html?|png|jpe?g|webp|gif|mp4|mov|mkv|webm))\b/i;
 
 function usage() {
   return `Usage:
@@ -60,6 +65,22 @@ function isConcrete(value = "") {
   return text.length >= 8 && !PLACEHOLDER_PATTERN.test(text);
 }
 
+function statusCell(cells = []) {
+  return clean(cells[cells.length - 1] || "").toLowerCase();
+}
+
+function hasReadyStatus(cells = [], blockedStatuses = new Set()) {
+  const status = statusCell(cells);
+  return Boolean(status) && !blockedStatuses.has(status) && !PLACEHOLDER_PATTERN.test(status);
+}
+
+function hasConcreteReference(value = "") {
+  const text = clean(value);
+  if (!isConcrete(text)) return false;
+  if (!/\bcandidate\b/i.test(text)) return true;
+  return CONCRETE_REFERENCE_PATTERN.test(text);
+}
+
 function tableRows(markdown = "") {
   return String(markdown || "")
     .split(/\r?\n/)
@@ -84,15 +105,26 @@ function tableRows(markdown = "") {
 }
 
 function concreteSourceRows(markdown = "") {
-  return tableRows(markdown).filter((cells) => cells.length >= 4 && isConcrete(cells[0]) && isConcrete(cells[1]));
+  return tableRows(markdown).filter(
+    (cells) => cells.length >= 5 && hasConcreteReference(cells[0]) && isConcrete(cells[1]) && hasReadyStatus(cells, SOURCE_NOT_READY_STATUSES)
+  );
 }
 
 function concreteProofRows(markdown = "") {
-  return tableRows(markdown).filter((cells) => cells.length >= 4 && isConcrete(cells[0]) && isConcrete(cells[1]) && isConcrete(cells[2]));
+  return tableRows(markdown).filter(
+    (cells) =>
+      cells.length >= 5 &&
+      isConcrete(cells[0]) &&
+      isConcrete(cells[1]) &&
+      isConcrete(cells[2]) &&
+      hasReadyStatus(cells, PROOF_NOT_READY_STATUSES)
+  );
 }
 
 function concreteObjectionRows(markdown = "") {
-  return tableRows(markdown).filter((cells) => cells.length >= 4 && isConcrete(cells[0]) && isConcrete(cells[1]));
+  return tableRows(markdown).filter(
+    (cells) => cells.length >= 5 && isConcrete(cells[0]) && isConcrete(cells[1]) && hasReadyStatus(cells, OBJECTION_NOT_READY_STATUSES)
+  );
 }
 
 function hasOpenReviewRows(markdown = "") {
