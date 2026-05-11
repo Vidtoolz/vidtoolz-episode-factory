@@ -2689,6 +2689,8 @@ test("rough cut review creates starter watch notes and blocks when notes are mis
 
   assert.match(notes, /Status: starter template/);
   assert.match(notes, /## First 30 Seconds Notes/);
+  assert.match(review, /Rough-cut version reviewed: Not assessed/);
+  assert.match(review, /Watch context: Not assessed\.; reviewer: Not assessed\./);
   assert.match(review, /Rough-cut review status: BLOCKED/);
   assert.match(review, /Second-cut ready: no/);
   assert.match(review, /starter template created/);
@@ -2742,6 +2744,8 @@ test("rough cut review real watch notes with no issues can use none closed list 
   const pickups = fs.readFileSync(path.join(runDir, "pickup-list.md"), "utf8");
   const fixes = fs.readFileSync(path.join(runDir, "edit-fix-list.md"), "utf8");
 
+  assert.match(review, /Rough-cut version reviewed: v1/);
+  assert.match(review, /Watch context: 2026-05-11; reviewer: Mikko/);
   assert.match(review, /No pickups detected from watch notes\./);
   assert.match(review, /No edit fixes detected from watch notes\./);
   assert.doesNotMatch(review, /Not assessed\. Real rough-cut watch notes are missing or still a starter template\./);

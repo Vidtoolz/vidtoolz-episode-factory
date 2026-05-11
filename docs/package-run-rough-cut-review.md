@@ -37,6 +37,10 @@ approval marker.
 Starter notes do not count as review evidence. Replace the `TODO` fields with a
 real manual watch review before expecting second-cut readiness.
 
+`rough-cut-review.md` surfaces the watched version, watch date, and reviewer
+from `rough-cut-watch-notes.md` so the review is tied to a specific export and
+viewing pass.
+
 ## Gate Logic
 
 The planner is conservative. `READY FOR SECOND CUT` requires:

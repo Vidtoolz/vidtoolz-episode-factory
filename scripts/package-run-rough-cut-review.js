@@ -391,11 +391,21 @@ function inputWarnings(context) {
 
 function buildReview(context, verdict) {
   const notes = context.watchNotesText;
+  const assessedValue = (value) => {
+    const text = cleanString(value);
+    if (!text || /^(todo|n\/a|none|not applicable)$/i.test(text)) return "Not assessed.";
+    return text;
+  };
+  const versionReviewed = assessedValue(sectionText(notes, "Rough-Cut Version Reviewed"));
+  const watchDate = assessedValue(sectionText(notes, "Watch Date"));
+  const reviewer = assessedValue(sectionText(notes, "Reviewer"));
   return `# Rough-Cut Review
 
 - Run: ${context.runId}
 - Tool: ${TOOL_NAME}
 - Rough-cut notes source: ${context.watchNotesSource}
+- Rough-cut version reviewed: ${versionReviewed}
+- Watch context: ${watchDate}; reviewer: ${reviewer}
 - Production plan status: ${context.productionGate.productionPlanStatus}
 - Shoot-readiness status: ${context.productionGate.shootReadinessStatus}
 - Script review status: ${context.scriptReviewStatus}
