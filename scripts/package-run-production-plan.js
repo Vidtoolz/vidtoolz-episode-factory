@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const researchPack = require("./package-run-research-pack.js");
+const scriptStructureTool = require("./package-run-script-structure.js");
 
 const TOOL_NAME = "package-run-production-plan.js";
 const TARGET_FILES = [
@@ -25,6 +26,11 @@ const INPUT_FILES = [
   "script-draft.md",
   "script-structure.md",
   "research-pack.md",
+  "research-sufficiency-review.md",
+  "research-evidence.md",
+  "source-support-map.md",
+  "proof-capture-plan.md",
+  "research-objections.md",
   "selected-package.json",
   "selected-package.md",
   "creator-qa-report.json",
@@ -106,6 +112,25 @@ function parseResearchGate(markdown = "") {
         ? "Research gate has PASS or an exact manual approval marker."
         : `Research gate is ${status}; production planning cannot approve shooting yet.`,
   };
+}
+
+function readResearchGate(runDir, researchPackMarkdown = "") {
+  const packGate = parseResearchGate(researchPackMarkdown);
+  if (packGate.approved) return packGate;
+
+  const reviewPath = scriptStructureTool.findResearchSufficiencyReviewPath(runDir);
+  if (reviewPath) {
+    const reviewGate = scriptStructureTool.parseResearchSufficiencyReviewStatus(fs.readFileSync(reviewPath, "utf8"), runDir);
+    return {
+      status: reviewGate.status,
+      approved: Boolean(reviewGate.readyToDraft),
+      manualApproval: false,
+      reason: reviewGate.reason,
+      sourceFile: "research-sufficiency-review.md",
+    };
+  }
+
+  return packGate;
 }
 
 function parseScriptStructureGate(markdown = "") {
@@ -241,7 +266,7 @@ function readPlannerContext(runDir) {
   const scriptName = scriptPath ? path.basename(scriptPath) : "missing";
   const scriptText = scriptPath ? fs.readFileSync(scriptPath, "utf8") : "";
   const reviewGate = parseScriptReviewGate(files["script-review.md"]);
-  const researchGate = parseResearchGate(files["research-pack.md"]);
+  const researchGate = readResearchGate(runDir, files["research-pack.md"]);
   const structureGate = parseScriptStructureGate(files["script-structure.md"]);
   const combinedText = [
     files["script-review.md"],
@@ -285,7 +310,7 @@ function determineShootReadiness(context) {
   }
 
   if (!context.researchGate.approved) {
-    blockers.push(`Research gate status is ${context.researchGate.status}.`);
+    blockers.push(`Research gate status is ${context.researchGate.status}. ${context.researchGate.reason || ""}`.trim());
     nextActions.push("Repair or manually approve research with an exact approval marker.");
   }
 
@@ -609,6 +634,7 @@ module.exports = {
   hasExactApprovalMarker,
   findScriptPath,
   parseResearchGate,
+  readResearchGate,
   parseScriptStructureGate,
   parseScriptReviewGate,
   readPlannerContext,

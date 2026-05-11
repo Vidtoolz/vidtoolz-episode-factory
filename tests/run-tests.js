@@ -2529,6 +2529,66 @@ function writeProductionPlannerBaseRun(runDir, options = {}) {
   }
 }
 
+function writeProductionPlannerResearchEvidence(runDir, options = {}) {
+  fs.writeFileSync(
+    path.join(runDir, "source-support-map.md"),
+    `# Source Support Map
+
+| source/reference | claim supported | evidence type | reliability note | status |
+| --- | --- | --- | --- | --- |
+| selected-package.json | The selected package and viewer promise are recorded locally. | local artifact | Local run artifact. | review-needed |
+| package-candidates.json | The rejected alternatives are available for comparison. | local artifact | Local run artifact. | review-needed |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "proof-capture-plan.md"),
+    `# Proof Capture Plan
+
+| proof item | what it proves | local capture method | file/app/source | status |
+| --- | --- | --- | --- | --- |
+| captured-package-filter.png | Shows raw ideas, scorecard, selected package, and rejected generic suggestion. | Screenshot captured locally. | captured-package-filter.png | captured |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-objections.md"),
+    `# Research Objections
+
+| objection/counterexample | why it matters | evidence needed | response plan | status |
+| --- | --- | --- | --- | --- |
+| AI can help expand options even when final strategy remains human-owned. | Prevents an anti-AI strawman. | Compare useful AI option with rejected generic option. | Frame AI as exploration support, not final authority. | review-needed |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-evidence.md"),
+    `# Research Evidence
+
+Concrete local evidence is listed in the support map and proof plan.
+
+${options.approval ? "Research approval: PASS" : "Research approval: TODO"}
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    `# Research Sufficiency Review
+
+- Research sufficiency status: ${options.status || "PASS"}
+- Source references: 2
+- Production-proof items: 1
+- Objections/counterexamples: 1
+- Research approval marker: ${options.approval ? "PASS" : "missing"}
+
+| blocker | why it matters | required fix | status |
+| --- | --- | --- | --- |
+| No blockers detected. | Evidence is ready for review. | Keep sources attached. | closed |
+`,
+    "utf8"
+  );
+}
+
 function productionPlanText(runDir) {
   return fs.readFileSync(path.join(runDir, "production-plan.md"), "utf8");
 }
@@ -2590,6 +2650,99 @@ test("production planner blocks partial research", () => {
   assert.match(plan, /Research gate status: PARTIAL/);
   assert.match(plan, /Shoot-readiness status: BLOCKED/);
   assert.match(plan, /Research gate status is PARTIAL/);
+});
+
+test("production planner accepts approved research sufficiency review over partial research pack", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-plan-review-pass-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-review-pass");
+  writeProductionPlannerBaseRun(runDir, { researchStatus: "PARTIAL" });
+  writeProductionPlannerResearchEvidence(runDir, { status: "PASS", approval: true });
+
+  assert.equal(packageProductionPlanScript.main([runDir]), 0);
+  const plan = productionPlanText(runDir);
+  const blockers = fs.readFileSync(path.join(runDir, "production-blockers.md"), "utf8");
+
+  assert.match(plan, /Research gate status: PASS/);
+  assert.match(plan, /Script structure status: READY TO DRAFT/);
+  assert.match(plan, /Shoot-readiness status: READY TO SHOOT/);
+  assert.match(plan, /Status: READY TO SHOOT/);
+  assert.match(blockers, /\| None\. \|/);
+});
+
+test("production planner blocks research evidence that is ready for review but not approved", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-plan-review-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-review-ready");
+  writeProductionPlannerBaseRun(runDir, { researchStatus: "PARTIAL" });
+  writeProductionPlannerResearchEvidence(runDir, { status: "READY FOR RESEARCH REVIEW", approval: false });
+
+  assert.equal(packageProductionPlanScript.main([runDir]), 0);
+  const plan = productionPlanText(runDir);
+
+  assert.match(plan, /Research gate status: READY FOR RESEARCH REVIEW/);
+  assert.match(plan, /Shoot-readiness status: BLOCKED/);
+  assert.doesNotMatch(plan, /Status: READY TO SHOOT/);
+});
+
+test("production planner blocks stale research review pass when evidence inputs are incomplete", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-plan-stale-review-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-stale-review");
+  writeProductionPlannerBaseRun(runDir, { researchStatus: "PARTIAL" });
+  fs.writeFileSync(
+    path.join(runDir, "research-evidence.md"),
+    "# Research Evidence\n\nExternal source candidates still need manual verification.\n\nResearch approval: PASS\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "source-support-map.md"),
+    `# Source Support Map
+
+| source/reference | claim supported | evidence type | reliability note | status |
+| --- | --- | --- | --- | --- |
+| selected-package.json | Local package decision exists. | local artifact | Local run artifact. | review-needed |
+| Manual external source candidate: YouTube Help page to verify later | External guidance might support the premise. | external candidate | Not verified. | to-verify |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "proof-capture-plan.md"),
+    `# Proof Capture Plan
+
+| proof item | what it proves | local capture method | file/app/source | status |
+| --- | --- | --- | --- | --- |
+| Raw AI suggestions vs selected package | Shows the workflow boundary. | Capture later. | local workspace | planned |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-objections.md"),
+    `# Research Objections
+
+| objection/counterexample | why it matters | evidence needed | response plan | status |
+| --- | --- | --- | --- | --- |
+| AI can help expand options while final strategy stays human-owned. | Keeps the argument balanced. | Local comparison. | Frame AI as support. | review-needed |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    `# Research Sufficiency Review
+
+- Research sufficiency status: PASS
+- Source references: 2
+- Production-proof items: 1
+- Objections/counterexamples: 1
+- Research approval marker: PASS
+`,
+    "utf8"
+  );
+
+  assert.equal(packageProductionPlanScript.main([runDir]), 0);
+  const plan = productionPlanText(runDir);
+
+  assert.match(plan, /Research gate status: NEEDS EVIDENCE/);
+  assert.match(plan, /Shoot-readiness status: BLOCKED/);
+  assert.match(plan, /current research evidence evaluates as NEEDS EVIDENCE/);
+  assert.doesNotMatch(plan, /Status: READY TO SHOOT/);
 });
 
 test("production planner blocks when no script file exists", () => {
