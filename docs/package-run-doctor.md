@@ -47,6 +47,15 @@ APPROVAL`, the next command points back to `package-run-script-review.js`
 instead of rerunning production planning. The production plan is already telling
 the workflow that the first blocker is upstream script review/revision.
 
+For research evidence, Doctor distinguishes evidence intake from human review:
+
+- `NEEDS EVIDENCE` in `research-sufficiency-review.md` routes back to
+  `package-run-research-evidence.js`.
+- `READY FOR RESEARCH REVIEW` means evidence is gathered but not approved; the
+  next action is manual research review, not rerunning evidence intake.
+- `PASS` requires exact research approval and lets downstream script-structure
+  or script-review blockers surface.
+
 ## Finish Test
 
 ```sh

@@ -45,9 +45,12 @@ The tool reports:
 
 - `BLOCKED` when no selected package exists.
 - `NEEDS EVIDENCE` when source, proof, objection, or approval evidence is
-  missing, placeholder, TODO, vague, or blocked.
+  missing, placeholder, TODO, vague, or blocked. Doctor should route this back
+  to the evidence intake tool.
 - `READY FOR RESEARCH REVIEW` when concrete source support, local proof, and
-  objections exist, but exact research approval is missing.
+  objections exist, but exact research approval is missing. This is a human
+  review state, not production approval, and Doctor should not loop back to
+  evidence intake unless evidence becomes incomplete again.
 - `PASS` only when exact approval exists and the evidence is complete.
 
 `PASS` requires:

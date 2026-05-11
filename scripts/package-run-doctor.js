@@ -126,6 +126,11 @@ function firstBlockerReason(run = {}) {
 function lifecycleGateSummary(gate = {}) {
   return {
     researchGateStatus: gate.researchGateStatus || "",
+    researchSufficiencyReviewStatus: gate.researchSufficiencyReviewStatus || "",
+    researchSourceReferenceCount: gate.researchSourceReferenceCount || 0,
+    researchProductionProofCount: gate.researchProductionProofCount || 0,
+    researchObjectionCount: gate.researchObjectionCount || 0,
+    researchApprovalMarker: gate.researchApprovalMarker || "",
     scriptStructureStatus: gate.scriptStructureStatus || "",
     readyToDraft: Boolean(gate.readyToDraft),
     scriptReviewStatus: gate.scriptReviewStatus || "",

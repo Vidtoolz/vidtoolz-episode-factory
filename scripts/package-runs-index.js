@@ -244,8 +244,15 @@ function readyYes(markdown = "", label = "Ready") {
   return /^yes$/i.test(lineValue(markdown, label));
 }
 
+function countValue(markdown = "", label = "") {
+  const value = lineValue(markdown, label);
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function readLifecycleGate(runDir, files = {}) {
   const researchPack = readOptionalText(runDir, "research-pack.md");
+  const researchSufficiencyReview = readOptionalText(runDir, "research-sufficiency-review.md");
   const scriptStructure = readOptionalText(runDir, "script-structure.md");
   const scriptReview = readOptionalText(runDir, "script-review.md");
   const productionPlan = readOptionalText(runDir, "production-plan.md");
@@ -260,6 +267,12 @@ function readLifecycleGate(runDir, files = {}) {
 
   return {
     researchGateStatus: gateStatus(researchPack, "Status"),
+    researchSufficiencyReviewStatus:
+      gateStatus(researchSufficiencyReview, "Research sufficiency status") || gateStatus(researchSufficiencyReview),
+    researchSourceReferenceCount: countValue(researchSufficiencyReview, "Source references"),
+    researchProductionProofCount: countValue(researchSufficiencyReview, "Production-proof items"),
+    researchObjectionCount: countValue(researchSufficiencyReview, "Objections/counterexamples"),
+    researchApprovalMarker: lineValue(researchSufficiencyReview, "Research approval marker"),
     scriptStructureStatus: gateStatus(scriptStructure, "Script structure status") || gateStatus(scriptStructure),
     readyToDraft: readyYes(scriptStructure, "Ready to draft"),
     scriptReviewStatus: gateStatus(scriptReview, "Script review status") || gateStatus(scriptReview),
@@ -283,6 +296,7 @@ function readLifecycleGate(runDir, files = {}) {
     readyToArchive: readyYes(archiveManifest, "Ready to archive"),
     repurposingStatus: gateStatus(repurposingPlan, "Repurposing status") || gateStatus(repurposingPlan),
     readyToCutShorts: readyYes(repurposingPlan, "Ready to cut shorts"),
+    hasResearchSufficiencyReview: Boolean(files.research_sufficiency_review),
     hasScriptStructure: Boolean(files.script_structure),
     hasScriptReview: Boolean(files.script_review),
     hasProductionPlan: Boolean(files.production_plan),
@@ -448,10 +462,37 @@ function firstBlockingGateForRun(run = {}) {
   const files = run.files || {};
   const target = run.path || "package-runs/YYYY-MM-DD-topic-slug";
   const researchStatus = gate.researchGateStatus || "";
+  const researchReviewStatus = gate.researchSufficiencyReviewStatus || "";
   const structureStatus = gate.scriptStructureStatus || "";
   const reviewStatus = gate.scriptReviewStatus || "";
 
   if (files.research_pack && researchStatus && researchStatus !== "PASS") {
+    if (researchReviewStatus === "PASS") {
+      // The derived review has explicit research approval; let downstream gates decide.
+    } else if (researchReviewStatus === "READY FOR RESEARCH REVIEW") {
+      return {
+        stage: "research-review",
+        reason:
+          "Research evidence is READY FOR RESEARCH REVIEW, but Research Sufficiency Gate is not PASS and exact research approval is missing.",
+        missingExpectedArtifacts: ["manual research review decision / Research approval: PASS or keep blocked"],
+        nextRecommendedCommand: "",
+      };
+    } else {
+      const statusText = researchReviewStatus || researchStatus;
+      const reason =
+        researchReviewStatus && researchReviewStatus !== researchStatus
+          ? `Research evidence review is ${statusText}; Research Sufficiency Gate is ${researchStatus}, not PASS.`
+          : `Research Sufficiency Gate is ${researchStatus}, not PASS. Add concrete research evidence before script structure, script review, or production planning.`;
+      return {
+        stage: "research",
+        reason,
+        missingExpectedArtifacts: ["research evidence with Research Sufficiency Gate: PASS"],
+        nextRecommendedCommand: `node scripts/package-run-research-evidence.js ${target}`,
+      };
+    }
+  }
+
+  if (files.research_pack && researchStatus && researchStatus !== "PASS" && researchReviewStatus !== "PASS") {
     return {
       stage: "research",
       reason: `Research Sufficiency Gate is ${researchStatus}, not PASS. Add concrete research evidence before script structure, script review, or production planning.`,
@@ -518,7 +559,7 @@ function nextRecommendedCommandForRun(run = {}) {
     return nextRecommendedCommand(run.status, run.path, run.creatorQaStatus, run.evidenceGate);
   }
   const blockingGate = firstBlockingGateForRun(run);
-  if (blockingGate && blockingGate.nextRecommendedCommand) return blockingGate.nextRecommendedCommand;
+  if (blockingGate) return blockingGate.nextRecommendedCommand || "";
   return nextRecommendedCommand(run.status, run.path, run.creatorQaStatus, run.evidenceGate);
 }
 

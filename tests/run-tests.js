@@ -5064,6 +5064,125 @@ test("package run doctor routes partial research to research evidence tool", () 
   assert.match(report.firstBlockerReason, /Research Sufficiency Gate is PARTIAL/);
 });
 
+test("package run doctor routes needs-evidence review back to research evidence intake", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-needs-doctor-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-needs-doctor");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Needs Evidence Route" } }));
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PARTIAL\n- Reason: sources missing\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    `# Research Sufficiency Review
+
+- Research sufficiency status: NEEDS EVIDENCE
+- Source references: 0
+- Production-proof items: 0
+- Objections/counterexamples: 0
+- Research approval marker: missing
+`,
+    "utf8"
+  );
+  const before = fs.readdirSync(runDir).sort();
+
+  const report = packageRunDoctorScript.buildDoctorReport(runDir);
+  const after = fs.readdirSync(runDir).sort();
+
+  assert.deepEqual(after, before);
+  assert.equal(report.lifecycleGate.researchGateStatus, "PARTIAL");
+  assert.equal(report.lifecycleGate.researchSufficiencyReviewStatus, "NEEDS EVIDENCE");
+  assert.equal(report.lifecycleGate.researchSourceReferenceCount, 0);
+  assert.match(report.nextRecommendedCommand, /package-run-research-evidence\.js/);
+  assert.match(report.firstBlockerReason, /Research evidence review is NEEDS EVIDENCE/);
+});
+
+test("package run doctor reports ready research evidence as manual review blocker", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-ready-doctor-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-ready-doctor");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Ready Evidence Route" } }));
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PARTIAL\n- Reason: awaiting manual review\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    `# Research Sufficiency Review
+
+- Research sufficiency status: READY FOR RESEARCH REVIEW
+- Source references: 2
+- Production-proof items: 1
+- Objections/counterexamples: 1
+- Research approval marker: missing
+`,
+    "utf8"
+  );
+  const before = fs.readdirSync(runDir).sort();
+
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  const run = index.runs[0];
+  const report = packageRunDoctorScript.buildDoctorReport(runDir);
+  const after = fs.readdirSync(runDir).sort();
+
+  assert.deepEqual(after, before);
+  assert.equal(run.lifecycleGate.researchSufficiencyReviewStatus, "READY FOR RESEARCH REVIEW");
+  assert.equal(run.lifecycleGate.researchSourceReferenceCount, 2);
+  assert.equal(run.lifecycleGate.researchProductionProofCount, 1);
+  assert.equal(run.lifecycleGate.researchObjectionCount, 1);
+  assert.doesNotMatch(run.nextRecommendedCommand, /package-run-research-evidence\.js/);
+  assert.doesNotMatch(report.nextRecommendedCommand, /package-run-research-evidence\.js/);
+  assert.match(report.firstBlockerReason, /READY FOR RESEARCH REVIEW/);
+  assert.deepEqual(report.missingExpectedArtifacts, [
+    "manual research review decision / Research approval: PASS or keep blocked",
+  ]);
+});
+
+test("package run doctor lets research sufficiency review pass reach script structure blocker", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-pass-doctor-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-pass-doctor");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Pass Evidence Route" } }));
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PARTIAL\n- Reason: derived review approved\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    `# Research Sufficiency Review
+
+- Research sufficiency status: PASS
+- Source references: 2
+- Production-proof items: 1
+- Objections/counterexamples: 1
+- Research approval marker: PASS
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "script-structure.md"),
+    "# Script Structure\n\n- Script structure status: PARTIAL\n- Ready to draft: no\n",
+    "utf8"
+  );
+  const before = fs.readdirSync(runDir).sort();
+
+  const report = packageRunDoctorScript.buildDoctorReport(runDir);
+  const after = fs.readdirSync(runDir).sort();
+
+  assert.deepEqual(after, before);
+  assert.equal(report.lifecycleGate.researchGateStatus, "PARTIAL");
+  assert.equal(report.lifecycleGate.researchSufficiencyReviewStatus, "PASS");
+  assert.match(report.nextRecommendedCommand, /package-run-script-structure\.js/);
+  assert.match(report.firstBlockerReason, /Script structure status is PARTIAL/);
+  assert.deepEqual(report.missingExpectedArtifacts, [
+    "script-structure.md with Script structure status: READY TO DRAFT",
+  ]);
+});
+
 test("verify script checks research evidence syntax", () => {
   const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
   assert.match(verify, /node --check scripts\/package-run-research-evidence\.js/);
