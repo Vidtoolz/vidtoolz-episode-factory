@@ -19,6 +19,7 @@ const packageCaptureChecklistScript = require("../scripts/package-run-capture-ch
 const packageRoughCutReviewScript = require("../scripts/package-run-rough-cut-review.js");
 const packageFinalReviewScript = require("../scripts/package-run-final-review.js");
 const packageRepurposeScript = require("../scripts/package-run-repurpose.js");
+const packageBrollPromptsScript = require("../scripts/package-run-broll-prompts.js");
 const packageExportChecklistScript = require("../scripts/package-run-export-checklist.js");
 const packagePublicationMetadataScript = require("../scripts/package-run-publication-metadata.js");
 const packageArchiveManifestScript = require("../scripts/package-run-archive-manifest.js");
@@ -4437,6 +4438,173 @@ test("verify script checks repurposing syntax", () => {
   const verify = fs.readFileSync(verifyPath, "utf8");
 
   assert.match(verify, /node --check scripts\/package-run-repurpose\.js/);
+});
+
+function writeBrollPromptRun(runDir, options = {}) {
+  fs.mkdirSync(runDir, { recursive: true });
+  if (options.script !== false) {
+    fs.writeFileSync(
+      path.join(runDir, options.draftOnly ? "script-draft.md" : "final-script.md"),
+      [
+        "# Final Script",
+        "",
+        "Open with a creator comparing raw AI video ideas against a practical scorecard.",
+        "Show how generic suggestions lose against a selected package with proof, specificity, and production constraints.",
+        "End with the repeatable workflow that keeps taste and positioning human-owned.",
+      ].join("\n"),
+      "utf8"
+    );
+  }
+  if (options.scriptReview !== false) {
+    fs.writeFileSync(
+      path.join(runDir, "script-review.md"),
+      `# Script Review\n\n- Script review status: ${options.scriptReviewStatus || "PASS"}\n- Production planning ready: yes\n`,
+      "utf8"
+    );
+  }
+  if (options.productionPlan !== false) {
+    fs.writeFileSync(
+      path.join(runDir, "production-plan.md"),
+      `# Production Plan\n\n- Shoot-readiness status: ${options.shootReadiness || "READY TO SHOOT"}\n`,
+      "utf8"
+    );
+  }
+  fs.writeFileSync(
+    path.join(runDir, "b-roll-list.md"),
+    "# B-Roll List\n\n| b-roll item | reason | source | status |\n| --- | --- | --- | --- |\n| Scorecard comparison close-up | Show workflow proof. | local capture | closed |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "graphics-list.md"),
+    "# Graphics List\n\n| graphic | clarity purpose | source/input | status |\n| --- | --- | --- | --- |\n| Before/after idea filter matrix | Clarify selection logic. | script | closed |\n",
+    "utf8"
+  );
+}
+
+function brollPromptPackText(runDir) {
+  return fs.readFileSync(path.join(runDir, "broll-prompt-pack.md"), "utf8");
+}
+
+test("broll prompt generator help works", () => {
+  const output = captureConsole(() => packageBrollPromptsScript.main(["--help"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /package-run-broll-prompts\.js/);
+});
+
+test("broll prompt generator blocks missing script", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-broll-missing-script-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-broll-missing-script");
+  writeBrollPromptRun(runDir, { script: false });
+
+  assert.equal(packageBrollPromptsScript.main([runDir]), 0);
+  const pack = brollPromptPackText(runDir);
+
+  assert.match(pack, /Visual prompt status: BLOCKED/);
+  assert.match(pack, /final-script\.md or script-draft\.md is missing/);
+});
+
+test("broll prompt generator blocks missing or non-pass script review", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-broll-review-blocked-"));
+  const missingRun = path.join(tempRoot, "package-runs", "2026-05-10-broll-missing-review");
+  const revisionRun = path.join(tempRoot, "package-runs", "2026-05-10-broll-needs-revision");
+  writeBrollPromptRun(missingRun, { scriptReview: false });
+  writeBrollPromptRun(revisionRun, { scriptReviewStatus: "NEEDS REVISION" });
+
+  assert.equal(packageBrollPromptsScript.main([missingRun]), 0);
+  assert.equal(packageBrollPromptsScript.main([revisionRun]), 0);
+
+  assert.match(brollPromptPackText(missingRun), /script-review\.md is missing/);
+  assert.match(brollPromptPackText(revisionRun), /Script review status is NEEDS REVISION, not PASS/);
+});
+
+test("broll prompt generator blocks non-ready production plan", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-broll-plan-blocked-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-broll-plan-blocked");
+  writeBrollPromptRun(runDir, { shootReadiness: "BLOCKED" });
+
+  assert.equal(packageBrollPromptsScript.main([runDir]), 0);
+
+  assert.match(brollPromptPackText(runDir), /Visual prompt status: BLOCKED/);
+  assert.match(brollPromptPackText(runDir), /Shoot-readiness status is BLOCKED, not READY TO SHOOT/);
+});
+
+test("broll prompt generator creates prompt artifacts from approved script and production plan", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-broll-generate-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-broll-generate");
+  writeBrollPromptRun(runDir);
+
+  const output = captureConsole(() => packageBrollPromptsScript.main([runDir]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /visual prompt status: NEEDS REVIEW/);
+  packageBrollPromptsScript.TARGET_FILES.forEach((filename) => {
+    assert.equal(fs.existsSync(path.join(runDir, filename)), true);
+  });
+  assert.match(brollPromptPackText(runDir), /Visual prompt status: NEEDS REVIEW/);
+  assert.match(fs.readFileSync(path.join(runDir, "visual-scene-prompts.md"), "utf8"), /creator comparing raw AI video ideas/);
+  assert.match(fs.readFileSync(path.join(runDir, "graphics-prompt-pack.md"), "utf8"), /Before\/after idea filter matrix/);
+});
+
+test("broll prompt generator preserves manual files unless overwrite is explicit", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-broll-preserve-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-broll-preserve");
+  writeBrollPromptRun(runDir);
+  const packPath = path.join(runDir, "broll-prompt-pack.md");
+  fs.writeFileSync(packPath, "# Manual B-Roll Prompt Pack\n\nKeep this.\n", "utf8");
+
+  const first = captureConsole(() => packageBrollPromptsScript.main([runDir]));
+  assert.equal(first.result, 0);
+  assert.equal(fs.readFileSync(packPath, "utf8"), "# Manual B-Roll Prompt Pack\n\nKeep this.\n");
+  assert.match(first.stdout.join("\n"), /unchanged: .*broll-prompt-pack\.md/);
+
+  const overwritten = captureConsole(() => packageBrollPromptsScript.main([runDir, "--overwrite"]));
+  assert.equal(overwritten.result, 0);
+  assert.match(fs.readFileSync(packPath, "utf8"), /# B-Roll Prompt Pack/);
+  assert.match(overwritten.stdout.join("\n"), /overwritten: .*broll-prompt-pack\.md/);
+});
+
+test("broll prompt generator passes only with exact approval and real prompt rows", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-broll-pass-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-broll-pass");
+  writeBrollPromptRun(runDir);
+  fs.writeFileSync(
+    path.join(runDir, "broll-prompt-pack.md"),
+    "# B-Roll Prompt Pack\n\nVisual prompt approval: PASS\n\n| prompt | purpose | status |\n| --- | --- | --- |\n| Capture the scorecard next to selected package. | Show the actual workflow proof. | review-needed |\n",
+    "utf8"
+  );
+
+  const output = captureConsole(() => packageBrollPromptsScript.main([runDir, "--overwrite"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /visual prompt status: PASS/);
+  assert.match(brollPromptPackText(runDir), /Visual prompt status: PASS/);
+  assert.match(brollPromptPackText(runDir), /Visual prompt approval: PASS/);
+});
+
+test("broll prompt generator does not pass placeholder prompt rows", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-broll-placeholder-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-broll-placeholder");
+  writeBrollPromptRun(runDir);
+  fs.writeFileSync(
+    path.join(runDir, "broll-prompt-pack.md"),
+    "# B-Roll Prompt Pack\n\nVisual prompt approval: PASS\n\n| prompt | purpose | status |\n| --- | --- | --- |\n| TODO | TODO | TODO |\n",
+    "utf8"
+  );
+
+  const output = captureConsole(() => packageBrollPromptsScript.main([runDir, "--overwrite"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /visual prompt status: NEEDS REVIEW/);
+  assert.match(brollPromptPackText(runDir), /Visual prompt status: NEEDS REVIEW/);
+  assert.doesNotMatch(brollPromptPackText(runDir), /Visual prompt status: PASS/);
+});
+
+test("verify script checks broll prompt generator syntax", () => {
+  const verifyPath = path.join(__dirname, "..", "scripts", "verify.sh");
+  const verify = fs.readFileSync(verifyPath, "utf8");
+
+  assert.match(verify, /node --check scripts\/package-run-broll-prompts\.js/);
 });
 
 function writeCapturePlanningRun(runDir, options = {}) {
