@@ -16,9 +16,17 @@ const DETECTED_FILES = [
   "final-outline.md",
   "script-prompt.md",
   "script-structure.md",
+  "script-draft.md",
   "final-script.md",
+  "script-review.md",
+  "script-revision-plan.md",
+  "production-notes.md",
   "production-plan.md",
   "production-blockers.md",
+  "shot-list.md",
+  "screen-capture-list.md",
+  "demo-list.md",
+  "audio-notes.md",
   "capture-checklist.md",
   "takes-log.md",
   "missing-shot-tracker.md",
@@ -83,6 +91,17 @@ const CAPTURE_ARTIFACTS = [
   "missing-shot-tracker.md",
   "screen-recording-checklist.md",
   "audio-capture-checklist.md",
+];
+
+const PRODUCTION_PLAN_ARTIFACTS = [
+  "production-plan.md",
+  "production-blockers.md",
+  "shot-list.md",
+  "screen-capture-list.md",
+  "demo-list.md",
+  "b-roll-list.md",
+  "graphics-list.md",
+  "audio-notes.md",
 ];
 
 const ROUGH_CUT_ARTIFACTS = ["rough-cut-watch-notes.md", "rough-cut-review.md", "pickup-list.md", "edit-fix-list.md"];
@@ -252,6 +271,7 @@ function readLifecycleGate(runDir, files = {}) {
     repurposingStatus: gateStatus(repurposingPlan, "Repurposing status") || gateStatus(repurposingPlan),
     readyToCutShorts: readyYes(repurposingPlan, "Ready to cut shorts"),
     hasProductionPlan: Boolean(files.production_plan),
+    hasAnyProductionPlanArtifacts: hasAnyArtifacts(files, PRODUCTION_PLAN_ARTIFACTS),
     hasAnyCaptureArtifacts: hasAnyArtifacts(files, CAPTURE_ARTIFACTS),
     hasAllCaptureArtifacts: hasAllArtifacts(files, CAPTURE_ARTIFACTS),
     hasAnyRoughCutArtifacts: hasAnyArtifacts(files, ROUGH_CUT_ARTIFACTS),
@@ -270,6 +290,7 @@ function readLifecycleGate(runDir, files = {}) {
 
 function lifecycleStatusFromGate(baseStatus, lifecycleGate = {}) {
   const hasModernLifecycle =
+    lifecycleGate.hasAnyProductionPlanArtifacts ||
     lifecycleGate.hasProductionPlan ||
     lifecycleGate.hasAnyCaptureArtifacts ||
     lifecycleGate.hasAnyRoughCutArtifacts ||
@@ -405,6 +426,14 @@ function nextRecommendedCommand(status, runPath, creatorQaStatus = "not run", ev
     "Ready to cut shorts": "",
   };
   return commandByStatus[status] || "";
+}
+
+function nextRecommendedCommandForRun(run = {}) {
+  const gate = run.lifecycleGate || {};
+  if (run.status === "Needs production planning" && gate.productionPlanStatus === "NEEDS SCRIPT APPROVAL") {
+    return `node scripts/package-run-script-review.js ${run.path || "package-runs/YYYY-MM-DD-topic-slug"}`;
+  }
+  return nextRecommendedCommand(run.status, run.path, run.creatorQaStatus, run.evidenceGate);
 }
 
 function workflowBucket(status, creatorQaStatus = "not run", evidenceGate = {}) {
@@ -596,7 +625,7 @@ function scanRun(runDir, repoRoot = process.cwd()) {
     evidenceGate,
     lifecycleGate,
     nextExpectedFile: nextExpectedFile(status),
-    nextRecommendedCommand: nextRecommendedCommand(status, runPath, creatorQaStatus, evidenceGate),
+    nextRecommendedCommand: nextRecommendedCommandForRun({ status, path: runPath, creatorQaStatus, evidenceGate, lifecycleGate }),
     updatedAt: latestMtimeIso(runDir, DETECTED_FILES),
     files,
   };
@@ -668,6 +697,7 @@ module.exports = {
   lifecycleStatusFromGate,
   nextExpectedFile,
   nextRecommendedCommand,
+  nextRecommendedCommandForRun,
   workflowBucket,
   readCreatorQaStatus,
   listCaptureEvidenceReferences,

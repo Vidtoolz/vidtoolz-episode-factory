@@ -42,6 +42,11 @@ Hermes, update project state, or create scheduled jobs.
 Unknown/manual files are listed separately. Their presence is not treated as an
 error.
 
+When `production-plan.md` exists but says `Shoot-readiness status: NEEDS SCRIPT
+APPROVAL`, the next command points back to `package-run-script-review.js`
+instead of rerunning production planning. The production plan is already telling
+the workflow that the first blocker is upstream script review/revision.
+
 ## Finish Test
 
 ```sh

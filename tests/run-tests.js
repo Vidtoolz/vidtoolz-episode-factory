@@ -5426,6 +5426,73 @@ test("package run doctor reports lifecycle next command and matching json fields
   assert.equal(parsed.readOnly, true);
 });
 
+test("package run doctor treats current workflow artifacts as known", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-doctor-known-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-doctor-known");
+  const knownArtifacts = [
+    "script-review.md",
+    "script-revision-plan.md",
+    "script-draft.md",
+    "shot-list.md",
+    "screen-capture-list.md",
+    "demo-list.md",
+    "audio-notes.md",
+    "production-notes.md",
+  ];
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({ package: { proposedTitle: "Doctor Known Artifacts Test" } }),
+    "utf8"
+  );
+  knownArtifacts.forEach((filename) => fs.writeFileSync(path.join(runDir, filename), `# ${filename}\n`, "utf8"));
+  fs.writeFileSync(path.join(runDir, "manual-note.md"), "# Human note\n", "utf8");
+
+  const before = fs.readdirSync(runDir).sort();
+  const report = packageRunDoctorScript.buildDoctorReport(runDir);
+  const after = fs.readdirSync(runDir).sort();
+
+  assert.deepEqual(after, before);
+  knownArtifacts.forEach((filename) => {
+    assert.equal(report.detectedKnownArtifacts.includes(filename), true, `${filename} should be known`);
+    assert.equal(report.unknownManualFiles.includes(filename), false, `${filename} should not be unknown`);
+  });
+  assert.deepEqual(report.unknownManualFiles, ["manual-note.md"]);
+});
+
+test("package runs index recommends script review when production plan needs script approval", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-script-approval-next-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-script-approval");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({ package: { proposedTitle: "Script Approval Next Command" } }),
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "production-plan.md"),
+    "# Production Plan\n\n- Shoot-readiness status: NEEDS SCRIPT APPROVAL\n",
+    "utf8"
+  );
+  const before = fs.readdirSync(runDir).sort();
+
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  const run = index.runs[0];
+  const doctor = packageRunDoctorScript.buildDoctorReport(runDir);
+  const after = fs.readdirSync(runDir).sort();
+
+  assert.deepEqual(after, before);
+  assert.equal(run.status, "Needs production planning");
+  assert.equal(run.lifecycleGate.productionPlanStatus, "NEEDS SCRIPT APPROVAL");
+  assert.equal(
+    run.nextRecommendedCommand,
+    "node scripts/package-run-script-review.js package-runs/2026-05-10-script-approval"
+  );
+  assert.match(doctor.nextRecommendedCommand, /package-run-script-review\.js/);
+  assert.match(doctor.firstBlockerReason, /NEEDS SCRIPT APPROVAL/);
+});
+
 test("verify script checks package run doctor syntax", () => {
   const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
   assert.match(verify, /node --check scripts\/package-run-doctor\.js/);
