@@ -18,10 +18,15 @@ The doctor reuses the package-runs index lifecycle logic and prints:
 
 - run id and path
 - workflow bucket
+- current inferred stage
 - lifecycle status
+- overall status: `BLOCKED`, `NEEDS WORK`, `READY FOR NEXT STAGE`, or
+  `COMPLETE ENOUGH FOR HUMAN REVIEW`
 - Creator QA status
 - Evidence Gate status
+- blocking reasons
 - lifecycle gate summary
+- existing approval markers detected from local gate outputs
 - detected known artifacts
 - missing expected artifact for the current stage
 - unknown/manual files
@@ -38,6 +43,11 @@ for quick terminal inspection.
 The doctor is read-only. It does not create, modify, move, delete, stage,
 commit, push, clean, archive, upload, publish, call external APIs, update
 Hermes, update project state, or create scheduled jobs.
+
+It uses existing gate outputs rather than inventing readiness. Placeholder
+content such as TODO, n/a, none, not applicable, or not assessed only counts as
+ready when an upstream tool has already converted it into an explicit passing
+gate state.
 
 Unknown/manual files are listed separately. Their presence is not treated as an
 error.

@@ -343,6 +343,14 @@ function lifecycleStatusFromGate(baseStatus, lifecycleGate = {}) {
     lifecycleGate.hasRepurposingPlan;
 
   if (hasModernLifecycle && !lifecycleGate.hasProductionPlan) return "Needs production planning";
+  if (
+    lifecycleGate.hasScriptReview &&
+    lifecycleGate.scriptReviewStatus === "PASS" &&
+    lifecycleGate.productionPlanningReady &&
+    !lifecycleGate.hasProductionPlan
+  ) {
+    return "Needs production planning";
+  }
 
   if (lifecycleGate.hasProductionPlan) {
     if (lifecycleGate.productionPlanStatus !== "READY TO SHOOT") return "Needs production planning";

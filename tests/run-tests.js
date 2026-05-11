@@ -6172,6 +6172,133 @@ test("package run doctor reports lifecycle next command and matching json fields
   assert.equal(parsed.readOnly, true);
 });
 
+test("package run doctor reports requested pipeline stages and overall status", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-doctor-pipeline-"));
+  const runsDir = path.join(tempRoot, "package-runs");
+
+  function makeRun(runId, files) {
+    const runDir = path.join(runsDir, runId);
+    fs.mkdirSync(runDir, { recursive: true });
+    Object.entries(files).forEach(([filename, content]) => fs.writeFileSync(path.join(runDir, filename), content, "utf8"));
+    return runDir;
+  }
+
+  const selected = { "selected-package.json": JSON.stringify({ package: { proposedTitle: "Pipeline Doctor" } }) };
+  const scriptApproved = {
+    ...selected,
+    "research-pack.md": "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PASS\n",
+    "script-structure.md": "# Script Structure\n\n- Script structure status: READY TO DRAFT\n- Ready to draft: yes\n",
+    "script-review.md": "# Script Review\n\n- Script review status: PASS\n- Production planning ready: yes\n",
+    "final-script.md": "# Final Script\n",
+  };
+  const productionReady = {
+    ...scriptApproved,
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+  };
+  const finalReady = {
+    ...productionReady,
+    "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
+    "takes-log.md": "# Takes Log\n",
+    "missing-shot-tracker.md": "# Missing Shot Tracker\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n",
+    "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
+    "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
+    "publication-blockers.md": "# Publication Blockers\n",
+  };
+  const exportReady = {
+    ...finalReady,
+    "export-checklist.md": "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+    "master-file-manifest.md": "# Master File Manifest\n",
+    "caption-check.md": "# Caption Check\n",
+    "loudness-check.md": "# Loudness Check\n",
+    "delivery-readiness.md": "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+  };
+  const metadataReady = {
+    ...exportReady,
+    "publish-metadata-review.md": "# Publication Metadata Review\n\n- Publication metadata status: READY TO SCHEDULE\n- Ready to schedule: yes\n",
+    "title-check.md": "# Title Check\n",
+    "thumbnail-check.md": "# Thumbnail Check\n",
+    "description-check.md": "# Description Check\n",
+    "chapters-check.md": "# Chapters Check\n",
+    "schedule-check.md": "# Schedule Check\n",
+  };
+  const archiveReady = {
+    ...metadataReady,
+    "archive-manifest.md": "# Archive Manifest\n\n- Archive manifest status: READY TO ARCHIVE\n- Ready to archive: yes\n",
+    "archive-source-files.md": "# Archive Source Files\n",
+    "archive-assets-manifest.md": "# Archive Assets Manifest\n",
+    "archive-export-manifest.md": "# Archive Export Manifest\n",
+    "reusable-clips-manifest.md": "# Reusable Clips Manifest\n",
+    "archive-blockers.md": "# Archive Blockers\n",
+  };
+
+  const missingResearchDir = makeRun("2026-05-10-missing-research", selected);
+  const scriptApprovedDir = makeRun("2026-05-10-script-approved", scriptApproved);
+  const productionReadyDir = makeRun("2026-05-10-production-ready", productionReady);
+  const finalReadyDir = makeRun("2026-05-10-final-ready", finalReady);
+  const exportReadyDir = makeRun("2026-05-10-export-ready", exportReady);
+  const metadataReadyDir = makeRun("2026-05-10-metadata-ready", metadataReady);
+  const archiveReadyDir = makeRun("2026-05-10-archive-ready", archiveReady);
+
+  const missingResearch = packageRunDoctorScript.buildDoctorReport(missingResearchDir, { repoRoot: tempRoot });
+  const scriptApprovedReport = packageRunDoctorScript.buildDoctorReport(scriptApprovedDir, { repoRoot: tempRoot });
+  const productionReadyReport = packageRunDoctorScript.buildDoctorReport(productionReadyDir, { repoRoot: tempRoot });
+  const finalReadyReport = packageRunDoctorScript.buildDoctorReport(finalReadyDir, { repoRoot: tempRoot });
+  const exportReadyReport = packageRunDoctorScript.buildDoctorReport(exportReadyDir, { repoRoot: tempRoot });
+  const metadataReadyReport = packageRunDoctorScript.buildDoctorReport(metadataReadyDir, { repoRoot: tempRoot });
+  const archiveReadyReport = packageRunDoctorScript.buildDoctorReport(archiveReadyDir, { repoRoot: tempRoot });
+
+  assert.equal(missingResearch.lifecycleStatus, "Package selected");
+  assert.equal(missingResearch.overallStatus, "BLOCKED");
+  assert.deepEqual(missingResearch.missingExpectedArtifacts, ["research-pack.md"]);
+
+  assert.equal(scriptApprovedReport.lifecycleStatus, "Needs production planning");
+  assert.equal(scriptApprovedReport.overallStatus, "BLOCKED");
+  assert.match(scriptApprovedReport.nextRecommendedCommand, /package-run-production-plan\.js/);
+  assert.equal(scriptApprovedReport.approvalMarkersDetected.includes("Script review status: PASS"), true);
+
+  assert.equal(productionReadyReport.lifecycleStatus, "Ready for capture checklist");
+  assert.equal(productionReadyReport.overallStatus, "READY FOR NEXT STAGE");
+  assert.match(productionReadyReport.nextRecommendedCommand, /package-run-capture-checklist\.js/);
+
+  assert.equal(finalReadyReport.lifecycleStatus, "Ready to publish");
+  assert.match(finalReadyReport.nextRecommendedCommand, /package-run-export-checklist\.js/);
+
+  assert.equal(exportReadyReport.lifecycleStatus, "Ready to upload");
+  assert.match(exportReadyReport.nextRecommendedCommand, /package-run-publication-metadata\.js/);
+
+  assert.equal(metadataReadyReport.lifecycleStatus, "Ready to schedule");
+  assert.match(metadataReadyReport.nextRecommendedCommand, /package-run-archive-manifest\.js/);
+
+  assert.equal(archiveReadyReport.lifecycleStatus, "Ready to archive");
+  assert.equal(archiveReadyReport.overallStatus, "COMPLETE ENOUGH FOR HUMAN REVIEW");
+  assert.match(archiveReadyReport.nextRecommendedCommand, /package-run-repurpose\.js/);
+});
+
+test("package run doctor does not treat placeholder capture artifacts as ready", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-doctor-placeholder-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-placeholder");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Placeholder Doctor" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n", "utf8");
+  [
+    "capture-checklist.md",
+    "takes-log.md",
+    "missing-shot-tracker.md",
+    "screen-recording-checklist.md",
+    "audio-capture-checklist.md",
+  ].forEach((filename) => fs.writeFileSync(path.join(runDir, filename), "# Placeholder\n\nTODO\n", "utf8"));
+
+  const report = packageRunDoctorScript.buildDoctorReport(runDir, { repoRoot: tempRoot });
+
+  assert.equal(report.lifecycleStatus, "Needs capture");
+  assert.equal(report.overallStatus, "BLOCKED");
+  assert.match(report.firstBlockerReason, /Capture checklist status is missing/);
+  assert.doesNotMatch(report.nextRecommendedCommand, /rough-cut-review/);
+});
+
 test("package run doctor treats current workflow artifacts as known", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-doctor-known-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-doctor-known");

@@ -153,6 +153,43 @@ function lifecycleGateSummary(gate = {}) {
   };
 }
 
+function overallStatus(run = {}) {
+  const status = run.status || "";
+  const blocker = firstBlockerReason(run);
+  if (status === "Ready to archive" || status === "Ready to cut shorts") return "COMPLETE ENOUGH FOR HUMAN REVIEW";
+  if (/^Ready\b/.test(status)) return "READY FOR NEXT STAGE";
+  if (/^Needs\b/.test(status) || blocker) return "BLOCKED";
+  return "NEEDS WORK";
+}
+
+function blockingReasons(run = {}) {
+  const reason = firstBlockerReason(run);
+  return reason ? [reason] : [];
+}
+
+function approvalMarkersDetected(gate = {}) {
+  const markers = [];
+  if (gate.researchApprovalMarker === "PASS") markers.push("Research approval marker: PASS");
+  if (gate.readyToDraft || gate.scriptStructureStatus === "READY TO DRAFT") markers.push("Script structure ready: READY TO DRAFT");
+  if (gate.scriptReviewStatus === "PASS") markers.push("Script review status: PASS");
+  if (gate.productionPlanningReady) markers.push("Production planning ready: yes");
+  if (gate.productionPlanStatus === "READY TO SHOOT") markers.push("Shoot-readiness status: READY TO SHOOT");
+  if (gate.readyForRoughCut || gate.captureStatus === "READY FOR ROUGH CUT") markers.push("Capture checklist status: READY FOR ROUGH CUT");
+  if (gate.secondCutReady || gate.roughCutStatus === "READY FOR SECOND CUT") markers.push("Rough-cut review status: READY FOR SECOND CUT");
+  if (gate.publishReady || gate.finalReviewStatus === "READY TO PUBLISH" || gate.finalReviewStatus === "PASS") {
+    markers.push("Final review publish-ready marker");
+  }
+  if (gate.readyToUpload || gate.exportStatus === "READY TO UPLOAD") markers.push("Export readiness: READY TO UPLOAD");
+  if (gate.readyToSchedule || gate.publicationMetadataStatus === "READY TO SCHEDULE") {
+    markers.push("Publication metadata status: READY TO SCHEDULE");
+  }
+  if (gate.readyToArchive || gate.archiveStatus === "READY TO ARCHIVE") markers.push("Archive manifest status: READY TO ARCHIVE");
+  if (gate.readyToCutShorts || gate.repurposingStatus === "READY TO CUT SHORTS") {
+    markers.push("Repurposing status: READY TO CUT SHORTS");
+  }
+  return markers;
+}
+
 function buildDoctorReport(runDirInput, options = {}) {
   const repoRoot = path.resolve(options.repoRoot || path.join(__dirname, ".."));
   const runDir = path.resolve(repoRoot, runDirInput || "");
@@ -168,11 +205,15 @@ function buildDoctorReport(runDirInput, options = {}) {
     path: run.path,
     title: run.title,
     workflowBucket: run.workflowBucket,
+    currentInferredStage: run.status,
     lifecycleStatus: run.status,
+    overallStatus: overallStatus(run),
+    blockingReasons: blockingReasons(run),
     creatorQaStatus: run.creatorQaStatus,
     evidenceGateStatus: run.evidenceGate.status,
     evidenceGate: run.evidenceGate,
     lifecycleGate: lifecycleGateSummary(run.lifecycleGate),
+    approvalMarkersDetected: approvalMarkersDetected(run.lifecycleGate),
     detectedKnownArtifacts: detected,
     missingExpectedArtifacts: missingExpectedArtifacts(run),
     unknownManualFiles: unknownFiles(runDir),
@@ -195,16 +236,32 @@ function renderText(report) {
   if (report.title) lines.push(`Title: ${report.title}`);
   lines.push(`Path: ${report.path}`);
   lines.push(`Workflow bucket: ${report.workflowBucket}`);
+  lines.push(`Current inferred stage: ${report.currentInferredStage}`);
   lines.push(`Lifecycle status: ${report.lifecycleStatus}`);
+  lines.push(`Overall status: ${report.overallStatus}`);
   lines.push(`Creator QA status: ${report.creatorQaStatus}`);
   lines.push(`Evidence gate status: ${report.evidenceGateStatus}`);
   lines.push(`First blocker: ${report.firstBlockerReason || "none detected by local index"}`);
   lines.push(`Next command: ${report.nextRecommendedCommand || "manual review or no deterministic command"}`);
   lines.push("");
+  lines.push("Blocking reasons:");
+  if (report.blockingReasons.length) {
+    report.blockingReasons.forEach((reason) => lines.push(`- ${reason}`));
+  } else {
+    lines.push("- none");
+  }
+  lines.push("");
   lines.push("Lifecycle gate summary:");
   Object.entries(report.lifecycleGate)
     .filter(([_key, value]) => value !== "" && value !== false)
     .forEach(([key, value]) => lines.push(`- ${key}: ${value}`));
+  lines.push("");
+  lines.push("Approval markers detected:");
+  if (report.approvalMarkersDetected.length) {
+    report.approvalMarkersDetected.forEach((marker) => lines.push(`- ${marker}`));
+  } else {
+    lines.push("- none");
+  }
   lines.push("");
   lines.push("Detected known artifacts:");
   if (report.detectedKnownArtifacts.length) {
@@ -281,6 +338,9 @@ module.exports = {
   missingExpectedArtifacts,
   firstBlockerReason,
   lifecycleGateSummary,
+  overallStatus,
+  blockingReasons,
+  approvalMarkersDetected,
   buildDoctorReport,
   renderText,
   main,
