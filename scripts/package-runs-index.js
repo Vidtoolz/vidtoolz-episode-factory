@@ -77,6 +77,34 @@ const PRODUCTION_ARTIFACTS = [
   "publish-pack.md",
 ];
 
+const CAPTURE_ARTIFACTS = [
+  "capture-checklist.md",
+  "takes-log.md",
+  "missing-shot-tracker.md",
+  "screen-recording-checklist.md",
+  "audio-capture-checklist.md",
+];
+
+const ROUGH_CUT_ARTIFACTS = ["rough-cut-watch-notes.md", "rough-cut-review.md", "pickup-list.md", "edit-fix-list.md"];
+const FINAL_REVIEW_ARTIFACTS = ["final-watch-notes.md", "final-review.md", "publication-blockers.md"];
+const EXPORT_ARTIFACTS = ["export-checklist.md", "master-file-manifest.md", "caption-check.md", "loudness-check.md", "delivery-readiness.md"];
+const PUBLICATION_METADATA_ARTIFACTS = [
+  "publish-metadata-review.md",
+  "title-check.md",
+  "thumbnail-check.md",
+  "description-check.md",
+  "chapters-check.md",
+  "schedule-check.md",
+];
+const ARCHIVE_ARTIFACTS = [
+  "archive-manifest.md",
+  "archive-source-files.md",
+  "archive-assets-manifest.md",
+  "archive-export-manifest.md",
+  "reusable-clips-manifest.md",
+  "archive-blockers.md",
+];
+
 const CAPTURE_REFERENCE_PATTERN = /\b[\w./-]*(?:transcript|screenshot|screen[-_\s]?recording|recording)[\w./-]*\.(?:md|txt|png|jpe?g|webp|gif|mp4|mov|mkv|webm)\b/gi;
 const CAPTURE_FILE_PATTERN = /(?:^|[-_])(capture[-_])?(transcript|screenshot|screen[-_]?recording|recording)(?:[-_.]|$)/i;
 const VISUAL_CAPTURE_PATTERN = /(screenshot|screen[-_\s]?recording|recording).*\.(png|jpe?g|webp|gif|mp4|mov|mkv|webm)$/i;
@@ -134,6 +162,14 @@ function hasAllProductionArtifacts(files = {}) {
   return PRODUCTION_ARTIFACTS.every((filename) => files[fileKey(filename)]);
 }
 
+function hasAllArtifacts(files = {}, filenames = []) {
+  return filenames.every((filename) => files[fileKey(filename)]);
+}
+
+function hasAnyArtifacts(files = {}, filenames = []) {
+  return filenames.some((filename) => files[fileKey(filename)]);
+}
+
 function normalizeCreatorQaStatus(value = "not run") {
   const status = String(value || "").trim().toUpperCase().replace(/_/g, " ");
   if (!status) return "not run";
@@ -164,6 +200,136 @@ function classifyRunStatus(files = {}, creatorQaStatus = "not run") {
   return "Idea run";
 }
 
+function readOptionalText(runDir, filename) {
+  const filePath = path.join(runDir, filename);
+  return fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf8") : "";
+}
+
+function lineValue(markdown = "", label = "") {
+  const escaped = String(label).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`^\\s*(?:[-*]\\s*)?${escaped}\\s*:\\s*(.+?)\\s*$`, "im");
+  const match = String(markdown || "").match(pattern);
+  return match ? match[1].trim() : "";
+}
+
+function gateStatus(markdown = "", label = "Status") {
+  return lineValue(markdown, label).toUpperCase();
+}
+
+function readyYes(markdown = "", label = "Ready") {
+  return /^yes$/i.test(lineValue(markdown, label));
+}
+
+function readLifecycleGate(runDir, files = {}) {
+  const productionPlan = readOptionalText(runDir, "production-plan.md");
+  const captureChecklist = readOptionalText(runDir, "capture-checklist.md");
+  const roughCutReview = readOptionalText(runDir, "rough-cut-review.md");
+  const finalReview = readOptionalText(runDir, "final-review.md");
+  const exportChecklist = readOptionalText(runDir, "export-checklist.md");
+  const deliveryReadiness = readOptionalText(runDir, "delivery-readiness.md");
+  const publicationMetadata = readOptionalText(runDir, "publish-metadata-review.md");
+  const archiveManifest = readOptionalText(runDir, "archive-manifest.md");
+  const repurposingPlan = readOptionalText(runDir, "repurposing-plan.md");
+
+  return {
+    productionPlanStatus: gateStatus(productionPlan, "Shoot-readiness status") || gateStatus(productionPlan),
+    captureStatus: gateStatus(captureChecklist, "Capture checklist status") || gateStatus(captureChecklist),
+    readyForRoughCut: readyYes(captureChecklist, "Ready for rough cut"),
+    roughCutStatus: gateStatus(roughCutReview, "Rough-cut review status") || gateStatus(roughCutReview),
+    secondCutReady: readyYes(roughCutReview, "Second-cut ready"),
+    finalReviewStatus: gateStatus(finalReview, "Final review status") || gateStatus(finalReview),
+    publishReady: readyYes(finalReview, "Publish ready"),
+    exportStatus:
+      gateStatus(deliveryReadiness, "Export checklist status") ||
+      gateStatus(exportChecklist, "Export checklist status") ||
+      gateStatus(deliveryReadiness) ||
+      gateStatus(exportChecklist),
+    readyToUpload: readyYes(deliveryReadiness, "Ready to upload") || readyYes(exportChecklist, "Ready to upload"),
+    publicationMetadataStatus: gateStatus(publicationMetadata, "Publication metadata status") || gateStatus(publicationMetadata),
+    readyToSchedule: readyYes(publicationMetadata, "Ready to schedule"),
+    archiveStatus: gateStatus(archiveManifest, "Archive manifest status") || gateStatus(archiveManifest),
+    readyToArchive: readyYes(archiveManifest, "Ready to archive"),
+    repurposingStatus: gateStatus(repurposingPlan, "Repurposing status") || gateStatus(repurposingPlan),
+    readyToCutShorts: readyYes(repurposingPlan, "Ready to cut shorts"),
+    hasProductionPlan: Boolean(files.production_plan),
+    hasAnyCaptureArtifacts: hasAnyArtifacts(files, CAPTURE_ARTIFACTS),
+    hasAllCaptureArtifacts: hasAllArtifacts(files, CAPTURE_ARTIFACTS),
+    hasAnyRoughCutArtifacts: hasAnyArtifacts(files, ROUGH_CUT_ARTIFACTS),
+    hasRoughCutReview: Boolean(files.rough_cut_review),
+    hasAnyFinalReviewArtifacts: hasAnyArtifacts(files, FINAL_REVIEW_ARTIFACTS),
+    hasFinalReview: Boolean(files.final_review),
+    hasAnyExportArtifacts: hasAnyArtifacts(files, EXPORT_ARTIFACTS),
+    hasAllExportArtifacts: hasAllArtifacts(files, EXPORT_ARTIFACTS),
+    hasAnyPublicationMetadataArtifacts: hasAnyArtifacts(files, PUBLICATION_METADATA_ARTIFACTS),
+    hasAllPublicationMetadataArtifacts: hasAllArtifacts(files, PUBLICATION_METADATA_ARTIFACTS),
+    hasAnyArchiveArtifacts: hasAnyArtifacts(files, ARCHIVE_ARTIFACTS),
+    hasAllArchiveArtifacts: hasAllArtifacts(files, ARCHIVE_ARTIFACTS),
+    hasRepurposingPlan: Boolean(files.repurposing_plan),
+  };
+}
+
+function lifecycleStatusFromGate(baseStatus, lifecycleGate = {}) {
+  const hasModernLifecycle =
+    lifecycleGate.hasProductionPlan ||
+    lifecycleGate.hasAnyCaptureArtifacts ||
+    lifecycleGate.hasAnyRoughCutArtifacts ||
+    lifecycleGate.hasAnyFinalReviewArtifacts ||
+    lifecycleGate.hasAnyExportArtifacts ||
+    lifecycleGate.hasAnyPublicationMetadataArtifacts ||
+    lifecycleGate.hasAnyArchiveArtifacts ||
+    lifecycleGate.hasRepurposingPlan;
+
+  if (hasModernLifecycle && !lifecycleGate.hasProductionPlan) return "Needs production planning";
+
+  if (lifecycleGate.hasProductionPlan) {
+    if (lifecycleGate.productionPlanStatus !== "READY TO SHOOT") return "Needs production planning";
+    if (!lifecycleGate.hasAllCaptureArtifacts) {
+      return lifecycleGate.hasAnyCaptureArtifacts ? "Needs capture" : "Ready for capture checklist";
+    }
+  }
+  if (lifecycleGate.hasAllCaptureArtifacts) {
+    const captureReady = lifecycleGate.readyForRoughCut || lifecycleGate.captureStatus === "READY FOR ROUGH CUT";
+    if (!captureReady) return "Needs capture";
+    if (!lifecycleGate.hasRoughCutReview) return "Ready for rough cut";
+  }
+  if (lifecycleGate.hasRoughCutReview) {
+    const roughCutReady = lifecycleGate.secondCutReady || lifecycleGate.roughCutStatus === "READY FOR SECOND CUT";
+    if (!roughCutReady) return "Needs rough-cut review";
+    if (!lifecycleGate.hasFinalReview) return "Ready for second cut";
+  }
+  if (lifecycleGate.hasFinalReview) {
+    const finalReady = lifecycleGate.publishReady || lifecycleGate.finalReviewStatus === "READY TO PUBLISH";
+    if (!finalReady) return "Needs final review";
+    if (!lifecycleGate.hasAllExportArtifacts) {
+      return lifecycleGate.hasAnyExportArtifacts ? "Needs export check" : "Ready to publish";
+    }
+  }
+  if (lifecycleGate.hasAllExportArtifacts) {
+    const exportReady = lifecycleGate.readyToUpload || lifecycleGate.exportStatus === "READY TO UPLOAD";
+    if (!exportReady) return "Needs export check";
+    if (!lifecycleGate.hasAllPublicationMetadataArtifacts) {
+      return lifecycleGate.hasAnyPublicationMetadataArtifacts ? "Needs publication metadata" : "Ready to upload";
+    }
+  }
+  if (lifecycleGate.hasAllPublicationMetadataArtifacts) {
+    const metadataReady = lifecycleGate.readyToSchedule || lifecycleGate.publicationMetadataStatus === "READY TO SCHEDULE";
+    if (!metadataReady) return "Needs publication metadata";
+    if (!lifecycleGate.hasAllArchiveArtifacts) {
+      return lifecycleGate.hasAnyArchiveArtifacts ? "Needs archive data" : "Ready to schedule";
+    }
+  }
+  if (lifecycleGate.hasAllArchiveArtifacts) {
+    const archiveReady = lifecycleGate.readyToArchive || lifecycleGate.archiveStatus === "READY TO ARCHIVE";
+    if (!archiveReady) return "Needs archive data";
+    if (!lifecycleGate.hasRepurposingPlan) return "Ready to archive";
+  }
+  if (lifecycleGate.hasRepurposingPlan) {
+    if (lifecycleGate.readyToCutShorts || lifecycleGate.repurposingStatus === "READY TO CUT SHORTS") return "Ready to cut shorts";
+    return "Needs repurposing approval";
+  }
+  return baseStatus;
+}
+
 function nextExpectedFile(status) {
   const nextByStatus = {
     "Idea run": "selected-package.json or selected-package.md",
@@ -175,6 +341,22 @@ function nextExpectedFile(status) {
     "Final script ready": "production-brief.md",
     "Production prep ready": "remaining production prep artifacts",
     "Ready to shoot": "",
+    "Needs production planning": "production-plan.md with READY TO SHOOT",
+    "Ready for capture checklist": "capture-checklist.md",
+    "Needs capture": "capture execution evidence",
+    "Ready for rough cut": "rough-cut-review.md",
+    "Needs rough-cut review": "rough-cut-watch-notes.md with real notes",
+    "Ready for second cut": "final-review.md",
+    "Needs final review": "final-watch-notes.md with real notes",
+    "Ready to publish": "export-checklist.md",
+    "Needs export check": "delivery-readiness.md with READY TO UPLOAD",
+    "Ready to upload": "publish-metadata-review.md",
+    "Needs publication metadata": "publish-metadata-review.md with READY TO SCHEDULE",
+    "Ready to schedule": "archive-manifest.md",
+    "Needs archive data": "archive-manifest.md with READY TO ARCHIVE",
+    "Ready to archive": "repurposing-plan.md or archive action",
+    "Needs repurposing approval": "repurposing-plan.md with READY TO CUT SHORTS",
+    "Ready to cut shorts": "",
   };
   return nextByStatus[status] || "";
 }
@@ -205,6 +387,22 @@ function nextRecommendedCommand(status, runPath, creatorQaStatus = "not run", ev
     "Final script ready": `node scripts/package-engine-new-production.js ${target}`,
     "Production prep ready": "",
     "Ready to shoot": "",
+    "Needs production planning": `node scripts/package-run-production-plan.js ${target}`,
+    "Ready for capture checklist": `node scripts/package-run-capture-checklist.js ${target}`,
+    "Needs capture": "",
+    "Ready for rough cut": `node scripts/package-run-rough-cut-review.js ${target}`,
+    "Needs rough-cut review": `node scripts/package-run-rough-cut-review.js ${target}`,
+    "Ready for second cut": `node scripts/package-run-final-review.js ${target}`,
+    "Needs final review": `node scripts/package-run-final-review.js ${target}`,
+    "Ready to publish": `node scripts/package-run-export-checklist.js ${target}`,
+    "Needs export check": `node scripts/package-run-export-checklist.js ${target}`,
+    "Ready to upload": `node scripts/package-run-publication-metadata.js ${target}`,
+    "Needs publication metadata": `node scripts/package-run-publication-metadata.js ${target}`,
+    "Ready to schedule": `node scripts/package-run-archive-manifest.js ${target}`,
+    "Needs archive data": `node scripts/package-run-archive-manifest.js ${target}`,
+    "Ready to archive": `node scripts/package-run-repurpose.js ${target}`,
+    "Needs repurposing approval": `node scripts/package-run-repurpose.js ${target}`,
+    "Ready to cut shorts": "",
   };
   return commandByStatus[status] || "";
 }
@@ -225,6 +423,22 @@ function workflowBucket(status, creatorQaStatus = "not run", evidenceGate = {}) 
     "Final script ready": "Needs production prep",
     "Production prep ready": "Needs production prep",
     "Ready to shoot": "Ready to shoot",
+    "Needs production planning": "Needs production planning",
+    "Ready for capture checklist": "Needs capture checklist",
+    "Needs capture": "Needs capture",
+    "Ready for rough cut": "Needs rough-cut review",
+    "Needs rough-cut review": "Needs rough-cut review",
+    "Ready for second cut": "Needs final review",
+    "Needs final review": "Needs final review",
+    "Ready to publish": "Needs export check",
+    "Needs export check": "Needs export check",
+    "Ready to upload": "Needs publication metadata",
+    "Needs publication metadata": "Needs publication metadata",
+    "Ready to schedule": "Needs archive manifest",
+    "Needs archive data": "Needs archive manifest",
+    "Ready to archive": "Ready to archive",
+    "Needs repurposing approval": "Needs repurposing approval",
+    "Ready to cut shorts": "Ready to cut shorts",
   };
   return bucketByStatus[status] || "Needs package selection";
 }
@@ -369,7 +583,9 @@ function scanRun(runDir, repoRoot = process.cwd()) {
   });
   const creatorQaStatus = readCreatorQaStatus(runDir);
   const evidenceGate = readEvidenceGate(runDir);
-  const status = classifyRunStatus(files, creatorQaStatus);
+  const baseStatus = classifyRunStatus(files, creatorQaStatus);
+  const lifecycleGate = readLifecycleGate(runDir, files);
+  const status = lifecycleStatusFromGate(baseStatus, lifecycleGate);
   return {
     runId,
     path: runPath,
@@ -378,6 +594,7 @@ function scanRun(runDir, repoRoot = process.cwd()) {
     workflowBucket: workflowBucket(status, creatorQaStatus, evidenceGate),
     creatorQaStatus,
     evidenceGate,
+    lifecycleGate,
     nextExpectedFile: nextExpectedFile(status),
     nextRecommendedCommand: nextRecommendedCommand(status, runPath, creatorQaStatus, evidenceGate),
     updatedAt: latestMtimeIso(runDir, DETECTED_FILES),
@@ -442,9 +659,13 @@ module.exports = {
   parseArgs,
   fileKey,
   hasAllProductionArtifacts,
+  hasAllArtifacts,
+  hasAnyArtifacts,
   normalizeCreatorQaStatus,
   isCreatorQaBlocking,
   classifyRunStatus,
+  readLifecycleGate,
+  lifecycleStatusFromGate,
   nextExpectedFile,
   nextRecommendedCommand,
   workflowBucket,

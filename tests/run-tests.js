@@ -5086,7 +5086,7 @@ test("package runs index scans package-runs folders and writes index json", () =
   const byRunId = Object.fromEntries(index.runs.map((run) => [run.runId, run]));
 
   assert.equal(index.count, 4);
-  assert.equal(byRunId["2026-05-02-ready"].status, "Production prep ready");
+  assert.equal(byRunId["2026-05-02-ready"].status, "Needs production planning");
   assert.equal(byRunId["2026-05-02-ready"].workflowBucket, "Needs QA repair");
   assert.equal(byRunId["2026-05-02-ready"].creatorQaStatus, "NEEDS WORK");
   assert.equal(
@@ -5130,10 +5130,13 @@ test("package runs index scans package-runs folders and writes index json", () =
   assert.equal(byRunId["2026-05-02-ready"].files.shorts_candidates, true);
   assert.equal(byRunId["2026-05-02-ready"].files.platform_variants, true);
   assert.equal(byRunId["2026-05-02-ready"].title, "Ready Package");
-  assert.equal(byRunId["2026-05-03-qa-missing"].status, "Ready to shoot");
-  assert.equal(byRunId["2026-05-03-qa-missing"].workflowBucket, "QA not run");
-  assert.equal(byRunId["2026-05-03-qa-missing"].nextRecommendedCommand, "node scripts/package-run-creator-qa.js package-runs/2026-05-03-qa-missing");
-  assert.equal(byRunId["2026-05-04-qa-fail"].status, "Production prep ready");
+  assert.equal(byRunId["2026-05-03-qa-missing"].status, "Needs production planning");
+  assert.equal(byRunId["2026-05-03-qa-missing"].workflowBucket, "Needs production planning");
+  assert.equal(
+    byRunId["2026-05-03-qa-missing"].nextRecommendedCommand,
+    "node scripts/package-run-production-plan.js package-runs/2026-05-03-qa-missing"
+  );
+  assert.equal(byRunId["2026-05-04-qa-fail"].status, "Needs production planning");
   assert.equal(byRunId["2026-05-04-qa-fail"].workflowBucket, "Needs QA repair");
   assert.equal(byRunId["2026-05-04-qa-fail"].creatorQaStatus, "FAIL");
   assert.equal(byRunId["2026-05-04-qa-fail"].nextRecommendedCommand, "Review creator-qa-report.md and repair package/script before shooting.");
@@ -5141,9 +5144,204 @@ test("package runs index scans package-runs folders and writes index json", () =
   assert.equal(byRunId["2026-05-01-idea"].creatorQaStatus, "not run");
   assert.equal(byRunId["2026-05-01-idea"].workflowBucket, "Needs package selection");
   assert.equal(written.count, 4);
-  assert.equal(written.statuses["Ready to shoot"], 1);
-  assert.equal(written.statuses["Production prep ready"], 2);
+  assert.equal(written.statuses["Needs production planning"], 3);
   assert.equal(output, 0);
+});
+
+test("package runs index follows lifecycle gates in order", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-runs-lifecycle-"));
+  const runsDir = path.join(tempRoot, "package-runs");
+
+  function makeRun(runId, files) {
+    const runDir = path.join(runsDir, runId);
+    fs.mkdirSync(runDir, { recursive: true });
+    Object.entries(files).forEach(([filename, content]) => {
+      fs.writeFileSync(path.join(runDir, filename), content, "utf8");
+    });
+    return runDir;
+  }
+
+  function baseFiles(extra = {}) {
+    return {
+      "selected-package.json": JSON.stringify({ package: { proposedTitle: "Lifecycle Test" } }),
+      "final-script.md": "# Final Script\n",
+      ...extra,
+    };
+  }
+
+  makeRun(
+    "2026-05-01-production-ready",
+    baseFiles({
+      "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    })
+  );
+
+  makeRun(
+    "2026-05-02-capture-ready",
+    baseFiles({
+      "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+      "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
+      "takes-log.md": "# Takes Log\n",
+      "missing-shot-tracker.md": "# Missing Shot Tracker\n",
+      "screen-recording-checklist.md": "# Screen Recording Checklist\n",
+      "audio-capture-checklist.md": "# Audio Capture Checklist\n",
+    })
+  );
+
+  makeRun(
+    "2026-05-03-final-ready",
+    baseFiles({
+      "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+      "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
+      "takes-log.md": "# Takes Log\n",
+      "missing-shot-tracker.md": "# Missing Shot Tracker\n",
+      "screen-recording-checklist.md": "# Screen Recording Checklist\n",
+      "audio-capture-checklist.md": "# Audio Capture Checklist\n",
+      "rough-cut-watch-notes.md": "# Rough-Cut Watch Notes\n",
+      "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
+      "pickup-list.md": "# Pickup List\n",
+      "edit-fix-list.md": "# Edit Fix List\n",
+      "final-watch-notes.md": "# Final Watch Notes\n",
+      "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
+      "publication-blockers.md": "# Publication Blockers\n",
+    })
+  );
+
+  makeRun(
+    "2026-05-04-export-ready",
+    baseFiles({
+      "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+      "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
+      "takes-log.md": "# Takes Log\n",
+      "missing-shot-tracker.md": "# Missing Shot Tracker\n",
+      "screen-recording-checklist.md": "# Screen Recording Checklist\n",
+      "audio-capture-checklist.md": "# Audio Capture Checklist\n",
+      "rough-cut-watch-notes.md": "# Rough-Cut Watch Notes\n",
+      "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
+      "pickup-list.md": "# Pickup List\n",
+      "edit-fix-list.md": "# Edit Fix List\n",
+      "final-watch-notes.md": "# Final Watch Notes\n",
+      "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
+      "publication-blockers.md": "# Publication Blockers\n",
+      "export-checklist.md": "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+      "master-file-manifest.md": "# Master File Manifest\n",
+      "caption-check.md": "# Caption Check\n",
+      "loudness-check.md": "# Loudness Check\n",
+      "delivery-readiness.md": "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+    })
+  );
+
+  makeRun(
+    "2026-05-05-metadata-ready",
+    baseFiles({
+      "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+      "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
+      "takes-log.md": "# Takes Log\n",
+      "missing-shot-tracker.md": "# Missing Shot Tracker\n",
+      "screen-recording-checklist.md": "# Screen Recording Checklist\n",
+      "audio-capture-checklist.md": "# Audio Capture Checklist\n",
+      "rough-cut-watch-notes.md": "# Rough-Cut Watch Notes\n",
+      "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
+      "pickup-list.md": "# Pickup List\n",
+      "edit-fix-list.md": "# Edit Fix List\n",
+      "final-watch-notes.md": "# Final Watch Notes\n",
+      "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
+      "publication-blockers.md": "# Publication Blockers\n",
+      "export-checklist.md": "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+      "master-file-manifest.md": "# Master File Manifest\n",
+      "caption-check.md": "# Caption Check\n",
+      "loudness-check.md": "# Loudness Check\n",
+      "delivery-readiness.md": "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+      "publish-metadata-review.md": "# Publication Metadata Review\n\n- Publication metadata status: READY TO SCHEDULE\n- Ready to schedule: yes\n",
+      "title-check.md": "# Title Check\n",
+      "thumbnail-check.md": "# Thumbnail Check\n",
+      "description-check.md": "# Description Check\n",
+      "chapters-check.md": "# Chapters Check\n",
+      "schedule-check.md": "# Schedule Check\n",
+    })
+  );
+
+  makeRun(
+    "2026-05-06-archive-ready",
+    baseFiles({
+      "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+      "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
+      "takes-log.md": "# Takes Log\n",
+      "missing-shot-tracker.md": "# Missing Shot Tracker\n",
+      "screen-recording-checklist.md": "# Screen Recording Checklist\n",
+      "audio-capture-checklist.md": "# Audio Capture Checklist\n",
+      "rough-cut-watch-notes.md": "# Rough-Cut Watch Notes\n",
+      "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
+      "pickup-list.md": "# Pickup List\n",
+      "edit-fix-list.md": "# Edit Fix List\n",
+      "final-watch-notes.md": "# Final Watch Notes\n",
+      "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
+      "publication-blockers.md": "# Publication Blockers\n",
+      "export-checklist.md": "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+      "master-file-manifest.md": "# Master File Manifest\n",
+      "caption-check.md": "# Caption Check\n",
+      "loudness-check.md": "# Loudness Check\n",
+      "delivery-readiness.md": "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+      "publish-metadata-review.md": "# Publication Metadata Review\n\n- Publication metadata status: READY TO SCHEDULE\n- Ready to schedule: yes\n",
+      "title-check.md": "# Title Check\n",
+      "thumbnail-check.md": "# Thumbnail Check\n",
+      "description-check.md": "# Description Check\n",
+      "chapters-check.md": "# Chapters Check\n",
+      "schedule-check.md": "# Schedule Check\n",
+      "archive-manifest.md": "# Archive Manifest\n\n- Archive manifest status: READY TO ARCHIVE\n- Ready to archive: yes\n",
+      "archive-source-files.md": "# Archive Source Files\n",
+      "archive-assets-manifest.md": "# Archive Assets Manifest\n",
+      "archive-export-manifest.md": "# Archive Export Manifest\n",
+      "reusable-clips-manifest.md": "# Reusable Clips Manifest\n",
+      "archive-blockers.md": "# Archive Blockers\n",
+    })
+  );
+
+  makeRun(
+    "2026-05-07-upstream-blocked",
+    baseFiles({
+      "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: BLOCKED\n",
+      "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: BLOCKED\n",
+      "final-review.md": "# Final Review\n\n- Publish ready: no\n",
+      "repurposing-plan.md": "# Repurposing Plan\n\n- Repurposing status: BLOCKED\n",
+    })
+  );
+
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  const byRunId = Object.fromEntries(index.runs.map((run) => [run.runId, run]));
+
+  assert.equal(byRunId["2026-05-01-production-ready"].status, "Ready for capture checklist");
+  assert.equal(
+    byRunId["2026-05-01-production-ready"].nextRecommendedCommand,
+    "node scripts/package-run-capture-checklist.js package-runs/2026-05-01-production-ready"
+  );
+  assert.equal(byRunId["2026-05-02-capture-ready"].status, "Ready for rough cut");
+  assert.equal(
+    byRunId["2026-05-02-capture-ready"].nextRecommendedCommand,
+    "node scripts/package-run-rough-cut-review.js package-runs/2026-05-02-capture-ready"
+  );
+  assert.equal(byRunId["2026-05-03-final-ready"].status, "Ready to publish");
+  assert.equal(
+    byRunId["2026-05-03-final-ready"].nextRecommendedCommand,
+    "node scripts/package-run-export-checklist.js package-runs/2026-05-03-final-ready"
+  );
+  assert.equal(byRunId["2026-05-04-export-ready"].status, "Ready to upload");
+  assert.equal(
+    byRunId["2026-05-04-export-ready"].nextRecommendedCommand,
+    "node scripts/package-run-publication-metadata.js package-runs/2026-05-04-export-ready"
+  );
+  assert.equal(byRunId["2026-05-05-metadata-ready"].status, "Ready to schedule");
+  assert.equal(
+    byRunId["2026-05-05-metadata-ready"].nextRecommendedCommand,
+    "node scripts/package-run-archive-manifest.js package-runs/2026-05-05-metadata-ready"
+  );
+  assert.equal(byRunId["2026-05-06-archive-ready"].status, "Ready to archive");
+  assert.equal(
+    byRunId["2026-05-06-archive-ready"].nextRecommendedCommand,
+    "node scripts/package-run-repurpose.js package-runs/2026-05-06-archive-ready"
+  );
+  assert.equal(byRunId["2026-05-07-upstream-blocked"].status, "Needs production planning");
+  assert.equal(byRunId["2026-05-07-upstream-blocked"].workflowBucket, "Needs production planning");
 });
 
 test("package runs index recommends deterministic next local commands", () => {

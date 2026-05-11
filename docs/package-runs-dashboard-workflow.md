@@ -70,6 +70,11 @@ script-structure.md
 final-script.md
 production-plan.md
 production-blockers.md
+capture-checklist.md
+takes-log.md
+missing-shot-tracker.md
+screen-recording-checklist.md
+audio-capture-checklist.md
 rough-cut-watch-notes.md
 rough-cut-review.md
 pickup-list.md
@@ -77,6 +82,23 @@ edit-fix-list.md
 final-watch-notes.md
 final-review.md
 publication-blockers.md
+export-checklist.md
+master-file-manifest.md
+caption-check.md
+loudness-check.md
+delivery-readiness.md
+publish-metadata-review.md
+title-check.md
+thumbnail-check.md
+description-check.md
+chapters-check.md
+schedule-check.md
+archive-manifest.md
+archive-source-files.md
+archive-assets-manifest.md
+archive-export-manifest.md
+reusable-clips-manifest.md
+archive-blockers.md
 capture-verification-note.md
 capture-result-note.md
 capture-transcript.md
@@ -185,6 +207,20 @@ The status is the highest completed workflow milestone:
 - `Ready to shoot`: all Production Prep artifacts exist, Creator QA is `PASS`
   or `not run`, and Creator QA has no blocking status
 
+After the older Production Prep milestone, the index also reads conservative
+gate text from the dedicated package-run tools. It uses the first unmet gate as
+the run status, so downstream smoke artifacts cannot make an earlier blocked
+stage look ready:
+
+- `Needs production planning` / `Ready for capture checklist`
+- `Needs capture` / `Ready for rough cut`
+- `Needs rough-cut review` / `Ready for second cut`
+- `Needs final review` / `Ready to publish`
+- `Needs export check` / `Ready to upload`
+- `Needs publication metadata` / `Ready to schedule`
+- `Needs archive data` / `Ready to archive`
+- `Needs repurposing approval` / `Ready to cut shorts`
+
 ## Daily Filters
 
 The dashboard groups runs into daily workflow filters:
@@ -215,6 +251,27 @@ The dashboard groups runs into daily workflow filters:
 - `QA not run`: all Production Prep artifacts exist, but Creator QA has not run
 - `Ready to shoot`: all Production Prep artifacts exist and Creator QA is
   `PASS`, with no blocking Evidence Gate status
+- `Needs production planning`: `production-plan.md` exists but does not say
+  `Shoot-readiness status: READY TO SHOOT`
+- `Needs capture checklist`: production planning is ready, but capture
+  execution artifacts have not been created
+- `Needs capture`: capture artifacts exist, but the capture checklist is not
+  `READY FOR ROUGH CUT`
+- `Needs rough-cut review`: capture is ready or rough-cut artifacts exist, but
+  the rough-cut review is not ready for second cut
+- `Needs final review`: rough-cut review is ready or final-review artifacts
+  exist, but final review is not publish-ready
+- `Needs export check`: final review is publish-ready, but export/mastering is
+  missing or not ready to upload
+- `Needs publication metadata`: export is ready, but publication metadata is
+  missing or not ready to schedule
+- `Needs archive manifest`: publication metadata is ready, but archive data is
+  missing or not ready to archive
+- `Needs repurposing approval`: archive is ready or repurposing artifacts
+  exist, but shorts are not ready to cut
+- `Ready to archive`: publication/export metadata are complete enough for the
+  archive manifest tool to run
+- `Ready to cut shorts`: repurposing gate is ready
 
 ## Recommended Commands
 
@@ -225,8 +282,14 @@ exact command:
 node scripts/package-engine-new-outline.js package-runs/YYYY-MM-DD-topic-slug
 node scripts/package-engine-new-script.js package-runs/YYYY-MM-DD-topic-slug
 node scripts/package-run-production-plan.js package-runs/YYYY-MM-DD-topic-slug
+node scripts/package-run-capture-checklist.js package-runs/YYYY-MM-DD-topic-slug
 node scripts/package-engine-new-production.js package-runs/YYYY-MM-DD-topic-slug
 node scripts/package-run-rough-cut-review.js package-runs/YYYY-MM-DD-topic-slug
+node scripts/package-run-final-review.js package-runs/YYYY-MM-DD-topic-slug
+node scripts/package-run-export-checklist.js package-runs/YYYY-MM-DD-topic-slug
+node scripts/package-run-publication-metadata.js package-runs/YYYY-MM-DD-topic-slug
+node scripts/package-run-archive-manifest.js package-runs/YYYY-MM-DD-topic-slug
+node scripts/package-run-repurpose.js package-runs/YYYY-MM-DD-topic-slug
 node scripts/package-run-creator-qa.js package-runs/YYYY-MM-DD-topic-slug
 ```
 
