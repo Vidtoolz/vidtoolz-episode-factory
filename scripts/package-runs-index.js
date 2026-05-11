@@ -12,6 +12,11 @@ const DETECTED_FILES = [
   "selected-package.json",
   "selected-package.md",
   "research-pack.md",
+  "research-evidence.md",
+  "source-support-map.md",
+  "proof-capture-plan.md",
+  "research-objections.md",
+  "research-sufficiency-review.md",
   "outline-prompt.md",
   "final-outline.md",
   "script-prompt.md",
@@ -240,6 +245,7 @@ function readyYes(markdown = "", label = "Ready") {
 }
 
 function readLifecycleGate(runDir, files = {}) {
+  const researchPack = readOptionalText(runDir, "research-pack.md");
   const productionPlan = readOptionalText(runDir, "production-plan.md");
   const captureChecklist = readOptionalText(runDir, "capture-checklist.md");
   const roughCutReview = readOptionalText(runDir, "rough-cut-review.md");
@@ -251,6 +257,7 @@ function readLifecycleGate(runDir, files = {}) {
   const repurposingPlan = readOptionalText(runDir, "repurposing-plan.md");
 
   return {
+    researchGateStatus: gateStatus(researchPack, "Status"),
     productionPlanStatus: gateStatus(productionPlan, "Shoot-readiness status") || gateStatus(productionPlan),
     captureStatus: gateStatus(captureChecklist, "Capture checklist status") || gateStatus(captureChecklist),
     readyForRoughCut: readyYes(captureChecklist, "Ready for rough cut"),
@@ -430,6 +437,9 @@ function nextRecommendedCommand(status, runPath, creatorQaStatus = "not run", ev
 
 function nextRecommendedCommandForRun(run = {}) {
   const gate = run.lifecycleGate || {};
+  if (run.files && run.files.research_pack && ["PARTIAL", "BLOCKED", "NEEDS RESEARCH"].includes(gate.researchGateStatus)) {
+    return `node scripts/package-run-research-evidence.js ${run.path || "package-runs/YYYY-MM-DD-topic-slug"}`;
+  }
   if (run.status === "Needs production planning" && gate.productionPlanStatus === "NEEDS SCRIPT APPROVAL") {
     return `node scripts/package-run-script-review.js ${run.path || "package-runs/YYYY-MM-DD-topic-slug"}`;
   }
@@ -625,7 +635,7 @@ function scanRun(runDir, repoRoot = process.cwd()) {
     evidenceGate,
     lifecycleGate,
     nextExpectedFile: nextExpectedFile(status),
-    nextRecommendedCommand: nextRecommendedCommandForRun({ status, path: runPath, creatorQaStatus, evidenceGate, lifecycleGate }),
+    nextRecommendedCommand: nextRecommendedCommandForRun({ status, path: runPath, creatorQaStatus, evidenceGate, lifecycleGate, files }),
     updatedAt: latestMtimeIso(runDir, DETECTED_FILES),
     files,
   };

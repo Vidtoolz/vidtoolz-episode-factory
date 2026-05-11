@@ -11,6 +11,7 @@ const packageOutlineScript = require("../scripts/package-engine-new-outline.js")
 const packageScriptPrepScript = require("../scripts/package-engine-new-script.js");
 const packageProductionPrepScript = require("../scripts/package-engine-new-production.js");
 const packageResearchPackScript = require("../scripts/package-run-research-pack.js");
+const packageResearchEvidenceScript = require("../scripts/package-run-research-evidence.js");
 const packageScriptStructureScript = require("../scripts/package-run-script-structure.js");
 const packageScriptReviewScript = require("../scripts/package-run-script-review.js");
 const packageProductionPlanScript = require("../scripts/package-run-production-plan.js");
@@ -4850,6 +4851,168 @@ test("package run research pack preserves manual edits unless overwrite is expli
   const overwritten = captureConsole(() => packageResearchPackScript.main([runDir, "--overwrite"]));
   assert.equal(overwritten.result, 0);
   assert.match(fs.readFileSync(packPath, "utf8"), /Manual Preserve Test/);
+});
+
+test("research evidence help works", () => {
+  const output = captureConsole(() => packageResearchEvidenceScript.main(["--help"]));
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /package-run-research-evidence\.js/);
+  assert.match(output.stdout.join("\n"), /--overwrite/);
+});
+
+test("research evidence blocks missing selected package", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-missing-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-missing");
+  fs.mkdirSync(runDir, { recursive: true });
+
+  const output = captureConsole(() => packageResearchEvidenceScript.main([runDir]));
+  const review = fs.readFileSync(path.join(runDir, "research-sufficiency-review.md"), "utf8");
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /research evidence: BLOCKED/);
+  assert.match(review, /Research sufficiency status: BLOCKED/);
+  assert.match(review, /selected-package\.json or selected-package\.md is missing/);
+});
+
+test("research evidence placeholder rows do not pass", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-placeholder-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-placeholder");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Placeholder Evidence" } }));
+
+  const output = captureConsole(() => packageResearchEvidenceScript.main([runDir]));
+  const evaluation = packageResearchEvidenceScript.evaluateResearchEvidence(runDir);
+
+  assert.equal(output.result, 0);
+  assert.equal(evaluation.status, "NEEDS EVIDENCE");
+  assert.equal(evaluation.sourceCount, 0);
+  assert.equal(evaluation.proofCount, 0);
+  assert.equal(evaluation.objectionCount, 0);
+});
+
+function writeConcreteResearchEvidence(runDir, approval = "") {
+  fs.writeFileSync(
+    path.join(runDir, "source-support-map.md"),
+    `# Source Support Map
+
+| source/reference | claim supported | evidence type | reliability note | status |
+| --- | --- | --- | --- | --- |
+| local-notes/resolve-test-log.md | Playback lag diagnosis needs source media and timeline context. | local test note | Human-captured local project observation. | closed |
+| docs/creator-comments-summary.md | Solo creators confuse cache, disk, and codec bottlenecks. | local research note | Summarized from local creator notes. | closed |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "proof-capture-plan.md"),
+    `# Proof Capture Plan
+
+| proof item | what it proves | local capture method | file/app/source | status |
+| --- | --- | --- | --- | --- |
+| Resolve timeline playback before and after cache toggle | Shows whether the suspected bottleneck changes playback. | Screen-record Resolve timeline and system monitor. | DaVinci Resolve local project | closed |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-objections.md"),
+    `# Research Objections
+
+| objection/counterexample | why it matters | evidence needed | response plan | status |
+| --- | --- | --- | --- | --- |
+| Playback lag may be caused by unsupported media rather than settings. | Prevents a misleading one-size-fits-all fix. | Show media info and timeline settings. | Frame script as diagnosis, not universal fix. | closed |
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-evidence.md"),
+    `# Research Evidence
+
+Concrete local evidence is listed in the support map and proof plan.
+
+${approval}
+`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    `# Research Sufficiency Review
+
+| blocker | why it matters | required fix | status |
+| --- | --- | --- | --- |
+| No blockers detected. | Evidence is ready for review. | Keep sources attached. | closed |
+`,
+    "utf8"
+  );
+}
+
+test("research evidence concrete evidence without approval is ready for review not pass", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-ready");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Ready Evidence" } }));
+  writeConcreteResearchEvidence(runDir);
+
+  const evaluation = packageResearchEvidenceScript.evaluateResearchEvidence(runDir);
+
+  assert.equal(evaluation.status, "READY FOR RESEARCH REVIEW");
+  assert.equal(evaluation.approval, false);
+  assert.equal(evaluation.sourceCount, 2);
+  assert.equal(evaluation.proofCount, 1);
+  assert.equal(evaluation.objectionCount, 1);
+});
+
+test("research evidence exact approval can pass only with concrete evidence", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-pass-"));
+  const passDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-pass");
+  const approvalOnlyDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-approval-only");
+  fs.mkdirSync(passDir, { recursive: true });
+  fs.mkdirSync(approvalOnlyDir, { recursive: true });
+  fs.writeFileSync(path.join(passDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Pass Evidence" } }));
+  fs.writeFileSync(path.join(approvalOnlyDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Approval Only" } }));
+  writeConcreteResearchEvidence(passDir, "Research approval: PASS");
+  fs.writeFileSync(path.join(approvalOnlyDir, "research-evidence.md"), "# Evidence\n\nResearch approval: PASS\n", "utf8");
+
+  assert.equal(packageResearchEvidenceScript.evaluateResearchEvidence(passDir).status, "PASS");
+  assert.notEqual(packageResearchEvidenceScript.evaluateResearchEvidence(approvalOnlyDir).status, "PASS");
+});
+
+test("research evidence preserves existing artifacts unless overwrite is explicit", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-preserve-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-preserve");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Preserve Evidence" } }));
+  const evidencePath = path.join(runDir, "research-evidence.md");
+  fs.writeFileSync(evidencePath, "# Human Evidence\n\nKeep this.\n", "utf8");
+
+  packageResearchEvidenceScript.runResearchEvidence(runDir);
+  assert.equal(fs.readFileSync(evidencePath, "utf8"), "# Human Evidence\n\nKeep this.\n");
+
+  packageResearchEvidenceScript.runResearchEvidence(runDir, { overwrite: true });
+  assert.match(fs.readFileSync(evidencePath, "utf8"), /Tool: package-run-research-evidence\.js/);
+});
+
+test("package run doctor routes partial research to research evidence tool", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-doctor-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-doctor");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Doctor Research Route" } }));
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PARTIAL\n- Reason: sources missing\n",
+    "utf8"
+  );
+  const before = fs.readdirSync(runDir).sort();
+
+  const report = packageRunDoctorScript.buildDoctorReport(runDir);
+  const after = fs.readdirSync(runDir).sort();
+
+  assert.deepEqual(after, before);
+  assert.equal(report.lifecycleGate.researchGateStatus, "PARTIAL");
+  assert.match(report.nextRecommendedCommand, /package-run-research-evidence\.js/);
+});
+
+test("verify script checks research evidence syntax", () => {
+  const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
+  assert.match(verify, /node --check scripts\/package-run-research-evidence\.js/);
 });
 
 test("package runs index classifies workflow status from detected files", () => {

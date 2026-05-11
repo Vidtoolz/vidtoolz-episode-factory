@@ -1,0 +1,49 @@
+# Package Run Research Evidence
+
+`scripts/package-run-research-evidence.js` is a local-first intake tool for
+human-provided evidence that supports a package run's research pack.
+
+It does not search the web, call YouTube APIs, invent sources, rewrite
+`research-pack.md`, upload, publish, archive, commit, push, update Hermes,
+update project state, or create scheduled jobs.
+
+## Usage
+
+```sh
+node scripts/package-run-research-evidence.js package-runs/YYYY-MM-DD-topic-slug
+node scripts/package-run-research-evidence.js package-runs/YYYY-MM-DD-topic-slug --overwrite
+node scripts/package-run-research-evidence.js --help
+```
+
+## Generated Artifacts
+
+- `research-evidence.md`
+- `source-support-map.md`
+- `proof-capture-plan.md`
+- `research-objections.md`
+- `research-sufficiency-review.md`
+
+Existing files are preserved unless `--overwrite` is explicit.
+
+## Gate Logic
+
+The tool reports:
+
+- `BLOCKED` when no selected package exists.
+- `NEEDS EVIDENCE` when source, proof, objection, or approval evidence is
+  missing, placeholder, TODO, vague, or blocked.
+- `READY FOR RESEARCH REVIEW` when concrete source support, local proof, and
+  objections exist, but exact research approval is missing.
+- `PASS` only when exact approval exists and the evidence is complete.
+
+`PASS` requires:
+
+- `Research approval: PASS` or `Manual research approval: PASS`
+- at least 2 concrete source references
+- at least 1 local production-proof item
+- at least 1 objection or counterexample
+- no open or blocked rows in `research-sufficiency-review.md`
+
+The tool records evidence readiness. A human still needs to decide whether to
+update `research-pack.md` or move the approval marker into the research pack's
+Research Sufficiency Gate for downstream script-structure approval.

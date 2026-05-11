@@ -166,6 +166,19 @@ the `Research Sufficiency Gate`; `PARTIAL`, `BLOCKED`, missing, or unreadable
 research stays marked as not ready to draft unless a human adds an explicit
 `PASS` or equivalent approval marker.
 
+When the research pack is partial, collect human-provided evidence locally:
+
+```sh
+node scripts/package-run-research-evidence.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `research-evidence.md`, `source-support-map.md`,
+`proof-capture-plan.md`, `research-objections.md`, and
+`research-sufficiency-review.md`. It does not call external APIs or invent
+sources. The tool can mark evidence `READY FOR RESEARCH REVIEW`, but `PASS`
+requires concrete source/proof/objection rows and an exact research approval
+marker.
+
 Create the standalone script-structure gate artifact:
 
 ```sh

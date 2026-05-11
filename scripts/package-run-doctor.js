@@ -120,6 +120,7 @@ function firstBlockerReason(run = {}) {
 
 function lifecycleGateSummary(gate = {}) {
   return {
+    researchGateStatus: gate.researchGateStatus || "",
     productionPlanStatus: gate.productionPlanStatus || "",
     captureStatus: gate.captureStatus || "",
     readyForRoughCut: Boolean(gate.readyForRoughCut),

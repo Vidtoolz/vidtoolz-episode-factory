@@ -241,7 +241,11 @@ The dashboard groups runs into daily workflow filters:
 - `Needs research pack`: selected package exists, but `research-pack.md` does
   not exist yet
 - `Needs outline`: `research-pack.md` exists, but final outline is not complete.
-  Use `node scripts/package-run-script-structure.js package-runs/<run-id>` to
+  If the Research Sufficiency Gate is `PARTIAL` or `BLOCKED`, run
+  `node scripts/package-run-research-evidence.js package-runs/<run-id>` to
+  collect local human-provided source, proof, and objection evidence before
+  rerunning script structure or script review. Use
+  `node scripts/package-run-script-structure.js package-runs/<run-id>` to
   inspect whether the research gate is actually ready to draft.
 - `Needs script`: final outline exists, but final script is not complete
 - `Needs production prep`: final script exists, but full Production Prep is not complete.
