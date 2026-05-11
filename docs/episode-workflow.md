@@ -23,7 +23,8 @@ Episode Factory is designed for a solo YouTube creator who needs to move from ro
 13. Validate publication metadata before any scheduling or publishing action. It creates `publish-metadata-review.md`, `title-check.md`, `thumbnail-check.md`, `description-check.md`, `chapters-check.md`, and `schedule-check.md`.
 14. Plan Shorts and platform variants only after final review and publication blockers are clear.
 15. Move to `Published` after the video is live.
-16. Move to `Archived` when the episode is no longer active but should remain available for reference.
+16. Record archive readiness after publication evidence exists. The archive manifest tool creates `archive-manifest.md`, `archive-source-files.md`, `archive-assets-manifest.md`, `archive-export-manifest.md`, `reusable-clips-manifest.md`, and `archive-blockers.md`.
+17. Move to `Archived` when the episode is no longer active but should remain available for reference.
 
 ## Detail Fields
 

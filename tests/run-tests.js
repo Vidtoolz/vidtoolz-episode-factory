@@ -20,6 +20,7 @@ const packageFinalReviewScript = require("../scripts/package-run-final-review.js
 const packageRepurposeScript = require("../scripts/package-run-repurpose.js");
 const packageExportChecklistScript = require("../scripts/package-run-export-checklist.js");
 const packagePublicationMetadataScript = require("../scripts/package-run-publication-metadata.js");
+const packageArchiveManifestScript = require("../scripts/package-run-archive-manifest.js");
 const packageRunCreatorQaScript = require("../scripts/package-run-creator-qa.js");
 const packageRunsIndexScript = require("../scripts/package-runs-index.js");
 const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashboard-launch.js");
@@ -3702,6 +3703,268 @@ test("verify script checks publication metadata syntax", () => {
   assert.match(verify, /node --check scripts\/package-run-publication-metadata\.js/);
 });
 
+function writeArchiveBaseRun(runDir, options = {}) {
+  writePublicationMetadataBaseRun(runDir, {
+    finalReview: options.finalReview,
+    finalReviewStatus: options.finalReviewStatus,
+    publishReady: options.publishReady,
+    gateStatus: options.gateStatus,
+    openPublicationBlocker: options.openPublicationBlocker,
+    exportReady: options.exportReady,
+  });
+  if (options.exportReady === false) {
+    fs.writeFileSync(path.join(runDir, "delivery-readiness.md"), "# Delivery Readiness\n\n- Export checklist status: NEEDS EXPORT CHECK\n- Ready to upload: no\n");
+  }
+  if (options.metadataReady !== false) {
+    fs.writeFileSync(
+      path.join(runDir, "publish-metadata-review.md"),
+      "# Publish Metadata Review\n\n- Publication metadata status: READY TO SCHEDULE\n- Ready to schedule: yes\n"
+    );
+  } else {
+    fs.writeFileSync(
+      path.join(runDir, "publish-metadata-review.md"),
+      "# Publish Metadata Review\n\n- Publication metadata status: NEEDS METADATA\n- Ready to schedule: no\n"
+    );
+  }
+  if (options.publicationEvidence !== false) {
+    fs.appendFileSync(path.join(runDir, "publish-pack.md"), "\nPublication status: PUBLISHED\nPublished URL: https://youtube.example/watch?v=vidtoolz\n");
+  }
+}
+
+function writeArchiveReadyArtifacts(runDir, options = {}) {
+  const checksum = options.checksum || "waived - local archive volume is manually verified";
+  const manifestLines = [
+    "# Archive Manifest",
+    "",
+    "- Final master export: exports/final-master.mp4",
+    "- Source project path: projects/vidtoolz-package-run",
+    "- Editing project file: projects/vidtoolz-package-run/project.drp",
+    "- Thumbnail file: thumbnails/final.png",
+    "- Caption file: captions/final.srt",
+    "- Publish metadata: publish-pack.md",
+    "- Reusable clips decision: none - no standalone clips identified because the episode depends on full context",
+  ];
+  if (options.topLevelChecksum !== false) {
+    manifestLines.push(`- Checksum/status: ${checksum}`);
+  }
+  manifestLines.push("", "Archive approval: PASS", "");
+  fs.writeFileSync(
+    path.join(runDir, "archive-manifest.md"),
+    manifestLines.join("\n")
+  );
+  fs.writeFileSync(
+    path.join(runDir, "archive-source-files.md"),
+    `# Archive Source Files\n\n| source item | path/reference | why preserve | checksum/status | archive status |\n| --- | --- | --- | --- | --- |\n| editing project | projects/vidtoolz-package-run/project.drp | Preserve edit state. | ${checksum} | closed |\n| project folder | projects/vidtoolz-package-run | Preserve source. | ${checksum} | closed |\n`
+  );
+  fs.writeFileSync(
+    path.join(runDir, "archive-assets-manifest.md"),
+    "# Archive Assets Manifest\n\n| asset | source/path | usage in video | rights/provenance note | archive status |\n| --- | --- | --- | --- | --- |\n| thumbnails | thumbnails/final.png | Upload thumbnail. | Original local design. | closed |\n| captions/subtitles | captions/final.srt | Accessibility. | Manual export. | closed |\n"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "archive-export-manifest.md"),
+    `# Archive Export Manifest\n\n| export item | path/reference | format/details | checksum/status | archive status |\n| --- | --- | --- | --- | --- |\n| final master export | exports/final-master.mp4 | H.264 MP4 4K | ${checksum} | closed |\n| publish metadata | publish-pack.md | title description chapters schedule | recorded | closed |\n`
+  );
+  fs.writeFileSync(
+    path.join(runDir, "reusable-clips-manifest.md"),
+    "# Reusable Clips Manifest\n\n| reusable clip/moment | source/timecode | reuse purpose | rights/context risk | status |\n| --- | --- | --- | --- | --- |\n| none - no standalone clips identified because the episode depends on full context | n/a | archive decision | no reuse risk | closed |\n"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "archive-blockers.md"),
+    "# Archive Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Archive readiness gates passed. | Keep archive evidence. | closed |\n"
+  );
+}
+
+function archiveManifestText(runDir) {
+  return fs.readFileSync(path.join(runDir, "archive-manifest.md"), "utf8");
+}
+
+test("archive manifest help works", () => {
+  const output = captureConsole(() => packageArchiveManifestScript.main(["--help"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /package-run-archive-manifest\.js/);
+});
+
+test("archive manifest blocks missing final review", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-missing-final-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-missing-final");
+  writeArchiveBaseRun(runDir, { finalReview: false });
+
+  assert.equal(packageArchiveManifestScript.main([runDir]), 0);
+
+  assert.match(archiveManifestText(runDir), /Archive manifest status: BLOCKED/);
+  assert.match(archiveManifestText(runDir), /final-review\.md is missing/);
+});
+
+test("archive manifest blocks final review blocked", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-final-blocked-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-final-blocked");
+  writeArchiveBaseRun(runDir, { finalReviewStatus: "BLOCKED", publishReady: "no", gateStatus: "BLOCKED" });
+
+  assert.equal(packageArchiveManifestScript.main([runDir]), 0);
+
+  assert.match(archiveManifestText(runDir), /Archive manifest status: BLOCKED/);
+  assert.match(archiveManifestText(runDir), /BLOCKED/);
+});
+
+test("archive manifest blocks open publication blockers", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-open-publication-blockers-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-open-publication-blockers");
+  writeArchiveBaseRun(runDir, { openPublicationBlocker: true });
+
+  assert.equal(packageArchiveManifestScript.main([runDir]), 0);
+
+  assert.match(archiveManifestText(runDir), /publication-blockers\.md has open or blocked rows/);
+});
+
+test("archive manifest blocks publish metadata not ready when present", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-metadata-blocked-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-metadata-blocked");
+  writeArchiveBaseRun(runDir, { metadataReady: false });
+
+  assert.equal(packageArchiveManifestScript.main([runDir]), 0);
+
+  assert.match(archiveManifestText(runDir), /publish-metadata-review\.md is NEEDS METADATA/);
+});
+
+test("archive manifest blocks export readiness not ready when present", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-export-blocked-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-export-blocked");
+  writeArchiveBaseRun(runDir, { exportReady: false });
+
+  assert.equal(packageArchiveManifestScript.main([runDir]), 0);
+
+  assert.match(archiveManifestText(runDir), /Export readiness is NEEDS EXPORT CHECK/);
+});
+
+test("archive manifest blocks missing publication evidence", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-no-publication-evidence-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-no-publication-evidence");
+  writeArchiveBaseRun(runDir, { publicationEvidence: false });
+
+  assert.equal(packageArchiveManifestScript.main([runDir]), 0);
+
+  assert.match(archiveManifestText(runDir), /publication evidence is missing/);
+});
+
+test("archive manifest creates starter artifacts and needs archive data", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-needs-data-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-needs-data");
+  writeArchiveBaseRun(runDir);
+
+  assert.equal(packageArchiveManifestScript.main([runDir]), 0);
+  const manifest = archiveManifestText(runDir);
+
+  assert.match(manifest, /Archive manifest status: NEEDS ARCHIVE DATA/);
+  packageArchiveManifestScript.TARGET_FILES.forEach((filename) => {
+    assert.equal(fs.existsSync(path.join(runDir, filename)), true);
+  });
+});
+
+test("archive manifest placeholder archive data does not pass", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-placeholder-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-placeholder");
+  writeArchiveBaseRun(runDir);
+  packageArchiveManifestScript.TARGET_FILES.forEach((filename) => fs.writeFileSync(path.join(runDir, filename), `# ${filename}\n\nTODO\n`));
+  fs.appendFileSync(path.join(runDir, "archive-manifest.md"), "\nArchive approval: PASS\n");
+
+  assert.equal(packageArchiveManifestScript.main([runDir, "--overwrite"]), 0);
+
+  assert.match(archiveManifestText(runDir), /Archive manifest status: NEEDS ARCHIVE DATA/);
+  assert.match(archiveManifestText(runDir), /final export\/master file path is missing/);
+});
+
+test("archive approval alone does not override missing required archive data", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-approval-alone-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-approval-alone");
+  writeArchiveBaseRun(runDir);
+  fs.writeFileSync(path.join(runDir, "archive-manifest.md"), "# Archive Manifest\n\nArchive approval: PASS\n");
+
+  assert.equal(packageArchiveManifestScript.main([runDir, "--overwrite"]), 0);
+
+  assert.match(archiveManifestText(runDir), /Archive manifest status: NEEDS ARCHIVE DATA/);
+  assert.match(archiveManifestText(runDir), /source project path is missing/);
+});
+
+test("archive manifest can mark ready to archive with real data and exact approval", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-ready");
+  writeArchiveBaseRun(runDir);
+  writeArchiveReadyArtifacts(runDir);
+
+  const output = captureConsole(() => packageArchiveManifestScript.main([runDir, "--overwrite"]));
+  const manifest = archiveManifestText(runDir);
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /archive manifest: READY TO ARCHIVE/);
+  assert.match(manifest, /Archive manifest status: READY TO ARCHIVE/);
+  assert.match(manifest, /Ready to archive: yes/);
+  packageArchiveManifestScript.TARGET_FILES.forEach((filename) => {
+    const artifact = fs.readFileSync(path.join(runDir, filename), "utf8");
+    assert.doesNotMatch(artifact, /\bTODO\b/);
+    assert.doesNotMatch(artifact, /\|\s*(?:open|blocked)\s*\|/i);
+  });
+});
+
+test("archive manifest accepts checksum waiver evidence from dedicated tables", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-table-checksum-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-table-checksum");
+  writeArchiveBaseRun(runDir);
+  writeArchiveReadyArtifacts(runDir, {
+    topLevelChecksum: false,
+    checksum: "checksum waived - local project archive only",
+  });
+
+  const output = captureConsole(() => packageArchiveManifestScript.main([runDir, "--overwrite"]));
+  const manifest = archiveManifestText(runDir);
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /archive manifest: READY TO ARCHIVE/);
+  assert.match(manifest, /Archive manifest status: READY TO ARCHIVE/);
+  assert.match(manifest, /Ready to archive: yes/);
+  assert.match(manifest, /checksum waived - local project archive only/);
+  packageArchiveManifestScript.TARGET_FILES.forEach((filename) => {
+    const artifact = fs.readFileSync(path.join(runDir, filename), "utf8");
+    assert.doesNotMatch(artifact, /\bTODO\b/);
+    assert.doesNotMatch(artifact, /\|\s*(?:open|blocked)\s*\|/i);
+  });
+});
+
+test("archive manifest preserves existing artifacts unless overwrite is explicit", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-preserve-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-preserve");
+  writeArchiveBaseRun(runDir);
+  const manifestPath = path.join(runDir, "archive-manifest.md");
+  fs.writeFileSync(manifestPath, "# Manual Archive Manifest\n\nKeep this.\n");
+
+  const output = captureConsole(() => packageArchiveManifestScript.main([runDir]));
+
+  assert.equal(output.result, 0);
+  assert.equal(fs.readFileSync(manifestPath, "utf8"), "# Manual Archive Manifest\n\nKeep this.\n");
+  assert.match(output.stdout.join("\n"), /unchanged: .*archive-manifest\.md/);
+});
+
+test("archive manifest overwrite replaces generated artifacts", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-overwrite-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-overwrite");
+  writeArchiveBaseRun(runDir);
+  const sourcePath = path.join(runDir, "archive-source-files.md");
+  fs.writeFileSync(sourcePath, "# Manual Source Manifest\n\nReplace me.\n");
+
+  const output = captureConsole(() => packageArchiveManifestScript.main([runDir, "--overwrite"]));
+
+  assert.equal(output.result, 0);
+  assert.match(fs.readFileSync(sourcePath, "utf8"), /# Archive Source Files/);
+  assert.match(output.stdout.join("\n"), /overwritten: .*archive-source-files\.md/);
+});
+
+test("verify script checks archive manifest syntax", () => {
+  const verifyPath = path.join(__dirname, "..", "scripts", "verify.sh");
+  const verify = fs.readFileSync(verifyPath, "utf8");
+
+  assert.match(verify, /node --check scripts\/package-run-archive-manifest\.js/);
+});
+
 function writeRepurposeBaseRun(runDir, options = {}) {
   fs.mkdirSync(runDir, { recursive: true });
   fs.writeFileSync(
@@ -4787,6 +5050,12 @@ test("package runs index scans package-runs folders and writes index json", () =
     "description-check.md",
     "chapters-check.md",
     "schedule-check.md",
+    "archive-manifest.md",
+    "archive-source-files.md",
+    "archive-assets-manifest.md",
+    "archive-export-manifest.md",
+    "reusable-clips-manifest.md",
+    "archive-blockers.md",
     "production-brief.md",
     "shooting-plan.md",
     "b-roll-list.md",
@@ -4851,6 +5120,12 @@ test("package runs index scans package-runs folders and writes index json", () =
   assert.equal(byRunId["2026-05-02-ready"].files.description_check, true);
   assert.equal(byRunId["2026-05-02-ready"].files.chapters_check, true);
   assert.equal(byRunId["2026-05-02-ready"].files.schedule_check, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.archive_manifest, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.archive_source_files, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.archive_assets_manifest, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.archive_export_manifest, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.reusable_clips_manifest, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.archive_blockers, true);
   assert.equal(byRunId["2026-05-02-ready"].files.repurposing_plan, true);
   assert.equal(byRunId["2026-05-02-ready"].files.shorts_candidates, true);
   assert.equal(byRunId["2026-05-02-ready"].files.platform_variants, true);

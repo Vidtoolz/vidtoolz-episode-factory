@@ -298,6 +298,21 @@ archive, or create scheduled jobs. `READY TO SCHEDULE` requires final review and
 export readiness, clear publication blockers, complete title/thumbnail/
 description/chapters/schedule metadata, and an exact metadata approval marker.
 
+After publication evidence exists, record archive readiness:
+
+```sh
+node scripts/package-run-archive-manifest.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `archive-manifest.md`, `archive-source-files.md`,
+`archive-assets-manifest.md`, `archive-export-manifest.md`,
+`reusable-clips-manifest.md`, and `archive-blockers.md`. It does not upload,
+publish, archive, move, copy, delete, compress, checksum-scan folders, call
+external APIs, create Git operations, or create scheduled jobs. `READY TO
+ARCHIVE` requires publication evidence, clear upstream publication/export/
+metadata gates, concrete archive manifests, clear archive blockers, and an exact
+archive approval marker.
+
 After the long-form episode has final approval, create repurposing candidates:
 
 ```sh
