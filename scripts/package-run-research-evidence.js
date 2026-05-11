@@ -22,18 +22,26 @@ function usage() {
   return `Usage:
   node scripts/package-run-research-evidence.js package-runs/YYYY-MM-DD-topic-slug
   node scripts/package-run-research-evidence.js package-runs/YYYY-MM-DD-topic-slug --overwrite
-  node scripts/package-run-research-evidence.js --help`;
+  node scripts/package-run-research-evidence.js package-runs/YYYY-MM-DD-topic-slug --reset-evidence
+  node scripts/package-run-research-evidence.js --help
+
+Behavior:
+  default: create missing evidence files and preserve existing manual evidence
+  --overwrite: refresh research-sufficiency-review.md without wiping evidence
+  --reset-evidence: destructive starter reset for evidence input files`;
 }
 
 function parseArgs(argv = []) {
   const result = {
     runFolder: "",
     overwrite: false,
+    resetEvidence: false,
     help: false,
   };
   argv.forEach((arg) => {
     if (arg === "--help" || arg === "-h") result.help = true;
     else if (arg === "--overwrite" || arg === "--force") result.overwrite = true;
+    else if (arg === "--reset-evidence") result.resetEvidence = true;
     else if (!result.runFolder) result.runFolder = arg;
   });
   return result;
@@ -175,7 +183,7 @@ This file is for human-provided local evidence only. Do not paste unsourced clai
   };
 }
 
-function evaluateResearchEvidence(runDir) {
+function evaluateResearchEvidence(runDir, options = {}) {
   const selectedPresent = selectedPackageExists(runDir);
   const sourceMap = readIfExists(path.join(runDir, "source-support-map.md"));
   const proofPlan = readIfExists(path.join(runDir, "proof-capture-plan.md"));
@@ -187,7 +195,7 @@ function evaluateResearchEvidence(runDir) {
   const proofCount = concreteProofRows(proofPlan).length;
   const objectionCount = concreteObjectionRows(objections).length;
   const approval = APPROVAL_PATTERN.test(approvalText);
-  const openReviewRows = hasOpenReviewRows(review);
+  const openReviewRows = options.ignoreReviewRows ? false : hasOpenReviewRows(review);
   const concrete =
     selectedPresent && sourceCount >= 2 && proofCount >= 1 && objectionCount >= 1 && sourceMap && proofPlan && objections;
 
@@ -219,7 +227,11 @@ function evaluateResearchEvidence(runDir) {
 function buildReviewContent(runId, evaluation) {
   const blockerRows = evaluation.blockers.length
     ? evaluation.blockers
-        .map((blocker) => `| ${blocker} | Research cannot pass conservatively. | Resolve with concrete local evidence or exact approval where required. | blocked |`)
+        .map((blocker) => {
+          const approvalOnly = evaluation.status === "READY FOR RESEARCH REVIEW" && /^exact Research approval: PASS/.test(blocker);
+          const status = approvalOnly ? "review-needed" : "blocked";
+          return `| ${blocker} | Research cannot pass conservatively. | Resolve with concrete local evidence or exact approval where required. | ${status} |`;
+        })
         .join("\n")
     : "| No blockers detected. | Evidence and approval requirements are complete. | Keep source files available for review. | closed |";
   return `# Research Sufficiency Review
@@ -255,10 +267,10 @@ function runResearchEvidence(runDir, options = {}) {
   const writes = [];
   TARGET_FILES.filter((filename) => filename !== "research-sufficiency-review.md").forEach((filename) => {
     const filePath = path.join(runDir, filename);
-    writes.push({ filename, status: writeFileIfSafe(filePath, starters[filename], Boolean(options.overwrite)) });
+    writes.push({ filename, status: writeFileIfSafe(filePath, starters[filename], Boolean(options.resetEvidence)) });
   });
 
-  const evaluation = evaluateResearchEvidence(runDir);
+  const evaluation = evaluateResearchEvidence(runDir, { ignoreReviewRows: true });
   const reviewPath = path.join(runDir, "research-sufficiency-review.md");
   const reviewStatus = writeFileIfSafe(reviewPath, buildReviewContent(runId, evaluation), Boolean(options.overwrite));
   writes.push({ filename: "research-sufficiency-review.md", status: reviewStatus });
@@ -281,7 +293,7 @@ function main(argv = process.argv.slice(2)) {
     console.error(`Run folder not found: ${runDir}`);
     return 1;
   }
-  const result = runResearchEvidence(runDir, { overwrite: options.overwrite });
+  const result = runResearchEvidence(runDir, { overwrite: options.overwrite, resetEvidence: options.resetEvidence });
   result.writes.forEach((item) => console.log(`${item.status}: ${path.relative(repoRoot, path.join(runDir, item.filename)).replace(/\\/g, "/")}`));
   console.log(`research evidence: ${result.evaluation.status}`);
   console.log(`sources: ${result.evaluation.sourceCount}`);

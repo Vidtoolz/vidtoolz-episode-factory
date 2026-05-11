@@ -4858,6 +4858,7 @@ test("research evidence help works", () => {
   assert.equal(output.result, 0);
   assert.match(output.stdout.join("\n"), /package-run-research-evidence\.js/);
   assert.match(output.stdout.join("\n"), /--overwrite/);
+  assert.match(output.stdout.join("\n"), /--reset-evidence/);
 });
 
 test("research evidence blocks missing selected package", () => {
@@ -4975,7 +4976,7 @@ test("research evidence exact approval can pass only with concrete evidence", ()
   assert.notEqual(packageResearchEvidenceScript.evaluateResearchEvidence(approvalOnlyDir).status, "PASS");
 });
 
-test("research evidence preserves existing artifacts unless overwrite is explicit", () => {
+test("research evidence preserves existing evidence files even with overwrite", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-preserve-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-preserve");
   fs.mkdirSync(runDir, { recursive: true });
@@ -4987,7 +4988,59 @@ test("research evidence preserves existing artifacts unless overwrite is explici
   assert.equal(fs.readFileSync(evidencePath, "utf8"), "# Human Evidence\n\nKeep this.\n");
 
   packageResearchEvidenceScript.runResearchEvidence(runDir, { overwrite: true });
-  assert.match(fs.readFileSync(evidencePath, "utf8"), /Tool: package-run-research-evidence\.js/);
+  assert.equal(fs.readFileSync(evidencePath, "utf8"), "# Human Evidence\n\nKeep this.\n");
+});
+
+test("research evidence overwrite preserves concrete evidence and refreshes derived review", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-overwrite-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-overwrite");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Overwrite Evidence" } }));
+  writeConcreteResearchEvidence(runDir);
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    `# Research Sufficiency Review
+
+| blocker | why it matters | required fix | status |
+| --- | --- | --- | --- |
+| stale source blocker | Old generated review should be refreshed. | Re-run the tool. | blocked |
+`,
+    "utf8"
+  );
+  const sourceMapBefore = fs.readFileSync(path.join(runDir, "source-support-map.md"), "utf8");
+  const proofPlanBefore = fs.readFileSync(path.join(runDir, "proof-capture-plan.md"), "utf8");
+  const objectionsBefore = fs.readFileSync(path.join(runDir, "research-objections.md"), "utf8");
+  const evidenceBefore = fs.readFileSync(path.join(runDir, "research-evidence.md"), "utf8");
+
+  const result = packageResearchEvidenceScript.runResearchEvidence(runDir, { overwrite: true });
+  const review = fs.readFileSync(path.join(runDir, "research-sufficiency-review.md"), "utf8");
+
+  assert.equal(fs.readFileSync(path.join(runDir, "source-support-map.md"), "utf8"), sourceMapBefore);
+  assert.equal(fs.readFileSync(path.join(runDir, "proof-capture-plan.md"), "utf8"), proofPlanBefore);
+  assert.equal(fs.readFileSync(path.join(runDir, "research-objections.md"), "utf8"), objectionsBefore);
+  assert.equal(fs.readFileSync(path.join(runDir, "research-evidence.md"), "utf8"), evidenceBefore);
+  assert.equal(result.evaluation.status, "READY FOR RESEARCH REVIEW");
+  assert.match(review, /Research sufficiency status: READY FOR RESEARCH REVIEW/);
+  assert.doesNotMatch(review, /stale source blocker/);
+  assert.match(review, /review-needed/);
+});
+
+test("research evidence creates missing evidence files and reset requires explicit flag", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-evidence-reset-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-evidence-reset");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Reset Evidence" } }));
+
+  packageResearchEvidenceScript.runResearchEvidence(runDir);
+  assert.equal(fs.existsSync(path.join(runDir, "research-evidence.md")), true);
+  assert.equal(fs.existsSync(path.join(runDir, "source-support-map.md")), true);
+
+  writeConcreteResearchEvidence(runDir);
+  packageResearchEvidenceScript.runResearchEvidence(runDir, { overwrite: true });
+  assert.match(fs.readFileSync(path.join(runDir, "source-support-map.md"), "utf8"), /local-notes\/resolve-test-log\.md/);
+
+  packageResearchEvidenceScript.runResearchEvidence(runDir, { resetEvidence: true, overwrite: true });
+  assert.match(fs.readFileSync(path.join(runDir, "source-support-map.md"), "utf8"), /\| TODO \| TODO \| TODO \| TODO \| open \|/);
 });
 
 test("package run doctor routes partial research to research evidence tool", () => {

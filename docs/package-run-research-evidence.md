@@ -12,6 +12,7 @@ update project state, or create scheduled jobs.
 ```sh
 node scripts/package-run-research-evidence.js package-runs/YYYY-MM-DD-topic-slug
 node scripts/package-run-research-evidence.js package-runs/YYYY-MM-DD-topic-slug --overwrite
+node scripts/package-run-research-evidence.js package-runs/YYYY-MM-DD-topic-slug --reset-evidence
 node scripts/package-run-research-evidence.js --help
 ```
 
@@ -23,7 +24,20 @@ node scripts/package-run-research-evidence.js --help
 - `research-objections.md`
 - `research-sufficiency-review.md`
 
-Existing files are preserved unless `--overwrite` is explicit.
+The four evidence input files are treated as human-editable evidence and are
+preserved by default:
+
+- `research-evidence.md`
+- `source-support-map.md`
+- `proof-capture-plan.md`
+- `research-objections.md`
+
+`--overwrite` refreshes only the derived review output,
+`research-sufficiency-review.md`. It does not wipe manually gathered evidence.
+
+`--reset-evidence` is the explicit destructive starter reset for the evidence
+input files. Use it only when you intentionally want to replace the evidence
+inputs with starter TODO templates.
 
 ## Gate Logic
 
