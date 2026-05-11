@@ -164,9 +164,9 @@ node scripts/package-run-script-structure.js package-runs/YYYY-MM-DD-ai-video-id
 This writes only `script-structure.md`. It does not create draft, final script,
 or production notes files. The artifact includes the proof ladder, act
 structure, beat-by-beat outline, required examples, objections, retention risks,
-unsupported claims, and script-readiness gate. `package-engine-new-script.js`
-also creates this file as a convenience during script prep, but the standalone
-command is the primary review tool.
+unsupported claims, local context inputs, and script-readiness gate.
+`package-engine-new-script.js` also creates this file as a convenience during
+script prep, but the standalone command is the primary review tool.
 
 After the research pack exposes the proof gaps clearly enough to continue and
 the script structure boundary is reviewed, create the outline prompt:

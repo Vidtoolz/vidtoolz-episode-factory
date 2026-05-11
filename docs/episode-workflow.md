@@ -7,14 +7,17 @@ Episode Factory is designed for a solo YouTube creator who needs to move from ro
 1. Capture the rough topic in `Idea`.
 2. Move to `Packaging` when the idea needs title, thumbnail, promise, and hook work.
 3. Use the Packaging Gate before treating the package as ready.
-4. Move to `Script` when the viewer problem, promise, title options, thumbnail concept, and hook are coherent.
-5. Move to `Ready to Shoot` when the script outline and production checklist are usable.
-6. Move to `Editing` when recording is done and editing work starts.
-7. Review the first watchable edit before treating the second cut as ready.
-8. Move to `Ready to Publish` when the edit is complete and publish assets need final checks.
-9. Plan Shorts and platform variants only after final review and publication blockers are clear.
-10. Move to `Published` after the video is live.
-11. Move to `Archived` when the episode is no longer active but should remain available for reference.
+4. Create the research pack and script-structure gate before drafting. In the
+   broader 23-stage package-run workflow, `package-run-script-structure.js`
+   sits between research approval and outline/script work.
+5. Move to `Script` when the viewer problem, promise, title options, thumbnail concept, and hook are coherent.
+6. Move to `Ready to Shoot` when the script outline and production checklist are usable.
+7. Move to `Editing` when recording is done and editing work starts.
+8. Review the first watchable edit before treating the second cut as ready.
+9. Move to `Ready to Publish` when the edit is complete and publish assets need final checks.
+10. Plan Shorts and platform variants only after final review and publication blockers are clear.
+11. Move to `Published` after the video is live.
+12. Move to `Archived` when the episode is no longer active but should remain available for reference.
 
 ## Detail Fields
 

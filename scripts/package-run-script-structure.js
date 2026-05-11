@@ -62,7 +62,7 @@ function parseResearchGateStatus(markdown = "") {
   if (status) {
     return {
       status,
-      structureStatus: status === "BLOCKED" ? "NEEDS RESEARCH" : "PARTIAL",
+      structureStatus: status === "BLOCKED" ? "BLOCKED" : "PARTIAL",
       readyToDraft: false,
       reason: `Research Sufficiency Gate is ${status}; script drafting is not approved yet.`,
     };
@@ -136,6 +136,30 @@ function readSelectedPackageSummary(runDir) {
   };
 }
 
+function readSupplementalInputs(runDir) {
+  return ["notes.md", "script-prompt.md", "final-outline.md"].map((filename) => {
+    const filePath = path.join(runDir, filename);
+    if (!fs.existsSync(filePath)) {
+      return { filename, status: "missing", excerpt: "" };
+    }
+    try {
+      const text = fs.readFileSync(filePath, "utf8");
+      return {
+        filename,
+        status: "present",
+        excerpt: text
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .slice(0, 3)
+          .join(" "),
+      };
+    } catch (error) {
+      return { filename, status: "unreadable", excerpt: error.message };
+    }
+  });
+}
+
 function writeFileIfSafe(filePath, content, overwrite = false) {
   if (!fs.existsSync(filePath)) {
     fs.writeFileSync(filePath, content, "utf8");
@@ -161,6 +185,7 @@ function writeScriptStructure(runDir, options = {}) {
     selectedPackageSource: selectedPackage.sourceFile,
     packageData: selectedPackage.packageData,
     researchSections,
+    supplementalInputs: readSupplementalInputs(runDir),
   });
   const outPath = path.join(runDir, SCRIPT_STRUCTURE_FILE);
   const status = writeFileIfSafe(outPath, content, Boolean(options.overwrite));
@@ -211,6 +236,7 @@ module.exports = {
   readResearchGate,
   readResearchSections,
   readSelectedPackageSummary,
+  readSupplementalInputs,
   writeFileIfSafe,
   writeScriptStructure,
   main,

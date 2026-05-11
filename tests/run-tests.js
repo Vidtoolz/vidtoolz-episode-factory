@@ -1961,6 +1961,7 @@ test("script prep placeholders create reviewable draft final and production file
   assert.match(structure, /## Act Structure/);
   assert.match(structure, /## Beat-by-Beat Outline/);
   assert.match(structure, /## Required Examples \/ Demos \/ Screenshots/);
+  assert.match(structure, /## Local Context Inputs/);
   assert.match(structure, /## Viewer Objections to Answer/);
   assert.match(structure, /## Retention Risks/);
   assert.match(structure, /## Unsupported or Risky Claims/);
@@ -2089,6 +2090,9 @@ test("script structure cli generates only script structure from partial research
       "",
     ].join("\n")
   );
+  fs.writeFileSync(path.join(runDir, "notes.md"), "# Notes\n\nManual package note.\n");
+  fs.writeFileSync(path.join(runDir, "script-prompt.md"), "# Script Prompt\n\nDrafting prompt context.\n");
+  fs.writeFileSync(path.join(runDir, "final-outline.md"), "# Final Outline\n\n1. Hook\n2. Proof\n");
 
   const output = captureConsole(() => packageScriptStructureScript.main([runDir]));
   const structure = fs.readFileSync(path.join(runDir, "script-structure.md"), "utf8");
@@ -2102,6 +2106,7 @@ test("script structure cli generates only script structure from partial research
     /## Act Structure/,
     /## Beat-by-Beat Outline/,
     /## Required Examples \/ Demos \/ Screenshots/,
+    /## Local Context Inputs/,
     /## Viewer Objections to Answer/,
     /## Retention Risks/,
     /## Unsupported or Risky Claims/,
@@ -2109,7 +2114,9 @@ test("script structure cli generates only script structure from partial research
   ].forEach((pattern) => assert.match(structure, pattern));
   assert.match(structure, /A stronger script starts with traceable proof/);
   assert.match(structure, /The package has enough source support/);
-  assert.equal(fs.existsSync(path.join(runDir, "script-prompt.md")), false);
+  assert.match(structure, /notes\.md: present - # Notes Manual package note\./);
+  assert.match(structure, /script-prompt\.md: present - # Script Prompt Drafting prompt context\./);
+  assert.match(structure, /final-outline\.md: present - # Final Outline 1\. Hook 2\. Proof/);
   assert.equal(fs.existsSync(path.join(runDir, "script-draft.md")), false);
   assert.equal(fs.existsSync(path.join(runDir, "final-script.md")), false);
   assert.equal(fs.existsSync(path.join(runDir, "production-notes.md")), false);
@@ -2138,7 +2145,7 @@ test("script structure cli marks missing and blocked research as not ready", () 
   assert.match(missing, /## Proof Ladder/);
   assert.match(missing, /## Script-Readiness Gate/);
   assert.match(blocked, /Research gate status: BLOCKED/);
-  assert.match(blocked, /Script structure status: NEEDS RESEARCH/);
+  assert.match(blocked, /Script structure status: BLOCKED/);
   assert.match(blocked, /Ready to draft: no/);
 });
 

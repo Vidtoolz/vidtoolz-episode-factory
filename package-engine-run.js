@@ -486,6 +486,7 @@ Write a reviewable draft with:
     selectedPackageSource = "",
     packageData = {},
     researchSections = {},
+    supplementalInputs = [],
   }) {
     const gate = researchGate && typeof researchGate === "object" ? researchGate : {};
     const pkg = packageData && typeof packageData === "object" ? packageData : {};
@@ -502,6 +503,14 @@ Write a reviewable draft with:
     const viewerProblem = firstFilled(research.viewerProblem, pkg.viewerProblem);
     const centralThesis = firstFilled(research.coreClaim, pkg.idea, pkg.viewerPromise);
     const productionApproach = firstFilled(pkg.suggestedProductionApproach, research.productionEvidenceNeeded);
+    const supplementalLines = Array.isArray(supplementalInputs)
+      ? supplementalInputs.map((input) => {
+          const filename = cleanString(input && input.filename) || "unknown";
+          const inputStatus = cleanString(input && input.status) || "missing";
+          const excerpt = cleanString(input && input.excerpt);
+          return `- ${filename}: ${inputStatus}${excerpt ? ` - ${excerpt}` : ""}`;
+        })
+      : [];
     const nextActions =
       status === "READY TO DRAFT"
         ? "- Draft from this structure, while keeping proof and source claims traceable.\n- Keep unresolved claims marked during drafting."
@@ -520,6 +529,10 @@ Write a reviewable draft with:
 ## Research Gate Interpretation
 
 ${reason}
+
+## Local Context Inputs
+
+${supplementalLines.length ? supplementalLines.join("\n") : "- notes.md: missing\n- script-prompt.md: missing\n- final-outline.md: missing"}
 
 ## Drafting Boundary
 
