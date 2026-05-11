@@ -14,6 +14,18 @@ Run this from the repo root:
 node scripts/package-runs-index.js
 ```
 
+To inspect a single run without regenerating the dashboard index or writing any
+files, run:
+
+```sh
+node scripts/package-run-doctor.js package-runs/YYYY-MM-DD-topic-slug
+node scripts/package-run-doctor.js package-runs/YYYY-MM-DD-topic-slug --json
+```
+
+The doctor uses the same lifecycle logic as the index and reports the current
+status, first blocking gate, detected artifacts, missing expected artifacts, and
+next recommended command. It is read-only and calls no external APIs.
+
 For daily use, run the launch helper from any current working directory:
 
 ```sh

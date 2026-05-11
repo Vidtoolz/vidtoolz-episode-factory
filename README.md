@@ -100,6 +100,17 @@ Generate the Package Runs dashboard index:
 node scripts/package-runs-index.js
 ```
 
+Inspect one package run without writing anything:
+
+```sh
+node scripts/package-run-doctor.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+node scripts/package-run-doctor.js package-runs/YYYY-MM-DD-ai-video-idea-filter --json
+```
+
+The Package Run Doctor reports lifecycle status, first blocking gate, detected
+artifacts, missing expected artifacts, and the next deterministic local command.
+It is read-only and does not call external APIs.
+
 Or regenerate the index and print the exact local server command and dashboard
 URL:
 

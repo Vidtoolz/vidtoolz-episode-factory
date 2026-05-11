@@ -22,6 +22,7 @@ const packageExportChecklistScript = require("../scripts/package-run-export-chec
 const packagePublicationMetadataScript = require("../scripts/package-run-publication-metadata.js");
 const packageArchiveManifestScript = require("../scripts/package-run-archive-manifest.js");
 const packageRunCreatorQaScript = require("../scripts/package-run-creator-qa.js");
+const packageRunDoctorScript = require("../scripts/package-run-doctor.js");
 const packageRunsIndexScript = require("../scripts/package-runs-index.js");
 const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashboard-launch.js");
 const packageEngineServer = require("../package-engine-server.js");
@@ -5342,6 +5343,92 @@ test("package runs index follows lifecycle gates in order", () => {
   );
   assert.equal(byRunId["2026-05-07-upstream-blocked"].status, "Needs production planning");
   assert.equal(byRunId["2026-05-07-upstream-blocked"].workflowBucket, "Needs production planning");
+});
+
+test("package run doctor help works", () => {
+  const output = captureConsole(() => packageRunDoctorScript.main(["--help"]));
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /Package Run Doctor/);
+  assert.match(output.stdout.join("\n"), /--json/);
+});
+
+test("package run doctor fails clearly for missing run folder", () => {
+  const output = captureConsole(() => packageRunDoctorScript.main(["package-runs/not-real"]));
+  assert.equal(output.result, 1);
+  assert.match(output.stderr.join("\n"), /Package run folder not found/);
+  assert.match(output.stderr.join("\n"), /Package Run Doctor/);
+});
+
+test("package run doctor reports blocked early run without writing artifacts", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-doctor-blocked-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-doctor-blocked");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({ package: { proposedTitle: "Doctor Blocked Test" } }),
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "manual-note.md"), "# Human note\n", "utf8");
+  const before = fs.readdirSync(runDir).sort();
+
+  const output = captureConsole(() => packageRunDoctorScript.main([runDir, "--json"]));
+  const after = fs.readdirSync(runDir).sort();
+  const report = JSON.parse(output.stdout.join("\n"));
+
+  assert.equal(output.result, 0);
+  assert.deepEqual(after, before);
+  assert.equal(report.runId, "2026-05-10-doctor-blocked");
+  assert.equal(report.lifecycleStatus, "Package selected");
+  assert.equal(report.workflowBucket, "Needs research pack");
+  assert.equal(report.creatorQaStatus, "not run");
+  assert.equal(report.evidenceGateStatus, "not evaluated");
+  assert.deepEqual(report.detectedKnownArtifacts, ["selected-package.json"]);
+  assert.deepEqual(report.unknownManualFiles, ["manual-note.md"]);
+  assert.deepEqual(report.missingExpectedArtifacts, ["research-pack.md"]);
+  assert.match(report.nextRecommendedCommand, /package-run-research-pack\.js/);
+  assert.equal(report.readOnly, true);
+  assert.equal(report.externalApisCalled, false);
+});
+
+test("package run doctor reports lifecycle next command and matching json fields", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-doctor-lifecycle-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-doctor-capture");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({ package: { proposedTitle: "Doctor Capture Test" } }),
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "production-plan.md"),
+    "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "utf8"
+  );
+
+  const report = packageRunDoctorScript.buildDoctorReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+  const text = packageRunDoctorScript.renderText(report);
+  const jsonOutput = captureConsole(() => packageRunDoctorScript.main([runDir, "--json"]));
+  const parsed = JSON.parse(jsonOutput.stdout.join("\n"));
+
+  assert.equal(report.lifecycleStatus, "Ready for capture checklist");
+  assert.equal(report.workflowBucket, "Needs capture checklist");
+  assert.equal(report.lifecycleGate.productionPlanStatus, "READY TO SHOOT");
+  assert.deepEqual(report.missingExpectedArtifacts, ["capture-checklist.md"]);
+  assert.equal(
+    report.nextRecommendedCommand,
+    "node scripts/package-run-capture-checklist.js package-runs/2026-05-10-doctor-capture"
+  );
+  assert.match(text, /Lifecycle status: Ready for capture checklist/);
+  assert.equal(jsonOutput.result, 0);
+  assert.equal(parsed.lifecycleStatus, report.lifecycleStatus);
+  assert.match(parsed.nextRecommendedCommand, /package-run-capture-checklist\.js/);
+  assert.equal(parsed.readOnly, true);
+});
+
+test("verify script checks package run doctor syntax", () => {
+  const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
+  assert.match(verify, /node --check scripts\/package-run-doctor\.js/);
 });
 
 test("package runs index recommends deterministic next local commands", () => {

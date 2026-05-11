@@ -30,6 +30,7 @@ node --check scripts/package-run-publication-metadata.js
 node --check scripts/package-run-archive-manifest.js
 node --check scripts/package-run-repurpose.js
 node --check scripts/package-run-creator-qa.js
+node --check scripts/package-run-doctor.js
 node --check scripts/package-runs-index.js
 node --check scripts/package-runs-dashboard-launch.js
 node --check scripts/trailer-cue-new.js
