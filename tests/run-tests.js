@@ -2232,6 +2232,7 @@ test("script review help works", () => {
 
   assert.equal(output.result, 0);
   assert.match(output.stdout.join("\n"), /package-run-script-review\.js/);
+  assert.match(output.stdout.join("\n"), /--from-review/);
 });
 
 test("script review blocks missing script and writes blocked revision plan", () => {
@@ -2283,6 +2284,26 @@ test("script review prevents pass for creator qa blocking status", () => {
   assert.match(review, /Production planning ready: no/);
 });
 
+test("script review detects unsupported claim and placeholder markers", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-review-unsupported-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-unsupported");
+  writeReviewBaseRun(runDir);
+  fs.writeFileSync(
+    path.join(runDir, "script-draft.md"),
+    "# Script\n\nThis is the best workflow and always works.\n\nTODO: add proof.\n\nUnsupported claim: verify before publishing.\n"
+  );
+
+  assert.equal(packageScriptReviewScript.main([runDir]), 0);
+  const review = fs.readFileSync(path.join(runDir, "script-review.md"), "utf8");
+  const plan = fs.readFileSync(path.join(runDir, "script-revision-plan.md"), "utf8");
+
+  assert.match(review, /Script review status: NEEDS REVISION/);
+  assert.match(review, /Script still contains placeholder or unfinished drafting markers/);
+  assert.match(review, /Script explicitly marks an unsupported claim or evidence gap/);
+  assert.match(plan, /READY FOR REVISION/);
+  assert.match(plan, /Do not shoot until production planning is explicitly ready/);
+});
+
 test("script review passes only when script research structure and qa are clear", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-review-pass-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-pass");
@@ -2295,6 +2316,43 @@ test("script review passes only when script research structure and qa are clear"
   assert.match(review, /Script review status: PASS/);
   assert.match(review, /Production planning ready: yes/);
   assert.match(plan, /READY FOR PRODUCTION PLANNING/);
+});
+
+test("script review from-review regenerates revision plan only", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-review-from-review-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-from-review");
+  fs.mkdirSync(runDir, { recursive: true });
+  const reviewPath = path.join(runDir, "script-review.md");
+  const planPath = path.join(runDir, "script-revision-plan.md");
+  fs.writeFileSync(
+    reviewPath,
+    [
+      "# Script Review",
+      "",
+      "- Script review status: NEEDS REVISION",
+      "- Production planning ready: no",
+      "- Research gate status: PASS",
+      "",
+      "## Review Verdict",
+      "",
+      "- Status: NEEDS REVISION",
+      "- Reason: Hook needs proof before production planning.",
+      "- Required before production planning:",
+      "- Add a concrete proof beat to the hook.",
+      "",
+    ].join("\n")
+  );
+
+  const output = captureConsole(() => packageScriptReviewScript.main([runDir, "--from-review"]));
+  const review = fs.readFileSync(reviewPath, "utf8");
+  const plan = fs.readFileSync(planPath, "utf8");
+
+  assert.equal(output.result, 0);
+  assert.equal(review.includes("Hook needs proof before production planning."), true);
+  assert.doesNotMatch(output.stdout.join("\n"), /script-review\.md/);
+  assert.match(output.stdout.join("\n"), /script-revision-plan\.md/);
+  assert.match(plan, /READY FOR REVISION/);
+  assert.match(plan, /Add a concrete proof beat to the hook/);
 });
 
 test("script review preserves existing artifacts unless overwrite is explicit", () => {

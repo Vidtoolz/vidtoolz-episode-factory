@@ -16,6 +16,13 @@ There is no server, account system, sync, collaboration, or cloud backup.
 
 Hermes, Linear, GitHub, Codex, and YouTube outputs are copy-only text packages. The app does not call external APIs.
 
+## Script Review Is Deterministic
+
+The package-run script review tool checks local files, gate statuses, Creator
+QA report status, and simple unfinished/unsupported-claim markers. It does not
+rewrite the script, judge creative quality like a human editor, or verify facts
+outside the local artifacts.
+
 ## Import Conflict Resolution Is Manual
 
 JSON import now shows a preview and supports replace, merge-new-only, and merge-and-update modes. Same-id/different-title conflicts and different-id/same-title possible duplicates are shown in the preview and skipped by merge modes. The app does not yet provide per-episode conflict resolution.

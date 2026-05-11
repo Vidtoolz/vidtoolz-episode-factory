@@ -11,13 +11,16 @@ Episode Factory is designed for a solo YouTube creator who needs to move from ro
    broader 23-stage package-run workflow, `package-run-script-structure.js`
    sits between research approval and outline/script work.
 5. Move to `Script` when the viewer problem, promise, title options, thumbnail concept, and hook are coherent.
-6. Move to `Ready to Shoot` when the script outline and production checklist are usable.
-7. Move to `Editing` when recording is done and editing work starts.
-8. Review the first watchable edit before treating the second cut as ready.
-9. Move to `Ready to Publish` when the edit is complete and publish assets need final checks.
-10. Plan Shorts and platform variants only after final review and publication blockers are clear.
-11. Move to `Published` after the video is live.
-12. Move to `Archived` when the episode is no longer active but should remain available for reference.
+6. Run the script review and revision loop before production planning. The
+   deterministic review creates `script-review.md` and
+   `script-revision-plan.md`; repairs remain manual.
+7. Move to `Ready to Shoot` when the script outline and production checklist are usable.
+8. Move to `Editing` when recording is done and editing work starts.
+9. Review the first watchable edit before treating the second cut as ready.
+10. Move to `Ready to Publish` when the edit is complete and publish assets need final checks.
+11. Plan Shorts and platform variants only after final review and publication blockers are clear.
+12. Move to `Published` after the video is live.
+13. Move to `Archived` when the episode is no longer active but should remain available for reference.
 
 ## Detail Fields
 

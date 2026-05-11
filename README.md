@@ -197,6 +197,13 @@ node scripts/package-run-script-review.js package-runs/YYYY-MM-DD-ai-video-idea-
 This writes `script-review.md` and `script-revision-plan.md` only. Production
 planning remains blocked unless the review status is `PASS`.
 
+To rebuild the revision plan from an existing review without regenerating the
+review artifact:
+
+```sh
+node scripts/package-run-script-review.js package-runs/YYYY-MM-DD-ai-video-idea-filter --from-review
+```
+
 After script review passes, create the local production planning gate and work
 lists:
 

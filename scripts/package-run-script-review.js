@@ -12,16 +12,21 @@ const REVISION_PLAN_FILE = "script-revision-plan.md";
 const APPROVAL_PATTERN = /^(?:[-*]\s*)?(?:Manual approval|Script review approval|Production planning approval):\s*PASS\s*$/im;
 
 function usage() {
-  return "Usage: node scripts/package-run-script-review.js package-runs/YYYY-MM-DD-topic-slug [--overwrite]";
+  return [
+    "Usage: node scripts/package-run-script-review.js package-runs/YYYY-MM-DD-topic-slug [--overwrite]",
+    "       node scripts/package-run-script-review.js package-runs/YYYY-MM-DD-topic-slug --from-review [--overwrite]",
+  ].join("\n");
 }
 
 function parseArgs(argv) {
   const args = [...argv];
-  const result = { runFolder: "", overwrite: false, help: false };
+  const result = { runFolder: "", overwrite: false, fromReview: false, help: false };
   while (args.length) {
     const item = args.shift();
     if (item === "--overwrite" || item === "--force") {
       result.overwrite = true;
+    } else if (item === "--from-review") {
+      result.fromReview = true;
     } else if (item === "--help" || item === "-h") {
       result.help = true;
     } else if (!result.runFolder) {
@@ -88,6 +93,40 @@ function isCreatorQaBlocking(status) {
   return normalized && normalized !== "PASS" && normalized !== "NOT RUN";
 }
 
+function analyzeScriptIssues(scriptText = "") {
+  const text = String(scriptText || "");
+  const lower = text.toLowerCase();
+  const issues = [];
+  const placeholderPatterns = [
+    /\bnot drafted yet\b/i,
+    /\bTODO\b/i,
+    /\bTBD\b/i,
+    /\bplaceholder\b/i,
+    /\[insert\b/i,
+  ];
+  if (placeholderPatterns.some((pattern) => pattern.test(text))) {
+    issues.push("Script still contains placeholder or unfinished drafting markers.");
+  }
+
+  const riskyClaimPatterns = [
+    /\bguarantee(?:d|s)?\b/i,
+    /\bproven\b/i,
+    /\balways\b/i,
+    /\bnever\b/i,
+    /\bbest\b/i,
+    /\bonly\b/i,
+  ];
+  if (riskyClaimPatterns.some((pattern) => pattern.test(text)) && !/source|evidence|proof|research|citation|example/i.test(text)) {
+    issues.push("Script contains strong claim language without nearby proof/source language.");
+  }
+
+  if (lower.includes("unsupported claim") || lower.includes("needs evidence") || lower.includes("verify before publishing")) {
+    issues.push("Script explicitly marks an unsupported claim or evidence gap.");
+  }
+
+  return issues;
+}
+
 function readReviewContext(runDir) {
   const scriptPath = findScriptPath(runDir);
   const scriptText = scriptPath ? fs.readFileSync(scriptPath, "utf8") : "";
@@ -98,6 +137,7 @@ function readReviewContext(runDir) {
   const structureGate = parseScriptStructureStatus(structureText);
   const creatorQaStatus = readCreatorQaStatus(runDir);
   const explicitApproval = hasManualApproval(scriptText, researchText, structureText, readOptionalFile(runDir, "creator-qa-report.md"));
+  const scriptIssues = analyzeScriptIssues(scriptText);
 
   return {
     runId: path.basename(runDir),
@@ -111,6 +151,7 @@ function readReviewContext(runDir) {
     structureGate,
     creatorQaStatus,
     explicitApproval,
+    scriptIssues,
   };
 }
 
@@ -126,6 +167,7 @@ function determineReviewStatus(context) {
   if (isCreatorQaBlocking(context.creatorQaStatus)) {
     blockers.push(`Creator QA status is ${context.creatorQaStatus}.`);
   }
+  context.scriptIssues.forEach((issue) => blockers.push(issue));
 
   if (!context.scriptPath) {
     return {
@@ -210,7 +252,7 @@ ${bulletList(warnings)}
 
 ## Unsupported Claims
 
-${bulletList(verdict.blockers, "No blocking unsupported-claim signals found by this local check.")}
+${bulletList(context.scriptIssues, "No blocking unsupported-claim signals found by this local check.")}
 
 ## Examples and Demonstrations
 
@@ -291,6 +333,7 @@ ${verdict.productionPlanningReady ? "- No required fixes before production plann
 
 - Research gate status: ${context.researchGate.status}
 - Resolve any source, proof, or example gaps before production planning.
+${context.scriptIssues.length ? bulletList(context.scriptIssues) : "- No deterministic script evidence-gap markers found."}
 
 ## Promise Delivery Fixes
 
@@ -318,6 +361,52 @@ ${verdict.productionPlanningReady ? "- No required fixes before production plann
 - Do not create production prep, shooting plans, b-roll lists, graphics lists, or publish packs from this tool.
 - Do not shoot until production planning is explicitly ready.
 `;
+}
+
+function lineValue(markdown, label) {
+  const pattern = new RegExp(`^\\s*-\\s*${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*([^\\n\\r]+)`, "im");
+  const match = String(markdown || "").match(pattern);
+  return match ? match[1].trim() : "";
+}
+
+function parseListAfterLabel(markdown, label) {
+  const lines = String(markdown || "").replace(/\r\n/g, "\n").split("\n");
+  const start = lines.findIndex((line) => line.trim().toLowerCase() === label.toLowerCase());
+  if (start === -1) return [];
+  const items = [];
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (/^#{1,6}\s+/.test(line)) break;
+    const item = line.match(/^\s*-\s+(.+)/);
+    if (item) items.push(item[1].trim());
+  }
+  return items.filter((item) => item && !/^no required fixes/i.test(item));
+}
+
+function buildRevisionPlanFromReview(runDir) {
+  const reviewText = readOptionalFile(runDir, REVIEW_FILE);
+  const status = (lineValue(reviewText, "Script review status") || lineValue(reviewText, "Status") || "BLOCKED").toUpperCase();
+  const productionReady = lineValue(reviewText, "Production planning ready").toLowerCase() === "yes";
+  const reason = lineValue(reviewText, "Reason") || (reviewText ? "Regenerated from existing script-review.md." : "script-review.md is missing.");
+  const blockers = parseListAfterLabel(reviewText, "- Required before production planning:").length
+    ? parseListAfterLabel(reviewText, "- Required before production planning:")
+    : reviewText
+      ? []
+      : ["script-review.md is missing."];
+  const verdict = {
+    status,
+    productionPlanningReady: productionReady && status === "PASS",
+    reason,
+    blockers,
+  };
+  const context = {
+    runId: path.basename(runDir),
+    researchGate: { status: lineValue(reviewText, "Research gate status") || "UNKNOWN" },
+    creatorQaStatus: lineValue(reviewText, "Creator QA status") || "UNKNOWN",
+    scriptIssues: [],
+    selectedPackage: { packageData: {}, warnings: [] },
+  };
+  return { context, verdict, files: [[REVISION_PLAN_FILE, buildRevisionPlan(context, verdict)]] };
 }
 
 function buildOutputs(runDir) {
@@ -370,7 +459,7 @@ function main(argv = process.argv.slice(2)) {
     return 1;
   }
 
-  const outputs = buildOutputs(runDir);
+  const outputs = options.fromReview ? buildRevisionPlanFromReview(runDir) : buildOutputs(runDir);
   const result = writeOutputs(runDir, outputs, options.overwrite);
   if (result.status === "skipped") {
     console.error(`${result.conflicts.join(", ")} already exists and differs. Use --overwrite to replace review artifacts.`);
@@ -380,7 +469,7 @@ function main(argv = process.argv.slice(2)) {
   const relativeRunDir = path.relative(repoRoot, runDir).replace(/\\/g, "/");
   console.log(`script review status: ${outputs.verdict.status}`);
   console.log(`production planning ready: ${outputs.verdict.productionPlanningReady ? "yes" : "no"}`);
-  console.log(`${relativeRunDir}/${REVIEW_FILE}`);
+  if (!options.fromReview) console.log(`${relativeRunDir}/${REVIEW_FILE}`);
   console.log(`${relativeRunDir}/${REVISION_PLAN_FILE}`);
   return 0;
 }
@@ -398,10 +487,12 @@ module.exports = {
   parseScriptStructureStatus,
   readCreatorQaStatus,
   isCreatorQaBlocking,
+  analyzeScriptIssues,
   readReviewContext,
   determineReviewStatus,
   buildScriptReview,
   buildRevisionPlan,
+  buildRevisionPlanFromReview,
   buildOutputs,
   writeOutputs,
   main,
