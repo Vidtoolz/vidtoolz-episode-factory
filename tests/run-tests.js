@@ -2899,6 +2899,17 @@ function writeFinalReviewBaseRun(runDir, options = {}) {
   if (options.finalWatchNotes) {
     fs.writeFileSync(path.join(runDir, "final-watch-notes.md"), options.finalWatchNotes);
   }
+  if (options.publishPack !== false) {
+    fs.writeFileSync(
+      path.join(runDir, "publish-pack.md"),
+      options.publishPack ||
+        "# Publish Pack\n\n## Title\n\nApproved title\n\n## Description\n\nApproved description.\n\n- Publish pack approval: PASS\n"
+    );
+  }
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({ package: { viewerPromise: "The final video delivers the package promise." } })
+  );
 }
 
 function finalReviewText(runDir) {
@@ -2933,8 +2944,64 @@ function realFinalWatchNotes(extraSections = "") {
     "",
     "None.",
     "",
+    "## Viewer Promise Delivery",
+    "",
+    "Promise is delivered clearly.",
+    "",
+    "## Opening Strength",
+    "",
+    "Opening is strong enough.",
+    "",
+    "## Clarity",
+    "",
+    "Clear.",
+    "",
+    "## Pacing",
+    "",
+    "Pacing works.",
+    "",
+    "## Proof / Evidence",
+    "",
+    "Proof is visible.",
+    "",
+    "## Audio Quality",
+    "",
+    "Audio is clean.",
+    "",
+    "## Visual Support",
+    "",
+    "Visuals support the claims.",
+    "",
+    "## Graphics / Captions",
+    "",
+    "Graphics are readable.",
+    "",
+    "## Title / Thumbnail Fit",
+    "",
+    "Title and thumbnail fit the video.",
+    "",
+    "## Ethical / Accuracy Risks",
+    "",
+    "No unresolved accuracy risk.",
+    "",
+    "## Upload Metadata Readiness",
+    "",
+    "Publish metadata is ready.",
+    "",
+    "## Archive Readiness",
+    "",
+    "Archive notes can be saved.",
+    "",
     extraSections,
   ].join("\n");
+}
+
+function aliasFinalWatchNotes(extraSections = "") {
+  return realFinalWatchNotes(extraSections)
+    .replace("## Viewer Promise Delivery", "## Promise Delivery")
+    .replace("## Opening Strength", "## Opening")
+    .replace("## Audio Quality", "## Audio")
+    .replace("## Visual Support", "## Visuals");
 }
 
 test("final review help works", () => {
@@ -2960,6 +3027,9 @@ test("final review blocks when rough cut review is blocked and final notes are m
   assert.match(notes, /Status: starter template/);
   assert.match(review, /Final review status: BLOCKED/);
   assert.match(review, /Publish ready: no/);
+  assert.match(review, /Final version reviewed: Not assessed/);
+  assert.match(review, /Viewer Promise Delivery/);
+  assert.match(review, /Upload Metadata Readiness/);
   assert.match(review, /rough-cut-review\.md is BLOCKED, not READY FOR SECOND CUT/);
   assert.match(review, /Not assessed\. Real final-watch notes are missing or still a starter template\./);
   assert.doesNotMatch(review, /No final-watch issues detected/);
@@ -2994,7 +3064,7 @@ test("final review treats starter final-watch notes as not assessed", () => {
   assert.doesNotMatch(blockers, /\| None\. \|.*\| closed \|/);
 });
 
-test("final review real notes with no issues can use none detected wording", () => {
+test("final review real notes with no issues still needs exact final approval", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-final-review-clean-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-final-clean");
   writeFinalReviewBaseRun(runDir, {
@@ -3005,10 +3075,116 @@ test("final review real notes with no issues can use none detected wording", () 
   const review = finalReviewText(runDir);
   const blockers = publicationBlockersText(runDir);
 
-  assert.match(review, /Final review status: PASS/);
-  assert.match(review, /Publish ready: yes/);
+  assert.match(review, /Final review status: NEEDS FINAL FIXES/);
+  assert.match(review, /Publish ready: no/);
+  assert.match(review, /Status: NEEDS FINAL FIXES/);
   assert.match(review, /No final-watch issues detected from real final-watch notes\./);
   assert.doesNotMatch(review, /Not assessed\. Real final-watch notes are missing or still a starter template\./);
+  assert.match(blockers, /Final-review evidence is incomplete/);
+  assert.match(blockers, /\| blocked \|/);
+});
+
+test("final review accepts legacy final-watch heading aliases", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-final-review-aliases-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-final-aliases");
+  writeFinalReviewBaseRun(runDir, {
+    finalWatchNotes: `${aliasFinalWatchNotes()}\n- Final approval: PASS\n`,
+  });
+
+  assert.equal(packageFinalReviewScript.main([runDir]), 0);
+  const review = finalReviewText(runDir);
+  const blockers = publicationBlockersText(runDir);
+
+  assert.match(review, /Final review status: PASS/);
+  assert.match(review, /Publish ready: yes/);
+  assert.match(review, /## Viewer Promise Delivery\n\nPromise is delivered clearly\./);
+  assert.match(review, /## Opening Strength\n\nOpening is strong enough\./);
+  assert.match(review, /## Audio Quality\n\nAudio is clean\./);
+  assert.match(review, /## Visual Support\n\nVisuals support the claims\./);
+  assert.doesNotMatch(review, /Not assessed\. Add real final-watch notes/);
+  assert.doesNotMatch(blockers, /is not assessed in final-watch-notes\.md/);
+});
+
+test("final review blocks exact approval when required final-watch sections are missing", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-final-review-missing-sections-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-final-missing-sections");
+  writeFinalReviewBaseRun(runDir, {
+    finalWatchNotes: [
+      "# Final-Watch Notes",
+      "",
+      "## Final Version Reviewed",
+      "",
+      "final-v1",
+      "",
+      "## Watch Date",
+      "",
+      "2026-05-11",
+      "",
+      "## Reviewer",
+      "",
+      "Mikko",
+      "",
+      "## Final-Watch Issues",
+      "",
+      "None.",
+      "",
+      "## Publication Blockers",
+      "",
+      "None.",
+      "",
+      "- Final approval: PASS",
+      "",
+    ].join("\n"),
+  });
+
+  assert.equal(packageFinalReviewScript.main([runDir]), 0);
+  const review = finalReviewText(runDir);
+  const blockers = publicationBlockersText(runDir);
+
+  assert.match(review, /Final review status: BLOCKED/);
+  assert.match(review, /Publish ready: no/);
+  assert.match(review, /Required final-watch sections are not assessed/);
+  assert.doesNotMatch(review, /Status: READY TO PUBLISH/);
+  assert.match(blockers, /Viewer Promise Delivery is not assessed in final-watch-notes\.md/);
+  assert.match(blockers, /Archive Readiness is not assessed in final-watch-notes\.md/);
+  assert.match(blockers, /\| blocked \|/);
+});
+
+test("final review blocks when publish pack is placeholder draft", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-final-review-publish-draft-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-final-publish-draft");
+  writeFinalReviewBaseRun(runDir, {
+    finalWatchNotes: `${realFinalWatchNotes()}\n- Final approval: PASS\n`,
+    publishPack: "# Publish Pack\n\n## Title\n\nTODO\n\n## Description\n\nDraft placeholder.\n",
+  });
+
+  assert.equal(packageFinalReviewScript.main([runDir]), 0);
+  const review = finalReviewText(runDir);
+  const blockers = publicationBlockersText(runDir);
+
+  assert.match(review, /Final review status: BLOCKED/);
+  assert.match(review, /Publish ready: no/);
+  assert.match(review, /publish-pack\.md still appears to be placeholder or draft metadata/);
+  assert.match(blockers, /placeholder or draft metadata/);
+  assert.match(blockers, /\| blocked \|/);
+});
+
+test("final review ready to publish requires exact final approval marker", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-final-review-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-final-ready");
+  writeFinalReviewBaseRun(runDir, {
+    finalWatchNotes: `${realFinalWatchNotes()}\n- Final approval: PASS\n`,
+  });
+
+  assert.equal(packageFinalReviewScript.main([runDir]), 0);
+  const review = finalReviewText(runDir);
+  const blockers = publicationBlockersText(runDir);
+
+  assert.match(review, /Final review status: PASS/);
+  assert.match(review, /Publish ready: yes/);
+  assert.match(review, /Status: READY TO PUBLISH/);
+  assert.match(review, /Final version reviewed: final-v1/);
+  assert.match(review, /Watch context: 2026-05-11; reviewer: Mikko/);
   assert.match(blockers, /\| None\. \| All final-review gates passed with real final-watch notes\. \| Keep final approval evidence with the run\. \| closed \|/);
   assert.doesNotMatch(blockers, /\| blocked \|/);
 });

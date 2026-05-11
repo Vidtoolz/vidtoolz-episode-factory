@@ -12,6 +12,31 @@ const FINAL_WATCH_NOTES_FILE = "final-watch-notes.md";
 const FINAL_REVIEW_FILE = "final-review.md";
 const PUBLICATION_BLOCKERS_FILE = "publication-blockers.md";
 const TARGET_FILES = [FINAL_WATCH_NOTES_FILE, FINAL_REVIEW_FILE, PUBLICATION_BLOCKERS_FILE];
+const INPUT_FILES = [
+  "final-watch-notes.md",
+  "rough-cut-review.md",
+  "publish-pack.md",
+  "selected-package.json",
+  "selected-package.md",
+  "thumbnail-title-check.md",
+];
+const REQUIRED_FINAL_WATCH_SECTIONS = [
+  { label: "Final Version Reviewed", headings: ["Final Version Reviewed"] },
+  { label: "Watch Date", headings: ["Watch Date"] },
+  { label: "Reviewer", headings: ["Reviewer"] },
+  { label: "Viewer Promise Delivery", headings: ["Viewer Promise Delivery", "Promise Delivery"] },
+  { label: "Opening Strength", headings: ["Opening Strength", "Opening"] },
+  { label: "Clarity", headings: ["Clarity"] },
+  { label: "Pacing", headings: ["Pacing"] },
+  { label: "Proof / Evidence", headings: ["Proof / Evidence"] },
+  { label: "Audio Quality", headings: ["Audio Quality", "Audio"] },
+  { label: "Visual Support", headings: ["Visual Support", "Visuals"] },
+  { label: "Graphics / Captions", headings: ["Graphics / Captions"] },
+  { label: "Title / Thumbnail Fit", headings: ["Title / Thumbnail Fit"] },
+  { label: "Ethical / Accuracy Risks", headings: ["Ethical / Accuracy Risks"] },
+  { label: "Upload Metadata Readiness", headings: ["Upload Metadata Readiness"] },
+  { label: "Archive Readiness", headings: ["Archive Readiness"] },
+];
 
 function usage() {
   return [
@@ -53,8 +78,28 @@ function sectionText(markdown, heading) {
   return researchPack.sectionText(String(markdown || ""), heading);
 }
 
+function sectionTextAny(markdown, headings) {
+  const labels = Array.isArray(headings) ? headings : [headings];
+  for (const heading of labels) {
+    const text = cleanString(sectionText(markdown, heading));
+    if (text) return text;
+  }
+  return "";
+}
+
 function normalizeLine(line) {
   return cleanString(String(line || "").replace(/^\s*(?:[-*]|\d+\.)\s+/, "").replace(/\[[ xX]\]\s*/, ""));
+}
+
+function isAssessedText(value) {
+  const text = cleanString(value);
+  return Boolean(text) && !/^(todo|tbd|placeholder|n\/a|none|not applicable)$/i.test(text);
+}
+
+function missingRequiredFinalWatchSections(markdown = "") {
+  return REQUIRED_FINAL_WATCH_SECTIONS.filter((section) => !isAssessedText(sectionTextAny(markdown, section.headings))).map(
+    (section) => section.label
+  );
 }
 
 function sectionItems(markdown, headings) {
@@ -101,6 +146,54 @@ TODO
 
 TODO
 
+## Viewer Promise Delivery
+
+TODO
+
+## Opening Strength
+
+TODO
+
+## Clarity
+
+TODO
+
+## Pacing
+
+TODO
+
+## Proof / Evidence
+
+TODO
+
+## Audio Quality
+
+TODO
+
+## Visual Support
+
+TODO
+
+## Graphics / Captions
+
+TODO
+
+## Title / Thumbnail Fit
+
+TODO
+
+## Ethical / Accuracy Risks
+
+TODO
+
+## Upload Metadata Readiness
+
+TODO
+
+## Archive Readiness
+
+TODO
+
 ## Publication Blockers
 
 TODO
@@ -143,21 +236,75 @@ function parseRoughCutReview(markdown = "") {
   };
 }
 
+function selectedPackageSummary(files) {
+  const jsonText = files["selected-package.json"];
+  if (jsonText) {
+    try {
+      const payload = JSON.parse(jsonText);
+      const source = payload && typeof payload === "object" && payload.package ? payload.package : payload;
+      return cleanString(source.viewerPromise || source.viewer_promise || source.proposedTitle || source.proposed_title || source.title || source.idea) ||
+        "Selected package JSON is present.";
+    } catch (_error) {
+      return "Selected package JSON is present but could not be summarized.";
+    }
+  }
+  const markdown = files["selected-package.md"];
+  if (markdown) {
+    const promise = lineValue(markdown, "Viewer promise") || lineValue(markdown, "Package promise");
+    if (promise) return promise;
+    const heading = markdown.split(/\r?\n/).find((line) => line.trim().startsWith("# "));
+    return heading ? heading.replace(/^#\s+/, "").replace(/^Selected Package:\s*/i, "").trim() : "Selected package markdown is present.";
+  }
+  return "No selected package summary is available.";
+}
+
+function parsePublishPack(markdown = "") {
+  const text = String(markdown || "");
+  if (!text) {
+    return {
+      status: "MISSING",
+      blocksPublication: true,
+      reason: "publish-pack.md is missing; upload metadata readiness cannot be approved.",
+    };
+  }
+  const placeholder = /\b(TODO|TBD|placeholder|not drafted yet|draft)\b/i.test(text);
+  const approval = /^(?:[-*]\s*)?(?:Publish pack approval|Upload metadata approval|Publication metadata approval):\s*PASS\s*$/im.test(text);
+  if (placeholder && !approval) {
+    return {
+      status: "DRAFT",
+      blocksPublication: true,
+      reason: "publish-pack.md still appears to be placeholder or draft metadata.",
+    };
+  }
+  return {
+    status: approval ? "APPROVED" : "PRESENT",
+    blocksPublication: false,
+    reason: approval ? "Publish pack has an exact approval marker." : "publish-pack.md is present with no placeholder markers detected.",
+  };
+}
+
 function readContext(runDir) {
-  const roughCutReviewText = readOptionalFile(runDir, "rough-cut-review.md");
+  const files = Object.fromEntries(INPUT_FILES.map((filename) => [filename, readOptionalFile(runDir, filename)]));
+  const roughCutReviewText = files["rough-cut-review.md"];
   const finalWatchNotesWereMissing = !readOptionalFile(runDir, FINAL_WATCH_NOTES_FILE);
   const finalWatchNotesText =
-    readOptionalFile(runDir, FINAL_WATCH_NOTES_FILE) || buildFinalWatchNotesTemplate(path.basename(runDir));
+    files[FINAL_WATCH_NOTES_FILE] || buildFinalWatchNotesTemplate(path.basename(runDir));
   const roughCut = parseRoughCutReview(roughCutReviewText);
   const finalIssues = sectionItems(finalWatchNotesText, ["Final-Watch Issues", "Publication Blockers"]);
+  const publishPack = parsePublishPack(files["publish-pack.md"]);
+  const missingRequiredSections = missingRequiredFinalWatchSections(finalWatchNotesText);
 
   return {
     runId: path.basename(runDir),
+    files,
     roughCut,
+    publishPack,
     finalWatchNotesWereMissing,
     finalWatchNotesText,
     finalWatchNotesAreStarter: isStarterFinalWatchNotes(finalWatchNotesText),
     finalIssues,
+    missingRequiredSections,
+    selectedSummary: selectedPackageSummary(files),
     explicitApproval: hasExactApprovalMarker(finalWatchNotesText),
   };
 }
@@ -181,6 +328,14 @@ function determineFinalReviewStatus(context) {
     blockers.push("Final-watch notes list unresolved issues.");
     nextActions.push("Resolve listed final-watch issues and review again.");
   }
+  if (context.missingRequiredSections.length) {
+    blockers.push(`Required final-watch sections are not assessed: ${context.missingRequiredSections.join(", ")}.`);
+    nextActions.push("Complete every required final-watch section with real non-placeholder notes.");
+  }
+  if (context.publishPack.blocksPublication) {
+    blockers.push(context.publishPack.reason);
+    nextActions.push("Replace placeholder publish metadata and approve the publish pack before publication.");
+  }
 
   if (blockers.length) {
     return {
@@ -191,7 +346,7 @@ function determineFinalReviewStatus(context) {
     };
   }
 
-  if (context.explicitApproval || (!context.finalWatchNotesAreStarter && !context.finalIssues.length)) {
+  if (context.explicitApproval && !context.finalWatchNotesAreStarter && !context.finalIssues.length) {
     return {
       status: "PASS",
       publishReady: true,
@@ -199,6 +354,15 @@ function determineFinalReviewStatus(context) {
         ? "Exact final-watch approval marker is present and upstream gates allow final review."
         : "Real final-watch notes exist, no final-watch issues were detected, and upstream gates allow final review.",
       nextActions: ["Proceed only within the approved publish scope."],
+    };
+  }
+
+  if (!context.finalWatchNotesAreStarter && !context.finalIssues.length) {
+    return {
+      status: "NEEDS FINAL FIXES",
+      publishReady: false,
+      reason: "Real final-watch notes exist and no issues were detected, but an exact final approval marker is required before publication readiness.",
+      nextActions: ["Add exact Final approval: PASS only after the human final-watch gate approves publication."],
     };
   }
 
@@ -223,7 +387,15 @@ function finalIssueList(context) {
   return markdownList(context.finalIssues, "No final-watch issues detected from real final-watch notes.");
 }
 
+function assessedSection(notes, headings, fallback) {
+  const text = cleanString(sectionTextAny(notes, headings));
+  if (!isAssessedText(text)) return fallback;
+  return text;
+}
+
 function buildFinalReview(context, verdict) {
+  const notes = context.finalWatchNotesText;
+  const finalGateStatus = verdict.publishReady ? "READY TO PUBLISH" : verdict.status === "NEEDS FINAL FIXES" ? "NEEDS FINAL FIXES" : "BLOCKED";
   return `# Final Review
 
 - Run: ${context.runId}
@@ -231,6 +403,10 @@ function buildFinalReview(context, verdict) {
 - Rough-cut review status: ${context.roughCut.status}
 - Second-cut ready: ${context.roughCut.secondCutReady}
 - Final-watch notes source: ${context.finalWatchNotesWereMissing ? "created starter template" : FINAL_WATCH_NOTES_FILE}
+- Final version reviewed: ${assessedSection(notes, ["Final Version Reviewed"], "Not assessed.")}
+- Watch context: ${assessedSection(notes, ["Watch Date"], "Not assessed.")}; reviewer: ${assessedSection(notes, ["Reviewer"], "Not assessed.")}
+- Package promise: ${context.selectedSummary}
+- Publish pack status: ${context.publishPack.status}
 - Final review status: ${verdict.status}
 - Publish ready: ${verdict.publishReady ? "yes" : "no"}
 - External APIs called: no
@@ -241,6 +417,8 @@ ${markdownList(
   [
     context.roughCut.allowsFinalReview ? "" : context.roughCut.reason,
     context.finalWatchNotesAreStarter ? "Final-watch notes are starter/template notes, not real review evidence." : "",
+    context.publishPack.blocksPublication ? context.publishPack.reason : "",
+    context.publishPack.status === "MISSING" ? context.publishPack.reason : "",
   ],
   "None."
 )}
@@ -254,13 +432,61 @@ ${markdownList(
 
 ${finalIssueList(context)}
 
+## Viewer Promise Delivery
+
+${assessedSection(notes, ["Viewer Promise Delivery", "Promise Delivery"], "- Not assessed. Add real final-watch notes.")}
+
+## Opening Strength
+
+${assessedSection(notes, ["Opening Strength", "Opening"], "- Not assessed. Add real final-watch notes.")}
+
+## Clarity
+
+${assessedSection(notes, ["Clarity"], "- Not assessed. Add real final-watch notes.")}
+
+## Pacing
+
+${assessedSection(notes, ["Pacing"], "- Not assessed. Add real final-watch notes.")}
+
+## Proof / Evidence
+
+${assessedSection(notes, ["Proof / Evidence"], "- Not assessed. Add real final-watch notes.")}
+
+## Audio Quality
+
+${assessedSection(notes, ["Audio Quality", "Audio"], "- Not assessed. Add real final-watch notes.")}
+
+## Visual Support
+
+${assessedSection(notes, ["Visual Support", "Visuals"], "- Not assessed. Add real final-watch notes.")}
+
+## Graphics / Captions
+
+${assessedSection(notes, ["Graphics / Captions"], "- Not assessed. Add real final-watch notes.")}
+
+## Title / Thumbnail Fit
+
+${assessedSection(notes, ["Title / Thumbnail Fit"], "- Not assessed. Add real final-watch notes.")}
+
+## Ethical / Accuracy Risks
+
+${assessedSection(notes, ["Ethical / Accuracy Risks"], "- Not assessed. Add real final-watch notes.")}
+
+## Upload Metadata Readiness
+
+${assessedSection(notes, ["Upload Metadata Readiness"], `- ${context.publishPack.reason}`)}
+
+## Archive Readiness
+
+${assessedSection(notes, ["Archive Readiness"], "- Not assessed. Add real final-watch notes.")}
+
 ## Publication Blockers
 
 ${finalIssueList(context)}
 
 ## Final Review Gate
 
-- Status: ${verdict.status}
+- Status: ${finalGateStatus}
 - Reason: ${verdict.reason}
 - Next actions:
 ${markdownList(verdict.nextActions, "Proceed only within the approved publish scope.")}
@@ -293,6 +519,22 @@ function publicationBlockerRows(context, verdict) {
       "blocked",
     ]);
   }
+  if (context.publishPack.blocksPublication) {
+    rows.push([
+      context.publishPack.reason,
+      "Publication readiness requires non-placeholder upload metadata.",
+      "Repair publish-pack.md and add an exact approval marker when reviewed.",
+      "blocked",
+    ]);
+  }
+  context.missingRequiredSections.forEach((section) => {
+    rows.push([
+      `${section} is not assessed in final-watch-notes.md`,
+      "READY TO PUBLISH requires real non-placeholder final-watch assessment for every required section.",
+      `Complete the ${section} section with real final-watch notes.`,
+      "blocked",
+    ]);
+  });
   context.finalIssues.forEach((issue) => {
     rows.push([
       issue,
@@ -399,12 +641,16 @@ if (require.main === module) {
 module.exports = {
   TOOL_NAME,
   TARGET_FILES,
+  REQUIRED_FINAL_WATCH_SECTIONS,
   FINAL_WATCH_NOTES_FILE,
   FINAL_REVIEW_FILE,
   PUBLICATION_BLOCKERS_FILE,
   usage,
   parseArgs,
   buildFinalWatchNotesTemplate,
+  sectionTextAny,
+  isAssessedText,
+  missingRequiredFinalWatchSections,
   isStarterFinalWatchNotes,
   parseRoughCutReview,
   readContext,

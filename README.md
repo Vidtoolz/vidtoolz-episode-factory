@@ -253,7 +253,9 @@ node scripts/package-run-final-review.js package-runs/YYYY-MM-DD-ai-video-idea-f
 This writes `final-watch-notes.md`, `final-review.md`, and
 `publication-blockers.md`. It blocks publication readiness when rough-cut review
 is blocked, final-watch notes are missing or still a starter template, or
-publication blockers remain open.
+publication blockers remain open. It also blocks when `publish-pack.md` is
+missing or still placeholder/draft metadata. `READY TO PUBLISH` requires an
+exact final approval marker in real final-watch notes.
 
 After the long-form episode has final approval, create repurposing candidates:
 
