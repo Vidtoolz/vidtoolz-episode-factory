@@ -20,9 +20,10 @@ Episode Factory is designed for a solo YouTube creator who needs to move from ro
 10. Review the first watchable edit before treating the second cut as ready.
 11. Move to `Ready to Publish` when the edit is complete and publish assets need final checks.
 12. Run the export/mastering checklist after final review and before publication metadata validation. It creates `export-checklist.md`, `master-file-manifest.md`, `caption-check.md`, `loudness-check.md`, and `delivery-readiness.md`.
-13. Plan Shorts and platform variants only after final review and publication blockers are clear.
-14. Move to `Published` after the video is live.
-15. Move to `Archived` when the episode is no longer active but should remain available for reference.
+13. Validate publication metadata before any scheduling or publishing action. It creates `publish-metadata-review.md`, `title-check.md`, `thumbnail-check.md`, `description-check.md`, `chapters-check.md`, and `schedule-check.md`.
+14. Plan Shorts and platform variants only after final review and publication blockers are clear.
+15. Move to `Published` after the video is live.
+16. Move to `Archived` when the episode is no longer active but should remain available for reference.
 
 ## Detail Fields
 

@@ -19,6 +19,7 @@ const packageRoughCutReviewScript = require("../scripts/package-run-rough-cut-re
 const packageFinalReviewScript = require("../scripts/package-run-final-review.js");
 const packageRepurposeScript = require("../scripts/package-run-repurpose.js");
 const packageExportChecklistScript = require("../scripts/package-run-export-checklist.js");
+const packagePublicationMetadataScript = require("../scripts/package-run-publication-metadata.js");
 const packageRunCreatorQaScript = require("../scripts/package-run-creator-qa.js");
 const packageRunsIndexScript = require("../scripts/package-runs-index.js");
 const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashboard-launch.js");
@@ -3412,6 +3413,295 @@ test("verify script checks export checklist syntax", () => {
   assert.match(verify, /node --check scripts\/package-run-export-checklist\.js/);
 });
 
+function writePublicationMetadataBaseRun(runDir, options = {}) {
+  fs.mkdirSync(runDir, { recursive: true });
+  if (options.finalReview !== false) {
+    const status = options.finalReviewStatus || "PASS";
+    const publishReady = options.publishReady || "yes";
+    const gateStatus = options.gateStatus || (status === "PASS" && publishReady === "yes" ? "READY TO PUBLISH" : status);
+    fs.writeFileSync(
+      path.join(runDir, "final-review.md"),
+      [
+        "# Final Review",
+        "",
+        "- Final review status: " + status,
+        "- Publish ready: " + publishReady,
+        "",
+        "## Final Review Gate",
+        "",
+        "- Status: " + gateStatus,
+        "",
+      ].join("\n")
+    );
+  }
+  fs.writeFileSync(
+    path.join(runDir, "publication-blockers.md"),
+    options.openPublicationBlocker
+      ? "# Publication Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| Missing metadata proof. | Blocks scheduling. | Fix metadata. | open |\n"
+      : "# Publication Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Final review gates passed. | Keep evidence. | closed |\n"
+  );
+  if (options.exportReady !== false) {
+    fs.writeFileSync(path.join(runDir, "delivery-readiness.md"), "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n");
+  }
+  if (options.publishPack !== false) {
+    fs.writeFileSync(
+      path.join(runDir, "publish-pack.md"),
+      [
+        "# Publish Pack",
+        "",
+        "- Title: Final VIDTOOLZ Package Run",
+        "- Thumbnail path: thumbnails/final-package-run.png",
+        "- Description: A practical VIDTOOLZ walkthrough for validating package runs before publishing.",
+        "- Chapters: 00:00 Hook; 01:10 Proof; 05:30 Workflow; 09:00 Payoff",
+        "- Schedule/release timing: 2026-05-15 16:00 Europe/Helsinki",
+        "",
+        "Publication metadata approval: PASS",
+        "",
+      ].join("\n")
+    );
+  }
+}
+
+function writePlaceholderPublishPack(runDir) {
+  fs.writeFileSync(
+    path.join(runDir, "publish-pack.md"),
+    "# Publish Pack\n\n- Title: TODO\n- Thumbnail path: placeholder\n- Description: TBD\n- Chapters: TODO\n- Schedule/release timing: TODO\n"
+  );
+}
+
+function publishMetadataReviewText(runDir) {
+  return fs.readFileSync(path.join(runDir, "publish-metadata-review.md"), "utf8");
+}
+
+test("publication metadata help works", () => {
+  const output = captureConsole(() => packagePublicationMetadataScript.main(["--help"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /package-run-publication-metadata\.js/);
+});
+
+test("publication metadata blocks missing final review", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-metadata-missing-final-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-metadata-missing-final");
+  writePublicationMetadataBaseRun(runDir, { finalReview: false });
+
+  assert.equal(packagePublicationMetadataScript.main([runDir]), 0);
+  const review = publishMetadataReviewText(runDir);
+
+  assert.match(review, /Publication metadata status: BLOCKED/);
+  assert.match(review, /final-review\.md is missing/);
+});
+
+test("publication metadata blocks final review not publish ready", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-metadata-final-blocked-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-metadata-final-blocked");
+  writePublicationMetadataBaseRun(runDir, { finalReviewStatus: "NEEDS FINAL FIXES", publishReady: "no", gateStatus: "NEEDS FINAL FIXES" });
+
+  assert.equal(packagePublicationMetadataScript.main([runDir]), 0);
+  const review = publishMetadataReviewText(runDir);
+
+  assert.match(review, /Publication metadata status: BLOCKED/);
+  assert.match(review, /NEEDS FINAL FIXES/);
+});
+
+test("publication metadata blocks open publication blockers", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-metadata-open-blockers-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-metadata-open-blockers");
+  writePublicationMetadataBaseRun(runDir, { openPublicationBlocker: true });
+
+  assert.equal(packagePublicationMetadataScript.main([runDir]), 0);
+  assert.match(publishMetadataReviewText(runDir), /Publication metadata status: BLOCKED/);
+  assert.match(publishMetadataReviewText(runDir), /publication-blockers\.md has open or blocked rows/);
+});
+
+test("publication metadata missing publish pack needs metadata", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-metadata-missing-pack-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-metadata-missing-pack");
+  writePublicationMetadataBaseRun(runDir, { publishPack: false });
+
+  assert.equal(packagePublicationMetadataScript.main([runDir]), 0);
+  const review = publishMetadataReviewText(runDir);
+
+  assert.match(review, /Publication metadata status: NEEDS METADATA/);
+  assert.match(review, /publish-pack\.md is missing/);
+  ["title-check.md", "thumbnail-check.md", "description-check.md", "chapters-check.md", "schedule-check.md"].forEach((filename) => {
+    assert.equal(fs.existsSync(path.join(runDir, filename)), true);
+  });
+});
+
+test("publication metadata blocks placeholder title description and thumbnail", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-metadata-placeholder-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-metadata-placeholder");
+  writePublicationMetadataBaseRun(runDir);
+  writePlaceholderPublishPack(runDir);
+
+  assert.equal(packagePublicationMetadataScript.main([runDir, "--overwrite"]), 0);
+  const review = publishMetadataReviewText(runDir);
+
+  assert.match(review, /Publication metadata status: NEEDS METADATA/);
+  assert.match(review, /title is missing or placeholder/);
+  assert.match(review, /thumbnail path or thumbnail approval is missing or placeholder/);
+  assert.match(review, /description is missing or placeholder/);
+});
+
+test("publication metadata requires chapters unless waived with reason", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-metadata-chapters-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-metadata-chapters");
+  writePublicationMetadataBaseRun(runDir);
+  fs.writeFileSync(
+    path.join(runDir, "publish-pack.md"),
+    "# Publish Pack\n\n- Title: Final VIDTOOLZ Package Run\n- Thumbnail path: thumbnails/final.png\n- Description: Ready description.\n- Schedule/release timing: 2026-05-15 16:00\n\nPublication metadata approval: PASS\n"
+  );
+
+  assert.equal(packagePublicationMetadataScript.main([runDir, "--overwrite"]), 0);
+  assert.match(publishMetadataReviewText(runDir), /chapters are missing or not explicitly waived with a reason/);
+
+  fs.writeFileSync(
+    path.join(runDir, "publish-pack.md"),
+    "# Publish Pack\n\n- Title: Final VIDTOOLZ Package Run\n- Thumbnail path: thumbnails/final.png\n- Description: Ready description.\n- Chapters: not needed - short update under chapter threshold\n- Schedule/release timing: 2026-05-15 16:00\n\nPublication metadata approval: PASS\n"
+  );
+  assert.equal(packagePublicationMetadataScript.main([runDir, "--overwrite"]), 0);
+  assert.doesNotMatch(publishMetadataReviewText(runDir), /chapters are missing or not explicitly waived/);
+});
+
+test("publication metadata requires schedule unless deferred with reason", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-metadata-schedule-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-metadata-schedule");
+  writePublicationMetadataBaseRun(runDir);
+  fs.writeFileSync(
+    path.join(runDir, "publish-pack.md"),
+    "# Publish Pack\n\n- Title: Final VIDTOOLZ Package Run\n- Thumbnail path: thumbnails/final.png\n- Description: Ready description.\n- Chapters: 00:00 Hook\n\nPublication metadata approval: PASS\n"
+  );
+
+  assert.equal(packagePublicationMetadataScript.main([runDir, "--overwrite"]), 0);
+  assert.match(publishMetadataReviewText(runDir), /schedule\/release timing is missing or not explicitly deferred with a reason/);
+
+  fs.writeFileSync(
+    path.join(runDir, "publish-pack.md"),
+    "# Publish Pack\n\n- Title: Final VIDTOOLZ Package Run\n- Thumbnail path: thumbnails/final.png\n- Description: Ready description.\n- Chapters: 00:00 Hook\n- Schedule/release timing: deferred - waiting for sponsor confirmation\n\nPublication metadata approval: PASS\n"
+  );
+  assert.equal(packagePublicationMetadataScript.main([runDir, "--overwrite"]), 0);
+  assert.doesNotMatch(publishMetadataReviewText(runDir), /schedule\/release timing is missing/);
+});
+
+test("publication metadata keeps approval marker separate from schedule evidence", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-metadata-schedule-marker-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-metadata-schedule-marker");
+  writePublicationMetadataBaseRun(runDir);
+  fs.writeFileSync(
+    path.join(runDir, "publish-pack.md"),
+    [
+      "# Publish Pack",
+      "",
+      "- Title: Final VIDTOOLZ Package Run",
+      "- Thumbnail path: thumbnails/final.png",
+      "- Description: Ready description.",
+      "- Chapters: 00:00 Hook",
+      "",
+      "## Schedule",
+      "",
+      "2026-05-15 16:00 Europe/Helsinki",
+      "",
+      "Metadata approval: PASS",
+      "",
+    ].join("\n")
+  );
+
+  assert.equal(packagePublicationMetadataScript.main([runDir, "--overwrite"]), 0);
+  const context = packagePublicationMetadataScript.readContext(runDir);
+
+  assert.equal(context.metadata.schedule, "2026-05-15 16:00 Europe/Helsinki");
+  assert.equal(context.metadataApproval, true);
+  assert.doesNotMatch(context.metadata.schedule, /Metadata approval: PASS/);
+});
+
+test("publication metadata renders multiline chapters safely in tables", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-metadata-multiline-chapters-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-metadata-multiline-chapters");
+  writePublicationMetadataBaseRun(runDir);
+  fs.writeFileSync(
+    path.join(runDir, "publish-pack.md"),
+    [
+      "# Publish Pack",
+      "",
+      "- Title: Final VIDTOOLZ Package Run",
+      "- Thumbnail path: thumbnails/final.png",
+      "- Description: Ready description.",
+      "- Schedule/release timing: 2026-05-15 16:00 Europe/Helsinki",
+      "",
+      "## Chapters",
+      "",
+      "00:00 Hook",
+      "01:00 Proof",
+      "02:00 Payoff",
+      "",
+      "Publication metadata approval: PASS",
+      "",
+    ].join("\n")
+  );
+
+  assert.equal(packagePublicationMetadataScript.main([runDir, "--overwrite"]), 0);
+  const review = publishMetadataReviewText(runDir);
+  const chaptersCheck = fs.readFileSync(path.join(runDir, "chapters-check.md"), "utf8");
+
+  assert.match(review, /\| Chapters \| 00:00 Hook \/ 01:00 Proof \/ 02:00 Payoff \| closed \|/);
+  assert.match(chaptersCheck, /\| Chapters recorded \| 00:00 Hook \/ 01:00 Proof \/ 02:00 Payoff \| closed \|/);
+  assert.doesNotMatch(review, /\| Chapters \| 00:00 Hook\r?\n/);
+  assert.doesNotMatch(chaptersCheck, /\| Chapters recorded \| 00:00 Hook\r?\n/);
+});
+
+test("publication metadata can mark ready to schedule with real metadata and exact approval", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-metadata-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-metadata-ready");
+  writePublicationMetadataBaseRun(runDir);
+
+  assert.equal(packagePublicationMetadataScript.main([runDir, "--overwrite"]), 0);
+  const review = publishMetadataReviewText(runDir);
+
+  assert.match(review, /Publication metadata status: READY TO SCHEDULE/);
+  assert.match(review, /Ready to schedule: yes/);
+  packagePublicationMetadataScript.TARGET_FILES.forEach((filename) => {
+    const artifact = fs.readFileSync(path.join(runDir, filename), "utf8");
+    assert.doesNotMatch(artifact, /\bTODO\b/);
+    assert.doesNotMatch(artifact, /\|\s*(?:open|blocked)\s*\|/i);
+  });
+});
+
+test("publication metadata preserves existing manual artifacts", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-metadata-preserve-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-metadata-preserve");
+  writePublicationMetadataBaseRun(runDir);
+  const reviewPath = path.join(runDir, "publish-metadata-review.md");
+  fs.writeFileSync(reviewPath, "# Manual Metadata Review\n\nKeep this.\n", "utf8");
+
+  const output = captureConsole(() => packagePublicationMetadataScript.main([runDir]));
+
+  assert.equal(output.result, 0);
+  assert.equal(fs.readFileSync(reviewPath, "utf8"), "# Manual Metadata Review\n\nKeep this.\n");
+  assert.match(output.stdout.join("\n"), /unchanged: .*publish-metadata-review\.md/);
+});
+
+test("publication metadata overwrite replaces generated files", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-metadata-overwrite-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-metadata-overwrite");
+  writePublicationMetadataBaseRun(runDir);
+  const titlePath = path.join(runDir, "title-check.md");
+  fs.writeFileSync(titlePath, "# Manual Title Check\n\nReplace me.\n", "utf8");
+
+  const output = captureConsole(() => packagePublicationMetadataScript.main([runDir, "--overwrite"]));
+
+  assert.equal(output.result, 0);
+  assert.match(fs.readFileSync(titlePath, "utf8"), /# Title Check/);
+  assert.match(output.stdout.join("\n"), /overwritten: .*title-check\.md/);
+});
+
+test("verify script checks publication metadata syntax", () => {
+  const verifyPath = path.join(__dirname, "..", "scripts", "verify.sh");
+  const verify = fs.readFileSync(verifyPath, "utf8");
+
+  assert.match(verify, /node --check scripts\/package-run-publication-metadata\.js/);
+});
+
 function writeRepurposeBaseRun(runDir, options = {}) {
   fs.mkdirSync(runDir, { recursive: true });
   fs.writeFileSync(
@@ -4491,6 +4781,12 @@ test("package runs index scans package-runs folders and writes index json", () =
     "caption-check.md",
     "loudness-check.md",
     "delivery-readiness.md",
+    "publish-metadata-review.md",
+    "title-check.md",
+    "thumbnail-check.md",
+    "description-check.md",
+    "chapters-check.md",
+    "schedule-check.md",
     "production-brief.md",
     "shooting-plan.md",
     "b-roll-list.md",
@@ -4549,6 +4845,12 @@ test("package runs index scans package-runs folders and writes index json", () =
   assert.equal(byRunId["2026-05-02-ready"].files.caption_check, true);
   assert.equal(byRunId["2026-05-02-ready"].files.loudness_check, true);
   assert.equal(byRunId["2026-05-02-ready"].files.delivery_readiness, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.publish_metadata_review, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.title_check, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.thumbnail_check, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.description_check, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.chapters_check, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.schedule_check, true);
   assert.equal(byRunId["2026-05-02-ready"].files.repurposing_plan, true);
   assert.equal(byRunId["2026-05-02-ready"].files.shorts_candidates, true);
   assert.equal(byRunId["2026-05-02-ready"].files.platform_variants, true);

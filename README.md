@@ -285,6 +285,19 @@ repurposing artifacts. `READY TO UPLOAD` requires final review approval, clear
 publication blockers, concrete export/master metadata, loudness and captions
 assessment, and an exact delivery approval marker.
 
+After export/mastering readiness passes, validate publication metadata:
+
+```sh
+node scripts/package-run-publication-metadata.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `publish-metadata-review.md`, `title-check.md`,
+`thumbnail-check.md`, `description-check.md`, `chapters-check.md`, and
+`schedule-check.md`. It does not call YouTube APIs, upload, schedule, publish,
+archive, or create scheduled jobs. `READY TO SCHEDULE` requires final review and
+export readiness, clear publication blockers, complete title/thumbnail/
+description/chapters/schedule metadata, and an exact metadata approval marker.
+
 After the long-form episode has final approval, create repurposing candidates:
 
 ```sh
