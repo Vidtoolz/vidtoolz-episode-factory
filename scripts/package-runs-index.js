@@ -246,6 +246,8 @@ function readyYes(markdown = "", label = "Ready") {
 
 function readLifecycleGate(runDir, files = {}) {
   const researchPack = readOptionalText(runDir, "research-pack.md");
+  const scriptStructure = readOptionalText(runDir, "script-structure.md");
+  const scriptReview = readOptionalText(runDir, "script-review.md");
   const productionPlan = readOptionalText(runDir, "production-plan.md");
   const captureChecklist = readOptionalText(runDir, "capture-checklist.md");
   const roughCutReview = readOptionalText(runDir, "rough-cut-review.md");
@@ -258,6 +260,10 @@ function readLifecycleGate(runDir, files = {}) {
 
   return {
     researchGateStatus: gateStatus(researchPack, "Status"),
+    scriptStructureStatus: gateStatus(scriptStructure, "Script structure status") || gateStatus(scriptStructure),
+    readyToDraft: readyYes(scriptStructure, "Ready to draft"),
+    scriptReviewStatus: gateStatus(scriptReview, "Script review status") || gateStatus(scriptReview),
+    productionPlanningReady: readyYes(scriptReview, "Production planning ready"),
     productionPlanStatus: gateStatus(productionPlan, "Shoot-readiness status") || gateStatus(productionPlan),
     captureStatus: gateStatus(captureChecklist, "Capture checklist status") || gateStatus(captureChecklist),
     readyForRoughCut: readyYes(captureChecklist, "Ready for rough cut"),
@@ -277,6 +283,8 @@ function readLifecycleGate(runDir, files = {}) {
     readyToArchive: readyYes(archiveManifest, "Ready to archive"),
     repurposingStatus: gateStatus(repurposingPlan, "Repurposing status") || gateStatus(repurposingPlan),
     readyToCutShorts: readyYes(repurposingPlan, "Ready to cut shorts"),
+    hasScriptStructure: Boolean(files.script_structure),
+    hasScriptReview: Boolean(files.script_review),
     hasProductionPlan: Boolean(files.production_plan),
     hasAnyProductionPlanArtifacts: hasAnyArtifacts(files, PRODUCTION_PLAN_ARTIFACTS),
     hasAnyCaptureArtifacts: hasAnyArtifacts(files, CAPTURE_ARTIFACTS),
@@ -435,14 +443,82 @@ function nextRecommendedCommand(status, runPath, creatorQaStatus = "not run", ev
   return commandByStatus[status] || "";
 }
 
-function nextRecommendedCommandForRun(run = {}) {
+function firstBlockingGateForRun(run = {}) {
   const gate = run.lifecycleGate || {};
-  if (run.files && run.files.research_pack && ["PARTIAL", "BLOCKED", "NEEDS RESEARCH"].includes(gate.researchGateStatus)) {
-    return `node scripts/package-run-research-evidence.js ${run.path || "package-runs/YYYY-MM-DD-topic-slug"}`;
+  const files = run.files || {};
+  const target = run.path || "package-runs/YYYY-MM-DD-topic-slug";
+  const researchStatus = gate.researchGateStatus || "";
+  const structureStatus = gate.scriptStructureStatus || "";
+  const reviewStatus = gate.scriptReviewStatus || "";
+
+  if (files.research_pack && researchStatus && researchStatus !== "PASS") {
+    return {
+      stage: "research",
+      reason: `Research Sufficiency Gate is ${researchStatus}, not PASS. Add concrete research evidence before script structure, script review, or production planning.`,
+      missingExpectedArtifacts: ["research evidence with Research Sufficiency Gate: PASS"],
+      nextRecommendedCommand: `node scripts/package-run-research-evidence.js ${target}`,
+    };
   }
-  if (run.status === "Needs production planning" && gate.productionPlanStatus === "NEEDS SCRIPT APPROVAL") {
-    return `node scripts/package-run-script-review.js ${run.path || "package-runs/YYYY-MM-DD-topic-slug"}`;
+
+  if (gate.hasScriptStructure && !(structureStatus === "READY TO DRAFT" || gate.readyToDraft)) {
+    return {
+      stage: "script-structure",
+      reason: `Script structure status is ${structureStatus || "missing"}, not READY TO DRAFT.`,
+      missingExpectedArtifacts: ["script-structure.md with Script structure status: READY TO DRAFT"],
+      nextRecommendedCommand: `node scripts/package-run-script-structure.js ${target}`,
+    };
   }
+
+  if (
+    gate.hasScriptReview &&
+    !(
+      reviewStatus === "PASS" &&
+      gate.productionPlanningReady
+    )
+  ) {
+    const planningReady = gate.productionPlanningReady ? "yes" : "no";
+    return {
+      stage: "script-review",
+      reason: `Script review status is ${reviewStatus || "missing"}; Production planning ready is ${planningReady}.`,
+      missingExpectedArtifacts: ["script-review.md with Script review status: PASS and Production planning ready: yes"],
+      nextRecommendedCommand: `node scripts/package-run-script-review.js ${target}`,
+    };
+  }
+
+  if (run.status === "Needs production planning") {
+    if (!gate.hasProductionPlan) {
+      return {
+        stage: "production-plan",
+        reason: "production-plan.md is missing.",
+        missingExpectedArtifacts: ["production-plan.md"],
+        nextRecommendedCommand: `node scripts/package-run-production-plan.js ${target}`,
+      };
+    }
+    if (gate.productionPlanStatus === "NEEDS SCRIPT APPROVAL") {
+      return {
+        stage: "script-review",
+        reason: "Shoot-readiness status is NEEDS SCRIPT APPROVAL; script review or revision approval is required before production planning can pass.",
+        missingExpectedArtifacts: ["script-review.md with Script review status: PASS and Production planning ready: yes"],
+        nextRecommendedCommand: `node scripts/package-run-script-review.js ${target}`,
+      };
+    }
+    return {
+      stage: "production-plan",
+      reason: `Shoot-readiness status is ${gate.productionPlanStatus || "missing"}, not READY TO SHOOT.`,
+      missingExpectedArtifacts: ["production-plan.md with Shoot-readiness status: READY TO SHOOT"],
+      nextRecommendedCommand: `node scripts/package-run-production-plan.js ${target}`,
+    };
+  }
+
+  return null;
+}
+
+function nextRecommendedCommandForRun(run = {}) {
+  if (isCreatorQaBlocking(run.creatorQaStatus || "not run")) {
+    return nextRecommendedCommand(run.status, run.path, run.creatorQaStatus, run.evidenceGate);
+  }
+  const blockingGate = firstBlockingGateForRun(run);
+  if (blockingGate && blockingGate.nextRecommendedCommand) return blockingGate.nextRecommendedCommand;
   return nextRecommendedCommand(run.status, run.path, run.creatorQaStatus, run.evidenceGate);
 }
 
@@ -707,6 +783,7 @@ module.exports = {
   lifecycleStatusFromGate,
   nextExpectedFile,
   nextRecommendedCommand,
+  firstBlockingGateForRun,
   nextRecommendedCommandForRun,
   workflowBucket,
   readCreatorQaStatus,

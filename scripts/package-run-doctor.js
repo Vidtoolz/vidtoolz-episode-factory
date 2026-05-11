@@ -50,6 +50,9 @@ function unknownFiles(runDir) {
 }
 
 function missingExpectedArtifacts(run = {}) {
+  const blockingGate = packageRunsIndex.firstBlockingGateForRun(run);
+  if (blockingGate && blockingGate.missingExpectedArtifacts) return blockingGate.missingExpectedArtifacts;
+
   const status = run.status || "";
   const files = run.files || {};
   const missingByStatus = {
@@ -97,6 +100,8 @@ function firstBlockerReason(run = {}) {
   }
   if (status === "Ready to shoot" && evidence.hasNarrowShootingApproval) return "Narrow shooting only approval blocks downstream work.";
   if (status === "Ready to shoot" && evidence.blocksProductionReady) return evidence.warning || "Evidence gate blocks production readiness.";
+  const blockingGate = packageRunsIndex.firstBlockingGateForRun(run);
+  if (blockingGate && blockingGate.reason) return blockingGate.reason;
   if (status === "Needs production planning") {
     if (!gate.hasProductionPlan) return "production-plan.md is missing.";
     return `Shoot-readiness status is ${gate.productionPlanStatus || "missing"}, not READY TO SHOOT.`;
@@ -121,6 +126,10 @@ function firstBlockerReason(run = {}) {
 function lifecycleGateSummary(gate = {}) {
   return {
     researchGateStatus: gate.researchGateStatus || "",
+    scriptStructureStatus: gate.scriptStructureStatus || "",
+    readyToDraft: Boolean(gate.readyToDraft),
+    scriptReviewStatus: gate.scriptReviewStatus || "",
+    productionPlanningReady: Boolean(gate.productionPlanningReady),
     productionPlanStatus: gate.productionPlanStatus || "",
     captureStatus: gate.captureStatus || "",
     readyForRoughCut: Boolean(gate.readyForRoughCut),

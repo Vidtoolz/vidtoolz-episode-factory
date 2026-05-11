@@ -5008,6 +5008,7 @@ test("package run doctor routes partial research to research evidence tool", () 
   assert.deepEqual(after, before);
   assert.equal(report.lifecycleGate.researchGateStatus, "PARTIAL");
   assert.match(report.nextRecommendedCommand, /package-run-research-evidence\.js/);
+  assert.match(report.firstBlockerReason, /Research Sufficiency Gate is PARTIAL/);
 });
 
 test("verify script checks research evidence syntax", () => {
@@ -5654,6 +5655,128 @@ test("package runs index recommends script review when production plan needs scr
   );
   assert.match(doctor.nextRecommendedCommand, /package-run-script-review\.js/);
   assert.match(doctor.firstBlockerReason, /NEEDS SCRIPT APPROVAL/);
+});
+
+test("package run doctor reports partial research before downstream production symptoms", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-root-research-blocker-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-root-research");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({ package: { proposedTitle: "Root Research Blocker" } }),
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PARTIAL\n- Reason: source list is TODO\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "production-plan.md"),
+    "# Production Plan\n\n- Shoot-readiness status: NEEDS SCRIPT APPROVAL\n",
+    "utf8"
+  );
+  const before = fs.readdirSync(runDir).sort();
+
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  const run = index.runs[0];
+  const doctor = packageRunDoctorScript.buildDoctorReport(runDir);
+  const after = fs.readdirSync(runDir).sort();
+
+  assert.deepEqual(after, before);
+  assert.equal(run.lifecycleGate.researchGateStatus, "PARTIAL");
+  assert.equal(run.lifecycleGate.productionPlanStatus, "NEEDS SCRIPT APPROVAL");
+  assert.match(run.nextRecommendedCommand, /package-run-research-evidence\.js/);
+  assert.match(doctor.nextRecommendedCommand, /package-run-research-evidence\.js/);
+  assert.match(doctor.firstBlockerReason, /Research Sufficiency Gate is PARTIAL/);
+  assert.deepEqual(doctor.missingExpectedArtifacts, ["research evidence with Research Sufficiency Gate: PASS"]);
+});
+
+test("package run doctor reports script structure blocker after research pass", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-root-structure-blocker-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-root-structure");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({ package: { proposedTitle: "Root Structure Blocker" } }),
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PASS\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "script-structure.md"),
+    "# Script Structure\n\n- Script structure status: PARTIAL\n- Ready to draft: no\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "production-plan.md"),
+    "# Production Plan\n\n- Shoot-readiness status: NEEDS SCRIPT APPROVAL\n",
+    "utf8"
+  );
+  const before = fs.readdirSync(runDir).sort();
+
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  const run = index.runs[0];
+  const doctor = packageRunDoctorScript.buildDoctorReport(runDir);
+  const after = fs.readdirSync(runDir).sort();
+
+  assert.deepEqual(after, before);
+  assert.equal(run.lifecycleGate.researchGateStatus, "PASS");
+  assert.equal(run.lifecycleGate.scriptStructureStatus, "PARTIAL");
+  assert.match(run.nextRecommendedCommand, /package-run-script-structure\.js/);
+  assert.match(doctor.firstBlockerReason, /Script structure status is PARTIAL/);
+  assert.deepEqual(doctor.missingExpectedArtifacts, [
+    "script-structure.md with Script structure status: READY TO DRAFT",
+  ]);
+});
+
+test("package run doctor reports script review blocker after research and structure pass", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-root-review-blocker-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-root-review");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({ package: { proposedTitle: "Root Review Blocker" } }),
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PASS\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "script-structure.md"),
+    "# Script Structure\n\n- Script structure status: READY TO DRAFT\n- Ready to draft: yes\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "script-review.md"),
+    "# Script Review\n\n- Script review status: NEEDS REVISION\n- Production planning ready: no\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "production-plan.md"),
+    "# Production Plan\n\n- Shoot-readiness status: NEEDS SCRIPT APPROVAL\n",
+    "utf8"
+  );
+  const before = fs.readdirSync(runDir).sort();
+
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  const run = index.runs[0];
+  const doctor = packageRunDoctorScript.buildDoctorReport(runDir);
+  const after = fs.readdirSync(runDir).sort();
+
+  assert.deepEqual(after, before);
+  assert.equal(run.lifecycleGate.scriptReviewStatus, "NEEDS REVISION");
+  assert.equal(run.lifecycleGate.productionPlanningReady, false);
+  assert.match(run.nextRecommendedCommand, /package-run-script-review\.js/);
+  assert.match(doctor.firstBlockerReason, /Script review status is NEEDS REVISION/);
+  assert.deepEqual(doctor.missingExpectedArtifacts, [
+    "script-review.md with Script review status: PASS and Production planning ready: yes",
+  ]);
 });
 
 test("verify script checks package run doctor syntax", () => {
