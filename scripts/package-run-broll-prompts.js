@@ -31,6 +31,8 @@ const INPUT_FILES = [
   "screen-capture-list.md",
   "b-roll-list.md",
   "graphics-list.md",
+  "selected-package.json",
+  "selected-package.md",
   ...TARGET_FILES,
 ];
 
@@ -237,20 +239,45 @@ function isCleanSourceLine(line) {
   );
 }
 
+function isMetadataLeak(line) {
+  const text = cleanString(line);
+  return (
+    /^\[[ xX]\]\s+/.test(text) ||
+    /^\|/.test(text) ||
+    /^(?:run|tool|status|source script|script review status|shoot-readiness status|external apis called|visual prompt approval|final-outline\.md|script-prompt\.md|script-draft\.md|final-script\.md|production-notes\.md)\s*:/i.test(text) ||
+    /\.md:\s*(?:present|missing|created|not present)/i.test(text)
+  );
+}
+
 function tidySourceLine(line) {
   return cleanString(
     String(line || "")
       .replace(/^#{1,6}\s+/, "")
       .replace(/^\s*(?:[-*]|\d+\.)\s+/, "")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
   );
+}
+
+function cleanConcept(value, minLength = 18) {
+  const raw = tidySourceLine(value);
+  if (isMetadataLeak(raw)) return "";
+  const text = raw
+    .replace(/\s+/g, " ")
+    .replace(/\|/g, "/")
+    .trim();
+  if (text.length < minLength) return "";
+  if (hasPlaceholderText(text)) return "";
+  return text;
 }
 
 function extractLines(text, limit = 8) {
   const seen = new Set();
   return String(text || "")
     .split(/\r?\n/)
-    .map(tidySourceLine)
-    .filter(isCleanSourceLine)
+    .map((line) => cleanConcept(line, 28))
+    .filter(Boolean)
     .filter((line) => {
       const key = line.toLowerCase();
       if (seen.has(key)) return false;
@@ -258,6 +285,68 @@ function extractLines(text, limit = 8) {
       return true;
     })
     .slice(0, limit);
+}
+
+function selectedPackageConcepts(files, limit = 4) {
+  const values = [];
+  const jsonText = files["selected-package.json"];
+  if (jsonText) {
+    try {
+      const payload = JSON.parse(jsonText);
+      const source = payload && typeof payload === "object" && payload.package ? payload.package : payload;
+      if (source && typeof source === "object") {
+        [
+          "proposedTitle",
+          "proposed_title",
+          "title",
+          "viewerPromise",
+          "viewer_promise",
+          "viewerProblem",
+          "viewer_problem",
+          "problem",
+          "angle",
+          "strategicAngle",
+          "contentAngle",
+          "packagePromise",
+          "targetViewer",
+        ].forEach((key) => {
+          if (source[key]) values.push(source[key]);
+        });
+      }
+    } catch (_error) {
+      // Ignore malformed selected-package.json; this is only a fallback source.
+    }
+  }
+  if (files["selected-package.md"]) values.push(...extractLines(files["selected-package.md"], limit));
+  return uniqueValues(values, limit);
+}
+
+function scriptConcepts(context, limit = 8) {
+  const concepts = [];
+  let buffer = [];
+  const flush = () => {
+    const text = cleanConcept(buffer.join(" "), 28);
+    if (text) concepts.push(text);
+    buffer = [];
+  };
+
+  String(context.script.text || "")
+    .split(/\r?\n/)
+    .forEach((line) => {
+      if (!cleanString(line)) {
+        flush();
+        return;
+      }
+      const cleaned = cleanConcept(line, 8);
+      if (!cleaned) return;
+      buffer.push(cleaned);
+      if (buffer.join(" ").length >= 55 || /[.!?]$/.test(cleaned)) flush();
+    });
+  flush();
+
+  const fromScript = uniqueValues(concepts, limit);
+  if (fromScript.length >= limit) return fromScript;
+  return uniqueValues([...fromScript, ...selectedPackageConcepts(context.files, limit)], limit);
 }
 
 function isReadyPlanningStatus(status) {
@@ -287,7 +376,7 @@ function uniqueValues(values, limit = 6) {
   const seen = new Set();
   const result = [];
   values.forEach((value) => {
-    const cleaned = cleanPlanningItem(value);
+    const cleaned = cleanPlanningItem(value) || cleanConcept(value, 18);
     const key = cleaned.toLowerCase();
     if (!cleaned || seen.has(key)) return;
     seen.add(key);
@@ -296,25 +385,35 @@ function uniqueValues(values, limit = 6) {
   return result.slice(0, limit);
 }
 
-function planningLines(context, filename, fallbackPatterns, limit = 6) {
+function planningLines(context, filename, fallbackPatterns, limit = 6, minimum = 1) {
   const rows = uniqueValues(planningRows(context.files[filename]), limit);
-  if (rows.length) return rows;
   const lines = uniqueValues(extractLines(context.files[filename], limit), limit);
-  if (lines.length) return lines;
-  const combined = fallbackPatterns.map((pattern) => extractLines(context.script.text).find((line) => pattern.test(line))).filter(Boolean);
-  return combined.length ? uniqueValues(combined, limit) : extractLines(context.script.text, limit);
+  const scriptLines = scriptConcepts(context, limit);
+  const combined = fallbackPatterns.map((pattern) => scriptLines.find((line) => pattern.test(line))).filter(Boolean);
+  const fallback = uniqueValues([...combined, ...scriptLines], limit);
+  const preferred = uniqueValues([...rows, ...lines], limit);
+  if (preferred.length >= minimum) return preferred.slice(0, limit);
+  return uniqueValues([...preferred, ...fallback], limit);
 }
 
 function conciseBrief(line, maxLength = 96) {
-  const text = cleanPlanningItem(line).replace(/\.$/, "");
-  return text.length > maxLength ? `${text.slice(0, maxLength - 3).trim()}...` : text;
+  const text = (cleanPlanningItem(line) || cleanConcept(line, 8)).replace(/\.$/, "");
+  if (text.length <= maxLength) return text;
+  const clipped = text.slice(0, maxLength - 3).replace(/\s+\S*$/, "").trim();
+  return `${clipped || text.slice(0, maxLength - 3).trim()}...`;
 }
 
 function stockQuery(line) {
-  const text = conciseBrief(line, 70)
+  const words = conciseBrief(line, 120)
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, " ")
-    .replace(/\b(?:show|capture|record|the|and|with|against|into|from|that|this|how)\b/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((word) => !/^(?:show|capture|record|film|create|open|end|the|and|with|against|into|from|that|this|how|why|what|for|over|under|beside|next|near|using|use|without|before|after)$/i.test(word))
+    .filter((word) => word.length > 2)
+    .slice(0, 6);
+  const text = words
+    .join(" ")
     .replace(/\s+/g, " ")
     .trim();
   return text || "creator workflow proof";
@@ -328,7 +427,7 @@ function promptRows(context, verdict) {
   if (verdict.status === "BLOCKED") {
     return "| Not assessed. | Approved script and planning gates are required before visual prompts can be assessed. | blocked |";
   }
-  const lines = planningLines(context, "b-roll-list.md", [/visual|show|proof|example|scene/i]);
+  const lines = planningLines(context, "b-roll-list.md", [/visual|show|proof|example|scene|workflow|creator/i], 6, 3);
   return lines
     .map((line) => `| Film a concise visual of ${tableCell(conciseBrief(line))}. | Show the viewer the concrete idea without inventing evidence. | ${promptStatus(verdict)} |`)
     .join("\n");
@@ -338,7 +437,7 @@ function visualSceneRows(context, verdict) {
   if (verdict.status === "BLOCKED") {
     return "| Not assessed. | Missing approved source material. | Keep blocked until script review passes. | blocked |";
   }
-  const lines = extractLines(context.script.text, 6);
+  const lines = scriptConcepts(context, 6);
   return lines
     .map((line) => `| ${tableCell(conciseBrief(line, 72))} | Practical VIDTOOLZ production workspace scene showing ${tableCell(conciseBrief(line, 90))}; natural screen-light, no fake product claims. | ${promptStatus(verdict)} |`)
     .join("\n");
@@ -348,7 +447,7 @@ function stockQueryRows(context, verdict) {
   if (verdict.status === "BLOCKED") {
     return "| Not assessed. | Missing approved source material. | blocked |";
   }
-  const lines = planningLines(context, "shot-list.md", [/workflow|creator|editing|screen|planning/i]);
+  const lines = planningLines(context, "shot-list.md", [/workflow|creator|editing|screen|planning|proof/i], 5, 2);
   return lines
     .map((line) => `| ${tableCell(stockQuery(line))} | Use only rights-clear stock or locally captured footage. | ${promptStatus(verdict)} |`)
     .join("\n");
@@ -358,9 +457,12 @@ function graphicsRows(context, verdict) {
   if (verdict.status === "BLOCKED") {
     return "| Not assessed. | Missing approved source material. | blocked |";
   }
-  const lines = planningLines(context, "graphics-list.md", [/score|matrix|framework|steps|before|after/i]);
+  const lines = planningLines(context, "graphics-list.md", [/score|matrix|framework|steps|before|after|workflow|proof/i], 5, 2);
   return lines
-    .map((line) => `| Create an explanatory graphic for ${tableCell(conciseBrief(line))}. | Clarify the argument without adding unsupported claims. | ${promptStatus(verdict)} |`)
+    .map((line, index) => {
+      const format = ["scorecard", "before/after comparison", "workflow diagram", "decision matrix"][index % 4];
+      return `| Create a ${format} for ${tableCell(conciseBrief(line))}. | Clarify the argument without adding unsupported claims. | ${promptStatus(verdict)} |`;
+    })
     .join("\n");
 }
 
@@ -523,6 +625,8 @@ module.exports = {
   hasExactVisualPromptApproval,
   tableRows,
   planningRows,
+  scriptConcepts,
+  selectedPackageConcepts,
   hasRealPromptRows,
   sourceScript,
   readContext,

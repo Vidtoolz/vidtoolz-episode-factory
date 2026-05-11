@@ -4485,6 +4485,20 @@ function brollPromptPackText(runDir) {
   return fs.readFileSync(path.join(runDir, "broll-prompt-pack.md"), "utf8");
 }
 
+function markdownDataRows(markdown, heading) {
+  const lines = markdown.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.trim() === heading);
+  if (start === -1) return [];
+  const rows = [];
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+    if (index > start + 1 && /^#/.test(line)) break;
+    if (!line.startsWith("|") || /^\|\s*-/.test(line) || /^\|\s*(?:prompt|scene|query|graphic|risk)\b/i.test(line)) continue;
+    rows.push(line);
+  }
+  return rows;
+}
+
 test("broll prompt generator help works", () => {
   const output = captureConsole(() => packageBrollPromptsScript.main(["--help"]));
 
@@ -4600,13 +4614,79 @@ test("broll prompt generator filters headers placeholders checkboxes and artifac
   const combined = packageBrollPromptsScript.TARGET_FILES.map((filename) => fs.readFileSync(path.join(runDir, filename), "utf8")).join("\n");
 
   assert.match(combined, /Film a concise visual of Scorecard proof over the selected package/);
-  assert.match(combined, /scorecard beside selected package/);
-  assert.match(combined, /Create an explanatory graphic for Before and after package scorecard/);
+  assert.match(combined, /scorecard selected package/);
+  assert.match(combined, /Create a scorecard for Before and after package scorecard/);
   assert.doesNotMatch(combined, /b-roll item \/ reason \/ source \/ status/i);
   assert.doesNotMatch(combined, /\| TODO \|/i);
   assert.doesNotMatch(combined, /Title and thumbnail assumptions verified/i);
   assert.doesNotMatch(combined, /final-outline\.md: present/i);
   assert.doesNotMatch(combined, /External APIs called: no.*\|/i);
+});
+
+test("broll prompt generator falls back to script when planning rows are placeholders", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-broll-script-fallback-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-broll-script-fallback");
+  writeBrollPromptRun(runDir);
+  fs.writeFileSync(
+    path.join(runDir, "final-script.md"),
+    [
+      "# Final Script",
+      "",
+      "- [ ] Title and thumbnail assumptions verified",
+      "final-outline.md: present",
+      "Open on a creator sorting raw AI video suggestions into a practical scorecard.",
+      "Cut to the scorecard rejecting generic ideas while one specific package stays on screen.",
+      "Show the selected package becoming a concrete production plan with proof captures and constraints.",
+      "Close on the repeatable workflow: AI expands options, but the creator owns taste and positioning.",
+    ].join("\n"),
+    "utf8"
+  );
+  ["b-roll-list.md", "graphics-list.md", "shot-list.md", "screen-capture-list.md"].forEach((filename) => {
+    fs.writeFileSync(
+      path.join(runDir, filename),
+      [
+        `# ${filename}`,
+        "",
+        "| item | reason | source | status |",
+        "| --- | --- | --- | --- |",
+        "| TODO | TODO | TODO | TODO |",
+        "| Placeholder planning row | not assessed | planning | open |",
+        "| Blocked planning row | blocked until review | planning | blocked |",
+      ].join("\n"),
+      "utf8"
+    );
+  });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({
+      package: {
+        proposedTitle: "AI video idea filter",
+        viewerPromise: "Turn raw AI suggestions into one production-ready video package.",
+      },
+    }),
+    "utf8"
+  );
+
+  assert.equal(packageBrollPromptsScript.main([runDir, "--overwrite"]), 0);
+  const broll = fs.readFileSync(path.join(runDir, "broll-prompt-pack.md"), "utf8");
+  const scenes = fs.readFileSync(path.join(runDir, "visual-scene-prompts.md"), "utf8");
+  const stock = fs.readFileSync(path.join(runDir, "stock-search-queries.md"), "utf8");
+  const graphics = fs.readFileSync(path.join(runDir, "graphics-prompt-pack.md"), "utf8");
+  const combined = [broll, scenes, stock, graphics].join("\n");
+
+  assert.equal(markdownDataRows(broll, "## B-Roll Prompts").length >= 3, true);
+  assert.equal(markdownDataRows(scenes, "# Visual Scene Prompts").length >= 3, true);
+  assert.equal(markdownDataRows(stock, "# Stock Search Queries").length >= 2, true);
+  assert.equal(markdownDataRows(graphics, "# Graphics Prompt Pack").length >= 2, true);
+  assert.doesNotMatch(combined, /item \/ reason \/ source \/ status/i);
+  assert.doesNotMatch(combined, /\| TODO \|/i);
+  assert.doesNotMatch(combined, /Title and thumbnail assumptions verified/i);
+  assert.doesNotMatch(combined, /final-outline\.md: present/i);
+  markdownDataRows(stock, "# Stock Search Queries").forEach((row) => {
+    const query = row.split("|")[1].trim();
+    assert.equal(query.split(/\s+/).length <= 6, true);
+    assert.doesNotMatch(query, /\.\.\.|[.!?]$/);
+  });
 });
 
 test("broll prompt generator preserves manual files unless overwrite is explicit", () => {
