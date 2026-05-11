@@ -225,6 +225,20 @@ exists, and no blockers are detected. `package-engine-new-production.js` is the
 broader production prep pack for brief, shooting plan, Resolve checklist,
 thumbnail/title, and publish prep.
 
+After production planning is approved, create the capture execution checklist:
+
+```sh
+node scripts/package-run-capture-checklist.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `capture-checklist.md`, `takes-log.md`,
+`missing-shot-tracker.md`, `screen-recording-checklist.md`, and
+`audio-capture-checklist.md`. It does not analyze media files or create
+rough-cut, final-review, publish, archive, or repurposing artifacts.
+`READY FOR ROUGH CUT` requires approved production planning, clear production
+blockers, completed required planning rows, and an exact capture/audio
+readiness approval marker after real capture review.
+
 After a first watchable edit exists, create the local rough-cut review starter
 and second-cut gate:
 

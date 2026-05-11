@@ -14,6 +14,7 @@ const packageResearchPackScript = require("../scripts/package-run-research-pack.
 const packageScriptStructureScript = require("../scripts/package-run-script-structure.js");
 const packageScriptReviewScript = require("../scripts/package-run-script-review.js");
 const packageProductionPlanScript = require("../scripts/package-run-production-plan.js");
+const packageCaptureChecklistScript = require("../scripts/package-run-capture-checklist.js");
 const packageRoughCutReviewScript = require("../scripts/package-run-rough-cut-review.js");
 const packageFinalReviewScript = require("../scripts/package-run-final-review.js");
 const packageRepurposeScript = require("../scripts/package-run-repurpose.js");
@@ -3410,6 +3411,184 @@ test("verify script checks repurposing syntax", () => {
   assert.match(verify, /node --check scripts\/package-run-repurpose\.js/);
 });
 
+function writeCapturePlanningRun(runDir, options = {}) {
+  fs.mkdirSync(runDir, { recursive: true });
+  if (options.productionPlan !== false) {
+    fs.writeFileSync(
+      path.join(runDir, "production-plan.md"),
+      [
+        "# Production Plan",
+        "",
+        "- Shoot-readiness status: " + (options.shootReadiness || "READY TO SHOOT"),
+        "",
+        "## Shoot-Readiness Gate",
+        "",
+        "- Status: " + (options.shootReadiness || "READY TO SHOOT"),
+        "",
+      ].join("\n")
+    );
+  }
+  fs.writeFileSync(
+    path.join(runDir, "production-blockers.md"),
+    options.openProductionBlocker
+      ? "# Production Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| Missing proof capture. | Blocks rough cut. | Capture the proof. | blocked |\n"
+      : "# Production Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Required gates are currently satisfied. | Keep review evidence with the run. | closed |\n"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "shot-list.md"),
+    "# Shot List\n\n| shot | reason | priority | status |\n| --- | --- | --- | --- |\n| Host intro take captured. | Opens the episode. | high | closed |\n"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "screen-capture-list.md"),
+    "# Screen Capture List\n\n| capture | proof purpose | source/app | status |\n| --- | --- | --- | --- |\n| Dashboard proof captured. | Shows the workflow. | browser | closed |\n"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "demo-list.md"),
+    "# Demo List\n\n| demo | what it proves | setup needed | status |\n| --- | --- | --- | --- |\n| Filtering demo captured. | Proves the method. | local files | closed |\n"
+  );
+  fs.writeFileSync(path.join(runDir, "audio-notes.md"), "# Audio Notes\n\n## Mic / Capture Notes\n\n- Use the approved mic setup.\n");
+}
+
+function writeReadyCaptureArtifacts(runDir) {
+  fs.writeFileSync(
+    path.join(runDir, "capture-checklist.md"),
+    "# Capture Checklist\n\n- Capture approval: PASS\n\nReal captured material has been reviewed.\n"
+  );
+  fs.writeFileSync(path.join(runDir, "takes-log.md"), "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| Take 1 | Host intro | host-intro.mov | clean | closed |\n");
+  fs.writeFileSync(path.join(runDir, "missing-shot-tracker.md"), "# Missing Shot Tracker\n\n| missing shot/content | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | All required shots captured. | Keep files with run. | closed |\n");
+  fs.writeFileSync(path.join(runDir, "screen-recording-checklist.md"), "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Dashboard proof | Shows workflow. | dashboard-proof.mp4 | closed |\n");
+  fs.writeFileSync(path.join(runDir, "audio-capture-checklist.md"), "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Approved script audio. | voiceover.wav | closed |\n\nAudio capture readiness: PASS\n");
+}
+
+function captureChecklistText(runDir) {
+  return fs.readFileSync(path.join(runDir, "capture-checklist.md"), "utf8");
+}
+
+test("capture checklist help works", () => {
+  const output = captureConsole(() => packageCaptureChecklistScript.main(["--help"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /package-run-capture-checklist\.js/);
+});
+
+test("capture checklist keeps data rows that begin with capture words", () => {
+  const markdown = "# Screen Capture List\n\n| capture | proof purpose | source/app | status |\n| --- | --- | --- | --- |\n| Demo capture | Show workflow proof | browser | closed |\n";
+
+  assert.deepEqual(packageCaptureChecklistScript.tableRows(markdown), ["| Demo capture | Show workflow proof | browser | closed |"]);
+  assert.equal(packageCaptureChecklistScript.hasIncompleteRows(markdown), false);
+});
+
+test("capture checklist blocks missing production plan", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-missing-plan-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-missing-plan");
+  fs.mkdirSync(runDir, { recursive: true });
+
+  assert.equal(packageCaptureChecklistScript.main([runDir]), 0);
+  const checklist = captureChecklistText(runDir);
+
+  assert.match(checklist, /Capture checklist status: BLOCKED/);
+  assert.match(checklist, /production-plan\.md is missing/);
+  assert.equal(fs.existsSync(path.join(runDir, "takes-log.md")), true);
+});
+
+test("capture checklist blocks blocked production plan", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-blocked-plan-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-blocked-plan");
+  writeCapturePlanningRun(runDir, { shootReadiness: "BLOCKED" });
+
+  assert.equal(packageCaptureChecklistScript.main([runDir]), 0);
+  const checklist = captureChecklistText(runDir);
+
+  assert.match(checklist, /Capture checklist status: BLOCKED/);
+  assert.match(checklist, /Shoot-readiness status is BLOCKED, not READY TO SHOOT/);
+});
+
+test("capture checklist blocks open production blockers", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-open-blockers-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-open-blockers");
+  writeCapturePlanningRun(runDir, { openProductionBlocker: true });
+
+  assert.equal(packageCaptureChecklistScript.main([runDir]), 0);
+  const checklist = captureChecklistText(runDir);
+
+  assert.match(checklist, /Capture checklist status: BLOCKED/);
+  assert.match(checklist, /production-blockers\.md has open or blocked rows/);
+});
+
+test("capture checklist creates starter artifacts and needs capture when capture artifacts are missing", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-missing-artifacts-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-missing-artifacts");
+  writeCapturePlanningRun(runDir);
+
+  assert.equal(packageCaptureChecklistScript.main([runDir]), 0);
+  const checklist = captureChecklistText(runDir);
+
+  assert.match(checklist, /Capture checklist status: NEEDS CAPTURE/);
+  assert.match(checklist, /capture execution artifacts are missing/);
+  assert.match(checklist, /audio capture checklist lacks an exact capture readiness approval marker/);
+  ["takes-log.md", "missing-shot-tracker.md", "screen-recording-checklist.md", "audio-capture-checklist.md"].forEach((filename) => {
+    assert.equal(fs.existsSync(path.join(runDir, filename)), true);
+  });
+});
+
+test("capture checklist preserves existing manual artifacts", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-preserve-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-preserve");
+  writeCapturePlanningRun(runDir);
+  const checklistPath = path.join(runDir, "capture-checklist.md");
+  fs.writeFileSync(checklistPath, "# Manual Capture Checklist\n\nKeep this.\n", "utf8");
+
+  const output = captureConsole(() => packageCaptureChecklistScript.main([runDir]));
+
+  assert.equal(output.result, 0);
+  assert.equal(fs.readFileSync(checklistPath, "utf8"), "# Manual Capture Checklist\n\nKeep this.\n");
+  assert.match(output.stdout.join("\n"), /unchanged: .*capture-checklist\.md/);
+});
+
+test("capture checklist can mark ready for rough cut with approved planning and real capture readiness", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-ready");
+  writeCapturePlanningRun(runDir);
+  fs.writeFileSync(
+    path.join(runDir, "screen-capture-list.md"),
+    "# Screen Capture List\n\n| capture | proof purpose | source/app | status |\n| --- | --- | --- | --- |\n| Demo capture | Show workflow proof | browser | closed |\n"
+  );
+  writeReadyCaptureArtifacts(runDir);
+
+  assert.equal(packageCaptureChecklistScript.main([runDir, "--overwrite"]), 0);
+  const checklist = captureChecklistText(runDir);
+
+  assert.match(checklist, /Capture checklist status: READY FOR ROUGH CUT/);
+  assert.match(checklist, /Ready for rough cut: yes/);
+  assert.match(fs.readFileSync(path.join(runDir, "screen-recording-checklist.md"), "utf8"), /Demo capture/);
+  packageCaptureChecklistScript.TARGET_FILES.forEach((filename) => {
+    const artifact = fs.readFileSync(path.join(runDir, filename), "utf8");
+    assert.doesNotMatch(artifact, /\bTODO\b/);
+    assert.doesNotMatch(artifact, /\|\s*(?:open|blocked)\s*\|/i);
+  });
+});
+
+test("capture checklist overwrite replaces generated artifacts", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-overwrite-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-overwrite");
+  writeCapturePlanningRun(runDir);
+  const takesPath = path.join(runDir, "takes-log.md");
+  fs.writeFileSync(takesPath, "# Manual Takes Log\n\nReplace me.\n", "utf8");
+
+  const output = captureConsole(() => packageCaptureChecklistScript.main([runDir, "--overwrite"]));
+
+  assert.equal(output.result, 0);
+  assert.match(fs.readFileSync(takesPath, "utf8"), /# Takes Log/);
+  assert.match(output.stdout.join("\n"), /overwritten: .*takes-log\.md/);
+});
+
+test("verify script checks capture checklist syntax", () => {
+  const verifyPath = path.join(__dirname, "..", "scripts", "verify.sh");
+  const verify = fs.readFileSync(verifyPath, "utf8");
+
+  assert.match(verify, /node --check scripts\/package-run-capture-checklist\.js/);
+});
+
 test("script prep cli writes local review artifacts and marks partial research as not ready", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-prep-"));
   const repoRunsDir = path.join(tempRoot, "package-runs");
@@ -4100,6 +4279,11 @@ test("package runs index scans package-runs folders and writes index json", () =
     "final-script.md",
     "production-plan.md",
     "production-blockers.md",
+    "capture-checklist.md",
+    "takes-log.md",
+    "missing-shot-tracker.md",
+    "screen-recording-checklist.md",
+    "audio-capture-checklist.md",
     "rough-cut-watch-notes.md",
     "rough-cut-review.md",
     "pickup-list.md",
@@ -4148,6 +4332,11 @@ test("package runs index scans package-runs folders and writes index json", () =
   assert.equal(byRunId["2026-05-02-ready"].files.creator_qa_report_json, true);
   assert.equal(byRunId["2026-05-02-ready"].files.production_plan, true);
   assert.equal(byRunId["2026-05-02-ready"].files.production_blockers, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.capture_checklist, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.takes_log, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.missing_shot_tracker, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.screen_recording_checklist, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.audio_capture_checklist, true);
   assert.equal(byRunId["2026-05-02-ready"].files.rough_cut_watch_notes, true);
   assert.equal(byRunId["2026-05-02-ready"].files.rough_cut_review, true);
   assert.equal(byRunId["2026-05-02-ready"].files.pickup_list, true);

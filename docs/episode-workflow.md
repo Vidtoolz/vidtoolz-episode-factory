@@ -15,12 +15,13 @@ Episode Factory is designed for a solo YouTube creator who needs to move from ro
    deterministic review creates `script-review.md` and
    `script-revision-plan.md`; repairs remain manual.
 7. Move to `Ready to Shoot` when the script outline and production checklist are usable.
-8. Move to `Editing` when recording is done and editing work starts.
-9. Review the first watchable edit before treating the second cut as ready.
-10. Move to `Ready to Publish` when the edit is complete and publish assets need final checks.
-11. Plan Shorts and platform variants only after final review and publication blockers are clear.
-12. Move to `Published` after the video is live.
-13. Move to `Archived` when the episode is no longer active but should remain available for reference.
+8. Run the capture checklist after production planning is approved and before rough-cut assembly. It creates `capture-checklist.md`, `takes-log.md`, `missing-shot-tracker.md`, `screen-recording-checklist.md`, and `audio-capture-checklist.md`.
+9. Move to `Editing` when recording is done and editing work starts.
+10. Review the first watchable edit before treating the second cut as ready.
+11. Move to `Ready to Publish` when the edit is complete and publish assets need final checks.
+12. Plan Shorts and platform variants only after final review and publication blockers are clear.
+13. Move to `Published` after the video is live.
+14. Move to `Archived` when the episode is no longer active but should remain available for reference.
 
 ## Detail Fields
 

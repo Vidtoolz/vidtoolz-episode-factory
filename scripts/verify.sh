@@ -22,6 +22,7 @@ node --check scripts/package-run-research-pack.js
 node --check scripts/package-run-script-structure.js
 node --check scripts/package-run-script-review.js
 node --check scripts/package-run-production-plan.js
+node --check scripts/package-run-capture-checklist.js
 node --check scripts/package-run-rough-cut-review.js
 node --check scripts/package-run-final-review.js
 node --check scripts/package-run-repurpose.js
