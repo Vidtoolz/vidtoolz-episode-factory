@@ -18,6 +18,7 @@ const packageCaptureChecklistScript = require("../scripts/package-run-capture-ch
 const packageRoughCutReviewScript = require("../scripts/package-run-rough-cut-review.js");
 const packageFinalReviewScript = require("../scripts/package-run-final-review.js");
 const packageRepurposeScript = require("../scripts/package-run-repurpose.js");
+const packageExportChecklistScript = require("../scripts/package-run-export-checklist.js");
 const packageRunCreatorQaScript = require("../scripts/package-run-creator-qa.js");
 const packageRunsIndexScript = require("../scripts/package-runs-index.js");
 const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashboard-launch.js");
@@ -3217,6 +3218,200 @@ test("verify script checks final review syntax", () => {
   assert.match(verify, /node --check scripts\/package-run-final-review\.js/);
 });
 
+function writeExportChecklistBaseRun(runDir, options = {}) {
+  fs.mkdirSync(runDir, { recursive: true });
+  if (options.finalReview !== false) {
+    const status = options.finalReviewStatus || "PASS";
+    const publishReady = options.publishReady || "yes";
+    const gateStatus = options.gateStatus || (status === "PASS" && publishReady === "yes" ? "READY TO PUBLISH" : status);
+    fs.writeFileSync(
+      path.join(runDir, "final-review.md"),
+      [
+        "# Final Review",
+        "",
+        "- Final review status: " + status,
+        "- Publish ready: " + publishReady,
+        "",
+        "## Final Review Gate",
+        "",
+        "- Status: " + gateStatus,
+        "",
+      ].join("\n")
+    );
+  }
+  fs.writeFileSync(
+    path.join(runDir, "publication-blockers.md"),
+    options.openPublicationBlocker
+      ? "# Publication Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| Missing export proof. | Blocks upload. | Verify export. | blocked |\n"
+      : "# Publication Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Final review gates passed. | Keep evidence. | closed |\n"
+  );
+}
+
+function writeRealExportArtifacts(runDir) {
+  fs.writeFileSync(
+    path.join(runDir, "export-checklist.md"),
+    [
+      "# Export Checklist",
+      "",
+      "- Final export file: exports/vidtoolz-final-master.mp4",
+      "- Codec: H.264",
+      "- Container: MP4",
+      "- Resolution: 3840x2160",
+      "- Frame rate: 30 fps",
+      "- Audio settings: AAC 48 kHz stereo",
+      "- Captions/subtitles status: Captions reviewed and ready",
+      "- Loudness check: -14 LUFS integrated, true peak below -1 dBTP",
+      "",
+    ].join("\n")
+  );
+  fs.writeFileSync(path.join(runDir, "master-file-manifest.md"), "# Master File Manifest\n\n- Master file: exports/vidtoolz-final-master.mp4\n");
+  fs.writeFileSync(path.join(runDir, "caption-check.md"), "# Caption Check\n\n- Captions status: Captions reviewed and ready\n");
+  fs.writeFileSync(path.join(runDir, "loudness-check.md"), "# Loudness Check\n\n- Loudness result: -14 LUFS integrated\n\nMastering approval: PASS\n");
+  fs.writeFileSync(path.join(runDir, "delivery-readiness.md"), "# Delivery Readiness\n\nDelivery approval: PASS\n");
+}
+
+function writePlaceholderExportArtifacts(runDir) {
+  fs.writeFileSync(path.join(runDir, "export-checklist.md"), "# Export Checklist\n\n- Final export file: TODO\n- Codec: TODO\n");
+  fs.writeFileSync(path.join(runDir, "master-file-manifest.md"), "# Master File Manifest\n\n- Master file: placeholder\n");
+  fs.writeFileSync(path.join(runDir, "caption-check.md"), "# Caption Check\n\n- Captions status: n/a\n");
+  fs.writeFileSync(path.join(runDir, "loudness-check.md"), "# Loudness Check\n\n- Loudness result: TBD\n");
+  fs.writeFileSync(path.join(runDir, "delivery-readiness.md"), "# Delivery Readiness\n\nDelivery approval: PASS\n");
+}
+
+function exportChecklistText(runDir) {
+  return fs.readFileSync(path.join(runDir, "export-checklist.md"), "utf8");
+}
+
+test("export checklist help works", () => {
+  const output = captureConsole(() => packageExportChecklistScript.main(["--help"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /package-run-export-checklist\.js/);
+});
+
+test("export checklist blocks missing final review", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-export-missing-final-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-export-missing-final");
+  writeExportChecklistBaseRun(runDir, { finalReview: false });
+
+  assert.equal(packageExportChecklistScript.main([runDir]), 0);
+  const checklist = exportChecklistText(runDir);
+
+  assert.match(checklist, /Export checklist status: BLOCKED/);
+  assert.match(checklist, /final-review\.md is missing/);
+});
+
+test("export checklist blocks final review blocked", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-export-final-blocked-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-export-final-blocked");
+  writeExportChecklistBaseRun(runDir, { finalReviewStatus: "BLOCKED", publishReady: "no", gateStatus: "BLOCKED" });
+
+  assert.equal(packageExportChecklistScript.main([runDir]), 0);
+  assert.match(exportChecklistText(runDir), /Export checklist status: BLOCKED/);
+  assert.match(exportChecklistText(runDir), /final-review\.md is BLOCKED/);
+});
+
+test("export checklist blocks final review needs final fixes", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-export-final-fixes-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-export-final-fixes");
+  writeExportChecklistBaseRun(runDir, { finalReviewStatus: "NEEDS FINAL FIXES", publishReady: "no", gateStatus: "NEEDS FINAL FIXES" });
+
+  assert.equal(packageExportChecklistScript.main([runDir]), 0);
+  assert.match(exportChecklistText(runDir), /Export checklist status: BLOCKED/);
+  assert.match(exportChecklistText(runDir), /NEEDS FINAL FIXES/);
+});
+
+test("export checklist blocks open publication blockers", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-export-open-blockers-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-export-open-blockers");
+  writeExportChecklistBaseRun(runDir, { openPublicationBlocker: true });
+
+  assert.equal(packageExportChecklistScript.main([runDir]), 0);
+  assert.match(exportChecklistText(runDir), /Export checklist status: BLOCKED/);
+  assert.match(exportChecklistText(runDir), /publication-blockers\.md has open or blocked rows/);
+});
+
+test("export checklist creates starter artifacts and needs export check after passing final review", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-export-needs-check-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-export-needs-check");
+  writeExportChecklistBaseRun(runDir);
+
+  assert.equal(packageExportChecklistScript.main([runDir]), 0);
+  const checklist = exportChecklistText(runDir);
+
+  assert.match(checklist, /Export checklist status: NEEDS EXPORT CHECK/);
+  assert.match(checklist, /final export file path\/name is missing/);
+  ["master-file-manifest.md", "caption-check.md", "loudness-check.md", "delivery-readiness.md"].forEach((filename) => {
+    assert.equal(fs.existsSync(path.join(runDir, filename)), true);
+  });
+});
+
+test("export checklist does not pass placeholder export metadata", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-export-placeholder-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-export-placeholder");
+  writeExportChecklistBaseRun(runDir);
+  writePlaceholderExportArtifacts(runDir);
+
+  assert.equal(packageExportChecklistScript.main([runDir, "--overwrite"]), 0);
+  const checklist = exportChecklistText(runDir);
+
+  assert.match(checklist, /Export checklist status: NEEDS EXPORT CHECK/);
+  assert.doesNotMatch(checklist, /READY TO UPLOAD/);
+});
+
+test("export checklist can mark ready to upload with real metadata and exact delivery approval", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-export-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-export-ready");
+  writeExportChecklistBaseRun(runDir);
+  writeRealExportArtifacts(runDir);
+
+  assert.equal(packageExportChecklistScript.main([runDir, "--overwrite"]), 0);
+  const checklist = exportChecklistText(runDir);
+
+  assert.match(checklist, /Export checklist status: READY TO UPLOAD/);
+  assert.match(checklist, /Ready to upload: yes/);
+  packageExportChecklistScript.TARGET_FILES.forEach((filename) => {
+    const artifact = fs.readFileSync(path.join(runDir, filename), "utf8");
+    assert.doesNotMatch(artifact, /\bTODO\b/);
+    assert.doesNotMatch(artifact, /\|\s*(?:open|blocked)\s*\|/i);
+  });
+});
+
+test("export checklist preserves existing manual files", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-export-preserve-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-export-preserve");
+  writeExportChecklistBaseRun(runDir);
+  const checklistPath = path.join(runDir, "export-checklist.md");
+  fs.writeFileSync(checklistPath, "# Manual Export Checklist\n\nKeep this.\n", "utf8");
+
+  const output = captureConsole(() => packageExportChecklistScript.main([runDir]));
+
+  assert.equal(output.result, 0);
+  assert.equal(fs.readFileSync(checklistPath, "utf8"), "# Manual Export Checklist\n\nKeep this.\n");
+  assert.match(output.stdout.join("\n"), /unchanged: .*export-checklist\.md/);
+});
+
+test("export checklist overwrite replaces generated files", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-export-overwrite-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-export-overwrite");
+  writeExportChecklistBaseRun(runDir);
+  const manifestPath = path.join(runDir, "master-file-manifest.md");
+  fs.writeFileSync(manifestPath, "# Manual Manifest\n\nReplace me.\n", "utf8");
+
+  const output = captureConsole(() => packageExportChecklistScript.main([runDir, "--overwrite"]));
+
+  assert.equal(output.result, 0);
+  assert.match(fs.readFileSync(manifestPath, "utf8"), /# Master File Manifest/);
+  assert.match(output.stdout.join("\n"), /overwritten: .*master-file-manifest\.md/);
+});
+
+test("verify script checks export checklist syntax", () => {
+  const verifyPath = path.join(__dirname, "..", "scripts", "verify.sh");
+  const verify = fs.readFileSync(verifyPath, "utf8");
+
+  assert.match(verify, /node --check scripts\/package-run-export-checklist\.js/);
+});
+
 function writeRepurposeBaseRun(runDir, options = {}) {
   fs.mkdirSync(runDir, { recursive: true });
   fs.writeFileSync(
@@ -4291,6 +4486,11 @@ test("package runs index scans package-runs folders and writes index json", () =
     "final-watch-notes.md",
     "final-review.md",
     "publication-blockers.md",
+    "export-checklist.md",
+    "master-file-manifest.md",
+    "caption-check.md",
+    "loudness-check.md",
+    "delivery-readiness.md",
     "production-brief.md",
     "shooting-plan.md",
     "b-roll-list.md",
@@ -4344,6 +4544,11 @@ test("package runs index scans package-runs folders and writes index json", () =
   assert.equal(byRunId["2026-05-02-ready"].files.final_watch_notes, true);
   assert.equal(byRunId["2026-05-02-ready"].files.final_review, true);
   assert.equal(byRunId["2026-05-02-ready"].files.publication_blockers, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.export_checklist, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.master_file_manifest, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.caption_check, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.loudness_check, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.delivery_readiness, true);
   assert.equal(byRunId["2026-05-02-ready"].files.repurposing_plan, true);
   assert.equal(byRunId["2026-05-02-ready"].files.shorts_candidates, true);
   assert.equal(byRunId["2026-05-02-ready"].files.platform_variants, true);

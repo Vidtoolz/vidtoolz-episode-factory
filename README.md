@@ -271,6 +271,20 @@ publication blockers remain open. It also blocks when `publish-pack.md` is
 missing or still placeholder/draft metadata. `READY TO PUBLISH` requires an
 exact final approval marker in real final-watch notes.
 
+After final review approves publication, create the local export/mastering
+checklist:
+
+```sh
+node scripts/package-run-export-checklist.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `export-checklist.md`, `master-file-manifest.md`,
+`caption-check.md`, `loudness-check.md`, and `delivery-readiness.md`. It does
+not inspect video files, upload, publish, archive, call external APIs, or create
+repurposing artifacts. `READY TO UPLOAD` requires final review approval, clear
+publication blockers, concrete export/master metadata, loudness and captions
+assessment, and an exact delivery approval marker.
+
 After the long-form episode has final approval, create repurposing candidates:
 
 ```sh

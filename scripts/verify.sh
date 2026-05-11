@@ -25,6 +25,7 @@ node --check scripts/package-run-production-plan.js
 node --check scripts/package-run-capture-checklist.js
 node --check scripts/package-run-rough-cut-review.js
 node --check scripts/package-run-final-review.js
+node --check scripts/package-run-export-checklist.js
 node --check scripts/package-run-repurpose.js
 node --check scripts/package-run-creator-qa.js
 node --check scripts/package-runs-index.js
