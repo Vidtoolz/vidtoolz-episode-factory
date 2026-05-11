@@ -6,6 +6,7 @@ const path = require("node:path");
 
 const run = require("../package-engine-run.js");
 const researchPack = require("./package-run-research-pack.js");
+const researchEvidence = require("./package-run-research-evidence.js");
 
 const SCRIPT_STRUCTURE_FILE = "script-structure.md";
 
@@ -38,6 +39,71 @@ function parseArgs(argv) {
 function findResearchPackPath(runDir) {
   const researchPath = path.join(runDir, "research-pack.md");
   return fs.existsSync(researchPath) ? researchPath : "";
+}
+
+function findResearchSufficiencyReviewPath(runDir) {
+  const reviewPath = path.join(runDir, "research-sufficiency-review.md");
+  return fs.existsSync(reviewPath) ? reviewPath : "";
+}
+
+function lineValue(markdown = "", label = "") {
+  const escaped = String(label).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`^\\s*(?:[-*]\\s*)?${escaped}\\s*:\\s*(.+?)\\s*$`, "im");
+  const match = String(markdown || "").match(pattern);
+  return match ? match[1].trim() : "";
+}
+
+function hasResearchEvidenceInputs(runDir) {
+  return ["research-evidence.md", "source-support-map.md", "proof-capture-plan.md", "research-objections.md"].some((filename) =>
+    fs.existsSync(path.join(runDir, filename))
+  );
+}
+
+function parseResearchSufficiencyReviewStatus(markdown = "", runDir = "") {
+  const status = lineValue(markdown, "Research sufficiency status").toUpperCase();
+  const approvalMarker = lineValue(markdown, "Research approval marker").toUpperCase();
+  const hasExplicitPass = status === "PASS" && approvalMarker === "PASS";
+
+  if (hasExplicitPass && runDir && hasResearchEvidenceInputs(runDir)) {
+    const evaluation = researchEvidence.evaluateResearchEvidence(runDir);
+    if (evaluation.status !== "PASS") {
+      return {
+        status: evaluation.status || status || "MISSING",
+        approvalMarker,
+        structureStatus: evaluation.status === "BLOCKED" ? "BLOCKED" : "PARTIAL",
+        readyToDraft: false,
+        reason: `research-sufficiency-review.md has PASS markers, but current research evidence evaluates as ${evaluation.status}; script drafting is not approved yet.`,
+      };
+    }
+  }
+
+  if (hasExplicitPass) {
+    return {
+      status: "PASS",
+      approvalMarker,
+      structureStatus: "READY TO DRAFT",
+      readyToDraft: true,
+      reason: "research-sufficiency-review.md includes Research sufficiency status: PASS and Research approval marker: PASS.",
+    };
+  }
+
+  if (status) {
+    return {
+      status,
+      approvalMarker,
+      structureStatus: status === "BLOCKED" || status === "NEEDS EVIDENCE" ? "BLOCKED" : "PARTIAL",
+      readyToDraft: false,
+      reason: `research-sufficiency-review.md is ${status} and does not include the exact Research approval marker: PASS.`,
+    };
+  }
+
+  return {
+    status: "MISSING",
+    approvalMarker,
+    structureStatus: "NEEDS RESEARCH",
+    readyToDraft: false,
+    reason: "research-sufficiency-review.md does not contain Research sufficiency status.",
+  };
 }
 
 function parseResearchGateStatus(markdown = "") {
@@ -78,6 +144,7 @@ function parseResearchGateStatus(markdown = "") {
 
 function readResearchGate(runDir) {
   const researchPath = findResearchPackPath(runDir);
+  const reviewPath = findResearchSufficiencyReviewPath(runDir);
   if (!researchPath) {
     return {
       sourceFile: "missing",
@@ -89,9 +156,25 @@ function readResearchGate(runDir) {
   }
 
   try {
+    const packGate = parseResearchGateStatus(fs.readFileSync(researchPath, "utf8"));
+    if (packGate.readyToDraft) {
+      return {
+        sourceFile: "research-pack.md",
+        ...packGate,
+      };
+    }
+    if (reviewPath) {
+      const reviewGate = parseResearchSufficiencyReviewStatus(fs.readFileSync(reviewPath, "utf8"), runDir);
+      if (reviewGate.readyToDraft) {
+        return {
+          sourceFile: "research-sufficiency-review.md",
+          ...reviewGate,
+        };
+      }
+    }
     return {
       sourceFile: "research-pack.md",
-      ...parseResearchGateStatus(fs.readFileSync(researchPath, "utf8")),
+      ...packGate,
     };
   } catch (error) {
     return {
@@ -232,6 +315,9 @@ module.exports = {
   usage,
   parseArgs,
   findResearchPackPath,
+  findResearchSufficiencyReviewPath,
+  lineValue,
+  parseResearchSufficiencyReviewStatus,
   parseResearchGateStatus,
   readResearchGate,
   readResearchSections,

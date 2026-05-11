@@ -2172,6 +2172,88 @@ test("script structure cli allows pass research to become ready to draft", () =>
   assert.match(structure, /Ready to draft: yes/);
 });
 
+test("script structure accepts approved research sufficiency review over partial research pack", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-structure-review-pass-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-review-pass");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Review Pass Research" } }));
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PARTIAL\n- Reason: original pack remains partial.\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    `# Research Sufficiency Review
+
+- Research sufficiency status: PASS
+- Source references: 2
+- Production-proof items: 1
+- Objections/counterexamples: 1
+- Research approval marker: PASS
+`,
+    "utf8"
+  );
+
+  assert.equal(packageScriptStructureScript.main([runDir]), 0);
+  const structure = fs.readFileSync(path.join(runDir, "script-structure.md"), "utf8");
+
+  assert.match(structure, /Script structure status: READY TO DRAFT/);
+  assert.match(structure, /Research gate status: PASS/);
+  assert.match(structure, /Ready to draft: yes/);
+  assert.match(structure, /Research source: research-sufficiency-review\.md/);
+});
+
+test("script structure keeps ready-for-review research evidence blocked until approval", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-structure-review-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-review-ready");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Review Ready Research" } }));
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PARTIAL\n- Reason: awaiting research approval.\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    `# Research Sufficiency Review
+
+- Research sufficiency status: READY FOR RESEARCH REVIEW
+- Source references: 2
+- Production-proof items: 1
+- Objections/counterexamples: 1
+- Research approval marker: missing
+`,
+    "utf8"
+  );
+
+  assert.equal(packageScriptStructureScript.main([runDir]), 0);
+  const structure = fs.readFileSync(path.join(runDir, "script-structure.md"), "utf8");
+
+  assert.match(structure, /Script structure status: PARTIAL/);
+  assert.match(structure, /Research gate status: PARTIAL/);
+  assert.match(structure, /Ready to draft: no/);
+});
+
+test("script structure keeps partial research pack blocked when sufficiency review is missing", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-structure-review-missing-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-review-missing");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Missing Review Research" } }));
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PARTIAL\n- Reason: still incomplete.\n",
+    "utf8"
+  );
+
+  assert.equal(packageScriptStructureScript.main([runDir]), 0);
+  const structure = fs.readFileSync(path.join(runDir, "script-structure.md"), "utf8");
+
+  assert.match(structure, /Script structure status: PARTIAL/);
+  assert.match(structure, /Research gate status: PARTIAL/);
+  assert.match(structure, /Ready to draft: no/);
+});
+
 test("script structure cli preserves existing structure unless overwrite is explicit", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-structure-preserve-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-preserve");
