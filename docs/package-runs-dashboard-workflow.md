@@ -66,7 +66,17 @@ selected-package.md
 outline-prompt.md
 final-outline.md
 script-prompt.md
+script-structure.md
 final-script.md
+production-plan.md
+production-blockers.md
+rough-cut-watch-notes.md
+rough-cut-review.md
+pickup-list.md
+edit-fix-list.md
+final-watch-notes.md
+final-review.md
+publication-blockers.md
 capture-verification-note.md
 capture-result-note.md
 capture-transcript.md
@@ -77,6 +87,9 @@ graphics-list.md
 resolve-edit-checklist.md
 thumbnail-title-check.md
 publish-pack.md
+repurposing-plan.md
+shorts-candidates.md
+platform-variants.md
 ```
 
 Available artifacts are rendered as direct local preview links from each run
@@ -161,6 +174,9 @@ The status is the highest completed workflow milestone:
 
 - `Idea run`: no selected package yet
 - `Package selected`: `selected-package.json` or `selected-package.md` exists
+- `Research pack ready`: `research-pack.md` exists. This is only a file state;
+  script prep still inspects the `Research Sufficiency Gate` before marking
+  script structure ready to draft.
 - `Outline prep ready`: `outline-prompt.md` exists
 - `Final outline ready`: `final-outline.md` exists
 - `Script prep ready`: `script-prompt.md` exists
@@ -174,9 +190,24 @@ The status is the highest completed workflow milestone:
 The dashboard groups runs into daily workflow filters:
 
 - `Needs package selection`: no selected package exists yet
-- `Needs outline`: selected package exists, but final outline is not complete
+- `Needs research pack`: selected package exists, but `research-pack.md` does
+  not exist yet
+- `Needs outline`: `research-pack.md` exists, but final outline is not complete.
+  Use `node scripts/package-run-script-structure.js package-runs/<run-id>` to
+  inspect whether the research gate is actually ready to draft.
 - `Needs script`: final outline exists, but final script is not complete
-- `Needs production prep`: final script exists, but full Production Prep is not complete
+- `Needs production prep`: final script exists, but full Production Prep is not complete.
+  Run `node scripts/package-run-script-review.js package-runs/<run-id>` before
+  production planning; production planning is ready only when script review is
+  `PASS`. Then run
+  `node scripts/package-run-production-plan.js package-runs/<run-id>` to create
+  the review-first production plan and blocker list before the broader
+  production prep pack.
+- Rough-cut review is a manual watch-notes workflow. Run
+  `node scripts/package-run-rough-cut-review.js package-runs/<run-id>` after a
+  first watchable edit exists. If watch notes are missing, the tool creates a
+  starter `rough-cut-watch-notes.md` and blocks second-cut readiness until real
+  notes are added.
 - `Needs QA repair`: Creator QA returned `FAIL`, `NEEDS WORK`, or an unknown
   non-empty status
 - `Needs proof capture`: full Production Prep artifacts exist, but the Evidence
@@ -193,7 +224,9 @@ exact command:
 ```sh
 node scripts/package-engine-new-outline.js package-runs/YYYY-MM-DD-topic-slug
 node scripts/package-engine-new-script.js package-runs/YYYY-MM-DD-topic-slug
+node scripts/package-run-production-plan.js package-runs/YYYY-MM-DD-topic-slug
 node scripts/package-engine-new-production.js package-runs/YYYY-MM-DD-topic-slug
+node scripts/package-run-rough-cut-review.js package-runs/YYYY-MM-DD-topic-slug
 node scripts/package-run-creator-qa.js package-runs/YYYY-MM-DD-topic-slug
 ```
 

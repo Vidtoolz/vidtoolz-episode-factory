@@ -18,6 +18,13 @@ node --check scripts/package-engine-new-run.js
 node --check scripts/package-engine-new-outline.js
 node --check scripts/package-engine-new-script.js
 node --check scripts/package-engine-new-production.js
+node --check scripts/package-run-research-pack.js
+node --check scripts/package-run-script-structure.js
+node --check scripts/package-run-script-review.js
+node --check scripts/package-run-production-plan.js
+node --check scripts/package-run-rough-cut-review.js
+node --check scripts/package-run-final-review.js
+node --check scripts/package-run-repurpose.js
 node --check scripts/package-run-creator-qa.js
 node --check scripts/package-runs-index.js
 node --check scripts/package-runs-dashboard-launch.js

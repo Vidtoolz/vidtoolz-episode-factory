@@ -448,6 +448,192 @@ Write a reviewable draft with:
 `;
   }
 
+  function firstFilled(...values) {
+    return values.map(cleanString).find(Boolean) || "";
+  }
+
+  function textOrPlaceholder(value) {
+    return cleanString(value) || "Not specified yet.";
+  }
+
+  function bulletBlock(value) {
+    const text = cleanString(value);
+    if (!text) return "- Not specified yet.";
+    if (/^\s*[-*]\s+/m.test(text)) return text;
+    return text
+      .split(/\r?\n/)
+      .map(cleanString)
+      .filter(Boolean)
+      .map((line) => `- ${line}`)
+      .join("\n");
+  }
+
+  function indentedBlock(value) {
+    const text = cleanString(value);
+    if (!text) return "  - Not specified yet.";
+    return text
+      .split(/\r?\n/)
+      .map(cleanString)
+      .filter(Boolean)
+      .map((line) => `  ${line}`)
+      .join("\n");
+  }
+
+  function buildScriptStructureMarkdown({
+    runId = "",
+    researchGate = {},
+    selectedPackageTitle = "",
+    selectedPackageSource = "",
+    packageData = {},
+    researchSections = {},
+  }) {
+    const gate = researchGate && typeof researchGate === "object" ? researchGate : {};
+    const pkg = packageData && typeof packageData === "object" ? packageData : {};
+    const research = researchSections && typeof researchSections === "object" ? researchSections : {};
+    const status = cleanString(gate.structureStatus) || "NEEDS RESEARCH";
+    const gateStatus = cleanString(gate.status) || "missing";
+    const reason = cleanString(gate.reason) || "Research sufficiency has not been approved.";
+    const source = cleanString(gate.sourceFile) || "research-pack.md";
+    const approval = gate.readyToDraft ? "yes" : "no";
+    const title = firstFilled(selectedPackageTitle, pkg.proposedTitle, pkg.title);
+    const packageSource = cleanString(selectedPackageSource) || "missing";
+    const coreClaim = firstFilled(research.coreClaim, pkg.viewerPromise, pkg.idea);
+    const targetViewer = firstFilled(research.targetViewer, pkg.targetViewer);
+    const viewerProblem = firstFilled(research.viewerProblem, pkg.viewerProblem);
+    const centralThesis = firstFilled(research.coreClaim, pkg.idea, pkg.viewerPromise);
+    const productionApproach = firstFilled(pkg.suggestedProductionApproach, research.productionEvidenceNeeded);
+    const nextActions =
+      status === "READY TO DRAFT"
+        ? "- Draft from this structure, while keeping proof and source claims traceable.\n- Keep unresolved claims marked during drafting."
+        : "- Resolve the research sufficiency gate before treating this as ready to draft.\n- Fill missing proof, examples, and source support.\n- Add explicit manual PASS only after review.";
+
+    return `# Script Structure
+
+- Run: ${cleanString(runId) || "Not specified."}
+- Script structure status: ${status}
+- Research gate status: ${gateStatus}
+- Ready to draft: ${approval}
+- Research source: ${source}
+- Selected package: ${title || "Not specified yet."}
+- Selected package source: ${packageSource}
+
+## Research Gate Interpretation
+
+${reason}
+
+## Drafting Boundary
+
+- READY TO DRAFT requires an explicit research sufficiency PASS or equivalent manual approval marker.
+- research-pack.md existing is not enough by itself.
+- PARTIAL, BLOCKED, missing, or unreadable research gates must be treated as needing research.
+
+## Working Title
+
+${textOrPlaceholder(title)}
+
+## Package Promise
+
+${textOrPlaceholder(firstFilled(pkg.viewerPromise, research.coreClaim))}
+
+## Target Viewer
+
+${textOrPlaceholder(targetViewer)}
+
+## Viewer Problem
+
+${textOrPlaceholder(viewerProblem)}
+
+## Central Thesis
+
+${textOrPlaceholder(centralThesis)}
+
+## What Must Be Proven
+
+${bulletBlock(research.whatMustBeProven || coreClaim)}
+
+## Proof Ladder
+
+- Baseline claim to prove: ${textOrPlaceholder(coreClaim)}
+- Viewer-visible proof needed: ${textOrPlaceholder(productionApproach)}
+- Example support needed:
+${indentedBlock(research.examplesNeeded)}
+- Missing proof to resolve:
+${indentedBlock(research.missingFacts)}
+
+## Cold Open
+
+- Start with the concrete viewer problem: ${textOrPlaceholder(viewerProblem)}
+- Preview the proof object or test: ${textOrPlaceholder(productionApproach)}
+- Avoid claiming the episode is ready to draft unless the research gate is PASS.
+
+## Act Structure
+
+### Act 1: setup / problem
+
+- Establish who this is for: ${textOrPlaceholder(targetViewer)}
+- Name the practical problem: ${textOrPlaceholder(viewerProblem)}
+- State the thesis without overstating proof: ${textOrPlaceholder(centralThesis)}
+
+### Act 2: evidence / examples
+
+- Use examples or demos from the research pack:
+${indentedBlock(research.examplesNeeded)}
+- Show production-relevant evidence:
+${indentedBlock(research.productionEvidenceNeeded)}
+- Identify missing or weak evidence before drafting claims.
+
+### Act 3: judgment / workflow / payoff
+
+- Turn the evidence into a practical judgment or workflow.
+- Pay off the promise: ${textOrPlaceholder(firstFilled(pkg.viewerPromise, research.coreClaim))}
+- State remaining uncertainty if the research gate is not PASS.
+
+## Beat-by-Beat Outline
+
+1. Cold open: name the viewer problem and stakes.
+2. Promise: state what the viewer should understand or be able to do.
+3. Context: explain why this matters for the target viewer.
+4. Evidence: show the strongest example, demo, screenshot, or source.
+5. Contrast: show the weak example, objection, or failure mode.
+6. Workflow: turn the evidence into a practical VIDTOOLZ method.
+7. Judgment: explain what to do, what not to do, and where uncertainty remains.
+8. Payoff: restate the practical outcome and next step.
+
+## Required Examples / Demos / Screenshots
+
+${bulletBlock(firstFilled(research.examplesNeeded, research.productionEvidenceNeeded, pkg.suggestedProductionApproach))}
+
+## Viewer Objections to Answer
+
+${bulletBlock(firstFilled(research.objections, pkg.mainRisk))}
+
+## Retention Risks
+
+- The video becomes generic if it does not show concrete examples or proof.
+- The claim may feel unsupported if source gaps remain visible.
+- The opening may feel abstract if the viewer problem is not shown quickly.
+- Main package risk: ${textOrPlaceholder(pkg.mainRisk)}
+
+## Unsupported or Risky Claims
+
+${bulletBlock(firstFilled(research.missingFacts, pkg.mainRisk))}
+
+## Ending / Payoff
+
+- Return to the package promise: ${textOrPlaceholder(firstFilled(pkg.viewerPromise, research.coreClaim))}
+- Show what the viewer should now decide, test, or change.
+- If research is not PASS, end with the remaining proof question instead of overstating certainty.
+
+## Script-Readiness Gate
+
+- Status: ${status}
+- Reason: ${reason}
+- Ready to draft: ${approval}
+- Next actions:
+${indentedBlock(nextActions)}
+`;
+  }
+
   function buildScriptDraftPlaceholderMarkdown(runId = "") {
     return `# Script Draft
 
@@ -996,6 +1182,7 @@ ${markdownBulletList(shortsLines, "Add five Shorts candidates from the hook, str
     buildOutlinesPlaceholderMarkdown,
     buildFinalOutlinePlaceholderMarkdown,
     buildScriptPrompt,
+    buildScriptStructureMarkdown,
     buildScriptDraftPlaceholderMarkdown,
     buildFinalScriptPlaceholderMarkdown,
     buildProductionNotesPlaceholderMarkdown,

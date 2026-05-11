@@ -10,9 +10,11 @@ Episode Factory is designed for a solo YouTube creator who needs to move from ro
 4. Move to `Script` when the viewer problem, promise, title options, thumbnail concept, and hook are coherent.
 5. Move to `Ready to Shoot` when the script outline and production checklist are usable.
 6. Move to `Editing` when recording is done and editing work starts.
-7. Move to `Ready to Publish` when the edit is complete and publish assets need final checks.
-8. Move to `Published` after the video is live.
-9. Move to `Archived` when the episode is no longer active but should remain available for reference.
+7. Review the first watchable edit before treating the second cut as ready.
+8. Move to `Ready to Publish` when the edit is complete and publish assets need final checks.
+9. Plan Shorts and platform variants only after final review and publication blockers are clear.
+10. Move to `Published` after the video is live.
+11. Move to `Archived` when the episode is no longer active but should remain available for reference.
 
 ## Detail Fields
 

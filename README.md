@@ -140,7 +140,36 @@ does not call AI APIs, write into Hermes brain, or create Episode Factory
 episodes.
 
 After selecting a winning package and saving `selected-package.json` or
-`selected-package.md` into the run folder, create the outline prompt:
+`selected-package.md` into the run folder, create a review-first research pack:
+
+```sh
+node scripts/package-run-research-pack.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `research-pack.md` in the run folder. It does not call external
+APIs or update Hermes brain. If `research-pack.md` already contains manual
+edits, the script skips it unless `--overwrite` is explicit.
+
+`research-pack.md` existing is only a file workflow state. Script prep checks
+the `Research Sufficiency Gate`; `PARTIAL`, `BLOCKED`, missing, or unreadable
+research stays marked as not ready to draft unless a human adds an explicit
+`PASS` or equivalent approval marker.
+
+Create the standalone script-structure gate artifact:
+
+```sh
+node scripts/package-run-script-structure.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes only `script-structure.md`. It does not create draft, final script,
+or production notes files. The artifact includes the proof ladder, act
+structure, beat-by-beat outline, required examples, objections, retention risks,
+unsupported claims, and script-readiness gate. `package-engine-new-script.js`
+also creates this file as a convenience during script prep, but the standalone
+command is the primary review tool.
+
+After the research pack exposes the proof gaps clearly enough to continue and
+the script structure boundary is reviewed, create the outline prompt:
 
 ```sh
 node scripts/package-engine-new-outline.js package-runs/YYYY-MM-DD-ai-video-idea-filter
@@ -155,11 +184,86 @@ After approving `final-outline.md`, create reviewable script prep artifacts:
 node scripts/package-engine-new-script.js package-runs/YYYY-MM-DD-ai-video-idea-filter
 ```
 
-This writes `script-prompt.md`, `script-draft.md`, `final-script.md`, and
-`production-notes.md`. It does not call AI APIs, write into Hermes brain, or
-create Episode Factory episode folders.
+This writes `script-prompt.md`, `script-structure.md`, `script-draft.md`,
+`final-script.md`, and `production-notes.md`. It does not call AI APIs, write
+into Hermes brain, or create Episode Factory episode folders.
 
-After approving `final-script.md`, create local production prep artifacts:
+After drafting or approving the script, run the local script review:
+
+```sh
+node scripts/package-run-script-review.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `script-review.md` and `script-revision-plan.md` only. Production
+planning remains blocked unless the review status is `PASS`.
+
+After script review passes, create the local production planning gate and work
+lists:
+
+```sh
+node scripts/package-run-production-plan.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `production-plan.md`, `shot-list.md`,
+`screen-capture-list.md`, `demo-list.md`, `b-roll-list.md`,
+`graphics-list.md`, `audio-notes.md`, and `production-blockers.md`. It does
+not create rough-cut review, final review, publish, archive, or Shorts
+repurposing artifacts. Existing manually edited planning files are preserved
+unless `--overwrite` is explicit.
+
+`package-run-production-plan.js` is the review-first production planning gate.
+It can only mark `READY TO SHOOT` when script review is `PASS`, production
+planning is ready, research and script structure are approved, a script file
+exists, and no blockers are detected. `package-engine-new-production.js` is the
+broader production prep pack for brief, shooting plan, Resolve checklist,
+thumbnail/title, and publish prep.
+
+After a first watchable edit exists, create the local rough-cut review starter
+and second-cut gate:
+
+```sh
+node scripts/package-run-rough-cut-review.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `rough-cut-watch-notes.md`, `rough-cut-review.md`,
+`pickup-list.md`, and `edit-fix-list.md`. It does not analyze video files, call
+external APIs, create final review, create publish/archive artifacts, create
+Shorts plans, or create new production plan artifacts. If watch notes are
+missing, it creates a starter template and blocks second-cut readiness until a
+real manual watch review is recorded.
+
+`package-run-rough-cut-review.js` can mark `READY FOR SECOND CUT` only when real
+watch notes exist, production was approved for shooting or manually approved,
+production blockers are not open, and no pickup/edit blockers remain unless an
+exact approval marker is present.
+
+After final watch review, create the local final review gate:
+
+```sh
+node scripts/package-run-final-review.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `final-watch-notes.md`, `final-review.md`, and
+`publication-blockers.md`. It blocks publication readiness when rough-cut review
+is blocked, final-watch notes are missing or still a starter template, or
+publication blockers remain open.
+
+After the long-form episode has final approval, create repurposing candidates:
+
+```sh
+node scripts/package-run-repurpose.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+```
+
+This writes `repurposing-plan.md`, `shorts-candidates.md`, and
+`platform-variants.md`. It does not create final review, rough-cut review,
+production planning, publish-pack, or archive artifacts. It can only mark
+`READY TO CUT SHORTS` when final review is approved, publish readiness is `yes`,
+publication blockers are clear, and `transcript.md` or `final-script.md`
+exists. Blocked or starter states produce not-assessed shorts rows rather than
+clean or closed candidate states.
+
+After approving `final-script.md` and reviewing the production plan, create
+local production prep artifacts:
 
 ```sh
 node scripts/package-engine-new-production.js package-runs/YYYY-MM-DD-ai-video-idea-filter
@@ -409,6 +513,8 @@ High-level browser checks:
 - `scripts/package-engine-new-script.js` creates local Script Prep artifacts from a selected package and final outline.
 - `scripts/package-engine-new-production.js` creates local Production Prep artifacts from a selected package, final outline, and final script.
 - `scripts/package-run-creator-qa.js` runs local Creator QA over Package Engine run artifacts.
+- `scripts/package-run-production-plan.js` turns approved script/review state into local production planning lists and a conservative shoot-readiness gate.
+- `scripts/package-run-rough-cut-review.js` turns manual rough-cut watch notes into pickup/edit-fix lists and a conservative second-cut readiness gate.
 - `scripts/package-runs-index.js` generates the local Package Runs dashboard index.
 - `scripts/package-runs-dashboard-launch.js` regenerates the Package Runs index and prints the local dashboard launch command.
 - `scripts/trailer-cue-new.js` creates local deterministic trailer cue prep folders with text maps, Resolve marker CSV, checklists, and MIDI files.

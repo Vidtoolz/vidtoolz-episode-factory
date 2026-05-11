@@ -24,6 +24,7 @@ Use this checklist before tagging or publishing a release.
 
 - Confirm no backend, API integration, drag-and-drop, or unrelated workflow work slipped into the release.
 - Confirm JSON import/export behavior still matches [docs/data-model.md](data-model.md).
+- Confirm package-run gate docs are current, including repurposing when package-run workflow files changed.
 - Confirm known limitations are current in [docs/known-limitations.md](known-limitations.md).
 - Confirm [CHANGELOG.md](../CHANGELOG.md) includes the release.
 

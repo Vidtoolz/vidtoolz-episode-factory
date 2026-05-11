@@ -4,6 +4,7 @@
   const STATUS_ORDER = [
     "Idea run",
     "Package selected",
+    "Research pack ready",
     "Outline prep ready",
     "Final outline ready",
     "Script prep ready",
@@ -17,6 +18,7 @@
     "Needs proof capture",
     "Narrow shooting approved",
     "Needs package selection",
+    "Needs research pack",
     "Needs outline",
     "Needs script",
     "Needs production prep",
@@ -28,10 +30,21 @@
     ["package_candidates", "package-candidates.json", "Candidates"],
     ["selected_package_json", "selected-package.json", "Selected JSON"],
     ["selected_package_md", "selected-package.md", "Selected MD"],
+    ["research_pack", "research-pack.md", "Research pack"],
     ["outline_prompt", "outline-prompt.md", "Outline prompt"],
     ["final_outline", "final-outline.md", "Final outline"],
     ["script_prompt", "script-prompt.md", "Script prompt"],
+    ["script_structure", "script-structure.md", "Script structure"],
     ["final_script", "final-script.md", "Final script"],
+    ["production_plan", "production-plan.md", "Production plan"],
+    ["production_blockers", "production-blockers.md", "Production blockers"],
+    ["rough_cut_watch_notes", "rough-cut-watch-notes.md", "Rough-cut notes"],
+    ["rough_cut_review", "rough-cut-review.md", "Rough-cut review"],
+    ["pickup_list", "pickup-list.md", "Pickup list"],
+    ["edit_fix_list", "edit-fix-list.md", "Edit fixes"],
+    ["final_watch_notes", "final-watch-notes.md", "Final-watch notes"],
+    ["final_review", "final-review.md", "Final review"],
+    ["publication_blockers", "publication-blockers.md", "Publication blockers"],
     ["capture_verification_note", "capture-verification-note.md", "Capture plan"],
     ["capture_result_note", "capture-result-note.md", "Capture result"],
     ["capture_transcript", "capture-transcript.md", "Capture transcript"],
@@ -45,6 +58,9 @@
     ["creator_qa_package", "creator-qa-package.md", "Creator QA package"],
     ["creator_qa_report", "creator-qa-report.md", "Creator QA report"],
     ["creator_qa_report_json", "creator-qa-report.json", "Creator QA JSON"],
+    ["repurposing_plan", "repurposing-plan.md", "Repurposing plan"],
+    ["shorts_candidates", "shorts-candidates.md", "Shorts candidates"],
+    ["platform_variants", "platform-variants.md", "Platform variants"],
   ];
 
   function escapeHtml(value) {
@@ -172,7 +188,8 @@
     if (status === "Ready to shoot" && qaStatus === "not run") return "QA not run";
     const bucketByStatus = {
       "Idea run": "Needs package selection",
-      "Package selected": "Needs outline",
+      "Package selected": "Needs research pack",
+      "Research pack ready": "Needs outline",
       "Outline prep ready": "Needs outline",
       "Final outline ready": "Needs script",
       "Script prep ready": "Needs script",

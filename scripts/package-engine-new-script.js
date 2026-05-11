@@ -6,6 +6,11 @@ const path = require("node:path");
 
 const run = require("../package-engine-run.js");
 const outlineScript = require("./package-engine-new-outline.js");
+const scriptStructureScript = require("./package-run-script-structure.js");
+
+function usage() {
+  return "Usage: node scripts/package-engine-new-script.js package-runs/YYYY-MM-DD-topic-slug [--selected path/to/selected-package.json] [--outline path/to/final-outline.md]";
+}
 
 function parseArgs(argv) {
   const args = [...argv];
@@ -13,6 +18,7 @@ function parseArgs(argv) {
     runFolder: "",
     selectedPath: "",
     outlinePath: "",
+    help: false,
   };
   while (args.length) {
     const item = args.shift();
@@ -20,6 +26,8 @@ function parseArgs(argv) {
       result.selectedPath = args.shift() || "";
     } else if (item === "--outline") {
       result.outlinePath = args.shift() || "";
+    } else if (item === "--help" || item === "-h") {
+      result.help = true;
     } else if (!result.runFolder) {
       result.runFolder = item;
     }
@@ -41,8 +49,12 @@ function appendNotes(runDir) {
 
 function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
+  if (options.help) {
+    console.log(usage());
+    return 0;
+  }
   if (!options.runFolder) {
-    console.error("Usage: node scripts/package-engine-new-script.js package-runs/YYYY-MM-DD-topic-slug [--selected path/to/selected-package.json] [--outline path/to/final-outline.md]");
+    console.error(usage());
     return 1;
   }
 
@@ -74,6 +86,7 @@ function main(argv = process.argv.slice(2)) {
     run.buildScriptPrompt({ selectedPackageText, finalOutlineText, runId }),
     "utf8"
   );
+  const structureResult = scriptStructureScript.writeScriptStructure(runDir, { overwrite: false });
   fs.writeFileSync(path.join(runDir, "script-draft.md"), run.buildScriptDraftPlaceholderMarkdown(runId), "utf8");
   fs.writeFileSync(path.join(runDir, "final-script.md"), run.buildFinalScriptPlaceholderMarkdown(runId), "utf8");
   fs.writeFileSync(path.join(runDir, "production-notes.md"), run.buildProductionNotesPlaceholderMarkdown(runId), "utf8");
@@ -82,6 +95,7 @@ function main(argv = process.argv.slice(2)) {
   const relativeRunDir = path.relative(repoRoot, runDir);
   console.log(`Created script prep files in: ${relativeRunDir}`);
   console.log(`${relativeRunDir}/script-prompt.md`);
+  console.log(`${structureResult.status}: ${relativeRunDir}/script-structure.md`);
   console.log(`${relativeRunDir}/script-draft.md`);
   console.log(`${relativeRunDir}/final-script.md`);
   console.log(`${relativeRunDir}/production-notes.md`);
@@ -92,4 +106,11 @@ if (require.main === module) {
   process.exitCode = main();
 }
 
-module.exports = { main, parseArgs, findFinalOutlinePath };
+module.exports = {
+  main,
+  parseArgs,
+  findFinalOutlinePath,
+  findResearchPackPath: scriptStructureScript.findResearchPackPath,
+  parseResearchGateStatus: scriptStructureScript.parseResearchGateStatus,
+  readResearchGate: scriptStructureScript.readResearchGate,
+};

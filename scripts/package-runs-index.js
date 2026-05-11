@@ -11,10 +11,21 @@ const DETECTED_FILES = [
   "package-candidates.json",
   "selected-package.json",
   "selected-package.md",
+  "research-pack.md",
   "outline-prompt.md",
   "final-outline.md",
   "script-prompt.md",
+  "script-structure.md",
   "final-script.md",
+  "production-plan.md",
+  "production-blockers.md",
+  "rough-cut-watch-notes.md",
+  "rough-cut-review.md",
+  "pickup-list.md",
+  "edit-fix-list.md",
+  "final-watch-notes.md",
+  "final-review.md",
+  "publication-blockers.md",
   "capture-verification-note.md",
   "capture-result-note.md",
   "capture-transcript.md",
@@ -29,6 +40,9 @@ const DETECTED_FILES = [
   "creator-qa-package.md",
   "creator-qa-report.md",
   "creator-qa-report.json",
+  "repurposing-plan.md",
+  "shorts-candidates.md",
+  "platform-variants.md",
 ];
 
 const PRODUCTION_ARTIFACTS = [
@@ -123,6 +137,7 @@ function classifyRunStatus(files = {}, creatorQaStatus = "not run") {
   if (files.script_prompt) return "Script prep ready";
   if (files.final_outline) return "Final outline ready";
   if (files.outline_prompt) return "Outline prep ready";
+  if (files.research_pack) return "Research pack ready";
   if (hasSelectedPackage(files)) return "Package selected";
   return "Idea run";
 }
@@ -130,7 +145,8 @@ function classifyRunStatus(files = {}, creatorQaStatus = "not run") {
 function nextExpectedFile(status) {
   const nextByStatus = {
     "Idea run": "selected-package.json or selected-package.md",
-    "Package selected": "outline-prompt.md",
+    "Package selected": "research-pack.md",
+    "Research pack ready": "outline-prompt.md",
     "Outline prep ready": "final-outline.md",
     "Final outline ready": "script-prompt.md",
     "Script prep ready": "final-script.md",
@@ -159,7 +175,8 @@ function nextRecommendedCommand(status, runPath, creatorQaStatus = "not run", ev
   }
   const commandByStatus = {
     "Idea run": "",
-    "Package selected": `node scripts/package-engine-new-outline.js ${target}`,
+    "Package selected": `node scripts/package-run-research-pack.js ${target}`,
+    "Research pack ready": `node scripts/package-engine-new-outline.js ${target}`,
     "Outline prep ready": "",
     "Final outline ready": `node scripts/package-engine-new-script.js ${target}`,
     "Script prep ready": "",
@@ -178,7 +195,8 @@ function workflowBucket(status, creatorQaStatus = "not run", evidenceGate = {}) 
   if (status === "Ready to shoot" && qaStatus === "not run") return "QA not run";
   const bucketByStatus = {
     "Idea run": "Needs package selection",
-    "Package selected": "Needs outline",
+    "Package selected": "Needs research pack",
+    "Research pack ready": "Needs outline",
     "Outline prep ready": "Needs outline",
     "Final outline ready": "Needs script",
     "Script prep ready": "Needs script",

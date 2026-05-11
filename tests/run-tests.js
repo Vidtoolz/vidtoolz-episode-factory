@@ -10,6 +10,13 @@ const packageRunScript = require("../scripts/package-engine-new-run.js");
 const packageOutlineScript = require("../scripts/package-engine-new-outline.js");
 const packageScriptPrepScript = require("../scripts/package-engine-new-script.js");
 const packageProductionPrepScript = require("../scripts/package-engine-new-production.js");
+const packageResearchPackScript = require("../scripts/package-run-research-pack.js");
+const packageScriptStructureScript = require("../scripts/package-run-script-structure.js");
+const packageScriptReviewScript = require("../scripts/package-run-script-review.js");
+const packageProductionPlanScript = require("../scripts/package-run-production-plan.js");
+const packageRoughCutReviewScript = require("../scripts/package-run-rough-cut-review.js");
+const packageFinalReviewScript = require("../scripts/package-run-final-review.js");
+const packageRepurposeScript = require("../scripts/package-run-repurpose.js");
 const packageRunCreatorQaScript = require("../scripts/package-run-creator-qa.js");
 const packageRunsIndexScript = require("../scripts/package-runs-index.js");
 const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashboard-launch.js");
@@ -1933,10 +1940,31 @@ test("script prep prompt includes package outline and required review sections",
 });
 
 test("script prep placeholders create reviewable draft final and production files", () => {
+  const structure = packageRun.buildScriptStructureMarkdown({
+    runId: "run-id",
+    researchGate: {
+      sourceFile: "research-pack.md",
+      status: "PARTIAL",
+      structureStatus: "PARTIAL",
+      readyToDraft: false,
+      reason: "Research is still partial.",
+    },
+  });
   const draft = packageRun.buildScriptDraftPlaceholderMarkdown("run-id");
   const final = packageRun.buildFinalScriptPlaceholderMarkdown("run-id");
   const production = packageRun.buildProductionNotesPlaceholderMarkdown("run-id");
 
+  assert.match(structure, /# Script Structure/);
+  assert.match(structure, /Script structure status: PARTIAL/);
+  assert.match(structure, /Ready to draft: no/);
+  assert.match(structure, /## Proof Ladder/);
+  assert.match(structure, /## Act Structure/);
+  assert.match(structure, /## Beat-by-Beat Outline/);
+  assert.match(structure, /## Required Examples \/ Demos \/ Screenshots/);
+  assert.match(structure, /## Viewer Objections to Answer/);
+  assert.match(structure, /## Retention Risks/);
+  assert.match(structure, /## Unsupported or Risky Claims/);
+  assert.match(structure, /## Script-Readiness Gate/);
   assert.match(draft, /# Script Draft/);
   assert.match(draft, /Open Verification Questions/);
   assert.match(final, /# Final Script/);
@@ -1960,7 +1988,1184 @@ test("script prep cli argument parsing accepts run folder selected and outline",
   assert.equal(parsed.outlinePath, "final-outline.md");
 });
 
-test("script prep cli writes the four local review artifacts", () => {
+test("script structure help and script prep help work", () => {
+  const structureHelp = captureConsole(() => packageScriptStructureScript.main(["--help"]));
+  const scriptPrepHelp = captureConsole(() => packageScriptPrepScript.main(["--help"]));
+
+  assert.equal(structureHelp.result, 0);
+  assert.match(structureHelp.stdout.join("\n"), /package-run-script-structure\.js/);
+  assert.equal(scriptPrepHelp.result, 0);
+  assert.match(scriptPrepHelp.stdout.join("\n"), /package-engine-new-script\.js/);
+});
+
+test("script structure research gate parser does not treat partial research as ready", () => {
+  const gate = packageScriptStructureScript.parseResearchGateStatus([
+    "# Research Pack",
+    "",
+    "## Research Sufficiency Gate",
+    "",
+    "- Status: PARTIAL",
+    "- Reason: Sources still need review.",
+  ].join("\n"));
+
+  assert.equal(gate.status, "PARTIAL");
+  assert.equal(gate.structureStatus, "PARTIAL");
+  assert.equal(gate.readyToDraft, false);
+});
+
+test("script structure research gate parser requires explicit pass for ready to draft", () => {
+  const passGate = packageScriptStructureScript.parseResearchGateStatus([
+    "# Research Pack",
+    "",
+    "## Research Sufficiency Gate",
+    "",
+    "- Status: PASS",
+    "- Reason: Mikko approved the research pack.",
+  ].join("\n"));
+  const manualGate = packageScriptStructureScript.parseResearchGateStatus([
+    "# Research Pack",
+    "",
+    "## Research Sufficiency Gate",
+    "",
+    "- Status: PARTIAL",
+    "- Manual approval: PASS",
+  ].join("\n"));
+
+  assert.equal(passGate.structureStatus, "READY TO DRAFT");
+  assert.equal(passGate.readyToDraft, true);
+  assert.equal(manualGate.structureStatus, "READY TO DRAFT");
+  assert.equal(manualGate.readyToDraft, true);
+});
+
+test("script structure cli generates only script structure from partial research", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-structure-partial-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-partial");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({
+      package: {
+        proposedTitle: "Partial Research Package",
+        viewerPromise: "Needs source review.",
+        targetViewer: "Serious solo creator.",
+        mainRisk: "Could become generic.",
+      },
+    })
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    [
+      "# Research Pack",
+      "",
+      "## Core Claim",
+      "",
+      "A stronger script starts with traceable proof.",
+      "",
+      "## Viewer Problem",
+      "",
+      "The creator has a package but no verified proof path.",
+      "",
+      "## What Must Be Proven",
+      "",
+      "- The package has enough source support.",
+      "- The production proof can be captured honestly.",
+      "",
+      "## Examples Needed",
+      "",
+      "- One visible proof example.",
+      "",
+      "## Objections / Counterarguments",
+      "",
+      "- The episode may be premature.",
+      "",
+      "## Production-Relevant Evidence Needed",
+      "",
+      "- Screen recording of the proof workflow.",
+      "",
+      "## Research Sufficiency Gate",
+      "",
+      "- Status: PARTIAL",
+      "- Reason: More research needed.",
+      "",
+    ].join("\n")
+  );
+
+  const output = captureConsole(() => packageScriptStructureScript.main([runDir]));
+  const structure = fs.readFileSync(path.join(runDir, "script-structure.md"), "utf8");
+
+  assert.equal(output.result, 0);
+  assert.match(structure, /Script structure status: PARTIAL/);
+  assert.match(structure, /Ready to draft: no/);
+  assert.match(structure, /Selected package: Partial Research Package/);
+  [
+    /## Proof Ladder/,
+    /## Act Structure/,
+    /## Beat-by-Beat Outline/,
+    /## Required Examples \/ Demos \/ Screenshots/,
+    /## Viewer Objections to Answer/,
+    /## Retention Risks/,
+    /## Unsupported or Risky Claims/,
+    /## Script-Readiness Gate/,
+  ].forEach((pattern) => assert.match(structure, pattern));
+  assert.match(structure, /A stronger script starts with traceable proof/);
+  assert.match(structure, /The package has enough source support/);
+  assert.equal(fs.existsSync(path.join(runDir, "script-prompt.md")), false);
+  assert.equal(fs.existsSync(path.join(runDir, "script-draft.md")), false);
+  assert.equal(fs.existsSync(path.join(runDir, "final-script.md")), false);
+  assert.equal(fs.existsSync(path.join(runDir, "production-notes.md")), false);
+});
+
+test("script structure cli marks missing and blocked research as not ready", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-structure-blocked-"));
+  const missingDir = path.join(tempRoot, "package-runs", "2026-05-10-missing");
+  const blockedDir = path.join(tempRoot, "package-runs", "2026-05-10-blocked");
+  fs.mkdirSync(missingDir, { recursive: true });
+  fs.mkdirSync(blockedDir, { recursive: true });
+  fs.writeFileSync(path.join(missingDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Missing Research" } }));
+  fs.writeFileSync(path.join(blockedDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Blocked Research" } }));
+  fs.writeFileSync(
+    path.join(blockedDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: BLOCKED\n- Reason: No sources.\n"
+  );
+
+  assert.equal(packageScriptStructureScript.main([missingDir]), 0);
+  assert.equal(packageScriptStructureScript.main([blockedDir]), 0);
+  const missing = fs.readFileSync(path.join(missingDir, "script-structure.md"), "utf8");
+  const blocked = fs.readFileSync(path.join(blockedDir, "script-structure.md"), "utf8");
+
+  assert.match(missing, /Script structure status: NEEDS RESEARCH/);
+  assert.match(missing, /Ready to draft: no/);
+  assert.match(missing, /## Proof Ladder/);
+  assert.match(missing, /## Script-Readiness Gate/);
+  assert.match(blocked, /Research gate status: BLOCKED/);
+  assert.match(blocked, /Script structure status: NEEDS RESEARCH/);
+  assert.match(blocked, /Ready to draft: no/);
+});
+
+test("script structure cli allows pass research to become ready to draft", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-structure-pass-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-pass");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Pass Research" } }));
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PASS\n- Reason: Research approved.\n"
+  );
+
+  assert.equal(packageScriptStructureScript.main([runDir]), 0);
+  const structure = fs.readFileSync(path.join(runDir, "script-structure.md"), "utf8");
+
+  assert.match(structure, /Script structure status: READY TO DRAFT/);
+  assert.match(structure, /Ready to draft: yes/);
+});
+
+test("script structure cli preserves existing structure unless overwrite is explicit", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-structure-preserve-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-preserve");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Preserve Structure" } }));
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PASS\n"
+  );
+  const structurePath = path.join(runDir, "script-structure.md");
+  fs.writeFileSync(structurePath, "# Manual Script Structure\n\nKeep this.\n", "utf8");
+
+  const skipped = captureConsole(() => packageScriptStructureScript.main([runDir]));
+  assert.equal(skipped.result, 2);
+  assert.equal(fs.readFileSync(structurePath, "utf8"), "# Manual Script Structure\n\nKeep this.\n");
+
+  const overwritten = captureConsole(() => packageScriptStructureScript.main([runDir, "--overwrite"]));
+  assert.equal(overwritten.result, 0);
+  assert.match(fs.readFileSync(structurePath, "utf8"), /Preserve Structure/);
+});
+
+function writeReviewBaseRun(runDir, options = {}) {
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({
+      package: {
+        proposedTitle: "Script Review Package",
+        viewerPromise: "A reviewed script is safe to take into production planning.",
+        targetViewer: "Solo creator",
+        viewerProblem: "The script may be under-researched.",
+        suggestedProductionApproach: "Show the proof path on screen.",
+      },
+    })
+  );
+  if (options.script !== false) {
+    fs.writeFileSync(path.join(runDir, options.finalScript ? "final-script.md" : "script-draft.md"), "# Script\n\nHook, proof, payoff.\n");
+  }
+  if (options.research !== false) {
+    fs.writeFileSync(
+      path.join(runDir, "research-pack.md"),
+      `# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: ${options.researchStatus || "PASS"}\n`
+    );
+  }
+  if (options.structure !== false) {
+    fs.writeFileSync(
+      path.join(runDir, "script-structure.md"),
+      [
+        "# Script Structure",
+        "",
+        `- Script structure status: ${options.structureStatus || "READY TO DRAFT"}`,
+        `- Ready to draft: ${options.readyToDraft || "yes"}`,
+        "",
+      ].join("\n")
+    );
+  }
+  if (options.creatorQaStatus) {
+    fs.writeFileSync(path.join(runDir, "creator-qa-report.json"), JSON.stringify({ overall_result: options.creatorQaStatus }));
+  }
+}
+
+test("script review help works", () => {
+  const output = captureConsole(() => packageScriptReviewScript.main(["--help"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /package-run-script-review\.js/);
+});
+
+test("script review blocks missing script and writes blocked revision plan", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-review-missing-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-missing");
+  writeReviewBaseRun(runDir, { script: false });
+
+  const output = packageScriptReviewScript.main([runDir]);
+  const review = fs.readFileSync(path.join(runDir, "script-review.md"), "utf8");
+  const plan = fs.readFileSync(path.join(runDir, "script-revision-plan.md"), "utf8");
+
+  assert.equal(output, 0);
+  assert.match(review, /Script review status: BLOCKED/);
+  assert.match(review, /Production planning ready: no/);
+  assert.match(review, /No final-script\.md or script-draft\.md exists/);
+  assert.match(plan, /Status: BLOCKED/);
+});
+
+test("script review prevents pass for partial research or not-ready structure", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-review-partial-"));
+  const partialDir = path.join(tempRoot, "package-runs", "2026-05-10-partial");
+  const notReadyDir = path.join(tempRoot, "package-runs", "2026-05-10-not-ready");
+  writeReviewBaseRun(partialDir, { researchStatus: "PARTIAL" });
+  writeReviewBaseRun(notReadyDir, { readyToDraft: "no", structureStatus: "PARTIAL" });
+
+  assert.equal(packageScriptReviewScript.main([partialDir]), 0);
+  assert.equal(packageScriptReviewScript.main([notReadyDir]), 0);
+  const partial = fs.readFileSync(path.join(partialDir, "script-review.md"), "utf8");
+  const notReady = fs.readFileSync(path.join(notReadyDir, "script-review.md"), "utf8");
+
+  assert.match(partial, /Script review status: NEEDS REVISION/);
+  assert.match(partial, /Research gate is PARTIAL/);
+  assert.match(partial, /Production planning ready: no/);
+  assert.match(notReady, /Script review status: NEEDS REVISION/);
+  assert.match(notReady, /Script structure is PARTIAL/);
+  assert.match(notReady, /Production planning ready: no/);
+});
+
+test("script review prevents pass for creator qa blocking status", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-review-qa-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-qa");
+  writeReviewBaseRun(runDir, { creatorQaStatus: "NEEDS WORK" });
+
+  assert.equal(packageScriptReviewScript.main([runDir]), 0);
+  const review = fs.readFileSync(path.join(runDir, "script-review.md"), "utf8");
+
+  assert.match(review, /Creator QA status is NEEDS WORK/);
+  assert.match(review, /Script review status: NEEDS REVISION/);
+  assert.match(review, /Production planning ready: no/);
+});
+
+test("script review passes only when script research structure and qa are clear", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-review-pass-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-pass");
+  writeReviewBaseRun(runDir, { finalScript: true, creatorQaStatus: "PASS" });
+
+  assert.equal(packageScriptReviewScript.main([runDir]), 0);
+  const review = fs.readFileSync(path.join(runDir, "script-review.md"), "utf8");
+  const plan = fs.readFileSync(path.join(runDir, "script-revision-plan.md"), "utf8");
+
+  assert.match(review, /Script review status: PASS/);
+  assert.match(review, /Production planning ready: yes/);
+  assert.match(plan, /READY FOR PRODUCTION PLANNING/);
+});
+
+test("script review preserves existing artifacts unless overwrite is explicit", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-review-preserve-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-preserve");
+  writeReviewBaseRun(runDir);
+  const reviewPath = path.join(runDir, "script-review.md");
+  const planPath = path.join(runDir, "script-revision-plan.md");
+  fs.writeFileSync(reviewPath, "# Manual Review\n\nKeep this.\n");
+  fs.writeFileSync(planPath, "# Manual Plan\n\nKeep this.\n");
+
+  const skipped = captureConsole(() => packageScriptReviewScript.main([runDir]));
+  assert.equal(skipped.result, 2);
+  assert.equal(fs.readFileSync(reviewPath, "utf8"), "# Manual Review\n\nKeep this.\n");
+  assert.equal(fs.readFileSync(planPath, "utf8"), "# Manual Plan\n\nKeep this.\n");
+
+  const overwritten = captureConsole(() => packageScriptReviewScript.main([runDir, "--overwrite"]));
+  assert.equal(overwritten.result, 0);
+  assert.match(fs.readFileSync(reviewPath, "utf8"), /# Script Review/);
+  assert.match(fs.readFileSync(planPath, "utf8"), /# Script Revision Plan/);
+});
+
+function writeProductionPlannerBaseRun(runDir, options = {}) {
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({
+      package: {
+        proposedTitle: "Production Planner Package",
+        viewerPromise: "A reviewed script becomes concrete production work.",
+        targetViewer: "Solo creator",
+        suggestedProductionApproach: "Screen-record the proof workflow and capture a clean hook.",
+      },
+    })
+  );
+  if (options.script !== false) {
+    fs.writeFileSync(path.join(runDir, options.draftOnly ? "script-draft.md" : "final-script.md"), "# Final Script\n\nRecord the hook. Show the demo and screen capture the proof workflow.\n");
+  }
+  if (options.review !== false) {
+    fs.writeFileSync(
+      path.join(runDir, "script-review.md"),
+      [
+        "# Script Review",
+        "",
+        `- Script review status: ${options.reviewStatus || "PASS"}`,
+        `- Production planning ready: ${options.productionPlanningReady || "yes"}`,
+        "- External APIs called: no",
+        "",
+      ].join("\n")
+    );
+  }
+  if (options.research !== false) {
+    fs.writeFileSync(
+      path.join(runDir, "research-pack.md"),
+      [
+        "# Research Pack",
+        "",
+        "## Production-Relevant Evidence Needed",
+        "",
+        "- Screen capture the proof workflow.",
+        "",
+        "## Research Sufficiency Gate",
+        "",
+        `- Status: ${options.researchStatus || "PASS"}`,
+        options.researchManualApproval ? "- Manual approval: PASS" : "",
+        "",
+      ].join("\n")
+    );
+  }
+  if (options.structure !== false) {
+    fs.writeFileSync(
+      path.join(runDir, "script-structure.md"),
+      [
+        "# Script Structure",
+        "",
+        `- Script structure status: ${options.structureStatus || "READY TO DRAFT"}`,
+        `- Ready to draft: ${options.readyToDraft || "yes"}`,
+        options.structureManualApproval ? "- Production planning approval: PASS" : "",
+        "",
+        "## Required Examples / Demos / Screenshots",
+        "",
+        "- Demo the idea filter and capture the output screen.",
+        "",
+      ].join("\n")
+    );
+  }
+}
+
+function productionPlanText(runDir) {
+  return fs.readFileSync(path.join(runDir, "production-plan.md"), "utf8");
+}
+
+test("production planner help works", () => {
+  const output = captureConsole(() => packageProductionPlanScript.main(["--help"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /package-run-production-plan\.js/);
+});
+
+test("production planner blocks missing script review", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-plan-missing-review-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-missing-review");
+  writeProductionPlannerBaseRun(runDir, { review: false });
+
+  assert.equal(packageProductionPlanScript.main([runDir]), 0);
+  const plan = productionPlanText(runDir);
+
+  assert.match(plan, /Shoot-readiness status: NEEDS SCRIPT APPROVAL/);
+  assert.match(plan, /script-review\.md is missing/);
+  assert.doesNotMatch(plan, /Status: READY TO SHOOT/);
+});
+
+test("production planner blocks script review needs revision", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-plan-needs-revision-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-needs-revision");
+  writeProductionPlannerBaseRun(runDir, { reviewStatus: "NEEDS REVISION" });
+
+  assert.equal(packageProductionPlanScript.main([runDir]), 0);
+  const plan = productionPlanText(runDir);
+
+  assert.match(plan, /Script review status: NEEDS REVISION/);
+  assert.match(plan, /Shoot-readiness status: NEEDS SCRIPT APPROVAL/);
+  assert.match(plan, /Script review status is NEEDS REVISION, not PASS/);
+});
+
+test("production planner blocks production planning ready no", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-plan-not-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-not-ready");
+  writeProductionPlannerBaseRun(runDir, { productionPlanningReady: "no" });
+
+  assert.equal(packageProductionPlanScript.main([runDir]), 0);
+  const plan = productionPlanText(runDir);
+
+  assert.match(plan, /Production planning ready from review: no/);
+  assert.match(plan, /Shoot-readiness status: BLOCKED/);
+  assert.match(plan, /Production planning ready is no/);
+});
+
+test("production planner blocks partial research", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-plan-partial-research-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-partial-research");
+  writeProductionPlannerBaseRun(runDir, { researchStatus: "PARTIAL" });
+
+  assert.equal(packageProductionPlanScript.main([runDir]), 0);
+  const plan = productionPlanText(runDir);
+
+  assert.match(plan, /Research gate status: PARTIAL/);
+  assert.match(plan, /Shoot-readiness status: BLOCKED/);
+  assert.match(plan, /Research gate status is PARTIAL/);
+});
+
+test("production planner blocks when no script file exists", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-plan-no-script-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-no-script");
+  writeProductionPlannerBaseRun(runDir, { script: false });
+
+  assert.equal(packageProductionPlanScript.main([runDir]), 0);
+  const plan = productionPlanText(runDir);
+  const blockers = fs.readFileSync(path.join(runDir, "production-blockers.md"), "utf8");
+
+  assert.match(plan, /Source script: missing/);
+  assert.match(plan, /Shoot-readiness status: BLOCKED/);
+  assert.match(blockers, /No final-script\.md or script-draft\.md exists/);
+});
+
+test("production planner can mark ready only with explicit pass conditions", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-plan-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-ready");
+  writeProductionPlannerBaseRun(runDir);
+
+  assert.equal(packageProductionPlanScript.main([runDir]), 0);
+  const plan = productionPlanText(runDir);
+  const blockers = fs.readFileSync(path.join(runDir, "production-blockers.md"), "utf8");
+
+  assert.match(plan, /Script review status: PASS/);
+  assert.match(plan, /Production planning ready from review: yes/);
+  assert.match(plan, /Research gate status: PASS/);
+  assert.match(plan, /Script structure status: READY TO DRAFT/);
+  assert.match(plan, /Status: READY TO SHOOT/);
+  assert.match(blockers, /\| None\. \|/);
+});
+
+test("production planner exact manual markers can approve research and structure only", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-plan-manual-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-manual");
+  writeProductionPlannerBaseRun(runDir, {
+    researchStatus: "PARTIAL",
+    researchManualApproval: true,
+    structureStatus: "PARTIAL",
+    readyToDraft: "no",
+    structureManualApproval: true,
+  });
+
+  assert.equal(packageProductionPlanScript.main([runDir]), 0);
+  const plan = productionPlanText(runDir);
+
+  assert.match(plan, /Research gate status: PARTIAL/);
+  assert.match(plan, /Script structure status: PARTIAL/);
+  assert.match(plan, /Status: READY TO SHOOT/);
+});
+
+test("production planner preserves existing artifacts unless overwrite is explicit", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-plan-preserve-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-preserve");
+  writeProductionPlannerBaseRun(runDir);
+  const planPath = path.join(runDir, "production-plan.md");
+  const brollPath = path.join(runDir, "b-roll-list.md");
+  fs.writeFileSync(planPath, "# Manual Production Plan\n\nKeep this.\n");
+  fs.writeFileSync(brollPath, "# Manual B-Roll\n\nKeep this.\n");
+
+  const first = captureConsole(() => packageProductionPlanScript.main([runDir]));
+  assert.equal(first.result, 0);
+  assert.equal(fs.readFileSync(planPath, "utf8"), "# Manual Production Plan\n\nKeep this.\n");
+  assert.equal(fs.readFileSync(brollPath, "utf8"), "# Manual B-Roll\n\nKeep this.\n");
+  assert.match(first.stdout.join("\n"), /unchanged: .*production-plan\.md/);
+  assert.match(first.stdout.join("\n"), /created: .*shot-list\.md/);
+
+  const overwritten = captureConsole(() => packageProductionPlanScript.main([runDir, "--overwrite"]));
+  assert.equal(overwritten.result, 0);
+  assert.match(fs.readFileSync(planPath, "utf8"), /# Production Plan/);
+  assert.match(fs.readFileSync(brollPath, "utf8"), /# B-Roll List/);
+  assert.match(overwritten.stdout.join("\n"), /overwritten: .*production-plan\.md/);
+});
+
+test("verify script checks production planner syntax", () => {
+  const verifyPath = path.join(__dirname, "..", "scripts", "verify.sh");
+  const verify = fs.readFileSync(verifyPath, "utf8");
+
+  assert.match(verify, /node --check scripts\/package-run-production-plan\.js/);
+});
+
+function writeRoughCutBaseRun(runDir, options = {}) {
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({
+      package: {
+        proposedTitle: "Rough Cut Package",
+        viewerPromise: "The rough cut clearly proves the workflow.",
+        targetViewer: "Solo creator",
+      },
+    })
+  );
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n\nHook, proof, payoff.\n");
+  fs.writeFileSync(
+    path.join(runDir, "script-review.md"),
+    "# Script Review\n\n- Script review status: PASS\n- Production planning ready: yes\n"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PASS\n"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "script-structure.md"),
+    "# Script Structure\n\n- Script structure status: READY TO DRAFT\n- Ready to draft: yes\n"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "production-plan.md"),
+    [
+      "# Production Plan",
+      "",
+      "- Shoot-readiness status: " + (options.shootReadiness || "READY TO SHOOT"),
+      "- Script review status: PASS",
+      "- Research gate status: PASS",
+      "",
+    ].join("\n")
+  );
+  fs.writeFileSync(
+    path.join(runDir, "production-blockers.md"),
+    options.openProductionBlocker
+      ? "# Production Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| Missing proof shot. | Blocks viewer trust. | Capture it. | open |\n"
+      : "# Production Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Required gates are currently satisfied. | Keep review evidence with the run. | closed |\n"
+  );
+  if (options.watchNotes) {
+    fs.writeFileSync(path.join(runDir, "rough-cut-watch-notes.md"), options.watchNotes);
+  }
+}
+
+function roughCutReviewText(runDir) {
+  return fs.readFileSync(path.join(runDir, "rough-cut-review.md"), "utf8");
+}
+
+function realWatchNotes(extraSections = "") {
+  return [
+    "# Rough-Cut Watch Notes",
+    "",
+    "## Rough-Cut Version Reviewed",
+    "",
+    "v1",
+    "",
+    "## Watch Date",
+    "",
+    "2026-05-11",
+    "",
+    "## Reviewer",
+    "",
+    "Mikko",
+    "",
+    "## First 30 Seconds Notes",
+    "",
+    "Hook is clear and watchable.",
+    "",
+    "## Clarity Notes",
+    "",
+    "The viewer can follow the promise.",
+    "",
+    "## Pacing Notes",
+    "",
+    "No major pacing issue detected.",
+    "",
+    "## Proof / Evidence Notes",
+    "",
+    "The proof lands clearly enough for a second cut.",
+    "",
+    extraSections,
+  ].join("\n");
+}
+
+test("rough cut review help works", () => {
+  const output = captureConsole(() => packageRoughCutReviewScript.main(["--help"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /package-run-rough-cut-review\.js/);
+});
+
+test("rough cut review creates starter watch notes and blocks when notes are missing", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-rough-cut-missing-notes-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-missing-notes");
+  writeRoughCutBaseRun(runDir);
+
+  assert.equal(packageRoughCutReviewScript.main([runDir]), 0);
+  const notes = fs.readFileSync(path.join(runDir, "rough-cut-watch-notes.md"), "utf8");
+  const review = roughCutReviewText(runDir);
+
+  assert.match(notes, /Status: starter template/);
+  assert.match(notes, /## First 30 Seconds Notes/);
+  assert.match(review, /Rough-cut review status: BLOCKED/);
+  assert.match(review, /Second-cut ready: no/);
+  assert.match(review, /starter template created/);
+  assert.match(review, /Not assessed\. Real rough-cut watch notes are missing or still a starter template\./);
+  assert.doesNotMatch(review, /No pickups detected from watch notes\./);
+  assert.doesNotMatch(review, /No edit fixes detected from watch notes\./);
+  assert.match(
+    fs.readFileSync(path.join(runDir, "pickup-list.md"), "utf8"),
+    /\| Not assessed\. \| Real rough-cut watch notes are missing or still a starter template\. \| high \| rough-cut-watch-notes\.md \| blocked \|/
+  );
+  assert.match(
+    fs.readFileSync(path.join(runDir, "edit-fix-list.md"), "utf8"),
+    /\| Not assessed\. \| Real rough-cut watch notes are missing or still a starter template\. \| Add real watch notes before edit fixes can be assessed\. \| high \| blocked \|/
+  );
+});
+
+test("rough cut review treats starter watch notes as blocked", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-rough-cut-starter-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-starter");
+  writeRoughCutBaseRun(runDir, {
+    watchNotes: packageRoughCutReviewScript.buildWatchNotesTemplate("2026-05-10-starter"),
+  });
+
+  assert.equal(packageRoughCutReviewScript.main([runDir]), 0);
+  const review = roughCutReviewText(runDir);
+  const pickups = fs.readFileSync(path.join(runDir, "pickup-list.md"), "utf8");
+  const fixes = fs.readFileSync(path.join(runDir, "edit-fix-list.md"), "utf8");
+
+  assert.match(review, /Rough-cut review status: BLOCKED/);
+  assert.match(review, /starter template or has no real review notes/);
+  assert.match(review, /Not assessed\. Real rough-cut watch notes are missing or still a starter template\./);
+  assert.doesNotMatch(review, /No pickups detected from watch notes\./);
+  assert.doesNotMatch(review, /No edit fixes detected from watch notes\./);
+  assert.match(pickups, /Not assessed\./);
+  assert.match(pickups, /\| blocked \|/);
+  assert.doesNotMatch(pickups, /None\..*closed/);
+  assert.match(fixes, /Not assessed\./);
+  assert.match(fixes, /\| blocked \|/);
+  assert.doesNotMatch(fixes, /None\..*closed/);
+});
+
+test("rough cut review real watch notes with no issues can use none closed list rows", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-rough-cut-no-issues-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-no-issues");
+  writeRoughCutBaseRun(runDir, {
+    watchNotes: realWatchNotes(),
+  });
+
+  assert.equal(packageRoughCutReviewScript.main([runDir]), 0);
+  const review = roughCutReviewText(runDir);
+  const pickups = fs.readFileSync(path.join(runDir, "pickup-list.md"), "utf8");
+  const fixes = fs.readFileSync(path.join(runDir, "edit-fix-list.md"), "utf8");
+
+  assert.match(review, /No pickups detected from watch notes\./);
+  assert.match(review, /No edit fixes detected from watch notes\./);
+  assert.doesNotMatch(review, /Not assessed\. Real rough-cut watch notes are missing or still a starter template\./);
+  assert.match(pickups, /\| None\. \| No pickups detected from watch notes\. \| low \| rough-cut-watch-notes\.md \| closed \|/);
+  assert.match(fixes, /\| None\. \| No edit fixes detected from watch notes\. \| No fix needed\. \| low \| closed \|/);
+  assert.doesNotMatch(pickups, /Not assessed/);
+  assert.doesNotMatch(fixes, /Not assessed/);
+});
+
+test("rough cut review blocks second cut when production plan is not ready to shoot", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-rough-cut-production-blocked-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-production-blocked");
+  writeRoughCutBaseRun(runDir, {
+    shootReadiness: "BLOCKED",
+    watchNotes: `${realWatchNotes()}\n- Rough-cut approval: PASS\n`,
+  });
+
+  assert.equal(packageRoughCutReviewScript.main([runDir]), 0);
+  const review = roughCutReviewText(runDir);
+
+  assert.match(review, /Shoot-readiness status: BLOCKED/);
+  assert.match(review, /Rough-cut review status: BLOCKED/);
+  assert.match(review, /Second-cut ready: no/);
+});
+
+test("rough cut review open production blockers prevent second cut readiness", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-rough-cut-open-blockers-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-open-blockers");
+  writeRoughCutBaseRun(runDir, {
+    openProductionBlocker: true,
+    watchNotes: `${realWatchNotes()}\n- Rough-cut approval: PASS\n`,
+  });
+
+  assert.equal(packageRoughCutReviewScript.main([runDir]), 0);
+  const review = roughCutReviewText(runDir);
+
+  assert.match(review, /Rough-cut review status: BLOCKED/);
+  assert.match(review, /production-blockers\.md has open blockers/);
+  assert.doesNotMatch(review, /Status: READY FOR SECOND CUT/);
+});
+
+test("rough cut review detects pickups needed and writes pickup list entries", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-rough-cut-pickups-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-pickups");
+  writeRoughCutBaseRun(runDir, {
+    watchNotes: realWatchNotes([
+      "## Pickups Needed",
+      "",
+      "- Retake the hook line with a clearer proof promise.",
+      "- Capture missing scorecard close-up.",
+      "",
+    ].join("\n")),
+  });
+
+  assert.equal(packageRoughCutReviewScript.main([runDir]), 0);
+  const review = roughCutReviewText(runDir);
+  const pickups = fs.readFileSync(path.join(runDir, "pickup-list.md"), "utf8");
+
+  assert.match(review, /Rough-cut review status: NEEDS PICKUPS/);
+  assert.match(pickups, /Retake the hook line/);
+  assert.match(pickups, /Capture missing scorecard close-up/);
+  assert.match(pickups, /\| pickup shot\/content \| reason \| priority \| source\/location \| status \|/);
+});
+
+test("rough cut review detects edit fixes needed and writes edit fix list entries", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-rough-cut-edit-fixes-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-edit-fixes");
+  writeRoughCutBaseRun(runDir, {
+    watchNotes: realWatchNotes([
+      "## Edit Fixes Needed",
+      "",
+      "- Tighten the middle proof section by 20 seconds.",
+      "- Move the scorecard graphic earlier.",
+      "",
+    ].join("\n")),
+  });
+
+  assert.equal(packageRoughCutReviewScript.main([runDir]), 0);
+  const review = roughCutReviewText(runDir);
+  const fixes = fs.readFileSync(path.join(runDir, "edit-fix-list.md"), "utf8");
+
+  assert.match(review, /Rough-cut review status: NEEDS EDIT FIXES/);
+  assert.match(fixes, /Tighten the middle proof section/);
+  assert.match(fixes, /Move the scorecard graphic earlier/);
+  assert.match(fixes, /\| section\/timecode \| problem \| fix \| priority \| status \|/);
+});
+
+test("rough cut review exact approval can mark ready only when other gates allow it", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-rough-cut-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-ready");
+  writeRoughCutBaseRun(runDir, {
+    watchNotes: `${realWatchNotes()}\n- Rough-cut approval: PASS\n`,
+  });
+
+  assert.equal(packageRoughCutReviewScript.main([runDir]), 0);
+  const review = roughCutReviewText(runDir);
+
+  assert.match(review, /Rough-cut review status: READY FOR SECOND CUT/);
+  assert.match(review, /Second-cut ready: yes/);
+  assert.match(review, /Status: READY FOR SECOND CUT/);
+});
+
+test("rough cut review preserves existing artifacts unless overwrite is explicit", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-rough-cut-preserve-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-preserve");
+  writeRoughCutBaseRun(runDir, {
+    watchNotes: `${realWatchNotes()}\n- Rough-cut approval: PASS\n`,
+  });
+  const reviewPath = path.join(runDir, "rough-cut-review.md");
+  const pickupPath = path.join(runDir, "pickup-list.md");
+  fs.writeFileSync(reviewPath, "# Manual Rough Cut Review\n\nKeep this.\n");
+  fs.writeFileSync(pickupPath, "# Manual Pickups\n\nKeep this.\n");
+
+  const first = captureConsole(() => packageRoughCutReviewScript.main([runDir]));
+  assert.equal(first.result, 0);
+  assert.equal(fs.readFileSync(reviewPath, "utf8"), "# Manual Rough Cut Review\n\nKeep this.\n");
+  assert.equal(fs.readFileSync(pickupPath, "utf8"), "# Manual Pickups\n\nKeep this.\n");
+  assert.match(first.stdout.join("\n"), /unchanged: .*rough-cut-review\.md/);
+  assert.match(first.stdout.join("\n"), /created: .*edit-fix-list\.md/);
+
+  const overwritten = captureConsole(() => packageRoughCutReviewScript.main([runDir, "--overwrite"]));
+  assert.equal(overwritten.result, 0);
+  assert.match(fs.readFileSync(reviewPath, "utf8"), /# Rough-Cut Review/);
+  assert.match(fs.readFileSync(pickupPath, "utf8"), /# Pickup List/);
+  assert.match(overwritten.stdout.join("\n"), /overwritten: .*rough-cut-review\.md/);
+});
+
+test("verify script checks rough cut review syntax", () => {
+  const verifyPath = path.join(__dirname, "..", "scripts", "verify.sh");
+  const verify = fs.readFileSync(verifyPath, "utf8");
+
+  assert.match(verify, /node --check scripts\/package-run-rough-cut-review\.js/);
+});
+
+function writeFinalReviewBaseRun(runDir, options = {}) {
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "rough-cut-review.md"),
+    [
+      "# Rough-Cut Review",
+      "",
+      "- Rough-cut review status: " + (options.roughCutStatus || "READY FOR SECOND CUT"),
+      "- Second-cut ready: " + (options.secondCutReady || "yes"),
+      "",
+      "## Second-Cut Readiness Gate",
+      "",
+      "- Status: " + (options.roughCutStatus || "READY FOR SECOND CUT"),
+      "",
+    ].join("\n")
+  );
+  if (options.finalWatchNotes) {
+    fs.writeFileSync(path.join(runDir, "final-watch-notes.md"), options.finalWatchNotes);
+  }
+}
+
+function finalReviewText(runDir) {
+  return fs.readFileSync(path.join(runDir, "final-review.md"), "utf8");
+}
+
+function publicationBlockersText(runDir) {
+  return fs.readFileSync(path.join(runDir, "publication-blockers.md"), "utf8");
+}
+
+function realFinalWatchNotes(extraSections = "") {
+  return [
+    "# Final-Watch Notes",
+    "",
+    "## Final Version Reviewed",
+    "",
+    "final-v1",
+    "",
+    "## Watch Date",
+    "",
+    "2026-05-11",
+    "",
+    "## Reviewer",
+    "",
+    "Mikko",
+    "",
+    "## Final-Watch Issues",
+    "",
+    "None.",
+    "",
+    "## Publication Blockers",
+    "",
+    "None.",
+    "",
+    extraSections,
+  ].join("\n");
+}
+
+test("final review help works", () => {
+  const output = captureConsole(() => packageFinalReviewScript.main(["--help"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /package-run-final-review\.js/);
+});
+
+test("final review blocks when rough cut review is blocked and final notes are missing", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-final-review-blocked-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-final-blocked");
+  writeFinalReviewBaseRun(runDir, {
+    roughCutStatus: "BLOCKED",
+    secondCutReady: "no",
+  });
+
+  assert.equal(packageFinalReviewScript.main([runDir]), 0);
+  const notes = fs.readFileSync(path.join(runDir, "final-watch-notes.md"), "utf8");
+  const review = finalReviewText(runDir);
+  const blockers = publicationBlockersText(runDir);
+
+  assert.match(notes, /Status: starter template/);
+  assert.match(review, /Final review status: BLOCKED/);
+  assert.match(review, /Publish ready: no/);
+  assert.match(review, /rough-cut-review\.md is BLOCKED, not READY FOR SECOND CUT/);
+  assert.match(review, /Not assessed\. Real final-watch notes are missing or still a starter template\./);
+  assert.doesNotMatch(review, /No final-watch issues detected/);
+  assert.doesNotMatch(review, /Status: PASS/);
+  assert.doesNotMatch(review, /Publish ready: yes/);
+  assert.match(blockers, /# Publication Blockers/);
+  assert.match(blockers, /\| blocker \| why it matters \| required fix \| status \|/);
+  assert.match(blockers, /rough-cut-review\.md is BLOCKED, not READY FOR SECOND CUT/);
+  assert.match(blockers, /Second-cut ready is no/);
+  assert.match(blockers, /final-watch-notes\.md is still a starter template or has no real final-watch notes/);
+  assert.match(blockers, /\| blocked \|/);
+  assert.doesNotMatch(blockers, /\| None\. \|.*\| closed \|/);
+});
+
+test("final review treats starter final-watch notes as not assessed", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-final-review-starter-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-final-starter");
+  writeFinalReviewBaseRun(runDir, {
+    finalWatchNotes: packageFinalReviewScript.buildFinalWatchNotesTemplate("2026-05-10-final-starter"),
+  });
+
+  assert.equal(packageFinalReviewScript.main([runDir]), 0);
+  const review = finalReviewText(runDir);
+  const blockers = publicationBlockersText(runDir);
+
+  assert.match(review, /Final review status: BLOCKED/);
+  assert.match(review, /Not assessed\. Real final-watch notes are missing or still a starter template\./);
+  assert.doesNotMatch(review, /No final-watch issues detected/);
+  assert.doesNotMatch(review, /Publish ready: yes/);
+  assert.match(blockers, /final-watch-notes\.md is still a starter template or has no real final-watch notes/);
+  assert.match(blockers, /\| blocked \|/);
+  assert.doesNotMatch(blockers, /\| None\. \|.*\| closed \|/);
+});
+
+test("final review real notes with no issues can use none detected wording", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-final-review-clean-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-final-clean");
+  writeFinalReviewBaseRun(runDir, {
+    finalWatchNotes: realFinalWatchNotes(),
+  });
+
+  assert.equal(packageFinalReviewScript.main([runDir]), 0);
+  const review = finalReviewText(runDir);
+  const blockers = publicationBlockersText(runDir);
+
+  assert.match(review, /Final review status: PASS/);
+  assert.match(review, /Publish ready: yes/);
+  assert.match(review, /No final-watch issues detected from real final-watch notes\./);
+  assert.doesNotMatch(review, /Not assessed\. Real final-watch notes are missing or still a starter template\./);
+  assert.match(blockers, /\| None\. \| All final-review gates passed with real final-watch notes\. \| Keep final approval evidence with the run\. \| closed \|/);
+  assert.doesNotMatch(blockers, /\| blocked \|/);
+});
+
+test("final review preserves publication blockers unless overwrite is explicit", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-final-review-preserve-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-final-preserve");
+  writeFinalReviewBaseRun(runDir, {
+    finalWatchNotes: realFinalWatchNotes(),
+  });
+  const blockersPath = path.join(runDir, "publication-blockers.md");
+  fs.writeFileSync(blockersPath, "# Manual Publication Blockers\n\nKeep this.\n", "utf8");
+
+  const first = captureConsole(() => packageFinalReviewScript.main([runDir]));
+  assert.equal(first.result, 0);
+  assert.equal(fs.readFileSync(blockersPath, "utf8"), "# Manual Publication Blockers\n\nKeep this.\n");
+  assert.match(first.stdout.join("\n"), /unchanged: .*publication-blockers\.md/);
+
+  const overwritten = captureConsole(() => packageFinalReviewScript.main([runDir, "--overwrite"]));
+  assert.equal(overwritten.result, 0);
+  assert.match(fs.readFileSync(blockersPath, "utf8"), /# Publication Blockers/);
+  assert.match(overwritten.stdout.join("\n"), /overwritten: .*publication-blockers\.md/);
+});
+
+test("verify script checks final review syntax", () => {
+  const verifyPath = path.join(__dirname, "..", "scripts", "verify.sh");
+  const verify = fs.readFileSync(verifyPath, "utf8");
+
+  assert.match(verify, /node --check scripts\/package-run-final-review\.js/);
+});
+
+function writeRepurposeBaseRun(runDir, options = {}) {
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({
+      package: {
+        proposedTitle: "Repurposing Package",
+        viewerPromise: "The viewer can turn one approved episode into useful shorts.",
+      },
+    })
+  );
+  if (options.finalReview !== false) {
+    fs.writeFileSync(
+      path.join(runDir, "final-review.md"),
+      [
+        "# Final Review",
+        "",
+        "- Final review status: " + (options.finalReviewStatus || "PASS"),
+        "- Publish ready: " + (options.publishReady || "yes"),
+        "",
+        "## Final Review Gate",
+        "",
+        "- Status: " + (options.finalReviewStatus || "PASS"),
+        "",
+      ].join("\n")
+    );
+  }
+  if (options.publicationBlockers !== false) {
+    fs.writeFileSync(
+      path.join(runDir, "publication-blockers.md"),
+      options.openPublicationBlocker
+        ? "# Publication Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| Missing final proof. | Blocks clips. | Fix the final proof. | blocked |\n"
+        : "# Publication Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | All final-review gates passed with real final-watch notes. | Keep final approval evidence with the run. | closed |\n"
+    );
+  }
+  if (options.source === "none") return;
+  if (options.source === "draft") {
+    fs.writeFileSync(path.join(runDir, "script-draft.md"), "# Script Draft\n\nThis draft-only source should not approve shorts by itself.\n");
+    return;
+  }
+  if (options.source === "transcript") {
+    fs.writeFileSync(
+      path.join(runDir, "transcript.md"),
+      "# Transcript\n\nThis is a self-contained moment about checking final approval before repurposing clips.\n"
+    );
+    return;
+  }
+  fs.writeFileSync(
+    path.join(runDir, "final-script.md"),
+    "# Final Script\n\nThis is a self-contained moment about turning an approved long-form video into shorts without losing context.\n"
+  );
+}
+
+function repurposingPlanText(runDir) {
+  return fs.readFileSync(path.join(runDir, "repurposing-plan.md"), "utf8");
+}
+
+function shortsCandidatesText(runDir) {
+  return fs.readFileSync(path.join(runDir, "shorts-candidates.md"), "utf8");
+}
+
+function platformVariantsText(runDir) {
+  return fs.readFileSync(path.join(runDir, "platform-variants.md"), "utf8");
+}
+
+test("repurposing help works", () => {
+  const output = captureConsole(() => packageRepurposeScript.main(["--help"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /package-run-repurpose\.js/);
+});
+
+test("repurposing blocks missing final review", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-repurpose-missing-final-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-repurpose-missing-final");
+  writeRepurposeBaseRun(runDir, { finalReview: false });
+
+  assert.equal(packageRepurposeScript.main([runDir]), 0);
+  const plan = repurposingPlanText(runDir);
+  const shorts = shortsCandidatesText(runDir);
+
+  assert.match(plan, /Repurposing status: BLOCKED/);
+  assert.match(plan, /Ready to cut shorts: no/);
+  assert.match(plan, /final-review\.md is missing/);
+  assert.match(shorts, /Not assessed/);
+  assert.match(shorts, /\| blocked \|/);
+});
+
+test("repurposing blocks final review blocked", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-repurpose-final-blocked-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-repurpose-final-blocked");
+  writeRepurposeBaseRun(runDir, { finalReviewStatus: "BLOCKED", publishReady: "no", openPublicationBlocker: true });
+
+  assert.equal(packageRepurposeScript.main([runDir]), 0);
+  const plan = repurposingPlanText(runDir);
+
+  assert.match(plan, /Repurposing status: BLOCKED/);
+  assert.match(plan, /Final review status is BLOCKED/);
+  assert.match(plan, /Publish ready is no/);
+  assert.match(plan, /publication-blockers\.md has open or blocked rows/);
+});
+
+test("repurposing blocks publish ready no", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-repurpose-publish-no-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-repurpose-publish-no");
+  writeRepurposeBaseRun(runDir, { publishReady: "no" });
+
+  assert.equal(packageRepurposeScript.main([runDir]), 0);
+  const plan = repurposingPlanText(runDir);
+
+  assert.match(plan, /Repurposing status: NEEDS FINAL APPROVAL/);
+  assert.match(plan, /Publish ready is no/);
+  assert.doesNotMatch(plan, /Status: READY TO CUT SHORTS/);
+});
+
+test("repurposing blocks open publication blockers", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-repurpose-open-blockers-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-repurpose-open-blockers");
+  writeRepurposeBaseRun(runDir, { openPublicationBlocker: true });
+
+  assert.equal(packageRepurposeScript.main([runDir]), 0);
+  const plan = repurposingPlanText(runDir);
+
+  assert.match(plan, /Repurposing status: NEEDS FINAL APPROVAL/);
+  assert.match(plan, /publication-blockers\.md has open or blocked rows/);
+});
+
+test("repurposing needs transcript or final script when source is missing", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-repurpose-no-source-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-repurpose-no-source");
+  writeRepurposeBaseRun(runDir, { source: "none" });
+
+  assert.equal(packageRepurposeScript.main([runDir]), 0);
+  const plan = repurposingPlanText(runDir);
+
+  assert.match(plan, /Repurposing status: NEEDS TRANSCRIPT/);
+  assert.match(plan, /transcript\.md or final-script\.md is missing/);
+});
+
+test("repurposing draft-only source does not allow ready", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-repurpose-draft-only-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-repurpose-draft-only");
+  writeRepurposeBaseRun(runDir, { source: "draft" });
+
+  assert.equal(packageRepurposeScript.main([runDir]), 0);
+  const plan = repurposingPlanText(runDir);
+
+  assert.match(plan, /Repurposing status: NEEDS TRANSCRIPT/);
+  assert.match(plan, /Only script-draft\.md is available as source material/);
+  assert.doesNotMatch(plan, /Status: READY TO CUT SHORTS/);
+});
+
+test("repurposing can mark ready only when final gates and source pass", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-repurpose-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-repurpose-ready");
+  writeRepurposeBaseRun(runDir, { source: "transcript" });
+
+  assert.equal(packageRepurposeScript.main([runDir]), 0);
+  const plan = repurposingPlanText(runDir);
+  const shorts = shortsCandidatesText(runDir);
+  const variants = platformVariantsText(runDir);
+
+  assert.match(plan, /Repurposing status: READY TO CUT SHORTS/);
+  assert.match(plan, /Ready to cut shorts: yes/);
+  assert.match(shorts, /self-contained moment/);
+  assert.match(variants, /Status: open/);
+});
+
+test("repurposing preserves existing artifacts unless overwrite is explicit", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-repurpose-preserve-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-repurpose-preserve");
+  writeRepurposeBaseRun(runDir);
+  const planPath = path.join(runDir, "repurposing-plan.md");
+  fs.writeFileSync(planPath, "# Manual Repurposing Plan\n\nKeep this.\n", "utf8");
+
+  const first = captureConsole(() => packageRepurposeScript.main([runDir]));
+  assert.equal(first.result, 0);
+  assert.equal(fs.readFileSync(planPath, "utf8"), "# Manual Repurposing Plan\n\nKeep this.\n");
+  assert.match(first.stdout.join("\n"), /unchanged: .*repurposing-plan\.md/);
+  assert.match(first.stdout.join("\n"), /created: .*shorts-candidates\.md/);
+
+  const overwritten = captureConsole(() => packageRepurposeScript.main([runDir, "--overwrite"]));
+  assert.equal(overwritten.result, 0);
+  assert.match(fs.readFileSync(planPath, "utf8"), /# Repurposing Plan/);
+  assert.match(overwritten.stdout.join("\n"), /overwritten: .*repurposing-plan\.md/);
+});
+
+test("verify script checks repurposing syntax", () => {
+  const verifyPath = path.join(__dirname, "..", "scripts", "verify.sh");
+  const verify = fs.readFileSync(verifyPath, "utf8");
+
+  assert.match(verify, /node --check scripts\/package-run-repurpose\.js/);
+});
+
+test("script prep cli writes local review artifacts and marks partial research as not ready", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-prep-"));
   const repoRunsDir = path.join(tempRoot, "package-runs");
   const runDir = path.join(repoRunsDir, "2026-05-02-script-prep");
@@ -1975,16 +3180,69 @@ test("script prep cli writes the four local review artifacts", () => {
     })
   );
   fs.writeFileSync(path.join(runDir, "final-outline.md"), "# Final Outline\n\n- Hook\n- Demo\n- Payoff\n");
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PARTIAL\n- Reason: Source list is not complete.\n"
+  );
   fs.writeFileSync(path.join(runDir, "notes.md"), "# Package Run Notes\n");
 
   const output = packageScriptPrepScript.main([runDir]);
 
   assert.equal(output, 0);
   assert.match(fs.readFileSync(path.join(runDir, "script-prompt.md"), "utf8"), /Script Prep Package/);
+  assert.match(fs.readFileSync(path.join(runDir, "script-structure.md"), "utf8"), /Script structure status: PARTIAL/);
+  assert.match(fs.readFileSync(path.join(runDir, "script-structure.md"), "utf8"), /Ready to draft: no/);
   assert.match(fs.readFileSync(path.join(runDir, "script-draft.md"), "utf8"), /# Script Draft/);
   assert.match(fs.readFileSync(path.join(runDir, "final-script.md"), "utf8"), /# Final Script/);
   assert.match(fs.readFileSync(path.join(runDir, "production-notes.md"), "utf8"), /# Production Notes/);
   assert.match(fs.readFileSync(path.join(runDir, "notes.md"), "utf8"), /## Script Prep/);
+});
+
+test("script prep cli marks missing research pack as needs research", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-prep-missing-research-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-02-script-prep");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({ package: { proposedTitle: "Missing Research Package", viewerPromise: "Needs research." } })
+  );
+  fs.writeFileSync(path.join(runDir, "final-outline.md"), "# Final Outline\n\n- Hook\n- Demo\n- Payoff\n");
+  fs.writeFileSync(path.join(runDir, "notes.md"), "# Package Run Notes\n");
+
+  const output = packageScriptPrepScript.main([runDir]);
+  const structure = fs.readFileSync(path.join(runDir, "script-structure.md"), "utf8");
+
+  assert.equal(output, 0);
+  assert.match(structure, /Script structure status: NEEDS RESEARCH/);
+  assert.match(structure, /research-pack\.md is missing/);
+  assert.doesNotMatch(structure, /Script structure status: READY TO DRAFT/);
+});
+
+test("script prep cli preserves manually edited script structure", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-prep-preserve-structure-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-02-script-prep-preserve");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({ package: { proposedTitle: "Preserve Script Structure", viewerPromise: "Keep manual structure edits." } })
+  );
+  fs.writeFileSync(path.join(runDir, "final-outline.md"), "# Final Outline\n\n- Hook\n- Demo\n- Payoff\n");
+  fs.writeFileSync(
+    path.join(runDir, "research-pack.md"),
+    "# Research Pack\n\n## Research Sufficiency Gate\n\n- Status: PASS\n"
+  );
+  const structurePath = path.join(runDir, "script-structure.md");
+  fs.writeFileSync(structurePath, "# Manual Script Structure\n\nKeep this human edit.\n", "utf8");
+
+  const output = captureConsole(() => packageScriptPrepScript.main([runDir]));
+
+  assert.equal(output.result, 0);
+  assert.equal(fs.readFileSync(structurePath, "utf8"), "# Manual Script Structure\n\nKeep this human edit.\n");
+  assert.match(output.stdout.join("\n"), /skipped: .*script-structure\.md/);
+  assert.match(fs.readFileSync(path.join(runDir, "script-prompt.md"), "utf8"), /Preserve Script Structure/);
+  assert.match(fs.readFileSync(path.join(runDir, "script-draft.md"), "utf8"), /# Script Draft/);
+  assert.match(fs.readFileSync(path.join(runDir, "final-script.md"), "utf8"), /# Final Script/);
+  assert.match(fs.readFileSync(path.join(runDir, "production-notes.md"), "utf8"), /# Production Notes/);
 });
 
 test("production prep builders create the seven required local planning artifacts", () => {
@@ -2347,6 +3605,80 @@ if __name__ == "__main__":
   assert.equal(packageRunCreatorQaScript.parseArgs(["package-runs/run", "--profile", "resolve_tutorial"]).profile, "resolve_tutorial");
 });
 
+test("package run research pack generates a starter pack for a valid run", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-pack-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-pack");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify(
+      {
+        package: {
+          proposedTitle: "Diagnose Resolve Playback Lag Before You Change Settings",
+          idea: "Help solo creators diagnose Resolve playback lag with evidence before changing random settings.",
+          viewerPromise: "The viewer can identify the likely bottleneck before changing settings.",
+          targetViewer: "Serious solo video creators using DaVinci Resolve.",
+          viewerProblem:
+            "Resolve playback stutters and the creator does not know whether disk, GPU, cache, media, or timeline settings are the real issue.",
+          mainRisk: "The video becomes another generic settings checklist without proof.",
+          thumbnailConcept: "Resolve timeline beside Task Manager proof signal.",
+          audience_demand_rationale: "Creators repeatedly search for Resolve playback lag fixes.",
+          suggested_production_approach: "Capture before/after playback and system-monitor evidence.",
+        },
+      },
+      null,
+      2
+    )
+  );
+
+  const output = captureConsole(() => packageResearchPackScript.main([runDir]));
+  const packPath = path.join(runDir, "research-pack.md");
+  const markdown = fs.readFileSync(packPath, "utf8");
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /created: .*research-pack\.md/);
+  assert.match(markdown, /# Research Pack/);
+  assert.match(markdown, /Diagnose Resolve Playback Lag Before You Change Settings/);
+  assert.match(markdown, /## What Must Be Proven/);
+  assert.match(markdown, /## Source List Placeholder/);
+  assert.match(markdown, /Status: PARTIAL/);
+});
+
+test("package run research pack handles a run with missing package files", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-pack-missing-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-missing");
+  fs.mkdirSync(runDir, { recursive: true });
+
+  const output = captureConsole(() => packageResearchPackScript.main([runDir]));
+  const markdown = fs.readFileSync(path.join(runDir, "research-pack.md"), "utf8");
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /Missing selected package/);
+  assert.match(markdown, /Input package: missing/);
+  assert.match(markdown, /Status: BLOCKED/);
+  assert.match(markdown, /starter template/);
+});
+
+test("package run research pack preserves manual edits unless overwrite is explicit", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-research-pack-preserve-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-preserve");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({ package: { proposedTitle: "Manual Preserve Test", viewerPromise: "Preserve manual edits." } })
+  );
+  const packPath = path.join(runDir, "research-pack.md");
+  fs.writeFileSync(packPath, "# Manual Research Pack\n\nKeep this human edit.\n", "utf8");
+
+  const skipped = captureConsole(() => packageResearchPackScript.main([runDir]));
+  assert.equal(skipped.result, 2);
+  assert.equal(fs.readFileSync(packPath, "utf8"), "# Manual Research Pack\n\nKeep this human edit.\n");
+
+  const overwritten = captureConsole(() => packageResearchPackScript.main([runDir, "--overwrite"]));
+  assert.equal(overwritten.result, 0);
+  assert.match(fs.readFileSync(packPath, "utf8"), /Manual Preserve Test/);
+});
+
 test("package runs index classifies workflow status from detected files", () => {
   const files = {};
   packageRunsIndexScript.DETECTED_FILES.forEach((filename) => {
@@ -2356,6 +3688,8 @@ test("package runs index classifies workflow status from detected files", () => 
   assert.equal(packageRunsIndexScript.classifyRunStatus(files), "Idea run");
   files.selected_package_json = true;
   assert.equal(packageRunsIndexScript.classifyRunStatus(files), "Package selected");
+  files.research_pack = true;
+  assert.equal(packageRunsIndexScript.classifyRunStatus(files), "Research pack ready");
   files.outline_prompt = true;
   assert.equal(packageRunsIndexScript.classifyRunStatus(files), "Outline prep ready");
   files.final_outline = true;
@@ -2376,6 +3710,8 @@ test("package runs index classifies workflow status from detected files", () => 
   assert.equal(packageRunsIndexScript.classifyRunStatus(files, "REVIEW REQUIRED"), "Production prep ready");
   assert.equal(packageRunsIndexScript.workflowBucket("Production prep ready", "FAIL"), "Needs QA repair");
   assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "not run"), "QA not run");
+  assert.equal(packageRunsIndexScript.workflowBucket("Package selected"), "Needs research pack");
+  assert.equal(packageRunsIndexScript.workflowBucket("Research pack ready"), "Needs outline");
 });
 
 test("package runs readiness buckets are conservative for creator qa status", () => {
@@ -2517,6 +3853,15 @@ test("package runs index scans package-runs folders and writes index json", () =
     "final-outline.md",
     "script-prompt.md",
     "final-script.md",
+    "production-plan.md",
+    "production-blockers.md",
+    "rough-cut-watch-notes.md",
+    "rough-cut-review.md",
+    "pickup-list.md",
+    "edit-fix-list.md",
+    "final-watch-notes.md",
+    "final-review.md",
+    "publication-blockers.md",
     "production-brief.md",
     "shooting-plan.md",
     "b-roll-list.md",
@@ -2524,6 +3869,9 @@ test("package runs index scans package-runs folders and writes index json", () =
     "resolve-edit-checklist.md",
     "thumbnail-title-check.md",
     "publish-pack.md",
+    "repurposing-plan.md",
+    "shorts-candidates.md",
+    "platform-variants.md",
   ].forEach((filename) => {
     if (filename !== "package-candidates.json") fs.writeFileSync(path.join(shootDir, filename), `${filename}\n`);
     if (filename !== "package-candidates.json") fs.writeFileSync(path.join(qaMissingDir, filename), `${filename}\n`);
@@ -2553,6 +3901,18 @@ test("package runs index scans package-runs folders and writes index json", () =
   );
   assert.equal(byRunId["2026-05-02-ready"].files.creator_qa_report, true);
   assert.equal(byRunId["2026-05-02-ready"].files.creator_qa_report_json, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.production_plan, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.production_blockers, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.rough_cut_watch_notes, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.rough_cut_review, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.pickup_list, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.edit_fix_list, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.final_watch_notes, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.final_review, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.publication_blockers, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.repurposing_plan, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.shorts_candidates, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.platform_variants, true);
   assert.equal(byRunId["2026-05-02-ready"].title, "Ready Package");
   assert.equal(byRunId["2026-05-03-qa-missing"].status, "Ready to shoot");
   assert.equal(byRunId["2026-05-03-qa-missing"].workflowBucket, "QA not run");
@@ -2573,6 +3933,10 @@ test("package runs index scans package-runs folders and writes index json", () =
 test("package runs index recommends deterministic next local commands", () => {
   assert.equal(
     packageRunsIndexScript.nextRecommendedCommand("Package selected", "package-runs/run-id"),
+    "node scripts/package-run-research-pack.js package-runs/run-id"
+  );
+  assert.equal(
+    packageRunsIndexScript.nextRecommendedCommand("Research pack ready", "package-runs/run-id"),
     "node scripts/package-engine-new-outline.js package-runs/run-id"
   );
   assert.equal(
