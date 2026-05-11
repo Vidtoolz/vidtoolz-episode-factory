@@ -127,6 +127,50 @@ function tableRows(markdown = "") {
     .filter((line) => !/^\|\s*(?:blocker|item|source item|asset|export item|reusable clip\/moment)\b/i.test(line));
 }
 
+function tableCells(row) {
+  return String(row || "")
+    .split("|")
+    .slice(1, -1)
+    .map((cell) => cell.trim());
+}
+
+function isReadyTableStatus(value) {
+  return /^(?:closed|recorded|captured|complete|ready|approved|archived)$/i.test(cleanString(value));
+}
+
+function isBlockedTableStatus(value) {
+  return /^(?:open|blocked|todo)$/i.test(cleanString(value));
+}
+
+function isGeneratedArchiveFiller(value) {
+  const text = cleanString(value);
+  return (
+    !text ||
+    /^(?:closed|recorded|captured|complete|ready|approved|archived)$/i.test(text) ||
+    /^Preserve\b/i.test(text) ||
+    /^Confirm\b/i.test(text) ||
+    /^See export-checklist\.md or delivery-readiness\.md\.?$/i.test(text) ||
+    /^Upload-ready derivative\b/i.test(text) ||
+    /^Caption\/subtitle deliverable\.?$/i.test(text) ||
+    /^Final thumbnail deliverable\.?$/i.test(text) ||
+    /^Title, description, chapters, schedule evidence\.?$/i.test(text) ||
+    /^Upload readiness evidence\.?$/i.test(text) ||
+    /^Recorded in archive manifest\.?$/i.test(text) ||
+    /^archive decision$/i.test(text) ||
+    /^documented in archive decision$/i.test(text) ||
+    /^no reuse risk$/i.test(text)
+  );
+}
+
+function rowEvidenceCell(cells) {
+  if (cells.length < 2) return "";
+  const evidence = cells[1];
+  const status = cells[cells.length - 1];
+  if (isBlockedTableStatus(status)) return "";
+  if (!isAssessedText(evidence) || isGeneratedArchiveFiller(evidence)) return "";
+  return evidence;
+}
+
 function fieldFromLines(files, labels) {
   for (const text of Object.values(files)) {
     for (const label of labels) {
@@ -151,14 +195,14 @@ function fieldFromTables(files, patterns) {
   const regexes = patterns.map((pattern) => (pattern instanceof RegExp ? pattern : new RegExp(pattern, "i")));
   for (const text of Object.values(files)) {
     for (const row of tableRows(text)) {
-      const cells = row
-        .split("|")
-        .slice(1, -1)
-        .map((cell) => cell.trim());
+      const cells = tableCells(row);
       if (cells.length < 2) continue;
       if (regexes.some((regex) => regex.test(cells[0]))) {
-        const values = cells.slice(1).filter((cell) => isAssessedText(cell) && !/^(?:open|blocked|todo)$/i.test(cell));
-        if (values.length) return values.join(" / ");
+        if (/reusable clip|none/i.test(cells[0]) && !isBlockedTableStatus(cells[cells.length - 1]) && reusableClipsReady(cells[0])) {
+          return cells[0];
+        }
+        const evidence = rowEvidenceCell(cells);
+        if (evidence) return evidence;
       }
     }
   }
@@ -168,14 +212,11 @@ function fieldFromTables(files, patterns) {
 function checksumStatusFromTables(files) {
   for (const text of Object.values(files)) {
     for (const row of tableRows(text)) {
-      const cells = row
-        .split("|")
-        .slice(1, -1)
-        .map((cell) => cell.trim());
+      const cells = tableCells(row);
       if (cells.length < 5) continue;
       const checksum = cells[3];
       const status = cells[4];
-      if (/^(?:open|blocked|todo)$/i.test(status)) continue;
+      if (isBlockedTableStatus(status)) continue;
       if (checksumReady(checksum)) return checksum;
     }
   }
@@ -196,6 +237,20 @@ function reusableClipsReady(value) {
   if (!isAssessedText(text)) return false;
   if (/\bnone\b/i.test(text)) return /(?:because|reason|:|-)\s+\S+/i.test(text);
   return !/\b(?:not reviewed|not assessed)\b/i.test(text);
+}
+
+function isGeneratedArchiveBlockerRow(row) {
+  const cells = tableCells(row);
+  if (cells.length < 4) return false;
+  return (
+    /^(?:open|blocked)$/i.test(cells[3]) &&
+    /^Blocks archive readiness\.?$/i.test(cells[1]) &&
+    /^Record or resolve this archive evidence\.?$/i.test(cells[2])
+  );
+}
+
+function hasOpenArchiveBlockers(markdown = "") {
+  return tableRows(markdown).some((row) => !isGeneratedArchiveBlockerRow(row) && /\|\s*(?:open|blocked)\s*\|?\s*$/i.test(row));
 }
 
 function parsePublicationMetadataStatus(markdown = "") {
@@ -277,7 +332,7 @@ function readContext(runDir) {
     exportReadiness,
     metadataReadiness,
     publicationEvidence: hasPublicationEvidence(files["publish-pack.md"], files[PUBLISH_METADATA_REVIEW_FILE], files[ARCHIVE_MANIFEST_FILE]),
-    archiveBlockersOpen: exportChecklist.hasOpenBlockedRows(files[ARCHIVE_BLOCKERS_FILE]),
+    archiveBlockersOpen: hasOpenArchiveBlockers(files[ARCHIVE_BLOCKERS_FILE]),
     archiveArtifactsMissing: TARGET_FILES.some((filename) => !files[filename]),
     archiveData: readArchiveData(files),
   };
@@ -569,6 +624,8 @@ module.exports = {
   hasExactArchiveApprovalMarker,
   hasPublicationEvidence,
   tableRows,
+  tableCells,
+  hasOpenArchiveBlockers,
   checksumStatusFromTables,
   parsePublicationMetadataStatus,
   readArchiveData,

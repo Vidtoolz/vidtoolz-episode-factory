@@ -4167,6 +4167,49 @@ test("archive manifest accepts checksum waiver evidence from dedicated tables", 
   });
 });
 
+test("archive manifest ignores stale generated archive blockers when current inputs are complete", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-stale-generated-blockers-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-stale-generated-blockers");
+  writeArchiveBaseRun(runDir);
+  writeArchiveReadyArtifacts(runDir, {
+    topLevelChecksum: false,
+    checksum: "checksum waived - manual file check passed",
+  });
+  fs.writeFileSync(
+    path.join(runDir, "archive-blockers.md"),
+    "# Archive Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| publish metadata reference is missing. | Blocks archive readiness. | Record or resolve this archive evidence. | blocked |\n| reusable clips/cutdown decision is missing or not reviewed. | Blocks archive readiness. | Record or resolve this archive evidence. | blocked |\n",
+    "utf8"
+  );
+
+  const output = captureConsole(() => packageArchiveManifestScript.main([runDir, "--overwrite"]));
+  const blockers = fs.readFileSync(path.join(runDir, "archive-blockers.md"), "utf8");
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /archive manifest: READY TO ARCHIVE/);
+  assert.match(archiveManifestText(runDir), /Archive manifest status: READY TO ARCHIVE/);
+  assert.match(blockers, /\| None\. \| Archive readiness gates passed\. \| Keep archive evidence with the run\. \| closed \|/);
+  assert.doesNotMatch(blockers, /Blocks archive readiness/);
+  assert.doesNotMatch(blockers, /\|\s*blocked\s*\|/i);
+});
+
+test("archive manifest generated fallback rows do not accumulate across overwrite reruns", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-idempotent-fallback-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-idempotent-fallback");
+  writeArchiveBaseRun(runDir);
+
+  assert.equal(packageArchiveManifestScript.main([runDir, "--overwrite"]), 0);
+  assert.equal(packageArchiveManifestScript.main([runDir, "--overwrite"]), 0);
+
+  const sourceFiles = fs.readFileSync(path.join(runDir, "archive-source-files.md"), "utf8");
+  const exportManifest = fs.readFileSync(path.join(runDir, "archive-export-manifest.md"), "utf8");
+  const manifest = archiveManifestText(runDir);
+
+  assert.match(manifest, /Archive manifest status: NEEDS ARCHIVE DATA/);
+  assert.doesNotMatch(sourceFiles, /Preserve complete episode working folder\. \//);
+  assert.doesNotMatch(exportManifest, /See export-checklist\.md or delivery-readiness\.md\. \//);
+  assert.doesNotMatch(manifest, /Blocks archive readiness\. \//);
+});
+
 test("archive manifest preserves existing artifacts unless overwrite is explicit", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-archive-preserve-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-archive-preserve");
