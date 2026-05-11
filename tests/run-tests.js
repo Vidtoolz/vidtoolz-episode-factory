@@ -4546,6 +4546,69 @@ test("broll prompt generator creates prompt artifacts from approved script and p
   assert.match(fs.readFileSync(path.join(runDir, "graphics-prompt-pack.md"), "utf8"), /Before\/after idea filter matrix/);
 });
 
+test("broll prompt generator filters headers placeholders checkboxes and artifact leaks", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-broll-clean-extraction-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-broll-clean-extraction");
+  writeBrollPromptRun(runDir);
+  fs.writeFileSync(
+    path.join(runDir, "b-roll-list.md"),
+    [
+      "# B-Roll List",
+      "",
+      "| b-roll item | reason | source | status |",
+      "| --- | --- | --- | --- |",
+      "| TODO | TODO | TODO | TODO |",
+      "| Generic blocked visual | Blocks output. | planning | blocked |",
+      "| Generic open visual | Needs work. | planning | open |",
+      "| Scorecard proof over the selected package | Demonstrate the filtering workflow. | local capture | closed |",
+      "",
+      "- [ ] Title and thumbnail assumptions verified",
+      "- final-outline.md: present",
+    ].join("\n"),
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "shot-list.md"),
+    [
+      "# Shot List",
+      "",
+      "| shot | reason | priority | status |",
+      "| --- | --- | --- | --- |",
+      "| shot | reason | priority | status |",
+      "| Capture scorecard beside selected package | show workflow proof | high | captured |",
+      "| Placeholder shot | TODO | high | blocked |",
+      "- [x] final-outline.md: present",
+    ].join("\n"),
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "graphics-list.md"),
+    [
+      "# Graphics List",
+      "",
+      "| graphic | clarity purpose | source/input | status |",
+      "| --- | --- | --- | --- |",
+      "| TODO | TODO | TODO | TODO |",
+      "| Before and after package scorecard | Explain the decision criteria. | script | reviewed |",
+      "- Status: blocked",
+      "- External APIs called: no",
+    ].join("\n"),
+    "utf8"
+  );
+
+  assert.equal(packageBrollPromptsScript.main([runDir, "--overwrite"]), 0);
+  const combined = packageBrollPromptsScript.TARGET_FILES.map((filename) => fs.readFileSync(path.join(runDir, filename), "utf8")).join("\n");
+
+  assert.match(combined, /Film a concise visual of Scorecard proof over the selected package/);
+  assert.match(combined, /scorecard beside selected package/);
+  assert.match(combined, /Create an explanatory graphic for Before and after package scorecard/);
+  assert.doesNotMatch(combined, /b-roll item \/ reason \/ source \/ status/i);
+  assert.doesNotMatch(combined, /\| TODO \|/i);
+  assert.doesNotMatch(combined, /Title and thumbnail assumptions verified/i);
+  assert.doesNotMatch(combined, /final-outline\.md: present/i);
+  assert.doesNotMatch(combined, /External APIs called: no.*\|/i);
+});
+
 test("broll prompt generator preserves manual files unless overwrite is explicit", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-broll-preserve-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-broll-preserve");

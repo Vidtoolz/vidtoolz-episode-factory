@@ -88,6 +88,10 @@ function isAssessedText(value) {
   return Boolean(text) && !/^(?:todo|tbd|placeholder|n\/a|na|none|not applicable|not assessed)$/i.test(text);
 }
 
+function hasPlaceholderText(value) {
+  return /\b(?:todo|tbd|placeholder|not assessed|not applicable)\b/i.test(String(value || ""));
+}
+
 function hasExactVisualPromptApproval(...texts) {
   return texts.some((text) => /^(?:[-*]\s*)?Visual prompt approval:\s*PASS\s*$/im.test(String(text || "")));
 }
@@ -98,7 +102,7 @@ function tableRows(markdown = "") {
     .map((line) => line.trim())
     .filter((line) => line.startsWith("|") && line.endsWith("|"))
     .filter((line) => !/^\|\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?$/.test(line))
-    .filter((line) => !/^\|\s*(?:prompt|scene|query|graphic|risk)\b/i.test(line));
+    .filter((line) => !isTableHeaderRow(line));
 }
 
 function rowCells(row) {
@@ -108,13 +112,39 @@ function rowCells(row) {
     .map((cell) => cell.trim());
 }
 
+function isTableHeaderRow(row) {
+  const headerLabels = new Set([
+    "prompt",
+    "purpose",
+    "status",
+    "scene",
+    "query",
+    "usage guard",
+    "graphic",
+    "clarity purpose",
+    "risk",
+    "mitigation",
+    "b-roll item",
+    "reason",
+    "source",
+    "shot",
+    "priority",
+    "capture",
+    "proof purpose",
+    "source/app",
+    "source/input",
+  ]);
+  const cells = rowCells(row).map((cell) => cell.toLowerCase());
+  return cells.length > 1 && cells.every((cell) => headerLabels.has(cell));
+}
+
 function hasRealPromptRows(...texts) {
   return texts.some((text) =>
     tableRows(text).some((row) => {
       const cells = rowCells(row);
       const status = cells[cells.length - 1] || "";
       const evidence = cells.slice(0, -1).join(" ");
-      return isAssessedText(evidence) && !/\b(?:todo|placeholder|not assessed)\b/i.test(evidence) && !/^(?:todo|blocked)$/i.test(status);
+      return isAssessedText(evidence) && !hasPlaceholderText(evidence) && !/^(?:todo|open|blocked)$/i.test(status);
     })
   );
 }
@@ -195,12 +225,32 @@ function inputWarnings(context) {
   return INPUT_FILES.filter((filename) => !context.files[filename]).map((filename) => `Missing ${filename}.`);
 }
 
+function isCleanSourceLine(line) {
+  const text = cleanString(line);
+  return (
+    text.length >= 28 &&
+    !hasPlaceholderText(text) &&
+    !/^\[[ xX]\]\s+/.test(text) &&
+    !/^\|/.test(text) &&
+    !/^(?:run|tool|status|source script|script review status|shoot-readiness status|external apis called|visual prompt approval|final-outline\.md|script-prompt\.md|script-draft\.md|final-script\.md|production-notes\.md)\s*:/i.test(text) &&
+    !/\.md:\s*(?:present|missing|created|not present)/i.test(text)
+  );
+}
+
+function tidySourceLine(line) {
+  return cleanString(
+    String(line || "")
+      .replace(/^#{1,6}\s+/, "")
+      .replace(/^\s*(?:[-*]|\d+\.)\s+/, "")
+  );
+}
+
 function extractLines(text, limit = 8) {
   const seen = new Set();
   return String(text || "")
     .split(/\r?\n/)
-    .map((line) => cleanString(line.replace(/^#{1,6}\s+/, "").replace(/^\s*(?:[-*]|\d+\.)\s+/, "")))
-    .filter((line) => line.length >= 28 && !/^(?:todo|status:|run:|tool:|visual prompt approval:)/i.test(line))
+    .map(tidySourceLine)
+    .filter(isCleanSourceLine)
     .filter((line) => {
       const key = line.toLowerCase();
       if (seen.has(key)) return false;
@@ -210,11 +260,64 @@ function extractLines(text, limit = 8) {
     .slice(0, limit);
 }
 
-function planningLines(context, filename, fallbackPatterns) {
-  const lines = extractLines(context.files[filename], 6);
+function isReadyPlanningStatus(status) {
+  return /^(?:closed|captured|reviewed|ready|approved|complete|done)$/i.test(cleanString(status));
+}
+
+function cleanPlanningItem(value) {
+  const text = tableCell(value)
+    .replace(/\s+\/\s*(?:closed|captured|reviewed|ready|approved|complete|done)$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!isCleanSourceLine(text)) return "";
+  if (/^(?:source|reason|status|b-roll item|shot|capture|graphic|clarity purpose|proof purpose)$/i.test(text)) return "";
+  return text;
+}
+
+function planningRows(markdown = "") {
+  return tableRows(markdown)
+    .map(rowCells)
+    .filter((cells) => cells.length >= 2)
+    .filter((cells) => isReadyPlanningStatus(cells[cells.length - 1]))
+    .map((cells) => cleanPlanningItem(cells[0]))
+    .filter(Boolean);
+}
+
+function uniqueValues(values, limit = 6) {
+  const seen = new Set();
+  const result = [];
+  values.forEach((value) => {
+    const cleaned = cleanPlanningItem(value);
+    const key = cleaned.toLowerCase();
+    if (!cleaned || seen.has(key)) return;
+    seen.add(key);
+    result.push(cleaned);
+  });
+  return result.slice(0, limit);
+}
+
+function planningLines(context, filename, fallbackPatterns, limit = 6) {
+  const rows = uniqueValues(planningRows(context.files[filename]), limit);
+  if (rows.length) return rows;
+  const lines = uniqueValues(extractLines(context.files[filename], limit), limit);
   if (lines.length) return lines;
   const combined = fallbackPatterns.map((pattern) => extractLines(context.script.text).find((line) => pattern.test(line))).filter(Boolean);
-  return combined.length ? combined : extractLines(context.script.text, 5);
+  return combined.length ? uniqueValues(combined, limit) : extractLines(context.script.text, limit);
+}
+
+function conciseBrief(line, maxLength = 96) {
+  const text = cleanPlanningItem(line).replace(/\.$/, "");
+  return text.length > maxLength ? `${text.slice(0, maxLength - 3).trim()}...` : text;
+}
+
+function stockQuery(line) {
+  const text = conciseBrief(line, 70)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .replace(/\b(?:show|capture|record|the|and|with|against|into|from|that|this|how)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text || "creator workflow proof";
 }
 
 function promptStatus(verdict) {
@@ -227,7 +330,7 @@ function promptRows(context, verdict) {
   }
   const lines = planningLines(context, "b-roll-list.md", [/visual|show|proof|example|scene/i]);
   return lines
-    .map((line) => `| ${tableCell(line)} | Show the viewer the concrete idea without inventing evidence. | ${promptStatus(verdict)} |`)
+    .map((line) => `| Film a concise visual of ${tableCell(conciseBrief(line))}. | Show the viewer the concrete idea without inventing evidence. | ${promptStatus(verdict)} |`)
     .join("\n");
 }
 
@@ -237,7 +340,7 @@ function visualSceneRows(context, verdict) {
   }
   const lines = extractLines(context.script.text, 6);
   return lines
-    .map((line) => `| ${tableCell(line.slice(0, 100))} | Practical VIDTOOLZ production workspace scene, natural screen-light, no fake product claims. | ${promptStatus(verdict)} |`)
+    .map((line) => `| ${tableCell(conciseBrief(line, 72))} | Practical VIDTOOLZ production workspace scene showing ${tableCell(conciseBrief(line, 90))}; natural screen-light, no fake product claims. | ${promptStatus(verdict)} |`)
     .join("\n");
 }
 
@@ -247,7 +350,7 @@ function stockQueryRows(context, verdict) {
   }
   const lines = planningLines(context, "shot-list.md", [/workflow|creator|editing|screen|planning/i]);
   return lines
-    .map((line) => `| ${tableCell(line.replace(/[^\w\s-]/g, "").slice(0, 90))} | Use only rights-clear stock or locally captured footage. | ${promptStatus(verdict)} |`)
+    .map((line) => `| ${tableCell(stockQuery(line))} | Use only rights-clear stock or locally captured footage. | ${promptStatus(verdict)} |`)
     .join("\n");
 }
 
@@ -257,7 +360,7 @@ function graphicsRows(context, verdict) {
   }
   const lines = planningLines(context, "graphics-list.md", [/score|matrix|framework|steps|before|after/i]);
   return lines
-    .map((line) => `| ${tableCell(line)} | Clarify the argument without adding unsupported claims. | ${promptStatus(verdict)} |`)
+    .map((line) => `| Create an explanatory graphic for ${tableCell(conciseBrief(line))}. | Clarify the argument without adding unsupported claims. | ${promptStatus(verdict)} |`)
     .join("\n");
 }
 
@@ -270,7 +373,7 @@ function buildBrollPromptPack(context, verdict) {
 - Script review status: ${context.scriptReviewStatus}
 - Shoot-readiness status: ${context.files["production-plan.md"] ? context.shootReadinessStatus : "not checked; production-plan.md missing"}
 - Visual prompt status: ${verdict.status}
-- Visual prompt approval: ${context.visualPromptApproval ? "PASS" : "TODO"}
+- Visual prompt approval: ${context.visualPromptApproval ? "PASS" : "missing"}
 - External APIs called: no
 
 ## Input Warnings
@@ -419,6 +522,7 @@ module.exports = {
   isAssessedText,
   hasExactVisualPromptApproval,
   tableRows,
+  planningRows,
   hasRealPromptRows,
   sourceScript,
   readContext,
