@@ -9935,7 +9935,7 @@ test("proposal loop runner run-codex runs postflight guard and exports accepted 
   fs.rmSync(patchPath, { force: true });
   fs.writeFileSync(
     fakeCodex,
-    `#!/usr/bin/env node\nconst fs=require('fs');const path=require('path');const cwd=process.argv[process.argv.indexOf('-C')+1];fs.writeFileSync(path.join(cwd,'tests/run-tests.js'),'allowed runner change\\n','utf8');`,
+    `#!/usr/bin/env node\nconst fs=require('fs');const path=require('path');const stdin=fs.readFileSync(0,'utf8');if(!stdin.trim()){console.error('fake Codex expected task content on stdin');process.exit(2);}if(!stdin.includes('do work')){console.error('fake Codex received unexpected stdin');process.exit(3);}const cwd=process.argv[process.argv.indexOf('-C')+1];fs.writeFileSync(path.join(cwd,'tests/run-tests.js'),'allowed runner change\\n','utf8');`,
     "utf8"
   );
   fs.chmodSync(fakeCodex, 0o755);

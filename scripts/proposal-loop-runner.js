@@ -143,11 +143,12 @@ function readTaskContent(options) {
 }
 
 function runCommand(command, args, options = {}) {
+  const hasInput = Object.hasOwn(options, "input") && options.input !== undefined;
   const result = childProcess.spawnSync(command, args, {
     cwd: options.cwd || process.cwd(),
     encoding: "utf8",
     input: options.input,
-    stdio: options.stdio || ["ignore", "pipe", "pipe"],
+    stdio: options.stdio || (hasInput ? ["pipe", "pipe", "pipe"] : ["ignore", "pipe", "pipe"]),
   });
   return {
     status: typeof result.status === "number" ? result.status : 1,
