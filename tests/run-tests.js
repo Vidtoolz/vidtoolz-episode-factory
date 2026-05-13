@@ -88,6 +88,10 @@ function writeTestFile(rootDir, relativePath, content) {
   fs.writeFileSync(filePath, content, "utf8");
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function createProposalGuardRepo(prefix = "proposal-loop-guard-") {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
   const originDir = path.join(tempRoot, "origin.git");
@@ -118,6 +122,19 @@ function inspectProposalGuardRepo(fixture, options = {}) {
     allowed: options.allowed || ["scripts/package-run-capture-gap.js", "tests/run-tests.js"],
     patch: options.patch || "",
   });
+}
+
+function runProposalGuardCommandPreflight(fixture, command, options = {}) {
+  return captureConsole(() =>
+    proposalLoopGuard.main([
+      "--repo",
+      options.repo || fixture.realRepo,
+      "--expected-worktree",
+      options.expectedWorktree || fixture.worktree,
+      "--codex-command",
+      command,
+    ])
+  );
 }
 
 test("proposal loop guard accepts clean allowed tracked diff", () => {
@@ -238,6 +255,21 @@ test("proposal loop guard accepts codex command with expected disposable clone -
   assert.equal(report.codexWorktree, path.resolve(fixture.worktree));
 });
 
+test("proposal loop guard cli accepts safe codex command with matching expected worktree", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-cli-codex-command-accept-");
+  const output = runProposalGuardCommandPreflight(
+    fixture,
+    `codex exec --full-auto -C "${fixture.worktree}" make the change`
+  );
+  const stdout = output.stdout.join("\n");
+
+  assert.equal(output.result, 0);
+  assert.match(stdout, /Command-boundary decision: accepted/);
+  assert.match(stdout, new RegExp(`Parsed Codex worktree: ${escapeRegExp(path.resolve(fixture.worktree))}`));
+  assert.match(stdout, new RegExp(`Expected disposable clone: ${escapeRegExp(path.resolve(fixture.worktree))}`));
+  assert.match(stdout, /Rejection Reasons\n- none/);
+});
+
 test("proposal loop guard rejects codex command without -C", () => {
   const fixture = createProposalGuardRepo("proposal-loop-guard-codex-command-missing-c-");
 
@@ -249,6 +281,17 @@ test("proposal loop guard rejects codex command without -C", () => {
 
   assert.equal(report.accepted, false);
   assert.match(report.failures.join("\n"), /must include -C/);
+});
+
+test("proposal loop guard cli rejects missing -C", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-cli-codex-command-missing-c-");
+  const output = runProposalGuardCommandPreflight(fixture, `codex exec --full-auto "make the change"`);
+  const stdout = output.stdout.join("\n");
+
+  assert.equal(output.result, 1);
+  assert.match(stdout, /Command-boundary decision: rejected/);
+  assert.match(stdout, /Parsed Codex worktree: \(missing\)/);
+  assert.match(stdout, /Codex command must include -C/);
 });
 
 test("proposal loop guard rejects codex command with -C but no path", () => {
@@ -277,6 +320,20 @@ test("proposal loop guard rejects codex command -C outside tmp", () => {
   assert.match(report.failures.join("\n"), /must be under \/tmp/);
 });
 
+test("proposal loop guard cli rejects -C outside tmp", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-cli-codex-command-outside-tmp-");
+  const output = runProposalGuardCommandPreflight(
+    fixture,
+    `codex exec --full-auto -C /home/vidtoolz/other-clone make the change`
+  );
+  const stdout = output.stdout.join("\n");
+
+  assert.equal(output.result, 1);
+  assert.match(stdout, /Command-boundary decision: rejected/);
+  assert.match(stdout, /Parsed Codex worktree: \/home\/vidtoolz\/other-clone/);
+  assert.match(stdout, /Codex command -C path must be under \/tmp/);
+});
+
 test("proposal loop guard rejects codex command -C equal to or inside real repo", () => {
   const fixture = createProposalGuardRepo("proposal-loop-guard-codex-command-real-repo-");
   const equalReport = proposalLoopGuard.validateCodexCommandBoundary({
@@ -296,6 +353,35 @@ test("proposal loop guard rejects codex command -C equal to or inside real repo"
   assert.match(insideReport.failures.join("\n"), /must not equal the real repo/);
 });
 
+test("proposal loop guard cli rejects -C equal to the real repo", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-cli-codex-command-real-repo-equal-");
+  const output = runProposalGuardCommandPreflight(
+    fixture,
+    `codex exec --full-auto -C "${fixture.realRepo}" make the change`
+  );
+  const stdout = output.stdout.join("\n");
+
+  assert.equal(output.result, 1);
+  assert.match(stdout, /Command-boundary decision: rejected/);
+  assert.match(stdout, new RegExp(`Parsed Codex worktree: ${escapeRegExp(path.resolve(fixture.realRepo))}`));
+  assert.match(stdout, /Codex command -C path must not equal the real repo or be inside it/);
+});
+
+test("proposal loop guard cli rejects -C inside the real repo", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-cli-codex-command-real-repo-inside-");
+  const nestedClone = path.join(fixture.realRepo, "nested-clone");
+  const output = runProposalGuardCommandPreflight(
+    fixture,
+    `codex exec --full-auto -C "${nestedClone}" make the change`
+  );
+  const stdout = output.stdout.join("\n");
+
+  assert.equal(output.result, 1);
+  assert.match(stdout, /Command-boundary decision: rejected/);
+  assert.match(stdout, new RegExp(`Parsed Codex worktree: ${escapeRegExp(path.resolve(nestedClone))}`));
+  assert.match(stdout, /Codex command -C path must not equal the real repo or be inside it/);
+});
+
 test("proposal loop guard rejects codex command -C that is not the expected disposable clone", () => {
   const fixture = createProposalGuardRepo("proposal-loop-guard-codex-command-wrong-clone-");
   const wrongWorktree = fs.mkdtempSync(path.join(os.tmpdir(), "proposal-loop-guard-wrong-clone-"));
@@ -308,6 +394,22 @@ test("proposal loop guard rejects codex command -C that is not the expected disp
 
   assert.equal(report.accepted, false);
   assert.match(report.failures.join("\n"), /must match the expected disposable clone path/);
+});
+
+test("proposal loop guard cli rejects -C that does not match expected worktree", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-cli-codex-command-wrong-clone-");
+  const wrongWorktree = fs.mkdtempSync(path.join(os.tmpdir(), "proposal-loop-guard-cli-wrong-clone-"));
+  const output = runProposalGuardCommandPreflight(
+    fixture,
+    `codex exec --full-auto -C "${wrongWorktree}" make the change`
+  );
+  const stdout = output.stdout.join("\n");
+
+  assert.equal(output.result, 1);
+  assert.match(stdout, /Command-boundary decision: rejected/);
+  assert.match(stdout, new RegExp(`Parsed Codex worktree: ${escapeRegExp(path.resolve(wrongWorktree))}`));
+  assert.match(stdout, new RegExp(`Expected disposable clone: ${escapeRegExp(path.resolve(fixture.worktree))}`));
+  assert.match(stdout, /Codex command -C path must match the expected disposable clone path/);
 });
 
 test("creates a normalized episode with required defaults", () => {

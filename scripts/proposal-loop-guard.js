@@ -12,8 +12,10 @@ function usage() {
     "",
     "Usage:",
     "  node scripts/proposal-loop-guard.js --repo <real-repo> --worktree <tmp-clone> --allowed <paths> [--patch <patch-path>]",
+    "  node scripts/proposal-loop-guard.js --repo <real-repo> --expected-worktree <tmp-clone> --codex-command \"<command string>\"",
     "",
     "Reviews a disposable Codex proposal-loop worktree before any real-repo apply.",
+    "Preflights a Codex command boundary before Codex is run.",
     "The guard never applies patches and never modifies the real repo.",
   ].join("\n");
 }
@@ -22,6 +24,8 @@ function parseArgs(argv = []) {
   const result = {
     repo: "",
     worktree: "",
+    expectedWorktree: "",
+    codexCommand: "",
     allowed: [],
     patch: "",
     help: false,
@@ -36,6 +40,12 @@ function parseArgs(argv = []) {
       index += 1;
     } else if (arg === "--worktree") {
       result.worktree = argv[index + 1] || "";
+      index += 1;
+    } else if (arg === "--expected-worktree") {
+      result.expectedWorktree = argv[index + 1] || "";
+      index += 1;
+    } else if (arg === "--codex-command") {
+      result.codexCommand = argv[index + 1] || "";
       index += 1;
     } else if (arg === "--allowed") {
       result.allowed = parseAllowed(argv[index + 1] || "");
@@ -312,6 +322,20 @@ function formatReviewPacket(report) {
   ].join("\n");
 }
 
+function formatCommandBoundaryPacket(report) {
+  return [
+    "# Codex Command Boundary Preflight",
+    "",
+    `Command-boundary decision: ${report.accepted ? "accepted" : "rejected"}`,
+    `Parsed Codex worktree: ${report.codexWorktree || "(missing)"}`,
+    `Expected disposable clone: ${report.expectedWorktree || "(missing)"}`,
+    `Real repo: ${report.repo || "(missing)"}`,
+    "",
+    "## Rejection Reasons",
+    formatList(report.failures),
+  ].join("\n");
+}
+
 function main(argv = process.argv.slice(2)) {
   let options;
   try {
@@ -327,6 +351,16 @@ function main(argv = process.argv.slice(2)) {
     return 0;
   }
 
+  if (options.codexCommand) {
+    const report = validateCodexCommandBoundary({
+      command: options.codexCommand,
+      repo: options.repo,
+      expectedWorktree: options.expectedWorktree,
+    });
+    console.log(formatCommandBoundaryPacket(report));
+    return report.accepted ? 0 : 1;
+  }
+
   const report = inspectWorktree(options);
   console.log(formatReviewPacket(report));
   return report.accepted ? 0 : 1;
@@ -338,6 +372,7 @@ if (require.main === module) {
 
 module.exports = {
   buildRejectedPatchPath,
+  formatCommandBoundaryPacket,
   formatReviewPacket,
   inspectWorktree,
   isPathInside,
