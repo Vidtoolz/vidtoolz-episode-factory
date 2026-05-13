@@ -30,6 +30,7 @@ function usage() {
     "  --run-codex                    Run Codex after command-boundary preflight passes.",
     "  --codex-bin <path-or-name>     Codex executable. Default: codex.",
     "  --codex-extra-arg <arg>        Extra Codex argument. May be repeated.",
+    "  --history-dir <path>           Manifest directory under /tmp. Default: /tmp/vidtoolz-proposal-loop-history.",
     "  --help                         Show this help.",
   ].join("\n");
 }
@@ -45,6 +46,7 @@ function parseArgs(argv = []) {
     runCodex: false,
     codexBin: "codex",
     codexExtraArgs: [],
+    historyDir: "",
     help: false,
   };
 
@@ -76,6 +78,9 @@ function parseArgs(argv = []) {
       index += 1;
     } else if (arg === "--codex-extra-arg") {
       result.codexExtraArgs.push(argv[index + 1] || "");
+      index += 1;
+    } else if (arg === "--history-dir") {
+      result.historyDir = argv[index + 1] || "";
       index += 1;
     } else {
       throw new Error(`Unknown option: ${arg}`);
@@ -121,6 +126,14 @@ function buildPaths(name) {
   const taskPath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}-task.md`);
   const patchPath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}.patch`);
   return { clonePath, taskPath, patchPath };
+}
+
+function buildDefaultHistoryDir() {
+  return path.join(os.tmpdir(), "vidtoolz-proposal-loop-history");
+}
+
+function buildManifestPath(historyDir, name) {
+  return path.join(historyDir, `${name}.json`);
 }
 
 function ensureUnderTmp(filePath, label) {
@@ -192,6 +205,39 @@ function buildCodexArgs(options) {
 function buildCodexCommand(options) {
   const args = buildCodexArgs(options);
   return `${[options.codexBin, ...args].map(quoteShell).join(" ")} < ${quoteShell(options.taskPath)}`;
+}
+
+function buildManifest(runOptions) {
+  const now = new Date().toISOString();
+  return {
+    schemaVersion: 1,
+    createdAt: now,
+    updatedAt: now,
+    name: runOptions.name,
+    repo: runOptions.repo,
+    clonePath: runOptions.clonePath,
+    taskPath: runOptions.taskPath,
+    patchPath: runOptions.patchPath,
+    manifestPath: runOptions.manifestPath,
+    allowed: runOptions.allowed,
+    runCodex: runOptions.runCodex,
+    codexBin: runOptions.codexBin,
+    codexCommand: runOptions.codexCommand,
+    runnerStatus: "started",
+    safetyNote:
+      "Review metadata only. The runner did not apply, commit, push, stage, reset, clean, or edit the real repo.",
+  };
+}
+
+function writeManifest(manifestPath, manifest, updates = {}) {
+  const next = {
+    ...manifest,
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
+  fs.writeFileSync(manifestPath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
+  return next;
 }
 
 function buildPreflightCommand(options) {
@@ -268,6 +314,9 @@ function validateOptions(options) {
   if (!options.repo) throw new Error("--repo is required.");
   if (!options.allowed || options.allowed.length === 0) throw new Error("--allowed is required.");
   if (!options.codexBin) throw new Error("--codex-bin must not be empty.");
+  if (options.historyDir && !proposalLoopGuard.isUnderTmp(options.historyDir)) {
+    throw new Error("--history-dir must be under /tmp.");
+  }
   options.codexExtraArgs.forEach((arg) => {
     if (!arg) throw new Error("--codex-extra-arg must not be empty.");
   });
@@ -276,6 +325,8 @@ function validateOptions(options) {
 
 function main(argv = process.argv.slice(2)) {
   let options;
+  let manifest = null;
+  let manifestPath = "";
   try {
     options = parseArgs(argv);
     if (options.help) {
@@ -286,9 +337,13 @@ function main(argv = process.argv.slice(2)) {
     const name = options.name || buildDefaultName();
     validateName(name);
     const paths = buildPaths(name);
+    const historyDir = path.resolve(options.historyDir || buildDefaultHistoryDir());
+    ensureUnderTmp(historyDir, "History directory");
     ensureUnderTmp(paths.clonePath, "Target clone path");
     ensureUnderTmp(paths.taskPath, "Task file path");
     ensureUnderTmp(paths.patchPath, "Patch path");
+    manifestPath = buildManifestPath(historyDir, name);
+    ensureUnderTmp(manifestPath, "Manifest path");
 
     const taskContent = readTaskContent(options);
     const runOptions = {
@@ -298,17 +353,23 @@ function main(argv = process.argv.slice(2)) {
       clonePath: paths.clonePath,
       taskPath: paths.taskPath,
       patchPath: paths.patchPath,
+      historyDir,
+      manifestPath,
     };
     runOptions.codexCommand = buildCodexCommand(runOptions);
+    manifest = buildManifest(runOptions);
 
     createClone(runOptions);
     fs.writeFileSync(runOptions.taskPath, taskContent, "utf8");
+    manifest = writeManifest(manifestPath, manifest, { runnerStatus: "setup-complete" });
 
     console.log("# Proposal Loop Runner");
     console.log("");
     console.log(`Disposable clone: ${runOptions.clonePath}`);
     console.log(`Task file: ${runOptions.taskPath}`);
     console.log(`Patch path: ${runOptions.patchPath}`);
+    console.log(`Run manifest: ${runOptions.manifestPath}`);
+    console.log("Run manifest is review metadata only, not an approval marker.");
     console.log("");
     console.log("## Codex Command");
     console.log(runOptions.codexCommand);
@@ -318,6 +379,12 @@ function main(argv = process.argv.slice(2)) {
     console.log("");
 
     const preflight = runPreflight(runOptions);
+    manifest = writeManifest(manifestPath, manifest, {
+      preflightDecision: preflight.accepted ? "accepted" : "rejected",
+      preflightFailures: preflight.failures,
+      runnerStatus: preflight.accepted ? "preflight-accepted" : "preflight-rejected",
+      finalStatus: preflight.accepted ? undefined : "rejected",
+    });
     if (!preflight.accepted) return 1;
 
     console.log("");
@@ -330,6 +397,10 @@ function main(argv = process.argv.slice(2)) {
 
     if (!runOptions.runCodex) {
       console.log("Codex was not run. Re-run with --run-codex after reviewing the command boundary.");
+      manifest = writeManifest(manifestPath, manifest, {
+        runnerStatus: "dry-run-complete",
+        finalStatus: "dry-run-complete",
+      });
       return 0;
     }
 
@@ -340,17 +411,45 @@ function main(argv = process.argv.slice(2)) {
     });
     if (codexResult.stdout.trim()) console.log(codexResult.stdout.trim());
     if (codexResult.stderr.trim()) console.error(codexResult.stderr.trim());
+    manifest = writeManifest(manifestPath, manifest, {
+      codexStatus: {
+        status: codexResult.status,
+        error: codexResult.error ? codexResult.error.message : "",
+      },
+      runnerStatus: codexResult.status === 0 && !codexResult.error ? "codex-complete" : "codex-failed",
+    });
     if (codexResult.status !== 0 || codexResult.error) {
       if (codexResult.error) console.error(codexResult.error.message);
+      manifest = writeManifest(manifestPath, manifest, {
+        error: codexResult.error ? codexResult.error.message : `Codex exited with status ${codexResult.status}.`,
+        runnerStatus: "codex-failed",
+        finalStatus: "failed",
+      });
       return codexResult.status || 1;
     }
 
     console.log("");
     console.log("## Postflight Guard Result");
     const postflight = runPostflight(runOptions);
+    manifest = writeManifest(manifestPath, manifest, {
+      postflightDecision: postflight.accepted ? "accepted-for-review" : "rejected",
+      postflightFailures: postflight.failures,
+      patchWritten: postflight.accepted && postflight.patchPath ? postflight.patchPath : undefined,
+      rejectedPatchWritten: !postflight.accepted && postflight.patchPath ? postflight.patchPath : undefined,
+      runnerStatus: postflight.accepted ? "accepted-for-review" : "postflight-rejected",
+      finalStatus: postflight.accepted ? "accepted-for-review" : "rejected",
+      error: postflight.accepted ? undefined : postflight.failures.join("\n"),
+    });
     return postflight.accepted ? 0 : 1;
   } catch (error) {
     console.error(error.message);
+    if (manifest && manifestPath) {
+      writeManifest(manifestPath, manifest, {
+        error: error.message,
+        runnerStatus: "failed",
+        finalStatus: "failed",
+      });
+    }
     return 1;
   }
 }
@@ -363,6 +462,8 @@ module.exports = {
   buildApplyChecklist,
   buildCodexArgs,
   buildCodexCommand,
+  buildDefaultHistoryDir,
+  buildManifestPath,
   buildPaths,
   buildPostflightCommand,
   buildPreflightCommand,

@@ -93,6 +93,10 @@ function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function readJsonFile(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
 function createProposalGuardRepo(prefix = "proposal-loop-guard-") {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
   const originDir = path.join(tempRoot, "origin.git");
@@ -9825,6 +9829,73 @@ test("proposal loop runner default mode creates tmp clone and task file", () => 
   assert.match(output.stdout.join("\n"), new RegExp(escapeRegExp(clonePath)));
 });
 
+test("proposal loop runner default dry-run writes manifest under /tmp", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-manifest-default-");
+  const name = `runner-manifest-default-${process.pid}`;
+  const clonePath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`);
+  const manifestPath = path.join(os.tmpdir(), "vidtoolz-proposal-loop-history", `${name}.json`);
+  fs.rmSync(clonePath, { recursive: true, force: true });
+  fs.rmSync(manifestPath, { force: true });
+
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task",
+      "do work",
+      "--name",
+      name,
+    ])
+  );
+  const manifest = readJsonFile(manifestPath);
+
+  assert.equal(output.result, 0);
+  assert.equal(fs.existsSync(manifestPath), true);
+  assert.equal(proposalLoopGuard.isUnderTmp(manifestPath), true);
+  assert.match(output.stdout.join("\n"), new RegExp(escapeRegExp(manifestPath)));
+  assert.equal(manifest.schemaVersion, 1);
+  assert.equal(manifest.name, name);
+  assert.equal(manifest.repo, path.resolve(fixture.worktree));
+  assert.equal(manifest.clonePath, clonePath);
+  assert.equal(manifest.taskPath, path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}-task.md`));
+  assert.equal(manifest.patchPath, path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}.patch`));
+  assert.deepEqual(manifest.allowed, ["tests/run-tests.js"]);
+  assert.equal(manifest.runCodex, false);
+  assert.match(manifest.safetyNote, /did not apply, commit, push, stage, reset, clean, or edit the real repo/);
+  assert.doesNotMatch(manifestPath, new RegExp(`^${escapeRegExp(fixture.worktree)}`));
+});
+
+test("proposal loop runner dry-run manifest records command-boundary accepted", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-manifest-preflight-");
+  const name = `runner-manifest-preflight-${process.pid}`;
+  const clonePath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`);
+  const manifestPath = path.join(os.tmpdir(), "vidtoolz-proposal-loop-history", `${name}.json`);
+  fs.rmSync(clonePath, { recursive: true, force: true });
+  fs.rmSync(manifestPath, { force: true });
+
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task",
+      "do work",
+      "--name",
+      name,
+    ])
+  );
+  const manifest = readJsonFile(manifestPath);
+
+  assert.equal(output.result, 0);
+  assert.equal(manifest.preflightDecision, "accepted");
+  assert.deepEqual(manifest.preflightFailures, []);
+  assert.equal(manifest.runnerStatus, "dry-run-complete");
+  assert.equal(manifest.finalStatus, "dry-run-complete");
+});
+
 test("proposal loop runner default mode prints codex command but does not run Codex", () => {
   const fixture = createProposalGuardRepo("proposal-loop-runner-no-codex-");
   const name = `runner-no-codex-${process.pid}`;
@@ -9962,6 +10033,52 @@ test("proposal loop runner run-codex runs postflight guard and exports accepted 
   assert.match(output.stdout.join("\n"), /Decision: accepted-for-review/);
 });
 
+test("proposal loop runner accepted run-codex manifest records postflight and patch path", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-manifest-accepted-");
+  const name = `runner-manifest-accepted-${process.pid}`;
+  const clonePath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`);
+  const patchPath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}.patch`);
+  const historyDir = path.join(fixture.tempRoot, "history");
+  const manifestPath = path.join(historyDir, `${name}.json`);
+  const fakeCodex = path.join(fixture.tempRoot, "fake-codex.js");
+  fs.rmSync(clonePath, { recursive: true, force: true });
+  fs.rmSync(patchPath, { force: true });
+  fs.writeFileSync(
+    fakeCodex,
+    `#!/usr/bin/env node\nconst fs=require('fs');const path=require('path');const cwd=process.argv[process.argv.indexOf('-C')+1];fs.writeFileSync(path.join(cwd,'tests/run-tests.js'),'allowed manifest change\\n','utf8');`,
+    "utf8"
+  );
+  fs.chmodSync(fakeCodex, 0o755);
+
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task",
+      "do work",
+      "--name",
+      name,
+      "--history-dir",
+      historyDir,
+      "--codex-bin",
+      fakeCodex,
+      "--run-codex",
+    ])
+  );
+  const manifest = readJsonFile(manifestPath);
+
+  assert.equal(output.result, 0);
+  assert.equal(manifest.runCodex, true);
+  assert.equal(manifest.codexBin, fakeCodex);
+  assert.equal(manifest.codexStatus.status, 0);
+  assert.equal(manifest.postflightDecision, "accepted-for-review");
+  assert.equal(manifest.patchWritten, patchPath);
+  assert.equal(manifest.runnerStatus, "accepted-for-review");
+  assert.equal(manifest.finalStatus, "accepted-for-review");
+});
+
 test("proposal loop runner run-codex exports rejected patch for forbidden diff", () => {
   const fixture = createProposalGuardRepo("proposal-loop-runner-run-rejected-");
   const name = `runner-run-rejected-${process.pid}`;
@@ -10000,6 +10117,143 @@ test("proposal loop runner run-codex exports rejected patch for forbidden diff",
   assert.equal(fs.existsSync(rejectedPatchPath), true);
   assert.match(fs.readFileSync(rejectedPatchPath, "utf8"), /package-runs\/2026-05-02-topic\/notes\.md/);
   assert.match(output.stdout.join("\n"), /Decision: rejected/);
+});
+
+test("proposal loop runner rejected run-codex manifest records decision and reason", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-manifest-rejected-");
+  const name = `runner-manifest-rejected-${process.pid}`;
+  const clonePath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`);
+  const patchPath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}.patch`);
+  const rejectedPatchPath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}.rejected.patch`);
+  const historyDir = path.join(fixture.tempRoot, "history");
+  const manifestPath = path.join(historyDir, `${name}.json`);
+  const fakeCodex = path.join(fixture.tempRoot, "fake-codex.js");
+  fs.rmSync(clonePath, { recursive: true, force: true });
+  fs.rmSync(patchPath, { force: true });
+  fs.rmSync(rejectedPatchPath, { force: true });
+  fs.writeFileSync(
+    fakeCodex,
+    `#!/usr/bin/env node\nconst fs=require('fs');const path=require('path');const cwd=process.argv[process.argv.indexOf('-C')+1];fs.mkdirSync(path.join(cwd,'package-runs/2026-05-02-topic'),{recursive:true});fs.writeFileSync(path.join(cwd,'package-runs/2026-05-02-topic/notes.md'),'forbidden manifest change\\n','utf8');`,
+    "utf8"
+  );
+  fs.chmodSync(fakeCodex, 0o755);
+
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task",
+      "do work",
+      "--name",
+      name,
+      "--history-dir",
+      historyDir,
+      "--codex-bin",
+      fakeCodex,
+      "--run-codex",
+    ])
+  );
+  const manifest = readJsonFile(manifestPath);
+
+  assert.equal(output.result, 1);
+  assert.equal(manifest.postflightDecision, "rejected");
+  assert.equal(manifest.rejectedPatchWritten, rejectedPatchPath);
+  assert.match(manifest.postflightFailures.join("\n"), /outside allowed scope/);
+  assert.match(manifest.error, /outside allowed scope/);
+  assert.equal(manifest.finalStatus, "rejected");
+});
+
+test("proposal loop runner Codex failure manifest records nonzero status", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-manifest-codex-fail-");
+  const name = `runner-manifest-codex-fail-${process.pid}`;
+  const clonePath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`);
+  const historyDir = path.join(fixture.tempRoot, "history");
+  const manifestPath = path.join(historyDir, `${name}.json`);
+  const fakeCodex = path.join(fixture.tempRoot, "fake-codex.js");
+  fs.rmSync(clonePath, { recursive: true, force: true });
+  fs.writeFileSync(
+    fakeCodex,
+    `#!/usr/bin/env node\nconsole.error('planned Codex failure');process.exit(7);`,
+    "utf8"
+  );
+  fs.chmodSync(fakeCodex, 0o755);
+
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task",
+      "do work",
+      "--name",
+      name,
+      "--history-dir",
+      historyDir,
+      "--codex-bin",
+      fakeCodex,
+      "--run-codex",
+    ])
+  );
+  const manifest = readJsonFile(manifestPath);
+
+  assert.equal(output.result, 7);
+  assert.equal(manifest.codexStatus.status, 7);
+  assert.equal(manifest.runnerStatus, "codex-failed");
+  assert.equal(manifest.finalStatus, "failed");
+  assert.match(manifest.error, /Codex exited with status 7/);
+  assert.equal(Object.hasOwn(manifest, "postflightDecision"), false);
+});
+
+test("proposal loop runner rejects non-tmp history dir", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-history-outside-tmp-");
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task",
+      "do work",
+      "--name",
+      `runner-history-outside-tmp-${process.pid}`,
+      "--history-dir",
+      "/var/tmp/vidtoolz-proposal-loop-history",
+    ])
+  );
+
+  assert.equal(output.result, 1);
+  assert.match(output.stderr.join("\n"), /--history-dir must be under \/tmp|History directory must be under \/tmp/);
+});
+
+test("proposal loop runner manifest writing does not affect real repo status", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-real-status-");
+  const name = `runner-real-status-${process.pid}`;
+  const clonePath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`);
+  const manifestPath = path.join(os.tmpdir(), "vidtoolz-proposal-loop-history", `${name}.json`);
+  fs.rmSync(clonePath, { recursive: true, force: true });
+  fs.rmSync(manifestPath, { force: true });
+  const beforeStatus = runGitCommand(fixture.worktree, ["status", "--short"]);
+
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task",
+      "do work",
+      "--name",
+      name,
+    ])
+  );
+  const afterStatus = runGitCommand(fixture.worktree, ["status", "--short"]);
+
+  assert.equal(output.result, 0);
+  assert.equal(fs.existsSync(manifestPath), true);
+  assert.equal(afterStatus, beforeStatus);
 });
 
 async function runTests() {

@@ -2,7 +2,7 @@
 
 `scripts/proposal-loop-runner.js` lets Mikko ask Hermes/Codex for a controlled patch proposal without letting the agent edit the real repository directly.
 
-Use it for review-only proposal loops. The runner creates a disposable clone under `/tmp`, writes the task to a `/tmp` task file, checks the Codex command boundary, and prints the commands needed for review.
+Use it for review-only proposal loops. The runner creates a disposable clone under `/tmp`, writes the task to a `/tmp` task file, writes a small run manifest under `/tmp`, checks the Codex command boundary, and prints the commands needed for review.
 
 ## Safety Rules
 
@@ -14,12 +14,25 @@ Use it for review-only proposal loops. The runner creates a disposable clone und
 - Existing dirty `package-runs/**` state is unrelated operator state. Do not sweep it into proposal commits or patch applications.
 - Smoke patches are proof artifacts. Do not apply them unless the file edits are intentional real changes.
 
+## Run Manifest
+
+Every runner execution writes a small JSON manifest under `/tmp/vidtoolz-proposal-loop-history/` by default:
+
+```text
+/tmp/vidtoolz-proposal-loop-history/<name>.json
+```
+
+The manifest records the disposable clone path, task path, patch path, allowed scope, Codex command, command-boundary preflight decision, and Codex/postflight status when Codex is run. It is audit and review metadata only. It is not an approval marker and does not mean a patch should be applied.
+
+Use `--history-dir <path>` to choose a different manifest directory under `/tmp`. This first version rejects non-`/tmp` history paths and does not write manifests into the real repo or `proposal-runs/`.
+
 ## Default Dry-Run Mode
 
 Default mode does not run Codex. It:
 
 - creates the disposable `/tmp` clone
 - writes the task file
+- writes the run manifest under `/tmp`
 - prints the Codex command with shell-style task redirection
 - runs command-boundary preflight
 - prints the postflight guard command
@@ -73,6 +86,8 @@ After Codex runs, inspect the postflight guard output:
 - No `package-runs/**` files are included unless the task intentionally allowed them.
 
 If the decision is rejected, treat the patch as review evidence only. Do not apply it to the real repo.
+
+Smoke patches are proof artifacts. Do not apply smoke patches as real changes unless the edits are intentionally reviewed and promoted through the real-repo apply checklist.
 
 ## Real-Repo Apply Checklist
 
