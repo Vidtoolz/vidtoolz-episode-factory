@@ -7502,12 +7502,33 @@ test("capture gap reporter is read-only and separates approval-required capture 
   assert.match(text, /Blocked actions:\n(?:- .+\n)*- Hermes brain write/);
 });
 
-test("capture gap reporter fails clearly for missing run directory", () => {
+test("capture gap reporter returns blocked read-only report for missing run directory", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-gap-missing-"));
-  assert.throws(
-    () => packageCaptureGapScript.buildCaptureGapReport("package-runs/definitely-missing", { repoRoot: tempRoot }),
-    /Package run folder not found/
+  const missingRun = path.join(tempRoot, "package-runs", "definitely-missing");
+
+  const report = packageCaptureGapScript.buildCaptureGapReport("package-runs/definitely-missing", { repoRoot: tempRoot });
+  const text = packageCaptureGapScript.renderText(report);
+
+  assert.equal(fs.existsSync(missingRun), false);
+  assert.equal(report.overallStatus, "BLOCKED");
+  assert.equal(report.reviewOnly, true);
+  assert.equal(report.readOnly, true);
+  assert.equal(report.writesPerformed, false);
+  assert.equal(report.externalApisCalled, false);
+  assert.equal(report.captureEvidenceAccepted, false);
+  assert.equal(
+    report.gaps.some(
+      (gap) =>
+        gap.area === "package-run-folder" &&
+        gap.status === "missing-folder" &&
+        /Package run folder is missing/.test(gap.reason)
+    ),
+    true
   );
+  assert.equal(report.blockedActions.includes("Hermes brain write"), true);
+  assert.equal(report.blockedActions.includes("project-state promotion"), true);
+  assert.match(text, /Package run folder is missing/);
+  assert.equal(fs.existsSync(missingRun), false);
 });
 
 test("capture gap reporter builds json-ready output and help", () => {

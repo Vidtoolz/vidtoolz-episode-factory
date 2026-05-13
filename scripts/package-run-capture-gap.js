@@ -57,7 +57,49 @@ function buildCaptureGapReport(runDirInput, options = {}) {
   const runDir = path.resolve(repoRoot, runDirInput || "");
   if (!runDirInput) throw new Error("Package run folder is required.");
   if (!fs.existsSync(runDir) || !fs.statSync(runDir).isDirectory()) {
-    throw new Error(`Package run folder not found: ${runDirInput}`);
+    const reportPath = normalizeRelative(path.relative(repoRoot, runDir) || runDirInput);
+    return {
+      runId: path.basename(runDir),
+      path: reportPath,
+      title: "",
+      currentInferredStage: "missing package-run folder",
+      overallStatus: "BLOCKED",
+      reviewOnly: true,
+      readOnly: true,
+      writesPerformed: false,
+      externalApisCalled: false,
+      captureEvidenceStatus: "not evaluated",
+      captureEvidenceAccepted: false,
+      realCaptureEvidence: false,
+      stage4Accepted: false,
+      gaps: [
+        gap(
+          "package-run-folder",
+          "missing-folder",
+          `Package run folder is missing: ${reportPath}.`,
+          "Create or restore the package-run folder before capture gap review can inspect evidence.",
+          [reportPath]
+        ),
+      ],
+      blockedActions: ["Hermes brain write", "project-state promotion"],
+      safeInspectionCommands: [
+        `node scripts/package-run-capture-gap.js ${runDirInput}`,
+        `node scripts/package-run-capture-gap.js ${runDirInput} --json`,
+      ],
+      approvalRequiredActions: [
+        "restoring or creating the missing package-run folder",
+        "updating Hermes brain",
+        "updating project state",
+        "committing or pushing",
+      ],
+      safetyNotes: [
+        "read-only: yes",
+        "external APIs called: no",
+        "writes performed: no",
+        "missing package-run folder was not created",
+        "no approval markers, production approval, ready-to-shoot marking, Hermes brain update, project-state update, commit, push, delete, reset, clean, or scheduled-job action performed",
+      ],
+    };
   }
 
   const doctor = packageRunDoctor.buildDoctorReport(runDirInput, { repoRoot });
