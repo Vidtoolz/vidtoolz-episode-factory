@@ -85,6 +85,81 @@ function isUnderTmp(inputPath) {
   return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
+function tokenizeCommand(command) {
+  if (Array.isArray(command)) return command.map(String);
+  const input = String(command || "");
+  const tokens = [];
+  let current = "";
+  let quote = "";
+  let escaped = false;
+
+  for (const char of input) {
+    if (escaped) {
+      current += char;
+      escaped = false;
+    } else if (char === "\\") {
+      escaped = true;
+    } else if (quote) {
+      if (char === quote) {
+        quote = "";
+      } else {
+        current += char;
+      }
+    } else if (char === "'" || char === '"') {
+      quote = char;
+    } else if (/\s/.test(char)) {
+      if (current) {
+        tokens.push(current);
+        current = "";
+      }
+    } else {
+      current += char;
+    }
+  }
+
+  if (escaped) current += "\\";
+  if (current) tokens.push(current);
+  return tokens;
+}
+
+function validateCodexCommandBoundary(options = {}) {
+  const command = options.command || "";
+  const repo = options.repo || "";
+  const expectedWorktree = options.expectedWorktree || "";
+  const tokens = tokenizeCommand(command);
+  const failures = [];
+  const cIndex = tokens.indexOf("-C");
+  const cPath = cIndex >= 0 ? tokens[cIndex + 1] || "" : "";
+
+  if (cIndex === -1) {
+    failures.push("Codex command must include -C.");
+  } else if (!cPath || cPath.startsWith("-")) {
+    failures.push("Codex command -C must include a path.");
+  }
+
+  if (!repo) failures.push("Real repo path is required.");
+  if (!expectedWorktree) failures.push("Expected disposable clone path is required.");
+
+  if (cPath && !cPath.startsWith("-")) {
+    if (!isUnderTmp(cPath)) failures.push("Codex command -C path must be under /tmp.");
+    if (repo && isPathInside(repo, cPath)) {
+      failures.push("Codex command -C path must not equal the real repo or be inside it.");
+    }
+    if (expectedWorktree && resolveRealPath(cPath) !== resolveRealPath(expectedWorktree)) {
+      failures.push("Codex command -C path must match the expected disposable clone path.");
+    }
+  }
+
+  return {
+    accepted: failures.length === 0,
+    command: Array.isArray(command) ? tokens : String(command || ""),
+    repo: repo ? path.resolve(repo) : "",
+    expectedWorktree: expectedWorktree ? path.resolve(expectedWorktree) : "",
+    codexWorktree: cPath ? path.resolve(cPath) : "",
+    failures,
+  };
+}
+
 function runGit(worktree, args) {
   const result = childProcess.spawnSync("git", args, {
     cwd: worktree,
@@ -270,4 +345,5 @@ module.exports = {
   main,
   parseArgs,
   parseAllowed,
+  validateCodexCommandBoundary,
 };
