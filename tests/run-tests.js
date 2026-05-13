@@ -7499,6 +7499,7 @@ test("capture gap reporter is read-only and separates approval-required capture 
   );
   assert.match(text, /Package Run Capture Gap/);
   assert.match(text, /Approval-required actions:/);
+  assert.match(text, /Blocked actions:\n(?:- .+\n)*- Hermes brain write/);
 });
 
 test("capture gap reporter fails clearly for missing run directory", () => {
