@@ -7501,6 +7501,14 @@ test("capture gap reporter is read-only and separates approval-required capture 
   assert.match(text, /Approval-required actions:/);
 });
 
+test("capture gap reporter fails clearly for missing run directory", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-gap-missing-"));
+  assert.throws(
+    () => packageCaptureGapScript.buildCaptureGapReport("package-runs/definitely-missing", { repoRoot: tempRoot }),
+    /Package run folder not found/
+  );
+});
+
 test("capture gap reporter builds json-ready output and help", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-gap-json-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-gap-json");
