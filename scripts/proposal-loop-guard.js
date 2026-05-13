@@ -191,6 +191,45 @@ function gitLines(worktree, args) {
     .filter(Boolean);
 }
 
+function createSkippedGitCheck(reason) {
+  return { status: 0, stdout: "", stderr: "", skipped: true, reason };
+}
+
+function validateReviewWorktree(options = {}) {
+  const repo = options.repo || "";
+  const worktree = options.worktree || "";
+  const failures = [];
+
+  if (!repo) failures.push("--repo is required.");
+  if (!worktree) failures.push("--worktree is required.");
+
+  if (worktree) {
+    if (!fs.existsSync(worktree)) {
+      failures.push("--worktree does not exist.");
+    } else {
+      const stat = fs.statSync(worktree);
+      if (!stat.isDirectory()) failures.push("--worktree is not a directory.");
+    }
+
+    if (!isUnderTmp(worktree)) failures.push("--worktree must be under /tmp.");
+    if (repo && isPathInside(repo, worktree)) {
+      failures.push("--worktree must not equal the real repo or be inside it.");
+    }
+  }
+
+  if (failures.length === 0) {
+    const gitCheck = runGit(worktree, ["rev-parse", "--is-inside-work-tree"]);
+    if (gitCheck.status !== 0 || gitCheck.stdout.trim() !== "true") {
+      failures.push("--worktree must be a Git worktree.");
+    }
+  }
+
+  return {
+    accepted: failures.length === 0,
+    failures,
+  };
+}
+
 function isAllowedPath(filePath, allowedPaths) {
   const normalized = normalizeGitPath(filePath);
   return allowedPaths.some((allowed) => {
@@ -213,17 +252,10 @@ function inspectWorktree(options = {}) {
   const allowed = Array.isArray(options.allowed) ? options.allowed.map(normalizeGitPath).filter(Boolean) : [];
   const patch = options.patch || "";
   const failures = [];
+  const worktreeValidation = validateReviewWorktree({ repo, worktree });
 
-  if (!repo) failures.push("--repo is required.");
-  if (!worktree) failures.push("--worktree is required.");
+  failures.push(...worktreeValidation.failures);
   if (allowed.length === 0) failures.push("--allowed must include at least one path.");
-
-  if (worktree) {
-    if (!isUnderTmp(worktree)) failures.push("--worktree must be under /tmp.");
-    if (repo && isPathInside(repo, worktree)) {
-      failures.push("--worktree must not equal the real repo or be inside it.");
-    }
-  }
 
   const report = {
     repo: repo ? path.resolve(repo) : "",
@@ -234,15 +266,15 @@ function inspectWorktree(options = {}) {
     stagedFiles: [],
     commitsAhead: [],
     changedFilesWithinAllowedScope: false,
-    diffCheck: { status: 1, stdout: "", stderr: "" },
-    cachedDiffCheck: { status: 1, stdout: "", stderr: "" },
+    diffCheck: createSkippedGitCheck("worktree validation failed"),
+    cachedDiffCheck: createSkippedGitCheck("worktree validation failed"),
     patchRequested: Boolean(patch),
     patchPath: "",
     accepted: false,
     failures,
   };
 
-  if (worktree && failures.filter((failure) => failure.startsWith("--worktree")).length === 0) {
+  if (worktreeValidation.accepted) {
     report.trackedChangedFiles = gitLines(worktree, ["diff", "--name-only", "HEAD"]).map(normalizeGitPath);
     report.untrackedFiles = gitLines(worktree, ["ls-files", "--others", "--exclude-standard"]).map(normalizeGitPath);
     report.stagedFiles = gitLines(worktree, ["diff", "--cached", "--name-only"]).map(normalizeGitPath);
@@ -263,13 +295,11 @@ function inspectWorktree(options = {}) {
 
   report.accepted = failures.length === 0;
 
-  if (patch) {
+  if (patch && worktreeValidation.accepted) {
     const requestedPatchPath = path.resolve(patch);
     report.patchPath = report.accepted ? requestedPatchPath : buildRejectedPatchPath(requestedPatchPath);
-    if (worktree && fs.existsSync(worktree)) {
-      const patchResult = runGit(worktree, ["diff", "--binary", "HEAD"]);
-      fs.writeFileSync(report.patchPath, patchResult.stdout, "utf8");
-    }
+    const patchResult = runGit(worktree, ["diff", "--binary", "HEAD"]);
+    fs.writeFileSync(report.patchPath, patchResult.stdout, "utf8");
   }
 
   return report;
@@ -281,6 +311,7 @@ function formatList(items) {
 }
 
 function formatCheck(result) {
+  if (result.skipped) return `skipped: ${result.reason}`;
   const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
   if (!output) return `status ${result.status}`;
   return `status ${result.status}\n${output}`;

@@ -118,7 +118,7 @@ function createProposalGuardRepo(prefix = "proposal-loop-guard-") {
 function inspectProposalGuardRepo(fixture, options = {}) {
   return proposalLoopGuard.inspectWorktree({
     repo: options.repo || fixture.realRepo,
-    worktree: options.worktree || fixture.worktree,
+    worktree: Object.hasOwn(options, "worktree") ? options.worktree : fixture.worktree,
     allowed: options.allowed || ["scripts/package-run-capture-gap.js", "tests/run-tests.js"],
     patch: options.patch || "",
   });
@@ -137,7 +137,66 @@ function runProposalGuardCommandPreflight(fixture, command, options = {}) {
   );
 }
 
-test("proposal loop guard accepts clean allowed tracked diff", () => {
+test("proposal loop guard review rejects missing worktree before git inspection", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-missing-worktree-");
+  const report = inspectProposalGuardRepo(fixture, { worktree: "" });
+  const packet = proposalLoopGuard.formatReviewPacket(report);
+
+  assert.equal(report.accepted, false);
+  assert.deepEqual(report.trackedChangedFiles, []);
+  assert.deepEqual(report.untrackedFiles, []);
+  assert.deepEqual(report.stagedFiles, []);
+  assert.deepEqual(report.commitsAhead, []);
+  assert.match(packet, /Decision: rejected/);
+  assert.match(packet, /## Tracked Changed Files\n- none/);
+  assert.match(packet, /## Untracked Files\n- none/);
+  assert.match(packet, /## Staged Files\n- none/);
+  assert.match(packet, /## Commits Ahead Of origin\/main\n- none/);
+  assert.match(packet, /--worktree is required\./);
+  assert.doesNotMatch(packet, /git diff --check failed/);
+});
+
+test("proposal loop guard review rejects nonexistent tmp worktree before git inspection", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-nonexistent-worktree-");
+  const missingWorktree = path.join(os.tmpdir(), "proposal-loop-guard-missing-worktree", String(Date.now()));
+  const report = inspectProposalGuardRepo(fixture, { worktree: missingWorktree });
+  const packet = proposalLoopGuard.formatReviewPacket(report);
+
+  assert.equal(report.accepted, false);
+  assert.deepEqual(report.trackedChangedFiles, []);
+  assert.deepEqual(report.untrackedFiles, []);
+  assert.deepEqual(report.stagedFiles, []);
+  assert.deepEqual(report.commitsAhead, []);
+  assert.match(packet, /Decision: rejected/);
+  assert.match(packet, /## Tracked Changed Files\n- none/);
+  assert.match(packet, /## Untracked Files\n- none/);
+  assert.match(packet, /## Staged Files\n- none/);
+  assert.match(packet, /## Commits Ahead Of origin\/main\n- none/);
+  assert.match(packet, /--worktree does not exist\./);
+  assert.doesNotMatch(packet, /git diff --check failed/);
+});
+
+test("proposal loop guard review rejects non-Git tmp directory before diff inspection", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-non-git-worktree-");
+  const nonGitDir = fs.mkdtempSync(path.join(os.tmpdir(), "proposal-loop-guard-non-git-"));
+  const report = inspectProposalGuardRepo(fixture, { worktree: nonGitDir });
+  const packet = proposalLoopGuard.formatReviewPacket(report);
+
+  assert.equal(report.accepted, false);
+  assert.deepEqual(report.trackedChangedFiles, []);
+  assert.deepEqual(report.untrackedFiles, []);
+  assert.deepEqual(report.stagedFiles, []);
+  assert.deepEqual(report.commitsAhead, []);
+  assert.match(packet, /Decision: rejected/);
+  assert.match(packet, /## Tracked Changed Files\n- none/);
+  assert.match(packet, /## Untracked Files\n- none/);
+  assert.match(packet, /## Staged Files\n- none/);
+  assert.match(packet, /## Commits Ahead Of origin\/main\n- none/);
+  assert.match(packet, /--worktree must be a Git worktree\./);
+  assert.doesNotMatch(packet, /git diff --check failed/);
+});
+
+test("proposal loop guard review accepts valid Git tmp worktree with allowed diff", () => {
   const fixture = createProposalGuardRepo("proposal-loop-guard-accept-");
   writeTestFile(fixture.worktree, "scripts/package-run-capture-gap.js", "allowed change\n");
 
@@ -151,7 +210,7 @@ test("proposal loop guard accepts clean allowed tracked diff", () => {
   assert.equal(report.changedFilesWithinAllowedScope, true);
 });
 
-test("proposal loop guard rejects forbidden package-runs file scope", () => {
+test("proposal loop guard review rejects valid Git tmp worktree with forbidden file scope", () => {
   const fixture = createProposalGuardRepo("proposal-loop-guard-forbidden-");
   writeTestFile(fixture.worktree, "package-runs/2026-05-02-topic/notes.md", "forbidden change\n");
 
