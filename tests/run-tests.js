@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const childProcess = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -33,6 +34,7 @@ const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashbo
 const packageEngineServer = require("../package-engine-server.js");
 const packageRunsDashboard = require("../package-runs-dashboard.js");
 const episodeFactoryCli = require("../scripts/episode-factory.js");
+const proposalLoopGuard = require("../scripts/proposal-loop-guard.js");
 const trailerCueGenerator = require("../trailer-cue-generator.js");
 const trailerCueScript = require("../scripts/trailer-cue-new.js");
 
@@ -71,6 +73,156 @@ function createMemoryStorage() {
     },
   };
 }
+
+function runGitCommand(repoDir, args) {
+  return childProcess.execFileSync("git", args, {
+    cwd: repoDir,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
+function writeTestFile(rootDir, relativePath, content) {
+  const filePath = path.join(rootDir, relativePath);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content, "utf8");
+}
+
+function createProposalGuardRepo(prefix = "proposal-loop-guard-") {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  const originDir = path.join(tempRoot, "origin.git");
+  const worktree = path.join(tempRoot, "worktree");
+  const realRepo = path.join(tempRoot, "real-repo");
+
+  fs.mkdirSync(worktree);
+  fs.mkdirSync(realRepo);
+  runGitCommand(worktree, ["init", "-b", "main"]);
+  runGitCommand(worktree, ["config", "user.email", "test@example.invalid"]);
+  runGitCommand(worktree, ["config", "user.name", "Test User"]);
+  writeTestFile(worktree, "scripts/package-run-capture-gap.js", "baseline\n");
+  writeTestFile(worktree, "tests/run-tests.js", "baseline\n");
+  writeTestFile(worktree, "package-runs/2026-05-02-topic/notes.md", "baseline\n");
+  runGitCommand(worktree, ["add", "."]);
+  runGitCommand(worktree, ["commit", "-m", "baseline"]);
+  runGitCommand(tempRoot, ["init", "--bare", originDir]);
+  runGitCommand(worktree, ["remote", "add", "origin", originDir]);
+  runGitCommand(worktree, ["push", "-u", "origin", "main"]);
+
+  return { tempRoot, originDir, realRepo, worktree };
+}
+
+function inspectProposalGuardRepo(fixture, options = {}) {
+  return proposalLoopGuard.inspectWorktree({
+    repo: options.repo || fixture.realRepo,
+    worktree: options.worktree || fixture.worktree,
+    allowed: options.allowed || ["scripts/package-run-capture-gap.js", "tests/run-tests.js"],
+    patch: options.patch || "",
+  });
+}
+
+test("proposal loop guard accepts clean allowed tracked diff", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-accept-");
+  writeTestFile(fixture.worktree, "scripts/package-run-capture-gap.js", "allowed change\n");
+
+  const report = inspectProposalGuardRepo(fixture);
+
+  assert.equal(report.accepted, true);
+  assert.deepEqual(report.trackedChangedFiles, ["scripts/package-run-capture-gap.js"]);
+  assert.deepEqual(report.untrackedFiles, []);
+  assert.deepEqual(report.stagedFiles, []);
+  assert.deepEqual(report.commitsAhead, []);
+  assert.equal(report.changedFilesWithinAllowedScope, true);
+});
+
+test("proposal loop guard rejects forbidden package-runs file scope", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-forbidden-");
+  writeTestFile(fixture.worktree, "package-runs/2026-05-02-topic/notes.md", "forbidden change\n");
+
+  const report = inspectProposalGuardRepo(fixture);
+
+  assert.equal(report.accepted, false);
+  assert.deepEqual(report.trackedChangedFiles, ["package-runs/2026-05-02-topic/notes.md"]);
+  assert.match(report.failures.join("\n"), /outside allowed scope/);
+});
+
+test("proposal loop guard rejects staged files", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-staged-");
+  writeTestFile(fixture.worktree, "scripts/package-run-capture-gap.js", "staged change\n");
+  runGitCommand(fixture.worktree, ["add", "scripts/package-run-capture-gap.js"]);
+
+  const report = inspectProposalGuardRepo(fixture);
+
+  assert.equal(report.accepted, false);
+  assert.deepEqual(report.stagedFiles, ["scripts/package-run-capture-gap.js"]);
+  assert.match(report.failures.join("\n"), /Staged files exist/);
+});
+
+test("proposal loop guard rejects untracked files", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-untracked-");
+  writeTestFile(fixture.worktree, "scratch.md", "untracked\n");
+
+  const report = inspectProposalGuardRepo(fixture);
+
+  assert.equal(report.accepted, false);
+  assert.deepEqual(report.untrackedFiles, ["scratch.md"]);
+  assert.match(report.failures.join("\n"), /Untracked files exist/);
+});
+
+test("proposal loop guard rejects commits ahead", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-ahead-");
+  writeTestFile(fixture.worktree, "scripts/package-run-capture-gap.js", "committed change\n");
+  runGitCommand(fixture.worktree, ["add", "scripts/package-run-capture-gap.js"]);
+  runGitCommand(fixture.worktree, ["commit", "-m", "ahead"]);
+
+  const report = inspectProposalGuardRepo(fixture);
+
+  assert.equal(report.accepted, false);
+  assert.equal(report.commitsAhead.length, 1);
+  assert.match(report.commitsAhead[0], /ahead/);
+  assert.match(report.failures.join("\n"), /Commits ahead of origin\/main exist/);
+});
+
+test("proposal loop guard rejects worktree outside /tmp", () => {
+  const report = proposalLoopGuard.inspectWorktree({
+    repo: "/tmp/proposal-loop-guard-real",
+    worktree: "/home/vidtoolz/vidtoolz-episode-factory",
+    allowed: ["scripts/package-run-capture-gap.js"],
+  });
+
+  assert.equal(report.accepted, false);
+  assert.match(report.failures.join("\n"), /must be under \/tmp/);
+});
+
+test("proposal loop guard rejects worktree equal to or inside real repo", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-real-scope-");
+  const equalReport = inspectProposalGuardRepo(fixture, {
+    repo: fixture.worktree,
+    worktree: fixture.worktree,
+  });
+  const insideReport = inspectProposalGuardRepo(fixture, {
+    repo: fixture.worktree,
+    worktree: path.join(fixture.worktree, "nested-clone"),
+  });
+
+  assert.equal(equalReport.accepted, false);
+  assert.equal(insideReport.accepted, false);
+  assert.match(equalReport.failures.join("\n"), /must not equal the real repo/);
+  assert.match(insideReport.failures.join("\n"), /must not equal the real repo/);
+});
+
+test("proposal loop guard exports rejected patch with rejected patch naming", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-rejected-patch-");
+  const requestedPatch = path.join(fixture.tempRoot, "proposal.patch");
+  writeTestFile(fixture.worktree, "package-runs/2026-05-02-topic/notes.md", "forbidden patch\n");
+
+  const report = inspectProposalGuardRepo(fixture, { patch: requestedPatch });
+
+  assert.equal(report.accepted, false);
+  assert.equal(report.patchPath, path.join(fixture.tempRoot, "proposal.rejected.patch"));
+  assert.equal(fs.existsSync(requestedPatch), false);
+  assert.equal(fs.existsSync(report.patchPath), true);
+  assert.match(fs.readFileSync(report.patchPath, "utf8"), /package-runs\/2026-05-02-topic\/notes\.md/);
+});
 
 test("creates a normalized episode with required defaults", () => {
   const episode = model.createEpisode({ workingTitle: "Test episode" });
