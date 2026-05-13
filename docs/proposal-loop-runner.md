@@ -4,6 +4,8 @@
 
 Use it for review-only proposal loops. The runner creates a disposable clone under `/tmp`, writes the task to a `/tmp` task file, writes a small run manifest under `/tmp`, checks the Codex command boundary, and prints the commands needed for review.
 
+For narrow documentation proposals, set `--allowed` to the exact documentation file or files that may change. Keep the task text explicit that package-runs, scripts, app files, git metadata, staging, and commits are out of scope.
+
 ## Safety Rules
 
 - All Codex work must happen only inside the disposable `/tmp` clone.
@@ -43,7 +45,7 @@ Safe dry-run example:
 ```bash
 node scripts/proposal-loop-runner.js \
   --repo /home/vidtoolz/vidtoolz-episode-factory \
-  --name runner-doc-review \
+  --name runner-doc-only-review \
   --allowed "docs/proposal-loop-runner.md" \
   --task "Update docs/proposal-loop-runner.md only. Do not edit package-runs, scripts, app files, git metadata, or any other file. Do not commit. Do not stage. Do not run destructive commands."
 ```
@@ -65,9 +67,9 @@ Safe `--run-codex` example:
 ```bash
 node scripts/proposal-loop-runner.js \
   --repo /home/vidtoolz/vidtoolz-episode-factory \
-  --name runner-doc-proposal \
-  --allowed "docs/proposal-loop-runner.md,README.md" \
-  --task "Update docs/proposal-loop-runner.md and README.md only. Do not edit package-runs, scripts, app files, git metadata, or any other file. Do not commit. Do not stage. Do not run destructive commands." \
+  --name runner-doc-only-proposal \
+  --allowed "docs/proposal-loop-runner.md" \
+  --task "Update docs/proposal-loop-runner.md only. Do not edit package-runs, scripts, app files, git metadata, or any other file. Do not commit. Do not stage. Do not run destructive commands." \
   --run-codex
 ```
 
@@ -99,9 +101,9 @@ git status --short --branch
 sed -n '1,260p' /tmp/vidtoolz-proposal-loop-<name>.patch
 git apply --check /tmp/vidtoolz-proposal-loop-<name>.patch
 git apply /tmp/vidtoolz-proposal-loop-<name>.patch
-git diff --stat -- docs/proposal-loop-runner.md README.md
-git diff --name-only -- docs/proposal-loop-runner.md README.md
-git diff --check -- docs/proposal-loop-runner.md README.md
+git diff --stat -- docs/proposal-loop-runner.md
+git diff --name-only -- docs/proposal-loop-runner.md
+git diff --check -- docs/proposal-loop-runner.md
 ./scripts/verify.sh
 git status --short --branch
 ```
