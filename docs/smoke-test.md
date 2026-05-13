@@ -8,6 +8,27 @@ Automated verification:
 ./scripts/verify.sh
 ```
 
+## Optional Headless Browser Smoke
+
+For deeper local browser workflow coverage, run:
+
+```sh
+node scripts/browser-workflow-smoke.js
+```
+
+This optional manual smoke tool starts a local Episode Factory server on
+`127.0.0.1`, launches Chrome or Chromium through the Chrome DevTools Protocol,
+and checks active-session completion, readiness persistence, JSON export, JSON
+import preview/merge-update, and safety assertions.
+
+It uses a temporary Chrome profile and temporary files under the OS temp
+directory. It does not touch `package-runs/`, call external APIs, update Hermes
+or project state, create scheduled jobs, approve production, or mark package
+runs ready to shoot.
+
+Set `CHROME_BIN=/path/to/chrome` if Chrome or Chromium is not available on
+`PATH`. This smoke tool is not part of `./scripts/verify.sh`.
+
 ## Setup
 
 - Start the local server from the project root:

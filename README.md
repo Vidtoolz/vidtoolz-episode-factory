@@ -610,6 +610,8 @@ This runs dependency-free model tests and JavaScript syntax checks.
 ## Smoke Test
 
 After automated verification, run the manual browser checklist in [docs/smoke-test.md](docs/smoke-test.md).
+For optional headless browser coverage, use `node scripts/browser-workflow-smoke.js`;
+it is documented in the smoke-test guide and is not part of `./scripts/verify.sh`.
 
 High-level browser checks:
 
