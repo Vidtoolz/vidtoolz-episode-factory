@@ -675,6 +675,7 @@ High-level browser checks:
 - `docs/package-runs-dashboard-workflow.md` documents the Package Runs dashboard workflow.
 - `docs/trailer-cue-generator.md` documents the Trailer Cue Generator workflow and limits.
 - `docs/trailer-cue-validation-workflow.md` documents the manual real-world trailer cue validation pass.
+- `docs/proposal-loop-runner.md` documents safe review-only Hermes/Codex proposal loops.
 - `docs/packaging-gate.md` documents the gate criteria.
 - `docs/creator-qa-export.md` documents the Creator QA export mapping.
 
