@@ -18,6 +18,7 @@ const packageProductionPlanScript = require("../scripts/package-run-production-p
 const packageShotEditPlanReviewScript = require("../scripts/package-run-shot-edit-plan-review.js");
 const packageCaptureChecklistScript = require("../scripts/package-run-capture-checklist.js");
 const packageCaptureEvidenceReviewScript = require("../scripts/package-run-capture-evidence-review.js");
+const packageCaptureGapScript = require("../scripts/package-run-capture-gap.js");
 const packageRoughCutReviewScript = require("../scripts/package-run-rough-cut-review.js");
 const packageFinalReviewScript = require("../scripts/package-run-final-review.js");
 const packageRepurposeScript = require("../scripts/package-run-repurpose.js");
@@ -7465,6 +7466,64 @@ test("package run doctor reports capture evidence gate fields", () => {
   assert.equal(report.conservativeBlockedActions.includes("upload"), true);
 });
 
+test("capture gap reporter is read-only and separates approval-required capture actions", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-gap-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-gap");
+  writeCaptureEvidenceFixture(runDir, {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Capture Gap" } }),
+    "final-script.md": "# Final Script\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "shot-edit-plan-review.md": "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n",
+    "capture-evidence-review.md":
+      "# Capture Evidence Review\n\n- Review status: READY FOR HUMAN APPROVAL\n- Capture evidence accepted: no\n- Real capture evidence detected: yes\n",
+  });
+  const before = fs.readdirSync(runDir).sort();
+
+  const report = packageCaptureGapScript.buildCaptureGapReport("package-runs/2026-05-10-capture-gap", { repoRoot: tempRoot });
+  const after = fs.readdirSync(runDir).sort();
+  const text = packageCaptureGapScript.renderText(report);
+
+  assert.deepEqual(after, before);
+  assert.equal(report.reviewOnly, true);
+  assert.equal(report.readOnly, true);
+  assert.equal(report.writesPerformed, false);
+  assert.equal(report.externalApisCalled, false);
+  assert.equal(report.overallStatus, "BLOCKED");
+  assert.equal(report.gaps.some((gap) => gap.area === "capture-approval"), true);
+  assert.equal(report.blockedActions.includes("Hermes brain write"), true);
+  assert.equal(report.blockedActions.includes("project-state promotion"), true);
+  assert.equal(report.approvalRequiredActions.includes("adding capture approval markers"), true);
+  assert.deepEqual(
+    report.safeInspectionCommands.filter((command) => /package-run-capture-evidence-review/.test(command)),
+    []
+  );
+  assert.match(text, /Package Run Capture Gap/);
+  assert.match(text, /Approval-required actions:/);
+});
+
+test("capture gap reporter builds json-ready output and help", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-gap-json-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-gap-json");
+  writeCaptureEvidenceFixture(runDir, {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Capture Gap JSON" } }),
+    "final-script.md": "# Final Script\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "capture-evidence-review.md":
+      "# Capture Evidence Review\n\n- Review status: NEEDS CAPTURE\n- Capture evidence accepted: no\n- Real capture evidence detected: no\n",
+  });
+  const report = packageCaptureGapScript.buildCaptureGapReport("package-runs/2026-05-10-capture-gap-json", { repoRoot: tempRoot });
+  const parsed = JSON.parse(JSON.stringify(report));
+  assert.equal(parsed.runId, "2026-05-10-capture-gap-json");
+  assert.equal(parsed.reviewOnly, true);
+  assert.equal(parsed.writesPerformed, false);
+  assert.deepEqual(packageCaptureGapScript.parseArgs(["package-runs/run", "--json"]), {
+    runDir: "package-runs/run",
+    json: true,
+    help: false,
+  });
+  assert.equal(packageCaptureGapScript.main(["--help"]), 0);
+});
+
 test("package run doctor reports requested pipeline stages and overall status", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-doctor-pipeline-"));
   const runsDir = path.join(tempRoot, "package-runs");
@@ -7821,6 +7880,11 @@ test("package run doctor reports script review blocker after research and struct
 test("verify script checks package run doctor syntax", () => {
   const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
   assert.match(verify, /node --check scripts\/package-run-doctor\.js/);
+});
+
+test("verify script checks package run capture gap syntax", () => {
+  const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
+  assert.match(verify, /node --check scripts\/package-run-capture-gap\.js/);
 });
 
 test("package runs index recommends deterministic next local commands", () => {
