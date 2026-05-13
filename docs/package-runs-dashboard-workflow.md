@@ -58,7 +58,7 @@ Linear, or any episode folder.
 Serve the repo locally:
 
 ```sh
-./scripts/serve-local.sh
+cd /home/vidtoolz/vidtoolz-episode-factory && ./scripts/serve-local.sh
 ```
 
 Then open:
@@ -66,6 +66,153 @@ Then open:
 ```text
 http://localhost:8010/package-runs-dashboard.html
 ```
+
+## Manual Lifecycle Gate Smoke Test
+
+Use this browser path when manually accepting Stage 4 and downstream evidence
+gate behavior. The dashboard is still read-only; it only displays the current
+`package-runs-index.json` state.
+
+1. Regenerate the index:
+
+```sh
+cd /home/vidtoolz/vidtoolz-episode-factory && node scripts/package-runs-index.js
+```
+
+2. Start the local server:
+
+```sh
+cd /home/vidtoolz/vidtoolz-episode-factory && ./scripts/serve-local.sh
+```
+
+3. Open:
+
+```text
+http://localhost:8010/package-runs-dashboard.html
+```
+
+4. Find a run grouped under `Needs shot/edit plan review`, `Needs shot/edit
+plan approval`, `Needs capture`, `Needs export check`, or another blocked
+downstream bucket.
+
+5. On the run card, confirm the `Lifecycle Review` panel shows:
+
+- current inferred stage
+- workflow bucket
+- overall status
+- first blocker
+- next recommended command
+- Stage 4 review status
+- Stage 4 accepted `yes` / `no`
+- Stage 4 next safe action
+- conservative blocked actions
+- missing expected artifacts
+- `Detected but not trusted yet`
+
+6. For a Stage 4 blocked run, confirm the panel labels the Stage 4 status as
+`BLOCKED`, `NEEDS WORK`, or `READY FOR HUMAN APPROVAL`, and shows `Human
+approval required` until the review is `PASS` and `Stage accepted: yes`.
+
+7. For a run with generated downstream artifacts, confirm the panel lists those
+files under `Detected but not trusted yet`, for example:
+
+- `capture-checklist.md` exists but real capture evidence is missing
+- `rough-cut-review.md` exists but capture evidence or real watch notes are
+  missing
+- `final-review.md` exists but upstream physical edit evidence is not proven
+- export artifacts exist but concrete export evidence and approvals are missing
+- archive artifacts exist but publication/export/archive evidence is missing
+
+8. Confirm conservative blocked actions are visible. Blocked downstream states
+must not visually imply upload, publishing, archive, Hermes brain write, or
+project-state promotion are allowed.
+
+9. Confirm the dashboard does not imply capture, edit, export, publication, or
+archive readiness from generated files alone. The current inferred stage should
+stay at the earliest unproven physical production gate.
+
+## Capture Evidence Panel
+
+The lifecycle review area also includes a `Capture Evidence` panel. Use it for
+manual GUI testing after Stage 4 is accepted.
+
+The panel shows:
+
+- capture evidence review status
+- capture evidence accepted `yes` / `no`
+- real capture evidence detected `yes` / `no`
+- missing capture evidence
+- missing shots or open capture blockers
+- next safe action
+- conservative blocked actions from the lifecycle panel
+
+It also includes a `Capture Evidence Intake` form. The form collects
+structured evidence for takes/A-roll, screen recordings, and audio/voiceover,
+then generates exact Markdown rows for `takes-log.md`,
+`screen-recording-checklist.md`, and `audio-capture-checklist.md`. Each row has
+a copy button.
+
+The form also supports a narrow local-only write flow through the existing local
+server:
+
+- The dashboard fetches a per-server local write nonce from
+  `/api/package-engine/status`.
+- Preview and Apply include that nonce and are rejected without it.
+- The server accepts only local `Host` / `Origin` values such as
+  `http://127.0.0.1:8010` or `http://localhost:8010`; missing `Origin` is
+  allowed for intentional curl/local CLI tests.
+- `Preview write` shows the exact Markdown sections before any file changes.
+- `Apply to run files` is disabled until preview succeeds.
+- Apply writes only the marked intake section in the three approved capture
+  files.
+- Apply also writes `capture-evidence-intake-log.md` in the same run folder.
+- Apply never writes `Capture evidence approval: PASS`.
+
+Required real-evidence fields include concrete media references such as local
+filenames, folder paths, take identifiers, or recording names. The form also
+shows an approval marker helper, but approval alone is not proof and must only
+be pasted after human review.
+
+Manual capture smoke test:
+
+1. Start the local server:
+
+```sh
+cd /home/vidtoolz/vidtoolz-episode-factory && node scripts/package-runs-index.js
+cd /home/vidtoolz/vidtoolz-episode-factory && ./scripts/serve-local.sh
+```
+
+2. Open:
+
+```text
+http://127.0.0.1:8010/package-runs-dashboard.html
+```
+
+3. Find a run blocked at `Needs capture`.
+4. Confirm the Capture Evidence panel shows missing real capture evidence.
+5. Confirm generated capture files are marked `Not trusted as proof` or
+   `Missing evidence`.
+6. Open `Capture Evidence Intake`.
+7. Enter concrete evidence references such as `media/take-01-hook.mov`,
+   `recordings/workflow-proof-001.mp4`, and `audio/voiceover-main.wav`.
+8. Click `Preview write`.
+9. Confirm exact Markdown preview is visible and no files changed before Apply.
+10. Click `Apply to run files`.
+11. Confirm only `takes-log.md`, `screen-recording-checklist.md`,
+    `audio-capture-checklist.md`, and `capture-evidence-intake-log.md` changed.
+12. Confirm the wording does not imply applied rows equal approved proof.
+13. Run:
+
+```sh
+cd /home/vidtoolz/vidtoolz-episode-factory && node scripts/package-run-capture-evidence-review.js package-runs/YYYY-MM-DD-topic-slug --overwrite
+cd /home/vidtoolz/vidtoolz-episode-factory && node scripts/package-runs-index.js
+```
+
+14. Refresh the dashboard. Real evidence can move the review to `READY FOR HUMAN
+APPROVAL`, but rough-cut readiness still requires exact human approval.
+15. Confirm the next safe action remains conservative and the dashboard does
+not imply rough-cut, export, publish, or archive
+readiness prematurely.
 
 ## Detected Files
 
@@ -82,11 +229,14 @@ script-structure.md
 final-script.md
 production-plan.md
 production-blockers.md
+shot-edit-plan-review.md
+shot-edit-plan-enhancement-plan.md
 capture-checklist.md
 takes-log.md
 missing-shot-tracker.md
 screen-recording-checklist.md
 audio-capture-checklist.md
+capture-evidence-review.md
 rough-cut-watch-notes.md
 rough-cut-review.md
 pickup-list.md

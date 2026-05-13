@@ -15,7 +15,9 @@ const packageResearchEvidenceScript = require("../scripts/package-run-research-e
 const packageScriptStructureScript = require("../scripts/package-run-script-structure.js");
 const packageScriptReviewScript = require("../scripts/package-run-script-review.js");
 const packageProductionPlanScript = require("../scripts/package-run-production-plan.js");
+const packageShotEditPlanReviewScript = require("../scripts/package-run-shot-edit-plan-review.js");
 const packageCaptureChecklistScript = require("../scripts/package-run-capture-checklist.js");
+const packageCaptureEvidenceReviewScript = require("../scripts/package-run-capture-evidence-review.js");
 const packageRoughCutReviewScript = require("../scripts/package-run-rough-cut-review.js");
 const packageFinalReviewScript = require("../scripts/package-run-final-review.js");
 const packageRepurposeScript = require("../scripts/package-run-repurpose.js");
@@ -214,6 +216,57 @@ test("partial readiness scoring is percentage based", () => {
 
   assert.equal(model.getReadinessScores(episode).packaging, 25);
   assert.ok(model.getReadinessScores(episode).overall < 100);
+});
+
+test("checklist toggle state persists and readiness recalculates after storage reload", () => {
+  const memoryStorage = createMemoryStorage();
+  const options = { storage: memoryStorage, model };
+  const episode = model.normalizeEpisode({ id: "readiness-persist", workingTitle: "Readiness Persist" });
+  const beforeScores = model.getReadinessScores(episode);
+  const productionGroup = model.normalizeChecklistGroup(
+    "productionChecklist",
+    episode.checklists.productionChecklist
+  );
+  const toggledGroup = productionGroup.map((item, index) =>
+    index === 0 ? { ...item, passed: true } : item
+  );
+  const toggledEpisode = model.normalizeEpisode({
+    ...episode,
+    checklists: {
+      ...episode.checklists,
+      productionChecklist: model.checklistToObject(toggledGroup),
+    },
+  });
+
+  storage.saveState({ selectedId: toggledEpisode.id, episodes: [toggledEpisode] }, options);
+  const reloadedToggled = storage.loadState(options).episodes[0];
+  const afterScores = model.getReadinessScores(reloadedToggled);
+
+  assert.equal(beforeScores.production, 0);
+  assert.equal(reloadedToggled.checklists.productionChecklist["Screen recording plan is clear"].passed, true);
+  assert.equal(afterScores.production, 5);
+  assert.notEqual(afterScores.overall, beforeScores.overall);
+
+  const restoredGroup = model.normalizeChecklistGroup(
+    "productionChecklist",
+    reloadedToggled.checklists.productionChecklist
+  ).map((item) =>
+    item.label === "Screen recording plan is clear" ? { ...item, passed: false } : item
+  );
+  const restoredEpisode = model.normalizeEpisode({
+    ...reloadedToggled,
+    checklists: {
+      ...reloadedToggled.checklists,
+      productionChecklist: model.checklistToObject(restoredGroup),
+    },
+  });
+  storage.saveState({ selectedId: restoredEpisode.id, episodes: [restoredEpisode] }, options);
+  const reloadedRestored = storage.loadState(options).episodes[0];
+  const restoredScores = model.getReadinessScores(reloadedRestored);
+
+  assert.equal(reloadedRestored.checklists.productionChecklist["Screen recording plan is clear"].passed, false);
+  assert.equal(restoredScores.production, beforeScores.production);
+  assert.equal(restoredScores.overall, beforeScores.overall);
 });
 
 test("duplication preserves structured checklist state while resetting status", () => {
@@ -1112,6 +1165,41 @@ test("completing an active session can become a work session with elapsed minute
   assert.equal(updated.workSessions[0].startedAt, "1970-01-01T00:00:00.000Z");
 });
 
+test("completed active session persists in history and clears the active draft", () => {
+  const memoryStorage = createMemoryStorage();
+  const options = { storage: memoryStorage, model };
+  const episode = model.normalizeEpisode({ id: "session-persist", workingTitle: "Session Persist" });
+  const state = model.normalizeState({ selectedId: episode.id, episodes: [episode] });
+  const task = model.generateNextActionTask(episode);
+  const active = model.startActiveSession(task, 0);
+
+  storage.saveState(state, options);
+  storage.saveActiveSession(active, options);
+  const loadedActive = storage.loadActiveSession(options);
+  const completion = model.buildCompletionDataFromActiveSession(
+    loadedActive,
+    {
+      result: "Completed persisted active work.",
+      nextActionAfterSession: "Review persisted session history.",
+    },
+    61000
+  );
+  const completedEpisode = model.addWorkSession(episode, completion);
+  storage.saveState({ selectedId: completedEpisode.id, episodes: [completedEpisode] }, options);
+  storage.saveActiveSession(null, options);
+
+  const reloadedState = storage.loadState(options);
+  const reloadedActive = storage.loadActiveSession(options);
+  const reloadedEpisode = reloadedState.episodes[0];
+
+  assert.equal(reloadedActive, null);
+  assert.equal(reloadedEpisode.workSessions.length, 1);
+  assert.equal(reloadedEpisode.workSessions[0].taskTitle, task.taskTitle);
+  assert.equal(reloadedEpisode.workSessions[0].taskType, task.type);
+  assert.equal(reloadedEpisode.workSessions[0].result, "Completed persisted active work.");
+  assert.equal(reloadedEpisode.nextAction, "Review persisted session history.");
+});
+
 test("active session progress percentage is capped against estimated minutes", () => {
   const task = {
     id: "task-progress",
@@ -1628,6 +1716,48 @@ test("merge and update matching episodes adds new episodes and updates same-id s
   assert.equal(result.episodes.find((episode) => episode.id === "same").notes, "updated");
   assert.equal(result.episodes.find((episode) => episode.id === "conflict").notes, "keep");
   assert.equal(result.episodes.find((episode) => episode.id === "new").workingTitle, "New");
+});
+
+test("merge and update import commit persists updates additions and unrelated episodes after reload", () => {
+  const memoryStorage = createMemoryStorage();
+  const options = { storage: memoryStorage, model };
+  const current = model.normalizeState({
+    selectedId: "same",
+    episodes: [
+      model.normalizeEpisode({ id: "same", workingTitle: "Same", notes: "old" }),
+      model.normalizeEpisode({ id: "unrelated", workingTitle: "Unrelated", notes: "preserve" }),
+    ],
+  });
+  const importedEpisode = model.normalizeEpisode({
+    id: "same",
+    workingTitle: "Same",
+    notes: "updated",
+    workSessions: [{ id: "imported-session", taskTitle: "Imported task", result: "Done" }],
+  });
+  const importedJson = model.exportEpisodeCollectionJson({
+    selectedId: "new",
+    episodes: [
+      importedEpisode,
+      model.normalizeEpisode({ id: "new", workingTitle: "New", notes: "added" }),
+    ],
+  });
+
+  storage.saveState(current, options);
+  const parsedImport = model.importEpisodeCollectionJson(importedJson);
+  assert.equal(parsedImport.ok, true);
+  const preview = model.buildImportPreview(storage.loadState(options), parsedImport.state);
+  const committed = model.applyMergeAndUpdateImport(storage.loadState(options), parsedImport.state);
+  storage.saveState(committed, options);
+  const reloaded = storage.loadState(options);
+
+  assert.equal(preview.counts.changedMatchingEpisodes, 1);
+  assert.equal(preview.counts.newEpisodes, 1);
+  assert.equal(reloaded.episodes.length, 3);
+  assert.equal(reloaded.episodes.filter((episode) => episode.id === "same").length, 1);
+  assert.equal(reloaded.episodes.find((episode) => episode.id === "same").notes, "updated");
+  assert.equal(reloaded.episodes.find((episode) => episode.id === "same").workSessions[0].taskTitle, "Imported task");
+  assert.equal(reloaded.episodes.find((episode) => episode.id === "unrelated").notes, "preserve");
+  assert.equal(reloaded.episodes.find((episode) => episode.id === "new").notes, "added");
 });
 
 test("same-id same-title imports are matching episodes", () => {
@@ -2824,6 +2954,211 @@ test("verify script checks production planner syntax", () => {
   const verify = fs.readFileSync(verifyPath, "utf8");
 
   assert.match(verify, /node --check scripts\/package-run-production-plan\.js/);
+});
+
+function writeConcreteStage4Planning(runDir, options = {}) {
+  fs.writeFileSync(
+    path.join(runDir, "production-plan.md"),
+    [
+      "# Production Plan",
+      "",
+      "- Shoot-readiness status: READY TO SHOOT",
+      "- Production planning ready from review: yes",
+      options.approval ? "- Shot/edit plan approval: PASS" : "",
+      "",
+      "## Production Goal",
+      "",
+      "- Capture the approved hook, proof workflow, and conclusion from the final script.",
+      "",
+    ].join("\n"),
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "shot-list.md"),
+    "# Shot List\n\n| shot | reason | priority | status |\n| --- | --- | --- | --- |\n| Hook A-roll | Opens the approved script and frames the viewer problem. | high | ready |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "screen-capture-list.md"),
+    "# Screen Capture List\n\n| capture | proof purpose | source/app | status |\n| --- | --- | --- | --- |\n| Package comparison screen | Shows the selected package and rejected generic option. | local browser | ready |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "demo-list.md"),
+    "# Demo List\n\n| demo | what it proves | setup needed | status |\n| --- | --- | --- | --- |\n| Run the idea filter | Shows the workflow boundary. | local notes and browser tab | ready |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "b-roll-list.md"),
+    "# B-Roll List\n\n| b-roll item | reason | source | status |\n| --- | --- | --- | --- |\n| Timeline overview | Adds pacing between proof beats. | Resolve project | ready |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "graphics-list.md"),
+    "# Graphics List\n\n| graphic | clarity purpose | source/input | status |\n| --- | --- | --- | --- |\n| Decision boundary card | Names human-owned decisions. | final script | ready |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "audio-notes.md"),
+    "# Audio Notes\n\n## Voiceover Notes\n\n- Record the approved final script with clean room tone and mark retakes by section.\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "production-blockers.md"),
+    "# Production Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Required gates are satisfied. | Keep evidence attached to the run. | closed |\n",
+    "utf8"
+  );
+}
+
+function stage4ReviewText(runDir) {
+  return fs.readFileSync(path.join(runDir, "shot-edit-plan-review.md"), "utf8");
+}
+
+test("shot/edit plan review help works", () => {
+  const output = captureConsole(() => packageShotEditPlanReviewScript.main(["--help"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /package-run-shot-edit-plan-review\.js/);
+});
+
+test("shot/edit plan review missing upstream files cannot produce PASS", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-missing-upstream-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-missing-upstream");
+  writeProductionPlannerBaseRun(runDir, { script: false });
+  writeConcreteStage4Planning(runDir, { approval: true });
+
+  assert.equal(packageShotEditPlanReviewScript.main([runDir]), 0);
+  const review = stage4ReviewText(runDir);
+
+  assert.match(review, /Review status: BLOCKED/);
+  assert.match(review, /Stage accepted: no/);
+  assert.match(review, /final-script\.md is missing/);
+  assert.doesNotMatch(review, /Review status: PASS/);
+});
+
+test("shot/edit plan review missing planning files cannot produce PASS", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-missing-planning-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-missing-planning");
+  writeProductionPlannerBaseRun(runDir);
+  writeConcreteStage4Planning(runDir, { approval: true });
+  fs.unlinkSync(path.join(runDir, "shot-list.md"));
+
+  assert.equal(packageShotEditPlanReviewScript.main([runDir]), 0);
+  const review = stage4ReviewText(runDir);
+
+  assert.match(review, /Review status: NEEDS WORK/);
+  assert.match(review, /Stage accepted: no/);
+  assert.match(review, /shot-list\.md is missing/);
+  assert.doesNotMatch(review, /Review status: PASS/);
+});
+
+test("shot/edit plan review placeholder-only planning files cannot produce PASS", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-placeholder-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-placeholder");
+  writeProductionPlannerBaseRun(runDir);
+  writeConcreteStage4Planning(runDir, { approval: true });
+  fs.writeFileSync(path.join(runDir, "demo-list.md"), "# Demo List\n\nTODO\n", "utf8");
+
+  assert.equal(packageShotEditPlanReviewScript.main([runDir]), 0);
+  const review = stage4ReviewText(runDir);
+
+  assert.match(review, /Review status: NEEDS WORK/);
+  assert.match(review, /demo-list\.md is placeholder-only or too thin/);
+  assert.doesNotMatch(review, /Stage accepted: yes/);
+});
+
+test("shot/edit plan review preserves manually edited planning artifacts", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-preserve-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-preserve");
+  writeProductionPlannerBaseRun(runDir);
+  writeConcreteStage4Planning(runDir);
+  const before = Object.fromEntries(
+    packageShotEditPlanReviewScript.PLANNING_FILES.map((filename) => [filename, fs.readFileSync(path.join(runDir, filename), "utf8")])
+  );
+
+  assert.equal(packageShotEditPlanReviewScript.main([runDir]), 0);
+
+  packageShotEditPlanReviewScript.PLANNING_FILES.forEach((filename) => {
+    assert.equal(fs.readFileSync(path.join(runDir, filename), "utf8"), before[filename]);
+  });
+});
+
+test("shot/edit plan review requires exact manual approval marker for accepted stage", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-approval-"));
+  const readyDir = path.join(tempRoot, "package-runs", "2026-05-10-ready");
+  const passDir = path.join(tempRoot, "package-runs", "2026-05-10-pass");
+  writeProductionPlannerBaseRun(readyDir);
+  writeConcreteStage4Planning(readyDir, { approval: false });
+  writeProductionPlannerBaseRun(passDir);
+  writeConcreteStage4Planning(passDir, { approval: true });
+
+  assert.equal(packageShotEditPlanReviewScript.main([readyDir]), 0);
+  assert.equal(packageShotEditPlanReviewScript.main([passDir]), 0);
+
+  assert.match(stage4ReviewText(readyDir), /Review status: READY FOR HUMAN APPROVAL/);
+  assert.match(stage4ReviewText(readyDir), /Stage accepted: no/);
+  assert.match(stage4ReviewText(passDir), /Review status: PASS/);
+  assert.match(stage4ReviewText(passDir), /Stage accepted: yes/);
+});
+
+test("shot/edit plan review ignores upstream manual approval markers for stage acceptance", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-upstream-approval-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-upstream-approval");
+  writeProductionPlannerBaseRun(runDir, { structureManualApproval: true });
+  writeConcreteStage4Planning(runDir, { approval: false });
+
+  assert.equal(packageShotEditPlanReviewScript.main([runDir]), 0);
+  const review = stage4ReviewText(runDir);
+
+  assert.match(review, /Review status: READY FOR HUMAN APPROVAL/);
+  assert.match(review, /Stage accepted: no/);
+  assert.match(review, /Manual approval marker detected: no/);
+  assert.doesNotMatch(review, /Review status: PASS/);
+});
+
+test("shot/edit plan review json returns machine-readable status", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-json-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-json");
+  writeProductionPlannerBaseRun(runDir);
+  writeConcreteStage4Planning(runDir);
+
+  const output = captureConsole(() => packageShotEditPlanReviewScript.main([runDir, "--json"]));
+  const payload = JSON.parse(output.stdout.join("\n"));
+
+  assert.equal(output.result, 0);
+  assert.equal(payload.stage, "script-to-shot-edit-plan");
+  assert.equal(payload.externalApisCalled, false);
+  assert.equal(payload.reviewStatus, "READY FOR HUMAN APPROVAL");
+  assert.equal(payload.stageAccepted, false);
+});
+
+test("shot/edit plan review writes only review and enhancement artifacts", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-write-scope-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-write-scope");
+  writeProductionPlannerBaseRun(runDir);
+  writeConcreteStage4Planning(runDir);
+  const beforeFiles = new Set(fs.readdirSync(runDir));
+
+  assert.equal(packageShotEditPlanReviewScript.main([runDir]), 0);
+
+  const afterFiles = fs.readdirSync(runDir);
+  const added = afterFiles.filter((filename) => !beforeFiles.has(filename)).sort();
+  assert.deepEqual(added, ["shot-edit-plan-enhancement-plan.md", "shot-edit-plan-review.md"]);
+});
+
+test("shot/edit plan review introduces no external API behavior", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "scripts", "package-run-shot-edit-plan-review.js"), "utf8");
+
+  assert.doesNotMatch(source, /require\(["']node:https?["']\)/);
+  assert.doesNotMatch(source, /\bfetch\s*\(/);
+  assert.doesNotMatch(source, /External APIs called: yes/);
+});
+
+test("verify script checks shot/edit plan review syntax", () => {
+  const verifyPath = path.join(__dirname, "..", "scripts", "verify.sh");
+  const verify = fs.readFileSync(verifyPath, "utf8");
+
+  assert.match(verify, /node --check scripts\/package-run-shot-edit-plan-review\.js/);
 });
 
 function writeRoughCutBaseRun(runDir, options = {}) {
@@ -4984,6 +5319,160 @@ test("verify script checks capture checklist syntax", () => {
   assert.match(verify, /node --check scripts\/package-run-capture-checklist\.js/);
 });
 
+function writeCaptureEvidenceFixture(runDir, extra = {}) {
+  const files = {
+    "shot-edit-plan-review.md": "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n",
+    "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
+    "takes-log.md": "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| Take 01 hook | shot-list.md | media/take-01-hook.mov | Human reviewed usable take. | captured |\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Workflow screen recording | Shows proof workflow. | recordings/workflow-001.mp4 | captured |\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Final script narration. | audio/voiceover.wav | recorded |\n",
+    "missing-shot-tracker.md": "# Missing Shot Tracker\n\n| missing shot/content | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Capture scope reviewed. | No fix needed. | closed |\n",
+    ...extra,
+  };
+  fs.mkdirSync(runDir, { recursive: true });
+  Object.entries(files).forEach(([filename, content]) => fs.writeFileSync(path.join(runDir, filename), content, "utf8"));
+}
+
+test("capture evidence review rejects generated checklist files", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-evidence-generated-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-generated-capture");
+  writeCaptureEvidenceFixture(runDir, {
+    "takes-log.md": "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| Approved hook shot | shot-list.md | Verified in existing capture artifacts. | Generated checklist row. | captured |\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Approved proof screen recording | screen-capture-list.md | Verified in existing capture artifacts. | captured |\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Approved script audio. | Verified in existing capture artifacts. | closed |\n\nCapture evidence approval: PASS\n",
+  });
+
+  const evaluation = packageCaptureEvidenceReviewScript.evaluateCaptureEvidence(runDir);
+
+  assert.equal(evaluation.status, "NEEDS CAPTURE");
+  assert.equal(evaluation.realCaptureEvidence, false);
+  assert.equal(evaluation.captureEvidenceAccepted, false);
+});
+
+test("capture evidence review requires approval after real rows", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-evidence-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-ready-capture");
+  writeCaptureEvidenceFixture(runDir);
+
+  const evaluation = packageCaptureEvidenceReviewScript.evaluateCaptureEvidence(runDir);
+
+  assert.equal(evaluation.status, "READY FOR HUMAN APPROVAL");
+  assert.equal(evaluation.realCaptureEvidence, true);
+  assert.equal(evaluation.approvalMarkerDetected, false);
+  assert.equal(evaluation.captureEvidenceAccepted, false);
+});
+
+test("capture evidence review approval marker alone does not pass", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-evidence-approval-only-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-approval-only");
+  writeCaptureEvidenceFixture(runDir, {
+    "takes-log.md": "# Takes Log\n\nTODO\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n\nTODO\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\nCapture evidence approval: PASS\n",
+  });
+
+  const evaluation = packageCaptureEvidenceReviewScript.evaluateCaptureEvidence(runDir);
+
+  assert.equal(evaluation.status, "NEEDS CAPTURE");
+  assert.equal(evaluation.realCaptureEvidence, false);
+  assert.equal(evaluation.approvalMarkerDetected, false);
+  assert.equal(evaluation.staleApprovalMarkerDetected, true);
+});
+
+test("capture evidence review does not let old approval marker pass newly added evidence", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-evidence-stale-approval-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-stale-approval");
+  writeCaptureEvidenceFixture(runDir, {
+    "capture-checklist.md": "# Capture Checklist\n\nCapture evidence approval: PASS\n\nOld approval before later evidence intake.\n",
+  });
+
+  const evaluation = packageCaptureEvidenceReviewScript.evaluateCaptureEvidence(runDir);
+
+  assert.equal(evaluation.status, "READY FOR HUMAN APPROVAL");
+  assert.equal(evaluation.realCaptureEvidence, true);
+  assert.equal(evaluation.approvalMarkerDetected, false);
+  assert.equal(evaluation.staleApprovalMarkerDetected, true);
+  assert.match(evaluation.findings.join("\n"), /approval marker must appear after the concrete take, screen, and audio evidence/i);
+});
+
+test("capture evidence review approval plus take evidence only does not pass", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-evidence-take-only-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-take-only");
+  writeCaptureEvidenceFixture(runDir, {
+    "capture-checklist.md": "# Capture Checklist\n\nCapture evidence approval: PASS\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n\nTODO\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\nTODO\n",
+  });
+
+  const evaluation = packageCaptureEvidenceReviewScript.evaluateCaptureEvidence(runDir);
+
+  assert.equal(evaluation.status, "NEEDS CAPTURE");
+  assert.equal(evaluation.realCaptureEvidence, false);
+  assert.equal(evaluation.screenRecordingsIdentified, false);
+  assert.equal(evaluation.audioCapturesIdentified, false);
+  assert.equal(evaluation.captureEvidenceAccepted, false);
+});
+
+test("capture evidence review approval plus take and screen without audio does not pass", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-evidence-no-audio-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-no-audio");
+  writeCaptureEvidenceFixture(runDir, {
+    "capture-checklist.md": "# Capture Checklist\n\nCapture evidence approval: PASS\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Audio proof screenshot | audio capture proof image only | screenshot.png | recorded |\n",
+  });
+
+  const evaluation = packageCaptureEvidenceReviewScript.evaluateCaptureEvidence(runDir);
+
+  assert.equal(evaluation.status, "NEEDS CAPTURE");
+  assert.equal(evaluation.realCaptureEvidence, false);
+  assert.equal(evaluation.screenRecordingsIdentified, true);
+  assert.equal(evaluation.audioCapturesIdentified, false);
+  assert.equal(evaluation.captureEvidenceAccepted, false);
+});
+
+test("capture evidence review approval plus take and audio without screen does not pass", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-evidence-no-screen-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-no-screen");
+  writeCaptureEvidenceFixture(runDir, {
+    "capture-checklist.md": "# Capture Checklist\n\nCapture evidence approval: PASS\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Placeholder screen | TODO | audio/voiceover.wav | captured |\n",
+  });
+
+  const evaluation = packageCaptureEvidenceReviewScript.evaluateCaptureEvidence(runDir);
+
+  assert.equal(evaluation.status, "NEEDS CAPTURE");
+  assert.equal(evaluation.realCaptureEvidence, false);
+  assert.equal(evaluation.screenRecordingsIdentified, false);
+  assert.equal(evaluation.audioCapturesIdentified, true);
+  assert.equal(evaluation.captureEvidenceAccepted, false);
+});
+
+test("capture evidence review passes real evidence with exact approval", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-evidence-pass-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-pass-capture");
+  writeCaptureEvidenceFixture(runDir, {
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Final script narration. | audio/voiceover.wav | recorded |\n\nCapture evidence approval: PASS\n",
+  });
+
+  const output = captureConsole(() => packageCaptureEvidenceReviewScript.main([runDir]));
+  const review = fs.readFileSync(path.join(runDir, "capture-evidence-review.md"), "utf8");
+
+  assert.equal(output.result, 0);
+  assert.match(review, /Review status: PASS/);
+  assert.match(review, /Capture evidence accepted: yes/);
+  assert.match(review, /External APIs called: no/);
+  assert.doesNotMatch(review, /Take\/camera\/A-roll evidence is missing/i);
+  assert.doesNotMatch(review, /Screen recording evidence is missing/i);
+  assert.doesNotMatch(review, /Audio\/A-roll\/voiceover capture evidence is missing/i);
+});
+
+test("verify script checks capture evidence review syntax", () => {
+  const verifyPath = path.join(__dirname, "..", "scripts", "verify.sh");
+  const verify = fs.readFileSync(verifyPath, "utf8");
+
+  assert.match(verify, /node --check scripts\/package-run-capture-evidence-review\.js/);
+});
+
 test("script prep cli writes local review artifacts and marks partial research as not ready", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-prep-"));
   const repoRunsDir = path.join(tempRoot, "package-runs");
@@ -6184,6 +6673,8 @@ test("package runs index scans package-runs folders and writes index json", () =
     "final-script.md",
     "production-plan.md",
     "production-blockers.md",
+    "shot-edit-plan-review.md",
+    "shot-edit-plan-enhancement-plan.md",
     "capture-checklist.md",
     "takes-log.md",
     "missing-shot-tracker.md",
@@ -6254,6 +6745,8 @@ test("package runs index scans package-runs folders and writes index json", () =
   assert.equal(byRunId["2026-05-02-ready"].files.creator_qa_report_json, true);
   assert.equal(byRunId["2026-05-02-ready"].files.production_plan, true);
   assert.equal(byRunId["2026-05-02-ready"].files.production_blockers, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.shot_edit_plan_review, true);
+  assert.equal(byRunId["2026-05-02-ready"].files.shot_edit_plan_enhancement_plan, true);
   assert.equal(byRunId["2026-05-02-ready"].files.capture_checklist, true);
   assert.equal(byRunId["2026-05-02-ready"].files.takes_log, true);
   assert.equal(byRunId["2026-05-02-ready"].files.missing_shot_tracker, true);
@@ -6326,6 +6819,56 @@ test("package runs index follows lifecycle gates in order", () => {
     };
   }
 
+  const shotEditPlanAccepted = {
+    "shot-edit-plan-review.md": "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n\n## Open Blockers\n\n- None.\n",
+    "shot-edit-plan-enhancement-plan.md": "# Shot/Edit Plan Enhancement Plan\n\n| priority | artifact | issue | suggested repair | reason |\n| --- | --- | --- | --- | --- |\n| low | planning artifacts | No automatic repair suggested. | Keep the accepted planning scope attached. | Accepted. |\n",
+  };
+  const captureEvidence = {
+    "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n\nCapture approval: PASS\n",
+    "takes-log.md": "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| Hook A-roll | shot-list.md | media/hook-a-roll.mov | Clean take reviewed. | captured |\n",
+    "missing-shot-tracker.md": "# Missing Shot Tracker\n\n| missing shot/content | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Capture scope complete. | No fix needed. | closed |\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Workflow proof capture | Shows approved proof workflow. | media/workflow-proof.mp4 | captured |\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Approved script narration. | audio/voiceover.wav | closed |\n\nAudio capture readiness: PASS\n",
+    "capture-evidence-review.md": "# Capture Evidence Review\n\n- Review status: PASS\n- Capture evidence accepted: yes\n- Real capture evidence detected: yes\n",
+  };
+  const roughCutEvidence = {
+    "rough-cut-watch-notes.md":
+      "# Rough-Cut Watch Notes\n\nRough cut file media/rough-cut-v1.mp4 was reviewed in a real viewing pass. Pacing is clear, audio is understandable, visual proof appears in the right section, and no pickup or edit-fix issues remain after review.\n",
+    "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
+    "pickup-list.md": "# Pickup List\n",
+    "edit-fix-list.md": "# Edit Fix List\n",
+  };
+  const finalWatchEvidence = {
+    "final-watch-notes.md":
+      "# Final Watch Notes\n\nFinal export media/final-cut-v1.mp4 reviewed after the completed edit. Viewer promise delivery, opening clarity, pacing, proof, audio, visuals, graphics, title/thumbnail fit, ethical accuracy, and archive readiness were reviewed with no open publication blockers.\n",
+    "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
+    "publication-blockers.md": "# Publication Blockers\n",
+  };
+  const exportEvidence = {
+    "export-checklist.md": "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n\nExport approval: PASS\n",
+    "master-file-manifest.md": "# Master File Manifest\n\nFinal export file: exports/final-master.mp4\nCodec: H.264\nResolution: 3840x2160\nChecksum: recorded locally.\n",
+    "caption-check.md": "# Caption Check\n\nCaptions reviewed against the final export. Timing and spelling are acceptable for upload.\n",
+    "loudness-check.md": "# Loudness Check\n\nIntegrated loudness measured at -14 LUFS on the final master.\n\nMastering approval: PASS\n",
+    "delivery-readiness.md": "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n\nFinal master, captions, loudness, and delivery settings reviewed.\n\nDelivery approval: PASS\n",
+  };
+  const metadataEvidence = {
+    "publish-metadata-review.md":
+      "# Publication Metadata Review\n\n- Publication metadata status: READY TO SCHEDULE\n- Ready to schedule: yes\n\nPublication metadata approval: PASS\n",
+    "title-check.md": "# Title Check\n\nFinal title: AI Video Proof Plan That Survives Real Production Review\nTitle approval recorded after final metadata review.\n",
+    "thumbnail-check.md": "# Thumbnail Check\n\nThumbnail path: thumbnails/final-approved.png\nThumbnail approval recorded after visual inspection.\n",
+    "description-check.md": "# Description Check\n\nDescription includes the final promise, proof context, links, and reviewed upload copy.\n",
+    "chapters-check.md": "# Chapters Check\n\n00:00 Hook\n01:12 Proof workflow\n04:30 Production boundary\n07:10 Final takeaway\n",
+    "schedule-check.md": "# Schedule Check\n\nRelease timing: 2026-05-15 16:00 Europe/Helsinki. Schedule approval recorded.\n",
+  };
+  const archiveEvidence = {
+    "archive-manifest.md": "# Archive Manifest\n\n- Archive manifest status: READY TO ARCHIVE\n- Ready to archive: yes\n\nArchive package includes final export, project file, metadata, captions, and source evidence.\n\nArchive approval: PASS\n",
+    "archive-source-files.md": "# Archive Source Files\n\nResolve project, script, captures, screenshots, and metadata source files are listed with local paths.\n",
+    "archive-assets-manifest.md": "# Archive Assets Manifest\n\nThumbnail, graphics, b-roll, audio, and caption assets are listed with local paths.\n",
+    "archive-export-manifest.md": "# Archive Export Manifest\n\nFinal master export, captions, metadata package, checksum, and delivery copy are recorded.\n",
+    "reusable-clips-manifest.md": "# Reusable Clips Manifest\n\nReusable intro, proof workflow, and recap clips are listed with local edit references.\n",
+    "archive-blockers.md": "# Archive Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Archive evidence is complete. | No fix needed. | closed |\n",
+  };
+
   makeRun(
     "2026-05-01-production-ready",
     baseFiles({
@@ -6337,11 +6880,8 @@ test("package runs index follows lifecycle gates in order", () => {
     "2026-05-02-capture-ready",
     baseFiles({
       "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
-      "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
-      "takes-log.md": "# Takes Log\n",
-      "missing-shot-tracker.md": "# Missing Shot Tracker\n",
-      "screen-recording-checklist.md": "# Screen Recording Checklist\n",
-      "audio-capture-checklist.md": "# Audio Capture Checklist\n",
+      ...shotEditPlanAccepted,
+      ...captureEvidence,
     })
   );
 
@@ -6349,18 +6889,10 @@ test("package runs index follows lifecycle gates in order", () => {
     "2026-05-03-final-ready",
     baseFiles({
       "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
-      "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
-      "takes-log.md": "# Takes Log\n",
-      "missing-shot-tracker.md": "# Missing Shot Tracker\n",
-      "screen-recording-checklist.md": "# Screen Recording Checklist\n",
-      "audio-capture-checklist.md": "# Audio Capture Checklist\n",
-      "rough-cut-watch-notes.md": "# Rough-Cut Watch Notes\n",
-      "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
-      "pickup-list.md": "# Pickup List\n",
-      "edit-fix-list.md": "# Edit Fix List\n",
-      "final-watch-notes.md": "# Final Watch Notes\n",
-      "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
-      "publication-blockers.md": "# Publication Blockers\n",
+      ...shotEditPlanAccepted,
+      ...captureEvidence,
+      ...roughCutEvidence,
+      ...finalWatchEvidence,
     })
   );
 
@@ -6368,23 +6900,11 @@ test("package runs index follows lifecycle gates in order", () => {
     "2026-05-04-export-ready",
     baseFiles({
       "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
-      "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
-      "takes-log.md": "# Takes Log\n",
-      "missing-shot-tracker.md": "# Missing Shot Tracker\n",
-      "screen-recording-checklist.md": "# Screen Recording Checklist\n",
-      "audio-capture-checklist.md": "# Audio Capture Checklist\n",
-      "rough-cut-watch-notes.md": "# Rough-Cut Watch Notes\n",
-      "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
-      "pickup-list.md": "# Pickup List\n",
-      "edit-fix-list.md": "# Edit Fix List\n",
-      "final-watch-notes.md": "# Final Watch Notes\n",
-      "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
-      "publication-blockers.md": "# Publication Blockers\n",
-      "export-checklist.md": "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
-      "master-file-manifest.md": "# Master File Manifest\n",
-      "caption-check.md": "# Caption Check\n",
-      "loudness-check.md": "# Loudness Check\n",
-      "delivery-readiness.md": "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+      ...shotEditPlanAccepted,
+      ...captureEvidence,
+      ...roughCutEvidence,
+      ...finalWatchEvidence,
+      ...exportEvidence,
     })
   );
 
@@ -6392,29 +6912,12 @@ test("package runs index follows lifecycle gates in order", () => {
     "2026-05-05-metadata-ready",
     baseFiles({
       "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
-      "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
-      "takes-log.md": "# Takes Log\n",
-      "missing-shot-tracker.md": "# Missing Shot Tracker\n",
-      "screen-recording-checklist.md": "# Screen Recording Checklist\n",
-      "audio-capture-checklist.md": "# Audio Capture Checklist\n",
-      "rough-cut-watch-notes.md": "# Rough-Cut Watch Notes\n",
-      "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
-      "pickup-list.md": "# Pickup List\n",
-      "edit-fix-list.md": "# Edit Fix List\n",
-      "final-watch-notes.md": "# Final Watch Notes\n",
-      "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
-      "publication-blockers.md": "# Publication Blockers\n",
-      "export-checklist.md": "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
-      "master-file-manifest.md": "# Master File Manifest\n",
-      "caption-check.md": "# Caption Check\n",
-      "loudness-check.md": "# Loudness Check\n",
-      "delivery-readiness.md": "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
-      "publish-metadata-review.md": "# Publication Metadata Review\n\n- Publication metadata status: READY TO SCHEDULE\n- Ready to schedule: yes\n",
-      "title-check.md": "# Title Check\n",
-      "thumbnail-check.md": "# Thumbnail Check\n",
-      "description-check.md": "# Description Check\n",
-      "chapters-check.md": "# Chapters Check\n",
-      "schedule-check.md": "# Schedule Check\n",
+      ...shotEditPlanAccepted,
+      ...captureEvidence,
+      ...roughCutEvidence,
+      ...finalWatchEvidence,
+      ...exportEvidence,
+      ...metadataEvidence,
     })
   );
 
@@ -6422,35 +6925,13 @@ test("package runs index follows lifecycle gates in order", () => {
     "2026-05-06-archive-ready",
     baseFiles({
       "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
-      "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
-      "takes-log.md": "# Takes Log\n",
-      "missing-shot-tracker.md": "# Missing Shot Tracker\n",
-      "screen-recording-checklist.md": "# Screen Recording Checklist\n",
-      "audio-capture-checklist.md": "# Audio Capture Checklist\n",
-      "rough-cut-watch-notes.md": "# Rough-Cut Watch Notes\n",
-      "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
-      "pickup-list.md": "# Pickup List\n",
-      "edit-fix-list.md": "# Edit Fix List\n",
-      "final-watch-notes.md": "# Final Watch Notes\n",
-      "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
-      "publication-blockers.md": "# Publication Blockers\n",
-      "export-checklist.md": "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
-      "master-file-manifest.md": "# Master File Manifest\n",
-      "caption-check.md": "# Caption Check\n",
-      "loudness-check.md": "# Loudness Check\n",
-      "delivery-readiness.md": "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
-      "publish-metadata-review.md": "# Publication Metadata Review\n\n- Publication metadata status: READY TO SCHEDULE\n- Ready to schedule: yes\n",
-      "title-check.md": "# Title Check\n",
-      "thumbnail-check.md": "# Thumbnail Check\n",
-      "description-check.md": "# Description Check\n",
-      "chapters-check.md": "# Chapters Check\n",
-      "schedule-check.md": "# Schedule Check\n",
-      "archive-manifest.md": "# Archive Manifest\n\n- Archive manifest status: READY TO ARCHIVE\n- Ready to archive: yes\n",
-      "archive-source-files.md": "# Archive Source Files\n",
-      "archive-assets-manifest.md": "# Archive Assets Manifest\n",
-      "archive-export-manifest.md": "# Archive Export Manifest\n",
-      "reusable-clips-manifest.md": "# Reusable Clips Manifest\n",
-      "archive-blockers.md": "# Archive Blockers\n",
+      ...shotEditPlanAccepted,
+      ...captureEvidence,
+      ...roughCutEvidence,
+      ...finalWatchEvidence,
+      ...exportEvidence,
+      ...metadataEvidence,
+      ...archiveEvidence,
     })
   );
 
@@ -6467,10 +6948,10 @@ test("package runs index follows lifecycle gates in order", () => {
   const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
   const byRunId = Object.fromEntries(index.runs.map((run) => [run.runId, run]));
 
-  assert.equal(byRunId["2026-05-01-production-ready"].status, "Ready for capture checklist");
+  assert.equal(byRunId["2026-05-01-production-ready"].status, "Needs shot/edit plan review");
   assert.equal(
     byRunId["2026-05-01-production-ready"].nextRecommendedCommand,
-    "node scripts/package-run-capture-checklist.js package-runs/2026-05-01-production-ready"
+    "node scripts/package-run-shot-edit-plan-review.js package-runs/2026-05-01-production-ready"
   );
   assert.equal(byRunId["2026-05-02-capture-ready"].status, "Ready for rough cut");
   assert.equal(
@@ -6567,19 +7048,421 @@ test("package run doctor reports lifecycle next command and matching json fields
   const jsonOutput = captureConsole(() => packageRunDoctorScript.main([runDir, "--json"]));
   const parsed = JSON.parse(jsonOutput.stdout.join("\n"));
 
-  assert.equal(report.lifecycleStatus, "Ready for capture checklist");
-  assert.equal(report.workflowBucket, "Needs capture checklist");
+  assert.equal(report.lifecycleStatus, "Needs shot/edit plan review");
+  assert.equal(report.workflowBucket, "Needs shot/edit plan review");
   assert.equal(report.lifecycleGate.productionPlanStatus, "READY TO SHOOT");
-  assert.deepEqual(report.missingExpectedArtifacts, ["capture-checklist.md"]);
+  assert.equal(report.lifecycleGate.hasShotEditPlanReview, false);
+  assert.deepEqual(report.missingExpectedArtifacts, ["shot-edit-plan-review.md"]);
   assert.equal(
     report.nextRecommendedCommand,
-    "node scripts/package-run-capture-checklist.js package-runs/2026-05-10-doctor-capture"
+    "node scripts/package-run-shot-edit-plan-review.js package-runs/2026-05-10-doctor-capture"
   );
-  assert.match(text, /Lifecycle status: Ready for capture checklist/);
+  assert.match(text, /Lifecycle status: Needs shot\/edit plan review/);
   assert.equal(jsonOutput.result, 0);
   assert.equal(parsed.lifecycleStatus, report.lifecycleStatus);
-  assert.match(parsed.nextRecommendedCommand, /package-run-capture-checklist\.js/);
+  assert.match(parsed.nextRecommendedCommand, /package-run-shot-edit-plan-review\.js/);
   assert.equal(parsed.readOnly, true);
+});
+
+test("package runs index requires accepted shot/edit plan review before capture checklist", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-index-gate-"));
+  const runsDir = path.join(tempRoot, "package-runs");
+
+  function makeRun(runId, extra = {}) {
+    const runDir = path.join(runsDir, runId);
+    fs.mkdirSync(runDir, { recursive: true });
+    fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: runId } }), "utf8");
+    fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+    fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n", "utf8");
+    Object.entries(extra).forEach(([filename, content]) => fs.writeFileSync(path.join(runDir, filename), content, "utf8"));
+  }
+
+  makeRun("2026-05-10-no-stage4-review");
+  makeRun("2026-05-11-stage4-needs-work", {
+    "shot-edit-plan-review.md":
+      "# Shot/Edit Plan Review\n\n- Review status: NEEDS WORK\n- Stage accepted: no\n\n## Open Blockers\n\n- shot-list.md still contains TODO markers.\n",
+    "shot-edit-plan-enhancement-plan.md": "# Shot/Edit Plan Enhancement Plan\n",
+    "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
+  });
+  makeRun("2026-05-12-stage4-human-approval", {
+    "shot-edit-plan-review.md":
+      "# Shot/Edit Plan Review\n\n- Review status: READY FOR HUMAN APPROVAL\n- Stage accepted: no\n\n## Open Blockers\n\n- No exact Stage 4 manual approval marker was detected.\n",
+    "shot-edit-plan-enhancement-plan.md": "# Shot/Edit Plan Enhancement Plan\n",
+    "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
+  });
+  makeRun("2026-05-13-stage4-accepted", {
+    "shot-edit-plan-review.md": "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n\n## Open Blockers\n\n- None.\n",
+    "shot-edit-plan-enhancement-plan.md": "# Shot/Edit Plan Enhancement Plan\n",
+  });
+
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  const byRunId = Object.fromEntries(index.runs.map((run) => [run.runId, run]));
+
+  assert.equal(byRunId["2026-05-10-no-stage4-review"].status, "Needs shot/edit plan review");
+  assert.equal(
+    byRunId["2026-05-10-no-stage4-review"].nextRecommendedCommand,
+    "node scripts/package-run-shot-edit-plan-review.js package-runs/2026-05-10-no-stage4-review"
+  );
+  assert.equal(byRunId["2026-05-11-stage4-needs-work"].status, "Needs shot/edit plan approval");
+  assert.equal(byRunId["2026-05-11-stage4-needs-work"].workflowBucket, "Needs shot/edit plan approval");
+  assert.doesNotMatch(byRunId["2026-05-11-stage4-needs-work"].nextRecommendedCommand, /capture-checklist/);
+  assert.equal(byRunId["2026-05-12-stage4-human-approval"].status, "Needs shot/edit plan approval");
+  assert.equal(byRunId["2026-05-12-stage4-human-approval"].lifecycleGate.shotEditPlanReviewStatus, "READY FOR HUMAN APPROVAL");
+  assert.equal(byRunId["2026-05-12-stage4-human-approval"].lifecycleGate.shotEditPlanAccepted, false);
+  assert.doesNotMatch(byRunId["2026-05-12-stage4-human-approval"].nextRecommendedCommand, /capture-checklist/);
+  assert.equal(byRunId["2026-05-13-stage4-accepted"].status, "Ready for capture checklist");
+  assert.equal(
+    byRunId["2026-05-13-stage4-accepted"].nextRecommendedCommand,
+    "node scripts/package-run-capture-checklist.js package-runs/2026-05-13-stage4-accepted"
+  );
+});
+
+test("package runs index does not let generated downstream artifacts jump past missing capture evidence", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-downstream-generated-block-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-generated-downstream");
+  fs.mkdirSync(runDir, { recursive: true });
+  const generatedFiles = {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Generated Downstream" } }),
+    "final-script.md": "# Final Script\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "shot-edit-plan-review.md": "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n",
+    "shot-edit-plan-enhancement-plan.md": "# Shot/Edit Plan Enhancement Plan\n",
+    "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
+    "takes-log.md": "# Takes Log\n\nTODO\n",
+    "missing-shot-tracker.md": "# Missing Shot Tracker\n\nTODO\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n\nTODO\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\nTODO\n",
+    "rough-cut-watch-notes.md": "# Rough-Cut Watch Notes\n\nTODO\n",
+    "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
+    "pickup-list.md": "# Pickup List\n",
+    "edit-fix-list.md": "# Edit Fix List\n",
+    "final-watch-notes.md": "# Final Watch Notes\n\nTODO\n",
+    "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
+    "publication-blockers.md": "# Publication Blockers\n",
+    "export-checklist.md": "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+    "master-file-manifest.md": "# Master File Manifest\n\nTODO\n",
+    "caption-check.md": "# Caption Check\n\nTODO\n",
+    "loudness-check.md": "# Loudness Check\n\nTODO\n",
+    "delivery-readiness.md": "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+    "publish-metadata-review.md": "# Publication Metadata Review\n\n- Publication metadata status: READY TO SCHEDULE\n- Ready to schedule: yes\n",
+    "title-check.md": "# Title Check\n\nTODO\n",
+    "thumbnail-check.md": "# Thumbnail Check\n\nTODO\n",
+    "description-check.md": "# Description Check\n\nTODO\n",
+    "chapters-check.md": "# Chapters Check\n\nTODO\n",
+    "schedule-check.md": "# Schedule Check\n\nTODO\n",
+    "archive-manifest.md": "# Archive Manifest\n\n- Archive manifest status: READY TO ARCHIVE\n- Ready to archive: yes\n",
+    "archive-source-files.md": "# Archive Source Files\n\nTODO\n",
+    "archive-assets-manifest.md": "# Archive Assets Manifest\n\nTODO\n",
+    "archive-export-manifest.md": "# Archive Export Manifest\n\nTODO\n",
+    "reusable-clips-manifest.md": "# Reusable Clips Manifest\n\nTODO\n",
+    "archive-blockers.md": "# Archive Blockers\n\nTODO\n",
+  };
+  Object.entries(generatedFiles).forEach(([filename, content]) => fs.writeFileSync(path.join(runDir, filename), content, "utf8"));
+
+  const run = packageRunsIndexScript.scanRun(runDir, tempRoot);
+  const doctor = packageRunDoctorScript.buildDoctorReport(runDir, { repoRoot: tempRoot });
+
+  assert.equal(run.status, "Needs capture");
+  assert.equal(run.workflowBucket, "Needs capture");
+  assert.equal(run.lifecycleGate.shotEditPlanAccepted, true);
+  assert.equal(run.lifecycleGate.readyForRoughCut, true);
+  assert.equal(run.lifecycleGate.hasConcreteCaptureEvidence, false);
+  assert.equal(run.lifecycleGate.effectiveCaptureApproved, false);
+  assert.equal(run.lifecycleGate.effectiveReadyForRoughCut, false);
+  assert.equal(run.lifecycleGate.effectivePublishReady, false);
+  assert.equal(run.lifecycleGate.effectiveReadyToUpload, false);
+  assert.equal(run.lifecycleGate.effectiveReadyToSchedule, false);
+  assert.notEqual(run.status, "Needs archive data");
+  assert.match(doctor.firstBlockerReason, /capture-evidence-review\.md is missing|real capture evidence/);
+});
+
+test("conservative workflow invariant stays blocked when paper-ready artifacts lack capture evidence proof", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-conservative-invariant-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-paper-ready-no-proof");
+  fs.mkdirSync(runDir, { recursive: true });
+  const files = {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Paper Ready Without Proof" } }),
+    "final-script.md": "# Final Script\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "shot-edit-plan-review.md": "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n",
+    "shot-edit-plan-enhancement-plan.md": "# Shot/Edit Plan Enhancement Plan\n",
+    "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n\nCapture approval: PASS\n",
+    "takes-log.md": "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| Generated hook | shot-list.md | Verified in existing capture artifacts. | Generated row, not durable proof. | captured |\n",
+    "missing-shot-tracker.md": "# Missing Shot Tracker\n\n| missing shot/content | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Generated assertion only. | Human evidence still required. | closed |\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Generated proof screen | screen-capture-list.md | Verified in existing capture artifacts. | captured |\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Final script narration. | Verified in existing capture artifacts. | closed |\n\nAudio capture readiness: PASS\n",
+    "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
+    "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
+    "export-checklist.md": "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n\nExport approval: PASS\n",
+    "delivery-readiness.md": "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n\nDelivery approval: PASS\n",
+    "archive-manifest.md": "# Archive Manifest\n\n- Archive manifest status: READY TO ARCHIVE\n- Ready to archive: yes\n\nArchive approval: PASS\n",
+  };
+  Object.entries(files).forEach(([filename, content]) => fs.writeFileSync(path.join(runDir, filename), content, "utf8"));
+
+  const run = packageRunsIndexScript.scanRun(runDir, tempRoot);
+  const report = packageRunDoctorScript.buildDoctorReport(runDir, { repoRoot: tempRoot });
+  const rejectedArtifacts = run.detectedButNotTrustedArtifacts.map((item) => item.artifact);
+
+  assert.equal(run.status, "Needs capture");
+  assert.equal(run.workflowBucket, "Needs capture");
+  assert.equal(run.overallStatus, "BLOCKED");
+  assert.equal(run.lifecycleGate.hasCaptureEvidenceReview, false);
+  assert.equal(run.lifecycleGate.hasConcreteCaptureEvidence, false);
+  assert.equal(run.lifecycleGate.captureApproved, true);
+  assert.equal(run.lifecycleGate.effectiveCaptureApproved, false);
+  assert.equal(run.lifecycleGate.effectiveReadyForRoughCut, false);
+  assert.equal(run.lifecycleGate.effectivePublishReady, false);
+  assert.equal(run.lifecycleGate.effectiveReadyToUpload, false);
+  assert.equal(run.lifecycleGate.effectiveReadyToSchedule, false);
+  assert.deepEqual(report.missingExpectedArtifacts, ["capture-evidence-review.md"]);
+  assert.match(report.firstBlockerReason, /capture-evidence-review\.md is missing/);
+  assert.ok(rejectedArtifacts.includes("capture-checklist.md"));
+  assert.ok(rejectedArtifacts.includes("rough-cut-review.md"));
+  assert.ok(rejectedArtifacts.includes("final-review.md"));
+  assert.ok(rejectedArtifacts.includes("export artifacts"));
+  assert.ok(rejectedArtifacts.includes("archive artifacts"));
+  assert.notEqual(run.status, "Ready to shoot");
+  assert.notEqual(run.status, "Ready for rough cut");
+  assert.notEqual(run.status, "Ready to upload");
+  assert.notEqual(run.status, "Ready to archive");
+});
+
+test("effective readiness overrides stale downstream markers when capture evidence review needs capture", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-effective-capture-block-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-effective-capture-block");
+  fs.mkdirSync(runDir, { recursive: true });
+  const files = {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Effective Capture Block" } }),
+    "final-script.md": "# Final Script\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "shot-edit-plan-review.md": "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n",
+    "shot-edit-plan-enhancement-plan.md": "# Shot/Edit Plan Enhancement Plan\n",
+    "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n\nCapture approval: PASS\n",
+    "takes-log.md": "# Takes Log\n\nTODO\n",
+    "missing-shot-tracker.md": "# Missing Shot Tracker\n\nTODO\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n\nTODO\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\nTODO\n\nAudio capture readiness: PASS\n",
+    "capture-evidence-review.md":
+      "# Capture Evidence Review\n\n- Review status: NEEDS CAPTURE\n- Capture evidence accepted: no\n- Real capture evidence detected: no\n- Ready for rough-cut work: no\n\n## Next Safe Action\n\n- Add real capture evidence rows with concrete media references, then rerun this review.\n",
+    "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
+    "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
+    "export-checklist.md": "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+    "delivery-readiness.md": "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+    "publish-metadata-review.md": "# Publication Metadata Review\n\n- Publication metadata status: READY TO SCHEDULE\n- Ready to schedule: yes\n",
+  };
+  Object.entries(files).forEach(([filename, content]) => fs.writeFileSync(path.join(runDir, filename), content, "utf8"));
+
+  const run = packageRunsIndexScript.scanRun(runDir, tempRoot);
+  const report = packageRunDoctorScript.buildDoctorReport(runDir, { repoRoot: tempRoot });
+
+  assert.equal(run.status, "Needs capture");
+  assert.equal(run.overallStatus, "BLOCKED");
+  assert.equal(run.lifecycleGate.readyForRoughCut, true);
+  assert.equal(run.lifecycleGate.captureApproved, true);
+  assert.equal(run.lifecycleGate.publishReady, true);
+  assert.equal(run.lifecycleGate.readyToUpload, true);
+  assert.equal(run.lifecycleGate.readyToSchedule, true);
+  assert.equal(run.lifecycleGate.effectiveCaptureApproved, false);
+  assert.equal(run.lifecycleGate.effectiveReadyForRoughCut, false);
+  assert.equal(run.lifecycleGate.effectivePublishReady, false);
+  assert.equal(run.lifecycleGate.effectiveReadyToUpload, false);
+  assert.equal(run.lifecycleGate.effectiveReadyToSchedule, false);
+  assert.equal(run.lifecycleGate.effectiveReadiness.downstreamReadinessOverridden, true);
+  assert.match(run.lifecycleGate.effectiveReadiness.nextSafeAction, /Add real capture evidence rows/);
+  assert.equal(report.effectiveReadiness.captureApproved, false);
+  assert.equal(report.effectiveReadiness.readyForRoughCut, false);
+  assert.equal(report.effectiveReadiness.publishReady, false);
+  assert.equal(report.effectiveReadiness.readyToUpload, false);
+  assert.equal(report.effectiveReadiness.readyToSchedule, false);
+  assert.match(report.nextSafeAction, /Add real capture evidence rows/);
+});
+
+test("package runs index rejects generated capture approvals without real capture rows", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-generated-capture-approval-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-generated-capture");
+  fs.mkdirSync(runDir, { recursive: true });
+  [
+    ["selected-package.json", JSON.stringify({ package: { proposedTitle: "Generated Capture" } })],
+    ["final-script.md", "# Final Script\n"],
+    ["production-plan.md", "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n"],
+    ["shot-edit-plan-review.md", "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n"],
+    ["shot-edit-plan-enhancement-plan.md", "# Shot/Edit Plan Enhancement Plan\n"],
+    ["capture-checklist.md", "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n\nCapture approval: PASS\n"],
+    ["takes-log.md", "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| Approved hook shot | shot-list.md | Verified in existing capture artifacts. | Generated checklist row. | captured |\n"],
+    ["missing-shot-tracker.md", "# Missing Shot Tracker\n"],
+    ["screen-recording-checklist.md", "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Approved proof screen recording | screen-capture-list.md | Verified in existing capture artifacts. | captured |\n"],
+    ["audio-capture-checklist.md", "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Approved script audio. | Verified in existing capture artifacts. | closed |\n\nAudio capture readiness: PASS\n"],
+  ].forEach(([filename, content]) => fs.writeFileSync(path.join(runDir, filename), content, "utf8"));
+
+  const run = packageRunsIndexScript.scanRun(runDir, tempRoot);
+
+  assert.equal(run.status, "Needs capture");
+  assert.equal(run.lifecycleGate.captureApproved, true);
+  assert.equal(run.lifecycleGate.hasConcreteCaptureEvidence, false);
+});
+
+test("package runs index uses capture evidence review conservatively", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-review-index-"));
+  const runsDir = path.join(tempRoot, "package-runs");
+  function makeRun(runId, reviewText) {
+    const runDir = path.join(runsDir, runId);
+    writeCaptureEvidenceFixture(runDir, {
+      "selected-package.json": JSON.stringify({ package: { proposedTitle: runId } }),
+      "final-script.md": "# Final Script\n",
+      "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+      "audio-capture-checklist.md": "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Final script narration. | audio/voiceover.wav | recorded |\n\nCapture evidence approval: PASS\n",
+      "capture-evidence-review.md": reviewText,
+    });
+  }
+  makeRun(
+    "2026-05-10-capture-human",
+    "# Capture Evidence Review\n\n- Review status: READY FOR HUMAN APPROVAL\n- Capture evidence accepted: no\n- Real capture evidence detected: yes\n"
+  );
+  makeRun(
+    "2026-05-11-capture-pass",
+    "# Capture Evidence Review\n\n- Review status: PASS\n- Capture evidence accepted: yes\n- Real capture evidence detected: yes\n"
+  );
+
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  const byRunId = Object.fromEntries(index.runs.map((run) => [run.runId, run]));
+
+  assert.equal(byRunId["2026-05-10-capture-human"].status, "Needs capture");
+  assert.equal(byRunId["2026-05-10-capture-human"].lifecycleGate.captureEvidenceReviewStatus, "READY FOR HUMAN APPROVAL");
+  assert.equal(byRunId["2026-05-10-capture-human"].lifecycleGate.captureEvidenceAccepted, false);
+  assert.equal(byRunId["2026-05-10-capture-human"].lifecycleGate.hasConcreteCaptureEvidence, false);
+  assert.equal(byRunId["2026-05-10-capture-human"].lifecycleGate.effectiveCaptureApproved, false);
+  assert.equal(byRunId["2026-05-10-capture-human"].lifecycleGate.effectiveReadyForRoughCut, false);
+  assert.equal(byRunId["2026-05-10-capture-human"].lifecycleGate.effectiveReadiness.downstreamReadinessOverridden, true);
+  assert.equal(byRunId["2026-05-11-capture-pass"].status, "Ready for rough cut");
+  assert.equal(byRunId["2026-05-11-capture-pass"].lifecycleGate.captureEvidenceAccepted, true);
+  assert.equal(byRunId["2026-05-11-capture-pass"].lifecycleGate.hasConcreteCaptureEvidence, true);
+  assert.equal(byRunId["2026-05-11-capture-pass"].lifecycleGate.effectiveCaptureApproved, true);
+  assert.equal(byRunId["2026-05-11-capture-pass"].lifecycleGate.effectiveReadyForRoughCut, true);
+});
+
+test("package runs index rejects generated rough-cut and final reviews without real watch notes", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-generated-watch-notes-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-generated-watch");
+  fs.mkdirSync(runDir, { recursive: true });
+  const files = {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Generated Watch" } }),
+    "final-script.md": "# Final Script\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "shot-edit-plan-review.md": "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n",
+    "shot-edit-plan-enhancement-plan.md": "# Shot/Edit Plan Enhancement Plan\n",
+    "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n\nCapture approval: PASS\n",
+    "takes-log.md": "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| Take 01 hook | shot-list.md | media/take-01-hook.mov | Human reviewed captured take. | captured |\n",
+    "missing-shot-tracker.md": "# Missing Shot Tracker\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\nAudio capture readiness: PASS\n",
+    "capture-evidence-review.md": "# Capture Evidence Review\n\n- Review status: PASS\n- Capture evidence accepted: yes\n- Real capture evidence detected: yes\n",
+    "rough-cut-watch-notes.md": "# Rough-Cut Watch Notes\n\nPacing and audio notes generated before any rough cut candidate exists.\n",
+    "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
+    "pickup-list.md": "# Pickup List\n",
+    "edit-fix-list.md": "# Edit Fix List\n",
+    "final-watch-notes.md": "# Final Watch Notes\n\nViewer promise, clarity, pacing, and publish notes generated before a final export candidate exists.\n",
+    "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
+    "publication-blockers.md": "# Publication Blockers\n",
+  };
+  Object.entries(files).forEach(([filename, content]) => fs.writeFileSync(path.join(runDir, filename), content, "utf8"));
+
+  const run = packageRunsIndexScript.scanRun(runDir, tempRoot);
+
+  assert.equal(run.status, "Needs rough-cut review");
+  assert.equal(run.lifecycleGate.hasConcreteCaptureEvidence, true);
+  assert.equal(run.lifecycleGate.hasRealRoughCutEvidence, false);
+  assert.equal(run.lifecycleGate.hasRealFinalWatchEvidence, false);
+});
+
+test("package run doctor reports blocked actions for downstream export blockers", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-export-blocked-actions-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-export-blocked");
+  fs.mkdirSync(runDir, { recursive: true });
+  const files = {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Export Blocked" } }),
+    "final-script.md": "# Final Script\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "shot-edit-plan-review.md": "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n",
+    "shot-edit-plan-enhancement-plan.md": "# Shot/Edit Plan Enhancement Plan\n",
+    "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n\nCapture approval: PASS\n",
+    "takes-log.md": "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| Take 01 hook | shot-list.md | media/take-01-hook.mov | Human reviewed captured take. | captured |\n",
+    "missing-shot-tracker.md": "# Missing Shot Tracker\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\nAudio capture readiness: PASS\n",
+    "capture-evidence-review.md": "# Capture Evidence Review\n\n- Review status: PASS\n- Capture evidence accepted: yes\n- Real capture evidence detected: yes\n",
+    "rough-cut-watch-notes.md": "# Rough-Cut Watch Notes\n\nRough cut file media/rough-cut-v1.mp4 reviewed in Resolve timeline. Pacing, audio, visuals, and pickup needs were checked by a human.\n",
+    "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
+    "pickup-list.md": "# Pickup List\n",
+    "edit-fix-list.md": "# Edit Fix List\n",
+    "final-watch-notes.md": "# Final Watch Notes\n\nFinal export media/final-cut-v1.mp4 reviewed. Viewer promise, opening, clarity, pacing, proof, audio, visuals, publish metadata fit, and accuracy were checked.\n",
+    "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
+    "publication-blockers.md": "# Publication Blockers\n",
+    "export-checklist.md": "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+    "master-file-manifest.md": "# Master File Manifest\n\nTODO\n",
+    "caption-check.md": "# Caption Check\n\nTODO\n",
+    "loudness-check.md": "# Loudness Check\n\nTODO\n",
+    "delivery-readiness.md": "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+  };
+  Object.entries(files).forEach(([filename, content]) => fs.writeFileSync(path.join(runDir, filename), content, "utf8"));
+
+  const report = packageRunDoctorScript.buildDoctorReport(runDir, { repoRoot: tempRoot });
+
+  assert.equal(report.lifecycleStatus, "Needs export check");
+  assert.equal(report.lifecycleGate.hasConcreteExportEvidence, false);
+  assert.deepEqual(report.conservativeBlockedActions, ["upload", "publishing", "archive", "Hermes brain write", "project-state promotion"]);
+});
+
+test("package run doctor reports shot/edit plan gate fields and conservative blockers", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-doctor-gate-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-stage4-doctor");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Stage 4 Doctor" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "shot-edit-plan-review.md"),
+    "# Shot/Edit Plan Review\n\n- Review status: NEEDS WORK\n- Stage accepted: no\n\n## Open Blockers\n\n- screen-capture-list.md has TODO rows.\n\n## Next Safe Action\n\n- Edit Stage 4 planning artifacts manually, then rerun this review.\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "shot-edit-plan-enhancement-plan.md"), "# Shot/Edit Plan Enhancement Plan\n", "utf8");
+
+  const report = packageRunDoctorScript.buildDoctorReport(runDir, { repoRoot: tempRoot });
+  const text = packageRunDoctorScript.renderText(report);
+
+  assert.equal(report.lifecycleStatus, "Needs shot/edit plan approval");
+  assert.equal(report.lifecycleGate.hasShotEditPlanReview, true);
+  assert.equal(report.lifecycleGate.shotEditPlanReviewStatus, "NEEDS WORK");
+  assert.equal(report.lifecycleGate.shotEditPlanAccepted, false);
+  assert.match(report.lifecycleGate.shotEditPlanBlockers, /screen-capture-list\.md/);
+  assert.match(report.firstBlockerReason, /Shot\/edit plan review status is NEEDS WORK/);
+  assert.deepEqual(report.missingExpectedArtifacts, ["shot-edit-plan-review.md with Review status: PASS and Stage accepted: yes"]);
+  assert.equal(report.conservativeBlockedActions.includes("shooting"), true);
+  assert.equal(report.conservativeBlockedActions.includes("project-state promotion"), true);
+  assert.match(text, /shotEditPlanReviewStatus: NEEDS WORK/);
+  assert.match(text, /Conservative blocked actions:/);
+});
+
+test("package run doctor reports capture evidence gate fields", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-doctor-gate-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-doctor");
+  writeCaptureEvidenceFixture(runDir, {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Capture Doctor" } }),
+    "final-script.md": "# Final Script\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "capture-evidence-review.md":
+      "# Capture Evidence Review\n\n- Review status: READY FOR HUMAN APPROVAL\n- Capture evidence accepted: no\n- Real capture evidence detected: yes\n\n## Next Safe Action\n\n- Add Capture evidence approval: PASS after human review.\n",
+  });
+
+  const report = packageRunDoctorScript.buildDoctorReport(runDir, { repoRoot: tempRoot });
+
+  assert.equal(report.lifecycleStatus, "Needs capture");
+  assert.equal(report.lifecycleGate.hasCaptureEvidenceReview, true);
+  assert.equal(report.lifecycleGate.captureEvidenceReviewStatus, "READY FOR HUMAN APPROVAL");
+  assert.equal(report.lifecycleGate.captureEvidenceAccepted, false);
+  assert.equal(report.lifecycleGate.captureEvidenceRealEvidence, true);
+  assert.match(report.firstBlockerReason, /Capture evidence review status is READY FOR HUMAN APPROVAL/);
+  assert.deepEqual(report.missingExpectedArtifacts, ["exact capture approval marker in capture-stage artifact"]);
+  assert.equal(report.conservativeBlockedActions.includes("upload"), true);
 });
 
 test("package run doctor reports requested pipeline stages and overall status", () => {
@@ -6605,42 +7488,71 @@ test("package run doctor reports requested pipeline stages and overall status", 
     ...scriptApproved,
     "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
   };
-  const finalReady = {
-    ...productionReady,
-    "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n",
-    "takes-log.md": "# Takes Log\n",
-    "missing-shot-tracker.md": "# Missing Shot Tracker\n",
-    "screen-recording-checklist.md": "# Screen Recording Checklist\n",
-    "audio-capture-checklist.md": "# Audio Capture Checklist\n",
+  const shotEditAccepted = {
+    "shot-edit-plan-review.md": "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n\n## Open Blockers\n\n- None.\n",
+    "shot-edit-plan-enhancement-plan.md": "# Shot/Edit Plan Enhancement Plan\n\n| priority | artifact | issue | suggested repair | reason |\n| --- | --- | --- | --- | --- |\n| low | planning artifacts | No automatic repair suggested. | Keep accepted scope. | Accepted. |\n",
+  };
+  const realCaptureEvidence = {
+    "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n\nCapture approval: PASS\n",
+    "takes-log.md": "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| Main proof take | shot-list.md | media/main-proof.mov | Reviewed and usable. | captured |\n",
+    "missing-shot-tracker.md": "# Missing Shot Tracker\n\n| missing shot/content | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Capture is complete. | No fix needed. | closed |\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Proof screen recording | Shows workflow output. | media/proof.mp4 | captured |\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Final script audio. | audio/voiceover.wav | closed |\n\nAudio capture readiness: PASS\n",
+    "capture-evidence-review.md": "# Capture Evidence Review\n\n- Review status: PASS\n- Capture evidence accepted: yes\n- Real capture evidence detected: yes\n",
+  };
+  const realRoughCutEvidence = {
+    "rough-cut-watch-notes.md":
+      "# Rough-Cut Watch Notes\n\nRough cut file media/pipeline-rough-cut-v1.mp4 was reviewed in an actual viewing pass. Pacing, visual proof, audio clarity, and edit continuity were reviewed and no pickups or edit fixes remain open.\n",
     "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
+  };
+  const realFinalEvidence = {
+    "final-watch-notes.md":
+      "# Final Watch Notes\n\nFinal export media/pipeline-final-cut.mp4 reviewed after the completed edit. Viewer promise delivery, opening strength, clarity, pacing, proof, audio quality, visual support, graphics, title fit, accuracy risk, and archive readiness were reviewed.\n",
     "final-review.md": "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n",
     "publication-blockers.md": "# Publication Blockers\n",
   };
+  const realExportEvidence = {
+    "export-checklist.md": "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n\nExport approval: PASS\n",
+    "master-file-manifest.md": "# Master File Manifest\n\nFinal master: exports/final.mp4\nCodec: H.264\nResolution: 3840x2160\nChecksum recorded.\n",
+    "caption-check.md": "# Caption Check\n\nCaptions reviewed and matched against the final master export.\n",
+    "loudness-check.md": "# Loudness Check\n\nFinal master measured at -14 LUFS integrated.\n\nMastering approval: PASS\n",
+    "delivery-readiness.md": "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n\nFinal export package reviewed.\n\nDelivery approval: PASS\n",
+  };
+  const realMetadataEvidence = {
+    "publish-metadata-review.md":
+      "# Publication Metadata Review\n\n- Publication metadata status: READY TO SCHEDULE\n- Ready to schedule: yes\n\nPublication metadata approval: PASS\n",
+    "title-check.md": "# Title Check\n\nFinal title: Pipeline Doctor Final Title approved for upload metadata.\n",
+    "thumbnail-check.md": "# Thumbnail Check\n\nThumbnail path: thumbnails/pipeline-doctor-final.png approved after review.\n",
+    "description-check.md": "# Description Check\n\nDescription has final publish copy, proof context, links, and reviewed upload wording.\n",
+    "chapters-check.md": "# Chapters Check\n\n00:00 Hook\n01:00 Proof\n03:00 Workflow\n05:00 Close\n",
+    "schedule-check.md": "# Schedule Check\n\nRelease timing approved for 2026-05-15 16:00 Europe/Helsinki.\n",
+  };
+  const realArchiveEvidence = {
+    "archive-manifest.md": "# Archive Manifest\n\n- Archive manifest status: READY TO ARCHIVE\n- Ready to archive: yes\n\nArchive contains final export, metadata, captions, source files, and project assets.\n\nArchive approval: PASS\n",
+    "archive-source-files.md": "# Archive Source Files\n\nResolve project, script, captures, and metadata source files are listed with local paths.\n",
+    "archive-assets-manifest.md": "# Archive Assets Manifest\n\nThumbnail, graphics, captures, b-roll, audio, and caption assets are listed with local paths.\n",
+    "archive-export-manifest.md": "# Archive Export Manifest\n\nFinal export, captions, metadata package, and checksum are recorded.\n",
+    "reusable-clips-manifest.md": "# Reusable Clips Manifest\n\nReusable proof, intro, and recap clips are listed with edit references.\n",
+    "archive-blockers.md": "# Archive Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Archive is complete. | No fix needed. | closed |\n",
+  };
+  const finalReady = {
+    ...productionReady,
+    ...shotEditAccepted,
+    ...realCaptureEvidence,
+    ...realRoughCutEvidence,
+    ...realFinalEvidence,
+  };
   const exportReady = {
     ...finalReady,
-    "export-checklist.md": "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
-    "master-file-manifest.md": "# Master File Manifest\n",
-    "caption-check.md": "# Caption Check\n",
-    "loudness-check.md": "# Loudness Check\n",
-    "delivery-readiness.md": "# Delivery Readiness\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n",
+    ...realExportEvidence,
   };
   const metadataReady = {
     ...exportReady,
-    "publish-metadata-review.md": "# Publication Metadata Review\n\n- Publication metadata status: READY TO SCHEDULE\n- Ready to schedule: yes\n",
-    "title-check.md": "# Title Check\n",
-    "thumbnail-check.md": "# Thumbnail Check\n",
-    "description-check.md": "# Description Check\n",
-    "chapters-check.md": "# Chapters Check\n",
-    "schedule-check.md": "# Schedule Check\n",
+    ...realMetadataEvidence,
   };
   const archiveReady = {
     ...metadataReady,
-    "archive-manifest.md": "# Archive Manifest\n\n- Archive manifest status: READY TO ARCHIVE\n- Ready to archive: yes\n",
-    "archive-source-files.md": "# Archive Source Files\n",
-    "archive-assets-manifest.md": "# Archive Assets Manifest\n",
-    "archive-export-manifest.md": "# Archive Export Manifest\n",
-    "reusable-clips-manifest.md": "# Reusable Clips Manifest\n",
-    "archive-blockers.md": "# Archive Blockers\n",
+    ...realArchiveEvidence,
   };
 
   const missingResearchDir = makeRun("2026-05-10-missing-research", selected);
@@ -6668,9 +7580,9 @@ test("package run doctor reports requested pipeline stages and overall status", 
   assert.match(scriptApprovedReport.nextRecommendedCommand, /package-run-production-plan\.js/);
   assert.equal(scriptApprovedReport.approvalMarkersDetected.includes("Script review status: PASS"), true);
 
-  assert.equal(productionReadyReport.lifecycleStatus, "Ready for capture checklist");
-  assert.equal(productionReadyReport.overallStatus, "READY FOR NEXT STAGE");
-  assert.match(productionReadyReport.nextRecommendedCommand, /package-run-capture-checklist\.js/);
+  assert.equal(productionReadyReport.lifecycleStatus, "Needs shot/edit plan review");
+  assert.equal(productionReadyReport.overallStatus, "BLOCKED");
+  assert.match(productionReadyReport.nextRecommendedCommand, /package-run-shot-edit-plan-review\.js/);
 
   assert.equal(finalReadyReport.lifecycleStatus, "Ready to publish");
   assert.match(finalReadyReport.nextRecommendedCommand, /package-run-export-checklist\.js/);
@@ -6693,6 +7605,12 @@ test("package run doctor does not treat placeholder capture artifacts as ready",
   fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Placeholder Doctor" } }), "utf8");
   fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
   fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "shot-edit-plan-review.md"),
+    "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "shot-edit-plan-enhancement-plan.md"), "# Shot/Edit Plan Enhancement Plan\n", "utf8");
   [
     "capture-checklist.md",
     "takes-log.md",
@@ -6705,7 +7623,7 @@ test("package run doctor does not treat placeholder capture artifacts as ready",
 
   assert.equal(report.lifecycleStatus, "Needs capture");
   assert.equal(report.overallStatus, "BLOCKED");
-  assert.match(report.firstBlockerReason, /Capture checklist status is missing/);
+  assert.match(report.firstBlockerReason, /capture-evidence-review\.md is missing|Capture checklist status is missing/);
   assert.doesNotMatch(report.nextRecommendedCommand, /rough-cut-review/);
 });
 
@@ -6720,6 +7638,8 @@ test("package run doctor treats current workflow artifacts as known", () => {
     "screen-capture-list.md",
     "demo-list.md",
     "audio-notes.md",
+    "shot-edit-plan-review.md",
+    "shot-edit-plan-enhancement-plan.md",
     "production-notes.md",
   ];
   fs.mkdirSync(runDir, { recursive: true });
@@ -6943,6 +7863,11 @@ test("package runs index recommends deterministic next local commands", () => {
   );
   assert.equal(packageRunsIndexScript.nextRecommendedCommand("Ready to shoot", "package-runs/run-id", "PASS"), "");
   assert.equal(
+    packageRunsIndexScript.nextRecommendedCommand("Needs shot/edit plan review", "package-runs/run-id", "PASS"),
+    "node scripts/package-run-shot-edit-plan-review.js package-runs/run-id"
+  );
+  assert.equal(packageRunsIndexScript.nextRecommendedCommand("Needs shot/edit plan approval", "package-runs/run-id", "PASS"), "");
+  assert.equal(
     packageRunsIndexScript.nextRecommendedCommand("Ready to shoot", "package-runs/run-id", "NEEDS WORK"),
     "Review Creator QA status NEEDS WORK and repair package/script before shooting."
   );
@@ -6953,6 +7878,8 @@ test("package runs index recommends deterministic next local commands", () => {
   assert.equal(packageRunsIndexScript.workflowBucket("Script prep ready"), "Needs script");
   assert.equal(packageRunsIndexScript.workflowBucket("Production prep ready"), "Needs production prep");
   assert.equal(packageRunsIndexScript.workflowBucket("Production prep ready", "FAIL"), "Needs QA repair");
+  assert.equal(packageRunsIndexScript.workflowBucket("Needs shot/edit plan review"), "Needs shot/edit plan review");
+  assert.equal(packageRunsIndexScript.workflowBucket("Needs shot/edit plan approval"), "Needs shot/edit plan approval");
   assert.equal(packageRunsIndexScript.workflowBucket("Ready to shoot", "not run"), "QA not run");
   assert.equal(
     packageRunsIndexScript.workflowBucket("Ready to shoot", "not run", {
@@ -7028,8 +7955,232 @@ test("package engine server status reports provider and model without generation
   assert.equal(placeholder.thumbnailProvider, "placeholder");
   assert.equal(placeholder.model, "local-svg-placeholder");
   assert.equal(placeholder.api, "/api/package-engine/thumbnails");
+  assert.equal(placeholder.captureEvidenceWrite.previewApi, "/api/package-runs/capture-evidence/preview");
+  assert.equal(placeholder.captureEvidenceWrite.applyApi, "/api/package-runs/capture-evidence/apply");
+  assert.equal(placeholder.captureEvidenceWrite.nonceHeader, "x-vidtoolz-local-write-nonce");
+  assert.equal(Boolean(placeholder.captureEvidenceWrite.localWriteNonce), true);
   assert.equal(openai.thumbnailProvider, "openai");
   assert.equal(openai.model, "gpt-image-1");
+});
+
+test("package engine capture evidence write nonce and local origin checks are enforced", () => {
+  const nonce = packageEngineServer.localWriteNonce();
+  const localReq = {
+    headers: {
+      host: "127.0.0.1:8010",
+      origin: "http://127.0.0.1:8010",
+      [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: nonce,
+    },
+  };
+  const curlReq = {
+    headers: {
+      host: "localhost:8010",
+      [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: nonce,
+    },
+  };
+
+  assert.equal(packageEngineServer.validateLocalWriteRequest(localReq, {}, { port: 8010, writeNonce: nonce }), true);
+  assert.equal(packageEngineServer.validateLocalWriteRequest(curlReq, {}, { port: 8010, writeNonce: nonce }), true);
+  assert.throws(
+    () => packageEngineServer.validateLocalWriteRequest({ headers: { host: "127.0.0.1:8010" } }, {}, { port: 8010, writeNonce: nonce }),
+    /valid local write nonce/
+  );
+  assert.throws(
+    () => packageEngineServer.validateLocalWriteRequest({
+      headers: {
+        host: "127.0.0.1:8010",
+        origin: "https://example.com",
+        [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: nonce,
+      },
+    }, {}, { port: 8010, writeNonce: nonce }),
+    /non-local Origin/
+  );
+  assert.throws(
+    () => packageEngineServer.validateLocalWriteRequest({
+      headers: {
+        host: "example.com:8010",
+        origin: "http://127.0.0.1:8010",
+        [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: nonce,
+      },
+    }, {}, { port: 8010, writeNonce: nonce }),
+    /local Host/
+  );
+});
+
+function captureEvidenceIntakeFields(overrides = {}) {
+  return {
+    takeName: "Take 01 hook",
+    takeSource: "shot-list.md hook row",
+    takeReference: "media/take-01-hook.mov",
+    takeNotes: "00:00-00:42 clean take",
+    screenName: "Workflow proof screen",
+    screenPurpose: "shows approved workflow result",
+    screenReference: "recordings/workflow-proof.mp4",
+    audioItem: "Voiceover main",
+    audioRequirement: "final script sections 1-4",
+    audioReference: "audio/voiceover-main.wav",
+    ...overrides,
+  };
+}
+
+test("capture evidence intake preview does not write files", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-intake-preview-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-12-preview");
+  fs.mkdirSync(runDir, { recursive: true });
+
+  const preview = packageEngineServer.buildCaptureEvidencePreview({
+    runId: "2026-05-12-preview",
+    fields: captureEvidenceIntakeFields(),
+  }, { root: tempRoot });
+
+  assert.equal(preview.ok, true);
+  assert.equal(preview.targets.length, 3);
+  assert.match(preview.sections["takes-log.md"], /capture-evidence-intake:start/);
+  assert.deepEqual(fs.readdirSync(runDir), []);
+});
+
+test("capture evidence intake apply rejects path traversal run ids", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-intake-traversal-"));
+
+  assert.throws(
+    () => packageEngineServer.applyCaptureEvidenceIntake({
+      runId: "../escape",
+      fields: captureEvidenceIntakeFields(),
+      confirmApply: true,
+      previewToken: "bad-token",
+    }, { root: tempRoot }),
+    /Invalid package-run id/
+  );
+});
+
+test("capture evidence intake apply rejects missing run folders", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-intake-missing-run-"));
+
+  assert.throws(
+    () => packageEngineServer.buildCaptureEvidencePreview({
+      runId: "2026-05-12-missing-run",
+      fields: captureEvidenceIntakeFields(),
+    }, { root: tempRoot }),
+    /Package-run folder does not exist/
+  );
+  assert.equal(fs.existsSync(path.join(tempRoot, "package-runs", "2026-05-12-missing-run")), false);
+});
+
+test("capture evidence intake apply rejects unapproved target filenames", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-intake-target-"));
+  fs.mkdirSync(path.join(tempRoot, "package-runs", "2026-05-12-target"), { recursive: true });
+
+  assert.throws(
+    () => packageEngineServer.buildCaptureEvidencePreview({
+      runId: "2026-05-12-target",
+      fields: captureEvidenceIntakeFields(),
+      targets: ["takes-log.md", "notes.md"],
+    }, { root: tempRoot }),
+    /Unapproved capture evidence target: notes\.md/
+  );
+});
+
+test("capture evidence intake apply writes only approved targets and audit log", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-intake-apply-"));
+  const runId = "2026-05-12-apply";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "notes.md"), "# Manual Notes\n\nKeep this.\n", "utf8");
+  const payload = { runId, fields: captureEvidenceIntakeFields() };
+  const preview = packageEngineServer.buildCaptureEvidencePreview(payload, { root: tempRoot });
+  const applied = packageEngineServer.applyCaptureEvidenceIntake({
+    ...payload,
+    previewToken: preview.previewToken,
+    confirmApply: true,
+  }, { root: tempRoot });
+
+  assert.deepEqual(applied.written.sort(), [
+    "audio-capture-checklist.md",
+    "capture-evidence-intake-log.md",
+    "screen-recording-checklist.md",
+    "takes-log.md",
+  ]);
+  assert.deepEqual(fs.readdirSync(runDir).sort(), [
+    "audio-capture-checklist.md",
+    "capture-evidence-intake-log.md",
+    "notes.md",
+    "screen-recording-checklist.md",
+    "takes-log.md",
+  ]);
+  assert.equal(fs.readFileSync(path.join(runDir, "notes.md"), "utf8"), "# Manual Notes\n\nKeep this.\n");
+  assert.match(fs.readFileSync(path.join(runDir, "capture-evidence-intake-log.md"), "utf8"), /External APIs called: no/);
+});
+
+test("capture evidence intake apply does not make capture review pass without manual approval", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-intake-review-no-approval-"));
+  const runId = "2026-05-12-review-no-approval";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "shot-edit-plan-review.md"),
+    "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "capture-checklist.md"),
+    "# Capture Checklist\n\n- Capture checklist status: NEEDS CAPTURE\n- Ready for rough cut: no\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "missing-shot-tracker.md"),
+    "# Missing Shot Tracker\n\n| missing shot/content | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Capture scope reviewed. | No fix needed. | closed |\n",
+    "utf8"
+  );
+  const payload = { runId, fields: captureEvidenceIntakeFields() };
+  const preview = packageEngineServer.buildCaptureEvidencePreview(payload, { root: tempRoot });
+
+  const applied = packageEngineServer.applyCaptureEvidenceIntake({
+    ...payload,
+    previewToken: preview.previewToken,
+    confirmApply: true,
+  }, { root: tempRoot });
+
+  applied.written.forEach((filename) => {
+    assert.doesNotMatch(fs.readFileSync(path.join(runDir, filename), "utf8"), /Capture evidence approval: PASS/);
+  });
+  assert.equal(packageCaptureEvidenceReviewScript.main([runDir, "--overwrite"]), 0);
+  const review = fs.readFileSync(path.join(runDir, "capture-evidence-review.md"), "utf8");
+
+  assert.doesNotMatch(review, /Review status: PASS/);
+  assert.match(review, /Capture evidence accepted: no/);
+  assert.match(review, /Review status: (?:NEEDS CAPTURE|READY FOR HUMAN APPROVAL)/);
+});
+
+test("capture evidence intake apply preserves manual content and updates marked section idempotently", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-intake-idempotent-"));
+  const runId = "2026-05-12-idempotent";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  const takesPath = path.join(runDir, "takes-log.md");
+  fs.writeFileSync(takesPath, "# Takes Log\n\nManual note before section.\n", "utf8");
+
+  const firstPayload = { runId, fields: captureEvidenceIntakeFields({ takeReference: "media/take-01.mov" }) };
+  const firstPreview = packageEngineServer.buildCaptureEvidencePreview(firstPayload, { root: tempRoot });
+  packageEngineServer.applyCaptureEvidenceIntake({
+    ...firstPayload,
+    previewToken: firstPreview.previewToken,
+    confirmApply: true,
+  }, { root: tempRoot });
+
+  const secondPayload = { runId, fields: captureEvidenceIntakeFields({ takeReference: "media/take-02.mov" }) };
+  const secondPreview = packageEngineServer.buildCaptureEvidencePreview(secondPayload, { root: tempRoot });
+  packageEngineServer.applyCaptureEvidenceIntake({
+    ...secondPayload,
+    previewToken: secondPreview.previewToken,
+    confirmApply: true,
+  }, { root: tempRoot });
+
+  const takes = fs.readFileSync(takesPath, "utf8");
+  assert.match(takes, /Manual note before section/);
+  assert.match(takes, /media\/take-02\.mov/);
+  assert.doesNotMatch(takes, /media\/take-01\.mov/);
+  assert.equal((takes.match(/capture-evidence-intake:start/g) || []).length, 1);
+  assert.equal((takes.match(/capture-evidence-intake:end/g) || []).length, 1);
 });
 
 test("package engine provider config defaults and respects openai mode", () => {
@@ -7262,6 +8413,191 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
   assert.match(stats, /Needs proof capture/);
   assert.match(stats, /Narrow shooting approved/);
   assert.match(stats, /QA not run/);
+});
+
+test("package runs dashboard renders lifecycle gate review data", () => {
+  const payload = {
+    generatedAt: "2026-05-12T00:00:00.000Z",
+    runs: [
+      {
+        runId: "2026-05-12-stage4-needs-work",
+        path: "package-runs/2026-05-12-stage4-needs-work",
+        title: "Stage 4 Needs Work",
+        status: "Needs shot/edit plan approval",
+        workflowBucket: "Needs shot/edit plan approval",
+        overallStatus: "BLOCKED",
+        firstBlockerReason: "Shot/edit plan review status is NEEDS WORK; Stage accepted is no. First blocker: shot-list.md has TODO rows.",
+        nextRecommendedCommand: "node scripts/package-run-shot-edit-plan-review.js package-runs/2026-05-12-stage4-needs-work",
+        missingExpectedArtifacts: ["shot-edit-plan-review.md with Review status: PASS and Stage accepted: yes"],
+        conservativeBlockedActions: ["shooting", "editing", "publishing", "upload prep", "Hermes brain write", "project-state promotion"],
+        detectedButNotTrustedArtifacts: [
+          {
+            artifact: "rough-cut-review.md",
+            reason: "Not trusted as proof: capture evidence is not proven.",
+          },
+          {
+            artifact: "export artifacts",
+            reason: "Missing evidence: concrete master, loudness, captions, delivery metadata, and exact approvals are not proven.",
+          },
+        ],
+        lifecycleGate: {
+          hasShotEditPlanReview: true,
+          shotEditPlanReviewStatus: "NEEDS WORK",
+          shotEditPlanAccepted: false,
+          shotEditPlanNextSafeAction: "Edit Stage 4 planning artifacts manually, then rerun this review.",
+          hasCaptureEvidenceReview: true,
+          captureEvidenceReviewStatus: "READY FOR HUMAN APPROVAL",
+          captureEvidenceAccepted: false,
+          captureEvidenceRealEvidence: true,
+          captureEvidenceNextSafeAction: "Add capture approval after human review.",
+          captureEvidenceBlockers: "Exact capture approval marker is missing.",
+          hasConcreteCaptureEvidence: false,
+          effectiveReadiness: {
+            captureApproved: false,
+            readyForRoughCut: false,
+            publishReady: false,
+            readyToUpload: false,
+            readyToSchedule: false,
+            downstreamReadinessOverridden: true,
+            overrideReason: "Capture evidence review status is READY FOR HUMAN APPROVAL; Capture evidence accepted is no.",
+            nextSafeAction: "Add capture approval after human review.",
+            rawMarkers: ["raw publish readiness marker"],
+          },
+          hasRealRoughCutEvidence: false,
+          hasRealFinalWatchEvidence: false,
+          hasConcreteExportEvidence: false,
+        },
+        files: {
+          production_plan: true,
+          shot_edit_plan_review: true,
+          shot_edit_plan_enhancement_plan: true,
+          rough_cut_review: true,
+          export_checklist: true,
+        },
+      },
+    ],
+  };
+
+  const index = packageRunsDashboard.normalizeIndex(payload);
+  const run = index.runs[0];
+  const card = packageRunsDashboard.renderRunCard(run);
+
+  assert.equal(run.lifecycleGate.shotEditPlanReviewStatus, "NEEDS WORK");
+  assert.equal(run.lifecycleGate.shotEditPlanAccepted, false);
+  assert.deepEqual(run.conservativeBlockedActions.slice(0, 2), ["shooting", "editing"]);
+  assert.equal(run.detectedButNotTrustedArtifacts.length, 2);
+  assert.match(card, /Lifecycle Review/);
+  assert.match(card, /Current inferred stage/);
+  assert.match(card, /Needs shot\/edit plan approval/);
+  assert.match(card, /BLOCKED/);
+  assert.match(card, /Effective readiness/);
+  assert.match(card, /Capture approved/);
+  assert.match(card, /Ready for rough cut/);
+  assert.match(card, /Publish ready/);
+  assert.match(card, /Upload ready/);
+  assert.match(card, /Raw downstream markers overridden/);
+  assert.match(card, /Stage 4 review status/);
+  assert.match(card, /NEEDS WORK/);
+  assert.match(card, /Stage 4 accepted/);
+  assert.match(card, /Human approval required/);
+  assert.match(card, /Edit Stage 4 planning artifacts manually/);
+  assert.match(card, /Conservative blocked actions/);
+  assert.match(card, /Hermes brain write/);
+  assert.match(card, /Missing expected artifacts/);
+  assert.match(card, /shot-edit-plan-review\.md with Review status: PASS and Stage accepted: yes/);
+  assert.match(card, /Detected but not trusted yet/);
+  assert.match(card, /rough-cut-review\.md/);
+  assert.match(card, /Not trusted as proof/);
+  assert.match(card, /export artifacts/);
+  assert.match(card, /Missing evidence/);
+  assert.match(card, /Capture Evidence/);
+  assert.match(card, /Effective capture approved/);
+  assert.match(card, /Effective ready for rough cut/);
+  assert.match(card, /Real capture evidence detected/);
+  assert.match(card, /Ready for rough cut only after approval/);
+  assert.match(card, /Copyable Markdown helper/);
+  assert.match(card, /Capture Evidence Intake/);
+  assert.match(card, /data-capture-field="takeName"/);
+  assert.match(card, /data-copy-capture-row="takesLog"/);
+  assert.match(card, /data-copy-capture-row="screenRecordingChecklist"/);
+  assert.match(card, /data-copy-capture-row="audioCaptureChecklist"/);
+  assert.match(card, /Local write preview/);
+  assert.match(card, /data-capture-preview/);
+  assert.match(card, /data-capture-apply disabled/);
+  assert.match(card, /Preview required before Apply is enabled/);
+  assert.match(card, /Copy buttons remain available/);
+  assert.match(card, /Capture evidence approval: PASS/);
+});
+
+test("package runs dashboard formats capture evidence intake rows", () => {
+  const rows = packageRunsDashboard.formatCaptureEvidenceRows({
+    takeName: "Take 01 | Hook",
+    takeSource: "shot-list.md hook",
+    takeReference: "media/take-01-hook.mov",
+    takeNotes: "00:00-00:42 clean take",
+    screenName: "Workflow proof screen",
+    screenPurpose: "shows final UI result",
+    screenReference: "recordings/workflow-proof.mp4",
+    audioItem: "Voiceover main",
+    audioRequirement: "final script sections 1-4",
+    audioReference: "audio/voiceover-main.wav",
+  });
+
+  assert.equal(rows.valid, true);
+  assert.deepEqual(rows.missing, []);
+  assert.equal(rows.takesLog, "| Take 01 / Hook | shot-list.md hook | media/take-01-hook.mov | 00:00-00:42 clean take | captured |");
+  assert.equal(rows.screenRecordingChecklist, "| Workflow proof screen | shows final UI result | recordings/workflow-proof.mp4 | captured |");
+  assert.equal(rows.audioCaptureChecklist, "| Voiceover main | final script sections 1-4 | audio/voiceover-main.wav | recorded |");
+  assert.equal(rows.approvalMarker, "Capture evidence approval: PASS");
+});
+
+test("package runs dashboard flags missing capture evidence intake fields", () => {
+  const rows = packageRunsDashboard.formatCaptureEvidenceRows({
+    takeName: "Take 01",
+    screenName: "Workflow proof",
+    audioItem: "Voiceover",
+  });
+
+  assert.equal(rows.valid, false);
+  assert.deepEqual(rows.missing, ["take media reference", "screen recording file/reference", "audio file/reference"]);
+  assert.match(rows.takesLog, /Missing required fields for real evidence/);
+  assert.match(rows.screenRecordingChecklist, /Missing required fields for real evidence/);
+  assert.match(rows.audioCaptureChecklist, /Missing required fields for real evidence/);
+});
+
+test("package runs dashboard browser write path requests local write config", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+
+  assert.match(source, /\/api\/package-engine\/status/);
+  assert.match(source, /localWriteNonce/);
+  assert.match(source, /nonceHeader/);
+  assert.match(source, /Local write config unavailable\. Copy buttons still work\./);
+});
+
+test("package runs dashboard renders safely with missing lifecycle fields", () => {
+  const index = packageRunsDashboard.normalizeIndex({
+    runs: [
+      {
+        runId: "2026-05-12-legacy",
+        path: "package-runs/2026-05-12-legacy",
+        status: "Package selected",
+        files: { selected_package_json: true },
+      },
+    ],
+  });
+
+  const run = index.runs[0];
+  const card = packageRunsDashboard.renderRunCard(run);
+
+  assert.equal(run.lifecycleGate.shotEditPlanReviewStatus, "");
+  assert.equal(run.conservativeBlockedActions.length, 0);
+  assert.equal(run.detectedButNotTrustedArtifacts.length, 0);
+  assert.match(card, /Lifecycle Review/);
+  assert.match(card, /missing review/);
+  assert.match(card, /No conservative blocked actions reported/);
+  assert.match(card, /No detected downstream artifacts are currently being rejected as proof/);
+  assert.match(card, /Capture Evidence Intake/);
+  assert.match(card, /data-copy-capture-row="approvalMarker"/);
 });
 
 test("package runs dashboard renders a safe markdown preview subset", () => {

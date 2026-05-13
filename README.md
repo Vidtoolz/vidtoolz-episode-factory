@@ -250,6 +250,27 @@ exists, and no blockers are detected. `package-engine-new-production.js` is the
 broader production prep pack for brief, shooting plan, Resolve checklist,
 thumbnail/title, and publish prep.
 
+After Mikko edits the generated planning artifacts, review the human-edited
+shot/edit plan without replacing it:
+
+```sh
+node scripts/package-run-shot-edit-plan-review.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+node scripts/package-run-shot-edit-plan-review.js package-runs/YYYY-MM-DD-ai-video-idea-filter --json
+```
+
+`package-run-production-plan.js` creates `production-plan.md`, `shot-list.md`,
+`screen-capture-list.md`, `demo-list.md`, `b-roll-list.md`,
+`graphics-list.md`, `audio-notes.md`, and `production-blockers.md`.
+`package-run-shot-edit-plan-review.js` reviews those human-edited planning
+artifacts and writes only `shot-edit-plan-review.md` and
+`shot-edit-plan-enhancement-plan.md`. It does not call external APIs and does
+not approve shooting from file existence alone; Stage 4 acceptance requires an
+exact approval marker such as `Shot/edit plan approval: PASS`.
+The package-run doctor, index, and dashboard route through this gate: a
+`production-plan.md` with `READY TO SHOOT` is not enough to recommend the
+capture checklist until `shot-edit-plan-review.md` says `Review status: PASS`
+and `Stage accepted: yes`.
+
 After production planning is approved, create the capture execution checklist:
 
 ```sh
@@ -260,9 +281,31 @@ This writes `capture-checklist.md`, `takes-log.md`,
 `missing-shot-tracker.md`, `screen-recording-checklist.md`, and
 `audio-capture-checklist.md`. It does not analyze media files or create
 rough-cut, final-review, publish, archive, or repurposing artifacts.
-`READY FOR ROUGH CUT` requires approved production planning, clear production
-blockers, completed required planning rows, and an exact capture/audio
-readiness approval marker after real capture review.
+Generated capture files are planning scaffolds, not proof of capture.
+
+After Mikko records real captured media references in those files, run the
+capture evidence review gate:
+
+```sh
+node scripts/package-run-capture-evidence-review.js package-runs/YYYY-MM-DD-ai-video-idea-filter
+node scripts/package-run-capture-evidence-review.js package-runs/YYYY-MM-DD-ai-video-idea-filter --json
+```
+
+This writes only `capture-evidence-review.md`. It does not call external APIs
+or modify capture artifacts. `PASS` requires Stage 4 acceptance, concrete
+take/camera evidence, concrete screen proof evidence, concrete audio/voiceover
+evidence, closed or accepted missing-shot state, resolved capture blockers, and
+an exact marker such as `Capture evidence approval: PASS`.
+The dashboard shows this as a visual Capture Evidence panel with a Capture
+Evidence Intake form for generating rows for `takes-log.md`,
+`screen-recording-checklist.md`, and `audio-capture-checklist.md`. The form has
+copy buttons plus a local-only `Preview write` / `Apply to run files` path.
+Preview and Apply require a per-server local write nonce from the local status
+response and local Host/Origin headers. Apply updates only the marked intake
+section in those three files and writes `capture-evidence-intake-log.md`; it
+does not write approval markers or advance the lifecycle. Rerun the review and
+add approval only after human review. See
+[docs/capture-evidence-workflow.md](docs/capture-evidence-workflow.md).
 
 After a first watchable edit exists, create the local rough-cut review starter
 and second-cut gate:
@@ -604,6 +647,7 @@ High-level browser checks:
 - `scripts/package-engine-new-production.js` creates local Production Prep artifacts from a selected package, final outline, and final script.
 - `scripts/package-run-creator-qa.js` runs local Creator QA over Package Engine run artifacts.
 - `scripts/package-run-production-plan.js` turns approved script/review state into local production planning lists and a conservative shoot-readiness gate.
+- `scripts/package-run-shot-edit-plan-review.js` reviews human-edited Stage 4 planning artifacts without modifying them.
 - `scripts/package-run-rough-cut-review.js` turns manual rough-cut watch notes into pickup/edit-fix lists and a conservative second-cut readiness gate.
 - `scripts/package-runs-index.js` generates the local Package Runs dashboard index.
 - `scripts/package-runs-dashboard-launch.js` regenerates the Package Runs index and prints the local dashboard launch command.

@@ -253,6 +253,39 @@ Blocked next actions:
 - Upload prep.
 - Final title/final thumbnail lock.
 
+### 10a. Shot/Edit Plan Review Gate
+
+Meaning: Stage 4 planning has been reviewed after Mikko's manual edits, but it is accepted only when the Stage 4 review explicitly passes.
+
+Minimum evidence:
+- `production-plan.md` has `Shoot-readiness status: READY TO SHOOT`.
+- `shot-edit-plan-review.md` exists.
+- `shot-edit-plan-review.md` says `Review status: PASS`.
+- `shot-edit-plan-review.md` says `Stage accepted: yes`.
+- The approval marker was added in a Stage 4 planning artifact, not only in upstream research, structure, or script-review files.
+
+Does not count as evidence:
+- `production-plan.md` by itself.
+- `Shoot-readiness status: READY TO SHOOT` without `shot-edit-plan-review.md`.
+- `shot-edit-plan-review.md` with `READY FOR HUMAN APPROVAL` and `Stage accepted: no`.
+- Upstream `Manual approval: PASS` markers from research, structure, or script review.
+- Capture checklist files created before Stage 4 is accepted.
+
+Allowed next actions:
+- If `shot-edit-plan-review.md` is missing, run `node scripts/package-run-shot-edit-plan-review.js package-runs/<run-id>`.
+- If review status is `BLOCKED` or `NEEDS WORK`, repair planning artifacts and rerun the review.
+- If review status is `READY FOR HUMAN APPROVAL`, ask Mikko for an explicit Stage 4 decision.
+- If review status is `PASS` and `Stage accepted: yes`, create or review capture checklist artifacts.
+
+Blocked next actions:
+- Shooting.
+- Editing.
+- Publishing.
+- Upload prep.
+- Final title/final thumbnail lock.
+- Hermes brain write.
+- Project-state promotion.
+
 ### 11. QA Repair Needed
 
 Meaning: Creator QA or a review artifact found blocking issues.
@@ -397,6 +430,7 @@ The following do not count as readiness evidence by themselves:
 - File existence without inspected content.
 - Placeholder sections.
 - Draft planning language.
+- Generated downstream artifacts without real physical production evidence.
 - Agent summaries without cited source files.
 - Dashboard labels without evidence review.
 - `capture-verification-note.md` as captured proof.
@@ -406,6 +440,27 @@ The following do not count as readiness evidence by themselves:
 - Claims that ChatGPT, Codex, or Hermes produced something unless the output is preserved.
 - A local transcript as original visual proof.
 - Placeholder final files as reviewed final outline/script evidence.
+
+After Stage 4 acceptance, downstream review artifacts remain scaffolds until
+the physical production evidence is present:
+
+- Capture requires real captured-source evidence, such as non-placeholder
+  `takes-log.md` rows, completed screen/audio capture rows, and an exact capture
+  readiness marker. `capture-checklist.md` existing is not proof of capture.
+- Rough-cut progress requires real `rough-cut-watch-notes.md`. A generated
+  `rough-cut-review.md` with `READY FOR SECOND CUT` is not enough if the watch
+  notes are starter, placeholder, or empty.
+- Final-review progress requires real `final-watch-notes.md`. A generated
+  `final-review.md` with `PASS` is not enough without final-watch evidence.
+- Export/upload readiness requires concrete `master-file-manifest.md`,
+  `loudness-check.md`, `caption-check.md`, and `delivery-readiness.md` evidence
+  plus exact export/mastering/delivery approval markers.
+- Publication metadata readiness requires complete non-placeholder title,
+  thumbnail, description, chapters, and schedule artifacts plus exact metadata
+  approval.
+- Archive readiness requires real publication/export evidence and concrete
+  archive manifests with exact archive approval. Archive files cannot become the
+  next blocker while earlier physical production stages are unproven.
 
 Special capture rules:
 

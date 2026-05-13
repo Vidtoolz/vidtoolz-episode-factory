@@ -33,11 +33,14 @@ const DETECTED_FILES = [
   "screen-capture-list.md",
   "demo-list.md",
   "audio-notes.md",
+  "shot-edit-plan-review.md",
+  "shot-edit-plan-enhancement-plan.md",
   "capture-checklist.md",
   "takes-log.md",
   "missing-shot-tracker.md",
   "screen-recording-checklist.md",
   "audio-capture-checklist.md",
+  "capture-evidence-review.md",
   "rough-cut-watch-notes.md",
   "rough-cut-review.md",
   "pickup-list.md",
@@ -98,6 +101,7 @@ const CAPTURE_ARTIFACTS = [
   "screen-recording-checklist.md",
   "audio-capture-checklist.md",
 ];
+const CAPTURE_EVIDENCE_REVIEW_ARTIFACTS = ["capture-evidence-review.md"];
 
 const PRODUCTION_PLAN_ARTIFACTS = [
   "production-plan.md",
@@ -109,6 +113,7 @@ const PRODUCTION_PLAN_ARTIFACTS = [
   "graphics-list.md",
   "audio-notes.md",
 ];
+const SHOT_EDIT_PLAN_REVIEW_ARTIFACTS = ["shot-edit-plan-review.md", "shot-edit-plan-enhancement-plan.md"];
 
 const ROUGH_CUT_ARTIFACTS = ["rough-cut-watch-notes.md", "rough-cut-review.md", "pickup-list.md", "edit-fix-list.md"];
 const FINAL_REVIEW_ARTIFACTS = ["final-watch-notes.md", "final-review.md", "publication-blockers.md"];
@@ -245,10 +250,106 @@ function readyYes(markdown = "", label = "Ready") {
   return /^yes$/i.test(lineValue(markdown, label));
 }
 
+function acceptedYes(markdown = "", label = "Stage accepted") {
+  return /^yes$/i.test(lineValue(markdown, label));
+}
+
 function countValue(markdown = "", label = "") {
   const value = lineValue(markdown, label);
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function sectionText(markdown = "", heading = "") {
+  const escaped = String(heading).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`(?:^|\\n)##\\s+${escaped}\\s*\\n([\\s\\S]*?)(?=\\n##\\s+|$)`, "i");
+  const match = String(markdown || "").match(pattern);
+  return match ? match[1].trim() : "";
+}
+
+function firstMeaningfulBullet(markdown = "", heading = "") {
+  const text = heading ? sectionText(markdown, heading) : String(markdown || "");
+  const line = text
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .find((item) => /^[-*]\s+/.test(item) && !/^[-*]\s+(none|none\.|no\b)/i.test(item));
+  return line ? line.replace(/^[-*]\s+/, "").trim() : "";
+}
+
+function hasExactApproval(markdown = "", labels = []) {
+  const escaped = labels.map((label) => String(label).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  if (!escaped) return false;
+  return new RegExp(`^(?:[-*]\\s*)?(?:${escaped}):\\s*PASS\\s*$`, "im").test(String(markdown || ""));
+}
+
+function meaningfulBody(markdown = "") {
+  return String(markdown || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !line.startsWith("#"))
+    .filter((line) => !/^\|?\s*:?-{3,}:?/.test(line))
+    .join("\n")
+    .trim();
+}
+
+function isPlaceholderText(markdown = "") {
+  const text = meaningfulBody(markdown);
+  if (!text) return true;
+  return /\b(?:TODO|TBD|placeholder|starter template|not assessed|not captured|not recorded|not ready|not available|fill in)\b/i.test(text);
+}
+
+function isConcreteMarkdown(markdown = "") {
+  const text = meaningfulBody(markdown);
+  return text.length >= 30 && !isPlaceholderText(markdown);
+}
+
+function tableRows(markdown = "") {
+  return String(markdown || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("|") && line.endsWith("|"))
+    .filter((line) => !/^\|\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?$/.test(line))
+    .filter((line) => !/\|\s*(?:item|take|screen recording|audio item|missing shot\/content|blocker|title|thumbnail|description|chapters|schedule)\s*\|/i.test(line));
+}
+
+function hasCompletedEvidenceRows(markdown = "") {
+  return tableRows(markdown).some((row) => {
+    if (/\b(?:TODO|TBD|placeholder|not assessed|open|blocked)\b/i.test(row)) return false;
+    return /\|\s*(?:closed|complete|completed|captured|recorded|ready|approved|done|pass)\s*\|?\s*$/i.test(row);
+  });
+}
+
+function hasRealCaptureRows(markdown = "") {
+  return tableRows(markdown).some((row) => {
+    if (!hasCompletedEvidenceRows(row)) return false;
+    if (/\b(?:verified in existing capture artifacts|approved screen recording from|approved proof screen recording|approved script audio)\b/i.test(row)) {
+      return false;
+    }
+    return /\b(?:\d{1,2}:\d{2}(?::\d{2})?|take\s*\d+|media\/|captures\/|recordings\/|audio\/|\.mp4|\.mov|\.mkv|\.webm|\.wav|\.mp3|\.png|\.jpe?g)\b/i.test(row);
+  });
+}
+
+function hasExplicitCaptureEvidenceNote(markdown = "") {
+  const text = meaningfulBody(markdown);
+  if (text.length < 40 || isPlaceholderText(markdown)) return false;
+  return /\b(?:captured media|actual captured media|recorded file|screen recording|voiceover file|take log|capture evidence)\b/i.test(text) &&
+    /\b(?:media\/|captures\/|recordings\/|audio\/|\.mp4|\.mov|\.mkv|\.webm|\.wav|\.mp3|\.png|\.jpe?g)\b/i.test(text);
+}
+
+function hasRealWatchNotes(markdown = "", type = "watch") {
+  const text = meaningfulBody(markdown);
+  if (text.length < 80) return false;
+  if (isPlaceholderText(markdown)) return false;
+  if (/\bbefore\s+(?:any|a|the)\s+(?:(?:rough[-\s]?cut|final[-\s]?export|final[-\s]?cut)\s+)?(?:edit\s+)?(?:export\s+)?candidate\s+exists?\b|\bbefore\s+(?:any|a|the)\s+(?:rough[-\s]?cut|final[-\s]?export|final[-\s]?cut)\s+exists?\b/i.test(text)) {
+    return false;
+  }
+  const expected = type === "final" ? /final[-\s]?watch|viewer promise|opening|clarity|pacing|audio|visual|publish/i : /rough[-\s]?cut|watch notes|pickup|edit fix|pacing|audio|visual|missing/i;
+  const candidate = type === "final"
+    ? /\b(?:final[-\s]?export|final[-\s]?cut|final[-\s]?render|export candidate|master file|\.mp4|\.mov|resolve timeline)\b/i
+    : /\b(?:rough[-\s]?cut|edit candidate|first[-\s]?cut|second[-\s]?cut|resolve timeline|timeline review|\.mp4|\.mov)\b/i;
+  const humanReview = /\b(?:reviewed|watched|checked|screened|played back|viewed)\b/i;
+  return expected.test(text) && candidate.test(text) && humanReview.test(text);
 }
 
 function readLifecycleGate(runDir, files = {}) {
@@ -263,14 +364,80 @@ function readLifecycleGate(runDir, files = {}) {
   const scriptStructure = readOptionalText(runDir, "script-structure.md");
   const scriptReview = readOptionalText(runDir, "script-review.md");
   const productionPlan = readOptionalText(runDir, "production-plan.md");
+  const shotEditPlanReview = readOptionalText(runDir, "shot-edit-plan-review.md");
   const captureChecklist = readOptionalText(runDir, "capture-checklist.md");
+  const takesLog = readOptionalText(runDir, "takes-log.md");
+  const screenRecordingChecklist = readOptionalText(runDir, "screen-recording-checklist.md");
+  const audioCaptureChecklist = readOptionalText(runDir, "audio-capture-checklist.md");
+  const captureResultNote = readOptionalText(runDir, "capture-result-note.md");
+  const captureEvidenceReview = readOptionalText(runDir, "capture-evidence-review.md");
+  const roughCutWatchNotes = readOptionalText(runDir, "rough-cut-watch-notes.md");
   const roughCutReview = readOptionalText(runDir, "rough-cut-review.md");
+  const finalWatchNotes = readOptionalText(runDir, "final-watch-notes.md");
   const finalReview = readOptionalText(runDir, "final-review.md");
   const exportChecklist = readOptionalText(runDir, "export-checklist.md");
+  const masterFileManifest = readOptionalText(runDir, "master-file-manifest.md");
+  const captionCheck = readOptionalText(runDir, "caption-check.md");
+  const loudnessCheck = readOptionalText(runDir, "loudness-check.md");
   const deliveryReadiness = readOptionalText(runDir, "delivery-readiness.md");
   const publicationMetadata = readOptionalText(runDir, "publish-metadata-review.md");
+  const titleCheck = readOptionalText(runDir, "title-check.md");
+  const thumbnailCheck = readOptionalText(runDir, "thumbnail-check.md");
+  const descriptionCheck = readOptionalText(runDir, "description-check.md");
+  const chaptersCheck = readOptionalText(runDir, "chapters-check.md");
+  const scheduleCheck = readOptionalText(runDir, "schedule-check.md");
   const archiveManifest = readOptionalText(runDir, "archive-manifest.md");
+  const archiveSourceFiles = readOptionalText(runDir, "archive-source-files.md");
+  const archiveAssetsManifest = readOptionalText(runDir, "archive-assets-manifest.md");
+  const archiveExportManifest = readOptionalText(runDir, "archive-export-manifest.md");
+  const reusableClipsManifest = readOptionalText(runDir, "reusable-clips-manifest.md");
+  const archiveBlockers = readOptionalText(runDir, "archive-blockers.md");
   const repurposingPlan = readOptionalText(runDir, "repurposing-plan.md");
+  const captureApproved = hasExactApproval([captureChecklist, takesLog, screenRecordingChecklist, audioCaptureChecklist].join("\n"), [
+    "Manual approval",
+    "Capture approval",
+    "Audio capture readiness",
+    "Rough-cut assembly approval",
+  ]);
+  const hasRealCaptureEvidence =
+    hasRealCaptureRows(takesLog) ||
+    hasRealCaptureRows(screenRecordingChecklist) ||
+    hasRealCaptureRows(audioCaptureChecklist) ||
+    hasExplicitCaptureEvidenceNote(captureResultNote);
+  const captureEvidenceReviewStatus = gateStatus(captureEvidenceReview, "Review status") || gateStatus(captureEvidenceReview);
+  const captureEvidenceAccepted = acceptedYes(captureEvidenceReview, "Capture evidence accepted");
+  const captureEvidenceRealEvidence =
+    /^yes$/i.test(lineValue(captureEvidenceReview, "Real capture evidence detected")) || hasRealCaptureEvidence;
+  const hasConcreteCaptureEvidence = files.capture_evidence_review
+    ? captureEvidenceReviewStatus === "PASS" && captureEvidenceAccepted
+    : captureApproved && hasRealCaptureEvidence;
+  const hasRealRoughCutEvidence = hasRealWatchNotes(roughCutWatchNotes, "rough");
+  const hasRealFinalWatchEvidence = hasRealWatchNotes(finalWatchNotes, "final");
+  const exportApproved =
+    hasExactApproval(exportChecklist, ["Manual approval", "Export approval", "Upload approval"]) &&
+    hasExactApproval(loudnessCheck, ["Mastering approval"]) &&
+    hasExactApproval(deliveryReadiness, ["Delivery approval"]);
+  const hasConcreteExportEvidence =
+    exportApproved &&
+    isConcreteMarkdown(masterFileManifest) &&
+    isConcreteMarkdown(loudnessCheck) &&
+    isConcreteMarkdown(captionCheck) &&
+    isConcreteMarkdown(deliveryReadiness);
+  const metadataApproved = hasExactApproval(publicationMetadata, [
+    "Manual approval",
+    "Metadata approval",
+    "Publication metadata approval",
+    "Schedule approval",
+  ]);
+  const hasConcretePublicationMetadata =
+    metadataApproved &&
+    [titleCheck, thumbnailCheck, descriptionCheck, chaptersCheck, scheduleCheck].every((text) => isConcreteMarkdown(text));
+  const archiveApproved = hasExactApproval(archiveManifest, ["Archive approval", "Manual archive approval"]);
+  const hasConcreteArchiveEvidence =
+    archiveApproved &&
+    [archiveManifest, archiveSourceFiles, archiveAssetsManifest, archiveExportManifest, reusableClipsManifest, archiveBlockers].every((text) =>
+      isConcreteMarkdown(text)
+    );
 
   return {
     researchGateStatus: gateStatus(researchPack, "Status"),
@@ -291,22 +458,39 @@ function readLifecycleGate(runDir, files = {}) {
     scriptReviewStatus: gateStatus(scriptReview, "Script review status") || gateStatus(scriptReview),
     productionPlanningReady: readyYes(scriptReview, "Production planning ready"),
     productionPlanStatus: gateStatus(productionPlan, "Shoot-readiness status") || gateStatus(productionPlan),
+    shotEditPlanReviewStatus: gateStatus(shotEditPlanReview, "Review status") || gateStatus(shotEditPlanReview),
+    shotEditPlanAccepted: acceptedYes(shotEditPlanReview, "Stage accepted"),
+    shotEditPlanBlockers: firstMeaningfulBullet(shotEditPlanReview, "Open Blockers"),
+    shotEditPlanNextSafeAction: firstMeaningfulBullet(shotEditPlanReview, "Next Safe Action"),
     captureStatus: gateStatus(captureChecklist, "Capture checklist status") || gateStatus(captureChecklist),
     readyForRoughCut: readyYes(captureChecklist, "Ready for rough cut"),
+    captureApproved,
+    hasCaptureEvidenceReview: Boolean(files.capture_evidence_review),
+    captureEvidenceReviewStatus,
+    captureEvidenceAccepted,
+    captureEvidenceRealEvidence,
+    captureEvidenceNextSafeAction: firstMeaningfulBullet(captureEvidenceReview, "Next Safe Action"),
+    captureEvidenceBlockers: firstMeaningfulBullet(captureEvidenceReview, "Capture Gate Findings"),
+    hasConcreteCaptureEvidence,
     roughCutStatus: gateStatus(roughCutReview, "Rough-cut review status") || gateStatus(roughCutReview),
     secondCutReady: readyYes(roughCutReview, "Second-cut ready"),
+    hasRealRoughCutEvidence,
     finalReviewStatus: gateStatus(finalReview, "Final review status") || gateStatus(finalReview),
     publishReady: readyYes(finalReview, "Publish ready"),
+    hasRealFinalWatchEvidence,
     exportStatus:
       gateStatus(deliveryReadiness, "Export checklist status") ||
       gateStatus(exportChecklist, "Export checklist status") ||
       gateStatus(deliveryReadiness) ||
       gateStatus(exportChecklist),
     readyToUpload: readyYes(deliveryReadiness, "Ready to upload") || readyYes(exportChecklist, "Ready to upload"),
+    hasConcreteExportEvidence,
     publicationMetadataStatus: gateStatus(publicationMetadata, "Publication metadata status") || gateStatus(publicationMetadata),
     readyToSchedule: readyYes(publicationMetadata, "Ready to schedule"),
+    hasConcretePublicationMetadata,
     archiveStatus: gateStatus(archiveManifest, "Archive manifest status") || gateStatus(archiveManifest),
     readyToArchive: readyYes(archiveManifest, "Ready to archive"),
+    hasConcreteArchiveEvidence,
     repurposingStatus: gateStatus(repurposingPlan, "Repurposing status") || gateStatus(repurposingPlan),
     readyToCutShorts: readyYes(repurposingPlan, "Ready to cut shorts"),
     hasResearchSufficiencyReview: Boolean(files.research_sufficiency_review),
@@ -314,8 +498,12 @@ function readLifecycleGate(runDir, files = {}) {
     hasScriptReview: Boolean(files.script_review),
     hasProductionPlan: Boolean(files.production_plan),
     hasAnyProductionPlanArtifacts: hasAnyArtifacts(files, PRODUCTION_PLAN_ARTIFACTS),
+    hasShotEditPlanReview: Boolean(files.shot_edit_plan_review),
+    hasShotEditPlanEnhancementPlan: Boolean(files.shot_edit_plan_enhancement_plan),
+    hasAnyShotEditPlanReviewArtifacts: hasAnyArtifacts(files, SHOT_EDIT_PLAN_REVIEW_ARTIFACTS),
     hasAnyCaptureArtifacts: hasAnyArtifacts(files, CAPTURE_ARTIFACTS),
     hasAllCaptureArtifacts: hasAllArtifacts(files, CAPTURE_ARTIFACTS),
+    hasAnyCaptureEvidenceReviewArtifacts: hasAnyArtifacts(files, CAPTURE_EVIDENCE_REVIEW_ARTIFACTS),
     hasAnyRoughCutArtifacts: hasAnyArtifacts(files, ROUGH_CUT_ARTIFACTS),
     hasRoughCutReview: Boolean(files.rough_cut_review),
     hasAnyFinalReviewArtifacts: hasAnyArtifacts(files, FINAL_REVIEW_ARTIFACTS),
@@ -330,10 +518,98 @@ function readLifecycleGate(runDir, files = {}) {
   };
 }
 
+function rawReadinessMarkers(gate = {}) {
+  const markers = [];
+  if (gate.captureApproved) markers.push("raw capture approval marker");
+  if (gate.readyForRoughCut || gate.captureStatus === "READY FOR ROUGH CUT") markers.push("raw rough-cut readiness marker");
+  if (gate.publishReady || gate.finalReviewStatus === "PASS" || gate.finalReviewStatus === "READY TO PUBLISH") {
+    markers.push("raw publish readiness marker");
+  }
+  if (gate.readyToUpload || gate.exportStatus === "READY TO UPLOAD") markers.push("raw upload readiness marker");
+  if (gate.readyToSchedule || gate.publicationMetadataStatus === "READY TO SCHEDULE") {
+    markers.push("raw schedule readiness marker");
+  }
+  if (gate.readyToArchive || gate.archiveStatus === "READY TO ARCHIVE") markers.push("raw archive readiness marker");
+  if (gate.readyToCutShorts || gate.repurposingStatus === "READY TO CUT SHORTS") {
+    markers.push("raw repurposing readiness marker");
+  }
+  return markers;
+}
+
+function effectiveReadinessForGate(gate = {}) {
+  const rawCaptureReady = Boolean(gate.readyForRoughCut || gate.captureStatus === "READY FOR ROUGH CUT");
+  const captureReviewBlocksDownstream = Boolean(gate.hasCaptureEvidenceReview && !gate.hasConcreteCaptureEvidence);
+  const captureApproved = Boolean(gate.hasConcreteCaptureEvidence);
+  const readyForRoughCut = Boolean(captureApproved && rawCaptureReady);
+  const roughCutReady = Boolean(
+    readyForRoughCut &&
+      gate.hasRealRoughCutEvidence &&
+      (gate.secondCutReady || gate.roughCutStatus === "READY FOR SECOND CUT")
+  );
+  const publishReady = Boolean(
+    roughCutReady &&
+      gate.hasRealFinalWatchEvidence &&
+      (gate.publishReady || gate.finalReviewStatus === "PASS" || gate.finalReviewStatus === "READY TO PUBLISH")
+  );
+  const readyToUpload = Boolean(
+    publishReady &&
+      gate.hasConcreteExportEvidence &&
+      (gate.readyToUpload || gate.exportStatus === "READY TO UPLOAD")
+  );
+  const readyToSchedule = Boolean(
+    readyToUpload &&
+      gate.hasConcretePublicationMetadata &&
+      (gate.readyToSchedule || gate.publicationMetadataStatus === "READY TO SCHEDULE")
+  );
+  const readyToArchive = Boolean(
+    readyToSchedule &&
+      gate.hasConcreteArchiveEvidence &&
+      (gate.readyToArchive || gate.archiveStatus === "READY TO ARCHIVE")
+  );
+  const readyToCutShorts = Boolean(readyToArchive && (gate.readyToCutShorts || gate.repurposingStatus === "READY TO CUT SHORTS"));
+  const overrideReason = captureReviewBlocksDownstream
+    ? `Capture evidence review status is ${gate.captureEvidenceReviewStatus || "missing"}; Capture evidence accepted is ${
+        gate.captureEvidenceAccepted ? "yes" : "no"
+      }. Raw downstream readiness markers are stale diagnostics until concrete capture evidence is accepted.`
+    : "";
+  return {
+    captureApproved,
+    readyForRoughCut,
+    publishReady,
+    readyToUpload,
+    readyToSchedule,
+    readyToArchive,
+    readyToCutShorts,
+    downstreamReadinessOverridden: captureReviewBlocksDownstream,
+    overrideReason,
+    nextSafeAction: captureReviewBlocksDownstream
+      ? gate.captureEvidenceNextSafeAction || "Add real capture evidence rows with concrete media references, then rerun capture evidence review."
+      : "",
+    rawMarkers: rawReadinessMarkers(gate),
+  };
+}
+
+function applyEffectiveReadiness(gate = {}) {
+  const effectiveReadiness = effectiveReadinessForGate(gate);
+  return {
+    ...gate,
+    effectiveReadiness,
+    effectiveCaptureApproved: effectiveReadiness.captureApproved,
+    effectiveReadyForRoughCut: effectiveReadiness.readyForRoughCut,
+    effectivePublishReady: effectiveReadiness.publishReady,
+    effectiveReadyToUpload: effectiveReadiness.readyToUpload,
+    effectiveReadyToSchedule: effectiveReadiness.readyToSchedule,
+    effectiveReadyToArchive: effectiveReadiness.readyToArchive,
+    effectiveReadyToCutShorts: effectiveReadiness.readyToCutShorts,
+  };
+}
+
 function lifecycleStatusFromGate(baseStatus, lifecycleGate = {}) {
+  const effective = lifecycleGate.effectiveReadiness || effectiveReadinessForGate(lifecycleGate);
   const hasModernLifecycle =
     lifecycleGate.hasAnyProductionPlanArtifacts ||
     lifecycleGate.hasProductionPlan ||
+    lifecycleGate.hasAnyShotEditPlanReviewArtifacts ||
     lifecycleGate.hasAnyCaptureArtifacts ||
     lifecycleGate.hasAnyRoughCutArtifacts ||
     lifecycleGate.hasAnyFinalReviewArtifacts ||
@@ -354,48 +630,52 @@ function lifecycleStatusFromGate(baseStatus, lifecycleGate = {}) {
 
   if (lifecycleGate.hasProductionPlan) {
     if (lifecycleGate.productionPlanStatus !== "READY TO SHOOT") return "Needs production planning";
+    if (!lifecycleGate.hasShotEditPlanReview) return "Needs shot/edit plan review";
+    if (lifecycleGate.shotEditPlanReviewStatus !== "PASS" || !lifecycleGate.shotEditPlanAccepted) {
+      return "Needs shot/edit plan approval";
+    }
     if (!lifecycleGate.hasAllCaptureArtifacts) {
       return lifecycleGate.hasAnyCaptureArtifacts ? "Needs capture" : "Ready for capture checklist";
     }
   }
   if (lifecycleGate.hasAllCaptureArtifacts) {
-    const captureReady = lifecycleGate.readyForRoughCut || lifecycleGate.captureStatus === "READY FOR ROUGH CUT";
-    if (!captureReady) return "Needs capture";
+    const captureReady = effective.readyForRoughCut;
+    if (!captureReady || !lifecycleGate.hasCaptureEvidenceReview || !lifecycleGate.hasConcreteCaptureEvidence) return "Needs capture";
     if (!lifecycleGate.hasRoughCutReview) return "Ready for rough cut";
   }
   if (lifecycleGate.hasRoughCutReview) {
     const roughCutReady = lifecycleGate.secondCutReady || lifecycleGate.roughCutStatus === "READY FOR SECOND CUT";
-    if (!roughCutReady) return "Needs rough-cut review";
+    if (!roughCutReady || !lifecycleGate.hasRealRoughCutEvidence) return "Needs rough-cut review";
     if (!lifecycleGate.hasFinalReview) return "Ready for second cut";
   }
   if (lifecycleGate.hasFinalReview) {
-    const finalReady = lifecycleGate.publishReady || lifecycleGate.finalReviewStatus === "READY TO PUBLISH";
-    if (!finalReady) return "Needs final review";
+    const finalReady = effective.publishReady;
+    if (!finalReady || !lifecycleGate.hasRealFinalWatchEvidence) return "Needs final review";
     if (!lifecycleGate.hasAllExportArtifacts) {
       return lifecycleGate.hasAnyExportArtifacts ? "Needs export check" : "Ready to publish";
     }
   }
   if (lifecycleGate.hasAllExportArtifacts) {
-    const exportReady = lifecycleGate.readyToUpload || lifecycleGate.exportStatus === "READY TO UPLOAD";
-    if (!exportReady) return "Needs export check";
+    const exportReady = effective.readyToUpload;
+    if (!exportReady || !lifecycleGate.hasConcreteExportEvidence) return "Needs export check";
     if (!lifecycleGate.hasAllPublicationMetadataArtifacts) {
       return lifecycleGate.hasAnyPublicationMetadataArtifacts ? "Needs publication metadata" : "Ready to upload";
     }
   }
   if (lifecycleGate.hasAllPublicationMetadataArtifacts) {
-    const metadataReady = lifecycleGate.readyToSchedule || lifecycleGate.publicationMetadataStatus === "READY TO SCHEDULE";
-    if (!metadataReady) return "Needs publication metadata";
+    const metadataReady = effective.readyToSchedule;
+    if (!metadataReady || !lifecycleGate.hasConcretePublicationMetadata) return "Needs publication metadata";
     if (!lifecycleGate.hasAllArchiveArtifacts) {
       return lifecycleGate.hasAnyArchiveArtifacts ? "Needs archive data" : "Ready to schedule";
     }
   }
   if (lifecycleGate.hasAllArchiveArtifacts) {
-    const archiveReady = lifecycleGate.readyToArchive || lifecycleGate.archiveStatus === "READY TO ARCHIVE";
-    if (!archiveReady) return "Needs archive data";
+    const archiveReady = effective.readyToArchive;
+    if (!archiveReady || !lifecycleGate.hasConcreteArchiveEvidence) return "Needs archive data";
     if (!lifecycleGate.hasRepurposingPlan) return "Ready to archive";
   }
   if (lifecycleGate.hasRepurposingPlan) {
-    if (lifecycleGate.readyToCutShorts || lifecycleGate.repurposingStatus === "READY TO CUT SHORTS") return "Ready to cut shorts";
+    if (effective.readyToCutShorts) return "Ready to cut shorts";
     return "Needs repurposing approval";
   }
   return baseStatus;
@@ -413,6 +693,8 @@ function nextExpectedFile(status) {
     "Production prep ready": "remaining production prep artifacts",
     "Ready to shoot": "",
     "Needs production planning": "production-plan.md with READY TO SHOOT",
+    "Needs shot/edit plan review": "shot-edit-plan-review.md",
+    "Needs shot/edit plan approval": "shot-edit-plan-review.md with Review status: PASS and Stage accepted: yes",
     "Ready for capture checklist": "capture-checklist.md",
     "Needs capture": "capture execution evidence",
     "Ready for rough cut": "rough-cut-review.md",
@@ -459,6 +741,8 @@ function nextRecommendedCommand(status, runPath, creatorQaStatus = "not run", ev
     "Production prep ready": "",
     "Ready to shoot": "",
     "Needs production planning": `node scripts/package-run-production-plan.js ${target}`,
+    "Needs shot/edit plan review": `node scripts/package-run-shot-edit-plan-review.js ${target}`,
+    "Needs shot/edit plan approval": "",
     "Ready for capture checklist": `node scripts/package-run-capture-checklist.js ${target}`,
     "Needs capture": "",
     "Ready for rough cut": `node scripts/package-run-rough-cut-review.js ${target}`,
@@ -572,7 +856,215 @@ function firstBlockingGateForRun(run = {}) {
     };
   }
 
+  if (run.status === "Needs shot/edit plan review") {
+    return {
+      stage: "shot-edit-plan-review",
+      reason: "shot-edit-plan-review.md is missing; production-plan.md readiness is not enough to approve capture.",
+      missingExpectedArtifacts: ["shot-edit-plan-review.md"],
+      nextRecommendedCommand: `node scripts/package-run-shot-edit-plan-review.js ${target}`,
+    };
+  }
+
+  if (run.status === "Needs shot/edit plan approval") {
+    const status = gate.shotEditPlanReviewStatus || "missing";
+    const accepted = gate.shotEditPlanAccepted ? "yes" : "no";
+    const blocker = gate.shotEditPlanBlockers ? ` First blocker: ${gate.shotEditPlanBlockers}` : "";
+    const nextSafeAction = gate.shotEditPlanNextSafeAction || "Edit Stage 4 planning artifacts manually, then rerun shot/edit plan review.";
+    return {
+      stage: "shot-edit-plan-review",
+      reason: `Shot/edit plan review status is ${status}; Stage accepted is ${accepted}.${blocker}`.trim(),
+      missingExpectedArtifacts:
+        status === "READY FOR HUMAN APPROVAL"
+          ? ["manual Stage 4 approval marker in planning artifacts"]
+          : ["shot-edit-plan-review.md with Review status: PASS and Stage accepted: yes"],
+      nextRecommendedCommand: status === "READY FOR HUMAN APPROVAL" ? "" : `node scripts/package-run-shot-edit-plan-review.js ${target}`,
+      nextSafeAction,
+      blockedActions: [
+        "shooting",
+        "editing",
+        "publishing",
+        "upload prep",
+        "final title lock",
+        "final thumbnail lock",
+        "Hermes brain write",
+        "project-state promotion",
+      ],
+    };
+  }
+
+  if (run.status === "Needs capture") {
+    if (gate.hasAllCaptureArtifacts && !gate.hasCaptureEvidenceReview) {
+      return {
+        stage: "capture-evidence",
+        reason: "capture-evidence-review.md is missing; generated capture checklist files are not proof of real captured media.",
+        missingExpectedArtifacts: ["capture-evidence-review.md"],
+        nextRecommendedCommand: `node scripts/package-run-capture-evidence-review.js ${target}`,
+        nextSafeAction: "Add real capture evidence rows or run the capture evidence review after manual intake.",
+      };
+    }
+    if (gate.hasCaptureEvidenceReview && !gate.hasConcreteCaptureEvidence) {
+      const status = gate.captureEvidenceReviewStatus || "missing";
+      const accepted = gate.captureEvidenceAccepted ? "yes" : "no";
+      return {
+        stage: "capture-evidence",
+        reason: `Capture evidence review status is ${status}; Capture evidence accepted is ${accepted}.`,
+        missingExpectedArtifacts:
+          status === "READY FOR HUMAN APPROVAL"
+            ? ["exact capture approval marker in capture-stage artifact"]
+            : ["real capture evidence and capture-evidence-review.md PASS"],
+        nextRecommendedCommand: status === "READY FOR HUMAN APPROVAL" ? "" : `node scripts/package-run-capture-evidence-review.js ${target}`,
+        nextSafeAction: gate.captureEvidenceNextSafeAction || "Add real capture evidence rows, then rerun capture evidence review.",
+      };
+    }
+  }
+
   return null;
+}
+
+function firstBlockerReasonForRun(run = {}) {
+  const status = run.status || "";
+  const gate = run.lifecycleGate || {};
+  const evidence = run.evidenceGate || {};
+  const creatorQaStatus = run.creatorQaStatus || "not run";
+
+  if (isCreatorQaBlocking(creatorQaStatus)) return `Creator QA status is ${creatorQaStatus}.`;
+  if (status === "Ready to shoot" && evidence.hasNarrowShootingApproval) return "Narrow shooting only approval blocks downstream work.";
+  if (status === "Ready to shoot" && evidence.blocksProductionReady) return evidence.warning || "Evidence gate blocks production readiness.";
+  const blockingGate = firstBlockingGateForRun(run);
+  if (blockingGate && blockingGate.reason) return blockingGate.reason;
+  if (status === "Needs production planning") {
+    if (!gate.hasProductionPlan) return "production-plan.md is missing.";
+    return `Shoot-readiness status is ${gate.productionPlanStatus || "missing"}, not READY TO SHOOT.`;
+  }
+  if (status === "Needs capture") {
+    if (gate.hasAllCaptureArtifacts && !gate.hasCaptureEvidenceReview) {
+      return "capture-evidence-review.md is missing; generated capture checklist files are not proof of real captured media.";
+    }
+    if (gate.hasCaptureEvidenceReview && !gate.hasConcreteCaptureEvidence) {
+      return `Capture evidence review status is ${gate.captureEvidenceReviewStatus || "missing"}; Capture evidence accepted is ${
+        gate.captureEvidenceAccepted ? "yes" : "no"
+      }.`;
+    }
+    if (gate.captureStatus === "READY FOR ROUGH CUT" && !gate.hasConcreteCaptureEvidence) {
+      return "Capture checklist status is READY FOR ROUGH CUT, but real capture evidence and exact capture approval are not proven.";
+    }
+    return `Capture checklist status is ${gate.captureStatus || "missing"}, not READY FOR ROUGH CUT.`;
+  }
+  if (status === "Needs rough-cut review") {
+    if ((gate.roughCutStatus === "READY FOR SECOND CUT" || gate.secondCutReady) && !gate.hasRealRoughCutEvidence) {
+      return "Rough-cut review says READY FOR SECOND CUT, but rough-cut-watch-notes.md lacks real watch notes.";
+    }
+    return `Rough-cut review status is ${gate.roughCutStatus || "missing"}, not READY FOR SECOND CUT.`;
+  }
+  if (status === "Needs final review") {
+    if ((gate.finalReviewStatus === "PASS" || gate.publishReady) && !gate.hasRealFinalWatchEvidence) {
+      return "Final review is publish-ready on paper, but final-watch-notes.md lacks real final-watch evidence.";
+    }
+    return `Final review is not publish-ready (${gate.finalReviewStatus || "missing"}).`;
+  }
+  if (status === "Needs export check") {
+    if ((gate.exportStatus === "READY TO UPLOAD" || gate.readyToUpload) && !gate.hasConcreteExportEvidence) {
+      return "Export readiness says READY TO UPLOAD, but concrete export evidence and exact approvals are not proven.";
+    }
+    return `Export readiness is ${gate.exportStatus || "missing"}, not READY TO UPLOAD.`;
+  }
+  if (status === "Needs publication metadata") {
+    if ((gate.publicationMetadataStatus === "READY TO SCHEDULE" || gate.readyToSchedule) && !gate.hasConcretePublicationMetadata) {
+      return "Publication metadata says READY TO SCHEDULE, but complete real metadata and exact approval are not proven.";
+    }
+    return `Publication metadata status is ${gate.publicationMetadataStatus || "missing"}, not READY TO SCHEDULE.`;
+  }
+  if (status === "Needs archive data") {
+    if ((gate.archiveStatus === "READY TO ARCHIVE" || gate.readyToArchive) && !gate.hasConcreteArchiveEvidence) {
+      return "Archive manifest says READY TO ARCHIVE, but concrete publication/export/archive evidence is not proven.";
+    }
+    return `Archive manifest status is ${gate.archiveStatus || "missing"}, not READY TO ARCHIVE.`;
+  }
+  if (status === "Needs repurposing approval") return `Repurposing status is ${gate.repurposingStatus || "missing"}, not READY TO CUT SHORTS.`;
+  if (run.nextExpectedFile) return `Missing expected artifact: ${run.nextExpectedFile}.`;
+  return "";
+}
+
+function missingExpectedArtifactsForRun(run = {}) {
+  const blockingGate = firstBlockingGateForRun(run);
+  if (blockingGate && blockingGate.missingExpectedArtifacts) return blockingGate.missingExpectedArtifacts;
+  return run.nextExpectedFile ? [run.nextExpectedFile] : [];
+}
+
+function overallStatusForRun(run = {}) {
+  const status = run.status || "";
+  const blocker = firstBlockerReasonForRun(run);
+  if (status === "Ready to archive" || status === "Ready to cut shorts") return "COMPLETE ENOUGH FOR HUMAN REVIEW";
+  if (/^Ready\b/.test(status)) return "READY FOR NEXT STAGE";
+  if (/^Needs\b/.test(status) || blocker) return "BLOCKED";
+  return "NEEDS WORK";
+}
+
+function conservativeBlockedActionsForRun(run = {}) {
+  const status = run.status || "";
+  const gate = run.lifecycleGate || {};
+  if (gate.hasProductionPlan && !gate.shotEditPlanAccepted) {
+    return [
+      "shooting",
+      "editing",
+      "publishing",
+      "upload prep",
+      "final title lock",
+      "final thumbnail lock",
+      "Hermes brain write",
+      "project-state promotion",
+    ];
+  }
+  if (
+    [
+      "Needs capture",
+      "Needs rough-cut review",
+      "Needs final review",
+      "Needs export check",
+      "Needs publication metadata",
+      "Needs archive data",
+      "Needs repurposing approval",
+    ].includes(status)
+  ) {
+    return ["upload", "publishing", "archive", "Hermes brain write", "project-state promotion"];
+  }
+  return [];
+}
+
+function detectedButNotTrustedArtifactsForRun(run = {}) {
+  const gate = run.lifecycleGate || {};
+  const files = run.files || {};
+  const items = [];
+  const add = (artifact, reason) => {
+    if (!items.some((item) => item.artifact === artifact && item.reason === reason)) items.push({ artifact, reason });
+  };
+  if (files.capture_checklist && !gate.hasConcreteCaptureEvidence) {
+    add("capture-checklist.md", "Not trusted as proof: real capture evidence is missing.");
+  }
+  if ((files.takes_log || files.screen_recording_checklist || files.audio_capture_checklist) && !gate.hasConcreteCaptureEvidence) {
+    add("capture execution artifacts", "Missing evidence: generated checklist rows or approvals alone do not prove captured media.");
+  }
+  if (files.rough_cut_review && (!gate.hasConcreteCaptureEvidence || !gate.hasRealRoughCutEvidence)) {
+    add(
+      "rough-cut-review.md",
+      gate.hasConcreteCaptureEvidence
+        ? "Not trusted as proof: rough-cut-watch-notes.md lacks real watch notes tied to an edit candidate."
+        : "Not trusted as proof: capture evidence is not proven."
+    );
+  }
+  if (files.final_review && (!gate.hasConcreteCaptureEvidence || !gate.hasRealRoughCutEvidence || !gate.hasRealFinalWatchEvidence)) {
+    add("final-review.md", "Not trusted as proof: upstream physical edit evidence is not proven.");
+  }
+  if (gate.hasAnyExportArtifacts && !gate.hasConcreteExportEvidence) {
+    add("export artifacts", "Missing evidence: concrete master, loudness, captions, delivery metadata, and exact approvals are not proven.");
+  }
+  if (gate.hasAnyPublicationMetadataArtifacts && !gate.hasConcretePublicationMetadata) {
+    add("publication metadata artifacts", "Missing evidence: complete real title, thumbnail, description, chapters, schedule, and approval are not proven.");
+  }
+  if (gate.hasAnyArchiveArtifacts && (!gate.hasConcreteExportEvidence || !gate.hasConcretePublicationMetadata || !gate.hasConcreteArchiveEvidence)) {
+    add("archive artifacts", "Not trusted as proof: publication/export/archive evidence is not proven.");
+  }
+  return items;
 }
 
 function nextRecommendedCommandForRun(run = {}) {
@@ -601,6 +1093,8 @@ function workflowBucket(status, creatorQaStatus = "not run", evidenceGate = {}) 
     "Production prep ready": "Needs production prep",
     "Ready to shoot": "Ready to shoot",
     "Needs production planning": "Needs production planning",
+    "Needs shot/edit plan review": "Needs shot/edit plan review",
+    "Needs shot/edit plan approval": "Needs shot/edit plan approval",
     "Ready for capture checklist": "Needs capture checklist",
     "Needs capture": "Needs capture",
     "Ready for rough cut": "Needs rough-cut review",
@@ -761,9 +1255,10 @@ function scanRun(runDir, repoRoot = process.cwd()) {
   const creatorQaStatus = readCreatorQaStatus(runDir);
   const evidenceGate = readEvidenceGate(runDir);
   const baseStatus = classifyRunStatus(files, creatorQaStatus);
-  const lifecycleGate = readLifecycleGate(runDir, files);
+  const lifecycleGate = applyEffectiveReadiness(readLifecycleGate(runDir, files));
   const status = lifecycleStatusFromGate(baseStatus, lifecycleGate);
-  return {
+  const nextExpected = nextExpectedFile(status);
+  const run = {
     runId,
     path: runPath,
     title: readPackageTitle(runDir),
@@ -772,10 +1267,18 @@ function scanRun(runDir, repoRoot = process.cwd()) {
     creatorQaStatus,
     evidenceGate,
     lifecycleGate,
-    nextExpectedFile: nextExpectedFile(status),
-    nextRecommendedCommand: nextRecommendedCommandForRun({ status, path: runPath, creatorQaStatus, evidenceGate, lifecycleGate, files }),
+    nextExpectedFile: nextExpected,
     updatedAt: latestMtimeIso(runDir, DETECTED_FILES),
     files,
+  };
+  run.nextRecommendedCommand = nextRecommendedCommandForRun(run);
+  run.firstBlockerReason = firstBlockerReasonForRun(run);
+  run.overallStatus = overallStatusForRun(run);
+  run.missingExpectedArtifacts = missingExpectedArtifactsForRun(run);
+  run.conservativeBlockedActions = conservativeBlockedActionsForRun(run);
+  run.detectedButNotTrustedArtifacts = detectedButNotTrustedArtifactsForRun(run);
+  return {
+    ...run,
   };
 }
 
@@ -842,10 +1345,18 @@ module.exports = {
   isCreatorQaBlocking,
   classifyRunStatus,
   readLifecycleGate,
+  rawReadinessMarkers,
+  effectiveReadinessForGate,
+  applyEffectiveReadiness,
   lifecycleStatusFromGate,
   nextExpectedFile,
   nextRecommendedCommand,
   firstBlockingGateForRun,
+  firstBlockerReasonForRun,
+  missingExpectedArtifactsForRun,
+  overallStatusForRun,
+  conservativeBlockedActionsForRun,
+  detectedButNotTrustedArtifactsForRun,
   nextRecommendedCommandForRun,
   workflowBucket,
   readCreatorQaStatus,

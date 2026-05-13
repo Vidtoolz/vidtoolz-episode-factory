@@ -445,19 +445,29 @@
   }
 
   function loadCandidates() {
-    candidateSource = runTools.candidateSourceFromLocation(window.location.search);
-    fetch(candidateSource, { cache: "no-store" })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Could not load ${candidateSource} (${response.status})`);
-        return response.json();
-      })
-      .then((payload) => {
-        const validation = model.validatePackageCandidateSet(payload);
-        if (!validation.ok) throw new Error(validation.error);
-        candidateSet = validation.data;
-        showStatus(`Loaded ${candidateSet.candidates.length} package candidates from ${candidateSource}.`, "success");
-        render();
-      })
+    candidateSource = runTools.candidateSourceFromLocation(window.location.search) || "package-candidates.json";
+    const sources = [candidateSource, "package-candidates.json", "./package-candidates.json", "/package-candidates.json"].filter((v,i,a)=>a.indexOf(v)===i);
+    const tryLoad = async () => {
+      let lastError = null;
+      for (const source of sources) {
+        try {
+          const response = await fetch(source, { cache: "no-store" });
+          if (!response.ok) throw new Error(`Could not load ${source} (${response.status})`);
+          const payload = await response.json();
+          const validation = model.validatePackageCandidateSet(payload);
+          if (!validation.ok) throw new Error(validation.error);
+          candidateSource = source;
+          candidateSet = validation.data;
+          showStatus(`Loaded ${candidateSet.candidates.length} package candidates from ${candidateSource}.`, "success");
+          render();
+          return;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError || new Error("Could not load package candidates.");
+    };
+    tryLoad()
       .catch((error) => {
         showStatus(error.message, "error");
         els.grid.innerHTML = `<p class="muted">Serve this directory locally and confirm the package candidate JSON exists and is valid.</p>`;

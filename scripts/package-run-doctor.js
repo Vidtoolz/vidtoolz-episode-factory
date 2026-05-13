@@ -64,6 +64,8 @@ function missingExpectedArtifacts(run = {}) {
     "Script prep ready": ["final-script.md"],
     "Final script ready": ["production-brief.md or production-plan.md"],
     "Needs production planning": ["production-plan.md with Shoot-readiness status: READY TO SHOOT"],
+    "Needs shot/edit plan review": ["shot-edit-plan-review.md"],
+    "Needs shot/edit plan approval": ["shot-edit-plan-review.md with Review status: PASS and Stage accepted: yes"],
     "Ready for capture checklist": ["capture-checklist.md"],
     "Needs capture": [
       "capture-checklist.md",
@@ -106,16 +108,51 @@ function firstBlockerReason(run = {}) {
     if (!gate.hasProductionPlan) return "production-plan.md is missing.";
     return `Shoot-readiness status is ${gate.productionPlanStatus || "missing"}, not READY TO SHOOT.`;
   }
-  if (status === "Needs capture") return `Capture checklist status is ${gate.captureStatus || "missing"}, not READY FOR ROUGH CUT.`;
+  if (status === "Needs shot/edit plan review") {
+    return "shot-edit-plan-review.md is missing; production-plan.md readiness is not enough to approve capture.";
+  }
+  if (status === "Needs shot/edit plan approval") {
+    const blocker = gate.shotEditPlanBlockers ? ` First blocker: ${gate.shotEditPlanBlockers}` : "";
+    return `Shot/edit plan review status is ${gate.shotEditPlanReviewStatus || "missing"}; Stage accepted is ${
+      gate.shotEditPlanAccepted ? "yes" : "no"
+    }.${blocker}`.trim();
+  }
+  if (status === "Needs capture") {
+    if (gate.captureStatus === "READY FOR ROUGH CUT" && !gate.hasConcreteCaptureEvidence) {
+      return "Capture checklist status is READY FOR ROUGH CUT, but real capture evidence and exact capture approval are not proven.";
+    }
+    return `Capture checklist status is ${gate.captureStatus || "missing"}, not READY FOR ROUGH CUT.`;
+  }
   if (status === "Needs rough-cut review") {
+    if ((gate.roughCutStatus === "READY FOR SECOND CUT" || gate.secondCutReady) && !gate.hasRealRoughCutEvidence) {
+      return "Rough-cut review says READY FOR SECOND CUT, but rough-cut-watch-notes.md lacks real watch notes.";
+    }
     return `Rough-cut review status is ${gate.roughCutStatus || "missing"}, not READY FOR SECOND CUT.`;
   }
-  if (status === "Needs final review") return `Final review is not publish-ready (${gate.finalReviewStatus || "missing"}).`;
-  if (status === "Needs export check") return `Export readiness is ${gate.exportStatus || "missing"}, not READY TO UPLOAD.`;
+  if (status === "Needs final review") {
+    if ((gate.finalReviewStatus === "PASS" || gate.publishReady) && !gate.hasRealFinalWatchEvidence) {
+      return "Final review is publish-ready on paper, but final-watch-notes.md lacks real final-watch evidence.";
+    }
+    return `Final review is not publish-ready (${gate.finalReviewStatus || "missing"}).`;
+  }
+  if (status === "Needs export check") {
+    if ((gate.exportStatus === "READY TO UPLOAD" || gate.readyToUpload) && !gate.hasConcreteExportEvidence) {
+      return "Export readiness says READY TO UPLOAD, but concrete export evidence and exact approvals are not proven.";
+    }
+    return `Export readiness is ${gate.exportStatus || "missing"}, not READY TO UPLOAD.`;
+  }
   if (status === "Needs publication metadata") {
+    if ((gate.publicationMetadataStatus === "READY TO SCHEDULE" || gate.readyToSchedule) && !gate.hasConcretePublicationMetadata) {
+      return "Publication metadata says READY TO SCHEDULE, but complete real metadata and exact approval are not proven.";
+    }
     return `Publication metadata status is ${gate.publicationMetadataStatus || "missing"}, not READY TO SCHEDULE.`;
   }
-  if (status === "Needs archive data") return `Archive manifest status is ${gate.archiveStatus || "missing"}, not READY TO ARCHIVE.`;
+  if (status === "Needs archive data") {
+    if ((gate.archiveStatus === "READY TO ARCHIVE" || gate.readyToArchive) && !gate.hasConcreteArchiveEvidence) {
+      return "Archive manifest says READY TO ARCHIVE, but concrete publication/export/archive evidence is not proven.";
+    }
+    return `Archive manifest status is ${gate.archiveStatus || "missing"}, not READY TO ARCHIVE.`;
+  }
   if (status === "Needs repurposing approval") {
     return `Repurposing status is ${gate.repurposingStatus || "missing"}, not READY TO CUT SHORTS.`;
   }
@@ -124,6 +161,7 @@ function firstBlockerReason(run = {}) {
 }
 
 function lifecycleGateSummary(gate = {}) {
+  const effectiveReadiness = gate.effectiveReadiness || packageRunsIndex.effectiveReadinessForGate(gate);
   return {
     researchGateStatus: gate.researchGateStatus || "",
     researchSufficiencyReviewStatus: gate.researchSufficiencyReviewStatus || "",
@@ -136,20 +174,46 @@ function lifecycleGateSummary(gate = {}) {
     scriptReviewStatus: gate.scriptReviewStatus || "",
     productionPlanningReady: Boolean(gate.productionPlanningReady),
     productionPlanStatus: gate.productionPlanStatus || "",
+    hasShotEditPlanReview: Boolean(gate.hasShotEditPlanReview),
+    shotEditPlanReviewStatus: gate.shotEditPlanReviewStatus || "",
+    shotEditPlanAccepted: Boolean(gate.shotEditPlanAccepted),
+    shotEditPlanBlockers: gate.shotEditPlanBlockers || "",
+    shotEditPlanNextSafeAction: gate.shotEditPlanNextSafeAction || "",
     captureStatus: gate.captureStatus || "",
     readyForRoughCut: Boolean(gate.readyForRoughCut),
+    captureApproved: Boolean(gate.captureApproved),
+    effectiveReadiness,
+    effectiveCaptureApproved: Boolean(effectiveReadiness.captureApproved),
+    effectiveReadyForRoughCut: Boolean(effectiveReadiness.readyForRoughCut),
+    hasCaptureEvidenceReview: Boolean(gate.hasCaptureEvidenceReview),
+    captureEvidenceReviewStatus: gate.captureEvidenceReviewStatus || "",
+    captureEvidenceAccepted: Boolean(gate.captureEvidenceAccepted),
+    captureEvidenceRealEvidence: Boolean(gate.captureEvidenceRealEvidence),
+    captureEvidenceNextSafeAction: gate.captureEvidenceNextSafeAction || "",
+    captureEvidenceBlockers: gate.captureEvidenceBlockers || "",
+    hasConcreteCaptureEvidence: Boolean(gate.hasConcreteCaptureEvidence),
     roughCutStatus: gate.roughCutStatus || "",
     secondCutReady: Boolean(gate.secondCutReady),
+    hasRealRoughCutEvidence: Boolean(gate.hasRealRoughCutEvidence),
     finalReviewStatus: gate.finalReviewStatus || "",
     publishReady: Boolean(gate.publishReady),
+    effectivePublishReady: Boolean(effectiveReadiness.publishReady),
+    hasRealFinalWatchEvidence: Boolean(gate.hasRealFinalWatchEvidence),
     exportStatus: gate.exportStatus || "",
     readyToUpload: Boolean(gate.readyToUpload),
+    effectiveReadyToUpload: Boolean(effectiveReadiness.readyToUpload),
+    hasConcreteExportEvidence: Boolean(gate.hasConcreteExportEvidence),
     publicationMetadataStatus: gate.publicationMetadataStatus || "",
     readyToSchedule: Boolean(gate.readyToSchedule),
+    effectiveReadyToSchedule: Boolean(effectiveReadiness.readyToSchedule),
+    hasConcretePublicationMetadata: Boolean(gate.hasConcretePublicationMetadata),
     archiveStatus: gate.archiveStatus || "",
     readyToArchive: Boolean(gate.readyToArchive),
+    effectiveReadyToArchive: Boolean(effectiveReadiness.readyToArchive),
+    hasConcreteArchiveEvidence: Boolean(gate.hasConcreteArchiveEvidence),
     repurposingStatus: gate.repurposingStatus || "",
     readyToCutShorts: Boolean(gate.readyToCutShorts),
+    effectiveReadyToCutShorts: Boolean(effectiveReadiness.readyToCutShorts),
   };
 }
 
@@ -174,6 +238,7 @@ function approvalMarkersDetected(gate = {}) {
   if (gate.scriptReviewStatus === "PASS") markers.push("Script review status: PASS");
   if (gate.productionPlanningReady) markers.push("Production planning ready: yes");
   if (gate.productionPlanStatus === "READY TO SHOOT") markers.push("Shoot-readiness status: READY TO SHOOT");
+  if (gate.shotEditPlanAccepted && gate.shotEditPlanReviewStatus === "PASS") markers.push("Shot/edit plan accepted: PASS");
   if (gate.readyForRoughCut || gate.captureStatus === "READY FOR ROUGH CUT") markers.push("Capture checklist status: READY FOR ROUGH CUT");
   if (gate.secondCutReady || gate.roughCutStatus === "READY FOR SECOND CUT") markers.push("Rough-cut review status: READY FOR SECOND CUT");
   if (gate.publishReady || gate.finalReviewStatus === "READY TO PUBLISH" || gate.finalReviewStatus === "PASS") {
@@ -190,6 +255,37 @@ function approvalMarkersDetected(gate = {}) {
   return markers;
 }
 
+function conservativeBlockedActionsForRun(run = {}) {
+  const status = run.status || "";
+  const gate = run.lifecycleGate || {};
+  if (gate.hasProductionPlan && !gate.shotEditPlanAccepted) {
+    return [
+      "shooting",
+      "editing",
+      "publishing",
+      "upload prep",
+      "final title lock",
+      "final thumbnail lock",
+      "Hermes brain write",
+      "project-state promotion",
+    ];
+  }
+  if (
+    [
+      "Needs capture",
+      "Needs rough-cut review",
+      "Needs final review",
+      "Needs export check",
+      "Needs publication metadata",
+      "Needs archive data",
+      "Needs repurposing approval",
+    ].includes(status)
+  ) {
+    return ["upload", "publishing", "archive", "Hermes brain write", "project-state promotion"];
+  }
+  return [];
+}
+
 function buildDoctorReport(runDirInput, options = {}) {
   const repoRoot = path.resolve(options.repoRoot || path.join(__dirname, ".."));
   const runDir = path.resolve(repoRoot, runDirInput || "");
@@ -200,6 +296,7 @@ function buildDoctorReport(runDirInput, options = {}) {
 
   const run = packageRunsIndex.scanRun(runDir, repoRoot);
   const detected = detectedArtifacts(run.files);
+  const effectiveReadiness = run.lifecycleGate.effectiveReadiness || packageRunsIndex.effectiveReadinessForGate(run.lifecycleGate);
   return {
     runId: run.runId,
     path: run.path,
@@ -212,6 +309,8 @@ function buildDoctorReport(runDirInput, options = {}) {
     creatorQaStatus: run.creatorQaStatus,
     evidenceGateStatus: run.evidenceGate.status,
     evidenceGate: run.evidenceGate,
+    effectiveReadiness,
+    nextSafeAction: effectiveReadiness.nextSafeAction || "",
     lifecycleGate: lifecycleGateSummary(run.lifecycleGate),
     approvalMarkersDetected: approvalMarkersDetected(run.lifecycleGate),
     detectedKnownArtifacts: detected,
@@ -219,6 +318,7 @@ function buildDoctorReport(runDirInput, options = {}) {
     unknownManualFiles: unknownFiles(runDir),
     nextRecommendedCommand: run.nextRecommendedCommand,
     firstBlockerReason: firstBlockerReason(run),
+    conservativeBlockedActions: conservativeBlockedActionsForRun(run),
     safetyNotes: [
       "read-only: yes",
       "external APIs called: no",
@@ -242,7 +342,11 @@ function renderText(report) {
   lines.push(`Creator QA status: ${report.creatorQaStatus}`);
   lines.push(`Evidence gate status: ${report.evidenceGateStatus}`);
   lines.push(`First blocker: ${report.firstBlockerReason || "none detected by local index"}`);
+  if (report.nextSafeAction) lines.push(`Next safe action: ${report.nextSafeAction}`);
   lines.push(`Next command: ${report.nextRecommendedCommand || "manual review or no deterministic command"}`);
+  if (report.lifecycleGate.shotEditPlanNextSafeAction) {
+    lines.push(`Stage 4 next safe action: ${report.lifecycleGate.shotEditPlanNextSafeAction}`);
+  }
   lines.push("");
   lines.push("Blocking reasons:");
   if (report.blockingReasons.length) {
@@ -251,12 +355,17 @@ function renderText(report) {
     lines.push("- none");
   }
   lines.push("");
-  lines.push("Lifecycle gate summary:");
+  lines.push("Effective readiness:");
+  Object.entries(report.effectiveReadiness)
+    .filter(([_key, value]) => value !== "" && !(Array.isArray(value) && value.length === 0))
+    .forEach(([key, value]) => lines.push(`- ${key}: ${Array.isArray(value) ? value.join(", ") : value}`));
+  lines.push("");
+  lines.push("Lifecycle gate summary (raw parsed markers and diagnostics):");
   Object.entries(report.lifecycleGate)
-    .filter(([_key, value]) => value !== "" && value !== false)
+    .filter(([key, value]) => key !== "effectiveReadiness" && value !== "" && value !== false)
     .forEach(([key, value]) => lines.push(`- ${key}: ${value}`));
   lines.push("");
-  lines.push("Approval markers detected:");
+  lines.push("Raw/stale approval markers detected:");
   if (report.approvalMarkersDetected.length) {
     report.approvalMarkersDetected.forEach((marker) => lines.push(`- ${marker}`));
   } else {
@@ -273,6 +382,13 @@ function renderText(report) {
   lines.push("Missing expected artifacts:");
   if (report.missingExpectedArtifacts.length) {
     report.missingExpectedArtifacts.forEach((filename) => lines.push(`- ${filename}`));
+  } else {
+    lines.push("- none");
+  }
+  lines.push("");
+  lines.push("Conservative blocked actions:");
+  if (report.conservativeBlockedActions.length) {
+    report.conservativeBlockedActions.forEach((action) => lines.push(`- ${action}`));
   } else {
     lines.push("- none");
   }
