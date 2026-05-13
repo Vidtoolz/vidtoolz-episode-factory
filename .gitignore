@@ -1,0 +1,5 @@
+# Local scratch import payloads
+/tmp-import-*.json
+
+# Ad hoc downloaded media/document samples
+/test-fixtures/internet-downloads/
