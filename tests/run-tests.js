@@ -35,6 +35,7 @@ const packageEngineServer = require("../package-engine-server.js");
 const packageRunsDashboard = require("../package-runs-dashboard.js");
 const episodeFactoryCli = require("../scripts/episode-factory.js");
 const proposalLoopGuard = require("../scripts/proposal-loop-guard.js");
+const proposalLoopRunner = require("../scripts/proposal-loop-runner.js");
 const trailerCueGenerator = require("../trailer-cue-generator.js");
 const trailerCueScript = require("../scripts/trailer-cue-new.js");
 
@@ -9715,6 +9716,290 @@ test("trailer cue script writes cue folders without overwriting changed files", 
     2
   );
   assert.equal(fs.readFileSync(sectionPath, "utf8"), "human edit");
+});
+
+test("proposal loop runner help documents safe modes and required options", () => {
+  const output = captureConsole(() => proposalLoopRunner.main(["--help"]));
+  const stdout = output.stdout.join("\n");
+
+  assert.equal(output.result, 0);
+  assert.equal(output.stderr.length, 0);
+  assert.match(stdout, /Proposal Loop Runner/);
+  assert.match(stdout, /default mode creates the disposable clone, writes the task, runs preflight, and does not run Codex/i);
+  assert.match(stdout, /--run-codex/);
+  assert.match(stdout, /--repo <real-repo>/);
+  assert.match(stdout, /--name <slug>/);
+  assert.match(stdout, /--allowed <paths>/);
+  assert.match(stdout, /--task <text>/);
+  assert.match(stdout, /--task-file <path>/);
+  assert.match(stdout, /--force/);
+});
+
+test("proposal loop runner rejects missing repo", () => {
+  const output = captureConsole(() => proposalLoopRunner.main(["--allowed", "tests/run-tests.js", "--task", "do work"]));
+
+  assert.equal(output.result, 1);
+  assert.match(output.stderr.join("\n"), /--repo is required/);
+});
+
+test("proposal loop runner rejects missing allowed scope", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-missing-allowed-");
+  const output = captureConsole(() => proposalLoopRunner.main(["--repo", fixture.worktree, "--task", "do work"]));
+
+  assert.equal(output.result, 1);
+  assert.match(output.stderr.join("\n"), /--allowed is required/);
+});
+
+test("proposal loop runner rejects missing task input", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-missing-task-");
+  const output = captureConsole(() =>
+    proposalLoopRunner.main(["--repo", fixture.worktree, "--allowed", "tests/run-tests.js"])
+  );
+
+  assert.equal(output.result, 1);
+  assert.match(output.stderr.join("\n"), /Provide exactly one of --task or --task-file/);
+});
+
+test("proposal loop runner rejects empty task content", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-empty-task-");
+  const taskFile = path.join(fixture.tempRoot, "empty-task.md");
+  fs.writeFileSync(taskFile, "  \n\t\n", "utf8");
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task-file",
+      taskFile,
+    ])
+  );
+
+  assert.equal(output.result, 1);
+  assert.match(output.stderr.join("\n"), /Task content must not be empty/);
+});
+
+test("proposal loop runner rejects unsafe name path traversal", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-unsafe-name-");
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task",
+      "do work",
+      "--name",
+      "../escape",
+    ])
+  );
+
+  assert.equal(output.result, 1);
+  assert.match(output.stderr.join("\n"), /--name must use only/);
+});
+
+test("proposal loop runner default mode creates tmp clone and task file", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-default-create-");
+  const name = `runner-default-create-${process.pid}`;
+  const clonePath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`);
+  const taskPath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}-task.md`);
+  fs.rmSync(clonePath, { recursive: true, force: true });
+  fs.rmSync(taskPath, { force: true });
+
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task",
+      "Add runner tests",
+      "--name",
+      name,
+    ])
+  );
+
+  assert.equal(output.result, 0);
+  assert.equal(fs.existsSync(path.join(clonePath, ".git")), true);
+  assert.equal(fs.readFileSync(taskPath, "utf8"), "Add runner tests\n");
+  assert.match(output.stdout.join("\n"), new RegExp(escapeRegExp(clonePath)));
+});
+
+test("proposal loop runner default mode prints codex command but does not run Codex", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-no-codex-");
+  const name = `runner-no-codex-${process.pid}`;
+  const clonePath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`);
+  fs.rmSync(clonePath, { recursive: true, force: true });
+
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task",
+      "do work",
+      "--name",
+      name,
+    ])
+  );
+  const stdout = output.stdout.join("\n");
+
+  assert.equal(output.result, 0);
+  assert.match(stdout, /codex exec --sandbox danger-full-access --ephemeral -C/);
+  assert.match(stdout, /Codex was not run/);
+  assert.equal(fs.existsSync(path.join(clonePath, "codex-ran.txt")), false);
+});
+
+test("proposal loop runner default mode runs command-boundary preflight", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-preflight-");
+  const name = `runner-preflight-${process.pid}`;
+  fs.rmSync(path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`), { recursive: true, force: true });
+
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task",
+      "do work",
+      "--name",
+      name,
+    ])
+  );
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /Command-boundary decision: accepted/);
+});
+
+test("proposal loop runner default mode prints postflight guard command", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-postflight-print-");
+  const name = `runner-postflight-print-${process.pid}`;
+  fs.rmSync(path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`), { recursive: true, force: true });
+
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task",
+      "do work",
+      "--name",
+      name,
+    ])
+  );
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /node scripts\/proposal-loop-guard\.js \\\n  --repo/);
+  assert.match(output.stdout.join("\n"), /--worktree/);
+  assert.match(output.stdout.join("\n"), /--patch \/tmp\/vidtoolz-proposal-loop-runner-postflight-print-/);
+});
+
+test("proposal loop runner default mode prints real-repo apply checklist", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-checklist-");
+  const name = `runner-checklist-${process.pid}`;
+  fs.rmSync(path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`), { recursive: true, force: true });
+
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "scripts/proposal-loop-runner.js,tests/run-tests.js",
+      "--task",
+      "do work",
+      "--name",
+      name,
+    ])
+  );
+  const stdout = output.stdout.join("\n");
+
+  assert.equal(output.result, 0);
+  assert.match(stdout, new RegExp(`cd ${escapeRegExp(fixture.worktree)}`));
+  assert.match(stdout, /git status --short --branch/);
+  assert.match(stdout, /git apply --check \/tmp\/vidtoolz-proposal-loop-runner-checklist-/);
+  assert.match(stdout, /git diff --stat -- scripts\/proposal-loop-runner\.js tests\/run-tests\.js/);
+  assert.match(stdout, /node --check scripts\/proposal-loop-runner\.js/);
+  assert.match(stdout, /git add scripts\/proposal-loop-runner\.js tests\/run-tests\.js/);
+});
+
+test("proposal loop runner run-codex runs postflight guard and exports accepted patch", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-run-accepted-");
+  const name = `runner-run-accepted-${process.pid}`;
+  const clonePath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`);
+  const patchPath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}.patch`);
+  const fakeCodex = path.join(fixture.tempRoot, "fake-codex.js");
+  fs.rmSync(clonePath, { recursive: true, force: true });
+  fs.rmSync(patchPath, { force: true });
+  fs.writeFileSync(
+    fakeCodex,
+    `#!/usr/bin/env node\nconst fs=require('fs');const path=require('path');const cwd=process.argv[process.argv.indexOf('-C')+1];fs.writeFileSync(path.join(cwd,'tests/run-tests.js'),'allowed runner change\\n','utf8');`,
+    "utf8"
+  );
+  fs.chmodSync(fakeCodex, 0o755);
+
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task",
+      "do work",
+      "--name",
+      name,
+      "--codex-bin",
+      fakeCodex,
+      "--run-codex",
+    ])
+  );
+
+  assert.equal(output.result, 0);
+  assert.equal(fs.existsSync(patchPath), true);
+  assert.match(fs.readFileSync(patchPath, "utf8"), /tests\/run-tests\.js/);
+  assert.match(output.stdout.join("\n"), /Decision: accepted-for-review/);
+});
+
+test("proposal loop runner run-codex exports rejected patch for forbidden diff", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-runner-run-rejected-");
+  const name = `runner-run-rejected-${process.pid}`;
+  const clonePath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`);
+  const patchPath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}.patch`);
+  const rejectedPatchPath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}.rejected.patch`);
+  const fakeCodex = path.join(fixture.tempRoot, "fake-codex.js");
+  fs.rmSync(clonePath, { recursive: true, force: true });
+  fs.rmSync(patchPath, { force: true });
+  fs.rmSync(rejectedPatchPath, { force: true });
+  fs.writeFileSync(
+    fakeCodex,
+    `#!/usr/bin/env node\nconst fs=require('fs');const path=require('path');const cwd=process.argv[process.argv.indexOf('-C')+1];fs.mkdirSync(path.join(cwd,'package-runs/2026-05-02-topic'),{recursive:true});fs.writeFileSync(path.join(cwd,'package-runs/2026-05-02-topic/notes.md'),'forbidden runner change\\n','utf8');`,
+    "utf8"
+  );
+  fs.chmodSync(fakeCodex, 0o755);
+
+  const output = captureConsole(() =>
+    proposalLoopRunner.main([
+      "--repo",
+      fixture.worktree,
+      "--allowed",
+      "tests/run-tests.js",
+      "--task",
+      "do work",
+      "--name",
+      name,
+      "--codex-bin",
+      fakeCodex,
+      "--run-codex",
+    ])
+  );
+
+  assert.equal(output.result, 1);
+  assert.equal(fs.existsSync(patchPath), false);
+  assert.equal(fs.existsSync(rejectedPatchPath), true);
+  assert.match(fs.readFileSync(rejectedPatchPath, "utf8"), /package-runs\/2026-05-02-topic\/notes\.md/);
+  assert.match(output.stdout.join("\n"), /Decision: rejected/);
 });
 
 async function runTests() {
