@@ -3039,6 +3039,56 @@ test("script review detects unsupported claim and placeholder markers", () => {
   assert.match(plan, /Do not shoot until production planning is explicitly ready/);
 });
 
+test("script review allows instructional warnings about unsupported claims", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-review-instructional-warning-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-instructional-warning");
+  writeReviewBaseRun(runDir, { finalScript: true, creatorQaStatus: "PASS" });
+  fs.writeFileSync(
+    path.join(runDir, "final-script.md"),
+    [
+      "# Final Script",
+      "",
+      "Open with the creator choosing between three packaged ideas.",
+      "",
+      "Reject or repair the idea when the title sounds broad, the thumbnail is just a slogan, the proof depends on unsupported claims about AI tools, or the script would mostly explain opinions instead of showing a decision process.",
+      "",
+      "Then show a concrete scorecard and one visible proof example from the workflow.",
+    ].join("\n")
+  );
+
+  assert.equal(packageScriptReviewScript.main([runDir]), 0);
+  const review = fs.readFileSync(path.join(runDir, "script-review.md"), "utf8");
+
+  assert.match(review, /Script review status: PASS/);
+  assert.match(review, /Production planning ready: yes/);
+  assert.doesNotMatch(review, /Script explicitly marks an unsupported claim or evidence gap/);
+});
+
+test("script review blocks current-script unsupported evidence markers", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-review-current-unsupported-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-current-unsupported");
+  writeReviewBaseRun(runDir, { finalScript: true, creatorQaStatus: "PASS" });
+  fs.writeFileSync(
+    path.join(runDir, "final-script.md"),
+    [
+      "# Final Script",
+      "",
+      "Open with the creator choosing between three packaged ideas.",
+      "",
+      "This script evidence is unresolved and needs evidence before production planning.",
+      "",
+      "Close with the scorecard once the proof is fixed.",
+    ].join("\n")
+  );
+
+  assert.equal(packageScriptReviewScript.main([runDir]), 0);
+  const review = fs.readFileSync(path.join(runDir, "script-review.md"), "utf8");
+
+  assert.match(review, /Script review status: NEEDS REVISION/);
+  assert.match(review, /Production planning ready: no/);
+  assert.match(review, /Script explicitly marks an unsupported claim or evidence gap/);
+});
+
 test("script review passes only when script research structure and qa are clear", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-review-pass-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-pass");

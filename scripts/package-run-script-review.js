@@ -93,9 +93,33 @@ function isCreatorQaBlocking(status) {
   return normalized && normalized !== "PASS" && normalized !== "NOT RUN";
 }
 
+function isInstructionalRiskExample(line = "") {
+  return /\b(reject|repair|avoid|flag|watch for|warning signs?|when|if|ideas?|scripts?)\b.*\b(unsupported claims?|evidence gaps?|missing proof|unsupported proof)\b/i.test(
+    String(line || "")
+  );
+}
+
+function hasBlockingEvidenceGapMarker(scriptText = "") {
+  return String(scriptText || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .some((line) => {
+      if (isInstructionalRiskExample(line)) return false;
+      return [
+        /\bunsupported claim\s*:/i,
+        /\bevidence gap\s*:/i,
+        /\bverify before publishing\b/i,
+        /\bnot production approved\b/i,
+        /\b(?:this|the|our|my|current)\s+(?:script|draft|claim|evidence|proof|section).{0,80}\b(?:unsupported|unresolved|missing proof|needs evidence|lacks evidence|not production approved)\b/i,
+        /\b(?:claim|evidence|proof).{0,50}\b(?:is|are|remains?|still)\s+(?:unsupported|unresolved|missing)\b/i,
+        /\b(?:needs evidence|missing proof|unresolved evidence|evidence gap)\b/i,
+      ].some((pattern) => pattern.test(line));
+    });
+}
+
 function analyzeScriptIssues(scriptText = "") {
   const text = String(scriptText || "");
-  const lower = text.toLowerCase();
   const issues = [];
   const placeholderPatterns = [
     /\bnot drafted yet\b/i,
@@ -120,7 +144,7 @@ function analyzeScriptIssues(scriptText = "") {
     issues.push("Script contains strong claim language without nearby proof/source language.");
   }
 
-  if (lower.includes("unsupported claim") || lower.includes("needs evidence") || lower.includes("verify before publishing")) {
+  if (hasBlockingEvidenceGapMarker(text)) {
     issues.push("Script explicitly marks an unsupported claim or evidence gap.");
   }
 
