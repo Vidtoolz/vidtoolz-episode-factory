@@ -199,16 +199,37 @@ function validateReviewWorktree(options = {}) {
   const repo = options.repo || "";
   const worktree = options.worktree || "";
   const failures = [];
+  let worktreeStat = null;
 
   if (!repo) failures.push("--repo is required.");
   if (!worktree) failures.push("--worktree is required.");
 
   if (worktree) {
-    if (!fs.existsSync(worktree)) {
-      failures.push("--worktree does not exist.");
-    } else {
-      const stat = fs.statSync(worktree);
-      if (!stat.isDirectory()) failures.push("--worktree is not a directory.");
+    let linkStat = null;
+    try {
+      linkStat = fs.lstatSync(worktree);
+    } catch (error) {
+      if (error && error.code === "ENOENT") {
+        failures.push("--worktree does not exist.");
+      } else {
+        failures.push(`--worktree cannot be inspected: ${error.message}`);
+      }
+    }
+
+    if (linkStat) {
+      if (linkStat.isSymbolicLink()) {
+        failures.push("--worktree must not be a symlink.");
+      } else {
+        try {
+          worktreeStat = fs.statSync(worktree);
+        } catch (error) {
+          failures.push(`--worktree cannot be inspected: ${error.message}`);
+        }
+      }
+    }
+
+    if (worktreeStat && !worktreeStat.isDirectory()) {
+      failures.push("--worktree is not a directory.");
     }
 
     if (!isUnderTmp(worktree)) failures.push("--worktree must be under /tmp.");

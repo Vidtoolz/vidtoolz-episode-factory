@@ -181,6 +181,51 @@ test("proposal loop guard review rejects nonexistent tmp worktree before git ins
   assert.doesNotMatch(packet, /git diff --check failed/);
 });
 
+test("proposal loop guard review rejects file worktree before git inspection", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-file-worktree-");
+  const fileWorktree = path.join(fixture.tempRoot, "not-a-worktree.txt");
+  fs.writeFileSync(fileWorktree, "not a directory\n", "utf8");
+
+  const report = inspectProposalGuardRepo(fixture, { worktree: fileWorktree });
+  const packet = proposalLoopGuard.formatReviewPacket(report);
+
+  assert.equal(report.accepted, false);
+  assert.deepEqual(report.trackedChangedFiles, []);
+  assert.deepEqual(report.untrackedFiles, []);
+  assert.deepEqual(report.stagedFiles, []);
+  assert.deepEqual(report.commitsAhead, []);
+  assert.match(packet, /Decision: rejected/);
+  assert.match(packet, /## Tracked Changed Files\n- none/);
+  assert.match(packet, /## Untracked Files\n- none/);
+  assert.match(packet, /## Staged Files\n- none/);
+  assert.match(packet, /## Commits Ahead Of origin\/main\n- none/);
+  assert.match(packet, /--worktree is not a directory\./);
+  assert.doesNotMatch(packet, /git diff --check failed/);
+});
+
+test("proposal loop guard review rejects symlink escaping tmp before git inspection", () => {
+  const fixture = createProposalGuardRepo("proposal-loop-guard-symlink-worktree-");
+  const symlinkWorktree = path.join(fixture.tempRoot, "worktree-link");
+  const outsideTmpTarget = path.parse(os.tmpdir()).root;
+  fs.symlinkSync(outsideTmpTarget, symlinkWorktree, "dir");
+
+  const report = inspectProposalGuardRepo(fixture, { worktree: symlinkWorktree });
+  const packet = proposalLoopGuard.formatReviewPacket(report);
+
+  assert.equal(report.accepted, false);
+  assert.deepEqual(report.trackedChangedFiles, []);
+  assert.deepEqual(report.untrackedFiles, []);
+  assert.deepEqual(report.stagedFiles, []);
+  assert.deepEqual(report.commitsAhead, []);
+  assert.match(packet, /Decision: rejected/);
+  assert.match(packet, /## Tracked Changed Files\n- none/);
+  assert.match(packet, /## Untracked Files\n- none/);
+  assert.match(packet, /## Staged Files\n- none/);
+  assert.match(packet, /## Commits Ahead Of origin\/main\n- none/);
+  assert.match(packet, /--worktree must not be a symlink\./);
+  assert.doesNotMatch(packet, /git diff --check failed/);
+});
+
 test("proposal loop guard review rejects non-Git tmp directory before diff inspection", () => {
   const fixture = createProposalGuardRepo("proposal-loop-guard-non-git-worktree-");
   const nonGitDir = fs.mkdtempSync(path.join(os.tmpdir(), "proposal-loop-guard-non-git-"));
