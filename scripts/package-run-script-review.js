@@ -110,12 +110,28 @@ function hasBlockingEvidenceGapMarker(scriptText = "") {
         /\bunsupported claim\s*:/i,
         /\bevidence gap\s*:/i,
         /\bverify before publishing\b/i,
-        /\bnot production approved\b/i,
-        /\b(?:this|the|our|my|current)\s+(?:script|draft|claim|evidence|proof|section).{0,80}\b(?:unsupported|unresolved|missing proof|needs evidence|lacks evidence|not production approved)\b/i,
+        /\b(?:this|the|our|my|current)\s+(?:script|draft|claim|evidence|proof|section).{0,80}\b(?:unsupported|unresolved|missing proof|needs evidence|lacks evidence)\b/i,
         /\b(?:claim|evidence|proof).{0,50}\b(?:is|are|remains?|still)\s+(?:unsupported|unresolved|missing)\b/i,
         /\b(?:needs evidence|missing proof|unresolved evidence|evidence gap)\b/i,
       ].some((pattern) => pattern.test(line));
     });
+}
+
+function hasDraftReadinessMarker(scriptText = "") {
+  return String(scriptText || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .some((line) =>
+      [
+        /\bStatus:\s*Draft repair\b/i,
+        /\bDraft repair\b/i,
+        /\bnot production approved\b/i,
+        /\bnot ready to shoot\b/i,
+        /\bnot ready for production planning\b/i,
+        /^-\s*\[\s\]\s*Script is ready for production planning\.\s*$/i,
+      ].some((pattern) => pattern.test(line))
+    );
 }
 
 function analyzeScriptIssues(scriptText = "") {
@@ -142,6 +158,10 @@ function analyzeScriptIssues(scriptText = "") {
   ];
   if (riskyClaimPatterns.some((pattern) => pattern.test(text)) && !/source|evidence|proof|research|citation|example/i.test(text)) {
     issues.push("Script contains strong claim language without nearby proof/source language.");
+  }
+
+  if (hasDraftReadinessMarker(text)) {
+    issues.push("Script explicitly marks itself as draft, not production approved, or not ready to shoot.");
   }
 
   if (hasBlockingEvidenceGapMarker(text)) {

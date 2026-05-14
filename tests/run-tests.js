@@ -3064,6 +3064,32 @@ test("script review allows instructional warnings about unsupported claims", () 
   assert.doesNotMatch(review, /Script explicitly marks an unsupported claim or evidence gap/);
 });
 
+test("script review reports draft readiness markers separately from unsupported claims", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-review-draft-marker-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-draft-marker");
+  writeReviewBaseRun(runDir, { finalScript: true, creatorQaStatus: "PASS" });
+  fs.writeFileSync(
+    path.join(runDir, "final-script.md"),
+    [
+      "# Final Script",
+      "",
+      "- Status: Draft repair for Creator QA; not production approved and not ready to shoot.",
+      "",
+      "Reject or repair the idea when the title sounds broad, the thumbnail is just a slogan, the proof depends on unsupported claims about AI tools, or the script would mostly explain opinions instead of showing a decision process.",
+      "",
+      "- [ ] Script is ready for production planning.",
+    ].join("\n")
+  );
+
+  assert.equal(packageScriptReviewScript.main([runDir]), 0);
+  const review = fs.readFileSync(path.join(runDir, "script-review.md"), "utf8");
+
+  assert.match(review, /Script review status: NEEDS REVISION/);
+  assert.match(review, /Production planning ready: no/);
+  assert.match(review, /Script explicitly marks itself as draft, not production approved, or not ready to shoot/);
+  assert.doesNotMatch(review, /Script explicitly marks an unsupported claim or evidence gap/);
+});
+
 test("script review blocks current-script unsupported evidence markers", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-review-current-unsupported-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-current-unsupported");
