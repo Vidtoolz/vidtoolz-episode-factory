@@ -261,16 +261,18 @@ function buildPostflightCommand(options) {
 
 function buildApplyChecklist(options) {
   const allowedArgs = options.allowed.map(quoteShell).join(" ");
-  const patch = quoteShell(options.patchPath);
   return [
     `cd ${quoteShell(options.repo)}`,
+    `PATCH=${quoteShell(options.patchPath)}`,
+    `MANIFEST=${quoteShell(options.manifestPath)}`,
     "",
     "git status --short --branch",
     "git log --oneline origin/main..HEAD",
     "",
-    `sed -n '1,260p' ${patch}`,
-    `git apply --check ${patch}`,
-    `git apply ${patch}`,
+    `sed -n '1,260p' "$MANIFEST"`,
+    `sed -n '1,260p' "$PATCH"`,
+    `git apply --check "$PATCH"`,
+    `git apply "$PATCH"`,
     "",
     `git diff --stat -- ${allowedArgs}`,
     `git diff --name-only -- ${allowedArgs}`,

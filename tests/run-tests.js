@@ -10016,7 +10016,11 @@ test("proposal loop runner default mode prints postflight guard command", () => 
 test("proposal loop runner default mode prints real-repo apply checklist", () => {
   const fixture = createProposalGuardRepo("proposal-loop-runner-checklist-");
   const name = `runner-checklist-${process.pid}`;
-  fs.rmSync(path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`), { recursive: true, force: true });
+  const clonePath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}`);
+  const patchPath = path.join(os.tmpdir(), `vidtoolz-proposal-loop-${name}.patch`);
+  const manifestPath = path.join(os.tmpdir(), "vidtoolz-proposal-loop-history", `${name}.json`);
+  fs.rmSync(clonePath, { recursive: true, force: true });
+  fs.rmSync(manifestPath, { force: true });
 
   const output = captureConsole(() =>
     proposalLoopRunner.main([
@@ -10034,8 +10038,14 @@ test("proposal loop runner default mode prints real-repo apply checklist", () =>
 
   assert.equal(output.result, 0);
   assert.match(stdout, new RegExp(`cd ${escapeRegExp(fixture.worktree)}`));
+  assert.match(stdout, new RegExp(`PATCH=${escapeRegExp(patchPath)}`));
+  assert.match(stdout, new RegExp(`MANIFEST=${escapeRegExp(manifestPath)}`));
+  assert.match(stdout, new RegExp(escapeRegExp(patchPath)));
+  assert.match(stdout, new RegExp(escapeRegExp(manifestPath)));
   assert.match(stdout, /git status --short --branch/);
-  assert.match(stdout, /git apply --check \/tmp\/vidtoolz-proposal-loop-runner-checklist-/);
+  assert.match(stdout, /git apply --check "\$PATCH"/);
+  assert.match(stdout, /git apply "\$PATCH"/);
+  assert.doesNotMatch(stdout, /RUN_ID/);
   assert.match(stdout, /git diff --stat -- scripts\/proposal-loop-runner\.js tests\/run-tests\.js/);
   assert.match(stdout, /node --check scripts\/proposal-loop-runner\.js/);
   assert.match(stdout, /git add scripts\/proposal-loop-runner\.js tests\/run-tests\.js/);
