@@ -2786,6 +2786,71 @@ test("script structure accepts approved research sufficiency review over partial
   assert.match(structure, /Research source: research-sufficiency-review\.md/);
 });
 
+test("script structure accepts approved research sufficiency review without research pack", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-structure-review-only-pass-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-review-only-pass");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Review Only Pass Research" } }));
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    `# Research Sufficiency Review
+
+- Research sufficiency status: PASS
+- Source references: 3
+- Production-proof items: 1
+- Objections/counterexamples: 1
+- Research approval marker: PASS
+`,
+    "utf8"
+  );
+
+  assert.equal(packageScriptStructureScript.main([runDir]), 0);
+  const structure = fs.readFileSync(path.join(runDir, "script-structure.md"), "utf8");
+
+  assert.match(structure, /Script structure status: READY TO DRAFT/);
+  assert.match(structure, /Research gate status: PASS/);
+  assert.match(structure, /Ready to draft: yes/);
+  assert.match(structure, /Research source: research-sufficiency-review\.md/);
+});
+
+test("script structure overwrite replaces stale needs research when approved review appears", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-structure-review-only-overwrite-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-review-only-overwrite");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Review Only Overwrite" } }));
+  const structurePath = path.join(runDir, "script-structure.md");
+  fs.writeFileSync(
+    structurePath,
+    "# Script Structure\n\n- Script structure status: NEEDS RESEARCH\n- Research gate status: MISSING\n- Ready to draft: no\n- Research source: missing\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    `# Research Sufficiency Review
+
+- Research sufficiency status: PASS
+- Source references: 3
+- Production-proof items: 1
+- Objections/counterexamples: 1
+- Research approval marker: PASS
+`,
+    "utf8"
+  );
+
+  const skipped = captureConsole(() => packageScriptStructureScript.main([runDir]));
+  assert.equal(skipped.result, 2);
+  assert.match(fs.readFileSync(structurePath, "utf8"), /Script structure status: NEEDS RESEARCH/);
+
+  const overwritten = captureConsole(() => packageScriptStructureScript.main([runDir, "--overwrite"]));
+  const structure = fs.readFileSync(structurePath, "utf8");
+
+  assert.equal(overwritten.result, 0);
+  assert.match(structure, /Script structure status: READY TO DRAFT/);
+  assert.match(structure, /Research gate status: PASS/);
+  assert.match(structure, /Ready to draft: yes/);
+  assert.match(structure, /Research source: research-sufficiency-review\.md/);
+});
+
 test("script structure keeps ready-for-review research evidence blocked until approval", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-script-structure-review-ready-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-review-ready");

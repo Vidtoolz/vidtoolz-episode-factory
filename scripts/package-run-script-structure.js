@@ -146,6 +146,23 @@ function readResearchGate(runDir) {
   const researchPath = findResearchPackPath(runDir);
   const reviewPath = findResearchSufficiencyReviewPath(runDir);
   if (!researchPath) {
+    if (reviewPath) {
+      try {
+        const reviewGate = parseResearchSufficiencyReviewStatus(fs.readFileSync(reviewPath, "utf8"), runDir);
+        return {
+          sourceFile: "research-sufficiency-review.md",
+          ...reviewGate,
+        };
+      } catch (error) {
+        return {
+          sourceFile: "research-sufficiency-review.md",
+          status: "UNREADABLE",
+          structureStatus: "NEEDS RESEARCH",
+          readyToDraft: false,
+          reason: `research-sufficiency-review.md could not be read: ${error.message}`,
+        };
+      }
+    }
     return {
       sourceFile: "missing",
       status: "MISSING",
