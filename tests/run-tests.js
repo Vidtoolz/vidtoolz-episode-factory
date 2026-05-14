@@ -20,6 +20,7 @@ const packageShotEditPlanReviewScript = require("../scripts/package-run-shot-edi
 const packageCaptureChecklistScript = require("../scripts/package-run-capture-checklist.js");
 const packageCaptureEvidenceReviewScript = require("../scripts/package-run-capture-evidence-review.js");
 const packageCaptureGapScript = require("../scripts/package-run-capture-gap.js");
+const packageArtifactHygieneScript = require("../scripts/package-run-artifact-hygiene.js");
 const packageRoughCutReviewScript = require("../scripts/package-run-rough-cut-review.js");
 const packageFinalReviewScript = require("../scripts/package-run-final-review.js");
 const packageRepurposeScript = require("../scripts/package-run-repurpose.js");
@@ -8138,6 +8139,164 @@ test("capture gap reporter builds json-ready output and help", () => {
     help: false,
   });
   assert.equal(packageCaptureGapScript.main(["--help"]), 0);
+});
+
+function createArtifactHygieneRepo() {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-artifact-hygiene-"));
+  runGitCommand(tempRoot, ["init", "-b", "main"]);
+  runGitCommand(tempRoot, ["config", "user.email", "test@example.invalid"]);
+  runGitCommand(tempRoot, ["config", "user.name", "Test User"]);
+  const runRel = "package-runs/2026-05-02-ai-video-idea-filter";
+  writeTestFile(
+    tempRoot,
+    `${runRel}/production-plan.md`,
+    "# Production Plan\n\n- Shoot-readiness status: NOT READY TO SHOOT\n"
+  );
+  runGitCommand(tempRoot, ["add", `${runRel}/production-plan.md`]);
+  runGitCommand(tempRoot, ["commit", "-m", "baseline"]);
+  return { tempRoot, runRel };
+}
+
+function classificationByFile(report) {
+  return Object.fromEntries(report.classifications.map((item) => [item.file, item]));
+}
+
+test("artifact hygiene reporter flags misleading capture approval artifacts", () => {
+  const fixture = createArtifactHygieneRepo();
+  writeTestFile(
+    fixture.tempRoot,
+    `${fixture.runRel}/capture-checklist.md`,
+    "# Capture Checklist\n\n- Capture checklist status: READY FOR HUMAN APPROVAL\n"
+  );
+  writeTestFile(
+    fixture.tempRoot,
+    `${fixture.runRel}/takes-log.md`,
+    "# Takes Log\n\n| take | file/reference | status |\n| --- | --- | --- |\n| Hook | Verified in existing capture artifacts. | captured |\n| Smoke test | media/test-capture/take-001-hook.mov | Capture readiness approved. Dummy smoke-test reference. Not real production approval. |\n"
+  );
+  writeTestFile(
+    fixture.tempRoot,
+    `${fixture.runRel}/shot-list.md`,
+    "# Shot List\n\n| shot | status |\n| --- | --- |\n| Hook screen proof | captured |\n"
+  );
+  const beforeStatus = runGitCommand(fixture.tempRoot, ["status", "--short"]);
+
+  const report = packageArtifactHygieneScript.buildArtifactHygieneReport(fixture.runRel, { repoRoot: fixture.tempRoot });
+  const byFile = classificationByFile(report);
+  const afterStatus = runGitCommand(fixture.tempRoot, ["status", "--short"]);
+
+  assert.equal(report.readOnly, true);
+  assert.equal(report.writesPerformed, false);
+  assert.equal(report.externalApisCalled, false);
+  assert.equal(afterStatus, beforeStatus);
+  assert.equal(byFile[`${fixture.runRel}/capture-checklist.md`].classification, "dangerous-or-misleading");
+  assert.equal(byFile[`${fixture.runRel}/takes-log.md`].classification, "dangerous-or-misleading");
+  assert.equal(byFile[`${fixture.runRel}/shot-list.md`].classification, "dangerous-or-misleading");
+  assert.deepEqual(report.dangerousFiles.sort(), [
+    `${fixture.runRel}/capture-checklist.md`,
+    `${fixture.runRel}/shot-list.md`,
+    `${fixture.runRel}/takes-log.md`,
+  ]);
+});
+
+test("artifact hygiene reporter does not flag negative approval wording as dangerous", () => {
+  const fixture = createArtifactHygieneRepo();
+  [
+    [
+      "capture-checklist.md",
+      "# Capture Checklist\n\n- Capture checklist status: BLOCKED\n- Capture approval: NOT APPROVED\n- Ready for rough cut: no\n- Keep blocked until real production capture exists.\n",
+    ],
+    [
+      "takes-log.md",
+      "# Takes Log\n\n| take | file/reference | status |\n| --- | --- | --- |\n| Hook | No accepted capture file yet. | not captured |\n\nDRAFT ONLY. Not accepted, not final.\n",
+    ],
+  ].forEach(([filename, content]) => writeTestFile(fixture.tempRoot, `${fixture.runRel}/${filename}`, content));
+
+  const report = packageArtifactHygieneScript.buildArtifactHygieneReport(fixture.runRel, { repoRoot: fixture.tempRoot });
+  const byFile = classificationByFile(report);
+
+  assert.equal(byFile[`${fixture.runRel}/capture-checklist.md`].classification, "planning-scaffold");
+  assert.equal(byFile[`${fixture.runRel}/takes-log.md`].classification, "planning-scaffold");
+  assert.equal(report.dangerousFiles.length, 0);
+});
+
+test("artifact hygiene reporter classifies premature downstream lifecycle scaffolds", () => {
+  const fixture = createArtifactHygieneRepo();
+  [
+    ["rough-cut-review.md", "# Rough-Cut Review\n\nBlocked draft scaffold. NOT APPROVED. Keep blocked.\n"],
+    ["final-review.md", "# Final Review\n\nBlocked draft scaffold. No accepted final cut. Final review status: BLOCKED.\n"],
+    ["export-checklist.md", "# Export Checklist\n\nBlocked draft scaffold. Ready to upload: no. DRAFT ONLY.\n"],
+    ["publish-metadata-review.md", "# Publication Metadata Review\n\nBlocked draft scaffold. Ready to schedule: no. Not final.\n"],
+    ["archive-manifest.md", "# Archive Manifest\n\nBlocked draft scaffold. Ready to archive: no. NOT APPROVED.\n"],
+  ].forEach(([filename, content]) => writeTestFile(fixture.tempRoot, `${fixture.runRel}/${filename}`, content));
+
+  const report = packageArtifactHygieneScript.buildArtifactHygieneReport(fixture.runRel, { repoRoot: fixture.tempRoot });
+  const byFile = classificationByFile(report);
+
+  assert.equal(report.untrackedPackageRunFileCount, 5);
+  assert.equal(byFile[`${fixture.runRel}/rough-cut-review.md`].classification, "downstream-lifecycle-scaffold");
+  assert.equal(byFile[`${fixture.runRel}/final-review.md`].classification, "downstream-lifecycle-scaffold");
+  assert.equal(byFile[`${fixture.runRel}/export-checklist.md`].classification, "downstream-lifecycle-scaffold");
+  assert.equal(byFile[`${fixture.runRel}/publish-metadata-review.md`].classification, "downstream-lifecycle-scaffold");
+  assert.equal(byFile[`${fixture.runRel}/archive-manifest.md`].classification, "downstream-lifecycle-scaffold");
+  assert.equal(report.dangerousFiles.length, 0);
+});
+
+test("artifact hygiene reporter includes matching tmp scripts and parseable json output", () => {
+  const fixture = createArtifactHygieneRepo();
+  writeTestFile(fixture.tempRoot, `${fixture.runRel}/research-sufficiency-review.md`, "# Research Sufficiency Review\n\nObserved proof notes.\n");
+  writeTestFile(fixture.tempRoot, "tmp-may2-cdp-check.js", "console.log('scratch');\n");
+  writeTestFile(fixture.tempRoot, "tmp-unrelated-cdp-check.js", "console.log('scratch');\n");
+  const beforeStatus = runGitCommand(fixture.tempRoot, ["status", "--short"]);
+
+  const output = childProcess.execFileSync(
+    process.execPath,
+    [path.join(__dirname, "..", "scripts", "package-run-artifact-hygiene.js"), fixture.runRel, "--json"],
+    { cwd: fixture.tempRoot, encoding: "utf8" }
+  );
+  const afterStatus = runGitCommand(fixture.tempRoot, ["status", "--short"]);
+  const report = JSON.parse(output);
+  const byFile = classificationByFile(report);
+
+  assert.equal(afterStatus, beforeStatus);
+  assert.equal(report.readOnly, true);
+  assert.equal(report.writesPerformed, false);
+  assert.equal(report.externalApisCalled, false);
+  assert.deepEqual(report.tempScripts, ["tmp-may2-cdp-check.js"]);
+  assert.equal(byFile["tmp-may2-cdp-check.js"].classification, "scratch-temp");
+  assert.equal(byFile[`${fixture.runRel}/research-sufficiency-review.md`].classification, "proof");
+  assert.equal(report.untrackedFiles.includes("tmp-unrelated-cdp-check.js"), false);
+});
+
+test("artifact hygiene reporter allows research pass marker without production approval", () => {
+  const fixture = createArtifactHygieneRepo();
+  writeTestFile(
+    fixture.tempRoot,
+    `${fixture.runRel}/research-sufficiency-review.md`,
+    "# Research Sufficiency Review\n\n- Research approval marker: PASS\n- Scope: research only, not production approval.\n"
+  );
+
+  const report = packageArtifactHygieneScript.buildArtifactHygieneReport(fixture.runRel, { repoRoot: fixture.tempRoot });
+  const byFile = classificationByFile(report);
+
+  assert.equal(byFile[`${fixture.runRel}/research-sufficiency-review.md`].classification, "proof");
+  assert.equal(report.dangerousFiles.length, 0);
+});
+
+test("artifact hygiene reporter rejects run paths outside package-runs read-only", () => {
+  const fixture = createArtifactHygieneRepo();
+  writeTestFile(fixture.tempRoot, "notes.md", "# Notes\n");
+  const output = captureConsole(() =>
+    packageArtifactHygieneScript.main(["notes.md", "--json"])
+  );
+  const parsed = JSON.parse(output.stdout.join("\n"));
+
+  assert.equal(output.result, 1);
+  assert.equal(parsed.ok, false);
+  assert.match(parsed.error, /package-runs/);
+  assert.equal(parsed.readOnly, true);
+  assert.equal(parsed.writesPerformed, false);
+  assert.equal(parsed.externalApisCalled, false);
+  assert.equal(fs.existsSync(path.join(fixture.tempRoot, "notes.md")), true);
 });
 
 test("package run doctor reports requested pipeline stages and overall status", () => {

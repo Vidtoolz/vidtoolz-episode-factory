@@ -27,6 +27,7 @@ node --check scripts/package-run-shot-edit-plan-review.js
 node --check scripts/package-run-capture-checklist.js
 node --check scripts/package-run-capture-evidence-review.js
 node --check scripts/package-run-capture-gap.js
+node --check scripts/package-run-artifact-hygiene.js
 node --check scripts/package-run-rough-cut-review.js
 node --check scripts/package-run-final-review.js
 node --check scripts/package-run-export-checklist.js
