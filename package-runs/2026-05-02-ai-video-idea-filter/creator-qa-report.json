@@ -1,0 +1,140 @@
+{
+  "category_scores": {
+    "Expected package structure": 5,
+    "Factual-claim risk": 5,
+    "Resolve terminology accuracy": 5,
+    "Script structure": 5,
+    "Thumbnail / title promise alignment": 5,
+    "Viewer payoff": 5,
+    "YouTube title clarity": 5
+  },
+  "checks": [
+    {
+      "details": {
+        "present": [
+          "hook",
+          "notes",
+          "script",
+          "thumbnail",
+          "title"
+        ],
+        "profile": "ai_video_breakdown",
+        "required_sections": [
+          "title",
+          "thumbnail",
+          "hook",
+          "script",
+          "notes"
+        ]
+      },
+      "failed": [],
+      "findings": [],
+      "name": "Expected package structure",
+      "score": 5,
+      "warnings": []
+    },
+    {
+      "details": {},
+      "failed": [],
+      "findings": [],
+      "name": "YouTube title clarity",
+      "score": 5,
+      "warnings": []
+    },
+    {
+      "details": {
+        "shared_terms": [
+          "ai",
+          "avoid",
+          "bad",
+          "ideas"
+        ]
+      },
+      "failed": [],
+      "findings": [],
+      "name": "Thumbnail / title promise alignment",
+      "score": 5,
+      "warnings": []
+    },
+    {
+      "details": {},
+      "failed": [],
+      "findings": [],
+      "name": "Viewer payoff",
+      "score": 5,
+      "warnings": []
+    },
+    {
+      "details": {
+        "expected": [
+          "hook",
+          "problem/context",
+          "promised outcome",
+          "steps or sections",
+          "demonstration/proof",
+          "recap or takeaway",
+          "call to action"
+        ],
+        "present": [
+          "hook",
+          "problem/context",
+          "promised outcome",
+          "steps or sections",
+          "demonstration/proof",
+          "recap or takeaway",
+          "call to action"
+        ],
+        "word_count": 727
+      },
+      "failed": [],
+      "findings": [],
+      "name": "Script structure",
+      "score": 5,
+      "warnings": []
+    },
+    {
+      "details": {
+        "needs_source_manual_verification": []
+      },
+      "failed": [],
+      "findings": [],
+      "name": "Factual-claim risk",
+      "score": 5,
+      "warnings": []
+    },
+    {
+      "details": {
+        "profile": "ai_video_breakdown",
+        "suspicious_terms": []
+      },
+      "failed": [],
+      "findings": [],
+      "name": "Resolve terminology accuracy",
+      "score": 5,
+      "warnings": []
+    }
+  ],
+  "created_at": "2026-05-14T03:08:25Z",
+  "failed_checks": [],
+  "findings": [],
+  "input_sections_detected": [
+    "hook",
+    "notes",
+    "script",
+    "thumbnail",
+    "title",
+    "viewer payoff"
+  ],
+  "max_score": 35,
+  "overall_result": "PASS",
+  "package_title": "Avoid Bad AI Video Ideas Before You Script",
+  "profile": "ai_video_breakdown",
+  "risky_claims": [],
+  "risky_factual_claims": [],
+  "suspicious_resolve_terms": [],
+  "suspicious_terms": [],
+  "top_3_recommended_fixes": [],
+  "top_fixes": [],
+  "total_score": 35,
+  "warnings": []
+}

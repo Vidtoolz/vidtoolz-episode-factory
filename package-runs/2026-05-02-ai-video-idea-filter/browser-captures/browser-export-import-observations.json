@@ -1,0 +1,252 @@
+{
+  "serverCommand": "./scripts/serve-local.sh",
+  "chromeCommand": "google-chrome --headless=new --remote-debugging-port=9333 --user-data-dir=/tmp/vidtoolz-may2-chrome-9333 --disable-gpu --no-first-run --no-default-browser-check about:blank",
+  "serverStatus": {
+    "ok": true,
+    "thumbnailProvider": "placeholder",
+    "model": "local-svg-placeholder",
+    "api": "/api/package-engine/thumbnails",
+    "captureEvidenceWrite": {
+      "previewApi": "/api/package-runs/capture-evidence/preview",
+      "applyApi": "/api/package-runs/capture-evidence/apply",
+      "nonceHeader": "x-vidtoolz-local-write-nonce",
+      "localWriteNonce": "[REDACTED]",
+      "allowedHosts": [
+        "127.0.0.1:8010",
+        "localhost:8010"
+      ],
+      "missingOriginAllowed": true
+    }
+  },
+  "packageEngine": {
+    "url": "http://127.0.0.1:8010/package-engine.html?run=2026-05-02-ai-video-idea-filter",
+    "initialPackage": {
+      "url": "http://127.0.0.1:8010/package-engine.html?run=2026-05-02-ai-video-idea-filter",
+      "title": "VIDTOOLZ Package Engine",
+      "status": "Loaded 10 package candidates from package-candidates.json.",
+      "candidateCount": "10 shown / 10 total",
+      "selectedSummary": "No winner selected",
+      "downloadJsonDisabled": true,
+      "downloadMarkdownDisabled": true,
+      "candidateTitles": [
+        "Thumbnail candidates",
+        "Shorts Ideas",
+        "Thumbnail candidates",
+        "Shorts Ideas",
+        "Thumbnail candidates",
+        "Shorts Ideas",
+        "Thumbnail candidates",
+        "Shorts Ideas",
+        "Thumbnail candidates",
+        "Shorts Ideas",
+        "Thumbnail candidates",
+        "Shorts Ideas"
+      ],
+      "buttons": [
+        {
+          "text": "Download selected JSON",
+          "disabled": true
+        },
+        {
+          "text": "Download selected Markdown",
+          "disabled": true
+        },
+        {
+          "text": "Generate thumbnail candidates",
+          "disabled": false
+        },
+        {
+          "text": "Generate 3 more",
+          "disabled": false
+        },
+        {
+          "text": "Thumbnail 1\nCreator: gpt-image-2\nPending image\nCreator at desk rejecting a chaotic AI suggestion cloud and choosing one clear package card.",
+          "disabled": false
+        },
+        {
+          "text": "Thumbnail 2\nCreator: gpt-image-2\nPending image\nAI IS NOT THE BOSS",
+          "disabled": false
+        },
+        {
+          "text": "Thumbnail 3\nCreator: gpt-image-2\nPending image\nSerious solo creator experimenting with AI tools but worried about generic content.",
+          "disabled": false
+        },
+        {
+          "text": "Expand details",
+          "disabled": false
+        },
+        {
+          "text": "Select winner",
+          "disabled": false
+        },
+        {
+          "text": "Generate 3 more",
+          "disabled": false
+        },
+        {
+          "text": "Thumbnail 1\nCreator: gpt-image-2\nPending image\nTen rough ideas entering a funnel, one clean YouTube package card leaving.",
+          "disabled": false
+        },
+        {
+          "text": "Thumbnail 2\nCreator: gpt-image-2\nPending image\n10 IDEAS -> 1 VIDEO",
+          "disabled": false
+        },
+        {
+          "text": "Thumbnail 3\nCreator: gpt-image-2\nPending image\nSolo creator with too many AI-generated ideas and no clear selection system.",
+          "disabled": false
+        },
+        {
+          "text": "Expand details",
+          "disabled": false
+        },
+        {
+          "text": "Select winner",
+          "disabled": false
+        },
+        {
+          "text": "Generate 3 more",
+          "disabled": false
+        },
+        {
+          "text": "Thumbnail 1\nCreator: gpt-image-2\nPending image\nScript document blocked by a missing package checklist.",
+          "disabled": false
+        },
+        {
+          "text": "Thumbnail 2\nCreator: gpt-image-2\nPending image\nSCRIPT LAST",
+          "disabled": false
+        },
+        {
+          "text": "Thumbnail 3\nCreator: gpt-image-2\nPending image\nCreator who starts scripting too early and loses the core promise.",
+          "disabled": false
+        },
+        {
+          "text": "Expand details",
+          "disabled": false
+        }
+      ],
+      "readyClaims": [
+        "blocked",
+        "blocked",
+        "blocked"
+      ]
+    },
+    "initialScreenshot": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-05-02-ai-video-idea-filter/browser-captures/package-engine-initial.png",
+    "afterSelect": {
+      "clicked": true,
+      "selectedSummary": "Selected #1: Stop Letting AI Choose Your Video Strategy",
+      "downloadJsonDisabled": false,
+      "downloadMarkdownDisabled": false,
+      "status": "Winning package selected. Export JSON or Markdown when ready."
+    },
+    "afterSelectState": {
+      "selectedSummary": "Selected #1: Stop Letting AI Choose Your Video Strategy",
+      "downloadJsonDisabled": false,
+      "downloadMarkdownDisabled": false,
+      "status": "Winning package selected. Export JSON or Markdown when ready.",
+      "readyClaims": [
+        "blocked",
+        "blocked",
+        "blocked"
+      ]
+    },
+    "selectedScreenshot": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-05-02-ai-video-idea-filter/browser-captures/package-engine-selected.png",
+    "selectedJsonDownload": null,
+    "packageReload": {
+      "url": "http://127.0.0.1:8010/package-engine.html?run=2026-05-02-ai-video-idea-filter",
+      "selectedSummary": "No winner selected",
+      "downloadJsonDisabled": true,
+      "status": "Loaded 10 package candidates from package-candidates.json."
+    }
+  },
+  "episodeFactoryImportExport": {
+    "url": "http://127.0.0.1:8010/index.html",
+    "initialApp": {
+      "url": "http://127.0.0.1:8010/index.html",
+      "title": "VIDTOOLZ Episode Factory",
+      "exportVisible": true,
+      "importVisible": true,
+      "exportText": "Export JSON",
+      "importText": "Import JSON",
+      "status": "",
+      "bodyStart": "VIDTOOLZ\n\nEpisode Factory\nv1.7.4\nPackage Engine\nRuns Dashboard\nExport JSON\nImport JSON\nCreate demo episode\nNew episode\n\nTotal episodes\n1\nTotal work sessions\n0\nBackup health\nExported today\nLast JSON export\n5/14/2026, 5:30:34 AM\nLast JSON import\nNever\nActive session\nNone\nBoard\n1 shown / 1 total\nWeekly Review\n\nProgress, blockers, publish candidates, and the next focus session.\n\nSessions\n0\nFocused minutes\n0\nEpisodes touched\n0\nMost recent\nNone\nIdea\n1\nPackaging\n0\nScript\n0\nReady to Shoot\n0\nEditing\n0\nReady to Publish\n0\nPublished\n0\nArchived\n0\nBlocked Episodes\nHow to turn a rough idea into a shoot-ready YouTube episode\npackaging 0%, production 0%, publish 0%\nClosest To Publish\nHow to turn a rough idea into a shoot-ready YouTube episode\nIdea · publish 0% · overall 25%\nRecommended Next Focus Session\n\nRepair the episode package\n\nHow to turn a rough idea into a shoot-ready YouTube episode · Packaging readiness is 0%.\n\nOpen Episode\nStart Session\nCopy Hermes weekly update\nCopy Linear weekly summary\nCopy creator review\n\nExecution Queue\n\n30-minute tasks generated from episode blockers.\n\nRepair the episode package\nHow to turn a rough idea into a shoot-ready YouTube episode · 30 min\nPackaging readines",
+      "readyClaims": [
+        "Ready to Shoot",
+        "Blocked",
+        "blocked",
+        "Ready to shoot",
+        "Ready to Shoot",
+        "Ready to Shoot"
+      ]
+    },
+    "initialScreenshot": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-05-02-ai-video-idea-filter/browser-captures/episode-factory-export-import-initial.png",
+    "afterExport": {
+      "status": "Exported 1 episodes.",
+      "capturedType": "application/json"
+    },
+    "appExportDownload": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-05-02-ai-video-idea-filter/browser-captures/vidtoolz-episode-factory-captured-export.json",
+    "importPreview": {
+      "previewVisible": true,
+      "previewText": "Import Preview\n\nReview the JSON file before changing local episode data.\n\nCurrent episodes\n1\nImported episodes\n1\nNew episodes\n0\nMatching episodes\n1\nChanged matches\n0\nDuplicates/conflicts\n0\nSkipped in merge\n0\nImported work sessions\n0\nConflicts and possible duplicates\nNo conflicts or possible duplicates found.\nChanged matching episodes\nNo changed matching episodes found.\nImport mode\nMerge new episodes only\nMerge and update matching episodes\nReplace library\nConfirm import\nCancel",
+      "status": "Import preview ready. Choose a mode and confirm to change local data.",
+      "modes": [
+        {
+          "value": "merge-new",
+          "checked": true
+        },
+        {
+          "value": "merge-update",
+          "checked": false
+        },
+        {
+          "value": "replace",
+          "checked": false
+        }
+      ],
+      "confirmVisible": true,
+      "cancelVisible": true,
+      "readyClaims": [
+        "Ready to Shoot",
+        "Blocked",
+        "blocked",
+        "Ready to shoot",
+        "Ready to Shoot",
+        "Ready to Shoot"
+      ]
+    },
+    "previewScreenshot": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-05-02-ai-video-idea-filter/browser-captures/episode-factory-import-preview.png",
+    "selectedMergeUpdate": [
+      {
+        "value": "merge-new",
+        "checked": false
+      },
+      {
+        "value": "merge-update",
+        "checked": true
+      },
+      {
+        "value": "replace",
+        "checked": false
+      }
+    ],
+    "mergeUpdateScreenshot": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-05-02-ai-video-idea-filter/browser-captures/episode-factory-import-merge-update-mode.png",
+    "afterCancel": {
+      "previewVisible": false,
+      "status": "Import canceled. Local data was not changed."
+    },
+    "reloadState": {
+      "url": "http://127.0.0.1:8010/index.html",
+      "previewVisible": false,
+      "status": "",
+      "exportVisible": true,
+      "importVisible": true,
+      "readyClaims": [
+        "Ready to Shoot",
+        "Blocked",
+        "blocked",
+        "Ready to shoot",
+        "Ready to Shoot",
+        "Ready to Shoot"
+      ]
+    }
+  }
+}

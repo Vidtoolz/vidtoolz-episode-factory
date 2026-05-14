@@ -1,0 +1,183 @@
+{
+  "app": "VIDTOOLZ Episode Factory",
+  "appVersion": "1.7.4",
+  "schemaVersion": 1,
+  "storageKey": "vidtoolz-episode-factory-v1",
+  "exportedAt": "2026-05-14T02:33:03.207Z",
+  "version": 1,
+  "selectedId": "episode-mp4veyni-2z3pfa",
+  "counts": {
+    "episodes": 1
+  },
+  "episodes": [
+    {
+      "id": "episode-mp4veyni-2z3pfa",
+      "status": "Idea",
+      "createdAt": "2026-05-14T02:29:59.406Z",
+      "updatedAt": "2026-05-14T02:29:59.406Z",
+      "version": 1,
+      "checklists": {
+        "packagingGate": {
+          "Viewer problem is clear": {
+            "passed": false
+          },
+          "Target viewer is specific": {
+            "passed": false
+          },
+          "Core promise is concrete": {
+            "passed": false
+          },
+          "Title is specific": {
+            "passed": false
+          },
+          "Hook works in the first 5 seconds": {
+            "passed": false
+          },
+          "Thumbnail concept is understandable without reading the title": {
+            "passed": false
+          },
+          "Topic is narrow enough for a 10-14 minute video": {
+            "passed": false
+          },
+          "Episode can produce at least 3 Shorts": {
+            "passed": false
+          }
+        },
+        "productionChecklist": {
+          "Screen recording plan is clear": {
+            "passed": false
+          },
+          "Talking points are ready": {
+            "passed": false
+          },
+          "Needed assets are listed": {
+            "passed": false
+          },
+          "Example footage or project files are ready": {
+            "passed": false
+          },
+          "Audio setup is checked": {
+            "passed": false
+          },
+          "Camera/screen setup is checked": {
+            "passed": false
+          },
+          "Shoot can be completed in one session": {
+            "passed": false
+          }
+        },
+        "editingChecklist": {
+          "Main timeline assembled": {
+            "passed": false
+          },
+          "Dead space removed": {
+            "passed": false
+          },
+          "Visual examples added": {
+            "passed": false
+          },
+          "Audio cleaned": {
+            "passed": false
+          },
+          "Captions or key text added where useful": {
+            "passed": false
+          },
+          "Intro hook tightened": {
+            "passed": false
+          },
+          "Ending/call-to-action checked": {
+            "passed": false
+          }
+        },
+        "shortsChecklist": {
+          "At least 3 Shorts candidates identified": {
+            "passed": false
+          },
+          "Each Short has a clear hook": {
+            "passed": false
+          },
+          "Each Short has one idea only": {
+            "passed": false
+          },
+          "Vertical framing considered": {
+            "passed": false
+          },
+          "Captions/text plan noted": {
+            "passed": false
+          }
+        },
+        "publishChecklist": {
+          "Final title selected": {
+            "passed": false
+          },
+          "Thumbnail selected": {
+            "passed": false
+          },
+          "Description drafted": {
+            "passed": false
+          },
+          "Chapters drafted if needed": {
+            "passed": false
+          },
+          "Tags/metadata checked": {
+            "passed": false
+          },
+          "End screen/cards checked": {
+            "passed": false
+          },
+          "Newsletter/social repurpose note drafted": {
+            "passed": false
+          }
+        }
+      },
+      "workSessions": [],
+      "workBlocks": [],
+      "packagingGate": {
+        "Viewer problem is clear": {
+          "passed": false
+        },
+        "Target viewer is specific": {
+          "passed": false
+        },
+        "Core promise is concrete": {
+          "passed": false
+        },
+        "Title is specific": {
+          "passed": false
+        },
+        "Hook works in the first 5 seconds": {
+          "passed": false
+        },
+        "Thumbnail concept is understandable without reading the title": {
+          "passed": false
+        },
+        "Topic is narrow enough for a 10-14 minute video": {
+          "passed": false
+        },
+        "Episode can produce at least 3 Shorts": {
+          "passed": false
+        }
+      },
+      "topic": "A practical VIDTOOLZ workflow idea",
+      "workingTitle": "How to turn a rough idea into a shoot-ready YouTube episode",
+      "format": "long",
+      "targetViewer": "Solo YouTube creator",
+      "viewerProblem": "They have ideas but lose momentum before packaging, scripting, and publishing.",
+      "corePromise": "A compact workflow for turning one idea into a complete production package.",
+      "sourceNotes": "",
+      "scriptPath": "",
+      "titleOptions": "- Stop Losing Video Ideas Before You Shoot\n- My Solo Creator Episode Factory\n- Turn Any Idea Into a Publish-Ready Video",
+      "thumbnailConcept": "Split screen: messy idea notes on the left, clean episode package on the right.",
+      "description": "",
+      "tags": "",
+      "hook": "Your idea is not the bottleneck. The missing production package is.",
+      "scriptOutline": "- Setup\n- Main beats\n- Payoff",
+      "nextAction": "",
+      "notes": "Starter episode. Edit or duplicate it.",
+      "productionChecklist": "- Record A-roll\n- Capture screen/B-roll\n- Check audio and framing",
+      "editingChecklist": "- Rough cut\n- Tighten pacing\n- Add captions and callouts\n- Audio polish",
+      "shortsPlan": "- Short 1:\n- Short 2:",
+      "publishChecklist": "- Final title selected\n- Thumbnail exported\n- Description checked\n- End screen/cards added"
+    }
+  ]
+}
