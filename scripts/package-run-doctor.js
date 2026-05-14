@@ -289,6 +289,12 @@ function conservativeBlockedActionsForRun(run = {}) {
   return [];
 }
 
+function primaryNextSafeAction(run = {}, effectiveReadiness = {}) {
+  const blockingGate = packageRunsIndex.firstBlockingGateForRun(run);
+  if (blockingGate && blockingGate.nextSafeAction) return blockingGate.nextSafeAction;
+  return effectiveReadiness.nextSafeAction || "";
+}
+
 function buildDoctorReport(runDirInput, options = {}) {
   const repoRoot = path.resolve(options.repoRoot || path.join(__dirname, ".."));
   const runDir = path.resolve(repoRoot, runDirInput || "");
@@ -300,6 +306,7 @@ function buildDoctorReport(runDirInput, options = {}) {
   const run = packageRunsIndex.scanRun(runDir, repoRoot);
   const detected = detectedArtifacts(run.files);
   const effectiveReadiness = run.lifecycleGate.effectiveReadiness || packageRunsIndex.effectiveReadinessForGate(run.lifecycleGate);
+  const nextSafeAction = primaryNextSafeAction(run, effectiveReadiness);
   return {
     runId: run.runId,
     path: run.path,
@@ -313,7 +320,7 @@ function buildDoctorReport(runDirInput, options = {}) {
     evidenceGateStatus: run.evidenceGate.status,
     evidenceGate: run.evidenceGate,
     effectiveReadiness,
-    nextSafeAction: effectiveReadiness.nextSafeAction || "",
+    nextSafeAction,
     lifecycleGate: lifecycleGateSummary(run.lifecycleGate),
     approvalMarkersDetected: approvalMarkersDetected(run.lifecycleGate),
     detectedKnownArtifacts: detected,
@@ -465,6 +472,7 @@ module.exports = {
   overallStatus,
   blockingReasons,
   approvalMarkersDetected,
+  primaryNextSafeAction,
   buildDoctorReport,
   renderText,
   main,

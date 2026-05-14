@@ -8114,6 +8114,52 @@ test("package run doctor reports shot/edit plan gate fields and conservative blo
   assert.match(text, /Conservative blocked actions:/);
 });
 
+test("package run doctor prioritizes Stage 4 planning repair over capture evidence intake", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-doctor-next-action-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-stage4-next-action");
+  writeCaptureEvidenceFixture(runDir, {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Stage 4 Next Action" } }),
+    "final-script.md": "# Final Script\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "shot-list.md": "# Shot List\n\nTODO\n",
+    "shot-edit-plan-review.md":
+      "# Shot/Edit Plan Review\n\n- Review status: NEEDS WORK\n- Stage accepted: no\n\n## Open Blockers\n\n- shot-list.md is placeholder-only or too thin.\n\n## Next Safe Action\n\n- Edit the planning artifacts manually, then run this review again.\n",
+    "capture-evidence-review.md":
+      "# Capture Evidence Review\n\n- Review status: NEEDS CAPTURE\n- Capture evidence accepted: no\n- Real capture evidence detected: no\n\n## Next Safe Action\n\n- Add real capture evidence rows with concrete media references, then rerun this review.\n",
+  });
+
+  const report = packageRunDoctorScript.buildDoctorReport(runDir, { repoRoot: tempRoot });
+  const text = packageRunDoctorScript.renderText(report);
+
+  assert.equal(report.lifecycleStatus, "Needs shot/edit plan approval");
+  assert.match(report.firstBlockerReason, /shot-list\.md is placeholder-only or too thin/);
+  assert.equal(report.lifecycleGate.shotEditPlanNextSafeAction, "Edit the planning artifacts manually, then run this review again.");
+  assert.equal(report.nextSafeAction, "Edit the planning artifacts manually, then run this review again.");
+  assert.doesNotMatch(report.nextSafeAction, /capture evidence/i);
+  assert.match(text, /Stage 4 next safe action: Edit the planning artifacts manually, then run this review again\./);
+});
+
+test("package run doctor does not make capture evidence primary before Stage 4 acceptance", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-doctor-human-review-next-action-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-stage4-human-review-next-action");
+  writeCaptureEvidenceFixture(runDir, {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Stage 4 Human Review Next Action" } }),
+    "final-script.md": "# Final Script\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "shot-edit-plan-review.md":
+      "# Shot/Edit Plan Review\n\n- Review status: READY FOR HUMAN APPROVAL\n- Stage accepted: no\n\n## Open Blockers\n\n- No exact Stage 4 manual approval marker was detected.\n\n## Next Safe Action\n\n- Mikko reviews the concrete shot/edit plan and adds an exact approval marker only if the scope is accepted.\n",
+    "capture-evidence-review.md":
+      "# Capture Evidence Review\n\n- Review status: NEEDS CAPTURE\n- Capture evidence accepted: no\n- Real capture evidence detected: no\n\n## Next Safe Action\n\n- Add real capture evidence rows with concrete media references, then rerun this review.\n",
+  });
+
+  const report = packageRunDoctorScript.buildDoctorReport(runDir, { repoRoot: tempRoot });
+
+  assert.equal(report.lifecycleStatus, "Needs shot/edit plan approval");
+  assert.equal(report.lifecycleGate.shotEditPlanAccepted, false);
+  assert.match(report.nextSafeAction, /Mikko reviews the concrete shot\/edit plan/);
+  assert.doesNotMatch(report.nextSafeAction, /capture evidence/i);
+});
+
 test("package run doctor reports capture evidence gate fields", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-doctor-gate-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-doctor");
@@ -8134,6 +8180,7 @@ test("package run doctor reports capture evidence gate fields", () => {
   assert.equal(report.lifecycleGate.captureEvidenceRealEvidence, true);
   assert.match(report.firstBlockerReason, /Capture evidence review status is READY FOR HUMAN APPROVAL/);
   assert.deepEqual(report.missingExpectedArtifacts, ["exact capture approval marker in capture-stage artifact"]);
+  assert.match(report.nextSafeAction, /Add Capture evidence approval: PASS after human review/);
   assert.equal(report.conservativeBlockedActions.includes("upload"), true);
 });
 
