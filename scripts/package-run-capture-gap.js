@@ -105,6 +105,8 @@ function buildCaptureGapReport(runDirInput, options = {}) {
   const doctor = packageRunDoctor.buildDoctorReport(runDirInput, { repoRoot });
   const capture = captureEvidenceReview.evaluateCaptureEvidence(runDir);
   const lifecycle = doctor.lifecycleGate || {};
+  const productionPlanningBlocked = Boolean(lifecycle.productionPlanningBlocked || doctor.currentInferredStage === "Needs production planning");
+  const stage4Accepted = Boolean(capture.stage4Accepted && lifecycle.shotEditPlanAccepted && !productionPlanningBlocked);
   const gaps = [];
 
   if (doctor.blockingReasons.length) {
@@ -134,7 +136,19 @@ function buildCaptureGapReport(runDirInput, options = {}) {
     );
   }
 
-  if (!capture.stage4Accepted) {
+  if (productionPlanningBlocked) {
+    gaps.push(
+      gap(
+        "production-planning",
+        "blocked",
+        lifecycle.productionBlockersOpen
+          ? `Shoot-readiness status is ${lifecycle.productionPlanStatus || "missing"} and production-blockers.md has open blockers.`
+          : `Shoot-readiness status is ${lifecycle.productionPlanStatus || "missing"}, not READY TO SHOOT.`,
+        lifecycle.productionPlanningNextSafeAction || "Repair production planning before capture evidence intake.",
+        ["production-plan.md", "production-blockers.md"]
+      )
+    );
+  } else if (!stage4Accepted) {
     gaps.push(
       gap(
         "shot-edit-plan",
@@ -146,7 +160,7 @@ function buildCaptureGapReport(runDirInput, options = {}) {
     );
   }
 
-  if (capture.missingRequiredFiles.length) {
+  if (!productionPlanningBlocked && capture.missingRequiredFiles.length) {
     gaps.push(
       gap(
         "capture-artifacts",
@@ -158,7 +172,7 @@ function buildCaptureGapReport(runDirInput, options = {}) {
     );
   }
 
-  if (!capture.realCaptureEvidence) {
+  if (!productionPlanningBlocked && !capture.realCaptureEvidence) {
     const missingEvidence = [];
     const findings = capture.findings.join("\n");
     if (/Take\/camera\/A-roll evidence is missing/i.test(findings)) missingEvidence.push("take/camera/A-roll evidence");
@@ -175,7 +189,7 @@ function buildCaptureGapReport(runDirInput, options = {}) {
     );
   }
 
-  if (!capture.missingShotsClosed) {
+  if (!productionPlanningBlocked && !capture.missingShotsClosed) {
     gaps.push(
       gap(
         "missing-shot-tracker",
@@ -187,7 +201,7 @@ function buildCaptureGapReport(runDirInput, options = {}) {
     );
   }
 
-  if (!capture.captureBlockersResolved) {
+  if (!productionPlanningBlocked && !capture.captureBlockersResolved) {
     gaps.push(
       gap(
         "capture-blockers",
@@ -199,7 +213,7 @@ function buildCaptureGapReport(runDirInput, options = {}) {
     );
   }
 
-  if (!capture.captureEvidenceAccepted) {
+  if (!productionPlanningBlocked && !capture.captureEvidenceAccepted) {
     gaps.push(
       gap(
         "capture-approval",
@@ -233,7 +247,7 @@ function buildCaptureGapReport(runDirInput, options = {}) {
     captureEvidenceStatus: capture.status,
     captureEvidenceAccepted: capture.captureEvidenceAccepted,
     realCaptureEvidence: capture.realCaptureEvidence,
-    stage4Accepted: capture.stage4Accepted,
+    stage4Accepted,
     gaps,
     blockedActions,
     safeInspectionCommands: [

@@ -7978,6 +7978,52 @@ test("package run doctor overrides stale capture evidence review with current so
   assert.doesNotMatch(text, /captureEvidenceReviewStatus: READY FOR HUMAN APPROVAL/);
 });
 
+test("package run doctor keeps May 2 stale capture artifacts behind production planning", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-doctor-may2-stale-ordering-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-02-ai-video-idea-filter");
+  writeCaptureEvidenceFixture(runDir, {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "May 2 Stale Ordering" } }),
+    "final-script.md": "# Final Script\n\nDraft script, not approved for production.\n",
+    "production-plan.md":
+      "# Production Plan\n\n- Production planning ready from review: no\n- Shoot-readiness status: NOT READY TO SHOOT\n\nCurrent final-script.md is a reviewable draft, not an approved production script.\nMikko production approval has not been given.\n",
+    "production-blockers.md":
+      "# Production Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| Mikko production approval has not been given. | Human production approval is required. | Request review after package gates are clean. | open |\n",
+    "shot-edit-plan-review.md":
+      "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n- Production planning ready: yes\n\n## Open Blockers\n\n- None detected by this local review.\n",
+    "capture-checklist.md":
+      "# Capture Checklist\n\n- Capture checklist status: READY FOR HUMAN APPROVAL\n- Ready for rough cut: no\n\nCapture approval: NOT APPROVED\n",
+    "takes-log.md":
+      "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| TAKE-001 | shot-list.md smoke-test row | media/test-capture/take-001-hook.mov | Dummy smoke-test A-roll reference. Not real production approval. | captured |\n",
+    "screen-recording-checklist.md":
+      "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Screen recording smoke proof 001 | Dummy smoke-test screen recording reference. Not real production approval. | recordings/test-screen-proof-001.mp4 | captured |\n",
+    "audio-capture-checklist.md":
+      "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover smoke-test main pass | Dummy smoke-test audio reference. Not real production approval. | audio/test-voiceover-main.wav | recorded |\n",
+    "capture-evidence-review.md":
+      "# Capture Evidence Review\n\n- Review status: READY FOR HUMAN APPROVAL\n- Capture evidence accepted: no\n- Real capture evidence detected: yes\n",
+  });
+
+  const report = packageRunDoctorScript.buildDoctorReport(runDir, { repoRoot: tempRoot });
+  const gap = packageCaptureGapScript.buildCaptureGapReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(report.overallStatus, "BLOCKED");
+  assert.equal(report.currentInferredStage, "Needs production planning");
+  assert.equal(report.lifecycleGate.productionPlanStatus, "NOT READY TO SHOOT");
+  assert.equal(report.lifecycleGate.productionBlockersOpen, true);
+  assert.equal(report.lifecycleGate.productionPlanningBlocked, true);
+  assert.equal(report.lifecycleGate.shotEditPlanReviewStatus, "STALE PASS");
+  assert.equal(report.lifecycleGate.shotEditPlanAccepted, false);
+  assert.equal(report.lifecycleGate.captureEvidenceAccepted, false);
+  assert.equal(report.lifecycleGate.captureEvidenceRealEvidence, false);
+  assert.match(report.nextSafeAction, /Repair production-plan\.md and resolve open production-blockers\.md/);
+  assert.doesNotMatch(report.nextSafeAction, /capture evidence rows/i);
+  assert.match(report.firstBlockerReason, /production-blockers\.md has open blockers/);
+  assert.equal(gap.overallStatus, "BLOCKED");
+  assert.equal(gap.stage4Accepted, false);
+  assert.equal(gap.gaps.some((item) => item.area === "production-planning"), true);
+  assert.equal(gap.gaps.some((item) => item.area === "real-capture-evidence"), false);
+  assert.doesNotMatch(gap.gaps.map((item) => item.safeNextAction).join("\n"), /Add concrete media references|Add real capture evidence rows/i);
+});
+
 test("capture gap reporter is read-only and separates approval-required capture actions", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-gap-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-gap");

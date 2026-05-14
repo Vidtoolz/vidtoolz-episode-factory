@@ -321,6 +321,10 @@ function hasCompletedEvidenceRows(markdown = "") {
   });
 }
 
+function hasOpenRows(markdown = "") {
+  return tableRows(markdown).some((row) => /\|\s*(?:open|blocked|todo|tbd)\s*\|?\s*$/i.test(row));
+}
+
 function hasRealCaptureRows(markdown = "") {
   return tableRows(markdown).some((row) => {
     if (!hasCompletedEvidenceRows(row)) return false;
@@ -365,6 +369,7 @@ function readLifecycleGate(runDir, files = {}) {
   const scriptStructure = readOptionalText(runDir, "script-structure.md");
   const scriptReview = readOptionalText(runDir, "script-review.md");
   const productionPlan = readOptionalText(runDir, "production-plan.md");
+  const productionBlockers = readOptionalText(runDir, "production-blockers.md");
   const shotEditPlanReview = readOptionalText(runDir, "shot-edit-plan-review.md");
   const captureChecklist = readOptionalText(runDir, "capture-checklist.md");
   const takesLog = readOptionalText(runDir, "takes-log.md");
@@ -455,6 +460,12 @@ function readLifecycleGate(runDir, files = {}) {
     [archiveManifest, archiveSourceFiles, archiveAssetsManifest, archiveExportManifest, reusableClipsManifest, archiveBlockers].every((text) =>
       isConcreteMarkdown(text)
     );
+  const productionPlanStatus = gateStatus(productionPlan, "Shoot-readiness status") || gateStatus(productionPlan);
+  const productionBlockersOpen = hasOpenRows(productionBlockers);
+  const productionPlanningBlocked = Boolean(files.production_plan && (productionPlanStatus !== "READY TO SHOOT" || productionBlockersOpen));
+  const rawShotEditPlanReviewStatus = gateStatus(shotEditPlanReview, "Review status") || gateStatus(shotEditPlanReview);
+  const rawShotEditPlanAccepted = acceptedYes(shotEditPlanReview, "Stage accepted");
+  const shotEditPlanStaleByProduction = Boolean(rawShotEditPlanReviewStatus === "PASS" && rawShotEditPlanAccepted && productionPlanningBlocked);
 
   return {
     researchGateStatus: gateStatus(researchPack, "Status"),
@@ -474,11 +485,20 @@ function readLifecycleGate(runDir, files = {}) {
     readyToDraft: readyYes(scriptStructure, "Ready to draft"),
     scriptReviewStatus: gateStatus(scriptReview, "Script review status") || gateStatus(scriptReview),
     productionPlanningReady: readyYes(scriptReview, "Production planning ready"),
-    productionPlanStatus: gateStatus(productionPlan, "Shoot-readiness status") || gateStatus(productionPlan),
-    shotEditPlanReviewStatus: gateStatus(shotEditPlanReview, "Review status") || gateStatus(shotEditPlanReview),
-    shotEditPlanAccepted: acceptedYes(shotEditPlanReview, "Stage accepted"),
-    shotEditPlanBlockers: firstMeaningfulBullet(shotEditPlanReview, "Open Blockers"),
-    shotEditPlanNextSafeAction: firstMeaningfulBullet(shotEditPlanReview, "Next Safe Action"),
+    productionPlanStatus,
+    productionBlockersOpen,
+    productionPlanningBlocked,
+    productionPlanningNextSafeAction: productionBlockersOpen
+      ? "Repair production-plan.md and resolve open production-blockers.md before capture evidence intake."
+      : "Repair production-plan.md and request Mikko production approval before capture evidence intake.",
+    shotEditPlanReviewStatus: shotEditPlanStaleByProduction ? "STALE PASS" : rawShotEditPlanReviewStatus,
+    shotEditPlanAccepted: rawShotEditPlanAccepted && !productionPlanningBlocked,
+    shotEditPlanBlockers: productionPlanningBlocked
+      ? "Upstream production planning is not ready; shot/edit plan acceptance is stale until production-plan.md is READY TO SHOOT and production-blockers.md is clear."
+      : firstMeaningfulBullet(shotEditPlanReview, "Open Blockers"),
+    shotEditPlanNextSafeAction: productionPlanningBlocked
+      ? "Repair production planning before using shot/edit planning or capture artifacts."
+      : firstMeaningfulBullet(shotEditPlanReview, "Next Safe Action"),
     captureStatus: gateStatus(captureChecklist, "Capture checklist status") || gateStatus(captureChecklist),
     readyForRoughCut: readyYes(captureChecklist, "Ready for rough cut"),
     captureApproved,
@@ -486,9 +506,11 @@ function readLifecycleGate(runDir, files = {}) {
     captureEvidenceReviewStatus,
     captureEvidenceAccepted,
     captureEvidenceRealEvidence,
-    captureEvidenceNextSafeAction: sourceCaptureEvidenceInvalid
-      ? captureEvidenceEvaluation.nextSafeAction
-      : firstMeaningfulBullet(captureEvidenceReview, "Next Safe Action"),
+    captureEvidenceNextSafeAction: productionPlanningBlocked
+      ? "Repair production planning before capture evidence intake."
+      : sourceCaptureEvidenceInvalid
+        ? captureEvidenceEvaluation.nextSafeAction
+        : firstMeaningfulBullet(captureEvidenceReview, "Next Safe Action"),
     captureEvidenceBlockers: sourceCaptureEvidenceInvalid
       ? captureEvidenceEvaluation.findings.join(" ")
       : firstMeaningfulBullet(captureEvidenceReview, "Capture Gate Findings"),
@@ -559,7 +581,8 @@ function rawReadinessMarkers(gate = {}) {
 
 function effectiveReadinessForGate(gate = {}) {
   const rawCaptureReady = Boolean(gate.readyForRoughCut || gate.captureStatus === "READY FOR ROUGH CUT");
-  const captureReviewBlocksDownstream = Boolean(gate.hasCaptureEvidenceReview && !gate.hasConcreteCaptureEvidence);
+  const productionPlanningBlocksDownstream = Boolean(gate.productionPlanningBlocked);
+  const captureReviewBlocksDownstream = Boolean(!productionPlanningBlocksDownstream && gate.hasCaptureEvidenceReview && !gate.hasConcreteCaptureEvidence);
   const captureApproved = Boolean(gate.hasConcreteCaptureEvidence);
   const readyForRoughCut = Boolean(captureApproved && rawCaptureReady);
   const roughCutReady = Boolean(
@@ -601,11 +624,17 @@ function effectiveReadinessForGate(gate = {}) {
     readyToSchedule,
     readyToArchive,
     readyToCutShorts,
-    downstreamReadinessOverridden: captureReviewBlocksDownstream,
-    overrideReason,
-    nextSafeAction: captureReviewBlocksDownstream
-      ? gate.captureEvidenceNextSafeAction || "Add real capture evidence rows with concrete media references, then rerun capture evidence review."
-      : "",
+    downstreamReadinessOverridden: productionPlanningBlocksDownstream || captureReviewBlocksDownstream,
+    overrideReason: productionPlanningBlocksDownstream
+      ? `Production planning is blocked: Shoot-readiness status is ${gate.productionPlanStatus || "missing"}${
+          gate.productionBlockersOpen ? "; production-blockers.md has open blockers" : ""
+        }. Capture evidence intake is downstream of production planning.`
+      : overrideReason,
+    nextSafeAction: productionPlanningBlocksDownstream
+      ? gate.productionPlanningNextSafeAction || "Repair production-plan.md before capture evidence intake."
+      : captureReviewBlocksDownstream
+        ? gate.captureEvidenceNextSafeAction || "Add real capture evidence rows with concrete media references, then rerun capture evidence review."
+        : "",
     rawMarkers: rawReadinessMarkers(gate),
   };
 }
@@ -869,11 +898,21 @@ function firstBlockingGateForRun(run = {}) {
         nextRecommendedCommand: `node scripts/package-run-script-review.js ${target}`,
       };
     }
+    if (gate.productionBlockersOpen) {
+      return {
+        stage: "production-plan",
+        reason: `Shoot-readiness status is ${gate.productionPlanStatus || "missing"}; production-blockers.md has open blockers.`,
+        missingExpectedArtifacts: ["production-plan.md with Shoot-readiness status: READY TO SHOOT", "closed production-blockers.md rows"],
+        nextRecommendedCommand: `node scripts/package-run-production-plan.js ${target}`,
+        nextSafeAction: gate.productionPlanningNextSafeAction,
+      };
+    }
     return {
       stage: "production-plan",
       reason: `Shoot-readiness status is ${gate.productionPlanStatus || "missing"}, not READY TO SHOOT.`,
       missingExpectedArtifacts: ["production-plan.md with Shoot-readiness status: READY TO SHOOT"],
       nextRecommendedCommand: `node scripts/package-run-production-plan.js ${target}`,
+      nextSafeAction: gate.productionPlanningNextSafeAction,
     };
   }
 
