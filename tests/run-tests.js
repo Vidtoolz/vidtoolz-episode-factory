@@ -3693,6 +3693,62 @@ test("shot/edit plan review requires exact manual approval marker for accepted s
   assert.match(stage4ReviewText(passDir), /Stage accepted: yes/);
 });
 
+test("shot/edit plan review accepts approved research sufficiency review without research pack", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-review-research-pass-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-review-research-pass");
+  writeProductionPlannerBaseRun(runDir, { research: false });
+  writeProductionPlannerResearchEvidence(runDir, { status: "PASS", approval: true });
+  writeConcreteStage4Planning(runDir, { approval: false });
+
+  assert.equal(packageShotEditPlanReviewScript.main([runDir]), 0);
+  const review = stage4ReviewText(runDir);
+
+  assert.match(review, /Review status: READY FOR HUMAN APPROVAL/);
+  assert.match(review, /Stage accepted: no/);
+  assert.match(review, /Research gate status: PASS/);
+  assert.doesNotMatch(review, /research-pack\.md is missing/);
+  assert.doesNotMatch(review, /Review status: BLOCKED/);
+});
+
+test("shot/edit plan review blocks unapproved research sufficiency review without research pack", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-review-research-unapproved-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-review-research-unapproved");
+  writeProductionPlannerBaseRun(runDir, { research: false });
+  writeProductionPlannerResearchEvidence(runDir, { status: "READY FOR RESEARCH REVIEW", approval: false });
+  writeConcreteStage4Planning(runDir, { approval: true });
+
+  assert.equal(packageShotEditPlanReviewScript.main([runDir]), 0);
+  const review = stage4ReviewText(runDir);
+
+  assert.match(review, /Review status: BLOCKED/);
+  assert.match(review, /Stage accepted: no/);
+  assert.match(review, /Research gate status: READY FOR RESEARCH REVIEW/);
+  assert.match(review, /Research gate status is READY FOR RESEARCH REVIEW/);
+  assert.doesNotMatch(review, /Review status: PASS/);
+});
+
+test("shot/edit plan review still requires manual marker after approved research sufficiency fallback", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-review-research-manual-"));
+  const readyDir = path.join(tempRoot, "package-runs", "2026-05-10-review-research-ready");
+  const passDir = path.join(tempRoot, "package-runs", "2026-05-10-review-research-pass");
+  writeProductionPlannerBaseRun(readyDir, { research: false });
+  writeProductionPlannerResearchEvidence(readyDir, { status: "PASS", approval: true });
+  writeConcreteStage4Planning(readyDir, { approval: false });
+  writeProductionPlannerBaseRun(passDir, { research: false });
+  writeProductionPlannerResearchEvidence(passDir, { status: "PASS", approval: true });
+  writeConcreteStage4Planning(passDir, { approval: true });
+
+  assert.equal(packageShotEditPlanReviewScript.main([readyDir]), 0);
+  assert.equal(packageShotEditPlanReviewScript.main([passDir]), 0);
+
+  assert.match(stage4ReviewText(readyDir), /Review status: READY FOR HUMAN APPROVAL/);
+  assert.match(stage4ReviewText(readyDir), /Stage accepted: no/);
+  assert.match(stage4ReviewText(readyDir), /Manual approval marker detected: no/);
+  assert.match(stage4ReviewText(passDir), /Review status: PASS/);
+  assert.match(stage4ReviewText(passDir), /Stage accepted: yes/);
+  assert.match(stage4ReviewText(passDir), /Manual approval marker detected: yes/);
+});
+
 test("shot/edit plan review ignores upstream manual approval markers for stage acceptance", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-upstream-approval-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-upstream-approval");

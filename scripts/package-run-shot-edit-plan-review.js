@@ -37,7 +37,7 @@ const UPSTREAM_FILES = [
   "creator-qa-report.json",
   "creator-qa-report.md",
 ];
-const REQUIRED_UPSTREAM_FILES = ["final-script.md", "script-review.md", "script-structure.md", "research-pack.md"];
+const REQUIRED_UPSTREAM_FILES = ["final-script.md", "script-review.md", "script-structure.md"];
 const APPROVAL_PATTERN = /^(?:[-*]\s*)?(?:Manual approval|Production planning approval|Shot\/edit plan approval):\s*PASS\s*$/im;
 
 function usage() {
@@ -177,11 +177,19 @@ function readContext(runDir) {
     structureGate,
     planningFindings,
     approvalMarker,
-    missingRequired: [
-      ...REQUIRED_UPSTREAM_FILES.filter((filename) => !upstream[filename]),
-      ...PLANNING_FILES.filter((filename) => !planning[filename]),
-    ],
+    missingRequired: missingRequiredFiles(upstream, planning, researchGate),
   };
+}
+
+function missingRequiredFiles(upstream, planning, researchGate) {
+  const missing = [
+    ...REQUIRED_UPSTREAM_FILES.filter((filename) => !upstream[filename]),
+    ...PLANNING_FILES.filter((filename) => !planning[filename]),
+  ];
+  if (!researchGate.approved && !upstream["research-pack.md"] && !upstream["research-sufficiency-review.md"]) {
+    missing.push("research-pack.md or approved research-sufficiency-review.md is missing.");
+  }
+  return missing;
 }
 
 function determineStatus(context) {
