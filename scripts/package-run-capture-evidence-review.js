@@ -123,7 +123,7 @@ function hasRealCaptureEvidence(markdown = "", type = "any") {
 
 function rowHasRealCaptureEvidence(row = "", type = "any") {
   if (!hasCompletedRow(row)) return false;
-  if (/\b(?:verified in existing capture artifacts|approved screen recording from|approved proof screen recording|approved script audio|generated checklist row)\b/i.test(row)) {
+  if (/\b(?:verified in existing capture artifacts|approved screen recording from|approved proof screen recording|approved script audio|generated checklist row|dummy|smoke-test|test-capture|test-screen|test-voiceover|not real production approval)\b/i.test(row)) {
     return false;
   }
   if (type === "take") {

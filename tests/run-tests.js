@@ -5799,6 +5799,30 @@ test("capture evidence review rejects generated checklist files", () => {
   assert.equal(evaluation.captureEvidenceAccepted, false);
 });
 
+test("capture evidence review rejects dummy smoke-test capture rows", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-evidence-dummy-smoke-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-dummy-smoke-capture");
+  writeCaptureEvidenceFixture(runDir, {
+    "capture-checklist.md":
+      "# Capture Checklist\n\n- Capture checklist status: READY FOR HUMAN APPROVAL\n- Ready for rough cut: no\n\nCapture approval: NOT APPROVED\n",
+    "takes-log.md":
+      "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| Take 1 | Screen-recorded comparison. | Verified in existing capture artifacts. | Generated checklist row. | closed |\n| TAKE-001 | shot-list.md smoke-test row | media/test-capture/take-001-hook.mov | Dummy smoke-test A-roll reference. Not real production approval. | captured |\n",
+    "screen-recording-checklist.md":
+      "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Workflow screen | Capture proof. | Verified in existing capture artifacts. | closed |\n| Screen recording smoke proof 001 | Dummy smoke-test screen recording reference. Not real production approval. | recordings/test-screen-proof-001.mp4 | captured |\n",
+    "audio-capture-checklist.md":
+      "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Record only approved script sections. | Verified in existing capture artifacts. | closed |\n| Voiceover smoke-test main pass | Dummy smoke-test audio reference. Not real production approval. | audio/test-voiceover-main.wav | recorded |\n\nAudio capture readiness: NOT APPROVED\n",
+  });
+
+  const evaluation = packageCaptureEvidenceReviewScript.evaluateCaptureEvidence(runDir);
+
+  assert.equal(evaluation.status, "NEEDS CAPTURE");
+  assert.equal(evaluation.realCaptureEvidence, false);
+  assert.equal(evaluation.screenRecordingsIdentified, false);
+  assert.equal(evaluation.audioCapturesIdentified, false);
+  assert.equal(evaluation.captureEvidenceAccepted, false);
+  assert.equal(evaluation.approvalMarkerDetected, false);
+});
+
 test("capture evidence review requires approval after real rows", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-evidence-ready-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-ready-capture");
@@ -7949,6 +7973,34 @@ test("capture gap reporter is read-only and separates approval-required capture 
   assert.match(text, /Package Run Capture Gap/);
   assert.match(text, /Approval-required actions:/);
   assert.match(text, /Blocked actions:\n(?:- .+\n)*- Hermes brain write/);
+});
+
+test("capture gap reporter rejects generated and dummy smoke-test capture rows", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-gap-dummy-smoke-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-gap-dummy-smoke");
+  writeCaptureEvidenceFixture(runDir, {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Capture Gap Dummy Smoke" } }),
+    "final-script.md": "# Final Script\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "shot-edit-plan-review.md": "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n",
+    "capture-checklist.md":
+      "# Capture Checklist\n\n- Capture checklist status: READY FOR HUMAN APPROVAL\n- Ready for rough cut: no\n\nCapture approval: NOT APPROVED\n",
+    "takes-log.md":
+      "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| Take 1 | Screen-recorded comparison. | Verified in existing capture artifacts. | Generated checklist row. | closed |\n| TAKE-001 | shot-list.md smoke-test row | media/test-capture/take-001-hook.mov | Dummy smoke-test A-roll reference. Not real production approval. | captured |\n",
+    "screen-recording-checklist.md":
+      "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Workflow screen | Capture proof. | Verified in existing capture artifacts. | closed |\n| Screen recording smoke proof 001 | Dummy smoke-test screen recording reference. Not real production approval. | recordings/test-screen-proof-001.mp4 | captured |\n",
+    "audio-capture-checklist.md":
+      "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Record only approved script sections. | Verified in existing capture artifacts. | closed |\n| Voiceover smoke-test main pass | Dummy smoke-test audio reference. Not real production approval. | audio/test-voiceover-main.wav | recorded |\n\nAudio capture readiness: NOT APPROVED\n",
+  });
+
+  const report = packageCaptureGapScript.buildCaptureGapReport("package-runs/2026-05-10-capture-gap-dummy-smoke", { repoRoot: tempRoot });
+
+  assert.equal(report.captureEvidenceStatus, "NEEDS CAPTURE");
+  assert.equal(report.realCaptureEvidence, false);
+  assert.equal(report.captureEvidenceAccepted, false);
+  assert.equal(report.gaps.some((gap) => gap.area === "real-capture-evidence"), true);
+  assert.equal(report.gaps.some((gap) => gap.area === "capture-approval"), true);
+  assert.equal(report.blockedActions.includes("rough-cut assembly"), true);
 });
 
 test("capture gap reporter returns blocked read-only report for missing run directory", () => {
