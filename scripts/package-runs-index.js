@@ -3,6 +3,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const captureEvidenceReviewTool = require("./package-run-capture-evidence-review.js");
 const researchEvidenceTool = require("./package-run-research-evidence.js");
 
 const DEFAULT_RUNS_DIR = "package-runs";
@@ -404,13 +405,29 @@ function readLifecycleGate(runDir, files = {}) {
     hasRealCaptureRows(screenRecordingChecklist) ||
     hasRealCaptureRows(audioCaptureChecklist) ||
     hasExplicitCaptureEvidenceNote(captureResultNote);
-  const captureEvidenceReviewStatus = gateStatus(captureEvidenceReview, "Review status") || gateStatus(captureEvidenceReview);
-  const captureEvidenceAccepted = acceptedYes(captureEvidenceReview, "Capture evidence accepted");
-  const captureEvidenceRealEvidence =
+  const hasCaptureEvidenceSource =
+    files.capture_evidence_review ||
+    files.capture_checklist ||
+    files.takes_log ||
+    files.screen_recording_checklist ||
+    files.audio_capture_checklist ||
+    files.missing_shot_tracker;
+  const captureEvidenceEvaluation = hasCaptureEvidenceSource ? captureEvidenceReviewTool.evaluateCaptureEvidence(runDir) : null;
+  const sourceCaptureEvidenceInvalid = Boolean(captureEvidenceEvaluation && !captureEvidenceEvaluation.realCaptureEvidence);
+  const rawCaptureEvidenceReviewStatus = gateStatus(captureEvidenceReview, "Review status") || gateStatus(captureEvidenceReview);
+  const rawCaptureEvidenceAccepted = acceptedYes(captureEvidenceReview, "Capture evidence accepted");
+  const rawCaptureEvidenceRealEvidence =
     /^yes$/i.test(lineValue(captureEvidenceReview, "Real capture evidence detected")) || hasRealCaptureEvidence;
-  const hasConcreteCaptureEvidence = files.capture_evidence_review
-    ? captureEvidenceReviewStatus === "PASS" && captureEvidenceAccepted
-    : captureApproved && hasRealCaptureEvidence;
+  const captureEvidenceReviewStatus = sourceCaptureEvidenceInvalid
+    ? captureEvidenceEvaluation.status
+    : rawCaptureEvidenceReviewStatus;
+  const captureEvidenceAccepted = sourceCaptureEvidenceInvalid ? false : rawCaptureEvidenceAccepted;
+  const captureEvidenceRealEvidence = sourceCaptureEvidenceInvalid ? false : rawCaptureEvidenceRealEvidence;
+  const hasConcreteCaptureEvidence = sourceCaptureEvidenceInvalid
+    ? false
+    : files.capture_evidence_review
+      ? captureEvidenceReviewStatus === "PASS" && captureEvidenceAccepted && captureEvidenceRealEvidence
+      : captureApproved && hasRealCaptureEvidence;
   const hasRealRoughCutEvidence = hasRealWatchNotes(roughCutWatchNotes, "rough");
   const hasRealFinalWatchEvidence = hasRealWatchNotes(finalWatchNotes, "final");
   const exportApproved =
@@ -469,8 +486,12 @@ function readLifecycleGate(runDir, files = {}) {
     captureEvidenceReviewStatus,
     captureEvidenceAccepted,
     captureEvidenceRealEvidence,
-    captureEvidenceNextSafeAction: firstMeaningfulBullet(captureEvidenceReview, "Next Safe Action"),
-    captureEvidenceBlockers: firstMeaningfulBullet(captureEvidenceReview, "Capture Gate Findings"),
+    captureEvidenceNextSafeAction: sourceCaptureEvidenceInvalid
+      ? captureEvidenceEvaluation.nextSafeAction
+      : firstMeaningfulBullet(captureEvidenceReview, "Next Safe Action"),
+    captureEvidenceBlockers: sourceCaptureEvidenceInvalid
+      ? captureEvidenceEvaluation.findings.join(" ")
+      : firstMeaningfulBullet(captureEvidenceReview, "Capture Gate Findings"),
     hasConcreteCaptureEvidence,
     roughCutStatus: gateStatus(roughCutReview, "Rough-cut review status") || gateStatus(roughCutReview),
     secondCutReady: readyYes(roughCutReview, "Second-cut ready"),

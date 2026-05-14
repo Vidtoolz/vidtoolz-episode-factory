@@ -362,7 +362,12 @@ function renderText(report) {
   lines.push("");
   lines.push("Lifecycle gate summary (raw parsed markers and diagnostics):");
   Object.entries(report.lifecycleGate)
-    .filter(([key, value]) => key !== "effectiveReadiness" && value !== "" && value !== false)
+    .filter(
+      ([key, value]) =>
+        key !== "effectiveReadiness" &&
+        value !== "" &&
+        (value !== false || key.startsWith("captureEvidence") || key === "hasConcreteCaptureEvidence")
+    )
     .forEach(([key, value]) => lines.push(`- ${key}: ${value}`));
   lines.push("");
   lines.push("Raw/stale approval markers detected:");

@@ -7827,8 +7827,8 @@ test("package runs index rejects generated rough-cut and final reviews without r
     "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n\nCapture approval: PASS\n",
     "takes-log.md": "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| Take 01 hook | shot-list.md | media/take-01-hook.mov | Human reviewed captured take. | captured |\n",
     "missing-shot-tracker.md": "# Missing Shot Tracker\n",
-    "screen-recording-checklist.md": "# Screen Recording Checklist\n",
-    "audio-capture-checklist.md": "# Audio Capture Checklist\n\nAudio capture readiness: PASS\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Workflow screen recording | Shows proof workflow. | recordings/workflow-001.mp4 | captured |\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Final script narration. | audio/voiceover.wav | recorded |\n\nAudio capture readiness: PASS\n",
     "capture-evidence-review.md": "# Capture Evidence Review\n\n- Review status: PASS\n- Capture evidence accepted: yes\n- Real capture evidence detected: yes\n",
     "rough-cut-watch-notes.md": "# Rough-Cut Watch Notes\n\nPacing and audio notes generated before any rough cut candidate exists.\n",
     "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
@@ -7861,8 +7861,8 @@ test("package run doctor reports blocked actions for downstream export blockers"
     "capture-checklist.md": "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n\nCapture approval: PASS\n",
     "takes-log.md": "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| Take 01 hook | shot-list.md | media/take-01-hook.mov | Human reviewed captured take. | captured |\n",
     "missing-shot-tracker.md": "# Missing Shot Tracker\n",
-    "screen-recording-checklist.md": "# Screen Recording Checklist\n",
-    "audio-capture-checklist.md": "# Audio Capture Checklist\n\nAudio capture readiness: PASS\n",
+    "screen-recording-checklist.md": "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Workflow screen recording | Shows proof workflow. | recordings/workflow-001.mp4 | captured |\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Final script narration. | audio/voiceover.wav | recorded |\n\nAudio capture readiness: PASS\n",
     "capture-evidence-review.md": "# Capture Evidence Review\n\n- Review status: PASS\n- Capture evidence accepted: yes\n- Real capture evidence detected: yes\n",
     "rough-cut-watch-notes.md": "# Rough-Cut Watch Notes\n\nRough cut file media/rough-cut-v1.mp4 reviewed in Resolve timeline. Pacing, audio, visuals, and pickup needs were checked by a human.\n",
     "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n",
@@ -7937,6 +7937,45 @@ test("package run doctor reports capture evidence gate fields", () => {
   assert.match(report.firstBlockerReason, /Capture evidence review status is READY FOR HUMAN APPROVAL/);
   assert.deepEqual(report.missingExpectedArtifacts, ["exact capture approval marker in capture-stage artifact"]);
   assert.equal(report.conservativeBlockedActions.includes("upload"), true);
+});
+
+test("package run doctor overrides stale capture evidence review with current source evaluation", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-capture-doctor-stale-review-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-doctor-stale-review");
+  writeCaptureEvidenceFixture(runDir, {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Capture Doctor Stale Review" } }),
+    "final-script.md": "# Final Script\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "capture-checklist.md":
+      "# Capture Checklist\n\n- Capture checklist status: READY FOR HUMAN APPROVAL\n- Ready for rough cut: no\n\nCapture approval: NOT APPROVED\n",
+    "takes-log.md":
+      "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| Take 1 | Screen-recorded comparison. | Verified in existing capture artifacts. | Generated checklist row. | closed |\n| TAKE-001 | shot-list.md smoke-test row | media/test-capture/take-001-hook.mov | Dummy smoke-test A-roll reference. Not real production approval. | captured |\n",
+    "screen-recording-checklist.md":
+      "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Workflow screen | Capture proof. | Verified in existing capture artifacts. | closed |\n| Screen recording smoke proof 001 | Dummy smoke-test screen recording reference. Not real production approval. | recordings/test-screen-proof-001.mp4 | captured |\n",
+    "audio-capture-checklist.md":
+      "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Record only approved script sections. | Verified in existing capture artifacts. | closed |\n| Voiceover smoke-test main pass | Dummy smoke-test audio reference. Not real production approval. | audio/test-voiceover-main.wav | recorded |\n\nAudio capture readiness: NOT APPROVED\n",
+    "capture-evidence-review.md":
+      "# Capture Evidence Review\n\n- Review status: READY FOR HUMAN APPROVAL\n- Capture evidence accepted: no\n- Real capture evidence detected: yes\n\n## Next Safe Action\n\n- Add Capture evidence approval: PASS after human review.\n",
+  });
+
+  const report = packageRunDoctorScript.buildDoctorReport(runDir, { repoRoot: tempRoot });
+  const text = packageRunDoctorScript.renderText(report);
+
+  assert.equal(report.lifecycleStatus, "Needs capture");
+  assert.equal(report.overallStatus, "BLOCKED");
+  assert.equal(report.lifecycleGate.hasCaptureEvidenceReview, true);
+  assert.equal(report.lifecycleGate.captureEvidenceReviewStatus, "NEEDS CAPTURE");
+  assert.equal(report.lifecycleGate.captureEvidenceAccepted, false);
+  assert.equal(report.lifecycleGate.captureEvidenceRealEvidence, false);
+  assert.equal(report.lifecycleGate.hasConcreteCaptureEvidence, false);
+  assert.equal(report.effectiveReadiness.captureApproved, false);
+  assert.equal(report.effectiveReadiness.readyForRoughCut, false);
+  assert.match(report.lifecycleGate.captureEvidenceNextSafeAction, /Add real capture evidence rows with concrete media references/);
+  assert.match(report.firstBlockerReason, /Capture evidence review status is NEEDS CAPTURE/);
+  assert.match(report.missingExpectedArtifacts.join("\n"), /real capture evidence and capture-evidence-review\.md PASS/);
+  assert.match(text, /captureEvidenceReviewStatus: NEEDS CAPTURE/);
+  assert.match(text, /captureEvidenceRealEvidence: false/);
+  assert.doesNotMatch(text, /captureEvidenceReviewStatus: READY FOR HUMAN APPROVAL/);
 });
 
 test("capture gap reporter is read-only and separates approval-required capture actions", () => {
