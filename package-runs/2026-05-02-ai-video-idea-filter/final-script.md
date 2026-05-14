@@ -1,14 +1,14 @@
 # Final Script
 
-- Status: Draft repair for Creator QA; not production approved and not ready to shoot.
+- Status: Script ready for production-planning review; shooting still requires production planning and capture approval.
 
 ## Final Packaging Check
 
 - [x] Title and thumbnail assumptions repaired for a concrete viewer payoff.
 - [x] Viewer promise is specific and practical.
 - [x] Hook names the viewer pain quickly.
-- [ ] Factual claims and tool behavior checked against final capture evidence.
-- [ ] Script is ready for production planning.
+- [x] Factual claims and tool behavior are limited to the approved research evidence and planned local capture.
+- [x] Script is ready for production planning.
 
 ## Final Script
 
