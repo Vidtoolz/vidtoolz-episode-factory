@@ -263,6 +263,8 @@ function buildApplyChecklist(options) {
   const allowedArgs = options.allowed.map(quoteShell).join(" ");
   return [
     `cd ${quoteShell(options.repo)}`,
+    `# Patch file: ${quoteShell(options.patchPath)}`,
+    `# Manifest file: ${quoteShell(options.manifestPath)}`,
     `PATCH=${quoteShell(options.patchPath)}`,
     `MANIFEST=${quoteShell(options.manifestPath)}`,
     "",

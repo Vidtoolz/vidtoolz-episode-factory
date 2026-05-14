@@ -10175,14 +10175,18 @@ test("proposal loop runner default mode prints real-repo apply checklist", () =>
 
   assert.equal(output.result, 0);
   assert.match(stdout, new RegExp(`cd ${escapeRegExp(fixture.worktree)}`));
-  assert.match(stdout, new RegExp(`PATCH=${escapeRegExp(patchPath)}`));
-  assert.match(stdout, new RegExp(`MANIFEST=${escapeRegExp(manifestPath)}`));
+  assert.match(stdout, new RegExp(`^# Patch file: ${escapeRegExp(patchPath)}$`, "m"));
+  assert.match(stdout, new RegExp(`^# Manifest file: ${escapeRegExp(manifestPath)}$`, "m"));
+  assert.match(stdout, new RegExp(`^PATCH=${escapeRegExp(patchPath)}$`, "m"));
+  assert.match(stdout, new RegExp(`^MANIFEST=${escapeRegExp(manifestPath)}$`, "m"));
   assert.match(stdout, new RegExp(escapeRegExp(patchPath)));
   assert.match(stdout, new RegExp(escapeRegExp(manifestPath)));
   assert.match(stdout, /git status --short --branch/);
   assert.match(stdout, /git apply --check "\$PATCH"/);
   assert.match(stdout, /git apply "\$PATCH"/);
   assert.doesNotMatch(stdout, /RUN_ID/);
+  assert.doesNotMatch(stdout, /PATCH=.*RUN_ID/);
+  assert.doesNotMatch(stdout, /MANIFEST=.*RUN_ID/);
   assert.match(stdout, /git diff --stat -- scripts\/proposal-loop-runner\.js tests\/run-tests\.js/);
   assert.match(stdout, /node --check scripts\/proposal-loop-runner\.js/);
   assert.match(stdout, /git add scripts\/proposal-loop-runner\.js tests\/run-tests\.js/);
