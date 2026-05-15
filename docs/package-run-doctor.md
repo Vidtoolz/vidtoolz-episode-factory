@@ -12,6 +12,16 @@ node scripts/package-run-doctor.js package-runs/YYYY-MM-DD-topic-slug --json
 node scripts/package-run-doctor.js --help
 ```
 
+For a shorter single-action view:
+
+```sh
+node scripts/package-run-next-action.js package-runs/YYYY-MM-DD-topic-slug
+node scripts/package-run-next-action.js package-runs/YYYY-MM-DD-topic-slug --json
+```
+
+The next-action command reuses the doctor/index classification. It does not
+mark runs ready, approve production, or write package-run files.
+
 ## What It Reports
 
 The doctor reuses the package-runs index lifecycle logic and prints:

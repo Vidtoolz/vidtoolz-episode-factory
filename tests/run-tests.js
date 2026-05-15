@@ -30,6 +30,7 @@ const packagePublicationMetadataScript = require("../scripts/package-run-publica
 const packageArchiveManifestScript = require("../scripts/package-run-archive-manifest.js");
 const packageRunCreatorQaScript = require("../scripts/package-run-creator-qa.js");
 const packageRunDoctorScript = require("../scripts/package-run-doctor.js");
+const packageRunNextActionScript = require("../scripts/package-run-next-action.js");
 const packageRunsIndexScript = require("../scripts/package-runs-index.js");
 const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashboard-launch.js");
 const packageEngineServer = require("../package-engine-server.js");
@@ -9146,6 +9147,110 @@ test("package run doctor reports script review blocker after research and struct
 test("verify script checks package run doctor syntax", () => {
   const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
   assert.match(verify, /node --check scripts\/package-run-doctor\.js/);
+});
+
+test("verify script checks package run next action syntax", () => {
+  const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
+  assert.match(verify, /node --check scripts\/package-run-next-action\.js/);
+});
+
+test("package run next action reports needs capture truthfully", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-next-action-capture-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-needs-capture");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Needs Capture Test" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "shot-edit-plan-review.md"), "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "shot-edit-plan-enhancement-plan.md"), "# Shot/Edit Plan Enhancement Plan\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "capture-checklist.md"), "# Capture Checklist\n\n- Capture checklist status: NEEDS CAPTURE\n- Ready for rough cut: no\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "takes-log.md"), "# Takes Log\n\nTODO\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "missing-shot-tracker.md"), "# Missing Shot Tracker\n\nTODO\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "screen-recording-checklist.md"), "# Screen Recording Checklist\n\nTODO\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "audio-capture-checklist.md"), "# Audio Capture Checklist\n\nTODO\n", "utf8");
+
+  const report = packageRunNextActionScript.buildNextActionReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(report.runTitle, "Needs Capture Test");
+  assert.equal(report.currentStage, "Needs capture");
+  assert.equal(report.dashboardBucket, "Needs capture");
+  assert.equal(report.owner, "Hermes");
+  assert.match(report.blockingFacts.join("\n"), /capture-evidence-review\.md is missing|Capture checklist status/);
+  assert.match(report.nextAction, /capture evidence|Capture checklist/i);
+  assert.match(report.commandToRun, /package-run-capture-evidence-review\.js|manual review/);
+  assert.equal(report.readOnly, true);
+});
+
+test("package run next action reports needs QA repair", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-next-action-qa-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-needs-qa");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Needs QA Test" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "b-roll-list.md"), "# B-Roll List\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "creator-qa-report.json"), JSON.stringify({ overall_result: "NEEDS WORK" }), "utf8");
+
+  const report = packageRunNextActionScript.buildNextActionReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(report.dashboardBucket, "Needs QA repair");
+  assert.equal(report.owner, "Codex");
+  assert.match(report.blockingFacts.join("\n"), /Creator QA status is NEEDS WORK/);
+  assert.match(report.commandToRun, /Review Creator QA status NEEDS WORK/);
+});
+
+test("package run next action reports ready to shoot without approving production", () => {
+  const doctorLike = {
+    lifecycleStatus: "Ready to shoot",
+    nextRecommendedCommand: "",
+    firstBlockerReason: "",
+  };
+
+  assert.equal(packageRunNextActionScript.actionOwner(doctorLike), "Codex");
+  assert.match(packageRunNextActionScript.nextActionText(doctorLike), /next local review command/);
+});
+
+test("package run next action reports missing artifacts", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-next-action-missing-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-missing");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Missing Artifact Test" } }), "utf8");
+
+  const report = packageRunNextActionScript.buildNextActionReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+  const text = packageRunNextActionScript.renderText(report);
+
+  assert.equal(report.currentStage, "Package selected");
+  assert.match(report.blockingFacts.join("\n"), /research-pack\.md/);
+  assert.match(report.commandToRun, /package-run-research-pack\.js/);
+  assert.match(text, /Package Run Next Action/);
+});
+
+test("package run next action reports conflicting visual risk artifacts", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-next-action-visual-risk-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-visual-risk");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Visual Risk Test" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "visual-risk-check.md"), "# Visual Risk Check\n\n- Status: NEEDS REVIEW\n", "utf8");
+
+  const report = packageRunNextActionScript.buildNextActionReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(report.visualRiskPresent, true);
+  assert.match(report.blockingFacts.join("\n"), /visual-risk-check\.md exists/);
+});
+
+test("package run next action json cli is parseable", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-next-action-json-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-json");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "JSON Test" } }), "utf8");
+
+  const output = captureConsole(() =>
+    packageRunNextActionScript.main([runDir, "--json"])
+  );
+  const parsed = JSON.parse(output.stdout.join("\n"));
+
+  assert.equal(output.result, 0);
+  assert.equal(parsed.runTitle, "JSON Test");
+  assert.equal(parsed.readOnly, true);
 });
 
 test("verify script checks package run capture gap syntax", () => {
