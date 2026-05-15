@@ -7842,11 +7842,11 @@ test("current May 2 active package run remains blocked at production planning wi
   assert.equal(run.inactive, false);
   assert.equal(run.status, "Needs production planning");
   assert.equal(run.workflowBucket, "Needs production planning");
-  assert.equal(run.lifecycleGate.rawProductionPlanStatus, "READY TO SHOOT");
+  assert.equal(run.lifecycleGate.rawProductionPlanStatus, "NOT READY TO SHOOT");
   assert.equal(run.lifecycleGate.productionPlanStatus, "NOT READY TO SHOOT");
   assert.equal(run.lifecycleGate.productionPlanningBlocked, true);
   assert.equal(run.lifecycleGate.productionApprovalBlocked, true);
-  assert.equal(run.lifecycleGate.captureEvidenceReviewStatus, "NEEDS CAPTURE");
+  assert.equal(run.lifecycleGate.captureEvidenceReviewStatus, "BLOCKED");
   assert.equal(run.lifecycleGate.effectiveCaptureApproved, false);
 });
 

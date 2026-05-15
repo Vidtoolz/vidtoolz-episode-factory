@@ -5,10 +5,10 @@
 - Source script: final-script.md
 - Script review status: PASS
 - Production planning ready from review: yes
-- Shot/edit plan approval: PASS
+- Shot/edit plan approval: stale / blocked
 - Research gate status: PASS
 - Script structure status: READY TO DRAFT
-- Shoot-readiness status: READY TO SHOOT
+- Shoot-readiness status: NOT READY TO SHOOT
 - External APIs called: no
 
 ## Input Warnings
@@ -24,8 +24,8 @@
 
 ## Approved / Not Approved Boundary
 
-- Approved boundary: The planner can be used for shooting preparation.
-- Not approved: rough-cut review, final review, publish pack, archive manifest, Shorts or repurposing plan.
+- Approved boundary: No production approval is currently granted. These planning lists are retained for review only.
+- Not approved: shooting, capture evidence intake, rough-cut review, final review, publish pack, archive manifest, Shorts or repurposing plan.
 - This tool is a production planning gate and list generator. package-engine-new-production.js remains the broader production prep pack.
 
 ## Required Live Shots
@@ -109,11 +109,13 @@
 
 ## Production Blockers
 
-- None.
+- Mikko production approval has not been given.
+- This production-plan.md previously conflicted with explicit not-production-approved evidence in creator-qa-package.md, selection-rationale-proof.md, and evidence-chain-summary.md.
+- shot-edit-plan-review.md previously contained stale acceptance markers and must not be treated as approval until production approval is resolved.
 
 ## Shoot-Readiness Gate
 
-- Status: READY TO SHOOT
-- Reason: Script review, production planning readiness, research gate, script structure, and script file are all approved.
+- Status: NOT READY TO SHOOT
+- Reason: Production approval is explicitly blocked by run evidence, and downstream shot/edit acceptance is stale until Mikko reviews and approves production.
 - Next actions:
-- Review the generated production lists, then capture only the approved scope.
+- Repair production-plan.md and production-blockers.md so they match the evidence, then request Mikko production review.

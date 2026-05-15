@@ -4,14 +4,14 @@
 - Tool: package-run-shot-edit-plan-review.js
 - External APIs called: no
 - Stage: script-to-shot-edit-plan
-- Review status: PASS
-- Stage accepted: yes
+- Review status: BLOCKED
+- Stage accepted: no
 - Script review status: PASS
-- Production planning ready: yes
+- Production planning ready: no
 - Research gate status: PASS
 - Script structure status: READY TO DRAFT
-- Production plan status: present
-- Manual approval marker detected: yes
+- Production plan status: NOT READY TO SHOOT
+- Manual approval marker detected: no
 
 ## Evidence Files Inspected
 
@@ -42,9 +42,10 @@
 
 ## Upstream Gate Findings
 
-- Script review is PASS and production planning is ready.
+- Script review is PASS, but production planning is not approved for shooting.
 - research-sufficiency-review.md includes Research sufficiency status: PASS and Research approval marker: PASS.
 - Script structure is ready to draft or has an exact manual approval marker.
+- Production approval is explicitly blocked by creator-qa-package.md, selection-rationale-proof.md, and evidence-chain-summary.md.
 
 ## Placeholder / TODO Findings
 
@@ -63,20 +64,23 @@
 
 ## Open Blockers
 
-- None detected by this local review.
+- Upstream production approval is blocked; shot/edit acceptance is stale until production approval is resolved.
+- Mikko production approval has not been given.
+- production-plan.md and production-blockers.md must remain blocked until the approval state is reconciled.
 
 ## Enhancement Summary
 
-- No automatic enhancement issues beyond human approval state.
+- Previous Stage accepted: yes / Review status: PASS markers were stale and have been superseded by the blocked production approval state.
 
 ## Next Safe Action
 
-- Proceed only with the explicitly approved shooting/edit-planning scope.
+- Repair production planning and request Mikko production review before using shot/edit planning or capture artifacts.
 
 ## Blocked Actions
 
-- Shooting without explicit approval.
-- Editing without explicit approval.
+- Shooting.
+- Capture evidence intake.
+- Editing progression.
 - Publishing.
 - Upload prep.
 - Final title lock.
