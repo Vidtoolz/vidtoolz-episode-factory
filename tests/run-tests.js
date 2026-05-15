@@ -32,6 +32,7 @@ const packageArchiveManifestScript = require("../scripts/package-run-archive-man
 const packageRunCreatorQaScript = require("../scripts/package-run-creator-qa.js");
 const packageRunDoctorScript = require("../scripts/package-run-doctor.js");
 const packageRunNextActionScript = require("../scripts/package-run-next-action.js");
+const packageRunActiveStateAuditScript = require("../scripts/package-run-active-state-audit.js");
 const packageProductionApprovalRepairScript = require("../scripts/package-run-production-approval-repair.js");
 const packageProductionApprovalReviewScript = require("../scripts/package-run-production-approval-review.js");
 const packageRunsIndexScript = require("../scripts/package-runs-index.js");
@@ -7849,6 +7850,158 @@ test("current May 2 active package run remains blocked at production planning wi
   assert.equal(run.lifecycleGate.productionApprovalBlocked, true);
   assert.equal(run.lifecycleGate.captureEvidenceReviewStatus, "BLOCKED");
   assert.equal(run.lifecycleGate.effectiveCaptureApproved, false);
+});
+
+test("active state audit degrades read-only when package-runs-index is missing", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-active-audit-missing-index-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Missing Index Active" } })
+  );
+
+  const report = packageRunActiveStateAuditScript.buildActiveStateAudit({ repoRoot: tempRoot });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.readOnly, true);
+  assert.equal(report.externalApisCalled, false);
+  assert.equal(report.sourceIndex.ok, false);
+  assert.match(report.sourceIndex.error, /package-runs-index\.json not found/);
+});
+
+test("active state audit selects exactly one active run", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-active-audit-one-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Only Active" } })
+  );
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-09-parked/package-run-state.md",
+    "# Package Run State\n\nPackage run state: parked\n"
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const report = packageRunActiveStateAuditScript.buildActiveStateAudit({ repoRoot: tempRoot });
+
+  assert.equal(report.ok, true);
+  assert.equal(report.ambiguity, false);
+  assert.equal(report.selectedActiveRun, "package-runs/2026-05-10-active");
+  assert.equal(report.candidateActiveRuns.length, 1);
+  assert.equal(report.candidateActiveRuns[0].safeRecommendedAction, "keep active");
+  assert.equal(report.inactiveRuns.length, 1);
+});
+
+test("active state audit reports multiple active runs as ambiguous", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-active-audit-many-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active-a/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Active A" } })
+  );
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-09-active-b/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Active B" } })
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const report = packageRunActiveStateAuditScript.buildActiveStateAudit({ repoRoot: tempRoot });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.ambiguity, true);
+  assert.equal(report.selectedActiveRun, "");
+  assert.equal(report.candidateActiveRuns.length, 2);
+  assert.equal(
+    report.exactNextSafeAction,
+    "Review package-run state markers and choose exactly one active run before package-run-specific cockpit panels can make decisions."
+  );
+  assert.equal(report.candidateActiveRuns.every((run) => run.safeRecommendedAction === "review manually"), true);
+});
+
+test("active state audit reports no active runs", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-active-audit-none-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-parked/package-run-state.md",
+    "# Package Run State\n\nPackage run state: parked\n"
+  );
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-09-superseded/package-run-state.md",
+    "# Package Run State\n\nPackage run state: superseded\n"
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const report = packageRunActiveStateAuditScript.buildActiveStateAudit({ repoRoot: tempRoot });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.ambiguity, false);
+  assert.equal(report.candidateActiveRuns.length, 0);
+  assert.equal(report.selectedActiveRun, "");
+  assert.equal(report.exactNextSafeAction, "Mark exactly one package run active or configure an explicit active run.");
+});
+
+test("active state audit json cli is parseable", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-active-audit-json-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "JSON Active" } })
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const output = captureConsole(() => packageRunActiveStateAuditScript.main(["--json"], { repoRoot: tempRoot }));
+  const payload = JSON.parse(output.stdout.join("\n"));
+
+  assert.equal(output.result, 0);
+  assert.equal(payload.name, "package_run_active_state_audit");
+  assert.equal(payload.ok, true);
+  assert.equal(payload.readOnly, true);
+  assert.equal(payload.externalApisCalled, false);
+  assert.equal(payload.selectedActiveRun, "package-runs/2026-05-10-active");
+});
+
+test("active state audit help output documents read-only usage", () => {
+  const output = captureConsole(() => packageRunActiveStateAuditScript.main(["--help"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /Package Run Active State Audit/);
+  assert.match(output.stdout.join("\n"), /--json/);
+  assert.match(output.stdout.join("\n"), /Read-only local audit/);
+});
+
+test("active state audit does not mutate package-run fixture files", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-active-audit-readonly-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Read Only Active" } })
+  );
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-09-parked/package-run-state.md",
+    "# Package Run State\n\nPackage run state: parked\n"
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+  const runFiles = [
+    "package-runs/2026-05-10-active/selected-package.json",
+    "package-runs/2026-05-09-parked/package-run-state.md",
+  ];
+  const before = Object.fromEntries(runFiles.map((filename) => [filename, fs.readFileSync(path.join(tempRoot, filename), "utf8")]));
+
+  const report = packageRunActiveStateAuditScript.buildActiveStateAudit({ repoRoot: tempRoot });
+  packageRunActiveStateAuditScript.renderText(report);
+  captureConsole(() => packageRunActiveStateAuditScript.main(["--json"], { repoRoot: tempRoot }));
+
+  const after = Object.fromEntries(runFiles.map((filename) => [filename, fs.readFileSync(path.join(tempRoot, filename), "utf8")]));
+  assert.deepEqual(after, before);
 });
 
 test("package runs index follows lifecycle gates in order", () => {
