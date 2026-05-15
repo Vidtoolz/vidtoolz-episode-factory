@@ -10,4 +10,3 @@
 
 - Add `Audio capture readiness: PASS` only after real audio capture is complete and reviewed.
 - `Manual approval: PASS` or `Rough-cut assembly approval: PASS` may also be used when a human explicitly accepts capture readiness.
-
