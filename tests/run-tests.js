@@ -8898,8 +8898,34 @@ test("production approval review packet json cli is parseable", () => {
   assert.equal(output.result, 0);
   assert.equal(payload.readOnly, true);
   assert.equal(payload.externalApisCalled, false);
+  assert.equal(payload.jsonContract.productionStatusContainer, "currentProductionStatus");
+  assert.deepEqual(payload.jsonContract.productionStatusFields, [
+    "effectiveProductionStatus",
+    "rawParsedProductionStatus",
+    "productionApprovalBlocked",
+    "productionBlockersOpen",
+    "shotEditPlanStatus",
+    "captureEvidenceStatus",
+  ]);
+  assert.equal(typeof payload.currentProductionStatus, "object");
+  assert.equal(Object.hasOwn(payload.currentProductionStatus, "effectiveProductionStatus"), true);
+  assert.equal(Object.hasOwn(payload.currentProductionStatus, "rawParsedProductionStatus"), true);
+  assert.equal(Object.hasOwn(payload.currentProductionStatus, "productionApprovalBlocked"), true);
+  assert.equal(Object.hasOwn(payload.currentProductionStatus, "productionBlockersOpen"), true);
+  assert.equal(Object.hasOwn(payload.currentProductionStatus, "shotEditPlanStatus"), true);
+  assert.equal(Object.hasOwn(payload.currentProductionStatus, "captureEvidenceStatus"), true);
   assert.equal(payload.currentProductionStatus.rawParsedProductionStatus, "READY TO SHOOT");
   assert.equal(payload.currentProductionStatus.effectiveProductionStatus, "NOT READY TO SHOOT");
+  assert.equal(payload.currentProductionStatus.productionApprovalBlocked, true);
+  assert.equal(payload.currentProductionStatus.productionBlockersOpen, true);
+  assert.equal(payload.currentProductionStatus.shotEditPlanStatus, "STALE PASS");
+  assert.equal(payload.currentProductionStatus.captureEvidenceStatus, "READY FOR ROUGH CUT");
+  assert.equal(Object.hasOwn(payload, "effectiveProductionStatus"), false);
+  assert.equal(Object.hasOwn(payload, "rawParsedProductionStatus"), false);
+  assert.equal(Object.hasOwn(payload, "productionApprovalBlocked"), false);
+  assert.equal(Object.hasOwn(payload, "productionBlockersOpen"), false);
+  assert.equal(Object.hasOwn(payload, "shotEditPlanStatus"), false);
+  assert.equal(Object.hasOwn(payload, "captureEvidenceStatus"), false);
   assert.equal(payload.blockingEvidence[0].file, "evidence-chain-summary.md");
 });
 

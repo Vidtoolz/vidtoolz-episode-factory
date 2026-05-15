@@ -19,6 +19,17 @@ const NOT_APPROVED_PATTERNS = [
   /\bnot production approved and not ready to shoot\b/i,
   /\bnot strong enough to mark production approved or ready[-\s]?to[-\s]?shoot\b/i,
 ];
+const JSON_CONTRACT = {
+  productionStatusContainer: "currentProductionStatus",
+  productionStatusFields: [
+    "effectiveProductionStatus",
+    "rawParsedProductionStatus",
+    "productionApprovalBlocked",
+    "productionBlockersOpen",
+    "shotEditPlanStatus",
+    "captureEvidenceStatus",
+  ],
+};
 
 function usage() {
   return `Mikko Production Approval Review Packet
@@ -29,6 +40,7 @@ Usage:
   node scripts/package-run-production-approval-review.js --help
 
 Read-only local decision packet for production approval review.
+JSON contract: production status fields are nested under currentProductionStatus.
 No files are created, modified, staged, uploaded, published, archived, committed,
 pushed, deleted, reset, cleaned, or sent to external APIs.`;
 }
@@ -171,6 +183,7 @@ function buildReviewPacket(runDirInput, options = {}) {
     runId: doctor.runId,
     title: doctor.title,
     path: doctor.path,
+    jsonContract: JSON_CONTRACT,
     currentProductionStatus: {
       effectiveProductionStatus: gate.productionPlanStatus || "",
       rawParsedProductionStatus: gate.rawProductionPlanStatus || gate.productionPlanStatus || "",
@@ -320,6 +333,7 @@ if (require.main === module) {
 
 module.exports = {
   EXACT_APPROVAL_MARKER,
+  JSON_CONTRACT,
   parseArgs,
   usage,
   productionBlockersAppearClosed,
