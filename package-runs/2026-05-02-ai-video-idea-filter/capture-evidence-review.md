@@ -4,14 +4,14 @@
 - Tool: package-run-capture-evidence-review.js
 - External APIs called: no
 - Stage: capture-evidence
-- Review status: READY FOR HUMAN APPROVAL
+- Review status: NEEDS CAPTURE
 - Capture evidence accepted: no
 - Stage 4 accepted: yes
-- Real capture evidence detected: yes
+- Real capture evidence detected: no
 - Screen recordings identified: yes
-- Audio/A-roll/voiceover captures identified: yes
-- Missing shots closed: yes
-- Capture blockers resolved: yes
+- Audio/A-roll/voiceover captures identified: no
+- Missing shots closed: no
+- Capture blockers resolved: no
 - Manual approval marker detected: no
 - Stale approval marker detected: no
 - Ready for rough-cut work: no
@@ -30,11 +30,15 @@
 
 ## Capture Gate Findings
 
+- Take/camera/A-roll evidence is missing or not concrete.
+- Audio/A-roll/voiceover capture evidence is missing or not concrete.
+- Missing-shot tracker is not closed or explicitly accepted.
+- Capture blockers remain open.
 - Exact capture-stage approval marker is missing.
 
 ## Next Safe Action
 
-- Review the capture evidence manually and add an exact capture approval marker if accepted.
+- Add real capture evidence rows with concrete media references, then rerun this review.
 
 ## Blocked Actions
 

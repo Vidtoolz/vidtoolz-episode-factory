@@ -6034,6 +6034,41 @@ test("capture evidence review requires approval after real rows", () => {
   assert.equal(evaluation.captureEvidenceAccepted, false);
 });
 
+test("capture evidence review recognizes absolute screen recording path with captured review-needed status", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-evidence-absolute-screen-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-absolute-screen");
+  writeCaptureEvidenceFixture(runDir, {
+    "takes-log.md": "# Takes Log\n\nTODO\n",
+    "screen-recording-checklist.md":
+      "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Scorecard workflow proof | Shows package selection workflow. | /home/vidtoolz/Videos/vidtoolz-captures/2026-05-02-ai-video-idea-filter/2026-05-14 09-33-52.mp4 | captured/review-needed |\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\nTODO\n",
+  });
+
+  const evaluation = packageCaptureEvidenceReviewScript.evaluateCaptureEvidence(runDir);
+
+  assert.equal(evaluation.screenRecordingsIdentified, true);
+  assert.equal(evaluation.realCaptureEvidence, false);
+  assert.equal(evaluation.status, "NEEDS CAPTURE");
+  assert.equal(evaluation.captureEvidenceAccepted, false);
+});
+
+test("capture evidence review does not recognize TODO screen recording placeholders", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-evidence-todo-screen-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-todo-screen");
+  writeCaptureEvidenceFixture(runDir, {
+    "takes-log.md": "# Takes Log\n\nTODO\n",
+    "screen-recording-checklist.md":
+      "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Placeholder screen | TODO | TODO | captured/review-needed |\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\nTODO\n",
+  });
+
+  const evaluation = packageCaptureEvidenceReviewScript.evaluateCaptureEvidence(runDir);
+
+  assert.equal(evaluation.screenRecordingsIdentified, false);
+  assert.equal(evaluation.realCaptureEvidence, false);
+  assert.equal(evaluation.status, "NEEDS CAPTURE");
+});
+
 test("capture evidence review approval marker alone does not pass", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-evidence-approval-only-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-approval-only");
@@ -6049,6 +6084,24 @@ test("capture evidence review approval marker alone does not pass", () => {
   assert.equal(evaluation.realCaptureEvidence, false);
   assert.equal(evaluation.approvalMarkerDetected, false);
   assert.equal(evaluation.staleApprovalMarkerDetected, true);
+});
+
+test("capture evidence review still requires closed missing shots and blockers with full media evidence", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-evidence-full-media-open-gates-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-full-media-open-gates");
+  writeCaptureEvidenceFixture(runDir, {
+    "capture-checklist.md": "# Capture Checklist\n\n| blocker | required fix | status |\n| --- | --- | --- |\n| Check OBS audio sync. | Review before rough cut. | open |\n",
+    "audio-capture-checklist.md": "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Final script narration. | audio/voiceover.wav | recorded |\n\nCapture evidence approval: PASS\n",
+    "missing-shot-tracker.md": "# Missing Shot Tracker\n\n| missing shot/content | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| Hook reshoot | Needed for edit. | Capture A-roll hook. | open |\n",
+  });
+
+  const evaluation = packageCaptureEvidenceReviewScript.evaluateCaptureEvidence(runDir);
+
+  assert.equal(evaluation.realCaptureEvidence, true);
+  assert.equal(evaluation.missingShotsClosed, false);
+  assert.equal(evaluation.captureBlockersResolved, false);
+  assert.equal(evaluation.status, "NEEDS CAPTURE");
+  assert.equal(evaluation.captureEvidenceAccepted, false);
 });
 
 test("capture evidence review does not let old approval marker pass newly added evidence", () => {

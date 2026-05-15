@@ -108,9 +108,45 @@ function tableRowsWithPositions(markdown = "") {
   return rows;
 }
 
+function tableCells(row = "") {
+  return String(row || "")
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+function rowStatus(row = "") {
+  const cells = tableCells(row);
+  return cells.length ? cells[cells.length - 1] : "";
+}
+
+function rowFileReferences(row = "") {
+  const cells = tableCells(row);
+  return cells.length >= 3 ? cells.slice(1, -1) : [];
+}
+
+function isPlaceholderValue(value = "") {
+  const text = String(value || "").trim();
+  if (!text) return true;
+  return /^(?:TODO|TBD|N\/A|NA|none|placeholder|fill in|not captured|not recorded|not available)$/i.test(text);
+}
+
+function isConcreteMediaReference(value = "") {
+  if (isPlaceholderValue(value)) return false;
+  return /(?:^\/|\.{0,2}\/|\b(?:media|captures|recordings|audio|videos|vidtoolz-captures)\/|\.(?:mp4|mov|mkv|webm|wav|mp3|m4a|aac|flac|png|jpe?g)\b)/i.test(String(value || ""));
+}
+
+function isCompletedStatus(status = "") {
+  if (isPlaceholderValue(status)) return false;
+  if (/\b(?:TODO|TBD|placeholder|not assessed|open|blocked|not captured|not recorded)\b/i.test(status)) return false;
+  return /\b(?:closed|complete|completed|captured|captured\/review-needed|review-needed|recorded|ready|approved|done|pass|accepted)\b/i.test(status);
+}
+
 function hasCompletedRow(row = "") {
   if (/\b(?:TODO|TBD|placeholder|not assessed|open|blocked)\b/i.test(row)) return false;
-  return /\|\s*(?:closed|complete|completed|captured|recorded|ready|approved|done|pass)\s*\|?\s*$/i.test(row);
+  return isCompletedStatus(rowStatus(row));
 }
 
 function hasRealCaptureRows(markdown = "") {
@@ -123,6 +159,7 @@ function hasRealCaptureEvidence(markdown = "", type = "any") {
 
 function rowHasRealCaptureEvidence(row = "", type = "any") {
   if (!hasCompletedRow(row)) return false;
+  if (!rowFileReferences(row).some((cell) => isConcreteMediaReference(cell))) return false;
   if (/\b(?:verified in existing capture artifacts|approved screen recording from|approved proof screen recording|approved script audio|generated checklist row|dummy|smoke-test|test-capture|test-screen|test-voiceover|not real production approval)\b/i.test(row)) {
     return false;
   }
