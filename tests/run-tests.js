@@ -33,6 +33,7 @@ const packageRunCreatorQaScript = require("../scripts/package-run-creator-qa.js"
 const packageRunDoctorScript = require("../scripts/package-run-doctor.js");
 const packageRunNextActionScript = require("../scripts/package-run-next-action.js");
 const packageRunActiveStateAuditScript = require("../scripts/package-run-active-state-audit.js");
+const packageRunStateProposalScript = require("../scripts/package-run-state-proposal.js");
 const packageProductionApprovalRepairScript = require("../scripts/package-run-production-approval-repair.js");
 const packageProductionApprovalReviewScript = require("../scripts/package-run-production-approval-review.js");
 const packageRunsIndexScript = require("../scripts/package-runs-index.js");
@@ -8002,6 +8003,147 @@ test("active state audit does not mutate package-run fixture files", () => {
 
   const after = Object.fromEntries(runFiles.map((filename) => [filename, fs.readFileSync(path.join(tempRoot, filename), "utf8")]));
   assert.deepEqual(after, before);
+});
+
+test("package run state proposal reports current multi-active ambiguity read-only", () => {
+  const repoRoot = path.resolve(__dirname, "..");
+  const packet = packageRunStateProposalScript.buildStateProposal({ repoRoot });
+
+  assert.equal(packet.name, "package_run_state_proposal");
+  assert.equal(packet.safety.readOnly, true);
+  assert.equal(packet.safety.packageRunFilesWritten, false);
+  assert.equal(packet.safety.packageRunsIndexUpdated, false);
+  assert.equal(packet.safety.gitActionsPerformed, false);
+  assert.equal(packet.proposals.length >= 1, true);
+  assert.equal(packet.proposals.some((item) => item.path === "package-runs/2026-05-02-ai-video-idea-filter"), true);
+  assert.equal(packet.proposals.some((item) => item.blockedActions.includes("capture intake")), true);
+  assert.equal(packet.proposals.some((item) => /approve-production|ready-to-shoot|publish|archive/.test(item.proposedState)), false);
+  assert.equal(
+    packet.exactNextSafeAction,
+    "Review this proposal, then explicitly choose which single package run remains active before package-run-specific cockpit panels make decisions."
+  );
+});
+
+test("package run state proposal json cli is parseable", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-state-proposal-json-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Proposal JSON Active" } })
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const output = captureConsole(() => packageRunStateProposalScript.main(["--json"], { repoRoot: tempRoot }));
+  const payload = JSON.parse(output.stdout.join("\n"));
+
+  assert.equal(output.result, 0);
+  assert.equal(payload.name, "package_run_state_proposal");
+  assert.equal(payload.ok, true);
+  assert.equal(payload.selectedActiveRun, "package-runs/2026-05-10-active");
+  assert.equal(payload.proposals.length, 1);
+  assert.equal(payload.proposals[0].proposedState, "keep-active");
+});
+
+test("package run state proposal degrades safely when no active candidates exist", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-state-proposal-none-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-parked/package-run-state.md",
+    "# Package Run State\n\nPackage run state: parked\n"
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const packet = packageRunStateProposalScript.buildStateProposal({ repoRoot: tempRoot });
+  const text = packageRunStateProposalScript.renderText(packet);
+
+  assert.equal(packet.ok, false);
+  assert.equal(packet.ambiguity, false);
+  assert.equal(packet.selectedActiveRun, "");
+  assert.deepEqual(packet.proposals, []);
+  assert.match(text, /No active package-run candidates were found/);
+});
+
+test("package run state proposal keeps single active run active", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-state-proposal-one-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Proposal One Active" } })
+  );
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-09-parked/package-run-state.md",
+    "# Package Run State\n\nPackage run state: parked\n"
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const packet = packageRunStateProposalScript.buildStateProposal({ repoRoot: tempRoot });
+
+  assert.equal(packet.ok, true);
+  assert.equal(packet.selectedActiveRun, "package-runs/2026-05-10-active");
+  assert.equal(packet.proposals.length, 1);
+  assert.equal(packet.proposals[0].proposedState, "keep-active");
+  assert.equal(packet.proposals[0].requiredHumanReview, true);
+});
+
+test("package run state proposal safety fields stay read-only", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-state-proposal-safety-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Proposal Safety" } })
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const packet = packageRunStateProposalScript.buildStateProposal({ repoRoot: tempRoot });
+
+  assert.equal(packet.safety.readOnly, true);
+  assert.equal(packet.safety.externalApisCalled, false);
+  assert.equal(packet.safety.packageRunFilesWritten, false);
+  assert.equal(packet.safety.packageRunsIndexUpdated, false);
+  assert.equal(packet.safety.approvalMarkersAdded, false);
+  assert.equal(packet.safety.gitActionsPerformed, false);
+  assert.equal(packet.safety.mediaMutated, false);
+  assert.equal(packet.safety.hermesOrProjectStateUpdated, false);
+  assert.equal(packet.safety.scheduledJobsCreated, false);
+});
+
+test("package run state proposal does not create or modify files", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-state-proposal-readonly-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Proposal Read Only" } })
+  );
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-09-active/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Proposal Older Active" } })
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+  const files = [
+    "package-runs-index.json",
+    "package-runs/2026-05-10-active/selected-package.json",
+    "package-runs/2026-05-09-active/selected-package.json",
+  ];
+  const before = Object.fromEntries(files.map((filename) => [filename, fs.readFileSync(path.join(tempRoot, filename), "utf8")]));
+  const beforeRunEntries = fs.readdirSync(path.join(tempRoot, "package-runs")).sort();
+
+  const packet = packageRunStateProposalScript.buildStateProposal({ repoRoot: tempRoot });
+  packageRunStateProposalScript.renderText(packet);
+  captureConsole(() => packageRunStateProposalScript.main(["--json"], { repoRoot: tempRoot }));
+
+  const after = Object.fromEntries(files.map((filename) => [filename, fs.readFileSync(path.join(tempRoot, filename), "utf8")]));
+  const afterRunEntries = fs.readdirSync(path.join(tempRoot, "package-runs")).sort();
+  assert.deepEqual(after, before);
+  assert.deepEqual(afterRunEntries, beforeRunEntries);
+  assert.equal(fs.existsSync(path.join(tempRoot, "package-runs/2026-05-10-active/package-run-state.md")), false);
+  assert.equal(packet.proposals.length, 2);
 });
 
 test("package runs index follows lifecycle gates in order", () => {
