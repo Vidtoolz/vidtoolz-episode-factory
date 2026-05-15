@@ -32,6 +32,7 @@ const packageArchiveManifestScript = require("../scripts/package-run-archive-man
 const packageRunCreatorQaScript = require("../scripts/package-run-creator-qa.js");
 const packageRunDoctorScript = require("../scripts/package-run-doctor.js");
 const packageRunNextActionScript = require("../scripts/package-run-next-action.js");
+const packageProductionApprovalRepairScript = require("../scripts/package-run-production-approval-repair.js");
 const packageRunsIndexScript = require("../scripts/package-runs-index.js");
 const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashboard-launch.js");
 const packageEngineServer = require("../package-engine-server.js");
@@ -8681,6 +8682,108 @@ test("package run lifecycle treats explicit production-not-approved notes as ups
   assert.doesNotMatch(doctor.nextSafeAction, /capture evidence rows/i);
   assert.doesNotMatch(nextAction.nextAction, /capture evidence rows/i);
   assert.doesNotMatch(nextAction.commandToRun, /package-run-capture-evidence-review/);
+});
+
+test("production approval repair reporter flags ready plan with explicit not-approved notes", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-approval-repair-conflict-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-02-ai-video-idea-filter");
+  writeCaptureEvidenceFixture(runDir, {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Production Approval Conflict" } }),
+    "final-script.md": "# Final Script\n",
+    "creator-qa-package.md": "# Creator QA Package\n\n- Status: Draft repair for Creator QA; not production approved and not ready to shoot.\n",
+    "evidence-chain-summary.md": "# Evidence Chain Summary\n\n- Production approved: no\n- Mikko production approval has not been given.\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "production-blockers.md":
+      "# Production Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Required gates are currently satisfied. | Keep review evidence with the run. | closed |\n",
+    "shot-edit-plan-review.md": "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n",
+    "capture-evidence-review.md":
+      "# Capture Evidence Review\n\n- Review status: NEEDS CAPTURE\n- Capture evidence accepted: no\n- Real capture evidence detected: no\n",
+  });
+  const before = fs.readdirSync(runDir).sort();
+
+  const report = packageProductionApprovalRepairScript.buildRepairReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+  const text = packageProductionApprovalRepairScript.renderText(report);
+  const after = fs.readdirSync(runDir).sort();
+
+  assert.deepEqual(after, before);
+  assert.equal(report.readOnly, true);
+  assert.equal(report.externalApisCalled, false);
+  assert.equal(report.needsRepair, true);
+  assert.equal(report.currentEffectiveProductionStatus, "NOT READY TO SHOOT");
+  assert.equal(report.rawParsedProductionStatus, "READY TO SHOOT");
+  assert.equal(report.productionBlockersAppearClosed, true);
+  assert.deepEqual(report.productionApprovalBlockerSources, ["creator-qa-package.md", "evidence-chain-summary.md"]);
+  assert.equal(report.staleArtifacts.some((item) => item.artifact === "production-plan.md"), true);
+  assert.equal(report.staleArtifacts.some((item) => item.artifact === "production-blockers.md"), true);
+  assert.equal(report.staleArtifacts.some((item) => item.artifact === "shot-edit-plan-review.md"), true);
+  assert.match(report.exactNextSafeAction, /Repair production-plan\.md and resolve open production-blockers\.md/);
+  assert.equal(report.exactApprovalMarkerRequired, "Mikko production approval: PASS");
+  assert.equal(report.approvalMarkerMustNotBeAddedByReporter, true);
+  assert.match(text, /Reporter action: read-only; marker not added/);
+});
+
+test("production approval repair reporter handles clean approved production planning", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-approval-repair-clean-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-clean-approved");
+  writeCaptureEvidenceFixture(runDir, {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Clean Approved" } }),
+    "final-script.md": "# Final Script\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "production-blockers.md":
+      "# Production Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Required gates are currently satisfied. | Keep review evidence with the run. | closed |\n",
+  });
+
+  const report = packageProductionApprovalRepairScript.buildRepairReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(report.readOnly, true);
+  assert.equal(report.externalApisCalled, false);
+  assert.equal(report.needsRepair, false);
+  assert.equal(report.currentEffectiveProductionStatus, "READY TO SHOOT");
+  assert.equal(report.rawParsedProductionStatus, "READY TO SHOOT");
+  assert.equal(report.productionBlockersAppearClosed, true);
+  assert.deepEqual(report.productionApprovalBlockerSources, []);
+  assert.deepEqual(report.staleArtifacts, []);
+  assert.deepEqual(report.requiredMikkoReviewItems, []);
+});
+
+test("production approval repair reporter reports missing run folder", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-approval-repair-missing-"));
+
+  assert.throws(
+    () => packageProductionApprovalRepairScript.buildRepairReport("package-runs/not-real", { repoRoot: tempRoot }),
+    /Package run folder not found/
+  );
+
+  const output = captureConsole(() => packageProductionApprovalRepairScript.main(["package-runs/not-real", "--json"]));
+  const payload = JSON.parse(output.stdout.join("\n"));
+  assert.equal(output.result, 1);
+  assert.equal(payload.ok, false);
+  assert.equal(payload.readOnly, true);
+  assert.equal(payload.externalApisCalled, false);
+  assert.match(payload.error, /Package run folder not found/);
+});
+
+test("production approval repair reporter json cli is parseable", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-approval-repair-json-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-json");
+  writeCaptureEvidenceFixture(runDir, {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Repair JSON" } }),
+    "final-script.md": "# Final Script\n",
+    "evidence-chain-summary.md": "# Evidence Chain Summary\n\n- Production approved: no\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "production-blockers.md":
+      "# Production Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Required gates are currently satisfied. | Keep review evidence with the run. | closed |\n",
+  });
+
+  const output = captureConsole(() => packageProductionApprovalRepairScript.main([runDir, "--json"]));
+  const payload = JSON.parse(output.stdout.join("\n"));
+
+  assert.equal(output.result, 0);
+  assert.equal(payload.readOnly, true);
+  assert.equal(payload.externalApisCalled, false);
+  assert.equal(payload.needsRepair, true);
+  assert.equal(payload.rawParsedProductionStatus, "READY TO SHOOT");
+  assert.equal(payload.currentEffectiveProductionStatus, "NOT READY TO SHOOT");
 });
 
 test("capture gap reporter is read-only and separates approval-required capture actions", () => {
