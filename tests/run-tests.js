@@ -20,6 +20,7 @@ const packageShotEditPlanReviewScript = require("../scripts/package-run-shot-edi
 const packageCaptureChecklistScript = require("../scripts/package-run-capture-checklist.js");
 const packageCaptureEvidenceReviewScript = require("../scripts/package-run-capture-evidence-review.js");
 const packageCaptureGapScript = require("../scripts/package-run-capture-gap.js");
+const packageRunEvidenceLintScript = require("../scripts/package-run-evidence-lint.js");
 const packageArtifactHygieneScript = require("../scripts/package-run-artifact-hygiene.js");
 const packageRoughCutReviewScript = require("../scripts/package-run-rough-cut-review.js");
 const packageFinalReviewScript = require("../scripts/package-run-final-review.js");
@@ -6197,6 +6198,132 @@ test("verify script checks capture evidence review syntax", () => {
   const verify = fs.readFileSync(verifyPath, "utf8");
 
   assert.match(verify, /node --check scripts\/package-run-capture-evidence-review\.js/);
+});
+
+test("package run evidence lint reports missing run folder read-only", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-lint-missing-"));
+  const report = packageRunEvidenceLintScript.lintEvidenceRows("package-runs/missing-run", { repoRoot: tempRoot });
+
+  assert.equal(report.status, "missing-run-folder");
+  assert.equal(report.readOnly, true);
+  assert.equal(report.externalApisCalled, false);
+  assert.equal(report.evidenceRowCount, 0);
+  assert.match(report.recommendedNextManualRepairAction, /Restore or create/);
+});
+
+test("package run evidence lint handles no evidence files", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-lint-empty-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-empty");
+  fs.mkdirSync(runDir, { recursive: true });
+
+  const report = packageRunEvidenceLintScript.lintEvidenceRows("package-runs/2026-05-10-empty", { repoRoot: tempRoot });
+
+  assert.equal(report.status, "no-evidence-rows");
+  assert.equal(report.evidenceFilesFound.length, 0);
+  assert.equal(report.evidenceFilesMissing.length, packageRunEvidenceLintScript.EVIDENCE_FILES.length);
+  assert.match(report.recommendedNextManualRepairAction, /Add concrete capture evidence rows/);
+});
+
+test("package run evidence lint flags placeholder and TODO rows", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-lint-placeholder-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-placeholder");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "screen-recording-checklist.md"),
+    "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Placeholder screen | TODO | TODO | captured |\n",
+    "utf8"
+  );
+
+  const report = packageRunEvidenceLintScript.lintEvidenceRows("package-runs/2026-05-10-placeholder", { repoRoot: tempRoot });
+
+  assert.equal(report.evidenceRowCount, 1);
+  assert.equal(report.placeholderOrTodoRows.length, 1);
+  assert.equal(report.missingMediaReferenceRows.length, 1);
+  assert.match(report.recommendedNextManualRepairAction, /Replace TODO\/placeholder/);
+});
+
+test("package run evidence lint flags dummy sample test media rows", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-lint-dummy-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-dummy");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "takes-log.md"),
+    "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| TAKE-001 | shot-list.md smoke-test row | media/test-capture/take-001-hook.mov | Dummy smoke-test A-roll reference. | captured |\n",
+    "utf8"
+  );
+
+  const report = packageRunEvidenceLintScript.lintEvidenceRows("package-runs/2026-05-10-dummy", { repoRoot: tempRoot });
+
+  assert.equal(report.dummySampleTestMediaRows.length, 1);
+  assert.equal(report.concreteMediaReferenceCount, 1);
+  assert.match(report.recommendedNextManualRepairAction, /dummy\/sample\/test/);
+});
+
+test("package run evidence lint recognizes concrete VIDNAS and production media path rows", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-lint-vidnas-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-vidnas");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "screen-recording-checklist.md"),
+    "# Screen Recording Checklist\n\n| screen recording | source category | proof purpose | file/reference | status |\n| --- | --- | --- | --- | --- |\n| Workflow proof | OBS | Shows real workflow. | /mnt/VIDNAS/public/VIDTOOLZ/inbox/from_phone/workflow-proof.mp4 | captured |\n| Local proof | OBS | Shows local workflow. | /home/vidtoolz/Videos/vidtoolz-captures/run/proof.mp4 | captured |\n",
+    "utf8"
+  );
+
+  const report = packageRunEvidenceLintScript.lintEvidenceRows("package-runs/2026-05-10-vidnas", { repoRoot: tempRoot });
+
+  assert.equal(report.evidenceRowCount, 2);
+  assert.equal(report.concreteMediaReferenceCount, 2);
+  assert.equal(report.vidnasOrProductionPathRows.length, 2);
+  assert.equal(report.missingMediaReferenceRows.length, 0);
+});
+
+test("package run evidence lint flags missing source category status and purpose fields", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-lint-missing-fields-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-missing-fields");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "takes-log.md"),
+    "# Takes Log\n\n| take | source category | file/reference | status |\n| --- | --- | --- | --- |\n|  |  | media/take-001.mov |  |\n",
+    "utf8"
+  );
+
+  const report = packageRunEvidenceLintScript.lintEvidenceRows("package-runs/2026-05-10-missing-fields", { repoRoot: tempRoot });
+
+  assert.equal(report.sourceCategoryMissingRows.length, 1);
+  assert.equal(report.evidenceTypeOrPurposeMissingRows.length, 1);
+  assert.equal(report.statusMissingRows.length, 1);
+  assert.match(report.recommendedNextManualRepairAction, /source\/category|evidence purpose\/type|status/);
+});
+
+test("package run evidence lint JSON output is parseable", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-lint-json-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-json");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Evidence Lint JSON" } }), "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "audio-capture-checklist.md"),
+    "# Audio Capture Checklist\n\n| audio item | source category | capture requirement | file/reference | status |\n| --- | --- | --- | --- | --- |\n| Voiceover | mic | Final narration. | audio/voiceover.wav | recorded |\n",
+    "utf8"
+  );
+
+  const output = captureConsole(() => packageRunEvidenceLintScript.main([runDir, "--json"]));
+  const payload = JSON.parse(output.stdout.join("\n"));
+
+  assert.equal(output.result, 0);
+  assert.equal(payload.runTitle, "Evidence Lint JSON");
+  assert.equal(payload.readOnly, true);
+  assert.equal(payload.externalApisCalled, false);
+  assert.equal(payload.evidenceRowCount, 1);
+  assert.ok(Array.isArray(payload.placeholderOrTodoRows));
+  assert.ok(Array.isArray(payload.placeholderTodoRows));
+  assert.equal(payload.placeholderTodoRows.length, payload.placeholderOrTodoRows.length);
+});
+
+test("verify script checks package run evidence lint syntax", () => {
+  const verifyPath = path.join(__dirname, "..", "scripts", "verify.sh");
+  const verify = fs.readFileSync(verifyPath, "utf8");
+
+  assert.match(verify, /node --check scripts\/package-run-evidence-lint\.js/);
 });
 
 test("script prep cli writes local review artifacts and marks partial research as not ready", () => {

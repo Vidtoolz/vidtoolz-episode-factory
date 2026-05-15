@@ -34,6 +34,17 @@ cd /home/vidtoolz/vidtoolz-episode-factory && node scripts/package-run-capture-e
 cd /home/vidtoolz/vidtoolz-episode-factory && node scripts/package-run-capture-evidence-review.js package-runs/YYYY-MM-DD-topic-slug --overwrite
 ```
 
+For read-only row diagnostics before review, use:
+
+```sh
+cd /home/vidtoolz/vidtoolz-episode-factory && node scripts/package-run-evidence-lint.js package-runs/YYYY-MM-DD-topic-slug
+cd /home/vidtoolz/vidtoolz-episode-factory && node scripts/package-run-evidence-lint.js package-runs/YYYY-MM-DD-topic-slug --json
+```
+
+The linter does not approve capture evidence or write package-run files. It
+only reports missing, placeholder, dummy/test, fragile local path, and concrete
+media-reference rows for manual repair.
+
 Statuses:
 
 - `BLOCKED`: Stage 4 is not accepted or required capture artifacts are missing.
