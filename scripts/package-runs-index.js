@@ -363,6 +363,18 @@ function hasOpenRows(markdown = "") {
   return tableRows(markdown).some((row) => /\|\s*(?:open|blocked|todo|tbd)\s*\|?\s*$/i.test(row));
 }
 
+function productionApprovalBlockers(markdowns = {}) {
+  const patterns = [
+    /\bproduction approved:\s*no\b/i,
+    /\bMikko production approval has not been given\b/i,
+    /\bnot production approved and not ready to shoot\b/i,
+    /\bnot strong enough to mark production approved or ready[-\s]?to[-\s]?shoot\b/i,
+  ];
+  return Object.entries(markdowns)
+    .filter(([_filename, text]) => patterns.some((pattern) => pattern.test(String(text || ""))))
+    .map(([filename]) => filename);
+}
+
 function hasRealCaptureRows(markdown = "") {
   return tableRows(markdown).some((row) => {
     if (!hasCompletedEvidenceRows(row)) return false;
@@ -425,6 +437,11 @@ function readLifecycleGate(runDir, files = {}) {
   const loudnessCheck = readOptionalText(runDir, "loudness-check.md");
   const deliveryReadiness = readOptionalText(runDir, "delivery-readiness.md");
   const publicationMetadata = readOptionalText(runDir, "publish-metadata-review.md");
+  const notes = readOptionalText(runDir, "notes.md");
+  const creatorQaPackage = readOptionalText(runDir, "creator-qa-package.md");
+  const scoringProvenanceReview = readOptionalText(runDir, "scoring-provenance-review.md");
+  const selectionRationaleProof = readOptionalText(runDir, "selection-rationale-proof.md");
+  const evidenceChainSummary = readOptionalText(runDir, "evidence-chain-summary.md");
   const titleCheck = readOptionalText(runDir, "title-check.md");
   const thumbnailCheck = readOptionalText(runDir, "thumbnail-check.md");
   const descriptionCheck = readOptionalText(runDir, "description-check.md");
@@ -498,8 +515,17 @@ function readLifecycleGate(runDir, files = {}) {
     [archiveManifest, archiveSourceFiles, archiveAssetsManifest, archiveExportManifest, reusableClipsManifest, archiveBlockers].every((text) =>
       isConcreteMarkdown(text)
     );
-  const productionPlanStatus = gateStatus(productionPlan, "Shoot-readiness status") || gateStatus(productionPlan);
-  const productionBlockersOpen = hasOpenRows(productionBlockers);
+  const rawProductionPlanStatus = gateStatus(productionPlan, "Shoot-readiness status") || gateStatus(productionPlan);
+  const productionApprovalBlockerSources = productionApprovalBlockers({
+    "notes.md": notes,
+    "creator-qa-package.md": creatorQaPackage,
+    "scoring-provenance-review.md": scoringProvenanceReview,
+    "selection-rationale-proof.md": selectionRationaleProof,
+    "evidence-chain-summary.md": evidenceChainSummary,
+  });
+  const productionApprovalBlocked = productionApprovalBlockerSources.length > 0;
+  const productionPlanStatus = productionApprovalBlocked ? "NOT READY TO SHOOT" : rawProductionPlanStatus;
+  const productionBlockersOpen = hasOpenRows(productionBlockers) || productionApprovalBlocked;
   const productionPlanningBlocked = Boolean(files.production_plan && (productionPlanStatus !== "READY TO SHOOT" || productionBlockersOpen));
   const rawShotEditPlanReviewStatus = gateStatus(shotEditPlanReview, "Review status") || gateStatus(shotEditPlanReview);
   const rawShotEditPlanAccepted = acceptedYes(shotEditPlanReview, "Stage accepted");
@@ -524,7 +550,10 @@ function readLifecycleGate(runDir, files = {}) {
     scriptReviewStatus: gateStatus(scriptReview, "Script review status") || gateStatus(scriptReview),
     productionPlanningReady: readyYes(scriptReview, "Production planning ready"),
     productionPlanStatus,
+    rawProductionPlanStatus,
     productionBlockersOpen,
+    productionApprovalBlocked,
+    productionApprovalBlockerSources,
     productionPlanningBlocked,
     productionPlanningNextSafeAction: productionBlockersOpen
       ? "Repair production-plan.md and resolve open production-blockers.md before capture evidence intake."
@@ -967,9 +996,13 @@ function firstBlockingGateForRun(run = {}) {
     if (gate.productionBlockersOpen) {
       return {
         stage: "production-plan",
-        reason: `Shoot-readiness status is ${gate.productionPlanStatus || "missing"}; production-blockers.md has open blockers.`,
+        reason: gate.productionApprovalBlocked
+          ? `Shoot-readiness status is ${gate.productionPlanStatus || "missing"}; production approval is explicitly blocked by ${(
+              gate.productionApprovalBlockerSources || []
+            ).join(", ")}.`
+          : `Shoot-readiness status is ${gate.productionPlanStatus || "missing"}; production-blockers.md has open blockers.`,
         missingExpectedArtifacts: ["production-plan.md with Shoot-readiness status: READY TO SHOOT", "closed production-blockers.md rows"],
-        nextRecommendedCommand: `node scripts/package-run-production-plan.js ${target}`,
+        nextRecommendedCommand: gate.productionApprovalBlocked ? "" : `node scripts/package-run-production-plan.js ${target}`,
         nextSafeAction: gate.productionPlanningNextSafeAction,
       };
     }

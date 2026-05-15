@@ -7829,7 +7829,7 @@ test("unknown package run state is ignored conservatively as active", () => {
   assert.equal(run.overallStatus, "BLOCKED");
 });
 
-test("current May 2 active package run remains blocked at capture evidence without a state marker", () => {
+test("current May 2 active package run remains blocked at production planning without a state marker", () => {
   const repoRoot = path.resolve(__dirname, "..");
   const runDir = path.join(repoRoot, "package-runs", "2026-05-02-ai-video-idea-filter");
   if (!fs.existsSync(runDir)) return;
@@ -7839,8 +7839,12 @@ test("current May 2 active package run remains blocked at capture evidence witho
   assert.equal(fs.existsSync(path.join(runDir, "package-run-state.md")), false);
   assert.equal(run.packageRunState.explicit, false);
   assert.equal(run.inactive, false);
-  assert.equal(run.status, "Needs capture");
-  assert.equal(run.workflowBucket, "Needs capture");
+  assert.equal(run.status, "Needs production planning");
+  assert.equal(run.workflowBucket, "Needs production planning");
+  assert.equal(run.lifecycleGate.rawProductionPlanStatus, "READY TO SHOOT");
+  assert.equal(run.lifecycleGate.productionPlanStatus, "NOT READY TO SHOOT");
+  assert.equal(run.lifecycleGate.productionPlanningBlocked, true);
+  assert.equal(run.lifecycleGate.productionApprovalBlocked, true);
   assert.equal(run.lifecycleGate.captureEvidenceReviewStatus, "NEEDS CAPTURE");
   assert.equal(run.lifecycleGate.effectiveCaptureApproved, false);
 });
@@ -8642,6 +8646,41 @@ test("package run doctor keeps May 2 stale capture artifacts behind production p
   assert.equal(gap.gaps.some((item) => item.area === "production-planning"), true);
   assert.equal(gap.gaps.some((item) => item.area === "real-capture-evidence"), false);
   assert.doesNotMatch(gap.gaps.map((item) => item.safeNextAction).join("\n"), /Add concrete media references|Add real capture evidence rows/i);
+});
+
+test("package run lifecycle treats explicit production-not-approved notes as upstream blockers", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-doctor-production-approval-conflict-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-02-ai-video-idea-filter");
+  writeCaptureEvidenceFixture(runDir, {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "May 2 Production Approval Conflict" } }),
+    "final-script.md": "# Final Script\n\nDraft script, not approved for production.\n",
+    "notes.md": "# Notes\n\nThis run is not production approved and is not ready to shoot until repo checks and Mikko approval justify it.\n",
+    "evidence-chain-summary.md": "# Evidence Chain Summary\n\n- Production approved: no\n- Mikko production approval has not been given.\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "production-blockers.md":
+      "# Production Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Required gates are currently satisfied. | Keep review evidence with the run. | closed |\n",
+    "shot-edit-plan-review.md": "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n",
+    "capture-evidence-review.md":
+      "# Capture Evidence Review\n\n- Review status: NEEDS CAPTURE\n- Capture evidence accepted: no\n- Real capture evidence detected: no\n\n## Next Safe Action\n\n- Add real capture evidence rows with concrete media references, then rerun this review.\n",
+  });
+
+  const run = packageRunsIndexScript.scanRun(runDir, tempRoot);
+  const doctor = packageRunDoctorScript.buildDoctorReport(runDir, { repoRoot: tempRoot });
+  const nextAction = packageRunNextActionScript.buildNextActionReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(run.status, "Needs production planning");
+  assert.equal(run.lifecycleGate.rawProductionPlanStatus, "READY TO SHOOT");
+  assert.equal(run.lifecycleGate.productionPlanStatus, "NOT READY TO SHOOT");
+  assert.equal(run.lifecycleGate.productionApprovalBlocked, true);
+  assert.equal(run.lifecycleGate.productionPlanningBlocked, true);
+  assert.equal(run.lifecycleGate.productionBlockersOpen, true);
+  assert.equal(run.lifecycleGate.shotEditPlanReviewStatus, "STALE PASS");
+  assert.equal(run.lifecycleGate.shotEditPlanAccepted, false);
+  assert.match(run.lifecycleGate.effectiveReadiness.overrideReason, /Production planning is blocked/);
+  assert.match(doctor.nextSafeAction, /Repair production-plan\.md and resolve open production-blockers\.md/);
+  assert.doesNotMatch(doctor.nextSafeAction, /capture evidence rows/i);
+  assert.doesNotMatch(nextAction.nextAction, /capture evidence rows/i);
+  assert.doesNotMatch(nextAction.commandToRun, /package-run-capture-evidence-review/);
 });
 
 test("capture gap reporter is read-only and separates approval-required capture actions", () => {
