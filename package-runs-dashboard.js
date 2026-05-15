@@ -55,10 +55,13 @@
     "Ready to shoot",
     "Ready to archive",
     "Ready to cut shorts",
+    "Inactive: parked",
+    "Inactive: superseded",
   ];
 
   const FILE_LABELS = [
     ["package_candidates", "package-candidates.json", "Candidates"],
+    ["package_run_state", "package-run-state.md", "Run state"],
     ["selected_package_json", "selected-package.json", "Selected JSON"],
     ["selected_package_md", "selected-package.md", "Selected MD"],
     ["research_pack", "research-pack.md", "Research pack"],
@@ -148,12 +151,32 @@
         const qaNotRun = creatorQaStatus === "not run";
         const evidenceGate = normalizeEvidenceGate(run.evidenceGate);
         const lifecycleGate = normalizeLifecycleGate(run.lifecycleGate);
+        const packageRunState =
+          run.packageRunState && typeof run.packageRunState === "object"
+            ? {
+                markerFile: String(run.packageRunState.markerFile || ""),
+                raw: String(run.packageRunState.raw || ""),
+                state: String(run.packageRunState.state || "active"),
+                explicit: Boolean(run.packageRunState.explicit),
+                isInactive: Boolean(run.packageRunState.isInactive),
+                warning: String(run.packageRunState.warning || ""),
+              }
+            : {
+                markerFile: "",
+                raw: "",
+                state: "active",
+                explicit: false,
+                isInactive: Boolean(run.inactive),
+                warning: "",
+              };
         const workflowBucket =
-          qaBlocking ||
-          (status === "Ready to shoot" &&
-            (qaNotRun || evidenceGate.blocksProductionReady || evidenceGate.hasNarrowShootingApproval))
-            ? workflowBucketForStatus(status, creatorQaStatus, evidenceGate)
-            : String(run.workflowBucket || workflowBucketForStatus(status, creatorQaStatus, evidenceGate));
+          packageRunState.isInactive
+            ? String(run.workflowBucket || `Inactive: ${packageRunState.state}`)
+            : qaBlocking ||
+                (status === "Ready to shoot" &&
+                  (qaNotRun || evidenceGate.blocksProductionReady || evidenceGate.hasNarrowShootingApproval))
+              ? workflowBucketForStatus(status, creatorQaStatus, evidenceGate)
+              : String(run.workflowBucket || workflowBucketForStatus(status, creatorQaStatus, evidenceGate));
         let nextRecommendedCommand = String(run.nextRecommendedCommand || "");
         if (!nextRecommendedCommand && qaBlocking) {
           nextRecommendedCommand =
@@ -173,10 +196,14 @@
           path: String(run.path || ""),
           title: String(run.title || ""),
           status,
+          activeStatus: String(run.activeStatus || ""),
           creatorQaStatus,
           evidenceGate,
           lifecycleGate,
           workflowBucket,
+          activeWorkflowBucket: String(run.activeWorkflowBucket || ""),
+          packageRunState,
+          inactive: Boolean(run.inactive || packageRunState.isInactive),
           overallStatus: String(run.overallStatus || (/^Ready\b/.test(status) ? "READY FOR NEXT STAGE" : /^Needs\b/.test(status) ? "BLOCKED" : "NEEDS WORK")),
           firstBlockerReason: String(run.firstBlockerReason || ""),
           missingExpectedArtifacts: normalizeStringArray(run.missingExpectedArtifacts),
@@ -807,6 +834,11 @@ Capture evidence approval: PASS`;
           <span class="package-number">${escapeHtml(run.runId)}</span>
           <span class="run-status-pill ${statusClass(run.status)}">${escapeHtml(run.status)}</span>
           <span class="run-status-pill ${statusClass(run.workflowBucket)}">${escapeHtml(run.workflowBucket)}</span>
+          ${
+            run.packageRunState && run.packageRunState.explicit
+              ? `<span class="run-status-pill ${statusClass(`state-${run.packageRunState.state}`)}">State: ${escapeHtml(run.packageRunState.state)}</span>`
+              : ""
+          }
         </div>
         <h2>${escapeHtml(title)}</h2>
         ${next}

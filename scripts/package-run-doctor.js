@@ -92,6 +92,9 @@ function missingExpectedArtifacts(run = {}) {
 }
 
 function firstBlockerReason(run = {}) {
+  if (run.packageRunState && run.packageRunState.isInactive) {
+    return `Package run is ${run.packageRunState.state}; inactive diagnostics do not count as active blockers.`;
+  }
   const status = run.status || "";
   const gate = run.lifecycleGate || {};
   const evidence = run.evidenceGate || {};
@@ -221,6 +224,7 @@ function lifecycleGateSummary(gate = {}) {
 }
 
 function overallStatus(run = {}) {
+  if (run.packageRunState && run.packageRunState.isInactive) return `INACTIVE: ${String(run.packageRunState.state || "").toUpperCase()}`;
   const status = run.status || "";
   const blocker = firstBlockerReason(run);
   if (status === "Ready to archive" || status === "Ready to cut shorts") return "COMPLETE ENOUGH FOR HUMAN REVIEW";
@@ -230,6 +234,7 @@ function overallStatus(run = {}) {
 }
 
 function blockingReasons(run = {}) {
+  if (run.packageRunState && run.packageRunState.isInactive) return [];
   const reason = firstBlockerReason(run);
   return reason ? [reason] : [];
 }
@@ -259,6 +264,9 @@ function approvalMarkersDetected(gate = {}) {
 }
 
 function conservativeBlockedActionsForRun(run = {}) {
+  if (run.packageRunState && run.packageRunState.isInactive) {
+    return packageRunsIndex.conservativeBlockedActionsForRun(run);
+  }
   const status = run.status || "";
   const gate = run.lifecycleGate || {};
   if (gate.hasProductionPlan && !gate.shotEditPlanAccepted) {
@@ -312,6 +320,10 @@ function buildDoctorReport(runDirInput, options = {}) {
     path: run.path,
     title: run.title,
     workflowBucket: run.workflowBucket,
+    activeWorkflowBucket: run.activeWorkflowBucket,
+    activeStatus: run.activeStatus,
+    packageRunState: run.packageRunState,
+    inactive: Boolean(run.inactive),
     currentInferredStage: run.status,
     lifecycleStatus: run.status,
     overallStatus: overallStatus(run),
@@ -345,6 +357,14 @@ function renderText(report) {
   lines.push(`Run: ${report.runId}`);
   if (report.title) lines.push(`Title: ${report.title}`);
   lines.push(`Path: ${report.path}`);
+  if (report.packageRunState && report.packageRunState.explicit) {
+    lines.push(`Package run state: ${report.packageRunState.state}`);
+    if (report.inactive) lines.push(`Active workflow bucket if reactivated: ${report.activeWorkflowBucket}`);
+    if (report.inactive) lines.push(`Active inferred stage if reactivated: ${report.activeStatus}`);
+  }
+  if (report.packageRunState && report.packageRunState.warning) {
+    lines.push(`Package run state warning: ${report.packageRunState.warning}`);
+  }
   lines.push(`Workflow bucket: ${report.workflowBucket}`);
   lines.push(`Current inferred stage: ${report.currentInferredStage}`);
   lines.push(`Lifecycle status: ${report.lifecycleStatus}`);

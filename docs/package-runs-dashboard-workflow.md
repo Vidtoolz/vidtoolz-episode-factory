@@ -438,6 +438,17 @@ The dashboard groups runs into daily workflow filters:
 - `Ready to archive`: publication/export metadata are complete enough for the
   archive manifest tool to run
 - `Ready to cut shorts`: repurposing gate is ready
+- `Inactive: parked`: `package-run-state.md` explicitly says
+  `Package run state: parked`; the run remains visible as diagnostics but does
+  not count as an active blocker
+- `Inactive: superseded`: `package-run-state.md` explicitly says
+  `Package run state: superseded`; the run remains visible as diagnostics but
+  does not count as an active blocker
+
+If `package-run-state.md` is missing, malformed, or uses an unknown value, the
+run is treated as active. Inactive state markers never approve production,
+capture, rough cut, publishing, upload, archive, Hermes brain writes,
+project-state promotion, final title, final thumbnail, or ready-to-shoot state.
 
 ## Recommended Commands
 

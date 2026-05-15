@@ -11,6 +11,26 @@ Use this state machine when reviewing `package-runs/*`, writing handoffs, updati
 - Draft planning files do not approve shooting, editing, publishing, upload prep, or Hermes memory writes.
 - A later state requires the earlier state to be valid, not merely present.
 - When files conflict, use the more conservative state until Mikko reviews the conflict.
+- A `package-run-state.md` marker can classify a run as `active`, `parked`, or `superseded`.
+- Missing, malformed, or unknown package-run state markers are treated conservatively as active.
+- `parked` and `superseded` runs remain visible as inactive diagnostics, but they do not count as active dashboard, doctor, or cockpit blockers.
+- A parked or superseded marker does not approve production, capture, rough cut, publishing, upload, archive, Hermes brain writes, project-state promotion, final title, final thumbnail, or ready-to-shoot state.
+
+## Package Run State Marker
+
+The optional local marker file is `package-run-state.md`.
+
+Recognized format:
+
+```markdown
+# Package Run State
+
+- Package run state: active
+```
+
+Recognized values are `active`, `parked`, and `superseded`.
+
+`active` preserves normal behavior. `parked` means work is intentionally inactive and should not appear as an active blocker. `superseded` means a newer package run has replaced this run. Both inactive states become the primary run status while keeping the underlying reactivation status visible as diagnostics. Downstream readiness stays false unless the run is reactivated and the real evidence gates independently pass.
 
 ## State Names
 

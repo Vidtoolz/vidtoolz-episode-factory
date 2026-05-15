@@ -11,6 +11,7 @@ const DEFAULT_OUT_FILE = "package-runs-index.json";
 
 const DETECTED_FILES = [
   "package-candidates.json",
+  "package-run-state.md",
   "selected-package.json",
   "selected-package.md",
   "research-pack.md",
@@ -155,6 +156,9 @@ const DOWNSTREAM_BLOCKED_ACTIONS = [
   "commit",
   "push",
 ];
+const PACKAGE_RUN_STATE_FILE = "package-run-state.md";
+const ACTIVE_PACKAGE_RUN_STATES = new Set(["active"]);
+const INACTIVE_PACKAGE_RUN_STATES = new Set(["parked", "superseded"]);
 
 function parseArgs(argv) {
   const args = [...argv];
@@ -241,6 +245,40 @@ function lineValue(markdown = "", label = "") {
   const pattern = new RegExp(`^\\s*(?:[-*]\\s*)?${escaped}\\s*:\\s*(.+?)\\s*$`, "im");
   const match = String(markdown || "").match(pattern);
   return match ? match[1].trim() : "";
+}
+
+function normalizePackageRunState(value = "") {
+  return String(value || "").trim().toLowerCase().replace(/_/g, "-");
+}
+
+function readPackageRunState(runDir) {
+  const filePath = path.join(runDir, PACKAGE_RUN_STATE_FILE);
+  if (!fs.existsSync(filePath)) {
+    return {
+      markerFile: "",
+      raw: "",
+      state: "active",
+      explicit: false,
+      isInactive: false,
+      warning: "",
+    };
+  }
+
+  const text = fs.readFileSync(filePath, "utf8");
+  const raw = lineValue(text, "Package run state");
+  const state = normalizePackageRunState(raw);
+  const isActive = ACTIVE_PACKAGE_RUN_STATES.has(state);
+  const isInactive = INACTIVE_PACKAGE_RUN_STATES.has(state);
+  const recognized = isActive || isInactive;
+
+  return {
+    markerFile: PACKAGE_RUN_STATE_FILE,
+    raw,
+    state: recognized ? state : "active",
+    explicit: recognized,
+    isInactive,
+    warning: recognized ? "" : "Unknown package-run state marker ignored; run remains active.",
+  };
 }
 
 function gateStatus(markdown = "", label = "Status") {
@@ -654,6 +692,34 @@ function applyEffectiveReadiness(gate = {}) {
   };
 }
 
+function applyPackageRunStateToGate(gate = {}, packageRunState = {}) {
+  if (!packageRunState.isInactive) return gate;
+  const effectiveReadiness = {
+    captureApproved: false,
+    readyForRoughCut: false,
+    publishReady: false,
+    readyToUpload: false,
+    readyToSchedule: false,
+    readyToArchive: false,
+    readyToCutShorts: false,
+    downstreamReadinessOverridden: true,
+    overrideReason: `Package run is ${packageRunState.state}; readiness markers are diagnostics only and do not approve production or downstream actions.`,
+    nextSafeAction: "Keep inactive unless Mikko explicitly reactivates this package run.",
+    rawMarkers: rawReadinessMarkers(gate),
+  };
+  return {
+    ...gate,
+    effectiveReadiness,
+    effectiveCaptureApproved: false,
+    effectiveReadyForRoughCut: false,
+    effectivePublishReady: false,
+    effectiveReadyToUpload: false,
+    effectiveReadyToSchedule: false,
+    effectiveReadyToArchive: false,
+    effectiveReadyToCutShorts: false,
+  };
+}
+
 function lifecycleStatusFromGate(baseStatus, lifecycleGate = {}) {
   const effective = lifecycleGate.effectiveReadiness || effectiveReadinessForGate(lifecycleGate);
   const hasModernLifecycle =
@@ -982,6 +1048,9 @@ function firstBlockingGateForRun(run = {}) {
 }
 
 function firstBlockerReasonForRun(run = {}) {
+  if (run.packageRunState && run.packageRunState.isInactive) {
+    return `Package run is ${run.packageRunState.state}; inactive diagnostics do not count as active blockers.`;
+  }
   const status = run.status || "";
   const gate = run.lifecycleGate || {};
   const evidence = run.evidenceGate || {};
@@ -1046,12 +1115,14 @@ function firstBlockerReasonForRun(run = {}) {
 }
 
 function missingExpectedArtifactsForRun(run = {}) {
+  if (run.packageRunState && run.packageRunState.isInactive) return [];
   const blockingGate = firstBlockingGateForRun(run);
   if (blockingGate && blockingGate.missingExpectedArtifacts) return blockingGate.missingExpectedArtifacts;
   return run.nextExpectedFile ? [run.nextExpectedFile] : [];
 }
 
 function overallStatusForRun(run = {}) {
+  if (run.packageRunState && run.packageRunState.isInactive) return `INACTIVE: ${String(run.packageRunState.state || "").toUpperCase()}`;
   const status = run.status || "";
   const blocker = firstBlockerReasonForRun(run);
   if (status === "Ready to archive" || status === "Ready to cut shorts") return "COMPLETE ENOUGH FOR HUMAN REVIEW";
@@ -1061,6 +1132,20 @@ function overallStatusForRun(run = {}) {
 }
 
 function conservativeBlockedActionsForRun(run = {}) {
+  if (run.packageRunState && run.packageRunState.isInactive) {
+    return [
+      "production approval",
+      "capture approval",
+      "rough cut",
+      "publishing",
+      "upload",
+      "archive",
+      "final title lock",
+      "final thumbnail lock",
+      "Hermes brain write",
+      "project-state promotion",
+    ];
+  }
   const status = run.status || "";
   const gate = run.lifecycleGate || {};
   if (gate.hasProductionPlan && !gate.shotEditPlanAccepted) {
@@ -1128,6 +1213,7 @@ function detectedButNotTrustedArtifactsForRun(run = {}) {
 }
 
 function nextRecommendedCommandForRun(run = {}) {
+  if (run.packageRunState && run.packageRunState.isInactive) return "";
   if (isCreatorQaBlocking(run.creatorQaStatus || "not run")) {
     return nextRecommendedCommand(run.status, run.path, run.creatorQaStatus, run.evidenceGate);
   }
@@ -1172,6 +1258,11 @@ function workflowBucket(status, creatorQaStatus = "not run", evidenceGate = {}) 
     "Ready to cut shorts": "Ready to cut shorts",
   };
   return bucketByStatus[status] || "Needs package selection";
+}
+
+function workflowBucketForPackageRunState(baseBucket, packageRunState = {}) {
+  if (!packageRunState.isInactive) return baseBucket;
+  return `Inactive: ${packageRunState.state}`;
 }
 
 function latestMtimeIso(runDir, filenames) {
@@ -1308,6 +1399,7 @@ function readEvidenceGate(runDir) {
 function scanRun(runDir, repoRoot = process.cwd()) {
   const runId = path.basename(runDir);
   const runPath = path.relative(repoRoot, runDir).replace(/\\/g, "/");
+  const packageRunState = readPackageRunState(runDir);
   const files = {};
   DETECTED_FILES.forEach((filename) => {
     files[fileKey(filename)] = fs.existsSync(path.join(runDir, filename));
@@ -1315,15 +1407,22 @@ function scanRun(runDir, repoRoot = process.cwd()) {
   const creatorQaStatus = readCreatorQaStatus(runDir);
   const evidenceGate = readEvidenceGate(runDir);
   const baseStatus = classifyRunStatus(files, creatorQaStatus);
-  const lifecycleGate = applyEffectiveReadiness(readLifecycleGate(runDir, files));
-  const status = lifecycleStatusFromGate(baseStatus, lifecycleGate);
+  const activeLifecycleGate = applyEffectiveReadiness(readLifecycleGate(runDir, files));
+  const activeStatus = lifecycleStatusFromGate(baseStatus, activeLifecycleGate);
+  const lifecycleGate = applyPackageRunStateToGate(activeLifecycleGate, packageRunState);
+  const status = packageRunState.isInactive ? `Inactive: ${packageRunState.state}` : activeStatus;
   const nextExpected = nextExpectedFile(status);
+  const activeWorkflowBucket = workflowBucket(activeStatus, creatorQaStatus, evidenceGate);
   const run = {
     runId,
     path: runPath,
     title: readPackageTitle(runDir),
     status,
-    workflowBucket: workflowBucket(status, creatorQaStatus, evidenceGate),
+    activeStatus,
+    workflowBucket: workflowBucketForPackageRunState(activeWorkflowBucket, packageRunState),
+    activeWorkflowBucket,
+    packageRunState,
+    inactive: packageRunState.isInactive,
     creatorQaStatus,
     evidenceGate,
     lifecycleGate,
@@ -1364,6 +1463,18 @@ function buildPackageRunsIndex(options = {}) {
       counts[item.status] = (counts[item.status] || 0) + 1;
       return counts;
     }, {}),
+    activeCount: runs.filter((item) => !item.inactive).length,
+    inactiveCount: runs.filter((item) => item.inactive).length,
+    inactiveRuns: runs
+      .filter((item) => item.inactive)
+      .map((item) => ({
+        runId: item.runId,
+        path: item.path,
+        state: item.packageRunState.state,
+        status: item.status,
+        activeStatus: item.activeStatus,
+        activeWorkflowBucket: item.activeWorkflowBucket,
+      })),
     runs,
   };
 }
@@ -1408,6 +1519,7 @@ module.exports = {
   rawReadinessMarkers,
   effectiveReadinessForGate,
   applyEffectiveReadiness,
+  applyPackageRunStateToGate,
   lifecycleStatusFromGate,
   nextExpectedFile,
   nextRecommendedCommand,
@@ -1419,7 +1531,10 @@ module.exports = {
   detectedButNotTrustedArtifactsForRun,
   nextRecommendedCommandForRun,
   workflowBucket,
+  workflowBucketForPackageRunState,
   readCreatorQaStatus,
+  normalizePackageRunState,
+  readPackageRunState,
   listCaptureEvidenceReferences,
   readNarrowShootingApproval,
   readEvidenceGate,

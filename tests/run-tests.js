@@ -7523,6 +7523,200 @@ test("package runs index scans package-runs folders and writes index json", () =
   assert.equal(output, 0);
 });
 
+test("package run state defaults to active when marker is absent", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-state-default-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-default-active");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Default Active" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "b-roll-list.md"), "# B-Roll List\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "creator-qa-report.json"), JSON.stringify({ overall_result: "NEEDS WORK" }), "utf8");
+
+  const run = packageRunsIndexScript.scanRun(runDir, tempRoot);
+  const doctor = packageRunDoctorScript.buildDoctorReport(runDir, { repoRoot: tempRoot });
+
+  assert.equal(run.packageRunState.explicit, false);
+  assert.equal(run.packageRunState.state, "active");
+  assert.equal(run.inactive, false);
+  assert.equal(run.status, "Needs production planning");
+  assert.equal(run.workflowBucket, "Needs QA repair");
+  assert.equal(doctor.workflowBucket, "Needs QA repair");
+  assert.deepEqual(doctor.blockingReasons, ["Creator QA status is NEEDS WORK."]);
+});
+
+test("package run state superseded removes run from active blocker buckets without approving downstream work", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-state-superseded-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-superseded");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "package-run-state.md"), "# Package Run State\n\n- Package run state: superseded\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Superseded Run" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "b-roll-list.md"), "# B-Roll List\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "creator-qa-report.json"), JSON.stringify({ overall_result: "NEEDS WORK" }), "utf8");
+  fs.writeFileSync(path.join(runDir, "capture-checklist.md"), "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n\nCapture approval: PASS\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "final-review.md"), "# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "delivery-readiness.md"), "# Delivery Readiness\n\n- Ready to upload: yes\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "archive-manifest.md"), "# Archive Manifest\n\n- Ready to archive: yes\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "repurposing-plan.md"), "# Repurposing Plan\n\n- Ready to cut shorts: yes\n", "utf8");
+
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  const run = index.runs[0];
+  const doctor = packageRunDoctorScript.buildDoctorReport(runDir, { repoRoot: tempRoot });
+
+  assert.equal(index.activeCount, 0);
+  assert.equal(index.inactiveCount, 1);
+  assert.deepEqual(index.inactiveRuns, [
+    {
+      runId: "2026-05-10-superseded",
+      path: "package-runs/2026-05-10-superseded",
+      state: "superseded",
+      status: "Inactive: superseded",
+      activeStatus: "Needs production planning",
+      activeWorkflowBucket: "Needs QA repair",
+    },
+  ]);
+  assert.equal(run.status, "Inactive: superseded");
+  assert.equal(run.activeStatus, "Needs production planning");
+  assert.equal(run.workflowBucket, "Inactive: superseded");
+  assert.equal(run.activeWorkflowBucket, "Needs QA repair");
+  assert.equal(run.overallStatus, "INACTIVE: SUPERSEDED");
+  assert.equal(run.firstBlockerReason, "Package run is superseded; inactive diagnostics do not count as active blockers.");
+  assert.deepEqual(run.missingExpectedArtifacts, []);
+  assert.equal(run.lifecycleGate.effectiveReadiness.captureApproved, false);
+  assert.equal(run.lifecycleGate.effectiveReadiness.publishReady, false);
+  assert.equal(run.lifecycleGate.effectiveReadiness.readyToUpload, false);
+  assert.equal(run.lifecycleGate.effectiveReadiness.readyToArchive, false);
+  assert.equal(run.lifecycleGate.effectiveReadiness.readyToCutShorts, false);
+  assert.equal(doctor.workflowBucket, "Inactive: superseded");
+  assert.equal(doctor.activeWorkflowBucket, "Needs QA repair");
+  assert.deepEqual(doctor.blockingReasons, []);
+  assert.equal(doctor.effectiveReadiness.captureApproved, false);
+  assert.equal(doctor.effectiveReadiness.publishReady, false);
+  assert.equal(doctor.effectiveReadiness.readyToUpload, false);
+  assert.equal(doctor.effectiveReadiness.readyToArchive, false);
+  assert.equal(doctor.effectiveReadiness.readyToCutShorts, false);
+});
+
+test("package run state parked removes run from active blocker buckets", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-state-parked-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-parked");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "package-run-state.md"), "# Package Run State\n\nPackage run state: parked\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Parked Run" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "b-roll-list.md"), "# B-Roll List\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "creator-qa-report.json"), JSON.stringify({ overall_result: "FAIL" }), "utf8");
+
+  const run = packageRunsIndexScript.scanRun(runDir, tempRoot);
+
+  assert.equal(run.packageRunState.state, "parked");
+  assert.equal(run.inactive, true);
+  assert.equal(run.status, "Inactive: parked");
+  assert.equal(run.activeStatus, "Needs production planning");
+  assert.equal(run.workflowBucket, "Inactive: parked");
+  assert.equal(run.activeWorkflowBucket, "Needs QA repair");
+  assert.notEqual(run.workflowBucket, "Needs QA repair");
+  assert.equal(run.lifecycleGate.effectiveCaptureApproved, false);
+  assert.equal(run.lifecycleGate.effectivePublishReady, false);
+  assert.equal(run.lifecycleGate.effectiveReadyToUpload, false);
+  assert.equal(run.lifecycleGate.effectiveReadyToArchive, false);
+  assert.equal(run.lifecycleGate.effectiveReadyToCutShorts, false);
+});
+
+test("inactive package run diagnostics use active lifecycle before readiness override", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-state-active-diagnostics-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-inactive-diagnostics");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "package-run-state.md"), "# Package Run State\n\n- Package run state: superseded\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Inactive Diagnostics" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "shot-edit-plan-review.md"),
+    "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n\n## Open Blockers\n\n- None.\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "shot-edit-plan-enhancement-plan.md"), "# Shot/Edit Plan Enhancement Plan\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "capture-checklist.md"),
+    "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n\nCapture approval: PASS\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "takes-log.md"),
+    "# Takes Log\n\n| take | source item | file/reference | quality notes | status |\n| --- | --- | --- | --- | --- |\n| A-roll | shot-list.md | media/a-roll.mov | Reviewed. | captured |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "missing-shot-tracker.md"),
+    "# Missing Shot Tracker\n\n| missing shot/content | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Complete. | No fix needed. | closed |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "screen-recording-checklist.md"),
+    "# Screen Recording Checklist\n\n| screen recording | proof purpose | file/reference | status |\n| --- | --- | --- | --- |\n| Proof | Shows flow. | media/proof.mp4 | captured |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "audio-capture-checklist.md"),
+    "# Audio Capture Checklist\n\n| audio item | capture requirement | file/reference | status |\n| --- | --- | --- | --- |\n| Voiceover | Narration. | audio/voiceover.wav | captured |\n\nAudio capture readiness: PASS\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "capture-evidence-review.md"),
+    "# Capture Evidence Review\n\n- Review status: PASS\n- Capture evidence accepted: yes\n- Real capture evidence detected: yes\n",
+    "utf8"
+  );
+
+  const run = packageRunsIndexScript.scanRun(runDir, tempRoot);
+
+  assert.equal(run.status, "Inactive: superseded");
+  assert.equal(run.workflowBucket, "Inactive: superseded");
+  assert.equal(run.activeStatus, "Ready for rough cut");
+  assert.equal(run.activeWorkflowBucket, "Needs rough-cut review");
+  assert.equal(run.lifecycleGate.hasConcreteCaptureEvidence, true);
+  assert.equal(run.lifecycleGate.effectiveReadiness.captureApproved, false);
+  assert.equal(run.lifecycleGate.effectiveReadiness.readyForRoughCut, false);
+  assert.equal(run.lifecycleGate.effectiveReadiness.publishReady, false);
+  assert.match(run.lifecycleGate.effectiveReadiness.overrideReason, /Package run is superseded/);
+});
+
+test("unknown package run state is ignored conservatively as active", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-state-unknown-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-unknown-state");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "package-run-state.md"), "# Package Run State\n\n- Package run state: finished\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Unknown State" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "b-roll-list.md"), "# B-Roll List\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "creator-qa-report.json"), JSON.stringify({ overall_result: "NEEDS WORK" }), "utf8");
+
+  const run = packageRunsIndexScript.scanRun(runDir, tempRoot);
+
+  assert.equal(run.packageRunState.explicit, false);
+  assert.equal(run.packageRunState.state, "active");
+  assert.equal(run.packageRunState.isInactive, false);
+  assert.match(run.packageRunState.warning, /Unknown package-run state marker ignored/);
+  assert.equal(run.workflowBucket, "Needs QA repair");
+  assert.equal(run.overallStatus, "BLOCKED");
+});
+
+test("current May 2 active package run remains blocked at capture evidence without a state marker", () => {
+  const repoRoot = path.resolve(__dirname, "..");
+  const runDir = path.join(repoRoot, "package-runs", "2026-05-02-ai-video-idea-filter");
+  if (!fs.existsSync(runDir)) return;
+
+  const run = packageRunsIndexScript.scanRun(runDir, repoRoot);
+
+  assert.equal(fs.existsSync(path.join(runDir, "package-run-state.md")), false);
+  assert.equal(run.packageRunState.explicit, false);
+  assert.equal(run.inactive, false);
+  assert.equal(run.status, "Needs capture");
+  assert.equal(run.workflowBucket, "Needs capture");
+  assert.equal(run.lifecycleGate.captureEvidenceReviewStatus, "NEEDS CAPTURE");
+  assert.equal(run.lifecycleGate.effectiveCaptureApproved, false);
+});
+
 test("package runs index follows lifecycle gates in order", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-runs-lifecycle-"));
   const runsDir = path.join(tempRoot, "package-runs");
@@ -9481,6 +9675,27 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
         },
         files: { final_script: true, production_brief: true, narrow_shooting_approval: true },
       },
+      {
+        runId: "2026-05-10-j",
+        path: "package-runs/2026-05-10-j",
+        title: "Parked Legacy Package",
+        status: "Inactive: parked",
+        activeStatus: "Needs production planning",
+        workflowBucket: "Inactive: parked",
+        activeWorkflowBucket: "Needs QA repair",
+        creatorQaStatus: "NEEDS WORK",
+        packageRunState: {
+          markerFile: "package-run-state.md",
+          raw: "parked",
+          state: "parked",
+          explicit: true,
+          isInactive: true,
+          warning: "",
+        },
+        inactive: true,
+        nextRecommendedCommand: "",
+        files: { package_run_state: true, final_script: true, creator_qa_report: true, creator_qa_report_json: true },
+      },
     ],
   };
   const index = packageRunsDashboard.normalizeIndex(payload);
@@ -9490,6 +9705,7 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
   const qaNotRun = packageRunsDashboard.filterAndSortRuns(index.runs, "QA not run", "run-desc");
   const needsProofCapture = packageRunsDashboard.filterAndSortRuns(index.runs, "Needs proof capture", "run-desc");
   const narrowShootingApproved = packageRunsDashboard.filterAndSortRuns(index.runs, "Narrow shooting approved", "run-desc");
+  const inactiveParked = packageRunsDashboard.filterAndSortRuns(index.runs, "Inactive: parked", "run-desc");
   const card = packageRunsDashboard.renderRunCard(filtered[0]);
   const scriptCard = packageRunsDashboard.renderRunCard(needsScript[0]);
   const failedQaCard = packageRunsDashboard.renderRunCard(needsQaRepair.find((run) => run.runId === "2026-05-04-d"));
@@ -9498,9 +9714,10 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
   const qaMissingCard = packageRunsDashboard.renderRunCard(qaNotRun[0]);
   const proofMissingCard = packageRunsDashboard.renderRunCard(needsProofCapture[0]);
   const narrowApprovedCard = packageRunsDashboard.renderRunCard(narrowShootingApproved[0]);
+  const inactiveCard = packageRunsDashboard.renderRunCard(inactiveParked[0]);
   const stats = packageRunsDashboard.renderWorkflowStats(index.runs);
 
-  assert.equal(index.count, 9);
+  assert.equal(index.count, 10);
   assert.equal(filtered.length, 1);
   assert.equal(filtered[0].runId, "2026-05-02-b");
   assert.equal(needsScript.length, 1);
@@ -9509,6 +9726,8 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
   assert.equal(needsProofCapture.length, 1);
   assert.equal(narrowShootingApproved.length, 1);
   assert.equal(narrowShootingApproved[0].runId, "2026-05-09-i");
+  assert.equal(inactiveParked.length, 1);
+  assert.equal(inactiveParked[0].runId, "2026-05-10-j");
   assert.match(card, /Ready Package/);
   assert.match(card, /Ready to shoot/);
   assert.match(card, /package-runs\/2026-05-02-b\//);
@@ -9543,12 +9762,15 @@ test("package runs dashboard normalizes filters and renders run cards", () => {
     narrowApprovedCard,
     /Shoot only the narrow approved scope; editing, publishing, upload prep, final title, and final thumbnail remain blocked\./
   );
+  assert.match(inactiveCard, /Inactive: parked/);
+  assert.match(inactiveCard, /State: parked/);
   assert.match(stats, /Ready to shoot/);
   assert.match(stats, /Needs production prep/);
   assert.match(stats, /Needs QA repair/);
   assert.match(stats, /Needs proof capture/);
   assert.match(stats, /Narrow shooting approved/);
   assert.match(stats, /QA not run/);
+  assert.match(stats, /Inactive: parked/);
 });
 
 test("package runs dashboard renders lifecycle gate review data", () => {
