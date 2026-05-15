@@ -1,0 +1,76 @@
+name: Codex implementation task
+description: Define a narrow issue-driven implementation task for Codex.
+title: "[Codex]: "
+labels:
+  - codex
+  - implementation
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for implementation work that can be reviewed through a PR. Keep tasks narrow and evidence-bound.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should change?
+      placeholder: Add a focused workflow or UI improvement.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Link local docs, package-run artifacts, Hermes handoffs, or prior discussion.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: In scope
+      description: List the files, behavior, or workflow states Codex may touch.
+      placeholder: |
+        - scripts/...
+        - docs/...
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: Name boundaries explicitly.
+      placeholder: |
+        - No package-run state promotion
+        - No publishing readiness claims
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance checks
+      description: What must be true before the PR is ready for review?
+      placeholder: |
+        - ./scripts/verify.sh passes
+        - Docs updated if workflow changed
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety boundary
+      options:
+        - label: This task does not require production readiness, publishing readiness, shooting approval, or proof-complete claims.
+          required: true
+        - label: Package-run evidence requirements are identified if package-run files may change.
+          required: true
+        - label: Human approval is required before durable workflow promotion or publishing.
+          required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Expected verification
+      description: Commands or browser checks Codex should run.
+      value: |
+        ./scripts/verify.sh
+    validations:
+      required: true

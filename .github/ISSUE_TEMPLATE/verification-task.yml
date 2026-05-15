@@ -1,0 +1,55 @@
+name: Verification task
+description: Define manual or browser verification that should not be treated as implementation.
+title: "[Verify]: "
+labels:
+  - verification
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when the main work is inspection, browser proof, package-run evidence review, or manual workflow validation.
+  - type: textarea
+    id: target
+    attributes:
+      label: Verification target
+      description: What file, page, package run, or workflow should be checked?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Verification steps
+      description: Exact commands, browser paths, or package-run files to inspect.
+      placeholder: |
+        1. Run ./scripts/verify.sh
+        2. Open ...
+        3. Capture screenshot or note result
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: What should pass, be visible, or remain blocked?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence to attach
+      description: Screenshots, browser notes, terminal output, or package-run artifact paths.
+      placeholder: |
+        - Screenshot:
+        - Terminal output:
+        - Package-run artifact:
+    validations:
+      required: true
+  - type: checkboxes
+    id: boundary
+    attributes:
+      label: Boundary
+      options:
+        - label: This task is verification only, not approval to publish or promote state.
+          required: true
+        - label: Missing proof or ambiguous evidence should be reported as a blocker.
+          required: true
