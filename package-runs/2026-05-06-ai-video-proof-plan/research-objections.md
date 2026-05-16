@@ -2,4 +2,7 @@
 
 | objection/counterexample | why it matters | evidence needed | response plan | status |
 | --- | --- | --- | --- | --- |
-| TODO | TODO | TODO | TODO | open |
+| Actual ChatGPT output was already practical, not a weak generic listicle. | The script cannot honestly pretend the captured AI output was the prepared weak example. | Compare `capture-transcript.md` and `capture-result-note.md` against the script's weak-example framing. | Label prepared/stress-test examples clearly and keep actual transcript claims separate. | review-needed |
+| Proof-plan framework could become abstract planning advice. | The episode promise depends on visible proof, not just a conceptual checklist. | Identify concrete on-screen proof items in `proof-capture-plan.md` and the script. | Keep the proof-plan table tied to local evidence and before/after package revision. | review-needed |
+| External hallucination/evaluation sources support verification generally, not the exact VIDTOOLZ workflow. | General sources cannot be treated as proof that this specific video package is production-ready. | Map each external source to only the general claim it supports in `source-support-map.md`. | Use external sources as framing and rely on local artifacts for package-specific proof. | review-needed |
+| Packaging candidate may no longer match the proof shown. | Title, thumbnail, and viewer promise could overclaim if the proof is narrower than the package. | Compare selected package, thumbnail notes, and final script against available proof artifacts. | Revise package framing or keep final title/thumbnail blocked until fit is reviewed. | review-needed |

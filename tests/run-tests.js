@@ -10133,6 +10133,60 @@ test("package run next action authority prioritizes partial research before prod
   assert.equal(report.nextSafeAction.suggestedCommand, "");
 });
 
+test("package run next action authority routes ready research review to Mikko approval decision", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-research-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-ready");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Research Ready" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "research-pack.md"), "# Research Pack\n\n- Status: PARTIAL\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "source-support-map.md"),
+    "# Source Support Map\n\n| source/reference | claim supported | evidence type | reliability note | status |\n| --- | --- | --- | --- | --- |\n| source-a.md | Claim A is supported. | Local source note | Concrete local reference. | review-needed |\n| source-b.md | Claim B is supported. | Local source note | Concrete local reference. | review-needed |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "proof-capture-plan.md"),
+    "# Proof Capture Plan\n\n| proof item | what it proves | local capture method | file/app/source | status |\n| --- | --- | --- | --- | --- |\n| Proof table | Shows the claim can be inspected. | Capture local table and notes. | proof.md | review-needed |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-objections.md"),
+    "# Research Objections\n\n| objection/counterexample | why it matters | evidence needed | response plan | status |\n| --- | --- | --- | --- | --- |\n| Counterexample | Prevents overclaiming. | Compare local notes. | Keep blocked until reviewed. | review-needed |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    "# Research Sufficiency Review\n\n- Research sufficiency status: READY FOR RESEARCH REVIEW\n- Research approval marker: missing\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: NEEDS SCRIPT APPROVAL\n", "utf8");
+
+  const report = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.match(report.sourceSignals.doctor.firstBlockerReason, /READY FOR RESEARCH REVIEW/i);
+  assert.equal(report.nextSafeAction.actor, "mikko");
+  assert.equal(report.nextSafeAction.mode, "approval-required");
+  assert.equal(
+    report.nextSafeAction.label,
+    "Review research evidence and decide whether to approve, request changes, or keep blocked before script structure or production planning."
+  );
+  assert.doesNotMatch(report.nextSafeAction.label, /repair brief/i);
+  assert.equal(report.nextSafeAction.suggestedCommand, "");
+  assert.equal(report.nextSafeAction.writesDurableState, true);
+  assert.equal(report.nextSafeAction.humanApprovalRequired, true);
+  assert.equal(report.humanApprovalRequired, true);
+  assert.equal(report.blockedActions.includes("production approval"), true);
+  assert.equal(report.blockedActions.includes("mark ready-to-shoot"), true);
+  assert.equal(report.blockedActions.includes("shooting"), true);
+  assert.equal(report.blockedActions.includes("editing"), true);
+  assert.equal(report.blockedActions.includes("publishing"), true);
+  assert.equal(report.blockedActions.includes("package-run artifact mutation"), true);
+  assert.equal(report.blockedActions.includes("media move"), true);
+  assert.equal(report.blockedActions.includes("scheduled job"), true);
+  assert.equal(report.blockedActions.includes("commit"), true);
+  assert.equal(report.blockedActions.includes("push"), true);
+});
+
 test("package run next action authority prioritizes missing or partial script structure before production repair", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-structure-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-structure");

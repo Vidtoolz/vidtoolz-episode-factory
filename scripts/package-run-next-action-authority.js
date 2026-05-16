@@ -79,6 +79,7 @@ function actionActor(run = {}, doctor = {}) {
   const reason = doctor.firstBlockerReason || run.firstBlockerReason || "";
   const stage = run.status || "";
   const gate = run.lifecycleGate || {};
+  if (isResearchReadyForReview(run, doctor)) return "mikko";
   if (gate.productionPlanningBlocked) return "codex";
   if (/approval|human|mikko/i.test(reason) || /READY FOR HUMAN APPROVAL/i.test(gate.shotEditPlanReviewStatus || gate.captureEvidenceReviewStatus || "")) {
     return "mikko";
@@ -121,9 +122,21 @@ function isResearchGateBlocking(run = {}, doctor = {}) {
   const researchStatus = normalizeGateStatus(gate.researchGateStatus);
   const researchReviewStatus = normalizeGateStatus(gate.researchSufficiencyReviewStatus);
   const doctorReason = String(doctor.firstBlockerReason || "").trim();
-  const blockingStatuses = new Set(["MISSING", "NEEDS EVIDENCE", "READY FOR RESEARCH REVIEW", "PARTIAL"]);
+  const blockingStatuses = new Set(["MISSING", "NEEDS EVIDENCE", "PARTIAL"]);
   if (blockingStatuses.has(researchStatus) || blockingStatuses.has(researchReviewStatus)) return true;
   return /research evidence|research sufficiency|research gate/i.test(doctorReason);
+}
+
+function isResearchReadyForReview(run = {}, doctor = {}) {
+  const gate = run.lifecycleGate || {};
+  const researchReviewStatus = normalizeGateStatus(gate.researchSufficiencyReviewStatus);
+  const approvalMarker = normalizeGateStatus(gate.researchApprovalMarker);
+  const doctorReason = String(doctor.firstBlockerReason || "").trim();
+  return (
+    researchReviewStatus === "READY FOR RESEARCH REVIEW" &&
+    approvalMarker !== "PASS" &&
+    /research approval|approval is missing|not PASS|READY FOR RESEARCH REVIEW/i.test(doctorReason)
+  );
 }
 
 function isScriptStructureBlocking(run = {}, doctor = {}) {
@@ -146,6 +159,9 @@ function isScriptReviewBlocking(run = {}, doctor = {}) {
 }
 
 function upstreamBlockerLabel(run = {}, doctor = {}) {
+  if (isResearchReadyForReview(run, doctor)) {
+    return "Review research evidence and decide whether to approve, request changes, or keep blocked before script structure or production planning.";
+  }
   if (isResearchGateBlocking(run, doctor)) {
     return "Prepare a research evidence and research sufficiency repair brief before script structure, script review, or production-plan repair.";
   }
@@ -222,10 +238,11 @@ function blockedActionsFor(run = {}, doctor = {}, nextAction = {}) {
 function enforceSemanticSafety(action = {}) {
   const safe = { ...action };
   const commandWritesDurableState = writesDurableState(safe.suggestedCommand);
+  const declaredWritesDurableState = Boolean(safe.writesDurableState);
   if (safe.suggestedCommand && commandWritesDurableState) {
     safe.suggestedCommand = "";
   }
-  safe.writesDurableState = commandWritesDurableState;
+  safe.writesDurableState = declaredWritesDurableState || commandWritesDurableState;
   if (DURABLE_LABEL_PATTERN.test(safe.label || "") && safe.mode === "read-only" && !safe.writesDurableState && !safe.humanApprovalRequired) {
     safe.mode = "draft-only";
   }
@@ -272,7 +289,7 @@ function buildAuthorityReport(runDirInput, options = {}) {
     mode: "read-only",
     label,
     suggestedCommand: command,
-    writesDurableState: writesDurableState(command),
+    writesDurableState: writesDurableState(command) || isResearchReadyForReview(run, doctor),
     humanApprovalRequired: actor === "mikko" || /approval/i.test(label),
   };
   nextSafeAction.mode = actionMode(run, nextSafeAction);
