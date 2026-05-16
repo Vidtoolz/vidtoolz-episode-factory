@@ -10239,6 +10239,106 @@ test("package run next action authority prioritizes script review needs revision
   assert.equal(report.nextSafeAction.suggestedCommand, "");
 });
 
+test("package run next action authority routes research and script pass to production planning repair", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-production-repair-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-production-repair");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Production Repair" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "research-pack.md"), "# Research Pack\n\n- Status: PARTIAL\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    "# Research Sufficiency Review\n\n- Research sufficiency status: PASS\n- Research approval marker: PASS\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "script-structure.md"),
+    "# Script Structure\n\n- Script structure status: READY TO DRAFT\n- Research gate status: PASS\n- Ready to draft: yes\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "script-review.md"),
+    "# Script Review\n\n- Script review status: PASS\n- Production planning ready: yes\n- Research gate status: PASS\n- Script structure status: READY TO DRAFT\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "production-plan.md"),
+    "# Production Plan\n\n- Shoot-readiness status: NEEDS SCRIPT APPROVAL\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "production-blockers.md"),
+    "# Production Blockers\n\n| blocker | why | fix | status |\n| --- | --- | --- | --- |\n| stale plan | script gates changed | repair production plan | open |\n",
+    "utf8"
+  );
+
+  const report = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(report.nextSafeAction.actor, "codex");
+  assert.equal(report.nextSafeAction.mode, "draft-only");
+  assert.equal(
+    report.nextSafeAction.label,
+    "Prepare a production-planning repair brief now that research and script review gates pass."
+  );
+  assert.doesNotMatch(report.nextSafeAction.label, /research evidence and research sufficiency repair/i);
+  assert.equal(report.nextSafeAction.suggestedCommand, "");
+  assert.equal(report.nextSafeAction.writesDurableState, false);
+  assert.equal(report.nextSafeAction.humanApprovalRequired, false);
+  assert.equal(report.blockedActions.includes("production approval"), true);
+  assert.equal(report.blockedActions.includes("mark ready-to-shoot"), true);
+  assert.equal(report.blockedActions.includes("shooting"), true);
+  assert.equal(report.blockedActions.includes("capture approval"), true);
+  assert.equal(report.blockedActions.includes("final title lock"), true);
+  assert.equal(report.blockedActions.includes("final thumbnail lock"), true);
+  assert.equal(report.blockedActions.includes("package-run artifact mutation"), true);
+});
+
+test("package run next action authority routes open production blockers to production planning repair", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-production-blockers-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-production-blockers");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Production Blockers" } }), "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    "# Research Sufficiency Review\n\n- Research sufficiency status: PASS\n- Research approval marker: PASS\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "script-structure.md"),
+    "# Script Structure\n\n- Script structure status: READY TO DRAFT\n- Research gate status: PASS\n- Ready to draft: yes\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "script-review.md"),
+    "# Script Review\n\n- Script review status: PASS\n- Production planning ready: yes\n- Research gate status: PASS\n- Script structure status: READY TO DRAFT\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "production-plan.md"),
+    "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "production-blockers.md"),
+    "# Production Blockers\n\n| blocker | why | fix | status |\n| --- | --- | --- | --- |\n| unresolved approval boundary | prevents production readiness | repair plan | open |\n",
+    "utf8"
+  );
+
+  const report = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.match(report.nextSafeAction.label, /production-planning repair brief/);
+  assert.doesNotMatch(report.nextSafeAction.label, /research evidence and research sufficiency repair/i);
+  assert.equal(report.nextSafeAction.mode, "draft-only");
+  assert.equal(report.nextSafeAction.suggestedCommand, "");
+  assert.equal(report.nextSafeAction.writesDurableState, false);
+  assert.equal(report.blockedActions.includes("production approval"), true);
+  assert.equal(report.blockedActions.includes("mark ready-to-shoot"), true);
+  assert.equal(report.blockedActions.includes("capture approval"), true);
+  assert.equal(report.blockedActions.includes("final title lock"), true);
+  assert.equal(report.blockedActions.includes("final thumbnail lock"), true);
+});
+
 test("package run next action authority json cli is stable and parseable", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-json-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-authority-json");

@@ -10,6 +10,7 @@ const BLOCKED_DURABLE_ACTIONS = [
   "production approval",
   "mark ready-to-shoot",
   "shooting",
+  "capture approval",
   "editing",
   "publishing",
   "upload prep",
@@ -123,6 +124,7 @@ function isResearchGateBlocking(run = {}, doctor = {}) {
   const researchReviewStatus = normalizeGateStatus(gate.researchSufficiencyReviewStatus);
   const doctorReason = String(doctor.firstBlockerReason || "").trim();
   const blockingStatuses = new Set(["MISSING", "NEEDS EVIDENCE", "PARTIAL"]);
+  if (researchReviewStatus === "PASS") return false;
   if (blockingStatuses.has(researchStatus) || blockingStatuses.has(researchReviewStatus)) return true;
   return /research evidence|research sufficiency|research gate/i.test(doctorReason);
 }
@@ -158,6 +160,15 @@ function isScriptReviewBlocking(run = {}, doctor = {}) {
   return /script review status is NEEDS REVISION/i.test(doctorReason);
 }
 
+function isProductionPlanningBlocking(run = {}, doctor = {}) {
+  const gate = run.lifecycleGate || {};
+  const productionPlanStatus = normalizeGateStatus(gate.productionPlanStatus || gate.rawProductionPlanStatus);
+  const doctorReason = String(doctor.firstBlockerReason || "").trim();
+  if (gate.productionPlanningBlocked || gate.productionBlockersOpen) return true;
+  if (["NEEDS SCRIPT APPROVAL", "BLOCKED", "STALE"].includes(productionPlanStatus)) return true;
+  return /production planning|production-plan|production-blockers|shoot-readiness/i.test(doctorReason);
+}
+
 function upstreamBlockerLabel(run = {}, doctor = {}) {
   if (isResearchReadyForReview(run, doctor)) {
     return "Review research evidence and decide whether to approve, request changes, or keep blocked before script structure or production planning.";
@@ -180,9 +191,12 @@ function authorityLabel(run = {}, doctor = {}) {
   if (run.packageRunState && run.packageRunState.isInactive) return `Keep package run ${run.packageRunState.state}; inspect manually before reactivation.`;
   const upstreamLabel = upstreamBlockerLabel(run, doctor);
   if (upstreamLabel) return upstreamLabel;
+  if (isProductionPlanningBlocking(run, doctor)) {
+    return "Prepare a production-planning repair brief now that research and script review gates pass.";
+  }
   if (run.lifecycleGate && run.lifecycleGate.effectiveReadiness && run.lifecycleGate.effectiveReadiness.nextSafeAction) {
     if (run.lifecycleGate.productionPlanningBlocked) {
-      return "Prepare a production-plan repair brief for Mikko review before capture evidence intake.";
+      return "Prepare a production-planning repair brief now that research and script review gates pass.";
     }
     return safeDraftLabel(run.lifecycleGate.effectiveReadiness.nextSafeAction);
   }
