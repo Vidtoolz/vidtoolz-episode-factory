@@ -9134,7 +9134,7 @@ test("production approval repair reporter json cli is parseable", () => {
   assert.equal(payload.currentEffectiveProductionStatus, "NOT READY TO SHOOT");
 });
 
-test("production approval review packet reports current May 6 active run ready for capture evidence review", () => {
+test("production approval review packet reports current May 6 active run blocked at capture evidence review", () => {
   const repoRoot = path.resolve(__dirname, "..");
   const runDir = path.join(repoRoot, "package-runs", "2026-05-06-ai-video-proof-plan");
   if (!fs.existsSync(runDir)) return;
@@ -9146,8 +9146,11 @@ test("production approval review packet reports current May 6 active run ready f
   assert.equal(packet.readOnly, true);
   assert.equal(packet.externalApisCalled, false);
   assert.equal(packet.captureIntakeSuggested, true);
-  assert.match(packet.exactNextSafeAction, /Add real capture evidence rows or run the capture evidence review after manual intake/);
-  assert.match(text, /capture evidence review/i);
+  assert.match(
+    packet.exactNextSafeAction,
+    /Add real capture evidence rows (or run the capture evidence review after manual intake|with concrete media references, then rerun this review)/
+  );
+  assert.match(text, /Capture evidence status: NEEDS CAPTURE/);
   assert.equal(packet.currentProductionStatus.captureEvidenceStatus, "NEEDS CAPTURE");
 });
 
