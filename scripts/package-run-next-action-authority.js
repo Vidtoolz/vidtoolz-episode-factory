@@ -75,12 +75,13 @@ function normalizeActor(value = "") {
   return "hermes";
 }
 
-function actionActor(run = {}, doctor = {}) {
+function actionActor(run = {}, doctor = {}, repoRoot = process.cwd()) {
   const qaBlocking = packageRunsIndex.isCreatorQaBlocking(run.creatorQaStatus || "not run");
   const reason = doctor.firstBlockerReason || run.firstBlockerReason || "";
   const stage = run.status || "";
   const gate = run.lifecycleGate || {};
   if (isResearchReadyForReview(run, doctor)) return "mikko";
+  if (isProductionPlanningRerunApprovalRequired(run, doctor, repoRoot)) return "mikko";
   if (gate.productionPlanningBlocked) return "codex";
   if (/approval|human|mikko/i.test(reason) || /READY FOR HUMAN APPROVAL/i.test(gate.shotEditPlanReviewStatus || gate.captureEvidenceReviewStatus || "")) {
     return "mikko";
@@ -169,6 +170,15 @@ function isProductionPlanningBlocking(run = {}, doctor = {}) {
   return /production planning|production-plan|production-blockers|shoot-readiness/i.test(doctorReason);
 }
 
+function hasProductionPlanningRepairBrief(run = {}, repoRoot = process.cwd()) {
+  if (!run.path) return false;
+  return fs.existsSync(path.join(repoRoot, run.path, "production-planning-repair-brief.md"));
+}
+
+function isProductionPlanningRerunApprovalRequired(run = {}, doctor = {}, repoRoot = process.cwd()) {
+  return isProductionPlanningBlocking(run, doctor) && hasProductionPlanningRepairBrief(run, repoRoot);
+}
+
 function upstreamBlockerLabel(run = {}, doctor = {}) {
   if (isResearchReadyForReview(run, doctor)) {
     return "Review research evidence and decide whether to approve, request changes, or keep blocked before script structure or production planning.";
@@ -185,12 +195,15 @@ function upstreamBlockerLabel(run = {}, doctor = {}) {
   return "";
 }
 
-function authorityLabel(run = {}, doctor = {}) {
+function authorityLabel(run = {}, doctor = {}, repoRoot = process.cwd()) {
   const qaStatus = packageRunsIndex.normalizeCreatorQaStatus(run.creatorQaStatus || "not run");
   if (packageRunsIndex.isCreatorQaBlocking(qaStatus)) return `Prepare a Creator QA repair brief for status ${qaStatus}.`;
   if (run.packageRunState && run.packageRunState.isInactive) return `Keep package run ${run.packageRunState.state}; inspect manually before reactivation.`;
   const upstreamLabel = upstreamBlockerLabel(run, doctor);
   if (upstreamLabel) return upstreamLabel;
+  if (isProductionPlanningRerunApprovalRequired(run, doctor, repoRoot)) {
+    return "Review the production-planning repair brief and decide whether to rerun production planning artifacts.";
+  }
   if (isProductionPlanningBlocking(run, doctor)) {
     return "Prepare a production-planning repair brief now that research and script review gates pass.";
   }
@@ -295,15 +308,16 @@ function buildAuthorityReport(runDirInput, options = {}) {
 
   const run = packageRunsIndex.scanRun(runDir, repoRoot);
   const doctor = packageRunDoctor.buildDoctorReport(path.relative(repoRoot, runDir), { repoRoot });
-  const label = authorityLabel(run, doctor);
+  const label = authorityLabel(run, doctor, repoRoot);
   const command = suggestedCommand(run, doctor, label);
-  const actor = actionActor(run, doctor);
+  const actor = actionActor(run, doctor, repoRoot);
   let nextSafeAction = {
     actor,
     mode: "read-only",
     label,
     suggestedCommand: command,
-    writesDurableState: writesDurableState(command) || isResearchReadyForReview(run, doctor),
+    writesDurableState:
+      writesDurableState(command) || isResearchReadyForReview(run, doctor) || isProductionPlanningRerunApprovalRequired(run, doctor, repoRoot),
     humanApprovalRequired: actor === "mikko" || /approval/i.test(label),
   };
   nextSafeAction.mode = actionMode(run, nextSafeAction);
