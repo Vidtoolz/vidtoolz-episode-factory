@@ -39,6 +39,7 @@ node --check scripts/package-run-broll-prompts.js
 node --check scripts/package-run-creator-qa.js
 node --check scripts/package-run-doctor.js
 node --check scripts/package-run-next-action.js
+node --check scripts/package-run-next-action-authority.js
 node --check scripts/package-run-active-state-audit.js
 node --check scripts/package-run-state-proposal.js
 node --check scripts/package-run-production-approval-repair.js

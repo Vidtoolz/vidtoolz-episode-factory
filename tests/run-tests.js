@@ -32,6 +32,7 @@ const packageArchiveManifestScript = require("../scripts/package-run-archive-man
 const packageRunCreatorQaScript = require("../scripts/package-run-creator-qa.js");
 const packageRunDoctorScript = require("../scripts/package-run-doctor.js");
 const packageRunNextActionScript = require("../scripts/package-run-next-action.js");
+const packageRunNextActionAuthorityScript = require("../scripts/package-run-next-action-authority.js");
 const packageRunActiveStateAuditScript = require("../scripts/package-run-active-state-audit.js");
 const packageRunStateProposalScript = require("../scripts/package-run-state-proposal.js");
 const packageProductionApprovalRepairScript = require("../scripts/package-run-production-approval-repair.js");
@@ -9981,6 +9982,210 @@ test("package run next action json cli is parseable", () => {
   assert.equal(output.result, 0);
   assert.equal(parsed.runTitle, "JSON Test");
   assert.equal(parsed.readOnly, true);
+});
+
+test("verify script checks package run next action authority syntax", () => {
+  const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
+  assert.match(verify, /node --check scripts\/package-run-next-action-authority\.js/);
+});
+
+test("package run next action authority keeps blocked runs out of production routing", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-blocked-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-blocked");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Blocked Authority" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "production-plan.md"),
+    "# Production Plan\n\n- Shoot-readiness status: NEEDS SCRIPT APPROVAL\n",
+    "utf8"
+  );
+
+  const report = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(report.currentStage, "Needs production planning");
+  assert.equal(report.sourceSignals.workflow.overallStatus, "BLOCKED");
+  assert.doesNotMatch(report.nextSafeAction.label, /shoot|edit|publish|ready-to-shoot/i);
+  assert.doesNotMatch(report.nextSafeAction.suggestedCommand, /shoot|edit|publish/i);
+  assert.notEqual(report.nextSafeAction.mode, "read-only");
+  assert.equal(report.blockedActions.includes("shooting"), true);
+  assert.equal(report.blockedActions.includes("editing"), true);
+  assert.equal(report.blockedActions.includes("publishing"), true);
+});
+
+test("package run next action authority routes Creator QA fail to repair review", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-qa-fail-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-qa-fail");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "QA Fail Authority" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "creator-qa-report.json"), JSON.stringify({ overall_result: "FAIL" }), "utf8");
+
+  const report = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(report.workflowBucket, "Needs QA repair");
+  assert.equal(report.nextSafeAction.actor, "codex");
+  assert.equal(report.nextSafeAction.mode, "draft-only");
+  assert.match(report.nextSafeAction.label, /Creator QA repair brief.*FAIL/);
+  assert.doesNotMatch(report.nextSafeAction.label, /production|shoot/i);
+  assert.equal(report.blockedActions.includes("shooting"), true);
+});
+
+test("package run next action authority routes missing capture proof to evidence work", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-capture-proof-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-proof");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Capture Proof Authority" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "shot-edit-plan-review.md"), "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "capture-checklist.md"), "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "takes-log.md"), "# Takes Log\n\nTODO\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "missing-shot-tracker.md"), "# Missing Shot Tracker\n\nTODO\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "screen-recording-checklist.md"), "# Screen Recording Checklist\n\nTODO\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "audio-capture-checklist.md"), "# Audio Capture Checklist\n\nTODO\n", "utf8");
+
+  const report = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(report.currentStage, "Needs capture");
+  assert.match(report.nextSafeAction.label, /capture evidence|real media proof/i);
+  assert.equal(report.nextSafeAction.suggestedCommand, "");
+  assert.doesNotMatch(report.nextSafeAction.label, /ready-to-shoot/i);
+  assert.equal(report.sourceSignals.captureEvidence.hasConcreteCaptureEvidence, false);
+  assert.equal(report.blockedActions.includes("ready-to-shoot"), true);
+});
+
+test("package run next action authority blocks durable actions instead of making them next", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-durable-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-durable");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Durable Authority" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "shot-edit-plan-review.md"),
+    "# Shot/Edit Plan Review\n\n- Review status: READY FOR HUMAN APPROVAL\n- Stage accepted: no\n\n## Next Safe Action\n\n- Mikko reviews Stage 4 planning and decides whether to approve.\n",
+    "utf8"
+  );
+
+  const report = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(report.nextSafeAction.actor, "mikko");
+  assert.equal(report.nextSafeAction.mode, "approval-required");
+  assert.equal(report.nextSafeAction.suggestedCommand, "");
+  assert.equal(report.humanApprovalRequired, true);
+  assert.equal(report.blockedActions.includes("production approval"), true);
+  assert.equal(report.blockedActions.includes("package-run artifact mutation"), true);
+});
+
+test("package run next action authority json cli is stable and parseable", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-json-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-authority-json");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Authority JSON" } }), "utf8");
+
+  const output = captureConsole(() => packageRunNextActionAuthorityScript.main([runDir, "--json"]));
+  const parsed = JSON.parse(output.stdout.join("\n"));
+
+  assert.equal(output.result, 0);
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.runId, "2026-05-10-authority-json");
+  assert.equal(parsed.title, "Authority JSON");
+  assert.equal(typeof parsed.nextSafeAction.actor, "string");
+  assert.equal(Object.hasOwn(parsed.nextSafeAction, "writesDurableState"), true);
+  assert.equal(Array.isArray(parsed.blockedActions), true);
+  assert.equal(typeof parsed.sourceSignals.packageRunIndex.matchedRun.status, "string");
+  assert.equal(parsed.readOnly, true);
+  assert.equal(parsed.externalApisCalled, false);
+  [
+    "runId",
+    "title",
+    "workflowBucket",
+    "currentStage",
+    "effectiveReadiness",
+    "nextSafeAction",
+    "blockedActions",
+    "humanApprovalRequired",
+    "safetyNote",
+    "sourceSignals",
+    "readOnly",
+    "externalApisCalled",
+  ].forEach((key) => assert.equal(Object.hasOwn(parsed, key), true, `${key} should be present`));
+});
+
+test("package run next action authority error json includes ok false", () => {
+  const output = captureConsole(() => packageRunNextActionAuthorityScript.main(["package-runs/not-real", "--json"]));
+  const parsed = JSON.parse(output.stdout.join("\n"));
+
+  assert.equal(output.result, 1);
+  assert.equal(parsed.ok, false);
+  assert.equal(parsed.readOnly, true);
+  assert.equal(parsed.externalApisCalled, false);
+  assert.match(parsed.error, /Package run folder not found/);
+});
+
+test("package run next action authority does not classify mutating labels as read-only", () => {
+  [
+    "Repair production-plan.md",
+    "Update package-run-state.md",
+    "Edit capture evidence rows",
+    "Resolve production-blockers.md",
+    "Write approval marker",
+    "Mark ready-to-shoot",
+    "Approve production",
+    "Move media files",
+    "Create scheduled job",
+  ].forEach((label) => {
+    const action = packageRunNextActionAuthorityScript.enforceSemanticSafety({
+      actor: "codex",
+      mode: "read-only",
+      label,
+      suggestedCommand: "",
+      writesDurableState: false,
+      humanApprovalRequired: false,
+    });
+    assert.notEqual(action.mode, "read-only", label);
+  });
+});
+
+test("package run next action authority treats capture evidence review as mutating", () => {
+  const command = "node scripts/package-run-capture-evidence-review.js package-runs/run-a";
+
+  assert.equal(packageRunNextActionAuthorityScript.isConfirmedReadOnlyCommand(command), false);
+  assert.equal(packageRunNextActionAuthorityScript.writesDurableState(command), true);
+
+  const action = packageRunNextActionAuthorityScript.enforceSemanticSafety({
+    actor: "hermes",
+    mode: "read-only",
+    label: "Run capture evidence review.",
+    suggestedCommand: command,
+    writesDurableState: false,
+    humanApprovalRequired: false,
+  });
+
+  assert.equal(action.mode, "approval-required");
+  assert.equal(action.suggestedCommand, "");
+  assert.equal(action.writesDurableState, true);
+  assert.equal(action.humanApprovalRequired, true);
+});
+
+test("package run next action authority read-only commands use explicit allowlist", () => {
+  assert.equal(
+    packageRunNextActionAuthorityScript.isConfirmedReadOnlyCommand("node scripts/package-run-doctor.js package-runs/run-a --json"),
+    true
+  );
+  assert.equal(
+    packageRunNextActionAuthorityScript.isConfirmedReadOnlyCommand("node scripts/package-run-evidence-lint.js package-runs/run-a"),
+    true
+  );
+  assert.equal(
+    packageRunNextActionAuthorityScript.isConfirmedReadOnlyCommand("node scripts/package-run-capture-evidence-review.js package-runs/run-a"),
+    false
+  );
+  assert.equal(
+    packageRunNextActionAuthorityScript.isConfirmedReadOnlyCommand("node scripts/package-run-production-plan.js package-runs/run-a"),
+    false
+  );
 });
 
 test("verify script checks package run capture gap syntax", () => {
