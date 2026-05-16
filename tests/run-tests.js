@@ -7834,35 +7834,54 @@ test("unknown package run state is ignored conservatively as active", () => {
   assert.equal(run.overallStatus, "BLOCKED");
 });
 
-test("current live package-run state selects May 6 and parks older May 2 runs", () => {
-  const repoRoot = path.resolve(__dirname, "..");
-  const runsDir = path.join(repoRoot, "package-runs");
-  const activeDir = path.join(runsDir, "2026-05-06-ai-video-proof-plan");
-  const parkedNextDir = path.join(runsDir, "2026-05-02-next-vidtoolz-video");
-  const parkedIdeaFilterDir = path.join(runsDir, "2026-05-02-ai-video-idea-filter");
-  if (![activeDir, parkedNextDir, parkedIdeaFilterDir].every((runDir) => fs.existsSync(runDir))) return;
+test("fixture package-run state selects May 6 and parks older May 2 runs", () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-state-may6-fixture-"));
+  const activeRel = "package-runs/2026-05-06-ai-video-proof-plan";
+  const parkedNextRel = "package-runs/2026-05-02-next-vidtoolz-video";
+  const parkedIdeaFilterRel = "package-runs/2026-05-02-ai-video-idea-filter";
 
-  const activeRun = packageRunsIndexScript.scanRun(activeDir, repoRoot);
-  const parkedNextRun = packageRunsIndexScript.scanRun(parkedNextDir, repoRoot);
-  const parkedIdeaFilterRun = packageRunsIndexScript.scanRun(parkedIdeaFilterDir, repoRoot);
+  writeTestFile(repoRoot, `${activeRel}/selected-package.json`, JSON.stringify({ package: { proposedTitle: "May 6 Active" } }));
+  writeTestFile(repoRoot, `${activeRel}/final-script.md`, "# Final Script\n");
+  writeTestFile(repoRoot, `${activeRel}/production-plan.md`, "# Production Plan\n\n- Shoot-readiness status: NEEDS SCRIPT APPROVAL\n");
+  [parkedNextRel, parkedIdeaFilterRel].forEach((runRel) => {
+    writeTestFile(
+      repoRoot,
+      `${runRel}/package-run-state.md`,
+      "# Package Run State\n\nPackage run state: parked\n\nReason: Fixture parked run.\n"
+    );
+    writeTestFile(repoRoot, `${runRel}/selected-package.json`, JSON.stringify({ package: { proposedTitle: path.basename(runRel) } }));
+    writeTestFile(repoRoot, `${runRel}/final-script.md`, "# Final Script\n");
+  });
+
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot, runsDir: "package-runs" });
+  writeTestFile(repoRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const activeRun = packageRunsIndexScript.scanRun(path.join(repoRoot, activeRel), repoRoot);
+  const parkedNextRun = packageRunsIndexScript.scanRun(path.join(repoRoot, parkedNextRel), repoRoot);
+  const parkedIdeaFilterRun = packageRunsIndexScript.scanRun(path.join(repoRoot, parkedIdeaFilterRel), repoRoot);
   const activeAudit = packageRunActiveStateAuditScript.buildActiveStateAudit({ repoRoot });
+  const inactiveByPath = Object.fromEntries(activeAudit.inactiveRuns.map((run) => [run.path, run]));
 
-  assert.equal(activeRun.path, "package-runs/2026-05-06-ai-video-proof-plan");
+  assert.equal(activeRun.path, activeRel);
   assert.equal(activeRun.packageRunState.explicit, false);
   assert.equal(activeRun.inactive, false);
   assert.equal(activeAudit.ok, true);
-  assert.equal(activeAudit.selectedActiveRun, "package-runs/2026-05-06-ai-video-proof-plan");
-  assert.deepEqual(activeAudit.candidateActiveRuns.map((run) => run.path), ["package-runs/2026-05-06-ai-video-proof-plan"]);
+  assert.equal(activeAudit.selectedActiveRun, activeRel);
+  assert.deepEqual(activeAudit.candidateActiveRuns.map((run) => run.path), [activeRel]);
 
   assert.equal(parkedNextRun.packageRunState.state, "parked");
   assert.equal(parkedNextRun.inactive, true);
   assert.equal(parkedNextRun.status, "Inactive: parked");
   assert.equal(parkedNextRun.workflowBucket, "Inactive: parked");
+  assert.equal(inactiveByPath[parkedNextRel].state, "parked");
+  assert.equal(inactiveByPath[parkedNextRel].inactive, true);
 
   assert.equal(parkedIdeaFilterRun.packageRunState.state, "parked");
   assert.equal(parkedIdeaFilterRun.inactive, true);
   assert.equal(parkedIdeaFilterRun.status, "Inactive: parked");
   assert.equal(parkedIdeaFilterRun.workflowBucket, "Inactive: parked");
+  assert.equal(inactiveByPath[parkedIdeaFilterRel].state, "parked");
+  assert.equal(inactiveByPath[parkedIdeaFilterRel].inactive, true);
 });
 
 test("active state audit degrades read-only when package-runs-index is missing", () => {
@@ -8017,20 +8036,37 @@ test("active state audit does not mutate package-run fixture files", () => {
   assert.deepEqual(after, before);
 });
 
-test("package run state proposal reports current single-active state read-only", () => {
-  const repoRoot = path.resolve(__dirname, "..");
+test("package run state proposal reports fixture single-active state read-only", () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-state-proposal-may6-fixture-"));
+  const activeRel = "package-runs/2026-05-06-ai-video-proof-plan";
+  const parkedNextRel = "package-runs/2026-05-02-next-vidtoolz-video";
+  const parkedIdeaFilterRel = "package-runs/2026-05-02-ai-video-idea-filter";
+  writeTestFile(repoRoot, `${activeRel}/selected-package.json`, JSON.stringify({ package: { proposedTitle: "May 6 Active" } }));
+  writeTestFile(repoRoot, `${activeRel}/final-script.md`, "# Final Script\n");
+  writeTestFile(repoRoot, `${activeRel}/production-plan.md`, "# Production Plan\n\n- Shoot-readiness status: NEEDS SCRIPT APPROVAL\n");
+  [parkedNextRel, parkedIdeaFilterRel].forEach((runRel) => {
+    writeTestFile(
+      repoRoot,
+      `${runRel}/package-run-state.md`,
+      "# Package Run State\n\nPackage run state: parked\n\nReason: Fixture parked run.\n"
+    );
+    writeTestFile(repoRoot, `${runRel}/selected-package.json`, JSON.stringify({ package: { proposedTitle: path.basename(runRel) } }));
+    writeTestFile(repoRoot, `${runRel}/final-script.md`, "# Final Script\n");
+  });
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot, runsDir: "package-runs" });
+  writeTestFile(repoRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
   const packet = packageRunStateProposalScript.buildStateProposal({ repoRoot });
 
   assert.equal(packet.name, "package_run_state_proposal");
   assert.equal(packet.ok, true);
   assert.equal(packet.ambiguity, false);
-  assert.equal(packet.selectedActiveRun, "package-runs/2026-05-06-ai-video-proof-plan");
+  assert.equal(packet.selectedActiveRun, activeRel);
   assert.equal(packet.safety.readOnly, true);
   assert.equal(packet.safety.packageRunFilesWritten, false);
   assert.equal(packet.safety.packageRunsIndexUpdated, false);
   assert.equal(packet.safety.gitActionsPerformed, false);
   assert.equal(packet.proposals.length, 1);
-  assert.equal(packet.proposals[0].path, "package-runs/2026-05-06-ai-video-proof-plan");
+  assert.equal(packet.proposals[0].path, activeRel);
   assert.equal(packet.proposals[0].proposedState, "keep-active");
   assert.equal(packet.proposals.some((item) => item.blockedActions.includes("capture intake")), true);
   assert.equal(packet.proposals.some((item) => /approve-production|ready-to-shoot|publish|archive/.test(item.proposedState)), false);
