@@ -3,24 +3,15 @@
 - Run: 2026-05-06-ai-video-proof-plan
 - Tool: package-run-production-plan.js
 - Source script: final-script.md
-- Script review status: MISSING
-- Production planning ready from review: no
-- Research gate status: MISSING
-- Script structure status: MISSING
-- Shoot-readiness status: NEEDS SCRIPT APPROVAL
+- Script review status: PASS
+- Production planning ready from review: yes
+- Research gate status: PASS
+- Script structure status: READY TO DRAFT
+- Shoot-readiness status: READY TO SHOOT
 - External APIs called: no
 
 ## Input Warnings
 
-- Missing script-review.md.
-- Missing script-revision-plan.md.
-- Missing script-structure.md.
-- Missing research-pack.md.
-- Missing research-sufficiency-review.md.
-- Missing research-evidence.md.
-- Missing source-support-map.md.
-- Missing proof-capture-plan.md.
-- Missing research-objections.md.
 - Missing selected-package.json.
 - Missing creator-qa-report.json.
 - Missing creator-qa-report.md.
@@ -33,7 +24,7 @@
 
 ## Approved / Not Approved Boundary
 
-- Approved boundary: Shooting is not approved by this planner.
+- Approved boundary: The planner can be used for shooting preparation.
 - Not approved: rough-cut review, final review, publish pack, archive manifest, Shorts or repurposing plan.
 - This tool is a production planning gate and list generator. package-engine-new-production.js remains the broader production prep pack.
 
@@ -41,6 +32,11 @@
 
 - What must appear on screen so the video is not just talking?
 - Talking-head setup, controlled/reproduced evidence, and one simple proof-plan table.
+- Viewer-visible proof needed: - Screen captures, test clips, timelines, screenshots, logs, or notes needed to demonstrate the claim.
+- One strong example that can be screen-recorded, recreated, or inspected.
+- Preview the proof object or test: - Screen captures, test clips, timelines, screenshots, logs, or notes needed to demonstrate the claim.
+- Screen captures, test clips, timelines, screenshots, logs, or notes needed to demonstrate the claim.
+- Evidence: show the strongest example, demo, screenshot, or source.
 
 ## Required Screen Recordings
 
@@ -105,21 +101,20 @@
 
 ## Production Risks
 
-- script-review.md is missing.
-- Research gate status is MISSING. research-pack.md is missing.
-- Script structure status is MISSING.
+- No blocking unsupported-claim signals found by this local check.
+- script-prompt.md: missing
+- PARTIAL, BLOCKED, missing, or unreadable research gates must be treated as needing research.
+- Missing proof to resolve:
+- Identify missing or weak evidence before drafting claims.
+- Main risk not specified yet. Identify the strongest reason not to make this video.
 
 ## Production Blockers
 
-- script-review.md is missing.
-- Research gate status is MISSING. research-pack.md is missing.
-- Script structure status is MISSING.
+- None.
 
 ## Shoot-Readiness Gate
 
-- Status: NEEDS SCRIPT APPROVAL
-- Reason: script-review.md is missing. Research gate status is MISSING. research-pack.md is missing. Script structure status is MISSING.
+- Status: READY TO SHOOT
+- Reason: Script review, production planning readiness, research gate, script structure, and script file are all approved.
 - Next actions:
-- Run script review after the script is ready: node scripts/package-run-script-review.js package-runs/<run-id>
-- Repair or manually approve research with an exact approval marker.
-- Repair or manually approve script structure with an exact approval marker.
+- Review the generated production lists, then capture only the approved scope.

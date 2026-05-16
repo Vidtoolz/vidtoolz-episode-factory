@@ -95,6 +95,7 @@ function actionActor(run = {}, doctor = {}, repoRoot = process.cwd()) {
 function actionMode(run = {}, action = {}) {
   if (action.actor === "mikko" || action.humanApprovalRequired) return "approval-required";
   if (run.packageRunState && run.packageRunState.isInactive) return "blocked";
+  if (/\bbrief\b/i.test(action.label || "")) return "draft-only";
   if (DURABLE_LABEL_PATTERN.test(action.label || "")) return action.writesDurableState ? "approval-required" : "draft-only";
   if (!action.suggestedCommand) return "read-only";
   if (isConfirmedReadOnlyCommand(action.suggestedCommand)) return "read-only";
@@ -166,8 +167,27 @@ function isProductionPlanningBlocking(run = {}, doctor = {}) {
   const productionPlanStatus = normalizeGateStatus(gate.productionPlanStatus || gate.rawProductionPlanStatus);
   const doctorReason = String(doctor.firstBlockerReason || "").trim();
   if (gate.productionPlanningBlocked || gate.productionBlockersOpen) return true;
+  if (run.status && run.status !== "Needs production planning") return false;
   if (["NEEDS SCRIPT APPROVAL", "BLOCKED", "STALE"].includes(productionPlanStatus)) return true;
   return /production planning|production-plan|production-blockers|shoot-readiness/i.test(doctorReason);
+}
+
+function isShotEditPlanReviewMissing(run = {}, doctor = {}) {
+  const doctorReason = String(doctor.firstBlockerReason || "").trim();
+  return run.status === "Needs shot/edit plan review" || /shot-edit-plan-review\.md is missing/i.test(doctorReason);
+}
+
+function isShotEditPlanReviewApprovalRequired(run = {}) {
+  const gate = run.lifecycleGate || {};
+  return (
+    run.status === "Needs shot/edit plan approval" &&
+    normalizeGateStatus(gate.shotEditPlanReviewStatus) === "READY FOR HUMAN APPROVAL" &&
+    !gate.shotEditPlanAccepted
+  );
+}
+
+function isShotEditPlanReviewRoutingLabel(label = "") {
+  return /shot\/edit plan review/i.test(String(label || ""));
 }
 
 function hasProductionPlanningRepairBrief(run = {}, repoRoot = process.cwd()) {
@@ -206,6 +226,12 @@ function authorityLabel(run = {}, doctor = {}, repoRoot = process.cwd()) {
   }
   if (isProductionPlanningBlocking(run, doctor)) {
     return "Prepare a production-planning repair brief now that research and script review gates pass.";
+  }
+  if (isShotEditPlanReviewApprovalRequired(run)) {
+    return "Review shot/edit plan review and decide whether to accept Stage 4 before capture evidence intake.";
+  }
+  if (isShotEditPlanReviewMissing(run, doctor)) {
+    return "Prepare a shot/edit plan review brief before capture evidence intake.";
   }
   if (run.lifecycleGate && run.lifecycleGate.effectiveReadiness && run.lifecycleGate.effectiveReadiness.nextSafeAction) {
     if (run.lifecycleGate.productionPlanningBlocked) {
@@ -323,7 +349,11 @@ function buildAuthorityReport(runDirInput, options = {}) {
   nextSafeAction.mode = actionMode(run, nextSafeAction);
   nextSafeAction = enforceSemanticSafety(nextSafeAction);
   const blockedActions = blockedActionsFor(run, doctor, nextSafeAction);
-  if (SHOOT_EDIT_PUBLISH_PATTERN.test(nextSafeAction.label) && blockedActions.some((item) => SHOOT_EDIT_PUBLISH_PATTERN.test(item))) {
+  if (
+    SHOOT_EDIT_PUBLISH_PATTERN.test(nextSafeAction.label) &&
+    !isShotEditPlanReviewRoutingLabel(nextSafeAction.label) &&
+    blockedActions.some((item) => SHOOT_EDIT_PUBLISH_PATTERN.test(item))
+  ) {
     nextSafeAction.label = "Needs inspection before production routing; downstream production actions remain blocked.";
     nextSafeAction.suggestedCommand = "";
     nextSafeAction.writesDurableState = false;
