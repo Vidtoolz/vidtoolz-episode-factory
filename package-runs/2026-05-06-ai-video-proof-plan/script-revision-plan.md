@@ -9,12 +9,12 @@
 ## Revision Gate
 
 - Status: READY FOR REVISION
-- Reason: Research gate is MISSING; production planning cannot be approved. Script structure is MISSING; draft readiness is not approved.
+- Reason: Research gate is PARTIAL; production planning cannot be approved. Script structure is PARTIAL; draft readiness is not approved.
 
 ## Required Fixes
 
-- Research gate is MISSING; production planning cannot be approved.
-- Script structure is MISSING; draft readiness is not approved.
+- Research gate is PARTIAL; production planning cannot be approved.
+- Script structure is PARTIAL; draft readiness is not approved.
 
 ## Optional Improvements
 
@@ -30,7 +30,7 @@
 
 ## Evidence Gaps to Resolve
 
-- Research gate status: MISSING
+- Research gate status: PARTIAL
 - Resolve any source, proof, or example gaps before production planning.
 - No deterministic script evidence-gap markers found.
 

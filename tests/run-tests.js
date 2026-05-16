@@ -10091,6 +10091,100 @@ test("package run next action authority blocks durable actions instead of making
   assert.equal(report.blockedActions.includes("package-run artifact mutation"), true);
 });
 
+test("package run next action authority prioritizes research needs evidence before production repair", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-research-needs-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-needs");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Research Needs" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "research-pack.md"), "# Research Pack\n\n- Status: PARTIAL\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    "# Research Sufficiency Review\n\n- Research sufficiency status: NEEDS EVIDENCE\n- Source references: 0\n- Production-proof items: 0\n- Objections/counterexamples: 0\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: NEEDS SCRIPT APPROVAL\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "production-blockers.md"),
+    "# Production Blockers\n\n| blocker | why | fix | status |\n| --- | --- | --- | --- |\n| upstream | required | repair | open |\n",
+    "utf8"
+  );
+
+  const report = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.match(report.sourceSignals.doctor.firstBlockerReason, /Research evidence review is NEEDS EVIDENCE/i);
+  assert.match(report.nextSafeAction.label, /research evidence and research sufficiency/i);
+  assert.doesNotMatch(report.nextSafeAction.label, /production-plan repair brief/i);
+  assert.equal(report.nextSafeAction.mode, "draft-only");
+  assert.equal(report.nextSafeAction.suggestedCommand, "");
+});
+
+test("package run next action authority prioritizes partial research before production repair", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-research-partial-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-research-partial");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Research Partial" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "research-pack.md"), "# Research Pack\n\n- Status: PARTIAL\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: NEEDS SCRIPT APPROVAL\n", "utf8");
+
+  const report = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.match(report.nextSafeAction.label, /research evidence and research sufficiency/i);
+  assert.doesNotMatch(report.nextSafeAction.label, /production-plan repair brief/i);
+  assert.equal(report.nextSafeAction.suggestedCommand, "");
+});
+
+test("package run next action authority prioritizes missing or partial script structure before production repair", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-structure-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-structure");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Structure Missing" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "research-pack.md"), "# Research Pack\n\n- Status: PASS\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "research-sufficiency-review.md"), "# Research Sufficiency Review\n\n- Research sufficiency status: PASS\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: NEEDS SCRIPT APPROVAL\n", "utf8");
+
+  const missingReport = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+  assert.match(missingReport.nextSafeAction.label, /script-structure repair brief/i);
+  assert.doesNotMatch(missingReport.nextSafeAction.label, /production-plan repair brief/i);
+  assert.equal(missingReport.nextSafeAction.suggestedCommand, "");
+
+  fs.writeFileSync(
+    path.join(runDir, "script-structure.md"),
+    "# Script Structure\n\n- Script structure status: PARTIAL\n- Ready to draft: no\n",
+    "utf8"
+  );
+  const partialReport = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+  assert.match(partialReport.nextSafeAction.label, /script-structure repair brief/i);
+  assert.doesNotMatch(partialReport.nextSafeAction.label, /production-plan repair brief/i);
+  assert.equal(partialReport.nextSafeAction.suggestedCommand, "");
+});
+
+test("package run next action authority prioritizes script review needs revision before production repair", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-script-review-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-script-review");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Script Review" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "research-pack.md"), "# Research Pack\n\n- Status: PASS\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "research-sufficiency-review.md"), "# Research Sufficiency Review\n\n- Research sufficiency status: PASS\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "script-structure.md"),
+    "# Script Structure\n\n- Script structure status: READY TO DRAFT\n- Ready to draft: yes\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "script-review.md"),
+    "# Script Review\n\n- Script review status: NEEDS REVISION\n- Production planning ready: no\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: NEEDS SCRIPT APPROVAL\n", "utf8");
+
+  const report = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.match(report.nextSafeAction.label, /script review and script revision repair brief/i);
+  assert.doesNotMatch(report.nextSafeAction.label, /production-plan repair brief/i);
+  assert.equal(report.nextSafeAction.mode, "draft-only");
+  assert.equal(report.nextSafeAction.suggestedCommand, "");
+});
+
 test("package run next action authority json cli is stable and parseable", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-json-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-authority-json");
@@ -10197,6 +10291,18 @@ test("package run next action authority read-only commands use explicit allowlis
   );
   assert.equal(
     packageRunNextActionAuthorityScript.isConfirmedReadOnlyCommand("node scripts/package-run-production-plan.js package-runs/run-a"),
+    false
+  );
+  assert.equal(
+    packageRunNextActionAuthorityScript.isConfirmedReadOnlyCommand("node scripts/package-run-research-evidence.js package-runs/run-a"),
+    false
+  );
+  assert.equal(
+    packageRunNextActionAuthorityScript.isConfirmedReadOnlyCommand("node scripts/package-run-script-structure.js package-runs/run-a"),
+    false
+  );
+  assert.equal(
+    packageRunNextActionAuthorityScript.isConfirmedReadOnlyCommand("node scripts/package-run-script-review.js package-runs/run-a"),
     false
   );
 });

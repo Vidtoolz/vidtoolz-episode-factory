@@ -112,10 +112,58 @@ function hasCaptureProofGap(run = {}) {
   return run.status === "Needs capture" || Boolean(gate.hasAnyCaptureArtifacts && !gate.hasConcreteCaptureEvidence);
 }
 
+function normalizeGateStatus(value = "") {
+  return String(value || "").trim().toUpperCase();
+}
+
+function isResearchGateBlocking(run = {}, doctor = {}) {
+  const gate = run.lifecycleGate || {};
+  const researchStatus = normalizeGateStatus(gate.researchGateStatus);
+  const researchReviewStatus = normalizeGateStatus(gate.researchSufficiencyReviewStatus);
+  const doctorReason = String(doctor.firstBlockerReason || "").trim();
+  const blockingStatuses = new Set(["MISSING", "NEEDS EVIDENCE", "READY FOR RESEARCH REVIEW", "PARTIAL"]);
+  if (blockingStatuses.has(researchStatus) || blockingStatuses.has(researchReviewStatus)) return true;
+  return /research evidence|research sufficiency|research gate/i.test(doctorReason);
+}
+
+function isScriptStructureBlocking(run = {}, doctor = {}) {
+  const gate = run.lifecycleGate || {};
+  const files = run.files || {};
+  const structureStatus = normalizeGateStatus(gate.scriptStructureStatus);
+  const doctorReason = String(doctor.firstBlockerReason || "").trim();
+  if (structureStatus === "MISSING" || structureStatus === "PARTIAL") return true;
+  if (files.research_pack && !files.script_structure) return true;
+  if (!gate.readyToDraft && /script structure/i.test(doctorReason)) return true;
+  return false;
+}
+
+function isScriptReviewBlocking(run = {}, doctor = {}) {
+  const gate = run.lifecycleGate || {};
+  const reviewStatus = normalizeGateStatus(gate.scriptReviewStatus);
+  const doctorReason = String(doctor.firstBlockerReason || "").trim();
+  if (reviewStatus === "NEEDS REVISION") return true;
+  return /script review status is NEEDS REVISION/i.test(doctorReason);
+}
+
+function upstreamBlockerLabel(run = {}, doctor = {}) {
+  if (isResearchGateBlocking(run, doctor)) {
+    return "Prepare a research evidence and research sufficiency repair brief before script structure, script review, or production-plan repair.";
+  }
+  if (isScriptStructureBlocking(run, doctor)) {
+    return "Prepare a script-structure repair brief after the research gate is addressed and before production-plan repair.";
+  }
+  if (isScriptReviewBlocking(run, doctor)) {
+    return "Prepare a script review and script revision repair brief before production-plan repair.";
+  }
+  return "";
+}
+
 function authorityLabel(run = {}, doctor = {}) {
   const qaStatus = packageRunsIndex.normalizeCreatorQaStatus(run.creatorQaStatus || "not run");
   if (packageRunsIndex.isCreatorQaBlocking(qaStatus)) return `Prepare a Creator QA repair brief for status ${qaStatus}.`;
   if (run.packageRunState && run.packageRunState.isInactive) return `Keep package run ${run.packageRunState.state}; inspect manually before reactivation.`;
+  const upstreamLabel = upstreamBlockerLabel(run, doctor);
+  if (upstreamLabel) return upstreamLabel;
   if (run.lifecycleGate && run.lifecycleGate.effectiveReadiness && run.lifecycleGate.effectiveReadiness.nextSafeAction) {
     if (run.lifecycleGate.productionPlanningBlocked) {
       return "Prepare a production-plan repair brief for Mikko review before capture evidence intake.";

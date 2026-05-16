@@ -5,14 +5,13 @@
 - Input script: final-script.md
 - Script review status: NEEDS REVISION
 - Production planning ready: no
-- Research gate status: MISSING
-- Script structure status: MISSING
+- Research gate status: PARTIAL
+- Script structure status: PARTIAL
 - External APIs called: no
 
 ## Input Warnings
 
-- Missing research-pack.md.
-- Missing script-structure.md.
+- None.
 
 ## Package Promise Alignment
 
@@ -31,12 +30,12 @@
 
 ## Structure and Flow
 
-- Script structure status: MISSING
+- Script structure status: PARTIAL
 - The script should follow the approved structure or clearly explain any deviation.
 
 ## Proof Strength
 
-- Research gate status: MISSING
+- Research gate status: PARTIAL
 - The proof must be visible, traceable, and tied to the package promise.
 
 ## Unsupported Claims
@@ -75,7 +74,7 @@
 ## Review Verdict
 
 - Status: NEEDS REVISION
-- Reason: Research gate is MISSING; production planning cannot be approved. Script structure is MISSING; draft readiness is not approved.
+- Reason: Research gate is PARTIAL; production planning cannot be approved. Script structure is PARTIAL; draft readiness is not approved.
 - Required before production planning:
-- Research gate is MISSING; production planning cannot be approved.
-- Script structure is MISSING; draft readiness is not approved.
+- Research gate is PARTIAL; production planning cannot be approved.
+- Script structure is PARTIAL; draft readiness is not approved.
