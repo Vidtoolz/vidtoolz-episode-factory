@@ -30,9 +30,9 @@
 
 - Original transcript visual proof remains unavailable.
 - Several evidence attempts are indexed as failed, wrong-content, or non-original captures.
-- The proof-plan checklist demo is still review-needed.
-- The before/after package revision is still review-needed.
-- The title and thumbnail fit check is still review-needed.
+- The proof-plan checklist demo is documented in `proof-plan-checklist-demo.md` for review; it is not approved.
+- The before/after package revision is documented in `before-after-package-revision.md` for review; it is not approved.
+- The title and thumbnail fit check is documented in `title-thumbnail-fit-check.md` for review; it is not approved.
 
 ## Forbidden Claims
 
@@ -54,19 +54,19 @@
 
 ## Proof-Plan Checklist Demo Status
 
-- Status: review-needed.
+- Status: documented for review in `proof-plan-checklist-demo.md`.
 - The planned demo can be framed as a local checklist or table showing how to test an AI-assisted video idea before scripting or shooting.
 - No approval is granted by this inspection.
 
 ## Before/After Package Revision Status
 
-- Status: review-needed.
+- Status: documented for review in `before-after-package-revision.md`.
 - Existing planning files describe a before/after package revision, but this inspection does not confirm a finished captured demo.
 - The prepared weak example must remain labeled as prepared or stress-test material, not captured ChatGPT output.
 
 ## Title And Thumbnail Fit Status
 
-- Status: review-needed.
+- Status: documented for review in `title-thumbnail-fit-check.md`.
 - Working title: `Stop Planning AI Videos Until You Have a Proof Plan`.
 - Working thumbnail text: `WHERE'S THE PROOF?`.
 - Existing thumbnail planning artifacts can be inspected as planning material only. Final title and final thumbnail remain blocked.
@@ -75,10 +75,10 @@
 
 - Mikko has not approved the research sufficiency gate.
 - Original transcript visual proof is unavailable.
-- Local proof items are still planned or review-needed rather than fully captured and accepted.
-- The proof-plan checklist demo still needs inspection or capture.
-- The before/after package revision still needs inspection or capture.
-- Title and thumbnail fit still needs inspection before any final packaging decision.
+- Local proof items are now documented for review rather than fully captured and accepted.
+- The proof-plan checklist demo still needs Mikko review or capture approval before it can support research PASS.
+- The before/after package revision still needs Mikko review or capture approval before it can support research PASS.
+- Title and thumbnail fit still needs Mikko review before any final packaging decision.
 - The objection that actual ChatGPT output was practical, not a weak generic listicle, must remain in scope.
 - External sources must remain scoped as general support only.
 
