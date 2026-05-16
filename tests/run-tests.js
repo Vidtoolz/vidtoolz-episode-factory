@@ -9145,13 +9145,13 @@ test("production approval review packet reports current May 6 active run blocked
   assert.equal(packet.runId, "2026-05-06-ai-video-proof-plan");
   assert.equal(packet.readOnly, true);
   assert.equal(packet.externalApisCalled, false);
-  assert.equal(packet.captureIntakeSuggested, true);
+  assert.equal(packet.captureIntakeSuggested, false);
   assert.match(
     packet.exactNextSafeAction,
-    /Add real capture evidence rows (or run the capture evidence review after manual intake|with concrete media references, then rerun this review)/
+    /Review the capture evidence manually and add an exact capture approval marker if accepted/
   );
-  assert.match(text, /Capture evidence status: NEEDS CAPTURE/);
-  assert.equal(packet.currentProductionStatus.captureEvidenceStatus, "NEEDS CAPTURE");
+  assert.match(text, /Capture evidence status: READY FOR HUMAN APPROVAL/);
+  assert.equal(packet.currentProductionStatus.captureEvidenceStatus, "READY FOR HUMAN APPROVAL");
 });
 
 test("production approval review packet includes KEEP BLOCKED for explicit not-approved evidence", () => {

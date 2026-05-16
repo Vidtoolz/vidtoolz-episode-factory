@@ -25,37 +25,37 @@
 
 | item | source | priority | status |
 | --- | --- | --- | --- |
-| shot | shot-list.md | high | TODO |
-| Talking-head intro framing the problem: AI-assisted video ideas can look ready before there is proof. | shot-list.md | medium | TODO |
-| Over-shoulder or screen view of the proof-plan checklist with viewer promise, proof/demo moment, evidence source, production path, and packaging fit. | shot-list.md | medium | TODO |
-| Controlled/reproduced ChatGPT capture shown with an on-screen label. | shot-list.md | medium | TODO |
-| Prepared weak example card: `10 AI Tools Every Creator Should Try in 2026`. | shot-list.md | medium | TODO |
-| Before/after package revision view comparing weak package framing against the proof-plan repaired version. | shot-list.md | medium | TODO |
-| Title/thumbnail fit check showing `Stop Planning AI Videos Until You Have a Proof Plan` and `WHERE'S THE PROOF?`. | shot-list.md | medium | TODO |
-| Final viewer takeaway: run the proof-plan check before scripting or shooting an AI-assisted idea. | shot-list.md | medium | TODO |
+| shot | shot-list.md | high | captured / review-needed; not approved |
+| Talking-head intro framing the problem: AI-assisted video ideas can look ready before there is proof. | shot-list.md; `aroll/aroll-01-intro-problem.MOV` | medium | captured / review-needed; not approved |
+| Over-shoulder or screen view of the proof-plan checklist with viewer promise, proof/demo moment, evidence source, production path, and packaging fit. | shot-list.md; `2026-05-16 19-59-50.mp4` | medium | captured / review-needed; not approved |
+| Controlled/reproduced ChatGPT capture shown with an on-screen label. | shot-list.md; `2026-05-16 19-57-58.mp4` | medium | captured / review-needed; not approved |
+| Prepared weak example card: `10 AI Tools Every Creator Should Try in 2026`. | shot-list.md; `2026-05-16 20-01-55.mp4` | medium | captured / review-needed; not approved |
+| Before/after package revision view comparing weak package framing against the proof-plan repaired version. | shot-list.md; `2026-05-16 20-04-16.mp4` | medium | captured / review-needed; not approved |
+| Title/thumbnail fit check showing `Stop Planning AI Videos Until You Have a Proof Plan` and `WHERE'S THE PROOF?`. | shot-list.md; `2026-05-16 20-05-37.mp4` | medium | captured / review-needed; not approved |
+| Final viewer takeaway: run the proof-plan check before scripting or shooting an AI-assisted idea. | shot-list.md; `aroll/aroll-04-final-takeaway.MOV` | medium | captured / review-needed; not approved |
 
 ## Required Screen Captures
 
 | item | source | priority | status |
 | --- | --- | --- | --- |
-| capture | screen-capture-list.md | high | TODO |
-| Local view of `capture-transcript.md` showing the pasted ChatGPT prompt and response text. | screen-capture-list.md | medium | TODO |
-| Controlled/reproduced ChatGPT capture with visible label. | screen-capture-list.md | medium | TODO |
-| Proof-plan checklist table with the five criteria visible. | screen-capture-list.md | medium | TODO |
-| Prepared weak example card and decision table. | screen-capture-list.md | medium | TODO |
-| Before/after package revision comparison. | screen-capture-list.md | medium | TODO |
-| Title/thumbnail fit check screen. | screen-capture-list.md | medium | TODO |
+| capture | screen-capture-list.md | high | captured / review-needed; not approved |
+| Local view of `capture-transcript.md` showing the pasted ChatGPT prompt and response text. | screen-capture-list.md; `2026-05-16 19-55-01.mp4` | medium | captured / review-needed; not approved |
+| Controlled/reproduced ChatGPT capture with visible label. | screen-capture-list.md; `2026-05-16 19-57-58.mp4` | medium | captured / review-needed; not approved |
+| Proof-plan checklist table with the five criteria visible. | screen-capture-list.md; `2026-05-16 19-59-50.mp4` | medium | captured / review-needed; not approved |
+| Prepared weak example card and decision table. | screen-capture-list.md; `2026-05-16 20-01-55.mp4` | medium | captured / review-needed; not approved |
+| Before/after package revision comparison. | screen-capture-list.md; `2026-05-16 20-04-16.mp4` | medium | captured / review-needed; not approved |
+| Title/thumbnail fit check screen. | screen-capture-list.md; `2026-05-16 20-05-37.mp4` | medium | captured / review-needed; not approved |
 
 ## Required Demos
 
 | item | source | priority | status |
 | --- | --- | --- | --- |
-| demo | demo-list.md | high | TODO |
-| Proof-plan checklist walkthrough. | demo-list.md | medium | TODO |
-| Controlled/reproduced ChatGPT output inspection. | demo-list.md | medium | TODO |
-| Prepared weak example stress test. | demo-list.md | medium | TODO |
-| Before/after package revision. | demo-list.md | medium | TODO |
-| Title/thumbnail fit check. | demo-list.md | medium | TODO |
+| demo | demo-list.md | high | captured / review-needed; not approved |
+| Proof-plan checklist walkthrough. | demo-list.md; `2026-05-16 19-59-50.mp4` | medium | captured / review-needed; not approved |
+| Controlled/reproduced ChatGPT output inspection. | demo-list.md; `2026-05-16 19-57-58.mp4` | medium | captured / review-needed; not approved |
+| Prepared weak example stress test. | demo-list.md; `2026-05-16 20-01-55.mp4` | medium | captured / review-needed; not approved |
+| Before/after package revision. | demo-list.md; `2026-05-16 20-04-16.mp4` | medium | captured / review-needed; not approved |
+| Title/thumbnail fit check. | demo-list.md; `2026-05-16 20-05-37.mp4` | medium | captured / review-needed; not approved |
 
 ## Audio Capture
 
@@ -65,12 +65,12 @@
 
 ## Capture Blockers
 
-- capture execution artifacts are missing.
-- audio capture checklist lacks an exact capture readiness approval marker.
+- Real active-run media paths are logged; capture review remains required.
+- Exact capture-stage approval marker is intentionally absent.
 
 ## Rough-Cut Assembly Gate
 
 - Status: NEEDS CAPTURE
-- Reason: capture execution artifacts are missing. audio capture checklist lacks an exact capture readiness approval marker.
+- Reason: real active-run media is logged for review, but capture approval is not granted.
 - Next actions:
-- Complete real capture work, update capture artifacts, and add an exact capture approval marker only after review.
+- Rerun capture evidence review and request Mikko approval only if the review reaches READY FOR HUMAN APPROVAL.

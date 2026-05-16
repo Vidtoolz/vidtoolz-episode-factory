@@ -2,13 +2,13 @@
 
 | missing shot/content | why it matters | required fix | status |
 | --- | --- | --- | --- |
-| Required screen captures | Hermes inspection confirmed screen-01 through screen-06 present as active-run-specific OBS root timestamp files. | Logged exact paths in `screen-recording-checklist.md`; keep capture approval blocked pending review. | captured / review-needed; not missing; not approved |
-| Required A-roll / talking-head takes | Hermes inspection confirmed aroll-01 through aroll-04 present in the active capture session `aroll/` folder. | Logged exact paths in `takes-log.md`; keep capture approval blocked pending review. | captured / review-needed; not missing; not approved |
-| Required voice/audio evidence | Hermes inspection confirmed `voice-01-active-episode-voiceover.MOV` present in the active capture session `audio/` folder. | Logged exact path in `audio-capture-checklist.md`; keep final voiceover acceptance blocked pending review. | captured / review-needed; not missing; not approved |
-| Room tone / silence sample | Hermes inspection confirmed `roomtone-01.MOV` present in the active capture session `roomtone/` folder. | Logged exact path in `audio-capture-checklist.md`; keep capture approval blocked pending review. | captured / review-needed; not missing; not approved |
-| Mic setup check | Hermes inspection confirmed `mic-check-01.MOV` present in the active capture session `mic-check/` folder. | Logged exact path in `audio-capture-checklist.md`; keep capture approval blocked pending review. | captured / review-needed; not missing; not approved |
-| Capture evidence review | Real media paths are now logged, but `capture-evidence-review.md` is intentionally not created in this task. | Run the capture evidence review only after Mikko is ready for that gate. | open |
-| Capture approval / rough-cut readiness | Capture approval is not granted and ready for rough cut remains no. | Manual capture evidence review and approval decision are still required. | blocked |
+| Required screen captures | Hermes inspection confirmed screen-01 through screen-06 present as active-run-specific OBS root timestamp files. | Logged exact paths in `screen-recording-checklist.md`; keep capture approval pending review. | captured / review-needed; not missing; not approved |
+| Required A-roll / talking-head takes | Hermes inspection confirmed aroll-01 through aroll-04 present in the active capture session `aroll/` folder. | Logged exact paths in `takes-log.md`; keep capture approval pending review. | captured / review-needed; not missing; not approved |
+| Required voice/audio evidence | Hermes inspection confirmed `voice-01-active-episode-voiceover.MOV` present in the active capture session `audio/` folder. | Logged exact path in `audio-capture-checklist.md`; keep final voiceover acceptance pending review. | captured / review-needed; not missing; not approved |
+| Room tone / silence sample | Hermes inspection confirmed `roomtone-01.MOV` present in the active capture session `roomtone/` folder. | Logged exact path in `audio-capture-checklist.md`; keep capture approval pending review. | captured / review-needed; not missing; not approved |
+| Mic setup check | Hermes inspection confirmed `mic-check-01.MOV` present in the active capture session `mic-check/` folder. | Logged exact path in `audio-capture-checklist.md`; keep capture approval pending review. | captured / review-needed; not missing; not approved |
+| Capture evidence review | Real media paths are logged and `capture-evidence-review.md` exists. | Rerun the capture evidence review after this tracker repair; keep capture acceptance for Mikko review. | review-needed; not approved |
+| Capture approval / rough-cut readiness | Capture approval is not granted and ready for rough cut remains no. | Manual capture evidence review and approval decision are still required before rough-cut work. | review-needed; not approved; rough-cut readiness: no |
 
 ## Files Not Accepted As Required Captures
 
