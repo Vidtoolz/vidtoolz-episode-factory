@@ -1,12 +1,18 @@
 # Screen Capture List
 
-| capture | proof purpose | source/app | status |
+- Run: 2026-05-06-ai-video-proof-plan
+- Status: draft screen-capture planning for review
+- Capture approval: not granted
+
+| capture | proof purpose | source/app | planning status |
 | --- | --- | --- | --- |
-| Run: 2026-05-06-ai-video-proof-plan | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
-| Stop Planning AI Videos Until You Have a Proof Plan | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
-| What will this video prove on screen? | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
-| A topic can sound good. A title can sound clickable. An outline can look finished. But none of that means the video has proof. | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
-| For the capture transcript, I tested a prompt that asks ChatGPT for video ideas for solo creators using AI tools. | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
-| The reproduced ChatGPT capture can demonstrate the proof-plan workflow, but it is not original transcript evidence. The original ChatGPT UI output from `capture-transcript.md` is unavailable as visual proof, so any script, narration, or graphic using capture 6 must label it as reproduced or controlled evidence. | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
-| By the end of this video, you will have a simple proof-plan check you can use before scripting or shooting an AI-assisted video idea. | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
-| A proof plan is the visible example, demo, comparison, or result that proves the video promise. | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
+| Local view of `capture-transcript.md` showing the pasted ChatGPT prompt and response text. | Documents the text evidence available to the run. | Local markdown file or editor view. | draft planned |
+| Controlled/reproduced ChatGPT capture with visible label. | Demonstrates the proof-plan workflow against AI output. | Reproduced ChatGPT session or indexed reproduced screenshot. | draft planned |
+| Proof-plan checklist table with the five criteria visible. | Gives viewers a concrete method they can inspect. | Local note, spreadsheet, or simple table graphic. | draft planned |
+| Prepared weak example card and decision table. | Shows how the stress-test material is evaluated. | Local card/table, not ChatGPT output. | draft planned |
+| Before/after package revision comparison. | Shows how the proof-plan changes the package. | Local planning files or side-by-side graphic. | draft planned |
+| Title/thumbnail fit check screen. | Shows packaging checked against proof before final lock. | `title-thumbnail-fit-check.md` and thumbnail planning notes. | draft planned |
+
+## Evidence Boundary
+
+Reproduced capture is not original transcript UI proof. ChatGPT did not generate the weak example. Title and thumbnail are not final. This list does not approve capture.

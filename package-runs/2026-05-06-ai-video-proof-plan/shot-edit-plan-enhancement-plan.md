@@ -2,8 +2,4 @@
 
 | priority | artifact | issue | suggested repair | reason |
 | --- | --- | --- | --- | --- |
-| high | shot-list.md | shot-list.md is placeholder-only or too thin. | Replace placeholder/TODO rows with concrete shots, captures, demos, visual assets, audio notes, or blocker decisions. | File existence is not readiness. |
-| high | screen-capture-list.md | screen-capture-list.md is placeholder-only or too thin. | Replace placeholder/TODO rows with concrete shots, captures, demos, visual assets, audio notes, or blocker decisions. | File existence is not readiness. |
-| high | demo-list.md | demo-list.md is placeholder-only or too thin. | Replace placeholder/TODO rows with concrete shots, captures, demos, visual assets, audio notes, or blocker decisions. | File existence is not readiness. |
-| high | b-roll-list.md | b-roll-list.md is placeholder-only or too thin. | Replace placeholder/TODO rows with concrete shots, captures, demos, visual assets, audio notes, or blocker decisions. | File existence is not readiness. |
-| high | graphics-list.md | graphics-list.md is placeholder-only or too thin. | Replace placeholder/TODO rows with concrete shots, captures, demos, visual assets, audio notes, or blocker decisions. | File existence is not readiness. |
+| medium | planning artifacts | No exact approval marker. | After human review, add one exact marker: Manual approval: PASS, Production planning approval: PASS, or Shot/edit plan approval: PASS. | The script can detect readiness but cannot self-approve Stage 4. |

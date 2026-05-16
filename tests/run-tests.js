@@ -9110,7 +9110,7 @@ test("production approval review packet reports current May 6 active run blocked
   assert.equal(packet.readOnly, true);
   assert.equal(packet.externalApisCalled, false);
   assert.equal(packet.captureIntakeSuggested, false);
-  assert.match(packet.exactNextSafeAction, /Edit the planning artifacts manually, then run this review again/);
+  assert.match(packet.exactNextSafeAction, /Mikko reviews the concrete shot\/edit plan and adds an exact approval marker only if the scope is accepted/);
   assert.doesNotMatch(packet.exactNextSafeAction, /Add real capture evidence rows/i);
   assert.doesNotMatch(text, /package-run-capture-evidence-review/);
 });
