@@ -7834,24 +7834,35 @@ test("unknown package run state is ignored conservatively as active", () => {
   assert.equal(run.overallStatus, "BLOCKED");
 });
 
-test("current May 2 active package run remains blocked at production planning without a state marker", () => {
+test("current live package-run state selects May 6 and parks older May 2 runs", () => {
   const repoRoot = path.resolve(__dirname, "..");
-  const runDir = path.join(repoRoot, "package-runs", "2026-05-02-ai-video-idea-filter");
-  if (!fs.existsSync(runDir)) return;
+  const runsDir = path.join(repoRoot, "package-runs");
+  const activeDir = path.join(runsDir, "2026-05-06-ai-video-proof-plan");
+  const parkedNextDir = path.join(runsDir, "2026-05-02-next-vidtoolz-video");
+  const parkedIdeaFilterDir = path.join(runsDir, "2026-05-02-ai-video-idea-filter");
+  if (![activeDir, parkedNextDir, parkedIdeaFilterDir].every((runDir) => fs.existsSync(runDir))) return;
 
-  const run = packageRunsIndexScript.scanRun(runDir, repoRoot);
+  const activeRun = packageRunsIndexScript.scanRun(activeDir, repoRoot);
+  const parkedNextRun = packageRunsIndexScript.scanRun(parkedNextDir, repoRoot);
+  const parkedIdeaFilterRun = packageRunsIndexScript.scanRun(parkedIdeaFilterDir, repoRoot);
+  const activeAudit = packageRunActiveStateAuditScript.buildActiveStateAudit({ repoRoot });
 
-  assert.equal(fs.existsSync(path.join(runDir, "package-run-state.md")), false);
-  assert.equal(run.packageRunState.explicit, false);
-  assert.equal(run.inactive, false);
-  assert.equal(run.status, "Needs production planning");
-  assert.equal(run.workflowBucket, "Needs production planning");
-  assert.equal(run.lifecycleGate.rawProductionPlanStatus, "NOT READY TO SHOOT");
-  assert.equal(run.lifecycleGate.productionPlanStatus, "NOT READY TO SHOOT");
-  assert.equal(run.lifecycleGate.productionPlanningBlocked, true);
-  assert.equal(run.lifecycleGate.productionApprovalBlocked, true);
-  assert.equal(run.lifecycleGate.captureEvidenceReviewStatus, "BLOCKED");
-  assert.equal(run.lifecycleGate.effectiveCaptureApproved, false);
+  assert.equal(activeRun.path, "package-runs/2026-05-06-ai-video-proof-plan");
+  assert.equal(activeRun.packageRunState.explicit, false);
+  assert.equal(activeRun.inactive, false);
+  assert.equal(activeAudit.ok, true);
+  assert.equal(activeAudit.selectedActiveRun, "package-runs/2026-05-06-ai-video-proof-plan");
+  assert.deepEqual(activeAudit.candidateActiveRuns.map((run) => run.path), ["package-runs/2026-05-06-ai-video-proof-plan"]);
+
+  assert.equal(parkedNextRun.packageRunState.state, "parked");
+  assert.equal(parkedNextRun.inactive, true);
+  assert.equal(parkedNextRun.status, "Inactive: parked");
+  assert.equal(parkedNextRun.workflowBucket, "Inactive: parked");
+
+  assert.equal(parkedIdeaFilterRun.packageRunState.state, "parked");
+  assert.equal(parkedIdeaFilterRun.inactive, true);
+  assert.equal(parkedIdeaFilterRun.status, "Inactive: parked");
+  assert.equal(parkedIdeaFilterRun.workflowBucket, "Inactive: parked");
 });
 
 test("active state audit degrades read-only when package-runs-index is missing", () => {
@@ -8006,17 +8017,21 @@ test("active state audit does not mutate package-run fixture files", () => {
   assert.deepEqual(after, before);
 });
 
-test("package run state proposal reports current multi-active ambiguity read-only", () => {
+test("package run state proposal reports current single-active state read-only", () => {
   const repoRoot = path.resolve(__dirname, "..");
   const packet = packageRunStateProposalScript.buildStateProposal({ repoRoot });
 
   assert.equal(packet.name, "package_run_state_proposal");
+  assert.equal(packet.ok, true);
+  assert.equal(packet.ambiguity, false);
+  assert.equal(packet.selectedActiveRun, "package-runs/2026-05-06-ai-video-proof-plan");
   assert.equal(packet.safety.readOnly, true);
   assert.equal(packet.safety.packageRunFilesWritten, false);
   assert.equal(packet.safety.packageRunsIndexUpdated, false);
   assert.equal(packet.safety.gitActionsPerformed, false);
-  assert.equal(packet.proposals.length >= 1, true);
-  assert.equal(packet.proposals.some((item) => item.path === "package-runs/2026-05-02-ai-video-idea-filter"), true);
+  assert.equal(packet.proposals.length, 1);
+  assert.equal(packet.proposals[0].path, "package-runs/2026-05-06-ai-video-proof-plan");
+  assert.equal(packet.proposals[0].proposedState, "keep-active");
   assert.equal(packet.proposals.some((item) => item.blockedActions.includes("capture intake")), true);
   assert.equal(packet.proposals.some((item) => /approve-production|ready-to-shoot|publish|archive/.test(item.proposedState)), false);
   assert.equal(
@@ -9083,21 +9098,19 @@ test("production approval repair reporter json cli is parseable", () => {
   assert.equal(payload.currentEffectiveProductionStatus, "NOT READY TO SHOOT");
 });
 
-test("production approval review packet reports current May 2 run blocked without capture intake", () => {
+test("production approval review packet reports current May 6 active run blocked without capture intake", () => {
   const repoRoot = path.resolve(__dirname, "..");
-  const runDir = path.join(repoRoot, "package-runs", "2026-05-02-ai-video-idea-filter");
+  const runDir = path.join(repoRoot, "package-runs", "2026-05-06-ai-video-proof-plan");
   if (!fs.existsSync(runDir)) return;
 
   const packet = packageProductionApprovalReviewScript.buildReviewPacket(path.relative(repoRoot, runDir), { repoRoot });
   const text = packageProductionApprovalReviewScript.renderText(packet);
 
+  assert.equal(packet.runId, "2026-05-06-ai-video-proof-plan");
   assert.equal(packet.readOnly, true);
   assert.equal(packet.externalApisCalled, false);
-  assert.equal(packet.currentProductionStatus.effectiveProductionStatus, "NOT READY TO SHOOT");
-  assert.equal(packet.currentProductionStatus.productionApprovalBlocked, true);
-  assert.equal(packet.currentProductionStatus.productionBlockersOpen, true);
   assert.equal(packet.captureIntakeSuggested, false);
-  assert.match(packet.exactNextSafeAction, /Repair production-plan\.md and resolve open production-blockers\.md/);
+  assert.match(packet.exactNextSafeAction, /Repair production-plan\.md and request Mikko production approval/);
   assert.doesNotMatch(packet.exactNextSafeAction, /Add real capture evidence rows/i);
   assert.doesNotMatch(text, /package-run-capture-evidence-review/);
 });
