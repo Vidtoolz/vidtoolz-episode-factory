@@ -186,8 +186,18 @@ function isShotEditPlanReviewApprovalRequired(run = {}) {
   );
 }
 
+function isShotEditPlanReviewNeedsWork(run = {}, doctor = {}) {
+  const gate = run.lifecycleGate || {};
+  const doctorReason = String(doctor.firstBlockerReason || "").trim();
+  return (
+    run.status === "Needs shot/edit plan approval" &&
+    normalizeGateStatus(gate.shotEditPlanReviewStatus) === "NEEDS WORK" &&
+    !gate.shotEditPlanAccepted
+  ) || /shot\/edit plan review status is NEEDS WORK/i.test(doctorReason);
+}
+
 function isShotEditPlanReviewRoutingLabel(label = "") {
-  return /shot\/edit plan review/i.test(String(label || ""));
+  return /shot\/edit (?:plan review|planning repair)/i.test(String(label || ""));
 }
 
 function hasProductionPlanningRepairBrief(run = {}, repoRoot = process.cwd()) {
@@ -226,6 +236,9 @@ function authorityLabel(run = {}, doctor = {}, repoRoot = process.cwd()) {
   }
   if (isProductionPlanningBlocking(run, doctor)) {
     return "Prepare a production-planning repair brief now that research and script review gates pass.";
+  }
+  if (isShotEditPlanReviewNeedsWork(run, doctor)) {
+    return "Prepare a shot/edit planning repair brief for the thin shot-list before capture evidence intake.";
   }
   if (isShotEditPlanReviewApprovalRequired(run)) {
     return "Review shot/edit plan review and decide whether to accept Stage 4 before capture evidence intake.";

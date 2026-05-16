@@ -9110,7 +9110,7 @@ test("production approval review packet reports current May 6 active run blocked
   assert.equal(packet.readOnly, true);
   assert.equal(packet.externalApisCalled, false);
   assert.equal(packet.captureIntakeSuggested, false);
-  assert.match(packet.exactNextSafeAction, /request Mikko production approval before capture evidence intake/);
+  assert.match(packet.exactNextSafeAction, /Edit the planning artifacts manually, then run this review again/);
   assert.doesNotMatch(packet.exactNextSafeAction, /Add real capture evidence rows/i);
   assert.doesNotMatch(text, /package-run-capture-evidence-review/);
 });
@@ -10412,6 +10412,92 @@ test("package run next action authority routes refreshed production plan to shot
   assert.equal(report.blockedActions.includes("media move"), true);
   assert.equal(report.blockedActions.includes("commit"), true);
   assert.equal(report.blockedActions.includes("push"), true);
+});
+
+test("package run next action authority routes shot edit needs work to planning repair", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-shot-edit-needs-work-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-shot-edit-needs-work");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Shot Edit Needs Work" } }), "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    "# Research Sufficiency Review\n\n- Research sufficiency status: PASS\n- Research approval marker: PASS\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "script-structure.md"),
+    "# Script Structure\n\n- Script structure status: READY TO DRAFT\n- Research gate status: PASS\n- Ready to draft: yes\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "script-review.md"),
+    "# Script Review\n\n- Script review status: PASS\n- Production planning ready: yes\n- Research gate status: PASS\n- Script structure status: READY TO DRAFT\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "production-blockers.md"),
+    "# Production Blockers\n\n| blocker | why | fix | status |\n| --- | --- | --- | --- |\n| None. | Required gates are currently satisfied. | Keep review evidence with the run. | closed |\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "shot-list.md"), "# Shot List\n\nTODO\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "shot-edit-plan-review.md"),
+    "# Shot/Edit Plan Review\n\n- Review status: NEEDS WORK\n- Stage accepted: no\n\n## Open Blockers\n\n- shot-list.md is placeholder-only or too thin.\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "shot-edit-plan-enhancement-plan.md"), "# Shot/Edit Plan Enhancement Plan\n", "utf8");
+
+  const report = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(report.currentStage, "Needs shot/edit plan approval");
+  assert.equal(report.nextSafeAction.actor, "codex");
+  assert.equal(report.nextSafeAction.mode, "draft-only");
+  assert.equal(
+    report.nextSafeAction.label,
+    "Prepare a shot/edit planning repair brief for the thin shot-list before capture evidence intake."
+  );
+  assert.match(report.nextSafeAction.label, /thin shot-list/);
+  assert.equal(report.nextSafeAction.suggestedCommand, "");
+  assert.equal(report.nextSafeAction.writesDurableState, false);
+  assert.equal(report.nextSafeAction.humanApprovalRequired, false);
+  assert.doesNotMatch(report.nextSafeAction.label, /Needs inspection before production routing/);
+  assert.equal(report.blockedActions.includes("production approval"), true);
+  assert.equal(report.blockedActions.includes("mark ready-to-shoot"), true);
+  assert.equal(report.blockedActions.includes("capture approval"), true);
+  assert.equal(report.blockedActions.includes("final title lock"), true);
+  assert.equal(report.blockedActions.includes("final thumbnail lock"), true);
+  assert.equal(report.blockedActions.includes("shooting"), true);
+  assert.equal(report.blockedActions.includes("editing"), true);
+  assert.equal(report.blockedActions.includes("publishing"), true);
+});
+
+test("package run next action authority requires accepted shot edit stage before capture routing", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-shot-edit-before-capture-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-shot-edit-before-capture");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Shot Edit Before Capture" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "production-blockers.md"),
+    "# Production Blockers\n\n| blocker | why | fix | status |\n| --- | --- | --- | --- |\n| None. | Required gates are currently satisfied. | Keep review evidence with the run. | closed |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "shot-edit-plan-review.md"),
+    "# Shot/Edit Plan Review\n\n- Review status: NEEDS WORK\n- Stage accepted: no\n\n## Open Blockers\n\n- shot-list.md is placeholder-only or too thin.\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "capture-checklist.md"), "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n", "utf8");
+
+  const report = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(report.currentStage, "Needs shot/edit plan approval");
+  assert.equal(report.nextSafeAction.label, "Prepare a shot/edit planning repair brief for the thin shot-list before capture evidence intake.");
+  assert.doesNotMatch(report.nextSafeAction.label, /capture evidence repair|capture proof|rough-cut/i);
+  assert.equal(report.sourceSignals.captureEvidence.captureEvidenceAccepted, false);
 });
 
 test("package run next action authority routes shot edit human review to Mikko", () => {
