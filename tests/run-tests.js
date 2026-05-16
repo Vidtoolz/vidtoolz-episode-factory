@@ -9110,7 +9110,7 @@ test("production approval review packet reports current May 6 active run blocked
   assert.equal(packet.readOnly, true);
   assert.equal(packet.externalApisCalled, false);
   assert.equal(packet.captureIntakeSuggested, false);
-  assert.match(packet.exactNextSafeAction, /Repair production-plan\.md and request Mikko production approval/);
+  assert.match(packet.exactNextSafeAction, /Repair production-plan\.md and resolve open production-blockers\.md/);
   assert.doesNotMatch(packet.exactNextSafeAction, /Add real capture evidence rows/i);
   assert.doesNotMatch(text, /package-run-capture-evidence-review/);
 });
