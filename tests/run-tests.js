@@ -9098,7 +9098,7 @@ test("production approval repair reporter json cli is parseable", () => {
   assert.equal(payload.currentEffectiveProductionStatus, "NOT READY TO SHOOT");
 });
 
-test("production approval review packet reports current May 6 active run blocked without capture intake", () => {
+test("production approval review packet reports current May 6 active run ready for capture evidence review", () => {
   const repoRoot = path.resolve(__dirname, "..");
   const runDir = path.join(repoRoot, "package-runs", "2026-05-06-ai-video-proof-plan");
   if (!fs.existsSync(runDir)) return;
@@ -9109,10 +9109,10 @@ test("production approval review packet reports current May 6 active run blocked
   assert.equal(packet.runId, "2026-05-06-ai-video-proof-plan");
   assert.equal(packet.readOnly, true);
   assert.equal(packet.externalApisCalled, false);
-  assert.equal(packet.captureIntakeSuggested, false);
-  assert.match(packet.exactNextSafeAction, /Repair production-plan\.md and request Mikko production approval before capture evidence intake/);
-  assert.doesNotMatch(packet.exactNextSafeAction, /Add real capture evidence rows/i);
-  assert.doesNotMatch(text, /package-run-capture-evidence-review/);
+  assert.equal(packet.captureIntakeSuggested, true);
+  assert.match(packet.exactNextSafeAction, /Add real capture evidence rows or run the capture evidence review after manual intake/);
+  assert.match(text, /capture evidence review/i);
+  assert.equal(packet.currentProductionStatus.captureEvidenceStatus, "NEEDS CAPTURE");
 });
 
 test("production approval review packet includes KEEP BLOCKED for explicit not-approved evidence", () => {
