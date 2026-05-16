@@ -4,14 +4,14 @@
 - Tool: package-run-shot-edit-plan-review.js
 - External APIs called: no
 - Stage: script-to-shot-edit-plan
-- Review status: READY FOR HUMAN APPROVAL
-- Stage accepted: no
+- Review status: PASS
+- Stage accepted: yes
 - Script review status: PASS
 - Production planning ready: yes
 - Research gate status: PASS
 - Script structure status: READY TO DRAFT
 - Production plan status: present
-- Manual approval marker detected: no
+- Manual approval marker detected: yes
 
 ## Evidence Files Inspected
 
@@ -62,7 +62,7 @@
 
 ## Open Blockers
 
-- No exact Stage 4 manual approval marker was detected.
+- None detected by this local review.
 
 ## Enhancement Summary
 
@@ -70,7 +70,7 @@
 
 ## Next Safe Action
 
-- Mikko reviews the concrete shot/edit plan and adds an exact approval marker only if the scope is accepted.
+- Proceed only with the explicitly approved shooting/edit-planning scope.
 
 ## Blocked Actions
 

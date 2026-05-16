@@ -96,6 +96,7 @@ function actionMode(run = {}, action = {}) {
   if (action.actor === "mikko" || action.humanApprovalRequired) return "approval-required";
   if (run.packageRunState && run.packageRunState.isInactive) return "blocked";
   if (/\bbrief\b/i.test(action.label || "")) return "draft-only";
+  if (/capture checklist artifacts/i.test(action.label || "")) return "draft-only";
   if (DURABLE_LABEL_PATTERN.test(action.label || "")) return action.writesDurableState ? "approval-required" : "draft-only";
   if (!action.suggestedCommand) return "read-only";
   if (isConfirmedReadOnlyCommand(action.suggestedCommand)) return "read-only";
@@ -196,6 +197,18 @@ function isShotEditPlanReviewNeedsWork(run = {}, doctor = {}) {
   ) || /shot\/edit plan review status is NEEDS WORK/i.test(doctorReason);
 }
 
+function isCaptureChecklistDraftNeeded(run = {}, doctor = {}) {
+  const gate = run.lifecycleGate || {};
+  const doctorReason = String(doctor.firstBlockerReason || "").trim();
+  return (
+    run.status === "Ready for capture checklist" &&
+    normalizeGateStatus(gate.shotEditPlanReviewStatus) === "PASS" &&
+    gate.shotEditPlanAccepted &&
+    !gate.hasAllCaptureArtifacts &&
+    /capture-checklist\.md/i.test(doctorReason)
+  );
+}
+
 function isShotEditPlanReviewRoutingLabel(label = "") {
   return /shot\/edit (?:plan review|planning repair)/i.test(String(label || ""));
 }
@@ -245,6 +258,9 @@ function authorityLabel(run = {}, doctor = {}, repoRoot = process.cwd()) {
   }
   if (isShotEditPlanReviewMissing(run, doctor)) {
     return "Prepare a shot/edit plan review brief before capture evidence intake.";
+  }
+  if (isCaptureChecklistDraftNeeded(run, doctor)) {
+    return "Prepare capture checklist artifacts after Stage 4 acceptance; do not approve capture.";
   }
   if (run.lifecycleGate && run.lifecycleGate.effectiveReadiness && run.lifecycleGate.effectiveReadiness.nextSafeAction) {
     if (run.lifecycleGate.productionPlanningBlocked) {

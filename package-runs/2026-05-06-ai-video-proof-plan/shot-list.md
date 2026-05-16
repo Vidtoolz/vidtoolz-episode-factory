@@ -5,6 +5,7 @@
 - Production approval: not granted
 - Capture approval: not granted
 - Title/thumbnail lock: not granted
+- Shot/edit plan approval: PASS
 
 ## Evidence Boundary
 

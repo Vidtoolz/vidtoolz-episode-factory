@@ -9110,7 +9110,7 @@ test("production approval review packet reports current May 6 active run blocked
   assert.equal(packet.readOnly, true);
   assert.equal(packet.externalApisCalled, false);
   assert.equal(packet.captureIntakeSuggested, false);
-  assert.match(packet.exactNextSafeAction, /Mikko reviews the concrete shot\/edit plan and adds an exact approval marker only if the scope is accepted/);
+  assert.match(packet.exactNextSafeAction, /Repair production-plan\.md and request Mikko production approval before capture evidence intake/);
   assert.doesNotMatch(packet.exactNextSafeAction, /Add real capture evidence rows/i);
   assert.doesNotMatch(text, /package-run-capture-evidence-review/);
 });
@@ -10471,6 +10471,68 @@ test("package run next action authority routes shot edit needs work to planning 
   assert.equal(report.blockedActions.includes("shooting"), true);
   assert.equal(report.blockedActions.includes("editing"), true);
   assert.equal(report.blockedActions.includes("publishing"), true);
+});
+
+test("package run next action authority routes accepted Stage 4 with missing capture checklist to draft preparation", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-authority-capture-checklist-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-capture-checklist");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Capture Checklist" } }), "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "research-sufficiency-review.md"),
+    "# Research Sufficiency Review\n\n- Research sufficiency status: PASS\n- Research approval marker: PASS\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "script-structure.md"),
+    "# Script Structure\n\n- Script structure status: READY TO DRAFT\n- Research gate status: PASS\n- Ready to draft: yes\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "script-review.md"),
+    "# Script Review\n\n- Script review status: PASS\n- Production planning ready: yes\n- Research gate status: PASS\n- Script structure status: READY TO DRAFT\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "production-blockers.md"),
+    "# Production Blockers\n\n| blocker | why | fix | status |\n| --- | --- | --- | --- |\n| None. | Required gates are currently satisfied. | Keep review evidence with the run. | closed |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "shot-edit-plan-review.md"),
+    "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n\n## Open Blockers\n\n- None.\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "shot-edit-plan-enhancement-plan.md"), "# Shot/Edit Plan Enhancement Plan\n", "utf8");
+
+  const report = packageRunNextActionAuthorityScript.buildAuthorityReport(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(report.currentStage, "Ready for capture checklist");
+  assert.equal(report.sourceSignals.doctor.firstBlockerReason, "Missing expected artifact: capture-checklist.md.");
+  assert.equal(report.nextSafeAction.actor, "codex");
+  assert.equal(report.nextSafeAction.mode, "draft-only");
+  assert.equal(
+    report.nextSafeAction.label,
+    "Prepare capture checklist artifacts after Stage 4 acceptance; do not approve capture."
+  );
+  assert.equal(report.nextSafeAction.suggestedCommand, "");
+  assert.doesNotMatch(report.nextSafeAction.suggestedCommand, /package-run-capture-checklist\.js/);
+  assert.equal(report.nextSafeAction.writesDurableState, false);
+  assert.equal(report.nextSafeAction.humanApprovalRequired, false);
+  assert.equal(report.effectiveReadiness.captureApproved, false);
+  assert.equal(report.effectiveReadiness.readyForRoughCut, false);
+  assert.equal(report.effectiveReadiness.publishReady, false);
+  assert.equal(report.blockedActions.includes("capture approval"), true);
+  assert.equal(report.blockedActions.includes("shooting"), true);
+  assert.equal(report.blockedActions.includes("editing"), true);
+  assert.equal(report.blockedActions.includes("publishing"), true);
+  assert.equal(report.blockedActions.includes("final title lock"), true);
+  assert.equal(report.blockedActions.includes("final thumbnail lock"), true);
+  assert.equal(report.blockedActions.includes("media move"), true);
+  assert.equal(report.blockedActions.includes("commit"), true);
+  assert.equal(report.blockedActions.includes("push"), true);
 });
 
 test("package run next action authority requires accepted shot edit stage before capture routing", () => {
