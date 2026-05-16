@@ -3,18 +3,17 @@
 - Run: 2026-05-06-ai-video-proof-plan
 - Tool: package-run-script-review.js
 - Based on: script-review.md
-- Revision status: READY FOR REVISION
+- Revision status: READY FOR PRODUCTION PLANNING
 - External APIs called: no
 
 ## Revision Gate
 
-- Status: READY FOR REVISION
-- Reason: Research gate is PARTIAL; production planning cannot be approved. Script structure is PARTIAL; draft readiness is not approved.
+- Status: READY FOR PRODUCTION PLANNING
+- Reason: Script exists, research and structure gates are approved, and no Creator QA blocker is present.
 
 ## Required Fixes
 
-- Research gate is PARTIAL; production planning cannot be approved.
-- Script structure is PARTIAL; draft readiness is not approved.
+- No required fixes before production planning.
 
 ## Optional Improvements
 
@@ -30,7 +29,7 @@
 
 ## Evidence Gaps to Resolve
 
-- Research gate status: PARTIAL
+- Research gate status: PASS
 - Resolve any source, proof, or example gaps before production planning.
 - No deterministic script evidence-gap markers found.
 

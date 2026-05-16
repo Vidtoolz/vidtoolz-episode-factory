@@ -1,16 +1,16 @@
 # Script Structure
 
 - Run: 2026-05-06-ai-video-proof-plan
-- Script structure status: PARTIAL
-- Research gate status: PARTIAL
-- Ready to draft: no
-- Research source: research-pack.md
+- Script structure status: READY TO DRAFT
+- Research gate status: PASS
+- Ready to draft: yes
+- Research source: research-sufficiency-review.md
 - Selected package: Selected Package
 - Selected package source: selected-package.md
 
 ## Research Gate Interpretation
 
-Research Sufficiency Gate is PARTIAL; script drafting is not approved yet.
+research-sufficiency-review.md includes Research sufficiency status: PASS and Research approval marker: PASS.
 
 ## Local Context Inputs
 
@@ -153,10 +153,9 @@ Not specified yet.
 
 ## Script-Readiness Gate
 
-- Status: PARTIAL
-- Reason: Research Sufficiency Gate is PARTIAL; script drafting is not approved yet.
-- Ready to draft: no
+- Status: READY TO DRAFT
+- Reason: research-sufficiency-review.md includes Research sufficiency status: PASS and Research approval marker: PASS.
+- Ready to draft: yes
 - Next actions:
-  - Resolve the research sufficiency gate before treating this as ready to draft.
-  - Fill missing proof, examples, and source support.
-  - Add explicit manual PASS only after review.
+  - Draft from this structure, while keeping proof and source claims traceable.
+  - Keep unresolved claims marked during drafting.

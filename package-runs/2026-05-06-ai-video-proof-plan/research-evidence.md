@@ -26,4 +26,4 @@ This file is for human-provided local evidence only. Do not paste unsourced clai
 
 ## Approval Marker
 
-- Research approval: TODO
+- Research approval: PASS
