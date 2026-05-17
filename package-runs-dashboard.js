@@ -875,6 +875,16 @@ Capture evidence approval: PASS`;
   function renderRoughCutResultCard(status = {}) {
     const result = status.roughCutResult || {};
     const candidate = status.roughCutCandidate || {};
+    const warning = status.staleDerivedArtifactWarning || {};
+    const staleWarning = result.derivedArtifactStale || warning.stale
+      ? `<div class="stale-derived-warning">
+        <strong>Derived rough-cut review artifact may be stale</strong>
+        <p>${escapeHtml(warning.currentWatchNotes || `Current watch notes say ${result.currentWatchNotesMarker || result.approvalMarker || "NOT GIVEN"}`)}</p>
+        <p>${escapeHtml(result.staleReason || warning.reason || "Regenerate derived rough-cut review artifacts from current watch notes.")}</p>
+        <small>Writes only <code>rough-cut-review.md</code>, <code>pickup-list.md</code>, and <code>edit-fix-list.md</code>. It will not edit <code>rough-cut-watch-notes.md</code>, approve rough cut, mark second-cut ready, or update package-runs-index.json.</small>
+        <button type="button" data-regenerate-rough-cut-derived>Regenerate rough-cut review artifacts</button>
+      </div>`
+      : "";
     return `<section class="rough-cut-result-card">
       <div class="mikko-console-header">
         <div>
@@ -892,6 +902,7 @@ Capture evidence approval: PASS`;
         <div><span>Pickup-list status</span><strong>${escapeHtml(result.pickupListStatus || "missing")}</strong></div>
         <div><span>Edit-fix-list status</span><strong>${escapeHtml(result.editFixListStatus || "missing")}</strong></div>
       </div>
+      ${staleWarning}
     </section>`;
   }
 
@@ -1289,6 +1300,12 @@ Capture evidence approval: PASS`;
         runRoughCutReview(runRoughCut);
         return;
       }
+      const regenerateRoughCut = event.target.closest("[data-regenerate-rough-cut-derived]");
+      if (regenerateRoughCut) {
+        event.preventDefault();
+        regenerateRoughCutDerived(regenerateRoughCut);
+        return;
+      }
       const openRoughCut = event.target.closest("[data-open-rough-cut]");
       if (openRoughCut) {
         event.preventDefault();
@@ -1513,6 +1530,7 @@ Capture evidence approval: PASS`;
       return {
         saveApi: config.saveApi || "/api/package-runs/rough-cut/watch-notes",
         reviewApi: config.reviewApi || "/api/package-runs/rough-cut/review",
+        regenerateDerivedApi: config.regenerateDerivedApi || "/api/package-runs/rough-cut/regenerate-derived",
         openApi: config.openApi || "/api/package-runs/rough-cut/open",
         pickupPlanSaveApi: config.pickupPlanSaveApi || "/api/package-runs/pickup-plan/save",
         nonceHeader: config.nonceHeader || "x-vidtoolz-local-write-nonce",
@@ -1567,6 +1585,25 @@ Capture evidence approval: PASS`;
       })
         .then((payload) => {
           setRoughCutStatus(container, `Review complete: ${payload.review.roughCutReviewStatus || "unknown"}.`, "valid");
+          const result = container.querySelector("[data-rough-cut-result]");
+          if (result) result.innerHTML = renderRoughCutResult(payload);
+        })
+        .catch((error) => setRoughCutStatus(container, error.message, "missing"))
+        .finally(() => {
+          button.disabled = false;
+        });
+    }
+
+    function regenerateRoughCutDerived(button) {
+      const container = button.closest("[data-rough-cut-console]");
+      if (!container) return;
+      button.disabled = true;
+      setRoughCutStatus(container, "Regenerating derived rough-cut review artifacts only.", "pending");
+      roughCutRequest((config) => config.regenerateDerivedApi, {
+        runId: container.dataset.runId || "",
+      })
+        .then((payload) => {
+          setRoughCutStatus(container, payload.warning || "Derived rough-cut artifacts regenerated.", "valid");
           const result = container.querySelector("[data-rough-cut-result]");
           if (result) result.innerHTML = renderRoughCutResult(payload);
         })

@@ -1180,6 +1180,27 @@ label > span,
   padding: 10px;
 }
 
+.stale-derived-warning {
+  margin-top: 4px;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #d97706;
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #7c2d12;
+}
+
+.stale-derived-warning p,
+.stale-derived-warning small {
+  margin: 0;
+}
+
+.stale-derived-warning button {
+  justify-self: start;
+}
+
 .active-run-summary,
 .gate-timeline,
 .rough-cut-result-card,

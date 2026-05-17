@@ -11189,6 +11189,116 @@ test("rough cut review stdout parser reports result fields", () => {
   assert.equal(parsed.editFixListStatus, "overwritten");
 });
 
+function createStaleRoughCutFixture() {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "rough-cut-stale-derived-"));
+  const runId = "2026-05-17-stale-derived";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  const indexPath = path.join(tempRoot, "package-runs-index.json");
+  const statePath = path.join(runDir, "package-run-state.md");
+  fs.mkdirSync(path.join(runDir, "media"), { recursive: true });
+  fs.writeFileSync(indexPath, JSON.stringify({ generatedAt: "before" }), "utf8");
+  fs.writeFileSync(statePath, "# Package Run State\n\nPackage run state: active\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "selected-package.md"), "# Selected Package\n\nViewer promise: prove package gates.\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "research-pack.md"), "# Research Pack\n\n- Status: PASS\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "research-sufficiency-review.md"), "# Research Sufficiency Review\n\n- Review status: PASS\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "script-structure.md"), "# Script Structure\n\n- Script structure status: READY TO DRAFT\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "script-review.md"), "# Script Review\n\n- Script review status: PASS\n- Production planning ready: yes\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "production-blockers.md"), "# Production Blockers\n\n| blocker | why | fix | status |\n| --- | --- | --- | --- |\n| None. | Clear. | None. | closed |\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "shot-edit-plan-review.md"), "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "capture-checklist.md"), "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "capture-evidence-review.md"), "# Capture Evidence Review\n\n- Review status: PASS\n- Capture evidence accepted: yes\n- Manual approval marker detected: yes\n- Ready for rough-cut work: yes\n- Real capture evidence detected: yes\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "media", "rough-cut-v1.mp4"), "fake", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "rough-cut-watch-notes.md"),
+    "# Rough-Cut Watch Notes\n\n- Reviewed file: media/rough-cut-v1.mp4\n\n## Rough-Cut Version Reviewed\n\nmedia/rough-cut-v1.mp4\n\n## Watch Date\n\n2026-05-17\n\n## Reviewer\n\nMikko\n\n## First 30 Seconds Notes\n\nHook needs a presenter pickup.\n\n## Clarity Notes\n\nMessage is clear but needs human presence.\n\n## Pacing Notes\n\nIntro pacing is slow.\n\n## Proof / Evidence Notes\n\nEvidence is visible.\n\n## Missing Visuals\n\nPresenter closeup after intro.\n\n## Audio Problems\n\nNone.\n\n## Graphics Problems\n\nNone.\n\n## Confusing Sections\n\nNone.\n\n## Sections to Cut / Tighten\n\nTrim intro pause.\n\n## Pickups Needed\n\nAdd presenter closeup after intro.\n\n## Edit Fixes Needed\n\nTrim intro pause.\n\n## Second-Cut Recommendation\n\nNeeds pickups before second cut.\n\n## Manual Rough-Cut Approval Marker\n\nRough-cut approval: NEEDS PICKUPS\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "rough-cut-review.md"),
+    "# Rough-Cut Review\n\n- Rough-cut notes source: created starter template\n- Rough-cut review status: BLOCKED\n- Second-cut ready: no\n\n## Second-Cut Readiness Gate\n\n- Status: BLOCKED\n- Reason: rough-cut-watch-notes.md was missing; starter template created.\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "pickup-list.md"), "# Pickup List\n\n| pickup shot/content | reason | priority | source/location | status |\n| --- | --- | --- | --- | --- |\n| Not assessed. | Real rough-cut watch notes are missing or still a starter template. | high | rough-cut-watch-notes.md | blocked |\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "edit-fix-list.md"), "# Edit Fix List\n\n| section/timecode | problem | fix | priority | status |\n| --- | --- | --- | --- | --- |\n| Not assessed. | Real rough-cut watch notes are missing or still a starter template. | Add real watch notes before edit fixes can be assessed. | high | blocked |\n", "utf8");
+  return {
+    tempRoot,
+    runId,
+    runDir,
+    indexPath,
+    statePath,
+    watchNotesPath: path.join(runDir, "rough-cut-watch-notes.md"),
+  };
+}
+
+test("rough cut status detects stale derived review artifact from newer NEEDS PICKUPS notes", () => {
+  const fixture = createStaleRoughCutFixture();
+
+  const parsed = packageEngineServer.parseRoughCutReviewFile(fixture.runDir);
+  const status = packageEngineServer.buildRoughCutStatus({ runId: fixture.runId }, { root: fixture.tempRoot });
+
+  assert.equal(parsed.derivedArtifactStale, true);
+  assert.equal(parsed.currentWatchNotesMarker, "NEEDS PICKUPS");
+  assert.match(parsed.staleReason, /Current watch notes say NEEDS PICKUPS/);
+  assert.equal(status.roughCutResult.derivedArtifactStale, true);
+  assert.deepEqual(status.staleDerivedArtifacts, ["rough-cut-review.md"]);
+  assert.equal(status.roughCutResult.secondCutReady, false);
+});
+
+test("dashboard renders stale rough-cut derived artifact warning and regenerate action", () => {
+  const html = packageRunsDashboard.renderMikkoInputConsole({
+    runId: "2026-05-17-stale-derived",
+    currentInferredStage: "Needs rough-cut review",
+    overallStatus: "BLOCKED",
+    firstBlockerReason: "Rough-cut review status is stale.",
+    roughCutCandidate: { path: "media/rough-cut-v1.mp4", source: "rough-cut-watch-notes.md" },
+    roughCutResult: {
+      roughCutReviewStatus: "BLOCKED",
+      secondCutReady: false,
+      reason: "rough-cut-watch-notes.md was missing; starter template created.",
+      reviewedFilePath: "media/rough-cut-v1.mp4",
+      approvalMarker: "NEEDS PICKUPS",
+      currentWatchNotesMarker: "NEEDS PICKUPS",
+      derivedArtifactStale: true,
+      staleReason: "Current watch notes say NEEDS PICKUPS but rough-cut-review.md still reports an old starter-template BLOCKED result.",
+    },
+  });
+
+  assert.match(html, /Derived rough-cut review artifact may be stale/);
+  assert.match(html, /Current watch notes say NEEDS PICKUPS/);
+  assert.match(html, /Regenerate rough-cut review artifacts/);
+  assert.match(html, /data-regenerate-rough-cut-derived/);
+});
+
+test("rough cut derived regeneration writes only derived artifacts and preserves source notes index and state", () => {
+  const fixture = createStaleRoughCutFixture();
+  const beforeNotes = fs.readFileSync(fixture.watchNotesPath, "utf8");
+  const beforeIndex = fs.readFileSync(fixture.indexPath, "utf8");
+  const beforeState = fs.readFileSync(fixture.statePath, "utf8");
+
+  const result = packageEngineServer.regenerateRoughCutDerivedArtifacts({ runId: fixture.runId }, { root: fixture.tempRoot });
+
+  assert.deepEqual(result.written.sort(), ["edit-fix-list.md", "pickup-list.md", "rough-cut-review.md"]);
+  assert.equal(fs.readFileSync(fixture.watchNotesPath, "utf8"), beforeNotes);
+  assert.equal(fs.readFileSync(fixture.indexPath, "utf8"), beforeIndex);
+  assert.equal(fs.readFileSync(fixture.statePath, "utf8"), beforeState);
+  assert.match(fs.readFileSync(path.join(fixture.runDir, "rough-cut-review.md"), "utf8"), /Rough-cut review status: NEEDS PICKUPS/);
+  assert.match(fs.readFileSync(path.join(fixture.runDir, "pickup-list.md"), "utf8"), /Add presenter closeup after intro/);
+  assert.match(fs.readFileSync(path.join(fixture.runDir, "edit-fix-list.md"), "utf8"), /Trim intro pause/);
+});
+
+test("rough cut derived regeneration stays blocked for pickups without inferring PASS or second-cut ready", () => {
+  const fixture = createStaleRoughCutFixture();
+
+  const result = packageEngineServer.regenerateRoughCutDerivedArtifacts({ runId: fixture.runId }, { root: fixture.tempRoot });
+  const review = fs.readFileSync(path.join(fixture.runDir, "rough-cut-review.md"), "utf8");
+
+  assert.equal(result.review.roughCutReviewStatus, "NEEDS PICKUPS");
+  assert.equal(result.review.secondCutReady, false);
+  assert.equal(result.approvedForSecondCut, false);
+  assert.doesNotMatch(review, /Rough-cut review status: PASS|Second-cut ready: yes|Rough-cut approval: PASS/);
+});
+
 function pickupPlanItems(overrides = {}) {
   return [{
     title: "Add presenter closeup after intro",

@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const childProcess = require('child_process');
 
 const packageRunDoctor = require('./scripts/package-run-doctor.js');
+const roughCutReviewScript = require('./scripts/package-run-rough-cut-review.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
@@ -19,6 +20,7 @@ const CAPTURE_EVIDENCE_APPLY_API = '/api/package-runs/capture-evidence/apply';
 const ROUGH_CUT_STATUS_API = '/api/package-runs/rough-cut/status';
 const ROUGH_CUT_SAVE_API = '/api/package-runs/rough-cut/watch-notes';
 const ROUGH_CUT_REVIEW_API = '/api/package-runs/rough-cut/review';
+const ROUGH_CUT_REGENERATE_DERIVED_API = '/api/package-runs/rough-cut/regenerate-derived';
 const ROUGH_CUT_OPEN_API = '/api/package-runs/rough-cut/open';
 const PICKUP_PLAN_SAVE_API = '/api/package-runs/pickup-plan/save';
 const SERVE_ROOT = ROOT;
@@ -36,6 +38,7 @@ const CAPTURE_EVIDENCE_TARGETS = [
 ];
 const CAPTURE_EVIDENCE_AUDIT_FILE = 'capture-evidence-intake-log.md';
 const ROUGH_CUT_WATCH_NOTES_FILE = 'rough-cut-watch-notes.md';
+const ROUGH_CUT_DERIVED_FILES = ['rough-cut-review.md', 'pickup-list.md', 'edit-fix-list.md'];
 const ROUGH_CUT_APPROVAL_VALUES = ['NOT GIVEN', 'NEEDS PICKUPS', 'NEEDS EDIT FIXES', 'PASS'];
 const PICKUP_ITEM_TYPES = ['presenter closeup', 'AI B-roll', 'screen zoom', 'graphic', 'edit-only fix', 'other'];
 const PICKUP_REQUIRED_VALUES = ['yes', 'no'];
@@ -496,14 +499,45 @@ function parseRoughCutReviewFile(runDir) {
   const watchNotes = fs.existsSync(path.join(runDir, ROUGH_CUT_WATCH_NOTES_FILE))
     ? fs.readFileSync(path.join(runDir, ROUGH_CUT_WATCH_NOTES_FILE), 'utf8')
     : '';
+  let currentReview = { verdict: { status: '', secondCutReady: false, reason: '' }, context: { pickups: [], editFixes: [] } };
+  try {
+    currentReview = roughCutReviewScript.buildOutputs(runDir);
+  } catch (_error) {
+    currentReview = { verdict: { status: '', secondCutReady: false, reason: '' }, context: { pickups: [], editFixes: [] } };
+  }
+  const roughCutReviewStatus = lineValue(text, 'Rough-cut review status') || 'NOT STARTED';
+  const currentWatchNotesMarker = lineValue(watchNotes, 'Rough-cut approval') || lineValue(watchNotes, 'Manual approval') || 'NOT GIVEN';
+  const reviewClaimsStarterTemplate =
+    /Rough-cut notes source:\s*created starter template/i.test(text) ||
+    /starter template created|watch-notes\.md was missing/i.test(text);
+  const currentHasHumanWatchNotes = Boolean(watchNotes) && !roughCutReviewScript.isStarterWatchNotes(watchNotes);
+  const derivedArtifactStale =
+    Boolean(text) &&
+    currentHasHumanWatchNotes &&
+    (
+      reviewClaimsStarterTemplate ||
+      (currentReview.verdict.status && currentReview.verdict.status !== roughCutReviewStatus) ||
+      (currentReview.verdict.secondCutReady !== /^yes$/i.test(lineValue(text, 'Second-cut ready')))
+    );
+  const staleReason = derivedArtifactStale
+    ? `Current watch notes say ${currentWatchNotesMarker}; regenerated rough-cut review would report ${currentReview.verdict.status || 'unknown'}, while rough-cut-review.md reports ${roughCutReviewStatus}.`
+    : '';
   return {
-    roughCutReviewStatus: lineValue(text, 'Rough-cut review status') || 'NOT STARTED',
+    roughCutReviewStatus,
     secondCutReady: /^yes$/i.test(lineValue(text, 'Second-cut ready')),
     reason: lineValue(text, 'Reason') || lineValue(text, 'Status') || '',
     reviewedFilePath: extractReviewedFilePath(watchNotes),
-    approvalMarker: lineValue(watchNotes, 'Rough-cut approval') || lineValue(watchNotes, 'Manual approval') || 'NOT GIVEN',
+    approvalMarker: currentWatchNotesMarker,
+    currentWatchNotesMarker,
     pickupListStatus: fs.existsSync(pickupPath) ? summarizeListStatus(fs.readFileSync(pickupPath, 'utf8')) : 'missing',
     editFixListStatus: fs.existsSync(fixPath) ? summarizeListStatus(fs.readFileSync(fixPath, 'utf8')) : 'missing',
+    currentDerivedStatus: currentReview.verdict.status || '',
+    currentDerivedSecondCutReady: Boolean(currentReview.verdict.secondCutReady),
+    currentPickupsDetected: Array.isArray(currentReview.context.pickups) ? currentReview.context.pickups.length : 0,
+    currentEditFixesDetected: Array.isArray(currentReview.context.editFixes) ? currentReview.context.editFixes.length : 0,
+    derivedArtifactStale,
+    staleReason,
+    regenerationRecommended: derivedArtifactStale,
     artifactPath: 'rough-cut-review.md',
   };
 }
@@ -732,6 +766,7 @@ function buildRoughCutStatus(payload = {}, options = {}) {
   const roughCutCandidate = detectRoughCutCandidate(resolved.runDir);
   const roughCutResult = parseRoughCutReviewFile(resolved.runDir);
   const indexStatus = dashboardIndexStatus(resolved);
+  const staleDerivedArtifacts = roughCutResult.derivedArtifactStale ? ['rough-cut-review.md'] : [];
   const exactNextSafeAction =
     doctor.nextSafeAction ||
     doctor.nextRecommendedCommand ||
@@ -752,6 +787,16 @@ function buildRoughCutStatus(payload = {}, options = {}) {
     missingExpectedArtifacts: doctor.missingExpectedArtifacts || [],
     roughCutCandidate,
     roughCutResult,
+    staleDerivedArtifacts,
+    staleDerivedArtifactWarning: roughCutResult.derivedArtifactStale ? {
+      stale: true,
+      title: 'Derived rough-cut review artifact may be stale',
+      currentWatchNotes: `Current watch notes say ${roughCutResult.currentWatchNotesMarker || roughCutResult.approvalMarker || 'NOT GIVEN'}`,
+      action: 'Regenerate rough-cut review artifacts',
+      reason: roughCutResult.staleReason,
+      writeScope: ROUGH_CUT_DERIVED_FILES,
+      boundary: 'Regeneration overwrites derived rough-cut artifacts only. It does not approve rough cut, mark second-cut ready, or edit rough-cut-watch-notes.md.',
+    } : { stale: false },
     gateTimeline: buildGateTimeline(doctor, roughCutResult),
     mediaRows: collectMediaRows(resolved, roughCutCandidate),
     dashboardIndex: indexStatus,
@@ -823,6 +868,49 @@ function runRoughCutReview(payload = {}, options = {}) {
     stderr,
     review: parseRoughCutReviewStdout(stdout),
     warning: 'Review script may write rough-cut-review.md, pickup-list.md, and edit-fix-list.md. It does not update package-runs-index.json.',
+  };
+}
+
+function regenerateRoughCutDerivedArtifacts(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const watchNotesPath = path.join(resolved.runDir, ROUGH_CUT_WATCH_NOTES_FILE);
+  const beforeWatchNotes = fs.existsSync(watchNotesPath) ? fs.readFileSync(watchNotesPath, 'utf8') : null;
+  const outputs = roughCutReviewScript.buildOutputs(resolved.runDir);
+  const filteredOutputs = {
+    ...outputs,
+    files: outputs.files.filter(([filename]) => ROUGH_CUT_DERIVED_FILES.includes(filename)),
+  };
+  const unexpected = filteredOutputs.files.find(([filename]) => !ROUGH_CUT_DERIVED_FILES.includes(filename));
+  if (unexpected) {
+    const error = new Error(`Unexpected rough-cut derived regeneration target: ${unexpected[0]}`);
+    error.statusCode = 500;
+    throw error;
+  }
+  const targetPaths = filteredOutputs.files.map(([filename]) => path.resolve(resolved.runDir, filename));
+  targetPaths.forEach((targetPath) => {
+    if (!targetPath.startsWith(resolved.runDir + path.sep)) {
+      const error = new Error('Resolved rough-cut derived artifact path is outside the approved write scope.');
+      error.statusCode = 400;
+      throw error;
+    }
+  });
+  const results = roughCutReviewScript.writeOutputs(resolved.runDir, filteredOutputs, true);
+  const afterWatchNotes = fs.existsSync(watchNotesPath) ? fs.readFileSync(watchNotesPath, 'utf8') : null;
+  if (beforeWatchNotes !== afterWatchNotes) {
+    const error = new Error('Safety stop: rough-cut-watch-notes.md changed during derived regeneration.');
+    error.statusCode = 500;
+    throw error;
+  }
+  const review = parseRoughCutReviewFile(resolved.runDir);
+  return {
+    ok: true,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    written: results.map(([filename]) => filename),
+    results: results.map(([filename, status]) => ({ filename, status })),
+    review,
+    approvedForSecondCut: false,
+    warning: 'Regenerated derived rough-cut review artifacts only. rough-cut-watch-notes.md, package-runs-index.json, and package-run-state.md were not updated. This is not approval.',
   };
 }
 
@@ -1108,6 +1196,7 @@ function createStatusResponse(env = process.env) {
       statusApi: ROUGH_CUT_STATUS_API,
       saveApi: ROUGH_CUT_SAVE_API,
       reviewApi: ROUGH_CUT_REVIEW_API,
+      regenerateDerivedApi: ROUGH_CUT_REGENERATE_DERIVED_API,
       openApi: ROUGH_CUT_OPEN_API,
       pickupPlanSaveApi: PICKUP_PLAN_SAVE_API,
       nonceHeader: LOCAL_WRITE_NONCE_HEADER,
@@ -1115,6 +1204,7 @@ function createStatusResponse(env = process.env) {
       allowedApprovalMarkers: ROUGH_CUT_APPROVAL_VALUES,
       allowedPickupStatuses: PICKUP_STATUSES,
       allowedWriteFiles: [ROUGH_CUT_WATCH_NOTES_FILE, 'pickup-list.md', 'edit-fix-list.md'],
+      derivedOnlyWriteFiles: ROUGH_CUT_DERIVED_FILES,
     },
   };
 }
@@ -1320,6 +1410,16 @@ function createServer() {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === ROUGH_CUT_REGENERATE_DERIVED_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, regenerateRoughCutDerivedArtifacts(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message, missing: error.missing || [] }));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === ROUGH_CUT_OPEN_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -1389,7 +1489,9 @@ module.exports = {
   PICKUP_SOURCES,
   PICKUP_STATUSES,
   ROUGH_CUT_APPROVAL_VALUES,
+  ROUGH_CUT_DERIVED_FILES,
   ROUGH_CUT_OPEN_API,
+  ROUGH_CUT_REGENERATE_DERIVED_API,
   ROUGH_CUT_REVIEW_API,
   ROUGH_CUT_SAVE_API,
   ROUGH_CUT_STATUS_API,
@@ -1427,6 +1529,7 @@ module.exports = {
   parseRoughCutReviewFile,
   parseRoughCutReviewStdout,
   providerConfig,
+  regenerateRoughCutDerivedArtifacts,
   roughCutInputDefaults,
   runRoughCutReview,
   safeJoin,
