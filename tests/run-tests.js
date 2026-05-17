@@ -12233,7 +12233,8 @@ test("production GPS integrates final candidate and final watch gate states", ()
 
   packageEngineServer.regenerateFinalReviewDerived({ runId: fixture.runId }, { root: fixture.tempRoot });
   gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot });
-  assert.equal(gps.summary.currentGate, "Export / Upload Readiness");
+  assert.equal(gps.summary.currentGate, "Export Master Preparation");
+  assert.match(gps.summary.nextSafeAction, /export\/register master file/i);
   assert.equal(gps.finalReviewConsole.publishReady, true);
   assert.equal(gps.blockedActions.includes("archive"), true);
   assert.equal(gps.blockedActions.includes("publish"), true);
@@ -12264,6 +12265,255 @@ test("dashboard renders Final Candidate / Final Watch Review safely", () => {
   assert.match(html, /data-save-final-watch-notes/);
   assert.match(html, /data-regenerate-final-review/);
   assert.match(html, /This is the human final approval marker/);
+  assert.match(html, /AI allowed/);
+  assert.match(html, /AI blocked/);
+  assert.match(html, /Blocked Actions/);
+});
+
+function createExportDeliveryFixture(overrides = {}) {
+  const fixture = createFinalReviewFixture(overrides);
+  const finalCandidatePath = path.join(fixture.tempRoot, "exports", "final-candidate.mp4");
+  fs.writeFileSync(finalCandidatePath, "fake final", "utf8");
+  packageEngineServer.applyFinalCandidateRegistration({ runId: fixture.runId, candidatePath: finalCandidatePath }, { root: fixture.tempRoot });
+  packageEngineServer.saveFinalWatchNotes({ runId: fixture.runId, fields: finalWatchFields({ candidatePath: finalCandidatePath, decisionMarker: "PASS" }) }, { root: fixture.tempRoot });
+  packageEngineServer.regenerateFinalReviewDerived({ runId: fixture.runId }, { root: fixture.tempRoot });
+  fs.writeFileSync(path.join(fixture.runDir, "publication-blockers.md"), "# Publication Blockers\n\n| blocker | why | fix | status |\n| --- | --- | --- | --- |\n| None. | Clear. | None. | closed |\n", "utf8");
+  return { ...fixture, finalCandidatePath };
+}
+
+function deliveryFields(overrides = {}) {
+  const pick = (key, fallback) => Object.prototype.hasOwnProperty.call(overrides, key) ? overrides[key] : fallback;
+  return {
+    masterFilePath: pick("masterFilePath", "/tmp/final-master.mp4"),
+    intendedPlatform: pick("intendedPlatform", "YouTube"),
+    exportPreset: pick("exportPreset", "YouTube 2160p H.264"),
+    containerCodecConfirmation: pick("containerCodecConfirmation", "MP4/H.264 confirmed."),
+    resolutionConfirmation: pick("resolutionConfirmation", "3840x2160 confirmed."),
+    frameRateConfirmation: pick("frameRateConfirmation", "30 fps confirmed."),
+    audioSettingsConfirmation: pick("audioSettingsConfirmation", "AAC 48 kHz stereo confirmed."),
+    loudnessStatus: pick("loudnessStatus", "-14 LUFS integrated, true peak below -1 dBTP."),
+    captionsStatus: pick("captionsStatus", "Captions reviewed and ready."),
+    qcNotes: pick("qcNotes", "Master export checked locally."),
+    decisionMarker: pick("decisionMarker", "NEEDS EXPORT CHECK"),
+  };
+}
+
+test("export master preview validates candidate and writes nothing", () => {
+  const fixture = createExportDeliveryFixture();
+  const masterFilePath = path.join(fixture.tempRoot, "exports", "final-master.mp4");
+  fs.writeFileSync(masterFilePath, "fake master", "utf8");
+  const beforeRunFiles = fs.readdirSync(fixture.runDir).sort();
+
+  const preview = packageEngineServer.buildExportMasterRegistration({ runId: fixture.runId, masterFilePath }, { root: fixture.tempRoot, mode: "preview" });
+
+  assert.equal(preview.ok, true);
+  assert.equal(preview.readOnly, true);
+  assert.equal(preview.externalApisCalled, false);
+  assert.equal(preview.masterFilePath, masterFilePath);
+  assert.equal(preview.masterFileExists, true);
+  assert.equal(preview.upstream.finalReviewStatus, "PASS");
+  assert.equal(preview.upstream.publishReady, true);
+  assert.equal(preview.readyToUpload, false);
+  assert.equal(preview.humanGateRequired, true);
+  assert.equal(preview.artifactFilename, "master-file-manifest.md");
+  assert.match(preview.artifactPreview, new RegExp(masterFilePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.deepEqual(fs.readdirSync(fixture.runDir).sort(), beforeRunFiles);
+});
+
+test("export master preview rejects invalid input", () => {
+  const fixture = createExportDeliveryFixture();
+  const masterFilePath = path.join(fixture.tempRoot, "exports", "final-master.mp4");
+  fs.writeFileSync(masterFilePath, "fake", "utf8");
+  const masterDir = path.join(fixture.tempRoot, "exports", "master-folder.mov");
+  fs.mkdirSync(masterDir, { recursive: true });
+  const badExtension = path.join(fixture.tempRoot, "exports", "master.txt");
+  fs.writeFileSync(badExtension, "fake", "utf8");
+
+  assert.throws(() => packageEngineServer.buildExportMasterRegistration({ masterFilePath }, { root: fixture.tempRoot }), /runId is required/);
+  assert.throws(() => packageEngineServer.buildExportMasterRegistration({ runId: "../escape", masterFilePath }, { root: fixture.tempRoot }), /Invalid package-run id/);
+  assert.throws(() => packageEngineServer.buildExportMasterRegistration({ runId: fixture.runId }, { root: fixture.tempRoot }), /export master path is required/i);
+  assert.throws(() => packageEngineServer.buildExportMasterRegistration({ runId: fixture.runId, masterFilePath: "relative.mp4" }, { root: fixture.tempRoot }), /absolute path/i);
+  assert.throws(() => packageEngineServer.buildExportMasterRegistration({ runId: fixture.runId, masterFilePath: path.join(fixture.tempRoot, "missing.mp4") }, { root: fixture.tempRoot }), /does not exist/i);
+  assert.throws(() => packageEngineServer.buildExportMasterRegistration({ runId: fixture.runId, masterFilePath: masterDir }, { root: fixture.tempRoot }), /must be a file/i);
+  assert.throws(() => packageEngineServer.buildExportMasterRegistration({ runId: fixture.runId, masterFilePath: badExtension }, { root: fixture.tempRoot }), /Unsupported export master extension/i);
+});
+
+test("export master apply writes only master manifest and preserves manual content", () => {
+  const fixture = createExportDeliveryFixture();
+  const masterFilePath = path.join(fixture.tempRoot, "exports", "final-master.mp4");
+  const secondMaster = path.join(fixture.tempRoot, "exports", "final-master-v2.mp4");
+  fs.writeFileSync(masterFilePath, "fake master", "utf8");
+  fs.writeFileSync(secondMaster, "fake master two", "utf8");
+  fs.writeFileSync(path.join(fixture.runDir, "master-file-manifest.md"), "# Master File Manifest\n\n## Manual Notes\n\nKeep manifest note.\n", "utf8");
+  const protectedFiles = [
+    fixture.indexPath,
+    fixture.statePath,
+    path.join(fixture.runDir, "final-watch-notes.md"),
+    path.join(fixture.runDir, "final-review.md"),
+    masterFilePath,
+  ];
+  const before = Object.fromEntries(protectedFiles.map((filePath) => [filePath, fs.readFileSync(filePath, "utf8")]));
+
+  const result = packageEngineServer.applyExportMasterRegistration({ runId: fixture.runId, masterFilePath }, { root: fixture.tempRoot });
+  packageEngineServer.applyExportMasterRegistration({ runId: fixture.runId, masterFilePath: secondMaster }, { root: fixture.tempRoot });
+  const manifest = fs.readFileSync(path.join(fixture.runDir, "master-file-manifest.md"), "utf8");
+
+  assert.deepEqual(result.written, ["master-file-manifest.md"]);
+  assert.match(manifest, /Keep manifest note/);
+  assert.match(manifest, new RegExp(secondMaster.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.doesNotMatch(manifest, /Ready to upload:\s*yes|Delivery approval:\s*PASS/i);
+  assert.equal(fs.existsSync(path.join(fixture.runDir, "delivery-readiness.md")), false);
+  assert.equal(fs.existsSync(path.join(fixture.runDir, "export-checklist.md")), false);
+  protectedFiles.forEach((filePath) => assert.equal(fs.readFileSync(filePath, "utf8"), before[filePath]));
+});
+
+test("export master apply blocks when final review is not approved", () => {
+  const fixture = createFinalReviewFixture();
+  const masterFilePath = path.join(fixture.tempRoot, "exports", "final-master.mp4");
+  fs.writeFileSync(masterFilePath, "fake master", "utf8");
+
+  const preview = packageEngineServer.buildExportMasterRegistration({ runId: fixture.runId, masterFilePath }, { root: fixture.tempRoot });
+
+  assert.equal(preview.upstream.publishReady, false);
+  assert.throws(() => packageEngineServer.applyExportMasterRegistration({ runId: fixture.runId, masterFilePath }, { root: fixture.tempRoot }), /Final review is not PASS/);
+  assert.equal(fs.existsSync(path.join(fixture.runDir, "master-file-manifest.md")), false);
+});
+
+test("delivery readiness save writes only delivery artifacts and requires explicit marker", () => {
+  const fixture = createExportDeliveryFixture();
+  const masterFilePath = path.join(fixture.tempRoot, "exports", "final-master.mp4");
+  fs.writeFileSync(masterFilePath, "fake master", "utf8");
+  packageEngineServer.applyExportMasterRegistration({ runId: fixture.runId, masterFilePath }, { root: fixture.tempRoot });
+  const protectedFiles = [
+    fixture.indexPath,
+    fixture.statePath,
+    path.join(fixture.runDir, "final-watch-notes.md"),
+    path.join(fixture.runDir, "final-review.md"),
+    path.join(fixture.runDir, "master-file-manifest.md"),
+    masterFilePath,
+  ];
+  const before = Object.fromEntries(protectedFiles.map((filePath) => [filePath, fs.readFileSync(filePath, "utf8")]));
+
+  const saved = packageEngineServer.saveDeliveryReadiness({
+    runId: fixture.runId,
+    fields: deliveryFields({ masterFilePath, decisionMarker: "PASS" }),
+  }, { root: fixture.tempRoot });
+
+  assert.deepEqual(saved.written.sort(), ["caption-check.md", "delivery-readiness.md", "loudness-check.md"]);
+  assert.match(fs.readFileSync(path.join(fixture.runDir, "delivery-readiness.md"), "utf8"), /Delivery approval: PASS/);
+  assert.equal(fs.existsSync(path.join(fixture.runDir, "export-checklist.md")), false);
+  protectedFiles.forEach((filePath) => assert.equal(fs.readFileSync(filePath, "utf8"), before[filePath]));
+  assert.throws(() => packageEngineServer.saveDeliveryReadiness({ runId: fixture.runId, fields: deliveryFields({ masterFilePath, decisionMarker: "APPROVED" }) }, { root: fixture.tempRoot }), /Invalid delivery readiness marker/);
+});
+
+test("export checklist derived generation requires final pass metadata and delivery approval", () => {
+  const cases = [
+    ["missing final review", () => createSecondCutInspectorFixture(), "BLOCKED", false],
+    ["final not pass", () => createFinalReviewFixture(), "BLOCKED", false],
+    ["master missing", () => createExportDeliveryFixture(), "NEEDS EXPORT CHECK", false],
+    ["checks missing", () => {
+      const fixture = createExportDeliveryFixture();
+      const masterFilePath = path.join(fixture.tempRoot, "exports", "final-master.mp4");
+      fs.writeFileSync(masterFilePath, "fake master", "utf8");
+      packageEngineServer.applyExportMasterRegistration({ runId: fixture.runId, masterFilePath }, { root: fixture.tempRoot });
+      return fixture;
+    }, "NEEDS EXPORT CHECK", false],
+    ["delivery no pass", () => {
+      const fixture = createExportDeliveryFixture();
+      const masterFilePath = path.join(fixture.tempRoot, "exports", "final-master.mp4");
+      fs.writeFileSync(masterFilePath, "fake master", "utf8");
+      packageEngineServer.applyExportMasterRegistration({ runId: fixture.runId, masterFilePath }, { root: fixture.tempRoot });
+      packageEngineServer.saveDeliveryReadiness({ runId: fixture.runId, fields: deliveryFields({ masterFilePath, decisionMarker: "NEEDS EXPORT CHECK" }) }, { root: fixture.tempRoot });
+      return fixture;
+    }, "NEEDS EXPORT CHECK", false],
+    ["delivery pass", () => {
+      const fixture = createExportDeliveryFixture();
+      const masterFilePath = path.join(fixture.tempRoot, "exports", "final-master.mp4");
+      fs.writeFileSync(masterFilePath, "fake master", "utf8");
+      packageEngineServer.applyExportMasterRegistration({ runId: fixture.runId, masterFilePath }, { root: fixture.tempRoot });
+      packageEngineServer.saveDeliveryReadiness({ runId: fixture.runId, fields: deliveryFields({ masterFilePath, decisionMarker: "PASS" }) }, { root: fixture.tempRoot });
+      return fixture;
+    }, "READY TO UPLOAD", true],
+  ];
+  cases.forEach(([label, makeFixture, expectedStatus, ready]) => {
+    const fixture = makeFixture();
+    const result = packageEngineServer.regenerateExportChecklistDerived({ runId: fixture.runId }, { root: fixture.tempRoot });
+    const checklist = fs.readFileSync(path.join(fixture.runDir, "export-checklist.md"), "utf8");
+
+    assert.deepEqual(result.written, ["export-checklist.md"], label);
+    assert.equal(result.review.status, expectedStatus, label);
+    assert.equal(result.review.readyToUpload, ready, label);
+    assert.match(checklist, new RegExp(`Ready to upload: ${ready ? "yes" : "no"}`));
+  });
+});
+
+test("export delivery console surfaces stale export checklist warnings", () => {
+  const fixture = createExportDeliveryFixture();
+  const masterFilePath = path.join(fixture.tempRoot, "exports", "final-master.mp4");
+  fs.writeFileSync(masterFilePath, "fake master", "utf8");
+  packageEngineServer.applyExportMasterRegistration({ runId: fixture.runId, masterFilePath }, { root: fixture.tempRoot });
+  packageEngineServer.saveDeliveryReadiness({ runId: fixture.runId, fields: deliveryFields({ masterFilePath, decisionMarker: "PASS" }) }, { root: fixture.tempRoot });
+  fs.writeFileSync(path.join(fixture.runDir, "export-checklist.md"), "# Export Checklist\n\n- Export checklist status: READY TO UPLOAD\n- Ready to upload: yes\n", "utf8");
+  fs.unlinkSync(masterFilePath);
+
+  const panel = packageEngineServer.buildExportDeliveryConsole({ runId: fixture.runId }, { root: fixture.tempRoot });
+
+  assert.equal(panel.staleDerivedChecklist, true);
+  assert.equal(panel.readyToUpload, true);
+  assert.equal(panel.warnings.some((warning) => /missing|stale/i.test(warning)), true);
+});
+
+test("production GPS integrates export delivery gates conservatively", () => {
+  const fixture = createExportDeliveryFixture();
+  let gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot });
+  assert.equal(gps.summary.currentGate, "Export Master Preparation");
+
+  const masterFilePath = path.join(fixture.tempRoot, "exports", "final-master.mp4");
+  fs.writeFileSync(masterFilePath, "fake master", "utf8");
+  packageEngineServer.applyExportMasterRegistration({ runId: fixture.runId, masterFilePath }, { root: fixture.tempRoot });
+  gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot });
+  assert.equal(gps.summary.currentGate, "Export / Delivery Check");
+
+  packageEngineServer.saveDeliveryReadiness({ runId: fixture.runId, fields: deliveryFields({ masterFilePath, decisionMarker: "NEEDS EXPORT CHECK" }) }, { root: fixture.tempRoot });
+  packageEngineServer.regenerateExportChecklistDerived({ runId: fixture.runId }, { root: fixture.tempRoot });
+  gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot });
+  assert.equal(gps.summary.currentGate, "Export Fixes / Delivery Check");
+
+  packageEngineServer.saveDeliveryReadiness({ runId: fixture.runId, fields: deliveryFields({ masterFilePath, decisionMarker: "PASS" }) }, { root: fixture.tempRoot });
+  packageEngineServer.regenerateExportChecklistDerived({ runId: fixture.runId }, { root: fixture.tempRoot });
+  gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot });
+  assert.equal(gps.summary.currentGate, "Publish Metadata Review");
+  assert.equal(gps.exportDeliveryConsole.readyToUpload, true);
+  assert.equal(gps.blockedActions.includes("publish"), true);
+  assert.equal(gps.blockedActions.includes("archive"), true);
+});
+
+test("dashboard renders Export / Delivery Readiness safely", () => {
+  const html = packageRunsDashboard.renderExportDeliveryReadiness({
+    runId: "2026-05-17-export-console",
+    exportDeliveryConsole: {
+      finalReviewStatus: "PASS",
+      publishReady: true,
+      masterFilePath: "/tmp/final-master.mp4",
+      masterFileManifestExists: true,
+      exportChecklistExists: false,
+      loudnessCheckExists: false,
+      captionCheckExists: false,
+      deliveryReadinessExists: false,
+      exportReadinessStatus: "NEEDS EXPORT CHECK",
+      readyToUpload: false,
+      aiAllowed: ["inspect file metadata"],
+      aiBlocked: ["choose delivery PASS"],
+      blockedActions: ["upload", "archive"],
+      warnings: ["Delivery readiness missing."],
+    },
+  });
+
+  assert.match(html, /Export \/ Delivery Readiness/);
+  assert.match(html, /data-preview-export-master/);
+  assert.match(html, /data-save-delivery-readiness/);
+  assert.match(html, /data-regenerate-export-checklist/);
+  assert.match(html, /This is the human delivery approval marker/);
   assert.match(html, /AI allowed/);
   assert.match(html, /AI blocked/);
   assert.match(html, /Blocked Actions/);

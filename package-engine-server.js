@@ -10,6 +10,7 @@ const childProcess = require('child_process');
 const packageRunDoctor = require('./scripts/package-run-doctor.js');
 const roughCutReviewScript = require('./scripts/package-run-rough-cut-review.js');
 const finalReviewScript = require('./scripts/package-run-final-review.js');
+const exportChecklistScript = require('./scripts/package-run-export-checklist.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
@@ -29,6 +30,10 @@ const FINAL_CANDIDATE_PREVIEW_API = '/api/package-runs/final-candidate/preview';
 const FINAL_CANDIDATE_APPLY_API = '/api/package-runs/final-candidate/apply';
 const FINAL_WATCH_NOTES_SAVE_API = '/api/package-runs/final-watch-notes/save';
 const FINAL_REVIEW_REGENERATE_API = '/api/package-runs/final-review/regenerate-derived';
+const EXPORT_MASTER_PREVIEW_API = '/api/package-runs/export-master/preview';
+const EXPORT_MASTER_APPLY_API = '/api/package-runs/export-master/apply';
+const DELIVERY_READINESS_SAVE_API = '/api/package-runs/delivery-readiness/save';
+const EXPORT_CHECKLIST_REGENERATE_API = '/api/package-runs/export-checklist/regenerate-derived';
 const ROUGH_CUT_SAVE_API = '/api/package-runs/rough-cut/watch-notes';
 const ROUGH_CUT_REVIEW_API = '/api/package-runs/rough-cut/review';
 const ROUGH_CUT_REGENERATE_DERIVED_API = '/api/package-runs/rough-cut/regenerate-derived';
@@ -55,6 +60,11 @@ const SECOND_CUT_REVIEW_FILE = 'second-cut-review.md';
 const FINAL_CANDIDATE_FILE = 'final-candidate.md';
 const FINAL_WATCH_NOTES_FILE = 'final-watch-notes.md';
 const FINAL_REVIEW_FILE = 'final-review.md';
+const EXPORT_CHECKLIST_FILE = 'export-checklist.md';
+const MASTER_FILE_MANIFEST_FILE = 'master-file-manifest.md';
+const CAPTION_CHECK_FILE = 'caption-check.md';
+const LOUDNESS_CHECK_FILE = 'loudness-check.md';
+const DELIVERY_READINESS_FILE = 'delivery-readiness.md';
 const ROUGH_CUT_DERIVED_FILES = ['rough-cut-review.md', 'pickup-list.md', 'edit-fix-list.md'];
 const SECOND_CUT_CANDIDATE_SECTION_START = '<!-- second-cut-candidate:start -->';
 const SECOND_CUT_CANDIDATE_SECTION_END = '<!-- second-cut-candidate:end -->';
@@ -68,6 +78,16 @@ const FINAL_WATCH_NOTES_SECTION_START = '<!-- final-watch-notes:start -->';
 const FINAL_WATCH_NOTES_SECTION_END = '<!-- final-watch-notes:end -->';
 const FINAL_REVIEW_SECTION_START = '<!-- final-review:start -->';
 const FINAL_REVIEW_SECTION_END = '<!-- final-review:end -->';
+const MASTER_FILE_MANIFEST_SECTION_START = '<!-- master-file-manifest:start -->';
+const MASTER_FILE_MANIFEST_SECTION_END = '<!-- master-file-manifest:end -->';
+const DELIVERY_READINESS_SECTION_START = '<!-- delivery-readiness:start -->';
+const DELIVERY_READINESS_SECTION_END = '<!-- delivery-readiness:end -->';
+const CAPTION_CHECK_SECTION_START = '<!-- caption-check:start -->';
+const CAPTION_CHECK_SECTION_END = '<!-- caption-check:end -->';
+const LOUDNESS_CHECK_SECTION_START = '<!-- loudness-check:start -->';
+const LOUDNESS_CHECK_SECTION_END = '<!-- loudness-check:end -->';
+const EXPORT_CHECKLIST_SECTION_START = '<!-- export-checklist:start -->';
+const EXPORT_CHECKLIST_SECTION_END = '<!-- export-checklist:end -->';
 const PRODUCTION_GPS_ARTIFACTS = [
   'rough-cut-watch-notes.md',
   'second-cut-candidate.md',
@@ -78,6 +98,10 @@ const PRODUCTION_GPS_ARTIFACTS = [
   'rough-cut-review.md',
   'second-cut-review.md',
   'final-review.md',
+  'master-file-manifest.md',
+  'caption-check.md',
+  'loudness-check.md',
+  'delivery-readiness.md',
   'pickup-list.md',
   'edit-fix-list.md',
   'capture-evidence-review.md',
@@ -94,6 +118,7 @@ const MEDIA_FILE_PATTERN = /\.(?:mp4|mov|mkv|webm|m4v|avi)$/i;
 const ROUGH_CUT_APPROVAL_VALUES = ['NOT GIVEN', 'NEEDS PICKUPS', 'NEEDS EDIT FIXES', 'PASS'];
 const SECOND_CUT_REVIEW_MARKERS = ['NEEDS MORE PICKUPS', 'NEEDS EDIT FIXES', 'READY FOR SECOND CUT'];
 const FINAL_REVIEW_MARKERS = ['NEEDS FINAL FIXES', 'PASS'];
+const DELIVERY_READINESS_MARKERS = ['NEEDS EXPORT CHECK', 'PASS'];
 const PICKUP_ITEM_TYPES = ['presenter closeup', 'AI B-roll', 'screen zoom', 'graphic', 'edit-only fix', 'other'];
 const PICKUP_REQUIRED_VALUES = ['yes', 'no'];
 const PICKUP_SOURCES = ['existing material', 'new recording', 'AI generation', 'editing only'];
@@ -906,7 +931,7 @@ function isSafeOpenPath(filePath, resolved, options = {}) {
 function gpsArtifactKind(filename) {
   if (/^(rough-cut-watch-notes|final-watch-notes|manual-approval-notes|second-cut-candidate|second-cut-watch-notes|final-candidate)\.md$/i.test(filename)) return 'source / human-authored';
   if (/^(package-run-state\.md|package-runs-index\.json)$/i.test(filename)) return 'state / lifecycle';
-  if (/^(rough-cut-review|second-cut-review|final-review|pickup-list|edit-fix-list|capture-evidence-review|export-checklist|publish-metadata-review)\.md$/i.test(filename)) return 'derived / generated';
+  if (/^(rough-cut-review|second-cut-review|final-review|pickup-list|edit-fix-list|capture-evidence-review|export-checklist|publish-metadata-review|master-file-manifest|caption-check|loudness-check|delivery-readiness)\.md$/i.test(filename)) return 'derived / generated';
   if (/^(capture-checklist|takes-log|screen-recording-checklist|audio-capture-checklist|missing-shot-tracker)\.md$/i.test(filename)) return 'evidence / media reference';
   return 'unclear';
 }
@@ -997,6 +1022,7 @@ function buildProductionGps(payload = {}, options = {}) {
   const roughCutResult = parseRoughCutReviewFile(resolved.runDir);
   const secondCutInspector = buildSecondCutInspector(payload, options);
   const finalReviewConsole = buildFinalReviewConsole(payload, options);
+  const exportDeliveryConsole = buildExportDeliveryConsole(payload, options);
   const gate = doctor.lifecycleGate || {};
   const artifactTrail = buildArtifactTrail(resolved);
   const gateTimeline = buildProductionGpsTimeline(doctor, roughCutResult);
@@ -1005,8 +1031,16 @@ function buildProductionGps(payload = {}, options = {}) {
   const roughNeedsEditFixes = roughCutResult.roughCutReviewStatus === 'NEEDS EDIT FIXES';
   const registeredCandidateReadyForReview = secondCutInspector.candidateStatus === 'found_needs_review' && secondCutInspector.registeredCandidate && secondCutInspector.registeredCandidate.exists;
   const secondCutStatus = secondCutInspector.secondCutReviewStatus || '';
-  const currentGate = finalReviewConsole.publishReady
-    ? 'Export / Upload Readiness'
+  const currentGate = exportDeliveryConsole.readyToUpload
+    ? 'Publish Metadata Review'
+    : finalReviewConsole.publishReady && !exportDeliveryConsole.masterFileManifestExists
+      ? 'Export Master Preparation'
+      : finalReviewConsole.publishReady && exportDeliveryConsole.masterFileManifestExists && (!exportDeliveryConsole.captionCheckExists || !exportDeliveryConsole.loudnessCheckExists || !exportDeliveryConsole.deliveryReadinessExists)
+        ? 'Export / Delivery Check'
+        : finalReviewConsole.publishReady && exportDeliveryConsole.exportChecklistExists && !exportDeliveryConsole.readyToUpload
+          ? 'Export Fixes / Delivery Check'
+          : finalReviewConsole.publishReady
+            ? 'Export / Delivery Check'
     : finalReviewConsole.finalReviewStatus === 'NEEDS FINAL FIXES'
       ? 'Final Fixes'
       : finalReviewConsole.finalWatchNotesExists && finalReviewConsole.staleDerivedReview
@@ -1038,8 +1072,16 @@ function buildProductionGps(payload = {}, options = {}) {
     'commit state file',
   ].filter(Boolean))];
   const nextSafeAction =
-    finalReviewConsole.publishReady
-      ? 'Proceed only to separate export/upload readiness checks; upload, archive, and state promotion remain blocked.'
+    exportDeliveryConsole.readyToUpload
+      ? 'Prepare/review publish metadata; scheduling, upload, archive, and state promotion remain separate gates.'
+      : finalReviewConsole.publishReady && !exportDeliveryConsole.masterFileManifestExists
+        ? 'Export/register master file for delivery review.'
+        : finalReviewConsole.publishReady && exportDeliveryConsole.masterFileManifestExists && (!exportDeliveryConsole.captionCheckExists || !exportDeliveryConsole.loudnessCheckExists || !exportDeliveryConsole.deliveryReadinessExists)
+          ? 'Record export metadata, loudness, captions, and delivery readiness.'
+          : finalReviewConsole.publishReady && exportDeliveryConsole.exportChecklistExists && !exportDeliveryConsole.readyToUpload
+            ? 'Resolve export/checklist blockers before upload.'
+            : finalReviewConsole.publishReady
+              ? 'Record delivery checks and regenerate export-checklist.md before upload readiness.'
       : finalReviewConsole.finalReviewStatus === 'NEEDS FINAL FIXES'
         ? 'Address final-watch fixes before any publish/export/upload/archive work.'
         : finalReviewConsole.finalWatchNotesExists && finalReviewConsole.staleDerivedReview
@@ -1072,6 +1114,15 @@ function buildProductionGps(payload = {}, options = {}) {
         title: /stale/i.test(warning) ? 'Derived final-review artifact may be stale' : 'Final review artifact warning',
         detail: warning,
         artifactPath: 'final-review.md',
+      });
+    }
+  });
+  exportDeliveryConsole.warnings.forEach((warning) => {
+    if (/stale|missing/i.test(warning)) {
+      staleWarnings.push({
+        title: /stale/i.test(warning) ? 'Derived export-checklist artifact may be stale' : 'Export readiness warning',
+        detail: warning,
+        artifactPath: 'export-checklist.md',
       });
     }
   });
@@ -1119,6 +1170,7 @@ function buildProductionGps(payload = {}, options = {}) {
     roughCutResult,
     secondCutInspector,
     finalReviewConsole,
+    exportDeliveryConsole,
     mediaRows: collectMediaRows(resolved, detectRoughCutCandidate(resolved.runDir)),
   };
 }
@@ -2094,6 +2146,437 @@ function buildFinalReviewConsole(payload = {}, options = {}) {
   };
 }
 
+function parseMasterFileManifest(runDir) {
+  const artifactPath = path.join(runDir, MASTER_FILE_MANIFEST_FILE);
+  if (!fs.existsSync(artifactPath)) return { exists: false, path: '', artifactPath: MASTER_FILE_MANIFEST_FILE };
+  const text = fs.readFileSync(artifactPath, 'utf8');
+  return {
+    exists: true,
+    path: lineValue(text, 'Final export file') || lineValue(text, 'Master file') || lineValue(text, 'Master file path') || lineValue(text, 'File name'),
+    codec: lineValue(text, 'Codec') || lineValue(text, 'Video codec'),
+    container: lineValue(text, 'Container') || lineValue(text, 'File container'),
+    resolution: lineValue(text, 'Resolution'),
+    frameRate: lineValue(text, 'Frame rate') || lineValue(text, 'Framerate') || lineValue(text, 'FPS'),
+    audioSettings: lineValue(text, 'Audio settings') || lineValue(text, 'Audio export settings'),
+    artifactPath: MASTER_FILE_MANIFEST_FILE,
+  };
+}
+
+function parseExportChecklistFile(runDir) {
+  const artifactPath = path.join(runDir, EXPORT_CHECKLIST_FILE);
+  if (!fs.existsSync(artifactPath)) {
+    return { exists: false, status: 'NEEDS EXPORT CHECK', readyToUpload: false, masterFilePath: '', reason: 'export-checklist.md is missing.' };
+  }
+  const text = fs.readFileSync(artifactPath, 'utf8');
+  const status = (lineValue(text, 'Export checklist status') || lineValue(text, 'Status') || 'NEEDS EXPORT CHECK').toUpperCase();
+  return {
+    exists: true,
+    status,
+    readyToUpload: /^yes$/i.test(lineValue(text, 'Ready to upload')) && status === 'READY TO UPLOAD',
+    masterFilePath: lineValue(text, 'Final export file') || lineValue(text, 'Master file'),
+    reason: lineValue(text, 'Reason'),
+  };
+}
+
+function exportMasterWarnings(descriptor, upstream) {
+  const warnings = [];
+  if (descriptor.metadataUnavailable) warnings.push('ffprobe metadata unavailable; file existence and filesystem metadata were recorded only.');
+  if (!descriptor.audioStreamPresent && !descriptor.audioPresent) warnings.push('No audio stream detected or audio metadata unavailable.');
+  if (!upstream.publishReady || upstream.finalReviewStatus !== 'PASS') warnings.push('Final review is not PASS with Publish ready: yes; export master registration is blocked.');
+  return warnings;
+}
+
+function masterFileManifestManagedMarkdown(runId, descriptor, payload, upstream) {
+  const notes = markdownText(payload.notes || '', 'No registration notes provided.');
+  const exportTimestamp = markdownCell(payload.exportTimestamp || payload.exportedAt || '');
+  const exportPreset = markdownCell(payload.exportPreset || payload.profile || '');
+  const targetPlatform = markdownCell(payload.targetPlatform || 'YouTube');
+  const audioSettings = descriptor.audioSampleRate || descriptor.audioChannels
+    ? `${descriptor.audioSampleRate || 'sample rate unknown'} / ${descriptor.audioChannels || 'channels unknown'}`
+    : 'metadata unavailable';
+  return [
+    MASTER_FILE_MANIFEST_SECTION_START,
+    '# Master File Manifest',
+    '',
+    `- Run: ${runId}`,
+    '- Artifact purpose: final export/master file reference for delivery review',
+    '- Ready to upload: no',
+    '- Human approval required: yes',
+    '- External APIs called: no',
+    '',
+    '## Master File',
+    '',
+    `- Final export file: ${descriptor.path}`,
+    `- Master file path: ${descriptor.path}`,
+    `- Exists: ${descriptor.exists ? 'yes' : 'no'}`,
+    `- Codec: ${descriptor.codec || 'metadata unavailable'}`,
+    `- Container: ${path.extname(descriptor.path || '').replace(/^\./, '').toUpperCase() || 'metadata unavailable'}`,
+    `- Resolution: ${descriptor.resolution || 'metadata unavailable'}`,
+    `- Frame rate: ${descriptor.frameRate || 'metadata unavailable'}`,
+    `- Audio settings: ${audioSettings}`,
+    `- Duration: ${descriptor.duration || 'metadata unavailable'}`,
+    `- Size: ${descriptor.size}`,
+    `- Modified: ${descriptor.modifiedTime || ''}`,
+    `- Target platform: ${targetPlatform}`,
+    exportPreset ? `- Export preset/profile: ${exportPreset}` : '',
+    exportTimestamp ? `- Export timestamp: ${exportTimestamp}` : '',
+    '',
+    '## Upstream Context',
+    '',
+    `- Final review status: ${upstream.finalReviewStatus}`,
+    `- Publish ready from final review: ${upstream.publishReady ? 'yes' : 'no'}`,
+    `- Source final review artifact: ${FINAL_REVIEW_FILE}`,
+    '',
+    '## Registration Notes',
+    '',
+    notes,
+    '',
+    '## Review Boundary',
+    '',
+    '- This artifact records a master/export file for delivery review.',
+    '- It does not mark ready to upload.',
+    '- It does not approve publish metadata, scheduling, upload, or archive.',
+    '- It does not update package-run state.',
+    MASTER_FILE_MANIFEST_SECTION_END,
+    '',
+  ].filter((line) => line !== '').join('\n');
+}
+
+function buildExportMasterRegistration(payload = {}, options = {}) {
+  if (!payload.runId) {
+    const error = new Error('runId is required for export master registration.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const resolved = resolveRunFromPayload(payload, options);
+  const masterFilePath = validateSecondCutCandidatePath(payload.masterFilePath, 'export master');
+  const descriptor = buildMediaDescriptor(masterFilePath, options);
+  descriptor.likelyRole = 'export master';
+  descriptor.confidence = /final|master|export|upload|deliver/i.test(masterFilePath) ? 'medium' : 'low';
+  descriptor.reasons = ['registered explicitly by Mikko for delivery review'];
+  const finalReview = parseFinalReviewFile(resolved.runDir);
+  const upstream = {
+    finalReviewStatus: finalReview.status || 'MISSING',
+    publishReady: Boolean(finalReview.publishReady && finalReview.status === 'PASS'),
+  };
+  const warnings = exportMasterWarnings(descriptor, upstream);
+  const artifactPreview = masterFileManifestManagedMarkdown(resolved.runId, descriptor, payload, upstream);
+  return {
+    ok: true,
+    readOnly: options.mode !== 'apply',
+    externalApisCalled: false,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    masterFilePath,
+    masterFileExists: true,
+    metadata: {
+      duration: descriptor.duration,
+      codec: descriptor.codec,
+      container: path.extname(masterFilePath).replace(/^\./, '').toUpperCase(),
+      resolution: descriptor.resolution,
+      frameRate: descriptor.frameRate,
+      audioStreams: descriptor.audioStreamPresent || descriptor.audioPresent ? 1 : 0,
+      audioSampleRate: descriptor.audioSampleRate || '',
+      audioChannels: descriptor.audioChannels || '',
+      size: descriptor.size,
+      modified: descriptor.modifiedTime,
+      metadataUnavailable: Boolean(descriptor.metadataUnavailable),
+    },
+    upstream,
+    warnings,
+    artifactFilename: MASTER_FILE_MANIFEST_FILE,
+    artifactPreview,
+    humanGateRequired: true,
+    readyToUpload: false,
+    aiAllowed: ['validate file existence', 'inspect technical metadata', 'record master file reference'],
+    aiBlocked: ['choose delivery PASS', 'mark ready to upload', 'upload', 'publish', 'archive', 'update package-run-state.md', 'update package-runs-index.json', 'move/delete/transcode media'],
+  };
+}
+
+function applyExportMasterRegistration(payload = {}, options = {}) {
+  const registration = buildExportMasterRegistration(payload, { ...options, mode: 'apply' });
+  if (!registration.upstream.publishReady || registration.upstream.finalReviewStatus !== 'PASS') {
+    const error = new Error('Final review is not PASS with Publish ready: yes; export master registration is blocked.');
+    error.statusCode = 409;
+    throw error;
+  }
+  const resolved = resolvePackageRunDir(registration.runId, options);
+  const targetPath = path.resolve(resolved.runDir, MASTER_FILE_MANIFEST_FILE);
+  if (!targetPath.startsWith(resolved.runDir + path.sep)) {
+    const error = new Error('Resolved master file manifest path is outside the approved write scope.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const existing = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf8') : '';
+  fs.writeFileSync(targetPath, replaceManagedSection(existing, registration.artifactPreview, MASTER_FILE_MANIFEST_SECTION_START, MASTER_FILE_MANIFEST_SECTION_END), 'utf8');
+  return {
+    ...registration,
+    readOnly: false,
+    written: [MASTER_FILE_MANIFEST_FILE],
+    warning: 'Registered export master for delivery review only. Upload readiness is not approved.',
+  };
+}
+
+function deliveryReadinessStatusFromMarker(marker = '') {
+  const normalized = String(marker || '').trim().toUpperCase();
+  if (DELIVERY_READINESS_MARKERS.includes(normalized)) return normalized;
+  return 'NEEDS EXPORT CHECK';
+}
+
+function normalizeDeliveryReadinessFields(fields = {}, resolved) {
+  const manifest = parseMasterFileManifest(resolved.runDir);
+  const masterFilePath = markdownCell(fields.masterFilePath || manifest.path || '');
+  if (!masterFilePath) {
+    const error = new Error('Master file path is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!fs.existsSync(masterFilePath) || !fs.statSync(masterFilePath).isFile()) {
+    const error = new Error('Master file does not exist.');
+    error.statusCode = 404;
+    throw error;
+  }
+  const rawDecisionMarker = String(fields.decisionMarker || fields.marker || '').trim().toUpperCase();
+  if (!DELIVERY_READINESS_MARKERS.includes(rawDecisionMarker)) {
+    const error = new Error(`Invalid delivery readiness marker: ${fields.decisionMarker || fields.marker || ''}`);
+    error.statusCode = 400;
+    throw error;
+  }
+  const decisionMarker = deliveryReadinessStatusFromMarker(rawDecisionMarker);
+  return {
+    masterFilePath,
+    intendedPlatform: markdownCell(fields.intendedPlatform || 'YouTube'),
+    exportPreset: markdownCell(fields.exportPreset || ''),
+    containerCodecConfirmation: markdownText(fields.containerCodecConfirmation || '', ''),
+    resolutionConfirmation: markdownText(fields.resolutionConfirmation || '', ''),
+    frameRateConfirmation: markdownText(fields.frameRateConfirmation || '', ''),
+    audioSettingsConfirmation: markdownText(fields.audioSettingsConfirmation || '', ''),
+    loudnessStatus: markdownText(fields.loudnessStatus || '', ''),
+    captionsStatus: markdownText(fields.captionsStatus || '', ''),
+    qcNotes: markdownText(fields.qcNotes || '', ''),
+    decisionMarker,
+  };
+}
+
+function deliveryArtifactMarkdowns(runId, fields) {
+  const ready = fields.decisionMarker === 'PASS';
+  const status = ready ? 'READY TO UPLOAD' : 'NEEDS EXPORT CHECK';
+  const loudness = fields.loudnessStatus || 'TODO';
+  const captions = fields.captionsStatus || 'TODO';
+  return {
+    [CAPTION_CHECK_FILE]: [
+      CAPTION_CHECK_SECTION_START,
+      '# Caption Check',
+      '',
+      `- Captions/subtitles status: ${captions}`,
+      '',
+      '## Review Boundary',
+      '',
+      '- This records caption/subtitle status for delivery review only.',
+      '- It does not mark ready to upload.',
+      CAPTION_CHECK_SECTION_END,
+      '',
+    ].join('\n'),
+    [LOUDNESS_CHECK_FILE]: [
+      LOUDNESS_CHECK_SECTION_START,
+      '# Loudness Check',
+      '',
+      `- Loudness check: ${loudness}`,
+      '',
+      '## Approval Marker',
+      '',
+      '- Add `Mastering approval: PASS` only after real loudness/mastering review.',
+      ready ? 'Mastering approval: PASS' : '',
+      LOUDNESS_CHECK_SECTION_END,
+      '',
+    ].filter((line) => line !== '').join('\n'),
+    [DELIVERY_READINESS_FILE]: [
+      DELIVERY_READINESS_SECTION_START,
+      '# Delivery Readiness',
+      '',
+      `- Export checklist status: ${status}`,
+      `- Ready to upload: ${ready ? 'yes' : 'no'}`,
+      `- Master file path: ${fields.masterFilePath}`,
+      `- Intended platform: ${fields.intendedPlatform}`,
+      fields.exportPreset ? `- Export preset/profile: ${fields.exportPreset}` : '',
+      `- Container/codec confirmation: ${fields.containerCodecConfirmation || 'TODO'}`,
+      `- Resolution confirmation: ${fields.resolutionConfirmation || 'TODO'}`,
+      `- Frame rate confirmation: ${fields.frameRateConfirmation || 'TODO'}`,
+      `- Audio settings confirmation: ${fields.audioSettingsConfirmation || 'TODO'}`,
+      `- Loudness check: ${loudness}`,
+      `- Captions/subtitles status: ${captions}`,
+      '',
+      '## QC Notes',
+      '',
+      fields.qcNotes || 'TODO',
+      '',
+      '## Approval Marker',
+      '',
+      '- Add `Delivery approval: PASS` only after the export is ready for upload.',
+      ready ? 'Delivery approval: PASS' : 'Delivery approval marker not granted. Current decision: NEEDS EXPORT CHECK',
+      '',
+      '## Upload Readiness Gate',
+      '',
+      `- Status: ${status}`,
+      `- Reason: ${ready ? 'Mikko explicitly marked Delivery approval: PASS.' : 'Delivery approval has not been granted.'}`,
+      DELIVERY_READINESS_SECTION_END,
+      '',
+    ].filter((line) => line !== '').join('\n'),
+  };
+}
+
+function saveDeliveryReadiness(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const fields = normalizeDeliveryReadinessFields(payload.fields || payload, resolved);
+  const markdowns = deliveryArtifactMarkdowns(resolved.runId, fields);
+  const written = [];
+  Object.entries(markdowns).forEach(([filename, markdown]) => {
+    const targetPath = path.resolve(resolved.runDir, filename);
+    if (!targetPath.startsWith(resolved.runDir + path.sep)) {
+      const error = new Error('Resolved delivery artifact path is outside the approved write scope.');
+      error.statusCode = 400;
+      throw error;
+    }
+    const markers = {
+      [CAPTION_CHECK_FILE]: [CAPTION_CHECK_SECTION_START, CAPTION_CHECK_SECTION_END],
+      [LOUDNESS_CHECK_FILE]: [LOUDNESS_CHECK_SECTION_START, LOUDNESS_CHECK_SECTION_END],
+      [DELIVERY_READINESS_FILE]: [DELIVERY_READINESS_SECTION_START, DELIVERY_READINESS_SECTION_END],
+    }[filename];
+    const existing = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf8') : '';
+    fs.writeFileSync(targetPath, replaceManagedSection(existing, markdown, markers[0], markers[1]), 'utf8');
+    written.push(filename);
+  });
+  return {
+    ok: true,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    written,
+    readyToUpload: false,
+    warning: fields.decisionMarker === 'PASS'
+      ? 'Human Delivery approval: PASS marker recorded. Regenerate derived export-checklist.md before any upload readiness decision.'
+      : 'Delivery checks saved. Upload readiness remains blocked.',
+  };
+}
+
+function buildExportChecklistFromDelivery(runId, options = {}) {
+  const resolved = resolvePackageRunDir(runId, options);
+  const context = exportChecklistScript.readContext(resolved.runDir);
+  context.targetArtifactsMissing = [
+    MASTER_FILE_MANIFEST_FILE,
+    CAPTION_CHECK_FILE,
+    LOUDNESS_CHECK_FILE,
+    DELIVERY_READINESS_FILE,
+  ].some((filename) => !context.files[filename]);
+  const readiness = exportChecklistScript.determineExportReadiness(context);
+  return {
+    status: readiness.status,
+    readyToUpload: readiness.readyToUpload,
+    reason: readiness.reason,
+    blockers: readiness.blockers,
+    nextActions: readiness.nextActions,
+    context,
+    markdown: [
+      EXPORT_CHECKLIST_SECTION_START,
+      exportChecklistScript.buildExportChecklist(context, readiness),
+      EXPORT_CHECKLIST_SECTION_END,
+      '',
+    ].join('\n'),
+  };
+}
+
+function regenerateExportChecklistDerived(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const review = buildExportChecklistFromDelivery(resolved.runId, options);
+  const targetPath = path.resolve(resolved.runDir, EXPORT_CHECKLIST_FILE);
+  if (!targetPath.startsWith(resolved.runDir + path.sep)) {
+    const error = new Error('Resolved export checklist path is outside the approved write scope.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const existing = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf8') : '';
+  fs.writeFileSync(targetPath, replaceManagedSection(existing, review.markdown, EXPORT_CHECKLIST_SECTION_START, EXPORT_CHECKLIST_SECTION_END), 'utf8');
+  return {
+    ok: true,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    written: [EXPORT_CHECKLIST_FILE],
+    review,
+    readyToUpload: review.readyToUpload,
+    warning: 'Regenerated derived export-checklist.md only. Publish metadata, scheduling, upload, archive, state, and index remain separate gates.',
+  };
+}
+
+function buildExportDeliveryConsole(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const finalReview = parseFinalReviewFile(resolved.runDir);
+  const manifest = parseMasterFileManifest(resolved.runDir);
+  const checklist = parseExportChecklistFile(resolved.runDir);
+  const paths = {
+    manifest: path.join(resolved.runDir, MASTER_FILE_MANIFEST_FILE),
+    caption: path.join(resolved.runDir, CAPTION_CHECK_FILE),
+    loudness: path.join(resolved.runDir, LOUDNESS_CHECK_FILE),
+    delivery: path.join(resolved.runDir, DELIVERY_READINESS_FILE),
+    checklist: path.join(resolved.runDir, EXPORT_CHECKLIST_FILE),
+    finalReview: path.join(resolved.runDir, FINAL_REVIEW_FILE),
+  };
+  const masterFileExists = Boolean(manifest.path && fs.existsSync(manifest.path) && fs.statSync(manifest.path).isFile());
+  const captionCheckExists = fs.existsSync(paths.caption);
+  const loudnessCheckExists = fs.existsSync(paths.loudness);
+  const deliveryReadinessExists = fs.existsSync(paths.delivery);
+  const exportChecklistExists = fs.existsSync(paths.checklist);
+  const context = exportChecklistScript.readContext(resolved.runDir);
+  const readiness = exportChecklistScript.determineExportReadiness(context);
+  const stale =
+    (fs.existsSync(paths.manifest) && exportChecklistExists && fs.statSync(paths.manifest).mtimeMs > fs.statSync(paths.checklist).mtimeMs) ||
+    (deliveryReadinessExists && exportChecklistExists && fs.statSync(paths.delivery).mtimeMs > fs.statSync(paths.checklist).mtimeMs) ||
+    (captionCheckExists && exportChecklistExists && fs.statSync(paths.caption).mtimeMs > fs.statSync(paths.checklist).mtimeMs) ||
+    (loudnessCheckExists && exportChecklistExists && fs.statSync(paths.loudness).mtimeMs > fs.statSync(paths.checklist).mtimeMs) ||
+    (fs.existsSync(paths.finalReview) && exportChecklistExists && fs.statSync(paths.finalReview).mtimeMs > fs.statSync(paths.checklist).mtimeMs) ||
+    (checklist.readyToUpload && !masterFileExists) ||
+    (checklist.readyToUpload && !context.deliveryApproved);
+  const warnings = [
+    finalReview.publishReady ? '' : 'Final review is not PASS with Publish ready: yes.',
+    manifest.exists && !masterFileExists ? 'Registered master file is missing.' : '',
+    exportChecklistExists && stale ? 'Derived export-checklist.md may be stale against current delivery artifacts.' : '',
+  ].filter(Boolean);
+  return {
+    ok: true,
+    readOnly: true,
+    externalApisCalled: false,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    finalReviewStatus: finalReview.status,
+    publishReady: Boolean(finalReview.publishReady && finalReview.status === 'PASS'),
+    masterFileManifestExists: manifest.exists,
+    masterFilePath: manifest.path || '',
+    masterFileExists,
+    exportChecklistExists,
+    exportReadinessStatus: exportChecklistExists ? checklist.status : readiness.status,
+    readyToUpload: Boolean(exportChecklistExists && checklist.readyToUpload),
+    loudnessCheckExists,
+    captionCheckExists,
+    deliveryReadinessExists,
+    deliveryApproved: context.deliveryApproved,
+    humanGateRequired: true,
+    staleDerivedChecklist: stale,
+    warnings,
+    aiAllowed: ['inspect file metadata', 'prepare checklist', 'parse artifacts', 'regenerate derived export checklist'],
+    aiBlocked: ['choose delivery PASS', 'upload', 'publish', 'schedule', 'archive', 'update package-run-state.md', 'update package-runs-index.json', 'move/delete/transcode media'],
+    blockedActions: ['upload', 'publish', 'schedule', 'archive', 'update package-run state', 'commit state markers'],
+    nextSafeAction: !finalReview.publishReady
+      ? 'Complete final review PASS before export/master registration.'
+      : !manifest.exists
+        ? 'Export/register master file for delivery review.'
+        : !captionCheckExists || !loudnessCheckExists || !deliveryReadinessExists
+          ? 'Record export metadata, loudness, captions, and delivery readiness.'
+          : stale
+            ? 'Regenerate derived export-checklist.md from current delivery artifacts.'
+            : checklist.readyToUpload
+              ? 'Proceed to separate publish metadata review; upload/archive remain blocked.'
+              : 'Resolve export/checklist blockers before upload.',
+  };
+}
+
 function markdownTableItems(markdown = '') {
   return String(markdown || '')
     .split(/\r?\n/)
@@ -2371,6 +2854,8 @@ function buildRoughCutStatus(payload = {}, options = {}) {
   const indexStatus = dashboardIndexStatus(resolved);
   const productionGps = buildProductionGps(payload, options);
   const secondCutInspector = buildSecondCutInspector(payload, options);
+  const finalReviewConsole = buildFinalReviewConsole(payload, options);
+  const exportDeliveryConsole = buildExportDeliveryConsole(payload, options);
   const staleDerivedArtifacts = roughCutResult.derivedArtifactStale ? ['rough-cut-review.md'] : [];
   const exactNextSafeAction =
     doctor.nextSafeAction ||
@@ -2405,6 +2890,8 @@ function buildRoughCutStatus(payload = {}, options = {}) {
     gateTimeline: buildGateTimeline(doctor, roughCutResult),
     productionGps,
     secondCutInspector,
+    finalReviewConsole,
+    exportDeliveryConsole,
     mediaRows: collectMediaRows(resolved, roughCutCandidate),
     dashboardIndex: indexStatus,
     activeRunSummary: {
@@ -2826,6 +3313,12 @@ function createStatusResponse(env = process.env) {
       allowedSecondCutReviewMarkers: SECOND_CUT_REVIEW_MARKERS,
       finalReviewAllowedWriteFiles: [FINAL_CANDIDATE_FILE, FINAL_WATCH_NOTES_FILE, FINAL_REVIEW_FILE],
       allowedFinalReviewMarkers: FINAL_REVIEW_MARKERS,
+      exportMasterPreviewApi: EXPORT_MASTER_PREVIEW_API,
+      exportMasterApplyApi: EXPORT_MASTER_APPLY_API,
+      deliveryReadinessSaveApi: DELIVERY_READINESS_SAVE_API,
+      exportChecklistRegenerateApi: EXPORT_CHECKLIST_REGENERATE_API,
+      exportDeliveryAllowedWriteFiles: [MASTER_FILE_MANIFEST_FILE, CAPTION_CHECK_FILE, LOUDNESS_CHECK_FILE, DELIVERY_READINESS_FILE, EXPORT_CHECKLIST_FILE],
+      allowedDeliveryReadinessMarkers: DELIVERY_READINESS_MARKERS,
       derivedOnlyWriteFiles: ROUGH_CUT_DERIVED_FILES,
     },
   };
@@ -3109,6 +3602,46 @@ function createServer() {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === EXPORT_MASTER_PREVIEW_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, buildExportMasterRegistration(payload, { mode: 'preview' }));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === EXPORT_MASTER_APPLY_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, applyExportMasterRegistration(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === DELIVERY_READINESS_SAVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, saveDeliveryReadiness(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === EXPORT_CHECKLIST_REGENERATE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, regenerateExportChecklistDerived(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === ROUGH_CUT_SAVE_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -3201,6 +3734,14 @@ module.exports = {
   CAPTURE_EVIDENCE_PREVIEW_API,
   CAPTURE_EVIDENCE_AUDIT_FILE,
   CAPTURE_EVIDENCE_TARGETS,
+  CAPTION_CHECK_FILE,
+  DELIVERY_READINESS_FILE,
+  DELIVERY_READINESS_MARKERS,
+  DELIVERY_READINESS_SAVE_API,
+  EXPORT_CHECKLIST_FILE,
+  EXPORT_CHECKLIST_REGENERATE_API,
+  EXPORT_MASTER_APPLY_API,
+  EXPORT_MASTER_PREVIEW_API,
   FINAL_CANDIDATE_APPLY_API,
   FINAL_CANDIDATE_FILE,
   FINAL_CANDIDATE_PREVIEW_API,
@@ -3209,7 +3750,9 @@ module.exports = {
   FINAL_REVIEW_REGENERATE_API,
   FINAL_WATCH_NOTES_FILE,
   FINAL_WATCH_NOTES_SAVE_API,
+  LOUDNESS_CHECK_FILE,
   LOCAL_WRITE_NONCE_HEADER,
+  MASTER_FILE_MANIFEST_FILE,
   PICKUP_ITEM_TYPES,
   PICKUP_PLAN_SAVE_API,
   PICKUP_PURPOSES,
@@ -3237,6 +3780,7 @@ module.exports = {
   ROUGH_CUT_WATCH_NOTES_FILE,
   STATUS_API,
   applyCaptureEvidenceIntake,
+  applyExportMasterRegistration,
   applyFinalCandidateRegistration,
   applySecondCutCandidateRegistration,
   buildCaptureEvidencePreview,
@@ -3256,6 +3800,9 @@ module.exports = {
   createThumbnailResponse,
   buildProductionGps,
   buildProductionGpsTimeline,
+  buildExportDeliveryConsole,
+  buildExportMasterRegistration,
+  buildExportChecklistFromDelivery,
   buildFinalCandidateRegistration,
   buildFinalReviewConsole,
   buildFinalReviewFromWatchNotes,
@@ -3284,17 +3831,21 @@ module.exports = {
   parseFinalCandidateArtifact,
   parseFinalReviewFile,
   parseFinalWatchNotes,
+  parseExportChecklistFile,
+  parseMasterFileManifest,
   parseSecondCutCandidateArtifact,
   parseSecondCutReviewFile,
   parseSecondCutWatchNotes,
   providerConfig,
   regenerateRoughCutDerivedArtifacts,
+  regenerateExportChecklistDerived,
   regenerateFinalReviewDerived,
   regenerateSecondCutReviewDerived,
   roughCutInputDefaults,
   runRoughCutReview,
   safeJoin,
   saveRoughCutWatchNotes,
+  saveDeliveryReadiness,
   saveFinalWatchNotes,
   saveSecondCutWatchNotes,
   savePickupPlan,

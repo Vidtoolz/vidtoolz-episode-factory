@@ -1296,6 +1296,80 @@ Capture evidence approval: PASS`;
     </section>`;
   }
 
+  function renderExportDeliveryReadiness(status = {}) {
+    const runId = status.runId || "";
+    const panel = status.exportDeliveryConsole || (status.productionGps && status.productionGps.exportDeliveryConsole) || {};
+    const list = (items, fallback) => `<ul>${(Array.isArray(items) && items.length ? items : [fallback]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+    return `<section class="export-delivery-readiness" data-export-delivery-readiness>
+      <div class="mikko-console-header">
+        <div>
+          <p class="eyebrow">Delivery Gate</p>
+          <h3>Export / Delivery Readiness</h3>
+        </div>
+        ${renderStatusBadge(panel.exportReadinessStatus || "NEEDS EXPORT CHECK")}
+      </div>
+      <div class="human-review-required">
+        <strong>Human delivery approval required</strong>
+        <p>Master export existence and metadata do not approve upload. Delivery PASS must be explicit from Mikko.</p>
+      </div>
+      <div class="lifecycle-review-grid">
+        <div><span>Run</span><strong>${escapeHtml(runId || "unknown")}</strong></div>
+        <div><span>Final review</span><strong>${escapeHtml(panel.finalReviewStatus || "unknown")}</strong></div>
+        <div><span>Publish ready from final review</span><strong>${panel.publishReady ? "yes" : "no"}</strong></div>
+        <div><span>Master file</span><strong>${escapeHtml(panel.masterFilePath || "not registered")}</strong></div>
+        <div><span>Export checklist</span><strong>${panel.exportChecklistExists ? "exists" : "missing"}</strong></div>
+        <div><span>Loudness check</span><strong>${panel.loudnessCheckExists ? "exists" : "missing"}</strong></div>
+        <div><span>Caption check</span><strong>${panel.captionCheckExists ? "exists" : "missing"}</strong></div>
+        <div><span>Ready to upload</span><strong>${panel.readyToUpload ? "yes" : "no"}</strong></div>
+      </div>
+      <div class="rough-cut-form-grid">
+        <label class="rough-cut-field rough-cut-field-wide">
+          <span>Master/export file path</span>
+          <input type="text" data-export-master-path value="${escapeHtml(panel.masterFilePath || "")}" placeholder="/absolute/path/to/final-master.mp4" />
+          <small>Preview validates this path and writes nothing. Save writes only master-file-manifest.md.</small>
+        </label>
+        <label class="rough-cut-field">
+          <span>Target platform</span>
+          <input type="text" data-delivery-field="intendedPlatform" value="YouTube" />
+        </label>
+        <label class="rough-cut-field">
+          <span>Export preset/profile</span>
+          <input type="text" data-export-master-preset data-delivery-field="exportPreset" placeholder="Resolve export preset/profile" />
+        </label>
+        ${renderRoughCutTextarea("containerCodecConfirmation", "Container / codec confirmation").replace(/data-rough-cut-field/g, "data-delivery-field")}
+        ${renderRoughCutTextarea("resolutionConfirmation", "Resolution confirmation").replace(/data-rough-cut-field/g, "data-delivery-field")}
+        ${renderRoughCutTextarea("frameRateConfirmation", "Frame rate confirmation").replace(/data-rough-cut-field/g, "data-delivery-field")}
+        ${renderRoughCutTextarea("audioSettingsConfirmation", "Audio settings confirmation").replace(/data-rough-cut-field/g, "data-delivery-field")}
+        ${renderRoughCutTextarea("loudnessStatus", "Loudness status").replace(/data-rough-cut-field/g, "data-delivery-field")}
+        ${renderRoughCutTextarea("captionsStatus", "Captions / subtitles status").replace(/data-rough-cut-field/g, "data-delivery-field")}
+        ${renderRoughCutTextarea("qcNotes", "QC notes").replace(/data-rough-cut-field/g, "data-delivery-field")}
+        <label class="rough-cut-field">
+          <span>Delivery decision marker *</span>
+          <select data-delivery-field="decisionMarker">
+            <option value="NEEDS EXPORT CHECK">NEEDS EXPORT CHECK</option>
+            <option value="PASS">PASS</option>
+          </select>
+          <small>This is the human delivery approval marker. Do not use unless Mikko has checked the exported master file.</small>
+        </label>
+      </div>
+      <div class="rough-cut-actions">
+        <button type="button" data-preview-export-master>Preview master registration</button>
+        <button type="button" data-apply-export-master disabled>Save master-file-manifest.md</button>
+        <button type="button" data-save-delivery-readiness>Save delivery checks</button>
+        <button type="button" data-regenerate-export-checklist ${panel.deliveryReadinessExists ? "" : "disabled"}>Regenerate export-checklist.md</button>
+        <span data-export-delivery-status class="capture-write-status">Writes only export/delivery artifacts. It does not upload or publish.</span>
+      </div>
+      <div data-export-master-metadata></div>
+      <textarea readonly rows="10" class="capture-write-preview" data-export-master-preview placeholder="Master manifest preview will show the exact managed Markdown before writing."></textarea>
+      ${panel.warnings && panel.warnings.length ? `<div class="stale-derived-warning"><h4>Warnings</h4>${list(panel.warnings, "No warnings.")}</div>` : ""}
+      <div class="gps-split">
+        <div><h4>AI allowed</h4>${list(panel.aiAllowed, "inspect file metadata")}</div>
+        <div><h4>AI blocked</h4>${list(panel.aiBlocked, "upload, publish, schedule, archive, or update state")}</div>
+      </div>
+      <div class="blocked-actions-panel"><h4>Blocked Actions</h4>${list(panel.blockedActions, "upload/publish/archive remain blocked until separate gates pass.")}</div>
+    </section>`;
+  }
+
   function renderMikkoInputConsole(status = {}, result = null) {
     const runId = status.runId || "";
     const candidate = status.roughCutCandidate || {};
@@ -1307,6 +1381,7 @@ Capture evidence approval: PASS`;
       ${renderSecondCutCandidateRegistration(status)}
       ${renderSecondCutHumanReview(status)}
       ${renderFinalCandidateReview(status)}
+      ${renderExportDeliveryReadiness(status)}
       ${renderActiveRunSummary(status.activeRunSummary || {
         runId,
         currentLifecycleStage: status.currentInferredStage,
@@ -1726,6 +1801,30 @@ Capture evidence approval: PASS`;
         regenerateFinalReviewDerived(regenerateFinalReview);
         return;
       }
+      const previewExportMaster = event.target.closest("[data-preview-export-master]");
+      if (previewExportMaster) {
+        event.preventDefault();
+        previewExportMasterRegistration(previewExportMaster);
+        return;
+      }
+      const applyExportMaster = event.target.closest("[data-apply-export-master]");
+      if (applyExportMaster) {
+        event.preventDefault();
+        applyExportMasterRegistration(applyExportMaster);
+        return;
+      }
+      const saveDelivery = event.target.closest("[data-save-delivery-readiness]");
+      if (saveDelivery) {
+        event.preventDefault();
+        saveDeliveryReadiness(saveDelivery);
+        return;
+      }
+      const regenerateExport = event.target.closest("[data-regenerate-export-checklist]");
+      if (regenerateExport) {
+        event.preventDefault();
+        regenerateExportChecklist(regenerateExport);
+        return;
+      }
       const link = event.target.closest("[data-preview-artifact]");
       if (!link) return;
       event.preventDefault();
@@ -1931,6 +2030,10 @@ Capture evidence approval: PASS`;
         finalCandidateApplyApi: config.finalCandidateApplyApi || "/api/package-runs/final-candidate/apply",
         finalWatchNotesSaveApi: config.finalWatchNotesSaveApi || "/api/package-runs/final-watch-notes/save",
         finalReviewRegenerateApi: config.finalReviewRegenerateApi || "/api/package-runs/final-review/regenerate-derived",
+        exportMasterPreviewApi: config.exportMasterPreviewApi || "/api/package-runs/export-master/preview",
+        exportMasterApplyApi: config.exportMasterApplyApi || "/api/package-runs/export-master/apply",
+        deliveryReadinessSaveApi: config.deliveryReadinessSaveApi || "/api/package-runs/delivery-readiness/save",
+        exportChecklistRegenerateApi: config.exportChecklistRegenerateApi || "/api/package-runs/export-checklist/regenerate-derived",
         nonceHeader: config.nonceHeader || "x-vidtoolz-local-write-nonce",
         localWriteNonce: config.localWriteNonce || (localWriteConfig ? localWriteConfig.localWriteNonce : ""),
       };
@@ -2342,6 +2445,120 @@ Capture evidence approval: PASS`;
         });
     }
 
+    function exportDeliveryPanel(button) {
+      return button.closest("[data-export-delivery-readiness]");
+    }
+
+    function setExportDeliveryStatus(panel, message, type = "") {
+      const status = panel ? panel.querySelector("[data-export-delivery-status]") : null;
+      if (status) {
+        status.textContent = message;
+        status.className = `capture-write-status ${type}`.trim();
+      }
+    }
+
+    function exportMasterPayload(consoleEl, panel) {
+      return {
+        runId: consoleEl.dataset.runId || "",
+        masterFilePath: panel.querySelector("[data-export-master-path]")?.value || "",
+        exportPreset: panel.querySelector("[data-export-master-preset]")?.value || "",
+      };
+    }
+
+    function deliveryReadinessFields(panel) {
+      const fields = {
+        masterFilePath: panel.querySelector("[data-export-master-path]")?.value || "",
+      };
+      panel.querySelectorAll("[data-delivery-field]").forEach((field) => {
+        fields[field.dataset.deliveryField] = field.value;
+      });
+      return fields;
+    }
+
+    function previewExportMasterRegistration(button) {
+      const consoleEl = button.closest("[data-rough-cut-console]");
+      const panel = exportDeliveryPanel(button);
+      if (!consoleEl || !panel) return;
+      const preview = panel.querySelector("[data-export-master-preview]");
+      const applyButton = panel.querySelector("[data-apply-export-master]");
+      const metadata = panel.querySelector("[data-export-master-metadata]");
+      button.disabled = true;
+      if (applyButton) applyButton.disabled = true;
+      setExportDeliveryStatus(panel, "Previewing master-file manifest. No files are being written.", "pending");
+      roughCutRequest((config) => config.exportMasterPreviewApi, exportMasterPayload(consoleEl, panel))
+        .then((payload) => {
+          panel.dataset.exportMasterPreviewValid = "yes";
+          if (preview) preview.value = payload.artifactPreview || "";
+          if (metadata) metadata.innerHTML = renderSecondCutCandidateMetadata(payload);
+          if (applyButton && payload.upstream && payload.upstream.publishReady) applyButton.disabled = false;
+          setExportDeliveryStatus(panel, "Preview ready. Save writes only master-file-manifest.md.", "valid");
+        })
+        .catch((error) => {
+          panel.dataset.exportMasterPreviewValid = "";
+          if (preview) preview.value = "";
+          if (metadata) metadata.innerHTML = "";
+          setExportDeliveryStatus(panel, error.message, "missing");
+        })
+        .finally(() => {
+          button.disabled = false;
+        });
+    }
+
+    function applyExportMasterRegistration(button) {
+      const consoleEl = button.closest("[data-rough-cut-console]");
+      const panel = exportDeliveryPanel(button);
+      if (!consoleEl || !panel) return;
+      if (panel.dataset.exportMasterPreviewValid !== "yes") {
+        setExportDeliveryStatus(panel, "Preview required before saving master-file-manifest.md.", "missing");
+        return;
+      }
+      button.disabled = true;
+      setExportDeliveryStatus(panel, "Saving master-file-manifest.md only.", "pending");
+      roughCutRequest((config) => config.exportMasterApplyApi, exportMasterPayload(consoleEl, panel))
+        .then((payload) => setExportDeliveryStatus(panel, payload.warning || `Saved: ${payload.written.join(", ")}`, "valid"))
+        .catch((error) => {
+          setExportDeliveryStatus(panel, error.message, "missing");
+          button.disabled = false;
+        });
+    }
+
+    function saveDeliveryReadiness(button) {
+      const consoleEl = button.closest("[data-rough-cut-console]");
+      const panel = exportDeliveryPanel(button);
+      if (!consoleEl || !panel) return;
+      button.disabled = true;
+      setExportDeliveryStatus(panel, "Saving delivery artifacts only.", "pending");
+      roughCutRequest((config) => config.deliveryReadinessSaveApi, {
+        runId: consoleEl.dataset.runId || "",
+        fields: deliveryReadinessFields(panel),
+      })
+        .then((payload) => {
+          setExportDeliveryStatus(panel, payload.warning || `Saved: ${payload.written.join(", ")}`, "valid");
+          const regen = panel.querySelector("[data-regenerate-export-checklist]");
+          if (regen) regen.disabled = false;
+        })
+        .catch((error) => setExportDeliveryStatus(panel, error.message, "missing"))
+        .finally(() => {
+          button.disabled = false;
+        });
+    }
+
+    function regenerateExportChecklist(button) {
+      const consoleEl = button.closest("[data-rough-cut-console]");
+      const panel = exportDeliveryPanel(button);
+      if (!consoleEl || !panel) return;
+      button.disabled = true;
+      setExportDeliveryStatus(panel, "Regenerating export-checklist.md only.", "pending");
+      roughCutRequest((config) => config.exportChecklistRegenerateApi, {
+        runId: consoleEl.dataset.runId || "",
+      })
+        .then((payload) => setExportDeliveryStatus(panel, payload.warning || `Export checklist: ${payload.review.status}`, "valid"))
+        .catch((error) => setExportDeliveryStatus(panel, error.message, "missing"))
+        .finally(() => {
+          button.disabled = false;
+        });
+    }
+
     function handleGridInput(event) {
       const input = event.target.closest("[data-capture-field]");
       if (input) {
@@ -2367,6 +2584,16 @@ Capture evidence approval: PASS`;
           const applyButton = panel.querySelector("[data-apply-final-candidate]");
           if (applyButton) applyButton.disabled = true;
           setFinalWatchStatus(panel, "Preview required before saving final-candidate.md.");
+        }
+      }
+      const exportInput = event.target.closest("[data-export-master-path], [data-export-master-preset]");
+      if (exportInput) {
+        const panel = exportInput.closest("[data-export-delivery-readiness]");
+        if (panel) {
+          panel.dataset.exportMasterPreviewValid = "";
+          const applyButton = panel.querySelector("[data-apply-export-master]");
+          if (applyButton) applyButton.disabled = true;
+          setExportDeliveryStatus(panel, "Preview required before saving master-file-manifest.md.");
         }
       }
     }
@@ -2423,6 +2650,7 @@ Capture evidence approval: PASS`;
     renderSecondCutCandidateRegistration,
     renderSecondCutHumanReview,
     renderFinalCandidateReview,
+    renderExportDeliveryReadiness,
     renderRoughCutResultCard,
     renderPickupPlanGui,
     renderMediaPanel,
