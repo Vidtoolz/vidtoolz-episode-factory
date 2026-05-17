@@ -11415,6 +11415,116 @@ test("operator cockpit status builds timeline summary media and index state", ()
   assert.equal(status.mediaRows.some((row) => row.path === "media/rough-cut-v1.mp4" && row.openAllowed), true);
 });
 
+function createProductionGpsFixture(overrides = {}) {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "production-gps-"));
+  const runId = overrides.runId || "2026-05-06-ai-video-proof-plan";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  const indexPath = path.join(tempRoot, "package-runs-index.json");
+  fs.mkdirSync(path.join(runDir, "media"), { recursive: true });
+  fs.writeFileSync(indexPath, JSON.stringify({ generatedAt: "before" }), "utf8");
+  writeCaptureEvidenceFixture(runDir, {
+    "package-run-state.md": "# Package Run State\n\nPackage run state: active\n",
+    "selected-package.md": "# Selected Package\n\nProof Plan Fixture\n",
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Proof Plan Fixture" } }),
+    "research-sufficiency-review.md": "# Research Sufficiency Review\n\n- Review status: PASS\n- Research approval marker: PASS\n",
+    "script-structure.md": "# Script Structure\n\n- Script structure status: READY TO DRAFT\n",
+    "script-review.md": "# Script Review\n\n- Script review status: PASS\n- Production planning ready: yes\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "production-blockers.md": "# Production Blockers\n\n| blocker | why | fix | status |\n| --- | --- | --- | --- |\n| None. | Clear. | None. | closed |\n",
+    "capture-evidence-review.md": "# Capture Evidence Review\n\n- Review status: PASS\n- Capture evidence accepted: yes\n- Manual approval marker detected: yes\n- Ready for rough-cut work: yes\n- Real capture evidence detected: yes\n",
+    "rough-cut-watch-notes.md": "# Rough-Cut Watch Notes\n\n- Reviewed file: media/rough-cut-v1.mp4\n\n## First 30 Seconds Notes\n\nOpening is acceptable.\n\n## Clarity Notes\n\nThe message is understandable.\n\n## Pacing Notes\n\nPacing is acceptable.\n\n## Proof / Evidence Notes\n\nProof/evidence is acceptable for this stage.\n\n## Missing Visuals\n\nPresenter is not seen, only heard.\n\n## Pickups Needed\n\nMaybe add closeups and AI-generated B-roll.\n\n## Edit Fixes Needed\n\nNo edit fixes noted beyond adding visual support.\n\n## Second-Cut Recommendation\n\nMove to second-cut work by adding clips.\n\n## Manual Rough-Cut Approval Marker\n\nRough-cut approval: NEEDS PICKUPS\n",
+    "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut notes source: rough-cut-watch-notes.md\n- Rough-cut review status: NEEDS PICKUPS\n- Second-cut ready: no\n\n## Second-Cut Readiness Gate\n\n- Status: NEEDS PICKUPS\n- Reason: Watch notes list pickups needed.\n",
+    "pickup-list.md": "# Pickup List\n\n| pickup shot/content | reason | priority | source/location | status |\n| --- | --- | --- | --- | --- |\n| Maybe add closeups and AI-generated B-roll. | Needed to repair rough-cut viewer experience. | high | rough-cut-watch-notes.md | open |\n",
+    "edit-fix-list.md": "# Edit Fix List\n\n| section/timecode | problem | fix | priority | status |\n| --- | --- | --- | --- | --- |\n| rough cut | No edit fixes noted beyond adding visual support. | Repair this before the second cut. | high | open |\n",
+    ...overrides.files,
+  });
+  fs.writeFileSync(path.join(runDir, "media", "rough-cut-v1.mp4"), "fake", "utf8");
+  return { tempRoot, runId, runDir, indexPath, statePath: path.join(runDir, "package-run-state.md") };
+}
+
+test("production GPS model builds current location human gate and blocked actions", () => {
+  const fixture = createProductionGpsFixture();
+
+  const gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot });
+
+  assert.equal(gps.readOnly, true);
+  assert.equal(gps.externalApisCalled, false);
+  assert.equal(gps.summary.runId, fixture.runId);
+  assert.equal(gps.summary.currentInferredStage, "Needs rough-cut review");
+  assert.equal(gps.summary.currentGate, "Pickup / Edit-Fix Planning");
+  assert.equal(gps.summary.gateStatus, "needs human review");
+  assert.equal(gps.summary.aiMayAct, true);
+  assert.equal(gps.humanGate.required, true);
+  assert.match(gps.humanGate.decision, /pickup/i);
+  assert.match(gps.summary.nextSafeAction, /pickup|rough-cut|second-cut/i);
+  assert.equal(gps.blockedActions.includes("mark second-cut ready"), true);
+  assert.equal(gps.blockedActions.includes("publish"), true);
+  assert.equal(gps.humanGate.aiAllowed.includes("draft pickup placement plan"), true);
+  assert.equal(gps.humanGate.aiBlocked.includes("mark second-cut ready"), true);
+});
+
+test("production GPS timeline marks current gate and keeps downstream locked", () => {
+  const fixture = createProductionGpsFixture();
+
+  const gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot });
+  const roughGate = gps.gateTimeline.find((gate) => gate.label === "Rough Cut Review");
+  const pickupGate = gps.gateTimeline.find((gate) => gate.label === "Pickup / Edit-Fix Planning");
+  const finalGate = gps.gateTimeline.find((gate) => gate.label === "Final Review");
+
+  assert.equal(Boolean(roughGate), true);
+  assert.equal(pickupGate.status, "current");
+  assert.equal(pickupGate.current, true);
+  assert.notEqual(finalGate.status, "done / pass");
+  assert.equal(finalGate.status, "not reached");
+});
+
+test("production GPS artifact trail classifies source derived state and missing artifacts", () => {
+  const fixture = createProductionGpsFixture();
+
+  const gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot });
+  const byPath = Object.fromEntries(gps.artifactTrail.items.map((item) => [item.path, item]));
+
+  assert.equal(byPath["rough-cut-watch-notes.md"].kind, "source / human-authored");
+  assert.equal(byPath["rough-cut-watch-notes.md"].containsApprovalMarker, true);
+  assert.equal(byPath["rough-cut-review.md"].kind, "derived / generated");
+  assert.equal(byPath["pickup-list.md"].kind, "derived / generated");
+  assert.equal(byPath["edit-fix-list.md"].kind, "derived / generated");
+  assert.equal(byPath["package-run-state.md"].kind, "state / lifecycle");
+  assert.equal(byPath["final-watch-notes.md"].exists, false);
+  assert.equal(byPath["rough-cut-review.md"].safeToRegenerate, true);
+  assert.equal(byPath["package-run-state.md"].requiresHumanReview, true);
+});
+
+test("production GPS stale rough-cut derived artifact warning is surfaced", () => {
+  const fixture = createProductionGpsFixture({
+    files: {
+      "rough-cut-review.md": "# Rough-Cut Review\n\n- Rough-cut notes source: created starter template\n- Rough-cut review status: BLOCKED\n- Second-cut ready: no\n\n## Second-Cut Readiness Gate\n\n- Status: BLOCKED\n- Reason: rough-cut-watch-notes.md was missing; starter template created.\n",
+    },
+  });
+
+  const gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot });
+
+  assert.equal(gps.staleWarnings.length, 1);
+  assert.match(gps.staleWarnings[0].title, /stale/i);
+  assert.match(gps.staleWarnings[0].detail, /NEEDS PICKUPS/);
+});
+
+test("production GPS builders are read-only and do not touch index or state files", () => {
+  const fixture = createProductionGpsFixture();
+  const beforeIndex = fs.readFileSync(fixture.indexPath, "utf8");
+  const beforeState = fs.readFileSync(fixture.statePath, "utf8");
+  const beforeIndexMtime = fs.statSync(fixture.indexPath).mtimeMs;
+  const beforeStateMtime = fs.statSync(fixture.statePath).mtimeMs;
+
+  const gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot });
+  packageRunsDashboard.renderProductionGps(gps);
+
+  assert.equal(fs.readFileSync(fixture.indexPath, "utf8"), beforeIndex);
+  assert.equal(fs.readFileSync(fixture.statePath, "utf8"), beforeState);
+  assert.equal(fs.statSync(fixture.indexPath).mtimeMs, beforeIndexMtime);
+  assert.equal(fs.statSync(fixture.statePath).mtimeMs, beforeStateMtime);
+});
+
 test("capture evidence intake preview does not write files", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-intake-preview-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-12-preview");
@@ -12037,6 +12147,62 @@ test("package runs dashboard renders Mikko rough-cut input console", () => {
   assert.match(html, /Review Result/);
   assert.match(html, /NEEDS PICKUPS/);
   assert.match(html, /Second-cut ready/);
+});
+
+test("package runs dashboard renders Production GPS panels safely", () => {
+  const gps = {
+    summary: {
+      runId: "2026-05-06-ai-video-proof-plan",
+      title: "Proof Plan Fixture",
+      stateLabel: "active",
+      currentLocation: "Package Run -> Rough Cut Review -> Pickup Execution -> Waiting for Mikko / Edit Work",
+      currentInferredStage: "Needs rough-cut review",
+      currentGate: "Pickup / Edit-Fix Planning",
+      gateStatus: "needs human review",
+      nextSafeAction: "Place/review pickup inserts before second-cut readiness.",
+      requiredHumanDecision: "Mikko must decide whether pickup/edit-fix work satisfies the rough-cut notes.",
+      latestRelevantArtifact: "rough-cut-watch-notes.md",
+      missingExpectedArtifact: "second-cut candidate",
+      aiMayAct: true,
+      mikkoApprovalRequired: true,
+    },
+    gateTimeline: [
+      { label: "Rough Cut Review", status: "needs human review", reason: "NEEDS PICKUPS", artifactPath: "rough-cut-review.md", current: false },
+      { label: "Pickup / Edit-Fix Planning", status: "current", reason: "Pickup work is active.", artifactPath: "pickup-list.md", current: true },
+      { label: "Final Review", status: "not reached", reason: "Locked until second cut.", artifactPath: "final-review.md", current: false },
+    ],
+    artifactTrail: {
+      items: [
+        { path: "rough-cut-watch-notes.md", exists: true, kind: "source / human-authored", canChangeReadiness: true, containsApprovalMarker: true, safeToRegenerate: false, requiresHumanReview: true },
+        { path: "rough-cut-review.md", exists: true, kind: "derived / generated", canChangeReadiness: true, containsApprovalMarker: false, safeToRegenerate: true, requiresHumanReview: true },
+        { path: "final-watch-notes.md", exists: false, kind: "source / human-authored", canChangeReadiness: true, containsApprovalMarker: false, safeToRegenerate: false, requiresHumanReview: true },
+      ],
+    },
+    humanGate: {
+      required: true,
+      title: "Human Gate Required",
+      decision: "Mikko must review pickup/edit-fix work before any second-cut readiness decision.",
+      reviewArtifact: "rough-cut-watch-notes.md",
+      doNotApproveYet: "Do not approve rough cut or mark second-cut ready.",
+      aiAllowed: ["inspect files", "draft pickup placement plan"],
+      aiBlocked: ["approve rough cut", "mark second-cut ready"],
+    },
+    blockedActions: ["mark second-cut ready", "publish", "archive", "promote project state"],
+    staleWarnings: [{ title: "Derived rough-cut review artifact may be stale", detail: "Current watch notes say NEEDS PICKUPS." }],
+  };
+  const html = packageRunsDashboard.renderProductionGps(gps);
+
+  assert.match(html, /Production GPS/);
+  assert.match(html, /Current location/);
+  assert.match(html, /Pickup \/ Edit-Fix Planning/);
+  assert.match(html, /Human Gate Required/);
+  assert.match(html, /Artifact Trail/);
+  assert.match(html, /Blocked Actions/);
+  assert.match(html, /AI allowed/);
+  assert.match(html, /AI blocked/);
+  assert.match(html, /rough-cut-watch-notes\.md/);
+  assert.match(html, /source \/ human-authored/);
+  assert.match(html, /Derived rough-cut review artifact may be stale/);
 });
 
 test("package runs dashboard formats capture evidence intake rows", () => {

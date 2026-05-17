@@ -1203,6 +1203,7 @@ label > span,
 
 .active-run-summary,
 .gate-timeline,
+.production-gps,
 .rough-cut-result-card,
 .pickup-plan-panel,
 .media-panel {
@@ -1263,9 +1264,77 @@ label > span,
 }
 
 .gate-locked,
-.gate-not-started {
+.gate-not-started,
+.gate-not-reached {
   border-left-color: var(--muted);
   opacity: 0.82;
+}
+
+.gate-current {
+  border-left-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.gate-current,
+.gate-needs-human-review,
+.gate-needs-artifact,
+.gate-stale-derived-artifact {
+  border-left-color: #ca8a04;
+}
+
+.gps-current-location,
+.human-gate-panel,
+.artifact-trail,
+.blocked-actions-panel,
+.gps-timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.gps-current-location {
+  background: #eef6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.gps-current-location h4,
+.human-gate-panel h4,
+.artifact-trail h4,
+.blocked-actions-panel h4,
+.gps-timeline h4,
+.human-gate-panel h5 {
+  margin: 0;
+}
+
+.gps-current-location p,
+.human-gate-panel p {
+  margin: 0;
+}
+
+.human-gate-panel {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.gps-split {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gps-split > div,
+.blocked-actions-panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.artifact-trail table {
+  width: 100%;
 }
 
 .pickup-table {

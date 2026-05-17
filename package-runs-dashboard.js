@@ -959,12 +959,92 @@ Capture evidence approval: PASS`;
     </section>`;
   }
 
+  function renderProductionGps(gps = {}) {
+    const summary = gps.summary || {};
+    const timeline = Array.isArray(gps.gateTimeline) ? gps.gateTimeline : [];
+    const trail = gps.artifactTrail && Array.isArray(gps.artifactTrail.items) ? gps.artifactTrail.items : [];
+    const humanGate = gps.humanGate || {};
+    const blocked = Array.isArray(gps.blockedActions) ? gps.blockedActions : [];
+    const stale = Array.isArray(gps.staleWarnings) ? gps.staleWarnings : [];
+    const list = (items, fallback) => `<ul>${(Array.isArray(items) && items.length ? items : [fallback]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+    return `<section class="production-gps" aria-label="VIDTOOLZ Production GPS">
+      <div class="mikko-console-header">
+        <div>
+          <p class="eyebrow">Production GPS</p>
+          <h3>Gate Cockpit v2</h3>
+        </div>
+        ${renderStatusBadge(summary.gateStatus || "unknown")}
+      </div>
+      <div class="gps-current-location">
+        <h4>Current location</h4>
+        <p>${escapeHtml(summary.currentLocation || "Package Run -> current gate unknown")}</p>
+      </div>
+      <div class="lifecycle-review-grid">
+        <div><span>Run</span><strong>${escapeHtml(summary.runId || "unknown")}</strong><small>${escapeHtml(summary.title || "")}</small></div>
+        <div><span>State</span><strong>${escapeHtml(summary.stateLabel || "unknown")}</strong></div>
+        <div><span>Current stage</span><strong>${escapeHtml(summary.currentInferredStage || "unknown")}</strong></div>
+        <div><span>Current gate</span><strong>${escapeHtml(summary.currentGate || "unknown")}</strong></div>
+        <div><span>Next safe action</span><strong>${escapeHtml(summary.nextSafeAction || "Inspect current gate.")}</strong></div>
+        <div><span>Human decision</span><strong>${escapeHtml(summary.requiredHumanDecision || "No decision reported.")}</strong></div>
+        <div><span>Latest artifact</span><strong>${escapeHtml(summary.latestRelevantArtifact || "none")}</strong></div>
+        <div><span>Missing expected artifact</span><strong>${escapeHtml(summary.missingExpectedArtifact || "none reported")}</strong></div>
+        <div><span>AI may act</span><strong>${summary.aiMayAct ? "yes" : "no"}</strong></div>
+        <div><span>Mikko approval required</span><strong>${summary.mikkoApprovalRequired ? "yes" : "no"}</strong></div>
+      </div>
+      <div class="gps-timeline">
+        <h4>Gate Timeline</h4>
+        <div class="gate-timeline-grid">
+          ${timeline.map((gate) => `<article class="gate-card ${gateClass(gate.status)} ${gate.current ? "gate-current" : ""}">
+            <div class="gate-card-top"><strong>${escapeHtml(gate.label)}</strong>${renderStatusBadge(gate.status || "not reached")}</div>
+            <p>${escapeHtml(gate.reason || "No reason reported.")}</p>
+            <small>${escapeHtml(gate.artifactPath || "No artifact path.")}</small>
+          </article>`).join("")}
+        </div>
+      </div>
+      <div class="human-gate-panel">
+        <h4>${escapeHtml(humanGate.title || "Human Gate Required")}</h4>
+        <p>${escapeHtml(humanGate.decision || "Mikko must review the current gate before approval.")}</p>
+        <p><strong>Review artifact:</strong> ${escapeHtml(humanGate.reviewArtifact || "not reported")}</p>
+        <p><strong>Do not approve yet:</strong> ${escapeHtml(humanGate.doNotApproveYet || "Do not infer approval from generated artifacts.")}</p>
+        <div class="gps-split">
+          <div><h5>AI allowed</h5>${list(humanGate.aiAllowed, "inspect files")}</div>
+          <div><h5>AI blocked</h5>${list(humanGate.aiBlocked, "approve or update state")}</div>
+        </div>
+      </div>
+      <div class="artifact-trail">
+        <h4>Artifact Trail</h4>
+        <table>
+          <thead><tr><th>Artifact</th><th>Status</th><th>Type</th><th>Readiness</th><th>Approval marker</th><th>Regenerate</th><th>Review</th></tr></thead>
+          <tbody>
+            ${trail.map((item) => `<tr>
+              <td>${escapeHtml(item.path || "")}</td>
+              <td>${item.exists ? "exists" : "missing"}</td>
+              <td>${escapeHtml(item.kind || "unclear")}</td>
+              <td>${item.canChangeReadiness ? "can change readiness" : "diagnostic only"}</td>
+              <td>${item.containsApprovalMarker ? "yes" : "no"}</td>
+              <td>${item.safeToRegenerate ? "safe derived" : "no"}</td>
+              <td>${item.requiresHumanReview ? "human review" : "not required"}</td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+      <div class="blocked-actions-panel">
+        <h4>Blocked Actions</h4>
+        ${list(blocked, "No blocked actions reported.")}
+      </div>
+      ${stale.length ? `<div class="stale-derived-warning">
+        ${stale.map((item) => `<strong>${escapeHtml(item.title || "Stale artifact warning")}</strong><p>${escapeHtml(item.detail || "")}</p>`).join("")}
+      </div>` : ""}
+    </section>`;
+  }
+
   function renderMikkoInputConsole(status = {}, result = null) {
     const runId = status.runId || "";
     const candidate = status.roughCutCandidate || {};
     const defaults = roughCutInputDefaults();
     const reviewedPath = candidate.path || "";
     return `<div class="mikko-console-run" data-rough-cut-console data-run-id="${escapeHtml(runId)}">
+      ${status.productionGps ? renderProductionGps(status.productionGps) : ""}
       ${renderActiveRunSummary(status.activeRunSummary || {
         runId,
         currentLifecycleStage: status.currentInferredStage,
@@ -1746,6 +1826,7 @@ Capture evidence approval: PASS`;
     roughCutInputDefaults,
     renderActiveRunSummary,
     renderGateTimeline,
+    renderProductionGps,
     renderRoughCutResultCard,
     renderPickupPlanGui,
     renderMediaPanel,

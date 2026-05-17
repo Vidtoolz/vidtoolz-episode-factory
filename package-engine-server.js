@@ -18,6 +18,7 @@ const STATUS_API = '/api/package-engine/status';
 const CAPTURE_EVIDENCE_PREVIEW_API = '/api/package-runs/capture-evidence/preview';
 const CAPTURE_EVIDENCE_APPLY_API = '/api/package-runs/capture-evidence/apply';
 const ROUGH_CUT_STATUS_API = '/api/package-runs/rough-cut/status';
+const PRODUCTION_GPS_API = '/api/package-runs/production-gps';
 const ROUGH_CUT_SAVE_API = '/api/package-runs/rough-cut/watch-notes';
 const ROUGH_CUT_REVIEW_API = '/api/package-runs/rough-cut/review';
 const ROUGH_CUT_REGENERATE_DERIVED_API = '/api/package-runs/rough-cut/regenerate-derived';
@@ -39,6 +40,23 @@ const CAPTURE_EVIDENCE_TARGETS = [
 const CAPTURE_EVIDENCE_AUDIT_FILE = 'capture-evidence-intake-log.md';
 const ROUGH_CUT_WATCH_NOTES_FILE = 'rough-cut-watch-notes.md';
 const ROUGH_CUT_DERIVED_FILES = ['rough-cut-review.md', 'pickup-list.md', 'edit-fix-list.md'];
+const PRODUCTION_GPS_ARTIFACTS = [
+  'rough-cut-watch-notes.md',
+  'final-watch-notes.md',
+  'manual-approval-notes.md',
+  'rough-cut-review.md',
+  'pickup-list.md',
+  'edit-fix-list.md',
+  'capture-evidence-review.md',
+  'export-checklist.md',
+  'publish-metadata-review.md',
+  'package-run-state.md',
+  'capture-checklist.md',
+  'takes-log.md',
+  'screen-recording-checklist.md',
+  'audio-capture-checklist.md',
+  'missing-shot-tracker.md',
+];
 const ROUGH_CUT_APPROVAL_VALUES = ['NOT GIVEN', 'NEEDS PICKUPS', 'NEEDS EDIT FIXES', 'PASS'];
 const PICKUP_ITEM_TYPES = ['presenter closeup', 'AI B-roll', 'screen zoom', 'graphic', 'edit-only fix', 'other'];
 const PICKUP_REQUIRED_VALUES = ['yes', 'no'];
@@ -668,6 +686,173 @@ function isSafeOpenPath(filePath, resolved, options = {}) {
   return allowedRoots.some((root) => absolute === root || absolute.startsWith(root + path.sep)) && fs.existsSync(absolute);
 }
 
+function gpsArtifactKind(filename) {
+  if (/^(rough-cut-watch-notes|final-watch-notes|manual-approval-notes)\.md$/i.test(filename)) return 'source / human-authored';
+  if (/^(package-run-state\.md|package-runs-index\.json)$/i.test(filename)) return 'state / lifecycle';
+  if (/^(rough-cut-review|pickup-list|edit-fix-list|capture-evidence-review|export-checklist|publish-metadata-review)\.md$/i.test(filename)) return 'derived / generated';
+  if (/^(capture-checklist|takes-log|screen-recording-checklist|audio-capture-checklist|missing-shot-tracker)\.md$/i.test(filename)) return 'evidence / media reference';
+  return 'unclear';
+}
+
+function containsApprovalMarker(markdown = '') {
+  return /(?:approval|accepted|ready|second-cut ready|capture evidence accepted):\s*(?:PASS|yes|READY|READY TO SHOOT|READY FOR ROUGH CUT|NEEDS PICKUPS|NEEDS EDIT FIXES)/i.test(String(markdown || ''));
+}
+
+function gpsArtifactCanChangeReadiness(filename, kind) {
+  return kind !== 'unclear' && (
+    kind === 'state / lifecycle' ||
+    kind === 'source / human-authored' ||
+    /(?:review|checklist|metadata|pickup-list|edit-fix-list|tracker)/i.test(filename)
+  );
+}
+
+function buildArtifactTrail(resolved) {
+  const items = PRODUCTION_GPS_ARTIFACTS.map((filename) => {
+    const artifactPath = path.join(resolved.runDir, filename);
+    const exists = fs.existsSync(artifactPath);
+    const text = exists ? fs.readFileSync(artifactPath, 'utf8') : '';
+    const kind = gpsArtifactKind(filename);
+    const safeToRegenerate = exists && kind === 'derived / generated' && ROUGH_CUT_DERIVED_FILES.includes(filename);
+    return {
+      path: filename,
+      exists,
+      kind,
+      canChangeReadiness: gpsArtifactCanChangeReadiness(filename, kind),
+      containsApprovalMarker: containsApprovalMarker(text),
+      safeToRegenerate,
+      requiresHumanReview: kind === 'source / human-authored' || kind === 'state / lifecycle' || containsApprovalMarker(text) || gpsArtifactCanChangeReadiness(filename, kind),
+      summary: exists ? 'present' : 'missing',
+    };
+  });
+  return {
+    groups: {
+      sourceHumanAuthored: items.filter((item) => item.kind === 'source / human-authored'),
+      derivedGenerated: items.filter((item) => item.kind === 'derived / generated'),
+      stateLifecycle: items.filter((item) => item.kind === 'state / lifecycle'),
+      evidenceMediaReferences: items.filter((item) => item.kind === 'evidence / media reference'),
+    },
+    items,
+  };
+}
+
+function gpsStatus(done, current, blocked, needsHuman, needsArtifact) {
+  if (current) return 'current';
+  if (blocked) return 'blocked';
+  if (needsHuman) return 'needs human review';
+  if (needsArtifact) return 'needs artifact';
+  return done ? 'done / pass' : 'not reached';
+}
+
+function buildProductionGpsTimeline(doctor = {}, roughCut = {}) {
+  const gate = doctor.lifecycleGate || {};
+  const roughNeedsWork = ['NEEDS PICKUPS', 'NEEDS EDIT FIXES'].includes(roughCut.roughCutReviewStatus);
+  const roughStarted = Boolean(roughCut.roughCutReviewStatus && roughCut.roughCutReviewStatus !== 'NOT STARTED');
+  const pickupCurrent = roughNeedsWork;
+  const roughCurrent = roughStarted && !roughNeedsWork && roughCut.roughCutReviewStatus !== 'READY FOR SECOND CUT';
+  const secondCutReached = Boolean(gate.secondCutReady);
+  const finalReached = Boolean(gate.finalReviewStatus);
+  const exportReached = Boolean(gate.exportStatus);
+  const publishReached = Boolean(gate.publicationMetadataStatus);
+  const archiveReached = Boolean(gate.archiveStatus || gate.readyToArchive);
+  return [
+    { label: 'Topic / Package', status: gpsStatus(Boolean(doctor.title), false, false, false, !doctor.title), reason: doctor.title ? `Selected package: ${doctor.title}.` : 'Selected package missing.', artifactPath: 'selected-package.md' },
+    { label: 'Research Evidence', status: gpsStatus(gate.researchSufficiencyReviewStatus === 'PASS' || gate.researchApprovalMarker === 'PASS', false, false, gate.researchSufficiencyReviewStatus && gate.researchSufficiencyReviewStatus !== 'PASS', !gate.researchSufficiencyReviewStatus), reason: `Research status: ${gate.researchSufficiencyReviewStatus || gate.researchGateStatus || 'missing'}.`, artifactPath: 'research-sufficiency-review.md' },
+    { label: 'Script Structure', status: gpsStatus(Boolean(gate.readyToDraft), false, false, false, !gate.scriptStructureStatus), reason: `Script structure: ${gate.scriptStructureStatus || 'missing'}.`, artifactPath: 'script-structure.md' },
+    { label: 'Script Review', status: gpsStatus(gate.scriptReviewStatus === 'PASS', false, gate.scriptReviewStatus && gate.scriptReviewStatus !== 'PASS', false, !gate.scriptReviewStatus), reason: `Script review: ${gate.scriptReviewStatus || 'missing'}.`, artifactPath: 'script-review.md' },
+    { label: 'Production Planning', status: gpsStatus(gate.productionPlanStatus === 'READY TO SHOOT' && !gate.productionPlanningBlocked, false, gate.productionPlanningBlocked, gate.productionPlanStatus && gate.productionPlanStatus !== 'READY TO SHOOT', !gate.productionPlanStatus), reason: `Production plan: ${gate.productionPlanStatus || 'missing'}.`, artifactPath: 'production-plan.md' },
+    { label: 'Shot/Edit Plan Review', status: gpsStatus(Boolean(gate.shotEditPlanAccepted), false, gate.hasShotEditPlanReview && !gate.shotEditPlanAccepted, false, !gate.hasShotEditPlanReview), reason: `Shot/edit review: ${gate.shotEditPlanReviewStatus || 'missing'}; accepted: ${gate.shotEditPlanAccepted ? 'yes' : 'no'}.`, artifactPath: 'shot-edit-plan-review.md' },
+    { label: 'Capture Checklist', status: gpsStatus(gate.captureStatus === 'READY FOR ROUGH CUT' || gate.readyForRoughCut, false, false, false, !gate.captureStatus), reason: `Capture checklist: ${gate.captureStatus || 'missing'}.`, artifactPath: 'capture-checklist.md' },
+    { label: 'Capture Evidence Review', status: gpsStatus(Boolean(gate.captureEvidenceAccepted), false, false, gate.hasCaptureEvidenceReview && !gate.captureEvidenceAccepted, !gate.hasCaptureEvidenceReview), reason: `Capture evidence: ${gate.captureEvidenceReviewStatus || 'missing'}; accepted: ${gate.captureEvidenceAccepted ? 'yes' : 'no'}.`, artifactPath: 'capture-evidence-review.md' },
+    { label: 'Rough Cut Review', status: roughCurrent ? 'current' : gpsStatus(roughCut.roughCutReviewStatus === 'READY FOR SECOND CUT', false, roughCut.roughCutReviewStatus === 'BLOCKED', roughNeedsWork, !roughStarted), reason: `Rough-cut review: ${roughCut.roughCutReviewStatus || 'missing'}.`, artifactPath: 'rough-cut-review.md', current: roughCurrent },
+    { label: 'Pickup / Edit-Fix Planning', status: pickupCurrent ? 'current' : gpsStatus(!roughNeedsWork && roughCut.roughCutReviewStatus === 'READY FOR SECOND CUT', false, false, roughNeedsWork, !roughStarted), reason: roughNeedsWork ? 'Pickup/edit-fix work is active before second-cut readiness.' : `Pickup list status: ${roughCut.pickupListStatus || 'missing'}.`, artifactPath: 'pickup-list.md', current: pickupCurrent },
+    { label: 'Second Cut Candidate', status: gpsStatus(secondCutReached, false, roughNeedsWork || roughCut.secondCutReady === false, false, !roughStarted), reason: `Second-cut ready: ${gate.secondCutReady || roughCut.secondCutReady ? 'yes' : 'no'}.`, artifactPath: 'rough-cut-review.md' },
+    { label: 'Final Review', status: !secondCutReached ? 'not reached' : gpsStatus(gate.finalReviewStatus === 'PASS', false, false, Boolean(finalReached && gate.finalReviewStatus !== 'PASS'), false), reason: `Final review: ${gate.finalReviewStatus || 'missing'}.`, artifactPath: 'final-review.md' },
+    { label: 'Export Check', status: !finalReached ? 'not reached' : gpsStatus(Boolean(gate.effectiveReadyToUpload), false, false, Boolean(exportReached && !gate.effectiveReadyToUpload), false), reason: `Export: ${gate.exportStatus || 'missing'}.`, artifactPath: 'export-checklist.md' },
+    { label: 'Publish Metadata', status: !exportReached ? 'not reached' : gpsStatus(Boolean(gate.effectiveReadyToSchedule), false, false, Boolean(publishReached && !gate.effectiveReadyToSchedule), false), reason: `Publish metadata: ${gate.publicationMetadataStatus || 'missing'}.`, artifactPath: 'publish-metadata-review.md' },
+    { label: 'Archive / Repurpose', status: !publishReached ? 'not reached' : gpsStatus(Boolean(gate.effectiveReadyToArchive), false, false, Boolean(archiveReached && !gate.effectiveReadyToArchive), false), reason: `Archive: ${gate.archiveStatus || 'missing'}.`, artifactPath: 'archive-manifest.md' },
+  ];
+}
+
+function buildProductionGps(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const runInput = `${PACKAGE_RUNS_DIR}/${resolved.runId}`;
+  const doctor = packageRunDoctor.buildDoctorReport(runInput, { repoRoot: resolved.root });
+  const roughCutResult = parseRoughCutReviewFile(resolved.runDir);
+  const gate = doctor.lifecycleGate || {};
+  const artifactTrail = buildArtifactTrail(resolved);
+  const gateTimeline = buildProductionGpsTimeline(doctor, roughCutResult);
+  const currentTimelineGate = gateTimeline.find((item) => item.current) || gateTimeline.find((item) => item.status === 'blocked' || item.status === 'needs human review' || item.status === 'needs artifact') || gateTimeline[0];
+  const roughNeedsPickups = roughCutResult.roughCutReviewStatus === 'NEEDS PICKUPS';
+  const roughNeedsEditFixes = roughCutResult.roughCutReviewStatus === 'NEEDS EDIT FIXES';
+  const currentGate = roughNeedsPickups || roughNeedsEditFixes ? 'Pickup / Edit-Fix Planning' : currentTimelineGate.label;
+  const gateStatus = roughNeedsPickups || roughNeedsEditFixes ? 'needs human review' : currentTimelineGate.status;
+  const blockedActions = [...new Set([
+    ...((doctor.conservativeBlockedActions || []).map((item) => item === 'upload' ? 'upload' : item)),
+    gate.productionPlanStatus === 'READY TO SHOOT' && !gate.productionPlanningBlocked ? '' : 'mark ready to shoot',
+    roughCutResult.secondCutReady ? '' : 'mark second-cut ready',
+    'approve final',
+    'publish',
+    'archive',
+    'promote project state',
+    'commit state file',
+  ].filter(Boolean))];
+  const nextSafeAction =
+    roughNeedsPickups
+      ? 'Place/review pickup inserts and edit-fix work before any second-cut readiness decision.'
+      : roughNeedsEditFixes
+        ? 'Apply and review edit fixes before any second-cut readiness decision.'
+        : doctor.nextSafeAction || doctor.nextRecommendedCommand || doctor.firstBlockerReason || 'Inspect the current gate before downstream work.';
+  const staleWarnings = roughCutResult.derivedArtifactStale ? [{
+    title: 'Derived rough-cut review artifact may be stale',
+    detail: roughCutResult.staleReason || `Current watch notes say ${roughCutResult.currentWatchNotesMarker || roughCutResult.approvalMarker || 'NOT GIVEN'}.`,
+    artifactPath: 'rough-cut-review.md',
+  }] : [];
+  const humanGateRequired = gateStatus !== 'done / pass' || roughNeedsPickups || roughNeedsEditFixes;
+  const latestRelevantArtifact = roughCutResult.reviewedFilePath ? 'rough-cut-watch-notes.md' : currentTimelineGate.artifactPath || '';
+  return {
+    ok: true,
+    readOnly: true,
+    externalApisCalled: false,
+    runId: resolved.runId,
+    runPath: runInput,
+    summary: {
+      runId: resolved.runId,
+      title: doctor.title || '',
+      stateLabel: (doctor.packageRunState || readPackageRunState(resolved.runDir)).state || 'active',
+      currentLocation: `Package Run -> ${roughNeedsPickups || roughNeedsEditFixes ? 'Rough Cut Review -> Pickup Execution -> Waiting for Mikko / Edit Work' : currentGate}`,
+      currentInferredStage: doctor.currentInferredStage || doctor.lifecycleStatus || '',
+      currentGate,
+      gateStatus,
+      nextSafeAction,
+      blockedActions,
+      requiredHumanDecision: humanGateRequired
+        ? 'Mikko must review the current gate before any readiness transition.'
+        : 'No human decision is currently reported by this read-only model.',
+      latestRelevantArtifact,
+      missingExpectedArtifact: (doctor.missingExpectedArtifacts || [])[0] || (roughCutResult.secondCutReady ? '' : 'second-cut candidate'),
+      aiMayAct: true,
+      mikkoApprovalRequired: humanGateRequired,
+    },
+    gateTimeline,
+    artifactTrail,
+    humanGate: {
+      required: humanGateRequired,
+      title: 'Human Gate Required',
+      decision: roughNeedsPickups || roughNeedsEditFixes
+        ? 'Mikko must decide whether pickup/edit-fix work satisfies the rough-cut notes before any second-cut readiness decision.'
+        : 'Mikko must review the current gate before any approval marker or readiness transition is added.',
+      reviewArtifact: latestRelevantArtifact || currentTimelineGate.artifactPath || '',
+      doNotApproveYet: 'Do not approve rough cut, mark second-cut ready, publish, archive, or update durable state from this dashboard.',
+      aiAllowed: ['inspect files', 'classify clips', 'draft pickup placement plan', 'summarize blockers', 'propose non-approval next steps'],
+      aiBlocked: ['approve rough cut', 'mark second-cut ready', 'approve final', 'publish', 'archive', 'update package-run-state.md', 'update package-runs-index.json'],
+    },
+    blockedActions,
+    staleWarnings,
+    roughCutResult,
+    mediaRows: collectMediaRows(resolved, detectRoughCutCandidate(resolved.runDir)),
+  };
+}
+
 function normalizePickupItem(item = {}) {
   const title = markdownCell(item.title || item.itemTitle || '');
   const type = markdownCell(item.type || '');
@@ -766,6 +951,7 @@ function buildRoughCutStatus(payload = {}, options = {}) {
   const roughCutCandidate = detectRoughCutCandidate(resolved.runDir);
   const roughCutResult = parseRoughCutReviewFile(resolved.runDir);
   const indexStatus = dashboardIndexStatus(resolved);
+  const productionGps = buildProductionGps(payload, options);
   const staleDerivedArtifacts = roughCutResult.derivedArtifactStale ? ['rough-cut-review.md'] : [];
   const exactNextSafeAction =
     doctor.nextSafeAction ||
@@ -798,6 +984,7 @@ function buildRoughCutStatus(payload = {}, options = {}) {
       boundary: 'Regeneration overwrites derived rough-cut artifacts only. It does not approve rough cut, mark second-cut ready, or edit rough-cut-watch-notes.md.',
     } : { stale: false },
     gateTimeline: buildGateTimeline(doctor, roughCutResult),
+    productionGps,
     mediaRows: collectMediaRows(resolved, roughCutCandidate),
     dashboardIndex: indexStatus,
     activeRunSummary: {
@@ -1194,6 +1381,7 @@ function createStatusResponse(env = process.env) {
     },
     roughCutInputConsole: {
       statusApi: ROUGH_CUT_STATUS_API,
+      productionGpsApi: PRODUCTION_GPS_API,
       saveApi: ROUGH_CUT_SAVE_API,
       reviewApi: ROUGH_CUT_REVIEW_API,
       regenerateDerivedApi: ROUGH_CUT_REGENERATE_DERIVED_API,
@@ -1389,6 +1577,15 @@ function createServer() {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === PRODUCTION_GPS_API) {
+      try {
+        send(res, 200, buildProductionGps({ runId: url.searchParams.get('runId') || '' }));
+      } catch (error) {
+        send(res, error.statusCode || 500, { error: error.message });
+      }
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === ROUGH_CUT_SAVE_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -1488,6 +1685,8 @@ module.exports = {
   PICKUP_REQUIRED_VALUES,
   PICKUP_SOURCES,
   PICKUP_STATUSES,
+  PRODUCTION_GPS_API,
+  PRODUCTION_GPS_ARTIFACTS,
   ROUGH_CUT_APPROVAL_VALUES,
   ROUGH_CUT_DERIVED_FILES,
   ROUGH_CUT_OPEN_API,
@@ -1506,12 +1705,15 @@ module.exports = {
   buildRoughCutWatchNotesMarkdown,
   buildOpenAIImageRequest,
   buildOpenAIThumbnailPrompts,
+  buildArtifactTrail,
   captureEvidenceInputDefaults,
   createCandidates,
   createOpenAIThumbnailCandidates,
   createServer,
   createStatusResponse,
   createThumbnailResponse,
+  buildProductionGps,
+  buildProductionGpsTimeline,
   detectRoughCutCandidate,
   dashboardIndexStatus,
   findActivePackageRun,
