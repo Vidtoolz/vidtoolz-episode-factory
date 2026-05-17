@@ -1216,6 +1216,86 @@ Capture evidence approval: PASS`;
     </section>`;
   }
 
+  function renderFinalCandidateReview(status = {}) {
+    const runId = status.runId || "";
+    const finalPanel = status.finalReviewConsole || (status.productionGps && status.productionGps.finalReviewConsole) || {};
+    const list = (items, fallback) => `<ul>${(Array.isArray(items) && items.length ? items : [fallback]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+    return `<section class="final-watch-review" data-final-watch-review>
+      <div class="mikko-console-header">
+        <div>
+          <p class="eyebrow">Human Final Gate</p>
+          <h3>Final Candidate / Final Watch Review</h3>
+        </div>
+        ${renderStatusBadge(finalPanel.finalReviewStatus || "NEEDS HUMAN REVIEW")}
+      </div>
+      <div class="human-review-required">
+        <strong>Mikko final decision required</strong>
+        <p>This records and derives final-watch review state. It does not upload, publish, archive, or update package-run state.</p>
+      </div>
+      <div class="lifecycle-review-grid">
+        <div><span>Run</span><strong>${escapeHtml(runId || "unknown")}</strong></div>
+        <div><span>Second-cut status</span><strong>${escapeHtml(finalPanel.secondCutReviewStatus || "unknown")}</strong></div>
+        <div><span>Second-cut ready</span><strong>${finalPanel.secondCutReady ? "yes" : "no"}</strong></div>
+        <div><span>Final candidate</span><strong>${escapeHtml(finalPanel.finalCandidatePath || "not registered")}</strong></div>
+        <div><span>Final-watch notes</span><strong>${finalPanel.finalWatchNotesExists ? "exists" : "missing"}</strong></div>
+        <div><span>Derived final review</span><strong>${finalPanel.finalReviewExists ? "exists" : "missing"}</strong></div>
+        <div><span>Publish ready</span><strong>${finalPanel.publishReady ? "yes" : "no"}</strong></div>
+        <div><span>Human gate required</span><strong>${finalPanel.humanGateRequired === false ? "no" : "yes"}</strong></div>
+      </div>
+      <p class="muted">Allowed final decision markers: NEEDS FINAL FIXES, PASS. PASS is a human final approval marker.</p>
+      <div class="rough-cut-form-grid">
+        <label class="rough-cut-field rough-cut-field-wide">
+          <span>Final candidate video path</span>
+          <input type="text" data-final-candidate-path value="${escapeHtml(finalPanel.finalCandidatePath || "")}" placeholder="/absolute/path/to/final-candidate.mp4" />
+          <small>Preview validates this path and writes nothing. Save writes only final-candidate.md.</small>
+        </label>
+        <label class="rough-cut-field rough-cut-field-wide">
+          <span>Final candidate notes</span>
+          <textarea rows="2" data-final-candidate-notes placeholder="Optional export or Resolve timeline notes."></textarea>
+        </label>
+        ${renderRoughCutTextInput("candidatePath", "Final candidate reviewed", finalPanel.finalCandidatePath || "", true).replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextInput("watchDate", "Watch date", new Date().toISOString().slice(0, 10), true).replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextInput("reviewer", "Reviewer", "Mikko", true).replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextarea("viewerPromiseDelivery", "Viewer promise delivery").replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextarea("openingStrength", "Opening strength").replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextarea("clarity", "Clarity").replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextarea("pacing", "Pacing").replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextarea("proofEvidence", "Proof / evidence").replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextarea("audioQuality", "Audio quality").replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextarea("visualSupport", "Visual support").replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextarea("graphicsCaptions", "Graphics / captions").replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextarea("titleThumbnailFit", "Title / thumbnail fit").replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextarea("ethicalAccuracyRisks", "Ethical / accuracy risks").replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextarea("uploadMetadataReadiness", "Upload metadata readiness").replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextarea("archiveReadiness", "Archive readiness").replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        ${renderRoughCutTextarea("remainingFinalFixes", "Remaining final fixes").replace(/data-rough-cut-field/g, "data-final-watch-field")}
+        <label class="rough-cut-field">
+          <span>Final decision marker *</span>
+          <select data-final-watch-field="decisionMarker">
+            <option value="NEEDS FINAL FIXES">NEEDS FINAL FIXES</option>
+            <option value="PASS">PASS</option>
+          </select>
+          <small>This is the human final approval marker. Do not use unless Mikko has watched the full final candidate.</small>
+        </label>
+      </div>
+      <div class="rough-cut-actions">
+        <button type="button" data-preview-final-candidate>Preview final candidate</button>
+        <button type="button" data-apply-final-candidate disabled>Save final-candidate.md</button>
+        <button type="button" data-save-final-watch-notes>Save final-watch notes</button>
+        <button type="button" data-regenerate-final-review ${finalPanel.finalWatchNotesExists ? "" : "disabled"}>Regenerate derived final review</button>
+        <span data-final-watch-status class="capture-write-status">Writes only final-candidate.md, final-watch-notes.md, or final-review.md.</span>
+      </div>
+      <div data-final-candidate-metadata></div>
+      <textarea readonly rows="10" class="capture-write-preview" data-final-candidate-preview placeholder="Final candidate preview will show the exact managed Markdown before writing."></textarea>
+      ${finalPanel.warnings && finalPanel.warnings.length ? `<div class="stale-derived-warning"><h4>Warnings</h4>${list(finalPanel.warnings, "No warnings.")}</div>` : ""}
+      <div class="gps-split">
+        <div><h4>AI allowed</h4>${list(finalPanel.aiAllowed, "inspect file metadata")}</div>
+        <div><h4>AI blocked</h4>${list(finalPanel.aiBlocked, "approve publishing or update state")}</div>
+      </div>
+      <div class="blocked-actions-panel"><h4>Blocked Actions</h4>${list(finalPanel.blockedActions, "publish/upload/archive remain blocked until separate gates pass.")}</div>
+    </section>`;
+  }
+
   function renderMikkoInputConsole(status = {}, result = null) {
     const runId = status.runId || "";
     const candidate = status.roughCutCandidate || {};
@@ -1226,6 +1306,7 @@ Capture evidence approval: PASS`;
       ${status.secondCutInspector ? renderSecondCutInspector(status.secondCutInspector) : ""}
       ${renderSecondCutCandidateRegistration(status)}
       ${renderSecondCutHumanReview(status)}
+      ${renderFinalCandidateReview(status)}
       ${renderActiveRunSummary(status.activeRunSummary || {
         runId,
         currentLifecycleStage: status.currentInferredStage,
@@ -1621,6 +1702,30 @@ Capture evidence approval: PASS`;
         regenerateSecondCutReviewDerived(regenerateSecondCutReview);
         return;
       }
+      const previewFinalCandidate = event.target.closest("[data-preview-final-candidate]");
+      if (previewFinalCandidate) {
+        event.preventDefault();
+        previewFinalCandidateRegistration(previewFinalCandidate);
+        return;
+      }
+      const applyFinalCandidate = event.target.closest("[data-apply-final-candidate]");
+      if (applyFinalCandidate) {
+        event.preventDefault();
+        applyFinalCandidateRegistration(applyFinalCandidate);
+        return;
+      }
+      const saveFinalWatch = event.target.closest("[data-save-final-watch-notes]");
+      if (saveFinalWatch) {
+        event.preventDefault();
+        saveFinalWatchNotes(saveFinalWatch);
+        return;
+      }
+      const regenerateFinalReview = event.target.closest("[data-regenerate-final-review]");
+      if (regenerateFinalReview) {
+        event.preventDefault();
+        regenerateFinalReviewDerived(regenerateFinalReview);
+        return;
+      }
       const link = event.target.closest("[data-preview-artifact]");
       if (!link) return;
       event.preventDefault();
@@ -1822,6 +1927,10 @@ Capture evidence approval: PASS`;
         secondCutCandidateApplyApi: config.secondCutCandidateApplyApi || "/api/package-runs/second-cut-candidate/apply",
         secondCutWatchNotesSaveApi: config.secondCutWatchNotesSaveApi || "/api/package-runs/second-cut-watch-notes/save",
         secondCutReviewRegenerateApi: config.secondCutReviewRegenerateApi || "/api/package-runs/second-cut-review/regenerate-derived",
+        finalCandidatePreviewApi: config.finalCandidatePreviewApi || "/api/package-runs/final-candidate/preview",
+        finalCandidateApplyApi: config.finalCandidateApplyApi || "/api/package-runs/final-candidate/apply",
+        finalWatchNotesSaveApi: config.finalWatchNotesSaveApi || "/api/package-runs/final-watch-notes/save",
+        finalReviewRegenerateApi: config.finalReviewRegenerateApi || "/api/package-runs/final-review/regenerate-derived",
         nonceHeader: config.nonceHeader || "x-vidtoolz-local-write-nonce",
         localWriteNonce: config.localWriteNonce || (localWriteConfig ? localWriteConfig.localWriteNonce : ""),
       };
@@ -2121,6 +2230,118 @@ Capture evidence approval: PASS`;
         });
     }
 
+    function finalWatchPanel(button) {
+      return button.closest("[data-final-watch-review]");
+    }
+
+    function setFinalWatchStatus(panel, message, type = "") {
+      const status = panel ? panel.querySelector("[data-final-watch-status]") : null;
+      if (status) {
+        status.textContent = message;
+        status.className = `capture-write-status ${type}`.trim();
+      }
+    }
+
+    function finalCandidatePayload(consoleEl, panel) {
+      return {
+        runId: consoleEl.dataset.runId || "",
+        candidatePath: panel.querySelector("[data-final-candidate-path]")?.value || "",
+        notes: panel.querySelector("[data-final-candidate-notes]")?.value || "",
+      };
+    }
+
+    function finalWatchFields(panel) {
+      const fields = {};
+      panel.querySelectorAll("[data-final-watch-field]").forEach((field) => {
+        fields[field.dataset.finalWatchField] = field.value;
+      });
+      return fields;
+    }
+
+    function previewFinalCandidateRegistration(button) {
+      const consoleEl = button.closest("[data-rough-cut-console]");
+      const panel = finalWatchPanel(button);
+      if (!consoleEl || !panel) return;
+      const preview = panel.querySelector("[data-final-candidate-preview]");
+      const applyButton = panel.querySelector("[data-apply-final-candidate]");
+      const metadata = panel.querySelector("[data-final-candidate-metadata]");
+      button.disabled = true;
+      if (applyButton) applyButton.disabled = true;
+      setFinalWatchStatus(panel, "Previewing final candidate registration. No files are being written.", "pending");
+      roughCutRequest((config) => config.finalCandidatePreviewApi, finalCandidatePayload(consoleEl, panel))
+        .then((payload) => {
+          panel.dataset.finalCandidatePreviewValid = "yes";
+          if (preview) preview.value = payload.artifactPreview || "";
+          if (metadata) metadata.innerHTML = renderSecondCutCandidateMetadata(payload);
+          if (applyButton && payload.upstream && payload.upstream.secondCutReady) applyButton.disabled = false;
+          setFinalWatchStatus(panel, "Preview ready. Save writes only final-candidate.md and does not approve publishing.", "valid");
+        })
+        .catch((error) => {
+          panel.dataset.finalCandidatePreviewValid = "";
+          if (preview) preview.value = "";
+          if (metadata) metadata.innerHTML = "";
+          setFinalWatchStatus(panel, error.message, "missing");
+        })
+        .finally(() => {
+          button.disabled = false;
+        });
+    }
+
+    function applyFinalCandidateRegistration(button) {
+      const consoleEl = button.closest("[data-rough-cut-console]");
+      const panel = finalWatchPanel(button);
+      if (!consoleEl || !panel) return;
+      if (panel.dataset.finalCandidatePreviewValid !== "yes") {
+        setFinalWatchStatus(panel, "Preview required before saving final-candidate.md.", "missing");
+        return;
+      }
+      button.disabled = true;
+      setFinalWatchStatus(panel, "Saving final-candidate.md only.", "pending");
+      roughCutRequest((config) => config.finalCandidateApplyApi, finalCandidatePayload(consoleEl, panel))
+        .then((payload) => setFinalWatchStatus(panel, payload.warning || `Saved: ${payload.written.join(", ")}`, "valid"))
+        .catch((error) => {
+          setFinalWatchStatus(panel, error.message, "missing");
+          button.disabled = false;
+        });
+    }
+
+    function saveFinalWatchNotes(button) {
+      const consoleEl = button.closest("[data-rough-cut-console]");
+      const panel = finalWatchPanel(button);
+      if (!consoleEl || !panel) return;
+      button.disabled = true;
+      setFinalWatchStatus(panel, "Saving final-watch-notes.md only.", "pending");
+      roughCutRequest((config) => config.finalWatchNotesSaveApi, {
+        runId: consoleEl.dataset.runId || "",
+        fields: finalWatchFields(panel),
+      })
+        .then((payload) => {
+          setFinalWatchStatus(panel, payload.warning || "Final-watch notes saved.", "valid");
+          const regen = panel.querySelector("[data-regenerate-final-review]");
+          if (regen) regen.disabled = false;
+        })
+        .catch((error) => setFinalWatchStatus(panel, error.message, "missing"))
+        .finally(() => {
+          button.disabled = false;
+        });
+    }
+
+    function regenerateFinalReviewDerived(button) {
+      const consoleEl = button.closest("[data-rough-cut-console]");
+      const panel = finalWatchPanel(button);
+      if (!consoleEl || !panel) return;
+      button.disabled = true;
+      setFinalWatchStatus(panel, "Regenerating final-review.md only.", "pending");
+      roughCutRequest((config) => config.finalReviewRegenerateApi, {
+        runId: consoleEl.dataset.runId || "",
+      })
+        .then((payload) => setFinalWatchStatus(panel, payload.warning || `Final review: ${payload.review.status}`, "valid"))
+        .catch((error) => setFinalWatchStatus(panel, error.message, "missing"))
+        .finally(() => {
+          button.disabled = false;
+        });
+    }
+
     function handleGridInput(event) {
       const input = event.target.closest("[data-capture-field]");
       if (input) {
@@ -2136,6 +2357,16 @@ Capture evidence approval: PASS`;
           const applyButton = panel.querySelector("[data-apply-second-cut-candidate]");
           if (applyButton) applyButton.disabled = true;
           setSecondCutCandidateStatus(panel, "Preview required before saving second-cut-candidate.md.");
+        }
+      }
+      const finalInput = event.target.closest("[data-final-candidate-path], [data-final-candidate-notes]");
+      if (finalInput) {
+        const panel = finalInput.closest("[data-final-watch-review]");
+        if (panel) {
+          panel.dataset.finalCandidatePreviewValid = "";
+          const applyButton = panel.querySelector("[data-apply-final-candidate]");
+          if (applyButton) applyButton.disabled = true;
+          setFinalWatchStatus(panel, "Preview required before saving final-candidate.md.");
         }
       }
     }
@@ -2191,6 +2422,7 @@ Capture evidence approval: PASS`;
     renderSecondCutInspector,
     renderSecondCutCandidateRegistration,
     renderSecondCutHumanReview,
+    renderFinalCandidateReview,
     renderRoughCutResultCard,
     renderPickupPlanGui,
     renderMediaPanel,

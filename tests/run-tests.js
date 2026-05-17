@@ -11977,7 +11977,7 @@ test("production GPS integrates second cut human decisions conservatively", () =
   const cases = [
     ["NEEDS MORE PICKUPS", "Pickup / Edit-Fix Planning", /remaining pickups/i, false],
     ["NEEDS EDIT FIXES", "Edit Fix Planning", /edit fixes/i, false],
-    ["READY FOR SECOND CUT", "Final Review Preparation", /final watch review/i, true],
+    ["READY FOR SECOND CUT", "Final Candidate Preparation", /register final candidate/i, true],
   ];
   cases.forEach(([marker, gate, actionPattern, ready]) => {
     const fixture = createSecondCutInspectorFixture();
@@ -11996,6 +11996,277 @@ test("production GPS integrates second cut human decisions conservatively", () =
     assert.equal(gps.blockedActions.includes("publish"), true);
     assert.equal(gps.blockedActions.includes("archive"), true);
   });
+});
+
+function createFinalReviewFixture(overrides = {}) {
+  const fixture = createSecondCutInspectorFixture(overrides);
+  const secondCutPath = path.join(fixture.tempRoot, "exports", "second-cut-candidate-v2.mp4");
+  fs.mkdirSync(path.dirname(secondCutPath), { recursive: true });
+  fs.writeFileSync(secondCutPath, "fake second cut", "utf8");
+  packageEngineServer.applySecondCutCandidateRegistration({ runId: fixture.runId, candidatePath: secondCutPath }, { root: fixture.tempRoot });
+  packageEngineServer.saveSecondCutWatchNotes({
+    runId: fixture.runId,
+    fields: secondCutWatchFields({ candidatePath: secondCutPath, decisionMarker: "READY FOR SECOND CUT" }),
+  }, { root: fixture.tempRoot });
+  packageEngineServer.regenerateSecondCutReviewDerived({ runId: fixture.runId }, { root: fixture.tempRoot });
+  return { ...fixture, secondCutPath };
+}
+
+function finalWatchFields(overrides = {}) {
+  const pick = (key, fallback) => Object.prototype.hasOwnProperty.call(overrides, key) ? overrides[key] : fallback;
+  return {
+    candidatePath: pick("candidatePath", "/tmp/final-candidate.mp4"),
+    watchDate: pick("watchDate", "2026-05-17"),
+    reviewer: pick("reviewer", "Mikko"),
+    viewerPromiseDelivery: pick("viewerPromiseDelivery", "Viewer promise is delivered clearly."),
+    openingStrength: pick("openingStrength", "Opening is strong enough."),
+    clarity: pick("clarity", "The message is clear."),
+    pacing: pick("pacing", "Pacing works."),
+    proofEvidence: pick("proofEvidence", "Proof/evidence is represented accurately."),
+    audioQuality: pick("audioQuality", "Audio is acceptable."),
+    visualSupport: pick("visualSupport", "Visual support is sufficient."),
+    graphicsCaptions: pick("graphicsCaptions", "Graphics and captions are acceptable."),
+    titleThumbnailFit: pick("titleThumbnailFit", "Title and thumbnail fit the final cut."),
+    ethicalAccuracyRisks: pick("ethicalAccuracyRisks", "No unresolved ethical or accuracy risk noted."),
+    uploadMetadataReadiness: pick("uploadMetadataReadiness", "Upload metadata can proceed to separate review."),
+    archiveReadiness: pick("archiveReadiness", "Archive readiness can proceed to separate review."),
+    remainingFinalFixes: pick("remainingFinalFixes", "No unresolved final fixes listed."),
+    decisionMarker: pick("decisionMarker", "NEEDS FINAL FIXES"),
+  };
+}
+
+test("final candidate preview validates candidate and writes nothing", () => {
+  const fixture = createFinalReviewFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "final-candidate.mp4");
+  fs.writeFileSync(candidatePath, "fake final", "utf8");
+  const beforeRunFiles = fs.readdirSync(fixture.runDir).sort();
+
+  const preview = packageEngineServer.buildFinalCandidateRegistration({
+    runId: fixture.runId,
+    candidatePath,
+    notes: "Final export candidate from Resolve.",
+  }, { root: fixture.tempRoot, mode: "preview" });
+
+  assert.equal(preview.ok, true);
+  assert.equal(preview.readOnly, true);
+  assert.equal(preview.externalApisCalled, false);
+  assert.equal(preview.candidatePath, candidatePath);
+  assert.equal(preview.candidateExists, true);
+  assert.equal(preview.upstream.secondCutReady, true);
+  assert.equal(preview.finalApproved, false);
+  assert.equal(preview.publishReady, false);
+  assert.equal(preview.humanGateRequired, true);
+  assert.equal(preview.artifactFilename, "final-candidate.md");
+  assert.match(preview.artifactPreview, new RegExp(candidatePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.deepEqual(fs.readdirSync(fixture.runDir).sort(), beforeRunFiles);
+});
+
+test("final candidate preview rejects invalid input", () => {
+  const fixture = createFinalReviewFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "final-candidate.mp4");
+  fs.writeFileSync(candidatePath, "fake", "utf8");
+  const candidateDir = path.join(fixture.tempRoot, "exports", "final-folder.mov");
+  fs.mkdirSync(candidateDir, { recursive: true });
+  const badExtension = path.join(fixture.tempRoot, "exports", "final.txt");
+  fs.writeFileSync(badExtension, "fake", "utf8");
+
+  assert.throws(() => packageEngineServer.buildFinalCandidateRegistration({ candidatePath }, { root: fixture.tempRoot }), /runId is required/);
+  assert.throws(() => packageEngineServer.buildFinalCandidateRegistration({ runId: "../escape", candidatePath }, { root: fixture.tempRoot }), /Invalid package-run id/);
+  assert.throws(() => packageEngineServer.buildFinalCandidateRegistration({ runId: fixture.runId }, { root: fixture.tempRoot }), /candidate path is required/i);
+  assert.throws(() => packageEngineServer.buildFinalCandidateRegistration({ runId: fixture.runId, candidatePath: "relative.mp4" }, { root: fixture.tempRoot }), /absolute path/i);
+  assert.throws(() => packageEngineServer.buildFinalCandidateRegistration({ runId: fixture.runId, candidatePath: path.join(fixture.tempRoot, "missing.mp4") }, { root: fixture.tempRoot }), /does not exist/i);
+  assert.throws(() => packageEngineServer.buildFinalCandidateRegistration({ runId: fixture.runId, candidatePath: candidateDir }, { root: fixture.tempRoot }), /must be a file/i);
+  assert.throws(() => packageEngineServer.buildFinalCandidateRegistration({ runId: fixture.runId, candidatePath: badExtension }, { root: fixture.tempRoot }), /Unsupported final candidate extension/i);
+});
+
+test("final candidate apply writes only allowed artifact and preserves manual content", () => {
+  const fixture = createFinalReviewFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "final-candidate.mp4");
+  const secondCandidatePath = path.join(fixture.tempRoot, "exports", "final-candidate-v2.mp4");
+  fs.writeFileSync(candidatePath, "fake final", "utf8");
+  fs.writeFileSync(secondCandidatePath, "fake final two", "utf8");
+  const finalCandidatePath = path.join(fixture.runDir, "final-candidate.md");
+  fs.writeFileSync(finalCandidatePath, "# Final Candidate\n\n## Manual Notes\n\nKeep final candidate manual note.\n", "utf8");
+  const protectedFiles = [
+    fixture.indexPath,
+    fixture.statePath,
+    path.join(fixture.runDir, "rough-cut-watch-notes.md"),
+    path.join(fixture.runDir, "second-cut-watch-notes.md"),
+    path.join(fixture.runDir, "second-cut-review.md"),
+    candidatePath,
+  ];
+  const before = Object.fromEntries(protectedFiles.map((filePath) => [filePath, fs.readFileSync(filePath, "utf8")]));
+
+  const result = packageEngineServer.applyFinalCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+  packageEngineServer.applyFinalCandidateRegistration({ runId: fixture.runId, candidatePath: secondCandidatePath }, { root: fixture.tempRoot });
+  const artifact = fs.readFileSync(finalCandidatePath, "utf8");
+
+  assert.deepEqual(result.written, ["final-candidate.md"]);
+  assert.match(artifact, /Keep final candidate manual note/);
+  assert.match(artifact, new RegExp(secondCandidatePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.doesNotMatch(artifact, /Final approved:\s*yes|Publish ready:\s*yes|Final approval:\s*PASS/i);
+  assert.equal(fs.existsSync(path.join(fixture.runDir, "final-watch-notes.md")), false);
+  assert.equal(fs.existsSync(path.join(fixture.runDir, "final-review.md")), false);
+  assert.equal(fs.existsSync(path.join(fixture.runDir, "publication-blockers.md")), false);
+  protectedFiles.forEach((filePath) => assert.equal(fs.readFileSync(filePath, "utf8"), before[filePath]));
+});
+
+test("final candidate apply blocks when second-cut is not ready", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "final-candidate.mp4");
+  fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+  fs.writeFileSync(candidatePath, "fake final", "utf8");
+
+  const preview = packageEngineServer.buildFinalCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+
+  assert.equal(preview.upstream.secondCutReady, false);
+  assert.equal(preview.publishReady, false);
+  assert.equal(preview.warnings.some((warning) => /second-cut review is not READY FOR SECOND CUT/i.test(warning)), true);
+  assert.throws(() => packageEngineServer.applyFinalCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot }), /not READY FOR SECOND CUT/);
+  assert.equal(fs.existsSync(path.join(fixture.runDir, "final-candidate.md")), false);
+});
+
+test("final-watch notes save writes only source artifact and requires explicit marker", () => {
+  const fixture = createFinalReviewFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "final-candidate.mp4");
+  fs.writeFileSync(candidatePath, "fake final", "utf8");
+  packageEngineServer.applyFinalCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+  const protectedFiles = [
+    fixture.indexPath,
+    fixture.statePath,
+    path.join(fixture.runDir, "final-candidate.md"),
+    path.join(fixture.runDir, "second-cut-watch-notes.md"),
+    path.join(fixture.runDir, "second-cut-review.md"),
+  ];
+  const before = Object.fromEntries(protectedFiles.map((filePath) => [filePath, fs.readFileSync(filePath, "utf8")]));
+
+  const saved = packageEngineServer.saveFinalWatchNotes({
+    runId: fixture.runId,
+    fields: finalWatchFields({ candidatePath, decisionMarker: "PASS" }),
+  }, { root: fixture.tempRoot });
+  const notes = fs.readFileSync(path.join(fixture.runDir, "final-watch-notes.md"), "utf8");
+
+  assert.deepEqual(saved.written, ["final-watch-notes.md"]);
+  assert.match(notes, /Final approval: PASS/);
+  assert.equal(fs.existsSync(path.join(fixture.runDir, "final-review.md")), false);
+  assert.equal(fs.existsSync(path.join(fixture.runDir, "publication-blockers.md")), false);
+  protectedFiles.forEach((filePath) => assert.equal(fs.readFileSync(filePath, "utf8"), before[filePath]));
+  assert.throws(() => packageEngineServer.saveFinalWatchNotes({ runId: fixture.runId, fields: finalWatchFields({ candidatePath, decisionMarker: "APPROVED" }) }, { root: fixture.tempRoot }), /Invalid final review marker/);
+});
+
+test("final-review derived generation requires exact PASS and required sections", () => {
+  const cases = [
+    ["NEEDS FINAL FIXES", finalWatchFields({ decisionMarker: "NEEDS FINAL FIXES", remainingFinalFixes: "Fix one title card." }), "NEEDS FINAL FIXES", false],
+    ["positive no marker", null, "BLOCKED", false],
+    ["PASS missing sections", finalWatchFields({ decisionMarker: "PASS", clarity: "" }), "BLOCKED", false],
+    ["PASS complete", finalWatchFields({ decisionMarker: "PASS" }), "PASS", true],
+  ];
+  cases.forEach(([label, fields, expectedStatus, publishReady]) => {
+    const fixture = createFinalReviewFixture();
+    const candidatePath = path.join(fixture.tempRoot, "exports", `${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.mp4`);
+    fs.writeFileSync(candidatePath, "fake final", "utf8");
+    packageEngineServer.applyFinalCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+    if (fields) {
+      packageEngineServer.saveFinalWatchNotes({ runId: fixture.runId, fields: { ...fields, candidatePath } }, { root: fixture.tempRoot });
+    } else {
+      fs.writeFileSync(path.join(fixture.runDir, "final-watch-notes.md"), "# Final-Watch Notes\n\nEverything is positive. Checklist complete. Candidate exists.\n", "utf8");
+    }
+
+    const result = packageEngineServer.regenerateFinalReviewDerived({ runId: fixture.runId }, { root: fixture.tempRoot });
+    const review = fs.readFileSync(path.join(fixture.runDir, "final-review.md"), "utf8");
+
+    assert.deepEqual(result.written, ["final-review.md"]);
+    assert.equal(result.review.status, expectedStatus);
+    assert.equal(result.review.publishReady, publishReady);
+    assert.match(review, new RegExp(`Publish ready: ${publishReady ? "yes" : "no"}`));
+    assert.equal(fs.existsSync(path.join(fixture.runDir, "publication-blockers.md")), false);
+  });
+});
+
+test("final-review derived generation blocks PASS when upstream second-cut is false", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "final-candidate.mp4");
+  fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+  fs.writeFileSync(candidatePath, "fake final", "utf8");
+  fs.writeFileSync(path.join(fixture.runDir, "final-candidate.md"), `# Final Candidate\n\n- Path: ${candidatePath}\n`, "utf8");
+  packageEngineServer.saveFinalWatchNotes({ runId: fixture.runId, fields: finalWatchFields({ candidatePath, decisionMarker: "PASS" }) }, { root: fixture.tempRoot });
+
+  const result = packageEngineServer.regenerateFinalReviewDerived({ runId: fixture.runId }, { root: fixture.tempRoot });
+
+  assert.equal(result.review.status, "BLOCKED");
+  assert.equal(result.review.publishReady, false);
+  assert.match(result.review.reason, /second-cut review is not READY FOR SECOND CUT/i);
+});
+
+test("final review console surfaces stale final-review warnings", () => {
+  const fixture = createFinalReviewFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "final-candidate.mp4");
+  const otherCandidatePath = path.join(fixture.tempRoot, "exports", "final-candidate-other.mp4");
+  fs.writeFileSync(candidatePath, "fake final", "utf8");
+  fs.writeFileSync(otherCandidatePath, "fake final other", "utf8");
+  packageEngineServer.applyFinalCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+  packageEngineServer.saveFinalWatchNotes({ runId: fixture.runId, fields: finalWatchFields({ candidatePath, decisionMarker: "PASS" }) }, { root: fixture.tempRoot });
+  fs.writeFileSync(path.join(fixture.runDir, "final-review.md"), `# Final Review\n\n- Final review status: PASS\n- Publish ready: yes\n- Final version reviewed: ${otherCandidatePath}\n`, "utf8");
+
+  const panel = packageEngineServer.buildFinalReviewConsole({ runId: fixture.runId }, { root: fixture.tempRoot });
+
+  assert.equal(panel.staleDerivedReview, true);
+  assert.equal(panel.publishReady, true);
+  assert.equal(panel.warnings.some((warning) => /stale/i.test(warning) || /missing/i.test(warning)), true);
+});
+
+test("production GPS integrates final candidate and final watch gate states", () => {
+  const fixture = createFinalReviewFixture();
+  let gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot });
+  assert.equal(gps.summary.currentGate, "Final Candidate Preparation");
+  assert.match(gps.summary.nextSafeAction, /register final candidate/i);
+
+  const candidatePath = path.join(fixture.tempRoot, "exports", "final-candidate.mp4");
+  fs.writeFileSync(candidatePath, "fake final", "utf8");
+  packageEngineServer.applyFinalCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+  gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot });
+  assert.equal(gps.summary.currentGate, "Final Watch Review");
+
+  packageEngineServer.saveFinalWatchNotes({ runId: fixture.runId, fields: finalWatchFields({ candidatePath, decisionMarker: "PASS" }) }, { root: fixture.tempRoot });
+  gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot });
+  assert.equal(gps.summary.currentGate, "Final Review Derivation");
+
+  packageEngineServer.regenerateFinalReviewDerived({ runId: fixture.runId }, { root: fixture.tempRoot });
+  gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot });
+  assert.equal(gps.summary.currentGate, "Export / Upload Readiness");
+  assert.equal(gps.finalReviewConsole.publishReady, true);
+  assert.equal(gps.blockedActions.includes("archive"), true);
+  assert.equal(gps.blockedActions.includes("publish"), true);
+});
+
+test("dashboard renders Final Candidate / Final Watch Review safely", () => {
+  const html = packageRunsDashboard.renderFinalCandidateReview({
+    runId: "2026-05-17-final-console",
+    finalReviewConsole: {
+      secondCutReviewStatus: "READY FOR SECOND CUT",
+      secondCutReady: true,
+      finalCandidatePath: "/tmp/final-candidate.mp4",
+      finalCandidateExists: true,
+      finalWatchNotesExists: false,
+      finalReviewExists: false,
+      finalReviewStatus: "NEEDS HUMAN REVIEW",
+      publishReady: false,
+      humanGateRequired: true,
+      aiAllowed: ["inspect file metadata"],
+      aiBlocked: ["choose PASS"],
+      blockedActions: ["upload", "archive"],
+      warnings: ["Final-watch notes missing."],
+    },
+  });
+
+  assert.match(html, /Final Candidate \/ Final Watch Review/);
+  assert.match(html, /data-preview-final-candidate/);
+  assert.match(html, /data-save-final-watch-notes/);
+  assert.match(html, /data-regenerate-final-review/);
+  assert.match(html, /This is the human final approval marker/);
+  assert.match(html, /AI allowed/);
+  assert.match(html, /AI blocked/);
+  assert.match(html, /Blocked Actions/);
 });
 
 test("capture evidence intake preview does not write files", () => {

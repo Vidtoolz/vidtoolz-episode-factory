@@ -9,6 +9,7 @@ const childProcess = require('child_process');
 
 const packageRunDoctor = require('./scripts/package-run-doctor.js');
 const roughCutReviewScript = require('./scripts/package-run-rough-cut-review.js');
+const finalReviewScript = require('./scripts/package-run-final-review.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
@@ -24,6 +25,10 @@ const SECOND_CUT_CANDIDATE_PREVIEW_API = '/api/package-runs/second-cut-candidate
 const SECOND_CUT_CANDIDATE_APPLY_API = '/api/package-runs/second-cut-candidate/apply';
 const SECOND_CUT_WATCH_NOTES_SAVE_API = '/api/package-runs/second-cut-watch-notes/save';
 const SECOND_CUT_REVIEW_REGENERATE_API = '/api/package-runs/second-cut-review/regenerate-derived';
+const FINAL_CANDIDATE_PREVIEW_API = '/api/package-runs/final-candidate/preview';
+const FINAL_CANDIDATE_APPLY_API = '/api/package-runs/final-candidate/apply';
+const FINAL_WATCH_NOTES_SAVE_API = '/api/package-runs/final-watch-notes/save';
+const FINAL_REVIEW_REGENERATE_API = '/api/package-runs/final-review/regenerate-derived';
 const ROUGH_CUT_SAVE_API = '/api/package-runs/rough-cut/watch-notes';
 const ROUGH_CUT_REVIEW_API = '/api/package-runs/rough-cut/review';
 const ROUGH_CUT_REGENERATE_DERIVED_API = '/api/package-runs/rough-cut/regenerate-derived';
@@ -47,6 +52,9 @@ const ROUGH_CUT_WATCH_NOTES_FILE = 'rough-cut-watch-notes.md';
 const SECOND_CUT_CANDIDATE_FILE = 'second-cut-candidate.md';
 const SECOND_CUT_WATCH_NOTES_FILE = 'second-cut-watch-notes.md';
 const SECOND_CUT_REVIEW_FILE = 'second-cut-review.md';
+const FINAL_CANDIDATE_FILE = 'final-candidate.md';
+const FINAL_WATCH_NOTES_FILE = 'final-watch-notes.md';
+const FINAL_REVIEW_FILE = 'final-review.md';
 const ROUGH_CUT_DERIVED_FILES = ['rough-cut-review.md', 'pickup-list.md', 'edit-fix-list.md'];
 const SECOND_CUT_CANDIDATE_SECTION_START = '<!-- second-cut-candidate:start -->';
 const SECOND_CUT_CANDIDATE_SECTION_END = '<!-- second-cut-candidate:end -->';
@@ -54,14 +62,22 @@ const SECOND_CUT_WATCH_NOTES_SECTION_START = '<!-- second-cut-watch-notes:start 
 const SECOND_CUT_WATCH_NOTES_SECTION_END = '<!-- second-cut-watch-notes:end -->';
 const SECOND_CUT_REVIEW_SECTION_START = '<!-- second-cut-review:start -->';
 const SECOND_CUT_REVIEW_SECTION_END = '<!-- second-cut-review:end -->';
+const FINAL_CANDIDATE_SECTION_START = '<!-- final-candidate:start -->';
+const FINAL_CANDIDATE_SECTION_END = '<!-- final-candidate:end -->';
+const FINAL_WATCH_NOTES_SECTION_START = '<!-- final-watch-notes:start -->';
+const FINAL_WATCH_NOTES_SECTION_END = '<!-- final-watch-notes:end -->';
+const FINAL_REVIEW_SECTION_START = '<!-- final-review:start -->';
+const FINAL_REVIEW_SECTION_END = '<!-- final-review:end -->';
 const PRODUCTION_GPS_ARTIFACTS = [
   'rough-cut-watch-notes.md',
   'second-cut-candidate.md',
   'second-cut-watch-notes.md',
+  'final-candidate.md',
   'final-watch-notes.md',
   'manual-approval-notes.md',
   'rough-cut-review.md',
   'second-cut-review.md',
+  'final-review.md',
   'pickup-list.md',
   'edit-fix-list.md',
   'capture-evidence-review.md',
@@ -77,6 +93,7 @@ const PRODUCTION_GPS_ARTIFACTS = [
 const MEDIA_FILE_PATTERN = /\.(?:mp4|mov|mkv|webm|m4v|avi)$/i;
 const ROUGH_CUT_APPROVAL_VALUES = ['NOT GIVEN', 'NEEDS PICKUPS', 'NEEDS EDIT FIXES', 'PASS'];
 const SECOND_CUT_REVIEW_MARKERS = ['NEEDS MORE PICKUPS', 'NEEDS EDIT FIXES', 'READY FOR SECOND CUT'];
+const FINAL_REVIEW_MARKERS = ['NEEDS FINAL FIXES', 'PASS'];
 const PICKUP_ITEM_TYPES = ['presenter closeup', 'AI B-roll', 'screen zoom', 'graphic', 'edit-only fix', 'other'];
 const PICKUP_REQUIRED_VALUES = ['yes', 'no'];
 const PICKUP_SOURCES = ['existing material', 'new recording', 'AI generation', 'editing only'];
@@ -790,31 +807,32 @@ function mediaFileBase(filePath) {
   };
 }
 
-function validateSecondCutCandidatePath(candidatePath) {
+function validateSecondCutCandidatePath(candidatePath, label = 'second-cut candidate') {
+  const title = label.replace(/^\w/, (char) => char.toUpperCase());
   const requested = markdownCell(candidatePath || '');
   if (!requested) {
-    const error = new Error('Second-cut candidate path is required.');
+    const error = new Error(`${title} path is required.`);
     error.statusCode = 400;
     throw error;
   }
   if (!path.isAbsolute(requested)) {
-    const error = new Error('Second-cut candidate path must be an absolute path.');
+    const error = new Error(`${title} path must be an absolute path.`);
     error.statusCode = 400;
     throw error;
   }
   const absolute = path.resolve(requested);
   if (!MEDIA_FILE_PATTERN.test(absolute)) {
-    const error = new Error('Unsupported second-cut candidate extension.');
+    const error = new Error(`Unsupported ${label} extension.`);
     error.statusCode = 400;
     throw error;
   }
   if (!fs.existsSync(absolute)) {
-    const error = new Error('Second-cut candidate file does not exist.');
+    const error = new Error(`${title} file does not exist.`);
     error.statusCode = 404;
     throw error;
   }
   if (!fs.statSync(absolute).isFile()) {
-    const error = new Error('Second-cut candidate path must be a file.');
+    const error = new Error(`${title} path must be a file.`);
     error.statusCode = 400;
     throw error;
   }
@@ -886,9 +904,9 @@ function isSafeOpenPath(filePath, resolved, options = {}) {
 }
 
 function gpsArtifactKind(filename) {
-  if (/^(rough-cut-watch-notes|final-watch-notes|manual-approval-notes|second-cut-candidate|second-cut-watch-notes)\.md$/i.test(filename)) return 'source / human-authored';
+  if (/^(rough-cut-watch-notes|final-watch-notes|manual-approval-notes|second-cut-candidate|second-cut-watch-notes|final-candidate)\.md$/i.test(filename)) return 'source / human-authored';
   if (/^(package-run-state\.md|package-runs-index\.json)$/i.test(filename)) return 'state / lifecycle';
-  if (/^(rough-cut-review|second-cut-review|pickup-list|edit-fix-list|capture-evidence-review|export-checklist|publish-metadata-review)\.md$/i.test(filename)) return 'derived / generated';
+  if (/^(rough-cut-review|second-cut-review|final-review|pickup-list|edit-fix-list|capture-evidence-review|export-checklist|publish-metadata-review)\.md$/i.test(filename)) return 'derived / generated';
   if (/^(capture-checklist|takes-log|screen-recording-checklist|audio-capture-checklist|missing-shot-tracker)\.md$/i.test(filename)) return 'evidence / media reference';
   return 'unclear';
 }
@@ -978,6 +996,7 @@ function buildProductionGps(payload = {}, options = {}) {
   const doctor = packageRunDoctor.buildDoctorReport(runInput, { repoRoot: resolved.root });
   const roughCutResult = parseRoughCutReviewFile(resolved.runDir);
   const secondCutInspector = buildSecondCutInspector(payload, options);
+  const finalReviewConsole = buildFinalReviewConsole(payload, options);
   const gate = doctor.lifecycleGate || {};
   const artifactTrail = buildArtifactTrail(resolved);
   const gateTimeline = buildProductionGpsTimeline(doctor, roughCutResult);
@@ -986,14 +1005,24 @@ function buildProductionGps(payload = {}, options = {}) {
   const roughNeedsEditFixes = roughCutResult.roughCutReviewStatus === 'NEEDS EDIT FIXES';
   const registeredCandidateReadyForReview = secondCutInspector.candidateStatus === 'found_needs_review' && secondCutInspector.registeredCandidate && secondCutInspector.registeredCandidate.exists;
   const secondCutStatus = secondCutInspector.secondCutReviewStatus || '';
-  const currentGate = registeredCandidateReadyForReview
-    ? secondCutStatus === 'READY FOR SECOND CUT' && secondCutInspector.secondCutReady
-      ? 'Final Review Preparation'
-      : secondCutStatus === 'NEEDS MORE PICKUPS'
-        ? 'Pickup / Edit-Fix Planning'
-        : secondCutStatus === 'NEEDS EDIT FIXES'
-          ? 'Edit Fix Planning'
-          : 'Second-Cut Candidate Review'
+  const currentGate = finalReviewConsole.publishReady
+    ? 'Export / Upload Readiness'
+    : finalReviewConsole.finalReviewStatus === 'NEEDS FINAL FIXES'
+      ? 'Final Fixes'
+      : finalReviewConsole.finalWatchNotesExists && finalReviewConsole.staleDerivedReview
+        ? 'Final Review Derivation'
+        : finalReviewConsole.finalCandidateExists && !finalReviewConsole.finalWatchNotesExists
+          ? 'Final Watch Review'
+          : secondCutInspector.secondCutReady && !finalReviewConsole.finalCandidateExists
+            ? 'Final Candidate Preparation'
+            : registeredCandidateReadyForReview
+              ? secondCutStatus === 'READY FOR SECOND CUT' && secondCutInspector.secondCutReady
+                ? 'Final Review Preparation'
+                : secondCutStatus === 'NEEDS MORE PICKUPS'
+                  ? 'Pickup / Edit-Fix Planning'
+                  : secondCutStatus === 'NEEDS EDIT FIXES'
+                    ? 'Edit Fix Planning'
+                    : 'Second-Cut Candidate Review'
     : roughNeedsPickups || roughNeedsEditFixes
       ? 'Pickup / Edit-Fix Planning'
       : currentTimelineGate.label;
@@ -1009,7 +1038,17 @@ function buildProductionGps(payload = {}, options = {}) {
     'commit state file',
   ].filter(Boolean))];
   const nextSafeAction =
-    registeredCandidateReadyForReview && secondCutStatus === 'READY FOR SECOND CUT' && secondCutInspector.secondCutReady
+    finalReviewConsole.publishReady
+      ? 'Proceed only to separate export/upload readiness checks; upload, archive, and state promotion remain blocked.'
+      : finalReviewConsole.finalReviewStatus === 'NEEDS FINAL FIXES'
+        ? 'Address final-watch fixes before any publish/export/upload/archive work.'
+        : finalReviewConsole.finalWatchNotesExists && finalReviewConsole.staleDerivedReview
+          ? 'Regenerate derived final review from current final-watch notes.'
+          : finalReviewConsole.finalCandidateExists && !finalReviewConsole.finalWatchNotesExists
+            ? 'Mikko watches final candidate and records final-watch notes.'
+            : secondCutInspector.secondCutReady && !finalReviewConsole.finalCandidateExists
+              ? 'Export/register final candidate for human final-watch review.'
+              : registeredCandidateReadyForReview && secondCutStatus === 'READY FOR SECOND CUT' && secondCutInspector.secondCutReady
       ? 'Prepare separate final watch review; publish/export/upload/archive remain blocked.'
       : registeredCandidateReadyForReview && secondCutStatus === 'NEEDS MORE PICKUPS'
         ? 'Address remaining pickups from second-cut watch notes before any final review.'
@@ -1027,6 +1066,15 @@ function buildProductionGps(payload = {}, options = {}) {
     detail: roughCutResult.staleReason || `Current watch notes say ${roughCutResult.currentWatchNotesMarker || roughCutResult.approvalMarker || 'NOT GIVEN'}.`,
     artifactPath: 'rough-cut-review.md',
   }] : [];
+  finalReviewConsole.warnings.forEach((warning) => {
+    if (/stale|missing/i.test(warning)) {
+      staleWarnings.push({
+        title: /stale/i.test(warning) ? 'Derived final-review artifact may be stale' : 'Final review artifact warning',
+        detail: warning,
+        artifactPath: 'final-review.md',
+      });
+    }
+  });
   const humanGateRequired = gateStatus !== 'done / pass' || roughNeedsPickups || roughNeedsEditFixes;
   const latestRelevantArtifact = roughCutResult.reviewedFilePath ? 'rough-cut-watch-notes.md' : currentTimelineGate.artifactPath || '';
   return {
@@ -1070,6 +1118,7 @@ function buildProductionGps(payload = {}, options = {}) {
     staleWarnings,
     roughCutResult,
     secondCutInspector,
+    finalReviewConsole,
     mediaRows: collectMediaRows(resolved, detectRoughCutCandidate(resolved.runDir)),
   };
 }
@@ -1517,6 +1566,531 @@ function regenerateSecondCutReviewDerived(payload = {}, options = {}) {
     review,
     approvedForFinalReview: false,
     warning: 'Regenerated derived second-cut-review.md only. Final review, publish/export, state, and index remain blocked.',
+  };
+}
+
+function finalReviewStatusFromMarker(marker = '') {
+  const normalized = String(marker || '').trim().toUpperCase();
+  if (FINAL_REVIEW_MARKERS.includes(normalized)) return normalized;
+  return 'NEEDS HUMAN REVIEW';
+}
+
+function parseFinalCandidateArtifact(runDir) {
+  const artifactPath = path.join(runDir, FINAL_CANDIDATE_FILE);
+  if (!fs.existsSync(artifactPath)) return { exists: false, path: '', artifactPath: FINAL_CANDIDATE_FILE };
+  const text = fs.readFileSync(artifactPath, 'utf8');
+  return {
+    exists: true,
+    path: lineValue(text, 'Path'),
+    reviewStatus: lineValue(text, 'Review status') || '',
+    finalApproved: /^yes$/i.test(lineValue(text, 'Final approved')),
+    publishReady: /^yes$/i.test(lineValue(text, 'Publish ready')),
+    artifactPath: FINAL_CANDIDATE_FILE,
+  };
+}
+
+function finalCandidateWarnings(descriptor, upstream) {
+  const warnings = [];
+  if (descriptor.metadataUnavailable) warnings.push('ffprobe metadata unavailable; file existence and filesystem metadata were recorded only.');
+  if (!descriptor.audioStreamPresent && !descriptor.audioPresent) warnings.push('No audio stream detected or audio metadata unavailable.');
+  if (!upstream.secondCutReady) warnings.push('Second-cut review is not READY FOR SECOND CUT; final candidate registration is blocked.');
+  const duration = Number(descriptor.duration || 0);
+  if (duration > 0 && duration < 30) warnings.push('Final candidate appears very short; confirm this is the final export candidate.');
+  return warnings;
+}
+
+function finalCandidateManagedMarkdown(runId, descriptor, payload, upstream) {
+  const notes = markdownText(payload.notes || '', 'No registration notes provided.');
+  const exportedAt = markdownCell(payload.exportedAt || payload.reviewedAt || '');
+  return [
+    FINAL_CANDIDATE_SECTION_START,
+    '# Final Candidate',
+    '',
+    `- Run: ${runId}`,
+    '- Artifact purpose: final candidate reference for human final-watch review',
+    '- Review status: READY FOR HUMAN FINAL REVIEW',
+    '- Final approved: no',
+    '- Publish ready: no',
+    '- Human approval required: yes',
+    '- External APIs called: no',
+    '',
+    '## Candidate File',
+    '',
+    `- Path: ${descriptor.path}`,
+    `- Exists: ${descriptor.exists ? 'yes' : 'no'}`,
+    `- Duration: ${descriptor.duration || 'metadata unavailable'}`,
+    `- Codec: ${descriptor.codec || 'metadata unavailable'}`,
+    `- Resolution: ${descriptor.resolution || 'metadata unavailable'}`,
+    `- Frame rate: ${descriptor.frameRate || 'metadata unavailable'}`,
+    `- Audio present: ${descriptor.audioStreamPresent || descriptor.audioPresent ? 'yes' : 'no/unknown'}`,
+    `- Size: ${descriptor.size}`,
+    `- Modified: ${descriptor.modifiedTime || ''}`,
+    exportedAt ? `- Exported/review timestamp: ${exportedAt}` : '',
+    '',
+    '## Upstream Context',
+    '',
+    `- Second-cut review status: ${upstream.secondCutReviewStatus}`,
+    `- Second-cut ready: ${upstream.secondCutReady ? 'yes' : 'no'}`,
+    `- Source second-cut review artifact: ${SECOND_CUT_REVIEW_FILE}`,
+    `- Source second-cut candidate artifact: ${SECOND_CUT_CANDIDATE_FILE}`,
+    '',
+    '## Registration Notes',
+    '',
+    notes,
+    '',
+    '## Review Boundary',
+    '',
+    '- This artifact records a final candidate file for review.',
+    '- It does not approve final review.',
+    '- It does not approve publishing.',
+    '- It does not approve upload.',
+    '- It does not approve archive.',
+    '- It does not update package-run state.',
+    '- Mikko must watch and explicitly approve final readiness.',
+    FINAL_CANDIDATE_SECTION_END,
+    '',
+  ].filter((line) => line !== '').join('\n');
+}
+
+function buildFinalCandidateRegistration(payload = {}, options = {}) {
+  if (!payload.runId) {
+    const error = new Error('runId is required for final candidate registration.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const resolved = resolveRunFromPayload(payload, options);
+  const candidatePath = validateSecondCutCandidatePath(payload.candidatePath, 'final candidate');
+  const descriptor = buildMediaDescriptor(candidatePath, options);
+  descriptor.likelyRole = 'final candidate';
+  descriptor.confidence = /final|master|export|candidate|review/i.test(candidatePath) ? 'medium' : 'low';
+  descriptor.reasons = ['registered explicitly by Mikko for final review'];
+  const secondCutReview = parseSecondCutReviewFile(resolved.runDir);
+  const upstream = {
+    secondCutReady: Boolean(secondCutReview.secondCutReady && secondCutReview.status === 'READY FOR SECOND CUT'),
+    secondCutReviewStatus: secondCutReview.status || 'MISSING',
+  };
+  const warnings = finalCandidateWarnings(descriptor, upstream);
+  const artifactPreview = finalCandidateManagedMarkdown(resolved.runId, descriptor, payload, upstream);
+  return {
+    ok: true,
+    readOnly: options.mode !== 'apply',
+    externalApisCalled: false,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    candidatePath,
+    candidateExists: true,
+    metadata: {
+      duration: descriptor.duration,
+      codec: descriptor.codec,
+      resolution: descriptor.resolution,
+      frameRate: descriptor.frameRate,
+      audioStreamPresent: Boolean(descriptor.audioStreamPresent || descriptor.audioPresent),
+      size: descriptor.size,
+      modifiedTime: descriptor.modifiedTime,
+      metadataUnavailable: Boolean(descriptor.metadataUnavailable),
+    },
+    upstream,
+    warnings,
+    artifactFilename: FINAL_CANDIDATE_FILE,
+    artifactPreview,
+    humanGateRequired: true,
+    finalApproved: false,
+    publishReady: false,
+    aiAllowed: ['validate file existence', 'inspect technical metadata', 'record final-review-needed candidate reference'],
+    aiBlocked: ['approve final review', 'mark publish ready', 'mark upload ready', 'archive', 'update package-run-state.md', 'update package-runs-index.json', 'move/delete/rename media'],
+  };
+}
+
+function applyFinalCandidateRegistration(payload = {}, options = {}) {
+  const registration = buildFinalCandidateRegistration(payload, { ...options, mode: 'apply' });
+  if (!registration.upstream.secondCutReady) {
+    const error = new Error('Second-cut review is not READY FOR SECOND CUT; final candidate registration is blocked.');
+    error.statusCode = 409;
+    throw error;
+  }
+  const resolved = resolvePackageRunDir(registration.runId, options);
+  const targetPath = path.resolve(resolved.runDir, FINAL_CANDIDATE_FILE);
+  if (!targetPath.startsWith(resolved.runDir + path.sep)) {
+    const error = new Error('Resolved final candidate artifact path is outside the approved write scope.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const existing = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf8') : '';
+  fs.writeFileSync(targetPath, replaceManagedSection(existing, registration.artifactPreview, FINAL_CANDIDATE_SECTION_START, FINAL_CANDIDATE_SECTION_END), 'utf8');
+  return {
+    ...registration,
+    readOnly: false,
+    written: [FINAL_CANDIDATE_FILE],
+    warning: 'Registered final candidate for human final-watch review only. Final review and publish readiness are not approved.',
+  };
+}
+
+function normalizeFinalWatchFields(fields = {}, resolved) {
+  const candidate = parseFinalCandidateArtifact(resolved.runDir);
+  const candidatePath = markdownCell(fields.candidatePath || candidate.path || '');
+  if (!candidatePath) {
+    const error = new Error('Final candidate file is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!fs.existsSync(candidatePath) || !fs.statSync(candidatePath).isFile()) {
+    const error = new Error('Final candidate file does not exist.');
+    error.statusCode = 404;
+    throw error;
+  }
+  const watchDate = markdownCell(fields.watchDate || '');
+  const reviewer = markdownCell(fields.reviewer || '');
+  if (!watchDate) {
+    const error = new Error('Final watch date is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!reviewer) {
+    const error = new Error('Final reviewer is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const decisionMarker = finalReviewStatusFromMarker(fields.decisionMarker || fields.marker || '');
+  if (!FINAL_REVIEW_MARKERS.includes(decisionMarker)) {
+    const error = new Error(`Invalid final review marker: ${fields.decisionMarker || fields.marker || ''}`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return {
+    candidatePath,
+    watchDate,
+    reviewer,
+    viewerPromiseDelivery: markdownText(fields.viewerPromiseDelivery || '', ''),
+    openingStrength: markdownText(fields.openingStrength || '', ''),
+    clarity: markdownText(fields.clarity || '', ''),
+    pacing: markdownText(fields.pacing || '', ''),
+    proofEvidence: markdownText(fields.proofEvidence || '', ''),
+    audioQuality: markdownText(fields.audioQuality || '', ''),
+    visualSupport: markdownText(fields.visualSupport || '', ''),
+    graphicsCaptions: markdownText(fields.graphicsCaptions || '', ''),
+    titleThumbnailFit: markdownText(fields.titleThumbnailFit || '', ''),
+    ethicalAccuracyRisks: markdownText(fields.ethicalAccuracyRisks || '', ''),
+    uploadMetadataReadiness: markdownText(fields.uploadMetadataReadiness || '', ''),
+    archiveReadiness: markdownText(fields.archiveReadiness || '', ''),
+    remainingFinalFixes: markdownText(fields.remainingFinalFixes || '', ''),
+    decisionMarker,
+  };
+}
+
+function finalWatchNotesMarkdown(runId, fields) {
+  return [
+    FINAL_WATCH_NOTES_SECTION_START,
+    '# Final-Watch Notes',
+    '',
+    `- Run: ${runId}`,
+    '- Review type: final candidate review',
+    '- External APIs called: no',
+    '',
+    '## Final Version Reviewed',
+    '',
+    fields.candidatePath,
+    '',
+    '## Watch Date',
+    '',
+    fields.watchDate,
+    '',
+    '## Reviewer',
+    '',
+    fields.reviewer,
+    '',
+    '## Final-Watch Issues',
+    '',
+    fields.decisionMarker === 'NEEDS FINAL FIXES' ? (fields.remainingFinalFixes || 'Needs final fixes.') : 'No unresolved final-watch issues listed.',
+    '',
+    '## Viewer Promise Delivery',
+    '',
+    fields.viewerPromiseDelivery || 'TODO',
+    '',
+    '## Opening Strength',
+    '',
+    fields.openingStrength || 'TODO',
+    '',
+    '## Clarity',
+    '',
+    fields.clarity || 'TODO',
+    '',
+    '## Pacing',
+    '',
+    fields.pacing || 'TODO',
+    '',
+    '## Proof / Evidence',
+    '',
+    fields.proofEvidence || 'TODO',
+    '',
+    '## Audio Quality',
+    '',
+    fields.audioQuality || 'TODO',
+    '',
+    '## Visual Support',
+    '',
+    fields.visualSupport || 'TODO',
+    '',
+    '## Graphics / Captions',
+    '',
+    fields.graphicsCaptions || 'TODO',
+    '',
+    '## Title / Thumbnail Fit',
+    '',
+    fields.titleThumbnailFit || 'TODO',
+    '',
+    '## Ethical / Accuracy Risks',
+    '',
+    fields.ethicalAccuracyRisks || 'TODO',
+    '',
+    '## Upload Metadata Readiness',
+    '',
+    fields.uploadMetadataReadiness || 'TODO',
+    '',
+    '## Archive Readiness',
+    '',
+    fields.archiveReadiness || 'TODO',
+    '',
+    '## Publication Blockers',
+    '',
+    fields.decisionMarker === 'NEEDS FINAL FIXES' ? (fields.remainingFinalFixes || 'Needs final fixes.') : 'No publication blockers listed by final watch.',
+    '',
+    '## Final Approval Marker',
+    '',
+    fields.decisionMarker === 'PASS'
+      ? 'Final approval: PASS'
+      : 'Final approval marker not granted. Current decision: NEEDS FINAL FIXES',
+    '',
+    '- PASS is a human final approval marker.',
+    '- Do not generate PASS automatically.',
+    '- Mikko must explicitly choose it after watching the full final candidate.',
+    FINAL_WATCH_NOTES_SECTION_END,
+    '',
+  ].join('\n');
+}
+
+function saveFinalWatchNotes(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const fields = normalizeFinalWatchFields(payload.fields || payload, resolved);
+  const managed = finalWatchNotesMarkdown(resolved.runId, fields);
+  const targetPath = path.resolve(resolved.runDir, FINAL_WATCH_NOTES_FILE);
+  if (!targetPath.startsWith(resolved.runDir + path.sep)) {
+    const error = new Error('Resolved final watch notes path is outside the approved write scope.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const existing = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf8') : '';
+  fs.writeFileSync(targetPath, replaceManagedSection(existing, managed, FINAL_WATCH_NOTES_SECTION_START, FINAL_WATCH_NOTES_SECTION_END), 'utf8');
+  return {
+    ok: true,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    written: [FINAL_WATCH_NOTES_FILE],
+    publishReady: false,
+    warning: fields.decisionMarker === 'PASS'
+      ? 'Human Final approval: PASS marker recorded in source notes. Regenerate derived final-review.md before any publish readiness decision.'
+      : 'Final-watch notes saved. Publish readiness remains blocked.',
+  };
+}
+
+function parseFinalWatchNotes(content = '') {
+  const text = String(content || '');
+  const hasPass = /^(?:[-*]\s*)?(?:Manual approval|Final-watch approval|Final approval):\s*PASS\s*$/im.test(text);
+  const marker = hasPass ? 'PASS' : (/NEEDS FINAL FIXES/i.test(text) ? 'NEEDS FINAL FIXES' : 'NEEDS HUMAN REVIEW');
+  return {
+    candidatePath: lineValue(text, 'Candidate file reviewed') || finalReviewScript.sectionTextAny(text, ['Final Version Reviewed']),
+    reviewer: finalReviewScript.sectionTextAny(text, ['Reviewer']),
+    watchDate: finalReviewScript.sectionTextAny(text, ['Watch Date']),
+    status: marker,
+    marker,
+    finalApproved: marker === 'PASS',
+    publishReady: false,
+    remainingFinalFixes: finalReviewScript.sectionTextAny(text, ['Final-Watch Issues', 'Publication Blockers']),
+    missingRequiredSections: finalReviewScript.missingRequiredFinalWatchSections(text),
+    isStarter: finalReviewScript.isStarterFinalWatchNotes(text),
+  };
+}
+
+function parseFinalReviewFile(runDir) {
+  const reviewPath = path.join(runDir, FINAL_REVIEW_FILE);
+  if (!fs.existsSync(reviewPath)) {
+    return { exists: false, status: 'NEEDS HUMAN REVIEW', publishReady: false, candidatePath: '', reason: 'final-review.md is missing.' };
+  }
+  const text = fs.readFileSync(reviewPath, 'utf8');
+  const status = (lineValue(text, 'Final review status') || lineValue(text, 'Review status') || lineValue(text, 'Status') || 'NEEDS HUMAN REVIEW').toUpperCase();
+  return {
+    exists: true,
+    status,
+    publishReady: /^yes$/i.test(lineValue(text, 'Publish ready')) && status === 'PASS',
+    candidatePath: lineValue(text, 'Final version reviewed') || lineValue(text, 'Candidate file'),
+    reason: lineValue(text, 'Reason'),
+  };
+}
+
+function buildFinalReviewFromWatchNotes(runId, options = {}) {
+  const resolved = resolvePackageRunDir(runId, options);
+  const notesPath = path.join(resolved.runDir, FINAL_WATCH_NOTES_FILE);
+  const notesText = fs.existsSync(notesPath) ? fs.readFileSync(notesPath, 'utf8') : '';
+  const parsed = parseFinalWatchNotes(notesText);
+  const finalCandidate = parseFinalCandidateArtifact(resolved.runDir);
+  const secondCutReview = parseSecondCutReviewFile(resolved.runDir);
+  const secondCutReady = Boolean(secondCutReview.secondCutReady && secondCutReview.status === 'READY FOR SECOND CUT');
+  const candidatePath = markdownCell(parsed.candidatePath || finalCandidate.path || '');
+  const candidateExists = Boolean(candidatePath && fs.existsSync(candidatePath) && fs.statSync(candidatePath).isFile());
+  let status = parsed.status;
+  const blockers = [];
+  if (!notesText.trim()) blockers.push('final-watch-notes.md is missing.');
+  if (parsed.isStarter) blockers.push('final-watch-notes.md is starter/template or lacks real final-watch evidence.');
+  if (!secondCutReady) blockers.push('second-cut review is not READY FOR SECOND CUT.');
+  if (!candidateExists) blockers.push('registered final candidate file is missing.');
+  if (parsed.missingRequiredSections.length) blockers.push(`Required final-watch sections are not assessed: ${parsed.missingRequiredSections.join(', ')}.`);
+  if (status !== 'PASS' && parsed.remainingFinalFixes && !/no (?:unresolved )?(?:publication blockers|final-watch issues)|none/i.test(parsed.remainingFinalFixes)) {
+    status = 'NEEDS FINAL FIXES';
+  }
+  if (blockers.length) status = 'BLOCKED';
+  const publishReady = status === 'PASS' && secondCutReady && candidateExists && !parsed.isStarter && parsed.missingRequiredSections.length === 0;
+  const reason = blockers.length
+    ? blockers.join(' ')
+    : status === 'PASS'
+      ? 'Exact Final approval: PASS marker is present with required final-watch sections and upstream second-cut readiness.'
+      : status === 'NEEDS FINAL FIXES'
+        ? 'Human final-watch notes request final fixes or do not include final approval.'
+        : 'Missing exact final approval marker.';
+  return {
+    status,
+    publishReady,
+    reason,
+    candidatePath,
+    candidateExists,
+    secondCutReady,
+    secondCutReviewStatus: secondCutReview.status,
+    sourceExists: Boolean(notesText.trim()),
+    sourceIsStarter: parsed.isStarter,
+    parsed,
+    markdown: [
+      FINAL_REVIEW_SECTION_START,
+      '# Final Review',
+      '',
+      `- Run: ${resolved.runId}`,
+      `- Source watch notes: ${FINAL_WATCH_NOTES_FILE}`,
+      `- Registered final candidate: ${FINAL_CANDIDATE_FILE}`,
+      `- Second-cut review status: ${secondCutReview.status}`,
+      `- Second-cut ready: ${secondCutReady ? 'yes' : 'no'}`,
+      `- Final version reviewed: ${candidatePath || 'not recorded'}`,
+      `- Final review status: ${status}`,
+      `- Publish ready: ${publishReady ? 'yes' : 'no'}`,
+      '- External APIs called: no',
+      '',
+      '## Gate Result',
+      '',
+      `- Status: ${status}`,
+      `- Reason: ${reason}`,
+      `- Candidate file: ${candidatePath || 'not recorded'}`,
+      `- Candidate exists: ${candidateExists ? 'yes' : 'no'}`,
+      `- Required next action: ${publishReady ? 'Proceed to separate export/upload readiness checks; upload, archive, and state promotion remain separate gates.' : 'Resolve the final-watch blocker before publish/export/upload/archive work.'}`,
+      '',
+      '## Review Boundary',
+      '',
+      '- This review is derived from human final-watch notes.',
+      '- It does not approve upload.',
+      '- It does not approve archive.',
+      '- It does not update package-run state.',
+      '- It does not update package-runs-index.json.',
+      '',
+      '## Blocked Actions',
+      '',
+      '- export/upload readiness',
+      '- publish metadata approval',
+      '- upload',
+      '- archive',
+      '- state promotion',
+      FINAL_REVIEW_SECTION_END,
+      '',
+    ].join('\n'),
+  };
+}
+
+function regenerateFinalReviewDerived(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const review = buildFinalReviewFromWatchNotes(resolved.runId, options);
+  const targetPath = path.resolve(resolved.runDir, FINAL_REVIEW_FILE);
+  if (!targetPath.startsWith(resolved.runDir + path.sep)) {
+    const error = new Error('Resolved final review path is outside the approved write scope.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const existing = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf8') : '';
+  fs.writeFileSync(targetPath, replaceManagedSection(existing, review.markdown, FINAL_REVIEW_SECTION_START, FINAL_REVIEW_SECTION_END), 'utf8');
+  return {
+    ok: true,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    written: [FINAL_REVIEW_FILE],
+    review,
+    publishReady: review.publishReady,
+    warning: 'Regenerated derived final-review.md only. Export/upload, publish metadata, archive, state, and index remain separate gates.',
+  };
+}
+
+function buildFinalReviewConsole(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const finalCandidate = parseFinalCandidateArtifact(resolved.runDir);
+  const finalWatchPath = path.join(resolved.runDir, FINAL_WATCH_NOTES_FILE);
+  const finalReviewPath = path.join(resolved.runDir, FINAL_REVIEW_FILE);
+  const finalWatchNotesExists = fs.existsSync(finalWatchPath);
+  const finalReviewExists = fs.existsSync(finalReviewPath);
+  const finalWatchText = finalWatchNotesExists ? fs.readFileSync(finalWatchPath, 'utf8') : '';
+  const watchNotes = parseFinalWatchNotes(finalWatchText);
+  const finalReview = parseFinalReviewFile(resolved.runDir);
+  const derived = finalReviewExists ? finalReview : buildFinalReviewFromWatchNotes(resolved.runId, options);
+  const secondCutReview = parseSecondCutReviewFile(resolved.runDir);
+  const finalCandidateFileExists = Boolean(finalCandidate.path && fs.existsSync(finalCandidate.path) && fs.statSync(finalCandidate.path).isFile());
+  const stale =
+    finalWatchNotesExists && !finalReviewExists ||
+    (finalWatchNotesExists && finalReviewExists && watchNotes.status !== finalReview.status && !(watchNotes.status === 'PASS' && finalReview.status === 'PASS')) ||
+    (finalWatchNotesExists && finalReviewExists && fs.statSync(finalWatchPath).mtimeMs > fs.statSync(finalReviewPath).mtimeMs) ||
+    (finalCandidate.exists && finalReviewExists && finalCandidate.path && finalReview.candidatePath && finalCandidate.path !== finalReview.candidatePath) ||
+    (finalCandidate.exists && !finalCandidateFileExists);
+  const warnings = [
+    secondCutReview.secondCutReady ? '' : 'Second-cut review is not READY FOR SECOND CUT.',
+    finalCandidate.exists && !finalCandidateFileExists ? 'Registered final candidate file is missing.' : '',
+    finalWatchNotesExists && !finalReviewExists ? 'Derived final review missing; regenerate final-review.md.' : '',
+    stale && finalReviewExists ? 'Derived final-review.md may be stale against final-watch notes or final candidate.' : '',
+  ].filter(Boolean);
+  const candidateStatus = !finalCandidate.exists ? 'not_registered' : finalCandidateFileExists ? 'registered_needs_final_watch' : 'missing_registered_file';
+  return {
+    ok: true,
+    readOnly: true,
+    externalApisCalled: false,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    secondCutReady: Boolean(secondCutReview.secondCutReady && secondCutReview.status === 'READY FOR SECOND CUT'),
+    secondCutReviewStatus: secondCutReview.status,
+    finalCandidateExists: finalCandidate.exists,
+    finalCandidatePath: finalCandidate.path || '',
+    finalCandidateFileExists,
+    finalCandidateStatus: candidateStatus,
+    finalWatchNotesExists,
+    finalWatchNotesStatus: watchNotes.status,
+    finalReviewExists,
+    finalReviewStatus: derived.status,
+    publishReady: Boolean(finalReviewExists && finalReview.publishReady),
+    humanGateRequired: true,
+    staleDerivedReview: stale,
+    warnings,
+    aiAllowed: ['inspect file metadata', 'prepare review checklist', 'parse final-watch notes', 'regenerate derived final review'],
+    aiBlocked: ['choose PASS', 'approve publishing', 'upload', 'archive', 'update package-run-state.md', 'update package-runs-index.json', 'move/delete media'],
+    blockedActions: ['approve publishing', 'mark upload ready', 'mark archive ready', 'update package-run state', 'commit state markers', 'upload', 'archive'],
+    nextSafeAction: !secondCutReview.secondCutReady
+      ? 'Complete explicit second-cut readiness before registering a final candidate.'
+      : !finalCandidate.exists
+        ? 'Export/register final candidate for human final-watch review.'
+        : !finalWatchNotesExists
+          ? 'Mikko watches final candidate and records final-watch notes.'
+          : stale
+            ? 'Regenerate derived final review from current final-watch notes.'
+            : finalReview.publishReady
+              ? 'Proceed only to separate export/upload readiness checks; upload/archive remain blocked.'
+              : 'Resolve final-watch blockers before publish/export/upload/archive work.',
   };
 }
 
@@ -2233,6 +2807,10 @@ function createStatusResponse(env = process.env) {
       secondCutCandidateApplyApi: SECOND_CUT_CANDIDATE_APPLY_API,
       secondCutWatchNotesSaveApi: SECOND_CUT_WATCH_NOTES_SAVE_API,
       secondCutReviewRegenerateApi: SECOND_CUT_REVIEW_REGENERATE_API,
+      finalCandidatePreviewApi: FINAL_CANDIDATE_PREVIEW_API,
+      finalCandidateApplyApi: FINAL_CANDIDATE_APPLY_API,
+      finalWatchNotesSaveApi: FINAL_WATCH_NOTES_SAVE_API,
+      finalReviewRegenerateApi: FINAL_REVIEW_REGENERATE_API,
       saveApi: ROUGH_CUT_SAVE_API,
       reviewApi: ROUGH_CUT_REVIEW_API,
       regenerateDerivedApi: ROUGH_CUT_REGENERATE_DERIVED_API,
@@ -2246,6 +2824,8 @@ function createStatusResponse(env = process.env) {
       secondCutCandidateAllowedWriteFiles: [SECOND_CUT_CANDIDATE_FILE],
       secondCutReviewAllowedWriteFiles: [SECOND_CUT_WATCH_NOTES_FILE, SECOND_CUT_REVIEW_FILE],
       allowedSecondCutReviewMarkers: SECOND_CUT_REVIEW_MARKERS,
+      finalReviewAllowedWriteFiles: [FINAL_CANDIDATE_FILE, FINAL_WATCH_NOTES_FILE, FINAL_REVIEW_FILE],
+      allowedFinalReviewMarkers: FINAL_REVIEW_MARKERS,
       derivedOnlyWriteFiles: ROUGH_CUT_DERIVED_FILES,
     },
   };
@@ -2489,6 +3069,46 @@ function createServer() {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === FINAL_CANDIDATE_PREVIEW_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, buildFinalCandidateRegistration(payload, { mode: 'preview' }));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === FINAL_CANDIDATE_APPLY_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, applyFinalCandidateRegistration(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === FINAL_WATCH_NOTES_SAVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, saveFinalWatchNotes(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === FINAL_REVIEW_REGENERATE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, regenerateFinalReviewDerived(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === ROUGH_CUT_SAVE_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -2581,6 +3201,14 @@ module.exports = {
   CAPTURE_EVIDENCE_PREVIEW_API,
   CAPTURE_EVIDENCE_AUDIT_FILE,
   CAPTURE_EVIDENCE_TARGETS,
+  FINAL_CANDIDATE_APPLY_API,
+  FINAL_CANDIDATE_FILE,
+  FINAL_CANDIDATE_PREVIEW_API,
+  FINAL_REVIEW_FILE,
+  FINAL_REVIEW_MARKERS,
+  FINAL_REVIEW_REGENERATE_API,
+  FINAL_WATCH_NOTES_FILE,
+  FINAL_WATCH_NOTES_SAVE_API,
   LOCAL_WRITE_NONCE_HEADER,
   PICKUP_ITEM_TYPES,
   PICKUP_PLAN_SAVE_API,
@@ -2609,6 +3237,7 @@ module.exports = {
   ROUGH_CUT_WATCH_NOTES_FILE,
   STATUS_API,
   applyCaptureEvidenceIntake,
+  applyFinalCandidateRegistration,
   applySecondCutCandidateRegistration,
   buildCaptureEvidencePreview,
   buildEditFixListMarkdown,
@@ -2627,6 +3256,9 @@ module.exports = {
   createThumbnailResponse,
   buildProductionGps,
   buildProductionGpsTimeline,
+  buildFinalCandidateRegistration,
+  buildFinalReviewConsole,
+  buildFinalReviewFromWatchNotes,
   buildSecondCutInspector,
   buildSecondCutPlacementChecklist,
   buildSecondCutCandidateRegistration,
@@ -2649,16 +3281,21 @@ module.exports = {
   openRoughCutVideo,
   parseRoughCutReviewFile,
   parseRoughCutReviewStdout,
+  parseFinalCandidateArtifact,
+  parseFinalReviewFile,
+  parseFinalWatchNotes,
   parseSecondCutCandidateArtifact,
   parseSecondCutReviewFile,
   parseSecondCutWatchNotes,
   providerConfig,
   regenerateRoughCutDerivedArtifacts,
+  regenerateFinalReviewDerived,
   regenerateSecondCutReviewDerived,
   roughCutInputDefaults,
   runRoughCutReview,
   safeJoin,
   saveRoughCutWatchNotes,
+  saveFinalWatchNotes,
   saveSecondCutWatchNotes,
   savePickupPlan,
   slugify,
