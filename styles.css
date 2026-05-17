@@ -1086,6 +1086,100 @@ label > span,
   padding: 9px 10px;
 }
 
+.mikko-input-console {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.mikko-console-header,
+.rough-cut-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.mikko-console-header h2 {
+  margin: 0;
+}
+
+.mikko-console-content {
+  display: grid;
+  gap: 12px;
+}
+
+.mikko-console-run,
+.rough-cut-form {
+  display: grid;
+  gap: 12px;
+}
+
+.rough-cut-form-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.rough-cut-field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.rough-cut-field-wide {
+  grid-column: span 2;
+}
+
+.rough-cut-field span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rough-cut-field input,
+.rough-cut-field select,
+.rough-cut-field textarea {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  font: inherit;
+  min-width: 0;
+  padding: 9px 10px;
+}
+
+.rough-cut-field textarea {
+  resize: vertical;
+}
+
+.rough-cut-result {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.rough-cut-result h4 {
+  margin: 0;
+}
+
+.rough-cut-result pre {
+  background: #111827;
+  border-radius: 7px;
+  color: #f9fafb;
+  max-height: 240px;
+  overflow: auto;
+  padding: 10px;
+}
+
 .package-runs-stats span {
   color: var(--muted);
   font-size: 12px;

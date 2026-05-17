@@ -757,6 +757,122 @@ Capture evidence approval: PASS`;
     </div>`;
   }
 
+  function roughCutInputDefaults() {
+    const today = new Date().toISOString().slice(0, 10);
+    return {
+      reviewedFilePath: "",
+      reviewedFileType: "rough-cut candidate",
+      watchDate: today,
+      reviewer: "Mikko",
+      first30SecondsNotes: "",
+      clarityNotes: "",
+      pacingNotes: "",
+      proofEvidenceNotes: "",
+      missingVisuals: "",
+      audioProblems: "",
+      graphicsProblems: "",
+      confusingSections: "",
+      sectionsToCutTighten: "",
+      pickupsNeeded: "",
+      editFixesNeeded: "",
+      secondCutRecommendation: "",
+      roughCutApprovalMarker: "NOT GIVEN",
+    };
+  }
+
+  function renderRoughCutTextInput(name, label, value = "", required = false) {
+    return `<label class="rough-cut-field">
+      <span>${escapeHtml(label)}${required ? " *" : ""}</span>
+      <input type="text" data-rough-cut-field="${escapeHtml(name)}" value="${escapeHtml(value)}" />
+    </label>`;
+  }
+
+  function renderRoughCutTextarea(name, label, required = false) {
+    return `<label class="rough-cut-field rough-cut-field-wide">
+      <span>${escapeHtml(label)}${required ? " *" : ""}</span>
+      <textarea rows="4" data-rough-cut-field="${escapeHtml(name)}"></textarea>
+    </label>`;
+  }
+
+  function renderRoughCutApprovalSelect() {
+    return `<label class="rough-cut-field">
+      <span>Rough-cut approval marker *</span>
+      <select data-rough-cut-field="roughCutApprovalMarker">
+        <option value="NOT GIVEN">NOT GIVEN</option>
+        <option value="NEEDS PICKUPS">NEEDS PICKUPS</option>
+        <option value="NEEDS EDIT FIXES">NEEDS EDIT FIXES</option>
+        <option value="PASS">PASS</option>
+      </select>
+    </label>`;
+  }
+
+  function renderRoughCutResult(result) {
+    if (!result || !result.review) return "";
+    const review = result.review || {};
+    return `<div class="rough-cut-result">
+      <h4>Review Result</h4>
+      <div class="lifecycle-review-grid">
+        <div><span>Rough-cut review status</span><strong>${escapeHtml(review.roughCutReviewStatus || "unknown")}</strong></div>
+        <div><span>Second-cut ready</span><strong>${review.secondCutReady ? "yes" : "no"}</strong></div>
+        <div><span>Reason</span><strong>${escapeHtml(review.reason || "No reason returned.")}</strong></div>
+        <div><span>Pickup list status</span><strong>${escapeHtml(review.pickupListStatus || "not reported")}</strong></div>
+        <div><span>Edit fix list status</span><strong>${escapeHtml(review.editFixListStatus || "not reported")}</strong></div>
+      </div>
+      <details>
+        <summary>Command output</summary>
+        <pre><code>${escapeHtml(result.stdout || result.stderr || "No output.")}</code></pre>
+      </details>
+    </div>`;
+  }
+
+  function renderMikkoInputConsole(status = {}, result = null) {
+    const runId = status.runId || "";
+    const candidate = status.roughCutCandidate || {};
+    const defaults = roughCutInputDefaults();
+    const reviewedPath = candidate.path || "";
+    return `<div class="mikko-console-run" data-rough-cut-console data-run-id="${escapeHtml(runId)}">
+      <div class="lifecycle-review-grid">
+        <div><span>Active package run</span><strong>${escapeHtml(runId || "not found")}</strong></div>
+        <div><span>Current lifecycle stage</span><strong>${escapeHtml(status.currentInferredStage || status.lifecycleStatus || "unknown")}</strong></div>
+        <div><span>Overall status</span><strong>${escapeHtml(status.overallStatus || "unknown")}</strong></div>
+        <div><span>Current blocker</span><strong>${escapeHtml(status.firstBlockerReason || "No blocker reported.")}</strong></div>
+        <div><span>Rough-cut candidate</span><strong>${escapeHtml(reviewedPath || "No candidate detected yet.")}</strong><small>${escapeHtml(candidate.source || "")}</small></div>
+        <div><span>Next command</span><code>${escapeHtml(status.nextRecommendedCommand || "No command reported.")}</code></div>
+      </div>
+      <div class="rough-cut-actions">
+        <button type="button" data-open-rough-cut ${reviewedPath ? "" : "disabled"}>Open in VLC</button>
+        <span data-rough-cut-status class="capture-write-status">Save writes only rough-cut-watch-notes.md.</span>
+      </div>
+      <form class="rough-cut-form">
+        <div class="rough-cut-form-grid">
+          ${renderRoughCutTextInput("reviewedFilePath", "Reviewed file path", reviewedPath, true)}
+          ${renderRoughCutTextInput("reviewedFileType", "Reviewed file type", defaults.reviewedFileType, true)}
+          ${renderRoughCutTextInput("watchDate", "Watch date", defaults.watchDate, true)}
+          ${renderRoughCutTextInput("reviewer", "Reviewer", defaults.reviewer, true)}
+          ${renderRoughCutTextarea("first30SecondsNotes", "First 30 seconds notes", true)}
+          ${renderRoughCutTextarea("clarityNotes", "Clarity notes", true)}
+          ${renderRoughCutTextarea("pacingNotes", "Pacing notes", true)}
+          ${renderRoughCutTextarea("proofEvidenceNotes", "Proof/evidence notes", true)}
+          ${renderRoughCutTextarea("missingVisuals", "Missing visuals")}
+          ${renderRoughCutTextarea("audioProblems", "Audio problems")}
+          ${renderRoughCutTextarea("graphicsProblems", "Graphics problems")}
+          ${renderRoughCutTextarea("confusingSections", "Confusing sections")}
+          ${renderRoughCutTextarea("sectionsToCutTighten", "Sections to cut/tighten")}
+          ${renderRoughCutTextarea("pickupsNeeded", "Pickups needed")}
+          ${renderRoughCutTextarea("editFixesNeeded", "Edit fixes needed")}
+          ${renderRoughCutTextarea("secondCutRecommendation", "Second-cut recommendation", true)}
+          ${renderRoughCutApprovalSelect()}
+        </div>
+        <div class="rough-cut-actions">
+          <button type="button" data-save-rough-cut-notes>Save watch notes</button>
+          <button type="button" data-run-rough-cut-review disabled>Run rough-cut review</button>
+        </div>
+      </form>
+      <p class="muted">PASS is written only when selected. Other marker values keep rough cut unapproved.</p>
+      <div data-rough-cut-result>${renderRoughCutResult(result)}</div>
+    </div>`;
+  }
+
   function renderLifecycleReviewPanel(run) {
     const gate = run.lifecycleGate || normalizeLifecycleGate({});
     const effective = gate.effectiveReadiness || normalizeEffectiveReadiness({});
@@ -888,6 +1004,8 @@ Capture evidence approval: PASS`;
       previewContent: doc.querySelector("#artifactPreviewContent"),
       rawLink: doc.querySelector("#artifactRawLink"),
       closePreview: doc.querySelector("#artifactPreviewClose"),
+      mikkoConsoleStatus: doc.querySelector("#mikkoConsoleStatus"),
+      mikkoConsoleContent: doc.querySelector("#mikkoConsoleContent"),
     };
     let index = normalizeIndex({});
     let localWriteConfig = null;
@@ -917,11 +1035,39 @@ Capture evidence approval: PASS`;
           index = normalizeIndex(payload);
           showStatus(`Loaded ${index.runs.length} package runs from package-runs-index.json.`, "success");
           render();
-          loadLocalWriteConfig().catch(() => {});
+          loadLocalWriteConfig().then(loadMikkoInputConsole).catch(() => loadMikkoInputConsole());
         })
         .catch((error) => {
           showStatus(error.message, "error");
           els.grid.innerHTML = `<p class="muted">Run <code>node scripts/package-runs-index.js</code>, then serve this directory locally.</p>`;
+        });
+    }
+
+    function setMikkoConsoleStatus(message, type = "") {
+      if (!els.mikkoConsoleStatus) return;
+      els.mikkoConsoleStatus.textContent = message;
+      els.mikkoConsoleStatus.className = `lifecycle-badge ${type}`.trim();
+    }
+
+    function loadMikkoInputConsole() {
+      if (!els.mikkoConsoleContent) return Promise.resolve();
+      setMikkoConsoleStatus("Loading active run");
+      const statusApi =
+        localWriteConfig && localWriteConfig.roughCutInputConsole
+          ? localWriteConfig.roughCutInputConsole.statusApi
+          : "/api/package-runs/rough-cut/status";
+      return fetch(statusApi, { cache: "no-store" })
+        .then((response) => response.json().then((payload) => {
+          if (!response.ok) throw new Error(payload.error || `Rough-cut console unavailable (${response.status}).`);
+          return payload;
+        }))
+        .then((payload) => {
+          els.mikkoConsoleContent.innerHTML = renderMikkoInputConsole(payload);
+          setMikkoConsoleStatus(payload.runId || "Active run loaded", "success");
+        })
+        .catch((error) => {
+          els.mikkoConsoleContent.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
+          setMikkoConsoleStatus("Unavailable", "error");
         });
     }
 
@@ -933,7 +1079,10 @@ Capture evidence approval: PASS`;
           if (!payload.captureEvidenceWrite || !payload.captureEvidenceWrite.localWriteNonce) {
             throw new Error("Local write config unavailable. Copy buttons still work.");
           }
-          localWriteConfig = payload.captureEvidenceWrite;
+          localWriteConfig = {
+            ...payload.captureEvidenceWrite,
+            roughCutInputConsole: payload.roughCutInputConsole || {},
+          };
           return localWriteConfig;
         }))
         .catch((error) => {
@@ -990,6 +1139,24 @@ Capture evidence approval: PASS`;
       if (copyButton) {
         event.preventDefault();
         copyCaptureRow(copyButton);
+        return;
+      }
+      const saveRoughCut = event.target.closest("[data-save-rough-cut-notes]");
+      if (saveRoughCut) {
+        event.preventDefault();
+        saveRoughCutNotes(saveRoughCut);
+        return;
+      }
+      const runRoughCut = event.target.closest("[data-run-rough-cut-review]");
+      if (runRoughCut) {
+        event.preventDefault();
+        runRoughCutReview(runRoughCut);
+        return;
+      }
+      const openRoughCut = event.target.closest("[data-open-rough-cut]");
+      if (openRoughCut) {
+        event.preventDefault();
+        openRoughCutVideo(openRoughCut);
         return;
       }
       const link = event.target.closest("[data-preview-artifact]");
@@ -1165,6 +1332,102 @@ Capture evidence approval: PASS`;
         });
     }
 
+    function roughCutValues(container) {
+      const values = roughCutInputDefaults();
+      container.querySelectorAll("[data-rough-cut-field]").forEach((input) => {
+        values[input.dataset.roughCutField] = input.value;
+      });
+      return values;
+    }
+
+    function setRoughCutStatus(container, message, type = "") {
+      const status = container.querySelector("[data-rough-cut-status]");
+      if (status) {
+        status.textContent = message;
+        status.className = `capture-write-status ${type}`.trim();
+      }
+    }
+
+    function roughCutApiConfig() {
+      const config = localWriteConfig && localWriteConfig.roughCutInputConsole ? localWriteConfig.roughCutInputConsole : {};
+      return {
+        saveApi: config.saveApi || "/api/package-runs/rough-cut/watch-notes",
+        reviewApi: config.reviewApi || "/api/package-runs/rough-cut/review",
+        openApi: config.openApi || "/api/package-runs/rough-cut/open",
+        nonceHeader: config.nonceHeader || "x-vidtoolz-local-write-nonce",
+        localWriteNonce: config.localWriteNonce || (localWriteConfig ? localWriteConfig.localWriteNonce : ""),
+      };
+    }
+
+    function roughCutRequest(api, body) {
+      return loadLocalWriteConfig().then(() => {
+        const config = roughCutApiConfig();
+        return fetch(api(config), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            [config.nonceHeader]: config.localWriteNonce,
+          },
+          body: JSON.stringify({ ...body, localWriteNonce: config.localWriteNonce }),
+        });
+      }).then((response) => response.json().then((payload) => {
+        if (!response.ok) throw new Error(payload.error || `Rough-cut request failed (${response.status}).`);
+        return payload;
+      }));
+    }
+
+    function saveRoughCutNotes(button) {
+      const container = button.closest("[data-rough-cut-console]");
+      if (!container) return;
+      button.disabled = true;
+      setRoughCutStatus(container, "Saving rough-cut-watch-notes.md.", "pending");
+      roughCutRequest((config) => config.saveApi, {
+        runId: container.dataset.runId || "",
+        fields: roughCutValues(container),
+      })
+        .then((payload) => {
+          setRoughCutStatus(container, payload.warning || "Watch notes saved.", "valid");
+          const runButton = container.querySelector("[data-run-rough-cut-review]");
+          if (runButton) runButton.disabled = false;
+        })
+        .catch((error) => setRoughCutStatus(container, error.message, "missing"))
+        .finally(() => {
+          button.disabled = false;
+        });
+    }
+
+    function runRoughCutReview(button) {
+      const container = button.closest("[data-rough-cut-console]");
+      if (!container) return;
+      button.disabled = true;
+      setRoughCutStatus(container, "Running rough-cut review script.", "pending");
+      roughCutRequest((config) => config.reviewApi, {
+        runId: container.dataset.runId || "",
+      })
+        .then((payload) => {
+          setRoughCutStatus(container, `Review complete: ${payload.review.roughCutReviewStatus || "unknown"}.`, "valid");
+          const result = container.querySelector("[data-rough-cut-result]");
+          if (result) result.innerHTML = renderRoughCutResult(payload);
+        })
+        .catch((error) => setRoughCutStatus(container, error.message, "missing"))
+        .finally(() => {
+          button.disabled = false;
+        });
+    }
+
+    function openRoughCutVideo(button) {
+      const container = button.closest("[data-rough-cut-console]");
+      if (!container) return;
+      const values = roughCutValues(container);
+      setRoughCutStatus(container, "Opening video in VLC.", "pending");
+      roughCutRequest((config) => config.openApi, {
+        runId: container.dataset.runId || "",
+        filePath: values.reviewedFilePath,
+      })
+        .then((payload) => setRoughCutStatus(container, `Opened: ${payload.opened}`, "valid"))
+        .catch((error) => setRoughCutStatus(container, error.message, "missing"));
+    }
+
     function handleGridInput(event) {
       const input = event.target.closest("[data-capture-field]");
       if (!input) return;
@@ -1176,11 +1439,12 @@ Capture evidence approval: PASS`;
     els.sort.addEventListener("change", render);
     els.grid.addEventListener("click", handleGridClick);
     els.grid.addEventListener("input", handleGridInput);
+    if (els.mikkoConsoleContent) els.mikkoConsoleContent.addEventListener("click", handleGridClick);
     els.closePreview.addEventListener("click", () => {
       els.previewPanel.classList.add("hidden");
     });
 
-    return { load, render, previewArtifact, updateCaptureIntake };
+    return { load, render, previewArtifact, updateCaptureIntake, loadMikkoInputConsole };
   }
 
   const api = {
@@ -1215,6 +1479,9 @@ Capture evidence approval: PASS`;
     formatCaptureEvidenceRows,
     renderCaptureEvidenceIntake,
     renderCaptureEvidencePanel,
+    roughCutInputDefaults,
+    renderMikkoInputConsole,
+    renderRoughCutResult,
     renderLifecycleReviewPanel,
     renderRunCard,
     renderStats,

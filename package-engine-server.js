@@ -5,6 +5,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const childProcess = require('child_process');
+
+const packageRunDoctor = require('./scripts/package-run-doctor.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
@@ -13,6 +16,10 @@ const API_PREFIX = '/api/package-engine/thumbnails';
 const STATUS_API = '/api/package-engine/status';
 const CAPTURE_EVIDENCE_PREVIEW_API = '/api/package-runs/capture-evidence/preview';
 const CAPTURE_EVIDENCE_APPLY_API = '/api/package-runs/capture-evidence/apply';
+const ROUGH_CUT_STATUS_API = '/api/package-runs/rough-cut/status';
+const ROUGH_CUT_SAVE_API = '/api/package-runs/rough-cut/watch-notes';
+const ROUGH_CUT_REVIEW_API = '/api/package-runs/rough-cut/review';
+const ROUGH_CUT_OPEN_API = '/api/package-runs/rough-cut/open';
 const SERVE_ROOT = ROOT;
 const PACKAGE_RUNS_DIR = 'package-runs';
 const OPENAI_IMAGES_URL = 'https://api.openai.com/v1/images/generations';
@@ -27,6 +34,8 @@ const CAPTURE_EVIDENCE_TARGETS = [
   'audio-capture-checklist.md',
 ];
 const CAPTURE_EVIDENCE_AUDIT_FILE = 'capture-evidence-intake-log.md';
+const ROUGH_CUT_WATCH_NOTES_FILE = 'rough-cut-watch-notes.md';
+const ROUGH_CUT_APPROVAL_VALUES = ['NOT GIVEN', 'NEEDS PICKUPS', 'NEEDS EDIT FIXES', 'PASS'];
 const CAPTURE_EVIDENCE_SECTION_START = '<!-- capture-evidence-intake:start -->';
 const CAPTURE_EVIDENCE_SECTION_END = '<!-- capture-evidence-intake:end -->';
 const LOCAL_WRITE_NONCE = crypto.randomBytes(24).toString('hex');
@@ -116,6 +125,15 @@ function markdownCell(value = '') {
   return String(value || '').trim().replace(/\r?\n/g, ' ').replace(/\|/g, '/').replace(/\s+/g, ' ');
 }
 
+function markdownText(value = '', fallback = 'None reported.') {
+  const text = String(value || '').replace(/\r\n/g, '\n').trim();
+  if (!text) return fallback;
+  return text
+    .split('\n')
+    .map((line) => line.replace(/\|/g, '/').trimEnd())
+    .join('\n');
+}
+
 function captureEvidenceInputDefaults() {
   return {
     takeName: '',
@@ -179,6 +197,10 @@ function validateCaptureEvidenceRunId(runId) {
   return normalized;
 }
 
+function validatePackageRunId(runId) {
+  return validateCaptureEvidenceRunId(runId);
+}
+
 function validateCaptureEvidenceTargets(targets = CAPTURE_EVIDENCE_TARGETS) {
   const requested = Array.isArray(targets) && targets.length ? targets : CAPTURE_EVIDENCE_TARGETS;
   const unique = [...new Set(requested.map((target) => String(target || '').trim()))];
@@ -207,6 +229,361 @@ function resolvePackageRunDir(runId, options = {}) {
     throw error;
   }
   return { root, runsRoot, runId: safeRunId, runDir };
+}
+
+function readPackageRunState(runDir) {
+  const statePath = path.join(runDir, 'package-run-state.md');
+  if (!fs.existsSync(statePath)) return { explicit: false, state: 'active', raw: '' };
+  const text = fs.readFileSync(statePath, 'utf8');
+  const stateLine = text.match(/^\s*(?:[-*]\s*)?(?:State|Package run state):\s*([A-Za-z -]+)\s*$/im);
+  const raw = stateLine ? stateLine[1].trim().toLowerCase() : '';
+  const bodyActive = /\bactive\b/i.test(text) && !/\b(?:parked|superseded)\b/i.test(raw);
+  const state = raw || (bodyActive ? 'active' : '');
+  return { explicit: Boolean(raw || bodyActive), state: state || 'active', raw: state || '' };
+}
+
+function findActivePackageRun(options = {}) {
+  const root = path.resolve(options.root || ROOT);
+  const runsRoot = path.resolve(root, PACKAGE_RUNS_DIR);
+  if (!fs.existsSync(runsRoot)) {
+    const error = new Error('package-runs folder does not exist.');
+    error.statusCode = 404;
+    throw error;
+  }
+  const dirs = fs.readdirSync(runsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .filter((name) => /^\d{4}-\d{2}-\d{2}-[a-z0-9][a-z0-9-]*$/.test(name));
+  const explicitActive = dirs.filter((runId) => {
+    const state = readPackageRunState(path.join(runsRoot, runId));
+    return state.explicit && state.state === 'active';
+  });
+  if (explicitActive.length === 1) {
+    const runId = explicitActive[0];
+    return { root, runsRoot, runId, runDir: path.join(runsRoot, runId) };
+  }
+  if (explicitActive.length > 1) {
+    const error = new Error(`Multiple active package runs found: ${explicitActive.join(', ')}.`);
+    error.statusCode = 409;
+    throw error;
+  }
+  const activeByDefault = dirs.filter((runId) => {
+    const state = readPackageRunState(path.join(runsRoot, runId));
+    return !state.explicit || state.state === 'active';
+  });
+  if (activeByDefault.length === 1) {
+    const runId = activeByDefault[0];
+    return { root, runsRoot, runId, runDir: path.join(runsRoot, runId) };
+  }
+  const error = new Error('Could not determine exactly one active package run.');
+  error.statusCode = 409;
+  throw error;
+}
+
+function resolveRunFromPayload(payload = {}, options = {}) {
+  if (payload.runId) return resolvePackageRunDir(payload.runId, options);
+  return findActivePackageRun(options);
+}
+
+function roughCutInputDefaults() {
+  return {
+    reviewedFilePath: '',
+    reviewedFileType: '',
+    watchDate: new Date().toISOString().slice(0, 10),
+    reviewer: 'Mikko',
+    first30SecondsNotes: '',
+    clarityNotes: '',
+    pacingNotes: '',
+    proofEvidenceNotes: '',
+    missingVisuals: '',
+    audioProblems: '',
+    graphicsProblems: '',
+    confusingSections: '',
+    sectionsToCutTighten: '',
+    pickupsNeeded: '',
+    editFixesNeeded: '',
+    secondCutRecommendation: '',
+    roughCutApprovalMarker: 'NOT GIVEN',
+  };
+}
+
+function normalizeRoughCutFields(fields = {}) {
+  const defaults = roughCutInputDefaults();
+  const normalized = Object.keys(defaults).reduce((result, key) => {
+    result[key] = typeof defaults[key] === 'string' ? markdownText(fields[key], '') : fields[key];
+    return result;
+  }, {});
+  normalized.watchDate = markdownCell(normalized.watchDate || defaults.watchDate);
+  normalized.reviewer = markdownCell(normalized.reviewer || defaults.reviewer);
+  normalized.reviewedFilePath = markdownCell(normalized.reviewedFilePath);
+  normalized.reviewedFileType = markdownCell(normalized.reviewedFileType);
+  normalized.roughCutApprovalMarker = String(fields.roughCutApprovalMarker || defaults.roughCutApprovalMarker).trim().toUpperCase();
+  if (!ROUGH_CUT_APPROVAL_VALUES.includes(normalized.roughCutApprovalMarker)) {
+    const error = new Error(`Invalid rough-cut approval marker: ${normalized.roughCutApprovalMarker}`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return normalized;
+}
+
+function missingRequiredRoughCutFields(fields = {}) {
+  const values = normalizeRoughCutFields(fields);
+  return [
+    ['reviewedFilePath', 'reviewed file path'],
+    ['reviewedFileType', 'reviewed file type'],
+    ['watchDate', 'watch date'],
+    ['reviewer', 'reviewer'],
+    ['first30SecondsNotes', 'first 30 seconds notes'],
+    ['clarityNotes', 'clarity notes'],
+    ['pacingNotes', 'pacing notes'],
+    ['proofEvidenceNotes', 'proof/evidence notes'],
+    ['secondCutRecommendation', 'second-cut recommendation'],
+  ].filter(([key]) => !String(values[key] || '').trim()).map(([, label]) => label);
+}
+
+function buildRoughCutWatchNotesMarkdown(runId, fields = {}) {
+  const input = normalizeRoughCutFields(fields);
+  const markerLine = input.roughCutApprovalMarker === 'PASS'
+    ? 'Rough-cut approval: PASS'
+    : `Rough-cut approval: ${input.roughCutApprovalMarker}`;
+  return `# Rough-Cut Watch Notes
+
+- Run: ${runId}
+- Tool: package-runs dashboard rough-cut input console
+- Status: human-entered review notes
+- External APIs called: no
+
+## Rough-Cut Version Reviewed
+
+- Reviewed file path: ${input.reviewedFilePath}
+- Reviewed file type: ${input.reviewedFileType}
+
+## Watch Date
+
+${input.watchDate}
+
+## Reviewer
+
+${input.reviewer}
+
+## First 30 Seconds Notes
+
+${markdownText(input.first30SecondsNotes)}
+
+## Clarity Notes
+
+${markdownText(input.clarityNotes)}
+
+## Pacing Notes
+
+${markdownText(input.pacingNotes)}
+
+## Proof / Evidence Notes
+
+${markdownText(input.proofEvidenceNotes)}
+
+## Missing Visuals
+
+${markdownText(input.missingVisuals)}
+
+## Audio Problems
+
+${markdownText(input.audioProblems)}
+
+## Graphics Problems
+
+${markdownText(input.graphicsProblems)}
+
+## Confusing Sections
+
+${markdownText(input.confusingSections)}
+
+## Sections to Cut / Tighten
+
+${markdownText(input.sectionsToCutTighten)}
+
+## Pickups Needed
+
+${markdownText(input.pickupsNeeded)}
+
+## Edit Fixes Needed
+
+${markdownText(input.editFixesNeeded)}
+
+## Second-Cut Recommendation
+
+${markdownText(input.secondCutRecommendation)}
+
+## Manual Rough-Cut Approval Marker
+
+${markerLine}
+`;
+}
+
+function extractReviewedFilePath(markdown = '') {
+  const text = String(markdown || '');
+  const explicit = text.match(/Reviewed file(?: path)?:\s*(.+)$/im);
+  if (explicit) return explicit[1].trim();
+  const version = text.match(/## Rough-Cut Version Reviewed\s+([\s\S]*?)(?:\n## |\s*$)/i);
+  if (!version) return '';
+  const candidate = version[1].split(/\r?\n/).map((line) => line.replace(/^\s*[-*]\s*/, '').trim()).find((line) => /\.(?:mp4|mov|mkv|webm|m4v)\b/i.test(line));
+  return candidate || '';
+}
+
+function detectRoughCutCandidate(runDir) {
+  const watchNotes = fs.existsSync(path.join(runDir, ROUGH_CUT_WATCH_NOTES_FILE))
+    ? fs.readFileSync(path.join(runDir, ROUGH_CUT_WATCH_NOTES_FILE), 'utf8')
+    : '';
+  const fromNotes = extractReviewedFilePath(watchNotes);
+  if (fromNotes) return { path: fromNotes, source: ROUGH_CUT_WATCH_NOTES_FILE };
+  const mediaExt = /\.(?:mp4|mov|mkv|webm|m4v)$/i;
+  const found = [];
+  function walk(dir, depth = 0) {
+    if (depth > 4 || found.length) return;
+    fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
+      if (found.length) return;
+      if (entry.name.startsWith('.')) return;
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath, depth + 1);
+      } else if (mediaExt.test(entry.name) && /rough|cut|review|candidate|timeline|edit/i.test(fullPath)) {
+        found.push(fullPath);
+      }
+    });
+  }
+  walk(runDir);
+  if (found.length) return { path: path.relative(runDir, found[0]).replace(/\\/g, '/'), source: 'media scan' };
+  return { path: '', source: '' };
+}
+
+function parseRoughCutReviewStdout(stdout = '') {
+  const text = String(stdout || '');
+  const line = (label) => {
+    const match = text.match(new RegExp(`^${label}:\\s*(.+)$`, 'im'));
+    return match ? match[1].trim() : '';
+  };
+  const written = [...text.matchAll(/^(created|overwritten|unchanged):\s*(.+)$/gim)].map((match) => ({
+    status: match[1],
+    path: match[2],
+  }));
+  return {
+    roughCutReviewStatus: line('rough-cut review'),
+    secondCutReady: /^yes$/i.test(line('second-cut ready')),
+    reason: line('reason'),
+    written,
+    pickupListStatus: (written.find((item) => /pickup-list\.md$/.test(item.path)) || {}).status || '',
+    editFixListStatus: (written.find((item) => /edit-fix-list\.md$/.test(item.path)) || {}).status || '',
+  };
+}
+
+function buildRoughCutStatus(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const runInput = `${PACKAGE_RUNS_DIR}/${resolved.runId}`;
+  const doctor = packageRunDoctor.buildDoctorReport(runInput, { repoRoot: resolved.root });
+  const roughCutCandidate = detectRoughCutCandidate(resolved.runDir);
+  return {
+    ok: true,
+    runId: resolved.runId,
+    runPath: runInput,
+    title: doctor.title || '',
+    currentInferredStage: doctor.currentInferredStage || doctor.lifecycleStatus || '',
+    lifecycleStatus: doctor.lifecycleStatus || '',
+    overallStatus: doctor.overallStatus || '',
+    firstBlockerReason: doctor.firstBlockerReason || (doctor.blockingReasons || []).join(' '),
+    nextRecommendedCommand: doctor.nextRecommendedCommand || '',
+    missingExpectedArtifacts: doctor.missingExpectedArtifacts || [],
+    roughCutCandidate,
+    lifecycleGate: doctor.lifecycleGate || {},
+    readOnly: true,
+    externalApisCalled: false,
+  };
+}
+
+function saveRoughCutWatchNotes(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const fields = normalizeRoughCutFields(payload.fields || payload);
+  const missing = missingRequiredRoughCutFields(fields);
+  if (missing.length) {
+    const error = new Error(`Missing required rough-cut fields: ${missing.join(', ')}.`);
+    error.statusCode = 400;
+    error.missing = missing;
+    throw error;
+  }
+  const targetPath = path.resolve(resolved.runDir, ROUGH_CUT_WATCH_NOTES_FILE);
+  if (!targetPath.startsWith(resolved.runDir + path.sep)) {
+    const error = new Error('Resolved rough-cut notes path is outside the approved write scope.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const content = buildRoughCutWatchNotesMarkdown(resolved.runId, fields);
+  fs.writeFileSync(targetPath, content, 'utf8');
+  return {
+    ok: true,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    written: [ROUGH_CUT_WATCH_NOTES_FILE],
+    approvedForSecondCut: fields.roughCutApprovalMarker === 'PASS',
+    warning: fields.roughCutApprovalMarker === 'PASS'
+      ? 'PASS marker was written from Mikko input. Run rough-cut review before downstream work.'
+      : 'Watch notes saved. Rough cut is not approved because PASS was not selected.',
+  };
+}
+
+function runRoughCutReview(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const repoRoot = resolved.root;
+  const runPath = `${PACKAGE_RUNS_DIR}/${resolved.runId}`;
+  const result = childProcess.spawnSync(process.execPath, ['scripts/package-run-rough-cut-review.js', runPath], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+  const stdout = result.stdout || '';
+  const stderr = result.stderr || '';
+  return {
+    ok: result.status === 0,
+    runId: resolved.runId,
+    runPath,
+    command: `node scripts/package-run-rough-cut-review.js ${runPath}`,
+    exitCode: result.status,
+    stdout,
+    stderr,
+    review: parseRoughCutReviewStdout(stdout),
+    warning: 'Review script may write rough-cut-review.md, pickup-list.md, and edit-fix-list.md. It does not update package-runs-index.json.',
+  };
+}
+
+function openRoughCutVideo(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const requested = markdownCell(payload.filePath || payload.reviewedFilePath || '');
+  if (!requested) {
+    const error = new Error('Reviewed file path is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const absolute = path.isAbsolute(requested) ? path.resolve(requested) : path.resolve(resolved.runDir, requested);
+  const allowedRoots = [resolved.runDir, path.resolve(options.videoRoot || path.join(process.env.HOME || '', 'Videos'))].filter(Boolean);
+  if (!allowedRoots.some((root) => absolute === root || absolute.startsWith(root + path.sep))) {
+    const error = new Error('Open video path must be inside the package run or ~/Videos.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!fs.existsSync(absolute)) {
+    const error = new Error('Reviewed file does not exist.');
+    error.statusCode = 404;
+    throw error;
+  }
+  const opener = options.opener || childProcess.spawn;
+  const child = opener('vlc', [absolute], {
+    detached: true,
+    stdio: 'ignore',
+  });
+  if (child && typeof child.unref === 'function') child.unref();
+  return {
+    ok: true,
+    runId: resolved.runId,
+    opened: absolute,
+    command: `vlc ${absolute}`,
+  };
 }
 
 function conservativeHeadingForTarget(filename) {
@@ -453,6 +830,16 @@ function createStatusResponse(env = process.env) {
       allowedHosts: [`127.0.0.1:${PORT}`, `localhost:${PORT}`],
       missingOriginAllowed: true,
     },
+    roughCutInputConsole: {
+      statusApi: ROUGH_CUT_STATUS_API,
+      saveApi: ROUGH_CUT_SAVE_API,
+      reviewApi: ROUGH_CUT_REVIEW_API,
+      openApi: ROUGH_CUT_OPEN_API,
+      nonceHeader: LOCAL_WRITE_NONCE_HEADER,
+      localWriteNonce: LOCAL_WRITE_NONCE,
+      allowedApprovalMarkers: ROUGH_CUT_APPROVAL_VALUES,
+      allowedWriteFiles: [ROUGH_CUT_WATCH_NOTES_FILE],
+    },
   };
 }
 
@@ -627,6 +1014,46 @@ function createServer() {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === ROUGH_CUT_STATUS_API) {
+      try {
+        send(res, 200, buildRoughCutStatus({ runId: url.searchParams.get('runId') || '' }));
+      } catch (error) {
+        send(res, error.statusCode || 500, { error: error.message });
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === ROUGH_CUT_SAVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, saveRoughCutWatchNotes(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message, missing: error.missing || [] }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === ROUGH_CUT_REVIEW_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const output = runRoughCutReview(payload);
+          send(res, output.ok ? 200 : 500, output);
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message, missing: error.missing || [] }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === ROUGH_CUT_OPEN_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, openRoughCutVideo(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
     const filePath = safeJoin(SERVE_ROOT, url.pathname === '/' ? '/index.html' : url.pathname);
     if (!filePath) {
       send(res, 403, 'Forbidden');
@@ -669,9 +1096,17 @@ module.exports = {
   CAPTURE_EVIDENCE_AUDIT_FILE,
   CAPTURE_EVIDENCE_TARGETS,
   LOCAL_WRITE_NONCE_HEADER,
+  ROUGH_CUT_APPROVAL_VALUES,
+  ROUGH_CUT_OPEN_API,
+  ROUGH_CUT_REVIEW_API,
+  ROUGH_CUT_SAVE_API,
+  ROUGH_CUT_STATUS_API,
+  ROUGH_CUT_WATCH_NOTES_FILE,
   STATUS_API,
   applyCaptureEvidenceIntake,
   buildCaptureEvidencePreview,
+  buildRoughCutStatus,
+  buildRoughCutWatchNotesMarkdown,
   buildOpenAIImageRequest,
   buildOpenAIThumbnailPrompts,
   captureEvidenceInputDefaults,
@@ -680,15 +1115,25 @@ module.exports = {
   createServer,
   createStatusResponse,
   createThumbnailResponse,
+  detectRoughCutCandidate,
+  findActivePackageRun,
   imageMimeType,
   isAllowedLocalHost,
   isAllowedLocalOrigin,
   localWriteNonce,
   makeDataUrl,
   missingRequiredCaptureFields,
+  missingRequiredRoughCutFields,
+  normalizeRoughCutFields,
+  openRoughCutVideo,
+  parseRoughCutReviewStdout,
   providerConfig,
+  roughCutInputDefaults,
+  runRoughCutReview,
   safeJoin,
+  saveRoughCutWatchNotes,
   slugify,
+  validatePackageRunId,
   validateCaptureEvidenceRunId,
   validateCaptureEvidenceTargets,
   validateLocalWriteRequest,
