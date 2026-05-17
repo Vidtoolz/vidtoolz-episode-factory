@@ -11525,6 +11525,132 @@ test("production GPS builders are read-only and do not touch index or state file
   assert.equal(fs.statSync(fixture.statePath).mtimeMs, beforeStateMtime);
 });
 
+function createSecondCutInspectorFixture(overrides = {}) {
+  const fixture = createProductionGpsFixture(overrides);
+  const videoRoot = path.join(fixture.tempRoot, "Videos");
+  const pickupDir = path.join(videoRoot, "vidtoolz-captures", fixture.runId, "20260517-pickups-visual-variety");
+  fs.mkdirSync(pickupDir, { recursive: true });
+  return { ...fixture, videoRoot, pickupDir };
+}
+
+test("second cut inspector reports no candidate conservatively", () => {
+  const fixture = createSecondCutInspectorFixture();
+
+  const inspector = packageEngineServer.buildSecondCutInspector({ runId: fixture.runId }, {
+    root: fixture.tempRoot,
+    videoRoot: fixture.videoRoot,
+  });
+
+  assert.equal(inspector.ok, true);
+  assert.equal(inspector.readOnly, true);
+  assert.equal(inspector.externalApisCalled, false);
+  assert.equal(inspector.candidateStatus, "not_found");
+  assert.equal(inspector.humanGateRequired, true);
+  assert.equal(inspector.secondCutReady, false);
+  assert.equal(inspector.blockedActions.includes("mark second-cut ready"), true);
+  assert.match(inspector.nextSafeAction, /export or identify a second-cut candidate/i);
+});
+
+test("second cut inspector reports fake candidate without crashing on metadata failure", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const candidatePath = path.join(fixture.runDir, "media", "second-cut-candidate-v2.mp4");
+  fs.writeFileSync(candidatePath, "not a real mp4", "utf8");
+
+  const inspector = packageEngineServer.buildSecondCutInspector({ runId: fixture.runId }, {
+    root: fixture.tempRoot,
+    videoRoot: fixture.videoRoot,
+  });
+
+  assert.equal(inspector.candidateStatus, "found_needs_review");
+  assert.equal(inspector.candidates.length, 1);
+  assert.equal(inspector.candidates[0].exists, true);
+  assert.equal(inspector.candidates[0].likelyRole, "second-cut candidate");
+  assert.equal(inspector.candidates[0].confidence, "high");
+  assert.equal(inspector.candidates[0].metadataUnavailable, true);
+  assert.equal(inspector.humanGateRequired, true);
+  assert.equal(inspector.secondCutReady, false);
+});
+
+test("second cut inspector discovers and classifies pickup media by filename", () => {
+  const fixture = createSecondCutInspectorFixture();
+  [
+    "keyboard-mouse-process.MOV",
+    "hands-on-notes-checklist.MOV",
+    "over-shoulder-context.MOV",
+    "silent-talking-head-reset.MOV",
+  ].forEach((filename) => fs.writeFileSync(path.join(fixture.pickupDir, filename), "fake mov", "utf8"));
+
+  const inspector = packageEngineServer.buildSecondCutInspector({ runId: fixture.runId }, {
+    root: fixture.tempRoot,
+    videoRoot: fixture.videoRoot,
+  });
+  const byName = Object.fromEntries(inspector.pickupMedia.map((item) => [path.basename(item.path), item]));
+
+  assert.equal(byName["keyboard-mouse-process.MOV"].likelyCategory, "hands");
+  assert.equal(byName["hands-on-notes-checklist.MOV"].likelyCategory, "notes/checklist");
+  assert.equal(byName["over-shoulder-context.MOV"].likelyCategory, "over-shoulder");
+  assert.equal(byName["silent-talking-head-reset.MOV"].likelyCategory, "talking-head presence");
+  assert.equal(inspector.pickupMedia.every((item) => item.humanReviewRequired === true), true);
+});
+
+test("second cut inspector links pickup requirements from rough-cut artifacts", () => {
+  const fixture = createSecondCutInspectorFixture({
+    files: {
+      "edit-fix-list.md": "# Edit Fix List\n\n| section/timecode | problem | fix | priority | status |\n| --- | --- | --- | --- | --- |\n| None. | No edit fixes detected from watch notes. | No fix needed. | low | closed |\n",
+    },
+  });
+
+  const inspector = packageEngineServer.buildSecondCutInspector({ runId: fixture.runId }, {
+    root: fixture.tempRoot,
+    videoRoot: fixture.videoRoot,
+  });
+
+  assert.equal(inspector.pickupRequirements.roughCutStatus, "NEEDS PICKUPS");
+  assert.equal(inspector.pickupRequirements.secondCutReady, false);
+  assert.equal(inspector.pickupRequirements.sourceWatchNoteMarker, "NEEDS PICKUPS");
+  assert.equal(inspector.pickupRequirements.pickupListStatus, "open");
+  assert.equal(inspector.pickupRequirements.editFixListStatus, "closed");
+  assert.equal(inspector.humanGateRequired, true);
+});
+
+test("second cut inspector placement checklist stays manual and non-approving", () => {
+  const checklist = packageEngineServer.buildSecondCutPlacementChecklist();
+  const text = checklist.join("\n");
+
+  assert.match(text, /over-shoulder\/context shot appears early enough/);
+  assert.match(text, /keyboard\/mouse clip is used/);
+  assert.match(text, /hands-on-notes clip is used/);
+  assert.match(text, /not approved until Mikko reviews/);
+  assert.doesNotMatch(text, /automatic pass|auto-pass|approved by AI/i);
+});
+
+test("second cut inspector is read-only for index state and package-run artifacts", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const files = [
+    fixture.indexPath,
+    fixture.statePath,
+    path.join(fixture.runDir, "rough-cut-watch-notes.md"),
+    path.join(fixture.runDir, "rough-cut-review.md"),
+    path.join(fixture.runDir, "pickup-list.md"),
+    path.join(fixture.runDir, "edit-fix-list.md"),
+  ];
+  const before = Object.fromEntries(files.map((filePath) => [filePath, {
+    text: fs.readFileSync(filePath, "utf8"),
+    mtime: fs.statSync(filePath).mtimeMs,
+  }]));
+
+  const inspector = packageEngineServer.buildSecondCutInspector({ runId: fixture.runId }, {
+    root: fixture.tempRoot,
+    videoRoot: fixture.videoRoot,
+  });
+  packageRunsDashboard.renderSecondCutInspector(inspector);
+
+  files.forEach((filePath) => {
+    assert.equal(fs.readFileSync(filePath, "utf8"), before[filePath].text);
+    assert.equal(fs.statSync(filePath).mtimeMs, before[filePath].mtime);
+  });
+});
+
 test("capture evidence intake preview does not write files", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-intake-preview-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-12-preview");
@@ -12203,6 +12329,46 @@ test("package runs dashboard renders Production GPS panels safely", () => {
   assert.match(html, /rough-cut-watch-notes\.md/);
   assert.match(html, /source \/ human-authored/);
   assert.match(html, /Derived rough-cut review artifact may be stale/);
+});
+
+test("package runs dashboard renders Second-Cut Candidate Inspector safely", () => {
+  const html = packageRunsDashboard.renderSecondCutInspector({
+    runId: "2026-05-06-ai-video-proof-plan",
+    candidateStatus: "not_found",
+    currentGate: "Second-Cut Candidate Preparation",
+    roughCutStatus: "NEEDS PICKUPS",
+    secondCutReady: false,
+    humanGateRequired: true,
+    nextSafeAction: "Second-cut candidate not found. Next safe action: export or identify a second-cut candidate, then inspect it before any approval.",
+    candidates: [],
+    pickupMedia: [
+      { filename: "keyboard-mouse-process.MOV", path: "/tmp/keyboard-mouse-process.MOV", likelyCategory: "hands", usableStatus: "unknown", humanReviewRequired: true, metadataUnavailable: true },
+    ],
+    pickupRequirements: {
+      roughCutStatus: "NEEDS PICKUPS",
+      secondCutReady: false,
+      sourceWatchNoteMarker: "NEEDS PICKUPS",
+      pickupListStatus: "open",
+      editFixListStatus: "closed",
+      pickupsRequested: ["Maybe add closeups"],
+      editFixesRequested: [],
+    },
+    placementChecklist: ["Confirm keyboard/mouse clip is used during workflow/process narration.", "Confirm rough cut is not approved until Mikko reviews the second-cut candidate."],
+    aiAllowed: ["inspect file metadata", "classify pickup files"],
+    aiBlocked: ["approve rough cut", "mark second-cut ready"],
+    blockedActions: ["mark second-cut ready", "publish"],
+    warnings: ["Second-cut candidate not found."],
+  });
+
+  assert.match(html, /Second-Cut Candidate Inspector/);
+  assert.match(html, /not_found/);
+  assert.match(html, /Human review required/);
+  assert.match(html, /Pickup Media/);
+  assert.match(html, /keyboard-mouse-process\.MOV/);
+  assert.match(html, /Placement Review Checklist/);
+  assert.match(html, /AI allowed/);
+  assert.match(html, /AI blocked/);
+  assert.match(html, /Blocked Actions/);
 });
 
 test("package runs dashboard formats capture evidence intake rows", () => {

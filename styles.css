@@ -1204,6 +1204,7 @@ label > span,
 .active-run-summary,
 .gate-timeline,
 .production-gps,
+.second-cut-inspector,
 .rough-cut-result-card,
 .pickup-plan-panel,
 .media-panel {
@@ -1284,9 +1285,11 @@ label > span,
 
 .gps-current-location,
 .human-gate-panel,
+.human-review-required,
 .artifact-trail,
 .blocked-actions-panel,
-.gps-timeline {
+.gps-timeline,
+.inspector-table-block {
   display: grid;
   gap: 10px;
 }
@@ -1308,11 +1311,13 @@ label > span,
 }
 
 .gps-current-location p,
-.human-gate-panel p {
+.human-gate-panel p,
+.human-review-required p {
   margin: 0;
 }
 
-.human-gate-panel {
+.human-gate-panel,
+.human-review-required {
   background: #fff7ed;
   border: 1px solid #fed7aa;
   border-radius: 8px;
@@ -1334,6 +1339,19 @@ label > span,
 }
 
 .artifact-trail table {
+  width: 100%;
+}
+
+.inspector-table-block {
+  overflow-x: auto;
+}
+
+.inspector-table-block h4,
+.human-review-required strong {
+  margin: 0;
+}
+
+.inspector-table-block table {
   width: 100%;
 }
 

@@ -19,6 +19,7 @@ const CAPTURE_EVIDENCE_PREVIEW_API = '/api/package-runs/capture-evidence/preview
 const CAPTURE_EVIDENCE_APPLY_API = '/api/package-runs/capture-evidence/apply';
 const ROUGH_CUT_STATUS_API = '/api/package-runs/rough-cut/status';
 const PRODUCTION_GPS_API = '/api/package-runs/production-gps';
+const SECOND_CUT_INSPECTOR_API = '/api/package-runs/second-cut-inspector';
 const ROUGH_CUT_SAVE_API = '/api/package-runs/rough-cut/watch-notes';
 const ROUGH_CUT_REVIEW_API = '/api/package-runs/rough-cut/review';
 const ROUGH_CUT_REGENERATE_DERIVED_API = '/api/package-runs/rough-cut/regenerate-derived';
@@ -57,6 +58,7 @@ const PRODUCTION_GPS_ARTIFACTS = [
   'audio-capture-checklist.md',
   'missing-shot-tracker.md',
 ];
+const MEDIA_FILE_PATTERN = /\.(?:mp4|mov|mkv|webm|m4v)$/i;
 const ROUGH_CUT_APPROVAL_VALUES = ['NOT GIVEN', 'NEEDS PICKUPS', 'NEEDS EDIT FIXES', 'PASS'];
 const PICKUP_ITEM_TYPES = ['presenter closeup', 'AI B-roll', 'screen zoom', 'graphic', 'edit-only fix', 'other'];
 const PICKUP_REQUIRED_VALUES = ['yes', 'no'];
@@ -678,6 +680,155 @@ function collectMediaRows(resolved, roughCutCandidate) {
   return rows.filter((row, index, list) => list.findIndex((item) => item.path === row.path) === index);
 }
 
+function walkMediaFiles(rootDir, options = {}) {
+  const found = [];
+  const maxDepth = options.maxDepth ?? 6;
+  const maxFiles = options.maxFiles ?? 240;
+  function walk(dir, depth = 0) {
+    if (!dir || depth > maxDepth || found.length >= maxFiles || !fs.existsSync(dir)) return;
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (_error) {
+      return;
+    }
+    entries.forEach((entry) => {
+      if (entry.name.startsWith('.') || found.length >= maxFiles) return;
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath, depth + 1);
+      } else if (MEDIA_FILE_PATTERN.test(entry.name)) {
+        found.push(fullPath);
+      }
+    });
+  }
+  walk(rootDir);
+  return found;
+}
+
+function mediaSearchRoots(resolved, options = {}) {
+  const videoRoot = path.resolve(options.videoRoot || path.join(process.env.HOME || '', 'Videos'));
+  return [
+    resolved.runDir,
+    path.join(videoRoot, 'vidtoolz-captures', resolved.runId),
+    path.join(videoRoot, resolved.runId),
+  ].filter((item, index, list) => item && fs.existsSync(item) && list.indexOf(item) === index);
+}
+
+function ffprobeMetadata(filePath, options = {}) {
+  const base = {
+    duration: '',
+    codec: '',
+    resolution: '',
+    frameRate: '',
+    audioPresent: false,
+    audioStreamPresent: false,
+    metadataUnavailable: true,
+  };
+  const runner = options.ffprobeRunner || childProcess.spawnSync;
+  let result;
+  try {
+    result = runner('ffprobe', ['-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', filePath], {
+      encoding: 'utf8',
+      timeout: 8000,
+    });
+  } catch (_error) {
+    return base;
+  }
+  if (!result || result.status !== 0 || !result.stdout) return base;
+  try {
+    const payload = JSON.parse(result.stdout);
+    const streams = Array.isArray(payload.streams) ? payload.streams : [];
+    const video = streams.find((stream) => stream.codec_type === 'video') || {};
+    const audio = streams.some((stream) => stream.codec_type === 'audio');
+    const rate = String(video.avg_frame_rate || video.r_frame_rate || '');
+    const frameRate = rate && rate.includes('/')
+      ? (() => {
+          const [num, den] = rate.split('/').map(Number);
+          return den ? String(Math.round((num / den) * 1000) / 1000) : '';
+        })()
+      : rate;
+    return {
+      duration: payload.format && payload.format.duration ? String(Math.round(Number(payload.format.duration) * 100) / 100) : '',
+      codec: video.codec_name || '',
+      resolution: video.width && video.height ? `${video.width}x${video.height}` : '',
+      frameRate,
+      audioPresent: audio,
+      audioStreamPresent: audio,
+      metadataUnavailable: false,
+    };
+  } catch (_error) {
+    return base;
+  }
+}
+
+function mediaFileBase(filePath) {
+  const stat = fs.statSync(filePath);
+  return {
+    filename: path.basename(filePath),
+    path: filePath,
+    exists: true,
+    modifiedTime: stat.mtime.toISOString(),
+    size: stat.size,
+  };
+}
+
+function likelyMediaRole(filePath) {
+  const text = filePath.toLowerCase();
+  const reasons = [];
+  if (/(second[-_ ]?cut|secondcut|second_cut|cut[-_ ]?2|\bv2\b)/i.test(text)) {
+    reasons.push('filename/path suggests second cut');
+    return { likelyRole: 'second-cut candidate', confidence: 'high', reasons };
+  }
+  if (/(candidate|review)/i.test(text) && !/pickup/i.test(text)) {
+    reasons.push('filename/path suggests review candidate');
+    return { likelyRole: 'second-cut candidate', confidence: 'medium', reasons };
+  }
+  if (/pickup|closeup|b-roll|broll|hands|keyboard|mouse|over[-_ ]?shoulder|talking/i.test(text)) {
+    reasons.push('filename/path suggests pickup media');
+    return { likelyRole: 'pickup media', confidence: 'medium', reasons };
+  }
+  if (/rough[-_ ]?cut|cut[-_ ]?1|\bv1\b/i.test(text)) {
+    reasons.push('filename/path suggests rough cut');
+    return { likelyRole: 'rough cut', confidence: 'medium', reasons };
+  }
+  return { likelyRole: 'unknown', confidence: 'low', reasons: ['no reliable role pattern matched'] };
+}
+
+function classifyPickupCategory(filePath) {
+  const text = filePath.toLowerCase();
+  if (/notes?|checklist|paper|notebook/.test(text)) return 'notes/checklist';
+  if (/over[-_ ]?shoulder|shoulder|context/.test(text)) return 'over-shoulder';
+  if (/talking|head|face|presenter|closeup|close-up/.test(text)) return 'talking-head presence';
+  if (/keyboard|mouse|hands?|typing/.test(text)) return 'hands';
+  if (/screen|workflow|desktop|ui/.test(text)) return 'screen/workflow';
+  return 'unknown';
+}
+
+function mediaOrientation(resolution = '') {
+  const match = String(resolution || '').match(/^(\d+)x(\d+)$/);
+  if (!match) return '';
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (!width || !height) return '';
+  if (width > height) return 'landscape';
+  if (height > width) return 'portrait';
+  return 'square';
+}
+
+function buildMediaDescriptor(filePath, options = {}) {
+  const role = likelyMediaRole(filePath);
+  const metadata = ffprobeMetadata(filePath, options);
+  return {
+    ...mediaFileBase(filePath),
+    ...metadata,
+    orientation: mediaOrientation(metadata.resolution),
+    likelyRole: role.likelyRole,
+    confidence: role.confidence,
+    reasons: role.reasons,
+  };
+}
+
 function isSafeOpenPath(filePath, resolved, options = {}) {
   const requested = markdownCell(filePath || '');
   if (!requested) return false;
@@ -853,6 +1004,117 @@ function buildProductionGps(payload = {}, options = {}) {
   };
 }
 
+function markdownTableItems(markdown = '') {
+  return String(markdown || '')
+    .split(/\r?\n/)
+    .filter((line) => /^\s*\|/.test(line) && !/\|\s*-+\s*\|/.test(line))
+    .map((line) => line.split('|').slice(1, -1).map((cell) => markdownCell(cell)))
+    .filter((cells) => cells.length && !/^none\.?$/i.test(cells[0]) && !/^item title$|^pickup shot/i.test(cells[0]));
+}
+
+function readRunFile(runDir, filename) {
+  const filePath = path.join(runDir, filename);
+  return fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+}
+
+function buildPickupRequirements(resolved, roughCutResult) {
+  const pickupText = readRunFile(resolved.runDir, 'pickup-list.md');
+  const editText = readRunFile(resolved.runDir, 'edit-fix-list.md');
+  return {
+    roughCutStatus: roughCutResult.roughCutReviewStatus || 'NOT STARTED',
+    secondCutReady: Boolean(roughCutResult.secondCutReady),
+    sourceWatchNoteMarker: roughCutResult.currentWatchNotesMarker || roughCutResult.approvalMarker || 'NOT GIVEN',
+    pickupListStatus: pickupText ? summarizeListStatus(pickupText) : 'missing',
+    editFixListStatus: editText ? summarizeListStatus(editText) : 'missing',
+    pickupsRequested: markdownTableItems(pickupText).map((cells) => cells[0]),
+    editFixesRequested: markdownTableItems(editText).map((cells) => cells[0]).filter((item) => !/^none\.?$/i.test(item)),
+    humanReviewRequired: true,
+  };
+}
+
+function buildSecondCutPlacementChecklist() {
+  return [
+    'Confirm over-shoulder/context shot appears early enough to break screen-only flow.',
+    'Confirm keyboard/mouse clip is used during workflow/process narration.',
+    'Confirm hands-on-notes clip is used during proof/checklist/review narration.',
+    'Confirm silent talking-head presence is used only as a short reset, not unsynced speech.',
+    'Confirm pickup inserts are mostly 2-4 seconds.',
+    'Confirm no important screen text is covered.',
+    'Confirm no private/sensitive screen detail is exposed.',
+    'Confirm AI-generated or pickup B-roll is not implied as proof evidence.',
+    'Confirm rough cut is not approved until Mikko reviews the second-cut candidate.',
+  ];
+}
+
+function discoverSecondCutMedia(resolved, options = {}) {
+  const roots = mediaSearchRoots(resolved, options);
+  const files = [...new Set(roots.flatMap((root) => walkMediaFiles(root)))];
+  const descriptors = files.map((filePath) => buildMediaDescriptor(filePath, options));
+  return {
+    candidates: descriptors.filter((item) => item.likelyRole === 'second-cut candidate'),
+    pickupMedia: descriptors
+      .filter((item) => item.likelyRole === 'pickup media' || /pickup/i.test(item.path))
+      .map((item) => ({
+        ...item,
+        likelyCategory: classifyPickupCategory(item.path),
+        usableStatus: item.metadataUnavailable ? 'unknown' : 'maybe usable',
+        humanReviewRequired: true,
+      })),
+  };
+}
+
+function buildSecondCutInspector(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const roughCutResult = parseRoughCutReviewFile(resolved.runDir);
+  const media = discoverSecondCutMedia(resolved, options);
+  const candidateStatus =
+    media.candidates.length === 0
+      ? 'not_found'
+      : media.candidates.length === 1
+        ? 'found_needs_review'
+        : 'multiple_candidates';
+  const pickupRequirements = buildPickupRequirements(resolved, roughCutResult);
+  const blockedActions = [
+    'approve rough cut',
+    'mark second-cut ready',
+    'mark final review ready',
+    'publish',
+    'upload',
+    'archive',
+    'update package-run state',
+    'commit state markers',
+    ...(candidateStatus === 'not_found' ? ['start final review', 'export/upload review', 'publish metadata review'] : []),
+  ];
+  const warnings = [
+    candidateStatus === 'not_found' ? 'Second-cut candidate not found.' : '',
+    candidateStatus === 'multiple_candidates' ? 'Multiple second-cut candidates found; Mikko must choose one manually.' : '',
+    roughCutResult.secondCutReady ? 'Second-cut readiness marker exists; human verification is still required.' : '',
+  ].filter(Boolean);
+  return {
+    ok: true,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    readOnly: true,
+    externalApisCalled: false,
+    currentGate: candidateStatus === 'not_found' ? 'Second-Cut Candidate Preparation' : 'Second-Cut Candidate Inspection',
+    roughCutStatus: roughCutResult.roughCutReviewStatus || 'NOT STARTED',
+    secondCutReady: Boolean(roughCutResult.secondCutReady),
+    candidateStatus,
+    candidates: media.candidates,
+    pickupMedia: media.pickupMedia,
+    pickupRequirements,
+    placementChecklist: buildSecondCutPlacementChecklist(),
+    humanGateRequired: true,
+    aiAllowed: ['inspect file metadata', 'classify pickup files', 'draft review checklist', 'surface missing candidate'],
+    aiBlocked: ['approve rough cut', 'mark second-cut ready', 'update package-run-state.md', 'update package-runs-index.json', 'commit or push', 'move/delete/rename media'],
+    blockedActions,
+    warnings,
+    nextSafeAction: candidateStatus === 'not_found'
+      ? 'Second-cut candidate not found. Next safe action: export or identify a second-cut candidate, then inspect it before any approval.'
+      : 'Inspect the second-cut candidate and pickup placement manually before any second-cut readiness decision.',
+  };
+}
+
 function normalizePickupItem(item = {}) {
   const title = markdownCell(item.title || item.itemTitle || '');
   const type = markdownCell(item.type || '');
@@ -952,6 +1214,7 @@ function buildRoughCutStatus(payload = {}, options = {}) {
   const roughCutResult = parseRoughCutReviewFile(resolved.runDir);
   const indexStatus = dashboardIndexStatus(resolved);
   const productionGps = buildProductionGps(payload, options);
+  const secondCutInspector = buildSecondCutInspector(payload, options);
   const staleDerivedArtifacts = roughCutResult.derivedArtifactStale ? ['rough-cut-review.md'] : [];
   const exactNextSafeAction =
     doctor.nextSafeAction ||
@@ -985,6 +1248,7 @@ function buildRoughCutStatus(payload = {}, options = {}) {
     } : { stale: false },
     gateTimeline: buildGateTimeline(doctor, roughCutResult),
     productionGps,
+    secondCutInspector,
     mediaRows: collectMediaRows(resolved, roughCutCandidate),
     dashboardIndex: indexStatus,
     activeRunSummary: {
@@ -1382,6 +1646,7 @@ function createStatusResponse(env = process.env) {
     roughCutInputConsole: {
       statusApi: ROUGH_CUT_STATUS_API,
       productionGpsApi: PRODUCTION_GPS_API,
+      secondCutInspectorApi: SECOND_CUT_INSPECTOR_API,
       saveApi: ROUGH_CUT_SAVE_API,
       reviewApi: ROUGH_CUT_REVIEW_API,
       regenerateDerivedApi: ROUGH_CUT_REGENERATE_DERIVED_API,
@@ -1586,6 +1851,15 @@ function createServer() {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === SECOND_CUT_INSPECTOR_API) {
+      try {
+        send(res, 200, buildSecondCutInspector({ runId: url.searchParams.get('runId') || '' }));
+      } catch (error) {
+        send(res, error.statusCode || 500, { error: error.message });
+      }
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === ROUGH_CUT_SAVE_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -1687,6 +1961,7 @@ module.exports = {
   PICKUP_STATUSES,
   PRODUCTION_GPS_API,
   PRODUCTION_GPS_ARTIFACTS,
+  SECOND_CUT_INSPECTOR_API,
   ROUGH_CUT_APPROVAL_VALUES,
   ROUGH_CUT_DERIVED_FILES,
   ROUGH_CUT_OPEN_API,
@@ -1714,8 +1989,12 @@ module.exports = {
   createThumbnailResponse,
   buildProductionGps,
   buildProductionGpsTimeline,
+  buildSecondCutInspector,
+  buildSecondCutPlacementChecklist,
   detectRoughCutCandidate,
+  classifyPickupCategory,
   dashboardIndexStatus,
+  discoverSecondCutMedia,
   findActivePackageRun,
   imageMimeType,
   isAllowedLocalHost,

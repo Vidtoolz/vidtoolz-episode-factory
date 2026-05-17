@@ -1038,6 +1038,90 @@ Capture evidence approval: PASS`;
     </section>`;
   }
 
+  function renderSecondCutInspector(inspector = {}) {
+    const candidates = Array.isArray(inspector.candidates) ? inspector.candidates : [];
+    const pickupMedia = Array.isArray(inspector.pickupMedia) ? inspector.pickupMedia : [];
+    const requirements = inspector.pickupRequirements || {};
+    const checklist = Array.isArray(inspector.placementChecklist) ? inspector.placementChecklist : [];
+    const warnings = Array.isArray(inspector.warnings) ? inspector.warnings : [];
+    const list = (items, fallback) => `<ul>${(Array.isArray(items) && items.length ? items : [fallback]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+    const mediaCell = (item) => [
+      item.duration ? `${item.duration}s` : "duration unavailable",
+      item.codec || "codec unavailable",
+      item.resolution || "resolution unavailable",
+      item.frameRate ? `${item.frameRate} fps` : "fps unavailable",
+      item.audioStreamPresent || item.audioPresent ? "audio yes" : "audio no/unknown",
+    ].join(" · ");
+    return `<section class="second-cut-inspector" aria-label="Second-Cut Candidate Inspector">
+      <div class="mikko-console-header">
+        <div>
+          <p class="eyebrow">Second Cut</p>
+          <h3>Second-Cut Candidate Inspector</h3>
+        </div>
+        ${renderStatusBadge(inspector.candidateStatus || "unknown")}
+      </div>
+      <div class="human-review-required">
+        <strong>Human review required</strong>
+        <p>${escapeHtml(inspector.nextSafeAction || "Inspect the candidate and pickup placement before any approval.")}</p>
+      </div>
+      <div class="lifecycle-review-grid">
+        <div><span>Current gate</span><strong>${escapeHtml(inspector.currentGate || "unknown")}</strong></div>
+        <div><span>Rough-cut status</span><strong>${escapeHtml(inspector.roughCutStatus || "unknown")}</strong></div>
+        <div><span>Second-cut ready</span><strong>${inspector.secondCutReady ? "yes" : "no"}</strong></div>
+        <div><span>Candidate status</span><strong>${escapeHtml(inspector.candidateStatus || "unknown")}</strong></div>
+        <div><span>Pickup-list status</span><strong>${escapeHtml(requirements.pickupListStatus || "missing")}</strong></div>
+        <div><span>Edit-fix-list status</span><strong>${escapeHtml(requirements.editFixListStatus || "missing")}</strong></div>
+        <div><span>Source watch-note marker</span><strong>${escapeHtml(requirements.sourceWatchNoteMarker || "NOT GIVEN")}</strong></div>
+        <div><span>Human gate required</span><strong>${inspector.humanGateRequired ? "yes" : "no"}</strong></div>
+      </div>
+      <div class="inspector-table-block">
+        <h4>Candidate Files</h4>
+        <table>
+          <thead><tr><th>File</th><th>Role</th><th>Confidence</th><th>Metadata</th><th>Modified</th></tr></thead>
+          <tbody>
+            ${candidates.length ? candidates.map((item) => `<tr>
+              <td>${escapeHtml(item.path || item.filename || "")}</td>
+              <td>${escapeHtml(item.likelyRole || "unknown")}</td>
+              <td>${escapeHtml(item.confidence || "low")}</td>
+              <td>${escapeHtml(mediaCell(item))}</td>
+              <td>${escapeHtml(item.modifiedTime || "")}</td>
+            </tr>`).join("") : `<tr><td colspan="5">Second-cut candidate not found.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+      <div class="inspector-table-block">
+        <h4>Pickup Media</h4>
+        <table>
+          <thead><tr><th>File</th><th>Category</th><th>Usable status</th><th>Metadata</th><th>Review</th></tr></thead>
+          <tbody>
+            ${pickupMedia.length ? pickupMedia.map((item) => `<tr>
+              <td>${escapeHtml(item.path || item.filename || "")}</td>
+              <td>${escapeHtml(item.likelyCategory || "unknown")}</td>
+              <td>${escapeHtml(item.usableStatus || "not inspected")}</td>
+              <td>${escapeHtml(mediaCell(item))}</td>
+              <td>${item.humanReviewRequired ? "human review required" : "not reported"}</td>
+            </tr>`).join("") : `<tr><td colspan="5">No pickup media found.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+      <div class="gps-split">
+        <div>
+          <h4>Placement Review Checklist</h4>
+          ${list(checklist, "No placement checks reported.")}
+        </div>
+        <div>
+          <h4>Blocked Actions</h4>
+          ${list(inspector.blockedActions, "No blocked actions reported.")}
+        </div>
+      </div>
+      <div class="gps-split">
+        <div><h4>AI allowed</h4>${list(inspector.aiAllowed, "inspect file metadata")}</div>
+        <div><h4>AI blocked</h4>${list(inspector.aiBlocked, "approve or update state")}</div>
+      </div>
+      ${warnings.length ? `<div class="stale-derived-warning"><h4>Warnings</h4>${list(warnings, "No warnings.")}</div>` : ""}
+    </section>`;
+  }
+
   function renderMikkoInputConsole(status = {}, result = null) {
     const runId = status.runId || "";
     const candidate = status.roughCutCandidate || {};
@@ -1045,6 +1129,7 @@ Capture evidence approval: PASS`;
     const reviewedPath = candidate.path || "";
     return `<div class="mikko-console-run" data-rough-cut-console data-run-id="${escapeHtml(runId)}">
       ${status.productionGps ? renderProductionGps(status.productionGps) : ""}
+      ${status.secondCutInspector ? renderSecondCutInspector(status.secondCutInspector) : ""}
       ${renderActiveRunSummary(status.activeRunSummary || {
         runId,
         currentLifecycleStage: status.currentInferredStage,
@@ -1827,6 +1912,7 @@ Capture evidence approval: PASS`;
     renderActiveRunSummary,
     renderGateTimeline,
     renderProductionGps,
+    renderSecondCutInspector,
     renderRoughCutResultCard,
     renderPickupPlanGui,
     renderMediaPanel,
