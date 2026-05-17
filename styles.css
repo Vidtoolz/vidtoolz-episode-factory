@@ -1180,6 +1180,137 @@ label > span,
   padding: 10px;
 }
 
+.active-run-summary,
+.gate-timeline,
+.rough-cut-result-card,
+.pickup-plan-panel,
+.media-panel {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.gate-timeline-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.gate-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--muted);
+  border-radius: 8px;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.gate-card-top {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.gate-card p,
+.gate-card small {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.gate-card small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.gate-pass {
+  border-left-color: var(--accent);
+}
+
+.gate-needs-review {
+  border-left-color: #ca8a04;
+}
+
+.gate-needs-work,
+.gate-blocked {
+  border-left-color: var(--danger);
+}
+
+.gate-locked,
+.gate-not-started {
+  border-left-color: var(--muted);
+  opacity: 0.82;
+}
+
+.pickup-table {
+  display: grid;
+  gap: 10px;
+}
+
+.pickup-item-row {
+  align-items: end;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(180px, 1.2fr) 150px 90px 140px 150px 110px minmax(180px, 1fr) 80px;
+  padding: 10px;
+}
+
+.pickup-item-row label {
+  display: grid;
+  gap: 5px;
+}
+
+.pickup-item-row span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pickup-item-row input,
+.pickup-item-row select,
+.pickup-item-row textarea {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font: inherit;
+  min-width: 0;
+  padding: 8px 9px;
+}
+
+.media-row-list {
+  display: grid;
+  gap: 8px;
+}
+
+.media-row {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 10px;
+}
+
+.media-row strong,
+.media-row small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.media-row small {
+  color: var(--muted);
+  margin-top: 3px;
+}
+
 .package-runs-stats span {
   color: var(--muted);
   font-size: 12px;

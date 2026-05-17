@@ -825,12 +825,148 @@ Capture evidence approval: PASS`;
     </div>`;
   }
 
+  function renderActiveRunSummary(summary = {}) {
+    const state = summary.packageRunState || {};
+    return `<section class="active-run-summary">
+      <div class="mikko-console-header">
+        <div>
+          <p class="eyebrow">Active Run</p>
+          <h3>${escapeHtml(summary.runId || "unknown")}</h3>
+        </div>
+        ${renderStatusBadge(summary.overallStatus || "unknown")}
+      </div>
+      <div class="lifecycle-review-grid">
+        <div><span>Lifecycle stage</span><strong>${escapeHtml(summary.currentLifecycleStage || "unknown")}</strong></div>
+        <div><span>Run state</span><strong>${escapeHtml(state.state || "active")}</strong><small>${state.explicit ? "explicit marker" : "inferred"}</small></div>
+        <div><span>Current blocker</span><strong>${escapeHtml(summary.currentBlocker || "No blocker reported.")}</strong></div>
+        <div><span>Exact next safe action</span><strong>${escapeHtml(summary.exactNextSafeAction || "Review current gate.")}</strong></div>
+        <div><span>Dashboard index updated</span><strong>${summary.dashboardIndexUpdated ? "yes" : "no"}</strong><small>${escapeHtml(summary.dashboardIndexReason || "")}</small></div>
+      </div>
+    </section>`;
+  }
+
+  function gateClass(status = "") {
+    return `gate-${String(status || "not-started").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  }
+
+  function renderGateTimeline(gates = []) {
+    const items = Array.isArray(gates) ? gates : [];
+    return `<section class="gate-timeline" aria-label="Visual gate timeline">
+      <div class="mikko-console-header">
+        <div>
+          <p class="eyebrow">Lifecycle Gates</p>
+          <h3>Visual Gate Timeline</h3>
+        </div>
+      </div>
+      <div class="gate-timeline-grid">
+        ${items.map((gate) => `<article class="gate-card ${gateClass(gate.status)}">
+          <div class="gate-card-top">
+            <strong>${escapeHtml(gate.label)}</strong>
+            ${renderStatusBadge(gate.status || "NOT STARTED")}
+          </div>
+          <p>${escapeHtml(gate.reason || "No reason reported.")}</p>
+          <small>${escapeHtml(gate.artifactPath || "No artifact path.")}</small>
+          <small>${escapeHtml(gate.allowedNextAction || "No action available.")}</small>
+        </article>`).join("")}
+      </div>
+    </section>`;
+  }
+
+  function renderRoughCutResultCard(status = {}) {
+    const result = status.roughCutResult || {};
+    const candidate = status.roughCutCandidate || {};
+    return `<section class="rough-cut-result-card">
+      <div class="mikko-console-header">
+        <div>
+          <p class="eyebrow">Rough Cut</p>
+          <h3>Latest Review Result</h3>
+        </div>
+        ${renderStatusBadge(result.roughCutReviewStatus || "NOT STARTED")}
+      </div>
+      <div class="lifecycle-review-grid">
+        <div><span>Rough-cut status</span><strong>${escapeHtml(result.roughCutReviewStatus || "unknown")}</strong></div>
+        <div><span>Second-cut ready</span><strong>${result.secondCutReady ? "yes" : "no"}</strong></div>
+        <div><span>Reason</span><strong>${escapeHtml(result.reason || "No reason reported.")}</strong></div>
+        <div><span>Reviewed file path</span><strong>${escapeHtml(result.reviewedFilePath || candidate.path || "No reviewed file detected.")}</strong></div>
+        <div><span>Approval marker</span><strong>${escapeHtml(result.approvalMarker || "NOT GIVEN")}</strong></div>
+        <div><span>Pickup-list status</span><strong>${escapeHtml(result.pickupListStatus || "missing")}</strong></div>
+        <div><span>Edit-fix-list status</span><strong>${escapeHtml(result.editFixListStatus || "missing")}</strong></div>
+      </div>
+    </section>`;
+  }
+
+  function renderPickupPlanGui() {
+    return `<section class="pickup-plan-panel" data-pickup-plan>
+      <div class="mikko-console-header">
+        <div>
+          <p class="eyebrow">Pickup Plan</p>
+          <h3>Structured Pickup Items</h3>
+        </div>
+        <button type="button" data-add-pickup-item>Add item</button>
+      </div>
+      <p class="muted">Writes only <code>pickup-list.md</code> and <code>edit-fix-list.md</code>. It will not approve rough cut, mark second-cut ready, update package-runs-index.json, or perform Git actions.</p>
+      <div class="pickup-table" data-pickup-items>
+        ${renderPickupItemRow(0)}
+      </div>
+      <div class="rough-cut-actions">
+        <button type="button" data-save-pickup-plan>Save pickup plan</button>
+        <span data-pickup-plan-status class="capture-write-status">Generated suggestions stay proposed until Mikko accepts them.</span>
+      </div>
+    </section>`;
+  }
+
+  function renderPickupItemRow(index) {
+    return `<div class="pickup-item-row" data-pickup-item>
+      <label><span>Item title</span><input type="text" data-pickup-field="title" placeholder="Add closeup after intro" /></label>
+      <label><span>Type</span><select data-pickup-field="type">
+        <option>presenter closeup</option><option>AI B-roll</option><option>screen zoom</option><option>graphic</option><option>edit-only fix</option><option>other</option>
+      </select></label>
+      <label><span>Required</span><select data-pickup-field="required"><option>yes</option><option>no</option></select></label>
+      <label><span>Source</span><select data-pickup-field="source"><option>existing material</option><option>new recording</option><option>AI generation</option><option>editing only</option></select></label>
+      <label><span>Purpose</span><select data-pickup-field="purpose"><option>clarify message</option><option>add human presence</option><option>visual variety</option><option>proof support</option><option>pacing</option><option>other</option></select></label>
+      <label><span>Status</span><select data-pickup-field="status"><option>proposed</option><option>accepted</option><option>rejected</option><option>done</option></select></label>
+      <label class="pickup-notes"><span>Notes</span><textarea rows="2" data-pickup-field="notes"></textarea></label>
+      <button type="button" data-remove-pickup-item ${index === 0 ? "disabled" : ""}>Remove</button>
+    </div>`;
+  }
+
+  function renderMediaPanel(status = {}) {
+    const rows = Array.isArray(status.mediaRows) ? status.mediaRows : [];
+    return `<section class="media-panel">
+      <div class="mikko-console-header">
+        <div>
+          <p class="eyebrow">Media</p>
+          <h3>Active-Run Media</h3>
+        </div>
+      </div>
+      <div class="media-row-list">
+        ${rows.length ? rows.map((row) => `<div class="media-row">
+          <div><strong>${escapeHtml(row.path)}</strong><small>${escapeHtml(row.type)} · ${escapeHtml(row.status)}</small></div>
+          <button type="button" data-open-media="${escapeHtml(row.path)}" ${row.openAllowed ? "" : "disabled"}>Open</button>
+        </div>`).join("") : `<p class="muted">No active-run media detected.</p>`}
+      </div>
+    </section>`;
+  }
+
   function renderMikkoInputConsole(status = {}, result = null) {
     const runId = status.runId || "";
     const candidate = status.roughCutCandidate || {};
     const defaults = roughCutInputDefaults();
     const reviewedPath = candidate.path || "";
     return `<div class="mikko-console-run" data-rough-cut-console data-run-id="${escapeHtml(runId)}">
+      ${renderActiveRunSummary(status.activeRunSummary || {
+        runId,
+        currentLifecycleStage: status.currentInferredStage,
+        overallStatus: status.overallStatus,
+        currentBlocker: status.firstBlockerReason,
+        exactNextSafeAction: status.exactNextSafeAction || status.nextRecommendedCommand,
+        packageRunState: {},
+        dashboardIndexUpdated: false,
+      })}
+      ${renderGateTimeline(status.gateTimeline || [])}
+      ${renderRoughCutResultCard(status)}
+      ${renderPickupPlanGui()}
+      ${renderMediaPanel(status)}
       <div class="lifecycle-review-grid">
         <div><span>Active package run</span><strong>${escapeHtml(runId || "not found")}</strong></div>
         <div><span>Current lifecycle stage</span><strong>${escapeHtml(status.currentInferredStage || status.lifecycleStatus || "unknown")}</strong></div>
@@ -1159,6 +1295,30 @@ Capture evidence approval: PASS`;
         openRoughCutVideo(openRoughCut);
         return;
       }
+      const openMedia = event.target.closest("[data-open-media]");
+      if (openMedia) {
+        event.preventDefault();
+        openMediaPath(openMedia);
+        return;
+      }
+      const addPickup = event.target.closest("[data-add-pickup-item]");
+      if (addPickup) {
+        event.preventDefault();
+        addPickupItem(addPickup);
+        return;
+      }
+      const removePickup = event.target.closest("[data-remove-pickup-item]");
+      if (removePickup) {
+        event.preventDefault();
+        removePickupItem(removePickup);
+        return;
+      }
+      const savePickup = event.target.closest("[data-save-pickup-plan]");
+      if (savePickup) {
+        event.preventDefault();
+        savePickupPlan(savePickup);
+        return;
+      }
       const link = event.target.closest("[data-preview-artifact]");
       if (!link) return;
       event.preventDefault();
@@ -1354,6 +1514,7 @@ Capture evidence approval: PASS`;
         saveApi: config.saveApi || "/api/package-runs/rough-cut/watch-notes",
         reviewApi: config.reviewApi || "/api/package-runs/rough-cut/review",
         openApi: config.openApi || "/api/package-runs/rough-cut/open",
+        pickupPlanSaveApi: config.pickupPlanSaveApi || "/api/package-runs/pickup-plan/save",
         nonceHeader: config.nonceHeader || "x-vidtoolz-local-write-nonce",
         localWriteNonce: config.localWriteNonce || (localWriteConfig ? localWriteConfig.localWriteNonce : ""),
       };
@@ -1428,6 +1589,72 @@ Capture evidence approval: PASS`;
         .catch((error) => setRoughCutStatus(container, error.message, "missing"));
     }
 
+    function openMediaPath(button) {
+      const container = button.closest("[data-rough-cut-console]");
+      if (!container) return;
+      setRoughCutStatus(container, "Opening media.", "pending");
+      roughCutRequest((config) => config.openApi, {
+        runId: container.dataset.runId || "",
+        filePath: button.dataset.openMedia || "",
+      })
+        .then((payload) => setRoughCutStatus(container, `Opened: ${payload.opened}`, "valid"))
+        .catch((error) => setRoughCutStatus(container, error.message, "missing"));
+    }
+
+    function pickupPlanStatusElement(container) {
+      return container.querySelector("[data-pickup-plan-status]");
+    }
+
+    function setPickupPlanStatus(container, message, type = "") {
+      const status = pickupPlanStatusElement(container);
+      if (status) {
+        status.textContent = message;
+        status.className = `capture-write-status ${type}`.trim();
+      }
+    }
+
+    function addPickupItem(button) {
+      const panel = button.closest("[data-pickup-plan]");
+      const list = panel ? panel.querySelector("[data-pickup-items]") : null;
+      if (!list) return;
+      list.insertAdjacentHTML("beforeend", renderPickupItemRow(list.querySelectorAll("[data-pickup-item]").length));
+      setPickupPlanStatus(panel, "New item added as proposed until Mikko changes status.", "pending");
+    }
+
+    function removePickupItem(button) {
+      const row = button.closest("[data-pickup-item]");
+      const panel = button.closest("[data-pickup-plan]");
+      if (row && !button.disabled) row.remove();
+      if (panel) setPickupPlanStatus(panel, "Item removed locally. Save to write pickup files.", "pending");
+    }
+
+    function pickupPlanItems(panel) {
+      return Array.from(panel.querySelectorAll("[data-pickup-item]")).map((row) => {
+        const item = {};
+        row.querySelectorAll("[data-pickup-field]").forEach((field) => {
+          item[field.dataset.pickupField] = field.value;
+        });
+        return item;
+      });
+    }
+
+    function savePickupPlan(button) {
+      const consoleEl = button.closest("[data-rough-cut-console]");
+      const panel = button.closest("[data-pickup-plan]");
+      if (!consoleEl || !panel) return;
+      button.disabled = true;
+      setPickupPlanStatus(panel, "Saving pickup-list.md and edit-fix-list.md only.", "pending");
+      roughCutRequest((config) => config.pickupPlanSaveApi, {
+        runId: consoleEl.dataset.runId || "",
+        items: pickupPlanItems(panel),
+      })
+        .then((payload) => setPickupPlanStatus(panel, payload.warning || `Saved: ${payload.written.join(", ")}`, "valid"))
+        .catch((error) => setPickupPlanStatus(panel, error.message, "missing"))
+        .finally(() => {
+          button.disabled = false;
+        });
+    }
+
     function handleGridInput(event) {
       const input = event.target.closest("[data-capture-field]");
       if (!input) return;
@@ -1480,6 +1707,11 @@ Capture evidence approval: PASS`;
     renderCaptureEvidenceIntake,
     renderCaptureEvidencePanel,
     roughCutInputDefaults,
+    renderActiveRunSummary,
+    renderGateTimeline,
+    renderRoughCutResultCard,
+    renderPickupPlanGui,
+    renderMediaPanel,
     renderMikkoInputConsole,
     renderRoughCutResult,
     renderLifecycleReviewPanel,

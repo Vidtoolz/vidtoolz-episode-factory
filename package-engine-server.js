@@ -20,6 +20,7 @@ const ROUGH_CUT_STATUS_API = '/api/package-runs/rough-cut/status';
 const ROUGH_CUT_SAVE_API = '/api/package-runs/rough-cut/watch-notes';
 const ROUGH_CUT_REVIEW_API = '/api/package-runs/rough-cut/review';
 const ROUGH_CUT_OPEN_API = '/api/package-runs/rough-cut/open';
+const PICKUP_PLAN_SAVE_API = '/api/package-runs/pickup-plan/save';
 const SERVE_ROOT = ROOT;
 const PACKAGE_RUNS_DIR = 'package-runs';
 const OPENAI_IMAGES_URL = 'https://api.openai.com/v1/images/generations';
@@ -36,6 +37,11 @@ const CAPTURE_EVIDENCE_TARGETS = [
 const CAPTURE_EVIDENCE_AUDIT_FILE = 'capture-evidence-intake-log.md';
 const ROUGH_CUT_WATCH_NOTES_FILE = 'rough-cut-watch-notes.md';
 const ROUGH_CUT_APPROVAL_VALUES = ['NOT GIVEN', 'NEEDS PICKUPS', 'NEEDS EDIT FIXES', 'PASS'];
+const PICKUP_ITEM_TYPES = ['presenter closeup', 'AI B-roll', 'screen zoom', 'graphic', 'edit-only fix', 'other'];
+const PICKUP_REQUIRED_VALUES = ['yes', 'no'];
+const PICKUP_SOURCES = ['existing material', 'new recording', 'AI generation', 'editing only'];
+const PICKUP_PURPOSES = ['clarify message', 'add human presence', 'visual variety', 'proof support', 'pacing', 'other'];
+const PICKUP_STATUSES = ['proposed', 'accepted', 'rejected', 'done'];
 const CAPTURE_EVIDENCE_SECTION_START = '<!-- capture-evidence-intake:start -->';
 const CAPTURE_EVIDENCE_SECTION_END = '<!-- capture-evidence-intake:end -->';
 const LOCAL_WRITE_NONCE = crypto.randomBytes(24).toString('hex');
@@ -132,6 +138,12 @@ function markdownText(value = '', fallback = 'None reported.') {
     .split('\n')
     .map((line) => line.replace(/\|/g, '/').trimEnd())
     .join('\n');
+}
+
+function lineValue(markdown = '', label = '') {
+  const escaped = String(label || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = String(markdown || '').match(new RegExp(`^(?:[-*]\\s*)?${escaped}:\\s*(.+)$`, 'im'));
+  return match ? match[1].trim() : '';
 }
 
 function captureEvidenceInputDefaults() {
@@ -476,11 +488,256 @@ function parseRoughCutReviewStdout(stdout = '') {
   };
 }
 
+function parseRoughCutReviewFile(runDir) {
+  const reviewPath = path.join(runDir, 'rough-cut-review.md');
+  const text = fs.existsSync(reviewPath) ? fs.readFileSync(reviewPath, 'utf8') : '';
+  const pickupPath = path.join(runDir, 'pickup-list.md');
+  const fixPath = path.join(runDir, 'edit-fix-list.md');
+  const watchNotes = fs.existsSync(path.join(runDir, ROUGH_CUT_WATCH_NOTES_FILE))
+    ? fs.readFileSync(path.join(runDir, ROUGH_CUT_WATCH_NOTES_FILE), 'utf8')
+    : '';
+  return {
+    roughCutReviewStatus: lineValue(text, 'Rough-cut review status') || 'NOT STARTED',
+    secondCutReady: /^yes$/i.test(lineValue(text, 'Second-cut ready')),
+    reason: lineValue(text, 'Reason') || lineValue(text, 'Status') || '',
+    reviewedFilePath: extractReviewedFilePath(watchNotes),
+    approvalMarker: lineValue(watchNotes, 'Rough-cut approval') || lineValue(watchNotes, 'Manual approval') || 'NOT GIVEN',
+    pickupListStatus: fs.existsSync(pickupPath) ? summarizeListStatus(fs.readFileSync(pickupPath, 'utf8')) : 'missing',
+    editFixListStatus: fs.existsSync(fixPath) ? summarizeListStatus(fs.readFileSync(fixPath, 'utf8')) : 'missing',
+    artifactPath: 'rough-cut-review.md',
+  };
+}
+
+function summarizeListStatus(markdown = '') {
+  const text = String(markdown || '');
+  if (/\|\s*open\s*\|?\s*$/im.test(text)) return 'open';
+  if (/\|\s*blocked\s*\|?\s*$/im.test(text)) return 'blocked';
+  if (/\|\s*accepted\s*\|?\s*$/im.test(text)) return 'accepted';
+  if (/\|\s*proposed\s*\|?\s*$/im.test(text)) return 'proposed';
+  if (/\|\s*done\s*\|?\s*$/im.test(text)) return 'done';
+  if (/\|\s*closed\s*\|?\s*$/im.test(text)) return 'closed';
+  return text.trim() ? 'present' : 'empty';
+}
+
+function dashboardIndexStatus(resolved) {
+  const indexPath = path.join(resolved.root, 'package-runs-index.json');
+  if (!fs.existsSync(indexPath)) return { exists: false, updatedForActiveRun: false, reason: 'package-runs-index.json is missing.' };
+  const indexMtime = fs.statSync(indexPath).mtimeMs;
+  let newestRunMtime = 0;
+  fs.readdirSync(resolved.runDir, { withFileTypes: true }).forEach((entry) => {
+    if (!entry.isFile()) return;
+    newestRunMtime = Math.max(newestRunMtime, fs.statSync(path.join(resolved.runDir, entry.name)).mtimeMs);
+  });
+  return {
+    exists: true,
+    updatedForActiveRun: indexMtime >= newestRunMtime,
+    indexPath: 'package-runs-index.json',
+    indexUpdatedAt: new Date(indexMtime).toISOString(),
+    newestRunArtifactAt: newestRunMtime ? new Date(newestRunMtime).toISOString() : '',
+    reason: indexMtime >= newestRunMtime
+      ? 'package-runs-index.json is at least as new as active run root files.'
+      : 'package-runs-index.json is older than one or more active run root files.',
+  };
+}
+
+function gateStatus(label, status, reason, artifactPath, allowedNextAction) {
+  return { label, status, reason, artifactPath, allowedNextAction };
+}
+
+function buildGateTimeline(doctor = {}, roughCut = {}) {
+  const gate = doctor.lifecycleGate || {};
+  const researchStatus = gate.researchSufficiencyReviewStatus === 'PASS' || gate.researchApprovalMarker === 'PASS' ? 'PASS' : gate.researchGateStatus || 'NOT STARTED';
+  const scriptStatus = gate.scriptReviewStatus === 'PASS' ? 'PASS' : gate.scriptReviewStatus || (gate.readyToDraft ? 'NEEDS REVIEW' : 'NOT STARTED');
+  const productionStatus =
+    gate.productionPlanningBlocked || gate.productionApprovalBlocked || gate.productionBlockersOpen
+      ? 'BLOCKED'
+      : gate.productionPlanStatus === 'READY TO SHOOT'
+        ? 'PASS'
+        : gate.productionPlanStatus
+          ? 'NEEDS WORK'
+          : 'NOT STARTED';
+  const captureStatus = gate.captureEvidenceAccepted ? 'PASS' : gate.hasCaptureEvidenceReview ? 'NEEDS REVIEW' : 'NOT STARTED';
+  const roughStatus = roughCut.roughCutReviewStatus === 'READY FOR SECOND CUT'
+    ? 'PASS'
+    : roughCut.roughCutReviewStatus === 'NOT STARTED'
+      ? 'NOT STARTED'
+      : roughCut.roughCutReviewStatus || 'NOT STARTED';
+  const pickupsStatus =
+    roughStatus === 'NEEDS PICKUPS' || roughCut.pickupListStatus === 'open' || roughCut.pickupListStatus === 'accepted' || roughCut.pickupListStatus === 'proposed'
+      ? 'NEEDS WORK'
+      : roughCut.pickupListStatus === 'done' || roughCut.pickupListStatus === 'closed'
+        ? 'PASS'
+        : roughStatus === 'PASS'
+          ? 'PASS'
+          : 'LOCKED';
+  const secondCutStatus = gate.secondCutReady ? 'PASS' : gate.roughCutStatus ? 'LOCKED' : 'NOT STARTED';
+  return [
+    gateStatus('Research', researchStatus, `Research review: ${gate.researchSufficiencyReviewStatus || gate.researchGateStatus || 'missing'}.`, 'research-sufficiency-review.md', researchStatus === 'PASS' ? 'Continue to package/script gates.' : 'Complete research review.'),
+    gateStatus('Package', doctor.title ? 'PASS' : 'NEEDS REVIEW', doctor.title ? `Selected package: ${doctor.title}.` : 'Selected package is missing.', 'selected-package.md', 'Keep selected package aligned with proof.'),
+    gateStatus('Script', scriptStatus, `Script review status: ${gate.scriptReviewStatus || 'missing'}.`, 'script-review.md', scriptStatus === 'PASS' ? 'Continue to production planning.' : 'Repair script and rerun script review.'),
+    gateStatus('Production Plan', productionStatus, `Production plan status: ${gate.productionPlanStatus || 'missing'}.`, 'production-plan.md', productionStatus === 'PASS' ? 'Use approved planning scope only.' : gate.productionPlanningNextSafeAction || 'Repair production plan.'),
+    gateStatus('Capture Evidence', captureStatus, `Capture evidence status: ${gate.captureEvidenceReviewStatus || 'missing'}; accepted: ${gate.captureEvidenceAccepted ? 'yes' : 'no'}.`, 'capture-evidence-review.md', gate.captureEvidenceAccepted ? 'Proceed to rough-cut review.' : gate.captureEvidenceNextSafeAction || 'Complete capture evidence review.'),
+    gateStatus('Rough Cut', roughStatus, roughCut.reason || `Rough-cut status: ${roughCut.roughCutReviewStatus || gate.roughCutStatus || 'missing'}.`, 'rough-cut-review.md', roughStatus === 'PASS' ? 'Proceed to second cut.' : 'Enter Mikko watch notes and resolve review result.'),
+    gateStatus('Pickups', pickupsStatus, `Pickup list status: ${roughCut.pickupListStatus || 'missing'}.`, 'pickup-list.md', pickupsStatus === 'NEEDS WORK' ? 'Accept, reject, or complete proposed pickups.' : 'No pickup action available until rough-cut review requires it.'),
+    gateStatus('Second Cut', secondCutStatus, `Second-cut ready: ${gate.secondCutReady ? 'yes' : 'no'}.`, 'rough-cut-review.md', gate.secondCutReady ? 'Create second cut and move to final review.' : 'Locked until rough cut passes.'),
+    gateStatus('Final Review', gate.finalReviewStatus === 'PASS' ? 'PASS' : gate.secondCutReady ? 'NEEDS REVIEW' : 'LOCKED', `Final review status: ${gate.finalReviewStatus || 'missing'}.`, 'final-review.md', gate.secondCutReady ? 'Run final review after second cut.' : 'Locked until second cut is ready.'),
+    gateStatus('Export', gate.effectiveReadyToUpload ? 'PASS' : gate.finalReviewStatus ? 'NEEDS REVIEW' : 'LOCKED', `Export status: ${gate.exportStatus || 'missing'}.`, 'export-checklist.md', 'Run export check after final review.'),
+    gateStatus('Publish', gate.effectiveReadyToSchedule ? 'PASS' : gate.effectiveReadyToUpload ? 'NEEDS REVIEW' : 'LOCKED', `Publication metadata status: ${gate.publicationMetadataStatus || 'missing'}.`, 'publish-metadata-review.md', 'Prepare publish metadata after export check.'),
+    gateStatus('Archive', gate.effectiveReadyToArchive ? 'PASS' : gate.effectiveReadyToSchedule ? 'NEEDS REVIEW' : 'LOCKED', `Archive status: ${gate.archiveStatus || 'missing'}.`, 'archive-manifest.md', 'Archive only after publication metadata is ready.'),
+  ];
+}
+
+function collectMediaRows(resolved, roughCutCandidate) {
+  const rows = [];
+  const add = (filePath, type, status) => {
+    if (!filePath) return;
+    rows.push({
+      path: filePath,
+      type,
+      status,
+      openAllowed: isSafeOpenPath(filePath, resolved),
+    });
+  };
+  add(roughCutCandidate.path, 'reviewed file', roughCutCandidate.path ? 'reviewed/current' : 'missing');
+  const mediaFiles = [];
+  function walk(dir, depth = 0) {
+    if (depth > 4 || mediaFiles.length > 60) return;
+    fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
+      if (entry.name.startsWith('.')) return;
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) return walk(fullPath, depth + 1);
+      if (!/\.(?:mp4|mov|mkv|webm|m4v|wav|mp3|m4a|flac)$/i.test(entry.name)) return;
+      mediaFiles.push(fullPath);
+    });
+  }
+  walk(resolved.runDir);
+  mediaFiles.forEach((fullPath) => {
+    const rel = path.relative(resolved.runDir, fullPath).replace(/\\/g, '/');
+    const lower = rel.toLowerCase();
+    const type = /\.(?:wav|mp3|m4a|flac)$/i.test(rel)
+      ? 'audio clip'
+      : /screen|capture|recording/.test(lower)
+        ? 'candidate screen recording'
+        : /a-?roll|talk|presenter|camera/.test(lower)
+          ? 'A-roll clip'
+          : 'media candidate';
+    add(rel, type, 'detected');
+  });
+  return rows.filter((row, index, list) => list.findIndex((item) => item.path === row.path) === index);
+}
+
+function isSafeOpenPath(filePath, resolved, options = {}) {
+  const requested = markdownCell(filePath || '');
+  if (!requested) return false;
+  const absolute = path.isAbsolute(requested) ? path.resolve(requested) : path.resolve(resolved.runDir, requested);
+  const allowedRoots = [resolved.runDir, path.resolve(options.videoRoot || path.join(process.env.HOME || '', 'Videos'))].filter(Boolean);
+  return allowedRoots.some((root) => absolute === root || absolute.startsWith(root + path.sep)) && fs.existsSync(absolute);
+}
+
+function normalizePickupItem(item = {}) {
+  const title = markdownCell(item.title || item.itemTitle || '');
+  const type = markdownCell(item.type || '');
+  const required = markdownCell(item.required || '').toLowerCase();
+  const source = markdownCell(item.source || '');
+  const purpose = markdownCell(item.purpose || '');
+  const status = markdownCell(item.status || '').toLowerCase();
+  const notes = markdownText(item.notes || '', '');
+  const allowed = [
+    [PICKUP_ITEM_TYPES, type, 'type'],
+    [PICKUP_REQUIRED_VALUES, required, 'required'],
+    [PICKUP_SOURCES, source, 'source'],
+    [PICKUP_PURPOSES, purpose, 'purpose'],
+    [PICKUP_STATUSES, status, 'status'],
+  ];
+  const invalid = allowed.find(([values, value]) => !values.includes(value));
+  if (!title) {
+    const error = new Error('Pickup item title is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (invalid) {
+    const error = new Error(`Invalid pickup ${invalid[2]}: ${invalid[1]}`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return { title, type, required, source, purpose, status, notes };
+}
+
+function normalizePickupItems(items = []) {
+  if (!Array.isArray(items) || !items.length) {
+    const error = new Error('At least one pickup item is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  return items.map(normalizePickupItem);
+}
+
+function buildPickupListMarkdown(runId, items = []) {
+  return `# Pickup List
+
+- Run: ${runId}
+- Tool: package-runs dashboard pickup plan
+- Approval boundary: proposed or accepted pickup items do not approve rough cut or mark second cut ready.
+- External APIs called: no
+
+| item title | type | required | source | purpose | status | notes |
+| --- | --- | --- | --- | --- | --- | --- |
+${items.map((item) => `| ${item.title} | ${item.type} | ${item.required} | ${item.source} | ${item.purpose} | ${item.status} | ${markdownCell(item.notes)} |`).join('\n')}
+`;
+}
+
+function buildEditFixListMarkdown(runId, items = []) {
+  const editItems = items.filter((item) => item.type === 'edit-only fix' || item.source === 'editing only');
+  return `# Edit Fix List
+
+- Run: ${runId}
+- Tool: package-runs dashboard pickup plan
+- Approval boundary: edit fixes do not approve rough cut or mark second cut ready.
+- External APIs called: no
+
+| item title | problem | fix/source | purpose | status | notes |
+| --- | --- | --- | --- | --- | --- |
+${(editItems.length ? editItems : items).map((item) => `| ${item.title} | ${item.type} | ${item.source} | ${item.purpose} | ${item.status} | ${markdownCell(item.notes)} |`).join('\n')}
+`;
+}
+
+function savePickupPlan(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const items = normalizePickupItems(payload.items || []);
+  const pickupPath = path.resolve(resolved.runDir, 'pickup-list.md');
+  const fixPath = path.resolve(resolved.runDir, 'edit-fix-list.md');
+  [pickupPath, fixPath].forEach((targetPath) => {
+    if (!targetPath.startsWith(resolved.runDir + path.sep)) {
+      const error = new Error('Resolved pickup plan path is outside the approved write scope.');
+      error.statusCode = 400;
+      throw error;
+    }
+  });
+  fs.writeFileSync(pickupPath, buildPickupListMarkdown(resolved.runId, items), 'utf8');
+  fs.writeFileSync(fixPath, buildEditFixListMarkdown(resolved.runId, items), 'utf8');
+  return {
+    ok: true,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    written: ['pickup-list.md', 'edit-fix-list.md'],
+    approvedForSecondCut: false,
+    warning: 'Pickup plan saved. Rough cut is not approved and second-cut readiness is not changed.',
+  };
+}
+
 function buildRoughCutStatus(payload = {}, options = {}) {
   const resolved = resolveRunFromPayload(payload, options);
   const runInput = `${PACKAGE_RUNS_DIR}/${resolved.runId}`;
   const doctor = packageRunDoctor.buildDoctorReport(runInput, { repoRoot: resolved.root });
   const roughCutCandidate = detectRoughCutCandidate(resolved.runDir);
+  const roughCutResult = parseRoughCutReviewFile(resolved.runDir);
+  const indexStatus = dashboardIndexStatus(resolved);
+  const exactNextSafeAction =
+    doctor.nextSafeAction ||
+    doctor.nextRecommendedCommand ||
+    doctor.firstBlockerReason ||
+    (doctor.blockingReasons || []).join(' ') ||
+    'Review the current lifecycle gate before downstream work.';
   return {
     ok: true,
     runId: resolved.runId,
@@ -491,8 +748,25 @@ function buildRoughCutStatus(payload = {}, options = {}) {
     overallStatus: doctor.overallStatus || '',
     firstBlockerReason: doctor.firstBlockerReason || (doctor.blockingReasons || []).join(' '),
     nextRecommendedCommand: doctor.nextRecommendedCommand || '',
+    exactNextSafeAction,
     missingExpectedArtifacts: doctor.missingExpectedArtifacts || [],
     roughCutCandidate,
+    roughCutResult,
+    gateTimeline: buildGateTimeline(doctor, roughCutResult),
+    mediaRows: collectMediaRows(resolved, roughCutCandidate),
+    dashboardIndex: indexStatus,
+    activeRunSummary: {
+      runId: resolved.runId,
+      runPath: runInput,
+      title: doctor.title || '',
+      currentLifecycleStage: doctor.currentInferredStage || doctor.lifecycleStatus || '',
+      overallStatus: doctor.overallStatus || '',
+      currentBlocker: doctor.firstBlockerReason || (doctor.blockingReasons || []).join(' '),
+      exactNextSafeAction,
+      packageRunState: doctor.packageRunState || readPackageRunState(resolved.runDir),
+      dashboardIndexUpdated: indexStatus.updatedForActiveRun,
+      dashboardIndexReason: indexStatus.reason,
+    },
     lifecycleGate: doctor.lifecycleGate || {},
     readOnly: true,
     externalApisCalled: false,
@@ -835,10 +1109,12 @@ function createStatusResponse(env = process.env) {
       saveApi: ROUGH_CUT_SAVE_API,
       reviewApi: ROUGH_CUT_REVIEW_API,
       openApi: ROUGH_CUT_OPEN_API,
+      pickupPlanSaveApi: PICKUP_PLAN_SAVE_API,
       nonceHeader: LOCAL_WRITE_NONCE_HEADER,
       localWriteNonce: LOCAL_WRITE_NONCE,
       allowedApprovalMarkers: ROUGH_CUT_APPROVAL_VALUES,
-      allowedWriteFiles: [ROUGH_CUT_WATCH_NOTES_FILE],
+      allowedPickupStatuses: PICKUP_STATUSES,
+      allowedWriteFiles: [ROUGH_CUT_WATCH_NOTES_FILE, 'pickup-list.md', 'edit-fix-list.md'],
     },
   };
 }
@@ -1054,6 +1330,16 @@ function createServer() {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === PICKUP_PLAN_SAVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, savePickupPlan(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message, missing: error.missing || [] }));
+      return;
+    }
+
     const filePath = safeJoin(SERVE_ROOT, url.pathname === '/' ? '/index.html' : url.pathname);
     if (!filePath) {
       send(res, 403, 'Forbidden');
@@ -1096,6 +1382,12 @@ module.exports = {
   CAPTURE_EVIDENCE_AUDIT_FILE,
   CAPTURE_EVIDENCE_TARGETS,
   LOCAL_WRITE_NONCE_HEADER,
+  PICKUP_ITEM_TYPES,
+  PICKUP_PLAN_SAVE_API,
+  PICKUP_PURPOSES,
+  PICKUP_REQUIRED_VALUES,
+  PICKUP_SOURCES,
+  PICKUP_STATUSES,
   ROUGH_CUT_APPROVAL_VALUES,
   ROUGH_CUT_OPEN_API,
   ROUGH_CUT_REVIEW_API,
@@ -1105,6 +1397,9 @@ module.exports = {
   STATUS_API,
   applyCaptureEvidenceIntake,
   buildCaptureEvidencePreview,
+  buildEditFixListMarkdown,
+  buildGateTimeline,
+  buildPickupListMarkdown,
   buildRoughCutStatus,
   buildRoughCutWatchNotesMarkdown,
   buildOpenAIImageRequest,
@@ -1116,6 +1411,7 @@ module.exports = {
   createStatusResponse,
   createThumbnailResponse,
   detectRoughCutCandidate,
+  dashboardIndexStatus,
   findActivePackageRun,
   imageMimeType,
   isAllowedLocalHost,
@@ -1125,13 +1421,17 @@ module.exports = {
   missingRequiredCaptureFields,
   missingRequiredRoughCutFields,
   normalizeRoughCutFields,
+  normalizePickupItem,
+  normalizePickupItems,
   openRoughCutVideo,
+  parseRoughCutReviewFile,
   parseRoughCutReviewStdout,
   providerConfig,
   roughCutInputDefaults,
   runRoughCutReview,
   safeJoin,
   saveRoughCutWatchNotes,
+  savePickupPlan,
   slugify,
   validatePackageRunId,
   validateCaptureEvidenceRunId,

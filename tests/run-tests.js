@@ -10983,7 +10983,7 @@ test("package engine server status reports provider and model without generation
   assert.equal(placeholder.roughCutInputConsole.saveApi, "/api/package-runs/rough-cut/watch-notes");
   assert.equal(placeholder.roughCutInputConsole.reviewApi, "/api/package-runs/rough-cut/review");
   assert.equal(placeholder.roughCutInputConsole.openApi, "/api/package-runs/rough-cut/open");
-  assert.deepEqual(placeholder.roughCutInputConsole.allowedWriteFiles, ["rough-cut-watch-notes.md"]);
+  assert.deepEqual(placeholder.roughCutInputConsole.allowedWriteFiles, ["rough-cut-watch-notes.md", "pickup-list.md", "edit-fix-list.md"]);
   assert.deepEqual(placeholder.roughCutInputConsole.allowedApprovalMarkers, ["NOT GIVEN", "NEEDS PICKUPS", "NEEDS EDIT FIXES", "PASS"]);
   assert.equal(openai.thumbnailProvider, "openai");
   assert.equal(openai.model, "gpt-image-1");
@@ -11187,6 +11187,111 @@ test("rough cut review stdout parser reports result fields", () => {
   assert.equal(parsed.reason, "Watch notes list pickups needed.");
   assert.equal(parsed.pickupListStatus, "created");
   assert.equal(parsed.editFixListStatus, "overwritten");
+});
+
+function pickupPlanItems(overrides = {}) {
+  return [{
+    title: "Add presenter closeup after intro",
+    type: "presenter closeup",
+    required: "yes",
+    source: "new recording",
+    purpose: "add human presence",
+    status: "proposed",
+    notes: "Use this only as a proposed pickup until Mikko accepts it.",
+    ...overrides,
+  }];
+}
+
+test("pickup plan save writes only pickup and edit-fix lists without updating index", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pickup-plan-save-"));
+  const runId = "2026-05-17-pickup-plan";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  const indexPath = path.join(tempRoot, "package-runs-index.json");
+  fs.writeFileSync(indexPath, JSON.stringify({ generatedAt: "before" }), "utf8");
+  const beforeIndex = fs.readFileSync(indexPath, "utf8");
+
+  const saved = packageEngineServer.savePickupPlan({ runId, items: pickupPlanItems() }, { root: tempRoot });
+  const files = fs.readdirSync(runDir).sort();
+
+  assert.deepEqual(saved.written.sort(), ["edit-fix-list.md", "pickup-list.md"]);
+  assert.equal(saved.approvedForSecondCut, false);
+  assert.deepEqual(files, ["edit-fix-list.md", "pickup-list.md"]);
+  assert.equal(fs.readFileSync(indexPath, "utf8"), beforeIndex);
+  assert.match(fs.readFileSync(path.join(runDir, "pickup-list.md"), "utf8"), /Add presenter closeup after intro/);
+  assert.match(fs.readFileSync(path.join(runDir, "pickup-list.md"), "utf8"), /proposed/);
+  assert.doesNotMatch(fs.readFileSync(path.join(runDir, "pickup-list.md"), "utf8"), /Rough-cut approval: PASS/);
+});
+
+test("pickup plan save rejects invalid pickup items", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pickup-plan-invalid-"));
+  const runId = "2026-05-17-pickup-invalid";
+  fs.mkdirSync(path.join(tempRoot, "package-runs", runId), { recursive: true });
+
+  assert.throws(
+    () => packageEngineServer.savePickupPlan({ runId, items: pickupPlanItems({ type: "magic" }) }, { root: tempRoot }),
+    /Invalid pickup type: magic/
+  );
+  assert.throws(
+    () => packageEngineServer.savePickupPlan({ runId, items: pickupPlanItems({ title: "" }) }, { root: tempRoot }),
+    /Pickup item title is required/
+  );
+});
+
+test("pickup plan accepted item still does not infer rough-cut PASS", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pickup-plan-no-pass-"));
+  const runId = "2026-05-17-pickup-no-pass";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+
+  const saved = packageEngineServer.savePickupPlan({
+    runId,
+    items: pickupPlanItems({ status: "accepted" }),
+  }, { root: tempRoot });
+  const pickup = fs.readFileSync(path.join(runDir, "pickup-list.md"), "utf8");
+  const fixes = fs.readFileSync(path.join(runDir, "edit-fix-list.md"), "utf8");
+
+  assert.equal(saved.approvedForSecondCut, false);
+  assert.match(pickup, /accepted/);
+  assert.doesNotMatch(pickup + fixes, /READY FOR SECOND CUT|Second-cut ready: yes|Rough-cut approval: PASS/);
+});
+
+test("operator cockpit status builds timeline summary media and index state", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "operator-cockpit-status-"));
+  const runId = "2026-05-17-cockpit-status";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  const indexPath = path.join(tempRoot, "package-runs-index.json");
+  fs.mkdirSync(path.join(runDir, "media"), { recursive: true });
+  fs.writeFileSync(indexPath, JSON.stringify({ generatedAt: "old" }), "utf8");
+  fs.writeFileSync(path.join(runDir, "package-run-state.md"), "# Package Run State\n\nPackage run state: active\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "selected-package.md"), "# Selected Package\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "research-sufficiency-review.md"), "# Research Sufficiency Review\n\n- Review status: PASS\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "script-structure.md"), "# Script Structure\n\n- Script structure status: READY TO DRAFT\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "script-review.md"), "# Script Review\n\n- Script review status: PASS\n- Production planning ready: yes\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "production-plan.md"), "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "production-blockers.md"), "# Production Blockers\n\n| blocker | why | fix | status |\n| --- | --- | --- | --- |\n| None. | Clear. | None. | closed |\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "shot-edit-plan-review.md"), "# Shot/Edit Plan Review\n\n- Review status: PASS\n- Stage accepted: yes\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "capture-checklist.md"), "# Capture Checklist\n\n- Capture checklist status: READY FOR ROUGH CUT\n- Ready for rough cut: yes\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "capture-evidence-review.md"), "# Capture Evidence Review\n\n- Review status: PASS\n- Capture evidence accepted: yes\n- Real capture evidence detected: yes\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "rough-cut-watch-notes.md"), "# Rough-Cut Watch Notes\n\n- Reviewed file: media/rough-cut-v1.mp4\n\n## First 30 Seconds Notes\n\nReal notes.\n\n## Clarity Notes\n\nClear.\n\n## Pacing Notes\n\nNeeds trim.\n\n## Proof / Evidence Notes\n\nProof lands.\n\n## Pickups Needed\n\nAdd closeup.\n\n## Edit Fixes Needed\n\nTrim pause.\n\n## Second-Cut Recommendation\n\nNeeds pickups.\n\n## Manual Rough-Cut Approval Marker\n\nRough-cut approval: NEEDS PICKUPS\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "rough-cut-review.md"), "# Rough-Cut Review\n\n- Rough-cut review status: NEEDS PICKUPS\n- Second-cut ready: no\n\n## Second-Cut Readiness Gate\n\n- Status: NEEDS PICKUPS\n- Reason: Watch notes list pickups needed.\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "pickup-list.md"), "# Pickup List\n\n| pickup shot/content | reason | priority | source/location | status |\n| --- | --- | --- | --- | --- |\n| Add closeup. | Human presence. | high | rough-cut-watch-notes.md | open |\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "edit-fix-list.md"), "# Edit Fix List\n\n| section/timecode | problem | fix | priority | status |\n| --- | --- | --- | --- | --- |\n| intro | pause | trim | high | open |\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "media", "rough-cut-v1.mp4"), "fake", "utf8");
+  fs.utimesSync(indexPath, new Date("2026-05-01T00:00:00Z"), new Date("2026-05-01T00:00:00Z"));
+
+  const status = packageEngineServer.buildRoughCutStatus({ runId }, { root: tempRoot });
+
+  assert.equal(status.activeRunSummary.runId, runId);
+  assert.equal(status.activeRunSummary.packageRunState.state, "active");
+  assert.equal(status.activeRunSummary.dashboardIndexUpdated, false);
+  assert.equal(status.roughCutResult.roughCutReviewStatus, "NEEDS PICKUPS");
+  assert.equal(status.roughCutResult.secondCutReady, false);
+  assert.equal(status.roughCutResult.approvalMarker, "NEEDS PICKUPS");
+  assert.equal(status.gateTimeline.length, 12);
+  assert.equal(status.gateTimeline.find((gate) => gate.label === "Rough Cut").status, "NEEDS PICKUPS");
+  assert.equal(status.gateTimeline.find((gate) => gate.label === "Second Cut").status, "LOCKED");
+  assert.equal(status.mediaRows.some((row) => row.path === "media/rough-cut-v1.mp4" && row.openAllowed), true);
 });
 
 test("capture evidence intake preview does not write files", () => {
@@ -11734,6 +11839,34 @@ test("package runs dashboard renders Mikko rough-cut input console", () => {
       path: "media/rough-cut-v1.mp4",
       source: "rough-cut-watch-notes.md",
     },
+    activeRunSummary: {
+      runId: "2026-05-17-rough-cut-console",
+      currentLifecycleStage: "Needs rough-cut review",
+      overallStatus: "BLOCKED",
+      currentBlocker: "Rough-cut review status is BLOCKED, not READY FOR SECOND CUT.",
+      exactNextSafeAction: "Accept or complete pickups before second-cut readiness.",
+      packageRunState: { state: "active", explicit: true },
+      dashboardIndexUpdated: false,
+      dashboardIndexReason: "package-runs-index.json is older than active run files.",
+    },
+    gateTimeline: [
+      { label: "Research", status: "PASS", reason: "Research passed.", artifactPath: "research-sufficiency-review.md", allowedNextAction: "Continue." },
+      { label: "Rough Cut", status: "NEEDS PICKUPS", reason: "Watch notes list pickups needed.", artifactPath: "rough-cut-review.md", allowedNextAction: "Resolve pickups." },
+      { label: "Second Cut", status: "LOCKED", reason: "Second-cut ready: no.", artifactPath: "rough-cut-review.md", allowedNextAction: "Locked until rough cut passes." },
+    ],
+    roughCutResult: {
+      roughCutReviewStatus: "NEEDS PICKUPS",
+      secondCutReady: false,
+      reason: "Watch notes list pickups needed.",
+      reviewedFilePath: "media/rough-cut-v1.mp4",
+      approvalMarker: "NEEDS PICKUPS",
+      pickupListStatus: "open",
+      editFixListStatus: "open",
+    },
+    mediaRows: [
+      { path: "media/rough-cut-v1.mp4", type: "reviewed file", status: "reviewed/current", openAllowed: true },
+      { path: "/etc/passwd", type: "unsafe", status: "blocked", openAllowed: false },
+    ],
   }, {
     review: {
       roughCutReviewStatus: "NEEDS PICKUPS",
@@ -11746,8 +11879,27 @@ test("package runs dashboard renders Mikko rough-cut input console", () => {
   });
 
   assert.match(html, /data-rough-cut-console/);
+  assert.match(html, /Active Run/);
   assert.match(html, /Active package run/);
   assert.match(html, /2026-05-17-rough-cut-console/);
+  assert.match(html, /Dashboard index updated/);
+  assert.match(html, /package-runs-index\.json is older/);
+  assert.match(html, /Exact next safe action/);
+  assert.match(html, /Accept or complete pickups/);
+  assert.match(html, /Visual Gate Timeline/);
+  assert.match(html, /Research/);
+  assert.match(html, /Second Cut/);
+  assert.match(html, /LOCKED/);
+  assert.match(html, /Latest Review Result/);
+  assert.match(html, /Approval marker/);
+  assert.match(html, /NEEDS PICKUPS/);
+  assert.match(html, /Structured Pickup Items/);
+  assert.match(html, /data-save-pickup-plan/);
+  assert.match(html, /pickup-list\.md/);
+  assert.match(html, /edit-fix-list\.md/);
+  assert.match(html, /Active-Run Media/);
+  assert.match(html, /data-open-media="media\/rough-cut-v1\.mp4"/);
+  assert.match(html, /data-open-media="\/etc\/passwd" disabled/);
   assert.match(html, /Current lifecycle stage/);
   assert.match(html, /Needs rough-cut review/);
   assert.match(html, /Current blocker/);
