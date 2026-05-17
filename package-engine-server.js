@@ -20,6 +20,8 @@ const CAPTURE_EVIDENCE_APPLY_API = '/api/package-runs/capture-evidence/apply';
 const ROUGH_CUT_STATUS_API = '/api/package-runs/rough-cut/status';
 const PRODUCTION_GPS_API = '/api/package-runs/production-gps';
 const SECOND_CUT_INSPECTOR_API = '/api/package-runs/second-cut-inspector';
+const SECOND_CUT_CANDIDATE_PREVIEW_API = '/api/package-runs/second-cut-candidate/preview';
+const SECOND_CUT_CANDIDATE_APPLY_API = '/api/package-runs/second-cut-candidate/apply';
 const ROUGH_CUT_SAVE_API = '/api/package-runs/rough-cut/watch-notes';
 const ROUGH_CUT_REVIEW_API = '/api/package-runs/rough-cut/review';
 const ROUGH_CUT_REGENERATE_DERIVED_API = '/api/package-runs/rough-cut/regenerate-derived';
@@ -40,9 +42,13 @@ const CAPTURE_EVIDENCE_TARGETS = [
 ];
 const CAPTURE_EVIDENCE_AUDIT_FILE = 'capture-evidence-intake-log.md';
 const ROUGH_CUT_WATCH_NOTES_FILE = 'rough-cut-watch-notes.md';
+const SECOND_CUT_CANDIDATE_FILE = 'second-cut-candidate.md';
 const ROUGH_CUT_DERIVED_FILES = ['rough-cut-review.md', 'pickup-list.md', 'edit-fix-list.md'];
+const SECOND_CUT_CANDIDATE_SECTION_START = '<!-- second-cut-candidate:start -->';
+const SECOND_CUT_CANDIDATE_SECTION_END = '<!-- second-cut-candidate:end -->';
 const PRODUCTION_GPS_ARTIFACTS = [
   'rough-cut-watch-notes.md',
+  'second-cut-candidate.md',
   'final-watch-notes.md',
   'manual-approval-notes.md',
   'rough-cut-review.md',
@@ -58,7 +64,7 @@ const PRODUCTION_GPS_ARTIFACTS = [
   'audio-capture-checklist.md',
   'missing-shot-tracker.md',
 ];
-const MEDIA_FILE_PATTERN = /\.(?:mp4|mov|mkv|webm|m4v)$/i;
+const MEDIA_FILE_PATTERN = /\.(?:mp4|mov|mkv|webm|m4v|avi)$/i;
 const ROUGH_CUT_APPROVAL_VALUES = ['NOT GIVEN', 'NEEDS PICKUPS', 'NEEDS EDIT FIXES', 'PASS'];
 const PICKUP_ITEM_TYPES = ['presenter closeup', 'AI B-roll', 'screen zoom', 'graphic', 'edit-only fix', 'other'];
 const PICKUP_REQUIRED_VALUES = ['yes', 'no'];
@@ -773,6 +779,37 @@ function mediaFileBase(filePath) {
   };
 }
 
+function validateSecondCutCandidatePath(candidatePath) {
+  const requested = markdownCell(candidatePath || '');
+  if (!requested) {
+    const error = new Error('Second-cut candidate path is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!path.isAbsolute(requested)) {
+    const error = new Error('Second-cut candidate path must be an absolute path.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const absolute = path.resolve(requested);
+  if (!MEDIA_FILE_PATTERN.test(absolute)) {
+    const error = new Error('Unsupported second-cut candidate extension.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!fs.existsSync(absolute)) {
+    const error = new Error('Second-cut candidate file does not exist.');
+    error.statusCode = 404;
+    throw error;
+  }
+  if (!fs.statSync(absolute).isFile()) {
+    const error = new Error('Second-cut candidate path must be a file.');
+    error.statusCode = 400;
+    throw error;
+  }
+  return absolute;
+}
+
 function likelyMediaRole(filePath) {
   const text = filePath.toLowerCase();
   const reasons = [];
@@ -838,7 +875,7 @@ function isSafeOpenPath(filePath, resolved, options = {}) {
 }
 
 function gpsArtifactKind(filename) {
-  if (/^(rough-cut-watch-notes|final-watch-notes|manual-approval-notes)\.md$/i.test(filename)) return 'source / human-authored';
+  if (/^(rough-cut-watch-notes|final-watch-notes|manual-approval-notes|second-cut-candidate)\.md$/i.test(filename)) return 'source / human-authored';
   if (/^(package-run-state\.md|package-runs-index\.json)$/i.test(filename)) return 'state / lifecycle';
   if (/^(rough-cut-review|pickup-list|edit-fix-list|capture-evidence-review|export-checklist|publish-metadata-review)\.md$/i.test(filename)) return 'derived / generated';
   if (/^(capture-checklist|takes-log|screen-recording-checklist|audio-capture-checklist|missing-shot-tracker)\.md$/i.test(filename)) return 'evidence / media reference';
@@ -929,13 +966,19 @@ function buildProductionGps(payload = {}, options = {}) {
   const runInput = `${PACKAGE_RUNS_DIR}/${resolved.runId}`;
   const doctor = packageRunDoctor.buildDoctorReport(runInput, { repoRoot: resolved.root });
   const roughCutResult = parseRoughCutReviewFile(resolved.runDir);
+  const secondCutInspector = buildSecondCutInspector(payload, options);
   const gate = doctor.lifecycleGate || {};
   const artifactTrail = buildArtifactTrail(resolved);
   const gateTimeline = buildProductionGpsTimeline(doctor, roughCutResult);
   const currentTimelineGate = gateTimeline.find((item) => item.current) || gateTimeline.find((item) => item.status === 'blocked' || item.status === 'needs human review' || item.status === 'needs artifact') || gateTimeline[0];
   const roughNeedsPickups = roughCutResult.roughCutReviewStatus === 'NEEDS PICKUPS';
   const roughNeedsEditFixes = roughCutResult.roughCutReviewStatus === 'NEEDS EDIT FIXES';
-  const currentGate = roughNeedsPickups || roughNeedsEditFixes ? 'Pickup / Edit-Fix Planning' : currentTimelineGate.label;
+  const registeredCandidateReadyForReview = secondCutInspector.candidateStatus === 'found_needs_review' && secondCutInspector.registeredCandidate && secondCutInspector.registeredCandidate.exists;
+  const currentGate = registeredCandidateReadyForReview
+    ? 'Second-Cut Candidate Review'
+    : roughNeedsPickups || roughNeedsEditFixes
+      ? 'Pickup / Edit-Fix Planning'
+      : currentTimelineGate.label;
   const gateStatus = roughNeedsPickups || roughNeedsEditFixes ? 'needs human review' : currentTimelineGate.status;
   const blockedActions = [...new Set([
     ...((doctor.conservativeBlockedActions || []).map((item) => item === 'upload' ? 'upload' : item)),
@@ -948,7 +991,9 @@ function buildProductionGps(payload = {}, options = {}) {
     'commit state file',
   ].filter(Boolean))];
   const nextSafeAction =
-    roughNeedsPickups
+    registeredCandidateReadyForReview
+      ? 'Mikko must watch the registered second-cut candidate and record review notes before any readiness decision.'
+      : roughNeedsPickups
       ? 'Place/review pickup inserts and edit-fix work before any second-cut readiness decision.'
       : roughNeedsEditFixes
         ? 'Apply and review edit fixes before any second-cut readiness decision.'
@@ -1000,7 +1045,170 @@ function buildProductionGps(payload = {}, options = {}) {
     blockedActions,
     staleWarnings,
     roughCutResult,
+    secondCutInspector,
     mediaRows: collectMediaRows(resolved, detectRoughCutCandidate(resolved.runDir)),
+  };
+}
+
+function secondCutCandidateWarnings(descriptor) {
+  const warnings = [];
+  if (descriptor.metadataUnavailable) warnings.push('ffprobe metadata unavailable; file existence and filesystem metadata were recorded only.');
+  if (!descriptor.audioStreamPresent && !descriptor.audioPresent) warnings.push('No audio stream detected or audio metadata unavailable.');
+  const duration = Number(descriptor.duration || 0);
+  if (duration > 0 && duration < 30) warnings.push('Candidate appears very short; confirm this is the exported second-cut candidate.');
+  if (/pickup|pickups|visual-variety|keyboard|mouse|hands|over[-_ ]?shoulder|talking/i.test(descriptor.path)) {
+    warnings.push('Path looks like pickup media rather than an edited second-cut export.');
+  }
+  return warnings;
+}
+
+function secondCutCandidateManagedMarkdown(runId, descriptor, payload = {}) {
+  const reviewer = markdownCell(payload.reviewer || 'Mikko');
+  const notes = markdownText(payload.notes || '', 'No registration notes provided.');
+  const exportedAt = markdownCell(payload.exportedAt || payload.reviewedAt || '');
+  return [
+    SECOND_CUT_CANDIDATE_SECTION_START,
+    '# Second-Cut Candidate',
+    '',
+    `- Run: ${runId}`,
+    '- Artifact purpose: second-cut candidate reference for human review',
+    '- Review status: READY FOR HUMAN REVIEW',
+    '- Second-cut ready: no',
+    '- Rough cut approval: not granted here',
+    '- Human approval required: yes',
+    '- External APIs called: no',
+    '',
+    '## Candidate File',
+    '',
+    `- Path: ${descriptor.path}`,
+    `- Exists: ${descriptor.exists ? 'yes' : 'no'}`,
+    `- Duration: ${descriptor.duration || 'metadata unavailable'}`,
+    `- Codec: ${descriptor.codec || 'metadata unavailable'}`,
+    `- Resolution: ${descriptor.resolution || 'metadata unavailable'}`,
+    `- Frame rate: ${descriptor.frameRate || 'metadata unavailable'}`,
+    `- Audio present: ${descriptor.audioStreamPresent || descriptor.audioPresent ? 'yes' : 'no/unknown'}`,
+    `- Size: ${descriptor.size}`,
+    `- Modified: ${descriptor.modifiedTime || ''}`,
+    `- Reviewer: ${reviewer}`,
+    exportedAt ? `- Exported/review timestamp: ${exportedAt}` : '',
+    '',
+    '## Registration Notes',
+    '',
+    notes,
+    '',
+    '## Review Boundary',
+    '',
+    '- This artifact records a candidate file for review.',
+    '- It does not approve the rough cut.',
+    '- It does not mark second-cut ready.',
+    '- It does not start final review.',
+    '- It does not update package-run state.',
+    '- Mikko must watch and explicitly approve any readiness transition.',
+    '',
+    '## Human Review Checklist',
+    '',
+    '- [ ] Watch the full second-cut candidate.',
+    '- [ ] Confirm pickup inserts are actually used.',
+    '- [ ] Confirm long screen-only stretches are reduced.',
+    '- [ ] Confirm no important screen detail is covered.',
+    '- [ ] Confirm no private/sensitive detail is visible.',
+    '- [ ] Confirm B-roll is not implied as proof evidence.',
+    '- [ ] Confirm pacing and clarity improved.',
+    '- [ ] Decide whether more pickups/edit fixes are needed.',
+    '- [ ] Do not mark second-cut ready unless explicitly approved by Mikko.',
+    SECOND_CUT_CANDIDATE_SECTION_END,
+    '',
+  ].filter((line) => line !== '').join('\n');
+}
+
+function replaceSecondCutCandidateManagedSection(existing = '', managedMarkdown = '') {
+  const text = String(existing || '');
+  const start = text.indexOf(SECOND_CUT_CANDIDATE_SECTION_START);
+  const end = text.indexOf(SECOND_CUT_CANDIDATE_SECTION_END);
+  if (start !== -1 && end !== -1 && end > start) {
+    const before = text.slice(0, start).replace(/\s*$/, '\n\n');
+    const after = text.slice(end + SECOND_CUT_CANDIDATE_SECTION_END.length).replace(/^\s*/, '\n');
+    return `${before}${managedMarkdown}${after}`.replace(/\n{4,}/g, '\n\n\n');
+  }
+  if (text.trim()) return `${text.replace(/\s*$/, '\n\n')}${managedMarkdown}`;
+  return `${managedMarkdown}`;
+}
+
+function buildSecondCutCandidateRegistration(payload = {}, options = {}) {
+  if (!payload.runId) {
+    const error = new Error('runId is required for second-cut candidate registration.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const resolved = resolveRunFromPayload(payload, options);
+  const candidatePath = validateSecondCutCandidatePath(payload.candidatePath);
+  const descriptor = buildMediaDescriptor(candidatePath, options);
+  descriptor.likelyRole = 'second-cut candidate';
+  descriptor.confidence = /second[-_ ]?cut|secondcut|second_cut|cut[-_ ]?2|\bv2\b|candidate|review/i.test(candidatePath)
+    ? descriptor.confidence === 'low' ? 'medium' : descriptor.confidence
+    : 'low';
+  descriptor.reasons = descriptor.reasons && descriptor.reasons.length ? descriptor.reasons : ['registered explicitly by Mikko for review'];
+  const warnings = secondCutCandidateWarnings(descriptor);
+  const artifactPreview = secondCutCandidateManagedMarkdown(resolved.runId, descriptor, payload);
+  return {
+    ok: true,
+    readOnly: options.mode !== 'apply',
+    externalApisCalled: false,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    candidatePath,
+    candidateExists: true,
+    metadata: {
+      duration: descriptor.duration,
+      codec: descriptor.codec,
+      resolution: descriptor.resolution,
+      frameRate: descriptor.frameRate,
+      audioStreamPresent: Boolean(descriptor.audioStreamPresent || descriptor.audioPresent),
+      size: descriptor.size,
+      modifiedTime: descriptor.modifiedTime,
+      metadataUnavailable: Boolean(descriptor.metadataUnavailable),
+    },
+    warnings,
+    artifactFilename: SECOND_CUT_CANDIDATE_FILE,
+    artifactPreview,
+    humanGateRequired: true,
+    secondCutReady: false,
+    roughCutApproved: false,
+    aiAllowed: ['validate file existence', 'inspect technical metadata', 'record review-needed candidate reference'],
+    aiBlocked: ['approve rough cut', 'mark second-cut ready', 'mark final review ready', 'update package-run-state.md', 'update package-runs-index.json', 'move/delete/rename media'],
+  };
+}
+
+function applySecondCutCandidateRegistration(payload = {}, options = {}) {
+  const registration = buildSecondCutCandidateRegistration(payload, { ...options, mode: 'apply' });
+  const resolved = resolvePackageRunDir(registration.runId, options);
+  const targetPath = path.resolve(resolved.runDir, SECOND_CUT_CANDIDATE_FILE);
+  if (!targetPath.startsWith(resolved.runDir + path.sep)) {
+    const error = new Error('Resolved second-cut candidate artifact path is outside the approved write scope.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const existing = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf8') : '';
+  const next = replaceSecondCutCandidateManagedSection(existing, registration.artifactPreview);
+  fs.writeFileSync(targetPath, next, 'utf8');
+  return {
+    ...registration,
+    readOnly: false,
+    written: [SECOND_CUT_CANDIDATE_FILE],
+    warning: 'Registered second-cut candidate for human review only. Rough cut is not approved and second-cut readiness is not changed.',
+  };
+}
+
+function parseSecondCutCandidateArtifact(runDir) {
+  const artifactPath = path.join(runDir, SECOND_CUT_CANDIDATE_FILE);
+  if (!fs.existsSync(artifactPath)) return { exists: false, path: '', artifactPath: SECOND_CUT_CANDIDATE_FILE };
+  const text = fs.readFileSync(artifactPath, 'utf8');
+  return {
+    exists: true,
+    path: lineValue(text, 'Path'),
+    reviewStatus: lineValue(text, 'Review status') || '',
+    secondCutReady: /^yes$/i.test(lineValue(text, 'Second-cut ready')),
+    artifactPath: SECOND_CUT_CANDIDATE_FILE,
   };
 }
 
@@ -1050,8 +1258,39 @@ function discoverSecondCutMedia(resolved, options = {}) {
   const roots = mediaSearchRoots(resolved, options);
   const files = [...new Set(roots.flatMap((root) => walkMediaFiles(root)))];
   const descriptors = files.map((filePath) => buildMediaDescriptor(filePath, options));
+  const registered = parseSecondCutCandidateArtifact(resolved.runDir);
+  let registeredCandidate = null;
+  if (registered.exists && registered.path) {
+    if (fs.existsSync(registered.path) && fs.statSync(registered.path).isFile()) {
+      registeredCandidate = {
+        ...buildMediaDescriptor(registered.path, options),
+        likelyRole: 'second-cut candidate',
+        confidence: 'high',
+        reasons: ['registered in second-cut-candidate.md for human review'],
+        registered: true,
+        reviewStatus: registered.reviewStatus || 'READY FOR HUMAN REVIEW',
+      };
+    } else {
+      registeredCandidate = {
+        filename: path.basename(registered.path),
+        path: registered.path,
+        exists: false,
+        likelyRole: 'second-cut candidate',
+        confidence: 'high',
+        reasons: ['registered in second-cut-candidate.md, but file is missing'],
+        registered: true,
+        reviewStatus: registered.reviewStatus || 'READY FOR HUMAN REVIEW',
+        metadataUnavailable: true,
+      };
+    }
+  }
+  const discoveredCandidates = descriptors.filter((item) => item.likelyRole === 'second-cut candidate');
+  const candidates = registeredCandidate
+    ? [registeredCandidate, ...discoveredCandidates.filter((item) => item.path !== registeredCandidate.path)]
+    : discoveredCandidates;
   return {
-    candidates: descriptors.filter((item) => item.likelyRole === 'second-cut candidate'),
+    registeredCandidate,
+    candidates,
     pickupMedia: descriptors
       .filter((item) => item.likelyRole === 'pickup media' || /pickup/i.test(item.path))
       .map((item) => ({
@@ -1068,7 +1307,11 @@ function buildSecondCutInspector(payload = {}, options = {}) {
   const roughCutResult = parseRoughCutReviewFile(resolved.runDir);
   const media = discoverSecondCutMedia(resolved, options);
   const candidateStatus =
-    media.candidates.length === 0
+    media.registeredCandidate && !media.registeredCandidate.exists
+      ? 'missing_registered_file'
+      : media.registeredCandidate && media.registeredCandidate.exists
+        ? 'found_needs_review'
+        : media.candidates.length === 0
       ? 'not_found'
       : media.candidates.length === 1
         ? 'found_needs_review'
@@ -1087,6 +1330,7 @@ function buildSecondCutInspector(payload = {}, options = {}) {
   ];
   const warnings = [
     candidateStatus === 'not_found' ? 'Second-cut candidate not found.' : '',
+    candidateStatus === 'missing_registered_file' ? 'Registered second-cut candidate file is missing.' : '',
     candidateStatus === 'multiple_candidates' ? 'Multiple second-cut candidates found; Mikko must choose one manually.' : '',
     roughCutResult.secondCutReady ? 'Second-cut readiness marker exists; human verification is still required.' : '',
   ].filter(Boolean);
@@ -1101,6 +1345,7 @@ function buildSecondCutInspector(payload = {}, options = {}) {
     secondCutReady: Boolean(roughCutResult.secondCutReady),
     candidateStatus,
     candidates: media.candidates,
+    registeredCandidate: media.registeredCandidate || null,
     pickupMedia: media.pickupMedia,
     pickupRequirements,
     placementChecklist: buildSecondCutPlacementChecklist(),
@@ -1109,7 +1354,9 @@ function buildSecondCutInspector(payload = {}, options = {}) {
     aiBlocked: ['approve rough cut', 'mark second-cut ready', 'update package-run-state.md', 'update package-runs-index.json', 'commit or push', 'move/delete/rename media'],
     blockedActions,
     warnings,
-    nextSafeAction: candidateStatus === 'not_found'
+    nextSafeAction: candidateStatus === 'missing_registered_file'
+      ? 'Registered second-cut candidate is missing. Next safe action: locate or re-register the exported second-cut candidate before review.'
+      : candidateStatus === 'not_found'
       ? 'Second-cut candidate not found. Next safe action: export or identify a second-cut candidate, then inspect it before any approval.'
       : 'Inspect the second-cut candidate and pickup placement manually before any second-cut readiness decision.',
   };
@@ -1647,6 +1894,8 @@ function createStatusResponse(env = process.env) {
       statusApi: ROUGH_CUT_STATUS_API,
       productionGpsApi: PRODUCTION_GPS_API,
       secondCutInspectorApi: SECOND_CUT_INSPECTOR_API,
+      secondCutCandidatePreviewApi: SECOND_CUT_CANDIDATE_PREVIEW_API,
+      secondCutCandidateApplyApi: SECOND_CUT_CANDIDATE_APPLY_API,
       saveApi: ROUGH_CUT_SAVE_API,
       reviewApi: ROUGH_CUT_REVIEW_API,
       regenerateDerivedApi: ROUGH_CUT_REGENERATE_DERIVED_API,
@@ -1657,6 +1906,7 @@ function createStatusResponse(env = process.env) {
       allowedApprovalMarkers: ROUGH_CUT_APPROVAL_VALUES,
       allowedPickupStatuses: PICKUP_STATUSES,
       allowedWriteFiles: [ROUGH_CUT_WATCH_NOTES_FILE, 'pickup-list.md', 'edit-fix-list.md'],
+      secondCutCandidateAllowedWriteFiles: [SECOND_CUT_CANDIDATE_FILE],
       derivedOnlyWriteFiles: ROUGH_CUT_DERIVED_FILES,
     },
   };
@@ -1860,6 +2110,26 @@ function createServer() {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === SECOND_CUT_CANDIDATE_PREVIEW_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, buildSecondCutCandidateRegistration(payload, { mode: 'preview' }));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === SECOND_CUT_CANDIDATE_APPLY_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, applySecondCutCandidateRegistration(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === ROUGH_CUT_SAVE_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -1962,6 +2232,9 @@ module.exports = {
   PRODUCTION_GPS_API,
   PRODUCTION_GPS_ARTIFACTS,
   SECOND_CUT_INSPECTOR_API,
+  SECOND_CUT_CANDIDATE_APPLY_API,
+  SECOND_CUT_CANDIDATE_FILE,
+  SECOND_CUT_CANDIDATE_PREVIEW_API,
   ROUGH_CUT_APPROVAL_VALUES,
   ROUGH_CUT_DERIVED_FILES,
   ROUGH_CUT_OPEN_API,
@@ -1972,6 +2245,7 @@ module.exports = {
   ROUGH_CUT_WATCH_NOTES_FILE,
   STATUS_API,
   applyCaptureEvidenceIntake,
+  applySecondCutCandidateRegistration,
   buildCaptureEvidencePreview,
   buildEditFixListMarkdown,
   buildGateTimeline,
@@ -1991,6 +2265,7 @@ module.exports = {
   buildProductionGpsTimeline,
   buildSecondCutInspector,
   buildSecondCutPlacementChecklist,
+  buildSecondCutCandidateRegistration,
   detectRoughCutCandidate,
   classifyPickupCategory,
   dashboardIndexStatus,
@@ -2009,6 +2284,7 @@ module.exports = {
   openRoughCutVideo,
   parseRoughCutReviewFile,
   parseRoughCutReviewStdout,
+  parseSecondCutCandidateArtifact,
   providerConfig,
   regenerateRoughCutDerivedArtifacts,
   roughCutInputDefaults,

@@ -1122,6 +1122,39 @@ Capture evidence approval: PASS`;
     </section>`;
   }
 
+  function renderSecondCutCandidateRegistration(status = {}) {
+    const runId = status.runId || "";
+    return `<section class="second-cut-registration" data-second-cut-registration>
+      <div class="mikko-console-header">
+        <div>
+          <p class="eyebrow">Review-Needed Intake</p>
+          <h3>Register Second-Cut Candidate</h3>
+        </div>
+        ${renderStatusBadge("human review only")}
+      </div>
+      <p class="muted">This records a candidate for human review. It does not approve rough cut or mark second-cut ready.</p>
+      <div class="lifecycle-review-grid">
+        <div><span>Run</span><strong>${escapeHtml(runId || "unknown")}</strong></div>
+        <div><span>Allowed write</span><strong>second-cut-candidate.md</strong><small>No package-run state, index, review notes, or media files are updated.</small></div>
+      </div>
+      <label class="rough-cut-field rough-cut-field-wide">
+        <span>Second-cut candidate video path</span>
+        <input type="text" data-second-cut-candidate-path placeholder="/absolute/path/to/second-cut-candidate.mp4" />
+      </label>
+      <label class="rough-cut-field rough-cut-field-wide">
+        <span>Registration notes</span>
+        <textarea rows="2" data-second-cut-candidate-notes placeholder="Optional export or Resolve timeline notes."></textarea>
+      </label>
+      <div class="rough-cut-actions">
+        <button type="button" data-preview-second-cut-candidate>Preview registration</button>
+        <button type="button" data-apply-second-cut-candidate disabled>Save review-needed artifact</button>
+        <span data-second-cut-candidate-status class="capture-write-status">Preview validates the file and writes nothing.</span>
+      </div>
+      <div class="second-cut-candidate-metadata" data-second-cut-candidate-metadata></div>
+      <textarea readonly rows="14" class="capture-write-preview" data-second-cut-candidate-preview placeholder="Preview will show the exact managed Markdown section before writing."></textarea>
+    </section>`;
+  }
+
   function renderMikkoInputConsole(status = {}, result = null) {
     const runId = status.runId || "";
     const candidate = status.roughCutCandidate || {};
@@ -1130,6 +1163,7 @@ Capture evidence approval: PASS`;
     return `<div class="mikko-console-run" data-rough-cut-console data-run-id="${escapeHtml(runId)}">
       ${status.productionGps ? renderProductionGps(status.productionGps) : ""}
       ${status.secondCutInspector ? renderSecondCutInspector(status.secondCutInspector) : ""}
+      ${renderSecondCutCandidateRegistration(status)}
       ${renderActiveRunSummary(status.activeRunSummary || {
         runId,
         currentLifecycleStage: status.currentInferredStage,
@@ -1501,6 +1535,18 @@ Capture evidence approval: PASS`;
         savePickupPlan(savePickup);
         return;
       }
+      const previewSecondCutCandidate = event.target.closest("[data-preview-second-cut-candidate]");
+      if (previewSecondCutCandidate) {
+        event.preventDefault();
+        previewSecondCutCandidateRegistration(previewSecondCutCandidate);
+        return;
+      }
+      const applySecondCutCandidate = event.target.closest("[data-apply-second-cut-candidate]");
+      if (applySecondCutCandidate) {
+        event.preventDefault();
+        applySecondCutCandidateRegistration(applySecondCutCandidate);
+        return;
+      }
       const link = event.target.closest("[data-preview-artifact]");
       if (!link) return;
       event.preventDefault();
@@ -1698,6 +1744,8 @@ Capture evidence approval: PASS`;
         regenerateDerivedApi: config.regenerateDerivedApi || "/api/package-runs/rough-cut/regenerate-derived",
         openApi: config.openApi || "/api/package-runs/rough-cut/open",
         pickupPlanSaveApi: config.pickupPlanSaveApi || "/api/package-runs/pickup-plan/save",
+        secondCutCandidatePreviewApi: config.secondCutCandidatePreviewApi || "/api/package-runs/second-cut-candidate/preview",
+        secondCutCandidateApplyApi: config.secondCutCandidateApplyApi || "/api/package-runs/second-cut-candidate/apply",
         nonceHeader: config.nonceHeader || "x-vidtoolz-local-write-nonce",
         localWriteNonce: config.localWriteNonce || (localWriteConfig ? localWriteConfig.localWriteNonce : ""),
       };
@@ -1857,11 +1905,106 @@ Capture evidence approval: PASS`;
         });
     }
 
+    function secondCutCandidatePanel(button) {
+      return button.closest("[data-second-cut-registration]");
+    }
+
+    function setSecondCutCandidateStatus(panel, message, type = "") {
+      const status = panel ? panel.querySelector("[data-second-cut-candidate-status]") : null;
+      if (status) {
+        status.textContent = message;
+        status.className = `capture-write-status ${type}`.trim();
+      }
+    }
+
+    function secondCutCandidatePayload(consoleEl, panel) {
+      return {
+        runId: consoleEl.dataset.runId || "",
+        candidatePath: panel.querySelector("[data-second-cut-candidate-path]")?.value || "",
+        notes: panel.querySelector("[data-second-cut-candidate-notes]")?.value || "",
+      };
+    }
+
+    function renderSecondCutCandidateMetadata(payload = {}) {
+      const metadata = payload.metadata || {};
+      const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
+      return `<div class="lifecycle-review-grid">
+        <div><span>Duration</span><strong>${escapeHtml(metadata.duration || "unavailable")}</strong></div>
+        <div><span>Resolution</span><strong>${escapeHtml(metadata.resolution || "unavailable")}</strong></div>
+        <div><span>Codec</span><strong>${escapeHtml(metadata.codec || "unavailable")}</strong></div>
+        <div><span>Audio present</span><strong>${metadata.audioStreamPresent ? "yes" : "no/unknown"}</strong></div>
+        <div><span>Size</span><strong>${escapeHtml(String(metadata.size || "unknown"))}</strong></div>
+        <div><span>Modified</span><strong>${escapeHtml(metadata.modifiedTime || "unknown")}</strong></div>
+      </div>${warnings.length ? `<div class="stale-derived-warning"><h4>Warnings</h4>${renderCompactList(warnings, "No warnings.")}</div>` : ""}`;
+    }
+
+    function previewSecondCutCandidateRegistration(button) {
+      const consoleEl = button.closest("[data-rough-cut-console]");
+      const panel = secondCutCandidatePanel(button);
+      if (!consoleEl || !panel) return;
+      const preview = panel.querySelector("[data-second-cut-candidate-preview]");
+      const applyButton = panel.querySelector("[data-apply-second-cut-candidate]");
+      const metadata = panel.querySelector("[data-second-cut-candidate-metadata]");
+      button.disabled = true;
+      if (applyButton) applyButton.disabled = true;
+      setSecondCutCandidateStatus(panel, "Previewing candidate registration. No files are being written.", "pending");
+      roughCutRequest((config) => config.secondCutCandidatePreviewApi, secondCutCandidatePayload(consoleEl, panel))
+        .then((payload) => {
+          panel.dataset.secondCutCandidatePreviewValid = "yes";
+          if (preview) preview.value = payload.artifactPreview || "";
+          if (metadata) metadata.innerHTML = renderSecondCutCandidateMetadata(payload);
+          if (applyButton) applyButton.disabled = false;
+          setSecondCutCandidateStatus(panel, "Preview ready. Save writes only second-cut-candidate.md and does not approve anything.", "valid");
+        })
+        .catch((error) => {
+          panel.dataset.secondCutCandidatePreviewValid = "";
+          if (preview) preview.value = "";
+          if (metadata) metadata.innerHTML = "";
+          setSecondCutCandidateStatus(panel, error.message, "missing");
+        })
+        .finally(() => {
+          button.disabled = false;
+        });
+    }
+
+    function applySecondCutCandidateRegistration(button) {
+      const consoleEl = button.closest("[data-rough-cut-console]");
+      const panel = secondCutCandidatePanel(button);
+      if (!consoleEl || !panel) return;
+      if (panel.dataset.secondCutCandidatePreviewValid !== "yes") {
+        setSecondCutCandidateStatus(panel, "Preview required before saving second-cut-candidate.md.", "missing");
+        return;
+      }
+      button.disabled = true;
+      setSecondCutCandidateStatus(panel, "Saving second-cut-candidate.md only.", "pending");
+      roughCutRequest((config) => config.secondCutCandidateApplyApi, secondCutCandidatePayload(consoleEl, panel))
+        .then((payload) => {
+          panel.dataset.secondCutCandidatePreviewValid = "";
+          setSecondCutCandidateStatus(panel, payload.warning || `Saved: ${payload.written.join(", ")}`, "valid");
+        })
+        .catch((error) => {
+          setSecondCutCandidateStatus(panel, error.message, "missing");
+          button.disabled = false;
+        });
+    }
+
     function handleGridInput(event) {
       const input = event.target.closest("[data-capture-field]");
-      if (!input) return;
-      const container = input.closest("[data-capture-intake]");
-      if (container) updateCaptureIntake(container);
+      if (input) {
+        const container = input.closest("[data-capture-intake]");
+        if (container) updateCaptureIntake(container);
+        return;
+      }
+      const secondCutInput = event.target.closest("[data-second-cut-candidate-path], [data-second-cut-candidate-notes]");
+      if (secondCutInput) {
+        const panel = secondCutInput.closest("[data-second-cut-registration]");
+        if (panel) {
+          panel.dataset.secondCutCandidatePreviewValid = "";
+          const applyButton = panel.querySelector("[data-apply-second-cut-candidate]");
+          if (applyButton) applyButton.disabled = true;
+          setSecondCutCandidateStatus(panel, "Preview required before saving second-cut-candidate.md.");
+        }
+      }
     }
 
     els.statusFilter.addEventListener("change", render);
@@ -1913,6 +2056,7 @@ Capture evidence approval: PASS`;
     renderGateTimeline,
     renderProductionGps,
     renderSecondCutInspector,
+    renderSecondCutCandidateRegistration,
     renderRoughCutResultCard,
     renderPickupPlanGui,
     renderMediaPanel,
