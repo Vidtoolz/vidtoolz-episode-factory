@@ -1378,6 +1378,136 @@ function parseSecondCutReviewFile(runDir) {
   };
 }
 
+function secondCutCandidateExportRoot(options = {}) {
+  return path.resolve(options.videoRoot || path.join(process.env.HOME || '/home/vidtoolz', 'Videos'));
+}
+
+function suggestSecondCutCandidateExportTarget(runId, options = {}) {
+  const safeRunId = validatePackageRunId(runId || '');
+  const expectedCandidateFolder = path.join(
+    secondCutCandidateExportRoot(options),
+    'vidtoolz-captures',
+    safeRunId,
+    'second-cut-candidates'
+  );
+  const expectedCandidateFilename = `${safeRunId}-second-cut-candidate-01.mp4`;
+  return {
+    expectedCandidateFolder,
+    expectedCandidateFilename,
+    expectedCandidatePath: path.join(expectedCandidateFolder, expectedCandidateFilename),
+  };
+}
+
+function enteredSecondCutCandidatePathStatus(candidatePath = '') {
+  const entered = markdownCell(candidatePath || '');
+  if (!entered) return 'missing';
+  if (!path.isAbsolute(entered) || !MEDIA_FILE_PATTERN.test(entered)) return 'invalid';
+  if (!fs.existsSync(entered) || !fs.statSync(entered).isFile()) return 'invalid';
+  return 'present';
+}
+
+function buildSecondCutCandidatePreflight(payload = {}, options = {}) {
+  const normalizedPayload = typeof payload === 'string' ? { runId: payload } : payload;
+  const resolved = resolveRunFromPayload(normalizedPayload, options);
+  const suggestion = suggestSecondCutCandidateExportTarget(resolved.runId, options);
+  const inspector = buildSecondCutInspector(normalizedPayload, options);
+  const registered = parseSecondCutCandidateArtifact(resolved.runDir);
+  const registeredFileExists = Boolean(registered.exists && registered.path && fs.existsSync(registered.path) && fs.statSync(registered.path).isFile());
+  const watchNotesPath = path.join(resolved.runDir, SECOND_CUT_WATCH_NOTES_FILE);
+  const reviewPath = path.join(resolved.runDir, SECOND_CUT_REVIEW_FILE);
+  const watchNotesExists = fs.existsSync(watchNotesPath);
+  const reviewExists = fs.existsSync(reviewPath);
+  const watchNotesText = watchNotesExists ? fs.readFileSync(watchNotesPath, 'utf8') : '';
+  const watchNotes = parseSecondCutWatchNotes(watchNotesText);
+  const derivedReview = parseSecondCutReviewFile(resolved.runDir);
+  const derivedMissingOrStale = Boolean(
+    watchNotesExists && !reviewExists ||
+    (watchNotesExists && reviewExists && watchNotes.status !== derivedReview.status) ||
+    (watchNotesExists && reviewExists && fs.statSync(watchNotesPath).mtimeMs > fs.statSync(reviewPath).mtimeMs) ||
+    (watchNotesExists && reviewExists && watchNotes.candidatePath && derivedReview.candidatePath && watchNotes.candidatePath !== derivedReview.candidatePath)
+  );
+  const registeredCandidateStatus =
+    !registered.exists
+      ? 'missing'
+      : registered.path && !registeredFileExists
+        ? 'registered_missing_file'
+        : registered.path && watchNotes.candidatePath && watchNotes.candidatePath !== registered.path
+          ? 'stale'
+          : registered.path
+            ? 'registered'
+            : 'unknown';
+  const candidateFileStatus =
+    registeredCandidateStatus === 'registered_missing_file' || registeredCandidateStatus === 'missing'
+      ? 'missing'
+      : registeredFileExists
+        ? 'exists'
+        : inspector.registeredCandidate && inspector.registeredCandidate.metadataUnavailable
+          ? 'metadata_unavailable'
+          : 'unknown';
+  let humanReviewStatus = 'not_started';
+  if (registered.exists && !watchNotesExists) humanReviewStatus = 'watch_notes_missing';
+  if (watchNotesExists && derivedMissingOrStale) humanReviewStatus = 'derived_review_missing';
+  if (watchNotesExists && !derivedMissingOrStale && watchNotes.status === 'NEEDS MORE PICKUPS') humanReviewStatus = 'needs_more_pickups';
+  if (watchNotesExists && !derivedMissingOrStale && watchNotes.status === 'NEEDS EDIT FIXES') humanReviewStatus = 'needs_edit_fixes';
+  if (watchNotesExists && !derivedMissingOrStale && derivedReview.status === 'READY FOR SECOND CUT' && derivedReview.secondCutReady) humanReviewStatus = 'ready_for_second_cut';
+  if (watchNotesExists && !derivedMissingOrStale && watchNotes.status === 'NEEDS HUMAN REVIEW') humanReviewStatus = 'blocked';
+  const secondCutReady = humanReviewStatus === 'ready_for_second_cut';
+  const warnings = [
+    ...inspector.warnings,
+    registeredCandidateStatus === 'missing' ? 'Second-cut candidate is not registered.' : '',
+    registeredCandidateStatus === 'registered_missing_file' ? 'Registered second-cut candidate file is missing.' : '',
+    registeredCandidateStatus === 'stale' ? 'Registered candidate path may be stale against current second-cut watch notes.' : '',
+    watchNotesExists && !reviewExists ? 'Derived second-cut review missing; regenerate second-cut-review.md.' : '',
+    watchNotesExists && reviewExists && derivedMissingOrStale ? 'Derived second-cut review may be stale or conflict with current watch notes.' : '',
+    secondCutReady ? '' : 'Second-cut approval is not granted by candidate existence, registration, metadata, or inspection.',
+  ].filter(Boolean);
+  const nextSafeAction =
+    registeredCandidateStatus === 'registered_missing_file'
+      ? 'Fix or re-register the second-cut candidate path before Mikko review.'
+      : registeredCandidateStatus === 'missing'
+        ? 'Export the second-cut candidate from Resolve, register the absolute path in Second-Cut Candidate Registration, and save it for human review.'
+        : humanReviewStatus === 'watch_notes_missing'
+          ? 'Mikko should inspect metadata, watch the full registered second-cut candidate, and record second-cut watch notes.'
+          : humanReviewStatus === 'derived_review_missing'
+            ? 'Regenerate the derived second-cut review from current human watch notes before any downstream gate.'
+            : humanReviewStatus === 'needs_more_pickups'
+              ? 'Return to pickup/edit work and address remaining pickups before another second-cut candidate.'
+              : humanReviewStatus === 'needs_edit_fixes'
+                ? 'Return to edit fixes before another second-cut readiness decision.'
+                : humanReviewStatus === 'ready_for_second_cut'
+                  ? 'Proceed to final candidate/final review preparation. Final/export/publish/archive remain separate blocked gates.'
+                  : 'Export and register a second-cut candidate, then Mikko must watch it before any readiness decision.';
+  return {
+    ok: true,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    readOnly: true,
+    externalApisCalled: false,
+    currentGate: inspector.currentGate,
+    roughCutStatus: inspector.roughCutStatus,
+    secondCutReady,
+    ...suggestion,
+    enteredCandidatePathStatus: enteredSecondCutCandidatePathStatus(normalizedPayload.candidatePath || ''),
+    registeredCandidateStatus,
+    candidateFileStatus,
+    inspectionStatus: inspector.candidateStatus || 'unknown',
+    humanReviewStatus,
+    downstreamStatus: {
+      finalReview: 'blocked',
+      exportDelivery: 'blocked',
+      publishMetadata: 'blocked',
+      archive: 'blocked',
+    },
+    registeredCandidatePath: registered.path || '',
+    secondCutWatchNotesExists: watchNotesExists,
+    secondCutReviewExists: reviewExists,
+    nextSafeAction,
+    aiAllowed: ['inspect metadata', 'surface missing candidate', 'summarize gate status', 'draft review checklist'],
+    aiBlocked: ['approve rough cut', 'mark second-cut ready', 'mark final review ready', 'mark export/upload ready', 'publish', 'archive', 'update state/index', 'move/delete/rename media'],
+    warnings,
+  };
+}
+
 function normalizeSecondCutWatchFields(fields = {}, resolved) {
   const registered = parseSecondCutCandidateArtifact(resolved.runDir);
   const candidatePath = markdownCell(fields.candidatePath || registered.path || '');
@@ -2854,6 +2984,7 @@ function buildRoughCutStatus(payload = {}, options = {}) {
   const indexStatus = dashboardIndexStatus(resolved);
   const productionGps = buildProductionGps(payload, options);
   const secondCutInspector = buildSecondCutInspector(payload, options);
+  const secondCutCandidatePreflight = buildSecondCutCandidatePreflight(payload, options);
   const finalReviewConsole = buildFinalReviewConsole(payload, options);
   const exportDeliveryConsole = buildExportDeliveryConsole(payload, options);
   const staleDerivedArtifacts = roughCutResult.derivedArtifactStale ? ['rough-cut-review.md'] : [];
@@ -2890,6 +3021,7 @@ function buildRoughCutStatus(payload = {}, options = {}) {
     gateTimeline: buildGateTimeline(doctor, roughCutResult),
     productionGps,
     secondCutInspector,
+    secondCutCandidatePreflight,
     finalReviewConsole,
     exportDeliveryConsole,
     mediaRows: collectMediaRows(resolved, roughCutCandidate),
@@ -3806,6 +3938,7 @@ module.exports = {
   buildFinalCandidateRegistration,
   buildFinalReviewConsole,
   buildFinalReviewFromWatchNotes,
+  buildSecondCutCandidatePreflight,
   buildSecondCutInspector,
   buildSecondCutPlacementChecklist,
   buildSecondCutCandidateRegistration,
@@ -3850,6 +3983,7 @@ module.exports = {
   saveSecondCutWatchNotes,
   savePickupPlan,
   slugify,
+  suggestSecondCutCandidateExportTarget,
   validatePackageRunId,
   validateCaptureEvidenceRunId,
   validateCaptureEvidenceTargets,

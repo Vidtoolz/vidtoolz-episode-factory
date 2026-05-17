@@ -1122,6 +1122,71 @@ Capture evidence approval: PASS`;
     </section>`;
   }
 
+  function renderSecondCutRegistrationPreflight(preflight = {}) {
+    const list = (items, fallback) => `<ul>${(Array.isArray(items) && items.length ? items : [fallback]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+    const downstream = preflight.downstreamStatus || {};
+    const stepItems = preflight.humanReviewStatus === "ready_for_second_cut"
+      ? [
+          "Proceed to final candidate/final review preparation.",
+          "Final/export/publish/archive remain separate gates.",
+        ]
+      : preflight.humanReviewStatus === "needs_more_pickups"
+        ? ["Return to pickup/edit work."]
+        : preflight.humanReviewStatus === "needs_edit_fixes"
+          ? ["Return to edit fixes."]
+          : preflight.registeredCandidateStatus === "registered"
+            ? [
+                "Inspect candidate metadata.",
+                "Mikko watches full candidate.",
+                "Record Second-Cut Human Review notes.",
+                "Choose marker only after watching.",
+              ]
+            : [
+                "Export second-cut candidate from Resolve.",
+                "Paste/export path into Second-Cut Candidate Registration.",
+                "Save/register candidate for human review.",
+                "Do not approve it yet.",
+              ];
+    return `<section class="second-cut-preflight" aria-label="Second-Cut Registration Preflight">
+      <div class="mikko-console-header">
+        <div>
+          <p class="eyebrow">Gate Clarity</p>
+          <h3>Second-Cut Registration Preflight</h3>
+        </div>
+        ${renderStatusBadge(preflight.humanReviewStatus || "not_started")}
+      </div>
+      <div class="human-review-required">
+        <strong>Registration is not approval.</strong>
+        <p>Human review is still required. Second-cut ready is not granted by file existence. Final/export/publish/archive remain blocked.</p>
+      </div>
+      <div class="lifecycle-review-grid">
+        <div><span>Expected export folder</span><strong>${escapeHtml(preflight.expectedCandidateFolder || "unknown")}</strong></div>
+        <div><span>Suggested export filename</span><strong>${escapeHtml(preflight.expectedCandidateFilename || "unknown")}</strong></div>
+        <div><span>Candidate path entered</span><strong>${escapeHtml(preflight.enteredCandidatePathStatus || "missing")}</strong><small>Candidate exported means a file exists.</small></div>
+        <div><span>Candidate registered</span><strong>${escapeHtml(preflight.registeredCandidateStatus || "unknown")}</strong><small>Candidate registered means second-cut-candidate.md records a file for review.</small></div>
+        <div><span>Registered candidate file</span><strong>${escapeHtml(preflight.candidateFileStatus || "unknown")}</strong></div>
+        <div><span>Inspection</span><strong>${escapeHtml(preflight.inspectionStatus || "unknown")}</strong></div>
+        <div><span>Human review</span><strong>${escapeHtml(preflight.humanReviewStatus || "not_started")}</strong><small>Human review pending means Mikko has not recorded second-cut watch notes yet.</small></div>
+        <div><span>Second-cut approval</span><strong>${preflight.secondCutReady ? "READY FOR SECOND CUT" : "not granted"}</strong><small>Second-cut approval not granted means READY FOR SECOND CUT has not been explicitly selected by Mikko.</small></div>
+        <div><span>Final review</span><strong>${escapeHtml(downstream.finalReview || "blocked")}</strong></div>
+        <div><span>Export/delivery</span><strong>${escapeHtml(downstream.exportDelivery || "blocked")}</strong></div>
+        <div><span>Publish/archive</span><strong>${escapeHtml(`${downstream.publishMetadata || "blocked"} / ${downstream.archive || "blocked"}`)}</strong><small>Downstream gates blocked means final/export/publish/archive cannot advance yet.</small></div>
+      </div>
+      <div class="human-review-required">
+        <strong>Next safe action</strong>
+        <p>${escapeHtml(preflight.nextSafeAction || "Export and register a second-cut candidate before any approval.")}</p>
+      </div>
+      <div class="gps-split">
+        <div><h4>Step-by-step</h4>${list(stepItems, "Export and register the candidate for human review.")}</div>
+        <div><h4>Warnings</h4>${list(preflight.warnings, "No preflight warnings reported.")}</div>
+      </div>
+      <div class="gps-split">
+        <div><h4>AI allowed</h4>${list(preflight.aiAllowed, "inspect metadata")}</div>
+        <div><h4>AI blocked</h4>${list(preflight.aiBlocked, "approve or update state")}</div>
+      </div>
+    </section>`;
+  }
+
   function renderSecondCutCandidateRegistration(status = {}) {
     const runId = status.runId || "";
     return `<section class="second-cut-registration" data-second-cut-registration>
@@ -1378,6 +1443,7 @@ Capture evidence approval: PASS`;
     return `<div class="mikko-console-run" data-rough-cut-console data-run-id="${escapeHtml(runId)}">
       ${status.productionGps ? renderProductionGps(status.productionGps) : ""}
       ${status.secondCutInspector ? renderSecondCutInspector(status.secondCutInspector) : ""}
+      ${status.secondCutCandidatePreflight ? renderSecondCutRegistrationPreflight(status.secondCutCandidatePreflight) : ""}
       ${renderSecondCutCandidateRegistration(status)}
       ${renderSecondCutHumanReview(status)}
       ${renderFinalCandidateReview(status)}
@@ -2647,6 +2713,7 @@ Capture evidence approval: PASS`;
     renderGateTimeline,
     renderProductionGps,
     renderSecondCutInspector,
+    renderSecondCutRegistrationPreflight,
     renderSecondCutCandidateRegistration,
     renderSecondCutHumanReview,
     renderFinalCandidateReview,

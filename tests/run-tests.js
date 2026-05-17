@@ -11554,6 +11554,223 @@ test("second cut inspector reports no candidate conservatively", () => {
   assert.match(inspector.nextSafeAction, /export or identify a second-cut candidate/i);
 });
 
+test("second cut registration preflight reports missing candidate registration", () => {
+  const fixture = createSecondCutInspectorFixture();
+
+  const preflight = packageEngineServer.buildSecondCutCandidatePreflight({ runId: fixture.runId }, {
+    root: fixture.tempRoot,
+    videoRoot: fixture.videoRoot,
+  });
+
+  assert.equal(preflight.ok, true);
+  assert.equal(preflight.readOnly, true);
+  assert.equal(preflight.roughCutStatus, "NEEDS PICKUPS");
+  assert.equal(preflight.registeredCandidateStatus, "missing");
+  assert.equal(preflight.candidateFileStatus, "missing");
+  assert.equal(preflight.secondCutReady, false);
+  assert.match(preflight.humanReviewStatus, /not_started|watch_notes_missing/);
+  assert.match(preflight.nextSafeAction, /export.*register/i);
+  assert.deepEqual(preflight.downstreamStatus, {
+    finalReview: "blocked",
+    exportDelivery: "blocked",
+    publishMetadata: "blocked",
+    archive: "blocked",
+  });
+});
+
+test("second cut registration preflight reports registered candidate with existing file", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "second-cut-candidate-v2.mp4");
+  fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+  fs.writeFileSync(candidatePath, "fake second cut", "utf8");
+  packageEngineServer.applySecondCutCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+
+  const preflight = packageEngineServer.buildSecondCutCandidatePreflight({ runId: fixture.runId }, {
+    root: fixture.tempRoot,
+    videoRoot: fixture.videoRoot,
+  });
+
+  assert.equal(preflight.registeredCandidateStatus, "registered");
+  assert.equal(preflight.candidateFileStatus, "exists");
+  assert.equal(preflight.inspectionStatus, "found_needs_review");
+  assert.equal(preflight.humanReviewStatus, "watch_notes_missing");
+  assert.equal(preflight.secondCutReady, false);
+  assert.equal(preflight.downstreamStatus.finalReview, "blocked");
+  assert.equal(preflight.downstreamStatus.archive, "blocked");
+});
+
+test("second cut registration preflight warns for registered missing file", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const missingPath = path.join(fixture.tempRoot, "exports", "missing-second-cut.mp4");
+  fs.writeFileSync(path.join(fixture.runDir, "second-cut-candidate.md"), `# Second-Cut Candidate\n\n- Path: ${missingPath}\n- Review status: READY FOR HUMAN REVIEW\n- Second-cut ready: no\n`, "utf8");
+
+  const preflight = packageEngineServer.buildSecondCutCandidatePreflight({ runId: fixture.runId }, {
+    root: fixture.tempRoot,
+    videoRoot: fixture.videoRoot,
+  });
+
+  assert.equal(preflight.registeredCandidateStatus, "registered_missing_file");
+  assert.equal(preflight.candidateFileStatus, "missing");
+  assert.equal(preflight.secondCutReady, false);
+  assert.equal(preflight.warnings.some((warning) => /missing/i.test(warning)), true);
+  assert.match(preflight.nextSafeAction, /fix|re-register|locate/i);
+});
+
+test("second cut registration preflight reports missing watch notes after registration", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "second-cut-candidate-v2.mp4");
+  fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+  fs.writeFileSync(candidatePath, "fake second cut", "utf8");
+  packageEngineServer.applySecondCutCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+
+  const status = packageEngineServer.buildRoughCutStatus({ runId: fixture.runId }, {
+    root: fixture.tempRoot,
+    videoRoot: fixture.videoRoot,
+  });
+  const html = packageRunsDashboard.renderSecondCutRegistrationPreflight(status.secondCutCandidatePreflight);
+
+  assert.equal(status.secondCutCandidatePreflight.humanReviewStatus, "watch_notes_missing");
+  assert.match(html, /Human review is still required/);
+});
+
+test("second cut registration preflight surfaces missing or stale derived review", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "second-cut-candidate-v2.mp4");
+  fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+  fs.writeFileSync(candidatePath, "fake second cut", "utf8");
+  packageEngineServer.applySecondCutCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+  packageEngineServer.saveSecondCutWatchNotes({ runId: fixture.runId, fields: secondCutWatchFields({ candidatePath, decisionMarker: "NEEDS EDIT FIXES" }) }, { root: fixture.tempRoot });
+
+  let preflight = packageEngineServer.buildSecondCutCandidatePreflight({ runId: fixture.runId }, {
+    root: fixture.tempRoot,
+    videoRoot: fixture.videoRoot,
+  });
+  assert.equal(preflight.humanReviewStatus, "derived_review_missing");
+  assert.equal(preflight.secondCutReady, false);
+  assert.equal(preflight.warnings.some((warning) => /derived second-cut review missing/i.test(warning)), true);
+
+  fs.writeFileSync(path.join(fixture.runDir, "second-cut-review.md"), "# Second-Cut Review\n\n- Review status: READY FOR SECOND CUT\n- Second-cut ready: yes\n", "utf8");
+  preflight = packageEngineServer.buildSecondCutCandidatePreflight({ runId: fixture.runId }, {
+    root: fixture.tempRoot,
+    videoRoot: fixture.videoRoot,
+  });
+  assert.equal(preflight.humanReviewStatus, "derived_review_missing");
+  assert.equal(preflight.secondCutReady, false);
+  assert.equal(preflight.warnings.some((warning) => /stale|conflict/i.test(warning)), true);
+});
+
+test("second cut registration preflight requires exact derived READY FOR SECOND CUT", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "second-cut-candidate-v2.mp4");
+  fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+  fs.writeFileSync(candidatePath, "fake second cut", "utf8");
+  packageEngineServer.applySecondCutCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+  fs.writeFileSync(path.join(fixture.runDir, "second-cut-watch-notes.md"), "# Second-Cut Watch Notes\n\nLooks good. Candidate exists and metadata is available.\n", "utf8");
+
+  const preflight = packageEngineServer.buildSecondCutCandidatePreflight({ runId: fixture.runId }, {
+    root: fixture.tempRoot,
+    videoRoot: fixture.videoRoot,
+  });
+
+  assert.equal(preflight.candidateFileStatus, "exists");
+  assert.equal(preflight.registeredCandidateStatus, "registered");
+  assert.notEqual(preflight.humanReviewStatus, "ready_for_second_cut");
+  assert.equal(preflight.secondCutReady, false);
+});
+
+test("second cut registration preflight shows ready marker path without unblocking downstream gates", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "second-cut-candidate-v2.mp4");
+  fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+  fs.writeFileSync(candidatePath, "fake second cut", "utf8");
+  packageEngineServer.applySecondCutCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+  packageEngineServer.saveSecondCutWatchNotes({ runId: fixture.runId, fields: secondCutWatchFields({ candidatePath, decisionMarker: "READY FOR SECOND CUT" }) }, { root: fixture.tempRoot });
+  packageEngineServer.regenerateSecondCutReviewDerived({ runId: fixture.runId }, { root: fixture.tempRoot });
+
+  const preflight = packageEngineServer.buildSecondCutCandidatePreflight({ runId: fixture.runId }, {
+    root: fixture.tempRoot,
+    videoRoot: fixture.videoRoot,
+  });
+
+  assert.equal(preflight.humanReviewStatus, "ready_for_second_cut");
+  assert.equal(preflight.secondCutReady, true);
+  assert.equal(preflight.downstreamStatus.finalReview, "blocked");
+  assert.equal(preflight.downstreamStatus.exportDelivery, "blocked");
+  assert.equal(preflight.downstreamStatus.publishMetadata, "blocked");
+  assert.equal(preflight.downstreamStatus.archive, "blocked");
+});
+
+test("second cut suggested filename helper is display only", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const suggestion = packageEngineServer.suggestSecondCutCandidateExportTarget("2026-05-06-ai-video-proof-plan", {
+    videoRoot: "/home/vidtoolz/Videos",
+  });
+
+  assert.equal(suggestion.expectedCandidateFolder, "/home/vidtoolz/Videos/vidtoolz-captures/2026-05-06-ai-video-proof-plan/second-cut-candidates");
+  assert.equal(suggestion.expectedCandidateFilename, "2026-05-06-ai-video-proof-plan-second-cut-candidate-01.mp4");
+  assert.equal(fs.existsSync(path.join(fixture.videoRoot, "vidtoolz-captures", fixture.runId, "second-cut-candidates")), false);
+});
+
+test("dashboard renders Second-Cut Registration Preflight boundaries", () => {
+  const html = packageRunsDashboard.renderSecondCutRegistrationPreflight({
+    runId: "2026-05-06-ai-video-proof-plan",
+    expectedCandidateFolder: "/home/vidtoolz/Videos/vidtoolz-captures/2026-05-06-ai-video-proof-plan/second-cut-candidates",
+    expectedCandidateFilename: "2026-05-06-ai-video-proof-plan-second-cut-candidate-01.mp4",
+    enteredCandidatePathStatus: "missing",
+    registeredCandidateStatus: "missing",
+    candidateFileStatus: "missing",
+    inspectionStatus: "not_found",
+    humanReviewStatus: "not_started",
+    secondCutReady: false,
+    nextSafeAction: "Export second-cut candidate from Resolve, then register it for human review.",
+    downstreamStatus: { finalReview: "blocked", exportDelivery: "blocked", publishMetadata: "blocked", archive: "blocked" },
+    aiAllowed: ["inspect metadata"],
+    aiBlocked: ["mark second-cut ready"],
+    warnings: ["Second-cut candidate is not registered."],
+  });
+
+  assert.match(html, /Second-Cut Registration Preflight/);
+  assert.match(html, /2026-05-06-ai-video-proof-plan-second-cut-candidate-01\.mp4/);
+  assert.match(html, /Candidate exported/);
+  assert.match(html, /Candidate registered/);
+  assert.match(html, /Human review/);
+  assert.match(html, /Second-cut approval/);
+  assert.match(html, /Registration is not approval/);
+  assert.match(html, /Human review is still required/);
+  assert.match(html, /Second-cut ready is not granted by file existence/);
+  assert.match(html, /Final\/export\/publish\/archive remain blocked/);
+});
+
+test("second cut registration preflight is read-only for package-run artifacts media index and state", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "second-cut-candidate-v2.mp4");
+  fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+  fs.writeFileSync(candidatePath, "fake second cut", "utf8");
+  const files = [
+    fixture.indexPath,
+    fixture.statePath,
+    path.join(fixture.runDir, "rough-cut-watch-notes.md"),
+    path.join(fixture.runDir, "rough-cut-review.md"),
+    path.join(fixture.runDir, "pickup-list.md"),
+    path.join(fixture.runDir, "edit-fix-list.md"),
+    candidatePath,
+  ];
+  const before = Object.fromEntries(files.map((filePath) => [filePath, fs.readFileSync(filePath, "utf8")]));
+  const beforeMtimes = Object.fromEntries(files.map((filePath) => [filePath, fs.statSync(filePath).mtimeMs]));
+
+  const preflight = packageEngineServer.buildSecondCutCandidatePreflight({ runId: fixture.runId, candidatePath }, {
+    root: fixture.tempRoot,
+    videoRoot: fixture.videoRoot,
+  });
+  packageRunsDashboard.renderSecondCutRegistrationPreflight(preflight);
+
+  files.forEach((filePath) => {
+    assert.equal(fs.readFileSync(filePath, "utf8"), before[filePath]);
+    assert.equal(fs.statSync(filePath).mtimeMs, beforeMtimes[filePath]);
+  });
+  assert.equal(fs.existsSync(path.join(fixture.runDir, "second-cut-candidate.md")), false);
+});
+
 test("second cut inspector reports fake candidate without crashing on metadata failure", () => {
   const fixture = createSecondCutInspectorFixture();
   const candidatePath = path.join(fixture.runDir, "media", "second-cut-candidate-v2.mp4");
