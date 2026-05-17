@@ -9134,24 +9134,35 @@ test("production approval repair reporter json cli is parseable", () => {
   assert.equal(payload.currentEffectiveProductionStatus, "NOT READY TO SHOOT");
 });
 
-test("production approval review packet reports current May 6 active run blocked at capture evidence review", () => {
+test("production approval review packet reports current May 6 active run blocked at rough-cut review", () => {
   const repoRoot = path.resolve(__dirname, "..");
   const runDir = path.join(repoRoot, "package-runs", "2026-05-06-ai-video-proof-plan");
   if (!fs.existsSync(runDir)) return;
 
   const packet = packageProductionApprovalReviewScript.buildReviewPacket(path.relative(repoRoot, runDir), { repoRoot });
+  const doctor = packageRunDoctorScript.buildDoctorReport(path.relative(repoRoot, runDir), { repoRoot });
   const text = packageProductionApprovalReviewScript.renderText(packet);
 
   assert.equal(packet.runId, "2026-05-06-ai-video-proof-plan");
   assert.equal(packet.readOnly, true);
   assert.equal(packet.externalApisCalled, false);
   assert.equal(packet.captureIntakeSuggested, false);
-  assert.match(
-    packet.exactNextSafeAction,
-    /Review the capture evidence manually and add an exact capture approval marker if accepted/
-  );
-  assert.match(text, /Capture evidence status: READY FOR HUMAN APPROVAL/);
-  assert.equal(packet.currentProductionStatus.captureEvidenceStatus, "READY FOR HUMAN APPROVAL");
+  assert.equal(packet.exactNextSafeAction, "Production approval gate is clear; downstream gates now apply.");
+  assert.doesNotMatch(packet.exactNextSafeAction, /Repair production-plan\.md and request Mikko production approval/);
+  assert.doesNotMatch(packet.exactNextSafeAction, /Review the capture evidence manually/);
+  assert.match(text, /Capture evidence status: PASS/);
+  assert.match(text, /Capture evidence accepted: yes/);
+  assert.equal(packet.currentProductionStatus.effectiveProductionStatus, "READY TO SHOOT");
+  assert.equal(packet.currentProductionStatus.productionApprovalBlocked, false);
+  assert.equal(packet.currentProductionStatus.productionBlockersOpen, false);
+  assert.equal(packet.currentProductionStatus.captureEvidenceStatus, "PASS");
+  assert.equal(packet.currentProductionStatus.captureEvidenceAccepted, true);
+  assert.equal(doctor.currentInferredStage, "Needs rough-cut review");
+  assert.equal(doctor.lifecycleGate.captureEvidenceReviewStatus, "PASS");
+  assert.equal(doctor.lifecycleGate.captureEvidenceAccepted, true);
+  assert.equal(doctor.lifecycleGate.roughCutStatus, "BLOCKED");
+  assert.equal(doctor.missingExpectedArtifacts.includes("rough-cut-watch-notes.md with real notes"), true);
+  assert.match(doctor.blockingReasons.join("\n"), /Rough-cut review status is BLOCKED, not READY FOR SECOND CUT/);
 });
 
 test("production approval review packet includes KEEP BLOCKED for explicit not-approved evidence", () => {
@@ -9211,6 +9222,31 @@ test("production approval review packet clean approved fixture exposes approve o
   assert.equal(fs.readFileSync(path.join(runDir, "production-plan.md"), "utf8").includes("Mikko production approval: PASS"), false);
 });
 
+test("production approval review packet does not show stale production-planning fallback after capture evidence is clear", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-approval-review-clear-capture-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-review-clear-capture");
+  writeCaptureEvidenceFixture(runDir, {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "Review Clear Capture" } }),
+    "final-script.md": "# Final Script\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "production-blockers.md":
+      "# Production Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Required gates are currently satisfied. | Keep review evidence with the run. | closed |\n",
+    "capture-evidence-review.md":
+      "# Capture Evidence Review\n\n- Review status: PASS\n- Capture evidence accepted: yes\n- Manual approval marker detected: yes\n- Ready for rough-cut work: yes\n- Real capture evidence detected: yes\n",
+  });
+
+  const packet = packageProductionApprovalReviewScript.buildReviewPacket(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+
+  assert.equal(packet.currentProductionStatus.effectiveProductionStatus, "READY TO SHOOT");
+  assert.equal(packet.currentProductionStatus.productionApprovalBlocked, false);
+  assert.equal(packet.currentProductionStatus.productionBlockersOpen, false);
+  assert.equal(packet.currentProductionStatus.captureEvidenceStatus, "PASS");
+  assert.equal(packet.currentProductionStatus.captureEvidenceAccepted, true);
+  assert.equal(packet.exactNextSafeAction, "Production approval gate is clear; downstream gates now apply.");
+  assert.doesNotMatch(packet.exactNextSafeAction, /Repair production-plan\.md and request Mikko production approval/);
+  assert.doesNotMatch(packet.exactNextSafeAction, /capture evidence intake/);
+});
+
 test("production approval review packet reports missing run folder", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-approval-review-missing-"));
 
@@ -9254,6 +9290,7 @@ test("production approval review packet json cli is parseable", () => {
     "productionBlockersOpen",
     "shotEditPlanStatus",
     "captureEvidenceStatus",
+    "captureEvidenceAccepted",
   ]);
   assert.equal(typeof payload.currentProductionStatus, "object");
   assert.equal(Object.hasOwn(payload.currentProductionStatus, "effectiveProductionStatus"), true);
@@ -9262,18 +9299,21 @@ test("production approval review packet json cli is parseable", () => {
   assert.equal(Object.hasOwn(payload.currentProductionStatus, "productionBlockersOpen"), true);
   assert.equal(Object.hasOwn(payload.currentProductionStatus, "shotEditPlanStatus"), true);
   assert.equal(Object.hasOwn(payload.currentProductionStatus, "captureEvidenceStatus"), true);
+  assert.equal(Object.hasOwn(payload.currentProductionStatus, "captureEvidenceAccepted"), true);
   assert.equal(payload.currentProductionStatus.rawParsedProductionStatus, "READY TO SHOOT");
   assert.equal(payload.currentProductionStatus.effectiveProductionStatus, "NOT READY TO SHOOT");
   assert.equal(payload.currentProductionStatus.productionApprovalBlocked, true);
   assert.equal(payload.currentProductionStatus.productionBlockersOpen, true);
   assert.equal(payload.currentProductionStatus.shotEditPlanStatus, "STALE PASS");
   assert.equal(payload.currentProductionStatus.captureEvidenceStatus, "READY FOR ROUGH CUT");
+  assert.equal(payload.currentProductionStatus.captureEvidenceAccepted, false);
   assert.equal(Object.hasOwn(payload, "effectiveProductionStatus"), false);
   assert.equal(Object.hasOwn(payload, "rawParsedProductionStatus"), false);
   assert.equal(Object.hasOwn(payload, "productionApprovalBlocked"), false);
   assert.equal(Object.hasOwn(payload, "productionBlockersOpen"), false);
   assert.equal(Object.hasOwn(payload, "shotEditPlanStatus"), false);
   assert.equal(Object.hasOwn(payload, "captureEvidenceStatus"), false);
+  assert.equal(Object.hasOwn(payload, "captureEvidenceAccepted"), false);
   assert.equal(payload.blockingEvidence[0].file, "evidence-chain-summary.md");
 });
 

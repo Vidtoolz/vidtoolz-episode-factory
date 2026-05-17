@@ -28,6 +28,7 @@ const JSON_CONTRACT = {
     "productionBlockersOpen",
     "shotEditPlanStatus",
     "captureEvidenceStatus",
+    "captureEvidenceAccepted",
   ],
 };
 
@@ -159,6 +160,28 @@ function decisionOptions(report = {}) {
   return options;
 }
 
+function productionPlanningIsBlocked(gate = {}) {
+  return Boolean(
+    gate.productionPlanningBlocked ||
+      gate.productionApprovalBlocked ||
+      gate.productionBlockersOpen ||
+      gate.productionPlanStatus !== "READY TO SHOOT" ||
+      (gate.rawProductionPlanStatus && gate.productionPlanStatus && gate.rawProductionPlanStatus !== gate.productionPlanStatus)
+  );
+}
+
+function exactNextSafeAction(doctor = {}) {
+  const gate = doctor.lifecycleGate || {};
+  if (doctor.nextSafeAction) return doctor.nextSafeAction;
+  if (productionPlanningIsBlocked(gate)) {
+    return gate.productionPlanningNextSafeAction || "Repair production planning before any downstream capture evidence intake.";
+  }
+  if (!gate.captureEvidenceAccepted) {
+    return gate.captureEvidenceNextSafeAction || "Complete capture evidence review before downstream rough-cut work.";
+  }
+  return "Production approval gate is clear; downstream gates now apply.";
+}
+
 function buildReviewPacket(runDirInput, options = {}) {
   const repoRoot = path.resolve(options.repoRoot || path.join(__dirname, ".."));
   const runDir = path.resolve(repoRoot, runDirInput || "");
@@ -191,6 +214,7 @@ function buildReviewPacket(runDirInput, options = {}) {
       productionBlockersOpen: Boolean(gate.productionBlockersOpen),
       shotEditPlanStatus: gate.shotEditPlanReviewStatus || "",
       captureEvidenceStatus: gate.captureEvidenceReviewStatus || gate.captureStatus || "",
+      captureEvidenceAccepted: Boolean(gate.captureEvidenceAccepted),
     },
     blockingSourceFiles: gate.productionApprovalBlockerSources || [],
     blockingEvidence: blockingSources,
@@ -204,8 +228,7 @@ function buildReviewPacket(runDirInput, options = {}) {
     ],
     decisionOptions: decisions,
     exactApprovalMarkerRequiredIfApproved: EXACT_APPROVAL_MARKER,
-    exactNextSafeAction:
-      doctor.nextSafeAction || gate.productionPlanningNextSafeAction || "Review production approval before any downstream capture evidence intake.",
+    exactNextSafeAction: exactNextSafeAction(doctor),
     captureIntakeSuggested: /capture evidence rows|package-run-capture-evidence-review/i.test(
       `${doctor.nextSafeAction || ""}\n${doctor.nextRecommendedCommand || ""}`
     ),
@@ -246,6 +269,7 @@ function renderText(packet = {}) {
     `- Production blockers open: ${status.productionBlockersOpen ? "yes" : "no"}`,
     `- Shot/edit plan status: ${status.shotEditPlanStatus || "unknown"}`,
     `- Capture evidence status: ${status.captureEvidenceStatus || "unknown"}`,
+    `- Capture evidence accepted: ${status.captureEvidenceAccepted ? "yes" : "no"}`,
     "",
     "## Blocking Source Files",
   ];

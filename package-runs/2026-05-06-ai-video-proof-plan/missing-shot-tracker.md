@@ -18,6 +18,14 @@
 - `/home/vidtoolz/Videos/vidtoolz-captures/2026-05-06-ai-video-proof-plan/20260516-capture-session-01/setup-tests/obs-setup-test-01.mp4`: setup-test only.
 - `/home/vidtoolz/Videos/vidtoolz-captures/2026-05-06-ai-video-proof-plan/20260516-capture-session-01/setup-tests/obs-setup-test-02.mp4`: setup-test only.
 
+## Capture Evidence Approval
+
+- Capture evidence approval: PASS
+- Decision source: Mikko manual review.
+- Scope: capture evidence only.
+- Accepted evidence includes redo screen recording: `/home/vidtoolz/Videos/vidtoolz-captures/2026-05-06-ai-video-proof-plan/20260516-capture-session-01/screen-redo/01-main-redo.mp4`.
+- This is not production approval, rough-cut approval, publish/upload/archive approval, Hermes brain approval, or project-state approval.
+
 ## Boundary Notes
 
 - Pasted transcript evidence is not original ChatGPT UI proof.
@@ -25,5 +33,5 @@
 - Prepared stress test is not ChatGPT output.
 - Working packaging remains under review.
 - Title and thumbnail are not final.
-- Capture is not approved.
-- Ready for rough cut: no.
+- Capture evidence is approved for the narrow capture-evidence stage only.
+- Downstream approvals remain separate.
