@@ -9134,13 +9134,24 @@ test("production approval repair reporter json cli is parseable", () => {
   assert.equal(payload.currentEffectiveProductionStatus, "NOT READY TO SHOOT");
 });
 
-test("production approval review packet reports current May 6 active run blocked at rough-cut review", () => {
-  const repoRoot = path.resolve(__dirname, "..");
-  const runDir = path.join(repoRoot, "package-runs", "2026-05-06-ai-video-proof-plan");
-  if (!fs.existsSync(runDir)) return;
+test("production approval review packet reports clear production and capture gates blocked at rough-cut review", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-production-approval-review-rough-cut-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-06-ai-video-proof-plan");
+  writeCaptureEvidenceFixture(runDir, {
+    "selected-package.json": JSON.stringify({ package: { proposedTitle: "May 6 Proof Plan Fixture" } }),
+    "final-script.md": "# Final Script\n\nApproved final script fixture.\n",
+    "production-plan.md": "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "production-blockers.md":
+      "# Production Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Required gates are currently satisfied. | Keep review evidence with the run. | closed |\n",
+    "capture-evidence-review.md":
+      "# Capture Evidence Review\n\n- Review status: PASS\n- Capture evidence accepted: yes\n- Manual approval marker detected: yes\n- Ready for rough-cut work: yes\n- Real capture evidence detected: yes\n",
+    "rough-cut-review.md":
+      "# Rough-Cut Review\n\n- Rough-cut notes source: created starter template\n- Rough-cut review status: BLOCKED\n- Second-cut ready: no\n\n## Second-Cut Readiness Gate\n\n- Status: BLOCKED\n- Reason: rough-cut-watch-notes.md was missing; starter template created.\n",
+  });
 
-  const packet = packageProductionApprovalReviewScript.buildReviewPacket(path.relative(repoRoot, runDir), { repoRoot });
-  const doctor = packageRunDoctorScript.buildDoctorReport(path.relative(repoRoot, runDir), { repoRoot });
+  const runPath = path.relative(tempRoot, runDir);
+  const packet = packageProductionApprovalReviewScript.buildReviewPacket(runPath, { repoRoot: tempRoot });
+  const doctor = packageRunDoctorScript.buildDoctorReport(runPath, { repoRoot: tempRoot });
   const text = packageProductionApprovalReviewScript.renderText(packet);
 
   assert.equal(packet.runId, "2026-05-06-ai-video-proof-plan");
