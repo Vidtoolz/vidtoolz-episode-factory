@@ -22,6 +22,8 @@ const PRODUCTION_GPS_API = '/api/package-runs/production-gps';
 const SECOND_CUT_INSPECTOR_API = '/api/package-runs/second-cut-inspector';
 const SECOND_CUT_CANDIDATE_PREVIEW_API = '/api/package-runs/second-cut-candidate/preview';
 const SECOND_CUT_CANDIDATE_APPLY_API = '/api/package-runs/second-cut-candidate/apply';
+const SECOND_CUT_WATCH_NOTES_SAVE_API = '/api/package-runs/second-cut-watch-notes/save';
+const SECOND_CUT_REVIEW_REGENERATE_API = '/api/package-runs/second-cut-review/regenerate-derived';
 const ROUGH_CUT_SAVE_API = '/api/package-runs/rough-cut/watch-notes';
 const ROUGH_CUT_REVIEW_API = '/api/package-runs/rough-cut/review';
 const ROUGH_CUT_REGENERATE_DERIVED_API = '/api/package-runs/rough-cut/regenerate-derived';
@@ -43,15 +45,23 @@ const CAPTURE_EVIDENCE_TARGETS = [
 const CAPTURE_EVIDENCE_AUDIT_FILE = 'capture-evidence-intake-log.md';
 const ROUGH_CUT_WATCH_NOTES_FILE = 'rough-cut-watch-notes.md';
 const SECOND_CUT_CANDIDATE_FILE = 'second-cut-candidate.md';
+const SECOND_CUT_WATCH_NOTES_FILE = 'second-cut-watch-notes.md';
+const SECOND_CUT_REVIEW_FILE = 'second-cut-review.md';
 const ROUGH_CUT_DERIVED_FILES = ['rough-cut-review.md', 'pickup-list.md', 'edit-fix-list.md'];
 const SECOND_CUT_CANDIDATE_SECTION_START = '<!-- second-cut-candidate:start -->';
 const SECOND_CUT_CANDIDATE_SECTION_END = '<!-- second-cut-candidate:end -->';
+const SECOND_CUT_WATCH_NOTES_SECTION_START = '<!-- second-cut-watch-notes:start -->';
+const SECOND_CUT_WATCH_NOTES_SECTION_END = '<!-- second-cut-watch-notes:end -->';
+const SECOND_CUT_REVIEW_SECTION_START = '<!-- second-cut-review:start -->';
+const SECOND_CUT_REVIEW_SECTION_END = '<!-- second-cut-review:end -->';
 const PRODUCTION_GPS_ARTIFACTS = [
   'rough-cut-watch-notes.md',
   'second-cut-candidate.md',
+  'second-cut-watch-notes.md',
   'final-watch-notes.md',
   'manual-approval-notes.md',
   'rough-cut-review.md',
+  'second-cut-review.md',
   'pickup-list.md',
   'edit-fix-list.md',
   'capture-evidence-review.md',
@@ -66,6 +76,7 @@ const PRODUCTION_GPS_ARTIFACTS = [
 ];
 const MEDIA_FILE_PATTERN = /\.(?:mp4|mov|mkv|webm|m4v|avi)$/i;
 const ROUGH_CUT_APPROVAL_VALUES = ['NOT GIVEN', 'NEEDS PICKUPS', 'NEEDS EDIT FIXES', 'PASS'];
+const SECOND_CUT_REVIEW_MARKERS = ['NEEDS MORE PICKUPS', 'NEEDS EDIT FIXES', 'READY FOR SECOND CUT'];
 const PICKUP_ITEM_TYPES = ['presenter closeup', 'AI B-roll', 'screen zoom', 'graphic', 'edit-only fix', 'other'];
 const PICKUP_REQUIRED_VALUES = ['yes', 'no'];
 const PICKUP_SOURCES = ['existing material', 'new recording', 'AI generation', 'editing only'];
@@ -875,9 +886,9 @@ function isSafeOpenPath(filePath, resolved, options = {}) {
 }
 
 function gpsArtifactKind(filename) {
-  if (/^(rough-cut-watch-notes|final-watch-notes|manual-approval-notes|second-cut-candidate)\.md$/i.test(filename)) return 'source / human-authored';
+  if (/^(rough-cut-watch-notes|final-watch-notes|manual-approval-notes|second-cut-candidate|second-cut-watch-notes)\.md$/i.test(filename)) return 'source / human-authored';
   if (/^(package-run-state\.md|package-runs-index\.json)$/i.test(filename)) return 'state / lifecycle';
-  if (/^(rough-cut-review|pickup-list|edit-fix-list|capture-evidence-review|export-checklist|publish-metadata-review)\.md$/i.test(filename)) return 'derived / generated';
+  if (/^(rough-cut-review|second-cut-review|pickup-list|edit-fix-list|capture-evidence-review|export-checklist|publish-metadata-review)\.md$/i.test(filename)) return 'derived / generated';
   if (/^(capture-checklist|takes-log|screen-recording-checklist|audio-capture-checklist|missing-shot-tracker)\.md$/i.test(filename)) return 'evidence / media reference';
   return 'unclear';
 }
@@ -974,8 +985,15 @@ function buildProductionGps(payload = {}, options = {}) {
   const roughNeedsPickups = roughCutResult.roughCutReviewStatus === 'NEEDS PICKUPS';
   const roughNeedsEditFixes = roughCutResult.roughCutReviewStatus === 'NEEDS EDIT FIXES';
   const registeredCandidateReadyForReview = secondCutInspector.candidateStatus === 'found_needs_review' && secondCutInspector.registeredCandidate && secondCutInspector.registeredCandidate.exists;
+  const secondCutStatus = secondCutInspector.secondCutReviewStatus || '';
   const currentGate = registeredCandidateReadyForReview
-    ? 'Second-Cut Candidate Review'
+    ? secondCutStatus === 'READY FOR SECOND CUT' && secondCutInspector.secondCutReady
+      ? 'Final Review Preparation'
+      : secondCutStatus === 'NEEDS MORE PICKUPS'
+        ? 'Pickup / Edit-Fix Planning'
+        : secondCutStatus === 'NEEDS EDIT FIXES'
+          ? 'Edit Fix Planning'
+          : 'Second-Cut Candidate Review'
     : roughNeedsPickups || roughNeedsEditFixes
       ? 'Pickup / Edit-Fix Planning'
       : currentTimelineGate.label;
@@ -991,7 +1009,13 @@ function buildProductionGps(payload = {}, options = {}) {
     'commit state file',
   ].filter(Boolean))];
   const nextSafeAction =
-    registeredCandidateReadyForReview
+    registeredCandidateReadyForReview && secondCutStatus === 'READY FOR SECOND CUT' && secondCutInspector.secondCutReady
+      ? 'Prepare separate final watch review; publish/export/upload/archive remain blocked.'
+      : registeredCandidateReadyForReview && secondCutStatus === 'NEEDS MORE PICKUPS'
+        ? 'Address remaining pickups from second-cut watch notes before any final review.'
+        : registeredCandidateReadyForReview && secondCutStatus === 'NEEDS EDIT FIXES'
+          ? 'Address edit fixes from second-cut watch notes before any final review.'
+          : registeredCandidateReadyForReview
       ? 'Mikko must watch the registered second-cut candidate and record review notes before any readiness decision.'
       : roughNeedsPickups
       ? 'Place/review pickup inserts and edit-fix work before any second-cut readiness decision.'
@@ -1212,6 +1236,290 @@ function parseSecondCutCandidateArtifact(runDir) {
   };
 }
 
+function secondCutReviewStatusFromMarker(marker = '') {
+  const normalized = String(marker || '').trim().toUpperCase();
+  if (SECOND_CUT_REVIEW_MARKERS.includes(normalized)) return normalized;
+  return 'NEEDS HUMAN REVIEW';
+}
+
+function parseSecondCutWatchNotes(content = '') {
+  const text = String(content || '');
+  const marker = secondCutReviewStatusFromMarker(lineValue(text, 'Second-cut review marker'));
+  const starter = !text.trim() || /starter template|TODO|TBD|placeholder/i.test(text);
+  return {
+    candidatePath: lineValue(text, 'Candidate file reviewed') || lineValue(text, 'Path'),
+    reviewer: lineValue(text, 'Reviewer'),
+    watchDate: lineValue(text, 'Watch date'),
+    status: marker,
+    marker,
+    secondCutReady: marker === 'READY FOR SECOND CUT',
+    remainingPickupsNeeded: lineValue(text, 'Remaining pickups needed') || '',
+    editFixesNeeded: lineValue(text, 'Remaining edit fixes needed') || '',
+    privacyWarnings: /privacy|sensitive/i.test(text) ? 'privacy/sensitive detail notes present' : '',
+    trustWarnings: /AI-generated|B-roll|proof evidence|misleading/i.test(text) ? 'visual trust/disclosure notes present' : '',
+    isStarter: starter || marker === 'NEEDS HUMAN REVIEW',
+  };
+}
+
+function parseSecondCutReviewFile(runDir) {
+  const reviewPath = path.join(runDir, SECOND_CUT_REVIEW_FILE);
+  if (!fs.existsSync(reviewPath)) {
+    return { exists: false, status: 'NEEDS HUMAN REVIEW', secondCutReady: false, candidatePath: '', reason: 'second-cut-review.md is missing.' };
+  }
+  const text = fs.readFileSync(reviewPath, 'utf8');
+  const status = secondCutReviewStatusFromMarker(lineValue(text, 'Review status') || lineValue(text, 'Status'));
+  return {
+    exists: true,
+    status,
+    secondCutReady: /^yes$/i.test(lineValue(text, 'Second-cut ready')) && status === 'READY FOR SECOND CUT',
+    candidatePath: lineValue(text, 'Candidate file'),
+    reason: lineValue(text, 'Reason'),
+  };
+}
+
+function normalizeSecondCutWatchFields(fields = {}, resolved) {
+  const registered = parseSecondCutCandidateArtifact(resolved.runDir);
+  const candidatePath = markdownCell(fields.candidatePath || registered.path || '');
+  if (!candidatePath) {
+    const error = new Error('Second-cut candidate file is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!fs.existsSync(candidatePath) || !fs.statSync(candidatePath).isFile()) {
+    const error = new Error('Second-cut candidate file does not exist.');
+    error.statusCode = 404;
+    throw error;
+  }
+  const watchDate = markdownCell(fields.watchDate || '');
+  const reviewer = markdownCell(fields.reviewer || '');
+  if (!watchDate) {
+    const error = new Error('Second-cut watch date is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!reviewer) {
+    const error = new Error('Second-cut reviewer is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const decisionMarker = secondCutReviewStatusFromMarker(fields.decisionMarker || fields.marker || '');
+  if (!SECOND_CUT_REVIEW_MARKERS.includes(decisionMarker)) {
+    const error = new Error(`Invalid second-cut review marker: ${fields.decisionMarker || fields.marker || ''}`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return {
+    candidatePath,
+    watchDate,
+    reviewer,
+    openingNotes: markdownText(fields.openingNotes || '', ''),
+    pickupPlacementNotes: markdownText(fields.pickupPlacementNotes || '', ''),
+    screenOnlyStretchNotes: markdownText(fields.screenOnlyStretchNotes || '', ''),
+    pacingClarityNotes: markdownText(fields.pacingClarityNotes || '', ''),
+    visualTrustDisclosureNotes: markdownText(fields.visualTrustDisclosureNotes || '', ''),
+    privacySensitiveNotes: markdownText(fields.privacySensitiveNotes || '', ''),
+    remainingPickupsNotes: markdownText(fields.remainingPickupsNotes || '', ''),
+    remainingEditFixesNotes: markdownText(fields.remainingEditFixesNotes || '', ''),
+    decisionMarker,
+  };
+}
+
+function secondCutWatchNotesMarkdown(runId, fields, roughCutResult) {
+  return [
+    SECOND_CUT_WATCH_NOTES_SECTION_START,
+    '# Second-Cut Watch Notes',
+    '',
+    `- Run: ${runId}`,
+    `- Candidate file reviewed: ${fields.candidatePath}`,
+    `- Watch date: ${fields.watchDate}`,
+    `- Reviewer: ${fields.reviewer}`,
+    '- Review type: second-cut candidate review',
+    '',
+    '## Candidate Context',
+    '',
+    `- Source candidate artifact: ${SECOND_CUT_CANDIDATE_FILE}`,
+    `- Rough-cut review status before second-cut review: ${roughCutResult.roughCutReviewStatus || 'unknown'}`,
+    `- Second-cut ready before review: ${roughCutResult.secondCutReady ? 'yes' : 'no'}`,
+    '',
+    '## Opening / Viewer Promise',
+    '',
+    'Notes:',
+    fields.openingNotes || 'No notes provided.',
+    '',
+    '## Pickup Placement',
+    '',
+    'Notes:',
+    fields.pickupPlacementNotes || 'No notes provided.',
+    '',
+    '## Screen-Only Stretches',
+    '',
+    'Notes:',
+    fields.screenOnlyStretchNotes || 'No notes provided.',
+    '',
+    '## Pacing / Clarity',
+    '',
+    'Notes:',
+    fields.pacingClarityNotes || 'No notes provided.',
+    '',
+    '## Visual Trust / Disclosure',
+    '',
+    'Notes:',
+    fields.visualTrustDisclosureNotes || 'No notes provided.',
+    '',
+    '## Privacy / Sensitive Details',
+    '',
+    'Notes:',
+    fields.privacySensitiveNotes || 'No notes provided.',
+    '',
+    '## Remaining Pickups Needed',
+    '',
+    'Notes:',
+    fields.remainingPickupsNotes || 'No notes provided.',
+    '',
+    '## Remaining Edit Fixes Needed',
+    '',
+    'Notes:',
+    fields.remainingEditFixesNotes || 'No notes provided.',
+    '',
+    '## Human Decision',
+    '',
+    `Second-cut review marker: ${fields.decisionMarker}`,
+    '',
+    '- READY FOR SECOND CUT is a human approval marker.',
+    '- Do not generate READY FOR SECOND CUT automatically.',
+    '- Mikko must explicitly choose it.',
+    SECOND_CUT_WATCH_NOTES_SECTION_END,
+    '',
+  ].join('\n');
+}
+
+function replaceManagedSection(existing = '', managed = '', startMarker, endMarker) {
+  const text = String(existing || '');
+  const start = text.indexOf(startMarker);
+  const end = text.indexOf(endMarker);
+  if (start !== -1 && end !== -1 && end > start) {
+    const before = text.slice(0, start).replace(/\s*$/, '\n\n');
+    const after = text.slice(end + endMarker.length).replace(/^\s*/, '\n');
+    return `${before}${managed}${after}`.replace(/\n{4,}/g, '\n\n\n');
+  }
+  if (text.trim()) return `${text.replace(/\s*$/, '\n\n')}${managed}`;
+  return managed;
+}
+
+function saveSecondCutWatchNotes(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const fields = normalizeSecondCutWatchFields(payload.fields || payload, resolved);
+  const roughCutResult = parseRoughCutReviewFile(resolved.runDir);
+  const managed = secondCutWatchNotesMarkdown(resolved.runId, fields, roughCutResult);
+  const targetPath = path.resolve(resolved.runDir, SECOND_CUT_WATCH_NOTES_FILE);
+  if (!targetPath.startsWith(resolved.runDir + path.sep)) {
+    const error = new Error('Resolved second-cut watch notes path is outside the approved write scope.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const existing = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf8') : '';
+  fs.writeFileSync(targetPath, replaceManagedSection(existing, managed, SECOND_CUT_WATCH_NOTES_SECTION_START, SECOND_CUT_WATCH_NOTES_SECTION_END), 'utf8');
+  return {
+    ok: true,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    written: [SECOND_CUT_WATCH_NOTES_FILE],
+    secondCutReady: fields.decisionMarker === 'READY FOR SECOND CUT',
+    warning: fields.decisionMarker === 'READY FOR SECOND CUT'
+      ? 'Human READY FOR SECOND CUT marker recorded. Regenerate derived review before downstream final-review work.'
+      : 'Second-cut watch notes saved. Second-cut readiness remains blocked.',
+  };
+}
+
+function buildSecondCutReviewFromWatchNotes(runId, options = {}) {
+  const resolved = resolvePackageRunDir(runId, options);
+  const notesPath = path.join(resolved.runDir, SECOND_CUT_WATCH_NOTES_FILE);
+  const candidate = parseSecondCutCandidateArtifact(resolved.runDir);
+  const notesText = fs.existsSync(notesPath) ? fs.readFileSync(notesPath, 'utf8') : '';
+  const parsed = parseSecondCutWatchNotes(notesText);
+  const status = parsed.status;
+  const candidatePath = parsed.candidatePath || candidate.path || '';
+  const candidateExists = Boolean(candidatePath && fs.existsSync(candidatePath) && fs.statSync(candidatePath).isFile());
+  const secondCutReady = status === 'READY FOR SECOND CUT';
+  const reason =
+    !notesText.trim() ? 'second-cut-watch-notes.md is missing.'
+      : status === 'NEEDS MORE PICKUPS' ? 'Human second-cut notes request more pickups.'
+        : status === 'NEEDS EDIT FIXES' ? 'Human second-cut notes request edit fixes.'
+          : status === 'READY FOR SECOND CUT' ? 'Mikko explicitly marked READY FOR SECOND CUT.'
+            : 'Missing exact second-cut review marker.';
+  return {
+    status,
+    secondCutReady,
+    reason,
+    candidatePath,
+    candidateExists,
+    sourceExists: Boolean(notesText.trim()),
+    sourceIsStarter: parsed.isStarter,
+    parsed,
+    markdown: [
+      SECOND_CUT_REVIEW_SECTION_START,
+      '# Second-Cut Review',
+      '',
+      `- Run: ${resolved.runId}`,
+      `- Source watch notes: ${SECOND_CUT_WATCH_NOTES_FILE}`,
+      `- Registered candidate: ${SECOND_CUT_CANDIDATE_FILE}`,
+      `- Review status: ${status}`,
+      `- Second-cut ready: ${secondCutReady ? 'yes' : 'no'}`,
+      '- Human approval required: yes',
+      '- External APIs called: no',
+      '',
+      '## Gate Result',
+      '',
+      `- Status: ${status}`,
+      `- Reason: ${reason}`,
+      `- Candidate file: ${candidatePath || 'not recorded'}`,
+      `- Candidate exists: ${candidateExists ? 'yes' : 'no'}`,
+      `- Required next action: ${secondCutReady ? 'Proceed to separate final watch review; publishing/export remain blocked.' : 'Resolve the human second-cut review blocker before final review.'}`,
+      '',
+      '## Boundary',
+      '',
+      '- This review is derived from human second-cut watch notes.',
+      '- It does not approve final review.',
+      '- It does not approve publishing.',
+      '- It does not update package-run state.',
+      '- It does not update package-runs-index.json.',
+      '',
+      '## Blocked Actions',
+      '',
+      '- final review',
+      '- export/upload',
+      '- publish',
+      '- archive',
+      '- state promotion',
+      secondCutReady ? '- Final review still requires a separate final-watch review later.' : '',
+      SECOND_CUT_REVIEW_SECTION_END,
+      '',
+    ].filter((line) => line !== '').join('\n'),
+  };
+}
+
+function regenerateSecondCutReviewDerived(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const review = buildSecondCutReviewFromWatchNotes(resolved.runId, options);
+  const targetPath = path.resolve(resolved.runDir, SECOND_CUT_REVIEW_FILE);
+  if (!targetPath.startsWith(resolved.runDir + path.sep)) {
+    const error = new Error('Resolved second-cut review path is outside the approved write scope.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const existing = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf8') : '';
+  fs.writeFileSync(targetPath, replaceManagedSection(existing, review.markdown, SECOND_CUT_REVIEW_SECTION_START, SECOND_CUT_REVIEW_SECTION_END), 'utf8');
+  return {
+    ok: true,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    written: [SECOND_CUT_REVIEW_FILE],
+    review,
+    approvedForFinalReview: false,
+    warning: 'Regenerated derived second-cut-review.md only. Final review, publish/export, state, and index remain blocked.',
+  };
+}
+
 function markdownTableItems(markdown = '') {
   return String(markdown || '')
     .split(/\r?\n/)
@@ -1306,6 +1614,19 @@ function buildSecondCutInspector(payload = {}, options = {}) {
   const resolved = resolveRunFromPayload(payload, options);
   const roughCutResult = parseRoughCutReviewFile(resolved.runDir);
   const media = discoverSecondCutMedia(resolved, options);
+  const watchNotesPath = path.join(resolved.runDir, SECOND_CUT_WATCH_NOTES_FILE);
+  const reviewPath = path.join(resolved.runDir, SECOND_CUT_REVIEW_FILE);
+  const secondCutWatchNotesExists = fs.existsSync(watchNotesPath);
+  const secondCutReviewExists = fs.existsSync(reviewPath);
+  const watchNotesText = secondCutWatchNotesExists ? fs.readFileSync(watchNotesPath, 'utf8') : '';
+  const watchNotes = parseSecondCutWatchNotes(watchNotesText);
+  const derivedReview = parseSecondCutReviewFile(resolved.runDir);
+  const secondCutReviewStatus = secondCutReviewExists ? derivedReview.status : watchNotes.status;
+  const derivedReviewStale =
+    secondCutWatchNotesExists && !secondCutReviewExists ||
+    (secondCutWatchNotesExists && secondCutReviewExists && watchNotes.status !== derivedReview.status) ||
+    (secondCutWatchNotesExists && secondCutReviewExists && fs.statSync(watchNotesPath).mtimeMs > fs.statSync(reviewPath).mtimeMs) ||
+    (secondCutWatchNotesExists && secondCutReviewExists && watchNotes.candidatePath && derivedReview.candidatePath && watchNotes.candidatePath !== derivedReview.candidatePath);
   const candidateStatus =
     media.registeredCandidate && !media.registeredCandidate.exists
       ? 'missing_registered_file'
@@ -1332,8 +1653,21 @@ function buildSecondCutInspector(payload = {}, options = {}) {
     candidateStatus === 'not_found' ? 'Second-cut candidate not found.' : '',
     candidateStatus === 'missing_registered_file' ? 'Registered second-cut candidate file is missing.' : '',
     candidateStatus === 'multiple_candidates' ? 'Multiple second-cut candidates found; Mikko must choose one manually.' : '',
+    secondCutWatchNotesExists && !secondCutReviewExists ? 'Derived second-cut review missing; regenerate second-cut-review.md.' : '',
+    derivedReviewStale && secondCutReviewExists ? 'Derived second-cut review may be stale against current watch notes.' : '',
     roughCutResult.secondCutReady ? 'Second-cut readiness marker exists; human verification is still required.' : '',
   ].filter(Boolean);
+  const secondCutReady = Boolean(secondCutReviewExists && derivedReview.secondCutReady && derivedReview.status === 'READY FOR SECOND CUT');
+  const nextSafeAction =
+    candidateStatus === 'missing_registered_file'
+      ? 'Registered second-cut candidate is missing. Next safe action: locate or re-register the exported second-cut candidate before review.'
+      : secondCutWatchNotesExists && derivedReviewStale
+        ? 'Regenerate derived second-cut review from current human watch notes.'
+        : candidateStatus === 'not_found'
+          ? 'Second-cut candidate not found. Next safe action: export or identify a second-cut candidate, then inspect it before any approval.'
+          : !secondCutWatchNotesExists
+            ? 'Mikko should watch the registered second-cut candidate and record second-cut watch notes.'
+            : 'Inspect the second-cut review result before any downstream final-review work.';
   return {
     ok: true,
     runId: resolved.runId,
@@ -1342,7 +1676,12 @@ function buildSecondCutInspector(payload = {}, options = {}) {
     externalApisCalled: false,
     currentGate: candidateStatus === 'not_found' ? 'Second-Cut Candidate Preparation' : 'Second-Cut Candidate Inspection',
     roughCutStatus: roughCutResult.roughCutReviewStatus || 'NOT STARTED',
-    secondCutReady: Boolean(roughCutResult.secondCutReady),
+    secondCutReady,
+    secondCutWatchNotesExists,
+    secondCutReviewExists,
+    secondCutReviewStatus,
+    secondCutWatchNotesStatus: watchNotes.status,
+    secondCutDerivedReviewStale: derivedReviewStale,
     candidateStatus,
     candidates: media.candidates,
     registeredCandidate: media.registeredCandidate || null,
@@ -1354,11 +1693,7 @@ function buildSecondCutInspector(payload = {}, options = {}) {
     aiBlocked: ['approve rough cut', 'mark second-cut ready', 'update package-run-state.md', 'update package-runs-index.json', 'commit or push', 'move/delete/rename media'],
     blockedActions,
     warnings,
-    nextSafeAction: candidateStatus === 'missing_registered_file'
-      ? 'Registered second-cut candidate is missing. Next safe action: locate or re-register the exported second-cut candidate before review.'
-      : candidateStatus === 'not_found'
-      ? 'Second-cut candidate not found. Next safe action: export or identify a second-cut candidate, then inspect it before any approval.'
-      : 'Inspect the second-cut candidate and pickup placement manually before any second-cut readiness decision.',
+    nextSafeAction,
   };
 }
 
@@ -1896,6 +2231,8 @@ function createStatusResponse(env = process.env) {
       secondCutInspectorApi: SECOND_CUT_INSPECTOR_API,
       secondCutCandidatePreviewApi: SECOND_CUT_CANDIDATE_PREVIEW_API,
       secondCutCandidateApplyApi: SECOND_CUT_CANDIDATE_APPLY_API,
+      secondCutWatchNotesSaveApi: SECOND_CUT_WATCH_NOTES_SAVE_API,
+      secondCutReviewRegenerateApi: SECOND_CUT_REVIEW_REGENERATE_API,
       saveApi: ROUGH_CUT_SAVE_API,
       reviewApi: ROUGH_CUT_REVIEW_API,
       regenerateDerivedApi: ROUGH_CUT_REGENERATE_DERIVED_API,
@@ -1907,6 +2244,8 @@ function createStatusResponse(env = process.env) {
       allowedPickupStatuses: PICKUP_STATUSES,
       allowedWriteFiles: [ROUGH_CUT_WATCH_NOTES_FILE, 'pickup-list.md', 'edit-fix-list.md'],
       secondCutCandidateAllowedWriteFiles: [SECOND_CUT_CANDIDATE_FILE],
+      secondCutReviewAllowedWriteFiles: [SECOND_CUT_WATCH_NOTES_FILE, SECOND_CUT_REVIEW_FILE],
+      allowedSecondCutReviewMarkers: SECOND_CUT_REVIEW_MARKERS,
       derivedOnlyWriteFiles: ROUGH_CUT_DERIVED_FILES,
     },
   };
@@ -2130,6 +2469,26 @@ function createServer() {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === SECOND_CUT_WATCH_NOTES_SAVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, saveSecondCutWatchNotes(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === SECOND_CUT_REVIEW_REGENERATE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, regenerateSecondCutReviewDerived(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === ROUGH_CUT_SAVE_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -2235,6 +2594,11 @@ module.exports = {
   SECOND_CUT_CANDIDATE_APPLY_API,
   SECOND_CUT_CANDIDATE_FILE,
   SECOND_CUT_CANDIDATE_PREVIEW_API,
+  SECOND_CUT_REVIEW_FILE,
+  SECOND_CUT_REVIEW_MARKERS,
+  SECOND_CUT_REVIEW_REGENERATE_API,
+  SECOND_CUT_WATCH_NOTES_FILE,
+  SECOND_CUT_WATCH_NOTES_SAVE_API,
   ROUGH_CUT_APPROVAL_VALUES,
   ROUGH_CUT_DERIVED_FILES,
   ROUGH_CUT_OPEN_API,
@@ -2266,6 +2630,7 @@ module.exports = {
   buildSecondCutInspector,
   buildSecondCutPlacementChecklist,
   buildSecondCutCandidateRegistration,
+  buildSecondCutReviewFromWatchNotes,
   detectRoughCutCandidate,
   classifyPickupCategory,
   dashboardIndexStatus,
@@ -2285,12 +2650,16 @@ module.exports = {
   parseRoughCutReviewFile,
   parseRoughCutReviewStdout,
   parseSecondCutCandidateArtifact,
+  parseSecondCutReviewFile,
+  parseSecondCutWatchNotes,
   providerConfig,
   regenerateRoughCutDerivedArtifacts,
+  regenerateSecondCutReviewDerived,
   roughCutInputDefaults,
   runRoughCutReview,
   safeJoin,
   saveRoughCutWatchNotes,
+  saveSecondCutWatchNotes,
   savePickupPlan,
   slugify,
   validatePackageRunId,

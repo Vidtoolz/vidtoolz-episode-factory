@@ -11823,6 +11823,181 @@ test("production GPS shifts to second-cut candidate review for registered candid
   assert.match(gps.summary.nextSafeAction, /watch the registered second-cut candidate/i);
 });
 
+function secondCutWatchFields(overrides = {}) {
+  const pick = (key, fallback) => Object.prototype.hasOwnProperty.call(overrides, key) ? overrides[key] : fallback;
+  return {
+    candidatePath: pick("candidatePath", "/tmp/second-cut-candidate-v2.mp4"),
+    watchDate: pick("watchDate", "2026-05-17"),
+    reviewer: pick("reviewer", "Mikko"),
+    openingNotes: pick("openingNotes", "Opening is clearer."),
+    pickupPlacementNotes: pick("pickupPlacementNotes", "Pickup inserts are visible but need review."),
+    screenOnlyStretchNotes: pick("screenOnlyStretchNotes", "Screen-only sections are reduced."),
+    pacingClarityNotes: pick("pacingClarityNotes", "Pacing improved."),
+    visualTrustDisclosureNotes: pick("visualTrustDisclosureNotes", "Illustrative B-roll is not presented as proof."),
+    privacySensitiveNotes: pick("privacySensitiveNotes", "No sensitive details noticed."),
+    remainingPickupsNotes: pick("remainingPickupsNotes", "No remaining pickups listed."),
+    remainingEditFixesNotes: pick("remainingEditFixesNotes", "No edit fixes listed."),
+    decisionMarker: pick("decisionMarker", "NEEDS MORE PICKUPS"),
+  };
+}
+
+test("second cut watch notes parser respects exact markers only", () => {
+  const needsPickups = packageEngineServer.parseSecondCutWatchNotes("Second-cut review marker: NEEDS MORE PICKUPS");
+  const needsFixes = packageEngineServer.parseSecondCutWatchNotes("Second-cut review marker: NEEDS EDIT FIXES");
+  const ready = packageEngineServer.parseSecondCutWatchNotes("Second-cut review marker: READY FOR SECOND CUT");
+  const missing = packageEngineServer.parseSecondCutWatchNotes("Notes are positive and all checklist items look done.");
+
+  assert.equal(needsPickups.status, "NEEDS MORE PICKUPS");
+  assert.equal(needsPickups.secondCutReady, false);
+  assert.equal(needsFixes.status, "NEEDS EDIT FIXES");
+  assert.equal(needsFixes.secondCutReady, false);
+  assert.equal(ready.status, "READY FOR SECOND CUT");
+  assert.equal(ready.secondCutReady, true);
+  assert.equal(missing.status, "NEEDS HUMAN REVIEW");
+  assert.equal(missing.secondCutReady, false);
+});
+
+test("second cut watch notes save writes only source artifact", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "second-cut-candidate-v2.mp4");
+  fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+  fs.writeFileSync(candidatePath, "fake second cut", "utf8");
+  packageEngineServer.applySecondCutCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+  const protectedFiles = [
+    fixture.indexPath,
+    fixture.statePath,
+    path.join(fixture.runDir, "rough-cut-watch-notes.md"),
+    path.join(fixture.runDir, "rough-cut-review.md"),
+    path.join(fixture.runDir, "pickup-list.md"),
+    path.join(fixture.runDir, "edit-fix-list.md"),
+    path.join(fixture.runDir, "second-cut-candidate.md"),
+  ];
+  const before = Object.fromEntries(protectedFiles.map((filePath) => [filePath, fs.readFileSync(filePath, "utf8")]));
+
+  const result = packageEngineServer.saveSecondCutWatchNotes({
+    runId: fixture.runId,
+    fields: secondCutWatchFields({ candidatePath, decisionMarker: "NEEDS MORE PICKUPS" }),
+  }, { root: fixture.tempRoot });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.written, ["second-cut-watch-notes.md"]);
+  assert.equal(fs.existsSync(path.join(fixture.runDir, "second-cut-watch-notes.md")), true);
+  assert.equal(fs.existsSync(path.join(fixture.runDir, "second-cut-review.md")), false);
+  protectedFiles.forEach((filePath) => assert.equal(fs.readFileSync(filePath, "utf8"), before[filePath]));
+});
+
+test("second cut watch notes save rejects invalid inputs", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "second-cut-candidate-v2.mp4");
+  fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+  fs.writeFileSync(candidatePath, "fake second cut", "utf8");
+
+  assert.throws(() => packageEngineServer.saveSecondCutWatchNotes({ runId: "../escape", fields: secondCutWatchFields({ candidatePath }) }, { root: fixture.tempRoot }), /Invalid package-run id/);
+  assert.throws(() => packageEngineServer.saveSecondCutWatchNotes({ runId: fixture.runId, fields: secondCutWatchFields({ candidatePath, decisionMarker: "PASS" }) }, { root: fixture.tempRoot }), /Invalid second-cut review marker/);
+  assert.throws(() => packageEngineServer.saveSecondCutWatchNotes({ runId: fixture.runId, fields: secondCutWatchFields({ candidatePath: "" }) }, { root: fixture.tempRoot }), /candidate file/i);
+  assert.throws(() => packageEngineServer.saveSecondCutWatchNotes({ runId: fixture.runId, fields: secondCutWatchFields({ candidatePath, reviewer: "" }) }, { root: fixture.tempRoot }), /reviewer/i);
+  assert.throws(() => packageEngineServer.saveSecondCutWatchNotes({ runId: fixture.runId, fields: secondCutWatchFields({ candidatePath, watchDate: "" }) }, { root: fixture.tempRoot }), /watch date/i);
+});
+
+test("second cut derived review generation writes only derived review", () => {
+  ["NEEDS MORE PICKUPS", "NEEDS EDIT FIXES", "READY FOR SECOND CUT"].forEach((marker) => {
+    const fixture = createSecondCutInspectorFixture();
+    const candidatePath = path.join(fixture.tempRoot, "exports", `${marker.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.mp4`);
+    fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+    fs.writeFileSync(candidatePath, "fake second cut", "utf8");
+    packageEngineServer.applySecondCutCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+    packageEngineServer.saveSecondCutWatchNotes({
+      runId: fixture.runId,
+      fields: secondCutWatchFields({ candidatePath, decisionMarker: marker }),
+    }, { root: fixture.tempRoot });
+    const beforeNotes = fs.readFileSync(path.join(fixture.runDir, "second-cut-watch-notes.md"), "utf8");
+    const beforeCandidate = fs.readFileSync(path.join(fixture.runDir, "second-cut-candidate.md"), "utf8");
+
+    const result = packageEngineServer.regenerateSecondCutReviewDerived({ runId: fixture.runId }, { root: fixture.tempRoot });
+    const review = fs.readFileSync(path.join(fixture.runDir, "second-cut-review.md"), "utf8");
+
+    assert.deepEqual(result.written, ["second-cut-review.md"]);
+    assert.equal(result.review.status, marker);
+    assert.equal(result.review.secondCutReady, marker === "READY FOR SECOND CUT");
+    assert.match(review, new RegExp(`Review status: ${marker}`));
+    assert.doesNotMatch(review, /Final review:\s*PASS|publish-ready:\s*yes|upload-ready:\s*yes/i);
+    assert.equal(fs.readFileSync(path.join(fixture.runDir, "second-cut-watch-notes.md"), "utf8"), beforeNotes);
+    assert.equal(fs.readFileSync(path.join(fixture.runDir, "second-cut-candidate.md"), "utf8"), beforeCandidate);
+  });
+});
+
+test("second cut readiness requires exact READY FOR SECOND CUT marker", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "second-cut-candidate-v2.mp4");
+  fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+  fs.writeFileSync(candidatePath, "fake second cut", "utf8");
+  fs.writeFileSync(path.join(fixture.runDir, "second-cut-watch-notes.md"), "# Second-Cut Watch Notes\n\nAll good. Checklist done. Candidate exists. Pickup media exists.\n", "utf8");
+
+  const result = packageEngineServer.regenerateSecondCutReviewDerived({ runId: fixture.runId }, { root: fixture.tempRoot });
+
+  assert.equal(result.review.status, "NEEDS HUMAN REVIEW");
+  assert.equal(result.review.secondCutReady, false);
+});
+
+test("second cut watch and review managed sections preserve manual notes", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "second-cut-candidate-v2.mp4");
+  fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+  fs.writeFileSync(candidatePath, "fake second cut", "utf8");
+  fs.writeFileSync(path.join(fixture.runDir, "second-cut-watch-notes.md"), "# Second-Cut Watch Notes\n\n## Manual Notes\n\nKeep source manual note.\n", "utf8");
+  fs.writeFileSync(path.join(fixture.runDir, "second-cut-review.md"), "# Second-Cut Review\n\n## Manual Notes\n\nKeep derived manual note.\n", "utf8");
+
+  packageEngineServer.saveSecondCutWatchNotes({ runId: fixture.runId, fields: secondCutWatchFields({ candidatePath }) }, { root: fixture.tempRoot });
+  packageEngineServer.regenerateSecondCutReviewDerived({ runId: fixture.runId }, { root: fixture.tempRoot });
+
+  assert.match(fs.readFileSync(path.join(fixture.runDir, "second-cut-watch-notes.md"), "utf8"), /Keep source manual note/);
+  assert.match(fs.readFileSync(path.join(fixture.runDir, "second-cut-review.md"), "utf8"), /Keep derived manual note/);
+});
+
+test("second cut inspector surfaces watch notes review and stale derived state", () => {
+  const fixture = createSecondCutInspectorFixture();
+  const candidatePath = path.join(fixture.tempRoot, "exports", "second-cut-candidate-v2.mp4");
+  fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+  fs.writeFileSync(candidatePath, "fake second cut", "utf8");
+  packageEngineServer.applySecondCutCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+  let inspector = packageEngineServer.buildSecondCutInspector({ runId: fixture.runId }, { root: fixture.tempRoot, videoRoot: fixture.videoRoot });
+  assert.equal(inspector.secondCutWatchNotesExists, false);
+  assert.equal(inspector.secondCutReady, false);
+  assert.match(inspector.nextSafeAction, /record second-cut watch notes/i);
+
+  packageEngineServer.saveSecondCutWatchNotes({ runId: fixture.runId, fields: secondCutWatchFields({ candidatePath, decisionMarker: "NEEDS MORE PICKUPS" }) }, { root: fixture.tempRoot });
+  inspector = packageEngineServer.buildSecondCutInspector({ runId: fixture.runId }, { root: fixture.tempRoot, videoRoot: fixture.videoRoot });
+  assert.equal(inspector.secondCutWatchNotesExists, true);
+  assert.equal(inspector.secondCutReviewStatus, "NEEDS MORE PICKUPS");
+  assert.equal(inspector.secondCutReady, false);
+  assert.equal(inspector.warnings.some((warning) => /derived second-cut review missing/i.test(warning)), true);
+});
+
+test("production GPS integrates second cut human decisions conservatively", () => {
+  const cases = [
+    ["NEEDS MORE PICKUPS", "Pickup / Edit-Fix Planning", /remaining pickups/i, false],
+    ["NEEDS EDIT FIXES", "Edit Fix Planning", /edit fixes/i, false],
+    ["READY FOR SECOND CUT", "Final Review Preparation", /final watch review/i, true],
+  ];
+  cases.forEach(([marker, gate, actionPattern, ready]) => {
+    const fixture = createSecondCutInspectorFixture();
+    const candidatePath = path.join(fixture.tempRoot, "exports", `${marker.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.mp4`);
+    fs.mkdirSync(path.dirname(candidatePath), { recursive: true });
+    fs.writeFileSync(candidatePath, "fake second cut", "utf8");
+    packageEngineServer.applySecondCutCandidateRegistration({ runId: fixture.runId, candidatePath }, { root: fixture.tempRoot });
+    packageEngineServer.saveSecondCutWatchNotes({ runId: fixture.runId, fields: secondCutWatchFields({ candidatePath, decisionMarker: marker }) }, { root: fixture.tempRoot });
+    packageEngineServer.regenerateSecondCutReviewDerived({ runId: fixture.runId }, { root: fixture.tempRoot });
+
+    const gps = packageEngineServer.buildProductionGps({ runId: fixture.runId }, { root: fixture.tempRoot, videoRoot: fixture.videoRoot });
+
+    assert.equal(gps.summary.currentGate, gate);
+    assert.match(gps.summary.nextSafeAction, actionPattern);
+    assert.equal(gps.secondCutInspector.secondCutReady, ready);
+    assert.equal(gps.blockedActions.includes("publish"), true);
+    assert.equal(gps.blockedActions.includes("archive"), true);
+  });
+});
+
 test("capture evidence intake preview does not write files", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "capture-intake-preview-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-12-preview");
@@ -12560,6 +12735,35 @@ test("package runs dashboard renders Second-Cut Candidate Registration safely", 
   assert.match(html, /data-apply-second-cut-candidate disabled/);
   assert.doesNotMatch(html, /PASS/);
   assert.doesNotMatch(html, /approval marker/i);
+});
+
+test("package runs dashboard renders Second-Cut Human Review safely", () => {
+  const html = packageRunsDashboard.renderSecondCutHumanReview({
+    runId: "2026-05-06-ai-video-proof-plan",
+    secondCutInspector: {
+      registeredCandidate: { path: "/tmp/second-cut-candidate.mp4" },
+      candidateStatus: "found_needs_review",
+      secondCutWatchNotesExists: false,
+      secondCutReviewExists: false,
+      secondCutReviewStatus: "NEEDS HUMAN REVIEW",
+      secondCutReady: false,
+      humanGateRequired: true,
+      blockedActions: ["mark second-cut ready", "publish"],
+      aiAllowed: ["inspect candidate metadata"],
+      aiBlocked: ["choose READY FOR SECOND CUT"],
+    },
+  });
+
+  assert.match(html, /Second-Cut Human Review/);
+  assert.match(html, /NEEDS MORE PICKUPS/);
+  assert.match(html, /NEEDS EDIT FIXES/);
+  assert.match(html, /READY FOR SECOND CUT/);
+  assert.match(html, /human approval marker/i);
+  assert.match(html, /data-save-second-cut-watch-notes/);
+  assert.match(html, /data-regenerate-second-cut-review/);
+  assert.match(html, /AI allowed/);
+  assert.match(html, /AI blocked/);
+  assert.doesNotMatch(html, /Final review:\s*PASS/i);
 });
 
 test("package runs dashboard formats capture evidence intake rows", () => {

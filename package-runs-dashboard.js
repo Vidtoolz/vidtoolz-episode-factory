@@ -1155,6 +1155,67 @@ Capture evidence approval: PASS`;
     </section>`;
   }
 
+  function renderSecondCutHumanReview(status = {}) {
+    const runId = status.runId || "";
+    const inspector = status.secondCutInspector || {};
+    const candidate = inspector.registeredCandidate || {};
+    const list = (items, fallback) => `<ul>${(Array.isArray(items) && items.length ? items : [fallback]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+    return `<section class="second-cut-human-review" data-second-cut-human-review>
+      <div class="mikko-console-header">
+        <div>
+          <p class="eyebrow">Human Gate</p>
+          <h3>Second-Cut Human Review</h3>
+        </div>
+        ${renderStatusBadge(inspector.secondCutReviewStatus || "NEEDS HUMAN REVIEW")}
+      </div>
+      <div class="human-review-required">
+        <strong>Mikko decision required</strong>
+        <p>AI can parse notes and regenerate the derived review, but cannot choose READY FOR SECOND CUT.</p>
+      </div>
+      <div class="lifecycle-review-grid">
+        <div><span>Run</span><strong>${escapeHtml(runId || "unknown")}</strong></div>
+        <div><span>Registered candidate</span><strong>${escapeHtml(candidate.path || "No registered candidate detected.")}</strong></div>
+        <div><span>Candidate status</span><strong>${escapeHtml(inspector.candidateStatus || "unknown")}</strong></div>
+        <div><span>Watch notes</span><strong>${inspector.secondCutWatchNotesExists ? "exists" : "missing"}</strong></div>
+        <div><span>Derived review</span><strong>${inspector.secondCutReviewExists ? "exists" : "missing"}</strong></div>
+        <div><span>Second-cut ready</span><strong>${inspector.secondCutReady ? "yes" : "no"}</strong></div>
+      </div>
+      <p class="muted">Allowed decision markers: NEEDS MORE PICKUPS, NEEDS EDIT FIXES, READY FOR SECOND CUT.</p>
+      <div class="rough-cut-form-grid">
+        ${renderRoughCutTextInput("candidatePath", "Candidate file reviewed", candidate.path || "", true).replace(/data-rough-cut-field/g, "data-second-cut-review-field")}
+        ${renderRoughCutTextInput("watchDate", "Watch date", new Date().toISOString().slice(0, 10), true).replace(/data-rough-cut-field/g, "data-second-cut-review-field")}
+        ${renderRoughCutTextInput("reviewer", "Reviewer", "Mikko", true).replace(/data-rough-cut-field/g, "data-second-cut-review-field")}
+        ${renderRoughCutTextarea("openingNotes", "Opening / viewer promise notes").replace(/data-rough-cut-field/g, "data-second-cut-review-field")}
+        ${renderRoughCutTextarea("pickupPlacementNotes", "Pickup placement notes").replace(/data-rough-cut-field/g, "data-second-cut-review-field")}
+        ${renderRoughCutTextarea("screenOnlyStretchNotes", "Screen-only stretch notes").replace(/data-rough-cut-field/g, "data-second-cut-review-field")}
+        ${renderRoughCutTextarea("pacingClarityNotes", "Pacing / clarity notes").replace(/data-rough-cut-field/g, "data-second-cut-review-field")}
+        ${renderRoughCutTextarea("visualTrustDisclosureNotes", "Visual trust / disclosure notes").replace(/data-rough-cut-field/g, "data-second-cut-review-field")}
+        ${renderRoughCutTextarea("privacySensitiveNotes", "Privacy / sensitive detail notes").replace(/data-rough-cut-field/g, "data-second-cut-review-field")}
+        ${renderRoughCutTextarea("remainingPickupsNotes", "Remaining pickups needed").replace(/data-rough-cut-field/g, "data-second-cut-review-field")}
+        ${renderRoughCutTextarea("remainingEditFixesNotes", "Remaining edit fixes needed").replace(/data-rough-cut-field/g, "data-second-cut-review-field")}
+        <label class="rough-cut-field">
+          <span>Second-cut review marker *</span>
+          <select data-second-cut-review-field="decisionMarker">
+            <option value="NEEDS MORE PICKUPS">NEEDS MORE PICKUPS</option>
+            <option value="NEEDS EDIT FIXES">NEEDS EDIT FIXES</option>
+            <option value="READY FOR SECOND CUT">READY FOR SECOND CUT</option>
+          </select>
+          <small>This is the human approval marker. Do not use unless Mikko has watched the full second-cut candidate.</small>
+        </label>
+      </div>
+      <div class="rough-cut-actions">
+        <button type="button" data-save-second-cut-watch-notes>Save second-cut watch notes</button>
+        <button type="button" data-regenerate-second-cut-review ${inspector.secondCutWatchNotesExists ? "" : "disabled"}>Regenerate derived second-cut review</button>
+        <span data-second-cut-review-status class="capture-write-status">Writes only second-cut-watch-notes.md or second-cut-review.md.</span>
+      </div>
+      <div class="gps-split">
+        <div><h4>AI allowed</h4>${list(["prepare review checklist", "parse notes", "regenerate derived review", "inspect candidate metadata"], "inspect candidate metadata")}</div>
+        <div><h4>AI blocked</h4>${list(["choose READY FOR SECOND CUT", "approve final review", "publish/upload/archive", "update state/index", "move/delete media"], "approve or update state")}</div>
+      </div>
+      <div class="blocked-actions-panel"><h4>Blocked Actions</h4>${list(inspector.blockedActions, "mark second-cut ready remains blocked until exact human marker and derived review.")}</div>
+    </section>`;
+  }
+
   function renderMikkoInputConsole(status = {}, result = null) {
     const runId = status.runId || "";
     const candidate = status.roughCutCandidate || {};
@@ -1164,6 +1225,7 @@ Capture evidence approval: PASS`;
       ${status.productionGps ? renderProductionGps(status.productionGps) : ""}
       ${status.secondCutInspector ? renderSecondCutInspector(status.secondCutInspector) : ""}
       ${renderSecondCutCandidateRegistration(status)}
+      ${renderSecondCutHumanReview(status)}
       ${renderActiveRunSummary(status.activeRunSummary || {
         runId,
         currentLifecycleStage: status.currentInferredStage,
@@ -1547,6 +1609,18 @@ Capture evidence approval: PASS`;
         applySecondCutCandidateRegistration(applySecondCutCandidate);
         return;
       }
+      const saveSecondCutWatchNotes = event.target.closest("[data-save-second-cut-watch-notes]");
+      if (saveSecondCutWatchNotes) {
+        event.preventDefault();
+        saveSecondCutHumanReviewNotes(saveSecondCutWatchNotes);
+        return;
+      }
+      const regenerateSecondCutReview = event.target.closest("[data-regenerate-second-cut-review]");
+      if (regenerateSecondCutReview) {
+        event.preventDefault();
+        regenerateSecondCutReviewDerived(regenerateSecondCutReview);
+        return;
+      }
       const link = event.target.closest("[data-preview-artifact]");
       if (!link) return;
       event.preventDefault();
@@ -1746,6 +1820,8 @@ Capture evidence approval: PASS`;
         pickupPlanSaveApi: config.pickupPlanSaveApi || "/api/package-runs/pickup-plan/save",
         secondCutCandidatePreviewApi: config.secondCutCandidatePreviewApi || "/api/package-runs/second-cut-candidate/preview",
         secondCutCandidateApplyApi: config.secondCutCandidateApplyApi || "/api/package-runs/second-cut-candidate/apply",
+        secondCutWatchNotesSaveApi: config.secondCutWatchNotesSaveApi || "/api/package-runs/second-cut-watch-notes/save",
+        secondCutReviewRegenerateApi: config.secondCutReviewRegenerateApi || "/api/package-runs/second-cut-review/regenerate-derived",
         nonceHeader: config.nonceHeader || "x-vidtoolz-local-write-nonce",
         localWriteNonce: config.localWriteNonce || (localWriteConfig ? localWriteConfig.localWriteNonce : ""),
       };
@@ -1988,6 +2064,63 @@ Capture evidence approval: PASS`;
         });
     }
 
+    function secondCutHumanReviewPanel(button) {
+      return button.closest("[data-second-cut-human-review]");
+    }
+
+    function setSecondCutHumanReviewStatus(panel, message, type = "") {
+      const status = panel ? panel.querySelector("[data-second-cut-review-status]") : null;
+      if (status) {
+        status.textContent = message;
+        status.className = `capture-write-status ${type}`.trim();
+      }
+    }
+
+    function secondCutHumanReviewFields(panel) {
+      const fields = {};
+      panel.querySelectorAll("[data-second-cut-review-field]").forEach((field) => {
+        fields[field.dataset.secondCutReviewField] = field.value;
+      });
+      return fields;
+    }
+
+    function saveSecondCutHumanReviewNotes(button) {
+      const consoleEl = button.closest("[data-rough-cut-console]");
+      const panel = secondCutHumanReviewPanel(button);
+      if (!consoleEl || !panel) return;
+      button.disabled = true;
+      setSecondCutHumanReviewStatus(panel, "Saving second-cut-watch-notes.md only.", "pending");
+      roughCutRequest((config) => config.secondCutWatchNotesSaveApi, {
+        runId: consoleEl.dataset.runId || "",
+        fields: secondCutHumanReviewFields(panel),
+      })
+        .then((payload) => {
+          setSecondCutHumanReviewStatus(panel, payload.warning || "Second-cut watch notes saved.", "valid");
+          const regen = panel.querySelector("[data-regenerate-second-cut-review]");
+          if (regen) regen.disabled = false;
+        })
+        .catch((error) => setSecondCutHumanReviewStatus(panel, error.message, "missing"))
+        .finally(() => {
+          button.disabled = false;
+        });
+    }
+
+    function regenerateSecondCutReviewDerived(button) {
+      const consoleEl = button.closest("[data-rough-cut-console]");
+      const panel = secondCutHumanReviewPanel(button);
+      if (!consoleEl || !panel) return;
+      button.disabled = true;
+      setSecondCutHumanReviewStatus(panel, "Regenerating second-cut-review.md only.", "pending");
+      roughCutRequest((config) => config.secondCutReviewRegenerateApi, {
+        runId: consoleEl.dataset.runId || "",
+      })
+        .then((payload) => setSecondCutHumanReviewStatus(panel, payload.warning || `Second-cut review: ${payload.review.status}`, "valid"))
+        .catch((error) => setSecondCutHumanReviewStatus(panel, error.message, "missing"))
+        .finally(() => {
+          button.disabled = false;
+        });
+    }
+
     function handleGridInput(event) {
       const input = event.target.closest("[data-capture-field]");
       if (input) {
@@ -2057,6 +2190,7 @@ Capture evidence approval: PASS`;
     renderProductionGps,
     renderSecondCutInspector,
     renderSecondCutCandidateRegistration,
+    renderSecondCutHumanReview,
     renderRoughCutResultCard,
     renderPickupPlanGui,
     renderMediaPanel,
