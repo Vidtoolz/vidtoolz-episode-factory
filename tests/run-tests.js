@@ -12901,12 +12901,15 @@ test("package engine provider config defaults and respects openai mode", () => {
   const openai = packageEngineServer.providerConfig({
     THUMBNAIL_PROVIDER: "openai",
     OPENAI_IMAGE_MODEL: "gpt-image-1",
+    OPENAI_IMAGE_TIMEOUT_MS: "12345",
   });
 
   assert.equal(defaults.provider, "placeholder");
   assert.equal(defaults.model, "gpt-image-1");
+  assert.equal(defaults.timeoutMs, 45000);
   assert.equal(openai.provider, "openai");
   assert.equal(openai.model, "gpt-image-1");
+  assert.equal(openai.timeoutMs, 12345);
 });
 
 test("package engine openai thumbnail mode requires an api key", async () => {
@@ -12938,6 +12941,47 @@ test("package engine openai prompt builder creates three distinct safe youtube p
     assert.match(prompt, /TEST BEFORE YOU SHOOT/);
     assert.match(prompt, /serious solo creators/);
   });
+});
+
+test("package engine openai thumbnail mode reports upstream request failures", async () => {
+  await assert.rejects(
+    () => packageEngineServer.createThumbnailResponse({
+      topic: "AI video idea filter",
+      thumbnailConcept: "Creator sorting ideas",
+      onThumbnailText: "Stop guessing",
+    }, {
+      env: {
+        THUMBNAIL_PROVIDER: "openai",
+        OPENAI_API_KEY: "test-key",
+      },
+      fetchImpl: async () => {
+        throw new Error("network unavailable");
+      },
+    }),
+    /OpenAI image generation request failed: network unavailable/
+  );
+});
+
+test("package engine openai thumbnail mode reports upstream timeout", async () => {
+  await assert.rejects(
+    () => packageEngineServer.createThumbnailResponse({
+      topic: "AI video idea filter",
+      thumbnailConcept: "Creator sorting ideas",
+      onThumbnailText: "Stop guessing",
+    }, {
+      env: {
+        THUMBNAIL_PROVIDER: "openai",
+        OPENAI_API_KEY: "test-key",
+        OPENAI_IMAGE_TIMEOUT_MS: "1000",
+      },
+      fetchImpl: async () => {
+        const error = new Error("operation timed out");
+        error.name = "TimeoutError";
+        throw error;
+      },
+    }),
+    /OpenAI image generation timed out after 1 seconds/
+  );
 });
 
 test("package runs dashboard normalizes filters and renders run cards", () => {
@@ -13634,6 +13678,19 @@ test("package engine thumbnail button uses configured generation API instead of 
   assert.match(script, /fetch\(thumbnailGenerationApi, \{/);
   assert.match(script, /els\.generateThumbnails\.addEventListener\("click", \(\) => generateMoreThumbnailCandidates\(\)\);/);
   assert.doesNotMatch(script, /return buildThumbnailCandidates\(candidate\);/);
+});
+
+test("package engine browser code surfaces thumbnail backend failures and recovers button state", () => {
+  const script = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const html = fs.readFileSync(path.join(__dirname, "..", "package-engine.html"), "utf8");
+
+  assert.match(script, /const THUMBNAIL_REQUEST_TIMEOUT_MS = 60000;/);
+  assert.match(script, /AbortSignal\.timeout\(THUMBNAIL_REQUEST_TIMEOUT_MS\)/);
+  assert.match(script, /Thumbnail generation failed/);
+  assert.match(script, /The configured thumbnail backend did not return usable candidates\./);
+  assert.match(script, /Thumbnail generation timed out\./);
+  assert.match(script, /finally \{\s*isGeneratingThumbnails = false;\s*render\(\);/);
+  assert.match(html, /package-engine\.js\?v=1\.7\.4-thumb5/);
 });
 
 test("visible app version and html cache busters use current release", () => {

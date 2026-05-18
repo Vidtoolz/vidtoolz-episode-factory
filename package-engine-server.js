@@ -47,6 +47,7 @@ const DEFAULT_OPENAI_IMAGE_MODEL = 'gpt-image-1';
 const DEFAULT_OPENAI_IMAGE_SIZE = '1536x1024';
 const DEFAULT_OPENAI_IMAGE_QUALITY = 'auto';
 const DEFAULT_OPENAI_IMAGE_FORMAT = 'png';
+const DEFAULT_OPENAI_IMAGE_TIMEOUT_MS = 45000;
 const CAPTURE_EVIDENCE_TARGETS = [
   'takes-log.md',
   'screen-recording-checklist.md',
@@ -3400,6 +3401,7 @@ function providerConfig(env = process.env) {
     size: env.OPENAI_IMAGE_SIZE || DEFAULT_OPENAI_IMAGE_SIZE,
     quality: env.OPENAI_IMAGE_QUALITY || DEFAULT_OPENAI_IMAGE_QUALITY,
     outputFormat: env.OPENAI_IMAGE_FORMAT || DEFAULT_OPENAI_IMAGE_FORMAT,
+    timeoutMs: Number(env.OPENAI_IMAGE_TIMEOUT_MS || DEFAULT_OPENAI_IMAGE_TIMEOUT_MS),
   };
 }
 
@@ -3542,17 +3544,30 @@ async function createOpenAIThumbnailCandidates(payload, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const prompts = buildOpenAIThumbnailPrompts(payload).slice(0, Number(payload.count || 3));
   const candidates = [];
+  const timeoutMs = Number.isFinite(config.timeoutMs) && config.timeoutMs > 0 ? config.timeoutMs : DEFAULT_OPENAI_IMAGE_TIMEOUT_MS;
 
   // TODO: Persist generated image files under package-runs/<run-id>/thumbnail-candidates/.
   for (const [idx, prompt] of prompts.entries()) {
-    const response = await fetchImpl(OPENAI_IMAGES_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.apiKey}`,
-      },
-      body: JSON.stringify(buildOpenAIImageRequest(prompt, config)),
-    });
+    let response;
+    try {
+      response = await fetchImpl(OPENAI_IMAGES_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${config.apiKey}`,
+        },
+        body: JSON.stringify(buildOpenAIImageRequest(prompt, config)),
+        signal: options.signal || AbortSignal.timeout(timeoutMs),
+      });
+    } catch (error) {
+      const timedOut = error && (error.name === 'AbortError' || error.name === 'TimeoutError');
+      const message = timedOut
+        ? `OpenAI image generation timed out after ${Math.ceil(timeoutMs / 1000)} seconds.`
+        : `OpenAI image generation request failed: ${error && error.message ? error.message : 'unknown network error'}`;
+      const wrapped = new Error(message);
+      wrapped.statusCode = timedOut ? 504 : 502;
+      throw wrapped;
+    }
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       const message = data && data.error && data.error.message ? data.error.message : `OpenAI image generation failed (${response.status}).`;

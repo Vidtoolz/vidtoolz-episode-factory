@@ -5,6 +5,7 @@
   const runTools = window.PackageEngineRun;
   const STATUS_API = "/api/package-engine/status";
   const DEFAULT_THUMBNAIL_API = "/api/package-engine/thumbnails";
+  const THUMBNAIL_REQUEST_TIMEOUT_MS = 60000;
   const els = {
     status: document.querySelector("#packageStatus"),
     grid: document.querySelector("#packageGrid"),
@@ -170,6 +171,18 @@
     const error = generatedThumbnailError
       ? `<p class="generated-thumbnail-error">${escapeHtml(generatedThumbnailError)}</p>`
       : "";
+    if (generatedThumbnailError && !generatedThumbnailCandidates.length) {
+      els.generatedThumbnailPanel.innerHTML = `
+        <div class="generated-thumbnail-header">
+          <div>
+            <h2>Thumbnail generation failed</h2>
+            <p>The configured thumbnail backend did not return usable candidates.</p>
+          </div>
+        </div>
+        ${error}
+      `;
+      return;
+    }
     const providerNote = generatedThumbnailProvider === "openai"
       ? `Externally generated thumbnail drafts from ${generatedThumbnailModel || "OpenAI"}.`
       : "Local placeholder SVG previews for now; these are not final AI or YouTube thumbnails.";
@@ -222,7 +235,7 @@
     showStatus("Generating thumbnail candidates…", "");
     render();
     try {
-      const response = await fetch(thumbnailGenerationApi, {
+      const fetchOptions = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -233,6 +246,12 @@
           targetViewer: selected.targetViewer || "",
           count: 3,
         }),
+      };
+      if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+        fetchOptions.signal = AbortSignal.timeout(THUMBNAIL_REQUEST_TIMEOUT_MS);
+      }
+      const response = await fetch(thumbnailGenerationApi, {
+        ...fetchOptions,
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -272,7 +291,10 @@
         throw new Error("Thumbnail generation returned no candidates.");
       }
     } catch (error) {
-      const message = error && error.message && error.message !== "Failed to fetch"
+      const timedOut = error && (error.name === "AbortError" || error.name === "TimeoutError");
+      const message = timedOut
+        ? "Thumbnail generation timed out. The backend did not return candidates; check the OpenAI image provider and try again."
+        : error && error.message && error.message !== "Failed to fetch"
         ? error.message
         : "Thumbnail generation failed. Check that ./scripts/serve-local.sh is running.";
       generatedThumbnailError = message;
