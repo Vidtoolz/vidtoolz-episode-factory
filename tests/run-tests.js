@@ -13623,6 +13623,19 @@ test("package engine browser code updates only the owning card when selecting ge
   assert.match(script, /generateMoreThumbnailCandidates\(thumbGenerate\.dataset\.thumbGenerate\)/);
 });
 
+test("package engine thumbnail button uses configured generation API instead of template fallback", () => {
+  const script = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+
+  assert.match(script, /const STATUS_API = "\/api\/package-engine\/status";/);
+  assert.match(script, /const DEFAULT_THUMBNAIL_API = "\/api\/package-engine\/thumbnails";/);
+  assert.match(script, /let thumbnailGenerationApi = DEFAULT_THUMBNAIL_API;/);
+  assert.match(script, /function loadThumbnailGenerationConfig\(\)/);
+  assert.match(script, /thumbnailGenerationApi = String\(payload\.api\);/);
+  assert.match(script, /fetch\(thumbnailGenerationApi, \{/);
+  assert.match(script, /els\.generateThumbnails\.addEventListener\("click", \(\) => generateMoreThumbnailCandidates\(\)\);/);
+  assert.doesNotMatch(script, /return buildThumbnailCandidates\(candidate\);/);
+});
+
 test("visible app version and html cache busters use current release", () => {
   const htmlFiles = ["index.html", "package-engine.html", "package-runs-dashboard.html"];
   const expectedCacheBuster = new RegExp(`v=${model.APP_VERSION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);

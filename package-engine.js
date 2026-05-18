@@ -3,6 +3,8 @@
 
   const model = window.PackageEngineModel;
   const runTools = window.PackageEngineRun;
+  const STATUS_API = "/api/package-engine/status";
+  const DEFAULT_THUMBNAIL_API = "/api/package-engine/thumbnails";
   const els = {
     status: document.querySelector("#packageStatus"),
     grid: document.querySelector("#packageGrid"),
@@ -26,6 +28,7 @@
   let generatedThumbnailError = "";
   let generatedThumbnailProvider = "placeholder";
   let generatedThumbnailModel = "local-svg-placeholder";
+  let thumbnailGenerationApi = DEFAULT_THUMBNAIL_API;
   let thumbnailGenerationCount = 0;
   let isGeneratingThumbnails = false;
 
@@ -80,7 +83,7 @@
     if (!candidate) return [];
     const generated = generatedThumbnailsByCandidate[candidate.id] || [];
     if (generated.length) return generated;
-    return buildThumbnailCandidates(candidate);
+    return [];
   }
 
   function primaryGeneratedThumbnail(candidate) {
@@ -151,7 +154,7 @@
         <div class="generated-thumbnail-header">
           <div>
             <h2>Generating thumbnail candidates...</h2>
-            <p>Creating local image previews for the selected package.</p>
+            <p>Calling the configured thumbnail-generation provider for the selected package.</p>
           </div>
           <span class="thumbnail-spinner" aria-hidden="true"></span>
         </div>
@@ -219,7 +222,7 @@
     showStatus("Generating thumbnail candidates…", "");
     render();
     try {
-      const response = await fetch("/api/package-engine/thumbnails", {
+      const response = await fetch(thumbnailGenerationApi, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -228,7 +231,6 @@
           onThumbnailText: selected.onThumbnailText || "",
           viewerPromise: selected.viewerPromise || "",
           targetViewer: selected.targetViewer || "",
-          creator: "gpt-image-2",
           count: 3,
         }),
       });
@@ -247,7 +249,7 @@
         id: String(item.id || `${selected.id}-thumb-${thumbnailGenerationCount + index + 1}`),
         label: String(item.label || `Thumbnail ${thumbnailGenerationCount + index + 1}`),
         prompt: String(item.prompt || selected.thumbnailConcept || selected.proposedTitle || selected.idea || "Thumbnail concept"),
-        creator: String(item.creator || "gpt-image-2"),
+        creator: String(item.creator || generatedThumbnailModel || generatedThumbnailProvider),
         selected: index === 0,
         thumbnailImage: String(item.thumbnailImage || item.thumbnail_image || item.thumbnailImagePath || item.thumbnail_image_path || ""),
       }));
@@ -474,6 +476,25 @@
       });
   }
 
+  function loadThumbnailGenerationConfig() {
+    return fetch(STATUS_API, { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        if (payload && payload.api) {
+          thumbnailGenerationApi = String(payload.api);
+        }
+        if (payload && payload.thumbnailProvider) {
+          generatedThumbnailProvider = String(payload.thumbnailProvider);
+        }
+        if (payload && payload.model) {
+          generatedThumbnailModel = String(payload.model);
+        }
+      })
+      .catch(() => {
+        thumbnailGenerationApi = DEFAULT_THUMBNAIL_API;
+      });
+  }
+
   els.grid.addEventListener("click", handleGridClick);
   els.sort.addEventListener("change", render);
   els.filter.addEventListener("change", render);
@@ -481,5 +502,5 @@
   els.downloadMarkdown.addEventListener("click", downloadSelectedMarkdown);
   els.generateThumbnails.addEventListener("click", () => generateMoreThumbnailCandidates());
 
-  loadCandidates();
+  loadThumbnailGenerationConfig().finally(loadCandidates);
 })();
