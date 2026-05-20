@@ -45,6 +45,7 @@ node --check scripts/package-run-state-proposal.js
 node --check scripts/package-run-production-approval-repair.js
 node --check scripts/package-run-production-approval-review.js
 node --check scripts/script-image-assets-dry-run.js
+node --check scripts/script-image-assets-review-page.js
 node --check scripts/package-runs-index.js
 node --check scripts/package-runs-dashboard-launch.js
 node --check scripts/trailer-cue-new.js

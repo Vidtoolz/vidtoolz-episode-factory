@@ -40,6 +40,7 @@ const packageProductionApprovalReviewScript = require("../scripts/package-run-pr
 const packageRunsIndexScript = require("../scripts/package-runs-index.js");
 const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashboard-launch.js");
 const scriptImageAssetsDryRunScript = require("../scripts/script-image-assets-dry-run.js");
+const scriptImageAssetsReviewPageScript = require("../scripts/script-image-assets-review-page.js");
 const packageEngineServer = require("../package-engine-server.js");
 const packageRunsDashboard = require("../package-runs-dashboard.js");
 const episodeFactoryCli = require("../scripts/episode-factory.js");
@@ -15045,6 +15046,118 @@ test("script image assets artifact writing uses tmp root and refuses overwrite",
     /Target folder already exists/
   );
   assert.equal(fs.existsSync(path.join(outputFolder, "block-001-prompt-01.png")), false);
+});
+
+test("script image assets review page builds read-only prompt review data", () => {
+  const artifacts = {
+    inputFolder: "/tmp/script-image-assets-review-fixture",
+    scriptBlocks: {
+      headline: "Review Headline",
+      source: { source_type: "markdown_file", source_path: "/tmp/final-script.md" },
+      block_count: 1,
+      blocks: [
+        {
+          block_id: "block-001",
+          sentence_start: 1,
+          sentence_end: 3,
+          text: "Block text for review.",
+        },
+      ],
+    },
+    imagePrompts: {
+      headline: "Review Headline",
+      prompts: [1, 2, 3, 4].map((promptNumber) => ({
+        block_id: "block-001",
+        prompt_number: promptNumber,
+        prompt_id: `block-001-prompt-0${promptNumber}`,
+        prompt_type: `type-${promptNumber}`,
+        full_prompt: `Full prompt ${promptNumber} <candidate>`,
+      })),
+    },
+    manifest: {
+      image_generation_enabled: false,
+      items: [1, 2, 3, 4].map((promptNumber) => ({
+        prompt_id: `block-001-prompt-0${promptNumber}`,
+        generation_status: "not_started",
+        reviewed_by_mikko: false,
+        approved: false,
+        selected: false,
+        production_ready: false,
+      })),
+    },
+  };
+
+  const data = scriptImageAssetsReviewPageScript.buildReviewData(artifacts);
+  const html = scriptImageAssetsReviewPageScript.renderHtml(data);
+
+  assert.equal(data.headline, "Review Headline");
+  assert.equal(data.blockCount, 1);
+  assert.equal(data.promptCount, 4);
+  assert.equal(data.expectedPromptCount, 4);
+  assert.equal(data.manifestSummary.imageGenerationEnabled, false);
+  assert.deepEqual(data.manifestSummary.generationStatuses, ["not_started"]);
+  assert.deepEqual(data.warnings, []);
+  assert.match(html, /All prompts shown here are candidates only/);
+  assert.match(html, /manifest: not_started/);
+  assert.match(html, /Full prompt 1 &lt;candidate&gt;/);
+  assert.doesNotMatch(html, /<candidate>/);
+});
+
+test("script image assets review page writes standalone html without touching input artifacts", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "script-image-assets-review-page-"));
+  const inputFolder = path.join(tempRoot, "input");
+  const outputPath = path.join(tempRoot, "report", "review.html");
+  fs.mkdirSync(inputFolder, { recursive: true });
+  writeTestFile(
+    inputFolder,
+    "script-blocks.json",
+    JSON.stringify({
+      headline: "Standalone Review",
+      source: { source_type: "markdown_file", source_path: "/tmp/source.md" },
+      block_count: 1,
+      blocks: [{ block_id: "block-001", sentence_start: 1, sentence_end: 1, text: "One block." }],
+    })
+  );
+  writeTestFile(
+    inputFolder,
+    "image-prompts.json",
+    JSON.stringify({
+      headline: "Standalone Review",
+      prompts: [1, 2, 3, 4].map((promptNumber) => ({
+        block_id: "block-001",
+        prompt_number: promptNumber,
+        prompt_id: `block-001-prompt-0${promptNumber}`,
+        prompt_type: `type-${promptNumber}`,
+        full_prompt: `Prompt ${promptNumber}`,
+      })),
+    })
+  );
+  writeTestFile(
+    inputFolder,
+    "generation-manifest.json",
+    JSON.stringify({
+      image_generation_enabled: false,
+      items: [1, 2, 3, 4].map((promptNumber) => ({
+        prompt_id: `block-001-prompt-0${promptNumber}`,
+        generation_status: "not_started",
+        reviewed_by_mikko: false,
+        approved: false,
+        selected: false,
+        production_ready: false,
+      })),
+    })
+  );
+  const beforeManifest = fs.readFileSync(path.join(inputFolder, "generation-manifest.json"), "utf8");
+
+  const output = captureConsole(() =>
+    scriptImageAssetsReviewPageScript.main(["--input-folder", inputFolder, "--output", outputPath])
+  );
+
+  assert.equal(output.result, 0);
+  assert.equal(fs.existsSync(outputPath), true);
+  assert.match(fs.readFileSync(outputPath, "utf8"), /Standalone Review/);
+  assert.equal(fs.readFileSync(path.join(inputFolder, "generation-manifest.json"), "utf8"), beforeManifest);
+  assert.equal(fs.existsSync(path.join(inputFolder, "block-001-prompt-01.png")), false);
 });
 
 async function runTests() {

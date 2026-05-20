@@ -47,3 +47,13 @@ The v1.2.0 release was completed on 2026-05-01. The release covered:
 - Updated README, changelog, known limitations, smoke test, release checklist, workflow docs, and data model docs.
 
 Next possible patch: consider v1.2.1 to change backup recency threshold to 24 hours if stricter daily backup discipline is preferred.
+
+## 2026-05-20 Script Image Assets Prompt Review Page
+
+- Repo: `/home/vidtoolz/vidtoolz-episode-factory`
+- Input artifacts: `/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-image-assets/Stop_Planning_AI_Videos_Until_You_Have_A_Proof_Plan`
+- Local report: `reports/script-image-assets-prompt-review.html`
+- Builder script: `scripts/script-image-assets-review-page.js`
+- Status: read-only review aid only; 32 script blocks and 128 prompts remain candidates.
+- Boundary: no image generation, no PNG creation, no API calls, no ComfyUI calls, no VIDNAS artifact edits, no package-run state changes, and no approval markers.
+- Remaining unapproved: Mikko still needs to review/select/reject prompt candidates before any downstream image-generation work.
