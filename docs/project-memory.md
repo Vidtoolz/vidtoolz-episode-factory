@@ -54,6 +54,15 @@ Next possible patch: consider v1.2.1 to change backup recency threshold to 24 ho
 - Input artifacts: `/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-image-assets/Stop_Planning_AI_Videos_Until_You_Have_A_Proof_Plan`
 - Local report: `reports/script-image-assets-prompt-review.html`
 - Builder script: `scripts/script-image-assets-review-page.js`
-- Status: implemented, committed, pushed, and verified; 32 script blocks and 128 prompts remain candidates for Mikko review before any image generation.
-- Boundary: no image generation, no PNG creation, no API calls, no ComfyUI calls, no VIDNAS artifact edits, no package-run state changes, and no approval markers.
-- Remaining unapproved: no prompt has been approved, selected, or marked production-ready. Phase 2 image generation remains unapproved.
+- Status: implemented, committed, pushed, and verified; the page supports Mikko review of 32 script blocks and 128 candidate prompts.
+- Boundary: no package-run state changes and no approval markers.
+- Remaining unapproved: no prompt has been approved, selected, or marked production-ready.
+
+## 2026-05-20 Completed Prompt-03 Image Candidate Pass
+
+- Input/output folder: `/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-image-assets/Stop_Planning_AI_Videos_Until_You_Have_A_Proof_Plan`
+- Controlled prompt-03 generation is complete for `block-001` through `block-032`; 32 prompt-03 images exist in the approved VIDNAS folder.
+- Manifest status: `generated: 32`, `not_started: 96`, `reviewed_by_mikko: 32`, `approved: 0`, `selected: 0`, and `production_ready: 0`.
+- The 96 `not_started` manifest items are expected because prompt types 01, 02, and 04 were not generated.
+- Prompt-03 is the preferred default visual-support prompt type for this script.
+- Boundary: no package-run state was edited, and no images are approved, selected, or production-ready yet.
