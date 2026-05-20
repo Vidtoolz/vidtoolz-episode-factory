@@ -54,6 +54,6 @@ Next possible patch: consider v1.2.1 to change backup recency threshold to 24 ho
 - Input artifacts: `/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-image-assets/Stop_Planning_AI_Videos_Until_You_Have_A_Proof_Plan`
 - Local report: `reports/script-image-assets-prompt-review.html`
 - Builder script: `scripts/script-image-assets-review-page.js`
-- Status: read-only review aid only; 32 script blocks and 128 prompts remain candidates.
+- Status: implemented, committed, pushed, and verified; 32 script blocks and 128 prompts remain candidates for Mikko review before any image generation.
 - Boundary: no image generation, no PNG creation, no API calls, no ComfyUI calls, no VIDNAS artifact edits, no package-run state changes, and no approval markers.
-- Remaining unapproved: Mikko still needs to review/select/reject prompt candidates before any downstream image-generation work.
+- Remaining unapproved: no prompt has been approved, selected, or marked production-ready. Phase 2 image generation remains unapproved.
