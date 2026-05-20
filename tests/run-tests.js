@@ -39,6 +39,7 @@ const packageProductionApprovalRepairScript = require("../scripts/package-run-pr
 const packageProductionApprovalReviewScript = require("../scripts/package-run-production-approval-review.js");
 const packageRunsIndexScript = require("../scripts/package-runs-index.js");
 const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashboard-launch.js");
+const scriptImageAssetsDryRunScript = require("../scripts/script-image-assets-dry-run.js");
 const packageEngineServer = require("../package-engine-server.js");
 const packageRunsDashboard = require("../package-runs-dashboard.js");
 const episodeFactoryCli = require("../scripts/episode-factory.js");
@@ -14815,6 +14816,107 @@ test("proposal loop runner manifest writing does not affect real repo status", (
   assert.equal(output.result, 0);
   assert.equal(fs.existsSync(manifestPath), true);
   assert.equal(afterStatus, beforeStatus);
+});
+
+test("script image assets dry run default output root matches approved VIDNAS path", () => {
+  assert.equal(
+    scriptImageAssetsDryRunScript.DEFAULT_OUTPUT_ROOT,
+    "/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-image-assets/"
+  );
+});
+
+test("script image assets dry run detects markdown headline and builds 3-sentence blocks", () => {
+  const input = [
+    "---",
+    "title: Stop Planning AI Videos Until You Have a Proof Plan",
+    "---",
+    "",
+    "This is sentence one.",
+    "This is sentence two.",
+    "This is sentence three.",
+    "This is sentence four.",
+    "This is sentence five.",
+  ].join("\n");
+  const plan = scriptImageAssetsDryRunScript.buildPlan(
+    {
+      stdin: true,
+      inputPath: "",
+      headline: "",
+      outputRoot: path.join(os.tmpdir(), "script-image-assets-test-root"),
+      outputFolder: "",
+    },
+    input,
+    new Date("2026-05-20T12:00:00Z")
+  );
+  const blocks = JSON.parse(plan.artifacts["script-blocks.json"]);
+  const prompts = JSON.parse(plan.artifacts["image-prompts.json"]);
+  const manifest = JSON.parse(plan.artifacts["generation-manifest.json"]);
+
+  assert.equal(plan.headline, "Stop Planning AI Videos Until You Have a Proof Plan");
+  assert.equal(plan.slug, "Stop_Planning_AI_Videos_Until_You_Have_A_Proof_Plan");
+  assert.equal(blocks.sentence_count, 5);
+  assert.equal(blocks.block_count, 2);
+  assert.equal(blocks.blocks[0].block_id, "block-001");
+  assert.equal(blocks.blocks[1].block_id, "block-002");
+  assert.equal(prompts.prompts.length, 8);
+  assert.equal(manifest.image_generation_enabled, false);
+  assert.equal(manifest.items[0].output_filename, "block-001-prompt-01.png");
+  assert.equal(manifest.items[0].generation_status, "not_started");
+  assert.equal(manifest.items[0].reviewed_by_mikko, false);
+  assert.equal(manifest.items[0].approved, false);
+  assert.equal(manifest.items[0].selected, false);
+  assert.equal(manifest.items[0].production_ready, false);
+});
+
+test("script image assets dry run previews without writing files", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "script-image-assets-dry-run-preview-"));
+  const outputRoot = path.join(tempRoot, "assets");
+  const input = "One sentence. Two sentence. Three sentence. Four sentence.";
+  const plan = scriptImageAssetsDryRunScript.buildPlan(
+    {
+      stdin: true,
+      inputPath: "",
+      headline: "Dry Run Preview",
+      outputRoot,
+      outputFolder: "",
+    },
+    input,
+    new Date("2026-05-20T12:00:00Z")
+  );
+
+  assert.equal(plan.artifacts.summary.blockCount, 2);
+  assert.equal(plan.artifacts.summary.promptCount, 8);
+  assert.equal(fs.existsSync(path.join(outputRoot, "Dry_Run_Preview")), false);
+});
+
+test("script image assets artifact writing uses tmp root and refuses overwrite", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "script-image-assets-write-"));
+  const outputRoot = path.join(tempRoot, "assets");
+  const outputFolder = path.join(outputRoot, "Safe_Test_Headline");
+  const input = "One sentence. Two sentence. Three sentence. Four sentence.";
+  const plan = scriptImageAssetsDryRunScript.buildPlan(
+    {
+      stdin: true,
+      inputPath: "",
+      headline: "Safe Test Headline",
+      outputRoot,
+      outputFolder: "",
+    },
+    input,
+    new Date("2026-05-20T12:00:00Z")
+  );
+
+  scriptImageAssetsDryRunScript.writeArtifacts(plan.outputFolder, plan.artifacts);
+
+  assert.equal(fs.existsSync(outputFolder), true);
+  scriptImageAssetsDryRunScript.ARTIFACT_FILENAMES.forEach((filename) => {
+    assert.equal(fs.existsSync(path.join(outputFolder, filename)), true);
+  });
+  assert.throws(
+    () => scriptImageAssetsDryRunScript.writeArtifacts(plan.outputFolder, plan.artifacts),
+    /Target folder already exists/
+  );
+  assert.equal(fs.existsSync(path.join(outputFolder, "block-001-prompt-01.png")), false);
 });
 
 async function runTests() {
