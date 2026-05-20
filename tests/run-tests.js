@@ -14868,6 +14868,134 @@ test("script image assets dry run detects markdown headline and builds 3-sentenc
   assert.equal(manifest.items[0].production_ready, false);
 });
 
+test("script image assets dry run prefers working title and script body over Episode Factory metadata", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "script-image-assets-episode-factory-"));
+  const outputRoot = path.join(tempRoot, "assets");
+  const input = [
+    "# Final Script",
+    "",
+    "Run: 2026-05-06-ai-video-proof-plan",
+    "Status: Revised script ready for review.",
+    "Source: package-run metadata.",
+    "",
+    "## Working Title",
+    "",
+    "Stop Planning AI Videos Until You Have a Proof Plan",
+    "",
+    "## Script",
+    "",
+    "### Hook",
+    "",
+    "Most AI video projects fail before generation starts.",
+    "The problem is not the model.",
+    "The problem is that nobody decided what proof the video needs.",
+    "",
+    "### Main",
+    "",
+    "A proof plan turns vague production into a testable workflow.",
+  ].join("\n");
+
+  const plan = scriptImageAssetsDryRunScript.buildPlan(
+    {
+      stdin: true,
+      inputPath: "",
+      headline: "",
+      outputRoot,
+      outputFolder: "",
+    },
+    input,
+    new Date("2026-05-20T12:00:00Z")
+  );
+  const blocks = JSON.parse(plan.artifacts["script-blocks.json"]);
+
+  assert.equal(plan.headline, "Stop Planning AI Videos Until You Have a Proof Plan");
+  assert.equal(plan.slug, "Stop_Planning_AI_Videos_Until_You_Have_A_Proof_Plan");
+  assert.equal(blocks.sentence_count, 4);
+  assert.equal(blocks.blocks[0].text, "Most AI video projects fail before generation starts. The problem is not the model. The problem is that nobody decided what proof the video needs.");
+  assert.equal(blocks.blocks[0].text.includes("Run:"), false);
+  assert.equal(blocks.blocks[0].text.includes("Status:"), false);
+  assert.equal(blocks.blocks[0].text.includes("Source:"), false);
+  assert.equal(blocks.blocks[0].text.includes("Hook"), false);
+  assert.equal(blocks.blocks[0].text.includes("Main"), false);
+  assert.equal(fs.existsSync(plan.outputFolder), false);
+});
+
+test("script image assets dry run explicit headline overrides detected title while script body extraction remains", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "script-image-assets-explicit-headline-"));
+  const outputRoot = path.join(tempRoot, "assets");
+  const input = [
+    "# Final Script",
+    "",
+    "## Working Title",
+    "Detected Working Title",
+    "",
+    "## Script",
+    "",
+    "### Hook",
+    "Actual sentence one.",
+    "Actual sentence two.",
+    "Actual sentence three.",
+  ].join("\n");
+
+  const plan = scriptImageAssetsDryRunScript.buildPlan(
+    {
+      stdin: true,
+      inputPath: "",
+      headline: "Explicit Operator Title",
+      outputRoot,
+      outputFolder: "",
+    },
+    input,
+    new Date("2026-05-20T12:00:00Z")
+  );
+  const blocks = JSON.parse(plan.artifacts["script-blocks.json"]);
+
+  assert.equal(plan.headline, "Explicit Operator Title");
+  assert.equal(plan.slug, "Explicit_Operator_Title");
+  assert.equal(blocks.blocks[0].text, "Actual sentence one. Actual sentence two. Actual sentence three.");
+  assert.equal(blocks.blocks[0].text.includes("Detected Working Title"), false);
+  assert.equal(fs.existsSync(plan.outputFolder), false);
+});
+
+test("script image assets dry run script section stops before higher-level following headings", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "script-image-assets-section-boundary-"));
+  const outputRoot = path.join(tempRoot, "assets");
+  const input = [
+    "# Final Script",
+    "",
+    "## Working Title",
+    "Boundary Test Title",
+    "",
+    "## Script",
+    "",
+    "Script sentence one.",
+    "Script sentence two.",
+    "Script sentence three.",
+    "",
+    "# Appendix",
+    "",
+    "Appendix sentence should not become narration.",
+  ].join("\n");
+
+  const plan = scriptImageAssetsDryRunScript.buildPlan(
+    {
+      stdin: true,
+      inputPath: "",
+      headline: "",
+      outputRoot,
+      outputFolder: "",
+    },
+    input,
+    new Date("2026-05-20T12:00:00Z")
+  );
+  const blocks = JSON.parse(plan.artifacts["script-blocks.json"]);
+
+  assert.equal(blocks.sentence_count, 3);
+  assert.equal(blocks.blocks[0].text, "Script sentence one. Script sentence two. Script sentence three.");
+  assert.equal(blocks.blocks[0].text.includes("Appendix"), false);
+  assert.equal(fs.existsSync(plan.outputFolder), false);
+});
+
 test("script image assets dry run previews without writing files", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "script-image-assets-dry-run-preview-"));
   const outputRoot = path.join(tempRoot, "assets");

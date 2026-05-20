@@ -108,23 +108,68 @@ function frontmatterTitle(markdownText) {
   return match ? match[1].trim() : "";
 }
 
+function findMarkdownSection(markdownText, headingName, level = 2) {
+  const body = stripFrontmatter(markdownText);
+  const lines = body.split("\n");
+  const headingPattern = new RegExp(`^${"#".repeat(level)}\\s+${headingName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i");
+  const boundaryPattern = /^#{1,6}\s+\S/;
+  const startIndex = lines.findIndex((line) => headingPattern.test(line.trim()));
+  if (startIndex === -1) return "";
+  const sectionLines = [];
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    const trimmed = line.trim();
+    if (boundaryPattern.test(trimmed) && trimmed.match(/^#+/)[0].length <= level) break;
+    sectionLines.push(line);
+  }
+  return sectionLines.join("\n").trim();
+}
+
+function detectWorkingTitle(markdownText) {
+  return findMarkdownSection(markdownText, "Working Title")
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line && !/^#+\s+/.test(line)) || "";
+}
+
+function isGenericScriptHeading(title) {
+  return /^(final|draft|revised)?\s*script$/i.test(cleanText(title));
+}
+
 function detectHeadline(markdownText) {
   const explicitTitle = frontmatterTitle(markdownText);
   if (explicitTitle) return explicitTitle;
 
+  const workingTitle = detectWorkingTitle(markdownText);
+  if (workingTitle) return workingTitle;
+
   const body = stripFrontmatter(markdownText);
   const h1 = body.match(/^#\s+(.+?)\s*$/m);
-  if (h1) return h1[1].trim();
+  if (h1 && !isGenericScriptHeading(h1[1])) return h1[1].trim();
 
   const firstClearLine = body
     .split("\n")
     .map((line) => line.trim())
-    .find((line) => line && line.length <= 120 && !/^[-*+>]\s/.test(line) && !/[.!?]$/.test(line));
+    .find((line) => line && line.length <= 120 && !/^#+\s+/.test(line) && !/^[-*+>]\s/.test(line) && !/[.!?]$/.test(line));
   return firstClearLine || "";
 }
 
+function stripMarkdownHeadings(markdownText) {
+  return cleanText(markdownText)
+    .split("\n")
+    .filter((line) => !/^#{1,6}\s+\S/.test(line.trim()))
+    .join("\n")
+    .trim();
+}
+
+function extractScriptBody(markdownText) {
+  const scriptSection = findMarkdownSection(markdownText, "Script");
+  if (scriptSection) return stripMarkdownHeadings(scriptSection);
+  return stripMarkdownHeadings(stripFrontmatter(markdownText));
+}
+
 function removeDetectedHeadline(markdownText, headline) {
-  let body = stripFrontmatter(markdownText);
+  let body = extractScriptBody(markdownText);
   if (!headline) return body.trim();
   const escaped = headline.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   body = body.replace(new RegExp(`^#\\s+${escaped}\\s*$\\n?`, "im"), "");
