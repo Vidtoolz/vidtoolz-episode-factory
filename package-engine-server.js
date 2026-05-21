@@ -20,6 +20,9 @@ const API_PREFIX = '/api/package-engine/thumbnails';
 const STATUS_API = '/api/package-engine/status';
 const CAPTURE_EVIDENCE_PREVIEW_API = '/api/package-runs/capture-evidence/preview';
 const CAPTURE_EVIDENCE_APPLY_API = '/api/package-runs/capture-evidence/apply';
+const EVIDENCE_INTAKE_STATUS_API = '/api/package-runs/evidence-intake/status';
+const EVIDENCE_INTAKE_PREVIEW_API = '/api/package-runs/evidence-intake/preview';
+const EVIDENCE_INTAKE_SAVE_API = '/api/package-runs/evidence-intake/save';
 const ROUGH_CUT_STATUS_API = '/api/package-runs/rough-cut/status';
 const NEXT_SAFE_ACTION_API = '/api/package-runs/next-safe-action';
 const PRODUCTION_GPS_API = '/api/package-runs/production-gps';
@@ -129,8 +132,40 @@ const PICKUP_PURPOSES = ['clarify message', 'add human presence', 'visual variet
 const PICKUP_STATUSES = ['proposed', 'accepted', 'rejected', 'done'];
 const CAPTURE_EVIDENCE_SECTION_START = '<!-- capture-evidence-intake:start -->';
 const CAPTURE_EVIDENCE_SECTION_END = '<!-- capture-evidence-intake:end -->';
+const EVIDENCE_INTAKE_DRAFT_SECTION_START = '<!-- evidence-intake-draft:start -->';
+const EVIDENCE_INTAKE_DRAFT_SECTION_END = '<!-- evidence-intake-draft:end -->';
 const LOCAL_WRITE_NONCE = crypto.randomBytes(24).toString('hex');
 const LOCAL_WRITE_NONCE_HEADER = 'x-vidtoolz-local-write-nonce';
+const EVIDENCE_INTAKE_MEDIA_TYPES = [
+  'screen_capture',
+  'camera_capture',
+  'audio_capture',
+  'generated_still',
+  'generated_video',
+  'kling_candidate',
+  'resolve_timeline_test',
+  'export_candidate',
+  'other',
+];
+const EVIDENCE_INTAKE_SOURCE_CATEGORIES = [
+  'A-roll',
+  'B-roll',
+  'screen proof',
+  'generated asset',
+  'Resolve test',
+  'audio',
+  'export',
+  'other',
+];
+const EVIDENCE_INTAKE_STATUSES = [
+  'planned',
+  'exists_on_vidnas',
+  'imported_to_resolve',
+  'tested_in_resolve',
+  'usable',
+  'rejected',
+  'missing',
+];
 
 function readJsonFile(filePath) {
   const raw = fs.readFileSync(filePath, 'utf8');
@@ -3308,6 +3343,347 @@ function applyCaptureEvidenceIntake(payload = {}, options = {}) {
   };
 }
 
+function markdownTableCells(row = '') {
+  return String(row || '')
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim());
+}
+
+function isMarkdownSeparatorRow(cells = []) {
+  return cells.length > 1 && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
+function markdownTableRows(markdown = '') {
+  const rows = [];
+  const lines = String(markdown || '').split(/\r?\n/);
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const headerLine = lines[index].trim();
+    const separatorLine = lines[index + 1].trim();
+    if (!headerLine.startsWith('|') || !headerLine.endsWith('|')) continue;
+    if (!separatorLine.startsWith('|') || !separatorLine.endsWith('|')) continue;
+    const header = markdownTableCells(headerLine);
+    const separator = markdownTableCells(separatorLine);
+    if (!isMarkdownSeparatorRow(separator)) continue;
+    for (let rowIndex = index + 2; rowIndex < lines.length; rowIndex += 1) {
+      const line = lines[rowIndex].trim();
+      if (!line.startsWith('|') || !line.endsWith('|')) break;
+      const cells = markdownTableCells(line);
+      if (isMarkdownSeparatorRow(cells)) continue;
+      rows.push({ header, cells, lineNumber: rowIndex + 1, row: line });
+    }
+  }
+  return rows;
+}
+
+function tableCellByPattern(headers = [], cells = [], patterns = []) {
+  const index = headers.findIndex((header) => patterns.some((pattern) => pattern.test(header)));
+  return index >= 0 ? String(cells[index] || '').trim() : '';
+}
+
+function stripMarkdownTicks(value = '') {
+  return String(value || '').trim().replace(/^`|`$/g, '');
+}
+
+function evidenceTypeFromFile(filename, row = '') {
+  const text = String(row || '');
+  if (filename === 'takes-log.md') return /a-roll|talking-head|camera/i.test(text) ? 'camera_capture' : 'camera_capture';
+  if (filename === 'screen-recording-checklist.md') return /\.(?:png|jpe?g|webp)$/i.test(text) ? 'screen_capture' : 'screen_capture';
+  if (filename === 'audio-capture-checklist.md') return 'audio_capture';
+  if (filename === 'missing-shot-tracker.md') return 'other';
+  return 'other';
+}
+
+function sourceCategoryFromFile(filename, row = '') {
+  const text = String(row || '');
+  if (filename === 'takes-log.md') return 'A-roll';
+  if (filename === 'screen-recording-checklist.md') return 'screen proof';
+  if (filename === 'audio-capture-checklist.md') return 'audio';
+  if (/kling|generated|prompt-\d+/i.test(text)) return 'generated asset';
+  if (/resolve|timeline/i.test(text)) return 'Resolve test';
+  return 'other';
+}
+
+function evidenceStatusFromRowStatus(status = '') {
+  const text = String(status || '').toLowerCase();
+  if (/missing/.test(text)) return 'missing';
+  if (/rejected/.test(text)) return 'rejected';
+  if (/usable|accepted/.test(text)) return 'usable';
+  if (/resolve|timeline/.test(text) && /tested/.test(text)) return 'tested_in_resolve';
+  if (/imported/.test(text)) return 'imported_to_resolve';
+  if (/captured|exists|recorded|review-needed|candidate/.test(text)) return 'exists_on_vidnas';
+  return 'planned';
+}
+
+function readEvidenceRowsFromArtifact(runDir, filename) {
+  const filePath = path.join(runDir, filename);
+  if (!fs.existsSync(filePath)) return [];
+  const markdown = fs.readFileSync(filePath, 'utf8');
+  return markdownTableRows(markdown)
+    .map((rowInfo) => {
+      const headers = rowInfo.header.map((header) => header.toLowerCase());
+      const cells = rowInfo.cells;
+      const mediaPath = stripMarkdownTicks(tableCellByPattern(headers, cells, [/file/, /reference/, /path/]));
+      const label = tableCellByPattern(headers, cells, [/take/, /screen recording/, /audio item/, /missing shot\/content/, /^item$/]) || cells[0] || '';
+      const proofPurpose =
+        tableCellByPattern(headers, cells, [/proof purpose/, /capture requirement/, /why it matters/, /source item/, /source\/purpose/, /source/]) ||
+        label;
+      const rawStatus = tableCellByPattern(headers, cells, [/status/, /readiness/]) || cells[cells.length - 1] || '';
+      return {
+        media_path: mediaPath,
+        media_type: evidenceTypeFromFile(filename, rowInfo.row),
+        source_category: sourceCategoryFromFile(filename, rowInfo.row),
+        proof_purpose: proofPurpose,
+        related_script_block_or_section: '',
+        status: evidenceStatusFromRowStatus(rawStatus),
+        resolve_tested: /resolve|timeline/i.test(rowInfo.row) && /tested|usable|rejected/i.test(rowInfo.row) ? 'yes' : 'no',
+        notes: `${filename}:${rowInfo.lineNumber} ${rawStatus}`.trim(),
+        artifact: filename,
+        line: rowInfo.lineNumber,
+        existsOnDisk: mediaPath ? fs.existsSync(mediaPath) : false,
+        evidenceOnly: true,
+        approved: false,
+        productionReady: false,
+      };
+    })
+    .filter((row) => row.media_path || row.proof_purpose);
+}
+
+function normalizeEvidenceIntakeRow(row = {}) {
+  const source = row && typeof row === 'object' ? row : {};
+  return {
+    media_path: markdownCell(source.media_path || source.mediaPath || ''),
+    media_type: markdownCell(source.media_type || source.mediaType || ''),
+    source_category: markdownCell(source.source_category || source.sourceCategory || ''),
+    proof_purpose: markdownCell(source.proof_purpose || source.proofPurpose || ''),
+    related_script_block_or_section: markdownCell(source.related_script_block_or_section || source.relatedScriptBlockOrSection || ''),
+    status: markdownCell(source.status || ''),
+    resolve_tested: /^yes$/i.test(String(source.resolve_tested || source.resolveTested || '')) ? 'yes' : 'no',
+    notes: markdownCell(source.notes || ''),
+  };
+}
+
+function hasPathTraversal(value = '') {
+  return /(^|[\\/])\.\.([\\/]|$)/.test(String(value || ''));
+}
+
+function isAcceptableEvidencePath(value = '') {
+  const text = String(value || '').trim();
+  if (!text || hasPathTraversal(text)) return false;
+  return (
+    path.isAbsolute(text) ||
+    /^VIDNAS[/:]/i.test(text) ||
+    /\/mnt\/[^|\s]*vidnas/i.test(text) ||
+    /\/home\/vidtoolz\/Videos\/vidtoolz-captures\//i.test(text) ||
+    /\b(?:media|captures|recordings|audio|videos|vidtoolz-captures)\//i.test(text)
+  );
+}
+
+function evidenceRowClaimsApproval(row = {}) {
+  return /\b(?:approved|approval|production[-_ ]?ready|publish[-_ ]?ready|ready to publish|ready for publish|PASS)\b/i.test(
+    `${row.proof_purpose || ''} ${row.status || ''} ${row.notes || ''}`
+  );
+}
+
+function validateEvidenceIntakeRows(rows = []) {
+  const normalizedRows = (Array.isArray(rows) ? rows : []).map(normalizeEvidenceIntakeRow);
+  const errors = [];
+  const warnings = [];
+  if (!normalizedRows.length) errors.push('At least one evidence row is required.');
+  normalizedRows.forEach((row, index) => {
+    const label = `row ${index + 1}`;
+    if (!row.media_path) errors.push(`${label}: media_path is required.`);
+    else if (hasPathTraversal(row.media_path)) errors.push(`${label}: path traversal is not allowed.`);
+    else if (!isAcceptableEvidencePath(row.media_path)) errors.push(`${label}: media_path must be absolute or a clear VIDNAS/local production path.`);
+    if (!row.media_type) errors.push(`${label}: media_type is required.`);
+    else if (!EVIDENCE_INTAKE_MEDIA_TYPES.includes(row.media_type)) errors.push(`${label}: unsupported media_type ${row.media_type}.`);
+    if (!row.source_category) warnings.push(`${label}: source_category is empty; classify the evidence before relying on it.`);
+    else if (!EVIDENCE_INTAKE_SOURCE_CATEGORIES.includes(row.source_category)) errors.push(`${label}: unsupported source_category ${row.source_category}.`);
+    if (!row.proof_purpose) errors.push(`${label}: proof_purpose is required.`);
+    if (!row.status) errors.push(`${label}: status is required.`);
+    else if (!EVIDENCE_INTAKE_STATUSES.includes(row.status)) errors.push(`${label}: unsupported status ${row.status}.`);
+    if (row.media_path && isAcceptableEvidencePath(row.media_path) && path.isAbsolute(row.media_path) && !fs.existsSync(row.media_path)) {
+      warnings.push(`${label}: MISSING FILE - path does not exist on this machine.`);
+    }
+    if ((row.status === 'tested_in_resolve' || row.resolve_tested === 'yes') && !/resolve|timeline|tested|usable|rejected/i.test(`${row.notes} ${row.proof_purpose}`)) {
+      warnings.push(`${label}: NEEDS RESOLVE TEST notes - tested_in_resolve requires Resolve/timeline notes.`);
+    }
+    if (/^generated_|kling_candidate/.test(row.media_type) && !/context|illustrative|candidate|not proof|supports|b-roll|resolve|timeline/i.test(`${row.notes} ${row.proof_purpose}`)) {
+      warnings.push(`${label}: generated asset needs context before it can support evidence.`);
+    }
+    if (evidenceRowClaimsApproval(row)) {
+      warnings.push(`${label}: evidence row contains approval/readiness language; this intake remains EVIDENCE ONLY, NOT APPROVED, NOT PRODUCTION READY.`);
+    }
+  });
+  return { rows: normalizedRows, valid: errors.length === 0, errors, warnings };
+}
+
+function evidenceDraftMarkdown(runId, rows = [], validation = {}) {
+  const lines = [
+    EVIDENCE_INTAKE_DRAFT_SECTION_START,
+    `- Run: ${runId}`,
+    '- Tool: package-runs dashboard Evidence Intake',
+    '- Mode: evidence-only draft',
+    '- Approval written: no',
+    '- Capture accepted written: no',
+    '- Production readiness written: no',
+    '- Publish readiness written: no',
+    '',
+    '| media_path | media_type | source_category | proof_purpose | related_script_block_or_section | status | resolve_tested | notes |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |',
+    ...rows.map((row) => `| ${row.media_path} | ${row.media_type} | ${row.source_category} | ${row.proof_purpose} | ${row.related_script_block_or_section || ''} | ${row.status} | ${row.resolve_tested} | ${row.notes || ''} |`),
+    '',
+  ];
+  if ((validation.warnings || []).length) {
+    lines.push('Warnings:');
+    validation.warnings.forEach((warning) => lines.push(`- ${warning}`));
+    lines.push('');
+  }
+  lines.push(EVIDENCE_INTAKE_DRAFT_SECTION_END, '');
+  return lines.join('\n');
+}
+
+function evidenceIntakeSummaryFromNextSafeAction(nextSafeAction = {}) {
+  const facts = nextSafeAction.facts || {};
+  if (facts.selectedStillCount > 0 && !facts.klingVideoCount) {
+    return {
+      evidenceStatus: 'selected stills exist, Kling candidates missing',
+      nextEvidenceAction: 'Create Kling MP4s manually, move them to VIDNAS, then record them here.',
+    };
+  }
+  if (facts.klingVideoCount > 0 && !facts.resolveTestRecorded) {
+    return {
+      evidenceStatus: 'Kling candidates exist, Resolve test evidence missing',
+      nextEvidenceAction: 'Import the Kling candidates to Resolve and record the timeline test result.',
+    };
+  }
+  return {
+    evidenceStatus: nextSafeAction.stage || 'evidence review required',
+    nextEvidenceAction: nextSafeAction.nextHumanAction || 'Record concrete media evidence and keep approval separate.',
+  };
+}
+
+function buildEvidenceIntakeStatus(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const nextSafeAction = nextSafeActionScript.buildNextSafeAction(resolved.runId, { repoRoot: resolved.root });
+  const existingRows = [
+    ...readEvidenceRowsFromArtifact(resolved.runDir, 'takes-log.md'),
+    ...readEvidenceRowsFromArtifact(resolved.runDir, 'screen-recording-checklist.md'),
+    ...readEvidenceRowsFromArtifact(resolved.runDir, 'audio-capture-checklist.md'),
+    ...readEvidenceRowsFromArtifact(resolved.runDir, 'missing-shot-tracker.md'),
+  ];
+  const summary = evidenceIntakeSummaryFromNextSafeAction(nextSafeAction);
+  return {
+    ok: true,
+    readOnly: true,
+    saveMode: 'controlled-audit-log-draft',
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    evidenceStatus: summary.evidenceStatus,
+    nextEvidenceAction: summary.nextEvidenceAction,
+    labels: ['EVIDENCE ONLY', 'NOT APPROVED', 'NOT PRODUCTION READY'],
+    existingRows,
+    existingRowCount: existingRows.length,
+    fields: {
+      mediaTypes: EVIDENCE_INTAKE_MEDIA_TYPES,
+      sourceCategories: EVIDENCE_INTAKE_SOURCE_CATEGORIES,
+      statuses: EVIDENCE_INTAKE_STATUSES,
+    },
+    allowedWriteFiles: [CAPTURE_EVIDENCE_AUDIT_FILE],
+    forbiddenActions: [
+      'write approval markers',
+      'mark capture evidence accepted',
+      'mark approved',
+      'mark selected',
+      'mark production_ready',
+      'mark publish_ready',
+      'edit package-run-state.md',
+      'write manifests',
+      'move or generate media',
+      'operate Kling',
+      'operate Resolve',
+    ],
+    externalApisCalled: false,
+  };
+}
+
+function buildEvidenceIntakePreview(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const validation = validateEvidenceIntakeRows(payload.rows || []);
+  if (!validation.valid) {
+    const error = new Error(`Evidence intake validation failed: ${validation.errors.join(', ')}`);
+    error.statusCode = 400;
+    error.errors = validation.errors;
+    error.warnings = validation.warnings;
+    throw error;
+  }
+  const draftMarkdown = evidenceDraftMarkdown(resolved.runId, validation.rows, validation);
+  const previewToken = crypto
+    .createHash('sha256')
+    .update(JSON.stringify({ runId: resolved.runId, rows: validation.rows, draftMarkdown }))
+    .digest('hex');
+  return {
+    ok: true,
+    mode: 'preview',
+    readOnly: true,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    targetFile: CAPTURE_EVIDENCE_AUDIT_FILE,
+    rows: validation.rows,
+    errors: [],
+    warnings: validation.warnings,
+    draftMarkdown,
+    previewToken,
+    approved: false,
+    selected: false,
+    captureEvidenceAccepted: false,
+    productionReady: false,
+    publishReady: false,
+    warning: 'Preview only. No files were written. This remains evidence only, not approval.',
+  };
+}
+
+function saveEvidenceIntakeDraft(payload = {}, options = {}) {
+  const preview = buildEvidenceIntakePreview(payload, options);
+  if (payload.confirmSave !== true || payload.previewToken !== preview.previewToken) {
+    const error = new Error('Save requires confirmSave: true and the matching previewToken.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const resolved = resolveRunFromPayload(payload, options);
+  const auditPath = path.resolve(resolved.runDir, CAPTURE_EVIDENCE_AUDIT_FILE);
+  if (!auditPath.startsWith(resolved.runDir + path.sep)) {
+    const error = new Error('Resolved evidence intake audit path is outside the approved write scope.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const timestamp = new Date().toISOString();
+  const existing = fs.existsSync(auditPath)
+    ? fs.readFileSync(auditPath, 'utf8').replace(/\s*$/, '\n\n')
+    : '# Capture Evidence Intake Log\n\n';
+  const entry = [
+    `## Evidence Intake Draft ${timestamp}`,
+    '',
+    preview.draftMarkdown,
+  ].join('\n');
+  fs.writeFileSync(auditPath, `${existing}${entry}`, 'utf8');
+  return {
+    ok: true,
+    mode: 'save',
+    runId: resolved.runId,
+    runPath: preview.runPath,
+    written: [CAPTURE_EVIDENCE_AUDIT_FILE],
+    approved: false,
+    selected: false,
+    captureEvidenceAccepted: false,
+    productionReady: false,
+    publishReady: false,
+    warning: 'Saved evidence-only draft to the capture evidence intake log. No approval or readiness markers were written.',
+  };
+}
+
 function localWriteNonce() {
   return LOCAL_WRITE_NONCE;
 }
@@ -3417,10 +3793,14 @@ function createStatusResponse(env = process.env) {
     captureEvidenceWrite: {
       previewApi: CAPTURE_EVIDENCE_PREVIEW_API,
       applyApi: CAPTURE_EVIDENCE_APPLY_API,
+      evidenceIntakeStatusApi: EVIDENCE_INTAKE_STATUS_API,
+      evidenceIntakePreviewApi: EVIDENCE_INTAKE_PREVIEW_API,
+      evidenceIntakeSaveApi: EVIDENCE_INTAKE_SAVE_API,
       nonceHeader: LOCAL_WRITE_NONCE_HEADER,
       localWriteNonce: LOCAL_WRITE_NONCE,
       allowedHosts: [`127.0.0.1:${PORT}`, `localhost:${PORT}`],
       missingOriginAllowed: true,
+      evidenceIntakeAllowedWriteFiles: [CAPTURE_EVIDENCE_AUDIT_FILE],
     },
     roughCutInputConsole: {
       statusApi: ROUGH_CUT_STATUS_API,
@@ -3642,6 +4022,35 @@ function createServer() {
           send(res, 200, applyCaptureEvidenceIntake(payload));
         })
         .catch((error) => send(res, error.statusCode || 500, { error: error.message, missing: error.missing || [] }));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === EVIDENCE_INTAKE_STATUS_API) {
+      try {
+        send(res, 200, buildEvidenceIntakeStatus({ runId: url.searchParams.get('runId') || '' }));
+      } catch (error) {
+        send(res, error.statusCode || 500, { error: error.message });
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === EVIDENCE_INTAKE_PREVIEW_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, buildEvidenceIntakePreview(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message, errors: error.errors || [], warnings: error.warnings || [] }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === EVIDENCE_INTAKE_SAVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, saveEvidenceIntakeDraft(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message, errors: error.errors || [], warnings: error.warnings || [] }));
       return;
     }
 
@@ -3897,6 +4306,9 @@ module.exports = {
   DELIVERY_READINESS_FILE,
   DELIVERY_READINESS_MARKERS,
   DELIVERY_READINESS_SAVE_API,
+  EVIDENCE_INTAKE_PREVIEW_API,
+  EVIDENCE_INTAKE_SAVE_API,
+  EVIDENCE_INTAKE_STATUS_API,
   EXPORT_CHECKLIST_FILE,
   EXPORT_CHECKLIST_REGENERATE_API,
   EXPORT_MASTER_APPLY_API,
@@ -3944,6 +4356,8 @@ module.exports = {
   applyFinalCandidateRegistration,
   applySecondCutCandidateRegistration,
   buildCaptureEvidencePreview,
+  buildEvidenceIntakePreview,
+  buildEvidenceIntakeStatus,
   buildEditFixListMarkdown,
   buildGateTimeline,
   buildPickupListMarkdown,
@@ -4008,6 +4422,7 @@ module.exports = {
   safeJoin,
   saveRoughCutWatchNotes,
   saveDeliveryReadiness,
+  saveEvidenceIntakeDraft,
   saveFinalWatchNotes,
   saveSecondCutWatchNotes,
   savePickupPlan,

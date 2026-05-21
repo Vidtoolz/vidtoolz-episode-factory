@@ -1723,10 +1723,160 @@ Capture evidence approval: PASS`;
     </div>`;
   }
 
+  function normalizeEvidenceIntake(payload) {
+    const source = payload && typeof payload === "object" ? payload : {};
+    const fields = source.fields && typeof source.fields === "object" ? source.fields : {};
+    return {
+      ok: source.ok !== false,
+      readOnly: source.readOnly !== false,
+      saveMode: String(source.saveMode || "preview-only"),
+      runId: String(source.runId || ""),
+      runPath: String(source.runPath || ""),
+      evidenceStatus: String(source.evidenceStatus || "Evidence status unavailable"),
+      nextEvidenceAction: String(source.nextEvidenceAction || "Record concrete media evidence and keep approval separate."),
+      labels: normalizeStringArray(source.labels),
+      existingRows: Array.isArray(source.existingRows)
+        ? source.existingRows.map((row) => normalizeEvidenceIntakeRow(row))
+        : [],
+      existingRowCount: Number.isFinite(source.existingRowCount) ? source.existingRowCount : 0,
+      fields: {
+        mediaTypes: normalizeStringArray(fields.mediaTypes),
+        sourceCategories: normalizeStringArray(fields.sourceCategories),
+        statuses: normalizeStringArray(fields.statuses),
+      },
+      allowedWriteFiles: normalizeStringArray(source.allowedWriteFiles),
+      forbiddenActions: normalizeStringArray(source.forbiddenActions),
+    };
+  }
+
+  function normalizeEvidenceIntakeRow(row = {}) {
+    const source = row && typeof row === "object" ? row : {};
+    return {
+      media_path: String(source.media_path || ""),
+      media_type: String(source.media_type || ""),
+      source_category: String(source.source_category || ""),
+      proof_purpose: String(source.proof_purpose || ""),
+      related_script_block_or_section: String(source.related_script_block_or_section || ""),
+      status: String(source.status || ""),
+      resolve_tested: String(source.resolve_tested || "no"),
+      notes: String(source.notes || ""),
+      artifact: String(source.artifact || ""),
+      line: Number.isFinite(source.line) ? source.line : 0,
+      existsOnDisk: Boolean(source.existsOnDisk),
+      evidenceOnly: source.evidenceOnly !== false,
+    };
+  }
+
+  function renderEvidenceOptions(options = [], selected = "") {
+    return options.map((option) => `<option value="${escapeHtml(option)}" ${option === selected ? "selected" : ""}>${escapeHtml(option)}</option>`).join("");
+  }
+
+  function evidenceRowLabel(row) {
+    if (row.status === "missing") return "MISSING FILE";
+    if (row.status === "tested_in_resolve" && row.resolve_tested !== "yes") return "NEEDS RESOLVE TEST";
+    if (row.status === "usable") return "USABLE CANDIDATE";
+    if (row.status === "exists_on_vidnas" || row.status === "imported_to_resolve") return "EVIDENCE ONLY";
+    return "NOT APPROVED";
+  }
+
+  function renderEvidenceRows(rows = []) {
+    if (!rows.length) return `<p class="muted">No existing evidence rows were found in the capture artifacts.</p>`;
+    return `<div class="evidence-row-table" role="table" aria-label="Existing evidence rows">
+      <div class="evidence-row-header" role="row">
+        <span>File</span><span>Type</span><span>Purpose</span><span>Status</span><span>Resolve</span>
+      </div>
+      ${rows.slice(0, 24).map((row) => `<div class="evidence-row" role="row">
+        <code>${escapeHtml(row.media_path || "no media path")}</code>
+        <span>${escapeHtml(row.media_type || "other")}</span>
+        <span>${escapeHtml(row.proof_purpose || "No proof purpose recorded.")}<small>${escapeHtml(row.artifact ? `${row.artifact}:${row.line || ""}` : row.notes)}</small></span>
+        <strong>${escapeHtml(evidenceRowLabel(row))}</strong>
+        <span>${escapeHtml(row.resolve_tested === "yes" ? "tested" : "not tested")}</span>
+      </div>`).join("")}
+    </div>`;
+  }
+
+  function renderEvidenceIntakePanel(payload) {
+    const panel = normalizeEvidenceIntake(payload);
+    const mediaTypes = panel.fields.mediaTypes.length ? panel.fields.mediaTypes : [
+      "screen_capture",
+      "camera_capture",
+      "audio_capture",
+      "generated_still",
+      "generated_video",
+      "kling_candidate",
+      "resolve_timeline_test",
+      "export_candidate",
+      "other",
+    ];
+    const sourceCategories = panel.fields.sourceCategories.length ? panel.fields.sourceCategories : [
+      "A-roll",
+      "B-roll",
+      "screen proof",
+      "generated asset",
+      "Resolve test",
+      "audio",
+      "export",
+      "other",
+    ];
+    const statuses = panel.fields.statuses.length ? panel.fields.statuses : [
+      "planned",
+      "exists_on_vidnas",
+      "imported_to_resolve",
+      "tested_in_resolve",
+      "usable",
+      "rejected",
+      "missing",
+    ];
+    return `<div class="evidence-intake-card" data-evidence-intake data-run-id="${escapeHtml(panel.runId)}">
+      <div class="evidence-intake-header">
+        <div>
+          <p class="eyebrow">Evidence Intake</p>
+          <h2>${escapeHtml(panel.evidenceStatus)}</h2>
+          <p class="muted">Active run: <code>${escapeHtml(panel.runId || "unknown")}</code></p>
+        </div>
+        <div class="evidence-intake-labels">
+          ${(panel.labels.length ? panel.labels : ["EVIDENCE ONLY", "NOT APPROVED", "NOT PRODUCTION READY"]).map((label) => `<span>${escapeHtml(label)}</span>`).join("")}
+        </div>
+      </div>
+      <div class="evidence-intake-next">
+        <h3>Next evidence action</h3>
+        <p>${escapeHtml(panel.nextEvidenceAction)}</p>
+      </div>
+      <section>
+        <h3>What media evidence exists?</h3>
+        ${renderEvidenceRows(panel.existingRows)}
+      </section>
+      <section class="evidence-add-row">
+        <h3>Add evidence row</h3>
+        <div class="evidence-form-grid">
+          <label><span>media_path *</span><input type="text" data-evidence-field="media_path" placeholder="/mnt/vidnas_public/.../kling-video-candidates/block-024-prompt-03-kling-01.mp4" /></label>
+          <label><span>media_type *</span><select data-evidence-field="media_type">${renderEvidenceOptions(mediaTypes, "kling_candidate")}</select></label>
+          <label><span>source_category</span><select data-evidence-field="source_category">${renderEvidenceOptions(sourceCategories, "generated asset")}</select></label>
+          <label><span>status *</span><select data-evidence-field="status">${renderEvidenceOptions(statuses, "exists_on_vidnas")}</select></label>
+          <label><span>resolve_tested</span><select data-evidence-field="resolve_tested"><option value="no">no</option><option value="yes">yes</option></select></label>
+          <label><span>related section</span><input type="text" data-evidence-field="related_script_block_or_section" placeholder="block-024 or hook" /></label>
+          <label class="evidence-field-wide"><span>proof_purpose *</span><input type="text" data-evidence-field="proof_purpose" placeholder="What this media proves or supports in the edit" /></label>
+          <label class="evidence-field-wide"><span>notes</span><input type="text" data-evidence-field="notes" placeholder="Resolve timeline notes, missing context, or why this remains a candidate" /></label>
+        </div>
+        <div class="evidence-write-actions">
+          <button type="button" data-evidence-preview>Preview evidence intake</button>
+          <button type="button" data-evidence-save disabled>Save evidence intake draft</button>
+        </div>
+        <div class="evidence-write-status" data-evidence-status>Preview validates without writing. Save writes only <code>${escapeHtml((panel.allowedWriteFiles || []).join(", ") || "capture-evidence-intake-log.md")}</code>.</div>
+        <textarea readonly rows="12" class="capture-write-preview" data-evidence-preview-output placeholder="Preview will show the exact evidence-only draft before writing."></textarea>
+      </section>
+      <section class="evidence-boundary">
+        <h3>DO NOT DO</h3>
+        ${renderCompactList(panel.forbiddenActions, "No forbidden actions reported.")}
+      </section>
+    </div>`;
+  }
+
   function createBrowserApp(doc = globalScope.document) {
     const els = {
       status: doc.querySelector("#packageRunsStatus"),
       nextSafeActionPanel: doc.querySelector("#nextSafeActionPanel"),
+      evidenceIntakePanel: doc.querySelector("#evidenceIntakePanel"),
       grid: doc.querySelector("#packageRunsGrid"),
       stats: doc.querySelector("#packageRunsStats"),
       summary: doc.querySelector("#packageRunsSummary"),
@@ -1770,12 +1920,31 @@ Capture evidence approval: PASS`;
           showStatus(`Loaded ${index.runs.length} package runs from package-runs-index.json.`, "success");
           render();
           loadLocalWriteConfig()
-            .then(() => Promise.all([loadNextSafeActionPanel(), loadMikkoInputConsole()]))
-            .catch(() => Promise.all([loadNextSafeActionPanel(), loadMikkoInputConsole()]));
+            .then(() => Promise.all([loadNextSafeActionPanel(), loadEvidenceIntakePanel(), loadMikkoInputConsole()]))
+            .catch(() => Promise.all([loadNextSafeActionPanel(), loadEvidenceIntakePanel(), loadMikkoInputConsole()]));
         })
         .catch((error) => {
           showStatus(error.message, "error");
           els.grid.innerHTML = `<p class="muted">Run <code>node scripts/package-runs-index.js</code>, then serve this directory locally.</p>`;
+        });
+    }
+
+    function loadEvidenceIntakePanel() {
+      if (!els.evidenceIntakePanel) return Promise.resolve();
+      const statusApi =
+        localWriteConfig && localWriteConfig.evidenceIntakeStatusApi
+          ? localWriteConfig.evidenceIntakeStatusApi
+          : "/api/package-runs/evidence-intake/status";
+      return fetch(statusApi, { cache: "no-store" })
+        .then((response) => response.json().then((payload) => {
+          if (!response.ok) throw new Error(payload.error || `Evidence intake unavailable (${response.status}).`);
+          return payload;
+        }))
+        .then((payload) => {
+          els.evidenceIntakePanel.innerHTML = renderEvidenceIntakePanel(payload);
+        })
+        .catch((error) => {
+          els.evidenceIntakePanel.innerHTML = `<div class="evidence-intake-card"><p class="eyebrow">Evidence Intake</p><h2>Unavailable</h2><p class="muted">${escapeHtml(error.message)}</p></div>`;
         });
     }
 
@@ -1878,6 +2047,18 @@ Capture evidence approval: PASS`;
     }
 
     function handleGridClick(event) {
+      const evidencePreview = event.target.closest("[data-evidence-preview]");
+      if (evidencePreview) {
+        event.preventDefault();
+        previewEvidenceIntake(evidencePreview);
+        return;
+      }
+      const evidenceSave = event.target.closest("[data-evidence-save]");
+      if (evidenceSave) {
+        event.preventDefault();
+        saveEvidenceIntake(evidenceSave);
+        return;
+      }
       const previewButton = event.target.closest("[data-capture-preview]");
       if (previewButton) {
         event.preventDefault();
@@ -2081,6 +2262,128 @@ Capture evidence approval: PASS`;
         status.textContent = message;
         status.className = `capture-write-status ${type}`.trim();
       }
+    }
+
+    function evidenceIntakeValues(container) {
+      const row = {};
+      container.querySelectorAll("[data-evidence-field]").forEach((input) => {
+        row[input.dataset.evidenceField] = input.value;
+      });
+      return [row];
+    }
+
+    function evidenceIntakePayload(container) {
+      return {
+        runId: container.dataset.runId || "",
+        rows: evidenceIntakeValues(container),
+        localWriteNonce: localWriteConfig ? localWriteConfig.localWriteNonce : "",
+      };
+    }
+
+    function setEvidenceIntakeStatus(container, message, type = "") {
+      const status = container.querySelector("[data-evidence-status]");
+      if (status) {
+        status.textContent = message;
+        status.className = `evidence-write-status ${type}`.trim();
+      }
+    }
+
+    function resetEvidenceIntakeState(container, message = "Preview required before Save is enabled.") {
+      container.dataset.evidencePreviewToken = "";
+      const saveButton = container.querySelector("[data-evidence-save]");
+      if (saveButton) saveButton.disabled = true;
+      setEvidenceIntakeStatus(container, message);
+    }
+
+    function renderEvidencePreviewPayload(payload) {
+      const lines = [];
+      if ((payload.warnings || []).length) {
+        lines.push("Warnings:", ...payload.warnings.map((warning) => `- ${warning}`), "");
+      }
+      if ((payload.errors || []).length) {
+        lines.push("Errors:", ...payload.errors.map((error) => `- ${error}`), "");
+      }
+      lines.push(payload.draftMarkdown || "");
+      return lines.join("\n");
+    }
+
+    function previewEvidenceIntake(button) {
+      const container = button.closest("[data-evidence-intake]");
+      if (!container) return;
+      const previewOutput = container.querySelector("[data-evidence-preview-output]");
+      const saveButton = container.querySelector("[data-evidence-save]");
+      button.disabled = true;
+      setEvidenceIntakeStatus(container, "Previewing evidence-only draft. No files are being written.", "pending");
+      loadLocalWriteConfig()
+        .then((config) => fetch(config.evidenceIntakePreviewApi || "/api/package-runs/evidence-intake/preview", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            [config.nonceHeader || "x-vidtoolz-local-write-nonce"]: config.localWriteNonce,
+          },
+          body: JSON.stringify(evidenceIntakePayload(container)),
+        }))
+        .then((response) => response.json().then((payload) => {
+          if (!response.ok) {
+            const error = new Error(payload.error || `Evidence intake preview failed (${response.status}).`);
+            error.payload = payload;
+            throw error;
+          }
+          return payload;
+        }))
+        .then((payload) => {
+          container.dataset.evidencePreviewToken = payload.previewToken || "";
+          if (previewOutput) previewOutput.value = renderEvidencePreviewPayload(payload);
+          if (saveButton) saveButton.disabled = !payload.previewToken;
+          const warningText = (payload.warnings || []).length ? ` Warnings: ${payload.warnings.length}.` : "";
+          setEvidenceIntakeStatus(container, `Preview ready.${warningText} Save writes only ${payload.targetFile || "capture-evidence-intake-log.md"}.`, "valid");
+        })
+        .catch((error) => {
+          const payload = error.payload || {};
+          resetEvidenceIntakeState(container, error.message);
+          if (previewOutput) previewOutput.value = renderEvidencePreviewPayload(payload);
+        })
+        .finally(() => {
+          button.disabled = false;
+        });
+    }
+
+    function saveEvidenceIntake(button) {
+      const container = button.closest("[data-evidence-intake]");
+      if (!container) return;
+      const previewToken = container.dataset.evidencePreviewToken || "";
+      if (!previewToken) {
+        resetEvidenceIntakeState(container);
+        return;
+      }
+      button.disabled = true;
+      setEvidenceIntakeStatus(container, "Saving evidence-only draft to the approved audit log.", "pending");
+      loadLocalWriteConfig()
+        .then((config) => fetch(config.evidenceIntakeSaveApi || "/api/package-runs/evidence-intake/save", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            [config.nonceHeader || "x-vidtoolz-local-write-nonce"]: config.localWriteNonce,
+          },
+          body: JSON.stringify({
+            ...evidenceIntakePayload(container),
+            previewToken,
+            confirmSave: true,
+          }),
+        }))
+        .then((response) => response.json().then((payload) => {
+          if (!response.ok) throw new Error(payload.error || `Evidence intake save failed (${response.status}).`);
+          return payload;
+        }))
+        .then((payload) => {
+          container.dataset.evidencePreviewToken = "";
+          setEvidenceIntakeStatus(container, payload.warning || `Saved: ${(payload.written || []).join(", ")}`, "valid");
+          button.disabled = true;
+        })
+        .catch((error) => {
+          setEvidenceIntakeStatus(container, error.message, "missing");
+          button.disabled = false;
+        });
     }
 
     function previewCaptureWrite(button) {
@@ -2751,6 +3054,12 @@ Capture evidence approval: PASS`;
     }
 
     function handleGridInput(event) {
+      const evidenceInput = event.target.closest("[data-evidence-field]");
+      if (evidenceInput) {
+        const container = evidenceInput.closest("[data-evidence-intake]");
+        if (container) resetEvidenceIntakeState(container, "Preview validates without writing. Save writes only the evidence intake audit log.");
+        return;
+      }
       const input = event.target.closest("[data-capture-field]");
       if (input) {
         const container = input.closest("[data-capture-intake]");
@@ -2795,11 +3104,23 @@ Capture evidence approval: PASS`;
     els.grid.addEventListener("input", handleGridInput);
     if (els.mikkoConsoleContent) els.mikkoConsoleContent.addEventListener("click", handleGridClick);
     if (els.nextSafeActionPanel) els.nextSafeActionPanel.addEventListener("click", handleGridClick);
+    if (els.evidenceIntakePanel) {
+      els.evidenceIntakePanel.addEventListener("click", handleGridClick);
+      els.evidenceIntakePanel.addEventListener("input", handleGridInput);
+    }
     els.closePreview.addEventListener("click", () => {
       els.previewPanel.classList.add("hidden");
     });
 
-    return { load, render, previewArtifact, updateCaptureIntake, loadMikkoInputConsole, loadNextSafeActionPanel };
+    return {
+      load,
+      render,
+      previewArtifact,
+      updateCaptureIntake,
+      loadMikkoInputConsole,
+      loadNextSafeActionPanel,
+      loadEvidenceIntakePanel,
+    };
   }
 
   const api = {
@@ -2855,6 +3176,10 @@ Capture evidence approval: PASS`;
     renderWorkflowStats,
     normalizeNextSafeAction,
     renderNextSafeActionPanel,
+    normalizeEvidenceIntake,
+    normalizeEvidenceIntakeRow,
+    renderEvidenceRows,
+    renderEvidenceIntakePanel,
     createBrowserApp,
   };
 

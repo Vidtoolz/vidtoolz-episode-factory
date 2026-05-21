@@ -11089,8 +11089,12 @@ test("package engine server status reports provider and model without generation
   assert.equal(placeholder.api, "/api/package-engine/thumbnails");
   assert.equal(placeholder.captureEvidenceWrite.previewApi, "/api/package-runs/capture-evidence/preview");
   assert.equal(placeholder.captureEvidenceWrite.applyApi, "/api/package-runs/capture-evidence/apply");
+  assert.equal(placeholder.captureEvidenceWrite.evidenceIntakeStatusApi, "/api/package-runs/evidence-intake/status");
+  assert.equal(placeholder.captureEvidenceWrite.evidenceIntakePreviewApi, "/api/package-runs/evidence-intake/preview");
+  assert.equal(placeholder.captureEvidenceWrite.evidenceIntakeSaveApi, "/api/package-runs/evidence-intake/save");
   assert.equal(placeholder.captureEvidenceWrite.nonceHeader, "x-vidtoolz-local-write-nonce");
   assert.equal(Boolean(placeholder.captureEvidenceWrite.localWriteNonce), true);
+  assert.deepEqual(placeholder.captureEvidenceWrite.evidenceIntakeAllowedWriteFiles, ["capture-evidence-intake-log.md"]);
   assert.equal(placeholder.roughCutInputConsole.statusApi, "/api/package-runs/rough-cut/status");
   assert.equal(placeholder.roughCutInputConsole.nextSafeActionApi, "/api/package-runs/next-safe-action");
   assert.equal(placeholder.roughCutInputConsole.secondCutCandidatePreviewApi, "/api/package-runs/second-cut-candidate/preview");
@@ -11163,6 +11167,58 @@ function captureEvidenceIntakeFields(overrides = {}) {
     audioReference: "audio/voiceover-main.wav",
     ...overrides,
   };
+}
+
+function evidenceIntakeRows(overrides = {}) {
+  return [{
+    media_path: "/tmp/vidtoolz-kling-candidate.mp4",
+    media_type: "kling_candidate",
+    source_category: "generated asset",
+    proof_purpose: "Kling b-roll candidate supports the prompt-03 block context.",
+    related_script_block_or_section: "block-024",
+    status: "exists_on_vidnas",
+    resolve_tested: "no",
+    notes: "Candidate only; not approval or production readiness.",
+    ...overrides,
+  }];
+}
+
+function createEvidenceNextActionFixture(withKlingVideo = false) {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-next-action-"));
+  const runId = "2026-05-06-ai-video-proof-plan";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  const assetFolder = path.join(tempRoot, "vidnas", "script-image-assets");
+  const manifestPath = path.join(assetFolder, "generation-manifest.json");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.mkdirSync(path.join(tempRoot, "reports"), { recursive: true });
+  fs.mkdirSync(assetFolder, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "package-run-state.md"), "# Package Run State\n\nPackage run state: active\n", "utf8");
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify({
+      output_folder: assetFolder,
+      items: [{
+        prompt_id: "prompt-03",
+        output_filename: "block-024-prompt-03.png",
+        selected: true,
+        reviewed_by_mikko: true,
+        approved: false,
+        production_ready: false,
+      }],
+    }),
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(tempRoot, "reports", "prompt-03-selected-image-edit-handoff.md"),
+    `# Handoff\n\nManifest: \`${manifestPath}\`\n`,
+    "utf8"
+  );
+  fs.writeFileSync(path.join(tempRoot, "reports", "prompt-03-image-selection-review.md"), "# Review\n", "utf8");
+  if (withKlingVideo) {
+    fs.mkdirSync(path.join(assetFolder, "kling-video-candidates"), { recursive: true });
+    fs.writeFileSync(path.join(assetFolder, "kling-video-candidates", "block-024-prompt-03-kling-01.mp4"), "fake video", "utf8");
+  }
+  return { tempRoot, runId, runDir, manifestPath, assetFolder };
 }
 
 function roughCutInputFields(overrides = {}) {
@@ -12996,6 +13052,207 @@ test("capture evidence intake apply preserves manual content and updates marked 
   assert.doesNotMatch(takes, /media\/take-01\.mov/);
   assert.equal((takes.match(/capture-evidence-intake:start/g) || []).length, 1);
   assert.equal((takes.match(/capture-evidence-intake:end/g) || []).length, 1);
+});
+
+test("evidence intake dashboard UI renders evidence-only controls", () => {
+  const html = packageRunsDashboard.renderEvidenceIntakePanel({
+    ok: true,
+    readOnly: true,
+    runId: "2026-05-06-ai-video-proof-plan",
+    evidenceStatus: "selected stills exist, Kling candidates missing",
+    nextEvidenceAction: "Create Kling MP4s manually, move them to VIDNAS, then record them here.",
+    labels: ["EVIDENCE ONLY", "NOT APPROVED", "NOT PRODUCTION READY"],
+    existingRows: [],
+    fields: {
+      mediaTypes: ["kling_candidate", "resolve_timeline_test"],
+      sourceCategories: ["generated asset", "Resolve test"],
+      statuses: ["exists_on_vidnas", "tested_in_resolve", "missing"],
+    },
+    allowedWriteFiles: ["capture-evidence-intake-log.md"],
+    forbiddenActions: ["mark approved", "mark production_ready", "publish"],
+  });
+
+  assert.match(html, /Evidence Intake/);
+  assert.match(html, /EVIDENCE ONLY/);
+  assert.match(html, /NOT APPROVED/);
+  assert.match(html, /NOT PRODUCTION READY/);
+  assert.match(html, /data-evidence-field="media_path"/);
+  assert.match(html, /data-evidence-preview/);
+  assert.match(html, /data-evidence-save disabled/);
+  assert.match(html, /Preview validates without writing/);
+  assert.match(html, /DO NOT DO/);
+});
+
+test("evidence intake dashboard displays existing evidence rows", () => {
+  const html = packageRunsDashboard.renderEvidenceIntakePanel({
+    runId: "2026-05-06-ai-video-proof-plan",
+    existingRows: [{
+      media_path: "/mnt/vidnas_public/episode/kling-01.mp4",
+      media_type: "kling_candidate",
+      source_category: "generated asset",
+      proof_purpose: "Supports prompt-03 B-roll in the edit.",
+      status: "exists_on_vidnas",
+      resolve_tested: "no",
+      artifact: "takes-log.md",
+      line: 12,
+    }],
+  });
+
+  assert.match(html, /\/mnt\/vidnas_public\/episode\/kling-01\.mp4/);
+  assert.match(html, /Supports prompt-03 B-roll in the edit/);
+  assert.match(html, /EVIDENCE ONLY/);
+  assert.match(html, /not tested/);
+  assert.match(html, /takes-log\.md:12/);
+});
+
+test("evidence intake status reads existing artifact rows", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-intake-status-"));
+  const runId = "2026-05-12-evidence-status";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "takes-log.md"),
+    "# Takes Log\n\n| take | source item | file/reference | status |\n| --- | --- | --- | --- |\n| Hook take | hook block | `/tmp/hook-take.mov` | captured |\n",
+    "utf8"
+  );
+
+  const status = packageEngineServer.buildEvidenceIntakeStatus({ runId }, { root: tempRoot });
+
+  assert.equal(status.ok, true);
+  assert.equal(status.readOnly, true);
+  assert.equal(status.existingRowCount, 1);
+  assert.equal(status.existingRows[0].media_path, "/tmp/hook-take.mov");
+  assert.equal(status.existingRows[0].media_type, "camera_capture");
+  assert.equal(status.existingRows[0].approved, false);
+  assert.equal(status.existingRows[0].productionReady, false);
+});
+
+test("evidence intake preview validates required fields without writing", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-intake-preview-"));
+  const runId = "2026-05-12-evidence-preview";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+
+  assert.throws(
+    () => packageEngineServer.buildEvidenceIntakePreview({ runId, rows: evidenceIntakeRows({ proof_purpose: "" }) }, { root: tempRoot }),
+    /proof_purpose is required/
+  );
+  assert.deepEqual(fs.readdirSync(runDir), []);
+});
+
+test("evidence intake rejects path traversal", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-intake-traversal-"));
+  const runId = "2026-05-12-evidence-traversal";
+  fs.mkdirSync(path.join(tempRoot, "package-runs", runId), { recursive: true });
+
+  assert.throws(
+    () => packageEngineServer.buildEvidenceIntakePreview({ runId, rows: evidenceIntakeRows({ media_path: "../escape.mp4" }) }, { root: tempRoot }),
+    /path traversal is not allowed/
+  );
+});
+
+test("evidence intake warns on missing files and generated proof without context", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-intake-warnings-"));
+  const runId = "2026-05-12-evidence-warnings";
+  fs.mkdirSync(path.join(tempRoot, "package-runs", runId), { recursive: true });
+
+  const preview = packageEngineServer.buildEvidenceIntakePreview({
+    runId,
+    rows: evidenceIntakeRows({
+      media_path: path.join(tempRoot, "missing-generated-still.png"),
+      media_type: "generated_still",
+      source_category: "generated asset",
+      proof_purpose: "Image is production proof",
+      notes: "",
+    }),
+  }, { root: tempRoot });
+
+  assert.equal(preview.ok, true);
+  assert.equal(preview.readOnly, true);
+  assert.equal(preview.warnings.some((warning) => /MISSING FILE/.test(warning)), true);
+  assert.equal(preview.warnings.some((warning) => /generated asset needs context/i.test(warning)), true);
+  assert.doesNotMatch(preview.draftMarkdown, /Production readiness written: yes|Publish readiness written: yes/);
+  assert.equal(fs.existsSync(path.join(tempRoot, "package-runs", runId, "capture-evidence-intake-log.md")), false);
+});
+
+test("evidence intake save writes only the audit-log draft and never readiness markers", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-intake-save-"));
+  const runId = "2026-05-12-evidence-save";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "package-run-state.md"), "# Package Run State\n\nPackage run state: active\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "generation-manifest.json"), "{\"items\":[]}\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "candidate.mp4"), "fake media", "utf8");
+  const protectedFiles = [
+    path.join(runDir, "package-run-state.md"),
+    path.join(runDir, "generation-manifest.json"),
+    path.join(runDir, "candidate.mp4"),
+  ];
+  const before = Object.fromEntries(protectedFiles.map((filePath) => [filePath, fs.readFileSync(filePath, "utf8")]));
+  const payload = {
+    runId,
+    rows: evidenceIntakeRows({
+      media_path: path.join(runDir, "candidate.mp4"),
+      notes: "Candidate only; tested in Resolve timeline not yet recorded.",
+    }),
+  };
+  const preview = packageEngineServer.buildEvidenceIntakePreview(payload, { root: tempRoot });
+  const saved = packageEngineServer.saveEvidenceIntakeDraft({
+    ...payload,
+    previewToken: preview.previewToken,
+    confirmSave: true,
+  }, { root: tempRoot });
+  const files = fs.readdirSync(runDir).sort();
+  const audit = fs.readFileSync(path.join(runDir, "capture-evidence-intake-log.md"), "utf8");
+
+  assert.deepEqual(saved.written, ["capture-evidence-intake-log.md"]);
+  assert.equal(saved.captureEvidenceAccepted, false);
+  assert.equal(saved.approved, false);
+  assert.equal(saved.selected, false);
+  assert.equal(saved.productionReady, false);
+  assert.equal(saved.publishReady, false);
+  assert.deepEqual(files, ["candidate.mp4", "capture-evidence-intake-log.md", "generation-manifest.json", "package-run-state.md"]);
+  assert.match(audit, /Approval written: no/);
+  assert.match(audit, /Capture accepted written: no/);
+  assert.match(audit, /Production readiness written: no/);
+  assert.match(audit, /Publish readiness written: no/);
+  assert.doesNotMatch(audit, /Capture evidence approval: PASS|production_ready:\s*true|publish_ready:\s*true/i);
+  protectedFiles.forEach((filePath) => assert.equal(fs.readFileSync(filePath, "utf8"), before[filePath]));
+});
+
+test("evidence intake status routes selected stills without Kling videos to manual Kling action", () => {
+  const fixture = createEvidenceNextActionFixture(false);
+
+  const status = packageEngineServer.buildEvidenceIntakeStatus({ runId: fixture.runId }, { root: fixture.tempRoot });
+
+  assert.equal(status.evidenceStatus, "selected stills exist, Kling candidates missing");
+  assert.match(status.nextEvidenceAction, /Create Kling MP4s manually/);
+  assert.doesNotMatch(status.nextEvidenceAction, /production[-_ ]?ready|publish/i);
+  assert.equal(status.externalApisCalled, false);
+});
+
+test("evidence intake status routes Kling videos without Resolve evidence to timeline testing", () => {
+  const fixture = createEvidenceNextActionFixture(true);
+
+  const status = packageEngineServer.buildEvidenceIntakeStatus({ runId: fixture.runId }, { root: fixture.tempRoot });
+
+  assert.equal(status.evidenceStatus, "Kling candidates exist, Resolve test evidence missing");
+  assert.match(status.nextEvidenceAction, /Import the Kling candidates to Resolve/);
+  assert.doesNotMatch(status.nextEvidenceAction, /approved|production[-_ ]?ready|publish/i);
+});
+
+test("evidence intake forbidden actions include approval publish and readiness automation", () => {
+  const fixture = createEvidenceNextActionFixture(false);
+
+  const status = packageEngineServer.buildEvidenceIntakeStatus({ runId: fixture.runId }, { root: fixture.tempRoot });
+  const forbidden = status.forbiddenActions.join("\n");
+
+  assert.match(forbidden, /mark approved/);
+  assert.match(forbidden, /mark production_ready/);
+  assert.match(forbidden, /mark publish_ready/);
+  assert.match(forbidden, /operate Kling/);
+  assert.match(forbidden, /operate Resolve/);
+  assert.match(forbidden, /write manifests/);
 });
 
 test("package engine provider config defaults and respects openai mode", () => {
