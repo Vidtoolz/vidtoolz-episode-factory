@@ -13859,6 +13859,87 @@ test("package runs dashboard renders Production GPS panels safely", () => {
   assert.match(html, /Derived rough-cut review artifact may be stale/);
 });
 
+test("package runs dashboard renders Production Timeline Cockpit without mutation controls", () => {
+  const html = packageRunsDashboard.renderProductionTimelineCockpit({
+    currentWork: {
+      latestCompleted: "Selected prompt-03 stills recorded; no assets approved.",
+      activeStage: "Manual Kling b-roll candidate creation",
+      activeTask: "Create three image-to-video candidates from selected prompt-03 stills.",
+      blocker: "No Kling MP4s exist on VIDNAS and no Resolve timeline test is recorded.",
+      immediateNextAction: "Mikko manually creates Kling MP4 candidates, moves them to VIDNAS, and tests in Resolve.",
+      nextSteps: [
+        "Create Kling candidates manually from selected stills.",
+        "Move MP4s to VIDNAS.",
+        "Record Resolve test results in evidence intake only.",
+      ],
+    },
+    lifecycle: [
+      { label: "Package", status: "completed", detail: "Package selected.", artifactPath: "package-run-state.md" },
+      { label: "Capture / B-roll", status: "current", detail: "Prompt-03 stills selected; Kling video pending.", artifactPath: "generation-manifest.json" },
+      { label: "Resolve Test", status: "blocked", detail: "Needs real MP4 candidates before timeline test.", artifactPath: "capture-evidence-intake-log.md" },
+      { label: "Second Cut", status: "next", detail: "Wait for real tested video evidence.", artifactPath: "second-cut-candidate.md" },
+      { label: "Publish", status: "future", detail: "Locked until final/export gates pass.", artifactPath: "publication-metadata.md" },
+    ],
+    blockedActions: [
+      "mark approved",
+      "mark production_ready",
+      "mark publish_ready",
+      "operate Kling automatically",
+      "move media automatically",
+    ],
+  });
+
+  assert.match(html, /Production Timeline Cockpit/);
+  assert.match(html, /Detailed Current-Work Timeline/);
+  assert.match(html, /Full Process Mini Timeline/);
+  assert.match(html, /Latest completed/);
+  assert.match(html, /Active now/);
+  assert.match(html, /Blocked by/);
+  assert.match(html, /Immediate next action/);
+  assert.match(html, /Next few steps/);
+  assert.match(html, /Manual Kling b-roll candidate creation/);
+  assert.match(html, /Selected prompt-03 stills recorded/);
+  assert.match(html, /No Kling MP4s exist on VIDNAS/);
+  assert.match(html, /gate-completed/);
+  assert.match(html, /gate-current/);
+  assert.match(html, /gate-blocked/);
+  assert.match(html, /gate-next/);
+  assert.match(html, /gate-future/);
+  assert.match(html, /Resolve Test/);
+  assert.match(html, /Evidence logging only/);
+  assert.match(html, /mark production_ready/);
+  assert.doesNotMatch(html, /data-save-production-ready/);
+  assert.doesNotMatch(html, /data-approve/);
+  assert.doesNotMatch(html, /data-publish/);
+  assert.doesNotMatch(html, /data-operate-kling/);
+  assert.doesNotMatch(html, /data-move-media/);
+});
+
+test("rough cut status exposes Production Timeline Cockpit for the live dashboard", () => {
+  const fixture = createEvidenceNextActionFixture(false);
+
+  const status = packageEngineServer.buildRoughCutStatus({ runId: fixture.runId }, { root: fixture.tempRoot });
+  const cockpit = status.productionTimelineCockpit;
+
+  assert.equal(Boolean(cockpit), true);
+  assert.equal(cockpit.readOnly, true);
+  assert.equal(cockpit.externalApisCalled, false);
+  assert.equal(cockpit.currentWork.activeStage, "Manual Kling b-roll candidate creation");
+  assert.match(cockpit.currentWork.latestCompleted, /Selected prompt-03 stills exist/);
+  assert.match(cockpit.currentWork.immediateNextAction, /Kling MP4 candidates/);
+  assert.equal(Array.isArray(cockpit.currentWork.nextSteps), true);
+  assert.equal(cockpit.currentWork.nextSteps.length >= 3, true);
+  assert.equal(Array.isArray(cockpit.lifecycle), true);
+  assert.equal(cockpit.lifecycle.length > 5, true);
+  assert.equal(cockpit.lifecycle.some((item) => item.status === "current" || item.current), true);
+  assert.equal(cockpit.lifecycle.some((item) => item.status === "next" || item.status === "future"), true);
+  assert.match(cockpit.blockedActions.join("\n"), /mark approved/);
+  assert.match(cockpit.blockedActions.join("\n"), /mark selected/);
+  assert.match(cockpit.blockedActions.join("\n"), /mark production_ready/);
+  assert.match(cockpit.blockedActions.join("\n"), /operate Kling/);
+  assert.doesNotMatch(JSON.stringify(cockpit), /capture accepted:\s*yes|production_ready:\s*true|publish_ready:\s*true/i);
+});
+
 test("package runs dashboard renders Second-Cut Candidate Inspector safely", () => {
   const html = packageRunsDashboard.renderSecondCutInspector({
     runId: "2026-05-06-ai-video-proof-plan",

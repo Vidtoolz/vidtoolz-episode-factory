@@ -872,6 +872,67 @@ Capture evidence approval: PASS`;
     </section>`;
   }
 
+  function renderProductionTimelineCockpit(payload = {}) {
+    const currentWork = payload.currentWork || {};
+    const lifecycle = Array.isArray(payload.lifecycle) ? payload.lifecycle : [];
+    const blockedActions = Array.isArray(payload.blockedActions) ? payload.blockedActions : [];
+    const nextSteps = Array.isArray(currentWork.nextSteps) ? currentWork.nextSteps : [];
+    const list = (items, fallback) => `<ul>${(Array.isArray(items) && items.length ? items : [fallback]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+    const activeLabel = [currentWork.activeStage, currentWork.activeTask].filter(Boolean).join(" — ") || "No active task reported.";
+    const lifecycleItems = lifecycle.length ? lifecycle : [
+      { label: "Current run", status: "current", detail: "No lifecycle timeline supplied.", artifactPath: "dashboard input" },
+    ];
+
+    return `<section class="production-timeline-cockpit" aria-label="Production Timeline Cockpit">
+      <div class="mikko-console-header">
+        <div>
+          <p class="eyebrow">Operator Cockpit</p>
+          <h3>Production Timeline Cockpit</h3>
+        </div>
+        ${renderStatusBadge(currentWork.status || "read-only")}
+      </div>
+      <div class="human-review-required">
+        <strong>Evidence logging only</strong>
+        <p>This cockpit is read-only orientation. It does not approve assets, mark production_ready, mark publish_ready, operate Kling, move media, or update package-run state.</p>
+      </div>
+      <div class="current-work-timeline">
+        <h4>Detailed Current-Work Timeline</h4>
+        <div class="current-work-grid">
+          <article class="timeline-step gate-card gate-completed">
+            <span>Latest completed</span>
+            <strong>${escapeHtml(currentWork.latestCompleted || "No completed work reported.")}</strong>
+          </article>
+          <article class="timeline-step gate-card gate-current">
+            <span>Active now</span>
+            <strong>${escapeHtml(activeLabel)}</strong>
+          </article>
+          <article class="timeline-step gate-card gate-blocked">
+            <span>Blocked by</span>
+            <strong>${escapeHtml(currentWork.blocker || "No blocker reported.")}</strong>
+          </article>
+          <article class="timeline-step gate-card gate-next">
+            <span>Immediate next action</span>
+            <strong>${escapeHtml(currentWork.immediateNextAction || "Review the active stage and record evidence only.")}</strong>
+          </article>
+        </div>
+        <div class="gps-split">
+          <div><h5>Next few steps</h5>${list(nextSteps, "Record the next verified evidence item without changing approval state.")}</div>
+          <div><h5>Blocked actions</h5>${list(blockedActions, "Do not approve, publish, operate tools automatically, or move media from this cockpit.")}</div>
+        </div>
+      </div>
+      <div class="gps-timeline">
+        <h4>Full Process Mini Timeline</h4>
+        <div class="gate-timeline-grid">
+          ${lifecycleItems.map((gate) => `<article class="gate-card ${gateClass(gate.status)} ${gate.current ? "gate-current" : ""}">
+            <div class="gate-card-top"><strong>${escapeHtml(gate.label || "Unnamed stage")}</strong>${renderStatusBadge(gate.status || "future")}</div>
+            <p>${escapeHtml(gate.detail || gate.reason || "No detail reported.")}</p>
+            <small>${escapeHtml(gate.artifactPath || "No artifact path.")}</small>
+          </article>`).join("")}
+        </div>
+      </div>
+    </section>`;
+  }
+
   function renderRoughCutResultCard(status = {}) {
     const result = status.roughCutResult || {};
     const candidate = status.roughCutCandidate || {};
@@ -1441,6 +1502,7 @@ Capture evidence approval: PASS`;
     const defaults = roughCutInputDefaults();
     const reviewedPath = candidate.path || "";
     return `<div class="mikko-console-run" data-rough-cut-console data-run-id="${escapeHtml(runId)}">
+      ${status.productionTimelineCockpit ? renderProductionTimelineCockpit(status.productionTimelineCockpit) : ""}
       ${status.productionGps ? renderProductionGps(status.productionGps) : ""}
       ${status.secondCutInspector ? renderSecondCutInspector(status.secondCutInspector) : ""}
       ${status.secondCutCandidatePreflight ? renderSecondCutRegistrationPreflight(status.secondCutCandidatePreflight) : ""}
@@ -3158,6 +3220,7 @@ Capture evidence approval: PASS`;
     roughCutInputDefaults,
     renderActiveRunSummary,
     renderGateTimeline,
+    renderProductionTimelineCockpit,
     renderProductionGps,
     renderSecondCutInspector,
     renderSecondCutRegistrationPreflight,

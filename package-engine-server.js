@@ -3013,6 +3013,113 @@ function savePickupPlan(payload = {}, options = {}) {
   };
 }
 
+function cockpitStatusFromGps(status = '') {
+  const text = String(status || '').toLowerCase();
+  if (/done|pass/.test(text)) return 'completed';
+  if (/current/.test(text)) return 'current';
+  if (/blocked|needs human|needs artifact|needs work/.test(text)) return 'blocked';
+  if (/not reached|locked/.test(text)) return 'future';
+  return text || 'future';
+}
+
+function buildProductionTimelineCockpit(payload = {}, options = {}, productionGps = null) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const gps = productionGps || buildProductionGps(payload, options);
+  const safeAction = nextSafeActionScript.buildNextSafeAction(resolved.runId, { repoRoot: resolved.root });
+  const facts = safeAction.facts || {};
+  const lifecycle = (gps.gateTimeline || []).map((gate) => ({
+    label: gate.label,
+    status: cockpitStatusFromGps(gate.status),
+    detail: gate.reason || gate.detail || '',
+    artifactPath: gate.artifactPath || '',
+    current: Boolean(gate.current) || /current/i.test(gate.status || ''),
+  }));
+  const firstFutureIndex = lifecycle.findIndex((gate) => gate.status === 'future');
+  if (firstFutureIndex >= 0 && !lifecycle.some((gate) => gate.status === 'next')) {
+    lifecycle[firstFutureIndex].status = 'next';
+  }
+  if (!lifecycle.some((gate) => gate.current || gate.status === 'current')) {
+    const currentIndex = lifecycle.findIndex((gate) => gate.status === 'blocked') >= 0
+      ? lifecycle.findIndex((gate) => gate.status === 'blocked')
+      : lifecycle.findIndex((gate) => gate.status === 'next');
+    if (currentIndex >= 0) {
+      lifecycle[currentIndex].current = true;
+      lifecycle[currentIndex].status = 'current';
+    }
+  }
+  let currentWork = {
+    status: gps.summary ? gps.summary.gateStatus || 'read-only' : 'read-only',
+    latestCompleted: 'No completed work reported by the current production timeline.',
+    activeStage: gps.summary ? gps.summary.currentGate || safeAction.stage || 'Current production gate' : safeAction.stage || 'Current production gate',
+    activeTask: gps.summary ? gps.summary.nextSafeAction || safeAction.nextHumanAction || 'Record evidence only.' : safeAction.nextHumanAction || 'Record evidence only.',
+    blocker: gps.summary ? gps.summary.requiredHumanDecision || safeAction.blockedUntil || 'No blocker reported.' : safeAction.blockedUntil || 'No blocker reported.',
+    immediateNextAction: safeAction.nextHumanAction || (gps.summary ? gps.summary.nextSafeAction : '') || 'Record verified evidence without changing approval state.',
+    nextSteps: [
+      safeAction.nextHumanAction || (gps.summary ? gps.summary.nextSafeAction : '') || 'Record the next verified evidence item.',
+      'Record evidence only; keep approval and readiness as separate gates.',
+    ],
+  };
+  if (facts.selectedStillCount > 0 && !facts.klingVideoCount) {
+    currentWork = {
+      status: 'blocked',
+      latestCompleted: 'Selected prompt-03 stills exist; no assets are approved or production_ready.',
+      activeStage: 'Manual Kling b-roll candidate creation',
+      activeTask: 'Create Kling MP4 candidates from selected prompt-03 stills.',
+      blocker: 'Kling MP4 candidates are missing on VIDNAS and Resolve timeline test evidence is not recorded.',
+      immediateNextAction: 'Mikko manually creates Kling MP4 candidates, moves them to VIDNAS, and tests them in Resolve.',
+      nextSteps: [
+        'Create Kling candidates manually from selected prompt-03 stills.',
+        'Move selected MP4 candidates to the approved VIDNAS folder.',
+        'Import candidates to Resolve and record timeline test evidence.',
+        'Keep approval, selected, production_ready, and publish_ready markers unchanged.',
+      ],
+    };
+  } else if (facts.klingVideoCount > 0 && !facts.resolveTestRecorded) {
+    currentWork = {
+      status: 'needs resolve test',
+      latestCompleted: 'Kling MP4 candidates exist on VIDNAS; they are still evidence only.',
+      activeStage: 'Resolve timeline test',
+      activeTask: 'Import Kling MP4 candidates into Resolve and test whether motion works in the timeline.',
+      blocker: 'Resolve timeline test evidence has not been recorded.',
+      immediateNextAction: 'Mikko records Resolve timeline test results before any readiness decision.',
+      nextSteps: [
+        'Import Kling MP4 candidates into Resolve.',
+        'Test each candidate in the timeline.',
+        'Record usable, maybe, or rejected evidence in Evidence Intake.',
+        'Keep approval, production_ready, and publish_ready markers unchanged.',
+      ],
+    };
+  }
+  return {
+    ok: true,
+    readOnly: true,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    currentWork,
+    lifecycle,
+    blockedActions: [...new Set([
+      ...(gps.blockedActions || []),
+      ...(safeAction.forbiddenActions || []),
+      'mark capture accepted',
+      'mark selected',
+      'mark approved',
+      'mark production_ready',
+      'mark publish_ready',
+      'operate Kling automatically',
+      'operate Resolve automatically',
+      'move media automatically',
+      'write package-run state',
+      'write manifests',
+    ])],
+    source: {
+      roughCutStatusApi: ROUGH_CUT_STATUS_API,
+      nextSafeAction: safeAction.stage || '',
+      productionGps: gps.summary ? gps.summary.currentGate || '' : '',
+    },
+    externalApisCalled: false,
+  };
+}
+
 function buildRoughCutStatus(payload = {}, options = {}) {
   const resolved = resolveRunFromPayload(payload, options);
   const runInput = `${PACKAGE_RUNS_DIR}/${resolved.runId}`;
@@ -3057,6 +3164,7 @@ function buildRoughCutStatus(payload = {}, options = {}) {
       boundary: 'Regeneration overwrites derived rough-cut artifacts only. It does not approve rough cut, mark second-cut ready, or edit rough-cut-watch-notes.md.',
     } : { stale: false },
     gateTimeline: buildGateTimeline(doctor, roughCutResult),
+    productionTimelineCockpit: buildProductionTimelineCockpit(payload, options, productionGps),
     productionGps,
     secondCutInspector,
     secondCutCandidatePreflight,

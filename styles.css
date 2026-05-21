@@ -1504,6 +1504,7 @@ label > span,
 
 .active-run-summary,
 .gate-timeline,
+.production-timeline-cockpit,
 .production-gps,
 .second-cut-inspector,
 .second-cut-preflight,
@@ -1557,7 +1558,8 @@ label > span,
   font-size: 12px;
 }
 
-.gate-pass {
+.gate-pass,
+.gate-completed {
   border-left-color: var(--accent);
 }
 
@@ -1580,6 +1582,37 @@ label > span,
 .gate-current {
   border-left-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.gate-next {
+  border-left-color: #7c3aed;
+}
+
+.gate-future {
+  border-left-color: var(--muted);
+  opacity: 0.82;
+}
+
+.current-work-timeline,
+.current-work-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.current-work-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.timeline-step span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.timeline-step strong {
+  overflow-wrap: anywhere;
 }
 
 .gate-current,
