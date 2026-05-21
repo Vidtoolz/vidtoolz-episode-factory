@@ -1620,9 +1620,113 @@ Capture evidence approval: PASS`;
     return WORKFLOW_FILTERS.map((label) => `<div><span>${escapeHtml(label)}</span><strong>${counts[label] || 0}</strong></div>`).join("");
   }
 
+  function normalizeNextSafeAction(payload) {
+    const source = payload && typeof payload === "object" ? payload : {};
+    const facts = source.facts && typeof source.facts === "object" ? source.facts : {};
+    return {
+      ok: source.ok !== false,
+      readOnly: source.readOnly !== false,
+      activeRun: String(source.activeRun || ""),
+      activeRunPath: String(source.activeRunPath || ""),
+      stage: String(source.stage || "Blocked / evidence missing"),
+      nextHumanAction: String(source.nextHumanAction || "Stop and inspect missing evidence before doing production work."),
+      nextAiAction: String(source.nextAiAction || "Prepare handoffs, inspect files, summarize status, or create read-only reports. Do not approve assets."),
+      blockedUntil: String(source.blockedUntil || "Required evidence is present and reviewed by Mikko."),
+      allowedActions: normalizeStringArray(source.allowedActions),
+      forbiddenActions: normalizeStringArray(source.forbiddenActions),
+      evidence: Array.isArray(source.evidence)
+        ? source.evidence.map((item) => {
+            const evidence = item && typeof item === "object" ? item : {};
+            return {
+              label: String(evidence.label || "evidence"),
+              path: String(evidence.path || ""),
+              href: String(evidence.href || evidence.path || ""),
+              exists: Boolean(evidence.exists),
+              kind: String(evidence.kind || ""),
+            };
+          })
+        : [],
+      facts: {
+        selectedStatus: String(facts.selectedStatus || "selected: 0 / reviewed: 0 / approved: 0 / production_ready: 0"),
+        selectedStillCount: Number.isFinite(facts.selectedStillCount) ? facts.selectedStillCount : 0,
+        reviewedPrompt03Count: Number.isFinite(facts.reviewedPrompt03Count) ? facts.reviewedPrompt03Count : 0,
+        approvedCount: Number.isFinite(facts.approvedCount) ? facts.approvedCount : 0,
+        productionReadyCount: Number.isFinite(facts.productionReadyCount) ? facts.productionReadyCount : 0,
+        expectedKlingVideoFilenames: normalizeStringArray(facts.expectedKlingVideoFilenames),
+        klingVideoCount: Number.isFinite(facts.klingVideoCount) ? facts.klingVideoCount : 0,
+        klingVideos: normalizeStringArray(facts.klingVideos),
+        resolveTestRecorded: Boolean(facts.resolveTestRecorded),
+      },
+    };
+  }
+
+  function renderEvidenceLinks(evidence = []) {
+    const items = evidence.length ? evidence : [{ label: "No evidence paths reported", path: "", href: "", exists: false }];
+    return `<ul class="next-safe-evidence-list">${items.map((item) => {
+      const state = item.exists ? "present" : "missing";
+      const label = `${item.label} (${state})`;
+      if (item.href && !/^\//.test(item.href)) {
+        return `<li><a href="${escapeHtml(item.href)}" data-preview-artifact="${escapeHtml(item.href)}" data-artifact-title="${escapeHtml(item.label)}" data-run-id="${escapeHtml(item.label)}">${escapeHtml(label)}</a><code>${escapeHtml(item.path)}</code></li>`;
+      }
+      return `<li><span>${escapeHtml(label)}</span><code>${escapeHtml(item.path || "missing")}</code></li>`;
+    }).join("")}</ul>`;
+  }
+
+  function renderNextSafeActionPanel(payload) {
+    const panel = normalizeNextSafeAction(payload);
+    const safeReadOnly = panel.readOnly ? "Read-only local inspection" : "Not read-only";
+    return `<div class="next-safe-action-card" data-next-safe-action>
+      <div class="next-safe-action-header">
+        <div>
+          <p class="eyebrow">NEXT SAFE ACTION</p>
+          <h2>${escapeHtml(panel.stage)}</h2>
+          <p class="muted">Active run: <code>${escapeHtml(panel.activeRun || "unknown")}</code></p>
+        </div>
+        <span class="lifecycle-badge ${panel.readOnly ? "success" : "error"}">${escapeHtml(safeReadOnly)}</span>
+      </div>
+      <div class="next-safe-action-main">
+        <section>
+          <h3>HUMAN NEXT</h3>
+          <p>${escapeHtml(panel.nextHumanAction)}</p>
+        </section>
+        <section>
+          <h3>AI MAY DO</h3>
+          <p>${escapeHtml(panel.nextAiAction)}</p>
+        </section>
+        <section>
+          <h3>BLOCKED UNTIL</h3>
+          <p>${escapeHtml(panel.blockedUntil)}</p>
+        </section>
+      </div>
+      <div class="next-safe-action-status" aria-label="Selected reviewed approved production_ready distinction">
+        <div><span>selected</span><strong>${panel.facts.selectedStillCount}</strong></div>
+        <div><span>reviewed</span><strong>${panel.facts.reviewedPrompt03Count}</strong></div>
+        <div><span>approved</span><strong>${panel.facts.approvedCount}</strong></div>
+        <div><span>production_ready</span><strong>${panel.facts.productionReadyCount}</strong></div>
+        <div><span>Kling MP4s</span><strong>${panel.facts.klingVideoCount}</strong></div>
+        <div><span>Resolve test</span><strong>${panel.facts.resolveTestRecorded ? "recorded" : "missing"}</strong></div>
+      </div>
+      <div class="next-safe-action-lists">
+        <section>
+          <h3>Allowed actions</h3>
+          ${renderCompactList(panel.allowedActions, "No allowed actions reported.")}
+        </section>
+        <section class="next-safe-danger">
+          <h3>DO NOT DO</h3>
+          ${renderCompactList(panel.forbiddenActions, "No forbidden actions reported.")}
+        </section>
+      </div>
+      <section class="next-safe-evidence">
+        <h3>Evidence / source files</h3>
+        ${renderEvidenceLinks(panel.evidence)}
+      </section>
+    </div>`;
+  }
+
   function createBrowserApp(doc = globalScope.document) {
     const els = {
       status: doc.querySelector("#packageRunsStatus"),
+      nextSafeActionPanel: doc.querySelector("#nextSafeActionPanel"),
       grid: doc.querySelector("#packageRunsGrid"),
       stats: doc.querySelector("#packageRunsStats"),
       summary: doc.querySelector("#packageRunsSummary"),
@@ -1665,11 +1769,32 @@ Capture evidence approval: PASS`;
           index = normalizeIndex(payload);
           showStatus(`Loaded ${index.runs.length} package runs from package-runs-index.json.`, "success");
           render();
-          loadLocalWriteConfig().then(loadMikkoInputConsole).catch(() => loadMikkoInputConsole());
+          loadLocalWriteConfig()
+            .then(() => Promise.all([loadNextSafeActionPanel(), loadMikkoInputConsole()]))
+            .catch(() => Promise.all([loadNextSafeActionPanel(), loadMikkoInputConsole()]));
         })
         .catch((error) => {
           showStatus(error.message, "error");
           els.grid.innerHTML = `<p class="muted">Run <code>node scripts/package-runs-index.js</code>, then serve this directory locally.</p>`;
+        });
+    }
+
+    function loadNextSafeActionPanel() {
+      if (!els.nextSafeActionPanel) return Promise.resolve();
+      const nextSafeActionApi =
+        localWriteConfig && localWriteConfig.roughCutInputConsole && localWriteConfig.roughCutInputConsole.nextSafeActionApi
+          ? localWriteConfig.roughCutInputConsole.nextSafeActionApi
+          : "/api/package-runs/next-safe-action";
+      return fetch(nextSafeActionApi, { cache: "no-store" })
+        .then((response) => response.json().then((payload) => {
+          if (!response.ok) throw new Error(payload.error || `Next safe action unavailable (${response.status}).`);
+          return payload;
+        }))
+        .then((payload) => {
+          els.nextSafeActionPanel.innerHTML = renderNextSafeActionPanel(payload);
+        })
+        .catch((error) => {
+          els.nextSafeActionPanel.innerHTML = `<div class="next-safe-action-card"><p class="eyebrow">NEXT SAFE ACTION</p><h2>Unavailable</h2><p class="muted">${escapeHtml(error.message)}</p></div>`;
         });
     }
 
@@ -2669,11 +2794,12 @@ Capture evidence approval: PASS`;
     els.grid.addEventListener("click", handleGridClick);
     els.grid.addEventListener("input", handleGridInput);
     if (els.mikkoConsoleContent) els.mikkoConsoleContent.addEventListener("click", handleGridClick);
+    if (els.nextSafeActionPanel) els.nextSafeActionPanel.addEventListener("click", handleGridClick);
     els.closePreview.addEventListener("click", () => {
       els.previewPanel.classList.add("hidden");
     });
 
-    return { load, render, previewArtifact, updateCaptureIntake, loadMikkoInputConsole };
+    return { load, render, previewArtifact, updateCaptureIntake, loadMikkoInputConsole, loadNextSafeActionPanel };
   }
 
   const api = {
@@ -2727,6 +2853,8 @@ Capture evidence approval: PASS`;
     renderRunCard,
     renderStats,
     renderWorkflowStats,
+    normalizeNextSafeAction,
+    renderNextSafeActionPanel,
     createBrowserApp,
   };
 

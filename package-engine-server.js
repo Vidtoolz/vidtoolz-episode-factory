@@ -11,6 +11,7 @@ const packageRunDoctor = require('./scripts/package-run-doctor.js');
 const roughCutReviewScript = require('./scripts/package-run-rough-cut-review.js');
 const finalReviewScript = require('./scripts/package-run-final-review.js');
 const exportChecklistScript = require('./scripts/package-run-export-checklist.js');
+const nextSafeActionScript = require('./scripts/package-run-next-safe-action.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
@@ -20,6 +21,7 @@ const STATUS_API = '/api/package-engine/status';
 const CAPTURE_EVIDENCE_PREVIEW_API = '/api/package-runs/capture-evidence/preview';
 const CAPTURE_EVIDENCE_APPLY_API = '/api/package-runs/capture-evidence/apply';
 const ROUGH_CUT_STATUS_API = '/api/package-runs/rough-cut/status';
+const NEXT_SAFE_ACTION_API = '/api/package-runs/next-safe-action';
 const PRODUCTION_GPS_API = '/api/package-runs/production-gps';
 const SECOND_CUT_INSPECTOR_API = '/api/package-runs/second-cut-inspector';
 const SECOND_CUT_CANDIDATE_PREVIEW_API = '/api/package-runs/second-cut-candidate/preview';
@@ -3422,6 +3424,7 @@ function createStatusResponse(env = process.env) {
     },
     roughCutInputConsole: {
       statusApi: ROUGH_CUT_STATUS_API,
+      nextSafeActionApi: NEXT_SAFE_ACTION_API,
       productionGpsApi: PRODUCTION_GPS_API,
       secondCutInspectorApi: SECOND_CUT_INSPECTOR_API,
       secondCutCandidatePreviewApi: SECOND_CUT_CANDIDATE_PREVIEW_API,
@@ -3647,6 +3650,15 @@ function createServer() {
         send(res, 200, buildRoughCutStatus({ runId: url.searchParams.get('runId') || '' }));
       } catch (error) {
         send(res, error.statusCode || 500, { error: error.message });
+      }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === NEXT_SAFE_ACTION_API) {
+      try {
+        send(res, 200, nextSafeActionScript.buildNextSafeAction(url.searchParams.get('runId') || '', { repoRoot: ROOT }));
+      } catch (error) {
+        send(res, error.statusCode || 500, { ok: false, readOnly: true, error: error.message });
       }
       return;
     }
@@ -3907,6 +3919,7 @@ module.exports = {
   PICKUP_SOURCES,
   PICKUP_STATUSES,
   PRODUCTION_GPS_API,
+  NEXT_SAFE_ACTION_API,
   PRODUCTION_GPS_ARTIFACTS,
   SECOND_CUT_INSPECTOR_API,
   SECOND_CUT_CANDIDATE_APPLY_API,
@@ -3935,6 +3948,7 @@ module.exports = {
   buildGateTimeline,
   buildPickupListMarkdown,
   buildRoughCutStatus,
+  buildNextSafeAction: nextSafeActionScript.buildNextSafeAction,
   buildRoughCutWatchNotesMarkdown,
   buildOpenAIImageRequest,
   buildOpenAIThumbnailPrompts,

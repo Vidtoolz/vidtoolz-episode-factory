@@ -32,6 +32,7 @@ const packageArchiveManifestScript = require("../scripts/package-run-archive-man
 const packageRunCreatorQaScript = require("../scripts/package-run-creator-qa.js");
 const packageRunDoctorScript = require("../scripts/package-run-doctor.js");
 const packageRunNextActionScript = require("../scripts/package-run-next-action.js");
+const packageRunNextSafeActionScript = require("../scripts/package-run-next-safe-action.js");
 const packageRunNextActionAuthorityScript = require("../scripts/package-run-next-action-authority.js");
 const packageRunActiveStateAuditScript = require("../scripts/package-run-active-state-audit.js");
 const packageRunStateProposalScript = require("../scripts/package-run-state-proposal.js");
@@ -97,6 +98,40 @@ function writeTestFile(rootDir, relativePath, content) {
   const filePath = path.join(rootDir, relativePath);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content, "utf8");
+}
+
+function createNextSafeActionFixture(options = {}) {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "next-safe-action-"));
+  const runId = options.runId || "2026-05-06-ai-video-proof-plan";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  const assetDir = path.join(tempRoot, "vidnas", "script-image-assets", "Proof_Plan");
+  const klingDir = path.join(assetDir, "kling-video-candidates");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.mkdirSync(assetDir, { recursive: true });
+  const manifestPath = path.join(assetDir, "generation-manifest.json");
+  const selected = options.selected === false ? [] : ["block-024", "block-027", "block-030"];
+  const items = ["block-024", "block-027", "block-030"].map((blockId) => ({
+    block_id: blockId,
+    prompt_id: `${blockId}-prompt-03`,
+    output_filename: `${blockId}-prompt-03.png`,
+    generation_status: "generated",
+    reviewed_by_mikko: true,
+    selected: selected.includes(blockId),
+    approved: false,
+    production_ready: false,
+  }));
+  fs.writeFileSync(manifestPath, JSON.stringify({ output_folder: assetDir, items }, null, 2), "utf8");
+  writeTestFile(tempRoot, "reports/prompt-03-selected-image-edit-handoff.md", `# Handoff\n\nSource manifest:\n\`${manifestPath}\`\n`);
+  writeTestFile(tempRoot, "reports/prompt-03-image-selection-review.md", "# Selection Review\n");
+  writeTestFile(tempRoot, "reports/prompt-03-kling-video-candidate-handoff.md", "# Kling Handoff\n");
+  if (options.klingVideos) {
+    fs.mkdirSync(klingDir, { recursive: true });
+    fs.writeFileSync(path.join(klingDir, "block-024-prompt-03-kling-01.mp4"), "fake video\n", "utf8");
+  }
+  if (options.resolveTest) {
+    fs.writeFileSync(path.join(runDir, "rough-cut-watch-notes.md"), "Kling clip imported into Resolve timeline and tested by Mikko.\n", "utf8");
+  }
+  return { tempRoot, runId, runDir, assetDir, klingDir, manifestPath };
 }
 
 function escapeRegExp(value) {
@@ -10856,6 +10891,70 @@ test("verify script checks package run capture gap syntax", () => {
   assert.match(verify, /node --check scripts\/package-run-capture-gap\.js/);
 });
 
+test("next safe action helper is read-only and reports selected stills without Kling videos", () => {
+  const fixture = createNextSafeActionFixture();
+  const beforeManifest = fs.readFileSync(fixture.manifestPath, "utf8");
+  const report = packageRunNextSafeActionScript.buildNextSafeAction(fixture.runId, { repoRoot: fixture.tempRoot });
+  const afterManifest = fs.readFileSync(fixture.manifestPath, "utf8");
+
+  assert.equal(report.ok, true);
+  assert.equal(report.readOnly, true);
+  assert.equal(report.facts.externalApisCalled, false);
+  assert.equal(report.facts.writesPackageRunState, false);
+  assert.equal(report.facts.writesManifest, false);
+  assert.equal(report.facts.writesMedia, false);
+  assert.equal(beforeManifest, afterManifest);
+  assert.equal(fs.existsSync(path.join(fixture.runDir, "package-run-state.md")), false);
+  assert.equal(report.stage, "Capture / b-roll candidate creation");
+  assert.match(report.nextHumanAction, /Create Kling b-roll candidates/);
+  assert.match(report.nextHumanAction, /move MP4s to the approved VIDNAS folder/);
+  assert.match(report.blockedUntil, /Kling video candidates exist on VIDNAS/);
+  assert.equal(report.facts.selectedStillCount, 3);
+  assert.equal(report.facts.approvedCount, 0);
+  assert.equal(report.facts.productionReadyCount, 0);
+});
+
+test("next safe action helper sends Kling videos without Resolve evidence to timeline testing", () => {
+  const fixture = createNextSafeActionFixture({ klingVideos: true });
+  const report = packageRunNextSafeActionScript.buildNextSafeAction(fixture.runId, { repoRoot: fixture.tempRoot });
+
+  assert.equal(report.stage, "Resolve timeline test");
+  assert.match(report.nextHumanAction, /DaVinci Resolve/);
+  assert.match(report.nextHumanAction, /test whether the motion works in the timeline/);
+  assert.equal(report.facts.klingVideoCount, 1);
+  assert.equal(report.facts.resolveTestRecorded, false);
+});
+
+test("next safe action helper keeps missing evidence blocked without readiness language", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "next-safe-action-missing-"));
+  const runId = "2026-05-06-ai-video-proof-plan";
+  fs.mkdirSync(path.join(tempRoot, "package-runs", runId), { recursive: true });
+  const report = packageRunNextSafeActionScript.buildNextSafeAction(runId, { repoRoot: tempRoot });
+  const actionText = [report.stage, report.nextHumanAction, report.blockedUntil].join(" ");
+
+  assert.equal(report.stage, "Blocked / evidence missing");
+  assert.doesNotMatch(actionText, /production-ready/i);
+  assert.doesNotMatch(actionText, /ready to publish/i);
+  assert.doesNotMatch(actionText, /publish ready/i);
+});
+
+test("next safe action helper forbids approval publish and production_ready automation", () => {
+  const fixture = createNextSafeActionFixture({ klingVideos: true });
+  const report = packageRunNextSafeActionScript.buildNextSafeAction(fixture.runId, { repoRoot: fixture.tempRoot });
+  const forbidden = report.forbiddenActions.join("\n");
+
+  assert.match(forbidden, /mark approved/);
+  assert.match(forbidden, /mark production_ready/);
+  assert.match(forbidden, /publish/);
+  assert.match(forbidden, /operate Kling automatically/);
+  assert.match(forbidden, /operate Resolve automatically/);
+});
+
+test("verify script checks package run next safe action syntax", () => {
+  const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
+  assert.match(verify, /node --check scripts\/package-run-next-safe-action\.js/);
+});
+
 test("package runs index recommends deterministic next local commands", () => {
   assert.equal(
     packageRunsIndexScript.nextRecommendedCommand("Package selected", "package-runs/run-id"),
@@ -10993,6 +11092,7 @@ test("package engine server status reports provider and model without generation
   assert.equal(placeholder.captureEvidenceWrite.nonceHeader, "x-vidtoolz-local-write-nonce");
   assert.equal(Boolean(placeholder.captureEvidenceWrite.localWriteNonce), true);
   assert.equal(placeholder.roughCutInputConsole.statusApi, "/api/package-runs/rough-cut/status");
+  assert.equal(placeholder.roughCutInputConsole.nextSafeActionApi, "/api/package-runs/next-safe-action");
   assert.equal(placeholder.roughCutInputConsole.secondCutCandidatePreviewApi, "/api/package-runs/second-cut-candidate/preview");
   assert.equal(placeholder.roughCutInputConsole.secondCutCandidateApplyApi, "/api/package-runs/second-cut-candidate/apply");
   assert.equal(placeholder.roughCutInputConsole.saveApi, "/api/package-runs/rough-cut/watch-notes");
@@ -13404,6 +13504,46 @@ test("package runs dashboard renders Mikko rough-cut input console", () => {
   assert.match(html, /Review Result/);
   assert.match(html, /NEEDS PICKUPS/);
   assert.match(html, /Second-cut ready/);
+});
+
+test("package runs dashboard renders Next Safe Action panel data safely", () => {
+  const html = packageRunsDashboard.renderNextSafeActionPanel({
+    ok: true,
+    readOnly: true,
+    activeRun: "2026-05-06-ai-video-proof-plan",
+    activeRunPath: "package-runs/2026-05-06-ai-video-proof-plan",
+    stage: "Capture / b-roll candidate creation",
+    nextHumanAction: "Create Kling b-roll candidates from selected prompt-03 stills, move MP4s to the approved VIDNAS folder, then test them in DaVinci Resolve.",
+    nextAiAction: "Prepare handoffs, inspect files, summarize status, or create read-only reports. Do not approve assets.",
+    blockedUntil: "Kling video candidates exist on VIDNAS and Mikko tests them in Resolve.",
+    allowedActions: ["read artifacts", "inspect manifest counts"],
+    forbiddenActions: ["mark approved", "mark production_ready", "publish", "operate Kling automatically"],
+    evidence: [
+      { label: "active package run folder", path: "/tmp/run", href: "package-runs/2026-05-06-ai-video-proof-plan", exists: true },
+      { label: "generation-manifest.json path", path: "/tmp/generation-manifest.json", href: "/tmp/generation-manifest.json", exists: true },
+    ],
+    facts: {
+      selectedStillCount: 3,
+      reviewedPrompt03Count: 32,
+      approvedCount: 0,
+      productionReadyCount: 0,
+      klingVideoCount: 0,
+      resolveTestRecorded: false,
+    },
+  });
+
+  assert.match(html, /NEXT SAFE ACTION/);
+  assert.match(html, /HUMAN NEXT/);
+  assert.match(html, /AI MAY DO/);
+  assert.match(html, /BLOCKED UNTIL/);
+  assert.match(html, /DO NOT DO/);
+  assert.match(html, /selected/);
+  assert.match(html, /reviewed/);
+  assert.match(html, /approved/);
+  assert.match(html, /production_ready/);
+  assert.match(html, /Create Kling b-roll candidates/);
+  assert.match(html, /mark production_ready/);
+  assert.match(html, /generation-manifest\.json path/);
 });
 
 test("package runs dashboard renders Production GPS panels safely", () => {
