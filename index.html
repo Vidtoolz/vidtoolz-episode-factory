@@ -16,25 +16,30 @@
         <div class="topbar-actions">
           <a class="nav-link-button" href="package-engine.html">Package Engine</a>
           <a class="nav-link-button" href="package-runs-dashboard.html">Runs Dashboard</a>
+          <div class="dashboard-mode-toggle episode-view-toggle" aria-label="Episode Factory view mode">
+            <button type="button" class="active" data-view-mode-button="focused" aria-pressed="true">Focused View</button>
+            <button type="button" data-view-mode-button="full" aria-pressed="false">Full Dashboard</button>
+          </div>
           <input id="searchInput" class="search" type="search" placeholder="Search episodes" />
-          <button id="exportJsonBtn" type="button">Export JSON</button>
-          <button id="importJsonBtn" type="button">Import JSON</button>
+          <button id="exportJsonBtn" type="button" data-view-group="admin" data-view-default="full">Export JSON</button>
+          <button id="importJsonBtn" type="button" data-view-group="admin" data-view-default="full">Import JSON</button>
           <input id="importJsonInput" type="file" accept="application/json,.json" hidden tabindex="-1" aria-hidden="true" />
-          <button id="demoEpisodeBtn" type="button">Create demo episode</button>
+          <button id="demoEpisodeBtn" type="button" data-view-group="admin" data-view-default="full">Create demo episode</button>
           <button id="newEpisodeBtn" class="primary-btn" type="button">New episode</button>
         </div>
       </header>
       <p id="importExportStatus" class="global-status" role="status"></p>
-      <section id="importPreviewPanel" class="import-preview hidden" aria-label="JSON import preview"></section>
-      <section id="appStatus" class="app-status" aria-label="App and backup status"></section>
+      <section id="importPreviewPanel" class="import-preview hidden" aria-label="JSON import preview" data-view-group="admin" data-view-default="full"></section>
+      <section id="appStatus" class="app-status" aria-label="App and backup status" data-view-group="diagnostics" data-view-default="full"></section>
 
-      <main class="workspace">
+      <main class="workspace" data-view-mode="focused">
+        <section id="episodeFocusPanel" class="episode-focus-panel" aria-label="Creator Work Focus" data-view-group="creator-focus" data-view-default="focused"></section>
         <section class="board-panel" aria-label="Episode board">
-          <div class="panel-heading">
+          <div class="panel-heading" data-view-group="board" data-view-default="full">
             <h2>Board</h2>
             <span id="episodeCount" class="muted"></span>
           </div>
-          <section class="weekly-panel" aria-label="Weekly review dashboard">
+          <section class="weekly-panel" aria-label="Weekly review dashboard" data-view-group="weekly" data-view-default="full">
             <div class="section-heading">
               <div>
                 <h2>Weekly Review</h2>
@@ -49,7 +54,7 @@
             </div>
             <p id="weeklyCopyStatus" class="copy-status" role="status"></p>
           </section>
-          <section class="queue-panel" aria-label="Execution queue">
+          <section class="queue-panel" aria-label="Execution queue" data-view-group="queue" data-view-default="focused">
             <div class="section-heading">
               <div>
                 <h2>Execution Queue</h2>
@@ -62,11 +67,11 @@
             <div id="completionDrawer" class="completion-drawer hidden"></div>
             <p id="taskCopyStatus" class="copy-status" role="status"></p>
           </section>
-          <div id="boardFilters" class="filter-row" aria-label="Board filters"></div>
-          <div id="board" class="board"></div>
+          <div id="boardFilters" class="filter-row" aria-label="Board filters" data-view-group="board" data-view-default="full"></div>
+          <div id="board" class="board" data-view-group="board" data-view-default="full"></div>
         </section>
 
-        <section class="detail-panel" aria-label="Episode detail">
+        <section class="detail-panel" aria-label="Episode detail" data-view-group="detail" data-view-default="focused">
           <div id="emptyState" class="empty-state">
             <h2>No episode selected</h2>
             <p>Create an episode to start packaging an idea into a publish-ready production package.</p>
@@ -78,7 +83,7 @@
                 <label for="statusSelect">Status</label>
                 <select id="statusSelect" name="status"></select>
               </div>
-              <div class="detail-actions">
+              <div class="detail-actions" data-view-group="admin" data-view-default="full">
                 <button id="duplicateBtn" type="button">Duplicate</button>
                 <button id="deleteBtn" class="danger-btn" type="button">Delete</button>
               </div>
@@ -96,7 +101,7 @@
               <div id="readinessGrid" class="readiness-grid"></div>
             </section>
 
-            <section class="sessions-panel">
+            <section class="sessions-panel" data-view-group="diagnostics" data-view-default="full">
               <div class="section-heading">
                 <div>
                   <h2>Recent Work Sessions</h2>
@@ -149,7 +154,7 @@
               <div id="workBlocks" class="work-blocks"></div>
             </section>
 
-            <section class="checklists-panel">
+            <section class="checklists-panel" data-view-group="diagnostics" data-view-default="full">
               <div class="section-heading">
                 <div>
                   <h2>Structured Checklists</h2>
@@ -159,7 +164,7 @@
               <div id="checklistGroups" class="checklist-groups"></div>
             </section>
 
-            <section class="copy-panel">
+            <section class="copy-panel" data-view-group="exports" data-view-default="full">
               <div class="section-heading">
                 <div>
                   <h2>Episode Package Export</h2>

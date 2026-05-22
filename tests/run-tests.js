@@ -14646,6 +14646,87 @@ test("package engine browser code surfaces thumbnail backend failures and recove
   assert.match(html, /package-engine\.js\?v=1\.7\.4-thumb5/);
 });
 
+test("episode factory HTML contains Focused View toggle and focus panel", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+
+  assert.match(html, /data-view-mode-button="focused"/);
+  assert.match(html, /Focused View/);
+  assert.match(html, /data-view-mode-button="full"/);
+  assert.match(html, /Full Dashboard/);
+  assert.match(html, /aria-pressed="true"/);
+  assert.match(html, /id="episodeFocusPanel"/);
+  assert.match(html, /data-view-group="creator-focus"/);
+  assert.match(html, /data-view-mode="focused"/);
+});
+
+test("episode factory normalizeViewMode defaults invalid values to focused", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const match = source.match(/function normalizeViewMode\(mode\) \{([\s\S]*?)\n  \}/);
+  assert.ok(match, "normalizeViewMode function should exist");
+  const normalizeViewMode = new Function("mode", match[1]);
+
+  assert.equal(normalizeViewMode(), "focused");
+  assert.equal(normalizeViewMode("unexpected"), "focused");
+  assert.equal(normalizeViewMode("focused"), "focused");
+  assert.equal(normalizeViewMode("full"), "full");
+});
+
+test("episode factory view mode storage is UI-only", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const setViewModeBody = source.match(/function setViewMode\(mode, options = \{\}\) \{([\s\S]*?)\n  \}/);
+
+  assert.match(source, /const EPISODE_FACTORY_VIEW_MODE_KEY = "vidtoolz-episode-factory-view-mode-v1"/);
+  assert.match(source, /localStorage\.getItem\(EPISODE_FACTORY_VIEW_MODE_KEY\)/);
+  assert.match(source, /localStorage\.setItem\(EPISODE_FACTORY_VIEW_MODE_KEY, normalized\)/);
+  assert.doesNotMatch(source, /localStorage\.setItem\(model\.STORAGE_KEY/);
+  assert.ok(setViewModeBody, "setViewMode should exist");
+  assert.doesNotMatch(setViewModeBody[1], /saveState|persist\(|importJson|exportJson|download|fetch\(/);
+});
+
+test("episode factory focus panel renders selected episode action summary without mutation controls", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const template = source.match(/els\.episodeFocusPanel\.innerHTML = `([\s\S]*?)`;\n  \}/);
+
+  assert.ok(template, "focus panel template should exist");
+  assert.match(source, /function buildEpisodeFocusModel\(\)/);
+  assert.match(source, /model\.generateNextActionTask\(episode\)/);
+  assert.match(source, /model\.getReadinessScores\(episode\)/);
+  assert.match(template[1], /Creator Work Focus/);
+  assert.match(template[1], /episodeTitle/);
+  assert.match(template[1], /episodeStatus/);
+  assert.match(template[1], /nextAction/);
+  assert.match(template[1], /Active session/);
+  assert.match(template[1], /Next work block/);
+  assert.match(template[1], /Blockers \/ warnings/);
+  assert.doesNotMatch(template[1], /PASS|approved|production_ready|publish_ready|package-run approval|import|export|delete|fetch|backend|Save|Apply/i);
+});
+
+test("episode factory focused view defers full dashboard and admin groups", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
+
+  assert.match(html, /data-view-group="weekly" data-view-default="full"/);
+  assert.match(html, /data-view-group="board" data-view-default="full"/);
+  assert.match(html, /data-view-group="diagnostics" data-view-default="full"/);
+  assert.match(html, /data-view-group="exports" data-view-default="full"/);
+  assert.match(html, /data-view-group="admin" data-view-default="full"/);
+  assert.match(html, /data-view-group="queue" data-view-default="focused"/);
+  assert.match(html, /data-view-group="detail" data-view-default="focused"/);
+  assert.match(css, /body\[data-episode-view-mode="focused"\] \[data-view-default="full"\] \{\s*display: none;/);
+  assert.match(css, /body\[data-episode-view-mode="focused"\] #appStatus\[data-view-warning="true"\] \{\s*display: grid;/);
+});
+
+test("episode factory full dashboard restores deferred panels", () => {
+  const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+
+  assert.match(source, /els\.workspace\.dataset\.viewMode = viewMode/);
+  assert.match(source, /document\.body\.dataset\.episodeViewMode = viewMode/);
+  assert.match(source, /button\.dataset\.viewModeButton === viewMode/);
+  assert.match(css, /\.workspace\[data-view-mode="focused"\]/);
+  assert.doesNotMatch(css, /body\[data-episode-view-mode="full"\] \[data-view-default="full"\]\s*\{\s*display: none/);
+});
+
 test("visible app version and html cache busters use current release", () => {
   const htmlFiles = ["index.html", "package-engine.html", "package-runs-dashboard.html"];
   const expectedCacheBuster = new RegExp(`v=${model.APP_VERSION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);

@@ -4,11 +4,15 @@
   const model = window.EpisodeFactoryModel;
   const storage = window.EpisodeFactoryStorage;
   const state = storage.loadState();
+  const EPISODE_FACTORY_VIEW_MODE_KEY = "vidtoolz-episode-factory-view-mode-v1";
   let activeSession = storage.loadActiveSession();
   let backupStatus = storage.loadBackupStatus();
   let pendingImport = null;
+  let viewMode = "focused";
 
   const els = {
+    workspace: document.querySelector(".workspace"),
+    episodeFocusPanel: document.querySelector("#episodeFocusPanel"),
     board: document.querySelector("#board"),
     count: document.querySelector("#episodeCount"),
     form: document.querySelector("#episodeForm"),
@@ -53,6 +57,40 @@
 
   els.appVersion.textContent = `v${model.APP_VERSION}`;
 
+  function normalizeViewMode(mode) {
+    return mode === "full" ? "full" : "focused";
+  }
+
+  function readViewMode() {
+    try {
+      return normalizeViewMode(window.localStorage && window.localStorage.getItem(EPISODE_FACTORY_VIEW_MODE_KEY));
+    } catch (_error) {
+      return "focused";
+    }
+  }
+
+  function saveViewMode(mode) {
+    const normalized = normalizeViewMode(mode);
+    try {
+      if (window.localStorage) window.localStorage.setItem(EPISODE_FACTORY_VIEW_MODE_KEY, normalized);
+    } catch (_error) {
+      return normalized;
+    }
+    return normalized;
+  }
+
+  function setViewMode(mode, options = {}) {
+    viewMode = normalizeViewMode(mode);
+    if (options.persist !== false) saveViewMode(viewMode);
+    if (els.workspace) els.workspace.dataset.viewMode = viewMode;
+    document.body.dataset.episodeViewMode = viewMode;
+    document.querySelectorAll("[data-view-mode-button]").forEach((button) => {
+      const active = button.dataset.viewModeButton === viewMode;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
   if (!state.episodes.length) {
     const starter = model.createEpisode({
       topic: "A practical VIDTOOLZ workflow idea",
@@ -96,17 +134,20 @@
       renderBoard();
       renderQueue();
       renderWeeklyDashboard();
+      renderEpisodeFocusPanel();
     } else if (renderMode === "checklists") {
       renderBoard();
       renderQueue();
       renderWeeklyDashboard();
       renderReadiness(state.episodes[index]);
       renderChecklists(state.episodes[index]);
+      renderEpisodeFocusPanel();
     } else if (renderMode === "workBlocks") {
       renderBoard();
       renderQueue();
       renderWeeklyDashboard();
       renderWorkBlocks(state.episodes[index]);
+      renderEpisodeFocusPanel();
     } else {
       render();
     }
@@ -217,6 +258,105 @@
     return items && items.length
       ? items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
       : "<li>None recorded.</li>";
+  }
+
+  function compactList(items, emptyText = "None reported.") {
+    const normalized = (items || []).filter(Boolean).slice(0, 4);
+    return normalized.length
+      ? normalized.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
+      : `<li>${escapeHtml(emptyText)}</li>`;
+  }
+
+  function buildEpisodeFocusModel() {
+    const episode = currentEpisode();
+    const selectedTask = episode ? model.generateNextActionTask(episode) : null;
+    const queueTask = model.buildExecutionQueue(state.episodes)[0] || null;
+    const nextTask = selectedTask || queueTask;
+    const nextBlock = model.buildWorkBlockQueue(state.episodes)[0] || null;
+    const session = model.normalizeActiveSession(activeSession);
+    const backupHealth = model.getBackupHealth(backupStatus);
+    const scores = episode ? model.getReadinessScores(episode) : null;
+    const checklistSummaries = episode ? model.getChecklistSummaries(episode) : [];
+    const weakChecklist = checklistSummaries
+      .filter((summary) => summary.passed < summary.total)
+      .slice(0, 3)
+      .map((summary) => `${summary.label}: ${summary.passed}/${summary.total}`);
+    const blockers = [];
+    if (nextTask && nextTask.sourceBlocker) blockers.push(nextTask.sourceBlocker);
+    if (nextBlock && nextBlock.status !== "done") blockers.push(`Work block: ${nextBlock.objective}`);
+    if (backupHealth.needsExport) blockers.push(`Backup: ${backupHealth.recommendation || backupHealth.label}`);
+    const whatNow = session
+      ? `${session.isRunning ? "Continue" : "Resume"} the active focus session: ${session.task.taskTitle}.`
+      : nextBlock
+        ? `Work the next 30-minute block: ${nextBlock.objective}.`
+        : nextTask
+          ? nextTask.taskTitle
+          : "Pick one episode and define the next practical action.";
+    return {
+      episode,
+      nextTask,
+      nextBlock,
+      session,
+      backupHealth,
+      scores,
+      weakChecklist,
+      blockers,
+      whatNow,
+    };
+  }
+
+  function renderEpisodeFocusPanel() {
+    if (!els.episodeFocusPanel) return;
+    const focus = buildEpisodeFocusModel();
+    const episodeTitle = focus.episode ? focus.episode.workingTitle || "Untitled episode" : "No episode selected";
+    const episodeStatus = focus.episode ? focus.episode.status || "No status" : "Select or create an episode";
+    const nextAction = focus.nextTask
+      ? `${focus.nextTask.taskTitle} (${focus.nextTask.estimatedMinutes} min)`
+      : "No generated next action available.";
+    const activeText = focus.session
+      ? `${focus.session.isRunning ? "Running" : "Paused"}: ${focus.session.task.taskTitle}`
+      : "No active focus session.";
+    const blockText = focus.nextBlock
+      ? `${focus.nextBlock.objective} (${focus.nextBlock.estimatedMinutes} min)`
+      : "No open work block.";
+    const readinessText = focus.scores
+      ? `Overall ${focus.scores.overall}% · packaging ${focus.scores.packaging}% · script ${focus.scores.script}% · production ${focus.scores.production}% · publish ${focus.scores.publish}%`
+      : "No readiness summary until an episode is selected.";
+
+    els.episodeFocusPanel.innerHTML = `
+      <div class="episode-focus-header">
+        <div>
+          <p class="eyebrow">Creator Work Focus</p>
+          <h2>${escapeHtml(episodeTitle)}</h2>
+          <p class="muted">${escapeHtml(episodeStatus)}</p>
+        </div>
+        <span class="lifecycle-badge">Read-only summary</span>
+      </div>
+      <div class="episode-focus-grid">
+        <section class="episode-focus-card episode-focus-now" aria-label="What to do now">
+          <span>What to do now</span>
+          <strong>${escapeHtml(focus.whatNow)}</strong>
+          <p>${escapeHtml(nextAction)}</p>
+        </section>
+        <section class="episode-focus-card" aria-label="Active session">
+          <span>Active session</span>
+          <strong>${escapeHtml(activeText)}</strong>
+        </section>
+        <section class="episode-focus-card" aria-label="Next work block">
+          <span>Next work block</span>
+          <strong>${escapeHtml(blockText)}</strong>
+        </section>
+        <section class="episode-focus-card" aria-label="Readiness summary">
+          <span>Readiness summary</span>
+          <strong>${escapeHtml(readinessText)}</strong>
+          <ul>${compactList(focus.weakChecklist, "Checklist summary is clear for the selected episode.")}</ul>
+        </section>
+        <section class="episode-focus-card episode-focus-blockers" aria-label="Blockers and warnings">
+          <span>Blockers / warnings</span>
+          <ul>${compactList(focus.blockers, "No current blocker reported by the focused summary.")}</ul>
+        </section>
+      </div>
+    `;
   }
 
   function renderNextWorkBlock() {
@@ -678,6 +818,8 @@
     renderQueue();
     renderBoard();
     renderForm();
+    renderEpisodeFocusPanel();
+    setViewMode(viewMode, { persist: false });
   }
 
   function renderWeeklyDashboard() {
@@ -765,6 +907,7 @@
       <div><span>Last JSON import</span><strong>${escapeHtml(formatOptionalTimestamp(status.lastImportAt))}</strong></div>
       <div><span>Active session</span><strong>${escapeHtml(activeText)}</strong></div>
     `;
+    els.appStatus.dataset.viewWarning = status.backupHealth.needsExport ? "true" : "false";
   }
 
   function showBackupRecommendation() {
@@ -1190,6 +1333,7 @@
       renderActiveSessionPanel();
       renderCompletionDrawer();
       renderAppStatus();
+      renderEpisodeFocusPanel();
       showTaskStatus("Complete the session details to save it.");
       return;
     }
@@ -1203,6 +1347,7 @@
     persistActiveSession();
     renderActiveSessionPanel();
     renderAppStatus();
+    renderEpisodeFocusPanel();
     showTaskStatus(message);
   }
 
@@ -1474,10 +1619,25 @@
     if (button) copyOutput(button.dataset.copy);
   });
 
+  document.querySelectorAll("[data-view-mode-button]").forEach((button) => {
+    button.addEventListener("click", () => setViewMode(button.dataset.viewModeButton));
+  });
+
+  window.EpisodeFactoryViewMode = {
+    key: EPISODE_FACTORY_VIEW_MODE_KEY,
+    normalizeViewMode,
+    readViewMode,
+    saveViewMode,
+    setViewMode,
+    buildEpisodeFocusModel,
+  };
+
+  viewMode = readViewMode();
   render();
 
   window.setInterval(() => {
     if (!activeSession || !activeSession.isRunning) return;
     renderActiveSessionPanel();
+    renderEpisodeFocusPanel();
   }, 1000);
 })();
