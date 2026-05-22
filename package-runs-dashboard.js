@@ -59,6 +59,44 @@
     "Inactive: superseded",
   ];
 
+  const BEGINNING_TRIAGE_STORAGE_KEY = "vidtoolz-beginning-triage-v1";
+  const EPISODE_FACTORY_STORAGE_KEY = "vidtoolz-episode-factory-v1";
+  const DASHBOARD_GROUPS = [
+    "diagnostics",
+    "active-package-run",
+    "beginning-triage",
+    "capture-rough-cut",
+    "final-export",
+    "historical-package-runs",
+  ];
+  const BEGINNING_TRIAGE_STEPS = [
+    { id: "not_started", label: "Not started" },
+    { id: "topic", label: "Topic Research" },
+    { id: "candidates", label: "Candidate Angles" },
+    { id: "rough_idea", label: "Rough Idea" },
+    { id: "packaging", label: "Packaging Drafts" },
+    { id: "claim", label: "Claim Triage" },
+    { id: "usefulness", label: "Usefulness Triage" },
+    { id: "proof", label: "Proof Triage" },
+    { id: "decision", label: "Decision" },
+    { id: "next_action", label: "Next action" },
+  ];
+  const BEGINNING_TRIAGE_PHASES = [
+    { id: "discover", label: "Discover direction", stages: ["not_started", "topic", "candidates"] },
+    { id: "shape", label: "Shape the promise", stages: ["rough_idea", "packaging"] },
+    { id: "validate", label: "Validate with proof", stages: ["claim", "usefulness", "proof", "decision", "next_action"] },
+  ];
+  const BEGINNING_TRIAGE_BLOCKED_ACTIONS = [
+    "No full script",
+    "No B-roll generation",
+    "No Resolve work",
+    "No production-ready status",
+    "No publish-ready status",
+    "No final title approval",
+    "No final thumbnail approval",
+    "No package-run promotion unless Mikko explicitly approves later",
+  ];
+
   const FILE_LABELS = [
     ["package_candidates", "package-candidates.json", "Candidates"],
     ["package_run_state", "package-run-state.md", "Run state"],
@@ -822,6 +860,477 @@ Capture evidence approval: PASS`;
         <summary>Command output</summary>
         <pre><code>${escapeHtml(result.stdout || result.stderr || "No output.")}</code></pre>
       </details>
+    </div>`;
+  }
+
+  function beginningTriageInitialState() {
+    return {
+      stage: "not_started",
+      decision: "",
+      selectedCandidate: "",
+      selectedPackage: "",
+      status: "Not started",
+      fields: {
+        topicArea: "",
+        audienceGuess: "",
+        topicWhyNow: "",
+        mikkoSuspects: "",
+        possibleProof: "",
+        candidate1Title: "",
+        candidate1Problem: "",
+        candidate1Care: "",
+        candidate1Claim: "",
+        candidate1Proof: "",
+        candidate1Packaging: "",
+        candidate1Risk: "",
+        candidate1Fit: "",
+        candidate2Title: "",
+        candidate2Problem: "",
+        candidate2Care: "",
+        candidate2Claim: "",
+        candidate2Proof: "",
+        candidate2Packaging: "",
+        candidate2Risk: "",
+        candidate2Fit: "",
+        candidate3Title: "",
+        candidate3Problem: "",
+        candidate3Care: "",
+        candidate3Claim: "",
+        candidate3Proof: "",
+        candidate3Packaging: "",
+        candidate3Risk: "",
+        candidate3Fit: "",
+        rawIdea: "",
+        researchChange: "",
+        chosenDirectionReason: "",
+        package1Title: "",
+        package1ThumbnailConcept: "",
+        package1ThumbnailText: "",
+        package1VisualHook: "",
+        package1Promise: "",
+        package1ClickReason: "",
+        package1Risk: "",
+        package2Title: "",
+        package2ThumbnailConcept: "",
+        package2ThumbnailText: "",
+        package2VisualHook: "",
+        package2Promise: "",
+        package2ClickReason: "",
+        package2Risk: "",
+        package3Title: "",
+        package3ThumbnailConcept: "",
+        package3ThumbnailText: "",
+        package3VisualHook: "",
+        package3Promise: "",
+        package3ClickReason: "",
+        package3Risk: "",
+        bestClaim: "",
+        claimOptionA: "",
+        claimOptionB: "",
+        claimOptionC: "",
+        whyCare: "",
+        viewerDecision: "",
+        creatorMistake: "",
+        authorityBasis: "",
+        minimumViableProof: "",
+        mainOverclaimRisk: "",
+        claimMapClaim: "",
+        proofNeeded: "",
+        existingProof: "",
+        proofGap: "",
+        visualEvidence: "",
+        forbiddenUnlessProven: "",
+        nextThirtyMinuteAction: "",
+        nextActionNote: "",
+      },
+    };
+  }
+
+  function normalizeBeginningTriageState(source = {}) {
+    const initial = beginningTriageInitialState();
+    const state = source && typeof source === "object" ? source : {};
+    const fields = state.fields && typeof state.fields === "object" ? state.fields : {};
+    const sourceStage = state.stage === "idea" ? "topic" : state.stage;
+    const stage = BEGINNING_TRIAGE_STEPS.some((step) => step.id === sourceStage) ? sourceStage : initial.stage;
+    const step = BEGINNING_TRIAGE_STEPS.find((item) => item.id === stage) || BEGINNING_TRIAGE_STEPS[0];
+    return {
+      ...initial,
+      ...state,
+      stage,
+      decision: String(state.decision || ""),
+      selectedCandidate: String(state.selectedCandidate || ""),
+      selectedPackage: String(state.selectedPackage || ""),
+      status: String(state.status || (stage === "not_started" ? "Not started" : step.label)),
+      fields: Object.fromEntries(Object.entries(initial.fields).map(([key, value]) => [key, String(fields[key] || value)])),
+    };
+  }
+
+  function beginningTriageStepIndex(stage) {
+    const index = BEGINNING_TRIAGE_STEPS.findIndex((step) => step.id === stage);
+    return index >= 0 ? index : 0;
+  }
+
+  function beginningTriagePhaseIndex(stage) {
+    const index = BEGINNING_TRIAGE_PHASES.findIndex((phase) => phase.stages.includes(stage));
+    return index >= 0 ? index : 0;
+  }
+
+  function beginningTriageStepLabel(stage) {
+    const step = BEGINNING_TRIAGE_STEPS.find((item) => item.id === stage);
+    return step ? step.label : "Not started";
+  }
+
+  function beginningTriageStatusLabel(state) {
+    if (state.stage === "not_started") return "Not started";
+    if (state.stage === "next_action" && state.decision === "Continue") return "Proof Candidate";
+    if (state.decision === "Pause") return "Paused";
+    if (state.decision === "Reject") return "Rejected";
+    if (state.decision === "Rework") return "Rework needed";
+    const phase = beginningTriagePhaseIndex(state.stage);
+    if (phase === 0) return "Discovering direction";
+    if (phase === 1) return "Shaping promise";
+    return "Validating proof";
+  }
+
+  function renderBeginningTriageStepper(state) {
+    const current = beginningTriagePhaseIndex(state.stage);
+    return `<div class="beginning-progress-wrap">
+      <ol class="beginning-triage-stepper" aria-label="Beginning triage phases">
+        ${BEGINNING_TRIAGE_PHASES.map((phase, index) => `<li class="${index < current ? "complete" : index === current ? "current" : "future"}">
+          <span>${index + 1}</span><strong>${escapeHtml(phase.label)}</strong>
+        </li>`).join("")}
+      </ol>
+      <p class="beginning-current-step">Current step: ${escapeHtml(beginningTriageStepLabel(state.stage))}</p>
+    </div>`;
+  }
+
+  function renderBeginningTriageSummaryCards(state) {
+    const fields = state.fields || {};
+    const selectedCandidateTitle = fields[`candidate${state.selectedCandidate || "1"}Title`] || "";
+    const selectedPackageTitle = fields[`package${state.selectedPackage || "1"}Title`] || "";
+    const cards = [];
+    if (state.selectedCandidate || selectedCandidateTitle) {
+      cards.push(`<article class="beginning-summary-card">
+        <span>Selected candidate</span>
+        <strong>${escapeHtml(selectedCandidateTitle || `Candidate ${state.selectedCandidate}`)}</strong>
+        <small>${escapeHtml(fields[`candidate${state.selectedCandidate || "1"}Claim`] || "Claim not captured yet.")}</small>
+      </article>`);
+    }
+    if (fields.rawIdea) {
+      cards.push(`<article class="beginning-summary-card">
+        <span>Rough idea</span>
+        <strong>${escapeHtml(fields.rawIdea)}</strong>
+      </article>`);
+    }
+    if (state.selectedPackage || selectedPackageTitle) {
+      cards.push(`<article class="beginning-summary-card">
+        <span>Selected package</span>
+        <strong>${escapeHtml(selectedPackageTitle || `Package ${state.selectedPackage}`)}</strong>
+        <small>${escapeHtml(fields[`package${state.selectedPackage || "1"}Promise`] || "Promise not captured yet.")}</small>
+      </article>`);
+    }
+    if (fields.bestClaim || fields.proofGap) {
+      cards.push(`<article class="beginning-summary-card">
+        <span>Claim/proof status</span>
+        <strong>${escapeHtml(fields.bestClaim || "Claim not written yet.")}</strong>
+        <small>${escapeHtml(fields.proofGap || "Proof gap not mapped yet.")}</small>
+      </article>`);
+    }
+    return cards.length ? `<section class="beginning-summary-strip" aria-label="Completed beginning triage selections">${cards.join("")}</section>` : "";
+  }
+
+  function renderBeginningTopAction(state) {
+    if (state.stage === "not_started") return `<button type="button" class="primary-action" data-beginning-action="start">Start</button>`;
+    if (state.stage === "topic") return `<button type="button" class="primary-action" data-beginning-action="research">Research the topic</button>`;
+    if (state.stage === "candidates") return `<span class="beginning-next-label">Next: select a candidate or research again.</span>`;
+    if (state.stage === "rough_idea") return `<button type="button" class="primary-action" data-beginning-action="goto" data-beginning-target="packaging">Continue to packaging</button>`;
+    if (state.stage === "packaging") return `<span class="beginning-next-label">Next: select a planning package.</span>`;
+    if (state.stage === "claim") return `<button type="button" class="primary-action" data-beginning-action="goto" data-beginning-target="usefulness">Continue to Usefulness Triage</button>`;
+    if (state.stage === "usefulness") return `<button type="button" class="primary-action" data-beginning-action="goto" data-beginning-target="proof">Continue to Proof Triage</button>`;
+    if (state.stage === "proof") return `<button type="button" class="primary-action" data-beginning-action="goto" data-beginning-target="decision">Proof path exists / continue</button>`;
+    if (state.stage === "decision") return `<span class="beginning-next-label">Next: choose Continue, Rework, Pause, or Reject.</span>`;
+    return `<span class="beginning-next-label">Next: write one 30-minute action.</span>`;
+  }
+
+  function renderBeginningHelp(summary, body) {
+    return `<details class="beginning-help">
+      <summary>${escapeHtml(summary)}</summary>
+      <div>${body}</div>
+    </details>`;
+  }
+
+  function renderBeginningActiveCard(title, decisionNow, body, controls = "", helper = "") {
+    return `<section class="beginning-active-card" aria-label="${escapeHtml(title)}">
+      <div class="beginning-active-header">
+        <div>
+          <p class="eyebrow">Active Card</p>
+          <h3>${escapeHtml(title)}</h3>
+          <p>${escapeHtml(decisionNow)}</p>
+        </div>
+      </div>
+      ${helper}
+      ${body}
+      ${controls}
+    </section>`;
+  }
+
+  function renderBeginningUpcoming(stage) {
+    const current = beginningTriageStepIndex(stage);
+    const upcoming = BEGINNING_TRIAGE_STEPS.slice(current + 1, current + 4);
+    return upcoming.length ? `<section class="beginning-upcoming" aria-label="Upcoming beginning triage steps">
+      <span>Upcoming</span>
+      ${upcoming.map((step) => `<small>${escapeHtml(step.label)}</small>`).join("")}
+    </section>` : "";
+  }
+
+  function renderBeginningTriageField(fields, key, label, placeholder = "") {
+    return `<label class="beginning-triage-field">
+      <span>${escapeHtml(label)}</span>
+      <textarea rows="3" data-beginning-field="${escapeHtml(key)}" placeholder="${escapeHtml(placeholder)}">${escapeHtml(fields[key] || "")}</textarea>
+    </label>`;
+  }
+
+  function buildBeginningResearchHandoffPrompt(topicArea = "") {
+    const topic = String(topicArea || "").trim() || "[topic area]";
+    return `Research this VIDTOOLZ topic for serious creators: ${topic}.
+Return 3 alternative but equally promising video candidate angles. For each, include core viewer problem, why serious creators should care, potential claim, proof path, packaging potential, overclaim risk, and VIDTOOLZ fit. Do not claim anything as proven without evidence.`;
+  }
+
+  function renderBeginningCandidateCard(fields, index, selectedCandidate = "") {
+    const selected = selectedCandidate === String(index);
+    return `<article class="beginning-candidate-card${selected ? " selected" : ""}">
+      <div class="beginning-card-heading">
+        <strong>${escapeHtml(fields[`candidate${index}Title`] || `Candidate ${index}`)}</strong>
+        ${selected ? renderStatusBadge("selected") : ""}
+      </div>
+      ${renderBeginningTriageField(fields, `candidate${index}Title`, "Angle name")}
+      ${renderBeginningTriageField(fields, `candidate${index}Problem`, "Viewer problem")}
+      ${renderBeginningTriageField(fields, `candidate${index}Claim`, "Potential claim")}
+      ${renderBeginningTriageField(fields, `candidate${index}Proof`, "Proof path")}
+      ${renderBeginningTriageField(fields, `candidate${index}Risk`, "Risk")}
+      <details class="beginning-card-notes">
+        <summary>More notes</summary>
+        ${renderBeginningTriageField(fields, `candidate${index}Care`, "Why serious creators should care")}
+        ${renderBeginningTriageField(fields, `candidate${index}Packaging`, "Packaging potential")}
+        ${renderBeginningTriageField(fields, `candidate${index}Fit`, "VIDTOOLZ fit")}
+      </details>
+      <button type="button" class="primary-action" data-beginning-action="select-candidate" data-beginning-candidate="${index}">Select this candidate</button>
+    </article>`;
+  }
+
+  function renderBeginningPackageCard(fields, index, selectedPackage = "") {
+    const selected = selectedPackage === String(index);
+    return `<article class="beginning-package-card${selected ? " selected" : ""}">
+      <div class="beginning-card-heading">
+        <strong>${escapeHtml(fields[`package${index}Title`] || `Package ${index}`)}</strong>
+        ${selected ? renderStatusBadge("selected planning package") : ""}
+      </div>
+      ${renderBeginningTriageField(fields, `package${index}Title`, "Title")}
+      ${renderBeginningTriageField(fields, `package${index}ThumbnailText`, "Thumbnail text, 0-4 words")}
+      ${renderBeginningTriageField(fields, `package${index}VisualHook`, "Visual hook")}
+      ${renderBeginningTriageField(fields, `package${index}Promise`, "Promise")}
+      ${renderBeginningTriageField(fields, `package${index}Risk`, "Truthfulness risk")}
+      <details class="beginning-card-notes">
+        <summary>More notes</summary>
+        ${renderBeginningTriageField(fields, `package${index}ThumbnailConcept`, "Thumbnail concept")}
+        ${renderBeginningTriageField(fields, `package${index}ClickReason`, "Why this might earn a click")}
+      </details>
+      <button type="button" class="primary-action" data-beginning-action="select-package" data-beginning-package="${index}">Select this package</button>
+    </article>`;
+  }
+
+  function beginningTriageGuidance(title, goal, mikkoNeeds, allowedActions = []) {
+    return renderBeginningHelp(
+      "Step guidance",
+      `<div class="beginning-triage-guidance">
+        <div><h3>Current step</h3><p>${escapeHtml(title)}</p></div>
+        <div><h3>Goal</h3><p>${escapeHtml(goal)}</p></div>
+        <div><h3>What Mikko needs to do right now</h3><p>${escapeHtml(mikkoNeeds)}</p></div>
+        <div><h3>Current allowed actions</h3>${renderCompactList(allowedActions, "Write, pause, go back, or reject.")}</div>
+      </div>`
+    );
+  }
+
+  function renderBeginningTriageBoundary() {
+    return `<details class="beginning-triage-boundary">
+      <summary>Boundaries</summary>
+      ${renderCompactList(BEGINNING_TRIAGE_BLOCKED_ACTIONS, "No blocked actions listed.")}
+      <p>This is an operator guidance UI, not an approval system. This has not created or promoted a package run.</p>
+    </details>`;
+  }
+
+  function renderBeginningTriageControls(buttons = []) {
+    return `<div class="beginning-triage-controls">
+      ${buttons.map((button, index) => `<button type="button" class="${index === 0 ? "primary-action" : "quiet-action"}" data-beginning-action="${escapeHtml(button.action)}"${button.target ? ` data-beginning-target="${escapeHtml(button.target)}"` : ""}${button.decision ? ` data-beginning-decision="${escapeHtml(button.decision)}"` : ""}>${escapeHtml(button.label)}</button>`).join("")}
+    </div>`;
+  }
+
+  function renderBeginningTriageClaimMap(fields) {
+    return `<div class="beginning-claim-map" role="table" aria-label="Claim map">
+      <div role="row" class="beginning-claim-map-header">
+        <span>Claim</span><span>Proof needed</span><span>Existing proof</span><span>Proof gap</span><span>Visual evidence</span><span>Forbidden unless proven</span>
+      </div>
+      <div role="row" class="beginning-claim-map-row">
+        <textarea data-beginning-field="claimMapClaim" aria-label="Claim">${escapeHtml(fields.claimMapClaim)}</textarea>
+        <textarea data-beginning-field="proofNeeded" aria-label="Proof needed">${escapeHtml(fields.proofNeeded)}</textarea>
+        <textarea data-beginning-field="existingProof" aria-label="Existing proof">${escapeHtml(fields.existingProof)}</textarea>
+        <textarea data-beginning-field="proofGap" aria-label="Proof gap">${escapeHtml(fields.proofGap)}</textarea>
+        <textarea data-beginning-field="visualEvidence" aria-label="Visual evidence">${escapeHtml(fields.visualEvidence)}</textarea>
+        <textarea data-beginning-field="forbiddenUnlessProven" aria-label="Forbidden unless proven">${escapeHtml(fields.forbiddenUnlessProven)}</textarea>
+      </div>
+    </div>`;
+  }
+
+  function renderBeginningTriageStage(state) {
+    const fields = state.fields;
+    if (state.stage === "not_started") {
+      return `<div class="beginning-triage-start">
+        <h2>Status: Not started</h2>
+        <p>Start begins research-first idea triage and does not create a package run. It helps move from topic to three candidate angles, a two-sentence rough idea, planning title-thumbnail package, claim, proof gap, decision, and one next 30-minute action.</p>
+        <button type="button" class="primary-action" data-beginning-action="start">Start</button>
+      </div>`;
+    }
+    if (state.stage === "topic") {
+      return `${beginningTriageGuidance("Topic Research", "Find a promising direction before asking Mikko to write a rough idea.", "Enter a topic, trigger the research handoff, compare three candidates, and choose or repeat.", ["describe topic area", "request research handoff", "pause", "reject"])}
+      <div class="beginning-triage-intro">This is research-first idea triage. The dashboard does not perform live web research. It creates a clear research request and a paste area for user-pasted or research-handoff results.</div>
+      <div class="beginning-triage-fields">
+        ${renderBeginningTriageField(fields, "topicArea", "Topic area / problem space", "Example: creator workflow mistakes in AI video production")}
+        ${renderBeginningTriageField(fields, "audienceGuess", "Audience guess", "Who might care before we know the angle")}
+        ${renderBeginningTriageField(fields, "topicWhyNow", "Why this topic matters now")}
+        ${renderBeginningTriageField(fields, "mikkoSuspects", "What Mikko already suspects")}
+        ${renderBeginningTriageField(fields, "possibleProof", "What kind of proof might exist")}
+      </div>
+      <section class="beginning-handoff-panel">
+        <h3>Research handoff request</h3>
+        <p>Use this request with a separate research workflow, then paste three alternative but equally promising candidate video angles in the next step. These are user-pasted/research-handoff results, not browser-generated web research.</p>
+        <textarea readonly rows="5" data-beginning-handoff-prompt>${escapeHtml(buildBeginningResearchHandoffPrompt(fields.topicArea))}</textarea>
+      </section>
+      ${renderBeginningTriageControls([{ action: "research", target: "candidates", label: "Research the topic" }, { action: "pause", label: "Pause" }, { action: "reject", label: "Reject" }])}`;
+    }
+    if (state.stage === "candidates") {
+      return `${beginningTriageGuidance("3 Video Candidate Angles", "Compare three researched directions before shaping a rough idea.", "Paste or enter three candidate angles from research handoff results, then select one or research again.", ["paste candidate angles", "select this candidate", "research again", "pause", "reject"])}
+      <div class="beginning-triage-intro">Candidate angles here are user-pasted/research-handoff results. The browser did not perform web search.</div>
+      <div class="beginning-candidate-grid">
+        ${[1, 2, 3].map((index) => renderBeginningCandidateCard(fields, index, state.selectedCandidate)).join("")}
+      </div>
+      ${renderBeginningTriageControls([{ action: "goto", target: "topic", label: "Research again" }, { action: "pause", label: "Pause" }, { action: "reject", label: "Reject" }])}`;
+    }
+    if (state.stage === "rough_idea") {
+      return `${beginningTriageGuidance("Two-sentence Rough Idea", "Turn the selected research candidate into Mikko's own rough idea.", "Write the idea plainly in roughly two sentences. It does not need to be polished.", ["write rough idea", "go back to candidates", "research again", "pause", "reject"])}
+      <div class="beginning-selected-summary"><strong>Selected research candidate:</strong> ${escapeHtml(fields[`candidate${state.selectedCandidate || "1"}Title`] || `Candidate ${state.selectedCandidate || "not selected"}`)}</div>
+      <div class="beginning-triage-fields">
+        ${renderBeginningTriageField(fields, "rawIdea", "Rough idea, approximately two sentences")}
+        ${renderBeginningTriageField(fields, "researchChange", "What changed after research")}
+        ${renderBeginningTriageField(fields, "chosenDirectionReason", "Why this is the chosen direction")}
+      </div>
+      ${renderBeginningTriageControls([{ action: "goto", target: "packaging", label: "Continue to YouTube Packaging Drafts" }, { action: "goto", target: "candidates", label: "Back to candidates" }, { action: "goto", target: "topic", label: "Research again" }, { action: "pause", label: "Pause" }, { action: "reject", label: "Reject" }])}`;
+    }
+    if (state.stage === "packaging") {
+      return `${beginningTriageGuidance("YouTube Packaging Drafts", "Explore title-thumbnail combinations before claim/proof triage.", "Create or paste planning title-thumbnail candidates, redo until one is strong enough, then select it.", ["generate title + thumbnail package", "select this package", "generate more / redo packaging", "rework rough idea", "pause", "reject"])}
+      <div class="beginning-triage-intro">This is planning packaging, not final approval. The dashboard does not create actual thumbnail images or pretend to generate with an external model.</div>
+      <section class="beginning-handoff-panel">
+        <h3>Packaging guidance</h3>
+        ${renderCompactList(["Title should be one idea only.", "Thumbnail should be one visual idea.", "Title and thumbnail must not merely repeat each other.", "Packaging may be more exciting than the raw topic, but not more exciting than the actual video value.", "Final title, final thumbnail, and publishing approval remain blocked."], "No packaging guidance.")}
+      </section>
+      <div class="beginning-package-grid">
+        ${[1, 2, 3].map((index) => renderBeginningPackageCard(fields, index, state.selectedPackage)).join("")}
+      </div>
+      ${renderBeginningTriageControls([{ action: "package", label: "Generate title + thumbnail package" }, { action: "package", label: "Generate more / redo packaging" }, { action: "goto", target: "rough_idea", label: "Rework rough idea" }, { action: "pause", label: "Pause" }, { action: "reject", label: "Reject" }])}`;
+    }
+    if (state.stage === "claim") {
+      return `${beginningTriageGuidance("Claim Triage", "Turn the packaged rough idea into a testable useful claim.", "Write the best current claim and optional alternatives. Do not assume the first claim is correct.", ["draft a claim", "compare claim options", "mark no strong claim yet", "go back to packaging", "pause", "reject"])}
+      <div class="beginning-selected-summary"><strong>Selected planning package:</strong> ${escapeHtml(fields[`package${state.selectedPackage || "1"}Title`] || `Package ${state.selectedPackage || "not selected"}`)}. Claim/proof triage is locked until a planning package is selected.</div>
+      <div class="beginning-triage-format">Good format: <code>Serious creators should understand/change/avoid ___ because ___.</code></div>
+      <div class="beginning-triage-fields">
+        ${renderBeginningTriageField(fields, "bestClaim", "Best current claim", "Serious creators should... because...")}
+        ${renderBeginningTriageField(fields, "claimOptionA", "Optional claim option A")}
+        ${renderBeginningTriageField(fields, "claimOptionB", "Optional claim option B")}
+        ${renderBeginningTriageField(fields, "claimOptionC", "Optional claim option C")}
+      </div>
+      ${renderBeginningTriageControls([{ action: "goto", target: "packaging", label: "Back to packaging" }, { action: "goto", target: "usefulness", label: "Continue to Usefulness Triage" }, { action: "rework", label: "Mark no strong claim yet / rework" }, { action: "pause", label: "Pause" }, { action: "reject", label: "Reject" }])}`;
+    }
+    if (state.stage === "usefulness") {
+      return `${beginningTriageGuidance("Usefulness Triage", "Check whether serious creators have a real reason to care.", "Name the viewer decision, avoided mistake, and Mikko authority basis.", ["describe usefulness", "choose authority basis", "rework", "pause", "reject"])}
+      <div class="beginning-authority-examples"><strong>Authority basis examples:</strong> Built system; Tested failure; Editor judgment; Systems operator view; Practical creator view.</div>
+      <div class="beginning-triage-fields">
+        ${renderBeginningTriageField(fields, "whyCare", "Why serious creators should care")}
+        ${renderBeginningTriageField(fields, "viewerDecision", "What viewer decision this helps")}
+        ${renderBeginningTriageField(fields, "creatorMistake", "What creator mistake this helps avoid")}
+        ${renderBeginningTriageField(fields, "authorityBasis", "Mikko authority basis")}
+      </div>
+      ${renderBeginningTriageControls([{ action: "goto", target: "claim", label: "Back to claim" }, { action: "goto", target: "packaging", label: "Back to packaging" }, { action: "goto", target: "proof", label: "Continue to Proof Triage" }, { action: "rework", label: "Rework" }, { action: "pause", label: "Pause" }, { action: "reject", label: "Reject" }])}`;
+    }
+    if (state.stage === "proof") {
+      return `${beginningTriageGuidance("Proof Triage", "Check whether the claim can be backed by real evidence.", "Map the claim to proof needed, existing proof, proof gap, and what cannot be claimed yet.", ["map proof", "inspect existing proof", "decide proof capture is needed", "rework claim", "pause", "reject"])}
+      <div class="beginning-triage-format">Generated B-roll or conceptual graphics may explain the idea, but cannot carry proof unless the video is specifically about generated media.</div>
+      <div class="beginning-triage-fields">
+        ${renderBeginningTriageField(fields, "minimumViableProof", "Minimum viable proof")}
+        ${renderBeginningTriageField(fields, "mainOverclaimRisk", "Main overclaim risk")}
+      </div>
+      ${renderBeginningTriageClaimMap(fields)}
+      ${renderBeginningTriageControls([{ action: "goto", target: "usefulness", label: "Back to usefulness" }, { action: "goto", target: "decision", label: "Proof path exists / continue to Decision" }, { action: "pause", label: "Need to inspect existing proof" }, { action: "pause", label: "Need to capture proof" }, { action: "goto", target: "claim", label: "Rework claim" }, { action: "goto", target: "packaging", label: "Back to packaging" }, { action: "pause", label: "Pause" }, { action: "reject", label: "Reject" }])}`;
+    }
+    if (state.stage === "decision") {
+      return `${beginningTriageGuidance("Decision", "Make an explicit decision. No ambiguous maybe.", "Choose Continue, Rework, Pause, or Reject.", ["continue", "rework", "pause", "reject"])}
+      <div class="beginning-decision-grid">
+        <div><strong>Continue</strong><p>Topic, rough idea, packaging, claim, and proof path are strong enough for another serious work block.</p></div>
+        <div><strong>Rework</strong><p>Idea has value but angle/package/claim/proof is weak.</p></div>
+        <div><strong>Pause</strong><p>Possibly useful, but not now.</p></div>
+        <div><strong>Reject</strong><p>Not VIDTOOLZ-fit, not packageable, or not provable enough.</p></div>
+      </div>
+      ${renderBeginningTriageControls([{ action: "goto", target: "proof", label: "Back" }, { action: "decide", decision: "Continue", label: "Continue" }, { action: "decide", decision: "Rework", label: "Rework" }, { action: "decide", decision: "Pause", label: "Pause" }, { action: "decide", decision: "Reject", label: "Reject" }])}`;
+    }
+    return `${beginningTriageGuidance("Next 30-minute action", "Choose one small next action after the decision.", "Write exactly one useful 30-minute action and optional note.", ["record next action", "go back to decision", "pause locally"])}
+    <div class="beginning-triage-fields">
+      ${renderBeginningTriageField(fields, "nextThirtyMinuteAction", "Next 30-minute action", "Inspect one existing artifact.")}
+      ${renderBeginningTriageField(fields, "nextActionNote", "Optional note")}
+    </div>
+    <div class="beginning-examples-grid">
+      <div><h3>Good example actions</h3>${renderCompactList(["Inspect one existing artifact.", "Research one missing proof source.", "Record one proof clip.", "Compare two workflows.", "Write one claim map.", "Find one real creator mistake.", "Rework title-thumbnail promise.", "Reject unless concrete proof can be found."], "No examples.")}</div>
+      <div><h3>Blocked examples</h3>${renderCompactList(["Write full script.", "Generate B-roll.", "Open Resolve.", "Create production plan.", "Mark production ready."], "No blocked examples.")}</div>
+    </div>
+    <div class="beginning-final-state">
+      <strong>Current state: ${escapeHtml(state.decision === "Continue" ? "Proof Candidate" : `Idea Candidate: ${(state.decision || "paused").toLowerCase()}`)}</strong>
+      <p>Selected research candidate: ${escapeHtml(fields[`candidate${state.selectedCandidate || "1"}Title`] || `Candidate ${state.selectedCandidate || "not selected"}`)}</p>
+      <p>Two-sentence rough idea: ${escapeHtml(fields.rawIdea || "Not written yet.")}</p>
+      <p>Selected planning title-thumbnail package: ${escapeHtml(fields[`package${state.selectedPackage || "1"}Title`] || `Package ${state.selectedPackage || "not selected"}`)}</p>
+      <p>Decision: ${escapeHtml(state.decision || "Pause")}</p>
+      <p>Next 30-minute action: ${escapeHtml(fields.nextThirtyMinuteAction || "Not chosen yet.")}</p>
+      <p>Boundary note: "This has not created or promoted a package run."</p>
+    </div>
+    ${renderBeginningTriageControls([{ action: "goto", target: "decision", label: "Back" }, { action: "pause", label: "Save/pause locally" }])}`;
+  }
+
+  function renderBeginningTriageCockpit(rawState = {}) {
+    const state = normalizeBeginningTriageState(rawState);
+    return `<div class="beginning-triage-card" data-beginning-triage data-stage="${escapeHtml(state.stage)}">
+      <div class="beginning-triage-header">
+        <div>
+          <p class="eyebrow">Beginning Triage</p>
+          <h2>Beginning Triage</h2>
+          ${renderStatusBadge(beginningTriageStatusLabel(state))}
+          <p class="muted">Browser-local triage only. Does not create or promote a package run.</p>
+        </div>
+        <div class="beginning-header-actions">
+          ${renderBeginningTopAction(state)}
+          <button type="button" class="quiet-action" data-beginning-action="reset">Reset triage draft</button>
+        </div>
+      </div>
+      ${renderBeginningTriageStepper(state)}
+      ${renderBeginningTriageSummaryCards(state)}
+      <section class="beginning-active-card" aria-label="Current beginning triage card">
+        <div class="beginning-active-header">
+          <div>
+            <p class="eyebrow">Now</p>
+            <h3>${escapeHtml(beginningTriageStepLabel(state.stage))}</h3>
+            <p>${escapeHtml(state.stage === "not_started" ? "Start a browser-local triage draft." : "Make the current decision, then move one step forward or loop back.")}</p>
+          </div>
+        </div>
+        ${renderBeginningTriageStage(state)}
+      </section>
+      ${renderBeginningUpcoming(state.stage)}
+      ${renderBeginningTriageBoundary()}
+      <p class="beginning-triage-storage">Stored only in <code>${BEGINNING_TRIAGE_STORAGE_KEY}</code>. Existing <code>${EPISODE_FACTORY_STORAGE_KEY}</code> data is not read or modified.</p>
     </div>`;
   }
 
@@ -1785,6 +2294,203 @@ Capture evidence approval: PASS`;
     </div>`;
   }
 
+  function findActiveRunFromIndex(indexPayload = {}, activeRunId = "") {
+    const normalized = normalizeIndex(indexPayload);
+    if (activeRunId) {
+      const match = normalized.runs.find((run) => run.runId === activeRunId);
+      if (match) return match;
+    }
+    const activeRuns = normalized.runs.filter((run) => !run.inactive);
+    return activeRuns.length === 1 ? activeRuns[0] : null;
+  }
+
+  function uniqueStrings(values = []) {
+    return [...new Set(normalizeStringArray(values))];
+  }
+
+  function compactCreatorList(items = [], limit = 4) {
+    const normalized = uniqueStrings(items).filter(Boolean);
+    if (normalized.length <= limit) return normalized;
+    return [...normalized.slice(0, limit), `${normalized.length - limit} more in diagnostics.`];
+  }
+
+  function buildCreatorCockpitPayload(payload = {}, options = {}) {
+    const panel = normalizeNextSafeAction(payload);
+    const beginningState = normalizeBeginningTriageState(options.beginningState || {});
+    const indexPayload = options.index || {};
+    const index = normalizeIndex(indexPayload);
+    const activeRun = findActiveRunFromIndex(index, panel.activeRun);
+    const hasActiveRun = Boolean(panel.activeRun);
+    const hasBeginningDraft = beginningState.stage !== "not_started";
+    const sourceStatus = hasActiveRun ? "available" : activeRun ? "partial" : hasBeginningDraft ? "partial" : "needs-review";
+    const canonicalNow = hasActiveRun
+      ? panel.stage
+      : activeRun
+        ? activeRun.status
+        : hasBeginningDraft
+          ? beginningTriageStatusLabel(beginningState)
+          : "Beginning triage available";
+    const nextAction = hasActiveRun
+      ? panel.nextHumanAction
+      : hasBeginningDraft && beginningState.fields.nextThirtyMinuteAction
+        ? beginningState.fields.nextThirtyMinuteAction
+        : activeRun
+          ? activeRun.nextRecommendedCommand || "Review diagnostics before choosing package-run work."
+          : "Use Beginning Triage to discover a direction, shape the promise, then validate the proof gap.";
+    const proof = [];
+    const missingProof = [];
+    const visibleEvidenceCount = panel.evidence.filter((item) => item.exists).length;
+    const missingEvidenceCount = panel.evidence.filter((item) => !item.exists).length;
+    panel.evidence.forEach((item) => {
+      if (!item.exists) missingProof.push(`${item.label}: missing. See diagnostics for path/source detail.`);
+    });
+    if (visibleEvidenceCount) {
+      proof.push(`${visibleEvidenceCount} source areas visible or detected. Source details stay in diagnostics; detected is not accepted.`);
+    }
+    if (missingEvidenceCount) {
+      missingProof.push(`${missingEvidenceCount} source areas missing or not visible. See diagnostics for exact paths.`);
+    }
+    if (panel.facts.selectedStillCount || panel.facts.reviewedPrompt03Count) {
+      proof.push(`${panel.facts.selectedStillCount} selected stills and ${panel.facts.reviewedPrompt03Count} reviewed prompt-03 items detected.`);
+    }
+    if (panel.facts.klingVideoCount) {
+      proof.push(`${panel.facts.klingVideoCount} Kling MP4 candidate${panel.facts.klingVideoCount === 1 ? "" : "s"} detected.`);
+    } else if (hasActiveRun) {
+      missingProof.push("Kling MP4 candidates are missing.");
+    }
+    if (panel.facts.resolveTestRecorded) {
+      proof.push("Resolve timeline test evidence is recorded.");
+    } else if (hasActiveRun) {
+      missingProof.push("Resolve timeline test evidence is missing.");
+    }
+    if (activeRun) {
+      const evidenceGate = normalizeEvidenceGate(activeRun.evidenceGate);
+      const lifecycleGate = normalizeLifecycleGate(activeRun.lifecycleGate);
+      if (evidenceGate.evidenceReferences.length) {
+        proof.push(`${evidenceGate.evidenceReferences.length} index evidence reference${evidenceGate.evidenceReferences.length === 1 ? "" : "s"} detected; references are diagnostic until the proper gate accepts them.`);
+      }
+      if (lifecycleGate.captureEvidenceRealEvidence) {
+        proof.push("Lifecycle diagnostics report real capture evidence detected; the cockpit does not create approval.");
+      }
+      if (activeRun.nextExpectedFile) missingProof.push(`Index missing/next expected: ${activeRun.nextExpectedFile}.`);
+      activeRun.missingExpectedArtifacts.forEach((item) => missingProof.push(`Missing expected artifact: ${item}.`));
+      if (evidenceGate.warning) missingProof.push("Evidence gate warning present; review diagnostics before readiness claims.");
+    }
+    if (!proof.length) proof.push("No proof source is currently visible in the cockpit payload.");
+    if (!missingProof.length) missingProof.push(panel.blockedUntil || "No missing proof detail reported; review diagnostics before claiming readiness.");
+
+    const blockedActions = uniqueStrings([
+      ...panel.forbiddenActions,
+      ...(activeRun ? activeRun.conservativeBlockedActions : []),
+      "mark publish_ready",
+      "upload",
+      "archive",
+      "update Hermes memory",
+      "update project-state notes",
+    ]);
+    const mikkoMust = hasActiveRun
+      ? [
+          panel.nextHumanAction,
+          `Confirm blocked-until condition manually: ${panel.blockedUntil}`,
+          "Make any approval or readiness decision outside the read-only cockpit after reviewing proof.",
+        ]
+      : [
+          "Choose the next creator-owned direction or active package-run before downstream work.",
+          "Keep approvals and readiness decisions outside the read-only cockpit.",
+        ];
+    const reconciliation = [];
+    if (activeRun && panel.stage && activeRun.status && panel.stage !== activeRun.status) {
+      reconciliation.push(`Lifecycle index says ${activeRun.status}; cockpit uses next-safe-action as Now. Lifecycle is diagnostic and package-runs-index.json may lag.`);
+    }
+    if (activeRun && activeRun.workflowBucket && activeRun.workflowBucket !== activeRun.status) {
+      reconciliation.push(`Workflow bucket says ${activeRun.workflowBucket}; lower dashboard panels remain diagnostics, not competing creator truth.`);
+    }
+    if (!hasActiveRun && !activeRun) {
+      reconciliation.push("Next-safe-action source is unavailable; cockpit stays conservative and does not invent readiness.");
+    }
+
+    return {
+      readOnly: panel.readOnly,
+      sourceStatus,
+      runId: panel.activeRun || (activeRun ? activeRun.runId : ""),
+      runPath: panel.activeRunPath || (activeRun ? activeRun.path : ""),
+      now: {
+        label: canonicalNow || "Needs review",
+        source: hasActiveRun ? "next-safe-action" : activeRun ? "package-runs-index" : hasBeginningDraft ? "beginning-triage" : "fallback",
+        reconciliation,
+      },
+      nextThirtyMinuteAction: {
+        text: nextAction || "Review diagnostics before acting.",
+        doneCondition: panel.blockedUntil || "Mikko has reviewed the relevant proof and missing proof.",
+      },
+      proof: compactCreatorList(proof, 3),
+      missingProof: compactCreatorList(missingProof, 4),
+      aiMay: compactCreatorList([panel.nextAiAction, ...panel.allowedActions], 4),
+      mikkoMust: compactCreatorList(mikkoMust, 3),
+      blockedActions: compactCreatorList(blockedActions, 6),
+      beginningState,
+      activeRunFocus: hasActiveRun,
+      hasBeginningDraft,
+    };
+  }
+
+  function renderCreatorCockpitList(items, emptyLabel) {
+    return renderCompactList(items, emptyLabel, "creator-cockpit-list");
+  }
+
+  function renderCreatorCockpit(cockpit = {}) {
+    const model = cockpit && typeof cockpit === "object" ? cockpit : buildCreatorCockpitPayload();
+    const readOnlyLabel = model.readOnly === false ? "Source not read-only" : "Read-only cockpit";
+    const runMeta = model.runId ? `Active run: ${escapeHtml(model.runId)}` : "No active package-run source loaded.";
+    return `<div id="currentFocusContent" class="current-focus-content creator-cockpit-content" data-current-focus-result data-creator-cockpit data-active-run-focus="${model.activeRunFocus ? "true" : "false"}">
+      <div class="creator-cockpit-status">
+        <span class="lifecycle-badge ${model.readOnly === false ? "error" : "success"}">${escapeHtml(readOnlyLabel)}</span>
+        <span>${escapeHtml(runMeta)}</span>
+        <span>Detected sources are diagnostics until a proper gate accepts them.</span>
+      </div>
+      <section class="creator-cockpit-section creator-cockpit-now" aria-label="Now">
+        <span>Now</span>
+        <strong>${escapeHtml(model.now.label || "Needs review")}</strong>
+        <p>Canonical source: ${escapeHtml(model.now.source || "fallback")}.</p>
+        ${model.now.reconciliation.length ? `<div class="creator-cockpit-reconciliation">${renderCreatorCockpitList(model.now.reconciliation, "No source conflict reported.")}</div>` : ""}
+      </section>
+      <section class="creator-cockpit-section creator-cockpit-next" aria-label="Next 30-minute action">
+        <span>Next 30-minute action</span>
+        <strong>${escapeHtml(model.nextThirtyMinuteAction.text)}</strong>
+        <p>Done when: ${escapeHtml(model.nextThirtyMinuteAction.doneCondition)}</p>
+      </section>
+      <section class="creator-cockpit-section" aria-label="Proof">
+        <span>Proof</span>
+        ${renderCreatorCockpitList(model.proof, "No visible proof source reported.")}
+      </section>
+      <section class="creator-cockpit-section" aria-label="Missing proof">
+        <span>Missing proof</span>
+        ${renderCreatorCockpitList(model.missingProof, "No missing proof reported; verify diagnostics before claiming readiness.")}
+      </section>
+      <section class="creator-cockpit-section" aria-label="AI may">
+        <span>AI may</span>
+        ${renderCreatorCockpitList(model.aiMay, "Inspect files and summarize status only.")}
+      </section>
+      <section class="creator-cockpit-section" aria-label="Mikko must">
+        <span>Mikko must</span>
+        ${renderCreatorCockpitList(model.mikkoMust, "Choose the next accountable creator action.")}
+      </section>
+      <section class="creator-cockpit-section creator-cockpit-blocked" aria-label="Blocked actions">
+        <span>Blocked actions</span>
+        ${renderCreatorCockpitList(model.blockedActions, "No blocked actions reported; stay conservative.")}
+      </section>
+      <div class="creator-cockpit-actions">
+        <button type="button" data-dashboard-action="open-diagnostics">Open diagnostics</button>
+        ${model.hasBeginningDraft ? `<button type="button" data-dashboard-action="open-beginning-triage">Open Beginning Triage</button>` : ""}
+      </div>
+      ${
+        model.hasBeginningDraft && model.activeRunFocus
+          ? `<p class="muted">Beginning triage draft exists, but active package-run focus remains primary.</p>`
+          : ""
+      }
+    </div>`;
+  }
+
   function normalizeEvidenceIntake(payload) {
     const source = payload && typeof payload === "object" ? payload : {};
     const fields = source.fields && typeof source.fields === "object" ? source.fields : {};
@@ -1934,9 +2640,51 @@ Capture evidence approval: PASS`;
     </div>`;
   }
 
+  function renderCurrentFocus(payload = {}, options = {}) {
+    return renderCreatorCockpit(buildCreatorCockpitPayload(payload, options));
+  }
+
+  function renderBeginningDraftReminder(state, activeRunFocus = false) {
+    const fields = state.fields || {};
+    const selectedCandidate = state.selectedCandidate ? fields[`candidate${state.selectedCandidate}Title`] || `Candidate ${state.selectedCandidate}` : "";
+    const selectedPackage = state.selectedPackage ? fields[`package${state.selectedPackage}Title`] || `Package ${state.selectedPackage}` : "";
+    const nextAction = fields.nextThirtyMinuteAction || (state.stage === "next_action" ? "Next 30-minute action not captured yet." : "");
+    return `<div class="current-focus-card beginning-draft-reminder">
+      <span>Beginning triage draft in progress</span>
+      <strong>${escapeHtml(beginningTriageStatusLabel(state))}</strong>
+      <p>Stage: ${escapeHtml(beginningTriageStepLabel(state.stage))}</p>
+      ${fields.topicArea ? `<p>Topic/problem space: ${escapeHtml(fields.topicArea)}</p>` : ""}
+      ${selectedCandidate ? `<p>Selected candidate: ${escapeHtml(selectedCandidate)}</p>` : ""}
+      ${selectedPackage ? `<p>Selected package: ${escapeHtml(selectedPackage)}</p>` : ""}
+      ${nextAction ? `<p>Next action: ${escapeHtml(nextAction)}</p>` : ""}
+      <button type="button" data-dashboard-action="open-beginning-triage">Open Beginning Triage</button>
+      ${activeRunFocus ? "<p>Active package-run focus remains primary.</p>" : ""}
+    </div>`;
+  }
+
+  function normalizeDashboardMode(mode = "focus") {
+    return mode === "full" ? "full" : "focus";
+  }
+
+  function dashboardFocusGroup(activeRunFocus = false) {
+    return activeRunFocus ? "active-package-run" : "beginning-triage";
+  }
+
+  function dashboardGroupOpenState(mode = "focus", activeRunFocus = false) {
+    const normalizedMode = normalizeDashboardMode(mode);
+    return Object.fromEntries(DASHBOARD_GROUPS.map((group) => [group, normalizedMode === "full"]));
+  }
+
   function createBrowserApp(doc = globalScope.document) {
     const els = {
       status: doc.querySelector("#packageRunsStatus"),
+      dashboard: doc.querySelector(".package-runs-dashboard"),
+      currentFocusPanel: doc.querySelector("#currentFocusPanel"),
+      currentFocusContent: doc.querySelector("#currentFocusContent"),
+      beginningTriagePanel: doc.querySelector("#beginningTriageCockpit"),
+      diagnosticsGroup: doc.querySelector("[data-dashboard-group='diagnostics']"),
+      beginningGroup: doc.querySelector("[data-dashboard-group='beginning-triage']"),
+      activePackageGroup: doc.querySelector("[data-dashboard-group='active-package-run']"),
       nextSafeActionPanel: doc.querySelector("#nextSafeActionPanel"),
       evidenceIntakePanel: doc.querySelector("#evidenceIntakePanel"),
       grid: doc.querySelector("#packageRunsGrid"),
@@ -1956,6 +2704,7 @@ Capture evidence approval: PASS`;
     let index = normalizeIndex({});
     let localWriteConfig = null;
     let localWriteConfigPromise = null;
+    let dashboardMode = "focus";
 
     function showStatus(message, type = "") {
       els.status.textContent = message;
@@ -1971,7 +2720,168 @@ Capture evidence approval: PASS`;
         : `<p class="muted">No package runs match this filter.</p>`;
     }
 
+    function storageAvailable() {
+      return Boolean(globalScope.localStorage && globalScope.localStorage.getItem && globalScope.localStorage.setItem);
+    }
+
+    function readBeginningTriageState() {
+      if (!storageAvailable()) return beginningTriageInitialState();
+      try {
+        const raw = globalScope.localStorage.getItem(BEGINNING_TRIAGE_STORAGE_KEY);
+        return raw ? normalizeBeginningTriageState(JSON.parse(raw)) : beginningTriageInitialState();
+      } catch (_error) {
+        return beginningTriageInitialState();
+      }
+    }
+
+    function saveBeginningTriageState(state) {
+      const normalized = normalizeBeginningTriageState(state);
+      if (storageAvailable()) {
+        globalScope.localStorage.setItem(BEGINNING_TRIAGE_STORAGE_KEY, JSON.stringify(normalized));
+      }
+      return normalized;
+    }
+
+    function renderBeginningTriageFromStorage() {
+      if (!els.beginningTriagePanel) return;
+      const state = readBeginningTriageState();
+      els.beginningTriagePanel.innerHTML = renderBeginningTriageCockpit(state);
+      renderCurrentFocusFallback(state);
+    }
+
+    function renderCurrentFocusFallback(state = readBeginningTriageState()) {
+      if (!els.currentFocusContent || els.currentFocusContent.dataset.activeRunFocus === "true") return;
+      els.currentFocusContent.outerHTML = renderCurrentFocus({}, { beginningState: state });
+      els.currentFocusContent = doc.querySelector("#currentFocusContent") || doc.querySelector("[data-current-focus-result]");
+    }
+
+    function setDashboardMode(mode = "focus") {
+      const nextMode = normalizeDashboardMode(mode);
+      dashboardMode = nextMode;
+      if (els.dashboard) els.dashboard.dataset.dashboardMode = nextMode;
+      doc.querySelectorAll("[data-dashboard-mode-button]").forEach((button) => {
+        const active = button.dataset.dashboardModeButton === nextMode;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+      const activeRunFocus = Boolean(els.currentFocusContent && els.currentFocusContent.dataset.activeRunFocus === "true");
+      const openState = dashboardGroupOpenState(nextMode, activeRunFocus);
+      doc.querySelectorAll("[data-dashboard-group]").forEach((group) => {
+        const groupName = group.dataset.dashboardGroup;
+        group.open = Boolean(openState[groupName]);
+      });
+    }
+
+    function beginningTriageStateFromDom(container) {
+      const state = readBeginningTriageState();
+      container.querySelectorAll("[data-beginning-field]").forEach((field) => {
+        state.fields[field.dataset.beginningField] = field.value;
+      });
+      return normalizeBeginningTriageState(state);
+    }
+
+    function updateBeginningTriageStage(container, stage, extra = {}) {
+      const state = normalizeBeginningTriageState({ ...beginningTriageStateFromDom(container), ...extra, stage });
+      const step = BEGINNING_TRIAGE_STEPS.find((item) => item.id === state.stage);
+      state.status = state.stage === "not_started" ? "Not started" : step ? step.label : state.status;
+      saveBeginningTriageState(state);
+      renderBeginningTriageFromStorage();
+    }
+
+    function updateBeginningTriageDraft(event) {
+      const field = event.target.closest("[data-beginning-field]");
+      if (!field || !els.beginningTriagePanel) return;
+      const state = saveBeginningTriageState(beginningTriageStateFromDom(els.beginningTriagePanel));
+      if (field.dataset.beginningField === "topicArea") {
+        const prompt = els.beginningTriagePanel.querySelector("[data-beginning-handoff-prompt]");
+        if (prompt) prompt.value = buildBeginningResearchHandoffPrompt(state.fields.topicArea);
+      }
+      renderCurrentFocusFallback(state);
+    }
+
+    function handleCurrentFocusClick(event) {
+      const button = event.target.closest("[data-dashboard-action]");
+      if (!button) return;
+      if (button.dataset.dashboardAction === "open-beginning-triage") {
+        event.preventDefault();
+        if (els.beginningGroup) els.beginningGroup.open = true;
+      }
+      if (button.dataset.dashboardAction === "open-diagnostics") {
+        event.preventDefault();
+        if (els.diagnosticsGroup) els.diagnosticsGroup.open = true;
+      }
+    }
+
+    function handleBeginningTriageClick(event) {
+      const button = event.target.closest("[data-beginning-action]");
+      if (!button || !els.beginningTriagePanel) return;
+      event.preventDefault();
+      const action = button.dataset.beginningAction;
+      if (action === "reset") {
+        const ok =
+          !globalScope.confirm ||
+          globalScope.confirm("Reset the beginning triage draft? This clears only vidtoolz-beginning-triage-v1.");
+        if (ok) {
+          if (storageAvailable() && globalScope.localStorage.removeItem) {
+            globalScope.localStorage.removeItem(BEGINNING_TRIAGE_STORAGE_KEY);
+          }
+          renderBeginningTriageFromStorage();
+        }
+        return;
+      }
+      if (action === "start") {
+        updateBeginningTriageStage(els.beginningTriagePanel, "topic", {
+          decision: "",
+          selectedCandidate: "",
+          selectedPackage: "",
+          status: "Topic Research",
+        });
+        return;
+      }
+      if (action === "research") {
+        updateBeginningTriageStage(els.beginningTriagePanel, "candidates", { status: "Candidate Angles" });
+        return;
+      }
+      if (action === "package") {
+        updateBeginningTriageStage(els.beginningTriagePanel, "packaging", { status: "Packaging Drafts" });
+        return;
+      }
+      if (action === "select-candidate") {
+        updateBeginningTriageStage(els.beginningTriagePanel, "rough_idea", {
+          selectedCandidate: button.dataset.beginningCandidate || "",
+          status: "Rough Idea",
+        });
+        return;
+      }
+      if (action === "select-package") {
+        updateBeginningTriageStage(els.beginningTriagePanel, "claim", {
+          selectedPackage: button.dataset.beginningPackage || "",
+          status: "Claim Triage",
+        });
+        return;
+      }
+      if (action === "goto") {
+        updateBeginningTriageStage(els.beginningTriagePanel, button.dataset.beginningTarget || "idea");
+        return;
+      }
+      if (action === "decide") {
+        updateBeginningTriageStage(els.beginningTriagePanel, "next_action", {
+          decision: button.dataset.beginningDecision || "",
+          status: "Next action",
+        });
+        return;
+      }
+      if (action === "pause" || action === "rework" || action === "reject") {
+        const decision = action === "pause" ? "Pause" : action === "rework" ? "Rework" : "Reject";
+        updateBeginningTriageStage(els.beginningTriagePanel, "next_action", {
+          decision,
+          status: "Next action",
+        });
+      }
+    }
+
     function load() {
+      renderBeginningTriageFromStorage();
       fetch("package-runs-index.json", { cache: "no-store" })
         .then((response) => {
           if (!response.ok) throw new Error(`Could not load package-runs-index.json (${response.status})`);
@@ -2023,6 +2933,12 @@ Capture evidence approval: PASS`;
         }))
         .then((payload) => {
           els.nextSafeActionPanel.innerHTML = renderNextSafeActionPanel(payload);
+          if (els.currentFocusContent) {
+            els.currentFocusContent.outerHTML = renderCurrentFocus(payload, { beginningState: readBeginningTriageState(), index });
+            els.currentFocusContent = doc.querySelector("#currentFocusContent");
+            if (els.currentFocusContent) els.currentFocusContent.dataset.activeRunFocus = payload && payload.activeRun ? "true" : "false";
+          }
+          setDashboardMode(dashboardMode);
         })
         .catch((error) => {
           els.nextSafeActionPanel.innerHTML = `<div class="next-safe-action-card"><p class="eyebrow">NEXT SAFE ACTION</p><h2>Unavailable</h2><p class="muted">${escapeHtml(error.message)}</p></div>`;
@@ -3170,9 +4086,19 @@ Capture evidence approval: PASS`;
       els.evidenceIntakePanel.addEventListener("click", handleGridClick);
       els.evidenceIntakePanel.addEventListener("input", handleGridInput);
     }
+    if (els.beginningTriagePanel) {
+      els.beginningTriagePanel.addEventListener("click", handleBeginningTriageClick);
+      els.beginningTriagePanel.addEventListener("input", updateBeginningTriageDraft);
+    }
+    doc.querySelectorAll("[data-dashboard-mode-button]").forEach((button) => {
+      button.addEventListener("click", () => setDashboardMode(button.dataset.dashboardModeButton));
+    });
+    if (els.currentFocusPanel) els.currentFocusPanel.addEventListener("click", handleCurrentFocusClick);
     els.closePreview.addEventListener("click", () => {
       els.previewPanel.classList.add("hidden");
     });
+
+    setDashboardMode("focus");
 
     return {
       load,
@@ -3182,12 +4108,18 @@ Capture evidence approval: PASS`;
       loadMikkoInputConsole,
       loadNextSafeActionPanel,
       loadEvidenceIntakePanel,
+      renderBeginningTriageFromStorage,
+      readBeginningTriageState,
+      setDashboardMode,
     };
   }
 
   const api = {
     STATUS_ORDER,
     WORKFLOW_FILTERS,
+    BEGINNING_TRIAGE_STORAGE_KEY,
+    EPISODE_FACTORY_STORAGE_KEY,
+    BEGINNING_TRIAGE_STEPS,
     FILE_LABELS,
     escapeHtml,
     statusRank,
@@ -3239,10 +4171,22 @@ Capture evidence approval: PASS`;
     renderWorkflowStats,
     normalizeNextSafeAction,
     renderNextSafeActionPanel,
+    findActiveRunFromIndex,
+    buildCreatorCockpitPayload,
+    renderCreatorCockpit,
     normalizeEvidenceIntake,
     normalizeEvidenceIntakeRow,
     renderEvidenceRows,
     renderEvidenceIntakePanel,
+    renderCurrentFocus,
+    normalizeDashboardMode,
+    dashboardGroupOpenState,
+    beginningTriageInitialState,
+    normalizeBeginningTriageState,
+    buildBeginningResearchHandoffPrompt,
+    renderBeginningTriageStepper,
+    renderBeginningTriageClaimMap,
+    renderBeginningTriageCockpit,
     createBrowserApp,
   };
 

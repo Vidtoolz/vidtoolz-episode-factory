@@ -21,96 +21,161 @@
 
       <p id="packageRunsStatus" class="global-status" role="status"></p>
 
-      <main class="package-runs-dashboard">
-        <section class="package-controls" aria-label="Package run filters">
-          <div>
-            <h2>Run Status</h2>
-            <p class="muted">Regenerate the index with <code>node scripts/package-runs-index.js</code>.</p>
-          </div>
-          <label>
-            <span>Workflow</span>
-            <select id="runStatusFilter">
-              <option value="All">All</option>
-              <option value="Needs package selection">Needs package selection</option>
-              <option value="Needs research pack">Needs research pack</option>
-              <option value="Needs outline">Needs outline</option>
-              <option value="Needs script">Needs script</option>
-              <option value="Needs production prep">Needs production prep</option>
-              <option value="Needs production planning">Needs production planning</option>
-              <option value="Needs shot/edit plan review">Needs shot/edit plan review</option>
-              <option value="Needs shot/edit plan approval">Needs shot/edit plan approval</option>
-              <option value="Needs capture checklist">Needs capture checklist</option>
-              <option value="Needs capture">Needs capture</option>
-              <option value="Needs rough-cut review">Needs rough-cut review</option>
-              <option value="Needs final review">Needs final review</option>
-              <option value="Needs export check">Needs export check</option>
-              <option value="Needs publication metadata">Needs publication metadata</option>
-              <option value="Needs archive manifest">Needs archive manifest</option>
-              <option value="Needs repurposing approval">Needs repurposing approval</option>
-              <option value="Narrow shooting approved">Narrow shooting approved</option>
-              <option value="Ready to shoot">Ready to shoot</option>
-              <option value="Ready to archive">Ready to archive</option>
-              <option value="Ready to cut shorts">Ready to cut shorts</option>
-            </select>
-          </label>
-          <label>
-            <span>Sort</span>
-            <select id="runSortSelect">
-              <option value="run-desc">Newest run first</option>
-              <option value="run-asc">Oldest run first</option>
-              <option value="status">Status</option>
-            </select>
-          </label>
-          <div id="packageRunsSummary" class="package-summary">
-            <span>0 runs</span>
-            <strong>No index loaded</strong>
-          </div>
-        </section>
-
-        <section id="nextSafeActionPanel" class="next-safe-action-panel" aria-label="Next safe action">
-          <div class="next-safe-action-loading">
-            <p class="eyebrow">NEXT SAFE ACTION</p>
-            <h2>Loading active run</h2>
-            <p class="muted">Reading local package-run evidence only.</p>
-          </div>
-        </section>
-
-        <section id="evidenceIntakePanel" class="evidence-intake-panel" aria-label="Evidence intake">
-          <div class="evidence-intake-loading">
-            <p class="eyebrow">Evidence Intake</p>
-            <h2>Loading evidence rows</h2>
-            <p class="muted">Reading current package-run evidence only.</p>
-          </div>
-        </section>
-
-        <section id="mikkoInputConsole" class="mikko-input-console" aria-label="Mikko input console">
-          <div class="mikko-console-header">
+      <main class="package-runs-dashboard" data-dashboard-mode="focus">
+        <section id="currentFocusPanel" class="current-focus-panel creator-cockpit-panel" aria-label="Creator Cockpit">
+          <div class="current-focus-header">
             <div>
-              <p class="eyebrow">Mikko Input Console</p>
-              <h2>Rough-Cut Review</h2>
+              <p class="eyebrow">Creator Cockpit</p>
+              <h2>What do I need now?</h2>
+              <p class="muted">Focus Mode keeps lower panels collapsed as diagnostics unless Mikko opens them.</p>
             </div>
-            <span id="mikkoConsoleStatus" class="lifecycle-badge">Loading active run</span>
+            <div class="dashboard-mode-toggle" aria-label="Dashboard view mode">
+              <button type="button" class="active" data-dashboard-mode-button="focus">Focus Mode</button>
+              <button type="button" data-dashboard-mode-button="full">Full Dashboard</button>
+            </div>
           </div>
-          <div id="mikkoConsoleContent" class="mikko-console-content">
-            <p class="muted">Loading active package run from the local server.</p>
+          <div id="currentFocusContent" class="current-focus-content">
+            <div class="current-focus-card">
+              <span>Now</span>
+              <strong>Beginning triage available</strong>
+              <p>Start or continue browser-local idea triage if no active package-run gate is more urgent.</p>
+            </div>
+            <div class="current-focus-card">
+              <span>Next 30-minute action</span>
+              <strong>Use the relevant active card below.</strong>
+              <p>Active package-run gates will appear here when the local status endpoint loads.</p>
+            </div>
+            <div class="current-focus-card current-focus-boundary">
+              <span>Blocked</span>
+              <strong>No package-run promotion, production-ready, publish-ready, or approval writes.</strong>
+              <p>Browser-local focus view only. Existing tools remain available in collapsed groups.</p>
+            </div>
           </div>
         </section>
 
-        <section id="packageRunsStats" class="package-runs-stats" aria-label="Package run status counts"></section>
-        <section id="artifactPreviewPanel" class="artifact-preview-panel hidden" aria-label="Run artifact preview">
-          <div class="artifact-preview-header">
+        <details class="dashboard-group diagnostics-group" data-dashboard-group="diagnostics">
+          <summary>Diagnostics / raw data</summary>
+          <section class="package-controls" aria-label="Package run filters">
             <div>
-              <h2 id="artifactPreviewTitle">Artifact Preview</h2>
-              <p id="artifactPreviewMeta" class="muted">Select an artifact from a run card.</p>
+              <h2>Run Status</h2>
+              <p class="muted">Regenerate the index with <code>node scripts/package-runs-index.js</code>.</p>
             </div>
-            <div class="artifact-preview-actions">
-              <a id="artifactRawLink" class="nav-link-button" href="#" target="_blank" rel="noopener">Open raw file</a>
-              <button id="artifactPreviewClose" type="button">Close preview</button>
+            <label>
+              <span>Workflow</span>
+              <select id="runStatusFilter">
+                <option value="All">All</option>
+                <option value="Needs package selection">Needs package selection</option>
+                <option value="Needs research pack">Needs research pack</option>
+                <option value="Needs outline">Needs outline</option>
+                <option value="Needs script">Needs script</option>
+                <option value="Needs production prep">Needs production prep</option>
+                <option value="Needs production planning">Needs production planning</option>
+                <option value="Needs shot/edit plan review">Needs shot/edit plan review</option>
+                <option value="Needs shot/edit plan approval">Needs shot/edit plan approval</option>
+                <option value="Needs capture checklist">Needs capture checklist</option>
+                <option value="Needs capture">Needs capture</option>
+                <option value="Needs rough-cut review">Needs rough-cut review</option>
+                <option value="Needs final review">Needs final review</option>
+                <option value="Needs export check">Needs export check</option>
+                <option value="Needs publication metadata">Needs publication metadata</option>
+                <option value="Needs archive manifest">Needs archive manifest</option>
+                <option value="Needs repurposing approval">Needs repurposing approval</option>
+                <option value="Narrow shooting approved">Narrow shooting approved</option>
+                <option value="Ready to shoot">Ready to shoot</option>
+                <option value="Ready to archive">Ready to archive</option>
+                <option value="Ready to cut shorts">Ready to cut shorts</option>
+              </select>
+            </label>
+            <label>
+              <span>Sort</span>
+              <select id="runSortSelect">
+                <option value="run-desc">Newest run first</option>
+                <option value="run-asc">Oldest run first</option>
+                <option value="status">Status</option>
+              </select>
+            </label>
+            <div id="packageRunsSummary" class="package-summary">
+              <span>0 runs</span>
+              <strong>No index loaded</strong>
             </div>
-          </div>
-          <div id="artifactPreviewContent" class="artifact-preview-content"></div>
-        </section>
-        <section id="packageRunsGrid" class="package-runs-grid" aria-label="Package run cards"></section>
+          </section>
+        </details>
+
+        <details class="dashboard-group active-package-group" data-dashboard-group="active-package-run">
+          <summary>Diagnostics: active package run</summary>
+          <p class="dashboard-diagnostic-note">Diagnostic detail only. The Creator Cockpit above is the creator-facing source for now and next action.</p>
+          <section id="nextSafeActionPanel" class="next-safe-action-panel" aria-label="Next safe action">
+            <div class="next-safe-action-loading">
+              <p class="eyebrow">NEXT SAFE ACTION</p>
+              <h2>Loading active run</h2>
+              <p class="muted">Reading local package-run evidence only.</p>
+            </div>
+          </section>
+        </details>
+
+        <details class="dashboard-group beginning-group" data-dashboard-group="beginning-triage">
+          <summary>Diagnostics: Beginning / idea triage</summary>
+          <p class="dashboard-diagnostic-note">Diagnostic detail only. Opening this panel does not create or promote a package run.</p>
+          <section id="beginningTriageCockpit" class="beginning-triage-panel" aria-label="Beginning triage cockpit">
+            <div class="beginning-triage-card">
+              <p class="eyebrow">Beginning Triage</p>
+              <h2>Status: Not started</h2>
+              <p class="muted">This starts research-first idea triage only. It does not create a package run.</p>
+              <button type="button" data-beginning-action="start">Start</button>
+            </div>
+          </section>
+        </details>
+
+        <details class="dashboard-group capture-group" data-dashboard-group="capture-rough-cut">
+          <summary>Diagnostics: capture / rough-cut / second-cut</summary>
+          <p class="dashboard-diagnostic-note">Diagnostic and stage-specific controls. Do not use this panel to approve, publish, promote, or mark readiness.</p>
+          <section id="evidenceIntakePanel" class="evidence-intake-panel" aria-label="Evidence intake">
+            <div class="evidence-intake-loading">
+              <p class="eyebrow">Evidence Intake</p>
+              <h2>Loading evidence rows</h2>
+              <p class="muted">Reading current package-run evidence only.</p>
+            </div>
+          </section>
+
+          <section id="mikkoInputConsole" class="mikko-input-console" aria-label="Mikko input console">
+            <div class="mikko-console-header">
+              <div>
+                <p class="eyebrow">Mikko Input Console</p>
+                <h2>Rough-Cut Review</h2>
+              </div>
+              <span id="mikkoConsoleStatus" class="lifecycle-badge">Loading active run</span>
+            </div>
+            <div id="mikkoConsoleContent" class="mikko-console-content">
+              <p class="muted">Loading active package run from the local server.</p>
+            </div>
+          </section>
+        </details>
+
+        <details class="dashboard-group final-group" data-dashboard-group="final-export">
+          <summary>Diagnostics: final / export / publishing</summary>
+          <p class="dashboard-diagnostic-note">Diagnostic only until the current gate reaches final/export/publishing. The cockpit must not be bypassed for readiness claims.</p>
+          <p class="muted">Final, export, publishing, archive, and downstream controls remain in the active package-run console when the current gate reaches them.</p>
+        </details>
+
+        <details class="dashboard-group historical-group" data-dashboard-group="historical-package-runs">
+          <summary>Diagnostics: historical package runs</summary>
+          <p class="dashboard-diagnostic-note">Historical lifecycle cards are diagnostics and may reflect generated index data. They are not a separate approval source.</p>
+          <section id="packageRunsStats" class="package-runs-stats" aria-label="Package run status counts"></section>
+          <section id="artifactPreviewPanel" class="artifact-preview-panel hidden" aria-label="Run artifact preview">
+            <div class="artifact-preview-header">
+              <div>
+                <h2 id="artifactPreviewTitle">Artifact Preview</h2>
+                <p id="artifactPreviewMeta" class="muted">Select an artifact from a run card.</p>
+              </div>
+              <div class="artifact-preview-actions">
+                <a id="artifactRawLink" class="nav-link-button" href="#" target="_blank" rel="noopener">Open raw file</a>
+                <button id="artifactPreviewClose" type="button">Close preview</button>
+              </div>
+            </div>
+            <div id="artifactPreviewContent" class="artifact-preview-content"></div>
+          </section>
+          <section id="packageRunsGrid" class="package-runs-grid" aria-label="Package run cards"></section>
+        </details>
       </main>
     </div>
 

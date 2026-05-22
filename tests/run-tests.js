@@ -13083,6 +13083,479 @@ test("evidence intake dashboard UI renders evidence-only controls", () => {
   assert.match(html, /DO NOT DO/);
 });
 
+test("package runs dashboard contains beginning triage cockpit mount", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.html"), "utf8");
+
+  assert.match(html, /id="currentFocusPanel"/);
+  assert.match(html, /Creator Cockpit/);
+  assert.match(html, /data-dashboard-mode="focus"/);
+  assert.match(html, /Focus Mode/);
+  assert.match(html, /Full Dashboard/);
+  assert.match(html, /id="beginningTriageCockpit"/);
+  assert.match(html, /Beginning Triage/);
+  assert.match(html, /Status: Not started/);
+  assert.match(html, />Start</);
+  assert.match(html, /research-first idea triage/);
+  assert.match(html, /does not create a package run/);
+});
+
+test("package runs dashboard groups advanced panels collapsed by default", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.html"), "utf8");
+
+  assert.match(html, /data-dashboard-group="beginning-triage"/);
+  assert.match(html, /data-dashboard-group="active-package-run"/);
+  assert.match(html, /data-dashboard-group="capture-rough-cut"/);
+  assert.match(html, /data-dashboard-group="final-export"/);
+  assert.match(html, /data-dashboard-group="diagnostics"/);
+  assert.match(html, /data-dashboard-group="historical-package-runs"/);
+  assert.doesNotMatch(html, /data-dashboard-group="beginning-triage" open/);
+  assert.doesNotMatch(html, /data-dashboard-group="active-package-run" open/);
+  assert.doesNotMatch(html, /data-dashboard-group="capture-rough-cut" open/);
+  assert.doesNotMatch(html, /data-dashboard-group="final-export" open/);
+  assert.doesNotMatch(html, /data-dashboard-group="historical-package-runs" open/);
+  assert.match(html, /id="nextSafeActionPanel"/);
+  assert.match(html, /id="evidenceIntakePanel"/);
+  assert.match(html, /id="mikkoInputConsole"/);
+  assert.match(html, /id="packageRunsGrid"/);
+});
+
+test("package runs dashboard Creator Cockpit renders active package-run gates", () => {
+  const html = packageRunsDashboard.renderCurrentFocus({
+    activeRun: "2026-05-06-ai-video-proof-plan",
+    stage: "Capture / b-roll candidate creation",
+    nextHumanAction: "Create Kling MP4 candidates and test them in Resolve.",
+    blockedUntil: "Resolve test evidence exists.",
+    readOnly: true,
+  });
+
+  assert.match(html, /data-creator-cockpit/);
+  assert.match(html, /Now/);
+  assert.match(html, /Capture \/ b-roll candidate creation/);
+  assert.match(html, /Next 30-minute action/);
+  assert.match(html, /Create Kling MP4 candidates/);
+  assert.match(html, /Proof/);
+  assert.match(html, /Missing proof/);
+  assert.match(html, /AI may/);
+  assert.match(html, /Mikko must/);
+  assert.match(html, /Blocked actions/);
+  assert.match(html, /Open diagnostics/);
+});
+
+test("package runs dashboard Creator Cockpit renders exactly seven primary sections", () => {
+  const html = packageRunsDashboard.renderCurrentFocus({
+    activeRun: "2026-05-06-ai-video-proof-plan",
+    stage: "Capture / b-roll candidate creation",
+    nextHumanAction: "Create Kling MP4 candidates and test them in Resolve.",
+    blockedUntil: "Resolve test evidence exists.",
+    readOnly: true,
+  });
+
+  assert.equal((html.match(/class="creator-cockpit-section/g) || []).length, 7);
+  ["Now", "Next 30-minute action", "Proof", "Missing proof", "AI may", "Mikko must", "Blocked actions"].forEach((label) => {
+    assert.match(html, new RegExp(`aria-label="${label}"`));
+  });
+});
+
+test("package runs dashboard Creator Cockpit has no mutation controls", () => {
+  const html = packageRunsDashboard.renderCurrentFocus({
+    activeRun: "2026-05-06-ai-video-proof-plan",
+    stage: "Capture / b-roll candidate creation",
+    nextHumanAction: "Create Kling MP4 candidates and test them in Resolve.",
+    blockedUntil: "Resolve test evidence exists.",
+    readOnly: true,
+    forbiddenActions: ["mark approved", "mark production_ready", "mark publish_ready"],
+  });
+  const controlHtml = (html.match(/<button[^>]*>.*?<\/button>|<input[^>]*>|<select[\s\S]*?<\/select>|<textarea[\s\S]*?<\/textarea>/g) || []).join("\n");
+
+  assert.match(controlHtml, /Open diagnostics/);
+  assert.doesNotMatch(controlHtml, /save|apply|approval|PASS|production_ready|publish_ready/i);
+  assert.doesNotMatch(controlHtml, /data-evidence-save|data-capture-apply|data-save-rough-cut-notes|data-save-pickup-plan|data-apply-final-candidate|data-apply-export-master/);
+});
+
+test("package runs dashboard Creator Cockpit summarizes proof without long source paths", () => {
+  const html = packageRunsDashboard.renderCurrentFocus({
+    activeRun: "2026-05-06-ai-video-proof-plan",
+    stage: "Capture / b-roll candidate creation",
+    nextHumanAction: "Create Kling MP4 candidates and test them in Resolve.",
+    blockedUntil: "Resolve test evidence exists.",
+    readOnly: true,
+    evidence: [
+      { label: "active package run folder", path: "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-05-06-ai-video-proof-plan", exists: true },
+      { label: "VIDNAS Kling video candidate folder", path: "/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/kling-video-candidates", exists: false },
+    ],
+    facts: {
+      selectedStillCount: 3,
+      reviewedPrompt03Count: 32,
+      klingVideoCount: 0,
+      resolveTestRecorded: false,
+    },
+  });
+  const proofSection = html.match(/<section class="creator-cockpit-section" aria-label="Proof">[\s\S]*?<\/section>/)[0];
+
+  assert.match(proofSection, /source areas visible or detected/);
+  assert.match(proofSection, /3 selected stills and 32 reviewed prompt-03 items detected/);
+  assert.doesNotMatch(proofSection, /\/home\/vidtoolz|\/mnt\/vidnas_public|package-runs\/2026-05-06-ai-video-proof-plan/);
+});
+
+test("package runs dashboard Creator Cockpit chooses next-safe-action over lifecycle diagnostics", () => {
+  const html = packageRunsDashboard.renderCurrentFocus({
+    activeRun: "2026-05-06-ai-video-proof-plan",
+    stage: "Capture / b-roll candidate creation",
+    nextHumanAction: "Create Kling MP4 candidates and test them in Resolve.",
+    blockedUntil: "Resolve test evidence exists.",
+    readOnly: true,
+  }, {
+    index: {
+      runs: [
+        {
+          runId: "2026-05-06-ai-video-proof-plan",
+          status: "Needs rough-cut review",
+          workflowBucket: "Needs rough-cut review",
+          path: "package-runs/2026-05-06-ai-video-proof-plan",
+          packageRunState: { state: "active", explicit: true, isInactive: false },
+          lifecycleGate: { captureEvidenceReviewStatus: "PASS", captureEvidenceAccepted: true },
+          evidenceGate: { status: "transcript captured; visual proof missing" },
+        },
+      ],
+    },
+  });
+
+  assert.match(html, /<strong>Capture \/ b-roll candidate creation<\/strong>/);
+  assert.match(html, /Lifecycle index says Needs rough-cut review/);
+  assert.match(html, /diagnostic/);
+  assert.match(html, /package-runs-index\.json may lag/);
+});
+
+test("package runs dashboard Creator Cockpit degrades missing source data conservatively", () => {
+  const html = packageRunsDashboard.renderCurrentFocus({}, { beginningState: { stage: "not_started" }, index: { runs: [] } });
+
+  assert.match(html, /Beginning triage available|Needs review/);
+  assert.match(html, /Next 30-minute action/);
+  assert.match(html, /No proof source is currently visible|No visible proof source reported/);
+  assert.match(html, /does not invent readiness|review diagnostics before claiming readiness|Source.*unavailable/i);
+});
+
+test("package runs dashboard mode open state toggles both directions", () => {
+  const focusState = packageRunsDashboard.dashboardGroupOpenState("focus", false);
+  assert.equal(packageRunsDashboard.normalizeDashboardMode(), "focus");
+  assert.equal(packageRunsDashboard.normalizeDashboardMode("full"), "full");
+  assert.equal(packageRunsDashboard.normalizeDashboardMode("unexpected"), "focus");
+  assert.equal(focusState["beginning-triage"], false);
+  assert.equal(focusState["active-package-run"], false);
+  assert.equal(focusState["capture-rough-cut"], false);
+  assert.equal(focusState["historical-package-runs"], false);
+
+  const fullState = packageRunsDashboard.dashboardGroupOpenState("full", false);
+  Object.values(fullState).forEach((open) => assert.equal(open, true));
+
+  const restoredFocusState = packageRunsDashboard.dashboardGroupOpenState("focus", false);
+  assert.deepEqual(restoredFocusState, focusState);
+});
+
+test("package runs dashboard mode open state is stable across repeated toggles", () => {
+  const sequence = [
+    packageRunsDashboard.dashboardGroupOpenState("focus", false),
+    packageRunsDashboard.dashboardGroupOpenState("full", false),
+    packageRunsDashboard.dashboardGroupOpenState("focus", false),
+    packageRunsDashboard.dashboardGroupOpenState("full", false),
+    packageRunsDashboard.dashboardGroupOpenState("focus", false),
+  ];
+
+  assert.equal(sequence[0]["beginning-triage"], false);
+  assert.equal(sequence[0]["diagnostics"], false);
+  assert.equal(sequence[1]["diagnostics"], true);
+  assert.equal(sequence[2]["beginning-triage"], false);
+  assert.equal(sequence[2]["diagnostics"], false);
+  assert.deepEqual(sequence[0], sequence[2]);
+  assert.deepEqual(sequence[2], sequence[4]);
+});
+
+test("package runs dashboard focus mode restores active package-run focus", () => {
+  const activeFocusState = packageRunsDashboard.dashboardGroupOpenState("focus", true);
+
+  assert.equal(activeFocusState["active-package-run"], false);
+  assert.equal(activeFocusState["beginning-triage"], false);
+  assert.equal(activeFocusState["diagnostics"], false);
+  assert.equal(activeFocusState["capture-rough-cut"], false);
+  assert.equal(activeFocusState["final-export"], false);
+  assert.equal(activeFocusState["historical-package-runs"], false);
+
+  const fullState = packageRunsDashboard.dashboardGroupOpenState("full", true);
+  Object.values(fullState).forEach((open) => assert.equal(open, true));
+  assert.deepEqual(packageRunsDashboard.dashboardGroupOpenState("focus", true), activeFocusState);
+});
+
+test("beginning triage research handoff prompt uses typed topic", () => {
+  const topic = "AI video workflows that create output before proof";
+  const prompt = packageRunsDashboard.buildBeginningResearchHandoffPrompt(topic);
+  const html = packageRunsDashboard.renderBeginningTriageCockpit({
+    stage: "topic",
+    fields: { topicArea: topic },
+  });
+
+  assert.match(prompt, /Research this VIDTOOLZ topic for serious creators: AI video workflows that create output before proof\./);
+  assert.match(html, /Research this VIDTOOLZ topic for serious creators: AI video workflows that create output before proof\./);
+  assert.doesNotMatch(html, /Research this VIDTOOLZ topic for serious creators: \[topic area\]\./);
+});
+
+test("beginning triage research handoff prompt keeps placeholder without topic", () => {
+  const prompt = packageRunsDashboard.buildBeginningResearchHandoffPrompt("");
+  const html = packageRunsDashboard.renderBeginningTriageCockpit({ stage: "topic" });
+
+  assert.match(prompt, /Research this VIDTOOLZ topic for serious creators: \[topic area\]\./);
+  assert.match(html, /Research this VIDTOOLZ topic for serious creators: \[topic area\]\./);
+});
+
+test("package runs dashboard shows compact beginning draft reminder in Focus Mode", () => {
+  const html = packageRunsDashboard.renderCurrentFocus({}, {
+    beginningState: {
+      stage: "packaging",
+      selectedCandidate: "1",
+      selectedPackage: "2",
+      fields: {
+        topicArea: "AI video workflows that create output before proof",
+        candidate1Title: "Proof-first AI workflow",
+        package2Title: "Stop Making AI Video Before Proof",
+        nextThirtyMinuteAction: "Inspect one existing artifact.",
+      },
+    },
+  });
+
+  assert.match(html, /Creator Cockpit|data-creator-cockpit/);
+  assert.match(html, /Shaping promise/);
+  assert.match(html, /Inspect one existing artifact/);
+  assert.match(html, /data-dashboard-action="open-beginning-triage"/);
+  assert.match(html, /Open Beginning Triage/);
+});
+
+test("package runs dashboard beginning draft reminder does not override active run focus", () => {
+  const html = packageRunsDashboard.renderCurrentFocus({
+    activeRun: "2026-05-06-ai-video-proof-plan",
+    stage: "Capture / b-roll candidate creation",
+    nextHumanAction: "Create Kling MP4 candidates and test them in Resolve.",
+    blockedUntil: "Resolve test evidence exists.",
+  }, {
+    beginningState: {
+      stage: "topic",
+      fields: { topicArea: "AI video workflow proof gap" },
+    },
+  });
+
+  assert.match(html, /Active run: 2026-05-06-ai-video-proof-plan/);
+  assert.match(html, /Capture \/ b-roll candidate creation/);
+  assert.match(html, /active package-run focus remains primary/);
+  assert.match(html, /Open Beginning Triage/);
+});
+
+test("package runs dashboard draft open control expands Beginning Triage only", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.html"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+
+  assert.match(html, /data-dashboard-group="beginning-triage"/);
+  assert.match(source, /data-dashboard-action="open-beginning-triage"/);
+  assert.match(source, /els\.beginningGroup\.open = true/);
+  assert.match(source, /data-dashboard-action="open-diagnostics"/);
+  assert.match(source, /els\.diagnosticsGroup\.open = true/);
+  assert.doesNotMatch(source, /localStorage\.setItem\(EPISODE_FACTORY_STORAGE_KEY/);
+});
+
+test("beginning triage cockpit exports storage and render helpers", () => {
+  assert.equal(packageRunsDashboard.BEGINNING_TRIAGE_STORAGE_KEY, "vidtoolz-beginning-triage-v1");
+  assert.equal(packageRunsDashboard.EPISODE_FACTORY_STORAGE_KEY, "vidtoolz-episode-factory-v1");
+  assert.notEqual(packageRunsDashboard.BEGINNING_TRIAGE_STORAGE_KEY, packageRunsDashboard.EPISODE_FACTORY_STORAGE_KEY);
+  assert.equal(typeof packageRunsDashboard.beginningTriageInitialState, "function");
+  assert.equal(typeof packageRunsDashboard.normalizeBeginningTriageState, "function");
+  assert.equal(typeof packageRunsDashboard.renderBeginningTriageCockpit, "function");
+});
+
+test("beginning triage cockpit initial render shows Not started and Start", () => {
+  const html = packageRunsDashboard.renderBeginningTriageCockpit();
+
+  assert.match(html, /Beginning Triage/);
+  assert.match(html, /Not started/);
+  assert.match(html, /data-beginning-action="start"/);
+  assert.match(html, />Start</);
+  assert.match(html, /Browser-local triage only\. Does not create or promote a package run/);
+  assert.match(html, /Discover direction/);
+  assert.match(html, /Shape the promise/);
+  assert.match(html, /Validate with proof/);
+  assert.match(html, /Current step: Not started/);
+  assert.match(html, /Current beginning triage card/);
+  assert.doesNotMatch(html, /data-package-run-create/);
+});
+
+test("beginning triage cockpit renders three high-level phases and one active card", () => {
+  const html = packageRunsDashboard.renderBeginningTriageCockpit({ stage: "packaging" });
+
+  assert.match(html, /Discover direction/);
+  assert.match(html, /Shape the promise/);
+  assert.match(html, /Validate with proof/);
+  assert.match(html, /Current step: Packaging Drafts/);
+  assert.equal((html.match(/beginning-active-card/g) || []).length, 1);
+  assert.match(html, /Upcoming/);
+  assert.match(html, /Claim Triage/);
+});
+
+test("beginning triage cockpit renders completed selections as compact summaries", () => {
+  const html = packageRunsDashboard.renderBeginningTriageCockpit({
+    stage: "claim",
+    selectedCandidate: "1",
+    selectedPackage: "2",
+    fields: {
+      candidate1Title: "Research-first creator angle",
+      candidate1Claim: "Creators should test proof first.",
+      rawIdea: "Creators should test a claim before filming. The video shows how to find the proof gap first.",
+      package2Title: "Stop Filming Unprovable Ideas",
+      package2Promise: "Avoid wasted production.",
+    },
+  });
+
+  assert.match(html, /beginning-summary-strip/);
+  assert.match(html, /Selected candidate/);
+  assert.match(html, /Research-first creator angle/);
+  assert.match(html, /Rough idea/);
+  assert.match(html, /Selected package/);
+  assert.match(html, /Stop Filming Unprovable Ideas/);
+});
+
+test("beginning triage cockpit starts with topic research before rough idea capture", () => {
+  const html = packageRunsDashboard.renderBeginningTriageCockpit({ stage: "topic" });
+
+  assert.match(html, /Current step/);
+  assert.match(html, /Topic Research/);
+  assert.match(html, /Goal/);
+  assert.match(html, /Find a promising direction before asking Mikko to write a rough idea/);
+  assert.match(html, /What Mikko needs to do right now/);
+  assert.match(html, /Enter a topic, trigger the research handoff, compare three candidates/);
+  assert.match(html, /Current allowed actions/);
+  assert.match(html, /Topic area \/ problem space/);
+  assert.match(html, /Research the topic/);
+  assert.match(html, /research handoff/i);
+  assert.doesNotMatch(html, /Rough idea, approximately two sentences/);
+  assert.doesNotMatch(html, /Minimum viable proof/);
+});
+
+test("beginning triage cockpit supports three candidate angles and research again loop", () => {
+  const html = packageRunsDashboard.renderBeginningTriageCockpit({ stage: "candidates" });
+
+  assert.match(html, /3 Video Candidate Angles/);
+  assert.match(html, /Candidate 1/);
+  assert.match(html, /Candidate 2/);
+  assert.match(html, /Candidate 3/);
+  assert.equal((html.match(/Select this candidate/g) || []).length, 3);
+  assert.match(html, /Viewer problem/);
+  assert.match(html, /Potential claim/);
+  assert.match(html, /Packaging potential/);
+  assert.match(html, /Research again/);
+  assert.match(html, /user-pasted\/research-handoff results/);
+});
+
+test("beginning triage cockpit rough idea follows selected candidate", () => {
+  const html = packageRunsDashboard.renderBeginningTriageCockpit({
+    stage: "rough_idea",
+    selectedCandidate: "2",
+    fields: { candidate2Title: "Creator proof angle" },
+  });
+
+  assert.match(html, /Two-sentence Rough Idea/);
+  assert.match(html, /Selected research candidate/);
+  assert.match(html, /Creator proof angle/);
+  assert.match(html, /Rough idea, approximately two sentences/);
+  assert.match(html, /Continue to YouTube Packaging Drafts/);
+  assert.match(html, /Back to candidates/);
+  assert.match(html, /Research again/);
+  assert.doesNotMatch(html, /Best current claim/);
+});
+
+test("beginning triage cockpit packaging stage precedes claim triage", () => {
+  const html = packageRunsDashboard.renderBeginningTriageCockpit({ stage: "packaging" });
+
+  assert.match(html, /YouTube Packaging Drafts/);
+  assert.match(html, /Generate title \+ thumbnail package/);
+  assert.match(html, /Generate more \/ redo packaging/);
+  assert.match(html, /Title/);
+  assert.match(html, /Thumbnail concept/);
+  assert.match(html, /Thumbnail text, 0-4 words/);
+  assert.equal((html.match(/Select this package/g) || []).length, 3);
+  assert.match(html, /Final title, final thumbnail, and publishing approval remain blocked/);
+  assert.doesNotMatch(html, /Best current claim/);
+});
+
+test("beginning triage cockpit claim stage follows selected planning package", () => {
+  const html = packageRunsDashboard.renderBeginningTriageCockpit({
+    stage: "claim",
+    selectedPackage: "1",
+    fields: { package1Title: "Stop Overclaiming AI Video" },
+  });
+
+  assert.match(html, /Claim Triage/);
+  assert.match(html, /Turn the packaged rough idea into a testable useful claim/);
+  assert.match(html, /Selected planning package/);
+  assert.match(html, /Stop Overclaiming AI Video/);
+  assert.match(html, /Claim\/proof triage is locked until a planning package is selected/);
+  assert.match(html, /Back to packaging/);
+});
+
+test("beginning triage cockpit proof stage includes required claim map columns", () => {
+  const html = packageRunsDashboard.renderBeginningTriageCockpit({ stage: "proof" });
+
+  ["Claim", "Proof needed", "Existing proof", "Proof gap", "Visual evidence", "Forbidden unless proven"].forEach((column) => {
+    assert.match(html, new RegExp(column));
+  });
+  assert.match(html, /Generated B-roll or conceptual graphics may explain the idea, but cannot carry proof unless the video is specifically about generated media/);
+  assert.match(html, /Back to packaging/);
+});
+
+test("beginning triage cockpit safety boundaries block readiness and promotion", () => {
+  const html = packageRunsDashboard.renderBeginningTriageCockpit({ stage: "claim" });
+
+  assert.match(html, /No full script/);
+  assert.match(html, /No B-roll generation/);
+  assert.match(html, /No Resolve work/);
+  assert.match(html, /No production-ready status/);
+  assert.match(html, /No publish-ready status/);
+  assert.match(html, /No final title approval/);
+  assert.match(html, /No final thumbnail approval/);
+  assert.match(html, /No package-run promotion unless Mikko explicitly approves later/);
+  assert.match(html, /not an approval system/);
+});
+
+test("beginning triage cockpit final display separates proof candidate from package run", () => {
+  const html = packageRunsDashboard.renderBeginningTriageCockpit({
+    stage: "next_action",
+    decision: "Continue",
+    selectedCandidate: "1",
+    selectedPackage: "2",
+    fields: {
+      candidate1Title: "Research-first creator angle",
+      rawIdea: "Creators should test a claim before filming. The video shows how to find the proof gap first.",
+      package2Title: "Stop Filming Unprovable Ideas",
+      nextThirtyMinuteAction: "Inspect one existing artifact.",
+    },
+  });
+
+  assert.match(html, /Current state: Proof Candidate/);
+  assert.match(html, /Selected research candidate: Research-first creator angle/);
+  assert.match(html, /Two-sentence rough idea: Creators should test a claim before filming/);
+  assert.match(html, /Selected planning title-thumbnail package: Stop Filming Unprovable Ideas/);
+  assert.match(html, /Decision: Continue/);
+  assert.match(html, /Next 30-minute action: Inspect one existing artifact/);
+  assert.match(html, /This has not created or promoted a package run/);
+  assert.doesNotMatch(html, /production_ready:\s*true|publish_ready:\s*true|approved:\s*true/i);
+});
+
+test("beginning triage cockpit localStorage wiring uses only the new key", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+
+  assert.match(source, /const BEGINNING_TRIAGE_STORAGE_KEY = "vidtoolz-beginning-triage-v1"/);
+  assert.match(source, /const EPISODE_FACTORY_STORAGE_KEY = "vidtoolz-episode-factory-v1"/);
+  assert.match(source, /localStorage\.getItem\(BEGINNING_TRIAGE_STORAGE_KEY\)/);
+  assert.match(source, /localStorage\.setItem\(BEGINNING_TRIAGE_STORAGE_KEY/);
+  assert.match(source, /localStorage\.removeItem\(BEGINNING_TRIAGE_STORAGE_KEY\)/);
+  assert.doesNotMatch(source, /localStorage\.setItem\(EPISODE_FACTORY_STORAGE_KEY/);
+  assert.doesNotMatch(source, /localStorage\.removeItem\(EPISODE_FACTORY_STORAGE_KEY/);
+});
+
 test("evidence intake dashboard displays existing evidence rows", () => {
   const html = packageRunsDashboard.renderEvidenceIntakePanel({
     runId: "2026-05-06-ai-video-proof-plan",
