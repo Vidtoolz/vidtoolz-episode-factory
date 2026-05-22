@@ -13738,10 +13738,30 @@ test("package engine provider config defaults and respects openai mode", () => {
 
   assert.equal(defaults.provider, "placeholder");
   assert.equal(defaults.model, "gpt-image-1");
-  assert.equal(defaults.timeoutMs, 45000);
+  assert.equal(defaults.timeoutMs, 120000);
   assert.equal(openai.provider, "openai");
   assert.equal(openai.model, "gpt-image-1");
   assert.equal(openai.timeoutMs, 12345);
+});
+
+test("package engine status response includes thumbnail timeout config without secrets", () => {
+  const status = packageEngineServer.createStatusResponse({
+    THUMBNAIL_PROVIDER: "openai",
+    OPENAI_API_KEY: "secret-key",
+    OPENAI_IMAGE_MODEL: "gpt-image-1",
+    OPENAI_IMAGE_SIZE: "1536x1024",
+    OPENAI_IMAGE_QUALITY: "low",
+    OPENAI_IMAGE_FORMAT: "png",
+    OPENAI_IMAGE_TIMEOUT_MS: "120000",
+  });
+
+  assert.equal(status.thumbnailProvider, "openai");
+  assert.equal(status.model, "gpt-image-1");
+  assert.equal(status.timeoutMs, 120000);
+  assert.equal(status.imageSize, "1536x1024");
+  assert.equal(status.quality, "low");
+  assert.equal(status.format, "png");
+  assert.doesNotMatch(JSON.stringify(status), /secret-key|OPENAI_API_KEY/);
 });
 
 test("package engine openai thumbnail mode requires an api key", async () => {
@@ -13796,7 +13816,32 @@ test("package engine openai thumbnail mode reports upstream request failures", a
 
 test("package engine openai thumbnail mode reports upstream timeout", async () => {
   await assert.rejects(
-    () => packageEngineServer.createThumbnailResponse({
+    async () => {
+      await packageEngineServer.createThumbnailResponse({
+      topic: "AI video idea filter",
+      thumbnailConcept: "Creator sorting ideas",
+      onThumbnailText: "Stop guessing",
+      }, {
+        env: {
+          THUMBNAIL_PROVIDER: "openai",
+          OPENAI_API_KEY: "test-key",
+          OPENAI_IMAGE_TIMEOUT_MS: "1000",
+        },
+        logger: false,
+        fetchImpl: async () => {
+          const error = new Error("operation timed out");
+          error.name = "TimeoutError";
+          throw error;
+        },
+      });
+    },
+    /OpenAI image generation timed out after 1 seconds/
+  );
+});
+
+test("package engine openai timeout error carries structured code", async () => {
+  try {
+    await packageEngineServer.createThumbnailResponse({
       topic: "AI video idea filter",
       thumbnailConcept: "Creator sorting ideas",
       onThumbnailText: "Stop guessing",
@@ -13806,14 +13851,19 @@ test("package engine openai thumbnail mode reports upstream timeout", async () =
         OPENAI_API_KEY: "test-key",
         OPENAI_IMAGE_TIMEOUT_MS: "1000",
       },
+      logger: false,
       fetchImpl: async () => {
         const error = new Error("operation timed out");
         error.name = "TimeoutError";
         throw error;
       },
-    }),
-    /OpenAI image generation timed out after 1 seconds/
-  );
+    });
+    assert.fail("expected timeout");
+  } catch (error) {
+    assert.equal(error.statusCode, 504);
+    assert.equal(error.errorCode, "openai_timeout");
+    assert.match(error.message, /timed out after 1 seconds/);
+  }
 });
 
 test("package runs dashboard normalizes filters and renders run cards", () => {
@@ -14625,9 +14675,13 @@ test("package engine thumbnail button uses configured generation API instead of 
 
   assert.match(script, /const STATUS_API = "\/api\/package-engine\/status";/);
   assert.match(script, /const DEFAULT_THUMBNAIL_API = "\/api\/package-engine\/thumbnails";/);
+  assert.match(script, /const DEFAULT_THUMBNAIL_REQUEST_TIMEOUT_MS = 130000;/);
+  assert.match(script, /const THUMBNAIL_FRONTEND_TIMEOUT_HEADROOM_MS = 10000;/);
   assert.match(script, /let thumbnailGenerationApi = DEFAULT_THUMBNAIL_API;/);
+  assert.match(script, /let thumbnailRequestTimeoutMs = DEFAULT_THUMBNAIL_REQUEST_TIMEOUT_MS;/);
   assert.match(script, /function loadThumbnailGenerationConfig\(\)/);
   assert.match(script, /thumbnailGenerationApi = String\(payload\.api\);/);
+  assert.match(script, /thumbnailRequestTimeoutMs = Number\(payload\.timeoutMs\) \+ THUMBNAIL_FRONTEND_TIMEOUT_HEADROOM_MS;/);
   assert.match(script, /fetch\(thumbnailGenerationApi, \{/);
   assert.match(script, /els\.generateThumbnails\.addEventListener\("click", \(\) => generateMoreThumbnailCandidates\(\)\);/);
   assert.doesNotMatch(script, /return buildThumbnailCandidates\(candidate\);/);
@@ -14637,11 +14691,13 @@ test("package engine browser code surfaces thumbnail backend failures and recove
   const script = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
   const html = fs.readFileSync(path.join(__dirname, "..", "package-engine.html"), "utf8");
 
-  assert.match(script, /const THUMBNAIL_REQUEST_TIMEOUT_MS = 60000;/);
-  assert.match(script, /AbortSignal\.timeout\(THUMBNAIL_REQUEST_TIMEOUT_MS\)/);
+  assert.match(script, /AbortSignal\.timeout\(thumbnailRequestTimeoutMs\)/);
   assert.match(script, /Thumbnail generation failed/);
   assert.match(script, /The configured thumbnail backend did not return usable candidates\./);
-  assert.match(script, /Thumbnail generation timed out\./);
+  assert.match(script, /Frontend request timed out after/);
+  assert.match(script, /Backend timeout:/);
+  assert.match(script, /OpenAI thumbnail provider error:/);
+  assert.match(script, /OPENAI_API_KEY is missing/);
   assert.match(script, /finally \{\s*isGeneratingThumbnails = false;\s*render\(\);/);
   assert.match(html, /package-engine\.js\?v=1\.7\.4-thumb5/);
 });

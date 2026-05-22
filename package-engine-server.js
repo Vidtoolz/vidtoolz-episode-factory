@@ -52,7 +52,7 @@ const DEFAULT_OPENAI_IMAGE_MODEL = 'gpt-image-1';
 const DEFAULT_OPENAI_IMAGE_SIZE = '1536x1024';
 const DEFAULT_OPENAI_IMAGE_QUALITY = 'auto';
 const DEFAULT_OPENAI_IMAGE_FORMAT = 'png';
-const DEFAULT_OPENAI_IMAGE_TIMEOUT_MS = 45000;
+const DEFAULT_OPENAI_IMAGE_TIMEOUT_MS = 120000;
 const CAPTURE_EVIDENCE_TARGETS = [
   'takes-log.md',
   'screen-recording-checklist.md',
@@ -3880,6 +3880,7 @@ function createCandidates(payload) {
 }
 
 function providerConfig(env = process.env) {
+  const rawTimeout = Number(env.OPENAI_IMAGE_TIMEOUT_MS || DEFAULT_OPENAI_IMAGE_TIMEOUT_MS);
   return {
     provider: String(env.THUMBNAIL_PROVIDER || DEFAULT_THUMBNAIL_PROVIDER).toLowerCase(),
     apiKey: env.OPENAI_API_KEY || '',
@@ -3887,7 +3888,7 @@ function providerConfig(env = process.env) {
     size: env.OPENAI_IMAGE_SIZE || DEFAULT_OPENAI_IMAGE_SIZE,
     quality: env.OPENAI_IMAGE_QUALITY || DEFAULT_OPENAI_IMAGE_QUALITY,
     outputFormat: env.OPENAI_IMAGE_FORMAT || DEFAULT_OPENAI_IMAGE_FORMAT,
-    timeoutMs: Number(env.OPENAI_IMAGE_TIMEOUT_MS || DEFAULT_OPENAI_IMAGE_TIMEOUT_MS),
+    timeoutMs: Number.isFinite(rawTimeout) && rawTimeout > 0 ? rawTimeout : DEFAULT_OPENAI_IMAGE_TIMEOUT_MS,
   };
 }
 
@@ -3897,6 +3898,10 @@ function createStatusResponse(env = process.env) {
     ok: true,
     thumbnailProvider: config.provider,
     model: config.provider === 'openai' ? config.model : 'local-svg-placeholder',
+    timeoutMs: config.timeoutMs,
+    imageSize: config.size,
+    quality: config.quality,
+    format: config.outputFormat,
     api: API_PREFIX,
     captureEvidenceWrite: {
       previewApi: CAPTURE_EVIDENCE_PREVIEW_API,
@@ -4025,11 +4030,28 @@ function normalizeOpenAIImageResponse(data, prompt, idx, config, payload) {
   };
 }
 
+function thumbnailLogPayload(config, statusCategory, startedAt, candidateCount = 0) {
+  return {
+    provider: config.provider,
+    model: config.provider === 'openai' ? config.model : 'local-svg-placeholder',
+    timeoutMs: config.timeoutMs,
+    elapsedMs: Date.now() - startedAt,
+    statusCategory,
+    candidateCount,
+  };
+}
+
+function logThumbnailRequest(config, statusCategory, startedAt, candidateCount = 0, logger = console) {
+  if (!logger || typeof logger.log !== 'function') return;
+  logger.log('[package-engine thumbnail]', JSON.stringify(thumbnailLogPayload(config, statusCategory, startedAt, candidateCount)));
+}
+
 async function createOpenAIThumbnailCandidates(payload, options = {}) {
   const config = options.config || providerConfig(options.env || process.env);
   if (!config.apiKey) {
     const error = new Error('OPENAI_API_KEY is required when THUMBNAIL_PROVIDER=openai.');
     error.statusCode = 400;
+    error.errorCode = 'missing_api_key';
     throw error;
   }
   const fetchImpl = options.fetchImpl || fetch;
@@ -4057,6 +4079,7 @@ async function createOpenAIThumbnailCandidates(payload, options = {}) {
         : `OpenAI image generation request failed: ${error && error.message ? error.message : 'unknown network error'}`;
       const wrapped = new Error(message);
       wrapped.statusCode = timedOut ? 504 : 502;
+      wrapped.errorCode = timedOut ? 'openai_timeout' : 'openai_request_failed';
       throw wrapped;
     }
     const data = await response.json().catch(() => ({}));
@@ -4064,6 +4087,7 @@ async function createOpenAIThumbnailCandidates(payload, options = {}) {
       const message = data && data.error && data.error.message ? data.error.message : `OpenAI image generation failed (${response.status}).`;
       const error = new Error(message);
       error.statusCode = response.status;
+      error.errorCode = 'openai_provider_error';
       throw error;
     }
     candidates.push(normalizeOpenAIImageResponse(data, prompt, idx, config, payload));
@@ -4074,22 +4098,48 @@ async function createOpenAIThumbnailCandidates(payload, options = {}) {
 
 async function createThumbnailResponse(payload, options = {}) {
   const config = options.config || providerConfig(options.env || process.env);
+  const startedAt = Date.now();
+  const logger = options.logger === undefined ? console : options.logger;
   if (config.provider === 'placeholder') {
+    const candidates = createCandidates(payload);
+    logThumbnailRequest(config, 'success', startedAt, candidates.length, logger);
     return {
       provider: 'placeholder',
       model: 'local-svg-placeholder',
-      candidates: createCandidates(payload),
+      timeoutMs: config.timeoutMs,
+      imageSize: config.size,
+      quality: config.quality,
+      format: config.outputFormat,
+      candidates,
     };
   }
   if (config.provider === 'openai') {
-    return {
-      provider: 'openai',
-      model: config.model,
-      candidates: await createOpenAIThumbnailCandidates(payload, { ...options, config }),
-    };
+    try {
+      const candidates = await createOpenAIThumbnailCandidates(payload, { ...options, config });
+      if (!candidates.length) {
+        const error = new Error('Thumbnail generation returned no usable candidates.');
+        error.statusCode = 502;
+        error.errorCode = 'no_usable_candidates';
+        throw error;
+      }
+      logThumbnailRequest(config, 'success', startedAt, candidates.length, logger);
+      return {
+        provider: 'openai',
+        model: config.model,
+        timeoutMs: config.timeoutMs,
+        imageSize: config.size,
+        quality: config.quality,
+        format: config.outputFormat,
+        candidates,
+      };
+    } catch (error) {
+      logThumbnailRequest(config, error.errorCode || 'error', startedAt, 0, logger);
+      throw error;
+    }
   }
   const error = new Error(`Unsupported THUMBNAIL_PROVIDER: ${config.provider}`);
   error.statusCode = 400;
+  error.errorCode = 'unsupported_provider';
   throw error;
 }
 
@@ -4107,7 +4157,14 @@ function createServer() {
           const thumbnailResponse = await createThumbnailResponse(payload);
           send(res, 200, thumbnailResponse);
         } catch (error) {
-          send(res, error.statusCode || 500, { error: error.message });
+          const config = providerConfig();
+          send(res, error.statusCode || 500, {
+            error: error.message,
+            errorCode: error.errorCode || 'thumbnail_generation_error',
+            provider: config.provider,
+            model: config.provider === 'openai' ? config.model : 'local-svg-placeholder',
+            timeoutMs: config.timeoutMs,
+          });
         }
       }).catch((error) => send(res, error.statusCode || 500, { error: error.message }));
       return;

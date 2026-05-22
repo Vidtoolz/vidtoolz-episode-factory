@@ -5,7 +5,8 @@
   const runTools = window.PackageEngineRun;
   const STATUS_API = "/api/package-engine/status";
   const DEFAULT_THUMBNAIL_API = "/api/package-engine/thumbnails";
-  const THUMBNAIL_REQUEST_TIMEOUT_MS = 60000;
+  const DEFAULT_THUMBNAIL_REQUEST_TIMEOUT_MS = 130000;
+  const THUMBNAIL_FRONTEND_TIMEOUT_HEADROOM_MS = 10000;
   const PACKAGE_ENGINE_VIEW_MODE_KEY = "vidtoolz-package-engine-view-mode-v1";
   const els = {
     workspace: document.querySelector(".package-engine-workspace"),
@@ -33,6 +34,7 @@
   let generatedThumbnailProvider = "placeholder";
   let generatedThumbnailModel = "local-svg-placeholder";
   let thumbnailGenerationApi = DEFAULT_THUMBNAIL_API;
+  let thumbnailRequestTimeoutMs = DEFAULT_THUMBNAIL_REQUEST_TIMEOUT_MS;
   let thumbnailGenerationCount = 0;
   let isGeneratingThumbnails = false;
   let packageEngineViewMode = "focused";
@@ -316,7 +318,7 @@
         }),
       };
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
-        fetchOptions.signal = AbortSignal.timeout(THUMBNAIL_REQUEST_TIMEOUT_MS);
+        fetchOptions.signal = AbortSignal.timeout(thumbnailRequestTimeoutMs);
       }
       const response = await fetch(thumbnailGenerationApi, {
         ...fetchOptions,
@@ -326,7 +328,18 @@
         if (response.status === 404 || response.status === 501) {
           throw new Error("Thumbnail generation endpoint is unavailable. Start the app with ./scripts/serve-local.sh instead of python3 -m http.server 8010.");
         }
-        const message = payload && payload.error ? payload.error : `Thumbnail generation failed (${response.status})`;
+        const errorCode = payload && payload.errorCode ? String(payload.errorCode) : "";
+        const serverMessage = payload && payload.error ? String(payload.error) : "";
+        let message = serverMessage || `Thumbnail generation failed (${response.status})`;
+        if (errorCode === "openai_timeout") {
+          message = `${serverMessage || "OpenAI image generation timed out."} Backend timeout: ${payload.timeoutMs || "unknown"} ms. Try again, lower image settings, or increase OPENAI_IMAGE_TIMEOUT_MS.`;
+        } else if (errorCode === "missing_api_key") {
+          message = "OpenAI thumbnail generation is configured, but OPENAI_API_KEY is missing.";
+        } else if (errorCode === "openai_provider_error" || errorCode === "openai_request_failed") {
+          message = `OpenAI thumbnail provider error: ${serverMessage || `HTTP ${response.status}`}`;
+        } else if (errorCode === "no_usable_candidates") {
+          message = "Thumbnail generation completed but returned no usable image candidates.";
+        }
         throw new Error(message);
       }
       generatedThumbnailProvider = String(payload.provider || "placeholder");
@@ -361,7 +374,7 @@
     } catch (error) {
       const timedOut = error && (error.name === "AbortError" || error.name === "TimeoutError");
       const message = timedOut
-        ? "Thumbnail generation timed out. The backend did not return candidates; check the OpenAI image provider and try again."
+        ? `Frontend request timed out after ${Math.ceil(thumbnailRequestTimeoutMs / 1000)} seconds before the backend returned. Check server logs or increase the exposed thumbnail timeout.`
         : error && error.message && error.message !== "Failed to fetch"
         ? error.message
         : "Thumbnail generation failed. Check that ./scripts/serve-local.sh is running.";
@@ -633,9 +646,15 @@
         if (payload && payload.model) {
           generatedThumbnailModel = String(payload.model);
         }
+        if (payload && Number(payload.timeoutMs) > 0) {
+          thumbnailRequestTimeoutMs = Number(payload.timeoutMs) + THUMBNAIL_FRONTEND_TIMEOUT_HEADROOM_MS;
+        } else {
+          thumbnailRequestTimeoutMs = DEFAULT_THUMBNAIL_REQUEST_TIMEOUT_MS;
+        }
       })
       .catch(() => {
         thumbnailGenerationApi = DEFAULT_THUMBNAIL_API;
+        thumbnailRequestTimeoutMs = DEFAULT_THUMBNAIL_REQUEST_TIMEOUT_MS;
       });
   }
 
