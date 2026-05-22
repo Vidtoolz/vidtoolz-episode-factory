@@ -1180,6 +1180,97 @@ body[data-episode-view-mode="focused"] #appStatus[data-view-warning="true"] {
   border-color: #ef4444;
 }
 
+.package-engine-view-toggle {
+  align-items: center;
+}
+
+body[data-package-engine-view-mode="focused"] .package-engine-shell [data-view-default="full"] {
+  display: none;
+}
+
+body[data-package-engine-view-mode="focused"] .package-engine-shell [data-view-warning="true"] {
+  display: block;
+}
+
+body[data-package-engine-view-mode="focused"] .package-engine-shell #generatedThumbnailPanel[data-view-warning="true"] {
+  display: grid;
+}
+
+.package-engine-workspace[data-view-mode="focused"] {
+  gap: 14px;
+}
+
+.package-focus-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.package-focus-header {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.package-focus-header h2,
+.package-focus-header p {
+  margin: 0;
+}
+
+.package-focus-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.package-focus-card {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 11px;
+}
+
+.package-focus-card > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.package-focus-card strong,
+.package-focus-card p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.package-focus-now {
+  border-color: #111827;
+  grid-column: span 2;
+  min-height: 120px;
+}
+
+.package-focus-now strong {
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.package-focus-risk {
+  border-color: #ef4444;
+}
+
+.package-focus-boundary {
+  border-color: #2563eb;
+  grid-column: span 2;
+}
+
 .current-focus-content {
   display: grid;
   gap: 10px;
@@ -3424,6 +3515,7 @@ body[data-episode-view-mode="focused"] #appStatus[data-view-warning="true"] {
   .package-runs-stats,
   .current-focus-content,
   .episode-focus-grid,
+  .package-focus-grid,
   .beginning-triage-stepper,
   .beginning-triage-guidance,
   .beginning-summary-strip,
@@ -3445,6 +3537,7 @@ body[data-episode-view-mode="focused"] #appStatus[data-view-warning="true"] {
   .topbar-actions,
   .current-focus-header,
   .episode-focus-header,
+  .package-focus-header,
   .detail-header,
   .artifact-preview-header {
     align-items: stretch;

@@ -16,21 +16,27 @@
         <div class="topbar-actions">
           <a class="nav-link-button" href="index.html">Episode Factory</a>
           <a class="nav-link-button" href="package-runs-dashboard.html">Run Dashboard</a>
-          <button id="downloadJsonBtn" class="primary-btn" type="button" disabled>Download selected JSON</button>
-          <button id="downloadMarkdownBtn" type="button" disabled>Download selected Markdown</button>
-          <button id="generateThumbnailsBtn" type="button" class="secondary-btn">Generate thumbnail candidates</button>
+          <div class="dashboard-mode-toggle package-engine-view-toggle" aria-label="Package Engine view mode">
+            <button type="button" class="active" data-package-engine-view-mode-button="focused" aria-pressed="true">Focused View</button>
+            <button type="button" data-package-engine-view-mode-button="full" aria-pressed="false">Full Dashboard</button>
+          </div>
+          <button id="downloadJsonBtn" class="primary-btn" type="button" disabled data-view-group="exports" data-view-default="full">Download selected JSON</button>
+          <button id="downloadMarkdownBtn" type="button" disabled data-view-group="exports" data-view-default="full">Download selected Markdown</button>
+          <button id="generateThumbnailsBtn" type="button" class="secondary-btn" data-view-group="thumbnail-work" data-view-default="full">Generate thumbnail candidates</button>
         </div>
       </header>
 
-      <p id="packageStatus" class="global-status" role="status"></p>
+      <p id="packageStatus" class="global-status" role="status" data-view-group="diagnostics" data-view-default="focused"></p>
 
-      <main class="package-engine-workspace">
-        <section class="package-controls" aria-label="Package controls">
+      <main class="package-engine-workspace" data-view-mode="focused">
+        <section id="packageFocusPanel" class="package-focus-panel" aria-label="Package Focus" data-view-group="creator-focus" data-view-default="focused"></section>
+
+        <section class="package-controls" aria-label="Package controls" data-view-group="candidate-review" data-view-default="focused">
           <div>
             <h2>Candidate Review</h2>
             <p class="muted">Review 10 structured package candidates, select one winner, then export it.</p>
           </div>
-          <label>
+          <label data-view-group="metadata" data-view-default="full">
             <span>Sort</span>
             <select id="sortSelect">
               <option value="score-desc">Score high to low</option>
@@ -38,7 +44,7 @@
               <option value="number">Package number</option>
             </select>
           </label>
-          <label>
+          <label data-view-group="metadata" data-view-default="full">
             <span>Recommendation</span>
             <select id="recommendationFilter">
               <option value="All">All</option>
@@ -53,9 +59,9 @@
           </div>
         </section>
 
-        <section id="generatedThumbnailPanel" class="generated-thumbnail-panel hidden" aria-live="polite"></section>
+        <section id="generatedThumbnailPanel" class="generated-thumbnail-panel hidden" aria-live="polite" data-view-group="thumbnail-work" data-view-default="full"></section>
 
-        <section id="packageGrid" class="package-grid" aria-label="Package candidate cards"></section>
+        <section id="packageGrid" class="package-grid" aria-label="Package candidate cards" data-view-group="candidate-review" data-view-default="focused"></section>
       </main>
     </div>
 

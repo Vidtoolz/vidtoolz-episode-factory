@@ -6,7 +6,10 @@
   const STATUS_API = "/api/package-engine/status";
   const DEFAULT_THUMBNAIL_API = "/api/package-engine/thumbnails";
   const THUMBNAIL_REQUEST_TIMEOUT_MS = 60000;
+  const PACKAGE_ENGINE_VIEW_MODE_KEY = "vidtoolz-package-engine-view-mode-v1";
   const els = {
+    workspace: document.querySelector(".package-engine-workspace"),
+    packageFocusPanel: document.querySelector("#packageFocusPanel"),
     status: document.querySelector("#packageStatus"),
     grid: document.querySelector("#packageGrid"),
     sort: document.querySelector("#sortSelect"),
@@ -32,6 +35,7 @@
   let thumbnailGenerationApi = DEFAULT_THUMBNAIL_API;
   let thumbnailGenerationCount = 0;
   let isGeneratingThumbnails = false;
+  let packageEngineViewMode = "focused";
 
   function escapeHtml(value) {
     return String(value || "")
@@ -44,6 +48,41 @@
   function showStatus(message, type = "") {
     els.status.textContent = message;
     els.status.className = `global-status ${type}`.trim();
+    els.status.dataset.viewWarning = type === "error" ? "true" : "false";
+  }
+
+  function normalizePackageEngineViewMode(mode) {
+    return mode === "full" ? "full" : "focused";
+  }
+
+  function readPackageEngineViewMode() {
+    try {
+      return normalizePackageEngineViewMode(window.localStorage && window.localStorage.getItem(PACKAGE_ENGINE_VIEW_MODE_KEY));
+    } catch (_error) {
+      return "focused";
+    }
+  }
+
+  function savePackageEngineViewMode(mode) {
+    const normalized = normalizePackageEngineViewMode(mode);
+    try {
+      if (window.localStorage) window.localStorage.setItem(PACKAGE_ENGINE_VIEW_MODE_KEY, normalized);
+    } catch (_error) {
+      return normalized;
+    }
+    return normalized;
+  }
+
+  function setPackageEngineViewMode(mode, options = {}) {
+    packageEngineViewMode = normalizePackageEngineViewMode(mode);
+    if (options.persist !== false) savePackageEngineViewMode(packageEngineViewMode);
+    if (els.workspace) els.workspace.dataset.viewMode = packageEngineViewMode;
+    document.body.dataset.packageEngineViewMode = packageEngineViewMode;
+    document.querySelectorAll("[data-package-engine-view-mode-button]").forEach((button) => {
+      const active = button.dataset.packageEngineViewModeButton === packageEngineViewMode;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
   }
 
   function visibleCandidates() {
@@ -53,6 +92,33 @@
 
   function selectedCandidate() {
     return candidateSet.candidates.find((candidate) => candidate.id === selectedId) || null;
+  }
+
+  function selectPackageFocusCandidate(candidates = [], selectedCandidateId = "", allCandidates = candidates) {
+    const visible = Array.isArray(candidates) ? candidates : [];
+    const all = Array.isArray(allCandidates) ? allCandidates : visible;
+    const selected = all.find((candidate) => candidate.id === selectedCandidateId) || visible.find((candidate) => candidate.id === selectedCandidateId) || null;
+    const recommended = visible.find((candidate) => candidate.recommendation === "Make") || visible[0] || null;
+    return selected || recommended;
+  }
+
+  function buildPackageFocusModel(candidates = visibleCandidates(), selectedCandidateId = selectedId) {
+    const visible = Array.isArray(candidates) ? candidates : [];
+    const candidate = selectPackageFocusCandidate(visible, selectedCandidateId, candidateSet.candidates);
+    const selected = Boolean(candidate && candidate.id === selectedCandidateId);
+    const source = selected ? "selected" : candidate ? "recommended visible" : "none";
+    const nextPackagingAction = candidate
+      ? selected
+        ? "Review the title, promise, thumbnail idea, and risk before using the existing explicit export controls."
+        : "Inspect this candidate, compare it against the visible alternatives, then select only if it earns the packaging choice."
+      : "Load package candidates before making a packaging decision.";
+    return {
+      candidate,
+      source,
+      selected,
+      nextPackagingAction,
+      boundary: "Browser selection only. Not approval. Not package-run state. Not exported unless Mikko uses the existing explicit download controls.",
+    };
   }
 
   function candidateThumbnailImage(candidate) {
@@ -146,10 +212,12 @@
     if (!isGeneratingThumbnails && !generatedThumbnailCandidates.length && !generatedThumbnailError) {
       els.generatedThumbnailPanel.classList.add("hidden");
       els.generatedThumbnailPanel.innerHTML = "";
+      els.generatedThumbnailPanel.dataset.viewWarning = "false";
       return;
     }
 
     els.generatedThumbnailPanel.classList.remove("hidden");
+    els.generatedThumbnailPanel.dataset.viewWarning = generatedThumbnailError ? "true" : "false";
     if (isGeneratingThumbnails) {
       els.generatedThumbnailPanel.innerHTML = `
         <div class="generated-thumbnail-header">
@@ -311,6 +379,58 @@
       .join("");
   }
 
+  function renderPackageFocusPanel() {
+    if (!els.packageFocusPanel) return;
+    const focus = buildPackageFocusModel();
+    const candidate = focus.candidate;
+    const title = candidate ? candidate.proposedTitle || candidate.idea || "Untitled package candidate" : "No package candidate loaded";
+    const candidateLabel = candidate
+      ? `${focus.selected ? "Selected package candidate" : "Strongest visible candidate"} #${candidate.packageNumber || "?"}`
+      : "Load candidates";
+    const scoreText = candidate ? `${candidate.score || 0}/100 · ${candidate.recommendation || "No recommendation"}` : "No score";
+    const promise = candidate ? candidate.viewerPromise || "Viewer promise not specified." : "Load candidates to inspect the viewer promise.";
+    const thumbnail = candidate ? candidate.thumbnailConcept || "Thumbnail concept not specified." : "No thumbnail concept loaded.";
+    const risk = candidate ? candidate.mainRisk || "Main risk not specified." : "No risk source loaded.";
+
+    els.packageFocusPanel.innerHTML = `
+      <div class="package-focus-header">
+        <div>
+          <p class="eyebrow">Package Focus</p>
+          <h2>${escapeHtml(title)}</h2>
+          <p class="muted">${escapeHtml(candidateLabel)} · ${escapeHtml(scoreText)}</p>
+        </div>
+        <span class="lifecycle-badge">Read-only summary</span>
+      </div>
+      <div class="package-focus-grid">
+        <section class="package-focus-card package-focus-now" aria-label="Current package candidate">
+          <span>Reviewing now</span>
+          <strong>${escapeHtml(title)}</strong>
+          <p>${escapeHtml(focus.source)}</p>
+        </section>
+        <section class="package-focus-card" aria-label="Viewer promise">
+          <span>Viewer promise</span>
+          <strong>${escapeHtml(promise)}</strong>
+        </section>
+        <section class="package-focus-card" aria-label="Thumbnail concept">
+          <span>Thumbnail concept</span>
+          <strong>${escapeHtml(thumbnail)}</strong>
+        </section>
+        <section class="package-focus-card package-focus-risk" aria-label="Main risk">
+          <span>Main risk / concern</span>
+          <strong>${escapeHtml(risk)}</strong>
+        </section>
+        <section class="package-focus-card" aria-label="Next packaging action">
+          <span>Next packaging action</span>
+          <strong>${escapeHtml(focus.nextPackagingAction)}</strong>
+        </section>
+        <section class="package-focus-card package-focus-boundary" aria-label="Selection boundary">
+          <span>Boundary</span>
+          <strong>${escapeHtml(focus.boundary)}</strong>
+        </section>
+      </div>
+    `;
+  }
+
   function renderCard(candidate) {
     const expanded = expandedIds.has(candidate.id);
     const selected = candidate.id === selectedId;
@@ -337,14 +457,14 @@
             : `<div class="thumbnail-placeholder">${escapeHtml(candidate.thumbnailConcept || "No thumbnail image linked yet.")}</div>`
         }
       </div>
-      <div class="thumbnail-candidates-section">
+      <div class="thumbnail-candidates-section" data-view-group="thumbnail-work" data-view-default="full">
         <div class="thumbnail-candidates-header">
           <h3>Thumbnail candidates</h3>
           <button type="button" class="secondary-btn" data-thumb-generate="${escapeHtml(candidate.id)}" ${isGeneratingThumbnails ? "disabled" : ""}>${isGeneratingThumbnails ? "Generating thumbnails…" : "Generate 3 more"}</button>
         </div>
         ${renderThumbnailCandidateStrip(candidate)}
       </div>
-      <div class="package-card-grid">
+      <div class="package-card-grid" data-view-group="metadata" data-view-default="full">
         <div><span>Thumbnail concept</span><strong>${escapeHtml(candidate.thumbnailConcept || "Not specified.")}</strong></div>
         <div><span>On-thumbnail text</span><strong>${escapeHtml(candidate.onThumbnailText || "Not specified.")}</strong></div>
         <div><span>Viewer promise</span><strong>${escapeHtml(candidate.viewerPromise || "Not specified.")}</strong></div>
@@ -352,7 +472,7 @@
         <div><span>Difficulty</span><strong>${escapeHtml(candidate.productionDifficulty)}</strong></div>
         <div><span>Main risk</span><strong>${escapeHtml(candidate.mainRisk || "Not specified.")}</strong></div>
       </div>
-      <div class="shorts-list">
+      <div class="shorts-list" data-view-group="metadata" data-view-default="full">
         <h3>Shorts Ideas</h3>
         <ol>${shorts || "<li>Not specified.</li>"}</ol>
       </div>
@@ -363,7 +483,7 @@
       ${
         expanded
           ? `
-            <section class="package-detail">
+            <section class="package-detail" data-view-group="metadata" data-view-default="full">
               <h3>Strategic Rationale</h3>
               <div class="strategic-grid">${renderStrategicDetails(candidate)}</div>
             </section>
@@ -386,6 +506,8 @@
     els.generateThumbnails.disabled = isGeneratingThumbnails || !visible.length;
     els.generateThumbnails.textContent = isGeneratingThumbnails ? "Generating thumbnails…" : "Generate thumbnail candidates";
     renderGeneratedThumbnailPanel();
+    renderPackageFocusPanel();
+    setPackageEngineViewMode(packageEngineViewMode, { persist: false });
     els.grid.innerHTML = "";
     if (!visible.length) {
       els.grid.innerHTML = `<p class="muted">No candidates match this filter.</p>`;
@@ -523,6 +645,21 @@
   els.downloadJson.addEventListener("click", downloadSelectedJson);
   els.downloadMarkdown.addEventListener("click", downloadSelectedMarkdown);
   els.generateThumbnails.addEventListener("click", () => generateMoreThumbnailCandidates());
+  document.querySelectorAll("[data-package-engine-view-mode-button]").forEach((button) => {
+    button.addEventListener("click", () => setPackageEngineViewMode(button.dataset.packageEngineViewModeButton));
+  });
 
+  window.PackageEngineViewMode = {
+    key: PACKAGE_ENGINE_VIEW_MODE_KEY,
+    normalizePackageEngineViewMode,
+    readPackageEngineViewMode,
+    savePackageEngineViewMode,
+    setPackageEngineViewMode,
+    buildPackageFocusModel,
+    selectPackageFocusCandidate,
+  };
+
+  packageEngineViewMode = readPackageEngineViewMode();
+  setPackageEngineViewMode(packageEngineViewMode, { persist: false });
   loadThumbnailGenerationConfig().finally(loadCandidates);
 })();

@@ -14646,6 +14646,119 @@ test("package engine browser code surfaces thumbnail backend failures and recove
   assert.match(html, /package-engine\.js\?v=1\.7\.4-thumb5/);
 });
 
+test("package engine HTML contains Focused View toggle and focus panel", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "package-engine.html"), "utf8");
+
+  assert.match(html, /data-package-engine-view-mode-button="focused"/);
+  assert.match(html, /Focused View/);
+  assert.match(html, /data-package-engine-view-mode-button="full"/);
+  assert.match(html, /Full Dashboard/);
+  assert.match(html, /aria-pressed="true"/);
+  assert.match(html, /id="packageFocusPanel"/);
+  assert.match(html, /data-view-group="creator-focus"/);
+  assert.match(html, /data-view-mode="focused"/);
+});
+
+test("package engine normalizePackageEngineViewMode defaults invalid values to focused", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const match = source.match(/function normalizePackageEngineViewMode\(mode\) \{([\s\S]*?)\n  \}/);
+  assert.ok(match, "normalizePackageEngineViewMode function should exist");
+  const normalizePackageEngineViewMode = new Function("mode", match[1]);
+
+  assert.equal(normalizePackageEngineViewMode(), "focused");
+  assert.equal(normalizePackageEngineViewMode("unexpected"), "focused");
+  assert.equal(normalizePackageEngineViewMode("focused"), "focused");
+  assert.equal(normalizePackageEngineViewMode("full"), "full");
+});
+
+test("package engine view mode storage is UI-only", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const setModeBody = source.match(/function setPackageEngineViewMode\(mode, options = \{\}\) \{([\s\S]*?)\n  \}/);
+
+  assert.match(source, /const PACKAGE_ENGINE_VIEW_MODE_KEY = "vidtoolz-package-engine-view-mode-v1"/);
+  assert.match(source, /localStorage\.getItem\(PACKAGE_ENGINE_VIEW_MODE_KEY\)/);
+  assert.match(source, /localStorage\.setItem\(PACKAGE_ENGINE_VIEW_MODE_KEY, normalized\)/);
+  assert.doesNotMatch(source, /vidtoolz-episode-factory-view-mode-v1/);
+  assert.doesNotMatch(source, /data-dashboard-mode|data-dashboard-group|data-dashboard-mode-button/);
+  assert.ok(setModeBody, "setPackageEngineViewMode should exist");
+  assert.doesNotMatch(setModeBody[1], /generateMoreThumbnailCandidates|downloadSelectedJson|downloadSelectedMarkdown|fetch\(|candidateSet\s*=|selectedId\s*=/);
+});
+
+test("package engine focus model chooses selected candidate when present", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const match = source.match(/function selectPackageFocusCandidate\(candidates = \[\], selectedCandidateId = "", allCandidates = candidates\) \{([\s\S]*?)\n  \}/);
+  assert.ok(match, "selectPackageFocusCandidate function should exist");
+  const selectPackageFocusCandidate = new Function("candidates", "selectedCandidateId", "allCandidates", match[1]);
+  const candidates = [
+    { id: "candidate-a", recommendation: "Make", score: 90 },
+    { id: "candidate-b", recommendation: "Maybe", score: 75 },
+  ];
+
+  assert.equal(selectPackageFocusCandidate(candidates, "candidate-b", candidates).id, "candidate-b");
+});
+
+test("package engine focus model chooses recommended visible candidate without selection", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const match = source.match(/function selectPackageFocusCandidate\(candidates = \[\], selectedCandidateId = "", allCandidates = candidates\) \{([\s\S]*?)\n  \}/);
+  assert.ok(match, "selectPackageFocusCandidate function should exist");
+  const selectPackageFocusCandidate = new Function("candidates", "selectedCandidateId", "allCandidates", match[1]);
+  const candidates = [
+    { id: "candidate-a", recommendation: "Maybe", score: 80 },
+    { id: "candidate-b", recommendation: "Make", score: 78 },
+  ];
+
+  assert.equal(selectPackageFocusCandidate(candidates, "", candidates).id, "candidate-b");
+});
+
+test("package engine focus panel renders package summary and safety boundary", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const template = source.match(/els\.packageFocusPanel\.innerHTML = `([\s\S]*?)`;\n  \}/);
+
+  assert.ok(template, "package focus panel template should exist");
+  assert.match(source, /function buildPackageFocusModel/);
+  assert.match(source, /viewerPromise/);
+  assert.match(source, /thumbnailConcept/);
+  assert.match(source, /mainRisk/);
+  assert.match(source, /nextPackagingAction/);
+  assert.match(source, /Browser selection only\. Not approval\. Not package-run state\./);
+  assert.match(template[1], /Package Focus/);
+  assert.match(template[1], /Viewer promise/);
+  assert.match(template[1], /Thumbnail concept/);
+  assert.match(template[1], /Main risk \/ concern/);
+  assert.match(template[1], /Next packaging action/);
+  assert.match(template[1], /Boundary/);
+  assert.doesNotMatch(template[1], /<button|<input|<select|<textarea|PASS|approved|production_ready|publish_ready|package-run approval|Generate thumbnail|Download selected|backend/i);
+});
+
+test("package engine focused view defers export thumbnail and metadata groups", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "package-engine.html"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
+
+  assert.match(html, /data-view-group="exports" data-view-default="full"/);
+  assert.match(html, /data-view-group="thumbnail-work" data-view-default="full"/);
+  assert.match(html, /data-view-group="metadata" data-view-default="full"/);
+  assert.match(html, /data-view-group="candidate-review" data-view-default="focused"/);
+  assert.match(css, /body\[data-package-engine-view-mode="focused"\] \.package-engine-shell \[data-view-default="full"\] \{\s*display: none;/);
+  assert.match(css, /body\[data-package-engine-view-mode="focused"\] \.package-engine-shell \[data-view-warning="true"\] \{\s*display: block;/);
+});
+
+test("package engine full dashboard restores deferred controls and diagnostics", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "package-engine.html"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+
+  assert.match(html, /id="packageGrid"/);
+  assert.match(html, /id="downloadJsonBtn"/);
+  assert.match(html, /id="downloadMarkdownBtn"/);
+  assert.match(html, /id="generatedThumbnailPanel"/);
+  assert.match(html, /id="sortSelect"/);
+  assert.match(html, /id="recommendationFilter"/);
+  assert.match(source, /els\.workspace\.dataset\.viewMode = packageEngineViewMode/);
+  assert.match(source, /document\.body\.dataset\.packageEngineViewMode = packageEngineViewMode/);
+  assert.match(source, /button\.dataset\.packageEngineViewModeButton === packageEngineViewMode/);
+  assert.doesNotMatch(css, /body\[data-package-engine-view-mode="full"\] \.package-engine-shell \[data-view-default="full"\]\s*\{\s*display: none/);
+});
+
 test("episode factory HTML contains Focused View toggle and focus panel", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 
