@@ -14928,6 +14928,22 @@ test("episode factory focused view defers full dashboard and admin groups", () =
   assert.match(css, /body\[data-episode-view-mode="focused"\] #appStatus\[data-view-warning="true"\] \{\s*display: grid;/);
 });
 
+test("package runs dashboard has a shell launcher documented", () => {
+  const scriptPath = path.join(__dirname, "..", "scripts", "open-package-runs-dashboard.sh");
+  const script = fs.readFileSync(scriptPath, "utf8");
+  const readme = fs.readFileSync(path.join(__dirname, "..", "README.md"), "utf8");
+  const workflowDoc = fs.readFileSync(path.join(__dirname, "..", "docs", "package-runs-dashboard-workflow.md"), "utf8");
+  const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
+
+  assert.match(script, /scripts\/serve-local\.sh/);
+  assert.match(script, /package-runs-dashboard\.html/);
+  assert.match(script, /api\/package-engine\/status/);
+  assert.doesNotMatch(script, /package-run-state|approval marker|Hermes brain|project memory/i);
+  assert.match(readme, /scripts\/open-package-runs-dashboard\.sh/);
+  assert.match(workflowDoc, /scripts\/open-package-runs-dashboard\.sh/);
+  assert.match(verify, /sh -n scripts\/open-package-runs-dashboard\.sh/);
+});
+
 test("episode factory full dashboard restores deferred panels", () => {
   const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
   const source = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");

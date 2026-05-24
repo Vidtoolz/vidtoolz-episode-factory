@@ -125,6 +125,12 @@ Then open the local status dashboard:
 http://localhost:8010/package-runs-dashboard.html
 ```
 
+Open the dashboard with the local server launcher:
+
+```sh
+./scripts/open-package-runs-dashboard.sh
+```
+
 The dashboard shows Creator QA as a workflow gate: `FAIL` moves a run into
 `Needs QA repair`, while complete production prep with no QA report appears as
 `QA not run` with the local QA command.

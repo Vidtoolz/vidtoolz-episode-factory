@@ -55,7 +55,13 @@ Linear, or any episode folder.
 
 ## Open The Dashboard
 
-Serve the repo locally:
+Open the dashboard with the local server launcher:
+
+```sh
+cd /home/vidtoolz/vidtoolz-episode-factory && ./scripts/open-package-runs-dashboard.sh
+```
+
+Or serve the repo locally:
 
 ```sh
 cd /home/vidtoolz/vidtoolz-episode-factory && ./scripts/serve-local.sh

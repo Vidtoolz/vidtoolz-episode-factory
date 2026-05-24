@@ -49,4 +49,5 @@ node --check scripts/script-image-assets-dry-run.js
 node --check scripts/script-image-assets-review-page.js
 node --check scripts/package-runs-index.js
 node --check scripts/package-runs-dashboard-launch.js
+sh -n scripts/open-package-runs-dashboard.sh
 node --check scripts/trailer-cue-new.js
