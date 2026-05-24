@@ -67,3 +67,29 @@ This run does not claim that later workflow gates are complete.
 - Shooting, editing, publishing, upload prep, final title/final thumbnail, project-state promotion, commit/push, and Hermes brain write remain blocked.
 - Review production-brief.md, shooting-plan.md, b-roll-list.md, graphics-list.md, resolve-edit-checklist.md, thumbnail-title-check.md, publish-pack.md, and the evidence-capture plan before any shooting or editing decision.
 - No AI/API calls, Hermes brain writes, GitHub/Linear writes, commits, pushes, or episode folders were created by this step.
+
+## Resolve timeline / explanatory insert update
+
+- Mikko imported the explanatory screen-insert package into the DaVinci Resolve timeline on PRESTO.
+- Imported and placed insert clips:
+  - `04-proof-plan-checklist`
+  - `06-before-after-package-repair`
+  - `03-claim-map-forbidden-unless-proven`
+  - `05-real-gate-blocker-not-ready`
+  - `01-focus-mode-now-next-blocked`
+  - `07-ai-may-mikko-must-doctrine`
+  - `02-beginning-triage-flow` only if the beginning workflow needs more context
+- These clips are explanatory inserts for supporting Mikko's A-roll and screen-recording spine.
+- They are not proof approval, package-run approval, production readiness, publishing readiness, or any later workflow-gate approval.
+- Current edit state:
+  - Main A-roll is usable and in the timeline as bottom-right PiP.
+  - A-roll audio is the preferred primary narration.
+  - Screen recording is the base visual layer.
+  - Explanatory inserts are available in the timeline for the first spine cut.
+- Next action: Mikko should do a focused Resolve watchdown and record:
+  1. whether the spine cut makes sense,
+  2. whether each insert should be kept, adjusted, or removed,
+  3. what visual gaps remain,
+  4. whether any insert creates a proof/trust risk,
+  5. the next edit step.
+- Boundary: do not mark `production_ready`, `publish_ready`, rough-cut ready, second-cut ready, final-ready, or approved from this update.
