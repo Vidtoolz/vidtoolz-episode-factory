@@ -34,6 +34,7 @@ const packageRunDoctorScript = require("../scripts/package-run-doctor.js");
 const packageRunNextActionScript = require("../scripts/package-run-next-action.js");
 const packageRunNextSafeActionScript = require("../scripts/package-run-next-safe-action.js");
 const packageRunNextActionAuthorityScript = require("../scripts/package-run-next-action-authority.js");
+const nextTaskClassifierScript = require("../scripts/next-task-classifier.js");
 const packageRunActiveStateAuditScript = require("../scripts/package-run-active-state-audit.js");
 const packageRunStateProposalScript = require("../scripts/package-run-state-proposal.js");
 const packageProductionApprovalRepairScript = require("../scripts/package-run-production-approval-repair.js");
@@ -132,6 +133,51 @@ function createNextSafeActionFixture(options = {}) {
     fs.writeFileSync(path.join(runDir, "rough-cut-watch-notes.md"), "Kling clip imported into Resolve timeline and tested by Mikko.\n", "utf8");
   }
   return { tempRoot, runId, runDir, assetDir, klingDir, manifestPath };
+}
+
+function createNextTaskClassifierFixture(options = {}) {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "next-task-classifier-"));
+  const agentBusRoot = path.join(tempRoot, "agent-bus");
+  const runId = options.runId || "2026-05-06-ai-video-proof-plan";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  writeTestFile(agentBusRoot, "bin/codex-prompt-basis", "#!/usr/bin/env bash\n");
+  writeTestFile(tempRoot, "scripts/open-package-runs-dashboard.sh", "#!/usr/bin/env sh\n");
+  writeTestFile(tempRoot, "package-runs-dashboard.js", "const label = 'Second-cut readiness';\n");
+  writeTestFile(
+    tempRoot,
+    `package-runs/${runId}/package-run-state.md`,
+    "# Package Run State\n\n- State: active\n"
+  );
+  writeTestFile(
+    tempRoot,
+    `package-runs/${runId}/capture-evidence-review.md`,
+    "# Capture Evidence Review\n\n- Review status: PASS\n- Capture evidence accepted: yes\n- Manual approval marker detected: yes\n- Ready for rough-cut work: yes\n- Real capture evidence detected: yes\n"
+  );
+  writeTestFile(
+    tempRoot,
+    `package-runs/${runId}/rough-cut-watch-notes.md`,
+    "# Rough-Cut Watch Notes\n\nRough cut file media/rough-cut-v1.mp4 was reviewed by Mikko.\n\n## Pickups Needed\n\nAdd closeups.\n\n## Manual Rough-Cut Approval Marker\n\nRough-cut approval: NEEDS PICKUPS\n"
+  );
+  writeTestFile(
+    tempRoot,
+    `package-runs/${runId}/rough-cut-review.md`,
+    "# Rough-Cut Review\n\n- Rough-cut review status: NEEDS PICKUPS\n- Second-cut ready: no\n\n## Second-Cut Readiness Gate\n\n- Status: NEEDS PICKUPS\n- Reason: Watch notes list pickups needed.\n"
+  );
+  writeTestFile(
+    tempRoot,
+    `package-runs/${runId}/media-creation-plan.md`,
+    "# Media Creation Plan\n\nDraft pickup planning only.\n"
+  );
+  runGitCommand(tempRoot, ["init", "-b", "main"]);
+  runGitCommand(tempRoot, ["config", "user.email", "test@example.invalid"]);
+  runGitCommand(tempRoot, ["config", "user.name", "Test User"]);
+  runGitCommand(tempRoot, ["add", "."]);
+  runGitCommand(tempRoot, ["commit", "-m", "baseline"]);
+  if (options.untracked !== false) {
+    writeTestFile(tempRoot, "reports/local-untracked-report.md", "# Local Report\n");
+  }
+  return { tempRoot, agentBusRoot, runId, runDir };
 }
 
 function escapeRegExp(value) {
@@ -10953,6 +10999,67 @@ test("next safe action helper forbids approval publish and production_ready auto
 test("verify script checks package run next safe action syntax", () => {
   const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
   assert.match(verify, /node --check scripts\/package-run-next-safe-action\.js/);
+});
+
+test("next task classifier does not recommend completed prompt basis work", () => {
+  const fixture = createNextTaskClassifierFixture();
+  const report = nextTaskClassifierScript.buildReport({
+    repoRoot: fixture.tempRoot,
+    agentBusRoot: fixture.agentBusRoot,
+  });
+
+  assert.equal(report.knownWork.codexPromptBasisDone, true);
+  assert.doesNotMatch(report.recommendedNextAction, /prompt[- ]basis/i);
+  assert.match(report.whatNotToDoYet.join("\n"), /prompt-basis work; it already exists/);
+});
+
+test("next task classifier keeps NEEDS PICKUPS out of second-cut ready state", () => {
+  const fixture = createNextTaskClassifierFixture();
+  const report = nextTaskClassifierScript.buildReport({
+    repoRoot: fixture.tempRoot,
+    agentBusRoot: fixture.agentBusRoot,
+  });
+  const output = nextTaskClassifierScript.renderMarkdown(report);
+
+  assert.equal(report.activeRun.roughCutStatus, "NEEDS PICKUPS");
+  assert.equal(report.activeRun.secondCutReady, false);
+  assert.equal(report.nextActionType, "manual production");
+  assert.match(report.recommendedNextAction, /manual Resolve pickup\/edit\/watchdown work/);
+  assert.doesNotMatch(report.recommendedNextAction, /second-cut approval/i);
+  assert.match(output, /Second-cut ready: no/);
+});
+
+test("next task classifier reports untracked artifacts without mutating them", () => {
+  const fixture = createNextTaskClassifierFixture();
+  const untrackedPath = path.join(fixture.tempRoot, "reports", "local-untracked-report.md");
+  const before = fs.existsSync(untrackedPath);
+  const report = nextTaskClassifierScript.buildReport({
+    repoRoot: fixture.tempRoot,
+    agentBusRoot: fixture.agentBusRoot,
+  });
+  const after = fs.existsSync(untrackedPath);
+
+  assert.equal(before, true);
+  assert.equal(after, true);
+  assert.equal(report.untrackedWarning.count, 1);
+  assert.deepEqual(report.repoStatus.untrackedPaths, ["reports/local-untracked-report.md"]);
+});
+
+test("next task classifier output includes what not to do yet", () => {
+  const fixture = createNextTaskClassifierFixture();
+  const report = nextTaskClassifierScript.buildReport({
+    repoRoot: fixture.tempRoot,
+    agentBusRoot: fixture.agentBusRoot,
+  });
+  const output = nextTaskClassifierScript.renderMarkdown(report);
+
+  assert.match(output, /## What Not To Do Yet/);
+  assert.match(output, /Do not recommend second-cut approval while rough-cut status is NEEDS PICKUPS/);
+});
+
+test("verify script checks next task classifier syntax", () => {
+  const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
+  assert.match(verify, /node --check scripts\/next-task-classifier\.js/);
 });
 
 test("package runs index recommends deterministic next local commands", () => {
