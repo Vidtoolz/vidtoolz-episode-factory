@@ -13141,7 +13141,7 @@ test("package runs dashboard Creator Cockpit renders active package-run gates", 
   assert.match(html, /Open diagnostics/);
 });
 
-test("package runs dashboard Creator Cockpit renders exactly seven primary sections", () => {
+test("package runs dashboard Creator Cockpit renders exactly eight primary sections", () => {
   const html = packageRunsDashboard.renderCurrentFocus({
     activeRun: "2026-05-06-ai-video-proof-plan",
     stage: "Capture / b-roll candidate creation",
@@ -13150,10 +13150,53 @@ test("package runs dashboard Creator Cockpit renders exactly seven primary secti
     readOnly: true,
   });
 
-  assert.equal((html.match(/class="creator-cockpit-section/g) || []).length, 7);
-  ["Now", "Next 30-minute action", "Proof", "Missing proof", "AI may", "Mikko must", "Blocked actions"].forEach((label) => {
+  assert.equal((html.match(/class="creator-cockpit-section/g) || []).length, 8);
+  ["Now", "Next 30-minute action", "Second-cut readiness", "Proof", "Missing proof", "AI may", "Mikko must", "Blocked actions"].forEach((label) => {
     assert.match(html, new RegExp(`aria-label="${label}"`));
   });
+});
+
+test("package runs dashboard Creator Cockpit shows second-cut readiness blocker from rough-cut artifacts", () => {
+  const html = packageRunsDashboard.renderCurrentFocus({
+    activeRun: "2026-05-06-ai-video-proof-plan",
+    stage: "Needs rough-cut review",
+    nextHumanAction: "Resolve pickup items.",
+    blockedUntil: "Rough-cut review is READY FOR SECOND CUT.",
+    readOnly: true,
+  }, {
+    index: {
+      runs: [
+        {
+          runId: "2026-05-06-ai-video-proof-plan",
+          status: "Needs rough-cut review",
+          workflowBucket: "Needs rough-cut review",
+          overallStatus: "BLOCKED",
+          firstBlockerReason: "Rough-cut review status is NEEDS PICKUPS, not READY FOR SECOND CUT.",
+          path: "package-runs/2026-05-06-ai-video-proof-plan",
+          packageRunState: { state: "active", explicit: true, isInactive: false },
+          lifecycleGate: {
+            roughCutStatus: "NEEDS PICKUPS",
+            secondCutReady: false,
+            hasRealRoughCutEvidence: true,
+          },
+          files: {
+            rough_cut_review: true,
+            rough_cut_watch_notes: true,
+            pickup_list: true,
+            edit_fix_list: true,
+          },
+        },
+      ],
+    },
+  });
+
+  const section = html.match(/<section class="creator-cockpit-section creator-cockpit-second-cut[\s\S]*?<\/section>/)[0];
+  assert.match(section, /Second-cut readiness/);
+  assert.match(section, /blocked/);
+  assert.match(section, /NEEDS PICKUPS/);
+  assert.match(section, /Required human action/);
+  assert.match(section, /rough-cut-review\.md/);
+  assert.match(section, /AI cannot approve second-cut readiness/);
 });
 
 test("package runs dashboard Creator Cockpit has no mutation controls", () => {

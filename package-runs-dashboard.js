@@ -2314,6 +2314,79 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     return [...normalized.slice(0, limit), `${normalized.length - limit} more in diagnostics.`];
   }
 
+  function buildSecondCutReadinessModel(activeRun = null, panel = {}) {
+    if (!activeRun) {
+      return {
+        status: "needs review",
+        className: "needs-review",
+        blockingReason: "No active package-run source is loaded in the Creator Cockpit.",
+        requiredHumanAction: "Open diagnostics and confirm the active run before doing second-cut work.",
+        sourceArtifact: "package-runs-index.json",
+        warning: "AI cannot approve second-cut readiness.",
+      };
+    }
+
+    const lifecycleGate = normalizeLifecycleGate(activeRun.lifecycleGate);
+    const roughCutStatus = String(lifecycleGate.roughCutStatus || activeRun.status || "unknown");
+    const secondCutReady = Boolean(lifecycleGate.secondCutReady);
+    const hasRealRoughCutEvidence = Boolean(lifecycleGate.hasRealRoughCutEvidence);
+    const sourceArtifacts = [];
+    if (activeRun.files && activeRun.files.rough_cut_review) sourceArtifacts.push("rough-cut-review.md");
+    if (activeRun.files && activeRun.files.rough_cut_watch_notes) sourceArtifacts.push("rough-cut-watch-notes.md");
+    if (activeRun.files && activeRun.files.pickup_list) sourceArtifacts.push("pickup-list.md");
+    if (activeRun.files && activeRun.files.edit_fix_list) sourceArtifacts.push("edit-fix-list.md");
+    const sourceArtifact = sourceArtifacts.length ? `${sourceArtifacts.join(", ")} via package-runs-index.json` : "package-runs-index.json";
+
+    if (!hasRealRoughCutEvidence) {
+      return {
+        status: "blocked",
+        className: "blocked",
+        blockingReason: "Real rough-cut watch evidence is missing or not trusted.",
+        requiredHumanAction: "Record or inspect concrete rough-cut watch notes before any second-cut readiness decision.",
+        sourceArtifact,
+        warning: "AI cannot approve second-cut readiness.",
+      };
+    }
+
+    if (/NEEDS PICKUPS|NEEDS EDIT FIXES|BLOCKED/i.test(roughCutStatus) || activeRun.overallStatus === "BLOCKED") {
+      return {
+        status: "blocked",
+        className: "blocked",
+        blockingReason:
+          activeRun.firstBlockerReason ||
+          `Rough-cut review status is ${roughCutStatus}, not READY FOR SECOND CUT.`,
+        requiredHumanAction:
+          roughCutStatus === "NEEDS PICKUPS"
+            ? "Resolve or explicitly reject the pickup items, then regenerate/review the rough-cut status."
+            : roughCutStatus === "NEEDS EDIT FIXES"
+              ? "Complete the edit fixes, then regenerate/review the rough-cut status."
+              : panel.nextHumanAction || "Resolve the rough-cut blocker before second-cut approval.",
+        sourceArtifact,
+        warning: "AI cannot approve second-cut readiness.",
+      };
+    }
+
+    if (roughCutStatus === "READY FOR SECOND CUT" || secondCutReady) {
+      return {
+        status: "human approval required",
+        className: "human-approval",
+        blockingReason: "Rough-cut artifacts indicate second-cut readiness, but this dashboard is not an approval authority.",
+        requiredHumanAction: "Mikko must review the relevant candidate/artifacts and explicitly choose the next gate.",
+        sourceArtifact,
+        warning: "AI cannot approve second-cut readiness or downstream final review.",
+      };
+    }
+
+    return {
+      status: "needs review",
+      className: "needs-review",
+      blockingReason: `Rough-cut status is ${roughCutStatus}; second-cut readiness is not established.`,
+      requiredHumanAction: panel.nextHumanAction || "Review the rough-cut gate and record the required human decision.",
+      sourceArtifact,
+      warning: "AI cannot approve second-cut readiness.",
+    };
+  }
+
   function buildCreatorCockpitPayload(payload = {}, options = {}) {
     const panel = normalizeNextSafeAction(payload);
     const beginningState = normalizeBeginningTriageState(options.beginningState || {});
@@ -2431,6 +2504,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       beginningState,
       activeRunFocus: hasActiveRun,
       hasBeginningDraft,
+      secondCutReadiness: buildSecondCutReadinessModel(activeRun, panel),
     };
   }
 
@@ -2440,6 +2514,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
 
   function renderCreatorCockpit(cockpit = {}) {
     const model = cockpit && typeof cockpit === "object" ? cockpit : buildCreatorCockpitPayload();
+    const secondCutReadiness = model.secondCutReadiness || buildSecondCutReadinessModel(null, {});
     const readOnlyLabel = model.readOnly === false ? "Source not read-only" : "Read-only cockpit";
     const runMeta = model.runId ? `Active run: ${escapeHtml(model.runId)}` : "No active package-run source loaded.";
     return `<div id="currentFocusContent" class="current-focus-content creator-cockpit-content" data-current-focus-result data-creator-cockpit data-active-run-focus="${model.activeRunFocus ? "true" : "false"}">
@@ -2458,6 +2533,14 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         <span>Next 30-minute action</span>
         <strong>${escapeHtml(model.nextThirtyMinuteAction.text)}</strong>
         <p>Done when: ${escapeHtml(model.nextThirtyMinuteAction.doneCondition)}</p>
+      </section>
+      <section class="creator-cockpit-section creator-cockpit-second-cut ${escapeHtml(secondCutReadiness.className)}" aria-label="Second-cut readiness">
+        <span>Second-cut readiness</span>
+        <strong>${escapeHtml(secondCutReadiness.status)}</strong>
+        <p><b>Blocking reason:</b> ${escapeHtml(secondCutReadiness.blockingReason)}</p>
+        <p><b>Required human action:</b> ${escapeHtml(secondCutReadiness.requiredHumanAction)}</p>
+        <p><b>Source:</b> ${escapeHtml(secondCutReadiness.sourceArtifact)}</p>
+        <p>${escapeHtml(secondCutReadiness.warning)}</p>
       </section>
       <section class="creator-cockpit-section" aria-label="Proof">
         <span>Proof</span>
@@ -4172,6 +4255,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     normalizeNextSafeAction,
     renderNextSafeActionPanel,
     findActiveRunFromIndex,
+    buildSecondCutReadinessModel,
     buildCreatorCockpitPayload,
     renderCreatorCockpit,
     normalizeEvidenceIntake,

@@ -1333,10 +1333,26 @@ body[data-package-engine-view-mode="focused"] .package-engine-shell #generatedTh
   padding: 14px;
 }
 
+.creator-cockpit-second-cut {
+  border-color: #f59e0b;
+  grid-column: span 2;
+  min-height: 136px;
+  padding: 14px;
+}
+
 .creator-cockpit-now strong,
-.creator-cockpit-next strong {
+.creator-cockpit-next strong,
+.creator-cockpit-second-cut strong {
   font-size: 20px;
   line-height: 1.2;
+}
+
+.creator-cockpit-second-cut.blocked {
+  border-color: #ef4444;
+}
+
+.creator-cockpit-second-cut.human-approval {
+  border-color: #7c3aed;
 }
 
 .creator-cockpit-blocked {
