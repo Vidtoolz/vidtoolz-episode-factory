@@ -2758,6 +2758,182 @@ function readRunFile(runDir, filename) {
   return fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
 }
 
+function runArtifactStatus(runDir, filenames = []) {
+  return filenames.map((filename) => {
+    const filePath = path.join(runDir, filename);
+    const exists = fs.existsSync(filePath);
+    return {
+      filename,
+      status: exists ? 'present' : 'missing',
+      exists,
+      modifiedAt: exists ? new Date(fs.statSync(filePath).mtimeMs).toISOString() : '',
+    };
+  });
+}
+
+function extractReferencedMediaPaths(markdown = '') {
+  const text = String(markdown || '');
+  const matches = [
+    ...text.matchAll(/`([^`\n]+\.(?:mp4|mov|mkv|webm|m4v|wav|mp3|m4a|flac|png|jpe?g|svg))`/gi),
+    ...text.matchAll(/\b((?:\/|\.{0,2}\/)?[A-Za-z0-9_./ -]+\.(?:mp4|mov|mkv|webm|m4v|wav|mp3|m4a|flac|png|jpe?g|svg))\b/gi),
+  ];
+  return [...new Set(matches.map((match) => markdownCell(match[1]).replace(/[),.;:]+$/, '')).filter(Boolean))]
+    .filter((item) => !/^https?:\/\//i.test(item));
+}
+
+function groupSecondCutSourcePaths(roughCutResult = {}, sourceText = {}, secondCutInspector = {}) {
+  const seen = new Set();
+  const unique = (items = []) => items
+    .filter(Boolean)
+    .map((item) => String(item).trim())
+    .filter(Boolean)
+    .filter((item, index, array) => array.indexOf(item) === index);
+  const take = (items = []) => unique(items).filter((item) => {
+    if (seen.has(item)) return false;
+    seen.add(item);
+    return true;
+  });
+  const supportMapReferences = extractReferencedMediaPaths(sourceText.supportMap || '');
+  const roughAndNotesReferences = [
+    ...extractReferencedMediaPaths(sourceText.roughReview || ''),
+    ...extractReferencedMediaPaths(sourceText.notes || ''),
+  ];
+  const pickupMedia = (secondCutInspector.pickupMedia || []).map((item) => item.path || item.filename);
+  const candidates = (secondCutInspector.candidates || []).map((item) => item.path || item.filename);
+  const screenRecordingCandidates = unique([
+    ...candidates.filter((item) => /screen-recording-candidates/i.test(String(item || ''))),
+    ...supportMapReferences.filter((item) => /screen-recording-candidates/i.test(item)),
+    ...roughAndNotesReferences.filter((item) => /screen-recording-candidates/i.test(item)),
+  ]);
+  const reviewed = take([roughCutResult.reviewedFilePath]);
+  const pickups = take(pickupMedia);
+  const screenCandidates = take(screenRecordingCandidates);
+  const supportRefs = take(supportMapReferences);
+  const other = take([
+    ...roughAndNotesReferences,
+    ...candidates,
+  ]);
+  return [
+    { key: 'reviewedRoughCut', label: 'reviewed rough cut', source: 'rough-cut watch notes', paths: reviewed.length ? reviewed : ['missing'] },
+    { key: 'pickupMedia', label: 'pickup media', source: 'discovered pickup media / second-cut inspector', paths: pickups.length ? pickups : ['missing'] },
+    { key: 'screenRecordingCandidates', label: 'screen-recording candidates', source: 'referenced candidates', paths: screenCandidates.length ? screenCandidates : ['missing'] },
+    { key: 'supportMapReferences', label: 'support-map references', source: 'second-cut-visual-support-map.md', paths: supportRefs.length ? supportRefs : ['missing'] },
+    { key: 'otherReferencedPaths', label: 'other referenced paths', source: 'rough-cut-review.md / notes.md / candidate discovery', paths: other.length ? other : ['missing'] },
+  ];
+}
+
+function buildSecondCutNextActionPacket(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const roughCutResult = parseRoughCutReviewFile(resolved.runDir);
+  const secondCutInspector = buildSecondCutInspector(payload, options);
+  const pickupRequirements = secondCutInspector.pickupRequirements || buildPickupRequirements(resolved, roughCutResult);
+  const indexStatus = dashboardIndexStatus(resolved);
+  const filenames = [
+    'rough-cut-review.md',
+    'pickup-list.md',
+    'edit-fix-list.md',
+    'second-cut-visual-support-map.md',
+    'notes.md',
+    'package-runs-index.json',
+  ];
+  const runArtifacts = runArtifactStatus(resolved.runDir, filenames.filter((filename) => filename !== 'package-runs-index.json'));
+  const indexPath = path.join(resolved.root, 'package-runs-index.json');
+  const indexArtifact = {
+    filename: 'package-runs-index.json',
+    status: fs.existsSync(indexPath) ? 'present' : 'missing',
+    exists: fs.existsSync(indexPath),
+    modifiedAt: fs.existsSync(indexPath) ? new Date(fs.statSync(indexPath).mtimeMs).toISOString() : '',
+  };
+  const supportMap = readRunFile(resolved.runDir, 'second-cut-visual-support-map.md');
+  const notes = readRunFile(resolved.runDir, 'notes.md');
+  const roughReview = readRunFile(resolved.runDir, 'rough-cut-review.md');
+  const allSourceText = [supportMap, notes, roughReview].join('\n');
+  const groupedSourcePaths = groupSecondCutSourcePaths(roughCutResult, { supportMap, notes, roughReview }, secondCutInspector);
+  const referencedPaths = [
+    roughCutResult.reviewedFilePath,
+    ...extractReferencedMediaPaths(allSourceText),
+    ...((secondCutInspector.pickupMedia || []).map((item) => item.path || item.filename)),
+    ...((secondCutInspector.candidates || []).map((item) => item.path || item.filename)),
+  ].filter(Boolean);
+  const pickupNeeds = [
+    ...((pickupRequirements.pickupsRequested || []).filter(Boolean)),
+    ...(roughCutResult.currentPickupsDetected && !(pickupRequirements.pickupsRequested || []).length
+      ? [`${roughCutResult.currentPickupsDetected} pickup item(s) detected in current rough-cut watch notes.`]
+      : []),
+  ];
+  const editFixes = (pickupRequirements.editFixesRequested || []).filter(Boolean);
+  const blocker = roughCutResult.roughCutReviewStatus === 'NEEDS PICKUPS'
+    ? 'Pickup items are still open; second-cut readiness is not available.'
+    : roughCutResult.roughCutReviewStatus === 'NEEDS EDIT FIXES'
+      ? 'Edit fixes are still open; second-cut readiness is not available.'
+      : roughCutResult.secondCutReady
+        ? 'Rough-cut artifacts report second-cut readiness, but downstream approval still requires human review.'
+        : `Rough-cut review status is ${roughCutResult.roughCutReviewStatus || 'unknown'}, not READY FOR SECOND CUT.`;
+  const nextDecision = secondCutInspector.candidateStatus === 'found_needs_review'
+    ? 'Mikko watches the registered second-cut candidate and records second-cut watch notes.'
+    : roughCutResult.roughCutReviewStatus === 'NEEDS PICKUPS'
+      ? 'First inspect the reviewed rough cut or current Resolve timeline, choose the highest-priority pickup/support insert supported by the artifacts, place it in Resolve, then export or register a second-cut candidate only after the pickup/edit work is represented in the timeline.'
+      : roughCutResult.roughCutReviewStatus === 'NEEDS EDIT FIXES'
+        ? 'Mikko applies the listed edit fixes, then exports or identifies a second-cut candidate for review.'
+        : 'Mikko reviews the rough-cut gate and records the next human decision.';
+  const blockedApprovals = [
+    'second-cut ready',
+    'final review',
+    'publish ready',
+    'upload',
+    'archive',
+    'Hermes brain write',
+    'project-state promotion',
+    'package-runs-index update',
+    'commit',
+    'push',
+  ];
+  const freshnessWarnings = [
+    !indexStatus.updatedForActiveRun ? indexStatus.reason : '',
+    roughCutResult.derivedArtifactStale ? roughCutResult.staleReason : '',
+  ].filter(Boolean);
+  const artifactBackedFacts = [
+    { label: 'Rough-cut status', value: roughCutResult.roughCutReviewStatus || 'NOT STARTED', source: 'rough-cut-review.md' },
+    { label: 'Second-cut ready marker', value: roughCutResult.secondCutReady ? 'yes' : 'no', source: 'rough-cut-review.md' },
+    { label: 'Pickup-list status', value: pickupRequirements.pickupListStatus || 'missing', source: 'pickup-list.md' },
+    { label: 'Edit-fix-list status', value: pickupRequirements.editFixListStatus || 'missing', source: 'edit-fix-list.md' },
+    { label: 'Second-cut candidate status', value: secondCutInspector.candidateStatus || 'unknown', source: 'candidate discovery / second-cut-candidate.md if present' },
+  ];
+  return {
+    ok: true,
+    readOnly: true,
+    externalApisCalled: false,
+    runId: resolved.runId,
+    runPath: `${PACKAGE_RUNS_DIR}/${resolved.runId}`,
+    currentRoughCutStatus: roughCutResult.roughCutReviewStatus || 'NOT STARTED',
+    secondCutReady: Boolean(roughCutResult.secondCutReady && secondCutInspector.secondCutReady),
+    currentBlocker: blocker,
+    exactPickupNeeds: pickupNeeds.length ? pickupNeeds : ['missing'],
+    editFixes: editFixes.length ? editFixes : ['missing or none listed'],
+    supportingArtifacts: [...runArtifacts, indexArtifact],
+    candidateMediaSourcePaths: [...new Set(referencedPaths)].length ? [...new Set(referencedPaths)] : ['missing'],
+    groupedMediaSourcePaths: groupedSourcePaths,
+    artifactBackedFacts,
+    inferredGuidance: {
+      label: 'Dashboard-inferred guidance',
+      source: 'derived from artifact-backed facts; not quoted from a source artifact',
+      nextVisibleAction: nextDecision,
+      checks: [
+        'Confirm evidence-boundary labels and visual-support inserts do not imply proof or final approval.',
+        'Only choose a second-cut marker after watching the exported/registered second-cut candidate.',
+      ],
+    },
+    mikkoMustWatchOrDecide: [
+      nextDecision,
+      'Confirm evidence-boundary labels and visual-support inserts do not imply proof or final approval.',
+      'Only choose a second-cut marker after watching the exported/registered second-cut candidate.',
+    ],
+    mustNotApproveYet: blockedApprovals,
+    sourceFreshnessWarnings: freshnessWarnings.length ? freshnessWarnings : ['No source freshness warning detected.'],
+    sourceFiles: filenames,
+  };
+}
+
 function buildPickupRequirements(resolved, roughCutResult) {
   const pickupText = readRunFile(resolved.runDir, 'pickup-list.md');
   const editText = readRunFile(resolved.runDir, 'edit-fix-list.md');
@@ -3132,6 +3308,7 @@ function buildRoughCutStatus(payload = {}, options = {}) {
   const secondCutCandidatePreflight = buildSecondCutCandidatePreflight(payload, options);
   const finalReviewConsole = buildFinalReviewConsole(payload, options);
   const exportDeliveryConsole = buildExportDeliveryConsole(payload, options);
+  const secondCutNextActionPacket = buildSecondCutNextActionPacket(payload, options);
   const staleDerivedArtifacts = roughCutResult.derivedArtifactStale ? ['rough-cut-review.md'] : [];
   const exactNextSafeAction =
     doctor.nextSafeAction ||
@@ -3166,6 +3343,7 @@ function buildRoughCutStatus(payload = {}, options = {}) {
     gateTimeline: buildGateTimeline(doctor, roughCutResult),
     productionTimelineCockpit: buildProductionTimelineCockpit(payload, options, productionGps),
     productionGps,
+    secondCutNextActionPacket,
     secondCutInspector,
     secondCutCandidatePreflight,
     finalReviewConsole,
@@ -4527,6 +4705,7 @@ module.exports = {
   buildGateTimeline,
   buildPickupListMarkdown,
   buildRoughCutStatus,
+  buildSecondCutNextActionPacket,
   buildNextSafeAction: nextSafeActionScript.buildNextSafeAction,
   buildRoughCutWatchNotesMarkdown,
   buildOpenAIImageRequest,

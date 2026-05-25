@@ -1608,6 +1608,79 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     </section>`;
   }
 
+  function renderSecondCutNextActionPacket(packet = {}) {
+    const facts = Array.isArray(packet.artifactBackedFacts) ? packet.artifactBackedFacts : [];
+    const artifacts = Array.isArray(packet.supportingArtifacts) ? packet.supportingArtifacts : [];
+    const groupedPaths = Array.isArray(packet.groupedMediaSourcePaths) ? packet.groupedMediaSourcePaths : [];
+    const sourceFreshness = Array.isArray(packet.sourceFreshnessWarnings) ? packet.sourceFreshnessWarnings : [];
+    const guidance = packet.inferredGuidance || {};
+    const guidanceChecks = Array.isArray(guidance.checks) ? guidance.checks : [];
+    const hasWarning = sourceFreshness.some((item) => !/no source freshness warning/i.test(String(item || "")));
+    const list = (items, fallback) => `<ul>${(Array.isArray(items) && items.length ? items : [fallback]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+    const compactArtifactList = artifacts.map((item) => `${item.filename || "unknown"}: ${item.status || (item.exists ? "present" : "missing")}`);
+    return `<section class="second-cut-next-action-packet" aria-label="Second-cut next action packet">
+      <div class="mikko-console-header">
+        <div>
+          <p class="eyebrow">Second Cut</p>
+          <h3>Next Action Packet</h3>
+        </div>
+        ${renderStatusBadge(packet.currentRoughCutStatus || "missing")}
+      </div>
+      <div class="human-review-required">
+        <strong>${packet.secondCutReady ? "Human review still required" : "Not second-cut ready"}</strong>
+        <p>${escapeHtml(packet.currentBlocker || "Current blocker is missing; inspect source artifacts before acting.")}</p>
+      </div>
+      <div class="artifact-trail">
+        <h4>Artifact-backed facts</h4>
+        <p class="muted">Facts below come from existing package-run artifacts or read-only discovery.</p>
+        <table>
+          <thead><tr><th>Fact</th><th>Value</th><th>Source</th></tr></thead>
+          <tbody>
+            ${facts.length ? facts.map((item) => `<tr>
+              <td>${escapeHtml(item.label || "unknown")}</td>
+              <td>${escapeHtml(item.value || "missing")}</td>
+              <td>${escapeHtml(item.source || "missing")}</td>
+            </tr>`).join("") : `<tr><td colspan="3">missing</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+      <div class="gps-split">
+        <div><h4>Exact pickup needs</h4>${list(packet.exactPickupNeeds, "missing")}</div>
+        <div><h4>Edit fixes</h4>${list(packet.editFixes, "missing or none listed")}</div>
+      </div>
+      <div class="human-review-required">
+        <h4>${escapeHtml(guidance.label || "Dashboard-inferred guidance")}</h4>
+        <p class="muted">${escapeHtml(guidance.source || "Derived by the dashboard; not quoted from a source artifact.")}</p>
+        <p><strong>Next visible action:</strong> ${escapeHtml(guidance.nextVisibleAction || "Review the active rough-cut/second-cut gate manually.")}</p>
+        ${list(guidanceChecks, "Keep approval blocked until Mikko reviews the second-cut candidate.")}
+      </div>
+      <div class="artifact-trail">
+        <h4>Grouped media/source paths</h4>
+        <p class="muted">Grouped to avoid treating every discovered path as the same kind of candidate.</p>
+        <table>
+          <thead><tr><th>Group</th><th>Source</th><th>Paths</th></tr></thead>
+          <tbody>
+            ${groupedPaths.length ? groupedPaths.map((group) => `<tr>
+              <td>${escapeHtml(group.label || "other referenced paths")}</td>
+              <td>${escapeHtml(group.source || "missing")}</td>
+              <td>${list(group.paths, "missing")}</td>
+            </tr>`).join("") : `<tr><td colspan="3">missing</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+      <div class="blocked-actions-panel">
+        <h4>Blocked approvals / forbidden actions</h4>
+        ${list(packet.mustNotApproveYet, "second-cut ready, final review, publish, upload, archive, state promotion")}
+      </div>
+      <div><h4>Source artifact status</h4>${list(compactArtifactList, "missing")}</div>
+      <div class="${hasWarning ? "stale-derived-warning" : "human-review-required"}">
+        <strong>Source freshness</strong>
+        ${list(sourceFreshness, "No source freshness warning detected.")}
+      </div>
+      <p class="muted">Read-only packet. It does not write package-run files, update package-runs-index.json, add approval markers, move media, commit, push, or update Hermes brain.</p>
+    </section>`;
+  }
+
   function renderSecondCutInspector(inspector = {}) {
     const candidates = Array.isArray(inspector.candidates) ? inspector.candidates : [];
     const pickupMedia = Array.isArray(inspector.pickupMedia) ? inspector.pickupMedia : [];
@@ -2013,6 +2086,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     return `<div class="mikko-console-run" data-rough-cut-console data-run-id="${escapeHtml(runId)}">
       ${status.productionTimelineCockpit ? renderProductionTimelineCockpit(status.productionTimelineCockpit) : ""}
       ${status.productionGps ? renderProductionGps(status.productionGps) : ""}
+      ${status.secondCutNextActionPacket ? renderSecondCutNextActionPacket(status.secondCutNextActionPacket) : ""}
       ${status.secondCutInspector ? renderSecondCutInspector(status.secondCutInspector) : ""}
       ${status.secondCutCandidatePreflight ? renderSecondCutRegistrationPreflight(status.secondCutCandidatePreflight) : ""}
       ${renderSecondCutCandidateRegistration(status)}
@@ -4237,6 +4311,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     renderGateTimeline,
     renderProductionTimelineCockpit,
     renderProductionGps,
+    renderSecondCutNextActionPacket,
     renderSecondCutInspector,
     renderSecondCutRegistrationPreflight,
     renderSecondCutCandidateRegistration,

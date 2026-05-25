@@ -11793,6 +11793,115 @@ test("production GPS builders are read-only and do not touch index or state file
   assert.equal(fs.statSync(fixture.statePath).mtimeMs, beforeStateMtime);
 });
 
+test("second-cut next action packet reads active run artifacts and surfaces pickups", () => {
+  const fixture = createProductionGpsFixture({
+    files: {
+      "second-cut-visual-support-map.md": "# Second-Cut Visual Support Map\n\nUse `aroll-01-intro-problem.MOV` and `04-proof-plan-checklist.png` as support only.\n",
+      "notes.md": "# Package Run Notes\n\nResolve timeline has `04-proof-plan-checklist` and `06-before-after-package-repair` inserts available.\n",
+    },
+  });
+
+  const packet = packageEngineServer.buildSecondCutNextActionPacket({ runId: fixture.runId }, { root: fixture.tempRoot });
+  const html = packageRunsDashboard.renderSecondCutNextActionPacket(packet);
+
+  assert.equal(packet.readOnly, true);
+  assert.equal(packet.externalApisCalled, false);
+  assert.equal(packet.currentRoughCutStatus, "NEEDS PICKUPS");
+  assert.equal(packet.secondCutReady, false);
+  assert.match(packet.currentBlocker, /Pickup items are still open/);
+  assert.equal(packet.exactPickupNeeds.includes("Maybe add closeups and AI-generated B-roll."), true);
+  assert.equal(packet.candidateMediaSourcePaths.some((item) => /aroll-01-intro-problem\.MOV/.test(item)), true);
+  assert.equal(packet.groupedMediaSourcePaths.some((group) => group.key === "supportMapReferences" && group.paths.some((item) => /aroll-01-intro-problem\.MOV/.test(item))), true);
+  assert.equal(packet.artifactBackedFacts.some((fact) => fact.label === "Rough-cut status" && fact.source === "rough-cut-review.md"), true);
+  assert.match(packet.inferredGuidance.source, /not quoted from a source artifact/);
+  assert.match(packet.inferredGuidance.nextVisibleAction, /First inspect the reviewed rough cut or current Resolve timeline/);
+  assert.match(packet.inferredGuidance.nextVisibleAction, /place it in Resolve/);
+  assert.match(packet.inferredGuidance.nextVisibleAction, /only after the pickup\/edit work is represented in the timeline/);
+  assert.equal(packet.supportingArtifacts.some((item) => item.filename === "rough-cut-review.md" && item.status === "present"), true);
+  assert.match(packet.mustNotApproveYet.join("\n"), /second-cut ready/);
+  assert.match(packet.mustNotApproveYet.join("\n"), /publish ready/);
+  assert.match(html, /Next Action Packet/);
+  assert.match(html, /Not second-cut ready/);
+  assert.match(html, /NEEDS PICKUPS/);
+  assert.match(html, /Maybe add closeups and AI-generated B-roll/);
+  assert.match(html, /Artifact-backed facts/);
+  assert.match(html, /Dashboard-inferred guidance/);
+  assert.match(html, /not quoted from a source artifact/);
+  assert.match(html, /Grouped media\/source paths/);
+  assert.match(html, /support-map references/);
+  assert.match(html, /reviewed rough cut/);
+  assert.match(html, /rough-cut-review\.md/);
+  assert.match(html, /second-cut-visual-support-map\.md/);
+  assert.match(html, /Blocked approvals \/ forbidden actions/);
+  assert.match(html, /package-runs-index\.json is older/);
+  assert.doesNotMatch(html, /Candidate media \/ source paths/);
+  assert.doesNotMatch(html, /data-save-second-cut|data-apply|data-approve|data-publish/);
+});
+
+test("second-cut next action packet handles missing artifacts safely", () => {
+  const fixture = createProductionGpsFixture();
+  for (const filename of ["pickup-list.md", "edit-fix-list.md", "second-cut-visual-support-map.md", "notes.md"]) {
+    const filePath = path.join(fixture.runDir, filename);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  }
+
+  const packet = packageEngineServer.buildSecondCutNextActionPacket({ runId: fixture.runId }, { root: fixture.tempRoot });
+  const html = packageRunsDashboard.renderSecondCutNextActionPacket(packet);
+  const artifactStatus = Object.fromEntries(packet.supportingArtifacts.map((item) => [item.filename, item.status]));
+
+  assert.equal(artifactStatus["pickup-list.md"], "missing");
+  assert.equal(artifactStatus["edit-fix-list.md"], "missing");
+  assert.equal(artifactStatus["second-cut-visual-support-map.md"], "missing");
+  assert.equal(artifactStatus["notes.md"], "missing");
+  assert.match(packet.exactPickupNeeds[0], /pickup item\(s\) detected in current rough-cut watch notes/);
+  assert.equal(packet.groupedMediaSourcePaths.some((group) => group.paths.includes("missing")), true);
+  assert.match(html, /pickup-list\.md/);
+  assert.match(html, /missing/);
+  assert.match(html, /Artifact-backed facts/);
+  assert.match(html, /Dashboard-inferred guidance/);
+  assert.match(html, /Blocked approvals \/ forbidden actions/);
+});
+
+test("second-cut next action packet is included in rough-cut dashboard status and does not mutate durable files", () => {
+  const fixture = createProductionGpsFixture({
+    files: {
+      "second-cut-visual-support-map.md": "# Second-Cut Visual Support Map\n\nCandidate source: `aroll-01-intro-problem.MOV`.\n",
+      "notes.md": "# Notes\n\nMikko should watch the Resolve spine cut.\n",
+    },
+  });
+  const trackedFiles = [
+    fixture.indexPath,
+    fixture.statePath,
+    path.join(fixture.runDir, "rough-cut-review.md"),
+    path.join(fixture.runDir, "pickup-list.md"),
+    path.join(fixture.runDir, "edit-fix-list.md"),
+    path.join(fixture.runDir, "second-cut-visual-support-map.md"),
+    path.join(fixture.runDir, "notes.md"),
+  ];
+  const before = Object.fromEntries(trackedFiles.map((filePath) => [filePath, {
+    text: fs.readFileSync(filePath, "utf8"),
+    mtime: fs.statSync(filePath).mtimeMs,
+  }]));
+  const repoRoot = path.resolve(__dirname, "..");
+  const gitHead = childProcess.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" });
+  const brainPath = "/home/vidtoolz/hermes-organiser/brain/index.json";
+  const brainBefore = fs.existsSync(brainPath) ? fs.statSync(brainPath).mtimeMs : null;
+
+  const status = packageEngineServer.buildRoughCutStatus({ runId: fixture.runId }, { root: fixture.tempRoot });
+  const html = packageRunsDashboard.renderMikkoInputConsole(status);
+
+  assert.equal(Boolean(status.secondCutNextActionPacket), true);
+  assert.match(html, /Second-cut next action packet/i);
+  assert.match(html, /Dashboard-inferred guidance/);
+  assert.match(html, /Next visible action/);
+  for (const filePath of trackedFiles) {
+    assert.equal(fs.readFileSync(filePath, "utf8"), before[filePath].text);
+    assert.equal(fs.statSync(filePath).mtimeMs, before[filePath].mtime);
+  }
+  assert.equal(childProcess.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }), gitHead);
+  if (brainBefore !== null) assert.equal(fs.statSync(brainPath).mtimeMs, brainBefore);
+});
+
 function createSecondCutInspectorFixture(overrides = {}) {
   const fixture = createProductionGpsFixture(overrides);
   const videoRoot = path.join(fixture.tempRoot, "Videos");
