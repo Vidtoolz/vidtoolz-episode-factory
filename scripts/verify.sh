@@ -13,6 +13,8 @@ node --check package-engine.js
 node --check package-engine-server.js
 node --check package-runs-dashboard.js
 node --check trailer-cue-generator.js
+node --check music-cue-generator.js
+node --check supervised-capture.js
 node --check scripts/episode-factory.js
 node --check scripts/package-engine-new-run.js
 node --check scripts/package-engine-new-outline.js
@@ -52,3 +54,5 @@ node --check scripts/package-runs-index.js
 node --check scripts/package-runs-dashboard-launch.js
 sh -n scripts/open-package-runs-dashboard.sh
 node --check scripts/trailer-cue-new.js
+node --check scripts/music-cue-new.js
+node --check scripts/supervised-capture.js
