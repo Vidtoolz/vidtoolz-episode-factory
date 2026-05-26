@@ -54,6 +54,8 @@ const musicCueGenerator = require("../music-cue-generator.js");
 const musicCueScript = require("../scripts/music-cue-new.js");
 const supervisedCapture = require("../supervised-capture.js");
 const supervisedCaptureScript = require("../scripts/supervised-capture.js");
+const earthStudioJobPlanner = require("../earth-studio-job-planner.js");
+const earthStudioJobScript = require("../scripts/earth-studio-job-plan.js");
 
 const tests = [];
 
@@ -16347,6 +16349,152 @@ test("supervised capture cli help documents supervised safety", () => {
   assert.equal(output.result, 0);
   assert.match(output.stdout.join("\n"), /start --confirm/);
   assert.match(output.stdout.join("\n"), /does not approve footage/);
+});
+
+const earthStudioExampleDescription =
+  "Hover over Midtown Manhattan for 3 seconds, then fly to Downtown Boston in 5 seconds, then hover over Downtown Boston for 5 seconds.";
+
+test("earth studio planner parses NYC to Boston example into three segments", () => {
+  const plan = earthStudioJobPlanner.buildShotPlan("VT_Boston_Test_01", earthStudioExampleDescription, "2026-05-26T00:00:00.000Z");
+
+  assert.equal(plan.segments.length, 3);
+  assert.equal(plan.segments[0].action, "hover");
+  assert.equal(plan.segments[1].action, "fly_to");
+  assert.equal(plan.segments[2].action, "hover");
+  assert.equal(plan.segments[0].location_name, "Midtown Manhattan");
+  assert.equal(plan.segments[1].location_name, "Downtown Boston");
+  assert.equal(plan.segments[2].location_name, "Downtown Boston");
+  assert.equal(plan.unresolved_items.length, 0);
+});
+
+test("earth studio planner duration parser supports seconds sec and s", () => {
+  assert.equal(earthStudioJobPlanner.extractDurationSeconds("hover for 3 seconds"), 3);
+  assert.equal(earthStudioJobPlanner.extractDurationSeconds("hover for 5 sec"), 5);
+  assert.equal(earthStudioJobPlanner.extractDurationSeconds("hover for 3s"), 3);
+});
+
+test("earth studio planner frame boundaries use inclusive exclusive convention", () => {
+  const plan = earthStudioJobPlanner.buildShotPlan("VT_Boston_Test_01", earthStudioExampleDescription, "2026-05-26T00:00:00.000Z");
+
+  assert.equal(plan.frame_convention.start_frame, "inclusive");
+  assert.equal(plan.frame_convention.end_frame, "exclusive");
+  assert.equal(plan.total_duration_seconds, 13);
+  assert.equal(plan.total_frames, 390);
+  assert.deepEqual(
+    plan.segments.map((segment) => [segment.start_seconds, segment.end_seconds, segment.start_frame, segment.end_frame]),
+    [
+      [0, 3, 0, 90],
+      [3, 8, 90, 240],
+      [8, 13, 240, 390],
+    ]
+  );
+});
+
+test("earth studio planner Downtown Boston fixture uses corrected coordinates", () => {
+  const downtown = earthStudioJobPlanner.resolveLocation("Downtown Boston");
+
+  assert.equal(downtown.latitude, 42.3555);
+  assert.equal(downtown.longitude, -71.0565);
+});
+
+test("earth studio planner KML uses longitude latitude altitude order", () => {
+  const artifacts = earthStudioJobPlanner.buildArtifacts("VT_Boston_Test_01", earthStudioExampleDescription, "2026-05-26T00:00:00.000Z");
+  const kml = artifacts["route.kml"];
+
+  assert.match(kml, /-71\.0565,42\.3555,0/);
+  assert.doesNotMatch(kml, /-1\.0565,42\.3555,0/);
+  assert.match(kml, /reference asset only/);
+});
+
+test("earth studio planner unknown location becomes manual review", () => {
+  const plan = earthStudioJobPlanner.buildShotPlan("Unknown_Test", "Hover over Imaginary City for 3 seconds.", "2026-05-26T00:00:00.000Z");
+
+  assert.equal(plan.segments.length, 1);
+  assert.equal(plan.segments[0].resolution_status, "manual_review");
+  assert.equal(plan.segments[0].location, null);
+  assert.match(plan.warnings.join("\n"), /unknown location fixture: Imaginary City/);
+});
+
+test("earth studio planner orbit becomes manual review in v1", () => {
+  const plan = earthStudioJobPlanner.buildShotPlan("Orbit_Test", "Orbit Downtown Boston for 3 seconds.", "2026-05-26T00:00:00.000Z");
+
+  assert.equal(plan.segments[0].action, "manual_review");
+  assert.equal(plan.segments[0].requested_action, "orbit");
+  assert.equal(plan.segments[0].resolution_status, "manual_review");
+  assert.match(plan.warnings.join("\n"), /orbit is not supported/);
+});
+
+test("earth studio planner dry run writes nothing", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "earth-studio-dry-run-"));
+  const output = captureConsole(() =>
+    earthStudioJobScript.main([
+      "--job",
+      "VT_Boston_Test_01",
+      "--description",
+      earthStudioExampleDescription,
+      "--out",
+      tempDir,
+      "--dry-run",
+    ])
+  );
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /No files written/);
+  assert.equal(fs.existsSync(path.join(tempDir, "VT_Boston_Test_01")), false);
+});
+
+test("earth studio planner generate mode writes expected files in temporary folder", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "earth-studio-write-"));
+  const output = captureConsole(() =>
+    earthStudioJobScript.main([
+      "--job",
+      "VT_Boston_Test_01",
+      "--description",
+      earthStudioExampleDescription,
+      "--out",
+      tempDir,
+      "--write",
+    ])
+  );
+  const jobDir = path.join(tempDir, "VT_Boston_Test_01");
+  const plan = readJsonFile(path.join(jobDir, "shot-plan.json"));
+
+  assert.equal(output.result, 0);
+  earthStudioJobPlanner.expectedFiles().forEach((filename) => {
+    assert.equal(fs.existsSync(path.join(jobDir, filename)), true);
+  });
+  assert.equal(plan.total_frames, 390);
+  assert.deepEqual(earthStudioJobPlanner.validateShotPlanPayload(plan), []);
+});
+
+test("earth studio planner verify mode catches missing artifacts", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "earth-studio-missing-"));
+  earthStudioJobScript.main([
+    "--job",
+    "VT_Boston_Test_01",
+    "--description",
+    earthStudioExampleDescription,
+    "--out",
+    tempDir,
+    "--write",
+  ]);
+  fs.unlinkSync(path.join(tempDir, "VT_Boston_Test_01", "route.kml"));
+
+  const output = captureConsole(() =>
+    earthStudioJobScript.main(["--job", "VT_Boston_Test_01", "--out", tempDir, "--verify"])
+  );
+
+  assert.equal(output.result, 1);
+  assert.match(output.stderr.join("\n"), /route\.kml/);
+});
+
+test("earth studio planner shot-plan markdown includes segment table and KML limitation", () => {
+  const artifacts = earthStudioJobPlanner.buildArtifacts("VT_Boston_Test_01", earthStudioExampleDescription, "2026-05-26T00:00:00.000Z");
+  const markdown = artifacts["shot-plan.md"];
+
+  assert.match(markdown, /## Segment Table/);
+  assert.match(markdown, /Manual Earth Studio Build Summary/);
+  assert.match(markdown, /KML import does not create a finished Earth Studio camera animation/);
 });
 
 test("proposal loop runner help documents safe modes and required options", () => {
