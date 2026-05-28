@@ -43,6 +43,7 @@ const packageRunsIndexScript = require("../scripts/package-runs-index.js");
 const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashboard-launch.js");
 const scriptImageAssetsDryRunScript = require("../scripts/script-image-assets-dry-run.js");
 const scriptImageAssetsReviewPageScript = require("../scripts/script-image-assets-review-page.js");
+const topicScoutScript = require("../scripts/topic-scout.js");
 const packageEngineServer = require("../package-engine-server.js");
 const packageRunsDashboard = require("../package-runs-dashboard.js");
 const episodeFactoryCli = require("../scripts/episode-factory.js");
@@ -17384,6 +17385,181 @@ test("script image assets review page writes standalone html without touching in
   assert.match(fs.readFileSync(outputPath, "utf8"), /Standalone Review/);
   assert.equal(fs.readFileSync(path.join(inputFolder, "generation-manifest.json"), "utf8"), beforeManifest);
   assert.equal(fs.existsSync(path.join(inputFolder, "block-001-prompt-01.png")), false);
+});
+
+test("topic scout default CLI makes no network calls", async () => {
+  const result = await topicScoutScript.run({
+    output: false,
+    generatedAt: "2026-05-28T04:00:00.000Z",
+  });
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.report.mode, topicScoutScript.DEMO_LABEL);
+  assert.equal(result.report.networkCallsMade, "none");
+  assert.equal(result.report.supportedCandidateCount, 10);
+});
+
+test("topic scout fixture data produces exactly 10 candidates when enough evidence exists", () => {
+  const report = topicScoutScript.synthesizeReport(
+    {
+      youtube: topicScoutScript.DEFAULT_YOUTUBE_FIXTURE,
+      news: topicScoutScript.DEFAULT_NEWS_FIXTURE,
+    },
+    { generatedAt: "2026-05-28T04:00:00.000Z" }
+  );
+
+  assert.equal(report.status, "complete");
+  assert.equal(report.candidates.length, 10);
+  assert.equal(report.supportedCandidateCount, 10);
+  assert.match(report.mode, /DEMO \/ FIXTURE DATA/);
+});
+
+test("topic scout insufficient evidence report does not invent candidates", () => {
+  const report = topicScoutScript.synthesizeReport(
+    {
+      youtube: {
+        mode: "fixture",
+        videos: topicScoutScript.DEFAULT_YOUTUBE_FIXTURE.videos.slice(0, 4),
+      },
+      news: topicScoutScript.DEFAULT_NEWS_FIXTURE,
+    },
+    { generatedAt: "2026-05-28T04:00:00.000Z" }
+  );
+
+  assert.equal(report.status, "insufficient-evidence");
+  assert.equal(report.candidates.length, 0);
+  assert.equal(report.supportedCandidateCount < 10, true);
+  assert.match(report.missingEvidence.join(" "), /Need at least 10/);
+});
+
+test("topic scout candidate schema includes all required fields", () => {
+  const report = topicScoutScript.synthesizeReport({}, { generatedAt: "2026-05-28T04:00:00.000Z" });
+  const candidate = report.candidates[0];
+
+  [
+    "topicTitle",
+    "briefDescription",
+    "youtubeEvidenceSummary",
+    "exampleSuccessfulVideos",
+    "currentGlobalNewsHook",
+    "logicalSynthesis",
+    "vidtoolzSpecificAngle",
+    "recommendedFormat",
+    "trustRisk",
+    "productionDifficulty",
+    "suggestedTitle",
+    "thumbnailText",
+    "requiredVisuals",
+    "whatMustNotBeImplied",
+    "scoreBreakdown",
+    "finalWeightedScore",
+    "growthWeightedScore",
+    "evidenceAndInference",
+  ].forEach((field) => assert.ok(Object.prototype.hasOwnProperty.call(candidate, field), field));
+  assert.equal(candidate.exampleSuccessfulVideos.length >= 2, true);
+  assert.ok(candidate.evidenceAndInference.observedYoutubeEvidence);
+  assert.ok(candidate.evidenceAndInference.synthesisInference);
+});
+
+test("topic scout scoring weights trust above view potential", () => {
+  const highTrustLowView = { trust: 100, authority: 80, usefulness: 80, feasibility: 80, view: 0 };
+  const lowTrustHighView = { trust: 0, authority: 80, usefulness: 80, feasibility: 80, view: 100 };
+
+  assert.equal(
+    topicScoutScript.weightedScore(highTrustLowView, {
+      trust: 0.3,
+      authority: 0.25,
+      usefulness: 0.2,
+      feasibility: 0.15,
+      view: 0.1,
+    }) >
+      topicScoutScript.weightedScore(lowTrustHighView, {
+        trust: 0.3,
+        authority: 0.25,
+        usefulness: 0.2,
+        feasibility: 0.15,
+        view: 0.1,
+      }),
+    true
+  );
+});
+
+test("topic scout growth-weighted score can differ from default score", () => {
+  const report = topicScoutScript.synthesizeReport({}, { generatedAt: "2026-05-28T04:00:00.000Z" });
+  const candidate = report.candidates.find((item) => item.finalWeightedScore !== item.growthWeightedScore);
+
+  assert.ok(candidate);
+});
+
+test("topic scout quota guard blocks excessive planned YouTube calls", () => {
+  const result = topicScoutScript.validateLiveYoutubeOptions(
+    {
+      liveYoutube: true,
+      maxSearchCalls: 9,
+      quotaBudget: 2000,
+    },
+    { YOUTUBE_API_KEY: "test-key" }
+  );
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /Quota guard blocked 9 search\.list calls/);
+});
+
+test("topic scout live youtube requires YOUTUBE_API_KEY", async () => {
+  const result = await topicScoutScript.run(
+    {
+      liveYoutube: true,
+      output: false,
+    },
+    {}
+  );
+
+  assert.equal(result.exitCode, 1);
+  assert.match(result.error, /requires both --live-youtube and YOUTUBE_API_KEY/);
+});
+
+test("topic scout evidence and inference fields are separate", () => {
+  const report = topicScoutScript.synthesizeReport({}, { generatedAt: "2026-05-28T04:00:00.000Z" });
+  const fields = report.candidates[0].evidenceAndInference;
+
+  assert.notEqual(fields.observedYoutubeEvidence.join("\n"), fields.synthesisInference);
+  assert.match(fields.currentNewsHookEvidence, /Fixture summary/);
+  assert.match(fields.trustWarning, /claim|labels|proof/i);
+});
+
+test("topic scout deceptive or forced topics are rejected or trust-risk flagged", () => {
+  const report = topicScoutScript.synthesizeReport({}, { generatedAt: "2026-05-28T04:00:00.000Z" });
+
+  assert.equal(report.candidates.some((candidate) => /Top 10 AI video tools/i.test(candidate.topicTitle)), false);
+  assert.equal(report.rejectedCandidates.some((candidate) => /Top 10 AI video tools/i.test(candidate.topicTitle)), true);
+  assert.match(JSON.stringify(report.rejectedCandidates), /generic top-10-tool topic/);
+});
+
+test("topic scout markdown and JSON rendering are stable", () => {
+  const report = topicScoutScript.synthesizeReport({}, { generatedAt: "2026-05-28T04:00:00.000Z" });
+  const markdown = topicScoutScript.renderMarkdown(report);
+  const json = JSON.stringify(report, null, 2);
+
+  assert.match(markdown, /# VIDTOOLZ Topic Scout \+ News Synthesizer/);
+  assert.match(markdown, /DEMO \/ FIXTURE DATA/);
+  assert.match(markdown, /Observed YouTube evidence/);
+  assert.match(markdown, /Synthesis\/inference/);
+  assert.match(json, /"candidates": \[/);
+});
+
+test("topic scout writes reports only under reports topic scout", async () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "topic-scout-"));
+  const reportDir = path.join("reports", "topic-scout", path.basename(tempRoot));
+  const result = await topicScoutScript.run({
+    output: true,
+    reportDir,
+    generatedAt: "2026-05-28T04:00:00.000Z",
+  });
+
+  assert.equal(result.exitCode, 0);
+  assert.match(result.written.jsonPath, /reports\/topic-scout/);
+  assert.match(result.written.markdownPath, /reports\/topic-scout/);
+  fs.rmSync(path.dirname(result.written.jsonPath), { recursive: true, force: true });
 });
 
 async function runTests() {
