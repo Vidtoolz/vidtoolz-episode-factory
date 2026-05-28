@@ -24,6 +24,38 @@ Reports are written only under:
 reports/topic-scout/
 ```
 
+## Manual 1of10 Input Mode
+
+Use this mode for CSV, JSON, or Markdown copied manually from 1of10 outlier/trending pages:
+
+```sh
+node scripts/topic-scout.js --oneof10-input path/to/manual-oneof10.csv
+```
+
+Accepted local file types:
+
+- `.csv`
+- `.json`
+- `.md` Markdown table
+
+Useful columns:
+
+- `title`
+- `channel`
+- `views`
+- `age` or `date`
+- `url`
+- `1of10 score`, `outlier score`, or `multiplier`
+- `topic`, `keyword`, or `niche`
+
+Manual mode makes no network calls and labels the report:
+
+```text
+MANUAL 1OF10 INPUT — USER-COPIED DATA, NOT LIVE YOUTUBE DATA
+```
+
+The scout treats copied 1of10 rows as observed performance evidence only. It does not scrape 1of10, verify the copied data, or imply VIDTOOLZ will reproduce the outlier result.
+
 ## Live YouTube Mode
 
 Live YouTube mode is guarded and opt-in:

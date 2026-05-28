@@ -44,6 +44,7 @@ node --check scripts/package-run-doctor.js
 node --check scripts/package-run-next-action.js
 node --check scripts/package-run-next-safe-action.js
 node --check scripts/package-run-next-action-authority.js
+node --check scripts/package-run-workflow-map.js
 node --check scripts/package-run-active-state-audit.js
 node --check scripts/package-run-state-proposal.js
 node --check scripts/next-task-classifier.js

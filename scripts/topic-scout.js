@@ -10,6 +10,7 @@ const DEFAULT_MAX_SEARCH_CALLS = 6;
 const HARD_SEARCH_CALL_LIMIT = 8;
 const REPORT_DIR = path.join("reports", "topic-scout");
 const DEMO_LABEL = "DEMO / FIXTURE DATA — NOT LIVE YOUTUBE DATA";
+const MANUAL_ONEOF10_LABEL = "MANUAL 1OF10 INPUT — USER-COPIED DATA, NOT LIVE YOUTUBE DATA";
 
 const FORMATS = new Set(["Production Note", "Current Signal → Production Rule", "Micro Workflow Teardown"]);
 
@@ -278,6 +279,7 @@ function parseArgs(argv = []) {
   const result = {
     liveYoutube: false,
     liveRss: false,
+    oneOfTenInput: "",
     youtubeFixture: "",
     newsFixture: "",
     output: true,
@@ -296,6 +298,7 @@ function parseArgs(argv = []) {
     const item = args.shift();
     if (item === "--live-youtube") result.liveYoutube = true;
     else if (item === "--live-rss") result.liveRss = true;
+    else if (item === "--oneof10-input" || item === "--manual-input") result.oneOfTenInput = args.shift() || "";
     else if (item === "--youtube-fixture") result.youtubeFixture = args.shift() || "";
     else if (item === "--news-fixture") result.newsFixture = args.shift() || "";
     else if (item === "--no-output" || item === "--dry-run") result.output = false;
@@ -314,10 +317,12 @@ function parseArgs(argv = []) {
 function usage() {
   return `Usage:
   node scripts/topic-scout.js
+  node scripts/topic-scout.js --oneof10-input path/to/oneof10.csv
   node scripts/topic-scout.js --youtube-fixture path/to/youtube.json --news-fixture path/to/news.json
   YOUTUBE_API_KEY=... node scripts/topic-scout.js --live-youtube
 
 Default mode is offline fixture mode and makes no network calls.
+Manual 1of10 mode accepts local JSON, CSV, or Markdown table files copied by the user.
 Live YouTube mode requires --live-youtube and YOUTUBE_API_KEY.
 Reports are written only under reports/topic-scout/ unless --report-dir is supplied.`;
 }
@@ -331,6 +336,144 @@ function loadInputData(options = {}) {
     youtube: options.youtubeFixture ? readJsonFile(options.youtubeFixture) : DEFAULT_YOUTUBE_FIXTURE,
     news: options.newsFixture ? readJsonFile(options.newsFixture) : DEFAULT_NEWS_FIXTURE,
   };
+}
+
+function parseCsvLine(line = "") {
+  const cells = [];
+  let current = "";
+  let quoted = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const next = line[index + 1];
+    if (char === '"' && quoted && next === '"') {
+      current += '"';
+      index += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === "," && !quoted) {
+      cells.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  cells.push(current.trim());
+  return cells;
+}
+
+function parseCsvTable(text = "") {
+  const rows = String(text)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map(parseCsvLine);
+  if (rows.length < 2) return [];
+  const headers = rows[0].map((header) => normalizeKey(header));
+  return rows.slice(1).map((cells) =>
+    headers.reduce((row, header, index) => {
+      row[header] = cells[index] || "";
+      return row;
+    }, {})
+  );
+}
+
+function parseMarkdownTable(text = "") {
+  const lines = String(text)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("|") && line.endsWith("|"));
+  const tableStart = lines.findIndex((line, index) => index + 1 < lines.length && /^\|\s*:?-{2,}:?\s*(?:\|\s*:?-{2,}:?\s*)+\|?$/.test(lines[index + 1]));
+  if (tableStart === -1) return [];
+  const headers = lines[tableStart]
+    .slice(1, -1)
+    .split("|")
+    .map((header) => normalizeKey(header));
+  return lines.slice(tableStart + 2).map((line) => {
+    const cells = line
+      .slice(1, -1)
+      .split("|")
+      .map((cell) => cell.trim());
+    return headers.reduce((row, header, index) => {
+      row[header] = cells[index] || "";
+      return row;
+    }, {});
+  });
+}
+
+function normalizeKey(value = "") {
+  return cleanString(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
+function firstValue(source = {}, keys = []) {
+  for (const key of keys) {
+    const normalized = normalizeKey(key);
+    if (source[normalized] !== undefined && source[normalized] !== null && String(source[normalized]).trim()) {
+      return String(source[normalized]).trim();
+    }
+  }
+  return "";
+}
+
+function parseViews(value = "") {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.round(value);
+  const text = cleanString(value).toLowerCase().replace(/,/g, "");
+  const match = text.match(/([0-9]+(?:\.[0-9]+)?)\s*([kmb])?/);
+  if (!match) return 0;
+  const base = Number(match[1]);
+  const suffix = match[2];
+  if (!Number.isFinite(base)) return 0;
+  if (suffix === "b") return Math.round(base * 1000000000);
+  if (suffix === "m") return Math.round(base * 1000000);
+  if (suffix === "k") return Math.round(base * 1000);
+  return Math.round(base);
+}
+
+function parseOneOfTenInputText(text = "", filePath = "") {
+  const ext = path.extname(filePath).toLowerCase();
+  let rows = [];
+  if (ext === ".json") {
+    const payload = JSON.parse(text);
+    rows = Array.isArray(payload) ? payload : payload.videos || payload.items || payload.rows || [];
+  } else if (ext === ".csv") {
+    rows = parseCsvTable(text);
+  } else {
+    rows = parseMarkdownTable(text);
+    if (!rows.length && /,/.test(text.split(/\r?\n/)[0] || "")) rows = parseCsvTable(text);
+  }
+
+  return rows.map((row, index) => normalizeOneOfTenRow(row, index)).filter((row) => row.title && row.views > 0);
+}
+
+function normalizeOneOfTenRow(row = {}, index = 0) {
+  const normalized = Object.keys(row).reduce((result, key) => {
+    result[normalizeKey(key)] = row[key];
+    return result;
+  }, {});
+  const title = firstValue(normalized, ["title", "video title", "topic", "video", "headline"]);
+  const channel = firstValue(normalized, ["channel", "creator", "channel name", "author"]);
+  const url = firstValue(normalized, ["url", "video url", "link"]);
+  const publishedAt = firstValue(normalized, ["publishedAt", "published at", "date", "published", "age"]);
+  const topic = firstValue(normalized, ["topic", "keyword", "niche", "category"]) || title;
+  const oneOfTenScore = firstValue(normalized, ["1of10 score", "outlier score", "score", "views per subscriber", "multiplier"]);
+  return {
+    id: firstValue(normalized, ["id"]) || `oneof10-${String(index + 1).padStart(3, "0")}`,
+    title,
+    topic,
+    channel,
+    views: parseViews(firstValue(normalized, ["views", "view count", "views count"])),
+    publishedAt,
+    age: firstValue(normalized, ["age"]) || publishedAt,
+    url,
+    oneOfTenScore,
+    source: "manual 1of10 input",
+  };
+}
+
+function loadOneOfTenEvidence(filePath = "") {
+  return parseOneOfTenInputText(fs.readFileSync(filePath, "utf8"), filePath);
 }
 
 function ageText(publishedAt, generatedAt) {
@@ -394,6 +537,17 @@ function rejectionReasons(pattern, videos, newsItem) {
   return reasons;
 }
 
+function oneOfTenRejectionReasons(item = {}, newsItem) {
+  const text = `${item.title} ${item.topic}`.toLowerCase();
+  const reasons = [];
+  if (/top\s*10|best\s+\d+\s+tools|tool list|tools list/.test(text)) reasons.push("generic top-10-tool topic");
+  if (/replaces all creators|replace creators|no humans needed/.test(text)) reasons.push("AI replacement hype");
+  if (/fake proof|deepfake proof|pretend proof/.test(text)) reasons.push("fake proof topic");
+  if (!item.title || !item.views) reasons.push("missing manual 1of10 title or views");
+  if (!newsItem) reasons.push("no logical current/global news hook");
+  return reasons;
+}
+
 function weightedScore(scores = {}, weights) {
   const total =
     Number(scores.trust || 0) * weights.trust +
@@ -402,6 +556,178 @@ function weightedScore(scores = {}, weights) {
     Number(scores.feasibility || 0) * weights.feasibility +
     Number(scores.view || 0) * weights.view;
   return Math.round(total);
+}
+
+function inferTopicProfile(item = {}) {
+  const text = `${item.title} ${item.topic}`.toLowerCase();
+  if (/caption|subtitle|accessib/.test(text)) {
+    return {
+      topicTitle: "Caption accuracy as creator trust",
+      briefDescription: "Use a proven caption/accessibility outlier as a reason to show one caption review rule.",
+      vidtoolzSpecificAngle: "Show one caption mistake, the meaning risk, and the minimum manual check before upload.",
+      recommendedFormat: "Production Note",
+      trustRisk: "low",
+      productionDifficulty: "low",
+      suggestedTitle: "Bad Captions Can Break Trust",
+      thumbnailText: "CHECK WORDS",
+      requiredVisuals: ["caption before/after", "timeline or waveform", "Mikko on camera", "rule card"],
+      whatMustNotBeImplied: "Do not imply captions prove the video's claims or replace source evidence.",
+      scores: { trust: 94, authority: 84, usefulness: 88, feasibility: 94, view: 70 },
+    };
+  }
+  if (/hook|retention|short|vertical|tiktok|reel/.test(text)) {
+    return {
+      topicTitle: "Short-form hooks without overclaiming",
+      briefDescription: "Use a proven short-form performance pattern to explain one credibility-preserving hook rule.",
+      vidtoolzSpecificAngle: "Rewrite a high-pressure hook into a clear promise that does not mislead viewers.",
+      recommendedFormat: "Current Signal → Production Rule",
+      trustRisk: "low",
+      productionDifficulty: "low",
+      suggestedTitle: "Make The Hook Strong, Not Misleading",
+      thumbnailText: "FAIR HOOK",
+      requiredVisuals: ["hook text cards", "Mikko on camera", "timeline cut points", "rule card"],
+      whatMustNotBeImplied: "Do not imply guaranteed reach, retention, or results from one outlier example.",
+      scores: { trust: 92, authority: 84, usefulness: 88, feasibility: 94, view: 80 },
+    };
+  }
+  if (/green screen|background|set|composite/.test(text)) {
+    return {
+      topicTitle: "AI backgrounds without false setting claims",
+      briefDescription: "Use a proven production-design outlier to show how generated settings should be labeled.",
+      vidtoolzSpecificAngle: "Show a green-screen or AI-background setup as illustration, not evidence.",
+      recommendedFormat: "Micro Workflow Teardown",
+      trustRisk: "medium",
+      productionDifficulty: "medium",
+      suggestedTitle: "The Safe Way To Use AI Backgrounds",
+      thumbnailText: "AI SET?",
+      requiredVisuals: ["green screen setup", "AI background label", "before/after composite", "rule card"],
+      whatMustNotBeImplied: "Do not imply a generated background is a real location or real capture.",
+      scores: { trust: 88, authority: 84, usefulness: 86, feasibility: 78, view: 78 },
+    };
+  }
+  if (/screen record|screen capture|tutorial|walkthrough|demo/.test(text)) {
+    return {
+      topicTitle: "Screen recording as the proof layer",
+      briefDescription: "Use a proven tutorial/outlier pattern to explain why real screen capture should carry proof.",
+      vidtoolzSpecificAngle: "Compare a decorative visual with a real screen capture and state the proof boundary.",
+      recommendedFormat: "Micro Workflow Teardown",
+      trustRisk: "low",
+      productionDifficulty: "low",
+      suggestedTitle: "Use Screen Recording When Proof Matters",
+      thumbnailText: "SHOW IT",
+      requiredVisuals: ["real screen recording", "claim map card", "talking head", "proof boundary overlay"],
+      whatMustNotBeImplied: "Do not imply the screen recording proves anything outside what is visible and explained.",
+      scores: { trust: 95, authority: 90, usefulness: 88, feasibility: 90, view: 72 },
+    };
+  }
+  if (/ai|synthetic|generated|b-roll|broll/.test(text)) {
+    return {
+      topicTitle: "Label AI visuals before they become accidental evidence",
+      briefDescription: "Use a proven AI/video outlier as a trust-safe entry point into visual labeling.",
+      vidtoolzSpecificAngle: "Classify the visual role: evidence, illustration, decoration, metaphor, simulation, or fiction.",
+      recommendedFormat: "Production Note",
+      trustRisk: "medium",
+      productionDifficulty: "low",
+      suggestedTitle: "Label AI B-Roll Before It Confuses People",
+      thumbnailText: "LABEL IT",
+      requiredVisuals: ["AI illustration", "label reference card", "real screen example", "Mikko on camera"],
+      whatMustNotBeImplied: "Do not imply an AI visual documents a real event, person, interface, or result.",
+      scores: { trust: 91, authority: 88, usefulness: 87, feasibility: 92, view: 76 },
+    };
+  }
+  if (/edit|editing|timeline|cut|before after/.test(text)) {
+    return {
+      topicTitle: "The edit decision that creates a proof gap",
+      briefDescription: "Use a proven editing outlier to show how a cut can make a claim feel stronger than the evidence.",
+      vidtoolzSpecificAngle: "Show a timeline before/after and name the inference the viewer must not make.",
+      recommendedFormat: "Micro Workflow Teardown",
+      trustRisk: "medium",
+      productionDifficulty: "medium",
+      suggestedTitle: "Your Edit Can Accidentally Overclaim",
+      thumbnailText: "PROOF GAP",
+      requiredVisuals: ["timeline example", "before/after card", "claim boundary label", "Mikko on camera"],
+      whatMustNotBeImplied: "Do not imply one editing example proves a broad platform or audience trend.",
+      scores: { trust: 89, authority: 89, usefulness: 86, feasibility: 80, view: 72 },
+    };
+  }
+  return {
+    topicTitle: "Workflow before tools in AI-assisted video",
+    briefDescription: "Use a proven creator-video outlier to convert attention into one practical production rule.",
+    vidtoolzSpecificAngle: "Extract a repeatable workflow decision instead of chasing the surface topic.",
+    recommendedFormat: "Production Note",
+    trustRisk: "medium",
+    productionDifficulty: "low",
+    suggestedTitle: "Turn The Trend Into One Production Rule",
+    thumbnailText: "ONE RULE",
+    requiredVisuals: ["Mikko on camera", "manual 1of10 evidence card", "workflow rule card", "simple screen capture"],
+    whatMustNotBeImplied: "Do not imply the outlier guarantees performance for VIDTOOLZ or proves a general trend by itself.",
+    scores: { trust: 88, authority: 84, usefulness: 86, feasibility: 90, view: 72 },
+  };
+}
+
+function buildOneOfTenCandidate(item, newsItem, generatedAt) {
+  const profile = inferTopicProfile(item);
+  const example = {
+    title: item.title,
+    views: item.views,
+    channel: item.channel,
+    age: item.age || ageText(item.publishedAt, generatedAt),
+    date: item.publishedAt,
+    url: item.url,
+  };
+  const scoreContext = item.oneOfTenScore ? ` 1of10 signal: ${item.oneOfTenScore}.` : "";
+  const newsHook = `${newsItem.title} (${newsItem.source}, ${newsItem.publishedAt})`;
+  const synthesis = `The manual 1of10 evidence shows an outlier or trending pattern around "${item.title}". That is observed performance evidence, not a guarantee. The news hook supplies current attention; VIDTOOLZ should convert both into one trust-safe production rule.`;
+  const scoreBreakdown = {
+    "trust and credibility": profile.scores.trust,
+    "authority-building": profile.scores.authority,
+    "practical usefulness": profile.scores.usefulness,
+    "production feasibility": profile.scores.feasibility,
+    "view potential": profile.scores.view,
+  };
+  return {
+    topicTitle: profile.topicTitle,
+    briefDescription: profile.briefDescription,
+    youtubeEvidenceSummary: `Manual 1of10 copied evidence: "${item.title}" by ${item.channel || "unknown channel"} with ${formatViews(item.views)} views.${scoreContext}`,
+    exampleSuccessfulVideos: [example],
+    currentGlobalNewsHook: newsHook,
+    logicalSynthesis: synthesis,
+    vidtoolzSpecificAngle: profile.vidtoolzSpecificAngle,
+    recommendedFormat: FORMATS.has(profile.recommendedFormat) ? profile.recommendedFormat : "Production Note",
+    trustRisk: profile.trustRisk,
+    productionDifficulty: profile.productionDifficulty,
+    suggestedTitle: profile.suggestedTitle,
+    thumbnailText: profile.thumbnailText,
+    requiredVisuals: profile.requiredVisuals,
+    whatMustNotBeImplied: profile.whatMustNotBeImplied,
+    scoreBreakdown,
+    finalWeightedScore: weightedScore(profile.scores, {
+      trust: 0.3,
+      authority: 0.25,
+      usefulness: 0.2,
+      feasibility: 0.15,
+      view: 0.1,
+    }),
+    growthWeightedScore: weightedScore(profile.scores, {
+      trust: 0.2,
+      authority: 0.2,
+      usefulness: 0.2,
+      feasibility: 0.15,
+      view: 0.25,
+    }),
+    evidenceAndInference: {
+      observedYoutubeEvidence: [
+        `${example.title} — ${formatViews(example.views)} views — ${example.channel || "unknown channel"} — ${example.age || "unknown age"} — manual 1of10 copy`,
+      ],
+      currentNewsHookEvidence: `${newsItem.title}. Fixture summary: ${newsItem.summary}`,
+      synthesisInference: synthesis,
+      trustWarning:
+        profile.trustRisk === "low"
+          ? "Use the 1of10 item as audience-pattern evidence only; keep the production claim scoped to what VIDTOOLZ can show."
+          : "Label visuals clearly and avoid letting the outlier, news hook, or AI imagery imply proof beyond the copied evidence.",
+      productionRecommendation: `Make this as a ${profile.recommendedFormat} with one practical rule, manual evidence attribution, and visible proof boundaries.`,
+    },
+  };
 }
 
 function buildCandidate(pattern, videos, newsItem, generatedAt) {
@@ -507,6 +833,55 @@ function synthesizeReport(input = {}, options = {}) {
       status === "complete"
         ? []
         : ["Need at least 10 non-rejected topic patterns with two YouTube examples and one logical news hook each."],
+    candidates: status === "complete" ? supportedCandidates : [],
+    rejectedCandidates: rejected,
+  };
+}
+
+function synthesizeOneOfTenReport(oneOfTenItems = [], input = {}, options = {}) {
+  const generatedAt = cleanString(options.generatedAt) || new Date().toISOString();
+  const news = input.news || DEFAULT_NEWS_FIXTURE;
+  const candidates = [];
+  const rejected = [];
+
+  oneOfTenItems.forEach((item) => {
+    const profile = inferTopicProfile(item);
+    const newsItem = matchNews(
+      {
+        topicTitle: `${profile.topicTitle} ${item.title}`,
+        briefDescription: `${profile.briefDescription} ${item.topic}`,
+        query: item.topic,
+      },
+      news.items || []
+    );
+    const reasons = oneOfTenRejectionReasons(item, newsItem);
+    if (reasons.length) {
+      rejected.push({ topicTitle: item.title, reasons });
+      return;
+    }
+    candidates.push(buildOneOfTenCandidate(item, newsItem, generatedAt));
+  });
+
+  candidates.sort((a, b) => b.finalWeightedScore - a.finalWeightedScore || b.exampleSuccessfulVideos[0].views - a.exampleSuccessfulVideos[0].views);
+  const supportedCandidates = candidates.slice(0, 10);
+  const status = supportedCandidates.length === 10 ? "complete" : "insufficient-evidence";
+
+  return {
+    tool: "VIDTOOLZ Topic Scout + News Synthesizer",
+    version: "0.1",
+    generatedAt,
+    mode: MANUAL_ONEOF10_LABEL,
+    networkCallsMade: "none",
+    inputEvidenceType: "manual 1of10 copied CSV/JSON/Markdown",
+    status,
+    supportedCandidateCount: supportedCandidates.length,
+    requiredCandidateCount: 10,
+    evidenceBoundary:
+      "Manual 1of10 rows are observed copied performance evidence. News hooks are local fixture inputs unless supplied by file. The VIDTOOLZ angle, synthesis, score, and production recommendation are inference.",
+    missingEvidence:
+      status === "complete"
+        ? []
+        : ["Need at least 10 non-rejected manual 1of10 rows with title and views plus one logical news hook each."],
     candidates: status === "complete" ? supportedCandidates : [],
     rejectedCandidates: rejected,
   };
@@ -698,6 +1073,12 @@ async function fetchLiveYoutubeData(options = {}, env = process.env) {
 async function run(options = {}, env = process.env) {
   const generatedAt = cleanString(options.generatedAt) || new Date().toISOString();
   let input = loadInputData(options);
+  if (options.oneOfTenInput) {
+    const oneOfTenItems = loadOneOfTenEvidence(options.oneOfTenInput);
+    const report = synthesizeOneOfTenReport(oneOfTenItems, input, { generatedAt });
+    const written = options.output === false ? null : writeReports(report, options);
+    return { exitCode: 0, report, written };
+  }
   if (options.liveYoutube) {
     const validation = validateLiveYoutubeOptions(options, env);
     if (!validation.ok) {
@@ -755,13 +1136,19 @@ module.exports = {
   DEFAULT_PATTERNS,
   DEFAULT_YOUTUBE_FIXTURE,
   DEMO_LABEL,
+  MANUAL_ONEOF10_LABEL,
   estimateYoutubeQuota,
+  inferTopicProfile,
   loadInputData,
+  loadOneOfTenEvidence,
   main,
+  normalizeOneOfTenRow,
+  parseOneOfTenInputText,
   parseArgs,
   rejectionReasons,
   renderMarkdown,
   run,
+  synthesizeOneOfTenReport,
   synthesizeReport,
   validateLiveYoutubeOptions,
   weightedScore,

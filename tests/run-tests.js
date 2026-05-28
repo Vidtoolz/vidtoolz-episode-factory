@@ -34,6 +34,7 @@ const packageRunDoctorScript = require("../scripts/package-run-doctor.js");
 const packageRunNextActionScript = require("../scripts/package-run-next-action.js");
 const packageRunNextSafeActionScript = require("../scripts/package-run-next-safe-action.js");
 const packageRunNextActionAuthorityScript = require("../scripts/package-run-next-action-authority.js");
+const packageRunWorkflowMapScript = require("../scripts/package-run-workflow-map.js");
 const nextTaskClassifierScript = require("../scripts/next-task-classifier.js");
 const packageRunActiveStateAuditScript = require("../scripts/package-run-active-state-audit.js");
 const packageRunStateProposalScript = require("../scripts/package-run-state-proposal.js");
@@ -10939,6 +10940,95 @@ test("package run next action authority read-only commands use explicit allowlis
   );
 });
 
+test("package run workflow map outputs current gate artifacts without writing package-run state", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-workflow-map-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-workflow-map");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.json"),
+    JSON.stringify({ package: { proposedTitle: "Workflow Map Test" } }),
+    "utf8"
+  );
+  fs.writeFileSync(path.join(runDir, "manual-note.md"), "# Manual note\n", "utf8");
+  const before = fs.readdirSync(runDir).sort();
+
+  const report = packageRunWorkflowMapScript.buildWorkflowMap(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+  const output = captureConsole(() => packageRunWorkflowMapScript.main([runDir], { repoRoot: tempRoot }));
+  const parsed = JSON.parse(output.stdout.join("\n"));
+  const after = fs.readdirSync(runDir).sort();
+
+  assert.deepEqual(after, before);
+  assert.equal(output.result, 0);
+  assert.equal(parsed.ok, true);
+  assert.equal(report.schema, "vidtoolz.packageRunWorkflowMap.v1");
+  assert.equal(report.runId, "2026-05-10-workflow-map");
+  assert.equal(report.title, "Workflow Map Test");
+  assert.equal(report.currentStage, "Package selected");
+  assert.match(report.currentBlocker, /research-pack\.md/);
+  assert.deepEqual(report.existingArtifacts, ["selected-package.json"]);
+  assert.deepEqual(report.missingArtifacts, ["research-pack.md"]);
+  assert.equal(report.safety.readOnly, true);
+  assert.equal(report.safety.packageRunFilesWritten, false);
+  assert.equal(report.safety.approvalMarkersAdded, false);
+  assert.equal(report.safety.gitActionsPerformed, false);
+  assert.equal(report.safety.mediaMutated, false);
+
+  const packageGate = report.gates.find((gate) => gate.id === "package-selection");
+  const researchGate = report.gates.find((gate) => gate.id === "research");
+  assert.equal(packageGate.status, "complete");
+  assert.deepEqual(packageGate.expectedArtifacts, ["selected-package.json or selected-package.md"]);
+  assert.deepEqual(packageGate.existingArtifacts, ["selected-package.json"]);
+  assert.equal(researchGate.status, "current-blocked");
+  assert.deepEqual(researchGate.missingArtifacts, [
+    "research-pack.md",
+    "research-evidence.md or source-support-map.md or proof-capture-plan.md or research-objections.md",
+  ]);
+  assert.equal(typeof report.nextSafeHumanAction.label, "string");
+});
+
+test("package run workflow map separates existing artifacts from blocked gate readiness", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-workflow-map-stage4-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-workflow-map-stage4");
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "Stage 4 Map" } }), "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+  fs.writeFileSync(
+    path.join(runDir, "production-plan.md"),
+    "# Production Plan\n\n- Shoot-readiness status: READY TO SHOOT\n",
+    "utf8"
+  );
+
+  const report = packageRunWorkflowMapScript.buildWorkflowMap(path.relative(tempRoot, runDir), { repoRoot: tempRoot });
+  const productionGate = report.gates.find((gate) => gate.id === "production-plan");
+  const shotEditGate = report.gates.find((gate) => gate.id === "shot-edit-plan-review");
+
+  assert.equal(report.currentStage, "Needs shot/edit plan review");
+  assert.match(report.currentBlocker, /shot-edit-plan-review\.md is missing/);
+  assert.deepEqual(report.missingArtifacts, ["shot-edit-plan-review.md"]);
+  assert.equal(productionGate.status, "complete");
+  assert.deepEqual(productionGate.existingArtifacts, ["production-plan.md"]);
+  assert.equal(shotEditGate.status, "current-blocked");
+  assert.deepEqual(shotEditGate.missingArtifacts, ["shot-edit-plan-review.md"]);
+  assert.equal(report.nextSafeHumanAction.writesDurableState, false);
+  assert.equal(report.safety.hermesOrProjectStateUpdated, false);
+});
+
+test("package run workflow map error json is parseable", () => {
+  const output = captureConsole(() => packageRunWorkflowMapScript.main(["package-runs/not-real"]));
+  const parsed = JSON.parse(output.stdout.join("\n"));
+
+  assert.equal(output.result, 1);
+  assert.equal(parsed.ok, false);
+  assert.equal(parsed.readOnly, true);
+  assert.equal(parsed.externalApisCalled, false);
+  assert.match(parsed.error, /Package run folder not found/);
+});
+
+test("verify script checks package run workflow map syntax", () => {
+  const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
+  assert.match(verify, /node --check scripts\/package-run-workflow-map\.js/);
+});
+
 test("verify script checks package run capture gap syntax", () => {
   const verify = fs.readFileSync(path.join(__dirname, "..", "scripts", "verify.sh"), "utf8");
   assert.match(verify, /node --check scripts\/package-run-capture-gap\.js/);
@@ -17560,6 +17650,113 @@ test("topic scout writes reports only under reports topic scout", async () => {
   assert.match(result.written.jsonPath, /reports\/topic-scout/);
   assert.match(result.written.markdownPath, /reports\/topic-scout/);
   fs.rmSync(path.dirname(result.written.jsonPath), { recursive: true, force: true });
+});
+
+function buildOneOfTenRows(count = 10) {
+  const titles = [
+    "AI B-roll labels before proof",
+    "Green screen AI background workflow",
+    "Screen recording tutorial proof",
+    "Shorts hook without misleading",
+    "Caption accuracy creator trust",
+    "Editing timeline proof gap",
+    "AI visual disclosure workflow",
+    "One day video production rule",
+    "Creator workflow before tools",
+    "Synthetic media label example",
+  ];
+  return Array.from({ length: count }, (_unused, index) => ({
+    title: titles[index % titles.length],
+    channel: `Outlier Channel ${index + 1}`,
+    views: 50000 + index * 10000,
+    age: `${index + 1} months old`,
+    url: `https://youtube.example/watch?v=manual${index + 1}`,
+    "1of10 score": `${index + 2}x baseline`,
+  }));
+}
+
+test("topic scout parses manual 1of10 JSON input into 10 VIDTOOLZ candidates", () => {
+  const rows = buildOneOfTenRows(10);
+  const parsed = topicScoutScript.parseOneOfTenInputText(JSON.stringify({ videos: rows }), "manual.json");
+  const report = topicScoutScript.synthesizeOneOfTenReport(parsed, { news: topicScoutScript.DEFAULT_NEWS_FIXTURE }, {
+    generatedAt: "2026-05-28T04:00:00.000Z",
+  });
+
+  assert.equal(parsed.length, 10);
+  assert.equal(report.status, "complete");
+  assert.equal(report.candidates.length, 10);
+  assert.equal(report.mode, topicScoutScript.MANUAL_ONEOF10_LABEL);
+  assert.match(report.candidates[0].youtubeEvidenceSummary, /Manual 1of10 copied evidence/);
+  assert.match(report.candidates[0].vidtoolzSpecificAngle, /Show|Use|Classify|Extract|Compare|Rewrite/);
+});
+
+test("topic scout parses manual 1of10 CSV input", () => {
+  const csv = [
+    "Title,Channel,Views,Age,URL,1of10 score",
+    ...buildOneOfTenRows(10).map((row) => `"${row.title}","${row.channel}","${row.views}","${row.age}","${row.url}","${row["1of10 score"]}"`),
+  ].join("\n");
+  const parsed = topicScoutScript.parseOneOfTenInputText(csv, "manual.csv");
+
+  assert.equal(parsed.length, 10);
+  assert.equal(parsed[0].title, "AI B-roll labels before proof");
+  assert.equal(parsed[0].views, 50000);
+  assert.equal(parsed[0].source, "manual 1of10 input");
+});
+
+test("topic scout parses manual 1of10 Markdown table input", () => {
+  const markdown = [
+    "| Title | Channel | Views | Age | URL | Outlier Score |",
+    "| --- | --- | ---: | --- | --- | --- |",
+    ...buildOneOfTenRows(10).map((row) => `| ${row.title} | ${row.channel} | ${row.views} | ${row.age} | ${row.url} | ${row["1of10 score"]} |`),
+  ].join("\n");
+  const parsed = topicScoutScript.parseOneOfTenInputText(markdown, "manual.md");
+
+  assert.equal(parsed.length, 10);
+  assert.equal(parsed[1].title, "Green screen AI background workflow");
+  assert.equal(parsed[1].channel, "Outlier Channel 2");
+});
+
+test("topic scout manual 1of10 mode blocks insufficient rows and does not invent candidates", () => {
+  const report = topicScoutScript.synthesizeOneOfTenReport(buildOneOfTenRows(4).map((row, index) => topicScoutScript.normalizeOneOfTenRow(row, index)), {
+    news: topicScoutScript.DEFAULT_NEWS_FIXTURE,
+  }, {
+    generatedAt: "2026-05-28T04:00:00.000Z",
+  });
+
+  assert.equal(report.status, "insufficient-evidence");
+  assert.equal(report.candidates.length, 0);
+  assert.equal(report.supportedCandidateCount, 4);
+  assert.match(report.missingEvidence.join(" "), /Need at least 10 non-rejected manual 1of10 rows/);
+});
+
+test("topic scout manual 1of10 mode rejects generic tool-list rows", () => {
+  const rows = buildOneOfTenRows(10);
+  rows[0].title = "Top 10 AI video tools every creator needs";
+  const parsed = rows.map((row, index) => topicScoutScript.normalizeOneOfTenRow(row, index));
+  const report = topicScoutScript.synthesizeOneOfTenReport(parsed, { news: topicScoutScript.DEFAULT_NEWS_FIXTURE }, {
+    generatedAt: "2026-05-28T04:00:00.000Z",
+  });
+
+  assert.equal(report.status, "insufficient-evidence");
+  assert.equal(report.rejectedCandidates.some((item) => /Top 10 AI video tools/.test(item.topicTitle)), true);
+  assert.match(JSON.stringify(report.rejectedCandidates), /generic top-10-tool topic/);
+});
+
+test("topic scout manual 1of10 CLI uses local file with no network calls", async () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "topic-scout-oneof10-"));
+  const inputPath = path.join(tempRoot, "oneof10.json");
+  fs.writeFileSync(inputPath, JSON.stringify({ videos: buildOneOfTenRows(10) }), "utf8");
+
+  const result = await topicScoutScript.run({
+    oneOfTenInput: inputPath,
+    output: false,
+    generatedAt: "2026-05-28T04:00:00.000Z",
+  });
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.report.mode, topicScoutScript.MANUAL_ONEOF10_LABEL);
+  assert.equal(result.report.networkCallsMade, "none");
+  assert.equal(result.report.candidates.length, 10);
 });
 
 async function runTests() {
