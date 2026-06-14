@@ -14,6 +14,7 @@ const exportChecklistScript = require('./scripts/package-run-export-checklist.js
 const publicationMetadataScript = require('./scripts/package-run-publication-metadata.js');
 const archiveManifestScript = require('./scripts/package-run-archive-manifest.js');
 const nextSafeActionScript = require('./scripts/package-run-next-safe-action.js');
+const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
@@ -67,6 +68,9 @@ const FLUX_RESULTS_API = '/api/flux/results';
 const IMAGE_PROMPTS_READ_API = '/api/image-prompts/read';
 const IMAGE_PROMPTS_VALIDATE_API = '/api/image-prompts/validate';
 const IMAGE_PROMPTS_SAVE_API = '/api/image-prompts/save';
+const DAILY_SCOUT_TODAY_API = '/api/daily-idea-scout/today';
+const DAILY_SCOUT_ARCHIVE_API = '/api/daily-idea-scout/archive';
+const DAILY_SCOUT_DATES_API = '/api/daily-idea-scout/dates';
 const SERVE_ROOT = ROOT;
 const PACKAGE_RUNS_DIR = 'package-runs';
 const VIDNAS_AIGEN_ROOT = '/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen';
@@ -5871,11 +5875,56 @@ async function createThumbnailResponse(payload, options = {}) {
   throw error;
 }
 
+function handleDailyScoutToday(req, res) {
+  const today = new Date().toISOString().slice(0, 10);
+  const data = dailyIdeaScout.readArchive(VIDNAS_AIGEN_ROOT + '/daily-idea-scout', today);
+  if (!data) {
+    send(res, 404, { ok: false, error: `No daily idea scout run found for ${today}` });
+    return;
+  }
+  send(res, 200, { ok: true, date: today, dailyRun: data });
+}
+
+function handleDailyScoutArchive(req, res, url) {
+  const date = url.searchParams.get('date');
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    send(res, 400, { ok: false, error: 'Missing or invalid date parameter (expected YYYY-MM-DD)' });
+    return;
+  }
+  const data = dailyIdeaScout.readArchive(VIDNAS_AIGEN_ROOT + '/daily-idea-scout', date);
+  if (!data) {
+    send(res, 404, { ok: false, error: `No archive found for ${date}` });
+    return;
+  }
+  send(res, 200, { ok: true, date, dailyRun: data });
+}
+
+function handleDailyScoutDates(req, res) {
+  const archiveRoot = VIDNAS_AIGEN_ROOT + '/daily-idea-scout';
+  const dates = dailyIdeaScout.listArchiveDates(archiveRoot);
+  send(res, 200, { ok: true, dates });
+}
+
 function createServer() {
   return http.createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     if (req.method === 'GET' && url.pathname === STATUS_API) {
       send(res, 200, createStatusResponse());
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === DAILY_SCOUT_TODAY_API) {
+      handleDailyScoutToday(req, res);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === DAILY_SCOUT_ARCHIVE_API) {
+      handleDailyScoutArchive(req, res, url);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === DAILY_SCOUT_DATES_API) {
+      handleDailyScoutDates(req, res);
       return;
     }
 

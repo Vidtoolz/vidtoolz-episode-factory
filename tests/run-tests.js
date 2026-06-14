@@ -18,6 +18,7 @@ require("./presto-batch-control.test.js");
 require("./image-selector.test.js");
 require("./flux-batch-control.test.js");
 require("./image-prompts-editor.test.js");
+require("./daily-idea-scout.test.js");
 
 async function runTests() {
   let passed = 0;

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Candidate Ideas — VIDTOOLZ Cockpit</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .scout-header {
+      border-bottom: 1px solid var(--border-color, #333);
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .scout-header h1 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.4rem;
+    }
+    .scout-meta {
+      color: var(--text-muted, #888);
+      font-size: 0.85rem;
+    }
+    .scout-date-picker {
+      margin: 1rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .scout-date-picker select {
+      padding: 0.4rem 0.6rem;
+      background: var(--bg-secondary, #1a1a2e);
+      color: var(--text-primary, #eee);
+      border: 1px solid var(--border-color, #333);
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+    .scout-date-picker button {
+      padding: 0.4rem 0.8rem;
+      background: var(--accent-color, #4a9eff);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .scout-idea-card {
+      background: var(--bg-secondary, #1a1a2e);
+      border: 1px solid var(--border-color, #333);
+      border-radius: 8px;
+      padding: 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .scout-idea-header {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    .scout-rank {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent-color, #4a9eff);
+      min-width: 2.5rem;
+    }
+    .scout-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .scout-score-bar {
+      height: 6px;
+      background: var(--bg-tertiary, #111);
+      border-radius: 3px;
+      margin: 0.5rem 0;
+      overflow: hidden;
+    }
+    .scout-score-fill {
+      height: 100%;
+      background: var(--accent-color, #4a9eff);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+    .scout-score-label {
+      font-size: 0.8rem;
+      color: var(--text-muted, #888);
+    }
+    .scout-description {
+      margin: 0.75rem 0;
+      line-height: 1.5;
+      color: var(--text-secondary, #ccc);
+    }
+    .scout-detail-toggle {
+      background: none;
+      border: none;
+      color: var(--accent-color, #4a9eff);
+      cursor: pointer;
+      padding: 0.2rem 0;
+      font-size: 0.85rem;
+    }
+    .scout-detail {
+      display: none;
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      background: var(--bg-tertiary, #111);
+      border-radius: 4px;
+    }
+    .scout-detail.open {
+      display: block;
+    }
+    .scout-detail h4 {
+      margin: 0.5rem 0 0.25rem;
+      font-size: 0.9rem;
+      color: var(--accent-color, #4a9eff);
+    }
+    .scout-detail p, .scout-detail ul {
+      margin: 0.25rem 0;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+    .scout-detail ul {
+      padding-left: 1.2rem;
+    }
+    .scout-evidence-item {
+      margin: 0.25rem 0;
+    }
+    .scout-evidence-item a {
+      color: var(--accent-color, #4a9eff);
+    }
+    .scout-scores-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.5rem;
+      margin: 0.5rem 0;
+    }
+    .scout-score-cell {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+    }
+    .scout-error, .scout-empty {
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-muted, #888);
+      border: 1px dashed var(--border-color, #333);
+      border-radius: 8px;
+    }
+    .scout-error {
+      color: #ff6b6b;
+    }
+    .scout-note {
+      font-size: 0.75rem;
+      color: var(--text-muted, #666);
+      margin-top: 0.5rem;
+      font-style: italic;
+    }
+    .scout-navigation {
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+    .scout-navigation a {
+      color: var(--accent-color, #4a9eff);
+      text-decoration: none;
+    }
+    .scout-navigation a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="scout-navigation">
+      <a href="index.html">&larr; Cockpit</a> &nbsp;|&nbsp;
+      <span>Daily Candidate Ideas (Discovery — not production pipeline)</span>
+    </div>
+
+    <div class="scout-header">
+      <h1>Daily Candidate Ideas</h1>
+      <div class="scout-meta" id="scout-meta">Loading...</div>
+    </div>
+
+    <div class="scout-date-picker">
+      <label for="date-select">Archive date:</label>
+      <select id="date-select">
+        <option value="today">Today</option>
+      </select>
+      <button id="load-btn">Load</button>
+    </div>
+
+    <div id="scout-content">
+      <div class="scout-empty">Loading...</div>
+    </div>
+  </div>
+
+  <script>
+    const contentEl = document.getElementById('scout-content');
+    const metaEl = document.getElementById('scout-meta');
+    const dateSelect = document.getElementById('date-select');
+    const loadBtn = document.getElementById('load-btn');
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function renderIdea(idea) {
+      const scorePercent = Math.round(idea.final_score * 10);
+      const evidenceHtml = (idea.evidence || []).map(ev => {
+        const link = ev.url ? `<a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener">source</a>` : '';
+        const note = ev.note ? ` — ${escapeHtml(ev.note)}` : '';
+        return `<li class="scout-evidence-item"><strong>${escapeHtml(ev.type)}:</strong> ${escapeHtml(ev.title)} ${link}${note}</li>`;
+      }).join('');
+
+      const scoresHtml = Object.entries(idea.scores || {}).map(([k, v]) => {
+        return `<div class="scout-score-cell"><span>${escapeHtml(k.replace(/_/g, ' '))}</span><span>${v}/10</span></div>`;
+      }).join('');
+
+      return `
+        <div class="scout-idea-card">
+          <div class="scout-idea-header">
+            <span class="scout-rank">#${idea.rank}</span>
+            <span class="scout-title">${escapeHtml(idea.title)}</span>
+          </div>
+          <div class="scout-score-bar">
+            <div class="scout-score-fill" style="width: ${scorePercent}%"></div>
+          </div>
+          <div class="scout-score-label">Score: ${idea.final_score}/10</div>
+          <p class="scout-description">${escapeHtml(idea.description)}</p>
+          <button class="scout-detail-toggle" onclick="toggleDetail(this)">Show details &darr;</button>
+          <div class="scout-detail">
+            <h4>Scores</h4>
+            <div class="scout-scores-grid">${scoresHtml}</div>
+
+            <h4>Evidence</h4>
+            <ul>${evidenceHtml || '<li>No evidence provided</li>'}</ul>
+
+            <h4>Thumbnail Prompt</h4>
+            <p>${escapeHtml(idea.thumbnail_prompt || '')}</p>
+
+            <h4>Ranking Rationale</h4>
+            <p>${escapeHtml(idea.ranking_rationale || '')}</p>
+
+            <h4>Thumbnail Status</h4>
+            <p>${escapeHtml(idea.thumbnail_status || 'pending')}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function toggleDetail(btn) {
+      const detail = btn.nextElementSibling;
+      const isOpen = detail.classList.toggle('open');
+      btn.innerHTML = isOpen ? 'Hide details &uarr;' : 'Show details &darr;';
+    }
+
+    function renderRun(run) {
+      if (!run || !run.ideas || run.ideas.length === 0) {
+        return '<div class="scout-empty">No candidate ideas found for this date.</div>';
+      }
+      return run.ideas.map(renderIdea).join('');
+    }
+
+    async function loadToday() {
+      contentEl.innerHTML = '<div class="scout-empty">Loading...</div>';
+      try {
+        const res = await fetch('/api/daily-idea-scout/today');
+        const data = await res.json();
+        if (!data.ok) {
+          contentEl.innerHTML = `<div class="scout-error">${escapeHtml(data.error)}</div>
+            <p class="scout-note">Run the daily scout: <code>npm run daily-idea-scout</code> or <code>node scripts/daily-idea-scout-launch.js --date=${new Date().toISOString().slice(0,10)}</code></p>`;
+          metaEl.textContent = 'No run today';
+          return;
+        }
+        metaEl.textContent = `Date: ${data.date} | Provider: ${data.dailyRun.provider} | Generated: ${data.dailyRun.generated_at}`;
+        contentEl.innerHTML = renderRun(data.dailyRun);
+      } catch (err) {
+        contentEl.innerHTML = `<div class="scout-error">Failed to load: ${escapeHtml(err.message)}</div>`;
+        metaEl.textContent = 'Error';
+      }
+    }
+
+    async function loadArchive(date) {
+      contentEl.innerHTML = '<div class="scout-empty">Loading...</div>';
+      try {
+        const res = await fetch(`/api/daily-idea-scout/archive?date=${encodeURIComponent(date)}`);
+        const data = await res.json();
+        if (!data.ok) {
+          contentEl.innerHTML = `<div class="scout-error">${escapeHtml(data.error)}</div>`;
+          metaEl.textContent = `Archive: ${date} — not found`;
+          return;
+        }
+        metaEl.textContent = `Date: ${data.date} | Provider: ${data.dailyRun.provider} | Generated: ${data.dailyRun.generated_at}`;
+        contentEl.innerHTML = renderRun(data.dailyRun);
+      } catch (err) {
+        contentEl.innerHTML = `<div class="scout-error">Failed to load: ${escapeHtml(err.message)}</div>`;
+        metaEl.textContent = 'Error';
+      }
+    }
+
+    async function loadDates() {
+      try {
+        const res = await fetch('/api/daily-idea-scout/dates');
+        const data = await res.json();
+        if (data.ok && data.dates.length > 0) {
+          for (const d of data.dates) {
+            if (d !== new Date().toISOString().slice(0, 10)) {
+              const opt = document.createElement('option');
+              opt.value = d;
+              opt.textContent = d;
+              dateSelect.appendChild(opt);
+            }
+          }
+        }
+      } catch (err) {
+        // silently ignore - picker just shows "Today"
+      }
+    }
+
+    loadBtn.addEventListener('click', () => {
+      const val = dateSelect.value;
+      if (val === 'today') {
+        loadToday();
+      } else {
+        loadArchive(val);
+      }
+    });
+
+    // Init
+    loadDates();
+    loadToday();
+  </script>
+</body>
+</html>
