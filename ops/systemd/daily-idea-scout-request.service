@@ -1,0 +1,16 @@
+# VIDTOOLZ Daily Idea Scout — research-request prep (DISABLED by default).
+#
+# This unit ONLY generates the daily human-in-the-loop research brief. It does
+# NOT research the web, call any LLM, score, rank, archive, generate thumbnails,
+# or approve anything — a human still does all of that via the manual provider.
+# Installed but-not-enabled until the operator deliberately enables it (see README.md).
+
+[Unit]
+Description=VIDTOOLZ Daily Idea Scout — prepare daily research request (human-in-the-loop)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/vidtoolz-episode-factory
+# Prep only: writes the day's brief to research-inbox/. No generation/approval.
+ExecStart=/usr/bin/node scripts/daily-idea-scout-request.js --out=%h/vidtoolz-episode-factory/research-inbox/daily-research-request.md
+TimeoutStartSec=120

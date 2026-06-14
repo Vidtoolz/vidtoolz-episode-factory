@@ -1,0 +1,12 @@
+# Fires the research-request prep at 07:00 Helsinki. DISABLED until manually enabled.
+# It only prepares the human's daily brief — it never auto-generates or approves ideas.
+
+[Unit]
+Description=Run VIDTOOLZ Daily Idea Scout research-request prep at 07:00 Helsinki
+
+[Timer]
+OnCalendar=*-*-* 07:00:00 Europe/Helsinki
+Persistent=true
+
+[Install]
+WantedBy=timers.target

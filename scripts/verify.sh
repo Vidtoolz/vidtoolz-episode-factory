@@ -57,6 +57,7 @@ node --check scripts/oneof10-input-helper.js
 node --check scripts/daily-idea-scout.js
 node --check scripts/daily-idea-scout-providers.js
 node --check scripts/daily-idea-scout-launch.js
+node --check scripts/daily-idea-scout-request.js
 node --check scripts/package-runs-index.js
 node --check scripts/package-runs-dashboard-launch.js
 node --check scripts/validate-published-videos.js

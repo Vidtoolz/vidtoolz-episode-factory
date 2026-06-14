@@ -515,3 +515,81 @@ test("daily-idea-scout: archiveExists returns correct values", () => {
     fs.rmSync(archiveRoot, { recursive: true, force: true });
   }
 });
+
+// ── Research-request generator (human-in-the-loop input prep) ────────────────
+const scoutRequest = require("../scripts/daily-idea-scout-request.js");
+const { parseManualMarkdown } = require("../scripts/daily-idea-scout-providers.js");
+
+test("daily-idea-scout: research request lists themes, the exact-15 rule, and all score keys", () => {
+  const md = scoutRequest.buildResearchRequest("2026-06-15");
+  assert.match(md, /2026-06-15/);
+  assert.match(md, /exactly 15/i);
+  assert.match(md, /--provider=manual/);
+  assert.match(md, /daily-idea-scout-launch\.js/);
+  for (const key of scout.SCORE_KEYS) {
+    assert.ok(md.includes(key), `request brief should document score key ${key}`);
+  }
+  for (const theme of scoutRequest.SEARCH_THEMES) {
+    assert.ok(md.includes(theme), `request brief should list theme: ${theme}`);
+  }
+});
+
+test("daily-idea-scout: request generator makes no network/LLM calls and needs no input", () => {
+  const originalFetch = global.fetch;
+  let fetchCalled = false;
+  global.fetch = () => { fetchCalled = true; throw new Error("no live calls allowed"); };
+  try {
+    const md = scoutRequest.buildResearchRequest("2026-06-15");
+    assert.ok(md.length > 0);
+    assert.strictEqual(fetchCalled, false);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+// Build a manual-input Markdown doc in the exact format the request brief documents.
+function manualMarkdownDoc(count) {
+  let md = "";
+  for (let i = 1; i <= count; i++) {
+    md += `## Test idea number ${i} for creator workflows\n`;
+    md += `Description: A grounded teardown ${i} with a hook, two points, on-screen proof, and a takeaway.\n`;
+    md += `Thumbnail Prompt: Clean editorial thumbnail ${i}, bold text overlay, dark background, no fake proof.\n`;
+    md += `Evidence:\n`;
+    md += `- trend | Observed signal ${i} | https://example.com/${i} | why it matters\n`;
+    md += `Scores:\n`;
+    for (const key of scout.SCORE_KEYS) md += `- ${key}: ${(i % 9) + 1}\n`;
+    md += `Ranking Rationale: Strong fit ${i}.\n\n`;
+  }
+  return md;
+}
+
+test("daily-idea-scout: human-in-the-loop round-trip — request format parses and runs end to end (dry-run, zero writes)", () => {
+  const doc = manualMarkdownDoc(scout.IDEA_COUNT);
+
+  // 1. The documented Markdown format parses into the expected number of ideas.
+  const parsed = parseManualMarkdown(doc, "inline-test.md");
+  assert.strictEqual(parsed.length, scout.IDEA_COUNT);
+
+  // 2. Full pipeline via the manual provider, dry-run (no archive written, no live calls).
+  const dir = makeTempArchive();
+  const inputPath = path.join(dir, "input.md");
+  fs.writeFileSync(inputPath, doc);
+  try {
+    setupManualProvider();
+    const result = scout.runDailyScout({
+      provider: "manual",
+      inputPath,
+      date: "2026-06-15",
+      dryRun: true,
+      archiveRoot: dir,
+    });
+    assert.strictEqual(result.ok, true, result.error || "expected ok");
+    assert.strictEqual(result.dryRun, true);
+    assert.strictEqual(result.dailyRun.ideas.length, scout.IDEA_COUNT);
+    assert.strictEqual(result.dailyRun.ideas[0].rank, 1);
+    assert.ok(typeof result.dailyRun.ideas[0].final_score === "number");
+    assert.strictEqual(scout.archiveExists(dir, "2026-06-15"), false);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
