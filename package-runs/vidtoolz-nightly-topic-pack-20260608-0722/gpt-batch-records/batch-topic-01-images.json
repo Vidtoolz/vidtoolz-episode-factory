@@ -1,0 +1,211 @@
+{
+  "batch_name": "batch-topic-01-images",
+  "generated_utc": "2026-06-08T07:22Z",
+  "topic_id": "topic-01-local-ai-video",
+  "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+  "prompt_type": "image",
+  "count": 25,
+  "status": "DRAFT \u2014 NOT GENERATED",
+  "records": [
+    {
+      "id": "topic-01-local-ai-video-img-01",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A person sitting at a desk with their head in their hands, soft dramatic lighting from a monitor glow \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-01.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-02",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A credit card on fire with subtle blue digital flames, dark background, dramatic lighting \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-02.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-03",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A loading progress bar stuck at 98 percent, minimalist design, dark background with subtle blue gradient \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-03.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-04",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A small robot figure walking through dense fog, cinematic lighting with soft blue tones \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-04.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-05",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A powerful gaming PC tower with subtle RGB lighting, dark room, monitor off \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-05.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-06",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "Close-up of a high-end graphics card with subtle illuminated circuit traces, dark background \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-06.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-07",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "An old-school calculator under dramatic spotlight, dark background, clean composition \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-07.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-08",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A small stack of euro coins with a subtle hourglass next to them, dark background \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-08.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-09",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "An hourglass where the falling sand turns into coins at the bottom, dark background \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-09.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-10",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "An abstract geometric open lock symbol made of light, dark background with blue and purple gradient \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-10.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-11",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A glowing download arrow descending into an open hand, dark background \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-11.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-12",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A graphics card with a subtle infinity symbol glowing above it, dark background \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-12.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-13",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A close-up of an electricity meter with a very small number displayed, dark and moody lighting \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-13.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-14",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A minimalist shield symbol made of light, protecting a small glowing computer icon inside \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-14.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-15",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "Split composition: left side shows a padlocked cloud symbol, right side shows an open glowing computer \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-15.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-16",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "An abstract visual of connected nodes with flowing light between them, complex but elegant \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-16.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-17",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "An open toolbox with glowing tools inside, dark background, warm and empowering lighting \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-17.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-18",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "Three abstract glowing orbs in different colors arranged in a triangle, dark background \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-18.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-19",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A bridge of light connecting two identical platforms, dark background, symbolic \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-19.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-20",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A stylized glowing convenience store sign in an otherwise empty dark space, slightly ironic \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-20.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-21",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A gaming PC tower with subtle film-studio lighting equipment arranged around it \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-21.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-22",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A pile of generic subscription receipts with subtle question marks, dark background \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-22.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-23",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "A person looking into a mirror, but the reflection shows a graphics card instead of their face \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-23.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-24",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "Split composition: an empty wallet on the left, a glowing computer on the right \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-24.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-img-25",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "image",
+      "prompt_text": "Soft dawn light streaming through a window onto a clean desk with a computer \u2014 professional YouTube explainer style, 9:16 vertical, dark background, no text",
+      "output_filename": "topic-01-local-ai-video-img-25.png",
+      "generation_status": "pending"
+    }
+  ]
+}

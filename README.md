@@ -105,12 +105,18 @@ Inspect one package run without writing anything:
 ```sh
 node scripts/package-run-doctor.js package-runs/YYYY-MM-DD-ai-video-idea-filter
 node scripts/package-run-doctor.js package-runs/YYYY-MM-DD-ai-video-idea-filter --json
+node scripts/package-run-workflow-map.js package-runs/YYYY-MM-DD-ai-video-idea-filter
 ```
 
 The Package Run Doctor reports the current inferred lifecycle stage, overall
 status, blocking reasons, approval markers, detected artifacts, missing expected
 artifacts, and the next deterministic local command. It is read-only and does
 not call external APIs.
+
+The Package Run Workflow Map prints JSON for one run: lifecycle gates, expected
+artifacts, existing artifacts, missing artifacts, the current blocker, and the
+next safe human action. It is read-only and uses the same conservative
+Doctor/index/authority signals as the dashboard.
 
 Or regenerate the index and print the exact local server command and dashboard
 URL:

@@ -53,8 +53,10 @@ node --check scripts/package-run-production-approval-review.js
 node --check scripts/script-image-assets-dry-run.js
 node --check scripts/script-image-assets-review-page.js
 node --check scripts/topic-scout.js
+node --check scripts/oneof10-input-helper.js
 node --check scripts/package-runs-index.js
 node --check scripts/package-runs-dashboard-launch.js
+node --check scripts/validate-published-videos.js
 sh -n scripts/open-package-runs-dashboard.sh
 node --check scripts/trailer-cue-new.js
 node --check scripts/music-cue-new.js

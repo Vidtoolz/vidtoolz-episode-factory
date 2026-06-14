@@ -1,0 +1,8 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]
+    - generic [ref=e8]
+  - status [ref=e14]: Loaded 10 package candidates from package-candidates.json.
+  - main [ref=e15]:
+    - region "Package controls" [ref=e16]
+    - region "Package candidate cards" [ref=e29]

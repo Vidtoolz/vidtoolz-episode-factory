@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VIDTOOLZ screen recording candidates</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #071017;
+    --panel: #111c26;
+    --panel-2: #172635;
+    --line: #2b4054;
+    --text: #edf5ff;
+    --muted: #9eb0c2;
+    --accent: #72f7c5;
+    --warn: #ffcb6b;
+    --bad: #ff7a90;
+    --blue: #7ab8ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); color: var(--text); font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  body { overflow: hidden; }
+  .slide { display: none; width: 100vw; height: 100vh; padding: 54px 72px; background: radial-gradient(circle at top right, #123246 0%, var(--bg) 42%); }
+  .slide.active { display: flex; flex-direction: column; gap: 28px; }
+  .kicker { text-transform: uppercase; letter-spacing: .17em; font-size: 20px; color: var(--accent); font-weight: 800; }
+  h1 { margin: 0; font-size: 52px; line-height: 1.05; max-width: 1500px; }
+  h2 { margin: 0 0 12px; font-size: 30px; }
+  p { margin: 0; color: var(--muted); font-size: 24px; line-height: 1.35; }
+  .grid { display: grid; gap: 22px; }
+  .grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .card { background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.025)); border: 1px solid var(--line); border-radius: 22px; padding: 24px; box-shadow: 0 22px 50px rgba(0,0,0,.24); }
+  .card strong { display: block; font-size: 28px; line-height: 1.18; margin-bottom: 10px; }
+  .card span { display: block; color: var(--accent); text-transform: uppercase; letter-spacing: .12em; font-weight: 800; font-size: 15px; margin-bottom: 10px; }
+  .muted { color: var(--muted); }
+  .blocked strong, .bad { color: var(--bad); }
+  .warn { color: var(--warn); }
+  .ok { color: var(--accent); }
+  .blue { color: var(--blue); }
+  table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 18px; font-size: 20px; }
+  th, td { border: 1px solid var(--line); padding: 17px 16px; vertical-align: top; line-height: 1.25; }
+  th { background: #1d3447; color: var(--accent); text-align: left; font-size: 17px; text-transform: uppercase; letter-spacing: .08em; }
+  td { background: rgba(255,255,255,.035); }
+  .footer { margin-top: auto; display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 18px; border-top: 1px solid var(--line); padding-top: 18px; }
+  .pill { display: inline-block; padding: 8px 12px; border-radius: 999px; background: #20374a; color: var(--text); border: 1px solid var(--line); font-size: 16px; margin-right: 8px; }
+  .flow { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .step { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 22px; font-size: 25px; font-weight: 800; }
+  .arrow { color: var(--accent); font-size: 34px; }
+</style>
+</head>
+<body>
+  <section class="slide" data-slide="1">
+    <div class="kicker">VIDTOOLZ / Focus Mode</div>
+    <h1>The system should show what matters now, not reward wandering around the machinery.</h1>
+    <div class="grid cols-3">
+      <div class="card"><span>Now</span><strong>Active video needs proof-first edit work</strong><p>Use the current package run and keep the next action concrete.</p></div>
+      <div class="card"><span>Next 30-minute action</span><strong>Place the first 3–5 Resolve spine markers</strong><p>M02, M03, M04, M09, then M05 only if the cut feels flat.</p></div>
+      <div class="card blocked"><span>Blocked actions</span><strong>No production-ready, publish-ready, or approval writes</strong><p>Tooling health and dashboard state are not video readiness.</p></div>
+    </div>
+    <div class="footer"><div>Use as B-roll over “Show the system”.</div><div>Candidate capture only — not approval.</div></div>
+  </section>
+
+  <section class="slide" data-slide="2">
+    <div class="kicker">Beginning Triage</div>
+    <h1>A better beginning starts before the rough idea becomes a commitment.</h1>
+    <div class="flow">
+      <div class="step">Topic / problem space</div><div class="arrow">→</div>
+      <div class="step">Research</div><div class="arrow">→</div>
+      <div class="step">3 angles</div><div class="arrow">→</div>
+      <div class="step">Choose direction</div><div class="arrow">→</div>
+      <div class="step">Rough idea</div><div class="arrow">→</div>
+      <div class="step">Title-thumbnail promise</div><div class="arrow">→</div>
+      <div class="step">Claim + proof triage</div>
+    </div>
+    <div class="grid cols-3">
+      <div class="card"><span>Topic</span><strong>AI video workflows</strong><p>Too broad. Not yet a video.</p></div>
+      <div class="card"><span>Possible angle</span><strong>Why AI video workflows fail</strong><p>Different claim, proof, and visual risk.</p></div>
+      <div class="card"><span>VIDTOOLZ angle</span><strong>Build a proof-first production system</strong><p>Specific enough to test on screen.</p></div>
+    </div>
+    <div class="footer"><div>Use over “Beginning workflow”.</div><div>Draft visual, not package approval.</div></div>
+  </section>
+
+  <section class="slide" data-slide="3">
+    <div class="kicker">Claim Map</div>
+    <h1>Before production, map what the video is allowed to claim.</h1>
+    <table>
+      <thead><tr><th>Claim</th><th>Proof needed</th><th>Existing proof</th><th>Proof gap</th><th>Visual evidence</th><th>Forbidden unless proven</th></tr></thead>
+      <tbody>
+        <tr><td>A proof-first workflow can stop weak videos moving too fast.</td><td>Visible gate or blocker before production.</td><td>Local dashboard, run files, capture checklist.</td><td>Mikko still judges sufficiency.</td><td>Dashboard + checklist + blocked status.</td><td>“Guarantees better videos.”</td></tr>
+        <tr><td>AI can prepare and expose gaps.</td><td>Show draft/planning artifacts.</td><td>Proof-plan checklist and before/after package revision.</td><td>Artifacts remain review-needed.</td><td>Tables and status boundaries.</td><td>“AI approves the video.”</td></tr>
+      </tbody>
+    </table>
+    <div class="footer"><div>Use over “The proof-first gate”.</div><div>Most important column: Forbidden unless proven.</div></div>
+  </section>
+
+  <section class="slide" data-slide="4">
+    <div class="kicker">Proof-Plan Checklist</div>
+    <h1>The checklist separates a polished idea from a makeable video with visible proof.</h1>
+    <table>
+      <thead><tr><th>Criterion</th><th>Test question</th><th>Status for this run</th></tr></thead>
+      <tbody>
+        <tr><td>Viewer promise</td><td>What will the viewer be able to do, understand, or decide?</td><td class="warn">review-needed</td></tr>
+        <tr><td>Proof/demo moment</td><td>What example, demo, comparison, or result proves the promise?</td><td class="warn">review-needed</td></tr>
+        <tr><td>Evidence source</td><td>Which local file, capture, or inspected artifact supports it?</td><td class="warn">review-needed</td></tr>
+        <tr><td>Production path</td><td>Can it be captured with available tools, time, and skill?</td><td class="warn">review-needed</td></tr>
+        <tr><td>Packaging fit</td><td>Does the title/thumbnail promise match only what the video can prove?</td><td class="warn">review-needed</td></tr>
+      </tbody>
+    </table>
+    <div class="footer"><div>Based on proof-plan-checklist-demo.md.</div><div>Review-needed, not approved.</div></div>
+  </section>
+
+  <section class="slide" data-slide="5">
+    <div class="kicker">Concrete Gate / Blocker</div>
+    <h1>A real blocker is stronger evidence than AI B-roll.</h1>
+    <div class="grid cols-2">
+      <div class="card"><span>Useful system behavior</span><strong>The system can say “not ready”.</strong><p>If missing pickups or proof gaps exist, the run should stay blocked instead of pretending files equal readiness.</p></div>
+      <div class="card blocked"><span>Boundary</span><strong>Ready for rough cut: no</strong><p>Editing, publishing, upload prep, final title lock, and final thumbnail lock remain blocked until reviewed.</p></div>
+      <div class="card"><span>Evidence visual</span><strong>Actual dashboard / actual artifact / actual blocker</strong><p>This is proof of workflow behavior, not a metaphor.</p></div>
+      <div class="card"><span>Illustrative visual</span><strong>AI B-roll can support, but cannot carry proof here.</strong><p>The proof must be the real workflow decision point.</p></div>
+    </div>
+    <div class="footer"><div>Use over “Concrete example”.</div><div>Candidate capture evidence only.</div></div>
+  </section>
+
+  <section class="slide" data-slide="6">
+    <div class="kicker">Before / After Package Repair</div>
+    <h1>The stronger package moves from generic output to a testable production promise.</h1>
+    <div class="grid cols-2">
+      <div class="card blocked"><span>Before</span><strong>10 AI Tools Every Creator Should Try in 2026</strong><p>Broad listicle promise. No specific viewer problem. No clear proof/demo moment. High risk of generic AI advice.</p></div>
+      <div class="card"><span>After</span><strong>Stop Planning AI Videos Until You Have a Proof Plan</strong><p>Viewer learns how to check whether an AI-assisted video idea has enough concrete proof to deserve production time.</p></div>
+      <div class="card"><span>What changed</span><strong>The proof requirement became explicit.</strong><p>The video must show what the idea can prove on screen.</p></div>
+      <div class="card"><span>Still blocked</span><strong>Final title and final thumbnail are not approved.</strong><p>This is a working package direction, not publishing readiness.</p></div>
+    </div>
+    <div class="footer"><div>Based on before-after-package-revision.md.</div><div>Draft planning evidence.</div></div>
+  </section>
+
+  <section class="slide" data-slide="7">
+    <div class="kicker">Better Role of AI</div>
+    <h1>AI handles expandable work. Mikko handles accountable work.</h1>
+    <div class="grid cols-2">
+      <div class="card"><span>AI may</span><strong>Prepare, inspect, draft, compare, expose gaps</strong><p>Good targets: research scanning, options, formatting, logistics, checklists, pickup planning, metadata, mechanical review.</p></div>
+      <div class="card blocked"><span>AI must not</span><strong>Approve itself or imply proof that does not exist</strong><p>No final topic choice, final voice, proof sufficiency, publish approval, or readiness decisions.</p></div>
+      <div class="card"><span>Mikko must</span><strong>Judge claim, proof, taste, lived experience, final publishability</strong><p>The human role is not just operating the camera. It is judgment.</p></div>
+      <div class="card"><span>Practical workflow</span><strong>Choose → Prove → Produce → Review → Package → Publish</strong><p>Slow down only where friction protects the work.</p></div>
+    </div>
+    <div class="footer"><div>Use over “The better role of AI” / “Practical workflow”.</div><div>Doctrine visual.</div></div>
+  </section>
+<script>
+  const params = new URLSearchParams(location.search);
+  let slide = params.get('slide') || '1';
+  function showSlide(nextSlide) {
+    slide = String(nextSlide);
+    for (const el of document.querySelectorAll('.slide')) {
+      el.classList.toggle('active', el.dataset.slide === slide);
+    }
+  }
+  document.addEventListener('keydown', (event) => {
+    if (/^[1-7]$/.test(event.key)) showSlide(event.key);
+  });
+  showSlide(slide);
+</script>
+</body>
+</html>

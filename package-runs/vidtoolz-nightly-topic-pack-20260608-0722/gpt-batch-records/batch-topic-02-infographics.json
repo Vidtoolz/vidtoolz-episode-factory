@@ -1,0 +1,131 @@
+{
+  "batch_name": "batch-topic-02-infographics",
+  "generated_utc": "2026-06-08T07:22Z",
+  "topic_id": "topic-02-youtube-automation-lie",
+  "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+  "prompt_type": "infographic",
+  "count": 15,
+  "status": "DRAFT \u2014 NOT GENERATED",
+  "records": [
+    {
+      "id": "topic-02-youtube-automation-lie-info-01",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: two columns \u2014 \"The Promise\" (beach, laptop, passive income) vs \"The Reality\" (empty views, burnout) \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-01.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-02-youtube-automation-lie-info-02",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: typical automation startup costs \u2014 course, freelancers, AI tools, total before first real view \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-02.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-02-youtube-automation-lie-info-03",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: three failure reasons for faceless channels \u2014 No Trust, No Personality, No Reason to Return \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-03.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-02-youtube-automation-lie-info-04",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: System vs Automation comparison \u2014 amplifies creator vs replaces creator, sustainable vs fragile \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-04.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-02-youtube-automation-lie-info-05",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: 4-step real creator system \u2014 Templates, AI-assisted drafting, Creator records, Consistent format \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-05.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-02-youtube-automation-lie-info-06",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: trust equation \u2014 Voice + Expertise + Consistency = Subscriber Trust \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-06.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-02-youtube-automation-lie-info-07",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: 3-month automation timeline \u2014 Month 1 setup, Month 2 launch/low views, Month 3 burnout/abandoned \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-07.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-02-youtube-automation-lie-info-08",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: three viewer needs \u2014 expertise icon, experience icon, human/real icon \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-08.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-02-youtube-automation-lie-info-09",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: Shortcut (automation, quick fail) vs Long Path (voice, systems, slow growth) \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-09.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-02-youtube-automation-lie-info-10",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: Creator Input \u2192 Production System \u2192 Amplified Output, creator at center \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-10.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-02-youtube-automation-lie-info-11",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: lasting channels (human voice, expertise, community) vs dying channels (generic, shallow, no community) \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-11.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-02-youtube-automation-lie-info-12",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: 4-point voice checklist \u2014 experience, opinions, recognizability, missability \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-12.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-02-youtube-automation-lie-info-13",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: 80/20 of YouTube \u2014 Trust and Voice (80%) vs Tools and Automation (20%) \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-13.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-02-youtube-automation-lie-info-14",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: 5 real system components \u2014 Script Templates, AI Research, Production Checklist, Format Templates, Publishing \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-14.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-02-youtube-automation-lie-info-15",
+      "topic_title": "YouTube Automation Is a Lie (And What Actually Works)",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: single bold question \u2014 \"If AI could run your channel without you \u2014 why would anyone watch?\" \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-02-youtube-automation-lie-info-15.png",
+      "generation_status": "pending"
+    }
+  ]
+}

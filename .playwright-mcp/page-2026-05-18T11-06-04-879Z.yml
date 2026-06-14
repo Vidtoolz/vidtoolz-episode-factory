@@ -1,0 +1,523 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - paragraph [ref=e5]: VIDTOOLZ
+      - heading "Package Engine v1.7.4" [level=1] [ref=e6]:
+        - text: Package Engine
+        - generic [ref=e7]: v1.7.4
+    - generic [ref=e8]:
+      - link "Episode Factory" [ref=e9] [cursor=pointer]:
+        - /url: index.html
+      - link "Run Dashboard" [ref=e10] [cursor=pointer]:
+        - /url: package-runs-dashboard.html
+      - button "Download selected JSON" [disabled] [ref=e11]
+      - button "Download selected Markdown" [disabled] [ref=e12]
+      - button "Generate thumbnail candidates" [ref=e1100] [cursor=pointer]
+  - status [ref=e14]: Thumbnail candidates generated.
+  - main [ref=e15]:
+    - region "Package controls" [ref=e16]:
+      - generic [ref=e17]:
+        - heading "Candidate Review" [level=2] [ref=e18]
+        - paragraph [ref=e19]: Review 10 structured package candidates, select one winner, then export it.
+      - generic [ref=e20]:
+        - generic [ref=e21]: Sort
+        - combobox "Sort" [ref=e22]:
+          - option "Score high to low" [selected]
+          - option "Score low to high"
+          - option "Package number"
+      - generic [ref=e23]:
+        - generic [ref=e24]: Recommendation
+        - combobox "Recommendation" [ref=e25]:
+          - option "All" [selected]
+          - option "Make"
+          - option "Maybe"
+          - option "Reject"
+      - generic [ref=e26]:
+        - generic [ref=e27]: 10 shown / 10 total
+        - strong [ref=e28]: No winner selected
+    - generic [ref=e481]:
+      - generic [ref=e1102]:
+        - heading "Generated thumbnail candidates" [level=2] [ref=e1103]
+        - paragraph [ref=e1104]: Externally generated thumbnail drafts from gpt-image-1.
+      - generic [ref=e1105]:
+        - article [ref=e1106]:
+          - img "Stop Letting AI Choose Your Video Strategy OpenAI draft 1" [ref=e1107]
+          - heading "Stop Letting AI Choose Your Video Strategy OpenAI draft 1" [level=3] [ref=e1108]
+          - generic [ref=e1109]: OpenAI / gpt-image-1
+          - paragraph [ref=e1110]: "16:9 YouTube thumbnail composition, landscape frame. Bold readable title text, high contrast, one clear visual idea. Practical VIDTOOLZ style: serious solo creator, AI workflow, production decision-making. No fake logos, no celebrity or public figure likeness, no misleading screenshot claims. Make the image feel useful, grounded, and production-focused rather than hype-driven. Topic: Stop Letting AI Choose Your Video Strategy. Thumbnail concept: Creator at desk rejecting a chaotic AI suggestion cloud and choosing one clear package card.. On-thumbnail text: \"AI IS NOT THE BOSS\". Viewer promise: Learn how to use AI for faster video ideation without outsourcing taste, positioning, or final judgment.. Target viewer: Serious solo creator experimenting with AI tools but worried about generic content.. Variation 1: Show a solo creator comparing competing video ideas before committing to production."
+        - article [ref=e1111]:
+          - img "Stop Letting AI Choose Your Video Strategy OpenAI draft 2" [ref=e1112]
+          - heading "Stop Letting AI Choose Your Video Strategy OpenAI draft 2" [level=3] [ref=e1113]
+          - generic [ref=e1114]: OpenAI / gpt-image-1
+          - paragraph [ref=e1115]: "16:9 YouTube thumbnail composition, landscape frame. Bold readable title text, high contrast, one clear visual idea. Practical VIDTOOLZ style: serious solo creator, AI workflow, production decision-making. No fake logos, no celebrity or public figure likeness, no misleading screenshot claims. Make the image feel useful, grounded, and production-focused rather than hype-driven. Topic: Stop Letting AI Choose Your Video Strategy. Thumbnail concept: Creator at desk rejecting a chaotic AI suggestion cloud and choosing one clear package card.. On-thumbnail text: \"AI IS NOT THE BOSS\". Viewer promise: Learn how to use AI for faster video ideation without outsourcing taste, positioning, or final judgment.. Target viewer: Serious solo creator experimenting with AI tools but worried about generic content.. Variation 2: Show a clear before/after decision board where weak AI suggestions become a stronger video package."
+        - article [ref=e1116]:
+          - img "Stop Letting AI Choose Your Video Strategy OpenAI draft 3" [ref=e1117]
+          - heading "Stop Letting AI Choose Your Video Strategy OpenAI draft 3" [level=3] [ref=e1118]
+          - generic [ref=e1119]: OpenAI / gpt-image-1
+          - paragraph [ref=e1120]: "16:9 YouTube thumbnail composition, landscape frame. Bold readable title text, high contrast, one clear visual idea. Practical VIDTOOLZ style: serious solo creator, AI workflow, production decision-making. No fake logos, no celebrity or public figure likeness, no misleading screenshot claims. Make the image feel useful, grounded, and production-focused rather than hype-driven. Topic: Stop Letting AI Choose Your Video Strategy. Thumbnail concept: Creator at desk rejecting a chaotic AI suggestion cloud and choosing one clear package card.. On-thumbnail text: \"AI IS NOT THE BOSS\". Viewer promise: Learn how to use AI for faster video ideation without outsourcing taste, positioning, or final judgment.. Target viewer: Serious solo creator experimenting with AI tools but worried about generic content.. Variation 3: Show a focused creator rejecting noisy AI outputs and choosing one practical thumbnail/title direction."
+    - region "Package candidate cards" [ref=e29]:
+      - article [ref=e1121]:
+        - generic [ref=e1122]:
+          - generic [ref=e1123]: "#1"
+          - generic [ref=e1124]: 94/100
+          - generic [ref=e1125]: Make
+        - heading "Stop Letting AI Choose Your Video Strategy" [level=2] [ref=e1126]
+        - paragraph [ref=e1127]: A practical framework for using AI as a research assistant while keeping creator judgment in control.
+        - generic [ref=e1128]:
+          - generic [ref=e1129]: Thumbnail image
+          - img "Thumbnail for Stop Letting AI Choose Your Video Strategy" [ref=e1130]
+        - generic [ref=e1131]:
+          - generic [ref=e1132]:
+            - heading "Thumbnail candidates" [level=3] [ref=e1133]
+            - button "Generate 3 more" [ref=e1134] [cursor=pointer]
+          - generic [ref=e1135]:
+            - button [ref=e1136] [cursor=pointer]:
+              - generic [ref=e1137]: Stop Letting AI Choose Your Video Strategy OpenAI draft 1
+              - generic [ref=e1138]: "Creator: OpenAI / gpt-image-1"
+              - img "Stop Letting AI Choose Your Video Strategy OpenAI draft 1" [ref=e1140]
+              - generic [ref=e1141]: "16:9 YouTube thumbnail composition, landscape frame. Bold readable title text, high contrast, one clear visual idea. Practical VIDTOOLZ style: serious solo creator, AI workflow, production decision-making. No fake logos, no celebrity or public figure likeness, no misleading screenshot claims. Make the image feel useful, grounded, and production-focused rather than hype-driven. Topic: Stop Letting AI Choose Your Video Strategy. Thumbnail concept: Creator at desk rejecting a chaotic AI suggestion cloud and choosing one clear package card.. On-thumbnail text: \"AI IS NOT THE BOSS\". Viewer promise: Learn how to use AI for faster video ideation without outsourcing taste, positioning, or final judgment.. Target viewer: Serious solo creator experimenting with AI tools but worried about generic content.. Variation 1: Show a solo creator comparing competing video ideas before committing to production."
+            - button [ref=e1142] [cursor=pointer]:
+              - generic [ref=e1143]: Stop Letting AI Choose Your Video Strategy OpenAI draft 2
+              - generic [ref=e1144]: "Creator: OpenAI / gpt-image-1"
+              - img "Stop Letting AI Choose Your Video Strategy OpenAI draft 2" [ref=e1146]
+              - generic [ref=e1147]: "16:9 YouTube thumbnail composition, landscape frame. Bold readable title text, high contrast, one clear visual idea. Practical VIDTOOLZ style: serious solo creator, AI workflow, production decision-making. No fake logos, no celebrity or public figure likeness, no misleading screenshot claims. Make the image feel useful, grounded, and production-focused rather than hype-driven. Topic: Stop Letting AI Choose Your Video Strategy. Thumbnail concept: Creator at desk rejecting a chaotic AI suggestion cloud and choosing one clear package card.. On-thumbnail text: \"AI IS NOT THE BOSS\". Viewer promise: Learn how to use AI for faster video ideation without outsourcing taste, positioning, or final judgment.. Target viewer: Serious solo creator experimenting with AI tools but worried about generic content.. Variation 2: Show a clear before/after decision board where weak AI suggestions become a stronger video package."
+            - button [ref=e1148] [cursor=pointer]:
+              - generic [ref=e1149]: Stop Letting AI Choose Your Video Strategy OpenAI draft 3
+              - generic [ref=e1150]: "Creator: OpenAI / gpt-image-1"
+              - img "Stop Letting AI Choose Your Video Strategy OpenAI draft 3" [ref=e1152]
+              - generic [ref=e1153]: "16:9 YouTube thumbnail composition, landscape frame. Bold readable title text, high contrast, one clear visual idea. Practical VIDTOOLZ style: serious solo creator, AI workflow, production decision-making. No fake logos, no celebrity or public figure likeness, no misleading screenshot claims. Make the image feel useful, grounded, and production-focused rather than hype-driven. Topic: Stop Letting AI Choose Your Video Strategy. Thumbnail concept: Creator at desk rejecting a chaotic AI suggestion cloud and choosing one clear package card.. On-thumbnail text: \"AI IS NOT THE BOSS\". Viewer promise: Learn how to use AI for faster video ideation without outsourcing taste, positioning, or final judgment.. Target viewer: Serious solo creator experimenting with AI tools but worried about generic content.. Variation 3: Show a focused creator rejecting noisy AI outputs and choosing one practical thumbnail/title direction."
+        - generic [ref=e1154]:
+          - generic [ref=e1155]:
+            - generic [ref=e1156]: Thumbnail concept
+            - strong [ref=e1157]: Creator at desk rejecting a chaotic AI suggestion cloud and choosing one clear package card.
+          - generic [ref=e1158]:
+            - generic [ref=e1159]: On-thumbnail text
+            - strong [ref=e1160]: AI IS NOT THE BOSS
+          - generic [ref=e1161]:
+            - generic [ref=e1162]: Viewer promise
+            - strong [ref=e1163]: Learn how to use AI for faster video ideation without outsourcing taste, positioning, or final judgment.
+          - generic [ref=e1164]:
+            - generic [ref=e1165]: Target viewer
+            - strong [ref=e1166]: Serious solo creator experimenting with AI tools but worried about generic content.
+          - generic [ref=e1167]:
+            - generic [ref=e1168]: Difficulty
+            - strong [ref=e1169]: Low
+          - generic [ref=e1170]:
+            - generic [ref=e1171]: Main risk
+            - strong [ref=e1172]: Could become abstract unless grounded in a real example workflow.
+        - generic [ref=e1173]:
+          - heading "Shorts Ideas" [level=3] [ref=e1174]
+          - list [ref=e1175]:
+            - listitem [ref=e1176]: The 90/10 rule for AI video ideas
+            - listitem [ref=e1177]: Why AI should not pick your final title
+            - listitem [ref=e1178]: One question that exposes generic AI ideas
+            - listitem [ref=e1179]: How to veto an AI package
+            - listitem [ref=e1180]: AI research versus creator taste
+        - generic [ref=e1181]:
+          - button "Expand details" [ref=e1182] [cursor=pointer]
+          - button "Select winner" [ref=e1183] [cursor=pointer]
+      - article [ref=e1184]:
+        - generic [ref=e1185]:
+          - generic [ref=e1186]: "#2"
+          - generic [ref=e1187]: 91/100
+          - generic [ref=e1188]: Make
+        - heading "My AI Video Idea Filter for Serious Creators" [level=2] [ref=e1189]
+        - paragraph [ref=e1190]: Show a scoring filter that turns a list of rough AI-assisted topics into one practical video package.
+        - generic [ref=e1191]:
+          - generic [ref=e1192]: Thumbnail image
+          - generic [ref=e1193]: Ten rough ideas entering a funnel, one clean YouTube package card leaving.
+        - generic [ref=e1194]:
+          - generic [ref=e1195]:
+            - heading "Thumbnail candidates" [level=3] [ref=e1196]
+            - button "Generate 3 more" [ref=e1197] [cursor=pointer]
+          - paragraph [ref=e1198]: No thumbnail candidates yet.
+        - generic [ref=e1199]:
+          - generic [ref=e1200]:
+            - generic [ref=e1201]: Thumbnail concept
+            - strong [ref=e1202]: Ten rough ideas entering a funnel, one clean YouTube package card leaving.
+          - generic [ref=e1203]:
+            - generic [ref=e1204]: On-thumbnail text
+            - strong [ref=e1205]: 10 IDEAS -> 1 VIDEO
+          - generic [ref=e1206]:
+            - generic [ref=e1207]: Viewer promise
+            - strong [ref=e1208]: Get a repeatable way to compare ideas before wasting time scripting or recording.
+          - generic [ref=e1209]:
+            - generic [ref=e1210]: Target viewer
+            - strong [ref=e1211]: Solo creator with too many AI-generated ideas and no clear selection system.
+          - generic [ref=e1212]:
+            - generic [ref=e1213]: Difficulty
+            - strong [ref=e1214]: Low
+          - generic [ref=e1215]:
+            - generic [ref=e1216]: Main risk
+            - strong [ref=e1217]: The scoring framework must feel useful, not arbitrary.
+        - generic [ref=e1218]:
+          - heading "Shorts Ideas" [level=3] [ref=e1219]
+          - list [ref=e1220]:
+            - listitem [ref=e1221]: Score your video idea before scripting
+            - listitem [ref=e1222]: The fastest way to reject weak AI ideas
+            - listitem [ref=e1223]: Why one clear promise beats ten topics
+            - listitem [ref=e1224]: A better use for ChatGPT video ideas
+            - listitem [ref=e1225]: The package card test
+        - generic [ref=e1226]:
+          - button "Expand details" [ref=e1227] [cursor=pointer]
+          - button "Select winner" [ref=e1228] [cursor=pointer]
+      - article [ref=e1229]:
+        - generic [ref=e1230]:
+          - generic [ref=e1231]: "#3"
+          - generic [ref=e1232]: 86/100
+          - generic [ref=e1233]: Make
+        - heading "Build a YouTube Package Before You Write the Script" [level=2] [ref=e1234]
+        - paragraph [ref=e1235]: Explain why title, thumbnail, promise, risk, and Shorts angles should be chosen before writing a full script.
+        - generic [ref=e1236]:
+          - generic [ref=e1237]: Thumbnail image
+          - generic [ref=e1238]: Script document blocked by a missing package checklist.
+        - generic [ref=e1239]:
+          - generic [ref=e1240]:
+            - heading "Thumbnail candidates" [level=3] [ref=e1241]
+            - button "Generate 3 more" [ref=e1242] [cursor=pointer]
+          - paragraph [ref=e1243]: No thumbnail candidates yet.
+        - generic [ref=e1244]:
+          - generic [ref=e1245]:
+            - generic [ref=e1246]: Thumbnail concept
+            - strong [ref=e1247]: Script document blocked by a missing package checklist.
+          - generic [ref=e1248]:
+            - generic [ref=e1249]: On-thumbnail text
+            - strong [ref=e1250]: SCRIPT LAST
+          - generic [ref=e1251]:
+            - generic [ref=e1252]: Viewer promise
+            - strong [ref=e1253]: Avoid weak scripts by locking the viewer-facing package before drafting.
+          - generic [ref=e1254]:
+            - generic [ref=e1255]: Target viewer
+            - strong [ref=e1256]: Creator who starts scripting too early and loses the core promise.
+          - generic [ref=e1257]:
+            - generic [ref=e1258]: Difficulty
+            - strong [ref=e1259]: Low
+          - generic [ref=e1260]:
+            - generic [ref=e1261]: Main risk
+            - strong [ref=e1262]: Could overlap with generic YouTube advice unless tied to a concrete package workflow.
+        - generic [ref=e1263]:
+          - heading "Shorts Ideas" [level=3] [ref=e1264]
+          - list [ref=e1265]:
+            - listitem [ref=e1266]: Do not script before this
+            - listitem [ref=e1267]: The package comes first
+            - listitem [ref=e1268]: Thumbnail before script?
+            - listitem [ref=e1269]: Why your script feels unfocused
+            - listitem [ref=e1270]: The viewer promise test
+        - generic [ref=e1271]:
+          - button "Expand details" [ref=e1272] [cursor=pointer]
+          - button "Select winner" [ref=e1273] [cursor=pointer]
+      - article [ref=e1274]:
+        - generic [ref=e1275]:
+          - generic [ref=e1276]: "#4"
+          - generic [ref=e1277]: 79/100
+          - generic [ref=e1278]: Maybe
+        - heading "The Creator Workflow AI Cannot Replace" [level=2] [ref=e1279]
+        - paragraph [ref=e1280]: A positioning video about the parts of solo creator work that AI can accelerate versus the parts the creator must own.
+        - generic [ref=e1281]:
+          - generic [ref=e1282]: Thumbnail image
+          - generic [ref=e1283]: AI robot handling research while creator holds the final decision stamp.
+        - generic [ref=e1284]:
+          - generic [ref=e1285]:
+            - heading "Thumbnail candidates" [level=3] [ref=e1286]
+            - button "Generate 3 more" [ref=e1287] [cursor=pointer]
+          - paragraph [ref=e1288]: No thumbnail candidates yet.
+        - generic [ref=e1289]:
+          - generic [ref=e1290]:
+            - generic [ref=e1291]: Thumbnail concept
+            - strong [ref=e1292]: AI robot handling research while creator holds the final decision stamp.
+          - generic [ref=e1293]:
+            - generic [ref=e1294]: On-thumbnail text
+            - strong [ref=e1295]: KEEP THIS HUMAN
+          - generic [ref=e1296]:
+            - generic [ref=e1297]: Viewer promise
+            - strong [ref=e1298]: Understand where AI helps and where it quietly weakens your creative edge.
+          - generic [ref=e1299]:
+            - generic [ref=e1300]: Target viewer
+            - strong [ref=e1301]: Creator anxious about AI replacing their workflow or voice.
+          - generic [ref=e1302]:
+            - generic [ref=e1303]: Difficulty
+            - strong [ref=e1304]: Medium
+          - generic [ref=e1305]:
+            - generic [ref=e1306]: Main risk
+            - strong [ref=e1307]: May become philosophical if not grounded in examples.
+        - generic [ref=e1308]:
+          - heading "Shorts Ideas" [level=3] [ref=e1309]
+          - list [ref=e1310]:
+            - listitem [ref=e1311]: AI can research, not care
+            - listitem [ref=e1312]: The creator job that still matters
+            - listitem [ref=e1313]: Do not automate your taste
+            - listitem [ref=e1314]: Where AI helps video creators
+            - listitem [ref=e1315]: Where AI hurts your channel
+        - generic [ref=e1316]:
+          - button "Expand details" [ref=e1317] [cursor=pointer]
+          - button "Select winner" [ref=e1318] [cursor=pointer]
+      - article [ref=e1319]:
+        - generic [ref=e1320]:
+          - generic [ref=e1321]: "#5"
+          - generic [ref=e1322]: 76/100
+          - generic [ref=e1323]: Maybe
+        - heading "I Tested an AI YouTube Idea Workflow" [level=2] [ref=e1324]
+        - paragraph [ref=e1325]: Run a real test of AI-assisted idea discovery, package generation, and final human selection.
+        - generic [ref=e1326]:
+          - generic [ref=e1327]: Thumbnail image
+          - generic [ref=e1328]: Scoreboard comparing AI-generated packages with a selected winner.
+        - generic [ref=e1329]:
+          - generic [ref=e1330]:
+            - heading "Thumbnail candidates" [level=3] [ref=e1331]
+            - button "Generate 3 more" [ref=e1332] [cursor=pointer]
+          - paragraph [ref=e1333]: No thumbnail candidates yet.
+        - generic [ref=e1334]:
+          - generic [ref=e1335]:
+            - generic [ref=e1336]: Thumbnail concept
+            - strong [ref=e1337]: Scoreboard comparing AI-generated packages with a selected winner.
+          - generic [ref=e1338]:
+            - generic [ref=e1339]: On-thumbnail text
+            - strong [ref=e1340]: AI IDEA TEST
+          - generic [ref=e1341]:
+            - generic [ref=e1342]: Viewer promise
+            - strong [ref=e1343]: See what AI can and cannot do when asked to build YouTube package candidates.
+          - generic [ref=e1344]:
+            - generic [ref=e1345]: Target viewer
+            - strong [ref=e1346]: Creator curious about AI ideation workflows and skeptical of perfect demos.
+          - generic [ref=e1347]:
+            - generic [ref=e1348]: Difficulty
+            - strong [ref=e1349]: Medium
+          - generic [ref=e1350]:
+            - generic [ref=e1351]: Main risk
+            - strong [ref=e1352]: Requires a convincing real test and enough screen capture to be credible.
+        - generic [ref=e1353]:
+          - heading "Shorts Ideas" [level=3] [ref=e1354]
+          - list [ref=e1355]:
+            - listitem [ref=e1356]: AI picked this bad title
+            - listitem [ref=e1357]: The best AI package surprised me
+            - listitem [ref=e1358]: What AI missed about YouTube
+            - listitem [ref=e1359]: Testing AI video ideas
+            - listitem [ref=e1360]: The human veto moment
+        - generic [ref=e1361]:
+          - button "Expand details" [ref=e1362] [cursor=pointer]
+          - button "Select winner" [ref=e1363] [cursor=pointer]
+      - article [ref=e1364]:
+        - generic [ref=e1365]:
+          - generic [ref=e1366]: "#6"
+          - generic [ref=e1367]: 72/100
+          - generic [ref=e1368]: Maybe
+        - heading "The 10-Card System for Choosing Your Next Video" [level=2] [ref=e1369]
+        - paragraph [ref=e1370]: Introduce a simple review surface where 10 candidate packages compete before one is selected.
+        - generic [ref=e1371]:
+          - generic [ref=e1372]: Thumbnail image
+          - generic [ref=e1373]: Ten cards on a board with one highlighted winner.
+        - generic [ref=e1374]:
+          - generic [ref=e1375]:
+            - heading "Thumbnail candidates" [level=3] [ref=e1376]
+            - button "Generate 3 more" [ref=e1377] [cursor=pointer]
+          - paragraph [ref=e1378]: No thumbnail candidates yet.
+        - generic [ref=e1379]:
+          - generic [ref=e1380]:
+            - generic [ref=e1381]: Thumbnail concept
+            - strong [ref=e1382]: Ten cards on a board with one highlighted winner.
+          - generic [ref=e1383]:
+            - generic [ref=e1384]: On-thumbnail text
+            - strong [ref=e1385]: PICK THE WINNER
+          - generic [ref=e1386]:
+            - generic [ref=e1387]: Viewer promise
+            - strong [ref=e1388]: Use a compact card system to compare ideas, risks, titles, thumbnails, and Shorts potential.
+          - generic [ref=e1389]:
+            - generic [ref=e1390]: Target viewer
+            - strong [ref=e1391]: Creator who wants a more visual way to choose between content ideas.
+          - generic [ref=e1392]:
+            - generic [ref=e1393]: Difficulty
+            - strong [ref=e1394]: Low
+          - generic [ref=e1395]:
+            - generic [ref=e1396]: Main risk
+            - strong [ref=e1397]: May feel too meta unless linked to a real production decision.
+        - generic [ref=e1398]:
+          - heading "Shorts Ideas" [level=3] [ref=e1399]
+          - list [ref=e1400]:
+            - listitem [ref=e1401]: Why I compare 10 package cards
+            - listitem [ref=e1402]: The winning video card
+            - listitem [ref=e1403]: Reject ideas faster
+            - listitem [ref=e1404]: Score before you shoot
+            - listitem [ref=e1405]: One board for video ideas
+        - generic [ref=e1406]:
+          - button "Expand details" [ref=e1407] [cursor=pointer]
+          - button "Select winner" [ref=e1408] [cursor=pointer]
+      - article [ref=e1409]:
+        - generic [ref=e1410]:
+          - generic [ref=e1411]: "#7"
+          - generic [ref=e1412]: 68/100
+          - generic [ref=e1413]: Maybe
+        - heading "Your AI Video Ideas Need a Kill Switch" [level=2] [ref=e1414]
+        - paragraph [ref=e1415]: Make the case for rejecting weak AI-generated packages quickly before they consume production energy.
+        - generic [ref=e1416]:
+          - generic [ref=e1417]: Thumbnail image
+          - generic [ref=e1418]: Large red reject stamp over generic AI video ideas.
+        - generic [ref=e1419]:
+          - generic [ref=e1420]:
+            - heading "Thumbnail candidates" [level=3] [ref=e1421]
+            - button "Generate 3 more" [ref=e1422] [cursor=pointer]
+          - paragraph [ref=e1423]: No thumbnail candidates yet.
+        - generic [ref=e1424]:
+          - generic [ref=e1425]:
+            - generic [ref=e1426]: Thumbnail concept
+            - strong [ref=e1427]: Large red reject stamp over generic AI video ideas.
+          - generic [ref=e1428]:
+            - generic [ref=e1429]: On-thumbnail text
+            - strong [ref=e1430]: REJECT FAST
+          - generic [ref=e1431]:
+            - generic [ref=e1432]: Viewer promise
+            - strong [ref=e1433]: Learn the rejection criteria that keep your channel from filling with generic AI-shaped videos.
+          - generic [ref=e1434]:
+            - generic [ref=e1435]: Target viewer
+            - strong [ref=e1436]: Creator overwhelmed by AI suggestions and afraid to discard ideas.
+          - generic [ref=e1437]:
+            - generic [ref=e1438]: Difficulty
+            - strong [ref=e1439]: Low
+          - generic [ref=e1440]:
+            - generic [ref=e1441]: Main risk
+            - strong [ref=e1442]: Negative framing may be less broadly appealing than a positive selection workflow.
+        - generic [ref=e1443]:
+          - heading "Shorts Ideas" [level=3] [ref=e1444]
+          - list [ref=e1445]:
+            - listitem [ref=e1446]: Reject AI ideas faster
+            - listitem [ref=e1447]: This AI idea is a trap
+            - listitem [ref=e1448]: The generic content warning sign
+            - listitem [ref=e1449]: One reason to kill a video idea
+            - listitem [ref=e1450]: Do not produce every idea
+        - generic [ref=e1451]:
+          - button "Expand details" [ref=e1452] [cursor=pointer]
+          - button "Select winner" [ref=e1453] [cursor=pointer]
+      - article [ref=e1454]:
+        - generic [ref=e1455]:
+          - generic [ref=e1456]: "#8"
+          - generic [ref=e1457]: 61/100
+          - generic [ref=e1458]: Reject
+        - heading "The Future of AI Video Creation" [level=2] [ref=e1459]
+        - paragraph [ref=e1460]: A broad trend video about where AI video tools are heading.
+        - generic [ref=e1461]:
+          - generic [ref=e1462]: Thumbnail image
+          - generic [ref=e1463]: Futuristic AI interface with video icons.
+        - generic [ref=e1464]:
+          - generic [ref=e1465]:
+            - heading "Thumbnail candidates" [level=3] [ref=e1466]
+            - button "Generate 3 more" [ref=e1467] [cursor=pointer]
+          - paragraph [ref=e1468]: No thumbnail candidates yet.
+        - generic [ref=e1469]:
+          - generic [ref=e1470]:
+            - generic [ref=e1471]: Thumbnail concept
+            - strong [ref=e1472]: Futuristic AI interface with video icons.
+          - generic [ref=e1473]:
+            - generic [ref=e1474]: On-thumbnail text
+            - strong [ref=e1475]: THE FUTURE?
+          - generic [ref=e1476]:
+            - generic [ref=e1477]: Viewer promise
+            - strong [ref=e1478]: Understand what AI might mean for video creation.
+          - generic [ref=e1479]:
+            - generic [ref=e1480]: Target viewer
+            - strong [ref=e1481]: General creator interested in AI trends.
+          - generic [ref=e1482]:
+            - generic [ref=e1483]: Difficulty
+            - strong [ref=e1484]: Medium
+          - generic [ref=e1485]:
+            - generic [ref=e1486]: Main risk
+            - strong [ref=e1487]: Too broad, speculative, and not distinct enough for VIDTOOLZ.
+        - generic [ref=e1488]:
+          - heading "Shorts Ideas" [level=3] [ref=e1489]
+          - list [ref=e1490]:
+            - listitem [ref=e1491]: AI video is changing
+            - listitem [ref=e1492]: The future of creators
+            - listitem [ref=e1493]: One AI trend to watch
+            - listitem [ref=e1494]: What changes next
+            - listitem [ref=e1495]: AI video tools are coming
+        - generic [ref=e1496]:
+          - button "Expand details" [ref=e1497] [cursor=pointer]
+          - button "Select winner" [ref=e1498] [cursor=pointer]
+      - article [ref=e1499]:
+        - generic [ref=e1500]:
+          - generic [ref=e1501]: "#9"
+          - generic [ref=e1502]: 55/100
+          - generic [ref=e1503]: Reject
+        - heading "Top 10 AI Tools for YouTubers" [level=2] [ref=e1504]
+        - paragraph [ref=e1505]: A listicle covering popular AI tools for research, scripting, thumbnails, editing, and publishing.
+        - generic [ref=e1506]:
+          - generic [ref=e1507]: Thumbnail image
+          - generic [ref=e1508]: Grid of tool logos with ranking numbers.
+        - generic [ref=e1509]:
+          - generic [ref=e1510]:
+            - heading "Thumbnail candidates" [level=3] [ref=e1511]
+            - button "Generate 3 more" [ref=e1512] [cursor=pointer]
+          - paragraph [ref=e1513]: No thumbnail candidates yet.
+        - generic [ref=e1514]:
+          - generic [ref=e1515]:
+            - generic [ref=e1516]: Thumbnail concept
+            - strong [ref=e1517]: Grid of tool logos with ranking numbers.
+          - generic [ref=e1518]:
+            - generic [ref=e1519]: On-thumbnail text
+            - strong [ref=e1520]: TOP 10 AI TOOLS
+          - generic [ref=e1521]:
+            - generic [ref=e1522]: Viewer promise
+            - strong [ref=e1523]: Find the best AI tools for YouTube creators.
+          - generic [ref=e1524]:
+            - generic [ref=e1525]: Target viewer
+            - strong [ref=e1526]: Creator shopping for AI tools.
+          - generic [ref=e1527]:
+            - generic [ref=e1528]: Difficulty
+            - strong [ref=e1529]: High
+          - generic [ref=e1530]:
+            - generic [ref=e1531]: Main risk
+            - strong [ref=e1532]: High maintenance, crowded topic, and likely to become outdated quickly.
+        - generic [ref=e1533]:
+          - heading "Shorts Ideas" [level=3] [ref=e1534]
+          - list [ref=e1535]:
+            - listitem [ref=e1536]: One AI tool creators use
+            - listitem [ref=e1537]: Do not use every AI tool
+            - listitem [ref=e1538]: AI tool ranking problem
+            - listitem [ref=e1539]: The tool list trap
+            - listitem [ref=e1540]: Best AI tool?
+        - generic [ref=e1541]:
+          - button "Expand details" [ref=e1542] [cursor=pointer]
+          - button "Select winner" [ref=e1543] [cursor=pointer]
+      - article [ref=e1544]:
+        - generic [ref=e1545]:
+          - generic [ref=e1546]: "#10"
+          - generic [ref=e1547]: 49/100
+          - generic [ref=e1548]: Reject
+        - heading "AI Will Change Everything for Creators" [level=2] [ref=e1549]
+        - paragraph [ref=e1550]: A broad opinion piece about AI disruption in creator work.
+        - generic [ref=e1551]:
+          - generic [ref=e1552]: Thumbnail image
+          - generic [ref=e1553]: Creator silhouette facing giant AI wave.
+        - generic [ref=e1554]:
+          - generic [ref=e1555]:
+            - heading "Thumbnail candidates" [level=3] [ref=e1556]
+            - button "Generate 3 more" [ref=e1557] [cursor=pointer]
+          - paragraph [ref=e1558]: No thumbnail candidates yet.
+        - generic [ref=e1559]:
+          - generic [ref=e1560]:
+            - generic [ref=e1561]: Thumbnail concept
+            - strong [ref=e1562]: Creator silhouette facing giant AI wave.
+          - generic [ref=e1563]:
+            - generic [ref=e1564]: On-thumbnail text
+            - strong [ref=e1565]: EVERYTHING CHANGES
+          - generic [ref=e1566]:
+            - generic [ref=e1567]: Viewer promise
+            - strong [ref=e1568]: Understand why AI will transform creator work.
+          - generic [ref=e1569]:
+            - generic [ref=e1570]: Target viewer
+            - strong [ref=e1571]: Broad creator audience interested in AI disruption.
+          - generic [ref=e1572]:
+            - generic [ref=e1573]: Difficulty
+            - strong [ref=e1574]: Medium
+          - generic [ref=e1575]:
+            - generic [ref=e1576]: Main risk
+            - strong [ref=e1577]: Too hype-driven and not specific enough to the VIDTOOLZ practical promise.
+        - generic [ref=e1578]:
+          - heading "Shorts Ideas" [level=3] [ref=e1579]
+          - list [ref=e1580]:
+            - listitem [ref=e1581]: AI changes creator work
+            - listitem [ref=e1582]: The AI creator wave
+            - listitem [ref=e1583]: Everything changes?
+            - listitem [ref=e1584]: Creators and AI
+            - listitem [ref=e1585]: AI disruption
+        - generic [ref=e1586]:
+          - button "Expand details" [ref=e1587] [cursor=pointer]
+          - button "Select winner" [ref=e1588] [cursor=pointer]

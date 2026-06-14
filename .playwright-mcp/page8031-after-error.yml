@@ -1,0 +1,126 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - paragraph [ref=e5]: VIDTOOLZ
+      - heading "Package Engine v1.7.4" [level=1] [ref=e6]:
+        - text: Package Engine
+        - generic [ref=e7]: v1.7.4
+    - generic [ref=e8]:
+      - link "Episode Factory" [ref=e9] [cursor=pointer]:
+        - /url: index.html
+      - link "Run Dashboard" [ref=e10] [cursor=pointer]:
+        - /url: package-runs-dashboard.html
+      - button "Download selected JSON" [disabled] [ref=e11]
+      - button "Download selected Markdown" [disabled] [ref=e12]
+      - button "Generate thumbnail candidates" [ref=e13] [cursor=pointer]
+  - status [ref=e14]: OpenAI image generation timed out after 0 seconds.
+  - main [ref=e15]:
+    - region "Package controls" [ref=e16]:
+      - generic [ref=e17]:
+        - heading "Candidate Review" [level=2] [ref=e18]
+        - paragraph [ref=e19]: Review 10 structured package candidates, select one winner, then export it.
+      - generic [ref=e20]:
+        - generic [ref=e21]: Sort
+        - combobox "Sort" [ref=e22]
+      - generic [ref=e23]:
+        - generic [ref=e24]: Recommendation
+        - combobox "Recommendation" [ref=e25]
+      - generic [ref=e26]:
+        - generic [ref=e27]: 10 shown / 10 total
+        - strong [ref=e28]: No winner selected
+    - generic [ref=e480]:
+      - generic [ref=e482]:
+        - heading "Thumbnail generation failed" [level=2] [ref=e483]
+        - paragraph [ref=e484]: The configured thumbnail backend did not return usable candidates.
+      - paragraph [ref=e485]: OpenAI image generation timed out after 0 seconds.
+    - region "Package candidate cards" [ref=e29]:
+      - article [ref=e486]:
+        - generic [ref=e487]
+        - heading "Stop Letting AI Choose Your Video Strategy" [level=2] [ref=e491]
+        - paragraph [ref=e492]: A practical framework for using AI as a research assistant while keeping creator judgment in control.
+        - generic [ref=e493]
+        - generic [ref=e496]
+        - generic [ref=e501]
+        - generic [ref=e520]
+        - generic [ref=e528]
+      - article [ref=e531]:
+        - generic [ref=e532]
+        - heading "My AI Video Idea Filter for Serious Creators" [level=2] [ref=e536]
+        - paragraph [ref=e537]: Show a scoring filter that turns a list of rough AI-assisted topics into one practical video package.
+        - generic [ref=e538]
+        - generic [ref=e541]
+        - generic [ref=e546]
+        - generic [ref=e565]
+        - generic [ref=e573]
+      - article [ref=e576]:
+        - generic [ref=e577]
+        - heading "Build a YouTube Package Before You Write the Script" [level=2] [ref=e581]
+        - paragraph [ref=e582]: Explain why title, thumbnail, promise, risk, and Shorts angles should be chosen before writing a full script.
+        - generic [ref=e583]
+        - generic [ref=e586]
+        - generic [ref=e591]
+        - generic [ref=e610]
+        - generic [ref=e618]
+      - article [ref=e621]:
+        - generic [ref=e622]
+        - heading "The Creator Workflow AI Cannot Replace" [level=2] [ref=e626]
+        - paragraph [ref=e627]: A positioning video about the parts of solo creator work that AI can accelerate versus the parts the creator must own.
+        - generic [ref=e628]
+        - generic [ref=e631]
+        - generic [ref=e636]
+        - generic [ref=e655]
+        - generic [ref=e663]
+      - article [ref=e666]:
+        - generic [ref=e667]
+        - heading "I Tested an AI YouTube Idea Workflow" [level=2] [ref=e671]
+        - paragraph [ref=e672]: Run a real test of AI-assisted idea discovery, package generation, and final human selection.
+        - generic [ref=e673]
+        - generic [ref=e676]
+        - generic [ref=e681]
+        - generic [ref=e700]
+        - generic [ref=e708]
+      - article [ref=e711]:
+        - generic [ref=e712]
+        - heading "The 10-Card System for Choosing Your Next Video" [level=2] [ref=e716]
+        - paragraph [ref=e717]: Introduce a simple review surface where 10 candidate packages compete before one is selected.
+        - generic [ref=e718]
+        - generic [ref=e721]
+        - generic [ref=e726]
+        - generic [ref=e745]
+        - generic [ref=e753]
+      - article [ref=e756]:
+        - generic [ref=e757]
+        - heading "Your AI Video Ideas Need a Kill Switch" [level=2] [ref=e761]
+        - paragraph [ref=e762]: Make the case for rejecting weak AI-generated packages quickly before they consume production energy.
+        - generic [ref=e763]
+        - generic [ref=e766]
+        - generic [ref=e771]
+        - generic [ref=e790]
+        - generic [ref=e798]
+      - article [ref=e801]:
+        - generic [ref=e802]
+        - heading "The Future of AI Video Creation" [level=2] [ref=e806]
+        - paragraph [ref=e807]: A broad trend video about where AI video tools are heading.
+        - generic [ref=e808]
+        - generic [ref=e811]
+        - generic [ref=e816]
+        - generic [ref=e835]
+        - generic [ref=e843]
+      - article [ref=e846]:
+        - generic [ref=e847]
+        - heading "Top 10 AI Tools for YouTubers" [level=2] [ref=e851]
+        - paragraph [ref=e852]: A listicle covering popular AI tools for research, scripting, thumbnails, editing, and publishing.
+        - generic [ref=e853]
+        - generic [ref=e856]
+        - generic [ref=e861]
+        - generic [ref=e880]
+        - generic [ref=e888]
+      - article [ref=e891]:
+        - generic [ref=e892]
+        - heading "AI Will Change Everything for Creators" [level=2] [ref=e896]
+        - paragraph [ref=e897]: A broad opinion piece about AI disruption in creator work.
+        - generic [ref=e898]
+        - generic [ref=e901]
+        - generic [ref=e906]
+        - generic [ref=e925]
+        - generic [ref=e933]

@@ -1,0 +1,121 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - paragraph [ref=e5]: VIDTOOLZ
+      - heading "Package Engine v1.7.4" [level=1] [ref=e6]:
+        - text: Package Engine
+        - generic [ref=e7]: v1.7.4
+    - generic [ref=e8]:
+      - link "Episode Factory" [ref=e9] [cursor=pointer]:
+        - /url: index.html
+      - link "Run Dashboard" [ref=e10] [cursor=pointer]:
+        - /url: package-runs-dashboard.html
+      - button "Download selected JSON" [disabled] [ref=e11]
+      - button "Download selected Markdown" [disabled] [ref=e12]
+      - button "Generate thumbnail candidates" [ref=e13] [cursor=pointer]
+  - status [ref=e14]: Loaded 10 package candidates from package-candidates.json.
+  - main [ref=e15]:
+    - region "Package controls" [ref=e16]:
+      - generic [ref=e17]:
+        - heading "Candidate Review" [level=2] [ref=e18]
+        - paragraph [ref=e19]: Review 10 structured package candidates, select one winner, then export it.
+      - generic [ref=e20]:
+        - generic [ref=e21]: Sort
+        - combobox "Sort" [ref=e22]
+      - generic [ref=e23]:
+        - generic [ref=e24]: Recommendation
+        - combobox "Recommendation" [ref=e25]
+      - generic [ref=e26]:
+        - generic [ref=e27]: 10 shown / 10 total
+        - strong [ref=e28]: No winner selected
+    - region "Package candidate cards" [ref=e29]:
+      - article [ref=e30]:
+        - generic [ref=e31]
+        - heading "Stop Letting AI Choose Your Video Strategy" [level=2] [ref=e35]
+        - paragraph [ref=e36]: A practical framework for using AI as a research assistant while keeping creator judgment in control.
+        - generic [ref=e37]
+        - generic [ref=e40]
+        - generic [ref=e45]
+        - generic [ref=e64]
+        - generic [ref=e72]
+      - article [ref=e75]:
+        - generic [ref=e76]
+        - heading "My AI Video Idea Filter for Serious Creators" [level=2] [ref=e80]
+        - paragraph [ref=e81]: Show a scoring filter that turns a list of rough AI-assisted topics into one practical video package.
+        - generic [ref=e82]
+        - generic [ref=e85]
+        - generic [ref=e90]
+        - generic [ref=e109]
+        - generic [ref=e117]
+      - article [ref=e120]:
+        - generic [ref=e121]
+        - heading "Build a YouTube Package Before You Write the Script" [level=2] [ref=e125]
+        - paragraph [ref=e126]: Explain why title, thumbnail, promise, risk, and Shorts angles should be chosen before writing a full script.
+        - generic [ref=e127]
+        - generic [ref=e130]
+        - generic [ref=e135]
+        - generic [ref=e154]
+        - generic [ref=e162]
+      - article [ref=e165]:
+        - generic [ref=e166]
+        - heading "The Creator Workflow AI Cannot Replace" [level=2] [ref=e170]
+        - paragraph [ref=e171]: A positioning video about the parts of solo creator work that AI can accelerate versus the parts the creator must own.
+        - generic [ref=e172]
+        - generic [ref=e175]
+        - generic [ref=e180]
+        - generic [ref=e199]
+        - generic [ref=e207]
+      - article [ref=e210]:
+        - generic [ref=e211]
+        - heading "I Tested an AI YouTube Idea Workflow" [level=2] [ref=e215]
+        - paragraph [ref=e216]: Run a real test of AI-assisted idea discovery, package generation, and final human selection.
+        - generic [ref=e217]
+        - generic [ref=e220]
+        - generic [ref=e225]
+        - generic [ref=e244]
+        - generic [ref=e252]
+      - article [ref=e255]:
+        - generic [ref=e256]
+        - heading "The 10-Card System for Choosing Your Next Video" [level=2] [ref=e260]
+        - paragraph [ref=e261]: Introduce a simple review surface where 10 candidate packages compete before one is selected.
+        - generic [ref=e262]
+        - generic [ref=e265]
+        - generic [ref=e270]
+        - generic [ref=e289]
+        - generic [ref=e297]
+      - article [ref=e300]:
+        - generic [ref=e301]
+        - heading "Your AI Video Ideas Need a Kill Switch" [level=2] [ref=e305]
+        - paragraph [ref=e306]: Make the case for rejecting weak AI-generated packages quickly before they consume production energy.
+        - generic [ref=e307]
+        - generic [ref=e310]
+        - generic [ref=e315]
+        - generic [ref=e334]
+        - generic [ref=e342]
+      - article [ref=e345]:
+        - generic [ref=e346]
+        - heading "The Future of AI Video Creation" [level=2] [ref=e350]
+        - paragraph [ref=e351]: A broad trend video about where AI video tools are heading.
+        - generic [ref=e352]
+        - generic [ref=e355]
+        - generic [ref=e360]
+        - generic [ref=e379]
+        - generic [ref=e387]
+      - article [ref=e390]:
+        - generic [ref=e391]
+        - heading "Top 10 AI Tools for YouTubers" [level=2] [ref=e395]
+        - paragraph [ref=e396]: A listicle covering popular AI tools for research, scripting, thumbnails, editing, and publishing.
+        - generic [ref=e397]
+        - generic [ref=e400]
+        - generic [ref=e405]
+        - generic [ref=e424]
+        - generic [ref=e432]
+      - article [ref=e435]:
+        - generic [ref=e436]
+        - heading "AI Will Change Everything for Creators" [level=2] [ref=e440]
+        - paragraph [ref=e441]: A broad opinion piece about AI disruption in creator work.
+        - generic [ref=e442]
+        - generic [ref=e445]
+        - generic [ref=e450]
+        - generic [ref=e469]
+        - generic [ref=e477]

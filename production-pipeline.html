@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VIDTOOLZ Production Pipeline</title>
+    <link rel="stylesheet" href="styles.css?v=1.7.4" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #111411;
+        --panel: #191d18;
+        --panel-soft: #21271f;
+        --border: #354034;
+        --border-strong: #52624f;
+        --text: #edf2e9;
+        --muted: #a4aea0;
+        --accent: #62b883;
+        --accent-strong: #93d3a9;
+        --danger: #f07b67;
+        --warning: #e4b95d;
+        --shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+      }
+
+      body { background: var(--bg); }
+      .pipeline-shell { margin: 0 auto; max-width: 1180px; padding: 22px 18px 56px; }
+      .pipeline-header {
+        align-items: flex-start;
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+      .pipeline-title h1 { font-size: 26px; margin: 0 0 6px; }
+      .pipeline-title p { color: var(--muted); font-size: 13px; margin: 0; }
+      .pipeline-nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; }
+      .pipeline-nav a {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--accent-strong);
+        font-size: 13px;
+        padding: 6px 10px;
+        text-decoration: none;
+      }
+      .pipeline-nav a:hover { border-color: var(--accent); color: #fff; }
+      .top-grid { display: grid; gap: 12px; grid-template-columns: 2fr 1fr; margin-bottom: 14px; }
+      .highlight, .status-panel, .package-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+      .highlight { padding: 16px; }
+      .highlight span, .status-panel span, .metric span { color: var(--muted); font-size: 12px; }
+      .highlight strong { display: block; font-size: 17px; line-height: 1.35; margin-top: 4px; }
+      .status-panel { display: grid; gap: 8px; padding: 14px; }
+      .badge-row { display: flex; flex-wrap: wrap; gap: 8px; }
+      .badge {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 12px;
+        padding: 4px 9px;
+      }
+      .badge.good { border-color: rgba(98, 184, 131, 0.55); color: var(--accent-strong); }
+      .badge.warn { border-color: rgba(228, 185, 93, 0.55); color: var(--warning); }
+      .badge.bad { border-color: rgba(240, 123, 103, 0.55); color: var(--danger); }
+      .package-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+      .package-card { display: grid; gap: 12px; padding: 15px; }
+      .package-card h2 {
+        font-size: 15px;
+        line-height: 1.25;
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      .metrics { display: grid; gap: 8px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .metric {
+        background: var(--panel-soft);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        min-width: 0;
+        padding: 9px;
+      }
+      .metric strong { display: block; font-size: 16px; margin-top: 3px; }
+      .next { color: var(--accent-strong); font-size: 13px; line-height: 1.35; }
+      .package-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .package-actions button { min-height: 32px; }
+      .action-note { color: var(--muted); font-size: 12px; }
+      .control-toggle {
+        align-items: center;
+        color: var(--muted);
+        display: inline-flex;
+        font-size: 12px;
+        gap: 6px;
+      }
+      .presto-controls, .presto-progress, .presto-results,
+      .flux-controls, .flux-progress, .flux-results {
+        background: var(--panel-soft);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+      }
+      .presto-controls h3, .presto-progress h3, .presto-results h3,
+      .flux-controls h3, .flux-progress h3, .flux-results h3 {
+        font-size: 13px;
+        margin: 0;
+      }
+      .presto-progress strong, .flux-progress strong { color: var(--accent-strong); }
+      .presto-stdout, .flux-stdout {
+        background: #0b0d0b;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.45;
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 8px;
+        white-space: pre-wrap;
+      }
+      .presto-badges, .flux-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+      .presto-badge, .flux-badge {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 11px;
+        padding: 3px 8px;
+      }
+      .presto-badge.good, .flux-badge.good { border-color: rgba(98, 184, 131, 0.55); color: var(--accent-strong); }
+      .presto-badge.bad, .flux-badge.bad { border-color: rgba(240, 123, 103, 0.55); color: var(--danger); }
+      .presto-badge.warn, .flux-badge.warn { border-color: rgba(228, 185, 93, 0.55); color: var(--warning); }
+      .btn-presto-cancel, .btn-flux-cancel {
+        border-color: rgba(240, 123, 103, 0.55);
+        color: var(--danger);
+      }
+      .loading {
+        background: linear-gradient(90deg, var(--panel), var(--panel-soft), var(--panel));
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--muted);
+        padding: 18px;
+      }
+      .error-box {
+        border: 1px solid rgba(240, 123, 103, 0.55);
+        border-radius: 8px;
+        color: var(--danger);
+        padding: 14px;
+      }
+      @media (max-width: 760px) {
+        .pipeline-header, .top-grid { grid-template-columns: 1fr; }
+        .pipeline-header { display: grid; }
+        .metrics { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="pipeline-shell">
+      <header class="pipeline-header">
+        <div class="pipeline-title">
+          <p class="eyebrow">VIDTOOLZ</p>
+          <h1>Production Pipeline</h1>
+          <p>FLUX, selection, Wan2.2, PRESTO, and lane state from VIDNAS files.</p>
+        </div>
+        <button id="refresh-button" class="primary-btn" type="button">Refresh</button>
+      </header>
+
+      <nav class="pipeline-nav">
+        <a href="mission-control.html">Mission Control</a>
+        <a href="package-runs-dashboard.html">Package Runs Dashboard</a>
+        <a href="package-engine.html">Package Engine</a>
+        <a href="production-day-dashboard.html">Production Day</a>
+      </nav>
+
+      <section class="top-grid">
+        <div class="highlight">
+          <span>Next action</span>
+          <strong id="next-action">Loading pipeline status...</strong>
+        </div>
+        <div class="status-panel">
+          <span>PRESTO and Wan lane</span>
+          <div id="status-badges" class="badge-row"></div>
+        </div>
+      </section>
+
+      <section id="content">
+        <div class="loading">Reading VIDNAS status files...</div>
+      </section>
+    </main>
+
+    <script>
+      const API = "/api/aigen/production-pipeline/status";
+      const RESOLVE_ASSEMBLY_API = "/api/aigen/resolve-assembly/create";
+      const PRESTO_SUBMIT_API = "/api/presto/submit";
+      const PRESTO_STATUS_API = "/api/presto/job-status";
+      const PRESTO_CANCEL_API = "/api/presto/cancel";
+      const PRESTO_RESULTS_API = "/api/presto/results";
+      const FLUX_SUBMIT_API = "/api/flux/submit";
+      const FLUX_STATUS_API = "/api/flux/job-status";
+      const FLUX_CANCEL_API = "/api/flux/cancel";
+      const FLUX_RESULTS_API = "/api/flux/results";
+      const DEFAULT_PRESTO_URL = "http://192.168.50.187:8188";
+      const content = document.getElementById("content");
+      const nextAction = document.getElementById("next-action");
+      const statusBadges = document.getElementById("status-badges");
+      const refreshButton = document.getElementById("refresh-button");
+      let prestoPollInterval = null;
+      let prestoStatus = { active: null, completed: null };
+      let prestoResults = new Map();
+      let fluxPollInterval = null;
+      let fluxStatus = { active: false };
+      let fluxResults = new Map();
+
+      function text(value) {
+        return String(value == null ? "" : value);
+      }
+
+      function badge(label, state) {
+        const el = document.createElement("span");
+        el.className = `badge ${state || ""}`.trim();
+        el.textContent = label;
+        return el;
+      }
+
+      function renderBadges(data) {
+        statusBadges.replaceChildren();
+        const presto = data.presto || {};
+        const lane = data.wan_lane || {};
+        statusBadges.appendChild(badge(presto.reachable ? "PRESTO reachable" : "PRESTO unreachable", presto.reachable ? "good" : "bad"));
+        statusBadges.appendChild(badge(presto.queue_empty === true ? "Queue empty" : presto.queue_empty === false ? "Queue busy" : "Queue unknown", presto.queue_empty === true ? "good" : "warn"));
+        statusBadges.appendChild(badge(lane.lock_active ? "Wan lock active" : "No Wan lock", lane.lock_active ? "warn" : "good"));
+        statusBadges.appendChild(badge(`${lane.completed_count || 0} completed`, "good"));
+        statusBadges.appendChild(badge(`${lane.failed_count || 0} failed`, (lane.failed_count || 0) ? "bad" : "good"));
+        statusBadges.appendChild(badge(`${lane.runs_count || 0} runs`, ""));
+      }
+
+      function metric(label, value) {
+        const el = document.createElement("div");
+        el.className = "metric";
+        const span = document.createElement("span");
+        span.textContent = label;
+        const strong = document.createElement("strong");
+        strong.textContent = value;
+        el.append(span, strong);
+        return el;
+      }
+
+      function resolveButtonState(pkg) {
+        if ((pkg.wan_pending || 0) > 0) return { disabled: true, note: "Wan videos pending" };
+        if ((pkg.wan_failed || 0) > 0) return { disabled: true, note: "Wan failures need review" };
+        if (pkg.resolve_handoff_ready) return { disabled: true, note: "Resolve handoff ready" };
+        return { disabled: false, note: `Ready to create (${pkg.resolve_handoff_count || 0}/3 files)` };
+      }
+
+      async function createResolveAssembly(packageId, button) {
+        button.disabled = true;
+        button.textContent = "Creating...";
+        try {
+          const response = await fetch(RESOLVE_ASSEMBLY_API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ package_id: packageId })
+          });
+          const data = await response.json();
+          if (data.ok) {
+            alert(`Resolve assembly handoff created:\n${(data.files || []).join("\n")}\n\n${data.output_dir || ""}`);
+            await loadStatus();
+            return;
+          }
+          alert(`Failed: ${data.error || "unknown error"}`);
+        } catch (error) {
+          alert(`Failed: ${text(error.message || error)}`);
+        } finally {
+          button.textContent = "Create Resolve Assembly";
+          button.disabled = false;
+        }
+      }
+
+      function lastOutputLine(output) {
+        const lines = text(output).split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+        return lines.length ? lines[lines.length - 1] : "Waiting for output...";
+      }
+
+      async function fetchPrestoStatus() {
+        const response = await fetch(PRESTO_STATUS_API, { cache: "no-store" });
+        prestoStatus = await response.json();
+        return prestoStatus;
+      }
+
+      async function fetchPrestoResults(packages) {
+        const needed = packages.filter((pkg) => (pkg.wan_completed || 0) > 0 || (pkg.wan_failed || 0) > 0);
+        const entries = await Promise.all(needed.map(async (pkg) => {
+          try {
+            const response = await fetch(`${PRESTO_RESULTS_API}?package_id=${encodeURIComponent(pkg.id)}`, { cache: "no-store" });
+            const data = await response.json();
+            return [pkg.id, data];
+          } catch (error) {
+            return [pkg.id, { ok: false, error: text(error.message || error) }];
+          }
+        }));
+        prestoResults = new Map(entries);
+      }
+
+      async function fetchFluxStatus() {
+        const response = await fetch(FLUX_STATUS_API, { cache: "no-store" });
+        fluxStatus = await response.json();
+        return fluxStatus;
+      }
+
+      async function fetchFluxResults(packages) {
+        const needed = packages.filter((pkg) => (pkg.prompts_count || 0) > 0);
+        const entries = await Promise.all(needed.map(async (pkg) => {
+          try {
+            const response = await fetch(`${FLUX_RESULTS_API}?package_id=${encodeURIComponent(pkg.id)}`, { cache: "no-store" });
+            const data = await response.json();
+            return [pkg.id, data];
+          } catch (error) {
+            return [pkg.id, { ok: false, error: text(error.message || error) }];
+          }
+        }));
+        fluxResults = new Map(entries);
+      }
+
+      function startPrestoPolling() {
+        if (prestoPollInterval) clearInterval(prestoPollInterval);
+        prestoPollInterval = setInterval(async () => {
+          try {
+            await fetchPrestoStatus();
+            updatePrestoProgressUI();
+            if (!prestoStatus.active) {
+              clearInterval(prestoPollInterval);
+              prestoPollInterval = null;
+              await loadStatus();
+            }
+          } catch (_) {
+            clearInterval(prestoPollInterval);
+            prestoPollInterval = null;
+          }
+        }, 5000);
+      }
+
+      function startFluxPolling() {
+        if (fluxPollInterval) clearInterval(fluxPollInterval);
+        fluxPollInterval = setInterval(async () => {
+          try {
+            await fetchFluxStatus();
+            updateFluxProgressUI();
+            if (!fluxStatus.active) {
+              clearInterval(fluxPollInterval);
+              fluxPollInterval = null;
+              await loadStatus();
+            }
+          } catch (_) {
+            clearInterval(fluxPollInterval);
+            fluxPollInterval = null;
+          }
+        }, 5000);
+      }
+
+      function updatePrestoProgressUI() {
+        const panels = document.querySelectorAll("[data-presto-progress-for]");
+        panels.forEach((panel) => {
+          const packageId = panel.getAttribute("data-presto-progress-for");
+          const active = prestoStatus.active && prestoStatus.active.package_id === packageId ? prestoStatus.active : null;
+          const completed = prestoStatus.completed && prestoStatus.completed.package_id === packageId ? prestoStatus.completed : null;
+          renderPrestoProgressPanel(panel, active, completed);
+        });
+      }
+
+      function updateFluxProgressUI() {
+        const panels = document.querySelectorAll("[data-flux-progress-for]");
+        panels.forEach((panel) => {
+          const packageId = panel.getAttribute("data-flux-progress-for");
+          const active = fluxStatus.active && fluxStatus.package_id === packageId ? fluxStatus : null;
+          const completed = !fluxStatus.active && fluxStatus.package_id === packageId && fluxStatus.exit_state ? fluxStatus : null;
+          renderFluxProgressPanel(panel, active, completed);
+        });
+      }
+
+      async function submitToPresto(packageId, button) {
+        button.disabled = true;
+        button.textContent = "Submitting...";
+        try {
+          const response = await fetch(PRESTO_SUBMIT_API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ package_id: packageId, comfyui_url: DEFAULT_PRESTO_URL })
+          });
+          const data = await response.json();
+          if (!data.ok) {
+            alert(`Failed: ${data.error || "unknown error"}`);
+            await fetchPrestoStatus();
+            updatePrestoProgressUI();
+            return;
+          }
+          await fetchPrestoStatus();
+          updatePrestoProgressUI();
+          startPrestoPolling();
+        } catch (error) {
+          alert(`Failed: ${text(error.message || error)}`);
+        } finally {
+          button.textContent = button.getAttribute("data-label") || "Submit to PRESTO";
+          button.disabled = false;
+          await loadStatus();
+        }
+      }
+
+      async function cancelPrestoJob(button) {
+        button.disabled = true;
+        button.textContent = "Cancelling...";
+        try {
+          const response = await fetch(PRESTO_CANCEL_API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({})
+          });
+          const data = await response.json();
+          if (!data.ok) alert(`Failed: ${data.error || "unknown error"}`);
+          await fetchPrestoStatus();
+          updatePrestoProgressUI();
+          await loadStatus();
+        } catch (error) {
+          alert(`Failed: ${text(error.message || error)}`);
+        }
+      }
+
+      async function submitToFlux(pkg, button, dryRunInput) {
+        const remaining = Math.max(0, (pkg.prompts_count || 0) - (pkg.flux_images_count || 0));
+        const dryRun = Boolean(dryRunInput && dryRunInput.checked);
+        const message =
+          `Generate FLUX images for ${pkg.id}?\n\n` +
+          `Prompts: ${pkg.prompts_count || 0}\n` +
+          `Existing images: ${pkg.flux_images_count || 0}\n` +
+          `Missing images: ${remaining}\n` +
+          `Mode: ${dryRun ? "dry run only" : "REAL generation"}`;
+        if (!confirm(message)) return;
+        if (!dryRun && !confirm("Start REAL FLUX generation now? This can take roughly 48 seconds per image.")) return;
+        button.disabled = true;
+        button.textContent = dryRun ? "Starting dry run..." : "Starting...";
+        try {
+          const response = await fetch(FLUX_SUBMIT_API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ package_id: pkg.id, limit: 0, skip_existing: true, dry_run: dryRun })
+          });
+          const data = await response.json();
+          if (!data.ok) {
+            alert(`Failed: ${data.error || "unknown error"}`);
+            await fetchFluxStatus();
+            updateFluxProgressUI();
+            return;
+          }
+          await fetchFluxStatus();
+          updateFluxProgressUI();
+          startFluxPolling();
+        } catch (error) {
+          alert(`Failed: ${text(error.message || error)}`);
+        } finally {
+          button.textContent = button.getAttribute("data-label") || "Generate FLUX images";
+          button.disabled = false;
+          await loadStatus();
+        }
+      }
+
+      async function cancelFluxJob(button) {
+        button.disabled = true;
+        button.textContent = "Cancelling...";
+        try {
+          const response = await fetch(FLUX_CANCEL_API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({})
+          });
+          const data = await response.json();
+          if (!data.ok) alert(`Failed: ${data.error || "unknown error"}`);
+          await fetchFluxStatus();
+          updateFluxProgressUI();
+          await loadStatus();
+        } catch (error) {
+          alert(`Failed: ${text(error.message || error)}`);
+        }
+      }
+
+      function renderPrestoProgressPanel(panel, active, completed) {
+        panel.innerHTML = "";
+        if (!active && !completed) {
+          panel.hidden = true;
+          return;
+        }
+        panel.hidden = false;
+        const title = document.createElement("h3");
+        title.textContent = active ? "Submitting to PRESTO..." : "PRESTO job completed";
+        const summary = document.createElement("div");
+        summary.className = "action-note";
+        summary.textContent = active
+          ? `Elapsed ${active.running_seconds || 0}s`
+          : `Exit code ${completed.exit_code == null ? "unknown" : completed.exit_code}, elapsed ${completed.running_seconds || 0}s`;
+        const status = document.createElement("strong");
+        status.textContent = lastOutputLine((active || completed).stdout_tail || (active || completed).stderr_tail);
+        const output = document.createElement("pre");
+        output.className = "presto-stdout";
+        output.textContent = text((active || completed).stdout_tail || (active || completed).stderr_tail || "");
+        panel.append(title, summary, status, output);
+        if (active) {
+          const cancel = document.createElement("button");
+          cancel.type = "button";
+          cancel.className = "btn-presto-cancel";
+          cancel.textContent = "Cancel";
+          cancel.addEventListener("click", () => cancelPrestoJob(cancel));
+          panel.appendChild(cancel);
+        }
+      }
+
+      function renderFluxProgressPanel(panel, active, completed) {
+        panel.innerHTML = "";
+        if (!active && !completed) {
+          panel.hidden = true;
+          return;
+        }
+        panel.hidden = false;
+        const title = document.createElement("h3");
+        title.textContent = active ? "Generating FLUX images..." : "FLUX job completed";
+        const summary = document.createElement("div");
+        summary.className = "action-note";
+        summary.textContent = active
+          ? `Mode ${active.mode || "unknown"}, elapsed ${active.elapsed_seconds || 0}s`
+          : `State ${completed.exit_state || "unknown"}, exit code ${completed.exit_code == null ? "unknown" : completed.exit_code}, elapsed ${completed.elapsed_seconds || 0}s`;
+        const status = document.createElement("strong");
+        status.textContent = lastOutputLine((active || completed).stdout_tail || (active || completed).stderr_tail);
+        const output = document.createElement("pre");
+        output.className = "flux-stdout";
+        output.textContent = text((active || completed).stdout_tail || (active || completed).stderr_tail || "");
+        panel.append(title, summary, status, output);
+        if (active) {
+          const cancel = document.createElement("button");
+          cancel.type = "button";
+          cancel.className = "btn-flux-cancel";
+          cancel.textContent = "Cancel";
+          cancel.addEventListener("click", () => cancelFluxJob(cancel));
+          panel.appendChild(cancel);
+        }
+      }
+
+      function prestoSubmitState(pkg, data) {
+        const active = prestoStatus.active;
+        if ((pkg.wan_pending || 0) <= 0) return { disabled: true, note: "No pending Wan selections" };
+        if (!((data.presto || {}).reachable)) return { disabled: true, note: "PRESTO unreachable" };
+        if (active) return { disabled: true, note: `PRESTO job running for ${active.package_id}` };
+        return { disabled: false, note: "Ready to submit package batch" };
+      }
+
+      function fluxSubmitState(pkg) {
+        if ((pkg.prompts_count || 0) <= 0) return { disabled: true, note: "No image prompts" };
+        if (fluxStatus.active) return { disabled: true, note: `FLUX job running: ${fluxStatus.package_id}` };
+        const remaining = Math.max(0, (pkg.prompts_count || 0) - (pkg.flux_images_count || 0));
+        return { disabled: false, note: remaining > 0 ? `${remaining} missing images; skip-existing enabled` : "All images exist; skip-existing will verify quickly" };
+      }
+
+      function renderFluxResults(pkg) {
+        const result = fluxResults.get(pkg.id);
+        if (!result || !result.ok || !result.manifest_exists) return null;
+        const summary = result.summary || {};
+        const panel = document.createElement("div");
+        panel.className = "flux-results";
+        const title = document.createElement("h3");
+        title.textContent = `${summary.complete || 0}/${summary.total_prompts || 0} complete, ${summary.failed || 0} failed, ${summary.dry_run || 0} dry-run`;
+        const badges = document.createElement("div");
+        badges.className = "flux-badges";
+        [
+          ["complete", "good"],
+          ["failed", "bad"],
+          ["dry_run", "warn"],
+          ["pending", ""]
+        ].forEach(([key, state]) => {
+          const item = document.createElement("span");
+          item.className = `flux-badge ${state}`.trim();
+          item.textContent = `${summary[key] || 0} ${key.replace("_", "-")}`;
+          badges.appendChild(item);
+        });
+        panel.append(title, badges);
+        return panel;
+      }
+
+      function renderPrestoResults(pkg) {
+        const result = prestoResults.get(pkg.id);
+        if (!result || !result.ok || (result.completed_count || 0) <= 0 && (result.failed_count || 0) <= 0) return null;
+        const panel = document.createElement("div");
+        panel.className = "presto-results";
+        const title = document.createElement("h3");
+        title.textContent = `${result.completed_count || 0}/${pkg.selections_count || 0} completed, ${result.failed_count || 0} failed`;
+        const badges = document.createElement("div");
+        badges.className = "presto-badges";
+        (result.completed || []).slice(0, 12).forEach((label) => {
+          const item = document.createElement("span");
+          item.className = "presto-badge good";
+          item.textContent = label;
+          badges.appendChild(item);
+        });
+        (result.failed || []).slice(0, 12).forEach((failure) => {
+          const item = document.createElement("span");
+          item.className = "presto-badge bad";
+          item.textContent = failure.label || "failed";
+          badges.appendChild(item);
+        });
+        panel.append(title, badges);
+        return panel;
+      }
+
+      function renderPackages(packages, data) {
+        const grid = document.createElement("div");
+        grid.className = "package-grid";
+        packages.forEach((pkg) => {
+          const card = document.createElement("article");
+          card.className = "package-card";
+          const title = document.createElement("h2");
+          title.textContent = pkg.id;
+          const metrics = document.createElement("div");
+          metrics.className = "metrics";
+          metrics.append(
+            metric("FLUX", `${pkg.flux_images_count || 0}/${pkg.prompts_count || 0} images`),
+            metric("Selections", `${pkg.selections_count || 0} selected`),
+            metric("Wan", `${pkg.wan_completed || 0} done / ${pkg.wan_pending || 0} pending / ${pkg.wan_failed || 0} failed`),
+            metric("Resolve", `${pkg.resolve_handoff_count || 0}/3 files`)
+          );
+          const next = document.createElement("div");
+          next.className = "next";
+          next.textContent = pkg.wan_next_action || "No action reported";
+          const actionState = resolveButtonState(pkg);
+          const actions = document.createElement("div");
+          actions.className = "package-actions";
+          const promptsButton = document.createElement("button");
+          promptsButton.type = "button";
+          promptsButton.textContent = "Edit image prompts";
+          promptsButton.addEventListener("click", () => {
+            window.location.href = `image-prompts-editor.html?package=${encodeURIComponent(pkg.id)}`;
+          });
+          const selectButton = document.createElement("button");
+          selectButton.type = "button";
+          selectButton.textContent = "Select FLUX images";
+          selectButton.disabled = (pkg.flux_images_count || 0) <= 0;
+          selectButton.addEventListener("click", () => {
+            window.location.href = `image-selector.html?package=${encodeURIComponent(pkg.id)}`;
+          });
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = "Create Resolve Assembly";
+          button.disabled = actionState.disabled;
+          button.addEventListener("click", () => createResolveAssembly(pkg.id, button));
+          const note = document.createElement("span");
+          note.className = "action-note";
+          note.textContent = actionState.note;
+          actions.append(promptsButton, selectButton, button, note);
+          const prestoControls = document.createElement("div");
+          prestoControls.className = "presto-controls";
+          const prestoTitle = document.createElement("h3");
+          prestoTitle.textContent = "PRESTO Wan2.2";
+          const prestoState = prestoSubmitState(pkg, data);
+          const prestoButton = document.createElement("button");
+          prestoButton.type = "button";
+          prestoButton.className = "btn-presto-submit";
+          prestoButton.textContent = `Submit ${pkg.wan_pending || 0} to PRESTO`;
+          prestoButton.setAttribute("data-label", prestoButton.textContent);
+          prestoButton.disabled = prestoState.disabled;
+          prestoButton.addEventListener("click", () => submitToPresto(pkg.id, prestoButton));
+          const prestoNote = document.createElement("span");
+          prestoNote.className = "action-note";
+          prestoNote.textContent = prestoState.note;
+          const progress = document.createElement("div");
+          progress.className = "presto-progress";
+          progress.setAttribute("data-presto-progress-for", pkg.id);
+          renderPrestoProgressPanel(
+            progress,
+            prestoStatus.active && prestoStatus.active.package_id === pkg.id ? prestoStatus.active : null,
+            prestoStatus.completed && prestoStatus.completed.package_id === pkg.id ? prestoStatus.completed : null
+          );
+          prestoControls.append(prestoTitle, prestoButton, prestoNote, progress);
+          const fluxControls = document.createElement("div");
+          fluxControls.className = "flux-controls";
+          const fluxTitle = document.createElement("h3");
+          fluxTitle.textContent = "FLUX local";
+          const fluxState = fluxSubmitState(pkg);
+          const fluxButton = document.createElement("button");
+          fluxButton.type = "button";
+          fluxButton.className = "btn-flux-submit";
+          const remainingFlux = Math.max(0, (pkg.prompts_count || 0) - (pkg.flux_images_count || 0));
+          fluxButton.textContent = `Generate ${remainingFlux} FLUX images`;
+          fluxButton.setAttribute("data-label", fluxButton.textContent);
+          fluxButton.disabled = fluxState.disabled;
+          const fluxDryRunLabel = document.createElement("label");
+          fluxDryRunLabel.className = "control-toggle";
+          const fluxDryRun = document.createElement("input");
+          fluxDryRun.type = "checkbox";
+          fluxDryRun.checked = true;
+          fluxDryRunLabel.append(fluxDryRun, document.createTextNode("Dry run only"));
+          fluxButton.addEventListener("click", () => submitToFlux(pkg, fluxButton, fluxDryRun));
+          const fluxNote = document.createElement("span");
+          fluxNote.className = "action-note";
+          fluxNote.textContent = fluxState.note;
+          const fluxProgress = document.createElement("div");
+          fluxProgress.className = "flux-progress";
+          fluxProgress.setAttribute("data-flux-progress-for", pkg.id);
+          renderFluxProgressPanel(
+            fluxProgress,
+            fluxStatus.active && fluxStatus.package_id === pkg.id ? fluxStatus : null,
+            !fluxStatus.active && fluxStatus.package_id === pkg.id && fluxStatus.exit_state ? fluxStatus : null
+          );
+          fluxControls.append(fluxTitle, fluxButton, fluxDryRunLabel, fluxNote, fluxProgress);
+          const results = renderPrestoResults(pkg);
+          const fluxResultPanel = renderFluxResults(pkg);
+          card.append(title, metrics, next, actions, fluxControls, prestoControls);
+          if (fluxResultPanel) card.appendChild(fluxResultPanel);
+          if (results) card.appendChild(results);
+          grid.appendChild(card);
+        });
+        return grid;
+      }
+
+      async function loadStatus() {
+        refreshButton.disabled = true;
+        content.innerHTML = '<div class="loading">Reading VIDNAS status files...</div>';
+        try {
+          const response = await fetch(API, { cache: "no-store" });
+          const data = await response.json();
+          await fetchPrestoStatus();
+          nextAction.textContent = data.next_action || data.error || "No status available";
+          renderBadges(data);
+          if (!data.ok) {
+            content.innerHTML = "";
+            const error = document.createElement("div");
+            error.className = "error-box";
+            error.textContent = data.error || "Pipeline status unavailable";
+            content.appendChild(error);
+            return;
+          }
+          const packages = Array.isArray(data.packages) ? data.packages : [];
+          await fetchFluxStatus();
+          await fetchFluxResults(packages);
+          await fetchPrestoResults(packages);
+          content.innerHTML = "";
+          content.appendChild(packages.length ? renderPackages(packages, data) : document.createTextNode("No packages found."));
+        } catch (error) {
+          nextAction.textContent = "Status request failed";
+          statusBadges.replaceChildren(badge("API error", "bad"));
+          content.innerHTML = "";
+          const box = document.createElement("div");
+          box.className = "error-box";
+          box.textContent = text(error.message || error);
+          content.appendChild(box);
+        } finally {
+          refreshButton.disabled = false;
+        }
+      }
+
+      refreshButton.addEventListener("click", loadStatus);
+      loadStatus();
+    </script>
+  </body>
+</html>

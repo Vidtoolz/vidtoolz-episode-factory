@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VIDTOOLZ Publish Gate</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #080b10;
+        --panel: #111923;
+        --panel-2: #172231;
+        --line: #2d3b4d;
+        --line-strong: #485b73;
+        --text: #eef5f9;
+        --muted: #9dafbf;
+        --accent: #62d4ff;
+        --ok: #8bdc9f;
+        --warn: #ffd166;
+        --danger: #ff7a7a;
+        --button: #223144;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      header, main { width: min(1280px, calc(100% - 32px)); margin: 0 auto; }
+      header { padding: 24px 0 16px; display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+      h1, h2, h3, p { margin-top: 0; }
+      h1 { margin-bottom: 4px; font-size: 28px; }
+      h2 { font-size: 18px; margin-bottom: 8px; }
+      h3 { font-size: 14px; margin-bottom: 8px; color: var(--accent); }
+      .eyebrow { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 12px; margin-bottom: 4px; }
+      .muted { color: var(--muted); }
+      .top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+      a, button { color: var(--text); }
+      a.nav, button {
+        border: 1px solid var(--line-strong);
+        border-radius: 8px;
+        background: var(--button);
+        padding: 8px 12px;
+        text-decoration: none;
+        cursor: pointer;
+        font: inherit;
+      }
+      button.primary { background: #1b5f7a; border-color: var(--accent); }
+      button:disabled { opacity: .45; cursor: not-allowed; }
+      input, select, textarea {
+        width: 100%;
+        border: 1px solid var(--line-strong);
+        border-radius: 8px;
+        background: #0d131c;
+        color: var(--text);
+        padding: 9px 10px;
+        font: inherit;
+      }
+      textarea { min-height: 88px; resize: vertical; }
+      code, pre { background: #0d131c; border: 1px solid var(--line); border-radius: 8px; }
+      code { padding: 2px 5px; }
+      pre { padding: 12px; white-space: pre-wrap; overflow: auto; max-height: 260px; }
+      main { padding-bottom: 48px; }
+      .run-picker, .step {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 14px;
+      }
+      .run-picker { display: grid; grid-template-columns: minmax(260px, 1fr) auto; gap: 12px; align-items: end; }
+      .steps { display: grid; gap: 14px; }
+      .step-header { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 12px; }
+      .step-title { display: flex; gap: 10px; align-items: center; }
+      .step-number {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--panel-2);
+        border: 1px solid var(--line-strong);
+        font-weight: 700;
+      }
+      .badge { border: 1px solid var(--line-strong); border-radius: 999px; padding: 3px 9px; color: var(--muted); font-size: 12px; }
+      .badge.pass { color: var(--ok); border-color: rgba(139,220,159,.6); }
+      .badge.blocked { color: var(--danger); border-color: rgba(255,122,122,.6); }
+      .badge.warn { color: var(--warn); border-color: rgba(255,209,102,.7); }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      .box { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
+      .decision-row, .button-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      .checklist { display: grid; gap: 8px; }
+      .checkline { display: flex; gap: 8px; align-items: flex-start; }
+      .checkline input { width: auto; margin-top: 4px; }
+      .status-line { min-height: 22px; color: var(--muted); }
+      .result { margin-top: 10px; }
+      .hidden { display: none; }
+      @media (max-width: 760px) {
+        header, .run-picker { display: block; }
+        .top-actions { justify-content: flex-start; margin-top: 12px; }
+        .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <p class="eyebrow">VIDTOOLZ Episode Factory</p>
+        <h1>Publish Gate</h1>
+        <p class="muted">Five gates from rough cut to published and archived. Human decisions stay explicit.</p>
+      </div>
+      <nav class="top-actions">
+        <a class="nav" href="index.html">Episode Factory</a>
+        <a class="nav" href="package-runs-dashboard.html">Runs Dashboard</a>
+        <a class="nav" href="production-day-dashboard.html">Production Day</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="run-picker" aria-label="Package run selector">
+        <label>
+          <span class="eyebrow">Active package run</span>
+          <select id="runSelect"></select>
+        </label>
+        <button id="refreshRunsBtn" type="button">Refresh Runs</button>
+      </section>
+      <p id="globalStatus" class="status-line" role="status"></p>
+
+      <section class="steps">
+        <article class="step" data-step="1">
+          <div class="step-header">
+            <div class="step-title"><span class="step-number">1</span><div><h2>Rough-Cut Review</h2><p class="muted">Run the rough-cut review and decide whether the cut can advance.</p></div></div>
+            <span id="gate1Badge" class="badge">LOCKED</span>
+          </div>
+          <div class="grid">
+            <div class="box">
+              <h3>Script</h3>
+              <pre>node scripts/package-run-rough-cut-review.js &lt;runPath&gt;</pre>
+              <div class="button-row"><button id="roughCutBtn" class="primary" type="button">Run Rough-Cut Review</button></div>
+              <div id="roughCutResult" class="result muted">No result yet.</div>
+            </div>
+            <div class="box">
+              <h3>Watch Notes</h3>
+              <pre id="watchNotes">Select a run to load rough-cut-watch-notes.md.</pre>
+            </div>
+          </div>
+          <div class="box result">
+            <h3>Mikko Decision</h3>
+            <div class="decision-row">
+              <label class="checkline"><input id="roughApproved" type="checkbox" /> Mark rough cut approved for this gate</label>
+              <label class="checkline"><input id="roughFixes" type="checkbox" /> Request fixes instead</label>
+            </div>
+          </div>
+        </article>
+
+        <article class="step" data-step="2">
+          <div class="step-header">
+            <div class="step-title"><span class="step-number">2</span><div><h2>Final Review</h2><p class="muted">Run final review after the final Resolve cut exists.</p></div></div>
+            <span id="gate2Badge" class="badge">LOCKED</span>
+          </div>
+          <div class="box">
+            <h3>Script</h3>
+            <pre>node scripts/package-run-final-review.js &lt;runPath&gt;</pre>
+            <button id="finalReviewBtn" class="primary" type="button">Run Final Review</button>
+            <div id="finalReviewResult" class="result muted">No result yet.</div>
+          </div>
+          <div class="box result">
+            <h3>Mikko Decision</h3>
+            <div class="decision-row">
+              <label class="checkline"><input id="finalApproved" type="checkbox" /> Final review approved</label>
+              <label class="checkline"><input id="finalFixes" type="checkbox" /> Fix blockers first</label>
+            </div>
+          </div>
+        </article>
+
+        <article class="step" data-step="3">
+          <div class="step-header">
+            <div class="step-title"><span class="step-number">3</span><div><h2>Export & Metadata</h2><p class="muted">Validate the master export and publication package.</p></div></div>
+            <span id="gate3Badge" class="badge">LOCKED</span>
+          </div>
+          <div class="grid">
+            <div class="box">
+              <h3>Export Checklist</h3>
+              <pre>node scripts/package-run-export-checklist.js &lt;runPath&gt;</pre>
+              <button id="exportBtn" class="primary" type="button">Run Export Checklist</button>
+              <div id="exportResult" class="result muted">No result yet.</div>
+            </div>
+            <div class="box">
+              <h3>Publication Metadata</h3>
+              <pre>node scripts/package-run-publication-metadata.js &lt;runPath&gt;</pre>
+              <button id="metadataBtn" class="primary" type="button">Validate Publication Metadata</button>
+              <div id="metadataResult" class="result muted">No result yet.</div>
+            </div>
+          </div>
+          <div class="box result">
+            <h3>Mikko Decision</h3>
+            <label class="checkline"><input id="metadataConfirmed" type="checkbox" /> Metadata is YouTube-ready</label>
+          </div>
+        </article>
+
+        <article class="step" data-step="4">
+          <div class="step-header">
+            <div class="step-title"><span class="step-number">4</span><div><h2>Publish</h2><p class="muted">Manual upload. This page does not publish to YouTube.</p></div></div>
+            <span id="gate4Badge" class="badge">LOCKED</span>
+          </div>
+          <div class="box">
+            <h3>Pre-flight Checklist</h3>
+            <div id="publishChecklist" class="checklist"></div>
+            <label class="checkline result"><input id="publishedConfirm" type="checkbox" /> I have published this video to YouTube</label>
+            <label class="result">YouTube URL<input id="youtubeUrl" type="url" placeholder="https://www.youtube.com/watch?v=..." /></label>
+          </div>
+        </article>
+
+        <article class="step" data-step="5">
+          <div class="step-header">
+            <div class="step-title"><span class="step-number">5</span><div><h2>Archive & Learn</h2><p class="muted">Create archive manifests and a post-publish learning note.</p></div></div>
+            <span id="gate5Badge" class="badge">LOCKED</span>
+          </div>
+          <div class="box">
+            <h3>Script</h3>
+            <pre>node scripts/package-run-archive-manifest.js &lt;runPath&gt;</pre>
+            <button id="archiveBtn" class="primary" type="button">Run Archive Manifest</button>
+            <div id="archiveResult" class="result muted">No result yet.</div>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      const API = {
+        status: "/api/package-engine/status",
+        list: "/api/package-runs/list",
+        rough: "/api/package-runs/rough-cut/review",
+        roughStatus: "/api/package-runs/rough-cut/status",
+        final: "/api/package-runs/final-review",
+        exportChecklist: "/api/package-runs/export-checklist",
+        metadata: "/api/package-runs/publication-metadata",
+        archive: "/api/package-runs/archive-manifest",
+      };
+      const state = { runs: [], selected: null, nonce: "", nonceHeader: "x-vidtoolz-local-write-nonce", results: {} };
+      const $ = (id) => document.getElementById(id);
+      const publishChecks = [
+        "Trust checklist passed: all factual claims verifiable or marked as opinion",
+        "Every AI visual classified",
+        "Non-evidence AI visuals labeled on-screen",
+        "Current-event sources cited in description",
+        "Any visual that could mislead is cut or relabeled",
+        "Thumbnail reviewed for misleading claims",
+        "Export file exists and verified",
+        "Thumbnail ready",
+        "Title, description, tags ready",
+        "No misleading claims in thumbnail/title",
+      ];
+
+      function escapeHtml(value) {
+        return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      }
+      function selectedRunId() { return $("runSelect").value; }
+      function selectedRunPath() { return state.selected?.path || (selectedRunId() ? `package-runs/${selectedRunId()}` : ""); }
+      function statusClass(pass, ready) { return pass ? "pass" : ready ? "warn" : "blocked"; }
+      function setBadge(id, label, cls) { const el = $(id); el.textContent = label; el.className = `badge ${cls || ""}`.trim(); }
+
+      async function fetchJson(url, options = {}) {
+        const response = await fetch(url, { cache: "no-store", ...options });
+        const text = await response.text();
+        let body = {};
+        try { body = text ? JSON.parse(text) : {}; } catch (_) { body = { raw: text }; }
+        if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`);
+        return body;
+      }
+      async function fetchText(path) {
+        const response = await fetch(path, { cache: "no-store" });
+        return response.ok ? response.text() : "";
+      }
+      async function postJson(url, payload) {
+        return fetchJson(url, {
+          method: "POST",
+          headers: { "content-type": "application/json", [state.nonceHeader]: state.nonce },
+          body: JSON.stringify({ ...payload, localWriteNonce: state.nonce }),
+        });
+      }
+
+      function renderRuns(index) {
+        state.runs = [...(index.runs || []), ...(index.inactiveRuns || [])];
+        $("runSelect").innerHTML = state.runs.map((run) => `<option value="${escapeHtml(run.runId)}">${escapeHtml(run.runId)} · ${escapeHtml(run.status || run.activeStatus || "")}</option>`).join("");
+        state.selected = state.runs.find((run) => run.runId === selectedRunId()) || state.runs[0] || null;
+      }
+
+      function renderPublishChecklist() {
+        $("publishChecklist").innerHTML = publishChecks.map((text, index) =>
+          `<label class="checkline"><input type="checkbox" data-publish-check="${index}" /> ${escapeHtml(text)}</label>`
+        ).join("");
+      }
+
+      function renderResult(targetId, payload, labels = {}) {
+        const summary = payload.summary || {};
+        const rows = Object.entries(labels).map(([key, label]) => `<div><strong>${escapeHtml(label)}:</strong> ${escapeHtml(summary[key] || "")}</div>`).join("");
+        const command = payload.command ? `<div><strong>Command:</strong> <code>${escapeHtml(payload.command)}</code></div>` : "";
+        const stderr = payload.stderr ? `<details><summary>stderr</summary><pre>${escapeHtml(payload.stderr)}</pre></details>` : "";
+        $(targetId).innerHTML = `${command}${rows || `<pre>${escapeHtml(payload.stdout || JSON.stringify(payload, null, 2))}</pre>`}${stderr}`;
+      }
+
+      async function loadStatus() {
+        const status = await fetchJson(API.status);
+        state.nonce = status.publishGate?.localWriteNonce || status.roughCutInputConsole?.localWriteNonce || "";
+        state.nonceHeader = status.publishGate?.nonceHeader || status.roughCutInputConsole?.nonceHeader || state.nonceHeader;
+      }
+      async function loadRuns() {
+        $("globalStatus").textContent = "Loading package runs...";
+        const index = await fetchJson(API.list);
+        renderRuns(index);
+        $("globalStatus").textContent = `Loaded ${state.runs.length} package runs.`;
+        await onRunChange();
+      }
+      async function onRunChange() {
+        state.selected = state.runs.find((run) => run.runId === selectedRunId()) || null;
+        state.results = {};
+        $("watchNotes").textContent = "Loading rough-cut-watch-notes.md...";
+        $("watchNotes").textContent = await fetchText(`${selectedRunPath()}/rough-cut-watch-notes.md`) || "rough-cut-watch-notes.md not found.";
+        ["roughCutResult","finalReviewResult","exportResult","metadataResult","archiveResult"].forEach((id) => $(id).textContent = "No result yet.");
+        ["roughApproved","roughFixes","finalApproved","finalFixes","metadataConfirmed","publishedConfirm"].forEach((id) => { $(id).checked = false; });
+        $("youtubeUrl").value = "";
+        updateGates();
+      }
+
+      function updateGates() {
+        const roughPass = state.results.rough?.review?.roughCutReviewStatus === "PASS" || state.results.rough?.review?.secondCutReady || $("roughApproved").checked;
+        const finalPass = /^PASS$/i.test(state.results.final?.summary?.final_review || "") || /^yes$/i.test(state.results.final?.summary?.publish_ready || "") || $("finalApproved").checked;
+        const exportPass = /^yes$/i.test(state.results.export?.summary?.ready_to_upload || "");
+        const metadataPass = /^yes$/i.test(state.results.metadata?.summary?.ready_to_schedule || "") || $("metadataConfirmed").checked;
+        const allPublishChecks = [...document.querySelectorAll("[data-publish-check]")].every((input) => input.checked);
+        const published = $("publishedConfirm").checked && /^https?:\/\/\S+/i.test($("youtubeUrl").value.trim());
+        setBadge("gate1Badge", roughPass ? "PASS" : "NEEDS REVIEW", statusClass(roughPass, true));
+        setBadge("gate2Badge", finalPass ? "PASS" : roughPass ? "READY" : "LOCKED", statusClass(finalPass, roughPass));
+        setBadge("gate3Badge", exportPass && metadataPass ? "PASS" : finalPass ? "READY" : "LOCKED", statusClass(exportPass && metadataPass, finalPass));
+        setBadge("gate4Badge", published ? "PUBLISHED" : exportPass && metadataPass && allPublishChecks ? "READY" : "LOCKED", statusClass(published, exportPass && metadataPass));
+        setBadge("gate5Badge", state.results.archive ? "RUN" : published ? "READY" : "LOCKED", statusClass(Boolean(state.results.archive), published));
+        $("finalReviewBtn").disabled = !roughPass;
+        $("exportBtn").disabled = !finalPass;
+        $("metadataBtn").disabled = !finalPass;
+        $("archiveBtn").disabled = !published;
+      }
+
+      async function runRoughCut() {
+        const output = await postJson(API.rough, { runId: selectedRunId() });
+        state.results.rough = output;
+        renderResult("roughCutResult", output, { rough_cut_review_status: "Review status", second_cut_ready: "Second-cut ready", reason: "Reason" });
+        updateGates();
+      }
+      async function runFinalReview() {
+        const output = await postJson(API.final, { runId: selectedRunId() });
+        state.results.final = output;
+        renderResult("finalReviewResult", output, { final_review: "Final review", publish_ready: "Publish ready", reason: "Reason" });
+        updateGates();
+      }
+      async function runExportChecklist() {
+        const output = await postJson(API.exportChecklist, { runId: selectedRunId() });
+        state.results.export = output;
+        renderResult("exportResult", output, { export_checklist: "Export checklist", ready_to_upload: "Ready to upload", reason: "Reason" });
+        updateGates();
+      }
+      async function runMetadata() {
+        const output = await postJson(API.metadata, { runId: selectedRunId() });
+        state.results.metadata = output;
+        renderResult("metadataResult", output, { publication_metadata: "Publication metadata", ready_to_schedule: "Ready to schedule", reason: "Reason" });
+        updateGates();
+      }
+      async function runArchive() {
+        const output = await postJson(API.archive, { runId: selectedRunId(), youtubeUrl: $("youtubeUrl").value.trim() });
+        state.results.archive = output;
+        renderResult("archiveResult", output, { archive_manifest: "Archive manifest", ready_to_archive: "Ready to archive", reason: "Reason" });
+        if (output.postPublishLearning) {
+          $("archiveResult").innerHTML += `<details open><summary>post-publish-learning.md (${escapeHtml(output.postPublishLearning.status)})</summary><pre>${escapeHtml(output.postPublishLearning.content || "")}</pre></details>`;
+        }
+        updateGates();
+      }
+
+      async function init() {
+        renderPublishChecklist();
+        $("refreshRunsBtn").addEventListener("click", loadRuns);
+        $("runSelect").addEventListener("change", onRunChange);
+        $("roughCutBtn").addEventListener("click", () => runRoughCut().catch((e) => $("roughCutResult").textContent = e.message));
+        $("finalReviewBtn").addEventListener("click", () => runFinalReview().catch((e) => $("finalReviewResult").textContent = e.message));
+        $("exportBtn").addEventListener("click", () => runExportChecklist().catch((e) => $("exportResult").textContent = e.message));
+        $("metadataBtn").addEventListener("click", () => runMetadata().catch((e) => $("metadataResult").textContent = e.message));
+        $("archiveBtn").addEventListener("click", () => runArchive().catch((e) => $("archiveResult").textContent = e.message));
+        document.addEventListener("change", updateGates);
+        try {
+          await loadStatus();
+          await loadRuns();
+        } catch (error) {
+          $("globalStatus").textContent = error.message;
+        }
+      }
+      init();
+    </script>
+  </body>
+</html>

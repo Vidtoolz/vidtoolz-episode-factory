@@ -548,6 +548,174 @@ function oneOfTenRejectionReasons(item = {}, newsItem) {
   return reasons;
 }
 
+function clamp1(value, min, max) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return min;
+  return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+function scoreCandidate10(candidate) {
+  const sb = candidate.scoreBreakdown || {};
+  const trust = Number(sb["trust and credibility"] || 0);
+  const authority = Number(sb["authority-building"] || 0);
+  const usefulness = Number(sb["practical usefulness"] || 0);
+  const feasibility = Number(sb["production feasibility"] || 0);
+  const viewPotential = Number(sb["view potential"] || 0);
+
+  const trustRisk = candidate.trustRisk || "medium";
+  const prodDiff = candidate.productionDifficulty || "medium";
+  const videoCount = Array.isArray(candidate.exampleSuccessfulVideos) ? candidate.exampleSuccessfulVideos.length : 0;
+
+  const audienceDemand = clamp1(Math.round(viewPotential / 10), 1, 10);
+  const channelFit = clamp1(Math.round(trust / 10), 1, 10);
+  const authorityBuilding = clamp1(Math.round(authority / 10), 1, 10);
+  const noveltyPenalty = trustRisk === "high" ? 7 : trustRisk === "medium" ? 4 : 2;
+  const novelty = clamp1(10 - noveltyPenalty, 1, 10);
+  const productionFeasibility = clamp1(Math.round(feasibility / 10), 1, 10);
+  const proofBase = clamp1(Math.min(10, videoCount * 3), 1, 10);
+  const proofModifier = trustRisk === "low" ? 1 : trustRisk === "high" ? -2 : 0;
+  const proofAvailability = clamp1(proofBase + proofModifier, 1, 10);
+  const titleThumbnailPotential = clamp1(Math.round((viewPotential + 20) / 12), 1, 10);
+  const riskGeneric = trustRisk === "high" ? 8 : trustRisk === "medium" ? 4 : 2;
+  const riskOverpromising = prodDiff === "high" ? 7 : prodDiff === "medium" ? 4 : 2;
+  const genericSafety = clamp1(11 - riskGeneric, 1, 10);
+  const promiseSafety = clamp1(11 - riskOverpromising, 1, 10);
+  const beatsExisting = clamp1(Math.round(novelty * 0.6 + (viewPotential / 10) * 0.4), 1, 10);
+
+  const scores = {
+    audience_demand: audienceDemand,
+    channel_fit: channelFit,
+    authority_building: authorityBuilding,
+    novelty,
+    production_feasibility: productionFeasibility,
+    proof_availability: proofAvailability,
+    title_thumbnail_potential: titleThumbnailPotential,
+    generic_safety: genericSafety,
+    promise_safety: promiseSafety,
+    beats_existing: beatsExisting,
+    risk_generic: riskGeneric,
+    risk_overpromising: riskOverpromising,
+  };
+
+  const total_score = [
+    audienceDemand,
+    channelFit,
+    authorityBuilding,
+    novelty,
+    productionFeasibility,
+    proofAvailability,
+    titleThumbnailPotential,
+    genericSafety,
+    promiseSafety,
+    beatsExisting,
+  ].reduce((sum, val) => sum + val, 0);
+
+  // VIDTOOLZ scoring hierarchy check
+  const usefulnessScaled = clamp1(Math.round(usefulness / 10), 1, 10);
+  const hierarchyViolated =
+    audienceDemand >= 8 && (channelFit < 4 || authorityBuilding < 4 || usefulnessScaled < 4);
+
+  // Find key strength (highest non-risk score) and key risk (highest score among risk criteria)
+  const strengthFields = [
+    ["audience_demand", audienceDemand],
+    ["channel_fit", channelFit],
+    ["authority_building", authorityBuilding],
+    ["novelty", novelty],
+    ["production_feasibility", productionFeasibility],
+    ["proof_availability", proofAvailability],
+    ["title_thumbnail_potential", titleThumbnailPotential],
+    ["generic_safety", genericSafety],
+    ["promise_safety", promiseSafety],
+    ["beats_existing", beatsExisting],
+  ].sort((a, b) => b[1] - a[1]);
+  const keyStrength = strengthFields[0];
+  const keyRisk = riskGeneric >= riskOverpromising ? ["risk_generic", riskGeneric] : ["risk_overpromising", riskOverpromising];
+
+  // Generate rationale
+  const rationaleParts = [];
+  rationaleParts.push(`Strongest: ${keyStrength[0]} (${keyStrength[1]}).`);
+  rationaleParts.push(`Key risk: ${keyRisk[0]} (${keyRisk[1]}${keyRisk[1] <= 3 ? ", low risk" : keyRisk[1] >= 6 ? ", high risk" : ""}).`);
+  if (hierarchyViolated) {
+    rationaleParts.push("VIDTOOLZ hierarchy: high view potential cannot override weak trust, authority, or usefulness.");
+  }
+  if (riskGeneric <= 2 && riskOverpromising <= 2) {
+    rationaleParts.push("Very low risk profile.");
+  }
+
+  return {
+    scores,
+    total_score,
+    score_rationale: rationaleParts.join(" "),
+  };
+}
+
+function renderScoringSummaryTable(candidates) {
+  const lines = ["## Scoring Summary", ""];
+  lines.push("| Rank | Title | Total | Key Strength | Key Risk Diagnostic |");
+  lines.push("|------|-------|-------|--------------|---------------------|");
+  candidates.forEach((c, i) => {
+    const s = c.scores || {};
+    const strengthFields = [
+      ["audience_demand", s.audience_demand || 0],
+      ["channel_fit", s.channel_fit || 0],
+      ["authority_building", s.authority_building || 0],
+      ["novelty", s.novelty || 0],
+      ["production_feasibility", s.production_feasibility || 0],
+      ["proof_availability", s.proof_availability || 0],
+      ["title_thumbnail_potential", s.title_thumbnail_potential || 0],
+      ["generic_safety", s.generic_safety || 0],
+      ["promise_safety", s.promise_safety || 0],
+      ["beats_existing", s.beats_existing || 0],
+    ].sort((a, b) => b[1] - a[1]);
+    const keyStrength = strengthFields[0];
+    const rg = s.risk_generic || 0;
+    const ro = s.risk_overpromising || 0;
+    const keyRisk = rg >= ro ? ["risk_generic", rg] : ["risk_overpromising", ro];
+    lines.push(`| ${i + 1} | ${c.topicTitle || c.suggestedTitle} | ${c.total_score || 0} | ${keyStrength[0]} (${keyStrength[1]}) | ${keyRisk[0]} (${keyRisk[1]}) |`);
+  });
+  lines.push("");
+  return lines.join("\n");
+}
+
+function renderCandidateScoreBreakdown(candidate) {
+  const s = candidate.scores;
+  if (!s) return "";
+  const lines = [`### Scores (${candidate.total_score}/100)`, ""];
+  const criteria = [
+    ["audience_demand", s.audience_demand, false],
+    ["channel_fit", s.channel_fit, false],
+    ["authority_building", s.authority_building, false],
+    ["novelty", s.novelty, false],
+    ["production_feasibility", s.production_feasibility, false],
+    ["proof_availability", s.proof_availability, false],
+    ["title_thumbnail", s.title_thumbnail_potential, false],
+    ["generic_safety", s.generic_safety, false],
+    ["promise_safety", s.promise_safety, false],
+    ["beats_existing", s.beats_existing, false],
+  ];
+  const maxLabelLen = Math.max(...criteria.map(([label]) => label.length));
+  criteria.forEach(([label, value, inverted]) => {
+    const bar = renderBar(value);
+    const invNote = inverted ? " (diagnostic: lower raw risk = better)" : "";
+    lines.push(`${label.padEnd(maxLabelLen + 2)}${bar} ${value}${invNote}`);
+  });
+  lines.push("");
+  lines.push(`raw_risk_generic       ${s.risk_generic} (diagnostic only; excluded from total_score)`);
+  lines.push(`raw_risk_overpromise   ${s.risk_overpromising} (diagnostic only; excluded from total_score)`);
+  if (candidate.score_rationale) {
+    lines.push("");
+    lines.push(`**Rationale:** ${candidate.score_rationale}`);
+  }
+  lines.push("");
+  return lines.join("\n");
+}
+
+function renderBar(value) {
+  const filled = clamp1(value, 0, 10);
+  const empty = 10 - filled;
+  return "\u2588".repeat(filled) + "\u2591".repeat(empty);
+}
+
 function weightedScore(scores = {}, weights) {
   const total =
     Number(scores.trust || 0) * weights.trust +
@@ -685,7 +853,7 @@ function buildOneOfTenCandidate(item, newsItem, generatedAt) {
     "production feasibility": profile.scores.feasibility,
     "view potential": profile.scores.view,
   };
-  return {
+  const candidate = {
     topicTitle: profile.topicTitle,
     briefDescription: profile.briefDescription,
     youtubeEvidenceSummary: `Manual 1of10 copied evidence: "${item.title}" by ${item.channel || "unknown channel"} with ${formatViews(item.views)} views.${scoreContext}`,
@@ -728,6 +896,13 @@ function buildOneOfTenCandidate(item, newsItem, generatedAt) {
       productionRecommendation: `Make this as a ${profile.recommendedFormat} with one practical rule, manual evidence attribution, and visible proof boundaries.`,
     },
   };
+  const scored = scoreCandidate10(candidate);
+  return {
+    ...candidate,
+    scores: scored.scores,
+    total_score: scored.total_score,
+    score_rationale: scored.score_rationale,
+  };
 }
 
 function buildCandidate(pattern, videos, newsItem, generatedAt) {
@@ -755,7 +930,7 @@ function buildCandidate(pattern, videos, newsItem, generatedAt) {
     "view potential": pattern.scores.view,
   };
 
-  return {
+  const candidate = {
     topicTitle: pattern.topicTitle,
     briefDescription: pattern.briefDescription,
     youtubeEvidenceSummary: `${examples.length} fixture-backed YouTube examples, ${formatViews(viewTotal)} combined views. Pattern: ${pattern.query}.`,
@@ -793,6 +968,13 @@ function buildCandidate(pattern, videos, newsItem, generatedAt) {
       productionRecommendation: `Make this as a ${pattern.recommendedFormat} with one practical rule and visible labels where needed.`,
     },
   };
+  const scored = scoreCandidate10(candidate);
+  return {
+    ...candidate,
+    scores: scored.scores,
+    total_score: scored.total_score,
+    score_rationale: scored.score_rationale,
+  };
 }
 
 function synthesizeReport(input = {}, options = {}) {
@@ -814,7 +996,7 @@ function synthesizeReport(input = {}, options = {}) {
     candidates.push(buildCandidate(pattern, videos, newsItem, generatedAt));
   });
 
-  candidates.sort((a, b) => b.finalWeightedScore - a.finalWeightedScore);
+  candidates.sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || b.finalWeightedScore - a.finalWeightedScore);
   const supportedCandidates = candidates.slice(0, 10);
   const status = supportedCandidates.length === 10 ? "complete" : "insufficient-evidence";
 
@@ -862,7 +1044,7 @@ function synthesizeOneOfTenReport(oneOfTenItems = [], input = {}, options = {}) 
     candidates.push(buildOneOfTenCandidate(item, newsItem, generatedAt));
   });
 
-  candidates.sort((a, b) => b.finalWeightedScore - a.finalWeightedScore || b.exampleSuccessfulVideos[0].views - a.exampleSuccessfulVideos[0].views);
+  candidates.sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || b.finalWeightedScore - a.finalWeightedScore);
   const supportedCandidates = candidates.slice(0, 10);
   const status = supportedCandidates.length === 10 ? "complete" : "insufficient-evidence";
 
@@ -910,6 +1092,11 @@ function renderMarkdown(report) {
   }
 
   lines.push("## Candidates", "");
+  
+  // Add scoring summary table
+  lines.push(renderScoringSummaryTable(report.candidates));
+  lines.push("");
+  
   report.candidates.forEach((candidate, index) => {
     lines.push(`### ${index + 1}. ${candidate.topicTitle}`, "");
     lines.push(`- Brief description: ${candidate.briefDescription}`);
@@ -946,6 +1133,9 @@ function renderMarkdown(report) {
     lines.push("What must not be implied:");
     lines.push(`- ${candidate.whatMustNotBeImplied}`);
     lines.push("");
+    
+    // Add per-candidate score breakdown
+    lines.push(renderCandidateScoreBreakdown(candidate));
   });
 
   lines.push("## Rejected / Flagged", "");
@@ -1146,8 +1336,11 @@ module.exports = {
   parseOneOfTenInputText,
   parseArgs,
   rejectionReasons,
+  renderCandidateScoreBreakdown,
   renderMarkdown,
+  renderScoringSummaryTable,
   run,
+  scoreCandidate10,
   synthesizeOneOfTenReport,
   synthesizeReport,
   validateLiveYoutubeOptions,

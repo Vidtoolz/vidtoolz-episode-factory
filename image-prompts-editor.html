@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VIDTOOLZ Image Prompts Editor</title>
+    <link rel="stylesheet" href="styles.css?v=1.7.4" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #111411;
+        --panel: #191d18;
+        --panel-soft: #21271f;
+        --border: #354034;
+        --text: #edf2e9;
+        --muted: #a4aea0;
+        --accent: #62b883;
+        --accent-strong: #93d3a9;
+        --danger: #f07b67;
+        --warning: #e4b95d;
+      }
+      body { background: var(--bg); color: var(--text); }
+      .shell { margin: 0 auto; max-width: 1260px; padding: 22px 18px 88px; }
+      .header {
+        align-items: flex-start;
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+      h1 { font-size: 26px; margin: 0 0 6px; overflow-wrap: anywhere; }
+      .meta, .status, .hint { color: var(--muted); font-size: 13px; }
+      .nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+      .nav a, .toolbar button, .row-actions button, .header button {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--accent-strong);
+        cursor: pointer;
+        font-size: 13px;
+        padding: 7px 10px;
+        text-decoration: none;
+      }
+      button:disabled { color: var(--muted); cursor: not-allowed; opacity: 0.65; }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+      }
+      .toolbar {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .status.good { color: var(--accent-strong); }
+      .status.warn { color: var(--warning); }
+      .status.bad { color: var(--danger); }
+      .messages {
+        display: grid;
+        gap: 6px;
+      }
+      .message {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        padding: 7px 9px;
+      }
+      .message.error { border-color: rgba(240, 123, 103, 0.55); color: var(--danger); }
+      .message.warning { border-color: rgba(228, 185, 93, 0.55); color: var(--warning); }
+      .table-wrap { overflow-x: auto; }
+      table {
+        border-collapse: collapse;
+        min-width: 1120px;
+        width: 100%;
+      }
+      th, td {
+        border-bottom: 1px solid var(--border);
+        padding: 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th { color: var(--muted); font-size: 12px; font-weight: 600; }
+      td.index { width: 74px; }
+      td.category, td.use { width: 170px; }
+      td.actions-cell { width: 210px; }
+      input, textarea {
+        background: #0b0d0b;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        box-sizing: border-box;
+        color: var(--text);
+        font: inherit;
+        padding: 7px 8px;
+        width: 100%;
+      }
+      textarea {
+        min-height: 96px;
+        resize: vertical;
+      }
+      .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+      .row-actions button.danger { border-color: rgba(240, 123, 103, 0.55); color: var(--danger); }
+      .extra {
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 11px;
+        max-width: 220px;
+        overflow-wrap: anywhere;
+      }
+      .footer {
+        background: rgba(17, 20, 17, 0.92);
+        border-top: 1px solid var(--border);
+        bottom: 0;
+        left: 0;
+        position: fixed;
+        right: 0;
+      }
+      .footer-inner {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+        justify-content: space-between;
+        margin: 0 auto;
+        max-width: 1260px;
+        padding: 10px 18px;
+      }
+      @media (max-width: 760px) {
+        .header, .footer-inner { display: grid; }
+        table { min-width: 900px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <div>
+          <h1 id="title">Image Prompts</h1>
+          <div id="meta" class="meta">Loading package prompt file...</div>
+        </div>
+        <button type="button" id="reload">Reload</button>
+      </header>
+
+      <nav class="nav">
+        <a href="production-pipeline.html">Production Pipeline</a>
+        <a id="selector-link" href="image-selector.html">Image Selector</a>
+      </nav>
+
+      <section class="panel">
+        <div class="toolbar">
+          <button type="button" id="add-row">Add Prompt</button>
+          <button type="button" id="renumber">Renumber 1..N</button>
+          <button type="button" id="validate">Validate</button>
+          <span id="status" class="status">unchanged</span>
+        </div>
+        <div id="messages" class="messages"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Index</th>
+                <th>Category</th>
+                <th>Intended Use</th>
+                <th>Prompt</th>
+                <th>Preserved Fields</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <div id="footer-status" class="hint">No package loaded.</div>
+        <div class="toolbar">
+          <button type="button" id="save" disabled>Save image-prompts.json</button>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      const READ_API = "/api/image-prompts/read";
+      const VALIDATE_API = "/api/image-prompts/validate";
+      const SAVE_API = "/api/image-prompts/save";
+      const params = new URLSearchParams(window.location.search);
+      const packageId = params.get("package") || "";
+      const title = document.getElementById("title");
+      const meta = document.getElementById("meta");
+      const rowsEl = document.getElementById("rows");
+      const messagesEl = document.getElementById("messages");
+      const statusEl = document.getElementById("status");
+      const footerStatus = document.getElementById("footer-status");
+      const saveButton = document.getElementById("save");
+      const selectorLink = document.getElementById("selector-link");
+      let prompts = [];
+      let wrapper = "image_prompts";
+      let baseModel = { image_prompts: [] };
+      let originalJson = "";
+      let dirty = false;
+      let valid = false;
+
+      function text(value) {
+        return String(value == null ? "" : value);
+      }
+
+      function stableJson(value) {
+        return JSON.stringify(value, null, 2);
+      }
+
+      function currentModel() {
+        if (wrapper === "array") return prompts;
+        const next = { ...(baseModel && typeof baseModel === "object" && !Array.isArray(baseModel) ? baseModel : {}) };
+        if (wrapper === "prompts") next.prompts = prompts;
+        else next.image_prompts = prompts;
+        return next;
+      }
+
+      function extraFields(row) {
+        const extras = { ...row };
+        delete extras.index;
+        delete extras.category;
+        delete extras.intended_use;
+        delete extras.prompt;
+        return extras;
+      }
+
+      function setStatus(label, state) {
+        statusEl.textContent = label;
+        statusEl.className = `status ${state || ""}`.trim();
+      }
+
+      function updateDirtyState() {
+        dirty = stableJson(currentModel()) !== originalJson;
+        footerStatus.textContent = `${prompts.length} prompts - ${dirty ? "unsaved changes" : "unchanged"}`;
+        if (!dirty) setStatus("unchanged", "");
+        saveButton.disabled = !dirty || !valid;
+      }
+
+      function renderMessages(validation) {
+        messagesEl.replaceChildren();
+        const errors = validation && Array.isArray(validation.errors) ? validation.errors : [];
+        const warnings = validation && Array.isArray(validation.warnings) ? validation.warnings : [];
+        [...errors.map((item) => ({ ...item, type: "error" })), ...warnings.map((item) => ({ ...item, type: "warning" }))].forEach((item) => {
+          const el = document.createElement("div");
+          el.className = `message ${item.type}`;
+          const row = item.row == null ? "" : `Row ${item.row + 1}: `;
+          el.textContent = `${row}${item.message || "Validation message"}`;
+          messagesEl.appendChild(el);
+        });
+      }
+
+      function rowInput(value, onInput, type) {
+        const input = document.createElement("input");
+        input.type = type || "text";
+        input.value = text(value);
+        input.addEventListener("input", () => {
+          onInput(input.value);
+          validateLocal();
+        });
+        return input;
+      }
+
+      function renderRows() {
+        rowsEl.replaceChildren();
+        prompts.forEach((row, idx) => {
+          const tr = document.createElement("tr");
+          const index = document.createElement("td");
+          index.className = "index";
+          index.appendChild(rowInput(row.index, (value) => { row.index = Number(value); }, "number"));
+          const category = document.createElement("td");
+          category.className = "category";
+          category.appendChild(rowInput(row.category, (value) => { row.category = value; }));
+          const intendedUse = document.createElement("td");
+          intendedUse.className = "use";
+          intendedUse.appendChild(rowInput(row.intended_use, (value) => { row.intended_use = value; }));
+          const prompt = document.createElement("td");
+          const textarea = document.createElement("textarea");
+          textarea.value = text(row.prompt);
+          textarea.addEventListener("input", () => {
+            row.prompt = textarea.value;
+            validateLocal();
+          });
+          prompt.appendChild(textarea);
+          const extra = document.createElement("td");
+          extra.className = "extra";
+          const extras = extraFields(row);
+          extra.textContent = Object.keys(extras).length ? JSON.stringify(extras) : "none";
+          const actions = document.createElement("td");
+          actions.className = "actions-cell";
+          const actionWrap = document.createElement("div");
+          actionWrap.className = "row-actions";
+          const duplicate = document.createElement("button");
+          duplicate.type = "button";
+          duplicate.textContent = "Duplicate";
+          duplicate.addEventListener("click", () => {
+            const copy = JSON.parse(JSON.stringify(row));
+            copy.index = Math.max(0, ...prompts.map((item) => Number(item.index) || 0)) + 1;
+            prompts.splice(idx + 1, 0, copy);
+            renderRows();
+            validateLocal();
+          });
+          const up = document.createElement("button");
+          up.type = "button";
+          up.textContent = "Up";
+          up.disabled = idx === 0;
+          up.addEventListener("click", () => {
+            [prompts[idx - 1], prompts[idx]] = [prompts[idx], prompts[idx - 1]];
+            renderRows();
+            validateLocal();
+          });
+          const down = document.createElement("button");
+          down.type = "button";
+          down.textContent = "Down";
+          down.disabled = idx === prompts.length - 1;
+          down.addEventListener("click", () => {
+            [prompts[idx], prompts[idx + 1]] = [prompts[idx + 1], prompts[idx]];
+            renderRows();
+            validateLocal();
+          });
+          const del = document.createElement("button");
+          del.type = "button";
+          del.className = "danger";
+          del.textContent = "Delete";
+          del.addEventListener("click", () => {
+            if (!confirm(`Delete prompt ${row.index || idx + 1}?`)) return;
+            prompts.splice(idx, 1);
+            renderRows();
+            validateLocal();
+          });
+          actionWrap.append(duplicate, up, down, del);
+          actions.appendChild(actionWrap);
+          tr.append(index, category, intendedUse, prompt, extra, actions);
+          rowsEl.appendChild(tr);
+        });
+      }
+
+      async function validateRemote() {
+        const response = await fetch(VALIDATE_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ package_id: packageId, model: currentModel() })
+        });
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error || "validation failed");
+        valid = Boolean(data.valid);
+        renderMessages(data);
+        setStatus(data.valid ? "valid" : "validation errors", data.valid ? "good" : "bad");
+        updateDirtyState();
+        return data;
+      }
+
+      function validateLocal() {
+        valid = false;
+        saveButton.disabled = true;
+        setStatus("validation needed", "warn");
+        updateDirtyState();
+      }
+
+      async function load() {
+        if (!packageId) {
+          title.textContent = "Image Prompts";
+          meta.textContent = "Missing ?package=<id> query parameter.";
+          setStatus("package missing", "bad");
+          return;
+        }
+        title.textContent = `Image Prompts - ${packageId}`;
+        selectorLink.href = `image-selector.html?package=${encodeURIComponent(packageId)}`;
+        const response = await fetch(`${READ_API}?package_id=${encodeURIComponent(packageId)}`, { cache: "no-store" });
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error || "read failed");
+        wrapper = data.wrapper || "image_prompts";
+        baseModel = data.model || { image_prompts: [] };
+        prompts = JSON.parse(JSON.stringify(data.prompts || []));
+        originalJson = stableJson(currentModel());
+        valid = false;
+        dirty = false;
+        meta.textContent = `${data.exists ? "Existing file" : "No file yet"} - ${data.count || 0} prompts - modified ${data.modified_at || "never"}`;
+        renderRows();
+        await validateRemote();
+        dirty = false;
+        updateDirtyState();
+      }
+
+      document.getElementById("add-row").addEventListener("click", () => {
+        prompts.push({
+          index: Math.max(0, ...prompts.map((item) => Number(item.index) || 0)) + 1,
+          category: "",
+          intended_use: "",
+          prompt: "",
+        });
+        renderRows();
+        validateLocal();
+      });
+
+      document.getElementById("renumber").addEventListener("click", () => {
+        prompts.forEach((row, index) => { row.index = index + 1; });
+        renderRows();
+        validateLocal();
+      });
+
+      document.getElementById("validate").addEventListener("click", () => {
+        validateRemote().catch((error) => {
+          setStatus(text(error.message || error), "bad");
+        });
+      });
+
+      document.getElementById("reload").addEventListener("click", () => {
+        if (dirty && !confirm("Discard unsaved changes and reload?")) return;
+        load().catch((error) => {
+          setStatus(text(error.message || error), "bad");
+          meta.textContent = text(error.message || error);
+        });
+      });
+
+      saveButton.addEventListener("click", async () => {
+        try {
+          const validation = await validateRemote();
+          if (!validation.valid) return;
+          const response = await fetch(SAVE_API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ package_id: packageId, model: currentModel() })
+          });
+          const data = await response.json();
+          if (!data.ok) throw new Error(data.error || "save failed");
+          originalJson = stableJson(currentModel());
+          dirty = false;
+          valid = true;
+          setStatus("saved", "good");
+          footerStatus.textContent = `${data.count || prompts.length} prompts saved`;
+          saveButton.disabled = true;
+          meta.textContent = `Saved file - ${data.count || prompts.length} prompts - modified ${data.modified_at || "now"}`;
+        } catch (error) {
+          setStatus(text(error.message || error), "bad");
+        }
+      });
+
+      load().catch((error) => {
+        setStatus(text(error.message || error), "bad");
+        meta.textContent = text(error.message || error);
+      });
+    </script>
+  </body>
+</html>

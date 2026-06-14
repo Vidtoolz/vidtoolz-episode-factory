@@ -1,0 +1,4 @@
+6. [GET] http://127.0.0.1:8020/api/package-engine/status => [200] OK
+8. [POST] http://127.0.0.1:8020/api/package-engine/thumbnails
+
+Note: 5 static requests not shown, run with "static" option to see them.

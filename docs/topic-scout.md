@@ -56,6 +56,26 @@ MANUAL 1OF10 INPUT — USER-COPIED DATA, NOT LIVE YOUTUBE DATA
 
 The scout treats copied 1of10 rows as observed performance evidence only. It does not scrape 1of10, verify the copied data, or imply VIDTOOLZ will reproduce the outlier result.
 
+## Manual 1of10 Helper
+
+Use the helper when preparing Mikko's local CSV:
+
+```sh
+node scripts/oneof10-input-helper.js template --open
+node scripts/oneof10-input-helper.js validate inputs/oneof10/manual-oneof10-template.csv
+node scripts/oneof10-input-helper.js run inputs/oneof10/manual-oneof10-template.csv --open
+```
+
+The helper creates or opens the local template, validates that at least 10 rows have `Title` and parseable `Views`, warns about generic/hype rows that Topic Scout is likely to reject, and only runs Topic Scout when the CSV has enough valid rows. It does not scrape 1of10, store browser data, or make network calls.
+
+Optional cleanup:
+
+```sh
+node scripts/oneof10-input-helper.js clean inputs/oneof10/manual-oneof10-template.csv
+```
+
+Cleanup writes a `.cleaned.csv` copy and leaves the original unchanged.
+
 ## Live YouTube Mode
 
 Live YouTube mode is guarded and opt-in:
@@ -104,7 +124,7 @@ Rejected or flagged topics include:
 
 ## Scoring
 
-Default score:
+Topic Scout keeps the original weighted scores for compatibility:
 
 - trust and credibility: 30%
 - authority-building: 25%
@@ -119,6 +139,29 @@ Growth-weighted score:
 - practical usefulness: 20%
 - production feasibility: 15%
 - view potential: 25%
+
+The report also includes a 10-criteria `total_score` from 10 to 100. Every
+criterion used in `total_score` is higher-is-better:
+
+- `audience_demand`
+- `channel_fit`
+- `authority_building`
+- `novelty`
+- `production_feasibility`
+- `proof_availability`
+- `title_thumbnail_potential`
+- `generic_safety`
+- `promise_safety`
+- `beats_existing`
+
+Raw risk diagnostics may also appear:
+
+- `risk_generic`
+- `risk_overpromising`
+
+Those raw risk values are lower-is-better diagnostics and are not summed into
+`total_score`. `generic_safety` and `promise_safety` are the inverted
+higher-is-better versions used for ranking.
 
 ## Verification
 

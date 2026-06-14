@@ -1,0 +1,157 @@
+# Run Report — Vidtoolz Nightly Topic Pack 2026-06-08
+
+**Package:** `vidtoolz-nightly-topic-pack-20260608-0722`
+**Generated:** 2026-06-08 07:22 UTC
+**Agent:** Hermes (profile: default)
+**Status:** DRAFT COMPLETE — NOTHING APPROVED
+
+---
+
+## Workflow Summary
+
+The Vidtoolz Nightly Topic-to-Video-Package workflow completed successfully, producing two complete topic packages as draft-only artifacts.
+
+### Steps Completed
+
+1. **Web Research** — Topic candidates researched via web search
+2. **Topic Scoring** — Candidates scored, two selected
+3. **Topic Briefs** — One brief per selected topic
+4. **Script Writing** — Two complete scripts, under 3 minutes each
+5. **Image Prompts** — 50 total (25 per topic)
+6. **Infographic Prompts** — 30 total (15 per topic)
+7. **GPT Batch Records** — 4 JSON batch files for image generation
+8. **ComfyUI Handoff** — 2 handoff manifests, 80 total entries
+9. **Dry Run Verification** — All text artifacts validated
+10. **Real Draft Run** — Package files written to disk
+
+### Steps NOT Executed (By Design)
+
+- GPT image generation (not run — prepared only)
+- ComfyUI I2V generation (not run — prepared only)
+- Assembly edit (not started)
+- Publishing (not performed)
+
+---
+
+## Topic Selection
+
+### Selected: "Stop Paying For AI Video — Your GPU Is Already a Studio"
+- **Score:** 44/50
+- **Rationale:** Highest Vidtoolz authority fit. Combines Mikko's technical credibility (ComfyUI, GPU workflow experience) with a clear value proposition: open-source vs cloud economics. Concrete, practical, anti-hype.
+
+### Selected: "YouTube Automation Is a Lie (And What Actually Works)"
+- **Score:** 42/50
+- **Rationale:** Contrasts well with Topic 1 — strategic rather than technical. Leverages Mikko's position as a real creator who builds systems. Directly confronts a pervasive myth in the creator economy.
+
+---
+
+## Output Metrics
+
+| Metric | Topic 1 | Topic 2 | Total |
+|--------|---------|---------|-------|
+| Script word count | 400 | 382 | 782 |
+| Script spoken duration (est.) | 2:51 | 2:43 | 5:34 |
+| Image prompts | 25 | 25 | 50 |
+| Infographic prompts | 15 | 15 | 30 |
+| GPT batch records | 2 files | 2 files | 4 files |
+| ComfyUI handoff entries | 40 | 40 | 80 |
+
+---
+
+## Verification Results
+
+| Check | Result |
+|-------|--------|
+| Topic files present (5 per topic) | ✅ |
+| Prompt counts correct (25+15 each) | ✅ |
+| GPT batch records valid | ✅ |
+| ComfyUI handoff valid (status, retry, error fields) | ✅ |
+| Filenames safe (ASCII, no spaces, no mojibake) | ✅ |
+| Scripts under 3 min spoken | ✅ (2:51, 2:43) |
+| No commits made | ✅ |
+| No pushes made | ✅ |
+| No cron jobs created | ✅ |
+| No package-runs state modified | ✅ |
+| No topics marked approved | ✅ |
+| No scripts marked final | ✅ |
+| Existing 2026-06-06 package-run untouched | ✅ |
+
+---
+
+## Files Created
+
+```
+vidtoolz-nightly-topic-pack-20260608-0722/
+├── README.md
+├── research-summary.md
+├── selection-scores.md
+├── run-report.md (this file)
+├── gpt-batch-records/
+│   ├── batch-topic-01-images.json
+│   ├── batch-topic-01-infographics.json
+│   ├── batch-topic-02-images.json
+│   └── batch-topic-02-infographics.json
+├── comfyui-handoff/
+│   ├── handoff-topic-01.json
+│   └── handoff-topic-02.json
+├── topic-01-local-ai-video/
+│   ├── topic-brief.md
+│   ├── script.md
+│   ├── image-prompts.md
+│   ├── infographic-prompts.md
+│   └── manifest.json
+└── topic-02-youtube-automation-lie/
+    ├── topic-brief.md
+    ├── script.md
+    ├── image-prompts.md
+    ├── infographic-prompts.md
+    └── manifest.json
+```
+
+**Total files created:** 20  
+**Total directories created:** 4
+
+---
+
+## Safety Compliance
+
+All safety rules were observed throughout:
+
+- [x] No publishing to YouTube
+- [x] No uploads anywhere
+- [x] No commits (`git status` confirms working tree clean except pre-existing changes)
+- [x] No pushes
+- [x] No cron jobs created
+- [x] No active package-runs state modified
+- [x] No topics marked as approved
+- [x] No scripts marked as final
+- [x] No existing generated media overwritten (no media generated at all)
+- [x] No previous outputs deleted
+
+---
+
+## What Remains to Build
+
+For this to become a fully automated nightly workflow:
+
+1. **GPT image generation trigger** — safe batch execution with Mikko approval gate
+2. **ComfyUI I2V trigger** — supervised batch execution on PRESTO per existing policy (max 3 jobs)
+3. **Assembly edit handoff** — paths from generated videos to Resolve project
+4. **Notification system** — alert Mikko when a nightly pack is ready for review
+5. **Cleanup policy** — how long to keep unapproved draft packages
+
+---
+
+## Recommendation
+
+Both topics are viable Vidtoolz content. Priority order (Mikko's call):
+
+1. **Topic 1** (Local AI Video) — Highest authority fit, most concrete, teaches something actionable
+2. **Topic 2** (YouTube Automation Lie) — Strong counter-narrative, contrasts well, builds trust
+
+Review the scripts before any image generation. The ComfyUI handoff is ready whenever images exist.
+
+---
+
+**Generated by:** Hermes Agent
+**DISCLAIMER:** AI-generated. Not reviewed by a human. Nothing is approved for production.

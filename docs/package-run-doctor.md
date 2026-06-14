@@ -22,6 +22,18 @@ node scripts/package-run-next-action.js package-runs/YYYY-MM-DD-topic-slug --jso
 The next-action command reuses the doctor/index classification. It does not
 mark runs ready, approve production, or write package-run files.
 
+For a machine-readable gate map:
+
+```sh
+node scripts/package-run-workflow-map.js package-runs/YYYY-MM-DD-topic-slug
+```
+
+The workflow-map command outputs JSON only. It reports ordered gates, expected
+artifacts, existing artifacts, missing artifacts, the current blocker, blocked
+actions, and the next safe human action. It composes the package-runs index,
+Doctor, and Next Action Authority, so artifact presence is still separated from
+readiness or approval.
+
 ## What It Reports
 
 The doctor reuses the package-runs index lifecycle logic and prints:

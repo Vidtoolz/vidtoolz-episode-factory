@@ -1,0 +1,2 @@
+[      14ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:8031/favicon.ico:0
+[   15634ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Gateway Timeout) @ http://127.0.0.1:8031/api/package-engine/thumbnails:0

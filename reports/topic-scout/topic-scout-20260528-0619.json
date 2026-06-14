@@ -1,0 +1,17 @@
+{
+  "tool": "VIDTOOLZ Topic Scout + News Synthesizer",
+  "version": "0.1",
+  "generatedAt": "2026-05-28T06:19:19.308Z",
+  "mode": "MANUAL 1OF10 INPUT — USER-COPIED DATA, NOT LIVE YOUTUBE DATA",
+  "networkCallsMade": "none",
+  "inputEvidenceType": "manual 1of10 copied CSV/JSON/Markdown",
+  "status": "insufficient-evidence",
+  "supportedCandidateCount": 2,
+  "requiredCandidateCount": 10,
+  "evidenceBoundary": "Manual 1of10 rows are observed copied performance evidence. News hooks are local fixture inputs unless supplied by file. The VIDTOOLZ angle, synthesis, score, and production recommendation are inference.",
+  "missingEvidence": [
+    "Need at least 10 non-rejected manual 1of10 rows with title and views plus one logical news hook each."
+  ],
+  "candidates": [],
+  "rejectedCandidates": []
+}

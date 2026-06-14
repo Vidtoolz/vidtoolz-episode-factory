@@ -11,6 +11,8 @@ const packageRunDoctor = require('./scripts/package-run-doctor.js');
 const roughCutReviewScript = require('./scripts/package-run-rough-cut-review.js');
 const finalReviewScript = require('./scripts/package-run-final-review.js');
 const exportChecklistScript = require('./scripts/package-run-export-checklist.js');
+const publicationMetadataScript = require('./scripts/package-run-publication-metadata.js');
+const archiveManifestScript = require('./scripts/package-run-archive-manifest.js');
 const nextSafeActionScript = require('./scripts/package-run-next-safe-action.js');
 
 const ROOT = __dirname;
@@ -39,13 +41,52 @@ const EXPORT_MASTER_PREVIEW_API = '/api/package-runs/export-master/preview';
 const EXPORT_MASTER_APPLY_API = '/api/package-runs/export-master/apply';
 const DELIVERY_READINESS_SAVE_API = '/api/package-runs/delivery-readiness/save';
 const EXPORT_CHECKLIST_REGENERATE_API = '/api/package-runs/export-checklist/regenerate-derived';
+const PACKAGE_RUNS_LIST_API = '/api/package-runs/list';
+const FINAL_REVIEW_API = '/api/package-runs/final-review';
+const EXPORT_CHECKLIST_API = '/api/package-runs/export-checklist';
+const PUBLICATION_METADATA_API = '/api/package-runs/publication-metadata';
+const ARCHIVE_MANIFEST_API = '/api/package-runs/archive-manifest';
 const ROUGH_CUT_SAVE_API = '/api/package-runs/rough-cut/watch-notes';
 const ROUGH_CUT_REVIEW_API = '/api/package-runs/rough-cut/review';
 const ROUGH_CUT_REGENERATE_DERIVED_API = '/api/package-runs/rough-cut/regenerate-derived';
 const ROUGH_CUT_OPEN_API = '/api/package-runs/rough-cut/open';
 const PICKUP_PLAN_SAVE_API = '/api/package-runs/pickup-plan/save';
+const AIGEN_STATUS_API = '/api/aigen/production-pipeline/status';
+const AIGEN_RESOLVE_ASSEMBLY_API = '/api/aigen/resolve-assembly/create';
+const AIGEN_FLUX_IMAGES_API_PREFIX = '/api/aigen/flux-images/';
+const AIGEN_SELECTED_IMAGES_API = '/api/aigen/selected-images';
+const AIGEN_ASSETS_PREFIX = '/aigen-assets/';
+const PRESTO_SUBMIT_API = '/api/presto/submit';
+const PRESTO_JOB_STATUS_API = '/api/presto/job-status';
+const PRESTO_CANCEL_API = '/api/presto/cancel';
+const PRESTO_RESULTS_API = '/api/presto/results';
+const FLUX_SUBMIT_API = '/api/flux/submit';
+const FLUX_JOB_STATUS_API = '/api/flux/job-status';
+const FLUX_CANCEL_API = '/api/flux/cancel';
+const FLUX_RESULTS_API = '/api/flux/results';
+const IMAGE_PROMPTS_READ_API = '/api/image-prompts/read';
+const IMAGE_PROMPTS_VALIDATE_API = '/api/image-prompts/validate';
+const IMAGE_PROMPTS_SAVE_API = '/api/image-prompts/save';
 const SERVE_ROOT = ROOT;
 const PACKAGE_RUNS_DIR = 'package-runs';
+const VIDNAS_AIGEN_ROOT = '/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen';
+const VIDNAS_SCRIPT_PACKAGES = path.join(VIDNAS_AIGEN_ROOT, 'script-packages');
+const VIDNAS_WAN_LANE = path.join(VIDNAS_AIGEN_ROOT, 'image-to-video', 'production', 'wan22-81f');
+const PRESTO_BASE_URL = 'http://192.168.50.187:8188';
+const RESOLVE_HANDOFF_FILES = ['assembly-plan.md', 'assembly-plan.csv', 'media-manifest.json'];
+const PRESTO_OUTPUT_LIMIT_BYTES = 100 * 1024;
+const PRESTO_OUTPUT_TAIL_BYTES = 4 * 1024;
+const PRESTO_COMPLETED_TTL_MS = 10 * 60 * 1000;
+const PRESTO_STATE = {
+  activeJob: null,
+  defaultUrl: PRESTO_BASE_URL,
+  productionScript: path.join(VIDNAS_WAN_LANE, 'run-production.py'),
+  runsDir: path.join(VIDNAS_WAN_LANE, 'runs'),
+};
+const FLUX_STATE = {
+  activeJob: null,
+  script: path.join(VIDNAS_AIGEN_ROOT, 'image-generation', 'flux-gguf', 'run-handoff.py'),
+};
 const OPENAI_IMAGES_URL = 'https://api.openai.com/v1/images/generations';
 const DEFAULT_THUMBNAIL_PROVIDER = 'placeholder';
 const DEFAULT_OPENAI_IMAGE_MODEL = 'gpt-image-1';
@@ -3421,6 +3462,1460 @@ function runRoughCutReview(payload = {}, options = {}) {
   };
 }
 
+function readPackageRunsIndex(options = {}) {
+  const root = path.resolve(options.root || ROOT);
+  const indexPath = path.join(root, 'package-runs-index.json');
+  if (!fs.existsSync(indexPath)) {
+    const error = new Error('package-runs-index.json does not exist.');
+    error.statusCode = 404;
+    throw error;
+  }
+  return readJsonFile(indexPath);
+}
+
+function parseLabelValueStdout(stdout = '') {
+  return String(stdout || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .reduce((result, line) => {
+      const match = line.match(/^([^:]+):\s*(.*)$/);
+      if (match) {
+        result[match[1].trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')] = match[2].trim();
+      }
+      return result;
+    }, {});
+}
+
+function aigenPaths(options = {}) {
+  const aigenRoot = options.aigenRoot || process.env.AIGEN_VIDNAS_ROOT || VIDNAS_AIGEN_ROOT;
+  return {
+    aigenRoot,
+    scriptPackages: options.scriptPackages || process.env.AIGEN_SCRIPT_PACKAGES || path.join(aigenRoot, 'script-packages'),
+    wanLane: options.wanLane || process.env.AIGEN_WAN_LANE || path.join(aigenRoot, 'image-to-video', 'production', 'wan22-81f'),
+    prestoBaseUrl: options.prestoBaseUrl || process.env.AIGEN_PRESTO_BASE_URL || PRESTO_BASE_URL,
+    prestoTimeoutMs: Number(options.prestoTimeoutMs || process.env.AIGEN_PRESTO_TIMEOUT_MS || 2000),
+    pythonBin: options.pythonBin || process.env.AIGEN_PYTHON_BIN || 'python3',
+    topicToPackageScript: options.topicToPackageScript || process.env.AIGEN_TOPIC_TO_PACKAGE_SCRIPT || path.join(aigenRoot, 'scripts', 'topic-to-package.py'),
+    productionScript: options.productionScript || process.env.AIGEN_PRODUCTION_SCRIPT || PRESTO_STATE.productionScript,
+    fluxScript: options.fluxScript || process.env.AIGEN_FLUX_SCRIPT || FLUX_STATE.script,
+    wanRunsDir: options.wanRunsDir || process.env.AIGEN_WAN_RUNS_DIR || PRESTO_STATE.runsDir,
+  };
+}
+
+function safeReadJson(filePath, fallback = null) {
+  try {
+    if (!fs.existsSync(filePath)) return fallback;
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function safeReadText(filePath, fallback = '') {
+  try {
+    if (!fs.existsSync(filePath)) return fallback;
+    return fs.readFileSync(filePath, 'utf8');
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function safeDirEntries(dirPath) {
+  try {
+    if (!fs.existsSync(dirPath)) return [];
+    return fs.readdirSync(dirPath, { withFileTypes: true });
+  } catch (_) {
+    return [];
+  }
+}
+
+function parseJsonLines(filePath) {
+  return safeReadText(filePath)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch (_) {
+        return { label: line.split(/\s+/)[0], raw: line };
+      }
+    });
+}
+
+function parseWanQueue(filePath) {
+  return safeReadText(filePath)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#'))
+    .map((line) => {
+      if (line.startsWith('{')) {
+        try {
+          return JSON.parse(line);
+        } catch (_) {
+          return { raw: line };
+        }
+      }
+      const parts = line.split('\t');
+      return { label: parts[0] || '', source: parts[1] || '', prompt: parts.slice(2).join('\t') };
+    });
+}
+
+function labelFromSelectedPath(selectedPath = '') {
+  return path.basename(String(selectedPath || ''), path.extname(String(selectedPath || '')));
+}
+
+function loadWanRunSummaries(runsDir) {
+  return safeDirEntries(runsDir)
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => {
+      const runLogPath = path.join(runsDir, entry.name, 'run.log');
+      const runLog = safeReadJson(runLogPath, null);
+      return {
+        id: entry.name,
+        label: runLog ? runLog.label || '' : '',
+        status: runLog ? runLog.status || '' : '',
+        runLogExists: Boolean(runLog),
+      };
+    });
+}
+
+function readWanLock(lockPath) {
+  if (!fs.existsSync(lockPath)) {
+    return { lock_active: false, lock_pid: null, lock_created_at: null };
+  }
+  const lock = safeReadJson(lockPath, {});
+  return {
+    lock_active: true,
+    lock_pid: lock.pid || null,
+    lock_created_at: lock.created_at || lock.createdAt || null,
+  };
+}
+
+function buildPackagePipelineStatus(packageDir, wanLabels) {
+  const id = path.basename(packageDir);
+  const selected = safeReadJson(path.join(packageDir, 'selected-images.json'), null);
+  const imagePrompts = safeReadJson(path.join(packageDir, 'image-prompts.json'), null);
+  const fluxManifestPath = path.join(packageDir, 'flux-generation-manifest.json');
+  const resolveHandoffDir = path.join(packageDir, 'resolve-handoff');
+  const resolveHandoffCount = RESOLVE_HANDOFF_FILES.filter((filename) => fs.existsSync(path.join(resolveHandoffDir, filename))).length;
+  const promptItems = imagePrompts && Array.isArray(imagePrompts.image_prompts) ? imagePrompts.image_prompts : [];
+  const selections = selected && Array.isArray(selected.selections) ? selected.selections : [];
+  const selectionLabels = selections.map((item) => labelFromSelectedPath(item.selected_path)).filter(Boolean);
+  const completed = selectionLabels.filter((label) => wanLabels.completed.has(label)).length;
+  const failed = selectionLabels.filter((label) => wanLabels.failed.has(label)).length;
+  const pending = Math.max(0, selectionLabels.length - completed - failed);
+  const fluxImagesDir = path.join(packageDir, 'images', 'flux-local');
+  const fluxImagesCount = safeDirEntries(fluxImagesDir).filter((entry) => entry.isFile() && /\.png$/i.test(entry.name)).length;
+  let wanNextAction = 'No selections found';
+  if (!promptItems.length) {
+    wanNextAction = 'Create or import image prompts';
+  } else if (fluxImagesCount < promptItems.length) {
+    wanNextAction = `Generate ${promptItems.length - fluxImagesCount} remaining FLUX images`;
+  } else if (!selections.length) {
+    wanNextAction = 'Select images for Wan2.2';
+  } else if (pending > 0) {
+    wanNextAction = `Submit ${pending} pending selections to PRESTO`;
+  } else if (failed > 0) {
+    wanNextAction = `Review ${failed} failed Wan selections`;
+  } else if (resolveHandoffCount < RESOLVE_HANDOFF_FILES.length) {
+    wanNextAction = 'Create Resolve assembly handoff';
+  } else {
+    wanNextAction = 'Wan selections complete';
+  }
+  return {
+    id,
+    has_selections: Boolean(selected),
+    selections_count: selections.length,
+    prompts_count: promptItems.length,
+    flux_images_count: fluxImagesCount,
+    has_flux_manifest: fs.existsSync(fluxManifestPath),
+    wan_completed: completed,
+    wan_pending: pending,
+    wan_failed: failed,
+    resolve_handoff_ready: resolveHandoffCount === RESOLVE_HANDOFF_FILES.length,
+    resolve_handoff_count: resolveHandoffCount,
+    wan_next_action: wanNextAction,
+  };
+}
+
+function aigenProductionPipelineStatus(options = {}) {
+  const paths = aigenPaths(options);
+  const mounted = fs.existsSync(paths.aigenRoot) && fs.existsSync(paths.scriptPackages);
+  const generatedAt = new Date().toISOString();
+  if (!mounted) {
+    return {
+      ok: false,
+      generated_at: generatedAt,
+      vidnas_mounted: false,
+      error: `VIDNAS not mounted at ${paths.aigenRoot}`,
+      packages: [],
+      wan_lane: {
+        lock_active: false,
+        lock_pid: null,
+        lock_created_at: null,
+        completed_count: 0,
+        failed_count: 0,
+        queue_items_count: 0,
+        runs_count: 0,
+      },
+      presto: { reachable: false, queue_empty: null, error: null },
+      next_action: 'Mount VIDNAS before checking production pipeline status',
+    };
+  }
+
+  const completed = parseJsonLines(path.join(paths.wanLane, 'completed.txt'));
+  const failed = parseJsonLines(path.join(paths.wanLane, 'failed.jsonl'));
+  const queueItems = parseWanQueue(path.join(paths.wanLane, 'queue.txt'));
+  const runs = loadWanRunSummaries(path.join(paths.wanLane, 'runs'));
+  const wanLabels = {
+    completed: new Set(completed.map((item) => String(item.label || '')).filter(Boolean)),
+    failed: new Set(failed.map((item) => String(item.label || '')).filter(Boolean)),
+  };
+  const packageDirs = safeDirEntries(paths.scriptPackages)
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(paths.scriptPackages, entry.name));
+  const packages = packageDirs.map((packageDir) => buildPackagePipelineStatus(packageDir, wanLabels));
+  const active = packages.find((item) => item.wan_pending > 0) ||
+    packages.find((item) => item.selections_count === 0 && item.flux_images_count > 0) ||
+    packages.find((item) => item.flux_images_count < item.prompts_count);
+  const nextAction = active
+    ? `${active.wan_next_action} for ${active.id}`
+    : 'No pending aigen production actions found';
+  return {
+    ok: true,
+    generated_at: generatedAt,
+    vidnas_mounted: true,
+    packages,
+    wan_lane: {
+      ...readWanLock(path.join(paths.wanLane, '.wan22-81f.lock')),
+      completed_count: completed.length,
+      failed_count: failed.length,
+      queue_items_count: queueItems.length,
+      runs_count: runs.length,
+    },
+    presto: { reachable: false, queue_empty: null, error: null },
+    next_action: nextAction,
+  };
+}
+
+function getJson(urlString, timeoutMs, callback) {
+  let settled = false;
+  let request;
+  try {
+    request = http.get(urlString, { timeout: timeoutMs }, (response) => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', (chunk) => { body += chunk; });
+      response.on('end', () => {
+        if (settled) return;
+        settled = true;
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          callback(new Error(`HTTP ${response.statusCode}`));
+          return;
+        }
+        try {
+          callback(null, JSON.parse(body || '{}'));
+        } catch (error) {
+          callback(error);
+        }
+      });
+    });
+    request.on('timeout', () => {
+      if (settled) return;
+      settled = true;
+      request.destroy();
+      callback(new Error(`timeout after ${timeoutMs}ms`));
+    });
+    request.on('error', (error) => {
+      if (settled) return;
+      settled = true;
+      callback(error);
+    });
+  } catch (error) {
+    callback(error);
+  }
+}
+
+function attachPrestoStatus(status, options = {}, callback) {
+  const paths = aigenPaths(options);
+  if (!paths.prestoBaseUrl) {
+    status.presto = { reachable: false, queue_empty: null, error: 'PRESTO base URL not configured' };
+    callback(status);
+    return;
+  }
+  const base = paths.prestoBaseUrl.replace(/\/+$/, '');
+  const timeoutMs = paths.prestoTimeoutMs;
+  getJson(`${base}/system_stats`, timeoutMs, (statsError) => {
+    if (statsError) {
+      status.presto = { reachable: false, queue_empty: null, error: statsError.message };
+      callback(status);
+      return;
+    }
+    getJson(`${base}/queue`, timeoutMs, (queueError, queue) => {
+      if (queueError) {
+        status.presto = { reachable: true, queue_empty: null, error: queueError.message };
+        callback(status);
+        return;
+      }
+      const running = Array.isArray(queue.queue_running) ? queue.queue_running.length : 0;
+      const pending = Array.isArray(queue.queue_pending) ? queue.queue_pending.length : 0;
+      status.presto = { reachable: true, queue_empty: running === 0 && pending === 0, error: null };
+      callback(status);
+    });
+  });
+}
+
+function handleAigenStatus(req, res) {
+  const status = aigenProductionPipelineStatus();
+  if (!status.ok) {
+    send(res, 200, status);
+    return;
+  }
+  attachPrestoStatus(status, {}, (withPresto) => send(res, 200, withPresto));
+}
+
+function resolveAigenPackageDir(packageId, options = {}) {
+  const paths = aigenPaths(options);
+  const id = String(packageId || '').trim();
+  if (!id) {
+    const error = new Error('package_id is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (id.includes('/') || id.includes('\\') || id === '.' || id === '..' || id.includes('..')) {
+    const error = new Error('Invalid package_id.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!/^[A-Za-z0-9._-]+$/.test(id)) {
+    const error = new Error('Invalid package_id.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const packageDir = path.resolve(paths.scriptPackages, id);
+  const scriptRoot = path.resolve(paths.scriptPackages);
+  if (!packageDir.startsWith(scriptRoot + path.sep)) {
+    const error = new Error('Resolved package path is outside script-packages.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!fs.existsSync(packageDir) || !fs.statSync(packageDir).isDirectory()) {
+    const error = new Error(`Package does not exist: ${id}`);
+    error.statusCode = 404;
+    throw error;
+  }
+  return { packageId: id, packageDir, paths };
+}
+
+function runResolveAssemblyCreate(packageId, options = {}) {
+  const { packageId: id, packageDir, paths } = resolveAigenPackageDir(packageId, options);
+  if (!fs.existsSync(paths.topicToPackageScript)) {
+    return Promise.resolve({
+      ok: false,
+      package_id: id,
+      error: `Resolve assembly script not found: ${paths.topicToPackageScript}`,
+      exit_code: 127,
+    });
+  }
+  const args = [
+    paths.topicToPackageScript,
+    'resolve-assembly-handoff',
+    '--package',
+    packageDir,
+    '--force',
+  ];
+  return new Promise((resolve) => {
+    const child = childProcess.spawn(paths.pythonBin, args, {
+      cwd: paths.aigenRoot,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
+    child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+    child.on('error', (error) => {
+      resolve({
+        ok: false,
+        package_id: id,
+        error: error.message,
+        exit_code: 1,
+        stdout,
+        stderr,
+      });
+    });
+    child.on('close', (code) => {
+      if (code === 0) {
+        const resolveDir = path.join(packageDir, 'resolve-handoff');
+        const existingFiles = RESOLVE_HANDOFF_FILES.filter((filename) => fs.existsSync(path.join(resolveDir, filename)));
+        resolve({
+          ok: true,
+          package_id: id,
+          files: RESOLVE_HANDOFF_FILES,
+          existing_files: existingFiles,
+          output_dir: resolveDir,
+          stdout,
+          stderr,
+        });
+        return;
+      }
+      resolve({
+        ok: false,
+        package_id: id,
+        error: (stderr || stdout || `resolve-assembly-handoff exited with code ${code}`).trim(),
+        exit_code: code,
+        stdout,
+        stderr,
+      });
+    });
+  });
+}
+
+function handleAigenResolveAssemblyCreate(req, res) {
+  readJsonBody(req)
+    .then((payload) => runResolveAssemblyCreate(payload.package_id))
+    .then((result) => send(res, result.ok ? 200 : 400, result))
+    .catch((error) => send(res, error.statusCode || 500, { ok: false, error: error.message }));
+}
+
+function fluxIndexFromFilename(filename = '') {
+  const match = String(filename).match(/^flux-(\d+)\.png$/i);
+  return match ? Number(match[1]) : null;
+}
+
+function loadImagePromptsByIndex(packageDir) {
+  const promptData = safeReadJson(path.join(packageDir, 'image-prompts.json'), {});
+  const prompts = promptData && Array.isArray(promptData.image_prompts) ? promptData.image_prompts : [];
+  return prompts.reduce((result, item) => {
+    if (!item || typeof item !== 'object') return result;
+    let index = item.index == null ? item.prompt_index : item.index;
+    if (typeof index === 'string' && /^\d+$/.test(index)) index = Number(index);
+    if (Number.isInteger(index) && item.prompt) result.set(index, String(item.prompt));
+    return result;
+  }, new Map());
+}
+
+function imagePromptsPathForPackage(packageDir) {
+  const target = path.resolve(packageDir, 'image-prompts.json');
+  const packageRoot = path.resolve(packageDir);
+  if (target !== path.join(packageRoot, 'image-prompts.json')) {
+    const error = new Error('Resolved image-prompts.json path is invalid.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!target.startsWith(packageRoot + path.sep)) {
+    const error = new Error('Resolved image-prompts.json path is outside package.');
+    error.statusCode = 400;
+    throw error;
+  }
+  return target;
+}
+
+function normalizeImagePromptsModel(input) {
+  const source = input == null ? { image_prompts: [] } : input;
+  let wrapper = 'image_prompts';
+  let prompts = [];
+  let passthrough = {};
+  if (Array.isArray(source)) {
+    wrapper = 'array';
+    prompts = source;
+  } else if (source && typeof source === 'object') {
+    passthrough = { ...source };
+    if (Array.isArray(source.image_prompts)) {
+      wrapper = 'image_prompts';
+      prompts = source.image_prompts;
+    } else if (Array.isArray(source.prompts)) {
+      wrapper = 'prompts';
+      prompts = source.prompts;
+    } else {
+      prompts = [];
+    }
+  } else {
+    const error = new Error('image-prompts model must be an array or object wrapper.');
+    error.statusCode = 400;
+    throw error;
+  }
+  return {
+    wrapper,
+    passthrough,
+    prompts: prompts.map((item) => (item && typeof item === 'object' && !Array.isArray(item) ? { ...item } : item)),
+  };
+}
+
+function readImagePrompts(packageId, options = {}) {
+  const { packageId: id, packageDir } = resolveAigenPackageDir(packageId, options);
+  const filePath = imagePromptsPathForPackage(packageDir);
+  const exists = fs.existsSync(filePath);
+  let parsed = { image_prompts: [] };
+  let stat = null;
+  if (exists) {
+    parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    stat = fs.statSync(filePath);
+  }
+  const model = normalizeImagePromptsModel(parsed);
+  return {
+    ok: true,
+    package_id: id,
+    exists,
+    path: filePath,
+    modified_at: stat ? stat.mtime.toISOString() : null,
+    size_bytes: stat ? stat.size : 0,
+    wrapper: model.wrapper,
+    prompts: model.prompts,
+    model: model.wrapper === 'array' ? model.prompts : { ...model.passthrough, [model.wrapper]: model.prompts },
+    count: model.prompts.length,
+  };
+}
+
+function promptIndexValue(item) {
+  if (!item || typeof item !== 'object') return null;
+  const value = item.index == null ? item.prompt_index : item.index;
+  if (typeof value === 'string' && /^\d+$/.test(value.trim())) return Number(value.trim());
+  return Number.isInteger(value) ? value : null;
+}
+
+function validateImagePromptsPayload(payload = {}) {
+  let model;
+  try {
+    if (Array.isArray(payload)) {
+      model = normalizeImagePromptsModel(payload);
+    } else if (payload && typeof payload === 'object' && Object.prototype.hasOwnProperty.call(payload, 'model')) {
+      model = normalizeImagePromptsModel(payload.model);
+    } else if (payload && typeof payload === 'object' && Array.isArray(payload.prompts)) {
+      model = normalizeImagePromptsModel({ image_prompts: payload.prompts });
+    } else {
+      model = normalizeImagePromptsModel(payload);
+    }
+  } catch (error) {
+    return {
+      ok: true,
+      valid: false,
+      errors: [{ field: 'model', message: error.message }],
+      warnings: [],
+      count: 0,
+      prompts: [],
+      model: { image_prompts: [] },
+    };
+  }
+
+  const errors = [];
+  const warnings = [];
+  const indexCounts = new Map();
+  const prompts = model.prompts;
+  if (!Array.isArray(prompts)) {
+    errors.push({ field: 'image_prompts', message: 'Prompt list must be an array.' });
+  }
+  prompts.forEach((item, row) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      errors.push({ row, field: 'item', message: 'Prompt item must be an object.' });
+      return;
+    }
+    const index = promptIndexValue(item);
+    if (!Number.isInteger(index) || index <= 0) {
+      errors.push({ row, field: 'index', message: 'index must be a positive integer.' });
+    } else {
+      indexCounts.set(index, (indexCounts.get(index) || 0) + 1);
+    }
+    const promptText = String(item.prompt == null ? '' : item.prompt).trim();
+    if (!promptText) {
+      errors.push({ row, field: 'prompt', message: 'prompt is required.' });
+    } else if (promptText.length < 40) {
+      warnings.push({ row, field: 'prompt', message: 'Prompt is very short.' });
+    } else if (promptText.length > 1200) {
+      warnings.push({ row, field: 'prompt', message: 'Prompt is suspiciously long.' });
+    }
+    if (!String(item.category == null ? '' : item.category).trim()) {
+      warnings.push({ row, field: 'category', message: 'Category is empty.' });
+    }
+  });
+  [...indexCounts.entries()].filter(([, count]) => count > 1).forEach(([index]) => {
+    errors.push({ field: 'index', index, message: `Duplicate index: ${index}` });
+  });
+  const sortedIndexes = [...indexCounts.keys()].sort((a, b) => a - b);
+  if (sortedIndexes.length) {
+    const sequential = sortedIndexes.every((index, position) => index === position + 1);
+    if (!sequential) warnings.push({ field: 'index', message: 'Indexes are non-sequential.' });
+  }
+  const outputModel = model.wrapper === 'array'
+    ? prompts
+    : { ...model.passthrough, [model.wrapper === 'prompts' ? 'prompts' : 'image_prompts']: prompts };
+  return {
+    ok: true,
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    count: prompts.length,
+    prompts,
+    wrapper: model.wrapper,
+    model: outputModel,
+  };
+}
+
+function validateImagePromptsForPackage(payload = {}, options = {}) {
+  if (payload && Object.prototype.hasOwnProperty.call(payload, 'package_id')) {
+    resolveAigenPackageDir(payload.package_id, options);
+  }
+  return validateImagePromptsPayload(payload);
+}
+
+function saveImagePrompts(payload = {}, options = {}) {
+  const { packageId: id, packageDir } = resolveAigenPackageDir(payload.package_id, options);
+  const filePath = imagePromptsPathForPackage(packageDir);
+  const scriptRoot = path.resolve(aigenPaths(options).scriptPackages);
+  if (!filePath.startsWith(scriptRoot + path.sep) || path.basename(filePath) !== 'image-prompts.json') {
+    const error = new Error('Refusing to write outside script-packages image-prompts.json.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const validation = validateImagePromptsPayload(payload);
+  if (!validation.valid) {
+    const error = new Error('image-prompts validation failed.');
+    error.statusCode = 400;
+    error.validation = validation;
+    throw error;
+  }
+  const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(tmpPath, `${JSON.stringify(validation.model, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmpPath, filePath);
+  const stat = fs.statSync(filePath);
+  console.log(`[image-prompts] ${id}: wrote ${validation.count} prompts to ${filePath}`);
+  return {
+    ok: true,
+    package_id: id,
+    written_to: filePath,
+    count: validation.count,
+    modified_at: stat.mtime.toISOString(),
+    warnings: validation.warnings,
+  };
+}
+
+function selectedIndicesFromData(data) {
+  const selections = Array.isArray(data) ? data : data && Array.isArray(data.selections) ? data.selections : [];
+  return selections
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      let index = item.index == null ? item.prompt_index : item.index;
+      if (!index && (item.path || item.selected_path)) {
+        index = fluxIndexFromFilename(path.basename(String(item.path || item.selected_path)));
+      }
+      if (typeof index === 'string' && /^\d+$/.test(index)) index = Number(index);
+      return Number.isInteger(index) ? index : null;
+    })
+    .filter((index) => index !== null);
+}
+
+function aigenAssetPath(packageId, relativePath) {
+  const { packageDir } = resolveAigenPackageDir(packageId);
+  const cleanRelative = String(relativePath || '').replace(/\\/g, '/');
+  if (!cleanRelative || cleanRelative.split('/').some((part) => part === '..' || part === '' || part.startsWith('.'))) {
+    const error = new Error('Invalid asset path.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const resolved = path.resolve(packageDir, cleanRelative);
+  if (!resolved.startsWith(path.resolve(packageDir) + path.sep)) {
+    const error = new Error('Asset path resolves outside package.');
+    error.statusCode = 400;
+    throw error;
+  }
+  return resolved;
+}
+
+function listFluxImages(packageId, options = {}) {
+  const { packageId: id, packageDir } = resolveAigenPackageDir(packageId, options);
+  const fluxDir = path.join(packageDir, 'images', 'flux-local');
+  const promptsByIndex = loadImagePromptsByIndex(packageDir);
+  const selectedData = safeReadJson(path.join(packageDir, 'selected-images.json'), null);
+  const selected = selectedData ? selectedIndicesFromData(selectedData) : [];
+  const images = safeDirEntries(fluxDir)
+    .filter((entry) => entry.isFile() && /^flux-\d+\.png$/i.test(entry.name))
+    .map((entry) => {
+      const index = fluxIndexFromFilename(entry.name);
+      const relative = `images/flux-local/${entry.name}`;
+      const absolute = path.join(fluxDir, entry.name);
+      let sizeBytes = 0;
+      try { sizeBytes = fs.statSync(absolute).size; } catch (_) {}
+      return {
+        index,
+        path: relative,
+        absolute_path: absolute,
+        asset_url: `${AIGEN_ASSETS_PREFIX}script-packages/${encodeURIComponent(id)}/images/flux-local/${encodeURIComponent(entry.name)}`,
+        prompt: promptsByIndex.get(index) || '',
+        label: path.basename(entry.name, path.extname(entry.name)),
+        exists: fs.existsSync(absolute),
+        size_bytes: sizeBytes,
+      };
+    })
+    .sort((a, b) => a.index - b.index);
+  return {
+    ok: true,
+    package_id: id,
+    images,
+    selected,
+    total: images.length,
+    selected_count: selected.length,
+  };
+}
+
+function selectedLabel(index, labels) {
+  return labels ? `selected-img-${String(index).padStart(3, '0')}` : `flux-${String(index).padStart(3, '0')}`;
+}
+
+function writeSelectedImages(payload = {}, options = {}) {
+  if (!Array.isArray(payload.selected_indices)) {
+    const error = new Error('selected_indices must be an array.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const selectedIndices = payload.selected_indices.map((index) => Number(index));
+  if (selectedIndices.some((index) => !Number.isInteger(index) || index <= 0)) {
+    const error = new Error('selected_indices must contain only positive integer indices.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const { packageId: id, packageDir } = resolveAigenPackageDir(payload.package_id, options);
+  const promptsByIndex = loadImagePromptsByIndex(packageDir);
+  const uniqueIndices = [...new Set(selectedIndices)];
+  const selectedAt = new Date().toISOString();
+  const selections = uniqueIndices.map((index) => {
+    const filename = `flux-${String(index).padStart(3, '0')}.png`;
+    const relative = `images/flux-local/${filename}`;
+    const absolute = aigenAssetPath(id, relative);
+    if (!fs.existsSync(absolute) || !fs.statSync(absolute).isFile()) {
+      const error = new Error(`Selected FLUX image does not exist for index ${index}: ${relative}`);
+      error.statusCode = 400;
+      throw error;
+    }
+    return {
+      prompt_index: index,
+      index,
+      selected_source: 'flux-local',
+      selected_path: relative,
+      path: relative,
+      prompt: promptsByIndex.get(index) || '',
+      label: selectedLabel(index, Boolean(payload.labels)),
+      generator: 'flux-local-vidnux',
+      selected_at: selectedAt,
+    };
+  });
+  const selectedPath = path.join(packageDir, 'selected-images.json');
+  const overwrotePrevious = fs.existsSync(selectedPath);
+  const output = {
+    version: 1,
+    package: `script-packages/${id}`,
+    updated_at: selectedAt,
+    label_mode: payload.labels ? 'selected-img' : 'flux',
+    selections,
+  };
+  const tmpPath = `${selectedPath}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(tmpPath, `${JSON.stringify(output, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmpPath, selectedPath);
+  console.log(`[image-selector] ${id}: wrote ${selections.length} selections to ${selectedPath}`);
+  return {
+    ok: true,
+    package_id: id,
+    written_to: selectedPath,
+    selected_count: selections.length,
+    overwrote_previous: overwrotePrevious,
+  };
+}
+
+function handleAigenFluxImages(req, res, url) {
+  const packageId = decodeURIComponent(url.pathname.slice(AIGEN_FLUX_IMAGES_API_PREFIX.length));
+  try {
+    send(res, 200, listFluxImages(packageId));
+  } catch (error) {
+    send(res, error.statusCode === 404 ? 400 : error.statusCode || 500, { ok: false, error: error.message });
+  }
+}
+
+function handleAigenSelectedImages(req, res) {
+  readJsonBody(req)
+    .then((payload) => {
+      const result = writeSelectedImages(payload);
+      send(res, 200, result);
+    })
+    .catch((error) => send(res, error.statusCode === 404 ? 400 : error.statusCode || 500, { ok: false, error: error.message }));
+}
+
+function handleImagePromptsRead(req, res, url) {
+  try {
+    send(res, 200, readImagePrompts(url.searchParams.get('package_id')));
+  } catch (error) {
+    send(res, error.statusCode === 404 ? 400 : error.statusCode || 500, { ok: false, error: error.message });
+  }
+}
+
+function handleImagePromptsValidate(req, res) {
+  readJsonBody(req)
+    .then((payload) => send(res, 200, validateImagePromptsForPackage(payload)))
+    .catch((error) => send(res, error.statusCode === 404 ? 400 : error.statusCode || 500, { ok: false, error: error.message }));
+}
+
+function handleImagePromptsSave(req, res) {
+  readJsonBody(req)
+    .then((payload) => {
+      const result = saveImagePrompts(payload);
+      send(res, 200, result);
+    })
+    .catch((error) => {
+      if (error.validation) {
+        send(res, error.statusCode || 400, { ok: false, error: error.message, validation: error.validation });
+        return;
+      }
+      send(res, error.statusCode === 404 ? 400 : error.statusCode || 500, { ok: false, error: error.message });
+    });
+}
+
+function handleAigenAsset(req, res, url) {
+  const raw = decodeURIComponent(url.pathname.slice(AIGEN_ASSETS_PREFIX.length));
+  const parts = raw.split('/').filter(Boolean);
+  if (parts.some((part) => part === '..' || part.startsWith('.'))) {
+    send(res, 403, 'Forbidden');
+    return;
+  }
+  const assetPath = path.resolve(VIDNAS_AIGEN_ROOT, raw);
+  const root = path.resolve(VIDNAS_AIGEN_ROOT);
+  if (!assetPath.startsWith(root + path.sep)) {
+    send(res, 403, 'Forbidden');
+    return;
+  }
+  fs.stat(assetPath, (err, stats) => {
+    if (err || !stats.isFile()) {
+      send(res, 404, 'Not found');
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': inferMime(assetPath), 'Cache-Control': 'public, max-age=300' });
+    fs.createReadStream(assetPath).pipe(res);
+  });
+}
+
+function appendCappedOutput(current, chunk) {
+  const next = current + chunk.toString();
+  if (Buffer.byteLength(next, 'utf8') <= PRESTO_OUTPUT_LIMIT_BYTES) return next;
+  return Buffer.from(next, 'utf8').subarray(-PRESTO_OUTPUT_LIMIT_BYTES).toString('utf8');
+}
+
+function tailOutput(value, byteLimit = PRESTO_OUTPUT_TAIL_BYTES) {
+  return Buffer.from(String(value || ''), 'utf8').subarray(-byteLimit).toString('utf8');
+}
+
+function prestoRunningSeconds(job, now = Date.now()) {
+  const started = Date.parse(job.startedAt);
+  const ended = job.completedAt ? Date.parse(job.completedAt) : now;
+  if (!Number.isFinite(started) || !Number.isFinite(ended)) return 0;
+  return Math.max(0, Math.floor((ended - started) / 1000));
+}
+
+function serializePrestoJob(job, running, now = Date.now()) {
+  if (!job) return null;
+  return {
+    running,
+    package_id: job.packageId,
+    comfyui_url: job.comfyuiUrl,
+    started_at: job.startedAt,
+    completed_at: job.completedAt || null,
+    running_seconds: prestoRunningSeconds(job, now),
+    exit_code: job.exitCode == null ? null : job.exitCode,
+    signal: job.signal || null,
+    stdout_tail: tailOutput(job.stdout),
+    stderr_tail: tailOutput(job.stderr),
+  };
+}
+
+function currentPrestoJobStatus(now = Date.now()) {
+  const job = PRESTO_STATE.activeJob;
+  if (!job) {
+    return { ok: true, active: null, completed: null };
+  }
+  if (!job.completedAt) {
+    return { ok: true, active: serializePrestoJob(job, true, now), completed: null };
+  }
+  const completedAt = Date.parse(job.completedAt);
+  if (Number.isFinite(completedAt) && now - completedAt <= PRESTO_COMPLETED_TTL_MS) {
+    return { ok: true, active: null, completed: serializePrestoJob(job, false, now) };
+  }
+  PRESTO_STATE.activeJob = null;
+  return { ok: true, active: null, completed: null };
+}
+
+function validatePrestoSubmitPayload(payload = {}, options = {}) {
+  const { packageId, paths } = resolveAigenPackageDir(payload.package_id, options);
+  const productionScript = options.productionScript || paths.productionScript;
+  if (!fs.existsSync(productionScript)) {
+    const error = new Error(`Production script not found: ${productionScript}`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return {
+    packageId,
+    productionScript,
+    pythonBin: options.pythonBin || paths.pythonBin,
+    comfyuiUrl: String(payload.comfyui_url || paths.prestoBaseUrl || PRESTO_STATE.defaultUrl).trim(),
+  };
+}
+
+function startPrestoPackageJob(payload = {}, options = {}) {
+  const current = currentPrestoJobStatus();
+  if (current.active) {
+    const error = new Error('Job already active');
+    error.statusCode = 409;
+    error.active = current.active;
+    throw error;
+  }
+  const config = validatePrestoSubmitPayload(payload, options);
+  const args = [
+    config.productionScript,
+    '--package',
+    config.packageId,
+    '--comfyui-url',
+    config.comfyuiUrl,
+  ];
+  const spawnFn = options.spawn || childProcess.spawn;
+  const child = spawnFn(config.pythonBin, args, {
+    cwd: path.dirname(config.productionScript),
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: process.env,
+  });
+  const job = {
+    process: child,
+    packageId: config.packageId,
+    comfyuiUrl: config.comfyuiUrl,
+    startedAt: new Date().toISOString(),
+    completedAt: null,
+    exitCode: null,
+    signal: null,
+    stdout: '',
+    stderr: '',
+  };
+  PRESTO_STATE.activeJob = job;
+  if (child.stdout && child.stdout.on) {
+    child.stdout.on('data', (chunk) => { job.stdout = appendCappedOutput(job.stdout, chunk); });
+  }
+  if (child.stderr && child.stderr.on) {
+    child.stderr.on('data', (chunk) => { job.stderr = appendCappedOutput(job.stderr, chunk); });
+  }
+  child.on('error', (error) => {
+    job.stderr = appendCappedOutput(job.stderr, `${error.message}\n`);
+    job.exitCode = 1;
+    job.completedAt = job.completedAt || new Date().toISOString();
+  });
+  child.on('close', (code, signal) => {
+    job.exitCode = code;
+    job.signal = signal || null;
+    job.completedAt = job.completedAt || new Date().toISOString();
+  });
+  return {
+    ok: true,
+    job_started: true,
+    package_id: config.packageId,
+    comfyui_url: config.comfyuiUrl,
+  };
+}
+
+function cancelPrestoJob(options = {}) {
+  const status = currentPrestoJobStatus();
+  if (!status.active) {
+    return Promise.resolve({ ok: false, error: 'No active job' });
+  }
+  const job = PRESTO_STATE.activeJob;
+  const child = job.process;
+  const killFn = options.kill || ((signal) => child.kill(signal));
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+    const timeout = setTimeout(() => {
+      if (!job.completedAt) {
+        try { killFn('SIGKILL'); } catch (_) {}
+        job.signal = job.signal || 'SIGKILL';
+        job.completedAt = job.completedAt || new Date().toISOString();
+      }
+      finish({ ok: true, cancelled: true, exit_code: job.exitCode == null ? null : job.exitCode });
+    }, options.killAfterMs || 5000);
+    child.once('close', (code, signal) => {
+      clearTimeout(timeout);
+      job.exitCode = code;
+      job.signal = signal || job.signal || null;
+      job.completedAt = job.completedAt || new Date().toISOString();
+      finish({ ok: true, cancelled: true, exit_code: code == null ? null : code });
+    });
+    try {
+      killFn('SIGTERM');
+    } catch (error) {
+      clearTimeout(timeout);
+      finish({ ok: false, error: error.message });
+    }
+  });
+}
+
+function readPrestoResults(packageId, options = {}) {
+  const { packageId: id, paths } = resolveAigenPackageDir(packageId, options);
+  const completed = parseJsonLines(path.join(paths.wanLane, 'completed.txt'))
+    .map((item) => String(item.label || item.raw || '').trim())
+    .filter(Boolean);
+  const failed = parseJsonLines(path.join(paths.wanLane, 'failed.jsonl'))
+    .map((item) => ({
+      label: String(item.label || '').trim(),
+      run_id: item.run_id || item.runId || null,
+      error: item.error || item.message || item.raw || '',
+      exit_code: item.exit_code == null ? null : item.exit_code,
+      timestamp: item.timestamp || item.completed_at || item.created_at || null,
+    }));
+  const runsDir = options.wanRunsDir || paths.wanRunsDir || path.join(paths.wanLane, 'runs');
+  const recentRuns = safeDirEntries(runsDir)
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => {
+      const runDir = path.join(runsDir, entry.name);
+      const runLogPath = path.join(runDir, 'run.log');
+      const runLog = safeReadJson(runLogPath, {});
+      let mtimeMs = 0;
+      try { mtimeMs = fs.statSync(runDir).mtimeMs; } catch (_) {}
+      return {
+        run_id: entry.name,
+        label: runLog.label || '',
+        status: runLog.status || '',
+        verified: Boolean(runLog.verified || runLog.verified_count || runLog.status === 'verified'),
+        verified_count: runLog.verified_count || 0,
+        prompt_id: runLog.prompt_id || null,
+        mtimeMs,
+      };
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)
+    .slice(0, 20)
+    .map(({ mtimeMs, ...item }) => item);
+  return {
+    ok: true,
+    package_id: id,
+    completed,
+    completed_count: completed.length,
+    failed,
+    failed_count: failed.length,
+    recent_runs: recentRuns,
+  };
+}
+
+function handlePrestoSubmit(req, res) {
+  readJsonBody(req)
+    .then((payload) => {
+      const result = startPrestoPackageJob(payload);
+      send(res, 200, result);
+    })
+    .catch((error) => {
+      if (error.statusCode === 409) {
+        send(res, 409, { ok: false, error: error.message, active: error.active });
+        return;
+      }
+      send(res, error.statusCode || 500, { ok: false, error: error.message });
+    });
+}
+
+function handlePrestoJobStatus(req, res) {
+  send(res, 200, currentPrestoJobStatus());
+}
+
+function handlePrestoCancel(req, res) {
+  cancelPrestoJob()
+    .then((result) => send(res, result.ok ? 200 : 400, result))
+    .catch((error) => send(res, error.statusCode || 500, { ok: false, error: error.message }));
+}
+
+function handlePrestoResults(req, res, url) {
+  try {
+    const result = readPrestoResults(url.searchParams.get('package_id'));
+    send(res, 200, result);
+  } catch (error) {
+    send(res, error.statusCode || 500, { ok: false, error: error.message });
+  }
+}
+
+function fluxRunningSeconds(job, now = Date.now()) {
+  const started = Date.parse(job.startedAt);
+  const ended = job.completedAt ? Date.parse(job.completedAt) : now;
+  if (!Number.isFinite(started) || !Number.isFinite(ended)) return 0;
+  return Math.max(0, Math.floor((ended - started) / 1000));
+}
+
+function serializeFluxJob(job, active, now = Date.now()) {
+  if (!job) {
+    return {
+      active: false,
+      job_id: null,
+      package_id: null,
+      mode: null,
+      pid: null,
+      started_at: null,
+      elapsed_seconds: 0,
+      stdout_tail: '',
+      stderr_tail: '',
+      exit_code: null,
+      exit_state: null,
+    };
+  }
+  return {
+    active,
+    job_id: job.jobId,
+    package_id: job.packageId,
+    mode: job.mode,
+    pid: job.pid || null,
+    started_at: job.startedAt,
+    elapsed_seconds: fluxRunningSeconds(job, now),
+    stdout_tail: tailOutput(job.stdout, 4096),
+    stderr_tail: tailOutput(job.stderr, 4096),
+    exit_code: job.exitCode == null ? null : job.exitCode,
+    exit_state: job.exitState || (active ? 'running' : 'completed'),
+  };
+}
+
+function currentFluxJobStatus(now = Date.now()) {
+  const job = FLUX_STATE.activeJob;
+  if (!job) return serializeFluxJob(null, false, now);
+  if (!job.completedAt) return serializeFluxJob(job, true, now);
+  const completedAt = Date.parse(job.completedAt);
+  if (Number.isFinite(completedAt) && now - completedAt <= PRESTO_COMPLETED_TTL_MS) {
+    return serializeFluxJob(job, false, now);
+  }
+  FLUX_STATE.activeJob = null;
+  return serializeFluxJob(null, false, now);
+}
+
+function validateFluxSubmitPayload(payload = {}, options = {}) {
+  const { packageId, paths } = resolveAigenPackageDir(payload.package_id, options);
+  const fluxScript = options.fluxScript || paths.fluxScript;
+  if (!fs.existsSync(fluxScript)) {
+    const error = new Error(`FLUX run-handoff.py not found: ${fluxScript}`);
+    error.statusCode = 500;
+    throw error;
+  }
+  const limit = Number(payload.limit || 0);
+  if (!Number.isInteger(limit) || limit < 0) {
+    const error = new Error('limit must be a non-negative integer.');
+    error.statusCode = 400;
+    throw error;
+  }
+  return {
+    packageId,
+    fluxScript,
+    pythonBin: options.pythonBin || paths.pythonBin,
+    limit,
+    skipExisting: payload.skip_existing !== false,
+    dryRun: Boolean(payload.dry_run),
+  };
+}
+
+function startFluxPackageJob(payload = {}, options = {}) {
+  const current = currentFluxJobStatus();
+  if (current.active) {
+    const error = new Error('FLUX job already active');
+    error.statusCode = 409;
+    error.active = current;
+    throw error;
+  }
+  const config = validateFluxSubmitPayload(payload, options);
+  const args = [
+    config.fluxScript,
+    '--package',
+    config.packageId,
+  ];
+  if (config.limit > 0) args.push('--limit', String(config.limit));
+  if (config.skipExisting) args.push('--skip-existing');
+  if (config.dryRun) args.push('--dry-run');
+  const spawnFn = options.spawn || childProcess.spawn;
+  const child = spawnFn(config.pythonBin, args, {
+    cwd: path.dirname(config.fluxScript),
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: process.env,
+  });
+  const job = {
+    process: child,
+    jobId: crypto.randomUUID(),
+    packageId: config.packageId,
+    mode: config.dryRun ? 'dry_run' : 'real',
+    pid: child.pid || null,
+    startedAt: new Date().toISOString(),
+    completedAt: null,
+    exitCode: null,
+    exitState: 'running',
+    signal: null,
+    stdout: '',
+    stderr: '',
+    args,
+  };
+  FLUX_STATE.activeJob = job;
+  const appendFluxOutput = (currentOutput, chunk) => tailOutput(appendCappedOutput(currentOutput, chunk), 8192);
+  if (child.stdout && child.stdout.on) {
+    child.stdout.on('data', (chunk) => { job.stdout = appendFluxOutput(job.stdout, chunk); });
+  }
+  if (child.stderr && child.stderr.on) {
+    child.stderr.on('data', (chunk) => { job.stderr = appendFluxOutput(job.stderr, chunk); });
+  }
+  child.on('error', (error) => {
+    job.stderr = appendFluxOutput(job.stderr, `${error.message}\n`);
+    job.exitCode = 1;
+    job.exitState = 'failed';
+    job.completedAt = job.completedAt || new Date().toISOString();
+  });
+  child.on('close', (code, signal) => {
+    job.exitCode = code;
+    job.signal = signal || null;
+    if (job.exitState !== 'cancelled') job.exitState = code === 0 ? 'completed' : 'failed';
+    job.completedAt = job.completedAt || new Date().toISOString();
+  });
+  return {
+    ok: true,
+    job_id: job.jobId,
+    package_id: config.packageId,
+    mode: job.mode,
+    pid: job.pid,
+  };
+}
+
+function cancelFluxJob(options = {}) {
+  const status = currentFluxJobStatus();
+  if (!status.active) {
+    return Promise.resolve({ ok: true, package_id: null, signal_sent: 'none (no active job)' });
+  }
+  const job = FLUX_STATE.activeJob;
+  const child = job.process;
+  const killFn = options.kill || ((signal) => child.kill(signal));
+  return new Promise((resolve) => {
+    let settled = false;
+    let signalSent = 'SIGTERM';
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve({ ok: true, package_id: job.packageId, signal_sent: signalSent });
+    };
+    const timeout = setTimeout(() => {
+      if (!job.completedAt) {
+        try { killFn('SIGKILL'); signalSent = 'SIGKILL'; } catch (_) {}
+        job.signal = job.signal || 'SIGKILL';
+        job.exitState = 'cancelled';
+        job.completedAt = job.completedAt || new Date().toISOString();
+      }
+      finish();
+    }, options.killAfterMs || 5000);
+    child.once('close', (code, signal) => {
+      clearTimeout(timeout);
+      job.exitCode = code;
+      job.signal = signal || job.signal || null;
+      job.exitState = 'cancelled';
+      job.completedAt = job.completedAt || new Date().toISOString();
+      finish();
+    });
+    try {
+      job.exitState = 'cancelled';
+      killFn('SIGTERM');
+    } catch (error) {
+      clearTimeout(timeout);
+      settled = true;
+      resolve({ ok: false, error: error.message, package_id: job.packageId, signal_sent: 'none' });
+    }
+  });
+}
+
+function promptCountForPackage(packageDir) {
+  const imagePrompts = safeReadJson(path.join(packageDir, 'image-prompts.json'), null);
+  return imagePrompts && Array.isArray(imagePrompts.image_prompts) ? imagePrompts.image_prompts.length : 0;
+}
+
+function normalizeFluxManifestItem(item = {}) {
+  const index = Number(item.index == null ? item.prompt_index : item.index);
+  const outputPath = item.output_path || item.path || (Number.isInteger(index) ? `images/flux-local/flux-${String(index).padStart(3, '0')}.png` : '');
+  const label = item.label || (outputPath ? path.basename(outputPath, path.extname(outputPath)) : Number.isInteger(index) ? `flux-${String(index).padStart(3, '0')}` : '');
+  return {
+    index: Number.isInteger(index) ? index : null,
+    label,
+    status: item.status || 'pending',
+    output_path: outputPath,
+    error: item.error || item.message || '',
+  };
+}
+
+function summarizeFluxItems(items, totalPrompts) {
+  const summary = { total_prompts: totalPrompts, complete: 0, failed: 0, dry_run: 0, pending: 0 };
+  items.forEach((item) => {
+    if (item.status === 'complete') summary.complete += 1;
+    else if (item.status === 'failed') summary.failed += 1;
+    else if (item.status === 'dry_run') summary.dry_run += 1;
+    else summary.pending += 1;
+  });
+  summary.pending = Math.max(summary.pending, Math.max(0, totalPrompts - items.length));
+  return summary;
+}
+
+function readFluxResults(packageId, options = {}) {
+  const { packageId: id, packageDir } = resolveAigenPackageDir(packageId, options);
+  const totalPrompts = promptCountForPackage(packageDir);
+  const manifestPath = path.join(packageDir, 'flux-generation-manifest.json');
+  const manifest = safeReadJson(manifestPath, null);
+  if (!manifest || !Array.isArray(manifest.items)) {
+    return {
+      ok: true,
+      package_id: id,
+      manifest_exists: false,
+      items: [],
+      summary: summarizeFluxItems([], totalPrompts),
+    };
+  }
+  const items = manifest.items.map(normalizeFluxManifestItem).sort((a, b) => (a.index || 0) - (b.index || 0));
+  return {
+    ok: true,
+    package_id: id,
+    manifest_exists: true,
+    items,
+    summary: summarizeFluxItems(items, Math.max(totalPrompts, items.length)),
+  };
+}
+
+function handleFluxSubmit(req, res) {
+  readJsonBody(req)
+    .then((payload) => {
+      const result = startFluxPackageJob(payload);
+      send(res, 200, result);
+    })
+    .catch((error) => {
+      if (error.statusCode === 409) {
+        send(res, 409, { ok: false, error: error.message, active: error.active });
+        return;
+      }
+      send(res, error.statusCode === 404 ? 400 : error.statusCode || 500, { ok: false, error: error.message });
+    });
+}
+
+function handleFluxJobStatus(req, res) {
+  send(res, 200, currentFluxJobStatus());
+}
+
+function handleFluxCancel(req, res) {
+  cancelFluxJob()
+    .then((result) => send(res, result.ok ? 200 : 400, result))
+    .catch((error) => send(res, error.statusCode || 500, { ok: false, error: error.message }));
+}
+
+function handleFluxResults(req, res, url) {
+  try {
+    send(res, 200, readFluxResults(url.searchParams.get('package_id')));
+  } catch (error) {
+    send(res, error.statusCode || 500, { ok: false, error: error.message });
+  }
+}
+
+function readRunArtifacts(runDir, filenames = []) {
+  return filenames.reduce((result, filename) => {
+    const artifactPath = path.join(runDir, filename);
+    result[filename] = fs.existsSync(artifactPath) ? fs.readFileSync(artifactPath, 'utf8') : '';
+    return result;
+  }, {});
+}
+
+function runPackageRunScript(payload = {}, scriptName, parser = parseLabelValueStdout, artifactFiles = [], options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const repoRoot = resolved.root;
+  const runPath = `${PACKAGE_RUNS_DIR}/${resolved.runId}`;
+  const result = childProcess.spawnSync(process.execPath, [`scripts/${scriptName}`, runPath], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+  const stdout = result.stdout || '';
+  const stderr = result.stderr || '';
+  return {
+    ok: result.status === 0,
+    runId: resolved.runId,
+    runPath,
+    command: `node scripts/${scriptName} ${runPath}`,
+    exitCode: result.status,
+    stdout,
+    stderr,
+    summary: parser(stdout),
+    artifacts: readRunArtifacts(resolved.runDir, artifactFiles),
+    warning: 'Script endpoint is scoped to the selected package run. It does not commit, push, publish, or update package-runs-index.json.',
+  };
+}
+
+function runFinalReview(payload = {}, options = {}) {
+  return runPackageRunScript(payload, 'package-run-final-review.js', parseLabelValueStdout, ['final-review.md', 'publication-blockers.md'], options);
+}
+
+function runExportChecklist(payload = {}, options = {}) {
+  return runPackageRunScript(payload, 'package-run-export-checklist.js', parseLabelValueStdout, ['export-checklist.md', 'master-file-manifest.md', 'delivery-readiness.md'], options);
+}
+
+function runPublicationMetadata(payload = {}, options = {}) {
+  return runPackageRunScript(payload, 'package-run-publication-metadata.js', parseLabelValueStdout, ['publish-metadata-review.md', 'title-check.md', 'thumbnail-check.md', 'description-check.md'], options);
+}
+
+function buildPostPublishLearningTemplate(runId, fields = {}) {
+  const publishedUrl = markdownCell(fields.youtubeUrl || fields.publishedUrl || '');
+  const publishedAt = markdownCell(fields.publishedAt || new Date().toISOString());
+  return `# Post-Publish Learning
+
+- Run: ${runId}
+- Tool: publish-gate.html
+- Status: starter template
+- External APIs called: no
+- Published URL: ${publishedUrl || 'TODO'}
+- Published at: ${publishedAt}
+
+## First 24 Hours
+
+- Views:
+- Click-through rate:
+- Average view duration:
+- Audience retention note:
+
+## Packaging Notes
+
+- Title performance:
+- Thumbnail performance:
+- Description/tags note:
+
+## Editorial Notes
+
+- What worked:
+- What confused viewers:
+- What to tighten next time:
+
+## Follow-Up Actions
+
+- [ ] Review analytics after 24 hours.
+- [ ] Decide whether thumbnail/title iteration is needed.
+- [ ] Capture reusable lesson for the next package run.
+`;
+}
+
+function ensurePostPublishLearning(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const targetPath = path.join(resolved.runDir, 'post-publish-learning.md');
+  if (!targetPath.startsWith(resolved.runDir + path.sep)) {
+    const error = new Error('Resolved post-publish learning path is outside the approved write scope.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!fs.existsSync(targetPath)) {
+    fs.writeFileSync(targetPath, buildPostPublishLearningTemplate(resolved.runId, payload), 'utf8');
+    return { filename: 'post-publish-learning.md', status: 'created', content: fs.readFileSync(targetPath, 'utf8') };
+  }
+  return { filename: 'post-publish-learning.md', status: 'exists', content: fs.readFileSync(targetPath, 'utf8') };
+}
+
+function runArchiveManifest(payload = {}, options = {}) {
+  const output = runPackageRunScript(payload, 'package-run-archive-manifest.js', parseLabelValueStdout, ['archive-manifest.md', 'archive-blockers.md'], options);
+  const learning = ensurePostPublishLearning(payload, options);
+  return {
+    ...output,
+    postPublishLearning: learning,
+    artifacts: {
+      ...output.artifacts,
+      [learning.filename]: learning.content,
+    },
+  };
+}
+
 function regenerateRoughCutDerivedArtifacts(payload = {}, options = {}) {
   const resolved = resolveRunFromPayload(payload, options);
   const watchNotesPath = path.join(resolved.runDir, ROUGH_CUT_WATCH_NOTES_FILE);
@@ -4129,6 +5624,38 @@ function createStatusResponse(env = process.env) {
       allowedDeliveryReadinessMarkers: DELIVERY_READINESS_MARKERS,
       derivedOnlyWriteFiles: ROUGH_CUT_DERIVED_FILES,
     },
+    publishGate: {
+      packageRunsListApi: PACKAGE_RUNS_LIST_API,
+      roughCutReviewApi: ROUGH_CUT_REVIEW_API,
+      finalReviewApi: FINAL_REVIEW_API,
+      exportChecklistApi: EXPORT_CHECKLIST_API,
+      publicationMetadataApi: PUBLICATION_METADATA_API,
+      archiveManifestApi: ARCHIVE_MANIFEST_API,
+      nonceHeader: LOCAL_WRITE_NONCE_HEADER,
+      localWriteNonce: LOCAL_WRITE_NONCE,
+      allowedWriteFiles: [
+        'final-review.md',
+        'publication-blockers.md',
+        'export-checklist.md',
+        'master-file-manifest.md',
+        'caption-check.md',
+        'loudness-check.md',
+        'delivery-readiness.md',
+        'publish-metadata-review.md',
+        'title-check.md',
+        'thumbnail-check.md',
+        'description-check.md',
+        'chapters-check.md',
+        'schedule-check.md',
+        'archive-manifest.md',
+        'archive-source-files.md',
+        'archive-assets-manifest.md',
+        'archive-export-manifest.md',
+        'reusable-clips-manifest.md',
+        'archive-blockers.md',
+        'post-publish-learning.md',
+      ],
+    },
   };
 }
 
@@ -4329,6 +5856,86 @@ function createServer() {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === AIGEN_STATUS_API) {
+      handleAigenStatus(req, res);
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === AIGEN_RESOLVE_ASSEMBLY_API) {
+      handleAigenResolveAssemblyCreate(req, res);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname.startsWith(AIGEN_FLUX_IMAGES_API_PREFIX)) {
+      handleAigenFluxImages(req, res, url);
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === AIGEN_SELECTED_IMAGES_API) {
+      handleAigenSelectedImages(req, res);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname.startsWith(AIGEN_ASSETS_PREFIX)) {
+      handleAigenAsset(req, res, url);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === IMAGE_PROMPTS_READ_API) {
+      handleImagePromptsRead(req, res, url);
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === IMAGE_PROMPTS_VALIDATE_API) {
+      handleImagePromptsValidate(req, res);
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === IMAGE_PROMPTS_SAVE_API) {
+      handleImagePromptsSave(req, res);
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === PRESTO_SUBMIT_API) {
+      handlePrestoSubmit(req, res);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === PRESTO_JOB_STATUS_API) {
+      handlePrestoJobStatus(req, res);
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === PRESTO_CANCEL_API) {
+      handlePrestoCancel(req, res);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === PRESTO_RESULTS_API) {
+      handlePrestoResults(req, res, url);
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === FLUX_SUBMIT_API) {
+      handleFluxSubmit(req, res);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === FLUX_JOB_STATUS_API) {
+      handleFluxJobStatus(req, res);
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === FLUX_CANCEL_API) {
+      handleFluxCancel(req, res);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === FLUX_RESULTS_API) {
+      handleFluxResults(req, res, url);
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === API_PREFIX) {
       readJsonBody(req).then(async (payload) => {
         try {
@@ -4411,6 +6018,15 @@ function createServer() {
         send(res, 200, nextSafeActionScript.buildNextSafeAction(url.searchParams.get('runId') || '', { repoRoot: ROOT }));
       } catch (error) {
         send(res, error.statusCode || 500, { ok: false, readOnly: true, error: error.message });
+      }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === PACKAGE_RUNS_LIST_API) {
+      try {
+        send(res, 200, readPackageRunsIndex());
+      } catch (error) {
+        send(res, error.statusCode || 500, { error: error.message });
       }
       return;
     }
@@ -4513,6 +6129,17 @@ function createServer() {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === FINAL_REVIEW_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const output = runFinalReview(payload);
+          send(res, output.ok ? 200 : 500, output);
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === EXPORT_MASTER_PREVIEW_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -4548,6 +6175,39 @@ function createServer() {
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
           send(res, 200, regenerateExportChecklistDerived(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === EXPORT_CHECKLIST_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const output = runExportChecklist(payload);
+          send(res, output.ok ? 200 : 500, output);
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === PUBLICATION_METADATA_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const output = runPublicationMetadata(payload);
+          send(res, output.ok ? 200 : 500, output);
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === ARCHIVE_MANIFEST_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const output = runArchiveManifest(payload);
+          send(res, output.ok ? 200 : 500, output);
         })
         .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
       return;
@@ -4641,6 +6301,24 @@ if (require.main === module) {
 
 module.exports = {
   API_PREFIX,
+  AIGEN_ASSETS_PREFIX,
+  AIGEN_FLUX_IMAGES_API_PREFIX,
+  AIGEN_RESOLVE_ASSEMBLY_API,
+  AIGEN_SELECTED_IMAGES_API,
+  AIGEN_STATUS_API,
+  FLUX_CANCEL_API,
+  FLUX_JOB_STATUS_API,
+  FLUX_RESULTS_API,
+  FLUX_STATE,
+  FLUX_SUBMIT_API,
+  IMAGE_PROMPTS_READ_API,
+  IMAGE_PROMPTS_SAVE_API,
+  IMAGE_PROMPTS_VALIDATE_API,
+  PRESTO_CANCEL_API,
+  PRESTO_JOB_STATUS_API,
+  PRESTO_RESULTS_API,
+  PRESTO_STATE,
+  PRESTO_SUBMIT_API,
   CAPTURE_EVIDENCE_APPLY_API,
   CAPTURE_EVIDENCE_PREVIEW_API,
   CAPTURE_EVIDENCE_AUDIT_FILE,
@@ -4653,6 +6331,7 @@ module.exports = {
   EVIDENCE_INTAKE_SAVE_API,
   EVIDENCE_INTAKE_STATUS_API,
   EXPORT_CHECKLIST_FILE,
+  EXPORT_CHECKLIST_API,
   EXPORT_CHECKLIST_REGENERATE_API,
   EXPORT_MASTER_APPLY_API,
   EXPORT_MASTER_PREVIEW_API,
@@ -4660,13 +6339,16 @@ module.exports = {
   FINAL_CANDIDATE_FILE,
   FINAL_CANDIDATE_PREVIEW_API,
   FINAL_REVIEW_FILE,
+  FINAL_REVIEW_API,
   FINAL_REVIEW_MARKERS,
   FINAL_REVIEW_REGENERATE_API,
   FINAL_WATCH_NOTES_FILE,
   FINAL_WATCH_NOTES_SAVE_API,
   LOUDNESS_CHECK_FILE,
   LOCAL_WRITE_NONCE_HEADER,
+  ARCHIVE_MANIFEST_API,
   MASTER_FILE_MANIFEST_FILE,
+  PACKAGE_RUNS_LIST_API,
   PICKUP_ITEM_TYPES,
   PICKUP_PLAN_SAVE_API,
   PICKUP_PURPOSES,
@@ -4674,6 +6356,7 @@ module.exports = {
   PICKUP_SOURCES,
   PICKUP_STATUSES,
   PRODUCTION_GPS_API,
+  PUBLICATION_METADATA_API,
   NEXT_SAFE_ACTION_API,
   PRODUCTION_GPS_ARTIFACTS,
   SECOND_CUT_INSPECTOR_API,
@@ -4698,6 +6381,8 @@ module.exports = {
   applyExportMasterRegistration,
   applyFinalCandidateRegistration,
   applySecondCutCandidateRegistration,
+  aigenProductionPipelineStatus,
+  attachPrestoStatus,
   buildCaptureEvidencePreview,
   buildEvidenceIntakePreview,
   buildEvidenceIntakeStatus,
@@ -4711,12 +6396,15 @@ module.exports = {
   buildOpenAIImageRequest,
   buildOpenAIThumbnailPrompts,
   buildArtifactTrail,
+  buildPostPublishLearningTemplate,
   captureEvidenceInputDefaults,
   createCandidates,
   createOpenAIThumbnailCandidates,
   createServer,
   createStatusResponse,
   createThumbnailResponse,
+  currentFluxJobStatus,
+  currentPrestoJobStatus,
   buildProductionGps,
   buildProductionGpsTimeline,
   buildExportDeliveryConsole,
@@ -4730,6 +6418,8 @@ module.exports = {
   buildSecondCutPlacementChecklist,
   buildSecondCutCandidateRegistration,
   buildSecondCutReviewFromWatchNotes,
+  cancelFluxJob,
+  cancelPrestoJob,
   detectRoughCutCandidate,
   classifyPickupCategory,
   dashboardIndexStatus,
@@ -4739,6 +6429,7 @@ module.exports = {
   isAllowedLocalHost,
   isAllowedLocalOrigin,
   localWriteNonce,
+  listFluxImages,
   makeDataUrl,
   missingRequiredCaptureFields,
   missingRequiredRoughCutFields,
@@ -4761,8 +6452,26 @@ module.exports = {
   regenerateExportChecklistDerived,
   regenerateFinalReviewDerived,
   regenerateSecondCutReviewDerived,
+  readPackageRunsIndex,
+  readFluxResults,
+  readImagePrompts,
+  readPrestoResults,
+  parseLabelValueStdout,
+  resolveAigenPackageDir,
+  runResolveAssemblyCreate,
+  saveImagePrompts,
+  validateImagePromptsPayload,
+  validateImagePromptsForPackage,
+  writeSelectedImages,
+  startFluxPackageJob,
+  startPrestoPackageJob,
   roughCutInputDefaults,
   runRoughCutReview,
+  runFinalReview,
+  runExportChecklist,
+  runPublicationMetadata,
+  runArchiveManifest,
+  runPackageRunScript,
   safeJoin,
   saveRoughCutWatchNotes,
   saveDeliveryReadiness,

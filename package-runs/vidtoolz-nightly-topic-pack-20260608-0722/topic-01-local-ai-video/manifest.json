@@ -1,0 +1,39 @@
+{
+  "topic_id": "topic-01-local-ai-video",
+  "working_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+  "package": "vidtoolz-nightly-topic-pack-20260608-0722",
+  "generated_utc": "2026-06-08T07:22Z",
+  "status": "DRAFT",
+  "approval_state": "NOT APPROVED",
+  "files": {
+    "topic_brief": "topic-brief.md",
+    "script": "script.md",
+    "image_prompts": "image-prompts.md",
+    "infographic_prompts": "infographic-prompts.md",
+    "manifest": "manifest.json"
+  },
+  "counts": {
+    "image_prompts": 25,
+    "infographic_prompts": 15,
+    "total_prompts": 40
+  },
+  "script": {
+    "estimated_seconds": 165,
+    "word_count_approx": 400,
+    "target_max_seconds": 180
+  },
+  "production": {
+    "gpt_images_generated": false,
+    "gpt_images_path": null,
+    "comfyui_videos_generated": false,
+    "comfyui_videos_path": null,
+    "assembly_edit_done": false,
+    "publish_ready": false
+  },
+  "safety": {
+    "draft_only": true,
+    "not_approved": true,
+    "not_published": true,
+    "not_committed": true
+  }
+}

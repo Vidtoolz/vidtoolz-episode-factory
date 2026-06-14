@@ -1,0 +1,131 @@
+{
+  "batch_name": "batch-topic-01-infographics",
+  "generated_utc": "2026-06-08T07:22Z",
+  "topic_id": "topic-01-local-ai-video",
+  "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+  "prompt_type": "infographic",
+  "count": 15,
+  "status": "DRAFT \u2014 NOT GENERATED",
+  "records": [
+    {
+      "id": "topic-01-local-ai-video-info-01",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: cost comparison cloud API vs local GPU, simple bar chart, minimal text: \"Cloud API: $0.50/sec \u2014 Local GPU: $0.00/sec\" \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-01.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-info-02",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: monthly cost breakdown for cloud AI video: clips \u00d7 cost per clip = shocking total \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-02.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-info-03",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: two side-by-side quality meters labeled \"Cloud API\" and \"Open Source\", both nearly identical high scores \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-03.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-info-04",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic checklist: GPU (RTX 3060+), ComfyUI, Wan 2.2 model weights, Node workflow \u2014 each with checkmark \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-04.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-info-05",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic comparing cloud vs local privacy: cloud data arrows to server, local arrows looping to computer \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-05.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-info-06",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: real cost for 1 min AI video backgrounds: 10 clips \u00d7 3 retries \u00d7 5 sec \u00d7 cloud rate vs local near zero \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-06.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-info-07",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: three model cards \u2014 Wan 2.2, HunyuanVideo 1.5, LTX-Video 2.3 \u2014 license, resolution, capability \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-07.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-info-08",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: dramatic cost ratio \u2014 cloud API $2.50 vs local GPU $0.01 for same 5-sec clip \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-08.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-info-09",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic comparing owning vs renting: one-time download unlimited vs recurring credit card with limits \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-09.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-info-10",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: initial setup time (2-4 hrs) \u2192 break-even (1-2 projects) \u2192 long-term savings (unlimited) \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-10.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-info-11",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: minimum and recommended GPU specs for local AI video \u2014 VRAM, approximate cost \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-11.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-info-12",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: 3 risks of cloud-only AI video \u2014 price changes, service shutdown, data privacy changes \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-12.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-info-13",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: simplified 4-step ComfyUI workflow \u2014 Load Model \u2192 Load Image \u2192 Generate Video \u2192 Save Output \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-13.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-info-14",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: typical monthly spend comparison \u2014 cloud API (~\u20ac50-150) vs local GPU (~\u20ac3-5 electricity) \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-14.png",
+      "generation_status": "pending"
+    },
+    {
+      "id": "topic-01-local-ai-video-info-15",
+      "topic_title": "Stop Paying For AI Video \u2014 Your GPU Is Already a Studio",
+      "prompt_type": "infographic",
+      "prompt_text": "Infographic: simple decision flowchart \u2014 \"Do you have a gaming GPU?\" \u2192 YES: start here \u2192 NO: plan accordingly \u2014 dark background, professional YouTube style, 9:16 vertical, clean typography, minimal text",
+      "output_filename": "topic-01-local-ai-video-info-15.png",
+      "generation_status": "pending"
+    }
+  ]
+}

@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VIDTOOLZ Mission Control</title>
+    <link rel="stylesheet" href="styles.css?v=1.7.4" />
+    <style>
+      .mission-control-shell {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 24px 20px 60px;
+      }
+      .mc-header {
+        margin-bottom: 32px;
+      }
+      .mc-header .eyebrow { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 4px; }
+      .mc-header h1 { margin: 0 0 8px; font-size: 26px; font-weight: 700; }
+      .mc-header .subtitle { color: var(--muted); margin: 0; font-size: 14px; }
+      .mc-nav { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; }
+      .mc-nav a { font-size: 13px; color: var(--accent); text-decoration: none; padding: 4px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); }
+      .mc-nav a:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+      .mc-section-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 32px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+      .mc-video-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 20px 24px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        display: grid;
+        grid-template-columns: 160px 1fr;
+        gap: 20px;
+      }
+      .mc-video-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 4px 16px rgba(35,97,74,0.10); }
+      .mc-video-card.parked { opacity: 0.72; }
+      .mc-thumb { width: 160px; height: 90px; border-radius: 6px; background: var(--panel-soft); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+      .mc-thumb img { width: 100%; height: 100%; object-fit: cover; }
+      .mc-thumb-placeholder { color: var(--muted); font-size: 12px; text-align: center; padding: 8px; }
+      .mc-card-body { display: flex; flex-direction: column; gap: 8px; }
+      .mc-card-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+      .mc-date { font-size: 12px; color: var(--muted); font-weight: 500; }
+      .mc-badge {
+        font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+        text-transform: uppercase; letter-spacing: 0.04em;
+      }
+      .mc-badge.active-badge { background: #d4f0e4; color: var(--accent-strong); }
+      .mc-badge.parked-badge { background: var(--panel-soft); color: var(--muted); }
+      .mc-badge.publish-badge { background: #fef3c7; color: #92400e; }
+      .mc-topic { font-size: 17px; font-weight: 700; line-height: 1.3; margin: 0; }
+      .mc-topic a { color: inherit; text-decoration: none; }
+      .mc-topic a:hover { color: var(--accent); }
+      .mc-stage { font-size: 13px; color: var(--muted); }
+      .mc-blocker { font-size: 13px; color: var(--danger); font-weight: 500; }
+      .mc-next { font-size: 13px; color: var(--accent-strong); }
+      .mc-next strong { font-weight: 600; }
+      .mc-card-footer { margin-top: 4px; }
+      .mc-card-footer a { font-size: 12px; color: var(--accent); text-decoration: none; font-weight: 500; }
+      .mc-card-footer a:hover { text-decoration: underline; }
+      @media (max-width: 640px) {
+        .mc-video-card { grid-template-columns: 1fr; }
+        .mc-thumb { width: 100%; height: 120px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="mission-control-shell">
+      <header class="mc-header">
+        <p class="eyebrow">VIDTOOLZ</p>
+        <h1>Mission Control</h1>
+        <p class="subtitle">Every video under development, one page each. Chronological. Grounded in package-run evidence.</p>
+      </header>
+
+      <nav class="mc-nav">
+        <a href="index.html">Episode Factory</a>
+        <a href="package-engine.html">Package Engine</a>
+        <a href="package-runs-dashboard.html">Package Runs Dashboard</a>
+        <a href="production-pipeline.html">Production Pipeline</a>
+        <a href="image-selector.html">Image Selector</a>
+        <a href="production-day-dashboard.html">Production Day</a>
+        <a href="mission-control/INDEX.md">Index (markdown)</a>
+        <a href="mission-control/capabilities.md">Capabilities</a>
+        <a href="mission-control/launch-map.md">Launch Map</a>
+      </nav>
+
+      <p class="mc-section-title">Active</p>
+
+      <article class="mc-video-card parked">
+        <div class="mc-thumb">
+          <div class="mc-thumb-placeholder">No active<br>production<br><span style="font-size:10px;color:var(--muted)">(ready for next topic)</span></div>
+        </div>
+        <div class="mc-card-body">
+          <div class="mc-card-top">
+            <span class="mc-badge parked-badge">Queue</span>
+          </div>
+          <h2 class="mc-topic">No active production</h2>
+          <div class="mc-stage">Both published videos shipped. Ready for next topic selection.</div>
+          <div class="mc-next"><strong>Next:</strong> Mikko selects next topic → approved idea → package-run → produce</div>
+        </div>
+      </article>
+
+      <p class="mc-section-title">Published</p>
+      <div id="published-videos-root"></div>
+
+      <p class="mc-section-title">Parked</p>
+
+      <!-- 2026-05-02 AI Video Idea Filter -->
+      <article class="mc-video-card parked">
+        <div class="mc-thumb">
+          <div class="mc-thumb-placeholder">AVOID BAD<br>AI IDEAS<br><span style="font-size:10px;color:var(--muted)">(concept only)</span></div>
+        </div>
+        <div class="mc-card-body">
+          <div class="mc-card-top">
+            <span class="mc-date">2026-05-02</span>
+            <span class="mc-badge parked-badge">Parked</span>
+          </div>
+          <h2 class="mc-topic"><a href="mission-control/2026-05-02-ai-video-idea-filter.md">Avoid Bad AI Video Ideas Before You Script</a></h2>
+          <div class="mc-stage">Production Prep — script done, prep artifacts generated, not captured</div>
+          <div class="mc-blocker">Parked behind active run · scoring caveat unverified (score 94)</div>
+          <div class="mc-card-footer">
+            <a href="mission-control/2026-05-02-ai-video-idea-filter.md">Open full page →</a>
+            &nbsp;·&nbsp;
+            <a href="package-runs/2026-05-02-ai-video-idea-filter/final-script.md">Script</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- 2026-05-02 Next VIDTOOLZ Video -->
+      <article class="mc-video-card parked">
+        <div class="mc-thumb">
+          <div class="mc-thumb-placeholder">No topic<br>selected</div>
+        </div>
+        <div class="mc-card-body">
+          <div class="mc-card-top">
+            <span class="mc-date">2026-05-02</span>
+            <span class="mc-badge parked-badge">Parked</span>
+          </div>
+          <h2 class="mc-topic"><a href="mission-control/2026-05-02-next-vidtoolz-video.md">Next VIDTOOLZ Video</a></h2>
+          <div class="mc-stage">Pre-selection — no package selected yet</div>
+          <div class="mc-blocker">Parked · no winning package · no topic · no script</div>
+          <div class="mc-card-footer">
+            <a href="mission-control/2026-05-02-next-vidtoolz-video.md">Open full page →</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- 2026-05-06 AI Video Proof Plan (superseded) -->
+      <article class="mc-video-card parked">
+        <div class="mc-thumb">
+          <div class="mc-thumb-placeholder">PROOF PLAN<br><span style="font-size:10px;color:var(--muted)">(superseded)</span></div>
+        </div>
+        <div class="mc-card-body">
+          <div class="mc-card-top">
+            <span class="mc-date">2026-05-06</span>
+            <span class="mc-badge parked-badge">Parked</span>
+          </div>
+          <h2 class="mc-topic"><a href="mission-control/2026-05-06-ai-video-proof-plan.md">Stop Planning AI Videos Until You Have a Proof Plan</a></h2>
+          <div class="mc-stage">Abandoned as published video — long theoretical script superseded by short concrete version</div>
+          <div class="mc-blocker">Superseded by published short: "Stop chasing AI tools. Do this instead."</div>
+          <div class="mc-card-footer">
+            <a href="mission-control/2026-05-06-ai-video-proof-plan.md">Open full page →</a>
+            &nbsp;·&nbsp;
+            <a href="package-runs/2026-05-06-ai-video-proof-plan/final-script.md">Script (abandoned long)</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- AI Replace Editors (superseded — shipped as The Microwave Learned to Cook) -->
+      <article class="mc-video-card parked">
+        <div class="mc-thumb">
+          <div class="mc-thumb-placeholder">AI REPLACE<br>EDITORS<br><span style="font-size:10px;color:var(--muted)">(superseded)</span></div>
+        </div>
+        <div class="mc-card-body">
+          <div class="mc-card-top">
+            <span class="mc-date">2026-06</span>
+            <span class="mc-badge parked-badge">Parked</span>
+          </div>
+          <h2 class="mc-topic">AI Replace Editors Is the Wrong Question</h2>
+          <div class="mc-stage">Working title — evolved into published video: "The Microwave Learned to Cook — What Editing Means Now"</div>
+          <div class="mc-blocker">Superseded by published video. Working title only; no separate package-run.</div>
+          <div class="mc-card-footer">
+            <span style="font-size:12px;color:var(--muted)">Shipped under final title. Same proven pattern: short conversational script, green screen + AI backgrounds.</span>
+          </div>
+        </div>
+      </article>
+
+      <p class="mc-section-title">Approved Ideas</p>
+
+      <article class="mc-video-card parked">
+        <div class="mc-thumb">
+          <div class="mc-thumb-placeholder">AWAITING<br>APPROVED<br>IDEAS</div>
+        </div>
+        <div class="mc-card-body">
+          <div class="mc-card-top">
+            <span class="mc-badge parked-badge">Queue</span>
+          </div>
+          <h2 class="mc-topic">No approved ideas yet</h2>
+          <div class="mc-stage">When Mikko greenlights a video idea, it appears here before package-run creation</div>
+          <div class="mc-card-footer">
+            <a href="mission-control/approved-ideas.md">Open approved-ideas.md →</a>
+          </div>
+        </div>
+      </article>
+
+    </div>
+    <script>
+      (function () {
+        const publishedRoot = document.getElementById("published-videos-root");
+        if (!publishedRoot) return;
+
+        const thumbnailTextByTitle = {
+          "Stop chasing AI tools. Do this instead.": ["NAME THE PROBLEM", "BEFORE THE TOOLS"],
+          "The Microwave Learned to Cook — What Editing Means Now": ["WHAT EDITING", "MEANS NOW"],
+        };
+
+        function appendText(parent, text) {
+          parent.appendChild(document.createTextNode(text || ""));
+        }
+
+        function publishedThumbnailLines(title) {
+          if (thumbnailTextByTitle[title]) return thumbnailTextByTitle[title];
+          return String(title || "")
+            .replace(/[^\w\s]/g, " ")
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 4)
+            .join(" ")
+            .toUpperCase()
+            .match(/.{1,18}(?:\s|$)/g)
+            ?.map((line) => line.trim())
+            .filter(Boolean)
+            .slice(0, 2) || ["PUBLISHED", "VIDEO"];
+        }
+
+        function renderPublishedVideo(video) {
+          const article = document.createElement("article");
+          article.className = "mc-video-card";
+
+          const thumb = document.createElement("div");
+          thumb.className = "mc-thumb";
+          const placeholder = document.createElement("div");
+          placeholder.className = "mc-thumb-placeholder";
+          publishedThumbnailLines(video.title).forEach((line, index) => {
+            if (index) placeholder.appendChild(document.createElement("br"));
+            appendText(placeholder, line);
+          });
+          placeholder.appendChild(document.createElement("br"));
+          const publishedLabel = document.createElement("span");
+          publishedLabel.setAttribute("style", "font-size:10px;color:var(--muted)");
+          appendText(publishedLabel, "(published)");
+          placeholder.appendChild(publishedLabel);
+          thumb.appendChild(placeholder);
+
+          const body = document.createElement("div");
+          body.className = "mc-card-body";
+
+          const top = document.createElement("div");
+          top.className = "mc-card-top";
+          const date = document.createElement("span");
+          date.className = "mc-date";
+          appendText(date, video.date);
+          const badge = document.createElement("span");
+          badge.className = "mc-badge publish-badge";
+          appendText(badge, "Published / Completed");
+          top.append(date, badge);
+
+          const title = document.createElement("h2");
+          title.className = "mc-topic";
+          appendText(title, video.title);
+
+          const stage = document.createElement("div");
+          stage.className = "mc-stage";
+          appendText(stage, video.status);
+
+          const blocker = document.createElement("div");
+          blocker.className = "mc-blocker";
+          appendText(blocker, "None");
+
+          const next = document.createElement("div");
+          next.className = "mc-next";
+          const nextLabel = document.createElement("strong");
+          appendText(nextLabel, "Next:");
+          next.append(nextLabel);
+          appendText(next, " Archive as reference production pattern");
+
+          const details = document.createElement("div");
+          details.setAttribute("style", "font-size:12px;color:var(--muted);margin-top:4px;");
+          const sourceLabel = document.createElement("strong");
+          appendText(sourceLabel, "Run/source:");
+          details.append(sourceLabel);
+          appendText(details, " " + (video.source || ""));
+          details.appendChild(document.createTextNode("\u00a0"));
+          const notesLabel = document.createElement("strong");
+          appendText(notesLabel, "Production note:");
+          details.append(notesLabel);
+          appendText(details, " " + (video.notes || ""));
+
+          body.append(top, title, stage, blocker, next, details);
+          article.append(thumb, body);
+          return article;
+        }
+
+        fetch("published-videos.json")
+          .then((response) => {
+            if (!response.ok) throw new Error("Unable to load published-videos.json");
+            return response.json();
+          })
+          .then((videos) => {
+            publishedRoot.replaceChildren(...videos.map(renderPublishedVideo));
+          })
+          .catch((error) => {
+            publishedRoot.textContent = "Published video registry failed to load.";
+            console.error(error);
+          });
+      })();
+    </script>
+  </body>
+</html>

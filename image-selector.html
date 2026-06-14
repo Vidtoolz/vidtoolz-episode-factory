@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VIDTOOLZ Image Selector</title>
+    <link rel="stylesheet" href="styles.css?v=1.7.4" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #111411;
+        --panel: #191d18;
+        --panel-soft: #21271f;
+        --border: #354034;
+        --text: #edf2e9;
+        --muted: #a4aea0;
+        --accent: #62b883;
+        --accent-strong: #93d3a9;
+        --danger: #f07b67;
+        --warning: #e4b95d;
+      }
+      body { background: var(--bg); color: var(--text); }
+      .selector-shell { margin: 0 auto; max-width: 1260px; padding: 22px 18px 92px; }
+      .selector-header {
+        align-items: flex-start;
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+      .selector-header h1 { font-size: 26px; margin: 0 0 6px; }
+      .selector-header p { color: var(--muted); font-size: 13px; margin: 0; }
+      .selector-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+      .selector-nav a {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--accent-strong);
+        font-size: 13px;
+        padding: 6px 10px;
+        text-decoration: none;
+      }
+      .status-row {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 14px;
+        padding: 12px;
+      }
+      .pill {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 12px;
+        padding: 4px 9px;
+      }
+      .pill.good { border-color: rgba(98, 184, 131, 0.55); color: var(--accent-strong); }
+      .gallery {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      }
+      .image-card {
+        background: var(--panel);
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        cursor: pointer;
+        display: grid;
+        gap: 8px;
+        overflow: hidden;
+        padding: 8px;
+      }
+      .image-card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(98, 184, 131, 0.35); }
+      .thumb-wrap { aspect-ratio: 9 / 16; background: #0b0d0b; border-radius: 6px; overflow: hidden; position: relative; }
+      .thumb-wrap img { height: 100%; object-fit: cover; width: 100%; }
+      .check {
+        align-items: center;
+        background: rgba(0, 0, 0, 0.65);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        display: flex;
+        height: 28px;
+        justify-content: center;
+        left: 8px;
+        position: absolute;
+        top: 8px;
+        width: 28px;
+      }
+      .image-card.selected .check { background: var(--accent); color: #061009; }
+      .image-meta { display: grid; gap: 5px; min-width: 0; }
+      .image-title { font-size: 13px; font-weight: 700; }
+      .image-prompt {
+        color: var(--muted);
+        display: -webkit-box;
+        font-size: 12px;
+        line-height: 1.35;
+        min-height: 48px;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+      }
+      .toolbar {
+        align-items: center;
+        background: rgba(25, 29, 24, 0.96);
+        border-top: 1px solid var(--border);
+        bottom: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        left: 0;
+        padding: 12px 18px;
+        position: fixed;
+        right: 0;
+        z-index: 10;
+      }
+      .toolbar-inner { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 auto; max-width: 1260px; width: 100%; }
+      .toolbar label { align-items: center; color: var(--muted); display: flex; font-size: 13px; gap: 6px; }
+      .spacer { flex: 1 1 auto; }
+      .loading, .error-box {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--muted);
+        padding: 16px;
+      }
+      .error-box { border-color: rgba(240, 123, 103, 0.55); color: var(--danger); }
+      @media (max-width: 680px) {
+        .selector-header { display: grid; }
+        .gallery { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="selector-shell">
+      <header class="selector-header">
+        <div>
+          <p class="eyebrow">VIDTOOLZ</p>
+          <h1>Image Selector</h1>
+          <p id="subtitle">Loading package...</p>
+        </div>
+        <button id="refresh-button" class="primary-btn" type="button">Refresh</button>
+      </header>
+
+      <nav class="selector-nav">
+        <a href="mission-control.html">Mission Control</a>
+        <a href="production-pipeline.html">Production Pipeline</a>
+        <a href="package-runs-dashboard.html">Package Runs Dashboard</a>
+      </nav>
+
+      <section id="status" class="status-row"></section>
+      <section id="content"><div class="loading">Reading FLUX images...</div></section>
+    </main>
+
+    <footer class="toolbar">
+      <div class="toolbar-inner">
+        <button id="select-all" type="button">Select all</button>
+        <button id="clear-all" type="button">Clear all</button>
+        <button id="invert" type="button">Invert</button>
+        <label><input id="label-mode" type="checkbox" /> Use selected-img labels</label>
+        <span class="spacer"></span>
+        <button id="cancel" type="button">Cancel</button>
+        <button id="save" class="primary-btn" type="button">Save selection</button>
+      </div>
+    </footer>
+
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const packageId = params.get("package") || "";
+      const subtitle = document.getElementById("subtitle");
+      const statusEl = document.getElementById("status");
+      const content = document.getElementById("content");
+      const refreshButton = document.getElementById("refresh-button");
+      const saveButton = document.getElementById("save");
+      const labelMode = document.getElementById("label-mode");
+      let images = [];
+      let selected = new Set();
+
+      function text(value) {
+        return String(value == null ? "" : value);
+      }
+
+      function pill(label, cls) {
+        const el = document.createElement("span");
+        el.className = `pill ${cls || ""}`.trim();
+        el.textContent = label;
+        return el;
+      }
+
+      function renderStatus(data) {
+        statusEl.replaceChildren(
+          pill(`${data.total || 0} FLUX images`, "good"),
+          pill(`${selected.size} selected`, selected.size ? "good" : ""),
+          pill(data.selected_count ? "Existing selection loaded" : "No existing selection", data.selected_count ? "good" : "")
+        );
+      }
+
+      function renderGallery() {
+        const grid = document.createElement("div");
+        grid.className = "gallery";
+        images.forEach((image) => {
+          const card = document.createElement("article");
+          card.className = `image-card ${selected.has(image.index) ? "selected" : ""}`.trim();
+          card.tabIndex = 0;
+          const thumb = document.createElement("div");
+          thumb.className = "thumb-wrap";
+          const img = document.createElement("img");
+          img.src = image.asset_url;
+          img.alt = image.label;
+          img.loading = "lazy";
+          const check = document.createElement("div");
+          check.className = "check";
+          check.textContent = selected.has(image.index) ? "✓" : "";
+          thumb.append(img, check);
+          const meta = document.createElement("div");
+          meta.className = "image-meta";
+          const title = document.createElement("div");
+          title.className = "image-title";
+          title.textContent = `[${String(image.index).padStart(3, "0")}] ${image.label}`;
+          const prompt = document.createElement("div");
+          prompt.className = "image-prompt";
+          prompt.textContent = image.prompt || "No prompt text found";
+          meta.append(title, prompt);
+          const toggle = () => {
+            if (selected.has(image.index)) selected.delete(image.index);
+            else selected.add(image.index);
+            render();
+          };
+          card.addEventListener("click", toggle);
+          card.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              toggle();
+            }
+          });
+          card.append(thumb, meta);
+          grid.appendChild(card);
+        });
+        return grid;
+      }
+
+      function render(data) {
+        renderStatus(data || { total: images.length, selected_count: selected.size });
+        content.innerHTML = "";
+        content.appendChild(images.length ? renderGallery() : document.createTextNode("No FLUX images found for this package."));
+      }
+
+      async function loadImages() {
+        if (!packageId) {
+          content.innerHTML = '<div class="error-box">Missing package query parameter.</div>';
+          return;
+        }
+        refreshButton.disabled = true;
+        content.innerHTML = '<div class="loading">Reading FLUX images...</div>';
+        try {
+          const response = await fetch(`/api/aigen/flux-images/${encodeURIComponent(packageId)}`, { cache: "no-store" });
+          const data = await response.json();
+          if (!data.ok) throw new Error(data.error || "Could not load FLUX images");
+          images = Array.isArray(data.images) ? data.images : [];
+          selected = new Set(Array.isArray(data.selected) ? data.selected : []);
+          subtitle.textContent = `${data.package_id} · ${data.total} generated images`;
+          render(data);
+        } catch (error) {
+          subtitle.textContent = packageId;
+          statusEl.replaceChildren(pill("Load failed", "bad"));
+          content.innerHTML = "";
+          const box = document.createElement("div");
+          box.className = "error-box";
+          box.textContent = text(error.message || error);
+          content.appendChild(box);
+        } finally {
+          refreshButton.disabled = false;
+        }
+      }
+
+      async function saveSelection() {
+        const indices = [...selected].sort((a, b) => a - b);
+        const message = `Save ${indices.length} selected images for ${packageId}?\n\nIndices: ${indices.join(", ") || "(none)"}`;
+        if (!window.confirm(message)) return;
+        saveButton.disabled = true;
+        saveButton.textContent = "Saving...";
+        try {
+          const response = await fetch("/api/aigen/selected-images", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              package_id: packageId,
+              selected_indices: indices,
+              labels: labelMode.checked
+            })
+          });
+          const data = await response.json();
+          if (!data.ok) throw new Error(data.error || "Save failed");
+          alert(`Selection saved:\n${data.written_to}`);
+          await loadImages();
+        } catch (error) {
+          alert(`Failed: ${text(error.message || error)}`);
+        } finally {
+          saveButton.disabled = false;
+          saveButton.textContent = "Save selection";
+        }
+      }
+
+      document.getElementById("select-all").addEventListener("click", () => { selected = new Set(images.map((image) => image.index)); render(); });
+      document.getElementById("clear-all").addEventListener("click", () => { selected = new Set(); render(); });
+      document.getElementById("invert").addEventListener("click", () => {
+        const next = new Set();
+        images.forEach((image) => { if (!selected.has(image.index)) next.add(image.index); });
+        selected = next;
+        render();
+      });
+      document.getElementById("cancel").addEventListener("click", () => { window.location.href = "production-pipeline.html"; });
+      refreshButton.addEventListener("click", loadImages);
+      saveButton.addEventListener("click", saveSelection);
+      loadImages();
+    </script>
+  </body>
+</html>
