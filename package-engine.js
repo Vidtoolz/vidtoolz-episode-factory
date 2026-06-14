@@ -34,6 +34,8 @@
   let generatedThumbnailProvider = "placeholder";
   let generatedThumbnailModel = "local-svg-placeholder";
   let thumbnailGenerationApi = DEFAULT_THUMBNAIL_API;
+  let localWriteNonce = "";
+  let nonceHeader = "x-vidtoolz-local-write-nonce";
   let thumbnailRequestTimeoutMs = DEFAULT_THUMBNAIL_REQUEST_TIMEOUT_MS;
   let thumbnailGenerationCount = 0;
   let isGeneratingThumbnails = false;
@@ -307,7 +309,7 @@
     try {
       const fetchOptions = {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
         body: JSON.stringify({
           topic: selected.proposedTitle || selected.idea || selected.thumbnailConcept || "VIDTOOLZ thumbnail",
           thumbnailConcept: selected.thumbnailConcept || "",
@@ -639,6 +641,12 @@
       .then((payload) => {
         if (payload && payload.api) {
           thumbnailGenerationApi = String(payload.api);
+        }
+        if (payload && payload.localWriteNonce) {
+          localWriteNonce = String(payload.localWriteNonce);
+        }
+        if (payload && payload.nonceHeader) {
+          nonceHeader = String(payload.nonceHeader);
         }
         if (payload && payload.thumbnailProvider) {
           generatedThumbnailProvider = String(payload.thumbnailProvider);

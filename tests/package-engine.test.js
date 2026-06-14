@@ -6,6 +6,7 @@
 
 const {
   assert,
+  http,
   childProcess,
   fs,
   os,
@@ -1028,4 +1029,123 @@ test("browser entry pages link between episode factory package engine and run da
   assert.match(packageEngineHtml, /href="package-runs-dashboard\.html"/);
   assert.match(dashboardHtml, /href="index\.html"/);
   assert.match(dashboardHtml, /href="package-engine\.html"/);
+});
+
+// ── Thumbnail endpoint local-write-nonce guard ──────────────────────────────
+// The POST /api/package-engine/thumbnails endpoint must enforce the same
+// Host + Origin + nonce guard as the GPU-job/aigen endpoints, so the OpenAI
+// provider (external paid call) can never be triggered without a local nonce.
+
+function listenServer(server) {
+  return new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+}
+function closeServer(server) {
+  return new Promise((resolve) => server.close(resolve));
+}
+function thumbnailRequest(server, options = {}) {
+  const address = server.address();
+  const body = JSON.stringify(options.body || { topic: "guard test", count: 3 });
+  const headers = {
+    "Content-Type": "application/json",
+    "Content-Length": Buffer.byteLength(body),
+    ...(options.headers || {}),
+  };
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      { hostname: "127.0.0.1", port: address.port, path: packageEngineServer.API_PREFIX, method: "POST", headers },
+      (response) => {
+        let raw = "";
+        response.setEncoding("utf8");
+        response.on("data", (c) => { raw += c; });
+        response.on("end", () => {
+          let parsed = null;
+          try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = { raw }; }
+          resolve({ statusCode: response.statusCode, body: parsed });
+        });
+      }
+    );
+    req.on("error", reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+test("thumbnails endpoint rejects POST without a write nonce (403)", async () => {
+  const server = packageEngineServer.createServer();
+  try {
+    await listenServer(server);
+    const res = await thumbnailRequest(server, { headers: { host: "127.0.0.1:8010", origin: "http://127.0.0.1:8010" } });
+    assert.equal(res.statusCode, 403);
+    assert.match(res.body.error, /nonce/i);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test("thumbnails endpoint rejects POST with a non-local Origin (403)", async () => {
+  const server = packageEngineServer.createServer();
+  try {
+    await listenServer(server);
+    const res = await thumbnailRequest(server, {
+      headers: {
+        host: "127.0.0.1:8010",
+        origin: "https://evil.example.com",
+        [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+      },
+    });
+    assert.equal(res.statusCode, 403);
+    assert.match(res.body.error, /Origin/i);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test("thumbnails endpoint accepts POST with a valid nonce and returns placeholder candidates (200)", async () => {
+  const prev = process.env.THUMBNAIL_PROVIDER;
+  delete process.env.THUMBNAIL_PROVIDER; // default = placeholder
+  const server = packageEngineServer.createServer();
+  try {
+    await listenServer(server);
+    const res = await thumbnailRequest(server, {
+      headers: {
+        host: "127.0.0.1:8010",
+        origin: "http://127.0.0.1:8010",
+        [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+      },
+    });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.provider, "placeholder");
+    assert.equal(res.body.candidates.length, 3);
+    assert.match(res.body.candidates[0].thumbnailImage, /^data:image\/svg\+xml;base64,/);
+  } finally {
+    await closeServer(server);
+    if (prev === undefined) delete process.env.THUMBNAIL_PROVIDER; else process.env.THUMBNAIL_PROVIDER = prev;
+  }
+});
+
+test("thumbnails endpoint does not reach the OpenAI provider without a valid nonce", async () => {
+  // With provider=openai, an unguarded endpoint would hit the OpenAI path and
+  // fail with an OPENAI_API_KEY error. The guard must short-circuit first: the
+  // response is the 403 nonce error, never the OpenAI-key error.
+  const prevProvider = process.env.THUMBNAIL_PROVIDER;
+  const prevKey = process.env.OPENAI_API_KEY;
+  process.env.THUMBNAIL_PROVIDER = "openai";
+  delete process.env.OPENAI_API_KEY;
+  let fetchCalled = false;
+  const realFetch = global.fetch;
+  global.fetch = async (...args) => { fetchCalled = true; if (realFetch) return realFetch(...args); throw new Error("network blocked in test"); };
+  const server = packageEngineServer.createServer();
+  try {
+    await listenServer(server);
+    const res = await thumbnailRequest(server, { headers: { host: "127.0.0.1:8010", origin: "http://127.0.0.1:8010" } });
+    assert.equal(res.statusCode, 403);
+    assert.match(res.body.error, /nonce/i);
+    assert.doesNotMatch(res.body.error, /OPENAI_API_KEY/);
+    assert.equal(fetchCalled, false, "OpenAI provider (fetch) must not be called without a valid nonce");
+  } finally {
+    await closeServer(server);
+    global.fetch = realFetch;
+    if (prevProvider === undefined) delete process.env.THUMBNAIL_PROVIDER; else process.env.THUMBNAIL_PROVIDER = prevProvider;
+    if (prevKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = prevKey;
+  }
 });

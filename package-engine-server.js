@@ -5603,6 +5603,8 @@ function createStatusResponse(env = process.env) {
     quality: config.quality,
     format: config.outputFormat,
     api: API_PREFIX,
+    nonceHeader: LOCAL_WRITE_NONCE_HEADER,
+    localWriteNonce: LOCAL_WRITE_NONCE,
     captureEvidenceWrite: {
       previewApi: CAPTURE_EVIDENCE_PREVIEW_API,
       applyApi: CAPTURE_EVIDENCE_APPLY_API,
@@ -6010,6 +6012,10 @@ function createServer() {
 
     if (req.method === 'POST' && url.pathname === API_PREFIX) {
       readJsonBody(req).then(async (payload) => {
+        // Local-write guard: same Host + Origin + nonce check as the GPU-job/aigen
+        // POST endpoints. Runs BEFORE createThumbnailResponse so the OpenAI provider
+        // (external paid call) is never reached without a valid local write nonce.
+        validateLocalWriteRequest(req, payload);
         try {
           const thumbnailResponse = await createThumbnailResponse(payload);
           send(res, 200, thumbnailResponse);
