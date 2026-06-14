@@ -204,6 +204,8 @@
       let originalJson = "";
       let dirty = false;
       let valid = false;
+      let localWriteNonce = "";
+      let nonceHeader = "x-vidtoolz-local-write-nonce";
 
       function text(value) {
         return String(value == null ? "" : value);
@@ -362,6 +364,17 @@
         updateDirtyState();
       }
 
+      async function fetchWriteNonce() {
+        try {
+          const res = await fetch("/api/aigen/production-pipeline/status", { cache: "no-store" });
+          const data = await res.json();
+          localWriteNonce = data.localWriteNonce || "";
+          nonceHeader = data.nonceHeader || "x-vidtoolz-local-write-nonce";
+        } catch {
+          /* nonce fetch failed; save will be rejected server-side */
+        }
+      }
+
       async function load() {
         if (!packageId) {
           title.textContent = "Image Prompts";
@@ -424,7 +437,7 @@
           if (!validation.valid) return;
           const response = await fetch(SAVE_API, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
             body: JSON.stringify({ package_id: packageId, model: currentModel() })
           });
           const data = await response.json();
@@ -441,7 +454,7 @@
         }
       });
 
-      load().catch((error) => {
+      fetchWriteNonce().then(() => load()).catch((error) => {
         setStatus(text(error.message || error), "bad");
         meta.textContent = text(error.message || error);
       });

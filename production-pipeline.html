@@ -218,6 +218,8 @@
       let fluxPollInterval = null;
       let fluxStatus = { active: false };
       let fluxResults = new Map();
+      let localWriteNonce = "";
+      let nonceHeader = "x-vidtoolz-local-write-nonce";
 
       function text(value) {
         return String(value == null ? "" : value);
@@ -266,7 +268,7 @@
         try {
           const response = await fetch(RESOLVE_ASSEMBLY_API, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
             body: JSON.stringify({ package_id: packageId })
           });
           const data = await response.json();
@@ -391,7 +393,7 @@
         try {
           const response = await fetch(PRESTO_SUBMIT_API, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
             body: JSON.stringify({ package_id: packageId, comfyui_url: DEFAULT_PRESTO_URL })
           });
           const data = await response.json();
@@ -419,7 +421,7 @@
         try {
           const response = await fetch(PRESTO_CANCEL_API, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
             body: JSON.stringify({})
           });
           const data = await response.json();
@@ -448,7 +450,7 @@
         try {
           const response = await fetch(FLUX_SUBMIT_API, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
             body: JSON.stringify({ package_id: pkg.id, limit: 0, skip_existing: true, dry_run: dryRun })
           });
           const data = await response.json();
@@ -476,7 +478,7 @@
         try {
           const response = await fetch(FLUX_CANCEL_API, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
             body: JSON.stringify({})
           });
           const data = await response.json();
@@ -729,6 +731,8 @@
         try {
           const response = await fetch(API, { cache: "no-store" });
           const data = await response.json();
+          localWriteNonce = data.localWriteNonce || "";
+          nonceHeader = data.nonceHeader || "x-vidtoolz-local-write-nonce";
           await fetchPrestoStatus();
           nextAction.textContent = data.next_action || data.error || "No status available";
           renderBadges(data);

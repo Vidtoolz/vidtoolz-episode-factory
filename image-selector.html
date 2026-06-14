@@ -177,6 +177,8 @@
       const labelMode = document.getElementById("label-mode");
       let images = [];
       let selected = new Set();
+      let localWriteNonce = "";
+      let nonceHeader = "x-vidtoolz-local-write-nonce";
 
       function text(value) {
         return String(value == null ? "" : value);
@@ -247,6 +249,17 @@
         content.appendChild(images.length ? renderGallery() : document.createTextNode("No FLUX images found for this package."));
       }
 
+      async function fetchWriteNonce() {
+        try {
+          const res = await fetch("/api/aigen/production-pipeline/status", { cache: "no-store" });
+          const data = await res.json();
+          localWriteNonce = data.localWriteNonce || "";
+          nonceHeader = data.nonceHeader || "x-vidtoolz-local-write-nonce";
+        } catch {
+          /* nonce fetch failed; save will be rejected server-side */
+        }
+      }
+
       async function loadImages() {
         if (!packageId) {
           content.innerHTML = '<div class="error-box">Missing package query parameter.</div>';
@@ -284,7 +297,7 @@
         try {
           const response = await fetch("/api/aigen/selected-images", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
             body: JSON.stringify({
               package_id: packageId,
               selected_indices: indices,
@@ -314,6 +327,7 @@
       document.getElementById("cancel").addEventListener("click", () => { window.location.href = "production-pipeline.html"; });
       refreshButton.addEventListener("click", loadImages);
       saveButton.addEventListener("click", saveSelection);
+      fetchWriteNonce();
       loadImages();
     </script>
   </body>

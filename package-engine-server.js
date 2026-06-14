@@ -3773,7 +3773,11 @@ function handleAigenStatus(req, res) {
     send(res, 200, status);
     return;
   }
-  attachPrestoStatus(status, {}, (withPresto) => send(res, 200, withPresto));
+  attachPrestoStatus(status, {}, (withPresto) => {
+    withPresto.localWriteNonce = LOCAL_WRITE_NONCE;
+    withPresto.nonceHeader = LOCAL_WRITE_NONCE_HEADER;
+    send(res, 200, withPresto);
+  });
 }
 
 function resolveAigenPackageDir(packageId, options = {}) {
@@ -3874,7 +3878,10 @@ function runResolveAssemblyCreate(packageId, options = {}) {
 
 function handleAigenResolveAssemblyCreate(req, res) {
   readJsonBody(req)
-    .then((payload) => runResolveAssemblyCreate(payload.package_id))
+    .then((payload) => {
+      validateLocalWriteRequest(req, payload);
+      return runResolveAssemblyCreate(payload.package_id);
+    })
     .then((result) => send(res, result.ok ? 200 : 400, result))
     .catch((error) => send(res, error.statusCode || 500, { ok: false, error: error.message }));
 }
@@ -4233,6 +4240,7 @@ function handleAigenFluxImages(req, res, url) {
 function handleAigenSelectedImages(req, res) {
   readJsonBody(req)
     .then((payload) => {
+      validateLocalWriteRequest(req, payload);
       const result = writeSelectedImages(payload);
       send(res, 200, result);
     })
@@ -4256,6 +4264,7 @@ function handleImagePromptsValidate(req, res) {
 function handleImagePromptsSave(req, res) {
   readJsonBody(req)
     .then((payload) => {
+      validateLocalWriteRequest(req, payload);
       const result = saveImagePrompts(payload);
       send(res, 200, result);
     })
@@ -4502,6 +4511,7 @@ function readPrestoResults(packageId, options = {}) {
 function handlePrestoSubmit(req, res) {
   readJsonBody(req)
     .then((payload) => {
+      validateLocalWriteRequest(req, payload);
       const result = startPrestoPackageJob(payload);
       send(res, 200, result);
     })
@@ -4519,6 +4529,12 @@ function handlePrestoJobStatus(req, res) {
 }
 
 function handlePrestoCancel(req, res) {
+  try {
+    validateLocalWriteRequest(req, {});
+  } catch (error) {
+    send(res, error.statusCode || 403, { ok: false, error: error.message });
+    return;
+  }
   cancelPrestoJob()
     .then((result) => send(res, result.ok ? 200 : 400, result))
     .catch((error) => send(res, error.statusCode || 500, { ok: false, error: error.message }));
@@ -4775,6 +4791,7 @@ function readFluxResults(packageId, options = {}) {
 function handleFluxSubmit(req, res) {
   readJsonBody(req)
     .then((payload) => {
+      validateLocalWriteRequest(req, payload);
       const result = startFluxPackageJob(payload);
       send(res, 200, result);
     })
@@ -4792,6 +4809,12 @@ function handleFluxJobStatus(req, res) {
 }
 
 function handleFluxCancel(req, res) {
+  try {
+    validateLocalWriteRequest(req, {});
+  } catch (error) {
+    send(res, error.statusCode || 403, { ok: false, error: error.message });
+    return;
+  }
   cancelFluxJob()
     .then((result) => send(res, result.ok ? 200 : 400, result))
     .catch((error) => send(res, error.statusCode || 500, { ok: false, error: error.message }));

@@ -58,6 +58,10 @@ function close(server) {
 function requestJson(server, pathname, options = {}) {
   const address = server.address();
   const body = options.rawBody !== undefined ? options.rawBody : options.body ? JSON.stringify(options.body) : "";
+  const defaultHeaders = body ? {
+    "Content-Type": "application/json",
+    "Content-Length": Buffer.byteLength(body),
+  } : {};
   return new Promise((resolve, reject) => {
     const req = http.request(
       {
@@ -65,10 +69,7 @@ function requestJson(server, pathname, options = {}) {
         port: address.port,
         path: pathname,
         method: options.method || "GET",
-        headers: body ? {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(body),
-        } : {},
+        headers: { ...defaultHeaders, ...(options.headers || {}) },
       },
       (response) => {
         let raw = "";
@@ -87,6 +88,13 @@ function requestJson(server, pathname, options = {}) {
     if (body) req.write(body);
     req.end();
   });
+}
+
+function localWriteHeaders() {
+  return {
+    Host: "127.0.0.1:8010",
+    [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+  };
 }
 
 function requestText(server, pathname) {
@@ -208,6 +216,7 @@ test("image prompts validate rejects invalid package path traversal", async () =
       await listen(server);
       const response = await requestJson(server, packageEngineServer.IMAGE_PROMPTS_VALIDATE_API, {
         method: "POST",
+        headers: localWriteHeaders(),
         body: { package_id: "../bad", model: { image_prompts: [] } },
       });
       assert.equal(response.statusCode, 400);
@@ -229,6 +238,7 @@ test("image prompts save valid prompts writes only image-prompts.json", async ()
       const before = hashPackageFiles(fixture.packageDir);
       const response = await requestJson(server, packageEngineServer.IMAGE_PROMPTS_SAVE_API, {
         method: "POST",
+        headers: localWriteHeaders(),
         body: {
           package_id: fixture.packageId,
           model: {
@@ -269,6 +279,7 @@ test("image prompts save invalid prompts writes nothing", async () => {
       const before = hashPackageFiles(fixture.packageDir);
       const response = await requestJson(server, packageEngineServer.IMAGE_PROMPTS_SAVE_API, {
         method: "POST",
+        headers: localWriteHeaders(),
         body: { package_id: fixture.packageId, model: { image_prompts: [{ index: 1, prompt: "" }] } },
       });
       assert.equal(response.statusCode, 400);
@@ -291,6 +302,7 @@ test("image prompts read and validate perform zero writes", async () => {
       await requestJson(server, `${packageEngineServer.IMAGE_PROMPTS_READ_API}?package_id=${fixture.packageId}`);
       await requestJson(server, packageEngineServer.IMAGE_PROMPTS_VALIDATE_API, {
         method: "POST",
+        headers: localWriteHeaders(),
         body: { package_id: fixture.packageId, model: JSON.parse(before["image-prompts.json"]) },
       });
       assert.deepEqual(hashPackageFiles(fixture.packageDir), before);
@@ -309,6 +321,7 @@ test("image prompts validate rejects malformed JSON payload", async () => {
       await listen(server);
       const response = await requestJson(server, packageEngineServer.IMAGE_PROMPTS_VALIDATE_API, {
         method: "POST",
+        headers: localWriteHeaders(),
         rawBody: "{bad json",
       });
       assert.equal(response.statusCode, 400);

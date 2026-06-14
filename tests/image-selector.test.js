@@ -56,6 +56,13 @@ function close(server) {
 function requestJson(server, pathname, options = {}) {
   const address = server.address();
   const body = options.body ? JSON.stringify(options.body) : "";
+  const headers = {
+    ...(body ? {
+      "Content-Type": "application/json",
+      "Content-Length": Buffer.byteLength(body),
+    } : {}),
+    ...(options.headers || {}),
+  };
   return new Promise((resolve, reject) => {
     const req = http.request(
       {
@@ -63,10 +70,7 @@ function requestJson(server, pathname, options = {}) {
         port: address.port,
         path: pathname,
         method: options.method || "GET",
-        headers: body ? {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(body),
-        } : {},
+        headers,
       },
       (response) => {
         let raw = "";
@@ -195,6 +199,10 @@ test("POST selected-images writes valid JSON", async () => {
       await listen(server);
       const response = await requestJson(server, packageEngineServer.AIGEN_SELECTED_IMAGES_API, {
         method: "POST",
+        headers: {
+          Host: "127.0.0.1:8010",
+          [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+        },
         body: { package_id: fixture.packageId, selected_indices: [1, 3], labels: false },
       });
       const selectedPath = path.join(fixture.packageDir, "selected-images.json");
@@ -222,6 +230,10 @@ test("POST selected-images overwrites existing selection", async () => {
       await listen(server);
       const response = await requestJson(server, packageEngineServer.AIGEN_SELECTED_IMAGES_API, {
         method: "POST",
+        headers: {
+          Host: "127.0.0.1:8010",
+          [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+        },
         body: { package_id: fixture.packageId, selected_indices: [3], labels: true },
       });
       const data = JSON.parse(fs.readFileSync(path.join(fixture.packageDir, "selected-images.json"), "utf8"));
@@ -243,6 +255,10 @@ test("POST selected-images validates indices exist", async () => {
       await listen(server);
       const response = await requestJson(server, packageEngineServer.AIGEN_SELECTED_IMAGES_API, {
         method: "POST",
+        headers: {
+          Host: "127.0.0.1:8010",
+          [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+        },
         body: { package_id: fixture.packageId, selected_indices: [99], labels: false },
       });
       assert.equal(response.statusCode, 400);
@@ -263,6 +279,10 @@ test("POST selected-images rejects path traversal package_id", async () => {
       await listen(server);
       const response = await requestJson(server, packageEngineServer.AIGEN_SELECTED_IMAGES_API, {
         method: "POST",
+        headers: {
+          Host: "127.0.0.1:8010",
+          [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+        },
         body: { package_id: "../bad", selected_indices: [1], labels: false },
       });
       assert.equal(response.statusCode, 400);

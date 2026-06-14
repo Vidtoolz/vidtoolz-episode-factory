@@ -74,6 +74,11 @@ function close(server) {
 function requestJson(server, pathname, options = {}) {
   const address = server.address();
   const body = options.body ? JSON.stringify(options.body) : "";
+  const baseHeaders = body ? {
+    "Content-Type": "application/json",
+    "Content-Length": Buffer.byteLength(body),
+  } : {};
+  const headers = { ...baseHeaders, ...(options.headers || {}) };
   return new Promise((resolve, reject) => {
     const req = http.request(
       {
@@ -81,10 +86,7 @@ function requestJson(server, pathname, options = {}) {
         port: address.port,
         path: pathname,
         method: options.method || "GET",
-        headers: body ? {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(body),
-        } : {},
+        headers,
       },
       (response) => {
         let raw = "";
@@ -165,9 +167,14 @@ test("PRESTO submit validation reports missing package and missing script", asyn
   try {
     await withPrestoEnv(fixture, async () => {
       await listen(server);
+      const nonceHeaders = {
+        host: "127.0.0.1:8010",
+        [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+      };
       const missing = await requestJson(server, packageEngineServer.PRESTO_SUBMIT_API, {
         method: "POST",
         body: {},
+        headers: nonceHeaders,
       });
       assert.equal(missing.statusCode, 400);
       assert.equal(missing.body.ok, false);
@@ -176,6 +183,7 @@ test("PRESTO submit validation reports missing package and missing script", asyn
       const nonexistent = await requestJson(server, packageEngineServer.PRESTO_SUBMIT_API, {
         method: "POST",
         body: { package_id: "nonexistent-package" },
+        headers: nonceHeaders,
       });
       assert.equal(nonexistent.body.ok, false);
       assert.match(nonexistent.body.error, /does not exist/i);
@@ -183,6 +191,7 @@ test("PRESTO submit validation reports missing package and missing script", asyn
       const missingScript = await requestJson(server, packageEngineServer.PRESTO_SUBMIT_API, {
         method: "POST",
         body: { package_id: fixture.packageId },
+        headers: nonceHeaders,
       });
       assert.equal(missingScript.statusCode, 400);
       assert.equal(missingScript.body.ok, false);
@@ -204,6 +213,10 @@ test("PRESTO submit rejects when a job is already active", async () => {
       const response = await requestJson(server, packageEngineServer.PRESTO_SUBMIT_API, {
         method: "POST",
         body: { package_id: fixture.packageId },
+        headers: {
+          host: "127.0.0.1:8010",
+          [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+        },
       });
       assert.equal(response.statusCode, 409);
       assert.equal(response.body.ok, false);

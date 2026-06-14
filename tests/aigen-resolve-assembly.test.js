@@ -79,6 +79,11 @@ function close(server) {
 function requestJson(server, pathname, options = {}) {
   const address = server.address();
   const body = options.body ? JSON.stringify(options.body) : "";
+  const baseHeaders = body ? {
+    "Content-Type": "application/json",
+    "Content-Length": Buffer.byteLength(body),
+  } : {};
+  const headers = { ...baseHeaders, ...(options.headers || {}) };
   return new Promise((resolve, reject) => {
     const req = http.request(
       {
@@ -86,10 +91,7 @@ function requestJson(server, pathname, options = {}) {
         port: address.port,
         path: pathname,
         method: options.method || "GET",
-        headers: body ? {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(body),
-        } : {},
+        headers,
       },
       (response) => {
         let raw = "";
@@ -140,6 +142,10 @@ test("POST /api/aigen/resolve-assembly/create with valid package_id succeeds", a
       const response = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
         method: "POST",
         body: { package_id: fixture.packageId },
+        headers: {
+          host: "127.0.0.1:8010",
+          [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+        },
       });
       assert.equal(response.statusCode, 200);
       assert.equal(response.body.ok, true);
@@ -164,6 +170,10 @@ test("POST /api/aigen/resolve-assembly/create with invalid package_id fails", as
       const response = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
         method: "POST",
         body: { package_id: "nonexistent-package" },
+        headers: {
+          host: "127.0.0.1:8010",
+          [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+        },
       });
       assert.equal(response.statusCode, 404);
       assert.equal(response.body.ok, false);
@@ -189,6 +199,27 @@ test("GET /api/aigen/production-pipeline/status includes resolve_handoff_ready f
       assert.equal(typeof pkg.resolve_handoff_ready, "boolean");
       assert.equal(pkg.resolve_handoff_ready, false);
       assert.equal(pkg.resolve_handoff_count, 0);
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("POST /api/aigen/resolve-assembly/create without nonce header is rejected with 403", async () => {
+  const fixture = createAigenFixture();
+  const server = packageEngineServer.createServer();
+  try {
+    await withAigenEnv(fixture, async () => {
+      await listen(server);
+      const response = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId },
+        headers: { host: "127.0.0.1:8010" },
+      });
+      assert.equal(response.statusCode, 403);
+      assert.equal(response.body.ok, false);
+      assert.match(response.body.error, /nonce/i);
     });
   } finally {
     await close(server);
