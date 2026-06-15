@@ -3585,11 +3585,10 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
           return payload;
         }))
         .then((payload) => {
-          const commands = (payload.nextCommands || []).join(" then ");
           container.dataset.capturePreviewToken = "";
           setCaptureWriteStatus(
             container,
-            `Applied locally to ${payload.written.join(", ")}. Capture is not approved. Next: ${commands}`,
+            `Applied locally to ${(payload?.written || []).join(", ")}${payload?.written?.length ? ". " : " (no files). "}Capture is not approved. Next: ${(payload?.nextCommands || []).join(" then ")}`,
             "valid"
           );
           button.disabled = true;
@@ -3714,7 +3713,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         runId: container.dataset.runId || "",
       })
         .then((payload) => {
-          setRoughCutStatus(container, `Review complete: ${payload.review.roughCutReviewStatus || "unknown"}.`, "valid");
+          setRoughCutStatus(container, `Review complete: ${payload?.review?.roughCutReviewStatus || "unknown"}.`, "valid");
           const result = container.querySelector("[data-rough-cut-result]");
           if (result) result.innerHTML = renderRoughCutResult(payload);
         })
@@ -3815,7 +3814,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         runId: consoleEl.dataset.runId || "",
         items: pickupPlanItems(panel),
       })
-        .then((payload) => setPickupPlanStatus(panel, payload.warning || `Saved: ${payload.written.join(", ")}`, "valid"))
+        .then((payload) => setPickupPlanStatus(panel, payload?.warning || `Saved: ${(payload?.written || []).join(", ")}`, "valid"))
         .catch((error) => setPickupPlanStatus(panel, error.message, "missing"))
         .finally(() => {
           button.disabled = false;
@@ -3897,7 +3896,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       roughCutRequest((config) => config.secondCutCandidateApplyApi, secondCutCandidatePayload(consoleEl, panel))
         .then((payload) => {
           panel.dataset.secondCutCandidatePreviewValid = "";
-          setSecondCutCandidateStatus(panel, payload.warning || `Saved: ${payload.written.join(", ")}`, "valid");
+          setSecondCutCandidateStatus(panel, payload?.warning || `Saved: ${(payload?.written || []).join(", ")}`, "valid");
         })
         .catch((error) => {
           setSecondCutCandidateStatus(panel, error.message, "missing");
@@ -3955,7 +3954,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       roughCutRequest((config) => config.secondCutReviewRegenerateApi, {
         runId: consoleEl.dataset.runId || "",
       })
-        .then((payload) => setSecondCutHumanReviewStatus(panel, payload.warning || `Second-cut review: ${payload.review.status}`, "valid"))
+        .then((payload) => setSecondCutHumanReviewStatus(panel, payload?.warning || `Second-cut review: ${payload?.review?.status || "unknown"}`, "valid"))
         .catch((error) => setSecondCutHumanReviewStatus(panel, error.message, "missing"))
         .finally(() => {
           button.disabled = false;
@@ -4030,7 +4029,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       button.disabled = true;
       setFinalWatchStatus(panel, "Saving final-candidate.md only.", "pending");
       roughCutRequest((config) => config.finalCandidateApplyApi, finalCandidatePayload(consoleEl, panel))
-        .then((payload) => setFinalWatchStatus(panel, payload.warning || `Saved: ${payload.written.join(", ")}`, "valid"))
+        .then((payload) => setFinalWatchStatus(panel, payload?.warning || `Saved: ${(payload?.written || []).join(", ")}`, "valid"))
         .catch((error) => {
           setFinalWatchStatus(panel, error.message, "missing");
           button.disabled = false;
@@ -4067,7 +4066,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       roughCutRequest((config) => config.finalReviewRegenerateApi, {
         runId: consoleEl.dataset.runId || "",
       })
-        .then((payload) => setFinalWatchStatus(panel, payload.warning || `Final review: ${payload.review.status}`, "valid"))
+        .then((payload) => setFinalWatchStatus(panel, payload?.warning || `Final review: ${payload?.review?.status || "unknown"}`, "valid"))
         .catch((error) => setFinalWatchStatus(panel, error.message, "missing"))
         .finally(() => {
           button.disabled = false;
@@ -4144,7 +4143,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       button.disabled = true;
       setExportDeliveryStatus(panel, "Saving master-file-manifest.md only.", "pending");
       roughCutRequest((config) => config.exportMasterApplyApi, exportMasterPayload(consoleEl, panel))
-        .then((payload) => setExportDeliveryStatus(panel, payload.warning || `Saved: ${payload.written.join(", ")}`, "valid"))
+        .then((payload) => setExportDeliveryStatus(panel, payload?.warning || `Saved: ${(payload?.written || []).join(", ")}`, "valid"))
         .catch((error) => {
           setExportDeliveryStatus(panel, error.message, "missing");
           button.disabled = false;
@@ -4162,7 +4161,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         fields: deliveryReadinessFields(panel),
       })
         .then((payload) => {
-          setExportDeliveryStatus(panel, payload.warning || `Saved: ${payload.written.join(", ")}`, "valid");
+          setExportDeliveryStatus(panel, payload?.warning || `Saved: ${(payload?.written || []).join(", ")}`, "valid");
           const regen = panel.querySelector("[data-regenerate-export-checklist]");
           if (regen) regen.disabled = false;
         })
@@ -4181,7 +4180,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       roughCutRequest((config) => config.exportChecklistRegenerateApi, {
         runId: consoleEl.dataset.runId || "",
       })
-        .then((payload) => setExportDeliveryStatus(panel, payload.warning || `Export checklist: ${payload.review.status}`, "valid"))
+        .then((payload) => setExportDeliveryStatus(panel, payload?.warning || `Export checklist: ${payload?.review?.status || "unknown"}`, "valid"))
         .catch((error) => setExportDeliveryStatus(panel, error.message, "missing"))
         .finally(() => {
           button.disabled = false;

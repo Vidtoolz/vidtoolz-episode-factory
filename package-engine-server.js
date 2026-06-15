@@ -236,7 +236,12 @@ function send(res, status, body, headers = {}) {
 }
 
 function safeJoin(root, requestPath) {
-  const decoded = decodeURIComponent(requestPath.split('?')[0]);
+  let decoded;
+  try {
+    decoded = decodeURIComponent(requestPath.split('?')[0]);
+  } catch (err) {
+    return null;
+  }
   const normalized = path.posix.normalize(decoded).replace(/^([.]{2}[\/])+/, '');
   const joined = path.join(root, normalized);
   if (!joined.startsWith(root)) return null;
@@ -5909,7 +5914,14 @@ function handleDailyScoutDates(req, res) {
 
 function createServer() {
   return http.createServer((req, res) => {
-    const url = new URL(req.url, `http://${req.headers.host}`);
+    const host = req.headers.host || 'localhost';
+    let url;
+    try {
+      url = new URL(req.url, `http://${host}`);
+    } catch (err) {
+      send(res, 400, 'Malformed URL');
+      return;
+    }
     if (req.method === 'GET' && url.pathname === STATUS_API) {
       send(res, 200, createStatusResponse());
       return;
@@ -6356,19 +6368,30 @@ function createServer() {
         const index = path.join(filePath, 'index.html');
         if (fs.existsSync(index)) {
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-          fs.createReadStream(index).pipe(res);
+          const stream = fs.createReadStream(index);
+          stream.on('error', (err) => { console.error('Stream error (index):', err.message); if (!res.headersSent) send(res, 500, 'Internal server error'); else res.end(); });
+          stream.pipe(res);
           return;
         }
         send(res, 404, 'Not found');
         return;
       }
       res.writeHead(200, { 'Content-Type': inferMime(filePath), 'Cache-Control': 'no-store' });
-      fs.createReadStream(filePath).pipe(res);
+      const stream = fs.createReadStream(filePath);
+      stream.on('error', (err) => { console.error('Stream error:', err.message); if (!res.headersSent) send(res, 500, 'Internal server error'); else res.end(); });
+      stream.pipe(res);
     });
   });
 }
 
 if (require.main === module) {
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception:', err);
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled rejection:', reason);
+  });
+
   const server = createServer();
 
   server.listen(PORT, HOST, () => {
