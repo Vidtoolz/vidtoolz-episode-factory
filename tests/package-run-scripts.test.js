@@ -35,6 +35,7 @@ const {
   packageBrollPromptsScript,
   packageExportChecklistScript,
   packagePublicationMetadataScript,
+  packageNewsletterScript,
   packageArchiveManifestScript,
   packageRunCreatorQaScript,
   packageRunDoctorScript,
@@ -8771,4 +8772,119 @@ test("script image assets review page writes standalone html without touching in
   assert.match(fs.readFileSync(outputPath, "utf8"), /Standalone Review/);
   assert.equal(fs.readFileSync(path.join(inputFolder, "generation-manifest.json"), "utf8"), beforeManifest);
   assert.equal(fs.existsSync(path.join(inputFolder, "block-001-prompt-01.png")), false);
+});
+
+function writeNewsletterRun(runDir, { full = true } = {}) {
+  fs.mkdirSync(runDir, { recursive: true });
+  if (full) {
+    fs.writeFileSync(
+      path.join(runDir, "publish-pack.md"),
+      [
+        "# Publish Pack",
+        "",
+        "- Final title: Fix Flat DaVinci Resolve Exports",
+        "- Description: Stop your exports looking washed out by checking color management first.",
+        "- Newsletter CTA: Reply with the camera format you shoot on.",
+        "- YouTube URL: https://youtu.be/abc123",
+        "- Lead magnet: https://vidtoolz.example/checklist",
+        "",
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(runDir, "repurposing-plan.md"),
+      [
+        "# Repurposing Plan",
+        "",
+        "## YouTube Community or Newsletter Teaser",
+        "",
+        "This month I finally fixed the flat-export problem and it took one setting.",
+        "",
+      ].join("\n")
+    );
+  }
+}
+
+test("newsletter help works", () => {
+  const output = captureConsole(() => packageNewsletterScript.main(["--help"]));
+
+  assert.equal(output.result, 0);
+  assert.match(output.stdout.join("\n"), /package-run-newsletter\.js/);
+});
+
+test("newsletter drafts a ready issue from package fields without external APIs", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-newsletter-ready-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-newsletter-ready");
+  writeNewsletterRun(runDir, { full: true });
+
+  assert.equal(packageNewsletterScript.main([runDir]), 0);
+
+  const draft = fs.readFileSync(path.join(runDir, "newsletter-draft.md"), "utf8");
+  const review = fs.readFileSync(path.join(runDir, "newsletter-review.md"), "utf8");
+
+  assert.match(review, /Status: DRAFT READY/);
+  assert.match(review, /Draftable: yes/);
+  assert.match(draft, /Fix Flat DaVinci Resolve Exports/);
+  assert.match(draft, /finally fixed the flat-export problem/);
+  assert.match(draft, /https:\/\/youtu\.be\/abc123/);
+  assert.doesNotMatch(draft, /\{\{VIDEO_URL\}\}/);
+  // Copy-only boundary: both artifacts must declare no external API use.
+  assert.match(draft, /External APIs called: no/);
+  assert.match(review, /does not call the Kit API/);
+});
+
+test("newsletter reports NEEDS CONTENT and a video-url placeholder for an empty run", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-newsletter-empty-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-newsletter-empty");
+  writeNewsletterRun(runDir, { full: false });
+
+  assert.equal(packageNewsletterScript.main([runDir]), 0);
+
+  const draft = fs.readFileSync(path.join(runDir, "newsletter-draft.md"), "utf8");
+  const review = fs.readFileSync(path.join(runDir, "newsletter-review.md"), "utf8");
+
+  assert.match(review, /Status: NEEDS CONTENT/);
+  assert.match(review, /Draftable: no/);
+  assert.match(review, /title is missing/);
+  assert.match(draft, /TODO: subject line/);
+  assert.match(draft, /\{\{VIDEO_URL\}\}/);
+});
+
+test("newsletter writes are idempotent without overwrite", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-newsletter-idem-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-newsletter-idem");
+  writeNewsletterRun(runDir, { full: true });
+
+  assert.equal(packageNewsletterScript.main([runDir]), 0);
+  const firstDraft = fs.readFileSync(path.join(runDir, "newsletter-draft.md"), "utf8");
+
+  const second = captureConsole(() => packageNewsletterScript.main([runDir]));
+  assert.equal(second.result, 0);
+  assert.match(second.stdout.join("\n"), /unchanged: .*newsletter-draft\.md/);
+  assert.equal(fs.readFileSync(path.join(runDir, "newsletter-draft.md"), "utf8"), firstDraft);
+});
+
+test("newsletter reads the real publish-pack format and does not leak the next heading into empty fields", () => {
+  // Mirrors the real publish-pack.md shape: backtick-wrapped "Working title",
+  // an EMPTY "Pinned comment:" immediately followed by a "## Chapters" heading.
+  // The same-line extractor must read the title and leave the empty field empty
+  // (not capture "## Chapters").
+  const publishPack = [
+    "# Publish Pack",
+    "",
+    "## Video Metadata Draft",
+    "",
+    "- Working title: `Stop Planning AI Videos Until You Have a Proof Plan`",
+    "- Description draft:",
+    "- Pinned comment:",
+    "",
+    "## Chapters",
+    "",
+    "00:00 Hook",
+  ].join("\n");
+
+  const fields = packageNewsletterScript.readNewsletterFields({ "publish-pack.md": publishPack });
+
+  assert.equal(fields.title, "Stop Planning AI Videos Until You Have a Proof Plan");
+  assert.equal(fields.pinnedComment, "");
+  assert.equal(fields.description, "");
 });

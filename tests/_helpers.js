@@ -29,6 +29,7 @@ const packageRepurposeScript = require("../scripts/package-run-repurpose.js");
 const packageBrollPromptsScript = require("../scripts/package-run-broll-prompts.js");
 const packageExportChecklistScript = require("../scripts/package-run-export-checklist.js");
 const packagePublicationMetadataScript = require("../scripts/package-run-publication-metadata.js");
+const packageNewsletterScript = require("../scripts/package-run-newsletter.js");
 const packageArchiveManifestScript = require("../scripts/package-run-archive-manifest.js");
 const packageRunCreatorQaScript = require("../scripts/package-run-creator-qa.js");
 const packageRunDoctorScript = require("../scripts/package-run-doctor.js");
@@ -276,6 +277,7 @@ module.exports = {
   packageBrollPromptsScript,
   packageExportChecklistScript,
   packagePublicationMetadataScript,
+  packageNewsletterScript,
   packageArchiveManifestScript,
   packageRunCreatorQaScript,
   packageRunDoctorScript,
