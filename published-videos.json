@@ -4,13 +4,17 @@
     "date": "2026-05",
     "status": "Published on YouTube",
     "source": "Published outside clean Episode Factory flow",
-    "notes": "Changed-plan workflow: abandoned long abstract script, short concrete friend-style script (Claude-polished), green-screen camera recording, GPT images, Kling video backgrounds, final composite to YouTube."
+    "notes": "Changed-plan workflow: abandoned long abstract script, short concrete friend-style script (Claude-polished), green-screen camera recording, GPT images, Kling video backgrounds, final composite to YouTube.",
+    "youtube_url": "",
+    "run_folder": ""
   },
   {
     "title": "The Microwave Learned to Cook — What Editing Means Now",
     "date": "2026-06",
     "status": "Published on YouTube",
     "source": "Published outside clean Episode Factory flow",
-    "notes": "Short conversational script, green screen + AI backgrounds, one clear point. Same proven pattern as Stop chasing AI tools."
+    "notes": "Short conversational script, green screen + AI backgrounds, one clear point. Same proven pattern as Stop chasing AI tools.",
+    "youtube_url": "",
+    "run_folder": ""
   }
 ]
