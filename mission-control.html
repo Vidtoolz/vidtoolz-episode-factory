@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Mission Control</title>
-    <link rel="stylesheet" href="styles.css?v=1.7.4" />
+    <link rel="stylesheet" href="styles.css?v=1.8.0" />
     <style>
       .mission-control-shell {
         max-width: 960px;
@@ -64,6 +64,16 @@
     </style>
   </head>
   <body>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html" class="active">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
+<details class="page-guide" open>
+  <summary>Page Guide — What is this?</summary>
+  <div class="page-guide-body">
+    <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Every video project on one page. Each card is a video with its current stage, artifacts, and next action.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Click a video card to see its full detail. For the focused what-now view, use <a href="package-runs-dashboard.html">Dashboard</a></span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Cards show: stage, script status, image prompts, generated images, video generation status, and resolve handoff state. Filter by stage or status.</span></div>
+  </div>
+</details>
+
     <div class="mission-control-shell">
       <header class="mc-header">
         <p class="eyebrow">VIDTOOLZ</p>
@@ -84,20 +94,7 @@
       </nav>
 
       <p class="mc-section-title">Active</p>
-
-      <article class="mc-video-card parked">
-        <div class="mc-thumb">
-          <div class="mc-thumb-placeholder">No active<br>production<br><span style="font-size:10px;color:var(--muted)">(ready for next topic)</span></div>
-        </div>
-        <div class="mc-card-body">
-          <div class="mc-card-top">
-            <span class="mc-badge parked-badge">Queue</span>
-          </div>
-          <h2 class="mc-topic">No active production</h2>
-          <div class="mc-stage">Both published videos shipped. Ready for next topic selection.</div>
-          <div class="mc-next"><strong>Next:</strong> Mikko selects next topic → approved idea → package-run → produce</div>
-        </div>
-      </article>
+      <div id="active-runs-root" style="color:var(--muted);font-size:13px;padding:16px 0;">Loading active productions...</div>
 
       <p class="mc-section-title">Published</p>
       <div id="published-videos-root"></div>
@@ -204,6 +201,123 @@
 
     </div>
     <script>
+      (function () {
+        var activeRoot = document.getElementById("active-runs-root");
+        if (activeRoot) {
+          function renderNoActiveCard() {
+            var article = document.createElement("article");
+            article.className = "mc-video-card parked";
+            var thumb = document.createElement("div");
+            thumb.className = "mc-thumb";
+            var thumbInner = document.createElement("div");
+            thumbInner.className = "mc-thumb-placeholder";
+            thumbInner.innerHTML = "No active<br>production<br><span style=\"font-size:10px;color:var(--muted)\">(ready for next topic)</span>";
+            thumb.appendChild(thumbInner);
+            var body = document.createElement("div");
+            body.className = "mc-card-body";
+            var top = document.createElement("div");
+            top.className = "mc-card-top";
+            var queueBadge = document.createElement("span");
+            queueBadge.className = "mc-badge parked-badge";
+            queueBadge.textContent = "Queue";
+            top.appendChild(queueBadge);
+            var title = document.createElement("h2");
+            title.className = "mc-topic";
+            title.textContent = "No active production";
+            var stage = document.createElement("div");
+            stage.className = "mc-stage";
+            stage.textContent = "Ready for next topic selection.";
+            var next = document.createElement("div");
+            next.className = "mc-next";
+            var nextStrong = document.createElement("strong");
+            nextStrong.textContent = "Next:";
+            next.appendChild(nextStrong);
+            next.appendChild(document.createTextNode(" Mikko selects next topic → approved idea → package-run → produce"));
+            body.append(top, title, stage, next);
+            article.append(thumb, body);
+            return article;
+          }
+
+          function thumbWordsFromTitle(title, runId) {
+            var text = (title || runId || "").toUpperCase().replace(/[^\w\s]/g, " ").trim();
+            var words = text.split(/\s+/).filter(Boolean).slice(0, 4);
+            return words.length ? words : ["ACTIVE", "RUN"];
+          }
+
+          function renderActiveRunCard(run) {
+            var article = document.createElement("article");
+            article.className = "mc-video-card active";
+            var thumb = document.createElement("div");
+            thumb.className = "mc-thumb";
+            var thumbInner = document.createElement("div");
+            thumbInner.className = "mc-thumb-placeholder";
+            thumbWordsFromTitle(run.title, run.runId).forEach(function (word, i) {
+              if (i) thumbInner.appendChild(document.createElement("br"));
+              thumbInner.appendChild(document.createTextNode(word));
+            });
+            thumb.appendChild(thumbInner);
+            var body = document.createElement("div");
+            body.className = "mc-card-body";
+            var top = document.createElement("div");
+            top.className = "mc-card-top";
+            var dateEl = document.createElement("span");
+            dateEl.className = "mc-date";
+            dateEl.textContent = String(run.runId || "").replace(/^(\d{4}-\d{2}-\d{2}).*/, "$1") || run.runId;
+            var badge = document.createElement("span");
+            badge.className = "mc-badge active-badge";
+            badge.textContent = run.status || "Active";
+            top.append(dateEl, badge);
+            var titleEl = document.createElement("h2");
+            titleEl.className = "mc-topic";
+            var titleLink = document.createElement("a");
+            titleLink.href = "package-runs-dashboard.html";
+            titleLink.textContent = run.title || "Untitled";
+            titleEl.appendChild(titleLink);
+            var stage = document.createElement("div");
+            stage.className = "mc-stage";
+            stage.textContent = run.workflowBucket || run.status || "";
+            var next = document.createElement("div");
+            next.className = "mc-next";
+            var nextStrong = document.createElement("strong");
+            nextStrong.textContent = "Next: ";
+            next.appendChild(nextStrong);
+            next.appendChild(document.createTextNode(run.nextExpectedFile || "See dashboard for next action"));
+            var footer = document.createElement("div");
+            footer.className = "mc-card-footer";
+            var dashLink = document.createElement("a");
+            dashLink.href = "package-runs-dashboard.html";
+            dashLink.textContent = "Open in Dashboard →";
+            footer.appendChild(dashLink);
+            body.append(top, titleEl, stage, next, footer);
+            article.append(thumb, body);
+            return article;
+          }
+
+          fetch("/api/package-runs/list", { cache: "no-store" })
+            .then(function (response) {
+              return response.json().then(function (json) {
+                if (!response.ok) throw new Error(json.error || ("Request failed (" + response.status + ")"));
+                return json.data !== undefined ? json.data : json;
+              });
+            })
+            .then(function (data) {
+              var activeRuns = (data.runs || []).filter(function (run) { return !run.inactive; });
+              activeRoot.removeAttribute("style");
+              activeRoot.style.cssText = "";
+              if (!activeRuns.length) {
+                activeRoot.replaceChildren(renderNoActiveCard());
+                return;
+              }
+              activeRoot.replaceChildren.apply(activeRoot, activeRuns.map(renderActiveRunCard));
+            })
+            .catch(function (error) {
+              activeRoot.textContent = "Failed to load active productions. Refresh to retry.";
+              activeRoot.style.cssText = "color:var(--danger);font-size:13px;padding:16px 0;";
+              console.error("Active runs fetch failed:", error);
+            });
+        }
+      })();
+
       (function () {
         const publishedRoot = document.getElementById("published-videos-root");
         if (!publishedRoot) return;
