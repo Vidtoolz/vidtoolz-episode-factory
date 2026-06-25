@@ -1132,9 +1132,12 @@ Capture evidence approval: PASS`;
     </section>` : "";
   }
 
-  function renderBeginningTriageField(fields, key, label, placeholder = "") {
+  function renderBeginningTriageField(fields, key, label, placeholder = "", ownership = "input") {
+    const ownerClass = ownership === "paste" ? "field-ownership--paste" : "field-ownership--input";
+    const ownerLabel = ownership === "paste" ? "Paste from research" : "Your input";
     return `<label class="beginning-triage-field">
       <span>${escapeHtml(label)}</span>
+      <small class="field-ownership ${ownerClass}">${ownerLabel}</small>
       <textarea rows="3" data-beginning-field="${escapeHtml(key)}" placeholder="${escapeHtml(placeholder)}">${escapeHtml(fields[key] || "")}</textarea>
     </label>`;
   }
@@ -1152,16 +1155,16 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         <strong>${escapeHtml(fields[`candidate${index}Title`] || `Candidate ${index}`)}</strong>
         ${selected ? renderStatusBadge("selected") : ""}
       </div>
-      ${renderBeginningTriageField(fields, `candidate${index}Title`, "Angle name")}
-      ${renderBeginningTriageField(fields, `candidate${index}Problem`, "Viewer problem")}
-      ${renderBeginningTriageField(fields, `candidate${index}Claim`, "Potential claim")}
-      ${renderBeginningTriageField(fields, `candidate${index}Proof`, "Proof path")}
-      ${renderBeginningTriageField(fields, `candidate${index}Risk`, "Risk")}
+      ${renderBeginningTriageField(fields, `candidate${index}Title`, "Angle name", "", "paste")}
+      ${renderBeginningTriageField(fields, `candidate${index}Problem`, "Viewer problem", "", "paste")}
+      ${renderBeginningTriageField(fields, `candidate${index}Claim`, "Potential claim", "", "paste")}
+      ${renderBeginningTriageField(fields, `candidate${index}Proof`, "Proof path", "", "paste")}
+      ${renderBeginningTriageField(fields, `candidate${index}Risk`, "Risk", "", "paste")}
       <details class="beginning-card-notes">
         <summary>More notes</summary>
-        ${renderBeginningTriageField(fields, `candidate${index}Care`, "Why serious creators should care")}
-        ${renderBeginningTriageField(fields, `candidate${index}Packaging`, "Packaging potential")}
-        ${renderBeginningTriageField(fields, `candidate${index}Fit`, "VIDTOOLZ fit")}
+        ${renderBeginningTriageField(fields, `candidate${index}Care`, "Why serious creators should care", "", "paste")}
+        ${renderBeginningTriageField(fields, `candidate${index}Packaging`, "Packaging potential", "", "paste")}
+        ${renderBeginningTriageField(fields, `candidate${index}Fit`, "VIDTOOLZ fit", "", "paste")}
       </details>
       <button type="button" class="primary-action" data-beginning-action="select-candidate" data-beginning-candidate="${index}">Select this candidate</button>
     </article>`;
@@ -3525,12 +3528,24 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       return normalizeBeginningTriageState(state);
     }
 
+    function flashBeginningTriageSaved() {
+      if (!els.beginningTriagePanel) return;
+      const card = els.beginningTriagePanel.querySelector(".beginning-triage-card");
+      if (!card) return;
+      const toast = globalScope.document.createElement("div");
+      toast.className = "beginning-triage-toast";
+      toast.textContent = "Saved";
+      card.insertBefore(toast, card.firstChild);
+      setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 850);
+    }
+
     function updateBeginningTriageStage(container, stage, extra = {}) {
       const state = normalizeBeginningTriageState({ ...beginningTriageStateFromDom(container), ...extra, stage });
       const step = BEGINNING_TRIAGE_STEPS.find((item) => item.id === state.stage);
       state.status = state.stage === "not_started" ? "Not started" : step ? step.label : state.status;
       saveBeginningTriageState(state);
       renderBeginningTriageFromStorage();
+      flashBeginningTriageSaved();
     }
 
     function updateBeginningTriageDraft(event) {
