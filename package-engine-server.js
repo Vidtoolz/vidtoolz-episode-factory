@@ -15,6 +15,8 @@ const publicationMetadataScript = require('./scripts/package-run-publication-met
 const archiveManifestScript = require('./scripts/package-run-archive-manifest.js');
 const nextSafeActionScript = require('./scripts/package-run-next-safe-action.js');
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
+const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
+const submittedTopics = require('./scripts/submitted-topics.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
@@ -43,6 +45,9 @@ const EXPORT_MASTER_APPLY_API = '/api/package-runs/export-master/apply';
 const DELIVERY_READINESS_SAVE_API = '/api/package-runs/delivery-readiness/save';
 const EXPORT_CHECKLIST_REGENERATE_API = '/api/package-runs/export-checklist/regenerate-derived';
 const PACKAGE_RUNS_LIST_API = '/api/package-runs/list';
+const HYPERFRAMES_STATUS_API = '/api/hyperframes/status';
+const HYPERFRAMES_PREVIEW_API = '/api/hyperframes/preview';
+const HYPERFRAMES_RENDER_API = '/api/hyperframes/render';
 const FINAL_REVIEW_API = '/api/package-runs/final-review';
 const EXPORT_CHECKLIST_API = '/api/package-runs/export-checklist';
 const PUBLICATION_METADATA_API = '/api/package-runs/publication-metadata';
@@ -51,6 +56,7 @@ const ROUGH_CUT_SAVE_API = '/api/package-runs/rough-cut/watch-notes';
 const ROUGH_CUT_REVIEW_API = '/api/package-runs/rough-cut/review';
 const ROUGH_CUT_REGENERATE_DERIVED_API = '/api/package-runs/rough-cut/regenerate-derived';
 const ROUGH_CUT_OPEN_API = '/api/package-runs/rough-cut/open';
+const PACKAGE_RUNS_OPEN_API = '/api/package-runs/open';
 const PICKUP_PLAN_SAVE_API = '/api/package-runs/pickup-plan/save';
 const AIGEN_STATUS_API = '/api/aigen/production-pipeline/status';
 const AIGEN_RESOLVE_ASSEMBLY_API = '/api/aigen/resolve-assembly/create';
@@ -61,6 +67,7 @@ const PRESTO_SUBMIT_API = '/api/presto/submit';
 const PRESTO_JOB_STATUS_API = '/api/presto/job-status';
 const PRESTO_CANCEL_API = '/api/presto/cancel';
 const PRESTO_RESULTS_API = '/api/presto/results';
+const PACKAGE_VIDEO_PROMPTS_API = '/api/package/video-prompts';
 const FLUX_SUBMIT_API = '/api/flux/submit';
 const FLUX_JOB_STATUS_API = '/api/flux/job-status';
 const FLUX_CANCEL_API = '/api/flux/cancel';
@@ -71,6 +78,12 @@ const IMAGE_PROMPTS_SAVE_API = '/api/image-prompts/save';
 const DAILY_SCOUT_TODAY_API = '/api/daily-idea-scout/today';
 const DAILY_SCOUT_ARCHIVE_API = '/api/daily-idea-scout/archive';
 const DAILY_SCOUT_DATES_API = '/api/daily-idea-scout/dates';
+const TOPIC_SCOUT_LIST_API = '/api/topic-scout/list';
+const TOPIC_SCOUT_SUBMIT_API = '/api/topic-scout/submit';
+const TOPIC_SCOUT_GET_API = '/api/topic-scout/get';
+const TOPIC_SCOUT_UPDATE_STATUS_API = '/api/topic-scout/update-status';
+const SAVE_SELECTED_PACKAGE_API = '/api/package-engine/save-selected';
+const GENERATE_OUTLINE_PROMPT_API = '/api/package-engine/generate-outline-prompt';
 const SERVE_ROOT = ROOT;
 const PACKAGE_RUNS_DIR = 'package-runs';
 const VIDNAS_AIGEN_ROOT = '/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen';
@@ -181,6 +194,15 @@ const EVIDENCE_INTAKE_DRAFT_SECTION_START = '<!-- evidence-intake-draft:start --
 const EVIDENCE_INTAKE_DRAFT_SECTION_END = '<!-- evidence-intake-draft:end -->';
 const LOCAL_WRITE_NONCE = crypto.randomBytes(24).toString('hex');
 const LOCAL_WRITE_NONCE_HEADER = 'x-vidtoolz-local-write-nonce';
+const HYPERFRAMES_DIR = 'hyperframes';
+const HYPERFRAMES_COMPOSITIONS_DIR = 'compositions';
+const HYPERFRAMES_RENDERS_DIR = 'renders';
+const HYPERFRAMES_LOGS_DIR = 'logs';
+const HYPERFRAMES_MANIFEST_FILE = 'hyperframes.json';
+const HYPERFRAMES_PROBE_COMMAND = ['npx', '--no-install', 'hyperframes', '--help'];
+const HYPERFRAMES_RENDER_COMMAND = ['npx', '--no-install', 'hyperframes', 'render'];
+const HYPERFRAMES_PROBE_TTL_MS = 60 * 1000;
+let hyperframesAvailabilityCache = null;
 const EVIDENCE_INTAKE_MEDIA_TYPES = [
   'screen_capture',
   'camera_capture',
@@ -233,6 +255,14 @@ function send(res, status, body, headers = {}) {
     ...headers,
   });
   res.end(data);
+}
+
+function sendError(res, statusCode, message, code, extra) {
+  send(res, statusCode, Object.assign({ ok: false, error: message || 'An error occurred', code: code || null }, extra || {}));
+}
+
+function sendJSON(res, statusCode, data) {
+  send(res, statusCode, { ok: true, data: data });
 }
 
 function safeJoin(root, requestPath) {
@@ -465,6 +495,320 @@ function findActivePackageRun(options = {}) {
 function resolveRunFromPayload(payload = {}, options = {}) {
   if (payload.runId) return resolvePackageRunDir(payload.runId, options);
   return findActivePackageRun(options);
+}
+
+function validateHyperframesCompositionId(id = '') {
+  const normalized = String(id || '').trim();
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(normalized)) {
+    const error = new Error('Invalid HyperFrames composition id.');
+    error.statusCode = 400;
+    throw error;
+  }
+  return normalized;
+}
+
+function hyperframesPaths(runDir) {
+  const baseDir = path.join(runDir, HYPERFRAMES_DIR);
+  return {
+    baseDir,
+    compositionsDir: path.join(baseDir, HYPERFRAMES_COMPOSITIONS_DIR),
+    rendersDir: path.join(baseDir, HYPERFRAMES_RENDERS_DIR),
+    logsDir: path.join(baseDir, HYPERFRAMES_LOGS_DIR),
+    manifestPath: path.join(baseDir, HYPERFRAMES_MANIFEST_FILE),
+  };
+}
+
+function hyperframesRelative(...parts) {
+  return path.posix.join(HYPERFRAMES_DIR, ...parts);
+}
+
+function titleFromCompositionId(id = '') {
+  return String(id || '')
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ') || 'Untitled composition';
+}
+
+function normalizeHyperframesStatus(value = '') {
+  const status = String(value || '').trim();
+  return ['not_rendered', 'rendered', 'failed', 'rendering'].includes(status) ? status : 'not_rendered';
+}
+
+function readHyperframesManifest(runDir) {
+  const { manifestPath } = hyperframesPaths(runDir);
+  if (!fs.existsSync(manifestPath)) {
+    return { schema_version: 1, updated_at: null, compositions: [] };
+  }
+  try {
+    const parsed = readJsonFile(manifestPath);
+    return {
+      schema_version: Number(parsed.schema_version) || 1,
+      updated_at: parsed.updated_at || null,
+      compositions: Array.isArray(parsed.compositions) ? parsed.compositions : [],
+    };
+  } catch (error) {
+    return { schema_version: 1, updated_at: null, compositions: [], manifest_error: error.message };
+  }
+}
+
+function compositionFromManifestItem(item = {}, fallbackId = '') {
+  const id = validateHyperframesCompositionId(item.id || fallbackId);
+  return {
+    id,
+    title: String(item.title || titleFromCompositionId(id)),
+    source_html: String(item.source_html || hyperframesRelative(HYPERFRAMES_COMPOSITIONS_DIR, `${id}.html`)),
+    preview_url: String(item.preview_url || `${HYPERFRAMES_PREVIEW_API}?runId=&id=${encodeURIComponent(id)}`),
+    rendered_mp4: String(item.rendered_mp4 || hyperframesRelative(HYPERFRAMES_RENDERS_DIR, `${id}.mp4`)),
+    status: normalizeHyperframesStatus(item.status),
+    last_rendered_at: item.last_rendered_at || null,
+    last_error: item.last_error || null,
+    approved: Boolean(item.approved),
+  };
+}
+
+function buildHyperframesComposition(runId, id, manifestItem = {}, renderedExists = false) {
+  const base = compositionFromManifestItem({ ...manifestItem, id }, id);
+  const renderedPath = hyperframesRelative(HYPERFRAMES_RENDERS_DIR, `${id}.mp4`);
+  return {
+    ...base,
+    source_html: hyperframesRelative(HYPERFRAMES_COMPOSITIONS_DIR, `${id}.html`),
+    preview_url: `${HYPERFRAMES_PREVIEW_API}?runId=${encodeURIComponent(runId)}&id=${encodeURIComponent(id)}`,
+    rendered_mp4: renderedPath,
+    status: base.status === 'not_rendered' && renderedExists ? 'rendered' : base.status,
+    last_rendered_at: renderedExists && !base.last_rendered_at ? null : base.last_rendered_at,
+  };
+}
+
+function discoverHyperframesCompositions(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const paths = hyperframesPaths(resolved.runDir);
+  const manifest = readHyperframesManifest(resolved.runDir);
+  const manifestById = new Map();
+  manifest.compositions.forEach((item) => {
+    try {
+      const composition = compositionFromManifestItem(item);
+      manifestById.set(composition.id, composition);
+    } catch (_error) {
+      // Invalid manifest ids are ignored so discovered HTML files can still show.
+    }
+  });
+  const hasHyperframesDir = fs.existsSync(paths.baseDir) && fs.statSync(paths.baseDir).isDirectory();
+  const hasCompositionsDir = fs.existsSync(paths.compositionsDir) && fs.statSync(paths.compositionsDir).isDirectory();
+  const discoveredIds = hasCompositionsDir
+    ? fs.readdirSync(paths.compositionsDir, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && /\.html$/i.test(entry.name))
+        .map((entry) => path.basename(entry.name, path.extname(entry.name)))
+        .filter((id) => /^[a-z0-9][a-z0-9-]*$/.test(id))
+        .sort()
+    : [];
+  const allIds = [...new Set([...discoveredIds, ...manifestById.keys()])].sort();
+  const compositions = allIds.map((id) => {
+    const renderedPath = path.join(paths.rendersDir, `${id}.mp4`);
+    return buildHyperframesComposition(resolved.runId, id, manifestById.get(id) || {}, fs.existsSync(renderedPath));
+  });
+  let laneStatus = 'no_directory';
+  if (hasHyperframesDir && !compositions.length) laneStatus = 'no_compositions';
+  if (compositions.some((item) => item.status === 'failed')) laneStatus = 'failed';
+  else if (compositions.some((item) => item.status === 'rendering')) laneStatus = 'rendering';
+  else if (compositions.some((item) => item.status === 'rendered')) laneStatus = 'rendered';
+  else if (compositions.length) laneStatus = 'not_rendered';
+  return {
+    ok: true,
+    runId: resolved.runId,
+    runPath: path.relative(resolved.root, resolved.runDir).replace(/\\/g, '/'),
+    availability: probeHyperframesAvailability(options),
+    lane: {
+      status: laneStatus,
+      hasHyperframesDir,
+      hasCompositionsDir,
+      compositionsCount: compositions.length,
+      manifestPath: fs.existsSync(paths.manifestPath) ? hyperframesRelative(HYPERFRAMES_MANIFEST_FILE) : '',
+      manifestError: manifest.manifest_error || null,
+    },
+    manifest: {
+      schema_version: manifest.schema_version,
+      updated_at: manifest.updated_at,
+      compositions,
+    },
+  };
+}
+
+function writeHyperframesManifest(runDir, compositions = []) {
+  const paths = hyperframesPaths(runDir);
+  fs.mkdirSync(paths.baseDir, { recursive: true });
+  const manifest = {
+    schema_version: 1,
+    updated_at: new Date().toISOString(),
+    compositions: compositions.map((item) => compositionFromManifestItem(item)),
+  };
+  fs.writeFileSync(paths.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  return manifest;
+}
+
+function updateHyperframesComposition(runDir, runId, id, patch = {}, options = {}) {
+  const paths = hyperframesPaths(runDir);
+  fs.mkdirSync(paths.rendersDir, { recursive: true });
+  fs.mkdirSync(paths.logsDir, { recursive: true });
+  const discovered = discoverHyperframesCompositions({ runId }, { root: options.root || path.dirname(path.dirname(runDir)) });
+  const current = discovered.manifest.compositions;
+  const existing = current.find((item) => item.id === id) || buildHyperframesComposition(runId, id);
+  const next = current.filter((item) => item.id !== id);
+  next.push({ ...existing, ...patch, id, approved: Boolean(existing.approved && patch.approved !== false) });
+  return writeHyperframesManifest(runDir, next.sort((a, b) => a.id.localeCompare(b.id)));
+}
+
+function resolveHyperframesCompositionFile(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const id = validateHyperframesCompositionId(payload.id || payload.compositionId);
+  const paths = hyperframesPaths(resolved.runDir);
+  const sourcePath = path.resolve(paths.compositionsDir, `${id}.html`);
+  const compositionRoot = path.resolve(paths.compositionsDir);
+  if (!sourcePath.startsWith(compositionRoot + path.sep)) {
+    const error = new Error('HyperFrames preview path escaped compositions directory.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) {
+    const error = new Error('HyperFrames composition HTML does not exist.');
+    error.statusCode = 404;
+    throw error;
+  }
+  return { ...resolved, id, ...paths, sourcePath };
+}
+
+function parseHyperframesVersion(output = '') {
+  const text = String(output || '');
+  const explicit = text.match(/\b(?:hyperframes\s+)?v?(\d+\.\d+\.\d+(?:[-+][\w.-]+)?)/i);
+  return explicit ? explicit[1] : '';
+}
+
+function probeHyperframesAvailability(options = {}) {
+  const now = Date.now();
+  if (!options.force && hyperframesAvailabilityCache && now - hyperframesAvailabilityCache.checkedAtMs < HYPERFRAMES_PROBE_TTL_MS) {
+    return hyperframesAvailabilityCache.value;
+  }
+  const command = options.probeCommand || HYPERFRAMES_PROBE_COMMAND;
+  const runner = options.runner || childProcess.spawnSync;
+  const checkedAt = new Date().toISOString();
+  let result;
+  try {
+    result = runner(command[0], command.slice(1), {
+      cwd: options.cwd || ROOT,
+      encoding: 'utf8',
+      timeout: options.timeoutMs || 15000,
+      env: { ...process.env, npm_config_yes: 'false' },
+    });
+  } catch (error) {
+    const value = {
+      available: false,
+      command: command.join(' '),
+      version: '',
+      error: error.message,
+      checked_at: checkedAt,
+    };
+    hyperframesAvailabilityCache = { checkedAtMs: now, value };
+    return value;
+  }
+  const stdout = result && result.stdout ? String(result.stdout) : '';
+  const stderr = result && result.stderr ? String(result.stderr) : '';
+  const combined = `${stdout}\n${stderr}`.trim();
+  const value = {
+    available: Boolean(result && result.status === 0),
+    command: command.join(' '),
+    version: parseHyperframesVersion(combined),
+    error: result && result.status === 0 ? '' : (combined || (result && result.error && result.error.message) || 'HyperFrames CLI unavailable.'),
+    checked_at: checkedAt,
+  };
+  hyperframesAvailabilityCache = { checkedAtMs: now, value };
+  return value;
+}
+
+function hyperframesRenderCommand(sourcePath, outputPath) {
+  return [...HYPERFRAMES_RENDER_COMMAND, sourcePath, outputPath];
+}
+
+function runHyperframesRenderCommand(sourcePath, outputPath, logPath, options = {}) {
+  const command = options.renderCommand || hyperframesRenderCommand(sourcePath, outputPath);
+  const runner = options.runner || childProcess.spawnSync;
+  const result = runner(command[0], command.slice(1), {
+    cwd: options.cwd || ROOT,
+    encoding: 'utf8',
+    timeout: options.timeoutMs || 5 * 60 * 1000,
+    env: { ...process.env, npm_config_yes: 'false' },
+  });
+  const stdout = result && result.stdout ? String(result.stdout) : '';
+  const stderr = result && result.stderr ? String(result.stderr) : '';
+  fs.writeFileSync(logPath, [
+    `Command: ${command.join(' ')}`,
+    `Exit code: ${result && typeof result.status === 'number' ? result.status : 'unknown'}`,
+    '',
+    'STDOUT:',
+    stdout,
+    '',
+    'STDERR:',
+    stderr,
+  ].join('\n'), 'utf8');
+  if (!result || result.status !== 0) {
+    const error = new Error((stderr || stdout || (result && result.error && result.error.message) || 'HyperFrames render failed.').trim());
+    error.statusCode = 500;
+    error.command = command.join(' ');
+    throw error;
+  }
+  return {
+    ok: true,
+    command: command.join(' '),
+    stdout,
+    stderr,
+  };
+}
+
+function renderHyperframesComposition(payload = {}, options = {}) {
+  const target = resolveHyperframesCompositionFile(payload, options);
+  const outputPath = path.join(target.rendersDir, `${target.id}.mp4`);
+  const logPath = path.join(target.logsDir, `${target.id}.log`);
+  fs.mkdirSync(target.rendersDir, { recursive: true });
+  fs.mkdirSync(target.logsDir, { recursive: true });
+  updateHyperframesComposition(target.runDir, target.runId, target.id, {
+    status: 'rendering',
+    last_error: null,
+    rendered_mp4: hyperframesRelative(HYPERFRAMES_RENDERS_DIR, `${target.id}.mp4`),
+  }, { root: target.root });
+  try {
+    const renderResult = (options.renderer || runHyperframesRenderCommand)(target.sourcePath, outputPath, logPath, options);
+    const manifest = updateHyperframesComposition(target.runDir, target.runId, target.id, {
+      status: 'rendered',
+      last_rendered_at: new Date().toISOString(),
+      last_error: null,
+      rendered_mp4: hyperframesRelative(HYPERFRAMES_RENDERS_DIR, `${target.id}.mp4`),
+      approved: false,
+    }, { root: target.root });
+    return {
+      ok: true,
+      runId: target.runId,
+      id: target.id,
+      source_html: hyperframesRelative(HYPERFRAMES_COMPOSITIONS_DIR, `${target.id}.html`),
+      rendered_mp4: hyperframesRelative(HYPERFRAMES_RENDERS_DIR, `${target.id}.mp4`),
+      log: hyperframesRelative(HYPERFRAMES_LOGS_DIR, `${target.id}.log`),
+      command: renderResult.command || hyperframesRenderCommand(target.sourcePath, outputPath).join(' '),
+      approved: false,
+      manifest,
+    };
+  } catch (error) {
+    const message = String(error.message || 'HyperFrames render failed.');
+    if (!fs.existsSync(logPath)) {
+      fs.writeFileSync(logPath, `${message}\n`, 'utf8');
+    }
+    const manifest = updateHyperframesComposition(target.runDir, target.runId, target.id, {
+      status: 'failed',
+      last_error: message,
+      rendered_mp4: hyperframesRelative(HYPERFRAMES_RENDERS_DIR, `${target.id}.mp4`),
+      approved: false,
+    }, { root: target.root });
+    error.manifest = manifest;
+    error.statusCode = error.statusCode || 500;
+    throw error;
+  }
 }
 
 function roughCutInputDefaults() {
@@ -4328,18 +4672,33 @@ function prestoRunningSeconds(job, now = Date.now()) {
 
 function serializePrestoJob(job, running, now = Date.now()) {
   if (!job) return null;
+  const elapsed = prestoRunningSeconds(job, now);
+  // ETA: Wan2.2 81-frame render typically takes ~717s (12 min)
+  const WAN_81F_TYPICAL_SECONDS = 717;
+  const etaSeconds = running ? Math.max(0, WAN_81F_TYPICAL_SECONDS - elapsed) : 0;
+  const etaPct = Math.min(100, Math.round((elapsed / WAN_81F_TYPICAL_SECONDS) * 100));
   return {
     running,
     package_id: job.packageId,
     comfyui_url: job.comfyuiUrl,
     started_at: job.startedAt,
     completed_at: job.completedAt || null,
-    running_seconds: prestoRunningSeconds(job, now),
+    running_seconds: elapsed,
+    eta_seconds: etaSeconds,
+    progress_pct: etaPct,
+    eta_label: running ? formatEta(etaSeconds) : 'Done',
     exit_code: job.exitCode == null ? null : job.exitCode,
     signal: job.signal || null,
     stdout_tail: tailOutput(job.stdout),
     stderr_tail: tailOutput(job.stderr),
   };
+}
+
+function formatEta(seconds) {
+  if (seconds <= 0) return 'Done';
+  const min = Math.floor(seconds / 60);
+  const sec = seconds % 60;
+  return min > 0 ? `${min}m ${sec}s` : `${sec}s`;
 }
 
 function currentPrestoJobStatus(now = Date.now()) {
@@ -4558,6 +4917,77 @@ function handlePrestoResults(req, res, url) {
   }
 }
 
+function readPackageVideoPrompts(packageId, options = {}) {
+  const { packageId: id, packageDir } = resolveAigenPackageDir(packageId, options);
+  const selected = safeReadJson(path.join(packageDir, 'selected-images.json'), null);
+  const selections = selected && Array.isArray(selected.selections) ? selected.selections : [];
+
+  const videoPromptsFile = path.join(packageDir, 'video-prompts.json');
+  const videoPrompts = safeReadJson(videoPromptsFile, null);
+  const vpPrompts = videoPrompts && Array.isArray(videoPrompts.prompts) ? videoPrompts.prompts : [];
+
+  // If video-prompts.json is missing or has no prompts, return not_prepared — never fall back to image-prompts.json
+  if (vpPrompts.length === 0) {
+    return {
+      ok: true,
+      package_id: id,
+      state: 'not_prepared',
+      selections_count: selections.length,
+      entries: [],
+    };
+  }
+
+  // Validate one-to-one: every selection prompt_index must have a matching video prompt, and vice versa
+  const selIndices = new Set(selections.map((s) => Number(s.prompt_index)));
+  const vpIndices = new Set(vpPrompts.map((p) => Number(p.prompt_index)));
+  const missingInVp = [...selIndices].filter((idx) => !vpIndices.has(idx));
+  const extraInVp = [...vpIndices].filter((idx) => !selIndices.has(idx));
+
+  if (missingInVp.length > 0 || extraInVp.length > 0) {
+    const parts = [];
+    if (missingInVp.length > 0) parts.push(`selections without video prompts: ${missingInVp.join(', ')}`);
+    if (extraInVp.length > 0) parts.push(`video prompts without selections: ${extraInVp.join(', ')}`);
+    const error = new Error(`video-prompts.json does not match selected-images.json: ${parts.join('; ')}`);
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const entries = [];
+  for (const selection of selections) {
+    if (!selection || typeof selection !== 'object') continue;
+    const promptIndex = Number(selection.prompt_index);
+    const selectedRel = String(selection.selected_path || '');
+    const label = labelFromSelectedPath(selectedRel);
+    const imagePath = path.join(packageDir, selectedRel);
+    const imageExists = fs.existsSync(imagePath);
+    const vpItem = vpPrompts.find((p) => Number(p.prompt_index) === promptIndex);
+    const promptText = vpItem ? String(vpItem.prompt || '') : '';
+    entries.push({
+      label,
+      prompt_index: promptIndex,
+      selected_path: selectedRel,
+      image_exists: imageExists,
+      prompt_text: promptText,
+    });
+  }
+  return {
+    ok: true,
+    package_id: id,
+    state: 'ready',
+    selections_count: entries.length,
+    entries,
+  };
+}
+
+function handlePackageVideoPrompts(req, res, url) {
+  try {
+    const result = readPackageVideoPrompts(url.searchParams.get('package_id'));
+    send(res, 200, result);
+  } catch (error) {
+    send(res, error.statusCode || 500, { ok: false, error: error.message });
+  }
+}
+
 function fluxRunningSeconds(job, now = Date.now()) {
   const started = Date.parse(job.startedAt);
   const ended = job.completedAt ? Date.parse(job.completedAt) : now;
@@ -4575,12 +5005,21 @@ function serializeFluxJob(job, active, now = Date.now()) {
       pid: null,
       started_at: null,
       elapsed_seconds: 0,
+      eta_seconds: 0,
+      progress_pct: 0,
+      eta_label: '',
       stdout_tail: '',
       stderr_tail: '',
       exit_code: null,
       exit_state: null,
     };
   }
+  const elapsed = fluxRunningSeconds(job, now);
+  // FLUX.1 Dev GGUF Q8_0 on RTX 5070 Ti: ~48s per 1080x1920 image
+  // Batch size varies; use 120s as fallback estimate per image
+  const FLUX_TYPICAL_SECONDS = 48;
+  const etaSeconds = active ? Math.max(0, FLUX_TYPICAL_SECONDS - elapsed) : 0;
+  const etaPct = Math.min(100, Math.round((elapsed / FLUX_TYPICAL_SECONDS) * 100));
   return {
     active,
     job_id: job.jobId,
@@ -4588,7 +5027,10 @@ function serializeFluxJob(job, active, now = Date.now()) {
     mode: job.mode,
     pid: job.pid || null,
     started_at: job.startedAt,
-    elapsed_seconds: fluxRunningSeconds(job, now),
+    elapsed_seconds: elapsed,
+    eta_seconds: etaSeconds,
+    progress_pct: etaPct,
+    eta_label: active ? formatEta(etaSeconds) : 'Done',
     stdout_tail: tailOutput(job.stdout, 4096),
     stderr_tail: tailOutput(job.stderr, 4096),
     exit_code: job.exitCode == null ? null : job.exitCode,
@@ -5024,6 +5466,70 @@ function openRoughCutVideo(payload = {}, options = {}) {
     command: `vlc ${absolute}`,
   };
 }
+
+function resolvePackageRunOpenTarget(payload = {}, options = {}) {
+  const resolved = resolveRunFromPayload(payload, options);
+  const rawAssetPath = markdownCell(payload.assetPath || payload.path || '');
+  if (!rawAssetPath) {
+    return { ...resolved, requested: '', targetPath: resolved.runDir, openedPath: resolved.runDir, targetExists: true };
+  }
+  if (path.isAbsolute(rawAssetPath) || rawAssetPath.includes('\\')) {
+    const error = new Error('Asset path must be relative to the package-run folder.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const normalized = path.posix.normalize(rawAssetPath);
+  if (!normalized || normalized === '.' || normalized.startsWith('../') || normalized.includes('/../')) {
+    const error = new Error('Asset path escaped the package-run folder.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const targetPath = path.resolve(resolved.runDir, normalized);
+  if (targetPath !== resolved.runDir && !targetPath.startsWith(resolved.runDir + path.sep)) {
+    const error = new Error('Resolved asset path escaped the package-run folder.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (fs.existsSync(targetPath)) {
+    const stat = fs.statSync(targetPath);
+    return {
+      ...resolved,
+      requested: normalized,
+      targetPath,
+      openedPath: stat.isDirectory() ? targetPath : path.dirname(targetPath),
+      targetExists: true,
+    };
+  }
+  const parentPath = path.dirname(targetPath);
+  const openedPath = parentPath.startsWith(resolved.runDir + path.sep) && fs.existsSync(parentPath) ? parentPath : resolved.runDir;
+  return { ...resolved, requested: normalized, targetPath, openedPath, targetExists: false };
+}
+
+function openPackageRunAssetFolder(payload = {}, options = {}) {
+  const resolved = resolvePackageRunOpenTarget(payload, options);
+  if (!fs.existsSync(resolved.openedPath) || !fs.statSync(resolved.openedPath).isDirectory()) {
+    const error = new Error('Folder to open does not exist.');
+    error.statusCode = 404;
+    throw error;
+  }
+  const opener = options.opener || childProcess.spawn;
+  const command = options.command || 'xdg-open';
+  const child = opener(command, [resolved.openedPath], {
+    detached: true,
+    stdio: 'ignore',
+  });
+  if (child && typeof child.unref === 'function') child.unref();
+  return {
+    ok: true,
+    runId: resolved.runId,
+    requested: resolved.requested,
+    opened: resolved.openedPath,
+    target: resolved.targetPath,
+    targetExists: resolved.targetExists,
+    command: `${command} ${resolved.openedPath}`,
+  };
+}
+
 
 function conservativeHeadingForTarget(filename) {
   const titles = {
@@ -5622,6 +6128,26 @@ function createStatusResponse(env = process.env) {
       missingOriginAllowed: true,
       evidenceIntakeAllowedWriteFiles: [CAPTURE_EVIDENCE_AUDIT_FILE],
     },
+    packageRunOpen: {
+      openApi: PACKAGE_RUNS_OPEN_API,
+      nonceHeader: LOCAL_WRITE_NONCE_HEADER,
+      localWriteNonce: LOCAL_WRITE_NONCE,
+      allowedHosts: [`127.0.0.1:${PORT}`, `localhost:${PORT}`],
+      action: 'open_os_folder',
+    },
+    hyperframes: {
+      availability: probeHyperframesAvailability(),
+      statusApi: HYPERFRAMES_STATUS_API,
+      previewApi: HYPERFRAMES_PREVIEW_API,
+      renderApi: HYPERFRAMES_RENDER_API,
+      nonceHeader: LOCAL_WRITE_NONCE_HEADER,
+      localWriteNonce: LOCAL_WRITE_NONCE,
+      manifest: hyperframesRelative(HYPERFRAMES_MANIFEST_FILE),
+      command: {
+        probe: HYPERFRAMES_PROBE_COMMAND.join(' '),
+        render: `${HYPERFRAMES_RENDER_COMMAND.join(' ')} <source.html> <output.mp4>`,
+      },
+    },
     roughCutInputConsole: {
       statusApi: ROUGH_CUT_STATUS_API,
       nextSafeActionApi: NEXT_SAFE_ACTION_API,
@@ -5912,7 +6438,416 @@ function handleDailyScoutDates(req, res) {
   send(res, 200, { ok: true, dates });
 }
 
-function createServer() {
+// ═══════════════════════════════════════════════════════════════
+// Media Gallery — scan a package-run + VIDNAS for all media assets
+// ═══════════════════════════════════════════════════════════════
+function handleMediaGallery(req, res, url) {
+  const runFolder = url.searchParams.get('run') || '';
+  if (!runFolder) {
+    sendError(res, 400, 'Missing run parameter', 'missing-run-param');
+    return;
+  }
+
+  let resolved;
+  try {
+    resolved = resolvePackageRunDir(runFolder);
+  } catch (e) {
+    sendError(res, e.statusCode || 400, e.message, 'run-resolution-error');
+    return;
+  }
+  const runDir = resolved.runDir;
+
+  const assets = [];
+  const VIDEO_EXT = /\.(mp4|webm|mov|avi|mkv)$/i;
+  const IMAGE_EXT = /\.(png|jpg|jpeg|webp|gif|bmp)$/i;
+
+  // 1. Scan run directory for any media files
+  function scanDir(dir, relBase) {
+    if (!fs.existsSync(dir)) return;
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (e) {
+      return;
+    }
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      const relPath = path.relative(relBase, fullPath);
+      if (entry.isDirectory()) {
+        // Skip node_modules, .git, superseded
+        if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'superseded') continue;
+        scanDir(fullPath, relBase);
+      } else if (VIDEO_EXT.test(entry.name) || IMAGE_EXT.test(entry.name)) {
+        try {
+          const stat = fs.statSync(fullPath);
+          const isVideo = VIDEO_EXT.test(entry.name);
+          assets.push({
+            name: entry.name,
+            path: `/package-runs/${runFolder}/${relPath.split(path.sep).join('/')}`,
+            url: `/package-runs/${runFolder}/${relPath.split(path.sep).join('/')}`,
+            size: stat.size,
+            type: isVideo ? 'video' : 'image',
+            mtime: stat.mtime.toISOString(),
+          });
+        } catch (e) {
+          // skip
+        }
+      }
+    }
+  }
+
+  scanDir(runDir, runDir);
+
+  // 2. Scan VIDNAS aigen directories for this run's media
+  const vidnasKlingDir = path.join(VIDNAS_AIGEN_ROOT, 'editors-replaced-kling');
+  if (fs.existsSync(vidnasKlingDir)) {
+    try {
+      const files = fs.readdirSync(vidnasKlingDir, { withFileTypes: true });
+      for (const entry of files) {
+        if (entry.isFile() && VIDEO_EXT.test(entry.name)) {
+          const stat = fs.statSync(path.join(vidnasKlingDir, entry.name));
+          assets.push({
+            name: entry.name,
+            path: `VIDNAS:aigen/editors-replaced-kling/${entry.name}`,
+            url: `/aigen-assets/editors-replaced-kling/${entry.name}`,
+            size: stat.size,
+            type: 'video',
+            source: 'VIDNAS',
+            mtime: stat.mtime.toISOString(),
+          });
+        }
+      }
+    } catch (e) {
+      // skip
+    }
+  }
+
+  // 3. Scan VIDNAS wan production lane
+  if (fs.existsSync(VIDNAS_WAN_LANE)) {
+    try {
+      const files = fs.readdirSync(VIDNAS_WAN_LANE, { withFileTypes: true });
+      for (const entry of files) {
+        if (entry.isFile() && VIDEO_EXT.test(entry.name)) {
+          const stat = fs.statSync(path.join(VIDNAS_WAN_LANE, entry.name));
+          assets.push({
+            name: entry.name,
+            path: `VIDNAS:aigen/image-to-video/production/wan22-81f/${entry.name}`,
+            url: `/aigen-assets/image-to-video/production/wan22-81f/${entry.name}`,
+            size: stat.size,
+            type: 'video',
+            source: 'VIDNAS',
+            mtime: stat.mtime.toISOString(),
+          });
+        }
+      }
+    } catch (e) {
+      // skip
+    }
+  }
+
+  // 4. Scan VIDNAS script-packages for images
+  if (runFolder.includes('ai-replace') || runFolder.includes('editors')) {
+    const pkgDir = path.join(VIDNAS_SCRIPT_PACKAGES, 'vidtoolz-youtube-ideas-20260611');
+    if (fs.existsSync(pkgDir)) {
+      function scanPkg(dir, pkgBase) {
+        let entries;
+        try {
+          entries = fs.readdirSync(dir, { withFileTypes: true });
+        } catch (e) {
+          return;
+        }
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            if (entry.name === 'node_modules' || entry.name === '.git') continue;
+            scanPkg(fullPath, pkgBase);
+          } else if (IMAGE_EXT.test(entry.name)) {
+            try {
+              const stat = fs.statSync(fullPath);
+              const relPath = path.relative(pkgBase, fullPath);
+              assets.push({
+                name: entry.name,
+                path: `VIDNAS:aigen/script-packages/vidtoolz-youtube-ideas-20260611/${relPath.split(path.sep).join('/')}`,
+                url: `/aigen-assets/script-packages/vidtoolz-youtube-ideas-20260611/${relPath.split(path.sep).join('/')}`,
+                size: stat.size,
+                type: 'image',
+                source: 'VIDNAS',
+                mtime: stat.mtime.toISOString(),
+              });
+            } catch (e) {
+              // skip
+            }
+          }
+        }
+      }
+      scanPkg(pkgDir, pkgDir);
+    }
+  }
+
+  // Sort by mtime descending
+  assets.sort((a, b) => (b.mtime || '').localeCompare(a.mtime || ''));
+
+  sendJSON(res, 200, {
+    runFolder,
+    assetCount: assets.length,
+    assets,
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Visual Beat Map — read-only beat map from existing run files
+// ═══════════════════════════════════════════════════════════════
+function handleBeatMap(req, res, url) {
+  const runFolder = url.searchParams.get('run') || '';
+  if (!runFolder) {
+    sendError(res, 400, 'Missing run parameter', 'missing-run-param');
+    return;
+  }
+  let resolved;
+  try {
+    resolved = resolvePackageRunDir(runFolder);
+  } catch (e) {
+    sendError(res, e.statusCode || 400, e.message, 'run-resolution-error');
+    return;
+  }
+  const runDir = resolved.runDir;
+
+  try {
+    const result = visualBeatMapParser.parseBeatMap(runDir);
+    sendJSON(res, 200, {
+      runId: runFolder,
+      beats: result.beats,
+      sources: result.sources,
+      totalBeats: result.beats.length,
+    });
+  } catch (error) {
+    sendError(res, 500, `Beat map parse failed: ${error.message}`, 'beat-map-parse-error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Friction Log — structured capture during production runs
+// ═══════════════════════════════════════════════════════════════
+function handleFrictionLogRead(req, res, url) {
+  const runFolder = url.searchParams.get('run') || '';
+  if (!runFolder) {
+    sendError(res, 400, 'Missing run parameter', 'missing-run-param');
+    return;
+  }
+  let resolved;
+  try {
+    resolved = resolvePackageRunDir(runFolder);
+  } catch (e) {
+    sendError(res, e.statusCode || 400, e.message, 'run-resolution-error');
+    return;
+  }
+  const logPath = path.join(resolved.runDir, 'FRICTION-LOG.json');
+  if (!fs.existsSync(logPath)) {
+    sendJSON(res, 200, { runFolder, entries: [], empty: true });
+    return;
+  }
+  try {
+    const data = JSON.parse(fs.readFileSync(logPath, 'utf8'));
+    sendJSON(res, 200, { runFolder, entries: data.entries || data || [], empty: !data.entries || data.entries.length === 0 });
+  } catch (e) {
+    sendJSON(res, 200, { runFolder, entries: [], empty: true, parseError: 'Failed to parse existing log' });
+  }
+}
+
+function handleFrictionLogSave(res, payload) {
+  const runFolder = payload.runFolder || '';
+  if (!runFolder) {
+    send(res, 400, { error: 'Missing runFolder' });
+    return;
+  }
+  let resolved;
+  try {
+    resolved = resolvePackageRunDir(runFolder);
+  } catch (e) {
+    send(res, e.statusCode || 400, { error: e.message });
+    return;
+  }
+  const runDir = resolved.runDir;
+  const logPath = path.join(runDir, 'FRICTION-LOG.json');
+  const logData = {
+    version: 1,
+    updatedAt: new Date().toISOString(),
+    entries: payload.entries || [],
+  };
+  fs.writeFileSync(logPath, JSON.stringify(logData, null, 2), 'utf8');
+  send(res, 200, { ok: true, saved: logData.entries.length, path: logPath });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Pipeline Status — derive 13-stage progress from package-run state
+// ═══════════════════════════════════════════════════════════════
+function handlePipelineStatus(req, res, url) {
+  const runFolder = url.searchParams.get('run') || '';
+  if (!runFolder) {
+    sendError(res, 400, 'Missing run parameter', 'missing-run-param');
+    return;
+  }
+  let resolved;
+  try {
+    resolved = resolvePackageRunDir(runFolder);
+  } catch (e) {
+    sendError(res, e.statusCode || 400, e.message, 'run-resolution-error');
+    return;
+  }
+  const runDir = resolved.runDir;
+
+  // Derive current stage from STATUS.md + file existence
+  const stages = [];
+  const statusPath = path.join(runDir, 'STATUS.md');
+  let statusContent = '';
+  try {
+    statusContent = fs.readFileSync(statusPath, 'utf8');
+  } catch (e) {
+    // ok
+  }
+
+  const existsAny = (names) => names.some((name) => fs.existsSync(path.join(runDir, name)));
+  const fileTextAny = (names) => names.map((name) => safeReadText(path.join(runDir, name), '')).join('\n');
+  // safeDirEntries returns Dirent objects (withFileTypes:true); extract .name before testing.
+  const hasMediaInDir = (dirPath) => fs.existsSync(dirPath) && safeDirEntries(dirPath).some((f) => MEDIA_FILE_PATTERN.test(f.name != null ? f.name : f));
+  let activeRunId = '';
+  try {
+    activeRunId = findActivePackageRun().runId;
+  } catch (_) {
+    activeRunId = '';
+  }
+  const reportText = activeRunId === runFolder ? safeReadText(path.join(ROOT, 'reports', 'prompt-03-selected-image-edit-handoff.md'), '') : '';
+  const manifestFromReport = (reportText.match(/`([^`]*generation-manifest\.json)`/i) || [])[1] || '';
+  const manifestPath = manifestFromReport && path.isAbsolute(manifestFromReport)
+    ? manifestFromReport
+    : (manifestFromReport ? path.join(ROOT, manifestFromReport) : path.join(runDir, 'flux-generation-manifest.json'));
+  const generationManifest = safeReadJson(manifestPath, null);
+  const manifestItems = generationManifest && Array.isArray(generationManifest.items) ? generationManifest.items : [];
+  const manifestDir = manifestPath ? path.dirname(manifestPath) : '';
+  const selectedImages = safeReadJson(path.join(runDir, 'selected-images.json'), null);
+  const selectedImageCount = Array.isArray(selectedImages && selectedImages.selections) ? selectedImages.selections.length : 0;
+  const selectedManifestCount = manifestItems.filter((item) => item && item.selected === true).length;
+  const klingCandidateDir = manifestDir ? path.join(manifestDir, 'kling-video-candidates') : '';
+
+  // Check for key files to determine stage completion. These are evidence signals only;
+  // they do not imply approval, production readiness, or publish readiness.
+  const hasIdea = existsAny(['idea.md', 'IDEA.md', 'package-candidates.json', 'selected-package.md', 'selected-package.json']);
+  const hasResearch = existsAny(['research-pack.md', 'research-evidence.md', 'research-sufficiency-review.md']);
+  const hasScript = existsAny(['script.md', 'SCRIPT.md', 'final-script.md', 'script-draft.md']);
+  const hasClaims = existsAny(['source-support-map.md', 'research-evidence.md', 'script-review.md']);
+  const hasYoutubePkg = existsAny(['youtube-package.json', 'selected-package.md', 'selected-package.json', 'thumbnail-title-check.md', 'publish-pack.md']);
+  const hasImagePrompts = existsAny(['image-prompts.json']) || Boolean(generationManifest || safeReadJson(path.join(manifestDir, 'image-prompts.json'), null));
+  const hasImageGen = manifestItems.length > 0 || (manifestDir && safeDirEntries(manifestDir).some((f) => /\.(?:png|jpe?g|webp)$/i.test(f.name != null ? f.name : f)));
+  const hasImageSelect = selectedImageCount > 0 || selectedManifestCount > 0;
+  const hasVideoGen = hasMediaInDir(klingCandidateDir) || hasMediaInDir(path.join(runDir, 'kling-video-candidates')) || hasMediaInDir(path.join(runDir, 'video-candidates'));
+  const captureText = fileTextAny(['capture-checklist.md', 'capture-evidence-review.md', 'takes-log.md', 'screen-recording-checklist.md']);
+  const hasARoll = /READY FOR ROUGH CUT|capture evidence accepted|aroll-|A-roll|\.MOV|\.mp4/i.test(captureText);
+  const hasAssembly = existsAny(['gate-5-assembly-manifest.md', 'assembly-plan.md', 'rough-cut-watch-notes.md', 'rough-cut-review.md']);
+  const hasPublishGate = existsAny(['final-watch-notes.md', 'final-review.md', 'export-checklist.md', 'delivery-readiness.md']);
+  const publishedVideos = safeReadJson(path.join(ROOT, 'published-videos.json'), []);
+  const hasPublishedInRegistry = Array.isArray(publishedVideos) && publishedVideos.some((item) => {
+    const itemRun = String((item && (item.run_folder || item.runFolder || item.runId)) || '').trim();
+    const itemUrl = String((item && (item.youtube_url || item.url)) || '').trim();
+    return itemRun === runFolder && /https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(itemUrl);
+  });
+  const hasPublished = hasPublishedInRegistry || /^Status:\s*Published\b/im.test(statusContent);
+
+  // Pickup-loop awareness: rough-cut approval status gates downstream stage completion.
+  // A run in NEEDS PICKUPS or NEEDS EDIT FIXES has assembly evidence but is not done with
+  // the assembly stage — it is inside a pickup loop. Artifact presence alone would let the
+  // tracker skip past stage 9 and 10, which is misleading for a pickup loop.
+  const roughCutNotesText = safeReadText(path.join(runDir, 'rough-cut-watch-notes.md'), '');
+  const roughCutApprovalMatch = roughCutNotesText.match(/rough-cut approval:\s*(.+)/i);
+  const roughCutApproval = roughCutApprovalMatch ? roughCutApprovalMatch[1].trim().toUpperCase() : '';
+  const roughCutInPickupLoop = /NEEDS PICKUPS|NEEDS EDIT FIXES/.test(roughCutApproval);
+
+  // Second-cut review resolves the pickup loop for the assembly stage.
+  const secondCutText = fileTextAny(['second-cut-watch-notes.md', 'second-cut-review.md']);
+  const secondCutReady = /READY FOR SECOND CUT/i.test(secondCutText);
+
+  // A pickup row is "presenter-type" when it mentions the camera presence of the presenter.
+  // These are A-roll pickups, not B-roll/video-gen work.
+  const pickupText = safeReadText(path.join(runDir, 'pickup-list.md'), '');
+  const hasOpenPresenterPickup = pickupText.split('\n').some(
+    (line) => /presenter|on.camera/i.test(line) && /\|\s*open\s*\|/i.test(line)
+  );
+
+  // Stage 9 (A-Roll): not complete if the pickup loop has open presenter-camera items.
+  const aRollCompleted = hasARoll && !(roughCutInPickupLoop && hasOpenPresenterPickup);
+  // Stage 10 (Assembly): not complete while the pickup loop is unresolved.
+  const assemblyCompleted = hasAssembly && (!roughCutInPickupLoop || secondCutReady);
+
+  // Derive gate from STATUS.md
+  let currentGate = 0;
+  const gateMatch = statusContent.match(/Gate\s*(\d)/i);
+  if (gateMatch) {
+    currentGate = parseInt(gateMatch[1], 10);
+  }
+
+  // Map to 13 stages
+  const stageMap = {
+    0: { key: 'idea', completed: hasIdea },
+    1: { key: 'research', completed: hasResearch },
+    2: { key: 'script', completed: hasScript },
+    3: { key: 'claims', completed: hasClaims },
+    4: { key: 'packaging', completed: hasYoutubePkg },
+    5: { key: 'image-prompts', completed: hasImagePrompts },
+    6: { key: 'image-gen', completed: hasImageGen },
+    7: { key: 'image-select', completed: hasImageSelect },
+    8: { key: 'video-gen', completed: hasVideoGen },
+    9: { key: 'a-roll', completed: aRollCompleted },
+    10: { key: 'assembly', completed: assemblyCompleted },
+    11: { key: 'publish-gate', completed: hasPublishGate },
+    12: { key: 'published', completed: hasPublished },
+  };
+
+  // Find current stage (first not-completed), preserving the canonical order.
+  let currentStage = 0;
+  for (let i = 0; i <= 12; i++) {
+    if (stageMap[i].completed) {
+      currentStage = i + 1;
+    } else {
+      currentStage = i;
+      break;
+    }
+  }
+  if (currentStage > 12) currentStage = 12;
+
+  // Detect blocker from STATUS.md
+  let blocker = null;
+  const blockerMatch = statusContent.match(/blocker[:\s]+(.+)/i);
+  if (blockerMatch) {
+    blocker = blockerMatch[1].trim();
+  }
+
+  // Build stage list
+  const stageNames = ['Idea', 'Research', 'Script', 'Claims Check', 'Packaging', 'Image Prompts', 'Image Gen', 'Image Select', 'Video Gen', 'A-Roll Record', 'Assembly Edit', 'Publish Gate', 'Published'];
+  for (let i = 0; i <= 12; i++) {
+    stages.push({
+      id: i,
+      key: stageMap[i].key,
+      label: stageNames[i],
+      completed: stageMap[i].completed,
+      active: i === currentStage,
+      blocked: blocker && i === currentStage,
+    });
+  }
+
+  sendJSON(res, 200, {
+    runFolder,
+    currentStage,
+    stages,
+    blocker,
+    gate: currentGate,
+    evidence: {
+      manifestPath: generationManifest ? manifestPath : '',
+      klingCandidateDir,
+    },
+  });
+}
+
+function createServer(options = {}) {
+  const serverOptions = options && typeof options === 'object' ? options : {};
   return http.createServer((req, res) => {
     const host = req.headers.host || 'localhost';
     let url;
@@ -5923,7 +6858,7 @@ function createServer() {
       return;
     }
     if (req.method === 'GET' && url.pathname === STATUS_API) {
-      send(res, 200, createStatusResponse());
+      sendJSON(res, 200, createStatusResponse());
       return;
     }
 
@@ -5939,6 +6874,150 @@ function createServer() {
 
     if (req.method === 'GET' && url.pathname === DAILY_SCOUT_DATES_API) {
       handleDailyScoutDates(req, res);
+      return;
+    }
+
+    // ── Topic Scout: custom topic submissions ──
+
+    if (req.method === 'GET' && url.pathname === TOPIC_SCOUT_LIST_API) {
+      try {
+        const runId = url.searchParams.get('runId') || '2026-06-24-ideation';
+        const topics = submittedTopics.listSubmittedTopics(ROOT, runId);
+        send(res, 200, { runId, count: topics.length, topics });
+      } catch (error) {
+        send(res, error.statusCode || 500, { error: error.message });
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === TOPIC_SCOUT_SUBMIT_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const runId = payload.runId || '2026-06-24-ideation';
+          const topicText = payload.topicText || '';
+          const record = submittedTopics.saveSubmittedTopic(ROOT, runId, topicText);
+          send(res, 200, record);
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === TOPIC_SCOUT_GET_API) {
+      try {
+        const runId = url.searchParams.get('runId') || '2026-06-24-ideation';
+        const topicId = url.searchParams.get('topicId') || '';
+        const record = submittedTopics.getSubmittedTopic(ROOT, runId, topicId);
+        if (!record) {
+          send(res, 404, { error: 'Topic not found.' });
+          return;
+        }
+        send(res, 200, record);
+      } catch (error) {
+        send(res, error.statusCode || 500, { error: error.message });
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === TOPIC_SCOUT_UPDATE_STATUS_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const runId = payload.runId || '2026-06-24-ideation';
+          const topicId = payload.topicId || '';
+          const status = payload.status || 'submitted';
+          const record = submittedTopics.updateTopicStatus(ROOT, runId, topicId, status);
+          if (!record) {
+            send(res, 404, { error: 'Topic not found.' });
+            return;
+          }
+          send(res, 200, record);
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    // ── Save Selected Package (write selected-package.json to run folder) ──
+
+    if (req.method === 'POST' && url.pathname === SAVE_SELECTED_PACKAGE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const runId = String(payload.runId || '').trim();
+          if (!runId) throw Object.assign(new Error('runId is required.'), { statusCode: 400 });
+          const selectedData = payload.selectedPackage;
+          if (!selectedData || typeof selectedData !== 'object') {
+            throw Object.assign(new Error('selectedPackage is required.'), { statusCode: 400 });
+          }
+          const runDir = path.join(ROOT, PACKAGE_RUNS_DIR, runId);
+          if (!fs.existsSync(runDir)) {
+            throw Object.assign(new Error(`Run folder not found: ${runId}`), { statusCode: 404 });
+          }
+          // Write selected-package.json
+          const jsonPath = path.join(runDir, 'selected-package.json');
+          fs.writeFileSync(jsonPath, JSON.stringify(selectedData, null, 2), 'utf8');
+          // Also write selected-package.md if title is available
+          const pkg = selectedData.package || selectedData;
+          const title = pkg.proposedTitle || pkg.proposed_title || pkg.title || 'Untitled package';
+          const mdPath = path.join(runDir, 'selected-package.md');
+          const md = `# Selected Package: ${title}\n\n- Package number: ${pkg.packageNumber || ''}\n- Score: ${pkg.score !== undefined ? pkg.score : ''}/100\n- Recommendation: ${pkg.recommendation || ''}\n- Production difficulty: ${pkg.productionDifficulty || ''}\n\n## Idea\n\n${pkg.idea || 'Not specified.'}\n\n## Viewer Promise\n\n${pkg.viewerPromise || 'Not specified.'}\n\n## Target Viewer\n\n${pkg.targetViewer || 'Not specified.'}\n\n## Thumbnail Concept\n\n${pkg.thumbnailConcept || 'Not specified.'}\n\n## Main Risk\n\n${pkg.mainRisk || 'Not specified.'}\n`;
+          fs.writeFileSync(mdPath, md, 'utf8');
+          send(res, 200, {
+            ok: true,
+            runId,
+            title,
+            jsonPath: `${PACKAGE_RUNS_DIR}/${runId}/selected-package.json`,
+            mdPath: `${PACKAGE_RUNS_DIR}/${runId}/selected-package.md`,
+            nextStep: 'Stage 1 complete. selected-package.json and selected-package.md saved to run folder. Next: Stage 2 (Outline) — paste the outline prompt into Hermes/ChatGPT to generate 3 outline options.',
+          });
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    // ── Generate Outline Prompt (run package-engine-new-outline.js) ──
+
+    if (req.method === 'POST' && url.pathname === GENERATE_OUTLINE_PROMPT_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const runId = String(payload.runId || '').trim();
+          if (!runId) throw Object.assign(new Error('runId is required.'), { statusCode: 400 });
+          const runDir = path.join(ROOT, PACKAGE_RUNS_DIR, runId);
+          if (!fs.existsSync(runDir)) {
+            throw Object.assign(new Error(`Run folder not found: ${runId}`), { statusCode: 404 });
+          }
+          const selectedPath = path.join(runDir, 'selected-package.json');
+          if (!fs.existsSync(selectedPath)) {
+            throw Object.assign(new Error('selected-package.json not found. Save your selection first.'), { statusCode: 400 });
+          }
+          const scriptPath = path.join(ROOT, 'scripts', 'package-engine-new-outline.js');
+          const { execSync } = require('child_process');
+          try {
+            const output = execSync(`node "${scriptPath}" "package-runs/${runId}"`, {
+              cwd: ROOT,
+              encoding: 'utf8',
+              timeout: 30000,
+            });
+            // Read the generated outline-prompt.md
+            const outlinePromptPath = path.join(runDir, 'outline-prompt.md');
+            let outlinePrompt = '';
+            if (fs.existsSync(outlinePromptPath)) {
+              outlinePrompt = fs.readFileSync(outlinePromptPath, 'utf8');
+            }
+            send(res, 200, {
+              ok: true,
+              runId,
+              output: output.trim(),
+              outlinePrompt,
+              outlinePromptPath: `package-runs/${runId}/outline-prompt.md`,
+              nextStep: 'Copy the outline prompt below, paste it into Hermes or ChatGPT, then save the 3 outline options as outlines.md in the run folder.',
+            });
+          } catch (err) {
+            send(res, 500, { error: 'Failed to generate outline prompt: ' + (err.message || String(err)) });
+          }
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
       return;
     }
 
@@ -5999,6 +7078,11 @@ function createServer() {
 
     if (req.method === 'GET' && url.pathname === PRESTO_RESULTS_API) {
       handlePrestoResults(req, res, url);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === PACKAGE_VIDEO_PROMPTS_API) {
+      handlePackageVideoPrompts(req, res, url);
       return;
     }
 
@@ -6067,9 +7151,9 @@ function createServer() {
 
     if (req.method === 'GET' && url.pathname === EVIDENCE_INTAKE_STATUS_API) {
       try {
-        send(res, 200, buildEvidenceIntakeStatus({ runId: url.searchParams.get('runId') || '' }));
+        sendJSON(res, 200, buildEvidenceIntakeStatus({ runId: url.searchParams.get('runId') || '' }));
       } catch (error) {
-        send(res, error.statusCode || 500, { error: error.message });
+        sendError(res, error.statusCode || 500, error.message, 'evidence-intake-status-error');
       }
       return;
     }
@@ -6078,9 +7162,9 @@ function createServer() {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, buildEvidenceIntakePreview(payload));
+          sendJSON(res, 200, buildEvidenceIntakePreview(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message, errors: error.errors || [], warnings: error.warnings || [] }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'evidence-intake-preview-error', { errors: error.errors || [], warnings: error.warnings || [] }));
       return;
     }
 
@@ -6096,28 +7180,69 @@ function createServer() {
 
     if (req.method === 'GET' && url.pathname === ROUGH_CUT_STATUS_API) {
       try {
-        send(res, 200, buildRoughCutStatus({ runId: url.searchParams.get('runId') || '' }));
+        sendJSON(res, 200, buildRoughCutStatus({ runId: url.searchParams.get('runId') || '' }));
       } catch (error) {
-        send(res, error.statusCode || 500, { error: error.message });
+        sendError(res, error.statusCode || 500, error.message, 'rough-cut-status-error');
       }
       return;
     }
 
     if (req.method === 'GET' && url.pathname === NEXT_SAFE_ACTION_API) {
       try {
-        send(res, 200, nextSafeActionScript.buildNextSafeAction(url.searchParams.get('runId') || '', { repoRoot: ROOT }));
+        sendJSON(res, 200, nextSafeActionScript.buildNextSafeAction(url.searchParams.get('runId') || '', { repoRoot: ROOT }));
       } catch (error) {
-        send(res, error.statusCode || 500, { ok: false, readOnly: true, error: error.message });
+        sendError(res, error.statusCode || 500, error.message, 'next-safe-action-error', { readOnly: true });
       }
       return;
     }
 
     if (req.method === 'GET' && url.pathname === PACKAGE_RUNS_LIST_API) {
       try {
-        send(res, 200, readPackageRunsIndex());
+        sendJSON(res, 200, readPackageRunsIndex());
       } catch (error) {
-        send(res, error.statusCode || 500, { error: error.message });
+        sendError(res, error.statusCode || 500, error.message, 'package-runs-list-error');
       }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === HYPERFRAMES_STATUS_API) {
+      try {
+        send(res, 200, discoverHyperframesCompositions({ runId: url.searchParams.get('runId') || '' }, { root: serverOptions.root || ROOT }));
+      } catch (error) {
+        send(res, error.statusCode || 500, { ok: false, error: error.message });
+      }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === HYPERFRAMES_PREVIEW_API) {
+      try {
+        const target = resolveHyperframesCompositionFile({
+          runId: url.searchParams.get('runId') || '',
+          id: url.searchParams.get('id') || '',
+        }, { root: serverOptions.root || ROOT });
+        res.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'X-Content-Type-Options': 'nosniff',
+        });
+        fs.createReadStream(target.sourcePath).pipe(res);
+      } catch (error) {
+        send(res, error.statusCode || 500, { ok: false, error: error.message });
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === HYPERFRAMES_RENDER_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, renderHyperframesComposition(payload, { root: serverOptions.root || ROOT }));
+        })
+        .catch((error) => send(res, error.statusCode || 500, {
+          ok: false,
+          error: error.message,
+          manifest: error.manifest || null,
+        }));
       return;
     }
 
@@ -6334,6 +7459,16 @@ function createServer() {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === PACKAGE_RUNS_OPEN_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          send(res, 200, openPackageRunAssetFolder(payload));
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === ROUGH_CUT_OPEN_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -6351,6 +7486,58 @@ function createServer() {
           send(res, 200, savePickupPlan(payload));
         })
         .catch((error) => send(res, error.statusCode || 500, { error: error.message, missing: error.missing || [] }));
+      return;
+    }
+
+    // ── Media Gallery API ──
+    if (req.method === 'GET' && url.pathname === '/api/package-runs/media-gallery') {
+      handleMediaGallery(req, res, url);
+      return;
+    }
+
+    // ── Friction Log API ──
+    if (req.method === 'GET' && url.pathname === '/api/package-runs/friction-log') {
+      handleFrictionLogRead(req, res, url);
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === '/api/package-runs/friction-log/save') {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          handleFrictionLogSave(res, payload);
+        })
+        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      return;
+    }
+
+    // ── Pipeline Status API (13-stage tracker) ──
+    if (req.method === 'GET' && url.pathname === '/api/package-runs/pipeline-status') {
+      handlePipelineStatus(req, res, url);
+      return;
+    }
+
+    // ── Visual Beat Map API (read-only) ──
+    if (req.method === 'GET' && url.pathname === '/api/package-runs/beat-map') {
+      handleBeatMap(req, res, url);
+      return;
+    }
+
+    // ── AIGEN Review View proxy (bridge port 8099 into cockpit) ──
+    if (url.pathname === '/aigen-review' || url.pathname.startsWith('/aigen-review/')) {
+      const reviewPath = url.pathname.replace(/^\/aigen-review/, '') || '/';
+      const reviewUrl = `http://127.0.0.1:8099${reviewPath}${url.search || ''}`;
+      const proxyReq = http.request(reviewUrl, { method: req.method, headers: { ...req.headers, host: '127.0.0.1:8099' } }, (proxyRes) => {
+        res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+        proxyRes.pipe(res);
+      });
+      proxyReq.on('error', () => {
+        send(res, 502, { error: 'AIGEN Review View (port 8099) is not running. Start it with: cd ~/work/aigen-edit && python3 review-view/server.py' });
+      });
+      if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+        req.pipe(proxyReq);
+      } else {
+        proxyReq.end();
+      }
       return;
     }
 
@@ -6412,6 +7599,9 @@ module.exports = {
   FLUX_RESULTS_API,
   FLUX_STATE,
   FLUX_SUBMIT_API,
+  HYPERFRAMES_PREVIEW_API,
+  HYPERFRAMES_RENDER_API,
+  HYPERFRAMES_STATUS_API,
   IMAGE_PROMPTS_READ_API,
   IMAGE_PROMPTS_SAVE_API,
   IMAGE_PROMPTS_VALIDATE_API,
@@ -6524,8 +7714,10 @@ module.exports = {
   detectRoughCutCandidate,
   classifyPickupCategory,
   dashboardIndexStatus,
+  discoverHyperframesCompositions,
   discoverSecondCutMedia,
   findActivePackageRun,
+  hyperframesRenderCommand,
   imageMimeType,
   isAllowedLocalHost,
   isAllowedLocalOrigin,
@@ -6537,7 +7729,9 @@ module.exports = {
   normalizeRoughCutFields,
   normalizePickupItem,
   normalizePickupItems,
+  openPackageRunAssetFolder,
   openRoughCutVideo,
+  parseHyperframesVersion,
   parseRoughCutReviewFile,
   parseRoughCutReviewStdout,
   parseFinalCandidateArtifact,
@@ -6548,18 +7742,24 @@ module.exports = {
   parseSecondCutCandidateArtifact,
   parseSecondCutReviewFile,
   parseSecondCutWatchNotes,
+  probeHyperframesAvailability,
   providerConfig,
   regenerateRoughCutDerivedArtifacts,
   regenerateExportChecklistDerived,
   regenerateFinalReviewDerived,
   regenerateSecondCutReviewDerived,
   readPackageRunsIndex,
+  resolvePackageRunOpenTarget,
   readFluxResults,
   readImagePrompts,
+  readPackageVideoPrompts,
   readPrestoResults,
   parseLabelValueStdout,
+  renderHyperframesComposition,
   resolveAigenPackageDir,
+  resolveHyperframesCompositionFile,
   runResolveAssemblyCreate,
+  runHyperframesRenderCommand,
   saveImagePrompts,
   validateImagePromptsPayload,
   validateImagePromptsForPackage,
@@ -6585,5 +7785,7 @@ module.exports = {
   validatePackageRunId,
   validateCaptureEvidenceRunId,
   validateCaptureEvidenceTargets,
+  validateHyperframesCompositionId,
   validateLocalWriteRequest,
+  writeHyperframesManifest,
 };

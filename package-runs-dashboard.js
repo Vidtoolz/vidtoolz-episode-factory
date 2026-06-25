@@ -3696,6 +3696,17 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       return `<div class="fetch-error-recovery"><p class="fetch-error-msg">${escapeHtml(message)}</p><button type="button" class="retry-btn" data-retry-load="${escapeHtml(retryAction)}">Retry</button></div>`;
     }
 
+    function apiFetch(url, options) {
+      return fetch(url, options).then((response) =>
+        response.json().then((json) => {
+          if (!response.ok) {
+            throw new Error(json.error || `Request failed (${response.status})`);
+          }
+          return json.data !== undefined ? json.data : json;
+        })
+      );
+    }
+
     function load() {
       renderBeginningTriageFromStorage();
       if (els.grid) els.grid.innerHTML = renderIndexLoadingSkeleton();
@@ -3731,11 +3742,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         localWriteConfig && localWriteConfig.evidenceIntakeStatusApi
           ? localWriteConfig.evidenceIntakeStatusApi
           : "/api/package-runs/evidence-intake/status";
-      return fetch(statusApi, { cache: "no-store" })
-        .then((response) => response.json().then((payload) => {
-          if (!response.ok) throw new Error(payload.error || `Evidence intake unavailable (${response.status}).`);
-          return payload;
-        }))
+      return apiFetch(statusApi, { cache: "no-store" })
         .then((payload) => {
           els.evidenceIntakePanel.innerHTML = renderEvidenceIntakePanel(payload);
         })
@@ -3751,11 +3758,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         localWriteConfig && localWriteConfig.roughCutInputConsole && localWriteConfig.roughCutInputConsole.nextSafeActionApi
           ? localWriteConfig.roughCutInputConsole.nextSafeActionApi
           : "/api/package-runs/next-safe-action";
-      return fetch(nextSafeActionApi, { cache: "no-store" })
-        .then((response) => response.json().then((payload) => {
-          if (!response.ok) throw new Error(payload.error || `Next safe action unavailable (${response.status}).`);
-          return payload;
-        }))
+      return apiFetch(nextSafeActionApi, { cache: "no-store" })
         .then((payload) => {
           els.nextSafeActionPanel.innerHTML = renderNextSafeActionPanel(payload);
           if (els.currentFocusContent) {
@@ -3785,11 +3788,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         localWriteConfig && localWriteConfig.roughCutInputConsole
           ? localWriteConfig.roughCutInputConsole.statusApi
           : "/api/package-runs/rough-cut/status";
-      return fetch(statusApi, { cache: "no-store" })
-        .then((response) => response.json().then((payload) => {
-          if (!response.ok) throw new Error(payload.error || `Rough-cut console unavailable (${response.status}).`);
-          return payload;
-        }))
+      return apiFetch(statusApi, { cache: "no-store" })
         .then((payload) => {
           els.mikkoConsoleContent.innerHTML = renderMikkoInputConsole(payload);
           setMikkoConsoleStatus(payload.runId || "Active run loaded", "success");
@@ -3802,9 +3801,8 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
 
     function loadLocalWriteConfig() {
       if (localWriteConfigPromise) return localWriteConfigPromise;
-      localWriteConfigPromise = fetch("/api/package-engine/status", { cache: "no-store" })
-        .then((response) => response.json().then((payload) => {
-          if (!response.ok) throw new Error(payload.error || `Local write config unavailable (${response.status}).`);
+      localWriteConfigPromise = apiFetch("/api/package-engine/status", { cache: "no-store" })
+        .then((payload) => {
           if (!payload.captureEvidenceWrite || !payload.captureEvidenceWrite.localWriteNonce) {
             throw new Error("Local write config unavailable. Copy buttons still work.");
           }
@@ -3819,7 +3817,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
             els.systemAvailabilityPanel.innerHTML = renderSystemAvailabilityPanel(index, localWriteConfig);
           }
           return localWriteConfig;
-        }))
+        })
         .catch((error) => {
           localWriteConfig = null;
           localWriteConfigPromise = null;
@@ -4240,13 +4238,13 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
           },
           body: JSON.stringify(evidenceIntakePayload(container)),
         }))
-        .then((response) => response.json().then((payload) => {
+        .then((response) => response.json().then((json) => {
           if (!response.ok) {
-            const error = new Error(payload.error || `Evidence intake preview failed (${response.status}).`);
-            error.payload = payload;
+            const error = new Error(json.error || `Evidence intake preview failed (${response.status}).`);
+            error.payload = json;
             throw error;
           }
-          return payload;
+          return json.data !== undefined ? json.data : json;
         }))
         .then((payload) => {
           container.dataset.evidencePreviewToken = payload.previewToken || "";
