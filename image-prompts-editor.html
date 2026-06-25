@@ -4,21 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Image Prompts Editor</title>
-    <link rel="stylesheet" href="styles.css?v=1.7.4" />
+    <link rel="stylesheet" href="styles.css?v=1.8.0" />
     <style>
-      :root {
-        color-scheme: dark;
-        --bg: #111411;
-        --panel: #191d18;
-        --panel-soft: #21271f;
-        --border: #354034;
-        --text: #edf2e9;
-        --muted: #a4aea0;
-        --accent: #62b883;
-        --accent-strong: #93d3a9;
-        --danger: #f07b67;
-        --warning: #e4b95d;
-      }
       body { background: var(--bg); color: var(--text); }
       .shell { margin: 0 auto; max-width: 1260px; padding: 22px 18px 88px; }
       .header {
@@ -135,6 +122,16 @@
     </style>
   </head>
   <body>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html" class="active">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
+<details class="page-guide" open>
+  <summary>Page Guide — What is this?</summary>
+  <div class="page-guide-body">
+    <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Edit and manage text-to-image prompts for FLUX generation. Each prompt becomes one source image for video production.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">When prompts are ready, go to <a href="production-pipeline.html">Pipeline</a> to generate FLUX images, or use the rewrite tool to refine prompts first.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Prompt list with edit, add, delete. Rewrite tool for batch refinement. FLUX prompts must be photorealistic, no text of any kind (anti-text prefix).</span></div>
+  </div>
+</details>
+
     <main class="shell">
       <header class="header">
         <div>
@@ -144,10 +141,7 @@
         <button type="button" id="reload">Reload</button>
       </header>
 
-      <nav class="nav">
-        <a href="production-pipeline.html">Production Pipeline</a>
-        <a id="selector-link" href="image-selector.html">Image Selector</a>
-      </nav>
+      
 
       <section class="panel">
         <div class="toolbar">

@@ -4,24 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Production Pipeline</title>
-    <link rel="stylesheet" href="styles.css?v=1.7.4" />
+    <link rel="stylesheet" href="styles.css?v=1.8.0" />
     <style>
-      :root {
-        color-scheme: dark;
-        --bg: #111411;
-        --panel: #191d18;
-        --panel-soft: #21271f;
-        --border: #354034;
-        --border-strong: #52624f;
-        --text: #edf2e9;
-        --muted: #a4aea0;
-        --accent: #62b883;
-        --accent-strong: #93d3a9;
-        --danger: #f07b67;
-        --warning: #e4b95d;
-        --shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
-      }
-
       body { background: var(--bg); }
       .pipeline-shell { margin: 0 auto; max-width: 1180px; padding: 22px 18px 56px; }
       .pipeline-header {
@@ -155,6 +139,64 @@
         color: var(--danger);
         padding: 14px;
       }
+      .video-prompts-panel {
+        background: var(--panel-soft);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+      }
+      .video-prompts-panel h3 { font-size: 13px; margin: 0; }
+      .video-prompt-entry {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 8px;
+        display: grid;
+        gap: 4px;
+      }
+      .video-prompt-entry-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .video-prompt-entry-header .label { font-weight: 600; color: var(--accent-strong); }
+      .video-prompt-text {
+        background: #0b0d0b;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 12px;
+        line-height: 1.45;
+        padding: 8px;
+        white-space: pre-wrap;
+      }
+      .btn-copy-prompt {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        color: var(--muted);
+        font-size: 11px;
+        padding: 3px 8px;
+        cursor: pointer;
+      }
+      .btn-copy-prompt:hover { color: var(--accent-strong); border-color: rgba(98, 184, 131, 0.55); }
+      .btn-copy-prompt.copied { color: var(--accent-strong); border-color: rgba(98, 184, 131, 0.55); }
+      .user-guide {
+        background: var(--panel-soft);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+      .user-guide h2 { font-size: 15px; margin: 0 0 8px 0; }
+      .user-guide h3 { font-size: 13px; margin: 10px 0 4px 0; color: var(--accent-strong); }
+      .user-guide p, .user-guide li { font-size: 12px; color: var(--muted); line-height: 1.5; }
+      .user-guide ol { padding-left: 18px; margin: 4px 0; }
+      .user-guide .step-note { color: var(--warning); font-size: 11px; }
       @media (max-width: 760px) {
         .pipeline-header, .top-grid { grid-template-columns: 1fr; }
         .pipeline-header { display: grid; }
@@ -163,6 +205,16 @@
     </style>
   </head>
   <body>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="production-pipeline.html" class="active">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
+<details class="page-guide" open>
+  <summary>Page Guide — What is this?</summary>
+  <div class="page-guide-body">
+    <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">AI generation pipeline: FLUX images, image selection, Wan2.2 video generation on PRESTO (or manual Kling). Shows live PRESTO/ComfyUI status.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">1. Generate FLUX images. 2. <a href="image-selector.html">Select images</a>. 3. Submit to PRESTO or copy Kling prompts. 4. Create Resolve Assembly</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Status badges: PRESTO reachable, queue state, Wan lock. Each package card has FLUX controls, PRESTO controls, video prompts panel, and Resolve assembly button.</span></div>
+  </div>
+</details>
+
     <main class="pipeline-shell">
       <header class="pipeline-header">
         <div class="pipeline-title">
@@ -173,12 +225,7 @@
         <button id="refresh-button" class="primary-btn" type="button">Refresh</button>
       </header>
 
-      <nav class="pipeline-nav">
-        <a href="mission-control.html">Mission Control</a>
-        <a href="package-runs-dashboard.html">Package Runs Dashboard</a>
-        <a href="package-engine.html">Package Engine</a>
-        <a href="production-day-dashboard.html">Production Day</a>
-      </nav>
+      
 
       <section class="top-grid">
         <div class="highlight">
@@ -190,6 +237,39 @@
           <div id="status-badges" class="badge-row"></div>
         </div>
       </section>
+
+      <details class="user-guide" id="user-guide">
+        <summary style="cursor:pointer;font-size:15px;font-weight:600;color:var(--accent-strong);">User Guide — How to Use This System</summary>
+        <h3>Overview</h3>
+        <p>This panel manages the video production pipeline: FLUX image generation, image selection, and two alternative video generation lanes — Wan2.2 via ComfyUI on PRESTO, or manual Kling generation. Each package card below shows one episode's production state.</p>
+        <h3>Production Workflow</h3>
+        <ol>
+          <li><strong>Generate FLUX images</strong> — In each package card, the "FLUX local" section generates photorealistic source images from your image prompts. Use "Dry run only" to test without consuming GPU. Click "Generate N FLUX images" to start.</li>
+          <li><strong>Select images</strong> — Click "Select Images" to open the image selector. Choose which FLUX-generated images will be used for video generation. The selection becomes the input set for video generation.</li>
+          <li><strong>Choose a video generation lane</strong> — After selecting images, pick one of two alternative paths:
+            <ul>
+              <li><strong>Lane A: PRESTO (ComfyUI / Wan2.2)</strong> — The "PRESTO Wan2.2" section submits all pending selected images to ComfyUI on PRESTO. Click "Submit N to PRESTO". The system processes each image one at a time using the 81-frame Wan2.2 workflow (~2.7 second videos). Progress and stdout appear in real-time. You can cancel mid-run.</li>
+              <li><strong>Lane B: Manual Kling generation</strong> — Click "Show Video Prompts" to reveal each selected image's image-to-video prompt text with copy buttons. Copy a prompt and paste it into Kling along with the corresponding image for manual video generation.</li>
+            </ul>
+            <span class="step-note">Choose one lane per image, or mix lanes across images — but never submit the same image to both lanes simultaneously.</span>
+          </li>
+          <li><strong>Review generated videos</strong> — Collect the output videos from whichever lane(s) you used. PRESTO results appear in the package's presto-results folder; Kling outputs are saved manually to VIDNAS.</li>
+          <li><strong>Create Resolve assembly</strong> — Once videos are generated, click "Create Resolve Assembly" to generate the handoff files for DaVinci Resolve editing.</li>
+        </ol>
+        <h3>Button Reference</h3>
+        <p><strong>Generate N FLUX images</strong> — Runs FLUX.1 Dev locally (vidnux RTX 5070 Ti) to produce source images from prompts. ~48s per 1080x1920 image.</p>
+        <p><strong>Select Images</strong> — Opens the image selector page to choose which images go to video generation.</p>
+        <p><strong>Submit N to PRESTO</strong> — Sends all pending selected images to ComfyUI on PRESTO (RTX 4090). Processes one at a time via 81-frame Wan2.2 i2v workflow. Observed estimate: ~12 min per video; actual time varies with model load and system state.</p>
+        <p><strong>Show/Hide Video Prompts</strong> — Toggles a panel showing each selected image's image-to-video prompt text with copy-to-clipboard buttons for manual Kling generation. If video-prompts.json is not present, the panel shows a "not prepared" message.</p>
+        <p><strong>Create Resolve Assembly</strong> — Generates handoff files for DaVinci Resolve (resolve-handoff folder).</p>
+        <h3>PRESTO Requirements</h3>
+        <p>ComfyUI must be running on PRESTO at <code>http://192.168.50.187:8188</code> with the queue empty. The status badges at the top show PRESTO reachability and queue state. One job runs at a time — wait for completion before submitting another package.</p>
+        <h3>Troubleshooting</h3>
+        <p><strong>"PRESTO unreachable"</strong> — Check that ComfyUI is running on PRESTO and the network is connected.</p>
+        <p><strong>"Queue busy"</strong> — Another ComfyUI job is running. Wait for it to finish or cancel it from the ComfyUI web UI.</p>
+        <p><strong>"Job already active"</strong> — Only one PRESTO job can run at a time. Wait for the current job to complete or cancel it.</p>
+        <p><strong>"Not prepared" in Video Prompts</strong> — The package has no video-prompts.json file. This file contains image-to-video prompts written for Kling. It must be created before the Video Prompts panel can display anything. The system does not fall back to image-prompts.json (those are text-to-image prompts, not video prompts).</p>
+      </details>
 
       <section id="content">
         <div class="loading">Reading VIDNAS status files...</div>
@@ -203,6 +283,7 @@
       const PRESTO_STATUS_API = "/api/presto/job-status";
       const PRESTO_CANCEL_API = "/api/presto/cancel";
       const PRESTO_RESULTS_API = "/api/presto/results";
+      const PACKAGE_VIDEO_PROMPTS_API = "/api/package/video-prompts";
       const FLUX_SUBMIT_API = "/api/flux/submit";
       const FLUX_STATUS_API = "/api/flux/job-status";
       const FLUX_CANCEL_API = "/api/flux/cancel";
@@ -684,6 +765,24 @@
             prestoStatus.completed && prestoStatus.completed.package_id === pkg.id ? prestoStatus.completed : null
           );
           prestoControls.append(prestoTitle, prestoButton, prestoNote, progress);
+          const videoPromptsToggle = document.createElement("button");
+          videoPromptsToggle.type = "button";
+          videoPromptsToggle.className = "btn-secondary";
+          videoPromptsToggle.textContent = "Show Video Prompts";
+          videoPromptsToggle.disabled = (pkg.selections_count || 0) <= 0;
+          const videoPromptsPanel = document.createElement("div");
+          videoPromptsPanel.className = "video-prompts-panel";
+          videoPromptsPanel.style.display = "none";
+          videoPromptsToggle.addEventListener("click", () => {
+            if (videoPromptsPanel.style.display === "none") {
+              videoPromptsPanel.style.display = "grid";
+              videoPromptsToggle.textContent = "Hide Video Prompts";
+              loadVideoPrompts(pkg.id, videoPromptsPanel);
+            } else {
+              videoPromptsPanel.style.display = "none";
+              videoPromptsToggle.textContent = "Show Video Prompts";
+            }
+          });
           const fluxControls = document.createElement("div");
           fluxControls.className = "flux-controls";
           const fluxTitle = document.createElement("h3");
@@ -717,12 +816,119 @@
           fluxControls.append(fluxTitle, fluxButton, fluxDryRunLabel, fluxNote, fluxProgress);
           const results = renderPrestoResults(pkg);
           const fluxResultPanel = renderFluxResults(pkg);
-          card.append(title, metrics, next, actions, fluxControls, prestoControls);
+          card.append(title, metrics, next, actions, fluxControls, prestoControls, videoPromptsToggle, videoPromptsPanel);
           if (fluxResultPanel) card.appendChild(fluxResultPanel);
           if (results) card.appendChild(results);
           grid.appendChild(card);
         });
         return grid;
+      }
+
+      async function loadVideoPrompts(packageId, panel) {
+        const loadingMsg = document.createElement("div");
+        loadingMsg.className = "loading";
+        loadingMsg.textContent = "Loading video prompts...";
+        panel.replaceChildren(loadingMsg);
+        try {
+          const url = `${PACKAGE_VIDEO_PROMPTS_API}?package_id=${encodeURIComponent(packageId)}`;
+          const response = await fetch(url, { cache: "no-store" });
+          const data = await response.json();
+          if (!data.ok) {
+            const errBox = document.createElement("div");
+            errBox.className = "error-box";
+            errBox.textContent = data.error || "Failed to load prompts";
+            panel.replaceChildren(errBox);
+            return;
+          }
+          // Handle not_prepared state: video-prompts.json is missing
+          if (data.state === "not_prepared") {
+            panel.replaceChildren();
+            const header = document.createElement("h3");
+            header.textContent = "Video Prompts — Not Prepared";
+            panel.appendChild(header);
+            const msg = document.createElement("p");
+            msg.style.cssText = "font-size:12px;color:var(--muted);margin:0;";
+            msg.textContent = `This package has ${data.selections_count || 0} selected images but no video-prompts.json file. Image-to-video prompts must be created before they can be used for Kling generation. The system does not fall back to image-prompts.json.`;
+            panel.appendChild(msg);
+            return;
+          }
+          panel.replaceChildren();
+          const header = document.createElement("h3");
+          header.textContent = `Video Prompts for Kling (${data.entries.length} selections)`;
+          panel.appendChild(header);
+          const hint = document.createElement("p");
+          hint.style.cssText = "font-size:11px;color:var(--muted);margin:0;";
+          hint.textContent = "Copy a prompt and paste it into Kling alongside the matching image for manual video generation.";
+          panel.appendChild(hint);
+          for (const entry of data.entries) {
+            const entryDiv = document.createElement("div");
+            entryDiv.className = "video-prompt-entry";
+            const entryHeader = document.createElement("div");
+            entryHeader.className = "video-prompt-entry-header";
+            const labelSpan = document.createElement("span");
+            labelSpan.className = "label";
+            labelSpan.textContent = entry.label || `#${entry.prompt_index}`;
+            const idxSpan = document.createElement("span");
+            idxSpan.textContent = `prompt_index: ${entry.prompt_index}`;
+            const statusSpan = document.createElement("span");
+            statusSpan.textContent = entry.image_exists ? "image OK" : "image MISSING";
+            statusSpan.style.color = entry.image_exists ? "var(--accent-strong)" : "var(--danger)";
+            const copyBtn = document.createElement("button");
+            copyBtn.type = "button";
+            copyBtn.className = "btn-copy-prompt";
+            copyBtn.textContent = "Copy";
+            copyBtn.addEventListener("click", () => {
+              const text = entry.prompt_text || "";
+              const onCopy = () => {
+                copyBtn.textContent = "Copied!";
+                copyBtn.classList.add("copied");
+                setTimeout(() => {
+                  copyBtn.textContent = "Copy";
+                  copyBtn.classList.remove("copied");
+                }, 2000);
+              };
+              const onFail = () => {
+                copyBtn.textContent = "Copy failed";
+                setTimeout(() => { copyBtn.textContent = "Copy"; }, 2000);
+              };
+              // Try clipboard API first, then fall back to a temporary textarea for non-secure contexts
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(onCopy).catch(() => {
+                  copyToClipboardFallback(text) ? onCopy() : onFail();
+                });
+              } else {
+                copyToClipboardFallback(text) ? onCopy() : onFail();
+              }
+            });
+            entryHeader.append(labelSpan, idxSpan, statusSpan, copyBtn);
+            const promptText = document.createElement("div");
+            promptText.className = "video-prompt-text";
+            promptText.textContent = entry.prompt_text || "(no prompt text found)";
+            entryDiv.append(entryHeader, promptText);
+            panel.appendChild(entryDiv);
+          }
+        } catch (error) {
+          const errBox = document.createElement("div");
+          errBox.className = "error-box";
+          errBox.textContent = error.message || "Failed to load prompts";
+          panel.replaceChildren(errBox);
+        }
+      }
+
+      function copyToClipboardFallback(text) {
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          return ok;
+        } catch (e) {
+          return false;
+        }
       }
 
       async function loadStatus() {

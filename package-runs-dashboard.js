@@ -59,6 +59,55 @@
     "Inactive: superseded",
   ];
 
+  const PRODUCTION_BUCKETS = [
+    "In Production",
+    "At Review",
+    "Blocked / Needs Action",
+    "Inactive / Archived",
+  ];
+
+  const REVIEW_WORKFLOW_BUCKETS = [
+    "Needs shot/edit plan review",
+    "Needs shot/edit plan approval",
+    "Needs rough-cut review",
+    "Needs final review",
+    "Needs export check",
+    "Needs publication metadata",
+    "Needs repurposing approval",
+    "Needs archive manifest",
+  ];
+
+  const BLOCKED_WORKFLOW_BUCKETS = [
+    "Needs QA repair",
+    "Needs proof capture",
+  ];
+
+  function productionBucketForRun(run) {
+    if (!run) return "In Production";
+    if (run.inactive || String(run.workflowBucket || "").startsWith("Inactive:")) {
+      return "Inactive / Archived";
+    }
+    if (BLOCKED_WORKFLOW_BUCKETS.includes(run.workflowBucket)) {
+      return "Blocked / Needs Action";
+    }
+    if (REVIEW_WORKFLOW_BUCKETS.includes(run.workflowBucket)) {
+      return "At Review";
+    }
+    return "In Production";
+  }
+
+  function groupRunsByProductionBucket(runs) {
+    const buckets = PRODUCTION_BUCKETS.reduce((result, label) => {
+      result[label] = [];
+      return result;
+    }, {});
+    (runs || []).forEach((run) => {
+      const bucket = productionBucketForRun(run);
+      buckets[bucket].push(run);
+    });
+    return buckets;
+  }
+
   const BEGINNING_TRIAGE_STORAGE_KEY = "vidtoolz-beginning-triage-v1";
   const EPISODE_FACTORY_STORAGE_KEY = "vidtoolz-episode-factory-v1";
   const DASHBOARD_GROUPS = [
@@ -2265,6 +2314,481 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     return WORKFLOW_FILTERS.map((label) => `<div><span>${escapeHtml(label)}</span><strong>${counts[label] || 0}</strong></div>`).join("");
   }
 
+  function renderCompactPipelineStrip(run) {
+    const rank = statusRank(run.status);
+    const total = STATUS_ORDER.length;
+    const pct = rank >= 0 ? Math.round(((rank + 1) / total) * 100) : 0;
+    const bucket = run.workflowBucket || "Unknown";
+    const blocker = run.firstBlockerReason
+      ? `<span class="compact-strip-blocker" title="${escapeHtml(run.firstBlockerReason)}">${escapeHtml(run.firstBlockerReason)}</span>`
+      : "";
+    return `<div class="compact-pipeline-strip">
+      <div class="compact-pipeline-bar"><div class="compact-pipeline-fill" style="width:${pct}%"></div></div>
+      <span class="compact-pipeline-bucket">${escapeHtml(bucket)}</span>
+      ${blocker}
+    </div>`;
+  }
+
+
+  function assetPresent(files = {}, keys = []) {
+    return keys.some((key) => Boolean(files[key]));
+  }
+
+  function countPresent(files = {}, keys = []) {
+    return keys.reduce((count, key) => count + (files[key] ? 1 : 0), 0);
+  }
+
+  const VIDEO_ASSET_LANES = [
+    {
+      key: "script",
+      label: "Script",
+      keys: ["script_structure", "script_draft", "final_script", "script"],
+      href: "final-script.md",
+      missing: "No script artifact detected",
+    },
+    {
+      key: "titles",
+      label: "Title candidates",
+      keys: ["thumbnail_title_check", "title_check", "selected_package_md", "selected_package_json"],
+      href: "thumbnail-title-check.md",
+      missing: "No title candidate artifact detected",
+    },
+    {
+      key: "descriptions",
+      label: "Description candidates",
+      keys: ["publish_pack", "description_check", "publish_metadata_review"],
+      href: "publish-pack.md",
+      missing: "No description/metadata artifact detected",
+    },
+    {
+      key: "thumbnails",
+      label: "Thumbnail candidates",
+      keys: ["thumbnail_mockup", "thumbnail_title_check", "thumbnail_check"],
+      href: "thumbnail-mockup.svg",
+      missing: "No thumbnail candidate artifact detected",
+    },
+    {
+      key: "imagePrompts",
+      label: "Image prompts",
+      keys: ["image_prompts", "graphics_list", "b_roll_list"],
+      href: "image-prompts.json",
+      missing: "No image-prompt manifest detected",
+    },
+    {
+      key: "generatedImages",
+      label: "Generated images",
+      keys: ["thumbnail_mockup", "selected_images"],
+      href: "selected-images.json",
+      missing: "No generated-image manifest detected",
+    },
+    {
+      key: "selectedImages",
+      label: "Selected images",
+      keys: ["selected_images"],
+      href: "selected-images.json",
+      missing: "No selected-images.json detected",
+    },
+    {
+      key: "videoPrompts",
+      label: "Video prompts",
+      keys: ["video_prompts", "visual_prompt_set"],
+      href: "video-prompts.json",
+      missing: "No video-prompt manifest detected",
+    },
+    {
+      key: "generatedVideo",
+      label: "Generated video clips",
+      keys: ["gate_5_assembly_manifest"],
+      href: "gate-5-assembly-manifest.md",
+      missing: "No generated-video manifest detected",
+    },
+    {
+      key: "hyperframes",
+      label: "Hyperframes scenes/renders",
+      keys: ["hyperframes"],
+      href: "hyperframes.json",
+      missing: "Lane visible; no Hyperframes manifest detected",
+      lane: "Hyperframes",
+    },
+    {
+      key: "remotion",
+      label: "Remotion compositions/renders",
+      keys: ["remotion_renders"],
+      href: "remotion-renders.json",
+      missing: "Lane visible; no Remotion manifest detected",
+      lane: "Remotion",
+    },
+    {
+      key: "resolve",
+      label: "Resolve handoff",
+      keys: ["resolve_edit_checklist", "gate_5_assembly_manifest"],
+      href: "resolve-edit-checklist.md",
+      missing: "No Resolve handoff artifact detected",
+    },
+    {
+      key: "publish",
+      label: "Publish state",
+      keys: ["final_review", "export_checklist", "publish_metadata_review", "publish_pack"],
+      href: "publish-pack.md",
+      missing: "Publish gate not reached",
+    },
+    {
+      key: "friction",
+      label: "Friction log",
+      keys: ["friction_log"],
+      href: "FRICTION-LOG.json",
+      missing: "No friction log detected",
+    },
+  ];
+
+  function buildProductionAssetLedger(run = {}) {
+    const files = run.files || {};
+    return VIDEO_ASSET_LANES.map((lane) => {
+      const count = countPresent(files, lane.keys);
+      const available = count > 0;
+      return {
+        key: lane.key,
+        label: lane.label,
+        count,
+        status: available ? "available" : "missing",
+        href: run.path ? `${run.path}/${lane.href}` : "#",
+        runId: run.runId || "",
+        assetPath: lane.href,
+        detail: available ? `${count} tracked artifact${count === 1 ? "" : "s"}` : lane.missing,
+        lane: lane.lane || "",
+      };
+    });
+  }
+
+  function renderAssetLedger(ledger = [], options = {}) {
+    const compact = Boolean(options.compact);
+    const items = (Array.isArray(ledger) ? ledger : []).map((item) => {
+      const statusClassName = item.status === "available" ? "asset-lane-available" : "asset-lane-missing";
+      const href = item.status === "available" ? item.href : "#";
+      const openAttrs = item.status === "available" ? ` data-open-package-folder="${escapeHtml(item.runId || "")}" data-open-asset-path="${escapeHtml(item.assetPath || "")}"` : "";
+      const linkAttrs = item.status === "available" ? `href="${escapeHtml(href)}"` : `href="#" aria-disabled="true"`;
+      return `<a class="asset-lane ${statusClassName}" ${linkAttrs}${openAttrs} data-asset-lane="${escapeHtml(item.key)}" title="Open containing folder in the OS file manager">
+        <span>${escapeHtml(item.label)}</span>
+        <strong>${escapeHtml(item.status === "available" ? String(item.count) : "missing")}</strong>
+        ${compact ? "" : `<small>${escapeHtml(item.detail)}</small>`}
+      </a>`;
+    }).join("");
+    return `<div class="asset-ledger ${compact ? "asset-ledger-compact" : ""}">${items}</div>`;
+  }
+
+  function thumbnailCandidateSources(run = {}) {
+    const base = run.path || "";
+    if (!base) return [];
+    return ["thumbnail-mockup.svg", "thumbnail-mockup.png", "thumbnail-mockup.jpg", "thumbnail-mockup.jpeg"].map((name) => `${base}/${name}`);
+  }
+
+  function renderVideoThumbnail(run = {}) {
+    const sources = thumbnailCandidateSources(run);
+    const fallback = `<div class="video-thumb-fallback"><span>No thumbnail preview</span></div>`;
+    if (!sources.length) return `<div class="video-thumb">${fallback}</div>`;
+    return `<div class="video-thumb">
+      <img src="${escapeHtml(sources[0])}" alt="${escapeHtml(run.title || run.runId || "Video thumbnail")}" loading="lazy" onerror="this.hidden=true; this.nextElementSibling.hidden=false" />
+      <div class="video-thumb-fallback" hidden><span>No thumbnail preview</span></div>
+    </div>`;
+  }
+
+  function runConceptDescription(run = {}) {
+    if (run.firstBlockerReason) return run.firstBlockerReason;
+    if (run.nextRecommendedCommand) return run.nextRecommendedCommand;
+    if (run.nextExpectedFile) return `Next expected artifact: ${run.nextExpectedFile}.`;
+    return "No concept summary is available in the package-run index yet.";
+  }
+
+  function hyperframesAvailabilityLabel(availability = null) {
+    if (!availability) return { status: "unknown", detail: "Availability probe has not loaded yet." };
+    if (availability.available) {
+      return {
+        status: "installed",
+        detail: availability.version ? `Available via ${availability.command} (${availability.version})` : `Available via ${availability.command}`,
+      };
+    }
+    return {
+      status: "not installed",
+      detail: availability.error || `Unavailable via ${availability.command || "npx --no-install hyperframes --help"}`,
+    };
+  }
+
+  function hyperframesLaneMessage(status) {
+    const messages = {
+      no_directory: "No hyperframes directory exists for this package-run.",
+      no_compositions: "hyperframes/ exists, but no HTML compositions were found.",
+      not_rendered: "Compositions exist, but no MP4 renders are complete.",
+      rendering: "A render is marked in progress.",
+      failed: "At least one HyperFrames render failed.",
+      rendered: "At least one HyperFrames composition has been rendered.",
+      unknown: "HyperFrames lane status has not loaded yet.",
+    };
+    return messages[status] || messages.unknown;
+  }
+
+  function renderHyperframesLane(run = {}, fallback = {}) {
+    const data = run.hyperframes || null;
+    const availability = hyperframesAvailabilityLabel(data ? data.availability : null);
+    const lane = data && data.lane ? data.lane : { status: "unknown", compositionsCount: fallback.count || 0 };
+    const compositions = data && data.manifest && Array.isArray(data.manifest.compositions) ? data.manifest.compositions : [];
+    const compositionRows = compositions.length
+      ? compositions.map((item) => {
+          const output = item.status === "rendered" && item.rendered_mp4
+            ? `<small>Output: <code>${escapeHtml(item.rendered_mp4)}</code></small>`
+            : "";
+          const renderedAt = item.last_rendered_at ? `<small>Rendered: ${escapeHtml(item.last_rendered_at)}</small>` : "";
+          const error = item.last_error ? `<small class="motion-lane-error">Error: ${escapeHtml(item.last_error)}</small>` : "";
+          const actionLabel = item.status === "rendered" ? "Render again" : item.status === "failed" ? "Retry render" : "Render MP4";
+          return `<li class="hyperframes-composition hyperframes-status-${escapeHtml(item.status)}">
+            <div>
+              <strong>${escapeHtml(item.title || item.id)}</strong>
+              <span>${escapeHtml(item.status || "not_rendered")}</span>
+              ${output}
+              ${renderedAt}
+              ${error}
+            </div>
+            <div class="hyperframes-actions">
+              <a href="${escapeHtml(item.preview_url)}" target="_blank" rel="noopener">Preview</a>
+              <button type="button" data-hyperframes-render="${escapeHtml(item.id)}" data-run-id="${escapeHtml(run.runId || "")}">${escapeHtml(actionLabel)}</button>
+            </div>
+          </li>`;
+        }).join("")
+      : `<li class="hyperframes-composition-empty">${escapeHtml(hyperframesLaneMessage(lane.status))}</li>`;
+    return `<div class="motion-lane-card hyperframes-lane-card" data-hyperframes-run="${escapeHtml(run.runId || "")}">
+      <p class="eyebrow">HyperFrames</p>
+      <h3>Agent-native motion graphics</h3>
+      <p>${escapeHtml(hyperframesLaneMessage(lane.status))}</p>
+      <div class="hyperframes-summary">
+        <span>Availability: <strong>${escapeHtml(availability.status)}</strong></span>
+        <span>Compositions: <strong>${escapeHtml(String(lane.compositionsCount || compositions.length || 0))}</strong></span>
+      </div>
+      <small>${escapeHtml(availability.detail)}</small>
+      ${data && data.lane && data.lane.manifestError ? `<small class="motion-lane-error">Manifest error: ${escapeHtml(data.lane.manifestError)}</small>` : ""}
+      <ul class="hyperframes-composition-list">${compositionRows}</ul>
+    </div>`;
+  }
+
+  function renderVideoProjectRoom(run = null) {
+    if (!run) {
+      return `<div class="video-room-empty"><p class="eyebrow">Video Room</p><h2>Select a video project</h2><p class="muted">No package-run is focused.</p></div>`;
+    }
+    const ledger = buildProductionAssetLedger(run);
+    const hyperframes = ledger.find((item) => item.key === "hyperframes") || {};
+    const remotion = ledger.find((item) => item.key === "remotion") || {};
+    
+    // Build enhanced next action content
+    const status = run.status || "Unknown";
+    const nextCmd = run.nextRecommendedCommand || "";
+    const missing = run.missingExpectedArtifacts || [];
+    const blocked = run.conservativeBlockedActions || [];
+    
+    let actionTitle = "Next Step";
+    let actionDescription = "Review current status and artifacts.";
+    let command = nextCmd;
+    
+    // Determine action type and human-readable description
+    if (run.creatorQaStatus && run.creatorQaStatus !== "PASS" && run.creatorQaStatus !== "not run") {
+      actionTitle = "Creator QA Required";
+      actionDescription = "Run the creator QA check to validate your script and package before proceeding to production.";
+      command = command || `node scripts/package-run-creator-qa.js package-runs/${run.runId}`;
+    } else if (status.includes("Research")) {
+      actionTitle = "Research Phase";
+      actionDescription = "Build the research foundation for this video topic.";
+      command = command || `node scripts/package-run-research-pack.js package-runs/${run.runId}`;
+    } else if (status.includes("Outline")) {
+      actionTitle = "Create Outline";
+      actionDescription = "Generate the video structure and flow.";
+      command = command || `node scripts/package-engine-new-outline.js package-runs/${run.runId}`;
+    } else if (status.includes("Script")) {
+      actionTitle = "Write Script";
+      actionDescription = "Create the full video script.";
+      command = command || `node scripts/package-run-script.js package-runs/${run.runId}`;
+    } else if (status === "Ready to shoot" || status.includes("Production")) {
+      actionTitle = "Production Check";
+      actionDescription = "Verify all production requirements are met before capturing video.";
+      command = command || `node scripts/package-run-creator-qa.js package-runs/${run.runId}`;
+    } else if (command) {
+      actionTitle = "Next Action";
+      actionDescription = "Execute the following command to move this project forward.";
+    }
+    
+    return `<div class="video-room">
+      <div class="video-room-header">
+        ${renderVideoThumbnail(run)}
+        <div>
+          <p class="eyebrow">Individual Video View · Video Production Room</p>
+          <h2>${escapeHtml(run.title || run.runId)}</h2>
+          <p>${escapeHtml(runConceptDescription(run))}</p>
+          <div class="video-room-badges">
+            <span class="run-status-pill ${statusClass(run.status)}">${escapeHtml(run.status || "unknown")}</span>
+            <span class="run-status-pill ${statusClass(run.workflowBucket)}">${escapeHtml(run.workflowBucket || "unknown")}</span>
+            <span class="run-status-pill ${run.overallStatus === "BLOCKED" ? "run-status-needs-qa-repair" : ""}">${escapeHtml(run.overallStatus || "unknown")}</span>
+          </div>
+        </div>
+      </div>
+      
+      ${command ? `
+      <div class="video-room-next-enhanced">
+        <h3>${escapeHtml(actionTitle)}</h3>
+        <div class="next-action-description">${escapeHtml(actionDescription)}</div>
+        <div class="next-action-command">
+          <code>${escapeHtml(command)}</code>
+          <button type="button" class="copy-btn" data-copy-command="${escapeHtml(command)}" onclick="navigator.clipboard.writeText(this.dataset.copyCommand); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy Command', 2000)">Copy Command</button>
+        </div>
+        ${missing.length > 0 ? `
+        <div class="missing-artifacts">
+          <strong>Missing Before This Step</strong>
+          <ul>
+            ${missing.slice(0, 5).map(item => `<li>${escapeHtml(item)}</li>`).join("")}
+          </ul>
+        </div>
+        ` : ""}
+      </div>
+      ` : `
+      <div class="video-room-manual-note">
+        <strong>Manual Review Required</strong>
+        <p>This project needs human judgment to determine the next step. Review the current status, artifacts, and blockers below to decide how to proceed.</p>
+      </div>
+      `}
+      
+      <section class="video-room-section">
+        <h3>Production Assets</h3>
+        ${renderAssetLedger(ledger)}
+      </section>
+      <section class="video-room-motion-lanes">
+        <p class="video-room-lane-note muted">Motion lanes — read-only orientation. Render jobs are visible here; production approval and media moves happen outside this view.</p>
+        ${renderHyperframesLane(run, hyperframes)}
+        <div class="motion-lane-card">
+          <p class="eyebrow">Remotion</p>
+          <h3>Reusable React-template video lane</h3>
+          <p>${escapeHtml(remotion.detail || "Lane visible; no Remotion manifest detected")}</p>
+          <ul>
+            <li>Use for branded intros/outros, recurring Shorts templates, title cards, caption packages, and promo renders.</li>
+            <li>Composition ID, template name, props source, preview, render path, provenance, and approval should become visible here as manifests are added.</li>
+          </ul>
+        </div>
+      </section>
+    </div>`;
+  }
+
+  function buildSystemAvailability(index = {}, config = {}) {
+    const normalized = normalizeIndex(index);
+    const hasRuns = normalized.runs.length > 0;
+    const active = normalized.runs.find((run) => run.packageRunState && run.packageRunState.state === "active") || normalized.runs[0];
+    const hyperframesAvailability = hyperframesAvailabilityLabel(config.hyperframesAvailability || (config.hyperframes && config.hyperframes.availability) || null);
+    return [
+      { name: "Cockpit server", status: "online", detail: "Dashboard loaded in browser" },
+      { name: "Package path", status: hasRuns ? "available" : "missing", detail: hasRuns ? `${normalized.runs.length} indexed video project${normalized.runs.length === 1 ? "" : "s"}` : "package-runs-index.json has no runs" },
+      { name: "Active video project", status: active ? "available" : "missing", detail: active ? active.runId : "No focused run" },
+      { name: "Local FLUX ComfyUI", status: "probe via job monitor", detail: "Active FLUX jobs are shown in Render Jobs" },
+      { name: "PRESTO / Wan2.2", status: "probe via job monitor", detail: "Active Wan2.2 jobs are shown in Render Jobs" },
+      { name: "HyperFrames", status: hyperframesAvailability.status, detail: hyperframesAvailability.detail },
+      { name: "Remotion", status: "lane visible", detail: "Template/render automation not enabled in this slice" },
+      { name: "Resolve handoff", status: active && assetPresent(active.files, ["resolve_edit_checklist", "gate_5_assembly_manifest"]) ? "available" : "missing", detail: active ? "Derived from focused run artifacts" : "No run selected" },
+      { name: "Package validation", status: "available", detail: "Use ./scripts/verify.sh before treating changes as complete" },
+    ];
+  }
+
+  function renderSystemAvailabilityPanel(index = {}, config = {}) {
+    const rows = buildSystemAvailability(index, config).map((item) => `<div class="system-status-row system-status-${escapeHtml(item.status.replace(/[^a-z0-9]+/gi, "-").toLowerCase())}">
+      <span>${escapeHtml(item.name)}</span>
+      <strong>${escapeHtml(item.status)}</strong>
+      <small>${escapeHtml(item.detail)}</small>
+    </div>`).join("");
+    return `<div class="system-availability-card">
+      <div>
+        <p class="eyebrow">System Status</p>
+        <h2>Production System Availability</h2>
+        <p class="muted">Read-only availability map. Job details stay in the Render Jobs monitor.</p>
+      </div>
+      <div class="system-status-grid">${rows}</div>
+    </div>`;
+  }
+
+  function capabilityInventoryItems() {
+    return [
+      { name: "Episode Factory Cockpit", category: "cockpit", location: "vidnux", status: "used", integration: "first-class", use: "Package-run visibility, gates, next action" },
+      { name: "FLUX ComfyUI", category: "image generation", location: "vidnux", status: "used", integration: "job monitor", use: "Image generation from package prompts" },
+      { name: "PRESTO Wan2.2", category: "video generation", location: "PRESTO", status: "used", integration: "job monitor", use: "Image-to-video generation" },
+      { name: "Hyperframes", category: "motion graphics", location: "local/browser", status: "visible stub", integration: "planned first-class lane", use: "HTML/CSS/JS explainer scenes and motion cards" },
+      { name: "Remotion", category: "template video", location: "local", status: "visible stub", integration: "planned first-class lane", use: "Reusable branded templates and batch renders" },
+      { name: "DaVinci Resolve", category: "edit/finish", location: "ROJEKTI / local", status: "manual", integration: "handoff only", use: "Final edit, review, delivery" },
+      { name: "VIDNAS", category: "storage", location: "NAS", status: "used", integration: "asset paths", use: "Shared media, generated assets, handoff paths" },
+    ];
+  }
+
+  function renderCapabilityInventoryPanel() {
+    const rows = capabilityInventoryItems().map((item) => `<article class="capability-card capability-${escapeHtml(item.status.replace(/[^a-z0-9]+/gi, "-").toLowerCase())}">
+      <div><span>${escapeHtml(item.category)}</span><strong>${escapeHtml(item.name)}</strong></div>
+      <p>${escapeHtml(item.use)}</p>
+      <small>${escapeHtml(item.location)} · ${escapeHtml(item.status)} · ${escapeHtml(item.integration)}</small>
+    </article>`).join("");
+    return `<div class="capability-inventory-card">
+      <div>
+        <p class="eyebrow">Capability Inventory</p>
+        <h2>Visible Production Lanes</h2>
+        <p class="muted">Used, planned, manual, and stubbed capabilities are visible so tools do not become hidden scripts.</p>
+      </div>
+      <div class="capability-grid">${rows}</div>
+    </div>`;
+  }
+
+  function renderProductionCard(run) {
+    const title = run.title || run.runId;
+    const updated = run.updatedAt ? new Date(run.updatedAt).toLocaleDateString() : "No tracked files";
+    const runHref = run.path ? `${run.path}/` : "#";
+    const bucket = productionBucketForRun(run);
+    const bucketClass = bucket.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase();
+    const ledger = buildProductionAssetLedger(run);
+    return `<article class="production-card production-bucket-${bucketClass}" data-run-id="${escapeHtml(run.runId)}">
+      <div class="production-card-layout">
+        ${renderVideoThumbnail(run)}
+        <div class="production-card-main">
+          <div class="production-card-top">
+            <span class="package-number">${escapeHtml(run.runId)}</span>
+            <span class="run-status-pill ${statusClass(run.status)}">${escapeHtml(run.status)}</span>
+          </div>
+          <h3>${escapeHtml(title)}</h3>
+          <p class="production-card-concept">${escapeHtml(runConceptDescription(run))}</p>
+          ${renderCompactPipelineStrip(run)}
+        </div>
+      </div>
+      <div class="production-card-next">
+        <span>Next</span>
+        <strong>${escapeHtml(run.nextRecommendedCommand || run.nextExpectedFile || "Manual review required")}</strong>
+      </div>
+      ${renderAssetLedger(ledger, { compact: true })}
+      <div class="production-card-meta">
+        <span>Updated: ${escapeHtml(updated)}</span>
+        <a href="${escapeHtml(runHref)}" class="nav-link-button" data-open-package-folder="${escapeHtml(run.runId)}">Open folder</a>
+      </div>
+      <button type="button" class="focus-run-btn" data-focus-run="${escapeHtml(run.runId)}">Focus this run / Open video room</button>
+    </article>`;
+  }
+
+  function renderProductionsOverview(runs) {
+    const buckets = groupRunsByProductionBucket(runs);
+    const sections = PRODUCTION_BUCKETS.filter((label) => buckets[label].length > 0);
+    if (sections.length === 0) {
+      return `<p class="muted">No package runs found. Run <code>node scripts/package-runs-index.js</code> to generate the index.</p>`;
+    }
+    return sections.map((label) => {
+      const bucketRuns = buckets[label];
+      const bucketClass = label.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase();
+      return `<section class="production-bucket production-bucket-${bucketClass}" data-production-bucket="${escapeHtml(label)}">
+        <div class="production-bucket-header">
+          <h3>${escapeHtml(label)}</h3>
+          <span class="production-bucket-count">${bucketRuns.length}</span>
+        </div>
+        <div class="production-bucket-grid">${bucketRuns.map(renderProductionCard).join("")}</div>
+      </section>`;
+    }).join("");
+  }
+
+  function focusRunFolderForRun(run = {}, runId = "") {
+    return (run && run.runId) || runId || "";
+  }
+
   function normalizeNextSafeAction(payload) {
     const source = payload && typeof payload === "object" ? payload : {};
     const facts = source.facts && typeof source.facts === "object" ? source.facts : {};
@@ -2857,11 +3381,16 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       closePreview: doc.querySelector("#artifactPreviewClose"),
       mikkoConsoleStatus: doc.querySelector("#mikkoConsoleStatus"),
       mikkoConsoleContent: doc.querySelector("#mikkoConsoleContent"),
+      productionsOverview: doc.querySelector("#productionsOverview"),
+      videoRoomPanel: doc.querySelector("#videoRoomPanel"),
+      systemAvailabilityPanel: doc.querySelector("#systemAvailabilityPanel"),
+      capabilityInventoryPanel: doc.querySelector("#capabilityInventoryPanel"),
     };
     let index = normalizeIndex({});
     let localWriteConfig = null;
     let localWriteConfigPromise = null;
     let dashboardMode = "focus";
+    let selectedRunId = null;
 
     function showStatus(message, type = "") {
       els.status.textContent = message;
@@ -2875,6 +3404,40 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       els.grid.innerHTML = visible.length
         ? visible.map(renderRunCard).join("")
         : `<p class="muted">No package runs match this filter.</p>`;
+      if (els.productionsOverview) {
+        els.productionsOverview.innerHTML = renderProductionsOverview(index.runs);
+      }
+      const focusedRun = index.runs.find((run) => run.runId === selectedRunId) || findActiveRunFromIndex(index, "") || index.runs[0] || null;
+      if (els.videoRoomPanel) {
+        els.videoRoomPanel.innerHTML = renderVideoProjectRoom(focusedRun);
+      }
+      if (els.systemAvailabilityPanel) {
+        els.systemAvailabilityPanel.innerHTML = renderSystemAvailabilityPanel(index, localWriteConfig || {});
+      }
+      if (els.capabilityInventoryPanel) {
+        els.capabilityInventoryPanel.innerHTML = renderCapabilityInventoryPanel();
+      }
+    }
+
+    function focusRun(runId) {
+      if (!runId) return;
+      const run = index.runs.find((r) => r.runId === runId);
+      const runFolder = focusRunFolderForRun(run, runId);
+      setFocusedRun(runId);
+      if (els.videoRoomPanel) {
+        els.videoRoomPanel.innerHTML = renderVideoProjectRoom(run || null);
+      }
+      loadHyperframesLane(runId);
+      loadPipelinePanels(runFolder);
+      if (els.dashboard) {
+        els.dashboard.scrollTop = 0;
+      }
+      const focusBtn = doc.querySelector(`[data-focus-run="${runId}"]`);
+      if (focusBtn) {
+        doc.querySelectorAll(".production-card").forEach((card) => card.classList.remove("production-card-focused"));
+        const card = focusBtn.closest(".production-card");
+        if (card) card.classList.add("production-card-focused");
+      }
     }
 
     function storageAvailable() {
@@ -2912,6 +3475,10 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       els.currentFocusContent = doc.querySelector("#currentFocusContent") || doc.querySelector("[data-current-focus-result]");
     }
 
+    function normalizeDashboardMode(mode) {
+      return mode === "full" ? "full" : "focus";
+    }
+
     function setDashboardMode(mode = "focus") {
       const nextMode = normalizeDashboardMode(mode);
       dashboardMode = nextMode;
@@ -2921,12 +3488,33 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         button.classList.toggle("active", active);
         button.setAttribute("aria-pressed", active ? "true" : "false");
       });
-      const activeRunFocus = Boolean(els.currentFocusContent && els.currentFocusContent.dataset.activeRunFocus === "true");
+      const activeRunFocus = activeRunId && (dashboardMode === "focus" || focusModeOverride);
       const openState = dashboardGroupOpenState(nextMode, activeRunFocus);
       doc.querySelectorAll("[data-dashboard-group]").forEach((group) => {
         const groupName = group.dataset.dashboardGroup;
         group.open = Boolean(openState[groupName]);
       });
+    }
+
+    function setFocusedRun(runId) {
+      activeRunId = runId;
+      focusModeOverride = true;
+      if (els.dashboard) els.dashboard.dataset.focusedRun = runId || "false";
+      if (runId && dashboardMode === "focus") {
+        setDashboardMode("focus");
+      }
+      requestAnimationFrame(() => {
+        if (els.videoRoomPanel) {
+          els.videoRoomPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    }
+
+    function clearFocusedRun() {
+      activeRunId = "";
+      focusModeOverride = false;
+      if (els.dashboard) els.dashboard.dataset.focusedRun = "false";
+      setDashboardMode(dashboardMode);
     }
 
     function beginningTriageStateFromDom(container) {
@@ -3037,10 +3625,87 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       }
     }
 
+    function loadPipelinePanels(activeRun) {
+      // Pipeline Tracker
+      const trackerContainer = doc.querySelector("#pipelineTrackerContainer");
+      if (trackerContainer && globalScope.PipelineTracker) {
+        if (activeRun) {
+          globalScope.PipelineTracker.mount(trackerContainer, { runFolder: activeRun });
+        } else {
+          trackerContainer.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px;">No active run detected. Start or select a package run to see pipeline progress.</div>`;
+        }
+      }
+
+      // Visual Beat Map
+      const beatMapContainer = doc.querySelector("#visualBeatMapContainer");
+      if (beatMapContainer && globalScope.VisualBeatMapPanel) {
+        if (activeRun) {
+          globalScope.VisualBeatMapPanel.mount(beatMapContainer, { runFolder: activeRun });
+        } else {
+          beatMapContainer.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px;">No active run. Select a package run to see its visual beat map.</div>`;
+        }
+      }
+
+      // Media Gallery
+      const galleryContainer = doc.querySelector("#mediaGalleryContainer");
+      if (galleryContainer && globalScope.MediaGallery) {
+        if (activeRun) {
+          globalScope.MediaGallery.mount(galleryContainer, { runFolder: activeRun });
+        } else {
+          galleryContainer.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px;">No active run. Media gallery shows when a run is active.</div>`;
+        }
+      }
+
+      // Friction Log
+      const frictionContainer = doc.querySelector("#frictionLogPanel");
+      if (frictionContainer && globalScope.FrictionLog) {
+        if (activeRun) {
+          globalScope.FrictionLog.mount(frictionContainer, { runFolder: activeRun });
+        } else {
+          frictionContainer.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px;">No active run. Friction log activates when a run is in progress.</div>`;
+        }
+      }
+
+      // Workflow Wizard
+      const wizardContainer = doc.querySelector("#workflowWizardContainer");
+      if (wizardContainer && globalScope.WorkflowWizard) {
+        if (activeRun) {
+          globalScope.WorkflowWizard.mount(wizardContainer, { runFolder: activeRun });
+        } else {
+          wizardContainer.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px;">No active run. Start or select a package run for guided workflow.</div>`;
+        }
+      }
+
+      // Job Progress (polls independently, no activeRun dependency)
+      const jobProgressContainer = doc.querySelector("#jobProgressPanel");
+      if (jobProgressContainer && globalScope.JobProgress) {
+        globalScope.JobProgress.mount(jobProgressContainer);
+      }
+    }
+
+    function renderIndexLoadingSkeleton() {
+      const card = `<div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line medium"></div><div class="skeleton-line short"></div></div>`;
+      return card + card + card;
+    }
+
+    function renderPanelLoadingSkeleton() {
+      return `<div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line medium"></div></div>`;
+    }
+
+    function renderFetchError(message, retryAction) {
+      return `<div class="fetch-error-recovery"><p class="fetch-error-msg">${escapeHtml(message)}</p><button type="button" class="retry-btn" data-retry-load="${escapeHtml(retryAction)}">Retry</button></div>`;
+    }
+
     function load() {
       renderBeginningTriageFromStorage();
+      if (els.grid) els.grid.innerHTML = renderIndexLoadingSkeleton();
+      showStatus("Loading package runs…", "");
+      const warningTimeout = setTimeout(() => {
+        showStatus("Taking longer than expected — check if the local server is running…", "");
+      }, 8000);
       fetch("package-runs-index.json", { cache: "no-store" })
         .then((response) => {
+          clearTimeout(warningTimeout);
           if (!response.ok) throw new Error(`Could not load package-runs-index.json (${response.status})`);
           return response.json();
         })
@@ -3049,17 +3714,19 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
           showStatus(`Loaded ${index.runs.length} package runs from package-runs-index.json.`, "success");
           render();
           loadLocalWriteConfig()
-            .then(() => Promise.all([loadNextSafeActionPanel(), loadEvidenceIntakePanel(), loadMikkoInputConsole()]))
+            .then(() => Promise.all([loadHyperframesLane(currentFocusedRun() ? currentFocusedRun().runId : ""), loadNextSafeActionPanel(), loadEvidenceIntakePanel(), loadMikkoInputConsole()]))
             .catch(() => Promise.all([loadNextSafeActionPanel(), loadEvidenceIntakePanel(), loadMikkoInputConsole()]));
         })
         .catch((error) => {
+          clearTimeout(warningTimeout);
           showStatus(error.message, "error");
-          els.grid.innerHTML = `<p class="muted">Run <code>node scripts/package-runs-index.js</code>, then serve this directory locally.</p>`;
+          els.grid.innerHTML = `<p class="muted">Run <code>node scripts/package-runs-index.js</code>, then serve this directory locally.</p>${renderFetchError(error.message, "index")}`;
         });
     }
 
     function loadEvidenceIntakePanel() {
       if (!els.evidenceIntakePanel) return Promise.resolve();
+      els.evidenceIntakePanel.innerHTML = renderPanelLoadingSkeleton();
       const statusApi =
         localWriteConfig && localWriteConfig.evidenceIntakeStatusApi
           ? localWriteConfig.evidenceIntakeStatusApi
@@ -3073,12 +3740,13 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
           els.evidenceIntakePanel.innerHTML = renderEvidenceIntakePanel(payload);
         })
         .catch((error) => {
-          els.evidenceIntakePanel.innerHTML = `<div class="evidence-intake-card"><p class="eyebrow">Evidence Intake</p><h2>Unavailable</h2><p class="muted">${escapeHtml(error.message)}</p></div>`;
+          els.evidenceIntakePanel.innerHTML = `<div class="evidence-intake-card"><p class="eyebrow">Evidence Intake</p><h2>Unavailable</h2><p class="muted">${escapeHtml(error.message)}</p>${renderFetchError(error.message, "evidence-intake")}</div>`;
         });
     }
 
     function loadNextSafeActionPanel() {
       if (!els.nextSafeActionPanel) return Promise.resolve();
+      els.nextSafeActionPanel.innerHTML = renderPanelLoadingSkeleton();
       const nextSafeActionApi =
         localWriteConfig && localWriteConfig.roughCutInputConsole && localWriteConfig.roughCutInputConsole.nextSafeActionApi
           ? localWriteConfig.roughCutInputConsole.nextSafeActionApi
@@ -3096,9 +3764,10 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
             if (els.currentFocusContent) els.currentFocusContent.dataset.activeRunFocus = payload && payload.activeRun ? "true" : "false";
           }
           setDashboardMode(dashboardMode);
+          loadPipelinePanels(payload && payload.activeRun ? payload.activeRun : "");
         })
         .catch((error) => {
-          els.nextSafeActionPanel.innerHTML = `<div class="next-safe-action-card"><p class="eyebrow">NEXT SAFE ACTION</p><h2>Unavailable</h2><p class="muted">${escapeHtml(error.message)}</p></div>`;
+          els.nextSafeActionPanel.innerHTML = `<div class="next-safe-action-card"><p class="eyebrow">NEXT SAFE ACTION</p><h2>Unavailable</h2><p class="muted">${escapeHtml(error.message)}</p>${renderFetchError(error.message, "next-safe-action")}</div>`;
         });
     }
 
@@ -3111,6 +3780,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     function loadMikkoInputConsole() {
       if (!els.mikkoConsoleContent) return Promise.resolve();
       setMikkoConsoleStatus("Loading active run");
+      els.mikkoConsoleContent.innerHTML = renderPanelLoadingSkeleton();
       const statusApi =
         localWriteConfig && localWriteConfig.roughCutInputConsole
           ? localWriteConfig.roughCutInputConsole.statusApi
@@ -3125,7 +3795,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
           setMikkoConsoleStatus(payload.runId || "Active run loaded", "success");
         })
         .catch((error) => {
-          els.mikkoConsoleContent.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
+          els.mikkoConsoleContent.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>${renderFetchError(error.message, "mikko-console")}`;
           setMikkoConsoleStatus("Unavailable", "error");
         });
     }
@@ -3140,8 +3810,14 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
           }
           localWriteConfig = {
             ...payload.captureEvidenceWrite,
+            packageRunOpen: payload.packageRunOpen || {},
+            hyperframes: payload.hyperframes || {},
+            hyperframesAvailability: payload.hyperframes ? payload.hyperframes.availability : null,
             roughCutInputConsole: payload.roughCutInputConsole || {},
           };
+          if (els.systemAvailabilityPanel) {
+            els.systemAvailabilityPanel.innerHTML = renderSystemAvailabilityPanel(index, localWriteConfig);
+          }
           return localWriteConfig;
         }))
         .catch((error) => {
@@ -3150,6 +3826,68 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
           throw error;
         });
       return localWriteConfigPromise;
+    }
+
+    function currentFocusedRun() {
+      return index.runs.find((run) => run.runId === selectedRunId) || findActiveRunFromIndex(index, "") || index.runs[0] || null;
+    }
+
+    function loadHyperframesLane(runId) {
+      const run = index.runs.find((item) => item.runId === runId) || currentFocusedRun();
+      if (!run || !run.runId || !els.videoRoomPanel) return Promise.resolve(null);
+      return loadLocalWriteConfig()
+        .then(() => {
+          const hyperframesConfig = localWriteConfig && localWriteConfig.hyperframes ? localWriteConfig.hyperframes : {};
+          const statusApi = hyperframesConfig.statusApi || "/api/hyperframes/status";
+          return fetch(`${statusApi}?runId=${encodeURIComponent(run.runId)}`, { cache: "no-store" });
+        })
+        .then((response) => response.json().then((payload) => {
+          if (!response.ok) throw new Error(payload.error || `HyperFrames status unavailable (${response.status}).`);
+          run.hyperframes = payload;
+          els.videoRoomPanel.innerHTML = renderVideoProjectRoom(run);
+          return payload;
+        }))
+        .catch((error) => {
+          run.hyperframes = {
+            availability: localWriteConfig ? localWriteConfig.hyperframesAvailability : null,
+            lane: { status: "unknown", compositionsCount: 0, manifestError: error.message },
+            manifest: { compositions: [] },
+          };
+          els.videoRoomPanel.innerHTML = renderVideoProjectRoom(run);
+          return null;
+        });
+    }
+
+    function renderHyperframesComposition(button) {
+      const runId = button.dataset.runId || "";
+      const id = button.dataset.hyperframesRender || "";
+      if (!runId || !id) return Promise.reject(new Error("HyperFrames render target is missing."));
+      button.disabled = true;
+      button.textContent = "Rendering...";
+      return loadLocalWriteConfig()
+        .then(() => {
+          const hyperframesConfig = localWriteConfig && localWriteConfig.hyperframes ? localWriteConfig.hyperframes : {};
+          const renderApi = hyperframesConfig.renderApi || "/api/hyperframes/render";
+          const nonceHeader = hyperframesConfig.nonceHeader || localWriteConfig.nonceHeader || "x-vidtoolz-local-write-nonce";
+          const localWriteNonce = hyperframesConfig.localWriteNonce || localWriteConfig.localWriteNonce || "";
+          return fetch(renderApi, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              [nonceHeader]: localWriteNonce,
+            },
+            body: JSON.stringify({ runId, id, localWriteNonce }),
+          });
+        })
+        .then((response) => response.json().then((payload) => {
+          if (!response.ok) throw new Error(payload.error || `HyperFrames render failed (${response.status}).`);
+          showStatus(`Rendered HyperFrames composition ${id}: ${payload.rendered_mp4}`, "success");
+          return loadHyperframesLane(runId);
+        }))
+        .catch((error) => {
+          showStatus(error.message, "error");
+          return loadHyperframesLane(runId);
+        });
     }
 
     function showPreviewLoading(href, title, runId) {
@@ -3181,7 +3919,51 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         .catch((error) => showPreviewError(href, error));
     }
 
+    function openPackageFolder(link) {
+      const runId = link.dataset.openPackageFolder || "";
+      const assetPath = link.dataset.openAssetPath || "";
+      if (!runId) return Promise.reject(new Error("Package-run id is missing."));
+      return loadLocalWriteConfig().then(() => {
+        const openConfig = (localWriteConfig && localWriteConfig.packageRunOpen) || {};
+        const openApi = openConfig.openApi || "/api/package-runs/open";
+        const nonceHeader = openConfig.nonceHeader || localWriteConfig.nonceHeader || "x-vidtoolz-local-write-nonce";
+        const localWriteNonce = openConfig.localWriteNonce || localWriteConfig.localWriteNonce || "";
+        return fetch(openApi, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            [nonceHeader]: localWriteNonce,
+          },
+          body: JSON.stringify({ runId, assetPath, localWriteNonce }),
+        });
+      }).then((response) => response.json().then((payload) => {
+        if (!response.ok) throw new Error(payload.error || `Open folder failed (${response.status}).`);
+        showStatus(`Opened OS folder: ${payload.opened}`, "success");
+        return payload;
+      }));
+    }
+
     function handleGridClick(event) {
+      const retryBtn = event.target.closest("[data-retry-load]");
+      if (retryBtn) {
+        event.preventDefault();
+        const target = retryBtn.dataset.retryLoad;
+        if (target === "index") load();
+        else if (target === "evidence-intake") loadEvidenceIntakePanel();
+        else if (target === "next-safe-action") loadNextSafeActionPanel();
+        else if (target === "mikko-console") loadMikkoInputConsole();
+        return;
+      }
+      const osFolder = event.target.closest("[data-open-package-folder]");
+      if (osFolder) {
+        event.preventDefault();
+        openPackageFolder(osFolder).catch((error) => {
+          showStatus(`${error.message} Falling back to browser folder view.`, "error");
+          const href = osFolder.getAttribute("href");
+          if (href && href !== "#") window.location.href = href;
+        });
+        return;
+      }
       const evidencePreview = event.target.closest("[data-evidence-preview]");
       if (evidencePreview) {
         event.preventDefault();
@@ -4250,11 +5032,46 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       button.addEventListener("click", () => setDashboardMode(button.dataset.dashboardModeButton));
     });
     if (els.currentFocusPanel) els.currentFocusPanel.addEventListener("click", handleCurrentFocusClick);
+    if (els.productionsOverview) {
+      els.productionsOverview.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-focus-run]");
+        if (!button) return;
+        event.preventDefault();
+        focusRun(button.dataset.focusRun);
+      });
+    }
+    if (els.videoRoomPanel) {
+      els.videoRoomPanel.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-hyperframes-render]");
+        if (!button) return;
+        event.preventDefault();
+        renderHyperframesComposition(button);
+      });
+    }
     els.closePreview.addEventListener("click", () => {
       els.previewPanel.classList.add("hidden");
     });
 
+    const galleryRefreshBtn = doc.querySelector("#mediaGalleryRefresh");
+    if (galleryRefreshBtn) {
+      galleryRefreshBtn.addEventListener("click", () => {
+        const galleryContainer = doc.querySelector("#mediaGalleryContainer");
+        if (galleryContainer && globalScope.MediaGallery && galleryContainer.dataset.runFolder) {
+          globalScope.MediaGallery.mount(galleryContainer, { runFolder: galleryContainer.dataset.runFolder });
+        }
+      });
+    }
+
     setDashboardMode("focus");
+
+    // Auto-focus run if ?run= parameter is present
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const runId = urlParams.get('run');
+      if (runId && index?.runs?.some(r => r.runId === runId)) {
+        focusRun(runId);
+      }
+    } catch (_) {}
 
     return {
       load,
@@ -4267,6 +5084,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       renderBeginningTriageFromStorage,
       readBeginningTriageState,
       setDashboardMode,
+      focusRun,
     };
   }
 
@@ -4326,6 +5144,24 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     renderRunCard,
     renderStats,
     renderWorkflowStats,
+    renderCompactPipelineStrip,
+    buildProductionAssetLedger,
+    renderAssetLedger,
+    renderVideoThumbnail,
+    runConceptDescription,
+    hyperframesAvailabilityLabel,
+    renderHyperframesLane,
+    renderVideoProjectRoom,
+    buildSystemAvailability,
+    renderSystemAvailabilityPanel,
+    capabilityInventoryItems,
+    renderCapabilityInventoryPanel,
+    renderProductionCard,
+    renderProductionsOverview,
+    focusRunFolderForRun,
+    PRODUCTION_BUCKETS,
+    productionBucketForRun,
+    groupRunsByProductionBucket,
     normalizeNextSafeAction,
     renderNextSafeActionPanel,
     findActiveRunFromIndex,

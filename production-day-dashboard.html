@@ -5,27 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Production Day Dashboard</title>
     <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="styles.css?v=1.8.0" />
     <style>
-      :root {
-        color-scheme: dark;
-        --bg: #07090d;
-        --panel: #111822;
-        --panel-2: #151f2c;
-        --panel-3: #1c2835;
-        --line: #2b3949;
-        --line-strong: #425469;
-        --text: #eef4f8;
-        --muted: #9badbf;
-        --soft: #c6d3df;
-        --accent: #62d4ff;
-        --accent-2: #8bdc9f;
-        --warning: #ffd166;
-        --danger: #ff7a7a;
-        --button: #223144;
-        --shadow: rgba(0, 0, 0, 0.35);
-        --radius: 8px;
-      }
-
       * {
         box-sizing: border-box;
       }
@@ -171,7 +152,7 @@
         border-radius: var(--radius);
         color: #ffe7a1;
         background: rgba(255, 209, 102, 0.11);
-        box-shadow: 0 12px 30px var(--shadow);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
       }
 
       .dashboard-grid {
@@ -188,7 +169,7 @@
         border: 1px solid var(--line);
         border-radius: var(--radius);
         background: rgba(17, 24, 34, 0.94);
-        box-shadow: 0 16px 36px var(--shadow);
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3);
       }
 
       .timer-panel {
@@ -599,6 +580,16 @@
     </style>
   </head>
   <body>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html" class="active">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
+<details class="page-guide" open>
+  <summary>Page Guide — What is this?</summary>
+  <div class="page-guide-body">
+    <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Execute one video in a focused 10-hour sprint. Timer, phase tracking, checklists, and stop-loss warnings.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Start the timer. Work through phases in order. When all phases are done, go to <a href="publish-gate.html">Publish Gate</a> for final review.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Timer panel with countdown. Phase cards: Setup, Capture, Assembly, Refine, Export. Each has checklists and time budget. Now panel shows current focus. Stop-loss warnings appear if phases overrun.</span></div>
+  </div>
+</details>
+
     <div class="app-shell">
       <header class="topbar">
         <div>
