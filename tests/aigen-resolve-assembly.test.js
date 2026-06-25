@@ -149,10 +149,10 @@ test("POST /api/aigen/resolve-assembly/create with valid package_id succeeds", a
       });
       assert.equal(response.statusCode, 200);
       assert.equal(response.body.ok, true);
-      assert.equal(response.body.files.length, 3);
-      assert.equal(response.body.files.includes("assembly-plan.md"), true);
-      assert.equal(response.body.files.includes("assembly-plan.csv"), true);
-      assert.equal(response.body.files.includes("media-manifest.json"), true);
+      assert.equal(response.body.data.files.length, 3);
+      assert.equal(response.body.data.files.includes("assembly-plan.md"), true);
+      assert.equal(response.body.data.files.includes("assembly-plan.csv"), true);
+      assert.equal(response.body.data.files.includes("media-manifest.json"), true);
       assert.equal(fs.existsSync(path.join(fixture.packageDir, "resolve-handoff", "assembly-plan.md")), true);
     });
   } finally {
@@ -193,7 +193,7 @@ test("GET /api/aigen/production-pipeline/status includes resolve_handoff_ready f
       await listen(server);
       const response = await requestJson(server, packageEngineServer.AIGEN_STATUS_API);
       assert.equal(response.statusCode, 200);
-      const pkg = response.body.packages.find((item) => item.id === fixture.packageId);
+      const pkg = response.body.data.packages.find((item) => item.id === fixture.packageId);
       assert.ok(pkg, "Package not found in status");
       assert.equal("resolve_handoff_ready" in pkg, true);
       assert.equal(typeof pkg.resolve_handoff_ready, "boolean");

@@ -232,10 +232,10 @@ test("FLUX submit succeeds and returns job id and pid", async () => {
       });
       assert.equal(response.statusCode, 200);
       assert.equal(response.body.ok, true);
-      assert.equal(response.body.package_id, fixture.packageId);
-      assert.equal(response.body.mode, "dry_run");
-      assert.match(response.body.job_id, /-/);
-      assert.equal(typeof response.body.pid, "number");
+      assert.equal(response.body.data.package_id, fixture.packageId);
+      assert.equal(response.body.data.mode, "dry_run");
+      assert.match(response.body.data.job_id, /-/);
+      assert.equal(typeof response.body.data.pid, "number");
     });
   } finally {
     await close(server);

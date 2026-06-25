@@ -144,8 +144,8 @@ test("GET flux-images returns empty array when package has no FLUX images", asyn
       const response = await requestJson(server, `${packageEngineServer.AIGEN_FLUX_IMAGES_API_PREFIX}${fixture.packageId}`);
       assert.equal(response.statusCode, 200);
       assert.equal(response.body.ok, true);
-      assert.deepEqual(response.body.images, []);
-      assert.equal(response.body.total, 0);
+      assert.deepEqual(response.body.data.images, []);
+      assert.equal(response.body.data.total, 0);
     });
   } finally {
     await close(server);
@@ -161,13 +161,13 @@ test("GET flux-images returns images with prompts", async () => {
       await listen(server);
       const response = await requestJson(server, `${packageEngineServer.AIGEN_FLUX_IMAGES_API_PREFIX}${fixture.packageId}`);
       assert.equal(response.statusCode, 200);
-      assert.equal(response.body.images.length, 3);
-      assert.deepEqual(response.body.images.map((image) => image.index), [1, 3, 7]);
-      assert.equal(response.body.images[1].prompt, "Prompt three");
-      assert.equal(response.body.images[1].path, "images/flux-local/flux-003.png");
-      assert.equal(response.body.images[1].label, "flux-003");
-      assert.equal(response.body.images[1].exists, true);
-      assert.equal(response.body.images[1].size_bytes > 0, true);
+      assert.equal(response.body.data.images.length, 3);
+      assert.deepEqual(response.body.data.images.map((image) => image.index), [1, 3, 7]);
+      assert.equal(response.body.data.images[1].prompt, "Prompt three");
+      assert.equal(response.body.data.images[1].path, "images/flux-local/flux-003.png");
+      assert.equal(response.body.data.images[1].label, "flux-003");
+      assert.equal(response.body.data.images[1].exists, true);
+      assert.equal(response.body.data.images[1].size_bytes > 0, true);
     });
   } finally {
     await close(server);
@@ -182,8 +182,8 @@ test("GET flux-images populates existing selection", async () => {
     await withAigenEnv(fixture, async () => {
       await listen(server);
       const response = await requestJson(server, `${packageEngineServer.AIGEN_FLUX_IMAGES_API_PREFIX}${fixture.packageId}`);
-      assert.deepEqual(response.body.selected, [1, 7]);
-      assert.equal(response.body.selected_count, 2);
+      assert.deepEqual(response.body.data.selected, [1, 7]);
+      assert.equal(response.body.data.selected_count, 2);
     });
   } finally {
     await close(server);
@@ -209,8 +209,8 @@ test("POST selected-images writes valid JSON", async () => {
       const data = JSON.parse(fs.readFileSync(selectedPath, "utf8"));
       assert.equal(response.statusCode, 200);
       assert.equal(response.body.ok, true);
-      assert.equal(response.body.overwrote_previous, false);
-      assert.equal(response.body.selected_count, 2);
+      assert.equal(response.body.data.overwrote_previous, false);
+      assert.equal(response.body.data.selected_count, 2);
       assert.equal(data.selections[0].prompt_index, 1);
       assert.equal(data.selections[0].selected_path, "images/flux-local/flux-001.png");
       assert.equal(data.selections[0].prompt, "Prompt one");
@@ -237,7 +237,7 @@ test("POST selected-images overwrites existing selection", async () => {
         body: { package_id: fixture.packageId, selected_indices: [3], labels: true },
       });
       const data = JSON.parse(fs.readFileSync(path.join(fixture.packageDir, "selected-images.json"), "utf8"));
-      assert.equal(response.body.overwrote_previous, true);
+      assert.equal(response.body.data.overwrote_previous, true);
       assert.equal(data.selections.length, 1);
       assert.equal(data.selections[0].label, "selected-img-003");
     });

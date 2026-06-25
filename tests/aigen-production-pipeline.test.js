@@ -101,13 +101,13 @@ test("GET /api/aigen/production-pipeline/status returns ok true when VIDNAS exis
     const response = await requestJson(server, packageEngineServer.AIGEN_STATUS_API);
     assert.equal(response.statusCode, 200);
     assert.equal(response.body.ok, true);
-    assert.equal(Array.isArray(response.body.packages), true);
-    assert.equal(response.body.packages[0].id, "vidtoolz-youtube-ideas-20260611");
-    assert.equal(response.body.packages[0].selections_count, 2);
-    assert.equal(response.body.packages[0].flux_images_count, 2);
-    assert.equal(response.body.packages[0].wan_completed, 1);
-    assert.equal(response.body.packages[0].wan_pending, 1);
-    assert.equal(typeof response.body.wan_lane, "object");
+    assert.equal(Array.isArray(response.body.data.packages), true);
+    assert.equal(response.body.data.packages[0].id, "vidtoolz-youtube-ideas-20260611");
+    assert.equal(response.body.data.packages[0].selections_count, 2);
+    assert.equal(response.body.data.packages[0].flux_images_count, 2);
+    assert.equal(response.body.data.packages[0].wan_completed, 1);
+    assert.equal(response.body.data.packages[0].wan_pending, 1);
+    assert.equal(typeof response.body.data.wan_lane, "object");
   } finally {
     await close(server);
     if (previous.root === undefined) delete process.env.AIGEN_VIDNAS_ROOT; else process.env.AIGEN_VIDNAS_ROOT = previous.root;
@@ -126,10 +126,11 @@ test("GET /api/aigen/production-pipeline/status handles missing VIDNAS gracefull
     await listen(server);
     const response = await requestJson(server, packageEngineServer.AIGEN_STATUS_API);
     assert.equal(response.statusCode, 200);
-    assert.equal(response.body.ok, false);
-    assert.equal(response.body.vidnas_mounted, false);
-    assert.match(response.body.error, /VIDNAS not mounted/);
-    assert.deepEqual(response.body.packages, []);
+    assert.equal(response.body.ok, true);
+    assert.equal(response.body.data.ok, false);
+    assert.equal(response.body.data.vidnas_mounted, false);
+    assert.match(response.body.data.error, /VIDNAS not mounted/);
+    assert.deepEqual(response.body.data.packages, []);
   } finally {
     await close(server);
     if (previous === undefined) delete process.env.AIGEN_VIDNAS_ROOT; else process.env.AIGEN_VIDNAS_ROOT = previous;

@@ -175,6 +175,186 @@ test("package run helpers build stable folder names and candidate source paths",
   assert.equal(packageRun.candidateSourceFromLocation(""), "package-candidates.json");
 });
 
+test("HyperFrames availability probe parses version and failure", () => {
+  const ok = packageEngineServer.probeHyperframesAvailability({
+    force: true,
+    runner: () => ({ status: 0, stdout: "hyperframes 1.2.3\n", stderr: "" }),
+  });
+  const fail = packageEngineServer.probeHyperframesAvailability({
+    force: true,
+    runner: () => ({ status: 1, stdout: "", stderr: "not found" }),
+  });
+
+  assert.equal(ok.available, true);
+  assert.equal(ok.command, "npx --no-install hyperframes --help");
+  assert.equal(ok.version, "1.2.3");
+  assert.equal(fail.available, false);
+  assert.match(fail.error, /not found/);
+});
+
+test("HyperFrames discovery works without a manifest", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "hyperframes-discovery-no-manifest-"));
+  const runId = "2099-04-01-hyperframes";
+  const compositionsDir = path.join(tempRoot, "package-runs", runId, "hyperframes", "compositions");
+  fs.mkdirSync(compositionsDir, { recursive: true });
+  fs.writeFileSync(path.join(compositionsDir, "opening-card.html"), "<!doctype html><h1>Opening</h1>", "utf8");
+
+  const result = packageEngineServer.discoverHyperframesCompositions({ runId }, {
+    root: tempRoot,
+    force: true,
+    runner: () => ({ status: 1, stdout: "", stderr: "missing" }),
+  });
+
+  assert.equal(result.lane.status, "not_rendered");
+  assert.equal(result.lane.compositionsCount, 1);
+  assert.equal(result.manifest.compositions[0].id, "opening-card");
+  assert.equal(result.manifest.compositions[0].source_html, "hyperframes/compositions/opening-card.html");
+  assert.match(result.manifest.compositions[0].preview_url, /\/api\/hyperframes\/preview/);
+});
+
+test("HyperFrames discovery merges manifest render state", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "hyperframes-discovery-manifest-"));
+  const runId = "2099-04-02-hyperframes";
+  const hyperframesDir = path.join(tempRoot, "package-runs", runId, "hyperframes");
+  fs.mkdirSync(path.join(hyperframesDir, "compositions"), { recursive: true });
+  fs.writeFileSync(path.join(hyperframesDir, "compositions", "quote-card.html"), "<!doctype html><h1>Quote</h1>", "utf8");
+  fs.writeFileSync(path.join(hyperframesDir, "hyperframes.json"), JSON.stringify({
+    schema_version: 1,
+    updated_at: "2099-04-02T00:00:00.000Z",
+    compositions: [{
+      id: "quote-card",
+      title: "Quote Card",
+      status: "failed",
+      last_error: "render broke",
+      approved: true,
+    }],
+  }), "utf8");
+
+  const result = packageEngineServer.discoverHyperframesCompositions({ runId }, {
+    root: tempRoot,
+    force: true,
+    runner: () => ({ status: 0, stdout: "hyperframes 1.0.0", stderr: "" }),
+  });
+
+  assert.equal(result.lane.status, "failed");
+  assert.equal(result.manifest.compositions[0].title, "Quote Card");
+  assert.equal(result.manifest.compositions[0].status, "failed");
+  assert.equal(result.manifest.compositions[0].last_error, "render broke");
+  assert.equal(result.manifest.compositions[0].approved, true);
+});
+
+test("HyperFrames preview rejects traversal and resolves only composition HTML", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "hyperframes-preview-safety-"));
+  const runId = "2099-04-03-hyperframes";
+  const compositionsDir = path.join(tempRoot, "package-runs", runId, "hyperframes", "compositions");
+  fs.mkdirSync(compositionsDir, { recursive: true });
+  fs.writeFileSync(path.join(compositionsDir, "safe-card.html"), "<!doctype html><h1>Safe</h1>", "utf8");
+
+  const target = packageEngineServer.resolveHyperframesCompositionFile({ runId, id: "safe-card" }, { root: tempRoot });
+  assert.equal(path.basename(target.sourcePath), "safe-card.html");
+  assert.throws(
+    () => packageEngineServer.resolveHyperframesCompositionFile({ runId, id: "../secret" }, { root: tempRoot }),
+    /Invalid HyperFrames composition id/
+  );
+});
+
+test("HyperFrames preview route serves only validated composition HTML", async () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "hyperframes-preview-route-"));
+  const runId = "2099-04-07-hyperframes";
+  const compositionsDir = path.join(tempRoot, "package-runs", runId, "hyperframes", "compositions");
+  fs.mkdirSync(compositionsDir, { recursive: true });
+  fs.writeFileSync(path.join(compositionsDir, "route-card.html"), "<!doctype html><h1>Route</h1>", "utf8");
+  const server = packageEngineServer.createServer({ root: tempRoot });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = server.address().port;
+  try {
+    const okBody = await new Promise((resolve, reject) => {
+      http.get(`http://127.0.0.1:${port}/api/hyperframes/preview?runId=${runId}&id=route-card`, (res) => {
+        let body = "";
+        res.on("data", (chunk) => { body += chunk; });
+        res.on("end", () => resolve({ status: res.statusCode, body, type: res.headers["content-type"] }));
+      }).on("error", reject);
+    });
+    const badBody = await new Promise((resolve, reject) => {
+      http.get(`http://127.0.0.1:${port}/api/hyperframes/preview?runId=${runId}&id=..%2Fsecret`, (res) => {
+        let body = "";
+        res.on("data", (chunk) => { body += chunk; });
+        res.on("end", () => resolve({ status: res.statusCode, body }));
+      }).on("error", reject);
+    });
+    assert.equal(okBody.status, 200);
+    assert.match(okBody.type, /text\/html/);
+    assert.match(okBody.body, /Route/);
+    assert.equal(badBody.status, 400);
+    assert.match(badBody.body, /Invalid HyperFrames composition id/);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("HyperFrames render route validation requires an existing composition", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "hyperframes-render-validation-"));
+  const runId = "2099-04-04-hyperframes";
+  fs.mkdirSync(path.join(tempRoot, "package-runs", runId, "hyperframes", "compositions"), { recursive: true });
+
+  assert.throws(
+    () => packageEngineServer.renderHyperframesComposition({ runId, id: "missing-card" }, {
+      root: tempRoot,
+      renderer: () => ({ ok: true, command: "fake" }),
+    }),
+    /composition HTML does not exist/
+  );
+});
+
+test("HyperFrames render updates manifest on simulated success", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "hyperframes-render-success-"));
+  const runId = "2099-04-05-hyperframes";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  const compositionsDir = path.join(runDir, "hyperframes", "compositions");
+  fs.mkdirSync(compositionsDir, { recursive: true });
+  fs.writeFileSync(path.join(compositionsDir, "scene-one.html"), "<!doctype html><h1>Scene</h1>", "utf8");
+
+  const result = packageEngineServer.renderHyperframesComposition({ runId, id: "scene-one" }, {
+    root: tempRoot,
+    renderer: (_source, output, log) => {
+      fs.writeFileSync(output, "fake mp4", "utf8");
+      fs.writeFileSync(log, "fake log", "utf8");
+      return { ok: true, command: "fake hyperframes render" };
+    },
+  });
+  const manifest = JSON.parse(fs.readFileSync(path.join(runDir, "hyperframes", "hyperframes.json"), "utf8"));
+
+  assert.equal(result.ok, true);
+  assert.equal(result.approved, false);
+  assert.equal(manifest.compositions[0].status, "rendered");
+  assert.equal(manifest.compositions[0].approved, false);
+  assert.equal(manifest.compositions[0].rendered_mp4, "hyperframes/renders/scene-one.mp4");
+  assert.ok(manifest.compositions[0].last_rendered_at);
+});
+
+test("HyperFrames render updates manifest on simulated failure", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "hyperframes-render-failure-"));
+  const runId = "2099-04-06-hyperframes";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  const compositionsDir = path.join(runDir, "hyperframes", "compositions");
+  fs.mkdirSync(compositionsDir, { recursive: true });
+  fs.writeFileSync(path.join(compositionsDir, "scene-fail.html"), "<!doctype html><h1>Scene</h1>", "utf8");
+
+  assert.throws(
+    () => packageEngineServer.renderHyperframesComposition({ runId, id: "scene-fail" }, {
+      root: tempRoot,
+      renderer: () => {
+        throw new Error("simulated failure");
+      },
+    }),
+    /simulated failure/
+  );
+  const manifest = JSON.parse(fs.readFileSync(path.join(runDir, "hyperframes", "hyperframes.json"), "utf8"));
+  assert.equal(manifest.compositions[0].status, "failed");
+  assert.equal(manifest.compositions[0].last_error, "simulated failure");
+  assert.equal(manifest.compositions[0].approved, false);
+});
+
 test("package run generation prompt includes workflow topic schema and guardrails", () => {
   const prompt = packageRun.buildGenerationPrompt({
     topic: "AI video idea filter",
@@ -902,7 +1082,7 @@ test("package engine browser code surfaces thumbnail backend failures and recove
   assert.match(script, /OpenAI thumbnail provider error:/);
   assert.match(script, /OPENAI_API_KEY is missing/);
   assert.match(script, /finally \{\s*isGeneratingThumbnails = false;\s*render\(\);/);
-  assert.match(html, /package-engine\.js\?v=1\.7\.4-thumb5/);
+  assert.match(html, /package-engine\.js\?v=1\.7\.6/);
 });
 
 test("package engine HTML contains Focused View toggle and focus panel", () => {
@@ -1114,9 +1294,10 @@ test("thumbnails endpoint accepts POST with a valid nonce and returns placeholde
       },
     });
     assert.equal(res.statusCode, 200);
-    assert.equal(res.body.provider, "placeholder");
-    assert.equal(res.body.candidates.length, 3);
-    assert.match(res.body.candidates[0].thumbnailImage, /^data:image\/svg\+xml;base64,/);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.data.provider, "placeholder");
+    assert.equal(res.body.data.candidates.length, 3);
+    assert.match(res.body.data.candidates[0].thumbnailImage, /^data:image\/svg\+xml;base64,/);
   } finally {
     await closeServer(server);
     if (prev === undefined) delete process.env.THUMBNAIL_PROVIDER; else process.env.THUMBNAIL_PROVIDER = prev;

@@ -145,9 +145,9 @@ test("image prompts read returns existing image-prompts.json", async () => {
       const response = await requestJson(server, `${packageEngineServer.IMAGE_PROMPTS_READ_API}?package_id=${fixture.packageId}`);
       assert.equal(response.statusCode, 200);
       assert.equal(response.body.ok, true);
-      assert.equal(response.body.exists, true);
-      assert.equal(response.body.count, 2);
-      assert.equal(response.body.prompts[0].supports, "Opening beat");
+      assert.equal(response.body.data.exists, true);
+      assert.equal(response.body.data.count, 2);
+      assert.equal(response.body.data.prompts[0].supports, "Opening beat");
     });
   } finally {
     await close(server);
@@ -164,9 +164,9 @@ test("image prompts read missing file returns safe empty model", async () => {
       const response = await requestJson(server, `${packageEngineServer.IMAGE_PROMPTS_READ_API}?package_id=${fixture.packageId}`);
       assert.equal(response.statusCode, 200);
       assert.equal(response.body.ok, true);
-      assert.equal(response.body.exists, false);
-      assert.equal(response.body.count, 0);
-      assert.deepEqual(response.body.prompts, []);
+      assert.equal(response.body.data.exists, false);
+      assert.equal(response.body.data.count, 0);
+      assert.deepEqual(response.body.data.prompts, []);
     });
   } finally {
     await close(server);

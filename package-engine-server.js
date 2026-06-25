@@ -4123,13 +4123,13 @@ function attachPrestoStatus(status, options = {}, callback) {
 function handleAigenStatus(req, res) {
   const status = aigenProductionPipelineStatus();
   if (!status.ok) {
-    send(res, 200, status);
+    sendJSON(res, 200, status);
     return;
   }
   attachPrestoStatus(status, {}, (withPresto) => {
     withPresto.localWriteNonce = LOCAL_WRITE_NONCE;
     withPresto.nonceHeader = LOCAL_WRITE_NONCE_HEADER;
-    send(res, 200, withPresto);
+    sendJSON(res, 200, withPresto);
   });
 }
 
@@ -4235,8 +4235,14 @@ function handleAigenResolveAssemblyCreate(req, res) {
       validateLocalWriteRequest(req, payload);
       return runResolveAssemblyCreate(payload.package_id);
     })
-    .then((result) => send(res, result.ok ? 200 : 400, result))
-    .catch((error) => send(res, error.statusCode || 500, { ok: false, error: error.message }));
+    .then((result) => {
+      if (result.ok) {
+        sendJSON(res, 200, result);
+      } else {
+        sendError(res, 400, result.error || 'Operation failed', null);
+      }
+    })
+    .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
 }
 
 function fluxIndexFromFilename(filename = '') {
@@ -4584,9 +4590,9 @@ function writeSelectedImages(payload = {}, options = {}) {
 function handleAigenFluxImages(req, res, url) {
   const packageId = decodeURIComponent(url.pathname.slice(AIGEN_FLUX_IMAGES_API_PREFIX.length));
   try {
-    send(res, 200, listFluxImages(packageId));
+    sendJSON(res, 200, listFluxImages(packageId));
   } catch (error) {
-    send(res, error.statusCode === 404 ? 400 : error.statusCode || 500, { ok: false, error: error.message });
+    sendError(res, error.statusCode === 404 ? 400 : error.statusCode || 500, error.message, null);
   }
 }
 
@@ -4595,23 +4601,23 @@ function handleAigenSelectedImages(req, res) {
     .then((payload) => {
       validateLocalWriteRequest(req, payload);
       const result = writeSelectedImages(payload);
-      send(res, 200, result);
+      sendJSON(res, 200, result);
     })
-    .catch((error) => send(res, error.statusCode === 404 ? 400 : error.statusCode || 500, { ok: false, error: error.message }));
+    .catch((error) => sendError(res, error.statusCode === 404 ? 400 : error.statusCode || 500, error.message, null));
 }
 
 function handleImagePromptsRead(req, res, url) {
   try {
-    send(res, 200, readImagePrompts(url.searchParams.get('package_id')));
+    sendJSON(res, 200, readImagePrompts(url.searchParams.get('package_id')));
   } catch (error) {
-    send(res, error.statusCode === 404 ? 400 : error.statusCode || 500, { ok: false, error: error.message });
+    sendError(res, error.statusCode === 404 ? 400 : error.statusCode || 500, error.message, null);
   }
 }
 
 function handleImagePromptsValidate(req, res) {
   readJsonBody(req)
-    .then((payload) => send(res, 200, validateImagePromptsForPackage(payload)))
-    .catch((error) => send(res, error.statusCode === 404 ? 400 : error.statusCode || 500, { ok: false, error: error.message }));
+    .then((payload) => sendJSON(res, 200, validateImagePromptsForPackage(payload)))
+    .catch((error) => sendError(res, error.statusCode === 404 ? 400 : error.statusCode || 500, error.message, null));
 }
 
 function handleImagePromptsSave(req, res) {
@@ -4619,14 +4625,14 @@ function handleImagePromptsSave(req, res) {
     .then((payload) => {
       validateLocalWriteRequest(req, payload);
       const result = saveImagePrompts(payload);
-      send(res, 200, result);
+      sendJSON(res, 200, result);
     })
     .catch((error) => {
       if (error.validation) {
-        send(res, error.statusCode || 400, { ok: false, error: error.message, validation: error.validation });
+        sendError(res, error.statusCode || 400, error.message, null, { validation: error.validation });
         return;
       }
-      send(res, error.statusCode === 404 ? 400 : error.statusCode || 500, { ok: false, error: error.message });
+      sendError(res, error.statusCode === 404 ? 400 : error.statusCode || 500, error.message, null);
     });
 }
 
@@ -4881,39 +4887,45 @@ function handlePrestoSubmit(req, res) {
     .then((payload) => {
       validateLocalWriteRequest(req, payload);
       const result = startPrestoPackageJob(payload);
-      send(res, 200, result);
+      sendJSON(res, 200, result);
     })
     .catch((error) => {
       if (error.statusCode === 409) {
-        send(res, 409, { ok: false, error: error.message, active: error.active });
+        sendError(res, 409, error.message, null, { active: error.active });
         return;
       }
-      send(res, error.statusCode || 500, { ok: false, error: error.message });
+      sendError(res, error.statusCode || 500, error.message, null);
     });
 }
 
 function handlePrestoJobStatus(req, res) {
-  send(res, 200, currentPrestoJobStatus());
+  sendJSON(res, 200, currentPrestoJobStatus());
 }
 
 function handlePrestoCancel(req, res) {
   try {
     validateLocalWriteRequest(req, {});
   } catch (error) {
-    send(res, error.statusCode || 403, { ok: false, error: error.message });
+    sendError(res, error.statusCode || 403, error.message, null);
     return;
   }
   cancelPrestoJob()
-    .then((result) => send(res, result.ok ? 200 : 400, result))
-    .catch((error) => send(res, error.statusCode || 500, { ok: false, error: error.message }));
+    .then((result) => {
+      if (result.ok) {
+        sendJSON(res, 200, result);
+      } else {
+        sendError(res, 400, result.error || 'Operation failed', null);
+      }
+    })
+    .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
 }
 
 function handlePrestoResults(req, res, url) {
   try {
     const result = readPrestoResults(url.searchParams.get('package_id'));
-    send(res, 200, result);
+    sendJSON(res, 200, result);
   } catch (error) {
-    send(res, error.statusCode || 500, { ok: false, error: error.message });
+    sendError(res, error.statusCode || 500, error.message, null);
   }
 }
 
@@ -4982,9 +4994,9 @@ function readPackageVideoPrompts(packageId, options = {}) {
 function handlePackageVideoPrompts(req, res, url) {
   try {
     const result = readPackageVideoPrompts(url.searchParams.get('package_id'));
-    send(res, 200, result);
+    sendJSON(res, 200, result);
   } catch (error) {
-    send(res, error.statusCode || 500, { ok: false, error: error.message });
+    sendError(res, error.statusCode || 500, error.message, null);
   }
 }
 
@@ -5244,38 +5256,44 @@ function handleFluxSubmit(req, res) {
     .then((payload) => {
       validateLocalWriteRequest(req, payload);
       const result = startFluxPackageJob(payload);
-      send(res, 200, result);
+      sendJSON(res, 200, result);
     })
     .catch((error) => {
       if (error.statusCode === 409) {
-        send(res, 409, { ok: false, error: error.message, active: error.active });
+        sendError(res, 409, error.message, null, { active: error.active });
         return;
       }
-      send(res, error.statusCode === 404 ? 400 : error.statusCode || 500, { ok: false, error: error.message });
+      sendError(res, error.statusCode === 404 ? 400 : error.statusCode || 500, error.message, null);
     });
 }
 
 function handleFluxJobStatus(req, res) {
-  send(res, 200, currentFluxJobStatus());
+  sendJSON(res, 200, currentFluxJobStatus());
 }
 
 function handleFluxCancel(req, res) {
   try {
     validateLocalWriteRequest(req, {});
   } catch (error) {
-    send(res, error.statusCode || 403, { ok: false, error: error.message });
+    sendError(res, error.statusCode || 403, error.message, null);
     return;
   }
   cancelFluxJob()
-    .then((result) => send(res, result.ok ? 200 : 400, result))
-    .catch((error) => send(res, error.statusCode || 500, { ok: false, error: error.message }));
+    .then((result) => {
+      if (result.ok) {
+        sendJSON(res, 200, result);
+      } else {
+        sendError(res, 400, result.error || 'Operation failed', null);
+      }
+    })
+    .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
 }
 
 function handleFluxResults(req, res, url) {
   try {
-    send(res, 200, readFluxResults(url.searchParams.get('package_id')));
+    sendJSON(res, 200, readFluxResults(url.searchParams.get('package_id')));
   } catch (error) {
-    send(res, error.statusCode || 500, { ok: false, error: error.message });
+    sendError(res, error.statusCode || 500, error.message, null);
   }
 }
 
@@ -6412,30 +6430,30 @@ function handleDailyScoutToday(req, res) {
   const today = new Date().toISOString().slice(0, 10);
   const data = dailyIdeaScout.readArchive(VIDNAS_AIGEN_ROOT + '/daily-idea-scout', today);
   if (!data) {
-    send(res, 404, { ok: false, error: `No daily idea scout run found for ${today}` });
+    sendError(res, 404, `No daily idea scout run found for ${today}`, null);
     return;
   }
-  send(res, 200, { ok: true, date: today, dailyRun: data });
+  sendJSON(res, 200, { date: today, dailyRun: data });
 }
 
 function handleDailyScoutArchive(req, res, url) {
   const date = url.searchParams.get('date');
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    send(res, 400, { ok: false, error: 'Missing or invalid date parameter (expected YYYY-MM-DD)' });
+    sendError(res, 400, 'Missing or invalid date parameter (expected YYYY-MM-DD)', null);
     return;
   }
   const data = dailyIdeaScout.readArchive(VIDNAS_AIGEN_ROOT + '/daily-idea-scout', date);
   if (!data) {
-    send(res, 404, { ok: false, error: `No archive found for ${date}` });
+    sendError(res, 404, `No archive found for ${date}`, null);
     return;
   }
-  send(res, 200, { ok: true, date, dailyRun: data });
+  sendJSON(res, 200, { date, dailyRun: data });
 }
 
 function handleDailyScoutDates(req, res) {
   const archiveRoot = VIDNAS_AIGEN_ROOT + '/daily-idea-scout';
   const dates = dailyIdeaScout.listArchiveDates(archiveRoot);
-  send(res, 200, { ok: true, dates });
+  sendJSON(res, 200, { dates });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -6657,14 +6675,14 @@ function handleFrictionLogRead(req, res, url) {
 function handleFrictionLogSave(res, payload) {
   const runFolder = payload.runFolder || '';
   if (!runFolder) {
-    send(res, 400, { error: 'Missing runFolder' });
+    sendError(res, 400, 'Missing runFolder', null);
     return;
   }
   let resolved;
   try {
     resolved = resolvePackageRunDir(runFolder);
   } catch (e) {
-    send(res, e.statusCode || 400, { error: e.message });
+    sendError(res, e.statusCode || 400, e.message, null);
     return;
   }
   const runDir = resolved.runDir;
@@ -6675,7 +6693,7 @@ function handleFrictionLogSave(res, payload) {
     entries: payload.entries || [],
   };
   fs.writeFileSync(logPath, JSON.stringify(logData, null, 2), 'utf8');
-  send(res, 200, { ok: true, saved: logData.entries.length, path: logPath });
+  sendJSON(res, 200, { saved: logData.entries.length, path: logPath });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -6883,9 +6901,9 @@ function createServer(options = {}) {
       try {
         const runId = url.searchParams.get('runId') || '2026-06-24-ideation';
         const topics = submittedTopics.listSubmittedTopics(ROOT, runId);
-        send(res, 200, { runId, count: topics.length, topics });
+        sendJSON(res, 200, { runId, count: topics.length, topics });
       } catch (error) {
-        send(res, error.statusCode || 500, { error: error.message });
+        sendError(res, error.statusCode || 500, error.message, null);
       }
       return;
     }
@@ -6897,9 +6915,9 @@ function createServer(options = {}) {
           const runId = payload.runId || '2026-06-24-ideation';
           const topicText = payload.topicText || '';
           const record = submittedTopics.saveSubmittedTopic(ROOT, runId, topicText);
-          send(res, 200, record);
+          sendJSON(res, 200, record);
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -6909,12 +6927,12 @@ function createServer(options = {}) {
         const topicId = url.searchParams.get('topicId') || '';
         const record = submittedTopics.getSubmittedTopic(ROOT, runId, topicId);
         if (!record) {
-          send(res, 404, { error: 'Topic not found.' });
+          sendError(res, 404, 'Topic not found.', null);
           return;
         }
-        send(res, 200, record);
+        sendJSON(res, 200, record);
       } catch (error) {
-        send(res, error.statusCode || 500, { error: error.message });
+        sendError(res, error.statusCode || 500, error.message, null);
       }
       return;
     }
@@ -6928,12 +6946,12 @@ function createServer(options = {}) {
           const status = payload.status || 'submitted';
           const record = submittedTopics.updateTopicStatus(ROOT, runId, topicId, status);
           if (!record) {
-            send(res, 404, { error: 'Topic not found.' });
+            sendError(res, 404, 'Topic not found.', null);
             return;
           }
-          send(res, 200, record);
+          sendJSON(res, 200, record);
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -6962,8 +6980,7 @@ function createServer(options = {}) {
           const mdPath = path.join(runDir, 'selected-package.md');
           const md = `# Selected Package: ${title}\n\n- Package number: ${pkg.packageNumber || ''}\n- Score: ${pkg.score !== undefined ? pkg.score : ''}/100\n- Recommendation: ${pkg.recommendation || ''}\n- Production difficulty: ${pkg.productionDifficulty || ''}\n\n## Idea\n\n${pkg.idea || 'Not specified.'}\n\n## Viewer Promise\n\n${pkg.viewerPromise || 'Not specified.'}\n\n## Target Viewer\n\n${pkg.targetViewer || 'Not specified.'}\n\n## Thumbnail Concept\n\n${pkg.thumbnailConcept || 'Not specified.'}\n\n## Main Risk\n\n${pkg.mainRisk || 'Not specified.'}\n`;
           fs.writeFileSync(mdPath, md, 'utf8');
-          send(res, 200, {
-            ok: true,
+          sendJSON(res, 200, {
             runId,
             title,
             jsonPath: `${PACKAGE_RUNS_DIR}/${runId}/selected-package.json`,
@@ -6971,7 +6988,7 @@ function createServer(options = {}) {
             nextStep: 'Stage 1 complete. selected-package.json and selected-package.md saved to run folder. Next: Stage 2 (Outline) — paste the outline prompt into Hermes/ChatGPT to generate 3 outline options.',
           });
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7005,8 +7022,7 @@ function createServer(options = {}) {
             if (fs.existsSync(outlinePromptPath)) {
               outlinePrompt = fs.readFileSync(outlinePromptPath, 'utf8');
             }
-            send(res, 200, {
-              ok: true,
+            sendJSON(res, 200, {
               runId,
               output: output.trim(),
               outlinePrompt,
@@ -7014,10 +7030,10 @@ function createServer(options = {}) {
               nextStep: 'Copy the outline prompt below, paste it into Hermes or ChatGPT, then save the 3 outline options as outlines.md in the run folder.',
             });
           } catch (err) {
-            send(res, 500, { error: 'Failed to generate outline prompt: ' + (err.message || String(err)) });
+            sendError(res, 500, 'Failed to generate outline prompt: ' + (err.message || String(err)), null);
           }
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7114,18 +7130,17 @@ function createServer(options = {}) {
         validateLocalWriteRequest(req, payload);
         try {
           const thumbnailResponse = await createThumbnailResponse(payload);
-          send(res, 200, thumbnailResponse);
+          sendJSON(res, 200, thumbnailResponse);
         } catch (error) {
           const config = providerConfig();
-          send(res, error.statusCode || 500, {
-            error: error.message,
+          sendError(res, error.statusCode || 500, error.message, null, {
             errorCode: error.errorCode || 'thumbnail_generation_error',
             provider: config.provider,
             model: config.provider === 'openai' ? config.model : 'local-svg-placeholder',
             timeoutMs: config.timeoutMs,
           });
         }
-      }).catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+      }).catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7133,9 +7148,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, buildCaptureEvidencePreview(payload));
+          sendJSON(res, 200, buildCaptureEvidencePreview(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message, missing: error.missing || [] }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null, { missing: error.missing || [] }));
       return;
     }
 
@@ -7143,9 +7158,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, applyCaptureEvidenceIntake(payload));
+          sendJSON(res, 200, applyCaptureEvidenceIntake(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message, missing: error.missing || [] }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null, { missing: error.missing || [] }));
       return;
     }
 
@@ -7172,9 +7187,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, saveEvidenceIntakeDraft(payload));
+          sendJSON(res, 200, saveEvidenceIntakeDraft(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message, errors: error.errors || [], warnings: error.warnings || [] }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null, { errors: error.errors || [], warnings: error.warnings || [] }));
       return;
     }
 
@@ -7207,9 +7222,9 @@ function createServer(options = {}) {
 
     if (req.method === 'GET' && url.pathname === HYPERFRAMES_STATUS_API) {
       try {
-        send(res, 200, discoverHyperframesCompositions({ runId: url.searchParams.get('runId') || '' }, { root: serverOptions.root || ROOT }));
+        sendJSON(res, 200, discoverHyperframesCompositions({ runId: url.searchParams.get('runId') || '' }, { root: serverOptions.root || ROOT }));
       } catch (error) {
-        send(res, error.statusCode || 500, { ok: false, error: error.message });
+        sendError(res, error.statusCode || 500, error.message, null);
       }
       return;
     }
@@ -7227,7 +7242,7 @@ function createServer(options = {}) {
         });
         fs.createReadStream(target.sourcePath).pipe(res);
       } catch (error) {
-        send(res, error.statusCode || 500, { ok: false, error: error.message });
+        sendError(res, error.statusCode || 500, error.message, null);
       }
       return;
     }
@@ -7236,11 +7251,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, renderHyperframesComposition(payload, { root: serverOptions.root || ROOT }));
+          sendJSON(res, 200, renderHyperframesComposition(payload, { root: serverOptions.root || ROOT }));
         })
-        .catch((error) => send(res, error.statusCode || 500, {
-          ok: false,
-          error: error.message,
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null, {
           manifest: error.manifest || null,
         }));
       return;
@@ -7248,18 +7261,18 @@ function createServer(options = {}) {
 
     if (req.method === 'GET' && url.pathname === PRODUCTION_GPS_API) {
       try {
-        send(res, 200, buildProductionGps({ runId: url.searchParams.get('runId') || '' }));
+        sendJSON(res, 200, buildProductionGps({ runId: url.searchParams.get('runId') || '' }));
       } catch (error) {
-        send(res, error.statusCode || 500, { error: error.message });
+        sendError(res, error.statusCode || 500, error.message, null);
       }
       return;
     }
 
     if (req.method === 'GET' && url.pathname === SECOND_CUT_INSPECTOR_API) {
       try {
-        send(res, 200, buildSecondCutInspector({ runId: url.searchParams.get('runId') || '' }));
+        sendJSON(res, 200, buildSecondCutInspector({ runId: url.searchParams.get('runId') || '' }));
       } catch (error) {
-        send(res, error.statusCode || 500, { error: error.message });
+        sendError(res, error.statusCode || 500, error.message, null);
       }
       return;
     }
@@ -7268,9 +7281,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, buildSecondCutCandidateRegistration(payload, { mode: 'preview' }));
+          sendJSON(res, 200, buildSecondCutCandidateRegistration(payload, { mode: 'preview' }));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7278,9 +7291,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, applySecondCutCandidateRegistration(payload));
+          sendJSON(res, 200, applySecondCutCandidateRegistration(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7288,9 +7301,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, saveSecondCutWatchNotes(payload));
+          sendJSON(res, 200, saveSecondCutWatchNotes(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7298,9 +7311,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, regenerateSecondCutReviewDerived(payload));
+          sendJSON(res, 200, regenerateSecondCutReviewDerived(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7308,9 +7321,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, buildFinalCandidateRegistration(payload, { mode: 'preview' }));
+          sendJSON(res, 200, buildFinalCandidateRegistration(payload, { mode: 'preview' }));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7318,9 +7331,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, applyFinalCandidateRegistration(payload));
+          sendJSON(res, 200, applyFinalCandidateRegistration(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7328,9 +7341,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, saveFinalWatchNotes(payload));
+          sendJSON(res, 200, saveFinalWatchNotes(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7338,9 +7351,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, regenerateFinalReviewDerived(payload));
+          sendJSON(res, 200, regenerateFinalReviewDerived(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7349,9 +7362,13 @@ function createServer(options = {}) {
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
           const output = runFinalReview(payload);
-          send(res, output.ok ? 200 : 500, output);
+          if (output.ok) {
+            sendJSON(res, 200, output);
+          } else {
+            sendError(res, 500, output.error || 'Operation failed', null);
+          }
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7359,9 +7376,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, buildExportMasterRegistration(payload, { mode: 'preview' }));
+          sendJSON(res, 200, buildExportMasterRegistration(payload, { mode: 'preview' }));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7369,9 +7386,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, applyExportMasterRegistration(payload));
+          sendJSON(res, 200, applyExportMasterRegistration(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7379,9 +7396,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, saveDeliveryReadiness(payload));
+          sendJSON(res, 200, saveDeliveryReadiness(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7389,9 +7406,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, regenerateExportChecklistDerived(payload));
+          sendJSON(res, 200, regenerateExportChecklistDerived(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7400,9 +7417,13 @@ function createServer(options = {}) {
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
           const output = runExportChecklist(payload);
-          send(res, output.ok ? 200 : 500, output);
+          if (output.ok) {
+            sendJSON(res, 200, output);
+          } else {
+            sendError(res, 500, output.error || 'Operation failed', null);
+          }
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7411,9 +7432,13 @@ function createServer(options = {}) {
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
           const output = runPublicationMetadata(payload);
-          send(res, output.ok ? 200 : 500, output);
+          if (output.ok) {
+            sendJSON(res, 200, output);
+          } else {
+            sendError(res, 500, output.error || 'Operation failed', null);
+          }
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7422,9 +7447,13 @@ function createServer(options = {}) {
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
           const output = runArchiveManifest(payload);
-          send(res, output.ok ? 200 : 500, output);
+          if (output.ok) {
+            sendJSON(res, 200, output);
+          } else {
+            sendError(res, 500, output.error || 'Operation failed', null);
+          }
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7432,9 +7461,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, saveRoughCutWatchNotes(payload));
+          sendJSON(res, 200, saveRoughCutWatchNotes(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message, missing: error.missing || [] }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null, { missing: error.missing || [] }));
       return;
     }
 
@@ -7443,9 +7472,13 @@ function createServer(options = {}) {
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
           const output = runRoughCutReview(payload);
-          send(res, output.ok ? 200 : 500, output);
+          if (output.ok) {
+            sendJSON(res, 200, output);
+          } else {
+            sendError(res, 500, output.error || 'Operation failed', null);
+          }
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message, missing: error.missing || [] }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null, { missing: error.missing || [] }));
       return;
     }
 
@@ -7453,9 +7486,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, regenerateRoughCutDerivedArtifacts(payload));
+          sendJSON(res, 200, regenerateRoughCutDerivedArtifacts(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message, missing: error.missing || [] }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null, { missing: error.missing || [] }));
       return;
     }
 
@@ -7463,9 +7496,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, openPackageRunAssetFolder(payload));
+          sendJSON(res, 200, openPackageRunAssetFolder(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7473,9 +7506,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, openRoughCutVideo(payload));
+          sendJSON(res, 200, openRoughCutVideo(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7483,9 +7516,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          send(res, 200, savePickupPlan(payload));
+          sendJSON(res, 200, savePickupPlan(payload));
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message, missing: error.missing || [] }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null, { missing: error.missing || [] }));
       return;
     }
 
@@ -7506,7 +7539,7 @@ function createServer(options = {}) {
           validateLocalWriteRequest(req, payload);
           handleFrictionLogSave(res, payload);
         })
-        .catch((error) => send(res, error.statusCode || 500, { error: error.message }));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
       return;
     }
 
@@ -7531,7 +7564,7 @@ function createServer(options = {}) {
         proxyRes.pipe(res);
       });
       proxyReq.on('error', () => {
-        send(res, 502, { error: 'AIGEN Review View (port 8099) is not running. Start it with: cd ~/work/aigen-edit && python3 review-view/server.py' });
+        sendError(res, 502, 'AIGEN Review View (port 8099) is not running. Start it with: cd ~/work/aigen-edit && python3 review-view/server.py', null);
       });
       if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
         req.pipe(proxyReq);
