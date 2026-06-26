@@ -135,8 +135,8 @@ function addEvidence(items, label, filePath, options = {}) {
   });
 }
 
-function manifestPathFromReport(repoRoot) {
-  const report = readTextIfExists(path.join(repoRoot, SELECTED_IMAGE_HANDOFF_REPORT));
+function manifestPathFromReport(runDir) {
+  const report = readTextIfExists(path.join(runDir, SELECTED_IMAGE_HANDOFF_REPORT));
   const match = report.match(/`([^`]*generation-manifest\.json)`/i);
   return match ? match[1] : "";
 }
@@ -219,20 +219,20 @@ function buildNextSafeAction(runInput = "", options = {}) {
     relativePath: resolved.runPath,
     kind: "folder",
   });
-  addEvidence(evidence, "selected image edit handoff report", path.join(repoRoot, SELECTED_IMAGE_HANDOFF_REPORT), {
+  addEvidence(evidence, "selected image edit handoff report", path.join(resolved.runDir, SELECTED_IMAGE_HANDOFF_REPORT), {
     href: SELECTED_IMAGE_HANDOFF_REPORT,
     kind: "markdown",
   });
-  addEvidence(evidence, "prompt-03 selection review report", path.join(repoRoot, PROMPT_03_SELECTION_REVIEW_REPORT), {
+  addEvidence(evidence, "prompt-03 selection review report", path.join(resolved.runDir, PROMPT_03_SELECTION_REVIEW_REPORT), {
     href: PROMPT_03_SELECTION_REVIEW_REPORT,
     kind: "markdown",
   });
-  addEvidence(evidence, "Kling video candidate handoff report", path.join(repoRoot, KLING_VIDEO_HANDOFF_REPORT), {
+  addEvidence(evidence, "Kling video candidate handoff report", path.join(resolved.runDir, KLING_VIDEO_HANDOFF_REPORT), {
     href: KLING_VIDEO_HANDOFF_REPORT,
     kind: "markdown",
   });
 
-  const manifestPath = options.manifestPath || manifestPathFromReport(repoRoot);
+  const manifestPath = options.manifestPath || manifestPathFromReport(resolved.runDir);
   const { manifest, items, error: manifestError } = parseManifest(manifestPath);
   const assetFolder = manifest && manifest.output_folder ? manifest.output_folder : path.dirname(manifestPath || "");
   const selectedItems = selectedPrompt03Items(items);

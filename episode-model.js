@@ -1428,7 +1428,7 @@
     const session = normalizeWorkSession(sessionInput);
     return normalizeEpisode({
       ...normalized,
-      nextAction: session.nextActionAfterSession,
+      nextAction: session.nextActionAfterSession || normalized.nextAction,
       workSessions: [session, ...normalized.workSessions],
       updatedAt: nowIso(),
     });

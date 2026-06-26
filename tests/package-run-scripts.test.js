@@ -1659,7 +1659,7 @@ test("rough cut review preserves existing artifacts unless overwrite is explicit
   assert.equal(first.result, 0);
   assert.equal(fs.readFileSync(reviewPath, "utf8"), "# Manual Rough Cut Review\n\nKeep this.\n");
   assert.equal(fs.readFileSync(pickupPath, "utf8"), "# Manual Pickups\n\nKeep this.\n");
-  assert.match(first.stdout.join("\n"), /unchanged: .*rough-cut-review\.md/);
+  assert.match(first.stdout.join("\n"), /skipped: .*rough-cut-review\.md/);
   assert.match(first.stdout.join("\n"), /created: .*edit-fix-list\.md/);
 
   const overwritten = captureConsole(() => packageRoughCutReviewScript.main([runDir, "--overwrite"]));
@@ -1997,7 +1997,7 @@ test("final review preserves publication blockers unless overwrite is explicit",
   const first = captureConsole(() => packageFinalReviewScript.main([runDir]));
   assert.equal(first.result, 0);
   assert.equal(fs.readFileSync(blockersPath, "utf8"), "# Manual Publication Blockers\n\nKeep this.\n");
-  assert.match(first.stdout.join("\n"), /unchanged: .*publication-blockers\.md/);
+  assert.match(first.stdout.join("\n"), /skipped: .*publication-blockers\.md/);
 
   const overwritten = captureConsole(() => packageFinalReviewScript.main([runDir, "--overwrite"]));
   assert.equal(overwritten.result, 0);

@@ -367,7 +367,7 @@ function createEvidenceNextActionFixture(withKlingVideo = false) {
   const assetFolder = path.join(tempRoot, "vidnas", "script-image-assets");
   const manifestPath = path.join(assetFolder, "generation-manifest.json");
   fs.mkdirSync(runDir, { recursive: true });
-  fs.mkdirSync(path.join(tempRoot, "reports"), { recursive: true });
+  fs.mkdirSync(path.join(runDir, "reports"), { recursive: true });
   fs.mkdirSync(assetFolder, { recursive: true });
   fs.writeFileSync(path.join(runDir, "package-run-state.md"), "# Package Run State\n\nPackage run state: active\n", "utf8");
   fs.writeFileSync(
@@ -386,11 +386,11 @@ function createEvidenceNextActionFixture(withKlingVideo = false) {
     "utf8"
   );
   fs.writeFileSync(
-    path.join(tempRoot, "reports", "prompt-03-selected-image-edit-handoff.md"),
+    path.join(runDir, "reports", "prompt-03-selected-image-edit-handoff.md"),
     `# Handoff\n\nManifest: \`${manifestPath}\`\n`,
     "utf8"
   );
-  fs.writeFileSync(path.join(tempRoot, "reports", "prompt-03-image-selection-review.md"), "# Review\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "reports", "prompt-03-image-selection-review.md"), "# Review\n", "utf8");
   if (withKlingVideo) {
     fs.mkdirSync(path.join(assetFolder, "kling-video-candidates"), { recursive: true });
     fs.writeFileSync(path.join(assetFolder, "kling-video-candidates", "block-024-prompt-03-kling-01.mp4"), "fake video", "utf8");

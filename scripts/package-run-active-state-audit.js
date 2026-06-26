@@ -393,7 +393,7 @@ function main(argv = process.argv.slice(2), options = {}) {
   } else {
     console.log(renderText(report));
   }
-  return 0;
+  return report.ok ? 0 : 1;
 }
 
 if (require.main === module) {

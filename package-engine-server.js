@@ -3913,7 +3913,7 @@ function discoverPackageRunCandidates(options = {}) {
 
     // Tag each candidate with its source run id for client-side filtering
     for (const c of candidates) {
-      if (!c._runId) c._runId = runId;
+      if (c && typeof c === "object" && !c._runId) c._runId = runId;
     }
 
     // Check for selected-package.json (read-only — just check existence)

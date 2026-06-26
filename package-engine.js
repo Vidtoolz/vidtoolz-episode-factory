@@ -738,6 +738,12 @@
       return;
     }
 
+    // Hide the panel during the async existing-file check so the user cannot
+    // confirm before the CREATE/REPLACE mode is determined.
+    els.confirmPanel.classList.add("hidden");
+    els.confirmStatus.textContent = "Checking for existing selection...";
+    els.confirmStatus.className = "confirm-status";
+
     // Check if this run already has a saved selected-package.json so the panel can
     // distinguish CREATE (no file yet) from REPLACE (a different selection is on disk).
     fetch(`package-runs/${runId}/selected-package.json`, { cache: "no-store" })
@@ -896,7 +902,7 @@
     const promptText = document.querySelector("#outlinePromptText");
 
     if (genBtn) {
-      genBtn.addEventListener("click", () => {
+      genBtn.onclick = () => {
         if (!localWriteNonce) {
           genStatus.textContent = "Cannot generate: local write nonce is missing. Refresh the page to retry.";
           genStatus.className = "confirm-status error";
@@ -948,7 +954,7 @@
             genStatus.className = "confirm-status error";
             genBtn.disabled = false;
           });
-      });
+      };
     }
 
     // Wire up the "Open Run Folder" button. It opens the run folder via the

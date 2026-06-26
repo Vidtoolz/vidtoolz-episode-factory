@@ -3123,7 +3123,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     const secondCutReadiness = model.secondCutReadiness || buildSecondCutReadinessModel(null, {});
     const readOnlyLabel = model.readOnly === false ? "Source not read-only" : "Read-only cockpit";
     const runMeta = model.runId ? `Active run: ${escapeHtml(model.runId)}` : "No active package-run source loaded.";
-    return `<div id="currentFocusContent" class="current-focus-content creator-cockpit-content" data-current-focus-result data-creator-cockpit data-active-run-focus="${model.activeRunFocus ? "true" : "false"}">
+    return `<div data-focus-content="current" class="current-focus-content creator-cockpit-content" data-current-focus-result data-creator-cockpit data-active-run-focus="${model.activeRunFocus ? "true" : "false"}">
       <div class="creator-cockpit-status">
         <span class="lifecycle-badge ${model.readOnly === false ? "error" : "success"}">${escapeHtml(readOnlyLabel)}</span>
         <span>${escapeHtml(runMeta)}</span>
@@ -3369,7 +3369,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       status: doc.querySelector("#packageRunsStatus"),
       dashboard: doc.querySelector(".package-runs-dashboard"),
       currentFocusPanel: doc.querySelector("#currentFocusPanel"),
-      currentFocusContent: doc.querySelector("#currentFocusContent"),
+      currentFocusContent: doc.querySelector("[data-focus-content='current']"),
       beginningTriagePanel: doc.querySelector("#beginningTriageCockpit"),
       diagnosticsGroup: doc.querySelector("[data-dashboard-group='diagnostics']"),
       beginningGroup: doc.querySelector("[data-dashboard-group='beginning-triage']"),
@@ -3482,7 +3482,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     function renderCurrentFocusFallback(state = readBeginningTriageState()) {
       if (!els.currentFocusContent || els.currentFocusContent.dataset.activeRunFocus === "true") return;
       els.currentFocusContent.outerHTML = renderCurrentFocus({}, { beginningState: state });
-      els.currentFocusContent = doc.querySelector("#currentFocusContent") || doc.querySelector("[data-current-focus-result]");
+      els.currentFocusContent = doc.querySelector("[data-focus-content='current']") || doc.querySelector("[data-current-focus-result]");
     }
 
     function normalizeDashboardMode(mode) {
@@ -3785,7 +3785,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
           els.nextSafeActionPanel.innerHTML = renderNextSafeActionPanel(payload);
           if (els.currentFocusContent) {
             els.currentFocusContent.outerHTML = renderCurrentFocus(payload, { beginningState: readBeginningTriageState(), index });
-            els.currentFocusContent = doc.querySelector("#currentFocusContent");
+            els.currentFocusContent = doc.querySelector("[data-focus-content='current']");
             if (els.currentFocusContent) els.currentFocusContent.dataset.activeRunFocus = payload && payload.activeRun ? "true" : "false";
           }
           setDashboardMode(dashboardMode);

@@ -405,11 +405,13 @@ function jsonPayload(outputs, writeResult, relativeRunDir) {
 function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   if (options.help) {
-    console.log(usage());
+    if (options.json) console.log(JSON.stringify({ ok: true, help: true, usage: usage() }, null, 2));
+    else console.log(usage());
     return 0;
   }
   if (!options.runFolder) {
-    console.error(usage());
+    if (options.json) console.log(JSON.stringify({ ok: false, error: "Missing run folder argument", usage: usage() }, null, 2));
+    else console.error(usage());
     return 1;
   }
 

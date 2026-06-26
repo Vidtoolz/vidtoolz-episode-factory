@@ -46,8 +46,13 @@
   }
 
   function dateString(date = new Date()) {
-    if (typeof date === "string") return date.slice(0, 10);
-    return date.toISOString().slice(0, 10);
+    if (typeof date === "string") {
+      const match = date.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (match) return match[1];
+      // Fall through to Date parsing for invalid strings
+    }
+    const parsed = new Date(date);
+    return isNaN(parsed.getTime()) ? new Date().toISOString().slice(0, 10) : parsed.toISOString().slice(0, 10);
   }
 
   function buildRunFolderName(topic, date = new Date()) {
@@ -220,7 +225,9 @@ ${workflow}
       lines.push("", `## ${field.replace(/_/g, " ")}`, "", cleanString(source[field]) || "Not specified.");
     });
 
-    const shorts = Array.isArray(source.shortsIdeas || source.shorts_ideas) ? source.shortsIdeas || source.shorts_ideas : [];
+    const shorts = Array.isArray(source.shortsIdeas) ? source.shortsIdeas
+      : Array.isArray(source.shorts_ideas) ? source.shorts_ideas
+      : [];
     lines.push("", "## Shorts Ideas", "");
     if (shorts.length) {
       shorts.slice(0, 5).forEach((item, index) => lines.push(`${index + 1}. ${cleanString(item)}`));

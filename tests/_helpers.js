@@ -135,9 +135,9 @@ function createNextSafeActionFixture(options = {}) {
     production_ready: false,
   }));
   fs.writeFileSync(manifestPath, JSON.stringify({ output_folder: assetDir, items }, null, 2), "utf8");
-  writeTestFile(tempRoot, "reports/prompt-03-selected-image-edit-handoff.md", `# Handoff\n\nSource manifest:\n\`${manifestPath}\`\n`);
-  writeTestFile(tempRoot, "reports/prompt-03-image-selection-review.md", "# Selection Review\n");
-  writeTestFile(tempRoot, "reports/prompt-03-kling-video-candidate-handoff.md", "# Kling Handoff\n");
+  writeTestFile(tempRoot, `package-runs/${runId}/reports/prompt-03-selected-image-edit-handoff.md`, `# Handoff\n\nSource manifest:\n\`${manifestPath}\`\n`);
+  writeTestFile(tempRoot, `package-runs/${runId}/reports/prompt-03-image-selection-review.md`, "# Selection Review\n");
+  writeTestFile(tempRoot, `package-runs/${runId}/reports/prompt-03-kling-video-candidate-handoff.md`, "# Kling Handoff\n");
   if (options.klingVideos) {
     fs.mkdirSync(klingDir, { recursive: true });
     fs.writeFileSync(path.join(klingDir, "block-024-prompt-03-kling-01.mp4"), "fake video\n", "utf8");

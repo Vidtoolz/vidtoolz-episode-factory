@@ -25,8 +25,13 @@
   function saveState(state, options = {}) {
     const storage = options.storage || globalScope.localStorage;
     if (!storage) return false;
-    storage.setItem(getStorageKey(), JSON.stringify(state));
-    return true;
+    try {
+      storage.setItem(getStorageKey(), JSON.stringify(state));
+      return true;
+    } catch (error) {
+      console.warn("Episode Factory could not save local state.", error);
+      return false;
+    }
   }
 
   function getActiveSessionKey() {
@@ -61,8 +66,13 @@
       storage.removeItem(getActiveSessionKey());
       return true;
     }
-    storage.setItem(getActiveSessionKey(), JSON.stringify(activeSession));
-    return true;
+    try {
+      storage.setItem(getActiveSessionKey(), JSON.stringify(activeSession));
+      return true;
+    } catch (error) {
+      console.warn("Episode Factory could not save active session.", error);
+      return false;
+    }
   }
 
   function loadBackupStatus(options = {}) {
@@ -82,8 +92,13 @@
     const storage = options.storage || globalScope.localStorage;
     const model = options.model || globalScope.EpisodeFactoryModel;
     if (!storage || !model) return false;
-    storage.setItem(getBackupStatusKey(), JSON.stringify(model.normalizeBackupStatus(backupStatus)));
-    return true;
+    try {
+      storage.setItem(getBackupStatusKey(), JSON.stringify(model.normalizeBackupStatus(backupStatus)));
+      return true;
+    } catch (error) {
+      console.warn("Episode Factory could not save backup status.", error);
+      return false;
+    }
   }
 
   function recordBackupTimestamp(type, timestamp = new Date().toISOString(), options = {}) {

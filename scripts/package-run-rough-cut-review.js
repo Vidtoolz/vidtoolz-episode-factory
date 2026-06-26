@@ -558,7 +558,7 @@ function writeOutputs(runDir, outputs, overwrite = false) {
       fs.writeFileSync(filePath, content, "utf8");
       return [filename, "overwritten"];
     }
-    return [filename, "unchanged"];
+    return [filename, "skipped"];
   });
 }
 

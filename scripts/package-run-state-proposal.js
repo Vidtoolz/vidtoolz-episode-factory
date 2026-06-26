@@ -227,7 +227,7 @@ function main(argv = process.argv.slice(2), options = {}) {
   } else {
     console.log(renderText(packet));
   }
-  return 0;
+  return packet.ok ? 0 : 1;
 }
 
 if (require.main === module) {

@@ -307,11 +307,13 @@ function formatReport(report) {
 function main(argv = process.argv.slice(2)) {
   const args = parseArgs(argv);
   if (args.help) {
-    console.log(usage());
+    if (args.json) console.log(JSON.stringify({ ok: true, help: true, usage: usage() }, null, 2));
+    else console.log(usage());
     return 0;
   }
   if (!args.runDir) {
-    console.error(usage());
+    if (args.json) console.log(JSON.stringify({ ok: false, error: "Missing run folder argument", usage: usage() }, null, 2));
+    else console.error(usage());
     return 1;
   }
   const report = lintEvidenceRows(args.runDir);
