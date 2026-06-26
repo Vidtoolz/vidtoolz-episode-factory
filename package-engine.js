@@ -356,9 +356,10 @@
         }
         throw new Error(message);
       }
-      generatedThumbnailProvider = String(payload.provider || "placeholder");
-      generatedThumbnailModel = String(payload.model || "");
-      const additions = Array.isArray(payload.candidates) ? payload.candidates : [];
+      const unwrapped = normalizePayload(payload);
+      generatedThumbnailProvider = String(unwrapped.provider || "placeholder");
+      generatedThumbnailModel = String(unwrapped.model || "");
+      const additions = Array.isArray(unwrapped.candidates) ? unwrapped.candidates : [];
       const normalized = additions.map((item, index) => ({
         id: String(item.id || `${selected.id}-thumb-${thumbnailGenerationCount + index + 1}`),
         label: String(item.label || `Thumbnail ${thumbnailGenerationCount + index + 1}`),

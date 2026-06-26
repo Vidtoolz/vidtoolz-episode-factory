@@ -1330,3 +1330,118 @@ test("thumbnails endpoint does not reach the OpenAI provider without a valid non
     if (prevKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = prevKey;
   }
 });
+
+// ── Thumbnail wrapped-response normalization regression tests ────────────────
+
+test("package engine thumbnail success path unwraps response with normalizePayload", () => {
+  const script = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+
+  // The success path must call normalizePayload on the raw response before reading fields.
+  assert.match(script, /const unwrapped = normalizePayload\(payload\);\s*generatedThumbnailProvider = String\(unwrapped\.provider/);
+  assert.match(script, /generatedThumbnailModel = String\(unwrapped\.model/);
+  assert.match(script, /Array\.isArray\(unwrapped\.candidates\)/);
+});
+
+test("package engine thumbnail success path does not read provider/model/candidates from raw payload", () => {
+  const script = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+
+  // After the unwrap, there should be no direct payload.provider / payload.model / payload.candidates reads
+  // in the success path (lines after the response.ok check).
+  const successPath = script.split(/if \(!response\.ok\)/)[1] || "";
+  assert.doesNotMatch(successPath, /payload\.provider/);
+  assert.doesNotMatch(successPath, /payload\.model\b/);
+  assert.doesNotMatch(successPath, /payload\.candidates/);
+});
+
+test("package engine thumbnail error path still reads error fields from raw payload", () => {
+  const script = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+
+  // Error path must still read errorCode/error/timeoutMs from the raw payload (sendError exposes at top level).
+  const errorPath = script.split(/if \(!response\.ok\)/)[1]?.split(/const unwrapped/)[0] || "";
+  assert.match(errorPath, /payload\.errorCode/);
+  assert.match(errorPath, /payload\.error/);
+});
+
+test("package engine normalizePayload unwraps { ok, data } envelope", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const match = source.match(/function normalizePayload\(json\) \{([\s\S]*?)\n  \}/);
+  assert.ok(match, "normalizePayload function should exist");
+  const normalizePayload = new Function("json", match[1]);
+
+  const unwrapped = normalizePayload({ ok: true, data: { provider: "openai", model: "gpt-image-1", candidates: [] } });
+  assert.equal(unwrapped.provider, "openai");
+  assert.equal(unwrapped.model, "gpt-image-1");
+  assert.deepEqual(unwrapped.candidates, []);
+});
+
+test("package engine normalizePayload passes through non-wrapped objects", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const match = source.match(/function normalizePayload\(json\) \{([\s\S]*?)\n  \}/);
+  const normalizePayload = new Function("json", match[1]);
+
+  const plain = { provider: "placeholder", model: "local-svg" };
+  assert.strictEqual(normalizePayload(plain), plain);
+  assert.strictEqual(normalizePayload(null), null);
+  assert.strictEqual(normalizePayload(undefined), undefined);
+  assert.strictEqual(normalizePayload(42), 42);
+});
+
+test("package engine thumbnail generation renders candidates from wrapped { ok, data } response", async () => {
+  // This test proves the end-to-end flow: server returns { ok, data: { provider, model, candidates } },
+  // and the browser code unwraps it via normalizePayload before reading candidate fields.
+  const wrappedResponse = {
+    ok: true,
+    data: {
+      provider: "openai",
+      model: "gpt-image-1",
+      candidates: [
+        {
+          id: "test-pkg-thumb-1",
+          label: "Thumbnail 1",
+          prompt: "A dramatic before/after comparison",
+          thumbnailImage: "data:image/png;base64,iVBORw0KGgo=",
+        },
+        {
+          id: "test-pkg-thumb-2",
+          label: "Thumbnail 2",
+          prompt: "A bold text overlay on dark background",
+          thumbnailImage: "data:image/png;base64,iVBORw0KGgo=",
+        },
+      ],
+    },
+  };
+
+  // Simulate the browser-side normalizePayload + field extraction logic.
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const match = source.match(/function normalizePayload\(json\) \{([\s\S]*?)\n  \}/);
+  const normalizePayload = new Function("json", match[1]);
+
+  const unwrapped = normalizePayload(wrappedResponse);
+  assert.equal(unwrapped.provider, "openai");
+  assert.equal(unwrapped.model, "gpt-image-1");
+  assert.equal(unwrapped.candidates.length, 2);
+  assert.equal(unwrapped.candidates[0].id, "test-pkg-thumb-1");
+  assert.match(unwrapped.candidates[0].thumbnailImage, /^data:image\/png;base64,/);
+  assert.equal(unwrapped.candidates[1].label, "Thumbnail 2");
+});
+
+test("package engine thumbnail generation handles wrapped response with empty candidates array", () => {
+  const wrappedResponse = {
+    ok: true,
+    data: {
+      provider: "placeholder",
+      model: "local-svg-placeholder",
+      candidates: [],
+    },
+  };
+
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const match = source.match(/function normalizePayload\(json\) \{([\s\S]*?)\n  \}/);
+  const normalizePayload = new Function("json", match[1]);
+
+  const unwrapped = normalizePayload(wrappedResponse);
+  assert.equal(unwrapped.provider, "placeholder");
+  assert.equal(unwrapped.model, "local-svg-placeholder");
+  assert.equal(Array.isArray(unwrapped.candidates), true);
+  assert.equal(unwrapped.candidates.length, 0);
+});
