@@ -48,6 +48,11 @@
   let isGeneratingThumbnails = false;
   let packageEngineViewMode = "focused";
 
+  function normalizePayload(json) {
+    if (json && typeof json === "object" && json.ok && json.data) return json.data;
+    return json;
+  }
+
   function escapeHtml(value) {
     return String(value || "")
       .replace(/&/g, "&amp;")
@@ -739,6 +744,11 @@
 
     if (genBtn) {
       genBtn.addEventListener("click", () => {
+        if (!localWriteNonce) {
+          genStatus.textContent = "Cannot generate: local write nonce is missing. Refresh the page to retry.";
+          genStatus.className = "confirm-status error";
+          return;
+        }
         genBtn.disabled = true;
         genStatus.textContent = "Generating...";
         genStatus.className = "confirm-status";
@@ -752,8 +762,9 @@
           body: JSON.stringify({ runId: runSlug, localWriteNonce }),
         })
           .then((r) => r.json())
-          .then((data) => {
-            if (!data.ok) throw new Error(data.error || "Generation failed");
+          .then((json) => {
+            if (!json.ok) throw new Error(json.error || "Generation failed");
+            const data = normalizePayload(json);
             genStatus.textContent = "Done — outline-prompt.md saved to run folder.";
             genStatus.className = "confirm-status success";
             promptBox.classList.remove("hidden");
@@ -821,7 +832,8 @@
   function loadThumbnailGenerationConfig() {
     return fetch(STATUS_API, { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
-      .then((payload) => {
+      .then((rawJson) => {
+        const payload = normalizePayload(rawJson);
         if (payload && payload.api) {
           thumbnailGenerationApi = String(payload.api);
         }
