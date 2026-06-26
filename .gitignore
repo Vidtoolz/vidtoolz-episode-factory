@@ -6,3 +6,6 @@
 
 # Dependencies
 node_modules/
+
+# Local stale package-run archive (redundant copies of tracked runs)
+package-runs/stale-runs/
