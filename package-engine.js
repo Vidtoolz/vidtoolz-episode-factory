@@ -26,6 +26,7 @@
     confirmPanel: document.querySelector("#confirmPanel"),
     confirmTitle: document.querySelector("#confirmTitle"),
     confirmRunId: document.querySelector("#confirmRunId"),
+    confirmModeText: document.querySelector("#confirmModeText"),
     confirmSaveBtn: document.querySelector("#confirmSaveBtn"),
     cancelConfirmBtn: document.querySelector("#cancelConfirmBtn"),
     confirmStatus: document.querySelector("#confirmStatus"),
@@ -35,7 +36,11 @@
 
   let candidateSet = { candidates: [] };
   let candidateSource = "package-candidates.json";
-  let selectedId = "";
+  // Persisted vs pending selection state are tracked separately:
+  // - persistedSelectedId: the candidate ID read from selected-package.json on disk.
+  // - pendingSelectedId: a candidate the user clicked but has not yet saved.
+  let persistedSelectedId = "";
+  let pendingSelectedId = "";
   let expandedIds = new Set();
   let thumbnailCandidates = [];
   let generatedThumbnailsByCandidate = {};
@@ -169,8 +174,13 @@
     return sorted;
   }
 
+  function currentSelectedId() {
+    return pendingSelectedId || persistedSelectedId || "";
+  }
+
   function selectedCandidate() {
-    return candidateSet.candidates.find((candidate) => candidate.id === selectedId) || null;
+    const id = pendingSelectedId || persistedSelectedId || "";
+    return candidateSet.candidates.find((candidate) => candidate.id === id) || null;
   }
 
   function selectPackageFocusCandidate(candidates = [], selectedCandidateId = "", allCandidates = candidates) {
@@ -181,7 +191,7 @@
     return selected || recommended;
   }
 
-  function buildPackageFocusModel(candidates = visibleCandidates(), selectedCandidateId = selectedId) {
+  function buildPackageFocusModel(candidates = visibleCandidates(), selectedCandidateId = currentSelectedId()) {
     const visible = Array.isArray(candidates) ? candidates : [];
     const candidate = selectPackageFocusCandidate(visible, selectedCandidateId, candidateSet.candidates);
     const selected = Boolean(candidate && candidate.id === selectedCandidateId);
@@ -524,13 +534,25 @@
 
   function renderCard(candidate) {
     const expanded = expandedIds.has(candidate.id);
-    const selected = candidate.id === selectedId;
+    const isPersistedWinner = candidate.id === persistedSelectedId;
+    const isPendingSelection = candidate.id === pendingSelectedId;
     const shorts = candidate.shortsIdeas
       .filter(Boolean)
       .map((idea) => `<li>${escapeHtml(idea)}</li>`)
       .join("");
     const article = document.createElement("article");
-    article.className = selected ? "package-card selected" : "package-card";
+    article.className = isPersistedWinner
+      ? "package-card selected"
+      : isPendingSelection
+      ? "package-card pending"
+      : "package-card";
+    const selectLabel = isPersistedWinner
+      ? "Winner selected"
+      : isPendingSelection
+      ? "Pending selection"
+      : "Select winner";
+    // The persisted winner has no data-select target — it cannot be re-selected.
+    const selectAttr = isPersistedWinner ? "" : ` data-select="${escapeHtml(candidate.id)}"`;
     const mainImage = mainThumbnailImage(candidate);
     article.innerHTML = `
       <div class="package-card-top">
@@ -569,7 +591,7 @@
       </div>
       <div class="package-actions">
         <button type="button" data-toggle="${escapeHtml(candidate.id)}">${expanded ? "Hide details" : "Expand details"}</button>
-        <button class="primary-btn" type="button" data-select="${escapeHtml(candidate.id)}">${selected ? "Winner selected" : "Select winner"}</button>
+        <button class="primary-btn" type="button"${selectAttr}>${selectLabel}</button>
       </div>
       ${
         expanded
@@ -589,9 +611,22 @@
     const visible = visibleCandidates();
     const selected = selectedCandidate();
     els.count.textContent = `${visible.length} shown / ${candidateSet.candidates.length} total`;
-    els.selectedSummary.textContent = selected
-      ? `Selected #${selected.packageNumber}: ${selected.proposedTitle}`
-      : "No winner selected";
+    const persisted = candidateSet.candidates.find((candidate) => candidate.id === persistedSelectedId) || null;
+    const pending = pendingSelectedId
+      ? candidateSet.candidates.find((candidate) => candidate.id === pendingSelectedId) || null
+      : null;
+    let summary;
+    if (persisted) {
+      summary = `Winner: #${persisted.packageNumber}: ${persisted.proposedTitle}`;
+      if (pending && pending.id !== persisted.id) {
+        summary += ` · Pending: #${pending.packageNumber}: ${pending.proposedTitle}`;
+      }
+    } else if (pending) {
+      summary = `Pending: #${pending.packageNumber}: ${pending.proposedTitle}`;
+    } else {
+      summary = "No winner selected";
+    }
+    els.selectedSummary.textContent = summary;
     els.downloadJson.disabled = !selected;
     els.downloadMarkdown.disabled = !selected;
     els.generateThumbnails.disabled = isGeneratingThumbnails || !visible.length;
@@ -679,8 +714,8 @@
       return;
     }
     if (select) {
-      selectedId = select.dataset.select;
-      showStatus("Winner selected. Review the confirmation panel below.", "success");
+      pendingSelectedId = select.dataset.select;
+      showStatus("Pending selection. Review the confirmation panel below.", "success");
       render();
       showConfirmPanel();
     }
@@ -703,22 +738,54 @@
       return;
     }
 
-    // Check if this run already has a saved selected-package.json
+    // Check if this run already has a saved selected-package.json so the panel can
+    // distinguish CREATE (no file yet) from REPLACE (a different selection is on disk).
     fetch(`package-runs/${runId}/selected-package.json`, { cache: "no-store" })
       .then((r) => r.ok ? r.json() : null)
       .then((existing) => {
         if (existing) {
-          showNextSteps(runId, existing.package || existing, true);
+          const existingPkg = existing.package || existing;
+          const existingId = (existingPkg && existingPkg.id) || existing.id || "";
+          // If the user is reviewing the candidate already persisted on disk, just show
+          // its saved next-steps state instead of offering to overwrite it.
+          if (existingId && existingId === currentSelectedId()) {
+            showNextSteps(runId, existingPkg, true);
+            return;
+          }
+          // Otherwise saving would REPLACE a different on-disk selection — require explicit replace.
+          setConfirmPanelMode("replace", existingPkg);
           return;
         }
-        els.confirmPanel.classList.remove("hidden");
-        els.nextStepsPanel.classList.add("hidden");
-        els.confirmStatus.textContent = "";
-        els.confirmStatus.className = "confirm-status";
+        setConfirmPanelMode("create", null);
       })
       .catch(() => {
-        els.confirmPanel.classList.remove("hidden");
+        setConfirmPanelMode("create", null);
       });
+  }
+
+  function setConfirmPanelMode(mode, existingPkg) {
+    els.confirmPanel.classList.remove("hidden");
+    els.nextStepsPanel.classList.add("hidden");
+    els.confirmStatus.textContent = "";
+    els.confirmStatus.className = "confirm-status";
+    if (mode === "replace") {
+      const existingTitle = existingPkg
+        ? existingPkg.proposedTitle || existingPkg.proposed_title || existingPkg.title || "Untitled"
+        : "Untitled";
+      els.confirmPanel.classList.add("confirm-replace");
+      if (els.confirmModeText) {
+        els.confirmModeText.textContent = `This will REPLACE the existing selected-package.json (currently: ${existingTitle}).`;
+        els.confirmModeText.className = "confirm-mode-text replace";
+      }
+      els.confirmSaveBtn.textContent = "Replace Selection";
+    } else {
+      els.confirmPanel.classList.remove("confirm-replace");
+      if (els.confirmModeText) {
+        els.confirmModeText.textContent = "This will CREATE a new selected-package.json.";
+        els.confirmModeText.className = "confirm-mode-text create";
+      }
+      els.confirmSaveBtn.textContent = "Confirm and Save";
+    }
   }
 
   function handleConfirmSave() {
@@ -758,6 +825,11 @@
         els.confirmStatus.textContent = "Saved.";
         els.confirmStatus.className = "confirm-status success";
         els.confirmPanel.classList.add("hidden");
+        // Promote the saved candidate to the persisted winner and clear the pending state
+        // so the card and Stage 1 panel both reflect what is now on disk.
+        persistedSelectedId = selected.id;
+        pendingSelectedId = "";
+        render();
         showNextSteps(runId, selected, false);
       })
       .catch((err) => {
@@ -929,13 +1001,38 @@
           "success"
         );
         render();
-        return true;
+        // Read-only: mark the candidate already persisted on disk as the winner. No writes.
+        return loadPersistedSelectedId().then(() => true);
       })
       .catch((error) => {
         // Discovery failed — fall back to static file load
         showStatus(`Discovery unavailable: ${error.message}. Falling back to static file.`, "");
         return false;
       });
+  }
+
+  function loadPersistedSelectedId() {
+    // Read-only: fetch selected-package.json for runs that report hasSelectedPackage and mark
+    // that candidate as the persisted winner. Must not write, save, or confirm anything.
+    const runsWithSelection = discoveredRuns.filter((run) => run && run.hasSelectedPackage === true);
+    if (!runsWithSelection.length) return Promise.resolve();
+    // Prefer the active run if it has a selection, otherwise use the first one found.
+    const active = runsWithSelection.find((run) => run.runId === discoveredActiveRunId);
+    const target = active || runsWithSelection[0];
+    if (!target || !target.runId) return Promise.resolve();
+    return fetch(`package-runs/${target.runId}/selected-package.json`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((rawJson) => {
+        if (!rawJson) return;
+        const data = normalizePayload(rawJson);
+        const pkg = (data && data.package) || data || {};
+        const persistedId = pkg.id || data.id || "";
+        if (persistedId) {
+          persistedSelectedId = persistedId;
+          render();
+        }
+      })
+      .catch(() => {});
   }
 
   function loadCandidates() {

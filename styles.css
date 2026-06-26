@@ -2726,6 +2726,13 @@ body[data-package-engine-view-mode="focused"] .package-engine-shell #generatedTh
     var(--shadow);
 }
 
+.package-card.pending {
+  border-color: #e0b341;
+  box-shadow:
+    inset 4px 0 0 #e0b341,
+    var(--shadow);
+}
+
 .package-run-card.qa-blocked {
   border-color: #efc4bf;
   box-shadow:
@@ -5279,6 +5286,20 @@ body[data-package-engine-view-mode="focused"] .package-engine-shell #generatedTh
 
 .confirm-status.success { color: var(--accent); }
 .confirm-status.error { color: var(--danger); }
+
+.confirm-mode-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem 0;
+}
+
+.confirm-mode-text:empty { display: none; }
+.confirm-mode-text.create { color: var(--muted); }
+.confirm-mode-text.replace { color: #e0b341; }
+
+.confirm-panel.confirm-replace .confirm-box {
+  border-color: #e0b341;
+}
 
 .next-steps-content {
   line-height: 1.7;

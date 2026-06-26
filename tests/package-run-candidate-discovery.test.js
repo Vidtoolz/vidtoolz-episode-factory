@@ -783,3 +783,152 @@ test("backend: no writes occur during multi-run discovery (3 runs × 10 candidat
   verify(tempRoot);
   assert.equal(errors.length, 0, `no writes expected, but: ${errors.join("; ")}`);
 });
+
+
+// ── Bug 2: persisted vs pending selection state ─────────────────────────────
+
+test("Bug2 #1: existing selected-package.json marks only that candidate as persisted winner", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  // A dedicated persistedSelectedId state variable must exist, separate from pending.
+  assert.match(source, /let persistedSelectedId\s*=/);
+  // It must be set from the on-disk selected-package.json (data.package.id or data.id).
+  const fnMatch = source.match(/function loadPersistedSelectedId\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch, "loadPersistedSelectedId function should exist");
+  const body = fnMatch[1];
+  assert.match(body, /selected-package\.json/);
+  assert.match(body, /persistedSelectedId\s*=/);
+  assert.match(body, /pkg\.id\s*\|\|\s*data\.id/);
+  // loadDiscoveredCandidates must invoke it after building candidates.
+  const discMatch = source.match(/function loadDiscoveredCandidates\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(discMatch);
+  assert.match(discMatch[1], /loadPersistedSelectedId\(\)/);
+});
+
+test("Bug2 #2: clicking another candidate sets pending (not persisted) and renderCard distinguishes them", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const clickMatch = source.match(/function handleGridClick\(event\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(clickMatch, "handleGridClick function should exist");
+  const clickBody = clickMatch[1];
+  // The select branch must set pendingSelectedId, NOT persistedSelectedId or a legacy selectedId.
+  assert.match(clickBody, /pendingSelectedId\s*=\s*select\.dataset\.select/);
+  assert.doesNotMatch(clickBody, /persistedSelectedId\s*=\s*select\.dataset\.select/);
+  assert.doesNotMatch(clickBody, /\bselectedId\s*=\s*select\.dataset\.select/);
+  // renderCard must distinguish a persisted winner from a pending selection.
+  const cardMatch = source.match(/function renderCard\(candidate\)\s*\{([\s\S]*?)\n    return article;/);
+  assert.ok(cardMatch, "renderCard function should exist");
+  const cardBody = cardMatch[1];
+  assert.match(cardBody, /isPersistedWinner\s*=\s*candidate\.id\s*===\s*persistedSelectedId/);
+  assert.match(cardBody, /isPendingSelection\s*=\s*candidate\.id\s*===\s*pendingSelectedId/);
+});
+
+test("Bug2 #3: confirm save with existing selected-package.json requires explicit replace", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function showConfirmPanel\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch, "showConfirmPanel function should exist");
+  const body = fnMatch[1];
+  // Must fetch the existing file and route to a replace mode when a different selection exists.
+  assert.match(body, /selected-package\.json/);
+  assert.match(body, /setConfirmPanelMode\(["']replace["']/);
+  assert.match(body, /setConfirmPanelMode\(["']create["']/);
+  // The replace mode must change the save button label and the mode text.
+  const modeMatch = source.match(/function setConfirmPanelMode\(mode, existingPkg\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(modeMatch, "setConfirmPanelMode function should exist");
+  const modeBody = modeMatch[1];
+  assert.match(modeBody, /Replace Selection/);
+  assert.match(modeBody, /Confirm and Save/);
+  assert.match(modeBody, /els\.confirmModeText/);
+});
+
+test("Bug2 #4: after successful save, persistedSelectedId is set and pendingSelectedId cleared", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function handleConfirmSave\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch, "handleConfirmSave function should exist");
+  const body = fnMatch[1];
+  assert.match(body, /persistedSelectedId\s*=\s*selected\.id/);
+  assert.match(body, /pendingSelectedId\s*=\s*""/);
+  // The persisted update must occur in the save success path (before showNextSteps).
+  const persistIndex = body.indexOf("persistedSelectedId = selected.id");
+  const nextStepsIndex = body.indexOf("showNextSteps(runId, selected, false)");
+  assert.ok(persistIndex !== -1 && nextStepsIndex !== -1 && persistIndex < nextStepsIndex,
+    "persistedSelectedId must be updated before showNextSteps in the success path");
+});
+
+test("Bug2 #5: generate-outline-prompt POST sends only runId and localWriteNonce (reads from disk)", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function showNextSteps\(runId, selected, alreadySaved\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch, "showNextSteps function should exist");
+  const body = fnMatch[1];
+  // The outline-prompt POST body must carry only runId + localWriteNonce, not candidate data.
+  assert.match(body, /generate-outline-prompt/);
+  assert.match(body, /body:\s*JSON\.stringify\(\{\s*runId:\s*runSlug,\s*localWriteNonce\s*\}\)/);
+  const postSlice = body.slice(body.indexOf("generate-outline-prompt"));
+  assert.doesNotMatch(postSlice, /selectedPackage/);
+  assert.doesNotMatch(postSlice, /candidate:/);
+});
+
+test("Bug2 #4b: saving a new selection overwrites an existing selected-package.json", async () => {
+  const realRunsRoot = path.join(__dirname, "..", "package-runs");
+  const stamp = `${process.pid}-${process.hrtime.bigint()}`;
+  const runId = `__test-replace-selection-${stamp}`;
+  const runDir = path.join(realRunsRoot, runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  // Seed an existing selected-package.json with an OLD candidate.
+  const existing = {
+    selectedAt: "2026-06-25T00:00:00.000Z",
+    package: { id: "old-candidate", proposedTitle: "Old Winner", packageNumber: 1, score: 70 },
+  };
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), JSON.stringify(existing, null, 2), "utf8");
+
+  const server = packageEngineServer.createServer();
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = server.address().port;
+  try {
+    const selectedPackage = {
+      selectedAt: "2026-06-26T00:00:00.000Z",
+      package: { id: "new-candidate", proposedTitle: "New Winner", packageNumber: 2, score: 95 },
+    };
+    const bodyStr = JSON.stringify({
+      runId,
+      selectedPackage,
+      localWriteNonce: packageEngineServer.localWriteNonce(),
+    });
+    const response = await new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          hostname: "127.0.0.1",
+          port,
+          path: "/api/package-engine/save-selected",
+          method: "POST",
+          headers: {
+            host: "127.0.0.1:8010",
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(bodyStr),
+            [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+          },
+        },
+        (res) => {
+          let data = "";
+          res.on("data", (chunk) => { data += chunk; });
+          res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(data) }));
+        }
+      );
+      req.on("error", reject);
+      req.write(bodyStr);
+      req.end();
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.ok, true);
+    const saved = JSON.parse(fs.readFileSync(path.join(runDir, "selected-package.json"), "utf8"));
+    const savedPkg = saved.package || saved;
+    assert.equal(savedPkg.id, "new-candidate", "file must hold the new candidate");
+    assert.equal(savedPkg.proposedTitle, "New Winner");
+    // The old data must be gone.
+    assert.notEqual(savedPkg.id, "old-candidate");
+    const raw = fs.readFileSync(path.join(runDir, "selected-package.json"), "utf8");
+    assert.doesNotMatch(raw, /Old Winner/, "old selection must be overwritten");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(runDir, { recursive: true, force: true });
+  }
+});
