@@ -4001,3 +4001,176 @@ test("renderCompactPipelineStrip includes blocker reason when present", () => {
   assert.match(html, /compact-strip-blocker/);
   assert.match(html, /Creator QA failed/);
 });
+
+// ── Wrapped-response normalization regression tests ─────────────────────────
+// Proves package-runs-dashboard.js browser code unwraps { ok, data } responses
+// from sendJSON() before reading success fields in capture/evidence workflows.
+
+test("package-runs-dashboard: normalizePayload unwraps { ok, data } envelope", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+  const match = source.match(/function normalizePayload\(json\) \{([\s\S]*?)\n  \}/);
+  assert.ok(match, "normalizePayload function should exist");
+  const normalizePayload = new Function("json", match[1]);
+
+  const unwrapped = normalizePayload({ ok: true, data: { previewToken: "abc123", written: ["file.md"] } });
+  assert.equal(unwrapped.previewToken, "abc123");
+  assert.deepEqual(unwrapped.written, ["file.md"]);
+});
+
+test("package-runs-dashboard: normalizePayload passes through non-wrapped objects", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+  const match = source.match(/function normalizePayload\(json\) \{([\s\S]*?)\n  \}/);
+  const normalizePayload = new Function("json", match[1]);
+
+  const plain = { previewToken: "tok", warning: "ok" };
+  assert.strictEqual(normalizePayload(plain), plain);
+  assert.strictEqual(normalizePayload(null), null);
+  assert.strictEqual(normalizePayload(undefined), undefined);
+});
+
+test("package-runs-dashboard: evidence intake preview uses normalizePayload", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+
+  // Evidence intake preview must unwrap with normalizePayload before reading previewToken.
+  const previewSection = source.split("evidenceIntakePreviewApi")[1]?.split("function saveEvidenceIntake")[0] || "";
+  assert.match(previewSection, /return normalizePayload\(json\)/);
+  assert.match(previewSection, /payload\.previewToken/);
+  assert.doesNotMatch(previewSection, /json\.data !== undefined \? json\.data : json/);
+});
+
+test("package-runs-dashboard: evidence intake save uses normalizePayload for written/warning", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+
+  // Save must unwrap with normalizePayload, then read written/warning from unwrapped payload.
+  const saveSection = source.split("function saveEvidenceIntake")[1]?.split("function previewCaptureWrite")[0] || "";
+  assert.match(saveSection, /return normalizePayload\(json\)/);
+  assert.match(saveSection, /payload\.warning/);
+  assert.match(saveSection, /payload\.written/);
+  // Must not read written/warning from raw json (pre-unwrap).
+  assert.doesNotMatch(saveSection, /json\.written/);
+  assert.doesNotMatch(saveSection, /json\.warning/);
+});
+
+test("package-runs-dashboard: capture evidence preview uses normalizePayload for previewToken", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+
+  const previewSection = source.split("function previewCaptureWrite")[1]?.split("function applyCaptureWrite")[0] || "";
+  assert.match(previewSection, /return normalizePayload\(json\)/);
+  assert.match(previewSection, /payload\.previewToken/);
+  // Must not read previewToken from raw json (pre-unwrap).
+  assert.doesNotMatch(previewSection, /json\.previewToken/);
+});
+
+test("package-runs-dashboard: capture evidence apply uses normalizePayload for written/nextCommands", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+
+  const applySection = source.split("function applyCaptureWrite")[1]?.split("function copyText")[0] || "";
+  assert.match(applySection, /return normalizePayload\(json\)/);
+  assert.match(applySection, /payload\?\.written/);
+  assert.match(applySection, /payload\?\.nextCommands/);
+  // Must not read written/nextCommands from raw json (pre-unwrap).
+  assert.doesNotMatch(applySection, /json\.written/);
+  assert.doesNotMatch(applySection, /json\.nextCommands/);
+});
+
+test("package-runs-dashboard: capture evidence error paths still read top-level json.error", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+
+  // Error paths must read json.error from raw wrapper (sendError exposes at top level).
+  const previewSection = source.split("function previewCaptureWrite")[1]?.split("function applyCaptureWrite")[0] || "";
+  assert.match(previewSection, /json\.error/);
+
+  const applySection = source.split("function applyCaptureWrite")[1]?.split("function copyText")[0] || "";
+  assert.match(applySection, /json\.error/);
+
+  const saveSection = source.split("function saveEvidenceIntake")[1]?.split("function previewCaptureWrite")[0] || "";
+  assert.match(saveSection, /json\.error/);
+});
+
+test("package-runs-dashboard: wrapped preview response exposes previewToken correctly", () => {
+  // Functional test: simulate the browser-side normalizePayload + field extraction
+  // for a capture evidence preview response.
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+  const match = source.match(/function normalizePayload\(json\) \{([\s\S]*?)\n  \}/);
+  const normalizePayload = new Function("json", match[1]);
+
+  const wrappedResponse = {
+    ok: true,
+    data: {
+      previewToken: "preview-abc-789",
+      preview: "# Capture Evidence Intake Log\n\n## Section 1",
+      targetFile: "capture-evidence-intake-log.md",
+      warnings: [],
+    },
+  };
+
+  const unwrapped = normalizePayload(wrappedResponse);
+  assert.equal(unwrapped.previewToken, "preview-abc-789");
+  assert.match(unwrapped.preview, /Capture Evidence Intake Log/);
+  assert.equal(unwrapped.targetFile, "capture-evidence-intake-log.md");
+  assert.deepEqual(unwrapped.warnings, []);
+});
+
+test("package-runs-dashboard: wrapped save response exposes written/warning correctly", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+  const match = source.match(/function normalizePayload\(json\) \{([\s\S]*?)\n  \}/);
+  const normalizePayload = new Function("json", match[1]);
+
+  const wrappedResponse = {
+    ok: true,
+    data: {
+      written: ["capture-evidence-intake-log.md"],
+      warning: "Saved 1 file.",
+      previewToken: "",
+    },
+  };
+
+  const unwrapped = normalizePayload(wrappedResponse);
+  assert.deepEqual(unwrapped.written, ["capture-evidence-intake-log.md"]);
+  assert.equal(unwrapped.warning, "Saved 1 file.");
+  // Simulate the status message logic from saveEvidenceIntake.
+  const statusMessage = unwrapped.warning || `Saved: ${(unwrapped.written || []).join(", ")}`;
+  assert.equal(statusMessage, "Saved 1 file.");
+});
+
+test("package-runs-dashboard: wrapped apply response succeeds without relying on raw wrapper fields", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+  const match = source.match(/function normalizePayload\(json\) \{([\s\S]*?)\n  \}/);
+  const normalizePayload = new Function("json", match[1]);
+
+  const wrappedResponse = {
+    ok: true,
+    data: {
+      written: ["capture-evidence-review.md", "pickup-list.md"],
+      nextCommands: ["Review rough-cut notes", "Open Resolve"],
+    },
+  };
+
+  const unwrapped = normalizePayload(wrappedResponse);
+  assert.deepEqual(unwrapped.written, ["capture-evidence-review.md", "pickup-list.md"]);
+  assert.deepEqual(unwrapped.nextCommands, ["Review rough-cut notes", "Open Resolve"]);
+
+  // Simulate the status message logic from applyCaptureWrite.
+  const statusMessage = `Applied locally to ${(unwrapped?.written || []).join(", ")}${unwrapped?.written?.length ? ". " : " (no files). "}Capture is not approved. Next: ${(unwrapped?.nextCommands || []).join(" then ")}`;
+  assert.match(statusMessage, /Applied locally to capture-evidence-review\.md, pickup-list\.md/);
+  assert.match(statusMessage, /Next: Review rough-cut notes then Open Resolve/);
+});
+
+test("package-runs-dashboard: error response with top-level error field is not unwrapped", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+  const match = source.match(/function normalizePayload\(json\) \{([\s\S]*?)\n  \}/);
+  const normalizePayload = new Function("json", match[1]);
+
+  // sendError() responses have { ok: false, error: "..." } — no data key.
+  const errorResponse = {
+    ok: false,
+    error: "Invalid nonce",
+    errorCode: "AUTH_FAILED",
+  };
+
+  const unwrapped = normalizePayload(errorResponse);
+  // Should pass through as-is since ok is false (no data unwrap).
+  assert.strictEqual(unwrapped, errorResponse);
+  assert.equal(unwrapped.error, "Invalid nonce");
+  assert.equal(unwrapped.errorCode, "AUTH_FAILED");
+});

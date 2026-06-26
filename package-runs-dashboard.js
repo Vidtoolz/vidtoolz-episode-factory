@@ -217,6 +217,11 @@
       .replace(/"/g, "&quot;");
   }
 
+  function normalizePayload(json) {
+    if (json && typeof json === "object" && json.ok && json.data) return json.data;
+    return json;
+  }
+
   function statusRank(status) {
     const index = STATUS_ORDER.indexOf(status);
     return index === -1 ? -1 : index;
@@ -4259,7 +4264,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
             error.payload = json;
             throw error;
           }
-          return json.data !== undefined ? json.data : json;
+          return normalizePayload(json);
         }))
         .then((payload) => {
           container.dataset.evidencePreviewToken = payload.previewToken || "";
@@ -4301,9 +4306,9 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
             confirmSave: true,
           }),
         }))
-        .then((response) => response.json().then((payload) => {
-          if (!response.ok) throw new Error(payload.error || `Evidence intake save failed (${response.status}).`);
-          return payload;
+        .then((response) => response.json().then((json) => {
+          if (!response.ok) throw new Error(json.error || `Evidence intake save failed (${response.status}).`);
+          return normalizePayload(json);
         }))
         .then((payload) => {
           container.dataset.evidencePreviewToken = "";
@@ -4333,9 +4338,9 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
           },
           body: JSON.stringify(captureWritePayload(container)),
         }))
-        .then((response) => response.json().then((payload) => {
-          if (!response.ok) throw new Error(payload.error || `Preview failed (${response.status}).`);
-          return payload;
+        .then((response) => response.json().then((json) => {
+          if (!response.ok) throw new Error(json.error || `Preview failed (${response.status}).`);
+          return normalizePayload(json);
         }))
         .then((payload) => {
           container.dataset.capturePreviewToken = payload.previewToken || "";
@@ -4375,9 +4380,9 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
             confirmApply: true,
           }),
         }))
-        .then((response) => response.json().then((payload) => {
-          if (!response.ok) throw new Error(payload.error || `Apply failed (${response.status}).`);
-          return payload;
+        .then((response) => response.json().then((json) => {
+          if (!response.ok) throw new Error(json.error || `Apply failed (${response.status}).`);
+          return normalizePayload(json);
         }))
         .then((payload) => {
           container.dataset.capturePreviewToken = "";
