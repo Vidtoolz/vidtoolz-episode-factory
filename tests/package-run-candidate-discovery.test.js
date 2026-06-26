@@ -603,6 +603,140 @@ test("browser: no file writes on page load — loadDiscoveredCandidates uses GET
   assert.doesNotMatch(body, /method:\s*["']PATCH["']/, "must not PATCH");
 });
 
+// ── Confirm/Save run-id resolution tests (candidate._runId over URL ?run) ───
+
+test("discovered candidate with _runId saves without URL ?run — handleConfirmSave prefers _runId", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function handleConfirmSave\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch, "handleConfirmSave function should exist");
+  const body = fnMatch[1];
+  // runId must be resolved from the candidate's own _runId first, then URL fallback.
+  assert.match(body, /selected\._runId\s*\|\|\s*new URLSearchParams/);
+});
+
+test("URL ?run remains supported as fallback in handleConfirmSave", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function handleConfirmSave\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch);
+  const body = fnMatch[1];
+  // URLSearchParams must still be read as the fallback source for run.
+  assert.match(body, /new URLSearchParams\(window\.location\.search\)\.get\(["']run["']\)/);
+});
+
+test("missing both _runId and URL run blocks before POST with a clear error", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function handleConfirmSave\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch);
+  const body = fnMatch[1];
+  // The blocking guard must check for a missing runId and emit a clear, actionable error.
+  assert.match(body, /if\s*\(\s*!runId\s*\)/);
+  assert.match(body, /No run ID found\. Select a candidate with a run ID or use \?run=<runId> in the URL\./);
+  // The guard must return before reaching the POST (the error branch ends in return).
+  const guardIndex = body.indexOf("No run ID found");
+  const postIndex = body.indexOf("/api/package-engine/save-selected");
+  assert.ok(guardIndex !== -1 && postIndex !== -1 && guardIndex < postIndex,
+    "the missing-runId guard must precede the save-selected POST");
+});
+
+test("showConfirmPanel also resolves _runId before URL and shows the target run", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function showConfirmPanel\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch, "showConfirmPanel function should exist");
+  const body = fnMatch[1];
+  assert.match(body, /selected\._runId\s*\|\|\s*new URLSearchParams/);
+  // The resolved run id must be surfaced into the confirm panel.
+  assert.match(body, /els\.confirmRunId/);
+});
+
+test("package-engine.html confirm-box displays the target run id element", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.html"), "utf8");
+  assert.match(source, /id=["']confirmRunId["']/);
+});
+
+test("existing selected-package.json is not overwritten without explicit confirm — showConfirmPanel checks first", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function showConfirmPanel\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch);
+  const body = fnMatch[1];
+  // Must fetch the existing selected-package.json and, when present, route to showNextSteps
+  // (the "already saved" path) instead of showing the save button.
+  assert.match(body, /selected-package\.json/);
+  assert.match(body, /if\s*\(\s*existing\s*\)\s*\{[\s\S]*?showNextSteps\([^)]*true\)/);
+});
+
+test("no files are written on page load — loadDiscoveredCandidates does not save or confirm", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function loadDiscoveredCandidates\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch);
+  const body = fnMatch[1];
+  // The page-load function must not POST a selection nor invoke the save handler.
+  assert.doesNotMatch(body, /save-selected/, "page load must not POST save-selected");
+  assert.doesNotMatch(body, /handleConfirmSave/, "page load must not call handleConfirmSave");
+});
+
+test("multi-run fixture: selecting candidate from run B writes only to run B", async () => {
+  // The save-selected endpoint writes under the server module ROOT/package-runs.
+  // Create two isolated, test-prefixed run dirs there, POST a save for run-b, and
+  // verify the write lands only in run-b — run-a must remain untouched. Clean up after.
+  const realRunsRoot = path.join(__dirname, "..", "package-runs");
+  const stamp = `${process.pid}-${process.hrtime.bigint()}`;
+  const runAId = `__test-save-run-a-${stamp}`;
+  const runBId = `__test-save-run-b-${stamp}`;
+  const runADir = path.join(realRunsRoot, runAId);
+  const runBDir = path.join(realRunsRoot, runBId);
+  fs.mkdirSync(runADir, { recursive: true });
+  fs.mkdirSync(runBDir, { recursive: true });
+
+  const server = packageEngineServer.createServer();
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = server.address().port;
+  try {
+    const selectedPackage = {
+      selectedAt: "2026-06-26T00:00:00.000Z",
+      package: { proposedTitle: "Run B Winner", packageNumber: 2, score: 88 },
+    };
+    const bodyStr = JSON.stringify({
+      runId: runBId,
+      selectedPackage,
+      localWriteNonce: packageEngineServer.localWriteNonce(),
+    });
+    const response = await new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          hostname: "127.0.0.1",
+          port,
+          path: "/api/package-engine/save-selected",
+          method: "POST",
+          headers: {
+            host: "127.0.0.1:8010",
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(bodyStr),
+            [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+          },
+        },
+        (res) => {
+          let data = "";
+          res.on("data", (chunk) => { data += chunk; });
+          res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(data) }));
+        }
+      );
+      req.on("error", reject);
+      req.write(bodyStr);
+      req.end();
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.ok, true);
+    // selected-package.json written to run-b only
+    assert.ok(fs.existsSync(path.join(runBDir, "selected-package.json")), "run-b must have selected-package.json");
+    assert.ok(!fs.existsSync(path.join(runADir, "selected-package.json")), "run-a must NOT have selected-package.json");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(runADir, { recursive: true, force: true });
+    fs.rmSync(runBDir, { recursive: true, force: true });
+  }
+});
+
 test("backend: no writes occur during multi-run discovery (3 runs × 10 candidates)", () => {
   const tempRoot = createDiscoveryRoot({
     runs: [

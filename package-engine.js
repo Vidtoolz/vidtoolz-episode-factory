@@ -25,6 +25,7 @@
     generatedThumbnailPanel: document.querySelector("#generatedThumbnailPanel"),
     confirmPanel: document.querySelector("#confirmPanel"),
     confirmTitle: document.querySelector("#confirmTitle"),
+    confirmRunId: document.querySelector("#confirmRunId"),
     confirmSaveBtn: document.querySelector("#confirmSaveBtn"),
     cancelConfirmBtn: document.querySelector("#cancelConfirmBtn"),
     confirmStatus: document.querySelector("#confirmStatus"),
@@ -688,8 +689,21 @@
   function showConfirmPanel() {
     const selected = selectedCandidate();
     if (!selected) return;
+    // Prefer the candidate's own run ID (from server-side discovery), fall back to URL ?run=...
+    const runId = selected._runId || new URLSearchParams(window.location.search).get("run") || "";
+    els.confirmTitle.textContent = selected.proposedTitle || selected.idea || "Untitled";
+    if (els.confirmRunId) els.confirmRunId.textContent = runId || "unknown";
+
+    if (!runId) {
+      // No run ID anywhere — still show the panel, skip the existing-file check, warn the user.
+      els.confirmPanel.classList.remove("hidden");
+      els.nextStepsPanel.classList.add("hidden");
+      els.confirmStatus.textContent = "Warning: no run ID found for this candidate.";
+      els.confirmStatus.className = "confirm-status error";
+      return;
+    }
+
     // Check if this run already has a saved selected-package.json
-    const runId = new URLSearchParams(window.location.search).get("run") || "";
     fetch(`package-runs/${runId}/selected-package.json`, { cache: "no-store" })
       .then((r) => r.ok ? r.json() : null)
       .then((existing) => {
@@ -697,14 +711,12 @@
           showNextSteps(runId, existing.package || existing, true);
           return;
         }
-        els.confirmTitle.textContent = selected.proposedTitle || selected.idea || "Untitled";
         els.confirmPanel.classList.remove("hidden");
         els.nextStepsPanel.classList.add("hidden");
         els.confirmStatus.textContent = "";
         els.confirmStatus.className = "confirm-status";
       })
       .catch(() => {
-        els.confirmTitle.textContent = selected.proposedTitle || selected.idea || "Untitled";
         els.confirmPanel.classList.remove("hidden");
       });
   }
@@ -712,9 +724,10 @@
   function handleConfirmSave() {
     const selected = selectedCandidate();
     if (!selected) return;
-    const runId = new URLSearchParams(window.location.search).get("run") || "";
+    // Prefer the candidate's own run ID (from server-side discovery), fall back to URL ?run=...
+    const runId = selected._runId || new URLSearchParams(window.location.search).get("run") || "";
     if (!runId) {
-      els.confirmStatus.textContent = "No run ID in URL.";
+      els.confirmStatus.textContent = "No run ID found. Select a candidate with a run ID or use ?run=<runId> in the URL.";
       els.confirmStatus.className = "confirm-status error";
       return;
     }
