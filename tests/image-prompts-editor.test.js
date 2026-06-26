@@ -358,3 +358,97 @@ test("production pipeline page exposes image prompts editor link", async () => {
     await close(server);
   }
 });
+
+// ── Regression: wrapped-response normalization (2026-06-26) ──
+// Bug: image-prompts-editor.html read wrapped API responses as if payload
+// fields were top-level. sendJSON wraps as { ok: true, data: { ... } } but
+// the code read data.valid, data.localWriteNonce, data.prompts, etc. directly
+// — all undefined. The editor could not load, validate, or save prompts.
+// Fix: normalizePayload(json) unwraps { ok, data } → data before reading fields.
+
+function readEditorHtml() {
+  return fs.readFileSync(
+    path.join(__dirname, "..", "image-prompts-editor.html"),
+    "utf8",
+  );
+}
+
+function extractNormalizePayload() {
+  const html = readEditorHtml();
+  const match = html.match(/function normalizePayload\s*\(json\)\s*\{[^}]+\}/);
+  if (!match) throw new Error("normalizePayload not found in image-prompts-editor.html");
+  // eslint-disable-next-line no-new-func
+  const fn = new Function(`${match[0]}; return normalizePayload;`)();
+  return fn;
+}
+
+test("image-prompts-editor.html defines normalizePayload to unwrap { ok, data }", () => {
+  const html = readEditorHtml();
+  assert.match(html, /function normalizePayload\s*\(/);
+  assert.match(html, /json\.data/);
+});
+
+test("normalizePayload unwraps { ok, data } and passes through unwrapped objects", () => {
+  const normalizePayload = extractNormalizePayload();
+  // Wrapped response: { ok: true, data: { ... } } → returns data
+  const wrapped = { ok: true, data: { valid: true, prompts: [] } };
+  assert.deepEqual(normalizePayload(wrapped), { valid: true, prompts: [] });
+  // Unwrapped response (e.g. static file): returns as-is
+  const unwrapped = { foo: "bar" };
+  assert.deepEqual(normalizePayload(unwrapped), { foo: "bar" });
+  // Null/undefined safety
+  assert.equal(normalizePayload(null), null);
+  assert.equal(normalizePayload(undefined), undefined);
+});
+
+test("validateRemote normalizes the wrapped response before reading payload.valid", () => {
+  const html = readEditorHtml();
+  // After data.ok check, must normalize before reading .valid
+  assert.match(html, /const payload = normalizePayload\(data\)[\s\S]*?payload\.valid/);
+  // Must NOT read data.valid directly (the old bug)
+  assert.doesNotMatch(html, /Boolean\(data\.valid\)/);
+});
+
+test("fetchWriteNonce normalizes the status response before reading nonce fields", () => {
+  const html = readEditorHtml();
+  // Must normalize before reading localWriteNonce/nonceHeader
+  assert.match(html, /normalizePayload\(data\)[\s\S]*?payload\.localWriteNonce/);
+  assert.match(html, /payload\.nonceHeader/);
+  // Must NOT read data.localWriteNonce directly (the old bug)
+  assert.doesNotMatch(html, /data\.localWriteNonce\s*=/);
+});
+
+test("load (read API) normalizes the wrapped response before reading prompts/model/count", () => {
+  const html = readEditorHtml();
+  // Must normalize before reading wrapper/model/prompts/exists/count/modified_at
+  assert.match(html, /const payload = normalizePayload\(data\)[\s\S]*?payload\.wrapper/);
+  assert.match(html, /payload\.model/);
+  assert.match(html, /payload\.prompts/);
+  assert.match(html, /payload\.exists/);
+  assert.match(html, /payload\.count/);
+  assert.match(html, /payload\.modified_at/);
+  // Must NOT read data.prompts directly (the old bug)
+  assert.doesNotMatch(html, /data\.prompts\s*\|\|/);
+});
+
+test("save handler sends the configured nonce header on POST", () => {
+  const html = readEditorHtml();
+  // The POST must include the nonce header dynamically (not hardcoded)
+  assert.match(html, /\[nonceHeader\]:\s*localWriteNonce/);
+});
+
+test("save handler normalizes the wrapped response before reading count/modified_at", () => {
+  const html = readEditorHtml();
+  // After data.ok check, must normalize before reading .count/.modified_at
+  assert.match(html, /const payload = normalizePayload\(data\)[\s\S]*?payload\.count/);
+  assert.match(html, /payload\.modified_at/);
+  // Must NOT read data.count directly (the old bug)
+  assert.doesNotMatch(html, /data\.count\s*\|\|/);
+});
+
+test("save handler guards against missing nonce before POST", () => {
+  const html = readEditorHtml();
+  // If the nonce never loaded, show a clear error instead of sending a doomed POST
+  assert.match(html, /if\s*\(\s*!localWriteNonce\s*\)/);
+  assert.match(html, /missing write nonce/);
+});

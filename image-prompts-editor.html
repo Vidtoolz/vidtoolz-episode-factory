@@ -201,6 +201,10 @@
       let localWriteNonce = "";
       let nonceHeader = "x-vidtoolz-local-write-nonce";
 
+      function normalizePayload(json) {
+        return json && typeof json === "object" && json.data !== undefined ? json.data : json;
+      }
+
       function text(value) {
         return String(value == null ? "" : value);
       }
@@ -344,11 +348,12 @@
         });
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || "validation failed");
-        valid = Boolean(data.valid);
-        renderMessages(data);
-        setStatus(data.valid ? "valid" : "validation errors", data.valid ? "good" : "bad");
+        const payload = normalizePayload(data);
+        valid = Boolean(payload.valid);
+        renderMessages(payload);
+        setStatus(payload.valid ? "valid" : "validation errors", payload.valid ? "good" : "bad");
         updateDirtyState();
-        return data;
+        return payload;
       }
 
       function validateLocal() {
@@ -362,8 +367,9 @@
         try {
           const res = await fetch("/api/aigen/production-pipeline/status", { cache: "no-store" });
           const data = await res.json();
-          localWriteNonce = data.localWriteNonce || "";
-          nonceHeader = data.nonceHeader || "x-vidtoolz-local-write-nonce";
+          const payload = normalizePayload(data);
+          localWriteNonce = payload.localWriteNonce || "";
+          nonceHeader = payload.nonceHeader || "x-vidtoolz-local-write-nonce";
         } catch {
           /* nonce fetch failed; save will be rejected server-side */
         }
@@ -381,13 +387,14 @@
         const response = await fetch(`${READ_API}?package_id=${encodeURIComponent(packageId)}`, { cache: "no-store" });
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || "read failed");
-        wrapper = data.wrapper || "image_prompts";
-        baseModel = data.model || { image_prompts: [] };
-        prompts = JSON.parse(JSON.stringify(data.prompts || []));
+        const payload = normalizePayload(data);
+        wrapper = payload.wrapper || "image_prompts";
+        baseModel = payload.model || { image_prompts: [] };
+        prompts = JSON.parse(JSON.stringify(payload.prompts || []));
         originalJson = stableJson(currentModel());
         valid = false;
         dirty = false;
-        meta.textContent = `${data.exists ? "Existing file" : "No file yet"} - ${data.count || 0} prompts - modified ${data.modified_at || "never"}`;
+        meta.textContent = `${payload.exists ? "Existing file" : "No file yet"} - ${payload.count || 0} prompts - modified ${payload.modified_at || "never"}`;
         renderRows();
         await validateRemote();
         dirty = false;
@@ -427,6 +434,10 @@
 
       saveButton.addEventListener("click", async () => {
         try {
+          if (!localWriteNonce) {
+            setStatus("missing write nonce — cannot save. Reload the page to fetch a new nonce.", "bad");
+            return;
+          }
           const validation = await validateRemote();
           if (!validation.valid) return;
           const response = await fetch(SAVE_API, {
@@ -436,13 +447,14 @@
           });
           const data = await response.json();
           if (!data.ok) throw new Error(data.error || "save failed");
+          const payload = normalizePayload(data);
           originalJson = stableJson(currentModel());
           dirty = false;
           valid = true;
           setStatus("saved", "good");
-          footerStatus.textContent = `${data.count || prompts.length} prompts saved`;
+          footerStatus.textContent = `${payload.count || prompts.length} prompts saved`;
           saveButton.disabled = true;
-          meta.textContent = `Saved file - ${data.count || prompts.length} prompts - modified ${data.modified_at || "now"}`;
+          meta.textContent = `Saved file - ${payload.count || prompts.length} prompts - modified ${payload.modified_at || "now"}`;
         } catch (error) {
           setStatus(text(error.message || error), "bad");
         }
