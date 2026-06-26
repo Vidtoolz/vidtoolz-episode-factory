@@ -396,9 +396,18 @@ function buildReview(context, verdict) {
     if (!text || /^(todo|n\/a|none|not applicable)$/i.test(text)) return "Not assessed.";
     return text;
   };
-  const versionReviewed = assessedValue(sectionText(notes, "Rough-Cut Version Reviewed"));
-  const watchDate = assessedValue(sectionText(notes, "Watch Date"));
-  const reviewer = assessedValue(sectionText(notes, "Reviewer"));
+  const versionReviewed = assessedValue(
+    sectionText(notes, "Rough-Cut Version Reviewed") ||
+    lineValue(notes, "Reviewed file")
+  );
+  const watchDate = assessedValue(
+    sectionText(notes, "Watch Date") ||
+    lineValue(notes, "Watch date")
+  );
+  const reviewer = assessedValue(
+    sectionText(notes, "Reviewer") ||
+    lineValue(notes, "Reviewer")
+  );
   return `# Rough-Cut Review
 
 - Run: ${context.runId}

@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const PACKAGE_RUNS_DIR = "package-runs";
-const DEFAULT_ACTIVE_RUN_ID = "2026-05-06-ai-video-proof-plan";
+const DEFAULT_ACTIVE_RUN_ID = "";
 const SELECTED_IMAGE_HANDOFF_REPORT = "reports/prompt-03-selected-image-edit-handoff.md";
 const PROMPT_03_SELECTION_REVIEW_REPORT = "reports/prompt-03-image-selection-review.md";
 const KLING_VIDEO_HANDOFF_REPORT = "reports/prompt-03-kling-video-candidate-handoff.md";
@@ -88,6 +88,11 @@ function readPackageRunState(runDir) {
   return { explicit: Boolean(raw || bodyActive), state: raw || (bodyActive ? "active" : "active") };
 }
 
+function mostRecentRunId(runIds) {
+  const sorted = [...runIds].sort();
+  return sorted[sorted.length - 1] || DEFAULT_ACTIVE_RUN_ID;
+}
+
 function findActiveRunId(repoRoot) {
   const runsRoot = path.join(repoRoot, PACKAGE_RUNS_DIR);
   if (!dirExists(runsRoot)) return DEFAULT_ACTIVE_RUN_ID;
@@ -100,12 +105,12 @@ function findActiveRunId(repoRoot) {
     return state.explicit && state.state === "active";
   });
   if (explicitActive.length === 1) return explicitActive[0];
-  if (explicitActive.length > 1) return DEFAULT_ACTIVE_RUN_ID;
+  if (explicitActive.length > 1) return mostRecentRunId(explicitActive);
   const defaultActive = runIds.filter((runId) => {
     const state = readPackageRunState(path.join(runsRoot, runId));
     return !state.explicit || state.state === "active";
   });
-  return defaultActive.length === 1 ? defaultActive[0] : DEFAULT_ACTIVE_RUN_ID;
+  return defaultActive.length === 1 ? defaultActive[0] : mostRecentRunId(defaultActive);
 }
 
 function resolveRun(repoRoot, runInput = "") {

@@ -54,6 +54,7 @@ node --check scripts/package-run-production-approval-review.js
 node --check scripts/script-image-assets-dry-run.js
 node --check scripts/script-image-assets-review-page.js
 node --check scripts/topic-scout.js
+node --check scripts/submitted-topics.js
 node --check scripts/oneof10-input-helper.js
 node --check scripts/daily-idea-scout.js
 node --check scripts/daily-idea-scout-providers.js

@@ -11,6 +11,7 @@ require("./package-runs-dashboard.test.js");
 require("./media-generators.test.js");
 require("./supervised-capture.test.js");
 require("./topic-scout.test.js");
+require("./submitted-topics.test.js");
 require("./published-videos.test.js");
 require("./aigen-production-pipeline.test.js");
 require("./aigen-resolve-assembly.test.js");
@@ -19,6 +20,11 @@ require("./image-selector.test.js");
 require("./flux-batch-control.test.js");
 require("./image-prompts-editor.test.js");
 require("./daily-idea-scout.test.js");
+require("./visual-beat-map-parser.test.js");
+require("./visual-beat-map-panel.test.js");
+require("./friction-log-nonce.test.js");
+require("./pipeline-status.test.js");
+require("./video-prompts.test.js");
 
 async function runTests() {
   let passed = 0;

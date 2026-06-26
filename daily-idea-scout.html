@@ -4,8 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Daily Candidate Ideas — VIDTOOLZ Cockpit</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=1.8.0">
   <style>
+    .container {
+      max-width: 1640px;
+      margin: 0 auto;
+      padding: 18px;
+    }
     .scout-header {
       border-bottom: 1px solid var(--border-color, #333);
       padding-bottom: 1rem;
@@ -23,21 +28,31 @@
       margin: 1rem 0;
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      flex-wrap: wrap;
+      gap: 0.5rem 0.75rem;
+      max-width: 560px;
+    }
+    .scout-date-picker label {
+      white-space: nowrap;
+      font-size: 0.9rem;
+      color: var(--muted, #8b949e);
     }
     .scout-date-picker select {
       padding: 0.4rem 0.6rem;
-      background: var(--bg-secondary, #1a1a2e);
-      color: var(--text-primary, #eee);
-      border: 1px solid var(--border-color, #333);
+      background: var(--panel, #161b22);
+      color: var(--text, #e6edf3);
+      border: 1px solid var(--border, #30363d);
       border-radius: 4px;
       font-size: 0.9rem;
+      flex: 0 0 auto;
+      width: auto;
+      max-width: 260px;
     }
     .scout-date-picker button {
       padding: 0.4rem 0.8rem;
-      background: var(--accent-color, #4a9eff);
+      background: var(--accent, #3fb950);
       color: #fff;
-      border: none;
+      border: 1px solid var(--accent, #3fb950);
       border-radius: 4px;
       cursor: pointer;
       font-size: 0.85rem;
@@ -135,21 +150,38 @@
       justify-content: space-between;
       font-size: 0.8rem;
     }
-    .scout-error, .scout-empty {
+    .scout-empty {
       padding: 2rem;
       text-align: center;
-      color: var(--text-muted, #888);
-      border: 1px dashed var(--border-color, #333);
+      color: var(--muted, #8b949e);
+      border: 1px dashed var(--border, #30363d);
       border-radius: 8px;
     }
     .scout-error {
-      color: #ff6b6b;
+      padding: 2rem;
+      text-align: center;
+      color: var(--danger, #f85149);
+      border: 1px solid var(--danger, #f85149);
+      border-radius: 8px;
+      background: var(--panel-soft, #1c2330);
     }
     .scout-note {
-      font-size: 0.75rem;
-      color: var(--text-muted, #666);
-      margin-top: 0.5rem;
-      font-style: italic;
+      font-size: 0.85rem;
+      color: var(--text, #e6edf3);
+      margin: 1rem 0 0.5rem;
+      line-height: 1.5;
+      text-align: left;
+    }
+    .scout-note code,
+    .scout-error code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.85rem;
+      background: var(--panel, #161b22);
+      color: var(--text, #e6edf3);
+      border: 1px solid var(--border, #30363d);
+      border-radius: 4px;
+      padding: 0.15rem 0.4rem;
+      white-space: nowrap;
     }
     .scout-navigation {
       font-size: 0.85rem;
@@ -165,12 +197,17 @@
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="scout-navigation">
-      <a href="index.html">&larr; Cockpit</a> &nbsp;|&nbsp;
-      <span>Daily Candidate Ideas (Discovery — not production pipeline)</span>
-    </div>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html" class="active">Daily Ideas</a></nav>
+<details class="page-guide" open>
+  <summary>Page Guide — What is this?</summary>
+  <div class="page-guide-body">
+    <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Daily AI-generated candidate ideas with scoring. Discovery tool, not part of the production pipeline.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Browse ideas by score. When you find a topic worth pursuing, go to <a href="topic-scout.html">Topic Scout</a> to formally submit it.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Date picker for archive. Idea cards ranked by score with evidence, thumbnail prompt, and ranking rationale. Click Show details for full breakdown.</span></div>
+  </div>
+</details>
 
+  <div class="container">
     <div class="scout-header">
       <h1>Daily Candidate Ideas</h1>
       <div class="scout-meta" id="scout-meta">Loading...</div>
@@ -264,8 +301,8 @@
         const res = await fetch('/api/daily-idea-scout/today');
         const data = await res.json();
         if (!data.ok) {
-          contentEl.innerHTML = `<div class="scout-error">${escapeHtml(data.error)}</div>
-            <p class="scout-note">Run the daily scout: <code>npm run daily-idea-scout</code> or <code>node scripts/daily-idea-scout-launch.js --date=${new Date().toISOString().slice(0,10)}</code></p>`;
+          contentEl.innerHTML = `<div class="scout-empty">${escapeHtml(data.error)}</div>
+            <p class="scout-note">Run the daily scout: <code>node scripts/daily-idea-scout-launch.js --date=${new Date().toISOString().slice(0,10)}</code></p>`;
           metaEl.textContent = 'No run today';
           return;
         }
@@ -283,7 +320,7 @@
         const res = await fetch(`/api/daily-idea-scout/archive?date=${encodeURIComponent(date)}`);
         const data = await res.json();
         if (!data.ok) {
-          contentEl.innerHTML = `<div class="scout-error">${escapeHtml(data.error)}</div>`;
+          contentEl.innerHTML = `<div class="scout-empty">${escapeHtml(data.error)}</div>`;
           metaEl.textContent = `Archive: ${date} — not found`;
           return;
         }

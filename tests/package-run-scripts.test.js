@@ -1488,6 +1488,69 @@ test("rough cut review real watch notes with no issues can use none closed list 
   assert.doesNotMatch(fixes, /Not assessed/);
 });
 
+test("rough cut review reads watch context from list-item fields when section headings are absent", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-rough-cut-list-item-fields-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-05-10-list-item-fields");
+  writeRoughCutBaseRun(runDir, {
+    watchNotes: [
+      "# Rough-Cut Watch Notes",
+      "",
+      "- Run: 2026-05-10-list-item-fields",
+      "- Reviewed file: media/02-main-redo-full.mp4",
+      "- Reviewed file type: screen redo capture / rough-cut candidate",
+      "- Watch date: 2026-05-17",
+      "- Reviewer: Mikko",
+      "- External APIs called: no",
+      "",
+      "## First 30 Seconds Notes",
+      "",
+      "Opening is acceptable.",
+      "",
+      "## Clarity Notes",
+      "",
+      "The message is understandable.",
+      "",
+      "## Pacing Notes",
+      "",
+      "Pacing is acceptable.",
+      "",
+      "## Proof / Evidence Notes",
+      "",
+      "Proof/evidence is acceptable for this stage.",
+      "",
+      "## Missing Visuals",
+      "",
+      "Presenter is not seen, only heard.",
+      "",
+      "## Pickups Needed",
+      "",
+      "Maybe add closeups and AI-generated B-roll.",
+      "",
+      "## Edit Fixes Needed",
+      "",
+      "No edit fixes noted.",
+      "",
+      "## Second-Cut Recommendation",
+      "",
+      "Move to second-cut work by adding clips.",
+      "",
+      "## Manual Rough-Cut Approval Marker",
+      "",
+      "Rough-cut approval: NEEDS PICKUPS",
+      "",
+    ].join("\n"),
+  });
+
+  assert.equal(packageRoughCutReviewScript.main([runDir]), 0);
+  const review = roughCutReviewText(runDir);
+
+  assert.match(review, /Rough-cut version reviewed: media[/]02-main-redo-full[.]mp4/);
+  assert.match(review, /Watch context: 2026-05-17; reviewer: Mikko/);
+  assert.doesNotMatch(review, /Rough-cut version reviewed: Not assessed/);
+  assert.doesNotMatch(review, /Watch context: Not assessed/);
+  assert.match(review, /Rough-cut review status: NEEDS PICKUPS/);
+});
+
 test("rough cut review blocks second cut when production plan is not ready to shoot", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-rough-cut-production-blocked-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-production-blocked");
@@ -4910,6 +4973,26 @@ test("package runs index scans package-runs folders and writes index json", () =
   assert.equal(output, 0);
 });
 
+test("package runs index ignores non-run container folders", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-runs-index-containers-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Active Run" } })
+  );
+  writeTestFile(
+    tempRoot,
+    "package-runs/stale-runs/2026-05-09-parked/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Archived Nested Run" } })
+  );
+
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+
+  assert.equal(index.count, 1);
+  assert.equal(index.activeCount, 1);
+  assert.deepEqual(index.runs.map((run) => run.path), ["package-runs/2026-05-10-active"]);
+});
+
 test("package run state defaults to active when marker is absent", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-state-default-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-10-default-active");
@@ -5178,6 +5261,29 @@ test("active state audit selects exactly one active run", () => {
   assert.equal(report.candidateActiveRuns.length, 1);
   assert.equal(report.candidateActiveRuns[0].safeRecommendedAction, "keep active");
   assert.equal(report.inactiveRuns.length, 1);
+});
+
+test("active state audit ignores non-run container folders", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-active-audit-containers-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Only Active" } })
+  );
+  writeTestFile(
+    tempRoot,
+    "package-runs/stale-runs/2026-05-09-old/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Nested Old Run" } })
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const report = packageRunActiveStateAuditScript.buildActiveStateAudit({ repoRoot: tempRoot });
+
+  assert.equal(report.ok, true);
+  assert.equal(report.ambiguity, false);
+  assert.equal(report.packageRunsDirectory.count, 1);
+  assert.deepEqual(report.candidateActiveRuns.map((run) => run.path), ["package-runs/2026-05-10-active"]);
 });
 
 test("active state audit reports multiple active runs as ambiguous", () => {

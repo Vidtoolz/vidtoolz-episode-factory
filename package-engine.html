@@ -4,9 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Package Engine</title>
-    <link rel="stylesheet" href="styles.css?v=1.7.4-thumb2" />
+    <link rel="stylesheet" href="styles.css?v=1.8.0-thumb2" />
   </head>
   <body>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html" class="active">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
+<details class="page-guide" open>
+  <summary>Page Guide — What is this?</summary>
+  <div class="page-guide-body">
+    <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Stage 2: Formally select a topic and create the package run that drives the production workflow.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">After creating a package run, open the <a href="package-runs-dashboard.html">Dashboard</a> to track it through production.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Shows available runs and package candidates. Selecting a topic creates a structured package run with artifact paths on VIDNAS.</span></div>
+  </div>
+</details>
+
     <div class="app-shell package-engine-shell">
       <header class="topbar">
         <div>
@@ -64,6 +74,26 @@
         <section id="generatedThumbnailPanel" class="generated-thumbnail-panel hidden" aria-live="polite" data-view-group="thumbnail-work" data-view-default="full"></section>
 
         <section id="packageGrid" class="package-grid" aria-label="Package candidate cards" data-view-group="candidate-review" data-view-default="focused"></section>
+
+        <section id="confirmPanel" class="confirm-panel hidden" aria-label="Confirm selection">
+          <div class="confirm-box">
+            <h2>Confirm Your Selection</h2>
+            <p>You selected: <strong id="confirmTitle">—</strong></p>
+            <p class="muted">Clicking "Confirm and Save" writes selected-package.json and selected-package.md to the run folder. This does NOT create an episode or start production — it confirms your Stage 1 choice and unlocks Stage 2.</p>
+            <div class="confirm-actions">
+              <button type="button" class="primary-btn" id="confirmSaveBtn">Confirm and Save</button>
+              <button type="button" id="cancelConfirmBtn">Cancel</button>
+            </div>
+            <span class="confirm-status" id="confirmStatus"></span>
+          </div>
+        </section>
+
+        <section id="nextStepsPanel" class="next-steps-panel hidden" aria-label="Next steps">
+          <div class="next-steps-box">
+            <h2>Stage 1 Complete — What Happens Next</h2>
+            <div class="next-steps-content" id="nextStepsContent"></div>
+          </div>
+        </section>
       </main>
     </div>
 

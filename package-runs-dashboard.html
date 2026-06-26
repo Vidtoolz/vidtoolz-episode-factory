@@ -4,9 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Package Runs Dashboard</title>
-    <link rel="stylesheet" href="styles.css?v=1.7.4" />
+    <link rel="stylesheet" href="styles.css?v=1.8.0" />
   </head>
   <body>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html" class="active">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
+<details class="page-guide" open>
+  <summary>Page Guide — What is this?</summary>
+  <div class="page-guide-body">
+    <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Your main cockpit. Shows what to do right now: current focus, next 30-minute action, proof status, and blocked items for each video project.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">The Focus panel tells you exactly what to do next. Click any video card below to open its full production room. Use <a href="mission-control.html">Mission Control</a> for a different overview.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Focus panel: Now / Next action / Second-cut readiness / Proof / Missing proof / AI may / Mikko must / Blocked. Productions overview lists all runs. Video Project Room shows focused run details.</span></div>
+  </div>
+</details>
+
     <div class="app-shell package-engine-shell">
       <header class="topbar">
         <div>
@@ -18,6 +28,7 @@
           <a class="nav-link-button" href="package-engine.html">Package Engine</a>
           <a class="nav-link-button" href="mission-control.html">Mission Control</a>
           <a class="nav-link-button" href="production-day-dashboard.html">Production Day</a>
+          <a class="nav-link-button" href="aigen-review.html">AIGEN Review</a>
         </div>
       </header>
 
@@ -53,6 +64,35 @@
               <p>Browser-local focus view only. Existing tools remain available in collapsed groups.</p>
             </div>
           </div>
+        </section>
+
+        <section id="productionsOverviewPanel" class="productions-overview-panel" aria-label="All videos command board">
+          <div class="productions-overview-header">
+            <div>
+              <p class="eyebrow">All Videos</p>
+              <h2>Production Command Board</h2>
+              <p class="muted">Every chosen video project, grouped by production stage. Each card shows the visible assets, blockers, and next operator action.</p>
+            </div>
+          </div>
+          <div id="productionsOverview" class="productions-overview"></div>
+        </section>
+
+        <section id="videoRoomPanel" class="video-room-panel" aria-label="Individual video production room">
+          <div class="video-room-empty">
+            <p class="eyebrow">Video Room</p>
+            <h2>Select a video project</h2>
+            <p class="muted">The focused video room aggregates prompts, assets, motion lanes, approvals, friction, and next action without writing state.</p>
+          </div>
+        </section>
+
+        <section id="runActionPanel" class="run-action-panel hidden" aria-label="Run action workspace">
+          <div id="runActionContent"></div>
+        </section>
+
+        <section id="systemAvailabilityPanel" class="system-availability-panel" aria-label="System availability">
+        </section>
+
+        <section id="capabilityInventoryPanel" class="capability-inventory-panel" aria-label="Capability inventory">
         </section>
 
         <details class="dashboard-group diagnostics-group" data-dashboard-group="diagnostics">
@@ -102,6 +142,51 @@
             </div>
           </section>
         </details>
+
+        <section id="jobProgressPanel" class="job-progress-panel-section" aria-label="Render job progress">
+        </section>
+
+        <section id="pipelineTrackerPanel" class="pipeline-tracker-panel" aria-label="Pipeline tracker">
+          <div class="pipeline-tracker-header">
+            <div>
+              <p class="eyebrow">Production Pipeline</p>
+              <h2>13-Stage Progress</h2>
+              <p class="muted">Visual progress tracker for the active package run.</p>
+            </div>
+          </div>
+          <div id="pipelineTrackerContainer" class="pipeline-tracker-container">
+            <div style="color:var(--muted);font-size:13px;padding:8px;">Loading pipeline status...</div>
+          </div>
+        </section>
+
+        <section id="visualBeatMapPanel" class="visual-beat-map-panel" aria-label="Visual beat map">
+          <div id="visualBeatMapContainer" class="visual-beat-map-container">
+            <div style="color:var(--muted);font-size:13px;padding:8px;">Loading visual beat map...</div>
+          </div>
+        </section>
+
+        <section id="mediaGalleryPanel" class="media-gallery-panel" aria-label="Media gallery">
+          <div class="media-gallery-header">
+            <div>
+              <p class="eyebrow">Media Gallery</p>
+              <h2>All Assets</h2>
+              <p class="muted">Browse all generated and source media for the active run.</p>
+            </div>
+            <button type="button" class="primary-btn" id="mediaGalleryRefresh">Refresh</button>
+          </div>
+          <div id="mediaGalleryContainer" class="media-gallery-container">
+            <div style="color:var(--muted);font-size:13px;padding:8px;">Loading media...</div>
+          </div>
+        </section>
+
+        <section id="frictionLogPanel" class="friction-log-panel-section" aria-label="Friction log">
+        </section>
+
+        <section id="workflowWizardPanel" class="workflow-wizard-panel" aria-label="Guided workflow">
+          <div id="workflowWizardContainer" class="workflow-wizard-container">
+            <div style="color:var(--muted);font-size:13px;padding:8px;">Loading workflow guidance...</div>
+          </div>
+        </section>
 
         <details class="dashboard-group active-package-group" data-dashboard-group="active-package-run">
           <summary>Diagnostics: active package run</summary>
@@ -181,6 +266,14 @@
       </main>
     </div>
 
-    <script src="package-runs-dashboard.js?v=1.7.4"></script>
+    <script src="pipeline-tracker.js?v=1.7.5"></script>
+    <script src="media-gallery.js?v=1.7.5"></script>
+    <script src="friction-log.js?v=1.7.5"></script>
+    <script src="workflow-wizard.js?v=1.7.5"></script>
+    <script src="job-progress.js?v=1.7.5"></script>
+    <script src="visual-beat-map-panel.js?v=1.7.5"></script>
+    <link rel="stylesheet" href="video-room-focus.css?v=1.7.4">
+    <script src="video-room-focus.js?v=1.7.4"></script>
+    <script src="package-runs-dashboard.js?v=1.7.6"></script>
   </body>
 </html>

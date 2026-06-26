@@ -91,6 +91,7 @@ function listPackageRunDirs(repoRoot, runsDir = "package-runs") {
   const dirs = fs
     .readdirSync(absoluteRunsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
+    .filter((entry) => packageRunsIndex.isPackageRunDir(path.join(absoluteRunsDir, entry.name)))
     .map((entry) => path.join(absoluteRunsDir, entry.name))
     .sort((a, b) => path.basename(b).localeCompare(path.basename(a)));
 

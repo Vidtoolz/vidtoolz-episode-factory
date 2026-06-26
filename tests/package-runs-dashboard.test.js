@@ -84,6 +84,228 @@ const {
 } = require("./_helpers.js");
 
 
+
+test("package runs index tracks cockpit visibility lane artifacts", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-runs-visibility-artifacts-"));
+  const runId = "2099-03-01-visible-lanes";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.md"), "# Visible Lane Test\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "thumbnail-mockup.svg"), "<svg></svg>", "utf8");
+  fs.writeFileSync(path.join(runDir, "FRICTION-LOG.json"), JSON.stringify({ entries: [] }), "utf8");
+  fs.mkdirSync(path.join(runDir, "hyperframes"), { recursive: true });
+  fs.writeFileSync(path.join(runDir, "hyperframes", "hyperframes.json"), JSON.stringify({ compositions: [] }), "utf8");
+  fs.writeFileSync(path.join(runDir, "remotion-renders.json"), JSON.stringify({ renders: [] }), "utf8");
+  fs.writeFileSync(path.join(runDir, "selected-images.json"), JSON.stringify({ selections: [] }), "utf8");
+
+  const run = packageRunsIndexScript.scanRun(runDir, tempRoot);
+
+  assert.equal(run.files.thumbnail_mockup, true);
+  assert.equal(run.files.friction_log, true);
+  assert.equal(run.files.hyperframes, true);
+  assert.equal(run.files.remotion_renders, true);
+  assert.equal(run.files.selected_images, true);
+});
+
+test("dashboard production card shows operator asset ledger and motion lanes", () => {
+  const run = {
+    runId: "2099-03-02-card",
+    path: "package-runs/2099-03-02-card",
+    title: "Visible cockpit card",
+    status: "Needs rough-cut review",
+    workflowBucket: "Needs rough-cut review",
+    overallStatus: "BLOCKED",
+    firstBlockerReason: "Rough-cut review status is NEEDS PICKUPS.",
+    nextRecommendedCommand: "node scripts/package-run-rough-cut-review.js package-runs/2099-03-02-card",
+    files: {
+      final_script: true,
+      thumbnail_title_check: true,
+      thumbnail_mockup: true,
+      image_prompts: true,
+      selected_images: true,
+      video_prompts: true,
+      hyperframes: true,
+      remotion_renders: false,
+      resolve_edit_checklist: true,
+      friction_log: true,
+    },
+  };
+
+  const ledger = packageRunsDashboard.buildProductionAssetLedger(run);
+  const html = packageRunsDashboard.renderProductionCard(run);
+
+  assert.equal(ledger.find((item) => item.key === "script").status, "available");
+  assert.equal(ledger.find((item) => item.key === "hyperframes").status, "available");
+  assert.equal(ledger.find((item) => item.key === "remotion").status, "missing");
+  assert.match(html, /Production-card|production-card/i);
+  assert.match(html, /Visible cockpit card/);
+  assert.match(html, /Image prompts/);
+  assert.match(html, /Hyperframes scenes\/renders/);
+  assert.match(html, /Remotion compositions\/renders/);
+  assert.match(html, /Open video room/);
+  assert.match(html, /data-open-package-folder="2099-03-02-card"/);
+  assert.match(html, /data-open-asset-path="final-script\.md"/);
+});
+
+test("dashboard video room exposes Hyperframes and Remotion as first-class read-only lanes", () => {
+  const run = {
+    runId: "2099-03-03-room",
+    path: "package-runs/2099-03-03-room",
+    title: "Video room test",
+    status: "Needs capture",
+    workflowBucket: "Needs capture",
+    overallStatus: "BLOCKED",
+    nextExpectedFile: "capture evidence",
+    files: {
+      final_script: true,
+      image_prompts: true,
+      video_prompts: true,
+      hyperframes: false,
+      remotion_renders: false,
+    },
+  };
+
+  const html = packageRunsDashboard.renderVideoProjectRoom(run);
+
+  assert.match(html, /Individual Video View/);
+  assert.match(html, /Production Assets/);
+  assert.match(html, /HyperFrames/);
+  assert.match(html, /Agent-native motion graphics/);
+  assert.match(html, /Remotion/);
+  assert.match(html, /Reusable React-template video lane/);
+  assert.match(html, /read-only orientation/i);
+  assert.doesNotMatch(html, /data-approve|data-publish|publish-ready:\s*yes/i);
+});
+
+test("dashboard system and capability panels make availability visible without actions", () => {
+  const index = {
+    runs: [{
+      runId: "2099-03-04-system",
+      path: "package-runs/2099-03-04-system",
+      status: "Needs rough-cut review",
+      packageRunState: { state: "active" },
+      files: { resolve_edit_checklist: true },
+    }],
+  };
+
+  const systemHtml = packageRunsDashboard.renderSystemAvailabilityPanel(index);
+  const capabilityHtml = packageRunsDashboard.renderCapabilityInventoryPanel();
+
+  assert.match(systemHtml, /Production System Availability/);
+  assert.match(systemHtml, /Cockpit server/);
+  assert.match(systemHtml, /PRESTO \/ Wan2\.2/);
+  assert.match(systemHtml, /HyperFrames/);
+  assert.match(systemHtml, /Remotion/);
+  assert.match(capabilityHtml, /Capability Inventory/);
+  assert.match(capabilityHtml, /Visible Production Lanes/);
+  assert.match(capabilityHtml, /DaVinci Resolve/);
+  assert.doesNotMatch(systemHtml + capabilityHtml, /data-approve|data-publish|data-render/);
+});
+
+test("dashboard HyperFrames lane renders useful composition and render status", () => {
+  const run = {
+    runId: "2099-04-08-hyperframes",
+    path: "package-runs/2099-04-08-hyperframes",
+    title: "HyperFrames cockpit test",
+    status: "Needs capture",
+    workflowBucket: "Needs capture",
+    overallStatus: "BLOCKED",
+    files: { hyperframes: true, remotion_renders: false },
+    hyperframes: {
+      availability: {
+        available: true,
+        command: "npx --no-install hyperframes --help",
+        version: "1.2.3",
+        checked_at: "2099-04-08T00:00:00.000Z",
+      },
+      lane: {
+        status: "failed",
+        compositionsCount: 2,
+        hasHyperframesDir: true,
+        hasCompositionsDir: true,
+      },
+      manifest: {
+        compositions: [
+          {
+            id: "opening-card",
+            title: "Opening Card",
+            preview_url: "/api/hyperframes/preview?runId=2099-04-08-hyperframes&id=opening-card",
+            rendered_mp4: "hyperframes/renders/opening-card.mp4",
+            status: "rendered",
+            last_rendered_at: "2099-04-08T00:01:00.000Z",
+            last_error: null,
+            approved: false,
+          },
+          {
+            id: "broken-card",
+            title: "Broken Card",
+            preview_url: "/api/hyperframes/preview?runId=2099-04-08-hyperframes&id=broken-card",
+            rendered_mp4: "hyperframes/renders/broken-card.mp4",
+            status: "failed",
+            last_rendered_at: null,
+            last_error: "simulated failure",
+            approved: false,
+          },
+        ],
+      },
+    },
+  };
+
+  const html = packageRunsDashboard.renderVideoProjectRoom(run);
+
+  assert.match(html, /Availability: <strong>installed<\/strong>/);
+  assert.match(html, /Compositions: <strong>2<\/strong>/);
+  assert.match(html, /Opening Card/);
+  assert.match(html, /hyperframes\/renders\/opening-card\.mp4/);
+  assert.match(html, /2099-04-08T00:01:00\.000Z/);
+  assert.match(html, /Broken Card/);
+  assert.match(html, /simulated failure/);
+  assert.match(html, /data-hyperframes-render="broken-card"/);
+  assert.match(html, /\/api\/hyperframes\/preview\?runId=2099-04-08-hyperframes&amp;id=opening-card/);
+  assert.doesNotMatch(html, /data-approve|publish-ready:\s*yes/i);
+});
+
+test("package-run OS folder opener resolves asset files to containing folders", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-open-folder-"));
+  const runId = "2099-03-05-open-folder";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Script\n", "utf8");
+  const calls = [];
+
+  const payload = packageEngineServer.openPackageRunAssetFolder(
+    { runId, assetPath: "final-script.md" },
+    {
+      root: tempRoot,
+      command: "xdg-open",
+      opener: (command, args, options) => {
+        calls.push({ command, args, options });
+        return { unref() {} };
+      },
+    }
+  );
+
+  assert.equal(payload.ok, true);
+  assert.equal(payload.opened, runDir);
+  assert.equal(payload.targetExists, true);
+  assert.equal(calls[0].command, "xdg-open");
+  assert.deepEqual(calls[0].args, [runDir]);
+});
+
+test("package-run OS folder opener rejects path traversal", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-open-folder-traversal-"));
+  const runId = "2099-03-06-open-folder";
+  fs.mkdirSync(path.join(tempRoot, "package-runs", runId), { recursive: true });
+
+  assert.throws(
+    () => packageEngineServer.openPackageRunAssetFolder(
+      { runId, assetPath: "../outside.md" },
+      { root: tempRoot, opener: () => ({ unref() {} }) }
+    ),
+    /escaped the package-run folder/
+  );
+});
+
 test("package runs dashboard launch helper writes index and prints local launch instructions", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-runs-dashboard-launch-"));
   const runDir = path.join(tempRoot, "package-runs", "2026-05-02-launch");
@@ -587,6 +809,7 @@ function createProductionGpsFixture(overrides = {}) {
     ...overrides.files,
   });
   fs.writeFileSync(path.join(runDir, "media", "rough-cut-v1.mp4"), "fake", "utf8");
+  fs.utimesSync(indexPath, new Date("2026-05-01T00:00:00Z"), new Date("2026-05-01T00:00:00Z"));
   return { tempRoot, runId, runDir, indexPath, statePath: path.join(runDir, "package-run-state.md") };
 }
 
@@ -3660,4 +3883,121 @@ test("package runs dashboard has a shell launcher documented", () => {
   assert.match(readme, /scripts\/open-package-runs-dashboard\.sh/);
   assert.match(workflowDoc, /scripts\/open-package-runs-dashboard\.sh/);
   assert.match(verify, /sh -n scripts\/open-package-runs-dashboard\.sh/);
+});
+
+test("productionBucketForRun classifies runs into correct production buckets", () => {
+  const { productionBucketForRun } = packageRunsDashboard;
+
+  assert.equal(productionBucketForRun({ workflowBucket: "Needs script" }), "In Production");
+  assert.equal(productionBucketForRun({ workflowBucket: "Ready to shoot" }), "In Production");
+  assert.equal(productionBucketForRun({ workflowBucket: "Needs rough-cut review" }), "At Review");
+  assert.equal(productionBucketForRun({ workflowBucket: "Needs final review" }), "At Review");
+  assert.equal(productionBucketForRun({ workflowBucket: "Needs QA repair" }), "Blocked / Needs Action");
+  assert.equal(productionBucketForRun({ workflowBucket: "Needs proof capture" }), "Blocked / Needs Action");
+  assert.equal(productionBucketForRun({ inactive: true, workflowBucket: "Ready to shoot" }), "Inactive / Archived");
+  assert.equal(productionBucketForRun({ workflowBucket: "Inactive: parked" }), "Inactive / Archived");
+  assert.equal(productionBucketForRun({ workflowBucket: "Inactive: superseded" }), "Inactive / Archived");
+  assert.equal(productionBucketForRun(null), "In Production");
+  assert.equal(productionBucketForRun({}), "In Production");
+  assert.equal(productionBucketForRun({ workflowBucket: undefined }), "In Production");
+});
+
+test("groupRunsByProductionBucket groups all runs and preserves bucket order", () => {
+  const { groupRunsByProductionBucket, PRODUCTION_BUCKETS } = packageRunsDashboard;
+
+  const runs = [
+    { runId: "r1", workflowBucket: "Needs script" },
+    { runId: "r2", workflowBucket: "Needs rough-cut review" },
+    { runId: "r3", workflowBucket: "Needs QA repair" },
+    { runId: "r4", inactive: true, workflowBucket: "Ready to shoot" },
+    { runId: "r5", workflowBucket: "Ready to shoot" },
+    { runId: "r6", workflowBucket: "Needs final review" },
+    { runId: "r7", workflowBucket: "Needs proof capture" },
+    { runId: "r8", workflowBucket: "Inactive: parked" },
+  ];
+
+  const buckets = groupRunsByProductionBucket(runs);
+
+  assert.deepEqual(Object.keys(buckets), PRODUCTION_BUCKETS);
+  assert.equal(buckets["In Production"].length, 2);
+  assert.equal(buckets["At Review"].length, 2);
+  assert.equal(buckets["Blocked / Needs Action"].length, 2);
+  assert.equal(buckets["Inactive / Archived"].length, 2);
+  assert.equal(buckets["In Production"][0].runId, "r1");
+  assert.equal(buckets["At Review"][0].runId, "r2");
+  assert.equal(buckets["Blocked / Needs Action"][0].runId, "r3");
+  assert.equal(buckets["Inactive / Archived"][0].runId, "r4");
+});
+
+test("groupRunsByProductionBucket handles empty and null input", () => {
+  const { groupRunsByProductionBucket, PRODUCTION_BUCKETS } = packageRunsDashboard;
+
+  const emptyBuckets = groupRunsByProductionBucket([]);
+  assert.deepEqual(Object.keys(emptyBuckets), PRODUCTION_BUCKETS);
+  PRODUCTION_BUCKETS.forEach((label) => assert.equal(emptyBuckets[label].length, 0));
+
+  const nullBuckets = groupRunsByProductionBucket(null);
+  assert.deepEqual(Object.keys(nullBuckets), PRODUCTION_BUCKETS);
+  PRODUCTION_BUCKETS.forEach((label) => assert.equal(nullBuckets[label].length, 0));
+});
+
+test("renderProductionsOverview renders bucket sections with counts and focus buttons", () => {
+  const { renderProductionsOverview } = packageRunsDashboard;
+
+  const runs = [
+    { runId: "2026-05-01-a", title: "Active Run", status: "Ready to shoot", workflowBucket: "Ready to shoot", path: "package-runs/2026-05-01-a" },
+    { runId: "2026-05-02-b", title: "Review Run", status: "Needs rough-cut review", workflowBucket: "Needs rough-cut review", path: "package-runs/2026-05-02-b" },
+  ];
+
+  const html = renderProductionsOverview(runs);
+  assert.match(html, /In Production/);
+  assert.match(html, /At Review/);
+  assert.match(html, /production-bucket-count/);
+  assert.match(html, /data-focus-run="2026-05-01-a"/);
+  assert.match(html, /data-focus-run="2026-05-02-b"/);
+  assert.match(html, /Focus this run/);
+  assert.match(html, /compact-pipeline-strip/);
+});
+
+test("focusRunFolderForRun returns bare run id for module API calls", () => {
+  const { focusRunFolderForRun } = packageRunsDashboard;
+
+  assert.equal(
+    focusRunFolderForRun({
+      runId: "2026-05-06-ai-video-proof-plan",
+      path: "package-runs/2026-05-06-ai-video-proof-plan",
+    }),
+    "2026-05-06-ai-video-proof-plan"
+  );
+  assert.equal(focusRunFolderForRun(null, "2026-05-07-next-run"), "2026-05-07-next-run");
+});
+
+test("renderProductionsOverview renders empty message when no runs exist", () => {
+  const { renderProductionsOverview } = packageRunsDashboard;
+
+  const html = renderProductionsOverview([]);
+  assert.match(html, /No package runs found/);
+  assert.doesNotMatch(html, /production-bucket/);
+});
+
+test("renderCompactPipelineStrip renders progress bar and bucket label", () => {
+  const { renderCompactPipelineStrip } = packageRunsDashboard;
+
+  const html = renderCompactPipelineStrip({ status: "Ready to shoot", workflowBucket: "Ready to shoot" });
+  assert.match(html, /compact-pipeline-bar/);
+  assert.match(html, /compact-pipeline-fill/);
+  assert.match(html, /Ready to shoot/);
+  assert.match(html, /style="width:\d+%"/);
+});
+
+test("renderCompactPipelineStrip includes blocker reason when present", () => {
+  const { renderCompactPipelineStrip } = packageRunsDashboard;
+
+  const html = renderCompactPipelineStrip({
+    status: "Production prep ready",
+    workflowBucket: "Needs QA repair",
+    firstBlockerReason: "Creator QA failed: script mismatch",
+  });
+  assert.match(html, /compact-strip-blocker/);
+  assert.match(html, /Creator QA failed/);
 });

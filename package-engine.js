@@ -21,6 +21,13 @@
     downloadMarkdown: document.querySelector("#downloadMarkdownBtn"),
     generateThumbnails: document.querySelector("#generateThumbnailsBtn"),
     generatedThumbnailPanel: document.querySelector("#generatedThumbnailPanel"),
+    confirmPanel: document.querySelector("#confirmPanel"),
+    confirmTitle: document.querySelector("#confirmTitle"),
+    confirmSaveBtn: document.querySelector("#confirmSaveBtn"),
+    cancelConfirmBtn: document.querySelector("#cancelConfirmBtn"),
+    confirmStatus: document.querySelector("#confirmStatus"),
+    nextStepsPanel: document.querySelector("#nextStepsPanel"),
+    nextStepsContent: document.querySelector("#nextStepsContent"),
   };
 
   let candidateSet = { candidates: [] };
@@ -600,8 +607,184 @@
     }
     if (select) {
       selectedId = select.dataset.select;
-      showStatus("Winning package selected. Export JSON or Markdown when ready.", "success");
+      showStatus("Winner selected. Review the confirmation panel below.", "success");
       render();
+      showConfirmPanel();
+    }
+  }
+
+  function showConfirmPanel() {
+    const selected = selectedCandidate();
+    if (!selected) return;
+    // Check if this run already has a saved selected-package.json
+    const runId = new URLSearchParams(window.location.search).get("run") || "";
+    fetch(`package-runs/${runId}/selected-package.json`, { cache: "no-store" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((existing) => {
+        if (existing) {
+          showNextSteps(runId, existing.package || existing, true);
+          return;
+        }
+        els.confirmTitle.textContent = selected.proposedTitle || selected.idea || "Untitled";
+        els.confirmPanel.classList.remove("hidden");
+        els.nextStepsPanel.classList.add("hidden");
+        els.confirmStatus.textContent = "";
+        els.confirmStatus.className = "confirm-status";
+      })
+      .catch(() => {
+        els.confirmTitle.textContent = selected.proposedTitle || selected.idea || "Untitled";
+        els.confirmPanel.classList.remove("hidden");
+      });
+  }
+
+  function handleConfirmSave() {
+    const selected = selectedCandidate();
+    if (!selected) return;
+    const runId = new URLSearchParams(window.location.search).get("run") || "";
+    if (!runId) {
+      els.confirmStatus.textContent = "No run ID in URL.";
+      els.confirmStatus.className = "confirm-status error";
+      return;
+    }
+    const btn = els.confirmSaveBtn;
+    btn.disabled = true;
+    els.confirmStatus.textContent = "Saving...";
+    els.confirmStatus.className = "confirm-status";
+
+    const selectedThumbnailCandidates = generatedThumbnailsByCandidate[selected.id] || thumbnailCandidates;
+    const thumbnailImage = primaryGeneratedThumbnailImage(selected) || selected.thumbnailImage || selected.thumbnail_image || selected.thumbnailImagePath || selected.thumbnail_image_path || "";
+    const selectedPackage = model.buildSelectedPackageJson(selected, { thumbnailImage, thumbnailCandidates: selectedThumbnailCandidates });
+
+    fetch("/api/package-engine/save-selected", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        [nonceHeader]: localWriteNonce,
+      },
+      body: JSON.stringify({
+        runId,
+        selectedPackage,
+        localWriteNonce,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.ok) throw new Error(data.error || "Save failed");
+        els.confirmStatus.textContent = "Saved.";
+        els.confirmStatus.className = "confirm-status success";
+        els.confirmPanel.classList.add("hidden");
+        showNextSteps(runId, selected, false);
+      })
+      .catch((err) => {
+        els.confirmStatus.textContent = err.message;
+        els.confirmStatus.className = "confirm-status error";
+        btn.disabled = false;
+      });
+  }
+
+  function showNextSteps(runId, selected, alreadySaved) {
+    els.confirmPanel.classList.add("hidden");
+    els.nextStepsPanel.classList.remove("hidden");
+    const title = selected.proposedTitle || selected.proposed_title || selected.title || "your topic";
+    const runSlug = runId;
+    els.nextStepsContent.innerHTML = `
+      <div class="stage-progress">
+        <span class="stage-done">✓ Stage 1: Topic Selection</span>
+        <span class="stage-arrow">→</span>
+        <span class="stage-current">Stage 2: Outline</span>
+        <span class="stage-arrow">→</span>
+        <span class="stage-future">3: Script</span>
+        <span class="stage-arrow">→</span>
+        <span class="stage-future">4: Shot Plan</span>
+        <span class="stage-arrow">→</span>
+        <span class="stage-future">5: Edit</span>
+        <span class="stage-arrow">→</span>
+        <span class="stage-future">6: Packaging</span>
+        <span class="stage-arrow">→</span>
+        <span class="stage-future">7: Publish</span>
+      </div>
+
+      <p>Selected: <strong>${escapeHtml(title)}</strong></p>
+      <p class="muted">Saved to: <code>package-runs/${escapeHtml(runSlug)}/selected-package.json</code></p>
+
+      <div class="next-action-box">
+        <p class="next-action-label">Next action: Generate outline prompt</p>
+        <p class="muted">The system will generate <code>outline-prompt.md</code> from your selected topic. One click — no manual file editing.</p>
+        <button type="button" class="primary-btn" id="generateOutlineBtn">Generate Outline Prompt</button>
+        <span class="confirm-status" id="outlineGenStatus"></span>
+      </div>
+
+      <div id="outlinePromptBox" class="outline-prompt-box hidden">
+        <h3>Outline Prompt — Ready to Use</h3>
+        <p class="muted">Copy this prompt and paste it into Hermes or ChatGPT. It contains your selected topic, VIDTOOLZ guardrails, and instructions to generate 3 outline options.</p>
+        <div class="prompt-actions">
+          <button type="button" id="copyPromptBtn">Copy to Clipboard</button>
+          <button type="button" id="downloadPromptBtn">Download as .md</button>
+        </div>
+        <pre id="outlinePromptText" class="prompt-text"></pre>
+        <p class="muted" style="margin-top: 0.75rem;">
+          After pasting into Hermes/ChatGPT, save the 3 outline options as <code>outlines.md</code> in the run folder. Then pick one and save it as <code>final-outline.md</code>.
+        </p>
+      </div>
+
+      ${alreadySaved ? '<p class="muted" style="margin-top: 0.5rem;">This selection was already saved.</p>' : ''}
+    `;
+    els.nextStepsPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // Wire up the generate button
+    const genBtn = document.querySelector("#generateOutlineBtn");
+    const genStatus = document.querySelector("#outlineGenStatus");
+    const promptBox = document.querySelector("#outlinePromptBox");
+    const promptText = document.querySelector("#outlinePromptText");
+
+    if (genBtn) {
+      genBtn.addEventListener("click", () => {
+        genBtn.disabled = true;
+        genStatus.textContent = "Generating...";
+        genStatus.className = "confirm-status";
+
+        fetch("/api/package-engine/generate-outline-prompt", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            [nonceHeader]: localWriteNonce,
+          },
+          body: JSON.stringify({ runId: runSlug, localWriteNonce }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (!data.ok) throw new Error(data.error || "Generation failed");
+            genStatus.textContent = "Done — outline-prompt.md saved to run folder.";
+            genStatus.className = "confirm-status success";
+            promptBox.classList.remove("hidden");
+            promptText.textContent = data.outlinePrompt || "(empty)";
+            // Wire up copy/download buttons
+            const copyBtn = document.querySelector("#copyPromptBtn");
+            const dlBtn = document.querySelector("#downloadPromptBtn");
+            if (copyBtn) {
+              copyBtn.addEventListener("click", () => {
+                navigator.clipboard.writeText(data.outlinePrompt || "").then(() => {
+                  copyBtn.textContent = "Copied!";
+                  setTimeout(() => { copyBtn.textContent = "Copy to Clipboard"; }, 2000);
+                });
+              });
+            }
+            if (dlBtn) {
+              dlBtn.addEventListener("click", () => {
+                const blob = new Blob([data.outlinePrompt || ""], { type: "text/markdown" });
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = "outline-prompt.md";
+                a.click();
+              });
+            }
+          })
+          .catch((err) => {
+            genStatus.textContent = err.message;
+            genStatus.className = "confirm-status error";
+            genBtn.disabled = false;
+          });
+      });
     }
   }
 
@@ -672,6 +855,10 @@
   els.downloadJson.addEventListener("click", downloadSelectedJson);
   els.downloadMarkdown.addEventListener("click", downloadSelectedMarkdown);
   els.generateThumbnails.addEventListener("click", () => generateMoreThumbnailCandidates());
+  els.confirmSaveBtn.addEventListener("click", handleConfirmSave);
+  els.cancelConfirmBtn.addEventListener("click", () => {
+    els.confirmPanel.classList.add("hidden");
+  });
   document.querySelectorAll("[data-package-engine-view-mode-button]").forEach((button) => {
     button.addEventListener("click", () => setPackageEngineViewMode(button.dataset.packageEngineViewModeButton));
   });

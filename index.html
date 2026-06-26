@@ -4,9 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Episode Factory</title>
-    <link rel="stylesheet" href="styles.css?v=1.7.4" />
+    <link rel="stylesheet" href="styles.css?v=1.8.0" />
   </head>
   <body>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html" class="active">Episode Board</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
+<details class="page-guide" open>
+  <summary>Page Guide — What is this?</summary>
+  <div class="page-guide-body">
+    <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Episode planning board. Create and organize episodes, manage the production queue, and see overall status.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Create a new episode or select an existing one to edit its details. For active production tracking, use <a href="package-runs-dashboard.html">Dashboard</a></span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Episode cards with status, priority, and stage. Drag to reorder. Click to edit. Links to script, image prompts, and pipeline tools.</span></div>
+  </div>
+</details>
+
     <div class="app-shell">
       <header class="topbar">
         <div>
@@ -19,6 +29,7 @@
           <a class="nav-link-button" href="mission-control.html">Mission Control</a>
           <a class="nav-link-button" href="production-day-dashboard.html">Production Day</a>
           <a class="nav-link-button" href="daily-idea-scout.html" title="Discovery — not part of production pipeline">Idea Scout</a>
+          <a class="nav-link-button" href="aigen-review.html">AIGEN Review</a>
           <div class="dashboard-mode-toggle episode-view-toggle" aria-label="Episode Factory view mode">
             <button type="button" class="active" data-view-mode-button="focused" aria-pressed="true">Focused View</button>
             <button type="button" data-view-mode-button="full" aria-pressed="false">Full Dashboard</button>

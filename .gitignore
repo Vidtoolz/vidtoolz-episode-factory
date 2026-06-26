@@ -3,3 +3,6 @@
 
 # Ad hoc downloaded media/document samples
 /test-fixtures/internet-downloads/
+
+# Dependencies
+node_modules/

@@ -84,6 +84,21 @@ const DETECTED_FILES = [
   "repurposing-plan.md",
   "shorts-candidates.md",
   "platform-variants.md",
+  "FRICTION-LOG.json",
+  "thumbnail-mockup.svg",
+  "thumbnail-mockup.png",
+  "thumbnail-mockup.jpg",
+  "thumbnail-mockup.jpeg",
+  "image-prompts.json",
+  "selected-images.json",
+  "video-prompts.json",
+  "visual-prompt-set.md",
+  "gate-5-assembly-manifest.md",
+  "hyperframes.json",
+  "hyperframes/hyperframes.json",
+  "hyperframes.md",
+  "remotion-renders.json",
+  "remotion-renders.md",
 ];
 
 const PRODUCTION_ARTIFACTS = [
@@ -184,8 +199,10 @@ function fileKey(filename) {
   if (filename === "selected-package.json") return "selected_package_json";
   if (filename === "selected-package.md") return "selected_package_md";
   if (filename === "creator-qa-report.json") return "creator_qa_report_json";
+  if (filename === "hyperframes/hyperframes.json") return "hyperframes";
   return filename
-    .replace(/\.json$|\.md$/g, "")
+    .toLowerCase()
+    .replace(/\.(?:json|md|svg|png|jpe?g)$/g, "")
     .replace(/-/g, "_");
 }
 
@@ -1435,7 +1452,8 @@ function scanRun(runDir, repoRoot = process.cwd()) {
   const packageRunState = readPackageRunState(runDir);
   const files = {};
   DETECTED_FILES.forEach((filename) => {
-    files[fileKey(filename)] = fs.existsSync(path.join(runDir, filename));
+    const key = fileKey(filename);
+    files[key] = Boolean(files[key] || fs.existsSync(path.join(runDir, filename)));
   });
   const creatorQaStatus = readCreatorQaStatus(runDir);
   const evidenceGate = readEvidenceGate(runDir);
@@ -1474,6 +1492,11 @@ function scanRun(runDir, repoRoot = process.cwd()) {
   };
 }
 
+function isPackageRunDir(runDir) {
+  if (!fs.existsSync(runDir) || !fs.statSync(runDir).isDirectory()) return false;
+  return DETECTED_FILES.some((filename) => fs.existsSync(path.join(runDir, filename)));
+}
+
 function buildPackageRunsIndex(options = {}) {
   const repoRoot = path.resolve(options.repoRoot || process.cwd());
   const runsDir = path.resolve(repoRoot, options.runsDir || DEFAULT_RUNS_DIR);
@@ -1484,6 +1507,7 @@ function buildPackageRunsIndex(options = {}) {
   const runs = fs
     .readdirSync(runsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
+    .filter((entry) => isPackageRunDir(path.join(runsDir, entry.name)))
     .map((entry) => scanRun(path.join(runsDir, entry.name), repoRoot))
     .sort((a, b) => b.runId.localeCompare(a.runId));
 
@@ -1571,6 +1595,7 @@ module.exports = {
   listCaptureEvidenceReferences,
   readNarrowShootingApproval,
   readEvidenceGate,
+  isPackageRunDir,
   scanRun,
   buildPackageRunsIndex,
   main,

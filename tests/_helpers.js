@@ -47,6 +47,7 @@ const packageRunsDashboardLaunchScript = require("../scripts/package-runs-dashbo
 const scriptImageAssetsDryRunScript = require("../scripts/script-image-assets-dry-run.js");
 const scriptImageAssetsReviewPageScript = require("../scripts/script-image-assets-review-page.js");
 const topicScoutScript = require("../scripts/topic-scout.js");
+const submittedTopicsScript = require("../scripts/submitted-topics.js");
 const oneOfTenInputHelper = require("../scripts/oneof10-input-helper.js");
 const packageEngineServer = require("../package-engine-server.js");
 const packageRunsDashboard = require("../package-runs-dashboard.js");
@@ -295,6 +296,7 @@ module.exports = {
   scriptImageAssetsDryRunScript,
   scriptImageAssetsReviewPageScript,
   topicScoutScript,
+  submittedTopicsScript,
   oneOfTenInputHelper,
   packageEngineServer,
   packageRunsDashboard,
