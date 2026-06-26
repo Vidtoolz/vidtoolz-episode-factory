@@ -447,7 +447,7 @@ test("daily-idea-scout: dashboard can render a manual-provider archive", () => {
           return element;
         },
       },
-      fetch: async () => ({ json: async () => ({ ok: true, dates: [] }) }),
+      fetch: async () => ({ json: async () => ({ ok: true, data: { dates: [] } }) }),
     };
     vm.createContext(context);
     vm.runInContext(script, context);
@@ -592,4 +592,237 @@ test("daily-idea-scout: human-in-the-loop round-trip — request format parses a
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// ── P2a: wrapped-response normalization regression tests ─────────────────────
+
+function loadScoutScript() {
+  const html = fs.readFileSync(path.join(__dirname, "..", "daily-idea-scout.html"), "utf8");
+  const script = html.match(/<script>([\s\S]*)<\/script>/)[1];
+  return script;
+}
+
+function createScoutVmContext(fetchImpl) {
+  const context = {
+    document: {
+      getElementById: () => ({ innerHTML: "", textContent: "", addEventListener: () => {}, appendChild: () => {} }),
+      createElement: () => {
+        const element = {};
+        Object.defineProperty(element, "textContent", {
+          set(value) {
+            this.innerHTML = String(value)
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;");
+          },
+        });
+        return element;
+      },
+    },
+    fetch: fetchImpl,
+  };
+  vm.createContext(context);
+  vm.runInContext(loadScoutScript(), context);
+  return context;
+}
+
+test("daily-idea-scout: normalizePayload unwraps { ok, data } envelope", () => {
+  const context = createScoutVmContext(async () => ({ json: async () => ({ ok: true, data: { dates: [] } }) }));
+  const result = context.normalizePayload({ ok: true, data: { dates: ["2026-06-14"] } });
+  assert.deepStrictEqual(result, { dates: ["2026-06-14"] });
+});
+
+test("daily-idea-scout: normalizePayload passes through non-wrapped objects", () => {
+  const context = createScoutVmContext(async () => ({ json: async () => ({ ok: true, data: { dates: [] } }) }));
+  const plain = { ok: true, dates: ["2026-06-14"] };
+  const result = context.normalizePayload(plain);
+  assert.strictEqual(result, plain);
+});
+
+test("daily-idea-scout: normalizePayload passes through null and primitives", () => {
+  const context = createScoutVmContext(async () => ({ json: async () => ({ ok: true, data: { dates: [] } }) }));
+  assert.strictEqual(context.normalizePayload(null), null);
+  assert.strictEqual(context.normalizePayload(undefined), undefined);
+  assert.strictEqual(context.normalizePayload(42), 42);
+  assert.strictEqual(context.normalizePayload("hello"), "hello");
+});
+
+test("daily-idea-scout: source includes normalizePayload function definition", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "daily-idea-scout.html"), "utf8");
+  assert.match(html, /function normalizePayload\s*\(/);
+});
+
+test("daily-idea-scout: loadToday reads date and dailyRun from unwrapped payload", () => {
+  const wrappedResponse = {
+    ok: true,
+    data: {
+      date: "2026-06-26",
+      dailyRun: {
+        provider: "fixture",
+        generated_at: "2026-06-26T10:00:00Z",
+        ideas: [],
+      },
+    },
+  };
+  let metaSet = "";
+  let contentSet = "";
+  const context = {
+    document: {
+      getElementById: (id) => {
+        if (id === "scout-meta") { const el = {}; Object.defineProperty(el, "textContent", { set(v) { metaSet = v; }, get() { return metaSet; } }); return el; }
+        if (id === "scout-content") { const el = {}; Object.defineProperty(el, "innerHTML", { set(v) { contentSet = v; }, get() { return contentSet; } }); return el; }
+        if (id === "date-select") return { value: "today", addEventListener: () => {} };
+        if (id === "load-btn") return { addEventListener: () => {} };
+        return { innerHTML: "", textContent: "", addEventListener: () => {}, appendChild: () => {} };
+      },
+      createElement: () => {
+        const element = {};
+        Object.defineProperty(element, "textContent", {
+          set(value) {
+            this.innerHTML = String(value)
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;");
+          },
+        });
+        return element;
+      },
+    },
+    fetch: async () => ({ json: async () => wrappedResponse }),
+  };
+  vm.createContext(context);
+  vm.runInContext(loadScoutScript(), context);
+
+  // Manually call loadToday (async)
+  return context.loadToday().then(() => {
+    assert.match(metaSet, /2026-06-26/);
+    assert.match(metaSet, /fixture/);
+    assert.match(metaSet, /2026-06-26T10:00:00Z/);
+  });
+});
+
+test("daily-idea-scout: loadArchive reads date and dailyRun from unwrapped payload", () => {
+  const wrappedResponse = {
+    ok: true,
+    data: {
+      date: "2026-06-20",
+      dailyRun: {
+        provider: "manual",
+        generated_at: "2026-06-20T08:30:00Z",
+        ideas: [],
+      },
+    },
+  };
+  let metaSet = "";
+  let contentSet = "";
+  const context = {
+    document: {
+      getElementById: (id) => {
+        if (id === "scout-meta") { const el = {}; Object.defineProperty(el, "textContent", { set(v) { metaSet = v; }, get() { return metaSet; } }); return el; }
+        if (id === "scout-content") { const el = {}; Object.defineProperty(el, "innerHTML", { set(v) { contentSet = v; }, get() { return contentSet; } }); return el; }
+        if (id === "date-select") return { value: "2026-06-20", addEventListener: () => {} };
+        if (id === "load-btn") return { addEventListener: () => {} };
+        return { innerHTML: "", textContent: "", addEventListener: () => {}, appendChild: () => {} };
+      },
+      createElement: () => {
+        const element = {};
+        Object.defineProperty(element, "textContent", {
+          set(value) {
+            this.innerHTML = String(value)
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;");
+          },
+        });
+        return element;
+      },
+    },
+    fetch: async () => ({ json: async () => wrappedResponse }),
+  };
+  vm.createContext(context);
+  vm.runInContext(loadScoutScript(), context);
+
+  return context.loadArchive("2026-06-20").then(() => {
+    assert.match(metaSet, /2026-06-20/);
+    assert.match(metaSet, /manual/);
+    assert.match(metaSet, /2026-06-20T08:30:00Z/);
+  });
+});
+
+test("daily-idea-scout: loadDates reads dates array from unwrapped payload", () => {
+  const wrappedResponse = {
+    ok: true,
+    data: {
+      dates: ["2026-06-25", "2026-06-24", "2026-06-23"],
+    },
+  };
+  const appendedValues = [];
+  const context = {
+    document: {
+      getElementById: (id) => {
+        if (id === "scout-meta") return { textContent: "", innerHTML: "" };
+        if (id === "scout-content") return { innerHTML: "" };
+        if (id === "date-select") return {
+          value: "today",
+          appendChild: (opt) => { appendedValues.push(opt.value); },
+        };
+        if (id === "load-btn") return { addEventListener: () => {} };
+        return { innerHTML: "", textContent: "", addEventListener: () => {}, appendChild: () => {} };
+      },
+      createElement: () => ({ value: "", textContent: "" }),
+    },
+    fetch: async () => ({ json: async () => wrappedResponse }),
+  };
+  vm.createContext(context);
+  vm.runInContext(loadScoutScript(), context);
+
+  return context.loadDates().then(() => {
+    // All three dates should be appended (none equals "today" since today is computed dynamically)
+    // We can't guarantee what "today" is, so we check that at least 2 of the 3 dates are present
+    // (one might be filtered if it happens to be today)
+    assert.ok(appendedValues.length >= 2, `Expected at least 2 dates appended, got ${appendedValues.length}`);
+    assert.ok(appendedValues.includes("2026-06-25"), "Should include 2026-06-25");
+    assert.ok(appendedValues.includes("2026-06-24"), "Should include 2026-06-24");
+  });
+});
+
+test("daily-idea-scout: loadToday handles error response without unwrapping", () => {
+  const errorResponse = { ok: false, error: "No run found" };
+  let contentSet = "";
+  let metaSet = "";
+  const context = {
+    document: {
+      getElementById: (id) => {
+        if (id === "scout-meta") { const el = {}; Object.defineProperty(el, "textContent", { set(v) { metaSet = v; }, get() { return metaSet; } }); return el; }
+        if (id === "scout-content") { const el = {}; Object.defineProperty(el, "innerHTML", { set(v) { contentSet = v; }, get() { return contentSet; } }); return el; }
+        if (id === "date-select") return { value: "today", addEventListener: () => {} };
+        if (id === "load-btn") return { addEventListener: () => {} };
+        return { innerHTML: "", textContent: "", addEventListener: () => {}, appendChild: () => {} };
+      },
+      createElement: () => {
+        const element = {};
+        Object.defineProperty(element, "textContent", {
+          set(value) {
+            this.innerHTML = String(value)
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;");
+          },
+        });
+        return element;
+      },
+    },
+    fetch: async () => ({ json: async () => errorResponse }),
+  };
+  vm.createContext(context);
+  vm.runInContext(loadScoutScript(), context);
+
+  return context.loadToday().then(() => {
+    assert.match(contentSet, /No run found/);
+    assert.strictEqual(metaSet, "No run today");
+  });
 });

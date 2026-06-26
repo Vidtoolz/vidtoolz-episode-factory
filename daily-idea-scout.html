@@ -238,6 +238,10 @@
       return div.innerHTML;
     }
 
+    function normalizePayload(json) {
+      return json && typeof json === "object" && json.data !== undefined ? json.data : json;
+    }
+
     function renderIdea(idea) {
       const scorePercent = Math.round(idea.final_score * 10);
       const evidenceHtml = (idea.evidence || []).map(ev => {
@@ -306,8 +310,9 @@
           metaEl.textContent = 'No run today';
           return;
         }
-        metaEl.textContent = `Date: ${data.date} | Provider: ${data.dailyRun.provider} | Generated: ${data.dailyRun.generated_at}`;
-        contentEl.innerHTML = renderRun(data.dailyRun);
+        const payload = normalizePayload(data);
+        metaEl.textContent = `Date: ${payload.date} | Provider: ${payload.dailyRun.provider} | Generated: ${payload.dailyRun.generated_at}`;
+        contentEl.innerHTML = renderRun(payload.dailyRun);
       } catch (err) {
         contentEl.innerHTML = `<div class="scout-error">Failed to load: ${escapeHtml(err.message)}</div>`;
         metaEl.textContent = 'Error';
@@ -324,8 +329,9 @@
           metaEl.textContent = `Archive: ${date} — not found`;
           return;
         }
-        metaEl.textContent = `Date: ${data.date} | Provider: ${data.dailyRun.provider} | Generated: ${data.dailyRun.generated_at}`;
-        contentEl.innerHTML = renderRun(data.dailyRun);
+        const payload = normalizePayload(data);
+        metaEl.textContent = `Date: ${payload.date} | Provider: ${payload.dailyRun.provider} | Generated: ${payload.dailyRun.generated_at}`;
+        contentEl.innerHTML = renderRun(payload.dailyRun);
       } catch (err) {
         contentEl.innerHTML = `<div class="scout-error">Failed to load: ${escapeHtml(err.message)}</div>`;
         metaEl.textContent = 'Error';
@@ -336,8 +342,9 @@
       try {
         const res = await fetch('/api/daily-idea-scout/dates');
         const data = await res.json();
-        if (data.ok && data.dates.length > 0) {
-          for (const d of data.dates) {
+        const payload = normalizePayload(data);
+        if (data.ok && payload.dates && payload.dates.length > 0) {
+          for (const d of payload.dates) {
             if (d !== new Date().toISOString().slice(0, 10)) {
               const opt = document.createElement('option');
               opt.value = d;
