@@ -877,6 +877,7 @@
         <div class="prompt-actions">
           <button type="button" id="copyPromptBtn">Copy to Clipboard</button>
           <button type="button" id="downloadPromptBtn">Download as .md</button>
+          <button type="button" id="openRunFolderBtn">Open Run Folder</button>
         </div>
         <pre id="outlinePromptText" class="prompt-text"></pre>
         <p class="muted" style="margin-top: 0.75rem;">
@@ -949,6 +950,67 @@
           });
       });
     }
+
+    // Wire up the "Open Run Folder" button. It opens the run folder via the
+    // existing /api/package-runs/open endpoint — it never writes any files.
+    const openFolderBtn = document.querySelector("#openRunFolderBtn");
+    if (openFolderBtn) {
+      openFolderBtn.addEventListener("click", () => {
+        // Resolve run ID using the same priority as the save path:
+        // 1. Prefer selected candidate _runId
+        // 2. Fall back to URL ?run=...
+        // 3. Fall back to persisted selected package run if available
+        const selected = selectedCandidate();
+        const urlRunId = new URLSearchParams(window.location.search).get("run") || "";
+        const resolvedRunId = (selected && selected._runId) || urlRunId || "";
+        if (!resolvedRunId) {
+          // Try persisted: find the run that has the selected package
+          const persistedRun = discoveredRuns.find((run) => run && run.hasSelectedPackage === true);
+          if (persistedRun && persistedRun.runId) {
+            openRunFolder(persistedRun.runId, openFolderBtn);
+          } else {
+            openFolderBtn.disabled = true;
+            openFolderBtn.textContent = "No run folder available";
+          }
+          return;
+        }
+        openRunFolder(resolvedRunId, openFolderBtn);
+      });
+    }
+  }
+
+  function openRunFolder(runId, btn) {
+    if (!localWriteNonce) {
+      btn.textContent = "No run folder available";
+      btn.disabled = true;
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "Opening...";
+    fetch("/api/package-runs/open", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
+      body: JSON.stringify({ runId, localWriteNonce }),
+    })
+      .then((r) => r.json().then((data) => ({ ok: r.ok, data: normalizePayload(data) })))
+      .then(({ ok, data }) => {
+        if (ok && data && data.ok !== false) {
+          btn.disabled = false;
+          btn.textContent = "Open Run Folder";
+        } else {
+          btn.disabled = false;
+          btn.textContent = "Open Run Folder";
+          const status = document.querySelector("#outlineGenStatus");
+          if (status) {
+            status.textContent = (data && data.error) || "Could not open run folder.";
+            status.className = "confirm-status error";
+          }
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        btn.textContent = "Open Run Folder";
+      });
   }
 
   function loadDiscoveredCandidates() {

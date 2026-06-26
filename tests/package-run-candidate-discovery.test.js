@@ -932,3 +932,56 @@ test("Bug2 #4b: saving a new selection overwrites an existing selected-package.j
     fs.rmSync(runDir, { recursive: true, force: true });
   }
 });
+
+// ── "Open Run Folder" button in Stage 2 outline handoff panel ───────────────
+// The button opens the run folder via the existing /api/package-runs/open
+// endpoint. It must never write outline files. Server-side path traversal and
+// package-runs/ confinement are covered in package-runs-dashboard.test.js
+// (the resolvePackageRunOpenTarget / resolvePackageRunDir tests, ~lines 268
+// and 295) so they are not duplicated here.
+
+test("Open Run Folder button exists in the Stage 2 outline handoff panel", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function showNextSteps\([^)]*\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch, "showNextSteps function should exist");
+  const body = fnMatch[1];
+  assert.match(body, /id="openRunFolderBtn"/, "button must have id openRunFolderBtn");
+  assert.match(body, /Open Run Folder/, "button must show 'Open Run Folder' text");
+  // The button must sit inside the .prompt-actions div, after downloadPromptBtn.
+  const actionsMatch = body.match(/<div class="prompt-actions">([\s\S]*?)<\/div>/);
+  assert.ok(actionsMatch, "prompt-actions div should exist");
+  assert.match(actionsMatch[1], /downloadPromptBtn[\s\S]*openRunFolderBtn/, "Open Run Folder must come after Download as .md inside prompt-actions");
+});
+
+test("Open Run Folder prefers selected candidate _runId when available", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function showNextSteps\([^)]*\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch);
+  assert.match(fnMatch[1], /selected\._runId/, "run id resolution must prefer selected._runId");
+});
+
+test("Open Run Folder falls back to URL ?run=... when no candidate runId", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function showNextSteps\([^)]*\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch);
+  assert.match(fnMatch[1], /URLSearchParams[\s\S]*\.get\(["']run["']\)/, "must read run id from URL ?run= param");
+});
+
+test("Open Run Folder disables and shows error text when no run id exists", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function showNextSteps\([^)]*\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch);
+  const body = fnMatch[1];
+  assert.match(body, /"No run folder available"/, "must show 'No run folder available' as disabled text");
+  assert.match(body, /disabled\s*=\s*true/, "must disable the button when no run id is found");
+});
+
+test("openRunFolder helper performs no outline file writes", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function openRunFolder\([^)]*\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch, "openRunFolder function should exist");
+  const body = fnMatch[1];
+  // The button only opens the folder — it must never write outline files.
+  assert.match(body, /\/api\/package-runs\/open/, "must call the open endpoint");
+  assert.doesNotMatch(body, /outlines\.md|final-outline\.md|writeFile|saveFile/, "must not write any outline files");
+});
