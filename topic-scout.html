@@ -387,12 +387,12 @@
       try {
         const res = await fetch(LIST_API, { cache: 'no-store' });
         if (!res.ok) return;
-        const data = await res.json();
-        if (!data.topics || data.topics.length === 0) {
+        const payload = normalizePayload(await res.json());
+        if (!payload.topics || payload.topics.length === 0) {
           document.getElementById('submittedList').innerHTML = '<p class="empty-state">No topics submitted yet.</p>';
           return;
         }
-        renderSubmittedTopics(data.topics);
+        renderSubmittedTopics(payload.topics);
       } catch (err) {
         console.error('Failed to load submitted topics:', err);
       }
@@ -455,12 +455,14 @@
             localWriteNonce: localWriteNonce,
           }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Submit failed');
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Submit failed');
+        const result = normalizePayload(json);
         document.getElementById('topicInput').value = '';
         document.getElementById('charCount').textContent = '0';
-        status.textContent = data.duplicate ? 'Duplicate — already submitted' : 'Submitted and reviewed';
+        status.textContent = result.duplicate ? 'Duplicate — already submitted' : 'Submitted and reviewed';
         status.className = 'submit-status success';
+        renderReviewInline(result);
         loadSubmittedTopics();
       } catch (err) {
         status.textContent = err.message;
@@ -468,6 +470,36 @@
       } finally {
         btn.disabled = false;
       }
+    }
+
+    function renderReviewInline(topic) {
+      const review = topic.review;
+      if (!review) return;
+      const checksHtml = (review.checks || []).map(c => `
+        <div class="review-check ${c.passed ? 'review-check-pass' : 'review-check-fail'}">
+          <span class="review-check-icon">${c.passed ? '✓' : '✗'}</span>
+          <div>
+            <span class="review-check-label">${escapeHtml(c.criterion)}</span>
+            <div class="review-check-detail">${escapeHtml(c.detail)}</div>
+          </div>
+        </div>
+      `).join('');
+      const box = document.getElementById('submittedList');
+      const wrapper = document.createElement('div');
+      wrapper.className = 'submitted-topic-card';
+      wrapper.style.borderColor = review.passedCount >= review.totalCount * 0.85 ? 'var(--success, #4caf50)' : 'var(--warn, #ff9800)';
+      wrapper.innerHTML = `
+        <div class="submitted-topic-header">
+          <span class="submitted-topic-text">"${escapeHtml(topic.topicText)}"</span>
+          <span class="submitted-topic-time">Just now</span>
+        </div>
+        <div class="review-box">
+          <div class="review-recommendation">${escapeHtml(review.recommendation)} (${review.passedCount}/${review.totalCount} criteria passed)</div>
+          ${checksHtml}
+          <div class="review-note">${escapeHtml(review.note || '')}</div>
+        </div>
+      `;
+      box.prepend(wrapper);
     }
 
     function escapeHtml(text) {

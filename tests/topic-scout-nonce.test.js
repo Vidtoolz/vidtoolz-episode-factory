@@ -121,3 +121,32 @@ test("topic-scout.html submitTopic guards against missing nonce before POST", ()
   assert.match(html, /if\s*\(\s*!localWriteNonce\s*\)/);
   assert.match(html, /nonce is missing/);
 });
+
+test("topic-scout.html submitTopic normalizes the response before reading duplicate/review fields", () => {
+  const html = readTopicScoutHtml();
+  // submitTopic must normalize the JSON before reading .duplicate or .review.
+  assert.match(html, /const result = normalizePayload\(json\)[\s\S]*?result\.duplicate/);
+  assert.doesNotMatch(html, /data\.duplicate/);
+});
+
+test("topic-scout.html submitTopic calls renderReviewInline to show criteria after submission", () => {
+  const html = readTopicScoutHtml();
+  assert.match(html, /renderReviewInline\s*\(/);
+});
+
+test("topic-scout.html renderReviewInline renders each criterion with pass/fail and detail", () => {
+  const html = readTopicScoutHtml();
+  assert.match(html, /function renderReviewInline/);
+  assert.match(html, /review\.checks/);
+  assert.match(html, /c\.passed.*review-check-pass|review-check-pass.*c\.passed/);
+  assert.match(html, /c\.criterion/);
+  assert.match(html, /c\.detail/);
+  assert.match(html, /review\.recommendation/);
+  assert.match(html, /review\.passedCount.*review\.totalCount/);
+});
+
+test("topic-scout.html loadSubmittedTopics normalizes the list response before reading topics", () => {
+  const html = readTopicScoutHtml();
+  assert.match(html, /normalizePayload\(await res\.json\(\)\)[\s\S]*?payload\.topics/);
+  assert.doesNotMatch(html, /data\.topics\b/);
+});
