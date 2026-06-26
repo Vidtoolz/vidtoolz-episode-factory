@@ -3911,6 +3911,11 @@ function discoverPackageRunCandidates(options = {}) {
 
     const candidates = Array.isArray(candidatesData.candidates) ? candidatesData.candidates : [];
 
+    // Tag each candidate with its source run id for client-side filtering
+    for (const c of candidates) {
+      if (!c._runId) c._runId = runId;
+    }
+
     // Check for selected-package.json (read-only — just check existence)
     const hasSelectedPackage = fs.existsSync(path.join(runDir, 'selected-package.json'));
 

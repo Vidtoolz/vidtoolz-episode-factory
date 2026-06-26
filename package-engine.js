@@ -51,7 +51,7 @@
   let packageEngineViewMode = "focused";
   let discoveredRuns = [];
   let discoveredActiveRunId = "";
-  let runFilterMode = "active";
+  let runFilterMode = "all";
   let searchQuery = "";
 
   function normalizePayload(json) {
@@ -145,7 +145,27 @@
     }
 
     const filtered = model.filterPackageCandidates(candidates, els.filter.value);
-    return model.sortPackageCandidates(filtered, els.sort.value);
+    const sorted = model.sortPackageCandidates(filtered, els.sort.value);
+
+    // Group active run first, preserving model sort order within each group.
+    // normalizePackageCandidate strips _runId, so reattach from originals.
+    if (discoveredRuns.length > 1 && discoveredActiveRunId) {
+      const runIdById = new Map();
+      for (const c of candidateSet.candidates) {
+        if (c.id) runIdById.set(c.id, c._runId || candidateSet._runId || "");
+      }
+      const active = sorted.filter((c) => {
+        const runId = runIdById.get(c.id) || candidateSet._runId || "";
+        return runId === discoveredActiveRunId;
+      });
+      const others = sorted.filter((c) => {
+        const runId = runIdById.get(c.id) || candidateSet._runId || "";
+        return runId !== discoveredActiveRunId;
+      });
+      return active.concat(others);
+    }
+
+    return sorted;
   }
 
   function selectedCandidate() {
@@ -885,10 +905,10 @@
         };
         candidateSource = `discovered (${discoveredRuns.length} runs, ${allCandidates.length} candidates)`;
 
-        // Default to active run filter if we have an active run
-        if (discoveredActiveRunId && els.runFilter) {
-          runFilterMode = "active";
-          els.runFilter.value = "active";
+        // Default to all runs so nothing is hidden on initial load
+        if (els.runFilter) {
+          runFilterMode = "all";
+          els.runFilter.value = "all";
         }
 
         showStatus(

@@ -441,11 +441,15 @@ test("package-engine.js tags candidates with _runId source metadata", () => {
   assert.match(fnMatch[1], /c\._runId\s*=\s*run\.runId/);
 });
 
-test("package-engine.js active run filter defaults to active when activeRunId is present", () => {
+test("package-engine.js defaults runFilterMode to all (not active)", () => {
   const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  // The variable default must be "all" so all runs are visible on initial load
+  assert.match(source, /let runFilterMode\s*=\s*["']all["']/);
+  // loadDiscoveredCandidates must also set the filter to "all" (not "active")
   const fnMatch = source.match(/function loadDiscoveredCandidates\(\)\s*\{([\s\S]*?)\n  \}/);
   assert.ok(fnMatch);
-  assert.match(fnMatch[1], /runFilterMode\s*=\s*["']active["']/);
+  assert.match(fnMatch[1], /runFilterMode\s*=\s*["']all["']/);
+  assert.match(fnMatch[1], /els\.runFilter\.value\s*=\s*["']all["']/);
 });
 
 test("package-engine.js recent/all/search filters exist in visibleCandidates", () => {
@@ -495,11 +499,153 @@ test("package-engine.html includes run filter select and search input controls",
   assert.match(source, /id=["']candidateSearch["']/);
   assert.match(source, /<option value=["']active["']>Active run<\/option>/);
   assert.match(source, /<option value=["']recent["']>Recent runs<\/option>/);
-  assert.match(source, /<option value=["']all["']>All runs<\/option>/);
+  assert.match(source, /<option value=["']all["']\s+selected>All runs<\/option>/);
 });
 
 test("package-engine.js wires run filter and search event listeners", () => {
   const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
   assert.match(source, /els\.runFilter\.addEventListener\(["']change["']/);
   assert.match(source, /els\.search\.addEventListener\(["']input["']/);
+});
+
+
+// ── Multi-run discovery + default-all filter tests ─────────────────────────
+
+test("backend: 3 eligible runs × 10 candidates returns 30 total candidates", () => {
+  const tempRoot = createDiscoveryRoot({
+    runs: [
+      { id: "2026-06-01-run-a", candidates: makeCandidates("2026-06-01-run-a", 10) },
+      { id: "2026-06-02-run-b", candidates: makeCandidates("2026-06-02-run-b", 10) },
+      { id: "2026-06-03-run-c", candidates: makeCandidates("2026-06-03-run-c", 10) },
+    ],
+  });
+  const result = packageEngineServer.discoverPackageRunCandidates({ root: tempRoot });
+  assert.equal(result.runs.length, 3);
+  assert.equal(result.totalCandidates, 30);
+  for (const run of result.runs) {
+    assert.equal(run.candidateCount, 10);
+    assert.equal(run.candidates.length, 10);
+  }
+});
+
+test("backend: discovery returns all candidates aggregated across runs", () => {
+  const tempRoot = createDiscoveryRoot({
+    runs: [
+      { id: "2026-06-01-run-a", candidates: makeCandidates("2026-06-01-run-a", 10) },
+      { id: "2026-06-02-run-b", candidates: makeCandidates("2026-06-02-run-b", 10) },
+      { id: "2026-06-03-run-c", candidates: makeCandidates("2026-06-03-run-c", 10) },
+    ],
+  });
+  const result = packageEngineServer.discoverPackageRunCandidates({ root: tempRoot });
+  const allCandidates = result.runs.flatMap((r) => r.candidates);
+  assert.equal(allCandidates.length, 30);
+  // Each candidate must carry its source runId
+  for (const c of allCandidates) {
+    assert.ok(c._runId, `candidate ${c.id} must have _runId`);
+  }
+  const runIds = new Set(allCandidates.map((c) => c._runId));
+  assert.equal(runIds.size, 3);
+});
+
+test("browser: visibleCandidates does not cap or slice discovered candidates", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function visibleCandidates\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch, "visibleCandidates function should exist");
+  const body = fnMatch[1];
+  // Must NOT splice candidates
+  assert.doesNotMatch(body, /candidates\.splice\(/, "visibleCandidates must not splice candidates");
+  // Must NOT slice the candidates array (slice on run IDs for "recent" is OK)
+  assert.doesNotMatch(body, /candidates\.slice\(/, "visibleCandidates must not slice the candidates array");
+  // Must NOT splice candidateSet
+  assert.doesNotMatch(body, /candidateSet\.candidates\.splice/, "must not splice candidateSet");
+  // Must return all sorted candidates (not a capped subset)
+  assert.match(body, /return\s+sorted|return\s+active\.concat\(others\)/);
+});
+
+test("browser: visibleCandidates groups active run first when multiple runs discovered", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function visibleCandidates\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch);
+  const body = fnMatch[1];
+  // Must check discoveredRuns.length > 1 before grouping
+  assert.match(body, /discoveredRuns\.length\s*>\s*1/);
+  // Must filter into active and others, then concat
+  assert.match(body, /active\.concat\(others\)/);
+});
+
+test("browser: active filter reduces to active run candidates only", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function visibleCandidates\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch);
+  const body = fnMatch[1];
+  // When runFilterMode === "active", only candidates from discoveredActiveRunId are visible
+  assert.match(body, /runFilterMode\s*===\s*["']active["']/);
+  assert.match(body, /discoveredActiveRunId\s*\?\s*\[discoveredActiveRunId\]/);
+});
+
+test("browser: static fallback loadCandidates still exists for discovery failure", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  assert.match(source, /function loadCandidates\(\)/);
+  assert.match(source, /if\s*\(\s*!discovered\s*\)\s*loadCandidates\(\)/);
+});
+
+test("browser: no file writes on page load — loadDiscoveredCandidates uses GET only", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function loadDiscoveredCandidates\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch);
+  const body = fnMatch[1];
+  // Must use fetch (GET — no method specified, or method: GET)
+  assert.match(body, /fetch\(/);
+  // Must NOT use POST, PUT, DELETE, or PATCH
+  assert.doesNotMatch(body, /method:\s*["']POST["']/, "must not POST");
+  assert.doesNotMatch(body, /method:\s*["']PUT["']/, "must not PUT");
+  assert.doesNotMatch(body, /method:\s*["']DELETE["']/, "must not DELETE");
+  assert.doesNotMatch(body, /method:\s*["']PATCH["']/, "must not PATCH");
+});
+
+test("backend: no writes occur during multi-run discovery (3 runs × 10 candidates)", () => {
+  const tempRoot = createDiscoveryRoot({
+    runs: [
+      { id: "2026-06-01-run-a", candidates: makeCandidates("2026-06-01-run-a", 10) },
+      { id: "2026-06-02-run-b", candidates: makeCandidates("2026-06-02-run-b", 10) },
+      { id: "2026-06-03-run-c", candidates: makeCandidates("2026-06-03-run-c", 10) },
+    ],
+  });
+  // Snapshot all files before
+  const before = {};
+  function snapshot(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        snapshot(full);
+      } else {
+        const stat = fs.statSync(full);
+        before[full] = { mtimeMs: stat.mtimeMs, size: stat.size };
+      }
+    }
+  }
+  snapshot(tempRoot);
+
+  packageEngineServer.discoverPackageRunCandidates({ root: tempRoot });
+
+  // Verify no files changed
+  const errors = [];
+  function verify(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        verify(full);
+      } else {
+        const stat = fs.statSync(full);
+        const b = before[full];
+        if (!b) {
+          errors.push(`new file created: ${full}`);
+        } else if (stat.mtimeMs !== b.mtimeMs || stat.size !== b.size) {
+          errors.push(`file modified: ${full}`);
+        }
+      }
+    }
+  }
+  verify(tempRoot);
+  assert.equal(errors.length, 0, `no writes expected, but: ${errors.join("; ")}`);
 });
