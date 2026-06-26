@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIDTOOLZ Cockpit — AIGEN Review</title>
+<link rel="stylesheet" href="styles.css?v=1.8.0">
+<style>
+  body { margin: 0; padding: 0; overflow: hidden; background: var(--bg); }
+  .review-bridge-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .review-bridge-header a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .review-bridge-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+  }
+  .review-bridge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+  .review-bridge-dot.online { background: var(--success); }
+  .review-bridge-dot.offline { background: var(--danger); }
+  .review-iframe-container {
+    width: 100%;
+    height: calc(100vh - 40px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .review-iframe-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  .review-offline {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+  }
+  .review-offline code {
+    display: block;
+    margin: 12px 0;
+    padding: 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html" class="active">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
+<details class="page-guide" open>
+  <summary>Page Guide — What is this?</summary>
+  <div class="page-guide-body">
+    <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Review AI-generated video clips before they enter the Resolve timeline. Check quality, rename, approve or reject.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Approve clips to move them to the production lane. For the full pipeline view, use <a href="production-pipeline.html">Pipeline</a></span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Clip grid with preview, metadata, and approve/reject buttons. Filter by package, status, or generation lane (Wan/Kling).</span></div>
+  </div>
+</details>
+
+  <div class="review-bridge-header">
+    <div>
+      <a href="/package-runs-dashboard.html">&larr; Back to Cockpit</a>
+      <span style="color:var(--muted);margin-left:12px;">AIGEN Review View</span>
+    </div>
+    <div class="review-bridge-status">
+      <span class="review-bridge-dot" id="statusDot"></span>
+      <span id="statusText">Checking...</span>
+    </div>
+  </div>
+  <div class="review-iframe-container" id="iframeContainer">
+    <div class="review-offline" id="offlineMessage" style="display:none;">
+      <h2>AIGEN Review View is not running</h2>
+      <p>Start it with:</p>
+      <code>cd ~/work/aigen-edit && python3 review-view/server.py &amp;</code>
+      <p>Then <a href="#" onclick="location.reload();return false;">reload this page</a>.</p>
+    </div>
+    <iframe id="reviewFrame" src="about:blank" style="display:none;"></iframe>
+  </div>
+
+  <script>
+    (function() {
+      var dot = document.getElementById('statusDot');
+      var text = document.getElementById('statusText');
+      var frame = document.getElementById('reviewFrame');
+      var offline = document.getElementById('offlineMessage');
+
+      // Check if review-view is running on port 8099
+      fetch('http://127.0.0.1:8099/', { method: 'HEAD', mode: 'no-cors', cache: 'no-store' })
+        .then(function() {
+          // Can't read the response in no-cors mode, but no error means it's likely up
+          dot.className = 'review-bridge-dot online';
+          text.textContent = 'Online (port 8099)';
+          offline.style.display = 'none';
+          frame.style.display = 'block';
+          frame.src = 'http://127.0.0.1:8099/';
+        })
+        .catch(function() {
+          // Try the proxy as fallback
+          fetch('/aigen-review/', { method: 'HEAD', cache: 'no-store' })
+            .then(function(r) {
+              if (r.ok || r.status < 500) {
+                dot.className = 'review-bridge-dot online';
+                text.textContent = 'Online (proxied)';
+                offline.style.display = 'none';
+                frame.style.display = 'block';
+                frame.src = '/aigen-review/';
+              } else {
+                showOffline();
+              }
+            })
+            .catch(showOffline);
+        });
+
+      function showOffline() {
+        dot.className = 'review-bridge-dot offline';
+        text.textContent = 'Offline';
+        frame.style.display = 'none';
+        offline.style.display = 'block';
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resume Work — VIDTOOLZ</title>
+    <link rel="stylesheet" href="styles.css?v=1.8.0">
+    <style>
+      .resume-container { max-width: 960px; margin: 0 auto; padding: 32px 24px 48px; }
+      .resume-header { margin-bottom: 32px; }
+      .resume-header h1 { font-size: 28px; margin: 0 0 6px; }
+      .resume-header p { color: var(--muted, #8b949e); font-size: 14px; margin: 0; }
+      .projects-grid { display: grid; gap: 20px; margin-top: 24px; }
+      .resume-card {
+        display: block;
+        background: var(--panel, #161b22);
+        border: 1px solid var(--border, #30363d);
+        border-radius: 10px;
+        padding: 20px 22px;
+        text-decoration: none;
+        color: inherit;
+        transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+        cursor: pointer;
+      }
+      .resume-card:hover {
+        border-color: var(--accent, #3fb950);
+        box-shadow: 0 0 0 1px var(--accent, #3fb950);
+        transform: translateY(-2px);
+      }
+      .resume-card-title {
+        font-size: 18px;
+        font-weight: 600;
+        line-height: 1.3;
+        margin: 0 0 10px;
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .status-pill {
+        flex-shrink: 0;
+        font-size: 12px;
+        font-weight: 500;
+        padding: 3px 10px;
+        border-radius: 100px;
+        white-space: nowrap;
+      }
+      .status-published { background: rgba(63, 185, 80, 0.2); color: var(--accent, #3fb950); }
+      .status-active { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
+      .status-blocked { background: rgba(248, 81, 73, 0.15); color: #f85149; }
+      .status-ideation { background: rgba(210, 153, 34, 0.2); color: #d29922; }
+
+      .resume-card-meta { font-size: 13px; color: var(--muted, #8b949e); margin-bottom: 16px; }
+      .resume-card-meta b { color: var(--soft, #c9d1d9); font-weight: 500; }
+
+      .progress-container { margin-bottom: 8px; }
+      .progress-bar { height: 8px; background: var(--panel-3, #21262d); border-radius: 4px; overflow: hidden; }
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #2ea043, #3fb950);
+        border-radius: 4px;
+        transition: width 0.4s;
+      }
+      .progress-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--muted, #8b949e);
+        margin-top: 4px;
+      }
+      .resume-card-stage {
+        font-size: 13px;
+        color: var(--accent, #3fb950);
+        font-weight: 600;
+        margin-top: 12px;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 64px 20px;
+        background: var(--panel, #161b22);
+        border-radius: 10px;
+        border: 1px solid var(--border, #30363d);
+      }
+      .empty-state h2 { font-size: 20px; margin: 0 0 8px; }
+      .empty-state p { color: var(--muted, #8b949e); margin: 0; }
+
+      .new-project-link {
+        display: block;
+        max-width: 280px;
+        margin: 28px auto 0;
+        text-align: center;
+        padding: 14px 20px;
+        background: var(--panel, #161b22);
+        border: 1px dashed #2ea043;
+        border-radius: 10px;
+        color: #2ea043;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      .new-project-link:hover { background: var(--panel-3, #21262d); border-style: solid; }
+    </style>
+  </head>
+  <body>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html" class="active">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
+<details class="page-guide" open>
+  <summary>Page Guide — What is this?</summary>
+  <div class="page-guide-body">
+    <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Your starting point. Shows all video projects with stage progress. Click any card to resume, or start a new project.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Click a project card to resume it, or <a href="topic-scout.html">start a new topic</a></span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Cards show stage, progress bar, and artifact count. Status pills: Active (blue), Ideation (yellow), Blocked (red), Published (green).</span></div>
+  </div>
+</details>
+
+    <div class="resume-container">
+      <div class="resume-header">
+        <p style="color: #2ea043; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 6px;">VIDTOOLZ</p>
+        <h1>Resume Work</h1>
+        <p>Continue an existing project or start something new.</p>
+      </div>
+
+      <a href="topic-scout.html" class="new-project-link">+ Start New Project</a>
+
+      <div id="projectsGrid" class="projects-grid">
+        <div class="empty-state">
+          <h2>Loading projects…</h2>
+          <p>Fetching your package runs.</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const STAGES = [
+        'Ideation', 'Research & Outline', 'Script', 'Script Review',
+        'Pre-Production Planning', 'Image Prompts', 'Image Generation',
+        'Image Selection', 'Video Generation', 'A-Roll Capture',
+        'Assembly Edit', 'Final Review & Publish', 'Published'
+      ];
+
+      const grid = document.getElementById('projectsGrid');
+
+      fetch('/api/package-runs/list')
+        .then(r => r.ok ? r.json() : Promise.reject('Server error'))
+        .then(data => {
+          const runs = data.runs || [];
+          if (!runs.length) {
+            grid.innerHTML = '<div class="empty-state"><h2>No projects yet</h2><p>Start a new one with the link above.</p></div>';
+            return;
+          }
+
+          const html = runs.map(run => buildCard(run)).join('');
+          grid.innerHTML = html;
+
+          grid.querySelectorAll('.resume-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+              e.preventDefault();
+              const runId = card.dataset.runId;
+              // Open specific run in the runs dashboard with URL parameter
+              const url = new URL('package-runs-dashboard.html', window.location.origin);
+              url.searchParams.set('run', runId);
+              window.location.href = url.toString();
+            });
+          });
+        })
+        .catch(() => {
+          grid.innerHTML = '<div class="empty-state"><h2>Could not load projects</h2><p>Make sure the Package Engine is running on port 8010.</p></div>';
+        });
+
+      function buildCard(run) {
+        const date = formatDate(run.runId);
+        const bucket = run.workflowBucket || '';
+        const status = run.packageRunState.state || 'inactive';
+        const stageIdx = stageFromBucket(bucket);
+        const stage = STAGES[stageIdx] || 'Ideation';
+        const pct = Math.round(((stageIdx + 0.5) / STAGES.length) * 100);
+        const isComplete = stageIdx >= STAGES.length - 1;
+
+        let statusLabel = 'Active';
+        let statusClass = 'status-active';
+        if (status === 'inactive' && stageIdx === 0) {
+          statusLabel = 'Ideation';
+          statusClass = 'status-ideation';
+        } else if (/blocker|blocked/i.test(bucket)) {
+          statusLabel = 'Blocked';
+          statusClass = 'status-blocked';
+        } else if (isComplete) {
+          statusLabel = 'Published';
+          statusClass = 'status-published';
+        }
+
+        return `
+          <div class="resume-card" data-run-id="${escapeHtml(run.runId)}">
+            <div class="resume-card-title">
+              <span>${escapeHtml(run.title || run.runId)}</span>
+              <span class="status-pill ${statusClass}">${statusLabel}</span>
+            </div>
+            <div class="resume-card-meta">
+              Opened <b>${date}</b> &middot; <b>${run.artifactCount || 0} artifacts</b>
+            </div>
+            <div class="progress-container">
+              <div class="progress-bar">
+                <div class="progress-fill" style="width:${pct}%"></div>
+              </div>
+              <div class="progress-label">
+                <span>Stage ${stageIdx + 1} of ${STAGES.length}</span>
+                <span>${pct}%</span>
+              </div>
+            </div>
+            ${isComplete ? '<div class="resume-card-stage">✓ All stages complete</div>' : `<div class="resume-card-stage">Next: ${escapeHtml(stage)}</div>`}
+          </div>`;
+      }
+
+      function formatDate(runId) {
+        const m = runId.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (!m) return runId;
+        const [, y, mo, d] = m;
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return `${months[+mo - 1]} ${+d}, ${y}`;
+      }
+
+      function stageFromBucket(bucket) {
+        const b = bucket.toLowerCase();
+        if (/publish/.test(b)) return 11;
+        if (/archive/.test(b)) return 12;
+        if (/final|second.cut|assembly|rough.cut/.test(b)) return 10;
+        if (/capture/.test(b)) return 9;
+        if (/video.*image|image.*video/.test(b)) return 8;
+        if (/image.*select/.test(b)) return 7;
+        if (/image.*gen/.test(b)) return 6;
+        if (/image/.test(b)) return 5;
+        if (/product/.test(b)) return 4;
+        if (/script.*review/.test(b)) return 3;
+        if (/script/.test(b)) return 2;
+        if (/research|outline/.test(b)) return 1;
+        if (/package.*select/.test(b)) return 0;
+        return 0;
+      }
+
+      function escapeHtml(s) {
+        if (!s) return '';
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+    </script>
+  </body>
+</html>

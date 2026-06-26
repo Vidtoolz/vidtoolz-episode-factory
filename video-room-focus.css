@@ -1,0 +1,200 @@
+/* Video Room Focus Mode */
+
+/* When in video room focus mode, hide non-essential panels */
+body.video-room-focus section[id="systemAvailabilityPanel"],
+body.video-room-focus section[id="capabilityInventoryPanel"],
+body.video-room-focus section[id="pipelineTrackerPanel"],
+body.video-room-focus section[id="visualBeatMapPanel"],
+body.video-room-focus section[id="frictionLogPanel"],
+body.video-room-focus section[id="workflowWizardPanel"],
+body.video-room-focus section[id="mediaGalleryPanel"] {
+  display: none !important;
+}
+
+/* Show only video room and run action panels */
+body.video-room-focus section[id="videoRoomPanel"],
+body.video-room-focus section[id="runActionPanel"] {
+  display: block !important;
+}
+
+/* Run action panel styling */
+.run-action-panel {
+  background: #fff;
+  border: 1px solid #e1e4e8;
+  border-radius: 8px;
+  padding: 24px;
+  margin: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.run-action-card {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.run-action-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.run-action-header h3 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #24292e;
+}
+
+.blocking-badge {
+  background: #d73a49;
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.run-action-description {
+  font-size: 16px;
+  color: #586069;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.run-action-command {
+  background: #f6f8fa;
+  border: 1px solid #e1e4e8;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.run-action-command code {
+  flex: 1;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #24292e;
+  word-break: break-all;
+}
+
+.copy-command-btn {
+  background: #2ea44f;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.copy-command-btn:hover {
+  background: #2c974b;
+}
+
+.copy-command-btn:active {
+  background: #238636;
+}
+
+.run-action-missing,
+.run-action-blocked {
+  background: #fffbdd;
+  border: 1px solid #f9c513;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.run-action-missing strong,
+.run-action-blocked strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #735c0f;
+  font-size: 14px;
+}
+
+.run-action-missing ul,
+.run-action-blocked ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #586069;
+  font-size: 14px;
+}
+
+.run-action-missing li,
+.run-action-blocked li {
+  margin-bottom: 4px;
+}
+
+.run-action-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.exit-focus-btn {
+  background: #0366d6;
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.exit-focus-btn:hover {
+  background: #0256c7;
+}
+
+.exit-focus-btn:active {
+  background: #0147a8;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .run-action-panel {
+    background: #0d1117;
+    border-color: #30363d;
+  }
+
+  .run-action-header h3 {
+    color: #c9d1d9;
+  }
+
+  .run-action-description {
+    color: #8b949e;
+  }
+
+  .run-action-command {
+    background: #161b22;
+    border-color: #30363d;
+  }
+
+  .run-action-command code {
+    color: #c9d1d9;
+  }
+
+  .run-action-missing,
+  .run-action-blocked {
+    background: #2d1f00;
+    border-color: #9e6a03;
+  }
+
+  .run-action-missing strong,
+  .run-action-blocked strong {
+    color: #e3b341;
+  }
+
+  .run-action-missing ul,
+  .run-action-blocked ul {
+    color: #8b949e;
+  }
+}
