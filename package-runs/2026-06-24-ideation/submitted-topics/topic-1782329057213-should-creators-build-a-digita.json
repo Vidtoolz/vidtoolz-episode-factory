@@ -1,0 +1,51 @@
+{
+  "id": "topic-1782329057213-should-creators-build-a-digita",
+  "slug": "should-creators-build-a-digital-twin-of-themselves-not-to-re",
+  "topicText": "Should creators build a digital twin of themselves — not to replace themselves, but to make their production workflow more consistent, reusable, and scalable?",
+  "submittedAt": "2026-06-24T19:24:17.213Z",
+  "status": "submitted",
+  "review": {
+    "evaluatedAt": "2026-06-24T19:24:17.213Z",
+    "checks": [
+      {
+        "criterion": "AI / Creator Workflow Relevance",
+        "passed": true,
+        "detail": "Relevant keywords found: workflow"
+      },
+      {
+        "criterion": "Professional Authority Fit",
+        "passed": true,
+        "detail": "Authority signals found: pro, production"
+      },
+      {
+        "criterion": "Visual Potential (Can it be shown?)",
+        "passed": false,
+        "detail": "No explicit visual demonstration signals. Consider how this will be shown on screen."
+      },
+      {
+        "criterion": "Specificity (Not abstract)",
+        "passed": true,
+        "detail": "Good specificity for a topic suggestion."
+      },
+      {
+        "criterion": "One Claim, One Example, One Point",
+        "passed": true,
+        "detail": "Concise enough for the one-claim brand pattern."
+      },
+      {
+        "criterion": "Trust Risk (Specific, not blanket anti-AI)",
+        "passed": true,
+        "detail": "No blanket anti-AI language detected."
+      },
+      {
+        "criterion": "Does Not Echo Abandoned Topic",
+        "passed": true,
+        "detail": "No overlap with abandoned topics detected."
+      }
+    ],
+    "passedCount": 6,
+    "totalCount": 7,
+    "recommendation": "Strong candidate — consider for next package run",
+    "note": "This is a structured assessment, not an approval. Mikko decides what enters the pipeline."
+  }
+}

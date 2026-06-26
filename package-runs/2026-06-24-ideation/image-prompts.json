@@ -1,0 +1,29 @@
+{
+  "image_prompts": [
+    {
+      "index": 1,
+      "scene": "Hook — Digital twin reveal",
+      "prompt": "Photorealistic close-up of a computer screen showing a production dashboard with stage tracking columns. Warm ambient lighting, shallow depth of field. No text visible on screen. Dark room, screen glow illuminating the edge of a desk."
+    },
+    {
+      "index": 2,
+      "scene": "What it is — Episode Factory dashboard",
+      "prompt": "Photorealistic wide shot of a dual monitor setup on a clean desk. Left screen shows a web dashboard with pipeline stages. Right screen dark. Warm room lighting, plants in background. No visible text. Shot from slightly above."
+    },
+    {
+      "index": 3,
+      "scene": "What it does — Brand pattern catch",
+      "prompt": "Photorealistic close-up of a monitor showing a red warning highlight on a document. Keyboard visible in foreground. Dark room, screen as main light source. No readable text. Shallow depth of field on the warning indicator."
+    },
+    {
+      "index": 4,
+      "scene": "What it can't do — Limitations",
+      "prompt": "Photorealistic shot of an empty video editing timeline interface on a monitor. Clean desk, no person visible. Soft natural light from a window. No readable text. Melancholic mood, slightly desaturated."
+    },
+    {
+      "index": 5,
+      "scene": "Ending — Reproducible craft",
+      "prompt": "Photorealistic shot of a workspace with a camera on a tripod next to a computer showing a dashboard. Warm golden hour light from a window. No visible text. Hopeful, productive mood. Shallow depth of field."
+    }
+  ]
+}
