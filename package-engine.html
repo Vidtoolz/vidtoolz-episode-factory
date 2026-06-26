@@ -46,8 +46,20 @@
         <section class="package-controls" aria-label="Package controls" data-view-group="candidate-review" data-view-default="focused">
           <div>
             <h2>Candidate Review</h2>
-            <p class="muted">Review 10 structured package candidates, select one winner, then export it.</p>
+            <p class="muted">Review package candidates from all available runs, select one winner, then export it.</p>
           </div>
+          <label data-view-group="metadata" data-view-default="full">
+            <span>Run</span>
+            <select id="runFilterSelect">
+              <option value="active">Active run</option>
+              <option value="recent">Recent runs</option>
+              <option value="all">All runs</option>
+            </select>
+          </label>
+          <label data-view-group="metadata" data-view-default="full">
+            <span>Search</span>
+            <input type="search" id="candidateSearch" placeholder="Search candidates…" autocomplete="off" />
+          </label>
           <label data-view-group="metadata" data-view-default="full">
             <span>Sort</span>
             <select id="sortSelect">

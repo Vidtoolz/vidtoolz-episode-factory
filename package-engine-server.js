@@ -45,6 +45,7 @@ const EXPORT_MASTER_APPLY_API = '/api/package-runs/export-master/apply';
 const DELIVERY_READINESS_SAVE_API = '/api/package-runs/delivery-readiness/save';
 const EXPORT_CHECKLIST_REGENERATE_API = '/api/package-runs/export-checklist/regenerate-derived';
 const PACKAGE_RUNS_LIST_API = '/api/package-runs/list';
+const PACKAGE_RUNS_CANDIDATES_API = '/api/package-runs/candidates';
 const HYPERFRAMES_STATUS_API = '/api/hyperframes/status';
 const HYPERFRAMES_PREVIEW_API = '/api/hyperframes/preview';
 const HYPERFRAMES_RENDER_API = '/api/hyperframes/render';
@@ -3826,6 +3827,115 @@ function readPackageRunsIndex(options = {}) {
   return readJsonFile(indexPath);
 }
 
+/**
+ * Discover package candidates from all valid package-run directories.
+ *
+ * Read-only: scans package-runs/, reads package-candidates.json + package-run-state.md
+ * + selected-package.json from each run. Does NOT write anything.
+ *
+ * Exclusions by default:
+ *   - stale-runs/ subdirectory
+ *   - Runs whose state is parked, abandoned, or superseded
+ *
+ * Returns:
+ *   { runs: [{ runId, state, hasSelectedPackage, candidateCount, candidates, project, topic, generatedAt }], totalCandidates, activeRunId }
+ */
+function discoverPackageRunCandidates(options = {}) {
+  const root = path.resolve(options.root || ROOT);
+  const runsRoot = path.resolve(root, PACKAGE_RUNS_DIR);
+  const includeParked = Boolean(options.includeParked);
+  const includeAbandoned = Boolean(options.includeAbandoned);
+  const includeSuperseded = Boolean(options.includeSuperseded);
+
+  if (!fs.existsSync(runsRoot)) {
+    return { runs: [], totalCandidates: 0, activeRunId: '' };
+  }
+
+  const dirEntries = fs.readdirSync(runsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .filter((name) => name !== 'stale-runs' && name !== '.git')
+    .filter((name) => /^\d{4}-\d{2}-\d{2}-[a-z0-9][a-z0-9-]*$/.test(name))
+    .sort();
+
+  const runs = [];
+  let activeRunId = '';
+
+  for (const runId of dirEntries) {
+    const runDir = path.join(runsRoot, runId);
+
+    // Read run state
+    const stateInfo = readPackageRunState(runDir);
+    const state = stateInfo.state || 'active';
+
+    // Skip parked/abandoned/superseded unless explicitly included
+    if (state === 'parked' && !includeParked) continue;
+    if (state === 'abandoned' && !includeAbandoned) continue;
+    if (state === 'superseded' && !includeSuperseded) continue;
+
+    // Also check for "Run disposition: abandoned" in the state file body
+    const stateFilePath = path.join(runDir, 'package-run-state.md');
+    let rawStateText = '';
+    if (fs.existsSync(stateFilePath)) {
+      rawStateText = fs.readFileSync(stateFilePath, 'utf8');
+    }
+    const dispositionMatch = rawStateText.match(/Run disposition:\s*([A-Za-z]+)/i);
+    if (dispositionMatch) {
+      const disposition = dispositionMatch[1].trim().toLowerCase();
+      if (disposition === 'abandoned' && !includeAbandoned) continue;
+      if (disposition === 'superseded' && !includeSuperseded) continue;
+    }
+
+    // Read package-candidates.json
+    const candidatesPath = path.join(runDir, 'package-candidates.json');
+    if (!fs.existsSync(candidatesPath)) continue;
+
+    let candidatesData;
+    try {
+      candidatesData = readJsonFile(candidatesPath);
+    } catch (_) {
+      // Malformed JSON — skip this run's candidates but don't crash
+      runs.push({
+        runId,
+        state,
+        hasSelectedPackage: fs.existsSync(path.join(runDir, 'selected-package.json')),
+        candidateCount: 0,
+        candidates: [],
+        project: '',
+        topic: '',
+        generatedAt: '',
+        malformed: true,
+      });
+      continue;
+    }
+
+    const candidates = Array.isArray(candidatesData.candidates) ? candidatesData.candidates : [];
+
+    // Check for selected-package.json (read-only — just check existence)
+    const hasSelectedPackage = fs.existsSync(path.join(runDir, 'selected-package.json'));
+
+    // Track active run
+    if (stateInfo.explicit && state === 'active' && !activeRunId) {
+      activeRunId = runId;
+    }
+
+    runs.push({
+      runId,
+      state,
+      hasSelectedPackage,
+      candidateCount: candidates.length,
+      candidates,
+      project: candidatesData.project || '',
+      topic: candidatesData.topic || '',
+      generatedAt: candidatesData.generatedAt || '',
+    });
+  }
+
+  const totalCandidates = runs.reduce((sum, run) => sum + run.candidateCount, 0);
+
+  return { runs, totalCandidates, activeRunId };
+}
+
 function parseLabelValueStdout(stdout = '') {
   return String(stdout || '')
     .split(/\r?\n/)
@@ -6211,6 +6321,7 @@ function createStatusResponse(env = process.env) {
     quality: config.quality,
     format: config.outputFormat,
     api: API_PREFIX,
+    packageRunsCandidatesApi: PACKAGE_RUNS_CANDIDATES_API,
     nonceHeader: LOCAL_WRITE_NONCE_HEADER,
     localWriteNonce: LOCAL_WRITE_NONCE,
     captureEvidenceWrite: {
@@ -7299,6 +7410,23 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === PACKAGE_RUNS_CANDIDATES_API) {
+      try {
+        const includeParked = url.searchParams.get('includeParked') === 'true';
+        const includeAbandoned = url.searchParams.get('includeAbandoned') === 'true';
+        const includeSuperseded = url.searchParams.get('includeSuperseded') === 'true';
+        sendJSON(res, 200, discoverPackageRunCandidates({
+          root: serverOptions.root || ROOT,
+          includeParked,
+          includeAbandoned,
+          includeSuperseded,
+        }));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'package-runs-candidates-error');
+      }
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === HYPERFRAMES_STATUS_API) {
       try {
         sendJSON(res, 200, discoverHyperframesCompositions({ runId: url.searchParams.get('runId') || '' }, { root: serverOptions.root || ROOT }));
@@ -7752,6 +7880,7 @@ module.exports = {
   ARCHIVE_MANIFEST_API,
   MASTER_FILE_MANIFEST_FILE,
   PACKAGE_RUNS_LIST_API,
+  PACKAGE_RUNS_CANDIDATES_API,
   PICKUP_ITEM_TYPES,
   PICKUP_PLAN_SAVE_API,
   PICKUP_PURPOSES,
@@ -7827,6 +7956,7 @@ module.exports = {
   classifyPickupCategory,
   dashboardIndexStatus,
   discoverHyperframesCompositions,
+  discoverPackageRunCandidates,
   discoverSecondCutMedia,
   findActivePackageRun,
   hyperframesRenderCommand,

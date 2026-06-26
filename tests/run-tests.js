@@ -27,6 +27,7 @@ require("./topic-scout-nonce.test.js");
 require("./outline-prompt-nonce.test.js");
 require("./pipeline-status.test.js");
 require("./video-prompts.test.js");
+require("./package-run-candidate-discovery.test.js");
 
 async function runTests() {
   let passed = 0;

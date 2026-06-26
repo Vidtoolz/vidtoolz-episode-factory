@@ -15,6 +15,8 @@
     grid: document.querySelector("#packageGrid"),
     sort: document.querySelector("#sortSelect"),
     filter: document.querySelector("#recommendationFilter"),
+    runFilter: document.querySelector("#runFilterSelect"),
+    search: document.querySelector("#candidateSearch"),
     count: document.querySelector("#candidateCount"),
     selectedSummary: document.querySelector("#selectedSummary"),
     downloadJson: document.querySelector("#downloadJsonBtn"),
@@ -47,6 +49,10 @@
   let thumbnailGenerationCount = 0;
   let isGeneratingThumbnails = false;
   let packageEngineViewMode = "focused";
+  let discoveredRuns = [];
+  let discoveredActiveRunId = "";
+  let runFilterMode = "active";
+  let searchQuery = "";
 
   function normalizePayload(json) {
     if (json && typeof json === "object" && json.ok && json.data) return json.data;
@@ -102,7 +108,43 @@
   }
 
   function visibleCandidates() {
-    const filtered = model.filterPackageCandidates(candidateSet.candidates, els.filter.value);
+    let candidates = candidateSet.candidates;
+
+    // Apply run filter if we have discovered runs
+    if (discoveredRuns.length && runFilterMode !== "all") {
+      let visibleRunIds;
+      if (runFilterMode === "active") {
+        visibleRunIds = discoveredActiveRunId ? [discoveredActiveRunId] : [];
+      } else if (runFilterMode === "recent") {
+        // Recent = most recent 3 runs (sorted by name = date prefix descending)
+        visibleRunIds = discoveredRuns
+          .map((r) => r.runId)
+          .sort()
+          .reverse()
+          .slice(0, 3);
+      } else {
+        visibleRunIds = null;
+      }
+      if (visibleRunIds) {
+        candidates = candidates.filter((c) => {
+          const runId = c._runId || candidateSet._runId || "";
+          return visibleRunIds.includes(runId);
+        });
+      }
+    }
+
+    // Apply search query
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      candidates = candidates.filter((c) => {
+        const title = String(c.proposedTitle || c.proposed_title || c.title || "").toLowerCase();
+        const promise = String(c.viewerPromise || c.viewer_promise || "").toLowerCase();
+        const topic = String(c.topic || "").toLowerCase();
+        return title.includes(q) || promise.includes(q) || topic.includes(q);
+      });
+    }
+
+    const filtered = model.filterPackageCandidates(candidates, els.filter.value);
     return model.sortPackageCandidates(filtered, els.sort.value);
   }
 
@@ -538,7 +580,11 @@
     setPackageEngineViewMode(packageEngineViewMode, { persist: false });
     els.grid.innerHTML = "";
     if (!visible.length) {
-      els.grid.innerHTML = `<p class="muted">No candidates match this filter.</p>`;
+      if (!candidateSet.candidates.length) {
+        els.grid.innerHTML = `<div class="empty-state"><p class="muted">No package candidates found.</p><p class="muted">Package Engine scans all <code>package-runs/</code> directories for <code>package-candidates.json</code> files on load. Ensure at least one run has candidates, or use manual import to paste candidates directly.</p></div>`;
+      } else {
+        els.grid.innerHTML = `<p class="muted">No candidates match the current filter. Try changing the run filter, clearing search, or switching recommendation to "All".</p>`;
+      }
       return;
     }
     visible.forEach((candidate) => els.grid.append(renderCard(candidate)));
@@ -800,6 +846,65 @@
     }
   }
 
+  function loadDiscoveredCandidates() {
+    const api = "/api/package-runs/candidates";
+    return fetch(api, { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Discovery API returned ${response.status}`);
+        return response.json();
+      })
+      .then((rawJson) => {
+        const payload = normalizePayload(rawJson);
+        if (!payload || !Array.isArray(payload.runs)) {
+          throw new Error("Discovery API returned unexpected format");
+        }
+        discoveredRuns = payload.runs || [];
+        discoveredActiveRunId = payload.activeRunId || "";
+
+        // Aggregate all candidates from all discovered runs
+        const allCandidates = [];
+        for (const run of discoveredRuns) {
+          const runCandidates = Array.isArray(run.candidates) ? run.candidates : [];
+          for (const c of runCandidates) {
+            // Tag each candidate with its run ID for filtering
+            if (!c._runId) c._runId = run.runId;
+            if (!c._runState) c._runState = run.state;
+            if (!c._hasSelectedPackage) c._hasSelectedPackage = run.hasSelectedPackage;
+            allCandidates.push(c);
+          }
+        }
+
+        if (allCandidates.length === 0) {
+          throw new Error("No candidates found in any package-run directory.");
+        }
+
+        // Build a combined candidateSet that looks like what validatePackageCandidateSet expects
+        candidateSet = {
+          candidates: allCandidates,
+          _runId: discoveredActiveRunId || (discoveredRuns[0] && discoveredRuns[0].runId) || "",
+        };
+        candidateSource = `discovered (${discoveredRuns.length} runs, ${allCandidates.length} candidates)`;
+
+        // Default to active run filter if we have an active run
+        if (discoveredActiveRunId && els.runFilter) {
+          runFilterMode = "active";
+          els.runFilter.value = "active";
+        }
+
+        showStatus(
+          `Loaded ${allCandidates.length} candidates from ${discoveredRuns.length} run(s)${discoveredActiveRunId ? " — active: " + discoveredActiveRunId : ""}.`,
+          "success"
+        );
+        render();
+        return true;
+      })
+      .catch((error) => {
+        // Discovery failed — fall back to static file load
+        showStatus(`Discovery unavailable: ${error.message}. Falling back to static file.`, "");
+        return false;
+      });
+  }
+
   function loadCandidates() {
     candidateSource = runTools.candidateSourceFromLocation(window.location.search) || "package-candidates.json";
     const sources = [candidateSource, "package-candidates.json", "./package-candidates.json", "/package-candidates.json"].filter((v,i,a)=>a.indexOf(v)===i);
@@ -865,6 +970,18 @@
   els.grid.addEventListener("click", handleGridClick);
   els.sort.addEventListener("change", render);
   els.filter.addEventListener("change", render);
+  if (els.runFilter) {
+    els.runFilter.addEventListener("change", () => {
+      runFilterMode = els.runFilter.value;
+      render();
+    });
+  }
+  if (els.search) {
+    els.search.addEventListener("input", () => {
+      searchQuery = els.search.value.trim();
+      render();
+    });
+  }
   els.downloadJson.addEventListener("click", downloadSelectedJson);
   els.downloadMarkdown.addEventListener("click", downloadSelectedMarkdown);
   els.generateThumbnails.addEventListener("click", () => generateMoreThumbnailCandidates());
@@ -888,5 +1005,9 @@
 
   packageEngineViewMode = readPackageEngineViewMode();
   setPackageEngineViewMode(packageEngineViewMode, { persist: false });
-  loadThumbnailGenerationConfig().finally(loadCandidates);
+  loadThumbnailGenerationConfig().finally(() => {
+    loadDiscoveredCandidates().then((discovered) => {
+      if (!discovered) loadCandidates();
+    });
+  });
 })();
