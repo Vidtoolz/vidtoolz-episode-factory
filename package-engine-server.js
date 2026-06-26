@@ -3919,6 +3919,49 @@ function labelFromSelectedPath(selectedPath = '') {
   return path.basename(String(selectedPath || ''), path.extname(String(selectedPath || '')));
 }
 
+function selectionPromptIndex(selection = {}) {
+  const direct = Number(selection.prompt_index);
+  if (Number.isInteger(direct) && direct > 0) return direct;
+  const source = String(selection.label || labelFromSelectedPath(selection.selected_path) || '');
+  const match = source.match(/(\d{1,5})/);
+  return match ? Number(match[1]) : null;
+}
+
+// A selected image's package-facing staged video lives at videos/mp4/<index>.mp4
+// (index zero-padded to 3 digits). This is package-scoped, unlike the global
+// Wan lane completed.txt labels (e.g. "flux-001") which collide across packages.
+function stagedMp4RelPath(promptIndex) {
+  return path.posix.join('videos', 'mp4', `${String(promptIndex).padStart(3, '0')}.mp4`);
+}
+
+function packageStagedWanStatus(packageDir) {
+  const selected = safeReadJson(path.join(packageDir, 'selected-images.json'), null);
+  const selections = selected && Array.isArray(selected.selections) ? selected.selections : [];
+  const items = selections.map((selection) => {
+    const promptIndex = selectionPromptIndex(selection);
+    const mp4Rel = promptIndex == null ? null : stagedMp4RelPath(promptIndex);
+    const mp4Exists = Boolean(mp4Rel && fs.existsSync(path.join(packageDir, mp4Rel)));
+    return {
+      prompt_index: promptIndex,
+      label: labelFromSelectedPath(selection.selected_path)
+        || (promptIndex != null ? `flux-${String(promptIndex).padStart(3, '0')}` : ''),
+      mp4_rel: mp4Rel,
+      mp4_exists: mp4Exists,
+    };
+  });
+  const completed = items.filter((item) => item.mp4_exists);
+  const pending = items.filter((item) => !item.mp4_exists);
+  return {
+    selections: items,
+    selectionCount: items.length,
+    completed,
+    pending,
+    completedLabels: completed.map((item) => item.label).filter(Boolean),
+    completedCount: completed.length,
+    pendingCount: pending.length,
+  };
+}
+
 function loadWanRunSummaries(runsDir) {
   return safeDirEntries(runsDir)
     .filter((entry) => entry.isDirectory())
@@ -3955,10 +3998,15 @@ function buildPackagePipelineStatus(packageDir, wanLabels) {
   const resolveHandoffCount = RESOLVE_HANDOFF_FILES.filter((filename) => fs.existsSync(path.join(resolveHandoffDir, filename))).length;
   const promptItems = imagePrompts && Array.isArray(imagePrompts.image_prompts) ? imagePrompts.image_prompts : [];
   const selections = selected && Array.isArray(selected.selections) ? selected.selections : [];
-  const selectionLabels = selections.map((item) => labelFromSelectedPath(item.selected_path)).filter(Boolean);
-  const completed = selectionLabels.filter((label) => wanLabels.completed.has(label)).length;
-  const failed = selectionLabels.filter((label) => wanLabels.failed.has(label)).length;
-  const pending = Math.max(0, selectionLabels.length - completed - failed);
+  // Wan completion is package-scoped: a selection is complete only when its
+  // package-facing staged MP4 (videos/mp4/<index>.mp4) exists. Global Wan lane
+  // labels are not package-unique, so they must not drive per-package counts.
+  const staged = packageStagedWanStatus(packageDir);
+  const completed = staged.completedCount;
+  // A staged (completed) selection can never be "failed". Among the not-yet-staged
+  // selections, surface a failure only when the Wan lane records that label as failed.
+  const failed = staged.pending.filter((item) => item.label && wanLabels.failed.has(item.label)).length;
+  const pending = Math.max(0, staged.selectionCount - completed - failed);
   const fluxImagesDir = path.join(packageDir, 'images', 'flux-local');
   const fluxImagesCount = safeDirEntries(fluxImagesDir).filter((entry) => entry.isFile() && /\.png$/i.test(entry.name)).length;
   let wanNextAction = 'No selections found';
@@ -4168,6 +4216,21 @@ function resolveAigenPackageDir(packageId, options = {}) {
 
 function runResolveAssemblyCreate(packageId, options = {}) {
   const { packageId: id, packageDir, paths } = resolveAigenPackageDir(packageId, options);
+  // Do not create Resolve assembly until every selected package MP4 exists.
+  const staged = packageStagedWanStatus(packageDir);
+  if (staged.selectionCount === 0 || staged.pendingCount > 0) {
+    const missing = staged.pending.map((item) => item.mp4_rel || `selection ${item.prompt_index}`);
+    return Promise.resolve({
+      ok: false,
+      package_id: id,
+      error: staged.selectionCount === 0
+        ? 'No selected images found; cannot create Resolve assembly.'
+        : `Resolve assembly blocked: ${staged.pendingCount} selected image(s) have no staged MP4 yet (${missing.join(', ')}). Submit them to PRESTO first.`,
+      pending_count: staged.pendingCount,
+      missing_mp4: missing,
+      exit_code: 1,
+    });
+  }
   if (!fs.existsSync(paths.topicToPackageScript)) {
     return Promise.resolve({
       ok: false,
@@ -4837,11 +4900,17 @@ function cancelPrestoJob(options = {}) {
 }
 
 function readPrestoResults(packageId, options = {}) {
-  const { packageId: id, paths } = resolveAigenPackageDir(packageId, options);
-  const completed = parseJsonLines(path.join(paths.wanLane, 'completed.txt'))
+  const { packageId: id, packageDir, paths } = resolveAigenPackageDir(packageId, options);
+  // Package-scoped completion: a selection is complete only when its staged
+  // package MP4 exists. The global Wan lane history is kept under lane_* fields
+  // so callers can still inspect it, but it must not be reported as this
+  // package's completions (labels like flux-001 collide across packages).
+  const staged = packageStagedWanStatus(packageDir);
+  const completed = staged.completedLabels;
+  const laneCompleted = parseJsonLines(path.join(paths.wanLane, 'completed.txt'))
     .map((item) => String(item.label || item.raw || '').trim())
     .filter(Boolean);
-  const failed = parseJsonLines(path.join(paths.wanLane, 'failed.jsonl'))
+  const laneFailed = parseJsonLines(path.join(paths.wanLane, 'failed.jsonl'))
     .map((item) => ({
       label: String(item.label || '').trim(),
       run_id: item.run_id || item.runId || null,
@@ -4849,6 +4918,11 @@ function readPrestoResults(packageId, options = {}) {
       exit_code: item.exit_code == null ? null : item.exit_code,
       timestamp: item.timestamp || item.completed_at || item.created_at || null,
     }));
+  // Package-scoped failures: only lane failures for a selection that is not yet
+  // staged. A staged (completed) selection is never reported as failed, and
+  // failures for unrelated packages never leak in. Global history is in lane_failed.
+  const pendingLabels = new Set(staged.pending.map((item) => item.label).filter(Boolean));
+  const failed = laneFailed.filter((item) => item.label && pendingLabels.has(item.label));
   const runsDir = options.wanRunsDir || paths.wanRunsDir || path.join(paths.wanLane, 'runs');
   const recentRuns = safeDirEntries(runsDir)
     .filter((entry) => entry.isDirectory())
@@ -4876,8 +4950,13 @@ function readPrestoResults(packageId, options = {}) {
     package_id: id,
     completed,
     completed_count: completed.length,
+    pending_count: staged.pendingCount,
+    lane_completed: laneCompleted,
+    lane_completed_count: laneCompleted.length,
     failed,
     failed_count: failed.length,
+    lane_failed: laneFailed,
+    lane_failed_count: laneFailed.length,
     recent_runs: recentRuns,
   };
 }
@@ -5218,7 +5297,7 @@ function normalizeFluxManifestItem(item = {}) {
 function summarizeFluxItems(items, totalPrompts) {
   const summary = { total_prompts: totalPrompts, complete: 0, failed: 0, dry_run: 0, pending: 0 };
   items.forEach((item) => {
-    if (item.status === 'complete') summary.complete += 1;
+    if (item.status === 'complete' || item.status === 'skipped') summary.complete += 1;
     else if (item.status === 'failed') summary.failed += 1;
     else if (item.status === 'dry_run') summary.dry_run += 1;
     else summary.pending += 1;

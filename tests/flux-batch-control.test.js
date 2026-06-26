@@ -355,6 +355,25 @@ test("FLUX results returns items from manifest", async () => {
   }
 });
 
+test("FLUX results counts skipped items as complete in summary", async () => {
+  const fixture = createFluxFixture();
+  try {
+    await withFluxEnv(fixture, () => {
+      writeJson(path.join(fixture.packageDir, "flux-generation-manifest.json"), {
+        items: [
+          { prompt_index: 1, status: "skipped", output_path: "images/flux-local/flux-001.png" },
+          { prompt_index: 2, status: "complete", output_path: "images/flux-local/flux-002.png" },
+        ],
+      });
+      const result = packageEngineServer.readFluxResults(fixture.packageId);
+      assert.equal(result.summary.complete, 2);
+      assert.equal(result.summary.pending, 0);
+    });
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("FLUX results without manifest returns prompt total and empty items", async () => {
   const fixture = createFluxFixture();
   try {

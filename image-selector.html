@@ -177,6 +177,16 @@
         return String(value == null ? "" : value);
       }
 
+      // The server wraps JSON responses as { ok, data: <payload> }, but some
+      // payloads are returned unwrapped. Unwrap one level when the inner value
+      // is itself an object, so callers can read fields directly either way.
+      function normalizePayload(json) {
+        if (json && typeof json === "object" && json.data && typeof json.data === "object") {
+          return json.data;
+        }
+        return json && typeof json === "object" ? json : {};
+      }
+
       function pill(label, cls) {
         const el = document.createElement("span");
         el.className = `pill ${cls || ""}`.trim();
@@ -245,9 +255,9 @@
       async function fetchWriteNonce() {
         try {
           const res = await fetch("/api/aigen/production-pipeline/status", { cache: "no-store" });
-          const data = await res.json();
-          localWriteNonce = data.localWriteNonce || "";
-          nonceHeader = data.nonceHeader || "x-vidtoolz-local-write-nonce";
+          const payload = normalizePayload(await res.json());
+          localWriteNonce = payload.localWriteNonce || "";
+          nonceHeader = payload.nonceHeader || "x-vidtoolz-local-write-nonce";
         } catch {
           /* nonce fetch failed; save will be rejected server-side */
         }
@@ -262,12 +272,13 @@
         content.innerHTML = '<div class="loading">Reading FLUX images...</div>';
         try {
           const response = await fetch(`/api/aigen/flux-images/${encodeURIComponent(packageId)}`, { cache: "no-store" });
-          const data = await response.json();
-          if (!data.ok) throw new Error(data.error || "Could not load FLUX images");
-          images = Array.isArray(data.images) ? data.images : [];
-          selected = new Set(Array.isArray(data.selected) ? data.selected : []);
-          subtitle.textContent = `${data.package_id} · ${data.total} generated images`;
-          render(data);
+          const json = await response.json();
+          if (!json.ok) throw new Error(json.error || "Could not load FLUX images");
+          const payload = normalizePayload(json);
+          images = Array.isArray(payload.images) ? payload.images : [];
+          selected = new Set(Array.isArray(payload.selected) ? payload.selected : []);
+          subtitle.textContent = `${payload.package_id} · ${payload.total} generated images`;
+          render(payload);
         } catch (error) {
           subtitle.textContent = packageId;
           statusEl.replaceChildren(pill("Load failed", "bad"));
@@ -297,9 +308,10 @@
               labels: labelMode.checked
             })
           });
-          const data = await response.json();
-          if (!data.ok) throw new Error(data.error || "Save failed");
-          alert(`Selection saved:\n${data.written_to}`);
+          const json = await response.json();
+          if (!json.ok) throw new Error(json.error || "Save failed");
+          const payload = normalizePayload(json);
+          alert(`Selection saved:\n${payload.written_to}`);
           await loadImages();
         } catch (error) {
           alert(`Failed: ${text(error.message || error)}`);

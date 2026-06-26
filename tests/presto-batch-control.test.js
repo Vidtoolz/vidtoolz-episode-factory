@@ -29,6 +29,12 @@ function createPrestoFixture(options = {}) {
     version: 1,
     selections: [{ prompt_index: 6, selected_path: "images/flux-local/flux-006.png" }],
   });
+  // Package-facing staged MP4 for selection 6: package-scoped completion source.
+  if (!options.noStagedMp4) {
+    const mp4Dir = path.join(packageDir, "videos", "mp4");
+    fs.mkdirSync(mp4Dir, { recursive: true });
+    fs.writeFileSync(path.join(mp4Dir, "006.mp4"), "mp4", "utf8");
+  }
   if (!options.missingScript) {
     fs.writeFileSync(
       productionScript,
@@ -272,10 +278,16 @@ test("PRESTO results returns completed failed and recent runs for a valid packag
     await withPrestoEnv(fixture, () => {
       const result = packageEngineServer.readPrestoResults(fixture.packageId);
       assert.equal(result.ok, true);
+      // Package-scoped: selection 6 is staged (videos/mp4/006.mp4) -> completed.
       assert.equal(result.completed_count, 1);
       assert.deepEqual(result.completed, ["flux-006"]);
-      assert.equal(result.failed_count, 1);
-      assert.equal(result.failed[0].label, "flux-008");
+      // flux-008 is in the global failed lane but is NOT a selection of this
+      // package, so it must not be reported as this package's failure.
+      assert.equal(result.failed_count, 0);
+      assert.deepEqual(result.failed, []);
+      // Global lane failures remain available under lane_failed.
+      assert.equal(result.lane_failed_count, 1);
+      assert.equal(result.lane_failed[0].label, "flux-008");
       assert.equal(result.recent_runs.length, 1);
       assert.equal(result.recent_runs[0].status, "verified");
       assert.equal(result.recent_runs[0].verified, true);

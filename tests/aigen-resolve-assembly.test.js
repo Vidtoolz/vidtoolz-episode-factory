@@ -28,6 +28,15 @@ function createAigenFixture(options = {}) {
   for (const index of [6, 8]) {
     fs.writeFileSync(path.join(fluxDir, `flux-${index.toString().padStart(3, "0")}.png`), "png", "utf8");
   }
+  // Stage package-facing MP4s for both selections unless the test wants to
+  // exercise the "Resolve blocked while MP4s pending" guard.
+  if (!options.missingStagedMp4) {
+    const mp4Dir = path.join(packageDir, "videos", "mp4");
+    fs.mkdirSync(mp4Dir, { recursive: true });
+    for (const index of [6, 8]) {
+      fs.writeFileSync(path.join(mp4Dir, `${index.toString().padStart(3, "0")}.mp4`), "mp4", "utf8");
+    }
+  }
   writeJson(path.join(packageDir, "selected-images.json"), {
     version: 1,
     selections: [
@@ -154,6 +163,31 @@ test("POST /api/aigen/resolve-assembly/create with valid package_id succeeds", a
       assert.equal(response.body.data.files.includes("assembly-plan.csv"), true);
       assert.equal(response.body.data.files.includes("media-manifest.json"), true);
       assert.equal(fs.existsSync(path.join(fixture.packageDir, "resolve-handoff", "assembly-plan.md")), true);
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("POST /api/aigen/resolve-assembly/create is blocked while selected MP4s are missing", async () => {
+  const fixture = createAigenFixture({ missingStagedMp4: true });
+  const server = packageEngineServer.createServer();
+  try {
+    await withAigenEnv(fixture, async () => {
+      await listen(server);
+      const response = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId },
+        headers: {
+          host: "127.0.0.1:8010",
+          [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+        },
+      });
+      assert.equal(response.body.ok, false);
+      assert.match(response.body.error, /Resolve assembly blocked|no staged MP4/i);
+      // No handoff files should have been written.
+      assert.equal(fs.existsSync(path.join(fixture.packageDir, "resolve-handoff", "assembly-plan.md")), false);
     });
   } finally {
     await close(server);

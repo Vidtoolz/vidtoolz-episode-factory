@@ -295,6 +295,93 @@ test("POST selected-images rejects path traversal package_id", async () => {
   }
 });
 
+function readImageSelectorHtml() {
+  return fs.readFileSync(path.join(__dirname, "..", "image-selector.html"), "utf8");
+}
+
+function extractNormalizePayload(html) {
+  const match = html.match(/function normalizePayload\(json\) \{[\s\S]*?\n {6}\}/);
+  assert.ok(match, "image-selector.html should define a normalizePayload helper");
+  // eslint-disable-next-line no-new-func
+  return new Function(`${match[0]}\nreturn normalizePayload;`)();
+}
+
+test("image-selector normalizePayload unwraps wrapped { ok, data } responses", () => {
+  const normalizePayload = extractNormalizePayload(readImageSelectorHtml());
+  const wrapped = {
+    ok: true,
+    data: {
+      ok: true,
+      package_id: "2026-06-24-ideation",
+      images: [{ index: 1 }, { index: 2 }],
+      selected: [1],
+      total: 5,
+      selected_count: 1,
+    },
+  };
+  const payload = normalizePayload(wrapped);
+  assert.equal(payload.package_id, "2026-06-24-ideation");
+  assert.equal(payload.total, 5);
+  assert.deepEqual(payload.selected, [1]);
+  assert.equal(payload.images.length, 2);
+});
+
+test("image-selector normalizePayload passes through unwrapped responses", () => {
+  const normalizePayload = extractNormalizePayload(readImageSelectorHtml());
+  const unwrapped = {
+    ok: true,
+    package_id: "legacy-package",
+    images: [{ index: 9 }],
+    selected: [9],
+    total: 1,
+    written_to: "/path/selected-images.json",
+  };
+  const payload = normalizePayload(unwrapped);
+  assert.equal(payload.package_id, "legacy-package");
+  assert.equal(payload.total, 1);
+  assert.equal(payload.written_to, "/path/selected-images.json");
+  assert.equal(payload.images.length, 1);
+});
+
+test("image-selector normalizePayload tolerates non-object input", () => {
+  const normalizePayload = extractNormalizePayload(readImageSelectorHtml());
+  assert.deepEqual(normalizePayload(null), {});
+  assert.deepEqual(normalizePayload("nope"), {});
+  assert.deepEqual(normalizePayload(undefined), {});
+});
+
+test("image-selector matches the live flux-images wrapper shape", async () => {
+  const fixture = createImageSelectorFixture();
+  const server = packageEngineServer.createServer();
+  try {
+    await withAigenEnv(fixture, async () => {
+      await listen(server);
+      const response = await requestJson(server, `${packageEngineServer.AIGEN_FLUX_IMAGES_API_PREFIX}${fixture.packageId}`);
+      // The browser receives exactly this body; normalizePayload must unwrap it.
+      const normalizePayload = extractNormalizePayload(readImageSelectorHtml());
+      const payload = normalizePayload(response.body);
+      assert.equal(payload.package_id, fixture.packageId);
+      assert.equal(payload.images.length, 3);
+      assert.equal(payload.total, 3);
+      assert.deepEqual(payload.images.map((image) => image.index), [1, 3, 7]);
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("image-selector call sites read the normalized payload, not the raw wrapper", () => {
+  const html = readImageSelectorHtml();
+  // loadImages: must normalize and read from payload, never images off the raw json.
+  assert.match(html, /const json = await response\.json\(\);[\s\S]*?const payload = normalizePayload\(json\);[\s\S]*?payload\.images/);
+  assert.doesNotMatch(html, /images = Array\.isArray\(data\.images\)/);
+  // saveSelection: must normalize before reading written_to.
+  assert.match(html, /const json = await response\.json\(\);[\s\S]*?const payload = normalizePayload\(json\);[\s\S]*?payload\.written_to/);
+  // fetchWriteNonce: must normalize before reading the nonce fields.
+  assert.match(html, /normalizePayload\(await res\.json\(\)\)[\s\S]*?payload\.localWriteNonce/);
+});
+
 test("aigen assets route rejects path traversal", async () => {
   const server = packageEngineServer.createServer();
   try {

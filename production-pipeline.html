@@ -306,6 +306,17 @@
         return String(value == null ? "" : value);
       }
 
+      // The server wraps JSON responses as { ok, data: <payload> }, but error
+      // responses and some payloads are returned unwrapped. Unwrap one level
+      // when the inner value is itself an object, so callers can read fields
+      // directly either way. Check the wrapper-level `ok` before normalizing.
+      function normalizePayload(json) {
+        if (json && typeof json === "object" && json.data && typeof json.data === "object") {
+          return json.data;
+        }
+        return json && typeof json === "object" ? json : {};
+      }
+
       function badge(label, state) {
         const el = document.createElement("span");
         el.className = `badge ${state || ""}`.trim();
@@ -352,8 +363,9 @@
             headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
             body: JSON.stringify({ package_id: packageId })
           });
-          const data = await response.json();
-          if (data.ok) {
+          const json = await response.json();
+          const data = normalizePayload(json);
+          if (json.ok) {
             alert(`Resolve assembly handoff created:\n${(data.files || []).join("\n")}\n\n${data.output_dir || ""}`);
             await loadStatus();
             return;
@@ -374,7 +386,7 @@
 
       async function fetchPrestoStatus() {
         const response = await fetch(PRESTO_STATUS_API, { cache: "no-store" });
-        prestoStatus = await response.json();
+        prestoStatus = normalizePayload(await response.json());
         return prestoStatus;
       }
 
@@ -383,8 +395,7 @@
         const entries = await Promise.all(needed.map(async (pkg) => {
           try {
             const response = await fetch(`${PRESTO_RESULTS_API}?package_id=${encodeURIComponent(pkg.id)}`, { cache: "no-store" });
-            const data = await response.json();
-            return [pkg.id, data];
+            return [pkg.id, normalizePayload(await response.json())];
           } catch (error) {
             return [pkg.id, { ok: false, error: text(error.message || error) }];
           }
@@ -394,7 +405,7 @@
 
       async function fetchFluxStatus() {
         const response = await fetch(FLUX_STATUS_API, { cache: "no-store" });
-        fluxStatus = await response.json();
+        fluxStatus = normalizePayload(await response.json());
         return fluxStatus;
       }
 
@@ -403,8 +414,7 @@
         const entries = await Promise.all(needed.map(async (pkg) => {
           try {
             const response = await fetch(`${FLUX_RESULTS_API}?package_id=${encodeURIComponent(pkg.id)}`, { cache: "no-store" });
-            const data = await response.json();
-            return [pkg.id, data];
+            return [pkg.id, normalizePayload(await response.json())];
           } catch (error) {
             return [pkg.id, { ok: false, error: text(error.message || error) }];
           }
@@ -477,9 +487,9 @@
             headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
             body: JSON.stringify({ package_id: packageId, comfyui_url: DEFAULT_PRESTO_URL })
           });
-          const data = await response.json();
-          if (!data.ok) {
-            alert(`Failed: ${data.error || "unknown error"}`);
+          const json = await response.json();
+          if (!json.ok) {
+            alert(`Failed: ${normalizePayload(json).error || "unknown error"}`);
             await fetchPrestoStatus();
             updatePrestoProgressUI();
             return;
@@ -505,8 +515,8 @@
             headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
             body: JSON.stringify({})
           });
-          const data = await response.json();
-          if (!data.ok) alert(`Failed: ${data.error || "unknown error"}`);
+          const json = await response.json();
+          if (!json.ok) alert(`Failed: ${normalizePayload(json).error || "unknown error"}`);
           await fetchPrestoStatus();
           updatePrestoProgressUI();
           await loadStatus();
@@ -534,9 +544,9 @@
             headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
             body: JSON.stringify({ package_id: pkg.id, limit: 0, skip_existing: true, dry_run: dryRun })
           });
-          const data = await response.json();
-          if (!data.ok) {
-            alert(`Failed: ${data.error || "unknown error"}`);
+          const json = await response.json();
+          if (!json.ok) {
+            alert(`Failed: ${normalizePayload(json).error || "unknown error"}`);
             await fetchFluxStatus();
             updateFluxProgressUI();
             return;
@@ -562,8 +572,8 @@
             headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
             body: JSON.stringify({})
           });
-          const data = await response.json();
-          if (!data.ok) alert(`Failed: ${data.error || "unknown error"}`);
+          const json = await response.json();
+          if (!json.ok) alert(`Failed: ${normalizePayload(json).error || "unknown error"}`);
           await fetchFluxStatus();
           updateFluxProgressUI();
           await loadStatus();
@@ -832,8 +842,9 @@
         try {
           const url = `${PACKAGE_VIDEO_PROMPTS_API}?package_id=${encodeURIComponent(packageId)}`;
           const response = await fetch(url, { cache: "no-store" });
-          const data = await response.json();
-          if (!data.ok) {
+          const json = await response.json();
+          const data = normalizePayload(json);
+          if (!json.ok) {
             const errBox = document.createElement("div");
             errBox.className = "error-box";
             errBox.textContent = data.error || "Failed to load prompts";
@@ -936,26 +947,27 @@
         content.innerHTML = '<div class="loading">Reading VIDNAS status files...</div>';
         try {
           const response = await fetch(API, { cache: "no-store" });
-          const data = await response.json();
-          localWriteNonce = data.localWriteNonce || "";
-          nonceHeader = data.nonceHeader || "x-vidtoolz-local-write-nonce";
+          const json = await response.json();
+          const payload = normalizePayload(json);
+          localWriteNonce = payload.localWriteNonce || "";
+          nonceHeader = payload.nonceHeader || "x-vidtoolz-local-write-nonce";
           await fetchPrestoStatus();
-          nextAction.textContent = data.next_action || data.error || "No status available";
-          renderBadges(data);
-          if (!data.ok) {
+          nextAction.textContent = payload.next_action || payload.error || "No status available";
+          renderBadges(payload);
+          if (!json.ok) {
             content.innerHTML = "";
             const error = document.createElement("div");
             error.className = "error-box";
-            error.textContent = data.error || "Pipeline status unavailable";
+            error.textContent = payload.error || "Pipeline status unavailable";
             content.appendChild(error);
             return;
           }
-          const packages = Array.isArray(data.packages) ? data.packages : [];
+          const packages = Array.isArray(payload.packages) ? payload.packages : [];
           await fetchFluxStatus();
           await fetchFluxResults(packages);
           await fetchPrestoResults(packages);
           content.innerHTML = "";
-          content.appendChild(packages.length ? renderPackages(packages, data) : document.createTextNode("No packages found."));
+          content.appendChild(packages.length ? renderPackages(packages, payload) : document.createTextNode("No packages found."));
         } catch (error) {
           nextAction.textContent = "Status request failed";
           statusBadges.replaceChildren(badge("API error", "bad"));
