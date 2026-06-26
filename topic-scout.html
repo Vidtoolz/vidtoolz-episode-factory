@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Topic Scout — VIDTOOLZ Episode Factory</title>
+  <link rel="stylesheet" href="styles.css?v=1.8.0">
+  <style>
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+    .scout-header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .scout-header h1 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.4rem;
+    }
+    .scout-meta {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .stage-badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      padding: 2px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+    }
+    .two-column {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    @media (max-width: 900px) {
+      .two-column { grid-template-columns: 1fr; }
+    }
+    .section-title {
+      font-size: 1.1rem;
+      margin: 0 0 0.75rem 0;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .submit-box {
+      background: var(--panel-soft);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .submit-box textarea {
+      width: 100%;
+      min-height: 80px;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.6rem;
+      font-size: 0.95rem;
+      font-family: inherit;
+      resize: vertical;
+    }
+    .submit-box textarea:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+    .submit-box .char-count {
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-align: right;
+      margin-top: 0.25rem;
+    }
+    .submit-box .actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      align-items: center;
+    }
+    .btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .btn:hover { border-color: var(--accent-blue); }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .btn-primary:hover { background: var(--accent-strong); }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .submit-status {
+      font-size: 0.85rem;
+      margin-left: 0.5rem;
+    }
+    .submit-status.success { color: var(--accent); }
+    .submit-status.error { color: var(--danger); }
+    .topic-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .topic-card-header {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .topic-number {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      min-width: 2rem;
+    }
+    .topic-title {
+      font-size: 1rem;
+      font-weight: 600;
+      flex: 1;
+    }
+    .topic-meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+    .topic-field {
+      margin-bottom: 0.3rem;
+      font-size: 0.85rem;
+    }
+    .topic-field-label {
+      color: var(--muted);
+      font-weight: 600;
+      margin-right: 0.25rem;
+    }
+    .topic-promise {
+      font-style: italic;
+      color: var(--accent-blue);
+    }
+    .risk-low { color: var(--accent); }
+    .risk-medium { color: var(--warning); }
+    .risk-high { color: var(--danger); }
+    .difficulty-low { color: var(--accent); }
+    .difficulty-medium { color: var(--warning); }
+    .difficulty-high { color: var(--danger); }
+    .submitted-topic-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent-purple);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .submitted-topic-card.duplicate {
+      border-left-color: var(--warning);
+      opacity: 0.7;
+    }
+    .submitted-topic-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.5rem;
+    }
+    .submitted-topic-text {
+      font-size: 0.95rem;
+      margin-bottom: 0.5rem;
+    }
+    .submitted-topic-time {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .review-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.75rem;
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+    }
+    .review-recommendation {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .review-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.4rem;
+      margin-bottom: 0.3rem;
+    }
+    .review-check-icon {
+      font-weight: 700;
+      min-width: 1.2rem;
+    }
+    .review-check-pass .review-check-icon { color: var(--accent); }
+    .review-check-fail .review-check-icon { color: var(--danger); }
+    .review-check-label { font-weight: 600; }
+    .review-check-detail { color: var(--muted); font-size: 0.8rem; }
+    .review-note {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      font-style: italic;
+    }
+    .empty-state {
+      color: var(--muted);
+      font-style: italic;
+      padding: 1rem;
+      text-align: center;
+    }
+    .user-guide {
+      background: var(--panel-soft);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.85rem;
+    }
+    .user-guide summary {
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .user-guide-content {
+      margin-top: 0.75rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .user-guide-content strong { color: var(--text); }
+    .user-guide-content ol, .user-guide-content ul {
+      margin: 0.5rem 0;
+      padding-left: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html" class="active">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
+<details class="page-guide" open>
+  <summary>Page Guide — What is this?</summary>
+  <div class="page-guide-body">
+    <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Stage 1: Choose your topic. Review 25 system-generated candidates or submit your own idea for instant structured review.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Once you have chosen a topic, go to <a href="package-engine.html">Package Engine</a> to formally select it and start production.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Left column: 25 candidates with promise, difficulty, and risk. Right column: submit your own (min 5 chars), get 7-criteria review. Brand pattern: one claim, one example, one point.</span></div>
+  </div>
+</details>
+
+  <div class="container">
+    <header class="scout-header">
+      <div>
+        <h1>Topic Scout <span class="stage-badge">Stage 1: Idea Selection</span></h1>
+        <p class="scout-meta">
+          VIDTOOLZ Episode Factory — review 25 system-generated candidates and submit your own topic ideas for system review.
+          <br>Run: <code>2026-06-24-ideation</code> · Format: YouTube Short, max 3 min spoken word (~390-450 words)
+        </p>
+      </div>
+    </header>
+
+    <details class="user-guide">
+      <summary>How to use this page</summary>
+      <div class="user-guide-content">
+        <strong>Step 1 — Review candidates:</strong> The left column shows 25 system-generated topic candidates. Each card has the title, core idea, viewer promise, target viewer, production difficulty, and risk assessment.
+        <br><br>
+        <strong>Step 2 — Submit your own topic:</strong> Use the form in the right column to type a topic idea. The system will review it against 7 criteria: AI/creator relevance, professional authority fit, visual potential, specificity, one-claim pattern, trust risk, and overlap with abandoned topics.
+        <br><br>
+        <strong>Step 3 — Read the review:</strong> Each submitted topic gets an instant structured review with pass/fail per criterion and an overall recommendation. The review is an assessment, not an approval — you decide what enters the pipeline.
+        <br><br>
+        <strong>Step 4 — Select a topic:</strong> Once you've decided on a topic (from the candidates or your own submissions), go to the <a href="package-engine.html?run=2026-06-24-ideation">Package Engine</a> to formally select it and start the production workflow.
+        <br><br>
+        <strong>Brand pattern reminder:</strong> One claim, one example, one point. Warm, personal, "told to a friend." Show craft, don't explain frameworks.
+      </div>
+    </details>
+
+    <div class="two-column">
+      <!-- LEFT: System-generated candidates -->
+      <section>
+        <h2 class="section-title">25 System Candidates</h2>
+        <div id="candidateList">
+          <p class="empty-state">Loading candidates...</p>
+        </div>
+      </section>
+
+      <!-- RIGHT: Submit your own + submitted topics -->
+      <section>
+        <h2 class="section-title">Submit Your Own Topic</h2>
+        <div class="submit-box">
+          <textarea id="topicInput" placeholder="Type your topic idea here. Example: Why I switched from Premiere to Resolve after 15 years on Avid" maxlength="500"></textarea>
+          <div class="char-count"><span id="charCount">0</span> / 500</div>
+          <div class="actions">
+            <button class="btn btn-primary" id="submitBtn" disabled>Submit for review</button>
+            <span class="submit-status" id="submitStatus"></span>
+          </div>
+        </div>
+
+        <h2 class="section-title" style="margin-top: 1.5rem;">Submitted Topics</h2>
+        <div id="submittedList">
+          <p class="empty-state">No topics submitted yet.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const RUN_ID = new URLSearchParams(window.location.search).get('run') || '2026-06-24-ideation';
+    const STATUS_API = '/api/package-engine/status';
+    const SUBMIT_API = '/api/topic-scout/submit';
+    const LIST_API = '/api/topic-scout/list?runId=' + RUN_ID;
+    let localWriteNonce = '';
+    let nonceHeader = 'x-vidtoolz-local-write-nonce';
+
+    function normalizePayload(json) {
+      if (json && typeof json === 'object' && json.data && typeof json.data === 'object') {
+        return json.data;
+      }
+      return json && typeof json === 'object' ? json : {};
+    }
+
+    async function loadNonce() {
+      try {
+        const res = await fetch(STATUS_API, { cache: 'no-store' });
+        const payload = normalizePayload(await res.json());
+        localWriteNonce = payload.localWriteNonce || '';
+        nonceHeader = payload.nonceHeader || nonceHeader;
+      } catch (err) {
+        console.error('Failed to load nonce:', err);
+      }
+    }
+
+    async function loadCandidates() {
+      const sources = [
+        `package-runs/${RUN_ID}/package-candidates.json`,
+        'package-candidates.json',
+      ];
+      for (const src of sources) {
+        try {
+          const res = await fetch(src, { cache: 'no-store' });
+          if (!res.ok) continue;
+          const data = await res.json();
+          if (data.candidates && data.candidates.length > 0) {
+            renderCandidates(data.candidates);
+            return;
+          }
+        } catch (err) { /* try next */ }
+      }
+      document.getElementById('candidateList').innerHTML = '<p class="empty-state">Could not load candidates.</p>';
+    }
+
+    function renderCandidates(candidates) {
+      const html = candidates.map(c => {
+        const riskClass = (c.mainRisk || '').toLowerCase().includes('medium') ? 'risk-medium' : 'risk-low';
+        const diffClass = (c.productionDifficulty || '').toLowerCase() === 'medium' ? 'difficulty-medium' : 'difficulty-low';
+        return `
+          <div class="topic-card">
+            <div class="topic-card-header">
+              <span class="topic-number">${c.packageNumber}</span>
+              <span class="topic-title">${escapeHtml(c.proposedTitle)}</span>
+            </div>
+            <div class="topic-field topic-promise">"${escapeHtml(c.viewerPromise)}"</div>
+            <div class="topic-field"><span class="topic-field-label">Idea:</span> ${escapeHtml(c.idea)}</div>
+            <div class="topic-field"><span class="topic-field-label">Target:</span> ${escapeHtml(c.targetViewer)}</div>
+            <div class="topic-field">
+              <span class="topic-field-label">Difficulty:</span> <span class="${diffClass}">${escapeHtml(c.productionDifficulty)}</span>
+              <span class="topic-field-label" style="margin-left:1rem;">Risk:</span> <span class="${riskClass}">${escapeHtml(c.mainRisk)}</span>
+            </div>
+            <div class="topic-field"><span class="topic-field-label">Thumbnail:</span> ${escapeHtml(c.thumbnailConcept)}</div>
+          </div>
+        `;
+      }).join('');
+      document.getElementById('candidateList').innerHTML = html;
+    }
+
+    async function loadSubmittedTopics() {
+      try {
+        const res = await fetch(LIST_API, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.topics || data.topics.length === 0) {
+          document.getElementById('submittedList').innerHTML = '<p class="empty-state">No topics submitted yet.</p>';
+          return;
+        }
+        renderSubmittedTopics(data.topics);
+      } catch (err) {
+        console.error('Failed to load submitted topics:', err);
+      }
+    }
+
+    function renderSubmittedTopics(topics) {
+      const html = topics.map(t => {
+        const checks = (t.review && t.review.checks) || [];
+        const checksHtml = checks.map(c => `
+          <div class="review-check ${c.passed ? 'review-check-pass' : 'review-check-fail'}">
+            <span class="review-check-icon">${c.passed ? '✓' : '✗'}</span>
+            <div>
+              <span class="review-check-label">${escapeHtml(c.criterion)}</span>
+              <div class="review-check-detail">${escapeHtml(c.detail)}</div>
+            </div>
+          </div>
+        `).join('');
+        const rec = t.review ? t.review.recommendation : 'No review available';
+        const passed = t.review ? `${t.review.passedCount}/${t.review.totalCount}` : '-';
+        return `
+          <div class="submitted-topic-card ${t.duplicate ? 'duplicate' : ''}">
+            <div class="submitted-topic-header">
+              <span class="submitted-topic-text">${escapeHtml(t.topicText)}</span>
+              <span class="submitted-topic-time">${new Date(t.submittedAt).toLocaleString()}</span>
+            </div>
+            <div class="review-box">
+              <div class="review-recommendation">${escapeHtml(rec)} (${passed} criteria passed)</div>
+              ${checksHtml}
+              <div class="review-note">${t.review ? escapeHtml(t.review.note) : ''}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      document.getElementById('submittedList').innerHTML = html;
+    }
+
+    async function submitTopic() {
+      const text = document.getElementById('topicInput').value.trim();
+      if (!text) return;
+      const btn = document.getElementById('submitBtn');
+      const status = document.getElementById('submitStatus');
+      if (!localWriteNonce) {
+        status.textContent = 'Cannot submit: local write nonce is missing. Refresh the page to retry.';
+        status.className = 'submit-status error';
+        return;
+      }
+      btn.disabled = true;
+      status.textContent = 'Submitting...';
+      status.className = 'submit-status';
+      try {
+        const res = await fetch(SUBMIT_API, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            [nonceHeader]: localWriteNonce,
+          },
+          body: JSON.stringify({
+            runId: RUN_ID,
+            topicText: text,
+            localWriteNonce: localWriteNonce,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Submit failed');
+        document.getElementById('topicInput').value = '';
+        document.getElementById('charCount').textContent = '0';
+        status.textContent = data.duplicate ? 'Duplicate — already submitted' : 'Submitted and reviewed';
+        status.className = 'submit-status success';
+        loadSubmittedTopics();
+      } catch (err) {
+        status.textContent = err.message;
+        status.className = 'submit-status error';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = String(text || '');
+      return div.innerHTML;
+    }
+
+    // Wire up
+    document.getElementById('topicInput').addEventListener('input', (e) => {
+      const len = e.target.value.length;
+      document.getElementById('charCount').textContent = len;
+      document.getElementById('submitBtn').disabled = len < 5;
+    });
+    document.getElementById('submitBtn').addEventListener('click', submitTopic);
+    document.getElementById('topicInput').addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'Enter') submitTopic();
+    });
+
+    // Init
+    (async () => {
+      await loadNonce();
+      await Promise.all([loadCandidates(), loadSubmittedTopics()]);
+    })();
+  </script>
+</body>
+</html>

@@ -23,6 +23,7 @@ require("./daily-idea-scout.test.js");
 require("./visual-beat-map-parser.test.js");
 require("./visual-beat-map-panel.test.js");
 require("./friction-log-nonce.test.js");
+require("./topic-scout-nonce.test.js");
 require("./pipeline-status.test.js");
 require("./video-prompts.test.js");
 
