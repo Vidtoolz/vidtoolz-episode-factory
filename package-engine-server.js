@@ -7108,6 +7108,7 @@ function createServer(options = {}) {
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
           const runId = payload.runId || '2026-06-24-ideation';
+          validatePackageRunId(runId);
           const topicText = payload.topicText || '';
           const record = submittedTopics.saveSubmittedTopic(ROOT, runId, topicText);
           sendJSON(res, 200, record);
@@ -7119,6 +7120,7 @@ function createServer(options = {}) {
     if (req.method === 'GET' && url.pathname === TOPIC_SCOUT_GET_API) {
       try {
         const runId = url.searchParams.get('runId') || '2026-06-24-ideation';
+        validatePackageRunId(runId);
         const topicId = url.searchParams.get('topicId') || '';
         const record = submittedTopics.getSubmittedTopic(ROOT, runId, topicId);
         if (!record) {
@@ -7137,6 +7139,7 @@ function createServer(options = {}) {
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
           const runId = payload.runId || '2026-06-24-ideation';
+          validatePackageRunId(runId);
           const topicId = payload.topicId || '';
           const status = payload.status || 'submitted';
           const record = submittedTopics.updateTopicStatus(ROOT, runId, topicId, status);
@@ -7158,6 +7161,7 @@ function createServer(options = {}) {
           validateLocalWriteRequest(req, payload);
           const runId = String(payload.runId || '').trim();
           if (!runId) throw Object.assign(new Error('runId is required.'), { statusCode: 400 });
+          validatePackageRunId(runId);
           const selectedData = payload.selectedPackage;
           if (!selectedData || typeof selectedData !== 'object') {
             throw Object.assign(new Error('selectedPackage is required.'), { statusCode: 400 });
@@ -7195,6 +7199,7 @@ function createServer(options = {}) {
           validateLocalWriteRequest(req, payload);
           const runId = String(payload.runId || '').trim();
           if (!runId) throw Object.assign(new Error('runId is required.'), { statusCode: 400 });
+          validatePackageRunId(runId);
           const runDir = path.join(ROOT, PACKAGE_RUNS_DIR, runId);
           if (!fs.existsSync(runDir)) {
             throw Object.assign(new Error(`Run folder not found: ${runId}`), { statusCode: 404 });
@@ -7204,13 +7209,17 @@ function createServer(options = {}) {
             throw Object.assign(new Error('selected-package.json not found. Save your selection first.'), { statusCode: 400 });
           }
           const scriptPath = path.join(ROOT, 'scripts', 'package-engine-new-outline.js');
-          const { execSync } = require('child_process');
+          const { spawnSync } = require('child_process');
           try {
-            const output = execSync(`node "${scriptPath}" "package-runs/${runId}"`, {
+            const result = spawnSync('node', [scriptPath, `package-runs/${runId}`], {
               cwd: ROOT,
               encoding: 'utf8',
               timeout: 30000,
             });
+            if (result.error) {
+              throw result.error;
+            }
+            const output = result.stdout || '';
             // Read the generated outline-prompt.md
             const outlinePromptPath = path.join(runDir, 'outline-prompt.md');
             let outlinePrompt = '';

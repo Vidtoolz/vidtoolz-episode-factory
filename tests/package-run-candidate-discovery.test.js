@@ -679,9 +679,9 @@ test("multi-run fixture: selecting candidate from run B writes only to run B", a
   // Create two isolated, test-prefixed run dirs there, POST a save for run-b, and
   // verify the write lands only in run-b — run-a must remain untouched. Clean up after.
   const realRunsRoot = path.join(__dirname, "..", "package-runs");
-  const stamp = `${process.pid}-${process.hrtime.bigint()}`;
-  const runAId = `__test-save-run-a-${stamp}`;
-  const runBId = `__test-save-run-b-${stamp}`;
+  const stamp = `${process.pid}`;
+  const runAId = `2026-01-01-test-save-run-a-${stamp}`;
+  const runBId = `2026-01-02-test-save-run-b-${stamp}`;
   const runADir = path.join(realRunsRoot, runAId);
   const runBDir = path.join(realRunsRoot, runBId);
   fs.mkdirSync(runADir, { recursive: true });
@@ -868,8 +868,8 @@ test("Bug2 #5: generate-outline-prompt POST sends only runId and localWriteNonce
 
 test("Bug2 #4b: saving a new selection overwrites an existing selected-package.json", async () => {
   const realRunsRoot = path.join(__dirname, "..", "package-runs");
-  const stamp = `${process.pid}-${process.hrtime.bigint()}`;
-  const runId = `__test-replace-selection-${stamp}`;
+  const stamp = `${process.pid}`;
+  const runId = `2026-01-03-test-replace-selection-${stamp}`;
   const runDir = path.join(realRunsRoot, runId);
   fs.mkdirSync(runDir, { recursive: true });
   // Seed an existing selected-package.json with an OLD candidate.

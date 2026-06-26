@@ -141,7 +141,7 @@ test("submitted topics: save throws 404 for non-existent run", () => {
   const { tmp } = createTempRepo();
   try {
     assert.throws(
-      () => submittedTopicsScript.saveSubmittedTopic(tmp, "nonexistent-run", "AI editing workflow"),
+      () => submittedTopicsScript.saveSubmittedTopic(tmp, "2026-01-01-nonexistent", "AI editing workflow"),
       /Run not found/
     );
   } finally {
@@ -173,7 +173,7 @@ test("submitted topics: updateTopicStatus returns null for non-existent topic", 
 test("submitted topics: list returns empty array for non-existent run", () => {
   const { tmp } = createTempRepo();
   try {
-    const topics = submittedTopicsScript.listSubmittedTopics(tmp, "nonexistent-run");
+    const topics = submittedTopicsScript.listSubmittedTopics(tmp, "2026-01-01-nonexistent");
     assert.deepEqual(topics, []);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
@@ -185,6 +185,30 @@ test("submitted topics: list returns empty array for null runId", () => {
   try {
     const topics = submittedTopicsScript.listSubmittedTopics(tmp, null);
     assert.deepEqual(topics, []);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("submitted topics: save rejects path traversal in runId", () => {
+  const { tmp } = createTempRepo();
+  try {
+    assert.throws(
+      () => submittedTopicsScript.saveSubmittedTopic(tmp, "../../etc", "AI editing workflow"),
+      /Invalid package-run id/
+    );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("submitted topics: getSubmittedTopic rejects path traversal in topicId", () => {
+  const { tmp, runId } = createTempRepo();
+  try {
+    assert.throws(
+      () => submittedTopicsScript.getSubmittedTopic(tmp, runId, "../../etc/hostname"),
+      /Invalid topic id/
+    );
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

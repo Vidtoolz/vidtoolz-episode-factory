@@ -3399,6 +3399,8 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     let localWriteConfigPromise = null;
     let dashboardMode = "focus";
     let selectedRunId = null;
+    let activeRunId = "";
+    let focusModeOverride = false;
 
     function showStatus(message, type = "") {
       els.status.textContent = message;

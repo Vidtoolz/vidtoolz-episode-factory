@@ -16,8 +16,20 @@ const path = require('path');
 
 const SUBMITTED_TOPICS_DIR = 'submitted-topics';
 
+// Match the package-run id format used by validatePackageRunId in the server.
+function validateRunId(runId) {
+  if (!/^\d{4}-\d{2}-\d{2}-[a-z0-9][a-z0-9-]*$/.test(String(runId || '').trim())) {
+    throw Object.assign(new Error('Invalid package-run id: ' + runId), { statusCode: 400 });
+  }
+}
+
+function validateTopicId(id) {
+  return typeof id === 'string' && /^[a-zA-Z0-9_-]+$/.test(id) && id.length <= 200;
+}
+
 function getSubmittedTopicsDir(repoRoot, runId) {
   if (!runId) return null;
+  validateRunId(runId);
   const runDir = path.join(repoRoot, 'package-runs', runId);
   if (!fs.existsSync(runDir)) return null;
   const dir = path.join(runDir, SUBMITTED_TOPICS_DIR);
@@ -53,6 +65,9 @@ function listSubmittedTopics(repoRoot, runId) {
 function getSubmittedTopic(repoRoot, runId, topicId) {
   const dir = getSubmittedTopicsDir(repoRoot, runId);
   if (!dir) return null;
+  if (!validateTopicId(topicId)) {
+    throw Object.assign(new Error('Invalid topic id: ' + topicId), { statusCode: 400 });
+  }
   const filePath = path.join(dir, `${topicId}.json`);
   if (!fs.existsSync(filePath)) return null;
   try {
@@ -101,6 +116,9 @@ function saveSubmittedTopic(repoRoot, runId, topicText) {
     review,
   };
 
+  if (!validateTopicId(id)) {
+    throw Object.assign(new Error('Invalid topic id: ' + id), { statusCode: 400 });
+  }
   const filePath = path.join(dir, `${id}.json`);
   fs.writeFileSync(filePath, JSON.stringify(record, null, 2), 'utf8');
 
@@ -120,13 +138,19 @@ function mergeIntoCandidates(repoRoot, runId, topic) {
   try {
     data = JSON.parse(fs.readFileSync(candidatesFile, 'utf8'));
   } catch (err) {
-    // If no candidates file, create one
-    data = {
-      project: 'VIDTOOLZ Package Engine',
-      topic: 'AI + creator workflow',
-      generatedAt: new Date().toISOString(),
-      candidates: [],
-    };
+    if (err.code === 'ENOENT') {
+      // File doesn't exist — create new structure
+      data = {
+        project: 'VIDTOOLZ Package Engine',
+        topic: 'AI + creator workflow',
+        generatedAt: new Date().toISOString(),
+        candidates: [],
+      };
+    } else {
+      // Parse error or other read error — DON'T overwrite
+      // Log and re-throw to prevent data loss
+      throw new Error(`Cannot read candidates file ${candidatesFile}: ${err.message}. Aborting merge to prevent data loss.`);
+    }
   }
 
   // Skip if already merged (by topicText)
@@ -282,6 +306,9 @@ function reviewTopic(text) {
 function updateTopicStatus(repoRoot, runId, topicId, status) {
   const record = getSubmittedTopic(repoRoot, runId, topicId);
   if (!record) return null;
+  if (!validateTopicId(topicId)) {
+    throw Object.assign(new Error('Invalid topic id: ' + topicId), { statusCode: 400 });
+  }
   record.status = status;
   const dir = getSubmittedTopicsDir(repoRoot, runId);
   fs.writeFileSync(path.join(dir, `${topicId}.json`), JSON.stringify(record, null, 2), 'utf8');
