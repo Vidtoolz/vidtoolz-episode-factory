@@ -2,28 +2,53 @@
   "use strict";
 
   const DEFAULT_OUTPUT_DIR = "/home/vidtoolz/Videos/vidtoolz-earth-studio-jobs";
-  const VERSION = "0.1.0";
+  const VERSION = "0.2.0";
   const FRAME_RATE = 30;
+  const DEFAULT_ALTITUDE_M = 2500;
   const EXPECTED_FILES = [
     "README.md",
     "shot-plan.json",
     "shot-plan.md",
     "route.kml",
     "earth-studio-build-checklist.md",
+    "earth-studio.esp",
   ];
 
+  // Built-in gazetteer (offline, no external geocoding API). Explicit
+  // "lat,lng" coordinates in the description are also supported, so any
+  // location is reachable without a network call.
   const LOCATION_FIXTURES = {
-    "midtown manhattan": {
-      name: "Midtown Manhattan",
-      latitude: 40.7549,
-      longitude: -73.984,
-    },
-    "downtown boston": {
-      name: "Downtown Boston",
-      latitude: 42.3555,
-      longitude: -71.0565,
-    },
+    "midtown manhattan": { name: "Midtown Manhattan", latitude: 40.7549, longitude: -73.984 },
+    "downtown boston": { name: "Downtown Boston", latitude: 42.3555, longitude: -71.0565 },
+    "lower manhattan": { name: "Lower Manhattan", latitude: 40.7128, longitude: -74.006 },
+    "san francisco": { name: "San Francisco", latitude: 37.7749, longitude: -122.4194 },
+    "los angeles": { name: "Los Angeles", latitude: 34.0522, longitude: -118.2437 },
+    "chicago": { name: "Chicago", latitude: 41.8781, longitude: -87.6298 },
+    "seattle": { name: "Seattle", latitude: 47.6062, longitude: -122.3321 },
+    "london": { name: "London", latitude: 51.5074, longitude: -0.1278 },
+    "paris": { name: "Paris", latitude: 48.8566, longitude: 2.3522 },
+    "berlin": { name: "Berlin", latitude: 52.52, longitude: 13.405 },
+    "helsinki": { name: "Helsinki", latitude: 60.1699, longitude: 24.9384 },
+    "stockholm": { name: "Stockholm", latitude: 59.3293, longitude: 18.0686 },
+    "tokyo": { name: "Tokyo", latitude: 35.6762, longitude: 139.6503 },
+    "singapore": { name: "Singapore", latitude: 1.3521, longitude: 103.8198 },
+    "sydney": { name: "Sydney", latitude: -33.8688, longitude: 151.2093 },
+    "dubai": { name: "Dubai", latitude: 25.2048, longitude: 55.2708 },
   };
+
+  // Parse an explicit coordinate phrase like "42.3555,-71.0565" or "lat 42.3 lng -71".
+  function parseExplicitCoords(value) {
+    const text = cleanString(value);
+    let m = text.match(/(-?\d{1,2}(?:\.\d+)?)\s*[,/ ]\s*(-?\d{1,3}(?:\.\d+)?)/);
+    const latLngLabel = text.match(/lat(?:itude)?\s*(-?\d{1,2}(?:\.\d+)?).*?l(?:ng|on|ongitude)?\s*(-?\d{1,3}(?:\.\d+)?)/i);
+    if (latLngLabel) m = latLngLabel;
+    if (!m) return null;
+    const latitude = Number(m[1]);
+    const longitude = Number(m[2]);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
+    return { name: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, latitude, longitude, source: "explicit_coordinates" };
+  }
 
   function cleanString(value) {
     return typeof value === "string" ? value.trim() : "";
@@ -46,14 +71,23 @@
 
   function resolveLocation(value) {
     const key = normalizeLocationName(value);
-    if (!key || !LOCATION_FIXTURES[key]) return null;
-    return { ...LOCATION_FIXTURES[key] };
+    if (key && LOCATION_FIXTURES[key]) return { ...LOCATION_FIXTURES[key], source: "gazetteer_fixture" };
+    const coords = parseExplicitCoords(value);
+    if (coords) return coords;
+    return null;
   }
 
   function splitSegments(description) {
-    return cleanString(description)
-      .split(/\bthen\b|[,.]/i)
-      .map((part) => part.trim())
+    // Protect "lat,lng" pairs and decimals so the , / . segment splitter does not
+    // shatter explicit coordinates like "35.65,139.84".
+    const DOT = "\u0001";
+    const COMMA = "\u0002";
+    const protectedText = cleanString(description)
+      .replace(/-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?/g, (m) => m.replace(/\./g, DOT).replace(/,/g, COMMA))
+      .replace(/\d+\.\d+/g, (m) => m.replace(/\./g, DOT));
+    return protectedText
+      .split(/\bthen\b|[,.;\n]/i)
+      .map((part) => part.split(COMMA).join(",").split(DOT).join(".").trim())
       .filter(Boolean);
   }
 
@@ -73,16 +107,18 @@
   function detectAction(text) {
     const lower = cleanString(text).toLowerCase();
     if (/\borbit(?:s|ing)?\b/.test(lower)) {
-      return {
-        action: "orbit",
-        resolutionStatus: "manual_review",
-        warning: "orbit is not supported by the v1 planner and must be planned manually.",
-      };
+      return { action: "orbit", resolutionStatus: "parsed" };
+    }
+    if (/\bzoom\s*(?:in|into|in on|closer)\b/.test(lower)) {
+      return { action: "zoom_in", resolutionStatus: "parsed" };
+    }
+    if (/\bzoom\s*(?:out|back|away)\b/.test(lower)) {
+      return { action: "zoom_out", resolutionStatus: "parsed" };
     }
     if (/\b(?:hover|hovers|hold|stays over)\b/.test(lower)) {
       return { action: "hover", resolutionStatus: "parsed" };
     }
-    if (/\b(?:move to|moves to|fly to|flies to|travel to)\b/.test(lower)) {
+    if (/\b(?:move to|moves to|fly to|flies to|travel to|pan to)\b/.test(lower)) {
       return { action: "fly_to", resolutionStatus: "parsed" };
     }
     return {
@@ -98,9 +134,13 @@
     if (action === "hover") {
       match = withoutDuration.match(/\b(?:hover|hovers|hold|stays over)\s+(?:over\s+|at\s+)?(.+)$/i);
     } else if (action === "fly_to") {
-      match = withoutDuration.match(/\b(?:move to|moves to|fly to|flies to|travel to)\s+(.+)$/i);
+      match = withoutDuration.match(/\b(?:move to|moves to|fly to|flies to|travel to|pan to)\s+(.+)$/i);
     } else if (action === "orbit") {
       match = withoutDuration.match(/\borbit(?:s|ing)?\s+(?:around\s+|over\s+|at\s+)?(.+)$/i);
+    } else if (action === "zoom_in") {
+      match = withoutDuration.match(/\bzoom\s*(?:in|into|in on|closer)\s+(?:on\s+|to\s+|over\s+)?(.+)$/i);
+    } else if (action === "zoom_out") {
+      match = withoutDuration.match(/\bzoom\s*(?:out|back|away)\s+(?:from\s+|of\s+|over\s+)?(.+)$/i);
     }
     return match ? cleanString(match[1]) : "";
   }
@@ -126,14 +166,16 @@
     const endSeconds = startSeconds + effectiveDuration;
     const hasManualWarning = warnings.length > 0 || actionInfo.resolutionStatus === "manual_review";
 
+    const altitudeByAction = { zoom_in: 800, zoom_out: 6000 };
     return {
       segment: {
         segment_id: segmentId,
         source_text: cleanString(text),
-        action: actionInfo.action === "orbit" ? "manual_review" : actionInfo.action,
+        action: actionInfo.action,
         requested_action: actionInfo.action,
         location_name: location ? location.name : locationPhrase || "",
         location,
+        altitude_m: altitudeByAction[actionInfo.action] || DEFAULT_ALTITUDE_M,
         start_seconds: startSeconds,
         end_seconds: endSeconds,
         duration_seconds: effectiveDuration,
@@ -384,6 +426,98 @@ This checklist is technical planning support only. It is not creative approval, 
 `;
   }
 
+  // Build a best-effort Google Earth Studio project (.esp) with camera keyframes.
+  // Earth Studio is browser-only with no API, so this file cannot be import-tested
+  // headlessly — it follows the documented .esp shape (cameraPositionGroup +
+  // cameraRotationGroup keyframes) and must be confirmed with one manual import.
+  // The shot-plan.json / route.kml remain reliable manual fallbacks.
+  function espKeyframe(frame, value, transition = "linear") {
+    return { time: Math.max(0, Math.round(frame)), value, transitionIn: { type: transition }, transitionOut: { type: transition } };
+  }
+
+  function espNumberAttr(type, keyframes, range = {}) {
+    return {
+      type,
+      value: {
+        type: "number",
+        relative: false,
+        minValueRange: typeof range.min === "number" ? range.min : undefined,
+        maxValueRange: typeof range.max === "number" ? range.max : undefined,
+        keyframes,
+      },
+    };
+  }
+
+  function buildEspKeyframes(plan) {
+    const resolved = plan.segments.filter((s) => s.location);
+    const lng = [];
+    const lat = [];
+    const alt = [];
+    const pan = [];
+    if (!resolved.length) return { lng, lat, alt, pan };
+    const first = resolved[0];
+    lng.push(espKeyframe(0, first.location.longitude));
+    lat.push(espKeyframe(0, first.location.latitude));
+    alt.push(espKeyframe(0, first.altitude_m || DEFAULT_ALTITUDE_M));
+    pan.push(espKeyframe(0, 0));
+    resolved.forEach((seg) => {
+      const endFrame = seg.end_frame;
+      lng.push(espKeyframe(endFrame, seg.location.longitude));
+      lat.push(espKeyframe(endFrame, seg.location.latitude));
+      alt.push(espKeyframe(endFrame, seg.altitude_m || DEFAULT_ALTITUDE_M));
+      // Approximate an orbit as a full heading sweep across the segment.
+      const endPan = seg.action === "orbit" ? 360 : (pan[pan.length - 1] ? pan[pan.length - 1].value : 0);
+      pan.push(espKeyframe(endFrame, endPan));
+    });
+    return { lng, lat, alt, pan };
+  }
+
+  function buildEsp(plan, options = {}) {
+    const width = options.width || 1920;
+    const height = options.height || 1080;
+    const totalFrames = Math.max(1, plan.total_frames || 1);
+    const kf = buildEspKeyframes(plan);
+    return {
+      url: "https://earth.google.com/studio/",
+      projectId: slugify(plan.job_name),
+      name: plan.job_name,
+      width,
+      height,
+      frameRate: plan.frame_rate,
+      duration: totalFrames,
+      numberOfFrames: totalFrames,
+      _vidtoolz_note: "Best-effort generated .esp. Import into Earth Studio (File > Import) and confirm the camera move before rendering. shot-plan.json/route.kml are manual fallbacks.",
+      scenes: [
+        {
+          duration: totalFrames,
+          attributes: [
+            {
+              type: "cameraGroup",
+              attributes: [
+                {
+                  type: "cameraPositionGroup",
+                  attributes: [
+                    espNumberAttr("longitude", kf.lng, { min: -180, max: 180 }),
+                    espNumberAttr("latitude", kf.lat, { min: -90, max: 90 }),
+                    espNumberAttr("altitude", kf.alt, { min: 0, max: 63170000 }),
+                  ],
+                },
+                {
+                  type: "cameraRotationGroup",
+                  attributes: [
+                    espNumberAttr("rotationX", [espKeyframe(0, 0)]),
+                    espNumberAttr("rotationY", kf.pan),
+                    espNumberAttr("rotationZ", [espKeyframe(0, 0)]),
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+  }
+
   function buildArtifacts(jobName, description, generatedAt) {
     const plan = buildShotPlan(jobName, description, generatedAt);
     return {
@@ -392,6 +526,7 @@ This checklist is technical planning support only. It is not creative approval, 
       "shot-plan.md": buildShotPlanMarkdown(plan),
       "route.kml": buildKml(plan),
       "earth-studio-build-checklist.md": buildChecklist(plan),
+      "earth-studio.esp": `${JSON.stringify(buildEsp(plan), null, 2)}\n`,
     };
   }
 
@@ -442,17 +577,20 @@ This checklist is technical planning support only. It is not creative approval, 
     DEFAULT_OUTPUT_DIR,
     VERSION,
     FRAME_RATE,
+    DEFAULT_ALTITUDE_M,
     LOCATION_FIXTURES,
     splitSegments,
     extractDurationSeconds,
     detectAction,
     extractLocationPhrase,
     resolveLocation,
+    parseExplicitCoords,
     parseDescription,
     buildShotPlan,
     buildArtifacts,
     buildKml,
     buildShotPlanMarkdown,
+    buildEsp,
     expectedFiles,
     validateShotPlanPayload,
     slugify,

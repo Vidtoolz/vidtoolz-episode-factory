@@ -266,6 +266,33 @@
         <div id="remotion-renders" style="margin-top:10px;"></div>
       </section>
 
+      <section id="earth-studio-lane" aria-label="Earth Studio map animation lane"
+        style="margin:14px 0; padding:14px; border:1px solid var(--border); border-radius:8px; background:var(--panel);">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div>
+            <p class="eyebrow">Optional tool · Earth Studio</p>
+            <h2 style="margin:2px 0;">Map animation (Google Earth Studio)</h2>
+            <p class="muted" style="margin:0;">Plan a camera move, generate an importable <code>.esp</code>, then render the exported frames to MP4 on vidnux. Earth Studio's frame export is the one manual (browser) step.</p>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+          <label class="muted" style="font-size:13px;">Project run:
+            <select id="es-run" style="margin-left:6px; padding:4px;"></select>
+          </label>
+          <input id="es-job" type="text" placeholder="Job name (e.g. City Flyover)" style="padding:5px; min-width:200px;">
+        </div>
+        <textarea id="es-desc" rows="2" placeholder="e.g. hover over Tokyo for 4 seconds, then fly to 35.65,139.84 in 6 seconds, then orbit Tokyo for 5 seconds"
+          style="width:100%; margin-top:8px; padding:6px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px;"></textarea>
+        <div id="es-actions" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px;">
+          <button type="button" id="es-generate" class="primary-btn">Generate plan + .esp</button>
+          <a class="btn-external" href="https://earth.google.com/studio/" target="_blank" rel="noopener">Open Earth Studio</a>
+          <button type="button" id="es-render" class="secondary-btn">Render frames → MP4</button>
+          <button type="button" id="es-stage" class="secondary-btn">Stage MP4 → VIDNAS</button>
+        </div>
+        <p class="muted" id="es-status" style="margin:8px 0 0; font-size:13px;"></p>
+        <pre id="es-job-log" style="display:none; margin:8px 0 0; padding:8px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:12px; white-space:pre-wrap; max-height:160px; overflow:auto;"></pre>
+      </section>
+
       <details class="user-guide" id="user-guide">
         <summary style="cursor:pointer;font-size:15px;font-weight:600;color:var(--accent-strong);">User Guide — How to Use This System</summary>
         <h3>Overview</h3>
@@ -1164,6 +1191,73 @@
           }
         }
         load();
+      })();
+    </script>
+    <script>
+      // Earth Studio map-animation lane (self-contained). Per-run; vidnux-local.
+      (function () {
+        const runSel = document.getElementById("es-run");
+        if (!runSel) return;
+        const jobEl = document.getElementById("es-job");
+        const descEl = document.getElementById("es-desc");
+        const statusEl = document.getElementById("es-status");
+        const logEl = document.getElementById("es-job-log");
+        let nonce = "", nonceHeaderName = "x-vidtoolz-local-write-nonce", pollTimer = null;
+        const esc = (s) => { const d = document.createElement("div"); d.textContent = String(s == null ? "" : s); return d.innerHTML; };
+        const unwrap = (j) => (j && j.data !== undefined ? j.data : j);
+
+        async function ensureNonce() {
+          if (nonce) return nonce;
+          try { const p = unwrap(await (await fetch("/api/package-engine/status", { cache: "no-store" })).json());
+            const c = p && p.captureEvidenceWrite; if (c && c.localWriteNonce) { nonce = c.localWriteNonce; nonceHeaderName = c.nonceHeader || nonceHeaderName; } } catch (_) {}
+          return nonce;
+        }
+        async function post(path, body) {
+          await ensureNonce();
+          const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json", [nonceHeaderName]: nonce }, body: JSON.stringify({ ...body, localWriteNonce: nonce }) });
+          return { code: r.status, data: unwrap(await r.json()) };
+        }
+        async function loadRuns() {
+          try {
+            const p = unwrap(await (await fetch("/api/package-runs/list", { cache: "no-store" })).json());
+            (p.runs || []).filter((r) => !/^_/.test(r.runId)).forEach((r) => { const o = document.createElement("option"); o.value = r.runId; o.textContent = r.runId; runSel.appendChild(o); });
+          } catch (_) {}
+        }
+        async function refresh() {
+          const runId = runSel.value; if (!runId) { statusEl.textContent = "Pick a project run."; return; }
+          try {
+            const s = unwrap(await (await fetch("/api/earth-studio/status?runId=" + encodeURIComponent(runId), { cache: "no-store" })).json());
+            const j = s.render_job || {};
+            statusEl.innerHTML = "Plan: <b>" + (s.has_plan ? "yes" : "no") + "</b> · .esp: <b>" + (s.has_esp ? "yes" : "no") +
+              "</b> · exported frames: <b>" + (s.frame_count || 0) + "</b> · rendered MP4: <b>" + (s.rendered_mp4 ? esc(s.rendered_mp4) + " (" + Math.round((s.rendered_bytes||0)/1024) + " KB)" : "no") + "</b>" +
+              (s.job ? " · plan frames: " + s.job.total_frames : "");
+            if (j && j.exit_state && j.exit_state !== "idle") { logEl.style.display = "block"; logEl.textContent = "[render " + j.exit_state + "] " + (j.elapsed_seconds||0) + "s\n" + (j.stderr_tail || "").slice(-800); if (j.active) startPoll(); }
+          } catch (e) { statusEl.textContent = "Status error: " + e.message; }
+        }
+        function startPoll() { if (pollTimer) return; pollTimer = setInterval(async () => {
+          try { const j = (unwrap(await (await fetch("/api/earth-studio/job-status", { cache: "no-store" })).json()) || {}).job || {};
+            logEl.style.display = "block"; logEl.textContent = "[render " + j.exit_state + "] " + (j.elapsed_seconds||0) + "s\n" + (j.stderr_tail||"").slice(-800);
+            if (!j.active) { clearInterval(pollTimer); pollTimer = null; refresh(); } } catch (_) { clearInterval(pollTimer); pollTimer = null; } }, 2500); }
+
+        document.getElementById("es-generate").addEventListener("click", async (e) => {
+          const runId = runSel.value; if (!runId) { statusEl.textContent = "Pick a project run first."; return; }
+          e.target.disabled = true; statusEl.textContent = "Generating plan + .esp…";
+          try { const r = await post("/api/earth-studio/plan", { runId, jobName: jobEl.value || "Map Animation", description: descEl.value || "" });
+            statusEl.textContent = r.data && r.data.ok ? "Generated. Import earth-studio/earth-studio.esp into Earth Studio, render frames into earth-studio/frames/, then Render → MP4." : ("Failed: " + ((r.data && r.data.error) || r.code));
+          } catch (err) { statusEl.textContent = "Error: " + err.message; } finally { e.target.disabled = false; refresh(); }
+        });
+        document.getElementById("es-render").addEventListener("click", async () => {
+          const runId = runSel.value; if (!runId) return;
+          const r = await post("/api/earth-studio/render", { runId });
+          if (!(r.data && r.data.ok)) { logEl.style.display = "block"; logEl.textContent = "Render failed to start: " + ((r.data && r.data.error) || r.code); } else startPoll();
+        });
+        document.getElementById("es-stage").addEventListener("click", async () => {
+          const runId = runSel.value; if (!runId) return;
+          const r = await post("/api/earth-studio/stage", { runId });
+          statusEl.textContent = r.data && r.data.ok ? "Staged to VIDNAS sandbox: " + esc(r.data.staged_to) : ("Stage failed: " + ((r.data && r.data.error) || r.code));
+        });
+        runSel.addEventListener("change", refresh);
+        loadRuns().then(refresh);
       })();
     </script>
   </body>

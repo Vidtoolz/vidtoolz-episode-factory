@@ -18,6 +18,7 @@ const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
 const remotionLane = require('./remotion-lane.js');
+const earthStudioLane = require('./earth-studio-lane.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
@@ -47,6 +48,12 @@ const DELIVERY_READINESS_SAVE_API = '/api/package-runs/delivery-readiness/save';
 const EXPORT_CHECKLIST_REGENERATE_API = '/api/package-runs/export-checklist/regenerate-derived';
 const PACKAGE_RUNS_LIST_API = '/api/package-runs/list';
 const PACKAGE_RUNS_CANDIDATES_API = '/api/package-runs/candidates';
+const EARTH_STUDIO_STATUS_API = '/api/earth-studio/status';
+const EARTH_STUDIO_PLAN_API = '/api/earth-studio/plan';
+const EARTH_STUDIO_RENDER_API = '/api/earth-studio/render';
+const EARTH_STUDIO_JOB_STATUS_API = '/api/earth-studio/job-status';
+const EARTH_STUDIO_CANCEL_API = '/api/earth-studio/cancel';
+const EARTH_STUDIO_STAGE_API = '/api/earth-studio/stage';
 const REMOTION_STATUS_API = '/api/remotion/status';
 const REMOTION_RENDER_API = '/api/remotion/render';
 const REMOTION_JOB_STATUS_API = '/api/remotion/job-status';
@@ -7407,6 +7414,46 @@ function createServer(options = {}) {
           sendJSON(res, 200, remotionLane.cancelRender());
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'remotion-cancel-error'));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === EARTH_STUDIO_STATUS_API) {
+      try { sendJSON(res, 200, earthStudioLane.status({ runId: url.searchParams.get('runId') || '' }, { root: serverOptions.root || ROOT })); }
+      catch (error) { sendError(res, error.statusCode || 500, error.message, 'earth-studio-status-error'); }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === EARTH_STUDIO_JOB_STATUS_API) {
+      try { sendJSON(res, 200, { job: earthStudioLane.currentJobStatus() }); }
+      catch (error) { sendError(res, error.statusCode || 500, error.message, 'earth-studio-job-status-error'); }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === EARTH_STUDIO_PLAN_API) {
+      readJsonBody(req)
+        .then((payload) => { validateLocalWriteRequest(req, payload); sendJSON(res, 200, earthStudioLane.writeJob(payload, { root: serverOptions.root || ROOT })); })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'earth-studio-plan-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === EARTH_STUDIO_RENDER_API) {
+      readJsonBody(req)
+        .then((payload) => { validateLocalWriteRequest(req, payload); sendJSON(res, 200, earthStudioLane.startRender(payload, { root: serverOptions.root || ROOT })); })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'earth-studio-render-error', { active: error.active || null }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === EARTH_STUDIO_CANCEL_API) {
+      readJsonBody(req)
+        .then((payload) => { validateLocalWriteRequest(req, payload); sendJSON(res, 200, earthStudioLane.cancelRender()); })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'earth-studio-cancel-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === EARTH_STUDIO_STAGE_API) {
+      readJsonBody(req)
+        .then((payload) => { validateLocalWriteRequest(req, payload); sendJSON(res, 200, earthStudioLane.stageToVidnas(payload, { root: serverOptions.root || ROOT })); })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'earth-studio-stage-error'));
       return;
     }
 
