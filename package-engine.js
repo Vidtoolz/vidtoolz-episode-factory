@@ -153,21 +153,20 @@
     const filtered = model.filterPackageCandidates(candidates, els.filter.value);
     const sorted = model.sortPackageCandidates(filtered, els.sort.value);
 
+    // normalizePackageCandidate strips _runId, so reattach it onto each rendered
+    // candidate from the originals — cards show which project a pick saves into (F4).
+    const runIdById = new Map();
+    for (const c of candidateSet.candidates) {
+      if (c.id) runIdById.set(c.id, c._runId || candidateSet._runId || "");
+    }
+    sorted.forEach((c) => {
+      c._runId = runIdById.get(c.id) || candidateSet._runId || "";
+    });
+
     // Group active run first, preserving model sort order within each group.
-    // normalizePackageCandidate strips _runId, so reattach from originals.
     if (discoveredRuns.length > 1 && discoveredActiveRunId) {
-      const runIdById = new Map();
-      for (const c of candidateSet.candidates) {
-        if (c.id) runIdById.set(c.id, c._runId || candidateSet._runId || "");
-      }
-      const active = sorted.filter((c) => {
-        const runId = runIdById.get(c.id) || candidateSet._runId || "";
-        return runId === discoveredActiveRunId;
-      });
-      const others = sorted.filter((c) => {
-        const runId = runIdById.get(c.id) || candidateSet._runId || "";
-        return runId !== discoveredActiveRunId;
-      });
+      const active = sorted.filter((c) => c._runId === discoveredActiveRunId);
+      const others = sorted.filter((c) => c._runId !== discoveredActiveRunId);
       return active.concat(others);
     }
 
@@ -561,6 +560,7 @@
         <span class="recommendation-pill recommendation-${String(candidate.recommendation || "Maybe").toLowerCase()}">${escapeHtml(candidate.recommendation)}</span>
       </div>
       <h2>${escapeHtml(candidate.proposedTitle || "Untitled package")}</h2>
+      ${candidate._runId ? `<p class="package-run-origin" style="margin:2px 0 6px;font-size:12px;color:var(--muted,#8b949e);">Selecting this saves into project <strong>${escapeHtml(candidate._runId)}</strong></p>` : ""}
       <p>${escapeHtml(candidate.idea || "No idea recorded.")}</p>
       <div class="package-thumbnail-preview">
         <span>Thumbnail image</span>

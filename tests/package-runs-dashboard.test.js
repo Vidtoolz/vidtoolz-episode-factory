@@ -4174,3 +4174,44 @@ test("package-runs-dashboard: error response with top-level error field is not u
   assert.equal(unwrapped.error, "Invalid nonce");
   assert.equal(unwrapped.errorCode, "AUTH_FAILED");
 });
+
+// ── F3: plain-language next-action mapping ──────────────────────────────────
+test("package-runs-dashboard: plainNextAction maps technical blockers to creator steps", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+  const match = source.match(/function plainNextAction\(stage, blockedUntil, fallback\) \{([\s\S]*?)\n  \}/);
+  assert.ok(match, "plainNextAction should exist");
+  const plainNextAction = new Function("stage", "blockedUntil", "fallback", match[1]);
+
+  assert.match(
+    plainNextAction("Blocked / evidence missing", "generation-manifest.json is readable and contains prompt-03 items.", "raw"),
+    /B-roll images \(Steps 6/,
+  );
+  assert.match(
+    plainNextAction("Blocked / evidence missing", "Mikko selects prompt-03 still images in the manifest.", "raw"),
+    /Step 8/,
+  );
+  assert.match(
+    plainNextAction("Capture / b-roll candidate creation", "Kling video candidates exist on VIDNAS.", "raw"),
+    /Step 9/,
+  );
+  assert.match(plainNextAction("Resolve timeline test", "x", "raw"), /Step 11/);
+  assert.match(plainNextAction("Resolve test review", "x", "raw"), /Step 12/);
+});
+
+test("package-runs-dashboard: plainNextAction falls back to the raw text when unmapped", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+  const match = source.match(/function plainNextAction\(stage, blockedUntil, fallback\) \{([\s\S]*?)\n  \}/);
+  const plainNextAction = new Function("stage", "blockedUntil", "fallback", match[1]);
+  assert.equal(plainNextAction("Totally unknown stage", "totally unknown blocker", "the original text"), "the original text");
+});
+
+// ── F2: front-door title fallback (resume.html) ─────────────────────────────
+test("resume.html: displayTitle keeps real titles, prettifies slugs, drops junk default", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "resume.html"), "utf8");
+  const match = source.match(/function displayTitle\(run\) \{([\s\S]*?)\n      \}/);
+  assert.ok(match, "displayTitle should exist");
+  const displayTitle = new Function("run", match[1]);
+  assert.equal(displayTitle({ title: "Real Topic Here", runId: "2026-06-24-x" }), "Real Topic Here");
+  assert.equal(displayTitle({ title: "", runId: "2026-06-06-ai-replace-editors" }), "ai replace editors");
+  assert.equal(displayTitle({ title: "Selected Package", runId: "2026-05-06-ai-video-proof-plan" }), "ai video proof plan");
+});

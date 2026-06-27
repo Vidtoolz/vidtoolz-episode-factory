@@ -49,6 +49,9 @@
       .status-active { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
       .status-blocked { background: rgba(248, 81, 73, 0.15); color: #f85149; }
       .status-ideation { background: rgba(210, 153, 34, 0.2); color: #d29922; }
+      .status-parked { background: rgba(139, 148, 158, 0.18); color: #8b949e; }
+      .resume-card-parked { opacity: 0.72; }
+      .resume-card-parked:hover { opacity: 1; }
 
       .resume-card-meta { font-size: 13px; color: var(--muted, #8b949e); margin-bottom: 16px; }
       .resume-card-meta b { color: var(--soft, #c9d1d9); font-weight: 500; }
@@ -173,32 +176,53 @@
           grid.innerHTML = '<div class="empty-state"><h2>Could not load projects</h2><p>Make sure the Package Engine is running on port 8010.</p></div>';
         });
 
+      // Use a human topic when present; fall back to a prettified folder name
+      // rather than a raw slug or the junk "Selected Package" default (F2).
+      function displayTitle(run) {
+        const t = (run.title || '').trim();
+        if (t && !/^selected package$/i.test(t)) return t;
+        const slug = (run.runId || '').replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/[-_]/g, ' ').trim();
+        return slug || run.runId || 'Untitled run';
+      }
+
       function buildCard(run) {
         const date = formatDate(run.runId);
         const bucket = run.workflowBucket || '';
-        const status = run.packageRunState.state || 'inactive';
-        const stageIdx = stageFromBucket(bucket);
+        // activeWorkflowBucket carries the real stage even for parked runs,
+        // whose workflowBucket collapses to "Inactive: parked" (F1).
+        const stageBucket = run.activeWorkflowBucket || bucket;
+        const isParked = Boolean(run.inactive) || /inactive|parked/i.test(run.status || '');
+        const stageIdx = stageFromBucket(stageBucket);
         const stage = STAGES[stageIdx] || 'Ideation';
         const pct = Math.round(((stageIdx + 0.5) / STAGES.length) * 100);
         const isComplete = stageIdx >= STAGES.length - 1;
 
-        let statusLabel = 'Active';
-        let statusClass = 'status-active';
-        if (status === 'inactive' && stageIdx === 0) {
-          statusLabel = 'Ideation';
-          statusClass = 'status-ideation';
+        let statusLabel, statusClass;
+        if (isParked) {
+          statusLabel = 'Parked';
+          statusClass = 'status-parked';
+        } else if (isComplete || /publish/i.test(stageBucket)) {
+          statusLabel = 'Published';
+          statusClass = 'status-published';
         } else if (/blocker|blocked/i.test(bucket)) {
           statusLabel = 'Blocked';
           statusClass = 'status-blocked';
-        } else if (isComplete) {
-          statusLabel = 'Published';
-          statusClass = 'status-published';
+        } else if (/idea|package.*select/i.test(stageBucket) || /idea run/i.test(run.status || '')) {
+          statusLabel = 'Idea';
+          statusClass = 'status-ideation';
+        } else {
+          statusLabel = 'Active';
+          statusClass = 'status-active';
         }
 
+        const stageLine = isComplete
+          ? '<div class="resume-card-stage">✓ All stages complete</div>'
+          : `<div class="resume-card-stage">${isParked ? 'Paused at' : 'Next'}: ${escapeHtml(stage)}</div>`;
+
         return `
-          <div class="resume-card" data-run-id="${escapeHtml(run.runId)}" data-workflow-bucket="${escapeHtml(bucket)}">
+          <div class="resume-card${isParked ? ' resume-card-parked' : ''}" data-run-id="${escapeHtml(run.runId)}" data-workflow-bucket="${escapeHtml(stageBucket)}">
             <div class="resume-card-title">
-              <span>${escapeHtml(run.title || run.runId)}</span>
+              <span>${escapeHtml(displayTitle(run))}</span>
               <span class="status-pill ${statusClass}">${statusLabel}</span>
             </div>
             <div class="resume-card-meta">
@@ -213,9 +237,9 @@
                 <span>${pct}%</span>
               </div>
             </div>
-            ${isComplete ? '<div class="resume-card-stage">✓ All stages complete</div>' : `<div class="resume-card-stage">Next: ${escapeHtml(stage)}</div>`}
+            ${stageLine}
             <div class="resume-card-actions">
-              <button type="button" class="btn-primary" data-continue-run="${escapeHtml(run.runId)}" data-workflow-bucket="${escapeHtml(bucket)}">Continue</button>
+              <button type="button" class="btn-primary" data-continue-run="${escapeHtml(run.runId)}" data-workflow-bucket="${escapeHtml(stageBucket)}">Continue</button>
               <a class="btn-secondary" href="new-video-build.html">Build Guide</a>
             </div>
           </div>`;

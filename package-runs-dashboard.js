@@ -2802,18 +2802,36 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     return (run && run.runId) || runId || "";
   }
 
+  // F3: translate the precise (engineer-oriented) next-safe-action into a plain
+  // creator sentence naming the workflow step. Falls back to the raw text.
+  function plainNextAction(stage, blockedUntil, fallback) {
+    const b = String(blockedUntil || "");
+    const s = String(stage || "");
+    if (/package run folder exists/i.test(b)) return "Pick and confirm a topic so the project folder is created (Step 1).";
+    if (/generation-manifest|prompt-03 items/i.test(b)) return "Write image prompts and generate your B-roll images (Steps 6–7).";
+    if (/selects prompt-03 still images|selected-image handoff/i.test(b)) return "Choose the best B-roll image for each prompt (Step 8).";
+    if (/Capture \/ b-roll|Kling video candidates/i.test(s + " " + b)) return "Turn your selected images into B-roll video clips, move the MP4s to VIDNAS, then test them in Resolve (Step 9).";
+    if (/Resolve timeline test/i.test(s)) return "Import the B-roll clips into DaVinci Resolve and check the motion works (Step 11).";
+    if (/Resolve test review/i.test(s)) return "Review your Resolve test notes — you're ready for the publish gate (Step 12).";
+    return String(fallback || "");
+  }
+
   function normalizeNextSafeAction(payload) {
     const source = payload && typeof payload === "object" ? payload : {};
     const facts = source.facts && typeof source.facts === "object" ? source.facts : {};
+    const stage = String(source.stage || "Blocked / evidence missing");
+    const nextHumanAction = String(source.nextHumanAction || "Stop and inspect missing evidence before doing production work.");
+    const blockedUntil = String(source.blockedUntil || "Required evidence is present and reviewed by Mikko.");
     return {
       ok: source.ok !== false,
       readOnly: source.readOnly !== false,
       activeRun: String(source.activeRun || ""),
       activeRunPath: String(source.activeRunPath || ""),
-      stage: String(source.stage || "Blocked / evidence missing"),
-      nextHumanAction: String(source.nextHumanAction || "Stop and inspect missing evidence before doing production work."),
+      stage,
+      nextHumanAction,
       nextAiAction: String(source.nextAiAction || "Prepare handoffs, inspect files, summarize status, or create read-only reports. Do not approve assets."),
-      blockedUntil: String(source.blockedUntil || "Required evidence is present and reviewed by Mikko."),
+      blockedUntil,
+      plainNext: plainNextAction(stage, blockedUntil, nextHumanAction),
       allowedActions: normalizeStringArray(source.allowedActions),
       forbiddenActions: normalizeStringArray(source.forbiddenActions),
       evidence: Array.isArray(source.evidence)
@@ -3015,7 +3033,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
           ? beginningTriageStatusLabel(beginningState)
           : "Beginning triage available";
     const nextAction = hasActiveRun
-      ? panel.nextHumanAction
+      ? (panel.plainNext || panel.nextHumanAction)
       : hasBeginningDraft && beginningState.fields.nextThirtyMinuteAction
         ? beginningState.fields.nextThirtyMinuteAction
         : activeRun
@@ -3754,7 +3772,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       if (!els.whatNextBanner) return;
       const panel = normalizeNextSafeAction(payload || {});
       const runId = panel.activeRun || requestedRunId();
-      const actionText = panel.nextHumanAction || panel.nextAiAction || "Open the focus panel and inspect the current gate.";
+      const actionText = panel.plainNext || panel.nextHumanAction || panel.nextAiAction || "Open the focus panel and inspect the current gate.";
       const dashboardHref = runId ? `package-runs-dashboard.html?run=${encodeURIComponent(runId)}#videoRoomPanel` : "#currentFocusPanel";
       els.whatNextBanner.innerHTML = `
         <div>
