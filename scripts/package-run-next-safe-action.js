@@ -209,6 +209,47 @@ function selectedStatusLabel(selectedItems, reviewedItems, manifestItems) {
   ].join(" / ");
 }
 
+// Front-half (Steps 1-6) awareness. The back-half decision tree below keys on the
+// generation-manifest, so without this a pre-image-gen run (including a brand-new
+// one) falls through to "generate B-roll images (Steps 6-7)" and the Build New Video
+// banner sends the operator straight to Step 6, skipping topic/script/packaging.
+// Returns null once image-prompts.json exists (the run has reached the image-gen
+// hand-off, where the existing back-half guidance is correct).
+function frontHalfNextAction(runDir) {
+  const has = (name) => fileExists(path.join(runDir, name));
+  if (has("image-prompts.json")) return null;
+  if (!has("selected-package.json")) {
+    return {
+      stage: "Package selection",
+      nextHumanAction:
+        "Generate 10 ranked package candidates (paste generation-prompt.md into Hermes/ChatGPT, save the JSON as package-candidates.json), then select the winning package.",
+      blockedUntil: "A package is selected (selected-package.json exists).",
+    };
+  }
+  if (!has("final-outline.md")) {
+    return {
+      stage: "Research and outline",
+      nextHumanAction:
+        "Research the topic and generate the outline, then save the finalized outline as final-outline.md.",
+      blockedUntil: "final-outline.md exists.",
+    };
+  }
+  if (!has("final-script.md")) {
+    return {
+      stage: "Script",
+      nextHumanAction:
+        "Write the script from the approved outline and save it as final-script.md.",
+      blockedUntil: "final-script.md exists.",
+    };
+  }
+  return {
+    stage: "Claims check, packaging, image prompts",
+    nextHumanAction:
+      "Run the claims check and packaging draft, then write your FLUX image prompts and save them as image-prompts.json.",
+    blockedUntil: "image-prompts.json exists.",
+  };
+}
+
 function buildNextSafeAction(runInput = "", options = {}) {
   const repoRoot = path.resolve(options.repoRoot || path.join(__dirname, ".."));
   const resolved = resolveRun(repoRoot, runInput || options.runId || "");
@@ -268,7 +309,17 @@ function buildNextSafeAction(runInput = "", options = {}) {
   if (!resolved.exists) {
     blockedUntil = `Active package run folder exists at ${resolved.runPath}.`;
   } else if (!manifestPath || manifestError || !items.length) {
-    blockedUntil = "generation-manifest.json is readable and contains prompt-03 items.";
+    // No usable image-gen manifest yet. If the run is still in the front half
+    // (no image-prompts.json), guide the operator to the actual front-half step
+    // instead of jumping to "generate B-roll images".
+    const frontHalf = frontHalfNextAction(resolved.runDir);
+    if (frontHalf) {
+      stage = frontHalf.stage;
+      nextHumanAction = frontHalf.nextHumanAction;
+      blockedUntil = frontHalf.blockedUntil;
+    } else {
+      blockedUntil = "generation-manifest.json is readable and contains prompt-03 items.";
+    }
   } else if (!selectedItems.length) {
     blockedUntil = "Mikko selects prompt-03 still images in the manifest or provides an explicit selected-image handoff.";
   } else if (!klingVideos.length) {

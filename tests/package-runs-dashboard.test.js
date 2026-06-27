@@ -4249,6 +4249,27 @@ test("plain-next-action: maps technical blockers to creator steps", () => {
   assert.match(plainNextAction("Resolve test review", "x", "raw"), /Step 12/);
 });
 
+test("plain-next-action: maps front-half blockers to early steps, not Step 6", () => {
+  const { plainNextAction } = require("../plain-next-action.js");
+
+  assert.match(
+    plainNextAction("Package selection", "A package is selected (selected-package.json exists).", "raw"),
+    /package candidates.*\(Step 1\)/,
+  );
+  assert.match(
+    plainNextAction("Research and outline", "final-outline.md exists.", "raw"),
+    /outline.*\(Step 2\)/,
+  );
+  assert.match(
+    plainNextAction("Script", "final-script.md exists.", "raw"),
+    /script.*\(Step 3\)/,
+  );
+  assert.match(
+    plainNextAction("Claims check, packaging, image prompts", "image-prompts.json exists.", "raw"),
+    /image prompts \(Steps 4/,
+  );
+});
+
 test("plain-next-action: falls back to the raw text when unmapped", () => {
   const { plainNextAction } = require("../plain-next-action.js");
   assert.equal(plainNextAction("Totally unknown stage", "totally unknown blocker", "the original text"), "the original text");

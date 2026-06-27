@@ -8,6 +8,10 @@
     const b = String(blockedUntil || "");
     const s = String(stage || "");
     if (/package run folder exists/i.test(b)) return "Pick and confirm a topic so the project folder is created (Step 1).";
+    if (/selected-package\.json exists/i.test(b)) return "Generate your package candidates and select the winning package (Step 1).";
+    if (/final-outline\.md exists/i.test(b)) return "Research the topic and finalize your outline (Step 2).";
+    if (/final-script\.md exists/i.test(b)) return "Write and finalize your script (Step 3).";
+    if (/image-prompts\.json exists/i.test(b)) return "Run the claims check and packaging, then write your image prompts (Steps 4–6).";
     if (/generation-manifest|prompt-03 items/i.test(b)) return "Write image prompts and generate your B-roll images (Steps 6–7).";
     if (/selects prompt-03 still images|selected-image handoff/i.test(b)) return "Choose the best B-roll image for each prompt (Step 8).";
     if (/Capture \/ b-roll|Kling video candidates/i.test(s + " " + b)) return "Turn your selected images into B-roll video clips, move the MP4s to VIDNAS, then test them in Resolve (Step 9).";

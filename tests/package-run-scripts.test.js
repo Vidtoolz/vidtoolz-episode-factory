@@ -8337,17 +8337,55 @@ test("next safe action helper sends Kling videos without Resolve evidence to tim
   assert.equal(report.facts.resolveTestRecorded, false);
 });
 
-test("next safe action helper keeps missing evidence blocked without readiness language", () => {
+test("next safe action helper guides a brand-new run to package selection without readiness language", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "next-safe-action-missing-"));
   const runId = "2026-05-06-ai-video-proof-plan";
   fs.mkdirSync(path.join(tempRoot, "package-runs", runId), { recursive: true });
   const report = packageRunNextSafeActionScript.buildNextSafeAction(runId, { repoRoot: tempRoot });
   const actionText = [report.stage, report.nextHumanAction, report.blockedUntil].join(" ");
 
-  assert.equal(report.stage, "Blocked / evidence missing");
+  // A run with no artifacts is at the front of the pipeline, not "blocked on a
+  // missing image-gen manifest". It must point to package selection (Step 1),
+  // never to image prompts / B-roll generation.
+  assert.equal(report.stage, "Package selection");
+  assert.match(report.nextHumanAction, /package candidates/i);
+  assert.match(report.blockedUntil, /selected-package\.json exists/i);
+  assert.doesNotMatch(actionText, /generation-manifest/i);
   assert.doesNotMatch(actionText, /production-ready/i);
   assert.doesNotMatch(actionText, /ready to publish/i);
   assert.doesNotMatch(actionText, /publish ready/i);
+});
+
+test("next safe action helper walks the front half by artifact (selected -> outline -> script -> image prompts)", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "next-safe-action-front-"));
+  const runId = "2026-05-06-ai-video-proof-plan";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  const stageOf = () => packageRunNextSafeActionScript.buildNextSafeAction(runId, { repoRoot: tempRoot }).stage;
+
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), "{}\n", "utf8");
+  assert.equal(stageOf(), "Research and outline");
+
+  fs.writeFileSync(path.join(runDir, "final-outline.md"), "# Outline\n", "utf8");
+  assert.equal(stageOf(), "Script");
+
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Script\n", "utf8");
+  assert.equal(stageOf(), "Claims check, packaging, image prompts");
+});
+
+test("next safe action helper hands off to image generation once image-prompts.json exists", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "next-safe-action-handoff-"));
+  const runId = "2026-05-06-ai-video-proof-plan";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "selected-package.json"), "{}\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "final-outline.md"), "# Outline\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Script\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "image-prompts.json"), "[]\n", "utf8");
+
+  const report = packageRunNextSafeActionScript.buildNextSafeAction(runId, { repoRoot: tempRoot });
+  // image-prompts.json present but no manifest yet -> back-half entry message.
+  assert.match(report.blockedUntil, /generation-manifest\.json is readable/i);
 });
 
 test("next safe action helper forbids approval publish and production_ready automation", () => {
