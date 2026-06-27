@@ -119,6 +119,7 @@ const DEFAULT_OPENAI_IMAGE_SIZE = '1536x1024';
 const DEFAULT_OPENAI_IMAGE_QUALITY = 'auto';
 const DEFAULT_OPENAI_IMAGE_FORMAT = 'png';
 const DEFAULT_OPENAI_IMAGE_TIMEOUT_MS = 120000;
+const FAVICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#111827"/><text x="32" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#f9fafb">EF</text></svg>';
 const CAPTURE_EVIDENCE_TARGETS = [
   'takes-log.md',
   'screen-recording-checklist.md',
@@ -7148,6 +7149,16 @@ function createServer(options = {}) {
     }
     if (req.method === 'GET' && url.pathname === STATUS_API) {
       sendJSON(res, 200, createStatusResponse());
+      return;
+    }
+
+    if ((req.method === 'GET' || req.method === 'HEAD') && url.pathname === '/favicon.ico') {
+      res.writeHead(200, {
+        'Content-Type': 'image/svg+xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=86400',
+        'X-Content-Type-Options': 'nosniff',
+      });
+      res.end(req.method === 'HEAD' ? undefined : FAVICON_SVG);
       return;
     }
 

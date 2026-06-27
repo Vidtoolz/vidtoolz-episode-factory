@@ -253,8 +253,17 @@
       function escapeHtml(value) {
         return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
       }
+      function normalizePayload(json) {
+        if (json && typeof json === "object" && json.ok === true && json.data && typeof json.data === "object") {
+          return json.data;
+        }
+        return json;
+      }
       function selectedRunId() { return $("runSelect").value; }
       function selectedRunPath() { return state.selected?.path || (selectedRunId() ? `package-runs/${selectedRunId()}` : ""); }
+      function selectedRunHasFile(key) {
+        return Boolean(state.selected?.files && state.selected.files[key] === true);
+      }
       function statusClass(pass, ready) { return pass ? "pass" : ready ? "warn" : "blocked"; }
       function setBadge(id, label, cls) { const el = $(id); el.textContent = label; el.className = `badge ${cls || ""}`.trim(); }
 
@@ -264,7 +273,7 @@
         let body = {};
         try { body = text ? JSON.parse(text) : {}; } catch (_) { body = { raw: text }; }
         if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`);
-        return body;
+        return normalizePayload(body);
       }
       async function fetchText(path) {
         const response = await fetch(path, { cache: "no-store" });
@@ -313,8 +322,12 @@
       async function onRunChange() {
         state.selected = state.runs.find((run) => run.runId === selectedRunId()) || null;
         state.results = {};
-        $("watchNotes").textContent = "Loading rough-cut-watch-notes.md...";
-        $("watchNotes").textContent = await fetchText(`${selectedRunPath()}/rough-cut-watch-notes.md`) || "rough-cut-watch-notes.md not found.";
+        if (selectedRunPath() && selectedRunHasFile("rough_cut_watch_notes")) {
+          $("watchNotes").textContent = "Loading rough-cut-watch-notes.md...";
+          $("watchNotes").textContent = await fetchText(`${selectedRunPath()}/rough-cut-watch-notes.md`) || "rough-cut-watch-notes.md not found.";
+        } else {
+          $("watchNotes").textContent = "rough-cut-watch-notes.md not found.";
+        }
         ["roughCutResult","finalReviewResult","exportResult","metadataResult","archiveResult"].forEach((id) => $(id).textContent = "No result yet.");
         ["roughApproved","roughFixes","finalApproved","finalFixes","metadataConfirmed","publishedConfirm"].forEach((id) => { $(id).checked = false; });
         $("youtubeUrl").value = "";

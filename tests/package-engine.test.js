@@ -1222,6 +1222,22 @@ function listenServer(server) {
 function closeServer(server) {
   return new Promise((resolve) => server.close(resolve));
 }
+function serverRequest(server, pathname, method = "GET") {
+  const address = server.address();
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      { hostname: "127.0.0.1", port: address.port, path: pathname, method },
+      (response) => {
+        let raw = "";
+        response.setEncoding("utf8");
+        response.on("data", (c) => { raw += c; });
+        response.on("end", () => resolve({ statusCode: response.statusCode, headers: response.headers, body: raw }));
+      }
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
 function thumbnailRequest(server, options = {}) {
   const address = server.address();
   const body = JSON.stringify(options.body || { topic: "guard test", count: 3 });
@@ -1249,6 +1265,24 @@ function thumbnailRequest(server, options = {}) {
     req.end();
   });
 }
+
+test("server serves favicon.ico without a 404 console error", async () => {
+  const server = packageEngineServer.createServer();
+  try {
+    await listenServer(server);
+    const res = await serverRequest(server, "/favicon.ico");
+    assert.equal(res.statusCode, 200);
+    assert.match(res.headers["content-type"], /^image\/svg\+xml/);
+    assert.match(res.body, /<svg/);
+
+    const headRes = await serverRequest(server, "/favicon.ico", "HEAD");
+    assert.equal(headRes.statusCode, 200);
+    assert.match(headRes.headers["content-type"], /^image\/svg\+xml/);
+    assert.equal(headRes.body, "");
+  } finally {
+    await closeServer(server);
+  }
+});
 
 test("thumbnails endpoint rejects POST without a write nonce (403)", async () => {
   const server = packageEngineServer.createServer();

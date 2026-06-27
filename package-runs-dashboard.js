@@ -2486,6 +2486,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
 
   function thumbnailCandidateSources(run = {}) {
     const base = run.path || "";
+    if (!run.files || run.files.thumbnail_mockup !== true) return [];
     if (!base) return [];
     return ["thumbnail-mockup.svg", "thumbnail-mockup.png", "thumbnail-mockup.jpg", "thumbnail-mockup.jpeg"].map((name) => `${base}/${name}`);
   }

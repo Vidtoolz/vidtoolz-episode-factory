@@ -4002,6 +4002,33 @@ test("renderCompactPipelineStrip includes blocker reason when present", () => {
   assert.match(html, /Creator QA failed/);
 });
 
+test("dashboard thumbnail renderer avoids missing image requests when no thumbnail is indexed", () => {
+  const { renderVideoThumbnail } = packageRunsDashboard;
+
+  const html = renderVideoThumbnail({
+    runId: "2026-06-27-no-thumbnail",
+    path: "package-runs/2026-06-27-no-thumbnail",
+    files: { thumbnail_mockup: false },
+  });
+
+  assert.match(html, /No thumbnail preview/);
+  assert.doesNotMatch(html, /<img/);
+  assert.doesNotMatch(html, /thumbnail-mockup\.svg/);
+});
+
+test("dashboard thumbnail renderer uses indexed thumbnail paths when a mockup exists", () => {
+  const { renderVideoThumbnail } = packageRunsDashboard;
+
+  const html = renderVideoThumbnail({
+    runId: "2026-05-06-ai-video-proof-plan",
+    path: "package-runs/2026-05-06-ai-video-proof-plan",
+    files: { thumbnail_mockup: true },
+  });
+
+  assert.match(html, /<img/);
+  assert.match(html, /package-runs\/2026-05-06-ai-video-proof-plan\/thumbnail-mockup\.svg/);
+});
+
 // ── Wrapped-response normalization regression tests ─────────────────────────
 // Proves package-runs-dashboard.js browser code unwraps { ok, data } responses
 // from sendJSON() before reading success fields in capture/evidence workflows.
@@ -4173,6 +4200,29 @@ test("package-runs-dashboard: error response with top-level error field is not u
   assert.strictEqual(unwrapped, errorResponse);
   assert.equal(unwrapped.error, "Invalid nonce");
   assert.equal(unwrapped.errorCode, "AUTH_FAILED");
+});
+
+test("publish-gate normalizes wrapped package-run list responses before reading runs", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "publish-gate.html"), "utf8");
+  assert.match(source, /function normalizePayload\s*\(json\)/);
+  assert.match(source, /return normalizePayload\(body\);/);
+  assert.match(source, /function selectedRunHasFile\s*\(key\)/);
+  assert.match(source, /selectedRunHasFile\("rough_cut_watch_notes"\)/);
+
+  const match = source.match(/function normalizePayload\(json\) \{([\s\S]*?)\n      \}/);
+  assert.ok(match, "publish-gate normalizePayload function should be extractable");
+  const normalizePayload = new Function("json", match[1]);
+  const wrapped = {
+    ok: true,
+    data: {
+      runs: [{ runId: "2026-05-06-ai-video-proof-plan", path: "package-runs/2026-05-06-ai-video-proof-plan" }],
+      inactiveRuns: [],
+    },
+  };
+
+  const payload = normalizePayload(wrapped);
+  assert.equal(payload.runs[0].path, "package-runs/2026-05-06-ai-video-proof-plan");
+  assert.strictEqual(normalizePayload({ ok: false, error: "Nope" }).error, "Nope");
 });
 
 // ── Fix #2: shared plain-language next-action module (used by dashboard + build page) ──
