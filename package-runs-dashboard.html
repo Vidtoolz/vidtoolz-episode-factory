@@ -4,10 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Package Runs Dashboard</title>
-    <link rel="stylesheet" href="styles.css?v=1.8.0" />
+    <link rel="stylesheet" href="styles.css?v=1.9.0" />
   </head>
   <body>
-  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html" class="active">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html" class="active">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="new-video-build.html">Build New Video</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
 <details class="page-guide" open>
   <summary>Page Guide — What is this?</summary>
   <div class="page-guide-body">
@@ -25,6 +25,7 @@
         </div>
         <div class="topbar-actions">
           <a class="nav-link-button" href="index.html">Episode Factory</a>
+          <a class="nav-link-button btn-primary" href="new-video-build.html">Build Guide</a>
           <a class="nav-link-button" href="package-engine.html">Package Engine</a>
           <a class="nav-link-button" href="mission-control.html">Mission Control</a>
           <a class="nav-link-button" href="production-day-dashboard.html">Production Day</a>
@@ -33,6 +34,18 @@
       </header>
 
       <p id="packageRunsStatus" class="global-status" role="status"></p>
+
+      <section id="whatNextBanner" class="what-next-banner" aria-label="What next">
+        <div>
+          <p class="eyebrow">What Next</p>
+          <h2>Loading next safe action...</h2>
+          <p class="muted">Reading local package-run evidence only.</p>
+        </div>
+        <div class="what-next-actions">
+          <a class="btn-primary" href="#currentFocusPanel">Open Focus Panel</a>
+          <button type="button" class="btn-secondary" disabled title="Complete the required artifact or gate file; this cockpit does not mark durable workflow state done.">Mark Done</button>
+        </div>
+      </section>
 
       <main class="package-runs-dashboard" data-dashboard-mode="focus">
         <section id="currentFocusPanel" class="current-focus-panel creator-cockpit-panel" aria-label="Creator Cockpit">

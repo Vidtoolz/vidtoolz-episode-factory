@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Resume Work — VIDTOOLZ</title>
-    <link rel="stylesheet" href="styles.css?v=1.8.0">
+    <link rel="stylesheet" href="styles.css?v=1.9.0">
     <style>
       .resume-container { max-width: 960px; margin: 0 auto; padding: 32px 24px 48px; }
       .resume-header { margin-bottom: 32px; }
@@ -74,6 +74,12 @@
         font-weight: 600;
         margin-top: 12px;
       }
+      .resume-card-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
 
       .empty-state {
         text-align: center;
@@ -102,7 +108,7 @@
     </style>
   </head>
   <body>
-  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html" class="active">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html" class="active">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="new-video-build.html">Build New Video</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
 <details class="page-guide" open>
   <summary>Page Guide — What is this?</summary>
   <div class="page-guide-body">
@@ -151,14 +157,13 @@
           const html = runs.map(run => buildCard(run)).join('');
           grid.innerHTML = html;
 
-          grid.querySelectorAll('.resume-card').forEach(card => {
+          grid.querySelectorAll('.resume-card, [data-continue-run]').forEach(card => {
             card.addEventListener('click', (e) => {
+              if (e.target.closest('a') && !e.target.closest('[data-continue-run]')) return;
               e.preventDefault();
-              const runId = card.dataset.runId;
-              // Open specific run in the runs dashboard with URL parameter
-              const url = new URL('package-runs-dashboard.html', window.location.origin);
-              url.searchParams.set('run', runId);
-              window.location.href = url.toString();
+              const runId = card.dataset.runId || card.dataset.continueRun;
+              const bucket = card.dataset.workflowBucket || '';
+              window.location.href = continueUrl(runId, bucket);
             });
           });
         })
@@ -189,7 +194,7 @@
         }
 
         return `
-          <div class="resume-card" data-run-id="${escapeHtml(run.runId)}">
+          <div class="resume-card" data-run-id="${escapeHtml(run.runId)}" data-workflow-bucket="${escapeHtml(bucket)}">
             <div class="resume-card-title">
               <span>${escapeHtml(run.title || run.runId)}</span>
               <span class="status-pill ${statusClass}">${statusLabel}</span>
@@ -207,7 +212,24 @@
               </div>
             </div>
             ${isComplete ? '<div class="resume-card-stage">✓ All stages complete</div>' : `<div class="resume-card-stage">Next: ${escapeHtml(stage)}</div>`}
+            <div class="resume-card-actions">
+              <button type="button" class="btn-primary" data-continue-run="${escapeHtml(run.runId)}" data-workflow-bucket="${escapeHtml(bucket)}">Continue</button>
+              <a class="btn-secondary" href="new-video-build.html">Build Guide</a>
+            </div>
           </div>`;
+      }
+
+      function continueUrl(runId, bucket) {
+        const b = (bucket || '').toLowerCase();
+        let page = 'package-runs-dashboard.html';
+        if (/package.*select|idea|topic/.test(b)) page = 'package-engine.html';
+        else if (/image.*prompt/.test(b)) page = 'image-prompts-editor.html';
+        else if (/image.*select/.test(b)) page = 'image-selector.html';
+        else if (/image.*gen|video.*image|wan|presto|resolve|rough.cut|second.cut/.test(b)) page = 'production-pipeline.html';
+        else if (/publish|publication|archive|final/.test(b)) page = 'publish-gate.html';
+        const url = new URL(page, window.location.origin);
+        if (runId) url.searchParams.set('run', runId);
+        return url.toString();
       }
 
       function formatDate(runId) {

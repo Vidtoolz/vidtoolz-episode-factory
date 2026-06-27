@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Production Pipeline</title>
-    <link rel="stylesheet" href="styles.css?v=1.8.0" />
+    <link rel="stylesheet" href="styles.css?v=1.9.0" />
     <style>
       body { background: var(--bg); }
       .pipeline-shell { margin: 0 auto; max-width: 1180px; padding: 22px 18px 56px; }
@@ -28,6 +28,12 @@
         text-decoration: none;
       }
       .pipeline-nav a:hover { border-color: var(--accent); color: #fff; }
+      .external-tool-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 14px;
+      }
       .top-grid { display: grid; gap: 12px; grid-template-columns: 2fr 1fr; margin-bottom: 14px; }
       .highlight, .status-panel, .package-card {
         background: var(--panel);
@@ -205,12 +211,12 @@
     </style>
   </head>
   <body>
-  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="production-pipeline.html" class="active">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="new-video-build.html">Build New Video</a><a href="production-pipeline.html" class="active">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
 <details class="page-guide" open>
   <summary>Page Guide — What is this?</summary>
   <div class="page-guide-body">
     <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">AI generation pipeline: FLUX images, image selection, Wan2.2 video generation on PRESTO (or manual Kling). Shows live PRESTO/ComfyUI status.</span></div>
-    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">1. Generate FLUX images. 2. <a href="image-selector.html">Select images</a>. 3. Submit to PRESTO or copy Kling prompts. 4. Create Resolve Assembly</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">1. Generate FLUX images. 2. <a href="image-selector.html">Select images</a>. 3. Submit to PRESTO or copy Kling prompts. 4. Create Resolve Assembly. After editing and review, continue to <a href="publish-gate.html">Publish Gate</a>.</span></div>
     <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Status badges: PRESTO reachable, queue state, Wan lock. Each package card has FLUX controls, PRESTO controls, video prompts panel, and Resolve assembly button.</span></div>
   </div>
 </details>
@@ -225,7 +231,14 @@
         <button id="refresh-button" class="primary-btn" type="button">Refresh</button>
       </header>
 
-      
+      <div class="external-tool-row" aria-label="External production tools">
+        <a class="btn-external" href="http://localhost:8188" target="_blank" rel="noopener">Open vidnux ComfyUI</a>
+        <a class="btn-external" href="http://192.168.50.187:8188" target="_blank" rel="noopener">Open PRESTO ComfyUI</a>
+        <a class="btn-external" href="http://localhost:8099" target="_blank" rel="noopener">Open AIGEN Review View</a>
+        <a class="btn-primary" href="aigen-review.html" target="_blank">Open Cockpit Review</a>
+        <a class="btn-secondary" href="publish-gate.html">Go to Publish Gate</a>
+      </div>
+
 
       <section class="top-grid">
         <div class="highlight">
@@ -289,6 +302,7 @@
       const FLUX_CANCEL_API = "/api/flux/cancel";
       const FLUX_RESULTS_API = "/api/flux/results";
       const DEFAULT_PRESTO_URL = "http://192.168.50.187:8188";
+      const VIDNUX_COMFYUI_URL = "http://localhost:8188";
       const content = document.getElementById("content");
       const nextAction = document.getElementById("next-action");
       const statusBadges = document.getElementById("status-badges");
@@ -755,6 +769,12 @@
           prestoControls.className = "presto-controls";
           const prestoTitle = document.createElement("h3");
           prestoTitle.textContent = "PRESTO Wan2.2";
+          const prestoOpen = document.createElement("a");
+          prestoOpen.href = DEFAULT_PRESTO_URL;
+          prestoOpen.target = "_blank";
+          prestoOpen.rel = "noopener";
+          prestoOpen.className = "btn-external";
+          prestoOpen.textContent = "Open PRESTO ComfyUI";
           const prestoState = prestoSubmitState(pkg, data);
           const prestoButton = document.createElement("button");
           prestoButton.type = "button";
@@ -774,7 +794,7 @@
             prestoStatus.active && prestoStatus.active.package_id === pkg.id ? prestoStatus.active : null,
             prestoStatus.completed && prestoStatus.completed.package_id === pkg.id ? prestoStatus.completed : null
           );
-          prestoControls.append(prestoTitle, prestoButton, prestoNote, progress);
+          prestoControls.append(prestoTitle, prestoOpen, prestoButton, prestoNote, progress);
           const videoPromptsToggle = document.createElement("button");
           videoPromptsToggle.type = "button";
           videoPromptsToggle.className = "btn-secondary";
@@ -797,6 +817,12 @@
           fluxControls.className = "flux-controls";
           const fluxTitle = document.createElement("h3");
           fluxTitle.textContent = "FLUX local";
+          const fluxOpen = document.createElement("a");
+          fluxOpen.href = VIDNUX_COMFYUI_URL;
+          fluxOpen.target = "_blank";
+          fluxOpen.rel = "noopener";
+          fluxOpen.className = "btn-external";
+          fluxOpen.textContent = "Open vidnux ComfyUI";
           const fluxState = fluxSubmitState(pkg);
           const fluxButton = document.createElement("button");
           fluxButton.type = "button";
@@ -823,7 +849,7 @@
             fluxStatus.active && fluxStatus.package_id === pkg.id ? fluxStatus : null,
             !fluxStatus.active && fluxStatus.package_id === pkg.id && fluxStatus.exit_state ? fluxStatus : null
           );
-          fluxControls.append(fluxTitle, fluxButton, fluxDryRunLabel, fluxNote, fluxProgress);
+          fluxControls.append(fluxTitle, fluxOpen, fluxButton, fluxDryRunLabel, fluxNote, fluxProgress);
           const results = renderPrestoResults(pkg);
           const fluxResultPanel = renderFluxResults(pkg);
           card.append(title, metrics, next, actions, fluxControls, prestoControls, videoPromptsToggle, videoPromptsPanel);

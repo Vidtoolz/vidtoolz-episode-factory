@@ -2641,7 +2641,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         <div class="next-action-description">${escapeHtml(actionDescription)}</div>
         <div class="next-action-command">
           <code>${escapeHtml(command)}</code>
-          <button type="button" class="copy-btn" data-copy-command="${escapeHtml(command)}" onclick="navigator.clipboard.writeText(this.dataset.copyCommand); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy Command', 2000)">Copy Command</button>
+          <button type="button" class="copy-btn btn-copy" data-copy-command="${escapeHtml(command)}">Copy Command</button>
         </div>
         ${missing.length > 0 ? `
         <div class="missing-artifacts">
@@ -3367,6 +3367,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
   function createBrowserApp(doc = globalScope.document) {
     const els = {
       status: doc.querySelector("#packageRunsStatus"),
+      whatNextBanner: doc.querySelector("#whatNextBanner"),
       dashboard: doc.querySelector(".package-runs-dashboard"),
       currentFocusPanel: doc.querySelector("#currentFocusPanel"),
       currentFocusContent: doc.querySelector("[data-focus-content='current']"),
@@ -3729,6 +3730,40 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       );
     }
 
+    function requestedRunId() {
+      try {
+        return new URLSearchParams(globalScope.location && globalScope.location.search ? globalScope.location.search : "").get("run") || "";
+      } catch (_error) {
+        return "";
+      }
+    }
+
+    function nextSafeActionApiUrl(baseUrl) {
+      const runId = requestedRunId();
+      if (!runId) return baseUrl;
+      const separator = baseUrl.includes("?") ? "&" : "?";
+      return `${baseUrl}${separator}run=${encodeURIComponent(runId)}`;
+    }
+
+    function renderWhatNextBanner(payload) {
+      if (!els.whatNextBanner) return;
+      const panel = normalizeNextSafeAction(payload || {});
+      const runId = panel.activeRun || requestedRunId();
+      const actionText = panel.nextHumanAction || panel.nextAiAction || "Open the focus panel and inspect the current gate.";
+      const dashboardHref = runId ? `package-runs-dashboard.html?run=${encodeURIComponent(runId)}#videoRoomPanel` : "#currentFocusPanel";
+      els.whatNextBanner.innerHTML = `
+        <div>
+          <p class="eyebrow">What Next</p>
+          <h2>${escapeHtml(actionText)}</h2>
+          <p class="muted">Stage: ${escapeHtml(panel.stage || "Unknown")} ${runId ? `&middot; Run: <code>${escapeHtml(runId)}</code>` : ""}</p>
+        </div>
+        <div class="what-next-actions">
+          <a class="btn-primary" href="${escapeHtml(dashboardHref)}">Open Relevant View</a>
+          <a class="btn-secondary" href="new-video-build.html">Build Guide</a>
+          <button type="button" class="btn-secondary" disabled title="Complete the required artifact or gate file; this cockpit does not mark durable workflow state done.">Mark Done</button>
+        </div>`;
+    }
+
     function load() {
       renderBeginningTriageFromStorage();
       if (els.grid) els.grid.innerHTML = renderIndexLoadingSkeleton();
@@ -3780,8 +3815,9 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         localWriteConfig && localWriteConfig.roughCutInputConsole && localWriteConfig.roughCutInputConsole.nextSafeActionApi
           ? localWriteConfig.roughCutInputConsole.nextSafeActionApi
           : "/api/package-runs/next-safe-action";
-      return apiFetch(nextSafeActionApi, { cache: "no-store" })
+      return apiFetch(nextSafeActionApiUrl(nextSafeActionApi), { cache: "no-store" })
         .then((payload) => {
+          renderWhatNextBanner(payload);
           els.nextSafeActionPanel.innerHTML = renderNextSafeActionPanel(payload);
           if (els.currentFocusContent) {
             els.currentFocusContent.outerHTML = renderCurrentFocus(payload, { beginningState: readBeginningTriageState(), index });
@@ -3792,6 +3828,9 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
           loadPipelinePanels(payload && payload.activeRun ? payload.activeRun : "");
         })
         .catch((error) => {
+          if (els.whatNextBanner) {
+            els.whatNextBanner.innerHTML = `<div><p class="eyebrow">What Next</p><h2>Next safe action unavailable</h2><p class="muted">${escapeHtml(error.message)}</p></div><div class="what-next-actions"><a class="btn-secondary" href="new-video-build.html">Build Guide</a></div>`;
+          }
           els.nextSafeActionPanel.innerHTML = `<div class="next-safe-action-card"><p class="eyebrow">NEXT SAFE ACTION</p><h2>Unavailable</h2><p class="muted">${escapeHtml(error.message)}</p>${renderFetchError(error.message, "next-safe-action")}</div>`;
         });
     }
@@ -4012,6 +4051,12 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       if (copyButton) {
         event.preventDefault();
         copyCaptureRow(copyButton);
+        return;
+      }
+      const commandCopyButton = event.target.closest("[data-copy-command]");
+      if (commandCopyButton) {
+        event.preventDefault();
+        copyCommandButton(commandCopyButton);
         return;
       }
       const saveRoughCut = event.target.closest("[data-save-rough-cut-notes]");
@@ -4406,6 +4451,45 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         return globalScope.navigator.clipboard.writeText(text);
       }
       return Promise.reject(new Error("Clipboard API unavailable."));
+    }
+
+    function fallbackSelectText(text) {
+      const textarea = doc.createElement("textarea");
+      textarea.value = text || "";
+      textarea.setAttribute("readonly", "readonly");
+      textarea.style.position = "fixed";
+      textarea.style.left = "12px";
+      textarea.style.bottom = "12px";
+      textarea.style.width = "min(680px, calc(100vw - 24px))";
+      textarea.style.height = "160px";
+      textarea.style.zIndex = "9999";
+      doc.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      setTimeout(() => {
+        if (textarea.parentNode) textarea.parentNode.removeChild(textarea);
+      }, 8000);
+    }
+
+    function copyCommandButton(button) {
+      const original = button.textContent || "Copy Command";
+      const command = button.dataset.copyCommand || "";
+      copyText(command)
+        .then(() => {
+          button.textContent = "Copied!";
+          button.classList.add("copied");
+          setTimeout(() => {
+            button.textContent = original;
+            button.classList.remove("copied");
+          }, 2000);
+        })
+        .catch(() => {
+          fallbackSelectText(command);
+          button.textContent = "Press Ctrl+C";
+          setTimeout(() => {
+            button.textContent = original;
+          }, 2000);
+        });
     }
 
     function copyCaptureRow(button) {

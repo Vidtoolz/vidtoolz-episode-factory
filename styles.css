@@ -67,15 +67,111 @@ button:disabled {
   opacity: 0.62;
 }
 
+.btn-primary,
+.btn-secondary,
+.btn-success,
+.btn-warning,
+.btn-external,
+.btn-copy,
+.primary-btn,
+.secondary-btn,
+.nav-link-button,
+.action-button {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  text-decoration: none;
+}
+
+.btn-primary,
 .primary-btn {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+  font-weight: 700;
+}
+
+.btn-primary:hover,
+.primary-btn:hover {
+  background: #388bfd;
+  border-color: #388bfd;
+}
+
+.btn-secondary,
+.secondary-btn {
+  background: transparent;
+  border-color: var(--border-strong);
   color: var(--text);
 }
 
-.primary-btn:hover {
+.btn-secondary:hover,
+.secondary-btn:hover {
+  background: var(--panel-soft);
+  border-color: var(--accent-blue);
+}
+
+.btn-success {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+  font-weight: 700;
+}
+
+.btn-success:hover {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
+}
+
+.btn-warning {
+  background: var(--warning);
+  border-color: var(--warning);
+  color: #161b22;
+  font-weight: 700;
+}
+
+.btn-warning:hover {
+  background: #bb8009;
+  border-color: #bb8009;
+  color: #fff;
+}
+
+.btn-external {
+  background: var(--accent-purple);
+  border-color: var(--accent-purple);
+  color: #fff;
+  font-weight: 700;
+}
+
+.btn-external:hover {
+  background: #8957e5;
+  border-color: #8957e5;
+}
+
+.btn-copy {
+  background: #173f2c;
+  border-color: rgba(63, 185, 80, 0.7);
+  color: #d2f8d2;
+  font-weight: 700;
+}
+
+.btn-copy:hover,
+.btn-copy.copied {
+  background: #1f6f43;
+  border-color: var(--success);
+  color: #fff;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-success:disabled,
+.btn-warning:disabled,
+.btn-external:disabled,
+.btn-copy:disabled,
+.primary-btn:disabled,
+.secondary-btn:disabled {
+  filter: grayscale(0.35);
 }
 
 .danger-btn {
@@ -109,6 +205,47 @@ button:disabled {
 
 .global-status.error {
   color: var(--danger);
+}
+
+.what-next-banner {
+  align-items: center;
+  background: linear-gradient(180deg, rgba(88, 166, 255, 0.12), rgba(22, 27, 34, 0.98));
+  border: 1px solid rgba(88, 166, 255, 0.45);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  margin: -4px auto 14px;
+  max-width: 1640px;
+  padding: 14px;
+}
+
+.what-next-banner h2 {
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+
+.what-next-banner p {
+  margin: 0;
+}
+
+.what-next-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+  .what-next-banner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .what-next-actions {
+    justify-content: flex-start;
+  }
 }
 
 .hidden {

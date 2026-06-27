@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VIDTOOLZ — Build a New Video</title>
+<link rel="stylesheet" href="styles.css?v=1.9.0" />
+<style>
+  .build-guide { max-width: 900px; margin: 0 auto; padding: 24px; }
+  .build-guide h1 { margin-bottom: 4px; }
+  .build-guide .subtitle { color: var(--muted, #888); margin-bottom: 24px; font-size: 14px; }
+
+  .step-card {
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    background: rgba(255,255,255,0.03);
+    transition: border-color 0.2s;
+  }
+  .step-card:hover { border-color: rgba(255,255,255,0.3); }
+  .step-card.hermes-scope { border-left: 3px solid #4a9eff; }
+  .step-card.mikko-scope { border-left: 3px solid #f59e0b; }
+  .step-card.current-step {
+    border-color: #58a6ff;
+    box-shadow: 0 0 0 1px rgba(88,166,255,0.55);
+  }
+
+  .step-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .step-number {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #4a9eff; color: #fff; font-weight: 700; font-size: 14px; flex-shrink: 0;
+  }
+  .step-card.mikko-scope .step-number { background: #f59e0b; }
+  .step-title { font-size: 16px; font-weight: 600; }
+  .step-badge { font-size: 11px; padding: 2px 8px; border-radius: 4px; margin-left: auto; white-space: nowrap; }
+  .step-badge.hermes { background: rgba(74,158,255,0.15); color: #6bb3ff; }
+  .step-badge.mikko { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .step-badge.gate { background: rgba(239,68,68,0.15); color: #f87171; }
+
+  .step-body { margin-left: 44px; }
+  .step-body p { margin: 4px 0; line-height: 1.6; font-size: 14px; }
+  .step-body ul { margin: 4px 0 8px 0; padding-left: 20px; }
+  .step-body li { margin: 2px 0; line-height: 1.5; font-size: 14px; }
+  .step-body code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+
+  .step-actions { margin-left: 44px; margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .step-actions a, .step-actions button {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 13px;
+    border: 1px solid rgba(255,255,255,0.2); cursor: pointer;
+    background: rgba(255,255,255,0.05); color: inherit;
+    transition: background 0.2s;
+  }
+  .step-actions a:hover, .step-actions button:hover { background: rgba(255,255,255,0.12); }
+  .step-actions a.primary, .step-actions button.primary {
+    background: #4a9eff; border-color: #4a9eff; color: #fff; font-weight: 600;
+  }
+  .step-actions a.primary:hover { background: #3a8eef; }
+  .step-actions a.btn-primary { background: #58a6ff; border-color: #58a6ff; color: #fff; font-weight: 700; }
+  .step-actions a.btn-secondary { background: transparent; border-color: var(--border-strong); color: var(--text); }
+  .step-actions a.btn-external { background: #a371f7; border-color: #a371f7; color: #fff; font-weight: 700; }
+
+  .warning-box {
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 6px; padding: 12px 16px; margin: 8px 0;
+    background: rgba(239,68,68,0.05);
+    font-size: 13px; line-height: 1.5;
+  }
+  .warning-box strong { color: #f87171; }
+
+  .info-box {
+    border: 1px solid rgba(74,158,255,0.2);
+    border-radius: 6px; padding: 12px 16px; margin: 8px 0;
+    background: rgba(74,158,255,0.05);
+    font-size: 13px; line-height: 1.5;
+  }
+
+  .current-step-banner {
+    align-items: center;
+    background: var(--panel);
+    border: 1px solid rgba(88,166,255,0.45);
+    border-radius: 8px;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    margin: 0 0 16px;
+    padding: 12px 14px;
+  }
+  .current-step-banner strong { color: #fff; }
+  .current-step-banner span { color: var(--muted); font-size: 13px; }
+
+  .checkpoint {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 8px; font-size: 13px; color: var(--muted, #888);
+  }
+  .checkpoint input[type="checkbox"] { width: 16px; height: 16px; }
+
+  .divider {
+    text-align: center; margin: 24px 0; padding: 12px;
+    border-top: 1px dashed rgba(255,255,255,0.15);
+    border-bottom: 1px dashed rgba(255,255,255,0.15);
+    font-size: 13px; color: var(--muted, #888);
+  }
+
+  .page-guide-section {
+    max-width: 900px; margin: 0 auto 24px; padding: 0 24px;
+  }
+
+  .collapsible { cursor: pointer; }
+  .collapsible-content { display: none; }
+  .collapsible.open + .collapsible-content { display: block; }
+</style>
+</head>
+<body>
+<nav class="ef-nav">
+  <span class="ef-nav-brand">EF</span>
+  <a href="resume.html">Resume</a>
+  <a href="topic-scout.html">Topic Scout</a>
+  <a href="package-engine.html">Package Engine</a>
+  <a href="package-runs-dashboard.html">Dashboard</a>
+  <a href="mission-control.html">Mission Control</a>
+  <span class="ef-nav-divider"></span>
+  <a href="index.html">Episode Board</a>
+  <a href="new-video-build.html" class="active">Build New Video</a>
+  <a href="image-prompts-editor.html">Image Prompts</a>
+  <a href="image-selector.html">Image Select</a>
+  <a href="aigen-review.html">AIGEN Review</a>
+  <span class="ef-nav-divider"></span>
+  <a href="production-day-dashboard.html">Production Day</a>
+  <a href="publish-gate.html">Publish Gate</a>
+</nav>
+
+<details class="page-guide" open>
+  <summary>Page Guide — What is this?</summary>
+  <div class="page-guide-body">
+    <div class="page-guide-row">
+      <span class="page-guide-label">What</span>
+      <span class="page-guide-text">Step-by-step guide for building a new VIDTOOLZ video from scratch. Follow the steps in order. Each step has clear instructions and buttons to open the tools you need.</span>
+    </div>
+    <div class="page-guide-row">
+      <span class="page-guide-label">Before starting</span>
+      <span class="page-guide-text">Run desktop shortcut "02-Systems-Check" first. It verifies VIDNAS is mounted, the Package Engine server is running, and PRESTO ComfyUI is reachable.</span>
+    </div>
+    <div class="page-guide-row">
+      <span class="page-guide-label">Color coding</span>
+      <span class="page-guide-text">Blue steps = Hermes assists. Orange steps = Mikko's domain (Resolve, camera, publish). Red badge = gate (must pass before proceeding).</span>
+    </div>
+    <div class="page-guide-row">
+      <span class="page-guide-label">If interrupted</span>
+      <span class="page-guide-text">Use desktop shortcut "01-Resume-Work" to find where you left off and continue.</span>
+    </div>
+  </div>
+</details>
+
+<div class="build-guide">
+  <h1>Build a New Video</h1>
+  <p class="subtitle">Proven pattern: one claim, one concrete example, one point. 1-3 minutes, vertical 9:16, YouTube Shorts. "Explain to a friend" tone.</p>
+
+  <div class="current-step-banner" id="currentStepBanner">
+    <div>
+      <strong id="currentStepLabel">Current step: Start at Step 1</strong>
+      <span id="currentStepHint">Use URL hash links like #step7 to jump directly to a production step.</span>
+    </div>
+    <a class="btn-secondary" href="#step1">Step 1</a>
+  </div>
+
+  <div class="info-box">
+    <strong>Brand direction:</strong> "Show craft, don't explain frameworks." Pick a topic where you can demonstrate something concrete on screen — a real workflow, a real tool result, a real editing technique. Not abstract theory.
+  </div>
+
+  <div class="warning-box">
+    <strong>Key question before scripting:</strong> "What will this video prove on screen?" If the answer is vague, fix it before writing the script. The May 6 video failed because this was asked too late.
+  </div>
+
+  <!-- STAGE 1 -->
+  <div class="step-card hermes-scope" id="step1">
+    <div class="step-header">
+      <span class="step-number">1</span>
+      <span class="step-title">Pick a Topic</span>
+      <span class="step-badge hermes">Hermes assists</span>
+    </div>
+    <div class="step-body">
+      <p>Browse system-generated candidates or submit your own topic idea. The system reviews it against 7 brand criteria (AI relevance, authority fit, visual potential, specificity, one-claim pattern, trust risk, abandoned-topic echo). This is an assessment, not an approval.</p>
+      <ul>
+        <li>Open Topic Scout — browse 25 candidates (left column) or type your own idea (right column)</li>
+        <li>Your submitted topic auto-appears in the Package Engine as a candidate card</li>
+        <li>Open Package Engine, review all candidates, click "Select winner" on your chosen one</li>
+        <li>Click "Confirm and Save" in the confirmation panel — this writes selected-package.json and selected-package.md to the run folder</li>
+      </ul>
+      <div class="warning-box">
+        <strong>Do not write any script before topic selection is done.</strong> The Topic Scout exists to enforce this. No jumping ahead.
+      </div>
+    </div>
+    <div class="step-actions">
+      <a href="topic-scout.html" target="_blank" class="btn-primary">Open Topic Scout</a>
+      <a href="package-engine.html" target="_blank" class="btn-secondary">Open Package Engine</a>
+    </div>
+    <div class="checkpoint">
+      <input type="checkbox" id="cp1"><label for="cp1">Topic selected and confirmed — selected-package.json exists in run folder</label>
+    </div>
+  </div>
+
+  <!-- STAGE 2 -->
+  <div class="step-card hermes-scope" id="step2">
+    <div class="step-header">
+      <span class="step-number">2</span>
+      <span class="step-title">Research and Outline</span>
+      <span class="step-badge hermes">Hermes assists</span>
+    </div>
+    <div class="step-body">
+      <p>Find 2-3 credible sources that support your claim. Use ChatGPT or Hermes web_search. Do not invent sources.</p>
+      <ul>
+        <li>Save sources and key quotes in <code>research-pack.md</code> in the run folder</li>
+        <li>Write <code>research-sufficiency-review.md</code>: is there enough proof to proceed? If thin, stop and pick a different topic</li>
+        <li>Use the Package Engine outline prompt handoff. It shows the prompt, copies it, and opens ChatGPT or Claude.</li>
+        <li>Save output as <code>outlines.md</code>. Choose the best outline. Save as <code>final-outline.md</code></li>
+      </ul>
+      <div class="info-box">
+        <strong>Note:</strong> There is no cockpit page for the research stage. You create research-pack.md and research-sufficiency-review.md manually in the run folder. For the outline prompt, use Package Engine's "Open ChatGPT" or "Open Claude" buttons.
+      </div>
+    </div>
+    <div class="step-actions">
+      <a href="package-engine.html" target="_blank" class="btn-primary">Open Package Engine Handoff</a>
+      <span class="muted" style="align-self: center; font-size: 0.9rem;">Package Engine copies the outline prompt, then opens ChatGPT/Claude for you.</span>
+    </div>
+    <div class="checkpoint">
+      <input type="checkbox" id="cp2"><label for="cp2">research-pack.md and final-outline.md exist in run folder</label>
+    </div>
+  </div>
+
+  <!-- STAGE 3 -->
+  <div class="step-card hermes-scope" id="step3">
+    <div class="step-header">
+      <span class="step-number">3</span>
+      <span class="step-title">Write the Script</span>
+      <span class="step-badge hermes">Hermes assists</span>
+    </div>
+    <div class="step-body">
+      <p>Draft the script using the proven pattern:</p>
+      <ul>
+        <li><strong>ONE claim</strong> + <strong>ONE concrete real-life example</strong> + <strong>ONE clear point</strong></li>
+        <li>Conversational "explain to a friend" tone with humor</li>
+        <li>Under 250 words (target 1-3 minutes spoken, ~390-450 words at 130-150 wpm max)</li>
+        <li>Mark presenter segments with <code>[A-ROLL]</code> and generated visuals with <code>[B-ROLL]</code></li>
+      </ul>
+      <p>Save as <code>script-draft.md</code>. Get a second opinion from ChatGPT or Hermes. Revise and save as <code>final-script.md</code>. Read aloud and time it — if over 3 minutes, cut.</p>
+    </div>
+    <div class="step-actions">
+      <a href="https://chatgpt.com/" target="_blank" rel="noopener" class="btn-external">Open ChatGPT</a>
+      <a href="https://claude.ai/" target="_blank" rel="noopener" class="btn-external">Open Claude</a>
+      <span class="muted" style="align-self: center; font-size: 0.9rem;">No prompt is auto-copied here. Paste your script-draft.md manually for review.</span>
+    </div>
+    <div class="checkpoint">
+      <input type="checkbox" id="cp3"><label for="cp3">final-script.md exists and has been read aloud and timed</label>
+    </div>
+  </div>
+
+  <!-- STAGE 4 -->
+  <div class="step-card hermes-scope" id="step4">
+    <div class="step-header">
+      <span class="step-number">4</span>
+      <span class="step-title">Claims Check</span>
+      <span class="step-badge hermes">Hermes assists</span>
+    </div>
+    <div class="step-body">
+      <ul>
+        <li>List every factual assertion in final-script.md</li>
+        <li>Cross-check each against research-pack.md sources</li>
+        <li>Flag or remove unsupported claims</li>
+        <li>Record the check result in <code>STATUS.md</code> in the run folder</li>
+      </ul>
+      <div class="warning-box">
+        <strong>Do not proceed if any claim is unsupported.</strong> Either find a source, reword as opinion, or cut the claim.
+      </div>
+    </div>
+    <div class="checkpoint">
+      <input type="checkbox" id="cp4"><label for="cp4">All claims verified or marked as opinion — STATUS.md updated</label>
+    </div>
+  </div>
+
+  <!-- STAGE 5 -->
+  <div class="step-card hermes-scope" id="step5">
+    <div class="step-header">
+      <span class="step-number">5</span>
+      <span class="step-title">Packaging (Draft)</span>
+      <span class="step-badge hermes">Hermes assists</span>
+    </div>
+    <div class="step-body">
+      <ul>
+        <li>Write 3-5 title candidates — curiosity-driven, under 60 characters</li>
+        <li>Describe thumbnail concept in <code>thumbnail-mockup-notes.md</code></li>
+        <li>Set target duration, aspect ratio (9:16), platform in package metadata</li>
+        <li>Save in <code>selected-package.md</code> and <code>youtube-package.json</code></li>
+      </ul>
+      <div class="info-box">
+        <strong>Do NOT finalize title/thumbnail yet.</strong> That happens at the Publish Gate (Step 12). This is draft only.
+      </div>
+    </div>
+    <div class="checkpoint">
+      <input type="checkbox" id="cp5"><label for="cp5">Draft titles and thumbnail concept saved</label>
+    </div>
+  </div>
+
+  <!-- STAGE 6 -->
+  <div class="step-card hermes-scope" id="step6">
+    <div class="step-header">
+      <span class="step-number">6</span>
+      <span class="step-title">Image Prompts</span>
+      <span class="step-badge hermes">Hermes assists</span>
+    </div>
+    <div class="step-body">
+      <p>Each <code>[B-ROLL]</code> tag in the script needs a visual. Write FLUX prompts for each beat.</p>
+      <ul>
+        <li>Open the Image Prompts Editor</li>
+        <li>Each prompt: subject, style, mood, composition for 9:16 vertical</li>
+        <li><strong>Photorealistic only.</strong> NO text in images. NO script narration in prompts (causes rendered text).</li>
+        <li>Add anti-text prefix at the start of each prompt</li>
+        <li>Save <code>image-prompts.json</code> in the run folder</li>
+      </ul>
+    </div>
+    <div class="step-actions">
+      <a href="image-prompts-editor.html" target="_blank" class="btn-primary">Open Image Prompts Editor</a>
+    </div>
+    <div class="checkpoint">
+      <input type="checkbox" id="cp6"><label for="cp6">image-prompts.json saved with one prompt per [B-ROLL] tag</label>
+    </div>
+  </div>
+
+  <!-- STAGE 7 -->
+  <div class="step-card hermes-scope" id="step7">
+    <div class="step-header">
+      <span class="step-number">7</span>
+      <span class="step-title">Image Generation</span>
+      <span class="step-badge hermes">Hermes assists</span>
+    </div>
+    <div class="step-body">
+      <p>Two paths — pick one:</p>
+      <ul>
+        <li><strong>vidnux local FLUX</strong> (faster, ~48s/image): Launch ComfyUI on vidnux. Run <code>generate-missing-prompts.py</code>. Crashes after ~33-50 gens (auto-restarts).</li>
+        <li><strong>PRESTO ComfyUI</strong> (http://192.168.50.187:8188): Use FLUX workflow there. Same prompts, same output resolution (1080x1920).</li>
+      </ul>
+      <p>Inspect each image: matches script beat? Is it 9:16? Quality acceptable? If wrong, adjust prompt and regenerate.</p>
+    </div>
+    <div class="step-actions">
+      <a href="http://localhost:8188" target="_blank" rel="noopener" class="btn-external">vidnux ComfyUI</a>
+      <a href="http://192.168.50.187:8188" target="_blank" rel="noopener" class="btn-external">PRESTO ComfyUI</a>
+    </div>
+    <div class="checkpoint">
+      <input type="checkbox" id="cp7"><label for="cp7">All images generated and inspected — quality acceptable</label>
+    </div>
+  </div>
+
+  <!-- STAGE 8 -->
+  <div class="step-card hermes-scope" id="step8">
+    <div class="step-header">
+      <span class="step-number">8</span>
+      <span class="step-title">Image Selection</span>
+      <span class="step-badge hermes">Hermes assists</span>
+    </div>
+    <div class="step-body">
+      <p>Review generated images and select the best one for each prompt. Selected images move to staging for video generation.</p>
+    </div>
+    <div class="step-actions">
+      <a href="http://localhost:8099" target="_blank" rel="noopener" class="btn-external">Open AIGEN Review View</a>
+      <a href="aigen-review.html" target="_blank" class="btn-primary">Open Cockpit AIGEN Review</a>
+      <a href="image-selector.html" target="_blank" class="btn-secondary">Image Selector</a>
+    </div>
+    <div class="checkpoint">
+      <input type="checkbox" id="cp8"><label for="cp8">All B-roll images selected — no pending regenerations</label>
+    </div>
+  </div>
+
+  <!-- STAGE 9 -->
+  <div class="step-card hermes-scope" id="step9">
+    <div class="step-header">
+      <span class="step-number">9</span>
+      <span class="step-title">Video Generation</span>
+      <span class="step-badge hermes">Hermes assists</span>
+    </div>
+    <div class="step-body">
+      <p>Two paths — pick one:</p>
+      <ul>
+        <li><strong>PRESTO Wan2.2 I2V</strong> (default, ~12 min/clip): Queue selected images through ComfyUI on PRESTO. Settings: 81 frames, ~2.7 seconds. <strong>Do NOT use 149 frames (OOM timeout).</strong></li>
+        <li><strong>Kling web UI</strong> (manual alternative): Use the SAME images and SAME prompts as Wan2.2. Generates 8-second clips. Good for shots needing longer motion.</li>
+      </ul>
+      <div class="warning-box">
+        <strong>CRITICAL: Rename ALL generated media to ASCII-safe hyphenated names</strong> before Resolve import. Examples: <code>kling-setB2-03.mp4</code>, <code>wan-scene01-81f.mp4</code>. No Chinese characters, spaces, or parentheses. Kling outputs 1080x1916 (4px short of 1920) — needs 4px crop/pad in Resolve.
+      </div>
+      <p>Move staged MP4 files to VIDNAS: <code>/mnt/vidnas_public/VIDTOOLZ/aigen/image-to-video/production/wan22-81f/</code></p>
+      <p class="muted">Manual VIDNAS path if folder opening is unavailable: <code>/mnt/vidnas_public/VIDTOOLZ/aigen/image-to-video/production/wan22-81f/</code></p>
+    </div>
+    <div class="step-actions">
+      <a href="http://192.168.50.187:8188" target="_blank" rel="noopener" class="btn-external">PRESTO ComfyUI</a>
+    </div>
+    <div class="checkpoint">
+      <input type="checkbox" id="cp9"><label for="cp9">All B-roll clips generated, renamed to ASCII-safe, on VIDNAS</label>
+    </div>
+  </div>
+
+  <!-- STAGE 10 -->
+  <div class="step-card hermes-scope" id="step10">
+    <div class="step-header">
+      <span class="step-number">10</span>
+      <span class="step-title">A-Roll Recording</span>
+      <span class="step-badge hermes">Hermes assists</span>
+    </div>
+    <div class="step-body">
+      <p>Record yourself on camera with green screen. Vertical 9:16 framing.</p>
+      <ul>
+        <li>Set up OBS on vidnux: green screen, camera, microphone</li>
+        <li>Open final-script.md. Identify all <code>[A-ROLL]</code> segments</li>
+        <li>Record presenter segments — one at a time, take by take</li>
+        <li>Save recordings to VIDNAS: <code>/mnt/vidnas_public/VIDTOOLZ/camera_originals/</code></li>
+        <li>Tell Hermes which take to move into the active run subfolder (be explicit)</li>
+        <li>Hermes runs ffprobe inspection — review resolution, frame rate, duration, codec</li>
+        <li>Approve the take or re-record. Do not keep bad takes.</li>
+      </ul>
+      <p class="muted">If the browser protocol button does not launch OBS, open OBS manually from the desktop or run <code>obs &amp;</code> in a local shell.</p>
+    </div>
+    <div class="step-actions">
+      <a href="obs://" target="_blank" class="btn-external">Open OBS</a>
+    </div>
+    <div class="checkpoint">
+      <input type="checkbox" id="cp10"><label for="cp10">All A-roll recorded, on VIDNAS, ffprobe-approved</label>
+    </div>
+  </div>
+
+  <div class="divider">
+    HERMES SCOPE ENDS HERE — RESOLVE EDITING BEGINS
+    <br>Stages 11-14 are Mikko's domain. Hermes does not operate Resolve, trigger exports, or publish.
+  </div>
+
+  <!-- STAGE 11 -->
+  <div class="step-card mikko-scope" id="step11">
+    <div class="step-header">
+      <span class="step-number">11</span>
+      <span class="step-title">Assembly Edit in Resolve</span>
+      <span class="step-badge mikko">Mikko's domain</span>
+    </div>
+    <div class="step-body">
+      <p>On PRESTO or vidnux, open DaVinci Resolve.</p>
+      <ul>
+        <li>Create a new project. Import A-roll from VIDNAS (do not copy locally — use VIDNAS as media source)</li>
+        <li>Import B-roll from VIDNAS (staged MP4 clips from the aigen lane)</li>
+        <li>Cut A-roll to script timing</li>
+        <li>Place B-roll over marked [B-ROLL] sections</li>
+        <li>Fix Kling 1916px height: scale or crop to 1920</li>
+        <li>Add green screen keying — remove green background from A-roll</li>
+        <li>Place generated backgrounds behind presenter where needed</li>
+        <li>Color match A-roll and B-roll</li>
+        <li>Set audio levels: voice peaking around -6dB, music/ambience under -20dB</li>
+        <li>Export as H.264 1080x1920 30fps. Save to VIDNAS, not local drive.</li>
+      </ul>
+    </div>
+    <div class="checkpoint">
+      <input type="checkbox" id="cp11"><label for="cp11">Export complete — MP4 saved to VIDNAS, ffprobe-verified</label>
+    </div>
+  </div>
+
+  <!-- STAGE 12 -->
+  <div class="step-card mikko-scope" id="step12">
+    <div class="step-header">
+      <span class="step-number">12</span>
+      <span class="step-title">Publish Gate</span>
+      <span class="step-badge gate">Gate — must pass</span>
+    </div>
+    <div class="step-body">
+      <p>Watch the exported video end-to-end with no interruptions.</p>
+      <ul>
+        <li>Fill <code>rough-cut-watch-notes.md</code> with timestamps and observations</li>
+        <li>Classify gate status: Ready, Needs Pickups, Needs Re-edit, or Rejected</li>
+        <li>If needs pickups: create <code>pickup-list.md</code>, go back to Step 10</li>
+        <li>Run title and thumbnail through packaging gate</li>
+        <li>Confirm all claims are still supported by research sources</li>
+      </ul>
+      <div class="warning-box">
+        <strong>Trust checklist (non-negotiable, before publishing):</strong>
+        <ul style="margin-top:6px;">
+          <li>All factual claims verifiable or marked as opinion</li>
+          <li>Every AI visual classified (Evidence, Illustration, Decoration, Metaphor, Simulation, Fiction)</li>
+          <li>Non-evidence AI visuals labeled on-screen</li>
+          <li>Current-event sources cited in description (date + source)</li>
+          <li>Any visual that could mislead → cut or relabeled</li>
+          <li>Thumbnail reviewed for misleading claims</li>
+        </ul>
+      </div>
+      <div class="info-box">
+        <strong>Only proceed to publishing if gate is "Ready."</strong> Do not bypass the gate.
+      </div>
+    </div>
+    <div class="step-actions">
+      <a href="publish-gate.html" target="_blank" class="btn-primary">Open Publish Gate</a>
+    </div>
+    <div class="checkpoint">
+      <input type="checkbox" id="cp12"><label for="cp12">Gate status: Ready — all trust checks passed</label>
+    </div>
+  </div>
+
+  <!-- STAGE 13 -->
+  <div class="step-card mikko-scope" id="step13">
+    <div class="step-header">
+      <span class="step-number">13</span>
+      <span class="step-title">Publish</span>
+      <span class="step-badge mikko">Mikko's domain</span>
+    </div>
+    <div class="step-body">
+      <ul>
+        <li>Upload to YouTube Studio manually as a Short (9:16, under 3 min)</li>
+        <li>Set title from <code>youtube-package.json</code></li>
+        <li>Set description and tags from package metadata</li>
+        <li>Set thumbnail</li>
+        <li>Record YouTube URL in <code>published-videos.json</code></li>
+        <li>Update <code>STATUS.md</code> in run folder to "Published"</li>
+      </ul>
+    </div>
+    <div class="checkpoint">
+      <input type="checkbox" id="cp13"><label for="cp13">Video published on YouTube — URL recorded in published-videos.json</label>
+    </div>
+  </div>
+
+  <!-- STAGE 14 -->
+  <div class="step-card mikko-scope" id="step14">
+    <div class="step-header">
+      <span class="step-number">14</span>
+      <span class="step-title">Measure and Reflect</span>
+      <span class="step-badge mikko">Mikko's domain</span>
+    </div>
+    <div class="step-body">
+      <p>After 48 hours, check YouTube Studio analytics: views, watch time, retention curve.</p>
+      <p>Record what worked and what didn't in <code>notes.md</code> — feed lessons into the next idea.</p>
+    </div>
+    <div class="checkpoint">
+      <input type="checkbox" id="cp14"><label for="cp14">Analytics reviewed — lessons recorded in notes.md</label>
+    </div>
+  </div>
+
+  <div style="text-align: center; margin-top: 32px; padding: 16px; font-size: 13px; color: var(--muted, #888);">
+    Proven pattern: one claim, one concrete example, one point.<br>
+    Green screen talking head + generated backgrounds. 1-3 min, vertical 9:16, YouTube Shorts.<br>
+    Three published videos used this pattern successfully.
+  </div>
+</div>
+
+<script>
+  // Persist checkbox state in localStorage
+  document.querySelectorAll('.checkpoint input[type="checkbox"]').forEach(function(cb) {
+    var key = 'vidtoolz-build-cp-' + cb.id;
+    cb.checked = localStorage.getItem(key) === '1';
+    cb.addEventListener('change', function() {
+      localStorage.setItem(key, cb.checked ? '1' : '0');
+    });
+  });
+
+  function setCurrentStepFromUrl() {
+    var params = new URLSearchParams(window.location.search);
+    var raw = (window.location.hash || '').replace('#', '') || params.get('step') || 'step1';
+    if (/^\d+$/.test(raw)) raw = 'step' + raw;
+    var step = document.getElementById(raw);
+    document.querySelectorAll('.step-card').forEach(function(card) {
+      card.classList.toggle('current-step', card === step);
+    });
+    var label = document.getElementById('currentStepLabel');
+    var hint = document.getElementById('currentStepHint');
+    if (!step) {
+      label.textContent = 'Current step: Start at Step 1';
+      hint.textContent = 'Use URL hash links like #step7 to jump directly to a production step.';
+      return;
+    }
+    var number = step.querySelector('.step-number');
+    var title = step.querySelector('.step-title');
+    label.textContent = 'Current step: Step ' + (number ? number.textContent : '') + ' — ' + (title ? title.textContent : '');
+    hint.textContent = 'This card is highlighted. Follow its buttons and checklist before moving on.';
+  }
+  window.addEventListener('hashchange', setCurrentStepFromUrl);
+  setCurrentStepFromUrl();
+</script>
+</body>
+</html>

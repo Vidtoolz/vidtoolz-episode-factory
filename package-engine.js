@@ -881,13 +881,20 @@
         <h3>Outline Prompt — Ready to Use</h3>
         <p class="muted">Copy this prompt and paste it into Hermes or ChatGPT. It contains your selected topic, VIDTOOLZ guardrails, and instructions to generate 3 outline options.</p>
         <div class="prompt-actions">
-          <button type="button" id="copyPromptBtn">Copy to Clipboard</button>
-          <button type="button" id="downloadPromptBtn">Download as .md</button>
-          <button type="button" id="openRunFolderBtn">Open Run Folder</button>
+          <button type="button" id="copyPromptBtn" class="btn-copy">Copy to Clipboard</button>
+          <button type="button" id="openChatGptBtn" class="btn-external">Open ChatGPT</button>
+          <button type="button" id="openClaudeBtn" class="btn-external">Open Claude</button>
+          <button type="button" id="downloadPromptBtn" class="btn-secondary">Download as .md</button>
+          <button type="button" id="openRunFolderBtn" class="btn-secondary">Open Run Folder</button>
         </div>
+        <p class="confirm-status" id="promptCopyStatus" role="status"></p>
         <pre id="outlinePromptText" class="prompt-text"></pre>
+        <textarea id="outlinePromptFallback" class="prompt-text hidden" rows="10" readonly></textarea>
         <p class="muted" style="margin-top: 0.75rem;">
           After pasting into Hermes/ChatGPT, save the 3 outline options as <code>outlines.md</code> in the run folder. Then pick one and save it as <code>final-outline.md</code>.
+        </p>
+        <p style="margin-top: 0.75rem;">
+          <a class="nav-link-button btn-primary" href="package-runs-dashboard.html?run=${encodeURIComponent(runSlug)}">Next: Go to Dashboard</a>
         </p>
       </div>
 
@@ -928,15 +935,27 @@
             genStatus.className = "confirm-status success";
             promptBox.classList.remove("hidden");
             promptText.textContent = data.outlinePrompt || "(empty)";
-            // Wire up copy/download buttons
+            // Wire up copy/download/open buttons
             const copyBtn = document.querySelector("#copyPromptBtn");
+            const chatGptBtn = document.querySelector("#openChatGptBtn");
+            const claudeBtn = document.querySelector("#openClaudeBtn");
             const dlBtn = document.querySelector("#downloadPromptBtn");
+            const copyStatus = document.querySelector("#promptCopyStatus");
+            const fallbackText = document.querySelector("#outlinePromptFallback");
+            const copyPrompt = () => copyTextWithFeedback(data.outlinePrompt || "", copyBtn, copyStatus, fallbackText);
             if (copyBtn) {
-              copyBtn.addEventListener("click", () => {
-                navigator.clipboard.writeText(data.outlinePrompt || "").then(() => {
-                  copyBtn.textContent = "Copied!";
-                  setTimeout(() => { copyBtn.textContent = "Copy to Clipboard"; }, 2000);
-                });
+              copyBtn.addEventListener("click", copyPrompt);
+            }
+            if (chatGptBtn) {
+              chatGptBtn.addEventListener("click", () => {
+                copyPrompt();
+                window.open("https://chatgpt.com/", "_blank", "noopener");
+              });
+            }
+            if (claudeBtn) {
+              claudeBtn.addEventListener("click", () => {
+                copyPrompt();
+                window.open("https://claude.ai/", "_blank", "noopener");
               });
             }
             if (dlBtn) {
@@ -983,6 +1002,41 @@
         openRunFolder(resolvedRunId, openFolderBtn);
       });
     }
+  }
+
+  function copyTextWithFeedback(text, btn, status, fallbackText) {
+    const original = btn ? btn.textContent : "";
+    function showCopied(message) {
+      if (btn) {
+        btn.textContent = "Copied!";
+        btn.classList.add("copied");
+        setTimeout(() => {
+          btn.textContent = original || "Copy to Clipboard";
+          btn.classList.remove("copied");
+        }, 2000);
+      }
+      if (status) {
+        status.textContent = message || "Text copied to clipboard. Paste into ChatGPT with Ctrl+V.";
+        status.className = "confirm-status success";
+      }
+    }
+    function showFallback() {
+      if (fallbackText) {
+        fallbackText.value = text || "";
+        fallbackText.classList.remove("hidden");
+        fallbackText.focus();
+        fallbackText.select();
+      }
+      if (status) {
+        status.textContent = "Clipboard unavailable. Press Ctrl+C to copy the selected text.";
+        status.className = "confirm-status error";
+      }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text || "").then(() => showCopied(), showFallback);
+      return;
+    }
+    showFallback();
   }
 
   function openRunFolder(runId, btn) {
