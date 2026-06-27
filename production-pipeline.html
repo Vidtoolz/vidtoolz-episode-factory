@@ -251,9 +251,15 @@
         </div>
       </section>
 
-      <section id="remotion-lane" aria-label="Remotion brandkit render lane"
-        style="margin:14px 0; padding:14px; border:1px solid var(--border); border-radius:8px; background:var(--panel);">
-        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+      <div style="margin:18px 0 6px; max-width:1640px;">
+        <p class="eyebrow" style="margin:0;">Optional asset &amp; render tools</p>
+        <p class="muted" style="margin:2px 0 0; font-size:13px;">Brandkit motion (Remotion) and map animation (Earth Studio) below — collapsed by default. Per-run HyperFrames motion graphics lives in the <a href="package-runs-dashboard.html">Dashboard</a> → focused video room.</p>
+      </div>
+
+      <details id="remotion-lane" aria-label="Remotion brandkit render lane"
+        style="margin:8px 0; padding:14px; border:1px solid var(--border); border-radius:8px; background:var(--panel);">
+        <summary style="cursor:pointer; font-weight:600;">Brandkit · Remotion — branded motion templates</summary>
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-top:10px;">
           <div>
             <p class="eyebrow">Brandkit · Remotion</p>
             <h2 style="margin:2px 0;">Branded motion templates</h2>
@@ -264,11 +270,12 @@
         <p class="muted" id="remotion-compositions" style="margin:8px 0 0;"></p>
         <pre id="remotion-job" style="display:none; margin:8px 0 0; padding:8px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:12px; white-space:pre-wrap; max-height:160px; overflow:auto;"></pre>
         <div id="remotion-renders" style="margin-top:10px;"></div>
-      </section>
+      </details>
 
-      <section id="earth-studio-lane" aria-label="Earth Studio map animation lane"
-        style="margin:14px 0; padding:14px; border:1px solid var(--border); border-radius:8px; background:var(--panel);">
-        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+      <details id="earth-studio-lane" aria-label="Earth Studio map animation lane"
+        style="margin:8px 0; padding:14px; border:1px solid var(--border); border-radius:8px; background:var(--panel);">
+        <summary style="cursor:pointer; font-weight:600;">Optional tool · Earth Studio — map animation</summary>
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-top:10px;">
           <div>
             <p class="eyebrow">Optional tool · Earth Studio</p>
             <h2 style="margin:2px 0;">Map animation (Google Earth Studio)</h2>
@@ -291,7 +298,7 @@
         </div>
         <p class="muted" id="es-status" style="margin:8px 0 0; font-size:13px;"></p>
         <pre id="es-job-log" style="display:none; margin:8px 0 0; padding:8px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:12px; white-space:pre-wrap; max-height:160px; overflow:auto;"></pre>
-      </section>
+      </details>
 
       <details class="user-guide" id="user-guide">
         <summary style="cursor:pointer;font-size:15px;font-weight:600;color:var(--accent-strong);">User Guide — How to Use This System</summary>
