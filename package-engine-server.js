@@ -6711,6 +6711,13 @@ function rebuildPackageRunsIndex(options = {}) {
 // ═══════════════════════════════════════════════════════════════
 // Media Gallery — scan a package-run + VIDNAS for all media assets
 // ═══════════════════════════════════════════════════════════════
+
+// A filename is DaVinci Resolve-safe only if it is ASCII alphanumerics plus . _ -
+// (no spaces, parentheses, or non-ASCII). Anything else imports as "Media Offline".
+function isResolveSafeFilename(name) {
+  return /^[A-Za-z0-9._-]+$/.test(String(name || ''));
+}
+
 function handleMediaGallery(req, res, url) {
   const runFolder = url.searchParams.get('run') || '';
   if (!runFolder) {
@@ -6857,10 +6864,22 @@ function handleMediaGallery(req, res, url) {
   // Sort by mtime descending
   assets.sort((a, b) => (b.mtime || '').localeCompare(a.mtime || ''));
 
+  // Resolve-readiness: flag filenames that are NOT ASCII-safe (spaces, parentheses,
+  // non-ASCII) — those import as "Media Offline" in DaVinci Resolve. Surfaced so the
+  // staging→Resolve handoff is clean (brand rule: ASCII-safe filenames before import).
+  const flagged = assets.map((a) => ({ ...a, ascii_safe: isResolveSafeFilename(a.name) }));
+  const asciiIssues = flagged.filter((a) => !a.ascii_safe).map((a) => a.name);
+
   sendJSON(res, 200, {
     runFolder,
-    assetCount: assets.length,
-    assets,
+    assetCount: flagged.length,
+    resolveReadiness: {
+      total: flagged.length,
+      needsRename: asciiIssues.length,
+      asciiIssues,
+      ready: asciiIssues.length === 0,
+    },
+    assets: flagged,
   });
 }
 
@@ -7952,6 +7971,7 @@ if (require.main === module) {
 
 module.exports = {
   API_PREFIX,
+  isResolveSafeFilename,
   DAILY_SCOUT_RUN_API,
   PACKAGE_RUNS_REINDEX_API,
   runDailyIdeaScoutNow,

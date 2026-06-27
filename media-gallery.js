@@ -143,6 +143,14 @@
       ).join("")}
     </div>`;
 
+    // Resolve-readiness banner: ASCII-safe filename check for the Resolve handoff.
+    const rr = meta && meta.resolveReadiness;
+    if (rr) {
+      html += rr.ready
+        ? `<div style="margin-bottom:12px;padding:8px 10px;border-radius:6px;background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.4);color:var(--accent,#3fb950);font-size:13px;">✓ Ready for Resolve — all ${rr.total} filename(s) are ASCII-safe.</div>`
+        : `<div style="margin-bottom:12px;padding:8px 10px;border-radius:6px;background:rgba(248,81,73,0.12);border:1px solid rgba(248,81,73,0.4);color:var(--danger,#f85149);font-size:13px;">⚠ ${rr.needsRename} of ${rr.total} file(s) need ASCII-safe renaming before Resolve import (otherwise "Media Offline"): ${rr.asciiIssues.map(escapeHtml).join(", ")}</div>`;
+    }
+
     // Gallery grid
     html += '<div class="media-gallery">';
     assets.forEach((a) => {
@@ -151,7 +159,7 @@
       const src = a.url || a.path;
       const thumb = a.thumbnail || (isVideo ? src : src);
 
-      html += `<div class="media-card media-${cls.type}" data-src="${escapeHtml(src)}" data-type="${cls.type}" data-name="${escapeHtml(a.name)}">`;
+      html += `<div class="media-card media-${cls.type}"${a.ascii_safe === false ? ' style="outline:2px solid var(--danger,#f85149);outline-offset:-2px;" title="Filename not ASCII-safe — rename before Resolve import"' : ''} data-src="${escapeHtml(src)}" data-type="${cls.type}" data-name="${escapeHtml(a.name)}">`;
       if (isVideo) {
         html += `<video src="${escapeHtml(src)}" muted preload="metadata" title="${escapeHtml(a.name)}"></video>`;
       } else {
