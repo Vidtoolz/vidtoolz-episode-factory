@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Production Pipeline</title>
-    <link rel="stylesheet" href="styles.css?v=1.9.1" />
+    <link rel="stylesheet" href="styles.css?v=1.9.2" />
     <style>
       body { background: var(--bg); }
       .pipeline-shell { margin: 0 auto; max-width: 1180px; padding: 22px 18px 56px; }
@@ -249,6 +249,21 @@
           <span>PRESTO and Wan lane</span>
           <div id="status-badges" class="badge-row"></div>
         </div>
+      </section>
+
+      <section id="remotion-lane" aria-label="Remotion brandkit render lane"
+        style="margin:14px 0; padding:14px; border:1px solid var(--border); border-radius:8px; background:var(--panel);">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div>
+            <p class="eyebrow">Brandkit · Remotion</p>
+            <h2 style="margin:2px 0;">Branded motion templates</h2>
+            <p class="muted" id="remotion-availability" style="margin:0;">Checking Remotion…</p>
+          </div>
+          <div id="remotion-actions" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;"></div>
+        </div>
+        <p class="muted" id="remotion-compositions" style="margin:8px 0 0;"></p>
+        <pre id="remotion-job" style="display:none; margin:8px 0 0; padding:8px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:12px; white-space:pre-wrap; max-height:160px; overflow:auto;"></pre>
+        <div id="remotion-renders" style="margin-top:10px;"></div>
       </section>
 
       <details class="user-guide" id="user-guide">
@@ -1028,6 +1043,128 @@
 
       refreshButton.addEventListener("click", loadStatus);
       loadStatus();
+    </script>
+    <script>
+      // Remotion brandkit render lane (self-contained). Triggers sandbox-only renders
+      // via /api/remotion/* and polls job-status while a render runs.
+      (function () {
+        const availEl = document.getElementById("remotion-availability");
+        const actionsEl = document.getElementById("remotion-actions");
+        const compsEl = document.getElementById("remotion-compositions");
+        const jobEl = document.getElementById("remotion-job");
+        const rendersEl = document.getElementById("remotion-renders");
+        if (!availEl) return;
+        let nonce = "";
+        let nonceHeaderName = "x-vidtoolz-local-write-nonce";
+        let pollTimer = null;
+
+        function esc(s) { const d = document.createElement("div"); d.textContent = String(s == null ? "" : s); return d.innerHTML; }
+        function unwrap(j) { return j && j.data !== undefined ? j.data : j; }
+
+        async function ensureNonce() {
+          if (nonce) return nonce;
+          try {
+            const r = await fetch("/api/package-engine/status", { cache: "no-store" });
+            const p = unwrap(await r.json());
+            const cew = p && p.captureEvidenceWrite;
+            if (cew && cew.localWriteNonce) { nonce = cew.localWriteNonce; nonceHeaderName = cew.nonceHeader || nonceHeaderName; }
+          } catch (_) { /* leave empty; render will 403 with a clear message */ }
+          return nonce;
+        }
+
+        function renderRendersList(renders) {
+          if (!renders || !renders.length) { rendersEl.innerHTML = '<p class="muted" style="margin:0;">No renders in the sandbox yet.</p>'; return; }
+          rendersEl.innerHTML =
+            '<p class="muted" style="margin:0 0 4px;">Sandbox renders (' + renders.length + "):</p><ul style=\"margin:0; padding-left:18px;\">" +
+            renders.map((r) => "<li>" + esc(r.file) + ' <span class="muted">(' + Math.round((r.bytes || 0) / 1024) + " KB)</span></li>").join("") +
+            "</ul>";
+        }
+
+        function setJob(job) {
+          if (!job || job.exit_state === "idle") { jobEl.style.display = "none"; return; }
+          jobEl.style.display = "block";
+          const head = "[" + job.exit_state + "] " + (job.label || job.target || "render") + " · " + (job.elapsed_seconds || 0) + "s\n";
+          jobEl.textContent = head + (job.stderr_tail ? job.stderr_tail + "\n" : "") + (job.stdout_tail || "");
+        }
+
+        function startPolling() {
+          if (pollTimer) return;
+          pollTimer = setInterval(async () => {
+            try {
+              const r = await fetch("/api/remotion/job-status", { cache: "no-store" });
+              const job = (unwrap(await r.json()) || {}).job;
+              setJob(job);
+              if (job && !job.active) { clearInterval(pollTimer); pollTimer = null; load(); }
+            } catch (_) { clearInterval(pollTimer); pollTimer = null; }
+          }, 3000);
+        }
+
+        async function triggerRender(target, btn) {
+          await ensureNonce();
+          if (btn) { btn.disabled = true; btn.textContent = "Rendering…"; }
+          try {
+            const r = await fetch("/api/remotion/render", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", [nonceHeaderName]: nonce },
+              body: JSON.stringify({ target, localWriteNonce: nonce }),
+            });
+            const d = unwrap(await r.json());
+            if (!r.ok || (d && d.ok === false)) {
+              jobEl.style.display = "block";
+              jobEl.textContent = "Render failed to start: " + esc((d && d.error) || ("HTTP " + r.status));
+            } else {
+              startPolling();
+            }
+          } catch (e) {
+            jobEl.style.display = "block";
+            jobEl.textContent = "Render request error: " + esc(e.message);
+          } finally {
+            load();
+          }
+        }
+
+        function renderActions(data) {
+          actionsEl.innerHTML = "";
+          const available = data.availability && data.availability.status === "available";
+          const running = data.job && data.job.active;
+          (data.targets || []).forEach((t) => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = t.key === "all" ? "primary-btn" : "secondary-btn";
+            b.textContent = "Render: " + t.label;
+            b.disabled = !available || running;
+            b.addEventListener("click", () => triggerRender(t.key, b));
+            actionsEl.appendChild(b);
+          });
+          if (running) {
+            const c = document.createElement("button");
+            c.type = "button"; c.className = "btn-warning"; c.textContent = "Cancel render";
+            c.addEventListener("click", async () => {
+              await ensureNonce();
+              await fetch("/api/remotion/cancel", { method: "POST", headers: { "Content-Type": "application/json", [nonceHeaderName]: nonce }, body: JSON.stringify({ localWriteNonce: nonce }) }).catch(() => {});
+              load();
+            });
+            actionsEl.appendChild(c);
+          }
+        }
+
+        async function load() {
+          try {
+            const r = await fetch("/api/remotion/status", { cache: "no-store" });
+            const data = unwrap(await r.json());
+            const a = data.availability || {};
+            availEl.textContent = a.status === "available" ? "Remotion ready — renders write to the sandbox." : ("Unavailable: " + (a.detail || "brandkit not installed"));
+            compsEl.textContent = "Compositions: " + (data.compositions || []).join(", ");
+            renderActions(data);
+            renderRendersList(data.renders);
+            setJob(data.job);
+            if (data.job && data.job.active) startPolling();
+          } catch (e) {
+            availEl.textContent = "Could not load Remotion status: " + e.message;
+          }
+        }
+        load();
+      })();
     </script>
   </body>
 </html>

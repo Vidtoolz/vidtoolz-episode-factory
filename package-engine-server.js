@@ -17,6 +17,7 @@ const nextSafeActionScript = require('./scripts/package-run-next-safe-action.js'
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
+const remotionLane = require('./remotion-lane.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
@@ -46,6 +47,10 @@ const DELIVERY_READINESS_SAVE_API = '/api/package-runs/delivery-readiness/save';
 const EXPORT_CHECKLIST_REGENERATE_API = '/api/package-runs/export-checklist/regenerate-derived';
 const PACKAGE_RUNS_LIST_API = '/api/package-runs/list';
 const PACKAGE_RUNS_CANDIDATES_API = '/api/package-runs/candidates';
+const REMOTION_STATUS_API = '/api/remotion/status';
+const REMOTION_RENDER_API = '/api/remotion/render';
+const REMOTION_JOB_STATUS_API = '/api/remotion/job-status';
+const REMOTION_CANCEL_API = '/api/remotion/cancel';
 const HYPERFRAMES_STATUS_API = '/api/hyperframes/status';
 const HYPERFRAMES_PREVIEW_API = '/api/hyperframes/preview';
 const HYPERFRAMES_RENDER_API = '/api/hyperframes/render';
@@ -7364,6 +7369,38 @@ function createServer(options = {}) {
 
     if (req.method === 'POST' && url.pathname === FLUX_CANCEL_API) {
       handleFluxCancel(req, res);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === REMOTION_STATUS_API) {
+      try { sendJSON(res, 200, remotionLane.status()); }
+      catch (error) { sendError(res, error.statusCode || 500, error.message, 'remotion-status-error'); }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === REMOTION_JOB_STATUS_API) {
+      try { sendJSON(res, 200, { job: remotionLane.currentJobStatus() }); }
+      catch (error) { sendError(res, error.statusCode || 500, error.message, 'remotion-job-status-error'); }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === REMOTION_RENDER_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, remotionLane.startRender(payload));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'remotion-render-error', { active: error.active || null }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === REMOTION_CANCEL_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, remotionLane.cancelRender());
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'remotion-cancel-error'));
       return;
     }
 

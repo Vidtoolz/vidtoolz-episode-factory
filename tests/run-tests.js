@@ -29,6 +29,7 @@ require("./pipeline-status.test.js");
 require("./video-prompts.test.js");
 require("./package-run-candidate-discovery.test.js");
 require("./quick-action-endpoints.test.js");
+require("./remotion-lane.test.js");
 
 async function runTests() {
   let passed = 0;
