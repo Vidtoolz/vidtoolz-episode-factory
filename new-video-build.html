@@ -162,6 +162,7 @@
     <div>
       <strong id="currentStepLabel">Current step: Start at Step 1</strong>
       <span id="currentStepHint">Use URL hash links like #step7 to jump directly to a production step.</span>
+      <span id="buildNextAction" style="display:none; margin-top:6px; color:var(--accent,#3fb950); font-size:13px;"></span>
     </div>
     <a class="btn-secondary" href="#step1">Step 1</a>
   </div>
@@ -543,6 +544,7 @@
   </div>
 </div>
 
+<script src="plain-next-action.js?v=1"></script>
 <script>
   // Persist checkbox state in localStorage
   document.querySelectorAll('.checkpoint input[type="checkbox"]').forEach(function(cb) {
@@ -575,6 +577,27 @@
   }
   window.addEventListener('hashchange', setCurrentStepFromUrl);
   setCurrentStepFromUrl();
+
+  // Fix #2: surface the same plain-language "next action" the dashboard shows, so the
+  // structured build page and the cockpit never disagree about what to do next.
+  function loadBuildNextAction() {
+    var el = document.getElementById('buildNextAction');
+    if (!el || typeof window.plainNextAction !== 'function') return;
+    fetch('/api/package-runs/next-safe-action', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (json) {
+        var d = (json && json.data) ? json.data : json;
+        if (!d || d.ok === false) return;
+        var plain = window.plainNextAction(d.stage, d.blockedUntil, d.nextHumanAction);
+        if (!plain) return;
+        var m = plain.match(/\(Steps?\s*(\d+)/i);
+        var link = m ? ' <a href="#step' + m[1] + '">Go to Step ' + m[1] + '</a>' : '';
+        el.innerHTML = 'Next action: ' + plain.replace(/</g, '&lt;') + link;
+        el.style.display = 'block';
+      })
+      .catch(function () { /* build page works fine without it */ });
+  }
+  loadBuildNextAction();
 </script>
 </body>
 </html>

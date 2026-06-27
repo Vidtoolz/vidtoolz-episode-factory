@@ -4175,12 +4175,9 @@ test("package-runs-dashboard: error response with top-level error field is not u
   assert.equal(unwrapped.errorCode, "AUTH_FAILED");
 });
 
-// ── F3: plain-language next-action mapping ──────────────────────────────────
-test("package-runs-dashboard: plainNextAction maps technical blockers to creator steps", () => {
-  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
-  const match = source.match(/function plainNextAction\(stage, blockedUntil, fallback\) \{([\s\S]*?)\n  \}/);
-  assert.ok(match, "plainNextAction should exist");
-  const plainNextAction = new Function("stage", "blockedUntil", "fallback", match[1]);
+// ── Fix #2: shared plain-language next-action module (used by dashboard + build page) ──
+test("plain-next-action: maps technical blockers to creator steps", () => {
+  const { plainNextAction } = require("../plain-next-action.js");
 
   assert.match(
     plainNextAction("Blocked / evidence missing", "generation-manifest.json is readable and contains prompt-03 items.", "raw"),
@@ -4198,10 +4195,8 @@ test("package-runs-dashboard: plainNextAction maps technical blockers to creator
   assert.match(plainNextAction("Resolve test review", "x", "raw"), /Step 12/);
 });
 
-test("package-runs-dashboard: plainNextAction falls back to the raw text when unmapped", () => {
-  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
-  const match = source.match(/function plainNextAction\(stage, blockedUntil, fallback\) \{([\s\S]*?)\n  \}/);
-  const plainNextAction = new Function("stage", "blockedUntil", "fallback", match[1]);
+test("plain-next-action: falls back to the raw text when unmapped", () => {
+  const { plainNextAction } = require("../plain-next-action.js");
   assert.equal(plainNextAction("Totally unknown stage", "totally unknown blocker", "the original text"), "the original text");
 });
 
