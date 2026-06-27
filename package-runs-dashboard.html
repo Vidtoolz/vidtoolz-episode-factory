@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Package Runs Dashboard</title>
-    <link rel="stylesheet" href="styles.css?v=1.9.0" />
+    <link rel="stylesheet" href="styles.css?v=1.9.1" />
   </head>
   <body>
   <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html" class="active">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="new-video-build.html">Build New Video</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
@@ -113,7 +113,7 @@
           <section class="package-controls" aria-label="Package run filters">
             <div>
               <h2>Run Status</h2>
-              <p class="muted">Regenerate the index with <code>node scripts/package-runs-index.js</code>.</p>
+              <p class="muted">Index lists all package runs. <button type="button" id="rebuildIndexBtn" class="btn-secondary">Rebuild index</button> <span id="rebuildIndexResult" class="muted"></span></p>
             </div>
             <label>
               <span>Workflow</span>

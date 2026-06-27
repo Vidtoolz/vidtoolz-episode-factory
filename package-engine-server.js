@@ -79,6 +79,8 @@ const IMAGE_PROMPTS_SAVE_API = '/api/image-prompts/save';
 const DAILY_SCOUT_TODAY_API = '/api/daily-idea-scout/today';
 const DAILY_SCOUT_ARCHIVE_API = '/api/daily-idea-scout/archive';
 const DAILY_SCOUT_DATES_API = '/api/daily-idea-scout/dates';
+const DAILY_SCOUT_RUN_API = '/api/daily-idea-scout/run';
+const PACKAGE_RUNS_REINDEX_API = '/api/package-runs/reindex';
 const TOPIC_SCOUT_LIST_API = '/api/topic-scout/list';
 const TOPIC_SCOUT_SUBMIT_API = '/api/topic-scout/submit';
 const TOPIC_SCOUT_GET_API = '/api/topic-scout/get';
@@ -6628,7 +6630,7 @@ function handleDailyScoutToday(req, res) {
     sendError(res, 404, `No daily idea scout run found for ${today}`, null);
     return;
   }
-  sendJSON(res, 200, { date: today, dailyRun: data });
+  sendJSON(res, 200, { date: today, dailyRun: data, localWriteNonce: LOCAL_WRITE_NONCE, nonceHeader: LOCAL_WRITE_NONCE_HEADER });
 }
 
 function handleDailyScoutArchive(req, res, url) {
@@ -6648,7 +6650,51 @@ function handleDailyScoutArchive(req, res, url) {
 function handleDailyScoutDates(req, res) {
   const archiveRoot = VIDNAS_AIGEN_ROOT + '/daily-idea-scout';
   const dates = dailyIdeaScout.listArchiveDates(archiveRoot);
-  sendJSON(res, 200, { dates });
+  sendJSON(res, 200, { dates, localWriteNonce: LOCAL_WRITE_NONCE, nonceHeader: LOCAL_WRITE_NONCE_HEADER });
+}
+
+// Run today's daily idea scout (default fixture provider — deterministic, local).
+function runDailyIdeaScoutNow(payload = {}, options = {}) {
+  const runner = options.runner || childProcess.spawnSync;
+  const args = ['scripts/daily-idea-scout-launch.js'];
+  if (payload && typeof payload.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(payload.date)) {
+    args.push(`--date=${payload.date}`);
+  }
+  const result = runner(process.execPath, args, {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: 60000,
+  });
+  if (result.error) {
+    throw Object.assign(new Error(`Daily scout failed to launch: ${result.error.message}`), { statusCode: 500 });
+  }
+  return {
+    ok: result.status === 0,
+    command: `node ${args.join(' ')}`,
+    exitCode: result.status,
+    stdout: (result.stdout || '').trim(),
+    stderr: (result.stderr || '').trim(),
+  };
+}
+
+// Rebuild package-runs-index.json from the package-runs/ folder.
+function rebuildPackageRunsIndex(options = {}) {
+  const runner = options.runner || childProcess.spawnSync;
+  const result = runner(process.execPath, ['scripts/package-runs-index.js'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: 60000,
+  });
+  if (result.error) {
+    throw Object.assign(new Error(`Index rebuild failed to launch: ${result.error.message}`), { statusCode: 500 });
+  }
+  return {
+    ok: result.status === 0,
+    command: 'node scripts/package-runs-index.js',
+    exitCode: result.status,
+    stdout: (result.stdout || '').trim(),
+    stderr: (result.stderr || '').trim(),
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -7723,6 +7769,26 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === DAILY_SCOUT_RUN_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, runDailyIdeaScoutNow(payload));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === PACKAGE_RUNS_REINDEX_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, rebuildPackageRunsIndex());
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === ROUGH_CUT_OPEN_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -7843,6 +7909,10 @@ if (require.main === module) {
 
 module.exports = {
   API_PREFIX,
+  DAILY_SCOUT_RUN_API,
+  PACKAGE_RUNS_REINDEX_API,
+  runDailyIdeaScoutNow,
+  rebuildPackageRunsIndex,
   AIGEN_ASSETS_PREFIX,
   AIGEN_FLUX_IMAGES_API_PREFIX,
   AIGEN_RESOLVE_ASSEMBLY_API,

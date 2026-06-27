@@ -1601,6 +1601,39 @@ body[data-package-engine-view-mode="focused"] .package-engine-shell #generatedTh
   display: none !important;
 }
 
+/* Focus Mode (default cockpit view, no run selected): collapse diagnostic &
+   reference panels so only the "what do I do now" surfaces remain visible.
+   Full Dashboard (data-dashboard-mode="full") reveals them again. This makes
+   the cockpit subtitle ("Focus Mode keeps lower panels collapsed as
+   diagnostics") actually true. Keeps What Next, Creator Cockpit, Productions
+   Overview, and Video Room. */
+.package-runs-dashboard[data-dashboard-mode="focus"] .system-availability-panel,
+.package-runs-dashboard[data-dashboard-mode="focus"] .capability-inventory-panel,
+.package-runs-dashboard[data-dashboard-mode="focus"] .job-progress-panel-section,
+.package-runs-dashboard[data-dashboard-mode="focus"] .pipeline-tracker-panel,
+.package-runs-dashboard[data-dashboard-mode="focus"] .visual-beat-map-panel,
+.package-runs-dashboard[data-dashboard-mode="focus"] .media-gallery-panel,
+.package-runs-dashboard[data-dashboard-mode="focus"] .friction-log-panel-section,
+.package-runs-dashboard[data-dashboard-mode="focus"] .workflow-wizard-panel {
+  display: none !important;
+}
+
+/* Declutter Focus Mode: the What-Next banner duplicates the Creator Cockpit
+   headline (same next-action source), and the governance cockpit rows are
+   accountability detail, not the immediate action. Hide them in Focus so the
+   cockpit shows just Now / Next / Blocked; Full Dashboard restores everything.
+   (Banner is a sibling of the cockpit, so :has() reaches back to it.) */
+.app-shell:has(.package-runs-dashboard[data-dashboard-mode="focus"]) #whatNextBanner {
+  display: none !important;
+}
+.package-runs-dashboard[data-dashboard-mode="focus"] .creator-cockpit-second-cut,
+.package-runs-dashboard[data-dashboard-mode="focus"] .creator-cockpit-section[aria-label="Proof"],
+.package-runs-dashboard[data-dashboard-mode="focus"] .creator-cockpit-section[aria-label="Missing proof"],
+.package-runs-dashboard[data-dashboard-mode="focus"] .creator-cockpit-section[aria-label="AI may"],
+.package-runs-dashboard[data-dashboard-mode="focus"] .creator-cockpit-section[aria-label="Mikko must"] {
+  display: none !important;
+}
+
 .package-runs-dashboard[data-focused-run]:not([data-focused-run="false"]) .video-room-panel {
   max-width: 1200px;
   margin: 0 auto;

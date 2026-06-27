@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VIDTOOLZ Cockpit — AIGEN Review</title>
-<link rel="stylesheet" href="styles.css?v=1.9.0">
+<link rel="stylesheet" href="styles.css?v=1.9.1">
 <style>
   body { margin: 0; padding: 0; overflow: hidden; background: var(--bg); }
   .review-bridge-header {
@@ -93,9 +93,8 @@
   <div class="review-iframe-container" id="iframeContainer">
     <div class="review-offline" id="offlineMessage" style="display:none;">
       <h2>AIGEN Review View is not running</h2>
-      <p>Start it with:</p>
-      <code>cd ~/work/aigen-edit && python3 review-view/server.py &amp;</code>
-      <p>Then <a href="#" onclick="location.reload();return false;">reload this page</a>.</p>
+      <p>Click the <strong>01-Resume-Work</strong> or <strong>02-Systems-Check</strong> desktop shortcut — both auto-start this server (port 8099). Then <a href="#" onclick="location.reload();return false;">reload this page</a>.</p>
+      <p class="muted" style="margin-top:10px;">Manual fallback: <code>python3 ~/work/aigen-edit/review-view/server.py &amp;</code></p>
     </div>
     <iframe id="reviewFrame" src="about:blank" style="display:none;"></iframe>
   </div>

@@ -2774,6 +2774,11 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     </article>`;
   }
 
+  // Test/dev/smoke runs clutter the production board; hide them from the overview.
+  function isTestRunId(id) {
+    return /^_|smoke|xval|e2e|validation|nightly|pilot|front-half|youtube-ideas/i.test(String(id || ""));
+  }
+
   function renderProductionsOverview(runs) {
     const buckets = groupRunsByProductionBucket(runs);
     const sections = PRODUCTION_BUCKETS.filter((label) => buckets[label].length > 0);
@@ -3416,7 +3421,7 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         ? visible.map(renderRunCard).join("")
         : `<p class="muted">No package runs match this filter.</p>`;
       if (els.productionsOverview) {
-        els.productionsOverview.innerHTML = renderProductionsOverview(index.runs);
+        els.productionsOverview.innerHTML = renderProductionsOverview(index.runs.filter((run) => !isTestRunId(run.runId)));
       }
       const focusedRun = index.runs.find((run) => run.runId === selectedRunId) || findActiveRunFromIndex(index, "") || index.runs[0] || null;
       if (els.videoRoomPanel) {
@@ -5135,6 +5140,42 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     doc.querySelectorAll("[data-dashboard-mode-button]").forEach((button) => {
       button.addEventListener("click", () => setDashboardMode(button.dataset.dashboardModeButton));
     });
+    const rebuildIndexBtn = doc.getElementById("rebuildIndexBtn");
+    if (rebuildIndexBtn) {
+      rebuildIndexBtn.addEventListener("click", () => {
+        const resultEl = doc.getElementById("rebuildIndexResult");
+        const prev = rebuildIndexBtn.textContent;
+        rebuildIndexBtn.disabled = true;
+        rebuildIndexBtn.textContent = "Rebuilding…";
+        if (resultEl) resultEl.textContent = "";
+        loadLocalWriteConfig()
+          .then((config) => {
+            const nonceHeader = (config && config.nonceHeader) || "x-vidtoolz-local-write-nonce";
+            const localWriteNonce = (config && config.localWriteNonce) || "";
+            return fetch("/api/package-runs/reindex", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
+              body: JSON.stringify({ localWriteNonce }),
+            });
+          })
+          .then((res) => res.json())
+          .then((data) => {
+            const inner = data && data.data ? data.data : data;
+            if (resultEl) {
+              resultEl.textContent = inner && inner.ok
+                ? "Index rebuilt — reload to see changes."
+                : `Rebuild failed${inner && inner.stderr ? ": " + inner.stderr : ""}`;
+            }
+          })
+          .catch((error) => {
+            if (resultEl) resultEl.textContent = `Rebuild failed: ${error.message}`;
+          })
+          .finally(() => {
+            rebuildIndexBtn.disabled = false;
+            rebuildIndexBtn.textContent = prev;
+          });
+      });
+    }
     if (els.currentFocusPanel) els.currentFocusPanel.addEventListener("click", handleCurrentFocusClick);
     if (els.productionsOverview) {
       els.productionsOverview.addEventListener("click", (event) => {

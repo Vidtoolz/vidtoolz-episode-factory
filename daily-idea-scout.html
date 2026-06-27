@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Daily Candidate Ideas — VIDTOOLZ Cockpit</title>
-  <link rel="stylesheet" href="styles.css?v=1.9.0">
+  <link rel="stylesheet" href="styles.css?v=1.9.1">
   <style>
     .container {
       max-width: 1640px;
@@ -231,6 +231,29 @@
     const metaEl = document.getElementById('scout-meta');
     const dateSelect = document.getElementById('date-select');
     const loadBtn = document.getElementById('load-btn');
+    let localWriteNonce = '';
+    let nonceHeader = 'x-vidtoolz-local-write-nonce';
+
+    async function runScout(btn) {
+      if (btn) { btn.disabled = true; btn.textContent = 'Running scout…'; }
+      try {
+        const res = await fetch('/api/daily-idea-scout/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', [nonceHeader]: localWriteNonce },
+          body: JSON.stringify({ localWriteNonce }),
+        });
+        const data = await res.json();
+        const inner = (data && data.data) ? data.data : data;
+        if (!res.ok || !inner.ok) {
+          const msg = (inner && inner.stderr) || (data && data.error) || `Scout failed (HTTP ${res.status})`;
+          contentEl.innerHTML = `<div class="scout-error">${escapeHtml(msg)}</div>`;
+          return;
+        }
+        loadToday();
+      } catch (err) {
+        contentEl.innerHTML = `<div class="scout-error">Could not run scout: ${escapeHtml(err.message)}</div>`;
+      }
+    }
 
     function escapeHtml(str) {
       const div = document.createElement('div');
@@ -306,11 +329,15 @@
         const data = await res.json();
         if (!data.ok) {
           contentEl.innerHTML = `<div class="scout-empty">${escapeHtml(data.error)}</div>
-            <p class="scout-note">Run the daily scout: <code>node scripts/daily-idea-scout-launch.js --date=${new Date().toISOString().slice(0,10)}</code></p>`;
+            <p class="scout-note">No scout run for today yet.</p>
+            <button type="button" id="runScoutBtn" class="btn-primary">Run today's scout</button>`;
+          const btn = document.getElementById('runScoutBtn');
+          if (btn) btn.addEventListener('click', () => runScout(btn));
           metaEl.textContent = 'No run today';
           return;
         }
         const payload = normalizePayload(data);
+        if (payload.localWriteNonce) { localWriteNonce = payload.localWriteNonce; nonceHeader = payload.nonceHeader || nonceHeader; }
         metaEl.textContent = `Date: ${payload.date} | Provider: ${payload.dailyRun.provider} | Generated: ${payload.dailyRun.generated_at}`;
         contentEl.innerHTML = renderRun(payload.dailyRun);
       } catch (err) {
@@ -343,6 +370,7 @@
         const res = await fetch('/api/daily-idea-scout/dates');
         const data = await res.json();
         const payload = normalizePayload(data);
+        if (payload.localWriteNonce) { localWriteNonce = payload.localWriteNonce; nonceHeader = payload.nonceHeader || nonceHeader; }
         if (data.ok && payload.dates && payload.dates.length > 0) {
           for (const d of payload.dates) {
             if (d !== new Date().toISOString().slice(0, 10)) {

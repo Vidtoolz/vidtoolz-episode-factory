@@ -28,6 +28,7 @@ require("./outline-prompt-nonce.test.js");
 require("./pipeline-status.test.js");
 require("./video-prompts.test.js");
 require("./package-run-candidate-discovery.test.js");
+require("./quick-action-endpoints.test.js");
 
 async function runTests() {
   let passed = 0;

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Production Pipeline</title>
-    <link rel="stylesheet" href="styles.css?v=1.9.0" />
+    <link rel="stylesheet" href="styles.css?v=1.9.1" />
     <style>
       body { background: var(--bg); }
       .pipeline-shell { margin: 0 auto; max-width: 1180px; padding: 22px 18px 56px; }
@@ -315,6 +315,11 @@
       let fluxResults = new Map();
       let localWriteNonce = "";
       let nonceHeader = "x-vidtoolz-local-write-nonce";
+      let showAllRuns = false;
+      // Test/dev/smoke runs clutter the pipeline; hide them unless "Show all" is on.
+      function isTestRun(id) {
+        return /^_|smoke|xval|e2e|validation|nightly|pilot|front-half|youtube-ideas/i.test(String(id || ""));
+      }
 
       function text(value) {
         return String(value == null ? "" : value);
@@ -988,12 +993,26 @@
             content.appendChild(error);
             return;
           }
-          const packages = Array.isArray(payload.packages) ? payload.packages : [];
+          const allPackages = Array.isArray(payload.packages) ? payload.packages : [];
+          const hiddenCount = allPackages.filter((pkg) => isTestRun(pkg.id)).length;
+          const packages = showAllRuns ? allPackages : allPackages.filter((pkg) => !isTestRun(pkg.id));
           await fetchFluxStatus();
           await fetchFluxResults(packages);
           await fetchPrestoResults(packages);
           content.innerHTML = "";
-          content.appendChild(packages.length ? renderPackages(packages, payload) : document.createTextNode("No packages found."));
+          if (!showAllRuns && hiddenCount > 0) {
+            const note = document.createElement("p");
+            note.className = "muted";
+            note.style.cssText = "margin:0 0 12px;font-size:13px;";
+            note.textContent = `${hiddenCount} test/dev run(s) hidden. `;
+            const link = document.createElement("a");
+            link.href = "#";
+            link.textContent = "Show all";
+            link.addEventListener("click", (e) => { e.preventDefault(); showAllRuns = true; loadStatus(); });
+            note.appendChild(link);
+            content.appendChild(note);
+          }
+          content.appendChild(packages.length ? renderPackages(packages, payload) : document.createTextNode("No production runs found."));
         } catch (error) {
           nextAction.textContent = "Status request failed";
           statusBadges.replaceChildren(badge("API error", "bad"));
