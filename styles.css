@@ -87,8 +87,10 @@ button:disabled {
 
 .btn-primary,
 .primary-btn {
-  background: var(--accent-blue);
-  border-color: var(--accent-blue);
+  /* Darker than --accent-blue so white label clears WCAG AA (~4.6:1).
+     The light --accent-blue stays for text-on-dark uses elsewhere. */
+  background: #1f6feb;
+  border-color: #1f6feb;
   color: #fff;
   font-weight: 700;
 }
@@ -113,8 +115,9 @@ button:disabled {
 }
 
 .btn-success {
-  background: var(--success);
-  border-color: var(--success);
+  /* Darker than --success so white label clears WCAG AA (~4.6:1). */
+  background: #238636;
+  border-color: #238636;
   color: #fff;
   font-weight: 700;
 }
@@ -138,15 +141,16 @@ button:disabled {
 }
 
 .btn-external {
-  background: var(--accent-purple);
-  border-color: var(--accent-purple);
+  /* Darker than --accent-purple so white label clears WCAG AA (~4.6:1). */
+  background: #8957e5;
+  border-color: #8957e5;
   color: #fff;
   font-weight: 700;
 }
 
 .btn-external:hover {
-  background: #8957e5;
-  border-color: #8957e5;
+  background: #7b46d6;
+  border-color: #7b46d6;
 }
 
 .btn-copy {
