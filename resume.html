@@ -148,7 +148,9 @@
       fetch('/api/package-runs/list')
         .then(r => r.ok ? r.json() : Promise.reject('Server error'))
         .then(data => {
-          const runs = data.runs || [];
+          // Server wraps the payload as { ok, data: { runs } }; tolerate both shapes.
+          const payload = (data && data.data) ? data.data : data;
+          const runs = (payload && payload.runs) || [];
           if (!runs.length) {
             grid.innerHTML = '<div class="empty-state"><h2>No projects yet</h2><p>Start a new one with the link above.</p></div>';
             return;
