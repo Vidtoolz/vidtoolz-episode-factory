@@ -145,6 +145,10 @@ test("dashboard production card shows operator asset ledger and motion lanes", (
   assert.match(html, /Open video room/);
   assert.match(html, /data-open-package-folder="2099-03-02-card"/);
   assert.match(html, /data-open-asset-path="final-script\.md"/);
+  // Missing lanes (e.g. remotion) must be non-interactive — no navigable href that
+  // would scroll-to-top on click; aria-disabled alone is advisory.
+  assert.doesNotMatch(html, /asset-lane-missing[^>]*href=/);
+  assert.match(html, /asset-lane-missing[^>]*aria-disabled="true"/);
 });
 
 test("dashboard video room exposes Hyperframes and Remotion as first-class read-only lanes", () => {

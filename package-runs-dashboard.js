@@ -2474,7 +2474,9 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       const statusClassName = item.status === "available" ? "asset-lane-available" : "asset-lane-missing";
       const href = item.status === "available" ? item.href : "#";
       const openAttrs = item.status === "available" ? ` data-open-package-folder="${escapeHtml(item.runId || "")}" data-open-asset-path="${escapeHtml(item.assetPath || "")}"` : "";
-      const linkAttrs = item.status === "available" ? `href="${escapeHtml(href)}"` : `href="#" aria-disabled="true"`;
+      // Missing lanes render without an href so the chip is truly non-interactive
+      // (aria-disabled alone doesn't stop an href="#" click from scrolling to top).
+      const linkAttrs = item.status === "available" ? `href="${escapeHtml(href)}"` : `aria-disabled="true" style="cursor:default;"`;
       return `<a class="asset-lane ${statusClassName}" ${linkAttrs}${openAttrs} data-asset-lane="${escapeHtml(item.key)}" title="Open containing folder in the OS file manager">
         <span>${escapeHtml(item.label)}</span>
         <strong>${escapeHtml(item.status === "available" ? String(item.count) : "missing")}</strong>
