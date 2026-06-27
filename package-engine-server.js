@@ -733,7 +733,13 @@ function probeHyperframesAvailability(options = {}) {
 }
 
 function hyperframesRenderCommand(sourcePath, outputPath) {
-  return [...HYPERFRAMES_RENDER_COMMAND, sourcePath, outputPath];
+  // hyperframes 0.7.x renders a PROJECT DIR: `render <dir> -c <composition> -o <output>`.
+  // The run's hyperframes/ dir is the project (it carries an index.html marker); the
+  // composition is referenced relative to it. (Earlier `render <file> <output>` form was
+  // incompatible with the installed CLI.)
+  const projectDir = path.dirname(path.dirname(sourcePath));
+  const compositionRel = path.relative(projectDir, sourcePath);
+  return [...HYPERFRAMES_RENDER_COMMAND, projectDir, '-c', compositionRel, '-o', outputPath];
 }
 
 function runHyperframesRenderCommand(sourcePath, outputPath, logPath, options = {}) {

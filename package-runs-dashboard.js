@@ -3918,9 +3918,11 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         })
         .then((response) => response.json().then((payload) => {
           if (!response.ok) throw new Error(payload.error || `HyperFrames status unavailable (${response.status}).`);
-          run.hyperframes = payload;
+          // Server wraps as { ok, data:{ availability, lane, manifest } }; unwrap so the
+          // lane can read manifest.compositions (latent bug; surfaced once hyperframes installed).
+          run.hyperframes = (payload && payload.data) ? payload.data : payload;
           els.videoRoomPanel.innerHTML = renderVideoProjectRoom(run);
-          return payload;
+          return run.hyperframes;
         }))
         .catch((error) => {
           run.hyperframes = {
