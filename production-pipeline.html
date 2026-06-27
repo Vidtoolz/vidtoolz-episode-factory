@@ -277,7 +277,7 @@
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
           <label class="muted" style="font-size:13px;">Project run:
-            <select id="es-run" style="margin-left:6px; padding:4px;"></select>
+            <input id="es-run" list="es-run-datalist" placeholder="run id (type or pick)" style="margin-left:6px; padding:4px; min-width:240px;"><datalist id="es-run-datalist"></datalist>
           </label>
           <input id="es-job" type="text" placeholder="Job name (e.g. City Flyover)" style="padding:5px; min-width:200px;">
         </div>
@@ -1220,7 +1220,12 @@
         async function loadRuns() {
           try {
             const p = unwrap(await (await fetch("/api/package-runs/list", { cache: "no-store" })).json());
-            (p.runs || []).filter((r) => !/^_/.test(r.runId)).forEach((r) => { const o = document.createElement("option"); o.value = r.runId; o.textContent = r.runId; runSel.appendChild(o); });
+            // Suggestions come from the index, but the field is a free-text input so a
+            // freshly-created (not-yet-indexed) run can still be entered (bug #2).
+            const dl = document.getElementById("es-run-datalist");
+            const runs = (p.runs || []).filter((r) => !/^_/.test(r.runId));
+            runs.forEach((r) => { const o = document.createElement("option"); o.value = r.runId; dl.appendChild(o); });
+            if (!runSel.value && runs[0]) runSel.value = runs[0].runId;
           } catch (_) {}
         }
         async function refresh() {
@@ -1243,8 +1248,11 @@
           const runId = runSel.value; if (!runId) { statusEl.textContent = "Pick a project run first."; return; }
           e.target.disabled = true; statusEl.textContent = "Generating plan + .esp…";
           try { const r = await post("/api/earth-studio/plan", { runId, jobName: jobEl.value || "Map Animation", description: descEl.value || "" });
-            statusEl.textContent = r.data && r.data.ok ? "Generated. Import earth-studio/earth-studio.esp into Earth Studio, render frames into earth-studio/frames/, then Render → MP4." : ("Failed: " + ((r.data && r.data.error) || r.code));
-          } catch (err) { statusEl.textContent = "Error: " + err.message; } finally { e.target.disabled = false; refresh(); }
+            // Don't refresh() over the result (bug #3): refresh would clobber the message
+            // with the status line and hide errors. Only refresh facts after a success.
+            if (r.data && r.data.ok) { statusEl.textContent = "Generated. Import earth-studio/earth-studio.esp into Earth Studio, render frames into earth-studio/frames/, then Render → MP4."; }
+            else { statusEl.textContent = "Failed: " + ((r.data && r.data.error) || r.code); }
+          } catch (err) { statusEl.textContent = "Error: " + err.message; } finally { e.target.disabled = false; }
         });
         document.getElementById("es-render").addEventListener("click", async () => {
           const runId = runSel.value; if (!runId) return;
