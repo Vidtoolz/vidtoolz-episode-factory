@@ -102,6 +102,7 @@ const BEGINNING_TRIAGE_GENERATE_API = '/api/beginning-triage/generate';
 const WORKFLOW_PATH_API = '/api/package-runs/workflow-path';
 const SHORTS_SCRIPT_OPTIONS_API = '/api/shorts/script-options';
 const SHORTS_SAVE_SCRIPT_API = '/api/shorts/save-script';
+const TOPIC_SCOUT_GENERATE_ONE_API = '/api/topic-scout/generate-one';
 const SHORTS_I2V_PROMPTS_API = '/api/shorts/i2v-prompts';
 const SHORTS_SAVE_I2V_PROMPTS_API = '/api/shorts/save-i2v-prompts';
 const SERVE_ROOT = ROOT;
@@ -4441,6 +4442,66 @@ function saveI2vPrompts(payload = {}, options = {}) {
   return { package_id: packageId, path: 'video-prompts.json', count: prompts.length };
 }
 
+// Generate ONE fresh topic candidate with the local Ollama LLM and append it to a
+// run's package-candidates.json (used by Topic Scout's "Delete & replace"). Existing
+// candidates are preserved as-is; only the new one is appended. Nonce-gated by the route.
+async function generateOneTopicCandidate(payload = {}, options = {}) {
+  const runId = validatePackageRunId(payload.runId);
+  const { candidatesPath, data } = readPackageCandidatesForEdit(runId, options);
+  const existing = Array.isArray(data.candidates) ? data.candidates : [];
+  const existingTitles = existing.map((c) => (c && c.proposedTitle) || '').filter(Boolean);
+  const schema = {
+    type: 'object',
+    properties: {
+      proposedTitle: { type: 'string' },
+      idea: { type: 'string' },
+      viewerPromise: { type: 'string' },
+      targetViewer: { type: 'string' },
+      thumbnailConcept: { type: 'string' },
+      onThumbnailText: { type: 'string' },
+      productionDifficulty: { type: 'string' },
+      mainRisk: { type: 'string' },
+      score: { type: 'integer' },
+      recommendation: { type: 'string' },
+      shortsIdeas: { type: 'array', items: { type: 'string' } },
+    },
+    required: ['proposedTitle', 'idea', 'viewerPromise', 'targetViewer', 'productionDifficulty', 'mainRisk'],
+  };
+  const system = [
+    'You generate ONE fresh YouTube Short idea for VIDTOOLZ (practical video creation in the AI era).',
+    'Audience: serious solo creators adapting to AI. Tone: practical teacher with critical tester instincts; no hype, no "make money with AI".',
+    'Format: a single 9:16 Short, under 3 minutes, one claim / one example / one point.',
+    'Be concrete and demonstrable on screen. Return only the requested JSON.',
+  ].join('\n');
+  const user = [
+    'Generate one new, distinct VIDTOOLZ Short topic candidate.',
+    existingTitles.length ? `Avoid duplicating or closely echoing these existing titles:\n- ${existingTitles.join('\n- ')}` : '',
+    'Fields: proposedTitle, idea, viewerPromise, targetViewer, thumbnailConcept, onThumbnailText (short, may be empty), productionDifficulty (Low/Medium/High), mainRisk, score (0-100 integer), recommendation (Make/Maybe/Reject), shortsIdeas (up to 5 short strings).',
+  ].filter(Boolean).join('\n\n');
+  const content = await callOllamaChat({ system, user, schema, model: payload.model }, options);
+  let parsed;
+  try { parsed = JSON.parse(content); } catch (_e) {
+    const error = new Error('Ollama did not return valid JSON. Try again, or set OLLAMA_MODEL to another installed model.');
+    error.statusCode = 502;
+    throw error;
+  }
+  if (!parsed || !String(parsed.proposedTitle || '').trim()) {
+    const error = new Error('Ollama returned no usable candidate. Try again.');
+    error.statusCode = 502;
+    throw error;
+  }
+  const nextNumber = existing.reduce((max, c) => Math.max(max, Number(c && c.packageNumber) || 0), 0) + 1;
+  const candidate = packageEngineModel.normalizePackageCandidate(
+    { ...parsed, id: `generated-${String(nextNumber).padStart(3, '0')}`, packageNumber: nextNumber },
+    existing.length
+  );
+  const next = { ...data, candidates: [...existing, candidate] };
+  const tmpPath = `${candidatesPath}.tmp`;
+  fs.writeFileSync(tmpPath, `${JSON.stringify(next, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmpPath, candidatesPath);
+  return { runId, candidate };
+}
+
 // Save a manually-generated (e.g. GPT) image into a package's images/flux-local/
 // as flux-NNN.png so it is indistinguishable from a FLUX image to the existing
 // image-selector and PRESTO I2V pipeline. Image bytes arrive base64-encoded in
@@ -8195,6 +8256,17 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === TOPIC_SCOUT_GENERATE_ONE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          return generateOneTopicCandidate(payload, { root: serverOptions.root || ROOT });
+        })
+        .then((result) => sendJSON(res, 200, result))
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'topic-scout-generate-one-error'));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === SHORTS_I2V_PROMPTS_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -8877,6 +8949,7 @@ module.exports = {
   generateI2vPrompts,
   saveI2vPrompts,
   uploadAigenImage,
+  generateOneTopicCandidate,
   workflowGenerationEnv,
   generateBeginningTriageDraft,
   callOllamaChat,

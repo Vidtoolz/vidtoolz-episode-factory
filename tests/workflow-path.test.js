@@ -404,3 +404,62 @@ test("image-prompts-editor and selector wire copy + manual upload", () => {
   const cockpit = fs.readFileSync(path.join(__dirname, "..", "shorts-workflow.html"), "utf8");
   assert.match(cockpit, /\/api\/aigen\/upload-image/);
 });
+
+// ── Topic Scout: delete & replace (generate one new idea) ─────────────────────
+
+function makeCandidatesRoot(runId, candidates) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "gen-one-"));
+  const runDir = path.join(root, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, "package-candidates.json"),
+    JSON.stringify({ project: "VIDTOOLZ", candidates }, null, 2), "utf8");
+  return { root, runDir };
+}
+
+test("generateOneTopicCandidate appends a new candidate and preserves existing ones", async () => {
+  const { root, runDir } = makeCandidatesRoot("2026-06-01-gen-run", [
+    { id: "pkg-001", packageNumber: 1, proposedTitle: "Existing one", idea: "x", viewerPromise: "p" },
+    { id: "pkg-002", packageNumber: 2, proposedTitle: "Existing two", idea: "y", viewerPromise: "q" },
+  ]);
+  const content = JSON.stringify({
+    proposedTitle: "A fresh AI-era editing idea", idea: "Concrete demo", viewerPromise: "You will learn X",
+    targetViewer: "Solo creators", productionDifficulty: "Low", mainRisk: "Could drift abstract",
+    score: 72, recommendation: "Maybe", shortsIdeas: ["a", "b"],
+  });
+  const fetchImpl = async () => ({ ok: true, json: async () => ({ message: { content } }) });
+  const result = await packageEngineServer.generateOneTopicCandidate({ runId: "2026-06-01-gen-run" }, { root, fetchImpl });
+  assert.equal(result.candidate.proposedTitle, "A fresh AI-era editing idea");
+  assert.equal(result.candidate.packageNumber, 3);
+  assert.match(result.candidate.id, /^generated-/);
+  const saved = JSON.parse(fs.readFileSync(path.join(runDir, "package-candidates.json"), "utf8"));
+  assert.equal(saved.candidates.length, 3);
+  assert.equal(saved.candidates[0].proposedTitle, "Existing one"); // preserved
+  assert.equal(saved.candidates[2].proposedTitle, "A fresh AI-era editing idea");
+});
+
+test("generateOneTopicCandidate rejects an invalid run id", async () => {
+  await assert.rejects(
+    () => packageEngineServer.generateOneTopicCandidate({ runId: "../../etc" }, { fetchImpl: async () => ({}) }),
+    /Invalid package-run id/);
+});
+
+test("topic-scout generate-one API rejects POST without nonce", async () => {
+  const { root } = makeCandidatesRoot("2026-06-01-gen-route", [{ id: "pkg-001", packageNumber: 1, proposedTitle: "T", idea: "i", viewerPromise: "v" }]);
+  const server = packageEngineServer.createServer({ root });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const port = server.address().port;
+  try {
+    const res = await postJson(port, "/api/topic-scout/generate-one", { runId: "2026-06-01-gen-route" });
+    assert.equal(res.status, 403);
+    assert.match(res.body.error, /nonce/i);
+  } finally {
+    await new Promise((r) => server.close(r));
+  }
+});
+
+test("topic-scout.html wires delete & replace", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "topic-scout.html"), "utf8");
+  assert.match(html, /Delete &amp; replace/);
+  assert.match(html, /\/api\/package-runs\/candidates\/delete/);
+  assert.match(html, /\/api\/topic-scout\/generate-one/);
+});

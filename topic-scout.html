@@ -142,6 +142,24 @@
       margin-bottom: 0.3rem;
       font-size: 0.85rem;
     }
+    .topic-card-actions {
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .topic-delete-replace {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--panel-soft);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .topic-delete-replace:hover { border-color: var(--accent, #3fb950); }
+    .topic-delete-replace:disabled { opacity: 0.6; cursor: default; }
+    .topic-action-status { font-size: 0.72rem; color: var(--muted); }
     .topic-field-label {
       color: var(--muted);
       font-weight: 600;
@@ -377,6 +395,10 @@
               <span class="topic-field-label" style="margin-left:1rem;">Risk:</span> <span class="${riskClass}">${escapeHtml(c.mainRisk)}</span>
             </div>
             <div class="topic-field"><span class="topic-field-label">Thumbnail:</span> ${escapeHtml(c.thumbnailConcept)}</div>
+            <div class="topic-card-actions">
+              <button type="button" class="topic-delete-replace" data-cand-id="${escapeHtml(c.id || '')}">Delete &amp; replace</button>
+              <span class="topic-action-status"></span>
+            </div>
           </div>
         `;
       }).join('');
@@ -514,6 +536,35 @@
       document.getElementById('charCount').textContent = len;
       document.getElementById('submitBtn').disabled = len < 5;
     });
+    // "Delete & replace": soft-delete this candidate, then generate one new idea (Ollama).
+    async function handleCandidateAction(e) {
+      const btn = e.target.closest('.topic-delete-replace');
+      if (!btn) return;
+      const id = btn.dataset.candId;
+      const statusEl = btn.parentElement.querySelector('.topic-action-status');
+      const setStatus = (m) => { if (statusEl) statusEl.textContent = m; };
+      if (!id) { setStatus('No candidate id.'); return; }
+      if (!localWriteNonce) { setStatus('Local write nonce unavailable. Refresh.'); return; }
+      if (!confirm('Delete this idea and generate a new one to replace it?')) return;
+      btn.disabled = true; setStatus('Deleting…');
+      const headers = { 'Content-Type': 'application/json', [nonceHeader]: localWriteNonce };
+      try {
+        let res = await fetch('/api/package-runs/candidates/delete', { method: 'POST', headers,
+          body: JSON.stringify({ runId: RUN_ID, candidateId: id, localWriteNonce }) });
+        let data = normalizePayload(await res.json());
+        if (!res.ok || data.ok === false) throw new Error(data.error || 'Delete failed.');
+        setStatus('Generating replacement…');
+        res = await fetch('/api/topic-scout/generate-one', { method: 'POST', headers,
+          body: JSON.stringify({ runId: RUN_ID, localWriteNonce }) });
+        data = normalizePayload(await res.json());
+        if (!res.ok || data.ok === false) throw new Error(data.error || 'Generation failed.');
+        await loadCandidates();
+      } catch (err) {
+        btn.disabled = false; setStatus(err.message);
+      }
+    }
+    document.getElementById('candidateList').addEventListener('click', handleCandidateAction);
+
     document.getElementById('submitBtn').addEventListener('click', submitTopic);
     document.getElementById('topicInput').addEventListener('keydown', (e) => {
       if (e.ctrlKey && e.key === 'Enter') submitTopic();
