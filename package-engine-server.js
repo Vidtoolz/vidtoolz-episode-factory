@@ -7622,8 +7622,11 @@ function handlePipelineStatus(req, res, url) {
     });
   }
 
+  const runWorkflowPath = workflowPathModel.readWorkflowPathFromState(
+    safeReadText(path.join(runDir, 'package-run-state.md'), ''));
   sendJSON(res, 200, {
     runFolder,
+    workflowPath: runWorkflowPath,
     currentStage,
     stages,
     blocker,
@@ -7765,9 +7768,16 @@ function createServer(options = {}) {
           const mdPath = path.join(runDir, 'selected-package.md');
           const md = `# Selected Package: ${title}\n\n- Package number: ${pkg.packageNumber || ''}\n- Score: ${pkg.score !== undefined ? pkg.score : ''}/100\n- Recommendation: ${pkg.recommendation || ''}\n- Production difficulty: ${pkg.productionDifficulty || ''}\n\n## Idea\n\n${pkg.idea || 'Not specified.'}\n\n## Viewer Promise\n\n${pkg.viewerPromise || 'Not specified.'}\n\n## Target Viewer\n\n${pkg.targetViewer || 'Not specified.'}\n\n## Thumbnail Concept\n\n${pkg.thumbnailConcept || 'Not specified.'}\n\n## Main Risk\n\n${pkg.mainRisk || 'Not specified.'}\n`;
           fs.writeFileSync(mdPath, md, 'utf8');
+          // Stamp the chosen workflow path (vertical/horizontal) onto the run if the
+          // client passed one (from the new-video-build choice). Explicit, durable.
+          let workflowPath = null;
+          if (payload.workflowPath) {
+            try { workflowPath = setWorkflowPathForRun({ runId, path: payload.workflowPath }, { root: ROOT }).workflowPath; } catch (_) {}
+          }
           sendJSON(res, 200, {
             runId,
             title,
+            workflowPath,
             jsonPath: `${PACKAGE_RUNS_DIR}/${runId}/selected-package.json`,
             mdPath: `${PACKAGE_RUNS_DIR}/${runId}/selected-package.md`,
             nextStep: 'Stage 1 complete. selected-package.json and selected-package.md saved to run folder. Next: Stage 2 (Outline) — paste the outline prompt into Hermes/ChatGPT to generate 3 outline options.',

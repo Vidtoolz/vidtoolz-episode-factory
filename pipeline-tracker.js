@@ -24,6 +24,22 @@
     { id: 12, key: "published",     label: "Published",      short: "Done" },
   ];
 
+  // Vertical / Shorts path is intentionally shorter: no research/claims/packaging.
+  const VERTICAL_STAGES = [
+    { id: 0, key: "idea",          label: "Topic",          short: "Topic" },
+    { id: 1, key: "script",        label: "Script",         short: "Script" },
+    { id: 2, key: "image-prompts", label: "Image Prompts",  short: "Prompts" },
+    { id: 3, key: "image-gen",     label: "Image Gen",      short: "Images" },
+    { id: 4, key: "image-select",  label: "Image Select",   short: "Select" },
+    { id: 5, key: "i2v-prompts",   label: "I2V Prompts",    short: "I2V" },
+    { id: 6, key: "video-gen",     label: "Video Gen",      short: "PRESTO" },
+    { id: 7, key: "view",          label: "View + Resolve", short: "View" },
+  ];
+
+  function stagesForPath(workflowPath) {
+    return String(workflowPath || "") === "vertical" ? VERTICAL_STAGES : STAGES;
+  }
+
   /**
    * Map Episode Factory statuses to pipeline stages.
    * The Episode Factory uses a simpler 8-status model; we map to 13 stages.
@@ -87,9 +103,11 @@
     const blockedStage = data.blockedStage || null;
     const stages = data.stages || {};
 
+    const stageList = stagesForPath(data.workflowPath);
+
     let html = '<div class="pipeline-tracker" role="navigation" aria-label="Production pipeline progress">';
 
-    STAGES.forEach((stage) => {
+    stageList.forEach((stage) => {
       let stageClass = "";
       let stageStatus = "pending";
 
@@ -195,7 +213,9 @@
     gateToStage,
     stagesArrayToMap,
     normalizeData,
+    stagesForPath,
     STAGES,
+    VERTICAL_STAGES,
   };
   if (typeof module !== "undefined" && module.exports) {
     module.exports = globalScope.PipelineTracker;

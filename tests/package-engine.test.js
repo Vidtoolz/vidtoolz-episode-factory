@@ -1126,7 +1126,7 @@ test("package engine browser code surfaces thumbnail backend failures and recove
   assert.match(script, /OpenAI thumbnail provider error:/);
   assert.match(script, /OPENAI_API_KEY is missing/);
   assert.match(script, /finally \{\s*isGeneratingThumbnails = false;\s*render\(\);/);
-  assert.match(html, /package-engine\.js\?v=1\.7\.8/);
+  assert.match(html, /package-engine\.js\?v=1\.7\.9/);
 });
 
 test("package engine HTML contains Focused View toggle and focus panel", () => {

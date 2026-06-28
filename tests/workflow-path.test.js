@@ -324,3 +324,33 @@ test("shorts-workflow.html wires the I2V builder with copy + save", () => {
   assert.match(html, /Copy/);
   assert.match(html, /video-prompts\.json/);
 });
+
+// ── Phase 2 Slice 4: vertical pipeline rendering + run stamping ───────────────
+
+test("pipeline-tracker uses a shorter vertical stage set for the vertical path", () => {
+  const PipelineTracker = require("../pipeline-tracker.js");
+  const full = PipelineTracker.stagesForPath("horizontal");
+  const vertical = PipelineTracker.stagesForPath("vertical");
+  assert.equal(full.length, 13);
+  assert.equal(vertical.length, 8);
+  assert.ok(vertical.some((s) => s.key === "i2v-prompts"));
+  // vertical drops long-form-only stages
+  assert.ok(!vertical.some((s) => s.key === "claims"));
+  assert.ok(!vertical.some((s) => s.key === "packaging"));
+});
+
+test("pipeline-status response includes the run's workflow path", () => {
+  // handlePipelineStatus is bound to the real ROOT (like save-selected), so this
+  // is asserted at the source level; behavior is verified live.
+  const server = fs.readFileSync(path.join(__dirname, "..", "package-engine-server.js"), "utf8");
+  assert.match(server, /readWorkflowPathFromState[\s\S]{0,160}package-run-state\.md/);
+  assert.match(server, /workflowPath: runWorkflowPath/);
+});
+
+test("package-engine.js stamps the workflow path on save-selected", () => {
+  const js = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  assert.match(js, /vidtoolz-workflow-path-v1/);
+  const server = fs.readFileSync(path.join(__dirname, "..", "package-engine-server.js"), "utf8");
+  // save-selected stamps via setWorkflowPathForRun when a path is provided
+  assert.match(server, /payload\.workflowPath[\s\S]{0,120}setWorkflowPathForRun/);
+});

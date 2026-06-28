@@ -1008,6 +1008,8 @@
       body: JSON.stringify({
         runId,
         selectedPackage,
+        // Stamp the workflow path chosen at the start (new-video-build) onto the run.
+        workflowPath: (function () { try { return localStorage.getItem("vidtoolz-workflow-path-v1") || ""; } catch (e) { return ""; } })(),
         localWriteNonce,
       }),
     })
