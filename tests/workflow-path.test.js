@@ -303,6 +303,21 @@ test("saveI2vPrompts maps prompts onto selected-images prompt_index and writes v
   assert.equal(saved.prompts[0].prompt, "zoom in");
 });
 
+test("saveI2vPrompts falls back to positional index when selected-images prompt_index is non-integer", () => {
+  const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), "i2v-nan-"));
+  const dir = path.join(scriptPackages, "pkg-nan");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "selected-images.json"), JSON.stringify({
+    version: 1, selections: [{ prompt_index: "abc", selected_path: "a.png" }, { prompt_index: 8, selected_path: "b.png" }],
+  }), "utf8");
+  const res = packageEngineServer.saveI2vPrompts(
+    { package_id: "pkg-nan", prompts: [{ prompt: "zoom in" }, { prompt: "pan left" }] }, { scriptPackages });
+  const saved = JSON.parse(fs.readFileSync(path.join(dir, "video-prompts.json"), "utf8"));
+  assert.equal(saved.prompts[0].prompt_index, 1); // fell back from "abc" → positional 1
+  assert.equal(saved.prompts[1].prompt_index, 8);
+  assert.ok(saved.prompts.every((p) => Number.isInteger(p.prompt_index)), "no NaN prompt_index");
+});
+
 test("shorts i2v-prompts API rejects POST without nonce", async () => {
   const { root } = makeRunRoot("2026-06-01-i2v-route", "# Package Run State\n");
   const server = packageEngineServer.createServer({ root });
@@ -323,6 +338,16 @@ test("shorts-workflow.html wires the I2V builder with copy + save", () => {
   assert.match(html, /\/api\/shorts\/save-i2v-prompts/);
   assert.match(html, /Copy/);
   assert.match(html, /video-prompts\.json/);
+});
+
+test("shorts-workflow.html uses one persisted package-id field for the image/I2V steps", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "shorts-workflow.html"), "utf8");
+  assert.match(html, /id="runPackageId"/);            // single consolidated field
+  assert.match(html, /function currentPackageId/);     // both steps read it
+  assert.match(html, /vidtoolz-shorts-package-id::/);   // persisted per run, survives reload
+  // the two old per-step package-id inputs are gone
+  assert.doesNotMatch(html, /id="upPackageId"/);
+  assert.doesNotMatch(html, /id="i2vPackageId"/);
 });
 
 // ── Phase 2 Slice 4: vertical pipeline rendering + run stamping ───────────────

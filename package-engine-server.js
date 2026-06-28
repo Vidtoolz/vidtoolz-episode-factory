@@ -4568,8 +4568,14 @@ function saveI2vPrompts(payload = {}, options = {}) {
   }
   const selected = safeReadJson(path.join(packageDir, 'selected-images.json'), null);
   const selections = selected && Array.isArray(selected.selections) ? selected.selections : [];
+  // Map onto the selected images' prompt_index when present, but never let a
+  // malformed/non-integer prompt_index produce a NaN index (which would corrupt
+  // video-prompts.json); fall back to the positional index for that row.
   const indexes = selections.length
-    ? selections.map((s) => Number(s.prompt_index))
+    ? selections.map((s, i) => {
+        const n = Number(s && s.prompt_index);
+        return Number.isInteger(n) ? n : i + 1;
+      })
     : texts.map((_t, i) => i + 1);
   const prompts = [];
   for (let i = 0; i < texts.length && i < indexes.length; i++) {
@@ -5277,7 +5283,13 @@ function readImagePrompts(packageId, options = {}) {
   let parsed = { image_prompts: [] };
   let stat = null;
   if (exists) {
-    parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    try {
+      parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch (_e) {
+      const error = new Error('image-prompts.json is not valid JSON. Fix the file or re-save from the editor.');
+      error.statusCode = 400;
+      throw error;
+    }
     stat = fs.statSync(filePath);
   }
   const model = normalizeImagePromptsModel(parsed);

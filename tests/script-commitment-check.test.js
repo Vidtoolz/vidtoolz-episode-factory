@@ -188,3 +188,12 @@ test("shorts-workflow.html reloads a saved commitment check on load", () => {
   assert.match(html, /script-commitment-check\.json/);          // reload reads the saved file
   assert.match(html, /\/api\/shorts\/save-script-commitment-check/); // explicit save on check
 });
+
+test("shorts-workflow.html saveCommit surfaces save failures instead of swallowing them", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "shorts-workflow.html"), "utf8");
+  const fn = html.match(/function saveCommit\(verdict\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fn, "saveCommit function should exist");
+  const body = fn[1];
+  assert.doesNotMatch(body, /\.catch\(function \(\) \{\}\)/); // no empty error swallow
+  assert.match(body, /saving the verdict failed|not saved/i);  // tells the user on failure
+});

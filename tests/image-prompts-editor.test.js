@@ -174,6 +174,23 @@ test("image prompts read missing file returns safe empty model", async () => {
   }
 });
 
+test("image prompts read returns a clear 400 (not a 500) for malformed image-prompts.json", async () => {
+  const fixture = createPromptFixture();
+  fs.writeFileSync(path.join(fixture.packageDir, "image-prompts.json"), "{ not valid json", "utf8");
+  const server = packageEngineServer.createServer();
+  try {
+    await withPromptEnv(fixture, async () => {
+      await listen(server);
+      const response = await requestJson(server, `${packageEngineServer.IMAGE_PROMPTS_READ_API}?package_id=${fixture.packageId}`);
+      assert.equal(response.statusCode, 400);
+      assert.match(response.body.error, /not valid JSON/i);
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("image prompts validate accepts valid prompt list", () => {
   const result = packageEngineServer.validateImagePromptsPayload({
     model: {

@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>VIDTOOLZ Shorts Workflow</title>
-<link rel="stylesheet" href="styles.css?v=1.9.2" />
+<link rel="stylesheet" href="styles.css?v=1.9.6" />
 <style>
   .shorts-guide { max-width: 900px; margin: 0 auto; padding: 0 24px 40px; }
   .shorts-guide h1 { margin-bottom: 4px; }
@@ -81,6 +81,10 @@
       <button type="button" id="setVerticalBtn" class="secondary-btn">Mark this run vertical</button>
       <span class="status" id="runStatus"></span>
     </div>
+    <div class="shorts-runbar">
+      <label class="status">Aigen package id: <input type="text" id="runPackageId" placeholder="package id (for image / I2V / PRESTO steps)" style="min-width:280px;" /></label>
+      <span class="status" id="runPackageStatus">Set once per run — remembered across the image, I2V, and PRESTO steps and on reload.</span>
+    </div>
 
     <!-- 1. Topic -->
     <div class="shorts-step">
@@ -127,7 +131,6 @@
         <strong style="font-size:13px;">Add a manual (GPT) image:</strong>
       </div>
       <div class="row" style="margin-top:4px;">
-        <label class="status">Package id: <input type="text" id="upPackageId" placeholder="aigen package id" style="min-width:200px;" /></label>
         <label class="status">Prompt #: <input type="number" id="upPromptIndex" value="1" min="1" max="999" style="width:64px;" /></label>
         <input type="file" id="upFile" accept="image/png,image/jpeg" />
         <button type="button" id="upBtn" class="secondary-btn">Upload image</button>
@@ -148,7 +151,6 @@
       </div>
       <div id="i2vResults"></div>
       <div class="row" style="margin-top:8px;">
-        <label class="status">Package id: <input type="text" id="i2vPackageId" placeholder="aigen package id (optional, for PRESTO)" style="min-width:220px;" /></label>
         <button type="button" id="saveI2vBtn" class="secondary-btn">Save to video-prompts.json</button>
         <span class="status" id="saveI2vStatus"></span>
       </div>
@@ -211,6 +213,18 @@
     ["lnkPipeline", "lnkPresto"].forEach(function (id) {
       var a = document.getElementById(id);
       if (a) a.href = a.getAttribute("href") + "?path=vertical";
+    });
+  }
+
+  // One run-scoped Aigen package id, persisted so the image / I2V / PRESTO steps don't
+  // each ask the user to retype it, and it survives reload. Replaces the two old fields.
+  var pkgKey = runId ? "vidtoolz-shorts-package-id::" + runId : "";
+  var runPackageInput = document.getElementById("runPackageId");
+  function currentPackageId() { return runPackageInput ? runPackageInput.value.trim() : ""; }
+  if (runPackageInput && pkgKey) {
+    try { var savedPkg = localStorage.getItem(pkgKey); if (savedPkg) runPackageInput.value = savedPkg; } catch (e) {}
+    runPackageInput.addEventListener("input", function () {
+      try { localStorage.setItem(pkgKey, runPackageInput.value.trim()); } catch (e) {}
     });
   }
 
@@ -353,8 +367,8 @@
 
   document.getElementById("saveI2vBtn").addEventListener("click", function () {
     var st = document.getElementById("saveI2vStatus");
-    var pkg = document.getElementById("i2vPackageId").value.trim();
-    if (!pkg) { setStatus(st, "Enter the aigen package id to save.", "error"); return; }
+    var pkg = currentPackageId();
+    if (!pkg) { setStatus(st, "Set the Aigen package id at the top first.", "error"); return; }
     // collect current (possibly edited) prompt textareas
     var tas = document.querySelectorAll("#i2vResults textarea");
     var prompts = Array.prototype.map.call(tas, function (t, i) { return { prompt_index: i + 1, prompt: t.value.trim() }; })
@@ -383,10 +397,10 @@
   // Step 3: upload a manual (GPT-generated) image as flux-NNN.png for a prompt.
   document.getElementById("upBtn").addEventListener("click", function () {
     var st = document.getElementById("upStatus");
-    var pkg = document.getElementById("upPackageId").value.trim();
+    var pkg = currentPackageId();
     var idx = parseInt(document.getElementById("upPromptIndex").value, 10);
     var file = document.getElementById("upFile").files[0];
-    if (!pkg) { setStatus(st, "Enter the aigen package id.", "error"); return; }
+    if (!pkg) { setStatus(st, "Set the Aigen package id at the top first.", "error"); return; }
     if (!idx) { setStatus(st, "Enter the prompt number.", "error"); return; }
     if (!file) { setStatus(st, "Choose a PNG or JPEG file.", "error"); return; }
     if (!nonce) { setStatus(st, "Local write nonce unavailable. Refresh.", "error"); return; }
@@ -456,11 +470,22 @@
   }
 
   // Persist a computed verdict into the run folder (explicit save endpoint).
+  // Surface save failures instead of swallowing them, so the verdict isn't shown
+  // as confirmed while silently failing to persist (it would vanish on reload).
   function saveCommit(verdict) {
-    if (!runId || !nonce || !verdict) return;
+    var status = document.getElementById("commitStatus");
+    if (!verdict) return;
+    if (!runId) { setStatus(status, "Verdict not saved: open with ?run=<run-id> to persist.", ""); return; }
+    if (!nonce) { setStatus(status, "Verdict not saved: local write nonce unavailable.", "error"); return; }
     var h = { "Content-Type": "application/json" }; h[nonceHeader] = nonce;
     fetch("/api/shorts/save-script-commitment-check", { method: "POST", headers: h,
-      body: JSON.stringify({ runId: runId, verdict: verdict, localWriteNonce: nonce }) }).catch(function () {});
+      body: JSON.stringify({ runId: runId, verdict: verdict, localWriteNonce: nonce }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        var d = res.j && res.j.data !== undefined ? res.j.data : res.j;
+        if (!res.ok || (d && d.ok === false)) throw new Error((d && d.error) || "save failed");
+      })
+      .catch(function (e) { setStatus(status, "Checked, but saving the verdict failed: " + e.message, "error"); });
   }
 
   // On load with ?run=, surface the last saved commitment verdict if one exists.

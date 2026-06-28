@@ -1128,6 +1128,19 @@ test("package engine thumbnail button uses configured generation API instead of 
   assert.doesNotMatch(script, /return buildThumbnailCandidates\(candidate\);/);
 });
 
+test("all HTML pages reference one shared styles.css cache-buster version", () => {
+  // styles.css is a single shared file; pages must not drift onto different ?v=
+  // strings (which serves some pages stale CSS). Bump them together.
+  const root = path.join(__dirname, "..");
+  const versions = new Set();
+  for (const f of fs.readdirSync(root)) {
+    if (!f.endsWith(".html")) continue;
+    const m = fs.readFileSync(path.join(root, f), "utf8").match(/styles\.css\?v=([0-9.]+)/);
+    if (m) versions.add(m[1]);
+  }
+  assert.equal(versions.size, 1, `expected one shared styles.css version, found: ${[...versions].join(", ")}`);
+});
+
 test("package engine browser code surfaces thumbnail backend failures and recovers button state", () => {
   const script = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
   const html = fs.readFileSync(path.join(__dirname, "..", "package-engine.html"), "utf8");
