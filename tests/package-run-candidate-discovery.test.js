@@ -9,6 +9,7 @@ const {
   os,
   path,
   http,
+  packageEngine,
   packageEngineServer,
   writeTestFile,
   test,
@@ -69,6 +70,34 @@ function makeCandidates(runId, count) {
     });
   }
   return { project: "VIDTOOLZ", topic: runId, candidates };
+}
+
+function postJson(port, route, payload, headers = {}) {
+  const bodyStr = JSON.stringify(payload || {});
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      {
+        hostname: "127.0.0.1",
+        port,
+        path: route,
+        method: "POST",
+        headers: {
+          host: "127.0.0.1:8010",
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(bodyStr),
+          ...headers,
+        },
+      },
+      (res) => {
+        let data = "";
+        res.on("data", (chunk) => { data += chunk; });
+        res.on("end", () => resolve({ status: res.statusCode, body: data ? JSON.parse(data) : null }));
+      }
+    );
+    req.on("error", reject);
+    req.write(bodyStr);
+    req.end();
+  });
 }
 
 
@@ -217,6 +246,97 @@ test("discovery includes abandoned runs when includeAbandoned is true", () => {
   assert.equal(result.runs.length, 2);
   const abandoned = result.runs.find((r) => r.runId === "2026-06-02-abandoned-run");
   assert.ok(abandoned, "abandoned run should be included");
+});
+
+test("mergeCandidateEdits only persists whitelisted candidate fields", () => {
+  const candidate = packageEngine.normalizePackageCandidate({
+    id: "pkg-001",
+    packageNumber: 1,
+    proposedTitle: "Original",
+    score: 50,
+    recommendation: "Maybe",
+  });
+  const updated = packageEngine.mergeCandidateEdits(candidate, {
+    id: "evil-id",
+    packageNumber: 99,
+    proposedTitle: "Updated",
+    score: 101,
+    recommendation: "Make",
+    _runId: "not-persisted",
+  });
+  assert.equal(updated.id, "pkg-001");
+  assert.equal(updated.packageNumber, 1);
+  assert.equal(updated.proposedTitle, "Updated");
+  assert.equal(updated.score, 100);
+  assert.equal(updated.recommendation, "Make");
+  assert.equal(updated._runId, undefined);
+});
+
+test("buildReReviewPrompt asks for JSON-only review fields for one candidate", () => {
+  const prompt = packageEngine.buildReReviewPrompt({
+    id: "pkg-001",
+    packageNumber: 1,
+    proposedTitle: "Edited Candidate",
+    score: 42,
+    recommendation: "Maybe",
+  });
+  assert.match(prompt, /valid JSON only/);
+  assert.match(prompt, /Edited Candidate/);
+  assert.match(prompt, /score/);
+  assert.match(prompt, /recommendation/);
+});
+
+test("updatePackageRunCandidate persists whitelisted edits to package-candidates.json", () => {
+  const tempRoot = createDiscoveryRoot({
+    runs: [
+      { id: "2026-06-01-edit-run", candidates: makeCandidates("2026-06-01-edit-run", 2) },
+    ],
+  });
+  const result = packageEngineServer.updatePackageRunCandidate({
+    runId: "2026-06-01-edit-run",
+    candidateId: "2026-06-01-edit-run-pkg-1",
+    fields: {
+      proposedTitle: "Edited Title",
+      score: 96,
+      recommendation: "Make",
+      id: "ignored",
+    },
+  }, { root: tempRoot });
+  assert.equal(result.candidate.proposedTitle, "Edited Title");
+  assert.equal(result.candidate.score, 96);
+  assert.equal(result.candidate.id, "2026-06-01-edit-run-pkg-1");
+  const saved = JSON.parse(fs.readFileSync(path.join(tempRoot, "package-runs", "2026-06-01-edit-run", "package-candidates.json"), "utf8"));
+  assert.equal(saved.candidates[0].proposedTitle, "Edited Title");
+  assert.equal(saved.candidates[0].id, "2026-06-01-edit-run-pkg-1");
+});
+
+test("softDeletePackageRunCandidate moves candidate into removedCandidates", () => {
+  const tempRoot = createDiscoveryRoot({
+    runs: [
+      { id: "2026-06-01-delete-run", candidates: makeCandidates("2026-06-01-delete-run", 2) },
+    ],
+  });
+  const result = packageEngineServer.softDeletePackageRunCandidate({
+    runId: "2026-06-01-delete-run",
+    candidateId: "2026-06-01-delete-run-pkg-1",
+  }, { root: tempRoot });
+  assert.equal(result.candidateId, "2026-06-01-delete-run-pkg-1");
+  const saved = JSON.parse(fs.readFileSync(path.join(tempRoot, "package-runs", "2026-06-01-delete-run", "package-candidates.json"), "utf8"));
+  assert.equal(saved.candidates.length, 1);
+  assert.equal(saved.removedCandidates.length, 1);
+  assert.equal(saved.removedCandidates[0].candidate.id, "2026-06-01-delete-run-pkg-1");
+  assert.ok(saved.removedCandidates[0].removedAt);
+});
+
+test("candidate update rejects path traversal run ids", () => {
+  assert.throws(
+    () => packageEngineServer.updatePackageRunCandidate({
+      runId: "../escape",
+      candidateId: "pkg-001",
+      fields: { proposedTitle: "Nope" },
+    }),
+    /Invalid package-run id/
+  );
 });
 
 test("discovery does not error when package-candidates.json is missing", () => {
@@ -415,6 +535,81 @@ test("discovery API route supports includeParked query param", async () => {
   }
 });
 
+test("candidate update API rejects POST without nonce", async () => {
+  const tempRoot = createDiscoveryRoot({
+    runs: [
+      { id: "2026-06-01-route-run", candidates: makeCandidates("2026-06-01-route-run", 1) },
+    ],
+  });
+  const server = packageEngineServer.createServer({ root: tempRoot });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = server.address().port;
+  try {
+    const res = await postJson(port, "/api/package-runs/candidates/update", {
+      runId: "2026-06-01-route-run",
+      candidateId: "2026-06-01-route-run-pkg-1",
+      fields: { proposedTitle: "Should Not Save" },
+    });
+    assert.equal(res.status, 403);
+    assert.match(res.body.error, /nonce/i);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("candidate update API returns 404 for missing candidate", async () => {
+  const tempRoot = createDiscoveryRoot({
+    runs: [
+      { id: "2026-06-01-route-run", candidates: makeCandidates("2026-06-01-route-run", 1) },
+    ],
+  });
+  const server = packageEngineServer.createServer({ root: tempRoot });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = server.address().port;
+  try {
+    const res = await postJson(port, "/api/package-runs/candidates/update", {
+      runId: "2026-06-01-route-run",
+      candidateId: "missing-candidate",
+      fields: { proposedTitle: "Should Not Save" },
+      localWriteNonce: packageEngineServer.localWriteNonce(),
+    }, {
+      [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+    });
+    assert.equal(res.status, 404);
+    assert.match(res.body.error, /Candidate not found/);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("candidate delete API soft-deletes with valid nonce", async () => {
+  const tempRoot = createDiscoveryRoot({
+    runs: [
+      { id: "2026-06-01-route-delete-run", candidates: makeCandidates("2026-06-01-route-delete-run", 2) },
+    ],
+  });
+  const server = packageEngineServer.createServer({ root: tempRoot });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = server.address().port;
+  try {
+    const res = await postJson(port, "/api/package-runs/candidates/delete", {
+      runId: "2026-06-01-route-delete-run",
+      candidateId: "2026-06-01-route-delete-run-pkg-1",
+      localWriteNonce: packageEngineServer.localWriteNonce(),
+    }, {
+      [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    const saved = JSON.parse(fs.readFileSync(path.join(tempRoot, "package-runs", "2026-06-01-route-delete-run", "package-candidates.json"), "utf8"));
+    assert.equal(saved.candidates.length, 1);
+    assert.equal(saved.removedCandidates.length, 1);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+
 
 // ── Browser-side source-level tests ────────────────────────────────────────
 
@@ -423,6 +618,24 @@ test("package-engine.js calls /api/package-runs/candidates on load via loadDisco
   assert.match(source, /function loadDiscoveredCandidates\s*\(/);
   assert.match(source, /\/api\/package-runs\/candidates/);
   assert.match(source, /loadDiscoveredCandidates\(\)\.then\(\(discovered\)/);
+});
+
+test("package-engine.js loads parked package runs by default", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  const fnMatch = source.match(/function loadDiscoveredCandidates\(\)\s*\{([\s\S]*?)\n  \}/);
+  assert.ok(fnMatch, "loadDiscoveredCandidates function should exist");
+  assert.match(fnMatch[1], /includeParked=true/);
+});
+
+test("package-engine.js wires candidate edit delete and re-review actions", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  assert.match(source, /data-edit=/);
+  assert.match(source, /data-delete=/);
+  assert.match(source, /data-rereview=/);
+  assert.match(source, /\/api\/package-runs\/candidates\/update/);
+  assert.match(source, /\/api\/package-runs\/candidates\/delete/);
+  assert.match(source, /buildReReviewPrompt/);
+  assert.match(source, /els\.grid\.addEventListener\("submit", handleGridSubmit\)/);
 });
 
 test("package-engine.js normalizes discovery response with normalizePayload before reading runs", () => {

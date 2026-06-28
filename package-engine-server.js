@@ -18,6 +18,7 @@ const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
 const remotionLane = require('./remotion-lane.js');
+const packageEngineModel = require('./package-engine-model.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
@@ -47,6 +48,8 @@ const DELIVERY_READINESS_SAVE_API = '/api/package-runs/delivery-readiness/save';
 const EXPORT_CHECKLIST_REGENERATE_API = '/api/package-runs/export-checklist/regenerate-derived';
 const PACKAGE_RUNS_LIST_API = '/api/package-runs/list';
 const PACKAGE_RUNS_CANDIDATES_API = '/api/package-runs/candidates';
+const PACKAGE_RUNS_CANDIDATE_UPDATE_API = '/api/package-runs/candidates/update';
+const PACKAGE_RUNS_CANDIDATE_DELETE_API = '/api/package-runs/candidates/delete';
 const REMOTION_STATUS_API = '/api/remotion/status';
 const REMOTION_RENDER_API = '/api/remotion/render';
 const REMOTION_JOB_STATUS_API = '/api/remotion/job-status';
@@ -3955,6 +3958,102 @@ function discoverPackageRunCandidates(options = {}) {
   return { runs, totalCandidates, activeRunId };
 }
 
+function packageCandidatesPathForRun(runId, options = {}) {
+  const resolved = resolvePackageRunDir(runId, options);
+  return {
+    ...resolved,
+    candidatesPath: path.join(resolved.runDir, 'package-candidates.json'),
+  };
+}
+
+function readPackageCandidatesForEdit(runId, options = {}) {
+  const resolved = packageCandidatesPathForRun(runId, options);
+  if (!fs.existsSync(resolved.candidatesPath)) {
+    const error = new Error('package-candidates.json does not exist for this run.');
+    error.statusCode = 404;
+    throw error;
+  }
+  const data = readJsonFile(resolved.candidatesPath);
+  if (!Array.isArray(data.candidates)) {
+    const error = new Error('package-candidates.json must contain a candidates array.');
+    error.statusCode = 400;
+    throw error;
+  }
+  return { ...resolved, data };
+}
+
+function writePackageCandidatesForEdit(candidatesPath, data) {
+  const validation = packageEngineModel.validatePackageCandidateSet(data);
+  if (!validation.ok) {
+    const error = new Error(validation.error);
+    error.statusCode = 400;
+    throw error;
+  }
+  const next = {
+    ...data,
+    candidates: validation.data.candidates,
+  };
+  if (Array.isArray(data.removedCandidates)) {
+    next.removedCandidates = data.removedCandidates;
+  }
+  const tmpPath = `${candidatesPath}.tmp`;
+  fs.writeFileSync(tmpPath, `${JSON.stringify(next, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmpPath, candidatesPath);
+  return next;
+}
+
+function updatePackageRunCandidate(payload = {}, options = {}) {
+  const runId = validatePackageRunId(payload.runId);
+  const candidateId = String(payload.candidateId || '').trim();
+  if (!candidateId) {
+    const error = new Error('candidateId is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const fields = payload.fields && typeof payload.fields === 'object' ? payload.fields : null;
+  if (!fields) {
+    const error = new Error('fields object is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const { candidatesPath, data } = readPackageCandidatesForEdit(runId, options);
+  const index = data.candidates.findIndex((candidate) => candidate && String(candidate.id || '') === candidateId);
+  if (index < 0) {
+    const error = new Error('Candidate not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+  const updatedCandidate = packageEngineModel.mergeCandidateEdits(data.candidates[index], fields);
+  data.candidates[index] = updatedCandidate;
+  writePackageCandidatesForEdit(candidatesPath, data);
+  return { runId, candidate: updatedCandidate };
+}
+
+function softDeletePackageRunCandidate(payload = {}, options = {}) {
+  const runId = validatePackageRunId(payload.runId);
+  const candidateId = String(payload.candidateId || '').trim();
+  if (!candidateId) {
+    const error = new Error('candidateId is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const { candidatesPath, data } = readPackageCandidatesForEdit(runId, options);
+  const index = data.candidates.findIndex((candidate) => candidate && String(candidate.id || '') === candidateId);
+  if (index < 0) {
+    const error = new Error('Candidate not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+  const [removed] = data.candidates.splice(index, 1);
+  data.removedCandidates = Array.isArray(data.removedCandidates) ? data.removedCandidates : [];
+  data.removedCandidates.push({
+    removedAt: new Date().toISOString(),
+    candidate: removed,
+  });
+  writePackageCandidatesForEdit(candidatesPath, data);
+  return { runId, candidateId, removedCandidate: removed, removedCount: data.removedCandidates.length };
+}
+
 function parseLabelValueStdout(stdout = '') {
   return String(stdout || '')
     .split(/\r?\n/)
@@ -7560,6 +7659,26 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === PACKAGE_RUNS_CANDIDATE_UPDATE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, updatePackageRunCandidate(payload, { root: serverOptions.root || ROOT }));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'package-runs-candidate-update-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === PACKAGE_RUNS_CANDIDATE_DELETE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, softDeletePackageRunCandidate(payload, { root: serverOptions.root || ROOT }));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'package-runs-candidate-delete-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === HYPERFRAMES_STATUS_API) {
       try {
         sendJSON(res, 200, discoverHyperframesCompositions({ runId: url.searchParams.get('runId') || '' }, { root: serverOptions.root || ROOT }));
@@ -8181,7 +8300,9 @@ module.exports = {
   saveSecondCutWatchNotes,
   savePickupPlan,
   slugify,
+  softDeletePackageRunCandidate,
   suggestSecondCutCandidateExportTarget,
+  updatePackageRunCandidate,
   validatePackageRunId,
   validateCaptureEvidenceRunId,
   validateCaptureEvidenceTargets,

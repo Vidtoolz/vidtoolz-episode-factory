@@ -11,6 +11,21 @@
     "audience_demand_rationale",
     "suggested_production_approach",
   ];
+  const EDITABLE_CANDIDATE_FIELDS = [
+    "score",
+    "recommendation",
+    "proposedTitle",
+    "idea",
+    "thumbnailConcept",
+    "onThumbnailText",
+    "thumbnailImage",
+    "viewerPromise",
+    "targetViewer",
+    "productionDifficulty",
+    "mainRisk",
+    "shortsIdeas",
+    ...STRATEGIC_FIELDS,
+  ];
 
   function cleanString(value) {
     return typeof value === "string" ? value.trim() : "";
@@ -88,6 +103,56 @@
       return { ok: false, error: `Candidate ${missingTitle.packageNumber} is missing proposedTitle.`, data: normalized };
     }
     return { ok: true, error: "", data: normalized };
+  }
+
+  function editableCandidateFields() {
+    return EDITABLE_CANDIDATE_FIELDS.slice();
+  }
+
+  function mergeCandidateEdits(candidate = {}, fields = {}) {
+    const source = fields && typeof fields === "object" ? fields : {};
+    const patch = {};
+    for (const field of EDITABLE_CANDIDATE_FIELDS) {
+      if (Object.prototype.hasOwnProperty.call(source, field)) {
+        patch[field] = source[field];
+      }
+    }
+    return normalizePackageCandidate({ ...candidate, ...patch }, Number(candidate.packageNumber || 1) - 1);
+  }
+
+  function buildReReviewPrompt(candidate = {}) {
+    const normalized = normalizePackageCandidate(candidate);
+    const reviewShape = {
+      score: 0,
+      recommendation: "Make | Maybe | Reject",
+      mainRisk: "",
+      why_this_matters_now: "",
+      why_this_stays_relevant: "",
+      why_this_fits_vidtoolz: "",
+      why_vidtoolz_can_make_it_better: "",
+      audience_demand_rationale: "",
+      suggested_production_approach: "",
+    };
+    return `# VIDTOOLZ Package Candidate Re-review Prompt
+
+Review this single edited YouTube package candidate for VIDTOOLZ.
+
+Return valid JSON only. Do not wrap the JSON in Markdown fences. Do not include commentary before or after the JSON.
+
+Update only review fields: score, recommendation, mainRisk, and strategic rationale fields.
+
+Use recommendation values only: Make, Maybe, Reject.
+Score must be an integer from 0 to 100.
+Be critical. Reject weak ideas instead of flattering them.
+
+Expected JSON shape:
+
+${JSON.stringify(reviewShape, null, 2)}
+
+Candidate to review:
+
+${JSON.stringify(normalized, null, 2)}
+`;
   }
 
   function sortPackageCandidates(candidates = [], mode = "score-desc") {
@@ -196,9 +261,12 @@ ${strategic}
     RECOMMENDATIONS,
     DIFFICULTIES,
     STRATEGIC_FIELDS,
+    editableCandidateFields,
     normalizePackageCandidate,
     normalizePackageCandidateSet,
     validatePackageCandidateSet,
+    mergeCandidateEdits,
+    buildReReviewPrompt,
     sortPackageCandidates,
     filterPackageCandidates,
     buildSelectedPackageJson,

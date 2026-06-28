@@ -42,6 +42,7 @@
   let persistedSelectedId = "";
   let pendingSelectedId = "";
   let expandedIds = new Set();
+  let editingIds = new Set();
   let thumbnailCandidates = [];
   let generatedThumbnailsByCandidate = {};
   let generatedThumbnailCandidates = [];
@@ -479,6 +480,50 @@
       .join("");
   }
 
+  function renderCandidateEditField(candidate, name, label, multiline = true) {
+    const value = name === "shortsIdeas" ? (candidate.shortsIdeas || []).filter(Boolean).join("\n") : candidate[name] || "";
+    const field = multiline
+      ? `<textarea name="${escapeHtml(name)}" rows="3">${escapeHtml(value)}</textarea>`
+      : `<input name="${escapeHtml(name)}" value="${escapeHtml(value)}" />`;
+    return `<label><span>${escapeHtml(label)}</span>${field}</label>`;
+  }
+
+  function renderCandidateEditForm(candidate) {
+    return `
+      <form class="candidate-edit-form" data-candidate-edit-form="${escapeHtml(candidate.id)}">
+        <div class="candidate-edit-grid">
+          ${renderCandidateEditField(candidate, "proposedTitle", "Title", false)}
+          ${renderCandidateEditField(candidate, "score", "Score", false)}
+          <label>
+            <span>Recommendation</span>
+            <select name="recommendation">
+              ${model.RECOMMENDATIONS.map((item) => `<option value="${escapeHtml(item)}" ${candidate.recommendation === item ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
+            </select>
+          </label>
+          <label>
+            <span>Difficulty</span>
+            <select name="productionDifficulty">
+              ${model.DIFFICULTIES.map((item) => `<option value="${escapeHtml(item)}" ${candidate.productionDifficulty === item ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
+            </select>
+          </label>
+          ${renderCandidateEditField(candidate, "idea", "Idea")}
+          ${renderCandidateEditField(candidate, "thumbnailConcept", "Thumbnail concept")}
+          ${renderCandidateEditField(candidate, "onThumbnailText", "On-thumbnail text", false)}
+          ${renderCandidateEditField(candidate, "thumbnailImage", "Thumbnail image path", false)}
+          ${renderCandidateEditField(candidate, "viewerPromise", "Viewer promise")}
+          ${renderCandidateEditField(candidate, "targetViewer", "Target viewer")}
+          ${renderCandidateEditField(candidate, "mainRisk", "Main risk")}
+          ${renderCandidateEditField(candidate, "shortsIdeas", "Shorts ideas")}
+          ${model.STRATEGIC_FIELDS.map((field) => renderCandidateEditField(candidate, field, field.replace(/_/g, " "))).join("")}
+        </div>
+        <div class="package-actions">
+          <button type="submit" class="primary-btn">Save edits</button>
+          <button type="button" data-edit-cancel="${escapeHtml(candidate.id)}">Cancel</button>
+        </div>
+      </form>
+    `;
+  }
+
   function renderPackageFocusPanel() {
     if (!els.packageFocusPanel) return;
     const focus = buildPackageFocusModel();
@@ -499,7 +544,7 @@
           <h2>${escapeHtml(title)}</h2>
           <p class="muted">${escapeHtml(candidateLabel)} · ${escapeHtml(scoreText)}</p>
         </div>
-        <span class="lifecycle-badge">Read-only summary</span>
+        <span class="lifecycle-badge">Review workspace</span>
       </div>
       <div class="package-focus-grid">
         <section class="package-focus-card package-focus-now" aria-label="Current package candidate">
@@ -533,6 +578,7 @@
 
   function renderCard(candidate) {
     const expanded = expandedIds.has(candidate.id);
+    const editing = editingIds.has(candidate.id);
     const isPersistedWinner = candidate.id === persistedSelectedId;
     const isPendingSelection = candidate.id === pendingSelectedId;
     const shorts = candidate.shortsIdeas
@@ -591,8 +637,12 @@
       </div>
       <div class="package-actions">
         <button type="button" data-toggle="${escapeHtml(candidate.id)}">${expanded ? "Hide details" : "Expand details"}</button>
+        <button type="button" data-edit="${escapeHtml(candidate.id)}">Edit</button>
+        <button type="button" data-rereview="${escapeHtml(candidate.id)}">Re-review</button>
+        <button type="button" data-delete="${escapeHtml(candidate.id)}">Delete</button>
         <button class="primary-btn" type="button"${selectAttr}>${selectLabel}</button>
       </div>
+      ${editing ? renderCandidateEditForm(candidate) : ""}
       ${
         expanded
           ? `
@@ -677,6 +727,10 @@
 
   function handleGridClick(event) {
     const toggle = event.target.closest("[data-toggle]");
+    const edit = event.target.closest("[data-edit]");
+    const editCancel = event.target.closest("[data-edit-cancel]");
+    const rereview = event.target.closest("[data-rereview]");
+    const deleteBtn = event.target.closest("[data-delete]");
     const select = event.target.closest("[data-select]");
     const thumbSelect = event.target.closest("[data-thumb-select]");
     const thumbGenerate = event.target.closest("[data-thumb-generate]");
@@ -688,6 +742,24 @@
         expandedIds.add(id);
       }
       render();
+      return;
+    }
+    if (edit) {
+      editingIds.add(edit.dataset.edit);
+      render();
+      return;
+    }
+    if (editCancel) {
+      editingIds.delete(editCancel.dataset.editCancel);
+      render();
+      return;
+    }
+    if (rereview) {
+      reReviewCandidate(rereview.dataset.rereview);
+      return;
+    }
+    if (deleteBtn) {
+      deleteCandidate(deleteBtn.dataset.delete);
       return;
     }
     if (thumbSelect) {
@@ -719,6 +791,120 @@
       render();
       showConfirmPanel();
     }
+  }
+
+  function candidateById(candidateId) {
+    return candidateSet.candidates.find((candidate) => candidate.id === candidateId) || null;
+  }
+
+  function updateCandidateInMemory(updatedCandidate) {
+    const existing = candidateById(updatedCandidate.id);
+    const metadata = existing
+      ? {
+          _runId: existing._runId,
+          _runState: existing._runState,
+          _hasSelectedPackage: existing._hasSelectedPackage,
+        }
+      : {};
+    candidateSet.candidates = candidateSet.candidates.map((candidate) =>
+      candidate.id === updatedCandidate.id ? { ...updatedCandidate, ...metadata } : candidate
+    );
+  }
+
+  function postCandidateUpdate(candidate, fields) {
+    if (!localWriteNonce) {
+      showStatus("Cannot save: local write nonce is missing. Refresh the page to retry.", "error");
+      return Promise.reject(new Error("Missing local write nonce."));
+    }
+    const runId = candidate._runId || candidateSet._runId || "";
+    if (!runId) {
+      showStatus("Cannot save: candidate has no source run.", "error");
+      return Promise.reject(new Error("Missing run ID."));
+    }
+    return fetch("/api/package-runs/candidates/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
+      body: JSON.stringify({ runId, candidateId: candidate.id, fields, localWriteNonce }),
+    })
+      .then((r) => r.json().then((data) => ({ ok: r.ok, data: normalizePayload(data) })))
+      .then(({ ok, data }) => {
+        if (!ok || !data || data.ok === false) throw new Error((data && data.error) || "Candidate update failed.");
+        updateCandidateInMemory(data.candidate);
+        editingIds.delete(candidate.id);
+        showStatus("Candidate saved to package-candidates.json.", "success");
+        render();
+        return data.candidate;
+      });
+  }
+
+  function handleGridSubmit(event) {
+    const form = event.target.closest("[data-candidate-edit-form]");
+    if (!form) return;
+    event.preventDefault();
+    const candidate = candidateById(form.dataset.candidateEditForm);
+    if (!candidate) return;
+    const data = new FormData(form);
+    const fields = {};
+    for (const field of model.editableCandidateFields()) {
+      if (!data.has(field)) continue;
+      fields[field] = field === "shortsIdeas"
+        ? String(data.get(field) || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean)
+        : String(data.get(field) || "");
+    }
+    postCandidateUpdate(candidate, fields).catch((error) => showStatus(error.message, "error"));
+  }
+
+  function deleteCandidate(candidateId) {
+    const candidate = candidateById(candidateId);
+    if (!candidate) return;
+    if (!localWriteNonce) {
+      showStatus("Cannot delete: local write nonce is missing. Refresh the page to retry.", "error");
+      return;
+    }
+    const runId = candidate._runId || candidateSet._runId || "";
+    if (!runId) {
+      showStatus("Cannot delete: candidate has no source run.", "error");
+      return;
+    }
+    if (!window.confirm(`Soft-delete candidate #${candidate.packageNumber}: ${candidate.proposedTitle || candidate.id}?`)) return;
+    fetch("/api/package-runs/candidates/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
+      body: JSON.stringify({ runId, candidateId: candidate.id, localWriteNonce }),
+    })
+      .then((r) => r.json().then((data) => ({ ok: r.ok, data: normalizePayload(data) })))
+      .then(({ ok, data }) => {
+        if (!ok || !data || data.ok === false) throw new Error((data && data.error) || "Candidate delete failed.");
+        candidateSet.candidates = candidateSet.candidates.filter((item) => item.id !== candidate.id);
+        editingIds.delete(candidate.id);
+        expandedIds.delete(candidate.id);
+        if (pendingSelectedId === candidate.id) pendingSelectedId = "";
+        showStatus("Candidate soft-deleted in package-candidates.json.", "success");
+        render();
+      })
+      .catch((error) => showStatus(error.message, "error"));
+  }
+
+  function reReviewCandidate(candidateId) {
+    const candidate = candidateById(candidateId);
+    if (!candidate) return;
+    const promptText = model.buildReReviewPrompt(candidate);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(promptText).catch(() => {});
+    }
+    const pasted = window.prompt("Re-review prompt copied. Paste the returned JSON here:");
+    if (!pasted) {
+      showStatus("Re-review prompt copied. No pasted JSON applied.", "");
+      return;
+    }
+    let fields;
+    try {
+      fields = JSON.parse(pasted);
+    } catch (error) {
+      showStatus("Pasted re-review result is not valid JSON.", "error");
+      return;
+    }
+    postCandidateUpdate(candidate, fields).catch((error) => showStatus(error.message, "error"));
   }
 
   function showConfirmPanel() {
@@ -1074,7 +1260,7 @@
   }
 
   function loadDiscoveredCandidates() {
-    const api = "/api/package-runs/candidates";
+    const api = "/api/package-runs/candidates?includeParked=true";
     return fetch(api, { cache: "no-store" })
       .then((response) => {
         if (!response.ok) throw new Error(`Discovery API returned ${response.status}`);
@@ -1220,6 +1406,7 @@
   }
 
   els.grid.addEventListener("click", handleGridClick);
+  els.grid.addEventListener("submit", handleGridSubmit);
   els.sort.addEventListener("change", render);
   els.filter.addEventListener("change", render);
   if (els.runFilter) {
