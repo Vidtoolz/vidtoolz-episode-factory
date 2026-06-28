@@ -21,6 +21,7 @@ const remotionLane = require('./remotion-lane.js');
 const packageEngineModel = require('./package-engine-model.js');
 const workflowPathModel = require('./workflow-path.js');
 const scriptCommitmentModel = require('./script-commitment-check.js');
+const resolveReadinessModel = require('./resolve-handoff-readiness.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
@@ -101,6 +102,7 @@ const GENERATE_OUTLINE_PROMPT_API = '/api/package-engine/generate-outline-prompt
 const SAVE_OUTLINE_API = '/api/package-engine/save-outline';
 const BEGINNING_TRIAGE_GENERATE_API = '/api/beginning-triage/generate';
 const WORKFLOW_PATH_API = '/api/package-runs/workflow-path';
+const RESOLVE_READINESS_API = '/api/package-runs/resolve-readiness';
 const SHORTS_SCRIPT_OPTIONS_API = '/api/shorts/script-options';
 const SHORTS_SAVE_SCRIPT_API = '/api/shorts/save-script';
 const SHORTS_SCRIPT_COMMITMENT_CHECK_API = '/api/shorts/script-commitment-check';
@@ -7808,6 +7810,68 @@ function handleFrictionLogSave(res, payload) {
 // ═══════════════════════════════════════════════════════════════
 // Pipeline Status — derive 13-stage progress from package-run state
 // ═══════════════════════════════════════════════════════════════
+// ── "Ready for Resolve" checklist (B2-A) ──────────────────────────────────────
+// Deterministic, read-only assessment of whether the SYSTEM side of a run is done
+// so it can be handed to Resolve. Stops at the handoff boundary — it never tracks
+// editing, export, or publishing. Run-local signals (script) + package-side signals
+// (image prompts/images/selection/i2v/clips/handoff, via buildPackagePipelineStatus).
+function gatherResolveReadiness(payload = {}, options = {}) {
+  const runInfo = readWorkflowPathForRun(payload.run, options); // throws 400/404 on a bad run
+  const runDir = runInfo.runDir;
+  const scriptSaved = ['final-script.md', 'script.md', 'SCRIPT.md']
+    .some((name) => fs.existsSync(path.join(runDir, name)));
+
+  const input = { workflowPath: runInfo.workflowPath, scriptSaved, packageLinked: false };
+  const packageId = String(payload.packageId || '').trim();
+  if (packageId) {
+    try {
+      const { packageDir, packageId: resolvedId } = resolveAigenPackageDir(packageId, options);
+      if (fs.existsSync(packageDir)) {
+        const paths = aigenPaths(options);
+        const completed = parseJsonLines(path.join(paths.wanLane, 'completed.txt'));
+        const failed = parseJsonLines(path.join(paths.wanLane, 'failed.jsonl'));
+        const wanLabels = {
+          completed: new Set(completed.map((i) => String(i.label || '')).filter(Boolean)),
+          failed: new Set(failed.map((i) => String(i.label || '')).filter(Boolean)),
+        };
+        const pkg = buildPackagePipelineStatus(packageDir, wanLabels);
+        const videoPrompts = safeReadJson(path.join(packageDir, 'video-prompts.json'), null);
+        input.packageLinked = true;
+        input.packageId = resolvedId;
+        input.imagePromptsCount = pkg.prompts_count;
+        input.imagesCount = pkg.flux_images_count;
+        input.selectionsCount = pkg.selections_count;
+        input.i2vPromptsCount = videoPrompts && Array.isArray(videoPrompts.prompts) ? videoPrompts.prompts.length : 0;
+        input.clipsCompleted = pkg.wan_completed;
+        input.clipsPending = pkg.wan_pending;
+        input.clipsFailed = pkg.wan_failed;
+        input.resolveHandoffReady = pkg.resolve_handoff_ready;
+      }
+    } catch (_error) {
+      // Invalid package id or unmounted VIDNAS → leave the media side "unknown".
+    }
+  }
+
+  return Object.assign(
+    { run: payload.run, packageId: input.packageLinked ? input.packageId : (packageId || null) },
+    resolveReadinessModel.buildResolveReadiness(input),
+  );
+}
+
+function handleResolveReadiness(req, res, url, options = {}) {
+  const run = url.searchParams.get('run') || '';
+  const packageId = url.searchParams.get('package') || '';
+  if (!run) {
+    sendError(res, 400, 'Missing run parameter', 'missing-run-param');
+    return;
+  }
+  try {
+    sendJSON(res, 200, gatherResolveReadiness({ run, packageId }, options));
+  } catch (error) {
+    sendError(res, error.statusCode || 400, error.message, 'resolve-readiness-error');
+  }
+}
+
 function handlePipelineStatus(req, res, url) {
   const runFolder = url.searchParams.get('run') || '';
   if (!runFolder) {
@@ -8891,6 +8955,11 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === RESOLVE_READINESS_API) {
+      handleResolveReadiness(req, res, url, serverOptions);
+      return;
+    }
+
     // ── Visual Beat Map API (read-only) ──
     if (req.method === 'GET' && url.pathname === '/api/package-runs/beat-map') {
       handleBeatMap(req, res, url);
@@ -9149,6 +9218,8 @@ module.exports = {
   startFluxPackageJob,
   startPrestoPackageJob,
   prestoComfyuiReachable,
+  gatherResolveReadiness,
+  RESOLVE_READINESS_API,
   roughCutInputDefaults,
   runRoughCutReview,
   runFinalReview,

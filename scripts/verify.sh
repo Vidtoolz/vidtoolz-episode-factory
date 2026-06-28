@@ -12,6 +12,7 @@ node --check package-engine-run.js
 node --check package-engine.js
 node --check workflow-path.js
 node --check script-commitment-check.js
+node --check resolve-handoff-readiness.js
 node --check package-engine-server.js
 node --check package-runs-dashboard.js
 node --check trailer-cue-generator.js

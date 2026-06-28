@@ -3773,6 +3773,16 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         }
       }
 
+      // Ready for Resolve (system-side handoff readiness — stops at the boundary)
+      const resolveReadinessContainer = doc.querySelector("#resolveReadinessPanel");
+      if (resolveReadinessContainer && globalScope.ResolveReadiness) {
+        if (activeRun) {
+          globalScope.ResolveReadiness.mount(resolveReadinessContainer, { runFolder: activeRun });
+        } else {
+          resolveReadinessContainer.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px;">No active run. Ready-for-Resolve check activates when a run is in progress.</div>`;
+        }
+      }
+
       // Workflow Wizard
       const wizardContainer = doc.querySelector("#workflowWizardContainer");
       if (wizardContainer && globalScope.WorkflowWizard) {

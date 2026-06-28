@@ -5,6 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Package Runs Dashboard</title>
     <link rel="stylesheet" href="styles.css?v=1.9.6" />
+    <style>
+      /* Ready-for-Resolve panel (B2-A) — page-specific layout. */
+      .resolve-readiness-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+      .resolve-readiness-panel .rr-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .resolve-readiness-panel .rr-header h2 { margin: 0; font-size: 16px; }
+      .resolve-readiness-panel .rr-badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); }
+      .resolve-readiness-panel.rr-ready .rr-badge { color: #0b3; border-color: #0b3; }
+      .resolve-readiness-panel.rr-not-ready .rr-badge { color: var(--muted); }
+      .resolve-readiness-panel .rr-scope { font-size: 12px; margin: 6px 0 10px; }
+      .resolve-readiness-panel .rr-list { list-style: none; margin: 0; padding: 0; }
+      .resolve-readiness-panel .rr-item { display: grid; grid-template-columns: 20px minmax(140px, max-content) 1fr; gap: 8px; align-items: baseline; padding: 4px 0; border-top: 1px solid var(--border); font-size: 13px; }
+      .resolve-readiness-panel .rr-item:first-child { border-top: none; }
+      .resolve-readiness-panel .rr-glyph { font-weight: 700; text-align: center; }
+      .resolve-readiness-panel .rr-ready .rr-glyph { color: #0b3; }
+      .resolve-readiness-panel .rr-partial .rr-glyph { color: #e8a33d; }
+      .resolve-readiness-panel .rr-missing .rr-glyph { color: var(--muted); }
+      .resolve-readiness-panel .rr-unknown .rr-glyph { color: var(--muted); }
+      .resolve-readiness-panel .rr-detail { color: var(--muted); }
+      .resolve-readiness-panel .rr-next { font-size: 13px; margin: 10px 0 6px; }
+      .resolve-readiness-panel .rr-pkg { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; }
+      .resolve-readiness-panel .rr-pkg label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 3px; }
+      .resolve-readiness-panel .rr-pkg input { min-width: 260px; padding: 5px 8px; }
+    </style>
   </head>
   <body>
   <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html" class="active">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="new-video-build.html">Build New Video</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
@@ -195,6 +218,9 @@
         <section id="frictionLogPanel" class="friction-log-panel-section" aria-label="Friction log">
         </section>
 
+        <section id="resolveReadinessPanel" class="resolve-readiness-panel-section" aria-label="Ready for Resolve">
+        </section>
+
         <section id="workflowWizardPanel" class="workflow-wizard-panel" aria-label="Guided workflow">
           <div id="workflowWizardContainer" class="workflow-wizard-container">
             <div style="color:var(--muted);font-size:13px;padding:8px;">Loading workflow guidance...</div>
@@ -282,6 +308,7 @@
     <script src="pipeline-tracker.js?v=1.7.6"></script>
     <script src="media-gallery.js?v=1.7.5"></script>
     <script src="friction-log.js?v=1.7.5"></script>
+    <script src="resolve-readiness-panel.js?v=1.7.5"></script>
     <script src="workflow-wizard.js?v=1.7.5"></script>
     <script src="job-progress.js?v=1.7.5"></script>
     <script src="visual-beat-map-panel.js?v=1.7.5"></script>
