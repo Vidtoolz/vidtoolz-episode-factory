@@ -268,3 +268,59 @@ test("production-pipeline.html passes workflowPath to FLUX and PRESTO submit", (
   // both submit bodies carry the workflow path
   assert.equal((html.match(/workflowPath: currentWorkflowPath\(\)/g) || []).length >= 2, true);
 });
+
+// ── Phase 2 Slice 3: I2V prompt builder ───────────────────────────────────────
+
+test("generateI2vPrompts returns motion prompts from a stubbed Ollama response", async () => {
+  const content = JSON.stringify({ prompts: ["slow zoom into the desk", "whip pan to the screen", "push in on the face"] });
+  const fetchImpl = async () => ({ ok: true, json: async () => ({ message: { content } }) });
+  const result = await packageEngineServer.generateI2vPrompts({ script: "Stop using AI b-roll.", count: 3 }, { fetchImpl });
+  assert.equal(result.prompts.length, 3);
+  assert.equal(result.prompts[0].prompt_index, 1);
+  assert.match(result.prompts[1].prompt, /whip pan/);
+});
+
+test("generateI2vPrompts requires a script", async () => {
+  await assert.rejects(
+    () => packageEngineServer.generateI2vPrompts({ script: "  " }, { fetchImpl: async () => ({}) }),
+    /script is required/i
+  );
+});
+
+test("saveI2vPrompts maps prompts onto selected-images prompt_index and writes video-prompts.json", () => {
+  const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), "i2v-pkg-"));
+  const dir = path.join(scriptPackages, "pkg-a");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "selected-images.json"), JSON.stringify({
+    version: 1, selections: [{ prompt_index: 6, selected_path: "a.png" }, { prompt_index: 8, selected_path: "b.png" }],
+  }), "utf8");
+  const res = packageEngineServer.saveI2vPrompts(
+    { package_id: "pkg-a", prompts: [{ prompt: "zoom in" }, { prompt: "pan left" }] }, { scriptPackages });
+  assert.equal(res.count, 2);
+  const saved = JSON.parse(fs.readFileSync(path.join(dir, "video-prompts.json"), "utf8"));
+  assert.equal(saved.prompts[0].prompt_index, 6);
+  assert.equal(saved.prompts[1].prompt_index, 8);
+  assert.equal(saved.prompts[0].prompt, "zoom in");
+});
+
+test("shorts i2v-prompts API rejects POST without nonce", async () => {
+  const { root } = makeRunRoot("2026-06-01-i2v-route", "# Package Run State\n");
+  const server = packageEngineServer.createServer({ root });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const port = server.address().port;
+  try {
+    const res = await postJson(port, "/api/shorts/i2v-prompts", { script: "x" });
+    assert.equal(res.status, 403);
+    assert.match(res.body.error, /nonce/i);
+  } finally {
+    await new Promise((r) => server.close(r));
+  }
+});
+
+test("shorts-workflow.html wires the I2V builder with copy + save", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "shorts-workflow.html"), "utf8");
+  assert.match(html, /\/api\/shorts\/i2v-prompts/);
+  assert.match(html, /\/api\/shorts\/save-i2v-prompts/);
+  assert.match(html, /Copy/);
+  assert.match(html, /video-prompts\.json/);
+});

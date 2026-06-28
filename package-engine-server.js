@@ -101,6 +101,8 @@ const BEGINNING_TRIAGE_GENERATE_API = '/api/beginning-triage/generate';
 const WORKFLOW_PATH_API = '/api/package-runs/workflow-path';
 const SHORTS_SCRIPT_OPTIONS_API = '/api/shorts/script-options';
 const SHORTS_SAVE_SCRIPT_API = '/api/shorts/save-script';
+const SHORTS_I2V_PROMPTS_API = '/api/shorts/i2v-prompts';
+const SHORTS_SAVE_I2V_PROMPTS_API = '/api/shorts/save-i2v-prompts';
 const SERVE_ROOT = ROOT;
 const PACKAGE_RUNS_DIR = 'package-runs';
 const VIDNAS_AIGEN_ROOT = '/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen';
@@ -4340,6 +4342,88 @@ function saveShortsScript(payload = {}, options = {}) {
   return { runId, path: `package-runs/${runId}/final-script.md`, bytes: Buffer.byteLength(text, 'utf8') };
 }
 
+// ── Vertical / Shorts workflow: image-to-video (I2V) prompt generation ────────
+
+function buildI2vSystemPrompt() {
+  return [
+    'You write image-to-video (I2V) motion prompts for a vertical Short (9:16).',
+    'Each prompt animates ONE still image for a ~4-second clip: describe camera move and subject/scene motion only — concise, concrete, present tense.',
+    'No dialogue, no audio, no scene numbers, no commentary. Motion direction only.',
+    'Return only the requested JSON.',
+  ].join('\n');
+}
+
+async function generateI2vPrompts(payload = {}, options = {}) {
+  const script = String(payload.script || '').trim();
+  if (!script) {
+    const error = new Error('A script is required to generate I2V prompts.');
+    error.statusCode = 400;
+    throw error;
+  }
+  let count = Number(payload.count);
+  if (!Number.isFinite(count) || count < 1) count = 4;
+  count = Math.min(12, Math.round(count));
+  const schema = {
+    type: 'object',
+    properties: { prompts: { type: 'array', items: { type: 'string' } } },
+    required: ['prompts'],
+  };
+  const user = [
+    `Monologue script:`,
+    script,
+    '',
+    `Write exactly ${count} image-to-video motion prompts, one per shot, that match the energy and beats of this monologue. Each is a single motion description for one still image.`,
+  ].join('\n');
+  const content = await callOllamaChat(
+    { system: buildI2vSystemPrompt(), user, schema, model: payload.model }, options);
+  let parsed;
+  try { parsed = JSON.parse(content); } catch (_e) {
+    const error = new Error('Ollama did not return valid JSON. Try again, or set OLLAMA_MODEL to another installed model.');
+    error.statusCode = 502;
+    throw error;
+  }
+  const prompts = (Array.isArray(parsed.prompts) ? parsed.prompts : [])
+    .map((p) => (typeof p === 'string' ? p.trim() : ''))
+    .filter(Boolean)
+    .slice(0, count)
+    .map((prompt, i) => ({ prompt_index: i + 1, prompt }));
+  if (!prompts.length) {
+    const error = new Error('Ollama returned no usable I2V prompts. Try again.');
+    error.statusCode = 502;
+    throw error;
+  }
+  return { model: payload.model || OLLAMA_MODEL, count: prompts.length, prompts };
+}
+
+// Save I2V prompts into a package's video-prompts.json (consumed by PRESTO).
+// When selected-images.json exists, prompts are mapped onto the selected images'
+// prompt_index values in order so PRESTO's 1:1 expectation holds.
+function saveI2vPrompts(payload = {}, options = {}) {
+  const { packageId, packageDir } = resolveAigenPackageDir(payload.package_id || payload.packageId, options);
+  const provided = Array.isArray(payload.prompts) ? payload.prompts : [];
+  const texts = provided.map((p) => (p && typeof p === 'object' ? String(p.prompt || '') : String(p || ''))).map((s) => s.trim());
+  if (!texts.some(Boolean)) {
+    const error = new Error('prompts are required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const selected = safeReadJson(path.join(packageDir, 'selected-images.json'), null);
+  const selections = selected && Array.isArray(selected.selections) ? selected.selections : [];
+  const indexes = selections.length
+    ? selections.map((s) => Number(s.prompt_index))
+    : texts.map((_t, i) => i + 1);
+  const prompts = [];
+  for (let i = 0; i < texts.length && i < indexes.length; i++) {
+    if (!texts[i]) continue;
+    prompts.push({ prompt_index: indexes[i], prompt: texts[i] });
+  }
+  const outPath = path.join(packageDir, 'video-prompts.json');
+  const tmpPath = `${outPath}.tmp`;
+  fs.writeFileSync(tmpPath, `${JSON.stringify({ version: 1, prompts }, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmpPath, outPath);
+  return { package_id: packageId, path: 'video-prompts.json', count: prompts.length };
+}
+
 // Build orientation/resolution environment variables for FLUX/PRESTO child
 // processes from the run's workflow path. Passed as ENV (never CLI args) so the
 // current external ComfyUI handoff scripts ignore them harmlessly; once those
@@ -8016,6 +8100,27 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === SHORTS_I2V_PROMPTS_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          return generateI2vPrompts(payload, { root: serverOptions.root || ROOT });
+        })
+        .then((result) => sendJSON(res, 200, result))
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'shorts-i2v-prompts-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === SHORTS_SAVE_I2V_PROMPTS_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, saveI2vPrompts(payload));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'shorts-save-i2v-prompts-error'));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === BEGINNING_TRIAGE_GENERATE_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -8674,6 +8779,8 @@ module.exports = {
   readWorkflowPathForRun,
   generateShortsScripts,
   saveShortsScript,
+  generateI2vPrompts,
+  saveI2vPrompts,
   workflowGenerationEnv,
   generateBeginningTriageDraft,
   callOllamaChat,

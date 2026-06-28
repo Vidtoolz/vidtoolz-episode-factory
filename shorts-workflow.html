@@ -102,9 +102,20 @@
     <!-- 4. I2V prompts -->
     <div class="shorts-step">
       <h2><span class="num">4</span> Image-to-video prompts</h2>
-      <p>Generate image-to-video prompts (with per-prompt copy buttons). <em>Coming in the next slice.</em></p>
+      <p>Generate I2V motion prompts from your script (local Ollama). Copy each individually, or save them to the package's <code>video-prompts.json</code> for PRESTO.</p>
       <div class="row">
-        <button type="button" class="secondary-btn" disabled title="Built in Phase 2 Slice 2">Generate I2V prompts</button>
+        <textarea id="i2vScript" placeholder="Paste or confirm the monologue script…" style="flex:1; min-width:260px; min-height:70px;"></textarea>
+      </div>
+      <div class="row" style="margin-top:6px;">
+        <label class="status">Shots: <input type="number" id="i2vCount" value="4" min="1" max="12" style="width:64px;" /></label>
+        <button type="button" id="genI2vBtn" class="primary-btn">Generate I2V prompts</button>
+        <span class="status" id="i2vStatus"></span>
+      </div>
+      <div id="i2vResults"></div>
+      <div class="row" style="margin-top:8px;">
+        <label class="status">Package id: <input type="text" id="i2vPackageId" placeholder="aigen package id (optional, for PRESTO)" style="min-width:220px;" /></label>
+        <button type="button" id="saveI2vBtn" class="secondary-btn">Save to video-prompts.json</button>
+        <span class="status" id="saveI2vStatus"></span>
       </div>
     </div>
 
@@ -245,12 +256,88 @@
             var d = res.j && res.j.data !== undefined ? res.j.data : res.j;
             if (!res.ok || (d && d.ok === false)) throw new Error((d && d.error) || "Save failed.");
             setStatus(st, "Saved " + (d.path || "final-script.md") + ".", "success");
+            var i2vScript = document.getElementById("i2vScript");
+            if (i2vScript && !i2vScript.value.trim()) i2vScript.value = content;
           })
           .catch(function (e) { save.disabled = false; setStatus(st, e.message, "error"); });
       });
       scriptOptions.appendChild(box);
     });
   }
+
+  // Step 4: I2V prompt generation (with per-prompt copy buttons) + save to video-prompts.json.
+  var generatedI2v = [];
+  document.getElementById("genI2vBtn").addEventListener("click", function () {
+    var script = document.getElementById("i2vScript").value.trim();
+    var count = parseInt(document.getElementById("i2vCount").value, 10) || 4;
+    var status = document.getElementById("i2vStatus");
+    if (!script) { setStatus(status, "Paste the script first.", "error"); return; }
+    if (!nonce) { setStatus(status, "Local write nonce unavailable. Refresh.", "error"); return; }
+    var btn = document.getElementById("genI2vBtn");
+    btn.disabled = true; setStatus(status, "Generating I2V prompts with local Ollama…", "");
+    var h = { "Content-Type": "application/json" }; h[nonceHeader] = nonce;
+    fetch("/api/shorts/i2v-prompts", { method: "POST", headers: h,
+      body: JSON.stringify({ script: script, count: count, localWriteNonce: nonce }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        var d = res.j && res.j.data !== undefined ? res.j.data : res.j;
+        if (!res.ok || !d || d.ok === false || !d.prompts) throw new Error((d && d.error) || "Generation failed.");
+        generatedI2v = d.prompts;
+        setStatus(status, "Generated " + d.prompts.length + " I2V prompts.", "success");
+        renderI2v(d.prompts);
+      })
+      .catch(function (e) { btn.disabled = false; setStatus(status, e.message, "error"); });
+  });
+
+  function renderI2v(prompts) {
+    var wrap = document.getElementById("i2vResults");
+    wrap.innerHTML = "";
+    prompts.forEach(function (p, i) {
+      var box = document.createElement("div");
+      box.className = "script-option";
+      box.innerHTML = '<div class="angle">Shot ' + (p.prompt_index || i + 1) + '</div>' +
+        '<textarea></textarea>' +
+        '<div class="row" style="margin-top:6px;"><button type="button" class="secondary-btn">Copy</button><span class="status"></span></div>';
+      var ta = box.querySelector("textarea");
+      ta.value = p.prompt;
+      var copyBtn = box.querySelector("button");
+      var st = box.querySelector(".status");
+      copyBtn.addEventListener("click", function () {
+        var text = ta.value;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { setStatus(st, "Copied!", "success"); },
+            function () { setStatus(st, "Press Ctrl+C to copy.", "error"); });
+        } else { ta.select(); setStatus(st, "Press Ctrl+C to copy.", ""); }
+      });
+      wrap.appendChild(box);
+    });
+  }
+
+  document.getElementById("saveI2vBtn").addEventListener("click", function () {
+    var st = document.getElementById("saveI2vStatus");
+    var pkg = document.getElementById("i2vPackageId").value.trim();
+    if (!pkg) { setStatus(st, "Enter the aigen package id to save.", "error"); return; }
+    // collect current (possibly edited) prompt textareas
+    var tas = document.querySelectorAll("#i2vResults textarea");
+    var prompts = Array.prototype.map.call(tas, function (t, i) { return { prompt_index: i + 1, prompt: t.value.trim() }; })
+      .filter(function (p) { return p.prompt; });
+    if (!prompts.length) { setStatus(st, "Generate prompts first.", "error"); return; }
+    if (!nonce) { setStatus(st, "Local write nonce unavailable. Refresh.", "error"); return; }
+    var h = { "Content-Type": "application/json" }; h[nonceHeader] = nonce;
+    var btn = document.getElementById("saveI2vBtn");
+    btn.disabled = true; setStatus(st, "Saving…", "");
+    fetch("/api/shorts/save-i2v-prompts", { method: "POST", headers: h,
+      body: JSON.stringify({ package_id: pkg, prompts: prompts, localWriteNonce: nonce }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        var d = res.j && res.j.data !== undefined ? res.j.data : res.j;
+        if (!res.ok || (d && d.ok === false)) throw new Error((d && d.error) || "Save failed.");
+        setStatus(st, "Saved " + (d.count || prompts.length) + " prompts to video-prompts.json.", "success");
+      })
+      .catch(function (e) { btn.disabled = false; setStatus(st, e.message, "error"); });
+  });
 
   function escapeHtml(s) {
     return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
