@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const captureEvidenceReviewTool = require("./package-run-capture-evidence-review.js");
 const researchEvidenceTool = require("./package-run-research-evidence.js");
+const WorkflowPath = require("../workflow-path.js");
 
 const DEFAULT_RUNS_DIR = "package-runs";
 const DEFAULT_OUT_FILE = "package-runs-index.json";
@@ -262,6 +263,14 @@ function lineValue(markdown = "", label = "") {
   const pattern = new RegExp(`^\\s*(?:[-*]\\s*)?${escaped}\\s*:\\s*(.+?)\\s*$`, "im");
   const match = String(markdown || "").match(pattern);
   return match ? match[1].trim() : "";
+}
+
+// Read the per-run "Workflow path:" marker from package-run-state.md.
+// Unset resolves to "horizontal" so existing long-form runs are unaffected.
+function readWorkflowPathForRun(runDir) {
+  const filePath = path.join(runDir, PACKAGE_RUN_STATE_FILE);
+  if (!fs.existsSync(filePath)) return WorkflowPath.DEFAULT_WORKFLOW_PATH;
+  return WorkflowPath.readWorkflowPathFromState(fs.readFileSync(filePath, "utf8"));
 }
 
 function normalizePackageRunState(value = "") {
@@ -1450,6 +1459,8 @@ function scanRun(runDir, repoRoot = process.cwd()) {
   const runId = path.basename(runDir);
   const runPath = path.relative(repoRoot, runDir).replace(/\\/g, "/");
   const packageRunState = readPackageRunState(runDir);
+  const workflowPath = readWorkflowPathForRun(runDir);
+  const workflowPathInfo = WorkflowPath.workflowPathInfo(workflowPath);
   const files = {};
   DETECTED_FILES.forEach((filename) => {
     const key = fileKey(filename);
@@ -1470,6 +1481,9 @@ function scanRun(runDir, repoRoot = process.cwd()) {
     title: readPackageTitle(runDir),
     status,
     activeStatus,
+    workflowPath,
+    orientation: workflowPathInfo.orientation,
+    resolution: workflowPathInfo.resolution,
     workflowBucket: workflowBucketForPackageRunState(activeWorkflowBucket, packageRunState),
     activeWorkflowBucket,
     packageRunState,
@@ -1592,6 +1606,7 @@ module.exports = {
   readCreatorQaStatus,
   normalizePackageRunState,
   readPackageRunState,
+  readWorkflowPathForRun,
   listCaptureEvidenceReferences,
   readNarrowShootingApproval,
   readEvidenceGate,

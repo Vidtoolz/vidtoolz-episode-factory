@@ -19,6 +19,7 @@ const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
 const remotionLane = require('./remotion-lane.js');
 const packageEngineModel = require('./package-engine-model.js');
+const workflowPathModel = require('./workflow-path.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
@@ -97,6 +98,7 @@ const SAVE_SELECTED_PACKAGE_API = '/api/package-engine/save-selected';
 const GENERATE_OUTLINE_PROMPT_API = '/api/package-engine/generate-outline-prompt';
 const SAVE_OUTLINE_API = '/api/package-engine/save-outline';
 const BEGINNING_TRIAGE_GENERATE_API = '/api/beginning-triage/generate';
+const WORKFLOW_PATH_API = '/api/package-runs/workflow-path';
 const SERVE_ROOT = ROOT;
 const PACKAGE_RUNS_DIR = 'package-runs';
 const VIDNAS_AIGEN_ROOT = '/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen';
@@ -4086,6 +4088,39 @@ function saveFinalOutline(payload = {}, options = {}) {
   };
 }
 
+// Read/write the "Workflow path:" marker (vertical|horizontal) in a run's
+// package-run-state.md. Confined to the resolved run dir; gated on a nonce by
+// the route. Unset resolves to horizontal so long-form runs are unaffected.
+function readWorkflowPathForRun(runId, options = {}) {
+  const resolved = resolvePackageRunDir(runId, options);
+  const statePath = path.join(resolved.runDir, 'package-run-state.md');
+  const text = fs.existsSync(statePath) ? fs.readFileSync(statePath, 'utf8') : '';
+  return { ...resolved, statePath, workflowPath: workflowPathModel.readWorkflowPathFromState(text), raw: text };
+}
+
+function setWorkflowPathForRun(payload = {}, options = {}) {
+  const runId = validatePackageRunId(payload.runId);
+  const desired = workflowPathModel.normalizeWorkflowPath(payload.path);
+  const { statePath, raw } = readWorkflowPathForRun(runId, options);
+  const marker = workflowPathModel.WORKFLOW_PATH_MARKER;
+  const line = `${marker}: ${desired}`;
+  let next;
+  const pattern = new RegExp(`^\\s*(?:[-*]\\s*)?${marker}\\s*:.*$`, 'im');
+  if (!raw) {
+    next = `# Package Run State\n\n${line}\n`;
+  } else if (pattern.test(raw)) {
+    next = raw.replace(pattern, line);
+  } else {
+    // insert after the first heading/line block
+    next = raw.endsWith('\n') ? `${raw}\n${line}\n` : `${raw}\n\n${line}\n`;
+  }
+  const tmpPath = `${statePath}.tmp`;
+  fs.writeFileSync(tmpPath, next, 'utf8');
+  fs.renameSync(tmpPath, statePath);
+  const info = workflowPathModel.workflowPathInfo(desired);
+  return { runId, workflowPath: desired, orientation: info.orientation, resolution: info.resolution };
+}
+
 // The five beginning-triage worksheet fields the Generate button fills.
 const BEGINNING_TRIAGE_GENERATE_FIELDS = [
   'topicArea',
@@ -7828,6 +7863,16 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === WORKFLOW_PATH_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, setWorkflowPathForRun(payload, { root: serverOptions.root || ROOT }));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'workflow-path-error'));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === BEGINNING_TRIAGE_GENERATE_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -8482,6 +8527,8 @@ module.exports = {
   slugify,
   softDeletePackageRunCandidate,
   saveFinalOutline,
+  setWorkflowPathForRun,
+  readWorkflowPathForRun,
   generateBeginningTriageDraft,
   callOllamaChat,
   suggestSecondCutCandidateExportTarget,

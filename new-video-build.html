@@ -111,6 +111,25 @@
   .collapsible { cursor: pointer; }
   .collapsible-content { display: none; }
   .collapsible.open + .collapsible-content { display: block; }
+
+  /* Workflow path choice (vertical Short vs horizontal long-form) */
+  .workflow-path-choice { max-width: 900px; margin: 0 auto 20px; padding: 0 24px; }
+  .workflow-path-choice h2 { font-size: 16px; margin: 0 0 10px; }
+  .workflow-path-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .workflow-path-cards { grid-template-columns: 1fr; } }
+  .workflow-path-card {
+    display: flex; flex-direction: column; gap: 6px; text-align: left;
+    padding: 14px 16px; border: 1px solid var(--border, #30363d);
+    border-radius: 8px; background: var(--panel, #161b22); color: inherit; cursor: pointer;
+  }
+  .workflow-path-card:hover { border-color: var(--accent, #3fb950); }
+  .workflow-path-card.active { border-color: var(--accent, #3fb950); box-shadow: 0 0 0 1px var(--accent, #3fb950) inset; }
+  .wpc-title { font-weight: 700; font-size: 15px; }
+  .wpc-meta { font-size: 12px; color: var(--accent, #3fb950); }
+  .wpc-desc { font-size: 12px; color: var(--muted, #8b949e); }
+  .workflow-path-active { margin: 10px 0 0; font-size: 13px; }
+  /* In vertical mode, hide long-form-only stages (research, claims, packaging). */
+  .build-guide.path-vertical [data-longform-only] { display: none; }
 </style>
 </head>
 <body>
@@ -156,7 +175,24 @@
 
 <div class="build-guide">
   <h1>Build a New Video</h1>
-  <p class="subtitle">Proven pattern: one claim, one concrete example, one point. 1-3 minutes, vertical 9:16, YouTube Shorts. "Explain to a friend" tone.</p>
+  <p class="subtitle" id="buildSubtitle">Proven pattern: one claim, one concrete example, one point. "Explain to a friend" tone.</p>
+
+  <section class="workflow-path-choice" id="workflowPathChoice" aria-label="Choose production path">
+    <h2>First, choose your production path</h2>
+    <div class="workflow-path-cards">
+      <button type="button" class="workflow-path-card" data-workflow-path="vertical">
+        <span class="wpc-title">Create vertical video / Short</span>
+        <span class="wpc-meta">9:16 · 1080×1920 · up to 3 min</span>
+        <span class="wpc-desc">Simple linear Shorts flow: topic → 3 scripts → images → image-to-video → PRESTO → view. No research, claim triage, packaging, or proof.</span>
+      </button>
+      <button type="button" class="workflow-path-card" data-workflow-path="horizontal">
+        <span class="wpc-title">Create horizontal video / long-form</span>
+        <span class="wpc-meta">16:9 · 1920×1080 · ~3–30 min</span>
+        <span class="wpc-desc">Full production system: research, claim development, packaging, proof, script structure, visual planning, Resolve handoff, publish gates.</span>
+      </button>
+    </div>
+    <p class="workflow-path-active muted" id="workflowPathActive" role="status"></p>
+  </section>
 
   <div class="current-step-banner" id="currentStepBanner">
     <div>
@@ -204,7 +240,7 @@
   </div>
 
   <!-- STAGE 2 -->
-  <div class="step-card hermes-scope" id="step2">
+  <div class="step-card hermes-scope" id="step2" data-longform-only>
     <div class="step-header">
       <span class="step-number">2</span>
       <span class="step-title">Research and Outline</span>
@@ -259,7 +295,7 @@
   </div>
 
   <!-- STAGE 4 -->
-  <div class="step-card hermes-scope" id="step4">
+  <div class="step-card hermes-scope" id="step4" data-longform-only>
     <div class="step-header">
       <span class="step-number">4</span>
       <span class="step-title">Claims Check</span>
@@ -282,7 +318,7 @@
   </div>
 
   <!-- STAGE 5 -->
-  <div class="step-card hermes-scope" id="step5">
+  <div class="step-card hermes-scope" id="step5" data-longform-only>
     <div class="step-header">
       <span class="step-number">5</span>
       <span class="step-title">Packaging (Draft)</span>
@@ -544,8 +580,53 @@
   </div>
 </div>
 
+<script src="workflow-path.js?v=1.0.0"></script>
 <script src="plain-next-action.js?v=1"></script>
 <script>
+  // Workflow path choice: vertical (Short) vs horizontal (long-form).
+  // Stored browser-local; the chosen path also drives the per-run marker once a run exists.
+  (function workflowPathChoice() {
+    var WP = window.WorkflowPath;
+    if (!WP) return;
+    var guide = document.querySelector('.build-guide');
+    var subtitle = document.getElementById('buildSubtitle');
+    var activeText = document.getElementById('workflowPathActive');
+    var cards = document.querySelectorAll('[data-workflow-path]');
+
+    function apply(path) {
+      var p = WP.normalizeWorkflowPath(path);
+      var info = WP.workflowPathInfo(p);
+      if (guide) {
+        guide.classList.toggle('path-vertical', p === 'vertical');
+        guide.classList.toggle('path-horizontal', p === 'horizontal');
+      }
+      cards.forEach(function (c) { c.classList.toggle('active', c.dataset.workflowPath === p); });
+      if (activeText) {
+        activeText.textContent = 'Path: ' + info.label + ' — ' + info.resolution + ' (' + info.aspectRatio + ').' +
+          (p === 'vertical'
+            ? ' Simplified Shorts flow; long-form research/claim/packaging steps are hidden.'
+            : ' Full long-form workflow with all stages.');
+      }
+      if (subtitle) {
+        subtitle.textContent = p === 'vertical'
+          ? 'Vertical Short · 9:16 · 1080×1920 · up to 3 min. Blunt, funny, direct monologue — "explain to a friend" tone.'
+          : 'Horizontal long-form · 16:9 · 1920×1080 · ~3–30 min. Full production system.';
+      }
+    }
+
+    cards.forEach(function (card) {
+      card.addEventListener('click', function () {
+        var p = WP.normalizeWorkflowPath(card.dataset.workflowPath);
+        try { localStorage.setItem(WP.WORKFLOW_PATH_STORAGE_KEY, p); } catch (e) {}
+        apply(p);
+      });
+    });
+
+    var stored = '';
+    try { stored = localStorage.getItem(WP.WORKFLOW_PATH_STORAGE_KEY) || ''; } catch (e) {}
+    apply(stored || WP.DEFAULT_WORKFLOW_PATH);
+  })();
+
   // Persist checkbox state in localStorage
   document.querySelectorAll('.checkpoint input[type="checkbox"]').forEach(function(cb) {
     var key = 'vidtoolz-build-cp-' + cb.id;
