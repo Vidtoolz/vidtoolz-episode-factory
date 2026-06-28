@@ -610,6 +610,111 @@ test("candidate delete API soft-deletes with valid nonce", async () => {
 });
 
 
+test("saveFinalOutline writes pasted text to final-outline.md", () => {
+  const tempRoot = createDiscoveryRoot({
+    runs: [
+      { id: "2026-06-01-outline-run", candidates: makeCandidates("2026-06-01-outline-run", 1) },
+    ],
+  });
+  const result = packageEngineServer.saveFinalOutline(
+    { runId: "2026-06-01-outline-run", content: "# Outline\n\nThree options here." },
+    { root: tempRoot }
+  );
+  assert.equal(result.path, "package-runs/2026-06-01-outline-run/final-outline.md");
+  const saved = fs.readFileSync(path.join(tempRoot, "package-runs", "2026-06-01-outline-run", "final-outline.md"), "utf8");
+  assert.match(saved, /Three options here\./);
+  assert.match(saved, /\n$/);
+});
+
+test("saveFinalOutline rejects empty content", () => {
+  const tempRoot = createDiscoveryRoot({
+    runs: [
+      { id: "2026-06-01-outline-empty", candidates: makeCandidates("2026-06-01-outline-empty", 1) },
+    ],
+  });
+  assert.throws(
+    () => packageEngineServer.saveFinalOutline({ runId: "2026-06-01-outline-empty", content: "   " }, { root: tempRoot }),
+    /content is required/
+  );
+});
+
+test("saveFinalOutline rejects path traversal run ids", () => {
+  const tempRoot = createDiscoveryRoot({ runs: [] });
+  assert.throws(
+    () => packageEngineServer.saveFinalOutline({ runId: "../../etc", content: "x" }, { root: tempRoot }),
+    /Invalid package-run id/
+  );
+});
+
+test("save-outline API rejects POST without nonce", async () => {
+  const tempRoot = createDiscoveryRoot({
+    runs: [
+      { id: "2026-06-01-outline-route", candidates: makeCandidates("2026-06-01-outline-route", 1) },
+    ],
+  });
+  const server = packageEngineServer.createServer({ root: tempRoot });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = server.address().port;
+  try {
+    const res = await postJson(port, "/api/package-engine/save-outline", {
+      runId: "2026-06-01-outline-route",
+      content: "Should not save",
+    });
+    assert.equal(res.status, 403);
+    assert.match(res.body.error, /nonce/i);
+    assert.equal(fs.existsSync(path.join(tempRoot, "package-runs", "2026-06-01-outline-route", "final-outline.md")), false);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("save-outline API writes final-outline.md with valid nonce", async () => {
+  const tempRoot = createDiscoveryRoot({
+    runs: [
+      { id: "2026-06-01-outline-ok", candidates: makeCandidates("2026-06-01-outline-ok", 1) },
+    ],
+  });
+  const server = packageEngineServer.createServer({ root: tempRoot });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = server.address().port;
+  try {
+    const res = await postJson(port, "/api/package-engine/save-outline", {
+      runId: "2026-06-01-outline-ok",
+      content: "## Outline 1: Practical tutorial\n\nThesis...",
+      localWriteNonce: packageEngineServer.localWriteNonce(),
+    }, {
+      [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    const saved = fs.readFileSync(path.join(tempRoot, "package-runs", "2026-06-01-outline-ok", "final-outline.md"), "utf8");
+    assert.match(saved, /Outline 1: Practical tutorial/);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("save-outline API returns 404 for a missing run", async () => {
+  const tempRoot = createDiscoveryRoot({ runs: [] });
+  const server = packageEngineServer.createServer({ root: tempRoot });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = server.address().port;
+  try {
+    const res = await postJson(port, "/api/package-engine/save-outline", {
+      runId: "2026-06-01-no-such-run",
+      content: "x",
+      localWriteNonce: packageEngineServer.localWriteNonce(),
+    }, {
+      [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+    });
+    assert.equal(res.status, 404);
+    assert.match(res.body.error, /does not exist/i);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+
 
 // ── Browser-side source-level tests ────────────────────────────────────────
 
@@ -636,6 +741,13 @@ test("package-engine.js wires candidate edit delete and re-review actions", () =
   assert.match(source, /\/api\/package-runs\/candidates\/delete/);
   assert.match(source, /buildReReviewPrompt/);
   assert.match(source, /els\.grid\.addEventListener\("submit", handleGridSubmit\)/);
+});
+
+test("package-engine.js wires the paste-and-save final-outline.md flow", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
+  assert.match(source, /id="outlineResultInput"/);
+  assert.match(source, /id="saveFinalOutlineBtn"/);
+  assert.match(source, /\/api\/package-engine\/save-outline/);
 });
 
 test("package-engine.js normalizes discovery response with normalizePayload before reading runs", () => {

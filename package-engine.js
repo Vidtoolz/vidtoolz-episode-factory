@@ -1076,9 +1076,15 @@
         <p class="confirm-status" id="promptCopyStatus" role="status"></p>
         <pre id="outlinePromptText" class="prompt-text"></pre>
         <textarea id="outlinePromptFallback" class="prompt-text hidden" rows="10" readonly></textarea>
-        <p class="muted" style="margin-top: 0.75rem;">
-          After pasting into Hermes/ChatGPT, save the 3 outline options as <code>outlines.md</code> in the run folder. Then pick one and save it as <code>final-outline.md</code>.
-        </p>
+        <div class="outline-result-box">
+          <h4>Paste the generated outlines</h4>
+          <p class="muted">Run the prompt in Hermes/ChatGPT, then paste the three outline options below and save them straight into the run folder as <code>final-outline.md</code> — no manual file editing.</p>
+          <textarea id="outlineResultInput" class="prompt-text" rows="14" placeholder="Paste the outline options returned by Hermes / ChatGPT here…"></textarea>
+          <div class="prompt-actions">
+            <button type="button" id="saveFinalOutlineBtn" class="primary-btn">Save as final-outline.md</button>
+          </div>
+          <p class="confirm-status" id="saveFinalOutlineStatus" role="status"></p>
+        </div>
         <p style="margin-top: 0.75rem;">
           <a class="nav-link-button btn-primary" href="package-runs-dashboard.html?run=${encodeURIComponent(runSlug)}">Next: Go to Dashboard</a>
         </p>
@@ -1186,6 +1192,48 @@
           return;
         }
         openRunFolder(resolvedRunId, openFolderBtn);
+      });
+    }
+
+    // Wire up the "Save as final-outline.md" button. It writes the pasted
+    // outline text into the run's final-outline.md via the nonce-gated
+    // save-outline endpoint, replacing the old manual file-editing step.
+    const saveOutlineBtn = document.querySelector("#saveFinalOutlineBtn");
+    const saveOutlineStatus = document.querySelector("#saveFinalOutlineStatus");
+    const outlineResultInput = document.querySelector("#outlineResultInput");
+    if (saveOutlineBtn && outlineResultInput) {
+      saveOutlineBtn.addEventListener("click", () => {
+        const content = outlineResultInput.value.trim();
+        if (!content) {
+          saveOutlineStatus.textContent = "Paste the generated outline text before saving.";
+          saveOutlineStatus.className = "confirm-status error";
+          return;
+        }
+        if (!localWriteNonce) {
+          saveOutlineStatus.textContent = "Cannot save: local write nonce is missing. Refresh the page to retry.";
+          saveOutlineStatus.className = "confirm-status error";
+          return;
+        }
+        saveOutlineBtn.disabled = true;
+        saveOutlineStatus.textContent = "Saving…";
+        saveOutlineStatus.className = "confirm-status";
+        fetch("/api/package-engine/save-outline", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
+          body: JSON.stringify({ runId: runSlug, content, localWriteNonce }),
+        })
+          .then((r) => r.json().then((data) => ({ ok: r.ok, data: normalizePayload(data) })))
+          .then(({ ok, data }) => {
+            if (!ok || !data || data.ok === false) throw new Error((data && data.error) || "Save failed.");
+            saveOutlineStatus.textContent = `Saved ${data.path || "final-outline.md"}. Next stage (Script) is unblocked.`;
+            saveOutlineStatus.className = "confirm-status success";
+            saveOutlineBtn.disabled = false;
+          })
+          .catch((err) => {
+            saveOutlineStatus.textContent = err.message;
+            saveOutlineStatus.className = "confirm-status error";
+            saveOutlineBtn.disabled = false;
+          });
       });
     }
   }

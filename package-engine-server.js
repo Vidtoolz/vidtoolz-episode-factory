@@ -95,6 +95,7 @@ const TOPIC_SCOUT_GET_API = '/api/topic-scout/get';
 const TOPIC_SCOUT_UPDATE_STATUS_API = '/api/topic-scout/update-status';
 const SAVE_SELECTED_PACKAGE_API = '/api/package-engine/save-selected';
 const GENERATE_OUTLINE_PROMPT_API = '/api/package-engine/generate-outline-prompt';
+const SAVE_OUTLINE_API = '/api/package-engine/save-outline';
 const SERVE_ROOT = ROOT;
 const PACKAGE_RUNS_DIR = 'package-runs';
 const VIDNAS_AIGEN_ROOT = '/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen';
@@ -4054,6 +4055,31 @@ function softDeletePackageRunCandidate(payload = {}, options = {}) {
   return { runId, candidateId, removedCandidate: removed, removedCount: data.removedCandidates.length };
 }
 
+// Save pasted outline text into a run's final-outline.md.
+// Read/write is confined to the resolved run directory and gated on a valid
+// local write nonce by the route handler. The target filename is fixed —
+// callers cannot choose an arbitrary path.
+function saveFinalOutline(payload = {}, options = {}) {
+  const runId = validatePackageRunId(payload.runId);
+  const content = typeof payload.content === 'string' ? payload.content : '';
+  if (!content.trim()) {
+    const error = new Error('content is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const resolved = resolvePackageRunDir(runId, options);
+  const outlinePath = path.join(resolved.runDir, 'final-outline.md');
+  const text = content.endsWith('\n') ? content : `${content}\n`;
+  const tmpPath = `${outlinePath}.tmp`;
+  fs.writeFileSync(tmpPath, text, 'utf8');
+  fs.renameSync(tmpPath, outlinePath);
+  return {
+    runId,
+    path: `package-runs/${runId}/final-outline.md`,
+    bytes: Buffer.byteLength(text, 'utf8'),
+  };
+}
+
 function parseLabelValueStdout(stdout = '') {
   return String(stdout || '')
     .split(/\r?\n/)
@@ -7659,6 +7685,16 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === SAVE_OUTLINE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, saveFinalOutline(payload, { root: serverOptions.root || ROOT }));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'save-outline-error'));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === PACKAGE_RUNS_CANDIDATE_UPDATE_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -8301,6 +8337,7 @@ module.exports = {
   savePickupPlan,
   slugify,
   softDeletePackageRunCandidate,
+  saveFinalOutline,
   suggestSecondCutCandidateExportTarget,
   updatePackageRunCandidate,
   validatePackageRunId,

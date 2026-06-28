@@ -5603,6 +5603,24 @@ body[data-package-engine-view-mode="focused"] .package-engine-shell #generatedTh
   margin-bottom: 0.75rem;
 }
 
+.outline-result-box {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.outline-result-box h4 {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.95rem;
+}
+
+.outline-result-box textarea#outlineResultInput {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.75rem;
+  resize: vertical;
+}
+
 .prompt-text {
   background: var(--bg);
   border: 1px solid var(--border);
