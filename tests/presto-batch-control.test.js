@@ -297,6 +297,123 @@ test("PRESTO results returns completed failed and recent runs for a valid packag
   }
 });
 
+// ── F2: PRESTO ComfyUI pre-flight reachability ────────────────────────────────
+
+function captureSpawn(captured) {
+  return (bin, args) => {
+    captured.bin = bin;
+    captured.args = args;
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.kill = () => true;
+    setImmediate(() => child.emit("close", 0, null));
+    return child;
+  };
+}
+
+const SUBMIT_HEADERS = () => ({
+  host: "127.0.0.1:8010",
+  [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+});
+
+test("PRESTO submit returns 503 when ComfyUI is unreachable (no job spawned)", async () => {
+  const fixture = createPrestoFixture();
+  const captured = {};
+  const server = packageEngineServer.createServer({
+    prestoReachableCheck: async () => false,
+    spawn: captureSpawn(captured),
+  });
+  try {
+    await withPrestoEnv(fixture, async () => {
+      await listen(server);
+      const response = await requestJson(server, packageEngineServer.PRESTO_SUBMIT_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId },
+        headers: SUBMIT_HEADERS(),
+      });
+      assert.equal(response.statusCode, 503);
+      assert.equal(response.body.ok, false);
+      assert.equal(response.body.code, "presto_unreachable");
+      assert.match(response.body.error, /not reachable/i);
+      assert.equal(captured.args, undefined); // never reached spawn
+      assert.equal(packageEngineServer.PRESTO_STATE.activeJob, null);
+    });
+  } finally {
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("PRESTO submit spawns with --timeout 3600 when ComfyUI is reachable", async () => {
+  const fixture = createPrestoFixture();
+  const captured = {};
+  const server = packageEngineServer.createServer({
+    prestoReachableCheck: async () => true,
+    spawn: captureSpawn(captured),
+  });
+  try {
+    await withPrestoEnv(fixture, async () => {
+      await listen(server);
+      const response = await requestJson(server, packageEngineServer.PRESTO_SUBMIT_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId },
+        headers: SUBMIT_HEADERS(),
+      });
+      assert.equal(response.statusCode, 200);
+      assert.equal(response.body.ok, true);
+      assert.equal(response.body.data.job_started, true);
+      const idx = captured.args.indexOf("--timeout");
+      assert.ok(idx >= 0, "spawn args include --timeout");
+      assert.equal(captured.args[idx + 1], "3600");
+    });
+  } finally {
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("startPrestoPackageJob honors AIGEN_PRESTO_TIMEOUT_SECONDS override", async () => {
+  const fixture = createPrestoFixture();
+  const captured = {};
+  try {
+    await withPrestoEnv(fixture, async () => {
+      process.env.AIGEN_PRESTO_TIMEOUT_SECONDS = "1200";
+      packageEngineServer.startPrestoPackageJob(
+        { package_id: fixture.packageId },
+        { spawn: captureSpawn(captured) }
+      );
+      const idx = captured.args.indexOf("--timeout");
+      assert.equal(captured.args[idx + 1], "1200");
+      delete process.env.AIGEN_PRESTO_TIMEOUT_SECONDS;
+    });
+  } finally {
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("prestoComfyuiReachable: ok→true, non-ok/throw/empty→false", async () => {
+  assert.equal(
+    await packageEngineServer.prestoComfyuiReachable("http://host:8188", { fetchImpl: async () => ({ ok: true }) }),
+    true
+  );
+  assert.equal(
+    await packageEngineServer.prestoComfyuiReachable("http://host:8188", { fetchImpl: async () => ({ ok: false }) }),
+    false
+  );
+  assert.equal(
+    await packageEngineServer.prestoComfyuiReachable("http://host:8188", { fetchImpl: async () => { throw new Error("ECONNREFUSED"); } }),
+    false
+  );
+  assert.equal(
+    await packageEngineServer.prestoComfyuiReachable("", { fetchImpl: async () => ({ ok: true }) }),
+    false
+  );
+});
+
 test("PRESTO results reports missing package", async () => {
   const fixture = createPrestoFixture();
   try {

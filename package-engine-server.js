@@ -5696,6 +5696,27 @@ function currentPrestoJobStatus(now = Date.now()) {
   return { ok: true, active: null, completed: null };
 }
 
+const PRESTO_REACHABILITY_TIMEOUT_MS = 4000;
+
+// Pre-flight reachability probe for the PRESTO ComfyUI endpoint. A quick GET /system_stats
+// turns a dead worker into an immediate, clear 503 instead of a spawned job that silently
+// times out. Read-only — it does not touch PRESTO or ComfyUI config. Injectable for tests.
+async function prestoComfyuiReachable(comfyuiUrl, options = {}) {
+  const fetchImpl = options.fetchImpl || (typeof fetch === 'function' ? fetch : null);
+  if (!fetchImpl) return true; // no fetch available → don't block submission on the probe
+  const base = String(comfyuiUrl || '').replace(/\/+$/, '');
+  if (!base) return false;
+  try {
+    const res = await fetchImpl(`${base}/system_stats`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(PRESTO_REACHABILITY_TIMEOUT_MS),
+    });
+    return !!(res && res.ok);
+  } catch (_error) {
+    return false;
+  }
+}
+
 function validatePrestoSubmitPayload(payload = {}, options = {}) {
   const { packageId, paths } = resolveAigenPackageDir(payload.package_id, options);
   const productionScript = options.productionScript || paths.productionScript;
@@ -5721,12 +5742,17 @@ function startPrestoPackageJob(payload = {}, options = {}) {
     throw error;
   }
   const config = validatePrestoSubmitPayload(payload, options);
+  const prestoTimeoutSeconds = Number(process.env.AIGEN_PRESTO_TIMEOUT_SECONDS) > 0
+    ? Math.floor(Number(process.env.AIGEN_PRESTO_TIMEOUT_SECONDS))
+    : 3600;
   const args = [
     config.productionScript,
     '--package',
     config.packageId,
     '--comfyui-url',
     config.comfyuiUrl,
+    '--timeout',
+    String(prestoTimeoutSeconds),
   ];
   const genEnv = workflowGenerationEnv(payload);
   const spawnFn = options.spawn || childProcess.spawn;
@@ -5875,12 +5901,34 @@ function readPrestoResults(packageId, options = {}) {
   };
 }
 
-function handlePrestoSubmit(req, res) {
+function handlePrestoSubmit(req, res, options = {}) {
   readJsonBody(req)
     .then((payload) => {
       validateLocalWriteRequest(req, payload);
-      const result = startPrestoPackageJob(payload);
-      sendJSON(res, 200, result);
+      // Cheap checks first, preserving their existing status codes: a running job → 409,
+      // an invalid payload / missing production script → 400 (thrown by validate*).
+      const current = currentPrestoJobStatus();
+      if (current.active) {
+        sendError(res, 409, 'Job already active', null, { active: current.active });
+        return null;
+      }
+      const config = validatePrestoSubmitPayload(payload, options);
+      // Pre-flight: confirm PRESTO ComfyUI is reachable before spawning, so a dead worker
+      // fails fast with a clear message instead of a job that silently times out.
+      const reachableCheck = options.prestoReachableCheck || prestoComfyuiReachable;
+      return Promise.resolve(reachableCheck(config.comfyuiUrl, options)).then((reachable) => {
+        if (!reachable) {
+          sendError(
+            res,
+            503,
+            `PRESTO ComfyUI is not reachable at ${config.comfyuiUrl}. Start ComfyUI on PRESTO (192.168.50.187:8188) and retry.`,
+            'presto_unreachable',
+          );
+          return;
+        }
+        const result = startPrestoPackageJob(payload, options);
+        sendJSON(res, 200, result);
+      });
     })
     .catch((error) => {
       if (error.statusCode === 409) {
@@ -8178,7 +8226,7 @@ function createServer(options = {}) {
     }
 
     if (req.method === 'POST' && url.pathname === PRESTO_SUBMIT_API) {
-      handlePrestoSubmit(req, res);
+      handlePrestoSubmit(req, res, serverOptions);
       return;
     }
 
@@ -9100,6 +9148,7 @@ module.exports = {
   writeSelectedImages,
   startFluxPackageJob,
   startPrestoPackageJob,
+  prestoComfyuiReachable,
   roughCutInputDefaults,
   runRoughCutReview,
   runFinalReview,
