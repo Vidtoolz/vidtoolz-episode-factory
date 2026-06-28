@@ -428,6 +428,7 @@
         var note = (d.model ? "" : "Local Ollama unavailable; mechanical checks only.");
         setStatus(status, note || ("Checked with " + d.model + "."), d.model ? "success" : "");
         out.innerHTML = renderCommit(d);
+        saveCommit(d);
       })
       .catch(function (e) { btn.disabled = false; setStatus(status, e.message, "error"); });
   });
@@ -454,7 +455,30 @@
       "</div>";
   }
 
+  // Persist a computed verdict into the run folder (explicit save endpoint).
+  function saveCommit(verdict) {
+    if (!runId || !nonce || !verdict) return;
+    var h = { "Content-Type": "application/json" }; h[nonceHeader] = nonce;
+    fetch("/api/shorts/save-script-commitment-check", { method: "POST", headers: h,
+      body: JSON.stringify({ runId: runId, verdict: verdict, localWriteNonce: nonce }) }).catch(function () {});
+  }
+
+  // On load with ?run=, surface the last saved commitment verdict if one exists.
+  function loadSavedCommit() {
+    if (!runId) return;
+    fetch("package-runs/" + encodeURIComponent(runId) + "/script-commitment-check.json", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (saved) {
+        if (!saved || !saved.verdict) return;
+        saved.loadedFromSave = true;
+        document.getElementById("commitResult").innerHTML = renderCommit(saved);
+        setStatus(document.getElementById("commitStatus"), "Showing last saved check.", "");
+      })
+      .catch(function () {});
+  }
+
   loadNonce();
+  loadSavedCommit();
 })();
 </script>
 </body>

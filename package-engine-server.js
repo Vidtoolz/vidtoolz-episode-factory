@@ -104,6 +104,7 @@ const WORKFLOW_PATH_API = '/api/package-runs/workflow-path';
 const SHORTS_SCRIPT_OPTIONS_API = '/api/shorts/script-options';
 const SHORTS_SAVE_SCRIPT_API = '/api/shorts/save-script';
 const SHORTS_SCRIPT_COMMITMENT_CHECK_API = '/api/shorts/script-commitment-check';
+const SHORTS_SAVE_SCRIPT_COMMITMENT_CHECK_API = '/api/shorts/save-script-commitment-check';
 const TOPIC_SCOUT_GENERATE_ONE_API = '/api/topic-scout/generate-one';
 const SHORTS_I2V_PROMPTS_API = '/api/shorts/i2v-prompts';
 const SHORTS_SAVE_I2V_PROMPTS_API = '/api/shorts/save-i2v-prompts';
@@ -4483,6 +4484,23 @@ async function scriptCommitmentCheck(payload = {}, options = {}) {
   return result;
 }
 
+// Persist a computed commitment-check verdict into the run folder. Nonce-gated by the
+// route; confined to the resolved run dir; atomic temp-then-rename; overwrites safely.
+function saveScriptCommitmentCheck(payload = {}, options = {}) {
+  const resolved = resolvePackageRunDir(payload.runId, options); // validates id + existence + traversal
+  const verdict = payload.verdict && typeof payload.verdict === 'object' ? payload.verdict : null;
+  if (!verdict || !verdict.verdict) {
+    const error = new Error('verdict object is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const outPath = path.join(resolved.runDir, 'script-commitment-check.json');
+  const tmp = `${outPath}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(verdict, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmp, outPath);
+  return { runId: resolved.runId, path: `package-runs/${resolved.runId}/script-commitment-check.json` };
+}
+
 // ── Vertical / Shorts workflow: image-to-video (I2V) prompt generation ────────
 
 function buildI2vSystemPrompt() {
@@ -8391,6 +8409,16 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === SHORTS_SAVE_SCRIPT_COMMITMENT_CHECK_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, saveScriptCommitmentCheck(payload, { root: serverOptions.root || ROOT }));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'shorts-save-script-commitment-check-error'));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === TOPIC_SCOUT_GENERATE_ONE_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -9082,6 +9110,7 @@ module.exports = {
   generateShortsScripts,
   saveShortsScript,
   scriptCommitmentCheck,
+  saveScriptCommitmentCheck,
   generateI2vPrompts,
   saveI2vPrompts,
   uploadAigenImage,
