@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VIDTOOLZ Shorts Workflow</title>
+<link rel="stylesheet" href="styles.css?v=1.9.2" />
+<style>
+  .shorts-guide { max-width: 900px; margin: 0 auto; padding: 0 24px 40px; }
+  .shorts-guide h1 { margin-bottom: 4px; }
+  .shorts-meta { font-size: 13px; color: var(--muted, #8b949e); margin: 0 0 16px; }
+  .shorts-runbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0 0 18px; }
+  .shorts-step { border: 1px solid var(--border, #30363d); border-radius: 8px; background: var(--panel, #161b22); padding: 14px 16px; margin-bottom: 12px; }
+  .shorts-step h2 { font-size: 15px; margin: 0 0 6px; display: flex; align-items: center; gap: 8px; }
+  .shorts-step .num { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: var(--accent, #3fb950); color: #04120a; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .shorts-step p { font-size: 13px; color: var(--muted, #8b949e); margin: 4px 0 10px; }
+  .shorts-step .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .script-option { border: 1px solid var(--border, #30363d); border-radius: 6px; padding: 10px 12px; margin-top: 8px; }
+  .script-option .angle { font-weight: 700; font-size: 13px; }
+  .script-option textarea { width: 100%; box-sizing: border-box; margin-top: 6px; min-height: 120px; }
+  .status { font-size: 12px; color: var(--muted, #8b949e); }
+  .status.error { color: var(--danger, #f87171); }
+  .status.success { color: var(--success, #34d399); }
+  .manual-note { border-left: 3px solid var(--accent, #3fb950); padding: 8px 14px; font-size: 13px; color: var(--muted, #8b949e); }
+</style>
+</head>
+<body>
+<nav class="ef-nav">
+  <span class="ef-nav-brand">EF</span>
+  <a href="resume.html">Resume</a>
+  <a href="topic-scout.html">Topic Scout</a>
+  <a href="package-engine.html">Package Engine</a>
+  <a href="package-runs-dashboard.html">Dashboard</a>
+  <a href="mission-control.html">Mission Control</a>
+  <span class="ef-nav-divider"></span>
+  <a href="index.html">Episode Board</a>
+  <a href="new-video-build.html">Build New Video</a>
+  <a href="shorts-workflow.html" class="active">Shorts Workflow</a>
+  <a href="image-prompts-editor.html">Image Prompts</a>
+  <a href="image-selector.html">Image Select</a>
+  <a href="aigen-review.html">AIGEN Review</a>
+</nav>
+
+<details class="page-guide" open>
+  <summary>Page Guide — What is this?</summary>
+  <div class="page-guide-body">
+    <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">The simplified vertical / Shorts production path: topic → 3 scripts → images → image-to-video → PRESTO → view. No research, claim triage, packaging, or proof.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Work top to bottom. Each step links to the existing cockpit tool, scoped to the focused run (<code>?run=</code>).</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Generated images/videos are viewable in the linked tools. The path is vertical 9:16 / 1080×1920.</span></div>
+  </div>
+</details>
+
+<div class="app-shell">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">VIDTOOLZ</p>
+      <h1>Shorts Workflow <span class="version-badge">v1.0.0</span></h1>
+    </div>
+  </header>
+
+  <div class="shorts-guide">
+    <p class="shorts-meta" id="shortsMeta">Vertical Short · 9:16 · 1080×1920 · up to 3 min. Blunt, funny, direct monologue.</p>
+
+    <div class="shorts-runbar">
+      <label class="status">Focused run: <code id="runLabel">none</code></label>
+      <button type="button" id="setVerticalBtn" class="secondary-btn">Mark this run vertical</button>
+      <span class="status" id="runStatus"></span>
+    </div>
+
+    <!-- 1. Topic -->
+    <div class="shorts-step">
+      <h2><span class="num">1</span> Topic</h2>
+      <p>Pick an existing topic or type a new one. No idea-triage or long-form research needed.</p>
+      <div class="row">
+        <input type="text" id="topicInput" placeholder="e.g. why most AI b-roll hurts your video" style="flex:1; min-width:260px;" />
+        <a class="nav-link-button" href="topic-scout.html">Open Topic Scout</a>
+      </div>
+    </div>
+
+    <!-- 2. Generate 3 scripts -->
+    <div class="shorts-step">
+      <h2><span class="num">2</span> Choose from 3 scripts</h2>
+      <p>Generate three short monologue scripts (local Ollama), pick one, edit it, and save as <code>final-script.md</code>.</p>
+      <div class="row">
+        <button type="button" id="genScriptsBtn" class="primary-btn">Generate 3 scripts</button>
+        <span class="status" id="scriptStatus"></span>
+      </div>
+      <div id="scriptOptions"></div>
+    </div>
+
+    <!-- 3. Image prompts + images -->
+    <div class="shorts-step">
+      <h2><span class="num">3</span> Image prompts + images</h2>
+      <p>Generate FLUX image prompts, then images. Generated images are viewable in the tools below.</p>
+      <div class="row">
+        <a class="nav-link-button" id="lnkImagePrompts" href="image-prompts-editor.html">Image Prompts</a>
+        <a class="nav-link-button" id="lnkPipeline" href="production-pipeline.html">Generate / view images</a>
+        <a class="nav-link-button" id="lnkImageSelect" href="image-selector.html">Select images</a>
+      </div>
+    </div>
+
+    <!-- 4. I2V prompts -->
+    <div class="shorts-step">
+      <h2><span class="num">4</span> Image-to-video prompts</h2>
+      <p>Generate image-to-video prompts (with per-prompt copy buttons). <em>Coming in the next slice.</em></p>
+      <div class="row">
+        <button type="button" class="secondary-btn" disabled title="Built in Phase 2 Slice 2">Generate I2V prompts</button>
+      </div>
+    </div>
+
+    <!-- 5. PRESTO -->
+    <div class="shorts-step">
+      <h2><span class="num">5</span> Send to PRESTO</h2>
+      <p>Send images + I2V prompts to PRESTO for image-to-video generation. Existing PRESTO safety boundaries are preserved.</p>
+      <div class="row">
+        <a class="nav-link-button" id="lnkPresto" href="production-pipeline.html">Open PRESTO controls</a>
+      </div>
+    </div>
+
+    <!-- 6. View videos -->
+    <div class="shorts-step">
+      <h2><span class="num">6</span> View generated videos</h2>
+      <p>Review the generated videos in the GUI.</p>
+      <div class="row">
+        <a class="nav-link-button" id="lnkReview" href="aigen-review.html">AIGEN Review</a>
+      </div>
+    </div>
+
+    <!-- 7. Manual edit -->
+    <div class="shorts-step">
+      <h2><span class="num">7</span> Record + edit in Resolve (manual)</h2>
+      <div class="manual-note">
+        Vertical workflow ends here. Record your monologue to camera, bring the generated videos and your
+        recording into DaVinci Resolve, edit manually, and publish the Short. No Resolve automation or
+        publish-ready status is forced for this path.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="workflow-path.js?v=1.0.0"></script>
+<script>
+(function shortsWorkflow() {
+  var WP = window.WorkflowPath;
+  var params = new URLSearchParams(window.location.search);
+  var runId = params.get("run") || "";
+  var nonce = "";
+  var nonceHeader = "x-vidtoolz-local-write-nonce";
+
+  var runLabel = document.getElementById("runLabel");
+  var runStatus = document.getElementById("runStatus");
+  var scriptStatus = document.getElementById("scriptStatus");
+  var scriptOptions = document.getElementById("scriptOptions");
+
+  if (runId) {
+    runLabel.textContent = runId;
+    ["lnkImagePrompts", "lnkPipeline", "lnkImageSelect", "lnkPresto", "lnkReview"].forEach(function (id) {
+      var a = document.getElementById(id);
+      if (a) a.href = a.getAttribute("href") + "?run=" + encodeURIComponent(runId);
+    });
+  }
+
+  function loadNonce() {
+    return fetch("/api/package-engine/status", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        var d = j && j.data !== undefined ? j.data : j;
+        var cw = d && d.captureEvidenceWrite ? d.captureEvidenceWrite : d || {};
+        nonce = (cw && cw.localWriteNonce) || (d && d.localWriteNonce) || "";
+        nonceHeader = (cw && cw.nonceHeader) || (d && d.nonceHeader) || nonceHeader;
+      })
+      .catch(function () {});
+  }
+
+  function setStatus(el, msg, type) { if (el) { el.textContent = msg; el.className = "status " + (type || ""); } }
+
+  // Mark run vertical (Phase 1 endpoint).
+  document.getElementById("setVerticalBtn").addEventListener("click", function () {
+    if (!runId) { setStatus(runStatus, "Open this page with ?run=<run-id> first.", "error"); return; }
+    if (!nonce) { setStatus(runStatus, "Local write nonce unavailable. Refresh.", "error"); return; }
+    var h = { "Content-Type": "application/json" }; h[nonceHeader] = nonce;
+    fetch("/api/package-runs/workflow-path", { method: "POST", headers: h,
+      body: JSON.stringify({ runId: runId, path: "vertical", localWriteNonce: nonce }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        var d = res.j && res.j.data !== undefined ? res.j.data : res.j;
+        if (!res.ok || (d && d.ok === false)) throw new Error((d && d.error) || "Failed.");
+        setStatus(runStatus, "Run marked vertical (" + (d.resolution || "1080x1920") + ").", "success");
+      })
+      .catch(function (e) { setStatus(runStatus, e.message, "error"); });
+  });
+
+  // Generate 3 scripts.
+  document.getElementById("genScriptsBtn").addEventListener("click", function () {
+    var topic = document.getElementById("topicInput").value.trim();
+    if (!topic) { setStatus(scriptStatus, "Enter a topic first.", "error"); return; }
+    if (!nonce) { setStatus(scriptStatus, "Local write nonce unavailable. Refresh.", "error"); return; }
+    var btn = document.getElementById("genScriptsBtn");
+    btn.disabled = true;
+    setStatus(scriptStatus, "Generating 3 scripts with local Ollama…", "");
+    var h = { "Content-Type": "application/json" }; h[nonceHeader] = nonce;
+    fetch("/api/shorts/script-options", { method: "POST", headers: h,
+      body: JSON.stringify({ topic: topic, localWriteNonce: nonce }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        var d = res.j && res.j.data !== undefined ? res.j.data : res.j;
+        if (!res.ok || !d || d.ok === false || !d.scripts) throw new Error((d && d.error) || "Generation failed.");
+        setStatus(scriptStatus, "Generated " + d.scripts.length + " scripts. Pick one, edit, and save.", "success");
+        renderScripts(d.scripts);
+      })
+      .catch(function (e) { btn.disabled = false; setStatus(scriptStatus, e.message, "error"); });
+  });
+
+  function renderScripts(scripts) {
+    scriptOptions.innerHTML = "";
+    scripts.forEach(function (s, i) {
+      var box = document.createElement("div");
+      box.className = "script-option";
+      box.innerHTML = '<div class="angle">Option ' + (i + 1) + ': ' + escapeHtml(s.angle) + '</div>' +
+        '<textarea></textarea>' +
+        '<div class="row" style="margin-top:6px;"><button type="button" class="primary-btn">Save this as final-script.md</button>' +
+        '<span class="status"></span></div>';
+      box.querySelector("textarea").value = s.script;
+      var save = box.querySelector("button");
+      var st = box.querySelector(".status");
+      save.addEventListener("click", function () {
+        if (!runId) { setStatus(st, "Open with ?run=<run-id> to save.", "error"); return; }
+        var content = box.querySelector("textarea").value.trim();
+        if (!content) { setStatus(st, "Script is empty.", "error"); return; }
+        var h = { "Content-Type": "application/json" }; h[nonceHeader] = nonce;
+        save.disabled = true; setStatus(st, "Saving…", "");
+        fetch("/api/shorts/save-script", { method: "POST", headers: h,
+          body: JSON.stringify({ runId: runId, content: content, localWriteNonce: nonce }) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            save.disabled = false;
+            var d = res.j && res.j.data !== undefined ? res.j.data : res.j;
+            if (!res.ok || (d && d.ok === false)) throw new Error((d && d.error) || "Save failed.");
+            setStatus(st, "Saved " + (d.path || "final-script.md") + ".", "success");
+          })
+          .catch(function (e) { save.disabled = false; setStatus(st, e.message, "error"); });
+      });
+      scriptOptions.appendChild(box);
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  loadNonce();
+})();
+</script>
+</body>
+</html>

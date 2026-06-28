@@ -192,6 +192,7 @@
       </button>
     </div>
     <p class="workflow-path-active muted" id="workflowPathActive" role="status"></p>
+    <a id="openShortsLink" class="nav-link-button btn-primary" href="shorts-workflow.html" style="display:none;">Open the simplified Shorts workflow →</a>
   </section>
 
   <div class="current-step-banner" id="currentStepBanner">
@@ -601,6 +602,8 @@
         guide.classList.toggle('path-horizontal', p === 'horizontal');
       }
       cards.forEach(function (c) { c.classList.toggle('active', c.dataset.workflowPath === p); });
+      var shortsLink = document.getElementById('openShortsLink');
+      if (shortsLink) shortsLink.style.display = (p === 'vertical') ? 'inline-block' : 'none';
       if (activeText) {
         activeText.textContent = 'Path: ' + info.label + ' — ' + info.resolution + ' (' + info.aspectRatio + ').' +
           (p === 'vertical'

@@ -99,6 +99,8 @@ const GENERATE_OUTLINE_PROMPT_API = '/api/package-engine/generate-outline-prompt
 const SAVE_OUTLINE_API = '/api/package-engine/save-outline';
 const BEGINNING_TRIAGE_GENERATE_API = '/api/beginning-triage/generate';
 const WORKFLOW_PATH_API = '/api/package-runs/workflow-path';
+const SHORTS_SCRIPT_OPTIONS_API = '/api/shorts/script-options';
+const SHORTS_SAVE_SCRIPT_API = '/api/shorts/save-script';
 const SERVE_ROOT = ROOT;
 const PACKAGE_RUNS_DIR = 'package-runs';
 const VIDNAS_AIGEN_ROOT = '/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen';
@@ -4248,6 +4250,96 @@ async function generateBeginningTriageDraft(payload = {}, options = {}) {
   return { model: payload.model || OLLAMA_MODEL, fields };
 }
 
+// ── Vertical / Shorts workflow: 3-script generation + save ────────────────────
+
+function buildShortsScriptSystemPrompt() {
+  return [
+    'You write short, punchy YouTube Shorts monologue scripts for VIDTOOLZ (practical video creation in the AI era).',
+    'Format: ONE person speaking directly to camera. Not a documentary, no narrator, no scene directions, no B-roll notes — just the spoken words.',
+    'Tone: blunt, funny, direct — like explaining the point to a smart friend. No hype, no fluff, no "in this video".',
+    'Length: under 3 minutes spoken (roughly 250-400 words). One clear point.',
+    'Return only the requested JSON.',
+  ].join('\n');
+}
+
+function buildShortsScriptUserPrompt(topic) {
+  return [
+    `Topic: ${topic}`,
+    '',
+    'Write THREE structurally different monologue scripts for this topic, each a complete spoken script:',
+    '1. A blunt hot-take / myth-bust angle.',
+    '2. A practical "here is how I actually do it" angle.',
+    '3. A story / "I learned this the hard way" angle.',
+    '',
+    'Each script: a strong first line that hooks in 3 seconds, one concrete point, a clean payoff. Spoken words only.',
+  ].join('\n');
+}
+
+// Generate 3 short monologue scripts with the local Ollama LLM. Read-only:
+// returns text; writes nothing. options.fetchImpl is injectable for tests.
+async function generateShortsScripts(payload = {}, options = {}) {
+  const topic = String(payload.topic || '').trim();
+  if (!topic) {
+    const error = new Error('A topic is required to generate scripts.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const schema = {
+    type: 'object',
+    properties: {
+      scripts: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: { angle: { type: 'string' }, script: { type: 'string' } },
+          required: ['angle', 'script'],
+        },
+      },
+    },
+    required: ['scripts'],
+  };
+  const content = await callOllamaChat(
+    { system: buildShortsScriptSystemPrompt(), user: buildShortsScriptUserPrompt(topic), schema, model: payload.model },
+    options
+  );
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (_error) {
+    const error = new Error('Ollama did not return valid JSON. Try again, or set OLLAMA_MODEL to another installed model.');
+    error.statusCode = 502;
+    throw error;
+  }
+  const scripts = Array.isArray(parsed.scripts) ? parsed.scripts.slice(0, 3).map((s, i) => ({
+    angle: s && typeof s.angle === 'string' && s.angle.trim() ? s.angle.trim() : `Option ${i + 1}`,
+    script: s && typeof s.script === 'string' ? s.script.trim() : '',
+  })).filter((s) => s.script) : [];
+  if (!scripts.length) {
+    const error = new Error('Ollama returned no usable scripts. Try again.');
+    error.statusCode = 502;
+    throw error;
+  }
+  return { model: payload.model || OLLAMA_MODEL, topic, scripts };
+}
+
+// Save the chosen monologue script into a run's final-script.md (atomic, run-confined).
+function saveShortsScript(payload = {}, options = {}) {
+  const runId = validatePackageRunId(payload.runId);
+  const content = typeof payload.content === 'string' ? payload.content : '';
+  if (!content.trim()) {
+    const error = new Error('content is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const resolved = resolvePackageRunDir(runId, options);
+  const scriptPath = path.join(resolved.runDir, 'final-script.md');
+  const text = content.endsWith('\n') ? content : `${content}\n`;
+  const tmpPath = `${scriptPath}.tmp`;
+  fs.writeFileSync(tmpPath, text, 'utf8');
+  fs.renameSync(tmpPath, scriptPath);
+  return { runId, path: `package-runs/${runId}/final-script.md`, bytes: Buffer.byteLength(text, 'utf8') };
+}
+
 function parseLabelValueStdout(stdout = '') {
   return String(stdout || '')
     .split(/\r?\n/)
@@ -7873,6 +7965,27 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === SHORTS_SCRIPT_OPTIONS_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          return generateShortsScripts(payload, { root: serverOptions.root || ROOT });
+        })
+        .then((result) => sendJSON(res, 200, result))
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'shorts-script-options-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === SHORTS_SAVE_SCRIPT_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, saveShortsScript(payload, { root: serverOptions.root || ROOT }));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'shorts-save-script-error'));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === BEGINNING_TRIAGE_GENERATE_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -8529,6 +8642,8 @@ module.exports = {
   saveFinalOutline,
   setWorkflowPathForRun,
   readWorkflowPathForRun,
+  generateShortsScripts,
+  saveShortsScript,
   generateBeginningTriageDraft,
   callOllamaChat,
   suggestSecondCutCandidateExportTarget,

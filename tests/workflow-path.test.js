@@ -167,3 +167,76 @@ test("new-video-build.html wires the vertical/horizontal choice", () => {
   // long-form-only stages are tagged so vertical mode can hide them
   assert.equal((html.match(/data-longform-only/g) || []).length >= 4, true);
 });
+
+// ── Phase 2 Slice 1: Shorts cockpit + 3-script generation ─────────────────────
+
+test("generateShortsScripts returns 3 monologue scripts from a stubbed Ollama response", async () => {
+  const content = JSON.stringify({
+    scripts: [
+      { angle: "Hot take", script: "Stop letting AI pick your b-roll. Here is why..." },
+      { angle: "How I do it", script: "Every short I make starts with one ugly question..." },
+      { angle: "Learned the hard way", script: "I shipped a video with generic AI b-roll once..." },
+    ],
+  });
+  const fetchImpl = async () => ({ ok: true, json: async () => ({ message: { content } }) });
+  const result = await packageEngineServer.generateShortsScripts(
+    { topic: "AI b-roll honesty" }, { fetchImpl });
+  assert.equal(result.scripts.length, 3);
+  assert.equal(result.scripts[0].angle, "Hot take");
+  assert.match(result.scripts[1].script, /one ugly question/);
+});
+
+test("generateShortsScripts requires a topic", async () => {
+  await assert.rejects(
+    () => packageEngineServer.generateShortsScripts({ topic: "  " }, { fetchImpl: async () => ({}) }),
+    /topic is required/i
+  );
+});
+
+test("saveShortsScript writes the chosen monologue to final-script.md", () => {
+  const { root, runDir } = makeRunRoot("2026-06-01-short-script", "# Package Run State\n");
+  const result = packageEngineServer.saveShortsScript(
+    { runId: "2026-06-01-short-script", content: "Hey — quick one. Stop overthinking your hooks." },
+    { root });
+  assert.equal(result.path, "package-runs/2026-06-01-short-script/final-script.md");
+  const saved = fs.readFileSync(path.join(runDir, "final-script.md"), "utf8");
+  assert.match(saved, /overthinking your hooks/);
+});
+
+test("shorts script-options API rejects POST without nonce", async () => {
+  const { root } = makeRunRoot("2026-06-01-shorts-route", "# Package Run State\n");
+  const server = packageEngineServer.createServer({ root });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const port = server.address().port;
+  try {
+    const res = await postJson(port, "/api/shorts/script-options", { topic: "x" });
+    assert.equal(res.status, 403);
+    assert.match(res.body.error, /nonce/i);
+  } finally {
+    await new Promise((r) => server.close(r));
+  }
+});
+
+test("shorts save-script API rejects POST without nonce", async () => {
+  const { root } = makeRunRoot("2026-06-01-shorts-save-route", "# Package Run State\n");
+  const server = packageEngineServer.createServer({ root });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const port = server.address().port;
+  try {
+    const res = await postJson(port, "/api/shorts/save-script",
+      { runId: "2026-06-01-shorts-save-route", content: "hi" });
+    assert.equal(res.status, 403);
+    assert.match(res.body.error, /nonce/i);
+  } finally {
+    await new Promise((r) => server.close(r));
+  }
+});
+
+test("shorts-workflow.html wires the simplified vertical cockpit", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "shorts-workflow.html"), "utf8");
+  assert.match(html, /\/api\/shorts\/script-options/);
+  assert.match(html, /\/api\/shorts\/save-script/);
+  assert.match(html, /\/api\/package-runs\/workflow-path/);
+  assert.match(html, /workflow-path\.js/);
+  assert.match(html, /Generate 3 scripts/);
+});
