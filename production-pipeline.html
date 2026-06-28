@@ -330,6 +330,14 @@
       let fluxResults = new Map();
       let localWriteNonce = "";
       let nonceHeader = "x-vidtoolz-local-write-nonce";
+      // Workflow path (vertical/horizontal) carried in ?path=; drives generation
+      // orientation/resolution via the FLUX/PRESTO submit payload. Default horizontal.
+      function currentWorkflowPath() {
+        try {
+          var p = new URLSearchParams(window.location.search).get("path") || "";
+          return p === "vertical" ? "vertical" : "horizontal";
+        } catch (e) { return "horizontal"; }
+      }
       let showAllRuns = false;
       // Test/dev/smoke runs clutter the pipeline; hide them unless "Show all" is on.
       function isTestRun(id) {
@@ -519,7 +527,7 @@
           const response = await fetch(PRESTO_SUBMIT_API, {
             method: "POST",
             headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
-            body: JSON.stringify({ package_id: packageId, comfyui_url: DEFAULT_PRESTO_URL })
+            body: JSON.stringify({ package_id: packageId, comfyui_url: DEFAULT_PRESTO_URL, workflowPath: currentWorkflowPath() })
           });
           const json = await response.json();
           if (!json.ok) {
@@ -576,7 +584,7 @@
           const response = await fetch(FLUX_SUBMIT_API, {
             method: "POST",
             headers: { "Content-Type": "application/json", [nonceHeader]: localWriteNonce },
-            body: JSON.stringify({ package_id: pkg.id, limit: 0, skip_existing: true, dry_run: dryRun })
+            body: JSON.stringify({ package_id: pkg.id, limit: 0, skip_existing: true, dry_run: dryRun, workflowPath: currentWorkflowPath() })
           });
           const json = await response.json();
           if (!json.ok) {

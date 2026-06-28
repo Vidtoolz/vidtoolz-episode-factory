@@ -156,7 +156,14 @@
     runLabel.textContent = runId;
     ["lnkImagePrompts", "lnkPipeline", "lnkImageSelect", "lnkPresto", "lnkReview"].forEach(function (id) {
       var a = document.getElementById(id);
-      if (a) a.href = a.getAttribute("href") + "?run=" + encodeURIComponent(runId);
+      if (!a) return;
+      // Vertical cockpit → carry path=vertical so FLUX/PRESTO generate 1080x1920.
+      a.href = a.getAttribute("href") + "?run=" + encodeURIComponent(runId) + "&path=vertical";
+    });
+  } else {
+    ["lnkPipeline", "lnkPresto"].forEach(function (id) {
+      var a = document.getElementById(id);
+      if (a) a.href = a.getAttribute("href") + "?path=vertical";
     });
   }
 

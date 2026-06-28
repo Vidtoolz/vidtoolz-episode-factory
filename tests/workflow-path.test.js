@@ -239,4 +239,32 @@ test("shorts-workflow.html wires the simplified vertical cockpit", () => {
   assert.match(html, /\/api\/package-runs\/workflow-path/);
   assert.match(html, /workflow-path\.js/);
   assert.match(html, /Generate 3 scripts/);
+  assert.match(html, /path=vertical/);
+});
+
+// ── Phase 2 Slice 2: generation orientation/resolution env ────────────────────
+
+test("workflowGenerationEnv derives vertical resolution env", () => {
+  const v = packageEngineServer.workflowGenerationEnv({ workflowPath: "vertical" });
+  assert.equal(v.orientation, "vertical");
+  assert.equal(v.targetResolution, "1080x1920");
+  assert.equal(v.env.VIDTOOLZ_ORIENTATION, "vertical");
+  assert.equal(v.env.VIDTOOLZ_TARGET_WIDTH, "1080");
+  assert.equal(v.env.VIDTOOLZ_TARGET_HEIGHT, "1920");
+  assert.equal(v.env.VIDTOOLZ_TARGET_RESOLUTION, "1080x1920");
+});
+
+test("workflowGenerationEnv defaults to horizontal resolution env", () => {
+  const h = packageEngineServer.workflowGenerationEnv({});
+  assert.equal(h.orientation, "horizontal");
+  assert.equal(h.env.VIDTOOLZ_TARGET_RESOLUTION, "1920x1080");
+  const g = packageEngineServer.workflowGenerationEnv({ workflowPath: "garbage" });
+  assert.equal(g.env.VIDTOOLZ_TARGET_RESOLUTION, "1920x1080");
+});
+
+test("production-pipeline.html passes workflowPath to FLUX and PRESTO submit", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "production-pipeline.html"), "utf8");
+  assert.match(html, /function currentWorkflowPath/);
+  // both submit bodies carry the workflow path
+  assert.equal((html.match(/workflowPath: currentWorkflowPath\(\)/g) || []).length >= 2, true);
 });

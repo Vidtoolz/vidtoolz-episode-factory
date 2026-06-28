@@ -4340,6 +4340,28 @@ function saveShortsScript(payload = {}, options = {}) {
   return { runId, path: `package-runs/${runId}/final-script.md`, bytes: Buffer.byteLength(text, 'utf8') };
 }
 
+// Build orientation/resolution environment variables for FLUX/PRESTO child
+// processes from the run's workflow path. Passed as ENV (never CLI args) so the
+// current external ComfyUI handoff scripts ignore them harmlessly; once those
+// scripts are updated to read them, vertical=1080x1920 / horizontal=1920x1080
+// generation follows the chosen workflow. Unset resolves to horizontal.
+function workflowGenerationEnv(payload = {}) {
+  const pathKey = workflowPathModel.normalizeWorkflowPath(payload.workflowPath || payload.orientation || '');
+  const info = workflowPathModel.workflowPathInfo(pathKey);
+  return {
+    env: {
+      VIDTOOLZ_WORKFLOW_PATH: pathKey,
+      VIDTOOLZ_ORIENTATION: info.orientation,
+      VIDTOOLZ_TARGET_WIDTH: String(info.width),
+      VIDTOOLZ_TARGET_HEIGHT: String(info.height),
+      VIDTOOLZ_TARGET_RESOLUTION: info.resolution,
+    },
+    workflowPath: pathKey,
+    orientation: info.orientation,
+    targetResolution: info.resolution,
+  };
+}
+
 function parseLabelValueStdout(stdout = '') {
   return String(stdout || '')
     .split(/\r?\n/)
@@ -5332,16 +5354,20 @@ function startPrestoPackageJob(payload = {}, options = {}) {
     '--comfyui-url',
     config.comfyuiUrl,
   ];
+  const genEnv = workflowGenerationEnv(payload);
   const spawnFn = options.spawn || childProcess.spawn;
   const child = spawnFn(config.pythonBin, args, {
     cwd: path.dirname(config.productionScript),
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: process.env,
+    env: { ...process.env, ...genEnv.env },
   });
   const job = {
     process: child,
     packageId: config.packageId,
     comfyuiUrl: config.comfyuiUrl,
+    workflowPath: genEnv.workflowPath,
+    orientation: genEnv.orientation,
+    targetResolution: genEnv.targetResolution,
     startedAt: new Date().toISOString(),
     completedAt: null,
     exitCode: null,
@@ -5696,16 +5722,20 @@ function startFluxPackageJob(payload = {}, options = {}) {
   if (config.limit > 0) args.push('--limit', String(config.limit));
   if (config.skipExisting) args.push('--skip-existing');
   if (config.dryRun) args.push('--dry-run');
+  const genEnv = workflowGenerationEnv(payload);
   const spawnFn = options.spawn || childProcess.spawn;
   const child = spawnFn(config.pythonBin, args, {
     cwd: path.dirname(config.fluxScript),
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: process.env,
+    env: { ...process.env, ...genEnv.env },
   });
   const job = {
     process: child,
     jobId: crypto.randomUUID(),
     packageId: config.packageId,
+    workflowPath: genEnv.workflowPath,
+    orientation: genEnv.orientation,
+    targetResolution: genEnv.targetResolution,
     mode: config.dryRun ? 'dry_run' : 'real',
     pid: child.pid || null,
     startedAt: new Date().toISOString(),
@@ -8644,6 +8674,7 @@ module.exports = {
   readWorkflowPathForRun,
   generateShortsScripts,
   saveShortsScript,
+  workflowGenerationEnv,
   generateBeginningTriageDraft,
   callOllamaChat,
   suggestSecondCutCandidateExportTarget,
