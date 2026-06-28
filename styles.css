@@ -1609,8 +1609,11 @@ body[data-package-engine-view-mode="focused"] .package-engine-shell #generatedTh
    reference panels so only the "what do I do now" surfaces remain visible.
    Full Dashboard (data-dashboard-mode="full") reveals them again. This makes
    the cockpit subtitle ("Focus Mode keeps lower panels collapsed as
-   diagnostics") actually true. Keeps What Next, Creator Cockpit, Productions
-   Overview, and Video Room. */
+   diagnostics") actually true. Keeps the Creator Cockpit (Now / Next / Blocked)
+   and the focused topic's Video Room. The all-videos command board is a
+   navigation surface, not part of the chosen topic, so it is hidden in Focus
+   and restored by Full Dashboard. */
+.package-runs-dashboard[data-dashboard-mode="focus"] .productions-overview-panel,
 .package-runs-dashboard[data-dashboard-mode="focus"] .system-availability-panel,
 .package-runs-dashboard[data-dashboard-mode="focus"] .capability-inventory-panel,
 .package-runs-dashboard[data-dashboard-mode="focus"] .job-progress-panel-section,

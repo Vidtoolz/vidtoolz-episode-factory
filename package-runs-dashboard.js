@@ -3418,7 +3418,10 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     let localWriteConfig = null;
     let localWriteConfigPromise = null;
     let dashboardMode = "focus";
-    let selectedRunId = null;
+    // Default the focused topic to the run passed in the URL (?run=…), so arriving
+    // from the Package Engine centers the Video Room on the chosen topic instead of
+    // the first/active run. requestedRunId() is a hoisted declaration below.
+    let selectedRunId = requestedRunId() || null;
     let activeRunId = "";
     let focusModeOverride = false;
 

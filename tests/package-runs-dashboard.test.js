@@ -2422,6 +2422,21 @@ test("package runs dashboard contains beginning triage cockpit mount", () => {
   assert.match(html, /does not create a package run/);
 });
 
+test("focus mode hides the all-videos command board (decluttered to chosen topic)", () => {
+  const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
+  // The productions overview (all videos) must be hidden in Focus Mode, gated on
+  // data-dashboard-mode="focus" so Full Dashboard still reveals it.
+  assert.match(
+    css,
+    /\.package-runs-dashboard\[data-dashboard-mode="focus"\] \.productions-overview-panel/
+  );
+});
+
+test("dashboard centers the video room on the run from the URL on load", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+  assert.match(source, /let selectedRunId = requestedRunId\(\) \|\| null;/);
+});
+
 test("package runs dashboard groups advanced panels collapsed by default", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.html"), "utf8");
 
