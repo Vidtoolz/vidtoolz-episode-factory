@@ -20,6 +20,7 @@ const submittedTopics = require('./scripts/submitted-topics.js');
 const remotionLane = require('./remotion-lane.js');
 const packageEngineModel = require('./package-engine-model.js');
 const workflowPathModel = require('./workflow-path.js');
+const scriptCommitmentModel = require('./script-commitment-check.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
@@ -102,6 +103,7 @@ const BEGINNING_TRIAGE_GENERATE_API = '/api/beginning-triage/generate';
 const WORKFLOW_PATH_API = '/api/package-runs/workflow-path';
 const SHORTS_SCRIPT_OPTIONS_API = '/api/shorts/script-options';
 const SHORTS_SAVE_SCRIPT_API = '/api/shorts/save-script';
+const SHORTS_SCRIPT_COMMITMENT_CHECK_API = '/api/shorts/script-commitment-check';
 const TOPIC_SCOUT_GENERATE_ONE_API = '/api/topic-scout/generate-one';
 const SHORTS_I2V_PROMPTS_API = '/api/shorts/i2v-prompts';
 const SHORTS_SAVE_I2V_PROMPTS_API = '/api/shorts/save-i2v-prompts';
@@ -4360,6 +4362,127 @@ function saveShortsScript(payload = {}, options = {}) {
   return { runId, path: `package-runs/${runId}/final-script.md`, bytes: Buffer.byteLength(text, 'utf8') };
 }
 
+// ── Vertical Script Commitment Check ──────────────────────────────────────────
+// One advisory pre-media checkpoint: "is this saved script worth generating media
+// for?" Mechanical checks run locally; the six judgment checks use the existing
+// local-Ollama path and degrade to "pending" if Ollama is unavailable. Never blocks.
+
+const SCRIPT_COMMITMENT_JUDGMENT_KEYS = [
+  { key: 'one_clear_claim', label: 'One clear claim' },
+  { key: 'strong_first_line', label: 'Strong first line' },
+  { key: 'spoken_natural', label: 'Spoken-to-camera naturalness' },
+  { key: 'blunt_tone', label: 'Blunt/funny/direct tone' },
+  { key: 'visual_usefulness', label: 'Visual usefulness' },
+  { key: 'finishability', label: 'Finishability' },
+];
+
+function normalizeCheckStatus(value, fallback) {
+  const v = String(value == null ? '' : value).trim().toLowerCase();
+  return ['pass', 'fail', 'warning', 'pending'].includes(v) ? v : (fallback || 'pending');
+}
+
+async function scriptCommitmentCheck(payload = {}, options = {}) {
+  // Resolve the script: explicit text wins; otherwise read the run's final-script.md.
+  let script = typeof payload.script === 'string' ? payload.script.trim() : '';
+  let runId = '';
+  if (payload.runId) {
+    try {
+      const resolved = resolvePackageRunDir(payload.runId, options);
+      runId = resolved.runId;
+      if (!script) {
+        const p = path.join(resolved.runDir, 'final-script.md');
+        if (fs.existsSync(p)) script = fs.readFileSync(p, 'utf8').trim();
+      }
+    } catch (_) { runId = ''; }
+  }
+
+  const mech = scriptCommitmentModel.mechanicalChecks(script);
+  const evaluatedAt = new Date().toISOString();
+  let model = '';
+  let ollamaNote = '';
+  let judgmentByKey = {};
+
+  if (!mech.empty) {
+    const schema = {
+      type: 'object',
+      properties: {
+        checks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { key: { type: 'string' }, status: { type: 'string' }, detail: { type: 'string' } },
+            required: ['key', 'status', 'detail'],
+          },
+        },
+        summary: { type: 'string' },
+      },
+      required: ['checks', 'summary'],
+    };
+    const system = [
+      'You judge whether a VIDTOOLZ vertical Short script is worth spending media-generation effort on.',
+      'This is a production commitment check for a spoken-to-camera monologue (blunt, funny, direct, friend-to-friend) — NOT a generic writing-quality exam.',
+      'Return only the requested JSON. For each key, status is one of: pass, warning, fail.',
+    ].join('\n');
+    const user = [
+      'Evaluate this saved Short script and return one check per key:',
+      '- one_clear_claim: makes ONE main point, not three half-points.',
+      '- strong_first_line: the first sentence creates friction, recognition, surprise, or a blunt useful claim (not a generic warm-up).',
+      '- spoken_natural: sounds like something a person says to camera (short sentences, contractions, spoken rhythm) — not essay language.',
+      '- blunt_tone: sharp point of view, friend-to-friend; not polite generic advice.',
+      '- visual_usefulness: enough concrete visual moments to justify image prompts / AI visuals / I2V / cutaways (not pure abstract commentary).',
+      '- finishability: realistic to record, edit, and publish as a Short without becoming a long-form project.',
+      'Also return a one-sentence summary.',
+      '',
+      'Script:',
+      script,
+    ].join('\n');
+    try {
+      const content = await callOllamaChat({ system, user, schema, model: payload.model }, options);
+      const parsed = JSON.parse(content);
+      model = payload.model || OLLAMA_MODEL;
+      if (parsed && typeof parsed.summary === 'string') ollamaNote = parsed.summary.trim();
+      (Array.isArray(parsed && parsed.checks) ? parsed.checks : []).forEach((c) => {
+        if (c && c.key) judgmentByKey[String(c.key)] = { status: normalizeCheckStatus(c.status), detail: String(c.detail || '') };
+      });
+    } catch (_error) {
+      ollamaNote = 'Local Ollama unavailable; mechanical checks only.';
+    }
+  }
+
+  // Assemble the visible checks: Runtime fit (mechanical) + six judgment checks.
+  const checks = [mech.runtimeCheck];
+  for (const { key, label } of SCRIPT_COMMITMENT_JUDGMENT_KEYS) {
+    const j = judgmentByKey[key];
+    let status = mech.empty ? 'fail' : (j ? j.status : 'pending');
+    let detail = mech.empty ? 'No script text.' : (j ? j.detail : (ollamaNote || 'Pending Ollama judgment.'));
+    // Deterministic generic-opening signal hardens "Strong first line" to at least a warning.
+    if (key === 'strong_first_line' && mech.genericOpening) {
+      if (status === 'pass' || status === 'pending') { status = 'warning'; }
+      detail = (detail ? detail + ' ' : '') + 'Opens with a generic warm-up phrase.';
+    }
+    checks.push({ label, status, detail });
+  }
+
+  const { verdict, recommendedNextAction } = scriptCommitmentModel.buildVerdict(checks, { empty: mech.empty, wayTooLong: mech.wayTooLong });
+  const summary = mech.empty
+    ? 'Script is empty — nothing to commit media generation to.'
+    : (ollamaNote || (verdict === 'pass' ? 'Mechanical checks pass; script looks worth generating media for.' : 'Mechanical review only.'));
+
+  const result = {
+    verdict,
+    summary,
+    checks,
+    estimatedWords: mech.words,
+    estimatedRuntimeSeconds: mech.runtimeSeconds,
+    recommendedNextAction,
+    model,
+    evaluatedAt,
+  };
+
+  // Compute-only: persistence is an explicit, separate step (saveScriptCommitmentCheck).
+  return result;
+}
+
 // ── Vertical / Shorts workflow: image-to-video (I2V) prompt generation ────────
 
 function buildI2vSystemPrompt() {
@@ -8257,6 +8380,17 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === SHORTS_SCRIPT_COMMITMENT_CHECK_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          return scriptCommitmentCheck(payload, { root: serverOptions.root || ROOT });
+        })
+        .then((result) => sendJSON(res, 200, result))
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'shorts-script-commitment-check-error'));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === TOPIC_SCOUT_GENERATE_ONE_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -8947,6 +9081,7 @@ module.exports = {
   readWorkflowPathForRun,
   generateShortsScripts,
   saveShortsScript,
+  scriptCommitmentCheck,
   generateI2vPrompts,
   saveI2vPrompts,
   uploadAigenImage,

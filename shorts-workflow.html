@@ -22,6 +22,21 @@
   .status.error { color: var(--danger, #f87171); }
   .status.success { color: var(--success, #34d399); }
   .manual-note { border-left: 3px solid var(--accent, #3fb950); padding: 8px 14px; font-size: 13px; color: var(--muted, #8b949e); }
+  .commit-verdict { display: inline-block; font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .commit-verdict.pass { background: rgba(52,211,153,0.15); color: var(--success, #34d399); }
+  .commit-verdict.revise { background: rgba(248,113,113,0.15); color: var(--danger, #f87171); }
+  .commit-verdict.reroute { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .commit-verdict.park { background: rgba(139,148,158,0.18); color: var(--muted, #8b949e); }
+  .commit-meta { font-size: 12px; color: var(--muted, #8b949e); margin: 6px 0; }
+  .commit-next { font-size: 13px; margin: 4px 0 8px; }
+  .commit-checks { list-style: none; padding: 0; margin: 0; font-size: 12.5px; }
+  .commit-checks li { padding: 3px 0; display: flex; gap: 8px; align-items: baseline; }
+  .commit-checks .ck-pass { color: var(--success, #34d399); }
+  .commit-checks .ck-warning { color: #fbbf24; }
+  .commit-checks .ck-fail { color: var(--danger, #f87171); }
+  .commit-checks .ck-pending { color: var(--muted, #8b949e); }
+  .commit-checks .ck-detail { color: var(--muted, #8b949e); }
+  .commit-result details { margin-top: 8px; font-size: 12px; color: var(--muted, #8b949e); }
 </style>
 </head>
 <body>
@@ -86,6 +101,17 @@
         <span class="status" id="scriptStatus"></span>
       </div>
       <div id="scriptOptions"></div>
+    </div>
+
+    <!-- Commitment check (advisory, before spending media-generation effort) -->
+    <div class="shorts-step commit-step">
+      <h2>Script commitment check</h2>
+      <p>Before generating images and video, check whether this script is worth spending media-generation effort on. Advisory only — you stay in control.</p>
+      <div class="row">
+        <button type="button" id="commitCheckBtn" class="secondary-btn">Check saved script</button>
+        <span class="status" id="commitStatus"></span>
+      </div>
+      <div id="commitResult"></div>
     </div>
 
     <!-- 3. Image prompts + images -->
@@ -164,6 +190,7 @@
   var WP = window.WorkflowPath;
   var params = new URLSearchParams(window.location.search);
   var runId = params.get("run") || "";
+  var lastSavedScript = "";
   var nonce = "";
   var nonceHeader = "x-vidtoolz-local-write-nonce";
 
@@ -265,6 +292,7 @@
             var d = res.j && res.j.data !== undefined ? res.j.data : res.j;
             if (!res.ok || (d && d.ok === false)) throw new Error((d && d.error) || "Save failed.");
             setStatus(st, "Saved " + (d.path || "final-script.md") + ".", "success");
+            lastSavedScript = content;
             var i2vScript = document.getElementById("i2vScript");
             if (i2vScript && !i2vScript.value.trim()) i2vScript.value = content;
           })
@@ -381,6 +409,50 @@
     reader.onerror = function () { btn.disabled = false; setStatus(st, "Could not read the file.", "error"); };
     reader.readAsDataURL(file);
   });
+
+  // Commitment check: "is this saved script worth generating media for?" Advisory.
+  document.getElementById("commitCheckBtn").addEventListener("click", function () {
+    var status = document.getElementById("commitStatus");
+    var out = document.getElementById("commitResult");
+    if (!nonce) { setStatus(status, "Local write nonce unavailable. Refresh.", "error"); return; }
+    var btn = document.getElementById("commitCheckBtn");
+    btn.disabled = true; setStatus(status, "Checking…", ""); out.innerHTML = "";
+    var h = { "Content-Type": "application/json" }; h[nonceHeader] = nonce;
+    fetch("/api/shorts/script-commitment-check", { method: "POST", headers: h,
+      body: JSON.stringify({ runId: runId, script: lastSavedScript || "", path: "vertical", localWriteNonce: nonce }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        var d = res.j && res.j.data !== undefined ? res.j.data : res.j;
+        if (!res.ok || !d || d.ok === false || !d.verdict) throw new Error((d && d.error) || "Check failed.");
+        var note = (d.model ? "" : "Local Ollama unavailable; mechanical checks only.");
+        setStatus(status, note || ("Checked with " + d.model + "."), d.model ? "success" : "");
+        out.innerHTML = renderCommit(d);
+      })
+      .catch(function (e) { btn.disabled = false; setStatus(status, e.message, "error"); });
+  });
+
+  function renderCommit(d) {
+    var icon = { pass: "✓", warning: "⚠", fail: "✗", pending: "…" };
+    var checksHtml = (d.checks || []).map(function (c) {
+      return '<li><span class="ck-' + escapeHtml(c.status) + '">' + (icon[c.status] || "•") + "</span>" +
+        "<span><strong>" + escapeHtml(c.label) + "</strong> <span class=\"ck-detail\">" + escapeHtml(c.detail || "") + "</span></span></li>";
+    }).join("");
+    var mins = Math.floor((d.estimatedRuntimeSeconds || 0) / 60), secs = (d.estimatedRuntimeSeconds || 0) % 60;
+    var savedNote = d.loadedFromSave ? '<div class="commit-meta">Loaded saved check.</div>' : "";
+    // Compact: verdict + summary + runtime + next action visible; checks + model behind details.
+    return '<div class="commit-result">' +
+      '<span class="commit-verdict ' + escapeHtml(d.verdict) + '">' + escapeHtml(d.verdict) + "</span>" +
+      savedNote +
+      '<div class="commit-meta">' + escapeHtml(d.summary || "") + "</div>" +
+      '<div class="commit-meta">~' + mins + "m " + secs + "s · " + (d.estimatedWords || 0) + " words</div>" +
+      '<div class="commit-next"><strong>Next:</strong> ' + escapeHtml(d.recommendedNextAction || "") + "</div>" +
+      "<details><summary>Checks &amp; details</summary>" +
+      '<ul class="commit-checks">' + checksHtml + "</ul>" +
+      "<div>Model: " + escapeHtml(d.model || "mechanical only") + " · " + escapeHtml(d.evaluatedAt || "") + "</div>" +
+      "</details>" +
+      "</div>";
+  }
 
   loadNonce();
 })();
