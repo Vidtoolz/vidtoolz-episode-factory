@@ -715,6 +715,22 @@ test("save-outline API returns 404 for a missing run", async () => {
 });
 
 
+test("beginning-triage generate API rejects POST without nonce", async () => {
+  const tempRoot = createDiscoveryRoot({ runs: [] });
+  const server = packageEngineServer.createServer({ root: tempRoot });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = server.address().port;
+  try {
+    const res = await postJson(port, "/api/beginning-triage/generate", {
+      fields: { topicArea: "AI b-roll" },
+    });
+    assert.equal(res.status, 403);
+    assert.match(res.body.error, /nonce/i);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
 
 // ── Browser-side source-level tests ────────────────────────────────────────
 

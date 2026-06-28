@@ -890,6 +890,50 @@ test("package engine capture evidence write nonce and local origin checks are en
   );
 });
 
+test("generateBeginningTriageDraft fills five fields from a stubbed Ollama response", async () => {
+  const fakeContent = JSON.stringify({
+    topicArea: "AI b-roll quality control",
+    audienceGuess: "Solo creators leaning on AI b-roll",
+    topicWhyNow: "AI b-roll is exploding but often generic",
+    mikkoSuspects: "Most AI b-roll hurts pacing",
+    possibleProof: "Side-by-side timeline demos",
+  });
+  const fetchImpl = async () => ({ ok: true, json: async () => ({ message: { content: fakeContent } }) });
+  const result = await packageEngineServer.generateBeginningTriageDraft(
+    { fields: { topicArea: "AI b-roll" } },
+    { fetchImpl }
+  );
+  assert.equal(result.fields.topicArea, "AI b-roll quality control");
+  assert.equal(result.fields.audienceGuess, "Solo creators leaning on AI b-roll");
+  assert.deepEqual(
+    Object.keys(result.fields).sort(),
+    ["audienceGuess", "mikkoSuspects", "possibleProof", "topicArea", "topicWhyNow"]
+  );
+});
+
+test("generateBeginningTriageDraft requires a topic area seed", async () => {
+  await assert.rejects(
+    () => packageEngineServer.generateBeginningTriageDraft({ fields: { topicArea: "   " } }, { fetchImpl: async () => ({}) }),
+    /topic area is required/i
+  );
+});
+
+test("generateBeginningTriageDraft reports Ollama being unreachable clearly", async () => {
+  const fetchImpl = async () => { throw new Error("fetch failed"); };
+  await assert.rejects(
+    () => packageEngineServer.generateBeginningTriageDraft({ fields: { topicArea: "x" } }, { fetchImpl }),
+    /Could not reach Ollama/
+  );
+});
+
+test("generateBeginningTriageDraft rejects non-JSON model output", async () => {
+  const fetchImpl = async () => ({ ok: true, json: async () => ({ message: { content: "not json at all" } }) });
+  await assert.rejects(
+    () => packageEngineServer.generateBeginningTriageDraft({ fields: { topicArea: "x" } }, { fetchImpl }),
+    /did not return valid JSON/
+  );
+});
+
 test("package engine provider config defaults and respects openai mode", () => {
   const defaults = packageEngineServer.providerConfig({});
   const openai = packageEngineServer.providerConfig({
@@ -1082,7 +1126,7 @@ test("package engine browser code surfaces thumbnail backend failures and recove
   assert.match(script, /OpenAI thumbnail provider error:/);
   assert.match(script, /OPENAI_API_KEY is missing/);
   assert.match(script, /finally \{\s*isGeneratingThumbnails = false;\s*render\(\);/);
-  assert.match(html, /package-engine\.js\?v=1\.7\.6/);
+  assert.match(html, /package-engine\.js\?v=1\.7\.8/);
 });
 
 test("package engine HTML contains Focused View toggle and focus panel", () => {

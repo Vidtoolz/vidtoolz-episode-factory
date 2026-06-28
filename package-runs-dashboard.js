@@ -1250,6 +1250,10 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
     if (state.stage === "topic") {
       return `${beginningTriageGuidance("Topic Research", "Find a promising direction before asking Mikko to write a rough idea.", "Enter a topic, trigger the research handoff, compare three candidates, and choose or repeat.", ["describe topic area", "request research handoff", "pause", "reject"])}
       <div class="beginning-triage-intro">This is research-first idea triage. The dashboard does not perform live web research. It creates a clear research request and a paste area for user-pasted or research-handoff results.</div>
+      <div class="beginning-generate-row">
+        <button type="button" class="quiet-action" data-beginning-action="generate">Generate with Ollama</button>
+        <span class="beginning-generate-status" data-beginning-generate-status>Write a topic area, then Generate to draft all five fields with the local LLM.</span>
+      </div>
       <div class="beginning-triage-fields">
         ${renderBeginningTriageField(fields, "topicArea", "Topic area / problem space", "Example: creator workflow mistakes in AI video production")}
         ${renderBeginningTriageField(fields, "audienceGuess", "Audience guess", "Who might care before we know the angle")}
@@ -3602,6 +3606,60 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       }
     }
 
+    function generateBeginningTriageFields(button) {
+      const container = els.beginningTriagePanel;
+      if (!container) return;
+      const statusEl = container.querySelector("[data-beginning-generate-status]");
+      const setStatus = (msg, type) => {
+        if (!statusEl) return;
+        statusEl.textContent = msg;
+        statusEl.className = `beginning-generate-status ${type || ""}`.trim();
+      };
+      const state = beginningTriageStateFromDom(container);
+      if (!String(state.fields.topicArea || "").trim()) {
+        setStatus("Write a topic area first, then Generate.", "error");
+        return;
+      }
+      const originalLabel = button.textContent;
+      button.disabled = true;
+      button.textContent = "Generating…";
+      setStatus("Generating with the local Ollama LLM… this can take a moment.", "");
+      loadLocalWriteConfig()
+        .then((config) => {
+          const nonce = config && config.localWriteNonce;
+          const nonceHeader = (config && config.nonceHeader) || "x-vidtoolz-local-write-nonce";
+          if (!nonce) throw new Error("Local write nonce unavailable. Refresh the page and retry.");
+          return fetch("/api/beginning-triage/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", [nonceHeader]: nonce },
+            body: JSON.stringify({ fields: state.fields, localWriteNonce: nonce }),
+          });
+        })
+        .then((response) => response.json().then((json) => ({ ok: response.ok, json })))
+        .then(({ ok, json }) => {
+          const data = json && json.data !== undefined ? json.data : json;
+          if (!ok || !data || data.ok === false || !data.fields) {
+            throw new Error((data && data.error) || (json && json.error) || "Generation failed.");
+          }
+          // Merge generated values over the current draft (re-read in case the
+          // creator kept typing while waiting) and persist to localStorage only.
+          const current = beginningTriageStateFromDom(container);
+          const merged = { ...current, fields: { ...current.fields, ...data.fields } };
+          saveBeginningTriageState(merged);
+          renderBeginningTriageFromStorage();
+          const after = els.beginningTriagePanel && els.beginningTriagePanel.querySelector("[data-beginning-generate-status]");
+          if (after) {
+            after.textContent = `Drafted all five fields with ${data.model || "Ollama"}. Edit freely, then continue.`;
+            after.className = "beginning-generate-status success";
+          }
+        })
+        .catch((error) => {
+          button.disabled = false;
+          button.textContent = originalLabel || "Generate with Ollama";
+          setStatus(error.message, "error");
+        });
+    }
+
     function handleBeginningTriageClick(event) {
       const button = event.target.closest("[data-beginning-action]");
       if (!button || !els.beginningTriagePanel) return;
@@ -3630,6 +3688,10 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
       }
       if (action === "research") {
         updateBeginningTriageStage(els.beginningTriagePanel, "candidates", { status: "Candidate Angles" });
+        return;
+      }
+      if (action === "generate") {
+        generateBeginningTriageFields(button);
         return;
       }
       if (action === "package") {

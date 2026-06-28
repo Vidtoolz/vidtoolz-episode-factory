@@ -96,6 +96,7 @@ const TOPIC_SCOUT_UPDATE_STATUS_API = '/api/topic-scout/update-status';
 const SAVE_SELECTED_PACKAGE_API = '/api/package-engine/save-selected';
 const GENERATE_OUTLINE_PROMPT_API = '/api/package-engine/generate-outline-prompt';
 const SAVE_OUTLINE_API = '/api/package-engine/save-outline';
+const BEGINNING_TRIAGE_GENERATE_API = '/api/beginning-triage/generate';
 const SERVE_ROOT = ROOT;
 const PACKAGE_RUNS_DIR = 'package-runs';
 const VIDNAS_AIGEN_ROOT = '/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen';
@@ -117,6 +118,11 @@ const FLUX_STATE = {
   script: path.join(VIDNAS_AIGEN_ROOT, 'image-generation', 'flux-gguf', 'run-handoff.py'),
 };
 const OPENAI_IMAGES_URL = 'https://api.openai.com/v1/images/generations';
+// Local Ollama LLM (no credentials, localhost only). Used for browser-local
+// idea-triage drafting. Configurable via env so a different host/model can be used.
+const OLLAMA_BASE_URL = String(process.env.OLLAMA_URL || process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
+const OLLAMA_MODEL = String(process.env.OLLAMA_MODEL || 'qwen3:14b');
+const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS) > 0 ? Number(process.env.OLLAMA_TIMEOUT_MS) : 120000;
 const DEFAULT_THUMBNAIL_PROVIDER = 'placeholder';
 const DEFAULT_OPENAI_IMAGE_MODEL = 'gpt-image-1';
 const DEFAULT_OPENAI_IMAGE_SIZE = '1536x1024';
@@ -4080,6 +4086,133 @@ function saveFinalOutline(payload = {}, options = {}) {
   };
 }
 
+// The five beginning-triage worksheet fields the Generate button fills.
+const BEGINNING_TRIAGE_GENERATE_FIELDS = [
+  'topicArea',
+  'audienceGuess',
+  'topicWhyNow',
+  'mikkoSuspects',
+  'possibleProof',
+];
+
+function buildBeginningTriageSystemPrompt() {
+  return [
+    'You are an ideation assistant for VIDTOOLZ, a YouTube channel about practical video creation in the AI era.',
+    'Audience: serious solo creators adapting to AI.',
+    'Tone: practical teacher with critical tester instincts — useful fast, no hype, test assumptions, judge AI/video tools by real production usefulness.',
+    'Avoid generic AI hype, "make money with AI" framing, and shallow reaction content.',
+    'You help fill an early idea-triage worksheet. Be concrete and grounded. Keep each field to 1-3 sentences.',
+    'Return only the requested JSON object.',
+  ].join('\n');
+}
+
+function buildBeginningTriageUserPrompt(fields = {}) {
+  const get = (key) => String(fields[key] || '').trim();
+  const lines = [
+    `Topic area / problem space (seed from the creator): ${get('topicArea')}`,
+    '',
+    'Anything the creator has already written (may be blank):',
+    `- Audience guess: ${get('audienceGuess') || '(blank)'}`,
+    `- Why this topic matters now: ${get('topicWhyNow') || '(blank)'}`,
+    `- What Mikko already suspects: ${get('mikkoSuspects') || '(blank)'}`,
+    `- What kind of proof might exist: ${get('possibleProof') || '(blank)'}`,
+    '',
+    'Fill in all five worksheet fields as JSON. Build on what the creator already wrote, and keep the topic area faithful to their seed. Fields:',
+    '- topicArea: a sharpened one-line topic area / problem space',
+    '- audienceGuess: who specifically might care, before the angle is known',
+    '- topicWhyNow: why this matters now in the AI-era creator landscape',
+    '- mikkoSuspects: a plausible hunch the creator likely already holds about this topic',
+    '- possibleProof: concrete kinds of evidence or on-screen demos that could prove the eventual claim',
+  ];
+  return lines.join('\n');
+}
+
+// Call the local Ollama chat API. Returns the raw assistant message content (a
+// JSON string when `schema` is supplied). options.fetchImpl is injectable for tests.
+async function callOllamaChat({ system, user, schema, model } = {}, options = {}) {
+  const fetchImpl = options.fetchImpl || fetch;
+  const url = `${OLLAMA_BASE_URL}/api/chat`;
+  let response;
+  try {
+    response = await fetchImpl(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: model || OLLAMA_MODEL,
+        messages: [
+          { role: 'system', content: system || '' },
+          { role: 'user', content: user || '' },
+        ],
+        stream: false,
+        think: false,
+        ...(schema ? { format: schema } : {}),
+        options: { temperature: 0.6 },
+      }),
+      signal: options.signal || AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
+    });
+  } catch (error) {
+    const timedOut = error && (error.name === 'AbortError' || error.name === 'TimeoutError');
+    const detail = String((error && (error.message || (error.cause && error.cause.code))) || '');
+    const refused = /ECONNREFUSED|fetch failed|ENOTFOUND|ECONNRESET/i.test(detail);
+    const message = timedOut
+      ? `Ollama generation timed out after ${Math.ceil(OLLAMA_TIMEOUT_MS / 1000)}s. Try a smaller model via OLLAMA_MODEL.`
+      : refused
+      ? `Could not reach Ollama at ${OLLAMA_BASE_URL}. Is it running? Start it with: ollama serve`
+      : `Ollama request failed: ${detail || 'unknown network error'}`;
+    const wrapped = new Error(message);
+    wrapped.statusCode = timedOut ? 504 : 503;
+    throw wrapped;
+  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const wrapped = new Error(data && data.error ? `Ollama error: ${data.error}` : `Ollama returned ${response.status}.`);
+    wrapped.statusCode = 502;
+    throw wrapped;
+  }
+  return data && data.message && typeof data.message.content === 'string' ? data.message.content : '';
+}
+
+// Draft the five beginning-triage fields with the local Ollama LLM. Read-only:
+// returns generated text; it does not write any file or workflow state.
+async function generateBeginningTriageDraft(payload = {}, options = {}) {
+  const inputFields = payload && typeof payload.fields === 'object' && payload.fields ? payload.fields : {};
+  const topicArea = String(inputFields.topicArea || '').trim();
+  if (!topicArea) {
+    const error = new Error('A topic area is required before generating. Write one, then Generate.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const schema = {
+    type: 'object',
+    properties: Object.fromEntries(BEGINNING_TRIAGE_GENERATE_FIELDS.map((key) => [key, { type: 'string' }])),
+    required: BEGINNING_TRIAGE_GENERATE_FIELDS.slice(),
+  };
+  const content = await callOllamaChat(
+    {
+      system: buildBeginningTriageSystemPrompt(),
+      user: buildBeginningTriageUserPrompt(inputFields),
+      schema,
+      model: payload.model,
+    },
+    options
+  );
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (_error) {
+    const error = new Error('Ollama did not return valid JSON. Try again, or set OLLAMA_MODEL to another installed model.');
+    error.statusCode = 502;
+    throw error;
+  }
+  const fields = {};
+  for (const key of BEGINNING_TRIAGE_GENERATE_FIELDS) {
+    fields[key] = typeof parsed[key] === 'string' ? parsed[key].trim() : '';
+  }
+  // Never lose the creator's seed if the model blanks the topic area.
+  if (!fields.topicArea) fields.topicArea = topicArea;
+  return { model: payload.model || OLLAMA_MODEL, fields };
+}
+
 function parseLabelValueStdout(stdout = '') {
   return String(stdout || '')
     .split(/\r?\n/)
@@ -7695,6 +7828,17 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === BEGINNING_TRIAGE_GENERATE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          return generateBeginningTriageDraft(payload, { root: serverOptions.root || ROOT });
+        })
+        .then((result) => sendJSON(res, 200, result))
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'beginning-triage-generate-error'));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === PACKAGE_RUNS_CANDIDATE_UPDATE_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -8338,6 +8482,8 @@ module.exports = {
   slugify,
   softDeletePackageRunCandidate,
   saveFinalOutline,
+  generateBeginningTriageDraft,
+  callOllamaChat,
   suggestSecondCutCandidateExportTarget,
   updatePackageRunCandidate,
   validatePackageRunId,

@@ -2437,6 +2437,16 @@ test("dashboard centers the video room on the run from the URL on load", () => {
   assert.match(source, /let selectedRunId = requestedRunId\(\) \|\| null;/);
 });
 
+test("beginning triage wires a Generate-with-Ollama button to the generate endpoint", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.js"), "utf8");
+  assert.match(source, /data-beginning-action="generate"/);
+  assert.match(source, /Generate with Ollama/);
+  assert.match(source, /function generateBeginningTriageFields/);
+  assert.match(source, /\/api\/beginning-triage\/generate/);
+  // The generated fields must be merged and persisted to the local triage store only.
+  assert.match(source, /saveBeginningTriageState\(merged\)/);
+});
+
 test("package runs dashboard groups advanced panels collapsed by default", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.html"), "utf8");
 
