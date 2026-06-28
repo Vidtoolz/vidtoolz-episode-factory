@@ -333,7 +333,18 @@
             renderRows();
             validateLocal();
           });
-          actionWrap.append(duplicate, up, down, del);
+          // Copy the exact text-to-image prompt for manual generation (e.g. in GPT).
+          const copyBtn = document.createElement("button");
+          copyBtn.type = "button";
+          copyBtn.textContent = "Copy prompt";
+          copyBtn.addEventListener("click", () => {
+            const value = text(row.prompt);
+            const done = () => { const o = copyBtn.textContent; copyBtn.textContent = "Copied!"; setTimeout(() => { copyBtn.textContent = o; }, 1500); };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(value).then(done, () => { textarea.focus(); textarea.select(); });
+            } else { textarea.focus(); textarea.select(); }
+          });
+          actionWrap.append(copyBtn, duplicate, up, down, del);
           actions.appendChild(actionWrap);
           tr.append(index, category, intendedUse, prompt, extra, actions);
           rowsEl.appendChild(tr);

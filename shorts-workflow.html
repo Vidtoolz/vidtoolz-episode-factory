@@ -91,13 +91,22 @@
     <!-- 3. Image prompts + images -->
     <div class="shorts-step">
       <h2><span class="num">3</span> Image prompts + images</h2>
-      <p>Generate FLUX image prompts, then images. Generated images are viewable in the tools below.</p>
+      <p>Generate FLUX image prompts, then images — or copy each text-to-image prompt (Copy buttons in the Image Prompts editor) to generate manually in GPT and upload the result below. Generated images are viewable in the tools below.</p>
       <div class="row">
         <a class="nav-link-button" id="lnkImagePrompts" href="image-prompts-editor.html">Image Prompts</a>
         <a class="nav-link-button" id="lnkPipeline" href="production-pipeline.html">Generate / view images</a>
         <a class="nav-link-button" id="lnkImageSelect" href="image-selector.html">Select images</a>
       </div>
-    </div>
+      <div class="row" style="margin-top:8px;">
+        <strong style="font-size:13px;">Add a manual (GPT) image:</strong>
+      </div>
+      <div class="row" style="margin-top:4px;">
+        <label class="status">Package id: <input type="text" id="upPackageId" placeholder="aigen package id" style="min-width:200px;" /></label>
+        <label class="status">Prompt #: <input type="number" id="upPromptIndex" value="1" min="1" max="999" style="width:64px;" /></label>
+        <input type="file" id="upFile" accept="image/png,image/jpeg" />
+        <button type="button" id="upBtn" class="secondary-btn">Upload image</button>
+        <span class="status" id="upStatus"></span>
+      </div>
 
     <!-- 4. I2V prompts -->
     <div class="shorts-step">
@@ -342,6 +351,36 @@
   function escapeHtml(s) {
     return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
+
+  // Step 3: upload a manual (GPT-generated) image as flux-NNN.png for a prompt.
+  document.getElementById("upBtn").addEventListener("click", function () {
+    var st = document.getElementById("upStatus");
+    var pkg = document.getElementById("upPackageId").value.trim();
+    var idx = parseInt(document.getElementById("upPromptIndex").value, 10);
+    var file = document.getElementById("upFile").files[0];
+    if (!pkg) { setStatus(st, "Enter the aigen package id.", "error"); return; }
+    if (!idx) { setStatus(st, "Enter the prompt number.", "error"); return; }
+    if (!file) { setStatus(st, "Choose a PNG or JPEG file.", "error"); return; }
+    if (!nonce) { setStatus(st, "Local write nonce unavailable. Refresh.", "error"); return; }
+    var btn = document.getElementById("upBtn");
+    btn.disabled = true; setStatus(st, "Uploading…", "");
+    var reader = new FileReader();
+    reader.onload = function () {
+      var h = { "Content-Type": "application/json" }; h[nonceHeader] = nonce;
+      fetch("/api/aigen/upload-image", { method: "POST", headers: h,
+        body: JSON.stringify({ package_id: pkg, prompt_index: idx, data_base64: String(reader.result || ""), localWriteNonce: nonce }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          btn.disabled = false;
+          var d = res.j && res.j.data !== undefined ? res.j.data : res.j;
+          if (!res.ok || (d && d.ok === false)) throw new Error((d && d.error) || "Upload failed.");
+          setStatus(st, "Uploaded as " + (d.path || "flux image") + ". It now appears in Select images → PRESTO.", "success");
+        })
+        .catch(function (e) { btn.disabled = false; setStatus(st, e.message, "error"); });
+    };
+    reader.onerror = function () { btn.disabled = false; setStatus(st, "Could not read the file.", "error"); };
+    reader.readAsDataURL(file);
+  });
 
   loadNonce();
 })();

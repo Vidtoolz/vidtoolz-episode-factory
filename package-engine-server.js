@@ -72,6 +72,7 @@ const AIGEN_STATUS_API = '/api/aigen/production-pipeline/status';
 const AIGEN_RESOLVE_ASSEMBLY_API = '/api/aigen/resolve-assembly/create';
 const AIGEN_FLUX_IMAGES_API_PREFIX = '/api/aigen/flux-images/';
 const AIGEN_SELECTED_IMAGES_API = '/api/aigen/selected-images';
+const AIGEN_UPLOAD_IMAGE_API = '/api/aigen/upload-image';
 const AIGEN_ASSETS_PREFIX = '/aigen-assets/';
 const PRESTO_SUBMIT_API = '/api/presto/submit';
 const PRESTO_JOB_STATUS_API = '/api/presto/job-status';
@@ -4424,6 +4425,64 @@ function saveI2vPrompts(payload = {}, options = {}) {
   return { package_id: packageId, path: 'video-prompts.json', count: prompts.length };
 }
 
+// Save a manually-generated (e.g. GPT) image into a package's images/flux-local/
+// as flux-NNN.png so it is indistinguishable from a FLUX image to the existing
+// image-selector and PRESTO I2V pipeline. Image bytes arrive base64-encoded in
+// JSON. Confined to the resolved package dir; gated on a nonce by the route.
+const MANUAL_IMAGE_MAX_BYTES = 25 * 1024 * 1024;
+function uploadAigenImage(payload = {}, options = {}) {
+  const { packageId, packageDir } = resolveAigenPackageDir(payload.package_id || payload.packageId, options);
+  const promptIndex = Number(payload.prompt_index);
+  if (!Number.isInteger(promptIndex) || promptIndex < 1 || promptIndex > 999) {
+    const error = new Error('prompt_index must be an integer from 1 to 999.');
+    error.statusCode = 400;
+    throw error;
+  }
+  let b64 = String(payload.data_base64 || payload.data || '');
+  const comma = b64.indexOf('base64,');
+  if (comma !== -1) b64 = b64.slice(comma + 'base64,'.length);
+  b64 = b64.trim();
+  if (!b64) {
+    const error = new Error('data_base64 is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  let buf;
+  try { buf = Buffer.from(b64, 'base64'); } catch (_e) { buf = null; }
+  if (!buf || !buf.length) {
+    const error = new Error('Could not decode image data.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (buf.length > MANUAL_IMAGE_MAX_BYTES) {
+    const error = new Error(`Image too large (max ${Math.floor(MANUAL_IMAGE_MAX_BYTES / 1024 / 1024)} MB).`);
+    error.statusCode = 413;
+    throw error;
+  }
+  const isPng = buf.length > 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
+  const isJpeg = buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  if (!isPng && !isJpeg) {
+    const error = new Error('Only PNG or JPEG images are supported.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const filename = `flux-${String(promptIndex).padStart(3, '0')}.png`;
+  const dir = path.join(packageDir, 'images', 'flux-local');
+  fs.mkdirSync(dir, { recursive: true });
+  const outPath = path.join(dir, filename);
+  const tmpPath = `${outPath}.tmp`;
+  fs.writeFileSync(tmpPath, buf);
+  fs.renameSync(tmpPath, outPath);
+  return {
+    package_id: packageId,
+    prompt_index: promptIndex,
+    filename,
+    path: `images/flux-local/${filename}`,
+    bytes: buf.length,
+    format: isPng ? 'png' : 'jpeg',
+  };
+}
+
 // Build orientation/resolution environment variables for FLUX/PRESTO child
 // processes from the run's workflow path. Passed as ENV (never CLI args) so the
 // current external ComfyUI handoff scripts ignore them harmlessly; once those
@@ -6777,12 +6836,12 @@ function validateLocalWriteRequest(req, payload = {}, options = {}) {
   return true;
 }
 
-function readJsonBody(req) {
+function readJsonBody(req, maxBytes = 1024 * 64) {
   return new Promise((resolve, reject) => {
     let body = '';
     req.on('data', (chunk) => {
       body += chunk;
-      if (body.length > 1024 * 64) {
+      if (body.length > maxBytes) {
         const error = new Error('Request body too large.');
         error.statusCode = 413;
         reject(error);
@@ -7857,6 +7916,16 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === AIGEN_UPLOAD_IMAGE_API) {
+      readJsonBody(req, MANUAL_IMAGE_MAX_BYTES + 2 * 1024 * 1024)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, uploadAigenImage(payload));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'aigen-upload-image-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname.startsWith(AIGEN_ASSETS_PREFIX)) {
       handleAigenAsset(req, res, url);
       return;
@@ -8791,6 +8860,7 @@ module.exports = {
   saveShortsScript,
   generateI2vPrompts,
   saveI2vPrompts,
+  uploadAigenImage,
   workflowGenerationEnv,
   generateBeginningTriageDraft,
   callOllamaChat,

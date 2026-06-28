@@ -141,7 +141,13 @@
         <button id="refresh-button" class="primary-btn" type="button">Refresh</button>
       </header>
 
-      
+      <section id="manual-upload" class="status-row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <strong style="font-size:13px;">Add a manual (GPT) image:</strong>
+        <label style="font-size:12px;">Prompt #: <input id="up-prompt-index" type="number" value="1" min="1" max="999" style="width:64px;" /></label>
+        <input id="up-file" type="file" accept="image/png,image/jpeg" />
+        <button id="up-button" type="button">Upload as flux image</button>
+        <span id="up-status" style="font-size:12px;color:var(--muted,#8b949e);"></span>
+      </section>
 
       <section id="status" class="status-row"></section>
       <section id="content"><div class="loading">Reading FLUX images...</div></section>
@@ -332,6 +338,38 @@
       document.getElementById("cancel").addEventListener("click", () => { window.location.href = "production-pipeline.html"; });
       refreshButton.addEventListener("click", loadImages);
       saveButton.addEventListener("click", saveSelection);
+
+      // Upload a manual (GPT-generated) image as flux-NNN.png, then refresh the gallery.
+      document.getElementById("up-button").addEventListener("click", () => {
+        const upStatus = document.getElementById("up-status");
+        const setUp = (m, c) => { upStatus.textContent = m; upStatus.style.color = c || "var(--muted,#8b949e)"; };
+        if (!packageId) { setUp("Open with ?package=<id> to upload.", "var(--danger,#f87171)"); return; }
+        const idx = parseInt(document.getElementById("up-prompt-index").value, 10);
+        const file = document.getElementById("up-file").files[0];
+        if (!idx) { setUp("Enter a prompt number.", "var(--danger,#f87171)"); return; }
+        if (!file) { setUp("Choose a PNG or JPEG.", "var(--danger,#f87171)"); return; }
+        if (!localWriteNonce) { setUp("Local write nonce unavailable. Refresh.", "var(--danger,#f87171)"); return; }
+        const btn = document.getElementById("up-button");
+        btn.disabled = true; setUp("Uploading…");
+        const reader = new FileReader();
+        reader.onload = () => {
+          const h = { "Content-Type": "application/json" }; h[nonceHeader] = localWriteNonce;
+          fetch("/api/aigen/upload-image", { method: "POST", headers: h,
+            body: JSON.stringify({ package_id: packageId, prompt_index: idx, data_base64: String(reader.result || ""), localWriteNonce }) })
+            .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+            .then(({ ok, j }) => {
+              btn.disabled = false;
+              const d = j && j.data !== undefined ? j.data : j;
+              if (!ok || (d && d.ok === false)) throw new Error((d && d.error) || "Upload failed.");
+              setUp("Uploaded " + (d.path || "image") + ". Refreshing…", "var(--success,#34d399)");
+              loadImages();
+            })
+            .catch((e) => { btn.disabled = false; setUp(e.message, "var(--danger,#f87171)"); });
+        };
+        reader.onerror = () => { btn.disabled = false; setUp("Could not read the file.", "var(--danger,#f87171)"); };
+        reader.readAsDataURL(file);
+      });
+
       fetchWriteNonce();
       loadImages();
     </script>

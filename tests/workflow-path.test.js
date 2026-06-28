@@ -354,3 +354,53 @@ test("package-engine.js stamps the workflow path on save-selected", () => {
   // save-selected stamps via setWorkflowPathForRun when a path is provided
   assert.match(server, /payload\.workflowPath[\s\S]{0,120}setWorkflowPathForRun/);
 });
+
+// ── Manual image lane: copy prompts + upload GPT images ───────────────────────
+
+const PNG_1x1_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
+
+test("uploadAigenImage saves a base64 image as flux-NNN.png in the package", () => {
+  const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), "up-pkg-"));
+  fs.mkdirSync(path.join(scriptPackages, "pkg-a"), { recursive: true });
+  const res = packageEngineServer.uploadAigenImage(
+    { package_id: "pkg-a", prompt_index: 3, data_base64: "data:image/png;base64," + PNG_1x1_B64 },
+    { scriptPackages });
+  assert.equal(res.path, "images/flux-local/flux-003.png");
+  assert.equal(res.format, "png");
+  const saved = fs.readFileSync(path.join(scriptPackages, "pkg-a", "images", "flux-local", "flux-003.png"));
+  assert.equal(saved[0], 0x89); // PNG magic
+});
+
+test("uploadAigenImage rejects non-image data and bad prompt_index", () => {
+  const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), "up-pkg2-"));
+  fs.mkdirSync(path.join(scriptPackages, "pkg-b"), { recursive: true });
+  assert.throws(
+    () => packageEngineServer.uploadAigenImage({ package_id: "pkg-b", prompt_index: 1, data_base64: Buffer.from("hello not an image").toString("base64") }, { scriptPackages }),
+    /PNG or JPEG/);
+  assert.throws(
+    () => packageEngineServer.uploadAigenImage({ package_id: "pkg-b", prompt_index: 0, data_base64: PNG_1x1_B64 }, { scriptPackages }),
+    /prompt_index/);
+});
+
+test("upload-image API rejects POST without nonce", async () => {
+  const { root } = makeRunRoot("2026-06-01-up-route", "# Package Run State\n");
+  const server = packageEngineServer.createServer({ root });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const port = server.address().port;
+  try {
+    const res = await postJson(port, "/api/aigen/upload-image", { package_id: "x", prompt_index: 1, data_base64: PNG_1x1_B64 });
+    assert.equal(res.status, 403);
+    assert.match(res.body.error, /nonce/i);
+  } finally {
+    await new Promise((r) => server.close(r));
+  }
+});
+
+test("image-prompts-editor and selector wire copy + manual upload", () => {
+  const editor = fs.readFileSync(path.join(__dirname, "..", "image-prompts-editor.html"), "utf8");
+  assert.match(editor, /Copy prompt/);
+  const selector = fs.readFileSync(path.join(__dirname, "..", "image-selector.html"), "utf8");
+  assert.match(selector, /\/api\/aigen\/upload-image/);
+  const cockpit = fs.readFileSync(path.join(__dirname, "..", "shorts-workflow.html"), "utf8");
+  assert.match(cockpit, /\/api\/aigen\/upload-image/);
+});
