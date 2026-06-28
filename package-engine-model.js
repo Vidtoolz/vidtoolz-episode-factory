@@ -42,6 +42,12 @@
     return RECOMMENDATIONS.find((item) => item.toLowerCase() === text) || "Maybe";
   }
 
+  // Suggested video length lane: "long" (~3-25 min) only when explicitly tagged;
+  // everything else defaults to "short" (<3 min), matching the historical framing.
+  function normalizeVideoFormat(value) {
+    return cleanString(value).toLowerCase() === "long" ? "long" : "short";
+  }
+
   function normalizeDifficulty(value) {
     const text = cleanString(value).toLowerCase();
     return DIFFICULTIES.find((item) => item.toLowerCase() === text) || "Medium";
@@ -74,6 +80,7 @@
       productionDifficulty: normalizeDifficulty(source.productionDifficulty || source.production_difficulty),
       mainRisk: cleanString(source.mainRisk || source.main_risk),
       shortsIdeas: normalizeShortsIdeas(source.shortsIdeas || source.shorts_ideas),
+      videoFormat: normalizeVideoFormat(source.videoFormat || source.video_format),
     };
 
     STRATEGIC_FIELDS.forEach((field) => {
@@ -262,6 +269,7 @@ ${strategic}
     DIFFICULTIES,
     STRATEGIC_FIELDS,
     editableCandidateFields,
+    normalizeVideoFormat,
     normalizePackageCandidate,
     normalizePackageCandidateSet,
     validatePackageCandidateSet,

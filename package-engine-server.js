@@ -4463,9 +4463,10 @@ async function generateOneTopicCandidate(payload = {}, options = {}) {
       mainRisk: { type: 'string' },
       score: { type: 'integer' },
       recommendation: { type: 'string' },
+      videoFormat: { type: 'string' },
       shortsIdeas: { type: 'array', items: { type: 'string' } },
     },
-    required: ['proposedTitle', 'idea', 'viewerPromise', 'targetViewer', 'productionDifficulty', 'mainRisk'],
+    required: ['proposedTitle', 'idea', 'viewerPromise', 'targetViewer', 'productionDifficulty', 'mainRisk', 'videoFormat'],
   };
   const system = [
     'You generate ONE fresh YouTube Short idea for VIDTOOLZ (practical video creation in the AI era).',
@@ -4476,7 +4477,7 @@ async function generateOneTopicCandidate(payload = {}, options = {}) {
   const user = [
     'Generate one new, distinct VIDTOOLZ Short topic candidate.',
     existingTitles.length ? `Avoid duplicating or closely echoing these existing titles:\n- ${existingTitles.join('\n- ')}` : '',
-    'Fields: proposedTitle, idea, viewerPromise, targetViewer, thumbnailConcept, onThumbnailText (short, may be empty), productionDifficulty (Low/Medium/High), mainRisk, score (0-100 integer), recommendation (Make/Maybe/Reject), shortsIdeas (up to 5 short strings).',
+    'Fields: proposedTitle, idea, viewerPromise, targetViewer, thumbnailConcept, onThumbnailText (short, may be empty), productionDifficulty (Low/Medium/High), mainRisk, score (0-100 integer), recommendation (Make/Maybe/Reject), videoFormat ("short" if it fits a <3 min vertical Short, "long" if it needs a ~5-25 min horizontal video), shortsIdeas (up to 5 short strings).',
   ].filter(Boolean).join('\n\n');
   const content = await callOllamaChat({ system, user, schema, model: payload.model }, options);
   let parsed;

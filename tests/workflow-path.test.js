@@ -424,13 +424,14 @@ test("generateOneTopicCandidate appends a new candidate and preserves existing o
   const content = JSON.stringify({
     proposedTitle: "A fresh AI-era editing idea", idea: "Concrete demo", viewerPromise: "You will learn X",
     targetViewer: "Solo creators", productionDifficulty: "Low", mainRisk: "Could drift abstract",
-    score: 72, recommendation: "Maybe", shortsIdeas: ["a", "b"],
+    score: 72, recommendation: "Maybe", videoFormat: "long", shortsIdeas: ["a", "b"],
   });
   const fetchImpl = async () => ({ ok: true, json: async () => ({ message: { content } }) });
   const result = await packageEngineServer.generateOneTopicCandidate({ runId: "2026-06-01-gen-run" }, { root, fetchImpl });
   assert.equal(result.candidate.proposedTitle, "A fresh AI-era editing idea");
   assert.equal(result.candidate.packageNumber, 3);
   assert.match(result.candidate.id, /^generated-/);
+  assert.equal(result.candidate.videoFormat, "long");
   const saved = JSON.parse(fs.readFileSync(path.join(runDir, "package-candidates.json"), "utf8"));
   assert.equal(saved.candidates.length, 3);
   assert.equal(saved.candidates[0].proposedTitle, "Existing one"); // preserved
@@ -462,4 +463,25 @@ test("topic-scout.html wires delete & replace", () => {
   assert.match(html, /Delete &amp; replace/);
   assert.match(html, /\/api\/package-runs\/candidates\/delete/);
   assert.match(html, /\/api\/topic-scout\/generate-one/);
+});
+
+// ── Topic length lanes (short ≤3 min vs long ≤25 min) ─────────────────────────
+
+test("candidate videoFormat defaults to short and preserves an explicit long", () => {
+  const model = require("../package-engine-model.js");
+  assert.equal(model.normalizeVideoFormat(""), "short");
+  assert.equal(model.normalizeVideoFormat(undefined), "short");
+  assert.equal(model.normalizeVideoFormat("anything"), "short");
+  assert.equal(model.normalizeVideoFormat("long"), "long");
+  assert.equal(model.normalizePackageCandidate({ proposedTitle: "T" }).videoFormat, "short");
+  assert.equal(model.normalizePackageCandidate({ proposedTitle: "T", videoFormat: "long" }).videoFormat, "long");
+  assert.equal(model.normalizePackageCandidate({ proposedTitle: "T", video_format: "long" }).videoFormat, "long");
+});
+
+test("topic-scout renders Short and Long lanes grouped by videoFormat", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "topic-scout.html"), "utf8");
+  assert.match(html, /topic-lane/);
+  assert.match(html, /videoFormat/);
+  assert.match(html, /lane\('Short'/);
+  assert.match(html, /lane\('Long'/);
 });

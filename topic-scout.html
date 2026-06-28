@@ -160,6 +160,26 @@
     .topic-delete-replace:hover { border-color: var(--accent, #3fb950); }
     .topic-delete-replace:disabled { opacity: 0.6; cursor: default; }
     .topic-action-status { font-size: 0.72rem; color: var(--muted); }
+    .topic-lane { margin-bottom: 1.25rem; }
+    .topic-lane-title {
+      font-size: 0.95rem;
+      margin: 0 0 0.5rem;
+      padding-bottom: 0.3rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+    .topic-lane-hint { font-size: 0.72rem; color: var(--muted); font-weight: 400; }
+    .topic-lane-count {
+      margin-left: auto;
+      font-size: 0.72rem;
+      color: var(--muted);
+      background: var(--panel-soft);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.05rem 0.5rem;
+    }
     .topic-field-label {
       color: var(--muted);
       font-weight: 600;
@@ -378,7 +398,7 @@
     }
 
     function renderCandidates(candidates) {
-      const html = candidates.map(c => {
+      const cardHtml = (c) => {
         const riskClass = (c.mainRisk || '').toLowerCase().includes('medium') ? 'risk-medium' : 'risk-low';
         const diffClass = (c.productionDifficulty || '').toLowerCase() === 'medium' ? 'difficulty-medium' : 'difficulty-low';
         return `
@@ -401,8 +421,19 @@
             </div>
           </div>
         `;
-      }).join('');
-      document.getElementById('candidateList').innerHTML = html;
+      };
+      // Two lanes by suggested video length. Only an explicit "long" tag goes long;
+      // everything else (incl. untagged existing candidates) stays in the Short lane.
+      const isLong = (c) => String(c.videoFormat || '').toLowerCase() === 'long';
+      const shortOnes = candidates.filter((c) => !isLong(c));
+      const longOnes = candidates.filter(isLong);
+      const lane = (title, hint, items) => `
+        <div class="topic-lane">
+          <h3 class="topic-lane-title">${title} <span class="topic-lane-hint">${hint}</span> <span class="topic-lane-count">${items.length}</span></h3>
+          ${items.length ? items.map(cardHtml).join('') : '<p class="empty-state">No ideas in this lane yet.</p>'}
+        </div>`;
+      document.getElementById('candidateList').innerHTML =
+        lane('Short', '≤ 3 min · vertical', shortOnes) + lane('Long', '≤ 25 min · horizontal', longOnes);
     }
 
     async function loadSubmittedTopics() {
