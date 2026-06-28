@@ -190,6 +190,20 @@ test("HyperFrames availability probe parses version and failure", () => {
   assert.equal(ok.version, "1.2.3");
   assert.equal(fail.available, false);
   assert.match(fail.error, /not found/);
+
+  // A multi-line Node stack trace must be condensed to ONE concise line for the
+  // availability cards (not dumped verbatim into the cockpit UI).
+  const nodeStack = packageEngineServer.probeHyperframesAvailability({
+    force: true,
+    runner: () => ({
+      status: 1, stdout: "",
+      stderr: "file:///x/cli.js:1\nimport { styleText } from \"util\";\n^^^\nSyntaxError: The requested module 'util' does not provide an export named 'styleText'\n    at ModuleJob._instantiate\n\nNode.js v18.19.1",
+    }),
+  });
+  assert.equal(nodeStack.available, false);
+  assert.ok(!nodeStack.error.includes("\n"), "probe error must be a single line");
+  assert.match(nodeStack.error, /Node >= 20/);
+  assert.match(nodeStack.error, /Node 18/);
 });
 
 test("HyperFrames discovery works without a manifest", () => {

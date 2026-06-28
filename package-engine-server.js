@@ -709,6 +709,22 @@ function parseHyperframesVersion(output = '') {
   return explicit ? explicit[1] : '';
 }
 
+// Condense a failed HyperFrames probe's stdout/stderr into ONE concise line.
+// The raw output can be a multi-line Node stack trace; the dashboard/mission-control
+// availability cards render this verbatim, so it must stay short and friendly.
+function condenseHyperframesProbeError(combined, fallback) {
+  const text = String(combined || '').trim();
+  if (!text) return fallback || 'HyperFrames CLI unavailable.';
+  // Node ESM/version mismatch (e.g. `styleText` import requires Node >= 20).
+  if (/styleText|does not provide an export/i.test(text)) {
+    const nodeVer = (text.match(/Node\.js\s+v?(\d+)/i) || [])[1];
+    return `HyperFrames CLI needs Node >= 20${nodeVer ? ` (probe ran under Node ${nodeVer})` : ''}.`;
+  }
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const errLine = lines.find((l) => /(error|not found|cannot|enoent|command not found)/i.test(l)) || lines[0] || '';
+  return errLine.length > 200 ? `${errLine.slice(0, 197)}…` : errLine;
+}
+
 function probeHyperframesAvailability(options = {}) {
   const now = Date.now();
   if (!options.force && hyperframesAvailabilityCache && now - hyperframesAvailabilityCache.checkedAtMs < HYPERFRAMES_PROBE_TTL_MS) {
@@ -743,7 +759,7 @@ function probeHyperframesAvailability(options = {}) {
     available: Boolean(result && result.status === 0),
     command: command.join(' '),
     version: parseHyperframesVersion(combined),
-    error: result && result.status === 0 ? '' : (combined || (result && result.error && result.error.message) || 'HyperFrames CLI unavailable.'),
+    error: result && result.status === 0 ? '' : condenseHyperframesProbeError(combined, result && result.error && result.error.message),
     checked_at: checkedAt,
   };
   hyperframesAvailabilityCache = { checkedAtMs: now, value };
