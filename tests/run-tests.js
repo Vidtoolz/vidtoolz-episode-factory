@@ -33,6 +33,7 @@ require("./script-commitment-check.test.js");
 require("./resolve-handoff-readiness.test.js");
 require("./resolve-ready-gallery.test.js");
 require("./quick-action-endpoints.test.js");
+require("./artifact-access-foundation.test.js");
 require("./remotion-lane.test.js");
 
 async function runTests() {
