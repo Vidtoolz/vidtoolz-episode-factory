@@ -24,7 +24,9 @@ const CANONICAL_FILES = [
 ];
 
 // Docs that must reflect current truth (no hardcoded counts, no stale phrases).
-const AUTHORITATIVE_DOCS = ["USAGE-GUIDE.md", "docs/COCKPIT-CROSS-REFERENCE.md", "docs/DOC-AUTHORITY.md"];
+// CLAUDE.md is included so future agent sessions never read a stale hardcoded
+// test count as fact (it must say "run scripts/verify.sh for the current count").
+const AUTHORITATIVE_DOCS = ["USAGE-GUIDE.md", "docs/COCKPIT-CROSS-REFERENCE.md", "docs/DOC-AUTHORITY.md", "CLAUDE.md"];
 
 const STALE_PHRASES = ["844 tests"];
 // Hardcoded test counts like "844 tests" or "1203/1203 passing".
