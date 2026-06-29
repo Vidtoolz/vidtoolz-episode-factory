@@ -2,6 +2,15 @@
 "use strict";
 
 /*
+ * VIDTOOLZ script safety
+ * Read/write behavior: READ-ONLY.
+ * This script must not create, modify, delete, rename, or move package-run files,
+ * package-run-state.md, approval markers, media files, generated indexes, or docs.
+ * If future behavior needs writes, create a separate mutating script or add an
+ * explicit MUTATES header and update the read/write guard test in the same PR.
+ */
+
+/*
  * VIDTOOLZ next-action role
  * Role: Authority / gating evaluation for a package run (human-approval-required, blocked actions,
  *   and the authoritative next-safe-action consumed by the workflow map).

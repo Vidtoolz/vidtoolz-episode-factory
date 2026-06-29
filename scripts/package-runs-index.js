@@ -1,6 +1,14 @@
 #!/usr/bin/env node
 "use strict";
 
+/*
+ * VIDTOOLZ script safety
+ * Read/write behavior: MUTATES GENERATED MIRROR ONLY.
+ * This script writes package-runs-index.json as a runtime/generated mirror.
+ * It must not mutate package-run source artifacts, package-run-state.md,
+ * approval markers, media files, or human-authored production state.
+ */
+
 const fs = require("node:fs");
 const path = require("node:path");
 const captureEvidenceReviewTool = require("./package-run-capture-evidence-review.js");
