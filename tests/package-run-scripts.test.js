@@ -5650,6 +5650,45 @@ test("cockpit orientation returns AMBIGUOUS and withholds guidance when active s
   assert.ok(o.nextValidAction);
 });
 
+test("orientation bar renders compact canonical fields and an ambiguous state", () => {
+  const orientationBar = require("../orientation-bar.js");
+  assert.equal(typeof orientationBar.render, "function");
+  assert.equal(typeof orientationBar.mount, "function");
+
+  const normal = {};
+  orientationBar.render(normal, {
+    mode: "Operator Clarity / Production",
+    activeRun: "2026-06-28-stop-writing-your-shorts-like-blog-posts",
+    currentGate: "Needs capture",
+    nextValidAction: "Add real capture evidence",
+    indexFreshness: { state: "fresh" },
+  });
+  assert.match(normal.innerHTML, /Canonical production state/);
+  assert.match(normal.innerHTML, /Active:/);
+  assert.match(normal.innerHTML, /2026-06-28-stop-writing-your-shorts-like-blog-posts/);
+  assert.match(normal.innerHTML, /Needs capture/);
+  assert.match(normal.innerHTML, /fresh/);
+
+  const ambiguous = {};
+  orientationBar.render(ambiguous, { mode: "AMBIGUOUS" });
+  assert.match(ambiguous.innerHTML, /ambiguous/i);
+  assert.match(ambiguous.innerHTML, /withheld/i);
+});
+
+test("orientation bar source is read-only, reads the canonical API, and fails gracefully", () => {
+  const src = fs.readFileSync(path.join(__dirname, "..", "orientation-bar.js"), "utf8");
+  assert.match(src, /\/api\/cockpit-orientation/);
+  assert.match(src, /AMBIGUOUS/);
+  assert.match(src, /unavailable/i); // graceful failure path
+  assert.match(src, /canonicalOrientationStrip/); // auto-mount target
+});
+
+test("package-runs-dashboard includes the canonical orientation strip and shared script", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.html"), "utf8");
+  assert.match(html, /id="canonicalOrientationStrip"/);
+  assert.match(html, /orientation-bar\.js/);
+});
+
 test("index freshness reports missing, fresh, and stale states", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "index-freshness-"));
   writeTestFile(
