@@ -5638,6 +5638,18 @@ test("next-action scripts declare role and canonical status", () => {
   }
 });
 
+test("open-active-run launcher resolves the active run dynamically with no hardcoded run id", () => {
+  const src = fs.readFileSync(path.join(__dirname, "..", "scripts/open-active-run.sh"), "utf8");
+  // Resolves the active run from the canonical orientation API at launch time.
+  assert.match(src, /\/api\/cockpit-orientation/);
+  assert.match(src, /activeRun/);
+  // Handles the ambiguous / no-active-run case instead of guessing.
+  assert.match(src, /AMBIGUOUS|guidanceWithheld/);
+  assert.match(src, /xdg-open/);
+  // The whole point: never pin a specific dated run id (that is what went stale).
+  assert.doesNotMatch(src, /\b20\d\d-\d\d-\d\d-[a-z0-9][a-z0-9-]+\b/);
+});
+
 test("docs authority check passes and catches hardcoded counts / stale phrases", () => {
   const docsCheck = require("../scripts/docs-authority-check.js");
 
