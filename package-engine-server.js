@@ -73,6 +73,7 @@ const ROUGH_CUT_REGENERATE_DERIVED_API = '/api/package-runs/rough-cut/regenerate
 const ROUGH_CUT_OPEN_API = '/api/package-runs/rough-cut/open';
 const PACKAGE_RUNS_OPEN_API = '/api/package-runs/open';
 const ARTIFACT_TEXT_API = '/api/package-runs/artifact-text';
+const ARTIFACTS_LIST_API = '/api/package-runs/artifacts';
 const OPEN_FILE_API = '/api/package-runs/open-file';
 const PICKUP_PLAN_SAVE_API = '/api/package-runs/pickup-plan/save';
 const AIGEN_STATUS_API = '/api/aigen/production-pipeline/status';
@@ -6602,7 +6603,36 @@ function openPackageRunAssetFolder(payload = {}, options = {}) {
 
 
 // ── Package-run text-artifact access (read-only text + nonce-gated open) ──
-const ARTIFACT_TEXT_EXTENSIONS = new Set(['.md', '.txt', '.json']);
+const PACKAGE_RUN_ARTIFACT_TEXT_MAX_BYTES = 1024 * 1024;
+const ARTIFACT_TEXT_EXTENSIONS = new Set(['.md', '.txt', '.json', '.csv']);
+const PACKAGE_RUN_ARTIFACT_TEXT_BLOCKLIST = new Set(['package-run-state.md']);
+const PACKAGE_RUN_ARTIFACT_LABELS = {
+  'selected-package.md': 'Selected Package',
+  'final-outline.md': 'Final Outline',
+  'final-script.md': 'Final Script',
+  'production-plan.md': 'Production Plan',
+  'shot-edit-plan-review.md': 'Shot/Edit Plan Review',
+  'capture-checklist.md': 'Capture Checklist',
+  'capture-evidence-review.md': 'Capture Evidence Review',
+  'rough-cut-watch-notes.md': 'Rough-Cut Watch Notes',
+  'rough-cut-review.md': 'Rough-Cut Review',
+  'final-watch-notes.md': 'Final Watch Notes',
+  'final-review.md': 'Final Review',
+  'publish-pack.md': 'Publish Pack',
+};
+
+function prettifyArtifactFilename(filename) {
+  const base = String(filename || '').replace(/\.[^.]+$/, '');
+  return base
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function artifactLabel(filename) {
+  return PACKAGE_RUN_ARTIFACT_LABELS[filename] || prettifyArtifactFilename(filename);
+}
 
 function resolvePackageRunTextFile(runId, file, options = {}) {
   const resolved = resolvePackageRunDir(runId, options);
@@ -6616,6 +6646,9 @@ function resolvePackageRunTextFile(runId, file, options = {}) {
   if (filename.includes('\0')) reject('File name contains an invalid character.');
   if (filename.includes('..') || filename.startsWith('/') || path.isAbsolute(filename) || filename.includes('\\')) {
     reject('File path escaped the package-run folder.');
+  }
+  if (PACKAGE_RUN_ARTIFACT_TEXT_BLOCKLIST.has(filename)) {
+    reject(`${filename} is not a text artifact.`);
   }
   if (!ARTIFACT_TEXT_EXTENSIONS.has(path.extname(filename).toLowerCase())) {
     reject('Unsupported file type.');
@@ -6635,11 +6668,45 @@ function readPackageRunArtifactText(runId, file, options = {}) {
     error.exists = false;
     throw error;
   }
+  const stats = fs.statSync(resolved.filePath);
+  if (stats.size > PACKAGE_RUN_ARTIFACT_TEXT_MAX_BYTES) {
+    const error = new Error('File exceeds maximum size.');
+    error.statusCode = 413;
+    throw error;
+  }
   return {
-    content: fs.readFileSync(resolved.filePath, 'utf8'),
-    filename: resolved.filename,
-    exists: true,
     runId: resolved.runId,
+    file: resolved.filename,
+    content: fs.readFileSync(resolved.filePath, 'utf8'),
+    sizeBytes: stats.size,
+    modifiedAt: stats.mtime.toISOString(),
+  };
+}
+
+function listPackageRunArtifacts(runId, options = {}) {
+  const resolved = resolvePackageRunDir(runId, options);
+  const artifacts = fs.readdirSync(resolved.runDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter((filename) => filename && !filename.startsWith('.'))
+    .filter((filename) => !PACKAGE_RUN_ARTIFACT_TEXT_BLOCKLIST.has(filename))
+    .filter((filename) => ARTIFACT_TEXT_EXTENSIONS.has(path.extname(filename).toLowerCase()))
+    .map((filename) => {
+      const filePath = path.join(resolved.runDir, filename);
+      const stats = fs.statSync(filePath);
+      if (stats.size > PACKAGE_RUN_ARTIFACT_TEXT_MAX_BYTES) return null;
+      return {
+        file: filename,
+        label: artifactLabel(filename),
+        sizeBytes: stats.size,
+        modifiedAt: stats.mtime.toISOString(),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.file.localeCompare(b.file));
+  return {
+    runId: resolved.runId,
+    artifacts,
   };
 }
 
@@ -7162,15 +7229,16 @@ function isAllowedLocalOrigin(value = '', port = PORT) {
 function validateLocalWriteRequest(req, payload = {}, options = {}) {
   const port = options.port || PORT;
   const nonce = options.writeNonce || LOCAL_WRITE_NONCE;
+  const label = options.label || 'Capture evidence write API';
   const host = req && req.headers ? req.headers.host : '';
   const origin = req && req.headers ? req.headers.origin : '';
   if (!isAllowedLocalHost(host, port)) {
-    const error = new Error('Capture evidence write API requires a local Host header.');
+    const error = new Error(`${label} requires a local Host header.`);
     error.statusCode = 403;
     throw error;
   }
   if (!isAllowedLocalOrigin(origin, port)) {
-    const error = new Error('Capture evidence write API rejects non-local Origin headers.');
+    const error = new Error(`${label} rejects non-local Origin headers.`);
     error.statusCode = 403;
     throw error;
   }
@@ -7181,7 +7249,7 @@ function validateLocalWriteRequest(req, payload = {}, options = {}) {
     payload.nonce ||
     '';
   if (providedNonce !== nonce) {
-    const error = new Error('Capture evidence write API requires a valid local write nonce.');
+    const error = new Error(`${label} requires a valid local write nonce.`);
     error.statusCode = 403;
     throw error;
   }
@@ -7326,7 +7394,7 @@ function buildCockpitOrientation(options = {}) {
     workflowPath = '';
   }
   const mediaSystem = workflowPath === 'vertical'
-    ? 'Vertical / Shorts path: media via I2V (FLUX → PRESTO Wan2.2). No separate AIGEN package run.'
+    ? 'Vertical / Shorts path: camera/A-roll capture. No separate AIGEN package is expected for this run.'
     : 'Horizontal path: AIGEN image/video pipeline (FLUX → image select → PRESTO/Kling → Resolve).';
 
   const guidance = doctor && doctor.operatorGuidance ? doctor.operatorGuidance : null;
@@ -8260,6 +8328,20 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === ARTIFACTS_LIST_API) {
+      try {
+        const runId = url.searchParams.get('runId') || '';
+        sendJSON(
+          res,
+          200,
+          listPackageRunArtifacts(runId, { root: serverOptions.root || ROOT })
+        );
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, null);
+      }
+      return;
+    }
+
     if ((req.method === 'GET' || req.method === 'HEAD') && url.pathname === '/favicon.ico') {
       res.writeHead(200, {
         'Content-Type': 'image/svg+xml; charset=utf-8',
@@ -9095,7 +9177,7 @@ function createServer(options = {}) {
     if (req.method === 'POST' && url.pathname === OPEN_FILE_API) {
       readJsonBody(req)
         .then((payload) => {
-          validateLocalWriteRequest(req, payload);
+          validateLocalWriteRequest(req, payload, { label: 'Open file action' });
           sendJSON(res, 200, openPackageRunFile(payload, { root: serverOptions.root || ROOT }));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, null, { exists: error.exists }));
@@ -9411,9 +9493,12 @@ module.exports = {
   openPackageRunAssetFolder,
   openRoughCutVideo,
   ARTIFACT_TEXT_API,
+  ARTIFACTS_LIST_API,
   OPEN_FILE_API,
+  PACKAGE_RUN_ARTIFACT_TEXT_MAX_BYTES,
   resolvePackageRunTextFile,
   readPackageRunArtifactText,
+  listPackageRunArtifacts,
   openPackageRunFile,
   parseHyperframesVersion,
   parseRoughCutReviewFile,

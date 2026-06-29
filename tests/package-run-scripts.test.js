@@ -5719,6 +5719,29 @@ test("cockpit orientation reports a single clean active run with operator fields
   assert.ok(o.indexFreshness && typeof o.indexFreshness.state === "string");
 });
 
+test("cockpit orientation uses camera/A-roll wording for vertical runs", () => {
+  const packageEngineServer = require("../package-engine-server.js");
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cockpit-orientation-vertical-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-06-28-vertical/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Vertical Orientation" } })
+  );
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-06-28-vertical/package-run-state.md",
+    "# Package Run State\n\nPackage run state: active\nWorkflow path: vertical\n"
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const o = packageEngineServer.buildCockpitOrientation({ repoRoot: tempRoot });
+
+  assert.equal(o.workflowPath, "vertical");
+  assert.match(o.linkedMediaSystem, /camera|A-roll|No separate AIGEN package/);
+  assert.doesNotMatch(o.linkedMediaSystem, /FLUX|PRESTO|Wan|I2V/);
+});
+
 test("cockpit orientation returns AMBIGUOUS and withholds guidance when active state is unclear", () => {
   const packageEngineServer = require("../package-engine-server.js");
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cockpit-orientation-ambiguous-"));
