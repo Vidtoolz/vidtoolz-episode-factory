@@ -69,6 +69,7 @@ node --check scripts/generate-production-spec.js
 node --check scripts/package-runs-dashboard-launch.js
 node --check scripts/validate-published-videos.js
 sh -n scripts/open-package-runs-dashboard.sh
+sh -n scripts/open-active-run.sh
 node --check scripts/trailer-cue-new.js
 node --check scripts/music-cue-new.js
 node --check scripts/supervised-capture.js
