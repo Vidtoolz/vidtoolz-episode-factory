@@ -56,6 +56,10 @@ image selection → Wan2.2 video generation (PRESTO) → Resolve handoff → pub
 - **Mikko approves all durable state changes** — the system guides, Mikko decides.
 - **Brand pattern**: one claim, one example, one point per video.
 - **No text in FLUX prompts** — causes rendered text artifacts. Photorealistic only.
+- **No OpenAI image generation.** OpenAI must not be used for any image/thumbnail
+  generation (it is hard-disabled in `package-engine-server.js`). Image generation
+  uses the local vidnux ComfyUI / FLUX path (`http://127.0.0.1:8188`). OpenAI may
+  remain only for non-image text/review uses already present.
 
 ## CSS
 - `styles.css` (shared, loaded with a `?v=` cache-buster query to force reload)

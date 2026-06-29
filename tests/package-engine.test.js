@@ -856,8 +856,11 @@ test("package engine server status reports provider and model without generation
   assert.deepEqual(placeholder.roughCutInputConsole.allowedWriteFiles, ["rough-cut-watch-notes.md", "pickup-list.md", "edit-fix-list.md"]);
   assert.deepEqual(placeholder.roughCutInputConsole.secondCutCandidateAllowedWriteFiles, ["second-cut-candidate.md"]);
   assert.deepEqual(placeholder.roughCutInputConsole.allowedApprovalMarkers, ["NOT GIVEN", "NEEDS PICKUPS", "NEEDS EDIT FIXES", "PASS"]);
-  assert.equal(openai.thumbnailProvider, "openai");
-  assert.equal(openai.model, "gpt-image-1");
+  // OpenAI image generation is disabled by policy: status never advertises it as available.
+  assert.equal(openai.thumbnailProvider, "disabled");
+  assert.equal(openai.model, "local-svg-placeholder");
+  assert.equal(openai.openaiImageGeneration, "disabled");
+  assert.equal(openai.localImageProvider.id, "vidnux-comfyui");
 });
 
 test("package engine capture evidence write nonce and local origin checks are enforced", () => {
@@ -975,8 +978,10 @@ test("package engine status response includes thumbnail timeout config without s
     OPENAI_IMAGE_TIMEOUT_MS: "120000",
   });
 
-  assert.equal(status.thumbnailProvider, "openai");
-  assert.equal(status.model, "gpt-image-1");
+  // OpenAI image generation is disabled by policy; status never advertises it.
+  assert.equal(status.thumbnailProvider, "disabled");
+  assert.equal(status.model, "local-svg-placeholder");
+  assert.equal(status.openaiImageGeneration, "disabled");
   assert.equal(status.timeoutMs, 120000);
   assert.equal(status.imageSize, "1536x1024");
   assert.equal(status.quality, "low");
@@ -984,15 +989,38 @@ test("package engine status response includes thumbnail timeout config without s
   assert.doesNotMatch(JSON.stringify(status), /secret-key|OPENAI_API_KEY/);
 });
 
-test("package engine openai thumbnail mode requires an api key", async () => {
-  await assert.rejects(
-    () => packageEngineServer.createThumbnailResponse({
-      topic: "AI video idea filter",
-      thumbnailConcept: "Creator sorting ideas",
-      onThumbnailText: "Stop guessing",
-    }, { env: { THUMBNAIL_PROVIDER: "openai" } }),
-    /OPENAI_API_KEY is required when THUMBNAIL_PROVIDER=openai/
-  );
+test("package engine openai thumbnail mode is disabled by policy and never calls fetch", async () => {
+  let fetchCalled = false;
+  const error = await packageEngineServer
+    .createThumbnailResponse(
+      { topic: "AI video idea filter", thumbnailConcept: "Creator sorting ideas", onThumbnailText: "Stop guessing" },
+      {
+        env: { THUMBNAIL_PROVIDER: "openai", OPENAI_API_KEY: "test-key" },
+        logger: false,
+        fetchImpl: async () => { fetchCalled = true; throw new Error("OpenAI image API must not be called"); },
+      }
+    )
+    .then(() => null, (e) => e);
+  assert.ok(error, "openai thumbnail mode must reject");
+  assert.equal(error.errorCode, "openai_image_disabled");
+  assert.match(error.message, /disabled by VIDTOOLZ policy/);
+  // The whole point: no OpenAI Images API call even with OPENAI_API_KEY set.
+  assert.equal(fetchCalled, false);
+});
+
+test("package engine createOpenAIThumbnailCandidates fails closed (disabled)", async () => {
+  const error = await packageEngineServer
+    .createOpenAIThumbnailCandidates({ topic: "x", count: 1 })
+    .then(() => null, (e) => e);
+  assert.ok(error);
+  assert.equal(error.errorCode, "openai_image_disabled");
+});
+
+test("server runtime contains no OpenAI Images API call", () => {
+  const src = fs.readFileSync(path.join(__dirname, "..", "package-engine-server.js"), "utf8");
+  assert.doesNotMatch(src, /api\.openai\.com\/v1\/images/, "no OpenAI Images API endpoint in server runtime");
+  assert.doesNotMatch(src, /images\.generate/, "no OpenAI images.generate call in server runtime");
+  assert.match(src, /OPENAI_IMAGE_DISABLED_REASON/, "policy-disabled marker must be present");
 });
 
 test("package engine openai prompt builder creates three distinct safe youtube prompts", () => {
@@ -1015,76 +1043,9 @@ test("package engine openai prompt builder creates three distinct safe youtube p
   });
 });
 
-test("package engine openai thumbnail mode reports upstream request failures", async () => {
-  await assert.rejects(
-    () => packageEngineServer.createThumbnailResponse({
-      topic: "AI video idea filter",
-      thumbnailConcept: "Creator sorting ideas",
-      onThumbnailText: "Stop guessing",
-    }, {
-      env: {
-        THUMBNAIL_PROVIDER: "openai",
-        OPENAI_API_KEY: "test-key",
-      },
-      fetchImpl: async () => {
-        throw new Error("network unavailable");
-      },
-    }),
-    /OpenAI image generation request failed: network unavailable/
-  );
-});
-
-test("package engine openai thumbnail mode reports upstream timeout", async () => {
-  await assert.rejects(
-    async () => {
-      await packageEngineServer.createThumbnailResponse({
-      topic: "AI video idea filter",
-      thumbnailConcept: "Creator sorting ideas",
-      onThumbnailText: "Stop guessing",
-      }, {
-        env: {
-          THUMBNAIL_PROVIDER: "openai",
-          OPENAI_API_KEY: "test-key",
-          OPENAI_IMAGE_TIMEOUT_MS: "1000",
-        },
-        logger: false,
-        fetchImpl: async () => {
-          const error = new Error("operation timed out");
-          error.name = "TimeoutError";
-          throw error;
-        },
-      });
-    },
-    /OpenAI image generation timed out after 1 seconds/
-  );
-});
-
-test("package engine openai timeout error carries structured code", async () => {
-  try {
-    await packageEngineServer.createThumbnailResponse({
-      topic: "AI video idea filter",
-      thumbnailConcept: "Creator sorting ideas",
-      onThumbnailText: "Stop guessing",
-    }, {
-      env: {
-        THUMBNAIL_PROVIDER: "openai",
-        OPENAI_API_KEY: "test-key",
-        OPENAI_IMAGE_TIMEOUT_MS: "1000",
-      },
-      logger: false,
-      fetchImpl: async () => {
-        const error = new Error("operation timed out");
-        error.name = "TimeoutError";
-        throw error;
-      },
-    });
-    assert.fail("expected timeout");
-  } catch (error) {
-    assert.equal(error.statusCode, 504);
-    assert.equal(error.errorCode, "openai_timeout");
-    assert.match(error.message, /timed out after 1 seconds/);
-  }
-});
+// Removed: the upstream-request-failure / timeout / structured-timeout-code tests.
+// OpenAI image generation is now hard-disabled, so there is no upstream OpenAI
+// request to fail or time out. Disabled behavior is covered by the two tests above.
 
 test("package engine browser code falls back to candidate thumbnail when no generated image exists", () => {
   const script = fs.readFileSync(path.join(__dirname, "..", "package-engine.js"), "utf8");
@@ -1149,9 +1110,11 @@ test("package engine browser code surfaces thumbnail backend failures and recove
   assert.match(script, /Thumbnail generation failed/);
   assert.match(script, /The configured thumbnail backend did not return usable candidates\./);
   assert.match(script, /Frontend request timed out after/);
-  assert.match(script, /Backend timeout:/);
-  assert.match(script, /OpenAI thumbnail provider error:/);
-  assert.match(script, /OPENAI_API_KEY is missing/);
+  // OpenAI image generation is disabled; the UI surfaces the disabled message and
+  // must not present OpenAI image generation as available.
+  assert.match(script, /openai_image_disabled/);
+  assert.match(script, /local vidnux ComfyUI \/ FLUX path/);
+  assert.doesNotMatch(script, /OpenAI thumbnail provider error:/);
   assert.match(script, /finally \{\s*isGeneratingThumbnails = false;\s*render\(\);/);
   assert.match(html, /package-engine\.js\?v=1\.7\.9/);
 });

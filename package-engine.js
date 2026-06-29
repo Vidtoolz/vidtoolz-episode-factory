@@ -229,7 +229,7 @@
       id: `${candidate.id}-thumb-${thumbnailGenerationCount + index + 1}`,
       label: `Thumbnail ${index + 1}`,
       prompt,
-      creator: "gpt-image-2",
+      creator: "local-placeholder",
       selected: index === 0,
       thumbnailImage: base && index === 0 ? base : "",
     }));
@@ -283,7 +283,7 @@
             return `
               <button type="button" class="thumbnail-candidate ${item.selected ? "selected" : ""}" data-thumb-select="${escapeHtml(item.id)}" ${isGeneratingThumbnails ? "disabled" : ""}>
                 <span class="thumbnail-candidate-label">${escapeHtml(item.label)}</span>
-                <span class="thumbnail-candidate-creator">Creator: ${escapeHtml(item.creator || "gpt-image-2")}</span>
+                <span class="thumbnail-candidate-creator">Creator: ${escapeHtml(item.creator || "local-placeholder")}</span>
                 <span class="thumbnail-candidate-image">
                   ${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(item.label)}" />` : `<span class="thumbnail-placeholder">Pending image</span>`}
                 </span>
@@ -340,9 +340,8 @@
       `;
       return;
     }
-    const providerNote = generatedThumbnailProvider === "openai"
-      ? `Externally generated thumbnail drafts from ${generatedThumbnailModel || "OpenAI"}.`
-      : "Local placeholder SVG previews for now; these are not final AI or YouTube thumbnails.";
+    const providerNote =
+      "Local placeholder SVG previews. VIDTOOLZ does not use OpenAI for image generation; real images come from the local vidnux ComfyUI / FLUX path. These are not final YouTube thumbnails.";
     const items = generatedThumbnailCandidates
       .map((item) => {
         const image = thumbnailCandidateImage(item);
@@ -418,12 +417,8 @@
         const errorCode = payload && payload.errorCode ? String(payload.errorCode) : "";
         const serverMessage = payload && payload.error ? String(payload.error) : "";
         let message = serverMessage || `Thumbnail generation failed (${response.status})`;
-        if (errorCode === "openai_timeout") {
-          message = `${serverMessage || "OpenAI image generation timed out."} Backend timeout: ${payload.timeoutMs || "unknown"} ms. Try again, lower image settings, or increase OPENAI_IMAGE_TIMEOUT_MS.`;
-        } else if (errorCode === "missing_api_key") {
-          message = "OpenAI thumbnail generation is configured, but OPENAI_API_KEY is missing.";
-        } else if (errorCode === "openai_provider_error" || errorCode === "openai_request_failed") {
-          message = `OpenAI thumbnail provider error: ${serverMessage || `HTTP ${response.status}`}`;
+        if (errorCode === "openai_image_disabled") {
+          message = serverMessage || "OpenAI image generation is disabled. VIDTOOLZ uses the local vidnux ComfyUI / FLUX path for images.";
         } else if (errorCode === "no_usable_candidates") {
           message = "Thumbnail generation completed but returned no usable image candidates.";
         }

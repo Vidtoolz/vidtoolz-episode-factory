@@ -83,7 +83,7 @@ The UI now treats thumbnail images as first-class preview assets:
 - the Generate thumbnail candidates button calls `POST /api/package-engine/thumbnails`
 - generated thumbnails must be browser-accessible URLs, data URLs, or local static paths
 - the default provider is local placeholder SVG previews
-- optional external OpenAI generation requires `THUMBNAIL_PROVIDER=openai`
+- OpenAI API image generation is disabled by VIDTOOLZ policy. Use local placeholder or vidnux ComfyUI / FLUX image paths instead.
 
 Run the UI through `./scripts/serve-local.sh` or the VIDTOOLZ Package Engine
 desktop launcher so the thumbnail API is available on the same origin as
@@ -109,13 +109,13 @@ Placeholder mode is the safe local default:
 Real image generation is opt-in and runs only on the local Node server:
 
 ```sh
-THUMBNAIL_PROVIDER=openai OPENAI_API_KEY="$OPENAI_API_KEY" ./scripts/serve-local.sh
+THUMBNAIL_PROVIDER=placeholder ./scripts/serve-local.sh
 ```
 
 Optional settings:
 
 ```sh
-OPENAI_IMAGE_MODEL=gpt-image-1
+# OPENAI_IMAGE_MODEL is not used for image generation; OpenAI image generation is disabled.
 OPENAI_IMAGE_SIZE=1536x1024
 OPENAI_IMAGE_QUALITY=auto
 OPENAI_IMAGE_FORMAT=png
