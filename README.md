@@ -68,25 +68,15 @@ page, but it cannot handle `POST /api/package-engine/thumbnails`. If an old
 Python static server is occupying `8010`, stop it or run `./scripts/serve-local.sh`
 so the launcher can replace it.
 
-By default, Package Engine thumbnails are local placeholder SVG previews. To use
-external OpenAI image generation, start the server with:
+Package Engine thumbnails are local placeholder SVG previews.
 
-```sh
-THUMBNAIL_PROVIDER=openai OPENAI_API_KEY="$OPENAI_API_KEY" ./scripts/serve-local.sh
-```
-
-Optional image-generation settings:
-
-```sh
-OPENAI_IMAGE_MODEL=gpt-image-1
-OPENAI_IMAGE_SIZE=1536x1024
-OPENAI_IMAGE_QUALITY=auto
-OPENAI_IMAGE_FORMAT=png
-```
-
-Real image generation may cost money, take longer than placeholder mode, and may
-require OpenAI organization verification. API keys stay on the local Node server
-and are never sent to the browser.
+**OpenAI image generation is disabled by VIDTOOLZ policy.** The OpenAI Images API
+path has been removed; setting `THUMBNAIL_PROVIDER=openai` is hard-disabled and
+cannot spend OpenAI tokens on images even if `OPENAI_API_KEY` is set. Real image
+generation runs locally via vidnux ComfyUI / FLUX
+(`http://127.0.0.1:8188`, workflow
+`/home/vidtoolz/comfy/ComfyUI/user/default/workflows/flux-gguf-1080x1920.json`),
+through the existing FLUX / image-prompts path — not through OpenAI.
 
 Open the isolated Package Engine review UI:
 

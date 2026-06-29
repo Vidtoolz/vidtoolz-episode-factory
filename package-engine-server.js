@@ -136,7 +136,18 @@ const FLUX_STATE = {
   activeJob: null,
   script: path.join(VIDNAS_AIGEN_ROOT, 'image-generation', 'flux-gguf', 'run-handoff.py'),
 };
-const OPENAI_IMAGES_URL = 'https://api.openai.com/v1/images/generations';
+// VIDTOOLZ policy: OpenAI must NOT be used for image generation. Image generation
+// runs locally via vidnux ComfyUI / FLUX. The OpenAI Images API path has been
+// removed; any image/thumbnail request for provider=openai is hard-disabled below
+// and cannot call OpenAI even if OPENAI_API_KEY is set.
+const OPENAI_IMAGE_DISABLED_REASON =
+  'OpenAI image generation is disabled by VIDTOOLZ policy. Image generation uses the local vidnux ComfyUI / FLUX path.';
+const LOCAL_IMAGE_PROVIDER = Object.freeze({
+  id: 'vidnux-comfyui',
+  name: 'vidnux ComfyUI / FLUX',
+  url: 'http://127.0.0.1:8188',
+  workflow: '/home/vidtoolz/comfy/ComfyUI/user/default/workflows/flux-gguf-1080x1920.json',
+});
 // Local Ollama LLM (no credentials, localhost only). Used for browser-local
 // idea-triage drafting. Configurable via env so a different host/model can be used.
 const OLLAMA_BASE_URL = String(process.env.OLLAMA_URL || process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
@@ -7421,8 +7432,11 @@ function createStatusResponse(env = process.env) {
   const config = providerConfig(env);
   return {
     ok: true,
-    thumbnailProvider: config.provider,
-    model: config.provider === 'openai' ? config.model : 'local-svg-placeholder',
+    // OpenAI image generation is disabled by policy; never advertise it as available.
+    thumbnailProvider: config.provider === 'openai' ? 'disabled' : config.provider,
+    model: 'local-svg-placeholder',
+    openaiImageGeneration: 'disabled',
+    localImageProvider: LOCAL_IMAGE_PROVIDER,
     timeoutMs: config.timeoutMs,
     imageSize: config.size,
     quality: config.quality,
@@ -7571,45 +7585,6 @@ function buildOpenAIThumbnailPrompts(payload) {
   ].join(' '));
 }
 
-function buildOpenAIImageRequest(prompt, config) {
-  const body = {
-    model: config.model,
-    prompt,
-    n: 1,
-    size: config.size,
-  };
-
-  if (config.model.startsWith('gpt-image')) {
-    body.quality = config.quality;
-    body.output_format = config.outputFormat;
-  } else {
-    body.response_format = 'b64_json';
-  }
-
-  return body;
-}
-
-function normalizeOpenAIImageResponse(data, prompt, idx, config, payload) {
-  const image = data && Array.isArray(data.data) ? data.data[0] : null;
-  if (!image) {
-    throw new Error('OpenAI image generation returned no image data.');
-  }
-  const b64 = image.b64_json || image.b64;
-  const url = image.url || '';
-  const thumbnailImage = b64 ? `data:${imageMimeType(config.outputFormat)};base64,${b64}` : url;
-  if (!thumbnailImage) {
-    throw new Error('OpenAI image generation returned an unsupported response shape.');
-  }
-  const title = payload.topic || payload.thumbnailConcept || 'VIDTOOLZ thumbnail';
-  return {
-    id: `${slugify(title)}-openai-${idx + 1}`,
-    label: `${title} OpenAI draft ${idx + 1}`,
-    prompt,
-    creator: `OpenAI / ${config.model}`,
-    thumbnailImage,
-  };
-}
-
 function thumbnailLogPayload(config, statusCategory, startedAt, candidateCount = 0) {
   return {
     provider: config.provider,
@@ -7626,60 +7601,31 @@ function logThumbnailRequest(config, statusCategory, startedAt, candidateCount =
   logger.log('[package-engine thumbnail]', JSON.stringify(thumbnailLogPayload(config, statusCategory, startedAt, candidateCount)));
 }
 
-async function createOpenAIThumbnailCandidates(payload, options = {}) {
-  const config = options.config || providerConfig(options.env || process.env);
-  if (!config.apiKey) {
-    const error = new Error('OPENAI_API_KEY is required when THUMBNAIL_PROVIDER=openai.');
-    error.statusCode = 400;
-    error.errorCode = 'missing_api_key';
-    throw error;
-  }
-  const fetchImpl = options.fetchImpl || fetch;
-  const prompts = buildOpenAIThumbnailPrompts(payload).slice(0, Number(payload.count || 3));
-  const candidates = [];
-  const timeoutMs = Number.isFinite(config.timeoutMs) && config.timeoutMs > 0 ? config.timeoutMs : DEFAULT_OPENAI_IMAGE_TIMEOUT_MS;
-
-  // TODO: Persist generated image files under package-runs/<run-id>/thumbnail-candidates/.
-  for (const [idx, prompt] of prompts.entries()) {
-    let response;
-    try {
-      response = await fetchImpl(OPENAI_IMAGES_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${config.apiKey}`,
-        },
-        body: JSON.stringify(buildOpenAIImageRequest(prompt, config)),
-        signal: options.signal || AbortSignal.timeout(timeoutMs),
-      });
-    } catch (error) {
-      const timedOut = error && (error.name === 'AbortError' || error.name === 'TimeoutError');
-      const message = timedOut
-        ? `OpenAI image generation timed out after ${Math.ceil(timeoutMs / 1000)} seconds.`
-        : `OpenAI image generation request failed: ${error && error.message ? error.message : 'unknown network error'}`;
-      const wrapped = new Error(message);
-      wrapped.statusCode = timedOut ? 504 : 502;
-      wrapped.errorCode = timedOut ? 'openai_timeout' : 'openai_request_failed';
-      throw wrapped;
-    }
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const message = data && data.error && data.error.message ? data.error.message : `OpenAI image generation failed (${response.status}).`;
-      const error = new Error(message);
-      error.statusCode = response.status;
-      error.errorCode = 'openai_provider_error';
-      throw error;
-    }
-    candidates.push(normalizeOpenAIImageResponse(data, prompt, idx, config, payload));
-  }
-
-  return candidates;
+// Hard-disabled by VIDTOOLZ policy. Kept (and exported) only so any caller that
+// still references it fails closed with a clear disabled error instead of
+// reaching OpenAI. It never performs a network request.
+async function createOpenAIThumbnailCandidates() {
+  const error = new Error(OPENAI_IMAGE_DISABLED_REASON);
+  error.statusCode = 400;
+  error.errorCode = 'openai_image_disabled';
+  error.statusCategory = 'disabled';
+  throw error;
 }
 
 async function createThumbnailResponse(payload, options = {}) {
   const config = options.config || providerConfig(options.env || process.env);
   const startedAt = Date.now();
   const logger = options.logger === undefined ? console : options.logger;
+  // VIDTOOLZ policy: never call OpenAI for images, even if OPENAI_API_KEY and
+  // THUMBNAIL_PROVIDER=openai are set. Fail closed with a disabled response.
+  if (config.provider === 'openai') {
+    logThumbnailRequest(config, 'disabled', startedAt, 0, logger);
+    const error = new Error(OPENAI_IMAGE_DISABLED_REASON);
+    error.statusCode = 400;
+    error.errorCode = 'openai_image_disabled';
+    error.statusCategory = 'disabled';
+    throw error;
+  }
   if (config.provider === 'placeholder') {
     const candidates = createCandidates(payload);
     logThumbnailRequest(config, 'success', startedAt, candidates.length, logger);
@@ -7692,30 +7638,6 @@ async function createThumbnailResponse(payload, options = {}) {
       format: config.outputFormat,
       candidates,
     };
-  }
-  if (config.provider === 'openai') {
-    try {
-      const candidates = await createOpenAIThumbnailCandidates(payload, { ...options, config });
-      if (!candidates.length) {
-        const error = new Error('Thumbnail generation returned no usable candidates.');
-        error.statusCode = 502;
-        error.errorCode = 'no_usable_candidates';
-        throw error;
-      }
-      logThumbnailRequest(config, 'success', startedAt, candidates.length, logger);
-      return {
-        provider: 'openai',
-        model: config.model,
-        timeoutMs: config.timeoutMs,
-        imageSize: config.size,
-        quality: config.quality,
-        format: config.outputFormat,
-        candidates,
-      };
-    } catch (error) {
-      logThumbnailRequest(config, error.errorCode || 'error', startedAt, 0, logger);
-      throw error;
-    }
   }
   const error = new Error(`Unsupported THUMBNAIL_PROVIDER: ${config.provider}`);
   error.statusCode = 400;
@@ -9444,7 +9366,6 @@ module.exports = {
   buildSecondCutNextActionPacket,
   buildNextSafeAction: nextSafeActionScript.buildNextSafeAction,
   buildRoughCutWatchNotesMarkdown,
-  buildOpenAIImageRequest,
   buildOpenAIThumbnailPrompts,
   buildArtifactTrail,
   buildPostPublishLearningTemplate,
