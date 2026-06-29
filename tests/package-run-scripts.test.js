@@ -5545,6 +5545,42 @@ test("package-run-state guard detects a run dir with artifacts but no state mark
   assert.deepEqual(offenders, ["2026-05-09-no-state"]);
 });
 
+test("package-runs dashboard wires the read-only artifact panel and shared clipboard", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "package-runs-dashboard.html"), "utf8");
+  assert.match(html, /id="packageRunArtifactPanel"/);
+  assert.match(html, /package-run-artifact-panel\.js/);
+  assert.match(html, /clipboard\.js/);
+});
+
+test("artifact panel uses the merged endpoints, nonce-gated open, and shared clipboard, with no edit controls", () => {
+  const panel = require("../package-run-artifact-panel.js");
+  assert.equal(typeof panel.mount, "function");
+  const src = fs.readFileSync(path.join(__dirname, "..", "package-run-artifact-panel.js"), "utf8");
+
+  // Uses the already-merged read/list/open endpoints.
+  assert.match(src, /\/api\/package-runs\/artifacts/);
+  assert.match(src, /\/api\/package-runs\/artifact-text/);
+  assert.match(src, /\/api\/package-runs\/open-file/);
+
+  // Open is POST + nonce header; reads stay GET (no nonce).
+  assert.match(src, /open-file[\s\S]{0,200}method:\s*"POST"/);
+  assert.match(src, /localWriteNonce|x-vidtoolz-local-write-nonce|nonce\.header/);
+  assert.doesNotMatch(src, /open-file[^\n]*\bGET\b/);
+
+  // Copy goes through the shared clipboard utility, not an ad-hoc navigator call.
+  assert.match(src, /copyToClipboard/);
+  assert.doesNotMatch(src, /navigator\.clipboard/);
+
+  // Read-only: no editing / saving / approval / mark-ready controls.
+  assert.doesNotMatch(src, /data-act="(?:save|edit|approve|mark)/i);
+  assert.doesNotMatch(src, /\b(?:approve|mark ready|mark done|save artifact|edit artifact)\b/i);
+
+  // Graceful states + selectable preview.
+  assert.match(src, /No safe text artifacts found/i);
+  assert.match(src, /No active\/focused run available/i);
+  assert.match(src, /artifact-content/); // selectable preview class (styles.css user-select:text)
+});
+
 test("read-only scripts declare safety headers and contain no direct write calls", () => {
   const forbiddenWriteCall = /\b(?:fs\.)?(?:writeFileSync|appendFileSync|rmSync|renameSync|unlinkSync|mkdirSync|copyFileSync|createWriteStream)\s*\(/g;
 
