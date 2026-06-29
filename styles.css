@@ -5734,6 +5734,16 @@ body[data-package-engine-view-mode="focused"] .package-engine-shell #generatedTh
   padding: 10px 14px;
   margin-bottom: 16px;
 }
+pre,
+code,
+textarea,
+.artifact-content,
+.script-text,
+.prompt-text,
+.review-text {
+  user-select: text;
+}
+
 .page-guide summary {
   cursor: pointer;
   font-size: 0.85rem;
@@ -5821,3 +5831,4 @@ body[data-package-engine-view-mode="focused"] .package-engine-shell #generatedTh
   font-size: 0.8rem;
   border-color: var(--border-strong);
 }
+

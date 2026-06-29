@@ -72,6 +72,8 @@ const ROUGH_CUT_REVIEW_API = '/api/package-runs/rough-cut/review';
 const ROUGH_CUT_REGENERATE_DERIVED_API = '/api/package-runs/rough-cut/regenerate-derived';
 const ROUGH_CUT_OPEN_API = '/api/package-runs/rough-cut/open';
 const PACKAGE_RUNS_OPEN_API = '/api/package-runs/open';
+const ARTIFACT_TEXT_API = '/api/package-runs/artifact-text';
+const OPEN_FILE_API = '/api/package-runs/open-file';
 const PICKUP_PLAN_SAVE_API = '/api/package-runs/pickup-plan/save';
 const AIGEN_STATUS_API = '/api/aigen/production-pipeline/status';
 const AIGEN_RESOLVE_ASSEMBLY_API = '/api/aigen/resolve-assembly/create';
@@ -461,7 +463,7 @@ function validateCaptureEvidenceTargets(targets = CAPTURE_EVIDENCE_TARGETS) {
 }
 
 function resolvePackageRunDir(runId, options = {}) {
-  const root = path.resolve(options.root || ROOT);
+  const root = path.resolve(options.root || options.repoRoot || ROOT);
   const runsRoot = path.resolve(root, PACKAGE_RUNS_DIR);
   const safeRunId = validateCaptureEvidenceRunId(runId);
   const runDir = path.resolve(runsRoot, safeRunId);
@@ -6599,6 +6601,72 @@ function openPackageRunAssetFolder(payload = {}, options = {}) {
 }
 
 
+// ── Package-run text-artifact access (read-only text + nonce-gated open) ──
+const ARTIFACT_TEXT_EXTENSIONS = new Set(['.md', '.txt', '.json']);
+
+function resolvePackageRunTextFile(runId, file, options = {}) {
+  const resolved = resolvePackageRunDir(runId, options);
+  const filename = String(file == null ? '' : file).trim();
+  const reject = (message, statusCode = 400) => {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    throw error;
+  };
+  if (!filename) reject('File is required.');
+  if (filename.includes('\0')) reject('File name contains an invalid character.');
+  if (filename.includes('..') || filename.startsWith('/') || path.isAbsolute(filename) || filename.includes('\\')) {
+    reject('File path escaped the package-run folder.');
+  }
+  if (!ARTIFACT_TEXT_EXTENSIONS.has(path.extname(filename).toLowerCase())) {
+    reject('Unsupported file type.');
+  }
+  const filePath = path.resolve(path.join(resolved.runDir, filename));
+  if (!filePath.startsWith(resolved.runDir + path.sep)) {
+    reject('File path escaped the package-run folder.');
+  }
+  return { ...resolved, filename, filePath };
+}
+
+function readPackageRunArtifactText(runId, file, options = {}) {
+  const resolved = resolvePackageRunTextFile(runId, file, options);
+  if (!fs.existsSync(resolved.filePath) || !fs.statSync(resolved.filePath).isFile()) {
+    const error = new Error('File not found');
+    error.statusCode = 404;
+    error.exists = false;
+    throw error;
+  }
+  return {
+    content: fs.readFileSync(resolved.filePath, 'utf8'),
+    filename: resolved.filename,
+    exists: true,
+    runId: resolved.runId,
+  };
+}
+
+function openPackageRunFile(payload = {}, options = {}) {
+  const resolved = resolvePackageRunTextFile(payload.runId, payload.file, options);
+  if (!fs.existsSync(resolved.filePath) || !fs.statSync(resolved.filePath).isFile()) {
+    const error = new Error('File not found');
+    error.statusCode = 404;
+    error.exists = false;
+    throw error;
+  }
+  const opener = options.opener || childProcess.spawn;
+  const command = options.command || 'xdg-open';
+  const child = opener(command, [resolved.filePath], {
+    detached: true,
+    stdio: 'ignore',
+  });
+  if (child && typeof child.unref === 'function') child.unref();
+  return {
+    ok: true,
+    runId: resolved.runId,
+    file: resolved.filename,
+    opened: resolved.filePath,
+    command: `${command} ${resolved.filePath}`,
+  };
+}
+
 function conservativeHeadingForTarget(filename) {
   const titles = {
     'takes-log.md': 'Takes Log',
@@ -8178,6 +8246,20 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === ARTIFACT_TEXT_API) {
+      try {
+        const runId = url.searchParams.get('runId') || '';
+        sendJSON(
+          res,
+          200,
+          readPackageRunArtifactText(runId, url.searchParams.get('file') || '', { root: serverOptions.root || ROOT })
+        );
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, null, { exists: error.exists });
+      }
+      return;
+    }
+
     if ((req.method === 'GET' || req.method === 'HEAD') && url.pathname === '/favicon.ico') {
       res.writeHead(200, {
         'Content-Type': 'image/svg+xml; charset=utf-8',
@@ -9010,6 +9092,16 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === OPEN_FILE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, openPackageRunFile(payload, { root: serverOptions.root || ROOT }));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, null, { exists: error.exists }));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === DAILY_SCOUT_RUN_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -9318,6 +9410,11 @@ module.exports = {
   normalizePickupItems,
   openPackageRunAssetFolder,
   openRoughCutVideo,
+  ARTIFACT_TEXT_API,
+  OPEN_FILE_API,
+  resolvePackageRunTextFile,
+  readPackageRunArtifactText,
+  openPackageRunFile,
   parseHyperframesVersion,
   parseRoughCutReviewFile,
   parseRoughCutReviewStdout,
