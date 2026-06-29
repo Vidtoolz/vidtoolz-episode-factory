@@ -1,6 +1,15 @@
 #!/usr/bin/env node
 "use strict";
 
+/*
+ * VIDTOOLZ script safety
+ * Read/write behavior: READ-ONLY.
+ * This script must not create, modify, delete, rename, or move package-run files,
+ * package-run-state.md, approval markers, media files, generated indexes, or docs.
+ * If future behavior needs writes, create a separate mutating script or add an
+ * explicit MUTATES header and update the read/write guard test in the same PR.
+ */
+
 // Lightweight doc-hygiene guard (Issues E/H). It does NOT rewrite docs. It fails
 // when:
 //   1. a canonical file referenced as authoritative is missing (guards Issue C),

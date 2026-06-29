@@ -5545,6 +5545,38 @@ test("package-run-state guard detects a run dir with artifacts but no state mark
   assert.deepEqual(offenders, ["2026-05-09-no-state"]);
 });
 
+test("read-only scripts declare safety headers and contain no direct write calls", () => {
+  const forbiddenWriteCall = /\b(?:fs\.)?(?:writeFileSync|appendFileSync|rmSync|renameSync|unlinkSync|mkdirSync|copyFileSync|createWriteStream)\s*\(/g;
+
+  // Sanity: the guard regex actually catches a direct write call.
+  assert.match("fs.writeFileSync('x','y')", forbiddenWriteCall);
+
+  const readOnlyScripts = [
+    "scripts/package-run-doctor.js",
+    "scripts/package-run-active-state-audit.js",
+    "scripts/package-run-next-safe-action.js",
+    "scripts/package-run-next-action.js",
+    "scripts/package-run-next-action-authority.js",
+    "scripts/docs-authority-check.js",
+    "scripts/system-registry.js",
+  ];
+  for (const rel of readOnlyScripts) {
+    const text = fs.readFileSync(path.join(__dirname, "..", rel), "utf8");
+    assert.ok(text.includes("VIDTOOLZ script safety"), `${rel} missing script-safety header`);
+    assert.match(text, /Read\/write behavior:\s*READ-ONLY/, `${rel} must declare READ-ONLY`);
+    const hits = text.match(forbiddenWriteCall) || [];
+    assert.deepEqual(hits, [], `${rel} must contain no direct filesystem write calls, found: ${hits.join(", ")}`);
+  }
+
+  // package-runs-index.js writes the generated mirror only — it must say so and
+  // must not claim to mutate package-run source state.
+  const indexText = fs.readFileSync(path.join(__dirname, "..", "scripts/package-runs-index.js"), "utf8");
+  assert.ok(indexText.includes("VIDTOOLZ script safety"));
+  assert.match(indexText, /Read\/write behavior:\s*MUTATES GENERATED MIRROR ONLY/);
+  assert.ok(indexText.includes("package-runs-index.json"));
+  assert.match(indexText, /must not mutate package-run source artifacts/i);
+});
+
 test("next-action scripts declare role and canonical status", () => {
   const required = [
     "VIDTOOLZ next-action role",
