@@ -55,6 +55,9 @@
       <section id="appStatus" class="app-status" aria-label="App and backup status" data-view-group="diagnostics" data-view-default="full"></section>
 
       <main class="workspace" data-view-mode="focused">
+        <section class="planning-board-notice" aria-label="Episode planning board scope" style="margin:0 16px 6px;padding:8px 14px;border:1px dashed var(--border);border-radius:8px;background:rgba(255,255,255,0.02);font-size:12.5px;line-height:1.5;color:var(--muted);">
+          <strong style="color:var(--text);">Episode planning board — local planning state</strong>. The panels below (Creator Work Focus, Weekly Review, Execution Queue, Board) are episode-planning state stored in this browser (localStorage), <em>not</em> the production source of truth. For the active production run, current gate, blocker, and next valid action, use the <strong>“📍 Where am I?”</strong> panel at the top of this page (canonical <code>/api/cockpit-orientation</code> state).
+        </section>
         <section id="episodeFocusPanel" class="episode-focus-panel" aria-label="Creator Work Focus" data-view-group="creator-focus" data-view-default="focused"></section>
         <section class="board-panel" aria-label="Episode board">
           <div class="panel-heading" data-view-group="board" data-view-default="full">
