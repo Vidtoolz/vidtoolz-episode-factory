@@ -4,6 +4,8 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
+const doctor = require("./package-run-doctor.js");
+
 const PACKAGE_RUNS_DIR = "package-runs";
 const DEFAULT_ACTIVE_RUN_ID = "";
 const SELECTED_IMAGE_HANDOFF_REPORT = "reports/prompt-03-selected-image-edit-handoff.md";
@@ -250,6 +252,40 @@ function frontHalfNextAction(runDir) {
   };
 }
 
+// Once a package has actually been selected (selected-package.md, the manual /
+// vertical lifecycle marker), the package-run *lifecycle* — not the AIGEN
+// image-pipeline tree below — is the source of truth for the stage. The doctor
+// already infers that stage from local evidence, so delegate to it instead of
+// re-deriving (and disagreeing with) it here. This is what kept next-safe-action
+// reporting "Package selection" for a run that was already at "Needs capture":
+// the front-half tree keyed on selected-package.json and never saw the .md.
+// Returns null for runs that have not reached selected-package.md, so the legacy
+// AIGEN guidance (which the image-pipeline runs and their tests rely on) is
+// preserved untouched.
+function lifecycleManagedNextAction(repoRoot, runPath, runDir) {
+  if (!fileExists(path.join(runDir, "selected-package.md"))) return null;
+  let report;
+  try {
+    report = doctor.buildDoctorReport(runPath, { repoRoot });
+  } catch (_error) {
+    return null;
+  }
+  const stage = report.currentInferredStage || "";
+  if (!stage || stage === "Idea run") return null;
+  const blocker = report.firstBlockerReason || "";
+  const humanNext = report.nextSafeAction || blocker || "Review the run with the package-run doctor.";
+  return {
+    stage,
+    nextHumanAction: humanNext,
+    blockedUntil: blocker || "See the package-run doctor for the current blocker.",
+    nextCommand: report.nextRecommendedCommand || "",
+    overallStatus: report.overallStatus || "",
+    blockedActions: report.conservativeBlockedActions || [],
+    inactive: Boolean(report.inactive),
+    packageRunState: report.packageRunState || null,
+  };
+}
+
 function buildNextSafeAction(runInput = "", options = {}) {
   const repoRoot = path.resolve(options.repoRoot || path.join(__dirname, ".."));
   const resolved = resolveRun(repoRoot, runInput || options.runId || "");
@@ -306,7 +342,20 @@ function buildNextSafeAction(runInput = "", options = {}) {
   let nextHumanAction = "Stop and inspect missing evidence before doing production work.";
   let blockedUntil = "Required evidence exists: active run folder, selected prompt-03 stills, manifest, and handoff reports.";
 
-  if (!resolved.exists) {
+  const lifecycleOverride = resolved.exists
+    ? lifecycleManagedNextAction(repoRoot, resolved.runPath, resolved.runDir)
+    : null;
+  let nextCommand = "";
+  let overallStatus = "";
+
+  if (lifecycleOverride) {
+    // Lifecycle-managed run (selected-package.md present): trust the doctor's stage.
+    stage = lifecycleOverride.stage;
+    nextHumanAction = lifecycleOverride.nextHumanAction;
+    blockedUntil = lifecycleOverride.blockedUntil;
+    nextCommand = lifecycleOverride.nextCommand;
+    overallStatus = lifecycleOverride.overallStatus;
+  } else if (!resolved.exists) {
     blockedUntil = `Active package run folder exists at ${resolved.runPath}.`;
   } else if (!manifestPath || manifestError || !items.length) {
     // No usable image-gen manifest yet. If the run is still in the front half
@@ -345,6 +394,9 @@ function buildNextSafeAction(runInput = "", options = {}) {
     nextHumanAction,
     nextAiAction: "Prepare handoffs, inspect files, summarize status, or create read-only reports. Do not approve assets.",
     blockedUntil,
+    nextCommand,
+    overallStatus,
+    lifecycleManaged: Boolean(lifecycleOverride),
     allowedActions: [...ALLOWED_ACTIONS],
     forbiddenActions: [...FORBIDDEN_ACTIONS],
     evidence,
@@ -375,6 +427,7 @@ function renderText(report = {}) {
     `Human next: ${report.nextHumanAction}`,
     `AI may do: ${report.nextAiAction}`,
     `Blocked until: ${report.blockedUntil}`,
+    ...(report.nextCommand ? [`Next command: ${report.nextCommand}`] : []),
     `Selected/reviewed boundary: ${report.facts ? report.facts.selectedStatus : ""}`,
     "",
     "Do not do:",

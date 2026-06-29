@@ -1,5 +1,11 @@
 # Video Production Engine Stage Model v1
 
+> **HISTORICAL — not the canonical operator stage model.** The single canonical
+> stage model is `VIDTOOLZ-CANONICAL-PRODUCTION-SPEC.md` (generated from
+> `pipeline-tracker.js`). This 7-stage description is a snapshot that maps onto
+> that 13-stage model; do not treat it as a competing model. See
+> `docs/DOC-AUTHORITY.md`.
+
 The Video Production Engine stage model is an organizing layer over the existing Package Engine `package-runs/` workflow. It does not create a second run folder model, lifecycle, or approval system; readiness still follows the conservative package-run doctrine in `docs/package-run-state-machine.md`: files are evidence only after their contents and approval markers are inspected.
 
 ## Stage 1: Idea / Topic Selection

@@ -64,6 +64,8 @@ node --check scripts/daily-idea-scout-providers.js
 node --check scripts/daily-idea-scout-launch.js
 node --check scripts/daily-idea-scout-request.js
 node --check scripts/package-runs-index.js
+node --check scripts/system-registry.js
+node --check scripts/generate-production-spec.js
 node --check scripts/package-runs-dashboard-launch.js
 node --check scripts/validate-published-videos.js
 sh -n scripts/open-package-runs-dashboard.sh
@@ -71,3 +73,9 @@ node --check scripts/trailer-cue-new.js
 node --check scripts/music-cue-new.js
 node --check scripts/supervised-capture.js
 node --check scripts/earth-studio-job-plan.js
+node --check scripts/docs-authority-check.js
+
+# Operator-clarity guards: canonical spec stays in sync with pipeline-tracker.js,
+# and authoritative docs keep no hardcoded test counts / stale phrases.
+node scripts/generate-production-spec.js --check
+node scripts/docs-authority-check.js

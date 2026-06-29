@@ -8,6 +8,9 @@ const packageRunsIndex = require("./package-runs-index.js");
 const MULTIPLE_ACTIVE_NEXT_ACTION =
   "Review package-run state markers and choose exactly one active run before package-run-specific cockpit panels can make decisions.";
 const NO_ACTIVE_NEXT_ACTION = "Mark exactly one package run active or configure an explicit active run.";
+const MISSING_STATE_NEXT_ACTION =
+  "One or more active package runs have no explicit package-run-state.md marker (state UNKNOWN). Add a 'Package run state: active|parked|superseded' marker to each listed run before relying on active-run guidance.";
+const ADD_STATE_MARKER_ACTION = "add explicit package-run-state.md marker";
 
 function usage() {
   return `Package Run Active State Audit
@@ -247,6 +250,10 @@ function summarizeEntry(rawEntry, repoRoot) {
 }
 
 function safeRecommendedActionForCandidate(candidate, activeCount) {
+  // A run that is treated as active but carries no explicit, recognized state
+  // marker is UNKNOWN state, not a confident "keep active". Surface that loudly
+  // instead of silently defaulting it to active.
+  if (!candidate.packageRunState.explicit) return ADD_STATE_MARKER_ACTION;
   if (candidate.packageRunState.warning || candidate.scanError) return "review manually";
   if (activeCount === 1) return "keep active";
   return "review manually";
@@ -274,18 +281,46 @@ function buildActiveStateAudit(options = {}) {
       inferredReason: entry.inferredReason,
       safeRecommendedAction: "review manually",
     }));
+  // Runs treated as active but lacking an explicit, recognized state marker are
+  // UNKNOWN state. They are reported loudly (not silently defaulted to active) so
+  // the cockpit can withhold confident next-action guidance until a marker is added.
+  const unknownStateRuns = candidateActiveRuns
+    .filter((candidate) => !candidate.packageRunState.explicit)
+    .map((candidate) => ({
+      runId: candidate.runId,
+      path: candidate.path,
+      state: candidate.packageRunState.state || "unknown",
+      warning:
+        candidate.packageRunState.warning ||
+        "No explicit package-run-state.md marker; treated as active by default (state UNKNOWN).",
+      safeRecommendedAction: ADD_STATE_MARKER_ACTION,
+    }));
+  const invalidState = unknownStateRuns.length > 0;
+
   const ambiguity = candidateActiveRuns.length > 1;
   const ok = index.ok && runsDir.ok && candidateActiveRuns.length === 1;
+  // The cockpit must not present a confident active run / next action when the
+  // active state is ambiguous, unknown, or absent.
+  const guidanceWithheld = ambiguity || invalidState || candidateActiveRuns.length !== 1;
+  const warnings = unknownStateRuns.map(
+    (run) => `${run.path}: ${run.warning}`
+  );
   const exactNextSafeAction = ambiguity
     ? MULTIPLE_ACTIVE_NEXT_ACTION
-    : candidateActiveRuns.length === 0
-      ? NO_ACTIVE_NEXT_ACTION
-      : "Keep exactly one package run active; park or supersede other runs only after Mikko review.";
+    : invalidState
+      ? MISSING_STATE_NEXT_ACTION
+      : candidateActiveRuns.length === 0
+        ? NO_ACTIVE_NEXT_ACTION
+        : "Keep exactly one package run active; park or supersede other runs only after Mikko review.";
 
   return {
     name: "package_run_active_state_audit",
     ok,
     ambiguity,
+    invalidState,
+    guidanceWithheld,
+    unknownStateRuns,
+    warnings,
     readOnly: true,
     externalApisCalled: false,
     repoRoot,
@@ -339,6 +374,8 @@ function renderText(report) {
     "",
     `- OK: ${report.ok ? "true" : "false"}`,
     `- Ambiguity: ${report.ambiguity ? "true" : "false"}`,
+    `- Invalid/unknown state: ${report.invalidState ? "true" : "false"}`,
+    `- Guidance withheld: ${report.guidanceWithheld ? "true" : "false"}`,
     `- Read-only: ${report.readOnly ? "true" : "false"}`,
     `- External APIs called: ${report.externalApisCalled ? "true" : "false"}`,
     `- Source index: ${report.sourceIndex.path}${report.sourceIndex.ok ? "" : ` (${report.sourceIndex.error})`}`,
@@ -354,6 +391,15 @@ function renderText(report) {
     });
   } else {
     lines.push("- None.", "");
+  }
+
+  if (report.unknownStateRuns && report.unknownStateRuns.length) {
+    lines.push("## Unknown / Missing State (loud warning)");
+    report.unknownStateRuns.forEach((run) => {
+      lines.push(`- ${run.path}: ${run.warning}`);
+      lines.push(`  - safe recommended action: ${run.safeRecommendedAction}`);
+    });
+    lines.push("");
   }
 
   lines.push("## Inactive Runs");
@@ -408,6 +454,8 @@ if (require.main === module) {
 module.exports = {
   MULTIPLE_ACTIVE_NEXT_ACTION,
   NO_ACTIVE_NEXT_ACTION,
+  MISSING_STATE_NEXT_ACTION,
+  ADD_STATE_MARKER_ACTION,
   usage,
   parseArgs,
   loadPackageRunsIndex,

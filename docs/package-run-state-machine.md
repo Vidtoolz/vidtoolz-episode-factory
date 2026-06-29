@@ -1,5 +1,11 @@
 # Package Run State Machine
 
+> **INTERNAL / DETAILED REFERENCE — not a competing operator model.** This is the
+> fine-grained, conservative evidence/gate reference used by the scripts. The
+> single operator-facing stage model is `VIDTOOLZ-CANONICAL-PRODUCTION-SPEC.md`
+> (generated from `pipeline-tracker.js`); the states here map onto it. See
+> `docs/DOC-AUTHORITY.md`.
+
 This document defines shared package-run status language for Episode Factory, Hermes, Codex, ChatGPT, and the markdown knowledge base. It is documentation-first and does not change run behavior. The core rule is conservative: file existence can suggest a milestone, but it does not prove readiness by itself.
 
 Use this state machine when reviewing `package-runs/*`, writing handoffs, updating dashboards, or asking Hermes for weekly review. Treat it as a shared vocabulary until scripts are deliberately updated to enforce it.

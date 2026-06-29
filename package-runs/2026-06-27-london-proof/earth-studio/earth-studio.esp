@@ -1,0 +1,233 @@
+{
+  "url": "https://earth.google.com/studio/",
+  "projectId": "london-flyover",
+  "name": "London Flyover",
+  "width": 1920,
+  "height": 1080,
+  "frameRate": 30,
+  "duration": 210,
+  "numberOfFrames": 210,
+  "_vidtoolz_note": "Best-effort generated .esp. Import into Earth Studio (File > Import) and confirm the camera move before rendering. shot-plan.json/route.kml are manual fallbacks.",
+  "scenes": [
+    {
+      "duration": 210,
+      "attributes": [
+        {
+          "type": "cameraGroup",
+          "attributes": [
+            {
+              "type": "cameraPositionGroup",
+              "attributes": [
+                {
+                  "type": "longitude",
+                  "value": {
+                    "type": "number",
+                    "relative": false,
+                    "minValueRange": -180,
+                    "maxValueRange": 180,
+                    "keyframes": [
+                      {
+                        "time": 0,
+                        "value": -0.1278,
+                        "transitionIn": {
+                          "type": "linear"
+                        },
+                        "transitionOut": {
+                          "type": "linear"
+                        }
+                      },
+                      {
+                        "time": 90,
+                        "value": -0.1278,
+                        "transitionIn": {
+                          "type": "linear"
+                        },
+                        "transitionOut": {
+                          "type": "linear"
+                        }
+                      },
+                      {
+                        "time": 210,
+                        "value": -0.1278,
+                        "transitionIn": {
+                          "type": "linear"
+                        },
+                        "transitionOut": {
+                          "type": "linear"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "latitude",
+                  "value": {
+                    "type": "number",
+                    "relative": false,
+                    "minValueRange": -90,
+                    "maxValueRange": 90,
+                    "keyframes": [
+                      {
+                        "time": 0,
+                        "value": 51.5074,
+                        "transitionIn": {
+                          "type": "linear"
+                        },
+                        "transitionOut": {
+                          "type": "linear"
+                        }
+                      },
+                      {
+                        "time": 90,
+                        "value": 51.5074,
+                        "transitionIn": {
+                          "type": "linear"
+                        },
+                        "transitionOut": {
+                          "type": "linear"
+                        }
+                      },
+                      {
+                        "time": 210,
+                        "value": 51.5074,
+                        "transitionIn": {
+                          "type": "linear"
+                        },
+                        "transitionOut": {
+                          "type": "linear"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "altitude",
+                  "value": {
+                    "type": "number",
+                    "relative": false,
+                    "minValueRange": 0,
+                    "maxValueRange": 63170000,
+                    "keyframes": [
+                      {
+                        "time": 0,
+                        "value": 2500,
+                        "transitionIn": {
+                          "type": "linear"
+                        },
+                        "transitionOut": {
+                          "type": "linear"
+                        }
+                      },
+                      {
+                        "time": 90,
+                        "value": 2500,
+                        "transitionIn": {
+                          "type": "linear"
+                        },
+                        "transitionOut": {
+                          "type": "linear"
+                        }
+                      },
+                      {
+                        "time": 210,
+                        "value": 2500,
+                        "transitionIn": {
+                          "type": "linear"
+                        },
+                        "transitionOut": {
+                          "type": "linear"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "type": "cameraRotationGroup",
+              "attributes": [
+                {
+                  "type": "rotationX",
+                  "value": {
+                    "type": "number",
+                    "relative": false,
+                    "keyframes": [
+                      {
+                        "time": 0,
+                        "value": 0,
+                        "transitionIn": {
+                          "type": "linear"
+                        },
+                        "transitionOut": {
+                          "type": "linear"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "rotationY",
+                  "value": {
+                    "type": "number",
+                    "relative": false,
+                    "keyframes": [
+                      {
+                        "time": 0,
+                        "value": 0,
+                        "transitionIn": {
+                          "type": "linear"
+                        },
+                        "transitionOut": {
+                          "type": "linear"
+                        }
+                      },
+                      {
+                        "time": 90,
+                        "value": 0,
+                        "transitionIn": {
+                          "type": "linear"
+                        },
+                        "transitionOut": {
+                          "type": "linear"
+                        }
+                      },
+                      {
+                        "time": 210,
+                        "value": 360,
+                        "transitionIn": {
+                          "type": "linear"
+                        },
+                        "transitionOut": {
+                          "type": "linear"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "rotationZ",
+                  "value": {
+                    "type": "number",
+                    "relative": false,
+                    "keyframes": [
+                      {
+                        "time": 0,
+                        "value": 0,
+                        "transitionIn": {
+                          "type": "linear"
+                        },
+                        "transitionOut": {
+                          "type": "linear"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

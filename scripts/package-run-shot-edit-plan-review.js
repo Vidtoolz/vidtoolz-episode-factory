@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const productionPlan = require("./package-run-production-plan.js");
+const packageRunsIndex = require("./package-runs-index.js");
 const researchPack = require("./package-run-research-pack.js");
 
 const TOOL_NAME = "package-run-shot-edit-plan-review.js";
@@ -39,6 +40,7 @@ const UPSTREAM_FILES = [
 ];
 const REQUIRED_UPSTREAM_FILES = ["final-script.md", "script-review.md", "script-structure.md"];
 const APPROVAL_PATTERN = /^(?:[-*]\s*)?(?:Manual approval|Production planning approval|Shot\/edit plan approval):\s*PASS\s*$/im;
+const MANUAL_VERTICAL_CHAIN_FILES = ["selected-package.md", "final-outline.md", "final-script.md", "production-prep-review-2.md"];
 
 function usage() {
   return [
@@ -74,6 +76,12 @@ function cleanString(value) {
 function readOptionalFile(runDir, filename) {
   const filePath = path.join(runDir, filename);
   return fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf8") : "";
+}
+
+function detectedFileMap(runDir) {
+  return Object.fromEntries(
+    packageRunsIndex.DETECTED_FILES.map((filename) => [packageRunsIndex.fileKey(filename), fs.existsSync(path.join(runDir, filename))])
+  );
 }
 
 function markdownList(items, fallback = "None.") {
@@ -125,6 +133,38 @@ function hasApprovalMarker(...texts) {
   return texts.some((text) => APPROVAL_PATTERN.test(String(text || "")));
 }
 
+function hasApprovedProductionPrepReview(markdown = "") {
+  return /^APPROVE FOR PRODUCTION PLAN\s*$/im.test(String(markdown || ""));
+}
+
+function manualVerticalPrepChainStatus(runDir, upstream, planning) {
+  const workflowPath = packageRunsIndex.readWorkflowPathForRun(runDir);
+  const files = detectedFileMap(runDir);
+  const lifecycleGate = packageRunsIndex.readLifecycleGate(runDir, files);
+  const missing = MANUAL_VERTICAL_CHAIN_FILES.filter((filename) => !upstream[filename]);
+  const blockers = [];
+
+  if (workflowPath !== "vertical") blockers.push(`Workflow path is ${workflowPath}, not vertical.`);
+  if (missing.length) blockers.push(`Missing manual vertical chain files: ${missing.join(", ")}.`);
+  if (!hasApprovedProductionPrepReview(upstream["production-prep-review-2.md"])) {
+    blockers.push("production-prep-review-2.md does not say APPROVE FOR PRODUCTION PLAN.");
+  }
+  if (lifecycleGate.productionPlanStatus !== "READY TO SHOOT") {
+    blockers.push(`Shoot-readiness status is ${lifecycleGate.productionPlanStatus || "missing"}, not READY TO SHOOT.`);
+  }
+  if (lifecycleGate.productionBlockersOpen) blockers.push("production-blockers.md has open blockers.");
+  if (!planning["production-plan.md"]) blockers.push("production-plan.md is missing.");
+  if (!planning["production-blockers.md"]) blockers.push("production-blockers.md is missing.");
+
+  return {
+    workflowPath,
+    lifecycleGate,
+    approved: blockers.length === 0,
+    blockers,
+    missing,
+  };
+}
+
 function planningFileFinding(filename, markdown) {
   if (!markdown) {
     return {
@@ -161,11 +201,14 @@ function planningFileFinding(filename, markdown) {
 }
 
 function readContext(runDir) {
-  const upstream = Object.fromEntries(UPSTREAM_FILES.map((filename) => [filename, readOptionalFile(runDir, filename)]));
+  const upstream = Object.fromEntries(
+    [...UPSTREAM_FILES, "final-outline.md", "production-prep-review-2.md"].map((filename) => [filename, readOptionalFile(runDir, filename)])
+  );
   const planning = Object.fromEntries(PLANNING_FILES.map((filename) => [filename, readOptionalFile(runDir, filename)]));
   const reviewGate = productionPlan.parseScriptReviewGate(upstream["script-review.md"]);
   const researchGate = productionPlan.readResearchGate(runDir, upstream["research-pack.md"]);
   const structureGate = productionPlan.parseScriptStructureGate(upstream["script-structure.md"]);
+  const manualVerticalPrepChain = manualVerticalPrepChainStatus(runDir, upstream, planning);
   const planningFindings = PLANNING_FILES.map((filename) => planningFileFinding(filename, planning[filename]));
   const approvalMarker = hasApprovalMarker(...PLANNING_FILES.map((filename) => planning[filename]));
   return {
@@ -175,13 +218,17 @@ function readContext(runDir) {
     reviewGate,
     researchGate,
     structureGate,
+    manualVerticalPrepChain,
     planningFindings,
     approvalMarker,
-    missingRequired: missingRequiredFiles(upstream, planning, researchGate),
+    missingRequired: missingRequiredFiles(upstream, planning, researchGate, manualVerticalPrepChain),
   };
 }
 
-function missingRequiredFiles(upstream, planning, researchGate) {
+function missingRequiredFiles(upstream, planning, researchGate, manualVerticalPrepChain = null) {
+  if (manualVerticalPrepChain && manualVerticalPrepChain.approved) {
+    return PLANNING_FILES.filter((filename) => !planning[filename]);
+  }
   const missing = [
     ...REQUIRED_UPSTREAM_FILES.filter((filename) => !upstream[filename]),
     ...PLANNING_FILES.filter((filename) => !planning[filename]),
@@ -194,13 +241,15 @@ function missingRequiredFiles(upstream, planning, researchGate) {
 
 function determineStatus(context) {
   const upstreamBlockers = [];
-  REQUIRED_UPSTREAM_FILES.forEach((filename) => {
-    if (!context.upstream[filename]) upstreamBlockers.push(`${filename} is missing.`);
-  });
-  if (context.reviewGate.status !== "PASS") upstreamBlockers.push(`Script review status is ${context.reviewGate.status}, not PASS.`);
-  if (!context.reviewGate.productionPlanningReady) upstreamBlockers.push("Production planning ready is no or missing.");
-  if (!context.researchGate.approved) upstreamBlockers.push(`Research gate status is ${context.researchGate.status}.`);
-  if (!context.structureGate.readyToDraft) upstreamBlockers.push(`Script structure status is ${context.structureGate.status}.`);
+  if (!context.manualVerticalPrepChain.approved) {
+    REQUIRED_UPSTREAM_FILES.forEach((filename) => {
+      if (!context.upstream[filename]) upstreamBlockers.push(`${filename} is missing.`);
+    });
+    if (context.reviewGate.status !== "PASS") upstreamBlockers.push(`Script review status is ${context.reviewGate.status}, not PASS.`);
+    if (!context.reviewGate.productionPlanningReady) upstreamBlockers.push("Production planning ready is no or missing.");
+    if (!context.researchGate.approved) upstreamBlockers.push(`Research gate status is ${context.researchGate.status}.`);
+    if (!context.structureGate.readyToDraft) upstreamBlockers.push(`Script structure status is ${context.structureGate.status}.`);
+  }
 
   const planningIssues = context.planningFindings.filter((finding) => finding.missing || finding.placeholder || finding.todoHeavy || finding.openBlocked);
   const concreteCount = context.planningFindings.filter((finding) => finding.concrete).length;
@@ -247,6 +296,8 @@ function determineStatus(context) {
 
 function buildReview(context, verdict) {
   const inspected = [...UPSTREAM_FILES, ...PLANNING_FILES].filter((filename) => context.upstream[filename] || context.planning[filename]);
+  if (context.upstream["final-outline.md"]) inspected.splice(UPSTREAM_FILES.length, 0, "final-outline.md");
+  if (context.upstream["production-prep-review-2.md"]) inspected.splice(UPSTREAM_FILES.length + (context.upstream["final-outline.md"] ? 1 : 0), 0, "production-prep-review-2.md");
   const placeholderFindings = context.planningFindings
     .filter((finding) => finding.placeholder || finding.todoHeavy)
     .map((finding) => finding.issue);
@@ -271,6 +322,7 @@ function buildReview(context, verdict) {
 - Production planning ready: ${context.reviewGate.productionPlanningReady ? "yes" : "no"}
 - Research gate status: ${context.researchGate.status}
 - Script structure status: ${context.structureGate.status}
+- Manual vertical prep chain accepted: ${context.manualVerticalPrepChain.approved ? "yes" : "no"}
 - Production plan status: ${context.planning["production-plan.md"] ? "present" : "missing"}
 - Manual approval marker detected: ${context.approvalMarker ? "yes" : "no"}
 
@@ -284,11 +336,14 @@ ${markdownList(context.missingRequired, "None.")}
 
 ## Upstream Gate Findings
 
-${markdownList([
-  context.reviewGate.reason,
-  context.researchGate.reason,
-  context.structureGate.reason,
-], "No upstream gate findings.")}
+${markdownList(
+  context.manualVerticalPrepChain.approved
+    ? [
+        "Manual vertical production-prep chain accepted: selected-package.md, final-outline.md, final-script.md, production-prep-review-2.md, production-plan.md, and closed production-blockers.md.",
+      ]
+    : [...context.manualVerticalPrepChain.blockers, context.reviewGate.reason, context.researchGate.reason, context.structureGate.reason],
+  "No upstream gate findings."
+)}
 
 ## Placeholder / TODO Findings
 
@@ -395,6 +450,8 @@ function jsonPayload(outputs, writeResult, relativeRunDir) {
     productionPlanningReady: outputs.context.reviewGate.productionPlanningReady,
     researchGateStatus: outputs.context.researchGate.status,
     scriptStructureStatus: outputs.context.structureGate.status,
+    manualVerticalPrepChainAccepted: outputs.context.manualVerticalPrepChain.approved,
+    manualVerticalPrepChainBlockers: outputs.context.manualVerticalPrepChain.blockers,
     manualApprovalMarkerDetected: outputs.context.approvalMarker,
     missingRequiredFiles: outputs.context.missingRequired,
     blockers: outputs.verdict.blockers,

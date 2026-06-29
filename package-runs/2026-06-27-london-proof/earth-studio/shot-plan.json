@@ -1,0 +1,81 @@
+{
+  "job_name": "London Flyover",
+  "version": "0.2.0",
+  "generated_at": "2026-06-27T09:48:27.286Z",
+  "source_description": "fly to London in 3 seconds, then orbit London for 4 seconds",
+  "parser_strategy": "offline_regex_with_manual_review_fallback",
+  "frame_rate": 30,
+  "frame_convention": {
+    "start_frame": "inclusive",
+    "end_frame": "exclusive"
+  },
+  "total_duration_seconds": 7,
+  "total_frames": 210,
+  "locations": [
+    {
+      "name": "London",
+      "latitude": 51.5074,
+      "longitude": -0.1278,
+      "resolution_status": "resolved_fixture"
+    }
+  ],
+  "segments": [
+    {
+      "segment_id": 1,
+      "source_text": "fly to London in 3 seconds",
+      "action": "fly_to",
+      "requested_action": "fly_to",
+      "location_name": "London",
+      "location": {
+        "name": "London",
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 2500,
+      "start_seconds": 0,
+      "end_seconds": 3,
+      "duration_seconds": 3,
+      "start_frame": 0,
+      "end_frame": 90,
+      "resolution_status": "resolved",
+      "warnings": []
+    },
+    {
+      "segment_id": 2,
+      "source_text": "orbit London for 4 seconds",
+      "action": "orbit",
+      "requested_action": "orbit",
+      "location_name": "London",
+      "location": {
+        "name": "London",
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 2500,
+      "start_seconds": 3,
+      "end_seconds": 7,
+      "duration_seconds": 4,
+      "start_frame": 90,
+      "end_frame": 210,
+      "resolution_status": "resolved",
+      "warnings": []
+    }
+  ],
+  "unresolved_items": [],
+  "manual_earth_studio_steps": [
+    "Open Google Earth Studio manually.",
+    "Create or open the project manually; this planner does not log in, automate a browser, or control Earth Studio.",
+    "Use shot-plan.json coordinates as manual camera/search references.",
+    "Use route.kml only as a placemark/path reference asset.",
+    "Manually create, review, and adjust all camera keyframes.",
+    "Render manually only after Mikko reviews the camera move."
+  ],
+  "warnings": [
+    "KML is a reference asset only and does not create a finished Google Earth Studio camera animation.",
+    "Placemark use as camera targets is unverified in v1; manually search or set camera targets from shot-plan.json if needed.",
+    "This planner does not render video, manipulate .esp files, control Google Earth Studio, or approve footage.",
+    "Technical planning artifacts are not creative approval, rights clearance, or package-run evidence approval."
+  ]
+}

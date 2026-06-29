@@ -1,0 +1,136 @@
+{
+  "generated_or_source_derived": "source-derived",
+  "do_not_edit_manually": true,
+  "runtime_source": "pipeline-tracker.js (STAGES / VERTICAL_STAGES)",
+  "regenerate_with": "node scripts/generate-production-spec.js",
+  "horizontalStages": [
+    {
+      "id": 0,
+      "key": "idea",
+      "label": "Idea",
+      "short": "Idea"
+    },
+    {
+      "id": 1,
+      "key": "research",
+      "label": "Research",
+      "short": "Research"
+    },
+    {
+      "id": 2,
+      "key": "script",
+      "label": "Script",
+      "short": "Script"
+    },
+    {
+      "id": 3,
+      "key": "claims",
+      "label": "Claims Check",
+      "short": "Claims"
+    },
+    {
+      "id": 4,
+      "key": "packaging",
+      "label": "Packaging",
+      "short": "Package"
+    },
+    {
+      "id": 5,
+      "key": "image-prompts",
+      "label": "Image Prompts",
+      "short": "Prompts"
+    },
+    {
+      "id": 6,
+      "key": "image-gen",
+      "label": "Image Gen",
+      "short": "Images"
+    },
+    {
+      "id": 7,
+      "key": "image-select",
+      "label": "Image Select",
+      "short": "Select"
+    },
+    {
+      "id": 8,
+      "key": "video-gen",
+      "label": "Video Gen",
+      "short": "Wan/Kling"
+    },
+    {
+      "id": 9,
+      "key": "a-roll",
+      "label": "A-Roll Record",
+      "short": "A-Roll"
+    },
+    {
+      "id": 10,
+      "key": "assembly",
+      "label": "Assembly Edit",
+      "short": "Assemble"
+    },
+    {
+      "id": 11,
+      "key": "publish-gate",
+      "label": "Publish Gate",
+      "short": "Gate"
+    },
+    {
+      "id": 12,
+      "key": "published",
+      "label": "Published",
+      "short": "Done"
+    }
+  ],
+  "verticalStages": [
+    {
+      "id": 0,
+      "key": "idea",
+      "label": "Topic",
+      "short": "Topic"
+    },
+    {
+      "id": 1,
+      "key": "script",
+      "label": "Script",
+      "short": "Script"
+    },
+    {
+      "id": 2,
+      "key": "image-prompts",
+      "label": "Image Prompts",
+      "short": "Prompts"
+    },
+    {
+      "id": 3,
+      "key": "image-gen",
+      "label": "Image Gen",
+      "short": "Images"
+    },
+    {
+      "id": 4,
+      "key": "image-select",
+      "label": "Image Select",
+      "short": "Select"
+    },
+    {
+      "id": 5,
+      "key": "i2v-prompts",
+      "label": "I2V Prompts",
+      "short": "I2V"
+    },
+    {
+      "id": 6,
+      "key": "video-gen",
+      "label": "Video Gen",
+      "short": "PRESTO"
+    },
+    {
+      "id": 7,
+      "key": "view",
+      "label": "View + Resolve",
+      "short": "View"
+    }
+  ]
+}

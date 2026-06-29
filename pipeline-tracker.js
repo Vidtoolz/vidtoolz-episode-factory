@@ -3,7 +3,11 @@
  * Shows the 13-stage canonical production pipeline with progress per video.
  * Any page can include this and call PipelineTracker.mount(container, data).
  *
- * Stages from VIDTOOLZ-CANONICAL-PRODUCTION-SPEC.md
+ * This file's STAGES / VERTICAL_STAGES arrays are the RUNTIME SOURCE OF TRUTH
+ * for the production stage model. config/production-stages.json and
+ * VIDTOOLZ-CANONICAL-PRODUCTION-SPEC.md are generated FROM here via
+ * `node scripts/generate-production-spec.js` (a drift check runs in the tests).
+ * Edit stages here, then regenerate — do not edit the generated artifacts.
  */
 (function PipelineTrackerModule(globalScope) {
   "use strict";

@@ -32,3 +32,45 @@ Three outlines generated into outlines.md (2026-06-25). Mikko reviews and select
 - Paste the prompt into Hermes or ChatGPT.
 - Save the generated outline options into outlines.md.
 - Edit the chosen structure into final-outline.md.
+
+## Outline Prep
+
+- outline-prompt.md created.
+- Paste the prompt into Hermes or ChatGPT.
+- Save the generated outline options into outlines.md.
+- Edit the chosen structure into final-outline.md.
+
+## Outline Prep
+
+- outline-prompt.md created.
+- Paste the prompt into Hermes or ChatGPT.
+- Save the generated outline options into outlines.md.
+- Edit the chosen structure into final-outline.md.
+
+## Outline Prep
+
+- outline-prompt.md created.
+- Paste the prompt into Hermes or ChatGPT.
+- Save the generated outline options into outlines.md.
+- Edit the chosen structure into final-outline.md.
+
+## Outline Prep
+
+- outline-prompt.md created.
+- Paste the prompt into Hermes or ChatGPT.
+- Save the generated outline options into outlines.md.
+- Edit the chosen structure into final-outline.md.
+
+## Outline Prep
+
+- outline-prompt.md created.
+- Paste the prompt into Hermes or ChatGPT.
+- Save the generated outline options into outlines.md.
+- Edit the chosen structure into final-outline.md.
+
+## Outline Prep
+
+- outline-prompt.md created.
+- Paste the prompt into Hermes or ChatGPT.
+- Save the generated outline options into outlines.md.
+- Edit the chosen structure into final-outline.md.
