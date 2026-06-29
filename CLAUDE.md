@@ -5,21 +5,39 @@ A GUI-first video production cockpit for Mikko's YouTube Shorts channel (VIDTOOL
 Manages the full lifecycle: topic selection → script → FLUX image prompts → image generation → 
 image selection → Wan2.2 video generation (PRESTO) → Resolve handoff → publish gate.
 
+## Canonical current state — read this first
+- **Primary cockpit entry point:** `index.html` → the **"📍 Where am I?"** panel at the top.
+- **Canonical current-state API:** `GET /api/cockpit-orientation` — active run, current gate,
+  blocker, next valid action, index freshness, guidance-withheld/ambiguous, out-of-scope. It
+  composes the canonical scripts (doctor / next-safe-action / active-state audit / index
+  freshness); do not duplicate that logic elsewhere.
+- `package-runs-dashboard.html` shows a compact canonical strip via `orientation-bar.js` (same API).
+- The lower homepage **Episode Board / Focus View is browser-local planning state (localStorage),
+  NOT production truth** — it is labeled as such in `index.html`.
+- **Canonical source files:** `pipeline-tracker.js` (stage model, source of truth) → generates
+  `VIDTOOLZ-CANONICAL-PRODUCTION-SPEC.md` + `config/production-stages.json` via
+  `scripts/generate-production-spec.js`; `config/system-registry.json` (+ `scripts/system-registry.js`)
+  for services/ports; `docs/DOC-AUTHORITY.md` (+ `scripts/docs-authority-check.js`) for which docs
+  are authoritative vs historical.
+- **Active run / per-run state:** `package-runs/<run>/package-run-state.md` +
+  `scripts/package-run-active-state-audit.js`; per-run diagnostics via `scripts/package-run-doctor.js`.
+
 ## Architecture
 - **Server**: `package-engine-server.js` (Node HTTP, port 8010, no framework)
-- **Frontend**: Vanilla HTML/JS pages, shared `styles.css` (v1.8.0)
-- **Tests**: `npm test` → 947/947 tests, run via `node --test tests/`
+- **Frontend**: Vanilla HTML/JS pages, shared `styles.css` (cache-busted with a `?v=` query)
+- **Tests**: `node tests/run-tests.js` (also run by `scripts/verify.sh`). Run `scripts/verify.sh`
+  for the current test count — do not hardcode it here.
 - **No build step** — all pages are static HTML served directly by the server
 
-## Key Pages (13 total)
+## Key Pages (see the nav bar for the full set)
 | Page | Purpose |
 |------|---------|
-| `resume.html` | Starting point — all projects with stage progress |
+| `index.html` | **Primary cockpit entry** — "📍 Where am I?" canonical orientation panel on top; lower Episode Board is browser-local planning state |
+| `resume.html` | All projects with stage progress |
 | `topic-scout.html` | Stage 1: Choose topic from 25 candidates or submit your own |
 | `package-engine.html` | Stage 2: Formally select topic and create package run |
-| `package-runs-dashboard.html` | **Main cockpit** — "what to do now" focus panel, video project room |
+| `package-runs-dashboard.html` | **Main run cockpit** — compact canonical orientation strip on top, "what to do now" focus panel, video project room |
 | `mission-control.html` | All video projects overview with stage/artifact status |
-| `index.html` | Episode planning board |
 | `production-pipeline.html` | AIGEN pipeline: FLUX → image select → PRESTO/Kling → Resolve |
 | `image-prompts-editor.html` | Edit FLUX text-to-image prompts |
 | `image-selector.html` | Select which FLUX images go to video generation |
@@ -33,14 +51,14 @@ image selection → Wan2.2 video generation (PRESTO) → Resolve handoff → pub
   what do I do here, where do I go next.
 - **Micro-guidance is integrated into elements**, not separate docs. Each page has a 
   `<details class="page-guide" open>` block with What/Next/Elements rows.
-- **Nav bar** (`ef-nav`) is consistent across all 13 pages with active page highlighted.
+- **Nav bar** (`ef-nav`) is consistent across all pages with the active page highlighted.
 - **Full GUI operability** — no terminal-only workflows needed to navigate.
 - **Mikko approves all durable state changes** — the system guides, Mikko decides.
 - **Brand pattern**: one claim, one example, one point per video.
 - **No text in FLUX prompts** — causes rendered text artifacts. Photorealistic only.
 
 ## CSS
-- `styles.css` (shared, loaded as `styles.css?v=1.8.0` to force reload)
+- `styles.css` (shared, loaded with a `?v=` cache-buster query to force reload)
 - CSS variables defined in `:root` (dark theme: `--panel`, `--border`, `--accent`, etc.)
 - Most pages also have 1 inline `<style>` block for page-specific layout
 - Nav bar CSS: `.ef-nav` classes in `styles.css`
@@ -53,10 +71,10 @@ Key prefixes: `/api/status`, `/api/package-runs/`, `/api/topic-scout/`, `/api/ai
 `/api/presto/`, `/api/flux/`, `/api/pipeline/`.
 
 ## Testing
-- `npm test` runs all 25 test files (947 tests)
-- Tests use Node's built-in test runner (`node --test`)
+- `scripts/verify.sh` runs the suite (`node tests/run-tests.js`) plus syntax checks and the
+  canonical-spec / doc-authority guards. Run it for the current test count — do not hardcode it.
 - Test helpers in `tests/_helpers.js`
-- Always run tests after changes. All must pass.
+- Always run `scripts/verify.sh` after changes. All must pass.
 
 ## Git
 - Main branch: `main`

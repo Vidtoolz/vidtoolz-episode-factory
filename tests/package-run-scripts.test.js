@@ -5563,6 +5563,38 @@ test("docs authority check passes and catches hardcoded counts / stale phrases",
 
   // The cleaned-up phrasing we use in authoritative docs is NOT flagged.
   assert.equal(docsCheck.scanText("Tests: run `scripts/verify.sh` for the current count.").length, 0);
+
+  // CLAUDE.md is guarded so a future agent session cannot reintroduce a stale
+  // hardcoded test count into the project instructions.
+  assert.ok(docsCheck.AUTHORITATIVE_DOCS.includes("CLAUDE.md"));
+});
+
+test("root cockpit HTML pages reference no missing local scripts, styles, or pages", () => {
+  // Guards against broken cockpit pages: a renamed/typo'd/removed asset that
+  // would 404 in the browser. Strips <script> blocks first so JS template
+  // literals (e.g. href="${...}") are not mistaken for static references.
+  const repoRoot = path.resolve(__dirname, "..");
+  const htmlFiles = fs.readdirSync(repoRoot).filter((f) => f.endsWith(".html"));
+  assert.ok(htmlFiles.length > 0, "expected root HTML pages");
+
+  const broken = [];
+  for (const file of htmlFiles) {
+    const markup = fs
+      .readFileSync(path.join(repoRoot, file), "utf8")
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ""); // drop inline JS
+    const refs = [];
+    for (const m of markup.matchAll(/<script\b[^>]*\bsrc\s*=\s*"([^"]+)"/gi)) refs.push(m[1]);
+    for (const m of markup.matchAll(/<link\b[^>]*\bhref\s*=\s*"([^"]+)"/gi)) refs.push(m[1]);
+    for (const m of markup.matchAll(/<a\b[^>]*\bhref\s*=\s*"([^"]+\.html(?:[?#][^"]*)?)"/gi)) refs.push(m[1]);
+
+    for (const ref of refs) {
+      if (/^(https?:|mailto:|#|data:|\/api\/)/i.test(ref) || ref.includes("${")) continue;
+      const clean = ref.split("?")[0].split("#")[0].replace(/^\//, "");
+      if (!clean) continue;
+      if (!fs.existsSync(path.join(repoRoot, clean))) broken.push(`${file} -> ${ref}`);
+    }
+  }
+  assert.deepEqual(broken, [], `Broken local references in root HTML: ${broken.join(", ")}`);
 });
 
 test("canonical production spec exists and stays in sync with pipeline-tracker.js", () => {
