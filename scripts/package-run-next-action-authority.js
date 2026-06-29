@@ -1,6 +1,23 @@
 #!/usr/bin/env node
 "use strict";
 
+/*
+ * VIDTOOLZ next-action role
+ * Role: Authority / gating evaluation for a package run (human-approval-required, blocked actions,
+ *   and the authoritative next-safe-action consumed by the workflow map).
+ * Canonical status: Authority/gating support — NOT the cockpit operator-guidance endpoint. The
+ *   cockpit's operator-facing "next safe action" comes from package-run-next-safe-action.js.
+ * Primary callers: scripts/package-run-workflow-map.js (buildAuthorityReport); CLI:
+ *   node scripts/package-run-next-action-authority.js.
+ * Read/write behavior: READ-ONLY. Must not write package-run state or approval markers.
+ * Do not use for: operator-facing "what next?" wording changes unless you intend to change
+ *   authority/gating behavior.
+ * Related scripts:
+ *   - package-run-next-safe-action.js: CANONICAL cockpit-facing next-safe-action.
+ *   - package-run-next-action.js: standalone CLI reporter (test-only callers).
+ *   - package-run-workflow-map.js: primary consumer of this authority report.
+ */
+
 const fs = require("node:fs");
 const path = require("node:path");
 const packageRunsIndex = require("./package-runs-index.js");

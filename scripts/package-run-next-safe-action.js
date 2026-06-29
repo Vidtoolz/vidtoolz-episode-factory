@@ -1,6 +1,23 @@
 #!/usr/bin/env node
 "use strict";
 
+/*
+ * VIDTOOLZ next-action role
+ * Role: Cockpit-facing next-safe-action guidance for one package run.
+ * Canonical status: CANONICAL operator-facing "next safe action". Backs /api/cockpit-orientation
+ *   and the cockpit/dashboard guidance — edit THIS file to change operator next-action behavior.
+ * Primary callers: package-engine-server.js (buildCockpitOrientation + run-focus / next-action
+ *   routes); CLI: node scripts/package-run-next-safe-action.js. (generate-production-spec.js only
+ *   prints this command string into the generated spec — not a code dependency.)
+ * Read/write behavior: READ-ONLY. Must not write package-run state or approval markers.
+ * Do not use for: authority/gating rule evaluation (see package-run-next-action-authority.js) or
+ *   per-run diagnostics (see package-run-doctor.js).
+ * Related scripts:
+ *   - package-run-doctor.js: per-run diagnostics / production meaning (also composed by the cockpit).
+ *   - package-run-next-action.js: standalone CLI reporter; NOT the cockpit path (test-only callers).
+ *   - package-run-next-action-authority.js: authority/gating checks used by the workflow map.
+ */
+
 const fs = require("node:fs");
 const path = require("node:path");
 

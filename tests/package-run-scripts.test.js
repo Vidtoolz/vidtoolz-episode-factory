@@ -5545,6 +5545,31 @@ test("package-run-state guard detects a run dir with artifacts but no state mark
   assert.deepEqual(offenders, ["2026-05-09-no-state"]);
 });
 
+test("next-action scripts declare role and canonical status", () => {
+  const required = [
+    "VIDTOOLZ next-action role",
+    "Role:",
+    "Canonical status:",
+    "Primary callers:",
+    "Read/write behavior:",
+    "Do not use for:",
+    "Related scripts:",
+  ];
+  const files = [
+    "scripts/package-run-next-action.js",
+    "scripts/package-run-next-safe-action.js",
+    "scripts/package-run-next-action-authority.js",
+  ];
+  for (const rel of files) {
+    const text = fs.readFileSync(path.join(__dirname, "..", rel), "utf8");
+    for (const field of required) {
+      assert.ok(text.includes(field), `${rel} missing role-header field: ${field}`);
+    }
+    // These three are read-only; the header must say so (audit confirmed 0 write calls).
+    assert.match(text, /Read\/write behavior:\s*READ-ONLY/, `${rel} must declare READ-ONLY`);
+  }
+});
+
 test("docs authority check passes and catches hardcoded counts / stale phrases", () => {
   const docsCheck = require("../scripts/docs-authority-check.js");
 
