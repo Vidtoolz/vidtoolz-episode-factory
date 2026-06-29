@@ -5837,6 +5837,26 @@ test("package-runs-dashboard includes the canonical orientation strip and shared
   assert.match(html, /orientation-bar\.js/);
 });
 
+test("production-pipeline includes shared clarity scripts", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "production-pipeline.html"), "utf8");
+  assert.match(html, /<script src="clipboard\.js\?v=1"><\/script>/);
+  assert.match(html, /<script src="orientation-bar\.js\?v=1"><\/script>/);
+  assert.match(html, /<script src="package-run-artifact-panel\.js\?v=1"><\/script>/);
+});
+
+test("production-pipeline includes orientation and artifact panel containers", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "production-pipeline.html"), "utf8");
+  assert.match(html, /<div id="canonicalOrientationStrip" aria-label="Canonical production state"><\/div>/);
+  assert.match(html, /<section id="packageRunArtifactPanel" aria-label="Package-run artifacts"><\/section>/);
+});
+
+test("production-pipeline uses the shared clipboard helper for copy buttons", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "production-pipeline.html"), "utf8");
+  assert.doesNotMatch(html, /function copyToClipboardFallback/);
+  assert.doesNotMatch(html, /navigator\.clipboard/);
+  assert.match(html, /window\.copyToClipboard\(text, onCopy, onFail\);/);
+});
+
 test("index freshness reports missing, fresh, and stale states", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "index-freshness-"));
   writeTestFile(

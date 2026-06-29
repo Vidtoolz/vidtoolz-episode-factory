@@ -231,6 +231,9 @@
         <button id="refresh-button" class="primary-btn" type="button">Refresh</button>
       </header>
 
+      <div id="canonicalOrientationStrip" aria-label="Canonical production state"></div>
+      <section id="packageRunArtifactPanel" aria-label="Package-run artifacts"></section>
+
       <div class="external-tool-row" aria-label="External production tools">
         <a class="btn-external" href="http://localhost:8188" target="_blank" rel="noopener">Open vidnux ComfyUI</a>
         <a class="btn-external" href="http://192.168.50.187:8188" target="_blank" rel="noopener">Open PRESTO ComfyUI</a>
@@ -956,14 +959,7 @@
                 copyBtn.textContent = "Copy failed";
                 setTimeout(() => { copyBtn.textContent = "Copy"; }, 2000);
               };
-              // Try clipboard API first, then fall back to a temporary textarea for non-secure contexts
-              if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(onCopy).catch(() => {
-                  copyToClipboardFallback(text) ? onCopy() : onFail();
-                });
-              } else {
-                copyToClipboardFallback(text) ? onCopy() : onFail();
-              }
+              window.copyToClipboard(text, onCopy, onFail);
             });
             entryHeader.append(labelSpan, idxSpan, statusSpan, copyBtn);
             const promptText = document.createElement("div");
@@ -977,22 +973,6 @@
           errBox.className = "error-box";
           errBox.textContent = error.message || "Failed to load prompts";
           panel.replaceChildren(errBox);
-        }
-      }
-
-      function copyToClipboardFallback(text) {
-        try {
-          const ta = document.createElement("textarea");
-          ta.value = text;
-          ta.style.position = "fixed";
-          ta.style.left = "-9999px";
-          document.body.appendChild(ta);
-          ta.select();
-          const ok = document.execCommand("copy");
-          document.body.removeChild(ta);
-          return ok;
-        } catch (e) {
-          return false;
         }
       }
 
@@ -1174,5 +1154,8 @@
         load();
       })();
     </script>
+    <script src="clipboard.js?v=1"></script>
+    <script src="orientation-bar.js?v=1"></script>
+    <script src="package-run-artifact-panel.js?v=1"></script>
   </body>
 </html>
