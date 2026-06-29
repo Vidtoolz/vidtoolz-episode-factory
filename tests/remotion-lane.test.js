@@ -15,9 +15,29 @@ function fakeChild() {
   };
 }
 
-test("remotion availability: available for the real brandkit root", () => {
-  // The brandkit repo exists with node_modules in this workspace.
-  assert.equal(remotion.availability().status, "available");
+function makeAvailableBrandkitRoot() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "remotion-brandkit-root-"));
+  fs.mkdirSync(path.join(root, "node_modules"));
+  fs.mkdirSync(path.join(root, "src"));
+  fs.writeFileSync(path.join(root, "package.json"), "{}\n", "utf8");
+  fs.writeFileSync(path.join(root, "src", "index.tsx"), "// fixture\n", "utf8");
+  return root;
+}
+
+test("remotion availability: default root reflects local install state", () => {
+  const expected = fs.existsSync(path.join(remotion.BRANDKIT_ROOT, "package.json"))
+    && fs.existsSync(path.join(remotion.BRANDKIT_ROOT, "node_modules"))
+    && fs.existsSync(path.join(remotion.BRANDKIT_ROOT, "src", "index.tsx"))
+    ? "available"
+    : "unavailable";
+  const actual = remotion.availability();
+  assert.equal(actual.root, remotion.BRANDKIT_ROOT);
+  assert.equal(actual.status, expected);
+  assert.match(actual.detail, expected === "available" ? /brandkit installed/ : /missing or has no node_modules/);
+});
+
+test("remotion availability: available for an installed brandkit root", () => {
+  assert.equal(remotion.availability({ root: makeAvailableBrandkitRoot() }).status, "available");
 });
 
 test("remotion availability: unavailable for a missing root", () => {
@@ -59,22 +79,23 @@ test("remotion startRender rejects when the brandkit is unavailable (503)", () =
 
 test("remotion startRender spawns npm run <script> and tracks an active job", () => {
   remotion.STATE.activeJob = null;
+  const root = makeAvailableBrandkitRoot();
   const calls = [];
   const child = fakeChild();
   const out = remotion.startRender(
     { target: "all" },
-    { root: remotion.BRANDKIT_ROOT, spawn: (bin, args, opts) => { calls.push({ bin, args, cwd: opts.cwd }); return child; } },
+    { root, spawn: (bin, args, opts) => { calls.push({ bin, args, cwd: opts.cwd }); return child; } },
   );
   assert.equal(out.ok, true);
   assert.ok(out.job_id);
   assert.equal(calls[0].bin, "npm");
   assert.deepEqual(calls[0].args, ["run", "render:all"]);
-  assert.equal(calls[0].cwd, remotion.BRANDKIT_ROOT);
+  assert.equal(calls[0].cwd, root);
   assert.equal(remotion.currentJobStatus().active, true);
 
   // a second concurrent render is refused
   assert.throws(
-    () => remotion.startRender({ target: "all" }, { root: remotion.BRANDKIT_ROOT, spawn: () => fakeChild() }),
+    () => remotion.startRender({ target: "all" }, { root, spawn: () => fakeChild() }),
     /already running/,
   );
 
@@ -87,10 +108,11 @@ test("remotion startRender spawns npm run <script> and tracks an active job", ()
 
 test("remotion cancelRender signals an active job", () => {
   remotion.STATE.activeJob = null;
+  const root = makeAvailableBrandkitRoot();
   const child = fakeChild();
   let sig = null;
   child.kill = (s) => { sig = s; };
-  remotion.startRender({ target: "all" }, { root: remotion.BRANDKIT_ROOT, spawn: () => child });
+  remotion.startRender({ target: "all" }, { root, spawn: () => child });
   const res = remotion.cancelRender();
   assert.equal(res.ok, true);
   assert.equal(sig, "SIGTERM");
