@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>London Flyover route reference</name>
+    <description>KML reference asset only. This does not create a finished Google Earth Studio camera animation.</description>
+    <Placemark>
+      <name>London</name>
+      <Point><coordinates>-0.1278,51.5074,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>London Flyover route path reference</name>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+        -0.1278,51.5074,0
+        -0.1278,51.5074,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

@@ -1,13 +1,16 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-06-27T00:00:00.000Z",
+  "updated_at": "2026-06-28T05:22:34.341Z",
   "compositions": [
     {
       "id": "intro",
       "title": "VIDTOOLZ Intro (sample)",
-      "source_html": "compositions/intro.html",
-      "rendered_mp4": "renders/intro.mp4",
-      "status": "not_rendered",
+      "source_html": "hyperframes/compositions/intro.html",
+      "preview_url": "/api/hyperframes/preview?runId=2026-06-27-hyperframes-sample&id=intro",
+      "rendered_mp4": "hyperframes/renders/intro.mp4",
+      "status": "rendered",
+      "last_rendered_at": "2026-06-28T05:22:34.101Z",
+      "last_error": null,
       "approved": false
     }
   ]

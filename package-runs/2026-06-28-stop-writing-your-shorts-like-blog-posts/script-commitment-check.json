@@ -1,0 +1,46 @@
+{
+  "verdict": "pass",
+  "summary": "The script clearly communicates the lesson that Shorts should be written like a person, not a blog, with a natural, blunt tone and enough visual cues for production.",
+  "checks": [
+    {
+      "label": "Runtime fit",
+      "status": "warning",
+      "detail": "102 words (~41s) — under 120; may be too thin for a Short."
+    },
+    {
+      "label": "One clear claim",
+      "status": "pass",
+      "detail": "The script makes a clear and focused claim: Shorts should be written like a person, not a blog."
+    },
+    {
+      "label": "Strong first line",
+      "status": "pass",
+      "detail": "The first line creates recognition and surprise by revealing a past mistake that the speaker made."
+    },
+    {
+      "label": "Spoken-to-camera naturalness",
+      "status": "pass",
+      "detail": "The language is conversational, with contractions and a natural rhythm that fits spoken-to-camera delivery."
+    },
+    {
+      "label": "Blunt/funny/direct tone",
+      "status": "pass",
+      "detail": "The tone is direct and personal, with a friend-to-friend approach that avoids being overly polite or generic."
+    },
+    {
+      "label": "Visual usefulness",
+      "status": "pass",
+      "detail": "The script contains enough concrete moments (e.g., writing a script, filming, scrolling past content) to generate useful visual prompts."
+    },
+    {
+      "label": "Finishability",
+      "status": "pass",
+      "detail": "The script is concise and self-contained, making it realistic to record and edit as a Short without needing to expand into a longer format."
+    }
+  ],
+  "estimatedWords": 102,
+  "estimatedRuntimeSeconds": 41,
+  "recommendedNextAction": "Proceed to image prompts",
+  "model": "qwen3:14b",
+  "evaluatedAt": "2026-06-28T18:29:32.151Z"
+}
