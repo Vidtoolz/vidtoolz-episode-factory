@@ -1110,6 +1110,87 @@ function writeConcreteStage4Planning(runDir, options = {}) {
   );
 }
 
+function writeManualVerticalStage4Run(runDir, options = {}) {
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(runDir, "package-run-state.md"),
+    "# Package Run State\n\nPackage run state: active\n\nWorkflow path: vertical\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "selected-package.md"),
+    "# Selected Package\n\n- Status: Manual Mikko-approved package selection for production prep.\n- Proposed title: Stop Writing Your Shorts Like Blog Posts\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "final-outline.md"),
+    "# Final Outline\n\n- Source of truth: final-script.md\n- Target format: vertical short, 1080x1920\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "final-script.md"),
+    "# Final Script\n\nStop writing Shorts like blog posts. Write like a person speaking to scrolling viewers.\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "production-prep-review-2.md"),
+    "# Production Prep Review 2\n\n## Verdict\n\nAPPROVE FOR PRODUCTION PLAN\n\n## Required fixes before production-plan.md\n\nnone\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "production-plan.md"),
+    [
+      "# Production Plan",
+      "",
+      `- Shoot-readiness status: ${options.shootReadiness || "READY TO SHOOT"}`,
+      "- Status: READY TO SHOOT",
+      "- Media generation started: no",
+      options.approval ? "- Shot/edit plan approval: PASS" : "",
+      "",
+      "## Production Scope",
+      "",
+      "Presenter-led vertical short with abstract visuals, kinetic typography, and blog-post versus Short contrast.",
+      "",
+    ].join("\n"),
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "shot-list.md"),
+    "# Shot List\n\n| shot | reason | priority | status |\n| --- | --- | --- | --- |\n| Presenter A-roll: full approved final script. | Carries the spoken vertical Short. | high | planned |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "screen-capture-list.md"),
+    "# Screen Capture List\n\nNo required screen captures for this production plan. The approved final script does not require tool demos or browser recordings.\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "demo-list.md"),
+    "# Demo List\n\n| demo | what it proves | setup needed | status |\n| --- | --- | --- | --- |\n| Dense blog-style script vs punchy Shorts beats. | Shows the approved writing contrast. | Designed graphic. | planned |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "b-roll-list.md"),
+    "# B-Roll List\n\n| b-roll item | reason | source | status |\n| --- | --- | --- | --- |\n| Blog post vs Short contrast card. | Clarifies the central production rule. | Designed graphic. | planned |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "graphics-list.md"),
+    "# Graphics List\n\n| graphic | clarity purpose | source/input | status |\n| --- | --- | --- | --- |\n| BLOG POST vs SHORT labels. | Makes the contrast readable on mobile. | final outline | planned |\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "audio-notes.md"),
+    "# Audio Notes\n\nRecord clean A-roll or voiceover from final-script.md only. Keep delivery conversational and capture room tone.\n",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runDir, "production-blockers.md"),
+    "# Production Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Mikko approved the repaired production prep packet for production-plan creation. | Keep review evidence with the run. | closed |\n",
+    "utf8"
+  );
+}
+
 function stage4ReviewText(runDir) {
   return fs.readFileSync(path.join(runDir, "shot-edit-plan-review.md"), "utf8");
 }
@@ -1119,6 +1200,40 @@ test("shot/edit plan review help works", () => {
 
   assert.equal(output.result, 0);
   assert.match(output.stdout.join("\n"), /package-run-shot-edit-plan-review\.js/);
+});
+
+test("shot/edit plan review accepts manual vertical production-prep chain without legacy upstream artifacts", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-vertical-manual-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-06-28-stop-writing-your-shorts-like-blog-posts");
+  writeManualVerticalStage4Run(runDir, { approval: false });
+
+  assert.equal(packageShotEditPlanReviewScript.main([runDir]), 0);
+  const review = stage4ReviewText(runDir);
+
+  assert.match(review, /Review status: READY FOR HUMAN APPROVAL/);
+  assert.match(review, /Stage accepted: no/);
+  assert.match(review, /Manual vertical prep chain accepted: yes/);
+  assert.match(review, /final-outline\.md/);
+  assert.match(review, /production-prep-review-2\.md/);
+  assert.match(review, /Manual vertical production-prep chain accepted/);
+  assert.doesNotMatch(review, /script-review\.md is missing/);
+  assert.doesNotMatch(review, /script-structure\.md is missing/);
+  assert.doesNotMatch(review, /Research gate status is MISSING/);
+});
+
+test("shot/edit plan review blocks manual vertical chain when production plan is not ready", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-vertical-blocked-"));
+  const runDir = path.join(tempRoot, "package-runs", "2026-06-28-stop-writing-your-shorts-like-blog-posts");
+  writeManualVerticalStage4Run(runDir, { shootReadiness: "NEEDS SCRIPT APPROVAL", approval: true });
+
+  assert.equal(packageShotEditPlanReviewScript.main([runDir]), 0);
+  const review = stage4ReviewText(runDir);
+
+  assert.match(review, /Review status: BLOCKED/);
+  assert.match(review, /Stage accepted: no/);
+  assert.match(review, /Manual vertical prep chain accepted: no/);
+  assert.match(review, /Shoot-readiness status is NEEDS SCRIPT APPROVAL, not READY TO SHOOT/);
+  assert.doesNotMatch(review, /Review status: PASS/);
 });
 
 test("shot/edit plan review missing upstream files cannot produce PASS", () => {
@@ -5245,6 +5360,14 @@ test("active state audit selects exactly one active run", () => {
     "package-runs/2026-05-10-active/selected-package.json",
     JSON.stringify({ package: { proposedTitle: "Only Active" } })
   );
+  // A confidently-active run carries an explicit active marker; without it the
+  // audit reports UNKNOWN state and recommends adding a marker (see the
+  // missing-state test below).
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/package-run-state.md",
+    "# Package Run State\n\nPackage run state: active\n"
+  );
   writeTestFile(
     tempRoot,
     "package-runs/2026-05-09-parked/package-run-state.md",
@@ -5295,8 +5418,18 @@ test("active state audit reports multiple active runs as ambiguous", () => {
   );
   writeTestFile(
     tempRoot,
+    "package-runs/2026-05-10-active-a/package-run-state.md",
+    "# Package Run State\n\nPackage run state: active\n"
+  );
+  writeTestFile(
+    tempRoot,
     "package-runs/2026-05-09-active-b/selected-package.json",
     JSON.stringify({ package: { proposedTitle: "Active B" } })
+  );
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-09-active-b/package-run-state.md",
+    "# Package Run State\n\nPackage run state: active\n"
   );
   const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
   writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
@@ -5336,6 +5469,219 @@ test("active state audit reports no active runs", () => {
   assert.equal(report.candidateActiveRuns.length, 0);
   assert.equal(report.selectedActiveRun, "");
   assert.equal(report.exactNextSafeAction, "Mark exactly one package run active or configure an explicit active run.");
+});
+
+test("active state audit flags a run with artifacts but no state marker as UNKNOWN, not silently active", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-active-audit-unknown-"));
+  // Real run dir (has a detected artifact) but NO package-run-state.md marker.
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-no-state/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "No State Marker" } })
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const report = packageRunActiveStateAuditScript.buildActiveStateAudit({ repoRoot: tempRoot });
+
+  // Loud, not silent: surfaced as invalid/unknown state with a withhold-guidance signal.
+  assert.equal(report.invalidState, true);
+  assert.equal(report.guidanceWithheld, true);
+  assert.equal(report.unknownStateRuns.length, 1);
+  assert.equal(report.unknownStateRuns[0].path, "package-runs/2026-05-10-no-state");
+  assert.equal(report.unknownStateRuns[0].safeRecommendedAction, "add explicit package-run-state.md marker");
+  assert.equal(report.exactNextSafeAction, packageRunActiveStateAuditScript.MISSING_STATE_NEXT_ACTION);
+  assert.ok(report.warnings.some((w) => /no explicit package-run-state\.md marker/i.test(w)));
+});
+
+test("active state audit: missing state combined with an explicit active run withholds guidance", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-active-audit-mixed-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Explicit Active" } })
+  );
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/package-run-state.md",
+    "# Package Run State\n\nPackage run state: active\n"
+  );
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-09-no-state/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "No State" } })
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const report = packageRunActiveStateAuditScript.buildActiveStateAudit({ repoRoot: tempRoot });
+
+  // Two active candidates -> ambiguity; the no-state one is also flagged UNKNOWN.
+  assert.equal(report.guidanceWithheld, true);
+  assert.equal(report.invalidState, true);
+  assert.ok(report.unknownStateRuns.some((run) => run.path === "package-runs/2026-05-09-no-state"));
+});
+
+test("package-run-state guard detects a run dir with artifacts but no state marker", () => {
+  // Fixture-based guard (no dependency on production package-runs state): a
+  // directory that is a package run (has a detected artifact) must declare its
+  // state, so the cockpit is never fed UNKNOWN state. Container dirs (no detected
+  // files) are not flagged.
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-run-state-guard-"));
+  const runsDir = path.join(tempRoot, "package-runs");
+  writeTestFile(tempRoot, "package-runs/2026-05-10-has-state/selected-package.json", "{}\n");
+  writeTestFile(tempRoot, "package-runs/2026-05-10-has-state/package-run-state.md", "# Package Run State\n\nPackage run state: active\n");
+  writeTestFile(tempRoot, "package-runs/2026-05-09-no-state/selected-package.json", "{}\n");
+  fs.mkdirSync(path.join(runsDir, "stale-runs"), { recursive: true }); // container dir, no detected files
+
+  const offenders = fs
+    .readdirSync(runsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(runsDir, entry.name))
+    .filter((dir) => packageRunsIndexScript.isPackageRunDir(dir))
+    .filter((dir) => !fs.existsSync(path.join(dir, "package-run-state.md")))
+    .map((dir) => path.basename(dir));
+
+  assert.deepEqual(offenders, ["2026-05-09-no-state"]);
+});
+
+test("docs authority check passes and catches hardcoded counts / stale phrases", () => {
+  const docsCheck = require("../scripts/docs-authority-check.js");
+
+  // Repo currently passes: canonical files exist and authoritative docs are clean.
+  const result = docsCheck.check();
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.deepEqual(result.missingCanonical, []);
+
+  // The scanner detects both a hardcoded count and the known-stale phrase.
+  const offenses = docsCheck.scanText(
+    ["Tests: 1203/1203 passing", "We had 844 tests here", "no counts on this line"].join("\n")
+  );
+  assert.ok(offenses.length >= 2);
+  assert.ok(offenses.some((o) => o.kind === "hardcoded-test-count"));
+  assert.ok(offenses.some((o) => o.kind === "stale-phrase"));
+
+  // The cleaned-up phrasing we use in authoritative docs is NOT flagged.
+  assert.equal(docsCheck.scanText("Tests: run `scripts/verify.sh` for the current count.").length, 0);
+});
+
+test("canonical production spec exists and stays in sync with pipeline-tracker.js", () => {
+  const gen = require("../scripts/generate-production-spec.js");
+  const tracker = require("../pipeline-tracker.js");
+
+  // Issue C: the referenced canonical spec must actually exist on disk.
+  assert.ok(fs.existsSync(gen.SPEC_MD_PATH), "VIDTOOLZ-CANONICAL-PRODUCTION-SPEC.md must exist");
+  assert.ok(fs.existsSync(gen.STAGES_JSON_PATH), "config/production-stages.json must exist");
+
+  // The runtime source of truth is the tracker, with 13 canonical stages.
+  assert.equal(tracker.STAGES.length, 13);
+
+  // Generated artifacts must match what the tracker would produce right now.
+  const result = gen.checkArtifacts();
+  assert.equal(result.ok, true, `production spec drifted: ${result.drifted.join(", ")}`);
+
+  // The spec must name the runtime source and warn against manual edits.
+  const specText = fs.readFileSync(gen.SPEC_MD_PATH, "utf8");
+  assert.match(specText, /source-derived/i);
+  assert.match(specText, /pipeline-tracker\.js/);
+});
+
+test("system registry loads, validates, and records verified ports with sources", () => {
+  const systemRegistry = require("../scripts/system-registry.js");
+  const registry = systemRegistry.loadRegistry();
+
+  assert.equal(registry.generated_or_verified, "verified");
+  assert.ok(Array.isArray(registry.components) && registry.components.length >= 3);
+  // Every component must carry an evidence source — no memory-only facts.
+  registry.components.forEach((component) => {
+    assert.ok(component.id && component.name, "component needs id and name");
+    assert.ok(component.source, `component ${component.id} must cite a source`);
+  });
+  const byId = Object.fromEntries(registry.components.map((c) => [c.id, c]));
+  assert.equal(byId.cockpit.port, 8010);
+  assert.equal(byId["presto-comfyui"].host, "192.168.50.187");
+  assert.equal(byId["presto-comfyui"].port, 8188);
+});
+
+test("cockpit orientation reports a single clean active run with operator fields", () => {
+  const packageEngineServer = require("../package-engine-server.js");
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cockpit-orientation-one-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-06-28-active/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Active Orientation" } })
+  );
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-06-28-active/package-run-state.md",
+    "# Package Run State\n\nPackage run state: active\n"
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const o = packageEngineServer.buildCockpitOrientation({ repoRoot: tempRoot });
+
+  assert.equal(o.mode, "Operator Clarity / Production");
+  assert.equal(o.activeRun, "2026-06-28-active");
+  assert.equal(o.activeRunPath, "package-runs/2026-06-28-active/");
+  assert.ok(o.currentGate);
+  assert.ok(o.aiSafeAction);
+  assert.ok(Array.isArray(o.outOfScope) && o.outOfScope.length > 0);
+  assert.ok(o.indexFreshness && typeof o.indexFreshness.state === "string");
+});
+
+test("cockpit orientation returns AMBIGUOUS and withholds guidance when active state is unclear", () => {
+  const packageEngineServer = require("../package-engine-server.js");
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cockpit-orientation-ambiguous-"));
+  // Run with artifacts but no explicit state marker -> UNKNOWN -> withhold guidance.
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-06-28-no-state/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "No State" } })
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+
+  const o = packageEngineServer.buildCockpitOrientation({ repoRoot: tempRoot });
+
+  assert.equal(o.mode, "AMBIGUOUS");
+  assert.equal(o.guidanceWithheld, true);
+  assert.equal(o.activeRun, "");
+  assert.ok(o.nextValidAction);
+});
+
+test("index freshness reports missing, fresh, and stale states", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "index-freshness-"));
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "Freshness" } })
+  );
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-05-10-active/package-run-state.md",
+    "# Package Run State\n\nPackage run state: active\n"
+  );
+
+  // No index file yet -> missing.
+  const missing = packageRunsIndexScript.indexFreshness({ repoRoot: tempRoot });
+  assert.equal(missing.state, "missing");
+  assert.equal(missing.stale, true);
+
+  // Build + write the index -> fresh.
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+  const fresh = packageRunsIndexScript.indexFreshness({ repoRoot: tempRoot });
+  assert.equal(fresh.state, "fresh");
+  assert.equal(fresh.stale, false);
+
+  // Make a run file newer than the index's generatedAt -> stale.
+  const future = new Date(Date.now() + 3600 * 1000);
+  fs.utimesSync(path.join(tempRoot, "package-runs/2026-05-10-active/package-run-state.md"), future, future);
+  const stale = packageRunsIndexScript.indexFreshness({ repoRoot: tempRoot });
+  assert.equal(stale.state, "stale");
+  assert.equal(stale.stale, true);
+  assert.match(stale.message, /rebuild/i);
 });
 
 test("active state audit json cli is parseable", () => {
@@ -5747,6 +6093,24 @@ test("package run doctor help works", () => {
   assert.equal(output.result, 0);
   assert.match(output.stdout.join("\n"), /Package Run Doctor/);
   assert.match(output.stdout.join("\n"), /--json/);
+});
+
+test("doctor operator guidance gives plain-language meaning and AI-safe action per status", () => {
+  const capture = packageRunDoctorScript.operatorGuidanceForRun({
+    status: "Needs capture",
+    nextRecommendedCommand: "node scripts/package-run-capture-evidence-review.js package-runs/x",
+  });
+  assert.match(capture.productionMeaning, /no real recorded media/i);
+  assert.match(capture.nextHumanAction, /record/i);
+  assert.match(capture.aiSafeAction, /must not mark this gate approved/i);
+  assert.equal(capture.nextCommand, "node scripts/package-run-capture-evidence-review.js package-runs/x");
+
+  const inactive = packageRunDoctorScript.operatorGuidanceForRun({
+    status: "Needs capture",
+    packageRunState: { isInactive: true, state: "parked" },
+  });
+  assert.match(inactive.productionMeaning, /parked/i);
+  assert.match(inactive.aiSafeAction, /do not reactivate/i);
 });
 
 test("package run doctor fails clearly for missing run folder", () => {
@@ -8371,6 +8735,32 @@ test("next safe action helper walks the front half by artifact (selected -> outl
 
   fs.writeFileSync(path.join(runDir, "final-script.md"), "# Script\n", "utf8");
   assert.equal(stageOf(), "Claims check, packaging, image prompts");
+});
+
+test("next safe action helper defers to the package-run lifecycle when selected-package.md exists without JSON", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "next-safe-action-md-"));
+  const runId = "2026-06-28-stop-writing-your-shorts-like-blog-posts";
+  const runDir = path.join(tempRoot, "package-runs", runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  // Lifecycle / vertical run shape: markdown package selection plus later
+  // artifacts, but NO selected-package.json. This is exactly the run that used
+  // to be misreported as "Package selection" because the front-half tree only
+  // looked for selected-package.json.
+  fs.writeFileSync(path.join(runDir, "package-run-state.md"), "# Package Run State\n\nPackage run state: active\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "selected-package.md"), "# Selected Package\n\n- Proposed title: Stop Writing Your Shorts Like Blog Posts\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "final-outline.md"), "# Final Outline\n", "utf8");
+  fs.writeFileSync(path.join(runDir, "final-script.md"), "# Final Script\n", "utf8");
+
+  const report = packageRunNextSafeActionScript.buildNextSafeAction(runId, { repoRoot: tempRoot });
+
+  // Must NOT regress to package selection, and must be flagged as lifecycle-managed
+  // (i.e. delegated to the doctor) rather than re-derived by the AIGEN front-half.
+  assert.notEqual(report.stage, "Package selection");
+  assert.equal(report.lifecycleManaged, true);
+  assert.doesNotMatch(
+    [report.stage, report.nextHumanAction, report.blockedUntil].join(" "),
+    /selected-package\.json exists/i
+  );
 });
 
 test("next safe action helper hands off to image generation once image-prompts.json exists", () => {

@@ -182,6 +182,7 @@ function parseArgs(argv) {
     runsDir: DEFAULT_RUNS_DIR,
     outFile: DEFAULT_OUT_FILE,
     json: false,
+    freshness: false,
   };
   while (args.length) {
     const item = args.shift();
@@ -191,6 +192,8 @@ function parseArgs(argv) {
       result.outFile = args.shift() || "";
     } else if (item === "--json") {
       result.json = true;
+    } else if (item === "--freshness") {
+      result.freshness = true;
     }
   }
   return result;
@@ -1333,6 +1336,86 @@ function latestMtimeIso(runDir, filenames) {
   return new Date(Math.max(...times)).toISOString();
 }
 
+// package-runs-index.json is a mirror of the package-runs/ directory, not the
+// source of truth. If a run file changes after the index was written, the index
+// (and any cockpit panel reading it) can silently show stale active/run state.
+// This compares the index's age against the newest package-run file so the
+// cockpit can warn and offer a rebuild instead of trusting a stale mirror.
+function indexFreshness(options = {}) {
+  const repoRoot = path.resolve(options.repoRoot || process.cwd());
+  const runsDir = path.resolve(repoRoot, options.runsDir || DEFAULT_RUNS_DIR);
+  const indexPath = path.resolve(repoRoot, options.outFile || DEFAULT_OUT_FILE);
+  const rel = (p) => path.relative(repoRoot, p).replace(/\\/g, "/") || ".";
+  const rebuildCommand = "node scripts/package-runs-index.js";
+
+  if (!fs.existsSync(indexPath)) {
+    return {
+      state: "missing",
+      stale: true,
+      indexPath: rel(indexPath),
+      indexMtime: "",
+      generatedAt: "",
+      newestRunMtime: "",
+      rebuildCommand,
+      message: `package-runs-index.json is missing; rebuild it with: ${rebuildCommand}`,
+    };
+  }
+  if (!fs.existsSync(runsDir) || !fs.statSync(runsDir).isDirectory()) {
+    return {
+      state: "unknown",
+      stale: false,
+      indexPath: rel(indexPath),
+      indexMtime: "",
+      generatedAt: "",
+      newestRunMtime: "",
+      rebuildCommand,
+      message: "package-runs directory not found; index freshness unknown.",
+    };
+  }
+
+  const indexMtimeMs = fs.statSync(indexPath).mtimeMs;
+  let generatedAt = "";
+  try {
+    generatedAt = JSON.parse(fs.readFileSync(indexPath, "utf8")).generatedAt || "";
+  } catch (_error) {
+    generatedAt = "";
+  }
+
+  const freshnessFiles = [...DETECTED_FILES, PACKAGE_RUN_STATE_FILE];
+  let newestRunMtimeMs = 0;
+  fs.readdirSync(runsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(runsDir, entry.name))
+    .filter((dir) => isPackageRunDir(dir))
+    .forEach((dir) => {
+      freshnessFiles.forEach((filename) => {
+        const filePath = path.join(dir, filename);
+        if (fs.existsSync(filePath)) {
+          const mtime = fs.statSync(filePath).mtimeMs;
+          if (mtime > newestRunMtimeMs) newestRunMtimeMs = mtime;
+        }
+      });
+    });
+
+  const generatedAtMs = generatedAt ? Date.parse(generatedAt) : 0;
+  const effectiveIndexMs = Math.max(indexMtimeMs, Number.isFinite(generatedAtMs) ? generatedAtMs : 0);
+  // 1s tolerance so a same-second rebuild is not flagged stale.
+  const stale = newestRunMtimeMs > effectiveIndexMs + 1000;
+
+  return {
+    state: stale ? "stale" : "fresh",
+    stale,
+    indexPath: rel(indexPath),
+    indexMtime: new Date(indexMtimeMs).toISOString(),
+    generatedAt,
+    newestRunMtime: newestRunMtimeMs ? new Date(newestRunMtimeMs).toISOString() : "",
+    rebuildCommand,
+    message: stale
+      ? `package-runs-index.json is older than the newest package-run file; rebuild with: ${rebuildCommand}`
+      : "package-runs-index.json is up to date.",
+  };
+}
+
 function readPackageTitle(runDir) {
   const jsonPath = path.join(runDir, "selected-package.json");
   if (fs.existsSync(jsonPath)) {
@@ -1553,6 +1636,19 @@ function buildPackageRunsIndex(options = {}) {
 function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   const repoRoot = path.resolve(__dirname, "..");
+
+  // Read-only freshness check: never rebuilds, just reports stale/fresh/missing.
+  if (options.freshness) {
+    const freshness = indexFreshness({ repoRoot, runsDir: options.runsDir, outFile: options.outFile });
+    if (options.json) {
+      console.log(JSON.stringify(freshness, null, 2));
+    } else {
+      console.log(`Index freshness: ${freshness.state}`);
+      console.log(freshness.message);
+    }
+    return freshness.stale ? 1 : 0;
+  }
+
   const index = buildPackageRunsIndex({ repoRoot, runsDir: options.runsDir });
   const outPath = path.resolve(repoRoot, options.outFile || DEFAULT_OUT_FILE);
   fs.writeFileSync(outPath, `${JSON.stringify(index, null, 2)}\n`, "utf8");
@@ -1611,6 +1707,7 @@ module.exports = {
   readNarrowShootingApproval,
   readEvidenceGate,
   isPackageRunDir,
+  indexFreshness,
   scanRun,
   buildPackageRunsIndex,
   main,

@@ -300,6 +300,101 @@ function conservativeBlockedActionsForRun(run = {}) {
   return [];
 }
 
+// Plain-language operator guidance for the CURRENT gate/blocker only. The rest
+// of the doctor output is technically precise but not enough for daily driving;
+// this answers "what does this mean, what do I physically do, what may AI do,
+// and what command runs next" without making the whole report verbose.
+const AI_SAFE_DEFAULT =
+  "Prepare checklists, summarize blockers, or write read-only reports. AI must not mark this gate approved, advance package-run state, or fabricate evidence.";
+
+const OPERATOR_GUIDANCE_BY_STATUS = {
+  "Idea run": {
+    productionMeaning: "No package has been selected yet. This is still an idea, not a committed production.",
+    nextHumanAction: "Generate package candidates and select the winning package (selected-package.md / .json).",
+  },
+  "Package selected": {
+    productionMeaning: "A package is chosen but the supporting research is not in place yet.",
+    nextHumanAction: "Assemble the research pack for the selected package.",
+  },
+  "Needs production planning": {
+    productionMeaning: "The script is approved, but the production plan is not shoot-ready, so there is nothing safe to shoot yet.",
+    nextHumanAction: "Finish production-plan.md to 'READY TO SHOOT' and clear any open items in production-blockers.md.",
+  },
+  "Needs shot/edit plan review": {
+    productionMeaning: "The production plan exists but its shot/edit plan has not been reviewed, so capture is not authorized.",
+    nextHumanAction: "Run the shot/edit plan review and resolve anything it flags.",
+  },
+  "Needs shot/edit plan approval": {
+    productionMeaning: "The shot/edit plan was reviewed but not yet accepted, so capture is still blocked.",
+    nextHumanAction: "Decide on the shot/edit plan; record an explicit 'Review status: PASS' and 'Stage accepted: yes' once you approve it.",
+  },
+  "Ready for capture checklist": {
+    productionMeaning: "The plan is approved and you can prepare the capture checklist before recording.",
+    nextHumanAction: "Generate the capture checklist, then record the planned media.",
+  },
+  "Needs capture": {
+    productionMeaning:
+      "No real recorded media has been reviewed yet. Generated capture checklist files do not prove that A-roll, screen recordings, or audio takes exist.",
+    nextHumanAction: "Record or locate the actual capture media (A-roll, screen recordings, audio), then review it.",
+  },
+  "Needs rough-cut review": {
+    productionMeaning: "A rough cut is expected, but there are no real human watch notes proving it was reviewed in the timeline.",
+    nextHumanAction: "Watch the rough cut in Resolve and write real notes in rough-cut-watch-notes.md.",
+  },
+  "Needs final review": {
+    productionMeaning: "The video is near done, but the final watch-down with real notes has not happened.",
+    nextHumanAction: "Do the final watch-down and record real notes before publish prep.",
+  },
+  "Needs export check": {
+    productionMeaning: "Editing looks complete on paper, but the export/delivery readiness is not proven.",
+    nextHumanAction: "Confirm the final export exists and complete delivery-readiness.md to 'READY TO UPLOAD'.",
+  },
+  "Needs publication metadata": {
+    productionMeaning: "Upload is approved in principle, but the title/description/metadata are not complete and reviewed.",
+    nextHumanAction: "Finalize publication metadata and mark it 'READY TO SCHEDULE'.",
+  },
+  "Needs archive data": {
+    productionMeaning: "The video is published-ready, but the archive manifest is incomplete.",
+    nextHumanAction: "Complete archive-manifest.md to 'READY TO ARCHIVE'.",
+  },
+  "Needs repurposing approval": {
+    productionMeaning: "Archiving is done, but the repurposing/Shorts plan is not approved.",
+    nextHumanAction: "Approve the repurposing plan ('READY TO CUT SHORTS') if you want derivative cuts.",
+  },
+};
+
+function operatorGuidanceForRun(run = {}) {
+  const command = run.nextRecommendedCommand || "";
+  if (run.packageRunState && run.packageRunState.isInactive) {
+    return {
+      productionMeaning: `This run is ${run.packageRunState.state}. It is not an active production target and must not be advanced.`,
+      nextHumanAction: "Leave it inactive, or explicitly reactivate it in package-run-state.md if you decide to resume it.",
+      aiSafeAction: "Summarize status only. Do not reactivate, approve, or advance an inactive run.",
+      nextCommand: command,
+    };
+  }
+  const status = run.status || "";
+  const blocker = firstBlockerReason(run);
+  const base = OPERATOR_GUIDANCE_BY_STATUS[status];
+  if (base) {
+    return { ...base, aiSafeAction: AI_SAFE_DEFAULT, nextCommand: command };
+  }
+  if (/^Ready\b/.test(status)) {
+    return {
+      productionMeaning: `This run is at "${status}" — the current gate's evidence is in place and it is ready for the next human decision.`,
+      nextHumanAction: run.nextSafeAction || "Review and approve the next gate when you are ready.",
+      aiSafeAction: AI_SAFE_DEFAULT,
+      nextCommand: command,
+    };
+  }
+  return {
+    productionMeaning: blocker || `This run is at "${status}".`,
+    nextHumanAction: run.nextSafeAction || "Complete the current gate's required evidence, then re-run the doctor.",
+    aiSafeAction: AI_SAFE_DEFAULT,
+    nextCommand: command,
+  };
+}
+
 function primaryNextSafeAction(run = {}, effectiveReadiness = {}) {
   const blockingGate = packageRunsIndex.firstBlockingGateForRun(run);
   if (blockingGate && blockingGate.nextSafeAction) return blockingGate.nextSafeAction;
@@ -336,6 +431,7 @@ function buildDoctorReport(runDirInput, options = {}) {
     evidenceGate: run.evidenceGate,
     effectiveReadiness,
     nextSafeAction,
+    operatorGuidance: operatorGuidanceForRun(run),
     lifecycleGate: lifecycleGateSummary(run.lifecycleGate),
     approvalMarkersDetected: approvalMarkersDetected(run.lifecycleGate),
     detectedKnownArtifacts: detected,
@@ -379,6 +475,16 @@ function renderText(report) {
   lines.push(`Next command: ${report.nextRecommendedCommand || "manual review or no deterministic command"}`);
   if (report.lifecycleGate.shotEditPlanNextSafeAction) {
     lines.push(`Stage 4 next safe action: ${report.lifecycleGate.shotEditPlanNextSafeAction}`);
+  }
+  if (report.operatorGuidance) {
+    lines.push("");
+    lines.push("Operator guidance (current gate):");
+    lines.push(`- Production meaning: ${report.operatorGuidance.productionMeaning}`);
+    lines.push(`- Next human action: ${report.operatorGuidance.nextHumanAction}`);
+    lines.push(`- AI-safe action: ${report.operatorGuidance.aiSafeAction}`);
+    if (report.operatorGuidance.nextCommand) {
+      lines.push(`- Next command: ${report.operatorGuidance.nextCommand}`);
+    }
   }
   lines.push("");
   lines.push("Blocking reasons:");
@@ -495,6 +601,7 @@ module.exports = {
   overallStatus,
   blockingReasons,
   approvalMarkersDetected,
+  operatorGuidanceForRun,
   primaryNextSafeAction,
   buildDoctorReport,
   renderText,

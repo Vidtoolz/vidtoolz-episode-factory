@@ -1,8 +1,9 @@
 # VIDTOOLZ Video Production System — Usage Guide
 
-Grounded in the real system state as of 2026-06-22.
-Active run: 2026-05-06-ai-video-proof-plan (Rough cut → Second cut, NEEDS PICKUPS).
-Tests: 899/899 passing. Cockpit port: 8010.
+Grounded in the real system state as of 2026-06-29.
+Active run: 2026-06-28-stop-writing-your-shorts-like-blog-posts (production prep / production-brief stage).
+Superseded inactive run: 2026-05-06-ai-video-proof-plan.
+Tests: run `scripts/verify.sh` for the current count. Cockpit port: 8010.
 
 ---
 
@@ -49,7 +50,7 @@ Do this instead:
 
 1. Open http://127.0.0.1:8010/package-runs-dashboard.html
 2. Look at the "Productions Overview" section at the top — it lists all runs
-3. Click your active run to focus it (2026-05-06-ai-video-proof-plan)
+3. Click your active run to focus it (2026-06-28-stop-writing-your-shorts-like-blog-posts)
 4. Read the "Next Safe Action" panel — it reads local evidence only and tells you:
    - What stage you are at
    - What is already done
@@ -63,16 +64,9 @@ Do this instead:
    - final-script.md (9 narrative sections)
 7. Resume from whatever phase the Next Safe Action indicates
 
-Right now your Next Safe Action says:
-  Stage: Rough cut → Second cut
-  State: NEEDS PICKUPS (since May 17)
-  Decision: How to add visual variety to the rough cut
-  Options: A (existing A-roll closeups), B (new pickups), C (both)
-  Recommended: C
-
-But there is also a real production blocker in the Friction Log:
-  Kling b-roll candidates folder does not exist yet on VIDNAS.
-  Three MP4s need to be manually created before Resolve testing can continue.
+Right now your active run is at production prep / production-brief stage.
+The immediate blocker is that production-brief.md does not exist yet.
+Do not move to FLUX, PRESTO/Wan, Resolve, or publish actions until production prep is complete.
 
 ---
 
@@ -170,13 +164,8 @@ and verify files exist after creation, but cannot generate clips or operate Klin
     /mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-image-assets/<topic>/kling-video-candidates/
 57. Verify all B-roll clips are on VIDNAS and accessible from Resolve clients
 
-For the current active run, the specific handoff is:
-  Create these 3 Kling MP4s from the selected stills:
-    - block-024-prompt-03-kling-01.mp4
-    - block-027-prompt-03-kling-01.mp4
-    - block-030-prompt-03-kling-01.mp4
-  Destination:
-    /mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-image-assets/Stop_Planning_AI_Videos_Until_You_Have_A_Proof_Plan/kling-video-candidates/
+For the current active run, there is no Kling/PRESTO handoff yet.
+Finish production prep first and verify the generated production artifacts before creating media.
 
 ### PHASE 10: A-ROLL RECORDING (Stage 9)
 
@@ -259,8 +248,8 @@ A direct POST without the nonce will get 403.
 This was a real bug found during validation — friction-log.js was missing the nonce.
 Fixed on 2026-06-22. Regression tests in tests/friction-log-nonce.test.js.
 
-Current friction log for the active run has 1 open entry:
-  Kling b-roll candidate folder missing on VIDNAS (high severity, unresolved).
+The current active run is not at the friction-log / rough-cut repair stage.
+Use the Runs Dashboard and package-run audit output for the next safe action.
 
 ---
 
@@ -319,19 +308,14 @@ Publish Gate         http://127.0.0.1:8010/publish-gate.html
 
 ## YOUR CURRENT NEXT ACTION
 
-Your active run (2026-05-06-ai-video-proof-plan) is at Rough cut → Second cut.
+Your active run (2026-06-28-stop-writing-your-shorts-like-blog-posts) is at production prep / production-brief stage.
 
-Two things are blocking progress:
+The current blocker is:
 
-1. KLING B-ROLL (from Friction Log):
-   The kling-video-candidates/ folder does not exist on VIDNAS.
-   Create the 3 Kling MP4s listed in Phase 9 above, move them to VIDNAS.
-   This is manual — you operate Kling.
+1. PRODUCTION PREP:
+   production-brief.md is missing.
+   The production-prep generator also requires a selected package file
+   (selected-package.json or selected-package.md) before it can create the brief.
 
-2. VISUAL VARIETY DECISION (from STATUS.md):
-   How to add visual variety to the rough cut.
-   Options: A (existing A-roll closeups), B (new pickups), C (both).
-   Recommended: C — costs 30 minutes max, keeps momentum.
-
-After both are resolved, continue with Resolve assembly (Phase 11)
-and work toward the Publish Gate (Phase 12).
+Do not create media, start PRESTO/Wan, open Resolve work, or publish anything until
+the production-prep artifacts exist and the dashboard/audit reports the next safe action.

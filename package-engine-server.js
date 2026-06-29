@@ -14,6 +14,9 @@ const exportChecklistScript = require('./scripts/package-run-export-checklist.js
 const publicationMetadataScript = require('./scripts/package-run-publication-metadata.js');
 const archiveManifestScript = require('./scripts/package-run-archive-manifest.js');
 const nextSafeActionScript = require('./scripts/package-run-next-safe-action.js');
+const activeStateAuditScript = require('./scripts/package-run-active-state-audit.js');
+const packageRunsIndexScript = require('./scripts/package-runs-index.js');
+const systemRegistryScript = require('./scripts/system-registry.js');
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
@@ -7168,6 +7171,116 @@ function providerConfig(env = process.env) {
   };
 }
 
+const COCKPIT_ORIENTATION_API = '/api/cockpit-orientation';
+
+const COCKPIT_OUT_OF_SCOPE = [
+  'New AI generation lanes or model integrations',
+  'Advancing gates, approvals, publishing, or upload prep',
+  'Editing past the Resolve handoff (scope ends at "ready for Resolve")',
+  'Broad documentation rewrites',
+];
+
+// Aggregates the canonical operator-clarity signals (active-state audit, doctor,
+// next-safe-action, index freshness, registry) into one payload the cockpit
+// homepage panel renders. It never advances state; if active state is ambiguous,
+// unknown, or absent it returns AMBIGUOUS mode and withholds normal next-action
+// guidance instead of guessing.
+function buildCockpitOrientation(options = {}) {
+  const repoRoot = options.repoRoot || __dirname;
+  const audit = activeStateAuditScript.buildActiveStateAudit({ repoRoot });
+  const freshness = packageRunsIndexScript.indexFreshness({ repoRoot });
+  let registry = null;
+  try {
+    const loaded = systemRegistryScript.loadRegistry();
+    registry = {
+      lastVerified: loaded.last_verified || '',
+      components: (loaded.components || []).map((component) => ({
+        id: component.id,
+        name: component.name,
+        machine: component.machine || null,
+        url: component.url || null,
+      })),
+    };
+  } catch (_error) {
+    registry = null;
+  }
+
+  const base = {
+    ok: true,
+    readOnly: true,
+    indexFreshness: { state: freshness.state, stale: freshness.stale, message: freshness.message, rebuildCommand: freshness.rebuildCommand },
+    activeStateOk: audit.ok,
+    ambiguity: audit.ambiguity,
+    invalidState: audit.invalidState,
+    guidanceWithheld: audit.guidanceWithheld,
+    warnings: audit.warnings || [],
+    outOfScope: COCKPIT_OUT_OF_SCOPE,
+    registry,
+  };
+
+  if (audit.guidanceWithheld || !audit.selectedActiveRun) {
+    return {
+      ...base,
+      mode: 'AMBIGUOUS',
+      activeRun: '',
+      activeRunPath: '',
+      currentGate: 'Unknown',
+      blocker: audit.invalidState
+        ? 'One or more runs have no explicit package-run-state.md marker (state UNKNOWN).'
+        : audit.ambiguity
+          ? 'Multiple package runs are marked active.'
+          : 'No package run is marked active.',
+      nextValidAction: audit.exactNextSafeAction,
+      needsMikko: 'Resolve active-run state: mark exactly one run active with an explicit package-run-state.md marker.',
+      aiSafeAction: 'Summarize state only. Do not pick an active run or advance any gate.',
+    };
+  }
+
+  const runPath = audit.selectedActiveRun;
+  const runId = runPath.replace(/^package-runs\//, '');
+  let doctor = null;
+  let nextSafe = null;
+  try {
+    doctor = packageRunDoctor.buildDoctorReport(runPath, { repoRoot });
+  } catch (_error) {
+    doctor = null;
+  }
+  try {
+    nextSafe = nextSafeActionScript.buildNextSafeAction(runId, { repoRoot });
+  } catch (_error) {
+    nextSafe = null;
+  }
+
+  let workflowPath = '';
+  try {
+    workflowPath = packageRunsIndexScript.readWorkflowPathForRun(path.join(repoRoot, runPath));
+  } catch (_error) {
+    workflowPath = '';
+  }
+  const mediaSystem = workflowPath === 'vertical'
+    ? 'Vertical / Shorts path: media via I2V (FLUX → PRESTO Wan2.2). No separate AIGEN package run.'
+    : 'Horizontal path: AIGEN image/video pipeline (FLUX → image select → PRESTO/Kling → Resolve).';
+
+  const guidance = doctor && doctor.operatorGuidance ? doctor.operatorGuidance : null;
+
+  return {
+    ...base,
+    mode: 'Operator Clarity / Production',
+    activeRun: doctor ? doctor.runId : runId,
+    activeRunPath: `${runPath}/`,
+    currentGate: doctor ? doctor.currentInferredStage : '',
+    overallStatus: doctor ? doctor.overallStatus : '',
+    blocker: doctor ? doctor.firstBlockerReason : '',
+    nextValidAction: (nextSafe && nextSafe.nextHumanAction) || (doctor && doctor.nextSafeAction) || '',
+    nextCommand: (doctor && doctor.nextRecommendedCommand) || (nextSafe && nextSafe.nextCommand) || '',
+    needsMikko: guidance ? guidance.nextHumanAction : (doctor && doctor.nextSafeAction) || '',
+    aiSafeAction: guidance ? guidance.aiSafeAction : 'Prepare checklists or summarize blockers only. Do not approve or advance gates.',
+    productionMeaning: guidance ? guidance.productionMeaning : '',
+    workflowPath,
+    linkedMediaSystem: mediaSystem,
+  };
+}
+
 function createStatusResponse(env = process.env) {
   const config = providerConfig(env);
   return {
@@ -8053,6 +8166,15 @@ function createServer(options = {}) {
     }
     if (req.method === 'GET' && url.pathname === STATUS_API) {
       sendJSON(res, 200, createStatusResponse());
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === COCKPIT_ORIENTATION_API) {
+      try {
+        sendJSON(res, 200, buildCockpitOrientation());
+      } catch (error) {
+        sendError(res, 500, `Cockpit orientation unavailable: ${error.message}`, null);
+      }
       return;
     }
 
@@ -9023,6 +9145,18 @@ if (require.main === module) {
     console.error('Unhandled rejection:', reason);
   });
 
+  // Safe auto-rebuild: if the package-runs index mirror is stale or missing on
+  // startup, refresh it so the cockpit orientation panel never reads stale state.
+  try {
+    const freshness = packageRunsIndexScript.indexFreshness({ repoRoot: __dirname });
+    if (freshness.stale) {
+      console.log(`package-runs-index.json is ${freshness.state}; rebuilding before serving.`);
+      rebuildPackageRunsIndex();
+    }
+  } catch (error) {
+    console.error(`Index freshness check skipped: ${error.message}`);
+  }
+
   const server = createServer();
 
   server.listen(PORT, HOST, () => {
@@ -9033,6 +9167,8 @@ if (require.main === module) {
 
 module.exports = {
   API_PREFIX,
+  COCKPIT_ORIENTATION_API,
+  buildCockpitOrientation,
   isResolveSafeFilename,
   DAILY_SCOUT_RUN_API,
   PACKAGE_RUNS_REINDEX_API,

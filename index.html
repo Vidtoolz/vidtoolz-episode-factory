@@ -8,6 +8,13 @@
   </head>
   <body>
   <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html" class="active">Episode Board</a><a href="new-video-build.html">Build New Video</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a></nav>
+<section id="operatorOrientation" class="operator-orientation" aria-label="Operator orientation" style="margin:10px 16px;padding:14px 16px;border:1px solid var(--border);border-radius:8px;background:var(--panel);">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+    <strong style="font-size:15px;">📍 Where am I? — live operator orientation</strong>
+    <span id="ooFreshness" class="muted" style="font-size:12px;"></span>
+  </div>
+  <div id="ooBody" style="margin-top:8px;font-size:13px;line-height:1.5;">Loading current state…</div>
+</section>
 <details class="page-guide" open>
   <summary>Page Guide — What is this?</summary>
   <div class="page-guide-body">
@@ -209,5 +216,78 @@
     <script src="episode-model.js?v=1.7.4"></script>
     <script src="storage-adapter.js?v=1.7.4"></script>
     <script src="app.js?v=1.7.4"></script>
+    <script>
+      // Operator orientation panel: reads the cockpit's canonical state endpoint
+      // (active-state audit + doctor + next-safe-action + index freshness) so the
+      // homepage answers "what is active, what is blocking, what do I do next?"
+      // in one glance. Degrades quietly if the cockpit server is not running.
+      (function () {
+        var body = document.getElementById("ooBody");
+        var freshEl = document.getElementById("ooFreshness");
+        if (!body) return;
+        function esc(value) {
+          return String(value == null ? "" : value).replace(/[&<>"]/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+          });
+        }
+        function row(label, value) {
+          if (!value) return "";
+          return (
+            '<div style="display:flex;gap:8px;margin:2px 0;">' +
+            '<span style="min-width:140px;color:var(--muted);">' + esc(label) + "</span>" +
+            "<span>" + esc(value) + "</span></div>"
+          );
+        }
+        fetch("/api/cockpit-orientation", { cache: "no-store" })
+          .then(function (r) {
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r.json();
+          })
+          .then(function (envelope) {
+            // The server wraps JSON payloads as { ok, data }.
+            var o = envelope && envelope.data ? envelope.data : envelope;
+            var f = o.indexFreshness || {};
+            if (freshEl) {
+              freshEl.textContent = "Index: " + (f.state || "unknown");
+              freshEl.style.color = f.stale ? "var(--danger)" : "var(--muted)";
+            }
+            if (o.mode === "AMBIGUOUS") {
+              body.innerHTML =
+                '<div style="padding:8px 10px;border-radius:6px;background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.3);">' +
+                '<strong style="color:var(--danger);">Active run status: AMBIGUOUS</strong><br>' +
+                esc(o.blocker) +
+                "<br>Normal next-action guidance is disabled until active state is resolved.</div>" +
+                row("Next valid action", o.nextValidAction) +
+                row("Needs Mikko", o.needsMikko) +
+                ((o.warnings && o.warnings.length)
+                  ? '<div style="margin-top:6px;color:var(--danger);font-size:12px;">' + o.warnings.map(esc).join("<br>") + "</div>"
+                  : "");
+              return;
+            }
+            body.innerHTML =
+              row("Mode", o.mode) +
+              row("Active run", o.activeRun) +
+              row("Current gate", o.currentGate + (o.overallStatus ? " (" + o.overallStatus + ")" : "")) +
+              row("Blocker", o.blocker) +
+              row("Next valid action", o.nextValidAction) +
+              row("Next command", o.nextCommand) +
+              row("Needs Mikko", o.needsMikko) +
+              row("AI-safe action", o.aiSafeAction) +
+              row("Path", o.activeRunPath) +
+              row("Media system", o.linkedMediaSystem) +
+              row("Out of scope", (o.outOfScope || []).join("; "));
+            if (f.stale) {
+              body.innerHTML +=
+                '<div style="margin-top:6px;color:var(--danger);font-size:12px;">⚠ ' + esc(f.message) + "</div>";
+            }
+          })
+          .catch(function () {
+            body.innerHTML =
+              '<span class="muted">Operator orientation is unavailable — start the cockpit server ' +
+              "(node package-engine-server.js) to see live state.</span>";
+            if (freshEl) freshEl.textContent = "";
+          });
+      })();
+    </script>
   </body>
 </html>

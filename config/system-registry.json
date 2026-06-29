@@ -1,0 +1,72 @@
+{
+  "generated_or_verified": "verified",
+  "last_verified": "2026-06-29",
+  "note": "Canonical, source-verified registry of the services/machines this cockpit talks to. Each component records the file the fact was verified from. Facts NOT verifiable from this repo are omitted rather than guessed. Update last_verified and the relevant source when a fact changes.",
+  "components": [
+    {
+      "id": "cockpit",
+      "name": "VIDTOOLZ Cockpit / Package Engine",
+      "machine": "vidnux",
+      "host": "127.0.0.1",
+      "port": 8010,
+      "url": "http://127.0.0.1:8010",
+      "role": "Operator cockpit and package-run engine (HTTP server, no framework). Serves all cockpit pages and package-run APIs.",
+      "start": "node package-engine-server.js  (PORT/HOST env-overridable)",
+      "health_check": "GET http://127.0.0.1:8010/api/status",
+      "source": "package-engine-server.js:27-28"
+    },
+    {
+      "id": "aigen-review",
+      "name": "AIGEN Review View",
+      "machine": "vidnux",
+      "host": "127.0.0.1",
+      "port": 8099,
+      "url": "http://127.0.0.1:8099",
+      "role": "Reviews AI-generated MP4 clips before Resolve. Proxied into the cockpit; not started by the cockpit.",
+      "start": "cd ~/work/aigen-edit && python3 review-view/server.py",
+      "health_check": "Cockpit proxies it; a 502 from the cockpit means it is not running.",
+      "source": "package-engine-server.js:8969-8978, workflow-wizard.js:102-106"
+    },
+    {
+      "id": "presto-comfyui",
+      "name": "PRESTO ComfyUI (Wan2.2 video generation)",
+      "machine": "PRESTO",
+      "host": "192.168.50.187",
+      "port": 8188,
+      "url": "http://192.168.50.187:8188",
+      "role": "Remote GPU worker. Generates Wan2.2 image-to-video clips for the 81-frame production lane.",
+      "health_check": "Cockpit pre-flight checks reachability before submitting a PRESTO job.",
+      "source": "package-engine-server.js:118 (PRESTO_BASE_URL), :5926"
+    },
+    {
+      "id": "flux-generation",
+      "name": "FLUX image generation (handoff script)",
+      "machine": "vidnux",
+      "host": null,
+      "port": null,
+      "url": null,
+      "role": "Local FLUX text-to-image generation, run as a child script (no standalone HTTP port). Submitted through the cockpit /api/flux/* routes.",
+      "script": "/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/image-generation/flux-gguf/run-handoff.py",
+      "source": "package-engine-server.js:131, :84-87"
+    },
+    {
+      "id": "vidnas",
+      "name": "VIDNAS shared media storage",
+      "machine": "VIDNAS",
+      "host": "192.168.61.186",
+      "port": null,
+      "url": null,
+      "role": "NAS holding shared media and the aigen library. Source of media for Resolve; destination for staged clips and final exports. The cockpit scope ends at staging clips here ('ready for Resolve').",
+      "mount": "/mnt/vidnas_public/VIDTOOLZ",
+      "aigen_root": "/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen",
+      "source": "package-engine-server.js:115, CLAUDE.md:69"
+    }
+  ],
+  "not_verified_here": [
+    {
+      "id": "mission-control",
+      "name": "Hermes Mission Control",
+      "reason": "Defined in a separate repo (hermes-mission-control), not in this repo. Its port is not declared in any file here, so it is intentionally left out of the verified component list rather than guessed."
+    }
+  ]
+}

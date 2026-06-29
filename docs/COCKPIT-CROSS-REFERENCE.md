@@ -9,7 +9,7 @@ Two separate web interfaces serve the VIDTOOLZ production system. This document 
 - **Port:** 8010 (default)
 - **Scope:** Full episode production lifecycle — topic ideas, package runs, gate management, script review, capture checklists, evidence review, export checklists, newsletter, archive.
 - **Pages:** mission-control.html, package-engine.html, package-runs-dashboard.html
-- **Tests:** 844 tests (scripts/verify.sh), GitHub Actions CI enabled (.github/workflows/verify.yml)
+- **Tests:** run `scripts/verify.sh` for the current count; GitHub Actions CI enabled (.github/workflows/verify.yml)
 - **State:** package-runs/ directory with STATUS.md per run
 
 ## Cockpit 2: AIGEN Review View (port 8099)
