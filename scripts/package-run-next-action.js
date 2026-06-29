@@ -1,6 +1,21 @@
 #!/usr/bin/env node
 "use strict";
 
+/*
+ * VIDTOOLZ next-action role
+ * Role: Standalone CLI "next production action" reporter for one package run.
+ * Canonical status: NOT the cockpit-facing path. No non-test production code calls this; it is
+ *   referenced only by tests/_helpers.js (standalone / legacy CLI helper). Do not wire it into the
+ *   cockpit or change operator guidance here.
+ * Primary callers: tests/_helpers.js; CLI: node scripts/package-run-next-action.js.
+ * Read/write behavior: READ-ONLY. Must not write package-run state or approval markers.
+ * Do not use for: changing cockpit homepage / package-runs dashboard next-action guidance
+ *   (see package-run-next-safe-action.js).
+ * Related scripts:
+ *   - package-run-next-safe-action.js: CANONICAL cockpit-facing next-safe-action.
+ *   - package-run-next-action-authority.js: authority/gating checks used by the workflow map.
+ */
+
 const fs = require("node:fs");
 const path = require("node:path");
 const packageRunDoctor = require("./package-run-doctor.js");
