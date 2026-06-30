@@ -21,10 +21,10 @@ Cockpit: http://127.0.0.1:8010
 
 You have two entry points:
 
-A. Projects board — http://127.0.0.1:8010/projects.html
-   All projects in a sortable, filterable table. Status and stage filters. Click Open on any row.
+A. Click desktop shortcut 10-Projects
+   Opens the Projects board — all projects in a sortable, filterable table. Status and stage filters. Click Open on any row.
 
-B. Desktop shortcut 09-Open-Active-Run
+B. Click desktop shortcut 09-Open-Active-Run
    Jumps straight to the active run.
 
 From a project, you land in the Project Workspace. The Next-task card at the top tells you exactly what to do next and has a button to do it. Click Focus mode for a distraction-free single-task view.
@@ -36,11 +36,12 @@ The system infers the next task from the files on disk — you do not need to re
 ## STARTING A NEW VIDEO
 
 Option A: From an idea
-1. Open http://127.0.0.1:8010/daily-idea-scout.html
+1. Click desktop shortcut 11-Ideas
+   Opens the Daily Idea Scout.
 2. Browse ideas by score. Click Approve, Park, or Reject.
 3. When a topic is worth making, click Promote to project.
    This creates a script-package with provenance. Idempotent — re-promoting opens the existing project.
-4. The new project appears on the Projects board. Open it and start with the Next-task card.
+4. The new project appears on the Projects board (shortcut 10). Open it and start with the Next-task card.
 
 Option B: From scratch
 1. Click desktop shortcut 03-Build-New-Video
@@ -183,6 +184,8 @@ Scroll the package-runs dashboard — the Pipeline Tracker shows every gate and 
 07  START-CAPTURE      Start 4K screen + audio capture
 08  STOP-CAPTURE       Stop capture, verify file
 09  Open-Active-Run    Open active run in dashboard (never stale)
+10  Projects           Open the Projects board
+11  Ideas              Open the Daily Idea Scout
 
 ---
 
