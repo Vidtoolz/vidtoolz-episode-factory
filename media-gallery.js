@@ -68,13 +68,23 @@
     return `${m}m ${s}s`;
   }
 
-  function classifyMedia(filename) {
+  // classifyMedia(filename, pathOrSource?) returns a provenance-aware badge.
+  // Manual-external media (GPT images / KlingAI videos imported by Mikko) is
+  // labeled distinctly from local FLUX/Wan2.2 output and is NEVER hidden.
+  function classifyMedia(filename, pathOrSource) {
     const lower = filename.toLowerCase();
+    const ctx = (String(pathOrSource || "") + " " + lower).toLowerCase();
+    const isImageExt = !!lower.match(/\.(png|jpg|jpeg|webp)$/);
+    const isVideoExt = !!lower.match(/\.(mp4|webm|mov|mkv)$/);
+    // Manual external first (folder/source hints), so it isn't mislabeled local.
+    if (ctx.includes("gpt-manual") || ctx.includes("gpt_manual")) return { type: "image", badge: "gpt", label: "MANUAL · GPT", external: true };
+    if (ctx.includes("klingai") || ctx.includes("kling-manual") || (ctx.includes("kling") && ctx.includes("manual"))) return { type: "video", badge: "klingai", label: "MANUAL · KlingAI", external: true };
+    if (ctx.includes("manual-external") || ctx.includes("manual_external")) return { type: isVideoExt ? "video" : "image", badge: "manual", label: "MANUAL · Imported", external: true };
     if (lower.includes("kling")) return { type: "video", badge: "kling", label: "Kling" };
-    if (lower.includes("wan") || lower.includes("promptfix")) return { type: "video", badge: "wan", label: "Wan2.2" };
-    if (lower.includes("flux") || lower.match(/\.(png|jpg|jpeg|webp)$/)) return { type: "image", badge: "flux", label: "FLUX" };
+    if (lower.includes("wan") || lower.includes("promptfix") || ctx.includes("videos/mp4")) return { type: "video", badge: "wan", label: "LOCAL · Wan2.2", external: false };
+    if (lower.includes("flux") || ctx.includes("flux-local") || isImageExt) return { type: "image", badge: "flux", label: "LOCAL · FLUX", external: false };
     if (lower.includes("camera") || lower.includes("a-roll") || lower.includes("aroll") || lower.includes("obs")) return { type: "video", badge: "camera", label: "Camera" };
-    if (lower.match(/\.(mp4|webm|mov)$/)) return { type: "video", badge: "", label: "Video" };
+    if (isVideoExt) return { type: "video", badge: "", label: "Video" };
     return { type: "image", badge: "", label: "Image" };
   }
 
@@ -127,7 +137,7 @@
     // Group by category
     const categories = {};
     assets.forEach((a) => {
-      const cls = classifyMedia(a.name);
+      const cls = classifyMedia(a.name, a.path || a.url || a.source || "");
       const cat = cls.label;
       if (!categories[cat]) categories[cat] = [];
       categories[cat].push({ ...a, ...cls });
@@ -154,7 +164,7 @@
     // Gallery grid
     html += '<div class="media-gallery">';
     assets.forEach((a) => {
-      const cls = classifyMedia(a.name);
+      const cls = classifyMedia(a.name, a.path || a.url || a.source || "");
       const isVideo = cls.type === "video";
       const src = a.url || a.path;
       const thumb = a.thumbnail || (isVideo ? src : src);

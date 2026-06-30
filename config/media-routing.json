@@ -1,0 +1,97 @@
+{
+  "_comment": "VIDTOOLZ media generation routing policy. SINGLE SOURCE OF TRUTH for which machine/engine owns each generation responsibility. This is hard policy, not a preference: local lanes must NEVER silently fall back to another host or to a cloud/external service. If a required local service is unavailable, the system must surface a clear blocked state and preserve the operator decision point. External (GPT/KlingAI) media is MANUAL ONLY — copy prompts out, import media back; never automated. Endpoints are overridable via the listed env vars so the policy can follow the real LAN without code edits.",
+  "version": 1,
+  "lanes": {
+    "image_prompt_generation": {
+      "label": "Image prompts",
+      "host": "vidnux",
+      "engine": "ollama",
+      "locality": "local",
+      "external_allowed": false,
+      "fallback_allowed": false,
+      "endpoint_env": ["OLLAMA_URL", "OLLAMA_BASE_URL"],
+      "endpoint_default": "http://127.0.0.1:11434",
+      "model_env": "OLLAMA_MODEL",
+      "model_default": "qwen3:14b",
+      "operator_text": "Image prompts: local Ollama on vidnux",
+      "manual_copy_allowed": true
+    },
+    "text_to_image_generation": {
+      "label": "Images",
+      "host": "vidnux",
+      "engine": "comfyui",
+      "preferred_workflow": "flux-gguf-1080x1920",
+      "resolution": "1080x1920",
+      "locality": "local",
+      "external_allowed": false,
+      "fallback_allowed": false,
+      "endpoint_env": ["AIGEN_COMFYUI_URL"],
+      "endpoint_default": "http://127.0.0.1:8188",
+      "operator_text": "Image generation: local ComfyUI/FLUX on vidnux"
+    },
+    "i2v_prompt_generation": {
+      "label": "I2V prompts",
+      "host": "presto",
+      "engine": "ollama",
+      "locality": "local",
+      "external_allowed": false,
+      "fallback_allowed": false,
+      "endpoint_env": ["OLLAMA_PRESTO_URL", "OLLAMA_PRESTO_BASE_URL"],
+      "endpoint_default": "http://192.168.50.187:11434",
+      "model_env": "OLLAMA_PRESTO_MODEL",
+      "model_default": "qwen3:14b",
+      "operator_text": "I2V prompts: local Ollama on PRESTO",
+      "manual_copy_allowed": true
+    },
+    "image_to_video_generation": {
+      "label": "Videos",
+      "host": "presto",
+      "engine": "comfyui",
+      "preferred_workflow": "wan22_i2v_vertical_1080x1920_30fps",
+      "resolution": "1080x1920",
+      "fps": 30,
+      "locality": "local",
+      "external_allowed": false,
+      "fallback_allowed": false,
+      "endpoint_env": ["AIGEN_PRESTO_BASE_URL"],
+      "endpoint_default": "http://192.168.50.187:8188",
+      "operator_text": "Video generation: local ComfyUI/Wan2.2 on PRESTO"
+    },
+    "manual_external_image_generation": {
+      "label": "External images (manual)",
+      "actor": "human_operator",
+      "likely_services": ["GPT image generation"],
+      "automation_allowed": false,
+      "import_allowed": true,
+      "operator_text": "External images: copy prompt to GPT in the browser; import the saved files back",
+      "generation_provider": "gpt_manual",
+      "generation_host": "external_browser",
+      "variant": "gpt-manual"
+    },
+    "manual_external_i2v_generation": {
+      "label": "External videos (manual)",
+      "actor": "human_operator",
+      "likely_services": ["KlingAI"],
+      "automation_allowed": false,
+      "import_allowed": true,
+      "operator_text": "External videos: copy I2V prompt + upload image to KlingAI in the browser; import the saved files back",
+      "generation_provider": "klingai_manual",
+      "generation_host": "external_browser",
+      "variant": "klingai-manual"
+    }
+  },
+  "operator_summary": [
+    "Image prompts: local Ollama on vidnux",
+    "Image generation: local ComfyUI on vidnux",
+    "I2V prompts: local Ollama on PRESTO",
+    "Video generation: local ComfyUI on PRESTO",
+    "External media: manual browser workflow only; import after generation"
+  ],
+  "non_goals": [
+    "OpenAI image API generation",
+    "KlingAI API generation",
+    "browser automation / login automation",
+    "remote start/stop of PRESTO ComfyUI",
+    "silent provider or host fallback"
+  ]
+}

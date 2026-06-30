@@ -231,6 +231,23 @@
         <button id="refresh-button" class="primary-btn" type="button">Refresh</button>
       </header>
 
+      <section id="mediaRoutingBanner" aria-label="Media generation routing" style="margin:12px 0;padding:12px 14px;border:1px solid var(--border,#30363d);border-radius:8px;background:var(--panel,#161b22);">
+        <div style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted,#8b949e);margin-bottom:8px;">Generation routing — local only, no fallback</div>
+        <div id="mediaRoutingPills" style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px;">
+          <span class="route-pill">LOCAL · vidnux · Ollama → image prompts</span>
+          <span class="route-pill">LOCAL · vidnux · ComfyUI FLUX → images</span>
+          <span class="route-pill">LOCAL · PRESTO · Ollama → I2V prompts</span>
+          <span class="route-pill">LOCAL · PRESTO · ComfyUI Wan2.2 → videos</span>
+          <span class="route-pill route-pill-manual">MANUAL EXTERNAL · GPT image → copy prompt / import</span>
+          <span class="route-pill route-pill-manual">MANUAL EXTERNAL · KlingAI video → copy prompt + image / import</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted,#8b949e);margin-top:8px;">External media is manual browser workflow only; import after generation with <code>scripts/import-manual-images.js</code> / <code>import-manual-videos.js</code>. If a local service is down the lane is <b>blocked</b>, never silently rerouted.</div>
+      </section>
+      <style>
+        .route-pill{background:var(--panel-3,#21262d);border:1px solid var(--border,#30363d);border-radius:100px;padding:3px 10px;color:#58a6ff;}
+        .route-pill-manual{color:#d29922;border-color:rgba(210,153,34,0.4);}
+      </style>
+
       <div id="canonicalOrientationStrip" aria-label="Canonical production state"></div>
       <section id="packageRunArtifactPanel" aria-label="Package-run artifacts"></section>
 

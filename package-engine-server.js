@@ -79,6 +79,8 @@ const OPEN_FILE_API = '/api/package-runs/open-file';
 const PICKUP_PLAN_SAVE_API = '/api/package-runs/pickup-plan/save';
 const AIGEN_STATUS_API = '/api/aigen/production-pipeline/status';
 const AIGEN_RESOLVE_ASSEMBLY_API = '/api/aigen/resolve-assembly/create';
+const MEDIA_ROUTING_API = '/api/media-routing';
+const PACKAGE_MEDIA_INDEX_API = '/api/aigen/package-media-index';
 const AIGEN_FLUX_IMAGES_API_PREFIX = '/api/aigen/flux-images/';
 const AIGEN_SELECTED_IMAGES_API = '/api/aigen/selected-images';
 const AIGEN_UPLOAD_IMAGE_API = '/api/aigen/upload-image';
@@ -164,6 +166,59 @@ const LOCAL_IMAGE_PROVIDER = Object.freeze({
 const OLLAMA_BASE_URL = String(process.env.OLLAMA_URL || process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
 const OLLAMA_MODEL = String(process.env.OLLAMA_MODEL || 'qwen3:14b');
 const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS) > 0 ? Number(process.env.OLLAMA_TIMEOUT_MS) : 120000;
+// Media routing policy: image prompts -> vidnux Ollama (above); I2V prompts ->
+// PRESTO Ollama (below). These are SEPARATE hosts by hard policy — I2V prompts
+// must NOT fall back to vidnux Ollama. Endpoints are env-overridable so the
+// policy can follow the real LAN. See media-routing.js / config/media-routing.json.
+const mediaRouting = require('./media-routing.js');
+const { buildPackageMediaIndex } = require('./package-media-index.js');
+const OLLAMA_PRESTO_BASE_URL = mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT);
+const OLLAMA_PRESTO_MODEL = mediaRouting.resolveModel(mediaRouting.LANE.I2V_PROMPT);
+
+// Read-only routing status: the policy plus the resolved local endpoints/models
+// for each lane. Used by the cockpit to make machine/provider routing obvious
+// and to state the no-fallback doctrine. Performs no network calls.
+function buildMediaRoutingStatus() {
+  const L = mediaRouting.LANE;
+  return {
+    ok: true,
+    operator_summary: mediaRouting.operatorSummary(),
+    lanes: {
+      image_prompt_generation: {
+        host: 'vidnux', engine: 'ollama', locality: 'local', fallback_allowed: false,
+        endpoint: OLLAMA_BASE_URL, model: OLLAMA_MODEL,
+        label: 'LOCAL · vidnux · Ollama',
+      },
+      text_to_image_generation: {
+        host: 'vidnux', engine: 'comfyui', locality: 'local', fallback_allowed: false,
+        endpoint: LOCAL_IMAGE_PROVIDER.url, workflow: 'flux-gguf-1080x1920',
+        label: 'LOCAL · vidnux · ComfyUI FLUX',
+      },
+      i2v_prompt_generation: {
+        host: 'presto', engine: 'ollama', locality: 'local', fallback_allowed: false,
+        endpoint: OLLAMA_PRESTO_BASE_URL, model: OLLAMA_PRESTO_MODEL,
+        label: 'LOCAL · PRESTO · Ollama',
+      },
+      image_to_video_generation: {
+        host: 'presto', engine: 'comfyui', locality: 'local', fallback_allowed: false,
+        endpoint: (process.env.AIGEN_PRESTO_BASE_URL || PRESTO_BASE_URL), workflow: 'wan22_i2v_vertical_1080x1920_30fps',
+        label: 'LOCAL · PRESTO · ComfyUI Wan2.2',
+      },
+      manual_external_image_generation: {
+        actor: 'human_operator', automation_allowed: false, import_allowed: true,
+        label: 'MANUAL EXTERNAL · GPT image',
+      },
+      manual_external_i2v_generation: {
+        actor: 'human_operator', automation_allowed: false, import_allowed: true,
+        label: 'MANUAL EXTERNAL · KlingAI video',
+      },
+    },
+    openai_image_generation: 'disabled',
+    non_goals: mediaRouting.POLICY.non_goals,
+    // referenced so the lane constants stay wired to this status payload
+    lane_keys: Object.values(L),
+  };
+}
 const DEFAULT_THUMBNAIL_PROVIDER = 'placeholder';
 const DEFAULT_OPENAI_IMAGE_MODEL = 'gpt-image-1';
 const DEFAULT_OPENAI_IMAGE_SIZE = '1536x1024';
@@ -4372,9 +4427,13 @@ function buildBeginningTriageUserPrompt(fields = {}) {
 
 // Call the local Ollama chat API. Returns the raw assistant message content (a
 // JSON string when `schema` is supplied). options.fetchImpl is injectable for tests.
-async function callOllamaChat({ system, user, schema, model } = {}, options = {}) {
+async function callOllamaChat({ system, user, schema, model, baseUrl } = {}, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
-  const url = `${OLLAMA_BASE_URL}/api/chat`;
+  // baseUrl selects the host lane (default vidnux Ollama). I2V prompts pass the
+  // PRESTO Ollama base; on failure we surface a blocked state and do NOT retry
+  // against another host.
+  const resolvedBase = String(baseUrl || OLLAMA_BASE_URL).replace(/\/+$/, '');
+  const url = `${resolvedBase}/api/chat`;
   let response;
   try {
     response = await fetchImpl(url, {
@@ -4400,7 +4459,7 @@ async function callOllamaChat({ system, user, schema, model } = {}, options = {}
     const message = timedOut
       ? `Ollama generation timed out after ${Math.ceil(OLLAMA_TIMEOUT_MS / 1000)}s. Try a smaller model via OLLAMA_MODEL.`
       : refused
-      ? `Could not reach Ollama at ${OLLAMA_BASE_URL}. Is it running? Start it with: ollama serve`
+      ? `Could not reach Ollama at ${resolvedBase}. Is it running on that host? Start it with: ollama serve (no fallback to another host).`
       : `Ollama request failed: ${detail || 'unknown network error'}`;
     const wrapped = new Error(message);
     wrapped.statusCode = timedOut ? 504 : 503;
@@ -4716,11 +4775,14 @@ async function generateI2vPrompts(payload = {}, options = {}) {
     '',
     `Write exactly ${count} image-to-video motion prompts, one per shot, that match the energy and beats of this monologue. Each is a single motion description for one still image.`,
   ].join('\n');
+  // Routing policy: I2V prompts are generated by Ollama on PRESTO, not vidnux.
+  // No fallback to vidnux Ollama or a cloud LLM — if PRESTO Ollama is down,
+  // callOllamaChat throws a 503 blocked state that names the PRESTO endpoint.
   const content = await callOllamaChat(
-    { system: buildI2vSystemPrompt(), user, schema, model: payload.model }, options);
+    { system: buildI2vSystemPrompt(), user, schema, model: payload.model || OLLAMA_PRESTO_MODEL, baseUrl: OLLAMA_PRESTO_BASE_URL }, options);
   let parsed;
   try { parsed = JSON.parse(content); } catch (_e) {
-    const error = new Error('Ollama did not return valid JSON. Try again, or set OLLAMA_MODEL to another installed model.');
+    const error = new Error('PRESTO Ollama did not return valid JSON. Try again, or set OLLAMA_PRESTO_MODEL to another installed model.');
     error.statusCode = 502;
     throw error;
   }
@@ -4730,11 +4792,22 @@ async function generateI2vPrompts(payload = {}, options = {}) {
     .slice(0, count)
     .map((prompt, i) => ({ prompt_index: i + 1, prompt }));
   if (!prompts.length) {
-    const error = new Error('Ollama returned no usable I2V prompts. Try again.');
+    const error = new Error('PRESTO Ollama returned no usable I2V prompts. Try again.');
     error.statusCode = 502;
     throw error;
   }
-  return { model: payload.model || OLLAMA_MODEL, count: prompts.length, prompts };
+  const prov = mediaRouting.provenanceFor(mediaRouting.LANE.I2V_PROMPT);
+  return {
+    model: payload.model || OLLAMA_PRESTO_MODEL,
+    count: prompts.length,
+    prompts,
+    prompt_type: 'image_to_video',
+    prompt_provider: prov.prompt_provider,
+    prompt_host: prov.prompt_host,
+    prompt_model: payload.model || OLLAMA_PRESTO_MODEL,
+    source: prov.source,
+    external_copy_allowed: true,
+  };
 }
 
 // Save I2V prompts into a package's video-prompts.json (consumed by PRESTO).
@@ -4767,7 +4840,17 @@ function saveI2vPrompts(payload = {}, options = {}) {
   }
   const outPath = path.join(packageDir, 'video-prompts.json');
   const tmpPath = `${outPath}.tmp`;
-  fs.writeFileSync(tmpPath, `${JSON.stringify({ version: 1, prompts }, null, 2)}\n`, 'utf8');
+  const prov = mediaRouting.provenanceFor(mediaRouting.LANE.I2V_PROMPT);
+  const record = {
+    version: 1,
+    prompt_type: 'image_to_video',
+    prompt_provider: prov.prompt_provider,
+    prompt_host: prov.prompt_host,
+    source: prov.source,
+    external_copy_allowed: true,
+    prompts,
+  };
+  fs.writeFileSync(tmpPath, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
   fs.renameSync(tmpPath, outPath);
   return { package_id: packageId, path: 'video-prompts.json', count: prompts.length };
 }
@@ -7606,6 +7689,8 @@ function createStatusResponse(env = process.env) {
     quality: config.quality,
     format: config.outputFormat,
     api: API_PREFIX,
+    mediaRoutingApi: MEDIA_ROUTING_API,
+    mediaRoutingSummary: mediaRouting.operatorSummary(),
     packageRunsCandidatesApi: PACKAGE_RUNS_CANDIDATES_API,
     nonceHeader: LOCAL_WRITE_NONCE_HEADER,
     localWriteNonce: LOCAL_WRITE_NONCE,
@@ -8388,6 +8473,24 @@ function createServer(options = {}) {
     }
     if (req.method === 'GET' && url.pathname === STATUS_API) {
       sendJSON(res, 200, createStatusResponse());
+      return;
+    }
+
+    // Read-only media routing policy: which machine/engine owns each generation
+    // lane, plus the resolved local endpoints. No external calls.
+    if (req.method === 'GET' && url.pathname === MEDIA_ROUTING_API) {
+      sendJSON(res, 200, buildMediaRoutingStatus());
+      return;
+    }
+
+    // Read-only unified package media index (local + manual-external together).
+    if (req.method === 'GET' && url.pathname === PACKAGE_MEDIA_INDEX_API) {
+      try {
+        const resolved = resolveAigenPackageDir(url.searchParams.get('package') || url.searchParams.get('package_id') || '', { root: serverOptions.root || ROOT });
+        sendJSON(res, 200, buildPackageMediaIndex(resolved.packageDir));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'package-media-index-error');
+      }
       return;
     }
 
@@ -9670,6 +9773,12 @@ module.exports = {
   saveScriptCommitmentCheck,
   generateI2vPrompts,
   saveI2vPrompts,
+  buildMediaRoutingStatus,
+  buildPackageMediaIndex,
+  MEDIA_ROUTING_API,
+  PACKAGE_MEDIA_INDEX_API,
+  OLLAMA_PRESTO_BASE_URL,
+  OLLAMA_PRESTO_MODEL,
   uploadAigenImage,
   generateOneTopicCandidate,
   workflowGenerationEnv,

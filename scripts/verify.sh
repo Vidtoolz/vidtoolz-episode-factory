@@ -13,6 +13,13 @@ node --check package-engine.js
 node --check workflow-path.js
 node --check script-commitment-check.js
 node --check resolve-handoff-readiness.js
+node --check media-routing.js
+node --check media-provenance.js
+node --check package-media-index.js
+node --check manual-media-import.js
+node --check scripts/import-manual-images.js
+node --check scripts/import-manual-videos.js
+node --check scripts/index-package-media.js
 node --check package-engine-server.js
 node --check package-runs-dashboard.js
 node --check trailer-cue-generator.js
