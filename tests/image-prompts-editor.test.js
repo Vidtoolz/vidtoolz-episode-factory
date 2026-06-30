@@ -469,3 +469,72 @@ test("save handler guards against missing nonce before POST", () => {
   assert.match(html, /if\s*\(\s*!localWriteNonce\s*\)/);
   assert.match(html, /missing write nonce/);
 });
+
+// ── Regression: project-context null href crash (2026-06-30) ──
+// Bug: load() did `selectorLink.href = …` on an element id ("selector-link")
+// that no longer exists in the markup, throwing "Cannot set properties of null
+// (setting 'href')" BEFORE the read API call — so the 25 prompts never rendered
+// and the footer stayed "No package loaded". Fix: guard optional-element href
+// updates (setHref) and keep prompt loading independent of project context.
+
+function extractSetHref() {
+  const html = readEditorHtml();
+  const match = html.match(/function setHref\s*\(el,\s*href\)\s*\{[^}]+\}/);
+  if (!match) throw new Error("setHref not found in image-prompts-editor.html");
+  // eslint-disable-next-line no-new-func
+  return new Function(`${match[0]}; return setHref;`)();
+}
+
+test("editor: selectorLink href update is guarded (no unguarded null .href crash)", () => {
+  const html = readEditorHtml();
+  // The crash line must be routed through the guarded helper, not a bare assignment.
+  assert.match(html, /setHref\(selectorLink,/);
+  // No bare `selectorLink.href =` statement (the old crash) at the start of a line.
+  assert.doesNotMatch(html, /\n\s*selectorLink\.href\s*=/);
+});
+
+test("editor: setHref helper is null-safe (skips missing elements, sets present ones)", () => {
+  const setHref = extractSetHref();
+  // Missing element -> must NOT throw "Cannot set properties of null".
+  assert.doesNotThrow(() => setHref(null, "image-selector.html?package=x"));
+  assert.doesNotThrow(() => setHref(undefined, "x"));
+  // Present element -> assigns href.
+  const fake = {};
+  setHref(fake, "image-selector.html?package=demo");
+  assert.equal(fake.href, "image-selector.html?package=demo");
+});
+
+test("editor: accepts ?package=, ?package_id=, and ?id= aliases", () => {
+  const html = readEditorHtml();
+  assert.match(html, /params\.get\("package"\)/);
+  assert.match(html, /params\.get\("package_id"\)/);
+  assert.match(html, /params\.get\("id"\)/);
+});
+
+test("editor: missing-parameter state shows a clear message and stops", () => {
+  const html = readEditorHtml();
+  assert.match(html, /if \(!packageId\)/);
+  assert.match(html, /Missing \?package=<id> query parameter\./);
+});
+
+test("editor: project-context rendering is non-fatal (own try/catch)", () => {
+  const html = readEditorHtml();
+  // loadProjectContext swallows its own errors so it can never break the editor.
+  assert.match(html, /async function loadProjectContext\(\)\s*\{\s*try\s*\{/);
+  assert.match(html, /catch \(e\) \{ \/\* non-project package or server down; skip context \*\/ \}/);
+});
+
+test("editor: prompt loading is independent of project-context success", () => {
+  const html = readEditorHtml();
+  // In load(), the read API fetch must come AFTER loadProjectContext() is kicked
+  // off (fire-and-forget, not awaited) so context failures never block the table.
+  const load = html.match(/async function load\(\)\s*\{[\s\S]*?\n      \}/);
+  assert.ok(load, "load() body found");
+  const body = load[0];
+  // loadProjectContext is called without await (fire-and-forget).
+  assert.match(body, /\n\s*loadProjectContext\(\);/);
+  assert.doesNotMatch(body, /await loadProjectContext\(\)/);
+  // The read fetch + renderRows happen in load() regardless of context outcome.
+  assert.match(body, /fetch\(`\$\{READ_API\}\?package_id=/);
+  assert.match(body, /renderRows\(\);/);
+});

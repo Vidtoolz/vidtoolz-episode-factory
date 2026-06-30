@@ -215,6 +215,13 @@
         return String(value == null ? "" : value);
       }
 
+      // Defensive DOM helper: optional elements (e.g. a project-context/selector
+      // link that may have been removed from the markup) must never crash the
+      // editor. Skip the update when the element is absent.
+      function setHref(el, href) {
+        if (el) el.href = href;
+      }
+
       function stableJson(value) {
         return JSON.stringify(value, null, 2);
       }
@@ -434,7 +441,8 @@
         const existing = Array.isArray(prompts) ? prompts.length : 0;
         if (existing > 0 && !confirm(`Replace the existing ${existing} image prompt(s) with a fresh set generated from the approved script?`)) return;
         if (gb) gb.disabled = true;
-        st.textContent = "Generating (local Ollama on vidnux)…";
+        const setGenStatus = (msg) => { if (st) st.textContent = msg; };
+        setGenStatus("Generating (local Ollama on vidnux)…");
         try {
           if (!localWriteNonce) await fetchWriteNonce();
           const headers = { "Content-Type": "application/json" }; headers[nonceHeader] = localWriteNonce;
@@ -445,15 +453,15 @@
           const data = await r.json();
           if (!r.ok) {
             const err = (data && data.error) || ("HTTP " + r.status);
-            st.textContent = (r.status === 503) ? ("Blocked: Ollama on vidnux unavailable — " + err) : ("Error: " + err);
+            setGenStatus((r.status === 503) ? ("Blocked: Ollama on vidnux unavailable — " + err) : ("Error: " + err));
             if (gb) gb.disabled = false;
             return;
           }
           const d = normalizePayload(data);
-          st.textContent = `Generated ${d.prompt_count} prompts — review/edit below, then Save.`;
+          setGenStatus(`Generated ${d.prompt_count} prompts — review/edit below, then Save.`);
           await load(); // reloads the prompts into the table + re-renders context
         } catch (e) {
-          st.textContent = "Error: " + (e.message || e);
+          setGenStatus("Error: " + (e.message || e));
           if (gb) gb.disabled = false;
         }
       }
@@ -466,7 +474,10 @@
           return;
         }
         title.textContent = `Image Prompts - ${packageId}`;
-        selectorLink.href = `image-selector.html?package=${encodeURIComponent(packageId)}`;
+        // Optional navigation link — guarded so a missing element never aborts load().
+        setHref(selectorLink, `image-selector.html?package=${encodeURIComponent(packageId)}`);
+        // Project context is best-effort: it is fire-and-forget (its own try/catch)
+        // so a context fetch/render failure can never block prompt rendering below.
         loadProjectContext();
         const response = await fetch(`${READ_API}?package_id=${encodeURIComponent(packageId)}`, { cache: "no-store" });
         const data = await response.json();
