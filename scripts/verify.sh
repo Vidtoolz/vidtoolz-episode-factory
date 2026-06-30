@@ -29,6 +29,7 @@ node --check score-explanation.js
 node --check scripts/import-manual-images.js
 node --check scripts/import-manual-videos.js
 node --check scripts/index-package-media.js
+node --check scripts/backfill-score-explanation.js
 node --check package-engine-server.js
 node --check package-runs-dashboard.js
 node --check trailer-cue-generator.js
