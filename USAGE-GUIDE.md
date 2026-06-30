@@ -6,136 +6,128 @@ Cockpit: http://127.0.0.1:8010
 
 ## DAILY STARTUP
 
-1. Click desktop shortcut **01-Resume-Work**
-   Checks VIDNAS, starts cockpit if needed, opens resume page with project list.
+1. Click desktop shortcut 01-Resume-Work
+   Checks VIDNAS, starts cockpit if needed, opens resume page.
 
-2. Click desktop shortcut **02-Systems-Check**
-   Opens an HTML readiness report: VIDNAS, PRESTO, ComfyUI, Ollama, cockpit.
+2. Click desktop shortcut 02-Systems-Check
+   Opens a readiness report: VIDNAS, PRESTO, ComfyUI, Ollama, cockpit.
 
-3. Click your project card on the resume page, or click desktop shortcut **09-Open-Active-Run** to jump straight to the active run in the dashboard.
-
-The dashboard Orientation Strip (top) shows: current gate, blocker, next action. Read it first, every time.
-
----
-
-## RESUMING A RUN
-
-1. Open the dashboard (shortcut **05-Creator-Cockpit** or **09-Open-Active-Run**).
-2. Read the Orientation Strip. It tells you the current gate and next action.
-3. Do the action it says. Use the dashboard forms — not manual file editing.
-4. After each action, the dashboard auto-refreshes the gate status.
-
-### Gates and what you do at each one
-
-**Needs package selection**
-Use the Beginning Triage panel in the dashboard. Fill the topic, candidate angles, and package fields. Click Select. The dashboard writes selected-package.md for you.
-
-**Needs script**
-Vertical path: open shorts-workflow.html (?run=<run-id>). Generate scripts with Ollama, pick one, edit it, click "Save this as final-script.md".
-Longform path: write the script in your editor of choice, then paste it into the dashboard script field.
-
-**Needs script review**
-Run the script review from the dashboard. It writes script-review.md and shows the result inline.
-
-**Needs production plan**
-The dashboard generates the production plan, shot list, and planning artifacts. Review them in the Artifact Panel (read-only, with copy buttons). Edit planning files only if the plan needs adjusting — these are generated templates, not gate evidence.
-
-**Needs capture**
-1. Record A-roll, screen captures, and audio (see A-ROLL RECORDING below).
-2. In the dashboard, open the Capture Evidence Intake panel.
-3. Fill the form: take name, media file path, screen recording name and path, audio item and path.
-4. Click **Preview write** — review the generated markdown rows.
-5. Click **Apply to run files** — writes to takes-log.md, screen-recording-checklist.md, and audio-capture-checklist.md automatically.
-6. The gate advances when real media references are detected and the approval marker is set.
-
-**Needs rough cut**
-1. Edit in Resolve (manual — your domain).
-2. Export a rough cut to VIDNAS.
-3. In the dashboard, open the Rough Cut Review form.
-4. Fill: candidate file path, watch date, reviewer, notes for each dimension (opening, pacing, clarity, visual trust, etc.).
-5. Select approval marker: NOT GIVEN / NEEDS PICKUPS / NEEDS EDIT FIXES / PASS.
-6. Submit. The dashboard writes rough-cut-watch-notes.md and runs the review gate.
-
-**Needs second cut** (if rough cut needed pickups)
-Same pattern: edit in Resolve, export, fill the Second Cut Review form in the dashboard, submit.
-
-**Needs final review**
-Watch the final edit. Fill the Final Candidate Review form in the dashboard: candidate path, watch date, reviewer, notes for all dimensions. Submit. The dashboard writes final-watch-notes.md and final-review.md.
-
-**Needs export/mastering**
-Fill the Export Master form in the dashboard: codec confirmation, file details. Submit. The dashboard writes export-checklist.md and master-file-manifest.md.
-
-**Needs publication metadata**
-Fill the Delivery Readiness form in the dashboard. Submit. The dashboard writes delivery-readiness.md and checks publication metadata.
-
-**Ready to publish**
-1. Upload to YouTube manually.
-2. Record the YouTube URL in the dashboard or in published-videos.json.
-3. Set package-run-state.md to "published" (only you do this).
+3. Click desktop shortcut 10-Projects to open the Projects board, or 11-Ideas to
+   open Daily Ideas (scan, triage, and promote ideas into projects).
 
 ---
 
-## STARTING A NEW RUN
+## FINDING WHAT TO DO NEXT
 
-1. Click desktop shortcut **03-Build-New-Video**
-   Opens the guided step-by-step build page (new-video-build.html).
+You have two entry points:
 
-2. Follow the steps on screen. Each step has checkboxes and buttons that open the right tool:
-   - Step 1: Pick topic (Topic Scout)
-   - Step 2: Research and outline (Package Engine)
-   - Step 3: Write script (shorts-workflow.html for vertical, editor for longform)
-   - Steps 4-5: Claims check and packaging (longform only)
-   - Step 6: Image prompts (Image Prompts Editor)
-   - Step 7: Image generation (ComfyUI)
-   - Step 8: Image selection (AIGEN Review)
-   - Step 9: Video generation (PRESTO Wan2.2 — manual)
-   - Step 10: A-roll recording (manual)
-   - Steps 11-14: Resolve edit, publish gate, publish, reflect (manual)
+A. Projects board — http://127.0.0.1:8010/projects.html
+   All projects in a sortable, filterable table. Status and stage filters. Click Open on any row.
 
-The build page links to each tool directly. You do not need terminal commands for any step.
+B. Desktop shortcut 09-Open-Active-Run
+   Jumps straight to the active run.
+
+From a project, you land in the Project Workspace. The Next-task card at the top tells you exactly what to do next and has a button to do it. Click Focus mode for a distraction-free single-task view.
+
+The system infers the next task from the files on disk — you do not need to remember where you left off.
+
+---
+
+## STARTING A NEW VIDEO
+
+Option A: From an idea
+1. Open http://127.0.0.1:8010/daily-idea-scout.html
+2. Browse ideas by score. Click Approve, Park, or Reject.
+3. When a topic is worth making, click Promote to project.
+   This creates a script-package with provenance. Idempotent — re-promoting opens the existing project.
+4. The new project appears on the Projects board. Open it and start with the Next-task card.
+
+Option B: From scratch
+1. Click desktop shortcut 03-Build-New-Video
+   Opens the guided step-by-step build page.
+2. Follow the steps on screen. Each step has buttons that open the right tool.
+
+---
+
+## THE PRODUCTION STAGES
+
+The system resolves each project through these stages. The Next-task card tells you which one you're on and what to do.
+
+1. WRITE SCRIPT
+   Vertical: open shorts-workflow.html (?run=<run-id>). Generate with Ollama, pick one, edit, click "Save this as final-script.md".
+   Longform: write in your editor, paste into the package-engine page.
+
+2. GENERATE IMAGE PROMPTS
+   Open image-prompts-editor.html from the Next-task button. Write prompts: subject + style + mood, vertical 9:16. Photorealistic only. No text of any kind in prompts.
+
+3. GENERATE IMAGES
+   Click the Next-task button to submit to vidnux FLUX via API (dry-run first). ~48s per image at 1080x1920.
+   Alternative: Import manual GPT images via the alternate action button.
+   Start ComfyUI with desktop shortcut 06-Start-ComfyUI if it isn't running.
+
+4. SELECT IMAGES
+   Open image-selector.html from the Next-task button. Review and select.
+
+5. GENERATE I2V PROMPTS
+   Open production-pipeline.html from the Next-task button. I2V prompts are generated by Ollama on PRESTO. Copy buttons export prompts for manual KlingAI.
+   Note: PRESTO Ollama must be running at 192.168.50.187:11434 or this lane blocks.
+
+6. GENERATE VIDEOS
+   Click the Next-task button to submit to PRESTO Wan2.2 via API. 81 frames per clip.
+   Alternative: Import manual KlingAI videos via the alternate action button.
+
+7. REVIEW VIDEOS
+   Open production-pipeline.html from the Next-task button. Review generated clips.
+
+8. PREPARE RESOLVE HANDOFF
+   Click the Next-task button. Creates resolve-handoff/media-manifest.json automatically.
+
+9. EDIT IN RESOLVE (manual — your domain)
+   Hermes scope stops here. Open DaVinci Resolve on PRESTO or vidnux.
+   - Import media from VIDNAS (do not copy locally).
+   - Cut A-roll to script timing. Place B-roll over [B-ROLL] sections.
+   - Key green screen. Add generated backgrounds behind presenter.
+   - Fix Kling 1916px height (scale or crop to 1920).
+   - Color match. Set audio levels (voice ~-6dB, music ~-20dB).
+   - Export H.264 1080x1920 30fps to VIDNAS.
+   Click the Next-task button to mark the project as "editing".
 
 ---
 
 ## A-ROLL RECORDING (MANUAL)
 
-1. Click desktop shortcut **06-Start-ComfyUI** if you need FLUX backgrounds running.
+1. Click desktop shortcut 06-Start-ComfyUI if you need FLUX backgrounds running.
 2. Set up OBS: green screen, camera, microphone.
-3. Open the script in the dashboard Artifact Panel (read-only, copyable) or in shorts-workflow.html.
+3. Open the script in the workspace Artifact Panel (read-only, copyable) or in shorts-workflow.html.
 4. Record presenter segments. Save to VIDNAS: /mnt/vidnas_public/VIDTOOLZ/camera_originals/
 5. Tell Hermes which take to move into the active run subfolder.
-6. Click desktop shortcut **07-START-CAPTURE** for 4K screen capture with system audio + Elgato mic.
-7. Click desktop shortcut **08-STOP-CAPTURE** to stop and verify the recording.
-8. Back in the dashboard, use the Capture Evidence Intake form to log what you recorded.
+6. Click desktop shortcut 07-START-CAPTURE for 4K screen capture with system audio + Elgato mic.
+7. Click desktop shortcut 08-STOP-CAPTURE to stop and verify the recording.
+8. Back in the workspace, use the Capture Evidence Intake form to log what you recorded.
 
 ---
 
-## IMAGE GENERATION (B-ROLL BACKGROUNDS)
+## REVIEW GATES (PACKAGE-RUNS DASHBOARD)
 
-1. Open http://127.0.0.1:8010/image-prompts-editor.html
-   Write prompts: subject + style + mood, vertical 9:16. Photorealistic only. No text of any kind in prompts.
+The package-runs dashboard (http://127.0.0.1:8010/package-runs-dashboard.html) handles the gate model for published-video readiness. Each gate has a form-based submit — do not open .md files manually.
 
-2. Click desktop shortcut **06-Start-ComfyUI** to start local FLUX.
-   ~48s per image at 1080x1920. Crashes after ~33-50 generations — auto-restarts.
+CAPTURE EVIDENCE
+Fill the Capture Evidence Intake form: take name, media path, screen recording, audio. Click Preview write, then Apply to run files. Writes takes-log.md, screen-recording-checklist.md, audio-capture-checklist.md automatically.
 
-3. Review and select images at http://127.0.0.1:8099 (AIGEN Review View).
+ROUGH CUT REVIEW
+Fill the form: candidate path, watch date, reviewer, notes per dimension. Select approval marker (NOT GIVEN / NEEDS PICKUPS / NEEDS EDIT FIXES / PASS). Submit.
 
-4. Generate video clips on PRESTO (Wan2.2 I2V, 81 frames, manual). Stage to:
-   /mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/
+SECOND CUT REVIEW
+Same pattern: edit in Resolve, export, fill the Second Cut Review form, submit.
 
----
+FINAL REVIEW
+Watch the final edit. Fill the Final Candidate Review form, submit.
 
-## ASSEMBLY EDIT IN RESOLVE (MANUAL)
+EXPORT/MASTERING
+Fill the Export Master form, submit. Writes export-checklist.md and master-file-manifest.md.
 
-Hermes scope stops here. Open DaVinci Resolve on PRESTO or vidnux.
-
-1. Import media from VIDNAS (do not copy locally).
-2. Cut A-roll to script timing. Place B-roll over [B-ROLL] sections.
-3. Key green screen. Add generated backgrounds behind presenter.
-4. Fix Kling 1916px height (scale or crop to 1920).
-5. Color match. Set audio levels (voice ~-6dB, music ~-20dB).
-6. Export H.264 1080x1920 30fps to VIDNAS.
-7. Watch the rough cut end-to-end.
-8. Fill the Rough Cut Review form in the dashboard (not a .md file).
+DELIVERY READINESS
+Fill the Delivery Readiness form, submit. Writes delivery-readiness.md.
 
 ---
 
@@ -149,47 +141,58 @@ Hermes scope stops here. Open DaVinci Resolve on PRESTO or vidnux.
 
 ---
 
+## ARCHIVING A PROJECT
+
+On the resume page, click Delete on a project card. This is non-destructive:
+- The run folder moves to stale-runs/ (dropped from the index, fully recoverable).
+- Generated media moves to VIDNAS ARCHIVED MEDIA (STILL / VIDEO).
+- Nothing is permanently deleted.
+
+---
+
 ## TROUBLESHOOTING
 
-**Dashboard blank or "Could not load"**
-Click desktop shortcut **01-Resume-Work** — it starts the cockpit if it's not running.
+Dashboard blank or "Could not load"
+Click desktop shortcut 01-Resume-Work — it starts the cockpit if it's not running.
 
-**Doctor says BLOCKED but I did the work**
-The gate needs an approval marker set via the dashboard form, not just file existence. Re-open the relevant panel in the dashboard, fill the required fields, and submit.
+Cockpit crash-looping (EADDRINUSE)
+Do NOT start node manually. Restart with: systemctl --user restart vidtoolz-cockpit.service
 
-**Orientation Strip says "stale index"**
-Click "Rebuild index" on the dashboard.
+Next-task says BLOCKED but I did the work
+The gate needs an approval marker set via the dashboard form, not just file existence. Re-open the relevant panel, fill the required fields, and submit.
 
-**ComfyUI crashed after many generations**
-Auto-restart should handle it. If not, click desktop shortcut **06-Start-ComfyUI** again.
+I2V prompts lane blocked
+PRESTO Ollama must be running at 192.168.50.187:11434. If it isn't up, the lane blocks by design — no fallback.
 
-**Want to see all gates at once**
-Scroll the dashboard — the Pipeline Tracker shows every gate and its status.
+ComfyUI crashed after many generations
+Auto-restart should handle it. If not, click desktop shortcut 06-Start-ComfyUI again.
+
+Want to see all gates at once
+Scroll the package-runs dashboard — the Pipeline Tracker shows every gate and its status.
 
 ---
 
 ## DESKTOP SHORTCUTS
 
-| # | Shortcut | What it does |
-|---|----------|-------------|
-| 01 | Resume-Work | Check VIDNAS, start cockpit, open resume page |
-| 02 | Systems-Check | Full readiness report (HTML) |
-| 03 | Build-New-Video | Open guided new-video build page |
-| 04 | Episode-Factory | Open Episode Factory index |
-| 05 | Creator-Cockpit | Open dashboard |
-| 06 | Start-ComfyUI | Start local FLUX ComfyUI |
-| 07 | START-CAPTURE | Start 4K screen + audio capture |
-| 08 | STOP-CAPTURE | Stop capture, verify file |
-| 09 | Open-Active-Run | Open active run in dashboard (never stale) |
+01  Resume-Work        Check VIDNAS, start cockpit, open resume page
+02  Systems-Check      Full readiness report (HTML)
+03  Build-New-Video    Open guided new-video build page
+04  Episode-Factory    Open Episode Factory index
+05  Creator-Cockpit    Open dashboard
+06  Start-ComfyUI      Start local FLUX ComfyUI
+07  START-CAPTURE      Start 4K screen + audio capture
+08  STOP-CAPTURE       Stop capture, verify file
+09  Open-Active-Run    Open active run in dashboard (never stale)
 
 ---
 
 ## KEY RULES
 
-1. The Orientation Strip is the single source of truth for "what do I do next." Read it first.
+1. The Next-task card is the single source of truth for "what do I do next." Read it first.
 2. Use dashboard forms for every gate. Do not open .md files to edit them manually.
 3. File existence does not prove completion. Gates use evidence, not file existence.
-4. Hermes cannot approve, publish, edit timelines, or operate Resolve/ComfyUI/Kling.
-5. package-run-state.md is touched only by you.
-6. No gate is bypassed. If the doctor says BLOCKED, it is blocked.
-7. All image generation is local FLUX on vidnux. No external API keys.
+4. Images run on vidnux (FLUX). Videos run on PRESTO (Wan2.2). External GPT/KlingAI is manual import only. No silent fallback.
+5. Hermes cannot approve, publish, edit timelines, or operate Resolve/ComfyUI/Kling.
+6. package-run-state.md is touched only by you.
+7. No gate is bypassed. If the system says BLOCKED, it is blocked.
+8. All image generation is local FLUX on vidnux. No external API keys.
