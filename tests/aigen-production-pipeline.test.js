@@ -159,6 +159,38 @@ test("Wan counts are package-scoped to staged MP4s, ignoring colliding global la
     assert.equal(pkg.wan_pending, 3);
     assert.equal(pkg.wan_failed, 0);
     assert.equal(pkg.resolve_handoff_ready, false);
+    // No video-prompts.json yet → the I2V prompt gate holds the workflow back
+    // from a PRESTO submit (this is the fix for the reported bug).
+    assert.equal(pkg.video_prompts_count, 0);
+    assert.equal(pkg.wan_next_action, "Generate I2V prompts first (PRESTO Ollama)");
+  } finally {
+    await close(server);
+    if (previous.root === undefined) delete process.env.AIGEN_VIDNAS_ROOT; else process.env.AIGEN_VIDNAS_ROOT = previous.root;
+    if (previous.presto === undefined) delete process.env.AIGEN_PRESTO_BASE_URL; else process.env.AIGEN_PRESTO_BASE_URL = previous.presto;
+    if (previous.timeout === undefined) delete process.env.AIGEN_PRESTO_TIMEOUT_MS; else process.env.AIGEN_PRESTO_TIMEOUT_MS = previous.timeout;
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("I2V prompt gate opens once video-prompts.json covers every selection", async () => {
+  const fixture = createScopingFixture();
+  // One video prompt per selected image (prompt_index 1..5) → gate opens.
+  writeJson(path.join(fixture.packageDir, "video-prompts.json"), {
+    version: 1,
+    prompt_type: "image_to_video",
+    prompts: [1, 2, 3, 4, 5].map((index) => ({ prompt_index: index, prompt: `motion prompt ${index}` })),
+  });
+  const previous = { root: process.env.AIGEN_VIDNAS_ROOT, presto: process.env.AIGEN_PRESTO_BASE_URL, timeout: process.env.AIGEN_PRESTO_TIMEOUT_MS };
+  process.env.AIGEN_VIDNAS_ROOT = fixture.aigenRoot;
+  process.env.AIGEN_PRESTO_BASE_URL = "http://127.0.0.1:9";
+  process.env.AIGEN_PRESTO_TIMEOUT_MS = "50";
+  const server = packageEngineServer.createServer();
+  try {
+    await listen(server);
+    const response = await requestJson(server, packageEngineServer.AIGEN_STATUS_API);
+    const pkg = response.body.data.packages.find((item) => item.id === fixture.packageId);
+    assert.ok(pkg, "package not found");
+    assert.equal(pkg.video_prompts_count, 5);
     assert.equal(pkg.wan_next_action, "Submit 3 pending selections to PRESTO");
   } finally {
     await close(server);

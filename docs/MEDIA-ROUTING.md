@@ -75,6 +75,16 @@ Image-to-video prompt generation routes to Ollama on PRESTO at
 `OLLAMA_PRESTO_MODEL`). It does not use vidnux Ollama and does not use a cloud
 LLM. Saved prompts (`video-prompts.json`) record `prompt_host: presto`.
 
+GUI path (guided workflow): once images are selected, the project enters the
+`i2v_prompts` stage and the Next-task button opens the project-scoped I2V prompt
+workspace `project-i2v-prompts.html?id=<project-id>`. It lists the selected
+images and generates ONE motion prompt per image via PRESTO Ollama
+(`POST /api/project/i2v-prompts/generate`), writes the canonical
+`video-prompts.json`, and supports review/edit/save
+(`POST /api/project/i2v-prompts/save`) plus a manual-KlingAI export sheet. If
+PRESTO Ollama is down the step is blocked (503) — no fallback. The project only
+advances to video generation once a prompt exists for every selected image.
+
 ## 6. Videos — local ComfyUI / Wan2.2 on PRESTO
 
 Image-to-video generation routes to ComfyUI on PRESTO
@@ -82,7 +92,10 @@ Image-to-video generation routes to ComfyUI on PRESTO
 1080x1920 @ 30fps). Staged clips land in `<package>/videos/mp4/NNN.mp4`. If
 PRESTO ComfyUI is unreachable, submission returns a blocked state
 (`presto_unreachable`) — it does not generate on vidnux or in the cloud, and
-does not silently reduce quality.
+does not silently reduce quality. The guided workflow gates this submit on a
+complete `video-prompts.json` (one prompt per selected image): the Pipeline
+disables the PRESTO submit and links back to the I2V prompt workspace until the
+prompts exist.
 
 ## 7. Copy I2V prompts + image to KlingAI (manual)
 

@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>I2V Prompts — VIDTOOLZ</title>
+  <link rel="stylesheet" href="styles.css?v=1.9.6" />
+  <style>
+    .i2v-grid { display: grid; gap: 14px; }
+    .i2v-card { display: grid; grid-template-columns: 132px 1fr; gap: 14px; padding: 12px; border: 1px solid var(--border, #30363d); border-radius: 8px; background: var(--panel, #161b22); }
+    .i2v-card img { width: 132px; height: 234px; object-fit: cover; border-radius: 6px; background: #0d1117; border: 1px solid var(--border, #30363d); }
+    .i2v-card .noimg { width: 132px; height: 234px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 11px; color: #8b949e; border: 1px dashed var(--border, #30363d); border-radius: 6px; }
+    .i2v-meta { font-size: 12px; color: #8b949e; margin-bottom: 6px; }
+    .i2v-src { font-size: 11px; color: #6e7681; margin: 4px 0 8px; max-height: 48px; overflow: auto; }
+    .i2v-card textarea { width: 100%; min-height: 84px; font-family: inherit; font-size: 13px; padding: 8px; box-sizing: border-box; background: #0d1117; color: #e6edf3; border: 1px solid var(--border, #30363d); border-radius: 6px; resize: vertical; }
+    .i2v-row-actions { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+    .i2v-row-actions button { font-size: 11px; }
+    .route-pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border, #30363d); color: #8b949e; }
+    .blk { color: #f85149; }
+    .ok { color: #3fb950; }
+    .panel { padding: 12px; border: 1px solid var(--border, #30363d); border-radius: 8px; background: var(--panel, #161b22); margin-bottom: 12px; }
+    .links a { margin-right: 12px; }
+    #export-sheet { width: 100%; min-height: 160px; font-family: ui-monospace, monospace; font-size: 12px; background: #0d1117; color: #e6edf3; border: 1px solid var(--border, #30363d); border-radius: 6px; padding: 8px; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="resume.html">Resume</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="project-i2v-prompts.html" class="active">I2V Prompts</a><a href="aigen-review.html">AIGEN Review</a></nav>
+
+  <details class="page-guide" open>
+    <summary>Page Guide — What is this?</summary>
+    <div class="page-guide-body">
+      <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Generate one image-to-video (I2V) motion prompt per selected image, using local Ollama on PRESTO. These prompts drive PRESTO Wan2.2 video generation (or manual KlingAI).</span></div>
+      <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Generate prompts, review/edit each one, Save. Only after prompts exist does PRESTO video generation unlock in the <a href="production-pipeline.html">Pipeline</a>.</span></div>
+      <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">One card per selected image: thumbnail, source prompt, editable I2V prompt, copy buttons. A manual-KlingAI export sheet at the bottom.</span></div>
+    </div>
+  </details>
+
+  <main class="shell">
+    <header class="header">
+      <div>
+        <h1 id="title">I2V Prompts</h1>
+        <div id="meta" class="meta">Loading project…</div>
+      </div>
+      <button type="button" id="reload">Reload</button>
+    </header>
+
+    <section id="project-context" class="panel" style="display:none;">
+      <div id="pc-body" class="meta"></div>
+    </section>
+
+    <section class="panel">
+      <span class="route-pill">LOCAL · PRESTO · Ollama → I2V prompts (no fallback)</span>
+      <div style="margin-top:8px;">
+        <button type="button" id="generate">Generate I2V prompts using PRESTO Ollama</button>
+        <button type="button" id="save" disabled>Save I2V prompts</button>
+        <span id="gen-status" class="meta" style="margin-left:8px;"></span>
+      </div>
+    </section>
+
+    <section id="blocked-panel" class="panel" style="display:none;">
+      <div id="blocked-body" class="blk"></div>
+    </section>
+
+    <section class="i2v-grid" id="cards"></section>
+
+    <section class="panel" id="export-panel" style="display:none;margin-top:14px;">
+      <h3 style="margin:0 0 6px;font-size:13px;">Manual KlingAI export sheet</h3>
+      <div class="meta">One row per selected image: source image path + I2V prompt. Upload the image and paste the prompt into KlingAI manually, then import the result.</div>
+      <textarea id="export-sheet" readonly></textarea>
+      <div style="margin-top:6px;"><button type="button" id="copy-sheet">Copy export sheet</button></div>
+    </section>
+
+    <section class="panel links" id="links-panel" style="display:none;">
+      <a id="link-workspace" href="#">← Project workspace</a>
+      <a id="link-focus" href="#">Focus mode</a>
+      <a id="link-selector" href="#">Image selector</a>
+      <a id="link-pipeline" href="#" style="display:none;">PRESTO video generation →</a>
+    </section>
+  </main>
+
+  <script src="clipboard.js?v=1.0.0"></script>
+  <script>
+    const GENERATE_API = "/api/project/i2v-prompts/generate";
+    const SAVE_API = "/api/project/i2v-prompts/save";
+    const READ_API = "/api/project/i2v-prompts";
+    const params = new URLSearchParams(window.location.search);
+    // Accept id / package_id / package aliases like the other project pages.
+    const projectId = params.get("id") || params.get("package_id") || params.get("package") || "";
+
+    let images = [];
+    let dirty = false;
+    let localWriteNonce = "";
+    let nonceHeader = "x-vidtoolz-local-write-nonce";
+
+    function $(id) { return document.getElementById(id); }
+    function setText(id, v) { const el = $(id); if (el) el.textContent = v == null ? "" : v; }
+    function setHtml(id, v) { const el = $(id); if (el) el.innerHTML = v; }
+    function show(id, on) { const el = $(id); if (el) el.style.display = on ? "" : "none"; }
+    function setHref(id, href) { const el = $(id); if (el) el.href = href; }
+    function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+    function normalizePayload(json) { return json && typeof json === "object" && json.data !== undefined ? json.data : json; }
+
+    function copyText(t) {
+      if (window.copyToClipboard) return window.copyToClipboard(t);
+      try { navigator.clipboard.writeText(t); } catch (_e) {}
+      return Promise.resolve();
+    }
+
+    async function fetchNonce() {
+      try {
+        const r = await fetch("/api/package-engine/status", { cache: "no-store" });
+        const p = normalizePayload(await r.json());
+        if (p && p.localWriteNonce) { localWriteNonce = p.localWriteNonce; nonceHeader = p.nonceHeader || nonceHeader; }
+      } catch (_e) { /* nonce stays empty; mutating actions will warn */ }
+    }
+
+    function setDirty(on) {
+      dirty = on;
+      const sv = $("save");
+      if (sv) sv.disabled = !on || !images.length;
+    }
+
+    function rebuildExportSheet() {
+      const lines = images.map((im) => {
+        const t = (im._textarea ? im._textarea.value : im.i2v_prompt) || "";
+        return `#${im.prompt_index}\t${im.selected_path}\t${t.replace(/\s+/g, " ").trim()}`;
+      });
+      const el = $("export-sheet");
+      if (el) el.value = lines.join("\n");
+    }
+
+    function renderCards() {
+      const root = $("cards");
+      if (!root) return;
+      root.replaceChildren();
+      images.forEach((im) => {
+        const card = document.createElement("div");
+        card.className = "i2v-card";
+        const thumb = im.asset_url && im.image_exists
+          ? `<img src="${esc(im.asset_url)}" alt="${esc(im.label)}" loading="lazy" />`
+          : `<div class="noimg">no image<br/>${esc(im.label)}</div>`;
+        card.innerHTML =
+          `<div>${thumb}</div>` +
+          `<div>` +
+            `<div class="i2v-meta"><b>${esc(im.label)}</b> · prompt_index ${esc(im.prompt_index)} · <span class="route-pill">${esc(im.selected_source || "flux-local")}</span></div>` +
+            `<details><summary class="i2v-meta">source image prompt</summary><div class="i2v-src">${esc(im.image_prompt) || "(none)"}</div></details>` +
+            `<textarea placeholder="I2V motion prompt for this image…"></textarea>` +
+            `<div class="i2v-row-actions">` +
+              `<button type="button" data-act="copy-prompt">Copy prompt</button>` +
+              `<button type="button" data-act="copy-path">Copy image path</button>` +
+            `</div>` +
+          `</div>`;
+        const ta = card.querySelector("textarea");
+        ta.value = im.i2v_prompt || "";
+        ta.addEventListener("input", () => { im.i2v_prompt = ta.value; setDirty(true); rebuildExportSheet(); });
+        im._textarea = ta;
+        card.querySelector('[data-act="copy-prompt"]').addEventListener("click", (e) => {
+          copyText(ta.value || ""); const b = e.target; const o = b.textContent; b.textContent = "Copied!"; setTimeout(() => { b.textContent = o; }, 1200);
+        });
+        card.querySelector('[data-act="copy-path"]').addEventListener("click", (e) => {
+          copyText(im.selected_path || ""); const b = e.target; const o = b.textContent; b.textContent = "Copied!"; setTimeout(() => { b.textContent = o; }, 1200);
+        });
+        root.appendChild(card);
+      });
+      rebuildExportSheet();
+    }
+
+    function renderContext(ctx) {
+      const e = encodeURIComponent(projectId);
+      setText("title", `I2V Prompts — ${ctx.title || projectId}`);
+      setText("meta", `${ctx.selected_images} selected image(s) · ${ctx.i2v_prompt_count} I2V prompt(s) · stage ${ctx.stage} · status ${ctx.status}`);
+      const scriptLine = ctx.has_script
+        ? '<span class="ok">✓ Approved script found.</span>'
+        : `<span class="blk">No approved script.</span> <a href="project-script.html?id=${e}">Write/approve it first</a>.`;
+      const prov = ctx.provider || {};
+      setHtml("pc-body",
+        `<div><b>${esc(ctx.title || projectId)}</b> <span class="meta">(${esc(projectId)})</span></div>` +
+        `<div style="margin-top:4px;">${scriptLine}</div>` +
+        `<div style="margin-top:4px;" class="meta">I2V provider: Ollama on <b>${esc(prov.host || "presto")}</b> · model ${esc(prov.model || "")} · ${esc(prov.endpoint || "")} · no fallback</div>`);
+      show("project-context", true);
+      show("links-panel", true);
+      setHref("link-workspace", `project-workspace.html?id=${e}`);
+      setHref("link-focus", `project-focus.html?id=${e}`);
+      setHref("link-selector", `image-selector.html?package=${e}`);
+      setHref("link-pipeline", `production-pipeline.html?package=${e}`);
+      // PRESTO generation link only once prompts exist.
+      show("link-pipeline", ctx.i2v_prompt_count > 0 && ctx.i2v_prompt_count >= ctx.selected_images);
+
+      // Blocked states gate the generate button.
+      const gen = $("generate");
+      if (!ctx.has_script) {
+        show("blocked-panel", true);
+        setHtml("blocked-body", `No approved script — generation blocked. <a href="project-script.html?id=${e}">Open the script workspace</a> to write/approve it.`);
+        if (gen) gen.disabled = true;
+      } else if (!ctx.selected_images) {
+        show("blocked-panel", true);
+        setHtml("blocked-body", `No selected images — generation blocked. <a href="image-selector.html?package=${e}">Open the image selector</a> to choose images first.`);
+        if (gen) gen.disabled = true;
+      } else {
+        show("blocked-panel", false);
+        if (gen) gen.disabled = false;
+      }
+      show("export-panel", ctx.selected_images > 0);
+    }
+
+    async function load() {
+      if (!projectId) {
+        setText("title", "I2V Prompts");
+        setText("meta", "Missing ?id=<project-id> query parameter.");
+        return;
+      }
+      let ctx;
+      try {
+        const r = await fetch(`${READ_API}?id=${encodeURIComponent(projectId)}`, { cache: "no-store" });
+        const body = await r.json();
+        if (!r.ok || (body && body.ok === false)) throw new Error((body && body.error) || ("HTTP " + r.status));
+        ctx = normalizePayload(body);
+      } catch (e) {
+        setText("meta", "Could not load project: " + (e.message || e));
+        return;
+      }
+      images = (ctx.images || []).map((im) => Object.assign({}, im));
+      renderContext(ctx);
+      renderCards();
+      setDirty(false);
+    }
+
+    async function generate() {
+      const gen = $("generate");
+      const existing = images.filter((im) => (im.i2v_prompt || "").trim()).length;
+      if (existing > 0 && !confirm(`Replace the existing ${existing} I2V prompt(s) with a fresh set generated from the selected images + approved script?`)) return;
+      if (gen) gen.disabled = true;
+      setText("gen-status", "Generating (local Ollama on PRESTO)…");
+      try {
+        if (!localWriteNonce) await fetchNonce();
+        const headers = { "Content-Type": "application/json" }; headers[nonceHeader] = localWriteNonce;
+        const r = await fetch(GENERATE_API, {
+          method: "POST", headers,
+          body: JSON.stringify({ id: projectId, confirm_replace: existing > 0, localWriteNonce }),
+        });
+        const data = await r.json();
+        if (!r.ok) {
+          const err = (data && data.error) || ("HTTP " + r.status);
+          setText("gen-status", (r.status === 503) ? ("Blocked: PRESTO Ollama unavailable — " + err) : ("Error: " + err));
+          if (gen) gen.disabled = false;
+          return;
+        }
+        const d = normalizePayload(data);
+        setText("gen-status", `Generated ${d.prompt_count} I2V prompt(s) — review/edit below, then Save.`);
+        await load();
+      } catch (e) {
+        setText("gen-status", "Error: " + (e.message || e));
+        if (gen) gen.disabled = false;
+      }
+    }
+
+    async function save() {
+      setText("gen-status", "Saving…");
+      try {
+        if (!localWriteNonce) await fetchNonce();
+        if (!localWriteNonce) { setText("gen-status", "missing write nonce — reload the page."); return; }
+        const headers = { "Content-Type": "application/json" }; headers[nonceHeader] = localWriteNonce;
+        const prompts = images.map((im) => ({
+          prompt_index: im.prompt_index,
+          i2v_prompt: (im._textarea ? im._textarea.value : im.i2v_prompt) || "",
+          motion_intent: im.motion_intent || "",
+          camera_motion: im.camera_motion || "",
+          subject_motion: im.subject_motion || "",
+        }));
+        const r = await fetch(SAVE_API, {
+          method: "POST", headers,
+          body: JSON.stringify({ id: projectId, prompts, localWriteNonce }),
+        });
+        const data = await r.json();
+        if (!r.ok) { setText("gen-status", "Error: " + ((data && data.error) || ("HTTP " + r.status))); return; }
+        const d = normalizePayload(data);
+        setText("gen-status", `Saved ${d.prompt_count} I2V prompt(s).`);
+        setDirty(false);
+        await load();
+      } catch (e) {
+        setText("gen-status", "Error: " + (e.message || e));
+      }
+    }
+
+    $("generate").addEventListener("click", generate);
+    $("save").addEventListener("click", save);
+    $("reload").addEventListener("click", () => { if (dirty && !confirm("Discard unsaved edits and reload?")) return; load(); });
+    const copySheet = $("copy-sheet");
+    if (copySheet) copySheet.addEventListener("click", (e) => { copyText($("export-sheet").value || ""); const b = e.target; const o = b.textContent; b.textContent = "Copied!"; setTimeout(() => { b.textContent = o; }, 1200); });
+
+    fetchNonce().then(load);
+  </script>
+</body>
+</html>

@@ -173,7 +173,10 @@ function resolveProjectState(packageDir, options = {}) {
   if (counts.image_prompts > 0) stage = 'image_generation';
   if (counts.total_images > 0) stage = 'image_review';
   if (counts.selected_images > 0) stage = 'i2v_prompts';
-  if (counts.i2v_prompts > 0) stage = 'video_generation';
+  // Advance to video generation ONLY when every selected image has an I2V prompt
+  // (PRESTO Wan2.2 needs a 1:1 prompt-per-image map). A partial set stays in the
+  // i2v_prompts stage and is surfaced as a warning below — never advance on a gap.
+  if (counts.i2v_prompts > 0 && counts.i2v_prompts >= counts.selected_images) stage = 'video_generation';
   if (counts.total_videos > 0) stage = 'video_review';
   if (hasHandoff) stage = 'resolve_handoff';
 
@@ -195,6 +198,11 @@ function resolveProjectState(packageDir, options = {}) {
   }
   if (!hasScript && stageIdx > STAGES.indexOf('script')) {
     warnings.push('No final script found although later artifacts exist.');
+  }
+  // Partial I2V coverage: some but not all selected images have a prompt. PRESTO
+  // needs one prompt per selected image, so the project stays in i2v_prompts.
+  if (counts.selected_images > 0 && counts.i2v_prompts > 0 && counts.i2v_prompts < counts.selected_images) {
+    warnings.push(`I2V prompt count (${counts.i2v_prompts}) does not match selected image count (${counts.selected_images}). Generate a prompt for every selected image before PRESTO video generation.`);
   }
   // Surface validation warnings from imported external media.
   for (const m of mediaIndex.images.concat(mediaIndex.videos)) {

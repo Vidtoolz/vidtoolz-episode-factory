@@ -706,6 +706,15 @@
 
       function prestoSubmitState(pkg, data) {
         const active = prestoStatus.active;
+        // I2V prompt gate: PRESTO video generation needs one prompt per selected
+        // image. Block the submit (and point to the I2V workspace) until prompts exist.
+        const sel = pkg.selections_count || 0;
+        const vp = pkg.video_prompts_count || 0;
+        if (sel > 0 && vp < sel) {
+          return { disabled: true, needsI2v: true, note: vp === 0
+            ? "I2V prompts missing — generate prompts first"
+            : `I2V prompts incomplete (${vp}/${sel}) — finish prompts first` };
+        }
         if ((pkg.wan_pending || 0) <= 0) return { disabled: true, note: "No pending Wan selections" };
         if (!((data.presto || {}).reachable)) return { disabled: true, note: "PRESTO unreachable" };
         if (active) return { disabled: true, note: `PRESTO job running for ${active.package_id}` };
@@ -834,6 +843,15 @@
           const prestoNote = document.createElement("span");
           prestoNote.className = "action-note";
           prestoNote.textContent = prestoState.note;
+          // When blocked on missing I2V prompts, point to the project-scoped I2V
+          // prompt workspace instead of encouraging a PRESTO submit.
+          let i2vLink = null;
+          if (prestoState.needsI2v) {
+            i2vLink = document.createElement("a");
+            i2vLink.className = "btn-go";
+            i2vLink.href = `project-i2v-prompts.html?id=${encodeURIComponent(pkg.id)}`;
+            i2vLink.textContent = "Open I2V prompt workspace →";
+          }
           const progress = document.createElement("div");
           progress.className = "presto-progress";
           progress.setAttribute("data-presto-progress-for", pkg.id);
@@ -842,7 +860,9 @@
             prestoStatus.active && prestoStatus.active.package_id === pkg.id ? prestoStatus.active : null,
             prestoStatus.completed && prestoStatus.completed.package_id === pkg.id ? prestoStatus.completed : null
           );
-          prestoControls.append(prestoTitle, prestoOpen, prestoButton, prestoNote, progress);
+          prestoControls.append(prestoTitle, prestoOpen, prestoButton, prestoNote);
+          if (i2vLink) prestoControls.append(i2vLink);
+          prestoControls.append(progress);
           const videoPromptsToggle = document.createElement("button");
           videoPromptsToggle.type = "button";
           videoPromptsToggle.className = "btn-secondary";

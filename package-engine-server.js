@@ -89,6 +89,9 @@ const PROJECT_SCRIPT_API = '/api/project/script';
 const PROJECT_SCRIPT_SAVE_DRAFT_API = '/api/project/script/save-draft';
 const PROJECT_SCRIPT_APPROVE_API = '/api/project/script/approve';
 const PROJECT_IMAGE_PROMPTS_GENERATE_API = '/api/project/image-prompts/generate';
+const PROJECT_I2V_PROMPTS_API = '/api/project/i2v-prompts';
+const PROJECT_I2V_PROMPTS_GENERATE_API = '/api/project/i2v-prompts/generate';
+const PROJECT_I2V_PROMPTS_SAVE_API = '/api/project/i2v-prompts/save';
 const PROJECT_ALLOWED_STATUSES = ['active', 'parked', 'blocked', 'editing', 'publish_prep', 'published', 'archived'];
 const AIGEN_FLUX_IMAGES_API_PREFIX = '/api/aigen/flux-images/';
 const AIGEN_SELECTED_IMAGES_API = '/api/aigen/selected-images';
@@ -195,6 +198,7 @@ const ideaPromotion = require('./idea-promotion.js');
 const topicScout = require('./topic-idea-scout.js');
 const projectScript = require('./project-script.js');
 const projectImagePrompts = require('./project-image-prompts.js');
+const projectI2vPrompts = require('./project-i2v-prompts.js');
 const OLLAMA_PRESTO_BASE_URL = mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT);
 const OLLAMA_PRESTO_MODEL = mediaRouting.resolveModel(mediaRouting.LANE.I2V_PROMPT);
 
@@ -4511,6 +4515,24 @@ async function callOllamaChat({ system, user, schema, model, baseUrl } = {}, opt
   return data && data.message && typeof data.message.content === 'string' ? data.message.content : '';
 }
 
+// I2V prompts are routed to local Ollama on PRESTO ONLY (media-routing policy).
+// This thin wrapper pins the PRESTO base/model and never falls back to vidnux or
+// a cloud LLM; a connection failure surfaces as the lane's 503 blocked state.
+async function callPrestoOllamaChat({ system, user, schema, model } = {}, options = {}) {
+  mediaRouting.assertLocalLane(mediaRouting.LANE.I2V_PROMPT);
+  const baseUrl = mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT);
+  const useModel = model || OLLAMA_PRESTO_MODEL;
+  try {
+    return await callOllamaChat({ system, user, schema, model: useModel, baseUrl }, options);
+  } catch (error) {
+    // Re-frame connection refusals as the canonical PRESTO-lane blocked state.
+    if (error && (error.statusCode === 503)) {
+      throw mediaRouting.blockedError(mediaRouting.LANE.I2V_PROMPT, `Could not reach Ollama at ${baseUrl}.`);
+    }
+    throw error;
+  }
+}
+
 // Draft the five beginning-triage fields with the local Ollama LLM. Read-only:
 // returns generated text; it does not write any file or workflow state.
 async function generateBeginningTriageDraft(payload = {}, options = {}) {
@@ -4892,6 +4914,152 @@ function saveI2vPrompts(payload = {}, options = {}) {
   return { package_id: packageId, path: 'video-prompts.json', count: prompts.length };
 }
 
+// ── Project-scoped I2V prompt workspace (selected-image-keyed) ────────────────
+// These power the guided i2v_prompts stage: read context + selected images +
+// any existing prompts; generate one motion prompt per selected image via PRESTO
+// Ollama; and save operator edits. All confined to one resolved package dir.
+
+function readProjectSelections(packageDir) {
+  const selected = safeReadJson(path.join(packageDir, 'selected-images.json'), null);
+  return selected && Array.isArray(selected.selections) ? selected.selections : [];
+}
+
+function readProjectVideoPromptsRaw(packageDir) {
+  const vp = safeReadJson(path.join(packageDir, 'video-prompts.json'), null);
+  return vp && Array.isArray(vp.prompts) ? vp.prompts : [];
+}
+
+// Atomic write of the canonical video-prompts.json, preserving the enriched
+// per-prompt review fields produced by project-i2v-prompts.js.
+function writeProjectVideoPrompts(packageDir, fileObj) {
+  const outPath = path.join(packageDir, 'video-prompts.json');
+  const tmpPath = `${outPath}.tmp`;
+  fs.writeFileSync(tmpPath, `${JSON.stringify(fileObj, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmpPath, outPath);
+  return outPath;
+}
+
+// Read-only context for project-i2v-prompts.html (no network — provider status
+// is the configured PRESTO lane descriptor, not a live ping).
+function readProjectI2vContext(packageId, options = {}) {
+  const { packageId: id, packageDir } = resolveAigenPackageDir(packageId, options);
+  const state = resolveProjectState(packageDir);
+  const scriptState = projectScript.readScript(packageDir);
+  const selections = readProjectSelections(packageDir);
+  const existing = readProjectVideoPromptsRaw(packageDir);
+  const byIndex = new Map(existing.map((p) => [Number(p.prompt_index), p]));
+  const images = selections.map((s, i) => {
+    const promptIndex = Number.isInteger(Number(s.prompt_index)) ? Number(s.prompt_index) : (i + 1);
+    const rel = String(s.selected_path || s.path || '');
+    const existingPrompt = byIndex.get(promptIndex) || null;
+    return {
+      index: i + 1,
+      prompt_index: promptIndex,
+      label: String(s.label || labelFromSelectedPath(rel) || `image-${promptIndex}`),
+      selected_path: rel,
+      selected_source: String(s.selected_source || s.source || ''),
+      asset_url: rel ? `${AIGEN_ASSETS_PREFIX}script-packages/${encodeURIComponent(id)}/${rel.split('/').map(encodeURIComponent).join('/')}` : '',
+      image_exists: rel ? fs.existsSync(path.join(packageDir, rel)) : false,
+      image_prompt: String(s.prompt || ''),
+      i2v_prompt: existingPrompt ? String(existingPrompt.prompt || existingPrompt.i2v_prompt || '') : '',
+      motion_intent: existingPrompt ? String(existingPrompt.motion_intent || '') : '',
+      camera_motion: existingPrompt ? String(existingPrompt.camera_motion || '') : '',
+      subject_motion: existingPrompt ? String(existingPrompt.subject_motion || '') : '',
+    };
+  });
+  return {
+    ok: true,
+    project_id: id,
+    title: state.title,
+    stage: state.stage,
+    status: state.status,
+    has_script: state.has_script,
+    selected_images: selections.length,
+    i2v_prompt_count: existing.length,
+    images,
+    provider: {
+      lane: mediaRouting.LANE.I2V_PROMPT,
+      provider: 'ollama',
+      host: 'presto',
+      endpoint: mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT),
+      model: OLLAMA_PRESTO_MODEL,
+      fallback_allowed: false,
+    },
+  };
+}
+
+// Generate one I2V motion prompt per selected image via PRESTO Ollama and write
+// the canonical video-prompts.json. Never generates videos / submits to PRESTO.
+async function generateProjectI2vPrompts(payload = {}, options = {}) {
+  const opt = { root: options.root || ROOT };
+  const resolved = resolveAigenPackageDir(payload.id || payload.package_id || payload.package || '', opt);
+  const scriptState = projectScript.readScript(resolved.packageDir);
+  if (!scriptState.final.exists) {
+    const e = new Error('No approved final script. Approve the script first.'); e.statusCode = 400; throw e;
+  }
+  const selections = readProjectSelections(resolved.packageDir);
+  if (!selections.length) {
+    const e = new Error('No selected images. Select images first, then generate I2V prompts.'); e.statusCode = 400; throw e;
+  }
+  const existing = readProjectVideoPromptsRaw(resolved.packageDir);
+  if (existing.length > 0 && !payload.confirm_replace) {
+    const e = new Error(`${existing.length} I2V prompt(s) already exist. Re-submit with confirm_replace to regenerate.`);
+    e.statusCode = 409; throw e;
+  }
+  const state = resolveProjectState(resolved.packageDir);
+  const prov = state.provenance || {};
+  const req = projectI2vPrompts.buildI2vPromptRequest({
+    title: state.title,
+    premise: prov.premise || '',
+    scoreSummary: (prov.score_explanation && prov.score_explanation.summary) || '',
+    script: scriptState.final.text || '',
+    selections,
+  });
+  // PRESTO Ollama only — 503 blocked on failure (no fallback). Record the model
+  // actually used (payload override or the configured PRESTO default).
+  const useModel = payload.model || OLLAMA_PRESTO_MODEL;
+  const content = await callPrestoOllamaChat({ system: req.system, user: req.user, schema: req.schema, model: useModel }, options);
+  const nowIso = new Date().toISOString();
+  const records = projectI2vPrompts.parseI2vPrompts(content, selections, { projectId: resolved.packageId, model: useModel, nowIso });
+  const fileObj = projectI2vPrompts.buildVideoPromptsFile(records, { projectId: resolved.packageId, model: useModel, nowIso });
+  writeProjectVideoPrompts(resolved.packageDir, fileObj);
+  const manifestPath = path.join(resolved.packageDir, 'video-prompts-generation-manifest.json');
+  ideaPromotion.writeJsonAtomic(manifestPath, projectI2vPrompts.buildManifest(records, { projectId: resolved.packageId, model: useModel, nowIso, scriptPath: scriptState.final.path }));
+  return {
+    ok: true,
+    project_id: resolved.packageId,
+    prompt_count: records.length,
+    prompts_path: 'video-prompts.json',
+    manifest_path: 'video-prompts-generation-manifest.json',
+    provider: 'ollama',
+    provider_host: 'presto',
+    model: useModel,
+    generated_at: nowIso,
+    replaced_existing: existing.length > 0,
+  };
+}
+
+// Save operator-edited I2V prompts (one per selected image) to video-prompts.json.
+function saveProjectI2vPrompts(payload = {}, options = {}) {
+  const opt = { root: options.root || ROOT };
+  const resolved = resolveAigenPackageDir(payload.id || payload.package_id || payload.package || '', opt);
+  const selections = readProjectSelections(resolved.packageDir);
+  if (!selections.length) {
+    const e = new Error('No selected images. Select images first.'); e.statusCode = 400; throw e;
+  }
+  const nowIso = new Date().toISOString();
+  const records = projectI2vPrompts.normalizeSaveRecords(payload.prompts, selections, { projectId: resolved.packageId, nowIso });
+  const fileObj = projectI2vPrompts.buildVideoPromptsFile(records, { projectId: resolved.packageId, model: OLLAMA_PRESTO_MODEL, nowIso });
+  writeProjectVideoPrompts(resolved.packageDir, fileObj);
+  return {
+    ok: true,
+    project_id: resolved.packageId,
+    prompt_count: records.length,
+    prompts_path: 'video-prompts.json',
+    saved_at: nowIso,
+  };
+}
+
 // Generate ONE fresh topic candidate with the local Ollama LLM and append it to a
 // run's package-candidates.json (used by Topic Scout's "Delete & replace"). Existing
 // candidates are preserved as-is; only the new one is appended. Nonce-gated by the route.
@@ -5205,6 +5373,8 @@ function buildPackagePipelineStatus(packageDir, wanLabels) {
   const resolveHandoffCount = RESOLVE_HANDOFF_FILES.filter((filename) => fs.existsSync(path.join(resolveHandoffDir, filename))).length;
   const promptItems = imagePrompts && Array.isArray(imagePrompts.image_prompts) ? imagePrompts.image_prompts : [];
   const selections = selected && Array.isArray(selected.selections) ? selected.selections : [];
+  const videoPrompts = safeReadJson(path.join(packageDir, 'video-prompts.json'), null);
+  const videoPromptsCount = videoPrompts && Array.isArray(videoPrompts.prompts) ? videoPrompts.prompts.length : 0;
   // Wan completion is package-scoped: a selection is complete only when its
   // package-facing staged MP4 (videos/mp4/<index>.mp4) exists. Global Wan lane
   // labels are not package-unique, so they must not drive per-package counts.
@@ -5223,6 +5393,12 @@ function buildPackagePipelineStatus(packageDir, wanLabels) {
     wanNextAction = `Generate ${promptItems.length - fluxImagesCount} remaining FLUX images`;
   } else if (!selections.length) {
     wanNextAction = 'Select images for Wan2.2';
+  } else if (videoPromptsCount < selections.length) {
+    // I2V prompt gate: PRESTO video generation needs one prompt per selected
+    // image. Do not urge a PRESTO submit before the prompts exist.
+    wanNextAction = videoPromptsCount === 0
+      ? 'Generate I2V prompts first (PRESTO Ollama)'
+      : `I2V prompts incomplete (${videoPromptsCount}/${selections.length}) — finish prompts first`;
   } else if (pending > 0) {
     wanNextAction = `Submit ${pending} pending selections to PRESTO`;
   } else if (failed > 0) {
@@ -5237,6 +5413,7 @@ function buildPackagePipelineStatus(packageDir, wanLabels) {
     has_selections: Boolean(selected),
     selections_count: selections.length,
     prompts_count: promptItems.length,
+    video_prompts_count: videoPromptsCount,
     flux_images_count: fluxImagesCount,
     has_flux_manifest: fs.existsSync(fluxManifestPath),
     wan_completed: completed,
@@ -8727,6 +8904,43 @@ function createServer(options = {}) {
       return;
     }
 
+    // Project-scoped I2V prompt workspace: read context + selected images + any
+    // existing prompts (read-only, no network).
+    if (req.method === 'GET' && url.pathname === PROJECT_I2V_PROMPTS_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('package_id') || url.searchParams.get('package') || '';
+        sendJSON(res, 200, readProjectI2vContext(id, { root: serverOptions.root || ROOT }));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'project-i2v-prompts-read-error');
+      }
+      return;
+    }
+
+    // Generate one I2V motion prompt per selected image via local Ollama on PRESTO
+    // (no fallback). Writes canonical video-prompts.json. Never generates videos.
+    if (req.method === 'POST' && url.pathname === PROJECT_I2V_PROMPTS_GENERATE_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload);
+          // Merge createServer options (e.g. fetchImpl for tests) with the root.
+          const result = await generateProjectI2vPrompts(payload, Object.assign({}, options, { root: serverOptions.root || ROOT }));
+          sendJSON(res, 200, result);
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'project-i2v-prompts-generate-error'));
+      return;
+    }
+
+    // Save operator-edited I2V prompts to video-prompts.json.
+    if (req.method === 'POST' && url.pathname === PROJECT_I2V_PROMPTS_SAVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, saveProjectI2vPrompts(payload, { root: serverOptions.root || ROOT }));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'project-i2v-prompts-save-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === COCKPIT_ORIENTATION_API) {
       try {
         sendJSON(res, 200, buildCockpitOrientation());
@@ -10127,6 +10341,10 @@ module.exports = {
   saveScriptCommitmentCheck,
   generateI2vPrompts,
   saveI2vPrompts,
+  readProjectI2vContext,
+  generateProjectI2vPrompts,
+  saveProjectI2vPrompts,
+  callPrestoOllamaChat,
   buildMediaRoutingStatus,
   buildPackageMediaIndex,
   resolveProjectState,
@@ -10141,6 +10359,9 @@ module.exports = {
   PROJECT_SCRIPT_SAVE_DRAFT_API,
   PROJECT_SCRIPT_APPROVE_API,
   PROJECT_IMAGE_PROMPTS_GENERATE_API,
+  PROJECT_I2V_PROMPTS_API,
+  PROJECT_I2V_PROMPTS_GENERATE_API,
+  PROJECT_I2V_PROMPTS_SAVE_API,
   IDEAS_TRIAGE_API,
   IDEAS_STATUS_API,
   IDEAS_PROMOTE_API,
