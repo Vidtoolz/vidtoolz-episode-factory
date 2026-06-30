@@ -35,6 +35,7 @@ require("./idea-promotion.test.js");
 require("./topic-idea-scout.test.js");
 require("./project-script.test.js");
 require("./backfill-score-explanation.test.js");
+require("./image-prompts-action.test.js");
 require("./workflow-path.test.js");
 require("./script-commitment-check.test.js");
 require("./resolve-handoff-readiness.test.js");

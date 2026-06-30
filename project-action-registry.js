@@ -26,10 +26,10 @@ const REGISTRY = {
     note: 'The topic is already chosen — write/paste/import the script for this project, save a draft, then approve the final.',
   },
   generate_image_prompts: {
-    label: 'Generate image prompts',
+    label: 'Open image prompts editor',
     type: 'open', page: 'image-prompts-editor.html',
     requires: ['script_final'], evidence: ['image-prompts.json'],
-    note: 'Image prompts use local Ollama/templates on vidnux; copy buttons export prompts for manual GPT.',
+    note: 'Opens the project image-prompts editor. Add/edit the FLUX prompts here for this project (one-click generation is not wired yet); copy buttons export prompts for manual GPT.',
   },
   submit_image_generation: {
     label: 'Generate local images (vidnux FLUX)',
@@ -113,7 +113,13 @@ function resolveAction(taskId, projectId) {
   if (a.note) out.note = a.note;
   if (a.type === 'open') {
     const page = a.page;
-    out.href = `${page}${page.includes('?') ? '&' : '?'}package_id=${encodeURIComponent(projectId)}`;
+    // Emit BOTH the canonical `package` and legacy `package_id` so every target
+    // page works regardless of which it reads (the aigen editors read `package`;
+    // the project pages read `id`/`package_id`). Fixes the image-prompts-editor
+    // "Missing ?package=" bug at the source.
+    const e = encodeURIComponent(projectId);
+    const sep = page.includes('?') ? '&' : '?';
+    out.href = `${page}${sep}package=${e}&package_id=${e}&id=${e}`;
   } else {
     out.method = a.method;
     out.endpoint = a.endpoint;

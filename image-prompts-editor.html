@@ -141,6 +141,10 @@
         <button type="button" id="reload">Reload</button>
       </header>
 
+      <section id="project-context" class="panel" style="display:none;margin-bottom:12px;">
+        <div id="pc-body" class="meta"></div>
+      </section>
+
       
 
       <section class="panel">
@@ -183,7 +187,9 @@
       const VALIDATE_API = "/api/image-prompts/validate";
       const SAVE_API = "/api/image-prompts/save";
       const params = new URLSearchParams(window.location.search);
-      const packageId = params.get("package") || "";
+      // Accept the canonical ?package= and the legacy ?package_id= / ?id= aliases
+      // so action links and older bookmarks both work.
+      const packageId = params.get("package") || params.get("package_id") || params.get("id") || "";
       const title = document.getElementById("title");
       const meta = document.getElementById("meta");
       const rowsEl = document.getElementById("rows");
@@ -386,6 +392,31 @@
         }
       }
 
+      function pcEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+      // Best-effort project context (title, stage, topic, approved-script status,
+      // links). Silently skipped for non-project packages or if the server is down.
+      async function loadProjectContext() {
+        try {
+          const res = await fetch(`/api/project-state?id=${encodeURIComponent(packageId)}`, { cache: "no-store" });
+          if (!res.ok) return;
+          const p = normalizePayload(await res.json());
+          if (!p || !p.state) return;
+          const s = p.state, prov = s.provenance || {};
+          const prem = prov.premise ? `<div><b>Topic:</b> ${pcEsc(prov.premise)}</div>` : "";
+          const seed = prov.seed_topic ? `<div>Seed topic: ${pcEsc(prov.seed_topic)}</div>` : "";
+          const scriptLine = s.has_script
+            ? '<div style="color:#3fb950;">✓ Approved script found.</div>'
+            : `<div style="color:#f85149;">No approved script found. <a href="project-script.html?id=${encodeURIComponent(packageId)}">Return to script workspace</a>.</div>`;
+          document.getElementById("pc-body").innerHTML =
+            `<div><b>${pcEsc(s.title || packageId)}</b> <span class="meta">(${pcEsc(packageId)})</span> · stage <b>${pcEsc(s.stage)}</b> · status ${pcEsc(s.status)}</div>`
+            + prem + seed + scriptLine
+            + `<div style="margin-top:6px;"><a href="project-workspace.html?id=${encodeURIComponent(packageId)}">← Project workspace</a> · <a href="project-focus.html?id=${encodeURIComponent(packageId)}">Focus mode</a></div>`
+            + `<div class="hint" style="margin-top:6px;">Add or edit this project's FLUX image prompts below, then Save. (One-click generation from the script is not wired yet.)</div>`;
+          document.getElementById("project-context").style.display = "";
+        } catch (e) { /* non-project package or server down; skip context */ }
+      }
+
       async function load() {
         if (!packageId) {
           title.textContent = "Image Prompts";
@@ -395,6 +426,7 @@
         }
         title.textContent = `Image Prompts - ${packageId}`;
         selectorLink.href = `image-selector.html?package=${encodeURIComponent(packageId)}`;
+        loadProjectContext();
         const response = await fetch(`${READ_API}?package_id=${encodeURIComponent(packageId)}`, { cache: "no-store" });
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || "read failed");

@@ -167,7 +167,7 @@
 
     <script>
       const params = new URLSearchParams(window.location.search);
-      const packageId = params.get("package") || "";
+      const packageId = params.get("package") || params.get("package_id") || params.get("id") || "";
       const subtitle = document.getElementById("subtitle");
       const statusEl = document.getElementById("status");
       const content = document.getElementById("content");

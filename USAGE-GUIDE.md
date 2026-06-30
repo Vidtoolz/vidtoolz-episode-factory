@@ -71,8 +71,14 @@ The system resolves each project through these stages. The Next-task card tells 
    script. Approving writes script/script-final.md and advances the project to
    image prompts. (A scaffold pre-fills from your topic; delete it freely.)
 
-2. GENERATE IMAGE PROMPTS
-   Open image-prompts-editor.html from the Next-task button. Write prompts: subject + style + mood, vertical 9:16. Photorealistic only. No text of any kind in prompts.
+2. IMAGE PROMPTS
+   The Next-task button ("Open image prompts editor") opens the project image
+   prompts editor (image-prompts-editor.html?package=<project-id>) with project
+   context: title, stage, topic, and whether an approved script exists, plus
+   links back to the workspace / Focus. Add/edit the prompts here (subject +
+   style + mood, vertical 9:16, photorealistic, no text in prompts) and Save.
+   Note: one-click generation from the script is not wired yet — you create/edit
+   the prompts in this editor for now.
 
 3. GENERATE IMAGES
    Click the Next-task button to submit to vidnux FLUX via API (dry-run first). ~48s per image at 1080x1920.
