@@ -43,7 +43,16 @@ Option A: From an idea
    This creates a script-package with provenance. Idempotent — re-promoting opens the existing project.
 4. The new project appears on the Projects board (shortcut 10). Open it and start with the Next-task card.
 
-Option B: From scratch
+Option B: From your own topic
+1. Click desktop shortcut 11-Ideas.
+2. In "Generate ideas from your topic", type a topic, rough idea, or angle.
+3. Click Generate 10 ideas. This creates a separate user-seeded run (local Ollama
+   on vidnux) and does NOT overwrite today's daily ideas.
+4. Review the user-seeded run (clearly labeled). Approve / Park / Reject.
+5. Promote one idea to a project (records "Promoted from user topic" provenance).
+6. Open it on the Projects board (shortcut 10) and work in Focus mode.
+
+Option C: From scratch
 1. Click desktop shortcut 03-Build-New-Video
    Opens the guided step-by-step build page.
 2. Follow the steps on screen. Each step has buttons that open the right tool.

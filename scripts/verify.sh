@@ -23,6 +23,7 @@ node --check project-action-registry.js
 node --check project-discovery.js
 node --check project-client.js
 node --check idea-promotion.js
+node --check topic-idea-scout.js
 node --check scripts/import-manual-images.js
 node --check scripts/import-manual-videos.js
 node --check scripts/index-package-media.js

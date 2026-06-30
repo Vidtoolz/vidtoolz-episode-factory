@@ -93,15 +93,18 @@
         client.renderAction(document.getElementById('pw-action'), nt, ()=>load(), document.getElementById('pw-result'));
       }
       function provenanceCard(p){
-        if(!p || p.source !== 'daily_idea_scout') return '';
+        if(!p || (p.source !== 'daily_idea_scout' && p.source !== 'user_topic_scout')) return '';
+        const isTopic = p.source === 'user_topic_scout';
+        const heading = isTopic ? 'Promoted from user topic' : 'Promoted from idea';
         const rows = [
-          ['Source','Daily Idea Scout'],
+          ['Source', isTopic ? 'User-seeded topic scout' : 'Daily Idea Scout'],
+          isTopic && p.seed_topic ? ['Seed topic', p.seed_topic] : null,
           p.idea_date ? ['Idea date', p.idea_date] : null,
           (p.idea_index!==null && p.idea_index!==undefined) ? ['Idea index', String(p.idea_index)] : null,
           p.premise ? ['Premise', p.premise] : null,
           (p.score!==null && p.score!==undefined) ? ['Score', String(p.score)] : null,
         ].filter(Boolean);
-        return `<div class="card"><div class="next-label">Promoted from idea</div>
+        return `<div class="card"><div class="next-label">${client.esc(heading)}</div>
           <div style="margin-top:8px;font-size:13px;">${rows.map(r=>`<div class="meta"><b style="color:var(--soft,#c9d1d9);">${client.esc(r[0])}:</b> ${client.esc(r[1])}</div>`).join('')}</div></div>`;
       }
       function countCard(label,val){ return `<div class="count"><b>${client.esc(val)}</b>${client.esc(label)}</div>`; }

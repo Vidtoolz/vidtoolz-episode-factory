@@ -112,6 +112,50 @@ function chooseProjectId(scriptPackagesRoot, title, date) {
   return id;
 }
 
+// Shared project-creation used by BOTH daily and user-topic promotion so a
+// promoted project has identical structure regardless of source. Writes a
+// convention-compatible script-package the state resolver can read.
+//   fields: { title, idea, score, thumbnailConcept, premise }
+//   prov:   { source, idea_uid, date, marker }  (marker = extra provenance fields)
+function createProjectFromIdea(scriptPackagesRoot, fields, prov, nowIso) {
+  const projectId = chooseProjectId(scriptPackagesRoot, fields.title, prov.date);
+  const pkgDir = path.join(scriptPackagesRoot, projectId);
+  writeJsonAtomic(path.join(pkgDir, 'selected-package.json'), {
+    selectedAt: nowIso,
+    source: prov.source,
+    package: {
+      proposedTitle: fields.title,
+      idea: fields.idea || '',
+      score: fields.score || 0,
+      thumbnailConcept: fields.thumbnailConcept || '',
+    },
+  });
+  writeJsonAtomic(path.join(pkgDir, 'manifest.json'), {
+    package_name: fields.title,
+    slug: slugifyTitle(fields.title),
+    created_at: nowIso,
+    updated_at: nowIso,
+    package_state: 'active',
+    source: prov.source,
+    source_idea_id: prov.idea_uid,
+  });
+  writeJsonAtomic(path.join(pkgDir, PROMOTED_MARKER), Object.assign({
+    source: prov.source,
+    idea_uid: prov.idea_uid,
+    title: fields.title,
+    premise: fields.premise || '',
+    score: fields.score || 0,
+    promoted_at: nowIso,
+  }, prov.marker || {}));
+  writeJsonAtomic(path.join(pkgDir, 'project-status.json'), {
+    status: 'active',
+    source: prov.source,
+    source_idea_id: prov.idea_uid,
+    updated_at: nowIso,
+  });
+  return projectId;
+}
+
 // Promote an idea to a project. Idempotent: if the idea was already promoted,
 // returns the existing project_id with created:false.
 function promoteIdea(opts = {}) {
@@ -127,46 +171,15 @@ function promoteIdea(opts = {}) {
     return { ok: true, project_id: existing, created: false, already_promoted: true };
   }
 
-  const projectId = chooseProjectId(scriptPackagesRoot, idea.title, date);
-  const pkgDir = path.join(scriptPackagesRoot, projectId);
   const nowIso = opts.now || new Date().toISOString();
   const premise = String(idea.description || '').split(/(?<=[.!?])\s/)[0] || '';
-
-  writeJsonAtomic(path.join(pkgDir, 'selected-package.json'), {
-    selectedAt: nowIso,
-    source: 'daily_idea_scout',
-    package: {
-      proposedTitle: idea.title,
-      idea: idea.description || '',
-      score: idea.final_score || 0,
-      thumbnailConcept: idea.thumbnail_prompt || '',
-    },
-  });
-  writeJsonAtomic(path.join(pkgDir, 'manifest.json'), {
-    package_name: idea.title,
-    slug: slugifyTitle(idea.title),
-    created_at: nowIso,
-    updated_at: nowIso,
-    package_state: 'active',
-    source: 'daily_idea_scout',
-    source_idea_id: uid,
-  });
-  writeJsonAtomic(path.join(pkgDir, PROMOTED_MARKER), {
-    source: 'daily_idea_scout',
-    date,
-    index,
-    idea_uid: uid,
+  const projectId = createProjectFromIdea(scriptPackagesRoot, {
     title: idea.title,
-    premise,
+    idea: idea.description || '',
     score: idea.final_score || 0,
-    promoted_at: nowIso,
-  });
-  writeJsonAtomic(path.join(pkgDir, 'project-status.json'), {
-    status: 'active',
-    source: 'daily_idea_scout',
-    source_idea_id: uid,
-    updated_at: nowIso,
-  });
+    thumbnailConcept: idea.thumbnail_prompt || '',
+    premise,
+  }, { source: 'daily_idea_scout', idea_uid: uid, date, marker: { date, index } }, nowIso);
 
   // Link the idea in the triage sidecar.
   triage[String(index)] = Object.assign({}, triage[String(index)] || {}, {
@@ -188,9 +201,12 @@ module.exports = {
   ideaUid,
   triagePath,
   readTriage,
+  readJson,
+  writeJsonAtomic,
   getIdea,
   setIdeaStatus,
   findPromotedProject,
   chooseProjectId,
+  createProjectFromIdea,
   promoteIdea,
 };

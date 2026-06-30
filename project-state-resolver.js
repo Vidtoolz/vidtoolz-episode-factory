@@ -108,11 +108,14 @@ function readProvenance(packageDir) {
   if (marker && marker.source) {
     return {
       source: marker.source,
-      idea_date: marker.date || '',
-      idea_index: Number.isInteger(marker.index) ? marker.index : null,
+      idea_date: marker.date || marker.source_date || '',
+      idea_index: Number.isInteger(marker.index) ? marker.index : (Number.isInteger(marker.source_idea_index) ? marker.source_idea_index : null),
       premise: marker.premise || '',
       score: typeof marker.score === 'number' ? marker.score : null,
       promoted_at: marker.promoted_at || '',
+      // user_topic_scout extras (empty for daily promotions)
+      seed_topic: marker.seed_topic || '',
+      run_id: marker.run_id || '',
     };
   }
   const man = readJson(path.join(packageDir, 'manifest.json'));

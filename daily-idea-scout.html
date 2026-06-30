@@ -217,6 +217,21 @@
     .scout-status-rejected { background: rgba(248,81,73,0.15); color: #f85149; }
     .scout-status-parked { background: rgba(210,153,34,0.2); color: #d29922; }
     .scout-status-promoted { background: rgba(88,166,255,0.2); color: #58a6ff; }
+    .topic-seed-panel {
+      background: var(--panel-soft, #161b22); border: 1px solid var(--border, #30363d);
+      border-radius: 10px; padding: 14px 16px; margin: 14px 0;
+    }
+    .topic-seed-panel textarea {
+      width: 100%; box-sizing: border-box; background: var(--panel, #0d1117);
+      border: 1px solid var(--border, #30363d); color: inherit; border-radius: 6px;
+      padding: 8px 10px; font-size: 13px; resize: vertical;
+    }
+    .topic-run-banner {
+      background: rgba(88,166,255,0.08); border: 1px solid rgba(88,166,255,0.35);
+      border-radius: 8px; padding: 10px 14px; margin: 14px 0 6px; font-size: 13px;
+    }
+    .topic-run-banner b { color: #58a6ff; }
+    .muted { color: var(--muted, #8b949e); }
   </style>
 </head>
 <body>
@@ -235,6 +250,18 @@
       <h1>Daily Candidate Ideas</h1>
       <div class="scout-meta" id="scout-meta">Loading...</div>
     </div>
+
+    <div class="topic-seed-panel" id="topic-seed-panel">
+      <h2 style="font-size:16px;margin:0 0 6px;">Generate ideas from your topic</h2>
+      <p class="muted" style="font-size:12px;margin:0 0 8px;">Creates a separate user-seeded idea run. Does not overwrite today's daily ideas.</p>
+      <textarea id="topic-seed-input" rows="2" maxlength="1000" placeholder="Enter a topic, rough idea, or angle… e.g. AI video generators still cannot maintain continuity"></textarea>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;">
+        <button id="topic-seed-btn" class="btn-primary" type="button">Generate 10 ideas</button>
+        <select id="topic-run-select" style="display:none;font-size:12px;"></select>
+        <span id="topic-seed-status" class="muted" style="font-size:12px;"></span>
+      </div>
+    </div>
+    <div id="topic-run-section" style="display:none;"></div>
 
     <div class="scout-date-picker">
       <label for="date-select">Archive date:</label>
@@ -288,22 +315,28 @@
       return json && typeof json === "object" && json.data !== undefined ? json.data : json;
     }
 
-    function renderIdea(idea, index, date, triage) {
+    function renderIdea(idea, index, date, triage, ctx) {
       const scorePercent = Math.round(idea.final_score * 10);
       const t = (triage && triage[String(index)]) || {};
       const status = t.status || 'new';
       const projectId = t.project_id || '';
       const idx = (index === undefined || index === null) ? '' : index;
+      // Source context: daily ideas carry only date+index; user-topic ideas also
+      // carry source + run id so triage/promote target the right archive.
+      const srcAttr = (ctx && ctx.source === 'user_topic')
+        ? ` data-idea-source="user_topic" data-idea-run="${escapeHtml(ctx.runId || '')}"`
+        : '';
+      const base = `data-idea-index="${idx}" data-idea-date="${escapeHtml(date || '')}"${srcAttr}`;
       const promoteCell = projectId
         ? `<a class="scout-act scout-act-open" href="project-workspace.html?id=${encodeURIComponent(projectId)}">Open project →</a>`
-        : `<button type="button" class="scout-act scout-act-promote" data-idea-act="promote" data-idea-index="${idx}" data-idea-date="${escapeHtml(date || '')}">Promote to project</button>`;
+        : `<button type="button" class="scout-act scout-act-promote" data-idea-act="promote" ${base}>Promote to project</button>`;
       const actionsHtml = `
         <div class="scout-idea-actions" data-idea-row="${idx}">
           <span class="scout-status-badge scout-status-${escapeHtml(status)}">${escapeHtml(status)}</span>
-          <button type="button" class="scout-act" data-idea-act="approved" data-idea-index="${idx}" data-idea-date="${escapeHtml(date || '')}">Approve</button>
-          <button type="button" class="scout-act" data-idea-act="parked" data-idea-index="${idx}" data-idea-date="${escapeHtml(date || '')}">Park</button>
-          <button type="button" class="scout-act" data-idea-act="new" data-idea-index="${idx}" data-idea-date="${escapeHtml(date || '')}">Unpark</button>
-          <button type="button" class="scout-act scout-act-reject" data-idea-act="rejected" data-idea-index="${idx}" data-idea-date="${escapeHtml(date || '')}">Reject</button>
+          <button type="button" class="scout-act" data-idea-act="approved" ${base}>Approve</button>
+          <button type="button" class="scout-act" data-idea-act="parked" ${base}>Park</button>
+          <button type="button" class="scout-act" data-idea-act="new" ${base}>Unpark</button>
+          <button type="button" class="scout-act scout-act-reject" data-idea-act="rejected" ${base}>Reject</button>
           ${promoteCell}
         </div>`;
       const evidenceHtml = (idea.evidence || []).map(ev => {
@@ -481,11 +514,15 @@
       const act = btn.dataset.ideaAct;
       const index = Number(btn.dataset.ideaIndex);
       const date = btn.dataset.ideaDate || currentDate;
+      // user-topic ideas carry source + run id; daily ideas omit them.
+      const srcCtx = (btn.dataset.ideaSource === 'user_topic')
+        ? { source: 'user_topic', run_id: btn.dataset.ideaRun }
+        : {};
       const row = btn.closest('.scout-idea-actions');
       btn.disabled = true;
       try {
         if (act === 'promote') {
-          const r = await postIdea('/api/ideas/promote', { date, index });
+          const r = await postIdea('/api/ideas/promote', Object.assign({ date, index }, srcCtx));
           // Replace the promote button with an Open-project link.
           const link = document.createElement('a');
           link.className = 'scout-act scout-act-open';
@@ -494,7 +531,7 @@
           btn.replaceWith(link);
           if (row) setRowStatus(row, 'promoted');
         } else {
-          await postIdea('/api/ideas/status', { date, index, status: act });
+          await postIdea('/api/ideas/status', Object.assign({ date, index, status: act }, srcCtx));
           if (row) setRowStatus(row, act);
           btn.disabled = false;
         }
@@ -510,6 +547,96 @@
         if (btn) { e.preventDefault(); handleIdeaAction(btn); }
       });
     }
+
+    // ── User-seeded topic scout ──
+    // Normalize a topic idea into the daily idea display shape so it renders with
+    // the same card layout + triage/promote controls.
+    function normalizeTopicIdea(it, i) {
+      const ev = [];
+      if (it.rationale) ev.push({ type: 'rationale', title: it.rationale });
+      if (it.proof_plan) ev.push({ type: 'proof', title: it.proof_plan });
+      if (it.production_fit) ev.push({ type: 'production', title: it.production_fit });
+      return {
+        title: it.title,
+        description: it.premise || '',
+        final_score: typeof it.score === 'number' ? it.score : 0,
+        rank: it.rank || (i + 1),
+        evidence: ev.length ? ev : [{ type: 'note', title: 'No rationale provided' }],
+        scores: {},
+        thumbnail_prompt: it.thumbnail_prompt || '',
+        ranking_rationale: it.rationale || '',
+        thumbnail_status: '',
+      };
+    }
+
+    function renderTopicRun(run, triage) {
+      const ideas = (run.ideas || []).map(normalizeTopicIdea);
+      const ctx = { source: 'user_topic', runId: run.run_id };
+      const cards = ideas.map((idea, i) => renderIdea(idea, i, run.date, triage || {}, ctx)).join('');
+      const sec = document.getElementById('topic-run-section');
+      sec.style.display = '';
+      sec.innerHTML = `
+        <div class="topic-run-banner">
+          <b>User-seeded topic run</b> — not the daily ideas.<br>
+          Seed: "${escapeHtml(run.seed_topic || '')}" · Generated: ${escapeHtml(run.generated_at || '')} ·
+          Provider: ${escapeHtml((run.provider || '') + (run.provider_host ? ' (' + run.provider_host + ')' : ''))}
+        </div>
+        ${cards}`;
+      sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    async function generateFromTopic() {
+      const input = document.getElementById('topic-seed-input');
+      const btn = document.getElementById('topic-seed-btn');
+      const statusEl = document.getElementById('topic-seed-status');
+      const topic = (input.value || '').trim();
+      if (!topic) { statusEl.textContent = 'Enter a topic first.'; return; }
+      btn.disabled = true; statusEl.textContent = 'Generating 10 ideas (local Ollama on vidnux)…';
+      try {
+        const r = await postIdea('/api/ideas/generate-from-topic', { topic });
+        statusEl.textContent = `Generated ${r.ideas.length} ideas.`;
+        renderTopicRun(r, {});
+        loadTopicRuns(); // refresh the recent-runs selector
+      } catch (e) {
+        statusEl.textContent = 'Blocked: ' + (e.message || e);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function loadTopicRuns() {
+      try {
+        const res = await fetch('/api/ideas/topic-runs');
+        const payload = normalizePayload(await res.json());
+        const runs = (payload && payload.runs) || [];
+        const sel = document.getElementById('topic-run-select');
+        if (!runs.length) { sel.style.display = 'none'; return; }
+        sel.style.display = '';
+        sel.innerHTML = '<option value="">Recent topic runs…</option>' +
+          runs.map(r => `<option value="${escapeHtml(r.date)}|${escapeHtml(r.run_id)}">${escapeHtml((r.seed_topic || r.run_id).slice(0, 50))} (${escapeHtml(r.date)})</option>`).join('');
+      } catch (e) { /* selector is optional */ }
+    }
+
+    async function reloadTopicRun(date, runId) {
+      const statusEl = document.getElementById('topic-seed-status');
+      try {
+        const res = await fetch(`/api/ideas/topic-run?date=${encodeURIComponent(date)}&run_id=${encodeURIComponent(runId)}`);
+        const payload = normalizePayload(await res.json());
+        if (payload && payload.run) { renderTopicRun(payload.run, payload.triage || {}); statusEl.textContent = 'Loaded saved topic run.'; }
+      } catch (e) { statusEl.textContent = 'Could not load that run.'; }
+    }
+
+    (function wireTopicPanel() {
+      const btn = document.getElementById('topic-seed-btn');
+      if (btn && btn.addEventListener) btn.addEventListener('click', generateFromTopic);
+      const sel = document.getElementById('topic-run-select');
+      if (sel && sel.addEventListener) sel.addEventListener('change', () => {
+        if (!sel.value) return;
+        const [d, rid] = sel.value.split('|');
+        reloadTopicRun(d, rid);
+      });
+      loadTopicRuns();
+    })();
 
     // Init
     loadDates();

@@ -109,6 +109,9 @@ const DAILY_SCOUT_RUN_API = '/api/daily-idea-scout/run';
 const IDEAS_TRIAGE_API = '/api/ideas/triage';
 const IDEAS_STATUS_API = '/api/ideas/status';
 const IDEAS_PROMOTE_API = '/api/ideas/promote';
+const IDEAS_GENERATE_FROM_TOPIC_API = '/api/ideas/generate-from-topic';
+const IDEAS_TOPIC_RUNS_API = '/api/ideas/topic-runs';
+const IDEAS_TOPIC_RUN_API = '/api/ideas/topic-run';
 const PACKAGE_RUNS_REINDEX_API = '/api/package-runs/reindex';
 const TOPIC_SCOUT_LIST_API = '/api/topic-scout/list';
 const TOPIC_SCOUT_SUBMIT_API = '/api/topic-scout/submit';
@@ -185,6 +188,7 @@ const { resolveProjectState } = require('./project-state-resolver.js');
 const { chooseNextTask } = require('./next-task-engine.js');
 const projectDiscovery = require('./project-discovery.js');
 const ideaPromotion = require('./idea-promotion.js');
+const topicScout = require('./topic-idea-scout.js');
 const OLLAMA_PRESTO_BASE_URL = mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT);
 const OLLAMA_PRESTO_MODEL = mediaRouting.resolveModel(mediaRouting.LANE.I2V_PROMPT);
 
@@ -8667,33 +8671,112 @@ function createServer(options = {}) {
       return;
     }
 
-    // Set an idea's triage status (approve/reject/park/unpark/shortlist).
+    // Set an idea's triage status (approve/reject/park/unpark/shortlist). Works
+    // for both daily ideas (date+index) and user-topic runs (source=user_topic,
+    // date, run_id, index).
     if (req.method === 'POST' && url.pathname === IDEAS_STATUS_API) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
-          const archiveRoot = path.join(aigenPaths({ root: serverOptions.root || ROOT }).aigenRoot, 'daily-idea-scout');
-          sendJSON(res, 200, ideaPromotion.setIdeaStatus({ archiveRoot, date: payload.date, index: payload.index, status: String(payload.status || '').trim() }));
+          const paths = aigenPaths({ root: serverOptions.root || ROOT });
+          const status = String(payload.status || '').trim();
+          if (payload.source === 'user_topic') {
+            sendJSON(res, 200, topicScout.setTopicIdeaStatus({
+              topicRoot: path.join(paths.aigenRoot, 'topic-idea-scout'),
+              date: payload.date, runId: payload.run_id, index: payload.index, status,
+            }));
+          } else {
+            sendJSON(res, 200, ideaPromotion.setIdeaStatus({
+              archiveRoot: path.join(paths.aigenRoot, 'daily-idea-scout'),
+              date: payload.date, index: payload.index, status,
+            }));
+          }
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'ideas-status-error'));
       return;
     }
 
-    // Promote an idea into a script-package project (idempotent).
+    // Promote an idea into a script-package project (idempotent). Daily or
+    // user-topic source.
     if (req.method === 'POST' && url.pathname === IDEAS_PROMOTE_API) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
           const paths = aigenPaths({ root: serverOptions.root || ROOT });
-          const result = ideaPromotion.promoteIdea({
-            archiveRoot: path.join(paths.aigenRoot, 'daily-idea-scout'),
-            scriptPackagesRoot: paths.scriptPackages,
-            date: payload.date,
-            index: payload.index,
-          });
+          let result;
+          if (payload.source === 'user_topic') {
+            result = topicScout.promoteTopicIdea({
+              topicRoot: path.join(paths.aigenRoot, 'topic-idea-scout'),
+              scriptPackagesRoot: paths.scriptPackages,
+              date: payload.date, runId: payload.run_id, index: payload.index,
+            });
+          } else {
+            result = ideaPromotion.promoteIdea({
+              archiveRoot: path.join(paths.aigenRoot, 'daily-idea-scout'),
+              scriptPackagesRoot: paths.scriptPackages,
+              date: payload.date, index: payload.index,
+            });
+          }
           sendJSON(res, 200, Object.assign({}, result, { href: `project-workspace.html?id=${encodeURIComponent(result.project_id)}` }));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'ideas-promote-error'));
+      return;
+    }
+
+    // Generate 10 candidate ideas from a user-seeded topic via local Ollama on
+    // vidnux (no cloud fallback). Stores a separate topic-idea-scout run; the
+    // daily archive is never touched.
+    if (req.method === 'POST' && url.pathname === IDEAS_GENERATE_FROM_TOPIC_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload);
+          const topic = topicScout.validateTopic(payload.topic); // 400 on empty/too long
+          const count = topicScout.DEFAULT_COUNT;
+          const { system, user, schema } = topicScout.buildTopicPrompt(topic, count);
+          // local-first: vidnux Ollama; on unavailable, callOllamaChat throws 503.
+          const content = await callOllamaChat({ system, user, schema }, options);
+          const ideas = topicScout.parseTopicIdeas(content, count); // 502 if malformed/insufficient
+          const nowIso = new Date().toISOString();
+          const date = nowIso.slice(0, 10);
+          const runId = topicScout.makeRunId(topic, nowIso);
+          const paths = aigenPaths({ root: serverOptions.root || ROOT });
+          const written = topicScout.writeTopicRun({
+            topicRoot: path.join(paths.aigenRoot, 'topic-idea-scout'),
+            date, runId, seedTopic: topic, provider: 'ollama', providerHost: 'vidnux', ideas, now: nowIso,
+          });
+          sendJSON(res, 200, {
+            ok: true, kind: topicScout.KIND, run_id: runId, date, seed_topic: topic,
+            provider: 'ollama', provider_host: 'vidnux', ideas,
+            archive_path: written.archive_path,
+            triage_context: { source: 'user_topic', date, run_id: runId },
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'ideas-generate-from-topic-error'));
+      return;
+    }
+
+    // List recent user-topic runs (read-only).
+    if (req.method === 'GET' && url.pathname === IDEAS_TOPIC_RUNS_API) {
+      try {
+        const topicRoot = path.join(aigenPaths({ root: serverOptions.root || ROOT }).aigenRoot, 'topic-idea-scout');
+        sendJSON(res, 200, { runs: topicScout.listTopicRuns(topicRoot) });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'ideas-topic-runs-error');
+      }
+      return;
+    }
+
+    // Reload a single user-topic run + its triage (read-only).
+    if (req.method === 'GET' && url.pathname === IDEAS_TOPIC_RUN_API) {
+      try {
+        const topicRoot = path.join(aigenPaths({ root: serverOptions.root || ROOT }).aigenRoot, 'topic-idea-scout');
+        const date = url.searchParams.get('date') || '';
+        const runId = url.searchParams.get('run_id') || '';
+        const run = topicScout.readTopicRun(topicRoot, date, runId);
+        sendJSON(res, 200, { run, triage: topicScout.readTopicTriage(topicRoot, date, runId) });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'ideas-topic-run-error');
+      }
       return;
     }
 
@@ -9927,6 +10010,9 @@ module.exports = {
   IDEAS_TRIAGE_API,
   IDEAS_STATUS_API,
   IDEAS_PROMOTE_API,
+  IDEAS_GENERATE_FROM_TOPIC_API,
+  IDEAS_TOPIC_RUNS_API,
+  IDEAS_TOPIC_RUN_API,
   OLLAMA_PRESTO_BASE_URL,
   OLLAMA_PRESTO_MODEL,
   uploadAigenImage,
