@@ -82,8 +82,9 @@
   <div class="review-bridge-header">
     <div class="review-bridge-links">
       <a href="/package-runs-dashboard.html">&larr; Back to Cockpit</a>
-      <a class="btn-external" id="openReviewLink" href="http://127.0.0.1:8099/review-view/" target="_blank" rel="noopener">Open Review View in Browser</a>
-      <span id="reviewContext" style="color:var(--muted);margin-left:12px;">AIGEN Review View</span>
+      <a class="btn-primary" id="projectReviewLink" href="project-video-review.html">★ Project Video Review (recommended)</a>
+      <a class="btn-external" id="openReviewLink" href="http://127.0.0.1:8099/review-view/" target="_blank" rel="noopener">Open legacy Review View</a>
+      <span id="reviewContext" style="color:var(--muted);margin-left:12px;">Legacy AIGEN Review View — for project-scoped review use Project Video Review</span>
     </div>
     <div class="review-bridge-status">
       <span class="review-bridge-dot" id="statusDot"></span>
@@ -122,7 +123,10 @@
       // /script-packages/... asset fetches resolve against its own server.
       var REVIEW_URL = 'http://127.0.0.1:8099/review-view/' + qs;
       openLink.href = REVIEW_URL;
-      if (pkg) contextEl.textContent = 'AIGEN Review View — ' + pkg;
+      // Cockpit-native, project-scoped review is the recommended path.
+      var projectLink = document.getElementById('projectReviewLink');
+      if (projectLink && pkg) projectLink.href = 'project-video-review.html?id=' + encodeURIComponent(pkg);
+      if (pkg) contextEl.textContent = 'Legacy AIGEN Review View — ' + pkg + ' · prefer Project Video Review';
 
       // Probe via the SAME-ORIGIN cockpit proxy so we can read the real status:
       //   200 -> review-view present (online); 404 -> service up but review-view

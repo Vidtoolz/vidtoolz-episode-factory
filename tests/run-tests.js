@@ -39,6 +39,7 @@ require("./image-prompts-action.test.js");
 require("./project-image-prompts.test.js");
 require("./project-i2v-prompts.test.js");
 require("./aigen-review-routing.test.js");
+require("./project-video-review.test.js");
 require("./workflow-path.test.js");
 require("./script-commitment-check.test.js");
 require("./resolve-handoff-readiness.test.js");

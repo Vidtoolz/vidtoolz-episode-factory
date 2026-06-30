@@ -65,10 +65,10 @@ const REGISTRY = {
     requires: ['selected_images'], evidence: ['external-media-manifest.json'],
   },
   review_videos: {
-    label: 'Review generated clips',
-    type: 'open', page: 'aigen-review.html',
-    requires: ['videos'], evidence: ['videos/mp4/'],
-    note: 'Opens the AIGEN Review View (port 8099) scoped to this package to review the generated clips before the Resolve handoff.',
+    label: 'Review generated videos',
+    type: 'open', page: 'project-video-review.html',
+    requires: ['videos'], evidence: ['video-review.json'],
+    note: 'Opens the cockpit-native project video review: each generated clip with its source image, I2V prompt, and spec validation, plus keep/flag/reject decisions. The Resolve handoff stays a separate gated step.',
   },
   prepare_resolve_handoff: {
     label: 'Prepare Resolve handoff',

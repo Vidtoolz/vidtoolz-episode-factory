@@ -115,7 +115,16 @@ The system resolves each project through these stages. The Next-task card tells 
    Alternative: Import manual KlingAI videos via the alternate action button.
 
 7. REVIEW VIDEOS
-   Open production-pipeline.html from the Next-task button. Review generated clips.
+   The Next-task button ("Review generated videos") opens the cockpit-native
+   Project Video Review (project-video-review.html?id=<project-id>) — one project
+   only, showing each generated clip with its source image, I2V prompt, and spec
+   validation badges (1080x1920 / 30fps / 81 frames / ~2.7s). Mark each clip
+   **Keep / Flag / Reject**, add notes, and Save — decisions are recorded in
+   video-review.json. Then prepare the Resolve handoff (a separate gated step).
+   Note: review decisions are recorded but do not yet filter the Resolve handoff
+   (it still includes all verified clips until handoff filtering is implemented).
+   The legacy AIGEN Review View (port 8099, aigen-review.html) remains available as
+   a secondary/auxiliary tool.
 
 8. PREPARE RESOLVE HANDOFF
    Click the Next-task button. Creates resolve-handoff/media-manifest.json automatically.

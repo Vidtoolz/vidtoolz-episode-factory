@@ -51,14 +51,14 @@ test("aigen-review: shows distinct offline vs review-view-missing messages", () 
   assert.match(html, /r\.status === 404/);
 });
 
-test("aigen-review: project video-review action opens the package-scoped review page", () => {
+test("aigen-review: video-review action opens the cockpit-native project page (not legacy 8099 wrapper)", () => {
   const a = resolveAction("review_videos", "demo-project");
   assert.equal(a.type, "open");
-  assert.match(a.href, /^aigen-review\.html\?/);
-  assert.match(a.href, /package=demo-project/);
-  assert.match(a.href, /package_id=demo-project/);
+  // The guided video_review action now opens the cockpit-native page, not the
+  // legacy AIGEN Review wrapper or the generic pipeline page.
+  assert.match(a.href, /^project-video-review\.html\?/);
   assert.match(a.href, /id=demo-project/);
-  assert.doesNotMatch(a.href, /production-pipeline\.html/);
+  assert.doesNotMatch(a.href, /aigen-review\.html|production-pipeline\.html/);
 });
 
 test("aigen-review: sibling 'Open AIGEN Review View' links also target /review-view/", () => {

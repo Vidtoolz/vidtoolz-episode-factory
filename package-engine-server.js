@@ -92,6 +92,8 @@ const PROJECT_IMAGE_PROMPTS_GENERATE_API = '/api/project/image-prompts/generate'
 const PROJECT_I2V_PROMPTS_API = '/api/project/i2v-prompts';
 const PROJECT_I2V_PROMPTS_GENERATE_API = '/api/project/i2v-prompts/generate';
 const PROJECT_I2V_PROMPTS_SAVE_API = '/api/project/i2v-prompts/save';
+const PROJECT_VIDEO_REVIEW_API = '/api/project/video-review';
+const PROJECT_VIDEO_REVIEW_SAVE_API = '/api/project/video-review/save';
 const PROJECT_ALLOWED_STATUSES = ['active', 'parked', 'blocked', 'editing', 'publish_prep', 'published', 'archived'];
 const AIGEN_FLUX_IMAGES_API_PREFIX = '/api/aigen/flux-images/';
 const AIGEN_SELECTED_IMAGES_API = '/api/aigen/selected-images';
@@ -199,6 +201,7 @@ const topicScout = require('./topic-idea-scout.js');
 const projectScript = require('./project-script.js');
 const projectImagePrompts = require('./project-image-prompts.js');
 const projectI2vPrompts = require('./project-i2v-prompts.js');
+const projectVideoReview = require('./project-video-review.js');
 const OLLAMA_PRESTO_BASE_URL = mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT);
 const OLLAMA_PRESTO_MODEL = mediaRouting.resolveModel(mediaRouting.LANE.I2V_PROMPT);
 
@@ -5060,6 +5063,121 @@ function saveProjectI2vPrompts(payload = {}, options = {}) {
   };
 }
 
+// ── Project-scoped video review (cockpit-native; no legacy 8099 dependency) ───
+// Pairs the pure helpers (project-video-review.js) with ffprobe + package reads.
+// Read-only GET; never mutates video files. Decisions persist to video-review.json.
+
+// ffprobe a clip into {width,height,fps,frames,duration}, cached by path+mtime+size
+// so repeated GETs don't re-probe unchanged files. Returns null if probe fails.
+const VIDEO_PROBE_CACHE = new Map();
+function probeVideo(absPath) {
+  let stat;
+  try { stat = fs.statSync(absPath); } catch (_) { return null; }
+  const key = `${absPath} ${stat.mtimeMs} ${stat.size}`;
+  if (VIDEO_PROBE_CACHE.has(key)) return VIDEO_PROBE_CACHE.get(key);
+  let probe = null;
+  try {
+    const out = childProcess.spawnSync('ffprobe', [
+      '-v', 'quiet', '-print_format', 'json', '-show_streams', '-show_format', absPath,
+    ], { encoding: 'utf8', timeout: 10000, maxBuffer: 4 * 1024 * 1024 });
+    if (out.status === 0 && out.stdout) {
+      const parsed = JSON.parse(out.stdout);
+      const v = (parsed.streams || []).find((s) => s.codec_type === 'video') || {};
+      let fps = null;
+      if (typeof v.r_frame_rate === 'string' && v.r_frame_rate.includes('/')) {
+        const [n, d] = v.r_frame_rate.split('/').map(Number);
+        if (d) fps = n / d;
+      }
+      let frames = v.nb_frames != null ? Number(v.nb_frames) : null;
+      const duration = (v.duration != null ? Number(v.duration) : (parsed.format && parsed.format.duration != null ? Number(parsed.format.duration) : null));
+      if ((!frames || Number.isNaN(frames)) && fps && duration) frames = Math.round(fps * duration);
+      probe = {
+        width: v.width != null ? Number(v.width) : null,
+        height: v.height != null ? Number(v.height) : null,
+        fps,
+        frames: frames != null && !Number.isNaN(frames) ? frames : null,
+        duration,
+      };
+    }
+  } catch (_) { probe = null; }
+  VIDEO_PROBE_CACHE.set(key, probe);
+  return probe;
+}
+
+function assetUrl(id, rel) {
+  return rel ? `${AIGEN_ASSETS_PREFIX}script-packages/${encodeURIComponent(id)}/${String(rel).split('/').map(encodeURIComponent).join('/')}` : '';
+}
+
+function readProjectVideoReviewFile(packageDir) {
+  const j = safeReadJson(path.join(packageDir, 'video-review.json'), null);
+  return j && Array.isArray(j.reviews) ? j.reviews : [];
+}
+
+// Assemble the project's clips: one per selected image (prompt_index), paired with
+// its source image, I2V prompt, ffprobe validation, and any saved review decision.
+function readProjectVideoReview(packageId, options = {}) {
+  const opt = { root: options.root || ROOT };
+  const { packageId: id, packageDir } = resolveAigenPackageDir(packageId, opt);
+  const state = resolveProjectState(packageDir);
+  const selections = readProjectSelections(packageDir);
+  const vpByIndex = new Map(readProjectVideoPromptsRaw(packageDir).map((p) => [Number(p.prompt_index), p]));
+  const reviewByIndex = new Map(readProjectVideoReviewFile(packageDir).map((r) => [Number(r.prompt_index), r]));
+
+  const clips = selections.map((s, i) => {
+    const promptIndex = Number.isInteger(Number(s.prompt_index)) ? Number(s.prompt_index) : (i + 1);
+    const mp4Rel = projectVideoReview.mp4RelPath(promptIndex);
+    const mp4Abs = path.join(packageDir, mp4Rel);
+    const validation = projectVideoReview.buildValidation(fs.existsSync(mp4Abs) ? probeVideo(mp4Abs) : null);
+    const srcRel = String(s.selected_path || s.path || '');
+    const vp = vpByIndex.get(promptIndex) || null;
+    const rev = reviewByIndex.get(promptIndex) || null;
+    return {
+      prompt_index: promptIndex,
+      label: String(s.label || labelFromSelectedPath(srcRel) || `clip-${promptIndex}`),
+      mp4_path: mp4Rel,
+      mp4_url: validation.exists ? assetUrl(id, mp4Rel) : '',
+      source_image_path: srcRel,
+      source_image_url: srcRel ? assetUrl(id, srcRel) : '',
+      source_image_exists: srcRel ? fs.existsSync(path.join(packageDir, srcRel)) : false,
+      i2v_prompt: vp ? String(vp.prompt || vp.i2v_prompt || '') : '',
+      validation,
+      review: {
+        decision: rev ? projectVideoReview.normalizeDecision(rev.decision) : 'unreviewed',
+        notes: rev ? String(rev.notes || '') : '',
+      },
+    };
+  });
+
+  const counts = projectVideoReview.summarizeCounts(clips);
+  return {
+    ok: true,
+    project: { id, title: state.title, stage: state.stage, status: state.status },
+    expected: projectVideoReview.EXPECTED,
+    clips,
+    counts,
+    usability: projectVideoReview.usability(counts),
+    // The handoff builder does not yet filter on these decisions.
+    handoff_consumes_review: false,
+    reviews_path: 'video-review.json',
+  };
+}
+
+// Persist operator review decisions to video-review.json (merged over existing).
+function saveProjectVideoReview(payload = {}, options = {}) {
+  const opt = { root: options.root || ROOT };
+  const { packageId: id, packageDir } = resolveAigenPackageDir(payload.id || payload.package_id || payload.package || '', opt);
+  const incoming = projectVideoReview.normalizeReviewSave(payload.reviews);
+  const merged = projectVideoReview.mergeReviews(readProjectVideoReviewFile(packageDir), incoming);
+  const nowIso = new Date().toISOString();
+  const fileObj = projectVideoReview.buildReviewFile(merged, { projectId: id, nowIso });
+  const outPath = path.join(packageDir, 'video-review.json');
+  const tmpPath = `${outPath}.tmp`;
+  fs.writeFileSync(tmpPath, `${JSON.stringify(fileObj, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmpPath, outPath);
+  const counts = projectVideoReview.summarizeCounts(merged.map((r) => ({ review: { decision: r.decision } })));
+  return { ok: true, project_id: id, reviews_path: 'video-review.json', saved_at: nowIso, review_count: merged.length, counts };
+}
+
 // Generate ONE fresh topic candidate with the local Ollama LLM and append it to a
 // run's package-candidates.json (used by Topic Scout's "Delete & replace"). Existing
 // candidates are preserved as-is; only the new one is appended. Nonce-gated by the route.
@@ -8941,6 +9059,29 @@ function createServer(options = {}) {
       return;
     }
 
+    // Project-scoped video review: clips + source images + I2V prompts +
+    // ffprobe validation + saved decisions (read-only; never mutates videos).
+    if (req.method === 'GET' && url.pathname === PROJECT_VIDEO_REVIEW_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('package_id') || url.searchParams.get('package') || '';
+        sendJSON(res, 200, readProjectVideoReview(id, { root: serverOptions.root || ROOT }));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'project-video-review-read-error');
+      }
+      return;
+    }
+
+    // Save keep/flag/reject review decisions to video-review.json.
+    if (req.method === 'POST' && url.pathname === PROJECT_VIDEO_REVIEW_SAVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          sendJSON(res, 200, saveProjectVideoReview(payload, { root: serverOptions.root || ROOT }));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'project-video-review-save-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === COCKPIT_ORIENTATION_API) {
       try {
         sendJSON(res, 200, buildCockpitOrientation());
@@ -10344,6 +10485,8 @@ module.exports = {
   readProjectI2vContext,
   generateProjectI2vPrompts,
   saveProjectI2vPrompts,
+  readProjectVideoReview,
+  saveProjectVideoReview,
   callPrestoOllamaChat,
   buildMediaRoutingStatus,
   buildPackageMediaIndex,
@@ -10362,6 +10505,8 @@ module.exports = {
   PROJECT_I2V_PROMPTS_API,
   PROJECT_I2V_PROMPTS_GENERATE_API,
   PROJECT_I2V_PROMPTS_SAVE_API,
+  PROJECT_VIDEO_REVIEW_API,
+  PROJECT_VIDEO_REVIEW_SAVE_API,
   IDEAS_TRIAGE_API,
   IDEAS_STATUS_API,
   IDEAS_PROMOTE_API,

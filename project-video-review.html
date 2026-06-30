@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Project Video Review — VIDTOOLZ</title>
+  <link rel="stylesheet" href="styles.css?v=1.9.6" />
+  <style>
+    .vr-grid { display: grid; gap: 14px; }
+    .vr-card { display: grid; grid-template-columns: 200px 120px 1fr; gap: 14px; padding: 12px; border: 1px solid var(--border, #30363d); border-radius: 8px; background: var(--panel, #161b22); }
+    .vr-card video { width: 200px; height: 356px; background: #0d1117; border-radius: 6px; border: 1px solid var(--border, #30363d); object-fit: cover; }
+    .vr-card .missing { width: 200px; height: 356px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; color: #f85149; border: 1px dashed var(--border, #30363d); border-radius: 6px; }
+    .vr-card img.src { width: 120px; height: 213px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border, #30363d); background: #0d1117; }
+    .vr-card .noimg { width: 120px; height: 213px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #8b949e; border: 1px dashed var(--border, #30363d); border-radius: 6px; }
+    .vr-meta { font-size: 12px; color: #8b949e; }
+    .vr-prompt { font-size: 12px; margin: 6px 0; max-height: 70px; overflow: auto; color: #c9d1d9; }
+    .badge { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--border, #30363d); margin: 2px 4px 2px 0; }
+    .badge.ok { color: #3fb950; border-color: #2ea04344; }
+    .badge.warn { color: #d29922; border-color: #d2992244; }
+    .decisions { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+    .decisions button { font-size: 12px; }
+    .decisions button.active[data-decision="keep"] { background: #238636; color: #fff; }
+    .decisions button.active[data-decision="flag"] { background: #9e6a03; color: #fff; }
+    .decisions button.active[data-decision="reject"] { background: #da3633; color: #fff; }
+    .vr-card textarea { width: 100%; min-height: 44px; font-family: inherit; font-size: 12px; padding: 6px; box-sizing: border-box; background: #0d1117; color: #e6edf3; border: 1px solid var(--border, #30363d); border-radius: 6px; }
+    .row-actions { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+    .row-actions button { font-size: 11px; }
+    .panel { padding: 12px; border: 1px solid var(--border, #30363d); border-radius: 8px; background: var(--panel, #161b22); margin-bottom: 12px; }
+    .summary-pills span { margin-right: 12px; font-size: 13px; }
+    .links a { margin-right: 12px; }
+    .warnmsg { color: #d29922; }
+    .okmsg { color: #3fb950; }
+  </style>
+</head>
+<body>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="resume.html">Resume</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="production-pipeline.html">Pipeline</a><a href="image-selector.html">Image Select</a><a href="project-i2v-prompts.html">I2V Prompts</a><a href="project-video-review.html" class="active">Video Review</a><a href="aigen-review.html">AIGEN Review</a></nav>
+
+  <details class="page-guide" open>
+    <summary>Page Guide — What is this?</summary>
+    <div class="page-guide-body">
+      <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Cockpit-native review of this project's generated PRESTO Wan2.2 clips — each clip with its source image, I2V prompt, and spec validation. Mark Keep / Flag / Reject.</span></div>
+      <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Review clips, Save decisions, then Prepare Resolve handoff. Decisions are recorded in video-review.json.</span></div>
+      <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">One card per clip: video player, source image, prompt, validation badges, decision buttons, notes.</span></div>
+    </div>
+  </details>
+
+  <main class="shell">
+    <header class="header">
+      <div>
+        <h1 id="title">Project Video Review</h1>
+        <div id="meta" class="meta">Loading…</div>
+      </div>
+      <button type="button" id="reload">Reload</button>
+    </header>
+
+    <section class="panel" id="summary-panel" style="display:none;">
+      <div class="summary-pills" id="summary"></div>
+      <div id="usability" style="margin-top:6px;"></div>
+      <div id="handoff-note" class="vr-meta" style="margin-top:6px;"></div>
+      <div style="margin-top:8px;">
+        <button type="button" id="save" disabled>Save review decisions</button>
+        <span id="save-status" class="vr-meta" style="margin-left:8px;"></span>
+      </div>
+    </section>
+
+    <section class="panel" id="error-panel" style="display:none;"><div id="error-body" class="warnmsg"></div></section>
+
+    <section class="vr-grid" id="cards"></section>
+
+    <section class="panel links" id="links-panel" style="display:none;">
+      <a id="link-workspace" href="#">← Project workspace</a>
+      <a id="link-focus" href="#">Focus mode</a>
+      <a id="link-i2v" href="#">I2V prompt workspace</a>
+      <a id="link-handoff" href="#" title="Prepare the Resolve handoff (separate gated step)">Prepare Resolve handoff →</a>
+    </section>
+  </main>
+
+  <script src="clipboard.js?v=1.0.0"></script>
+  <script>
+    const READ_API = "/api/project/video-review";
+    const SAVE_API = "/api/project/video-review/save";
+    const params = new URLSearchParams(window.location.search);
+    const projectId = params.get("id") || params.get("package_id") || params.get("package") || "";
+
+    let clips = [];
+    let dirty = false;
+    let localWriteNonce = "";
+    let nonceHeader = "x-vidtoolz-local-write-nonce";
+
+    function $(id) { return document.getElementById(id); }
+    function setText(id, v) { const el = $(id); if (el) el.textContent = v == null ? "" : v; }
+    function setHtml(id, v) { const el = $(id); if (el) el.innerHTML = v; }
+    function show(id, on) { const el = $(id); if (el) el.style.display = on ? "" : "none"; }
+    function setHref(id, href) { const el = $(id); if (el) el.href = href; }
+    function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+    function normalizePayload(j) { return j && typeof j === "object" && j.data !== undefined ? j.data : j; }
+    function copyText(t) { if (window.copyToClipboard) return window.copyToClipboard(t); try { navigator.clipboard.writeText(t); } catch (_e) {} return Promise.resolve(); }
+
+    async function fetchNonce() {
+      try {
+        const r = await fetch("/api/package-engine/status", { cache: "no-store" });
+        const p = normalizePayload(await r.json());
+        if (p && p.localWriteNonce) { localWriteNonce = p.localWriteNonce; nonceHeader = p.nonceHeader || nonceHeader; }
+      } catch (_e) {}
+    }
+
+    function setDirty(on) { dirty = on; const b = $("save"); if (b) b.disabled = !on; }
+
+    function recompute() {
+      const c = { clips: clips.length, keep: 0, flag: 0, reject: 0, unreviewed: 0 };
+      clips.forEach((x) => { const d = x.review.decision || "unreviewed"; if (c[d] === undefined) c.unreviewed++; else c[d]++; });
+      setHtml("summary",
+        `<span><b>${c.clips}</b> clips</span>` +
+        `<span class="okmsg"><b>${c.keep}</b> keep</span>` +
+        `<span class="warnmsg"><b>${c.flag}</b> flag</span>` +
+        `<span style="color:#f85149;"><b>${c.reject}</b> reject</span>` +
+        `<span><b>${c.unreviewed}</b> unreviewed</span>`);
+      const usable = c.keep >= 1, recommended = c.keep >= 5;
+      const msg = !usable ? "No clips kept yet — mark usable clips Keep before the Resolve handoff."
+        : !recommended ? `Only ${c.keep} clip(s) kept (recommended 5+). You can still proceed.`
+        : `${c.keep} clips kept — ready for the Resolve handoff.`;
+      setHtml("usability", `<span class="${usable ? "okmsg" : "warnmsg"}">${usable ? "✓" : "⚠"} ${esc(msg)}</span>`);
+    }
+
+    function decisionButtons(clip) {
+      return ["keep", "flag", "reject"].map((d) =>
+        `<button type="button" data-decision="${d}" class="${clip.review.decision === d ? "active" : ""}">${d[0].toUpperCase() + d.slice(1)}</button>`
+      ).join("");
+    }
+
+    function renderCards() {
+      const root = $("cards");
+      root.replaceChildren();
+      clips.forEach((clip) => {
+        const v = clip.validation || {};
+        const specBadges = v.exists
+          ? `<span class="badge ${v.width === 1080 && v.height === 1920 ? "ok" : "warn"}">${v.width || "?"}x${v.height || "?"}</span>` +
+            `<span class="badge ${v.fps && Math.round(v.fps) === 30 ? "ok" : "warn"}">${v.fps ? Math.round(v.fps) : "?"}fps</span>` +
+            `<span class="badge ${v.frames === 81 ? "ok" : "warn"}">${v.frames || "?"} frames</span>` +
+            `<span class="badge ${v.duration ? "ok" : "warn"}">${v.duration ? v.duration.toFixed(1) : "?"}s</span>`
+          : `<span class="badge warn">missing clip</span>`;
+        const warns = (v.warnings || []).length ? `<div class="warnmsg vr-meta">⚠ ${esc((v.warnings || []).join(" "))}</div>` : "";
+        const card = document.createElement("div");
+        card.className = "vr-card";
+        const videoCell = clip.mp4_url
+          ? `<video controls preload="metadata" src="${esc(clip.mp4_url)}"></video>`
+          : `<div class="missing">clip missing<br/>${esc(clip.mp4_path)}</div>`;
+        const srcCell = (clip.source_image_url && clip.source_image_exists)
+          ? `<img class="src" src="${esc(clip.source_image_url)}" alt="${esc(clip.label)}" loading="lazy" />`
+          : `<div class="noimg">no source<br/>image</div>`;
+        card.innerHTML =
+          `<div>${videoCell}</div>` +
+          `<div>${srcCell}</div>` +
+          `<div>` +
+            `<div class="vr-meta"><b>#${clip.prompt_index}</b> · ${esc(clip.label)} · <span class="vr-meta">${esc(clip.mp4_path)}</span></div>` +
+            `<div style="margin:4px 0;">${specBadges}</div>${warns}` +
+            `<div class="vr-prompt"><b>I2V:</b> ${esc(clip.i2v_prompt) || "(none)"}</div>` +
+            `<div class="decisions">${decisionButtons(clip)}</div>` +
+            `<textarea placeholder="Notes (optional)…">${esc(clip.review.notes || "")}</textarea>` +
+            `<div class="row-actions">` +
+              `<button type="button" data-act="copy-mp4">Copy MP4 path</button>` +
+              `<button type="button" data-act="copy-prompt">Copy I2V prompt</button>` +
+            `</div>` +
+          `</div>`;
+        // wire decision buttons
+        card.querySelectorAll(".decisions button").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const d = btn.getAttribute("data-decision");
+            clip.review.decision = (clip.review.decision === d) ? "unreviewed" : d;
+            card.querySelectorAll(".decisions button").forEach((b) => b.classList.toggle("active", b.getAttribute("data-decision") === clip.review.decision));
+            setDirty(true); recompute();
+          });
+        });
+        const ta = card.querySelector("textarea");
+        ta.addEventListener("input", () => { clip.review.notes = ta.value; setDirty(true); });
+        card.querySelector('[data-act="copy-mp4"]').addEventListener("click", (e) => { copyText(clip.mp4_path || ""); flash(e.target); });
+        card.querySelector('[data-act="copy-prompt"]').addEventListener("click", (e) => { copyText(clip.i2v_prompt || ""); flash(e.target); });
+        root.appendChild(card);
+      });
+    }
+
+    function flash(btn) { const o = btn.textContent; btn.textContent = "Copied!"; setTimeout(() => { btn.textContent = o; }, 1200); }
+
+    async function load() {
+      if (!projectId) { setText("title", "Project Video Review"); setText("meta", "Missing ?id=<project-id> query parameter."); return; }
+      let data;
+      try {
+        const r = await fetch(`${READ_API}?id=${encodeURIComponent(projectId)}`, { cache: "no-store" });
+        const body = await r.json();
+        if (!r.ok || (body && body.ok === false)) throw new Error((body && body.error) || ("HTTP " + r.status));
+        data = normalizePayload(body);
+      } catch (e) {
+        show("error-panel", true); setHtml("error-body", "Could not load project: " + esc(e.message || e));
+        return;
+      }
+      const p = data.project || {};
+      setText("title", `Video Review — ${p.title || projectId}`);
+      setText("meta", `${p.id} · stage ${p.stage} · status ${p.status} · ${data.counts.clips} clip(s)`);
+      clips = (data.clips || []).map((c) => Object.assign({}, c, { review: Object.assign({ decision: "unreviewed", notes: "" }, c.review || {}) }));
+      setHtml("handoff-note", data.handoff_consumes_review
+        ? "Rejected clips will be excluded from the Resolve handoff."
+        : "Note: review decisions are recorded, but the Resolve handoff still includes all verified clips until handoff filtering is implemented.");
+      show("summary-panel", true); show("links-panel", true);
+      const e = encodeURIComponent(projectId);
+      setHref("link-workspace", `project-workspace.html?id=${e}`);
+      setHref("link-focus", `project-focus.html?id=${e}`);
+      setHref("link-i2v", `project-i2v-prompts.html?id=${e}`);
+      setHref("link-handoff", `production-pipeline.html?package=${e}`);
+      renderCards(); recompute(); setDirty(false);
+    }
+
+    async function save() {
+      setText("save-status", "Saving…");
+      try {
+        if (!localWriteNonce) await fetchNonce();
+        if (!localWriteNonce) { setText("save-status", "missing write nonce — reload the page."); return; }
+        const headers = { "Content-Type": "application/json" }; headers[nonceHeader] = localWriteNonce;
+        const reviews = clips.map((c) => ({ prompt_index: c.prompt_index, decision: c.review.decision || "unreviewed", notes: c.review.notes || "" }));
+        const r = await fetch(SAVE_API, { method: "POST", headers, body: JSON.stringify({ id: projectId, reviews, localWriteNonce }) });
+        const data = await r.json();
+        if (!r.ok) { setText("save-status", "Error: " + ((data && data.error) || ("HTTP " + r.status))); return; }
+        setText("save-status", "Saved review decisions.");
+        setDirty(false);
+      } catch (e) { setText("save-status", "Error: " + (e.message || e)); }
+    }
+
+    $("save").addEventListener("click", save);
+    $("reload").addEventListener("click", () => { if (dirty && !confirm("Discard unsaved decisions and reload?")) return; load(); });
+
+    fetchNonce().then(load);
+  </script>
+</body>
+</html>
