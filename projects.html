@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Projects — VIDTOOLZ</title>
+    <link rel="stylesheet" href="styles.css?v=1.9.6">
+    <style>
+      .pb-wrap { max-width: 1200px; margin: 0 auto; padding: 24px 20px 48px; }
+      .pb-head { display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
+      .pb-controls { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+      .pb-controls input, .pb-controls select { background:var(--panel,#161b22); border:1px solid var(--border,#30363d); color:inherit; border-radius:6px; padding:6px 10px; font-size:13px; }
+      table.pb { width:100%; border-collapse:collapse; font-size:13px; }
+      table.pb th, table.pb td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border,#30363d); vertical-align:top; }
+      table.pb th { color:var(--muted,#8b949e); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em; cursor:pointer; }
+      table.pb tr:hover td { background:rgba(88,166,255,0.06); }
+      .pill { font-size:11px; padding:2px 8px; border-radius:100px; white-space:nowrap; }
+      .st-active{background:rgba(88,166,255,.18);color:#58a6ff;} .st-parked{background:rgba(139,148,158,.18);color:#8b949e;}
+      .st-blocked{background:rgba(248,81,73,.15);color:#f85149;} .st-published,.st-editing{background:rgba(63,185,80,.18);color:#3fb950;}
+      .st-archived{background:rgba(139,148,158,.12);color:#8b949e;}
+      .stagebar{height:5px;background:var(--panel-3,#21262d);border-radius:3px;overflow:hidden;width:120px;margin-top:3px;}
+      .stagefill{height:100%;background:linear-gradient(90deg,#2ea043,#3fb950);}
+      .nexttask{color:var(--muted,#8b949e);} .nexttask b{color:var(--soft,#c9d1d9);font-weight:500;}
+      .open-btn{background:#2ea043;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;text-decoration:none;display:inline-block;}
+      .diag-row td { opacity:.55; }
+      .muted{color:var(--muted,#8b949e);}
+    </style>
+  </head>
+  <body>
+    <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html" class="active">Projects</a><a href="daily-idea-scout.html">Ideas</a><a href="resume.html">Resume</a><a href="package-engine.html">Package Engine</a><a href="production-pipeline.html">Pipeline</a><a href="mission-control.html">Mission Control</a></nav>
+    <div class="pb-wrap">
+      <div class="pb-head">
+        <div>
+          <p style="color:#2ea043;font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin:0 0 4px;">VIDTOOLZ</p>
+          <h1 style="margin:0;">Ongoing projects</h1>
+          <p class="muted" id="pb-count" style="margin:4px 0 0;font-size:13px;">Loading…</p>
+        </div>
+      </div>
+      <div class="pb-controls">
+        <input id="pb-search" type="search" placeholder="Search title / package…" style="min-width:220px;">
+        <select id="pb-status"><option value="">All statuses</option></select>
+        <select id="pb-stage"><option value="">All stages</option></select>
+        <label class="muted" style="font-size:12px;display:flex;align-items:center;gap:5px;"><input type="checkbox" id="pb-diag"> show test/diagnostic packages</label>
+      </div>
+      <div id="pb-table"></div>
+    </div>
+    <script>
+      let ALL = [];
+      const grid = document.getElementById('pb-table');
+      let sortKey = 'last_updated', sortDir = -1;
+
+      fetch('/api/projects', { cache:'no-store' })
+        .then(r => r.ok ? r.json() : Promise.reject('server error'))
+        .then(body => {
+          const data = (body && body.data) ? body.data : body;
+          ALL = data.projects || [];
+          fillFilter('pb-status', [...new Set(ALL.map(p=>p.status))].sort());
+          fillFilter('pb-stage', [...new Set(ALL.map(p=>p.stage))].sort());
+          document.getElementById('pb-count').textContent = `${data.real_count} projects (${ALL.length} incl. test packages)`;
+          render();
+        })
+        .catch(() => { grid.innerHTML = '<p class="muted">Could not load projects. Is the Package Engine running on port 8010?</p>'; });
+
+      function fillFilter(id, vals){ const s=document.getElementById(id); vals.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o);}); }
+      ['pb-search','pb-status','pb-stage','pb-diag'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+
+      function render(){
+        const q=document.getElementById('pb-search').value.toLowerCase().trim();
+        const fs=document.getElementById('pb-status').value, fg=document.getElementById('pb-stage').value;
+        const diag=document.getElementById('pb-diag').checked;
+        let rows = ALL.filter(p=>(diag||!p.diagnostic)
+          && (!fs||p.status===fs) && (!fg||p.stage===fg)
+          && (!q || (p.title||'').toLowerCase().includes(q) || (p.project_id||'').toLowerCase().includes(q)));
+        rows.sort((a,b)=>{const av=(a[sortKey]??'')+'',bv=(b[sortKey]??'')+'';return av<bv?-1*sortDir:av>bv?sortDir:0;});
+        if(!rows.length){ grid.innerHTML='<p class="muted">No projects match.</p>'; return; }
+        grid.innerHTML = `<table class="pb"><thead><tr>
+          ${th('title','Project')}${th('project_id','Package')}${th('stage','Stage')}${th('status','Status')}
+          <th>Next task</th>${th('last_updated','Updated')}<th></th></tr></thead><tbody>
+          ${rows.map(rowHtml).join('')}</tbody></table>`;
+        grid.querySelectorAll('th[data-k]').forEach(h=>h.onclick=()=>{const k=h.dataset.k;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();});
+      }
+      function th(k,label){ return `<th data-k="${k}">${label}${sortKey===k?(sortDir>0?' ▲':' ▼'):''}</th>`; }
+      function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+      function rowHtml(p){
+        const pct = p.stage_total ? Math.round(((p.stage_index+1)/p.stage_total)*100) : 0;
+        const nt = p.next_task||{};
+        const upd = p.last_updated ? p.last_updated.slice(0,10) : '';
+        return `<tr class="${p.diagnostic?'diag-row':''}">
+          <td><b>${esc(p.title)}</b>${p.diagnostic?' <span class="muted" style="font-size:10px;">(test)</span>':''}</td>
+          <td class="muted" style="font-size:11px;">${esc(p.project_id)}</td>
+          <td>${esc(p.stage)}<div class="stagebar"><div class="stagefill" style="width:${pct}%"></div></div></td>
+          <td><span class="pill st-${esc(p.status)}">${esc(p.status)}</span></td>
+          <td class="nexttask">${nt.blocked?'⛔ ':''}<b>${esc(nt.label||'')}</b><br><span style="font-size:11px;">${esc(nt.why||'')}</span></td>
+          <td class="muted" style="font-size:11px;">${esc(upd)}</td>
+          <td><a class="open-btn" href="project-workspace.html?id=${encodeURIComponent(p.project_id)}">Open →</a></td>
+        </tr>`;
+      }
+    </script>
+  </body>
+</html>

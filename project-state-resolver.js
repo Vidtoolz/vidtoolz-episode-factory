@@ -1,0 +1,205 @@
+/*
+ * VIDTOOLZ project state resolver (aigen script-packages media pipeline).
+ *
+ * Deterministic + file-driven: given a package directory it reads the package
+ * files and returns a normalized state object (stage, status, counts, blockers,
+ * warnings). The cockpit infers what to do from this — the operator never has to
+ * remember the next step. Read-only; no network calls, no mutation.
+ *
+ * NOTE: this is the aigen media pipeline's stage model. It is intentionally
+ * separate from pipeline-tracker.js (the package-runs 13-stage gate model), so
+ * editing this never touches the canonical-spec guard.
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+const { buildPackageMediaIndex } = require('./package-media-index.js');
+
+// Normalized aigen-media stages, in pipeline order.
+const STAGES = [
+  'idea',
+  'approved_topic',
+  'script',
+  'image_prompts',
+  'image_generation',
+  'image_review',
+  'i2v_prompts',
+  'video_generation',
+  'video_review',
+  'resolve_handoff',
+  'editing',
+  'publish_prep',
+  'published',
+];
+const TERMINAL = ['parked', 'blocked', 'archived'];
+
+function readJson(p) {
+  try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return null; }
+}
+function fileNonTrivial(p, minBytes = 40) {
+  try { return fs.statSync(p).size >= minBytes; } catch (e) { return false; }
+}
+function firstExisting(packageDir, rels) {
+  for (const rel of rels) {
+    const full = path.join(packageDir, rel);
+    if (fs.existsSync(full)) return full;
+  }
+  return '';
+}
+
+function readTitle(packageDir) {
+  const sp = readJson(path.join(packageDir, 'selected-package.json'));
+  if (sp) {
+    const pkg = sp.package || sp;
+    const t = (pkg.proposedTitle || pkg.title || sp.title || '').trim();
+    if (t) return t;
+  }
+  const yt = readJson(path.join(packageDir, 'youtube-package.json'));
+  if (yt && (yt.title || yt.proposedTitle)) return String(yt.title || yt.proposedTitle).trim();
+  const man = readJson(path.join(packageDir, 'manifest.json'));
+  if (man && (man.title || man.package_name)) return String(man.title || man.package_name).trim();
+  return path.basename(packageDir);
+}
+
+function readImagePromptCount(packageDir) {
+  for (const rel of ['image-prompts.json', path.join('prompts', 'image-prompts.json')]) {
+    const j = readJson(path.join(packageDir, rel));
+    if (j) {
+      if (Array.isArray(j.image_prompts)) return j.image_prompts.length;
+      if (Array.isArray(j.prompts)) return j.prompts.length;
+      if (Array.isArray(j)) return j.length;
+    }
+  }
+  // CSV fallback
+  const csv = firstExisting(packageDir, [path.join('prompts', 'prompts.csv')]);
+  if (csv) {
+    try {
+      const lines = fs.readFileSync(csv, 'utf8').split(/\r?\n/).filter((l) => l.trim());
+      return Math.max(0, lines.length - 1);
+    } catch (e) { /* ignore */ }
+  }
+  return 0;
+}
+
+function readI2vPromptCount(packageDir) {
+  const j = readJson(path.join(packageDir, 'video-prompts.json'));
+  if (j && Array.isArray(j.prompts)) return j.prompts.length;
+  return 0;
+}
+
+function readSelectedCount(packageDir) {
+  const j = readJson(path.join(packageDir, 'selected-images.json'));
+  return j && Array.isArray(j.selections) ? j.selections.length : 0;
+}
+
+// Optional GUI-written status override (park/unpark/mark stage). Single file in
+// the package so the GUI can change status without touching pipeline files.
+function readStatusOverride(packageDir) {
+  const j = readJson(path.join(packageDir, 'project-status.json'));
+  return j && typeof j.status === 'string' ? j.status.trim().toLowerCase() : '';
+}
+
+function resolveProjectState(packageDir, options = {}) {
+  const exists = fs.existsSync(packageDir) && fs.statSync(packageDir).isDirectory();
+  if (!exists) {
+    const e = new Error(`Package directory not found: ${packageDir}`);
+    e.statusCode = 404;
+    throw e;
+  }
+  const title = readTitle(packageDir);
+  const manifest = readJson(path.join(packageDir, 'manifest.json')) || {};
+
+  const hasMetadata = Boolean(
+    readJson(path.join(packageDir, 'selected-package.json')) ||
+    readJson(path.join(packageDir, 'manifest.json')) ||
+    readJson(path.join(packageDir, 'youtube-package.json')),
+  );
+  const scriptFile = firstExisting(packageDir, [
+    path.join('script', 'script-final.md'),
+    'script-final.md',
+    'final-script.md',
+    path.join('script', 'script-draft.md'),
+  ]);
+  const hasScript = Boolean(scriptFile) && fileNonTrivial(scriptFile);
+
+  const mediaIndex = buildPackageMediaIndex(packageDir);
+  const counts = {
+    image_prompts: readImagePromptCount(packageDir),
+    local_images: mediaIndex.counts.images_local,
+    manual_external_images: mediaIndex.counts.images_external,
+    selected_images: readSelectedCount(packageDir),
+    i2v_prompts: readI2vPromptCount(packageDir),
+    local_videos: mediaIndex.counts.videos_local,
+    manual_external_videos: mediaIndex.counts.videos_external,
+  };
+  counts.total_images = counts.local_images + counts.manual_external_images;
+  counts.total_videos = counts.local_videos + counts.manual_external_videos;
+
+  const hasHandoff = fs.existsSync(path.join(packageDir, 'resolve-handoff', 'media-manifest.json'));
+
+  // Stage = furthest evidence reached (the current actionable stage).
+  let stage = 'idea';
+  if (hasMetadata) stage = 'approved_topic';
+  if (hasMetadata && !hasScript) stage = 'script';
+  else if (hasScript && counts.image_prompts === 0) stage = 'image_prompts';
+  else if (counts.image_prompts > 0 && counts.total_images === 0) stage = 'image_generation';
+  else if (counts.total_images > 0 && counts.selected_images === 0) stage = 'image_review';
+  else if (counts.selected_images > 0 && counts.i2v_prompts === 0 && counts.total_videos === 0) stage = 'i2v_prompts';
+  else if ((counts.i2v_prompts > 0 || counts.selected_images > 0) && counts.total_videos === 0) stage = 'video_generation';
+  else if (counts.total_videos > 0 && !hasHandoff) stage = 'video_review';
+  else if (hasHandoff) stage = 'resolve_handoff';
+
+  // Status: GUI override wins; else derive from package_state / handoff.
+  const override = readStatusOverride(packageDir);
+  let status = 'active';
+  const pkgState = String(manifest.package_state || '').toLowerCase();
+  if (override) status = override;
+  else if (/archiv/.test(pkgState)) status = 'archived';
+  else if (/publish/.test(pkgState)) status = 'published';
+  else if (/park/.test(pkgState)) status = 'parked';
+
+  const blockers = [];
+  const warnings = [];
+  // Data-gap warnings: later artifacts exist but an earlier one is missing.
+  const stageIdx = STAGES.indexOf(stage);
+  if (!hasMetadata && stageIdx > STAGES.indexOf('approved_topic')) {
+    warnings.push('Project metadata (selected-package.json / manifest.json) is missing although later artifacts exist.');
+  }
+  if (!hasScript && stageIdx > STAGES.indexOf('script')) {
+    warnings.push('No final script found although later artifacts exist.');
+  }
+  // Surface validation warnings from imported external media.
+  for (const m of mediaIndex.images.concat(mediaIndex.videos)) {
+    if (m.validation && Array.isArray(m.validation.warnings) && m.validation.warnings.length) {
+      warnings.push(`${m.path}: ${m.validation.warnings.join('; ')}`);
+    }
+    if (m.exists === false) warnings.push(`Missing file referenced in manifest: ${m.path}`);
+  }
+
+  return {
+    project_id: path.basename(packageDir),
+    title,
+    package_path: packageDir,
+    status,
+    stage,
+    stage_index: STAGES.indexOf(stage),
+    stage_total: STAGES.length,
+    has_metadata: hasMetadata,
+    has_script: hasScript,
+    has_resolve_handoff: hasHandoff,
+    counts,
+    blockers,
+    warnings,
+  };
+}
+
+module.exports = {
+  STAGES,
+  TERMINAL,
+  resolveProjectState,
+  readTitle,
+  readImagePromptCount,
+  readI2vPromptCount,
+  readSelectedCount,
+};

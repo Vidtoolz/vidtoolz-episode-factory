@@ -1,0 +1,157 @@
+/**
+ * VIDTOOLZ Episode Factory Tests — Cockpit IA: project state resolver,
+ * next-task engine, GUI action registry, and project discovery.
+ *
+ * The resolver is deterministic + file-driven; these build temp packages that
+ * represent each pipeline stage and assert the resolved stage, the chosen next
+ * task, and that every task maps to a safe GUI action (never a shell command).
+ */
+
+const {
+  assert,
+  fs,
+  os,
+  path,
+  test,
+} = require("./_helpers.js");
+
+const { resolveProjectState, STAGES } = require("../project-state-resolver.js");
+const { chooseNextTask } = require("../next-task-engine.js");
+const { REGISTRY, resolveAction } = require("../project-action-registry.js");
+const { listProjects, summarizeProject } = require("../project-discovery.js");
+
+// Build a temp package whose files represent a given pipeline position.
+function makePkg(spec = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "cockpit-"));
+  const pkg = path.join(root, spec.id || "demo-pkg");
+  fs.mkdirSync(pkg, { recursive: true });
+  const w = (rel, content) => {
+    const full = path.join(pkg, rel);
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    fs.writeFileSync(full, content);
+  };
+  if (spec.metadata) w("selected-package.json", JSON.stringify({ package: { proposedTitle: spec.title || "Demo Title" } }));
+  if (spec.script) w("script/script-final.md", "# Script\n" + "x".repeat(200));
+  if (spec.imagePrompts) w("image-prompts.json", JSON.stringify({ image_prompts: Array.from({ length: spec.imagePrompts }, (_, i) => ({ index: i + 1, prompt: "p" })) }));
+  if (spec.images) {
+    w("flux-generation-manifest.json", JSON.stringify({ workflow: "flux-gguf-1080x1920", items: Array.from({ length: spec.images }, (_, i) => ({ prompt_index: i + 1, status: "complete", output_path: `images/flux-local/flux-00${i + 1}.png` })) }));
+  }
+  if (spec.selected) w("selected-images.json", JSON.stringify({ selections: Array.from({ length: spec.selected }, (_, i) => ({ prompt_index: i + 1, selected_path: `images/flux-local/flux-00${i + 1}.png` })) }));
+  if (spec.i2v) w("video-prompts.json", JSON.stringify({ prompts: Array.from({ length: spec.i2v }, (_, i) => ({ prompt_index: i + 1, prompt: "motion" })) }));
+  if (spec.videos) for (let i = 1; i <= spec.videos; i++) w(`videos/mp4/00${i}.mp4`, "VID");
+  if (spec.handoff) w("resolve-handoff/media-manifest.json", JSON.stringify({ clips: [] }));
+  if (spec.status) w("project-status.json", JSON.stringify({ status: spec.status }));
+  return { root, pkg };
+}
+
+function nextOf(spec) {
+  const { pkg } = makePkg(spec);
+  const state = resolveProjectState(pkg);
+  return { state, task: chooseNextTask(state) };
+}
+
+// ── Resolver + next-task scenarios ─────────────────────────────────────────
+
+const SCENARIOS = [
+  ["idea only (empty package)", {}, "idea", "complete_project_setup"],
+  ["metadata, no script", { metadata: true }, "script", "write_script"],
+  ["script, no image prompts", { metadata: true, script: true }, "image_prompts", "generate_image_prompts"],
+  ["image prompts, no images", { metadata: true, script: true, imagePrompts: 25 }, "image_generation", "submit_image_generation"],
+  ["images, no selection", { metadata: true, script: true, imagePrompts: 25, images: 25 }, "image_review", "select_images"],
+  ["selection, no I2V", { metadata: true, script: true, imagePrompts: 25, images: 25, selected: 5 }, "i2v_prompts", "generate_i2v_prompts"],
+  ["I2V, no videos", { metadata: true, script: true, imagePrompts: 25, images: 25, selected: 5, i2v: 5 }, "video_generation", "submit_video_generation"],
+  ["videos, no handoff", { metadata: true, script: true, imagePrompts: 25, images: 25, selected: 5, i2v: 5, videos: 5 }, "video_review", "prepare_resolve_handoff"],
+  ["handoff exists", { metadata: true, script: true, imagePrompts: 25, images: 25, selected: 5, i2v: 5, videos: 5, handoff: true }, "resolve_handoff", "edit_in_resolve"],
+];
+
+for (const [name, spec, expectStage, expectTask] of SCENARIOS) {
+  test(`cockpit next-task: ${name} -> ${expectStage}/${expectTask}`, () => {
+    const { state, task } = nextOf(spec);
+    assert.equal(state.stage, expectStage, `stage for ${name}`);
+    assert.equal(task.id, expectTask, `task for ${name}`);
+    assert.ok(task.why && task.why.length > 0, "task has a reason");
+    assert.ok(task.primary_action && task.primary_action.can_run_in_gui, "task has a GUI action");
+  });
+}
+
+test("cockpit next-task: parked project -> unpark", () => {
+  const { task } = nextOf({ metadata: true, script: true, status: "parked" });
+  assert.equal(task.id, "unpark_project");
+});
+
+test("cockpit next-task: archived/published is done", () => {
+  assert.equal(nextOf({ metadata: true, status: "archived" }).task.done, true);
+  assert.equal(nextOf({ metadata: true, status: "published" }).task.done, true);
+});
+
+test("cockpit: alternate import action offered when images/videos missing", () => {
+  const imgStage = nextOf({ metadata: true, script: true, imagePrompts: 25 });
+  assert.equal(imgStage.task.alternate_action.id, "import_manual_images");
+  const vidStage = nextOf({ metadata: true, script: true, imagePrompts: 25, images: 25, selected: 5, i2v: 5 });
+  assert.equal(vidStage.task.alternate_action.id, "import_manual_videos");
+});
+
+test("cockpit: data-gap warning when later artifacts exist but metadata missing", () => {
+  // handoff + videos but no selected-package.json/manifest -> warning, still edit_in_resolve.
+  const { state, task } = nextOf({ script: true, imagePrompts: 5, images: 5, selected: 5, videos: 5, handoff: true });
+  assert.equal(task.id, "edit_in_resolve");
+  assert.ok(state.warnings.some((w) => /metadata/i.test(w)), "metadata gap warned");
+});
+
+// ── Action registry: safe GUI actions only, no shell ────────────────────────
+
+test("action registry: every action is a safe GUI open/post (no shell)", () => {
+  for (const id of Object.keys(REGISTRY)) {
+    const a = resolveAction(id, "demo-pkg");
+    assert.ok(a, `action resolves for ${id}`);
+    assert.equal(a.can_run_in_gui, true, `${id} runs in GUI`);
+    assert.ok(a.type === "open" || a.type === "post", `${id} is open|post`);
+    if (a.type === "post") {
+      assert.ok(a.endpoint.startsWith("/api/"), `${id} posts to an /api/ endpoint`);
+      assert.equal(a.body.package_id, "demo-pkg", `${id} carries package id`);
+    } else {
+      assert.ok(/\.html\?/.test(a.href), `${id} opens an in-GUI page`);
+    }
+    // No field should smell like a shell command.
+    assert.ok(!JSON.stringify(a).match(/\b(bash|sh -c|node scripts\/|rm -rf|exec)\b/), `${id} has no shell command`);
+  }
+});
+
+// ── Discovery ───────────────────────────────────────────────────────────────
+
+test("discovery: lists packages with stage/next-task and flags diagnostics", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "discovery-"));
+  const mk = (id, spec) => {
+    const d = path.join(root, id);
+    fs.mkdirSync(d, { recursive: true });
+    if (spec.metadata) fs.writeFileSync(path.join(d, "selected-package.json"), JSON.stringify({ package: { proposedTitle: spec.title } }));
+    if (spec.script) { fs.mkdirSync(path.join(d, "script"), { recursive: true }); fs.writeFileSync(path.join(d, "script", "script-final.md"), "x".repeat(200)); }
+  };
+  mk("real-project-a", { metadata: true, title: "Real A", script: true });
+  mk("_smoke-test-thing", { metadata: true, title: "Smoke" });
+  const out = listProjects({ packagesRoot: root });
+  assert.equal(out.count, 2);
+  assert.equal(out.real_count, 1);
+  const real = out.projects.find((p) => p.project_id === "real-project-a");
+  assert.equal(real.title, "Real A");
+  assert.equal(real.next_task.id, "generate_image_prompts");
+  const smoke = out.projects.find((p) => p.project_id === "_smoke-test-thing");
+  assert.equal(smoke.diagnostic, true);
+});
+
+// ── Backward compatibility ──────────────────────────────────────────────────
+
+test("resolver: legacy package with only manifest.json resolves without throwing", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "legacy-"));
+  const pkg = path.join(root, "legacy-pkg");
+  fs.mkdirSync(pkg, { recursive: true });
+  fs.writeFileSync(path.join(pkg, "manifest.json"), JSON.stringify({ package_name: "Legacy", package_state: "active" }));
+  const state = resolveProjectState(pkg);
+  assert.equal(state.has_metadata, true);
+  assert.equal(state.stage, "script"); // metadata but no script
+  assert.ok(STAGES.includes(state.stage));
+});
+
+test("resolver: missing package throws 404", () => {
+  assert.throws(() => resolveProjectState("/no/such/package"), (e) => e.statusCode === 404);
+});

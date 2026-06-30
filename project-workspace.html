@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Project — VIDTOOLZ</title>
+    <link rel="stylesheet" href="styles.css?v=1.9.6">
+    <style>
+      .pw { max-width: 920px; margin: 0 auto; padding: 24px 20px 48px; }
+      .pw-back { font-size:12px; }
+      .pw-id { display:flex; gap:14px; align-items:baseline; flex-wrap:wrap; margin:8px 0 4px; }
+      .pw-id h1 { margin:0; font-size:24px; }
+      .pill{font-size:11px;padding:2px 9px;border-radius:100px;white-space:nowrap;}
+      .st-active{background:rgba(88,166,255,.18);color:#58a6ff;}.st-parked{background:rgba(139,148,158,.18);color:#8b949e;}
+      .st-blocked{background:rgba(248,81,73,.15);color:#f85149;}.st-published,.st-editing{background:rgba(63,185,80,.18);color:#3fb950;}
+      .meta{color:var(--muted,#8b949e);font-size:12px;}
+      .card{background:var(--panel,#161b22);border:1px solid var(--border,#30363d);border-radius:10px;padding:18px 20px;margin:16px 0;}
+      .card.next{border-color:var(--accent,#3fb950);box-shadow:0 0 0 1px rgba(63,185,80,.25);}
+      .next-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#3fb950;font-weight:600;}
+      .stagebar{height:6px;background:var(--panel-3,#21262d);border-radius:3px;overflow:hidden;margin:10px 0;}
+      .stagefill{height:100%;background:linear-gradient(90deg,#2ea043,#3fb950);}
+      .btn{border:none;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;text-decoration:none;display:inline-block;margin-right:8px;}
+      .btn-go{background:#2ea043;color:#fff;} .btn-alt{background:var(--panel-3,#21262d);color:inherit;border:1px solid var(--border,#30363d);}
+      .btn-dry{background:transparent;color:#58a6ff;border:1px solid rgba(88,166,255,.4);}
+      .counts{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;}
+      .count{background:var(--panel-3,#21262d);border-radius:6px;padding:8px 10px;font-size:12px;}
+      .count b{display:block;font-size:18px;}
+      details{margin:10px 0;} summary{cursor:pointer;color:var(--muted,#8b949e);font-size:13px;}
+      .warn{color:#d29922;font-size:12px;margin:4px 0;} .blk{color:#f85149;}
+      .result{font-size:12px;white-space:pre-wrap;background:var(--panel-3,#21262d);border-radius:6px;padding:10px;margin-top:10px;display:none;}
+      .focus-link{float:right;}
+    </style>
+  </head>
+  <body>
+    <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="daily-idea-scout.html">Ideas</a><a href="production-pipeline.html">Pipeline</a></nav>
+    <div class="pw">
+      <div class="pw-back"><a href="projects.html">← Back to projects</a> · <a href="daily-idea-scout.html">Ideas</a></div>
+      <div id="pw-body"><p class="meta">Loading project…</p></div>
+    </div>
+    <script src="project-client.js"></script>
+    <script>
+      const ID = new URLSearchParams(location.search).get('id') || '';
+      const body = document.getElementById('pw-body');
+      const client = ProjectClient();
+
+      function load(){
+        if(!ID){ body.innerHTML='<p class="blk">No project id. <a href="projects.html">Back to projects</a></p>'; return; }
+        client.fetchState(ID).then(render).catch(e=>{ body.innerHTML = `<p class="blk">Could not load project: ${client.esc(e.message||e)}</p>`; });
+      }
+
+      function render(d){
+        const s=d.state, nt=d.next_task, c=s.counts||{};
+        const pct = s.stage_total ? Math.round(((s.stage_index+1)/s.stage_total)*100):0;
+        body.innerHTML = `
+          <a class="btn btn-alt focus-link" href="project-focus.html?id=${encodeURIComponent(ID)}">Focus mode →</a>
+          <div class="pw-id"><h1>${client.esc(s.title)}</h1><span class="pill st-${client.esc(s.status)}">${client.esc(s.status)}</span></div>
+          <div class="meta">Package <code>${client.esc(s.project_id)}</code></div>
+          <div class="stagebar"><div class="stagefill" style="width:${pct}%"></div></div>
+          <div class="meta">Stage <b>${client.esc(s.stage)}</b> · ${s.stage_index+1} of ${s.stage_total}</div>
+
+          <div class="card next">
+            <div class="next-label">Next task</div>
+            <h2 style="margin:6px 0;">${client.esc(nt.label)}</h2>
+            <p class="meta" style="font-size:13px;">${client.esc(nt.why)}</p>
+            <div id="pw-action"></div>
+            <div class="result" id="pw-result"></div>
+          </div>
+
+          ${(s.blockers&&s.blockers.length)?`<div class="card"><b class="blk">Blockers</b>${s.blockers.map(b=>`<div class="warn blk">⛔ ${client.esc(b)}</div>`).join('')}</div>`:''}
+          ${(s.warnings&&s.warnings.length)?`<div class="card"><b>Warnings</b>${s.warnings.map(w=>`<div class="warn">⚠ ${client.esc(w)}</div>`).join('')}</div>`:''}
+
+          <div class="card">
+            <div class="next-label">Project evidence</div>
+            <div class="counts" style="margin-top:8px;">
+              ${countCard('Image prompts',c.image_prompts)}
+              ${countCard('Local images',c.local_images)}
+              ${countCard('External images',c.manual_external_images)}
+              ${countCard('Selected',c.selected_images)}
+              ${countCard('I2V prompts',c.i2v_prompts)}
+              ${countCard('Local videos',c.local_videos)}
+              ${countCard('External videos',c.manual_external_videos)}
+              ${countCard('Resolve handoff',s.has_resolve_handoff?'✓':'—')}
+            </div>
+          </div>
+
+          <details><summary>Media (${(d.media.images||[]).length} image, ${(d.media.videos||[]).length} video)</summary>
+            <div class="meta" style="margin-top:8px;">${mediaList(d.media)}</div></details>
+          <details><summary>Routing &amp; service note</summary>
+            <div class="meta" style="margin-top:8px;">Prompts/images → local vidnux · I2V/videos → local PRESTO · external GPT/KlingAI → manual import. If a local service is down the task is blocked, never silently rerouted.</div></details>
+        `;
+        client.renderAction(document.getElementById('pw-action'), nt, ()=>load(), document.getElementById('pw-result'));
+      }
+      function countCard(label,val){ return `<div class="count"><b>${client.esc(val)}</b>${client.esc(label)}</div>`; }
+      function mediaList(m){
+        const all=(m.images||[]).concat(m.videos||[]);
+        if(!all.length) return 'No media yet.';
+        return all.slice(0,40).map(x=>`${x.media_type==='video'?'🎬':'🖼'} ${client.esc(x.path)} <span style="color:#58a6ff;">[${client.esc(x.variant)}]</span>`).join('<br>');
+      }
+      load();
+    </script>
+  </body>
+</html>

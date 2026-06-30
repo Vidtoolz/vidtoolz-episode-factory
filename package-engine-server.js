@@ -81,6 +81,11 @@ const AIGEN_STATUS_API = '/api/aigen/production-pipeline/status';
 const AIGEN_RESOLVE_ASSEMBLY_API = '/api/aigen/resolve-assembly/create';
 const MEDIA_ROUTING_API = '/api/media-routing';
 const PACKAGE_MEDIA_INDEX_API = '/api/aigen/package-media-index';
+const PROJECTS_LIST_API = '/api/projects';
+const PROJECT_STATE_API = '/api/project-state';
+const PROJECT_IMPORT_MEDIA_API = '/api/project/import-media';
+const PROJECT_STATUS_API = '/api/project/status';
+const PROJECT_ALLOWED_STATUSES = ['active', 'parked', 'blocked', 'editing', 'publish_prep', 'published', 'archived'];
 const AIGEN_FLUX_IMAGES_API_PREFIX = '/api/aigen/flux-images/';
 const AIGEN_SELECTED_IMAGES_API = '/api/aigen/selected-images';
 const AIGEN_UPLOAD_IMAGE_API = '/api/aigen/upload-image';
@@ -172,6 +177,10 @@ const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS) > 0 ? Number(pro
 // policy can follow the real LAN. See media-routing.js / config/media-routing.json.
 const mediaRouting = require('./media-routing.js');
 const { buildPackageMediaIndex } = require('./package-media-index.js');
+const { importManualMedia } = require('./manual-media-import.js');
+const { resolveProjectState } = require('./project-state-resolver.js');
+const { chooseNextTask } = require('./next-task-engine.js');
+const projectDiscovery = require('./project-discovery.js');
 const OLLAMA_PRESTO_BASE_URL = mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT);
 const OLLAMA_PRESTO_MODEL = mediaRouting.resolveModel(mediaRouting.LANE.I2V_PROMPT);
 
@@ -8494,6 +8503,78 @@ function createServer(options = {}) {
       return;
     }
 
+    // Read-only projects board: every package with stage/status/next-task.
+    if (req.method === 'GET' && url.pathname === PROJECTS_LIST_API) {
+      try {
+        sendJSON(res, 200, projectDiscovery.listProjects({ packagesRoot: aigenPaths({ root: serverOptions.root || ROOT }).scriptPackages }));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'projects-list-error');
+      }
+      return;
+    }
+
+    // Read-only single-project state: resolver + next task + media index.
+    if (req.method === 'GET' && url.pathname === PROJECT_STATE_API) {
+      try {
+        const resolved = resolveAigenPackageDir(url.searchParams.get('package') || url.searchParams.get('package_id') || '', { root: serverOptions.root || ROOT });
+        const state = resolveProjectState(resolved.packageDir);
+        const nextTask = chooseNextTask(state);
+        const media = buildPackageMediaIndex(resolved.packageDir);
+        sendJSON(res, 200, { state, next_task: nextTask, media });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'project-state-error');
+      }
+      return;
+    }
+
+    // Import manual external media (GPT images / KlingAI videos) via the GUI.
+    // Nonce-gated; wraps the import core; supports dry-run. No external calls.
+    if (req.method === 'POST' && url.pathname === PROJECT_IMPORT_MEDIA_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const resolved = resolveAigenPackageDir(payload.package_id || payload.package || '', { root: serverOptions.root || ROOT });
+          const kind = String(payload.kind || '').trim();
+          if (kind !== 'image' && kind !== 'video') {
+            const e = new Error('kind must be "image" or "video".');
+            e.statusCode = 400;
+            throw e;
+          }
+          const result = importManualMedia({
+            package: resolved.packageDir,
+            kind,
+            dryRun: Boolean(payload.dry_run || payload.dryRun),
+            ffprobe: kind === 'video' ? ffprobeMetadata : undefined,
+          });
+          sendJSON(res, 200, result);
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'project-import-media-error'));
+      return;
+    }
+
+    // Set a project's status (park/unpark/mark editing/published/archived) by
+    // writing project-status.json into the resolved package dir. Nonce-gated.
+    if (req.method === 'POST' && url.pathname === PROJECT_STATUS_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const resolved = resolveAigenPackageDir(payload.package_id || payload.package || '', { root: serverOptions.root || ROOT });
+          const status = String(payload.status || '').trim().toLowerCase();
+          if (!PROJECT_ALLOWED_STATUSES.includes(status)) {
+            const e = new Error(`status must be one of: ${PROJECT_ALLOWED_STATUSES.join(', ')}`);
+            e.statusCode = 400;
+            throw e;
+          }
+          const outPath = path.join(resolved.packageDir, 'project-status.json');
+          const tmp = `${outPath}.${process.pid}.tmp`;
+          fs.writeFileSync(tmp, `${JSON.stringify({ status, updated_at: new Date().toISOString() }, null, 2)}\n`, 'utf8');
+          fs.renameSync(tmp, outPath);
+          sendJSON(res, 200, { ok: true, package_id: resolved.packageId, status });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'project-status-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === COCKPIT_ORIENTATION_API) {
       try {
         sendJSON(res, 200, buildCockpitOrientation());
@@ -9775,8 +9856,14 @@ module.exports = {
   saveI2vPrompts,
   buildMediaRoutingStatus,
   buildPackageMediaIndex,
+  resolveProjectState,
+  chooseNextTask,
   MEDIA_ROUTING_API,
   PACKAGE_MEDIA_INDEX_API,
+  PROJECTS_LIST_API,
+  PROJECT_STATE_API,
+  PROJECT_IMPORT_MEDIA_API,
+  PROJECT_STATUS_API,
   OLLAMA_PRESTO_BASE_URL,
   OLLAMA_PRESTO_MODEL,
   uploadAigenImage,

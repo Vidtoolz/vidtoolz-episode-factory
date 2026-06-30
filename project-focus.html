@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Focus — VIDTOOLZ</title>
+    <link rel="stylesheet" href="styles.css?v=1.9.6">
+    <style>
+      body { background: #0d1117; }
+      .focus { max-width: 600px; margin: 0 auto; padding: 48px 24px; min-height: 90vh; display:flex; flex-direction:column; }
+      .fx-top { display:flex; justify-content:space-between; align-items:baseline; font-size:12px; color:var(--muted,#8b949e); }
+      .fx-stage { color:#3fb950; text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
+      .fx-title { font-size:15px; color:var(--soft,#c9d1d9); margin:6px 0 30px; }
+      .fx-task { font-size:30px; font-weight:600; line-height:1.2; margin:0 0 14px; }
+      .fx-why { font-size:16px; color:var(--muted,#8b949e); margin:0 0 28px; line-height:1.5; }
+      .fx-req { font-size:12px; color:var(--muted,#8b949e); margin-bottom:24px; }
+      .fx-actions { margin:8px 0 24px; }
+      .btn{border:none;border-radius:8px;padding:12px 22px;font-size:15px;cursor:pointer;text-decoration:none;display:inline-block;margin:0 10px 10px 0;}
+      .btn-go{background:#2ea043;color:#fff;} .btn-alt{background:var(--panel-3,#21262d);color:inherit;border:1px solid var(--border,#30363d);font-size:13px;padding:10px 18px;}
+      .btn-dry{background:transparent;color:#58a6ff;border:1px solid rgba(88,166,255,.4);}
+      .meta{color:var(--muted,#8b949e);font-size:13px;} .blk{color:#f85149;}
+      .warn{color:#d29922;font-size:13px;}
+      .result{font-size:13px;white-space:pre-wrap;background:var(--panel-3,#21262d);border-radius:8px;padding:12px;margin-top:14px;display:none;}
+      .fx-exit { margin-top:auto; padding-top:32px; font-size:13px; }
+      .fx-done { font-size:22px; color:#3fb950; }
+    </style>
+  </head>
+  <body>
+    <div class="focus">
+      <div class="fx-top">
+        <span class="fx-stage" id="fx-stage">…</span>
+        <span id="fx-status"></span>
+      </div>
+      <div class="fx-title" id="fx-projtitle">Loading…</div>
+      <div id="fx-main"></div>
+      <div class="fx-exit">
+        <a href="#" id="fx-refresh" class="meta">↻ Refresh task</a> &nbsp;·&nbsp;
+        <a id="fx-workspace" class="meta" href="#">Project workspace</a> &nbsp;·&nbsp;
+        <a href="projects.html" class="meta">Exit focus</a>
+      </div>
+    </div>
+    <script src="project-client.js"></script>
+    <script>
+      const ID = new URLSearchParams(location.search).get('id') || '';
+      const client = ProjectClient();
+      document.getElementById('fx-workspace').href = 'project-workspace.html?id=' + encodeURIComponent(ID);
+
+      function load(){
+        if(!ID){ document.getElementById('fx-main').innerHTML='<p class="blk">No project id.</p>'; return; }
+        client.fetchState(ID).then(render).catch(e=>{ document.getElementById('fx-main').innerHTML=`<p class="blk">Could not load: ${client.esc(e.message||e)}</p>`; });
+      }
+      function render(d){
+        const s=d.state, nt=d.next_task;
+        document.getElementById('fx-stage').textContent = s.stage;
+        document.getElementById('fx-status').textContent = s.status;
+        document.getElementById('fx-projtitle').textContent = s.title;
+        const main=document.getElementById('fx-main');
+        if(nt.done){
+          main.innerHTML = `<div class="fx-done">✓ Nothing to do right now.</div><p class="fx-why">${client.esc(nt.why)}</p>`;
+          return;
+        }
+        const req=(nt.requires&&nt.requires.length)?`<div class="fx-req"><b>Needs:</b> ${nt.requires.map(client.esc).join(', ')}</div>`:'';
+        main.innerHTML = `
+          <h1 class="fx-task">${client.esc(nt.label)}</h1>
+          <p class="fx-why">${client.esc(nt.why)}</p>
+          ${req}
+          <div class="fx-actions" id="fx-action"></div>
+          <div class="result" id="fx-result"></div>`;
+        client.renderAction(document.getElementById('fx-action'), nt, ()=>load(), document.getElementById('fx-result'));
+      }
+      document.getElementById('fx-refresh').onclick=(e)=>{e.preventDefault();load();};
+      load();
+    </script>
+  </body>
+</html>

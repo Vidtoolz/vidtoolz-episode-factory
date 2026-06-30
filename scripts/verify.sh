@@ -17,6 +17,11 @@ node --check media-routing.js
 node --check media-provenance.js
 node --check package-media-index.js
 node --check manual-media-import.js
+node --check project-state-resolver.js
+node --check next-task-engine.js
+node --check project-action-registry.js
+node --check project-discovery.js
+node --check project-client.js
 node --check scripts/import-manual-images.js
 node --check scripts/import-manual-videos.js
 node --check scripts/index-package-media.js
