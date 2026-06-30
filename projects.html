@@ -40,6 +40,7 @@
         <input id="pb-search" type="search" placeholder="Search title / package…" style="min-width:220px;">
         <select id="pb-status"><option value="">All statuses</option></select>
         <select id="pb-stage"><option value="">All stages</option></select>
+        <label class="muted" style="font-size:12px;display:flex;align-items:center;gap:5px;"><input type="checkbox" id="pb-archived"> show archived</label>
         <label class="muted" style="font-size:12px;display:flex;align-items:center;gap:5px;"><input type="checkbox" id="pb-diag"> show test/diagnostic packages</label>
       </div>
       <div id="pb-table"></div>
@@ -56,23 +57,39 @@
           ALL = data.projects || [];
           fillFilter('pb-status', [...new Set(ALL.map(p=>p.status))].sort());
           fillFilter('pb-stage', [...new Set(ALL.map(p=>p.stage))].sort());
-          document.getElementById('pb-count').textContent = `${data.real_count} projects (${ALL.length} incl. test packages)`;
+          const current = (data.current_count != null) ? data.current_count : data.real_count;
+          const archived = data.archived_count || 0;
+          document.getElementById('pb-count').textContent =
+            `${current} current project${current === 1 ? '' : 's'}` +
+            (archived ? ` · ${archived} archived (hidden)` : '') +
+            ` · ${ALL.length} total incl. test packages`;
           render();
         })
         .catch(() => { grid.innerHTML = '<p class="muted">Could not load projects. Is the Package Engine running on port 8010?</p>'; });
 
       function fillFilter(id, vals){ const s=document.getElementById(id); vals.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o);}); }
-      ['pb-search','pb-status','pb-stage','pb-diag'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+      ['pb-search','pb-status','pb-stage','pb-diag','pb-archived'].forEach(id=>document.getElementById(id).addEventListener('input',render));
 
       function render(){
         const q=document.getElementById('pb-search').value.toLowerCase().trim();
         const fs=document.getElementById('pb-status').value, fg=document.getElementById('pb-stage').value;
         const diag=document.getElementById('pb-diag').checked;
+        const showArchived=document.getElementById('pb-archived').checked;
+        // Archived projects are hidden by default; show them only when the
+        // "show archived" box is ticked or the user explicitly filters to a
+        // status (e.g. selects "archived" in the status dropdown).
         let rows = ALL.filter(p=>(diag||!p.diagnostic)
+          && (showArchived || fs || !p.archived)
           && (!fs||p.status===fs) && (!fg||p.stage===fg)
           && (!q || (p.title||'').toLowerCase().includes(q) || (p.project_id||'').toLowerCase().includes(q)));
         rows.sort((a,b)=>{const av=(a[sortKey]??'')+'',bv=(b[sortKey]??'')+'';return av<bv?-1*sortDir:av>bv?sortDir:0;});
-        if(!rows.length){ grid.innerHTML='<p class="muted">No projects match.</p>'; return; }
+        if(!rows.length){
+          const anyArchivedHidden = !showArchived && !fs && ALL.some(p=>p.archived && !p.diagnostic);
+          grid.innerHTML = anyArchivedHidden
+            ? '<p class="muted">No current projects — all are archived. Tick <b>show archived</b> to see them, or open <a href="daily-idea-scout.html">Daily Ideas</a> to start a new one.</p>'
+            : '<p class="muted">No projects match.</p>';
+          return;
+        }
         grid.innerHTML = `<table class="pb"><thead><tr>
           ${th('title','Project')}${th('project_id','Package')}${th('stage','Stage')}${th('status','Status')}
           <th>Next task</th>${th('last_updated','Updated')}<th></th></tr></thead><tbody>

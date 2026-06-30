@@ -139,6 +139,30 @@ test("discovery: lists packages with stage/next-task and flags diagnostics", () 
   assert.equal(smoke.diagnostic, true);
 });
 
+test("discovery: archived projects are flagged and counted as not-current (still listed for recovery)", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "discovery-arch-"));
+  const mk = (id, spec) => {
+    const d = path.join(root, id);
+    fs.mkdirSync(d, { recursive: true });
+    fs.writeFileSync(path.join(d, "selected-package.json"), JSON.stringify({ package: { proposedTitle: spec.title } }));
+    if (spec.archived) fs.writeFileSync(path.join(d, "project-status.json"), JSON.stringify({ status: "archived", archived_at: "2026-06-30T00:00:00Z" }));
+  };
+  mk("active-one", { title: "Active One" });
+  mk("archived-one", { title: "Archived One", archived: true });
+
+  const out = listProjects({ packagesRoot: root });
+  assert.equal(out.count, 2);
+  assert.equal(out.real_count, 2);       // both are real (non-diagnostic)
+  assert.equal(out.archived_count, 1);   // one archived
+  assert.equal(out.current_count, 1);    // only the active one is "current"
+
+  const archived = out.projects.find((p) => p.project_id === "archived-one");
+  assert.equal(archived.status, "archived");
+  assert.equal(archived.archived, true); // flagged so the board can hide it by default
+  // Still listed (recoverable via the API / archived filter), not dropped.
+  assert.ok(out.projects.some((p) => p.project_id === "archived-one"));
+});
+
 // ── Backward compatibility ──────────────────────────────────────────────────
 
 test("resolver: legacy package with only manifest.json resolves without throwing", () => {

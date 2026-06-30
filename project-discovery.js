@@ -30,6 +30,7 @@ function summarizeProject(packageDir) {
     status: 'active',
     stage: 'idea',
     diagnostic: DIAGNOSTIC_RE.test(id),
+    archived: false,
     last_updated: null,
   };
   try {
@@ -54,6 +55,7 @@ function summarizeProject(packageDir) {
       source,
       title: state.title,
       status: state.status,
+      archived: state.status === 'archived',
       stage: state.stage,
       stage_index: state.stage_index,
       stage_total: state.stage_total,
@@ -92,6 +94,10 @@ function listProjects(options = {}) {
     root,
     count: projects.length,
     real_count: projects.filter((p) => !p.diagnostic).length,
+    archived_count: projects.filter((p) => p.archived).length,
+    // "current" = real (non-diagnostic) projects that are not archived — what the
+    // Projects board shows by default.
+    current_count: projects.filter((p) => !p.diagnostic && !p.archived).length,
     projects,
   };
 }
