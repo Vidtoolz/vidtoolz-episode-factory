@@ -94,7 +94,10 @@ test("archivePackageRun moves the run folder into stale-runs/ and preserves file
 
   assert.equal(result.ok, true);
   assert.equal(result.runId, runId);
+  assert.equal(result.run_id, runId);
+  assert.equal(result.deleted, true);
   assert.equal(result.archivedTo, `package-runs/stale-runs/${runId}`);
+  assert.equal(result.archived_to, `package-runs/stale-runs/${runId}`);
   assert.equal(result.recoverable, true);
 
   // Original location is gone; stale-runs copy exists with files intact.
@@ -113,17 +116,24 @@ test("archivePackageRun rejects a missing run with 404", () => {
   );
 });
 
-test("archivePackageRun refuses to clobber an existing stale-runs entry (409)", () => {
+test("archivePackageRun archives under a timestamped name when a stale-runs entry already exists (no clobber, no 409)", () => {
   const { tempRoot, runId } = createRunRoot();
-  // Pre-seed a stale-runs entry with the same id.
+  // Pre-seed a stale-runs entry with the same id (a prior archive of this run).
   writeTestFile(tempRoot, `package-runs/stale-runs/${runId}/package-run-state.md`, "# already archived\n");
 
-  assert.throws(
-    () => archivePackageRun({ runId }, { root: tempRoot }),
-    (error) => error.statusCode === 409,
+  const result = archivePackageRun({ runId }, { root: tempRoot, now: "2026-06-30T12:34:56.000Z" });
+
+  // Deletion succeeds (no 409) under a timestamped destination.
+  assert.equal(result.deleted, true);
+  assert.equal(result.archived_to, `package-runs/stale-runs/${runId}-20260630123456`);
+  // The pre-existing archive entry is untouched.
+  assert.equal(
+    fs.readFileSync(path.join(tempRoot, "package-runs", "stale-runs", runId, "package-run-state.md"), "utf8"),
+    "# already archived\n",
   );
-  // The live run must remain untouched when archive is refused.
-  assert.equal(fs.existsSync(path.join(tempRoot, "package-runs", runId)), true);
+  // The live run was moved out of package-runs/ into the timestamped archive.
+  assert.equal(fs.existsSync(path.join(tempRoot, "package-runs", runId)), false);
+  assert.equal(fs.existsSync(path.join(tempRoot, "package-runs", "stale-runs", `${runId}-20260630123456`, "selected-package.json")), true);
 });
 
 test("archivePackageRun rejects a path-traversal runId", () => {

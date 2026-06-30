@@ -705,20 +705,34 @@ function relocateRunMedia(runId, options = {}) {
 function archivePackageRun(payload = {}, options = {}) {
   const resolved = resolvePackageRunDir(payload.runId, options);
   const staleRoot = path.join(resolved.runsRoot, 'stale-runs');
-  const destDir = path.join(staleRoot, resolved.runId);
-  if (fs.existsSync(destDir)) {
-    const error = new Error('A run with this id already exists in stale-runs; archive it manually first.');
-    error.statusCode = 409;
-    throw error;
+  // Collision-proof destination. A previous archive of the same run id used to
+  // make this throw a 409 ("already exists in stale-runs"), which blocked the
+  // Resume-page Delete button. Instead, keep the plain run id when free and
+  // append a timestamp (then a counter) when it is taken — we never overwrite an
+  // existing archive entry, and deletion always succeeds.
+  let destName = resolved.runId;
+  if (fs.existsSync(path.join(staleRoot, destName))) {
+    const stamp = String(options.now || new Date().toISOString()).replace(/[-:.TZ]/g, '').slice(0, 14);
+    destName = `${resolved.runId}-${stamp}`;
+    let n = 1;
+    while (fs.existsSync(path.join(staleRoot, destName))) {
+      n += 1;
+      destName = `${resolved.runId}-${stamp}-${n}`;
+    }
   }
+  const destDir = path.join(staleRoot, destName);
   // Relocate media first (run dir still in place), then archive the run folder.
   const media = relocateRunMedia(resolved.runId, options);
   fs.mkdirSync(staleRoot, { recursive: true });
   fs.renameSync(resolved.runDir, destDir);
+  const archivedTo = `${PACKAGE_RUNS_DIR}/stale-runs/${destName}`;
   return {
     ok: true,
     runId: resolved.runId,
-    archivedTo: `${PACKAGE_RUNS_DIR}/stale-runs/${resolved.runId}`,
+    run_id: resolved.runId,
+    deleted: true,
+    archivedTo,
+    archived_to: archivedTo,
     recoverable: true,
     media,
   };
