@@ -72,6 +72,7 @@ const ROUGH_CUT_REVIEW_API = '/api/package-runs/rough-cut/review';
 const ROUGH_CUT_REGENERATE_DERIVED_API = '/api/package-runs/rough-cut/regenerate-derived';
 const ROUGH_CUT_OPEN_API = '/api/package-runs/rough-cut/open';
 const PACKAGE_RUNS_OPEN_API = '/api/package-runs/open';
+const PACKAGE_RUNS_ARCHIVE_API = '/api/package-runs/archive';
 const ARTIFACT_TEXT_API = '/api/package-runs/artifact-text';
 const ARTIFACTS_LIST_API = '/api/package-runs/artifacts';
 const OPEN_FILE_API = '/api/package-runs/open-file';
@@ -121,6 +122,16 @@ const PACKAGE_RUNS_DIR = 'package-runs';
 const VIDNAS_AIGEN_ROOT = '/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen';
 const VIDNAS_SCRIPT_PACKAGES = path.join(VIDNAS_AIGEN_ROOT, 'script-packages');
 const VIDNAS_WAN_LANE = path.join(VIDNAS_AIGEN_ROOT, 'image-to-video', 'production', 'wan22-81f');
+// Per-project generated media (FLUX stills + kling-video-candidates) lives under
+// here, one folder per project. A run is linked to its folder via the folder's
+// generation-manifest.json -> source.source_path (which embeds the runId).
+const VIDNAS_SCRIPT_IMAGE_ASSETS_ROOT = path.join(VIDNAS_AIGEN_ROOT, 'script-image-assets');
+// Archive destination on the VIDNAS EXT4 share (PRESTO sees this as V:\MEDIA EXT4\ARCHIVED MEDIA).
+const VIDNAS_ARCHIVED_MEDIA_ROOT = '/mnt/vidnas_ext4/MEDIA EXT4/ARCHIVED MEDIA';
+const VIDNAS_ARCHIVED_STILL_DIR = path.join(VIDNAS_ARCHIVED_MEDIA_ROOT, 'STILL');
+const VIDNAS_ARCHIVED_VIDEO_DIR = path.join(VIDNAS_ARCHIVED_MEDIA_ROOT, 'VIDEO');
+const ARCHIVE_IMAGE_EXT = /\.(png|jpg|jpeg|webp|gif|bmp)$/i;
+const ARCHIVE_VIDEO_EXT = /\.(mp4|webm|mov|avi|mkv)$/i;
 const PRESTO_BASE_URL = 'http://192.168.50.187:8188';
 const RESOLVE_HANDOFF_FILES = ['assembly-plan.md', 'assembly-plan.csv', 'media-manifest.json'];
 const PRESTO_OUTPUT_LIMIT_BYTES = 100 * 1024;
@@ -490,6 +501,159 @@ function resolvePackageRunDir(runId, options = {}) {
     throw error;
   }
   return { root, runsRoot, runId: safeRunId, runDir };
+}
+
+// Find the script-image-assets folder(s) that belong to a run. The reliable
+// link is each folder's generation-manifest.json -> source.source_path, which
+// embeds the absolute path of a file inside package-runs/<runId>/. Title-based
+// slug matching is NOT reliable (the asset folder is named from the script
+// headline, which often differs from the package title), so we match the
+// runId as a full path segment in the manifest instead. Read-only.
+function findRunAssetFolders(runId, options = {}) {
+  const safeRunId = validateCaptureEvidenceRunId(runId);
+  const assetsRoot = path.resolve(options.assetsRoot || VIDNAS_SCRIPT_IMAGE_ASSETS_ROOT);
+  if (!fs.existsSync(assetsRoot)) return [];
+  const runSegment = new RegExp(`(^|[\\/])package-runs[\\/]${safeRunId}(?:[\\/]|$)`);
+  const folders = [];
+  let entries;
+  try {
+    entries = fs.readdirSync(assetsRoot, { withFileTypes: true });
+  } catch (e) {
+    return [];
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const folder = path.resolve(assetsRoot, entry.name);
+    // Stay strictly inside the assets root.
+    if (!folder.startsWith(assetsRoot + path.sep)) continue;
+    const manifestPath = path.join(folder, 'generation-manifest.json');
+    if (!fs.existsSync(manifestPath)) continue;
+    let manifest;
+    try {
+      manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    } catch (e) {
+      continue;
+    }
+    const sourcePath = manifest && manifest.source ? String(manifest.source.source_path || '') : '';
+    if (sourcePath && runSegment.test(sourcePath)) {
+      folders.push(folder);
+    }
+  }
+  return folders;
+}
+
+// Move one file into a flat destination directory without ever overwriting an
+// existing archived file. On a name clash with a byte-identical file we treat it
+// as already archived (and remove the source); on a clash with a different file
+// we keep both by appending a disambiguator. Cross-share "move" = copy + verify
+// + unlink, because the assets share and the archive share are different mounts
+// (a plain rename would fail with EXDEV).
+function moveFileNoClobber(srcPath, destDir, disambiguator) {
+  fs.mkdirSync(destDir, { recursive: true });
+  const ext = path.extname(srcPath);
+  const base = path.basename(srcPath, ext);
+  const srcSize = fs.statSync(srcPath).size;
+  let dest = path.join(destDir, base + ext);
+  if (fs.existsSync(dest)) {
+    // Identical file already archived — drop the source, report as deduped.
+    if (fs.statSync(dest).size === srcSize) {
+      fs.rmSync(srcPath, { force: true });
+      return { dest, deduped: true };
+    }
+    // Different file with the same name — keep both.
+    const tag = String(disambiguator || 'dup').replace(/[^A-Za-z0-9._-]+/g, '_');
+    let n = 0;
+    do {
+      const suffix = n === 0 ? `__${tag}` : `__${tag}-${n}`;
+      dest = path.join(destDir, base + suffix + ext);
+      n += 1;
+    } while (fs.existsSync(dest));
+  }
+  fs.copyFileSync(srcPath, dest);
+  // Verify the copy landed fully before deleting the source.
+  if (fs.statSync(dest).size !== srcSize) {
+    fs.rmSync(dest, { force: true });
+    const error = new Error('Copy verification failed (size mismatch).');
+    error.statusCode = 500;
+    throw error;
+  }
+  fs.rmSync(srcPath, { force: true });
+  return { dest, deduped: false };
+}
+
+// Relocate a run's generated media to the ARCHIVED MEDIA folders: images -> STILL,
+// videos -> VIDEO (both flat). Non-media files (manifests, script-blocks.json,
+// image-prompts.json) are left in place on the Public share. Best-effort: per-file
+// errors are collected, not thrown, so a single bad file never blocks the delete.
+function relocateRunMedia(runId, options = {}) {
+  const stillDir = options.archiveStillDir || VIDNAS_ARCHIVED_STILL_DIR;
+  const videoDir = options.archiveVideoDir || VIDNAS_ARCHIVED_VIDEO_DIR;
+  const folders = findRunAssetFolders(runId, options);
+  const stats = { folders: [], stills: 0, videos: 0, deduped: 0, errors: [] };
+
+  for (const folder of folders) {
+    stats.folders.push(folder);
+    const tag = path.basename(folder);
+    const walk = (dir) => {
+      let entries;
+      try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+      } catch (e) {
+        stats.errors.push({ path: dir, error: e.message });
+        return;
+      }
+      for (const entry of entries) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+        } else if (entry.isFile()) {
+          const isImage = ARCHIVE_IMAGE_EXT.test(entry.name);
+          const isVideo = ARCHIVE_VIDEO_EXT.test(entry.name);
+          if (!isImage && !isVideo) continue; // leave manifests/JSON in place
+          try {
+            const result = moveFileNoClobber(full, isVideo ? videoDir : stillDir, tag);
+            if (result.deduped) stats.deduped += 1;
+            else if (isVideo) stats.videos += 1;
+            else stats.stills += 1;
+          } catch (e) {
+            stats.errors.push({ path: full, error: e.message });
+          }
+        }
+      }
+    };
+    walk(folder);
+  }
+  return stats;
+}
+
+// Archive (non-destructive "delete") a package run. Two parts:
+//   1. Relocate the run's generated media (FLUX stills + kling videos) to the
+//      VIDNAS ARCHIVED MEDIA/STILL and /VIDEO folders. Non-media files stay put.
+//   2. Move the run folder into package-runs/stale-runs/<runId>/ so it drops off
+//      the resume list (stale-runs/ is excluded from the index) while every file
+//      is preserved and recoverable.
+// Confined to the resolved run dir + the assets/archive roots; gated on a local
+// write nonce by the route handler.
+function archivePackageRun(payload = {}, options = {}) {
+  const resolved = resolvePackageRunDir(payload.runId, options);
+  const staleRoot = path.join(resolved.runsRoot, 'stale-runs');
+  const destDir = path.join(staleRoot, resolved.runId);
+  if (fs.existsSync(destDir)) {
+    const error = new Error('A run with this id already exists in stale-runs; archive it manually first.');
+    error.statusCode = 409;
+    throw error;
+  }
+  // Relocate media first (run dir still in place), then archive the run folder.
+  const media = relocateRunMedia(resolved.runId, options);
+  fs.mkdirSync(staleRoot, { recursive: true });
+  fs.renameSync(resolved.runDir, destDir);
+  return {
+    ok: true,
+    runId: resolved.runId,
+    archivedTo: `${PACKAGE_RUNS_DIR}/stale-runs/${resolved.runId}`,
+    recoverable: true,
+    media,
+  };
 }
 
 function readPackageRunState(runDir) {
@@ -8814,6 +8978,24 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === PACKAGE_RUNS_ARCHIVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const result = archivePackageRun(payload, { root: serverOptions.root || ROOT });
+          // Refresh the index so the resume list drops the archived run on reload.
+          let reindex;
+          try {
+            reindex = rebuildPackageRunsIndex();
+          } catch (error) {
+            reindex = { ok: false, error: error.message };
+          }
+          sendJSON(res, 200, { ...result, reindex });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'package-runs-archive-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === HYPERFRAMES_STATUS_API) {
       try {
         sendJSON(res, 200, discoverHyperframesCompositions({ runId: url.searchParams.get('runId') || '' }, { root: serverOptions.root || ROOT }));
@@ -9321,6 +9503,10 @@ module.exports = {
   ARCHIVE_MANIFEST_API,
   MASTER_FILE_MANIFEST_FILE,
   PACKAGE_RUNS_LIST_API,
+  PACKAGE_RUNS_ARCHIVE_API,
+  archivePackageRun,
+  findRunAssetFolders,
+  relocateRunMedia,
   PACKAGE_RUNS_CANDIDATES_API,
   PICKUP_ITEM_TYPES,
   PICKUP_PLAN_SAVE_API,

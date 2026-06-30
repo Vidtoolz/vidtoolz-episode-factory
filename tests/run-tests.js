@@ -28,6 +28,7 @@ require("./outline-prompt-nonce.test.js");
 require("./pipeline-status.test.js");
 require("./video-prompts.test.js");
 require("./package-run-candidate-discovery.test.js");
+require("./package-run-archive.test.js");
 require("./workflow-path.test.js");
 require("./script-commitment-check.test.js");
 require("./resolve-handoff-readiness.test.js");

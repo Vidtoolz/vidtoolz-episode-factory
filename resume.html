@@ -108,6 +108,24 @@
         font-weight: 500;
       }
       .new-project-link:hover { background: var(--panel-3, #21262d); border-style: solid; }
+
+      .btn-delete {
+        margin-left: auto;
+        background: transparent;
+        border: 1px solid var(--border, #30363d);
+        color: var(--muted, #8b949e);
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: border-color 0.15s, color 0.15s, background 0.15s;
+      }
+      .btn-delete:hover {
+        border-color: #f85149;
+        color: #f85149;
+        background: rgba(248, 81, 73, 0.08);
+      }
+      .btn-delete:disabled { opacity: 0.5; cursor: default; }
     </style>
   </head>
   <body>
@@ -148,6 +166,22 @@
 
       const grid = document.getElementById('projectsGrid');
 
+      // Local write nonce for the archive (delete) endpoint. Fetched from the
+      // status endpoint; until it arrives, delete is rejected server-side.
+      let localWriteNonce = '';
+      let nonceHeader = 'x-vidtoolz-local-write-nonce';
+      fetch('/api/package-engine/status', { cache: 'no-store' })
+        .then(r => r.ok ? r.json() : null)
+        .then(body => {
+          // Status is sent via sendJSON, which wraps it as { ok, data }.
+          const payload = (body && body.data) ? body.data : body;
+          if (payload && payload.localWriteNonce) {
+            localWriteNonce = payload.localWriteNonce;
+            nonceHeader = payload.nonceHeader || nonceHeader;
+          }
+        })
+        .catch(() => { /* nonce unavailable; delete will be rejected server-side */ });
+
       fetch('/api/package-runs/list')
         .then(r => r.ok ? r.json() : Promise.reject('Server error'))
         .then(data => {
@@ -164,11 +198,21 @@
 
           grid.querySelectorAll('.resume-card, [data-continue-run]').forEach(card => {
             card.addEventListener('click', (e) => {
+              // The Delete button has its own handler — never treat it as a navigation click.
+              if (e.target.closest('[data-archive-run]')) return;
               if (e.target.closest('a') && !e.target.closest('[data-continue-run]')) return;
               e.preventDefault();
               const runId = card.dataset.runId || card.dataset.continueRun;
               const bucket = card.dataset.workflowBucket || '';
               window.location.href = continueUrl(runId, bucket);
+            });
+          });
+
+          grid.querySelectorAll('[data-archive-run]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              archiveRun(btn);
             });
           });
         })
@@ -241,8 +285,61 @@
             <div class="resume-card-actions">
               <button type="button" class="btn-primary" data-continue-run="${escapeHtml(run.runId)}" data-workflow-bucket="${escapeHtml(stageBucket)}">Continue</button>
               <a class="btn-secondary" href="new-video-build.html">Build Guide</a>
+              <button type="button" class="btn-delete" data-archive-run="${escapeHtml(run.runId)}" data-run-title="${escapeHtml(displayTitle(run))}">Delete</button>
             </div>
           </div>`;
+      }
+
+      // Delete = non-destructive archive. The server (1) moves the project's
+      // generated stills/videos to the VIDNAS ARCHIVED MEDIA folders, then
+      // (2) moves the run folder into package-runs/stale-runs/ (recoverable) and
+      // reindexes. The media copy is cross-network, so this can take a while on
+      // large projects — we wait for it. Then we drop the card.
+      function archiveRun(btn) {
+        const runId = btn.dataset.archiveRun;
+        const title = btn.dataset.runTitle || runId;
+        if (!runId) return;
+        if (!confirm(`Delete "${title}"?\n\nIts stills and videos are moved to VIDNAS ARCHIVED MEDIA (STILL / VIDEO), and the project is moved to stale-runs/ and removed from this list. Nothing is permanently deleted — files are recoverable.\n\nLarge projects may take a while to copy.`)) {
+          return;
+        }
+        if (!localWriteNonce) {
+          alert('Local write nonce unavailable — refresh the page and try again.');
+          return;
+        }
+        const card = btn.closest('.resume-card');
+        btn.disabled = true;
+        btn.textContent = 'Archiving media…';
+        const headers = { 'Content-Type': 'application/json' };
+        headers[nonceHeader] = localWriteNonce;
+        fetch('/api/package-runs/archive', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ runId, localWriteNonce }),
+        })
+          .then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e)).catch(() => Promise.reject({})))
+          .then((body) => {
+            const result = (body && body.data) ? body.data : body;
+            const m = (result && result.media) || { stills: 0, videos: 0, deduped: 0, errors: [] };
+            if (card) card.remove();
+            if (!grid.querySelector('.resume-card')) {
+              grid.innerHTML = '<div class="empty-state"><h2>No projects yet</h2><p>Start a new one with the link above.</p></div>';
+            }
+            let msg = `Deleted "${title}". Archived ${m.stills} still(s) and ${m.videos} video(s) to VIDNAS ARCHIVED MEDIA.`;
+            if (m.deduped) msg += ` ${m.deduped} already-archived file(s) skipped.`;
+            if (m.errors && m.errors.length) {
+              msg += `\n\n${m.errors.length} file(s) could not be moved (left in place):\n` +
+                m.errors.slice(0, 5).map(e => `• ${e.path}: ${e.error}`).join('\n');
+            }
+            if (!m.folders || !m.folders.length) {
+              msg = `Deleted "${title}". No generated media folder was detected for this run, so no media was moved.`;
+            }
+            alert(msg);
+          })
+          .catch((err) => {
+            btn.disabled = false;
+            btn.textContent = 'Delete';
+            alert('Could not delete project: ' + ((err && err.error) || 'server error'));
+          });
       }
 
       function continueUrl(runId, bucket) {
