@@ -156,4 +156,7 @@ test("topic: daily-idea-scout.html has the topic input panel + generate wiring",
   assert.match(html, /function renderTopicRun/);
   assert.match(html, /User-seeded topic run/);          // source label distinct from daily
   assert.match(html, /data-idea-source="user_topic"/);  // triage/promote carry source
+  // The topic cards render into #topic-run-section, so that container MUST have
+  // its own click delegation (the daily list's delegation is on #scout-content).
+  assert.match(html, /getElementById\('topic-run-section'\)[\s\S]*?addEventListener\('click'/);
 });

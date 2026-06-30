@@ -635,6 +635,14 @@
         const [d, rid] = sel.value.split('|');
         reloadTopicRun(d, rid);
       });
+      // Triage/promote buttons on the user-seeded run render into
+      // #topic-run-section, NOT #scout-content, so they need their own click
+      // delegation (the daily list's delegation only covers #scout-content).
+      const sec = document.getElementById('topic-run-section');
+      if (sec && sec.addEventListener) sec.addEventListener('click', (e) => {
+        const b = e.target.closest && e.target.closest('[data-idea-act]');
+        if (b) { e.preventDefault(); handleIdeaAction(b); }
+      });
       loadTopicRuns();
     })();
 
