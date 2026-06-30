@@ -8688,6 +8688,10 @@ function createServer(options = {}) {
           let count = Number(payload.count);
           if (!Number.isFinite(count) || count < 1) count = projectImagePrompts.DEFAULT_COUNT;
           count = Math.min(40, Math.round(count));
+          // Over-generate candidates so the dedup/screen/face selection has
+          // headroom (the model tends to loop / repeat templates). parseImagePrompts
+          // still selects exactly `count` distinct presenter-safe prompts.
+          const requestCount = Math.min(40, count + 15);
 
           const state = resolveProjectState(resolved.packageDir);
           const prov = state.provenance || {};
@@ -8695,7 +8699,7 @@ function createServer(options = {}) {
           const reqPrompt = projectImagePrompts.buildImagePromptRequest({
             title: state.title, premise: prov.premise || '',
             scoreSummary: (prov.score_explanation && prov.score_explanation.summary) || '',
-            script: finalText, count,
+            script: finalText, count: requestCount,
           });
           // local-first: vidnux Ollama (default base); unavailable -> 503 from callOllamaChat.
           const content = await callOllamaChat({ system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL }, options);
