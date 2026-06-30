@@ -82,8 +82,8 @@
   <div class="review-bridge-header">
     <div class="review-bridge-links">
       <a href="/package-runs-dashboard.html">&larr; Back to Cockpit</a>
-      <a class="btn-external" href="http://localhost:8099" target="_blank" rel="noopener">Open Review View in Browser</a>
-      <span style="color:var(--muted);margin-left:12px;">AIGEN Review View</span>
+      <a class="btn-external" id="openReviewLink" href="http://127.0.0.1:8099/review-view/" target="_blank" rel="noopener">Open Review View in Browser</a>
+      <span id="reviewContext" style="color:var(--muted);margin-left:12px;">AIGEN Review View</span>
     </div>
     <div class="review-bridge-status">
       <span class="review-bridge-dot" id="statusDot"></span>
@@ -92,9 +92,9 @@
   </div>
   <div class="review-iframe-container" id="iframeContainer">
     <div class="review-offline" id="offlineMessage" style="display:none;">
-      <h2>AIGEN Review View is not running</h2>
-      <p>Click the <strong>01-Resume-Work</strong> or <strong>02-Systems-Check</strong> desktop shortcut — both auto-start this server (port 8099). Then <a href="#" onclick="location.reload();return false;">reload this page</a>.</p>
-      <p class="muted" style="margin-top:10px;">Manual fallback: <code>python3 ~/work/aigen-edit/review-view/server.py &amp;</code></p>
+      <h2 id="offlineTitle">AIGEN Review service is offline on port 8099.</h2>
+      <p id="offlineBody">Click the <strong>01-Resume-Work</strong> or <strong>02-Systems-Check</strong> desktop shortcut — both auto-start this server (port 8099). Then <a href="#" onclick="location.reload();return false;">reload this page</a>.</p>
+      <p class="muted" style="margin-top:10px;">Manual fallback: <code>cd ~/work/aigen-edit &amp;&amp; python3 review-view/server.py</code></p>
     </div>
     <iframe id="reviewFrame" src="about:blank" style="display:none;"></iframe>
   </div>
@@ -105,38 +105,59 @@
       var text = document.getElementById('statusText');
       var frame = document.getElementById('reviewFrame');
       var offline = document.getElementById('offlineMessage');
+      var offlineTitle = document.getElementById('offlineTitle');
+      var offlineBody = document.getElementById('offlineBody');
+      var openLink = document.getElementById('openReviewLink');
+      var contextEl = document.getElementById('reviewContext');
 
-      // Check if review-view is running on port 8099
-      fetch('http://127.0.0.1:8099/', { method: 'HEAD', mode: 'no-cors', cache: 'no-store' })
-        .then(function() {
-          // Can't read the response in no-cors mode, but no error means it's likely up
-          dot.className = 'review-bridge-dot online';
-          text.textContent = 'Online (port 8099)';
-          offline.style.display = 'none';
-          frame.style.display = 'block';
-          frame.src = 'http://127.0.0.1:8099/';
+      // The real review UI lives at /review-view/ on the AIGEN service (port 8099),
+      // NOT the service root (which serves a bare directory listing). Forward the
+      // project package context through every alias the review app might read.
+      var params = new URLSearchParams(window.location.search);
+      var pkg = params.get('package') || params.get('package_id') || params.get('id') || '';
+      var qs = pkg
+        ? ('?package=' + encodeURIComponent(pkg) + '&package_id=' + encodeURIComponent(pkg) + '&id=' + encodeURIComponent(pkg))
+        : '';
+      // Embed DIRECTLY from the 8099 origin so the review app's absolute
+      // /script-packages/... asset fetches resolve against its own server.
+      var REVIEW_URL = 'http://127.0.0.1:8099/review-view/' + qs;
+      openLink.href = REVIEW_URL;
+      if (pkg) contextEl.textContent = 'AIGEN Review View — ' + pkg;
+
+      // Probe via the SAME-ORIGIN cockpit proxy so we can read the real status:
+      //   200 -> review-view present (online); 404 -> service up but review-view
+      //   missing; anything else / network error -> service offline (proxy 502).
+      fetch('/aigen-review/review-view/', { method: 'HEAD', cache: 'no-store' })
+        .then(function(r) {
+          if (r.status === 200) { showOnline(); }
+          else if (r.status === 404) { showMissing(); }
+          else { showOffline(); }
         })
-        .catch(function() {
-          // Try the proxy as fallback
-          fetch('/aigen-review/', { method: 'HEAD', cache: 'no-store' })
-            .then(function(r) {
-              if (r.ok || r.status < 500) {
-                dot.className = 'review-bridge-dot online';
-                text.textContent = 'Online (proxied)';
-                offline.style.display = 'none';
-                frame.style.display = 'block';
-                frame.src = '/aigen-review/';
-              } else {
-                showOffline();
-              }
-            })
-            .catch(showOffline);
-        });
+        .catch(showOffline);
+
+      function showOnline() {
+        dot.className = 'review-bridge-dot online';
+        text.textContent = pkg ? 'Online (port 8099) — ' + pkg : 'Online (port 8099)';
+        offline.style.display = 'none';
+        frame.style.display = 'block';
+        frame.src = REVIEW_URL;
+      }
 
       function showOffline() {
         dot.className = 'review-bridge-dot offline';
         text.textContent = 'Offline';
         frame.style.display = 'none';
+        offlineTitle.textContent = 'AIGEN Review service is offline on port 8099.';
+        offlineBody.innerHTML = 'Click the <strong>01-Resume-Work</strong> or <strong>02-Systems-Check</strong> desktop shortcut — both auto-start this server (port 8099). Then <a href="#" onclick="location.reload();return false;">reload this page</a>.';
+        offline.style.display = 'block';
+      }
+
+      function showMissing() {
+        dot.className = 'review-bridge-dot offline';
+        text.textContent = 'review-view missing';
+        frame.style.display = 'none';
+        offlineTitle.textContent = 'AIGEN service is online, but review-view/ was not found.';
+        offlineBody.innerHTML = 'The service on port 8099 is up but is not serving <code>review-view/</code>. Confirm the AIGEN service root contains the <code>review-view/</code> app, then <a href="#" onclick="location.reload();return false;">reload</a>.';
         offline.style.display = 'block';
       }
     })();

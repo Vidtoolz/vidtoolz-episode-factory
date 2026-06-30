@@ -66,8 +66,9 @@ const REGISTRY = {
   },
   review_videos: {
     label: 'Review generated clips',
-    type: 'open', page: 'production-pipeline.html',
+    type: 'open', page: 'aigen-review.html',
     requires: ['videos'], evidence: ['videos/mp4/'],
+    note: 'Opens the AIGEN Review View (port 8099) scoped to this package to review the generated clips before the Resolve handoff.',
   },
   prepare_resolve_handoff: {
     label: 'Prepare Resolve handoff',
