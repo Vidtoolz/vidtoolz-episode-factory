@@ -58,6 +58,8 @@
           <div class="stagebar"><div class="stagefill" style="width:${pct}%"></div></div>
           <div class="meta">Stage <b>${client.esc(s.stage)}</b> · ${s.stage_index+1} of ${s.stage_total}</div>
 
+          ${provenanceCard(s.provenance)}
+
           <div class="card next">
             <div class="next-label">Next task</div>
             <h2 style="margin:6px 0;">${client.esc(nt.label)}</h2>
@@ -89,6 +91,18 @@
             <div class="meta" style="margin-top:8px;">Prompts/images → local vidnux · I2V/videos → local PRESTO · external GPT/KlingAI → manual import. If a local service is down the task is blocked, never silently rerouted.</div></details>
         `;
         client.renderAction(document.getElementById('pw-action'), nt, ()=>load(), document.getElementById('pw-result'));
+      }
+      function provenanceCard(p){
+        if(!p || p.source !== 'daily_idea_scout') return '';
+        const rows = [
+          ['Source','Daily Idea Scout'],
+          p.idea_date ? ['Idea date', p.idea_date] : null,
+          (p.idea_index!==null && p.idea_index!==undefined) ? ['Idea index', String(p.idea_index)] : null,
+          p.premise ? ['Premise', p.premise] : null,
+          (p.score!==null && p.score!==undefined) ? ['Score', String(p.score)] : null,
+        ].filter(Boolean);
+        return `<div class="card"><div class="next-label">Promoted from idea</div>
+          <div style="margin-top:8px;font-size:13px;">${rows.map(r=>`<div class="meta"><b style="color:var(--soft,#c9d1d9);">${client.esc(r[0])}:</b> ${client.esc(r[1])}</div>`).join('')}</div></div>`;
       }
       function countCard(label,val){ return `<div class="count"><b>${client.esc(val)}</b>${client.esc(label)}</div>`; }
       function mediaList(m){

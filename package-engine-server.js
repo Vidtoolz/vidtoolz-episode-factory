@@ -106,6 +106,9 @@ const DAILY_SCOUT_TODAY_API = '/api/daily-idea-scout/today';
 const DAILY_SCOUT_ARCHIVE_API = '/api/daily-idea-scout/archive';
 const DAILY_SCOUT_DATES_API = '/api/daily-idea-scout/dates';
 const DAILY_SCOUT_RUN_API = '/api/daily-idea-scout/run';
+const IDEAS_TRIAGE_API = '/api/ideas/triage';
+const IDEAS_STATUS_API = '/api/ideas/status';
+const IDEAS_PROMOTE_API = '/api/ideas/promote';
 const PACKAGE_RUNS_REINDEX_API = '/api/package-runs/reindex';
 const TOPIC_SCOUT_LIST_API = '/api/topic-scout/list';
 const TOPIC_SCOUT_SUBMIT_API = '/api/topic-scout/submit';
@@ -181,6 +184,7 @@ const { importManualMedia } = require('./manual-media-import.js');
 const { resolveProjectState } = require('./project-state-resolver.js');
 const { chooseNextTask } = require('./next-task-engine.js');
 const projectDiscovery = require('./project-discovery.js');
+const ideaPromotion = require('./idea-promotion.js');
 const OLLAMA_PRESTO_BASE_URL = mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT);
 const OLLAMA_PRESTO_MODEL = mediaRouting.resolveModel(mediaRouting.LANE.I2V_PROMPT);
 
@@ -8516,7 +8520,7 @@ function createServer(options = {}) {
     // Read-only single-project state: resolver + next task + media index.
     if (req.method === 'GET' && url.pathname === PROJECT_STATE_API) {
       try {
-        const resolved = resolveAigenPackageDir(url.searchParams.get('package') || url.searchParams.get('package_id') || '', { root: serverOptions.root || ROOT });
+        const resolved = resolveAigenPackageDir(url.searchParams.get('package') || url.searchParams.get('package_id') || url.searchParams.get('id') || '', { root: serverOptions.root || ROOT });
         const state = resolveProjectState(resolved.packageDir);
         const nextTask = chooseNextTask(state);
         const media = buildPackageMediaIndex(resolved.packageDir);
@@ -8634,6 +8638,48 @@ function createServer(options = {}) {
 
     if (req.method === 'GET' && url.pathname === DAILY_SCOUT_DATES_API) {
       handleDailyScoutDates(req, res);
+      return;
+    }
+
+    // ── Idea triage + promote-to-project (daily-idea-scout) ──
+    // Read-only triage overlay (non-destructive sidecar) for a date's ideas.
+    if (req.method === 'GET' && url.pathname === IDEAS_TRIAGE_API) {
+      try {
+        const archiveRoot = path.join(aigenPaths({ root: serverOptions.root || ROOT }).aigenRoot, 'daily-idea-scout');
+        sendJSON(res, 200, { date: url.searchParams.get('date') || '', triage: ideaPromotion.readTriage(archiveRoot, url.searchParams.get('date') || '') });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'ideas-triage-error');
+      }
+      return;
+    }
+
+    // Set an idea's triage status (approve/reject/park/unpark/shortlist).
+    if (req.method === 'POST' && url.pathname === IDEAS_STATUS_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const archiveRoot = path.join(aigenPaths({ root: serverOptions.root || ROOT }).aigenRoot, 'daily-idea-scout');
+          sendJSON(res, 200, ideaPromotion.setIdeaStatus({ archiveRoot, date: payload.date, index: payload.index, status: String(payload.status || '').trim() }));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'ideas-status-error'));
+      return;
+    }
+
+    // Promote an idea into a script-package project (idempotent).
+    if (req.method === 'POST' && url.pathname === IDEAS_PROMOTE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const paths = aigenPaths({ root: serverOptions.root || ROOT });
+          const result = ideaPromotion.promoteIdea({
+            archiveRoot: path.join(paths.aigenRoot, 'daily-idea-scout'),
+            scriptPackagesRoot: paths.scriptPackages,
+            date: payload.date,
+            index: payload.index,
+          });
+          sendJSON(res, 200, Object.assign({}, result, { href: `project-workspace.html?id=${encodeURIComponent(result.project_id)}` }));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'ideas-promote-error'));
       return;
     }
 
@@ -9864,6 +9910,9 @@ module.exports = {
   PROJECT_STATE_API,
   PROJECT_IMPORT_MEDIA_API,
   PROJECT_STATUS_API,
+  IDEAS_TRIAGE_API,
+  IDEAS_STATUS_API,
+  IDEAS_PROMOTE_API,
   OLLAMA_PRESTO_BASE_URL,
   OLLAMA_PRESTO_MODEL,
   uploadAigenImage,

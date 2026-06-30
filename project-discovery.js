@@ -35,10 +35,23 @@ function summarizeProject(packageDir) {
   try {
     base.last_updated = fs.statSync(packageDir).mtime.toISOString();
   } catch (e) { /* ignore */ }
+  // Provenance: promoted-from-idea marker or manifest.source.
+  let source = 'package';
+  try {
+    const marker = JSON.parse(fs.readFileSync(path.join(packageDir, 'promoted-from-idea.json'), 'utf8'));
+    if (marker && marker.source) source = marker.source;
+  } catch (e) {
+    try {
+      const man = JSON.parse(fs.readFileSync(path.join(packageDir, 'manifest.json'), 'utf8'));
+      if (man && man.source) source = man.source;
+    } catch (e2) { /* ignore */ }
+  }
+  base.source = source;
   try {
     const state = resolveProjectState(packageDir);
     const next = chooseNextTask(state);
     return Object.assign(base, {
+      source,
       title: state.title,
       status: state.status,
       stage: state.stage,

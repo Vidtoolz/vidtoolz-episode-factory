@@ -53,7 +53,8 @@
         const s=d.state, nt=d.next_task;
         document.getElementById('fx-stage').textContent = s.stage;
         document.getElementById('fx-status').textContent = s.status;
-        document.getElementById('fx-projtitle').textContent = s.title;
+        const prov = (s.provenance && s.provenance.source === 'daily_idea_scout') ? 'Source: Daily Idea Scout idea' : '';
+        document.getElementById('fx-projtitle').innerHTML = client.esc(s.title) + (prov ? ` <span style="color:var(--muted,#8b949e);font-size:12px;">· ${client.esc(prov)}</span>` : '');
         const main=document.getElementById('fx-main');
         if(nt.done){
           main.innerHTML = `<div class="fx-done">✓ Nothing to do right now.</div><p class="fx-why">${client.esc(nt.why)}</p>`;

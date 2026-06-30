@@ -195,15 +195,37 @@
     .scout-navigation a:hover {
       text-decoration: underline;
     }
+    .scout-idea-actions {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+      margin: 10px 0 4px;
+    }
+    .scout-act {
+      background: var(--panel, #161b22); border: 1px solid var(--border, #30363d);
+      color: var(--soft, #c9d1d9); border-radius: 6px; padding: 4px 10px;
+      font-size: 12px; cursor: pointer; text-decoration: none;
+    }
+    .scout-act:hover { border-color: #58a6ff; color: #58a6ff; }
+    .scout-act:disabled { opacity: 0.5; cursor: default; }
+    .scout-act-reject:hover { border-color: #f85149; color: #f85149; }
+    .scout-act-promote { border-color: #2ea043; color: #3fb950; font-weight: 600; }
+    .scout-act-open { border-color: #2ea043; color: #3fb950; font-weight: 600; }
+    .scout-status-badge {
+      font-size: 11px; padding: 2px 8px; border-radius: 100px; margin-right: 4px;
+      background: rgba(139,148,158,0.18); color: #8b949e; text-transform: capitalize;
+    }
+    .scout-status-approved { background: rgba(63,185,80,0.18); color: #3fb950; }
+    .scout-status-rejected { background: rgba(248,81,73,0.15); color: #f85149; }
+    .scout-status-parked { background: rgba(210,153,34,0.2); color: #d29922; }
+    .scout-status-promoted { background: rgba(88,166,255,0.2); color: #58a6ff; }
   </style>
 </head>
 <body>
-  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="new-video-build.html">Build New Video</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html" class="active">Daily Ideas</a></nav>
+  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="new-video-build.html">Build New Video</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html" class="active">Daily Ideas</a></nav>
 <details class="page-guide" open>
   <summary>Page Guide — What is this?</summary>
   <div class="page-guide-body">
     <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Daily AI-generated candidate ideas with scoring. Discovery tool, not part of the production pipeline.</span></div>
-    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Browse ideas by score. When you find a topic worth pursuing, go to <a href="topic-scout.html">Topic Scout</a> to formally submit it.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Browse ideas by score. Approve, park, or reject each one. When a topic is worth making, click <b>Promote to project</b> to create a video project, then open it on the <a href="projects.html">Projects</a> board.</span></div>
     <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Date picker for archive. Idea cards ranked by score with evidence, thumbnail prompt, and ranking rationale. Click Show details for full breakdown.</span></div>
   </div>
 </details>
@@ -266,8 +288,24 @@
       return json && typeof json === "object" && json.data !== undefined ? json.data : json;
     }
 
-    function renderIdea(idea) {
+    function renderIdea(idea, index, date, triage) {
       const scorePercent = Math.round(idea.final_score * 10);
+      const t = (triage && triage[String(index)]) || {};
+      const status = t.status || 'new';
+      const projectId = t.project_id || '';
+      const idx = (index === undefined || index === null) ? '' : index;
+      const promoteCell = projectId
+        ? `<a class="scout-act scout-act-open" href="project-workspace.html?id=${encodeURIComponent(projectId)}">Open project →</a>`
+        : `<button type="button" class="scout-act scout-act-promote" data-idea-act="promote" data-idea-index="${idx}" data-idea-date="${escapeHtml(date || '')}">Promote to project</button>`;
+      const actionsHtml = `
+        <div class="scout-idea-actions" data-idea-row="${idx}">
+          <span class="scout-status-badge scout-status-${escapeHtml(status)}">${escapeHtml(status)}</span>
+          <button type="button" class="scout-act" data-idea-act="approved" data-idea-index="${idx}" data-idea-date="${escapeHtml(date || '')}">Approve</button>
+          <button type="button" class="scout-act" data-idea-act="parked" data-idea-index="${idx}" data-idea-date="${escapeHtml(date || '')}">Park</button>
+          <button type="button" class="scout-act" data-idea-act="new" data-idea-index="${idx}" data-idea-date="${escapeHtml(date || '')}">Unpark</button>
+          <button type="button" class="scout-act scout-act-reject" data-idea-act="rejected" data-idea-index="${idx}" data-idea-date="${escapeHtml(date || '')}">Reject</button>
+          ${promoteCell}
+        </div>`;
       const evidenceHtml = (idea.evidence || []).map(ev => {
         const link = ev.url ? `<a href="${escapeHtml(ev.url)}" target="_blank" rel="noopener">source</a>` : '';
         const note = ev.note ? ` — ${escapeHtml(ev.note)}` : '';
@@ -289,6 +327,7 @@
           </div>
           <div class="scout-score-label">Score: ${idea.final_score}/10</div>
           <p class="scout-description">${escapeHtml(idea.description)}</p>
+          ${actionsHtml}
           <button class="scout-detail-toggle" onclick="toggleDetail(this)">Show details &darr;</button>
           <div class="scout-detail">
             <h4>Scores</h4>
@@ -316,11 +355,12 @@
       btn.innerHTML = isOpen ? 'Hide details &uarr;' : 'Show details &darr;';
     }
 
-    function renderRun(run) {
+    function renderRun(run, triage) {
       if (!run || !run.ideas || run.ideas.length === 0) {
         return '<div class="scout-empty">No candidate ideas found for this date.</div>';
       }
-      return run.ideas.map(renderIdea).join('');
+      const date = run.date || '';
+      return run.ideas.map((idea, i) => renderIdea(idea, i, date, triage || {})).join('');
     }
 
     async function loadToday() {
@@ -340,7 +380,9 @@
         const payload = normalizePayload(data);
         if (payload.localWriteNonce) { localWriteNonce = payload.localWriteNonce; nonceHeader = payload.nonceHeader || nonceHeader; }
         metaEl.textContent = `Date: ${payload.date} | Provider: ${payload.dailyRun.provider} | Generated: ${payload.dailyRun.generated_at}`;
-        contentEl.innerHTML = renderRun(payload.dailyRun);
+        currentDate = payload.date;
+        const triage = await fetchTriage(payload.date);
+        contentEl.innerHTML = renderRun(payload.dailyRun, triage);
       } catch (err) {
         contentEl.innerHTML = `<div class="scout-error">Failed to load: ${escapeHtml(err.message)}</div>`;
         metaEl.textContent = 'Error';
@@ -359,7 +401,9 @@
         }
         const payload = normalizePayload(data);
         metaEl.textContent = `Date: ${payload.date} | Provider: ${payload.dailyRun.provider} | Generated: ${payload.dailyRun.generated_at}`;
-        contentEl.innerHTML = renderRun(payload.dailyRun);
+        currentDate = payload.date;
+        const triage = await fetchTriage(payload.date);
+        contentEl.innerHTML = renderRun(payload.dailyRun, triage);
       } catch (err) {
         contentEl.innerHTML = `<div class="scout-error">Failed to load: ${escapeHtml(err.message)}</div>`;
         metaEl.textContent = 'Error';
@@ -395,6 +439,77 @@
         loadArchive(val);
       }
     });
+
+    // ── Idea triage + promote-to-project (GUI actions) ──
+    let currentDate = '';
+
+    async function fetchTriage(date) {
+      if (!date) return {};
+      try {
+        const res = await fetch(`/api/ideas/triage?date=${encodeURIComponent(date)}`);
+        const payload = normalizePayload(await res.json());
+        return (payload && payload.triage) || {};
+      } catch (e) { return {}; }
+    }
+
+    async function ensureNonce() {
+      if (localWriteNonce) return localWriteNonce;
+      try {
+        const res = await fetch('/api/package-engine/status', { cache: 'no-store' });
+        const payload = normalizePayload(await res.json());
+        if (payload && payload.localWriteNonce) { localWriteNonce = payload.localWriteNonce; nonceHeader = payload.nonceHeader || nonceHeader; }
+      } catch (e) { /* leave empty; server will reject */ }
+      return localWriteNonce;
+    }
+
+    function setRowStatus(row, status) {
+      const badge = row.querySelector('.scout-status-badge');
+      if (badge) { badge.textContent = status; badge.className = 'scout-status-badge scout-status-' + status; }
+    }
+
+    async function postIdea(endpoint, body) {
+      const nonce = await ensureNonce();
+      const headers = { 'Content-Type': 'application/json' };
+      headers[nonceHeader] = nonce;
+      const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(Object.assign({ localWriteNonce: nonce }, body)) });
+      const data = await res.json();
+      if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+      return normalizePayload(data);
+    }
+
+    async function handleIdeaAction(btn) {
+      const act = btn.dataset.ideaAct;
+      const index = Number(btn.dataset.ideaIndex);
+      const date = btn.dataset.ideaDate || currentDate;
+      const row = btn.closest('.scout-idea-actions');
+      btn.disabled = true;
+      try {
+        if (act === 'promote') {
+          const r = await postIdea('/api/ideas/promote', { date, index });
+          // Replace the promote button with an Open-project link.
+          const link = document.createElement('a');
+          link.className = 'scout-act scout-act-open';
+          link.href = r.href || ('project-workspace.html?id=' + encodeURIComponent(r.project_id));
+          link.textContent = r.already_promoted ? 'Open project →' : 'Open project →';
+          btn.replaceWith(link);
+          if (row) setRowStatus(row, 'promoted');
+        } else {
+          await postIdea('/api/ideas/status', { date, index, status: act });
+          if (row) setRowStatus(row, act);
+          btn.disabled = false;
+        }
+      } catch (e) {
+        btn.disabled = false;
+        alert('Action failed: ' + (e.message || e));
+      }
+    }
+
+    if (contentEl && typeof contentEl.addEventListener === 'function') {
+      contentEl.addEventListener('click', (e) => {
+        const btn = e.target.closest && e.target.closest('[data-idea-act]');
+        if (btn) { e.preventDefault(); handleIdeaAction(btn); }
+      });
+    }
 
     // Init
     loadDates();

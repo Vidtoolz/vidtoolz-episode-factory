@@ -93,6 +93,33 @@ the manual external import path.
 - `POST /api/project/import-media` — import manual external media (nonce-gated).
 - `POST /api/project/status` — set status / park / unpark (nonce-gated).
 
+## Idea → project flow (GUI, no terminal)
+
+Start at **Ideas** (`daily-idea-scout.html`) or **Projects** (`projects.html`) —
+both are in the shared cockpit nav on every page.
+
+On the Ideas page each idea has GUI buttons:
+
+- **Approve / Park / Unpark / Reject** — set the idea's triage status. This writes
+  a non-destructive sidecar (`<archive>/<date>/idea-triage.json`) keyed by the
+  idea's position; the validated `ideas.json` is never rewritten. Reject and Park
+  only change status — nothing is deleted. Endpoint: `POST /api/ideas/status`.
+- **Promote to project** — creates a script-package project from the idea via
+  `POST /api/ideas/promote`. Promotion is idempotent: clicking again opens the
+  existing project instead of creating a duplicate (the button becomes
+  **Open project →**). The new package gets `selected-package.json`,
+  `manifest.json`, `promoted-from-idea.json`, and `project-status.json`.
+
+A promoted project then appears on **Projects** (tagged source
+`daily_idea_scout`), opens in `project-workspace.html?id=<id>`, and resolves
+through the state resolver. A freshly promoted, script-less project is NOT
+broken — it shows stage `script` with the next task **Write / approve the
+script** (the action opens `package-engine.html`, an in-GUI page, never a
+terminal). From the workspace, **Focus mode** shows that one task.
+
+If a promoted project has no script/media yet, that is expected: the next-task
+engine returns the first meaningful task rather than an error.
+
 ## Troubleshooting (fallback only)
 
 The import/index also have CLI equivalents for troubleshooting:

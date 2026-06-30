@@ -100,6 +100,26 @@ function readStatusOverride(packageDir) {
   return j && typeof j.status === 'string' ? j.status.trim().toLowerCase() : '';
 }
 
+// Project provenance. Promoted-from-idea projects carry promoted-from-idea.json;
+// otherwise fall back to manifest.source, else a plain script package. A
+// malformed/missing sidecar degrades to { source: 'package' } and never throws.
+function readProvenance(packageDir) {
+  const marker = readJson(path.join(packageDir, 'promoted-from-idea.json'));
+  if (marker && marker.source) {
+    return {
+      source: marker.source,
+      idea_date: marker.date || '',
+      idea_index: Number.isInteger(marker.index) ? marker.index : null,
+      premise: marker.premise || '',
+      score: typeof marker.score === 'number' ? marker.score : null,
+      promoted_at: marker.promoted_at || '',
+    };
+  }
+  const man = readJson(path.join(packageDir, 'manifest.json'));
+  if (man && man.source) return { source: man.source };
+  return { source: 'package' };
+}
+
 function resolveProjectState(packageDir, options = {}) {
   const exists = fs.existsSync(packageDir) && fs.statSync(packageDir).isDirectory();
   if (!exists) {
@@ -138,17 +158,19 @@ function resolveProjectState(packageDir, options = {}) {
 
   const hasHandoff = fs.existsSync(path.join(packageDir, 'resolve-handoff', 'media-manifest.json'));
 
-  // Stage = furthest evidence reached (the current actionable stage).
+  // Stage = the next action implied by the FURTHEST evidence on disk. Sequential
+  // (not else-if) so a gap in an earlier artifact (e.g. images exist but no
+  // image-prompts.json) does not drag the project back to an early stage; the
+  // furthest milestone wins and the gap is reported as a warning below.
   let stage = 'idea';
-  if (hasMetadata) stage = 'approved_topic';
-  if (hasMetadata && !hasScript) stage = 'script';
-  else if (hasScript && counts.image_prompts === 0) stage = 'image_prompts';
-  else if (counts.image_prompts > 0 && counts.total_images === 0) stage = 'image_generation';
-  else if (counts.total_images > 0 && counts.selected_images === 0) stage = 'image_review';
-  else if (counts.selected_images > 0 && counts.i2v_prompts === 0 && counts.total_videos === 0) stage = 'i2v_prompts';
-  else if ((counts.i2v_prompts > 0 || counts.selected_images > 0) && counts.total_videos === 0) stage = 'video_generation';
-  else if (counts.total_videos > 0 && !hasHandoff) stage = 'video_review';
-  else if (hasHandoff) stage = 'resolve_handoff';
+  if (hasMetadata) stage = 'script';
+  if (hasScript) stage = 'image_prompts';
+  if (counts.image_prompts > 0) stage = 'image_generation';
+  if (counts.total_images > 0) stage = 'image_review';
+  if (counts.selected_images > 0) stage = 'i2v_prompts';
+  if (counts.i2v_prompts > 0) stage = 'video_generation';
+  if (counts.total_videos > 0) stage = 'video_review';
+  if (hasHandoff) stage = 'resolve_handoff';
 
   // Status: GUI override wins; else derive from package_state / handoff.
   const override = readStatusOverride(packageDir);
@@ -181,6 +203,7 @@ function resolveProjectState(packageDir, options = {}) {
     project_id: path.basename(packageDir),
     title,
     package_path: packageDir,
+    provenance: readProvenance(packageDir),
     status,
     stage,
     stage_index: STAGES.indexOf(stage),
@@ -198,6 +221,7 @@ module.exports = {
   STAGES,
   TERMINAL,
   resolveProjectState,
+  readProvenance,
   readTitle,
   readImagePromptCount,
   readI2vPromptCount,
