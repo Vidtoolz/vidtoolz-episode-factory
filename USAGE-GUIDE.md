@@ -1,321 +1,195 @@
-# VIDTOOLZ Video Production System — Usage Guide
+# VIDTOOLZ Cockpit — Operator Guide
 
-Grounded in the real system state as of 2026-06-29.
-Active run: 2026-06-28-stop-writing-your-shorts-like-blog-posts (production prep / production-brief stage).
-Superseded inactive run: 2026-05-06-ai-video-proof-plan.
-Tests: run `scripts/verify.sh` for the current count. Cockpit port: 8010.
+Cockpit: http://127.0.0.1:8010
 
 ---
 
-## BEFORE YOU START
+## DAILY STARTUP
 
-The cockpit runs on vidnux at http://127.0.0.1:8010.
-Start it from terminal:
+1. Click desktop shortcut **01-Resume-Work**
+   Checks VIDNAS, starts cockpit if needed, opens resume page with project list.
 
-  cd /home/vidtoolz/vidtoolz-episode-factory
-  node package-engine-server.js
+2. Click desktop shortcut **02-Systems-Check**
+   Opens an HTML readiness report: VIDNAS, PRESTO, ComfyUI, Ollama, cockpit.
 
-The AIGEN Review View is a separate server on port 8099.
-Start it separately when you need image review (Phase 7).
+3. Click your project card on the resume page, or click desktop shortcut **09-Open-Active-Run** to jump straight to the active run in the dashboard.
 
----
-
-## THE 13-STAGE PIPELINE
-
-The system follows this canonical pipeline (defined in pipeline-tracker.js):
-
-  0  Idea            —   one-sentence claim
-  1  Research        —   credible sources
-  2  Script          —   A-roll/B-roll marked script
-  3  Claims Check    —   every assertion verified
-  4  Packaging       —   title, thumbnail, metadata
-  5  Image Prompts   —   FLUX prompts for B-roll
-  6  Image Gen       —   FLUX images generated
-  7  Image Select    —   best images chosen
-  8  Video Gen       —   Wan2.2 or Kling clips (MANUAL)
-  9  A-Roll Record   —   presenter on camera
- 10  Assembly Edit   —   DaVinci Resolve timeline (MANUAL)
- 11  Publish Gate    —   final review and packaging check
- 12  Published       —   upload to YouTube
-
-The Runs Dashboard shows a visual pipeline tracker at the top.
-The Workflow Wizard panel shows step-by-step guidance for the current stage.
+The dashboard Orientation Strip (top) shows: current gate, blocker, next action. Read it first, every time.
 
 ---
 
-## HOW TO RESUME AN EXISTING RUN
+## RESUMING A RUN
 
-If you already have an active run (like now), do NOT restart from Phase 2.
-Do this instead:
+1. Open the dashboard (shortcut **05-Creator-Cockpit** or **09-Open-Active-Run**).
+2. Read the Orientation Strip. It tells you the current gate and next action.
+3. Do the action it says. Use the dashboard forms — not manual file editing.
+4. After each action, the dashboard auto-refreshes the gate status.
 
-1. Open http://127.0.0.1:8010/package-runs-dashboard.html
-2. Look at the "Productions Overview" section at the top — it lists all runs
-3. Click your active run to focus it (2026-06-28-stop-writing-your-shorts-like-blog-posts)
-4. Read the "Next Safe Action" panel — it reads local evidence only and tells you:
-   - What stage you are at
-   - What is already done
-   - What the next real action is
-   - What evidence exists
-   - What remains blocked
-5. Read the STATUS.md file in the run folder for the decision you need to make
-6. Check the Visual Beat Map panel — it shows all 37 beats from 3 sources:
-   - resolve-spine-cut-marker-map.md (13 markers)
-   - media-creation-plan.md (15 clip cards)
-   - final-script.md (9 narrative sections)
-7. Resume from whatever phase the Next Safe Action indicates
+### Gates and what you do at each one
 
-Right now your active run is at production prep / production-brief stage.
-The immediate blocker is that production-brief.md does not exist yet.
-Do not move to FLUX, PRESTO/Wan, Resolve, or publish actions until production prep is complete.
+**Needs package selection**
+Use the Beginning Triage panel in the dashboard. Fill the topic, candidate angles, and package fields. Click Select. The dashboard writes selected-package.md for you.
 
----
+**Needs script**
+Vertical path: open shorts-workflow.html (?run=<run-id>). Generate scripts with Ollama, pick one, edit it, click "Save this as final-script.md".
+Longform path: write the script in your editor of choice, then paste it into the dashboard script field.
 
-## HOW TO START A NEW RUN (FROM SCRATCH)
+**Needs script review**
+Run the script review from the dashboard. It writes script-review.md and shows the result inline.
 
-Only do this if you do not have an active run.
+**Needs production plan**
+The dashboard generates the production plan, shot list, and planning artifacts. Review them in the Artifact Panel (read-only, with copy buttons). Edit planning files only if the plan needs adjusting — these are generated templates, not gate evidence.
 
-### PHASE 1: IDEA (Stage 0)
+**Needs capture**
+1. Record A-roll, screen captures, and audio (see A-ROLL RECORDING below).
+2. In the dashboard, open the Capture Evidence Intake panel.
+3. Fill the form: take name, media file path, screen recording name and path, audio item and path.
+4. Click **Preview write** — review the generated markdown rows.
+5. Click **Apply to run files** — writes to takes-log.md, screen-recording-checklist.md, and audio-capture-checklist.md automatically.
+6. The gate advances when real media references are detected and the approval marker is set.
 
-1. Open http://127.0.0.1:8010/index.html — Episode Factory home
-2. Click "Package Engine" or use the Runs Dashboard "New episode" option
-3. A new package-run folder is created under package-runs/ with a timestamped name
-4. Write your one-sentence claim in idea.md in the run folder
-5. Identify target audience — default is YouTube Short, 9:16 vertical, 1-3 minutes
-6. Note the emotional hook — why someone would share this
-7. Keep it to one claim, one example, one point
+**Needs rough cut**
+1. Edit in Resolve (manual — your domain).
+2. Export a rough cut to VIDNAS.
+3. In the dashboard, open the Rough Cut Review form.
+4. Fill: candidate file path, watch date, reviewer, notes for each dimension (opening, pacing, clarity, visual trust, etc.).
+5. Select approval marker: NOT GIVEN / NEEDS PICKUPS / NEEDS EDIT FIXES / PASS.
+6. Submit. The dashboard writes rough-cut-watch-notes.md and runs the review gate.
 
-### PHASE 2: RESEARCH (Stage 1)
+**Needs second cut** (if rough cut needed pickups)
+Same pattern: edit in Resolve, export, fill the Second Cut Review form in the dashboard, submit.
 
-8. Find 2-3 credible sources that support the claim
-9. Use ChatGPT or ask Hermes to web_search for sources — do not invent sources
-10. Capture source URLs and key quotes in research-pack.md
-11. Identify the single strongest example to build the video around
-12. Write a research-sufficiency check: is there enough proof to proceed?
-13. If research is thin, stop and pick a different idea
+**Needs final review**
+Watch the final edit. Fill the Final Candidate Review form in the dashboard: candidate path, watch date, reviewer, notes for all dimensions. Submit. The dashboard writes final-watch-notes.md and final-review.md.
 
-### PHASE 3: SCRIPT (Stage 2)
+**Needs export/mastering**
+Fill the Export Master form in the dashboard: codec confirmation, file details. Submit. The dashboard writes export-checklist.md and master-file-manifest.md.
 
-14. Draft the script in ChatGPT following: one claim, one example, one point
-15. Keep it under 250 words (target 1-3 minutes of speech)
-16. Mark presenter segments with [A-ROLL] and generated visuals with [B-ROLL]
-17. Save as script-draft.md, then revise through QA passes
-18. Save the approved version as final-script.md
-19. The script should have clearly marked sections (Hook, Setup, Promise, Parts, Recap, CTA)
-20. Read it aloud and time it — adjust if over 3 minutes
+**Needs publication metadata**
+Fill the Delivery Readiness form in the dashboard. Submit. The dashboard writes delivery-readiness.md and checks publication metadata.
 
-### PHASE 4: CLAIMS CHECK (Stage 3)
-
-21. Read final-script.md and list every factual assertion
-22. Cross-check each assertion against research-pack.md sources
-23. Flag any unsupported claims for revision or removal
-24. Record the check result in STATUS.md — only proceed if all claims are supported
-
-### PHASE 5: PACKAGING (Stage 4)
-
-25. Write 3-5 title candidates — curiosity-driven, under 60 characters
-26. Describe a thumbnail concept
-27. Set target duration, aspect ratio (9:16), and platform in youtube-package.json
-28. Run title and thumbnail through a fit-check: does the title match the script promise?
-29. Save packaging decisions in selected-package.md and youtube-package.json
-30. Do not finalize title or thumbnail yet — that happens at Publish Gate (Stage 11)
-
-### PHASE 6: IMAGE PROMPTS (Stage 5)
-
-31. Review final-script.md B-roll markers — each [B-ROLL] tag needs a visual
-32. Open http://127.0.0.1:8010/image-prompts-editor.html
-33. Write FLUX prompts for each visual beat in image-prompts.json
-34. Each prompt: subject, style, mood, composition for 9:16 vertical
-35. Keep prompts concrete — "warm kitchen interior, soft light, vertical" not "a nice room"
-36. Save and validate the JSON
-
-### PHASE 7: IMAGE GENERATION (Stage 6)
-
-37. Two paths: vidnux local FLUX or PRESTO ComfyUI
-38. For vidnux local FLUX: run the handoff adapter — reads image-prompts.json, outputs to package/images/flux-local/
-39. vidnux ComfyUI: ~/comfy/ComfyUI, FLUX.1 Dev GGUF Q8_0, ~48s per image at 1080x1920
-40. For PRESTO ComfyUI: http://192.168.50.187:8188
-41. Check output: images should appear in package/images/flux-local/ with a flux-generation-manifest.json
-42. Inspect each image — does it match the script beat? Is it 9:16? Is quality acceptable?
-
-### PHASE 8: IMAGE SELECTION (Stage 7)
-
-43. Open the AIGEN Review View at http://127.0.0.1:8099 (separate server)
-44. For each prompt, review the generated image(s)
-45. Select the best image or flag for regeneration
-46. Selected images move to staging for video generation
-47. If an image is wrong, go back to Phase 7 and regenerate with adjusted prompt
-48. Do not proceed to video generation until all B-roll images are selected
-
-### PHASE 9: VIDEO GENERATION (Stage 8) — MANUAL, MIKKO OPERATES
-
-Hermes can prepare handoffs (list which stills, expected filenames, destination paths)
-and verify files exist after creation, but cannot generate clips or operate Kling/ComfyUI.
-
-49. Two paths: PRESTO Wan2.2 I2V or Kling web UI
-50. For PRESTO Wan2.2: queue selected images through ComfyUI on PRESTO
-51. Wan2.2 settings: 81 frames, ~2.7 seconds, ~12 minutes render per clip
-52. Do NOT use 149 frames / 5 seconds — this has timed out in production
-53. For Kling: use the web UI to generate clips needing longer motion
-54. CRITICAL: Rename ALL generated media to ASCII-safe hyphenated names
-    Examples: kling-setB2-03.mp4, wan-scene01-81f.mp4
-    No Chinese characters, spaces, or parentheses in filenames
-55. Kling outputs 1080x1916 (4px short of 1920) — Resolve needs a 4px crop or pad
-56. Move staged MP4 files to VIDNAS:
-    /mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-image-assets/<topic>/kling-video-candidates/
-57. Verify all B-roll clips are on VIDNAS and accessible from Resolve clients
-
-For the current active run, there is no Kling/PRESTO handoff yet.
-Finish production prep first and verify the generated production artifacts before creating media.
-
-### PHASE 10: A-ROLL RECORDING (Stage 9)
-
-58. Set up OBS on vidnux with green screen, camera, and microphone
-59. Open final-script.md and identify all [A-ROLL] segments
-60. Record presenter segments matching the script A-roll markers
-61. Save recordings to VIDNAS: /mnt/vidnas_public/VIDTOOLZ/camera_originals/
-62. Tell Hermes which take to move into the active run subfolder — be explicit
-63. Hermes moves the newest take and runs ffprobe inspection
-64. Review the ffprobe output: resolution, frame rate, duration, codec
-65. If the take is good, approve it as the A-roll source
-66. If the take has issues, re-record — do not keep bad takes
-67. All A-roll MP4 files must be on VIDNAS before proceeding to assembly
-
-### PHASE 11: ASSEMBLY EDIT IN RESOLVE (Stage 10) — MANUAL, MIKKO OPERATES
-
-Hermes scope stops here. Hermes can prepare the marker map, clip cards, and
-media-creation plan, and verify files are on VIDNAS, but cannot operate Resolve.
-
-68. Open DaVinci Resolve on PRESTO or vidnux
-69. Create a new Resolve project
-70. Import A-roll from VIDNAS — do not copy files locally, use VIDNAS as media source
-71. Import B-roll from VIDNAS — the staged MP4 clips from the aigen lane
-72. Open resolve-spine-cut-marker-map.md for the 13 markers (M01-M13)
-73. Cut the A-roll to script timing — follow the marker map
-74. Place B-roll over the marked sections — each [B-ROLL] tag gets its clip
-75. Fix Kling 1916px height: scale or crop to 1920 in Resolve project settings
-76. Add green screen keying — remove green background from A-roll
-77. Add GPT-to-Kling backgrounds or FLUX images behind presenter where needed
-78. Color match: ensure A-roll and B-roll look consistent
-79. Set audio levels: voice peak around -6dB, music/ambience under -20dB
-80. Add the opening hook — place a marker at the opening hook
-81. Insert A-roll closeups or pickup clips at visual-support points
-82. Do not solve all visual-support candidates at once — just the first one, then iterate
-83. Export as H.264 1080x1920 30fps
-84. Save the exported MP4 to VIDNAS, not to a local drive
-
-### PHASE 12: PUBLISH GATE (Stage 11)
-
-85. Watch the exported video end-to-end with no interruptions
-86. Open the "Mikko Input Console" in the Runs Dashboard — the rough-cut review panel
-87. Fill rough-cut-watch-notes.md with timestamps and observations
-88. Record the reviewed file name, watch date, and reviewer name
-89. Classify the gate status: Ready, Needs Pickups, Needs Re-edit, or Rejected
-90. If needs pickups: create a pickup-list.md and go back to Phase 10-11
-91. Run title and thumbnail through the packaging gate
-92. Confirm all claims are still supported by research sources
-93. Only proceed to publishing if the gate is "Ready" — do not bypass the gate
-
-### PHASE 13: PUBLISH (Stage 12) — MANUAL, MIKKO OPERATES
-
-94. Upload to YouTube as a Short (9:16, under 3 minutes)
-95. Set the title from youtube-package.json
-96. Set the description and tags from the package metadata
-97. Set the thumbnail
-98. Record the YouTube URL in published-videos.json
-99. Update STATUS.md in the run folder to "Published"
-100. The pipeline tracker will show stage 12 complete
-
-### PHASE 14: MEASURE AND REFLECT
-
-101. After 48 hours, check YouTube Studio analytics: views, watch time, retention
-102. Record what worked and what did not in notes.md — feed lessons into next idea
+**Ready to publish**
+1. Upload to YouTube manually.
+2. Record the YouTube URL in the dashboard or in published-videos.json.
+3. Set package-run-state.md to "published" (only you do this).
 
 ---
 
-## FRICTION LOGGING
+## STARTING A NEW RUN
 
-During production runs, capture every blocker as it happens.
+1. Click desktop shortcut **03-Build-New-Video**
+   Opens the guided step-by-step build page (new-video-build.html).
 
-Use the Friction Log panel in the Runs Dashboard — not direct API calls.
-The dashboard UI fetches the local-write nonce automatically from
-/api/package-engine/status and includes it in the save request.
+2. Follow the steps on screen. Each step has checkboxes and buttons that open the right tool:
+   - Step 1: Pick topic (Topic Scout)
+   - Step 2: Research and outline (Package Engine)
+   - Step 3: Write script (shorts-workflow.html for vertical, editor for longform)
+   - Steps 4-5: Claims check and packaging (longform only)
+   - Step 6: Image prompts (Image Prompts Editor)
+   - Step 7: Image generation (ComfyUI)
+   - Step 8: Image selection (AIGEN Review)
+   - Step 9: Video generation (PRESTO Wan2.2 — manual)
+   - Step 10: A-roll recording (manual)
+   - Steps 11-14: Resolve edit, publish gate, publish, reflect (manual)
 
-If you script friction logging externally, you must:
-1. GET /api/package-engine/status to obtain localWriteNonce and nonceHeader
-2. Include both in your POST to /api/package-runs/friction-log/save
-
-A direct POST without the nonce will get 403.
-This was a real bug found during validation — friction-log.js was missing the nonce.
-Fixed on 2026-06-22. Regression tests in tests/friction-log-nonce.test.js.
-
-The current active run is not at the friction-log / rough-cut repair stage.
-Use the Runs Dashboard and package-run audit output for the next safe action.
-
----
-
-## KEY FILES IN A PACKAGE RUN
-
-Each video is a folder under package-runs/ containing:
-
-  idea.md                        — the one-sentence claim
-  research-pack.md               — sources and quotes
-  final-script.md                — approved script with A-roll/B-roll markers
-  STATUS.md                      — current stage, gate status, next decision
-  package-run-state.md           — active/inactive state (DO NOT TOUCH)
-  rough-cut-watch-notes.md       — review notes (source of truth for gate)
-  image-prompts.json             — FLUX prompts for B-roll backgrounds
-  youtube-package.json           — title, thumbnail, metadata
-  resolve-spine-cut-marker-map.md — 13 markers for Resolve timeline
-  media-creation-plan.md         — 15 clip cards with visual job per beat
-  selected-package.md            — packaging decisions
-  production-plan.md             — production prep notes
-  FRICTION-LOG.json              — structured friction entries
-  second-cut-visual-support-map.md — visual candidates with insert instructions
+The build page links to each tool directly. You do not need terminal commands for any step.
 
 ---
 
-## COCKPIT URLS
+## A-ROLL RECORDING (MANUAL)
 
-Main dashboard      http://127.0.0.1:8010/package-runs-dashboard.html
-Episode Factory home http://127.0.0.1:8010/index.html
-Package Engine       http://127.0.0.1:8010/package-engine.html
-Image Prompts Editor http://127.0.0.1:8010/image-prompts-editor.html
-Mission Control      http://127.0.0.1:8010/mission-control.html
-Production Day       http://127.0.0.1:8010/production-day-dashboard.html
-Idea Scout           http://127.0.0.1:8010/daily-idea-scout.html
-AIGEN Review View    http://127.0.0.1:8099 (separate server)
-Publish Gate         http://127.0.0.1:8010/publish-gate.html
+1. Click desktop shortcut **06-Start-ComfyUI** if you need FLUX backgrounds running.
+2. Set up OBS: green screen, camera, microphone.
+3. Open the script in the dashboard Artifact Panel (read-only, copyable) or in shorts-workflow.html.
+4. Record presenter segments. Save to VIDNAS: /mnt/vidnas_public/VIDTOOLZ/camera_originals/
+5. Tell Hermes which take to move into the active run subfolder.
+6. Click desktop shortcut **07-START-CAPTURE** for 4K screen capture with system audio + Elgato mic.
+7. Click desktop shortcut **08-STOP-CAPTURE** to stop and verify the recording.
+8. Back in the dashboard, use the Capture Evidence Intake form to log what you recorded.
+
+---
+
+## IMAGE GENERATION (B-ROLL BACKGROUNDS)
+
+1. Open http://127.0.0.1:8010/image-prompts-editor.html
+   Write prompts: subject + style + mood, vertical 9:16. Photorealistic only. No text of any kind in prompts.
+
+2. Click desktop shortcut **06-Start-ComfyUI** to start local FLUX.
+   ~48s per image at 1080x1920. Crashes after ~33-50 generations — auto-restarts.
+
+3. Review and select images at http://127.0.0.1:8099 (AIGEN Review View).
+
+4. Generate video clips on PRESTO (Wan2.2 I2V, 81 frames, manual). Stage to:
+   /mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/
+
+---
+
+## ASSEMBLY EDIT IN RESOLVE (MANUAL)
+
+Hermes scope stops here. Open DaVinci Resolve on PRESTO or vidnux.
+
+1. Import media from VIDNAS (do not copy locally).
+2. Cut A-roll to script timing. Place B-roll over [B-ROLL] sections.
+3. Key green screen. Add generated backgrounds behind presenter.
+4. Fix Kling 1916px height (scale or crop to 1920).
+5. Color match. Set audio levels (voice ~-6dB, music ~-20dB).
+6. Export H.264 1080x1920 30fps to VIDNAS.
+7. Watch the rough cut end-to-end.
+8. Fill the Rough Cut Review form in the dashboard (not a .md file).
+
+---
+
+## PUBLISH
+
+1. Open http://127.0.0.1:8010/publish-gate.html
+2. Verify trust checklist: claims verifiable, AI visuals classified, no misleading thumbnails.
+3. Upload to YouTube manually.
+4. Record the YouTube URL.
+5. Set package-run-state.md to "published" (only you).
+
+---
+
+## TROUBLESHOOTING
+
+**Dashboard blank or "Could not load"**
+Click desktop shortcut **01-Resume-Work** — it starts the cockpit if it's not running.
+
+**Doctor says BLOCKED but I did the work**
+The gate needs an approval marker set via the dashboard form, not just file existence. Re-open the relevant panel in the dashboard, fill the required fields, and submit.
+
+**Orientation Strip says "stale index"**
+Click "Rebuild index" on the dashboard.
+
+**ComfyUI crashed after many generations**
+Auto-restart should handle it. If not, click desktop shortcut **06-Start-ComfyUI** again.
+
+**Want to see all gates at once**
+Scroll the dashboard — the Pipeline Tracker shows every gate and its status.
+
+---
+
+## DESKTOP SHORTCUTS
+
+| # | Shortcut | What it does |
+|---|----------|-------------|
+| 01 | Resume-Work | Check VIDNAS, start cockpit, open resume page |
+| 02 | Systems-Check | Full readiness report (HTML) |
+| 03 | Build-New-Video | Open guided new-video build page |
+| 04 | Episode-Factory | Open Episode Factory index |
+| 05 | Creator-Cockpit | Open dashboard |
+| 06 | Start-ComfyUI | Start local FLUX ComfyUI |
+| 07 | START-CAPTURE | Start 4K screen + audio capture |
+| 08 | STOP-CAPTURE | Stop capture, verify file |
+| 09 | Open-Active-Run | Open active run in dashboard (never stale) |
 
 ---
 
 ## KEY RULES
 
-- The Runs Dashboard is your main control surface
-- The Workflow Wizard panel shows step-by-step guidance for the current stage
-- The Next Safe Action panel reads local evidence and tells you what to do now
-- The Visual Beat Map panel shows all beats from 3 sources in one view
-- Hermes scope stops at Resolve editing — stages 0-9 are Hermes-assisted
-  stages 10-12 are Mikko's manual domain
-- Kling video generation is manual — Hermes prepares handoffs, cannot operate Kling
-- No file is approved, published, or marked ready without Mikko's explicit sign-off
-- package-run-state.md must not be touched by anyone except Mikko
-- rough-cut-watch-notes.md is the single source of truth for review status
-- When resuming an existing run, always start from Next Safe Action
-- Friction log entries go through the dashboard UI (nonce required for saves)
-- No new features should be built until one end-to-end run completes with a friction log
-
----
-
-## YOUR CURRENT NEXT ACTION
-
-Your active run (2026-06-28-stop-writing-your-shorts-like-blog-posts) is at production prep / production-brief stage.
-
-The current blocker is:
-
-1. PRODUCTION PREP:
-   production-brief.md is missing.
-   The production-prep generator also requires a selected package file
-   (selected-package.json or selected-package.md) before it can create the brief.
-
-Do not create media, start PRESTO/Wan, open Resolve work, or publish anything until
-the production-prep artifacts exist and the dashboard/audit reports the next safe action.
+1. The Orientation Strip is the single source of truth for "what do I do next." Read it first.
+2. Use dashboard forms for every gate. Do not open .md files to edit them manually.
+3. File existence does not prove completion. Gates use evidence, not file existence.
+4. Hermes cannot approve, publish, edit timelines, or operate Resolve/ComfyUI/Kling.
+5. package-run-state.md is touched only by you.
+6. No gate is bypassed. If the doctor says BLOCKED, it is blocked.
+7. All image generation is local FLUX on vidnux. No external API keys.
