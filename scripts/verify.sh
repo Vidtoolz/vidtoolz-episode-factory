@@ -25,6 +25,7 @@ node --check project-client.js
 node --check idea-promotion.js
 node --check topic-idea-scout.js
 node --check project-script.js
+node --check project-image-prompts.js
 node --check score-explanation.js
 node --check scripts/import-manual-images.js
 node --check scripts/import-manual-videos.js

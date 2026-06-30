@@ -74,11 +74,12 @@ The system resolves each project through these stages. The Next-task card tells 
 2. IMAGE PROMPTS
    The Next-task button ("Open image prompts editor") opens the project image
    prompts editor (image-prompts-editor.html?package=<project-id>) with project
-   context: title, stage, topic, and whether an approved script exists, plus
-   links back to the workspace / Focus. Add/edit the prompts here (subject +
-   style + mood, vertical 9:16, photorealistic, no text in prompts) and Save.
-   Note: one-click generation from the script is not wired yet — you create/edit
-   the prompts in this editor for now.
+   context: title, stage, topic, and an "Approved script found" confirmation.
+   Click **Generate image prompts from approved script** — local Ollama on vidnux
+   turns the script into ~25 vertical 1080x1920, photorealistic, no-text FLUX
+   prompts. Review/edit them in the table and Save. (If prompts already exist it
+   asks to replace; if vidnux Ollama is down the step is blocked — no fallback.)
+   Once prompts exist, the project advances to local FLUX image generation.
 
 3. GENERATE IMAGES
    Click the Next-task button to submit to vidnux FLUX via API (dry-run first). ~48s per image at 1080x1920.

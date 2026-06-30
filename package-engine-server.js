@@ -88,6 +88,7 @@ const PROJECT_STATUS_API = '/api/project/status';
 const PROJECT_SCRIPT_API = '/api/project/script';
 const PROJECT_SCRIPT_SAVE_DRAFT_API = '/api/project/script/save-draft';
 const PROJECT_SCRIPT_APPROVE_API = '/api/project/script/approve';
+const PROJECT_IMAGE_PROMPTS_GENERATE_API = '/api/project/image-prompts/generate';
 const PROJECT_ALLOWED_STATUSES = ['active', 'parked', 'blocked', 'editing', 'publish_prep', 'published', 'archived'];
 const AIGEN_FLUX_IMAGES_API_PREFIX = '/api/aigen/flux-images/';
 const AIGEN_SELECTED_IMAGES_API = '/api/aigen/selected-images';
@@ -193,6 +194,7 @@ const projectDiscovery = require('./project-discovery.js');
 const ideaPromotion = require('./idea-promotion.js');
 const topicScout = require('./topic-idea-scout.js');
 const projectScript = require('./project-script.js');
+const projectImagePrompts = require('./project-image-prompts.js');
 const OLLAMA_PRESTO_BASE_URL = mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT);
 const OLLAMA_PRESTO_MODEL = mediaRouting.resolveModel(mediaRouting.LANE.I2V_PROMPT);
 
@@ -8662,6 +8664,65 @@ function createServer(options = {}) {
       return;
     }
 
+    // Generate the project's image prompts from its approved script via local
+    // Ollama on vidnux (no cloud fallback). Writes the canonical image-prompts.json
+    // (reusing saveImagePrompts validation) + a provenance sidecar. Generates TEXT
+    // prompts only — never images.
+    if (req.method === 'POST' && url.pathname === PROJECT_IMAGE_PROMPTS_GENERATE_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload);
+          const opt = { root: serverOptions.root || ROOT };
+          const resolved = resolveAigenPackageDir(payload.id || payload.package_id || payload.package || '', opt);
+          // Require an approved final script.
+          const scriptState = projectScript.readScript(resolved.packageDir);
+          if (!scriptState.final.exists) {
+            const e = new Error('No approved final script. Approve the script first.'); e.statusCode = 400; throw e;
+          }
+          // Don't clobber existing prompts unless confirmed.
+          const existing = readImagePrompts(resolved.packageId, opt);
+          if (existing.count > 0 && !payload.confirm_replace) {
+            const e = new Error(`${existing.count} image prompt(s) already exist. Re-submit with confirm_replace to regenerate.`);
+            e.statusCode = 409; throw e;
+          }
+          let count = Number(payload.count);
+          if (!Number.isFinite(count) || count < 1) count = projectImagePrompts.DEFAULT_COUNT;
+          count = Math.min(40, Math.round(count));
+
+          const state = resolveProjectState(resolved.packageDir);
+          const prov = state.provenance || {};
+          const finalText = (projectScript.readScript(resolved.packageDir).final.text) || '';
+          const reqPrompt = projectImagePrompts.buildImagePromptRequest({
+            title: state.title, premise: prov.premise || '',
+            scoreSummary: (prov.score_explanation && prov.score_explanation.summary) || '',
+            script: finalText, count,
+          });
+          // local-first: vidnux Ollama (default base); unavailable -> 503 from callOllamaChat.
+          const content = await callOllamaChat({ system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL }, options);
+          const nowIso = new Date().toISOString();
+          const records = projectImagePrompts.parseImagePrompts(content, count, { projectId: resolved.packageId, model: OLLAMA_MODEL, nowIso, scriptPath: scriptState.final.path });
+
+          const saved = saveImagePrompts({ package_id: resolved.packageId, model: { image_prompts: records } }, opt);
+          const manifestPath = path.join(resolved.packageDir, 'image-prompts-generation-manifest.json');
+          ideaPromotion.writeJsonAtomic(manifestPath, projectImagePrompts.buildManifest(records, { projectId: resolved.packageId, model: OLLAMA_MODEL, nowIso, scriptPath: scriptState.final.path }));
+
+          sendJSON(res, 200, {
+            ok: true,
+            project_id: resolved.packageId,
+            prompt_count: saved.count,
+            prompts_path: 'image-prompts.json',
+            manifest_path: 'image-prompts-generation-manifest.json',
+            provider: 'ollama',
+            provider_host: 'vidnux',
+            model: OLLAMA_MODEL,
+            generated_at: nowIso,
+            replaced_existing: existing.count > 0,
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'project-image-prompts-generate-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === COCKPIT_ORIENTATION_API) {
       try {
         sendJSON(res, 200, buildCockpitOrientation());
@@ -10075,6 +10136,7 @@ module.exports = {
   PROJECT_SCRIPT_API,
   PROJECT_SCRIPT_SAVE_DRAFT_API,
   PROJECT_SCRIPT_APPROVE_API,
+  PROJECT_IMAGE_PROMPTS_GENERATE_API,
   IDEAS_TRIAGE_API,
   IDEAS_STATUS_API,
   IDEAS_PROMOTE_API,

@@ -407,14 +407,55 @@
           const seed = prov.seed_topic ? `<div>Seed topic: ${pcEsc(prov.seed_topic)}</div>` : "";
           const scriptLine = s.has_script
             ? '<div style="color:#3fb950;">✓ Approved script found.</div>'
-            : `<div style="color:#f85149;">No approved script found. <a href="project-script.html?id=${encodeURIComponent(packageId)}">Return to script workspace</a>.</div>`;
+            : `<div style="color:#f85149;">No approved script found. <a href="project-script.html?id=${encodeURIComponent(packageId)}">Return to script workspace</a> to write/approve it first.</div>`;
+          // Generation panel: only when an approved script exists.
+          const genPanel = s.has_script
+            ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border,#30363d);">
+                 <div><b>Generate from approved script</b> · Provider: local Ollama on vidnux</div>
+                 <button type="button" id="ip-generate" style="margin-top:6px;">Generate image prompts from approved script</button>
+                 <span id="ip-gen-status" class="meta" style="margin-left:8px;"></span>
+               </div>`
+            : '';
           document.getElementById("pc-body").innerHTML =
             `<div><b>${pcEsc(s.title || packageId)}</b> <span class="meta">(${pcEsc(packageId)})</span> · stage <b>${pcEsc(s.stage)}</b> · status ${pcEsc(s.status)}</div>`
             + prem + seed + scriptLine
             + `<div style="margin-top:6px;"><a href="project-workspace.html?id=${encodeURIComponent(packageId)}">← Project workspace</a> · <a href="project-focus.html?id=${encodeURIComponent(packageId)}">Focus mode</a></div>`
-            + `<div class="hint" style="margin-top:6px;">Add or edit this project's FLUX image prompts below, then Save. (One-click generation from the script is not wired yet.)</div>`;
+            + genPanel
+            + `<div class="hint" style="margin-top:6px;">Generated prompts are starting points — review and edit them below, then Save.</div>`;
           document.getElementById("project-context").style.display = "";
+          const gb = document.getElementById("ip-generate");
+          if (gb) gb.addEventListener("click", generateFromScript);
         } catch (e) { /* non-project package or server down; skip context */ }
+      }
+
+      async function generateFromScript() {
+        const st = document.getElementById("ip-gen-status");
+        const gb = document.getElementById("ip-generate");
+        const existing = Array.isArray(prompts) ? prompts.length : 0;
+        if (existing > 0 && !confirm(`Replace the existing ${existing} image prompt(s) with a fresh set generated from the approved script?`)) return;
+        if (gb) gb.disabled = true;
+        st.textContent = "Generating (local Ollama on vidnux)…";
+        try {
+          if (!localWriteNonce) await fetchWriteNonce();
+          const headers = { "Content-Type": "application/json" }; headers[nonceHeader] = localWriteNonce;
+          const r = await fetch("/api/project/image-prompts/generate", {
+            method: "POST", headers,
+            body: JSON.stringify({ id: packageId, confirm_replace: existing > 0, localWriteNonce }),
+          });
+          const data = await r.json();
+          if (!r.ok) {
+            const err = (data && data.error) || ("HTTP " + r.status);
+            st.textContent = (r.status === 503) ? ("Blocked: Ollama on vidnux unavailable — " + err) : ("Error: " + err);
+            if (gb) gb.disabled = false;
+            return;
+          }
+          const d = normalizePayload(data);
+          st.textContent = `Generated ${d.prompt_count} prompts — review/edit below, then Save.`;
+          await load(); // reloads the prompts into the table + re-renders context
+        } catch (e) {
+          st.textContent = "Error: " + (e.message || e);
+          if (gb) gb.disabled = false;
+        }
       }
 
       async function load() {
