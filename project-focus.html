@@ -32,6 +32,7 @@
         <span id="fx-status"></span>
       </div>
       <div class="fx-title" id="fx-projtitle">Loading…</div>
+      <div id="fx-score" class="meta" style="font-size:12px;margin:-18px 0 24px;display:none;"></div>
       <div id="fx-main"></div>
       <div class="fx-exit">
         <a href="#" id="fx-refresh" class="meta">↻ Refresh task</a> &nbsp;·&nbsp;
@@ -57,6 +58,17 @@
           : (s.provenance && s.provenance.source === 'user_topic_scout') ? ('Source: user topic — ' + (s.provenance.seed_topic || 'seeded'))
           : '';
         document.getElementById('fx-projtitle').innerHTML = client.esc(s.title) + (prov ? ` <span style="color:var(--muted,#8b949e);font-size:12px;">· ${client.esc(prov)}</span>` : '');
+        // Compact score line (minimal): score + one-line summary; full breakdown lives in the workspace.
+        const pv = s.provenance || {};
+        const scoreEl = document.getElementById('fx-score');
+        if (scoreEl) {
+          if (pv.score !== null && pv.score !== undefined) {
+            const sum = (pv.score_explanation && pv.score_explanation.summary) || '';
+            scoreEl.innerHTML = `Score ${client.esc(pv.score)}/10${sum ? ' — ' + client.esc(sum) : ''} `
+              + `<a href="project-workspace.html?id=${encodeURIComponent(ID)}" style="color:#58a6ff;">full breakdown →</a>`;
+            scoreEl.style.display = '';
+          } else { scoreEl.style.display = 'none'; }
+        }
         const main=document.getElementById('fx-main');
         if(nt.done){
           main.innerHTML = `<div class="fx-done">✓ Nothing to do right now.</div><p class="fx-why">${client.esc(nt.why)}</p>`;

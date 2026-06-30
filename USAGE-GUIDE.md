@@ -64,8 +64,12 @@ Option C: From scratch
 The system resolves each project through these stages. The Next-task card tells you which one you're on and what to do.
 
 1. WRITE SCRIPT
-   Vertical: open shorts-workflow.html (?run=<run-id>). Generate with Ollama, pick one, edit, click "Save this as final-script.md".
-   Longform: write in your editor, paste into the package-engine page.
+   The Next-task button opens the project's own script workspace
+   (project-script.html?id=<project-id>) — the chosen topic, premise, and a
+   "Why this scored X/10" breakdown are already shown; you are NOT sent back to
+   pick a topic. Write/paste/import the script, Save draft, then Approve as final
+   script. Approving writes script/script-final.md and advances the project to
+   image prompts. (A scaffold pre-fills from your topic; delete it freely.)
 
 2. GENERATE IMAGE PROMPTS
    Open image-prompts-editor.html from the Next-task button. Write prompts: subject + style + mood, vertical 9:16. Photorealistic only. No text of any kind in prompts.

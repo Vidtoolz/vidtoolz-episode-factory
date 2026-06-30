@@ -18,6 +18,7 @@ const fs = require('fs');
 const path = require('path');
 
 const idea = require('./idea-promotion.js');
+const { buildScoreExplanation } = require('./score-explanation.js');
 
 const KIND = 'user_seeded_topic_scout';
 const MAX_TOPIC_LEN = 1000;
@@ -67,8 +68,11 @@ function buildTopicPrompt(topic, count = DEFAULT_COUNT) {
     `Seed topic: ${topic}`,
     '',
     `Return exactly ${count} ideas, ranked strongest first, as JSON:`,
-    '{"ideas":[{"title","premise","score","rationale","audience_fit","production_fit","difficulty","format","opening_hook","proof_plan","thumbnail_prompt"}]}',
-    'score: number 0-10. difficulty: low|medium|high. format: Short|Long|Either.',
+    '{"ideas":[{"title","premise","score","score_summary","strengths","weaknesses","evaluation_criteria","rationale","audience_fit","production_fit","difficulty","format","opening_hook","proof_plan","thumbnail_prompt"}]}',
+    'score: number 0-10. score_summary: one sentence on why it earned that score.',
+    'strengths: array of short strings (what makes it strong). weaknesses: array of short strings (what to watch / weaker points).',
+    'evaluation_criteria: array of {name, result, score} for Audience fit, Production fit, Proof / evidence plan, Originality / specificity.',
+    'difficulty: low|medium|high. format: Short|Long|Either.',
   ].join('\n');
   const schema = {
     type: 'object',
@@ -79,6 +83,13 @@ function buildTopicPrompt(topic, count = DEFAULT_COUNT) {
           type: 'object',
           properties: {
             title: { type: 'string' }, premise: { type: 'string' }, score: { type: 'number' },
+            score_summary: { type: 'string' },
+            strengths: { type: 'array', items: { type: 'string' } },
+            weaknesses: { type: 'array', items: { type: 'string' } },
+            evaluation_criteria: {
+              type: 'array',
+              items: { type: 'object', properties: { name: { type: 'string' }, result: { type: 'string' }, score: { type: 'number' } }, required: ['name'] },
+            },
             rationale: { type: 'string' }, audience_fit: { type: 'string' }, production_fit: { type: 'string' },
             difficulty: { type: 'string' }, format: { type: 'string' }, opening_hook: { type: 'string' },
             proof_plan: { type: 'string' }, thumbnail_prompt: { type: 'string' },
@@ -112,6 +123,16 @@ function parseTopicIdeas(content, count = DEFAULT_COUNT) {
       title: it.title.trim(),
       premise: it.premise.trim(),
       score: normScore(it.score),
+      score_summary: String(it.score_summary || '').trim(),
+      strengths: Array.isArray(it.strengths) ? it.strengths.map((s) => String(s || '').trim()).filter(Boolean) : [],
+      weaknesses: Array.isArray(it.weaknesses) ? it.weaknesses.map((s) => String(s || '').trim()).filter(Boolean) : [],
+      evaluation_criteria: Array.isArray(it.evaluation_criteria)
+        ? it.evaluation_criteria.map((c) => ({
+            name: String((c && c.name) || '').trim(),
+            result: String((c && c.result) || '').trim(),
+            score: c && typeof c.score === 'number' ? c.score : undefined,
+          })).filter((c) => c.name)
+        : [],
       rationale: String(it.rationale || '').trim(),
       audience_fit: String(it.audience_fit || '').trim(),
       production_fit: String(it.production_fit || '').trim(),
@@ -236,7 +257,10 @@ function promoteTopicIdea(opts = {}) {
     source: 'user_topic_scout',
     idea_uid: uid,
     date,
-    marker: { date, index: Number(index), run_id: runId, seed_topic: run.seed_topic || '' },
+    marker: {
+      date, index: Number(index), run_id: runId, seed_topic: run.seed_topic || '',
+      score_explanation: buildScoreExplanation(theIdea, 'user_topic_scout'),
+    },
   }, nowIso);
 
   triage[String(index)] = Object.assign({}, triage[String(index)] || {}, {

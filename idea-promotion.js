@@ -18,6 +18,7 @@ const fs = require('fs');
 const path = require('path');
 
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
+const { buildScoreExplanation } = require('./score-explanation.js');
 
 const ALLOWED_STATUSES = ['new', 'shortlisted', 'approved', 'rejected', 'parked', 'promoted'];
 const TRIAGE_FILE = 'idea-triage.json';
@@ -179,7 +180,10 @@ function promoteIdea(opts = {}) {
     score: idea.final_score || 0,
     thumbnailConcept: idea.thumbnail_prompt || '',
     premise,
-  }, { source: 'daily_idea_scout', idea_uid: uid, date, marker: { date, index } }, nowIso);
+  }, {
+    source: 'daily_idea_scout', idea_uid: uid, date,
+    marker: { date, index, score_explanation: buildScoreExplanation(idea, 'daily_idea_scout') },
+  }, nowIso);
 
   // Link the idea in the triage sidecar.
   triage[String(index)] = Object.assign({}, triage[String(index)] || {}, {

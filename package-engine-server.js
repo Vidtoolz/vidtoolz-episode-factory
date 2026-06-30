@@ -85,6 +85,9 @@ const PROJECTS_LIST_API = '/api/projects';
 const PROJECT_STATE_API = '/api/project-state';
 const PROJECT_IMPORT_MEDIA_API = '/api/project/import-media';
 const PROJECT_STATUS_API = '/api/project/status';
+const PROJECT_SCRIPT_API = '/api/project/script';
+const PROJECT_SCRIPT_SAVE_DRAFT_API = '/api/project/script/save-draft';
+const PROJECT_SCRIPT_APPROVE_API = '/api/project/script/approve';
 const PROJECT_ALLOWED_STATUSES = ['active', 'parked', 'blocked', 'editing', 'publish_prep', 'published', 'archived'];
 const AIGEN_FLUX_IMAGES_API_PREFIX = '/api/aigen/flux-images/';
 const AIGEN_SELECTED_IMAGES_API = '/api/aigen/selected-images';
@@ -189,6 +192,7 @@ const { chooseNextTask } = require('./next-task-engine.js');
 const projectDiscovery = require('./project-discovery.js');
 const ideaPromotion = require('./idea-promotion.js');
 const topicScout = require('./topic-idea-scout.js');
+const projectScript = require('./project-script.js');
 const OLLAMA_PRESTO_BASE_URL = mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT);
 const OLLAMA_PRESTO_MODEL = mediaRouting.resolveModel(mediaRouting.LANE.I2V_PROMPT);
 
@@ -8597,6 +8601,67 @@ function createServer(options = {}) {
       return;
     }
 
+    // Project-scoped script workspace: load topic context + draft/final + scaffold.
+    if (req.method === 'GET' && url.pathname === PROJECT_SCRIPT_API) {
+      try {
+        const resolved = resolveAigenPackageDir(url.searchParams.get('id') || url.searchParams.get('package') || url.searchParams.get('package_id') || '', { root: serverOptions.root || ROOT });
+        const state = resolveProjectState(resolved.packageDir);
+        const prov = state.provenance || {};
+        const script = projectScript.readScript(resolved.packageDir);
+        const angle = (prov.score_explanation && prov.score_explanation.summary) || prov.premise || '';
+        const scaffold = projectScript.buildScaffold({ title: state.title, premise: prov.premise || '', angle });
+        sendJSON(res, 200, {
+          ok: true,
+          project_id: state.project_id,
+          title: state.title,
+          status: state.status,
+          stage: state.stage,
+          source: { source: prov.source || 'package', seed_topic: prov.seed_topic || '' },
+          score: (prov.score !== undefined ? prov.score : null),
+          score_explanation: prov.score_explanation || null,
+          premise: prov.premise || '',
+          draft: script.draft,
+          final: script.final,
+          notes: script.notes,
+          suggested_scaffold: scaffold,
+        });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'project-script-error');
+      }
+      return;
+    }
+
+    // Save a script draft (non-final). Nonce-gated.
+    if (req.method === 'POST' && url.pathname === PROJECT_SCRIPT_SAVE_DRAFT_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const resolved = resolveAigenPackageDir(payload.id || payload.package_id || payload.package || '', { root: serverOptions.root || ROOT });
+          sendJSON(res, 200, Object.assign({ project_id: resolved.packageId }, projectScript.saveDraft(resolved.packageDir, payload.text, payload.notes)));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'project-script-save-draft-error'));
+      return;
+    }
+
+    // Approve the final script (writes the canonical path the resolver reads,
+    // advancing the project past the script stage). Nonce-gated; 409 unless
+    // confirm_replace when a final already exists.
+    if (req.method === 'POST' && url.pathname === PROJECT_SCRIPT_APPROVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload);
+          const resolved = resolveAigenPackageDir(payload.id || payload.package_id || payload.package || '', { root: serverOptions.root || ROOT });
+          const approved = projectScript.approveFinal(resolved.packageDir, payload.text, Boolean(payload.confirm_replace));
+          const state = resolveProjectState(resolved.packageDir);
+          const next = chooseNextTask(state);
+          sendJSON(res, 200, Object.assign({ project_id: resolved.packageId }, approved, {
+            stage: state.stage, next_task: { id: next.id, label: next.label },
+          }));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'project-script-approve-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === COCKPIT_ORIENTATION_API) {
       try {
         sendJSON(res, 200, buildCockpitOrientation());
@@ -10007,6 +10072,9 @@ module.exports = {
   PROJECT_STATE_API,
   PROJECT_IMPORT_MEDIA_API,
   PROJECT_STATUS_API,
+  PROJECT_SCRIPT_API,
+  PROJECT_SCRIPT_SAVE_DRAFT_API,
+  PROJECT_SCRIPT_APPROVE_API,
   IDEAS_TRIAGE_API,
   IDEAS_STATUS_API,
   IDEAS_PROMOTE_API,

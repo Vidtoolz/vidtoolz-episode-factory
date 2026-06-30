@@ -33,6 +33,7 @@ require("./media-routing.test.js");
 require("./project-cockpit.test.js");
 require("./idea-promotion.test.js");
 require("./topic-idea-scout.test.js");
+require("./project-script.test.js");
 require("./workflow-path.test.js");
 require("./script-commitment-check.test.js");
 require("./resolve-handoff-readiness.test.js");

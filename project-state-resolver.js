@@ -116,6 +116,8 @@ function readProvenance(packageDir) {
       // user_topic_scout extras (empty for daily promotions)
       seed_topic: marker.seed_topic || '',
       run_id: marker.run_id || '',
+      // Structured "why this scored X" breakdown (null on older projects).
+      score_explanation: (marker.score_explanation && typeof marker.score_explanation === 'object') ? marker.score_explanation : null,
     };
   }
   const man = readJson(path.join(packageDir, 'manifest.json'));

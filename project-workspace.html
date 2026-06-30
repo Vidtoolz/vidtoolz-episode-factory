@@ -105,7 +105,29 @@
           (p.score!==null && p.score!==undefined) ? ['Score', String(p.score)] : null,
         ].filter(Boolean);
         return `<div class="card"><div class="next-label">${client.esc(heading)}</div>
-          <div style="margin-top:8px;font-size:13px;">${rows.map(r=>`<div class="meta"><b style="color:var(--soft,#c9d1d9);">${client.esc(r[0])}:</b> ${client.esc(r[1])}</div>`).join('')}</div></div>`;
+          <div style="margin-top:8px;font-size:13px;">${rows.map(r=>`<div class="meta"><b style="color:var(--soft,#c9d1d9);">${client.esc(r[0])}:</b> ${client.esc(r[1])}</div>`).join('')}</div>
+          ${scoreExplanation(p)}</div>`;
+      }
+      function scoreExplanation(p){
+        const sx = p.score_explanation;
+        const scoreLabel = (p.score!==null && p.score!==undefined) ? (p.score + '/10') : '';
+        if(!sx || !sx.available){
+          return `<details style="margin-top:10px;"><summary class="meta">Why this scored ${client.esc(scoreLabel||'—')}</summary>
+            <div class="meta" style="margin-top:6px;">No detailed scoring breakdown was stored for this idea.${p.premise?' Premise: '+client.esc(p.premise):''}</div></details>`;
+        }
+        const list = (arr)=>(arr&&arr.length)?('<ul style="margin:4px 0 8px;padding-left:18px;">'+arr.map(x=>`<li class="meta">${client.esc(x)}</li>`).join('')+'</ul>'):'';
+        const crit = (sx.criteria&&sx.criteria.length)
+          ? '<div class="meta" style="margin-top:4px;"><b style="color:var(--soft,#c9d1d9);">Criteria</b></div>'+
+            sx.criteria.map(c=>`<div class="meta">• ${client.esc(c.name)}${(c.score!==undefined&&c.score!==null)?' ('+client.esc(c.score)+')':''}${c.result?': '+client.esc(c.result):''}</div>`).join('')
+          : '';
+        return `<details style="margin-top:10px;" open><summary class="meta" style="color:#3fb950;">Why this scored ${client.esc(scoreLabel)}</summary>
+          <div style="margin-top:6px;font-size:13px;">
+            ${sx.summary?`<div class="meta" style="margin-bottom:6px;">${client.esc(sx.summary)}</div>`:''}
+            ${sx.succeeded&&sx.succeeded.length?'<div class="meta"><b style="color:var(--soft,#c9d1d9);">What succeeded</b></div>'+list(sx.succeeded):''}
+            ${sx.weaker_points&&sx.weaker_points.length?'<div class="meta"><b style="color:#d29922;">Weaker / watch</b></div>'+list(sx.weaker_points):''}
+            ${crit}
+            ${sx.raw_rationale?`<details style="margin-top:6px;"><summary class="meta">Raw rationale</summary><div class="meta" style="margin-top:4px;white-space:pre-wrap;">${client.esc(sx.raw_rationale)}</div></details>`:''}
+          </div></details>`;
       }
       function countCard(label,val){ return `<div class="count"><b>${client.esc(val)}</b>${client.esc(label)}</div>`; }
       function mediaList(m){

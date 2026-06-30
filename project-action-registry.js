@@ -20,9 +20,10 @@ const REGISTRY = {
     requires: [], evidence: ['selected-package.json'],
   },
   write_script: {
-    label: 'Write / approve the script',
-    type: 'open', page: 'package-engine.html',
+    label: 'Open script workspace',
+    type: 'open', page: 'project-script.html',
     requires: ['project_metadata'], evidence: ['script/script-final.md'],
+    note: 'The topic is already chosen — write/paste/import the script for this project, save a draft, then approve the final.',
   },
   generate_image_prompts: {
     label: 'Generate image prompts',

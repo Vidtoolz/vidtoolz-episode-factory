@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Script — VIDTOOLZ</title>
+    <link rel="stylesheet" href="styles.css?v=1.9.6">
+    <style>
+      .ps { max-width: 880px; margin: 0 auto; padding: 22px 20px 56px; }
+      .ps-back { font-size: 12px; }
+      .ps h1 { margin: 8px 0 2px; font-size: 24px; }
+      .meta { color: var(--muted,#8b949e); font-size: 13px; }
+      .card { background: var(--panel,#161b22); border: 1px solid var(--border,#30363d); border-radius: 10px; padding: 16px 18px; margin: 14px 0; }
+      .label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted,#8b949e); font-weight: 600; margin-bottom: 6px; }
+      textarea { width: 100%; box-sizing: border-box; background: var(--panel-3,#0d1117); border: 1px solid var(--border,#30363d); color: inherit; border-radius: 6px; padding: 10px 12px; font: 13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; resize: vertical; }
+      .btn { border: none; border-radius: 6px; padding: 9px 16px; font-size: 13px; cursor: pointer; margin-right: 8px; }
+      .btn-go { background: #2ea043; color: #fff; } .btn-alt { background: var(--panel-3,#21262d); color: inherit; border: 1px solid var(--border,#30363d); }
+      .btn:disabled { opacity: .5; cursor: default; }
+      .pill { font-size:11px;padding:2px 9px;border-radius:100px; }
+      .final-yes { background: rgba(63,185,80,.18); color:#3fb950; } .final-no { background: rgba(139,148,158,.18); color:#8b949e; }
+      .result { font-size:12px;white-space:pre-wrap;background:var(--panel-3,#21262d);border-radius:6px;padding:10px;margin-top:10px;display:none; }
+      .blk { color:#f85149; } .warn { color:#d29922; }
+      details summary { cursor:pointer; }
+    </style>
+  </head>
+  <body>
+    <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="daily-idea-scout.html">Ideas</a><a href="production-pipeline.html">Pipeline</a></nav>
+    <div class="ps">
+      <div class="ps-back" id="ps-back"></div>
+      <div id="ps-body"><p class="meta">Loading script workspace…</p></div>
+    </div>
+    <script>
+      const ID = new URLSearchParams(location.search).get('id') || new URLSearchParams(location.search).get('package_id') || '';
+      const body = document.getElementById('ps-body');
+      let nonce = '', nonceHeader = 'x-vidtoolz-local-write-nonce';
+      function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+      document.getElementById('ps-back').innerHTML = ID
+        ? `<a href="project-workspace.html?id=${encodeURIComponent(ID)}">← Project workspace</a> · <a href="project-focus.html?id=${encodeURIComponent(ID)}">Focus mode</a>`
+        : '<a href="projects.html">← Projects</a>';
+
+      function ensureNonce(){
+        if(nonce) return Promise.resolve(nonce);
+        return fetch('/api/package-engine/status',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(b=>{
+          const p=(b&&b.data)?b.data:b; if(p&&p.localWriteNonce){nonce=p.localWriteNonce;nonceHeader=p.nonceHeader||nonceHeader;} return nonce;
+        }).catch(()=>'');
+      }
+
+      function load(){
+        if(!ID){ body.innerHTML='<p class="blk">No project id.</p>'; return; }
+        fetch('/api/project/script?id='+encodeURIComponent(ID),{cache:'no-store'})
+          .then(r=>r.json().then(b=>r.ok?b:Promise.reject(new Error((b&&b.error)||'error'))))
+          .then(b=>render((b&&b.data)?b.data:b))
+          .catch(e=>{ body.innerHTML=`<p class="blk">Could not load: ${esc(e.message||e)}</p>`; });
+      }
+
+      function scoreLine(d){
+        if(d.score===null||d.score===undefined) return '';
+        const sx=d.score_explanation;
+        const sum=(sx&&sx.summary)?(' — '+esc(sx.summary)):'';
+        return `<div class="meta" style="margin-top:4px;">Score <b style="color:var(--soft,#c9d1d9);">${esc(d.score)}/10</b>${sum} · <a href="project-workspace.html?id=${encodeURIComponent(ID)}" style="color:#58a6ff;">full breakdown →</a></div>`;
+      }
+
+      function render(d){
+        const srcLabel = d.source && d.source.source==='user_topic_scout' ? 'Promoted from your topic'
+          : d.source && d.source.source==='daily_idea_scout' ? 'Promoted from Daily Idea Scout' : 'Project';
+        const seed = (d.source && d.source.seed_topic) ? `<div class="meta">Seed topic: ${esc(d.source.seed_topic)}</div>` : '';
+        const finalExists = d.final && d.final.exists;
+        const prefill = (d.draft && d.draft.exists && d.draft.text) || (finalExists && d.final.text) || d.suggested_scaffold || '';
+        const notesPrefill = (d.notes && d.notes.exists && d.notes.text) || '';
+        body.innerHTML = `
+          <div class="meta">${esc(srcLabel)}</div>
+          <h1>${esc(d.title)}</h1>
+          ${seed}
+          ${d.premise?`<div class="meta" style="margin-top:4px;"><b style="color:var(--soft,#c9d1d9);">Topic:</b> ${esc(d.premise)}</div>`:''}
+          ${scoreLine(d)}
+          <div class="meta" style="margin-top:6px;">Stage <b>${esc(d.stage)}</b> · status ${esc(d.status)} ·
+            Final script: <span class="pill ${finalExists?'final-yes':'final-no'}">${finalExists?'approved':'not yet'}</span></div>
+
+          <div class="card">
+            <div class="label">Script ${finalExists?'(approved final loaded)':'(draft)'}</div>
+            <textarea id="ps-script" rows="20">${esc(prefill)}</textarea>
+            <div class="label" style="margin-top:12px;">Notes (optional)</div>
+            <textarea id="ps-notes" rows="3">${esc(notesPrefill)}</textarea>
+            <div style="margin-top:12px;">
+              <button class="btn btn-alt" id="ps-save" type="button">Save draft</button>
+              <button class="btn btn-go" id="ps-approve" type="button">${finalExists?'Replace final script':'Approve as final script'}</button>
+              <span class="meta" id="ps-msg"></span>
+            </div>
+            <div class="result" id="ps-result"></div>
+            ${finalExists?'<div class="warn" style="font-size:12px;margin-top:8px;">A final script already exists. Approving will ask you to confirm replacement.</div>':''}
+          </div>
+          <div class="meta">When you approve a final script, the project advances to image prompts and Focus mode shows the next task.</div>
+        `;
+        document.getElementById('ps-save').onclick = saveDraft;
+        document.getElementById('ps-approve').onclick = () => approve(finalExists);
+      }
+
+      function post(endpoint, payload){
+        return ensureNonce().then(n=>{
+          const headers={'Content-Type':'application/json'}; headers[nonceHeader]=n;
+          return fetch(endpoint,{method:'POST',headers,body:JSON.stringify(Object.assign({localWriteNonce:n},payload))})
+            .then(r=>r.json().then(b=>r.ok?b:Promise.reject(new Error((b&&b.error)||('HTTP '+r.status)))));
+        });
+      }
+      function show(msg){ const el=document.getElementById('ps-result'); el.style.display='block'; el.textContent=msg; }
+
+      function saveDraft(){
+        const text=document.getElementById('ps-script').value;
+        const notes=document.getElementById('ps-notes').value;
+        if(!text.trim()){ show('Nothing to save.'); return; }
+        post('/api/project/script/save-draft',{id:ID,text,notes}).then(()=>show('Draft saved to script/script-draft.md.')).catch(e=>show('Error: '+(e.message||e)));
+      }
+
+      function approve(finalExists){
+        const text=document.getElementById('ps-script').value;
+        if(!text.trim()){ show('Final script cannot be empty.'); return; }
+        if(finalExists && !confirm('Replace the existing final script for this project?')) return;
+        post('/api/project/script/approve',{id:ID,text,confirm_replace:!!finalExists})
+          .then(r=>{
+            const d=(r&&r.data)?r.data:r;
+            show('Final script approved (script/script-final.md). Stage → '+(d.stage||'?')+'. Next: '+((d.next_task&&d.next_task.label)||'see workspace')+'.');
+            const wrap=document.createElement('div'); wrap.style.marginTop='10px';
+            wrap.innerHTML=`<a class="btn btn-alt" href="project-workspace.html?id=${encodeURIComponent(ID)}">Project workspace</a> <a class="btn btn-go" href="project-focus.html?id=${encodeURIComponent(ID)}">Focus mode →</a>`;
+            document.getElementById('ps-result').appendChild(wrap);
+          })
+          .catch(e=>{
+            if(/confirm_replace/.test(e.message||'')){ if(confirm('A final script exists. Replace it?')){ post('/api/project/script/approve',{id:ID,text,confirm_replace:true}).then(()=>load()).catch(er=>show('Error: '+(er.message||er))); } }
+            else show('Error: '+(e.message||e));
+          });
+      }
+
+      load();
+    </script>
+  </body>
+</html>
