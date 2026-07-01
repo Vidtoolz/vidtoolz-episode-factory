@@ -395,6 +395,45 @@ test("startPrestoPackageJob honors AIGEN_PRESTO_TIMEOUT_SECONDS override", async
   }
 });
 
+test("startPrestoPackageJob defaults to the recommended HQ profile", async () => {
+  const fixture = createPrestoFixture();
+  const captured = {};
+  try {
+    await withPrestoEnv(fixture, async () => {
+      packageEngineServer.startPrestoPackageJob(
+        { package_id: fixture.packageId },
+        { spawn: captureSpawn(captured) }
+      );
+      const idx = captured.args.indexOf("--profile");
+      assert.ok(idx >= 0, "--profile flag passed to runner");
+      assert.equal(captured.args[idx + 1], "wan22_hq_720p_5s_no_lightx2v");
+    });
+  } finally {
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("startPrestoPackageJob honors an explicit profile and rejects unknown ones", async () => {
+  const fixture = createPrestoFixture();
+  const captured = {};
+  try {
+    await withPrestoEnv(fixture, async () => {
+      packageEngineServer.startPrestoPackageJob(
+        { package_id: fixture.packageId, profile: "fast_current" },
+        { spawn: captureSpawn(captured) }
+      );
+      assert.equal(captured.args[captured.args.indexOf("--profile") + 1], "fast_current");
+    });
+    // unknown profile falls back to the recommended HQ default
+    assert.equal(packageEngineServer.normalizePrestoProfile("bogus"), "wan22_hq_720p_5s_no_lightx2v");
+    assert.equal(packageEngineServer.normalizePrestoProfile("fast_current"), "fast_current");
+  } finally {
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("prestoComfyuiReachable: ok→true, non-ok/throw/empty→false", async () => {
   assert.equal(
     await packageEngineServer.prestoComfyuiReachable("http://host:8188", { fetchImpl: async () => ({ ok: true }) }),
