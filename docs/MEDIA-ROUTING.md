@@ -151,6 +151,26 @@ In every case the operator decision point is preserved: start the local service
 and retry, or fall back to the **manual** external workflow (copy prompt out,
 import media back) — which is the only sanctioned external path.
 
+## PRESTO I2V generation profiles
+
+The PRESTO Wan2.2 lane is **profile-selectable** (added 2026-07-01). Authoritative
+settings live in `aigen/image-to-video/profiles.json`; `run-production.py` reads
+them via `--profile`, and the cockpit passes the operator's choice through.
+
+- **`wan22_hq_720p_5s_no_lightx2v`** (recommended, cockpit default): no LightX2V,
+  30 steps, cfg 4, 720×1280 · 25 fps · 101 frames (~4.04 s), clean **motion**
+  prompt + source-image obedience wrapper + people-suppression negative, random
+  per-clip seed. Diagnostics proved this removes the recurring hallucinated-person
+  artifact (indexes 002/021/025). ~54 min/clip on the RTX 4090 → ~9 h for 10
+  clips. Stages to **`videos/mp4-hq-720p/`** — it never overwrites `videos/mp4/`.
+- **`fast_current`** (legacy fallback): the original LightX2V 4-step lane —
+  1080×1920 · 30 fps · 81 frames (2.7 s), cfg 1, scene prompt. ~12 min/clip but
+  hallucinates extra people into empty presenter space. Stages to `videos/mp4/`.
+
+Completion is tracked per profile: switching profiles never treats the other
+profile's clips as already done. Resolve handoff still consumes `videos/mp4/`;
+choosing the HQ variant for handoff is a later, explicit operator step.
+
 ## Not automated (by policy)
 
 OpenAI image API, KlingAI API, browser/login automation, remote start/stop of

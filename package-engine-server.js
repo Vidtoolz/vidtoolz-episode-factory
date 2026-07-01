@@ -6315,6 +6315,18 @@ async function prestoComfyuiReachable(comfyuiUrl, options = {}) {
   }
 }
 
+// Selectable I2V generation profiles (authoritative settings live in the AIGEN
+// image-to-video/profiles.json; run-production.py reads them). The cockpit only
+// needs the allowed names + the recommended default. HQ is the recommended lane
+// (no LightX2V, cfg4, 720x1280, 4s+) proven to remove hallucinated people.
+const PRESTO_PROFILES = ['fast_current', 'wan22_hq_720p_5s_no_lightx2v'];
+const DEFAULT_PRESTO_PROFILE = 'wan22_hq_720p_5s_no_lightx2v';
+
+function normalizePrestoProfile(value) {
+  const v = String(value || '').trim();
+  return PRESTO_PROFILES.includes(v) ? v : DEFAULT_PRESTO_PROFILE;
+}
+
 function validatePrestoSubmitPayload(payload = {}, options = {}) {
   const { packageId, paths } = resolveAigenPackageDir(payload.package_id, options);
   const productionScript = options.productionScript || paths.productionScript;
@@ -6328,6 +6340,7 @@ function validatePrestoSubmitPayload(payload = {}, options = {}) {
     productionScript,
     pythonBin: options.pythonBin || paths.pythonBin,
     comfyuiUrl: String(payload.comfyui_url || paths.prestoBaseUrl || PRESTO_STATE.defaultUrl).trim(),
+    profile: normalizePrestoProfile(payload.profile),
   };
 }
 
@@ -6347,6 +6360,8 @@ function startPrestoPackageJob(payload = {}, options = {}) {
     config.productionScript,
     '--package',
     config.packageId,
+    '--profile',
+    config.profile,
     '--comfyui-url',
     config.comfyuiUrl,
     '--timeout',
@@ -6363,6 +6378,7 @@ function startPrestoPackageJob(payload = {}, options = {}) {
     process: child,
     packageId: config.packageId,
     comfyuiUrl: config.comfyuiUrl,
+    profile: config.profile,
     workflowPath: genEnv.workflowPath,
     orientation: genEnv.orientation,
     targetResolution: genEnv.targetResolution,
@@ -6395,6 +6411,7 @@ function startPrestoPackageJob(payload = {}, options = {}) {
     job_started: true,
     package_id: config.packageId,
     comfyui_url: config.comfyuiUrl,
+    profile: config.profile,
   };
 }
 
@@ -10455,6 +10472,9 @@ module.exports = {
   startFluxPackageJob,
   startPrestoPackageJob,
   prestoComfyuiReachable,
+  normalizePrestoProfile,
+  PRESTO_PROFILES,
+  DEFAULT_PRESTO_PROFILE,
   gatherResolveReadiness,
   RESOLVE_READINESS_API,
   roughCutInputDefaults,
