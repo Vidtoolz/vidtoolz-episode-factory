@@ -494,13 +494,12 @@ test("earth studio planner unknown location becomes manual review", () => {
   assert.match(plan.warnings.join("\n"), /unknown location fixture: Imaginary City/);
 });
 
-test("earth studio planner orbit becomes manual review in v1", () => {
+test("earth studio planner orbit is a supported action (v0.2+)", () => {
   const plan = earthStudioJobPlanner.buildShotPlan("Orbit_Test", "Orbit Downtown Boston for 3 seconds.", "2026-05-26T00:00:00.000Z");
 
-  assert.equal(plan.segments[0].action, "manual_review");
+  assert.equal(plan.segments[0].action, "orbit");
   assert.equal(plan.segments[0].requested_action, "orbit");
-  assert.equal(plan.segments[0].resolution_status, "manual_review");
-  assert.match(plan.warnings.join("\n"), /orbit is not supported/);
+  assert.equal(plan.segments[0].resolution_status, "resolved");
 });
 
 test("earth studio planner dry run writes nothing", () => {

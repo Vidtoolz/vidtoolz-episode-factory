@@ -97,6 +97,12 @@ const PROJECT_VIDEO_VARIANTS_API = '/api/project/video-variants';
 const PROJECT_MEDIA_KIT_API = '/api/project/media-kit';
 const PROJECT_YOUTUBE_DRAFT_API = '/api/project/youtube-draft';
 const PROJECT_YOUTUBE_DRAFT_SAVE_API = '/api/project/youtube-draft/save';
+const EARTH_STUDIO_STATUS_API = '/api/earth-studio/status';
+const EARTH_STUDIO_PLAN_API = '/api/earth-studio/plan';
+const EARTH_STUDIO_RENDER_API = '/api/earth-studio/render';
+const EARTH_STUDIO_JOB_STATUS_API = '/api/earth-studio/job-status';
+const EARTH_STUDIO_CANCEL_API = '/api/earth-studio/cancel';
+const EARTH_STUDIO_STAGE_API = '/api/earth-studio/stage';
 const PROJECT_VIDEO_REVIEW_SAVE_API = '/api/project/video-review/save';
 const PROJECT_ALLOWED_STATUSES = ['active', 'parked', 'blocked', 'editing', 'publish_prep', 'published', 'archived'];
 const AIGEN_FLUX_IMAGES_API_PREFIX = '/api/aigen/flux-images/';
@@ -200,6 +206,7 @@ const { importManualMedia } = require('./manual-media-import.js');
 const { resolveProjectState } = require('./project-state-resolver.js');
 const { chooseNextTask } = require('./next-task-engine.js');
 const projectDiscovery = require('./project-discovery.js');
+const earthStudioLane = require('./earth-studio-lane.js');
 const ideaPromotion = require('./idea-promotion.js');
 const topicScout = require('./topic-idea-scout.js');
 const projectScript = require('./project-script.js');
@@ -5484,6 +5491,9 @@ function readProjectMediaKit(packageId, options = {}) {
       ...videoFolders.map((f) => mediaKitFolder(id, packageDir, f.label, `videos/${f.variant}`)),
       mediaKitFolder(id, packageDir, 'Resolve handoff', 'resolve-handoff'),
       mediaKitFolder(id, packageDir, 'Script', 'script'),
+      ...(fs.existsSync(path.join(packageDir, 'earth-studio'))
+        ? [mediaKitFolder(id, packageDir, 'Earth Studio map animation', 'earth-studio')]
+        : []),
     ],
   };
 }
@@ -9819,6 +9829,65 @@ function createServer(options = {}) {
       return;
     }
 
+    // ── Earth Studio map-animation lane (project-scoped, revived 2026-07-02) ──
+    if (req.method === 'GET' && url.pathname === EARTH_STUDIO_STATUS_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('package_id') || url.searchParams.get('package') || '';
+        const { packageId, packageDir } = resolveAigenPackageDir(id, { root: serverOptions.root || ROOT });
+        sendJSON(res, 200, earthStudioLane.status(packageDir, packageId));
+      } catch (error) { sendError(res, error.statusCode || 500, error.message, 'earth-studio-status-error'); }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === EARTH_STUDIO_JOB_STATUS_API) {
+      try { sendJSON(res, 200, { job: earthStudioLane.currentJobStatus() }); }
+      catch (error) { sendError(res, error.statusCode || 500, error.message, 'earth-studio-job-status-error'); }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === EARTH_STUDIO_PLAN_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Earth Studio plan API' });
+          const { packageId, packageDir } = resolveAigenPackageDir(payload.id || payload.package_id || '', { root: serverOptions.root || ROOT });
+          sendJSON(res, 200, { project_id: packageId, ...earthStudioLane.writeJob(packageDir, payload) });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'earth-studio-plan-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === EARTH_STUDIO_RENDER_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Earth Studio render API' });
+          const { packageId, packageDir } = resolveAigenPackageDir(payload.id || payload.package_id || '', { root: serverOptions.root || ROOT });
+          sendJSON(res, 200, earthStudioLane.startRender(packageDir, packageId, serverOptions.earthStudio || {}));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'earth-studio-render-error', { active: error.active || null }));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === EARTH_STUDIO_CANCEL_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Earth Studio cancel API' });
+          sendJSON(res, 200, earthStudioLane.cancelRender());
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'earth-studio-cancel-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === EARTH_STUDIO_STAGE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Earth Studio stage API' });
+          const { packageId, packageDir } = resolveAigenPackageDir(payload.id || payload.package_id || '', { root: serverOptions.root || ROOT });
+          sendJSON(res, 200, earthStudioLane.stageToVidnas(packageDir, packageId, serverOptions.earthStudio || {}));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'earth-studio-stage-error'));
+      return;
+    }
+
     // Save keep/flag/reject review decisions to video-review.json.
     if (req.method === 'POST' && url.pathname === PROJECT_VIDEO_REVIEW_SAVE_API) {
       readJsonBody(req)
@@ -11274,6 +11343,12 @@ module.exports = {
   PROJECT_MEDIA_KIT_API,
   PROJECT_YOUTUBE_DRAFT_API,
   PROJECT_YOUTUBE_DRAFT_SAVE_API,
+  EARTH_STUDIO_STATUS_API,
+  EARTH_STUDIO_PLAN_API,
+  EARTH_STUDIO_RENDER_API,
+  EARTH_STUDIO_JOB_STATUS_API,
+  EARTH_STUDIO_CANCEL_API,
+  EARTH_STUDIO_STAGE_API,
   PROJECT_VIDEO_REVIEW_SAVE_API,
   IDEAS_TRIAGE_API,
   IDEAS_STATUS_API,

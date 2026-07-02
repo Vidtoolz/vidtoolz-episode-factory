@@ -41,6 +41,7 @@ require("./project-i2v-prompts.test.js");
 require("./aigen-review-routing.test.js");
 require("./project-video-review.test.js");
 require("./project-media-kit.test.js");
+require("./earth-studio.test.js");
 require("./workflow-path.test.js");
 require("./script-commitment-check.test.js");
 require("./resolve-handoff-readiness.test.js");

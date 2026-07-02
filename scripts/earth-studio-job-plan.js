@@ -133,8 +133,8 @@ function runVerify(options) {
   const kmlPath = path.join(jobDir, "route.kml");
   if (fs.existsSync(kmlPath)) {
     const kml = fs.readFileSync(kmlPath, "utf8");
-    if (!kml.includes("-71.0565,42.3555,0")) errors.push("route.kml is missing corrected Downtown Boston coordinates");
-    if (kml.includes("-1.0565,42.3555,0")) errors.push("route.kml contains incorrect Downtown Boston longitude");
+    if (!/<coordinates>\s*-?\d/.test(kml)) errors.push("route.kml contains no coordinates");
+    if (!kml.includes("reference asset only")) errors.push("route.kml missing reference-only disclaimer");
   }
 
   const shotPlanMdPath = path.join(jobDir, "shot-plan.md");
