@@ -103,6 +103,28 @@ const EARTH_STUDIO_RENDER_API = '/api/earth-studio/render';
 const EARTH_STUDIO_JOB_STATUS_API = '/api/earth-studio/job-status';
 const EARTH_STUDIO_CANCEL_API = '/api/earth-studio/cancel';
 const EARTH_STUDIO_STAGE_API = '/api/earth-studio/stage';
+const SCORE_SETTINGS_API = '/api/score/settings';
+const SCORE_PROJECTS_API = '/api/score/projects';
+const SCORE_PROJECT_API = '/api/score/project';
+const SCORE_PROFILES_API = '/api/score/profiles';
+const SCORE_PROFILE_DELETE_API = '/api/score/profiles/delete';
+const SCORE_CUES_GENERATE_API = '/api/score/cues/generate';
+const SCORE_CUES_SAVE_API = '/api/score/cues/save';
+const SCORE_CUES_APPROVE_API = '/api/score/cues/approve';
+const SCORE_PALETTE_API = '/api/score/palette';
+const SCORE_CANDIDATES_GENERATE_API = '/api/score/candidates/generate';
+const SCORE_CANDIDATE_STATUS_API = '/api/score/candidates/status';
+const SCORE_CANDIDATE_APPROVE_API = '/api/score/candidates/approve';
+const SCORE_CANDIDATE_REVISE_API = '/api/score/candidates/revise';
+const SCORE_REAPER_BUILD_API = '/api/score/reaper/build';
+const SCORE_REAPER_OPEN_API = '/api/score/reaper/open';
+const SCORE_ABLETON_BUILD_API = '/api/score/ableton/build';
+const SCORE_PROBE_API = '/api/score/probe';
+const SCORE_PROMPT_API = '/api/score/prompt';
+const SCORE_AI_APPLY_API = '/api/score/cues/ai-apply';
+const SCORE_AI_CALL_API = '/api/score/cues/ai-call';
+const SCORE_OPEN_FOLDER_API = '/api/score/open-folder';
+const SCORE_FILE_API = '/api/score/file';
 const PROJECT_VIDEO_REVIEW_SAVE_API = '/api/project/video-review/save';
 const PROJECT_ALLOWED_STATUSES = ['active', 'parked', 'blocked', 'editing', 'publish_prep', 'published', 'archived'];
 const AIGEN_FLUX_IMAGES_API_PREFIX = '/api/aigen/flux-images/';
@@ -207,6 +229,8 @@ const { resolveProjectState } = require('./project-state-resolver.js');
 const { chooseNextTask } = require('./next-task-engine.js');
 const projectDiscovery = require('./project-discovery.js');
 const earthStudioLane = require('./earth-studio-lane.js');
+const scoreLane = require('./score-engine/score-lane.js');
+const scorePlanner = require('./score-engine/cue-planner.js');
 const ideaPromotion = require('./idea-promotion.js');
 const topicScout = require('./topic-idea-scout.js');
 const projectScript = require('./project-script.js');
@@ -9885,6 +9909,264 @@ function createServer(options = {}) {
           sendJSON(res, 200, earthStudioLane.stageToVidnas(packageDir, packageId, serverOptions.earthStudio || {}));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'earth-studio-stage-error'));
+      return;
+    }
+
+    // ── Score Engine (Scorecraft) — original music cues per video (2026-07-02) ──
+    // Settings/music-root are injectable via env for tests and via serverOptions.
+    const scoreOptions = () => ({
+      settingsPath: process.env.SCORE_ENGINE_SETTINGS_PATH || undefined,
+      musicRoot: process.env.SCORE_ENGINE_MUSIC_ROOT || undefined,
+      ...(serverOptions.scoreEngine || {}),
+    });
+
+    if (req.method === 'GET' && url.pathname === SCORE_SETTINGS_API) {
+      try { sendJSON(res, 200, { settings: scoreLane.loadSettings(scoreOptions()), settings_path: process.env.SCORE_ENGINE_SETTINGS_PATH || scoreLane.DEFAULT_SETTINGS_PATH }); }
+      catch (error) { sendError(res, error.statusCode || 500, error.message, 'score-settings-error'); }
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_SETTINGS_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score settings API' });
+          sendJSON(res, 200, { settings: scoreLane.saveSettings(payload.settings || payload, scoreOptions()) });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-settings-save-error'));
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === SCORE_PROJECTS_API) {
+      try { sendJSON(res, 200, { projects: scoreLane.listProjects(scoreOptions()) }); }
+      catch (error) { sendError(res, error.statusCode || 500, error.message, 'score-projects-error'); }
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_PROJECTS_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score project create API' });
+          sendJSON(res, 200, scoreLane.createScoreProject(payload, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-project-create-error'));
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === SCORE_PROJECT_API) {
+      try { sendJSON(res, 200, scoreLane.getProject(url.searchParams.get('id') || '', scoreOptions())); }
+      catch (error) { sendError(res, error.statusCode || 500, error.message, 'score-project-error'); }
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === SCORE_PROFILES_API) {
+      try { sendJSON(res, 200, { profiles: scoreLane.loadProfiles(scoreLane.loadSettings(scoreOptions())) }); }
+      catch (error) { sendError(res, error.statusCode || 500, error.message, 'score-profiles-error'); }
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_PROFILES_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score profile save API' });
+          sendJSON(res, 200, { profile: scoreLane.saveProfile(scoreLane.loadSettings(scoreOptions()), payload.profile || payload) });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-profile-save-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_PROFILE_DELETE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score profile delete API' });
+          sendJSON(res, 200, scoreLane.deleteProfile(scoreLane.loadSettings(scoreOptions()), payload.profile_id || ''));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-profile-delete-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_CUES_GENERATE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score cue generate API' });
+          sendJSON(res, 200, scoreLane.generateCuesForProject(payload.project_id || '', payload, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-cues-generate-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_CUES_SAVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score cue save API' });
+          sendJSON(res, 200, scoreLane.saveCueSheetEdits(payload.project_id || '', payload.cues || [], scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-cues-save-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_CUES_APPROVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score cue approve API' });
+          sendJSON(res, 200, scoreLane.approveCueSheet(payload.project_id || '', scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-cues-approve-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_PALETTE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score palette API' });
+          sendJSON(res, 200, scoreLane.setPalette(payload.project_id || '', payload.palette_id || '', scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-palette-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_CANDIDATES_GENERATE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score candidate generate API' });
+          sendJSON(res, 200, scoreLane.generateCandidates(payload.project_id || '', payload, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-candidates-generate-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_CANDIDATE_STATUS_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score candidate status API' });
+          sendJSON(res, 200, { candidate: scoreLane.setCandidateStatus(payload.project_id || '', payload.candidate_id || '', payload.status || '', payload.notes, scoreOptions()) });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-candidate-status-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_CANDIDATE_APPROVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score candidate approve API' });
+          sendJSON(res, 200, scoreLane.approveCandidate(payload.project_id || '', payload.candidate_id || '', scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-candidate-approve-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_CANDIDATE_REVISE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score candidate revise API' });
+          sendJSON(res, 200, scoreLane.reviseCandidate(payload.project_id || '', payload.candidate_id || '', payload.request || '', scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-candidate-revise-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_REAPER_BUILD_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score REAPER build API' });
+          sendJSON(res, 200, scoreLane.buildReaperHandoff(payload.project_id || '', payload.candidate_id || '', scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-reaper-build-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_REAPER_OPEN_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score REAPER open API' });
+          sendJSON(res, 200, scoreLane.openInReaper(payload.project_id || '', payload.candidate_id || '', scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-reaper-open-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_ABLETON_BUILD_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score Ableton build API' });
+          sendJSON(res, 200, scoreLane.buildAbletonHandoff(payload.project_id || '', payload.candidate_id || '', scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-ableton-build-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_PROBE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score probe API' });
+          sendJSON(res, 200, scoreLane.probeDuration(payload.path || '', scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-probe-error'));
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === SCORE_PROMPT_API) {
+      try {
+        const task = url.searchParams.get('task') || 'cue_sheet';
+        const projectId = url.searchParams.get('id') || '';
+        let context = {};
+        if (projectId) {
+          const state = scoreLane.getProject(projectId, scoreOptions());
+          const scriptFile = require('node:path').join(state.dir, 'script-snapshot.txt');
+          context = {
+            duration_seconds: state.project.duration_seconds,
+            target_platform: state.project.target_platform,
+            music_role: state.project.music_role,
+            dialogue_density: state.project.dialogue_density,
+            overall_mood: state.project.overall_mood,
+            script_text: fs.existsSync(scriptFile) ? fs.readFileSync(scriptFile, 'utf8').slice(0, 6000) : '(no script)',
+            cue_sheet: state.cue_sheet || {},
+            palette_ids: Object.keys(require('./score-engine/score-schemas.js').DEFAULT_PALETTES).join(', '),
+            preferences: '(none)',
+          };
+        }
+        sendJSON(res, 200, { task, prompt: scorePlanner.renderPrompt(task, context) });
+      } catch (error) { sendError(res, error.statusCode || 500, error.message, 'score-prompt-error'); }
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_AI_APPLY_API) {
+      readJsonBody(req, 1024 * 512)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score AI apply API' });
+          sendJSON(res, 200, scoreLane.generateCuesForProject(payload.project_id || '', { ai_response_text: payload.response_text || '', generator: 'ai_manual_paste' }, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-ai-apply-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_AI_CALL_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score AI call API' });
+          const settings = scoreLane.loadSettings(scoreOptions());
+          const provider = payload.provider || settings.default_ai_provider;
+          if (provider === 'manual') {
+            const error = new Error('AI provider is set to manual. Use "Copy prompt" + "Paste AI response", or pick a provider in Settings.');
+            error.statusCode = 400;
+            throw error;
+          }
+          const promptRes = await new Promise((resolve, reject) => {
+            try {
+              const state = scoreLane.getProject(payload.project_id || '', scoreOptions());
+              const scriptFile = require('node:path').join(state.dir, 'script-snapshot.txt');
+              resolve(scorePlanner.renderPrompt('cue_sheet', {
+                duration_seconds: state.project.duration_seconds,
+                target_platform: state.project.target_platform,
+                music_role: state.project.music_role,
+                dialogue_density: state.project.dialogue_density,
+                overall_mood: state.project.overall_mood,
+                script_text: fs.existsSync(scriptFile) ? fs.readFileSync(scriptFile, 'utf8').slice(0, 6000) : '(no script)',
+              }));
+            } catch (e) { reject(e); }
+          });
+          const aiResult = await scorePlanner.callAiProvider(provider, promptRes, settings);
+          const applied = scoreLane.generateCuesForProject(payload.project_id || '', { ai_response_text: aiResult.text, generator: `ai_${aiResult.provider}_${aiResult.model}` }, scoreOptions());
+          sendJSON(res, 200, { provider: aiResult.provider, model: aiResult.model, ...applied });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-ai-call-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_OPEN_FOLDER_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score open folder API' });
+          sendJSON(res, 200, scoreLane.openFolder(payload.project_id || '', payload.path || '', scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-open-folder-error'));
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === SCORE_FILE_API) {
+      try {
+        const settings = scoreLane.loadSettings(scoreOptions());
+        const filePath = scoreLane.resolveProjectFile(settings, url.searchParams.get('id') || '', url.searchParams.get('path') || '');
+        const ext = require('node:path').extname(filePath).toLowerCase();
+        const types = { '.wav': 'audio/wav', '.mid': 'audio/midi', '.json': 'application/json', '.md': 'text/markdown; charset=utf-8', '.rpp': 'text/plain; charset=utf-8', '.csv': 'text/csv; charset=utf-8', '.txt': 'text/plain; charset=utf-8' };
+        res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream', 'Content-Length': fs.statSync(filePath).size, 'Cache-Control': 'no-store' });
+        fs.createReadStream(filePath).pipe(res);
+      } catch (error) { sendError(res, error.statusCode || 500, error.message, 'score-file-error'); }
       return;
     }
 

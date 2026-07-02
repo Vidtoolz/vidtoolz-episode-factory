@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Score Engine — VIDTOOLZ</title>
+    <link rel="stylesheet" href="styles.css?v=1.9.6">
+    <style>
+      .se { max-width: 1080px; margin: 0 auto; padding: 24px 20px 48px; }
+      .se h1 { margin: 8px 0 4px; font-size: 24px; }
+      .meta{color:var(--muted,#8b949e);font-size:12px;}
+      .panel{background:var(--panel,#161b22);border:1px solid var(--border,#30363d);border-radius:10px;padding:16px 18px;margin:14px 0;}
+      .panel h2{margin:0 0 10px;font-size:16px;}
+      .btn{border:none;border-radius:6px;padding:6px 13px;font-size:13px;cursor:pointer;background:var(--panel-3,#21262d);color:inherit;border:1px solid var(--border,#30363d);margin:3px 6px 3px 0;text-decoration:none;display:inline-block;}
+      .btn:hover{border-color:#58a6ff;} .btn-go{background:#2ea043;color:#fff;border-color:#2ea043;}
+      input[type=text],input[type=number],select,textarea{background:#0d1117;color:#e6edf3;border:1px solid var(--border,#30363d);border-radius:6px;padding:7px;font-size:13px;font-family:inherit;box-sizing:border-box;}
+      .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;}
+      .field{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted,#8b949e);}
+      .field input,.field select{width:100%;}
+      table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+      th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border,#30363d);vertical-align:top;}
+      .chip{display:inline-block;font-size:11px;padding:2px 9px;border-radius:99px;background:var(--panel-3,#21262d);border:1px solid var(--border,#30363d);margin-right:5px;}
+      .ok{color:#3fb950;} .warn{color:#d29922;} .err{color:#f85149;}
+      .errbox{border:1px solid #f8514966;background:#f851490d;border-radius:8px;padding:10px 12px;font-size:13px;margin:10px 0;display:none;}
+      #copy-status{position:fixed;bottom:16px;right:16px;background:#238636;color:#fff;padding:7px 14px;border-radius:8px;font-size:13px;display:none;z-index:50;}
+      details.section{margin:14px 0;} details.section>summary{cursor:pointer;font-weight:600;padding:8px 0;}
+    </style>
+  </head>
+  <body>
+    <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="daily-idea-scout.html">Ideas</a><a href="production-pipeline.html">Pipeline</a><a href="score-engine.html" class="active">Score Engine</a></nav>
+    <div class="se">
+      <details class="page-guide" open>
+        <summary>Page Guide — What is this?</summary>
+        <div class="page-guide-body">
+          <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Score Engine (Scorecraft) creates ORIGINAL music cues for your videos: cue sheet → palette → seeded MIDI candidates → sketch preview → REAPER/Ableton handoff → approved export into the video package. AI plans structure (optional); a deterministic composer writes the notes; you approve everything.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Create a score below (or open a recent one). Each score opens its own workspace page where you edit cues, pick a palette, generate and preview candidates, and export.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Recent scores · New score wizard · DAW connection status · Instrument profiles · Settings.</span></div>
+        </div>
+      </details>
+
+      <h1>🎼 Score Engine</h1>
+      <div class="meta">Original music only — no artist imitation. Local-first: everything lands in the project's <code>music/</code> folder.</div>
+      <div class="errbox" id="err"></div>
+
+      <div class="panel">
+        <h2>Recent score projects</h2>
+        <div id="projects">Loading…</div>
+      </div>
+
+      <div class="panel">
+        <h2>Create score</h2>
+        <div class="grid">
+          <label class="field">Project name<input type="text" id="w-name" placeholder="e.g. Why I refuse — score"></label>
+          <label class="field">VIDTOOLZ package (optional)<select id="w-package"><option value="">— standalone score —</option></select></label>
+          <label class="field">Video file path (optional)<input type="text" id="w-video" placeholder="/path/to/video.mp4"></label>
+          <label class="field">Duration seconds<input type="number" id="w-duration" min="5" step="0.1" placeholder="60"></label>
+          <label class="field">Script path (optional — estimates duration)<input type="text" id="w-script" placeholder="/path/to/script.md"></label>
+          <label class="field">Target platform<select id="w-platform"><option value="youtube_shorts">YouTube Shorts</option><option value="youtube_longform">YouTube long-form</option><option value="documentary_segment">Documentary segment</option><option value="generic_video" selected>Generic video</option></select></label>
+          <label class="field">Music role<select id="w-role"><option value="underscore" selected>Full underscore</option><option value="intro">Intro only</option><option value="transition">Transitions only</option><option value="outro">Outro/button</option><option value="mixed">Full package (mixed)</option></select></label>
+          <label class="field">Dialogue density<select id="w-dialogue"><option value="high" selected>High (narration-heavy)</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
+          <label class="field">Overall mood<select id="w-mood"><option>curious</option><option>clinical</option><option>warm</option><option>tense</option><option>playful</option><option>dark</option><option>optimistic</option><option>urgent</option></select></label>
+          <label class="field">Default palette<select id="w-palette"></select></label>
+          <label class="field">Candidates<input type="number" id="w-count" min="1" max="5" value="3"></label>
+          <label class="field">Seed<input type="number" id="w-seed" min="1" value="1"></label>
+        </div>
+        <div style="margin-top:10px;">
+          <button class="btn" id="w-probe">Probe video duration (ffprobe)</button>
+          <button class="btn btn-go" id="w-create">Create score</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>DAW connection status</h2>
+        <div id="daw-status">Loading…</div>
+      </div>
+
+      <details class="section"><summary>🎛 Instrument profiles</summary>
+        <div class="panel">
+          <div class="meta">Template-first: profiles point at owned-tool categories/presets — the tool never pretends to control Omnisphere/UVI/Arturia directly. Edit a row and press Save.</div>
+          <div id="profiles">Loading…</div>
+          <h2 style="margin-top:14px;">Add / edit profile</h2>
+          <div class="grid">
+            <label class="field">profile_id (snake_case)<input type="text" id="p-id"></label>
+            <label class="field">Display name<input type="text" id="p-name"></label>
+            <label class="field">Vendor<input type="text" id="p-vendor" placeholder="Arturia / UVI / Spectrasonics / Ableton"></label>
+            <label class="field">Role<select id="p-role"><option>pad</option><option>bass</option><option>lead</option><option>pulse</option><option>texture</option><option>impact</option><option>drum</option><option>fx</option></select></label>
+            <label class="field">Preset hint<input type="text" id="p-preset"></label>
+            <label class="field">Track template path (REAPER)<input type="text" id="p-template"></label>
+          </div>
+          <button class="btn btn-go" id="p-save">Save profile</button>
+        </div>
+      </details>
+
+      <details class="section"><summary>⚙️ Settings</summary>
+        <div class="panel">
+          <div class="meta">API keys are NEVER stored here — only the names of environment variables. Paths stay on this machine.</div>
+          <div class="grid" id="settings-grid"></div>
+          <button class="btn btn-go" id="s-save" style="margin-top:10px;">Save settings</button>
+          <span class="meta" id="s-path"></span>
+        </div>
+      </details>
+    </div>
+    <div id="copy-status"></div>
+    <script>
+      function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+      function unwrap(j){return j && typeof j==='object' && j.data!==undefined ? j.data : j;}
+      function toast(msg, ok){ const el=document.getElementById('copy-status'); el.textContent=msg; el.style.background=ok===false?'#da3633':'#238636'; el.style.display='block'; clearTimeout(el._t); el._t=setTimeout(()=>{el.style.display='none';},2200); }
+      function showErr(msg){ const el=document.getElementById('err'); if(!msg){el.style.display='none';return;} el.style.display='block'; el.innerHTML=esc(msg)+' — <a href="#" onclick="document.querySelector(\'details.section:last-of-type\').open=true;return false;">check Settings</a>'; }
+      let nonce='', nonceHeader='x-vidtoolz-local-write-nonce';
+      async function fetchJson(url, opts){ const r=await fetch(url, Object.assign({cache:'no-store'}, opts||{})); const j=await r.json().catch(()=>({})); if(!r.ok||(j&&j.ok===false)) throw new Error((j&&j.error)||('HTTP '+r.status)); return unwrap(j); }
+      async function ensureNonce(){ if(nonce) return nonce; try{ const p=await fetchJson('/api/package-engine/status'); if(p&&p.localWriteNonce){nonce=p.localWriteNonce;nonceHeader=p.nonceHeader||nonceHeader;} }catch(e){} return nonce; }
+      async function post(path, body){ await ensureNonce(); const headers={'Content-Type':'application/json'}; headers[nonceHeader]=nonce; const r=await fetch(path,{method:'POST',headers,body:JSON.stringify(body)}); const j=await r.json().catch(()=>({})); if(!r.ok||(j&&j.ok===false)) throw new Error((j&&j.error)||('HTTP '+r.status)); return unwrap(j); }
+
+      const SETTING_FIELDS = [
+        ['music_root','Music root folder'],['default_video_package_root','Video package root'],
+        ['ffmpeg_path','ffmpeg path'],['ffprobe_path','ffprobe path'],
+        ['reaper_executable_path','REAPER executable'],['reaper_resource_path','REAPER resource path'],
+        ['reaper_project_template_path','REAPER project template'],['reaper_track_template_folder','REAPER track template folder'],
+        ['ableton_template_path','Ableton template set path'],
+        ['openai_api_key_env','OpenAI key env var name'],['anthropic_api_key_env','Anthropic key env var name'],
+        ['default_ai_provider','AI provider (manual|openai|anthropic)'],['default_palette','Default palette'],
+        ['default_candidate_count','Default candidate count'],['default_dialogue_density','Default dialogue density'],
+        ['default_export_sample_rate','Export sample rate'],['default_export_bit_depth','Export bit depth'],
+      ];
+      let SETTINGS=null;
+
+      async function loadProjects(){
+        try{
+          const d = await fetchJson('/api/score/projects');
+          const rows = (d.projects||[]).slice().reverse().map(p =>
+            `<tr><td><a href="score-project.html?id=${encodeURIComponent(p.project_id)}">${esc(p.name||p.project_id)}</a></td>
+             <td>${p.duration_seconds!=null?esc(p.duration_seconds)+'s':'—'}</td><td>${p.cue_count||0} cues</td>
+             <td>${p.approved?'<span class="chip ok">approved</span>':'<span class="chip">in progress</span>'}${p.exists?'':' <span class="chip err">folder missing</span>'}</td>
+             <td class="meta">${esc(p.package_path||'standalone')}</td></tr>`).join('');
+          document.getElementById('projects').innerHTML = rows ? `<table><tr><th>Score</th><th>Duration</th><th>Cues</th><th>Status</th><th>Location</th></tr>${rows}</table>` : '<div class="meta">No score projects yet — create your first one below.</div>';
+        }catch(e){ document.getElementById('projects').innerHTML = '<span class="err">'+esc(e.message)+'</span>'; }
+      }
+
+      async function loadPackages(){
+        try{
+          const d = await fetchJson('/api/projects');
+          const sel = document.getElementById('w-package');
+          (d.projects||[]).filter(p=>!p.diagnostic&&!p.archived).forEach(p=>{
+            const opt=document.createElement('option'); opt.value=(d.root?d.root.replace(/\/$/,'')+'/':'')+p.project_id; opt.textContent=p.project_id; sel.appendChild(opt);
+          });
+        }catch(e){ /* package list unavailable — standalone still works */ }
+      }
+
+      async function loadSettings(){
+        const d = await fetchJson('/api/score/settings');
+        SETTINGS = d.settings;
+        document.getElementById('s-path').textContent = ' stored at '+(d.settings_path||'');
+        document.getElementById('settings-grid').innerHTML = SETTING_FIELDS.map(([k,label]) =>
+          `<label class="field">${esc(label)}<input type="text" data-setting="${k}" value="${esc(SETTINGS[k]==null?'':SETTINGS[k])}"></label>`).join('');
+        const pal=document.getElementById('w-palette'); pal.innerHTML='';
+        ['tech_noir_pulse','broadcast_explainer','ai_lab','dry_comedy_underscore','serious_system_builder'].forEach(id=>{
+          const o=document.createElement('option'); o.value=id; o.textContent=id.replace(/_/g,' '); if(id===SETTINGS.default_palette)o.selected=true; pal.appendChild(o);
+        });
+        renderDawStatus();
+      }
+
+      function renderDawStatus(){
+        const rows = [
+          ['REAPER', SETTINGS.reaper_executable_path ? 'configured: '+SETTINGS.reaper_executable_path : 'not configured — handoff projects still build; "Open in REAPER" needs the path'],
+          ['Ableton Live', SETTINGS.ableton_template_path ? 'template set: '+SETTINGS.ableton_template_path : 'MIDI/template handoff available; set a template path for smoother imports'],
+          ['ffprobe', SETTINGS.ffprobe_path || 'ffprobe'],
+          ['AI planning', SETTINGS.default_ai_provider==='manual' ? 'manual mode (copy prompt / paste response) — fully offline' : 'provider: '+SETTINGS.default_ai_provider+' (key from env '+(SETTINGS.default_ai_provider==='openai'?SETTINGS.openai_api_key_env:SETTINGS.anthropic_api_key_env)+')'],
+        ];
+        document.getElementById('daw-status').innerHTML = '<table>'+rows.map(([k,v])=>`<tr><th style="width:130px;">${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')+'</table>';
+      }
+
+      async function loadProfiles(){
+        try{
+          const d = await fetchJson('/api/score/profiles');
+          document.getElementById('profiles').innerHTML = '<table><tr><th>id</th><th>Name</th><th>Vendor</th><th>Role</th><th>Preset hint</th><th></th></tr>'+
+            (d.profiles||[]).map(p=>`<tr><td><code>${esc(p.profile_id)}</code></td><td>${esc(p.display_name)}</td><td>${esc(p.vendor||'')}</td><td>${esc(p.role)}</td><td class="meta">${esc(p.preset_hint||'')}</td>
+              <td><button class="btn" data-edit="${esc(p.profile_id)}">Edit</button><button class="btn" data-del="${esc(p.profile_id)}">Delete</button></td></tr>`).join('')+'</table>';
+          document.getElementById('profiles')._profiles = d.profiles||[];
+        }catch(e){ document.getElementById('profiles').innerHTML='<span class="err">'+esc(e.message)+'</span>'; }
+      }
+
+      document.addEventListener('click', async (ev)=>{
+        const editId = ev.target.getAttribute && ev.target.getAttribute('data-edit');
+        const delId = ev.target.getAttribute && ev.target.getAttribute('data-del');
+        if (editId){
+          const p = (document.getElementById('profiles')._profiles||[]).find(x=>x.profile_id===editId);
+          if(p){ ['p-id','p-name','p-vendor','p-preset','p-template'].forEach((id,i)=>{document.getElementById(id).value=[p.profile_id,p.display_name,p.vendor,p.preset_hint,p.track_template_path][i]||'';}); document.getElementById('p-role').value=p.role||'pad'; toast('Loaded into editor below'); }
+        }
+        if (delId && window.confirm('Delete instrument profile '+delId+'?')){
+          try{ await post('/api/score/profiles/delete',{profile_id:delId}); toast('Deleted'); loadProfiles(); }catch(e){ toast(e.message,false); }
+        }
+      });
+
+      document.getElementById('p-save').onclick = async ()=>{
+        try{
+          await post('/api/score/profiles',{profile:{profile_id:document.getElementById('p-id').value.trim(),display_name:document.getElementById('p-name').value.trim(),vendor:document.getElementById('p-vendor').value.trim(),role:document.getElementById('p-role').value,preset_hint:document.getElementById('p-preset').value.trim(),track_template_path:document.getElementById('p-template').value.trim()||null,daw_backend:'both'}});
+          toast('Profile saved'); loadProfiles();
+        }catch(e){ toast(e.message,false); }
+      };
+
+      document.getElementById('s-save').onclick = async ()=>{
+        const patch={};
+        document.querySelectorAll('[data-setting]').forEach(el=>{
+          let v=el.value.trim();
+          if(['default_candidate_count','default_export_sample_rate','default_export_bit_depth'].includes(el.getAttribute('data-setting'))) v=Number(v)||0;
+          patch[el.getAttribute('data-setting')]=v;
+        });
+        try{ await post('/api/score/settings',{settings:patch}); toast('Settings saved'); loadSettings(); }catch(e){ toast(e.message,false); showErr(e.message); }
+      };
+
+      document.getElementById('w-probe').onclick = async ()=>{
+        const p=document.getElementById('w-video').value.trim();
+        if(!p) return toast('Enter a video file path first', false);
+        try{ const d=await post('/api/score/probe',{path:p}); document.getElementById('w-duration').value=d.duration_seconds; toast('Duration: '+d.duration_seconds+'s'); }
+        catch(e){ toast(e.message,false); showErr(e.message); }
+      };
+
+      document.getElementById('w-create').onclick = async ()=>{
+        try{
+          const body={
+            name:document.getElementById('w-name').value.trim(),
+            video_package_path:document.getElementById('w-package').value||null,
+            video_path:document.getElementById('w-video').value.trim()||null,
+            duration_seconds:Number(document.getElementById('w-duration').value)||null,
+            script_path:document.getElementById('w-script').value.trim()||null,
+            target_platform:document.getElementById('w-platform').value,
+            music_role:document.getElementById('w-role').value,
+            dialogue_density:document.getElementById('w-dialogue').value,
+            overall_mood:document.getElementById('w-mood').value,
+            palette_id:document.getElementById('w-palette').value,
+            candidate_count:Number(document.getElementById('w-count').value)||3,
+            seed:Number(document.getElementById('w-seed').value)||1,
+          };
+          const d=await post('/api/score/projects',body);
+          toast('Score created');
+          location.href='score-project.html?id='+encodeURIComponent(d.project.project_id);
+        }catch(e){ toast(e.message,false); showErr(e.message); }
+      };
+
+      loadProjects(); loadPackages(); loadSettings().catch(e=>showErr(e.message)); loadProfiles();
+    </script>
+  </body>
+</html>

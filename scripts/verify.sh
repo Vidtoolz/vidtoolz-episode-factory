@@ -37,6 +37,13 @@ node --check trailer-cue-generator.js
 node --check music-cue-generator.js
 node --check supervised-capture.js
 node --check earth-studio-job-planner.js
+node --check score-engine/score-schemas.js
+node --check score-engine/midi-writer.js
+node --check score-engine/composer.js
+node --check score-engine/preview-synth.js
+node --check score-engine/cue-planner.js
+node --check score-engine/reaper-backend.js
+node --check score-engine/score-lane.js
 node --check scripts/episode-factory.js
 node --check scripts/resolve-handoff.js
 node --check scripts/package-engine-new-run.js

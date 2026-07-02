@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Score workspace — VIDTOOLZ</title>
+    <link rel="stylesheet" href="styles.css?v=1.9.6">
+    <style>
+      .sp { max-width: 1120px; margin: 0 auto; padding: 24px 20px 48px; }
+      .sp h1 { margin: 8px 0 2px; font-size: 22px; }
+      .meta{color:var(--muted,#8b949e);font-size:12px;}
+      .step{background:var(--panel,#161b22);border:1px solid var(--border,#30363d);border-radius:10px;padding:16px 18px;margin:14px 0;}
+      .step.done{border-color:rgba(63,185,80,.5);}
+      .step-head{display:flex;gap:10px;align-items:center;font-weight:600;font-size:15px;margin-bottom:8px;}
+      .badge{font-size:11px;padding:2px 10px;border-radius:99px;border:1px solid var(--border,#30363d);}
+      .badge.done{color:#3fb950;border-color:#2ea04366;} .badge.todo{color:#d29922;border-color:#d2992266;}
+      .btn{border:none;border-radius:6px;padding:6px 13px;font-size:13px;cursor:pointer;background:var(--panel-3,#21262d);color:inherit;border:1px solid var(--border,#30363d);margin:3px 6px 3px 0;text-decoration:none;display:inline-block;}
+      .btn:hover{border-color:#58a6ff;} .btn-go{background:#2ea043;color:#fff;border-color:#2ea043;} .btn-warn{border-color:#d2992266;color:#d29922;}
+      input,select,textarea{background:#0d1117;color:#e6edf3;border:1px solid var(--border,#30363d);border-radius:6px;padding:5px 6px;font-size:12px;font-family:inherit;box-sizing:border-box;}
+      table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+      th,td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--border,#30363d);vertical-align:middle;}
+      td input[type=text]{width:110px;} td input[type=number]{width:58px;} td select{width:105px;}
+      .timeline{display:flex;height:34px;border:1px solid var(--border,#30363d);border-radius:6px;overflow:hidden;margin:8px 0;}
+      .tl-cue{display:flex;align-items:center;justify-content:center;font-size:10px;color:#0d1117;font-weight:700;overflow:hidden;white-space:nowrap;}
+      .chip{display:inline-block;font-size:11px;padding:2px 9px;border-radius:99px;background:var(--panel-3,#21262d);border:1px solid var(--border,#30363d);margin:2px 5px 2px 0;}
+      .ok{color:#3fb950;} .warn{color:#d29922;} .err{color:#f85149;}
+      .errbox{border:1px solid #f8514966;background:#f851490d;border-radius:8px;padding:10px 12px;font-size:13px;margin:10px 0;display:none;white-space:pre-wrap;}
+      .cand{border:1px solid var(--border,#30363d);border-radius:8px;padding:12px;margin:10px 0;background:#0d1117;}
+      .cand.approved{border-color:#2ea043;}
+      .cand-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-weight:600;}
+      audio{width:100%;max-width:420px;height:32px;display:block;margin:4px 0;}
+      .palette-card{border:1px solid var(--border,#30363d);border-radius:8px;padding:10px 12px;margin:6px 0;cursor:pointer;}
+      .palette-card.sel{border-color:#3fb950;box-shadow:0 0 0 1px rgba(63,185,80,.3);}
+      .ab{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+      pre{background:#0d1117;border:1px solid var(--border,#30363d);border-radius:6px;padding:8px;font-size:11px;white-space:pre-wrap;max-height:200px;overflow:auto;}
+      code{font-size:11px;background:var(--panel-3,#21262d);padding:1px 5px;border-radius:4px;word-break:break-all;}
+      #copy-status{position:fixed;bottom:16px;right:16px;background:#238636;color:#fff;padding:7px 14px;border-radius:8px;font-size:13px;display:none;z-index:50;}
+    </style>
+  </head>
+  <body>
+    <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="production-pipeline.html">Pipeline</a><a href="score-engine.html">Score Engine</a></nav>
+    <div class="sp">
+      <details class="page-guide">
+        <summary>Page Guide — What is this?</summary>
+        <div class="page-guide-body">
+          <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Workspace for ONE score: edit the cue sheet, approve it, choose a palette, generate seeded candidates, preview the sketch mixes, request revisions in plain words, build the REAPER/Ableton handoff, approve one candidate, and export mix + dialogue-safe mix + stems + Resolve import folder.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Work top to bottom. Previews are deliberately sketch-quality — final sound comes from your instruments via the DAW handoff.</span></div>
+        </div>
+      </details>
+      <div class="meta"><a href="score-engine.html">← Score Engine</a></div>
+      <h1 id="title">Loading…</h1>
+      <div class="meta" id="subtitle"></div>
+      <div class="errbox" id="err"></div>
+
+      <div class="step" id="step-cues">
+        <div class="step-head">1 · Cue sheet <span class="badge todo" id="cues-badge">todo</span></div>
+        <div class="timeline" id="timeline"></div>
+        <div id="cue-table"></div>
+        <div style="margin-top:8px;">
+          <button class="btn" id="cues-generate">Generate cue sheet</button>
+          <button class="btn" id="cues-add">Add cue</button>
+          <button class="btn" id="cues-save">Save cue edits</button>
+          <button class="btn btn-go" id="cues-approve">Approve cue sheet</button>
+        </div>
+        <details style="margin-top:8px;"><summary class="meta">AI-assisted cue sheet (optional)</summary>
+          <div class="meta" style="margin:6px 0;">Manual mode: copy the prompt into any assistant, paste the JSON answer back. It is schema-validated before anything is saved. Configured provider can be called directly.</div>
+          <button class="btn" id="ai-copy">Copy cue-sheet prompt</button>
+          <button class="btn" id="ai-call">Ask configured AI provider</button>
+          <textarea id="ai-paste" rows="4" style="width:100%;margin-top:6px;" placeholder='Paste AI JSON response here: {"cues": [...]}'></textarea>
+          <button class="btn" id="ai-apply">Validate + apply pasted response</button>
+        </details>
+      </div>
+
+      <div class="step" id="step-palette">
+        <div class="step-head">2 · Palette &amp; instruments <span class="badge todo" id="palette-badge">todo</span></div>
+        <div id="palette-cards"></div>
+        <div id="palette-roles"></div>
+        <button class="btn btn-go" id="palette-apply">Apply palette</button>
+      </div>
+
+      <div class="step" id="step-cands">
+        <div class="step-head">3 · Music candidates <span class="badge todo" id="cands-badge">todo</span></div>
+        <label class="meta">How many: <input type="number" id="cand-count" min="1" max="5" value="3" style="width:54px;"></label>
+        <button class="btn btn-go" id="cands-generate">Generate music candidates</button>
+        <span class="meta" id="cands-busy"></span>
+        <div id="cands"></div>
+        <details id="ab-wrap" style="margin-top:8px;display:none;"><summary class="meta">A/B compare candidates</summary>
+          <div class="ab">
+            <div><select id="ab-a"></select><audio id="ab-a-audio" controls></audio></div>
+            <div><select id="ab-b"></select><audio id="ab-b-audio" controls></audio></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="step" id="step-export">
+        <div class="step-head">4 · Approved export <span class="badge todo" id="export-badge">todo</span></div>
+        <div id="export-body" class="meta">Approve a candidate above to export mix, dialogue-safe mix, stems, MIDI, and the Resolve import folder into <code>music/approved/</code>.</div>
+      </div>
+    </div>
+    <div id="copy-status"></div>
+    <script>
+      const ID = new URLSearchParams(location.search).get('id') || '';
+      let ST = null; let CUES = [];
+      const FUNCTIONS = ['hook','setup','explanation','turn','reveal','climax','button','outro'];
+      const EMOTIONS = ['curious','tense','warm','clinical','playful','dark','optimistic','urgent'];
+      const PALETTES = ['tech_noir_pulse','broadcast_explainer','ai_lab','dry_comedy_underscore','serious_system_builder'];
+      const CUE_COLORS = ['#3fb950','#58a6ff','#d29922','#a371f7','#f85149','#79c0ff','#ffa657','#7ee787'];
+
+      function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+      function unwrap(j){return j && typeof j==='object' && j.data!==undefined ? j.data : j;}
+      function toast(msg, ok){ const el=document.getElementById('copy-status'); el.textContent=msg; el.style.background=ok===false?'#da3633':'#238636'; el.style.display='block'; clearTimeout(el._t); el._t=setTimeout(()=>{el.style.display='none';},2600); }
+      function showErr(msg){ const el=document.getElementById('err'); if(!msg){el.style.display='none';return;} el.style.display='block'; el.textContent=msg; }
+      let nonce='', nonceHeader='x-vidtoolz-local-write-nonce';
+      async function fetchJson(url, opts){ const r=await fetch(url, Object.assign({cache:'no-store'}, opts||{})); const j=await r.json().catch(()=>({})); if(!r.ok||(j&&j.ok===false)) throw new Error((j&&j.error)||('HTTP '+r.status)); return unwrap(j); }
+      async function ensureNonce(){ if(nonce) return nonce; try{ const p=await fetchJson('/api/package-engine/status'); if(p&&p.localWriteNonce){nonce=p.localWriteNonce;nonceHeader=p.nonceHeader||nonceHeader;} }catch(e){} return nonce; }
+      async function post(path, body){ await ensureNonce(); const headers={'Content-Type':'application/json'}; headers[nonceHeader]=nonce; const r=await fetch(path,{method:'POST',headers,body:JSON.stringify(body)}); const j=await r.json().catch(()=>({})); if(!r.ok||(j&&j.ok===false)) throw new Error((j&&j.error)||('HTTP '+r.status)); return unwrap(j); }
+      function fileUrl(rel){ return '/api/score/file?id='+encodeURIComponent(ID)+'&path='+encodeURIComponent(rel); }
+      function copyText(text,label){ navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text).then(()=>toast('Copied: '+label),()=>toast('Copy failed',false)) : toast('Copy unsupported',false); }
+
+      async function load(){
+        try{
+          ST = await fetchJson('/api/score/project?id='+encodeURIComponent(ID));
+          showErr('');
+          render();
+        }catch(e){ showErr(e.message); document.getElementById('title').textContent='Score not found'; }
+      }
+
+      function render(){
+        const p = ST.project;
+        document.getElementById('title').textContent = '🎼 ' + (p.name || p.project_id);
+        document.getElementById('subtitle').innerHTML = `${p.duration_seconds}s · ${esc(p.target_platform)} · ${esc(p.music_role)} · dialogue ${esc(p.dialogue_density)} · seed ${p.seed} · <code>${esc(ST.dir)}</code> <button class="btn" style="padding:1px 8px;font-size:11px;" onclick="copyText('${esc(ST.dir)}','project path')">Copy path</button>`;
+        CUES = (ST.cue_sheet && ST.cue_sheet.cues) ? JSON.parse(JSON.stringify(ST.cue_sheet.cues)) : [];
+        renderCues(); renderPalette(); renderCandidates(); renderExport();
+      }
+
+      function renderCues(){
+        const approved = ST.project.cue_sheet_approved;
+        document.getElementById('cues-badge').className = 'badge '+(approved?'done':'todo');
+        document.getElementById('cues-badge').textContent = approved?'approved':(CUES.length?'draft — approve when ready':'todo');
+        document.getElementById('step-cues').className = 'step'+(approved?' done':'');
+        const total = ST.project.duration_seconds || 1;
+        document.getElementById('timeline').innerHTML = CUES.map((c,i)=>
+          `<div class="tl-cue" style="width:${((c.end_seconds-c.start_seconds)/total*100)}%;background:${CUE_COLORS[i%CUE_COLORS.length]};" title="${esc(c.cue_id+' '+c.name)}">${esc(c.cue_id)}</div>`).join('');
+        if(!CUES.length){ document.getElementById('cue-table').innerHTML='<div class="meta">No cues yet — click Generate cue sheet.</div>'; return; }
+        document.getElementById('cue-table').innerHTML = '<table><tr><th>id</th><th>Name</th><th>Start</th><th>End</th><th>Function</th><th>Emotion</th><th>Energy</th><th>Density</th><th>BPM</th><th>Key</th><th>Hit points (s)</th><th>Dlg-safe</th><th></th></tr>'+
+          CUES.map((c,i)=>`<tr>
+            <td><b style="color:${CUE_COLORS[i%CUE_COLORS.length]}">${esc(c.cue_id)}</b></td>
+            <td><input type="text" data-cue="${i}" data-k="name" value="${esc(c.name)}"></td>
+            <td><input type="number" step="0.1" data-cue="${i}" data-k="start_seconds" value="${c.start_seconds}"></td>
+            <td><input type="number" step="0.1" data-cue="${i}" data-k="end_seconds" value="${c.end_seconds}"></td>
+            <td><select data-cue="${i}" data-k="function">${FUNCTIONS.map(f=>`<option${f===c.function?' selected':''}>${f}</option>`).join('')}</select></td>
+            <td><select data-cue="${i}" data-k="emotion">${EMOTIONS.map(f=>`<option${f===c.emotion?' selected':''}>${f}</option>`).join('')}</select></td>
+            <td><input type="number" min="1" max="5" data-cue="${i}" data-k="energy" value="${c.energy}"></td>
+            <td><input type="number" min="1" max="5" data-cue="${i}" data-k="density" value="${c.density}"></td>
+            <td><input type="number" min="40" max="220" data-cue="${i}" data-k="tempo_bpm" value="${c.tempo_bpm}"></td>
+            <td><input type="text" style="width:80px;" data-cue="${i}" data-k="key" value="${esc(c.key)}"></td>
+            <td><input type="text" style="width:90px;" data-cue="${i}" data-k="hit_points" value="${esc((c.hit_points||[]).join(', '))}" placeholder="e.g. 4.5, 9"></td>
+            <td style="text-align:center;"><input type="checkbox" data-cue="${i}" data-k="dialogue_safe"${c.dialogue_safe?' checked':''}></td>
+            <td><button class="btn" data-delcue="${i}" title="Delete cue">✕</button></td>
+          </tr>`).join('')+'</table>';
+      }
+
+      function collectCues(){
+        document.querySelectorAll('[data-cue]').forEach(el=>{
+          const i=Number(el.getAttribute('data-cue')), k=el.getAttribute('data-k');
+          if(!CUES[i]) return;
+          if(k==='dialogue_safe') CUES[i][k]=el.checked;
+          else if(k==='hit_points') CUES[i][k]=el.value.split(',').map(s=>Number(s.trim())).filter(n=>Number.isFinite(n));
+          else if(['start_seconds','end_seconds','energy','density','tempo_bpm'].includes(k)) CUES[i][k]=Number(el.value);
+          else CUES[i][k]=el.value;
+        });
+        return CUES;
+      }
+
+      function renderPalette(){
+        const hasPlan = Boolean(ST.music_plan);
+        document.getElementById('palette-badge').className='badge '+(hasPlan?'done':'todo');
+        document.getElementById('palette-badge').textContent=hasPlan?('applied: '+ST.music_plan.palette_id):'todo';
+        document.getElementById('step-palette').className='step'+(hasPlan?' done':'');
+        const current = ST.project.palette_id;
+        document.getElementById('palette-cards').innerHTML = PALETTES.map(id=>
+          `<div class="palette-card${id===current?' sel':''}" data-palette="${id}"><b>${esc(id.replace(/_/g,' '))}</b>${id===current?' <span class="chip ok">selected</span>':''}</div>`).join('');
+        if (hasPlan){
+          document.getElementById('palette-roles').innerHTML = '<table><tr><th>Role</th><th>Character</th><th>Instrument profile</th><th>Preset hint</th></tr>'+
+            Object.entries(ST.music_plan.roles).map(([role,r])=>`<tr><td><b>${esc(role)}</b></td><td>${esc(r.character)}</td><td>${esc(r.profile_display_name||'')}${r.vendor?' <span class="chip">'+esc(r.vendor)+'</span>':''}</td><td class="meta">${esc(r.preset_hint||'')}</td></tr>`).join('')+'</table>'+
+            '<div class="meta" style="margin-top:6px;">Mix guidance: '+ST.music_plan.mix_guidance.map(esc).join(' · ')+'</div>';
+        } else document.getElementById('palette-roles').innerHTML='';
+      }
+
+      function candStatusChip(c){
+        const map={planned:'',midi_generated:'',daw_built:'chip',preview_rendered:'',approved:'ok',rejected:'err'};
+        return `<span class="chip ${map[c.status]||''}">${esc(c.status.replace(/_/g,' '))}</span>`;
+      }
+
+      function renderCandidates(){
+        const cands = ST.candidates||[];
+        document.getElementById('cands-badge').className='badge '+(cands.length?'done':'todo');
+        document.getElementById('cands-badge').textContent=cands.length?cands.length+' generated':'todo';
+        document.getElementById('step-cands').className='step'+(cands.length?' done':'');
+        document.getElementById('cands').innerHTML = cands.map(c=>`
+          <div class="cand${c.status==='approved'?' approved':''}" id="cand-${esc(c.candidate_id)}">
+            <div class="cand-head">${esc(c.candidate_id)} ${candStatusChip(c)}
+              <span class="chip">seed ${c.seed}</span><span class="chip">${esc(c.palette_id)}</span>
+              <span class="chip">${c.cue_count} cues</span><span class="chip">${c.tempo_bpm} BPM · ${esc(c.key)}</span>
+              <span class="chip">${c.note_count} notes</span>
+              ${c.parent_candidate?`<span class="chip">revised from ${esc(c.parent_candidate)}</span>`:''}
+              ${c.reaper_built?'<span class="chip ok">REAPER built</span>':''}${c.ableton_built?'<span class="chip ok">Ableton handoff</span>':''}
+            </div>
+            <div class="meta">Preview (sketch mockup):</div>
+            <audio controls preload="none" src="${fileUrl(c.files.preview_mix)}"></audio>
+            <div class="meta">Dialogue-safe preview:</div>
+            <audio controls preload="none" src="${fileUrl(c.files.preview_dialogue_safe)}"></audio>
+            <div>
+              <button class="btn" data-act="reaper" data-cand="${esc(c.candidate_id)}">Build REAPER project</button>
+              <button class="btn" data-act="reaper-open" data-cand="${esc(c.candidate_id)}">Open in REAPER</button>
+              <button class="btn" data-act="ableton" data-cand="${esc(c.candidate_id)}">Build Ableton handoff</button>
+              <a class="btn" href="${fileUrl('candidates/'+c.candidate_id+'/provenance.md')}" target="_blank">Provenance</a>
+              <button class="btn btn-go" data-act="approve" data-cand="${esc(c.candidate_id)}">Approve + export</button>
+              <button class="btn btn-warn" data-act="reject" data-cand="${esc(c.candidate_id)}">Reject</button>
+            </div>
+            <details><summary class="meta">Duplicate &amp; revise</summary>
+              <textarea rows="2" style="width:100%;margin-top:4px;" id="rev-${esc(c.candidate_id)}" placeholder='e.g. "less busy under speech", "stronger ending button", "reduce bass", "more tension in the middle"'></textarea>
+              <button class="btn" data-act="revise" data-cand="${esc(c.candidate_id)}">Generate revised candidate</button>
+            </details>
+          </div>`).join('') || '<div class="meta">No candidates yet.</div>';
+        const ab=document.getElementById('ab-wrap');
+        if(cands.length>=2){
+          ab.style.display='block';
+          const opts = cands.map(c=>`<option value="${esc(c.files.preview_mix)}">${esc(c.candidate_id)}</option>`).join('');
+          const a=document.getElementById('ab-a'), b=document.getElementById('ab-b');
+          if(a.innerHTML!==opts){ a.innerHTML=opts; b.innerHTML=opts; b.selectedIndex=1; }
+          document.getElementById('ab-a-audio').src=fileUrl(a.value);
+          document.getElementById('ab-b-audio').src=fileUrl(b.value);
+          a.onchange=()=>{document.getElementById('ab-a-audio').src=fileUrl(a.value);};
+          b.onchange=()=>{document.getElementById('ab-b-audio').src=fileUrl(b.value);};
+        } else ab.style.display='none';
+      }
+
+      function renderExport(){
+        const approved = ST.approved;
+        document.getElementById('export-badge').className='badge '+(approved?'done':'todo');
+        document.getElementById('export-badge').textContent=approved?('approved: '+(ST.project.approved_candidate||'')):'todo';
+        document.getElementById('step-export').className='step'+(approved?' done':'');
+        if(!approved) return;
+        const base = ST.dir.replace(/\/$/,'')+'/approved';
+        document.getElementById('export-body').innerHTML = `
+          <table>
+            <tr><th>Stereo mix</th><td><code>${esc(base)}/mix.wav</code></td></tr>
+            <tr><th>Dialogue-safe mix</th><td><code>${esc(base)}/mix-dialogue-safe.wav</code></td></tr>
+            <tr><th>Stems</th><td><code>${esc(base)}/stems/</code></td></tr>
+            <tr><th>MIDI</th><td><code>${esc(base)}/midi/</code></td></tr>
+            <tr><th>Resolve import</th><td><code>${esc(base)}/resolve-import/</code> (mixes + stems + cue-markers.csv)</td></tr>
+          </table>
+          <audio controls preload="none" src="${fileUrl('approved/mix.wav')}"></audio>
+          <div>
+            <button class="btn" onclick="copyText('${esc(base)}/resolve-import','Resolve import path')">Copy Resolve import path</button>
+            <button class="btn" data-open="approved">Open output folder</button>
+            <button class="btn" data-open="approved/resolve-import">Open Resolve import folder</button>
+            <a class="btn" href="${fileUrl('approved/provenance.md')}" target="_blank">Provenance report</a>
+          </div>
+          <div class="meta" style="margin-top:6px;">These WAVs are Score Engine sketch renders — for final quality, render from REAPER/Ableton with your real instruments (README in the handoff explains it) and drop the result into the package.</div>`;
+      }
+
+      // ── actions ──
+      document.getElementById('cues-generate').onclick = async ()=>{
+        if (CUES.length && !window.confirm('Regenerate the cue sheet? The current one is archived to history/, not lost.')) return;
+        try{ await post('/api/score/cues/generate',{project_id:ID}); toast('Cue sheet generated'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
+      };
+      document.getElementById('cues-add').onclick = ()=>{
+        collectCues();
+        const last = CUES[CUES.length-1];
+        const start = last ? last.end_seconds : 0;
+        CUES.push({cue_id:'C'+String(CUES.length+1).padStart(3,'0'),name:'New cue',start_seconds:start,end_seconds:Math.min(ST.project.duration_seconds,start+10),function:'explanation',emotion:'clinical',energy:2,density:2,tempo_bpm:ST.project.global_tempo_bpm,key:ST.project.global_key,time_signature:'4/4',instrument_roles:{pulse:'',bass:'',harmony:'',melody:'',texture:'',impact:''},arrangement_notes:'',hit_points:[],dialogue_safe:true});
+        renderCues();
+      };
+      document.getElementById('cues-save').onclick = async ()=>{
+        try{ await post('/api/score/cues/save',{project_id:ID,cues:collectCues()}); toast('Cue sheet saved (previous archived)'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
+      };
+      document.getElementById('cues-approve').onclick = async ()=>{
+        try{ await post('/api/score/cues/save',{project_id:ID,cues:collectCues()}); await post('/api/score/cues/approve',{project_id:ID}); toast('Cue sheet approved'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
+      };
+      document.getElementById('ai-copy').onclick = async ()=>{
+        try{ const d=await fetchJson('/api/score/prompt?task=cue_sheet&id='+encodeURIComponent(ID)); copyText(d.prompt,'cue-sheet prompt'); }catch(e){ toast(e.message,false); }
+      };
+      document.getElementById('ai-call').onclick = async ()=>{
+        try{ const d=await post('/api/score/cues/ai-call',{project_id:ID}); toast('AI cue sheet applied ('+d.provider+')'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
+      };
+      document.getElementById('ai-apply').onclick = async ()=>{
+        try{ await post('/api/score/cues/ai-apply',{project_id:ID,response_text:document.getElementById('ai-paste').value}); toast('AI response validated + applied'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
+      };
+      document.getElementById('palette-apply').onclick = async ()=>{
+        const sel=document.querySelector('.palette-card.sel');
+        try{ await post('/api/score/palette',{project_id:ID,palette_id:sel?sel.getAttribute('data-palette'):ST.project.palette_id}); toast('Palette applied'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
+      };
+      document.getElementById('cands-generate').onclick = async ()=>{
+        const busy=document.getElementById('cands-busy'); busy.textContent='Generating candidates (MIDI + previews)…';
+        try{ const d=await post('/api/score/candidates/generate',{project_id:ID,count:Number(document.getElementById('cand-count').value)||3}); toast(d.candidates.length+' candidates generated'); }
+        catch(e){ toast(e.message,false); showErr(e.message); }
+        busy.textContent=''; load();
+      };
+
+      document.addEventListener('click', async (ev)=>{
+        const t=ev.target;
+        if (t.classList && t.classList.contains('palette-card')){ document.querySelectorAll('.palette-card').forEach(el=>el.classList.remove('sel')); t.classList.add('sel'); return; }
+        if (t.closest && t.closest('.palette-card')){ document.querySelectorAll('.palette-card').forEach(el=>el.classList.remove('sel')); t.closest('.palette-card').classList.add('sel'); return; }
+        const del = t.getAttribute && t.getAttribute('data-delcue');
+        if (del!==null && del!==undefined && del!==''){ collectCues(); CUES.splice(Number(del),1); renderCues(); return; }
+        const open = t.getAttribute && t.getAttribute('data-open');
+        if (open){ try{ await post('/api/score/open-folder',{project_id:ID,path:open}); toast('Opened folder'); }catch(e){ toast(e.message,false);} return; }
+        const act = t.getAttribute && t.getAttribute('data-act');
+        if (!act) return;
+        const cand = t.getAttribute('data-cand');
+        try{
+          if (act==='reaper'){ const d=await post('/api/score/reaper/build',{project_id:ID,candidate_id:cand}); toast('REAPER project built'); }
+          else if (act==='reaper-open'){ const d=await post('/api/score/reaper/open',{project_id:ID,candidate_id:cand}); toast('Launching REAPER…'); }
+          else if (act==='ableton'){ await post('/api/score/ableton/build',{project_id:ID,candidate_id:cand}); toast('Ableton handoff built'); }
+          else if (act==='approve'){ if(!window.confirm('Approve '+cand+' and export to music/approved/? A previous approval would be archived, not overwritten.')) return; await post('/api/score/candidates/approve',{project_id:ID,candidate_id:cand}); toast('Approved + exported'); }
+          else if (act==='reject'){ await post('/api/score/candidates/status',{project_id:ID,candidate_id:cand,status:'rejected'}); toast('Rejected'); }
+          else if (act==='revise'){ const req=document.getElementById('rev-'+cand).value.trim(); if(!req) return toast('Describe the revision first',false); const d=await post('/api/score/candidates/revise',{project_id:ID,candidate_id:cand,request:req}); toast('Revised → '+d.candidate.candidate_id+(d.revision_plan.unmatched?' (no rule matched — new seed variation)':'')); }
+          load();
+        }catch(e){ toast(e.message,false); showErr(e.message); }
+      });
+
+      load();
+    </script>
+  </body>
+</html>
