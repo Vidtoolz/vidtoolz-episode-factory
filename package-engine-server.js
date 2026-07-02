@@ -5449,9 +5449,21 @@ function assertValidVideoVariant(variant) {
 function normalizeExcludeIndexes(value) {
   if (value == null || value === '') return [];
   const list = Array.isArray(value) ? value : String(value).split(',');
-  return list
-    .map((entry) => Number(String(entry).trim()))
-    .filter((n) => Number.isInteger(n));
+  const result = [];
+  for (const entry of list) {
+    const token = String(entry).trim();
+    if (!token) continue;
+    const n = Number(token);
+    if (!Number.isInteger(n)) {
+      // A typo like "2l" must fail loudly, not silently exclude nothing
+      // (matches the NAS assembler, which raises on invalid tokens).
+      const error = new Error(`Invalid exclude index: ${token}`);
+      error.statusCode = 400;
+      throw error;
+    }
+    result.push(n);
+  }
+  return result;
 }
 
 // A selected image's package-facing staged video lives at videos/<variant>/<index>.mp4
@@ -5780,10 +5792,13 @@ function runResolveAssemblyCreate(packageId, options = {}) {
 
   const videoDir = path.posix.join('videos', variant);
   const staged = packageStagedWanStatus(packageDir, variant);
-  const includedClips = staged.completed; // selections whose clip exists in videos/<variant>/
-  const pendingClips = staged.pending;    // selections with no clip in that variant folder
-  const excludedClips = pendingClips.filter((item) => excludeIndexes.includes(item.prompt_index));
-  const missingClips = pendingClips.filter((item) => !excludeIndexes.includes(item.prompt_index));
+  // Inclusion/exclusion mirrors the NAS assembler exactly: an explicitly
+  // excluded index is excluded whether or not its clip exists in the variant
+  // folder (excluded > staged), so the manifest fields Node stamps can never
+  // disagree with the ones the assembler writes.
+  const excludedClips = staged.selections.filter((item) => excludeIndexes.includes(item.prompt_index));
+  const includedClips = staged.completed.filter((item) => !excludeIndexes.includes(item.prompt_index));
+  const missingClips = staged.pending.filter((item) => !excludeIndexes.includes(item.prompt_index));
   const includedIndexes = includedClips.map((item) => item.prompt_index);
   const excludedIndexes = excludedClips.map((item) => item.prompt_index);
 

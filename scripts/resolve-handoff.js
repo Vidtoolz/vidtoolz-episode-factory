@@ -65,7 +65,7 @@ async function main() {
     });
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
-    process.exit(error.statusCode ? 1 : 1);
+    process.exit(1);
     return;
   }
 

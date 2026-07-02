@@ -455,6 +455,68 @@ test("resolve-assembly allows explicitly excluding a held clip to proceed", asyn
   }
 });
 
+test("resolve-assembly excluding a STAGED clip omits it from included and records it as excluded", async () => {
+  const fixture = createAigenFixture();
+  stageVariant(fixture, "mp4-hq-720p", [6, 8]); // both clips exist in the HQ folder
+  const server = packageEngineServer.createServer();
+  try {
+    await withAigenEnv(fixture, async () => {
+      await listen(server);
+      // Dry-run: the excluded-but-staged clip must not be counted as included.
+      const dry = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId, video_variant: "mp4-hq-720p", exclude_indexes: [8], dry_run: true },
+        headers: { host: "127.0.0.1:8010" },
+      });
+      assert.equal(dry.body.data.included_clips.length, 1);
+      assert.equal(dry.body.data.included_clips[0].prompt_index, 6);
+      assert.equal(dry.body.data.excluded_clips.length, 1);
+      assert.equal(dry.body.data.excluded_clips[0].prompt_index, 8);
+      assert.equal(dry.body.data.missing_clips.length, 0);
+
+      // Real run: the manifest must agree — excluded index never in included_indexes.
+      const real = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId, video_variant: "mp4-hq-720p", exclude_indexes: [8] },
+        headers: {
+          host: "127.0.0.1:8010",
+          [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+        },
+      });
+      assert.equal(real.statusCode, 200);
+      assert.deepEqual(real.body.data.included_indexes, [6]);
+      assert.deepEqual(real.body.data.excluded_indexes, [8]);
+      const manifest = readManifest(fixture);
+      assert.deepEqual(manifest.included_indexes, [6]);
+      assert.deepEqual(manifest.excluded_indexes, [8]);
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-assembly rejects a non-integer exclude index with 400", async () => {
+  const fixture = createAigenFixture();
+  const server = packageEngineServer.createServer();
+  try {
+    await withAigenEnv(fixture, async () => {
+      await listen(server);
+      const response = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId, exclude_indexes: "6,2l", dry_run: true },
+        headers: { host: "127.0.0.1:8010" },
+      });
+      assert.equal(response.statusCode, 400);
+      assert.equal(response.body.ok, false);
+      assert.match(response.body.error, /invalid exclude index/i);
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("resolve-assembly rejects a path-traversal video variant with 400", async () => {
   const fixture = createAigenFixture();
   const server = packageEngineServer.createServer();
