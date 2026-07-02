@@ -5420,19 +5420,54 @@ function selectionPromptIndex(selection = {}) {
   return match ? Number(match[1]) : null;
 }
 
-// A selected image's package-facing staged video lives at videos/mp4/<index>.mp4
-// (index zero-padded to 3 digits). This is package-scoped, unlike the global
-// Wan lane completed.txt labels (e.g. "flux-001") which collide across packages.
-function stagedMp4RelPath(promptIndex) {
-  return path.posix.join('videos', 'mp4', `${String(promptIndex).padStart(3, '0')}.mp4`);
+// Video variant = the videos/<variant>/ subfolder a Resolve handoff pulls its
+// clips from. Default 'mp4' = the legacy fast Wan2.2 clips (backward compatible);
+// 'mp4-hq-720p' = the HQ Wan2.2 clips. The name is validated against path
+// traversal like a package id, so an operator/API can only ever select a sibling
+// videos/* folder (never escape the package or reach an absolute path).
+const DEFAULT_VIDEO_VARIANT = 'mp4';
+const VIDEO_VARIANT_PATTERN = /^[A-Za-z0-9._-]+$/;
+
+function assertValidVideoVariant(variant) {
+  const name = String(variant == null || variant === '' ? DEFAULT_VIDEO_VARIANT : variant).trim();
+  if (
+    !name
+    || name.includes('/')
+    || name.includes('\\')
+    || name === '.'
+    || name === '..'
+    || name.includes('..')
+    || !VIDEO_VARIANT_PATTERN.test(name)
+  ) {
+    const error = new Error(`Invalid video variant: ${variant}`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return name;
 }
 
-function packageStagedWanStatus(packageDir) {
+function normalizeExcludeIndexes(value) {
+  if (value == null || value === '') return [];
+  const list = Array.isArray(value) ? value : String(value).split(',');
+  return list
+    .map((entry) => Number(String(entry).trim()))
+    .filter((n) => Number.isInteger(n));
+}
+
+// A selected image's package-facing staged video lives at videos/<variant>/<index>.mp4
+// (index zero-padded to 3 digits). This is package-scoped, unlike the global
+// Wan lane completed.txt labels (e.g. "flux-001") which collide across packages.
+function stagedMp4RelPath(promptIndex, variant = DEFAULT_VIDEO_VARIANT) {
+  return path.posix.join('videos', variant, `${String(promptIndex).padStart(3, '0')}.mp4`);
+}
+
+function packageStagedWanStatus(packageDir, variant = DEFAULT_VIDEO_VARIANT) {
+  const videoVariant = assertValidVideoVariant(variant);
   const selected = safeReadJson(path.join(packageDir, 'selected-images.json'), null);
   const selections = selected && Array.isArray(selected.selections) ? selected.selections : [];
   const items = selections.map((selection) => {
     const promptIndex = selectionPromptIndex(selection);
-    const mp4Rel = promptIndex == null ? null : stagedMp4RelPath(promptIndex);
+    const mp4Rel = promptIndex == null ? null : stagedMp4RelPath(promptIndex, videoVariant);
     const mp4Exists = Boolean(mp4Rel && fs.existsSync(path.join(packageDir, mp4Rel)));
     return {
       prompt_index: promptIndex,
@@ -5445,6 +5480,8 @@ function packageStagedWanStatus(packageDir) {
   const completed = items.filter((item) => item.mp4_exists);
   const pending = items.filter((item) => !item.mp4_exists);
   return {
+    videoVariant,
+    videoDir: path.posix.join('videos', videoVariant),
     selections: items,
     selectionCount: items.length,
     completed,
@@ -5716,20 +5753,85 @@ function resolveAigenPackageDir(packageId, options = {}) {
   return { packageId: id, packageDir, paths };
 }
 
+// Record the chosen video variant + which selections were included/excluded in the
+// generated media-manifest.json, so the handoff is self-describing about the exact
+// clip source folder it drew from. Returns true if the manifest was updated.
+function stampManifestVariant(packageDir, info) {
+  const manifestPath = path.join(packageDir, 'resolve-handoff', 'media-manifest.json');
+  if (!fs.existsSync(manifestPath)) return false;
+  let manifest = safeReadJson(manifestPath, null);
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) manifest = {};
+  manifest.video_variant = info.video_variant;
+  manifest.video_dir = info.video_dir;
+  manifest.included_indexes = info.included_indexes;
+  manifest.excluded_indexes = info.excluded_indexes;
+  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  return true;
+}
+
 function runResolveAssemblyCreate(packageId, options = {}) {
+  // Validate the requested variant BEFORE touching the filesystem so path
+  // traversal (e.g. "../../etc") is rejected up front with a 400.
+  const variant = assertValidVideoVariant(options.videoVariant);
+  const dryRun = Boolean(options.dryRun);
+  const excludeIndexes = normalizeExcludeIndexes(options.excludeIndexes);
   const { packageId: id, packageDir, paths } = resolveAigenPackageDir(packageId, options);
-  // Do not create Resolve assembly until every selected package MP4 exists.
-  const staged = packageStagedWanStatus(packageDir);
-  if (staged.selectionCount === 0 || staged.pendingCount > 0) {
-    const missing = staged.pending.map((item) => item.mp4_rel || `selection ${item.prompt_index}`);
+
+  const videoDir = path.posix.join('videos', variant);
+  const staged = packageStagedWanStatus(packageDir, variant);
+  const includedClips = staged.completed; // selections whose clip exists in videos/<variant>/
+  const pendingClips = staged.pending;    // selections with no clip in that variant folder
+  const excludedClips = pendingClips.filter((item) => excludeIndexes.includes(item.prompt_index));
+  const missingClips = pendingClips.filter((item) => !excludeIndexes.includes(item.prompt_index));
+  const includedIndexes = includedClips.map((item) => item.prompt_index);
+  const excludedIndexes = excludedClips.map((item) => item.prompt_index);
+
+  // Dry-run: enumerate exactly which clips the handoff would include from the
+  // chosen variant folder, and never spawn Python or write any handoff file.
+  if (dryRun) {
+    return Promise.resolve({
+      ok: true,
+      dry_run: true,
+      wrote: false,
+      package_id: id,
+      video_variant: variant,
+      video_dir: videoDir,
+      selection_count: staged.selectionCount,
+      included_count: includedClips.length,
+      included_clips: includedClips,
+      missing_clips: missingClips,
+      excluded_clips: excludedClips,
+      would_write: RESOLVE_HANDOFF_FILES,
+      output_dir: path.join(packageDir, 'resolve-handoff'),
+    });
+  }
+
+  // Real run — the safety gate is variant-aware and never silently assembles a
+  // partial handoff. It refuses if any selected image lacks a clip in the chosen
+  // variant folder UNLESS that index was explicitly excluded by the operator, so
+  // the fast videos/mp4/ clips can never be silently substituted for a missing
+  // HQ clip.
+  if (staged.selectionCount === 0) {
     return Promise.resolve({
       ok: false,
       package_id: id,
-      error: staged.selectionCount === 0
-        ? 'No selected images found; cannot create Resolve assembly.'
-        : `Resolve assembly blocked: ${staged.pendingCount} selected image(s) have no staged MP4 yet (${missing.join(', ')}). Submit them to PRESTO first.`,
-      pending_count: staged.pendingCount,
+      video_variant: variant,
+      video_dir: videoDir,
+      error: 'No selected images found; cannot create Resolve assembly.',
+      exit_code: 1,
+    });
+  }
+  if (missingClips.length > 0) {
+    const missing = missingClips.map((item) => item.mp4_rel || `selection ${item.prompt_index}`);
+    return Promise.resolve({
+      ok: false,
+      package_id: id,
+      video_variant: variant,
+      video_dir: videoDir,
+      error: `Resolve assembly blocked: ${missingClips.length} selected image(s) have no staged MP4 in ${videoDir}/ (${missing.join(', ')}). Render them, or pass exclude_indexes to omit them explicitly.`,
+      pending_count: missingClips.length,
       missing_mp4: missing,
+      missing_indexes: missingClips.map((item) => item.prompt_index),
       exit_code: 1,
     });
   }
@@ -5737,6 +5839,7 @@ function runResolveAssemblyCreate(packageId, options = {}) {
     return Promise.resolve({
       ok: false,
       package_id: id,
+      video_variant: variant,
       error: `Resolve assembly script not found: ${paths.topicToPackageScript}`,
       exit_code: 127,
     });
@@ -5748,6 +5851,12 @@ function runResolveAssemblyCreate(packageId, options = {}) {
     packageDir,
     '--force',
   ];
+  // Only pass --video-variant for a non-default variant, so the legacy fast-clip
+  // path stays byte-identical to previous behavior (and older assemblers that do
+  // not know the flag keep working for the default).
+  if (variant !== DEFAULT_VIDEO_VARIANT) {
+    args.push('--video-variant', variant);
+  }
   return new Promise((resolve) => {
     const child = childProcess.spawn(paths.pythonBin, args, {
       cwd: paths.aigenRoot,
@@ -5761,6 +5870,7 @@ function runResolveAssemblyCreate(packageId, options = {}) {
       resolve({
         ok: false,
         package_id: id,
+        video_variant: variant,
         error: error.message,
         exit_code: 1,
         stdout,
@@ -5771,11 +5881,36 @@ function runResolveAssemblyCreate(packageId, options = {}) {
       if (code === 0) {
         const resolveDir = path.join(packageDir, 'resolve-handoff');
         const existingFiles = RESOLVE_HANDOFF_FILES.filter((filename) => fs.existsSync(path.join(resolveDir, filename)));
+        let manifestVariantRecorded = false;
+        try {
+          manifestVariantRecorded = stampManifestVariant(packageDir, {
+            video_variant: variant,
+            video_dir: videoDir,
+            included_indexes: includedIndexes,
+            excluded_indexes: excludedIndexes,
+          });
+        } catch (error) {
+          resolve({
+            ok: false,
+            package_id: id,
+            video_variant: variant,
+            error: `Resolve handoff written but recording the variant in media-manifest.json failed: ${error.message}`,
+            exit_code: 1,
+            stdout,
+            stderr,
+          });
+          return;
+        }
         resolve({
           ok: true,
           package_id: id,
+          video_variant: variant,
+          video_dir: videoDir,
           files: RESOLVE_HANDOFF_FILES,
           existing_files: existingFiles,
+          included_indexes: includedIndexes,
+          excluded_indexes: excludedIndexes,
+          manifest_variant_recorded: manifestVariantRecorded,
           output_dir: resolveDir,
           stdout,
           stderr,
@@ -5785,6 +5920,7 @@ function runResolveAssemblyCreate(packageId, options = {}) {
       resolve({
         ok: false,
         package_id: id,
+        video_variant: variant,
         error: (stderr || stdout || `resolve-assembly-handoff exited with code ${code}`).trim(),
         exit_code: code,
         stdout,
@@ -5797,14 +5933,23 @@ function runResolveAssemblyCreate(packageId, options = {}) {
 function handleAigenResolveAssemblyCreate(req, res) {
   readJsonBody(req)
     .then((payload) => {
-      validateLocalWriteRequest(req, payload);
-      return runResolveAssemblyCreate(payload.package_id);
+      const dryRun = Boolean(payload.dry_run || payload.dryRun);
+      // A dry-run only inspects/enumerates and writes nothing, so it does not
+      // require the local-write nonce. A real create still does.
+      if (!dryRun) {
+        validateLocalWriteRequest(req, payload, { label: 'Resolve assembly create API' });
+      }
+      return runResolveAssemblyCreate(payload.package_id, {
+        videoVariant: payload.video_variant || payload.videoVariant,
+        dryRun,
+        excludeIndexes: payload.exclude_indexes || payload.excludeIndexes,
+      });
     })
     .then((result) => {
       if (result.ok) {
         sendJSON(res, 200, result);
       } else {
-        sendError(res, 400, result.error || 'Operation failed', null);
+        sendError(res, result.statusCode || 400, result.error || 'Operation failed', null);
       }
     })
     .catch((error) => sendError(res, error.statusCode || 500, error.message, null));
@@ -10284,6 +10429,10 @@ module.exports = {
   AIGEN_ASSETS_PREFIX,
   AIGEN_FLUX_IMAGES_API_PREFIX,
   AIGEN_RESOLVE_ASSEMBLY_API,
+  runResolveAssemblyCreate,
+  packageStagedWanStatus,
+  assertValidVideoVariant,
+  DEFAULT_VIDEO_VARIANT,
   AIGEN_SELECTED_IMAGES_API,
   AIGEN_STATUS_API,
   FLUX_CANCEL_API,

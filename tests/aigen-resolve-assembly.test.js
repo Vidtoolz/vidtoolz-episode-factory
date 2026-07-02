@@ -260,3 +260,218 @@ test("POST /api/aigen/resolve-assembly/create without nonce header is rejected w
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
 });
+
+// --- Video variant selection (HQ vs fast) ---------------------------------
+
+// Stage package-facing MP4s in an arbitrary videos/<variant>/ folder. Used to
+// simulate the HQ clip folder (videos/mp4-hq-720p/) alongside the default mp4.
+function stageVariant(fixture, variant, indexes) {
+  const dir = path.join(fixture.packageDir, "videos", variant);
+  fs.mkdirSync(dir, { recursive: true });
+  for (const index of indexes) {
+    fs.writeFileSync(path.join(dir, `${index.toString().padStart(3, "0")}.mp4`), "mp4", "utf8");
+  }
+}
+
+function readManifest(fixture) {
+  return JSON.parse(
+    fs.readFileSync(path.join(fixture.packageDir, "resolve-handoff", "media-manifest.json"), "utf8")
+  );
+}
+
+test("resolve-assembly dry-run defaults to the mp4 variant and writes nothing", async () => {
+  const fixture = createAigenFixture(); // stages videos/mp4/ for [6, 8]
+  const server = packageEngineServer.createServer();
+  try {
+    await withAigenEnv(fixture, async () => {
+      await listen(server);
+      const response = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId, dry_run: true },
+        headers: { host: "127.0.0.1:8010" }, // no nonce required for a dry-run
+      });
+      assert.equal(response.statusCode, 200);
+      assert.equal(response.body.ok, true);
+      assert.equal(response.body.data.dry_run, true);
+      assert.equal(response.body.data.wrote, false);
+      assert.equal(response.body.data.video_variant, "mp4");
+      assert.equal(response.body.data.video_dir, "videos/mp4");
+      assert.equal(response.body.data.included_clips.length, 2);
+      assert.equal(response.body.data.missing_clips.length, 0);
+      // Dry-run must not create any handoff files.
+      assert.equal(fs.existsSync(path.join(fixture.packageDir, "resolve-handoff", "assembly-plan.md")), false);
+      assert.equal(fs.existsSync(path.join(fixture.packageDir, "resolve-handoff", "media-manifest.json")), false);
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-assembly dry-run reports the explicit HQ variant and its clips", async () => {
+  const fixture = createAigenFixture();
+  stageVariant(fixture, "mp4-hq-720p", [6, 8]); // HQ clips present for both selections
+  const server = packageEngineServer.createServer();
+  try {
+    await withAigenEnv(fixture, async () => {
+      await listen(server);
+      const response = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId, video_variant: "mp4-hq-720p", dry_run: true },
+        headers: { host: "127.0.0.1:8010" },
+      });
+      assert.equal(response.statusCode, 200);
+      assert.equal(response.body.data.video_variant, "mp4-hq-720p");
+      assert.equal(response.body.data.video_dir, "videos/mp4-hq-720p");
+      assert.equal(response.body.data.included_clips.length, 2);
+      for (const clip of response.body.data.included_clips) {
+        assert.match(clip.mp4_rel, /^videos\/mp4-hq-720p\//);
+      }
+      // Never silently reaches into videos/mp4/.
+      assert.equal(fs.existsSync(path.join(fixture.packageDir, "resolve-handoff", "assembly-plan.md")), false);
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-assembly real create with HQ variant uses videos/mp4-hq-720p and records it in the manifest", async () => {
+  const fixture = createAigenFixture();
+  stageVariant(fixture, "mp4-hq-720p", [6, 8]);
+  const server = packageEngineServer.createServer();
+  try {
+    await withAigenEnv(fixture, async () => {
+      await listen(server);
+      const response = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId, video_variant: "mp4-hq-720p" },
+        headers: {
+          host: "127.0.0.1:8010",
+          [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+        },
+      });
+      assert.equal(response.statusCode, 200);
+      assert.equal(response.body.ok, true);
+      assert.equal(response.body.data.video_variant, "mp4-hq-720p");
+      assert.equal(response.body.data.manifest_variant_recorded, true);
+      const manifest = readManifest(fixture);
+      assert.equal(manifest.video_variant, "mp4-hq-720p");
+      assert.equal(manifest.video_dir, "videos/mp4-hq-720p");
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-assembly real create with default variant records mp4 in the manifest (backward compatible)", async () => {
+  const fixture = createAigenFixture(); // videos/mp4/ staged for both selections
+  const server = packageEngineServer.createServer();
+  try {
+    await withAigenEnv(fixture, async () => {
+      await listen(server);
+      const response = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId },
+        headers: {
+          host: "127.0.0.1:8010",
+          [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+        },
+      });
+      assert.equal(response.statusCode, 200);
+      assert.equal(response.body.data.video_variant, "mp4");
+      const manifest = readManifest(fixture);
+      assert.equal(manifest.video_variant, "mp4");
+      assert.equal(manifest.video_dir, "videos/mp4");
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-assembly clearly reports a held/missing clip and blocks a real run", async () => {
+  const fixture = createAigenFixture();
+  stageVariant(fixture, "mp4-hq-720p", [6]); // index 8 is missing/held (stands in for 021)
+  const server = packageEngineServer.createServer();
+  try {
+    await withAigenEnv(fixture, async () => {
+      await listen(server);
+      // Dry-run reports exactly the missing selection.
+      const dry = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId, video_variant: "mp4-hq-720p", dry_run: true },
+        headers: { host: "127.0.0.1:8010" },
+      });
+      assert.equal(dry.body.data.included_clips.length, 1);
+      assert.equal(dry.body.data.missing_clips.length, 1);
+      assert.equal(dry.body.data.missing_clips[0].prompt_index, 8);
+
+      // A real run is blocked (not silently partial) and names the missing clip.
+      const real = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId, video_variant: "mp4-hq-720p" },
+        headers: {
+          host: "127.0.0.1:8010",
+          [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+        },
+      });
+      assert.equal(real.body.ok, false);
+      assert.match(real.body.error, /Resolve assembly blocked.*mp4-hq-720p/i);
+      assert.equal(fs.existsSync(path.join(fixture.packageDir, "resolve-handoff", "assembly-plan.md")), false);
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-assembly allows explicitly excluding a held clip to proceed", async () => {
+  const fixture = createAigenFixture();
+  stageVariant(fixture, "mp4-hq-720p", [6]); // index 8 held
+  const server = packageEngineServer.createServer();
+  try {
+    await withAigenEnv(fixture, async () => {
+      await listen(server);
+      const response = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId, video_variant: "mp4-hq-720p", exclude_indexes: [8] },
+        headers: {
+          host: "127.0.0.1:8010",
+          [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+        },
+      });
+      assert.equal(response.statusCode, 200);
+      assert.equal(response.body.ok, true);
+      assert.deepEqual(response.body.data.excluded_indexes, [8]);
+      const manifest = readManifest(fixture);
+      assert.deepEqual(manifest.excluded_indexes, [8]);
+      assert.deepEqual(manifest.included_indexes, [6]);
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-assembly rejects a path-traversal video variant with 400", async () => {
+  const fixture = createAigenFixture();
+  const server = packageEngineServer.createServer();
+  try {
+    await withAigenEnv(fixture, async () => {
+      await listen(server);
+      const response = await requestJson(server, packageEngineServer.AIGEN_RESOLVE_ASSEMBLY_API, {
+        method: "POST",
+        body: { package_id: fixture.packageId, video_variant: "../../../etc", dry_run: true },
+        headers: { host: "127.0.0.1:8010" },
+      });
+      assert.equal(response.statusCode, 400);
+      assert.equal(response.body.ok, false);
+      assert.match(response.body.error, /invalid video variant/i);
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});

@@ -38,6 +38,7 @@ node --check music-cue-generator.js
 node --check supervised-capture.js
 node --check earth-studio-job-planner.js
 node --check scripts/episode-factory.js
+node --check scripts/resolve-handoff.js
 node --check scripts/package-engine-new-run.js
 node --check scripts/package-engine-new-outline.js
 node --check scripts/package-engine-new-script.js
