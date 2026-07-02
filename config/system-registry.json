@@ -1,6 +1,6 @@
 {
   "generated_or_verified": "verified",
-  "last_verified": "2026-06-29",
+  "last_verified": "2026-07-02",
   "note": "Canonical, source-verified registry of the services/machines this cockpit talks to. Each component records the file the fact was verified from. Facts NOT verifiable from this repo are omitted rather than guessed. Update last_verified and the relevant source when a fact changes.",
   "components": [
     {
