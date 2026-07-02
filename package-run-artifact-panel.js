@@ -215,7 +215,13 @@
       })
       .then(function (orientation) {
         if (!orientation || orientation.mode === "AMBIGUOUS" || !orientation.activeRun) {
-          renderUnavailable("No active/focused run available — resolve active state on the homepage before browsing artifacts.");
+          // Projects-lane aware: when the real work is an active project (no
+          // package run focused), say so instead of implying broken state.
+          if (orientation && orientation.activeProject) {
+            renderUnavailable("No package run is focused — active work is project “" + orientation.activeProject + "” on the Projects lane; package-run artifacts don’t apply to it.");
+          } else {
+            renderUnavailable("No active/focused run available — resolve active state on the homepage before browsing artifacts.");
+          }
           return null;
         }
         runId = orientation.activeRun;

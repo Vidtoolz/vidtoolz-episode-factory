@@ -74,7 +74,9 @@
       }
 
       function lanePills(variants) {
-        return (variants.variants || []).map((v) => {
+        // Hide empty lanes (a bare "videos/mp4/ — 0/0" pill is noise on a
+        // project that never used that lane).
+        return (variants.variants || []).filter((v) => v.clip_files > 0).map((v) => {
           const marks = [v.is_handoff_variant ? 'handoff' : '', v.is_best ? 'chosen' : ''].filter(Boolean).join(' · ');
           return `<span class="lane-pill ${v.is_handoff_variant ? 'chosen' : ''}">videos/${client.esc(v.name)}/ — ${v.completed}/${v.selections}${marks ? ' · ' + client.esc(marks) : ''}</span>`;
         }).join('');

@@ -256,11 +256,16 @@
             }
             if (o.mode === "Projects Lane / Production") {
               // No package run is active, but exactly one aigen project is —
-              // that project is the current work.
+              // that project is the current work. Link straight to where the
+              // next action happens instead of making the operator hunt.
+              var pid = encodeURIComponent(o.activeProject || "");
               body.innerHTML =
                 '<div style="padding:8px 10px;border-radius:6px;background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.3);">' +
-                '<strong style="color:var(--accent);">Active project: ' + esc(o.activeProjectTitle || o.activeProject) + "</strong><br>" +
-                "Projects lane (no package run is marked active — that is expected for this workflow).</div>" +
+                '<strong style="color:var(--accent);"><a href="project-workspace.html?id=' + pid + '" style="color:inherit;">Active project: ' + esc(o.activeProjectTitle || o.activeProject) + "</a></strong><br>" +
+                "Projects lane (no package run is marked active — that is expected for this workflow).<br>" +
+                '<span style="font-size:12px;">Open: <a href="project-workspace.html?id=' + pid + '">Workspace</a> · ' +
+                '<a href="project-resolve-handoff.html?id=' + pid + '">Resolve handoff</a> · ' +
+                '<a href="project-video-review.html?id=' + pid + '">Video review</a></span></div>' +
                 row("Stage", o.currentGate) +
                 (o.blocker ? row("Blocker", o.blocker) : "") +
                 row("Next valid action", o.nextValidAction) +

@@ -5724,6 +5724,9 @@ function buildPackagePipelineStatus(packageDir, wanLabels) {
     resolve_handoff_ready: resolveHandoffCount === RESOLVE_HANDOFF_FILES.length,
     resolve_handoff_count: resolveHandoffCount,
     handoff_video_variant: handoffVideoVariant,
+    // Operator status from project-status.json (active/editing/parked/archived/
+    // published); null when the package predates the projects lane.
+    project_status: (safeReadJson(path.join(packageDir, 'project-status.json'), null) || {}).status || null,
     wan_next_action: wanNextAction,
   };
 }
@@ -5765,12 +5768,29 @@ function aigenProductionPipelineStatus(options = {}) {
     .filter((entry) => entry.isDirectory())
     .map((entry) => path.join(paths.scriptPackages, entry.name));
   const packages = packageDirs.map((packageDir) => buildPackagePipelineStatus(packageDir, wanLabels));
-  const active = packages.find((item) => item.wan_pending > 0) ||
-    packages.find((item) => item.selections_count === 0 && item.flux_images_count > 0) ||
-    packages.find((item) => item.flux_images_count < item.prompts_count);
-  const nextAction = active
-    ? `${active.wan_next_action} for ${active.id}`
-    : 'No pending aigen production actions found';
+  // Global next action: the ACTIVE project's state always wins. The previous
+  // first-package-with-pending-work scan surfaced stale/abandoned packages
+  // ("Generate 2 remaining FLUX images for <old package>") while the actual
+  // active project sat at the Resolve handoff — contradicting the canonical
+  // orientation strip on the same page.
+  const pickPending = (list) => list.find((item) => item.wan_pending > 0) ||
+    list.find((item) => item.selections_count === 0 && item.flux_images_count > 0) ||
+    list.find((item) => item.flux_images_count < item.prompts_count);
+  const activeProjects = packages.filter((item) => item.project_status === 'active' || item.project_status === 'editing');
+  const dormant = packages.filter((item) => !activeProjects.includes(item)
+    && item.project_status !== 'archived' && item.project_status !== 'published' && item.project_status !== 'parked');
+  let nextAction;
+  const activePick = pickPending(activeProjects);
+  if (activePick) {
+    nextAction = `${activePick.wan_next_action} for ${activePick.id}`;
+  } else if (activeProjects.length) {
+    nextAction = `${activeProjects[0].wan_next_action} for ${activeProjects[0].id}`;
+  } else {
+    const dormantPick = pickPending(dormant);
+    nextAction = dormantPick
+      ? `${dormantPick.wan_next_action} for ${dormantPick.id} (no active project)`
+      : 'No pending aigen production actions found';
+  }
   return {
     ok: true,
     generated_at: generatedAt,

@@ -74,7 +74,13 @@ function ProjectClient() {
         wrap.appendChild(dry);
       }
       const runBtn = mkBtn('btn btn-go', a.label);
-      runBtn.onclick = () => run(a, false, resultEl, onDone, [runBtn]);
+      runBtn.onclick = () => {
+        // Nonce-gated actions record durable project state — one mis-click
+        // must not silently advance a project, so confirm first.
+        if (a.nonce && typeof window !== 'undefined' && window.confirm
+            && !window.confirm('Run "' + a.label + '"? This records durable project state.')) return;
+        run(a, false, resultEl, onDone, [runBtn]);
+      };
       wrap.appendChild(runBtn);
       slot.replaceWith(wrap);
     });

@@ -471,3 +471,60 @@ test("production-pipeline call sites read the normalized payload, not the raw wr
   // POST handlers gate on wrapper-level json.ok and normalize the error/body.
   assert.match(html, /if \(!json\.ok\) \{\s*\n\s*alert\(`Failed: \$\{normalizePayload\(json\)\.error/);
 });
+
+test("global next_action prefers the ACTIVE project over stale packages with pending work", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "aigen-nextaction-"));
+  const aigenRoot = path.join(root, "aigen");
+  const wanLane = path.join(aigenRoot, "image-to-video", "production", "wan22-81f");
+  fs.mkdirSync(path.join(wanLane, "runs"), { recursive: true });
+  fs.writeFileSync(path.join(wanLane, "completed.txt"), "", "utf8");
+  fs.writeFileSync(path.join(wanLane, "failed.jsonl"), "", "utf8");
+  fs.writeFileSync(path.join(wanLane, "queue.txt"), "", "utf8");
+
+  // Stale package (no project-status.json) with pending FLUX work — the old
+  // logic surfaced this one as the global next action.
+  const stale = path.join(aigenRoot, "script-packages", "old-stale-package");
+  fs.mkdirSync(path.join(stale, "images", "flux-local"), { recursive: true });
+  writeJson(path.join(stale, "image-prompts.json"), { image_prompts: [{ index: 1, prompt: "a" }, { index: 2, prompt: "b" }] });
+  fs.writeFileSync(path.join(stale, "images", "flux-local", "flux-001.png"), "png", "utf8"); // 1 of 2
+
+  // ACTIVE project, fully complete through the handoff.
+  const active = path.join(aigenRoot, "script-packages", "my-active-video");
+  fs.mkdirSync(path.join(active, "images", "flux-local"), { recursive: true });
+  fs.mkdirSync(path.join(active, "videos", "mp4-hq-720p"), { recursive: true });
+  fs.mkdirSync(path.join(active, "resolve-handoff"), { recursive: true });
+  writeJson(path.join(active, "project-status.json"), { status: "active" });
+  writeJson(path.join(active, "image-prompts.json"), { image_prompts: [{ index: 1, prompt: "a" }] });
+  fs.writeFileSync(path.join(active, "images", "flux-local", "flux-001.png"), "png", "utf8");
+  writeJson(path.join(active, "selected-images.json"), { selections: [{ prompt_index: 1, selected_path: "images/flux-local/flux-001.png" }] });
+  writeJson(path.join(active, "video-prompts.json"), { prompts: [{ prompt_index: 1, prompt: "m" }] });
+  fs.writeFileSync(path.join(active, "videos", "mp4-hq-720p", "001.mp4"), "mp4", "utf8");
+  for (const f of ["assembly-plan.md", "assembly-plan.csv"]) fs.writeFileSync(path.join(active, "resolve-handoff", f), "x", "utf8");
+  writeJson(path.join(active, "resolve-handoff", "media-manifest.json"), { video_variant: "mp4-hq-720p", clips: [] });
+
+  const previous = { root: process.env.AIGEN_VIDNAS_ROOT, presto: process.env.AIGEN_PRESTO_BASE_URL, timeout: process.env.AIGEN_PRESTO_TIMEOUT_MS };
+  process.env.AIGEN_VIDNAS_ROOT = aigenRoot;
+  process.env.AIGEN_PRESTO_BASE_URL = "http://127.0.0.1:9";
+  process.env.AIGEN_PRESTO_TIMEOUT_MS = "50";
+  const server = packageEngineServer.createServer();
+  try {
+    await listen(server);
+    const response = await requestJson(server, packageEngineServer.AIGEN_STATUS_API);
+    const nextAction = response.body.data.next_action;
+    // The active project's truthful state wins; the stale package must not hijack it.
+    assert.match(nextAction, /my-active-video/);
+    assert.doesNotMatch(nextAction, /old-stale-package/);
+
+    // Legacy behavior preserved: with NO active-status package, dormant pending
+    // work still surfaces (explicitly labeled).
+    fs.rmSync(path.join(active, "project-status.json"));
+    const response2 = await requestJson(server, packageEngineServer.AIGEN_STATUS_API);
+    assert.match(response2.body.data.next_action, /old-stale-package \(no active project\)|my-active-video/);
+  } finally {
+    await close(server);
+    if (previous.root === undefined) delete process.env.AIGEN_VIDNAS_ROOT; else process.env.AIGEN_VIDNAS_ROOT = previous.root;
+    if (previous.presto === undefined) delete process.env.AIGEN_PRESTO_BASE_URL; else process.env.AIGEN_PRESTO_BASE_URL = previous.presto;
+    if (previous.timeout === undefined) delete process.env.AIGEN_PRESTO_TIMEOUT_MS; else process.env.AIGEN_PRESTO_TIMEOUT_MS = previous.timeout;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

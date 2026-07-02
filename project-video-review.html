@@ -84,6 +84,7 @@
     const projectId = params.get("id") || params.get("package_id") || params.get("package") || "";
 
     let clips = [];
+    let projectStage = "";
     let dirty = false;
     let localWriteNonce = "";
     let nonceHeader = "x-vidtoolz-local-write-nonce";
@@ -117,9 +118,16 @@
         `<span style="color:#f85149;"><b>${c.reject}</b> reject</span>` +
         `<span><b>${c.unreviewed}</b> unreviewed</span>`);
       const usable = c.keep >= 1, recommended = c.keep >= 5;
-      const msg = !usable ? "No clips kept yet — mark usable clips Keep before the Resolve handoff."
+      // When the handoff is already built, "before the Resolve handoff" would
+      // be misleading — decisions are then advisory notes for the edit and for
+      // any handoff rebuild.
+      const handoffDone = projectStage === "resolve_handoff";
+      const msg = !usable
+        ? (handoffDone
+          ? "Handoff already built — Keep/Flag/Reject here is advisory for the edit and for future handoff rebuilds."
+          : "No clips kept yet — mark usable clips Keep before the Resolve handoff.")
         : !recommended ? `Only ${c.keep} clip(s) kept (recommended 5+). You can still proceed.`
-        : `${c.keep} clips kept — ready for the Resolve handoff.`;
+        : `${c.keep} clips kept${handoffDone ? "." : " — ready for the Resolve handoff."}`;
       setHtml("usability", `<span class="${usable ? "okmsg" : "warnmsg"}">${usable ? "✓" : "⚠"} ${esc(msg)}</span>`);
     }
 
@@ -199,6 +207,7 @@
         return;
       }
       const p = data.project || {};
+      projectStage = String(p.stage || "");
       setText("title", `Video Review — ${p.title || projectId}`);
       const ex = data.expected || {};
       const lane = data.video_variant
