@@ -5810,6 +5810,86 @@ test("cockpit orientation returns AMBIGUOUS and withholds guidance when active s
   assert.ok(o.nextValidAction);
 });
 
+test("cockpit orientation surfaces a single active project when package-runs lane is cleanly empty", () => {
+  const packageEngineServer = require("../package-engine-server.js");
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cockpit-orientation-projects-"));
+  // Cleanly empty package-runs lane: directory exists, no runs at all.
+  fs.mkdirSync(path.join(tempRoot, "package-runs"), { recursive: true });
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+  // One active aigen project in a temp scriptPackages root.
+  const scriptPackages = path.join(tempRoot, "aigen", "script-packages");
+  const pkg = path.join(scriptPackages, "my-video-20260701");
+  fs.mkdirSync(pkg, { recursive: true });
+  fs.writeFileSync(path.join(pkg, "project-status.json"), JSON.stringify({ status: "active" }));
+  const prevEnv = process.env.AIGEN_SCRIPT_PACKAGES;
+  process.env.AIGEN_SCRIPT_PACKAGES = scriptPackages;
+  try {
+    const o = packageEngineServer.buildCockpitOrientation({ repoRoot: tempRoot });
+    assert.equal(o.mode, "Projects Lane / Production");
+    assert.equal(o.activeProject, "my-video-20260701");
+    assert.equal(o.projectsLane.activeCount, 1);
+    assert.ok(o.currentGate, "stage surfaces as the current gate");
+    assert.ok(o.nextValidAction, "next task surfaces as the next valid action");
+    assert.equal(o.activeRun, "");
+  } finally {
+    if (prevEnv === undefined) delete process.env.AIGEN_SCRIPT_PACKAGES; else process.env.AIGEN_SCRIPT_PACKAGES = prevEnv;
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("cockpit orientation stays AMBIGUOUS with multiple active projects but lists them", () => {
+  const packageEngineServer = require("../package-engine-server.js");
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cockpit-orientation-projects2-"));
+  fs.mkdirSync(path.join(tempRoot, "package-runs"), { recursive: true });
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+  const scriptPackages = path.join(tempRoot, "aigen", "script-packages");
+  for (const id of ["video-a-20260701", "video-b-20260702"]) {
+    const pkg = path.join(scriptPackages, id);
+    fs.mkdirSync(pkg, { recursive: true });
+    fs.writeFileSync(path.join(pkg, "project-status.json"), JSON.stringify({ status: "active" }));
+  }
+  const prevEnv = process.env.AIGEN_SCRIPT_PACKAGES;
+  process.env.AIGEN_SCRIPT_PACKAGES = scriptPackages;
+  try {
+    const o = packageEngineServer.buildCockpitOrientation({ repoRoot: tempRoot });
+    assert.equal(o.mode, "AMBIGUOUS");
+    assert.equal(o.projectsLane.activeCount, 2);
+    assert.equal(o.projectsLane.projects.length, 2);
+  } finally {
+    if (prevEnv === undefined) delete process.env.AIGEN_SCRIPT_PACKAGES; else process.env.AIGEN_SCRIPT_PACKAGES = prevEnv;
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("cockpit orientation stays AMBIGUOUS on invalid run markers even with one active project", () => {
+  const packageEngineServer = require("../package-engine-server.js");
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cockpit-orientation-projects3-"));
+  // A run with artifacts but no explicit state marker -> UNKNOWN -> must stay AMBIGUOUS.
+  writeTestFile(
+    tempRoot,
+    "package-runs/2026-06-28-no-state/selected-package.json",
+    JSON.stringify({ package: { proposedTitle: "No State" } })
+  );
+  const index = packageRunsIndexScript.buildPackageRunsIndex({ repoRoot: tempRoot, runsDir: "package-runs" });
+  writeTestFile(tempRoot, "package-runs-index.json", JSON.stringify(index, null, 2));
+  const scriptPackages = path.join(tempRoot, "aigen", "script-packages");
+  const pkg = path.join(scriptPackages, "my-video-20260701");
+  fs.mkdirSync(pkg, { recursive: true });
+  fs.writeFileSync(path.join(pkg, "project-status.json"), JSON.stringify({ status: "active" }));
+  const prevEnv = process.env.AIGEN_SCRIPT_PACKAGES;
+  process.env.AIGEN_SCRIPT_PACKAGES = scriptPackages;
+  try {
+    const o = packageEngineServer.buildCockpitOrientation({ repoRoot: tempRoot });
+    assert.equal(o.mode, "AMBIGUOUS", "invalid run markers must never be masked by the projects lane");
+    assert.equal(o.projectsLane.activeCount, 1);
+  } finally {
+    if (prevEnv === undefined) delete process.env.AIGEN_SCRIPT_PACKAGES; else process.env.AIGEN_SCRIPT_PACKAGES = prevEnv;
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
 test("orientation bar renders compact canonical fields and an ambiguous state", () => {
   const orientationBar = require("../orientation-bar.js");
   assert.equal(typeof orientationBar.render, "function");

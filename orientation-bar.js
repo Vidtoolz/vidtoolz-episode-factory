@@ -56,7 +56,7 @@
     container.innerHTML =
       '<div class="ob-strip">' +
       '<strong class="ob-title">Canonical production state</strong> ' +
-      field("Active", o.activeRun) +
+      field("Active", o.activeRun || o.activeProject) +
       field("Gate", o.currentGate) +
       field("Next", o.nextValidAction) +
       field("Index", freshness.state) +

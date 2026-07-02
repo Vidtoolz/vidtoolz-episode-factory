@@ -254,7 +254,33 @@
               freshEl.textContent = "Index: " + (f.state || "unknown");
               freshEl.style.color = f.stale ? "var(--danger)" : "var(--muted)";
             }
+            if (o.mode === "Projects Lane / Production") {
+              // No package run is active, but exactly one aigen project is —
+              // that project is the current work.
+              body.innerHTML =
+                '<div style="padding:8px 10px;border-radius:6px;background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.3);">' +
+                '<strong style="color:var(--accent);">Active project: ' + esc(o.activeProjectTitle || o.activeProject) + "</strong><br>" +
+                "Projects lane (no package run is marked active — that is expected for this workflow).</div>" +
+                row("Stage", o.currentGate) +
+                (o.blocker ? row("Blocker", o.blocker) : "") +
+                row("Next valid action", o.nextValidAction) +
+                row("Needs Mikko", o.needsMikko) +
+                row("AI-safe action", o.aiSafeAction) +
+                row("Media system", o.linkedMediaSystem) +
+                row("Out of scope", (o.outOfScope || []).join("; "));
+              return;
+            }
             if (o.mode === "AMBIGUOUS") {
+              var lane = o.projectsLane || {};
+              var laneNote = "";
+              if (lane.activeCount > 0) {
+                laneNote =
+                  '<div style="margin-top:6px;font-size:12px;">Projects lane has ' +
+                  lane.activeCount +
+                  " active project(s): " +
+                  (lane.projects || []).map(function (p) { return esc(p.id) + " [" + esc(p.stage) + "]"; }).join(", ") +
+                  "</div>";
+              }
               body.innerHTML =
                 '<div style="padding:8px 10px;border-radius:6px;background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.3);">' +
                 '<strong style="color:var(--danger);">Active run status: AMBIGUOUS</strong><br>' +
@@ -262,6 +288,7 @@
                 "<br>Normal next-action guidance is disabled until active state is resolved.</div>" +
                 row("Next valid action", o.nextValidAction) +
                 row("Needs Mikko", o.needsMikko) +
+                laneNote +
                 ((o.warnings && o.warnings.length)
                   ? '<div style="margin-top:6px;color:var(--danger);font-size:12px;">' + o.warnings.map(esc).join("<br>") + "</div>"
                   : "");

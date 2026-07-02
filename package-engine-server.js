@@ -8145,11 +8145,44 @@ const COCKPIT_OUT_OF_SCOPE = [
   'Broad documentation rewrites',
 ];
 
+// Projects-lane view for the orientation. The aigen projects board is a
+// separate state model from package-runs; when no package run is active the
+// projects lane usually holds the real work-in-progress, so the orientation
+// surfaces it instead of implying nothing is happening. Read-only.
+function buildProjectsLaneOrientation(options = {}) {
+  let listing = null;
+  try {
+    listing = projectDiscovery.listProjects({
+      packagesRoot: options.scriptPackagesRoot || aigenPaths({}).scriptPackages,
+    });
+  } catch (_error) {
+    return { available: false, activeCount: 0, projects: [] };
+  }
+  if (!listing || listing.error) return { available: false, activeCount: 0, projects: [] };
+  const active = (listing.projects || [])
+    .filter((p) => p.status === 'active' && !p.diagnostic && !p.archived && !p.error);
+  return {
+    available: true,
+    activeCount: active.length,
+    projects: active.slice(0, 5).map((p) => ({
+      id: p.project_id,
+      title: p.title,
+      stage: p.stage,
+      stage_index: p.stage_index,
+      stage_total: p.stage_total,
+      next_task: p.next_task || null,
+    })),
+  };
+}
+
 // Aggregates the canonical operator-clarity signals (active-state audit, doctor,
 // next-safe-action, index freshness, registry) into one payload the cockpit
 // homepage panel renders. It never advances state; if active state is ambiguous,
 // unknown, or absent it returns AMBIGUOUS mode and withholds normal next-action
-// guidance instead of guessing.
+// guidance instead of guessing. Exception: when the package-runs lane is CLEANLY
+// empty (no ambiguity, no invalid markers — simply no active run) and the aigen
+// projects lane has exactly one active project, the orientation reports that
+// project as the current work instead of a scary AMBIGUOUS verdict.
 function buildCockpitOrientation(options = {}) {
   const repoRoot = options.repoRoot || __dirname;
   const audit = activeStateAuditScript.buildActiveStateAudit({ repoRoot });
@@ -8184,9 +8217,34 @@ function buildCockpitOrientation(options = {}) {
   };
 
   if (audit.guidanceWithheld || !audit.selectedActiveRun) {
+    const projectsLane = buildProjectsLaneOrientation(options);
+    // Clean absence: the package-runs lane simply has no active run (no
+    // conflicting or invalid markers). If exactly one aigen project is active,
+    // that project IS the current work — report it instead of AMBIGUOUS.
+    const cleanAbsence = !audit.ambiguity && !audit.invalidState && !audit.selectedActiveRun;
+    if (cleanAbsence && projectsLane.activeCount === 1) {
+      const project = projectsLane.projects[0];
+      const task = project.next_task || {};
+      return {
+        ...base,
+        mode: 'Projects Lane / Production',
+        projectsLane,
+        activeRun: '',
+        activeRunPath: '',
+        activeProject: project.id,
+        activeProjectTitle: project.title,
+        currentGate: `${project.stage} (${(project.stage_index || 0) + 1}/${project.stage_total || '?'})`,
+        blocker: task.blocked ? String(task.why || 'Next task is blocked.') : '',
+        nextValidAction: task.label ? `${task.label} — ${task.why || ''}`.trim() : 'Open the project workspace for the next task.',
+        needsMikko: task.label || 'Review the active project in the projects board.',
+        aiSafeAction: 'Summarize project state or prepare checklists only. Do not advance stages or approve gates.',
+        linkedMediaSystem: 'Projects lane: AIGEN media pipeline (FLUX → image select → PRESTO → Resolve handoff). No package run is marked active.',
+      };
+    }
     return {
       ...base,
       mode: 'AMBIGUOUS',
+      projectsLane,
       activeRun: '',
       activeRunPath: '',
       currentGate: 'Unknown',
@@ -10501,6 +10559,7 @@ module.exports = {
   API_PREFIX,
   COCKPIT_ORIENTATION_API,
   buildCockpitOrientation,
+  buildProjectsLaneOrientation,
   isResolveSafeFilename,
   DAILY_SCOUT_RUN_API,
   PACKAGE_RUNS_REINDEX_API,
