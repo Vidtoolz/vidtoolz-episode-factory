@@ -59,33 +59,51 @@ function collectLocalImages(packageDir) {
   return out;
 }
 
-// Local Wan2.2 videos staged under videos/mp4/<index>.mp4.
+// Local Wan2.2 videos staged under videos/<variant>/<index>.mp4. 'mp4' is the
+// legacy fast lane; other folders (e.g. 'mp4-hq-720p') are named generation
+// variants — an HQ-only package must not report zero local videos.
+const VIDEO_VARIANT_WORKFLOWS = {
+  'mp4': 'wan22_i2v_vertical_1080x1920_30fps',
+  'mp4-hq-720p': 'wan22_i2v_vertical_720x1280_25fps_101f_hq_no_lightx2v',
+};
+const SAFE_VARIANT_NAME = /^[A-Za-z0-9._-]+$/;
+
 function collectLocalVideos(packageDir) {
-  const dir = path.join(packageDir, 'videos', 'mp4');
+  const videosRoot = path.join(packageDir, 'videos');
   const out = [];
-  let entries = [];
+  let variantDirs = [];
   try {
-    entries = fs.readdirSync(dir, { withFileTypes: true });
+    variantDirs = fs.readdirSync(videosRoot, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && SAFE_VARIANT_NAME.test(e.name));
   } catch (e) {
     return out;
   }
-  for (const entry of entries) {
-    if (!entry.isFile() || !provenance.isVideoFile(entry.name)) continue;
-    const rel = path.join('videos', 'mp4', entry.name);
-    out.push({
-      media_type: 'video',
-      generation_mode: 'local',
-      generation_provider: 'comfyui_wan22',
-      generation_host: 'presto',
-      prompt_provider: 'ollama',
-      prompt_host: 'presto',
-      workflow: 'wan22_i2v_vertical_1080x1920_30fps',
-      variant: 'wan22-local',
-      path: rel,
-      prompt_index: promptIndexFromName(entry.name),
-      status: 'complete',
-      exists: true,
-    });
+  for (const variantDir of variantDirs) {
+    let entries = [];
+    try {
+      entries = fs.readdirSync(path.join(videosRoot, variantDir.name), { withFileTypes: true });
+    } catch (e) {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isFile() || !provenance.isVideoFile(entry.name)) continue;
+      const rel = path.join('videos', variantDir.name, entry.name);
+      out.push({
+        media_type: 'video',
+        generation_mode: 'local',
+        generation_provider: 'comfyui_wan22',
+        generation_host: 'presto',
+        prompt_provider: 'ollama',
+        prompt_host: 'presto',
+        workflow: VIDEO_VARIANT_WORKFLOWS[variantDir.name] || `wan22_i2v_${variantDir.name}`,
+        variant: 'wan22-local',
+        video_variant: variantDir.name,
+        path: rel,
+        prompt_index: promptIndexFromName(entry.name),
+        status: 'complete',
+        exists: true,
+      });
+    }
   }
   return out;
 }

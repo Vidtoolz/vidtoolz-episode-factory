@@ -11,8 +11,14 @@
  * filter the Resolve handoff (that builder still includes all verified clips).
  */
 
-// The Wan2.2 i2v contract every clip is checked against.
+// The Wan2.2 i2v contract every clip is checked against, per video variant
+// (videos/<variant>/ staging folder). 'mp4' = legacy fast lane; 'mp4-hq-720p'
+// = the HQ no-LightX2V lane (720x1280 / 25fps / 101f / ~4.04s).
 const EXPECTED = Object.freeze({ width: 1080, height: 1920, fps: 30, frames: 81, duration: 2.7 });
+const EXPECTED_BY_VARIANT = Object.freeze({
+  'mp4': EXPECTED,
+  'mp4-hq-720p': Object.freeze({ width: 720, height: 1280, fps: 25, frames: 101, duration: 4.04 }),
+});
 const DURATION_TOLERANCE = 0.5; // seconds
 const VALID_DECISIONS = Object.freeze(['unreviewed', 'keep', 'flag', 'reject']);
 // Below this many kept clips the UI nudges the operator to review more first.
@@ -22,13 +28,19 @@ function zeroPad3(n) {
   return String(n).padStart(3, '0');
 }
 
-// Relative MP4 path for a clip, by its prompt_index (PRESTO stages videos/mp4/NNN.mp4).
-function mp4RelPath(promptIndex) {
-  return `videos/mp4/${zeroPad3(promptIndex)}.mp4`;
+// Spec for a variant; unknown variants fall back to the legacy fast contract.
+function expectedForVariant(variant) {
+  return EXPECTED_BY_VARIANT[variant] || EXPECTED;
+}
+
+// Relative MP4 path for a clip, by its prompt_index (PRESTO stages
+// videos/<variant>/NNN.mp4; default 'mp4' = legacy fast lane).
+function mp4RelPath(promptIndex, variant = 'mp4') {
+  return `videos/${variant}/${zeroPad3(promptIndex)}.mp4`;
 }
 
 // Turn a raw ffprobe result (or null) into a validation record + spec warnings.
-function buildValidation(probe) {
+function buildValidation(probe, expected = EXPECTED) {
   if (!probe) {
     return { exists: false, width: null, height: null, fps: null, frames: null, duration: null, warnings: ['Clip file is missing.'] };
   }
@@ -38,13 +50,13 @@ function buildValidation(probe) {
   const fps = probe.fps == null ? null : Number(probe.fps);
   const frames = probe.frames == null ? null : Number(probe.frames);
   const duration = probe.duration == null ? null : Number(probe.duration);
-  if (width !== EXPECTED.width || height !== EXPECTED.height) {
-    warnings.push(`Resolution ${width}x${height} != expected ${EXPECTED.width}x${EXPECTED.height}.`);
+  if (width !== expected.width || height !== expected.height) {
+    warnings.push(`Resolution ${width}x${height} != expected ${expected.width}x${expected.height}.`);
   }
-  if (fps != null && Math.round(fps) !== EXPECTED.fps) warnings.push(`Frame rate ${fps} != expected ${EXPECTED.fps}fps.`);
-  if (frames != null && frames !== EXPECTED.frames) warnings.push(`Frame count ${frames} != expected ${EXPECTED.frames}.`);
-  if (duration != null && Math.abs(duration - EXPECTED.duration) > DURATION_TOLERANCE) {
-    warnings.push(`Duration ${duration.toFixed(2)}s differs from expected ~${EXPECTED.duration}s.`);
+  if (fps != null && Math.round(fps) !== expected.fps) warnings.push(`Frame rate ${fps} != expected ${expected.fps}fps.`);
+  if (frames != null && frames !== expected.frames) warnings.push(`Frame count ${frames} != expected ${expected.frames}.`);
+  if (duration != null && Math.abs(duration - expected.duration) > DURATION_TOLERANCE) {
+    warnings.push(`Duration ${duration.toFixed(2)}s differs from expected ~${expected.duration}s.`);
   }
   return { exists: true, width, height, fps, frames, duration, warnings };
 }
@@ -122,6 +134,8 @@ function buildReviewFile(reviews, ctx = {}) {
 
 module.exports = {
   EXPECTED,
+  EXPECTED_BY_VARIANT,
+  expectedForVariant,
   DURATION_TOLERANCE,
   VALID_DECISIONS,
   RECOMMENDED_KEEP,

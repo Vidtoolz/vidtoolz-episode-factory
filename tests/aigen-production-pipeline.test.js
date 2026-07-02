@@ -172,6 +172,50 @@ test("Wan counts are package-scoped to staged MP4s, ignoring colliding global la
   }
 });
 
+test("Wan counts detect the HQ variant folder for an HQ-only package", async () => {
+  const fixture = createScopingFixture();
+  // HQ-only: remove the legacy mp4 staging and stage ALL five selections in the
+  // HQ variant folder (the cockpit's default PRESTO profile renders there).
+  fs.rmSync(path.join(fixture.packageDir, "videos", "mp4"), { recursive: true, force: true });
+  const hqDir = path.join(fixture.packageDir, "videos", "mp4-hq-720p");
+  fs.mkdirSync(hqDir, { recursive: true });
+  for (const index of [1, 2, 3, 4, 5]) {
+    fs.writeFileSync(path.join(hqDir, `${String(index).padStart(3, "0")}.mp4`), "mp4", "utf8");
+  }
+  writeJson(path.join(fixture.packageDir, "video-prompts.json"), {
+    prompts: [1, 2, 3, 4, 5].map((index) => ({ prompt_index: index, prompt: `motion ${index}` })),
+  });
+  const previous = {
+    root: process.env.AIGEN_VIDNAS_ROOT,
+    presto: process.env.AIGEN_PRESTO_BASE_URL,
+    timeout: process.env.AIGEN_PRESTO_TIMEOUT_MS,
+  };
+  process.env.AIGEN_VIDNAS_ROOT = fixture.aigenRoot;
+  process.env.AIGEN_PRESTO_BASE_URL = "http://127.0.0.1:9";
+  process.env.AIGEN_PRESTO_TIMEOUT_MS = "50";
+  const server = packageEngineServer.createServer();
+  try {
+    await listen(server);
+    const response = await requestJson(server, packageEngineServer.AIGEN_STATUS_API);
+    assert.equal(response.statusCode, 200);
+    const pkg = response.body.data.packages.find((item) => item.id === fixture.packageId);
+    assert.ok(pkg, "package not found in status");
+    // All HQ clips count as completed; nothing pending; the next action moves
+    // past PRESTO submission instead of demanding a re-render.
+    assert.equal(pkg.wan_completed, 5);
+    assert.equal(pkg.wan_pending, 0);
+    assert.equal(pkg.wan_failed, 0);
+    assert.equal(pkg.video_variant, "mp4-hq-720p");
+    assert.equal(pkg.wan_next_action, "Create Resolve assembly handoff");
+  } finally {
+    await close(server);
+    if (previous.root === undefined) delete process.env.AIGEN_VIDNAS_ROOT; else process.env.AIGEN_VIDNAS_ROOT = previous.root;
+    if (previous.presto === undefined) delete process.env.AIGEN_PRESTO_BASE_URL; else process.env.AIGEN_PRESTO_BASE_URL = previous.presto;
+    if (previous.timeout === undefined) delete process.env.AIGEN_PRESTO_TIMEOUT_MS; else process.env.AIGEN_PRESTO_TIMEOUT_MS = previous.timeout;
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("I2V prompt gate opens once video-prompts.json covers every selection", async () => {
   const fixture = createScopingFixture();
   // One video prompt per selected image (prompt_index 1..5) → gate opens.

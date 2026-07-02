@@ -238,6 +238,21 @@ test("buildPackageMediaIndex merges local FLUX + external GPT media with provena
   assert.equal(vid.generation_host, "presto");
 });
 
+test("buildPackageMediaIndex counts HQ variant clips for an HQ-only package", () => {
+  const { pkg } = tmpPackage();
+  // HQ-only: clips staged in videos/mp4-hq-720p/, nothing in videos/mp4/.
+  fs.mkdirSync(path.join(pkg, "videos", "mp4-hq-720p"), { recursive: true });
+  fs.writeFileSync(path.join(pkg, "videos", "mp4-hq-720p", "002.mp4"), "VID");
+  fs.writeFileSync(path.join(pkg, "videos", "mp4-hq-720p", "009.mp4"), "VID");
+  const index = buildPackageMediaIndex(pkg);
+  assert.equal(index.counts.videos_local, 2, "HQ-only package must not report zero local videos");
+  const clip = index.videos.find((m) => m.path.endsWith("002.mp4"));
+  assert.equal(clip.variant, "wan22-local");
+  assert.equal(clip.video_variant, "mp4-hq-720p");
+  assert.match(clip.path, /^videos\/mp4-hq-720p\//);
+  assert.equal(clip.prompt_index, 2);
+});
+
 // ── Backward compatibility ──────────────────────────────────────────────────
 
 test("buildPackageMediaIndex loads a legacy package with only flux manifest (no external sidecar)", () => {

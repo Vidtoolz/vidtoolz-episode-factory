@@ -55,7 +55,8 @@ function createPackage(opts = {}) {
   }
   // Write a clip file per index, except any in opts.omit. The first one is a real
   // spec clip (if ffmpeg is available) so ffprobe validation can be asserted.
-  const mp4Dir = path.join(pkg, "videos", "mp4");
+  // opts.videoVariant stages clips in videos/<variant>/ (default legacy mp4).
+  const mp4Dir = path.join(pkg, "videos", opts.videoVariant || "mp4");
   fs.mkdirSync(mp4Dir, { recursive: true });
   indices.forEach((idx, i) => {
     if ((opts.omit || []).includes(idx)) return;
@@ -107,6 +108,28 @@ test("pvr: buildValidation flags off-spec clips and missing files", () => {
 test("pvr: mp4RelPath zero-pads prompt_index", () => {
   assert.equal(pvr.mp4RelPath(2), "videos/mp4/002.mp4");
   assert.equal(pvr.mp4RelPath(25), "videos/mp4/025.mp4");
+});
+
+test("pvr: mp4RelPath accepts a video variant folder", () => {
+  assert.equal(pvr.mp4RelPath(2, "mp4-hq-720p"), "videos/mp4-hq-720p/002.mp4");
+  assert.equal(pvr.mp4RelPath(25, "mp4"), "videos/mp4/025.mp4");
+});
+
+test("pvr: expectedForVariant returns the HQ contract for mp4-hq-720p", () => {
+  assert.deepEqual(pvr.expectedForVariant("mp4"), pvr.EXPECTED);
+  const hq = pvr.expectedForVariant("mp4-hq-720p");
+  assert.deepEqual(hq, { width: 720, height: 1280, fps: 25, frames: 101, duration: 4.04 });
+  // Unknown variants fall back to the legacy fast contract.
+  assert.deepEqual(pvr.expectedForVariant("nonexistent"), pvr.EXPECTED);
+});
+
+test("pvr: buildValidation validates against a variant-specific expected spec", () => {
+  const hq = pvr.expectedForVariant("mp4-hq-720p");
+  const ok = pvr.buildValidation({ width: 720, height: 1280, fps: 25, frames: 101, duration: 4.04 }, hq);
+  assert.equal(ok.warnings.length, 0, `HQ-spec clip must not warn: ${ok.warnings.join(" | ")}`);
+  // The same probe against the default (fast) spec warns on every axis.
+  const wrongSpec = pvr.buildValidation({ width: 720, height: 1280, fps: 25, frames: 101, duration: 4.04 });
+  assert.ok(wrongSpec.warnings.length >= 3, "HQ clip vs fast spec should warn");
 });
 
 test("pvr: normalizeReviewSave validates decisions and prompt_index", () => {
@@ -175,6 +198,41 @@ test("video-review GET: real spec clip validates 1080x1920/30/81 (ffmpeg)", asyn
       assert.equal(Math.round(c0.validation.fps), 30);
       assert.equal(c0.validation.frames, 81);
       assert.equal(c0.validation.warnings.length, 0);
+    });
+  } finally { await close(server); fs.rmSync(fx.root, { recursive: true, force: true }); }
+});
+
+test("video-review GET: HQ-only package auto-detects mp4-hq-720p and uses the HQ spec", async () => {
+  const fx = createPackage({ indices: [2, 9, 10], videoVariant: "mp4-hq-720p", realFirst: false });
+  const server = packageEngineServer.createServer();
+  try {
+    await withEnv(fx, async () => {
+      await listen(server);
+      const res = await requestJson(server, `${packageEngineServer.PROJECT_VIDEO_REVIEW_API}?id=${fx.packageId}`);
+      assert.equal(res.statusCode, 200);
+      const d = res.body.data;
+      assert.equal(d.video_variant, "mp4-hq-720p");
+      assert.deepEqual(d.expected, { width: 720, height: 1280, fps: 25, frames: 101, duration: 4.04 });
+      assert.equal(d.clips.length, 3);
+      // Every clip path must resolve inside the HQ variant folder, never videos/mp4/.
+      for (const clip of d.clips) {
+        assert.match(clip.mp4_path, /^videos\/mp4-hq-720p\//);
+      }
+    });
+  } finally { await close(server); fs.rmSync(fx.root, { recursive: true, force: true }); }
+});
+
+test("video-review GET: explicit ?variant= overrides detection and rejects traversal", async () => {
+  const fx = createPackage({ indices: [2], realFirst: false }); // clips staged in legacy mp4
+  const server = packageEngineServer.createServer();
+  try {
+    await withEnv(fx, async () => {
+      await listen(server);
+      const forced = await requestJson(server, `${packageEngineServer.PROJECT_VIDEO_REVIEW_API}?id=${fx.packageId}&variant=mp4-hq-720p`);
+      assert.equal(forced.body.data.video_variant, "mp4-hq-720p");
+      assert.equal(forced.body.data.clips[0].validation.exists, false); // nothing staged there
+      const bad = await requestJson(server, `${packageEngineServer.PROJECT_VIDEO_REVIEW_API}?id=${fx.packageId}&variant=${encodeURIComponent("../../etc")}`);
+      assert.equal(bad.statusCode, 400);
     });
   } finally { await close(server); fs.rmSync(fx.root, { recursive: true, force: true }); }
 });

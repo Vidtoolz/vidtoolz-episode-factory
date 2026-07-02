@@ -5120,14 +5120,21 @@ function readProjectVideoReview(packageId, options = {}) {
   const { packageId: id, packageDir } = resolveAigenPackageDir(packageId, opt);
   const state = resolveProjectState(packageDir);
   const selections = readProjectSelections(packageDir);
+  // Review the variant folder that actually holds this project's clips (an
+  // HQ-only project reviews videos/mp4-hq-720p/), validated against that
+  // variant's spec. An explicit options.videoVariant overrides detection.
+  const videoVariant = options.videoVariant
+    ? assertValidVideoVariant(options.videoVariant)
+    : packageBestStagedWanStatus(packageDir).videoVariant;
+  const expected = projectVideoReview.expectedForVariant(videoVariant);
   const vpByIndex = new Map(readProjectVideoPromptsRaw(packageDir).map((p) => [Number(p.prompt_index), p]));
   const reviewByIndex = new Map(readProjectVideoReviewFile(packageDir).map((r) => [Number(r.prompt_index), r]));
 
   const clips = selections.map((s, i) => {
     const promptIndex = Number.isInteger(Number(s.prompt_index)) ? Number(s.prompt_index) : (i + 1);
-    const mp4Rel = projectVideoReview.mp4RelPath(promptIndex);
+    const mp4Rel = projectVideoReview.mp4RelPath(promptIndex, videoVariant);
     const mp4Abs = path.join(packageDir, mp4Rel);
-    const validation = projectVideoReview.buildValidation(fs.existsSync(mp4Abs) ? probeVideo(mp4Abs) : null);
+    const validation = projectVideoReview.buildValidation(fs.existsSync(mp4Abs) ? probeVideo(mp4Abs) : null, expected);
     const srcRel = String(s.selected_path || s.path || '');
     const vp = vpByIndex.get(promptIndex) || null;
     const rev = reviewByIndex.get(promptIndex) || null;
@@ -5152,7 +5159,8 @@ function readProjectVideoReview(packageId, options = {}) {
   return {
     ok: true,
     project: { id, title: state.title, stage: state.stage, status: state.status },
-    expected: projectVideoReview.EXPECTED,
+    video_variant: videoVariant,
+    expected,
     clips,
     counts,
     usability: projectVideoReview.usability(counts),
@@ -5504,6 +5512,31 @@ function packageStagedWanStatus(packageDir, variant = DEFAULT_VIDEO_VARIANT) {
   };
 }
 
+// Enumerate videos/<variant>/ folders that contain at least one staged NNN.mp4.
+function listPackageVideoVariants(packageDir) {
+  const videosRoot = path.join(packageDir, 'videos');
+  return safeDirEntries(videosRoot)
+    .filter((entry) => entry.isDirectory() && VIDEO_VARIANT_PATTERN.test(entry.name))
+    .filter((entry) => safeDirEntries(path.join(videosRoot, entry.name))
+      .some((file) => file.isFile() && /^\d{3}\.mp4$/i.test(file.name)))
+    .map((entry) => entry.name);
+}
+
+// Variant-aware staged status: check every populated videos/* folder and report
+// the one covering the most selections. Ties prefer the legacy mp4 folder so
+// existing fast-lane packages keep their exact previous behavior; an HQ-only
+// package (the default profile renders to videos/mp4-hq-720p/) is no longer
+// reported as "nothing staged".
+function packageBestStagedWanStatus(packageDir) {
+  let best = packageStagedWanStatus(packageDir);
+  for (const variant of listPackageVideoVariants(packageDir)) {
+    if (variant === DEFAULT_VIDEO_VARIANT) continue;
+    const status = packageStagedWanStatus(packageDir, variant);
+    if (status.completedCount > best.completedCount) best = status;
+  }
+  return best;
+}
+
 function loadWanRunSummaries(runsDir) {
   return safeDirEntries(runsDir)
     .filter((entry) => entry.isDirectory())
@@ -5543,9 +5576,10 @@ function buildPackagePipelineStatus(packageDir, wanLabels) {
   const videoPrompts = safeReadJson(path.join(packageDir, 'video-prompts.json'), null);
   const videoPromptsCount = videoPrompts && Array.isArray(videoPrompts.prompts) ? videoPrompts.prompts.length : 0;
   // Wan completion is package-scoped: a selection is complete only when its
-  // package-facing staged MP4 (videos/mp4/<index>.mp4) exists. Global Wan lane
-  // labels are not package-unique, so they must not drive per-package counts.
-  const staged = packageStagedWanStatus(packageDir);
+  // package-facing staged MP4 (videos/<variant>/<index>.mp4) exists. Global Wan
+  // lane labels are not package-unique, so they must not drive per-package
+  // counts. Variant-aware: an HQ-only package counts via videos/mp4-hq-720p/.
+  const staged = packageBestStagedWanStatus(packageDir);
   const completed = staged.completedCount;
   // A staged (completed) selection can never be "failed". Among the not-yet-staged
   // selections, surface a failure only when the Wan lane records that label as failed.
@@ -5586,6 +5620,7 @@ function buildPackagePipelineStatus(packageDir, wanLabels) {
     wan_completed: completed,
     wan_pending: pending,
     wan_failed: failed,
+    video_variant: staged.videoVariant,
     resolve_handoff_ready: resolveHandoffCount === RESOLVE_HANDOFF_FILES.length,
     resolve_handoff_count: resolveHandoffCount,
     wan_next_action: wanNextAction,
@@ -6488,6 +6523,12 @@ async function prestoComfyuiReachable(comfyuiUrl, options = {}) {
 // (no LightX2V, cfg4, 720x1280, 4s+) proven to remove hallucinated people.
 const PRESTO_PROFILES = ['fast_current', 'wan22_hq_720p_5s_no_lightx2v'];
 const DEFAULT_PRESTO_PROFILE = 'wan22_hq_720p_5s_no_lightx2v';
+// Staging folder per profile (mirror of output_subdir in the AIGEN
+// image-to-video/profiles.json — keep in sync when adding a profile).
+const PRESTO_PROFILE_OUTPUT_SUBDIRS = {
+  fast_current: 'mp4',
+  wan22_hq_720p_5s_no_lightx2v: 'mp4-hq-720p',
+};
 
 function normalizePrestoProfile(value) {
   const v = String(value || '').trim();
@@ -6630,7 +6671,17 @@ function readPrestoResults(packageId, options = {}) {
   // package MP4 exists. The global Wan lane history is kept under lane_* fields
   // so callers can still inspect it, but it must not be reported as this
   // package's completions (labels like flux-001 collide across packages).
-  const staged = packageStagedWanStatus(packageDir);
+  // Variant-aware: when the last submitted PRESTO job for THIS package has a
+  // known profile, report against that profile's staging folder (an HQ batch
+  // must not be judged by the legacy videos/mp4/); otherwise use the variant
+  // folder with the best coverage.
+  const activeJob = PRESTO_STATE.activeJob;
+  const jobSubdir = activeJob && activeJob.packageId === id
+    ? PRESTO_PROFILE_OUTPUT_SUBDIRS[activeJob.profile]
+    : null;
+  const staged = jobSubdir
+    ? packageStagedWanStatus(packageDir, jobSubdir)
+    : packageBestStagedWanStatus(packageDir);
   const completed = staged.completedLabels;
   const laneCompleted = parseJsonLines(path.join(paths.wanLane, 'completed.txt'))
     .map((item) => String(item.label || item.raw || '').trim())
@@ -6673,6 +6724,7 @@ function readPrestoResults(packageId, options = {}) {
   return {
     ok: true,
     package_id: id,
+    video_variant: staged.videoVariant,
     completed,
     completed_count: completed.length,
     pending_count: staged.pendingCount,
@@ -9251,7 +9303,10 @@ function createServer(options = {}) {
     if (req.method === 'GET' && url.pathname === PROJECT_VIDEO_REVIEW_API) {
       try {
         const id = url.searchParams.get('id') || url.searchParams.get('package_id') || url.searchParams.get('package') || '';
-        sendJSON(res, 200, readProjectVideoReview(id, { root: serverOptions.root || ROOT }));
+        sendJSON(res, 200, readProjectVideoReview(id, {
+          root: serverOptions.root || ROOT,
+          videoVariant: url.searchParams.get('variant') || undefined,
+        }));
       } catch (error) {
         sendError(res, error.statusCode || 500, error.message, 'project-video-review-read-error');
       }
@@ -10456,8 +10511,11 @@ module.exports = {
   AIGEN_RESOLVE_ASSEMBLY_API,
   runResolveAssemblyCreate,
   packageStagedWanStatus,
+  packageBestStagedWanStatus,
+  listPackageVideoVariants,
   assertValidVideoVariant,
   DEFAULT_VIDEO_VARIANT,
+  PRESTO_PROFILE_OUTPUT_SUBDIRS,
   AIGEN_SELECTED_IMAGES_API,
   AIGEN_STATUS_API,
   FLUX_CANCEL_API,
