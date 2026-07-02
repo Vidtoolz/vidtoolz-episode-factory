@@ -12,7 +12,7 @@
       "url": "http://127.0.0.1:8010",
       "role": "Operator cockpit and package-run engine (HTTP server, no framework). Serves all cockpit pages and package-run APIs.",
       "start": "node package-engine-server.js  (PORT/HOST env-overridable)",
-      "health_check": "GET http://127.0.0.1:8010/api/status",
+      "health_check": "GET http://127.0.0.1:8010/api/package-engine/status",
       "source": "package-engine-server.js:27-28"
     },
     {
