@@ -86,7 +86,9 @@ function collectLocalVideos(packageDir) {
       continue;
     }
     for (const entry of entries) {
-      if (!entry.isFile() || !provenance.isVideoFile(entry.name)) continue;
+      // Symlinked clips count too — Dirent.isFile() is false for symlinks,
+      // but a symlinked NNN.mp4 is a staged clip on NAS pipelines.
+      if ((!entry.isFile() && !entry.isSymbolicLink()) || !provenance.isVideoFile(entry.name)) continue;
       const rel = path.join('videos', variantDir.name, entry.name);
       out.push({
         media_type: 'video',

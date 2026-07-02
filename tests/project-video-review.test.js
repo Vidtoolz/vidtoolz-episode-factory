@@ -222,6 +222,79 @@ test("video-review GET: HQ-only package auto-detects mp4-hq-720p and uses the HQ
   } finally { await close(server); fs.rmSync(fx.root, { recursive: true, force: true }); }
 });
 
+test("video-review GET: symlinked clips count as staged (variant detection + counts)", async () => {
+  // NAS pipelines may stage clips as symlinks; Dirent.isFile() is false for
+  // symlinks, so a naive gate would report an HQ-only symlinked package as
+  // "nothing staged" everywhere.
+  const fx = createPackage({ indices: [2, 9], realFirst: false });
+  fs.rmSync(path.join(fx.pkg, "videos", "mp4"), { recursive: true, force: true }); // HQ-only
+  const realDir = path.join(fx.pkg, "clip-masters");
+  const hqDir = path.join(fx.pkg, "videos", "mp4-hq-720p");
+  fs.mkdirSync(realDir, { recursive: true });
+  fs.mkdirSync(hqDir, { recursive: true });
+  for (const idx of [2, 9]) {
+    const target = path.join(realDir, `${pvr.zeroPad3(idx)}.mp4`);
+    fs.writeFileSync(target, "placeholder");
+    fs.symlinkSync(target, path.join(hqDir, `${pvr.zeroPad3(idx)}.mp4`));
+  }
+  const server = packageEngineServer.createServer();
+  try {
+    await withEnv(fx, async () => {
+      await listen(server);
+      const res = await requestJson(server, `${packageEngineServer.PROJECT_VIDEO_REVIEW_API}?id=${fx.packageId}`);
+      assert.equal(res.body.data.video_variant, "mp4-hq-720p");
+      const best = packageEngineServer.packageBestStagedWanStatus(fx.pkg);
+      assert.equal(best.videoVariant, "mp4-hq-720p");
+      assert.equal(best.completedCount, 2, "symlinked clips must count as staged");
+    });
+  } finally { await close(server); fs.rmSync(fx.root, { recursive: true, force: true }); }
+});
+
+test("video-review GET: coverage tie defers to the handoff's recorded variant (delivery lane)", async () => {
+  // Both lanes fully staged (10/10 tie) — without a handoff the tie-break
+  // prefers legacy mp4, but an HQ handoff means HQ is the delivery lane and
+  // the review must show THOSE clips.
+  const fx = createPackage({ indices: [2, 9], realFirst: false }); // stages videos/mp4/
+  const hqDir = path.join(fx.pkg, "videos", "mp4-hq-720p");
+  fs.mkdirSync(hqDir, { recursive: true });
+  for (const idx of [2, 9]) fs.writeFileSync(path.join(hqDir, `${pvr.zeroPad3(idx)}.mp4`), "placeholder");
+  fs.mkdirSync(path.join(fx.pkg, "resolve-handoff"), { recursive: true });
+  fs.writeFileSync(
+    path.join(fx.pkg, "resolve-handoff", "media-manifest.json"),
+    JSON.stringify({ video_variant: "mp4-hq-720p", clips: [] })
+  );
+  const server = packageEngineServer.createServer();
+  try {
+    await withEnv(fx, async () => {
+      await listen(server);
+      const res = await requestJson(server, `${packageEngineServer.PROJECT_VIDEO_REVIEW_API}?id=${fx.packageId}`);
+      assert.equal(res.body.data.video_variant, "mp4-hq-720p");
+      assert.match(res.body.data.clips[0].mp4_path, /^videos\/mp4-hq-720p\//);
+    });
+  } finally { await close(server); fs.rmSync(fx.root, { recursive: true, force: true }); }
+});
+
+test("video-review GET: handoff variant never wins with LESS coverage than the best lane", async () => {
+  // Handoff records HQ but the HQ folder has fewer clips than mp4 → keep mp4.
+  const fx = createPackage({ indices: [2, 9], realFirst: false });
+  const hqDir = path.join(fx.pkg, "videos", "mp4-hq-720p");
+  fs.mkdirSync(hqDir, { recursive: true });
+  fs.writeFileSync(path.join(hqDir, "002.mp4"), "placeholder"); // only 1 of 2
+  fs.mkdirSync(path.join(fx.pkg, "resolve-handoff"), { recursive: true });
+  fs.writeFileSync(
+    path.join(fx.pkg, "resolve-handoff", "media-manifest.json"),
+    JSON.stringify({ video_variant: "mp4-hq-720p", clips: [] })
+  );
+  const server = packageEngineServer.createServer();
+  try {
+    await withEnv(fx, async () => {
+      await listen(server);
+      const res = await requestJson(server, `${packageEngineServer.PROJECT_VIDEO_REVIEW_API}?id=${fx.packageId}`);
+      assert.equal(res.body.data.video_variant, "mp4");
+    });
+  } finally { await close(server); fs.rmSync(fx.root, { recursive: true, force: true }); }
+});
+
 test("video-review GET: explicit ?variant= overrides detection and rejects traversal", async () => {
   const fx = createPackage({ indices: [2], realFirst: false }); // clips staged in legacy mp4
   const server = packageEngineServer.createServer();

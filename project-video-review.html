@@ -185,7 +185,11 @@
       if (!projectId) { setText("title", "Project Video Review"); setText("meta", "Missing ?id=<project-id> query parameter."); return; }
       let data;
       try {
-        const r = await fetch(`${READ_API}?id=${encodeURIComponent(projectId)}`, { cache: "no-store" });
+        // Optional ?variant= forwards to the API (videos/<variant>/ lane); the
+        // server otherwise defaults to the handoff's delivery lane.
+        const variantParam = new URLSearchParams(location.search).get("variant");
+        const query = `?id=${encodeURIComponent(projectId)}` + (variantParam ? `&variant=${encodeURIComponent(variantParam)}` : "");
+        const r = await fetch(`${READ_API}${query}`, { cache: "no-store" });
         const body = await r.json();
         if (!r.ok || (body && body.ok === false)) throw new Error((body && body.error) || ("HTTP " + r.status));
         data = normalizePayload(body);
@@ -195,7 +199,11 @@
       }
       const p = data.project || {};
       setText("title", `Video Review — ${p.title || projectId}`);
-      setText("meta", `${p.id} · stage ${p.stage} · status ${p.status} · ${data.counts.clips} clip(s)`);
+      const ex = data.expected || {};
+      const lane = data.video_variant
+        ? ` · lane videos/${data.video_variant}/ (${ex.width || "?"}x${ex.height || "?"} @ ${ex.fps || "?"}fps)`
+        : "";
+      setText("meta", `${p.id} · stage ${p.stage} · status ${p.status} · ${data.counts.clips} clip(s)${lane}`);
       clips = (data.clips || []).map((c) => Object.assign({}, c, { review: Object.assign({ decision: "unreviewed", notes: "" }, c.review || {}) }));
       setHtml("handoff-note", data.handoff_consumes_review
         ? "Rejected clips will be excluded from the Resolve handoff."

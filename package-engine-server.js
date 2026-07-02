@@ -5461,15 +5461,15 @@ function normalizeExcludeIndexes(value) {
   for (const entry of list) {
     const token = String(entry).trim();
     if (!token) continue;
-    const n = Number(token);
-    if (!Number.isInteger(n)) {
-      // A typo like "2l" must fail loudly, not silently exclude nothing
-      // (matches the NAS assembler, which raises on invalid tokens).
+    // Plain decimal digits only: rejects typos ("2l"), floats ("2.5"), and
+    // Number() coercions that silently mean something else than typed
+    // ("0x1F"→31, "1e2"→100, negatives). Matches the NAS assembler.
+    if (!/^\d+$/.test(token)) {
       const error = new Error(`Invalid exclude index: ${token}`);
       error.statusCode = 400;
       throw error;
     }
-    result.push(n);
+    result.push(Number(token));
   }
   return result;
 }
@@ -5481,14 +5481,40 @@ function stagedMp4RelPath(promptIndex, variant = DEFAULT_VIDEO_VARIANT) {
   return path.posix.join('videos', variant, `${String(promptIndex).padStart(3, '0')}.mp4`);
 }
 
-function packageStagedWanStatus(packageDir, variant = DEFAULT_VIDEO_VARIANT) {
-  const videoVariant = assertValidVideoVariant(variant);
+// A staged clip filename: NNN.mp4 (3+ digits — stagedMp4RelPath pads to 3 but a
+// 4-digit prompt index produces 4 digits). Case-sensitive on purpose: the
+// existence check hits a case-sensitive Linux fs, so accepting `.MP4` here
+// would list a variant folder whose clips then never count.
+const STAGED_CLIP_NAME = /^\d{3,}\.mp4$/;
+
+// Read a package's selected-images.json selections (shared by the per-variant
+// status calls so a multi-variant scan reads the file once, not once per lane —
+// packages live on a CIFS mount where every read is a network round-trip).
+function readPackageSelections(packageDir) {
   const selected = safeReadJson(path.join(packageDir, 'selected-images.json'), null);
-  const selections = selected && Array.isArray(selected.selections) ? selected.selections : [];
+  return selected && Array.isArray(selected.selections) ? selected.selections : [];
+}
+
+// One readdir of videos/<variant>/ → Set of staged clip filenames. Includes
+// symlinked clips (Dirent.isFile() is false for symlinks, but a symlinked
+// NNN.mp4 is a staged clip — NAS pipelines stage via symlink too).
+function readVariantClipSet(packageDir, variant) {
+  const entries = safeDirEntries(path.join(packageDir, 'videos', variant));
+  return new Set(
+    entries
+      .filter((entry) => (entry.isFile() || entry.isSymbolicLink()) && STAGED_CLIP_NAME.test(entry.name))
+      .map((entry) => entry.name)
+  );
+}
+
+function packageStagedWanStatus(packageDir, variant = DEFAULT_VIDEO_VARIANT, options = {}) {
+  const videoVariant = assertValidVideoVariant(variant);
+  const selections = options.selections || readPackageSelections(packageDir);
+  const clipSet = options.clipSet || readVariantClipSet(packageDir, videoVariant);
   const items = selections.map((selection) => {
     const promptIndex = selectionPromptIndex(selection);
     const mp4Rel = promptIndex == null ? null : stagedMp4RelPath(promptIndex, videoVariant);
-    const mp4Exists = Boolean(mp4Rel && fs.existsSync(path.join(packageDir, mp4Rel)));
+    const mp4Exists = Boolean(mp4Rel && clipSet.has(`${String(promptIndex).padStart(3, '0')}.mp4`));
     return {
       prompt_index: promptIndex,
       label: labelFromSelectedPath(selection.selected_path)
@@ -5512,27 +5538,60 @@ function packageStagedWanStatus(packageDir, variant = DEFAULT_VIDEO_VARIANT) {
   };
 }
 
-// Enumerate videos/<variant>/ folders that contain at least one staged NNN.mp4.
-function listPackageVideoVariants(packageDir) {
+// Enumerate videos/<variant>/ folders that contain at least one staged NNN.mp4
+// (regular file or symlink), with the clip Set captured so callers can count
+// without re-listing the folder.
+function listPackageVideoVariantEntries(packageDir) {
   const videosRoot = path.join(packageDir, 'videos');
   return safeDirEntries(videosRoot)
     .filter((entry) => entry.isDirectory() && VIDEO_VARIANT_PATTERN.test(entry.name))
-    .filter((entry) => safeDirEntries(path.join(videosRoot, entry.name))
-      .some((file) => file.isFile() && /^\d{3}\.mp4$/i.test(file.name)))
-    .map((entry) => entry.name);
+    .map((entry) => ({ name: entry.name, clipSet: readVariantClipSet(packageDir, entry.name) }))
+    .filter((variant) => variant.clipSet.size > 0);
+}
+
+function listPackageVideoVariants(packageDir) {
+  return listPackageVideoVariantEntries(packageDir).map((variant) => variant.name);
+}
+
+// Which clip lane the existing Resolve handoff was built from (recorded in
+// media-manifest.json by the variant-aware assembler; null for legacy manifests).
+function packageHandoffVideoVariant(packageDir) {
+  const manifest = safeReadJson(path.join(packageDir, 'resolve-handoff', 'media-manifest.json'), null);
+  const variant = manifest && manifest.video_variant ? String(manifest.video_variant) : null;
+  return variant && VIDEO_VARIANT_PATTERN.test(variant) ? variant : null;
 }
 
 // Variant-aware staged status: check every populated videos/* folder and report
 // the one covering the most selections. Ties prefer the legacy mp4 folder so
 // existing fast-lane packages keep their exact previous behavior; an HQ-only
 // package (the default profile renders to videos/mp4-hq-720p/) is no longer
-// reported as "nothing staged".
+// reported as "nothing staged". Delivery-lane override: when a Resolve handoff
+// exists and its recorded variant covers at least as many selections, report
+// THAT lane — review and dashboards should describe what is actually being
+// delivered, not the coverage tie-break (a package with 10 fast + 10 HQ clips
+// and an HQ handoff must review the HQ clips).
 function packageBestStagedWanStatus(packageDir) {
-  let best = packageStagedWanStatus(packageDir);
-  for (const variant of listPackageVideoVariants(packageDir)) {
-    if (variant === DEFAULT_VIDEO_VARIANT) continue;
-    const status = packageStagedWanStatus(packageDir, variant);
+  // One selections read + one readdir per variant folder for the whole scan
+  // (this runs per package on every status poll, over CIFS).
+  const selections = readPackageSelections(packageDir);
+  const variantEntries = listPackageVideoVariantEntries(packageDir);
+  const statusFor = (variant) => {
+    const entry = variantEntries.find((v) => v.name === variant);
+    return packageStagedWanStatus(packageDir, variant, {
+      selections,
+      clipSet: entry ? entry.clipSet : new Set(),
+    });
+  };
+  let best = statusFor(DEFAULT_VIDEO_VARIANT);
+  for (const entry of variantEntries) {
+    if (entry.name === DEFAULT_VIDEO_VARIANT) continue;
+    const status = statusFor(entry.name);
     if (status.completedCount > best.completedCount) best = status;
+  }
+  const handoffVariant = packageHandoffVideoVariant(packageDir);
+  if (handoffVariant && handoffVariant !== best.videoVariant) {
+    const handoffStatus = statusFor(handoffVariant);
+    if (handoffStatus.completedCount >= best.completedCount) best = handoffStatus;
   }
   return best;
 }
@@ -5571,13 +5630,10 @@ function buildPackagePipelineStatus(packageDir, wanLabels) {
   const fluxManifestPath = path.join(packageDir, 'flux-generation-manifest.json');
   const resolveHandoffDir = path.join(packageDir, 'resolve-handoff');
   const resolveHandoffCount = RESOLVE_HANDOFF_FILES.filter((filename) => fs.existsSync(path.join(resolveHandoffDir, filename))).length;
-  // Which clip lane the existing handoff was actually built from (recorded in
-  // media-manifest.json since the variant work) — lets the dashboard distinguish
-  // an HQ handoff from a legacy fast one instead of treating them as identical.
-  const handoffManifest = safeReadJson(path.join(resolveHandoffDir, 'media-manifest.json'), null);
-  const handoffVideoVariant = handoffManifest && handoffManifest.video_variant
-    ? String(handoffManifest.video_variant)
-    : null;
+  // Which clip lane the existing handoff was actually built from — lets the
+  // dashboard distinguish an HQ handoff from a legacy fast one instead of
+  // treating them as identical.
+  const handoffVideoVariant = packageHandoffVideoVariant(packageDir);
   const promptItems = imagePrompts && Array.isArray(imagePrompts.image_prompts) ? imagePrompts.image_prompts : [];
   const selections = selected && Array.isArray(selected.selections) ? selected.selections : [];
   const videoPrompts = safeReadJson(path.join(packageDir, 'video-prompts.json'), null);
@@ -5814,8 +5870,11 @@ function resolveAigenPackageDir(packageId, options = {}) {
 function stampManifestVariant(packageDir, info) {
   const manifestPath = path.join(packageDir, 'resolve-handoff', 'media-manifest.json');
   if (!fs.existsSync(manifestPath)) return false;
-  let manifest = safeReadJson(manifestPath, null);
-  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) manifest = {};
+  const manifest = safeReadJson(manifestPath, null);
+  // A manifest we cannot parse as an object is NOT ours to rewrite — stamping
+  // over it would replace the assembler's real manifest with a 5-field stub.
+  // Leave it alone and report not-stamped.
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) return false;
   manifest.video_variant = info.video_variant;
   manifest.video_source_folder = info.video_source_folder;
   manifest.included_indexes = info.included_indexes;
@@ -6678,12 +6737,15 @@ function readPrestoResults(packageId, options = {}) {
   // package MP4 exists. The global Wan lane history is kept under lane_* fields
   // so callers can still inspect it, but it must not be reported as this
   // package's completions (labels like flux-001 collide across packages).
-  // Variant-aware: when the last submitted PRESTO job for THIS package has a
-  // known profile, report against that profile's staging folder (an HQ batch
-  // must not be judged by the legacy videos/mp4/); otherwise use the variant
-  // folder with the best coverage.
+  // Variant-aware: while a PRESTO job for THIS package is genuinely running,
+  // report against that job's staging folder (an in-flight HQ batch must not
+  // be judged by the legacy videos/mp4/). A finished/stale job must NOT pin
+  // the lane — after completion the best-coverage/handoff logic decides, so
+  // this endpoint can never disagree with the status dashboard about a
+  // completed package.
+  const jobActive = currentPrestoJobStatus().active;
   const activeJob = PRESTO_STATE.activeJob;
-  const jobSubdir = activeJob && activeJob.packageId === id
+  const jobSubdir = jobActive && activeJob && activeJob.packageId === id
     ? PRESTO_PROFILE_OUTPUT_SUBDIRS[activeJob.profile]
     : null;
   const staged = jobSubdir
@@ -10578,6 +10640,7 @@ module.exports = {
   runResolveAssemblyCreate,
   packageStagedWanStatus,
   packageBestStagedWanStatus,
+  packageHandoffVideoVariant,
   listPackageVideoVariants,
   assertValidVideoVariant,
   DEFAULT_VIDEO_VARIANT,
