@@ -178,6 +178,31 @@ Fill the Delivery Readiness form, submit. Writes delivery-readiness.md.
 
 ---
 
+## BEFORE EDITING: PROJECT MEDIA KIT
+
+Open `project-media-kit.html?id=<project-id>` (linked as "Media kit" from the
+project workspace, the Resolve handoff page, video review, and focus mode once
+the project reaches the handoff).
+
+One project-scoped page with everything the video has before the edit:
+
+- YouTube draft: temporary title, description, and thumbnail candidate
+  (editable, saved to `youtube-draft.json` in the package — nothing publishes).
+- Final script, image prompts, all generated stills (selected ones marked),
+  I2V prompts, and generated clips per lane (handoff lane first).
+- Resolve handoff status: lane, included/excluded indexes, artifact paths.
+- Copy buttons on every prompt, path, and section — including "KlingAI bundle"
+  (image path + I2V prompt) and "full media kit as Markdown" for manual use in
+  external tools (GPT image generation, KlingAI). Copy-only; nothing external
+  is automated.
+- VIDNAS folder paths in Linux, Windows drive-letter (default `X:`, override
+  with `VIDTOOLZ_VIDNAS_WINDOWS_ROOT`), and always-valid UNC form. Browsers
+  block `file://` folder links — paste a copied path into your file manager.
+
+Use it as the final overview before opening Resolve.
+
+---
+
 ## PUBLISH
 
 1. Open http://127.0.0.1:8010/publish-gate.html

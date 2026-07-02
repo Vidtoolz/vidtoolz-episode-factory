@@ -94,6 +94,9 @@ const PROJECT_I2V_PROMPTS_GENERATE_API = '/api/project/i2v-prompts/generate';
 const PROJECT_I2V_PROMPTS_SAVE_API = '/api/project/i2v-prompts/save';
 const PROJECT_VIDEO_REVIEW_API = '/api/project/video-review';
 const PROJECT_VIDEO_VARIANTS_API = '/api/project/video-variants';
+const PROJECT_MEDIA_KIT_API = '/api/project/media-kit';
+const PROJECT_YOUTUBE_DRAFT_API = '/api/project/youtube-draft';
+const PROJECT_YOUTUBE_DRAFT_SAVE_API = '/api/project/youtube-draft/save';
 const PROJECT_VIDEO_REVIEW_SAVE_API = '/api/project/video-review/save';
 const PROJECT_ALLOWED_STATUSES = ['active', 'parked', 'blocked', 'editing', 'publish_prep', 'published', 'archived'];
 const AIGEN_FLUX_IMAGES_API_PREFIX = '/api/aigen/flux-images/';
@@ -5207,6 +5210,284 @@ function readProjectVideoVariants(packageId, options = {}) {
   };
 }
 
+// ── Project media kit (pre-edit asset board) ────────────────────────────────
+// Windows-side VIDNAS paths for the media kit. The UNC form is always valid on
+// any Windows box regardless of drive mappings; the drive-letter form is
+// convenience and env-configurable (no mapping for the Public share is
+// documented anywhere, so X: is an assumption the operator can override).
+const VIDNAS_WINDOWS_ROOT = process.env.VIDTOOLZ_VIDNAS_WINDOWS_ROOT || 'X:\\VIDTOOLZ\\03_SHARED_MEDIA_LIBRARY\\aigen';
+const VIDNAS_UNC_ROOT = '\\\\192.168.61.186\\Public\\VIDTOOLZ\\03_SHARED_MEDIA_LIBRARY\\aigen';
+
+function windowsPathsFor(relFromAigen) {
+  const backslashed = String(relFromAigen).split('/').filter(Boolean).join('\\');
+  return {
+    windows_path: `${VIDNAS_WINDOWS_ROOT}\\${backslashed}`,
+    windows_unc_path: `${VIDNAS_UNC_ROOT}\\${backslashed}`,
+  };
+}
+
+function mediaKitFolder(id, packageDir, label, rel) {
+  const relFromAigen = rel ? `script-packages/${id}/${rel}` : `script-packages/${id}`;
+  return {
+    label,
+    relative_path: rel || '.',
+    linux_path: rel ? path.join(packageDir, rel) : packageDir,
+    ...windowsPathsFor(relFromAigen),
+    url_prefix: rel ? assetUrl(id, rel) : `${AIGEN_ASSETS_PREFIX}script-packages/${encodeURIComponent(id)}/`,
+  };
+}
+
+// The prompt index encoded in a flux image filename. Unlike
+// promptIndexFromName (last digit group), this reads the flux-NNN prefix so
+// regenerated variants like flux-021-v2.png map to 21, not 2.
+function fluxPromptIndex(name) {
+  const m = String(name || '').match(/^flux-(\d{1,4})/i);
+  return m ? Number(m[1]) : null;
+}
+
+function readProjectYoutubeDraft(packageId, options = {}) {
+  const opt = { root: options.root || ROOT };
+  const { packageId: id, packageDir } = resolveAigenPackageDir(packageId, opt);
+  const draft = safeReadJson(path.join(packageDir, 'youtube-draft.json'), null);
+  const state = resolveProjectState(packageDir);
+  const premise = state.provenance && state.provenance.premise ? String(state.provenance.premise) : '';
+  const selections = readPackageSelections(packageDir);
+  const firstSelected = selections.length ? String(selections[0].selected_path || selections[0].path || '') : '';
+
+  const tempTitle = draft && draft.temp_title ? String(draft.temp_title) : state.title;
+  const tempDescription = draft && draft.temp_description
+    ? String(draft.temp_description)
+    : (premise ? `A short video about ${premise}` : '');
+
+  // Thumbnail: explicit draft choice wins; else propose the first selected
+  // image as a candidate; else none. Never generated here.
+  let thumbnail = { exists: false, path: '', url: '', source: 'none' };
+  const draftThumb = draft && draft.thumbnail && draft.thumbnail.path ? String(draft.thumbnail.path) : '';
+  if (draftThumb && fs.existsSync(path.join(packageDir, draftThumb))) {
+    thumbnail = { exists: true, path: draftThumb, url: assetUrl(id, draftThumb), source: 'draft' };
+  } else if (firstSelected && fs.existsSync(path.join(packageDir, firstSelected))) {
+    thumbnail = { exists: true, path: firstSelected, url: assetUrl(id, firstSelected), source: 'selected_candidate' };
+  }
+
+  return {
+    ok: true,
+    project_id: id,
+    draft_exists: Boolean(draft),
+    path: 'youtube-draft.json',
+    temp_title: tempTitle,
+    temp_description: tempDescription,
+    thumbnail,
+    updated_at: draft && draft.updated_at ? draft.updated_at : null,
+  };
+}
+
+function saveProjectYoutubeDraft(payload = {}, options = {}) {
+  const opt = { root: options.root || ROOT };
+  const { packageId: id, packageDir } = resolveAigenPackageDir(payload.id || payload.package_id || payload.package || '', opt);
+  const tempTitle = String(payload.temp_title == null ? '' : payload.temp_title).slice(0, 500);
+  const tempDescription = String(payload.temp_description == null ? '' : payload.temp_description).slice(0, 10000);
+  const thumbRel = String(payload.thumbnail_path == null ? '' : payload.thumbnail_path).trim();
+
+  let thumbnail = { type: 'none', path: '', notes: '' };
+  if (thumbRel) {
+    if (thumbRel.includes('..') || thumbRel.startsWith('/') || thumbRel.includes('\\')) {
+      const e = new Error('thumbnail_path must be a package-relative path.'); e.statusCode = 400; throw e;
+    }
+    const abs = path.resolve(packageDir, thumbRel);
+    if (abs !== packageDir && !abs.startsWith(packageDir + path.sep)) {
+      const e = new Error('thumbnail_path escapes the project package.'); e.statusCode = 400; throw e;
+    }
+    if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
+      const e = new Error(`thumbnail_path does not exist in the package: ${thumbRel}`); e.statusCode = 400; throw e;
+    }
+    thumbnail = { type: 'selected_image', path: thumbRel, notes: String(payload.thumbnail_notes || '').slice(0, 1000) };
+  }
+
+  const fileObj = {
+    version: 1,
+    temp_title: tempTitle,
+    temp_description: tempDescription,
+    thumbnail,
+    updated_at: new Date().toISOString(),
+  };
+  const outPath = path.join(packageDir, 'youtube-draft.json');
+  const tmpPath = `${outPath}.tmp`;
+  fs.writeFileSync(tmpPath, `${JSON.stringify(fileObj, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmpPath, outPath);
+  return { ok: true, project_id: id, path: 'youtube-draft.json', saved: fileObj };
+}
+
+// One project-scoped view of everything the operator has before editing:
+// YouTube draft, script, prompts, images, I2V prompts, clips per lane, and
+// the Resolve handoff — with copyable VIDNAS paths. Read-only assembly.
+function readProjectMediaKit(packageId, options = {}) {
+  const opt = { root: options.root || ROOT };
+  const { packageId: id, packageDir } = resolveAigenPackageDir(packageId, opt);
+  const state = resolveProjectState(packageDir);
+  const youtube = readProjectYoutubeDraft(id, opt);
+  const variantsInfo = readProjectVideoVariants(id, opt);
+
+  // Script
+  const scriptRel = path.posix.join('script', 'script-final.md');
+  const scriptAbs = path.join(packageDir, 'script', 'script-final.md');
+  let scriptText = '';
+  try { scriptText = fs.readFileSync(scriptAbs, 'utf8').slice(0, 200000); } catch (e) { scriptText = ''; }
+
+  // Image prompts
+  const promptData = safeReadJson(path.join(packageDir, 'image-prompts.json'), null);
+  const promptItems = promptData && Array.isArray(promptData.image_prompts) ? promptData.image_prompts : [];
+  const imagePrompts = promptItems.map((p) => ({
+    index: Number(p.index == null ? p.prompt_index : p.index),
+    prompt: String(p.prompt || ''),
+    category: String(p.category || ''),
+    intended_use: String(p.intended_use || ''),
+  })).filter((p) => Number.isInteger(p.index));
+  const promptByIndex = new Map(imagePrompts.map((p) => [p.index, p.prompt]));
+
+  // Images: everything on disk in images/flux-local/, selected set marked.
+  const selections = readPackageSelections(packageDir);
+  const selectedPaths = new Set(selections.map((s) => String(s.selected_path || s.path || '')));
+  const fluxDirRel = path.posix.join('images', 'flux-local');
+  const imageItems = safeDirEntries(path.join(packageDir, fluxDirRel))
+    .filter((entry) => (entry.isFile() || entry.isSymbolicLink()) && /\.(png|jpe?g|webp)$/i.test(entry.name))
+    .map((entry) => {
+      const rel = path.posix.join(fluxDirRel, entry.name);
+      const promptIndex = fluxPromptIndex(entry.name);
+      return {
+        prompt_index: promptIndex,
+        selected: selectedPaths.has(rel),
+        path: rel,
+        url: assetUrl(id, rel),
+        source_prompt: promptIndex != null ? String(promptByIndex.get(promptIndex) || '') : '',
+        generation_provider: 'flux',
+        generation_host: 'vidnux',
+      };
+    })
+    .sort((a, b) => (a.prompt_index || 0) - (b.prompt_index || 0) || a.path.localeCompare(b.path));
+
+  // I2V prompts
+  const vp = safeReadJson(path.join(packageDir, 'video-prompts.json'), null);
+  const i2vItems = (vp && Array.isArray(vp.prompts) ? vp.prompts : []).map((p) => {
+    const idx = Number(p.prompt_index == null ? p.index : p.prompt_index);
+    const text = String(p.prompt || p.i2v_prompt || '');
+    const srcRel = String(p.source_image || '');
+    return {
+      prompt_index: idx,
+      source_image: srcRel,
+      source_image_url: srcRel ? assetUrl(id, srcRel) : '',
+      prompt: text,
+    };
+  }).filter((p) => Number.isInteger(p.prompt_index));
+
+  // Video lanes: clips per populated variant folder; the handoff lane carries
+  // ffprobe validation + review decisions via the review reader.
+  const handoffVariant = variantsInfo.handoff_video_variant;
+  const primaryVariant = handoffVariant || variantsInfo.best_variant || DEFAULT_VIDEO_VARIANT;
+  let review = null;
+  try { review = readProjectVideoReview(id, { ...opt, videoVariant: primaryVariant }); } catch (e) { review = null; }
+  const reviewByIndex = new Map(((review && review.clips) || []).map((c) => [c.prompt_index, c]));
+  const i2vByIndex = new Map(i2vItems.map((p) => [p.prompt_index, p]));
+  const videoFolders = variantsInfo.variants
+    .filter((v) => v.clip_files > 0)
+    .map((v) => ({
+      variant: v.name,
+      label: v.name === 'mp4' ? 'Fast Wan2.2 clips (legacy lane)' : v.name === 'mp4-hq-720p' ? 'HQ Wan2.2 clips' : `${v.name} clips`,
+      count: v.clip_files,
+      relative_path: `videos/${v.name}/`,
+      handoff_variant: v.is_handoff_variant,
+    }));
+  const videoItems = [];
+  for (const folder of videoFolders) {
+    const clips = safeDirEntries(path.join(packageDir, 'videos', folder.variant))
+      .filter((entry) => (entry.isFile() || entry.isSymbolicLink()) && /^\d{3,}\.mp4$/.test(entry.name))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    for (const clip of clips) {
+      const idx = Number(clip.name.replace(/\.mp4$/, ''));
+      const rel = path.posix.join('videos', folder.variant, clip.name);
+      const rc = folder.variant === primaryVariant ? reviewByIndex.get(idx) : null;
+      const i2v = i2vByIndex.get(idx);
+      videoItems.push({
+        prompt_index: idx,
+        variant: folder.variant,
+        path: rel,
+        url: assetUrl(id, rel),
+        i2v_prompt: i2v ? i2v.prompt : '',
+        source_image: i2v ? i2v.source_image : '',
+        source_image_url: i2v && i2v.source_image ? assetUrl(id, i2v.source_image) : '',
+        validation: rc ? rc.validation : null,
+        review_decision: rc && rc.review ? rc.review.decision : null,
+      });
+    }
+  }
+
+  // Resolve handoff
+  const handoffManifest = safeReadJson(path.join(packageDir, 'resolve-handoff', 'media-manifest.json'), null);
+  const handoffArtifacts = RESOLVE_HANDOFF_FILES
+    .filter((f) => fs.existsSync(path.join(packageDir, 'resolve-handoff', f)))
+    .map((f) => `resolve-handoff/${f}`);
+
+  return {
+    ok: true,
+    project: {
+      id,
+      title: state.title,
+      status: state.status,
+      stage: state.stage,
+      premise: state.provenance && state.provenance.premise ? state.provenance.premise : '',
+      package_path: packageDir,
+      vidnas_linux_path: packageDir,
+      ...windowsPathsFor(`script-packages/${id}`),
+    },
+    youtube: {
+      draft_exists: youtube.draft_exists,
+      temp_title: youtube.temp_title,
+      temp_description: youtube.temp_description,
+      thumbnail: youtube.thumbnail,
+      updated_at: youtube.updated_at,
+    },
+    script: {
+      final_exists: Boolean(scriptText),
+      path: scriptRel,
+      text: scriptText,
+    },
+    image_prompts: {
+      count: imagePrompts.length,
+      path: 'image-prompts.json',
+      items: imagePrompts,
+    },
+    images: {
+      all_count: imageItems.length,
+      selected_count: imageItems.filter((im) => im.selected).length,
+      items: imageItems,
+    },
+    i2v_prompts: {
+      count: i2vItems.length,
+      path: 'video-prompts.json',
+      items: i2vItems,
+    },
+    videos: {
+      primary_variant: primaryVariant,
+      folders: videoFolders,
+      items: videoItems,
+    },
+    resolve_handoff: {
+      exists: state.has_resolve_handoff,
+      path: 'resolve-handoff/',
+      video_variant: state.handoff_video_variant,
+      included_indexes: handoffManifest && Array.isArray(handoffManifest.included_indexes) ? handoffManifest.included_indexes : [],
+      excluded_indexes: handoffManifest && Array.isArray(handoffManifest.excluded_indexes) ? handoffManifest.excluded_indexes : [],
+      artifacts: handoffArtifacts,
+    },
+    folders: [
+      mediaKitFolder(id, packageDir, 'Package root', ''),
+      mediaKitFolder(id, packageDir, 'FLUX images', 'images/flux-local'),
+      ...videoFolders.map((f) => mediaKitFolder(id, packageDir, f.label, `videos/${f.variant}`)),
+      mediaKitFolder(id, packageDir, 'Resolve handoff', 'resolve-handoff'),
+      mediaKitFolder(id, packageDir, 'Script', 'script'),
+    ],
+  };
+}
+
 // Persist operator review decisions to video-review.json (merged over existing).
 function saveProjectVideoReview(payload = {}, options = {}) {
   const opt = { root: options.root || ROOT };
@@ -9507,6 +9788,37 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === PROJECT_MEDIA_KIT_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('package_id') || url.searchParams.get('package') || '';
+        sendJSON(res, 200, readProjectMediaKit(id, { root: serverOptions.root || ROOT }));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'project-media-kit-read-error');
+      }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === PROJECT_YOUTUBE_DRAFT_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('package_id') || url.searchParams.get('package') || '';
+        sendJSON(res, 200, readProjectYoutubeDraft(id, { root: serverOptions.root || ROOT }));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'project-youtube-draft-read-error');
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === PROJECT_YOUTUBE_DRAFT_SAVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'YouTube draft save API' });
+          return saveProjectYoutubeDraft(payload, { root: serverOptions.root || ROOT });
+        })
+        .then((result) => sendJSON(res, 200, result))
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'project-youtube-draft-save-error'));
+      return;
+    }
+
     // Save keep/flag/reject review decisions to video-review.json.
     if (req.method === 'POST' && url.pathname === PROJECT_VIDEO_REVIEW_SAVE_API) {
       readJsonBody(req)
@@ -10935,6 +11247,9 @@ module.exports = {
   saveProjectI2vPrompts,
   readProjectVideoReview,
   readProjectVideoVariants,
+  readProjectMediaKit,
+  readProjectYoutubeDraft,
+  saveProjectYoutubeDraft,
   saveProjectVideoReview,
   callPrestoOllamaChat,
   buildMediaRoutingStatus,
@@ -10956,6 +11271,9 @@ module.exports = {
   PROJECT_I2V_PROMPTS_SAVE_API,
   PROJECT_VIDEO_REVIEW_API,
   PROJECT_VIDEO_VARIANTS_API,
+  PROJECT_MEDIA_KIT_API,
+  PROJECT_YOUTUBE_DRAFT_API,
+  PROJECT_YOUTUBE_DRAFT_SAVE_API,
   PROJECT_VIDEO_REVIEW_SAVE_API,
   IDEAS_TRIAGE_API,
   IDEAS_STATUS_API,

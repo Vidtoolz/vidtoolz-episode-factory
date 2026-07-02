@@ -37,6 +37,7 @@
       <div class="fx-exit">
         <a href="#" id="fx-refresh" class="meta">↻ Refresh task</a> &nbsp;·&nbsp;
         <a id="fx-workspace" class="meta" href="#">Project workspace</a> &nbsp;·&nbsp;
+        <span id="fx-mediakit-slot"></span>
         <a href="projects.html" class="meta">Exit focus</a>
       </div>
     </div>
@@ -53,6 +54,11 @@
       function render(d){
         const s=d.state, nt=d.next_task;
         document.getElementById('fx-stage').textContent = s.stage;
+        // Pre-edit shortcut: once the project reaches the handoff boundary the
+        // media kit is the natural next stop before Resolve.
+        if (s.stage === 'resolve_handoff' || s.status === 'editing') {
+          document.getElementById('fx-mediakit-slot').innerHTML = '<a class="meta" href="project-media-kit.html?id=' + encodeURIComponent(ID) + '">Media kit</a> &nbsp;·&nbsp;';
+        }
         document.getElementById('fx-status').textContent = s.status;
         const prov = (s.provenance && s.provenance.source === 'daily_idea_scout') ? 'Source: Daily Idea Scout idea'
           : (s.provenance && s.provenance.source === 'user_topic_scout') ? ('Source: user topic — ' + (s.provenance.seed_topic || 'seeded'))

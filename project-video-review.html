@@ -73,6 +73,7 @@
       <a id="link-focus" href="#">Focus mode</a>
       <a id="link-i2v" href="#">I2V prompt workspace</a>
       <a id="link-handoff" href="#" title="Prepare the Resolve handoff (separate gated step)">Prepare Resolve handoff →</a>
+      <a id="link-mediakit" href="#">Media kit →</a>
     </section>
   </main>
 
@@ -224,6 +225,7 @@
       setHref("link-focus", `project-focus.html?id=${e}`);
       setHref("link-i2v", `project-i2v-prompts.html?id=${e}`);
       setHref("link-handoff", `project-resolve-handoff.html?id=${e}`);
+      setHref("link-mediakit", `project-media-kit.html?id=${e}`);
       // Lane pills: every populated videos/<variant>/ folder, linking to this
       // page with an explicit ?variant= override.
       fetch(`/api/project/video-variants?id=${e}`, { cache: "no-store" })

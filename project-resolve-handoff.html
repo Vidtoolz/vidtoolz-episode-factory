@@ -36,7 +36,7 @@
           <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Handoff status, clip lane pills, clip table (edit order), NAS paths, Resolve import steps, next-task action.</span></div>
         </div>
       </details>
-      <div class="pw-back meta"><a href="projects.html">← Projects</a> · <a id="link-workspace" href="#">Workspace</a> · <a id="link-review" href="#">Video review</a></div>
+      <div class="pw-back meta"><a href="projects.html">← Projects</a> · <a id="link-workspace" href="#">Workspace</a> · <a id="link-review" href="#">Video review</a> · <a id="link-mediakit" href="#">Media kit</a></div>
       <div id="rh-body"><p class="meta">Loading handoff…</p></div>
     </div>
     <script src="project-client.js"></script>
@@ -56,6 +56,7 @@
         if (!ID) { body.innerHTML = '<p class="blk">No project id. <a href="projects.html">Back to projects</a></p>'; return; }
         document.getElementById('link-workspace').href = `project-workspace.html?id=${encodeURIComponent(ID)}`;
         document.getElementById('link-review').href = `project-video-review.html?id=${encodeURIComponent(ID)}`;
+        document.getElementById('link-mediakit').href = `project-media-kit.html?id=${encodeURIComponent(ID)}`;
         let state, variants, manifest = null;
         try {
           const d = await client.fetchState(ID);

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Project Media Kit — VIDTOOLZ</title>
+    <link rel="stylesheet" href="styles.css?v=1.9.6">
+    <style>
+      .mk { max-width: 1080px; margin: 0 auto; padding: 24px 20px 48px; }
+      .mk-id { display:flex; gap:14px; align-items:baseline; flex-wrap:wrap; margin:8px 0 4px; }
+      .mk-id h1 { margin:0; font-size:24px; }
+      .pill{font-size:11px;padding:2px 9px;border-radius:100px;white-space:nowrap;}
+      .st-active{background:rgba(88,166,255,.18);color:#58a6ff;} .st-editing,.st-published{background:rgba(63,185,80,.18);color:#3fb950;}
+      .st-parked,.st-archived{background:rgba(139,148,158,.18);color:#8b949e;}
+      .meta{color:var(--muted,#8b949e);font-size:12px;}
+      .card{background:var(--panel,#161b22);border:1px solid var(--border,#30363d);border-radius:10px;padding:16px 18px;margin:14px 0;}
+      .sec-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#3fb950;font-weight:600;}
+      details.sec > summary { cursor:pointer; font-size:15px; font-weight:600; padding:6px 0; }
+      .btn{border:none;border-radius:6px;padding:5px 11px;font-size:12px;cursor:pointer;background:var(--panel-3,#21262d);color:inherit;border:1px solid var(--border,#30363d);margin:2px 6px 2px 0;}
+      .btn:hover{border-color:#58a6ff;}
+      .btn-go{background:#2ea043;color:#fff;border-color:#2ea043;}
+      code{font-size:12px;background:var(--panel-3,#21262d);padding:1px 5px;border-radius:4px;word-break:break-all;}
+      textarea,input[type=text]{width:100%;box-sizing:border-box;background:#0d1117;color:#e6edf3;border:1px solid var(--border,#30363d);border-radius:6px;padding:7px;font-size:13px;font-family:inherit;}
+      textarea{min-height:80px;}
+      .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+      .imcard{border:1px solid var(--border,#30363d);border-radius:8px;padding:6px;font-size:11px;background:var(--panel-3,#21262d);}
+      .imcard.sel{border-color:#3fb950;}
+      .imcard img{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:5px;background:#0d1117;}
+      .vidcard{display:grid;grid-template-columns:150px 90px 1fr;gap:12px;border:1px solid var(--border,#30363d);border-radius:8px;padding:10px;margin:8px 0;background:var(--panel-3,#21262d);font-size:12px;}
+      .vidcard video{width:150px;aspect-ratio:9/16;border-radius:6px;background:#0d1117;}
+      .vidcard img{width:90px;aspect-ratio:9/16;object-fit:cover;border-radius:6px;background:#0d1117;}
+      .promptrow{border-bottom:1px solid var(--border,#30363d);padding:7px 0;font-size:12px;}
+      .pathrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:4px 0;font-size:12px;}
+      .decision{font-size:10px;padding:1px 7px;border-radius:99px;border:1px solid var(--border,#30363d);}
+      .decision.keep{color:#3fb950;border-color:#2ea04366;} .decision.reject{color:#f85149;border-color:#f8514966;} .decision.flag{color:#d29922;border-color:#d2992266;}
+      #copy-status{position:fixed;bottom:16px;right:16px;background:#238636;color:#fff;padding:7px 14px;border-radius:8px;font-size:13px;display:none;z-index:50;}
+      .thumbprev{width:130px;aspect-ratio:9/16;object-fit:cover;border-radius:6px;border:1px solid var(--border,#30363d);background:#0d1117;}
+      .blk{color:#f85149;} .warn{color:#d29922;}
+      .links a{margin-right:10px;font-size:12px;}
+    </style>
+  </head>
+  <body>
+    <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="daily-idea-scout.html">Ideas</a><a href="production-pipeline.html">Pipeline</a></nav>
+    <div class="mk">
+      <details class="page-guide" open>
+        <summary>Page Guide — What is this?</summary>
+        <div class="page-guide-body">
+          <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">The Project Media Kit — everything this video project has before editing: YouTube draft (temp title / description / thumbnail), final script, image prompts, stills, selected images, I2V prompts, generated clips per lane, and the Resolve handoff, with copyable VIDNAS paths.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Review and copy whatever you need (prompts for GPT image generation / KlingAI, paths for Resolve or a file manager), then open Resolve and start the edit. Nothing here publishes or generates media.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Collapsible sections with per-item copy buttons, section exports, and a full-kit Markdown export.</span></div>
+        </div>
+      </details>
+      <div class="meta links" id="top-links"><a href="projects.html">← Projects</a></div>
+      <div id="mk-body"><p class="meta">Loading media kit…</p></div>
+    </div>
+    <div id="copy-status"></div>
+    <script src="clipboard.js?v=1.0.0"></script>
+    <script>
+      const ID = new URLSearchParams(location.search).get('id') || '';
+      const body = document.getElementById('mk-body');
+      let KIT = null;
+      let localWriteNonce = '';
+      let nonceHeader = 'x-vidtoolz-local-write-nonce';
+
+      function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+      function unwrap(j){return j && typeof j==='object' && j.data!==undefined ? j.data : j;}
+
+      function toast(msg, ok){
+        const el = document.getElementById('copy-status');
+        el.textContent = msg; el.style.background = ok===false ? '#da3633' : '#238636';
+        el.style.display='block'; clearTimeout(el._t); el._t=setTimeout(()=>{el.style.display='none';},1600);
+      }
+      // Copy with clipboard API + textarea fallback (clipboard may be blocked
+      // on plain-HTTP local hosts in some browsers).
+      function copy(text, label){
+        const done=()=>toast('Copied: '+(label||'text'));
+        const fail=()=>{ try{
+            const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta);
+            ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done();
+          }catch(e){ toast('Copy failed — select manually', false); } };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fail);
+        else fail();
+      }
+      // Delegated copy handler: any element with data-copy copies its payload.
+      document.addEventListener('click', (ev)=>{
+        const t = ev.target.closest('[data-copy]');
+        if (!t) return;
+        copy(t.getAttribute('data-copy'), t.getAttribute('data-copy-label') || 'text');
+      });
+      function cbtn(text, label, cls){
+        return `<button type="button" class="btn ${cls||''}" data-copy="${esc(text)}" data-copy-label="${esc(label||'')}">Copy ${esc(label||'')}</button>`;
+      }
+
+      async function fetchJson(url, opts){
+        const r = await fetch(url, Object.assign({cache:'no-store'}, opts||{}));
+        const j = await r.json();
+        if (!r.ok || (j && j.ok===false)) throw new Error((j && j.error) || ('HTTP '+r.status));
+        return unwrap(j);
+      }
+      async function fetchNonce(){
+        try{
+          const p = await fetchJson('/api/package-engine/status');
+          if (p && p.localWriteNonce){ localWriteNonce=p.localWriteNonce; nonceHeader=p.nonceHeader||nonceHeader; }
+        }catch(e){}
+      }
+
+      function pathRow(label, linux, windowsPath, unc){
+        return `<div class="pathrow"><b style="min-width:130px;">${esc(label)}</b>`+
+          `${cbtn(linux, 'Linux path')}${windowsPath?cbtn(windowsPath,'Windows path'):''}${unc?cbtn(unc,'UNC path'):''}`+
+          `<code style="opacity:.75;">${esc(linux)}</code></div>`;
+      }
+
+      // ── Markdown exports ─────────────────────────────────────────────────
+      function mdImagePrompts(){
+        return KIT.image_prompts.items.map(p=>`### Image prompt ${String(p.index).padStart(3,'0')}${p.category?' ('+p.category+')':''}\n${p.prompt}`).join('\n\n');
+      }
+      function mdKling(){
+        return KIT.i2v_prompts.items.map(p=>`### Clip ${String(p.prompt_index).padStart(3,'0')}\nSource image (VIDNAS): ${KIT.project.vidnas_linux_path}/${p.source_image}\nSource image (Windows): ${KIT.project.windows_path}\\${String(p.source_image).split('/').join('\\\\')}\nI2V prompt: ${p.prompt}`).join('\n\n');
+      }
+      function mdFolders(){
+        return KIT.folders.map(f=>`- ${f.label}:\n  - Linux: ${f.linux_path}\n  - Windows: ${f.windows_path}\n  - UNC: ${f.windows_unc_path}`).join('\n');
+      }
+      function mdFullKit(){
+        const k = KIT;
+        const selected = k.images.items.filter(i=>i.selected).map(i=>`- ${i.path}`).join('\n');
+        const clips = k.videos.folders.map(f=>`### ${f.label} (videos/${f.variant}/)${f.handoff_variant?' — handoff lane':''}\n`+k.videos.items.filter(v=>v.variant===f.variant).map(v=>`- ${v.path}`).join('\n')).join('\n\n');
+        return [
+          `# Media Kit — ${k.project.title}`,
+          `Package: ${k.project.id}`,
+          `Stage: ${k.project.stage} · Status: ${k.project.status}`,
+          `\n## YouTube draft\nTitle: ${k.youtube.temp_title}\n\nDescription:\n${k.youtube.temp_description}\n\nThumbnail: ${k.youtube.thumbnail.path || '(none selected)'} (${k.youtube.thumbnail.source})`,
+          `\n## Script\nPath: ${k.project.vidnas_linux_path}/${k.script.path}\n\n${k.script.text}`,
+          `\n## Image prompts (${k.image_prompts.count})\n\n${mdImagePrompts()}`,
+          `\n## Selected images (${k.images.selected_count} of ${k.images.all_count})\n${selected}`,
+          `\n## I2V prompts (${k.i2v_prompts.count})\n\n${mdKling()}`,
+          `\n## Video clips\n\n${clips}`,
+          `\n## Resolve handoff\nExists: ${k.resolve_handoff.exists ? 'yes' : 'no'} · Lane: ${k.resolve_handoff.video_variant || '-'} · Included: ${k.resolve_handoff.included_indexes.join(', ') || '-'} · Excluded: ${k.resolve_handoff.excluded_indexes.join(', ') || 'none'}\n${k.resolve_handoff.artifacts.map(a=>`- ${k.project.vidnas_linux_path}/${a}`).join('\n')}`,
+          `\n## VIDNAS folders\n${mdFolders()}`,
+        ].join('\n');
+      }
+
+      async function saveDraft(){
+        const status = document.getElementById('yt-save-status');
+        status.textContent = 'Saving…';
+        try{
+          if (!localWriteNonce) await fetchNonce();
+          const payload = {
+            id: ID,
+            temp_title: document.getElementById('yt-title').value,
+            temp_description: document.getElementById('yt-desc').value,
+            thumbnail_path: document.getElementById('yt-thumb-path').value.trim(),
+          };
+          const headers = {'Content-Type':'application/json'};
+          headers[nonceHeader] = localWriteNonce;
+          const r = await fetch('/api/project/youtube-draft/save', {method:'POST', headers, body: JSON.stringify(payload)});
+          const j = await r.json();
+          if (!r.ok || j.ok===false) throw new Error(j.error || ('HTTP '+r.status));
+          status.textContent = 'Saved to youtube-draft.json';
+          toast('YouTube draft saved');
+        }catch(e){ status.textContent = 'Save failed: '+(e.message||e); toast('Save failed', false); }
+      }
+
+      function render(){
+        const k = KIT;
+        const p = k.project;
+        const tl = document.getElementById('top-links');
+        const e = encodeURIComponent(p.id);
+        tl.innerHTML = `<a href="projects.html">← Projects</a>`+
+          `<a href="project-workspace.html?id=${e}">Workspace</a>`+
+          `<a href="project-focus.html?id=${e}">Focus</a>`+
+          `<a href="project-script.html?id=${e}">Script</a>`+
+          `<a href="image-prompts-editor.html?package=${e}">Image prompts</a>`+
+          `<a href="project-i2v-prompts.html?id=${e}">I2V prompts</a>`+
+          `<a href="project-video-review.html?id=${e}">Video review</a>`+
+          `<a href="project-resolve-handoff.html?id=${e}">Resolve handoff</a>`;
+
+        const yt = k.youtube;
+        const thumb = yt.thumbnail && yt.thumbnail.exists
+          ? `<img class="thumbprev" src="${esc(yt.thumbnail.url)}" alt="thumbnail candidate"><div class="meta">${esc(yt.thumbnail.path)} <span class="pill" style="background:rgba(88,166,255,.15);color:#58a6ff;">${esc(yt.thumbnail.source)}</span></div>`
+          : '<div class="meta warn">No thumbnail selected yet.</div>';
+
+        body.innerHTML = `
+          <div class="mk-id"><h1>Media Kit — ${esc(p.title)}</h1><span class="pill st-${esc(p.status)}">${esc(p.status)}</span></div>
+          <div class="meta">Package <code>${esc(p.id)}</code> · stage <b>${esc(p.stage)}</b> · handoff ${k.resolve_handoff.exists?'✓ '+esc(k.resolve_handoff.video_variant||''):'—'}</div>
+
+          <details class="sec card" open><summary>1 · YouTube draft <span class="meta">(temporary — nothing publishes)</span></summary>
+            <div style="display:grid;grid-template-columns:150px 1fr;gap:16px;margin-top:10px;">
+              <div>${thumb}<input id="yt-thumb-path" type="text" style="margin-top:6px;font-size:11px;" value="${esc(yt.thumbnail.path||'')}" placeholder="thumbnail path (package-relative)"></div>
+              <div>
+                <label class="meta">Temp title</label>
+                <input id="yt-title" type="text" value="${esc(yt.temp_title)}">
+                <label class="meta" style="display:block;margin-top:8px;">Temp description</label>
+                <textarea id="yt-desc">${esc(yt.temp_description)}</textarea>
+                <div style="margin-top:8px;">
+                  <button type="button" class="btn btn-go" id="yt-save">Save draft</button>
+                  <span id="yt-save-status" class="meta"></span>
+                </div>
+                <div style="margin-top:6px;">
+                  ${cbtn(yt.temp_title,'title')}${cbtn(yt.temp_description,'description')}${yt.thumbnail.path?cbtn(p.vidnas_linux_path+'/'+yt.thumbnail.path,'thumbnail path'):''}
+                  <button type="button" class="btn" id="yt-copy-all">Copy all YouTube draft text</button>
+                </div>
+                <div class="meta">${yt.draft_exists ? 'Draft stored in youtube-draft.json · updated ' + esc(yt.updated_at||'') : 'No draft saved yet — showing defaults from the project title/premise.'}</div>
+              </div>
+            </div>
+          </details>
+
+          <details class="sec card" open><summary>2 · Script</summary>
+            <div class="meta" style="margin:6px 0;">${k.script.final_exists ? esc(k.script.path) : '<span class="blk">No final script found.</span>'}
+              ${cbtn(k.script.text,'script')}${cbtn(p.vidnas_linux_path+'/'+k.script.path,'script path')}
+              <a class="btn" href="project-script.html?id=${e}">Open script page →</a></div>
+            <textarea readonly style="min-height:180px;font-size:12px;">${esc(k.script.text)}</textarea>
+          </details>
+
+          <details class="sec card"><summary>3 · Image prompts <span class="meta">(${k.image_prompts.count})</span></summary>
+            <div style="margin:6px 0;">
+              <button type="button" class="btn" id="copy-all-image-prompts">Copy all image prompts</button>
+              ${cbtn(p.vidnas_linux_path+'/'+k.image_prompts.path,'JSON path')}
+              <a class="btn" href="image-prompts-editor.html?package=${e}">Open prompt editor →</a>
+            </div>
+            ${k.image_prompts.items.map(pr=>`<div class="promptrow"><b>${String(pr.index).padStart(3,'0')}</b>${pr.category?` <span class="pill" style="background:var(--panel-3);">${esc(pr.category)}</span>`:''} ${esc(pr.prompt)}<br>${cbtn(pr.prompt,'prompt '+pr.index)}</div>`).join('')}
+          </details>
+
+          <details class="sec card"><summary>4 · Generated images <span class="meta">(${k.images.all_count} total · ${k.images.selected_count} selected)</span></summary>
+            <div style="margin:6px 0;">
+              <label class="meta"><input type="checkbox" id="sel-only" checked> selected only</label>
+              ${pathRow('images/flux-local/', (k.folders.find(f=>f.relative_path==='images/flux-local')||{}).linux_path||'', (k.folders.find(f=>f.relative_path==='images/flux-local')||{}).windows_path, (k.folders.find(f=>f.relative_path==='images/flux-local')||{}).windows_unc_path)}
+              <div class="meta">Use a copied VIDNAS path in your file manager — browsers block direct folder links.</div>
+            </div>
+            <div class="grid" id="image-grid"></div>
+          </details>
+
+          <details class="sec card"><summary>5 · I2V prompts <span class="meta">(${k.i2v_prompts.count} — for KlingAI / external I2V)</span></summary>
+            <div style="margin:6px 0;">
+              <button type="button" class="btn" id="copy-all-kling">Copy all KlingAI bundles</button>
+              ${cbtn(p.vidnas_linux_path+'/'+k.i2v_prompts.path,'JSON path')}
+              <a class="btn" href="project-i2v-prompts.html?id=${e}">Open I2V workspace →</a>
+            </div>
+            ${k.i2v_prompts.items.map(v=>`
+              <div class="vidcard" style="grid-template-columns:90px 1fr;">
+                <img src="${esc(v.source_image_url)}" alt="">
+                <div><b>${String(v.prompt_index).padStart(3,'0')}</b> · <code>${esc(v.source_image)}</code><br>${esc(v.prompt)}<br>
+                  ${cbtn(v.prompt,'I2V prompt')}${cbtn(p.vidnas_linux_path+'/'+v.source_image,'image path')}
+                  <button type="button" class="btn" data-copy="${esc('Clip '+String(v.prompt_index).padStart(3,'0')+'\nSource image: '+p.vidnas_linux_path+'/'+v.source_image+'\nI2V prompt: '+v.prompt)}" data-copy-label="KlingAI bundle ${v.prompt_index}">Copy KlingAI bundle</button>
+                </div>
+              </div>`).join('')}
+          </details>
+
+          <details class="sec card" open><summary>6 · Generated video clips <span class="meta">(${k.videos.items.length} files · handoff lane: ${esc(k.videos.primary_variant)})</span></summary>
+            ${k.videos.folders.map(f=>`<div class="meta" style="margin:6px 0;"><b>videos/${esc(f.variant)}/</b> — ${f.count} clip(s)${f.handoff_variant?' · <span style="color:#3fb950;">handoff lane</span>':''}</div>`).join('')}
+            <div id="video-cards"></div>
+            <div class="meta"><a href="project-video-review.html?id=${e}">Open video review →</a></div>
+          </details>
+
+          <details class="sec card" open><summary>7 · Resolve handoff</summary>
+            ${k.resolve_handoff.exists
+              ? `<div class="meta" style="margin:6px 0;">✓ Exists · lane <b>videos/${esc(k.resolve_handoff.video_variant||'?')}/</b> · included: ${k.resolve_handoff.included_indexes.map(n=>String(n).padStart(3,'0')).join(', ')||'—'} · excluded: ${k.resolve_handoff.excluded_indexes.length?'<span class="warn">'+k.resolve_handoff.excluded_indexes.map(n=>String(n).padStart(3,'0')).join(', ')+'</span>':'none'}</div>`
+              : '<div class="blk meta" style="margin:6px 0;">No Resolve handoff yet.</div>'}
+            ${k.resolve_handoff.artifacts.map(a=>`<div class="pathrow"><code>${esc(a)}</code>${cbtn(p.vidnas_linux_path+'/'+a,'path')}</div>`).join('')}
+            <a class="btn" href="project-resolve-handoff.html?id=${e}">Open edit-start page →</a>
+          </details>
+
+          <details class="sec card" open><summary>8 · External manual generation helper</summary>
+            <div class="meta" style="margin:6px 0;">Copy-only helpers for manual GPT image generation / KlingAI — nothing is automated.</div>
+            <button type="button" class="btn" id="x-image-prompts">Copy all image prompts</button>
+            <button type="button" class="btn" id="x-kling">Copy all I2V prompts + image paths (KlingAI)</button>
+            <button type="button" class="btn" id="x-folders">Copy all VIDNAS folders</button>
+            <button type="button" class="btn btn-go" id="x-full">Copy full media kit as Markdown</button>
+            <div style="margin-top:10px;">${k.folders.map(f=>pathRow(f.label, f.linux_path, f.windows_path, f.windows_unc_path)).join('')}</div>
+            <div class="meta">Windows drive letter defaults to X: (override with VIDTOOLZ_VIDNAS_WINDOWS_ROOT); the UNC path always works.</div>
+          </details>
+        `;
+
+        renderImages();
+        renderVideos();
+        document.getElementById('sel-only').addEventListener('change', renderImages);
+        document.getElementById('yt-save').onclick = saveDraft;
+        document.getElementById('yt-copy-all').onclick = ()=>copy(`Title: ${yt.temp_title}\n\nDescription:\n${document.getElementById('yt-desc').value}\n\nThumbnail: ${document.getElementById('yt-thumb-path').value||'(none)'}`, 'YouTube draft');
+        document.getElementById('copy-all-image-prompts').onclick = ()=>copy(mdImagePrompts(),'all image prompts');
+        document.getElementById('copy-all-kling').onclick = ()=>copy(mdKling(),'all KlingAI bundles');
+        document.getElementById('x-image-prompts').onclick = ()=>copy(mdImagePrompts(),'all image prompts');
+        document.getElementById('x-kling').onclick = ()=>copy(mdKling(),'all KlingAI bundles');
+        document.getElementById('x-folders').onclick = ()=>copy(mdFolders(),'all VIDNAS folders');
+        document.getElementById('x-full').onclick = ()=>copy(mdFullKit(),'full media kit (Markdown)');
+      }
+
+      function renderImages(){
+        const selOnly = document.getElementById('sel-only').checked;
+        const items = KIT.images.items.filter(i=>!selOnly || i.selected);
+        document.getElementById('image-grid').innerHTML = items.map(i=>`
+          <div class="imcard ${i.selected?'sel':''}">
+            <img loading="lazy" src="${esc(i.url)}" alt="">
+            <div><b>${i.prompt_index!=null?String(i.prompt_index).padStart(3,'0'):'—'}</b>${i.selected?' <span style="color:#3fb950;">selected</span>':''}</div>
+            <div style="opacity:.7;max-height:44px;overflow:hidden;">${esc((i.source_prompt||'').slice(0,90))}</div>
+            ${cbtn(KIT.project.vidnas_linux_path+'/'+i.path,'path')}${cbtn(location.origin+i.url,'URL')}${i.source_prompt?cbtn(i.source_prompt,'prompt'):''}
+          </div>`).join('');
+      }
+
+      function renderVideos(){
+        // Handoff/primary lane first, then other lanes.
+        const order = [KIT.videos.primary_variant].concat(KIT.videos.folders.map(f=>f.variant).filter(v=>v!==KIT.videos.primary_variant));
+        const cards = [];
+        for (const variant of order){
+          for (const v of KIT.videos.items.filter(x=>x.variant===variant)){
+            const val = v.validation;
+            cards.push(`
+              <div class="vidcard">
+                <video controls preload="metadata" src="${esc(v.url)}"></video>
+                ${v.source_image_url?`<img loading="lazy" src="${esc(v.source_image_url)}" alt="">`:'<div></div>'}
+                <div>
+                  <b>${String(v.prompt_index).padStart(3,'0')}</b> · <code>${esc(v.path)}</code>
+                  ${v.variant===KIT.videos.primary_variant?'<span class="pill" style="background:rgba(63,185,80,.15);color:#3fb950;">handoff lane</span>':'<span class="pill" style="background:var(--panel-3);">legacy fast</span>'}
+                  ${v.review_decision && v.review_decision!=='unreviewed'?`<span class="decision ${esc(v.review_decision)}">${esc(v.review_decision)}</span>`:''}
+                  ${val?`<div class="meta">${val.width||'?'}x${val.height||'?'} · ${val.fps!=null?Math.round(val.fps):'?'}fps · ${val.frames||'?'}f · ${val.duration!=null?Number(val.duration).toFixed(2):'?'}s</div>`:''}
+                  <div style="opacity:.75;">${esc((v.i2v_prompt||'').slice(0,160))}</div>
+                  ${cbtn(KIT.project.vidnas_linux_path+'/'+v.path,'path')}${cbtn(location.origin+v.url,'URL')}${v.i2v_prompt?cbtn(v.i2v_prompt,'I2V prompt'):''}
+                </div>
+              </div>`);
+          }
+        }
+        document.getElementById('video-cards').innerHTML = cards.join('');
+      }
+
+      async function load(){
+        if (!ID){ body.innerHTML = '<p class="blk">No project id. <a href="projects.html">Back to projects</a></p>'; return; }
+        try{
+          KIT = await fetchJson('/api/project/media-kit?id='+encodeURIComponent(ID));
+          await fetchNonce();
+        }catch(e){ body.innerHTML = '<p class="blk">Could not load media kit: '+esc(e.message||e)+'</p>'; return; }
+        render();
+      }
+      load();
+    </script>
+  </body>
+</html>
