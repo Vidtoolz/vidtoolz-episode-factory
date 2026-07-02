@@ -5762,9 +5762,10 @@ function stampManifestVariant(packageDir, info) {
   let manifest = safeReadJson(manifestPath, null);
   if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) manifest = {};
   manifest.video_variant = info.video_variant;
-  manifest.video_dir = info.video_dir;
+  manifest.video_source_folder = info.video_source_folder;
   manifest.included_indexes = info.included_indexes;
   manifest.excluded_indexes = info.excluded_indexes;
+  manifest.missing_indexes = info.missing_indexes;
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   return true;
 }
@@ -5857,6 +5858,11 @@ function runResolveAssemblyCreate(packageId, options = {}) {
   if (variant !== DEFAULT_VIDEO_VARIANT) {
     args.push('--video-variant', variant);
   }
+  // Forward explicitly-excluded indexes so the assembler omits them from the
+  // manifest and records them as excluded (never silently included).
+  if (excludedIndexes.length > 0) {
+    args.push('--exclude', excludedIndexes.join(','));
+  }
   return new Promise((resolve) => {
     const child = childProcess.spawn(paths.pythonBin, args, {
       cwd: paths.aigenRoot,
@@ -5885,9 +5891,10 @@ function runResolveAssemblyCreate(packageId, options = {}) {
         try {
           manifestVariantRecorded = stampManifestVariant(packageDir, {
             video_variant: variant,
-            video_dir: videoDir,
+            video_source_folder: videoDir,
             included_indexes: includedIndexes,
             excluded_indexes: excludedIndexes,
+            missing_indexes: [], // a real run only reaches here with no un-excluded missing clips
           });
         } catch (error) {
           resolve({

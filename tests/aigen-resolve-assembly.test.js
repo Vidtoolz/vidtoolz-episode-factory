@@ -357,7 +357,7 @@ test("resolve-assembly real create with HQ variant uses videos/mp4-hq-720p and r
       assert.equal(response.body.data.manifest_variant_recorded, true);
       const manifest = readManifest(fixture);
       assert.equal(manifest.video_variant, "mp4-hq-720p");
-      assert.equal(manifest.video_dir, "videos/mp4-hq-720p");
+      assert.equal(manifest.video_source_folder, "videos/mp4-hq-720p");
     });
   } finally {
     await close(server);
@@ -383,7 +383,7 @@ test("resolve-assembly real create with default variant records mp4 in the manif
       assert.equal(response.body.data.video_variant, "mp4");
       const manifest = readManifest(fixture);
       assert.equal(manifest.video_variant, "mp4");
-      assert.equal(manifest.video_dir, "videos/mp4");
+      assert.equal(manifest.video_source_folder, "videos/mp4");
     });
   } finally {
     await close(server);
