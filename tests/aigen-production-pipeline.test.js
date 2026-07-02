@@ -172,6 +172,43 @@ test("Wan counts are package-scoped to staged MP4s, ignoring colliding global la
   }
 });
 
+test("pipeline status exposes the handoff's recorded video variant", async () => {
+  const fixture = createScopingFixture();
+  // A completed HQ handoff: all three files present, manifest records the variant.
+  const handoffDir = path.join(fixture.packageDir, "resolve-handoff");
+  fs.mkdirSync(handoffDir, { recursive: true });
+  fs.writeFileSync(path.join(handoffDir, "assembly-plan.md"), "# plan", "utf8");
+  fs.writeFileSync(path.join(handoffDir, "assembly-plan.csv"), "order\n", "utf8");
+  writeJson(path.join(handoffDir, "media-manifest.json"), {
+    video_variant: "mp4-hq-720p",
+    video_source_folder: "videos/mp4-hq-720p",
+    clips: [],
+  });
+  const previous = {
+    root: process.env.AIGEN_VIDNAS_ROOT,
+    presto: process.env.AIGEN_PRESTO_BASE_URL,
+    timeout: process.env.AIGEN_PRESTO_TIMEOUT_MS,
+  };
+  process.env.AIGEN_VIDNAS_ROOT = fixture.aigenRoot;
+  process.env.AIGEN_PRESTO_BASE_URL = "http://127.0.0.1:9";
+  process.env.AIGEN_PRESTO_TIMEOUT_MS = "50";
+  const server = packageEngineServer.createServer();
+  try {
+    await listen(server);
+    const response = await requestJson(server, packageEngineServer.AIGEN_STATUS_API);
+    const pkg = response.body.data.packages.find((item) => item.id === fixture.packageId);
+    assert.ok(pkg, "package not found in status");
+    assert.equal(pkg.resolve_handoff_ready, true);
+    assert.equal(pkg.handoff_video_variant, "mp4-hq-720p");
+  } finally {
+    await close(server);
+    if (previous.root === undefined) delete process.env.AIGEN_VIDNAS_ROOT; else process.env.AIGEN_VIDNAS_ROOT = previous.root;
+    if (previous.presto === undefined) delete process.env.AIGEN_PRESTO_BASE_URL; else process.env.AIGEN_PRESTO_BASE_URL = previous.presto;
+    if (previous.timeout === undefined) delete process.env.AIGEN_PRESTO_TIMEOUT_MS; else process.env.AIGEN_PRESTO_TIMEOUT_MS = previous.timeout;
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("Wan counts detect the HQ variant folder for an HQ-only package", async () => {
   const fixture = createScopingFixture();
   // HQ-only: remove the legacy mp4 staging and stage ALL five selections in the

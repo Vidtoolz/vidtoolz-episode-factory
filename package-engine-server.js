@@ -5571,6 +5571,13 @@ function buildPackagePipelineStatus(packageDir, wanLabels) {
   const fluxManifestPath = path.join(packageDir, 'flux-generation-manifest.json');
   const resolveHandoffDir = path.join(packageDir, 'resolve-handoff');
   const resolveHandoffCount = RESOLVE_HANDOFF_FILES.filter((filename) => fs.existsSync(path.join(resolveHandoffDir, filename))).length;
+  // Which clip lane the existing handoff was actually built from (recorded in
+  // media-manifest.json since the variant work) — lets the dashboard distinguish
+  // an HQ handoff from a legacy fast one instead of treating them as identical.
+  const handoffManifest = safeReadJson(path.join(resolveHandoffDir, 'media-manifest.json'), null);
+  const handoffVideoVariant = handoffManifest && handoffManifest.video_variant
+    ? String(handoffManifest.video_variant)
+    : null;
   const promptItems = imagePrompts && Array.isArray(imagePrompts.image_prompts) ? imagePrompts.image_prompts : [];
   const selections = selected && Array.isArray(selected.selections) ? selected.selections : [];
   const videoPrompts = safeReadJson(path.join(packageDir, 'video-prompts.json'), null);
@@ -5623,6 +5630,7 @@ function buildPackagePipelineStatus(packageDir, wanLabels) {
     video_variant: staged.videoVariant,
     resolve_handoff_ready: resolveHandoffCount === RESOLVE_HANDOFF_FILES.length,
     resolve_handoff_count: resolveHandoffCount,
+    handoff_video_variant: handoffVideoVariant,
     wan_next_action: wanNextAction,
   };
 }
@@ -5937,7 +5945,13 @@ function runResolveAssemblyCreate(packageId, options = {}) {
       if (code === 0) {
         const resolveDir = path.join(packageDir, 'resolve-handoff');
         const existingFiles = RESOLVE_HANDOFF_FILES.filter((filename) => fs.existsSync(path.join(resolveDir, filename)));
+        // The re-stamp is belt-and-braces: the assembler already writes the
+        // variant fields itself. If the re-stamp fails AFTER the handoff files
+        // were written, reporting ok:false would be a lie (half-commit: the
+        // operator sees an error while readiness sees the files). Report
+        // success with an explicit warning instead.
         let manifestVariantRecorded = false;
+        let stampWarning = null;
         try {
           manifestVariantRecorded = stampManifestVariant(packageDir, {
             video_variant: variant,
@@ -5947,16 +5961,8 @@ function runResolveAssemblyCreate(packageId, options = {}) {
             missing_indexes: [], // a real run only reaches here with no un-excluded missing clips
           });
         } catch (error) {
-          resolve({
-            ok: false,
-            package_id: id,
-            video_variant: variant,
-            error: `Resolve handoff written but recording the variant in media-manifest.json failed: ${error.message}`,
-            exit_code: 1,
-            stdout,
-            stderr,
-          });
-          return;
+          stampWarning = `Handoff files were written, but re-stamping media-manifest.json failed: ${error.message}. `
+            + 'The assembler records the variant fields itself; verify media-manifest.json manually.';
         }
         resolve({
           ok: true,
@@ -5968,6 +5974,7 @@ function runResolveAssemblyCreate(packageId, options = {}) {
           included_indexes: includedIndexes,
           excluded_indexes: excludedIndexes,
           manifest_variant_recorded: manifestVariantRecorded,
+          warning: stampWarning,
           output_dir: resolveDir,
           stdout,
           stderr,

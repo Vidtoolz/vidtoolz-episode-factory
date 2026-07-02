@@ -179,3 +179,23 @@ test("resolver: legacy package with only manifest.json resolves without throwing
 test("resolver: missing package throws 404", () => {
   assert.throws(() => resolveProjectState("/no/such/package"), (e) => e.statusCode === 404);
 });
+
+test("resolver: exposes the handoff's recorded video variant (null for legacy manifests)", () => {
+  // Legacy manifest without variant fields → null, never a crash.
+  const legacy = makePkg({ metadata: true, script: true, handoff: true });
+  const legacyState = resolveProjectState(legacy.pkg);
+  assert.equal(legacyState.has_resolve_handoff, true);
+  assert.equal(legacyState.handoff_video_variant, null);
+
+  // Variant-recording manifest (written by the variant-aware assembler) → surfaced.
+  const hq = makePkg({ metadata: true, script: true });
+  fs.mkdirSync(path.join(hq.pkg, "resolve-handoff"), { recursive: true });
+  fs.writeFileSync(
+    path.join(hq.pkg, "resolve-handoff", "media-manifest.json"),
+    JSON.stringify({ video_variant: "mp4-hq-720p", video_source_folder: "videos/mp4-hq-720p", clips: [] })
+  );
+  const hqState = resolveProjectState(hq.pkg);
+  assert.equal(hqState.has_resolve_handoff, true);
+  assert.equal(hqState.handoff_video_variant, "mp4-hq-720p");
+  assert.equal(hqState.stage, "resolve_handoff");
+});

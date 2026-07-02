@@ -162,6 +162,15 @@ function resolveProjectState(packageDir, options = {}) {
   counts.total_videos = counts.local_videos + counts.manual_external_videos;
 
   const hasHandoff = fs.existsSync(path.join(packageDir, 'resolve-handoff', 'media-manifest.json'));
+  // Which clip lane the handoff was built from (recorded in the manifest since
+  // the variant work; null for legacy manifests). Purely informational here.
+  let handoffVideoVariant = null;
+  if (hasHandoff) {
+    try {
+      const handoffManifest = JSON.parse(fs.readFileSync(path.join(packageDir, 'resolve-handoff', 'media-manifest.json'), 'utf8'));
+      if (handoffManifest && handoffManifest.video_variant) handoffVideoVariant = String(handoffManifest.video_variant);
+    } catch (e) { /* legacy or unreadable manifest — variant stays unknown */ }
+  }
 
   // Stage = the next action implied by the FURTHEST evidence on disk. Sequential
   // (not else-if) so a gap in an earlier artifact (e.g. images exist but no
@@ -224,6 +233,7 @@ function resolveProjectState(packageDir, options = {}) {
     has_metadata: hasMetadata,
     has_script: hasScript,
     has_resolve_handoff: hasHandoff,
+    handoff_video_variant: handoffVideoVariant,
     counts,
     blockers,
     warnings,
