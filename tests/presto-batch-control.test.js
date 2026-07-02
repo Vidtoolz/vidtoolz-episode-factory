@@ -346,7 +346,7 @@ test("PRESTO submit returns 503 when ComfyUI is unreachable (no job spawned)", a
   }
 });
 
-test("PRESTO submit spawns with --timeout 3600 when ComfyUI is reachable", async () => {
+test("PRESTO submit spawns with --timeout 5400 when ComfyUI is reachable", async () => {
   const fixture = createPrestoFixture();
   const captured = {};
   const server = packageEngineServer.createServer({
@@ -366,7 +366,8 @@ test("PRESTO submit spawns with --timeout 3600 when ComfyUI is reachable", async
       assert.equal(response.body.data.job_started, true);
       const idx = captured.args.indexOf("--timeout");
       assert.ok(idx >= 0, "spawn args include --timeout");
-      assert.equal(captured.args[idx + 1], "3600");
+      // 5400s clears the HQ profile's ~55-min per-clip runtime with margin.
+      assert.equal(captured.args[idx + 1], "5400");
     });
   } finally {
     packageEngineServer.PRESTO_STATE.activeJob = null;

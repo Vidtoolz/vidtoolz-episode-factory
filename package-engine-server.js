@@ -6520,9 +6520,12 @@ function startPrestoPackageJob(payload = {}, options = {}) {
     throw error;
   }
   const config = validatePrestoSubmitPayload(payload, options);
+  // Default must clear the HQ profile's per-clip runtime with real margin:
+  // measured HQ render = 54m51s, so 3600 left only ~5 min of headroom and a
+  // slow clip would be killed at minute 60 after wasting the whole render.
   const prestoTimeoutSeconds = Number(process.env.AIGEN_PRESTO_TIMEOUT_SECONDS) > 0
     ? Math.floor(Number(process.env.AIGEN_PRESTO_TIMEOUT_SECONDS))
-    : 3600;
+    : 5400;
   const args = [
     config.productionScript,
     '--package',
