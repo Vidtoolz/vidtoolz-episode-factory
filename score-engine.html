@@ -146,9 +146,11 @@
         }catch(e){ /* package list unavailable — standalone still works */ }
       }
 
+      let DETECTED_REAPER = null;
       async function loadSettings(){
         const d = await fetchJson('/api/score/settings');
         SETTINGS = d.settings;
+        DETECTED_REAPER = d.detected_reaper || null;
         document.getElementById('s-path').textContent = ' stored at '+(d.settings_path||'');
         document.getElementById('settings-grid').innerHTML = SETTING_FIELDS.map(([k,label]) =>
           `<label class="field">${esc(label)}<input type="text" data-setting="${k}" value="${esc(SETTINGS[k]==null?'':SETTINGS[k])}"></label>`).join('');
@@ -160,13 +162,21 @@
       }
 
       function renderDawStatus(){
+        const reaperState = SETTINGS.reaper_executable_path
+          ? 'configured: '+SETTINGS.reaper_executable_path
+          : (DETECTED_REAPER
+              ? 'not configured — but detected at '+DETECTED_REAPER
+              : 'not configured — handoff projects still build; "Open in REAPER" needs the path');
         const rows = [
-          ['REAPER', SETTINGS.reaper_executable_path ? 'configured: '+SETTINGS.reaper_executable_path : 'not configured — handoff projects still build; "Open in REAPER" needs the path'],
+          ['REAPER', reaperState],
           ['Ableton Live', SETTINGS.ableton_template_path ? 'template set: '+SETTINGS.ableton_template_path : 'MIDI/template handoff available; set a template path for smoother imports'],
           ['ffprobe', SETTINGS.ffprobe_path || 'ffprobe'],
           ['AI planning', SETTINGS.default_ai_provider==='manual' ? 'manual mode (copy prompt / paste response) — fully offline' : 'provider: '+SETTINGS.default_ai_provider+' (key from env '+(SETTINGS.default_ai_provider==='openai'?SETTINGS.openai_api_key_env:SETTINGS.anthropic_api_key_env)+')'],
         ];
-        document.getElementById('daw-status').innerHTML = '<table>'+rows.map(([k,v])=>`<tr><th style="width:130px;">${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')+'</table>';
+        document.getElementById('daw-status').innerHTML = '<table>'+rows.map(([k,v])=>`<tr><th style="width:130px;">${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')+'</table>'
+          + (!SETTINGS.reaper_executable_path && DETECTED_REAPER ? `<button class="btn btn-go" id="use-detected-reaper" style="margin-top:8px;">Use detected REAPER path</button>` : '');
+        const btn=document.getElementById('use-detected-reaper');
+        if (btn) btn.onclick = async ()=>{ try{ await post('/api/score/settings',{settings:{reaper_executable_path:DETECTED_REAPER}}); toast('REAPER path saved'); loadSettings(); }catch(e){ toast(e.message,false); } };
       }
 
       async function loadProfiles(){

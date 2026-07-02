@@ -98,13 +98,18 @@ function writeWavBuffer(left, right, sampleRate, bitDepth = 16) {
 }
 
 // Render the full mix (and optionally per-lane stems) from composed notes.
-// options: { sampleRate, bitDepth, dialogueSafe, laneGains: {bass: 0.5,...}, stems: true }
+// options: { sampleRate, bitDepth, dialogueSafe, laneGains: {bass: 0.5,...}, stems: true,
+//   durationExact: true } — durationExact trims the output to EXACTLY the target
+// duration (video-package delivery), fading the last 150ms into the boundary so
+// release tails never push the export past the video length (validation defect #1).
 function renderMix(composition, durationSeconds, options = {}) {
   const sampleRate = options.sampleRate || 48000;
   const bitDepth = options.bitDepth || 16;
   const laneGains = options.laneGains || {};
   const lanes = composition.meta.lanes;
-  const frames = Math.ceil(durationSeconds * sampleRate) + sampleRate;
+  const frames = options.durationExact
+    ? Math.max(1, Math.round(durationSeconds * sampleRate))
+    : Math.ceil(durationSeconds * sampleRate) + sampleRate;
   const left = new Float64Array(frames);
   const right = new Float64Array(frames);
   const stems = {};
@@ -132,13 +137,24 @@ function renderMix(composition, durationSeconds, options = {}) {
     left[i] = Math.tanh(left[i] * scale * 1.1) / 1.1;
     right[i] = Math.tanh(right[i] * scale * 1.1) / 1.1;
   }
+  const fadeSamples = options.durationExact ? Math.min(frames, Math.round(sampleRate * 0.15)) : 0;
+  if (fadeSamples > 0) {
+    for (let i = frames - fadeSamples; i < frames; i += 1) {
+      const gain = (frames - i) / fadeSamples;
+      left[i] *= gain;
+      right[i] *= gain;
+    }
+  }
 
-  const result = { mix: writeWavBuffer(left, right, sampleRate, bitDepth), sampleRate, bitDepth, peak, scale };
+  const result = { mix: writeWavBuffer(left, right, sampleRate, bitDepth), sampleRate, bitDepth, peak, scale, durationExact: Boolean(options.durationExact) };
   if (options.stems) {
     result.stems = {};
     for (const lane of Object.keys(stems)) {
-      const mono = stems[lane];
+      // renderLane always allocates a padded buffer — clip stems to the same
+      // frame count as the mix so duration-exact exports match everywhere.
+      const mono = stems[lane].subarray(0, frames);
       for (let i = 0; i < frames; i += 1) mono[i] = Math.tanh(mono[i] * scale * 1.1) / 1.1;
+      for (let i = frames - fadeSamples; i < frames && fadeSamples > 0; i += 1) mono[i] *= (frames - i) / fadeSamples;
       result.stems[lane] = writeWavBuffer(mono, mono, sampleRate, bitDepth);
     }
   }

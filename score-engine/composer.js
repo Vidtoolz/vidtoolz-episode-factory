@@ -98,14 +98,20 @@ function effectiveCueSettings(cue, options = {}) {
 
 // ── per-lane generators (all deterministic from rng) ──
 
+// Pulse register options (validation defect #3): 'low_mid' is the original
+// D3-A3 placement; 'mid_high' (default for dialogue-heavy projects) lifts the
+// pulse an octave so it clears male-narration fundamentals; 'high' goes above.
+const PULSE_REGISTER_BASES = { low_mid: 4, mid_high: 5, high: 6 };
+
 function composePulse(ctx) {
   const { cue, eff, rng, grid, out } = ctx;
   const stepBeats = eff.dialogueSafe || eff.density <= 2 ? 0.5 : eff.density >= 4 ? 0.25 : 0.5;
   const gate = 0.55 + rng() * 0.15;
   const baseVel = Math.min(eff.velocityCeiling, 42 + eff.energy * 9);
   const restProbability = eff.dialogueSafe ? 0.3 : Math.max(0.02, 0.28 - eff.density * 0.05);
-  const pitchRoot = degreeToMidi(ctx.key, 0, 4); // around C4 region
-  const pitchAlt = degreeToMidi(ctx.key, 4, 4);
+  const registerBase = PULSE_REGISTER_BASES[ctx.pulseRegister] || PULSE_REGISTER_BASES.low_mid;
+  const pitchRoot = degreeToMidi(ctx.key, 0, registerBase);
+  const pitchAlt = degreeToMidi(ctx.key, 4, registerBase);
   for (let beat = 0; beat + stepBeats <= grid.beats + 1e-9; beat += stepBeats) {
     if (rng() < restProbability) continue;
     const accent = Math.abs(beat % 1) < 1e-9 ? 6 : Math.abs(beat % 0.5) < 1e-9 ? 0 : -6;
@@ -133,13 +139,40 @@ function composeBass(ctx) {
   }
 }
 
+// Harmonic drift (validation defect #4): long static cues get subtle, seeded
+// per-phrase movement — a mediant chord substitution, an occasional octave
+// voicing lift, and a soft sustained color tone at phrase starts. Off unless
+// the compose caller enables it AND the cue exceeds the threshold; short cues
+// keep the plain progression. Dialogue-safe velocities are respected.
+const DRIFT_PHRASE_BARS = 8;
+
 function composeHarmony(ctx) {
-  const { eff, grid, out, chords } = ctx;
+  const { eff, rng, grid, out, chords } = ctx;
   const baseVel = Math.min(eff.velocityCeiling - 8, 34 + eff.energy * 6);
+  const variants = [];
+  if (ctx.driftActive) {
+    const phraseCount = Math.ceil(grid.bars.length / DRIFT_PHRASE_BARS);
+    for (let p = 0; p < phraseCount; p += 1) {
+      variants.push(p === 0
+        ? { substitute: false, lift: 0, colorTone: false }
+        : { substitute: rng() < 0.5, lift: rng() < 0.4 ? 12 : 0, colorTone: rng() < 0.6 });
+    }
+  }
   let voicing = null;
   for (const bar of grid.bars) {
     const chord = chords[bar.index % chords.length];
-    voicing = voiceLead(voicing, chordPitches(ctx.key, chord.degree, 4));
+    let degree = chord.degree;
+    let lift = 0;
+    const variant = ctx.driftActive ? variants[Math.floor(bar.index / DRIFT_PHRASE_BARS)] : null;
+    if (variant) {
+      if (variant.substitute) degree = (degree + 3) % 7; // gentle mediant shift for the phrase
+      lift = variant.lift;
+      if (variant.colorTone && bar.index % DRIFT_PHRASE_BARS === 0 && bar.index > 0) {
+        // Soft sustained 9th above the root — a drift event, not a melody.
+        out.push(grid.event("harmony", bar.startBeat, bar.beats * 1.9, degreeToMidi(ctx.key, degree + 8, 4) + lift, Math.max(20, baseVel - 12)));
+      }
+    }
+    voicing = voiceLead(voicing, chordPitches(ctx.key, degree, 4).map((p) => p + lift));
     for (const pitch of voicing) {
       out.push(grid.event("harmony", bar.startBeat, bar.beats * 0.98, pitch, baseVel));
     }
@@ -201,9 +234,17 @@ const LANES = ["pulse", "bass", "harmony", "texture", "melody", "impact"];
 const LANE_GENERATORS = { pulse: composePulse, bass: composeBass, harmony: composeHarmony, texture: composeTexture, melody: composeMelody, impact: composeImpacts };
 
 // ── main entry: compose(cueSheet, options) → {notes, tempoMap, markers, meta} ──
-// options: { seed, palette_id, dialogue_density, lane_gains }
+// options: { seed, palette_id, dialogue_density, lane_gains,
+//   pulse_register: 'low_mid'|'mid_high'|'high' (default low_mid = pre-v1.1 behavior),
+//   harmonic_drift: boolean (default false = pre-v1.1 behavior),
+//   harmonic_drift_threshold: seconds (default 35) }
+// Defaults deliberately reproduce v1.0 output so stored candidates recompose
+// byte-identically; new candidates opt in via recorded generation settings.
 function compose(cueSheet, options = {}) {
   const seed = Number.isInteger(options.seed) ? options.seed : 1;
+  const pulseRegister = PULSE_REGISTER_BASES[options.pulse_register] ? options.pulse_register : "low_mid";
+  const driftEnabled = options.harmonic_drift === true;
+  const driftThreshold = Number(options.harmonic_drift_threshold) > 0 ? Number(options.harmonic_drift_threshold) : 35;
   const cues = cueSheet.cues || [];
   const notes = [];
   const tempoMap = [];
@@ -253,7 +294,12 @@ function compose(cueSheet, options = {}) {
     };
     LANES.forEach((lane, laneIndex) => {
       const rng = mulberry32(seed ^ hashString(`${cue.cue_id}:${lane}`) ^ (laneIndex * 2654435761));
-      LANE_GENERATORS[lane]({ cue, eff, rng, grid, out, key, chords, isLastCue: cueIndex === cues.length - 1 });
+      LANE_GENERATORS[lane]({
+        cue, eff, rng, grid, out, key, chords,
+        isLastCue: cueIndex === cues.length - 1,
+        pulseRegister,
+        driftActive: driftEnabled && cueSeconds >= driftThreshold,
+      });
     });
 
     // Generators push grid.event() results directly; clipped-out notes are null.
@@ -270,6 +316,8 @@ function compose(cueSheet, options = {}) {
       seed,
       palette_id: options.palette_id || null,
       dialogue_density: options.dialogue_density || null,
+      pulse_register: pulseRegister,
+      harmonic_drift: driftEnabled,
       cue_count: cues.length,
       total_ticks: cueStartTick,
       note_count: notes.length,
@@ -278,4 +326,4 @@ function compose(cueSheet, options = {}) {
   };
 }
 
-module.exports = { compose, mulberry32, hashString, parseKey, effectiveCueSettings, LANES, PROGRESSION_POOLS, MODES };
+module.exports = { compose, mulberry32, hashString, parseKey, effectiveCueSettings, LANES, PROGRESSION_POOLS, MODES, PULSE_REGISTER_BASES };

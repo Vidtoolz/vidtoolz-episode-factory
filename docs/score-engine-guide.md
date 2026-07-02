@@ -63,15 +63,32 @@ preset hint, optional REAPER track template path). Manage them on the Score
 Engine home page (add/edit/duplicate by loading a row into the editor and
 changing the id). Palettes reference profiles by id.
 
-## REAPER integration
+## REAPER integration (v1.1)
 
-"Build REAPER project" writes `candidates/<id>/reaper/project.rpp` with six
-role tracks (colored, conservative volume/pan), one embedded MIDI item per
-lane×cue, and cue markers, plus `README-reaper.md` with per-track instrument
-suggestions. "Open in REAPER" launches it when the executable path is set.
-Rendering (mix/stems) happens inside REAPER — the README lists the exact steps.
-Honest status: the `.rpp` structure is machine-verified by tests, but final
-in-REAPER rendering is operator-driven in this version.
+"Build REAPER project" writes `candidates/<id>/reaper/` with:
+- `project.rpp` — six role tracks, embedded MIDI items per lane×cue, cue
+  markers, and **pre-seeded render settings** (48 kHz/24-bit stereo WAV, entire
+  project → `renders/scorecraft-mix.wav`), so after patching instruments,
+  File → Render → Render is one click.
+- `render-scorecraft-mix.lua` — a safe one-click render action (versioned
+  output, exact project bounds). Validated against real REAPER 7.67.
+- `build-scorecraft-from-templates.lua` — **the repeatable-patching route**:
+  builds a NEW project where each role track comes from your own
+  .RTrackTemplate (instruments loaded), MIDI written in via the REAPER API,
+  markers added, saved versioned. Validated against real REAPER 7.67.
+- `README-reaper.md` — both routes, per-track suggestions, template status.
+
+Track templates: build each role's instrument track once in REAPER, right-click
+→ Save track as track template, then either paste the path into the matching
+instrument profile (Score Engine page) or drop files named
+`pulse/bass/harmony/melody/texture/impact.RTrackTemplate` into the folder set
+as `reaper_track_template_folder` in Settings. Missing/relative template paths
+fall back to plain MIDI tracks with a visible warning — never a failure.
+
+Approved package exports are **duration-exact by default** (trimmed to video
+length with a 150 ms boundary fade); untick "Duration-exact package export" on
+the workspace to keep the release tail instead. The mode is recorded in
+provenance.
 
 ## Ableton support (current state)
 

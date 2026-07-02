@@ -17,7 +17,8 @@ const midiWriter = require("./midi-writer.js");
 const synth = require("./preview-synth.js");
 const reaper = require("./reaper-backend.js");
 
-const ENGINE_VERSION = "1.0.0";
+const ENGINE_VERSION = "1.1.0";
+const PULSE_REGISTERS = ["low_mid", "mid_high", "high"];
 const DEFAULT_SETTINGS_PATH = path.join(os.homedir(), ".vidtoolz", "score-engine-settings.json");
 
 function nowIso() { return new Date().toISOString(); }
@@ -336,6 +337,13 @@ function generateCandidates(projectId, input = {}, options = {}) {
 
   const count = Math.min(5, Math.max(1, Number(input.count) || project.candidate_count || 3));
   const baseSeed = Number.isInteger(input.seed) ? input.seed : project.seed || 1;
+  // v1.1: voice-safe pulse register — dialogue-heavy projects default to
+  // mid_high (clears narration fundamentals); recorded per candidate so
+  // approve/REAPER recomposition stays byte-identical forever.
+  const pulseRegister = PULSE_REGISTERS.includes(input.pulse_register)
+    ? input.pulse_register
+    : (project.dialogue_density === "high" ? "mid_high" : "low_mid");
+  const harmonicDrift = input.harmonic_drift === undefined ? true : Boolean(input.harmonic_drift);
   const created = [];
   for (let i = 0; i < count; i += 1) {
     created.push(buildOneCandidate(dir, project, musicPlan, {
@@ -345,6 +353,8 @@ function generateCandidates(projectId, input = {}, options = {}) {
       cues: project.cues,
       parent_candidate: input.parent_candidate || null,
       revision: input.revision || null,
+      pulse_register: pulseRegister,
+      harmonic_drift: harmonicDrift,
       sampleRate: settings.default_export_sample_rate,
     }, settings));
   }
@@ -362,6 +372,8 @@ function buildOneCandidate(dir, project, musicPlan, generation, settings) {
     seed: generation.seed,
     palette_id: generation.palette_id,
     dialogue_density: project.dialogue_density,
+    pulse_register: generation.pulse_register,
+    harmonic_drift: generation.harmonic_drift,
   });
 
   // MIDI: one combined file + one per lane (per-role import convenience, §12).
@@ -387,6 +399,8 @@ function buildOneCandidate(dir, project, musicPlan, generation, settings) {
     seed: generation.seed,
     palette_id: generation.palette_id,
     lane_gains: generation.lane_gains,
+    pulse_register: generation.pulse_register || null,
+    harmonic_drift: Boolean(generation.harmonic_drift),
     parent_candidate: generation.parent_candidate,
     revision: generation.revision,
     duration_seconds: project.duration_seconds,
@@ -421,6 +435,8 @@ function buildCandidateProvenance(project, musicPlan, meta, generation) {
     seed: meta.seed,
     palette_id: meta.palette_id,
     dialogue_density: project.dialogue_density,
+    pulse_register: meta.pulse_register || "low_mid",
+    harmonic_drift: meta.harmonic_drift === true,
     cue_sheet: generation.cues.map((c) => ({ cue_id: c.cue_id, name: c.name, start: c.start_seconds, end: c.end_seconds, function: c.function, emotion: c.emotion, energy: c.energy, density: c.density })),
     instrument_profiles: musicPlan ? Object.fromEntries(Object.entries(musicPlan.roles).map(([role, r]) => [role, r.profile_id])) : {},
     generation_method: "deterministic rule-based composer (no AI note generation)",
@@ -437,6 +453,7 @@ function renderProvenanceMarkdown(provenance) {
     "",
     `- Engine: ${provenance.engine} · Created: ${provenance.created_at}`,
     `- Seed: ${provenance.seed} · Palette: ${provenance.palette_id} · Dialogue density: ${provenance.dialogue_density}`,
+    `- Pulse register: ${provenance.pulse_register || "low_mid"} · Harmonic drift: ${provenance.harmonic_drift ? "on" : "off"}${provenance.render ? ` · Export: ${provenance.render.export_mode || ""}` : ""}`,
     `- Note generation: ${provenance.generation_method}`,
     `- Sources: package=${provenance.source.video_package_path || "-"} video=${provenance.source.video_path || "-"} script=${provenance.source.script_path || "-"}`,
     provenance.parent_candidate ? `- Derived from: ${provenance.parent_candidate}` : null,
@@ -459,6 +476,19 @@ function renderProvenanceMarkdown(provenance) {
 }
 
 // ── candidate actions ──
+// Recomposition options recorded at generation time. Candidates from v1.0 have
+// no pulse_register/harmonic_drift fields — the composer defaults reproduce the
+// old output exactly, so historical candidates stay byte-identical.
+function compositionOptionsFromMeta(project, meta) {
+  return {
+    seed: meta.seed,
+    palette_id: meta.palette_id,
+    dialogue_density: project.dialogue_density,
+    pulse_register: meta.pulse_register || undefined,
+    harmonic_drift: meta.harmonic_drift === true,
+  };
+}
+
 function candidateDirOf(dir, candidateId) {
   if (!/^candidate-\d{3}$/.test(String(candidateId || ""))) throw httpError(`Invalid candidate id: ${candidateId}`, 400);
   const candidateDir = path.join(dir, "candidates", candidateId);
@@ -495,12 +525,50 @@ function reviseCandidate(projectId, candidateId, requestText, options = {}) {
     cues: revised.cues,
     parent_candidate: candidateId,
     revision: plan,
+    pulse_register: meta.pulse_register || undefined,
+    harmonic_drift: meta.harmonic_drift === true,
     sampleRate: settings.default_export_sample_rate,
   }, settings);
   return { revision_plan: plan, candidate: result.meta };
 }
 
 // ── DAW handoffs ──
+// Resolve a usable .RTrackTemplate per lane. Sources, in priority order:
+// the instrument profile assigned to the role in the music plan, then a file
+// named <lane>.RTrackTemplate in settings.reaper_track_template_folder.
+// Paths must be absolute and existing; anything else becomes a warning and the
+// lane falls back to a plain MIDI track (never a hard failure).
+function resolveTrackTemplates(settings, musicPlan) {
+  const profiles = loadProfiles(settings);
+  const profileById = new Map(profiles.map((p) => [p.profile_id, p]));
+  const templates = {};
+  const warnings = [];
+  for (const track of reaper.LANE_TRACKS) {
+    const role = musicPlan && musicPlan.roles ? musicPlan.roles[track.lane] : null;
+    const profile = role && role.profile_id ? profileById.get(role.profile_id) : null;
+    const candidates = [];
+    if (profile && profile.track_template_path) candidates.push({ source: `profile ${profile.profile_id}`, p: String(profile.track_template_path) });
+    if (settings.reaper_track_template_folder) {
+      candidates.push({ source: "template folder", p: path.join(String(settings.reaper_track_template_folder), `${track.lane}.RTrackTemplate`) });
+    }
+    let resolved = null;
+    for (const candidate of candidates) {
+      if (!path.isAbsolute(candidate.p)) {
+        warnings.push(`${track.lane}: template path is not absolute (${candidate.p}) — ignored (${candidate.source})`);
+        continue;
+      }
+      if (!fs.existsSync(candidate.p)) {
+        warnings.push(`${track.lane}: template file missing (${candidate.p}) — falling back to plain MIDI track (${candidate.source})`);
+        continue;
+      }
+      resolved = candidate.p;
+      break;
+    }
+    if (resolved) templates[track.lane] = resolved;
+  }
+  return { templates, warnings };
+}
+
 function buildReaperHandoff(projectId, candidateId, options = {}) {
   const settings = loadSettings(options);
   const { dir } = resolveProjectDir(settings, projectId);
@@ -509,18 +577,58 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
   const musicPlan = readJson(path.join(dir, "music-plan.json"));
   const cues = readJson(path.join(candidateDir, "cue-sheet-used.json")).cues;
   const meta = readJson(path.join(candidateDir, "candidate.json"));
-  const composition = composerEngine.compose({ cues }, { seed: meta.seed, palette_id: meta.palette_id, dialogue_density: project.dialogue_density });
+  const composition = composerEngine.compose({ cues }, compositionOptionsFromMeta(project, meta));
 
   const reaperDir = path.join(candidateDir, "reaper");
-  fs.mkdirSync(reaperDir, { recursive: true });
+  const rendersDir = path.join(reaperDir, "renders");
+  fs.mkdirSync(rendersDir, { recursive: true });
   const rppPath = path.join(reaperDir, "project.rpp");
   if (fs.existsSync(rppPath)) fs.copyFileSync(rppPath, path.join(reaperDir, `project-${stamp()}.rpp.bak`));
-  fs.writeFileSync(rppPath, reaper.buildRppText({ projectName: `${project.name} ${candidateId}`, cues, composition, sampleRate: settings.default_export_sample_rate }));
-  fs.writeFileSync(path.join(reaperDir, "README-reaper.md"), reaper.buildReaperReadme({ projectName: project.name, cues, musicPlan, settings }));
+  fs.writeFileSync(rppPath, reaper.buildRppText({
+    projectName: `${project.name} ${candidateId}`, cues, composition,
+    sampleRate: settings.default_export_sample_rate, rendersDir,
+  }));
+
+  const { templates, warnings } = resolveTrackTemplates(settings, musicPlan);
+  fs.writeFileSync(path.join(reaperDir, "render-scorecraft-mix.lua"), reaper.buildRenderScript({
+    rendersDir, durationSeconds: project.duration_seconds, sampleRate: settings.default_export_sample_rate,
+  }));
+  fs.writeFileSync(path.join(reaperDir, "build-scorecraft-from-templates.lua"), reaper.buildTemplateScript({
+    projectName: `${project.name} ${candidateId}`,
+    roles: reaper.LANE_TRACKS.map((track) => ({
+      lane: track.lane,
+      name: track.name,
+      template: templates[track.lane] || null,
+      // One MIDI item per cue with note data embedded (seconds + pitch + velocity);
+      // written via the REAPER API instead of .mid import, which prompts.
+      items: cues.map((cue) => ({
+        start: cue.start_seconds,
+        end: cue.end_seconds,
+        notes: composition.notes
+          .filter((n) => n.lane === track.lane && n.seconds >= cue.start_seconds - 1e-6 && n.seconds < cue.end_seconds)
+          .map((n) => ({ s: n.seconds, e: Math.round((n.seconds + n.dur_seconds) * 1000) / 1000, n: n.note, v: n.velocity })),
+      })).filter((item) => item.notes.length > 0),
+    })),
+    cues,
+    savePath: path.join(reaperDir, "scorecraft-from-templates.rpp"),
+    tempo: cues[0] ? cues[0].tempo_bpm : project.global_tempo_bpm,
+  }));
+  fs.writeFileSync(path.join(reaperDir, "README-reaper.md"), reaper.buildReaperReadme({
+    projectName: project.name, cues, musicPlan, settings, templates, templateWarnings: warnings,
+  }));
 
   meta.status = meta.status === "approved" ? "approved" : "daw_built";
   writeJson(path.join(candidateDir, "candidate.json"), meta);
-  return { rpp: rppPath, readme: path.join(reaperDir, "README-reaper.md"), open_command: reaper.openInReaperCommand(settings, rppPath) };
+  return {
+    rpp: rppPath,
+    readme: path.join(reaperDir, "README-reaper.md"),
+    render_script: path.join(reaperDir, "render-scorecraft-mix.lua"),
+    template_script: path.join(reaperDir, "build-scorecraft-from-templates.lua"),
+    templates_used: templates,
+    template_warnings: warnings,
+    midi_only: Object.keys(templates).length === 0,
+    open_command: reaper.openInReaperCommand(settings, rppPath),
+  };
 }
 
 function openInReaper(projectId, candidateId, options = {}) {
@@ -587,7 +695,11 @@ handoff keeps you fully productive without it.
 }
 
 // ── approval + export ──
-function approveCandidate(projectId, candidateId, options = {}) {
+// exportOptions.durationExact (default from settings.duration_exact_export,
+// which defaults true): video-package exports are trimmed to EXACTLY the
+// project duration with a 150ms boundary fade; pass false for a
+// tail-preserving export (release rings past the video end by up to 1s).
+function approveCandidate(projectId, candidateId, options = {}, exportOptions = {}) {
   const settings = loadSettings(options);
   const { dir } = resolveProjectDir(settings, projectId);
   const candidateDir = candidateDirOf(dir, candidateId);
@@ -595,6 +707,9 @@ function approveCandidate(projectId, candidateId, options = {}) {
   const meta = readJson(path.join(candidateDir, "candidate.json"));
   const cues = readJson(path.join(candidateDir, "cue-sheet-used.json")).cues;
   const musicPlan = readJson(path.join(dir, "music-plan.json"));
+  const durationExact = exportOptions.durationExact !== undefined
+    ? Boolean(exportOptions.durationExact)
+    : settings.duration_exact_export !== false;
 
   const approvedDir = path.join(dir, "approved");
   if (fs.existsSync(approvedDir)) {
@@ -605,12 +720,12 @@ function approveCandidate(projectId, candidateId, options = {}) {
   fs.mkdirSync(path.join(approvedDir, "midi"), { recursive: true });
 
   // Full-quality render at export sample rate, with stems (§13).
-  const composition = composerEngine.compose({ cues }, { seed: meta.seed, palette_id: meta.palette_id, dialogue_density: project.dialogue_density });
+  const composition = composerEngine.compose({ cues }, compositionOptionsFromMeta(project, meta));
   const sampleRate = settings.default_export_sample_rate || 48000;
   const bitDepth = settings.default_export_bit_depth === 24 ? 24 : 16;
-  const full = synth.renderMix(composition, project.duration_seconds, { sampleRate, bitDepth, stems: true, laneGains: meta.lane_gains || {} });
+  const full = synth.renderMix(composition, project.duration_seconds, { sampleRate, bitDepth, stems: true, laneGains: meta.lane_gains || {}, durationExact });
   fs.writeFileSync(path.join(approvedDir, "mix.wav"), full.mix);
-  const safe = synth.renderMix(composition, project.duration_seconds, { sampleRate, bitDepth, dialogueSafe: true, laneGains: meta.lane_gains || {} });
+  const safe = synth.renderMix(composition, project.duration_seconds, { sampleRate, bitDepth, dialogueSafe: true, laneGains: meta.lane_gains || {}, durationExact });
   fs.writeFileSync(path.join(approvedDir, "mix-dialogue-safe.wav"), safe.mix);
   for (const [lane, buffer] of Object.entries(full.stems)) {
     fs.writeFileSync(path.join(approvedDir, "stems", `${lane}.wav`), buffer);
@@ -636,7 +751,13 @@ function approveCandidate(projectId, candidateId, options = {}) {
     approval_status: "approved",
     approved_at: nowIso(),
     approved_candidate: candidateId,
-    render: { sample_rate: sampleRate, bit_depth: bitDepth, renderer: "score-engine preview synth (sketch quality)" },
+    render: {
+      sample_rate: sampleRate,
+      bit_depth: bitDepth,
+      renderer: "score-engine preview synth (sketch quality)",
+      duration_exact: durationExact,
+      export_mode: durationExact ? "duration_exact (trimmed + 150ms boundary fade)" : "tail_preserving (release rings past project end)",
+    },
     exported_files: ["approved/mix.wav", "approved/mix-dialogue-safe.wav", "approved/stems/", "approved/midi/", "approved/resolve-import/"],
   };
   writeJson(path.join(approvedDir, "provenance.json"), provenance);

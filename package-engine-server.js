@@ -9921,7 +9921,10 @@ function createServer(options = {}) {
     });
 
     if (req.method === 'GET' && url.pathname === SCORE_SETTINGS_API) {
-      try { sendJSON(res, 200, { settings: scoreLane.loadSettings(scoreOptions()), settings_path: process.env.SCORE_ENGINE_SETTINGS_PATH || scoreLane.DEFAULT_SETTINGS_PATH }); }
+      try {
+        const detected = ['/usr/local/bin/reaper', '/opt/REAPER/reaper', '/usr/bin/reaper'].find((p) => { try { return fs.existsSync(p); } catch (e) { return false; } }) || null;
+        sendJSON(res, 200, { settings: scoreLane.loadSettings(scoreOptions()), settings_path: process.env.SCORE_ENGINE_SETTINGS_PATH || scoreLane.DEFAULT_SETTINGS_PATH, detected_reaper: detected });
+      }
       catch (error) { sendError(res, error.statusCode || 500, error.message, 'score-settings-error'); }
       return;
     }
@@ -10034,7 +10037,7 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Score candidate approve API' });
-          sendJSON(res, 200, scoreLane.approveCandidate(payload.project_id || '', payload.candidate_id || '', scoreOptions()));
+          sendJSON(res, 200, scoreLane.approveCandidate(payload.project_id || '', payload.candidate_id || '', scoreOptions(), { durationExact: payload.duration_exact }));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-candidate-approve-error'));
       return;

@@ -513,3 +513,180 @@ test("score-engine API: nonce-gated create + full GUI flow over HTTP", async () 
     delete process.env.SCORE_ENGINE_MUSIC_ROOT;
   }
 });
+
+// ═══ v1.1 — REAPER production polish ═══
+
+function wavDurationSeconds(file) {
+  const buffer = fs.readFileSync(file);
+  const sampleRate = buffer.readUInt32LE(24);
+  const blockAlign = buffer.readUInt16LE(32);
+  const dataBytes = buffer.readUInt32LE(40);
+  return dataBytes / (sampleRate * blockAlign);
+}
+
+function ffprobeDuration(file) {
+  const childProcess = require("node:child_process");
+  const result = childProcess.spawnSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", file], { encoding: "utf8" });
+  if (result.status !== 0) return null; // ffprobe unavailable → header math still asserts
+  return Number(String(result.stdout).trim());
+}
+
+test("score-engine v1.1: approved export is duration-exact by default; previews keep the tail", () => {
+  const { options } = tmpEnv();
+  const project = readyProject(options, { duration_seconds: 30 });
+  lane.generateCandidates(project.project_id, { count: 1 }, options);
+  const dir = lane.getProject(project.project_id, options).dir;
+  // Candidate preview intentionally keeps the 1s release tail.
+  assert.ok(wavDurationSeconds(path.join(dir, "candidates", "candidate-001", "renders", "preview-mix.wav")) > 30.5);
+  const result = lane.approveCandidate(project.project_id, "candidate-001", options);
+  const mix = path.join(result.approved_dir, "mix.wav");
+  assert.equal(wavDurationSeconds(mix), 30, "approved mix must be exactly 30.000s");
+  assert.equal(wavDurationSeconds(path.join(result.approved_dir, "mix-dialogue-safe.wav")), 30);
+  assert.equal(wavDurationSeconds(path.join(result.approved_dir, "stems", "bass.wav")), 30);
+  const probed = ffprobeDuration(mix);
+  if (probed !== null) assert.ok(Math.abs(probed - 30) < 0.002, `ffprobe says ${probed}s`);
+  const provenance = JSON.parse(fs.readFileSync(path.join(result.approved_dir, "provenance.json"), "utf8"));
+  assert.equal(provenance.render.duration_exact, true);
+  assert.match(provenance.render.export_mode, /duration_exact/);
+});
+
+test("score-engine v1.1: tail-preserving export is an explicit option and recorded in provenance", () => {
+  const { options } = tmpEnv();
+  const project = readyProject(options, { duration_seconds: 30 });
+  lane.generateCandidates(project.project_id, { count: 1 }, options);
+  const result = lane.approveCandidate(project.project_id, "candidate-001", options, { durationExact: false });
+  assert.equal(wavDurationSeconds(path.join(result.approved_dir, "mix.wav")), 31, "tail-preserving keeps the 1s release tail");
+  const provenance = JSON.parse(fs.readFileSync(path.join(result.approved_dir, "provenance.json"), "utf8"));
+  assert.equal(provenance.render.duration_exact, false);
+  assert.match(provenance.render.export_mode, /tail_preserving/);
+});
+
+test("score-engine v1.1: mid_high pulse register clears the D3-A3 narration band; default preserves v1.0 output", () => {
+  const sheet = planner.generateCueSheet({ duration_seconds: 60, dialogue_density: "high" });
+  const lifted = composer.compose(sheet, { seed: 5, pulse_register: "mid_high" });
+  const liftedPulse = lifted.notes.filter((n) => n.lane === "pulse");
+  assert.ok(liftedPulse.length > 0);
+  assert.ok(liftedPulse.every((n) => n.note >= 60), "mid_high pulse stays at/above D4 region");
+  assert.ok(liftedPulse.every((n) => !(n.note >= 50 && n.note <= 57)), "no notes in the old D3-A3 problem band");
+  const legacy = composer.compose(sheet, { seed: 5 });
+  const legacyPulse = legacy.notes.filter((n) => n.lane === "pulse");
+  assert.ok(legacyPulse.every((n) => n.note >= 50 && n.note <= 57), "default (no option) reproduces v1.0 register");
+  // Rhythm identical, only register moves: same tick pattern.
+  assert.deepEqual(liftedPulse.map((n) => n.tick), legacyPulse.map((n) => n.tick));
+});
+
+test("score-engine v1.1: dialogue-heavy projects record mid_high pulse register; REAPER rebuild matches candidate notes", () => {
+  const { options } = tmpEnv();
+  const project = readyProject(options, { duration_seconds: 30, dialogue_density: "high" });
+  lane.generateCandidates(project.project_id, { count: 1 }, options);
+  const state = lane.getProject(project.project_id, options);
+  assert.equal(state.candidates[0].pulse_register, "mid_high");
+  assert.equal(state.candidates[0].harmonic_drift, true);
+  const provenance = JSON.parse(fs.readFileSync(path.join(state.dir, "candidates", "candidate-001", "provenance.json"), "utf8"));
+  assert.equal(provenance.pulse_register, "mid_high");
+  assert.equal(provenance.harmonic_drift, true);
+  // Recomposition consistency: the .rpp built later must embed exactly the candidate's notes.
+  const built = lane.buildReaperHandoff(project.project_id, "candidate-001", options);
+  const rpp = fs.readFileSync(built.rpp, "utf8");
+  const noteOns = (rpp.match(/^\s*E \d+ 9[0-9a-f] /gm) || []).length;
+  assert.equal(noteOns, state.candidates[0].note_count, "rpp note-ons equal recorded candidate note_count");
+});
+
+test("score-engine v1.1: harmonic drift adds voicing movement to long cues only, deterministically, within boundaries", () => {
+  const mkCue = (id, start, end, fn) => ({ cue_id: id, name: fn, start_seconds: start, end_seconds: end, function: fn, emotion: "clinical", energy: 2, density: 1, tempo_bpm: 84, key: "D minor", time_signature: "4/4", instrument_roles: {}, arrangement_notes: "", hit_points: [], dialogue_safe: true });
+  const sheet = { cues: [mkCue("C001", 0, 60, "explanation"), mkCue("C002", 60, 70, "button")] };
+  const voicings = (result, cue) => {
+    const byBar = new Map();
+    for (const n of result.notes.filter((x) => x.lane === "harmony" && x.seconds >= cue.start_seconds && x.seconds < cue.end_seconds)) {
+      const key = Math.round(n.seconds * 10);
+      byBar.set(key, (byBar.get(key) || []).concat(n.note).sort((a, b) => a - b));
+    }
+    return new Set([...byBar.values()].map((v) => v.join(",")));
+  };
+  const drifted = composer.compose(sheet, { seed: 9, harmonic_drift: true });
+  const driftedAgain = composer.compose(sheet, { seed: 9, harmonic_drift: true });
+  assert.deepEqual(drifted.notes, driftedAgain.notes, "drift is deterministic by seed");
+  const plain = composer.compose(sheet, { seed: 9 });
+  const longDrifted = voicings(drifted, sheet.cues[0]);
+  const longPlain = voicings(plain, sheet.cues[0]);
+  assert.ok(longDrifted.size > longPlain.size, `long cue gains voicing variety (${longDrifted.size} vs ${longPlain.size})`);
+  // Short cue (10s < 35s threshold) must be untouched by drift.
+  const shortDrifted = drifted.notes.filter((n) => n.lane === "harmony" && n.seconds >= 60);
+  const shortPlain = plain.notes.filter((n) => n.lane === "harmony" && n.seconds >= 60);
+  assert.deepEqual(shortDrifted, shortPlain, "short cue identical with and without drift");
+  // Dialogue-safe velocity ceiling respected; no boundary crossings.
+  assert.ok(drifted.notes.filter((n) => n.lane === "harmony").every((n) => n.velocity <= 72));
+  for (const n of drifted.notes) {
+    const cue = sheet.cues.find((c) => n.seconds >= c.start_seconds - 1e-6 && n.seconds < c.end_seconds);
+    assert.ok(cue && n.seconds + n.dur_seconds <= cue.end_seconds + 1e-6, `drift note at ${n.seconds}s crosses boundary`);
+  }
+});
+
+test("score-engine v1.1: .rpp pre-seeds render defaults and the render script is generated versioned-safe", () => {
+  const { options } = tmpEnv();
+  const project = readyProject(options, { duration_seconds: 20 });
+  lane.generateCandidates(project.project_id, { count: 1 }, options);
+  const built = lane.buildReaperHandoff(project.project_id, "candidate-001", options);
+  const rpp = fs.readFileSync(built.rpp, "utf8");
+  assert.match(rpp, /RENDER_FILE ".*\/reaper\/renders"/);
+  assert.match(rpp, /RENDER_PATTERN "scorecraft-mix"/);
+  assert.match(rpp, /<RENDER_CFG\n\s+ZXZhdxgAAA==/, "24-bit WAV render config seeded");
+  assert.ok(fs.existsSync(built.render_script));
+  const script = fs.readFileSync(built.render_script, "utf8");
+  assert.match(script, /local DURATION = 20/);
+  assert.match(script, /RENDER_ENDPOS", DURATION/);
+  assert.match(script, /os\.date/, "render output is versioned, never overwritten");
+  assert.match(script, /41824/);
+  const readme = fs.readFileSync(built.readme, "utf8");
+  assert.match(readme, /MIDI-only until instruments/);
+  assert.match(readme, /render-scorecraft-mix\.lua/);
+});
+
+test("score-engine v1.1: track templates resolve from profiles/folder, warn on missing or relative, fall back to plain MIDI", () => {
+  const { root, options } = tmpEnv();
+  const project = readyProject(options, { duration_seconds: 20 });
+  lane.generateCandidates(project.project_id, { count: 1 }, options);
+  const settings = lane.loadSettings(options);
+
+  // No templates configured → MIDI-only, no warnings.
+  let built = lane.buildReaperHandoff(project.project_id, "candidate-001", options);
+  assert.equal(built.midi_only, true);
+  assert.deepEqual(built.template_warnings, []);
+
+  // Real template via the pulse profile; missing template on bass profile; relative path on harmony.
+  const templateFile = path.join(root, "pulse.RTrackTemplate");
+  fs.writeFileSync(templateFile, '<TRACK\n  NAME "My Pulse Synth"\n>\n');
+  const plan = JSON.parse(fs.readFileSync(path.join(lane.getProject(project.project_id, options).dir, "music-plan.json"), "utf8"));
+  lane.saveProfile(settings, { profile_id: plan.roles.pulse.profile_id, display_name: "pulse prof", role: "pulse", track_template_path: templateFile });
+  lane.saveProfile(settings, { profile_id: plan.roles.bass.profile_id, display_name: "bass prof", role: "bass", track_template_path: path.join(root, "missing.RTrackTemplate") });
+  lane.saveProfile(settings, { profile_id: plan.roles.harmony.profile_id, display_name: "harm prof", role: "pad", track_template_path: "../sneaky.RTrackTemplate" });
+
+  built = lane.buildReaperHandoff(project.project_id, "candidate-001", options);
+  assert.equal(built.midi_only, false);
+  assert.equal(built.templates_used.pulse, templateFile);
+  assert.ok(!built.templates_used.bass, "missing template must not be used");
+  assert.ok(built.template_warnings.some((w) => w.includes("bass") && w.includes("missing")));
+  assert.ok(built.template_warnings.some((w) => w.includes("harmony") && w.includes("not absolute")), "relative paths rejected");
+
+  const templateScript = fs.readFileSync(built.template_script, "utf8");
+  assert.ok(templateScript.includes(templateFile), "script embeds the resolved template path");
+  assert.match(templateScript, /template = nil/, "unresolved roles fall back to nil → plain MIDI track");
+  assert.match(templateScript, /SetTrackStateChunk/);
+  assert.match(templateScript, /AddProjectMarker/);
+  assert.match(templateScript, /os\.date/, "template build save path is versioned");
+  const readme = fs.readFileSync(built.readme, "utf8");
+  assert.match(readme, /pulse: .*pulse\.RTrackTemplate/);
+  assert.match(readme, /⚠/);
+});
+
+test("score-engine v1.1: template folder fallback resolves <lane>.RTrackTemplate files", () => {
+  const { root, options } = tmpEnv();
+  const project = readyProject(options, { duration_seconds: 20 });
+  lane.generateCandidates(project.project_id, { count: 1 }, options);
+  const folder = path.join(root, "templates");
+  fs.mkdirSync(folder, { recursive: true });
+  fs.writeFileSync(path.join(folder, "bass.RTrackTemplate"), '<TRACK\n  NAME "Bass Rig"\n>\n');
+  lane.saveSettings({ reaper_track_template_folder: folder }, options);
+  const built = lane.buildReaperHandoff(project.project_id, "candidate-001", options);
+  assert.equal(built.templates_used.bass, path.join(folder, "bass.RTrackTemplate"));
+});

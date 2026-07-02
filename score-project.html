@@ -81,8 +81,10 @@
       <div class="step" id="step-cands">
         <div class="step-head">3 · Music candidates <span class="badge todo" id="cands-badge">todo</span></div>
         <label class="meta">How many: <input type="number" id="cand-count" min="1" max="5" value="3" style="width:54px;"></label>
+        <label class="meta">Pulse register: <select id="cand-register" style="width:150px;"><option value="">auto (voice-safe)</option><option value="low_mid">low-mid (D3 area)</option><option value="mid_high">mid-high (D4 area)</option><option value="high">high (D5 area)</option></select></label>
         <button class="btn btn-go" id="cands-generate">Generate music candidates</button>
         <span class="meta" id="cands-busy"></span>
+        <label class="meta" style="display:block;margin-top:4px;"><input type="checkbox" id="export-exact" checked> Duration-exact package export (trim to video length; untick to keep the release tail)</label>
         <div id="cands"></div>
         <details id="ab-wrap" style="margin-top:8px;display:none;"><summary class="meta">A/B compare candidates</summary>
           <div class="ab">
@@ -203,6 +205,7 @@
               <span class="chip">seed ${c.seed}</span><span class="chip">${esc(c.palette_id)}</span>
               <span class="chip">${c.cue_count} cues</span><span class="chip">${c.tempo_bpm} BPM · ${esc(c.key)}</span>
               <span class="chip">${c.note_count} notes</span>
+              ${c.pulse_register?`<span class="chip">pulse ${esc(c.pulse_register)}</span>`:''}${c.harmonic_drift?'<span class="chip">drift</span>':''}
               ${c.parent_candidate?`<span class="chip">revised from ${esc(c.parent_candidate)}</span>`:''}
               ${c.reaper_built?'<span class="chip ok">REAPER built</span>':''}${c.ableton_built?'<span class="chip ok">Ableton handoff</span>':''}
             </div>
@@ -218,6 +221,7 @@
               <button class="btn btn-go" data-act="approve" data-cand="${esc(c.candidate_id)}">Approve + export</button>
               <button class="btn btn-warn" data-act="reject" data-cand="${esc(c.candidate_id)}">Reject</button>
             </div>
+            <div class="meta">REAPER project is MIDI-only until instruments/templates are patched — the handoff README covers both routes. Render defaults are pre-seeded (48 kHz/24-bit); <code>render-scorecraft-mix.lua</code> gives a versioned one-click render.</div>
             <details><summary class="meta">Duplicate &amp; revise</summary>
               <textarea rows="2" style="width:100%;margin-top:4px;" id="rev-${esc(c.candidate_id)}" placeholder='e.g. "less busy under speech", "stronger ending button", "reduce bass", "more tension in the middle"'></textarea>
               <button class="btn" data-act="revise" data-cand="${esc(c.candidate_id)}">Generate revised candidate</button>
@@ -294,7 +298,12 @@
       };
       document.getElementById('cands-generate').onclick = async ()=>{
         const busy=document.getElementById('cands-busy'); busy.textContent='Generating candidates (MIDI + previews)…';
-        try{ const d=await post('/api/score/candidates/generate',{project_id:ID,count:Number(document.getElementById('cand-count').value)||3}); toast(d.candidates.length+' candidates generated'); }
+        try{
+          const body={project_id:ID,count:Number(document.getElementById('cand-count').value)||3};
+          const reg=document.getElementById('cand-register').value;
+          if(reg) body.pulse_register=reg;
+          const d=await post('/api/score/candidates/generate',body); toast(d.candidates.length+' candidates generated');
+        }
         catch(e){ toast(e.message,false); showErr(e.message); }
         busy.textContent=''; load();
       };
@@ -311,10 +320,20 @@
         if (!act) return;
         const cand = t.getAttribute('data-cand');
         try{
-          if (act==='reaper'){ const d=await post('/api/score/reaper/build',{project_id:ID,candidate_id:cand}); toast('REAPER project built'); }
+          if (act==='reaper'){
+            const d=await post('/api/score/reaper/build',{project_id:ID,candidate_id:cand});
+            const used=Object.keys(d.templates_used||{}).length;
+            const warns=(d.template_warnings||[]).length;
+            toast('REAPER built — '+(used?used+' template track(s)':'MIDI-only (no templates)')+(warns?', '+warns+' template warning(s)':''));
+            if (warns) showErr('Template warnings:\n'+(d.template_warnings||[]).join('\n'));
+          }
           else if (act==='reaper-open'){ const d=await post('/api/score/reaper/open',{project_id:ID,candidate_id:cand}); toast('Launching REAPER…'); }
           else if (act==='ableton'){ await post('/api/score/ableton/build',{project_id:ID,candidate_id:cand}); toast('Ableton handoff built'); }
-          else if (act==='approve'){ if(!window.confirm('Approve '+cand+' and export to music/approved/? A previous approval would be archived, not overwritten.')) return; await post('/api/score/candidates/approve',{project_id:ID,candidate_id:cand}); toast('Approved + exported'); }
+          else if (act==='approve'){
+            const exact=document.getElementById('export-exact').checked;
+            if(!window.confirm('Approve '+cand+' and export to music/approved/ ('+(exact?'duration-exact':'tail-preserving')+')? A previous approval would be archived, not overwritten.')) return;
+            await post('/api/score/candidates/approve',{project_id:ID,candidate_id:cand,duration_exact:exact}); toast('Approved + exported ('+(exact?'duration-exact':'tail-preserving')+')');
+          }
           else if (act==='reject'){ await post('/api/score/candidates/status',{project_id:ID,candidate_id:cand,status:'rejected'}); toast('Rejected'); }
           else if (act==='revise'){ const req=document.getElementById('rev-'+cand).value.trim(); if(!req) return toast('Describe the revision first',false); const d=await post('/api/score/candidates/revise',{project_id:ID,candidate_id:cand,request:req}); toast('Revised → '+d.candidate.candidate_id+(d.revision_plan.unmatched?' (no rule matched — new seed variation)':'')); }
           load();

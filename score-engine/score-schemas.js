@@ -136,6 +136,7 @@ const DEFAULT_SETTINGS = {
   default_dialogue_density: "high",
   default_export_sample_rate: 48000,
   default_export_bit_depth: 24,
+  duration_exact_export: true,
 };
 
 // ── validators: return array of error strings (empty = valid) ──
