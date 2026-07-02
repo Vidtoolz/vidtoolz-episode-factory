@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Earth Studio — VIDTOOLZ</title>
+    <link rel="stylesheet" href="styles.css?v=1.9.6">
+    <style>
+      .es { max-width: 980px; margin: 0 auto; padding: 24px 20px 48px; }
+      .es-id { display:flex; gap:14px; align-items:baseline; flex-wrap:wrap; margin:8px 0 4px; }
+      .es-id h1 { margin:0; font-size:24px; }
+      .meta{color:var(--muted,#8b949e);font-size:12px;}
+      .step{background:var(--panel,#161b22);border:1px solid var(--border,#30363d);border-radius:10px;padding:16px 18px;margin:14px 0;}
+      .step.done{border-color:rgba(63,185,80,.5);}
+      .step.active{border-color:var(--accent,#3fb950);box-shadow:0 0 0 1px rgba(63,185,80,.25);}
+      .step-head{display:flex;gap:10px;align-items:center;font-weight:600;font-size:15px;}
+      .badge{font-size:11px;padding:2px 10px;border-radius:99px;border:1px solid var(--border,#30363d);}
+      .badge.done{color:#3fb950;border-color:#2ea04366;} .badge.todo{color:#d29922;border-color:#d2992266;} .badge.manual{color:#58a6ff;border-color:#58a6ff44;}
+      .btn{border:none;border-radius:6px;padding:6px 13px;font-size:13px;cursor:pointer;background:var(--panel-3,#21262d);color:inherit;border:1px solid var(--border,#30363d);margin:3px 6px 3px 0;text-decoration:none;display:inline-block;}
+      .btn:hover{border-color:#58a6ff;} .btn-go{background:#2ea043;color:#fff;border-color:#2ea043;}
+      textarea,input[type=text]{width:100%;box-sizing:border-box;background:#0d1117;color:#e6edf3;border:1px solid var(--border,#30363d);border-radius:6px;padding:7px;font-size:13px;font-family:inherit;}
+      code{font-size:12px;background:var(--panel-3,#21262d);padding:1px 5px;border-radius:4px;word-break:break-all;}
+      .chip{display:inline-block;font-size:11px;padding:2px 9px;border-radius:99px;background:var(--panel-3,#21262d);border:1px solid var(--border,#30363d);cursor:pointer;margin:2px 4px 2px 0;}
+      .chip:hover{border-color:#3fb950;color:#3fb950;}
+      table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+      th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--border,#30363d);}
+      .ok{color:#3fb950;} .warn{color:#d29922;} .blk{color:#f85149;}
+      pre{background:#0d1117;border:1px solid var(--border,#30363d);border-radius:6px;padding:8px;font-size:12px;white-space:pre-wrap;max-height:160px;overflow:auto;}
+      video{max-width:320px;border-radius:8px;border:1px solid var(--border,#30363d);background:#0d1117;}
+      #copy-status{position:fixed;bottom:16px;right:16px;background:#238636;color:#fff;padding:7px 14px;border-radius:8px;font-size:13px;display:none;z-index:50;}
+    </style>
+  </head>
+  <body>
+    <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="daily-idea-scout.html">Ideas</a><a href="production-pipeline.html">Pipeline</a></nav>
+    <div class="es">
+      <details class="page-guide" open>
+        <summary>Page Guide — What is this?</summary>
+        <div class="page-guide-body">
+          <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Guided Google Earth Studio map-animation workspace for one project. Describe a camera move in plain words, get an importable .esp, export frames from Earth Studio into the project folder, and render them to MP4 — step by step, with each step lighting up when it's done.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Follow the steps top to bottom. Only the frame export inside Earth Studio is manual (it's browser-only, no API) — everything else runs here. Nothing publishes; renders stay in the project (and optionally a VIDNAS sandbox).</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Live parse preview while you type, known-location chips, copyable paths, live frame counter, render log, MP4 preview.</span></div>
+        </div>
+      </details>
+      <div class="meta"><a href="projects.html">← Projects</a> · <a id="link-workspace" href="#">Workspace</a> · <a id="link-mediakit" href="#">Media kit</a> · <a href="production-pipeline.html">Pipeline</a></div>
+      <div class="es-id"><h1 id="es-title">Earth Studio — map animation</h1></div>
+      <div class="meta" id="es-meta">Loading…</div>
+      <div id="es-steps"></div>
+    </div>
+    <div id="copy-status"></div>
+    <script src="earth-studio-job-planner.js"></script>
+    <script>
+      const ID = new URLSearchParams(location.search).get('id') || '';
+      const planner = window.EarthStudioJobPlanner;
+      let ST = null;           // /api/earth-studio/status payload
+      let PKG_PATH = '';       // absolute package path (from media-kit project info)
+      let nonce = '', nonceHeader = 'x-vidtoolz-local-write-nonce';
+      let pollTimer = null;
+
+      function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+      function unwrap(j){return j && typeof j==='object' && j.data!==undefined ? j.data : j;}
+      function toast(msg, ok){ const el=document.getElementById('copy-status'); el.textContent=msg; el.style.background=ok===false?'#da3633':'#238636'; el.style.display='block'; clearTimeout(el._t); el._t=setTimeout(()=>{el.style.display='none';},1600); }
+      function copy(text,label){ const done=()=>toast('Copied: '+(label||'text')); const fail=()=>{ try{ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done(); }catch(e){ toast('Copy failed',false);} };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done,fail); else fail(); }
+      document.addEventListener('click',(ev)=>{ const t=ev.target.closest('[data-copy]'); if(!t) return; copy(t.getAttribute('data-copy'), t.getAttribute('data-copy-label')||'text'); });
+      function cbtn(text,label){ return `<button type="button" class="btn" data-copy="${esc(text)}" data-copy-label="${esc(label||'')}">Copy ${esc(label||'')}</button>`; }
+
+      async function fetchJson(url, opts){ const r=await fetch(url, Object.assign({cache:'no-store'}, opts||{})); const j=await r.json(); if(!r.ok||(j&&j.ok===false)) throw new Error((j&&j.error)||('HTTP '+r.status)); return unwrap(j); }
+      async function ensureNonce(){ if(nonce) return nonce; try{ const p=await fetchJson('/api/package-engine/status'); if(p&&p.localWriteNonce){nonce=p.localWriteNonce;nonceHeader=p.nonceHeader||nonceHeader;} }catch(e){} return nonce; }
+      async function post(path, body){ await ensureNonce(); const headers={'Content-Type':'application/json'}; headers[nonceHeader]=nonce; const r=await fetch(path,{method:'POST',headers,body:JSON.stringify(body)}); const j=await r.json(); if(!r.ok||(j&&j.ok===false)) throw new Error((j&&j.error)||('HTTP '+r.status)); return unwrap(j); }
+
+      // ── Live parse preview (client-side; the planner is the same module the
+      // server uses, so what you see here is exactly what Generate will write).
+      function parsePreview(){
+        const desc = document.getElementById('es-desc').value;
+        const box = document.getElementById('es-preview');
+        if (!desc.trim()) { box.innerHTML = '<div class="meta">Preview appears here while you type.</div>'; return; }
+        const parsed = planner.parseDescription(desc);
+        const rows = parsed.segments.map((s)=>`<tr>
+          <td>${s.segment_id}</td><td>${esc(s.action)}</td><td>${esc(s.location_name||'—')}</td>
+          <td>${s.start_seconds}–${s.end_seconds}s</td>
+          <td class="${s.resolution_status==='resolved'?'ok':'warn'}">${esc(s.resolution_status)}</td></tr>`).join('');
+        const warns = parsed.warnings.length ? `<div class="warn" style="font-size:12px;margin-top:6px;">⚠ ${parsed.warnings.map(esc).join('<br>⚠ ')}</div>` : '<div class="ok" style="font-size:12px;margin-top:6px;">✓ All segments resolved.</div>';
+        box.innerHTML = `<table><tr><th>#</th><th>Action</th><th>Location</th><th>Time</th><th>Status</th></tr>${rows}</table>
+          <div class="meta">Total: ${parsed.total_duration_seconds}s · ${parsed.total_frames} frames @ ${parsed.frame_rate}fps</div>${warns}`;
+      }
+
+      function chipRow(){
+        const names = Object.values(planner.LOCATION_FIXTURES).map((l)=>l.name);
+        return names.map((n)=>`<span class="chip" data-ins="${esc(n)}">${esc(n)}</span>`).join('') +
+          `<span class="chip" data-ins="60.1699,24.9384" title="Explicit coordinates work too">lat,lng…</span>`;
+      }
+
+      function stepBadge(done, manual){ return done ? '<span class="badge done">done</span>' : manual ? '<span class="badge manual">manual step</span>' : '<span class="badge todo">to do</span>'; }
+
+      function render(){
+        const s = ST;
+        const framesDir = s.frames_dir || '';
+        const laneDirPath = PKG_PATH ? PKG_PATH + '/earth-studio' : '';
+        const espPath = laneDirPath ? laneDirPath + '/earth-studio.esp' : '';
+        const job = s.job;
+        const renderJob = s.render_job || {};
+        const hasFrames = (s.frame_count||0) > 0;
+        const rendered = Boolean(s.rendered_mp4);
+        const renderedUrl = rendered ? `/aigen-assets/script-packages/${encodeURIComponent(ID)}/${s.rendered_mp4}` : '';
+        const active = !s.has_plan ? 1 : !hasFrames ? (s.has_esp ? 3 : 2) : !rendered ? 4 : 5;
+
+        document.getElementById('es-meta').innerHTML =
+          `Project <code>${esc(ID)}</code>${job ? ` · job <b>${esc(job.jobName)}</b> · ${job.total_frames} frames planned` : ' · no map-animation job yet'}`;
+
+        document.getElementById('es-steps').innerHTML = `
+          <div class="step ${s.has_plan?'done':''} ${active===1?'active':''}">
+            <div class="step-head">1 · Describe the camera move ${stepBadge(s.has_plan,false)}</div>
+            <div class="meta" style="margin:6px 0;">Plain words: <b>fly to</b> / <b>hover over</b> / <b>orbit</b> / <b>zoom in on</b> / <b>zoom out from</b> a place, each with a duration ("for 4 seconds"). Chain with "then". Known places (or click to insert):</div>
+            <div style="margin:4px 0 8px;">${chipRow()}</div>
+            <input id="es-job" type="text" placeholder="Job name (e.g. Helsinki Flyover)" value="${esc(job?job.jobName:'')}">
+            <textarea id="es-desc" rows="2" style="margin-top:6px;" placeholder="fly to Helsinki in 4 seconds, then orbit Helsinki for 5 seconds">${esc(job?job.description:'')}</textarea>
+            <div id="es-preview" style="margin-top:8px;"><div class="meta">Preview appears here while you type.</div></div>
+            <div style="margin-top:8px;"><button type="button" class="btn btn-go" id="es-generate">${s.has_plan?'Regenerate plan + .esp':'Generate plan + .esp'}</button>
+            <span class="meta" id="es-gen-status"></span></div>
+          </div>
+
+          <div class="step ${hasFrames?'done':''} ${active===2?'active':''}">
+            <div class="step-head">2 · Build the move in Earth Studio ${stepBadge(hasFrames, !hasFrames)}</div>
+            <ol class="meta" style="line-height:1.8;padding-left:18px;margin:6px 0;">
+              <li><a class="btn" href="https://earth.google.com/studio/" target="_blank" rel="noopener">Open Earth Studio →</a> (Google login, browser-only — nothing here automates it)</li>
+              <li>File → Import → Earth Studio project, pick: ${espPath?cbtn(espPath,'.esp path'):'<span class="warn">generate the plan first</span>'}</li>
+              <li>Confirm the camera move looks right (the .esp is best-effort — adjust keyframes freely; <code>shot-plan.md</code> in the same folder is the human-readable plan).</li>
+            </ol>
+          </div>
+
+          <div class="step ${hasFrames?'done':''} ${active===3?'active':''}">
+            <div class="step-head">3 · Export frames into the project ${stepBadge(hasFrames,false)}</div>
+            <div class="meta" style="margin:6px 0;">In Earth Studio: Render → image sequence, and save the frames into this folder (reachable from any machine via VIDNAS):</div>
+            ${framesDir?`<div>${cbtn(framesDir,'frames folder (Linux)')}${cbtn('\\\\\\\\192.168.61.186\\\\Public\\\\VIDTOOLZ\\\\03_SHARED_MEDIA_LIBRARY\\\\aigen\\\\script-packages\\\\'+ID+'\\\\earth-studio\\\\frames','frames folder (Windows UNC)')}</div>`:''}
+            <div class="meta" style="margin-top:6px;">Exported frames detected: <b id="es-frame-count" class="${hasFrames?'ok':''}">${s.frame_count||0}</b>
+              <button type="button" class="btn" id="es-refresh">Refresh</button>
+              ${!hasFrames&&s.has_plan?'<span class="meta">(auto-checking every few seconds…)</span>':''}</div>
+          </div>
+
+          <div class="step ${rendered?'done':''} ${active===4?'active':''}">
+            <div class="step-head">4 · Render frames → MP4 ${stepBadge(rendered,false)}</div>
+            <div style="margin:6px 0;"><button type="button" class="btn btn-go" id="es-render" ${hasFrames?'':'disabled'}>Render ${s.frame_count||0} frames → MP4</button>
+              ${renderJob.exit_state && renderJob.exit_state!=='idle' ? `<span class="meta">render ${esc(renderJob.exit_state)}${renderJob.active?' · '+renderJob.elapsed_seconds+'s':''}</span>` : ''}</div>
+            <pre id="es-log" style="display:${renderJob.exit_state && renderJob.exit_state!=='idle'?'block':'none'};">${esc((renderJob.stderr_tail||'').slice(-800))}</pre>
+            ${rendered?`<div style="margin-top:8px;"><video controls preload="metadata" src="${esc(renderedUrl)}"></video>
+              <div class="meta">${esc(s.rendered_mp4)} · ${Math.round((s.rendered_bytes||0)/1024)} KB</div></div>`:''}
+          </div>
+
+          <div class="step ${active===5?'active':''}">
+            <div class="step-head">5 · Use it ${rendered?'<span class="badge done">ready</span>':'<span class="badge todo">after render</span>'}</div>
+            <div class="meta" style="margin:6px 0;">The MP4 lives in the project (<code>earth-studio/renders/</code>) — import it into Resolve from there like any other clip, or stage a copy to the VIDNAS sandbox for sharing.</div>
+            ${rendered?`<div>${cbtn(PKG_PATH+'/'+s.rendered_mp4,'rendered MP4 path')}<button type="button" class="btn" id="es-stage">Stage copy → VIDNAS sandbox</button><span class="meta" id="es-stage-status"></span></div>`:''}
+          </div>
+        `;
+
+        // wire handlers
+        const desc = document.getElementById('es-desc');
+        let deb=null; desc.addEventListener('input', ()=>{ clearTimeout(deb); deb=setTimeout(parsePreview,250); });
+        document.querySelectorAll('.chip').forEach((c)=>c.addEventListener('click',()=>{ desc.value=(desc.value?desc.value.replace(/\s*$/,' '):'')+c.getAttribute('data-ins'); desc.dispatchEvent(new Event('input')); desc.focus(); }));
+        parsePreview();
+        document.getElementById('es-generate').onclick = generate;
+        document.getElementById('es-refresh').onclick = refresh;
+        const rbtn = document.getElementById('es-render'); if (rbtn) rbtn.onclick = startRender;
+        const sbtn = document.getElementById('es-stage'); if (sbtn) sbtn.onclick = stage;
+
+        // auto-poll: waiting for frames, or an active render
+        clearInterval(pollTimer); pollTimer=null;
+        if ((s.has_plan && !hasFrames) || renderJob.active) pollTimer = setInterval(refresh, renderJob.active ? 3000 : 6000);
+      }
+
+      async function generate(){
+        const st = document.getElementById('es-gen-status'); st.textContent='Generating…';
+        try{
+          const r = await post('/api/earth-studio/plan', { id: ID, jobName: document.getElementById('es-job').value || 'Map Animation', description: document.getElementById('es-desc').value });
+          toast('Plan + .esp generated');
+          if (r.unresolved_count) st.textContent = r.unresolved_count + ' unresolved segment(s) — fix the description or adjust manually in Earth Studio.';
+          await refresh();
+        }catch(e){ st.textContent='Failed: '+(e.message||e); toast('Generate failed', false); }
+      }
+      async function startRender(){
+        try{ await post('/api/earth-studio/render', { id: ID }); toast('Render started'); await refresh(); }
+        catch(e){ toast('Render failed: '+(e.message||e), false); const log=document.getElementById('es-log'); if(log){log.style.display='block';log.textContent=e.message||e;} }
+      }
+      async function stage(){
+        const st=document.getElementById('es-stage-status');
+        try{ const r=await post('/api/earth-studio/stage',{id:ID}); st.textContent='Staged: '+r.staged_to; toast('Staged to sandbox'); }
+        catch(e){ st.textContent='Failed: '+(e.message||e); }
+      }
+      async function refresh(){
+        try{ ST = await fetchJson('/api/earth-studio/status?id='+encodeURIComponent(ID)); }catch(e){ document.getElementById('es-meta').innerHTML='<span class="blk">Could not load: '+esc(e.message||e)+'</span>'; return; }
+        // preserve in-progress typing across refreshes
+        const descEl=document.getElementById('es-desc');
+        const typing = descEl && (descEl.value !== (ST.job?ST.job.description:'')) && document.activeElement===descEl;
+        if (typing){ // update only the dynamic bits
+          const fc=document.getElementById('es-frame-count'); if(fc) fc.textContent=ST.frame_count||0;
+          return;
+        }
+        render();
+      }
+      async function load(){
+        if(!ID){ document.getElementById('es-meta').innerHTML='<span class="blk">No project id. <a href="projects.html">Back to projects</a></span>'; return; }
+        document.getElementById('link-workspace').href='project-workspace.html?id='+encodeURIComponent(ID);
+        document.getElementById('link-mediakit').href='project-media-kit.html?id='+encodeURIComponent(ID);
+        try{ const kit = await fetchJson('/api/project/media-kit?id='+encodeURIComponent(ID)); PKG_PATH = kit.project.vidnas_linux_path || kit.project.package_path || ''; document.getElementById('es-title').textContent='Earth Studio — '+kit.project.title; }catch(e){}
+        await refresh();
+      }
+      load();
+    </script>
+  </body>
+</html>

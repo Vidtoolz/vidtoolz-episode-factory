@@ -162,12 +162,32 @@ test("earth-studio API: plan requires nonce; status reports the written job; tra
   }
 });
 
-test("earth-studio GUI: pipeline page has the project-scoped lane section", () => {
-  const html = fs.readFileSync(path.join(__dirname, "..", "production-pipeline.html"), "utf8");
-  assert.match(html, /earth-studio-lane/);
-  assert.match(html, /es-project/);
-  assert.match(html, /\/api\/earth-studio\/plan/);
-  assert.match(html, /\/api\/earth-studio\/render/);
-  assert.match(html, /earth\.google\.com\/studio/);
-  assert.doesNotMatch(html, /es-run\b/); // legacy run-scoped picker retired
+test("earth-studio GUI: pipeline page is a launcher; the guided page owns the workflow", () => {
+  const pipeline = fs.readFileSync(path.join(__dirname, "..", "production-pipeline.html"), "utf8");
+  assert.match(pipeline, /earth-studio-lane/);
+  assert.match(pipeline, /project-earth-studio\.html\?id=/);
+  assert.doesNotMatch(pipeline, /\/api\/earth-studio\/plan/); // writes live on the guided page only
+  assert.doesNotMatch(pipeline, /es-run\b/);
+
+  const page = fs.readFileSync(path.join(__dirname, "..", "project-earth-studio.html"), "utf8");
+  assert.match(page, /earth-studio-job-planner\.js/); // live client-side parse preview
+  assert.match(page, /parseDescription/);
+  assert.match(page, /LOCATION_FIXTURES/); // gazetteer chips
+  assert.match(page, /\/api\/earth-studio\/plan/);
+  assert.match(page, /\/api\/earth-studio\/render/);
+  assert.match(page, /\/api\/earth-studio\/stage/);
+  assert.match(page, /earth\.google\.com\/studio/);
+  assert.match(page, /frames folder/i);
+  assert.match(page, /page-guide/);
+  for (const step of ["1 · Describe", "2 · Build the move", "3 · Export frames", "4 · Render frames", "5 · Use it"]) {
+    assert.ok(page.includes(step), `missing step: ${step}`);
+  }
+  assert.doesNotMatch(page, /8099/);
+});
+
+test("earth-studio GUI: workspace and media kit link to the guided page", () => {
+  for (const f of ["project-workspace.html", "project-media-kit.html"]) {
+    const html = fs.readFileSync(path.join(__dirname, "..", f), "utf8");
+    assert.match(html, /project-earth-studio\.html\?id=/, `${f} must link to the Earth Studio workspace`);
+  }
 });

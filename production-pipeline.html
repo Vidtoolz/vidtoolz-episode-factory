@@ -302,24 +302,15 @@
         <div style="margin-top:10px;">
           <p class="eyebrow">Optional tool · Earth Studio</p>
           <h2 style="margin:2px 0;">Map animation (Google Earth Studio)</h2>
-          <p class="muted" style="margin:0;">Plan a camera move for the selected project, generate an importable <code>.esp</code>, then render the exported frames to MP4 on vidnux. Artifacts live in the project package under <code>earth-studio/</code>. Earth Studio's frame export is the one manual (browser) step.</p>
+          <p class="muted" style="margin:0;">Plan a camera move in plain words, import the generated <code>.esp</code>, export frames, render to MP4 — the guided workspace walks each step per project.</p>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
           <label class="muted" style="font-size:13px;">Project:
             <input id="es-project" list="es-project-datalist" placeholder="project id (type or pick)" style="margin-left:6px; padding:4px; min-width:280px;"><datalist id="es-project-datalist"></datalist>
           </label>
-          <input id="es-job" type="text" placeholder="Job name (e.g. City Flyover)" style="padding:5px; min-width:200px;">
-        </div>
-        <textarea id="es-desc" rows="2" placeholder="e.g. hover over Tokyo for 4 seconds, then fly to 35.65,139.84 in 6 seconds, then orbit Tokyo for 5 seconds"
-          style="width:100%; margin-top:8px; padding:6px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px;"></textarea>
-        <div id="es-actions" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px;">
-          <button type="button" id="es-generate" class="primary-btn">Generate plan + .esp</button>
-          <a class="btn-external" href="https://earth.google.com/studio/" target="_blank" rel="noopener">Open Earth Studio</a>
-          <button type="button" id="es-render" class="secondary-btn">Render frames → MP4</button>
-          <button type="button" id="es-stage" class="secondary-btn">Stage MP4 → VIDNAS sandbox</button>
+          <a class="primary-btn" id="es-open" href="#" style="text-decoration:none;">Open Earth Studio workspace →</a>
         </div>
         <p class="muted" id="es-status" style="margin:8px 0 0; font-size:13px;"></p>
-        <pre id="es-job-log" style="display:none; margin:8px 0 0; padding:8px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:12px; white-space:pre-wrap; max-height:160px; overflow:auto;"></pre>
       </details>
 
       <details class="user-guide" id="user-guide">
@@ -1258,91 +1249,35 @@
     <script src="orientation-bar.js?v=1"></script>
     <script src="package-run-artifact-panel.js?v=1"></script>
     <script>
-      // Earth Studio map-animation lane (self-contained; PROJECT-scoped since
-      // 2026-07-02 — artifacts live in the aigen package's earth-studio/ dir).
+      // Earth Studio launcher — the guided workflow lives on project-earth-studio.html.
       (function () {
         const projEl = document.getElementById("es-project");
         if (!projEl) return;
-        const jobEl = document.getElementById("es-job");
-        const descEl = document.getElementById("es-desc");
+        const openEl = document.getElementById("es-open");
         const statusEl = document.getElementById("es-status");
-        const logEl = document.getElementById("es-job-log");
-        let nonce = "", nonceHeaderName = "x-vidtoolz-local-write-nonce", pollTimer = null;
-        const esc = (s) => { const d = document.createElement("div"); d.textContent = String(s == null ? "" : s); return d.innerHTML; };
         const unwrap = (j) => (j && j.data !== undefined ? j.data : j);
-
-        async function ensureNonce() {
-          if (nonce) return nonce;
-          try {
-            const p = unwrap(await (await fetch("/api/package-engine/status", { cache: "no-store" })).json());
-            if (p && p.localWriteNonce) { nonce = p.localWriteNonce; nonceHeaderName = p.nonceHeader || nonceHeaderName; }
-            else if (p && p.captureEvidenceWrite && p.captureEvidenceWrite.localWriteNonce) { nonce = p.captureEvidenceWrite.localWriteNonce; nonceHeaderName = p.captureEvidenceWrite.nonceHeader || nonceHeaderName; }
-          } catch (_) {}
-          return nonce;
+        function sync() {
+          const id = projEl.value.trim();
+          openEl.href = id ? "project-earth-studio.html?id=" + encodeURIComponent(id) : "#";
+          if (!id) { statusEl.textContent = "Pick a project."; return; }
+          fetch("/api/earth-studio/status?id=" + encodeURIComponent(id), { cache: "no-store" })
+            .then((r) => r.json()).then((j) => { const s = unwrap(j);
+              statusEl.textContent = s && s.ok
+                ? `Plan: ${s.has_plan ? "yes" : "no"} · frames: ${s.frame_count || 0} · rendered MP4: ${s.rendered_mp4 ? "yes" : "no"}`
+                : "";
+            }).catch(() => { statusEl.textContent = ""; });
         }
-        async function post(path, body) {
-          await ensureNonce();
-          const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json", [nonceHeaderName]: nonce }, body: JSON.stringify({ ...body, localWriteNonce: nonce }) });
-          return { code: r.status, data: unwrap(await r.json()) };
-        }
-        async function loadProjects() {
-          try {
-            const p = unwrap(await (await fetch("/api/projects", { cache: "no-store" })).json());
-            const dl = document.getElementById("es-project-datalist");
-            const projects = (p.projects || []).filter((x) => !x.diagnostic && !x.archived);
-            projects.forEach((x) => { const o = document.createElement("option"); o.value = x.project_id; dl.appendChild(o); });
-            const fromQuery = new URLSearchParams(location.search).get("package");
-            if (fromQuery) projEl.value = fromQuery;
-            else if (!projEl.value) {
-              const active = projects.find((x) => x.status === "active");
-              if (active) projEl.value = active.project_id;
-            }
-          } catch (_) {}
-        }
-        async function refresh() {
-          const id = projEl.value; if (!id) { statusEl.textContent = "Pick a project."; return; }
-          try {
-            const s = unwrap(await (await fetch("/api/earth-studio/status?id=" + encodeURIComponent(id), { cache: "no-store" })).json());
-            const j = s.render_job || {};
-            statusEl.innerHTML = "Plan: <b>" + (s.has_plan ? "yes" : "no") + "</b> · .esp: <b>" + (s.has_esp ? "yes" : "no") +
-              "</b> · exported frames: <b>" + (s.frame_count || 0) + "</b> · rendered MP4: <b>" + (s.rendered_mp4 ? esc(s.rendered_mp4) + " (" + Math.round((s.rendered_bytes || 0) / 1024) + " KB)" : "no") + "</b>" +
-              (s.job ? " · plan frames: " + s.job.total_frames : "") +
-              (s.frames_dir ? "<br>Drop the Earth Studio frame export into: <code>" + esc(s.frames_dir) + "</code>" : "");
-            if (j && j.exit_state && j.exit_state !== "idle") { logEl.style.display = "block"; logEl.textContent = "[render " + j.exit_state + "] " + (j.elapsed_seconds || 0) + "s\n" + (j.stderr_tail || "").slice(-800); if (j.active) startPoll(); }
-          } catch (e) { statusEl.textContent = "Status error: " + e.message; }
-        }
-        function startPoll() {
-          if (pollTimer) return;
-          pollTimer = setInterval(async () => {
-            try {
-              const j = (unwrap(await (await fetch("/api/earth-studio/job-status", { cache: "no-store" })).json()) || {}).job || {};
-              logEl.style.display = "block"; logEl.textContent = "[render " + j.exit_state + "] " + (j.elapsed_seconds || 0) + "s\n" + (j.stderr_tail || "").slice(-800);
-              if (!j.active) { clearInterval(pollTimer); pollTimer = null; refresh(); }
-            } catch (_) { clearInterval(pollTimer); pollTimer = null; }
-          }, 2500);
-        }
-
-        document.getElementById("es-generate").addEventListener("click", async (e) => {
-          const id = projEl.value; if (!id) { statusEl.textContent = "Pick a project first."; return; }
-          e.target.disabled = true; statusEl.textContent = "Generating plan + .esp…";
-          try {
-            const r = await post("/api/earth-studio/plan", { id, jobName: jobEl.value || "Map Animation", description: descEl.value || "" });
-            if (r.data && r.data.ok) { statusEl.textContent = "Generated" + (r.data.unresolved_count ? " with " + r.data.unresolved_count + " unresolved segment(s) — check shot-plan.md." : ".") + " Import earth-studio/earth-studio.esp into Earth Studio, export frames into earth-studio/frames/, then Render → MP4."; }
-            else { statusEl.textContent = "Failed: " + ((r.data && r.data.error) || r.code); }
-          } catch (err) { statusEl.textContent = "Error: " + err.message; } finally { e.target.disabled = false; }
-        });
-        document.getElementById("es-render").addEventListener("click", async () => {
-          const id = projEl.value; if (!id) return;
-          const r = await post("/api/earth-studio/render", { id });
-          if (!(r.data && r.data.ok)) { logEl.style.display = "block"; logEl.textContent = "Render failed to start: " + ((r.data && r.data.error) || r.code); } else startPoll();
-        });
-        document.getElementById("es-stage").addEventListener("click", async () => {
-          const id = projEl.value; if (!id) return;
-          const r = await post("/api/earth-studio/stage", { id });
-          statusEl.textContent = r.data && r.data.ok ? "Staged to VIDNAS sandbox: " + esc(r.data.staged_to) : ("Stage failed: " + ((r.data && r.data.error) || r.code));
-        });
-        projEl.addEventListener("change", refresh);
-        loadProjects().then(refresh);
+        fetch("/api/projects", { cache: "no-store" }).then((r) => r.json()).then((j) => {
+          const p = unwrap(j);
+          const dl = document.getElementById("es-project-datalist");
+          const projects = (p.projects || []).filter((x) => !x.diagnostic && !x.archived);
+          projects.forEach((x) => { const o = document.createElement("option"); o.value = x.project_id; dl.appendChild(o); });
+          const fromQuery = new URLSearchParams(location.search).get("package");
+          if (fromQuery) projEl.value = fromQuery;
+          else { const active = projects.find((x) => x.status === "active"); if (active) projEl.value = active.project_id; }
+          sync();
+        }).catch(() => {});
+        projEl.addEventListener("change", sync);
       })();
     </script>
   </body>
