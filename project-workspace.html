@@ -81,7 +81,9 @@
               ${countCard('I2V prompts',c.i2v_prompts)}
               ${countCard('Local videos',c.local_videos)}
               ${countCard('External videos',c.manual_external_videos)}
-              ${countCard('Resolve handoff',s.has_resolve_handoff?'✓':'—')}
+              ${s.has_resolve_handoff
+                ? `<a class="count" style="text-decoration:none;color:inherit;border:1px solid rgba(63,185,80,.4);" href="project-resolve-handoff.html?id=${encodeURIComponent(ID)}"><b>✓</b>Resolve handoff →</a>`
+                : countCard('Resolve handoff','—')}
             </div>
           </div>
 

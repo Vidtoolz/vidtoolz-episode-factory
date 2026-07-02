@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resolve Handoff — VIDTOOLZ</title>
+    <link rel="stylesheet" href="styles.css?v=1.9.6">
+    <style>
+      .rh { max-width: 920px; margin: 0 auto; padding: 24px 20px 48px; }
+      .rh-id { display:flex; gap:14px; align-items:baseline; flex-wrap:wrap; margin:8px 0 4px; }
+      .rh-id h1 { margin:0; font-size:24px; }
+      .pill{font-size:11px;padding:2px 9px;border-radius:100px;white-space:nowrap;}
+      .st-active{background:rgba(88,166,255,.18);color:#58a6ff;} .st-editing,.st-published{background:rgba(63,185,80,.18);color:#3fb950;}
+      .st-parked{background:rgba(139,148,158,.18);color:#8b949e;}
+      .meta{color:var(--muted,#8b949e);font-size:12px;}
+      .card{background:var(--panel,#161b22);border:1px solid var(--border,#30363d);border-radius:10px;padding:18px 20px;margin:16px 0;}
+      .card.next{border-color:var(--accent,#3fb950);box-shadow:0 0 0 1px rgba(63,185,80,.25);}
+      .next-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#3fb950;font-weight:600;}
+      .lane-pill{display:inline-block;font-size:12px;padding:3px 10px;border-radius:100px;margin:2px 6px 2px 0;background:var(--panel-3,#21262d);border:1px solid var(--border,#30363d);}
+      .lane-pill.chosen{border-color:#3fb950;color:#3fb950;}
+      table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+      th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--border,#30363d);}
+      code{font-size:12px;background:var(--panel-3,#21262d);padding:1px 5px;border-radius:4px;word-break:break-all;}
+      ol.steps{font-size:13px;line-height:1.7;padding-left:20px;} ol.steps li{margin:4px 0;}
+      .blk{color:#f85149;} .result{font-size:12px;white-space:pre-wrap;background:var(--panel-3,#21262d);border-radius:6px;padding:10px;margin-top:10px;display:none;}
+    </style>
+  </head>
+  <body>
+    <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="daily-idea-scout.html">Ideas</a><a href="production-pipeline.html">Pipeline</a></nav>
+    <div class="rh">
+      <details class="page-guide" open>
+        <summary>Page Guide — What is this?</summary>
+        <div class="page-guide-body">
+          <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">The edit-start view for one project: what the Resolve handoff contains, which clip lane it uses, where the files live on VIDNAS, and how to bring them into DaVinci Resolve.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Follow the import steps in Resolve, then click the Mark-editing action so the system records that editing has started. Editing itself happens in Resolve — the system stops here.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Handoff status, clip lane pills, clip table (edit order), NAS paths, Resolve import steps, next-task action.</span></div>
+        </div>
+      </details>
+      <div class="pw-back meta"><a href="projects.html">← Projects</a> · <a id="link-workspace" href="#">Workspace</a> · <a id="link-review" href="#">Video review</a></div>
+      <div id="rh-body"><p class="meta">Loading handoff…</p></div>
+    </div>
+    <script src="project-client.js"></script>
+    <script>
+      const ID = new URLSearchParams(location.search).get('id') || '';
+      const body = document.getElementById('rh-body');
+      const client = ProjectClient();
+
+      async function fetchJson(url) {
+        const r = await fetch(url, { cache: 'no-store' });
+        const j = await r.json();
+        if (!r.ok || (j && j.ok === false)) throw new Error((j && j.error) || ('HTTP ' + r.status));
+        return j && j.data !== undefined ? j.data : j;
+      }
+
+      async function load() {
+        if (!ID) { body.innerHTML = '<p class="blk">No project id. <a href="projects.html">Back to projects</a></p>'; return; }
+        document.getElementById('link-workspace').href = `project-workspace.html?id=${encodeURIComponent(ID)}`;
+        document.getElementById('link-review').href = `project-video-review.html?id=${encodeURIComponent(ID)}`;
+        let state, variants, manifest = null;
+        try {
+          const d = await client.fetchState(ID);
+          state = d;
+          variants = await fetchJson(`/api/project/video-variants?id=${encodeURIComponent(ID)}`);
+          if (d.state.has_resolve_handoff) {
+            try {
+              manifest = await fetchJson(`/aigen-assets/script-packages/${encodeURIComponent(ID)}/resolve-handoff/media-manifest.json`);
+            } catch (e) { manifest = null; }
+          }
+        } catch (e) {
+          body.innerHTML = `<p class="blk">Could not load: ${client.esc(e.message || e)}</p>`;
+          return;
+        }
+        render(state, variants, manifest);
+      }
+
+      function lanePills(variants) {
+        return (variants.variants || []).map((v) => {
+          const marks = [v.is_handoff_variant ? 'handoff' : '', v.is_best ? 'chosen' : ''].filter(Boolean).join(' · ');
+          return `<span class="lane-pill ${v.is_handoff_variant ? 'chosen' : ''}">videos/${client.esc(v.name)}/ — ${v.completed}/${v.selections}${marks ? ' · ' + client.esc(marks) : ''}</span>`;
+        }).join('');
+      }
+
+      function clipTable(manifest) {
+        const clips = (manifest && manifest.clips) || [];
+        if (!clips.length) return '<p class="meta">No clip list in the manifest.</p>';
+        const rows = clips.map((c) => {
+          const t = c.technical_metadata || {};
+          return `<tr><td>${c.order}</td><td>${String(c.prompt_index).padStart(3, '0')}</td><td><code>${client.esc(c.staged_video_relative_path || '')}</code></td><td>${client.esc(String(t.width || '?'))}x${client.esc(String(t.height || '?'))} · ${client.esc(String(t.frames || '?'))}f · ${client.esc(String(t.duration || '?'))}s</td></tr>`;
+        }).join('');
+        return `<table><tr><th>Order</th><th>Index</th><th>Clip</th><th>Tech</th></tr>${rows}</table>`;
+      }
+
+      function render(d, variants, manifest) {
+        const s = d.state, nt = d.next_task;
+        const pkgPath = s.package_path || '';
+        const handoffDir = pkgPath ? pkgPath + '/resolve-handoff' : '';
+        const lane = variants.handoff_video_variant || variants.best_variant || 'mp4';
+        const clipDir = pkgPath ? `${pkgPath}/videos/${lane}` : '';
+        const excluded = manifest && Array.isArray(manifest.excluded_indexes) ? manifest.excluded_indexes : [];
+        const included = manifest && Array.isArray(manifest.included_indexes) ? manifest.included_indexes : [];
+        body.innerHTML = `
+          <div class="rh-id"><h1>Resolve Handoff — ${client.esc(s.title)}</h1><span class="pill st-${client.esc(s.status)}">${client.esc(s.status)}</span></div>
+          <div class="meta">Package <code>${client.esc(s.project_id)}</code> · stage <b>${client.esc(s.stage)}</b></div>
+
+          <div class="card">
+            <div class="next-label">Handoff status</div>
+            ${s.has_resolve_handoff
+              ? `<p style="font-size:13px;margin:8px 0 4px;">✓ Handoff assembled${manifest && manifest.created_at ? ' · ' + client.esc(manifest.created_at) : ''}</p>
+                 <div class="meta">Clip lane: <b>videos/${client.esc(lane)}/</b>${included.length ? ` · ${included.length} clip(s) included` : ''}${excluded.length ? ` · <span style=\"color:#d29922;\">excluded: ${excluded.map((n) => client.esc(String(n))).join(', ')}</span>` : ''}</div>`
+              : '<p class="blk" style="font-size:13px;">No Resolve handoff yet — create it from the next-task action on the workspace (or the pipeline page) first.</p>'}
+            <div style="margin-top:10px;">${lanePills(variants)}</div>
+          </div>
+
+          ${s.has_resolve_handoff ? `
+          <div class="card">
+            <div class="next-label">Clips in edit order (assembly-plan)</div>
+            ${clipTable(manifest)}
+          </div>
+
+          <div class="card">
+            <div class="next-label">Open in DaVinci Resolve</div>
+            <ol class="steps">
+              <li>The handoff lives on VIDNAS at:<br><code>${client.esc(handoffDir)}</code></li>
+              <li>Read <code>assembly-plan.md</code> there for the human summary; <code>assembly-plan.csv</code> is the same clip order for reference while editing.</li>
+              <li>In Resolve: create/open the project, set a <b>vertical 1080x1920</b> timeline.</li>
+              <li>Media Pool → Import Media → import the clip folder:<br><code>${client.esc(clipDir)}</code></li>
+              <li>Clips are <b>720x1280</b> — on the 1080x1920 timeline set clip scaling to fill (Resolve's default "Scale to fit" is fine; they upscale cleanly).</li>
+              <li>Mikko's talking-head/voiceover is the primary layer; these clips are background/B-roll candidates. Clip order and durations are suggestions, not edit decisions.</li>
+            </ol>
+            <div class="meta">The system's scope ends here — editing, export, and publishing are manual and yours.</div>
+          </div>` : ''}
+
+          <div class="card next">
+            <div class="next-label">Next task</div>
+            <h2 style="margin:6px 0;">${client.esc(nt.label)}</h2>
+            <p class="meta" style="font-size:13px;">${client.esc(nt.why)}</p>
+            <div id="rh-action"></div>
+            <div class="result" id="rh-result"></div>
+          </div>
+        `;
+        client.renderAction(document.getElementById('rh-action'), nt, () => load(), document.getElementById('rh-result'));
+      }
+      load();
+    </script>
+  </body>
+</html>

@@ -54,6 +54,7 @@
     </header>
 
     <section class="panel" id="summary-panel" style="display:none;">
+      <div id="variant-pills" style="margin-bottom:8px;"></div>
       <div class="summary-pills" id="summary"></div>
       <div id="usability" style="margin-top:6px;"></div>
       <div id="handoff-note" class="vr-meta" style="margin-top:6px;"></div>
@@ -213,7 +214,21 @@
       setHref("link-workspace", `project-workspace.html?id=${e}`);
       setHref("link-focus", `project-focus.html?id=${e}`);
       setHref("link-i2v", `project-i2v-prompts.html?id=${e}`);
-      setHref("link-handoff", `production-pipeline.html?package=${e}`);
+      setHref("link-handoff", `project-resolve-handoff.html?id=${e}`);
+      // Lane pills: every populated videos/<variant>/ folder, linking to this
+      // page with an explicit ?variant= override.
+      fetch(`/api/project/video-variants?id=${e}`, { cache: "no-store" })
+        .then((r) => r.json())
+        .then((vb) => {
+          const vd = vb && vb.data ? vb.data : vb;
+          const pills = (vd.variants || []).map((v) => {
+            const active = v.name === data.video_variant;
+            const marks = [v.is_handoff_variant ? "handoff" : "", active ? "viewing" : ""].filter(Boolean).join(" · ");
+            return `<a href="?id=${e}&variant=${encodeURIComponent(v.name)}" style="display:inline-block;font-size:12px;padding:2px 10px;border-radius:100px;margin-right:6px;border:1px solid ${active ? "#3fb950" : "var(--border,#30363d)"};color:${active ? "#3fb950" : "inherit"};text-decoration:none;">videos/${esc(v.name)}/ ${v.completed}/${v.selections}${marks ? " · " + esc(marks) : ""}</a>`;
+          }).join("");
+          if (pills) setHtml("variant-pills", pills);
+        })
+        .catch(() => { /* pills are optional decoration */ });
       renderCards(); recompute(); setDirty(false);
     }
 

@@ -433,3 +433,59 @@ test("video-review page: project-video-review.html has players, decisions, links
   assert.match(html, /project-focus\.html\?id=/);
   assert.doesNotMatch(html, /8099/); // no legacy review-view dependency
 });
+
+// ── Video variants API + edit-start page ─────────────────────────────────────
+
+test("video-variants API: lists populated lanes with coverage, handoff and best flags", async () => {
+  const fx = createPackage({ indices: [2, 9], realFirst: false }); // videos/mp4/ staged
+  const hqDir = path.join(fx.pkg, "videos", "mp4-hq-720p");
+  fs.mkdirSync(hqDir, { recursive: true });
+  for (const idx of [2, 9]) fs.writeFileSync(path.join(hqDir, `${pvr.zeroPad3(idx)}.mp4`), "x");
+  fs.mkdirSync(path.join(fx.pkg, "resolve-handoff"), { recursive: true });
+  fs.writeFileSync(path.join(fx.pkg, "resolve-handoff", "media-manifest.json"), JSON.stringify({ video_variant: "mp4-hq-720p", clips: [] }));
+  const server = packageEngineServer.createServer();
+  try {
+    await withEnv(fx, async () => {
+      await listen(server);
+      const res = await requestJson(server, `${packageEngineServer.PROJECT_VIDEO_VARIANTS_API}?id=${fx.packageId}`);
+      assert.equal(res.statusCode, 200);
+      const d = res.body.data;
+      assert.equal(d.handoff_video_variant, "mp4-hq-720p");
+      assert.equal(d.best_variant, "mp4-hq-720p"); // handoff wins the coverage tie
+      const names = d.variants.map((v) => v.name).sort();
+      assert.deepEqual(names, ["mp4", "mp4-hq-720p"]);
+      const hq = d.variants.find((v) => v.name === "mp4-hq-720p");
+      assert.equal(hq.completed, 2);
+      assert.equal(hq.is_handoff_variant, true);
+      assert.equal(hq.is_best, true);
+      const fast = d.variants.find((v) => v.name === "mp4");
+      assert.equal(fast.is_default, true);
+      assert.equal(fast.is_handoff_variant, false);
+    });
+  } finally { await close(server); fs.rmSync(fx.root, { recursive: true, force: true }); }
+});
+
+test("edit-start page: project-resolve-handoff.html shows handoff, lanes, Resolve steps, and the action", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "project-resolve-handoff.html"), "utf8");
+  assert.match(html, /\/api\/project\/video-variants/);
+  assert.match(html, /aigen-assets\/script-packages/); // reads the real manifest
+  assert.match(html, /resolve-handoff\/media-manifest\.json/);
+  assert.match(html, /renderAction/); // Mark-editing via the gated action registry
+  assert.match(html, /project-client\.js/);
+  assert.match(html, /1080x1920/); // timeline guidance
+  assert.match(html, /720x1280/);  // clip scaling guidance
+  assert.match(html, /page-guide/);
+  assert.doesNotMatch(html, /8099/);
+});
+
+test("review page links to the project-scoped handoff page, not the global pipeline page", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "project-video-review.html"), "utf8");
+  assert.match(html, /project-resolve-handoff\.html\?id=/);
+  assert.match(html, /\/api\/project\/video-variants/); // lane pills
+  assert.match(html, /variant-pills/);
+});
+
+test("workspace links to the edit-start page when a handoff exists", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "project-workspace.html"), "utf8");
+  assert.match(html, /project-resolve-handoff\.html\?id=/);
+});

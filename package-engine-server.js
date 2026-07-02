@@ -93,6 +93,7 @@ const PROJECT_I2V_PROMPTS_API = '/api/project/i2v-prompts';
 const PROJECT_I2V_PROMPTS_GENERATE_API = '/api/project/i2v-prompts/generate';
 const PROJECT_I2V_PROMPTS_SAVE_API = '/api/project/i2v-prompts/save';
 const PROJECT_VIDEO_REVIEW_API = '/api/project/video-review';
+const PROJECT_VIDEO_VARIANTS_API = '/api/project/video-variants';
 const PROJECT_VIDEO_REVIEW_SAVE_API = '/api/project/video-review/save';
 const PROJECT_ALLOWED_STATUSES = ['active', 'parked', 'blocked', 'editing', 'publish_prep', 'published', 'archived'];
 const AIGEN_FLUX_IMAGES_API_PREFIX = '/api/aigen/flux-images/';
@@ -5170,6 +5171,42 @@ function readProjectVideoReview(packageId, options = {}) {
   };
 }
 
+// Per-variant staged-clip picture for ONE project: every populated
+// videos/<variant>/ lane with its coverage, which lane the coverage/handoff
+// logic would pick, and which lane the existing Resolve handoff recorded.
+// Read-only; feeds the review page's lane pills and the handoff page.
+function readProjectVideoVariants(packageId, options = {}) {
+  const opt = { root: options.root || ROOT };
+  const { packageId: id, packageDir } = resolveAigenPackageDir(packageId, opt);
+  const selections = readPackageSelections(packageDir);
+  const handoffVariant = packageHandoffVideoVariant(packageDir);
+  const best = packageBestStagedWanStatus(packageDir);
+  const entries = listPackageVideoVariantEntries(packageDir);
+  if (!entries.some((entry) => entry.name === DEFAULT_VIDEO_VARIANT)) {
+    entries.unshift({ name: DEFAULT_VIDEO_VARIANT, clipSet: readVariantClipSet(packageDir, DEFAULT_VIDEO_VARIANT) });
+  }
+  const variants = entries.map((entry) => {
+    const status = packageStagedWanStatus(packageDir, entry.name, { selections, clipSet: entry.clipSet });
+    return {
+      name: entry.name,
+      video_dir: status.videoDir,
+      completed: status.completedCount,
+      selections: status.selectionCount,
+      clip_files: entry.clipSet.size,
+      is_default: entry.name === DEFAULT_VIDEO_VARIANT,
+      is_handoff_variant: entry.name === handoffVariant,
+      is_best: entry.name === best.videoVariant,
+    };
+  });
+  return {
+    ok: true,
+    project_id: id,
+    variants,
+    best_variant: best.videoVariant,
+    handoff_video_variant: handoffVariant,
+  };
+}
+
 // Persist operator review decisions to video-review.json (merged over existing).
 function saveProjectVideoReview(payload = {}, options = {}) {
   const opt = { root: options.root || ROOT };
@@ -9440,6 +9477,16 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === PROJECT_VIDEO_VARIANTS_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('package_id') || url.searchParams.get('package') || '';
+        sendJSON(res, 200, readProjectVideoVariants(id, { root: serverOptions.root || ROOT }));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'project-video-variants-read-error');
+      }
+      return;
+    }
+
     // Save keep/flag/reject review decisions to video-review.json.
     if (req.method === 'POST' && url.pathname === PROJECT_VIDEO_REVIEW_SAVE_API) {
       readJsonBody(req)
@@ -10867,6 +10914,7 @@ module.exports = {
   generateProjectI2vPrompts,
   saveProjectI2vPrompts,
   readProjectVideoReview,
+  readProjectVideoVariants,
   saveProjectVideoReview,
   callPrestoOllamaChat,
   buildMediaRoutingStatus,
@@ -10887,6 +10935,7 @@ module.exports = {
   PROJECT_I2V_PROMPTS_GENERATE_API,
   PROJECT_I2V_PROMPTS_SAVE_API,
   PROJECT_VIDEO_REVIEW_API,
+  PROJECT_VIDEO_VARIANTS_API,
   PROJECT_VIDEO_REVIEW_SAVE_API,
   IDEAS_TRIAGE_API,
   IDEAS_STATUS_API,
