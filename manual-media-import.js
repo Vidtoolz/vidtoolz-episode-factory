@@ -62,8 +62,20 @@ function resolvePackageDir(arg, options = {}) {
 }
 
 function sha256File(filePath) {
+  // Hash in fixed-size chunks: readFileSync buffers the whole file and throws
+  // ERR_FS_FILE_TOO_LARGE past Node's 2 GiB buffer cap, which real camera
+  // originals exceed. Missing/unreadable files still throw (ENOENT/EACCES).
   const hash = crypto.createHash('sha256');
-  hash.update(fs.readFileSync(filePath));
+  const fd = fs.openSync(filePath, 'r');
+  try {
+    const chunk = Buffer.allocUnsafe(8 * 1024 * 1024);
+    let bytesRead;
+    while ((bytesRead = fs.readSync(fd, chunk, 0, chunk.length, null)) > 0) {
+      hash.update(chunk.subarray(0, bytesRead));
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
   return hash.digest('hex');
 }
 

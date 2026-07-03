@@ -1,0 +1,101 @@
+{
+  "package": "five-gate-dry-run-20260703",
+  "images": [
+    {
+      "media_type": "image",
+      "exists": true,
+      "generation_mode": "manual_external",
+      "generation_provider": "unknown_manual",
+      "generation_host": "external_browser",
+      "variant": "gpt-manual",
+      "imported_at": "2026-07-03T15:09:51.698Z",
+      "original_filename": "test-static-card-001.png",
+      "path": "images/gpt-manual/test-static-card-001.png",
+      "sha256": "7c3cb0cc5e3316ef9527632c4c969a6ecd10ead8efbac8545cf9d4310fb816f7",
+      "prompt_index": 1,
+      "prompt_text": "",
+      "validation": {
+        "width": 1080,
+        "height": 1920,
+        "warnings": []
+      }
+    }
+  ],
+  "videos": [
+    {
+      "media_type": "video",
+      "generation_mode": "local",
+      "generation_provider": "comfyui_wan22",
+      "generation_host": "presto",
+      "prompt_provider": "ollama",
+      "prompt_host": "presto",
+      "workflow": "wan22_i2v_vertical_1080x1920_30fps",
+      "variant": "wan22-local",
+      "video_variant": "mp4",
+      "path": "videos/mp4/001.mp4",
+      "prompt_index": 1,
+      "status": "complete",
+      "exists": true
+    },
+    {
+      "media_type": "video",
+      "exists": true,
+      "generation_mode": "manual_external",
+      "generation_provider": "unknown_manual",
+      "generation_host": "external_browser",
+      "variant": "klingai-manual",
+      "imported_at": "2026-07-03T15:09:45.032Z",
+      "original_filename": "VT_capture_vidnux_20260703-180602_profile-screen-4k30.mp4",
+      "path": "videos/manual-external/VT_capture_vidnux_20260703-180602_profile-screen-4k30.mp4",
+      "sha256": "83a5c48112f20cf74b2a462de7eba883314170c238c6a3397b2299010c9509e8",
+      "prompt_index": 30,
+      "prompt_text": "",
+      "validation": {
+        "width": 3840,
+        "height": 2160,
+        "fps": 30,
+        "codec": "h264",
+        "duration": 139.2,
+        "warnings": [
+          "Resolution 3840x2160 is not the target 1080x1920.",
+          "Video is not vertical (portrait 9:16 expected)."
+        ]
+      }
+    },
+    {
+      "media_type": "video",
+      "exists": true,
+      "generation_mode": "manual_external",
+      "generation_provider": "unknown_manual",
+      "generation_host": "external_browser",
+      "variant": "klingai-manual",
+      "imported_at": "2026-07-03T15:57:37.932Z",
+      "original_filename": "ip17 what is hermes.MP4",
+      "path": "videos/manual-external/ip17 what is hermes.MP4",
+      "sha256": "566a4f0bc0e595f20f40157a07128856fb2e2c17d5e0821bbb8bbde300326279",
+      "prompt_index": null,
+      "prompt_text": "",
+      "validation": {
+        "width": 3840,
+        "height": 2160,
+        "fps": 59.986,
+        "codec": "hevc",
+        "duration": 332.99,
+        "warnings": [
+          "Resolution 3840x2160 is not the target 1080x1920.",
+          "Video is not vertical (portrait 9:16 expected).",
+          "Frame rate 59.986fps is not the target 30fps.",
+          "Codec hevc is not h264 — confirm Resolve compatibility."
+        ]
+      }
+    }
+  ],
+  "counts": {
+    "images_total": 1,
+    "images_local": 0,
+    "images_external": 1,
+    "videos_total": 3,
+    "videos_local": 1,
+    "videos_external": 2
+  }
+}

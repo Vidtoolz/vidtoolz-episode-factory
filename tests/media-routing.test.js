@@ -16,9 +16,11 @@ const {
   test,
 } = require("./_helpers.js");
 
+const crypto = require("node:crypto");
+
 const routing = require("../media-routing.js");
 const provenance = require("../media-provenance.js");
-const { importManualMedia } = require("../manual-media-import.js");
+const { importManualMedia, sha256File } = require("../manual-media-import.js");
 const { buildPackageMediaIndex } = require("../package-media-index.js");
 
 // Minimal valid PNG header carrying width/height (enough for dimension reading).
@@ -206,7 +208,63 @@ test("import manual videos: klingai provenance + ffprobe warnings", () => {
   assert.ok(e.validation.warnings.some((w) => /Frame rate/.test(w)));
 });
 
+// ── Import hashing (>2 GiB camera originals) ────────────────────────────────
+
+test("sha256File hashes in chunks: same digest, multi-chunk safe, no whole-file readFileSync", () => {
+  const { pkg } = tmpPackage();
+  // Larger than one 8 MiB chunk so the read loop crosses a chunk boundary,
+  // with a tail that is not chunk-aligned.
+  const bytes = Buffer.alloc(8 * 1024 * 1024 + 3, 7);
+  const file = path.join(pkg, "big.bin");
+  fs.writeFileSync(file, bytes);
+  const expected = crypto.createHash("sha256").update(bytes).digest("hex");
+  assert.equal(sha256File(file), expected);
+
+  // The 2 GiB failure came from buffering whole files with readFileSync
+  // (ERR_FS_FILE_TOO_LARGE). Poison readFileSync for this file to prove the
+  // chunked path never falls back to it.
+  const original = fs.readFileSync;
+  fs.readFileSync = (p, ...rest) => {
+    if (String(p) === file) throw new Error("sha256File must not buffer whole files with readFileSync");
+    return original.call(fs, p, ...rest);
+  };
+  try {
+    assert.equal(sha256File(file), expected);
+  } finally {
+    fs.readFileSync = original;
+  }
+
+  // Missing files still fail clearly.
+  assert.throws(() => sha256File(path.join(pkg, "missing.bin")), /ENOENT/);
+});
+
 // ── Unified media index (local + external) ──────────────────────────────────
+
+test("buildPackageMediaIndex: manual video imports are not double-listed as WAN/PRESTO renders", () => {
+  const { pkg } = tmpPackage();
+  // A real WAN clip in the fast lane...
+  fs.mkdirSync(path.join(pkg, "videos", "mp4"), { recursive: true });
+  fs.writeFileSync(path.join(pkg, "videos", "mp4", "001.mp4"), "VID");
+  // ...and a manually imported external video (A-roll / screen-recording lane).
+  const drop = path.join(pkg, "imports", "manual-videos");
+  fs.mkdirSync(drop, { recursive: true });
+  fs.writeFileSync(path.join(drop, "capture-030.mp4"), "FAKEVIDEO");
+  const ffprobe = () => ({ duration: 139.2, codec: "h264", resolution: "3840x2160", frameRate: 30, audioPresent: false, metadataUnavailable: false });
+  importManualMedia({ package: pkg, kind: "video", provider: "unknown_manual", ffprobe, now: "2026-07-03T00:00:00Z" });
+
+  const index = buildPackageMediaIndex(pkg);
+  const manualEntries = index.videos.filter((m) => String(m.path).startsWith("videos/manual-external/"));
+  assert.equal(manualEntries.length, 1, "a manual import must appear exactly once, from the external manifest");
+  assert.equal(manualEntries[0].generation_mode, "manual_external");
+  assert.equal(manualEntries[0].generation_provider, "unknown_manual");
+  // The WAN lane must still classify as PRESTO-generated.
+  const wan = index.videos.find((m) => m.path === path.join("videos", "mp4", "001.mp4"));
+  assert.equal(wan.generation_provider, "comfyui_wan22");
+  assert.equal(wan.generation_host, "presto");
+  assert.equal(index.counts.videos_total, 2);
+  assert.equal(index.counts.videos_local, 1);
+  assert.equal(index.counts.videos_external, 1);
+});
 
 test("buildPackageMediaIndex merges local FLUX + external GPT media with provenance", () => {
   const { pkg } = tmpPackage();

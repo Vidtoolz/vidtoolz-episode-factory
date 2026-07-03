@@ -68,6 +68,12 @@ const VIDEO_VARIANT_WORKFLOWS = {
 };
 const SAFE_VARIANT_NAME = /^[A-Za-z0-9._-]+$/;
 
+// videos/manual-external/ is the manual-import destination (manual-media-import.js
+// KINDS), not a WAN generation lane. Its entries enter the index through
+// collectExternal() with their true manual provenance; sweeping the folder here
+// would double-list every manual video as a comfyui_wan22/PRESTO render.
+const MANUAL_EXTERNAL_VIDEO_VARIANT = 'manual-external';
+
 function collectLocalVideos(packageDir) {
   const videosRoot = path.join(packageDir, 'videos');
   const out = [];
@@ -79,6 +85,7 @@ function collectLocalVideos(packageDir) {
     return out;
   }
   for (const variantDir of variantDirs) {
+    if (variantDir.name === MANUAL_EXTERNAL_VIDEO_VARIANT) continue;
     let entries = [];
     try {
       entries = fs.readdirSync(path.join(videosRoot, variantDir.name), { withFileTypes: true });

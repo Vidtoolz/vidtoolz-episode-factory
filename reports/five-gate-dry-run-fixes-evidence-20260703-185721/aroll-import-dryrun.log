@@ -1,0 +1,5 @@
+DRY-RUN manual videos -> /home/vidtoolz/vidtoolz-episode-factory/reports/five-gate-dry-run-evidence-20260703-175510/script-packages/five-gate-dry-run-20260703/videos/manual-external
+Scanned 1 file(s) in /mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/camera_originals/ip17 what is hermes
+Would import: 1 | duplicates skipped: 0 | warnings: 4
+  ip17 what is hermes.MP4 -> videos/manual-external/ip17 what is hermes.MP4  [unknown_manual]  ⚠ Resolution 3840x2160 is not the target 1080x1920.; Video is not vertical (portrait 9:16 expected).; Frame rate 59.986fps is not the target 30fps.; Codec hevc is not h264 — confirm Resolve compatibility.
+dryrun_exit=0
