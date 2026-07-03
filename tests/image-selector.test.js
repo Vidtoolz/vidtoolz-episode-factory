@@ -388,7 +388,81 @@ test("aigen assets route rejects path traversal", async () => {
     await listen(server);
     const response = await requestText(server, "/aigen-assets/../../../etc/passwd");
     assert.equal([403, 404].includes(response.statusCode), true);
+    const nested = await requestText(server, "/aigen-assets/script-packages/../../../etc/passwd");
+    assert.equal([403, 404].includes(nested.statusCode), true);
   } finally {
     await close(server);
+  }
+});
+
+test("aigen assets route serves script-packages media from the env-overridden fixture root", async () => {
+  const fixture = createImageSelectorFixture();
+  const server = packageEngineServer.createServer();
+  try {
+    await listen(server);
+    await withAigenEnv(fixture, async () => {
+      const url = `/aigen-assets/script-packages/${fixture.packageId}/images/flux-local/flux-001.png`;
+      const response = await requestText(server, url);
+      assert.equal(response.statusCode, 200);
+      assert.equal(response.body, "png-1");
+      // Missing files under the fixture root return a clean 404.
+      const missing = await requestText(
+        server,
+        `/aigen-assets/script-packages/${fixture.packageId}/images/flux-local/flux-999.png`
+      );
+      assert.equal(missing.statusCode, 404);
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("aigen assets route serves aigen-root-relative media (non script-packages paths)", async () => {
+  const fixture = createImageSelectorFixture();
+  const assetDir = path.join(fixture.aigenRoot, "editors-replaced-kling");
+  fs.mkdirSync(assetDir, { recursive: true });
+  fs.writeFileSync(path.join(assetDir, "clip-01.mp4"), "mp4-bytes", "utf8");
+  const server = packageEngineServer.createServer();
+  try {
+    await listen(server);
+    await withAigenEnv(fixture, async () => {
+      const response = await requestText(server, "/aigen-assets/editors-replaced-kling/clip-01.mp4");
+      assert.equal(response.statusCode, 200);
+      assert.equal(response.body, "mp4-bytes");
+    });
+  } finally {
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("aigen assets route honors an AIGEN_SCRIPT_PACKAGES override outside the aigen root", async () => {
+  // The visual-verification failure mode: script-packages overridden to a root
+  // NOT nested under the aigen root. script-packages/<pkg> asset URLs must still
+  // resolve against the configured script-packages root.
+  const fixture = createImageSelectorFixture();
+  const detachedPackages = fs.mkdtempSync(path.join(os.tmpdir(), "detached-packages-"));
+  const pkgDir = path.join(detachedPackages, "detached-pkg");
+  fs.mkdirSync(path.join(pkgDir, "images", "flux-local"), { recursive: true });
+  fs.writeFileSync(path.join(pkgDir, "images", "flux-local", "flux-001.png"), "detached-png", "utf8");
+  const previous = {
+    root: process.env.AIGEN_VIDNAS_ROOT,
+    scriptPackages: process.env.AIGEN_SCRIPT_PACKAGES,
+  };
+  process.env.AIGEN_VIDNAS_ROOT = fixture.aigenRoot;
+  process.env.AIGEN_SCRIPT_PACKAGES = detachedPackages;
+  const server = packageEngineServer.createServer();
+  try {
+    await listen(server);
+    const response = await requestText(server, "/aigen-assets/script-packages/detached-pkg/images/flux-local/flux-001.png");
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body, "detached-png");
+  } finally {
+    if (previous.root === undefined) delete process.env.AIGEN_VIDNAS_ROOT; else process.env.AIGEN_VIDNAS_ROOT = previous.root;
+    if (previous.scriptPackages === undefined) delete process.env.AIGEN_SCRIPT_PACKAGES; else process.env.AIGEN_SCRIPT_PACKAGES = previous.scriptPackages;
+    await close(server);
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+    fs.rmSync(detachedPackages, { recursive: true, force: true });
   }
 });

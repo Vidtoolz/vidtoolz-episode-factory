@@ -6847,15 +6847,30 @@ function handleImagePromptsSave(req, res) {
     });
 }
 
-function handleAigenAsset(req, res, url) {
+function handleAigenAsset(req, res, url, options = {}) {
   const raw = decodeURIComponent(url.pathname.slice(AIGEN_ASSETS_PREFIX.length));
   const parts = raw.split('/').filter(Boolean);
   if (parts.some((part) => part === '..' || part.startsWith('.'))) {
     send(res, 403, 'Forbidden');
     return;
   }
-  const assetPath = path.resolve(VIDNAS_AIGEN_ROOT, raw);
-  const root = path.resolve(VIDNAS_AIGEN_ROOT);
+  // Resolve through the same env-overridable roots as every other aigen route
+  // (aigenPaths), not the hard-coded VIDNAS constant, so fixture/test roots can
+  // serve media. URL shapes: "script-packages/<pkg>/<rel>" maps onto the
+  // configured script-packages root (which may be overridden independently of
+  // the aigen root); any other path resolves under the aigen root. With no env
+  // overrides both resolve exactly as before.
+  const paths = aigenPaths(options);
+  let root;
+  let relative;
+  if (parts[0] === 'script-packages') {
+    root = path.resolve(paths.scriptPackages);
+    relative = parts.slice(1).join('/');
+  } else {
+    root = path.resolve(paths.aigenRoot);
+    relative = parts.join('/');
+  }
+  const assetPath = path.resolve(root, relative);
   if (!assetPath.startsWith(root + path.sep)) {
     send(res, 403, 'Forbidden');
     return;
@@ -10556,7 +10571,7 @@ function createServer(options = {}) {
     }
 
     if (req.method === 'GET' && url.pathname.startsWith(AIGEN_ASSETS_PREFIX)) {
-      handleAigenAsset(req, res, url);
+      handleAigenAsset(req, res, url, serverOptions);
       return;
     }
 
