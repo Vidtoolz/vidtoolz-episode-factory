@@ -1,0 +1,56 @@
+{
+ "resolve-ready-gallery.test.js": {
+  "mappedModules": 49,
+  "campaignRuns": 2457,
+  "sampleSize": 12,
+  "killsInVacuousCheck": 0
+ },
+ "topic-scout-nonce.test.js": {
+  "mappedModules": 49,
+  "campaignRuns": 2452,
+  "sampleSize": 12,
+  "killsInVacuousCheck": 0
+ },
+ "outline-prompt-nonce.test.js": {
+  "mappedModules": 49,
+  "campaignRuns": 2452,
+  "sampleSize": 12,
+  "killsInVacuousCheck": 0
+ },
+ "quick-action-endpoints.test.js": {
+  "mappedModules": 49,
+  "campaignRuns": 2452,
+  "sampleSize": 12,
+  "killsInVacuousCheck": 0
+ },
+ "video-prompts.test.js": {
+  "mappedModules": 49,
+  "campaignRuns": 2069,
+  "sampleSize": 12,
+  "killsInVacuousCheck": 0
+ },
+ "aigen-resolve-assembly.test.js": {
+  "mappedModules": 49,
+  "campaignRuns": 1894,
+  "sampleSize": 12,
+  "killsInVacuousCheck": 0
+ },
+ "aigen-production-pipeline.test.js": {
+  "mappedModules": 49,
+  "campaignRuns": 1894,
+  "sampleSize": 12,
+  "killsInVacuousCheck": 0
+ },
+ "friction-log-nonce.test.js": {
+  "mappedModules": 49,
+  "campaignRuns": 1894,
+  "sampleSize": 12,
+  "killsInVacuousCheck": 0
+ },
+ "image-prompts-action.test.js": {
+  "mappedModules": 1,
+  "campaignRuns": 18,
+  "sampleSize": 4,
+  "killsInVacuousCheck": 3
+ }
+}

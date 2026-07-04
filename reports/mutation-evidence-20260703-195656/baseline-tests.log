@@ -1,0 +1,2309 @@
+ok - proposal loop guard review rejects missing worktree before git inspection
+ok - proposal loop guard review rejects nonexistent tmp worktree before git inspection
+ok - proposal loop guard review rejects file worktree before git inspection
+ok - proposal loop guard review rejects symlink escaping tmp before git inspection
+ok - proposal loop guard review rejects non-Git tmp directory before diff inspection
+ok - proposal loop guard review accepts valid Git tmp worktree with allowed diff
+ok - proposal loop guard review rejects valid Git tmp worktree with forbidden file scope
+ok - proposal loop guard rejects staged files
+ok - proposal loop guard rejects untracked files
+ok - proposal loop guard rejects commits ahead
+ok - proposal loop guard rejects worktree outside /tmp
+ok - proposal loop guard rejects worktree equal to or inside real repo
+ok - proposal loop guard exports rejected patch with rejected patch naming
+ok - proposal loop guard accepts codex command with expected disposable clone -C path
+ok - proposal loop guard cli accepts safe codex command with matching expected worktree
+ok - proposal loop guard rejects codex command without -C
+ok - proposal loop guard cli rejects missing -C
+ok - proposal loop guard rejects codex command with -C but no path
+ok - proposal loop guard rejects codex command -C outside tmp
+ok - proposal loop guard cli rejects -C outside tmp
+ok - proposal loop guard rejects codex command -C equal to or inside real repo
+ok - proposal loop guard cli rejects -C equal to the real repo
+ok - proposal loop guard cli rejects -C inside the real repo
+ok - proposal loop guard rejects codex command -C that is not the expected disposable clone
+ok - proposal loop guard cli rejects -C that does not match expected worktree
+ok - proposal loop runner help documents safe modes and required options
+ok - proposal loop runner rejects missing repo
+ok - proposal loop runner rejects missing allowed scope
+ok - proposal loop runner rejects missing task input
+ok - proposal loop runner rejects empty task content
+ok - proposal loop runner rejects unsafe name path traversal
+ok - proposal loop runner default mode creates tmp clone and task file
+ok - proposal loop runner default dry-run writes manifest under /tmp
+ok - proposal loop runner dry-run manifest records command-boundary accepted
+ok - proposal loop runner default mode prints codex command but does not run Codex
+ok - proposal loop runner default mode runs command-boundary preflight
+ok - proposal loop runner default mode prints postflight guard command
+ok - proposal loop runner default mode prints real-repo apply checklist
+ok - proposal loop runner run-codex runs postflight guard and exports accepted patch
+ok - proposal loop runner accepted run-codex manifest records postflight and patch path
+ok - proposal loop runner run-codex exports rejected patch for forbidden diff
+ok - proposal loop runner rejected run-codex manifest records decision and reason
+ok - proposal loop runner Codex failure manifest records nonzero status
+ok - proposal loop runner rejects non-tmp history dir
+ok - proposal loop runner manifest writing does not affect real repo status
+ok - creates a normalized episode with required defaults
+ok - normalization preserves unknown harmless episode fields
+ok - invalid episode format normalizes to long
+ok - normalizes invalid status back to Idea
+ok - duplicates reset status and preserve package fields
+ok - packaging gate reports pass fail state
+ok - checklist normalization creates every v0.2 group with default items
+ok - old episode data keeps legacy text and receives structured checklist defaults
+ok - old packaging gate labels migrate to v0.2 checklist labels
+ok - readiness scoring combines checklist and script readiness
+ok - partial readiness scoring is percentage based
+ok - duplication preserves structured checklist state while resetting status
+ok - packaging review returns actionable warnings
+ok - next-action generation creates a packaging repair task below 80 percent
+ok - work block creation stores required defaults on the episode
+ok - starter work block planning creates practical 30-minute blocks
+ok - starter work block planning does not duplicate existing objectives
+ok - work block queue follows operational priority order
+ok - work block queue prefers active and older blocks within the same category
+ok - starting completing and skipping work blocks updates status timestamps and notes
+ok - work block next ignores done and skipped blocks
+ok - doctor audit returns ok for clean current-style data
+ok - doctor audit reports duplicate episode ids as errors
+ok - doctor audit reports duplicate work block ids as errors
+ok - doctor audit reports invalid work block status and category
+ok - doctor audit reports invalid selectedId and missing required episode fields
+ok - doctor audit reports invalid JSON
+ok - next-action generation creates a script task when package passes but script is thin
+ok - next-action generation creates shoot prep editing and publish tasks
+ok - execution queue sorts by practical urgency
+ok - published and archived complete episodes do not produce blocker tasks
+ok - old episodes receive nextAction compatibility and can override inferred task
+ok - old episodes receive empty work session history
+ok - work session normalization fills required defaults
+ok - old work sessions remain compatible without start and end timestamps
+ok - adding a session stores history updates next action and selected checklist items
+ok - selected checklist updates do not complete unselected items
+ok - completion form data normalization builds session input without completing text-derived checklist items
+ok - editing a work session updates session fields and next action
+ok - deleting a work session removes only that session
+ok - resume blocker task generation uses still blocked session text
+ok - repeat task generation uses previous session task title and type
+ok - active session normalization handles old or missing data
+ok - starting a session creates one running active session
+ok - active session pause resume and elapsed time are testable
+ok - completing an active session can become a work session with elapsed minutes
+ok - active session progress percentage is capped against estimated minutes
+ok - pipeline counts include every production status
+ok - weekly summary filters sessions from the last 7 days
+ok - weekly summary counts old sessions by createdAt when endedAt is missing
+ok - weekly review generation combines pipeline work blockers publish ranking and next focus
+ok - blocked episode detection names readiness blockers
+ok - closest-to-publish ranking favors later pipeline stages
+ok - abandoning an active session clears the draft
+ok - episode factory HTML contains Focused View toggle and focus panel
+ok - episode factory focus panel renders selected episode action summary without mutation controls
+ok - episode factory full dashboard restores deferred panels
+ok - visible app version and html cache busters use current release
+ok - checklist toggle state persists and readiness recalculates after storage reload
+ok - browser localStorage shaped episode data with work blocks normalizes correctly
+ok - completed active session persists in history and clears the active draft
+ok - backup status normalization accepts missing or invalid input
+ok - app status counts episodes sessions backup timestamps and active session
+ok - demo episode creation adds realistic sample data without overwriting existing data
+ok - state normalization accepts raw episode arrays
+ok - episode factory view mode storage is UI-only
+ok - episode factory CLI creates file-backed episodes and reports next task
+ok - episode factory CLI init creates valid empty storage
+ok - episode factory CLI init refuses to overwrite existing storage by default
+ok - episode factory CLI init force overwrites only the intended storage file
+ok - episode factory CLI doctor guides first run when default storage is missing
+ok - episode factory CLI doctor json guides first run when default storage is missing
+ok - episode factory CLI doctor file missing path stays a real error
+ok - episode factory CLI doctor passes after init
+ok - episode factory CLI init followed by create list and block plan works
+ok - episode factory CLI manages work block lifecycle
+ok - episode factory CLI block add fails on invalid episode references
+ok - episode factory CLI doctor json output is parseable and read only
+ok - copy payloads include integration-ready context
+ok - task package copy builders include steps and success criteria
+ok - session export payload builders include session progress context
+ok - full markdown package includes readiness checklist states and next action
+ok - single episode export builders produce the expected package types
+ok - creator qa json export includes expected keys
+ok - creator qa markdown export includes expected sections
+ok - creator qa exports tolerate missing optional fields
+ok - structured outline export includes grounding checklist
+ok - import and export preserve work blocks
+ok - JSON export and import preserve work sessions
+ok - JSON round trip preserves edited work sessions
+ok - backup health recommends export when no export exists
+ok - backup health reports today and day age for recent exports
+ok - backup health recommends export when export is stale
+ok - last export and import timestamp helpers persist to localStorage
+ok - weekly export builders produce review outputs
+ok - export payload includes all stored episode data and metadata
+ok - shared collection JSON helpers round trip new fields and unknown fields
+ok - import accepts exported payload and returns replacement state
+ok - import accepts legacy raw episode arrays
+ok - import accepts unversioned browser localStorage shaped data
+ok - import rejects invalid JSON and missing episodes
+ok - import rejects unsupported schema versions with actionable errors
+ok - import rejects non-object episode entries
+ok - import repairs duplicate episode ids
+ok - import preview generation summarizes new matching changed duplicate conflict and sessions
+ok - replace import applies the imported state after preview
+ok - merge new episodes only adds safe new episodes and skips matches conflicts and duplicates
+ok - merge and update matching episodes adds new episodes and updates same-id same-title matches
+ok - merge and update import commit persists updates additions and unrelated episodes after reload
+ok - same-id same-title imports are matching episodes
+ok - same-id different-title imports are conflicts
+ok - different-id same-title imports are possible duplicates and skipped by merge modes
+ok - merge and update preserves imported work sessions and export fields
+ok - malformed import rejection still prevents preview planning
+ok - old v1.0 import compatibility keeps exported object and raw array imports working
+ok - episode factory CLI import merge-new skips existing matches without overwriting
+ok - episode factory CLI doctor file reports invalid JSON without importing
+ok - package engine normalizes candidate fields and strategic fields
+ok - package engine validates candidate sets
+ok - package engine sorts by score and filters by recommendation
+ok - package engine exports selected package json and markdown
+ok - package run helpers build stable folder names and candidate source paths
+ok - HyperFrames availability probe parses version and failure
+ok - HyperFrames discovery works without a manifest
+ok - HyperFrames discovery merges manifest render state
+ok - HyperFrames preview rejects traversal and resolves only composition HTML
+ok - HyperFrames preview route serves only validated composition HTML
+ok - HyperFrames render route validation requires an existing composition
+ok - HyperFrames render updates manifest on simulated success
+ok - HyperFrames render updates manifest on simulated failure
+ok - package run generation prompt includes workflow topic schema and guardrails
+ok - package run placeholder candidates create 10 inspectable candidates
+ok - package run cli argument parsing accepts topic workflow and date
+ok - outline prep extracts selected package from exported json shape
+ok - outline prompt includes selected package workflow structures and guardrails
+ok - outline placeholders include the three required outline sections
+ok - outline cli argument parsing accepts run folder selected and workflow
+ok - script prep prompt includes package outline and required review sections
+ok - script prep placeholders create reviewable draft final and production files
+ok - script prep cli argument parsing accepts run folder selected and outline
+Created script prep files in: ../../../tmp/package-script-prep-cDZY75/package-runs/2026-05-02-script-prep
+../../../tmp/package-script-prep-cDZY75/package-runs/2026-05-02-script-prep/script-prompt.md
+created: ../../../tmp/package-script-prep-cDZY75/package-runs/2026-05-02-script-prep/script-structure.md
+../../../tmp/package-script-prep-cDZY75/package-runs/2026-05-02-script-prep/script-draft.md
+../../../tmp/package-script-prep-cDZY75/package-runs/2026-05-02-script-prep/final-script.md
+../../../tmp/package-script-prep-cDZY75/package-runs/2026-05-02-script-prep/production-notes.md
+ok - script prep cli writes local review artifacts and marks partial research as not ready
+Created script prep files in: ../../../tmp/package-script-prep-missing-research-zme1Jl/package-runs/2026-05-02-script-prep
+../../../tmp/package-script-prep-missing-research-zme1Jl/package-runs/2026-05-02-script-prep/script-prompt.md
+created: ../../../tmp/package-script-prep-missing-research-zme1Jl/package-runs/2026-05-02-script-prep/script-structure.md
+../../../tmp/package-script-prep-missing-research-zme1Jl/package-runs/2026-05-02-script-prep/script-draft.md
+../../../tmp/package-script-prep-missing-research-zme1Jl/package-runs/2026-05-02-script-prep/final-script.md
+../../../tmp/package-script-prep-missing-research-zme1Jl/package-runs/2026-05-02-script-prep/production-notes.md
+ok - script prep cli marks missing research pack as needs research
+ok - script prep cli preserves manually edited script structure
+ok - production prep builders create the seven required local planning artifacts
+ok - production prep cli argument parsing accepts run folder and explicit inputs
+Created production prep files in: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep
+created: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep/production-brief.md
+created: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep/shooting-plan.md
+created: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep/b-roll-list.md
+created: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep/graphics-list.md
+created: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep/resolve-edit-checklist.md
+created: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep/thumbnail-title-check.md
+created: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep/publish-pack.md
+Created production prep files in: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep
+unchanged: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep/production-brief.md
+skipped: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep/shooting-plan.md
+unchanged: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep/b-roll-list.md
+unchanged: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep/graphics-list.md
+unchanged: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep/resolve-edit-checklist.md
+unchanged: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep/thumbnail-title-check.md
+unchanged: ../../../tmp/package-production-prep-j060tZ/package-runs/2026-05-02-production-prep/publish-pack.md
+ok - production prep cli writes seven artifacts and preserves existing human edits
+ok - package engine server exposes thumbnail candidates with browser-loadable images
+[package-engine thumbnail] {"provider":"placeholder","model":"local-svg-placeholder","timeoutMs":120000,"elapsedMs":0,"statusCategory":"success","candidateCount":3}
+ok - package engine thumbnail response defaults to placeholder provider
+ok - package engine server status reports provider and model without generation
+ok - package engine capture evidence write nonce and local origin checks are enforced
+ok - generateBeginningTriageDraft fills five fields from a stubbed Ollama response
+ok - generateBeginningTriageDraft requires a topic area seed
+ok - generateBeginningTriageDraft reports Ollama being unreachable clearly
+ok - generateBeginningTriageDraft rejects non-JSON model output
+ok - package engine provider config defaults and respects openai mode
+ok - package engine status response includes thumbnail timeout config without secrets
+ok - package engine openai thumbnail mode is disabled by policy and never calls fetch
+ok - package engine createOpenAIThumbnailCandidates fails closed (disabled)
+ok - server runtime contains no OpenAI Images API call
+ok - package engine openai prompt builder creates three distinct safe youtube prompts
+ok - package engine browser code falls back to candidate thumbnail when no generated image exists
+ok - package engine browser code updates main thumbnail after generation
+ok - package engine browser code updates only the owning card when selecting generated thumbnails
+ok - package engine thumbnail button uses configured generation API instead of template fallback
+ok - all HTML pages reference one shared styles.css cache-buster version
+ok - package engine browser code surfaces thumbnail backend failures and recovers button state
+ok - package engine HTML contains Focused View toggle and focus panel
+ok - package engine normalizePackageEngineViewMode defaults invalid values to focused
+ok - package engine view mode storage is UI-only
+ok - package engine focus model chooses selected candidate when present
+ok - package engine focus model chooses recommended visible candidate without selection
+ok - package engine focus panel renders package summary and safety boundary
+ok - package engine focused view defers export thumbnail and metadata groups
+ok - package engine full dashboard restores deferred controls and diagnostics
+ok - browser entry pages link between episode factory package engine and run dashboard
+ok - server serves favicon.ico without a 404 console error
+ok - thumbnails endpoint rejects POST without a write nonce (403)
+ok - thumbnails endpoint rejects POST with a non-local Origin (403)
+[package-engine thumbnail] {"provider":"placeholder","model":"local-svg-placeholder","timeoutMs":120000,"elapsedMs":0,"statusCategory":"success","candidateCount":3}
+ok - thumbnails endpoint accepts POST with a valid nonce and returns placeholder candidates (200)
+ok - thumbnails endpoint does not reach the OpenAI provider without a valid nonce
+ok - package engine thumbnail success path unwraps response with normalizePayload
+ok - package engine thumbnail success path does not read provider/model/candidates from raw payload
+ok - package engine thumbnail error path still reads error fields from raw payload
+ok - package engine normalizePayload unwraps { ok, data } envelope
+ok - package engine normalizePayload passes through non-wrapped objects
+ok - package engine thumbnail generation renders candidates from wrapped { ok, data } response
+ok - package engine thumbnail generation handles wrapped response with empty candidates array
+ok - script structure help and script prep help work
+ok - script structure research gate parser does not treat partial research as ready
+ok - script structure research gate parser requires explicit pass for ready to draft
+ok - script structure cli generates only script structure from partial research
+created: ../../../tmp/package-script-structure-blocked-xxPjec/package-runs/2026-05-10-missing/script-structure.md
+research gate: MISSING
+script structure status: NEEDS RESEARCH
+created: ../../../tmp/package-script-structure-blocked-xxPjec/package-runs/2026-05-10-blocked/script-structure.md
+research gate: BLOCKED
+script structure status: BLOCKED
+ok - script structure cli marks missing and blocked research as not ready
+created: ../../../tmp/package-script-structure-pass-0ZHvoX/package-runs/2026-05-10-pass/script-structure.md
+research gate: PASS
+script structure status: READY TO DRAFT
+ok - script structure cli allows pass research to become ready to draft
+created: ../../../tmp/package-script-structure-review-pass-yJ6qi4/package-runs/2026-05-10-review-pass/script-structure.md
+research gate: PASS
+script structure status: READY TO DRAFT
+ok - script structure accepts approved research sufficiency review over partial research pack
+created: ../../../tmp/package-script-structure-review-only-pass-HwLDD8/package-runs/2026-05-10-review-only-pass/script-structure.md
+research gate: PASS
+script structure status: READY TO DRAFT
+ok - script structure accepts approved research sufficiency review without research pack
+ok - script structure overwrite replaces stale needs research when approved review appears
+created: ../../../tmp/package-script-structure-review-ready-wMGSwg/package-runs/2026-05-10-review-ready/script-structure.md
+research gate: PARTIAL
+script structure status: PARTIAL
+ok - script structure keeps ready-for-review research evidence blocked until approval
+created: ../../../tmp/package-script-structure-review-missing-hRM6EF/package-runs/2026-05-10-review-missing/script-structure.md
+research gate: PARTIAL
+script structure status: PARTIAL
+ok - script structure keeps partial research pack blocked when sufficiency review is missing
+ok - script structure cli preserves existing structure unless overwrite is explicit
+ok - script review help works
+script review status: BLOCKED
+production planning ready: no
+../../../tmp/package-script-review-missing-BVO6X3/package-runs/2026-05-10-missing/script-review.md
+../../../tmp/package-script-review-missing-BVO6X3/package-runs/2026-05-10-missing/script-revision-plan.md
+ok - script review blocks missing script and writes blocked revision plan
+script review status: NEEDS REVISION
+production planning ready: no
+../../../tmp/package-script-review-partial-gvSw8O/package-runs/2026-05-10-partial/script-review.md
+../../../tmp/package-script-review-partial-gvSw8O/package-runs/2026-05-10-partial/script-revision-plan.md
+script review status: NEEDS REVISION
+production planning ready: no
+../../../tmp/package-script-review-partial-gvSw8O/package-runs/2026-05-10-not-ready/script-review.md
+../../../tmp/package-script-review-partial-gvSw8O/package-runs/2026-05-10-not-ready/script-revision-plan.md
+ok - script review prevents pass for partial research or not-ready structure
+script review status: NEEDS REVISION
+production planning ready: no
+../../../tmp/package-script-review-qa-F1pXZU/package-runs/2026-05-10-qa/script-review.md
+../../../tmp/package-script-review-qa-F1pXZU/package-runs/2026-05-10-qa/script-revision-plan.md
+ok - script review prevents pass for creator qa blocking status
+script review status: NEEDS REVISION
+production planning ready: no
+../../../tmp/package-script-review-unsupported-ZpDdZL/package-runs/2026-05-10-unsupported/script-review.md
+../../../tmp/package-script-review-unsupported-ZpDdZL/package-runs/2026-05-10-unsupported/script-revision-plan.md
+ok - script review detects unsupported claim and placeholder markers
+script review status: PASS
+production planning ready: yes
+../../../tmp/package-script-review-instructional-warning-5dmDet/package-runs/2026-05-10-instructional-warning/script-review.md
+../../../tmp/package-script-review-instructional-warning-5dmDet/package-runs/2026-05-10-instructional-warning/script-revision-plan.md
+ok - script review allows instructional warnings about unsupported claims
+script review status: NEEDS REVISION
+production planning ready: no
+../../../tmp/package-script-review-draft-marker-be5R81/package-runs/2026-05-10-draft-marker/script-review.md
+../../../tmp/package-script-review-draft-marker-be5R81/package-runs/2026-05-10-draft-marker/script-revision-plan.md
+ok - script review reports draft readiness markers separately from unsupported claims
+script review status: NEEDS REVISION
+production planning ready: no
+../../../tmp/package-script-review-current-unsupported-r1tbxr/package-runs/2026-05-10-current-unsupported/script-review.md
+../../../tmp/package-script-review-current-unsupported-r1tbxr/package-runs/2026-05-10-current-unsupported/script-revision-plan.md
+ok - script review blocks current-script unsupported evidence markers
+script review status: PASS
+production planning ready: yes
+../../../tmp/package-script-review-pass-QUPtDo/package-runs/2026-05-10-pass/script-review.md
+../../../tmp/package-script-review-pass-QUPtDo/package-runs/2026-05-10-pass/script-revision-plan.md
+ok - script review passes only when script research structure and qa are clear
+ok - script review from-review regenerates revision plan only
+ok - script review preserves existing artifacts unless overwrite is explicit
+ok - production planner help works
+production planner: NEEDS SCRIPT APPROVAL
+reason: script-review.md is missing.
+created: ../../../tmp/package-production-plan-missing-review-G9nhIy/package-runs/2026-05-10-missing-review/production-plan.md
+created: ../../../tmp/package-production-plan-missing-review-G9nhIy/package-runs/2026-05-10-missing-review/shot-list.md
+created: ../../../tmp/package-production-plan-missing-review-G9nhIy/package-runs/2026-05-10-missing-review/screen-capture-list.md
+created: ../../../tmp/package-production-plan-missing-review-G9nhIy/package-runs/2026-05-10-missing-review/demo-list.md
+created: ../../../tmp/package-production-plan-missing-review-G9nhIy/package-runs/2026-05-10-missing-review/b-roll-list.md
+created: ../../../tmp/package-production-plan-missing-review-G9nhIy/package-runs/2026-05-10-missing-review/graphics-list.md
+created: ../../../tmp/package-production-plan-missing-review-G9nhIy/package-runs/2026-05-10-missing-review/audio-notes.md
+created: ../../../tmp/package-production-plan-missing-review-G9nhIy/package-runs/2026-05-10-missing-review/production-blockers.md
+ok - production planner blocks missing script review
+production planner: NEEDS SCRIPT APPROVAL
+reason: Script review status is NEEDS REVISION, not PASS.
+created: ../../../tmp/package-production-plan-needs-revision-J97esF/package-runs/2026-05-10-needs-revision/production-plan.md
+created: ../../../tmp/package-production-plan-needs-revision-J97esF/package-runs/2026-05-10-needs-revision/shot-list.md
+created: ../../../tmp/package-production-plan-needs-revision-J97esF/package-runs/2026-05-10-needs-revision/screen-capture-list.md
+created: ../../../tmp/package-production-plan-needs-revision-J97esF/package-runs/2026-05-10-needs-revision/demo-list.md
+created: ../../../tmp/package-production-plan-needs-revision-J97esF/package-runs/2026-05-10-needs-revision/b-roll-list.md
+created: ../../../tmp/package-production-plan-needs-revision-J97esF/package-runs/2026-05-10-needs-revision/graphics-list.md
+created: ../../../tmp/package-production-plan-needs-revision-J97esF/package-runs/2026-05-10-needs-revision/audio-notes.md
+created: ../../../tmp/package-production-plan-needs-revision-J97esF/package-runs/2026-05-10-needs-revision/production-blockers.md
+ok - production planner blocks script review needs revision
+production planner: BLOCKED
+reason: Production planning ready is no.
+created: ../../../tmp/package-production-plan-not-ready-bKMARB/package-runs/2026-05-10-not-ready/production-plan.md
+created: ../../../tmp/package-production-plan-not-ready-bKMARB/package-runs/2026-05-10-not-ready/shot-list.md
+created: ../../../tmp/package-production-plan-not-ready-bKMARB/package-runs/2026-05-10-not-ready/screen-capture-list.md
+created: ../../../tmp/package-production-plan-not-ready-bKMARB/package-runs/2026-05-10-not-ready/demo-list.md
+created: ../../../tmp/package-production-plan-not-ready-bKMARB/package-runs/2026-05-10-not-ready/b-roll-list.md
+created: ../../../tmp/package-production-plan-not-ready-bKMARB/package-runs/2026-05-10-not-ready/graphics-list.md
+created: ../../../tmp/package-production-plan-not-ready-bKMARB/package-runs/2026-05-10-not-ready/audio-notes.md
+created: ../../../tmp/package-production-plan-not-ready-bKMARB/package-runs/2026-05-10-not-ready/production-blockers.md
+ok - production planner blocks production planning ready no
+production planner: BLOCKED
+reason: Research gate status is PARTIAL. Research gate is PARTIAL; production planning cannot approve shooting yet.
+created: ../../../tmp/package-production-plan-partial-research-vj6saa/package-runs/2026-05-10-partial-research/production-plan.md
+created: ../../../tmp/package-production-plan-partial-research-vj6saa/package-runs/2026-05-10-partial-research/shot-list.md
+created: ../../../tmp/package-production-plan-partial-research-vj6saa/package-runs/2026-05-10-partial-research/screen-capture-list.md
+created: ../../../tmp/package-production-plan-partial-research-vj6saa/package-runs/2026-05-10-partial-research/demo-list.md
+created: ../../../tmp/package-production-plan-partial-research-vj6saa/package-runs/2026-05-10-partial-research/b-roll-list.md
+created: ../../../tmp/package-production-plan-partial-research-vj6saa/package-runs/2026-05-10-partial-research/graphics-list.md
+created: ../../../tmp/package-production-plan-partial-research-vj6saa/package-runs/2026-05-10-partial-research/audio-notes.md
+created: ../../../tmp/package-production-plan-partial-research-vj6saa/package-runs/2026-05-10-partial-research/production-blockers.md
+ok - production planner blocks partial research
+production planner: READY TO SHOOT
+reason: Script review, production planning readiness, research gate, script structure, and script file are all approved.
+created: ../../../tmp/package-production-plan-review-pass-BpA5M8/package-runs/2026-05-10-review-pass/production-plan.md
+created: ../../../tmp/package-production-plan-review-pass-BpA5M8/package-runs/2026-05-10-review-pass/shot-list.md
+created: ../../../tmp/package-production-plan-review-pass-BpA5M8/package-runs/2026-05-10-review-pass/screen-capture-list.md
+created: ../../../tmp/package-production-plan-review-pass-BpA5M8/package-runs/2026-05-10-review-pass/demo-list.md
+created: ../../../tmp/package-production-plan-review-pass-BpA5M8/package-runs/2026-05-10-review-pass/b-roll-list.md
+created: ../../../tmp/package-production-plan-review-pass-BpA5M8/package-runs/2026-05-10-review-pass/graphics-list.md
+created: ../../../tmp/package-production-plan-review-pass-BpA5M8/package-runs/2026-05-10-review-pass/audio-notes.md
+created: ../../../tmp/package-production-plan-review-pass-BpA5M8/package-runs/2026-05-10-review-pass/production-blockers.md
+ok - production planner accepts approved research sufficiency review over partial research pack
+production planner: BLOCKED
+reason: Research gate status is READY FOR RESEARCH REVIEW. research-sufficiency-review.md is READY FOR RESEARCH REVIEW and does not include the exact Research approval marker: PASS.
+created: ../../../tmp/package-production-plan-review-ready-ySyyLY/package-runs/2026-05-10-review-ready/production-plan.md
+created: ../../../tmp/package-production-plan-review-ready-ySyyLY/package-runs/2026-05-10-review-ready/shot-list.md
+created: ../../../tmp/package-production-plan-review-ready-ySyyLY/package-runs/2026-05-10-review-ready/screen-capture-list.md
+created: ../../../tmp/package-production-plan-review-ready-ySyyLY/package-runs/2026-05-10-review-ready/demo-list.md
+created: ../../../tmp/package-production-plan-review-ready-ySyyLY/package-runs/2026-05-10-review-ready/b-roll-list.md
+created: ../../../tmp/package-production-plan-review-ready-ySyyLY/package-runs/2026-05-10-review-ready/graphics-list.md
+created: ../../../tmp/package-production-plan-review-ready-ySyyLY/package-runs/2026-05-10-review-ready/audio-notes.md
+created: ../../../tmp/package-production-plan-review-ready-ySyyLY/package-runs/2026-05-10-review-ready/production-blockers.md
+ok - production planner blocks research evidence that is ready for review but not approved
+production planner: BLOCKED
+reason: Research gate status is NEEDS EVIDENCE. research-sufficiency-review.md has PASS markers, but current research evidence evaluates as NEEDS EVIDENCE; script drafting is not approved yet.
+created: ../../../tmp/package-production-plan-stale-review-vTBTA2/package-runs/2026-05-10-stale-review/production-plan.md
+created: ../../../tmp/package-production-plan-stale-review-vTBTA2/package-runs/2026-05-10-stale-review/shot-list.md
+created: ../../../tmp/package-production-plan-stale-review-vTBTA2/package-runs/2026-05-10-stale-review/screen-capture-list.md
+created: ../../../tmp/package-production-plan-stale-review-vTBTA2/package-runs/2026-05-10-stale-review/demo-list.md
+created: ../../../tmp/package-production-plan-stale-review-vTBTA2/package-runs/2026-05-10-stale-review/b-roll-list.md
+created: ../../../tmp/package-production-plan-stale-review-vTBTA2/package-runs/2026-05-10-stale-review/graphics-list.md
+created: ../../../tmp/package-production-plan-stale-review-vTBTA2/package-runs/2026-05-10-stale-review/audio-notes.md
+created: ../../../tmp/package-production-plan-stale-review-vTBTA2/package-runs/2026-05-10-stale-review/production-blockers.md
+ok - production planner blocks stale research review pass when evidence inputs are incomplete
+production planner: BLOCKED
+reason: No final-script.md or script-draft.md exists.
+created: ../../../tmp/package-production-plan-no-script-rUX8pV/package-runs/2026-05-10-no-script/production-plan.md
+created: ../../../tmp/package-production-plan-no-script-rUX8pV/package-runs/2026-05-10-no-script/shot-list.md
+created: ../../../tmp/package-production-plan-no-script-rUX8pV/package-runs/2026-05-10-no-script/screen-capture-list.md
+created: ../../../tmp/package-production-plan-no-script-rUX8pV/package-runs/2026-05-10-no-script/demo-list.md
+created: ../../../tmp/package-production-plan-no-script-rUX8pV/package-runs/2026-05-10-no-script/b-roll-list.md
+created: ../../../tmp/package-production-plan-no-script-rUX8pV/package-runs/2026-05-10-no-script/graphics-list.md
+created: ../../../tmp/package-production-plan-no-script-rUX8pV/package-runs/2026-05-10-no-script/audio-notes.md
+created: ../../../tmp/package-production-plan-no-script-rUX8pV/package-runs/2026-05-10-no-script/production-blockers.md
+ok - production planner blocks when no script file exists
+production planner: READY TO SHOOT
+reason: Script review, production planning readiness, research gate, script structure, and script file are all approved.
+created: ../../../tmp/package-production-plan-ready-oWjxvi/package-runs/2026-05-10-ready/production-plan.md
+created: ../../../tmp/package-production-plan-ready-oWjxvi/package-runs/2026-05-10-ready/shot-list.md
+created: ../../../tmp/package-production-plan-ready-oWjxvi/package-runs/2026-05-10-ready/screen-capture-list.md
+created: ../../../tmp/package-production-plan-ready-oWjxvi/package-runs/2026-05-10-ready/demo-list.md
+created: ../../../tmp/package-production-plan-ready-oWjxvi/package-runs/2026-05-10-ready/b-roll-list.md
+created: ../../../tmp/package-production-plan-ready-oWjxvi/package-runs/2026-05-10-ready/graphics-list.md
+created: ../../../tmp/package-production-plan-ready-oWjxvi/package-runs/2026-05-10-ready/audio-notes.md
+created: ../../../tmp/package-production-plan-ready-oWjxvi/package-runs/2026-05-10-ready/production-blockers.md
+ok - production planner can mark ready only with explicit pass conditions
+production planner: READY TO SHOOT
+reason: Script review, production planning readiness, research gate, script structure, and script file are all approved.
+created: ../../../tmp/package-production-plan-manual-L6zhCF/package-runs/2026-05-10-manual/production-plan.md
+created: ../../../tmp/package-production-plan-manual-L6zhCF/package-runs/2026-05-10-manual/shot-list.md
+created: ../../../tmp/package-production-plan-manual-L6zhCF/package-runs/2026-05-10-manual/screen-capture-list.md
+created: ../../../tmp/package-production-plan-manual-L6zhCF/package-runs/2026-05-10-manual/demo-list.md
+created: ../../../tmp/package-production-plan-manual-L6zhCF/package-runs/2026-05-10-manual/b-roll-list.md
+created: ../../../tmp/package-production-plan-manual-L6zhCF/package-runs/2026-05-10-manual/graphics-list.md
+created: ../../../tmp/package-production-plan-manual-L6zhCF/package-runs/2026-05-10-manual/audio-notes.md
+created: ../../../tmp/package-production-plan-manual-L6zhCF/package-runs/2026-05-10-manual/production-blockers.md
+ok - production planner exact manual markers can approve research and structure only
+ok - production planner preserves existing artifacts unless overwrite is explicit
+ok - verify script checks production planner syntax
+ok - shot/edit plan review help works
+shot/edit plan review status: READY FOR HUMAN APPROVAL
+stage accepted: no
+../../../tmp/package-stage4-vertical-manual-VfJtpg/package-runs/2026-06-28-stop-writing-your-shorts-like-blog-posts/shot-edit-plan-review.md
+../../../tmp/package-stage4-vertical-manual-VfJtpg/package-runs/2026-06-28-stop-writing-your-shorts-like-blog-posts/shot-edit-plan-enhancement-plan.md
+ok - shot/edit plan review accepts manual vertical production-prep chain without legacy upstream artifacts
+shot/edit plan review status: BLOCKED
+stage accepted: no
+../../../tmp/package-stage4-vertical-blocked-ky4x1E/package-runs/2026-06-28-stop-writing-your-shorts-like-blog-posts/shot-edit-plan-review.md
+../../../tmp/package-stage4-vertical-blocked-ky4x1E/package-runs/2026-06-28-stop-writing-your-shorts-like-blog-posts/shot-edit-plan-enhancement-plan.md
+ok - shot/edit plan review blocks manual vertical chain when production plan is not ready
+shot/edit plan review status: BLOCKED
+stage accepted: no
+../../../tmp/package-stage4-missing-upstream-5fTyUT/package-runs/2026-05-10-missing-upstream/shot-edit-plan-review.md
+../../../tmp/package-stage4-missing-upstream-5fTyUT/package-runs/2026-05-10-missing-upstream/shot-edit-plan-enhancement-plan.md
+ok - shot/edit plan review missing upstream files cannot produce PASS
+shot/edit plan review status: NEEDS WORK
+stage accepted: no
+../../../tmp/package-stage4-missing-planning-ZJzpRk/package-runs/2026-05-10-missing-planning/shot-edit-plan-review.md
+../../../tmp/package-stage4-missing-planning-ZJzpRk/package-runs/2026-05-10-missing-planning/shot-edit-plan-enhancement-plan.md
+ok - shot/edit plan review missing planning files cannot produce PASS
+shot/edit plan review status: NEEDS WORK
+stage accepted: no
+../../../tmp/package-stage4-placeholder-IVF7Fx/package-runs/2026-05-10-placeholder/shot-edit-plan-review.md
+../../../tmp/package-stage4-placeholder-IVF7Fx/package-runs/2026-05-10-placeholder/shot-edit-plan-enhancement-plan.md
+ok - shot/edit plan review placeholder-only planning files cannot produce PASS
+shot/edit plan review status: READY FOR HUMAN APPROVAL
+stage accepted: no
+../../../tmp/package-stage4-preserve-Sw689Q/package-runs/2026-05-10-preserve/shot-edit-plan-review.md
+../../../tmp/package-stage4-preserve-Sw689Q/package-runs/2026-05-10-preserve/shot-edit-plan-enhancement-plan.md
+ok - shot/edit plan review preserves manually edited planning artifacts
+shot/edit plan review status: READY FOR HUMAN APPROVAL
+stage accepted: no
+../../../tmp/package-stage4-approval-1VoahY/package-runs/2026-05-10-ready/shot-edit-plan-review.md
+../../../tmp/package-stage4-approval-1VoahY/package-runs/2026-05-10-ready/shot-edit-plan-enhancement-plan.md
+shot/edit plan review status: PASS
+stage accepted: yes
+../../../tmp/package-stage4-approval-1VoahY/package-runs/2026-05-10-pass/shot-edit-plan-review.md
+../../../tmp/package-stage4-approval-1VoahY/package-runs/2026-05-10-pass/shot-edit-plan-enhancement-plan.md
+ok - shot/edit plan review requires exact manual approval marker for accepted stage
+shot/edit plan review status: READY FOR HUMAN APPROVAL
+stage accepted: no
+../../../tmp/package-stage4-review-research-pass-Xq9ZGn/package-runs/2026-05-10-review-research-pass/shot-edit-plan-review.md
+../../../tmp/package-stage4-review-research-pass-Xq9ZGn/package-runs/2026-05-10-review-research-pass/shot-edit-plan-enhancement-plan.md
+ok - shot/edit plan review accepts approved research sufficiency review without research pack
+shot/edit plan review status: BLOCKED
+stage accepted: no
+../../../tmp/package-stage4-review-research-unapproved-g5g3qk/package-runs/2026-05-10-review-research-unapproved/shot-edit-plan-review.md
+../../../tmp/package-stage4-review-research-unapproved-g5g3qk/package-runs/2026-05-10-review-research-unapproved/shot-edit-plan-enhancement-plan.md
+ok - shot/edit plan review blocks unapproved research sufficiency review without research pack
+shot/edit plan review status: READY FOR HUMAN APPROVAL
+stage accepted: no
+../../../tmp/package-stage4-review-research-manual-JKVTp0/package-runs/2026-05-10-review-research-ready/shot-edit-plan-review.md
+../../../tmp/package-stage4-review-research-manual-JKVTp0/package-runs/2026-05-10-review-research-ready/shot-edit-plan-enhancement-plan.md
+shot/edit plan review status: PASS
+stage accepted: yes
+../../../tmp/package-stage4-review-research-manual-JKVTp0/package-runs/2026-05-10-review-research-pass/shot-edit-plan-review.md
+../../../tmp/package-stage4-review-research-manual-JKVTp0/package-runs/2026-05-10-review-research-pass/shot-edit-plan-enhancement-plan.md
+ok - shot/edit plan review still requires manual marker after approved research sufficiency fallback
+shot/edit plan review status: READY FOR HUMAN APPROVAL
+stage accepted: no
+../../../tmp/package-stage4-upstream-approval-SIv751/package-runs/2026-05-10-upstream-approval/shot-edit-plan-review.md
+../../../tmp/package-stage4-upstream-approval-SIv751/package-runs/2026-05-10-upstream-approval/shot-edit-plan-enhancement-plan.md
+ok - shot/edit plan review ignores upstream manual approval markers for stage acceptance
+ok - shot/edit plan review json returns machine-readable status
+shot/edit plan review status: READY FOR HUMAN APPROVAL
+stage accepted: no
+../../../tmp/package-stage4-write-scope-jZtt4I/package-runs/2026-05-10-write-scope/shot-edit-plan-review.md
+../../../tmp/package-stage4-write-scope-jZtt4I/package-runs/2026-05-10-write-scope/shot-edit-plan-enhancement-plan.md
+ok - shot/edit plan review writes only review and enhancement artifacts
+ok - shot/edit plan review introduces no external API behavior
+ok - verify script checks shot/edit plan review syntax
+ok - rough cut review help works
+rough-cut review: BLOCKED
+second-cut ready: no
+reason: rough-cut-watch-notes.md was missing; starter template created.
+created: ../../../tmp/package-rough-cut-missing-notes-MKNPhF/package-runs/2026-05-10-missing-notes/rough-cut-watch-notes.md
+created: ../../../tmp/package-rough-cut-missing-notes-MKNPhF/package-runs/2026-05-10-missing-notes/rough-cut-review.md
+created: ../../../tmp/package-rough-cut-missing-notes-MKNPhF/package-runs/2026-05-10-missing-notes/pickup-list.md
+created: ../../../tmp/package-rough-cut-missing-notes-MKNPhF/package-runs/2026-05-10-missing-notes/edit-fix-list.md
+ok - rough cut review creates starter watch notes and blocks when notes are missing
+rough-cut review: BLOCKED
+second-cut ready: no
+reason: rough-cut-watch-notes.md is still a starter template or has no real review notes.
+unchanged: ../../../tmp/package-rough-cut-starter-NFcawD/package-runs/2026-05-10-starter/rough-cut-watch-notes.md
+created: ../../../tmp/package-rough-cut-starter-NFcawD/package-runs/2026-05-10-starter/rough-cut-review.md
+created: ../../../tmp/package-rough-cut-starter-NFcawD/package-runs/2026-05-10-starter/pickup-list.md
+created: ../../../tmp/package-rough-cut-starter-NFcawD/package-runs/2026-05-10-starter/edit-fix-list.md
+ok - rough cut review treats starter watch notes as blocked
+rough-cut review: READY FOR SECOND CUT
+second-cut ready: yes
+reason: Real watch notes exist, no pickups or edit fixes were detected, and upstream gates allow review.
+unchanged: ../../../tmp/package-rough-cut-no-issues-Jl2Wjo/package-runs/2026-05-10-no-issues/rough-cut-watch-notes.md
+created: ../../../tmp/package-rough-cut-no-issues-Jl2Wjo/package-runs/2026-05-10-no-issues/rough-cut-review.md
+created: ../../../tmp/package-rough-cut-no-issues-Jl2Wjo/package-runs/2026-05-10-no-issues/pickup-list.md
+created: ../../../tmp/package-rough-cut-no-issues-Jl2Wjo/package-runs/2026-05-10-no-issues/edit-fix-list.md
+ok - rough cut review real watch notes with no issues can use none closed list rows
+rough-cut review: NEEDS PICKUPS
+second-cut ready: no
+reason: Watch notes list pickups needed.
+unchanged: ../../../tmp/package-rough-cut-list-item-fields-S05P5W/package-runs/2026-05-10-list-item-fields/rough-cut-watch-notes.md
+created: ../../../tmp/package-rough-cut-list-item-fields-S05P5W/package-runs/2026-05-10-list-item-fields/rough-cut-review.md
+created: ../../../tmp/package-rough-cut-list-item-fields-S05P5W/package-runs/2026-05-10-list-item-fields/pickup-list.md
+created: ../../../tmp/package-rough-cut-list-item-fields-S05P5W/package-runs/2026-05-10-list-item-fields/edit-fix-list.md
+ok - rough cut review reads watch context from list-item fields when section headings are absent
+rough-cut review: BLOCKED
+second-cut ready: no
+reason: Production plan shoot-readiness is BLOCKED, not READY TO SHOOT.
+unchanged: ../../../tmp/package-rough-cut-production-blocked-VkcEuP/package-runs/2026-05-10-production-blocked/rough-cut-watch-notes.md
+created: ../../../tmp/package-rough-cut-production-blocked-VkcEuP/package-runs/2026-05-10-production-blocked/rough-cut-review.md
+created: ../../../tmp/package-rough-cut-production-blocked-VkcEuP/package-runs/2026-05-10-production-blocked/pickup-list.md
+created: ../../../tmp/package-rough-cut-production-blocked-VkcEuP/package-runs/2026-05-10-production-blocked/edit-fix-list.md
+ok - rough cut review blocks second cut when production plan is not ready to shoot
+rough-cut review: BLOCKED
+second-cut ready: no
+reason: production-blockers.md has open blockers.
+unchanged: ../../../tmp/package-rough-cut-open-blockers-UL4HCY/package-runs/2026-05-10-open-blockers/rough-cut-watch-notes.md
+created: ../../../tmp/package-rough-cut-open-blockers-UL4HCY/package-runs/2026-05-10-open-blockers/rough-cut-review.md
+created: ../../../tmp/package-rough-cut-open-blockers-UL4HCY/package-runs/2026-05-10-open-blockers/pickup-list.md
+created: ../../../tmp/package-rough-cut-open-blockers-UL4HCY/package-runs/2026-05-10-open-blockers/edit-fix-list.md
+ok - rough cut review open production blockers prevent second cut readiness
+rough-cut review: NEEDS PICKUPS
+second-cut ready: no
+reason: Watch notes list pickups needed.
+unchanged: ../../../tmp/package-rough-cut-pickups-JwxNf5/package-runs/2026-05-10-pickups/rough-cut-watch-notes.md
+created: ../../../tmp/package-rough-cut-pickups-JwxNf5/package-runs/2026-05-10-pickups/rough-cut-review.md
+created: ../../../tmp/package-rough-cut-pickups-JwxNf5/package-runs/2026-05-10-pickups/pickup-list.md
+created: ../../../tmp/package-rough-cut-pickups-JwxNf5/package-runs/2026-05-10-pickups/edit-fix-list.md
+ok - rough cut review detects pickups needed and writes pickup list entries
+rough-cut review: NEEDS EDIT FIXES
+second-cut ready: no
+reason: Watch notes list edit fixes needed.
+unchanged: ../../../tmp/package-rough-cut-edit-fixes-Nm7C5B/package-runs/2026-05-10-edit-fixes/rough-cut-watch-notes.md
+created: ../../../tmp/package-rough-cut-edit-fixes-Nm7C5B/package-runs/2026-05-10-edit-fixes/rough-cut-review.md
+created: ../../../tmp/package-rough-cut-edit-fixes-Nm7C5B/package-runs/2026-05-10-edit-fixes/pickup-list.md
+created: ../../../tmp/package-rough-cut-edit-fixes-Nm7C5B/package-runs/2026-05-10-edit-fixes/edit-fix-list.md
+ok - rough cut review detects edit fixes needed and writes edit fix list entries
+rough-cut review: READY FOR SECOND CUT
+second-cut ready: yes
+reason: Exact rough-cut or second-cut approval marker is present and upstream gates allow review.
+unchanged: ../../../tmp/package-rough-cut-ready-ZurzLt/package-runs/2026-05-10-ready/rough-cut-watch-notes.md
+created: ../../../tmp/package-rough-cut-ready-ZurzLt/package-runs/2026-05-10-ready/rough-cut-review.md
+created: ../../../tmp/package-rough-cut-ready-ZurzLt/package-runs/2026-05-10-ready/pickup-list.md
+created: ../../../tmp/package-rough-cut-ready-ZurzLt/package-runs/2026-05-10-ready/edit-fix-list.md
+ok - rough cut review exact approval can mark ready only when other gates allow it
+ok - rough cut review preserves existing artifacts unless overwrite is explicit
+ok - verify script checks rough cut review syntax
+ok - final review help works
+final review: BLOCKED
+publish ready: no
+reason: rough-cut-review.md is BLOCKED, not READY FOR SECOND CUT. final-watch-notes.md was missing; starter template created. Required final-watch sections are not assessed: Final Version Reviewed, Watch Date, Reviewer, Viewer Promise Delivery, Opening Strength, Clarity, Pacing, Proof / Evidence, Audio Quality, Visual Support, Graphics / Captions, Title / Thumbnail Fit, Ethical / Accuracy Risks, Upload Metadata Readiness, Archive Readiness.
+created: ../../../tmp/package-final-review-blocked-4eCByI/package-runs/2026-05-10-final-blocked/final-watch-notes.md
+created: ../../../tmp/package-final-review-blocked-4eCByI/package-runs/2026-05-10-final-blocked/final-review.md
+created: ../../../tmp/package-final-review-blocked-4eCByI/package-runs/2026-05-10-final-blocked/publication-blockers.md
+ok - final review blocks when rough cut review is blocked and final notes are missing
+final review: BLOCKED
+publish ready: no
+reason: final-watch-notes.md is still a starter template or has no real final-watch notes. Required final-watch sections are not assessed: Final Version Reviewed, Watch Date, Reviewer, Viewer Promise Delivery, Opening Strength, Clarity, Pacing, Proof / Evidence, Audio Quality, Visual Support, Graphics / Captions, Title / Thumbnail Fit, Ethical / Accuracy Risks, Upload Metadata Readiness, Archive Readiness.
+unchanged: ../../../tmp/package-final-review-starter-Gt8kRU/package-runs/2026-05-10-final-starter/final-watch-notes.md
+created: ../../../tmp/package-final-review-starter-Gt8kRU/package-runs/2026-05-10-final-starter/final-review.md
+created: ../../../tmp/package-final-review-starter-Gt8kRU/package-runs/2026-05-10-final-starter/publication-blockers.md
+ok - final review treats starter final-watch notes as not assessed
+final review: NEEDS FINAL FIXES
+publish ready: no
+reason: Real final-watch notes exist and no issues were detected, but an exact final approval marker is required before publication readiness.
+unchanged: ../../../tmp/package-final-review-clean-xEjHxw/package-runs/2026-05-10-final-clean/final-watch-notes.md
+created: ../../../tmp/package-final-review-clean-xEjHxw/package-runs/2026-05-10-final-clean/final-review.md
+created: ../../../tmp/package-final-review-clean-xEjHxw/package-runs/2026-05-10-final-clean/publication-blockers.md
+ok - final review real notes with no issues still needs exact final approval
+final review: PASS
+publish ready: yes
+reason: Exact final-watch approval marker is present and upstream gates allow final review.
+unchanged: ../../../tmp/package-final-review-aliases-rh3Mgd/package-runs/2026-05-10-final-aliases/final-watch-notes.md
+created: ../../../tmp/package-final-review-aliases-rh3Mgd/package-runs/2026-05-10-final-aliases/final-review.md
+created: ../../../tmp/package-final-review-aliases-rh3Mgd/package-runs/2026-05-10-final-aliases/publication-blockers.md
+ok - final review accepts legacy final-watch heading aliases
+final review: BLOCKED
+publish ready: no
+reason: Final-watch notes list unresolved issues. Required final-watch sections are not assessed: Viewer Promise Delivery, Opening Strength, Clarity, Pacing, Proof / Evidence, Audio Quality, Visual Support, Graphics / Captions, Title / Thumbnail Fit, Ethical / Accuracy Risks, Upload Metadata Readiness, Archive Readiness.
+unchanged: ../../../tmp/package-final-review-missing-sections-g2IOmK/package-runs/2026-05-10-final-missing-sections/final-watch-notes.md
+created: ../../../tmp/package-final-review-missing-sections-g2IOmK/package-runs/2026-05-10-final-missing-sections/final-review.md
+created: ../../../tmp/package-final-review-missing-sections-g2IOmK/package-runs/2026-05-10-final-missing-sections/publication-blockers.md
+ok - final review blocks exact approval when required final-watch sections are missing
+final review: BLOCKED
+publish ready: no
+reason: publish-pack.md still appears to be placeholder or draft metadata.
+unchanged: ../../../tmp/package-final-review-publish-draft-37PHPc/package-runs/2026-05-10-final-publish-draft/final-watch-notes.md
+created: ../../../tmp/package-final-review-publish-draft-37PHPc/package-runs/2026-05-10-final-publish-draft/final-review.md
+created: ../../../tmp/package-final-review-publish-draft-37PHPc/package-runs/2026-05-10-final-publish-draft/publication-blockers.md
+ok - final review blocks when publish pack is placeholder draft
+final review: PASS
+publish ready: yes
+reason: Exact final-watch approval marker is present and upstream gates allow final review.
+unchanged: ../../../tmp/package-final-review-ready-5XOU5P/package-runs/2026-05-10-final-ready/final-watch-notes.md
+created: ../../../tmp/package-final-review-ready-5XOU5P/package-runs/2026-05-10-final-ready/final-review.md
+created: ../../../tmp/package-final-review-ready-5XOU5P/package-runs/2026-05-10-final-ready/publication-blockers.md
+ok - final review ready to publish requires exact final approval marker
+ok - final review preserves publication blockers unless overwrite is explicit
+ok - verify script checks final review syntax
+ok - export checklist help works
+export checklist: BLOCKED
+ready to upload: no
+reason: final-review.md is missing.
+created: ../../../tmp/package-export-missing-final-1Bd5Lv/package-runs/2026-05-10-export-missing-final/export-checklist.md
+created: ../../../tmp/package-export-missing-final-1Bd5Lv/package-runs/2026-05-10-export-missing-final/master-file-manifest.md
+created: ../../../tmp/package-export-missing-final-1Bd5Lv/package-runs/2026-05-10-export-missing-final/caption-check.md
+created: ../../../tmp/package-export-missing-final-1Bd5Lv/package-runs/2026-05-10-export-missing-final/loudness-check.md
+created: ../../../tmp/package-export-missing-final-1Bd5Lv/package-runs/2026-05-10-export-missing-final/delivery-readiness.md
+ok - export checklist blocks missing final review
+export checklist: BLOCKED
+ready to upload: no
+reason: final-review.md is BLOCKED; Final Review Gate is BLOCKED; Publish ready is no.
+created: ../../../tmp/package-export-final-blocked-MnEkkC/package-runs/2026-05-10-export-final-blocked/export-checklist.md
+created: ../../../tmp/package-export-final-blocked-MnEkkC/package-runs/2026-05-10-export-final-blocked/master-file-manifest.md
+created: ../../../tmp/package-export-final-blocked-MnEkkC/package-runs/2026-05-10-export-final-blocked/caption-check.md
+created: ../../../tmp/package-export-final-blocked-MnEkkC/package-runs/2026-05-10-export-final-blocked/loudness-check.md
+created: ../../../tmp/package-export-final-blocked-MnEkkC/package-runs/2026-05-10-export-final-blocked/delivery-readiness.md
+ok - export checklist blocks final review blocked
+export checklist: BLOCKED
+ready to upload: no
+reason: final-review.md is NEEDS FINAL FIXES; Final Review Gate is NEEDS FINAL FIXES; Publish ready is no.
+created: ../../../tmp/package-export-final-fixes-G3CjLq/package-runs/2026-05-10-export-final-fixes/export-checklist.md
+created: ../../../tmp/package-export-final-fixes-G3CjLq/package-runs/2026-05-10-export-final-fixes/master-file-manifest.md
+created: ../../../tmp/package-export-final-fixes-G3CjLq/package-runs/2026-05-10-export-final-fixes/caption-check.md
+created: ../../../tmp/package-export-final-fixes-G3CjLq/package-runs/2026-05-10-export-final-fixes/loudness-check.md
+created: ../../../tmp/package-export-final-fixes-G3CjLq/package-runs/2026-05-10-export-final-fixes/delivery-readiness.md
+ok - export checklist blocks final review needs final fixes
+export checklist: BLOCKED
+ready to upload: no
+reason: publication-blockers.md has open or blocked rows.
+created: ../../../tmp/package-export-open-blockers-QH5Uy6/package-runs/2026-05-10-export-open-blockers/export-checklist.md
+created: ../../../tmp/package-export-open-blockers-QH5Uy6/package-runs/2026-05-10-export-open-blockers/master-file-manifest.md
+created: ../../../tmp/package-export-open-blockers-QH5Uy6/package-runs/2026-05-10-export-open-blockers/caption-check.md
+created: ../../../tmp/package-export-open-blockers-QH5Uy6/package-runs/2026-05-10-export-open-blockers/loudness-check.md
+created: ../../../tmp/package-export-open-blockers-QH5Uy6/package-runs/2026-05-10-export-open-blockers/delivery-readiness.md
+ok - export checklist blocks open publication blockers
+export checklist: NEEDS EXPORT CHECK
+ready to upload: no
+reason: export/mastering checklist artifacts are missing. final export file path/name is missing. codec is missing. container is missing. resolution is missing. frame rate is missing. audio settings are missing. loudness check is missing or placeholder. captions/subtitles status is missing. delivery-readiness.md lacks an exact delivery approval marker.
+created: ../../../tmp/package-export-needs-check-liRUjC/package-runs/2026-05-10-export-needs-check/export-checklist.md
+created: ../../../tmp/package-export-needs-check-liRUjC/package-runs/2026-05-10-export-needs-check/master-file-manifest.md
+created: ../../../tmp/package-export-needs-check-liRUjC/package-runs/2026-05-10-export-needs-check/caption-check.md
+created: ../../../tmp/package-export-needs-check-liRUjC/package-runs/2026-05-10-export-needs-check/loudness-check.md
+created: ../../../tmp/package-export-needs-check-liRUjC/package-runs/2026-05-10-export-needs-check/delivery-readiness.md
+ok - export checklist creates starter artifacts and needs export check after passing final review
+export checklist: NEEDS EXPORT CHECK
+ready to upload: no
+reason: final export file path/name is missing. codec is missing. container is missing. resolution is missing. frame rate is missing. audio settings are missing. loudness check is missing or placeholder. captions/subtitles status is missing.
+overwritten: ../../../tmp/package-export-placeholder-gvlsuk/package-runs/2026-05-10-export-placeholder/export-checklist.md
+overwritten: ../../../tmp/package-export-placeholder-gvlsuk/package-runs/2026-05-10-export-placeholder/master-file-manifest.md
+overwritten: ../../../tmp/package-export-placeholder-gvlsuk/package-runs/2026-05-10-export-placeholder/caption-check.md
+overwritten: ../../../tmp/package-export-placeholder-gvlsuk/package-runs/2026-05-10-export-placeholder/loudness-check.md
+overwritten: ../../../tmp/package-export-placeholder-gvlsuk/package-runs/2026-05-10-export-placeholder/delivery-readiness.md
+ok - export checklist does not pass placeholder export metadata
+export checklist: READY TO UPLOAD
+ready to upload: yes
+reason: Final review is approved, publication blockers are clear, export metadata is recorded, loudness/captions are assessed, and delivery readiness is explicitly approved.
+overwritten: ../../../tmp/package-export-ready-r2XJl5/package-runs/2026-05-10-export-ready/export-checklist.md
+overwritten: ../../../tmp/package-export-ready-r2XJl5/package-runs/2026-05-10-export-ready/master-file-manifest.md
+overwritten: ../../../tmp/package-export-ready-r2XJl5/package-runs/2026-05-10-export-ready/caption-check.md
+overwritten: ../../../tmp/package-export-ready-r2XJl5/package-runs/2026-05-10-export-ready/loudness-check.md
+overwritten: ../../../tmp/package-export-ready-r2XJl5/package-runs/2026-05-10-export-ready/delivery-readiness.md
+ok - export checklist can mark ready to upload with real metadata and exact delivery approval
+ok - export checklist preserves existing manual files
+ok - export checklist overwrite replaces generated files
+ok - verify script checks export checklist syntax
+ok - publication metadata help works
+publication metadata: BLOCKED
+ready to schedule: no
+reason: final-review.md is missing.
+created: ../../../tmp/package-metadata-missing-final-nRiooI/package-runs/2026-05-10-metadata-missing-final/publish-metadata-review.md
+created: ../../../tmp/package-metadata-missing-final-nRiooI/package-runs/2026-05-10-metadata-missing-final/title-check.md
+created: ../../../tmp/package-metadata-missing-final-nRiooI/package-runs/2026-05-10-metadata-missing-final/thumbnail-check.md
+created: ../../../tmp/package-metadata-missing-final-nRiooI/package-runs/2026-05-10-metadata-missing-final/description-check.md
+created: ../../../tmp/package-metadata-missing-final-nRiooI/package-runs/2026-05-10-metadata-missing-final/chapters-check.md
+created: ../../../tmp/package-metadata-missing-final-nRiooI/package-runs/2026-05-10-metadata-missing-final/schedule-check.md
+ok - publication metadata blocks missing final review
+publication metadata: BLOCKED
+ready to schedule: no
+reason: final-review.md is NEEDS FINAL FIXES; Final Review Gate is NEEDS FINAL FIXES; Publish ready is no.
+created: ../../../tmp/package-metadata-final-blocked-5NCfSS/package-runs/2026-05-10-metadata-final-blocked/publish-metadata-review.md
+created: ../../../tmp/package-metadata-final-blocked-5NCfSS/package-runs/2026-05-10-metadata-final-blocked/title-check.md
+created: ../../../tmp/package-metadata-final-blocked-5NCfSS/package-runs/2026-05-10-metadata-final-blocked/thumbnail-check.md
+created: ../../../tmp/package-metadata-final-blocked-5NCfSS/package-runs/2026-05-10-metadata-final-blocked/description-check.md
+created: ../../../tmp/package-metadata-final-blocked-5NCfSS/package-runs/2026-05-10-metadata-final-blocked/chapters-check.md
+created: ../../../tmp/package-metadata-final-blocked-5NCfSS/package-runs/2026-05-10-metadata-final-blocked/schedule-check.md
+ok - publication metadata blocks final review not publish ready
+publication metadata: BLOCKED
+ready to schedule: no
+reason: publication-blockers.md has open or blocked rows.
+created: ../../../tmp/package-metadata-open-blockers-YpsWFX/package-runs/2026-05-10-metadata-open-blockers/publish-metadata-review.md
+created: ../../../tmp/package-metadata-open-blockers-YpsWFX/package-runs/2026-05-10-metadata-open-blockers/title-check.md
+created: ../../../tmp/package-metadata-open-blockers-YpsWFX/package-runs/2026-05-10-metadata-open-blockers/thumbnail-check.md
+created: ../../../tmp/package-metadata-open-blockers-YpsWFX/package-runs/2026-05-10-metadata-open-blockers/description-check.md
+created: ../../../tmp/package-metadata-open-blockers-YpsWFX/package-runs/2026-05-10-metadata-open-blockers/chapters-check.md
+created: ../../../tmp/package-metadata-open-blockers-YpsWFX/package-runs/2026-05-10-metadata-open-blockers/schedule-check.md
+ok - publication metadata blocks open publication blockers
+publication metadata: NEEDS METADATA
+ready to schedule: no
+reason: publish-pack.md is missing. title is missing or placeholder. thumbnail path or thumbnail approval is missing or placeholder. description is missing or placeholder. chapters are missing or not explicitly waived with a reason. schedule/release timing is missing or not explicitly deferred with a reason. publication metadata approval marker is missing.
+created: ../../../tmp/package-metadata-missing-pack-gTjvHj/package-runs/2026-05-10-metadata-missing-pack/publish-metadata-review.md
+created: ../../../tmp/package-metadata-missing-pack-gTjvHj/package-runs/2026-05-10-metadata-missing-pack/title-check.md
+created: ../../../tmp/package-metadata-missing-pack-gTjvHj/package-runs/2026-05-10-metadata-missing-pack/thumbnail-check.md
+created: ../../../tmp/package-metadata-missing-pack-gTjvHj/package-runs/2026-05-10-metadata-missing-pack/description-check.md
+created: ../../../tmp/package-metadata-missing-pack-gTjvHj/package-runs/2026-05-10-metadata-missing-pack/chapters-check.md
+created: ../../../tmp/package-metadata-missing-pack-gTjvHj/package-runs/2026-05-10-metadata-missing-pack/schedule-check.md
+ok - publication metadata missing publish pack needs metadata
+publication metadata: NEEDS METADATA
+ready to schedule: no
+reason: title is missing or placeholder. thumbnail path or thumbnail approval is missing or placeholder. description is missing or placeholder. chapters are missing or not explicitly waived with a reason. schedule/release timing is missing or not explicitly deferred with a reason. publication metadata approval marker is missing.
+created: ../../../tmp/package-metadata-placeholder-iWOIRM/package-runs/2026-05-10-metadata-placeholder/publish-metadata-review.md
+created: ../../../tmp/package-metadata-placeholder-iWOIRM/package-runs/2026-05-10-metadata-placeholder/title-check.md
+created: ../../../tmp/package-metadata-placeholder-iWOIRM/package-runs/2026-05-10-metadata-placeholder/thumbnail-check.md
+created: ../../../tmp/package-metadata-placeholder-iWOIRM/package-runs/2026-05-10-metadata-placeholder/description-check.md
+created: ../../../tmp/package-metadata-placeholder-iWOIRM/package-runs/2026-05-10-metadata-placeholder/chapters-check.md
+created: ../../../tmp/package-metadata-placeholder-iWOIRM/package-runs/2026-05-10-metadata-placeholder/schedule-check.md
+ok - publication metadata blocks placeholder title description and thumbnail
+publication metadata: NEEDS METADATA
+ready to schedule: no
+reason: chapters are missing or not explicitly waived with a reason.
+created: ../../../tmp/package-metadata-chapters-HoI62D/package-runs/2026-05-10-metadata-chapters/publish-metadata-review.md
+created: ../../../tmp/package-metadata-chapters-HoI62D/package-runs/2026-05-10-metadata-chapters/title-check.md
+created: ../../../tmp/package-metadata-chapters-HoI62D/package-runs/2026-05-10-metadata-chapters/thumbnail-check.md
+created: ../../../tmp/package-metadata-chapters-HoI62D/package-runs/2026-05-10-metadata-chapters/description-check.md
+created: ../../../tmp/package-metadata-chapters-HoI62D/package-runs/2026-05-10-metadata-chapters/chapters-check.md
+created: ../../../tmp/package-metadata-chapters-HoI62D/package-runs/2026-05-10-metadata-chapters/schedule-check.md
+publication metadata: READY TO SCHEDULE
+ready to schedule: yes
+reason: Final review and export readiness are approved, publish metadata is complete, and exact metadata approval is present.
+overwritten: ../../../tmp/package-metadata-chapters-HoI62D/package-runs/2026-05-10-metadata-chapters/publish-metadata-review.md
+overwritten: ../../../tmp/package-metadata-chapters-HoI62D/package-runs/2026-05-10-metadata-chapters/title-check.md
+overwritten: ../../../tmp/package-metadata-chapters-HoI62D/package-runs/2026-05-10-metadata-chapters/thumbnail-check.md
+overwritten: ../../../tmp/package-metadata-chapters-HoI62D/package-runs/2026-05-10-metadata-chapters/description-check.md
+overwritten: ../../../tmp/package-metadata-chapters-HoI62D/package-runs/2026-05-10-metadata-chapters/chapters-check.md
+overwritten: ../../../tmp/package-metadata-chapters-HoI62D/package-runs/2026-05-10-metadata-chapters/schedule-check.md
+ok - publication metadata requires chapters unless waived with reason
+publication metadata: NEEDS METADATA
+ready to schedule: no
+reason: schedule/release timing is missing or not explicitly deferred with a reason.
+created: ../../../tmp/package-metadata-schedule-gQG1xN/package-runs/2026-05-10-metadata-schedule/publish-metadata-review.md
+created: ../../../tmp/package-metadata-schedule-gQG1xN/package-runs/2026-05-10-metadata-schedule/title-check.md
+created: ../../../tmp/package-metadata-schedule-gQG1xN/package-runs/2026-05-10-metadata-schedule/thumbnail-check.md
+created: ../../../tmp/package-metadata-schedule-gQG1xN/package-runs/2026-05-10-metadata-schedule/description-check.md
+created: ../../../tmp/package-metadata-schedule-gQG1xN/package-runs/2026-05-10-metadata-schedule/chapters-check.md
+created: ../../../tmp/package-metadata-schedule-gQG1xN/package-runs/2026-05-10-metadata-schedule/schedule-check.md
+publication metadata: READY TO SCHEDULE
+ready to schedule: yes
+reason: Final review and export readiness are approved, publish metadata is complete, and exact metadata approval is present.
+overwritten: ../../../tmp/package-metadata-schedule-gQG1xN/package-runs/2026-05-10-metadata-schedule/publish-metadata-review.md
+overwritten: ../../../tmp/package-metadata-schedule-gQG1xN/package-runs/2026-05-10-metadata-schedule/title-check.md
+overwritten: ../../../tmp/package-metadata-schedule-gQG1xN/package-runs/2026-05-10-metadata-schedule/thumbnail-check.md
+overwritten: ../../../tmp/package-metadata-schedule-gQG1xN/package-runs/2026-05-10-metadata-schedule/description-check.md
+overwritten: ../../../tmp/package-metadata-schedule-gQG1xN/package-runs/2026-05-10-metadata-schedule/chapters-check.md
+overwritten: ../../../tmp/package-metadata-schedule-gQG1xN/package-runs/2026-05-10-metadata-schedule/schedule-check.md
+ok - publication metadata requires schedule unless deferred with reason
+publication metadata: READY TO SCHEDULE
+ready to schedule: yes
+reason: Final review and export readiness are approved, publish metadata is complete, and exact metadata approval is present.
+created: ../../../tmp/package-metadata-schedule-marker-6lj38i/package-runs/2026-05-10-metadata-schedule-marker/publish-metadata-review.md
+created: ../../../tmp/package-metadata-schedule-marker-6lj38i/package-runs/2026-05-10-metadata-schedule-marker/title-check.md
+created: ../../../tmp/package-metadata-schedule-marker-6lj38i/package-runs/2026-05-10-metadata-schedule-marker/thumbnail-check.md
+created: ../../../tmp/package-metadata-schedule-marker-6lj38i/package-runs/2026-05-10-metadata-schedule-marker/description-check.md
+created: ../../../tmp/package-metadata-schedule-marker-6lj38i/package-runs/2026-05-10-metadata-schedule-marker/chapters-check.md
+created: ../../../tmp/package-metadata-schedule-marker-6lj38i/package-runs/2026-05-10-metadata-schedule-marker/schedule-check.md
+ok - publication metadata keeps approval marker separate from schedule evidence
+publication metadata: READY TO SCHEDULE
+ready to schedule: yes
+reason: Final review and export readiness are approved, publish metadata is complete, and exact metadata approval is present.
+created: ../../../tmp/package-metadata-multiline-chapters-W0BiAe/package-runs/2026-05-10-metadata-multiline-chapters/publish-metadata-review.md
+created: ../../../tmp/package-metadata-multiline-chapters-W0BiAe/package-runs/2026-05-10-metadata-multiline-chapters/title-check.md
+created: ../../../tmp/package-metadata-multiline-chapters-W0BiAe/package-runs/2026-05-10-metadata-multiline-chapters/thumbnail-check.md
+created: ../../../tmp/package-metadata-multiline-chapters-W0BiAe/package-runs/2026-05-10-metadata-multiline-chapters/description-check.md
+created: ../../../tmp/package-metadata-multiline-chapters-W0BiAe/package-runs/2026-05-10-metadata-multiline-chapters/chapters-check.md
+created: ../../../tmp/package-metadata-multiline-chapters-W0BiAe/package-runs/2026-05-10-metadata-multiline-chapters/schedule-check.md
+ok - publication metadata renders multiline chapters safely in tables
+publication metadata: READY TO SCHEDULE
+ready to schedule: yes
+reason: Final review and export readiness are approved, publish metadata is complete, and exact metadata approval is present.
+created: ../../../tmp/package-metadata-ready-69Cv0p/package-runs/2026-05-10-metadata-ready/publish-metadata-review.md
+created: ../../../tmp/package-metadata-ready-69Cv0p/package-runs/2026-05-10-metadata-ready/title-check.md
+created: ../../../tmp/package-metadata-ready-69Cv0p/package-runs/2026-05-10-metadata-ready/thumbnail-check.md
+created: ../../../tmp/package-metadata-ready-69Cv0p/package-runs/2026-05-10-metadata-ready/description-check.md
+created: ../../../tmp/package-metadata-ready-69Cv0p/package-runs/2026-05-10-metadata-ready/chapters-check.md
+created: ../../../tmp/package-metadata-ready-69Cv0p/package-runs/2026-05-10-metadata-ready/schedule-check.md
+ok - publication metadata can mark ready to schedule with real metadata and exact approval
+ok - publication metadata preserves existing manual artifacts
+ok - publication metadata overwrite replaces generated files
+ok - verify script checks publication metadata syntax
+ok - archive manifest help works
+archive manifest: BLOCKED
+ready to archive: no
+reason: final-review.md is missing.
+created: ../../../tmp/package-archive-missing-final-XKhbWW/package-runs/2026-05-10-archive-missing-final/archive-manifest.md
+created: ../../../tmp/package-archive-missing-final-XKhbWW/package-runs/2026-05-10-archive-missing-final/archive-source-files.md
+created: ../../../tmp/package-archive-missing-final-XKhbWW/package-runs/2026-05-10-archive-missing-final/archive-assets-manifest.md
+created: ../../../tmp/package-archive-missing-final-XKhbWW/package-runs/2026-05-10-archive-missing-final/archive-export-manifest.md
+created: ../../../tmp/package-archive-missing-final-XKhbWW/package-runs/2026-05-10-archive-missing-final/reusable-clips-manifest.md
+created: ../../../tmp/package-archive-missing-final-XKhbWW/package-runs/2026-05-10-archive-missing-final/archive-blockers.md
+ok - archive manifest blocks missing final review
+archive manifest: BLOCKED
+ready to archive: no
+reason: final-review.md is BLOCKED; Final Review Gate is BLOCKED; Publish ready is no.
+created: ../../../tmp/package-archive-final-blocked-BDRSFC/package-runs/2026-05-10-archive-final-blocked/archive-manifest.md
+created: ../../../tmp/package-archive-final-blocked-BDRSFC/package-runs/2026-05-10-archive-final-blocked/archive-source-files.md
+created: ../../../tmp/package-archive-final-blocked-BDRSFC/package-runs/2026-05-10-archive-final-blocked/archive-assets-manifest.md
+created: ../../../tmp/package-archive-final-blocked-BDRSFC/package-runs/2026-05-10-archive-final-blocked/archive-export-manifest.md
+created: ../../../tmp/package-archive-final-blocked-BDRSFC/package-runs/2026-05-10-archive-final-blocked/reusable-clips-manifest.md
+created: ../../../tmp/package-archive-final-blocked-BDRSFC/package-runs/2026-05-10-archive-final-blocked/archive-blockers.md
+ok - archive manifest blocks final review blocked
+archive manifest: BLOCKED
+ready to archive: no
+reason: publication-blockers.md has open or blocked rows.
+created: ../../../tmp/package-archive-open-publication-blockers-Xx8itw/package-runs/2026-05-10-archive-open-publication-blockers/archive-manifest.md
+created: ../../../tmp/package-archive-open-publication-blockers-Xx8itw/package-runs/2026-05-10-archive-open-publication-blockers/archive-source-files.md
+created: ../../../tmp/package-archive-open-publication-blockers-Xx8itw/package-runs/2026-05-10-archive-open-publication-blockers/archive-assets-manifest.md
+created: ../../../tmp/package-archive-open-publication-blockers-Xx8itw/package-runs/2026-05-10-archive-open-publication-blockers/archive-export-manifest.md
+created: ../../../tmp/package-archive-open-publication-blockers-Xx8itw/package-runs/2026-05-10-archive-open-publication-blockers/reusable-clips-manifest.md
+created: ../../../tmp/package-archive-open-publication-blockers-Xx8itw/package-runs/2026-05-10-archive-open-publication-blockers/archive-blockers.md
+ok - archive manifest blocks open publication blockers
+archive manifest: BLOCKED
+ready to archive: no
+reason: publish-metadata-review.md is NEEDS METADATA; Ready to schedule is no.
+created: ../../../tmp/package-archive-metadata-blocked-TQzB4n/package-runs/2026-05-10-archive-metadata-blocked/archive-manifest.md
+created: ../../../tmp/package-archive-metadata-blocked-TQzB4n/package-runs/2026-05-10-archive-metadata-blocked/archive-source-files.md
+created: ../../../tmp/package-archive-metadata-blocked-TQzB4n/package-runs/2026-05-10-archive-metadata-blocked/archive-assets-manifest.md
+created: ../../../tmp/package-archive-metadata-blocked-TQzB4n/package-runs/2026-05-10-archive-metadata-blocked/archive-export-manifest.md
+created: ../../../tmp/package-archive-metadata-blocked-TQzB4n/package-runs/2026-05-10-archive-metadata-blocked/reusable-clips-manifest.md
+created: ../../../tmp/package-archive-metadata-blocked-TQzB4n/package-runs/2026-05-10-archive-metadata-blocked/archive-blockers.md
+ok - archive manifest blocks publish metadata not ready when present
+archive manifest: BLOCKED
+ready to archive: no
+reason: Export readiness is NEEDS EXPORT CHECK; Ready to upload is no.
+created: ../../../tmp/package-archive-export-blocked-7wXooA/package-runs/2026-05-10-archive-export-blocked/archive-manifest.md
+created: ../../../tmp/package-archive-export-blocked-7wXooA/package-runs/2026-05-10-archive-export-blocked/archive-source-files.md
+created: ../../../tmp/package-archive-export-blocked-7wXooA/package-runs/2026-05-10-archive-export-blocked/archive-assets-manifest.md
+created: ../../../tmp/package-archive-export-blocked-7wXooA/package-runs/2026-05-10-archive-export-blocked/archive-export-manifest.md
+created: ../../../tmp/package-archive-export-blocked-7wXooA/package-runs/2026-05-10-archive-export-blocked/reusable-clips-manifest.md
+created: ../../../tmp/package-archive-export-blocked-7wXooA/package-runs/2026-05-10-archive-export-blocked/archive-blockers.md
+ok - archive manifest blocks export readiness not ready when present
+archive manifest: BLOCKED
+ready to archive: no
+reason: publication evidence is missing.
+created: ../../../tmp/package-archive-no-publication-evidence-hiQsTv/package-runs/2026-05-10-archive-no-publication-evidence/archive-manifest.md
+created: ../../../tmp/package-archive-no-publication-evidence-hiQsTv/package-runs/2026-05-10-archive-no-publication-evidence/archive-source-files.md
+created: ../../../tmp/package-archive-no-publication-evidence-hiQsTv/package-runs/2026-05-10-archive-no-publication-evidence/archive-assets-manifest.md
+created: ../../../tmp/package-archive-no-publication-evidence-hiQsTv/package-runs/2026-05-10-archive-no-publication-evidence/archive-export-manifest.md
+created: ../../../tmp/package-archive-no-publication-evidence-hiQsTv/package-runs/2026-05-10-archive-no-publication-evidence/reusable-clips-manifest.md
+created: ../../../tmp/package-archive-no-publication-evidence-hiQsTv/package-runs/2026-05-10-archive-no-publication-evidence/archive-blockers.md
+ok - archive manifest blocks missing publication evidence
+archive manifest: NEEDS ARCHIVE DATA
+ready to archive: no
+reason: archive manifest artifacts are missing. final export/master file path is missing. source project path is missing. editing project file is missing. caption reference is missing. publish metadata reference is missing. asset manifest is missing or placeholder. reusable clips/cutdown decision is missing or not reviewed. checksum/status fields are missing or not explicitly waived with a reason. archive approval marker is missing.
+created: ../../../tmp/package-archive-needs-data-BKljfH/package-runs/2026-05-10-archive-needs-data/archive-manifest.md
+created: ../../../tmp/package-archive-needs-data-BKljfH/package-runs/2026-05-10-archive-needs-data/archive-source-files.md
+created: ../../../tmp/package-archive-needs-data-BKljfH/package-runs/2026-05-10-archive-needs-data/archive-assets-manifest.md
+created: ../../../tmp/package-archive-needs-data-BKljfH/package-runs/2026-05-10-archive-needs-data/archive-export-manifest.md
+created: ../../../tmp/package-archive-needs-data-BKljfH/package-runs/2026-05-10-archive-needs-data/reusable-clips-manifest.md
+created: ../../../tmp/package-archive-needs-data-BKljfH/package-runs/2026-05-10-archive-needs-data/archive-blockers.md
+ok - archive manifest creates starter artifacts and needs archive data
+archive manifest: NEEDS ARCHIVE DATA
+ready to archive: no
+reason: final export/master file path is missing. source project path is missing. editing project file is missing. caption reference is missing. publish metadata reference is missing. asset manifest is missing or placeholder. reusable clips/cutdown decision is missing or not reviewed. checksum/status fields are missing or not explicitly waived with a reason.
+overwritten: ../../../tmp/package-archive-placeholder-dFztCP/package-runs/2026-05-10-archive-placeholder/archive-manifest.md
+overwritten: ../../../tmp/package-archive-placeholder-dFztCP/package-runs/2026-05-10-archive-placeholder/archive-source-files.md
+overwritten: ../../../tmp/package-archive-placeholder-dFztCP/package-runs/2026-05-10-archive-placeholder/archive-assets-manifest.md
+overwritten: ../../../tmp/package-archive-placeholder-dFztCP/package-runs/2026-05-10-archive-placeholder/archive-export-manifest.md
+overwritten: ../../../tmp/package-archive-placeholder-dFztCP/package-runs/2026-05-10-archive-placeholder/reusable-clips-manifest.md
+overwritten: ../../../tmp/package-archive-placeholder-dFztCP/package-runs/2026-05-10-archive-placeholder/archive-blockers.md
+ok - archive manifest placeholder archive data does not pass
+archive manifest: NEEDS ARCHIVE DATA
+ready to archive: no
+reason: archive manifest artifacts are missing. final export/master file path is missing. source project path is missing. editing project file is missing. caption reference is missing. publish metadata reference is missing. asset manifest is missing or placeholder. reusable clips/cutdown decision is missing or not reviewed. checksum/status fields are missing or not explicitly waived with a reason.
+overwritten: ../../../tmp/package-archive-approval-alone-QZe237/package-runs/2026-05-10-archive-approval-alone/archive-manifest.md
+created: ../../../tmp/package-archive-approval-alone-QZe237/package-runs/2026-05-10-archive-approval-alone/archive-source-files.md
+created: ../../../tmp/package-archive-approval-alone-QZe237/package-runs/2026-05-10-archive-approval-alone/archive-assets-manifest.md
+created: ../../../tmp/package-archive-approval-alone-QZe237/package-runs/2026-05-10-archive-approval-alone/archive-export-manifest.md
+created: ../../../tmp/package-archive-approval-alone-QZe237/package-runs/2026-05-10-archive-approval-alone/reusable-clips-manifest.md
+created: ../../../tmp/package-archive-approval-alone-QZe237/package-runs/2026-05-10-archive-approval-alone/archive-blockers.md
+ok - archive approval alone does not override missing required archive data
+ok - archive manifest can mark ready to archive with real data and exact approval
+ok - archive manifest accepts checksum waiver evidence from dedicated tables
+ok - archive manifest ignores stale generated archive blockers when current inputs are complete
+archive manifest: NEEDS ARCHIVE DATA
+ready to archive: no
+reason: archive manifest artifacts are missing. final export/master file path is missing. source project path is missing. editing project file is missing. caption reference is missing. publish metadata reference is missing. asset manifest is missing or placeholder. reusable clips/cutdown decision is missing or not reviewed. checksum/status fields are missing or not explicitly waived with a reason. archive approval marker is missing.
+created: ../../../tmp/package-archive-idempotent-fallback-jJFMSg/package-runs/2026-05-10-archive-idempotent-fallback/archive-manifest.md
+created: ../../../tmp/package-archive-idempotent-fallback-jJFMSg/package-runs/2026-05-10-archive-idempotent-fallback/archive-source-files.md
+created: ../../../tmp/package-archive-idempotent-fallback-jJFMSg/package-runs/2026-05-10-archive-idempotent-fallback/archive-assets-manifest.md
+created: ../../../tmp/package-archive-idempotent-fallback-jJFMSg/package-runs/2026-05-10-archive-idempotent-fallback/archive-export-manifest.md
+created: ../../../tmp/package-archive-idempotent-fallback-jJFMSg/package-runs/2026-05-10-archive-idempotent-fallback/reusable-clips-manifest.md
+created: ../../../tmp/package-archive-idempotent-fallback-jJFMSg/package-runs/2026-05-10-archive-idempotent-fallback/archive-blockers.md
+archive manifest: NEEDS ARCHIVE DATA
+ready to archive: no
+reason: final export/master file path is missing. source project path is missing. editing project file is missing. caption reference is missing. publish metadata reference is missing. asset manifest is missing or placeholder. reusable clips/cutdown decision is missing or not reviewed. checksum/status fields are missing or not explicitly waived with a reason. archive approval marker is missing.
+overwritten: ../../../tmp/package-archive-idempotent-fallback-jJFMSg/package-runs/2026-05-10-archive-idempotent-fallback/archive-manifest.md
+unchanged: ../../../tmp/package-archive-idempotent-fallback-jJFMSg/package-runs/2026-05-10-archive-idempotent-fallback/archive-source-files.md
+unchanged: ../../../tmp/package-archive-idempotent-fallback-jJFMSg/package-runs/2026-05-10-archive-idempotent-fallback/archive-assets-manifest.md
+unchanged: ../../../tmp/package-archive-idempotent-fallback-jJFMSg/package-runs/2026-05-10-archive-idempotent-fallback/archive-export-manifest.md
+unchanged: ../../../tmp/package-archive-idempotent-fallback-jJFMSg/package-runs/2026-05-10-archive-idempotent-fallback/reusable-clips-manifest.md
+overwritten: ../../../tmp/package-archive-idempotent-fallback-jJFMSg/package-runs/2026-05-10-archive-idempotent-fallback/archive-blockers.md
+ok - archive manifest generated fallback rows do not accumulate across overwrite reruns
+ok - archive manifest preserves existing artifacts unless overwrite is explicit
+ok - archive manifest overwrite replaces generated artifacts
+ok - verify script checks archive manifest syntax
+ok - repurposing help works
+repurposing: BLOCKED
+ready to cut shorts: no
+reason: final-review.md is missing. Publish ready is no.
+created: ../../../tmp/package-repurpose-missing-final-8agwbN/package-runs/2026-05-10-repurpose-missing-final/repurposing-plan.md
+created: ../../../tmp/package-repurpose-missing-final-8agwbN/package-runs/2026-05-10-repurpose-missing-final/shorts-candidates.md
+created: ../../../tmp/package-repurpose-missing-final-8agwbN/package-runs/2026-05-10-repurpose-missing-final/platform-variants.md
+ok - repurposing blocks missing final review
+repurposing: BLOCKED
+ready to cut shorts: no
+reason: Final review status is BLOCKED. Publish ready is no. publication-blockers.md has open or blocked rows.
+created: ../../../tmp/package-repurpose-final-blocked-HGAuOs/package-runs/2026-05-10-repurpose-final-blocked/repurposing-plan.md
+created: ../../../tmp/package-repurpose-final-blocked-HGAuOs/package-runs/2026-05-10-repurpose-final-blocked/shorts-candidates.md
+created: ../../../tmp/package-repurpose-final-blocked-HGAuOs/package-runs/2026-05-10-repurpose-final-blocked/platform-variants.md
+ok - repurposing blocks final review blocked
+repurposing: NEEDS FINAL APPROVAL
+ready to cut shorts: no
+reason: Publish ready is no.
+created: ../../../tmp/package-repurpose-publish-no-ypP9wo/package-runs/2026-05-10-repurpose-publish-no/repurposing-plan.md
+created: ../../../tmp/package-repurpose-publish-no-ypP9wo/package-runs/2026-05-10-repurpose-publish-no/shorts-candidates.md
+created: ../../../tmp/package-repurpose-publish-no-ypP9wo/package-runs/2026-05-10-repurpose-publish-no/platform-variants.md
+ok - repurposing blocks publish ready no
+repurposing: NEEDS FINAL APPROVAL
+ready to cut shorts: no
+reason: publication-blockers.md has open or blocked rows.
+created: ../../../tmp/package-repurpose-open-blockers-I8oI5a/package-runs/2026-05-10-repurpose-open-blockers/repurposing-plan.md
+created: ../../../tmp/package-repurpose-open-blockers-I8oI5a/package-runs/2026-05-10-repurpose-open-blockers/shorts-candidates.md
+created: ../../../tmp/package-repurpose-open-blockers-I8oI5a/package-runs/2026-05-10-repurpose-open-blockers/platform-variants.md
+ok - repurposing blocks open publication blockers
+repurposing: NEEDS TRANSCRIPT
+ready to cut shorts: no
+reason: transcript.md or final-script.md is missing.
+created: ../../../tmp/package-repurpose-no-source-RdqvVd/package-runs/2026-05-10-repurpose-no-source/repurposing-plan.md
+created: ../../../tmp/package-repurpose-no-source-RdqvVd/package-runs/2026-05-10-repurpose-no-source/shorts-candidates.md
+created: ../../../tmp/package-repurpose-no-source-RdqvVd/package-runs/2026-05-10-repurpose-no-source/platform-variants.md
+ok - repurposing needs transcript or final script when source is missing
+repurposing: NEEDS TRANSCRIPT
+ready to cut shorts: no
+reason: Only script-draft.md is available as source material.
+created: ../../../tmp/package-repurpose-draft-only-Cwnn6b/package-runs/2026-05-10-repurpose-draft-only/repurposing-plan.md
+created: ../../../tmp/package-repurpose-draft-only-Cwnn6b/package-runs/2026-05-10-repurpose-draft-only/shorts-candidates.md
+created: ../../../tmp/package-repurpose-draft-only-Cwnn6b/package-runs/2026-05-10-repurpose-draft-only/platform-variants.md
+ok - repurposing draft-only source does not allow ready
+repurposing: READY TO CUT SHORTS
+ready to cut shorts: yes
+reason: Final review passed, publish readiness is yes, publication blockers are clear, and source material exists.
+created: ../../../tmp/package-repurpose-ready-TsqVRT/package-runs/2026-05-10-repurpose-ready/repurposing-plan.md
+created: ../../../tmp/package-repurpose-ready-TsqVRT/package-runs/2026-05-10-repurpose-ready/shorts-candidates.md
+created: ../../../tmp/package-repurpose-ready-TsqVRT/package-runs/2026-05-10-repurpose-ready/platform-variants.md
+ok - repurposing can mark ready only when final gates and source pass
+ok - repurposing preserves existing artifacts unless overwrite is explicit
+ok - verify script checks repurposing syntax
+ok - broll prompt generator help works
+visual prompt status: BLOCKED
+reason: final-script.md or script-draft.md is missing.
+created: ../../../tmp/package-broll-missing-script-ctIgiC/package-runs/2026-05-10-broll-missing-script/broll-prompt-pack.md
+created: ../../../tmp/package-broll-missing-script-ctIgiC/package-runs/2026-05-10-broll-missing-script/visual-scene-prompts.md
+created: ../../../tmp/package-broll-missing-script-ctIgiC/package-runs/2026-05-10-broll-missing-script/stock-search-queries.md
+created: ../../../tmp/package-broll-missing-script-ctIgiC/package-runs/2026-05-10-broll-missing-script/graphics-prompt-pack.md
+created: ../../../tmp/package-broll-missing-script-ctIgiC/package-runs/2026-05-10-broll-missing-script/visual-risk-check.md
+ok - broll prompt generator blocks missing script
+visual prompt status: BLOCKED
+reason: script-review.md is missing.
+created: ../../../tmp/package-broll-review-blocked-rTqWeq/package-runs/2026-05-10-broll-missing-review/broll-prompt-pack.md
+created: ../../../tmp/package-broll-review-blocked-rTqWeq/package-runs/2026-05-10-broll-missing-review/visual-scene-prompts.md
+created: ../../../tmp/package-broll-review-blocked-rTqWeq/package-runs/2026-05-10-broll-missing-review/stock-search-queries.md
+created: ../../../tmp/package-broll-review-blocked-rTqWeq/package-runs/2026-05-10-broll-missing-review/graphics-prompt-pack.md
+created: ../../../tmp/package-broll-review-blocked-rTqWeq/package-runs/2026-05-10-broll-missing-review/visual-risk-check.md
+visual prompt status: BLOCKED
+reason: Script review status is NEEDS REVISION, not PASS.
+created: ../../../tmp/package-broll-review-blocked-rTqWeq/package-runs/2026-05-10-broll-needs-revision/broll-prompt-pack.md
+created: ../../../tmp/package-broll-review-blocked-rTqWeq/package-runs/2026-05-10-broll-needs-revision/visual-scene-prompts.md
+created: ../../../tmp/package-broll-review-blocked-rTqWeq/package-runs/2026-05-10-broll-needs-revision/stock-search-queries.md
+created: ../../../tmp/package-broll-review-blocked-rTqWeq/package-runs/2026-05-10-broll-needs-revision/graphics-prompt-pack.md
+created: ../../../tmp/package-broll-review-blocked-rTqWeq/package-runs/2026-05-10-broll-needs-revision/visual-risk-check.md
+ok - broll prompt generator blocks missing or non-pass script review
+visual prompt status: BLOCKED
+reason: Shoot-readiness status is BLOCKED, not READY TO SHOOT.
+created: ../../../tmp/package-broll-plan-blocked-x1U15f/package-runs/2026-05-10-broll-plan-blocked/broll-prompt-pack.md
+created: ../../../tmp/package-broll-plan-blocked-x1U15f/package-runs/2026-05-10-broll-plan-blocked/visual-scene-prompts.md
+created: ../../../tmp/package-broll-plan-blocked-x1U15f/package-runs/2026-05-10-broll-plan-blocked/stock-search-queries.md
+created: ../../../tmp/package-broll-plan-blocked-x1U15f/package-runs/2026-05-10-broll-plan-blocked/graphics-prompt-pack.md
+created: ../../../tmp/package-broll-plan-blocked-x1U15f/package-runs/2026-05-10-broll-plan-blocked/visual-risk-check.md
+ok - broll prompt generator blocks non-ready production plan
+ok - broll prompt generator creates prompt artifacts from approved script and production plan
+visual prompt status: NEEDS REVIEW
+reason: Visual prompts need human review and exact Visual prompt approval: PASS before they pass.
+created: ../../../tmp/package-broll-selected-json-4CZ6YZ/package-runs/2026-05-10-broll-selected-json/broll-prompt-pack.md
+created: ../../../tmp/package-broll-selected-json-4CZ6YZ/package-runs/2026-05-10-broll-selected-json/visual-scene-prompts.md
+created: ../../../tmp/package-broll-selected-json-4CZ6YZ/package-runs/2026-05-10-broll-selected-json/stock-search-queries.md
+created: ../../../tmp/package-broll-selected-json-4CZ6YZ/package-runs/2026-05-10-broll-selected-json/graphics-prompt-pack.md
+created: ../../../tmp/package-broll-selected-json-4CZ6YZ/package-runs/2026-05-10-broll-selected-json/visual-risk-check.md
+ok - broll prompt generator treats selected package json and markdown as alternate inputs
+visual prompt status: NEEDS REVIEW
+reason: Visual prompts need human review and exact Visual prompt approval: PASS before they pass.
+created: ../../../tmp/package-broll-clean-extraction-yFYy7F/package-runs/2026-05-10-broll-clean-extraction/broll-prompt-pack.md
+created: ../../../tmp/package-broll-clean-extraction-yFYy7F/package-runs/2026-05-10-broll-clean-extraction/visual-scene-prompts.md
+created: ../../../tmp/package-broll-clean-extraction-yFYy7F/package-runs/2026-05-10-broll-clean-extraction/stock-search-queries.md
+created: ../../../tmp/package-broll-clean-extraction-yFYy7F/package-runs/2026-05-10-broll-clean-extraction/graphics-prompt-pack.md
+created: ../../../tmp/package-broll-clean-extraction-yFYy7F/package-runs/2026-05-10-broll-clean-extraction/visual-risk-check.md
+ok - broll prompt generator filters headers placeholders checkboxes and artifact leaks
+visual prompt status: NEEDS REVIEW
+reason: Visual prompts need human review and exact Visual prompt approval: PASS before they pass.
+created: ../../../tmp/package-broll-script-fallback-J4mnGr/package-runs/2026-05-10-broll-script-fallback/broll-prompt-pack.md
+created: ../../../tmp/package-broll-script-fallback-J4mnGr/package-runs/2026-05-10-broll-script-fallback/visual-scene-prompts.md
+created: ../../../tmp/package-broll-script-fallback-J4mnGr/package-runs/2026-05-10-broll-script-fallback/stock-search-queries.md
+created: ../../../tmp/package-broll-script-fallback-J4mnGr/package-runs/2026-05-10-broll-script-fallback/graphics-prompt-pack.md
+created: ../../../tmp/package-broll-script-fallback-J4mnGr/package-runs/2026-05-10-broll-script-fallback/visual-risk-check.md
+ok - broll prompt generator falls back to script when planning rows are placeholders
+visual prompt status: NEEDS REVIEW
+reason: Visual prompts need human review and exact Visual prompt approval: PASS before they pass.
+created: ../../../tmp/package-broll-stock-clean-F0ozCU/package-runs/2026-05-10-broll-stock-clean/broll-prompt-pack.md
+created: ../../../tmp/package-broll-stock-clean-F0ozCU/package-runs/2026-05-10-broll-stock-clean/visual-scene-prompts.md
+created: ../../../tmp/package-broll-stock-clean-F0ozCU/package-runs/2026-05-10-broll-stock-clean/stock-search-queries.md
+created: ../../../tmp/package-broll-stock-clean-F0ozCU/package-runs/2026-05-10-broll-stock-clean/graphics-prompt-pack.md
+created: ../../../tmp/package-broll-stock-clean-F0ozCU/package-runs/2026-05-10-broll-stock-clean/visual-risk-check.md
+ok - broll prompt generator stock queries are short filler-free phrases
+ok - broll prompt generator preserves manual files unless overwrite is explicit
+ok - broll prompt generator passes only with exact approval and real prompt rows
+ok - broll prompt generator does not pass placeholder prompt rows
+ok - verify script checks broll prompt generator syntax
+ok - capture checklist help works
+ok - capture checklist keeps data rows that begin with capture words
+capture checklist: BLOCKED
+ready for rough cut: no
+reason: production-plan.md is missing.
+created: ../../../tmp/package-capture-missing-plan-FjbT9L/package-runs/2026-05-10-capture-missing-plan/capture-checklist.md
+created: ../../../tmp/package-capture-missing-plan-FjbT9L/package-runs/2026-05-10-capture-missing-plan/takes-log.md
+created: ../../../tmp/package-capture-missing-plan-FjbT9L/package-runs/2026-05-10-capture-missing-plan/missing-shot-tracker.md
+created: ../../../tmp/package-capture-missing-plan-FjbT9L/package-runs/2026-05-10-capture-missing-plan/screen-recording-checklist.md
+created: ../../../tmp/package-capture-missing-plan-FjbT9L/package-runs/2026-05-10-capture-missing-plan/audio-capture-checklist.md
+ok - capture checklist blocks missing production plan
+capture checklist: BLOCKED
+ready for rough cut: no
+reason: Shoot-readiness status is BLOCKED, not READY TO SHOOT.
+created: ../../../tmp/package-capture-blocked-plan-vpTrDO/package-runs/2026-05-10-capture-blocked-plan/capture-checklist.md
+created: ../../../tmp/package-capture-blocked-plan-vpTrDO/package-runs/2026-05-10-capture-blocked-plan/takes-log.md
+created: ../../../tmp/package-capture-blocked-plan-vpTrDO/package-runs/2026-05-10-capture-blocked-plan/missing-shot-tracker.md
+created: ../../../tmp/package-capture-blocked-plan-vpTrDO/package-runs/2026-05-10-capture-blocked-plan/screen-recording-checklist.md
+created: ../../../tmp/package-capture-blocked-plan-vpTrDO/package-runs/2026-05-10-capture-blocked-plan/audio-capture-checklist.md
+ok - capture checklist blocks blocked production plan
+capture checklist: BLOCKED
+ready for rough cut: no
+reason: production-blockers.md has open or blocked rows.
+created: ../../../tmp/package-capture-open-blockers-xLDlNx/package-runs/2026-05-10-capture-open-blockers/capture-checklist.md
+created: ../../../tmp/package-capture-open-blockers-xLDlNx/package-runs/2026-05-10-capture-open-blockers/takes-log.md
+created: ../../../tmp/package-capture-open-blockers-xLDlNx/package-runs/2026-05-10-capture-open-blockers/missing-shot-tracker.md
+created: ../../../tmp/package-capture-open-blockers-xLDlNx/package-runs/2026-05-10-capture-open-blockers/screen-recording-checklist.md
+created: ../../../tmp/package-capture-open-blockers-xLDlNx/package-runs/2026-05-10-capture-open-blockers/audio-capture-checklist.md
+ok - capture checklist blocks open production blockers
+capture checklist: NEEDS CAPTURE
+ready for rough cut: no
+reason: capture execution artifacts are missing. audio capture checklist lacks an exact capture readiness approval marker.
+created: ../../../tmp/package-capture-missing-artifacts-zdIZoH/package-runs/2026-05-10-capture-missing-artifacts/capture-checklist.md
+created: ../../../tmp/package-capture-missing-artifacts-zdIZoH/package-runs/2026-05-10-capture-missing-artifacts/takes-log.md
+created: ../../../tmp/package-capture-missing-artifacts-zdIZoH/package-runs/2026-05-10-capture-missing-artifacts/missing-shot-tracker.md
+created: ../../../tmp/package-capture-missing-artifacts-zdIZoH/package-runs/2026-05-10-capture-missing-artifacts/screen-recording-checklist.md
+created: ../../../tmp/package-capture-missing-artifacts-zdIZoH/package-runs/2026-05-10-capture-missing-artifacts/audio-capture-checklist.md
+ok - capture checklist creates starter artifacts and needs capture when capture artifacts are missing
+ok - capture checklist preserves existing manual artifacts
+capture checklist: READY FOR ROUGH CUT
+ready for rough cut: yes
+reason: Production planning is ready, production blockers are clear, required planning rows are complete, and capture readiness is explicitly approved.
+overwritten: ../../../tmp/package-capture-ready-3d6eW8/package-runs/2026-05-10-capture-ready/capture-checklist.md
+overwritten: ../../../tmp/package-capture-ready-3d6eW8/package-runs/2026-05-10-capture-ready/takes-log.md
+overwritten: ../../../tmp/package-capture-ready-3d6eW8/package-runs/2026-05-10-capture-ready/missing-shot-tracker.md
+overwritten: ../../../tmp/package-capture-ready-3d6eW8/package-runs/2026-05-10-capture-ready/screen-recording-checklist.md
+overwritten: ../../../tmp/package-capture-ready-3d6eW8/package-runs/2026-05-10-capture-ready/audio-capture-checklist.md
+ok - capture checklist can mark ready for rough cut with approved planning and real capture readiness
+ok - capture checklist overwrite replaces generated artifacts
+ok - verify script checks capture checklist syntax
+ok - capture evidence review rejects generated checklist files
+ok - capture evidence review rejects dummy smoke-test capture rows
+ok - capture evidence review requires approval after real rows
+ok - capture evidence review recognizes absolute screen recording path with captured review-needed status
+ok - capture evidence review does not recognize TODO screen recording placeholders
+ok - capture evidence review approval marker alone does not pass
+ok - capture evidence review still requires closed missing shots and blockers with full media evidence
+ok - capture evidence review does not let old approval marker pass newly added evidence
+ok - capture evidence review approval plus take evidence only does not pass
+ok - capture evidence review approval plus take and screen without audio does not pass
+ok - capture evidence review approval plus take and audio without screen does not pass
+ok - capture evidence review passes real evidence with exact approval
+ok - verify script checks capture evidence review syntax
+ok - package run evidence lint reports missing run folder read-only
+ok - package run evidence lint handles no evidence files
+ok - package run evidence lint flags placeholder and TODO rows
+ok - package run evidence lint flags dummy sample test media rows
+ok - package run evidence lint recognizes concrete VIDNAS and production media path rows
+ok - package run evidence lint flags missing source category status and purpose fields
+ok - package run evidence lint JSON output is parseable
+ok - verify script checks package run evidence lint syntax
+ok - package run creator qa builds package and guards existing artifacts
+Creator QA completed for: ../../../tmp/package-run-qa-cli-4kQ9mz/package-runs/2026-05-02-qa
+Creator QA result: PASS
+../../../tmp/package-run-qa-cli-4kQ9mz/package-runs/2026-05-02-qa/creator-qa-package.md
+../../../tmp/package-run-qa-cli-4kQ9mz/package-runs/2026-05-02-qa/creator-qa-report.md
+../../../tmp/package-run-qa-cli-4kQ9mz/package-runs/2026-05-02-qa/creator-qa-report.json
+creator-qa-report.md already exists. Use --force to replace QA artifacts.
+Creator QA completed for: ../../../tmp/package-run-qa-cli-4kQ9mz/package-runs/2026-05-02-qa
+Creator QA result: PASS
+../../../tmp/package-run-qa-cli-4kQ9mz/package-runs/2026-05-02-qa/creator-qa-package.md
+../../../tmp/package-run-qa-cli-4kQ9mz/package-runs/2026-05-02-qa/creator-qa-report.md
+../../../tmp/package-run-qa-cli-4kQ9mz/package-runs/2026-05-02-qa/creator-qa-report.json
+ok - package run creator qa cli writes local qa artifacts using creator qa root
+ok - package run research pack generates a starter pack for a valid run
+ok - package run research pack handles a run with missing package files
+ok - package run research pack preserves manual edits unless overwrite is explicit
+ok - research evidence help works
+ok - research evidence blocks missing selected package
+ok - research evidence placeholder rows do not pass
+ok - research evidence to-verify source rows do not count as concrete sources
+ok - research evidence planned proof rows do not count as concrete proof
+ok - research evidence current real-run pattern remains needs evidence
+ok - research evidence captured or review-needed proof can be ready without approval
+ok - research evidence concrete evidence without approval is ready for review not pass
+ok - research evidence exact approval can pass only with concrete evidence
+ok - research evidence preserves existing evidence files even with overwrite
+ok - research evidence overwrite preserves concrete evidence and refreshes derived review
+ok - research evidence creates missing evidence files and reset requires explicit flag
+ok - package run doctor routes partial research to research evidence tool
+ok - package run doctor routes needs-evidence review back to research evidence intake
+ok - package run doctor reports ready research evidence as manual review blocker
+ok - package run doctor lets research sufficiency review pass reach script structure blocker
+ok - verify script checks research evidence syntax
+ok - package runs index classifies workflow status from detected files
+ok - package runs readiness buckets are conservative for creator qa status
+ok - package runs index reports conservative evidence gate status
+Wrote ../../../tmp/package-runs-index-3XIrDk/package-runs-index.json
+Indexed 4 package runs.
+ok - package runs index scans package-runs folders and writes index json
+ok - package runs index ignores non-run container folders
+ok - package run state defaults to active when marker is absent
+ok - package run state superseded removes run from active blocker buckets without approving downstream work
+ok - package run state parked removes run from active blocker buckets
+ok - inactive package run diagnostics use active lifecycle before readiness override
+ok - unknown package run state is ignored conservatively as active
+ok - fixture package-run state selects May 6 and parks older May 2 runs
+ok - active state audit degrades read-only when package-runs-index is missing
+ok - active state audit selects exactly one active run
+ok - active state audit ignores non-run container folders
+ok - active state audit reports multiple active runs as ambiguous
+ok - active state audit reports no active runs
+ok - active state audit flags a run with artifacts but no state marker as UNKNOWN, not silently active
+ok - active state audit: missing state combined with an explicit active run withholds guidance
+ok - package-run-state guard detects a run dir with artifacts but no state marker
+ok - package-runs dashboard wires the read-only artifact panel and shared clipboard
+ok - artifact panel uses the merged endpoints, nonce-gated open, and shared clipboard, with no edit controls
+ok - read-only scripts declare safety headers and contain no direct write calls
+ok - next-action scripts declare role and canonical status
+ok - open-active-run launcher resolves the active run dynamically with no hardcoded run id
+ok - docs authority check passes and catches hardcoded counts / stale phrases
+ok - root cockpit HTML pages reference no missing local scripts, styles, or pages
+ok - canonical production spec exists and stays in sync with pipeline-tracker.js
+ok - system registry loads, validates, and records verified ports with sources
+ok - cockpit orientation reports a single clean active run with operator fields
+ok - cockpit orientation uses camera/A-roll wording for vertical runs
+ok - cockpit orientation returns AMBIGUOUS and withholds guidance when active state is unclear
+ok - cockpit orientation surfaces a single active project when package-runs lane is cleanly empty
+ok - cockpit orientation stays AMBIGUOUS with multiple active projects but lists them
+ok - cockpit orientation stays AMBIGUOUS on invalid run markers even with one active project
+ok - orientation bar renders compact canonical fields and an ambiguous state
+ok - orientation bar source is read-only, reads the canonical API, and fails gracefully
+ok - package-runs-dashboard includes the canonical orientation strip and shared script
+ok - production-pipeline includes shared clarity scripts
+ok - production-pipeline includes orientation and artifact panel containers
+ok - production-pipeline uses the shared clipboard helper for copy buttons
+ok - index freshness reports missing, fresh, and stale states
+ok - active state audit json cli is parseable
+ok - active state audit help output documents read-only usage
+ok - active state audit does not mutate package-run fixture files
+ok - package run state proposal reports fixture single-active state read-only
+ok - package run state proposal json cli is parseable
+ok - package run state proposal degrades safely when no active candidates exist
+ok - package run state proposal keeps single active run active
+ok - package run state proposal safety fields stay read-only
+ok - package run state proposal does not create or modify files
+ok - package runs index follows lifecycle gates in order
+ok - package run doctor help works
+ok - doctor operator guidance gives plain-language meaning and AI-safe action per status
+ok - package run doctor fails clearly for missing run folder
+ok - package run doctor reports blocked early run without writing artifacts
+ok - package run doctor reports lifecycle next command and matching json fields
+ok - package runs index requires accepted shot/edit plan review before capture checklist
+ok - package runs index does not let generated downstream artifacts jump past missing capture evidence
+ok - conservative workflow invariant stays blocked when paper-ready artifacts lack capture evidence proof
+ok - effective readiness overrides stale downstream markers when capture evidence review needs capture
+ok - package runs index rejects generated capture approvals without real capture rows
+ok - package runs index uses capture evidence review conservatively
+ok - package runs index rejects generated rough-cut and final reviews without real watch notes
+ok - package run doctor reports blocked actions for downstream export blockers
+ok - package run doctor reports shot/edit plan gate fields and conservative blockers
+ok - package run doctor prioritizes Stage 4 planning repair over capture evidence intake
+ok - package run doctor does not make capture evidence primary before Stage 4 acceptance
+ok - package run doctor reports capture evidence gate fields
+ok - package run doctor overrides stale capture evidence review with current source evaluation
+ok - package run doctor keeps May 2 stale capture artifacts behind production planning
+ok - package run lifecycle treats explicit production-not-approved notes as upstream blockers
+ok - production approval repair reporter flags ready plan with explicit not-approved notes
+ok - production approval repair reporter handles clean approved production planning
+ok - production approval repair reporter reports missing run folder
+ok - production approval repair reporter json cli is parseable
+ok - production approval review packet reports clear production and capture gates blocked at rough-cut review
+ok - production approval review packet includes KEEP BLOCKED for explicit not-approved evidence
+ok - production approval review packet clean approved fixture exposes approve option without adding marker
+ok - production approval review packet does not show stale production-planning fallback after capture evidence is clear
+ok - production approval review packet reports missing run folder
+ok - production approval review packet json cli is parseable
+ok - production approval review packet does not mutate fixture files
+ok - capture gap reporter is read-only and separates approval-required capture actions
+ok - capture gap reporter rejects generated and dummy smoke-test capture rows
+ok - capture gap reporter returns blocked read-only report for missing run directory
+Package Run Capture Gap
+
+Usage:
+  node scripts/package-run-capture-gap.js package-runs/YYYY-MM-DD-topic-slug
+  node scripts/package-run-capture-gap.js package-runs/YYYY-MM-DD-topic-slug --json
+  node scripts/package-run-capture-gap.js --help
+
+Read-only local capture gap reporter for one VIDTOOLZ package run.
+No files are created, modified, staged, uploaded, published, archived, or sent to external APIs.
+ok - capture gap reporter builds json-ready output and help
+ok - artifact hygiene reporter flags misleading capture approval artifacts
+ok - artifact hygiene reporter does not flag negative approval wording as dangerous
+ok - artifact hygiene reporter classifies premature downstream lifecycle scaffolds
+ok - artifact hygiene reporter includes matching tmp scripts and parseable json output
+ok - artifact hygiene reporter allows research pass marker without production approval
+ok - artifact hygiene reporter rejects run paths outside package-runs read-only
+ok - package run doctor reports requested pipeline stages and overall status
+ok - package run doctor does not treat placeholder capture artifacts as ready
+ok - package run doctor treats current workflow artifacts as known
+ok - package runs index recommends script review when production plan needs script approval
+ok - package run doctor reports partial research before downstream production symptoms
+ok - package run doctor reports script structure blocker after research pass
+ok - package run doctor reports script review blocker after research and structure pass
+ok - verify script checks package run doctor syntax
+ok - verify script checks package run next action syntax
+ok - package run next action reports needs capture truthfully
+ok - package run next action reports needs QA repair
+ok - package run next action reports ready to shoot without approving production
+ok - package run next action reports missing artifacts
+ok - package run next action reports conflicting visual risk artifacts
+ok - package run next action json cli is parseable
+ok - verify script checks package run next action authority syntax
+ok - package run next action authority keeps blocked runs out of production routing
+ok - package run next action authority routes Creator QA fail to repair review
+ok - package run next action authority routes missing capture proof to evidence work
+ok - package run next action authority blocks durable actions instead of making them next
+ok - package run next action authority prioritizes research needs evidence before production repair
+ok - package run next action authority prioritizes partial research before production repair
+ok - package run next action authority routes ready research review to Mikko approval decision
+ok - package run next action authority prioritizes missing or partial script structure before production repair
+ok - package run next action authority prioritizes script review needs revision before production repair
+ok - package run next action authority routes research and script pass to production planning repair
+ok - package run next action authority routes existing production repair brief to Mikko decision
+ok - package run next action authority routes refreshed production plan to shot edit review
+ok - package run next action authority routes shot edit needs work to planning repair
+ok - package run next action authority routes accepted Stage 4 with missing capture checklist to draft preparation
+ok - package run next action authority requires accepted shot edit stage before capture routing
+ok - package run next action authority routes shot edit human review to Mikko
+ok - package run next action authority routes open production blockers to production planning repair
+ok - package run next action authority json cli is stable and parseable
+ok - package run next action authority error json includes ok false
+ok - package run next action authority does not classify mutating labels as read-only
+ok - package run next action authority treats capture evidence review as mutating
+ok - package run next action authority read-only commands use explicit allowlist
+ok - package run workflow map outputs current gate artifacts without writing package-run state
+ok - package run workflow map separates existing artifacts from blocked gate readiness
+ok - package run workflow map error json is parseable
+ok - verify script checks package run workflow map syntax
+ok - verify script checks package run capture gap syntax
+ok - next safe action helper is read-only and reports selected stills without Kling videos
+ok - next safe action helper sends Kling videos without Resolve evidence to timeline testing
+ok - next safe action helper guides a brand-new run to package selection without readiness language
+ok - next safe action helper walks the front half by artifact (selected -> outline -> script -> image prompts)
+ok - next safe action helper defers to the package-run lifecycle when selected-package.md exists without JSON
+ok - next safe action helper hands off to image generation once image-prompts.json exists
+ok - next safe action helper forbids approval publish and production_ready automation
+ok - verify script checks package run next safe action syntax
+ok - next task classifier does not recommend completed prompt basis work
+ok - next task classifier keeps NEEDS PICKUPS out of second-cut ready state
+ok - next task classifier reports untracked artifacts without mutating them
+ok - next task classifier output includes what not to do yet
+ok - verify script checks next task classifier syntax
+ok - package runs index recommends deterministic next local commands
+ok - rough cut review stdout parser reports result fields
+ok - episode factory normalizeViewMode defaults invalid values to focused
+ok - episode factory focused view defers full dashboard and admin groups
+ok - script image assets dry run default output root matches approved VIDNAS path
+ok - script image assets dry run detects markdown headline and builds 3-sentence blocks
+ok - script image assets dry run prefers working title and script body over Episode Factory metadata
+ok - script image assets dry run explicit headline overrides detected title while script body extraction remains
+ok - script image assets dry run script section stops before higher-level following headings
+ok - script image assets dry run previews without writing files
+ok - script image assets artifact writing uses tmp root and refuses overwrite
+ok - script image assets review page builds read-only prompt review data
+ok - script image assets review page writes standalone html without touching input artifacts
+ok - newsletter help works
+newsletter draft: DRAFT READY
+draftable: yes
+created: ../../../tmp/package-newsletter-ready-3wuaLG/package-runs/2026-05-10-newsletter-ready/newsletter-draft.md
+created: ../../../tmp/package-newsletter-ready-3wuaLG/package-runs/2026-05-10-newsletter-ready/newsletter-review.md
+ok - newsletter drafts a ready issue from package fields without external APIs
+newsletter draft: NEEDS CONTENT
+draftable: no
+created: ../../../tmp/package-newsletter-empty-5XmMy3/package-runs/2026-05-10-newsletter-empty/newsletter-draft.md
+created: ../../../tmp/package-newsletter-empty-5XmMy3/package-runs/2026-05-10-newsletter-empty/newsletter-review.md
+ok - newsletter reports NEEDS CONTENT and a video-url placeholder for an empty run
+newsletter draft: DRAFT READY
+draftable: yes
+created: ../../../tmp/package-newsletter-idem-MPRHAS/package-runs/2026-05-10-newsletter-idem/newsletter-draft.md
+created: ../../../tmp/package-newsletter-idem-MPRHAS/package-runs/2026-05-10-newsletter-idem/newsletter-review.md
+ok - newsletter writes are idempotent without overwrite
+ok - newsletter reads the real publish-pack format and does not leak the next heading into empty fields
+ok - package runs index tracks cockpit visibility lane artifacts
+ok - dashboard production card shows operator asset ledger and motion lanes
+ok - dashboard video room exposes Hyperframes and Remotion as first-class read-only lanes
+ok - dashboard system and capability panels make availability visible without actions
+ok - dashboard HyperFrames lane renders useful composition and render status
+ok - package-run OS folder opener resolves asset files to containing folders
+ok - package-run OS folder opener rejects path traversal
+ok - package runs dashboard launch helper writes index and prints local launch instructions
+ok - rough cut input console saves only watch notes and does not approve without PASS
+ok - rough cut input console writes PASS only from explicit PASS marker
+ok - rough cut input console rejects missing required fields and invalid approval marker
+ok - rough cut input console detects reviewed file and guards open video paths
+ok - rough cut status detects stale derived review artifact from newer NEEDS PICKUPS notes
+ok - dashboard renders stale rough-cut derived artifact warning and regenerate action
+ok - rough cut derived regeneration writes only derived artifacts and preserves source notes index and state
+ok - rough cut derived regeneration stays blocked for pickups without inferring PASS or second-cut ready
+ok - pickup plan save writes only pickup and edit-fix lists without updating index
+ok - pickup plan save rejects invalid pickup items
+ok - pickup plan accepted item still does not infer rough-cut PASS
+ok - publish gate status advertises endpoint surface
+ok - publish gate stdout parser normalizes script labels
+ok - publish gate learning template records published url without publishing
+ok - operator cockpit status builds timeline summary media and index state
+ok - production GPS model builds current location human gate and blocked actions
+ok - production GPS timeline marks current gate and keeps downstream locked
+ok - production GPS artifact trail classifies source derived state and missing artifacts
+ok - production GPS stale rough-cut derived artifact warning is surfaced
+ok - production GPS builders are read-only and do not touch index or state files
+ok - second-cut next action packet reads active run artifacts and surfaces pickups
+ok - second-cut next action packet handles missing artifacts safely
+ok - second-cut next action packet is included in rough-cut dashboard status and does not mutate durable files
+ok - second cut inspector reports no candidate conservatively
+ok - second cut registration preflight reports missing candidate registration
+ok - second cut registration preflight reports registered candidate with existing file
+ok - second cut registration preflight warns for registered missing file
+ok - second cut registration preflight reports missing watch notes after registration
+ok - second cut registration preflight surfaces missing or stale derived review
+ok - second cut registration preflight requires exact derived READY FOR SECOND CUT
+ok - second cut registration preflight shows ready marker path without unblocking downstream gates
+ok - second cut suggested filename helper is display only
+ok - dashboard renders Second-Cut Registration Preflight boundaries
+ok - second cut registration preflight is read-only for package-run artifacts media index and state
+ok - second cut inspector reports fake candidate without crashing on metadata failure
+ok - second cut inspector discovers and classifies pickup media by filename
+ok - second cut inspector links pickup requirements from rough-cut artifacts
+ok - second cut inspector placement checklist stays manual and non-approving
+ok - second cut inspector is read-only for index state and package-run artifacts
+ok - second cut candidate preview validates candidate and writes nothing
+ok - second cut candidate preview rejects invalid input
+ok - second cut candidate apply writes only the allowed artifact
+ok - second cut candidate apply artifact remains non-approving
+ok - second cut candidate apply preserves manual content outside managed section
+ok - second cut inspector reads registered candidate
+ok - second cut inspector warns when registered candidate file is missing
+ok - production GPS shifts to second-cut candidate review for registered candidate without approving
+ok - second cut watch notes parser respects exact markers only
+ok - second cut watch notes save writes only source artifact
+ok - second cut watch notes save rejects invalid inputs
+ok - second cut derived review generation writes only derived review
+ok - second cut readiness requires exact READY FOR SECOND CUT marker
+ok - second cut watch and review managed sections preserve manual notes
+ok - second cut inspector surfaces watch notes review and stale derived state
+ok - production GPS integrates second cut human decisions conservatively
+ok - final candidate preview validates candidate and writes nothing
+ok - final candidate preview rejects invalid input
+ok - final candidate apply writes only allowed artifact and preserves manual content
+ok - final candidate apply blocks when second-cut is not ready
+ok - final-watch notes save writes only source artifact and requires explicit marker
+ok - final-review derived generation requires exact PASS and required sections
+ok - final-review derived generation blocks PASS when upstream second-cut is false
+ok - final review console surfaces stale final-review warnings
+ok - production GPS integrates final candidate and final watch gate states
+ok - dashboard renders Final Candidate / Final Watch Review safely
+ok - export master preview validates candidate and writes nothing
+ok - export master preview rejects invalid input
+ok - export master apply writes only master manifest and preserves manual content
+ok - export master apply blocks when final review is not approved
+ok - delivery readiness save writes only delivery artifacts and requires explicit marker
+ok - export checklist derived generation requires final pass metadata and delivery approval
+ok - export delivery console surfaces stale export checklist warnings
+ok - production GPS integrates export delivery gates conservatively
+ok - dashboard renders Export / Delivery Readiness safely
+ok - capture evidence intake preview does not write files
+ok - capture evidence intake apply rejects path traversal run ids
+ok - capture evidence intake apply rejects missing run folders
+ok - capture evidence intake apply rejects unapproved target filenames
+ok - capture evidence intake apply writes only approved targets and audit log
+capture evidence review: READY FOR HUMAN APPROVAL
+capture evidence accepted: no
+created: ../../../tmp/capture-intake-review-no-approval-QOc5no/package-runs/2026-05-12-review-no-approval/capture-evidence-review.md
+ok - capture evidence intake apply does not make capture review pass without manual approval
+ok - capture evidence intake apply preserves manual content and updates marked section idempotently
+ok - evidence intake dashboard UI renders evidence-only controls
+ok - package runs dashboard contains beginning triage cockpit mount
+ok - focus mode hides the all-videos command board (decluttered to chosen topic)
+ok - dashboard centers the video room on the run from the URL on load
+ok - beginning triage wires a Generate-with-Ollama button to the generate endpoint
+ok - package runs dashboard groups advanced panels collapsed by default
+ok - package runs dashboard Creator Cockpit renders active package-run gates
+ok - package runs dashboard Creator Cockpit renders exactly eight primary sections
+ok - package runs dashboard Creator Cockpit shows second-cut readiness blocker from rough-cut artifacts
+ok - package runs dashboard Creator Cockpit has no mutation controls
+ok - package runs dashboard Creator Cockpit summarizes proof without long source paths
+ok - package runs dashboard Creator Cockpit chooses next-safe-action over lifecycle diagnostics
+ok - package runs dashboard Creator Cockpit degrades missing source data conservatively
+ok - package runs dashboard mode open state toggles both directions
+ok - package runs dashboard mode open state is stable across repeated toggles
+ok - package runs dashboard focus mode restores active package-run focus
+ok - beginning triage research handoff prompt uses typed topic
+ok - beginning triage research handoff prompt keeps placeholder without topic
+ok - package runs dashboard shows compact beginning draft reminder in Focus Mode
+ok - package runs dashboard beginning draft reminder does not override active run focus
+ok - package runs dashboard draft open control expands Beginning Triage only
+ok - beginning triage cockpit exports storage and render helpers
+ok - beginning triage cockpit initial render shows Not started and Start
+ok - beginning triage cockpit renders three high-level phases and one active card
+ok - beginning triage cockpit renders completed selections as compact summaries
+ok - beginning triage cockpit starts with topic research before rough idea capture
+ok - beginning triage cockpit supports three candidate angles and research again loop
+ok - beginning triage cockpit rough idea follows selected candidate
+ok - beginning triage cockpit packaging stage precedes claim triage
+ok - beginning triage cockpit claim stage follows selected planning package
+ok - beginning triage cockpit proof stage includes required claim map columns
+ok - beginning triage cockpit safety boundaries block readiness and promotion
+ok - beginning triage cockpit final display separates proof candidate from package run
+ok - beginning triage cockpit localStorage wiring uses only the new key
+ok - evidence intake dashboard displays existing evidence rows
+ok - evidence intake status reads existing artifact rows
+ok - evidence intake preview validates required fields without writing
+ok - evidence intake rejects path traversal
+ok - evidence intake warns on missing files and generated proof without context
+ok - evidence intake save writes only the audit-log draft and never readiness markers
+ok - evidence intake status routes selected stills without Kling videos to manual Kling action
+ok - evidence intake status routes Kling videos without Resolve evidence to timeline testing
+ok - evidence intake forbidden actions include approval publish and readiness automation
+ok - package runs dashboard normalizes filters and renders run cards
+ok - package runs dashboard renders lifecycle gate review data
+ok - package runs dashboard renders Mikko rough-cut input console
+ok - package runs dashboard renders Next Safe Action panel data safely
+ok - package runs dashboard renders Production GPS panels safely
+ok - package runs dashboard renders Production Timeline Cockpit without mutation controls
+ok - rough cut status exposes Production Timeline Cockpit for the live dashboard
+ok - package runs dashboard renders Second-Cut Candidate Inspector safely
+ok - package runs dashboard renders Second-Cut Candidate Registration safely
+ok - package runs dashboard renders Second-Cut Human Review safely
+ok - package runs dashboard formats capture evidence intake rows
+ok - package runs dashboard flags missing capture evidence intake fields
+ok - package runs dashboard browser write path requests local write config
+ok - package runs dashboard renders safely with missing lifecycle fields
+ok - package runs dashboard renders a safe markdown preview subset
+ok - package runs dashboard has a shell launcher documented
+ok - productionBucketForRun classifies runs into correct production buckets
+ok - groupRunsByProductionBucket groups all runs and preserves bucket order
+ok - groupRunsByProductionBucket handles empty and null input
+ok - renderProductionsOverview renders bucket sections with counts and focus buttons
+ok - focusRunFolderForRun returns bare run id for module API calls
+ok - renderProductionsOverview renders empty message when no runs exist
+ok - renderCompactPipelineStrip renders progress bar and bucket label
+ok - renderCompactPipelineStrip includes blocker reason when present
+ok - dashboard thumbnail renderer avoids missing image requests when no thumbnail is indexed
+ok - dashboard thumbnail renderer uses indexed thumbnail paths when a mockup exists
+ok - package-runs-dashboard: normalizePayload unwraps { ok, data } envelope
+ok - package-runs-dashboard: normalizePayload passes through non-wrapped objects
+ok - package-runs-dashboard: evidence intake preview uses normalizePayload
+ok - package-runs-dashboard: evidence intake save uses normalizePayload for written/warning
+ok - package-runs-dashboard: capture evidence preview uses normalizePayload for previewToken
+ok - package-runs-dashboard: capture evidence apply uses normalizePayload for written/nextCommands
+ok - package-runs-dashboard: capture evidence error paths still read top-level json.error
+ok - package-runs-dashboard: wrapped preview response exposes previewToken correctly
+ok - package-runs-dashboard: wrapped save response exposes written/warning correctly
+ok - package-runs-dashboard: wrapped apply response succeeds without relying on raw wrapper fields
+ok - package-runs-dashboard: error response with top-level error field is not unwrapped
+ok - publish-gate normalizes wrapped package-run list responses before reading runs
+ok - plain-next-action: maps technical blockers to creator steps
+ok - plain-next-action: maps front-half blockers to early steps, not Step 6
+ok - plain-next-action: falls back to the raw text when unmapped
+ok - resume.html: displayTitle keeps real titles, prettifies slugs, drops junk default
+ok - trailer cue folder names are deterministic and slugged
+ok - trailer cue section and tempo maps cover a two minute trailer
+ok - trailer cue artifacts include planning files and six midi stems
+ok - trailer cue dark fairytale preset changes structure maps and text artifacts
+ok - trailer cue dark fairytale preset changes midi ranges and rhythm density
+ok - trailer cue test notes template supports manual validation fields
+ok - trailer cue validation docs describe the manual real-world pass without automation
+ok - trailer cue resolve markers use one hour timecode and section rows
+ok - trailer cue midi files are standard midi buffers with notes
+ok - trailer cue cli help documents supported options and current limits
+ok - trailer cue cli rejects unsupported presets clearly
+ok - trailer cue cli still rejects unknown options clearly
+ok - trailer cue cli creates dark fairytale preset cue folders
+Created trailer cue files in: ../../../tmp/trailer-cue-z9uqeQ/2026-05-06-local-trailer-cue
+skipped: ../../../tmp/trailer-cue-z9uqeQ/2026-05-06-local-trailer-cue/section-map.md
+unchanged: ../../../tmp/trailer-cue-z9uqeQ/2026-05-06-local-trailer-cue/tempo-map.md
+unchanged: ../../../tmp/trailer-cue-z9uqeQ/2026-05-06-local-trailer-cue/resolve-markers.csv
+unchanged: ../../../tmp/trailer-cue-z9uqeQ/2026-05-06-local-trailer-cue/patch-recommendations.md
+unchanged: ../../../tmp/trailer-cue-z9uqeQ/2026-05-06-local-trailer-cue/render-checklist.md
+unchanged: ../../../tmp/trailer-cue-z9uqeQ/2026-05-06-local-trailer-cue/test-notes.md
+unchanged: ../../../tmp/trailer-cue-z9uqeQ/2026-05-06-local-trailer-cue/motif.mid
+unchanged: ../../../tmp/trailer-cue-z9uqeQ/2026-05-06-local-trailer-cue/drone.mid
+unchanged: ../../../tmp/trailer-cue-z9uqeQ/2026-05-06-local-trailer-cue/pulse.mid
+unchanged: ../../../tmp/trailer-cue-z9uqeQ/2026-05-06-local-trailer-cue/riser.mid
+unchanged: ../../../tmp/trailer-cue-z9uqeQ/2026-05-06-local-trailer-cue/climax-hits.mid
+unchanged: ../../../tmp/trailer-cue-z9uqeQ/2026-05-06-local-trailer-cue/final-sting.mid
+ok - trailer cue script writes cue folders without overwriting changed files
+ok - music cue low pulse starts at 15 seconds on beat 3 of bar 5
+ok - music cue arrangement contains populated midi schema and evaluation fields
+ok - music cue artifacts include required markdown, json, and four midi files
+ok - music cue midi files are standard midi buffers with note content
+ok - music cue cli dry run writes nothing
+ok - music cue cli writes and verifies the required cue folder
+Created music cue files in: /tmp/music-cue-missing-cg0T65/VT_CalmThinkingBed_01
+created: /tmp/music-cue-missing-cg0T65/VT_CalmThinkingBed_01/README.md
+created: /tmp/music-cue-missing-cg0T65/VT_CalmThinkingBed_01/arrangement.json
+created: /tmp/music-cue-missing-cg0T65/VT_CalmThinkingBed_01/ableton-track-map.md
+created: /tmp/music-cue-missing-cg0T65/VT_CalmThinkingBed_01/render-checklist.md
+created: /tmp/music-cue-missing-cg0T65/VT_CalmThinkingBed_01/evaluation-checklist.md
+created: /tmp/music-cue-missing-cg0T65/VT_CalmThinkingBed_01/midi/01_PAD_MAIN.mid
+created: /tmp/music-cue-missing-cg0T65/VT_CalmThinkingBed_01/midi/02_LOW_PULSE.mid
+created: /tmp/music-cue-missing-cg0T65/VT_CalmThinkingBed_01/midi/03_SOFT_BASS.mid
+created: /tmp/music-cue-missing-cg0T65/VT_CalmThinkingBed_01/midi/04_GRAIN_SHIMMER.mid
+ok - music cue verify fails when an expected midi file is missing
+ok - music cue cli rejects unsupported cues clearly
+ok - earth studio planner parses NYC to Boston example into three segments
+ok - earth studio planner duration parser supports seconds sec and s
+ok - earth studio planner frame boundaries use inclusive exclusive convention
+ok - earth studio planner Downtown Boston fixture uses corrected coordinates
+ok - earth studio planner KML uses longitude latitude altitude order
+ok - earth studio planner unknown location becomes manual review
+ok - earth studio planner orbit is a supported action (v0.2+)
+ok - earth studio planner dry run writes nothing
+ok - earth studio planner generate mode writes expected files in temporary folder
+Created Earth Studio job planning files in: /tmp/earth-studio-missing-iswd7r/VT_Boston_Test_01
+created: /tmp/earth-studio-missing-iswd7r/VT_Boston_Test_01/README.md
+created: /tmp/earth-studio-missing-iswd7r/VT_Boston_Test_01/shot-plan.json
+created: /tmp/earth-studio-missing-iswd7r/VT_Boston_Test_01/shot-plan.md
+created: /tmp/earth-studio-missing-iswd7r/VT_Boston_Test_01/route.kml
+created: /tmp/earth-studio-missing-iswd7r/VT_Boston_Test_01/earth-studio-build-checklist.md
+created: /tmp/earth-studio-missing-iswd7r/VT_Boston_Test_01/earth-studio.esp
+ok - earth studio planner verify mode catches missing artifacts
+ok - earth studio planner shot-plan markdown includes segment table and KML limitation
+ok - supervised capture filename and sidecar use approved convention
+ok - supervised capture primary noaudio command uses full 4k geometry
+ok - supervised capture primary mic command uses full 4k geometry and explicit audio source
+ok - supervised capture system audio command requires and uses explicit monitor source
+ok - supervised capture systemaudio mic command uses both audio inputs and amix
+ok - supervised capture mic profile requires explicit audio source
+ok - supervised capture preflight lists audio candidates without choosing one
+ok - supervised capture preflight groups system monitor and microphone candidates
+ok - supervised capture warns on Wayland instead of pretending x11grab is supported
+ok - supervised capture parses xrandr geometry and warns when profile crops display
+ok - supervised capture 4k profile follows detected full-display geometry
+ok - supervised capture metadata stores full ffmpeg command and approval boundary
+ok - supervised capture active-state validation checks process start time
+ok - supervised capture active-state validation passes for matching wrapper ffmpeg
+ok - supervised capture verify fails missing output cleanly
+ok - supervised capture verify enforces sidecar metadata and size threshold
+ok - supervised capture verify checks ffprobe stream metadata when available
+ok - supervised capture verify requires audio stream for audio profiles
+ok - supervised capture verify accepts audio stream for audio profiles
+ok - supervised capture cli start without confirm does not record
+ok - supervised capture cli status reports no active capture
+ok - supervised capture cli help documents supervised safety
+ok - topic scout default CLI makes no network calls
+ok - topic scout fixture data produces exactly 10 candidates when enough evidence exists
+ok - topic scout insufficient evidence report does not invent candidates
+ok - topic scout candidate schema includes all required fields
+ok - topic scout scoring weights trust above view potential
+ok - topic scout growth-weighted score can differ from default score
+ok - topic scout quota guard blocks excessive planned YouTube calls
+ok - topic scout live youtube requires YOUTUBE_API_KEY
+ok - topic scout evidence and inference fields are separate
+ok - topic scout deceptive or forced topics are rejected or trust-risk flagged
+ok - topic scout markdown and JSON rendering are stable
+ok - topic scout writes reports only under reports topic scout
+ok - topic scout parses manual 1of10 JSON input into 10 VIDTOOLZ candidates
+ok - topic scout parses manual 1of10 CSV input
+ok - topic scout parses manual 1of10 Markdown table input
+ok - topic scout manual 1of10 mode blocks insufficient rows and does not invent candidates
+ok - topic scout manual 1of10 mode rejects generic tool-list rows
+ok - topic scout manual 1of10 CLI uses local file with no network calls
+ok - oneof10 helper template creation does not overwrite existing file by default
+ok - oneof10 helper validation passes with 10 valid rows
+ok - oneof10 helper validation fails with 9 valid rows
+ok - oneof10 helper validation catches invalid views
+ok - oneof10 helper validation catches missing title
+ok - oneof10 helper validation warns on generic tool-list rows
+ok - oneof10 helper clean creates cleaned copy and preserves original
+ok - oneof10 helper run mode refuses Topic Scout when fewer than 10 valid rows exist
+ok - topic scout scores present with 10 criteria
+ok - topic scout total_score calculated and in valid range
+ok - topic scout total_score does not reward higher raw risk
+ok - topic scout candidates sorted by total_score descending
+ok - topic scout score_rationale present
+ok - topic scout risk scores identified
+ok - topic scout scoring table in markdown
+ok - topic scout per-candidate breakdown in markdown
+ok - topic scout backward compatible with existing fields
+ok - submitted topics: save creates a JSON file in submitted-topics/
+ok - submitted topics: list returns all saved topics
+ok - submitted topics: get retrieves a single topic by id
+ok - submitted topics: get returns null for non-existent topic
+ok - submitted topics: duplicate submission returns duplicate flag
+ok - submitted topics: review has 7 criteria checks
+ok - submitted topics: review flags blanket anti-AI language
+ok - submitted topics: review flags abandoned proof-plan topic
+ok - submitted topics: save rejects empty text
+ok - submitted topics: save rejects text under 5 characters
+ok - submitted topics: save rejects text over 500 characters
+ok - submitted topics: save throws 404 for non-existent run
+ok - submitted topics: updateTopicStatus changes status
+ok - submitted topics: updateTopicStatus returns null for non-existent topic
+ok - submitted topics: list returns empty array for non-existent run
+ok - submitted topics: list returns empty array for null runId
+ok - submitted topics: save rejects path traversal in runId
+ok - submitted topics: getSubmittedTopic rejects path traversal in topicId
+ok - published videos registry is valid and package-run free
+ok - Wan counts are package-scoped to staged MP4s, ignoring colliding global lane labels
+ok - pipeline status exposes the handoff's recorded video variant
+ok - Wan counts detect the HQ variant folder for an HQ-only package
+ok - I2V prompt gate opens once video-prompts.json covers every selection
+ok - PRESTO results report package-scoped completions, not global lane labels
+ok - GET /api/aigen/production-pipeline/status returns ok true when VIDNAS exists
+ok - GET /api/aigen/production-pipeline/status handles missing VIDNAS gracefully
+ok - aigen production pipeline status handles unreachable PRESTO gracefully
+ok - production-pipeline normalizePayload unwraps wrapped { ok, data } status
+ok - production-pipeline normalizePayload passes through unwrapped/error responses
+ok - production-pipeline normalizePayload matches the live wrapped status body
+ok - production-pipeline call sites read the normalized payload, not the raw wrapper
+ok - global next_action prefers the ACTIVE project over stale packages with pending work
+ok - POST /api/aigen/resolve-assembly/create with valid package_id succeeds
+ok - POST /api/aigen/resolve-assembly/create is blocked while selected MP4s are missing
+ok - POST /api/aigen/resolve-assembly/create with invalid package_id fails
+ok - GET /api/aigen/production-pipeline/status includes resolve_handoff_ready field
+ok - POST /api/aigen/resolve-assembly/create without nonce header is rejected with 403
+ok - resolve-assembly dry-run defaults to the mp4 variant and writes nothing
+ok - resolve-assembly dry-run reports the explicit HQ variant and its clips
+ok - resolve-assembly real create with HQ variant uses videos/mp4-hq-720p and records it in the manifest
+ok - resolve-assembly real create with default variant records mp4 in the manifest (backward compatible)
+ok - resolve-assembly clearly reports a held/missing clip and blocks a real run
+ok - resolve-assembly allows explicitly excluding a held clip to proceed
+ok - resolve-assembly excluding a STAGED clip omits it from included and records it as excluded
+ok - resolve-assembly rejects a non-integer exclude index with 400
+ok - resolve-assembly rejects a path-traversal video variant with 400
+ok - PRESTO submit validation reports missing package and missing script
+ok - PRESTO submit rejects when a job is already active
+ok - PRESTO job status reports no job
+ok - PRESTO job status reports active job with elapsed seconds
+ok - PRESTO cancel reports no active job
+ok - PRESTO cancel sends SIGTERM to active job
+ok - PRESTO results returns completed failed and recent runs for a valid package
+ok - PRESTO submit returns 503 when ComfyUI is unreachable (no job spawned)
+ok - PRESTO submit spawns with --timeout 5400 when ComfyUI is reachable
+ok - startPrestoPackageJob honors AIGEN_PRESTO_TIMEOUT_SECONDS override
+ok - startPrestoPackageJob defaults to the recommended HQ profile
+ok - startPrestoPackageJob honors an explicit profile and rejects unknown ones
+ok - prestoComfyuiReachable: ok→true, non-ok/throw/empty→false
+ok - PRESTO results reports missing package
+ok - GET flux-images returns clear error for missing package
+ok - GET flux-images returns empty array when package has no FLUX images
+ok - GET flux-images returns images with prompts
+ok - GET flux-images populates existing selection
+[image-selector] vidtoolz-youtube-ideas-20260611: wrote 2 selections to /tmp/image-selector-KCYEeh/aigen/script-packages/vidtoolz-youtube-ideas-20260611/selected-images.json
+ok - POST selected-images writes valid JSON
+[image-selector] vidtoolz-youtube-ideas-20260611: wrote 1 selections to /tmp/image-selector-hHFfES/aigen/script-packages/vidtoolz-youtube-ideas-20260611/selected-images.json
+ok - POST selected-images overwrites existing selection
+ok - POST selected-images validates indices exist
+ok - POST selected-images rejects path traversal package_id
+ok - image-selector normalizePayload unwraps wrapped { ok, data } responses
+ok - image-selector normalizePayload passes through unwrapped responses
+ok - image-selector normalizePayload tolerates non-object input
+ok - image-selector matches the live flux-images wrapper shape
+ok - image-selector call sites read the normalized payload, not the raw wrapper
+ok - aigen assets route rejects path traversal
+ok - aigen assets route serves script-packages media from the env-overridden fixture root
+ok - aigen assets route serves aigen-root-relative media (non script-packages paths)
+ok - aigen assets route honors an AIGEN_SCRIPT_PACKAGES override outside the aigen root
+ok - FLUX submit reports missing package
+ok - FLUX submit reports missing run-handoff script
+ok - FLUX submit rejects when a job is already active
+ok - FLUX submit succeeds and returns job id and pid
+ok - FLUX submit dry_run true appends dry-run flag and records mode
+ok - FLUX submit limit and skip_existing flags build expected CLI args
+ok - FLUX job status reports no active job
+ok - FLUX job status reports active job with stdout tail
+ok - FLUX cancel reports no active job
+ok - FLUX cancel sends SIGTERM to active job
+ok - FLUX results returns items from manifest
+ok - FLUX results counts skipped items as complete in summary
+ok - FLUX results without manifest returns prompt total and empty items
+ok - image prompts read returns existing image-prompts.json
+ok - image prompts read missing file returns safe empty model
+ok - image prompts read returns a clear 400 (not a 500) for malformed image-prompts.json
+ok - image prompts validate accepts valid prompt list
+ok - image prompts validate rejects duplicate indexes
+ok - image prompts validate rejects missing prompt text
+ok - image prompts validate rejects invalid package path traversal
+[image-prompts] vidtoolz-youtube-ideas-20260611: wrote 1 prompts to /tmp/image-prompts-editor-dvJ7xa/aigen/script-packages/vidtoolz-youtube-ideas-20260611/image-prompts.json
+ok - image prompts save valid prompts writes only image-prompts.json
+ok - image prompts save invalid prompts writes nothing
+ok - image prompts read and validate perform zero writes
+ok - image prompts validate rejects malformed JSON payload
+ok - image prompts editor page is served
+ok - production pipeline page exposes image prompts editor link
+ok - image-prompts-editor.html defines normalizePayload to unwrap { ok, data }
+ok - normalizePayload unwraps { ok, data } and passes through unwrapped objects
+ok - validateRemote normalizes the wrapped response before reading payload.valid
+ok - fetchWriteNonce normalizes the status response before reading nonce fields
+ok - load (read API) normalizes the wrapped response before reading prompts/model/count
+ok - save handler sends the configured nonce header on POST
+ok - save handler normalizes the wrapped response before reading count/modified_at
+ok - save handler guards against missing nonce before POST
+ok - editor: selectorLink href update is guarded (no unguarded null .href crash)
+ok - editor: setHref helper is null-safe (skips missing elements, sets present ones)
+ok - editor: accepts ?package=, ?package_id=, and ?id= aliases
+ok - editor: missing-parameter state shows a clear message and stops
+ok - editor: project-context rendering is non-fatal (own try/catch)
+ok - editor: prompt loading is independent of project-context success
+ok - daily-idea-scout: scoreCandidateIdea computes weighted final score
+ok - daily-idea-scout: scoreCandidateIdea inverts trust_risk
+ok - daily-idea-scout: rankIdeas sorts descending and assigns rank 1-15
+ok - daily-idea-scout: validateIdeaShape passes valid idea
+ok - daily-idea-scout: validateIdeaShape rejects missing title
+ok - daily-idea-scout: validateIdeaShape rejects out-of-range score
+ok - daily-idea-scout: validateIdeaShape rejects empty evidence
+ok - daily-idea-scout: validateDailyRunShape rejects wrong idea count
+ok - daily-idea-scout: writeArchive creates directory structure
+ok - daily-idea-scout: no-overwrite without force
+ok - daily-idea-scout: force overwrite
+ok - daily-idea-scout: readArchive reads back written data
+ok - daily-idea-scout: readArchive returns null for missing date
+ok - daily-idea-scout: listArchiveDates reverse chronological
+ok - daily-idea-scout: report has all expected Markdown sections
+ok - daily-idea-scout: dry-run computes but writes no files
+ok - daily-idea-scout: manual provider reads a valid Markdown input file
+ok - daily-idea-scout: manual provider reads a valid JSON input file
+ok - daily-idea-scout: manual provider invalid or missing input fails clearly
+ok - daily-idea-scout: manual provider dry-run writes zero files
+ok - daily-idea-scout: manual archive matches existing schema
+ok - daily-idea-scout: manual provider preserves evidence records
+ok - daily-idea-scout: dashboard can render a manual-provider archive
+ok - daily-idea-scout: unknown provider throws
+ok - daily-idea-scout: malformed research handled gracefully
+ok - daily-idea-scout: empty research handled gracefully
+ok - daily-idea-scout: resolveArchivePath rejects invalid date
+ok - daily-idea-scout: archiveExists returns correct values
+ok - daily-idea-scout: research request lists themes, the exact-15 rule, and all score keys
+ok - daily-idea-scout: request generator makes no network/LLM calls and needs no input
+ok - daily-idea-scout: human-in-the-loop round-trip — request format parses and runs end to end (dry-run, zero writes)
+ok - daily-idea-scout: normalizePayload unwraps { ok, data } envelope
+ok - daily-idea-scout: normalizePayload passes through non-wrapped objects
+ok - daily-idea-scout: normalizePayload passes through null and primitives
+ok - daily-idea-scout: source includes normalizePayload function definition
+ok - daily-idea-scout: loadToday reads date and dailyRun from unwrapped payload
+ok - daily-idea-scout: loadArchive reads date and dailyRun from unwrapped payload
+ok - daily-idea-scout: loadDates reads dates array from unwrapped payload
+ok - daily-idea-scout: loadToday handles error response without unwrapping
+ok - parseMarkdownTables extracts header and data rows
+ok - parseMarkdownTables handles multiple tables with non-table text between
+ok - parseMarkdownTables returns empty array for text with no tables
+ok - tableToObjects converts table to array of objects keyed by header
+ok - parseMarkerMap extracts markers from fixture
+ok - parseMarkerMap ignores insert table (no Marker ID column)
+ok - parseMarkerMap returns empty for empty text
+ok - parseMarkerMap returns empty for text with no marker table
+ok - parseClipCards extracts clip cards with fields
+ok - parseClipCards returns empty for empty text
+ok - parseClipCards handles clip card with no fields
+ok - parseScriptSections extracts sections from fixture
+ok - parseScriptSections returns empty for text with no ### headings
+ok - parseScriptSections returns empty for empty text
+ok - inferVisualJobFromSection maps known section names
+ok - inferVisualJobFromSection returns empty for unknown sections
+ok - normalizePriority extracts numeric priority from IDs
+ok - parseBeatMap merges all three sources from a run directory
+ok - parseBeatMap handles missing source files gracefully
+ok - parseBeatMap handles partial sources (only script)
+ok - parseBeatMap returns empty for null/undefined/nonexistent paths
+ok - groupBeatsBySource groups beats by their source field
+ok - groupBeatsBySource handles empty input
+ok - crossReferenceBeats links beats by matching section names
+ok - crossReferenceBeats handles beats with no section
+ok - crossReferenceBeats handles empty input
+ok - parser CLI --help returns 0 and shows usage
+ok - parser CLI --json outputs valid JSON with beats and sources
+ok - parser CLI text output shows beat summary
+ok - parser CLI returns 1 for missing directory argument
+ok - visual beat map panel groups beats by source and priority
+ok - visual beat map panel renders source groups, beat fields, and read-only copy
+ok - visual beat map panel renders empty state with source flags
+ok - visual beat map panel maps proof statuses to stable classes
+ok - visual beat map panel escapes beat card content
+ok - validateLocalWriteRequest rejects a friction log save without a nonce with 403
+ok - validateLocalWriteRequest accepts a friction log save with a nonce in the header
+ok - validateLocalWriteRequest accepts a friction log save with a nonce only in the body
+ok - validateLocalWriteRequest rejects a friction log save with a wrong nonce with 403
+ok - validateLocalWriteRequest rejects a non-local host with 403
+ok - validateLocalWriteRequest rejects a non-local origin with 403
+ok - createStatusResponse exposes localWriteNonce and nonceHeader for the browser fetch path
+ok - LOCAL_WRITE_NONCE_HEADER is the expected header name
+ok - localWriteNonce returns the same nonce as createStatusResponse
+ok - topic-scout submit without a nonce is rejected with 403
+ok - topic-scout submit with a valid nonce in the header succeeds
+ok - topic-scout submit with a valid nonce in the body succeeds
+ok - topic-scout submit with a wrong nonce is rejected with 403
+ok - topic-scout.html defines normalizePayload to unwrap { ok, data } responses
+ok - topic-scout.html loadNonce normalizes the status response before reading nonce fields
+ok - topic-scout.html submitTopic sends the configured nonce header on POST
+ok - topic-scout.html submitTopic guards against missing nonce before POST
+ok - topic-scout.html submitTopic normalizes the response before reading duplicate/review fields
+ok - topic-scout.html submitTopic calls renderReviewInline to show criteria after submission
+ok - topic-scout.html renderReviewInline renders each criterion with pass/fail and detail
+ok - topic-scout.html loadSubmittedTopics normalizes the list response before reading topics
+ok - outline prompt generation without a nonce is rejected with 403
+ok - outline prompt generation with a valid nonce in the header succeeds
+ok - outline prompt generation with a valid nonce in the body succeeds
+ok - outline prompt generation with a wrong nonce is rejected with 403
+ok - package-engine.js defines normalizePayload to unwrap { ok, data } responses
+ok - package-engine.js loadThumbnailGenerationConfig normalizes the status response before reading nonce fields
+ok - package-engine.js generate outline button sends the configured nonce header on POST
+ok - package-engine.js generate outline button guards against missing nonce before POST
+ok - package-engine.js outline prompt response handler normalizes before reading outlinePrompt
+ok - pipeline status treats final-script.md as completed script evidence
+ok - pipeline status derives image generation and selection from run-local manifest
+ok - pipeline status only marks published when registry entry matches the run
+ok - pipeline status holds a-roll and assembly incomplete when rough-cut needs pickups with open presenter pickup
+ok - pipeline status marks a-roll complete but assembly incomplete when presenter pickups are done but second-cut not ready
+ok - pipeline status marks assembly complete when second-cut is ready despite rough-cut needing pickups
+ok - pipeline status does not apply pickup-loop gating when rough-cut has passed
+ok - pipeline tracker maps server stage arrays to renderable stage statuses
+ok - video-prompts: returns ready state with joined entries
+ok - video-prompts: returns not_prepared when video-prompts.json is missing
+ok - video-prompts: returns 400 when package_id is missing
+ok - video-prompts: returns 404 for nonexistent package
+ok - video-prompts: returns 409 on index mismatch
+ok - video-prompts: never falls back to image-prompts.json
+ok - video-prompts: readPackageVideoPrompts function works directly
+ok - video-prompts: reports image_exists=false when image file is absent
+ok - video-prompts: old route /api/presto/video-prompts returns 404
+ok - discovery loads candidates from multiple package-runs
+ok - discovery groups and tags candidates with their source run id
+ok - discovery excludes package-runs/stale-runs directory
+ok - discovery excludes parked runs by default
+ok - discovery excludes superseded runs by default
+ok - discovery excludes runs with 'Run disposition: abandoned' by default
+ok - discovery includes parked runs when includeParked is true
+ok - discovery includes superseded runs when includeSuperseded is true
+ok - discovery includes abandoned runs when includeAbandoned is true
+ok - mergeCandidateEdits only persists whitelisted candidate fields
+ok - buildReReviewPrompt asks for JSON-only review fields for one candidate
+ok - updatePackageRunCandidate persists whitelisted edits to package-candidates.json
+ok - softDeletePackageRunCandidate moves candidate into removedCandidates
+ok - candidate update rejects path traversal run ids
+ok - discovery does not error when package-candidates.json is missing
+ok - discovery does not error on malformed package-candidates.json and reports safely
+ok - discovery detects selected-package.json read-only without overwriting it
+ok - discovery reports hasSelectedPackage=false when no selected-package.json exists
+ok - discovery performs no writes on GET — no files created or modified
+ok - discovery returns empty result when package-runs directory does not exist
+ok - discovery identifies active run id from explicit state
+ok - discovery API route returns wrapped { ok, data } response
+ok - discovery API route supports includeParked query param
+ok - candidate update API rejects POST without nonce
+ok - candidate update API returns 404 for missing candidate
+ok - candidate delete API soft-deletes with valid nonce
+ok - saveFinalOutline writes pasted text to final-outline.md
+ok - saveFinalOutline rejects empty content
+ok - saveFinalOutline rejects path traversal run ids
+ok - save-outline API rejects POST without nonce
+ok - save-outline API writes final-outline.md with valid nonce
+ok - save-outline API returns 404 for a missing run
+ok - beginning-triage generate API rejects POST without nonce
+ok - package-engine.js calls /api/package-runs/candidates on load via loadDiscoveredCandidates
+ok - package-engine.js loads parked package runs by default
+ok - package-engine.js wires candidate edit delete and re-review actions
+ok - package-engine.js wires the paste-and-save final-outline.md flow
+ok - package-engine.js normalizes discovery response with normalizePayload before reading runs
+ok - package-engine.js tags candidates with _runId source metadata
+ok - package-engine.js defaults runFilterMode to all (not active)
+ok - package-engine.js recent/all/search filters exist in visibleCandidates
+ok - package-engine.js search filters without mutating candidate state
+ok - package-engine.js falls back to static loadCandidates when discovery fails
+ok - package-engine.js empty state distinguishes no candidates from filter mismatch
+ok - package-engine.html includes run filter select and search input controls
+ok - package-engine.js wires run filter and search event listeners
+ok - backend: 3 eligible runs × 10 candidates returns 30 total candidates
+ok - backend: discovery returns all candidates aggregated across runs
+ok - browser: visibleCandidates does not cap or slice discovered candidates
+ok - browser: visibleCandidates groups active run first when multiple runs discovered
+ok - browser: active filter reduces to active run candidates only
+ok - browser: static fallback loadCandidates still exists for discovery failure
+ok - browser: no file writes on page load — loadDiscoveredCandidates uses GET only
+ok - discovered candidate with _runId saves without URL ?run — handleConfirmSave prefers _runId
+ok - URL ?run remains supported as fallback in handleConfirmSave
+ok - missing both _runId and URL run blocks before POST with a clear error
+ok - showConfirmPanel also resolves _runId before URL and shows the target run
+ok - package-engine.html confirm-box displays the target run id element
+ok - existing selected-package.json is not overwritten without explicit confirm — showConfirmPanel checks first
+ok - no files are written on page load — loadDiscoveredCandidates does not save or confirm
+ok - multi-run fixture: selecting candidate from run B writes only to run B
+ok - backend: no writes occur during multi-run discovery (3 runs × 10 candidates)
+ok - Bug2 #1: existing selected-package.json marks only that candidate as persisted winner
+ok - Bug2 #2: clicking another candidate sets pending (not persisted) and renderCard distinguishes them
+ok - Bug2 #3: confirm save with existing selected-package.json requires explicit replace
+ok - Bug2 #4: after successful save, persistedSelectedId is set and pendingSelectedId cleared
+ok - Bug2 #5: generate-outline-prompt POST sends only runId and localWriteNonce (reads from disk)
+ok - Bug2 #4b: saving a new selection overwrites an existing selected-package.json
+ok - Open Run Folder button exists in the Stage 2 outline handoff panel
+ok - Open Run Folder prefers selected candidate _runId when available
+ok - Open Run Folder falls back to URL ?run=... when no candidate runId
+ok - Open Run Folder disables and shows error text when no run id exists
+ok - openRunFolder helper performs no outline file writes
+ok - archivePackageRun route constant is exported
+ok - archivePackageRun moves the run folder into stale-runs/ and preserves files
+ok - archivePackageRun rejects a missing run with 404
+ok - archivePackageRun archives under a timestamped name when a stale-runs entry already exists (no clobber, no 409)
+ok - archivePackageRun rejects a path-traversal runId
+ok - findRunAssetFolders matches a run via the manifest source_path back-link
+ok - findRunAssetFolders ignores folders with no manifest and returns [] when root is absent
+ok - relocateRunMedia moves images to STILL and videos to VIDEO, leaving JSON in place
+ok - relocateRunMedia never overwrites a different file with the same name (keeps both)
+ok - relocateRunMedia dedupes a byte-identical already-archived file
+ok - archivePackageRun relocates media and reports stats alongside the stale-runs move
+ok - archivePackageRun reports zero media when no asset folder is linked to the run
+ok - routing: image prompts route to vidnux Ollama, local, no fallback
+ok - routing: T2I routes to vidnux ComfyUI, local, no fallback
+ok - routing: I2V prompts route to PRESTO Ollama, distinct from vidnux, no fallback
+ok - routing: video gen routes to PRESTO ComfyUI, no fallback
+ok - routing: manual external lanes allow import but not automation
+ok - routing: env overrides endpoint but never enables fallback
+ok - routing: blockedError is a 503 blocked state with routing detail
+ok - routing: provenanceFor yields correct provenance per lane
+ok - server: buildMediaRoutingStatus exposes 6 lanes with hosts, openai disabled
+ok - generateI2vPrompts calls the PRESTO Ollama endpoint and tags provenance
+ok - generateI2vPrompts blocks (no fallback) when PRESTO Ollama is unreachable
+ok - import manual images: provenance, dedup, no-overwrite, warnings
+ok - import manual videos: klingai provenance + ffprobe warnings
+ok - sha256File hashes in chunks: same digest, multi-chunk safe, no whole-file readFileSync
+ok - buildPackageMediaIndex: manual video imports are not double-listed as WAN/PRESTO renders
+ok - buildPackageMediaIndex merges local FLUX + external GPT media with provenance
+ok - buildPackageMediaIndex counts HQ variant clips for an HQ-only package
+ok - buildPackageMediaIndex loads a legacy package with only flux manifest (no external sidecar)
+ok - provenance: inferProvenance classifies legacy paths without explicit records
+ok - cockpit next-task: idea only (empty package) -> idea/complete_project_setup
+ok - cockpit next-task: metadata, no script -> script/write_script
+ok - cockpit next-task: script, no image prompts -> image_prompts/generate_image_prompts
+ok - cockpit next-task: image prompts, no images -> image_generation/submit_image_generation
+ok - cockpit next-task: images, no selection -> image_review/select_images
+ok - cockpit next-task: selection, no I2V -> i2v_prompts/generate_i2v_prompts
+ok - cockpit next-task: I2V, no videos -> video_generation/submit_video_generation
+ok - cockpit next-task: videos, no handoff -> video_review/prepare_resolve_handoff
+ok - cockpit next-task: handoff exists -> resolve_handoff/edit_in_resolve
+ok - cockpit next-task: parked project -> unpark
+ok - cockpit next-task: archived/published is done
+ok - cockpit: alternate import action offered when images/videos missing
+ok - cockpit: data-gap warning when later artifacts exist but metadata missing
+ok - action registry: every action is a safe GUI open/post (no shell)
+ok - discovery: lists packages with stage/next-task and flags diagnostics
+ok - discovery: archived projects are flagged and counted as not-current (still listed for recovery)
+ok - resolver: legacy package with only manifest.json resolves without throwing
+ok - resolver: missing package throws 404
+ok - resolver: exposes the handoff's recorded video variant (null for legacy manifests)
+ok - idea status: approve/reject/park/unpark write a non-destructive sidecar
+ok - idea status: invalid status -> 400, invalid index -> 404
+ok - idea status: invalid date -> 400
+ok - promote: creates a resolvable project with a sensible first task
+ok - promote: idempotent — second promote returns the same project, no duplicate
+ok - promote: records project id in the idea triage sidecar
+ok - promote: project-id collision for same title/different idea is handled
+ok - promote: promoted project is discoverable with source=daily_idea_scout
+ok - provenance: promoted project state carries daily_idea_scout provenance
+ok - provenance: legacy script package reports source=package and renders cleanly
+ok - provenance: malformed promoted-from-idea.json does not break resolution
+ok - provenance UI: workspace renders a promoted-from-idea panel; focus shows compact source
+ok - shared nav: representative pages link to Projects and Ideas
+ok - backward compat: a media-rich existing-style package still resolves
+ok - topic: validateTopic rejects empty (400) and too-long (400)
+ok - topic: parseTopicIdeas returns exactly 10 ranked ideas (sorted desc)
+ok - topic: parseTopicIdeas rejects malformed JSON and fewer-than-10 (502, no partial)
+ok - topic: writeTopicRun stores under topic-idea-scout, not daily-idea-scout
+ok - topic: listTopicRuns + readTopicRun round-trip
+ok - topic: setTopicIdeaStatus writes sidecar without touching ideas.json
+ok - topic: triage rejects invalid status (400), out-of-range index (404), traversal run_id (400)
+ok - topic: promoteTopicIdea creates a resolvable project with user_topic provenance
+ok - topic: promoteTopicIdea is idempotent (no duplicate project)
+ok - topic: daily promote still produces daily_idea_scout provenance (regression)
+ok - topic: daily-idea-scout.html has the topic input panel + generate wiring
+ok - score: user-topic idea yields strengths/weaknesses/criteria explanation
+ok - score: daily idea derives criteria from sub-scores + evidence
+ok - score: older idea with no breakdown reports available:false (no crash)
+ok - score: promoted user-topic project exposes score_explanation in project-state
+ok - score: promoted daily project exposes score_explanation too
+ok - script: write_script action opens project-script.html (not package-engine.html)
+ok - script: scaffold includes the chosen topic; save draft does not advance stage
+ok - script: approve writes canonical final and advances stage to image_prompts
+ok - script: empty final rejected (400); existing final needs confirm (409)
+ok - script: project-script.html has topic context, score, draft + approve controls
+ok - workspace: renders the score-explanation panel
+ok - backfill: writes score_explanation from the source archive (real fields, not invented)
+ok - backfill: --dry-run writes nothing
+ok - backfill: missing source archive reports safely, no mutation
+ok - backfill: insufficient source data is not invented
+ok - backfill: existing score_explanation is preserved (no overwrite without --force)
+ok - backfill: path-traversal / bad project id rejected
+ok - backfill: not-a-promoted-project reports cleanly
+ok - action: generate_image_prompts opens the editor with canonical ?package= (and ?package_id= alias)
+ok - action: every open action URL includes a ?package= param (no contextless links)
+ok - editor: image-prompts-editor.html reads package || package_id || id, keeps clear missing message
+ok - editor: shows project context — title/stage, approved-script status, workspace + focus links
+ok - selector: image-selector.html tolerates ?package_id= alias too
+ok - label: image prompt action label is honest (does not claim auto-generation)
+ok - imgprompts: build instruction carries vertical/photoreal/negative-space + script extraction
+ok - imgprompts: every parsed prompt is normalized to vertical/photoreal/negative-space/no-text
+ok - imgprompts: drops too-short + baked-in-text prompts (still reaches exact count)
+ok - imgprompts: duplicate/near-duplicate batch is rejected (502, no write)
+ok - imgprompts: screen/interface prompts are CAPPED, not fatal, given candidate headroom
+ok - imgprompts: too few distinct prompts after dedup -> 502 (no partial write)
+ok - imgprompts: malformed JSON -> 502; too few usable -> 502 (no partial)
+ok - imgprompts: screen + face detectors behave
+[image-prompts] demo: wrote 25 prompts to /tmp/pip-int-f8HrYK/script-packages/demo/image-prompts.json
+ok - imgprompts: generated records pass saveImagePrompts and advance the resolver
+ok - imgprompts: validateImagePromptsPayload accepts generated records
+ok - imgprompts: manifest records provenance + count
+ok - imgprompts: editor exposes a generation panel wired to the endpoint
+ok - i2v: build instruction carries motion/vertical/no-text rules + one-per-image
+ok - i2v: parse maps one canonical record per selected image with PRESTO provenance
+ok - i2v: parse fails 502 (no records) when a selected image has no usable prompt
+ok - i2v: parse fails 502 on malformed JSON
+ok - i2v: buildVideoPromptsFile is canonical (prompts array, PRESTO host)
+ok - i2v: normalizeSaveRecords requires one prompt per selection (else 400)
+ok - i2v endpoint: GET context lists selected images + PRESTO provider
+ok - i2v endpoint: generate requires an approved script (400)
+ok - i2v endpoint: generate requires selected images (400)
+ok - i2v endpoint: generate rejects a path-traversal id (400)
+ok - i2v endpoint: PRESTO Ollama unavailable returns 503 (no fallback, nothing written)
+ok - i2v endpoint: malformed model output returns 502 and writes nothing
+ok - i2v endpoint: successful generate writes canonical video-prompts.json + manifest
+ok - i2v endpoint: existing prompts cause 409 unless confirm_replace
+ok - i2v endpoint: generate requires a local write nonce
+ok - i2v endpoint: save validates + writes video-prompts.json
+ok - i2v resolver: selected>0 / i2v=0 -> i2v_prompts; full coverage -> video_generation
+ok - i2v resolver: partial prompt coverage stays in i2v_prompts with a warning
+ok - i2v registry: generate_i2v_prompts opens project-i2v-prompts.html (not generic pipeline)
+ok - i2v page: project-i2v-prompts.html exists with the required affordances
+ok - i2v page: production-pipeline blocks PRESTO submit when prompts are missing
+ok - aigen-review: does NOT embed the AIGEN service root as the review UI
+ok - aigen-review: routes to /review-view/ for both the iframe and the external link
+ok - aigen-review: accepts package/package_id/id and forwards them to review-view
+ok - aigen-review: shows distinct offline vs review-view-missing messages
+ok - aigen-review: video-review action opens the cockpit-native project page (not legacy 8099 wrapper)
+ok - aigen-review: sibling 'Open AIGEN Review View' links also target /review-view/
+ok - pvr: buildValidation flags off-spec clips and missing files
+ok - pvr: mp4RelPath zero-pads prompt_index
+ok - pvr: mp4RelPath accepts a video variant folder
+ok - pvr: expectedForVariant returns the HQ contract for mp4-hq-720p
+ok - pvr: buildValidation validates against a variant-specific expected spec
+ok - pvr: normalizeReviewSave validates decisions and prompt_index
+ok - pvr: summarizeCounts + usability thresholds
+ok - pvr: mergeReviews lets a new batch override prior decisions
+ok - video-review GET: returns one clip per selection mapped to mp4 + source + prompt
+ok - video-review GET: real spec clip validates 1080x1920/30/81 (ffmpeg)
+ok - video-review GET: HQ-only package auto-detects mp4-hq-720p and uses the HQ spec
+ok - video-review GET: symlinked clips count as staged (variant detection + counts)
+ok - video-review GET: coverage tie defers to the handoff's recorded variant (delivery lane)
+ok - video-review GET: handoff variant never wins with LESS coverage than the best lane
+ok - video-review GET: explicit ?variant= overrides detection and rejects traversal
+ok - video-review GET: missing MP4 yields a validation warning (no crash)
+ok - video-review GET: missing video-prompts.json degrades gracefully (empty i2v_prompt)
+ok - video-review GET: reads existing video-review.json decisions
+ok - video-review GET: rejects traversal id (400) and missing project (404)
+ok - video-review save: writes video-review.json, merges, and tallies
+ok - video-review save: rejects invalid decision (400), traversal (400), and missing nonce (403)
+ok - video-review registry: review_videos opens project-video-review.html (not legacy)
+ok - video-review page: project-video-review.html has players, decisions, links, no 8099
+ok - video-variants API: lists populated lanes with coverage, handoff and best flags
+ok - edit-start page: project-resolve-handoff.html shows handoff, lanes, Resolve steps, and the action
+ok - review page links to the project-scoped handoff page, not the global pipeline page
+ok - workspace links to the edit-start page when a handoff exists
+ok - media-kit API: assembles title, script, prompts, images, i2v, videos, handoff
+ok - media-kit API: traversal id rejected, missing project 404, bare package tolerated
+ok - youtube-draft: save + reload round-trip; thumbnail validation; nonce required
+ok - media-kit page: sections, copy helpers, workflow links, no 8099
+ok - workflow pages link to the media kit
+ok - earth-studio planner: parses orbit, zoom_in, and explicit coordinates
+ok - earth-studio planner: explicit lat,lng resolves without a gazetteer entry
+ok - earth-studio planner: gazetteer expanded beyond the original two
+ok - earth-studio planner: buildEsp emits camera position keyframes
+ok - earth-studio planner: validation is generic (no Boston fossil), catches bad coords
+ok - earth-studio lane: writeJob writes plan + .esp + job.json into the package
+ok - earth-studio lane: startRender refuses when no frames are exported yet
+ok - earth-studio lane: startRender builds an ffmpeg glob job once frames exist
+ok - earth-studio lane: stageToVidnas copies the MP4 and refuses approved paths
+ok - earth-studio API: plan requires nonce; status reports the written job; traversal rejected
+ok - earth-studio GUI: pipeline page is a launcher; the guided page owns the workflow
+ok - earth-studio GUI: workspace and media kit link to the guided page
+ok - score-engine schemas: valid cue sheet passes, broken cues are rejected with reasons
+ok - score-engine schemas: settings validator refuses raw API keys in files
+ok - score-engine planner: 60s script-first video gets at least 3 contiguous duration-locked cues
+ok - score-engine planner: cue duration math holds across duration buckets
+ok - score-engine planner: script duration estimate uses narration pace
+ok - score-engine planner: artist-style requests are stripped to abstract attributes
+ok - score-engine planner: AI cue sheet responses are schema-validated and fenced JSON is tolerated
+ok - score-engine planner: palette validation + music plan resolves instrument profiles
+ok - score-engine composer: identical input + seed reproduces identical MIDI notes
+ok - score-engine composer: no note starts outside its cue or crosses a cue boundary
+ok - score-engine composer: dialogue-safe cues cap density, velocity, and melody
+ok - score-engine composer: final cue gets a button and hit points land as impacts
+ok - score-engine midi: VLQ encoding matches the MIDI spec reference values
+ok - score-engine midi: generated SMF parses back with matching note and marker counts
+ok - score-engine synth: renders a valid RIFF/WAV of the right length, deterministic
+ok - score-engine revision: plain-language requests map to structured changes and derived settings
+ok - score-engine lane: settings round-trip, defaults, and API-key refusal
+ok - score-engine lane: instrument profile CRUD with validation
+ok - score-engine lane: project creation writes layout + registry; duplicate names rejected
+ok - score-engine lane: package-linked project lands in <package>/music
+ok - score-engine lane: script text estimates duration when none is given
+ok - score-engine lane: cue generate → edit → approve flow with versioned history
+ok - score-engine lane: candidates require an approved cue sheet
+ok - score-engine lane: candidate generation produces valid MIDI, previews, provenance (acceptance §21)
+ok - score-engine lane: approve exports mix, dialogue-safe mix, stems, MIDI, Resolve folder + provenance
+ok - score-engine lane: revision request derives a new candidate with structured changes
+ok - score-engine reaper: RPP is balanced, has 6 lane tracks, cue markers, and embedded MIDI
+ok - score-engine reaper: open-in-reaper needs config; spawns injected command when configured
+ok - score-engine ableton: handoff folder has README, per-lane MIDI, layout, palette, cue sheet
+ok - score-engine lane: probeDuration uses injected ffprobe and reports failures clearly
+ok - score-engine lane: project file serving refuses traversal and wrong types
+ok - score-engine API: nonce-gated create + full GUI flow over HTTP
+ok - score-engine v1.1: approved export is duration-exact by default; previews keep the tail
+ok - score-engine v1.1: tail-preserving export is an explicit option and recorded in provenance
+ok - score-engine v1.1: mid_high pulse register clears the D3-A3 narration band; default preserves v1.0 output
+ok - score-engine v1.1: dialogue-heavy projects record mid_high pulse register; REAPER rebuild matches candidate notes
+ok - score-engine v1.1: harmonic drift adds voicing movement to long cues only, deterministically, within boundaries
+ok - score-engine v1.1: .rpp pre-seeds render defaults and the render script is generated versioned-safe
+ok - score-engine v1.1: track templates resolve from profiles/folder, warn on missing or relative, fall back to plain MIDI
+ok - score-engine v1.1: template folder fallback resolves <lane>.RTrackTemplate files
+ok - workflow path defaults to horizontal when unset
+ok - workflow path normalizes vertical/horizontal aliases
+ok - workflow path info carries the correct resolution per orientation
+ok - readWorkflowPathFromState parses the marker and defaults horizontal
+ok - package-runs index surfaces workflowPath/orientation/resolution (default horizontal)
+ok - package-runs index reads a vertical workflow-path marker
+ok - setWorkflowPathForRun writes the marker and readWorkflowPathForRun reads it back
+ok - setWorkflowPathForRun defaults unknown input to horizontal
+ok - workflow-path API rejects POST without nonce
+ok - workflow-path API writes the marker with a valid nonce
+ok - new-video-build.html wires the vertical/horizontal choice
+ok - generateShortsScripts returns 3 monologue scripts from a stubbed Ollama response
+ok - generateShortsScripts requires a topic
+ok - saveShortsScript writes the chosen monologue to final-script.md
+ok - shorts script-options API rejects POST without nonce
+ok - shorts save-script API rejects POST without nonce
+ok - shorts-workflow.html wires the simplified vertical cockpit
+ok - workflowGenerationEnv derives vertical resolution env
+ok - workflowGenerationEnv defaults to horizontal resolution env
+ok - production-pipeline.html passes workflowPath to FLUX and PRESTO submit
+ok - generateI2vPrompts returns motion prompts from a stubbed Ollama response
+ok - generateI2vPrompts requires a script
+ok - saveI2vPrompts maps prompts onto selected-images prompt_index and writes video-prompts.json
+ok - saveI2vPrompts falls back to positional index when selected-images prompt_index is non-integer
+ok - shorts i2v-prompts API rejects POST without nonce
+ok - shorts-workflow.html wires the I2V builder with copy + save
+ok - shorts-workflow.html uses one persisted package-id field for the image/I2V steps
+ok - pipeline-tracker uses a shorter vertical stage set for the vertical path
+ok - pipeline-status response includes the run's workflow path
+ok - package-engine.js stamps the workflow path on save-selected
+ok - uploadAigenImage saves a base64 image as flux-NNN.png in the package
+ok - uploadAigenImage rejects non-image data and bad prompt_index
+ok - upload-image API rejects POST without nonce
+ok - image-prompts-editor and selector wire copy + manual upload
+ok - generateOneTopicCandidate appends a new candidate and preserves existing ones
+ok - generateOneTopicCandidate rejects an invalid run id
+ok - topic-scout generate-one API rejects POST without nonce
+ok - topic-scout.html wires delete & replace
+ok - candidate videoFormat defaults to short and preserves an explicit long
+ok - topic-scout renders Short and Long lanes grouped by videoFormat
+ok - mechanical: empty script flags empty and verdict revises
+ok - mechanical: short valid script passes the runtime check
+ok - mechanical: over 400 words warns
+ok - mechanical: over 600 words reroutes
+ok - mechanical: generic opening is detected
+ok - scriptCommitmentCheck: empty script returns revise
+ok - scriptCommitmentCheck: valid script with Ollama pass returns pass
+ok - scriptCommitmentCheck: over 600 words reroutes regardless of Ollama
+ok - scriptCommitmentCheck: generic opening hardens the first-line check to warning
+ok - scriptCommitmentCheck: Ollama unavailable still returns mechanical checks, judgment pending
+ok - script-commitment-check API rejects POST without nonce
+ok - shorts-workflow.html wires the commitment check (advisory, not blocking)
+ok - saveScriptCommitmentCheck writes script-commitment-check.json
+ok - saveScriptCommitmentCheck overwrites safely
+ok - saveScriptCommitmentCheck rejects missing runId
+ok - saveScriptCommitmentCheck rejects path traversal
+ok - saveScriptCommitmentCheck requires a verdict object
+ok - save-script-commitment-check API rejects POST without nonce
+ok - shorts-workflow.html reloads a saved commitment check on load
+ok - shorts-workflow.html saveCommit surfaces save failures instead of swallowing them
+ok - readiness: a fully complete horizontal run is ready for Resolve
+ok - readiness: vertical adds the i2v-prompts check
+ok - readiness: never references editing, export, or publishing
+ok - readiness: missing script blocks readiness
+ok - readiness: unlinked package leaves the media side unknown
+ok - readiness: partially rendered clips report partial, not ready
+ok - readiness: selected-but-failed clips are not ready
+ok - gatherResolveReadiness: full vertical fixture is ready (script + linked package)
+ok - gatherResolveReadiness: without a package, media side is unknown
+ok - resolve-readiness endpoint: returns the checklist over HTTP
+ok - resolve-readiness endpoint: missing run param → 400
+ok - dashboard wires the Ready-for-Resolve panel (mounted for the active run)
+ok - the panel module exposes a mount and targets the read-only endpoint
+ok - media gallery: isResolveSafeFilename passes clean ASCII-safe names
+ok - media gallery: isResolveSafeFilename flags spaces, parentheses, and non-ASCII
+ok - rebuildPackageRunsIndex spawns the index script and reports ok on exit 0
+ok - rebuildPackageRunsIndex reports ok:false on a non-zero exit
+ok - rebuildPackageRunsIndex throws 500 when the runner cannot launch
+ok - runDailyIdeaScoutNow spawns the scout launcher with no --date by default
+ok - runDailyIdeaScoutNow passes a well-formed --date through
+ok - runDailyIdeaScoutNow ignores a malformed date (no injection)
+ok - runDailyIdeaScoutNow throws 500 when the runner cannot launch
+ok - GET /api/package-runs/artifact-text returns content and metadata for an existing text file
+ok - GET /api/package-runs/artifact-text returns 404 for a missing file
+ok - GET /api/package-runs/artifact-text rejects path escape attempts
+ok - GET /api/package-runs/artifact-text rejects non-text file extensions
+ok - GET /api/package-runs/artifact-text rejects package-run-state.md as operational state
+ok - GET /api/package-runs/artifact-text rejects files larger than the text cap
+ok - GET /api/package-runs/artifacts lists safe root-level text artifacts only
+ok - POST /api/package-runs/open-file requires a local write nonce with open-file wording
+ok - POST /api/package-runs/open-file rejects package-run-state.md before opening
+ok - shared clipboard.js exists and exposes copyToClipboard
+ok - remotion availability: default root reflects local install state
+ok - remotion availability: available for an installed brandkit root
+ok - remotion availability: unavailable for a missing root
+ok - remotion status exposes the 5 compositions and the render targets
+ok - remotion listRenders reads mp4 files from a directory
+ok - remotion startRender rejects an unknown target with 400
+ok - remotion startRender rejects when the brandkit is unavailable (503)
+ok - remotion startRender spawns npm run <script> and tracks an active job
+ok - remotion cancelRender signals an active job
+1488/1488 tests passed

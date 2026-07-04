@@ -1,0 +1,11 @@
+Survivor kill-check batch 1 — 2026-07-04T02:31:30.472Z
+Base commit: c576bd9 + uncommitted test batch (5 files copied in)
+KILLED  media-provenance.js:35 [buf[0] === 0x89 -> buf[0] !== 0x89] via media-routing.test.js
+KILLED  resolve-handoff-readiness.js:38 [pending === 0 && -> pending === 0 ||] via resolve-handoff-readiness.test.js
+KILLED  manual-media-import.js:73 [null)) > 0) -> null)) > 1)] via media-routing.test.js
+KILLED  manual-media-import.js:56 [|| !fs.statSync(dir).isDirectory() -> && !fs.statSync(dir).isDirectory()] via media-routing.test.js
+KILLED  package-engine-server.js:799 [/\bactive\b/i.test(text) && -> /\bactive\b/i.test(text) ||] via pipeline-status.test.js
+KILLED  pipeline-tracker.js:62 [map[status] !== undefined -> map[status] === undefined] via pipeline-status.test.js
+KILLED  project-state-resolver.js:41 [.size >= minBytes -> .size > minBytes] via project-cockpit.test.js
+KILLED  supervised-capture.js:24 [audio: false, -> audio: true,] via supervised-capture.test.js
+ALL 8 TARGET MUTANTS KILLED
