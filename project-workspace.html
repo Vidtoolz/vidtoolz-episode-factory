@@ -13,6 +13,8 @@
       .pill{font-size:11px;padding:2px 9px;border-radius:100px;white-space:nowrap;}
       .st-active{background:rgba(88,166,255,.18);color:#58a6ff;}.st-parked{background:rgba(139,148,158,.18);color:#8b949e;}
       .st-blocked{background:rgba(248,81,73,.15);color:#f85149;}.st-published,.st-editing{background:rgba(63,185,80,.18);color:#3fb950;}
+      .path-vertical{background:rgba(210,153,34,.15);color:#d29922;cursor:help;}
+      .path-horizontal{background:rgba(57,197,207,.15);color:#39c5cf;cursor:help;}
       .meta{color:var(--muted,#8b949e);font-size:12px;}
       .card{background:var(--panel,#161b22);border:1px solid var(--border,#30363d);border-radius:10px;padding:18px 20px;margin:16px 0;}
       .card.next{border-color:var(--accent,#3fb950);box-shadow:0 0 0 1px rgba(63,185,80,.25);}
@@ -51,14 +53,20 @@
       function render(d){
         const s=d.state, nt=d.next_task, c=s.counts||{};
         const pct = s.stage_total ? Math.round(((s.stage_index+1)/s.stage_total)*100):0;
+        // Pathway = production tempo lane (short/1-day vs long-form/multi-week).
+        const pw = (s.pathway && s.pathway.key) ? s.pathway : null;
+        const pwTitle = pw ? (pw.tempo_hint || '') + (pw.is_default ? ' (lane default — no pathway marker in the package)' : '') : '';
+        const pathwayPill = pw ? `<span class="pill path-${client.esc(pw.key)}" title="${client.esc(pwTitle)}">${client.esc(pw.label)} · ${client.esc(pw.tempo)}</span>` : '';
+        const tempoLine = pw ? `<div class="meta" style="margin-top:2px;">⏱ ${client.esc(pw.tempo_hint)}</div>` : '';
         body.innerHTML = `
           <a class="btn btn-alt focus-link" href="project-focus.html?id=${encodeURIComponent(ID)}">Focus mode →</a>
           <a class="btn btn-alt focus-link" href="project-media-kit.html?id=${encodeURIComponent(ID)}" style="margin-right:8px;">Media kit →</a>
           <a class="btn btn-alt focus-link" href="project-earth-studio.html?id=${encodeURIComponent(ID)}" style="margin-right:8px;">Earth Studio →</a>
-          <div class="pw-id"><h1>${client.esc(s.title)}</h1><span class="pill st-${client.esc(s.status)}">${client.esc(s.status)}</span></div>
+          <div class="pw-id"><h1>${client.esc(s.title)}</h1><span class="pill st-${client.esc(s.status)}">${client.esc(s.status)}</span>${pathwayPill}</div>
           <div class="meta">Package <code>${client.esc(s.project_id)}</code></div>
           <div class="stagebar"><div class="stagefill" style="width:${pct}%"></div></div>
           <div class="meta">Stage <b>${client.esc(s.stage)}</b> · ${s.stage_index+1} of ${s.stage_total}</div>
+          ${tempoLine}
 
           ${provenanceCard(s.provenance)}
 

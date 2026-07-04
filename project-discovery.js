@@ -54,6 +54,7 @@ function summarizeProject(packageDir) {
     return Object.assign(base, {
       source,
       title: state.title,
+      pathway: state.pathway,
       status: state.status,
       archived: state.status === 'archived',
       stage: state.stage,

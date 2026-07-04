@@ -18,6 +18,8 @@
       .st-active{background:rgba(88,166,255,.18);color:#58a6ff;} .st-parked{background:rgba(139,148,158,.18);color:#8b949e;}
       .st-blocked{background:rgba(248,81,73,.15);color:#f85149;} .st-published,.st-editing{background:rgba(63,185,80,.18);color:#3fb950;}
       .st-archived{background:rgba(139,148,158,.12);color:#8b949e;}
+      .path-vertical{background:rgba(210,153,34,.15);color:#d29922;cursor:help;}
+      .path-horizontal{background:rgba(57,197,207,.15);color:#39c5cf;cursor:help;}
       .stagebar{height:5px;background:var(--panel-3,#21262d);border-radius:3px;overflow:hidden;width:120px;margin-top:3px;}
       .stagefill{height:100%;background:linear-gradient(90deg,#2ea043,#3fb950);}
       .nexttask{color:var(--muted,#8b949e);} .nexttask b{color:var(--soft,#c9d1d9);font-weight:500;}
@@ -102,8 +104,11 @@
         const pct = p.stage_total ? Math.round(((p.stage_index+1)/p.stage_total)*100) : 0;
         const nt = p.next_task||{};
         const upd = p.last_updated ? p.last_updated.slice(0,10) : '';
+        // Pathway pill: short/1-day vs long-form/multi-week tempo lane.
+        const pw = (p.pathway && p.pathway.key) ? p.pathway : null;
+        const pathTag = pw ? ` <span class="pill path-${esc(pw.key)}" title="${esc((pw.tempo_hint||'') + (pw.is_default ? ' (lane default — no pathway marker in the package)' : ''))}">${pw.key==='vertical'?'short · 1-day':'long-form · weeks'}</span>` : '';
         return `<tr class="${p.diagnostic?'diag-row':''}">
-          <td><b>${esc(p.title)}</b>${p.diagnostic?' <span class="muted" style="font-size:10px;">(test)</span>':''}</td>
+          <td><b>${esc(p.title)}</b>${pathTag}${p.diagnostic?' <span class="muted" style="font-size:10px;">(test)</span>':''}</td>
           <td class="muted" style="font-size:11px;">${esc(p.project_id)}</td>
           <td>${esc(p.stage)}<div class="stagebar"><div class="stagefill" style="width:${pct}%"></div></div></td>
           <td><span class="pill st-${esc(p.status)}">${esc(p.status)}</span></td>

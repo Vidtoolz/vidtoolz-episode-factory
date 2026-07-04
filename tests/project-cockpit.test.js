@@ -98,6 +98,68 @@ test("cockpit: data-gap warning when later artifacts exist but metadata missing"
   assert.ok(state.warnings.some((w) => /metadata/i.test(w)), "metadata gap warned");
 });
 
+// ── Pathway: short/1-day vertical vs long-form/multi-week ──────────────────
+
+test("pathway: unmarked aigen package defaults to short vertical, honestly sourced", () => {
+  const { state } = nextOf({ metadata: true, script: true });
+  assert.equal(state.pathway.key, "vertical");
+  assert.equal(state.pathway.source, "default");
+  assert.equal(state.pathway.is_default, true);
+  assert.ok(state.pathway.label && state.pathway.tempo, "pathway has operator label + tempo");
+  assert.ok(state.pathway.tempo_hint.length > 0, "pathway explains its tempo");
+});
+
+test("pathway: explicit long-form manifest marker wins over the lane default", () => {
+  const { pkg } = makePkg({ metadata: true });
+  fs.writeFileSync(path.join(pkg, "manifest.json"), JSON.stringify({ package_name: "LF", workflow_path: "horizontal" }));
+  const state = resolveProjectState(pkg);
+  assert.equal(state.pathway.key, "horizontal");
+  assert.equal(state.pathway.source, "manifest");
+  assert.equal(state.pathway.is_default, false);
+});
+
+test("pathway: selected-package videoFormat 'long' resolves to long-form", () => {
+  const { pkg } = makePkg({});
+  fs.writeFileSync(path.join(pkg, "selected-package.json"), JSON.stringify({ package: { proposedTitle: "T", videoFormat: "long" } }));
+  const state = resolveProjectState(pkg);
+  assert.equal(state.pathway.key, "horizontal");
+  assert.equal(state.pathway.source, "selected-package");
+});
+
+test("pathway: project-status.json override beats every other marker", () => {
+  const { pkg } = makePkg({ metadata: true });
+  fs.writeFileSync(path.join(pkg, "manifest.json"), JSON.stringify({ package_name: "X", workflow_path: "horizontal" }));
+  fs.writeFileSync(path.join(pkg, "project-status.json"), JSON.stringify({ status: "active", workflow_path: "short" }));
+  const state = resolveProjectState(pkg);
+  assert.equal(state.pathway.key, "vertical");
+  assert.equal(state.pathway.source, "project-status");
+});
+
+test("pathway: an unrecognized marker value never silently relabels the pathway", () => {
+  // workflow-path.js normalizes unknown values to horizontal (package-runs
+  // legacy default); the project resolver must NOT — a typo falls through to
+  // the honest lane default instead of becoming long-form.
+  const { pkg } = makePkg({ metadata: true });
+  fs.writeFileSync(path.join(pkg, "manifest.json"), JSON.stringify({ package_name: "X", workflow_path: "banana" }));
+  const state = resolveProjectState(pkg);
+  assert.equal(state.pathway.key, "vertical");
+  assert.equal(state.pathway.source, "default");
+});
+
+test("pathway: focus, workspace, and board views all render the pathway", () => {
+  const read = (f) => fs.readFileSync(path.join(__dirname, "..", f), "utf8");
+  const focus = read("project-focus.html");
+  assert.ok(focus.includes('id="fx-path"'), "focus view has the pathway chip element");
+  assert.ok(/s\.pathway/.test(focus), "focus view reads state.pathway");
+  const workspace = read("project-workspace.html");
+  assert.ok(/s\.pathway/.test(workspace), "workspace reads state.pathway");
+  assert.ok(workspace.includes("tempo_hint"), "workspace shows the tempo guidance");
+  assert.ok(workspace.includes("path-vertical") && workspace.includes("path-horizontal"), "workspace styles both pathways");
+  const board = read("projects.html");
+  assert.ok(/p\.pathway/.test(board), "projects board reads project pathway");
+  assert.ok(board.includes("path-vertical") && board.includes("path-horizontal"), "board styles both pathways");
+});
+
 // ── Action registry: safe GUI actions only, no shell ────────────────────────
 
 test("action registry: every action is a safe GUI open/post (no shell)", () => {
@@ -135,6 +197,7 @@ test("discovery: lists packages with stage/next-task and flags diagnostics", () 
   const real = out.projects.find((p) => p.project_id === "real-project-a");
   assert.equal(real.title, "Real A");
   assert.equal(real.next_task.id, "generate_image_prompts");
+  assert.equal(real.pathway.key, "vertical", "board summaries carry the pathway");
   const smoke = out.projects.find((p) => p.project_id === "_smoke-test-thing");
   assert.equal(smoke.diagnostic, true);
 });

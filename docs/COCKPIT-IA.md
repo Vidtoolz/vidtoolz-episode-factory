@@ -22,7 +22,8 @@ reveals test/diagnostic packages (hidden by default). Each row has **Open →**.
 Page: `project-workspace.html?id=<package-id>` → reads
 `GET /api/project-state?package=<id>`. Shows only the chosen project:
 
-- header: title, package id, stage + progress, status pill;
+- header: title, package id, stage + progress, status pill, pathway pill
+  (short/1-day vs long-form/multi-week) with a tempo guidance line;
 - a prominent **Next task** card with the reason and the GUI action(s);
 - compact evidence (counts: prompts, local/external images, selected, I2V
   prompts, local/external videos, handoff);
@@ -54,6 +55,33 @@ furthest coherent evidence on disk. This is independent of the package-runs
 reason, required inputs, GUI action, blocked flag, and completion evidence.
 Missing earlier artifacts (e.g. no script although images exist) surface as
 warnings rather than derailing the next task.
+
+## Production pathway: short/1-day vs long-form/multi-week
+
+Every resolved project state carries a `pathway` — which production tempo the
+project runs on:
+
+- **`vertical`** — short vertical video (9:16, ≤ 3 min), intended to be built
+  in one day. This is the **lane default**: the aigen script-package pipeline
+  is the short/vertical flow by design, so an unmarked package is labeled
+  `Short vertical · 1-day build` with `source: "default"`.
+- **`horizontal`** — long-form (16:9), multi-week tempo: staged progress,
+  approvals and evidence over speed.
+
+Explicit markers always win over the default, in precedence order:
+`project-status.json` (`workflow_path`/`pathway`) → `manifest.json`
+(`workflow_path`/`video_format`/`orientation`) → `selected-package.json`
+(`workflowPath`/`videoFormat`) → `promoted-from-idea.json` (`videoFormat`).
+Accepted values: `vertical|short|shorts|9:16` and
+`horizontal|long|long-form|longform|16:9`. An unrecognized value is treated as
+absent (falls through to the default) — a typo never silently relabels a
+project. Unlike `workflow-path.js` (package-runs world, unset → horizontal),
+the project lane default is vertical; the two defaults are intentionally
+different.
+
+The pathway is shown as a pill/chip on the projects board, the project
+workspace (with the tempo hint line), and focus mode; hovering it explains the
+tempo and whether the label is an explicit marker or the lane default.
 
 ## GUI action model (no terminal for ordinary tasks)
 

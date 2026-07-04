@@ -10,6 +10,9 @@
       .focus { max-width: 600px; margin: 0 auto; padding: 48px 24px; min-height: 90vh; display:flex; flex-direction:column; }
       .fx-top { display:flex; justify-content:space-between; align-items:baseline; font-size:12px; color:var(--muted,#8b949e); }
       .fx-stage { color:#3fb950; text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
+      .fx-path { text-transform:uppercase; letter-spacing:.05em; font-weight:600; margin-left:10px; cursor:help; }
+      .fx-path.path-vertical { color:#d29922; }
+      .fx-path.path-horizontal { color:#39c5cf; }
       .fx-title { font-size:15px; color:var(--soft,#c9d1d9); margin:6px 0 30px; }
       .fx-task { font-size:30px; font-weight:600; line-height:1.2; margin:0 0 14px; }
       .fx-why { font-size:16px; color:var(--muted,#8b949e); margin:0 0 28px; line-height:1.5; }
@@ -28,7 +31,7 @@
   <body>
     <div class="focus">
       <div class="fx-top">
-        <span class="fx-stage" id="fx-stage">…</span>
+        <span><span class="fx-stage" id="fx-stage">…</span><span class="fx-path" id="fx-path"></span></span>
         <span id="fx-status"></span>
       </div>
       <div class="fx-title" id="fx-projtitle">Loading…</div>
@@ -54,6 +57,14 @@
       function render(d){
         const s=d.state, nt=d.next_task;
         document.getElementById('fx-stage').textContent = s.stage;
+        // Pathway chip: which tempo lane this project runs on. Answers
+        // "short/day or long/week?" without adding a section.
+        const pathEl = document.getElementById('fx-path');
+        if (pathEl && s.pathway && s.pathway.key) {
+          pathEl.textContent = s.pathway.key === 'vertical' ? 'short · 1-day' : 'long-form · weeks';
+          pathEl.className = 'fx-path path-' + s.pathway.key;
+          pathEl.title = (s.pathway.tempo_hint || '') + (s.pathway.is_default ? ' (lane default — no pathway marker in the package)' : '');
+        }
         // Pre-edit shortcut: once the project reaches the handoff boundary the
         // media kit is the natural next stop before Resolve.
         if (s.stage === 'resolve_handoff' || s.status === 'editing') {

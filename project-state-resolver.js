@@ -17,6 +17,29 @@ const path = require('path');
 const { buildPackageMediaIndex } = require('./package-media-index.js');
 
 // Normalized aigen-media stages, in pipeline order.
+// Production pathways (tempo lanes). The aigen script-package lane is the
+// short/vertical pipeline by design (workflow-path.js "vertical" — its stage
+// flow IS this resolver's stage model), so an unmarked package defaults to
+// vertical. Explicit markers always win; long-form packages must say so.
+const PATHWAYS = {
+  vertical: {
+    key: 'vertical',
+    label: 'Short vertical',
+    tempo: '1-day build',
+    aspect: '9:16',
+    max_duration_minutes: 3,
+    tempo_hint: 'Shorts tempo: aim to reach the Resolve handoff today — prefer fast, good-enough choices over polish.',
+  },
+  horizontal: {
+    key: 'horizontal',
+    label: 'Long-form',
+    tempo: 'multi-week build',
+    aspect: '16:9',
+    max_duration_minutes: 30,
+    tempo_hint: 'Long-form tempo: progress one stage at a time — approvals and evidence matter more than speed.',
+  },
+};
+
 const STAGES = [
   'idea',
   'approved_topic',
@@ -125,6 +148,41 @@ function readProvenance(packageDir) {
   return { source: 'package' };
 }
 
+// Explicit pathway tokens only. Unlike workflow-path.js normalizeWorkflowPath
+// (which maps ANY unknown value to horizontal for legacy package-runs), an
+// unrecognized marker here is treated as absent — a typo must never silently
+// relabel a short as long-form or vice versa.
+function explicitPathwayKey(value) {
+  const v = String(value == null ? '' : value).trim().toLowerCase();
+  if (!v) return '';
+  if (v === 'vertical' || v === 'short' || v === 'shorts' || v === '9:16') return 'vertical';
+  if (v === 'horizontal' || v === 'long' || v === 'long-form' || v === 'longform' || v === '16:9') return 'horizontal';
+  return '';
+}
+
+// Pathway = which production tempo this project runs on (short/1-day vertical
+// vs long-form/multi-week). Read from explicit package markers in precedence
+// order; without any marker the aigen lane default (vertical) applies and the
+// source is reported honestly as 'default'.
+function readPathway(packageDir) {
+  const statusFile = readJson(path.join(packageDir, 'project-status.json')) || {};
+  const manifest = readJson(path.join(packageDir, 'manifest.json')) || {};
+  const sp = readJson(path.join(packageDir, 'selected-package.json')) || {};
+  const spPkg = (sp && typeof sp.package === 'object' && sp.package) ? sp.package : sp;
+  const idea = readJson(path.join(packageDir, 'promoted-from-idea.json')) || {};
+  const candidates = [
+    ['project-status', statusFile.workflow_path || statusFile.pathway],
+    ['manifest', manifest.workflow_path || manifest.video_format || manifest.orientation],
+    ['selected-package', spPkg.workflowPath || spPkg.videoFormat || spPkg.video_format],
+    ['promoted-idea', idea.videoFormat || idea.video_format],
+  ];
+  for (const [source, raw] of candidates) {
+    const key = explicitPathwayKey(raw);
+    if (key) return Object.assign({}, PATHWAYS[key], { source, is_default: false });
+  }
+  return Object.assign({}, PATHWAYS.vertical, { source: 'default', is_default: true });
+}
+
 function resolveProjectState(packageDir, options = {}) {
   const exists = fs.existsSync(packageDir) && fs.statSync(packageDir).isDirectory();
   if (!exists) {
@@ -226,6 +284,7 @@ function resolveProjectState(packageDir, options = {}) {
     title,
     package_path: packageDir,
     provenance: readProvenance(packageDir),
+    pathway: readPathway(packageDir),
     status,
     stage,
     stage_index: STAGES.indexOf(stage),
@@ -243,7 +302,9 @@ function resolveProjectState(packageDir, options = {}) {
 module.exports = {
   STAGES,
   TERMINAL,
+  PATHWAYS,
   resolveProjectState,
+  readPathway,
   readProvenance,
   readTitle,
   readImagePromptCount,
