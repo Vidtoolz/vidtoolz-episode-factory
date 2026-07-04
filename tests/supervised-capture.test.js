@@ -552,6 +552,29 @@ test("supervised capture cli status reports no active capture", () => {
   assert.match(output.stdout.join("\n"), /No active supervised capture/);
 });
 
+test("capture PROFILES pin their audio and display configuration", () => {
+  // Mutation audit survivors (supervised-capture.js:24-97): every audio /
+  // fullDisplay / primary boolean in PROFILES could be flipped without a test
+  // noticing — i.e. the capture profiles themselves were unverified.
+  const expected = {
+    "vidnux-screen-4k30-noaudio": { audio: false, audioMode: "none", fullDisplay: true, primary: true },
+    "vidnux-screen-4k30-mic": { audio: true, audioMode: "mic", fullDisplay: true, primary: true },
+    "vidnux-screen-4k30-systemaudio": { audio: true, audioMode: "systemaudio", fullDisplay: true, primary: true },
+    "vidnux-screen-4k30-systemaudio-mic": { audio: true, audioMode: "systemaudio-mic", fullDisplay: true, primary: true },
+    "vidnux-screen-1080p30-noaudio": { audio: false, audioMode: "none", fullDisplay: false, primary: false },
+    "vidnux-screen-1080p30-mic": { audio: true, audioMode: "mic", fullDisplay: false, primary: false },
+  };
+  assert.deepEqual(Object.keys(supervisedCapture.PROFILES).sort(), Object.keys(expected).sort());
+  for (const [name, want] of Object.entries(expected)) {
+    const got = supervisedCapture.PROFILES[name];
+    assert.deepEqual(
+      { audio: got.audio, audioMode: got.audioMode, fullDisplay: got.fullDisplay, primary: got.primary },
+      want,
+      name
+    );
+  }
+});
+
 test("supervised capture cli help documents supervised safety", () => {
   const output = captureConsole(() => supervisedCaptureScript.main(["--help"]));
 

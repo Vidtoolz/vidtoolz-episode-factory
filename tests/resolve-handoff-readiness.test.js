@@ -43,6 +43,20 @@ test("readiness: vertical adds the i2v-prompts check", () => {
   assert.equal(r.ready, true);
 });
 
+test("readiness: clips are NOT ready while failed clips exist, even with all selections rendered", () => {
+  // Mutation audit survivor (resolve-handoff-readiness.js:38): flipping the
+  // ready condition's && to || let "completed >= selections" alone report
+  // ready with failures present. The mixed state must stay partial.
+  const r = buildResolveReadiness({ ...LINKED_READY, selectionsCount: 2, clipsCompleted: 2, clipsPending: 0, clipsFailed: 1 });
+  assert.equal(statusOf(r, "clips"), "partial");
+  const detail = (r.items.find((i) => i.key === "clips") || {}).detail;
+  assert.match(detail, /1 failed/);
+  assert.equal(r.ready, false);
+  // Pending clips alone must also hold readiness back.
+  const p = buildResolveReadiness({ ...LINKED_READY, selectionsCount: 2, clipsCompleted: 2, clipsPending: 1 });
+  assert.equal(statusOf(p, "clips"), "partial");
+});
+
 test("readiness: never references editing, export, or publishing", () => {
   const r = buildResolveReadiness(LINKED_READY);
   const blob = JSON.stringify(r).toLowerCase();

@@ -199,3 +199,24 @@ test("resolver: exposes the handoff's recorded video variant (null for legacy ma
   assert.equal(hqState.handoff_video_variant, "mp4-hq-720p");
   assert.equal(hqState.stage, "resolve_handoff");
 });
+
+test("state resolver: script evidence respects the exact minimum-size boundary", () => {
+  // Mutation audit survivors (project-state-resolver.js:41): flipping
+  // `size >= minBytes` to `>` (or the catch's `return false` to `true`)
+  // survived — the evidence-size boundary and the missing-file path were
+  // unasserted. Pin both: exactly 40 bytes counts, 39 does not, absent stays idea.
+  const at = (pkg) => STAGES.indexOf(resolveProjectState(pkg).stage);
+  const mk = (bytes) => {
+    const { pkg } = makePkg({});
+    if (bytes !== null) {
+      fs.mkdirSync(path.join(pkg, "script"), { recursive: true });
+      fs.writeFileSync(path.join(pkg, "script", "script-final.md"), "x".repeat(bytes));
+    }
+    return pkg;
+  };
+  const stageAt40 = at(mk(40));
+  const stageAt39 = at(mk(39));
+  const stageAbsent = at(mk(null));
+  assert.ok(stageAt40 > stageAt39, "a 40-byte final script must count as script evidence; 39 bytes must not");
+  assert.equal(stageAt39, stageAbsent, "a sub-minimum script must resolve like a missing script");
+});

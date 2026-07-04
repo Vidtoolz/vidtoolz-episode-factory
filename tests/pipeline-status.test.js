@@ -252,3 +252,50 @@ test("pipeline tracker maps server stage arrays to renderable stage statuses", (
   assert.equal(map["video-gen"].status, "active");
   assert.equal(map["a-roll"].status, "blocked");
 });
+
+test("pipeline tracker statusToStage and gateToStage pin the canonical mappings", () => {
+  // Mutation audit survivors (pipeline-tracker.js:62,71): the canonical
+  // status→stage and gate→stage lookups had no behavioral assertions, so the
+  // cockpit's primary orientation mapping could be silently broken.
+  assert.equal(pipelineTracker.statusToStage("Script"), 2);
+  assert.equal(pipelineTracker.statusToStage("Ready to Shoot"), 9);
+  assert.equal(pipelineTracker.statusToStage("Editing"), 10);
+  assert.equal(pipelineTracker.statusToStage("Ready to Publish"), 11);
+  assert.equal(pipelineTracker.statusToStage("Published"), 12);
+  assert.equal(pipelineTracker.statusToStage("Archived"), 12);
+  assert.equal(pipelineTracker.statusToStage("No Such Status"), 0);
+  const gateMap = { 0: 0, 1: 2, 2: 4, 3: 6, 4: 8, 5: 10 };
+  for (const [gate, stage] of Object.entries(gateMap)) {
+    assert.equal(pipelineTracker.gateToStage(Number(gate)), stage, `gate ${gate}`);
+  }
+  assert.equal(pipelineTracker.gateToStage(99), 0);
+});
+
+test("findActivePackageRun: implicit state notes are not explicit-active; parked-only roots refuse", () => {
+  // Mutation audit survivor (package-engine-server.js:799): flipping the
+  // bodyActive && to || would make ANY state file read as explicitly active,
+  // colliding with the real active run (409 instead of a clean answer).
+  const os = require("node:os");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "active-run-"));
+  const runs = path.join(root, "package-runs");
+  const write = (run, content) => {
+    fs.mkdirSync(path.join(runs, run), { recursive: true });
+    fs.writeFileSync(path.join(runs, run, "package-run-state.md"), content);
+  };
+  write("2026-07-01-real-run", "# Package Run State\n- Package run state: active\n");
+  write("2026-07-02-notes-run", "# Package Run State\n- Notes: cleanup pass later.\n");
+  const found = packageEngineServer.findActivePackageRun({ root });
+  assert.equal(found.runId, "2026-07-01-real-run");
+
+  // A single explicitly parked run must not resolve as active.
+  const root2 = fs.mkdtempSync(path.join(os.tmpdir(), "active-run-parked-"));
+  fs.mkdirSync(path.join(root2, "package-runs", "2026-07-01-parked-run"), { recursive: true });
+  fs.writeFileSync(
+    path.join(root2, "package-runs", "2026-07-01-parked-run", "package-run-state.md"),
+    "# Package Run State\n- Package run state: parked\n"
+  );
+  assert.throws(
+    () => packageEngineServer.findActivePackageRun({ root: root2 }),
+    (e) => e.statusCode === 409
+  );
+});

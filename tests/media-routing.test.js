@@ -208,7 +208,65 @@ test("import manual videos: klingai provenance + ffprobe warnings", () => {
   assert.ok(e.validation.warnings.some((w) => /Frame rate/.test(w)));
 });
 
+// ── Image dimension validation (mutation-audit survivors) ───────────────────
+
+test("provenance: imageDimensionsFromBuffer parses real headers and rejects garbage", () => {
+  // Mutation audit: every magic-byte comparison on media-provenance.js:35
+  // survived — nothing asserted parsed dimensions. Pin the parser directly.
+  assert.deepEqual(provenance.imageDimensionsFromBuffer(pngBytes(1080, 1920)), { width: 1080, height: 1920 });
+  assert.deepEqual(provenance.imageDimensionsFromBuffer(pngBytes(800, 600)), { width: 800, height: 600 });
+  const gif = Buffer.alloc(24);
+  gif.write("GIF89a", 0, "ascii");
+  gif.writeUInt16LE(320, 6);
+  gif.writeUInt16LE(240, 8);
+  assert.deepEqual(provenance.imageDimensionsFromBuffer(gif), { width: 320, height: 240 });
+  assert.equal(provenance.imageDimensionsFromBuffer(Buffer.alloc(64, 7)), null); // no known magic
+  assert.equal(provenance.imageDimensionsFromBuffer(Buffer.alloc(23)), null); // below minimum header size
+  assert.equal(provenance.imageDimensionsFromBuffer(null), null);
+});
+
+test("import manual images: correct dimensions produce ZERO warnings and exact width/height", () => {
+  // Companion to the parser test: through the real import path, a conforming
+  // 1080x1920 card must record exact dimensions with an empty warnings list —
+  // previously only "warnings exist for bad files" was asserted, which held
+  // even with dimension parsing fully broken.
+  const { pkg } = tmpPackage();
+  const drop = path.join(pkg, "imports", "manual-images");
+  fs.mkdirSync(drop, { recursive: true });
+  fs.writeFileSync(path.join(drop, "good-card.png"), pngBytes(1080, 1920));
+  const res = importManualMedia({ package: pkg, kind: "image", now: "2026-07-04T00:00:00Z" });
+  const e = res.imported[0];
+  assert.equal(e.validation.width, 1080);
+  assert.equal(e.validation.height, 1920);
+  assert.deepEqual(e.validation.warnings, []);
+});
+
+test("resolvePackageDir rejects a path that exists but is a file, not a directory", () => {
+  // Mutation audit survivor (manual-media-import.js:56): flipping the
+  // existsSync/isDirectory guard's || to && accepted plain files as package dirs.
+  const { pkg } = tmpPackage();
+  const filePath = path.join(pkg, "not-a-dir.txt");
+  fs.writeFileSync(filePath, "plain file");
+  assert.throws(
+    () => importManualMedia({ package: filePath, kind: "image" }),
+    (e) => e.statusCode === 404 && /not found/i.test(e.message)
+  );
+});
+
 // ── Import hashing (>2 GiB camera originals) ────────────────────────────────
+
+test("sha256File: digest is correct when the final chunk is a single byte", () => {
+  // Mutation audit survivor (manual-media-import.js:73): the chunked read
+  // loop's `> 0` flipped to `> 1` survived — a trailing 1-byte read would be
+  // silently dropped from the digest for files of size ≡ 1 (mod 8 MiB).
+  const { pkg } = tmpPackage();
+  const bytes = Buffer.alloc(8 * 1024 * 1024 + 1, 3);
+  bytes[bytes.length - 1] = 9; // the byte that a broken loop would drop
+  const file = path.join(pkg, "boundary.bin");
+  fs.writeFileSync(file, bytes);
+  const expected = crypto.createHash("sha256").update(bytes).digest("hex");
+  assert.equal(sha256File(file), expected);
+});
 
 test("sha256File hashes in chunks: same digest, multi-chunk safe, no whole-file readFileSync", () => {
   const { pkg } = tmpPackage();
