@@ -207,6 +207,11 @@ function getProject(projectId, options = {}) {
   const musicPlan = readJson(path.join(dir, "music-plan.json"));
   const candidates = listCandidates(dir);
   const approvedDir = path.join(dir, "approved");
+  // Score Map + readiness data (v1.2): pure analysis of the plan and a staged
+  // readiness assessment ride along with every project GET — the UI never
+  // computes truth client-side, and deep verification stays a CLI concern.
+  const readinessLib = require("./score-readiness.js");
+  const readiness = readinessLib.assessReadiness({ project, cueSheet, musicPlan, candidates, dir });
   return {
     project,
     dir,
@@ -215,6 +220,8 @@ function getProject(projectId, options = {}) {
     candidates,
     approved: fs.existsSync(path.join(approvedDir, "provenance.json")) ? readJson(path.join(approvedDir, "provenance.json")) : null,
     reaper_ready: candidates.some((c) => c.reaper_built),
+    analysis: readiness.analysis,
+    readiness,
   };
 }
 
@@ -234,11 +241,14 @@ function listProjects(options = {}) {
   const registry = loadRegistry(settings);
   return registry.projects.map((entry) => {
     const project = readJson(path.join(entry.path, "score-project.json"));
+    // cue_count honesty fix (v1.2): cues live in cue-sheet.json, never on the
+    // project record — the landing page always showed 0 before this.
+    const cueSheet = readJson(path.join(entry.path, "cue-sheet.json"));
     return {
       ...entry,
       exists: fs.existsSync(entry.path),
       duration_seconds: project ? project.duration_seconds : null,
-      cue_count: project && project.cues ? project.cues.length : 0,
+      cue_count: cueSheet && Array.isArray(cueSheet.cues) ? cueSheet.cues.length : 0,
       approved: project ? Boolean(project.approved_candidate) : false,
     };
   });

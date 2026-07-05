@@ -20,8 +20,29 @@
       table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
       th,td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--border,#30363d);vertical-align:middle;}
       td input[type=text]{width:110px;} td input[type=number]{width:58px;} td select{width:105px;}
-      .timeline{display:flex;height:34px;border:1px solid var(--border,#30363d);border-radius:6px;overflow:hidden;margin:8px 0;}
-      .tl-cue{display:flex;align-items:center;justify-content:center;font-size:10px;color:#0d1117;font-weight:700;overflow:hidden;white-space:nowrap;}
+      /* Score Map (v1.2): the plan as a picture — time ruler, energy-height
+         cue blocks colored by function, dialogue-risk striping, silence gaps. */
+      .smap{border:1px solid var(--border,#30363d);border-radius:8px;background:#0d1117;padding:10px 12px 6px;margin:8px 0;}
+      .smap-ruler{position:relative;height:16px;border-bottom:1px solid var(--border,#30363d);margin-bottom:4px;}
+      .smap-tick{position:absolute;top:0;font-size:9px;color:var(--muted,#8b949e);border-left:1px solid #30363d;padding-left:3px;height:16px;}
+      .smap-track{position:relative;height:96px;}
+      .smap-cue{position:absolute;bottom:0;border-radius:4px 4px 0 0;overflow:hidden;cursor:default;
+        display:flex;flex-direction:column;justify-content:flex-end;align-items:center;
+        font-size:10px;font-weight:700;color:#0d1117;box-sizing:border-box;border:1px solid rgba(13,17,23,.55);}
+      .smap-cue .smap-cuelabel{width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 3px 2px;}
+      .smap-cue.dlg-risk{background-image:repeating-linear-gradient(135deg,transparent 0 6px,rgba(248,81,73,.5) 6px 10px);}
+      .smap-cue.dlg-check{background-image:repeating-linear-gradient(135deg,transparent 0 8px,rgba(210,153,34,.45) 8px 11px);}
+      .smap-gap{position:absolute;bottom:0;height:26px;border:1px dashed #30363d;border-radius:4px;color:var(--muted,#8b949e);
+        font-size:9px;display:flex;align-items:center;justify-content:center;background:rgba(139,148,158,.05);}
+      .smap-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:var(--muted,#8b949e);margin-top:6px;}
+      .smap-legend .sw{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:3px;}
+      .smap-warnings{margin:6px 0 0;font-size:12px;}
+      .smap-warnings li{margin:2px 0;}
+      .ready-grid{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0;}
+      .ready-stage{border:1px solid var(--border,#30363d);border-radius:8px;padding:6px 12px;font-size:12px;line-height:1.5;}
+      .ready-stage.done{border-color:rgba(63,185,80,.55);color:#3fb950;}
+      .ready-stage.draft{border-color:#d2992266;color:#d29922;}
+      .ready-stage .meta{display:block;color:var(--muted,#8b949e);font-size:10.5px;}
       .chip{display:inline-block;font-size:11px;padding:2px 9px;border-radius:99px;background:var(--panel-3,#21262d);border:1px solid var(--border,#30363d);margin:2px 5px 2px 0;}
       .ok{color:#3fb950;} .warn{color:#d29922;} .err{color:#f85149;}
       .errbox{border:1px solid #f8514966;background:#f851490d;border-radius:8px;padding:10px 12px;font-size:13px;margin:10px 0;display:none;white-space:pre-wrap;}
@@ -52,9 +73,17 @@
       <div class="meta" id="subtitle"></div>
       <div class="errbox" id="err"></div>
 
+      <div class="step" id="step-readiness">
+        <div class="step-head">Score readiness <span class="badge todo" id="ready-badge">…</span></div>
+        <div class="ready-grid" id="ready-stages"></div>
+        <div class="meta" id="ready-next"></div>
+        <div class="meta" style="margin-top:6px;">Deep verification (files + ffprobe against provenance — the only Resolve-ready proof):
+          <code id="ready-cmd"></code> <button class="btn" style="padding:1px 8px;font-size:11px;" id="ready-copy">Copy command</button></div>
+      </div>
+
       <div class="step" id="step-cues">
         <div class="step-head">1 · Cue sheet <span class="badge todo" id="cues-badge">todo</span></div>
-        <div class="timeline" id="timeline"></div>
+        <div class="smap" id="score-map"></div>
         <div id="cue-table"></div>
         <div style="margin-top:8px;">
           <button class="btn" id="cues-generate">Generate cue sheet</button>
@@ -132,7 +161,53 @@
         document.getElementById('title').textContent = '🎼 ' + (p.name || p.project_id);
         document.getElementById('subtitle').innerHTML = `${p.duration_seconds}s · ${esc(p.target_platform)} · ${esc(p.music_role)} · dialogue ${esc(p.dialogue_density)} · seed ${p.seed} · <code>${esc(ST.dir)}</code> <button class="btn" style="padding:1px 8px;font-size:11px;" onclick="copyText('${esc(ST.dir)}','project path')">Copy path</button>`;
         CUES = (ST.cue_sheet && ST.cue_sheet.cues) ? JSON.parse(JSON.stringify(ST.cue_sheet.cues)) : [];
-        renderCues(); renderPalette(); renderCandidates(); renderExport();
+        renderReadiness(); renderCues(); renderPalette(); renderCandidates(); renderExport();
+      }
+
+      const FN_COLOR = {hook:'#3fb950',setup:'#79c0ff',explanation:'#58a6ff',turn:'#d29922',reveal:'#a371f7',climax:'#f85149',button:'#ffa657',outro:'#7ee787'};
+
+      function renderReadiness(){
+        const R = ST.readiness; if(!R) return;
+        const done = R.stages.filter(s=>s.state==='done').length;
+        const badge=document.getElementById('ready-badge');
+        badge.className='badge '+(done===R.stages.length?'done':'todo');
+        badge.textContent=`${done}/${R.stages.length} stages${R.dialogue_risk_count?` · ${R.dialogue_risk_count} dialogue risk(s)`:''}`;
+        document.getElementById('ready-stages').innerHTML = R.stages.map(s=>
+          `<span class="ready-stage ${s.state}"><b>${esc(s.label)}</b> ${s.state==='done'?'✓':s.state==='draft'?'· draft':'· todo'}<span class="meta">${esc(s.detail)}</span></span>`).join('');
+        document.getElementById('ready-next').innerHTML = '<b>Next:</b> '+esc(R.next_action)
+          + (R.approved_export_exists ? ' <span class="warn">Approved export exists — run the verifier to confirm it is Resolve-safe; the panel never claims that without probed evidence.</span>' : '');
+        document.getElementById('ready-cmd').textContent = R.verify_command;
+        document.getElementById('ready-copy').onclick = ()=>copyText(R.verify_command,'verify command');
+      }
+
+      // Score Map: the plan as a picture. Height = energy, color = function,
+      // red striping = dialogue risk, amber striping = dialogue check,
+      // dashed slots = planned silence (visible, never accidental).
+      function renderScoreMap(){
+        const el = document.getElementById('score-map');
+        const A = ST.analysis;
+        if(!A || !A.cues.length){
+          el.innerHTML = '<div class="meta" style="padding:14px 4px;">No cues yet — the Score Map appears as soon as a cue sheet exists. Click <b>Generate cue sheet</b> below for a deterministic starting plan, or use the AI-assisted option.</div>';
+          return;
+        }
+        const total = A.duration_seconds || 1;
+        const tickStep = total<=90?15:total<=240?30:60;
+        let ticks=''; for(let t=0;t<=total;t+=tickStep){ ticks+=`<div class="smap-tick" style="left:${(t/total*100)}%">${t}s</div>`; }
+        const blocks = A.cues.map((c,i)=>{
+          const left=(c.start_seconds/total*100), width=Math.max(((c.end_seconds-c.start_seconds)/total*100),1.2);
+          const h=28+((c.energy||1)-1)*16; // energy 1–5 → 28–92px
+          const cls = c.dialogue_risk==='high'?' dlg-risk':c.dialogue_risk==='medium'?' dlg-check':'';
+          const title=`${c.cue_id} ${c.name}\n${c.start_seconds}–${c.end_seconds}s (${c.duration_seconds}s)\nfunction ${c.function} · ${c.emotion}\nenergy ${c.energy}/5 · density ${c.density}\ndialogue-safe: ${c.dialogue_safe?'yes':'NO'}${c.dialogue_risk!=='none'?' · RISK '+c.dialogue_risk:''}${c.hit_points.length?'\nhits: '+c.hit_points.join(', ')+'s':''}`;
+          return `<div class="smap-cue${cls}" style="left:${left}%;width:${width}%;height:${h}px;background:${FN_COLOR[c.function]||'#8b949e'}" title="${esc(title)}"><span class="smap-cuelabel">${esc(c.cue_id)} ${esc(c.function)} ${c.energy}⚡</span></div>`;
+        }).join('');
+        const gapDivs = A.gaps.map(g=>
+          `<div class="smap-gap" style="left:${(g.start_seconds/total*100)}%;width:${Math.max(((g.duration_seconds)/total*100),1)}%" title="No music planned ${g.start_seconds}–${g.end_seconds}s — fine if deliberate">silence ${g.duration_seconds}s</div>`).join('');
+        const warn = A.warnings.filter(w=>w.kind!=='music-gap');
+        el.innerHTML = `<div class="smap-ruler">${ticks}</div><div class="smap-track">${gapDivs}${blocks}</div>
+          <div class="smap-legend">${Object.entries(FN_COLOR).map(([f,c])=>`<span><span class="sw" style="background:${c}"></span>${f}</span>`).join('')}
+            <span><span class="sw" style="background:repeating-linear-gradient(135deg,#30363d 0 4px,rgba(248,81,73,.6) 4px 7px)"></span>dialogue risk</span>
+            <span>height = energy · ${A.coverage_pct}% covered${A.gaps.length?` · ${A.gaps.length} silence gap(s)`:''}</span></div>
+          ${warn.length?`<ul class="smap-warnings">${warn.map(w=>`<li class="${w.kind==='dialogue-risk'?'warn':'meta'}">${esc(w.message)}</li>`).join('')}</ul>`:''}`;
       }
 
       function renderCues(){
@@ -140,9 +215,7 @@
         document.getElementById('cues-badge').className = 'badge '+(approved?'done':'todo');
         document.getElementById('cues-badge').textContent = approved?'approved':(CUES.length?'draft — approve when ready':'todo');
         document.getElementById('step-cues').className = 'step'+(approved?' done':'');
-        const total = ST.project.duration_seconds || 1;
-        document.getElementById('timeline').innerHTML = CUES.map((c,i)=>
-          `<div class="tl-cue" style="width:${((c.end_seconds-c.start_seconds)/total*100)}%;background:${CUE_COLORS[i%CUE_COLORS.length]};" title="${esc(c.cue_id+' '+c.name)}">${esc(c.cue_id)}</div>`).join('');
+        renderScoreMap();
         if(!CUES.length){ document.getElementById('cue-table').innerHTML='<div class="meta">No cues yet — click Generate cue sheet.</div>'; return; }
         document.getElementById('cue-table').innerHTML = '<table><tr><th>id</th><th>Name</th><th>Start</th><th>End</th><th>Function</th><th>Emotion</th><th>Energy</th><th>Density</th><th>BPM</th><th>Key</th><th>Hit points (s)</th><th>Dlg-safe</th><th></th></tr>'+
           CUES.map((c,i)=>`<tr>
