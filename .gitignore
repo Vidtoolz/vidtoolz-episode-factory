@@ -9,3 +9,8 @@ node_modules/
 
 # Local stale package-run archive (redundant copies of tracked runs)
 package-runs/stale-runs/
+
+# Local generated verification evidence (keep workflow handoffs/scout outputs tracked)
+/reports/mutation-evidence-*/
+/reports/five-gate-dry-run-fixes-evidence-*/
+/reports/cockpit-*-evidence-*/
