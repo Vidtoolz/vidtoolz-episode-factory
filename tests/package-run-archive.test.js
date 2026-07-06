@@ -194,6 +194,21 @@ test("relocateRunMedia never overwrites a different file with the same name (kee
   assert.equal(stats.stills, 2);
 });
 
+test("relocateRunMedia keeps same-size name collisions when bytes differ", () => {
+  const ctx = createMediaRoot();
+  fs.mkdirSync(ctx.archiveStillDir, { recursive: true });
+  // Same filename and same byte size as source "IMG-A", but different content.
+  fs.writeFileSync(path.join(ctx.archiveStillDir, "block-001-prompt-01.png"), "IMG-B");
+
+  const stats = relocateRunMedia(ctx.runId, mediaOpts(ctx));
+
+  assert.equal(fs.readFileSync(path.join(ctx.archiveStillDir, "block-001-prompt-01.png"), "utf8"), "IMG-B");
+  const files = fs.readdirSync(ctx.archiveStillDir).filter((f) => f.startsWith("block-001-prompt-01"));
+  assert.equal(files.length, 2, "same-size non-identical media must be archived under a second name");
+  assert.equal(stats.deduped, 0);
+  assert.equal(stats.stills, 2);
+});
+
 test("relocateRunMedia dedupes a byte-identical already-archived file", () => {
   const ctx = createMediaRoot();
   fs.mkdirSync(ctx.archiveStillDir, { recursive: true });

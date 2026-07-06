@@ -13,6 +13,7 @@ const {
   writeTestFile,
   test,
 } = require("./_helpers.js");
+const { Readable } = require("node:stream");
 
 const WorkflowPath = require("../workflow-path.js");
 
@@ -396,6 +397,35 @@ test("uploadAigenImage saves a base64 image as flux-NNN.png in the package", () 
   assert.equal(saved[0], 0x89); // PNG magic
 });
 
+test("uploadAigenImage records manual provenance and selection carries it forward", () => {
+  const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), "up-pkg-prov-"));
+  fs.mkdirSync(path.join(scriptPackages, "pkg-prov"), { recursive: true });
+  const res = packageEngineServer.uploadAigenImage(
+    {
+      package_id: "pkg-prov",
+      prompt_index: 2,
+      data_base64: "data:image/png;base64," + PNG_1x1_B64,
+      provider: "gpt-manual",
+      filename: "browser-download.png",
+      prompt: "manual shot prompt",
+    },
+    { scriptPackages });
+
+  assert.equal(res.path, "images/flux-local/flux-002.png");
+  assert.equal(res.provenance.generation_mode, "manual_external");
+  assert.equal(res.provenance.generation_provider, "gpt-manual");
+  const sidecar = JSON.parse(fs.readFileSync(path.join(scriptPackages, "pkg-prov", "external-media-manifest.json"), "utf8"));
+  assert.equal(sidecar.images.length, 1);
+  assert.equal(sidecar.images[0].path, "images/flux-local/flux-002.png");
+  assert.equal(sidecar.images[0].generation_mode, "manual_external");
+
+  packageEngineServer.writeSelectedImages({ package_id: "pkg-prov", selected_indices: [2] }, { scriptPackages });
+  const selected = JSON.parse(fs.readFileSync(path.join(scriptPackages, "pkg-prov", "selected-images.json"), "utf8"));
+  assert.equal(selected.selections[0].selected_source, "manual-external");
+  assert.equal(selected.selections[0].generator, "gpt-manual");
+  assert.equal(selected.selections[0].provenance.source, "external-media-manifest");
+});
+
 test("uploadAigenImage rejects non-image data and bad prompt_index", () => {
   const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), "up-pkg2-"));
   fs.mkdirSync(path.join(scriptPackages, "pkg-b"), { recursive: true });
@@ -419,6 +449,15 @@ test("upload-image API rejects POST without nonce", async () => {
   } finally {
     await new Promise((r) => server.close(r));
   }
+});
+
+test("readJsonBody preserves multibyte characters split across chunks", async () => {
+  const text = "ää — Resolve 🚀";
+  const body = Buffer.from(JSON.stringify({ text }), "utf8");
+  const split = body.indexOf(Buffer.from("ä", "utf8")) + 1;
+  const req = Readable.from([body.subarray(0, split), body.subarray(split)]);
+  const parsed = await packageEngineServer.readJsonBody(req);
+  assert.equal(parsed.text, text);
 });
 
 test("image-prompts-editor and selector wire copy + manual upload", () => {

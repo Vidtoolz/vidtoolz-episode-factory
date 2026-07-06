@@ -25,6 +25,7 @@ const packageEngineModel = require('./package-engine-model.js');
 const workflowPathModel = require('./workflow-path.js');
 const scriptCommitmentModel = require('./script-commitment-check.js');
 const resolveReadinessModel = require('./resolve-handoff-readiness.js');
+const { slugify, escapeXml, markdownCell, markdownText, lineValue } = require('./package-engine-text-utils.js');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8010);
@@ -224,7 +225,7 @@ const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS) > 0 ? Number(pro
 // policy can follow the real LAN. See media-routing.js / config/media-routing.json.
 const mediaRouting = require('./media-routing.js');
 const { buildPackageMediaIndex } = require('./package-media-index.js');
-const { importManualMedia } = require('./manual-media-import.js');
+const { importManualMedia, readSidecar, writeSidecar } = require('./manual-media-import.js');
 const { resolveProjectState } = require('./project-state-resolver.js');
 const { chooseNextTask } = require('./next-task-engine.js');
 const projectDiscovery = require('./project-discovery.js');
@@ -470,14 +471,6 @@ function inferMime(file) {
   return 'application/octet-stream';
 }
 
-function slugify(value) {
-  return String(value || 'thumbnail')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48) || 'thumbnail';
-}
-
 function makeDataUrl(label, idx) {
   const seed = crypto.createHash('sha1').update(`${label}:${idx}`).digest('hex').slice(0, 10);
   const hue = parseInt(seed.slice(0, 2), 16) % 360;
@@ -497,33 +490,6 @@ function makeDataUrl(label, idx) {
       <text x="96" y="340" fill="#bfdbfe" font-family="Arial, Helvetica, sans-serif" font-size="24">gpt-image-2</text>
     </svg>`;
   return 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64');
-}
-
-function escapeXml(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function markdownCell(value = '') {
-  return String(value || '').trim().replace(/\r?\n/g, ' ').replace(/\|/g, '/').replace(/\s+/g, ' ');
-}
-
-function markdownText(value = '', fallback = 'None reported.') {
-  const text = String(value || '').replace(/\r\n/g, '\n').trim();
-  if (!text) return fallback;
-  return text
-    .split('\n')
-    .map((line) => line.replace(/\|/g, '/').trimEnd())
-    .join('\n');
-}
-
-function lineValue(markdown = '', label = '') {
-  const escaped = String(label || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = String(markdown || '').match(new RegExp(`^(?:[-*]\\s*)?${escaped}:\\s*(.+)$`, 'im'));
-  return match ? match[1].trim() : '';
 }
 
 function captureEvidenceInputDefaults() {
@@ -662,6 +628,21 @@ function findRunAssetFolders(runId, options = {}) {
   return folders;
 }
 
+function sha256LocalFile(filePath) {
+  const hash = crypto.createHash('sha256');
+  const fd = fs.openSync(filePath, 'r');
+  try {
+    const chunk = Buffer.allocUnsafe(8 * 1024 * 1024);
+    let bytesRead;
+    while ((bytesRead = fs.readSync(fd, chunk, 0, chunk.length, null)) > 0) {
+      hash.update(chunk.subarray(0, bytesRead));
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  return hash.digest('hex');
+}
+
 // Move one file into a flat destination directory without ever overwriting an
 // existing archived file. On a name clash with a byte-identical file we treat it
 // as already archived (and remove the source); on a clash with a different file
@@ -676,7 +657,7 @@ function moveFileNoClobber(srcPath, destDir, disambiguator) {
   let dest = path.join(destDir, base + ext);
   if (fs.existsSync(dest)) {
     // Identical file already archived — drop the source, report as deduped.
-    if (fs.statSync(dest).size === srcSize) {
+    if (fs.statSync(dest).size === srcSize && sha256LocalFile(dest) === sha256LocalFile(srcPath)) {
       fs.rmSync(srcPath, { force: true });
       return { dest, deduped: true };
     }
@@ -5604,6 +5585,32 @@ async function generateOneTopicCandidate(payload = {}, options = {}) {
 // image-selector and PRESTO I2V pipeline. Image bytes arrive base64-encoded in
 // JSON. Confined to the resolved package dir; gated on a nonce by the route.
 const MANUAL_IMAGE_MAX_BYTES = 25 * 1024 * 1024;
+function recordManualFluxUpload(packageDir, packageId, details = {}) {
+  const nowIso = new Date().toISOString();
+  const sidecar = readSidecar(packageDir);
+  const images = Array.isArray(sidecar.images) ? sidecar.images.filter((entry) => entry.path !== details.relative) : [];
+  const provider = String(details.payload.provider || details.payload.source || 'manual_upload').trim() || 'manual_upload';
+  const entry = {
+    media_type: 'image',
+    generation_mode: 'manual_external',
+    generation_provider: provider,
+    generation_host: 'manual',
+    variant: 'manual_upload',
+    imported_at: nowIso,
+    original_filename: String(details.payload.filename || details.filename),
+    path: details.relative,
+    sha256: crypto.createHash('sha256').update(details.buf).digest('hex'),
+    prompt_index: details.promptIndex,
+    prompt_text: String(details.payload.prompt || details.payload.prompt_text || ''),
+    validation: { ok: true, warnings: [], format: details.isPng ? 'png' : 'jpeg' },
+  };
+  sidecar.package = sidecar.package || packageId;
+  sidecar.version = sidecar.version || 1;
+  sidecar.images = [...images, entry];
+  writeSidecar(packageDir, sidecar, nowIso);
+  return entry;
+}
+
 function uploadAigenImage(payload = {}, options = {}) {
   const { packageId, packageDir } = resolveAigenPackageDir(payload.package_id || payload.packageId, options);
   const promptIndex = Number(payload.prompt_index);
@@ -5647,13 +5654,27 @@ function uploadAigenImage(payload = {}, options = {}) {
   const tmpPath = `${outPath}.tmp`;
   fs.writeFileSync(tmpPath, buf);
   fs.renameSync(tmpPath, outPath);
+  const relative = `images/flux-local/${filename}`;
+  const provenance = recordManualFluxUpload(packageDir, packageId, {
+    relative,
+    filename,
+    promptIndex,
+    buf,
+    isPng,
+    payload,
+  });
   return {
     package_id: packageId,
     prompt_index: promptIndex,
     filename,
-    path: `images/flux-local/${filename}`,
+    path: relative,
     bytes: buf.length,
     format: isPng ? 'png' : 'jpeg',
+    provenance: {
+      generation_mode: provenance.generation_mode,
+      generation_provider: provenance.generation_provider,
+      generation_host: provenance.generation_host,
+    },
   };
 }
 
@@ -6682,8 +6703,8 @@ function selectedIndicesFromData(data) {
     .filter((index) => index !== null);
 }
 
-function aigenAssetPath(packageId, relativePath) {
-  const { packageDir } = resolveAigenPackageDir(packageId);
+function aigenAssetPath(packageId, relativePath, options = {}) {
+  const { packageDir } = resolveAigenPackageDir(packageId, options);
   const cleanRelative = String(relativePath || '').replace(/\\/g, '/');
   if (!cleanRelative || cleanRelative.split('/').some((part) => part === '..' || part === '' || part.startsWith('.'))) {
     const error = new Error('Invalid asset path.');
@@ -6753,26 +6774,39 @@ function writeSelectedImages(payload = {}, options = {}) {
   }
   const { packageId: id, packageDir } = resolveAigenPackageDir(payload.package_id, options);
   const promptsByIndex = loadImagePromptsByIndex(packageDir);
+  const sidecar = readSidecar(packageDir);
+  const manualImages = new Map(
+    (Array.isArray(sidecar.images) ? sidecar.images : []).map((entry) => [entry.path, entry])
+  );
   const uniqueIndices = [...new Set(selectedIndices)];
   const selectedAt = new Date().toISOString();
   const selections = uniqueIndices.map((index) => {
     const filename = `flux-${String(index).padStart(3, '0')}.png`;
     const relative = `images/flux-local/${filename}`;
-    const absolute = aigenAssetPath(id, relative);
+    const absolute = aigenAssetPath(id, relative, options);
     if (!fs.existsSync(absolute) || !fs.statSync(absolute).isFile()) {
       const error = new Error(`Selected FLUX image does not exist for index ${index}: ${relative}`);
       error.statusCode = 400;
       throw error;
     }
+    const manual = manualImages.get(relative);
     return {
       prompt_index: index,
       index,
-      selected_source: 'flux-local',
+      selected_source: manual ? 'manual-external' : 'flux-local',
       selected_path: relative,
       path: relative,
       prompt: promptsByIndex.get(index) || '',
       label: selectedLabel(index, Boolean(payload.labels)),
-      generator: 'flux-local-vidnux',
+      generator: manual ? (manual.generation_provider || 'manual-external') : 'flux-local-vidnux',
+      ...(manual ? {
+        provenance: {
+          generation_mode: manual.generation_mode,
+          generation_provider: manual.generation_provider,
+          generation_host: manual.generation_host,
+          source: 'external-media-manifest',
+        },
+      } : {}),
       selected_at: selectedAt,
     };
   });
@@ -8543,25 +8577,37 @@ function validateLocalWriteRequest(req, payload = {}, options = {}) {
 
 function readJsonBody(req, maxBytes = 1024 * 64) {
   return new Promise((resolve, reject) => {
-    let body = '';
+    const chunks = [];
+    let bytes = 0;
+    let settled = false;
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    };
     req.on('data', (chunk) => {
-      body += chunk;
-      if (body.length > maxBytes) {
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      bytes += buf.length;
+      if (bytes > maxBytes) {
         const error = new Error('Request body too large.');
         error.statusCode = 413;
-        reject(error);
+        fail(error);
         req.destroy();
+        return;
       }
+      chunks.push(buf);
     });
     req.on('end', () => {
+      if (settled) return;
       try {
+        const body = Buffer.concat(chunks, bytes).toString('utf8');
         resolve(body ? JSON.parse(body) : {});
       } catch (error) {
         error.statusCode = 400;
-        reject(error);
+        fail(error);
       }
     });
-    req.on('error', reject);
+    req.on('error', fail);
   });
 }
 
@@ -11670,5 +11716,6 @@ module.exports = {
   validateCaptureEvidenceTargets,
   validateHyperframesCompositionId,
   validateLocalWriteRequest,
+  readJsonBody,
   writeHyperframesManifest,
 };
