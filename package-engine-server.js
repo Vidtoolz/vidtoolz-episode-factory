@@ -5089,7 +5089,7 @@ const VIDEO_PROBE_CACHE = new Map();
 function probeVideo(absPath) {
   let stat;
   try { stat = fs.statSync(absPath); } catch (_) { return null; }
-  const key = `${absPath}${stat.mtimeMs}${stat.size}`;
+  const key = `${absPath}|${stat.mtimeMs}|${stat.size}`;
   if (VIDEO_PROBE_CACHE.has(key)) return VIDEO_PROBE_CACHE.get(key);
   let probe = null;
   try {
