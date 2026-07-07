@@ -108,6 +108,10 @@ const SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API = '/api/super-focus/generate-image-
 const SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API = '/api/super-focus/generate-infographic-prompts';
 const SUPER_FOCUS_IMAGE_PROMPT_API = '/api/super-focus/image-prompt';
 const SUPER_FOCUS_INFOGRAPHIC_PROMPT_API = '/api/super-focus/infographic-prompt';
+const SUPER_FOCUS_GENERATE_IMAGES_API = '/api/super-focus/generate-images';
+const SUPER_FOCUS_IMAGES_STATUS_API = '/api/super-focus/images-status';
+const SUPER_FOCUS_IMAGES_CANCEL_API = '/api/super-focus/images-cancel';
+const SUPER_FOCUS_IMAGE_FILE_API = '/api/super-focus/image';
 const EARTH_STUDIO_STATUS_API = '/api/earth-studio/status';
 const EARTH_STUDIO_PLAN_API = '/api/earth-studio/plan';
 const EARTH_STUDIO_RENDER_API = '/api/earth-studio/render';
@@ -250,9 +254,13 @@ const projectI2vPrompts = require('./project-i2v-prompts.js');
 const projectVideoReview = require('./project-video-review.js');
 const superFocus = require('./super-focus.js');
 const superFocusPrompts = require('./super-focus-prompts.js');
+const superFocusMedia = require('./super-focus-media.js');
 // Super Focus keeps its own local, file-backed project state (never on VIDNAS).
 // Root is env-overridable so it can follow a different disk without code edits.
 const SUPER_FOCUS_ROOT = process.env.SUPER_FOCUS_ROOT || path.join(ROOT, 'super-focus-projects');
+// Generated media (media-only) lives on VIDNAS under a dedicated Super Focus
+// namespace, separate from aigen script-packages. Env-overridable.
+const SUPER_FOCUS_MEDIA_ROOT = process.env.SUPER_FOCUS_MEDIA_ROOT || path.join(VIDNAS_AIGEN_ROOT, 'super-focus');
 const OLLAMA_PRESTO_BASE_URL = mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT);
 const OLLAMA_PRESTO_MODEL = mediaRouting.resolveModel(mediaRouting.LANE.I2V_PROMPT);
 
@@ -7478,10 +7486,26 @@ function startFluxPackageJob(payload = {}, options = {}) {
     throw error;
   }
   const config = validateFluxSubmitPayload(payload, options);
+  return launchFluxHandoffJob({
+    fluxScript: config.fluxScript,
+    pythonBin: config.pythonBin,
+    packageArg: config.packageId,
+    packageId: config.packageId,
+    limit: config.limit,
+    skipExisting: config.skipExisting,
+    dryRun: config.dryRun,
+  }, payload, options);
+}
+
+// Shared FLUX spawn + job tracking. Callers MUST check currentFluxJobStatus()
+// for an active job first (single-GPU lock). config.packageArg is the literal
+// --package value; run-handoff.py accepts an absolute dir (Super Focus lane) or
+// a script-packages id (aigen lane). Sets FLUX_STATE.activeJob.
+function launchFluxHandoffJob(config, payload = {}, options = {}) {
   const args = [
     config.fluxScript,
     '--package',
-    config.packageId,
+    config.packageArg,
   ];
   if (config.limit > 0) args.push('--limit', String(config.limit));
   if (config.skipExisting) args.push('--skip-existing');
@@ -7497,6 +7521,7 @@ function startFluxPackageJob(payload = {}, options = {}) {
     process: child,
     jobId: crypto.randomUUID(),
     packageId: config.packageId,
+    lane: config.lane || 'aigen',
     workflowPath: genEnv.workflowPath,
     orientation: genEnv.orientation,
     targetResolution: genEnv.targetResolution,
@@ -7538,6 +7563,35 @@ function startFluxPackageJob(payload = {}, options = {}) {
     mode: job.mode,
     pid: job.pid,
   };
+}
+
+// Start a Super Focus image batch: materialize prompts into the project's VIDNAS
+// media dir, then dispatch run-handoff.py against that absolute dir. Reuses the
+// single global FLUX lock (GPU-safe). No ComfyUI auto-start; no cloud fallback.
+function startSuperFocusImageJob(mediaDir, options = {}) {
+  const current = currentFluxJobStatus();
+  if (current.active) {
+    const error = new Error('A FLUX image job is already running. Wait for it to finish.');
+    error.statusCode = 409;
+    error.active = current;
+    throw error;
+  }
+  const fluxScript = options.fluxScript || FLUX_STATE.script;
+  if (!fs.existsSync(fluxScript)) {
+    const error = new Error(`FLUX run-handoff.py not found: ${fluxScript}`);
+    error.statusCode = 500;
+    throw error;
+  }
+  return launchFluxHandoffJob({
+    fluxScript,
+    pythonBin: options.pythonBin || 'python3',
+    packageArg: mediaDir,
+    packageId: options.projectId || mediaDir,
+    limit: Number(options.limit) > 0 ? Number(options.limit) : 0,
+    skipExisting: options.skipExisting !== false,
+    dryRun: Boolean(options.dryRun),
+    lane: 'super-focus',
+  }, options.payload || {}, options);
 }
 
 function cancelFluxJob(options = {}) {
@@ -9655,6 +9709,7 @@ function createServer(options = {}) {
     // State lives locally (never VIDNAS). No generation happens here in Slice 1;
     // create/list/load/save-title/save-script only. All writes are nonce-gated.
     const sfRoot = serverOptions.superFocusRoot || SUPER_FOCUS_ROOT;
+    const sfMediaRoot = serverOptions.superFocusMediaRoot || SUPER_FOCUS_MEDIA_ROOT;
 
     if (req.method === 'GET' && url.pathname === SUPER_FOCUS_PROJECTS_API) {
       try {
@@ -9837,6 +9892,89 @@ function createServer(options = {}) {
           sendJSON(res, 200, { project: state });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-infographic-prompt-error'));
+      return;
+    }
+
+    // Start a supervised image batch: materialize prompts to the VIDNAS media
+    // dir and dispatch run-handoff.py (vidnux FLUX). Reuses the global FLUX lock
+    // (409 if busy). No ComfyUI auto-start, no cloud fallback.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_GENERATE_IMAGES_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus image generation API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          if (!Array.isArray(state.image_prompts) || state.image_prompts.length === 0) {
+            const e = new Error('Create image prompts first, then generate images.'); e.statusCode = 400; throw e;
+          }
+          const materialized = superFocusMedia.materializeImagePrompts(id, state.image_prompts, { mediaRoot: sfMediaRoot });
+          const job = startSuperFocusImageJob(materialized.mediaDir, {
+            projectId: id,
+            skipExisting: payload.skip_existing !== false,
+            dryRun: Boolean(payload.dry_run),
+            spawn: options.spawn,
+            // Dispatch script/python are env-overridable so the lane can follow
+            // the real host (or a stub) without code edits; falls back to the
+            // canonical vidnux run-handoff.py.
+            fluxScript: options.fluxScript || process.env.SUPER_FOCUS_FLUX_SCRIPT,
+            pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN,
+            payload,
+          });
+          sendJSON(res, 200, { job, materialized_count: materialized.count, media_dir: materialized.mediaDir });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-images-error'));
+      return;
+    }
+
+    // Read-only: reconcile per-index image state from the on-disk manifest + PNG
+    // files (files win — survives a server restart), plus the FLUX job status.
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_IMAGES_STATUS_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+        const state = superFocus.loadProject(id, { root: sfRoot });
+        const recon = superFocusMedia.reconcileImages(id, state.image_prompts, { mediaRoot: sfMediaRoot });
+        const flux = currentFluxJobStatus();
+        sendJSON(res, 200, {
+          project_id: id,
+          flux_job: flux,
+          job_is_this_project: Boolean(flux.active && flux.package_id === id),
+          manifest_exists: recon.manifest_exists,
+          total: recon.total,
+          done: recon.done,
+          failed: recon.failed,
+          images: recon.images,
+        });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-images-status-error');
+      }
+      return;
+    }
+
+    // Cancel the active FLUX job (nonce-gated). The lock is global; this stops
+    // whatever image batch is running.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_IMAGES_CANCEL_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus image cancel API' });
+          const result = await cancelFluxJob(options);
+          sendJSON(res, 200, result);
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-images-cancel-error'));
+      return;
+    }
+
+    // Serve one generated PNG from the project's media dir (path-guarded).
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_IMAGE_FILE_API) {
+      try {
+        const id = url.searchParams.get('id') || '';
+        superFocus.assertValidProjectId(id);
+        const filePath = superFocusMedia.safeImageFilePath(id, url.searchParams.get('index'), { mediaRoot: sfMediaRoot });
+        if (!filePath || !fs.existsSync(filePath)) { sendError(res, 404, 'Image not found.', 'super-focus-image-missing'); return; }
+        res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'no-store' });
+        fs.createReadStream(filePath).pipe(res);
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-image-error');
+      }
       return;
     }
 
@@ -11903,8 +12041,15 @@ module.exports = {
   SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API,
   SUPER_FOCUS_IMAGE_PROMPT_API,
   SUPER_FOCUS_INFOGRAPHIC_PROMPT_API,
+  SUPER_FOCUS_GENERATE_IMAGES_API,
+  SUPER_FOCUS_IMAGES_STATUS_API,
+  SUPER_FOCUS_IMAGES_CANCEL_API,
+  SUPER_FOCUS_IMAGE_FILE_API,
   superFocus,
   superFocusPrompts,
+  superFocusMedia,
+  startSuperFocusImageJob,
+  launchFluxHandoffJob,
   EARTH_STUDIO_STATUS_API,
   EARTH_STUDIO_PLAN_API,
   EARTH_STUDIO_RENDER_API,

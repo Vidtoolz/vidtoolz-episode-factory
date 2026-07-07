@@ -104,6 +104,13 @@
       margin-top: 12px; padding: 10px 14px; border-radius: 8px;
       background: rgba(210,153,34,.12); border: 1px solid #6b5320; color: #e3b341; font-size: 14px;
     }
+    .prompt-row .pthumb { grid-column: 1 / -1; margin-top: 4px; }
+    .prompt-row .pthumb img { max-width: 120px; border-radius: 6px; border: 1px solid var(--border); display: block; }
+    .prompt-row .pthumb .thumb-note { font-size: 12px; color: var(--muted); }
+    .prompt-row .pthumb .thumb-note.err { color: #f85149; }
+    .imggen-progress { margin-top: 10px; font-size: 14px; color: var(--muted); }
+    .imggen-bar { height: 6px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--border); overflow: hidden; margin-top: 8px; }
+    .imggen-fill { height: 100%; width: 0; background: var(--accent); transition: width .3s ease; }
     .btn.busy { opacity: .6; cursor: progress; }
     .hidden { display: none; }
   </style>
@@ -191,8 +198,19 @@
         <div class="prompt-grid" id="imgp-list"></div>
       </div>
 
-      <!-- 4. Generated images (later slice) -->
-      <div class="section disabled"><div class="step">Step 4</div><h2>Generated images</h2><div class="later">vidnux ComfyUI / FLUX — arrives in Slice 4 (after the media-bridge decision).</div></div>
+      <!-- 4. Generated images -->
+      <div class="section">
+        <div class="step">Step 4</div>
+        <h2>Generated images</h2>
+        <div class="row">
+          <button class="btn primary" id="imggen-generate">Generate images based on the image prompts</button>
+          <button class="btn hidden" id="imggen-cancel">Cancel</button>
+          <span class="save-state" id="imggen-status"></span>
+        </div>
+        <div class="later-note">Runs vidnux ComfyUI / FLUX locally on your saved prompts (skips images that already exist). One batch at a time; images appear next to each prompt above as they finish. ComfyUI must be running.</div>
+        <div class="imggen-progress hidden" id="imggen-progress"></div>
+        <div class="imggen-bar hidden" id="imggen-barwrap"><div class="imggen-fill" id="imggen-fill"></div></div>
+      </div>
 
       <!-- 5. Infographic prompts -->
       <div class="section">
@@ -225,8 +243,13 @@
     var GEN_INFP_API = '/api/super-focus/generate-infographic-prompts';
     var IMGP_SAVE_API = '/api/super-focus/image-prompt';
     var INFP_SAVE_API = '/api/super-focus/infographic-prompt';
+    var GEN_IMAGES_API = '/api/super-focus/generate-images';
+    var IMAGES_STATUS_API = '/api/super-focus/images-status';
+    var IMAGES_CANCEL_API = '/api/super-focus/images-cancel';
+    var IMAGE_FILE_API = '/api/super-focus/image';
     var IMG_MAX = 100;
     var INF_MAX = 30;
+    var imagesPollTimer = null;
 
     var nonce = null;
     var nonceHeader = 'x-vidtoolz-local-write-nonce';
@@ -268,7 +291,7 @@
       window.scrollTo(0, 0);
     }
 
-    function goHome() { currentId = null; show('landing'); }
+    function goHome() { if (typeof stopImagesPolling === 'function') stopImagesPolling(); currentId = null; show('landing'); }
 
     function setStatus(el, msg, isErr) {
       el.textContent = msg;
@@ -343,7 +366,8 @@
 
     // Build a fixed grid of `max` numbered, editable prompt slots pre-filled from
     // `records` (index-keyed). Empty slots are editable and can be saved too.
-    function renderPromptGrid(elId, records, max, saveApi) {
+    // withThumb adds a per-row image container (id thumbPrefix + index).
+    function renderPromptGrid(elId, records, max, saveApi, withThumb, thumbPrefix) {
       var grid = document.getElementById(elId);
       grid.innerHTML = '';
       var byIndex = {};
@@ -378,6 +402,11 @@
           });
           ctrl.appendChild(copyBtn); ctrl.appendChild(saveBtn); ctrl.appendChild(st);
           row.appendChild(num); row.appendChild(ta); row.appendChild(ctrl);
+          if (withThumb) {
+            var thumb = document.createElement('div');
+            thumb.className = 'pthumb'; thumb.id = thumbPrefix + index;
+            row.appendChild(thumb);
+          }
           grid.appendChild(row);
         })(i);
       }
@@ -400,11 +429,73 @@
         (proj.image_prompts && proj.image_prompts.length) ? (proj.image_prompts.length + ' saved') : '');
       setStatus(document.getElementById('infp-status'),
         (proj.infographic_prompts && proj.infographic_prompts.length) ? (proj.infographic_prompts.length + ' saved') : '');
-      renderPromptGrid('imgp-list', proj.image_prompts, IMG_MAX, IMGP_SAVE_API);
-      renderPromptGrid('infp-list', proj.infographic_prompts, INF_MAX, INFP_SAVE_API);
+      renderPromptGrid('imgp-list', proj.image_prompts, IMG_MAX, IMGP_SAVE_API, true, 'imgp-thumb-');
+      renderPromptGrid('infp-list', proj.infographic_prompts, INF_MAX, INFP_SAVE_API, false);
       updateStaleBanner('imgp-stale', proj.stale && proj.stale.image_prompts);
       updateStaleBanner('infp-stale', proj.stale && proj.stale.infographic_prompts);
+      stopImagesPolling();
+      setStatus(document.getElementById('imggen-status'), '');
+      refreshImagesStatus(); // reconcile any already-generated images from disk
       show('project');
+    }
+
+    // ---- Image generation (vidnux FLUX via the existing dispatch) ----
+    function setThumb(index, row) {
+      var el = document.getElementById('imgp-thumb-' + index);
+      if (!el) return;
+      if (row.status === 'done' && row.has_image) {
+        el.innerHTML = '';
+        var img = document.createElement('img');
+        img.src = IMAGE_FILE_API + '?id=' + encodeURIComponent(currentId) + '&index=' + index + '&t=' + row.generated_at;
+        img.alt = 'Generated image ' + index;
+        el.appendChild(img);
+      } else if (row.status === 'failed') {
+        el.innerHTML = '<span class="thumb-note err">failed: ' + (row.error ? String(row.error).slice(0, 80) : 'generation error') + '</span>';
+      } else if (row.status === 'missing_file') {
+        el.innerHTML = '<span class="thumb-note err">manifest done but file missing</span>';
+      } else {
+        el.innerHTML = '';
+      }
+    }
+
+    function applyImagesStatus(d) {
+      (d.images || []).forEach(function (row) { setThumb(row.index, row); });
+      var active = d.flux_job && d.flux_job.active && d.job_is_this_project;
+      var prog = document.getElementById('imggen-progress');
+      var barwrap = document.getElementById('imggen-barwrap');
+      var fill = document.getElementById('imggen-fill');
+      var cancelBtn = document.getElementById('imggen-cancel');
+      var genBtn = document.getElementById('imggen-generate');
+      var pct = d.total ? Math.round((d.done / d.total) * 100) : 0;
+      if (d.total > 0 && (active || d.done > 0 || d.failed > 0)) {
+        prog.classList.remove('hidden'); barwrap.classList.remove('hidden');
+        fill.style.width = pct + '%';
+        prog.textContent = d.done + '/' + d.total + ' done' + (d.failed ? (' · ' + d.failed + ' failed') : '') + (active ? ' · generating…' : '');
+      } else {
+        prog.classList.add('hidden'); barwrap.classList.add('hidden');
+      }
+      cancelBtn.classList.toggle('hidden', !active);
+      genBtn.disabled = active;
+      genBtn.classList.toggle('busy', active);
+      return active;
+    }
+
+    function refreshImagesStatus() {
+      if (!currentId) return Promise.resolve();
+      return apiGet(IMAGES_STATUS_API + '?id=' + encodeURIComponent(currentId)).then(function (res) {
+        if (!res.ok) return;
+        var active = applyImagesStatus(unwrap(res.body));
+        if (active && !imagesPollTimer) startImagesPolling();
+        if (!active) stopImagesPolling();
+      });
+    }
+
+    function startImagesPolling() {
+      if (imagesPollTimer) return;
+      imagesPollTimer = setInterval(refreshImagesStatus, 3000);
+    }
+    function stopImagesPolling() {
+      if (imagesPollTimer) { clearInterval(imagesPollTimer); imagesPollTimer = null; }
     }
 
     // Run a generate action with a busy state on its button; msgEl shows status.
@@ -502,6 +593,31 @@
         updateStaleBanner('infp-stale', d.project.stale && d.project.stale.infographic_prompts);
         setStatus(el, d.count + ' prompts saved');
       }).catch(function () { btn.classList.remove('busy'); btn.disabled = false; setStatus(el, 'Generation failed', true); });
+    });
+
+    document.getElementById('imggen-generate').addEventListener('click', function () {
+      if (!currentId) return;
+      var el = document.getElementById('imggen-status');
+      setStatus(el, 'Starting FLUX batch on vidnux…');
+      apiPost(GEN_IMAGES_API, { id: currentId }).then(function (res) {
+        if (!res.ok) {
+          setStatus(el, (res.body && res.body.error) || 'Could not start image generation', true);
+          return;
+        }
+        var d = unwrap(res.body);
+        setStatus(el, 'Batch started for ' + d.materialized_count + ' prompts');
+        startImagesPolling();
+        refreshImagesStatus();
+      }).catch(function () { setStatus(el, 'Could not start image generation', true); });
+    });
+
+    document.getElementById('imggen-cancel').addEventListener('click', function () {
+      if (!currentId) return;
+      var el = document.getElementById('imggen-status');
+      apiPost(IMAGES_CANCEL_API, { id: currentId }).then(function (res) {
+        setStatus(el, res.ok ? 'Cancel signal sent' : 'Cancel failed', !res.ok);
+        refreshImagesStatus();
+      });
     });
 
     goHome();

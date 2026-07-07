@@ -1,6 +1,8 @@
 const { test, assert, packageEngineServer, fs, os, path, http } = require("./_helpers.js");
+const { EventEmitter } = require("node:events");
 const superFocus = require("../super-focus.js");
 const sfPrompts = require("../super-focus-prompts.js");
+const sfMedia = require("../super-focus-media.js");
 
 // Fake Ollama chat: returns a fixed assistant message content, no network.
 function fakeOllama(content) {
@@ -581,4 +583,224 @@ test("per-row edit does NOT trigger script-staleness (manual downstream edit)", 
   const edited = superFocus.saveImagePrompt(created.project_id, 1, "one edited", { root });
   assert.ok(!edited.stale.image_prompts);
   assert.equal(edited.image_prompts.find((p) => p.index === 1).text, "one edited");
+});
+
+// ==================== Slice 4: image generation (stubbed FLUX) ====================
+
+function delay(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+// Fake `run-handoff.py` dispatch: reads the materialized image-prompts.json from
+// the --package dir, writes PNGs + a flux-generation-manifest.json, then closes.
+function fakeFluxSpawn(opts = {}) {
+  return function () {
+    const args = arguments[1] || [];
+    const pkg = args[args.indexOf("--package") + 1];
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.pid = 4242;
+    child.kill = function () { setImmediate(() => child.emit("close", null, "SIGTERM")); };
+    if (opts.hang) return child; // never closes -> stays "active"
+    setImmediate(() => {
+      const pj = JSON.parse(fs.readFileSync(path.join(pkg, "image-prompts.json"), "utf8"));
+      const dir = path.join(pkg, "images", "flux-local");
+      fs.mkdirSync(dir, { recursive: true });
+      const items = pj.image_prompts.map((p) => {
+        const fail = (opts.failIndices || []).indexOf(p.index) !== -1;
+        const name = "flux-" + String(p.index).padStart(3, "0") + ".png";
+        if (!fail) fs.writeFileSync(path.join(dir, name), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+        return {
+          prompt_index: p.index, prompt: p.prompt,
+          status: fail ? "failed" : "complete",
+          output_path: "images/flux-local/" + name,
+          error: fail ? "stub failure" : undefined,
+          generated_at: "2026-07-07T00:00:00Z",
+        };
+      });
+      fs.writeFileSync(path.join(pkg, "flux-generation-manifest.json"), JSON.stringify({ items }));
+      child.stdout.emit("data", Buffer.from("stub done\n"));
+      child.emit("close", 0, null);
+    });
+    return child;
+  };
+}
+
+function fakeScript() {
+  const p = path.join(mkRoot(), "run-handoff.py");
+  fs.writeFileSync(p, "# stub\n");
+  return p;
+}
+
+function imageServer(spawnImpl, { promptCount = 3 } = {}) {
+  packageEngineServer.FLUX_STATE.activeJob = null; // isolate from other tests
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "Imgs" }, { root });
+  superFocus.saveScript(created.project_id, "a script", { root });
+  superFocus.saveImagePrompts(
+    created.project_id,
+    Array.from({ length: promptCount }, (_, i) => "prompt " + (i + 1)),
+    { root }
+  );
+  const server = packageEngineServer.createServer({
+    superFocusRoot: root,
+    superFocusMediaRoot: mediaRoot,
+    fluxScript: fakeScript(),
+    pythonBin: "python3",
+    spawn: spawnImpl,
+  });
+  return { server, root, mediaRoot, id: created.project_id };
+}
+
+test("generate-images materializes image-prompts.json and dispatches; images reconcile as done", async () => {
+  const { server, mediaRoot, id } = imageServer(fakeFluxSpawn());
+  await listen(server);
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(gen.statusCode, 200);
+    assert.equal(unwrap(gen).materialized_count, 3);
+    // The materialized input is written where run-handoff.py expects it.
+    const promptsFile = path.join(mediaRoot, id, "image-prompts.json");
+    assert.ok(fs.existsSync(promptsFile));
+    const written = JSON.parse(fs.readFileSync(promptsFile, "utf8"));
+    assert.equal(written.image_prompts[0].prompt, "prompt 1");
+
+    await delay(40); // let the stub child write files + close
+    const status = await request(server, packageEngineServer.SUPER_FOCUS_IMAGES_STATUS_API + "?id=" + encodeURIComponent(id));
+    assert.equal(status.statusCode, 200);
+    const d = unwrap(status);
+    assert.equal(d.total, 3);
+    assert.equal(d.done, 3);
+    assert.equal(d.failed, 0);
+    assert.equal(d.flux_job.active, false);
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("failed indices are reported; successful ones still land", async () => {
+  const { server, id } = imageServer(fakeFluxSpawn({ failIndices: [2] }));
+  await listen(server);
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    await delay(40);
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_IMAGES_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(d.done, 2);
+    assert.equal(d.failed, 1);
+    const bad = d.images.find((r) => r.index === 2);
+    assert.equal(bad.status, "failed");
+    assert.match(bad.error, /stub failure/);
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("generate-images requires prompts (400) and is nonce-gated (403)", async () => {
+  packageEngineServer.FLUX_STATE.activeJob = null;
+  const root = mkRoot();
+  const created = superFocus.createProject({ title: "NoPrompts" }, { root });
+  const server = packageEngineServer.createServer({ superFocusRoot: root, superFocusMediaRoot: mkRoot(), fluxScript: fakeScript(), spawn: fakeFluxSpawn() });
+  await listen(server);
+  try {
+    const noPrompts = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id: created.project_id },
+    });
+    assert.equal(noPrompts.statusCode, 400);
+    const noNonce = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: { host: "127.0.0.1:8010" }, body: { id: created.project_id },
+    });
+    assert.equal(noNonce.statusCode, 403);
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("a second image batch is refused while one is active (single GPU lock)", async () => {
+  const { server, id } = imageServer(fakeFluxSpawn({ hang: true }));
+  await listen(server);
+  try {
+    const first = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(first.statusCode, 200);
+    const second = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(second.statusCode, 409);
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null; // release the hung stub
+  }
+});
+
+test("images-status reconciles from disk alone (survives restart, files win)", async () => {
+  packageEngineServer.FLUX_STATE.activeJob = null;
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "Reopen" }, { root });
+  superFocus.saveImagePrompts(created.project_id, ["a", "b"], { root });
+  // Simulate a prior run's on-disk output, with NO in-memory job.
+  const dir = path.join(mediaRoot, created.project_id, "images", "flux-local");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "flux-001.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  fs.writeFileSync(path.join(mediaRoot, created.project_id, "flux-generation-manifest.json"),
+    JSON.stringify({ items: [{ prompt_index: 1, status: "complete", output_path: "images/flux-local/flux-001.png" }] }));
+  const server = packageEngineServer.createServer({ superFocusRoot: root, superFocusMediaRoot: mediaRoot });
+  await listen(server);
+  try {
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_IMAGES_STATUS_API + "?id=" + encodeURIComponent(created.project_id)));
+    assert.equal(d.total, 2);
+    assert.equal(d.done, 1);       // index 1 has a file
+    assert.equal(d.images.find((r) => r.index === 2).status, "pending");
+  } finally {
+    await close(server);
+  }
+});
+
+test("image file endpoint serves the PNG and guards bad index / traversal", async () => {
+  const { server, id } = imageServer(fakeFluxSpawn());
+  await listen(server);
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    await delay(40);
+    // Raw request (not JSON) for the binary.
+    const addr = server.address();
+    const raw = await new Promise((resolve) => {
+      http.get({ hostname: "127.0.0.1", port: addr.port, path: packageEngineServer.SUPER_FOCUS_IMAGE_FILE_API + "?id=" + encodeURIComponent(id) + "&index=1" }, (r) => {
+        const chunks = []; r.on("data", (c) => chunks.push(c)); r.on("end", () => resolve({ status: r.statusCode, type: r.headers["content-type"], len: Buffer.concat(chunks).length }));
+      });
+    });
+    assert.equal(raw.status, 200);
+    assert.match(raw.type, /image\/png/);
+    assert.ok(raw.len > 0);
+    const missing = await request(server, packageEngineServer.SUPER_FOCUS_IMAGE_FILE_API + "?id=" + encodeURIComponent(id) + "&index=99");
+    assert.equal(missing.statusCode, 404);
+    const bad = await request(server, packageEngineServer.SUPER_FOCUS_IMAGE_FILE_API + "?id=" + encodeURIComponent("../etc") + "&index=1");
+    assert.equal(bad.statusCode, 400);
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("media bridge unit: prompt payload maps text->prompt and drops empties; path guard blocks traversal", () => {
+  const payload = sfMedia.imagePromptsPayload([
+    { index: 1, text: "one" }, { index: 2, text: "  " }, { index: 3, text: "three" },
+  ]);
+  assert.equal(payload.image_prompts.length, 2);
+  assert.deepEqual(payload.image_prompts.map((p) => p.index), [1, 3]);
+  assert.equal(payload.image_prompts[0].prompt, "one");
+  // Path guard: valid index resolves inside the media dir; junk index -> null.
+  const good = sfMedia.safeImageFilePath("proj-abcd1234", 5, { mediaRoot: "/tmp/sf-media" });
+  assert.ok(good && good.endsWith("proj-abcd1234/images/flux-local/flux-005.png"));
+  assert.equal(sfMedia.safeImageFilePath("proj-abcd1234", "0", { mediaRoot: "/tmp/sf-media" }), null);
 });
