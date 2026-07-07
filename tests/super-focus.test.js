@@ -1,5 +1,17 @@
 const { test, assert, packageEngineServer, fs, os, path, http } = require("./_helpers.js");
 const superFocus = require("../super-focus.js");
+const sfPrompts = require("../super-focus-prompts.js");
+
+// Fake Ollama chat: returns a fixed assistant message content, no network.
+function fakeOllama(content) {
+  return async () => ({ ok: true, json: async () => ({ message: { content } }) });
+}
+function refusedFetch() {
+  return async () => { const e = new Error("fetch failed"); e.cause = { code: "ECONNREFUSED" }; throw e; };
+}
+function jsonArray(n, prefix) {
+  return JSON.stringify(Array.from({ length: n }, (_, i) => (prefix || "Prompt") + " " + (i + 1) + " distinct vertical scene"));
+}
 
 // ---- local helpers (mirror the flux/presto endpoint-test pattern) ----
 function mkRoot() {
@@ -272,4 +284,185 @@ test("super-focus model: create/list/load are isolated per root and stage-infer"
 
   // Unknown id -> 404-shaped error.
   assert.throws(() => superFocus.loadProject("does-not-exist-0000", { root }), /not found/i);
+});
+
+// ============================ Slice 2: Ollama text ============================
+
+async function makeProjectServer(fetchImpl, { title, script } = {}) {
+  const root = mkRoot();
+  const server = packageEngineServer.createServer(fetchImpl ? { superFocusRoot: root, fetchImpl } : { superFocusRoot: root });
+  await listen(server);
+  const proj = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_PROJECTS_API, {
+    method: "POST", headers: writeHeaders(), body: { title: title || "" },
+  })).project;
+  if (script) {
+    await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id: proj.project_id, script },
+    });
+  }
+  return { root, server, id: proj.project_id };
+}
+
+test("generate-topic returns a cleaned topic and does NOT persist it", async () => {
+  const fake = fakeOllama('<think>weighing options</think>\n"Build a local render queue that never blocks you"');
+  const { server, id } = await makeProjectServer(fake);
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_TOPIC_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 200);
+    const d = unwrap(res);
+    assert.equal(d.topic, "Build a local render queue that never blocks you"); // think + quotes stripped
+    assert.equal(d.provider_host, "vidnux");
+    // Not persisted: title still empty until the operator Saves.
+    const reload = unwrap(await request(
+      server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(id))).project;
+    assert.equal(reload.title, "");
+  } finally {
+    await close(server);
+  }
+});
+
+test("generate-script requires a saved title, then returns a script", async () => {
+  const fake = fakeOllama("Okay so here is the thing about local pipelines.");
+  const { server, id } = await makeProjectServer(fake); // no title saved yet
+  try {
+    const noTitle = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(noTitle.statusCode, 400);
+
+    await request(server, packageEngineServer.SUPER_FOCUS_TITLE_API, {
+      method: "POST", headers: writeHeaders(), body: { id, title: "Local render queue" },
+    });
+    const ok = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(ok.statusCode, 200);
+    assert.match(unwrap(ok).script, /local pipelines/);
+  } finally {
+    await close(server);
+  }
+});
+
+test("generate-image-prompts requires a script, persists up to 100, and gates re-run with 409", async () => {
+  const fake = fakeOllama(jsonArray(100, "Scene"));
+  // First without a script:
+  const noScript = await makeProjectServer(fake);
+  try {
+    const res = await request(noScript.server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id: noScript.id },
+    });
+    assert.equal(res.statusCode, 400);
+  } finally {
+    await close(noScript.server);
+  }
+
+  const { server, id } = await makeProjectServer(fake, { script: "A real script about local video pipelines." });
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(gen.statusCode, 200);
+    assert.equal(unwrap(gen).count, 100);
+    // Persisted across reload.
+    const reload = unwrap(await request(
+      server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(id))).project;
+    assert.equal(reload.image_prompts.length, 100);
+    assert.equal(reload.image_prompts[0].index, 1);
+    assert.equal(reload.stage, "image_prompts");
+
+    // Re-run without confirm_replace -> 409; with confirm_replace -> 200.
+    const conflict = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(conflict.statusCode, 409);
+    const replace = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, confirm_replace: true },
+    });
+    assert.equal(replace.statusCode, 200);
+  } finally {
+    await close(server);
+  }
+});
+
+test("image-prompts tolerates fewer than 100 and dedupes (up-to-N, not exactly-N)", async () => {
+  // 5 items, two identical -> 4 distinct.
+  const fake = fakeOllama(JSON.stringify(["Alpha scene", "Beta scene", "alpha scene", "Gamma scene", "Delta scene"]));
+  const { server, id } = await makeProjectServer(fake, { script: "script text here" });
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(gen.statusCode, 200);
+    assert.equal(unwrap(gen).count, 4);
+  } finally {
+    await close(server);
+  }
+});
+
+test("generate-infographic-prompts persists up to 30", async () => {
+  const fake = fakeOllama(jsonArray(30, "Infographic"));
+  const { server, id } = await makeProjectServer(fake, { script: "script text for infographics" });
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(gen.statusCode, 200);
+    assert.equal(unwrap(gen).count, 30);
+    const reload = unwrap(await request(
+      server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(id))).project;
+    assert.equal(reload.infographic_prompts.length, 30);
+  } finally {
+    await close(server);
+  }
+});
+
+test("generation surfaces a 503 blocked state when Ollama is unreachable (no fallback)", async () => {
+  const { server, id } = await makeProjectServer(refusedFetch(), { title: "T", script: "S" });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 503);
+    assert.match(res.body.error, /no fallback/i);
+  } finally {
+    await close(server);
+  }
+});
+
+test("generation endpoints are nonce-gated", async () => {
+  const { server, id } = await makeProjectServer(fakeOllama("x"), { title: "T" });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_TOPIC_API, {
+      method: "POST", headers: { host: "127.0.0.1:8010" }, body: { id },
+    });
+    assert.equal(res.statusCode, 403);
+  } finally {
+    await close(server);
+  }
+});
+
+// ---- pure parser / cleaner unit tests ----
+test("parsePromptArray: strict JSON, fenced JSON, object-wrapped, line-split, dedupe, cap", () => {
+  assert.deepEqual(sfPrompts.parsePromptArray('["a","b","c"]', 100), ["a", "b", "c"]);
+  assert.deepEqual(sfPrompts.parsePromptArray('```json\n["a","b"]\n```', 100), ["a", "b"]);
+  assert.deepEqual(sfPrompts.parsePromptArray('{"prompts":["a","b"]}', 100), ["a", "b"]);
+  assert.deepEqual(
+    sfPrompts.parsePromptArray("1. first prompt\n2. second prompt\n- third prompt", 100),
+    ["first prompt", "second prompt", "third prompt"]
+  );
+  assert.deepEqual(sfPrompts.parsePromptArray('["a","A","b"]', 100), ["a", "b"]); // case-insensitive dedupe
+  assert.equal(sfPrompts.parsePromptArray(jsonArray(120, "S"), 100).length, 100); // capped
+});
+
+test("parsePromptArray throws 502 when nothing usable is present", () => {
+  assert.throws(() => sfPrompts.parsePromptArray("   \n\n  ", 100), (e) => e.statusCode === 502);
+});
+
+test("cleanTopic strips think blocks + quotes; cleanScript strips fences and keeps lines", () => {
+  assert.equal(sfPrompts.cleanTopic('<think>x</think>\n"My topic"'), "My topic");
+  assert.equal(sfPrompts.cleanTopic("Title: A concrete topic"), "A concrete topic");
+  const script = sfPrompts.cleanScript("```\nLine one.\nLine two.\n```");
+  assert.match(script, /Line one\.\nLine two\./);
 });

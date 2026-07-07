@@ -102,6 +102,10 @@ const SUPER_FOCUS_PROJECTS_API = '/api/super-focus/projects';
 const SUPER_FOCUS_PROJECT_API = '/api/super-focus/project';
 const SUPER_FOCUS_TITLE_API = '/api/super-focus/title';
 const SUPER_FOCUS_SCRIPT_API = '/api/super-focus/script';
+const SUPER_FOCUS_GENERATE_TOPIC_API = '/api/super-focus/generate-topic';
+const SUPER_FOCUS_GENERATE_SCRIPT_API = '/api/super-focus/generate-script';
+const SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API = '/api/super-focus/generate-image-prompts';
+const SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API = '/api/super-focus/generate-infographic-prompts';
 const EARTH_STUDIO_STATUS_API = '/api/earth-studio/status';
 const EARTH_STUDIO_PLAN_API = '/api/earth-studio/plan';
 const EARTH_STUDIO_RENDER_API = '/api/earth-studio/render';
@@ -243,6 +247,7 @@ const projectImagePrompts = require('./project-image-prompts.js');
 const projectI2vPrompts = require('./project-i2v-prompts.js');
 const projectVideoReview = require('./project-video-review.js');
 const superFocus = require('./super-focus.js');
+const superFocusPrompts = require('./super-focus-prompts.js');
 // Super Focus keeps its own local, file-backed project state (never on VIDNAS).
 // Root is env-overridable so it can follow a different disk without code edits.
 const SUPER_FOCUS_ROOT = process.env.SUPER_FOCUS_ROOT || path.join(ROOT, 'super-focus-projects');
@@ -9707,6 +9712,106 @@ function createServer(options = {}) {
       return;
     }
 
+    // Generate a VIDTOOLZ topic via local Ollama (vidnux lane). Returns the text
+    // only; the operator explicitly Saves to persist it. No fallback to cloud.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_GENERATE_TOPIC_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus topic generation API' });
+          const id = payload.id || payload.project_id || '';
+          superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown project
+          const reqPrompt = superFocusPrompts.buildTopicRequest();
+          const content = await callOllamaChat(
+            { system: reqPrompt.system, user: reqPrompt.user, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL },
+            options
+          );
+          const topic = superFocusPrompts.cleanTopic(content);
+          if (!topic) { const e = new Error('Ollama returned an empty topic.'); e.statusCode = 502; throw e; }
+          sendJSON(res, 200, { topic, provider: 'ollama', provider_host: 'vidnux', model: OLLAMA_MODEL });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-topic-error'));
+      return;
+    }
+
+    // Generate a script from the SAVED title via local Ollama (vidnux lane).
+    // Returns text only; operator Saves to persist. Requires a saved title.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_GENERATE_SCRIPT_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus script generation API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          if (!state.title || !state.title.trim()) {
+            const e = new Error('Save a title first, then generate the script.'); e.statusCode = 400; throw e;
+          }
+          const reqPrompt = superFocusPrompts.buildScriptRequest(state.title);
+          const content = await callOllamaChat(
+            { system: reqPrompt.system, user: reqPrompt.user, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL },
+            options
+          );
+          const script = superFocusPrompts.cleanScript(content);
+          if (!script) { const e = new Error('Ollama returned an empty script.'); e.statusCode = 502; throw e; }
+          sendJSON(res, 200, { script, provider: 'ollama', provider_host: 'vidnux', model: OLLAMA_MODEL });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-script-error'));
+      return;
+    }
+
+    // Generate up to 100 image prompts from the SAVED script and persist them.
+    // Requires a saved script; 409 unless confirm_replace when prompts exist.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus image-prompts generation API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          if (!state.script || !state.script.trim()) {
+            const e = new Error('Save a script first, then create image prompts.'); e.statusCode = 400; throw e;
+          }
+          if (Array.isArray(state.image_prompts) && state.image_prompts.length > 0 && !payload.confirm_replace) {
+            const e = new Error(`${state.image_prompts.length} image prompt(s) already exist. Re-submit with confirm_replace to regenerate.`);
+            e.statusCode = 409; throw e;
+          }
+          const reqPrompt = superFocusPrompts.buildImagePromptsRequest(state.script, superFocusPrompts.IMAGE_PROMPT_MAX);
+          const content = await callOllamaChat(
+            { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL },
+            options
+          );
+          const prompts = superFocusPrompts.parsePromptArray(content, superFocusPrompts.IMAGE_PROMPT_MAX);
+          const saved = superFocus.saveImagePrompts(id, prompts, { root: sfRoot });
+          sendJSON(res, 200, { project: saved, count: saved.image_prompts.length, provider: 'ollama', provider_host: 'vidnux', model: OLLAMA_MODEL });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-image-prompts-error'));
+      return;
+    }
+
+    // Generate up to 30 infographic prompts from the SAVED script and persist.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus infographic-prompts generation API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          if (!state.script || !state.script.trim()) {
+            const e = new Error('Save a script first, then create infographic prompts.'); e.statusCode = 400; throw e;
+          }
+          if (Array.isArray(state.infographic_prompts) && state.infographic_prompts.length > 0 && !payload.confirm_replace) {
+            const e = new Error(`${state.infographic_prompts.length} infographic prompt(s) already exist. Re-submit with confirm_replace to regenerate.`);
+            e.statusCode = 409; throw e;
+          }
+          const reqPrompt = superFocusPrompts.buildInfographicPromptsRequest(state.script, superFocusPrompts.INFOGRAPHIC_PROMPT_MAX);
+          const content = await callOllamaChat(
+            { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL },
+            options
+          );
+          const prompts = superFocusPrompts.parsePromptArray(content, superFocusPrompts.INFOGRAPHIC_PROMPT_MAX);
+          const saved = superFocus.saveInfographicPrompts(id, prompts, { root: sfRoot });
+          sendJSON(res, 200, { project: saved, count: saved.infographic_prompts.length, provider: 'ollama', provider_host: 'vidnux', model: OLLAMA_MODEL });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-infographic-prompts-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === PROJECT_STATE_API) {
       try {
         const resolved = resolveAigenPackageDir(url.searchParams.get('package') || url.searchParams.get('package_id') || url.searchParams.get('id') || '', { root: serverOptions.root || ROOT });
@@ -11764,7 +11869,12 @@ module.exports = {
   SUPER_FOCUS_PROJECT_API,
   SUPER_FOCUS_TITLE_API,
   SUPER_FOCUS_SCRIPT_API,
+  SUPER_FOCUS_GENERATE_TOPIC_API,
+  SUPER_FOCUS_GENERATE_SCRIPT_API,
+  SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API,
+  SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API,
   superFocus,
+  superFocusPrompts,
   EARTH_STUDIO_STATUS_API,
   EARTH_STUDIO_PLAN_API,
   EARTH_STUDIO_RENDER_API,

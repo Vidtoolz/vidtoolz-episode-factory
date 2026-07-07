@@ -107,12 +107,13 @@ function emptyState(fields = {}) {
   };
 }
 
-// Furthest-evidence-wins stage inference, mirroring the aigen resolver's spirit
-// but limited to what Slice 1 tracks (title -> script). Later slices extend this.
+// Furthest-evidence-wins stage inference, mirroring the aigen resolver's spirit.
+// Extended per slice; still limited to the text spine (through image_prompts).
 function inferStage(state) {
   let stage = 'title';
   if (state.title && String(state.title).trim()) stage = 'title';
   if (state.script && String(state.script).trim()) stage = 'script';
+  if (Array.isArray(state.image_prompts) && state.image_prompts.length > 0) stage = 'image_prompts';
   return stage;
 }
 
@@ -226,6 +227,40 @@ function saveScript(projectId, script, options = {}) {
   return state;
 }
 
+// Store an "up to N" set of generated prompts as numbered, index-keyed records.
+// Empty entries are dropped (empty slots are never persisted). Existing per-row
+// image metadata (images/i2v/video) is intentionally not created here — Slice 2
+// only writes the prompt text; later slices attach media to each row.
+function normalizePromptRecords(texts) {
+  const records = [];
+  (Array.isArray(texts) ? texts : []).forEach((text) => {
+    const clean = typeof text === 'string' ? text.trim() : '';
+    if (!clean) return;
+    records.push({ index: records.length + 1, text: clean, status: 'saved' });
+  });
+  return records;
+}
+
+function saveImagePrompts(projectId, texts, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  state.image_prompts = normalizePromptRecords(texts);
+  state.stage = inferStage(state);
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
+function saveInfographicPrompts(projectId, texts, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  state.infographic_prompts = normalizePromptRecords(texts);
+  state.stage = inferStage(state);
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
 module.exports = {
   SCHEMA_VERSION,
   STATE_FILENAME,
@@ -242,4 +277,6 @@ module.exports = {
   listProjects,
   saveTitle,
   saveScript,
+  saveImagePrompts,
+  saveInfographicPrompts,
 };

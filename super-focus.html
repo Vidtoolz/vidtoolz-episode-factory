@@ -86,6 +86,19 @@
     .proj-list button { flex: 0 0 auto; }
     .empty { color: var(--muted); padding: 16px 0; }
     .later-note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .prompt-list { margin: 14px 0 0; padding-left: 0; list-style: none; counter-reset: p; }
+    .prompt-list li {
+      counter-increment: p; display: flex; gap: 10px; align-items: flex-start;
+      border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2);
+      padding: 10px 12px; margin-bottom: 8px;
+    }
+    .prompt-list li::before {
+      content: counter(p); flex: 0 0 34px; color: var(--muted); font-variant-numeric: tabular-nums;
+      font-size: 13px; text-align: right; padding-top: 2px;
+    }
+    .prompt-list .ptext { flex: 1; white-space: pre-wrap; }
+    .prompt-count { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .btn.busy { opacity: .6; cursor: progress; }
     .hidden { display: none; }
   </style>
 </head>
@@ -138,11 +151,11 @@
         <label for="title-input">Video title / topic</label>
         <input type="text" id="title-input" placeholder="Type a title, or generate one…" />
         <div class="row">
-          <button class="btn" id="title-generate" disabled title="Available in Slice 2 (local Ollama)">Generate a topic for VIDTOOLZ</button>
+          <button class="btn" id="title-generate">Generate a topic for VIDTOOLZ</button>
           <button class="btn primary" id="title-save">Save</button>
           <span class="save-state" id="title-status"></span>
         </div>
-        <div class="later-note">Topic generation (local Ollama on vidnux) arrives in Slice 2.</div>
+        <div class="later-note">Generate fills the box with a local-Ollama (vidnux) topic — click Save to keep it.</div>
       </div>
 
       <!-- 2. Script -->
@@ -152,17 +165,41 @@
         <label for="script-input">Spoken script (~3 minutes)</label>
         <textarea id="script-input" placeholder="Paste or write your script, or generate one…"></textarea>
         <div class="row">
-          <button class="btn" id="script-generate" disabled title="Available in Slice 2 (local Ollama)">Generate</button>
+          <button class="btn" id="script-generate">Generate</button>
           <button class="btn primary" id="script-save">Save</button>
           <span class="save-state" id="script-status"></span>
         </div>
-        <div class="later-note">Script generation (local Ollama on vidnux) arrives in Slice 2.</div>
+        <div class="later-note">Generate writes a local-Ollama (vidnux) script from the saved title — click Save to keep it.</div>
       </div>
 
-      <!-- 3-7. Later slices: shown so the linear shape is visible, honestly disabled -->
-      <div class="section disabled"><div class="step">Step 3</div><h2>Main image prompts</h2><div class="later">Up to 100 prompt rows — arrives in Slices 2–3.</div></div>
+      <!-- 3. Main image prompts -->
+      <div class="section">
+        <div class="step">Step 3</div>
+        <h2>Main image prompts</h2>
+        <div class="row">
+          <button class="btn" id="imgp-generate">Create image prompts based on the script</button>
+          <span class="save-state" id="imgp-status"></span>
+        </div>
+        <div class="later-note">Up to 100 prompts from the saved script (local Ollama on vidnux). Per-row edit / copy / save arrives in Slice 3.</div>
+        <ol class="prompt-list" id="imgp-list"></ol>
+      </div>
+
+      <!-- 4. Generated images (later slice) -->
       <div class="section disabled"><div class="step">Step 4</div><h2>Generated images</h2><div class="later">vidnux ComfyUI / FLUX — arrives in Slice 4 (after the media-bridge decision).</div></div>
-      <div class="section disabled"><div class="step">Step 5</div><h2>Infographic prompts</h2><div class="later">Up to 30 prompt rows — arrives in Slices 2–3.</div></div>
+
+      <!-- 5. Infographic prompts -->
+      <div class="section">
+        <div class="step">Step 5</div>
+        <h2>Infographic prompts</h2>
+        <div class="row">
+          <button class="btn" id="infp-generate">Create infographic prompts based on the script</button>
+          <span class="save-state" id="infp-status"></span>
+        </div>
+        <div class="later-note">Up to 30 still-infographic prompts from the saved script (local Ollama on vidnux). Per-row edit / copy / save arrives in Slice 3.</div>
+        <ol class="prompt-list" id="infp-list"></ol>
+      </div>
+
+      <!-- 6-7. Later slices -->
       <div class="section disabled"><div class="step">Step 6</div><h2>Image-to-video prompts</h2><div class="later">Per-image prompts (PRESTO Ollama lane) — arrives in Slice 5.</div></div>
       <div class="section disabled"><div class="step">Step 7</div><h2>Generated videos</h2><div class="later">PRESTO ComfyUI / Wan2.2 — arrives in Slice 6 (after the media-bridge decision).</div></div>
     </section>
@@ -174,6 +211,10 @@
     var PROJECT_API = '/api/super-focus/project';
     var TITLE_API = '/api/super-focus/title';
     var SCRIPT_API = '/api/super-focus/script';
+    var GEN_TOPIC_API = '/api/super-focus/generate-topic';
+    var GEN_SCRIPT_API = '/api/super-focus/generate-script';
+    var GEN_IMGP_API = '/api/super-focus/generate-image-prompts';
+    var GEN_INFP_API = '/api/super-focus/generate-infographic-prompts';
 
     var nonce = null;
     var nonceHeader = 'x-vidtoolz-local-write-nonce';
@@ -271,6 +312,19 @@
       });
     }
 
+    function renderPromptList(elId, records) {
+      var list = document.getElementById(elId);
+      list.innerHTML = '';
+      (records || []).forEach(function (rec) {
+        var li = document.createElement('li');
+        var span = document.createElement('span');
+        span.className = 'ptext';
+        span.textContent = rec.text || '';
+        li.appendChild(span);
+        list.appendChild(li);
+      });
+    }
+
     function openProject(proj) {
       currentId = proj.project_id;
       document.getElementById('proj-heading').textContent =
@@ -280,7 +334,31 @@
       document.getElementById('script-input').value = proj.script || '';
       setStatus(document.getElementById('title-status'), '');
       setStatus(document.getElementById('script-status'), '');
+      setStatus(document.getElementById('imgp-status'),
+        (proj.image_prompts && proj.image_prompts.length) ? (proj.image_prompts.length + ' saved') : '');
+      setStatus(document.getElementById('infp-status'),
+        (proj.infographic_prompts && proj.infographic_prompts.length) ? (proj.infographic_prompts.length + ' saved') : '');
+      renderPromptList('imgp-list', proj.image_prompts);
+      renderPromptList('infp-list', proj.infographic_prompts);
       show('project');
+    }
+
+    // Run a generate action with a busy state on its button; msgEl shows status.
+    function runGenerate(btn, statusEl, path, onData) {
+      if (!currentId) return;
+      btn.classList.add('busy'); btn.disabled = true;
+      setStatus(statusEl, 'Generating… (local Ollama on vidnux)');
+      apiPost(path, { id: currentId }).then(function (res) {
+        btn.classList.remove('busy'); btn.disabled = false;
+        if (!res.ok) {
+          setStatus(statusEl, (res.body && res.body.error) || 'Generation failed', true);
+          return;
+        }
+        onData(unwrap(res.body));
+      }).catch(function () {
+        btn.classList.remove('busy'); btn.disabled = false;
+        setStatus(statusEl, 'Generation failed', true);
+      });
     }
 
     // ---- Saves ----
@@ -305,6 +383,55 @@
         if (!res.ok) { setStatus(el, 'Save failed', true); return; }
         setStatus(el, 'Saved ✓', false);
       });
+    });
+
+    // ---- Generation (local Ollama, vidnux lane) ----
+    document.getElementById('title-generate').addEventListener('click', function () {
+      var btn = this, el = document.getElementById('title-status');
+      runGenerate(btn, el, GEN_TOPIC_API, function (data) {
+        document.getElementById('title-input').value = data.topic || '';
+        setStatus(el, 'Generated — click Save to keep it');
+      });
+    });
+
+    document.getElementById('script-generate').addEventListener('click', function () {
+      var btn = this, el = document.getElementById('script-status');
+      runGenerate(btn, el, GEN_SCRIPT_API, function (data) {
+        document.getElementById('script-input').value = data.script || '';
+        setStatus(el, 'Generated — click Save to keep it');
+      });
+    });
+
+    document.getElementById('imgp-generate').addEventListener('click', function () {
+      var btn = this, el = document.getElementById('imgp-status');
+      var existing = document.getElementById('imgp-list').children.length;
+      if (existing > 0 && !confirm('Replace the ' + existing + ' existing image prompts?')) return;
+      if (!currentId) return;
+      btn.classList.add('busy'); btn.disabled = true;
+      setStatus(el, 'Generating up to 100 prompts… (local Ollama on vidnux)');
+      apiPost(GEN_IMGP_API, { id: currentId, confirm_replace: existing > 0 }).then(function (res) {
+        btn.classList.remove('busy'); btn.disabled = false;
+        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Generation failed', true); return; }
+        var d = unwrap(res.body);
+        renderPromptList('imgp-list', d.project.image_prompts);
+        setStatus(el, d.count + ' prompts saved');
+      }).catch(function () { btn.classList.remove('busy'); btn.disabled = false; setStatus(el, 'Generation failed', true); });
+    });
+
+    document.getElementById('infp-generate').addEventListener('click', function () {
+      var btn = this, el = document.getElementById('infp-status');
+      var existing = document.getElementById('infp-list').children.length;
+      if (existing > 0 && !confirm('Replace the ' + existing + ' existing infographic prompts?')) return;
+      if (!currentId) return;
+      btn.classList.add('busy'); btn.disabled = true;
+      setStatus(el, 'Generating up to 30 prompts… (local Ollama on vidnux)');
+      apiPost(GEN_INFP_API, { id: currentId, confirm_replace: existing > 0 }).then(function (res) {
+        btn.classList.remove('busy'); btn.disabled = false;
+        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Generation failed', true); return; }
+        var d = unwrap(res.body);
+        renderPromptList('infp-list', d.project.infographic_prompts);
+        setStatus(el, d.count + ' prompts saved');
+      }).catch(function () { btn.classList.remove('busy'); btn.disabled = false; setStatus(el, 'Generation failed', true); });
     });
 
     goHome();
