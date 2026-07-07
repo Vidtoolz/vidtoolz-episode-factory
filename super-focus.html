@@ -114,6 +114,11 @@
     .prompt-row .pi2v .pi2v-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .prompt-row .pi2v .btn { padding: 6px 10px; font-size: 13px; }
     .prompt-row .pi2v .pi2v-stale { color: #e3b341; font-size: 12px; }
+    .prompt-row .pvid { grid-column: 1 / -1; margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--border); }
+    .prompt-row .pvid .pvid-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .prompt-row .pvid video { max-width: 160px; border-radius: 6px; border: 1px solid var(--border); display: block; margin-top: 6px; }
+    .prompt-row .pvid .pvid-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .prompt-row .pvid .btn { padding: 6px 10px; font-size: 13px; }
     .imggen-progress { margin-top: 10px; font-size: 14px; color: var(--muted); }
     .imggen-bar { height: 6px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--border); overflow: hidden; margin-top: 8px; }
     .imggen-fill { height: 100%; width: 0; background: var(--accent); transition: width .3s ease; }
@@ -231,9 +236,22 @@
         <div class="prompt-grid" id="infp-list"></div>
       </div>
 
-      <!-- 6-7. Later slices -->
-      <div class="section disabled"><div class="step">Step 6</div><h2>Image-to-video prompts</h2><div class="later">Per-image prompts (PRESTO Ollama lane) — arrives in Slice 5.</div></div>
-      <div class="section disabled"><div class="step">Step 7</div><h2>Generated videos</h2><div class="later">PRESTO ComfyUI / Wan2.2 — arrives in Slice 6 (after the media-bridge decision).</div></div>
+      <!-- 6. Image-to-video prompts live inline in each image row above (Create a video prompt). -->
+      <div class="section disabled"><div class="step">Step 6</div><h2>Image-to-video prompts</h2><div class="later">Each generated image above has its own “Create a video prompt” box (PRESTO Ollama lane).</div></div>
+
+      <!-- 7. Generated videos -->
+      <div class="section">
+        <div class="step">Step 7</div>
+        <h2>Generated videos</h2>
+        <div class="row">
+          <button class="btn primary" id="vidgen-generate">Generate videos for all ready images</button>
+          <button class="btn hidden" id="vidgen-cancel">Cancel</button>
+          <span class="save-state" id="vidgen-status"></span>
+        </div>
+        <div class="later-note">Runs PRESTO ComfyUI / Wan2.2 on rows that have BOTH a generated still and a saved image-to-video prompt. One clip at a time, slow (minutes each), resumes and skips finished clips. PRESTO must be running; it is never auto-started. Each clip appears next to its image above; or use the per-image “Generate video on PRESTO” button.</div>
+        <div class="imggen-progress hidden" id="vidgen-progress"></div>
+        <div class="imggen-bar hidden" id="vidgen-barwrap"><div class="imggen-fill" id="vidgen-fill"></div></div>
+      </div>
     </section>
   </div>
 
@@ -255,6 +273,11 @@
     var IMAGE_FILE_API = '/api/super-focus/image';
     var GEN_I2V_API = '/api/super-focus/generate-i2v-prompt';
     var I2V_SAVE_API = '/api/super-focus/i2v-prompt';
+    var GEN_VIDEOS_API = '/api/super-focus/generate-videos';
+    var VIDEOS_STATUS_API = '/api/super-focus/videos-status';
+    var VIDEOS_CANCEL_API = '/api/super-focus/videos-cancel';
+    var VIDEO_FILE_API = '/api/super-focus/video';
+    var videosPollTimer = null;
     var IMG_MAX = 100;
     var INF_MAX = 30;
     var imagesPollTimer = null;
@@ -299,7 +322,11 @@
       window.scrollTo(0, 0);
     }
 
-    function goHome() { if (typeof stopImagesPolling === 'function') stopImagesPolling(); currentId = null; show('landing'); }
+    function goHome() {
+      if (typeof stopImagesPolling === 'function') stopImagesPolling();
+      if (typeof stopVideosPolling === 'function') stopVideosPolling();
+      currentId = null; show('landing');
+    }
 
     function setStatus(el, msg, isErr) {
       el.textContent = msg;
@@ -411,6 +438,27 @@
       return wrap;
     }
 
+    // Per-image video block (PRESTO Wan2.2). Shows a per-row generate button and
+    // the staged clip once done; the batch button lives in Step 7.
+    function buildVideoBlock(index) {
+      var wrap = document.createElement('div'); wrap.className = 'pvid'; wrap.id = 'imgp-video-' + index;
+      var label = document.createElement('div'); label.className = 'pvid-label'; label.textContent = 'Video (PRESTO Wan2.2)';
+      var rowEl = document.createElement('div'); rowEl.className = 'pvid-row';
+      var genBtn = document.createElement('button'); genBtn.className = 'btn'; genBtn.textContent = 'Generate video on PRESTO';
+      var st = document.createElement('span'); st.className = 'prow-status';
+      genBtn.addEventListener('click', function () {
+        genBtn.classList.add('busy'); genBtn.disabled = true; setRowStatus(st, 'Starting on PRESTO…', '');
+        apiPost(GEN_VIDEOS_API, { id: currentId, indexes: [index] }).then(function (res) {
+          genBtn.classList.remove('busy'); genBtn.disabled = false;
+          if (!res.ok) { setRowStatus(st, (res.body && res.body.error) || 'failed', 'dirty'); return; }
+          setRowStatus(st, 'queued on PRESTO', 'ok'); startVideosPolling(); refreshVideosStatus();
+        }).catch(function () { genBtn.classList.remove('busy'); genBtn.disabled = false; setRowStatus(st, 'failed', 'dirty'); });
+      });
+      rowEl.appendChild(genBtn); rowEl.appendChild(st);
+      wrap.appendChild(label); wrap.appendChild(rowEl);
+      return wrap;
+    }
+
     // Build a fixed grid of `max` numbered, editable prompt slots pre-filled from
     // `records` (index-keyed). Empty slots are editable and can be saved too.
     // withThumb adds a per-row image container (id thumbPrefix + index).
@@ -454,6 +502,7 @@
             thumb.className = 'pthumb'; thumb.id = thumbPrefix + index;
             row.appendChild(thumb);
             row.appendChild(buildI2vBlock(index, rec));
+            row.appendChild(buildVideoBlock(index));
           }
           grid.appendChild(row);
         })(i);
@@ -481,9 +530,11 @@
       renderPromptGrid('infp-list', proj.infographic_prompts, INF_MAX, INFP_SAVE_API, false);
       updateStaleBanner('imgp-stale', proj.stale && proj.stale.image_prompts);
       updateStaleBanner('infp-stale', proj.stale && proj.stale.infographic_prompts);
-      stopImagesPolling();
+      stopImagesPolling(); stopVideosPolling();
       setStatus(document.getElementById('imggen-status'), '');
+      setStatus(document.getElementById('vidgen-status'), '');
       refreshImagesStatus(); // reconcile any already-generated images from disk
+      refreshVideosStatus(); // reconcile any already-generated videos from disk
       show('project');
     }
 
@@ -544,6 +595,59 @@
     }
     function stopImagesPolling() {
       if (imagesPollTimer) { clearInterval(imagesPollTimer); imagesPollTimer = null; }
+    }
+
+    // ---- Video generation (PRESTO Wan2.2) ----
+    function setVideo(index, row) {
+      var el = document.getElementById('imgp-video-' + index);
+      if (!el) return;
+      var st = el.querySelector('.prow-status');
+      if (row.status === 'done' && row.has_video) {
+        if (!el.querySelector('video')) {
+          var v = document.createElement('video');
+          v.controls = true; v.src = VIDEO_FILE_API + '?id=' + encodeURIComponent(currentId) + '&index=' + index;
+          el.appendChild(v);
+        }
+        if (st) setRowStatus(st, 'done', 'ok');
+      }
+    }
+
+    function applyVideosStatus(d) {
+      (d.videos || []).forEach(function (row) { setVideo(row.index, row); });
+      // job_is_this_project is true only when the ACTIVE PRESTO job is ours.
+      var active = Boolean(d.job_is_this_project);
+      var prog = document.getElementById('vidgen-progress');
+      var barwrap = document.getElementById('vidgen-barwrap');
+      var fill = document.getElementById('vidgen-fill');
+      var pct = d.total ? Math.round((d.done / d.total) * 100) : 0;
+      if (d.total > 0 && (active || d.done > 0)) {
+        prog.classList.remove('hidden'); barwrap.classList.remove('hidden');
+        fill.style.width = pct + '%';
+        prog.textContent = d.done + '/' + d.total + ' clips done' + (active ? ' · rendering on PRESTO… (slow)' : '');
+      } else {
+        prog.classList.add('hidden'); barwrap.classList.add('hidden');
+      }
+      document.getElementById('vidgen-cancel').classList.toggle('hidden', !active);
+      var genBtn = document.getElementById('vidgen-generate');
+      genBtn.disabled = active; genBtn.classList.toggle('busy', active);
+      return active;
+    }
+
+    function refreshVideosStatus() {
+      if (!currentId) return Promise.resolve();
+      return apiGet(VIDEOS_STATUS_API + '?id=' + encodeURIComponent(currentId)).then(function (res) {
+        if (!res.ok) return;
+        var active = applyVideosStatus(unwrap(res.body));
+        if (active && !videosPollTimer) startVideosPolling();
+        if (!active) stopVideosPolling();
+      });
+    }
+    function startVideosPolling() {
+      if (videosPollTimer) return;
+      videosPollTimer = setInterval(refreshVideosStatus, 5000);
+    }
+    function stopVideosPolling() {
+      if (videosPollTimer) { clearInterval(videosPollTimer); videosPollTimer = null; }
     }
 
     // Run a generate action with a busy state on its button; msgEl shows status.
@@ -665,6 +769,27 @@
       apiPost(IMAGES_CANCEL_API, { id: currentId }).then(function (res) {
         setStatus(el, res.ok ? 'Cancel signal sent' : 'Cancel failed', !res.ok);
         refreshImagesStatus();
+      });
+    });
+
+    document.getElementById('vidgen-generate').addEventListener('click', function () {
+      if (!currentId) return;
+      var el = document.getElementById('vidgen-status');
+      setStatus(el, 'Starting PRESTO Wan2.2 batch…');
+      apiPost(GEN_VIDEOS_API, { id: currentId }).then(function (res) {
+        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Could not start video generation', true); return; }
+        var d = unwrap(res.body);
+        setStatus(el, 'Batch started for ' + d.materialized_count + ' ready clip(s)');
+        startVideosPolling(); refreshVideosStatus();
+      }).catch(function () { setStatus(el, 'Could not start video generation', true); });
+    });
+
+    document.getElementById('vidgen-cancel').addEventListener('click', function () {
+      if (!currentId) return;
+      var el = document.getElementById('vidgen-status');
+      apiPost(VIDEOS_CANCEL_API, { id: currentId }).then(function (res) {
+        setStatus(el, res.ok ? 'Cancel signal sent' : 'Cancel failed', !res.ok);
+        refreshVideosStatus();
       });
     });
 

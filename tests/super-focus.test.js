@@ -897,3 +897,216 @@ test("i2v prompt builder + cleaner: includes script/image context, strips think/
   assert.match(req.user, /flux-001\.png/);
   assert.equal(sfPrompts.cleanI2vPrompt('<think>x</think>\n"Slow push-in,\nsteady."'), "Slow push-in, steady.");
 });
+
+// ==================== Slice 6: video generation (stubbed PRESTO Wan2.2) ====================
+
+const HQ_SUBDIR = "mp4-hq-720p"; // wan22_hq_720p_5s_no_lightx2v output_subdir
+
+// Fake run-production.py: reads selected-images.json, writes an MP4 per selection
+// (honoring --indexes), into videos/<profile subdir>/, then closes.
+function fakePrestoSpawn(opts = {}) {
+  return function () {
+    const args = arguments[1] || [];
+    const pkg = args[args.indexOf("--package") + 1];
+    const profile = args[args.indexOf("--profile") + 1];
+    const subdir = profile === "wan22_hq_720p_5s_no_lightx2v" ? "mp4-hq-720p" : "mp4";
+    const ixArg = args.indexOf("--indexes");
+    const only = ixArg >= 0 ? args[ixArg + 1].split(",").map(Number) : null;
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stderr = new EventEmitter(); child.pid = 7;
+    child.kill = function () { setImmediate(() => child.emit("close", null, "SIGTERM")); };
+    if (opts.hang) return child;
+    setImmediate(() => {
+      const sel = JSON.parse(fs.readFileSync(path.join(pkg, "selected-images.json"), "utf8")).selections;
+      const dir = path.join(pkg, "videos", subdir);
+      fs.mkdirSync(dir, { recursive: true });
+      sel.forEach((s) => {
+        if (only && only.indexOf(s.prompt_index) === -1) return;
+        fs.writeFileSync(path.join(dir, String(s.prompt_index).padStart(3, "0") + ".mp4"), Buffer.from([0, 0, 0, 0]));
+      });
+      child.emit("close", 0, null);
+    });
+    return child;
+  };
+}
+
+function videoServer(spawnImpl, opts = {}) {
+  packageEngineServer.PRESTO_STATE.activeJob = null;
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "Vid" }, { root });
+  const n = opts.promptCount || 2;
+  superFocus.saveScript(created.project_id, "s", { root });
+  superFocus.saveImagePrompts(created.project_id, Array.from({ length: n }, (_, i) => "p" + (i + 1)), { root });
+  const flux = path.join(mediaRoot, created.project_id, "images", "flux-local");
+  fs.mkdirSync(flux, { recursive: true });
+  const imageCount = opts.imageCount == null ? n : opts.imageCount;
+  for (let i = 1; i <= imageCount; i++) fs.writeFileSync(path.join(flux, "flux-" + String(i).padStart(3, "0") + ".png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  const i2vCount = opts.i2vCount == null ? n : opts.i2vCount;
+  for (let j = 1; j <= i2vCount; j++) superFocus.setI2vPrompt(created.project_id, j, "motion " + j, { root });
+  const server = packageEngineServer.createServer({
+    superFocusRoot: root, superFocusMediaRoot: mediaRoot,
+    productionScript: fakeScript(), pythonBin: "python3", spawn: spawnImpl,
+  });
+  return { server, root, mediaRoot, id: created.project_id };
+}
+
+test("generate-videos materializes selected-images + video-prompts and dispatches; clips reconcile done", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn());
+  await listen(server);
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(gen.statusCode, 200);
+    assert.equal(unwrap(gen).materialized_count, 2);
+    const sel = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "selected-images.json"), "utf8"));
+    assert.equal(sel.selections.length, 2);
+    assert.equal(sel.selections[0].selected_path, path.join("images", "flux-local", "flux-001.png"));
+    const vp = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "video-prompts.json"), "utf8"));
+    assert.equal(vp.prompt_type, "image_to_video");
+    assert.equal(vp.prompts[0].prompt, "motion 1");
+
+    await delay(40);
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(d.subdir, HQ_SUBDIR);
+    assert.equal(d.total, 2);
+    assert.equal(d.done, 2);
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("only rows with BOTH a still and an i2v prompt are video-eligible", async () => {
+  // 3 prompts, images for all 3, but i2v only for 2 -> 2 eligible.
+  const { server, id } = videoServer(fakePrestoSpawn(), { promptCount: 3, imageCount: 3, i2vCount: 2 });
+  await listen(server);
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(unwrap(gen).materialized_count, 2);
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("generate-videos returns 400 when no row is video-ready", async () => {
+  const { server, id } = videoServer(fakePrestoSpawn(), { i2vCount: 0 }); // images but no i2v
+  await listen(server);
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(gen.statusCode, 400);
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("per-image subset via indexes renders only the requested clip", async () => {
+  const { server, id } = videoServer(fakePrestoSpawn(), { promptCount: 3 });
+  await listen(server);
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, indexes: [2] },
+    });
+    assert.equal(gen.statusCode, 200);
+    assert.deepEqual(unwrap(gen).requested, [2]);
+    await delay(40);
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(d.total, 3);   // 3 eligible rows
+    assert.equal(d.done, 1);    // only index 2 was rendered
+    assert.equal(d.videos.find((v) => v.index === 2).status, "done");
+    assert.equal(d.videos.find((v) => v.index === 1).status, "pending");
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("a second video batch is refused while one is active (single PRESTO lock)", async () => {
+  const { server, id } = videoServer(fakePrestoSpawn({ hang: true }));
+  await listen(server);
+  try {
+    const first = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(first.statusCode, 200);
+    const second = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(second.statusCode, 409);
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("generate-videos is nonce-gated; video file endpoint serves mp4 and guards index/traversal", async () => {
+  const { server, id } = videoServer(fakePrestoSpawn());
+  await listen(server);
+  try {
+    const noNonce = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: { host: "127.0.0.1:8010" }, body: { id },
+    });
+    assert.equal(noNonce.statusCode, 403);
+
+    await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, { method: "POST", headers: writeHeaders(), body: { id } });
+    await delay(40);
+    const addr = server.address();
+    const raw = await new Promise((resolve) => {
+      http.get({ hostname: "127.0.0.1", port: addr.port, path: packageEngineServer.SUPER_FOCUS_VIDEO_FILE_API + "?id=" + encodeURIComponent(id) + "&index=1" }, (r) => {
+        const chunks = []; r.on("data", (c) => chunks.push(c)); r.on("end", () => resolve({ status: r.statusCode, type: r.headers["content-type"] }));
+      });
+    });
+    assert.equal(raw.status, 200);
+    assert.match(raw.type, /video\/mp4/);
+    const missing = await request(server, packageEngineServer.SUPER_FOCUS_VIDEO_FILE_API + "?id=" + encodeURIComponent(id) + "&index=99");
+    assert.equal(missing.statusCode, 404);
+    const bad = await request(server, packageEngineServer.SUPER_FOCUS_VIDEO_FILE_API + "?id=" + encodeURIComponent("../etc") + "&index=1");
+    assert.equal(bad.statusCode, 400);
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("videos-status reconciles from disk alone (survives restart)", async () => {
+  packageEngineServer.PRESTO_STATE.activeJob = null;
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn()); // 2 eligible rows, no job run
+  await listen(server);
+  try {
+    // Simulate a prior render's output for index 1 only.
+    const dir = path.join(mediaRoot, id, "videos", HQ_SUBDIR);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "001.mp4"), Buffer.from([0, 0, 0, 0]));
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(d.total, 2);
+    assert.equal(d.done, 1);
+  } finally {
+    await close(server);
+  }
+});
+
+test("video bridge unit: materialize shapes, eligibility filter, path guard", () => {
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "U" }, { root });
+  superFocus.saveImagePrompts(created.project_id, ["a", "b", "c"], { root });
+  const flux = path.join(mediaRoot, created.project_id, "images", "flux-local");
+  fs.mkdirSync(flux, { recursive: true });
+  fs.writeFileSync(path.join(flux, "flux-001.png"), Buffer.from([1])); // image only for row 1
+  superFocus.setI2vPrompt(created.project_id, 1, "motion one", { root });
+  superFocus.setI2vPrompt(created.project_id, 2, "motion two", { root }); // i2v only for row 2 (no image)
+  const state = superFocus.loadProject(created.project_id, { root });
+  const eligible = sfMedia.eligibleVideoRows(created.project_id, state.image_prompts, { mediaRoot });
+  assert.deepEqual(eligible.map((r) => r.index), [1]); // only row 1 has BOTH
+  const mat = sfMedia.materializeVideoInputs(created.project_id, state.image_prompts, { mediaRoot });
+  assert.deepEqual(mat.indexes, [1]);
+  assert.equal(sfMedia.safeVideoFilePath(created.project_id, "mp4-hq-720p", "0", { mediaRoot }), null);
+  assert.ok(sfMedia.safeVideoFilePath(created.project_id, "mp4-hq-720p", 1, { mediaRoot }).endsWith("videos/mp4-hq-720p/001.mp4"));
+});

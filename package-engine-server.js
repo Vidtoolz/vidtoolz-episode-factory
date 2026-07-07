@@ -114,6 +114,10 @@ const SUPER_FOCUS_IMAGES_CANCEL_API = '/api/super-focus/images-cancel';
 const SUPER_FOCUS_IMAGE_FILE_API = '/api/super-focus/image';
 const SUPER_FOCUS_GENERATE_I2V_PROMPT_API = '/api/super-focus/generate-i2v-prompt';
 const SUPER_FOCUS_I2V_PROMPT_API = '/api/super-focus/i2v-prompt';
+const SUPER_FOCUS_GENERATE_VIDEOS_API = '/api/super-focus/generate-videos';
+const SUPER_FOCUS_VIDEOS_STATUS_API = '/api/super-focus/videos-status';
+const SUPER_FOCUS_VIDEOS_CANCEL_API = '/api/super-focus/videos-cancel';
+const SUPER_FOCUS_VIDEO_FILE_API = '/api/super-focus/video';
 const EARTH_STUDIO_STATUS_API = '/api/earth-studio/status';
 const EARTH_STUDIO_PLAN_API = '/api/earth-studio/plan';
 const EARTH_STUDIO_RENDER_API = '/api/earth-studio/render';
@@ -7073,16 +7077,33 @@ function startPrestoPackageJob(payload = {}, options = {}) {
     throw error;
   }
   const config = validatePrestoSubmitPayload(payload, options);
+  return launchPrestoProductionJob({
+    productionScript: config.productionScript,
+    pythonBin: config.pythonBin,
+    packageArg: config.packageId,
+    packageId: config.packageId,
+    profile: config.profile,
+    comfyuiUrl: config.comfyuiUrl,
+  }, payload, options);
+}
+
+// Shared PRESTO Wan2.2 spawn + job tracking. Callers MUST check
+// currentPrestoJobStatus() first (single-GPU lock). config.packageArg is the
+// literal --package value (absolute dir for Super Focus, or a script-packages
+// id for the aigen lane). Sets PRESTO_STATE.activeJob.
+function launchPrestoProductionJob(config, payload = {}, options = {}) {
   // Default must clear the HQ profile's per-clip runtime with real margin:
   // measured HQ render = 54m51s, so 3600 left only ~5 min of headroom and a
   // slow clip would be killed at minute 60 after wasting the whole render.
-  const prestoTimeoutSeconds = Number(process.env.AIGEN_PRESTO_TIMEOUT_SECONDS) > 0
-    ? Math.floor(Number(process.env.AIGEN_PRESTO_TIMEOUT_SECONDS))
-    : 5400;
+  const prestoTimeoutSeconds = Number(config.timeoutSeconds) > 0
+    ? Math.floor(Number(config.timeoutSeconds))
+    : (Number(process.env.AIGEN_PRESTO_TIMEOUT_SECONDS) > 0
+      ? Math.floor(Number(process.env.AIGEN_PRESTO_TIMEOUT_SECONDS))
+      : 5400);
   const args = [
     config.productionScript,
     '--package',
-    config.packageId,
+    config.packageArg,
     '--profile',
     config.profile,
     '--comfyui-url',
@@ -7090,6 +7111,10 @@ function startPrestoPackageJob(payload = {}, options = {}) {
     '--timeout',
     String(prestoTimeoutSeconds),
   ];
+  if (Array.isArray(config.indexes) && config.indexes.length) {
+    args.push('--indexes', config.indexes.join(','));
+  }
+  if (Number(config.limit) > 0) args.push('--limit', String(config.limit));
   const genEnv = workflowGenerationEnv(payload);
   const spawnFn = options.spawn || childProcess.spawn;
   const child = spawnFn(config.pythonBin, args, {
@@ -7100,6 +7125,7 @@ function startPrestoPackageJob(payload = {}, options = {}) {
   const job = {
     process: child,
     packageId: config.packageId,
+    lane: config.lane || 'aigen',
     comfyuiUrl: config.comfyuiUrl,
     profile: config.profile,
     workflowPath: genEnv.workflowPath,
@@ -7136,6 +7162,37 @@ function startPrestoPackageJob(payload = {}, options = {}) {
     comfyui_url: config.comfyuiUrl,
     profile: config.profile,
   };
+}
+
+// Start a Super Focus video batch: dispatch run-production.py against the
+// project's VIDNAS media dir (which already holds the stills + materialized
+// selected-images.json / video-prompts.json). Reuses the single PRESTO lock.
+// No PRESTO auto-start; a dead worker surfaces as the caller's 503.
+function startSuperFocusVideoJob(mediaDir, options = {}) {
+  const current = currentPrestoJobStatus();
+  if (current.active) {
+    const error = new Error('A PRESTO video job is already running. Wait for it to finish.');
+    error.statusCode = 409;
+    error.active = current.active;
+    throw error;
+  }
+  const productionScript = options.productionScript || process.env.SUPER_FOCUS_PRODUCTION_SCRIPT || PRESTO_STATE.productionScript;
+  if (!fs.existsSync(productionScript)) {
+    const error = new Error(`PRESTO run-production.py not found: ${productionScript}`);
+    error.statusCode = 500;
+    throw error;
+  }
+  return launchPrestoProductionJob({
+    productionScript,
+    pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN || 'python3',
+    packageArg: mediaDir,
+    packageId: options.projectId || mediaDir,
+    profile: normalizePrestoProfile(options.profile),
+    comfyuiUrl: options.comfyuiUrl || PRESTO_STATE.defaultUrl,
+    indexes: options.indexes,
+    limit: options.limit,
+    lane: 'super-focus',
+  }, options.payload || {}, options);
 }
 
 function cancelPrestoJob(options = {}) {
@@ -10029,6 +10086,101 @@ function createServer(options = {}) {
       return;
     }
 
+    // Start a supervised video batch on PRESTO (Wan2.2). Materializes
+    // selected-images.json + video-prompts.json for the eligible rows (still on
+    // disk + i2v prompt), then dispatches run-production.py. Optional indexes[]
+    // restricts it to specific rows (per-image). Reuses the single PRESTO lock.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_GENERATE_VIDEOS_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus video generation API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          const materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, { mediaRoot: sfMediaRoot });
+          if (materialized.count === 0) {
+            const e = new Error('No video-ready rows. Each video needs a generated still AND a saved image-to-video prompt.'); e.statusCode = 400; throw e;
+          }
+          // Optional per-image subset: keep only requested indexes that are eligible.
+          let indexes;
+          if (Array.isArray(payload.indexes) && payload.indexes.length) {
+            const wanted = payload.indexes.map((n) => Math.round(Number(n)));
+            indexes = materialized.indexes.filter((i) => wanted.includes(i));
+            if (indexes.length === 0) { const e = new Error('None of the requested rows are video-ready.'); e.statusCode = 400; throw e; }
+          }
+          const job = startSuperFocusVideoJob(materialized.mediaDir, {
+            projectId: id,
+            profile: DEFAULT_PRESTO_PROFILE,
+            comfyuiUrl: PRESTO_BASE_URL,
+            indexes,
+            spawn: options.spawn,
+            productionScript: options.productionScript,
+            pythonBin: options.pythonBin,
+            payload,
+          });
+          sendJSON(res, 200, {
+            job,
+            materialized_count: materialized.count,
+            requested: indexes || materialized.indexes,
+            media_dir: materialized.mediaDir,
+            subdir: PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4',
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-videos-error'));
+      return;
+    }
+
+    // Read-only: reconcile per-index video state from disk + PRESTO job status.
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_VIDEOS_STATUS_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+        const state = superFocus.loadProject(id, { root: sfRoot });
+        const subdir = PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4';
+        const recon = superFocusMedia.reconcileVideos(id, state.image_prompts, subdir, { mediaRoot: sfMediaRoot });
+        const presto = currentPrestoJobStatus();
+        const active = presto.active || null;
+        sendJSON(res, 200, {
+          project_id: id,
+          presto_job: active || presto.completed || null,
+          job_is_this_project: Boolean(active && active.package_id === id),
+          subdir,
+          total: recon.total,
+          done: recon.done,
+          videos: recon.videos,
+        });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-videos-status-error');
+      }
+      return;
+    }
+
+    // Cancel the active PRESTO job (nonce-gated). The lock is global.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_VIDEOS_CANCEL_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus video cancel API' });
+          const result = await cancelPrestoJob(options);
+          sendJSON(res, 200, result);
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-videos-cancel-error'));
+      return;
+    }
+
+    // Serve one staged MP4 from the project's media dir (path-guarded).
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_VIDEO_FILE_API) {
+      try {
+        const id = url.searchParams.get('id') || '';
+        superFocus.assertValidProjectId(id);
+        const subdir = PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4';
+        const filePath = superFocusMedia.safeVideoFilePath(id, subdir, url.searchParams.get('index'), { mediaRoot: sfMediaRoot });
+        if (!filePath || !fs.existsSync(filePath)) { sendError(res, 404, 'Video not found.', 'super-focus-video-missing'); return; }
+        res.writeHead(200, { 'Content-Type': 'video/mp4', 'Cache-Control': 'no-store' });
+        fs.createReadStream(filePath).pipe(res);
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-video-error');
+      }
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === PROJECT_STATE_API) {
       try {
         const resolved = resolveAigenPackageDir(url.searchParams.get('package') || url.searchParams.get('package_id') || url.searchParams.get('id') || '', { root: serverOptions.root || ROOT });
@@ -12098,11 +12250,17 @@ module.exports = {
   SUPER_FOCUS_IMAGE_FILE_API,
   SUPER_FOCUS_GENERATE_I2V_PROMPT_API,
   SUPER_FOCUS_I2V_PROMPT_API,
+  SUPER_FOCUS_GENERATE_VIDEOS_API,
+  SUPER_FOCUS_VIDEOS_STATUS_API,
+  SUPER_FOCUS_VIDEOS_CANCEL_API,
+  SUPER_FOCUS_VIDEO_FILE_API,
   superFocus,
   superFocusPrompts,
   superFocusMedia,
   startSuperFocusImageJob,
+  startSuperFocusVideoJob,
   launchFluxHandoffJob,
+  launchPrestoProductionJob,
   EARTH_STUDIO_STATUS_API,
   EARTH_STUDIO_PLAN_API,
   EARTH_STUDIO_RENDER_API,

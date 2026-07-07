@@ -143,9 +143,88 @@ function safeImageFilePath(projectId, index, options = {}) {
   return filePath;
 }
 
+// ── Video (PRESTO Wan2.2) ────────────────────────────────────────────────────
+
+const SELECTED_IMAGES_FILENAME = 'selected-images.json';
+const VIDEO_PROMPTS_FILENAME = 'video-prompts.json';
+
+function videoFileName(index) {
+  return `${String(index).padStart(3, '0')}.mp4`;
+}
+
+function videosDir(mediaDir, subdir) {
+  return path.join(mediaDir, 'videos', subdir || 'mp4');
+}
+
+function videoFilePath(mediaDir, subdir, index) {
+  return path.join(videosDir(mediaDir, subdir), videoFileName(index));
+}
+
+// A row is video-eligible only when it has BOTH a generated still on disk AND a
+// saved i2v motion prompt. Returns the eligible rows (with the still's rel path).
+function eligibleVideoRows(projectId, imagePrompts, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  return (Array.isArray(imagePrompts) ? imagePrompts : []).filter((p) => {
+    const hasImage = fs.existsSync(imageFilePath(mediaDir, p.index));
+    const hasI2v = p.i2v_prompt && typeof p.i2v_prompt.text === 'string' && p.i2v_prompt.text.trim();
+    return hasImage && hasI2v;
+  });
+}
+
+// Write selected-images.json + video-prompts.json for run-production.py from the
+// eligible rows (still on disk + i2v prompt). Returns the eligible indexes.
+function materializeVideoInputs(projectId, imagePrompts, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  const eligible = eligibleVideoRows(projectId, imagePrompts, options);
+  const selections = eligible.map((p) => ({
+    prompt_index: p.index,
+    index: p.index,
+    selected_source: 'flux-local',
+    selected_path: path.join('images', 'flux-local', imageFileName(p.index)),
+    label: `flux-${String(p.index).padStart(3, '0')}`,
+  }));
+  const prompts = eligible.map((p) => ({ prompt_index: p.index, prompt: p.i2v_prompt.text.trim() }));
+  const writeJson = (name, data) => {
+    const outPath = path.join(mediaDir, name);
+    const tmp = `${outPath}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
+    fs.renameSync(tmp, outPath);
+  };
+  fs.mkdirSync(mediaDir, { recursive: true });
+  writeJson(SELECTED_IMAGES_FILENAME, { version: 1, selections });
+  writeJson(VIDEO_PROMPTS_FILENAME, { version: 1, prompt_type: 'image_to_video', prompts });
+  return { mediaDir, count: selections.length, indexes: selections.map((s) => s.prompt_index) };
+}
+
+// Reconcile per-index video state from disk (the staged MP4 files win).
+function reconcileVideos(projectId, imagePrompts, subdir, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  const eligible = eligibleVideoRows(projectId, imagePrompts, options);
+  let done = 0;
+  const videos = eligible.map((p) => {
+    const fileExists = fs.existsSync(videoFilePath(mediaDir, subdir, p.index));
+    if (fileExists) done += 1;
+    return { index: p.index, status: fileExists ? 'done' : 'pending', has_video: fileExists };
+  });
+  return { media_dir: mediaDir, subdir: subdir || 'mp4', total: videos.length, done, videos };
+}
+
+function safeVideoFilePath(projectId, subdir, index, options = {}) {
+  const idx = Math.round(Number(index));
+  if (!Number.isFinite(idx) || idx < 1) return null;
+  const safeSub = String(subdir || 'mp4').replace(/[^a-zA-Z0-9._-]/g, '');
+  const dir = path.resolve(videosDir(mediaDirFor(projectId, options), safeSub));
+  const filePath = path.resolve(path.join(dir, videoFileName(idx)));
+  if (filePath !== path.join(dir, videoFileName(idx))) return null;
+  if (!filePath.startsWith(dir + path.sep)) return null;
+  return filePath;
+}
+
 module.exports = {
   IMAGE_PROMPTS_FILENAME,
   FLUX_MANIFEST_FILENAME,
+  SELECTED_IMAGES_FILENAME,
+  VIDEO_PROMPTS_FILENAME,
   resolveMediaRoot,
   mediaDirFor,
   fluxImagesDir,
@@ -157,4 +236,11 @@ module.exports = {
   readFluxManifest,
   reconcileImages,
   safeImageFilePath,
+  videoFileName,
+  videosDir,
+  videoFilePath,
+  eligibleVideoRows,
+  materializeVideoInputs,
+  reconcileVideos,
+  safeVideoFilePath,
 };
