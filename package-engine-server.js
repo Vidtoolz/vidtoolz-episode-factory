@@ -267,6 +267,19 @@ const SUPER_FOCUS_ROOT = process.env.SUPER_FOCUS_ROOT || path.join(ROOT, 'super-
 // Generated media (media-only) lives on VIDNAS under a dedicated Super Focus
 // namespace, separate from aigen script-packages. Env-overridable.
 const SUPER_FOCUS_MEDIA_ROOT = process.env.SUPER_FOCUS_MEDIA_ROOT || path.join(VIDNAS_AIGEN_ROOT, 'super-focus');
+
+// Validate an optional operator-supplied count/limit for Super Focus. Absent
+// (undefined/null/'') returns `fallback`; otherwise it must be an integer 1..max.
+function validateSuperFocusCount(value, max, label = 'count') {
+  if (value === undefined || value === null || value === '') return max;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1 || n > max) {
+    const e = new Error(`${label} must be an integer between 1 and ${max}.`);
+    e.statusCode = 400;
+    throw e;
+  }
+  return n;
+}
 const OLLAMA_PRESTO_BASE_URL = mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT);
 const OLLAMA_PRESTO_MODEL = mediaRouting.resolveModel(mediaRouting.LANE.I2V_PROMPT);
 
@@ -9888,12 +9901,14 @@ function createServer(options = {}) {
             const e = new Error(`${state.image_prompts.length} image prompt(s) already exist. Re-submit with confirm_replace to regenerate.`);
             e.statusCode = 409; throw e;
           }
-          const reqPrompt = superFocusPrompts.buildImagePromptsRequest(state.script, superFocusPrompts.IMAGE_PROMPT_MAX);
+          // Operator-chosen count (1..MAX); absent keeps the historical up-to-MAX behavior.
+          const count = validateSuperFocusCount(payload.count, superFocusPrompts.IMAGE_PROMPT_MAX, 'count');
+          const reqPrompt = superFocusPrompts.buildImagePromptsRequest(state.script, count);
           const content = await callOllamaChat(
             { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL },
             options
           );
-          const prompts = superFocusPrompts.parsePromptArray(content, superFocusPrompts.IMAGE_PROMPT_MAX);
+          const prompts = superFocusPrompts.parsePromptArray(content, count);
           const saved = superFocus.saveImagePrompts(id, prompts, { root: sfRoot });
           sendJSON(res, 200, { project: saved, count: saved.image_prompts.length, provider: 'ollama', provider_host: 'vidnux', model: OLLAMA_MODEL });
         })
@@ -9915,12 +9930,13 @@ function createServer(options = {}) {
             const e = new Error(`${state.infographic_prompts.length} infographic prompt(s) already exist. Re-submit with confirm_replace to regenerate.`);
             e.statusCode = 409; throw e;
           }
-          const reqPrompt = superFocusPrompts.buildInfographicPromptsRequest(state.script, superFocusPrompts.INFOGRAPHIC_PROMPT_MAX);
+          const count = validateSuperFocusCount(payload.count, superFocusPrompts.INFOGRAPHIC_PROMPT_MAX, 'count');
+          const reqPrompt = superFocusPrompts.buildInfographicPromptsRequest(state.script, count);
           const content = await callOllamaChat(
             { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL },
             options
           );
-          const prompts = superFocusPrompts.parsePromptArray(content, superFocusPrompts.INFOGRAPHIC_PROMPT_MAX);
+          const prompts = superFocusPrompts.parsePromptArray(content, count);
           const saved = superFocus.saveInfographicPrompts(id, prompts, { root: sfRoot });
           sendJSON(res, 200, { project: saved, count: saved.infographic_prompts.length, provider: 'ollama', provider_host: 'vidnux', model: OLLAMA_MODEL });
         })
@@ -9974,8 +9990,17 @@ function createServer(options = {}) {
             e.statusCode = 503; throw e;
           }
           const materialized = superFocusMedia.materializeImagePrompts(id, state.image_prompts, { mediaRoot: sfMediaRoot });
+          // "Images to generate": generate/resume only the first N saved prompts
+          // (run-handoff.py --limit takes prompts[:N]); absent = all prompts.
+          const limit = payload.limit === undefined || payload.limit === null || payload.limit === ''
+            ? 0
+            : validateSuperFocusCount(payload.limit, superFocusPrompts.IMAGE_PROMPT_MAX, 'limit');
+          const totalPrompts = materialized.count;
+          const willGenerate = limit > 0 ? Math.min(limit, totalPrompts) : totalPrompts;
+          const remaining = Math.max(0, totalPrompts - willGenerate);
           const job = startSuperFocusImageJob(materialized.mediaDir, {
             projectId: id,
+            limit,
             skipExisting: payload.skip_existing !== false,
             dryRun: Boolean(payload.dry_run),
             spawn: options.spawn,
@@ -9986,7 +10011,14 @@ function createServer(options = {}) {
             pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN,
             payload,
           });
-          sendJSON(res, 200, { job, materialized_count: materialized.count, media_dir: materialized.mediaDir });
+          sendJSON(res, 200, {
+            job,
+            materialized_count: materialized.count,
+            limit: limit || null,
+            will_generate: willGenerate,
+            remaining_ungenerated: remaining,
+            media_dir: materialized.mediaDir,
+          });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-images-error'));
       return;
@@ -12273,6 +12305,7 @@ module.exports = {
   superFocus,
   superFocusPrompts,
   superFocusMedia,
+  validateSuperFocusCount,
   startSuperFocusImageJob,
   startSuperFocusVideoJob,
   launchFluxHandoffJob,

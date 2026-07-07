@@ -1187,3 +1187,162 @@ test("images-status reports busy_elsewhere when the FLUX lock is held by another
     packageEngineServer.FLUX_STATE.activeJob = null;
   }
 });
+
+// ==================== Slice 8: rehearsal friction fixes ====================
+
+test("validateSuperFocusCount: blank -> max; 1..max ok; out-of-range/non-int -> 400", () => {
+  const V = packageEngineServer.validateSuperFocusCount;
+  assert.equal(V(undefined, 100), 100);
+  assert.equal(V("", 100), 100);
+  assert.equal(V(5, 100), 5);
+  assert.equal(V("8", 100), 8);
+  assert.throws(() => V(0, 100), (e) => e.statusCode === 400);
+  assert.throws(() => V(101, 100), (e) => e.statusCode === 400);
+  assert.throws(() => V(2.5, 100), (e) => e.statusCode === 400);
+  assert.equal(V(7, 30), 7); // within a smaller max (infographic lane)
+  assert.throws(() => V(31, 30), (e) => e.statusCode === 400 && /1 and 30/.test(e.message));
+});
+
+test("generate-image-prompts honors count: 5 requested -> 5 persisted even if model returns more", async () => {
+  const fake = fakeOllama(jsonArray(50, "S")); // model returns 50
+  const { server, id } = await makeProjectServer(fake, { script: "a real script" });
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 5 },
+    });
+    assert.equal(gen.statusCode, 200);
+    assert.equal(unwrap(gen).count, 5);
+    const reload = unwrap(await request(
+      server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(id))).project;
+    assert.equal(reload.image_prompts.length, 5);
+  } finally { await close(server); }
+});
+
+test("generate-image-prompts rejects out-of-range count (400)", async () => {
+  const { server, id } = await makeProjectServer(fakeOllama(jsonArray(10, "S")), { script: "s" });
+  try {
+    for (const bad of [0, 101]) {
+      const r = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+        method: "POST", headers: writeHeaders(), body: { id, count: bad },
+      });
+      assert.equal(r.statusCode, 400);
+    }
+  } finally { await close(server); }
+});
+
+test("generate-image-prompts still gates re-run with 409 (confirm_replace) under count control", async () => {
+  const { server, id } = await makeProjectServer(fakeOllama(jsonArray(10, "S")), { script: "s" });
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 4 } });
+    const conflict = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 4 } });
+    assert.equal(conflict.statusCode, 409);
+    const ok = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 4, confirm_replace: true } });
+    assert.equal(ok.statusCode, 200);
+  } finally { await close(server); }
+});
+
+test("generate-infographic-prompts honors count (default max when absent)", async () => {
+  const { server, id } = await makeProjectServer(fakeOllama(jsonArray(20, "I")), { script: "s" });
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 6 } });
+    assert.equal(unwrap(gen).count, 6);
+    // confirm_replace to pass the "already exists" gate and reach count validation.
+    const bad = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 31, confirm_replace: true } });
+    assert.equal(bad.statusCode, 400);
+  } finally { await close(server); }
+});
+
+// A FLUX spawn spy that records args and honors --limit (writes only first N PNGs).
+function spyFluxSpawn() {
+  const calls = [];
+  const fn = function () {
+    const args = arguments[1] || [];
+    calls.push(args);
+    const pkg = args[args.indexOf("--package") + 1];
+    const li = args.indexOf("--limit");
+    const limit = li >= 0 ? Number(args[li + 1]) : 0;
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stderr = new EventEmitter(); child.pid = 99;
+    child.kill = function () { setImmediate(() => child.emit("close", null, "SIGTERM")); };
+    setImmediate(() => {
+      const pj = JSON.parse(fs.readFileSync(path.join(pkg, "image-prompts.json"), "utf8"));
+      const dir = path.join(pkg, "images", "flux-local"); fs.mkdirSync(dir, { recursive: true });
+      let picked = pj.image_prompts;
+      if (limit > 0) picked = picked.slice(0, limit);
+      const items = picked.map((p) => {
+        fs.writeFileSync(path.join(dir, "flux-" + String(p.index).padStart(3, "0") + ".png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+        return { prompt_index: p.index, status: "complete", output_path: "images/flux-local/flux-" + String(p.index).padStart(3, "0") + ".png" };
+      });
+      fs.writeFileSync(path.join(pkg, "flux-generation-manifest.json"), JSON.stringify({ items }));
+      child.emit("close", 0, null);
+    });
+    return child;
+  };
+  return { fn, calls };
+}
+
+test("generate-images limit: dispatches --limit N and only the first N prompts render", async () => {
+  const spy = spyFluxSpawn();
+  const { server, id } = imageServer(spy.fn, { promptCount: 5 }); // 5 saved prompts
+  await listen(server);
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id, limit: 2 },
+    });
+    assert.equal(gen.statusCode, 200);
+    const d = unwrap(gen);
+    assert.equal(d.will_generate, 2);
+    assert.equal(d.remaining_ungenerated, 3);
+    // run-handoff.py received --limit 2
+    const args = spy.calls[0];
+    assert.ok(args.includes("--limit") && args[args.indexOf("--limit") + 1] === "2");
+    assert.ok(args.includes("--skip-existing"));
+    await delay(40);
+    const st = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_IMAGES_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(st.total, 5);
+    assert.equal(st.done, 2); // only first 2 generated; no manual row clearing needed
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("generate-images rejects out-of-range limit (400)", async () => {
+  const { server, id } = imageServer(fakeFluxSpawn(), { promptCount: 3 });
+  await listen(server);
+  try {
+    for (const bad of [0, 101]) {
+      const r = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+        method: "POST", headers: writeHeaders(), body: { id, limit: bad } });
+      assert.equal(r.statusCode, 400);
+    }
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("unknown /api/super-focus route returns 404 (the signal the UI maps to a restart message)", async () => {
+  const server = packageEngineServer.createServer({ superFocusRoot: mkRoot() });
+  await listen(server);
+  try {
+    const res = await request(server, "/api/super-focus/does-not-exist");
+    assert.equal(res.statusCode, 404);
+  } finally { await close(server); }
+});
+
+test("image prompt template hardening: exact count + no-text/no-people/background-plate constraints", () => {
+  const req = sfPrompts.buildImagePromptsRequest("SCRIPT", 8);
+  assert.match(req.user, /create exactly 8 distinct vertical background image prompts/i);
+  assert.match(req.user, /background-plate style/i);
+  assert.match(req.user, /lower-right/i);
+  assert.match(req.user, /no readable text, no fake text, no garbled letters/i);
+  assert.match(req.user, /no presenter, no human, no host/i);
+  assert.match(req.user, /no screenshots or mock-ups of real or fake software UIs/i);
+  assert.match(req.user, /Return exactly 8 strings/);
+});

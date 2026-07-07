@@ -15,9 +15,9 @@ A project is one linear sheet, in order:
 
 1. **Title** — type one, or **Generate a topic for VIDTOOLZ** (local Ollama). Save to keep.
 2. **Script / voiceover** — write one, or **Generate** from the saved title (local Ollama). Save to keep.
-3. **Main image prompts** — up to 100, generated from the saved script; each row is editable with Copy / Save changes.
-4. **Generated images** — batch generate from the prompts (vidnux ComfyUI / FLUX); thumbnails appear inline per row.
-5. **Infographic prompts** — up to 30 still-infographic prompts from the script (prompt-only).
+3. **Main image prompts** — choose a **Prompt count** (1–100, default 8) and generate from the saved script; all 100 slots stay editable (Copy / Save changes). Prompts are background-plate style: no text, no people, clean lower-right space for a presenter overlay.
+4. **Generated images** — set **Images to generate** (1–100, default 3) and generate/resume the first N saved prompts (vidnux ComfyUI / FLUX, `--skip-existing`); thumbnails appear inline per row. No need to clear rows to scope a small run.
+5. **Infographic prompts** — choose a **Prompt count** (1–30, default 6) still-infographic prompts from the script (prompt-only).
 6. **Image-to-video prompts** — one per generated image (**Create a video prompt**, PRESTO Ollama lane).
 7. **Generated videos** — batch or per-image (PRESTO ComfyUI / Wan2.2); clips appear inline per row.
 
@@ -85,6 +85,20 @@ items, so it is safe to re-run to resume.
 - `POST /generate-images`, `GET /images-status?id=`, `POST /images-cancel`, `GET /image?id=&index=`
 - `POST /generate-i2v-prompt`, `POST /i2v-prompt`
 - `POST /generate-videos` (optional `indexes[]`), `GET /videos-status?id=`, `POST /videos-cancel`, `GET /video?id=&index=`
+
+## After a deploy: restart the cockpit
+
+The page HTML is served from disk, but the API routes are compiled into the
+running server process. After updating the code, restart the cockpit so the new
+routes are live:
+
+```sh
+systemctl --user restart vidtoolz-cockpit.service
+```
+
+If the page is newer than the running backend, Super Focus detects the resulting
+404/405 and shows a visible banner with this exact command (instead of a generic
+failure alert).
 
 ## Boundaries and limitations
 

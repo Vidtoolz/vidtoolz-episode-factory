@@ -78,24 +78,25 @@ function promptArraySchema() {
 function buildImagePromptsRequest(script, count) {
   const n = clampCount(count, IMAGE_PROMPT_MAX);
   const user = [
-    `Based on this script, create ${n} distinct vertical background image prompts for an AI-native video production systems YouTube Short.`,
+    `Based on this script, create exactly ${n} distinct vertical background image prompts for an AI-native video production systems YouTube Short.`,
     '',
     'Script:',
     String(script || '').trim(),
     '',
+    'These are BACKGROUND PLATES that sit behind a presenter overlay added later.',
+    '',
     'Requirements:',
     '- 1080x1920 vertical composition implied',
-    '- visually varied',
-    '- useful behind a presenter',
-    '- no text-heavy poster designs unless explicitly needed',
-    '- no fake screenshots of real tools',
-    '- no copyrighted characters',
-    '- no copyrighted logos',
+    '- background-plate style; leave clean, uncluttered space in the lower-right for a presenter overlay',
+    '- visually varied across the set',
+    '- no readable text, no fake text, no garbled letters, no lettering of any kind',
+    '- no screenshots or mock-ups of real or fake software UIs',
+    '- no presenter, no human, no host, no influencer, no editor figure, no camera operator, no people at all',
+    '- no copyrighted characters or logos',
     '- no claims of real evidence',
-    '- clear visual metaphor or scene',
-    '- suitable for local image generation',
-    '- each prompt should be specific enough for FLUX',
-    '- each prompt should be different from the others',
+    '- prefer visual metaphors, objects, rooms, machines, timelines, gates, pipelines, abstract systems',
+    '- each prompt a clear single scene, specific enough for FLUX',
+    '- each prompt different from the others',
     '',
     'Return strict JSON:',
     '[',
@@ -103,7 +104,7 @@ function buildImagePromptsRequest(script, count) {
     '  "prompt 2"',
     ']',
     '',
-    `Return up to ${n} strings and no commentary.`,
+    `Return exactly ${n} strings and no commentary.`,
   ].join('\n');
   return { system: PROMPTS_SYSTEM, user, schema: promptArraySchema() };
 }
@@ -111,7 +112,7 @@ function buildImagePromptsRequest(script, count) {
 function buildInfographicPromptsRequest(script, count) {
   const n = clampCount(count, INFOGRAPHIC_PROMPT_MAX);
   const user = [
-    `Based on this script, create ${n} infographic image prompts.`,
+    `Based on this script, create exactly ${n} infographic image prompts.`,
     '',
     'Script:',
     String(script || '').trim(),
@@ -120,14 +121,15 @@ function buildInfographicPromptsRequest(script, count) {
     '- explain concepts visually',
     '- clean editorial design',
     '- suitable as background or cutaway graphics',
-    '- no tiny unreadable text',
-    '- no fake UI screenshots',
+    '- no readable text, no fake text, no garbled letters',
+    '- no screenshots or mock-ups of real or fake software UIs',
+    '- no people (no presenter, host, or editor figure)',
     '- no copyrighted logos',
     '- no unsupported factual claims',
     '- each prompt should describe the infographic clearly',
     '- suitable for local image generation',
     '',
-    `Return a strict JSON array of up to ${n} strings and no commentary.`,
+    `Return a strict JSON array of exactly ${n} strings and no commentary.`,
   ].join('\n');
   return { system: PROMPTS_SYSTEM, user, schema: promptArraySchema() };
 }
