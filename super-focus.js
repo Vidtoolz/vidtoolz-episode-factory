@@ -1,0 +1,245 @@
+'use strict';
+
+// Super Focus — standalone, local-first, file-backed project model.
+//
+// Slice 1 scope: project folder + one versioned state JSON per project, plus
+// title/script persistence and a live directory-scan listing. No generation,
+// no network, no VIDNAS. Media (later slices) is referenced by path only;
+// binaries are never stored in the JSON.
+//
+// Deliberately dependency-free and separate from the aigen "project" resolver
+// (project-state-resolver.js) and the package-runs model. Each Super Focus
+// project is a self-describing folder that owns a single super-focus.json.
+
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+
+const SCHEMA_VERSION = 1;
+const STATE_FILENAME = 'super-focus.json';
+
+// Linear production stages, in order. Slice 1 only actively writes title/script;
+// the later stages are scaffolded so downstream slices extend without migration.
+const STAGES = [
+  'title',
+  'script',
+  'image_prompts',
+  'images',
+  'infographic_prompts',
+  'i2v_prompts',
+  'videos',
+];
+
+const APPROVAL_KEYS = [
+  'title',
+  'script',
+  'image_prompts',
+  'images',
+  'infographic_prompts',
+  'i2v_prompts',
+  'videos',
+];
+
+// Project ids are folder names; keep them strictly filesystem- and URL-safe so a
+// caller-supplied id can never escape the projects root.
+const PROJECT_ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function resolveRoot(options = {}) {
+  if (options && options.root) return options.root;
+  if (process.env.SUPER_FOCUS_ROOT) return process.env.SUPER_FOCUS_ROOT;
+  return path.join(__dirname, 'super-focus-projects');
+}
+
+function slugify(text) {
+  const base = String(text || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+    .replace(/-+$/g, '');
+  return base || 'untitled';
+}
+
+function shortId() {
+  return crypto.randomBytes(4).toString('hex');
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function assertValidProjectId(projectId) {
+  const id = String(projectId || '').trim();
+  if (!id || !PROJECT_ID_RE.test(id)) {
+    const error = new Error('Invalid Super Focus project id.');
+    error.statusCode = 400;
+    throw error;
+  }
+  return id;
+}
+
+function emptyApproval() {
+  const approval = {};
+  for (const key of APPROVAL_KEYS) approval[key] = 'draft';
+  return approval;
+}
+
+function emptyState(fields = {}) {
+  const created = fields.created_at || nowIso();
+  return {
+    schema_version: SCHEMA_VERSION,
+    project_id: fields.project_id || '',
+    slug: fields.slug || '',
+    title: typeof fields.title === 'string' ? fields.title : '',
+    script: typeof fields.script === 'string' ? fields.script : '',
+    stage: 'title',
+    approval: emptyApproval(),
+    // Scaffolded for later slices; empty slots are not persisted individually.
+    image_prompts: [],
+    infographic_prompts: [],
+    jobs: [],
+    // Staleness scaffold: later slices set flags here when upstream text changes
+    // (mark stale, never delete downstream, require explicit regeneration).
+    stale: {},
+    created_at: created,
+    updated_at: fields.updated_at || created,
+  };
+}
+
+// Furthest-evidence-wins stage inference, mirroring the aigen resolver's spirit
+// but limited to what Slice 1 tracks (title -> script). Later slices extend this.
+function inferStage(state) {
+  let stage = 'title';
+  if (state.title && String(state.title).trim()) stage = 'title';
+  if (state.script && String(state.script).trim()) stage = 'script';
+  return stage;
+}
+
+function stateDir(projectId, options) {
+  return path.join(resolveRoot(options), assertValidProjectId(projectId));
+}
+
+function statePath(projectId, options) {
+  return path.join(stateDir(projectId, options), STATE_FILENAME);
+}
+
+function writeStateAtomic(dir, state) {
+  fs.mkdirSync(dir, { recursive: true });
+  const outPath = path.join(dir, STATE_FILENAME);
+  const tmp = `${outPath}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmp, outPath);
+  return outPath;
+}
+
+function readStateDir(dir) {
+  const file = path.join(dir, STATE_FILENAME);
+  const raw = fs.readFileSync(file, 'utf8');
+  const parsed = JSON.parse(raw);
+  // Normalize so missing/older fields never crash a reader.
+  return Object.assign(emptyState(), parsed, {
+    approval: Object.assign(emptyApproval(), parsed.approval || {}),
+  });
+}
+
+function createProject(input = {}, options = {}) {
+  const title = typeof input.title === 'string' ? input.title : '';
+  const slug = slugify(title || 'untitled-video');
+  const projectId = `${slug}-${shortId()}`;
+  const created = nowIso();
+  const state = emptyState({
+    project_id: projectId,
+    slug,
+    title,
+    created_at: created,
+    updated_at: created,
+  });
+  state.stage = inferStage(state);
+  const dir = path.join(resolveRoot(options), projectId);
+  if (fs.existsSync(dir)) {
+    const error = new Error('Super Focus project id collision.');
+    error.statusCode = 409;
+    throw error;
+  }
+  writeStateAtomic(dir, state);
+  return state;
+}
+
+function loadProject(projectId, options = {}) {
+  const dir = stateDir(projectId, options);
+  if (!fs.existsSync(path.join(dir, STATE_FILENAME))) {
+    const error = new Error('Super Focus project not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+  return readStateDir(dir);
+}
+
+function listProjects(options = {}) {
+  const root = resolveRoot(options);
+  if (!fs.existsSync(root)) return [];
+  const entries = fs.readdirSync(root, { withFileTypes: true });
+  const projects = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    if (!PROJECT_ID_RE.test(entry.name)) continue;
+    const file = path.join(root, entry.name, STATE_FILENAME);
+    if (!fs.existsSync(file)) continue;
+    let state;
+    try {
+      state = readStateDir(path.join(root, entry.name));
+    } catch (err) {
+      continue; // Skip unreadable/corrupt project rather than fail the whole list.
+    }
+    projects.push({
+      project_id: state.project_id || entry.name,
+      slug: state.slug || '',
+      title: state.title || '',
+      stage: state.stage || 'title',
+      created_at: state.created_at || '',
+      updated_at: state.updated_at || '',
+    });
+  }
+  projects.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
+  return projects;
+}
+
+function saveTitle(projectId, title, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  state.title = typeof title === 'string' ? title : '';
+  state.slug = state.slug || slugify(state.title || 'untitled-video');
+  state.stage = inferStage(state);
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
+function saveScript(projectId, script, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  state.script = typeof script === 'string' ? script : '';
+  state.stage = inferStage(state);
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
+module.exports = {
+  SCHEMA_VERSION,
+  STATE_FILENAME,
+  STAGES,
+  APPROVAL_KEYS,
+  PROJECT_ID_RE,
+  resolveRoot,
+  slugify,
+  assertValidProjectId,
+  emptyState,
+  inferStage,
+  createProject,
+  loadProject,
+  listProjects,
+  saveTitle,
+  saveScript,
+};

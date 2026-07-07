@@ -4,6 +4,9 @@
 # Ad hoc downloaded media/document samples
 /test-fixtures/internet-downloads/
 
+# Super Focus local, file-backed project state (never committed; never on VIDNAS)
+/super-focus-projects/
+
 # Dependencies
 node_modules/
 

@@ -98,6 +98,10 @@ const PROJECT_VIDEO_VARIANTS_API = '/api/project/video-variants';
 const PROJECT_MEDIA_KIT_API = '/api/project/media-kit';
 const PROJECT_YOUTUBE_DRAFT_API = '/api/project/youtube-draft';
 const PROJECT_YOUTUBE_DRAFT_SAVE_API = '/api/project/youtube-draft/save';
+const SUPER_FOCUS_PROJECTS_API = '/api/super-focus/projects';
+const SUPER_FOCUS_PROJECT_API = '/api/super-focus/project';
+const SUPER_FOCUS_TITLE_API = '/api/super-focus/title';
+const SUPER_FOCUS_SCRIPT_API = '/api/super-focus/script';
 const EARTH_STUDIO_STATUS_API = '/api/earth-studio/status';
 const EARTH_STUDIO_PLAN_API = '/api/earth-studio/plan';
 const EARTH_STUDIO_RENDER_API = '/api/earth-studio/render';
@@ -238,6 +242,10 @@ const projectScript = require('./project-script.js');
 const projectImagePrompts = require('./project-image-prompts.js');
 const projectI2vPrompts = require('./project-i2v-prompts.js');
 const projectVideoReview = require('./project-video-review.js');
+const superFocus = require('./super-focus.js');
+// Super Focus keeps its own local, file-backed project state (never on VIDNAS).
+// Root is env-overridable so it can follow a different disk without code edits.
+const SUPER_FOCUS_ROOT = process.env.SUPER_FOCUS_ROOT || path.join(ROOT, 'super-focus-projects');
 const OLLAMA_PRESTO_BASE_URL = mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT);
 const OLLAMA_PRESTO_MODEL = mediaRouting.resolveModel(mediaRouting.LANE.I2V_PROMPT);
 
@@ -9636,6 +9644,69 @@ function createServer(options = {}) {
     }
 
     // Read-only single-project state: resolver + next task + media index.
+    // ---- Super Focus: standalone, local, file-backed minimal production view ----
+    // State lives locally (never VIDNAS). No generation happens here in Slice 1;
+    // create/list/load/save-title/save-script only. All writes are nonce-gated.
+    const sfRoot = serverOptions.superFocusRoot || SUPER_FOCUS_ROOT;
+
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_PROJECTS_API) {
+      try {
+        sendJSON(res, 200, { projects: superFocus.listProjects({ root: sfRoot }) });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-list-error');
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_PROJECTS_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus project create API' });
+          const state = superFocus.createProject(
+            { title: typeof payload.title === 'string' ? payload.title : '' },
+            { root: sfRoot }
+          );
+          sendJSON(res, 200, { project: state });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-create-error'));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_PROJECT_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+        const state = superFocus.loadProject(id, { root: sfRoot });
+        sendJSON(res, 200, { project: state });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-load-error');
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_TITLE_API) {
+      readJsonBody(req, 1024 * 256)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus title save API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.saveTitle(id, payload.title, { root: sfRoot });
+          sendJSON(res, 200, { project: state });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-title-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_SCRIPT_API) {
+      readJsonBody(req, 1024 * 256)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus script save API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.saveScript(id, payload.script, { root: sfRoot });
+          sendJSON(res, 200, { project: state });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-script-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === PROJECT_STATE_API) {
       try {
         const resolved = resolveAigenPackageDir(url.searchParams.get('package') || url.searchParams.get('package_id') || url.searchParams.get('id') || '', { root: serverOptions.root || ROOT });
@@ -11689,6 +11760,11 @@ module.exports = {
   PROJECT_MEDIA_KIT_API,
   PROJECT_YOUTUBE_DRAFT_API,
   PROJECT_YOUTUBE_DRAFT_SAVE_API,
+  SUPER_FOCUS_PROJECTS_API,
+  SUPER_FOCUS_PROJECT_API,
+  SUPER_FOCUS_TITLE_API,
+  SUPER_FOCUS_SCRIPT_API,
+  superFocus,
   EARTH_STUDIO_STATUS_API,
   EARTH_STUDIO_PLAN_API,
   EARTH_STUDIO_RENDER_API,

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Super Focus — VIDTOOLZ</title>
+  <style>
+    :root {
+      --bg: #0e1116;
+      --panel: #161b22;
+      --panel-2: #1d232c;
+      --border: #2b333d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #2f81f7;
+      --accent-ink: #ffffff;
+      --ok: #2ea043;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 80px; }
+    .brand { font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+    h1 { font-size: 30px; margin: 6px 0 4px; }
+    .sub { color: var(--muted); margin: 0 0 32px; }
+
+    /* Landing: exactly two large options */
+    .landing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 640px) { .landing-grid { grid-template-columns: 1fr; } }
+    .big-box {
+      appearance: none; text-align: left; cursor: pointer;
+      background: var(--panel); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 32px 26px; min-height: 180px;
+      display: flex; flex-direction: column; justify-content: center; gap: 10px;
+      transition: border-color .15s ease, transform .05s ease, background .15s ease;
+    }
+    .big-box:hover { border-color: var(--accent); background: var(--panel-2); }
+    .big-box:active { transform: translateY(1px); }
+    .big-box .icon { font-size: 34px; }
+    .big-box .label { font-size: 20px; font-weight: 600; }
+    .big-box .hint { color: var(--muted); font-size: 14px; }
+
+    /* Sections / form */
+    .section {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px 22px; margin: 0 0 18px;
+    }
+    .section h2 { margin: 0 0 4px; font-size: 18px; }
+    .section .step { color: var(--muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+    .section.disabled { opacity: .55; }
+    .section.disabled .later { color: var(--muted); font-size: 13px; margin-top: 8px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+    input[type="text"], textarea {
+      width: 100%; background: var(--panel-2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px;
+      font: inherit; resize: vertical;
+    }
+    textarea { min-height: 220px; }
+    input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+    button.btn {
+      appearance: none; cursor: pointer; font: inherit; font-weight: 600;
+      border-radius: 8px; padding: 10px 16px; border: 1px solid var(--border);
+      background: var(--panel-2); color: var(--text);
+    }
+    button.btn:hover:not(:disabled) { border-color: var(--accent); }
+    button.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+    button.btn:disabled { cursor: not-allowed; opacity: .5; }
+    .save-state { color: var(--ok); font-size: 13px; min-height: 18px; }
+    .save-state.err { color: #f85149; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; gap: 12px; }
+    .link-btn { background: none; border: none; color: var(--accent); cursor: pointer; font: inherit; padding: 0; }
+    .proj-list { list-style: none; margin: 0; padding: 0; }
+    .proj-list li {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px;
+      background: var(--panel-2);
+    }
+    .proj-list .meta { color: var(--muted); font-size: 13px; }
+    .proj-list button { flex: 0 0 auto; }
+    .empty { color: var(--muted); padding: 16px 0; }
+    .later-note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">VIDTOOLZ · Super Focus</div>
+
+    <!-- LANDING -->
+    <section id="view-landing">
+      <h1>Super Focus</h1>
+      <p class="sub">One video, one straight line: idea → script → images → video. Nothing else.</p>
+      <div class="landing-grid">
+        <button class="big-box" id="btn-create">
+          <span class="icon">➕</span>
+          <span class="label">Create a new video project</span>
+          <span class="hint">Start a fresh Super Focus project from a blank title.</span>
+        </button>
+        <button class="big-box" id="btn-open">
+          <span class="icon">📂</span>
+          <span class="label">Open an existing video project</span>
+          <span class="hint">Pick up a saved Super Focus project where you left off.</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- OPEN / LIST -->
+    <section id="view-open" class="hidden">
+      <div class="topbar">
+        <h1 style="font-size:22px;margin:0;">Open a project</h1>
+        <button class="link-btn" data-home>← Back</button>
+      </div>
+      <ul class="proj-list" id="proj-list"></ul>
+      <p class="empty hidden" id="proj-empty">No Super Focus projects yet. Go back and create one.</p>
+    </section>
+
+    <!-- PROJECT FORM -->
+    <section id="view-project" class="hidden">
+      <div class="topbar">
+        <div>
+          <h1 style="font-size:22px;margin:0;" id="proj-heading">New video project</h1>
+          <div class="meta" id="proj-id" style="color:var(--muted);font-size:12px;"></div>
+        </div>
+        <button class="link-btn" data-home>← Back</button>
+      </div>
+
+      <!-- 1. Title -->
+      <div class="section">
+        <div class="step">Step 1</div>
+        <h2>Title</h2>
+        <label for="title-input">Video title / topic</label>
+        <input type="text" id="title-input" placeholder="Type a title, or generate one…" />
+        <div class="row">
+          <button class="btn" id="title-generate" disabled title="Available in Slice 2 (local Ollama)">Generate a topic for VIDTOOLZ</button>
+          <button class="btn primary" id="title-save">Save</button>
+          <span class="save-state" id="title-status"></span>
+        </div>
+        <div class="later-note">Topic generation (local Ollama on vidnux) arrives in Slice 2.</div>
+      </div>
+
+      <!-- 2. Script -->
+      <div class="section">
+        <div class="step">Step 2</div>
+        <h2>Script / voiceover</h2>
+        <label for="script-input">Spoken script (~3 minutes)</label>
+        <textarea id="script-input" placeholder="Paste or write your script, or generate one…"></textarea>
+        <div class="row">
+          <button class="btn" id="script-generate" disabled title="Available in Slice 2 (local Ollama)">Generate</button>
+          <button class="btn primary" id="script-save">Save</button>
+          <span class="save-state" id="script-status"></span>
+        </div>
+        <div class="later-note">Script generation (local Ollama on vidnux) arrives in Slice 2.</div>
+      </div>
+
+      <!-- 3-7. Later slices: shown so the linear shape is visible, honestly disabled -->
+      <div class="section disabled"><div class="step">Step 3</div><h2>Main image prompts</h2><div class="later">Up to 100 prompt rows — arrives in Slices 2–3.</div></div>
+      <div class="section disabled"><div class="step">Step 4</div><h2>Generated images</h2><div class="later">vidnux ComfyUI / FLUX — arrives in Slice 4 (after the media-bridge decision).</div></div>
+      <div class="section disabled"><div class="step">Step 5</div><h2>Infographic prompts</h2><div class="later">Up to 30 prompt rows — arrives in Slices 2–3.</div></div>
+      <div class="section disabled"><div class="step">Step 6</div><h2>Image-to-video prompts</h2><div class="later">Per-image prompts (PRESTO Ollama lane) — arrives in Slice 5.</div></div>
+      <div class="section disabled"><div class="step">Step 7</div><h2>Generated videos</h2><div class="later">PRESTO ComfyUI / Wan2.2 — arrives in Slice 6 (after the media-bridge decision).</div></div>
+    </section>
+  </div>
+
+  <script>
+    var STATUS_API = '/api/package-engine/status';
+    var PROJECTS_API = '/api/super-focus/projects';
+    var PROJECT_API = '/api/super-focus/project';
+    var TITLE_API = '/api/super-focus/title';
+    var SCRIPT_API = '/api/super-focus/script';
+
+    var nonce = null;
+    var nonceHeader = 'x-vidtoolz-local-write-nonce';
+    var currentId = null;
+
+    function unwrap(body) { return (body && body.data) ? body.data : body; }
+
+    function ensureNonce() {
+      if (nonce) return Promise.resolve(nonce);
+      return fetch(STATUS_API, { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.json(); })
+        .then(function (p) {
+          var d = unwrap(p);
+          nonce = d.localWriteNonce || (p && p.localWriteNonce);
+          nonceHeader = d.nonceHeader || (p && p.nonceHeader) || nonceHeader;
+          return nonce;
+        });
+    }
+
+    function apiGet(path) {
+      return fetch(path, { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); });
+    }
+
+    function apiPost(path, payload) {
+      return ensureNonce().then(function (n) {
+        var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        headers[nonceHeader] = n;
+        var body = Object.assign({}, payload, { localWriteNonce: n });
+        return fetch(path, { method: 'POST', headers: headers, body: JSON.stringify(body) })
+          .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); });
+      });
+    }
+
+    function show(view) {
+      ['landing', 'open', 'project'].forEach(function (v) {
+        document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
+      });
+      window.scrollTo(0, 0);
+    }
+
+    function goHome() { currentId = null; show('landing'); }
+
+    function setStatus(el, msg, isErr) {
+      el.textContent = msg;
+      el.classList.toggle('err', !!isErr);
+    }
+
+    // ---- Create ----
+    document.getElementById('btn-create').addEventListener('click', function () {
+      apiPost(PROJECTS_API, { title: '' }).then(function (res) {
+        if (!res.ok) { alert('Could not create project: ' + ((res.body && res.body.error) || 'error')); return; }
+        var proj = unwrap(res.body).project;
+        openProject(proj);
+      });
+    });
+
+    // ---- Open list ----
+    document.getElementById('btn-open').addEventListener('click', function () {
+      apiGet(PROJECTS_API).then(function (res) {
+        var list = document.getElementById('proj-list');
+        var empty = document.getElementById('proj-empty');
+        list.innerHTML = '';
+        var projects = res.ok ? (unwrap(res.body).projects || []) : [];
+        empty.classList.toggle('hidden', projects.length > 0);
+        projects.forEach(function (p) {
+          var li = document.createElement('li');
+          var left = document.createElement('div');
+          var title = document.createElement('div');
+          title.textContent = p.title && p.title.trim() ? p.title : '(untitled)';
+          title.style.fontWeight = '600';
+          var meta = document.createElement('div');
+          meta.className = 'meta';
+          meta.textContent = 'stage: ' + p.stage + ' · updated ' + (p.updated_at || '').slice(0, 16).replace('T', ' ');
+          left.appendChild(title); left.appendChild(meta);
+          var btn = document.createElement('button');
+          btn.className = 'btn';
+          btn.textContent = 'Open →';
+          btn.addEventListener('click', function () { loadProject(p.project_id); });
+          li.appendChild(left); li.appendChild(btn);
+          list.appendChild(li);
+        });
+        show('open');
+      });
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-home]'), function (b) {
+      b.addEventListener('click', goHome);
+    });
+
+    function loadProject(id) {
+      apiGet(PROJECT_API + '?id=' + encodeURIComponent(id)).then(function (res) {
+        if (!res.ok) { alert('Could not open project.'); return; }
+        openProject(unwrap(res.body).project);
+      });
+    }
+
+    function openProject(proj) {
+      currentId = proj.project_id;
+      document.getElementById('proj-heading').textContent =
+        (proj.title && proj.title.trim()) ? proj.title : 'New video project';
+      document.getElementById('proj-id').textContent = proj.project_id;
+      document.getElementById('title-input').value = proj.title || '';
+      document.getElementById('script-input').value = proj.script || '';
+      setStatus(document.getElementById('title-status'), '');
+      setStatus(document.getElementById('script-status'), '');
+      show('project');
+    }
+
+    // ---- Saves ----
+    document.getElementById('title-save').addEventListener('click', function () {
+      if (!currentId) return;
+      var val = document.getElementById('title-input').value;
+      apiPost(TITLE_API, { id: currentId, title: val }).then(function (res) {
+        var el = document.getElementById('title-status');
+        if (!res.ok) { setStatus(el, 'Save failed', true); return; }
+        var proj = unwrap(res.body).project;
+        document.getElementById('proj-heading').textContent =
+          (proj.title && proj.title.trim()) ? proj.title : 'New video project';
+        setStatus(el, 'Saved ✓', false);
+      });
+    });
+
+    document.getElementById('script-save').addEventListener('click', function () {
+      if (!currentId) return;
+      var val = document.getElementById('script-input').value;
+      apiPost(SCRIPT_API, { id: currentId, script: val }).then(function (res) {
+        var el = document.getElementById('script-status');
+        if (!res.ok) { setStatus(el, 'Save failed', true); return; }
+        setStatus(el, 'Saved ✓', false);
+      });
+    });
+
+    goHome();
+  </script>
+</body>
+</html>
