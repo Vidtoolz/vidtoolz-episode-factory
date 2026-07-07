@@ -39,7 +39,7 @@
       "endpoint_env": ["OLLAMA_PRESTO_URL", "OLLAMA_PRESTO_BASE_URL"],
       "endpoint_default": "http://192.168.50.187:11434",
       "model_env": "OLLAMA_PRESTO_MODEL",
-      "model_default": "qwen3:14b",
+      "model_default": "vidtoolz-presto:latest",
       "operator_text": "I2V prompts: local Ollama on PRESTO",
       "manual_copy_allowed": true
     },
