@@ -108,6 +108,12 @@
     .prompt-row .pthumb img { max-width: 120px; border-radius: 6px; border: 1px solid var(--border); display: block; }
     .prompt-row .pthumb .thumb-note { font-size: 12px; color: var(--muted); }
     .prompt-row .pthumb .thumb-note.err { color: #f85149; }
+    .prompt-row .pi2v { grid-column: 1 / -1; margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--border); }
+    .prompt-row .pi2v .pi2v-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .prompt-row .pi2v textarea { min-height: 40px; margin: 0 0 6px; }
+    .prompt-row .pi2v .pi2v-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .prompt-row .pi2v .btn { padding: 6px 10px; font-size: 13px; }
+    .prompt-row .pi2v .pi2v-stale { color: #e3b341; font-size: 12px; }
     .imggen-progress { margin-top: 10px; font-size: 14px; color: var(--muted); }
     .imggen-bar { height: 6px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--border); overflow: hidden; margin-top: 8px; }
     .imggen-fill { height: 100%; width: 0; background: var(--accent); transition: width .3s ease; }
@@ -247,6 +253,8 @@
     var IMAGES_STATUS_API = '/api/super-focus/images-status';
     var IMAGES_CANCEL_API = '/api/super-focus/images-cancel';
     var IMAGE_FILE_API = '/api/super-focus/image';
+    var GEN_I2V_API = '/api/super-focus/generate-i2v-prompt';
+    var I2V_SAVE_API = '/api/super-focus/i2v-prompt';
     var IMG_MAX = 100;
     var INF_MAX = 30;
     var imagesPollTimer = null;
@@ -364,6 +372,45 @@
       el.className = 'prow-status' + (cls ? ' ' + cls : '');
     }
 
+    // Per-image image-to-video prompt block (PRESTO Ollama lane).
+    function buildI2vBlock(index, rec) {
+      var i2v = rec && rec.i2v_prompt ? rec.i2v_prompt : null;
+      var wrap = document.createElement('div'); wrap.className = 'pi2v';
+      var label = document.createElement('div'); label.className = 'pi2v-label'; label.textContent = 'Image-to-video prompt';
+      var ta = document.createElement('textarea'); ta.value = i2v && i2v.text ? i2v.text : ''; ta.setAttribute('aria-label', 'I2V prompt ' + index);
+      var rowEl = document.createElement('div'); rowEl.className = 'pi2v-row';
+      var genBtn = document.createElement('button'); genBtn.className = 'btn'; genBtn.textContent = 'Create a video prompt';
+      var copyBtn = document.createElement('button'); copyBtn.className = 'btn'; copyBtn.textContent = 'Copy';
+      var saveBtn = document.createElement('button'); saveBtn.className = 'btn primary'; saveBtn.textContent = 'Save changes';
+      var st = document.createElement('span'); st.className = 'prow-status';
+      if (i2v && i2v.text) { st.textContent = i2v.stale ? 'stale' : (i2v.status === 'generated' ? 'generated' : 'saved'); st.classList.add(i2v.stale ? 'dirty' : 'ok'); }
+      var stale = document.createElement('span'); stale.className = 'pi2v-stale';
+      stale.textContent = (i2v && i2v.stale) ? '⚠ image prompt changed since this was written' : '';
+      genBtn.addEventListener('click', function () {
+        genBtn.classList.add('busy'); genBtn.disabled = true; setRowStatus(st, 'Generating… (PRESTO Ollama)', '');
+        apiPost(GEN_I2V_API, { id: currentId, index: index }).then(function (res) {
+          genBtn.classList.remove('busy'); genBtn.disabled = false;
+          if (!res.ok) { setRowStatus(st, (res.body && res.body.error) || 'failed', 'dirty'); return; }
+          var proj = unwrap(res.body).project;
+          var r = (proj.image_prompts || []).find(function (x) { return x.index === index; });
+          ta.value = r && r.i2v_prompt ? r.i2v_prompt.text : '';
+          setRowStatus(st, 'generated', 'ok'); stale.textContent = '';
+        }).catch(function () { genBtn.classList.remove('busy'); genBtn.disabled = false; setRowStatus(st, 'failed', 'dirty'); });
+      });
+      copyBtn.addEventListener('click', function () { copyText(ta.value, st); });
+      saveBtn.addEventListener('click', function () {
+        saveBtn.disabled = true;
+        apiPost(I2V_SAVE_API, { id: currentId, index: index, text: ta.value }).then(function (res) {
+          saveBtn.disabled = false;
+          if (!res.ok) { setRowStatus(st, 'Save failed', 'dirty'); return; }
+          setRowStatus(st, 'Saved ✓', 'ok'); stale.textContent = '';
+        }).catch(function () { saveBtn.disabled = false; setRowStatus(st, 'Save failed', 'dirty'); });
+      });
+      rowEl.appendChild(genBtn); rowEl.appendChild(copyBtn); rowEl.appendChild(saveBtn); rowEl.appendChild(st); rowEl.appendChild(stale);
+      wrap.appendChild(label); wrap.appendChild(ta); wrap.appendChild(rowEl);
+      return wrap;
+    }
+
     // Build a fixed grid of `max` numbered, editable prompt slots pre-filled from
     // `records` (index-keyed). Empty slots are editable and can be saved too.
     // withThumb adds a per-row image container (id thumbPrefix + index).
@@ -406,6 +453,7 @@
             var thumb = document.createElement('div');
             thumb.className = 'pthumb'; thumb.id = thumbPrefix + index;
             row.appendChild(thumb);
+            row.appendChild(buildI2vBlock(index, rec));
           }
           grid.appendChild(row);
         })(i);

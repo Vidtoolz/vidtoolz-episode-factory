@@ -132,6 +132,44 @@ function buildInfographicPromptsRequest(script, count) {
   return { system: PROMPTS_SYSTEM, user, schema: promptArraySchema() };
 }
 
+const I2V_SYSTEM =
+  'You generate one image-to-video motion prompt for the VIDTOOLZ channel, for PRESTO ComfyUI (Wan2.2). ' +
+  'Always write in English. Return ONLY the video prompt text — no preamble, no headings, no markdown, no quotes.';
+
+function buildI2vPromptRequest(fields = {}) {
+  const user = [
+    'Create one image-to-video prompt for PRESTO ComfyUI based on this still image prompt and the script context.',
+    '',
+    'Script:',
+    String(fields.script || '').trim(),
+    '',
+    'Image prompt:',
+    String(fields.imagePrompt || '').trim(),
+    '',
+    'Image path/metadata:',
+    String(fields.imageMetadata || '(still not generated yet; base the motion on the image prompt)').trim(),
+    '',
+    'Requirements:',
+    '- describe motion/evolution from the still image',
+    '- keep it grounded and controllable',
+    '- no camera chaos',
+    '- no impossible object transformations unless appropriate',
+    '- suitable for a vertical AI video background',
+    '- avoid duration/fps/resolution unless required by the existing PRESTO workflow',
+    '- return only the video prompt text',
+  ].join('\n');
+  return { system: I2V_SYSTEM, user };
+}
+
+// One grounded motion prompt: strip think/fences/quotes, collapse to a tidy
+// single block (newlines -> spaces so it drops cleanly into a workflow field).
+function cleanI2vPrompt(raw) {
+  let t = stripThinkingAndFences(raw);
+  t = t.replace(/\s+/g, ' ').trim();
+  t = stripWrappingQuotes(t);
+  return t.trim();
+}
+
 function clampCount(count, max) {
   let n = Number(count);
   if (!Number.isFinite(n) || n < 1) n = max;
@@ -287,11 +325,13 @@ module.exports = {
   buildScriptRequest,
   buildImagePromptsRequest,
   buildInfographicPromptsRequest,
+  buildI2vPromptRequest,
   promptArraySchema,
   clampCount,
   stripThinkingAndFences,
   stripWrappingQuotes,
   cleanTopic,
   cleanScript,
+  cleanI2vPrompt,
   parsePromptArray,
 };

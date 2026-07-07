@@ -112,6 +112,8 @@ const SUPER_FOCUS_GENERATE_IMAGES_API = '/api/super-focus/generate-images';
 const SUPER_FOCUS_IMAGES_STATUS_API = '/api/super-focus/images-status';
 const SUPER_FOCUS_IMAGES_CANCEL_API = '/api/super-focus/images-cancel';
 const SUPER_FOCUS_IMAGE_FILE_API = '/api/super-focus/image';
+const SUPER_FOCUS_GENERATE_I2V_PROMPT_API = '/api/super-focus/generate-i2v-prompt';
+const SUPER_FOCUS_I2V_PROMPT_API = '/api/super-focus/i2v-prompt';
 const EARTH_STUDIO_STATUS_API = '/api/earth-studio/status';
 const EARTH_STUDIO_PLAN_API = '/api/earth-studio/plan';
 const EARTH_STUDIO_RENDER_API = '/api/earth-studio/render';
@@ -9978,6 +9980,55 @@ function createServer(options = {}) {
       return;
     }
 
+    // Generate one image-to-video motion prompt for a given image-prompt row,
+    // via local Ollama on PRESTO (media-routing lane; NO fallback to vidnux/cloud).
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_GENERATE_I2V_PROMPT_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus I2V prompt generation API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          const idx = Math.round(Number(payload.index));
+          const row = (state.image_prompts || []).find((r) => r.index === idx);
+          if (!row || !row.text) {
+            const e = new Error(`No image prompt at index ${payload.index}.`); e.statusCode = 400; throw e;
+          }
+          // Include the generated still's path as metadata when it exists.
+          let imageMetadata = '(still not generated yet; base the motion on the image prompt)';
+          const filePath = superFocusMedia.safeImageFilePath(id, idx, { mediaRoot: sfMediaRoot });
+          if (filePath && fs.existsSync(filePath)) {
+            imageMetadata = `${superFocusMedia.imageFileName(idx)} (vertical 1080x1920 still, generator flux-local-vidnux)`;
+          }
+          const reqPrompt = superFocusPrompts.buildI2vPromptRequest({
+            script: state.script, imagePrompt: row.text, imageMetadata,
+          });
+          // PRESTO Ollama lane only; unreachable -> canonical 503 blocked state.
+          const content = await callPrestoOllamaChat(
+            { system: reqPrompt.system, user: reqPrompt.user },
+            options
+          );
+          const text = superFocusPrompts.cleanI2vPrompt(content);
+          if (!text) { const e = new Error('Ollama returned an empty I2V prompt.'); e.statusCode = 502; throw e; }
+          const saved = superFocus.setI2vPrompt(id, idx, text, { root: sfRoot, status: 'generated' });
+          sendJSON(res, 200, { project: saved, index: idx, provider: 'ollama', provider_host: 'presto' });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-i2v-prompt-error'));
+      return;
+    }
+
+    // Save an edited I2V prompt to a specific image-prompt row (nonce-gated).
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_I2V_PROMPT_API) {
+      readJsonBody(req, 1024 * 64)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus I2V prompt save API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.setI2vPrompt(id, Math.round(Number(payload.index)), payload.text, { root: sfRoot, status: 'saved' });
+          sendJSON(res, 200, { project: state });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-i2v-prompt-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === PROJECT_STATE_API) {
       try {
         const resolved = resolveAigenPackageDir(url.searchParams.get('package') || url.searchParams.get('package_id') || url.searchParams.get('id') || '', { root: serverOptions.root || ROOT });
@@ -12045,6 +12096,8 @@ module.exports = {
   SUPER_FOCUS_IMAGES_STATUS_API,
   SUPER_FOCUS_IMAGES_CANCEL_API,
   SUPER_FOCUS_IMAGE_FILE_API,
+  SUPER_FOCUS_GENERATE_I2V_PROMPT_API,
+  SUPER_FOCUS_I2V_PROMPT_API,
   superFocus,
   superFocusPrompts,
   superFocusMedia,

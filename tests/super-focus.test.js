@@ -804,3 +804,96 @@ test("media bridge unit: prompt payload maps text->prompt and drops empties; pat
   assert.ok(good && good.endsWith("proj-abcd1234/images/flux-local/flux-005.png"));
   assert.equal(sfMedia.safeImageFilePath("proj-abcd1234", "0", { mediaRoot: "/tmp/sf-media" }), null);
 });
+
+// ==================== Slice 5: image-to-video prompts (PRESTO Ollama) ====================
+
+async function projectWithImagePrompts(fetchImpl, texts) {
+  const root = mkRoot();
+  const created = superFocus.createProject({ title: "I2V" }, { root });
+  superFocus.saveScript(created.project_id, "a grounded script about local pipelines", { root });
+  superFocus.saveImagePrompts(created.project_id, texts || ["a dim studio desk", "flowing light ribbons"], { root });
+  const server = packageEngineServer.createServer(fetchImpl ? { superFocusRoot: root, fetchImpl } : { superFocusRoot: root });
+  await listen(server);
+  return { root, server, id: created.project_id };
+}
+
+test("generate-i2v-prompt (PRESTO Ollama) writes to the correct row; requires the row to exist", async () => {
+  const fake = fakeOllama('<think>plan</think>\nSlow cinematic push-in on the desk, gentle lamp flicker, subtle dust drift, stable motion, no cuts.');
+  const { server, id } = await projectWithImagePrompts(fake);
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_I2V_PROMPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 2 },
+    });
+    assert.equal(gen.statusCode, 200);
+    const proj = unwrap(gen).project;
+    const row2 = proj.image_prompts.find((r) => r.index === 2);
+    const row1 = proj.image_prompts.find((r) => r.index === 1);
+    assert.match(row2.i2v_prompt.text, /push-in/);
+    assert.equal(row2.i2v_prompt.status, "generated");
+    assert.ok(!row1.i2v_prompt, "only the targeted row gets an i2v prompt");
+
+    // Missing index -> 400.
+    const missing = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_I2V_PROMPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 99 },
+    });
+    assert.equal(missing.statusCode, 400);
+  } finally {
+    await close(server);
+  }
+});
+
+test("i2v-prompt save persists an edited prompt to the row", async () => {
+  const { server, id } = await projectWithImagePrompts(null);
+  try {
+    const save = await request(server, packageEngineServer.SUPER_FOCUS_I2V_PROMPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1, text: "hand-written motion prompt" },
+    });
+    assert.equal(save.statusCode, 200);
+    const reload = unwrap(await request(
+      server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(id))).project;
+    const row = reload.image_prompts.find((r) => r.index === 1);
+    assert.equal(row.i2v_prompt.text, "hand-written motion prompt");
+    assert.equal(row.i2v_prompt.status, "saved");
+  } finally {
+    await close(server);
+  }
+});
+
+test("editing an image prompt after its i2v exists preserves the i2v and flags it stale", () => {
+  const root = mkRoot();
+  const created = superFocus.createProject({ title: "T" }, { root });
+  superFocus.saveScript(created.project_id, "script", { root });
+  superFocus.saveImagePrompts(created.project_id, ["first image prompt", "second"], { root });
+  superFocus.setI2vPrompt(created.project_id, 1, "motion for first", { root, status: "saved" });
+  // Edit the image prompt text of row 1.
+  const edited = superFocus.saveImagePrompt(created.project_id, 1, "first image prompt CHANGED", { root });
+  const row = edited.image_prompts.find((r) => r.index === 1);
+  assert.ok(row.i2v_prompt, "i2v prompt is preserved, not wiped");
+  assert.equal(row.i2v_prompt.text, "motion for first");
+  assert.equal(row.i2v_prompt.stale, true);
+});
+
+test("generate-i2v-prompt is nonce-gated and surfaces a 503 when PRESTO Ollama is down", async () => {
+  const down = await projectWithImagePrompts(refusedFetch());
+  try {
+    const noNonce = await request(down.server, packageEngineServer.SUPER_FOCUS_GENERATE_I2V_PROMPT_API, {
+      method: "POST", headers: { host: "127.0.0.1:8010" }, body: { id: down.id, index: 1 },
+    });
+    assert.equal(noNonce.statusCode, 403);
+    const blocked = await request(down.server, packageEngineServer.SUPER_FOCUS_GENERATE_I2V_PROMPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id: down.id, index: 1 },
+    });
+    assert.equal(blocked.statusCode, 503);
+    assert.match(blocked.body.error, /no fallback/i);
+  } finally {
+    await close(down.server);
+  }
+});
+
+test("i2v prompt builder + cleaner: includes script/image context, strips think/quotes to one line", () => {
+  const req = sfPrompts.buildI2vPromptRequest({ script: "SCR", imagePrompt: "IMG", imageMetadata: "flux-001.png" });
+  assert.match(req.user, /Script:\nSCR/);
+  assert.match(req.user, /Image prompt:\nIMG/);
+  assert.match(req.user, /flux-001\.png/);
+  assert.equal(sfPrompts.cleanI2vPrompt('<think>x</think>\n"Slow push-in,\nsteady."'), "Slow push-in, steady.");
+});

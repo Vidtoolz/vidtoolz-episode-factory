@@ -301,8 +301,18 @@ function upsertPromptSlot(records, index, text) {
     const e = new Error('Prompt index must be a positive integer.'); e.statusCode = 400; throw e;
   }
   const clean = typeof text === 'string' ? text.trim() : '';
+  const existing = (Array.isArray(records) ? records : []).find((r) => r.index === idx) || null;
   const list = (Array.isArray(records) ? records : []).filter((r) => r.index !== idx);
-  if (clean) list.push({ index: idx, text: clean, status: 'saved' });
+  if (clean) {
+    // Preserve downstream fields (i2v_prompt, images) attached to this row; only
+    // the text changes. If an i2v prompt exists and the source text changed,
+    // flag it as possibly stale — never delete it.
+    const merged = Object.assign({}, existing || {}, { index: idx, text: clean, status: 'saved' });
+    if (merged.i2v_prompt && existing && existing.text !== clean) {
+      merged.i2v_prompt = Object.assign({}, merged.i2v_prompt, { stale: true });
+    }
+    list.push(merged);
+  }
   list.sort((a, b) => a.index - b.index);
   return list;
 }
@@ -322,6 +332,29 @@ function saveInfographicPrompt(projectId, index, text, options = {}) {
   const state = loadProject(projectId, options);
   state.infographic_prompts = upsertPromptSlot(state.infographic_prompts, index, text);
   state.stage = inferStage(state);
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
+// Attach/replace the image-to-video prompt on one image-prompt row. status is
+// 'generated' (from PRESTO Ollama) or 'saved' (operator edit). source_hash lets
+// a later image-prompt edit flag it stale; setting it here clears any stale flag.
+function setI2vPrompt(projectId, index, text, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  const idx = Math.round(Number(index));
+  const row = (Array.isArray(state.image_prompts) ? state.image_prompts : []).find((r) => r.index === idx);
+  if (!row) {
+    const e = new Error(`No image prompt at index ${index}.`); e.statusCode = 400; throw e;
+  }
+  row.i2v_prompt = {
+    text: typeof text === 'string' ? text.trim() : '',
+    status: options.status === 'generated' ? 'generated' : 'saved',
+    source_hash: scriptHash(row.text),
+    stale: false,
+    updated_at: nowIso(),
+  };
   state.updated_at = nowIso();
   writeStateAtomic(dir, state);
   return state;
@@ -347,4 +380,5 @@ module.exports = {
   saveInfographicPrompts,
   saveImagePrompt,
   saveInfographicPrompt,
+  setI2vPrompt,
 };
