@@ -574,8 +574,11 @@
         prog.classList.add('hidden'); barwrap.classList.add('hidden');
       }
       cancelBtn.classList.toggle('hidden', !active);
-      genBtn.disabled = active;
+      genBtn.disabled = active || d.busy_elsewhere;
       genBtn.classList.toggle('busy', active);
+      if (d.busy_elsewhere && !active) {
+        setStatus(document.getElementById('imggen-status'), 'GPU busy with another job — try again shortly');
+      }
       return active;
     }
 
@@ -629,7 +632,10 @@
       }
       document.getElementById('vidgen-cancel').classList.toggle('hidden', !active);
       var genBtn = document.getElementById('vidgen-generate');
-      genBtn.disabled = active; genBtn.classList.toggle('busy', active);
+      genBtn.disabled = active || d.busy_elsewhere; genBtn.classList.toggle('busy', active);
+      if (d.busy_elsewhere && !active) {
+        setStatus(document.getElementById('vidgen-status'), 'PRESTO busy with another job — try again shortly');
+      }
       return active;
     }
 

@@ -9959,12 +9959,19 @@ function createServer(options = {}) {
     // (409 if busy). No ComfyUI auto-start, no cloud fallback.
     if (req.method === 'POST' && url.pathname === SUPER_FOCUS_GENERATE_IMAGES_API) {
       readJsonBody(req)
-        .then((payload) => {
+        .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Super Focus image generation API' });
           const id = payload.id || payload.project_id || '';
           const state = superFocus.loadProject(id, { root: sfRoot });
           if (!Array.isArray(state.image_prompts) || state.image_prompts.length === 0) {
             const e = new Error('Create image prompts first, then generate images.'); e.statusCode = 400; throw e;
+          }
+          // Pre-flight: vidnux ComfyUI must be reachable. No cloud fallback.
+          const reach = options.fluxReachableCheck || options.reachableCheck || prestoComfyuiReachable;
+          const reachable = await reach(LOCAL_IMAGE_PROVIDER.url, options);
+          if (!reachable) {
+            const e = new Error(`vidnux ComfyUI is not reachable at ${LOCAL_IMAGE_PROVIDER.url}. Start ComfyUI on vidnux and retry (no fallback to cloud).`);
+            e.statusCode = 503; throw e;
           }
           const materialized = superFocusMedia.materializeImagePrompts(id, state.image_prompts, { mediaRoot: sfMediaRoot });
           const job = startSuperFocusImageJob(materialized.mediaDir, {
@@ -9997,6 +10004,7 @@ function createServer(options = {}) {
           project_id: id,
           flux_job: flux,
           job_is_this_project: Boolean(flux.active && flux.package_id === id),
+          busy_elsewhere: Boolean(flux.active && flux.package_id !== id),
           manifest_exists: recon.manifest_exists,
           total: recon.total,
           done: recon.done,
@@ -10092,7 +10100,7 @@ function createServer(options = {}) {
     // restricts it to specific rows (per-image). Reuses the single PRESTO lock.
     if (req.method === 'POST' && url.pathname === SUPER_FOCUS_GENERATE_VIDEOS_API) {
       readJsonBody(req)
-        .then((payload) => {
+        .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Super Focus video generation API' });
           const id = payload.id || payload.project_id || '';
           const state = superFocus.loadProject(id, { root: sfRoot });
@@ -10106,6 +10114,13 @@ function createServer(options = {}) {
             const wanted = payload.indexes.map((n) => Math.round(Number(n)));
             indexes = materialized.indexes.filter((i) => wanted.includes(i));
             if (indexes.length === 0) { const e = new Error('None of the requested rows are video-ready.'); e.statusCode = 400; throw e; }
+          }
+          // Pre-flight: PRESTO ComfyUI must be reachable. No cloud fallback, no auto-start.
+          const reach = options.prestoReachableCheck || options.reachableCheck || prestoComfyuiReachable;
+          const reachable = await reach(PRESTO_BASE_URL, options);
+          if (!reachable) {
+            const e = new Error(`PRESTO ComfyUI is not reachable at ${PRESTO_BASE_URL}. Start ComfyUI on PRESTO and retry (no fallback).`);
+            e.statusCode = 503; throw e;
           }
           const job = startSuperFocusVideoJob(materialized.mediaDir, {
             projectId: id,
@@ -10142,6 +10157,7 @@ function createServer(options = {}) {
           project_id: id,
           presto_job: active || presto.completed || null,
           job_is_this_project: Boolean(active && active.package_id === id),
+          busy_elsewhere: Boolean(active && active.package_id !== id),
           subdir,
           total: recon.total,
           done: recon.done,

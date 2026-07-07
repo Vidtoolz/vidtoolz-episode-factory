@@ -648,6 +648,7 @@ function imageServer(spawnImpl, { promptCount = 3 } = {}) {
     fluxScript: fakeScript(),
     pythonBin: "python3",
     spawn: spawnImpl,
+    fluxReachableCheck: async () => true,
   });
   return { server, root, mediaRoot, id: created.project_id };
 }
@@ -947,6 +948,7 @@ function videoServer(spawnImpl, opts = {}) {
   const server = packageEngineServer.createServer({
     superFocusRoot: root, superFocusMediaRoot: mediaRoot,
     productionScript: fakeScript(), pythonBin: "python3", spawn: spawnImpl,
+    prestoReachableCheck: async () => true,
   });
   return { server, root, mediaRoot, id: created.project_id };
 }
@@ -1109,4 +1111,79 @@ test("video bridge unit: materialize shapes, eligibility filter, path guard", ()
   assert.deepEqual(mat.indexes, [1]);
   assert.equal(sfMedia.safeVideoFilePath(created.project_id, "mp4-hq-720p", "0", { mediaRoot }), null);
   assert.ok(sfMedia.safeVideoFilePath(created.project_id, "mp4-hq-720p", 1, { mediaRoot }).endsWith("videos/mp4-hq-720p/001.mp4"));
+});
+
+// ==================== Slice 7: hardening (reachability + busy-elsewhere) ====================
+
+test("generate-images returns 503 (no fallback) when vidnux ComfyUI is unreachable", async () => {
+  packageEngineServer.FLUX_STATE.activeJob = null;
+  const root = mkRoot();
+  const created = superFocus.createProject({ title: "Down" }, { root });
+  superFocus.saveScript(created.project_id, "s", { root });
+  superFocus.saveImagePrompts(created.project_id, ["a", "b"], { root });
+  const server = packageEngineServer.createServer({
+    superFocusRoot: root, superFocusMediaRoot: mkRoot(),
+    fluxScript: fakeScript(), spawn: fakeFluxSpawn(),
+    fluxReachableCheck: async () => false, // ComfyUI down
+  });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id: created.project_id },
+    });
+    assert.equal(res.statusCode, 503);
+    assert.match(res.body.error, /no fallback/i);
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("generate-videos returns 503 (no fallback) when PRESTO ComfyUI is unreachable", async () => {
+  packageEngineServer.PRESTO_STATE.activeJob = null;
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "Down" }, { root });
+  superFocus.saveImagePrompts(created.project_id, ["a"], { root });
+  // One video-ready row: still on disk + i2v prompt.
+  const flux = path.join(mediaRoot, created.project_id, "images", "flux-local");
+  fs.mkdirSync(flux, { recursive: true });
+  fs.writeFileSync(path.join(flux, "flux-001.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  superFocus.setI2vPrompt(created.project_id, 1, "motion", { root });
+  const server = packageEngineServer.createServer({
+    superFocusRoot: root, superFocusMediaRoot: mediaRoot,
+    productionScript: fakeScript(), spawn: fakePrestoSpawn(),
+    prestoReachableCheck: async () => false, // PRESTO down
+  });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id: created.project_id },
+    });
+    assert.equal(res.statusCode, 503);
+    assert.match(res.body.error, /not reachable/i);
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("images-status reports busy_elsewhere when the FLUX lock is held by another project", async () => {
+  const a = imageServer(fakeFluxSpawn({ hang: true })); // project A holds the lock
+  await listen(a.server);
+  const b = imageServer(fakeFluxSpawn()); // different project/root
+  await listen(b.server);
+  try {
+    // A starts a hung job -> global FLUX lock held.
+    await request(a.server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id: a.id },
+    });
+    const d = unwrap(await request(b.server, packageEngineServer.SUPER_FOCUS_IMAGES_STATUS_API + "?id=" + encodeURIComponent(b.id)));
+    assert.equal(d.busy_elsewhere, true);
+    assert.equal(d.job_is_this_project, false);
+  } finally {
+    await close(a.server);
+    await close(b.server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
 });
