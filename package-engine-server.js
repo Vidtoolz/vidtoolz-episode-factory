@@ -106,6 +106,8 @@ const SUPER_FOCUS_GENERATE_TOPIC_API = '/api/super-focus/generate-topic';
 const SUPER_FOCUS_GENERATE_SCRIPT_API = '/api/super-focus/generate-script';
 const SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API = '/api/super-focus/generate-image-prompts';
 const SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API = '/api/super-focus/generate-infographic-prompts';
+const SUPER_FOCUS_IMAGE_PROMPT_API = '/api/super-focus/image-prompt';
+const SUPER_FOCUS_INFOGRAPHIC_PROMPT_API = '/api/super-focus/infographic-prompt';
 const EARTH_STUDIO_STATUS_API = '/api/earth-studio/status';
 const EARTH_STUDIO_PLAN_API = '/api/earth-studio/plan';
 const EARTH_STUDIO_RENDER_API = '/api/earth-studio/render';
@@ -9812,6 +9814,32 @@ function createServer(options = {}) {
       return;
     }
 
+    // Save a single image prompt slot by 1-based index (per-row "Save changes").
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_IMAGE_PROMPT_API) {
+      readJsonBody(req, 1024 * 64)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus image-prompt save API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.saveImagePrompt(id, payload.index, payload.text, { root: sfRoot });
+          sendJSON(res, 200, { project: state });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-image-prompt-error'));
+      return;
+    }
+
+    // Save a single infographic prompt slot by 1-based index.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_INFOGRAPHIC_PROMPT_API) {
+      readJsonBody(req, 1024 * 64)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus infographic-prompt save API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.saveInfographicPrompt(id, payload.index, payload.text, { root: sfRoot });
+          sendJSON(res, 200, { project: state });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-infographic-prompt-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === PROJECT_STATE_API) {
       try {
         const resolved = resolveAigenPackageDir(url.searchParams.get('package') || url.searchParams.get('package_id') || url.searchParams.get('id') || '', { root: serverOptions.root || ROOT });
@@ -11873,6 +11901,8 @@ module.exports = {
   SUPER_FOCUS_GENERATE_SCRIPT_API,
   SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API,
   SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API,
+  SUPER_FOCUS_IMAGE_PROMPT_API,
+  SUPER_FOCUS_INFOGRAPHIC_PROMPT_API,
   superFocus,
   superFocusPrompts,
   EARTH_STUDIO_STATUS_API,

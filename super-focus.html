@@ -86,18 +86,24 @@
     .proj-list button { flex: 0 0 auto; }
     .empty { color: var(--muted); padding: 16px 0; }
     .later-note { color: var(--muted); font-size: 12px; margin-top: 6px; }
-    .prompt-list { margin: 14px 0 0; padding-left: 0; list-style: none; counter-reset: p; }
-    .prompt-list li {
-      counter-increment: p; display: flex; gap: 10px; align-items: flex-start;
+    .prompt-grid { margin: 14px 0 0; }
+    .prompt-row {
+      display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: start;
       border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2);
       padding: 10px 12px; margin-bottom: 8px;
     }
-    .prompt-list li::before {
-      content: counter(p); flex: 0 0 34px; color: var(--muted); font-variant-numeric: tabular-nums;
-      font-size: 13px; text-align: right; padding-top: 2px;
+    .prompt-row .pnum { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; text-align: right; padding-top: 8px; }
+    .prompt-row textarea.pinput { min-height: 46px; margin: 0; }
+    .prompt-row .pctrl { display: flex; flex-direction: column; gap: 6px; align-items: stretch; min-width: 120px; }
+    .prompt-row .pctrl .btn { padding: 6px 10px; font-size: 13px; }
+    .prompt-row .prow-status { font-size: 12px; min-height: 15px; text-align: center; color: var(--muted); }
+    .prompt-row .prow-status.ok { color: var(--ok); }
+    .prompt-row .prow-status.dirty { color: #d29922; }
+    .prompt-row.filled { border-color: #33404d; }
+    .stale-banner {
+      margin-top: 12px; padding: 10px 14px; border-radius: 8px;
+      background: rgba(210,153,34,.12); border: 1px solid #6b5320; color: #e3b341; font-size: 14px;
     }
-    .prompt-list .ptext { flex: 1; white-space: pre-wrap; }
-    .prompt-count { color: var(--muted); font-size: 13px; margin-top: 4px; }
     .btn.busy { opacity: .6; cursor: progress; }
     .hidden { display: none; }
   </style>
@@ -180,8 +186,9 @@
           <button class="btn" id="imgp-generate">Create image prompts based on the script</button>
           <span class="save-state" id="imgp-status"></span>
         </div>
-        <div class="later-note">Up to 100 prompts from the saved script (local Ollama on vidnux). Per-row edit / copy / save arrives in Slice 3.</div>
-        <ol class="prompt-list" id="imgp-list"></ol>
+        <div class="later-note">Up to 100 prompts from the saved script (local Ollama on vidnux). Edit any box, then Copy or Save changes.</div>
+        <div class="stale-banner hidden" id="imgp-stale">⚠ The script changed after these prompts were generated. They may be stale — regenerate, or keep your edits.</div>
+        <div class="prompt-grid" id="imgp-list"></div>
       </div>
 
       <!-- 4. Generated images (later slice) -->
@@ -195,8 +202,9 @@
           <button class="btn" id="infp-generate">Create infographic prompts based on the script</button>
           <span class="save-state" id="infp-status"></span>
         </div>
-        <div class="later-note">Up to 30 still-infographic prompts from the saved script (local Ollama on vidnux). Per-row edit / copy / save arrives in Slice 3.</div>
-        <ol class="prompt-list" id="infp-list"></ol>
+        <div class="later-note">Up to 30 still-infographic prompts from the saved script (local Ollama on vidnux). Edit any box, then Copy or Save changes.</div>
+        <div class="stale-banner hidden" id="infp-stale">⚠ The script changed after these prompts were generated. They may be stale — regenerate, or keep your edits.</div>
+        <div class="prompt-grid" id="infp-list"></div>
       </div>
 
       <!-- 6-7. Later slices -->
@@ -215,6 +223,10 @@
     var GEN_SCRIPT_API = '/api/super-focus/generate-script';
     var GEN_IMGP_API = '/api/super-focus/generate-image-prompts';
     var GEN_INFP_API = '/api/super-focus/generate-infographic-prompts';
+    var IMGP_SAVE_API = '/api/super-focus/image-prompt';
+    var INFP_SAVE_API = '/api/super-focus/infographic-prompt';
+    var IMG_MAX = 100;
+    var INF_MAX = 30;
 
     var nonce = null;
     var nonceHeader = 'x-vidtoolz-local-write-nonce';
@@ -312,17 +324,67 @@
       });
     }
 
-    function renderPromptList(elId, records) {
-      var list = document.getElementById(elId);
-      list.innerHTML = '';
-      (records || []).forEach(function (rec) {
-        var li = document.createElement('li');
-        var span = document.createElement('span');
-        span.className = 'ptext';
-        span.textContent = rec.text || '';
-        li.appendChild(span);
-        list.appendChild(li);
-      });
+    function copyText(text, statusEl) {
+      function done() { setRowStatus(statusEl, 'Copied', 'ok'); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text); done(); });
+      } else { legacyCopy(text); done(); }
+    }
+    function legacyCopy(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+    function setRowStatus(el, msg, cls) {
+      el.textContent = msg || '';
+      el.className = 'prow-status' + (cls ? ' ' + cls : '');
+    }
+
+    // Build a fixed grid of `max` numbered, editable prompt slots pre-filled from
+    // `records` (index-keyed). Empty slots are editable and can be saved too.
+    function renderPromptGrid(elId, records, max, saveApi) {
+      var grid = document.getElementById(elId);
+      grid.innerHTML = '';
+      var byIndex = {};
+      (records || []).forEach(function (r) { byIndex[r.index] = r; });
+      for (var i = 1; i <= max; i++) {
+        (function (index) {
+          var rec = byIndex[index];
+          var text = rec ? (rec.text || '') : '';
+          var row = document.createElement('div');
+          row.className = 'prompt-row' + (text ? ' filled' : '');
+          var num = document.createElement('div'); num.className = 'pnum'; num.textContent = index;
+          var ta = document.createElement('textarea');
+          ta.className = 'pinput'; ta.value = text; ta.setAttribute('aria-label', 'Prompt ' + index);
+          var ctrl = document.createElement('div'); ctrl.className = 'pctrl';
+          var copyBtn = document.createElement('button'); copyBtn.className = 'btn'; copyBtn.textContent = 'Copy';
+          var saveBtn = document.createElement('button'); saveBtn.className = 'btn primary'; saveBtn.textContent = 'Save changes';
+          var st = document.createElement('div'); setRowStatus(st, text ? 'saved' : '', text ? 'ok' : '');
+          var savedValue = text;
+          ta.addEventListener('input', function () {
+            setRowStatus(st, ta.value === savedValue ? (savedValue ? 'saved' : '') : 'unsaved', ta.value === savedValue ? (savedValue ? 'ok' : '') : 'dirty');
+          });
+          copyBtn.addEventListener('click', function () { copyText(ta.value, st); });
+          saveBtn.addEventListener('click', function () {
+            saveBtn.disabled = true;
+            apiPost(saveApi, { id: currentId, index: index, text: ta.value }).then(function (res) {
+              saveBtn.disabled = false;
+              if (!res.ok) { setRowStatus(st, 'Save failed', 'dirty'); return; }
+              savedValue = ta.value;
+              row.className = 'prompt-row' + (ta.value.trim() ? ' filled' : '');
+              setRowStatus(st, ta.value.trim() ? 'Saved ✓' : 'cleared', 'ok');
+            }).catch(function () { saveBtn.disabled = false; setRowStatus(st, 'Save failed', 'dirty'); });
+          });
+          ctrl.appendChild(copyBtn); ctrl.appendChild(saveBtn); ctrl.appendChild(st);
+          row.appendChild(num); row.appendChild(ta); row.appendChild(ctrl);
+          grid.appendChild(row);
+        })(i);
+      }
+    }
+
+    function updateStaleBanner(bannerId, isStale) {
+      document.getElementById(bannerId).classList.toggle('hidden', !isStale);
     }
 
     function openProject(proj) {
@@ -338,8 +400,10 @@
         (proj.image_prompts && proj.image_prompts.length) ? (proj.image_prompts.length + ' saved') : '');
       setStatus(document.getElementById('infp-status'),
         (proj.infographic_prompts && proj.infographic_prompts.length) ? (proj.infographic_prompts.length + ' saved') : '');
-      renderPromptList('imgp-list', proj.image_prompts);
-      renderPromptList('infp-list', proj.infographic_prompts);
+      renderPromptGrid('imgp-list', proj.image_prompts, IMG_MAX, IMGP_SAVE_API);
+      renderPromptGrid('infp-list', proj.infographic_prompts, INF_MAX, INFP_SAVE_API);
+      updateStaleBanner('imgp-stale', proj.stale && proj.stale.image_prompts);
+      updateStaleBanner('infp-stale', proj.stale && proj.stale.infographic_prompts);
       show('project');
     }
 
@@ -381,6 +445,10 @@
       apiPost(SCRIPT_API, { id: currentId, script: val }).then(function (res) {
         var el = document.getElementById('script-status');
         if (!res.ok) { setStatus(el, 'Save failed', true); return; }
+        var proj = unwrap(res.body).project;
+        // Saving the script may flag existing prompt sets as possibly stale.
+        updateStaleBanner('imgp-stale', proj.stale && proj.stale.image_prompts);
+        updateStaleBanner('infp-stale', proj.stale && proj.stale.infographic_prompts);
         setStatus(el, 'Saved ✓', false);
       });
     });
@@ -413,7 +481,8 @@
         btn.classList.remove('busy'); btn.disabled = false;
         if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Generation failed', true); return; }
         var d = unwrap(res.body);
-        renderPromptList('imgp-list', d.project.image_prompts);
+        renderPromptGrid('imgp-list', d.project.image_prompts, IMG_MAX, IMGP_SAVE_API);
+        updateStaleBanner('imgp-stale', d.project.stale && d.project.stale.image_prompts);
         setStatus(el, d.count + ' prompts saved');
       }).catch(function () { btn.classList.remove('busy'); btn.disabled = false; setStatus(el, 'Generation failed', true); });
     });
@@ -429,7 +498,8 @@
         btn.classList.remove('busy'); btn.disabled = false;
         if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Generation failed', true); return; }
         var d = unwrap(res.body);
-        renderPromptList('infp-list', d.project.infographic_prompts);
+        renderPromptGrid('infp-list', d.project.infographic_prompts, INF_MAX, INFP_SAVE_API);
+        updateStaleBanner('infp-stale', d.project.stale && d.project.stale.infographic_prompts);
         setStatus(el, d.count + ' prompts saved');
       }).catch(function () { btn.classList.remove('busy'); btn.disabled = false; setStatus(el, 'Generation failed', true); });
     });

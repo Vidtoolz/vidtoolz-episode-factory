@@ -99,12 +99,19 @@ function emptyState(fields = {}) {
     image_prompts: [],
     infographic_prompts: [],
     jobs: [],
-    // Staleness scaffold: later slices set flags here when upstream text changes
-    // (mark stale, never delete downstream, require explicit regeneration).
+    // Hashes of the upstream text each derived set was generated from, so a later
+    // upstream edit can flag the set as possibly stale (never delete it).
+    sources: {},
+    // Staleness flags: set true when upstream text changed after a derived set
+    // existed. Downstream is preserved; the operator regenerates explicitly.
     stale: {},
     created_at: created,
     updated_at: fields.updated_at || created,
   };
+}
+
+function scriptHash(script) {
+  return crypto.createHash('sha1').update(String(script || '')).digest('hex').slice(0, 16);
 }
 
 // Furthest-evidence-wins stage inference, mirroring the aigen resolver's spirit.
@@ -221,6 +228,21 @@ function saveScript(projectId, script, options = {}) {
   const dir = stateDir(projectId, options);
   const state = loadProject(projectId, options);
   state.script = typeof script === 'string' ? script : '';
+  // If a derived prompt set exists and the script has changed since it was
+  // generated, flag it as possibly stale. Never delete it; the operator
+  // regenerates (or keeps their edits) explicitly.
+  const newHash = scriptHash(state.script);
+  state.sources = state.sources || {};
+  state.stale = state.stale || {};
+  const markStale = (records, srcKey, staleKey) => {
+    if (!Array.isArray(records) || records.length === 0) return;
+    const src = state.sources[srcKey];
+    if (!src) return;
+    if (src !== newHash) state.stale[staleKey] = true;
+    else delete state.stale[staleKey]; // reverted to the generating script -> fresh again
+  };
+  markStale(state.image_prompts, 'image_prompts_script_hash', 'image_prompts');
+  markStale(state.infographic_prompts, 'infographic_prompts_script_hash', 'infographic_prompts');
   state.stage = inferStage(state);
   state.updated_at = nowIso();
   writeStateAtomic(dir, state);
@@ -245,6 +267,11 @@ function saveImagePrompts(projectId, texts, options = {}) {
   const dir = stateDir(projectId, options);
   const state = loadProject(projectId, options);
   state.image_prompts = normalizePromptRecords(texts);
+  state.sources = state.sources || {};
+  state.stale = state.stale || {};
+  // Record the script this set was generated from; clear any stale flag.
+  state.sources.image_prompts_script_hash = scriptHash(state.script);
+  delete state.stale.image_prompts;
   state.stage = inferStage(state);
   state.updated_at = nowIso();
   writeStateAtomic(dir, state);
@@ -255,6 +282,45 @@ function saveInfographicPrompts(projectId, texts, options = {}) {
   const dir = stateDir(projectId, options);
   const state = loadProject(projectId, options);
   state.infographic_prompts = normalizePromptRecords(texts);
+  state.sources = state.sources || {};
+  state.stale = state.stale || {};
+  state.sources.infographic_prompts_script_hash = scriptHash(state.script);
+  delete state.stale.infographic_prompts;
+  state.stage = inferStage(state);
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
+// Save/clear a single prompt slot by 1-based index (per-row "Save changes").
+// Empty text removes the slot (empty slots are never persisted). Editing one
+// row does not change the set's script-derived staleness — it is a manual edit.
+function upsertPromptSlot(records, index, text) {
+  const idx = Math.round(Number(index));
+  if (!Number.isFinite(idx) || idx < 1) {
+    const e = new Error('Prompt index must be a positive integer.'); e.statusCode = 400; throw e;
+  }
+  const clean = typeof text === 'string' ? text.trim() : '';
+  const list = (Array.isArray(records) ? records : []).filter((r) => r.index !== idx);
+  if (clean) list.push({ index: idx, text: clean, status: 'saved' });
+  list.sort((a, b) => a.index - b.index);
+  return list;
+}
+
+function saveImagePrompt(projectId, index, text, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  state.image_prompts = upsertPromptSlot(state.image_prompts, index, text);
+  state.stage = inferStage(state);
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
+function saveInfographicPrompt(projectId, index, text, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  state.infographic_prompts = upsertPromptSlot(state.infographic_prompts, index, text);
   state.stage = inferStage(state);
   state.updated_at = nowIso();
   writeStateAtomic(dir, state);
@@ -279,4 +345,6 @@ module.exports = {
   saveScript,
   saveImagePrompts,
   saveInfographicPrompts,
+  saveImagePrompt,
+  saveInfographicPrompt,
 };

@@ -466,3 +466,119 @@ test("cleanTopic strips think blocks + quotes; cleanScript strips fences and kee
   const script = sfPrompts.cleanScript("```\nLine one.\nLine two.\n```");
   assert.match(script, /Line one\.\nLine two\./);
 });
+
+// ======================= Slice 3: prompt editing + staleness =======================
+
+test("per-row image-prompt save writes only the targeted slot and persists", async () => {
+  const { server, id } = await makeProjectServer(fakeOllama(jsonArray(3, "S")), { script: "script text" });
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    // Edit slot 2 only.
+    const save = await request(server, packageEngineServer.SUPER_FOCUS_IMAGE_PROMPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 2, text: "edited prompt two" },
+    });
+    assert.equal(save.statusCode, 200);
+    const reload = unwrap(await request(
+      server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(id))).project;
+    const slot2 = reload.image_prompts.find((p) => p.index === 2);
+    assert.equal(slot2.text, "edited prompt two");
+    // Slot 1 and 3 untouched.
+    assert.ok(reload.image_prompts.find((p) => p.index === 1));
+    assert.ok(reload.image_prompts.find((p) => p.index === 3));
+  } finally {
+    await close(server);
+  }
+});
+
+test("per-row save can fill a new slot and clearing text removes the slot", async () => {
+  const { server, id } = await makeProjectServer(null, { script: "s" });
+  try {
+    // Fill slot 7 in an otherwise-empty set.
+    await request(server, packageEngineServer.SUPER_FOCUS_IMAGE_PROMPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 7, text: "manual slot seven" },
+    });
+    let reload = unwrap(await request(
+      server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(id))).project;
+    assert.equal(reload.image_prompts.length, 1);
+    assert.equal(reload.image_prompts[0].index, 7);
+    // Clear it (empty text) -> slot removed (empty slots are never persisted).
+    await request(server, packageEngineServer.SUPER_FOCUS_IMAGE_PROMPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 7, text: "   " },
+    });
+    reload = unwrap(await request(
+      server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(id))).project;
+    assert.equal(reload.image_prompts.length, 0);
+  } finally {
+    await close(server);
+  }
+});
+
+test("per-row save rejects a bad index (400) and requires a nonce (403)", async () => {
+  const { server, id } = await makeProjectServer(null, { script: "s" });
+  try {
+    const bad = await request(server, packageEngineServer.SUPER_FOCUS_IMAGE_PROMPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 0, text: "x" },
+    });
+    assert.equal(bad.statusCode, 400);
+    const noNonce = await request(server, packageEngineServer.SUPER_FOCUS_IMAGE_PROMPT_API, {
+      method: "POST", headers: { host: "127.0.0.1:8010" }, body: { id, index: 1, text: "x" },
+    });
+    assert.equal(noNonce.statusCode, 403);
+  } finally {
+    await close(server);
+  }
+});
+
+test("editing the script after prompts exist flags them stale; regeneration clears it", async () => {
+  const { server, id } = await makeProjectServer(fakeOllama(jsonArray(4, "S")), { script: "original script" });
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    // Change the script.
+    await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, script: "a very different script" },
+    });
+    let p = unwrap(await request(
+      server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(id))).project;
+    assert.equal(p.stale.image_prompts, true);
+    assert.equal(p.stale.infographic_prompts, true);
+
+    // Revert the script -> stale clears (identical to the generating script).
+    await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, script: "original script" },
+    });
+    p = unwrap(await request(
+      server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(id))).project;
+    assert.ok(!p.stale.image_prompts);
+
+    // Change again, then regenerate -> stale cleared for the regenerated set.
+    await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, script: "changed once more" },
+    });
+    await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, confirm_replace: true },
+    });
+    p = unwrap(await request(
+      server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(id))).project;
+    assert.ok(!p.stale.image_prompts);
+    assert.equal(p.stale.infographic_prompts, true); // infographics still from the old script
+  } finally {
+    await close(server);
+  }
+});
+
+test("per-row edit does NOT trigger script-staleness (manual downstream edit)", () => {
+  const root = mkRoot();
+  const created = superFocus.createProject({ title: "T" }, { root });
+  superFocus.saveScript(created.project_id, "the script", { root });
+  superFocus.saveImagePrompts(created.project_id, ["one", "two"], { root });
+  const edited = superFocus.saveImagePrompt(created.project_id, 1, "one edited", { root });
+  assert.ok(!edited.stale.image_prompts);
+  assert.equal(edited.image_prompts.find((p) => p.index === 1).text, "one edited");
+});
