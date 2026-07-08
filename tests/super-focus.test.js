@@ -1317,6 +1317,104 @@ test("generate-image-prompts still gates re-run with 409 (confirm_replace) under
   } finally { await close(server); }
 });
 
+// -------- "Create remaining prompts": fill only empty slots, preserve filled --------
+
+test("fillEmptyImagePrompts: 40 filled + 60 empty -> 100 filled, originals unchanged", () => {
+  const root = mkRoot();
+  const created = superFocus.createProject({ title: "Fill" }, { root });
+  superFocus.saveScript(created.project_id, "s", { root });
+  superFocus.saveImagePrompts(created.project_id, Array.from({ length: 40 }, (_, i) => "orig " + (i + 1)), { root });
+  const after = superFocus.fillEmptyImagePrompts(
+    created.project_id, Array.from({ length: 60 }, (_, i) => "new " + (i + 1)), { root, capacity: 100 }
+  );
+  assert.equal(after.image_prompts.length, 100);
+  assert.equal(after.image_prompts.find((p) => p.index === 1).text, "orig 1");
+  assert.equal(after.image_prompts.find((p) => p.index === 40).text, "orig 40");
+  assert.equal(after.image_prompts.find((p) => p.index === 41).text, "new 1");
+  assert.equal(after.image_prompts.find((p) => p.index === 100).text, "new 60");
+});
+
+test("fillEmptyImagePrompts preserves i2v/image state on filled rows and does not stale them", () => {
+  const root = mkRoot();
+  const created = superFocus.createProject({ title: "Keep" }, { root });
+  superFocus.saveScript(created.project_id, "s", { root });
+  superFocus.saveImagePrompts(created.project_id, ["a", "b"], { root });
+  superFocus.setI2vPrompt(created.project_id, 1, "motion one", { root });
+  const after = superFocus.fillEmptyImagePrompts(created.project_id, ["c", "d"], { root, capacity: 4 });
+  const row1 = after.image_prompts.find((p) => p.index === 1);
+  assert.equal(row1.text, "a", "filled prompt text unchanged");
+  assert.equal(row1.i2v_prompt.text, "motion one", "i2v preserved by index");
+  assert.ok(!row1.i2v_prompt.stale, "filled row's i2v not marked stale");
+  assert.ok(!row1.image_stale, "filled row's image not marked mismatched");
+  assert.equal(after.image_prompts.length, 4);
+  assert.equal(after.image_prompts.find((p) => p.index === 3).text, "c");
+});
+
+test("fillEmptyImagePrompts fills scattered empty slots by index (a cleared gap is refilled)", () => {
+  const root = mkRoot();
+  const created = superFocus.createProject({ title: "Gap" }, { root });
+  superFocus.saveScript(created.project_id, "s", { root });
+  superFocus.saveImagePrompts(created.project_id, Array.from({ length: 40 }, (_, i) => "orig " + (i + 1)), { root });
+  superFocus.saveImagePrompt(created.project_id, 20, "", { root }); // clear a scattered slot
+  const after = superFocus.fillEmptyImagePrompts(
+    created.project_id, Array.from({ length: 61 }, (_, i) => "new " + (i + 1)), { root, capacity: 100 }
+  );
+  assert.equal(after.image_prompts.length, 100);
+  // Lowest empty index (20) takes the first generated prompt, then 41..100.
+  assert.equal(after.image_prompts.find((p) => p.index === 20).text, "new 1");
+  assert.equal(after.image_prompts.find((p) => p.index === 41).text, "new 2");
+  assert.equal(after.image_prompts.find((p) => p.index === 19).text, "orig 19", "surviving original untouched");
+});
+
+test("generate-remaining-image-prompts fills only empty slots, no replace confirm, preserves filled", async () => {
+  const { server, id, root } = await makeProjectServer(fakeOllama(jsonArray(100, "TopUp")), { script: "a real script" });
+  try {
+    // Seed 40 existing prompts + an i2v on row 1 (distinct from the "TopUp" set).
+    superFocus.saveImagePrompts(id, Array.from({ length: 40 }, (_, i) => "seed " + (i + 1)), { root });
+    superFocus.setI2vPrompt(id, 1, "keep this motion", { root });
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_REMAINING_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 200, "no confirm_replace needed (not 409)");
+    const d = unwrap(res);
+    assert.equal(d.capacity, 100);
+    assert.equal(d.empty_before, 60);
+    assert.equal(d.added, 60);
+    assert.equal(d.total_filled, 100);
+    const seed1 = d.project.image_prompts.find((p) => p.index === 1);
+    assert.equal(seed1.text, "seed 1", "filled prompt unchanged");
+    assert.equal(seed1.i2v_prompt.text, "keep this motion", "downstream i2v preserved");
+    assert.ok(!seed1.i2v_prompt.stale && !seed1.image_stale, "filled row not marked stale");
+    // Now full -> a second top-up is a 400 (nothing to fill), still no confirm.
+    const full = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_REMAINING_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(full.statusCode, 400);
+  } finally { await close(server); }
+});
+
+test("generate-remaining-image-prompts drops exact-duplicate candidates", async () => {
+  const { server, id, root } = await makeProjectServer(
+    fakeOllama(JSON.stringify(["seed 1", "fresh one", "fresh two"])), { script: "s" }
+  );
+  try {
+    superFocus.saveImagePrompts(id, ["seed 1"], { root }); // one filled prompt
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_REMAINING_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 200);
+    const d = unwrap(res);
+    const texts = d.project.image_prompts.map((p) => p.text);
+    assert.equal(texts.filter((t) => t === "seed 1").length, 1, "exact duplicate not re-added");
+    assert.ok(texts.includes("fresh one") && texts.includes("fresh two"), "distinct candidates added");
+    // Honest reporting: only what was actually inserted is counted; the response
+    // must NOT pretend every empty slot was filled once duplicates were dropped.
+    assert.equal(d.empty_before, 99, "99 slots were empty");
+    assert.equal(d.added, 2, "only the 2 distinct candidates were added (dup dropped)");
+    assert.equal(d.total_filled, 3, "total reflects reality, not capacity");
+  } finally { await close(server); }
+});
+
 test("generate-infographic-prompts honors count (default max when absent)", async () => {
   const { server, id } = await makeProjectServer(fakeOllama(jsonArray(20, "I")), { script: "s" });
   try {

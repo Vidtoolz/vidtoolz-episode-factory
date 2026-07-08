@@ -105,6 +105,7 @@ const SUPER_FOCUS_SCRIPT_API = '/api/super-focus/script';
 const SUPER_FOCUS_GENERATE_TOPIC_API = '/api/super-focus/generate-topic';
 const SUPER_FOCUS_GENERATE_SCRIPT_API = '/api/super-focus/generate-script';
 const SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API = '/api/super-focus/generate-image-prompts';
+const SUPER_FOCUS_GENERATE_REMAINING_IMAGE_PROMPTS_API = '/api/super-focus/generate-remaining-image-prompts';
 const SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API = '/api/super-focus/generate-infographic-prompts';
 const SUPER_FOCUS_IMAGE_PROMPT_API = '/api/super-focus/image-prompt';
 const SUPER_FOCUS_INFOGRAPHIC_PROMPT_API = '/api/super-focus/infographic-prompt';
@@ -9916,6 +9917,54 @@ function createServer(options = {}) {
       return;
     }
 
+    // Top-up: generate prompts ONLY for the currently-empty image-prompt slots
+    // (up to capacity) and drop them into those index gaps. Existing filled rows
+    // — text, i2v prompt, image state, stale flags — are preserved untouched.
+    // This is non-destructive: no confirm_replace gate, and it never flags an
+    // unchanged filled row stale.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_GENERATE_REMAINING_IMAGE_PROMPTS_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus remaining-image-prompts generation API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          if (!state.script || !state.script.trim()) {
+            const e = new Error('Save a script first, then create image prompts.'); e.statusCode = 400; throw e;
+          }
+          const capacity = superFocusPrompts.IMAGE_PROMPT_MAX;
+          const records = Array.isArray(state.image_prompts) ? state.image_prompts : [];
+          const filledIndexes = new Set(records.filter((r) => r && r.text && r.text.trim()).map((r) => r.index));
+          const filledTexts = records.filter((r) => r && r.text && r.text.trim()).map((r) => r.text.trim());
+          let emptyCount = 0;
+          for (let i = 1; i <= capacity; i += 1) if (!filledIndexes.has(i)) emptyCount += 1;
+          if (emptyCount === 0) {
+            const e = new Error(`All ${capacity} prompt slots are already filled.`); e.statusCode = 400; throw e;
+          }
+          const before = filledTexts.length;
+          const reqPrompt = superFocusPrompts.buildImagePromptsRequest(state.script, emptyCount, filledTexts);
+          const content = await callOllamaChat(
+            { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL },
+            options
+          );
+          const generated = superFocusPrompts.parsePromptArray(content, emptyCount);
+          // Cheap exact-duplicate guard (case-insensitive) against what we have.
+          const existingLower = new Set(filledTexts.map((t) => t.toLowerCase()));
+          const distinct = generated.filter((p) => !existingLower.has(p.trim().toLowerCase()));
+          const saved = superFocus.fillEmptyImagePrompts(id, distinct, { root: sfRoot, capacity });
+          const after = (saved.image_prompts || []).filter((r) => r && r.text && r.text.trim()).length;
+          sendJSON(res, 200, {
+            project: saved,
+            capacity,
+            empty_before: emptyCount,
+            added: after - before,
+            total_filled: after,
+            provider: 'ollama', provider_host: 'vidnux', model: OLLAMA_MODEL,
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-remaining-image-prompts-error'));
+      return;
+    }
+
     // Generate up to 30 infographic prompts from the SAVED script and persist.
     if (req.method === 'POST' && url.pathname === SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API) {
       readJsonBody(req)
@@ -12300,6 +12349,7 @@ module.exports = {
   SUPER_FOCUS_GENERATE_TOPIC_API,
   SUPER_FOCUS_GENERATE_SCRIPT_API,
   SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API,
+  SUPER_FOCUS_GENERATE_REMAINING_IMAGE_PROMPTS_API,
   SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API,
   SUPER_FOCUS_IMAGE_PROMPT_API,
   SUPER_FOCUS_INFOGRAPHIC_PROMPT_API,

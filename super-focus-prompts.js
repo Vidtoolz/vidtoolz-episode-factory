@@ -75,9 +75,12 @@ function promptArraySchema() {
   return { type: 'array', items: { type: 'string' } };
 }
 
-function buildImagePromptsRequest(script, count) {
+// `existingPrompts` (optional) are prompts the project already has; they are
+// passed as "do not repeat" context so a top-up run yields distinct prompts.
+// The list is bounded to keep the request small and maintainable.
+function buildImagePromptsRequest(script, count, existingPrompts) {
   const n = clampCount(count, IMAGE_PROMPT_MAX);
-  const user = [
+  const lines = [
     `Based on this script, create exactly ${n} distinct vertical background image prompts for an AI-native video production systems YouTube Short.`,
     '',
     'Script:',
@@ -97,6 +100,20 @@ function buildImagePromptsRequest(script, count) {
     '- prefer visual metaphors, objects, rooms, machines, timelines, gates, pipelines, abstract systems',
     '- each prompt a clear single scene, specific enough for FLUX',
     '- each prompt different from the others',
+  ];
+  const exclusions = (Array.isArray(existingPrompts) ? existingPrompts : [])
+    .map((p) => (typeof p === 'string' ? p.trim() : ''))
+    .filter(Boolean)
+    .slice(0, 40);
+  if (exclusions.length) {
+    lines.push(
+      '',
+      'These prompts already exist — do NOT repeat or lightly reword any of them:',
+      ...exclusions.map((p) => `- ${p}`),
+      'Every new prompt must be clearly different from all of the above.'
+    );
+  }
+  lines.push(
     '',
     'Return strict JSON:',
     '[',
@@ -104,9 +121,9 @@ function buildImagePromptsRequest(script, count) {
     '  "prompt 2"',
     ']',
     '',
-    `Return exactly ${n} strings and no commentary.`,
-  ].join('\n');
-  return { system: PROMPTS_SYSTEM, user, schema: promptArraySchema() };
+    `Return exactly ${n} strings and no commentary.`
+  );
+  return { system: PROMPTS_SYSTEM, user: lines.join('\n'), schema: promptArraySchema() };
 }
 
 function buildInfographicPromptsRequest(script, count) {

@@ -216,9 +216,10 @@
         <div class="row">
           <button class="btn" id="imgp-generate">Create image prompts based on the script</button>
           <label class="count-field">Prompt count <input type="number" id="imgp-count" min="1" max="100" value="8" /></label>
+          <button class="btn" id="imgp-remaining">Create remaining prompts</button>
           <span class="save-state" id="imgp-status"></span>
         </div>
-        <div class="later-note">Generates the chosen number of prompts (1–100) from the saved script (local Ollama on vidnux). All 100 slots stay editable. Edit any box, then Copy or Save changes.</div>
+        <div class="later-note"><strong>Create image prompts</strong> replaces the whole set (asks first). <strong>Create remaining prompts</strong> fills only the empty slots — up to 100 — and leaves your existing prompts, images, and video prompts untouched. All 100 slots stay editable; edit any box, then Copy or Save changes.</div>
         <div class="stale-banner hidden" id="imgp-stale">⚠ The script changed after these prompts were generated. They may be stale — regenerate, or keep your edits.</div>
         <div class="prompt-grid" id="imgp-list"></div>
       </div>
@@ -280,6 +281,7 @@
     var GEN_TOPIC_API = '/api/super-focus/generate-topic';
     var GEN_SCRIPT_API = '/api/super-focus/generate-script';
     var GEN_IMGP_API = '/api/super-focus/generate-image-prompts';
+    var GEN_REMAINING_IMGP_API = '/api/super-focus/generate-remaining-image-prompts';
     var GEN_INFP_API = '/api/super-focus/generate-infographic-prompts';
     var IMGP_SAVE_API = '/api/super-focus/image-prompt';
     var INFP_SAVE_API = '/api/super-focus/infographic-prompt';
@@ -548,6 +550,7 @@
                 var oldI2v = row.querySelector('.pi2v');
                 if (oldI2v) row.replaceChild(buildI2vBlock(index, updated), oldI2v);
                 refreshImagesStatus();
+                updateRemainingButton(); // clearing/filling a row changes the empty count
               }
             }).catch(function () { saveBtn.disabled = false; setRowStatus(st, 'Save failed', 'dirty'); });
           });
@@ -569,6 +572,23 @@
       document.getElementById(bannerId).classList.toggle('hidden', !isStale);
     }
 
+    // Reflect how many image-prompt slots are empty on the "Create remaining"
+    // button. Counts the rendered (saved-state) boxes; disables when all filled.
+    function updateRemainingButton() {
+      var btn = document.getElementById('imgp-remaining');
+      if (!btn) return;
+      var inputs = document.getElementById('imgp-list').querySelectorAll('.pinput');
+      var empty = inputs.length ? 0 : IMG_MAX;
+      Array.prototype.forEach.call(inputs, function (t) { if (!t.value.trim()) empty += 1; });
+      if (empty <= 0) {
+        btn.disabled = true;
+        btn.textContent = 'All ' + IMG_MAX + ' prompt slots filled';
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Create remaining prompts (' + empty + ' empty)';
+      }
+    }
+
     function openProject(proj) {
       currentId = proj.project_id;
       document.getElementById('proj-heading').textContent =
@@ -586,6 +606,7 @@
       renderPromptGrid('infp-list', proj.infographic_prompts, INF_MAX, INFP_SAVE_API, false);
       updateStaleBanner('imgp-stale', proj.stale && proj.stale.image_prompts);
       updateStaleBanner('infp-stale', proj.stale && proj.stale.infographic_prompts);
+      updateRemainingButton();
       stopImagesPolling(); stopVideosPolling();
       setStatus(document.getElementById('imggen-status'), '');
       setStatus(document.getElementById('vidgen-status'), '');
@@ -812,7 +833,27 @@
         // Existing images/i2v prompts are preserved by index; surface any that
         // no longer match a regenerated prompt (mismatch badge on the thumbnail).
         refreshImagesStatus();
+        updateRemainingButton();
       }).catch(function () { stop(); btn.classList.remove('busy'); btn.disabled = false; setStatus(el, 'Generation failed', true); });
+    });
+
+    // Top-up: fill only the empty image-prompt slots. Non-destructive — existing
+    // prompts, images, and video prompts are preserved (no replace confirm).
+    document.getElementById('imgp-remaining').addEventListener('click', function () {
+      if (!currentId) return;
+      var btn = this, el = document.getElementById('imgp-status');
+      btn.classList.add('busy'); btn.disabled = true;
+      var stop = elapsedTicker(el, 'Filling empty prompt slots… (local Ollama on vidnux)');
+      apiPost(GEN_REMAINING_IMGP_API, { id: currentId }).then(function (res) {
+        stop(); btn.classList.remove('busy');
+        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Generation failed', true); updateRemainingButton(); return; }
+        var d = unwrap(res.body);
+        renderPromptGrid('imgp-list', d.project.image_prompts, IMG_MAX, IMGP_SAVE_API, true, 'imgp-thumb-');
+        updateStaleBanner('imgp-stale', d.project.stale && d.project.stale.image_prompts);
+        setStatus(el, d.added + ' new prompt(s) added to empty slots (' + d.total_filled + '/' + d.capacity + ' filled)');
+        updateRemainingButton();
+        refreshImagesStatus();
+      }).catch(function () { stop(); btn.classList.remove('busy'); setStatus(el, 'Generation failed', true); updateRemainingButton(); });
     });
 
     document.getElementById('infp-generate').addEventListener('click', function () {

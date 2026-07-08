@@ -327,6 +327,40 @@ function saveImagePrompts(projectId, texts, options = {}) {
   return state;
 }
 
+// Image-prompt slot capacity. Mirrors super-focus-prompts.IMAGE_PROMPT_MAX; the
+// server passes the canonical value via options.capacity, this is the fallback.
+const IMAGE_PROMPT_CAPACITY = 100;
+
+// Fill the currently-empty image-prompt slots (up to capacity) with newly
+// generated prompt texts, BY INDEX. Existing filled rows are left untouched —
+// their text, i2v prompt, image state, and stale flags are all preserved; they
+// are never renumbered. New rows land in the empty index gaps (scattered or a
+// trailing block) as fresh source prompts. `texts` are consumed in slot order.
+function fillEmptyImagePrompts(projectId, texts, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  const capacity = Number(options.capacity) > 0 ? Math.round(Number(options.capacity)) : IMAGE_PROMPT_CAPACITY;
+  const byIndex = {};
+  (Array.isArray(state.image_prompts) ? state.image_prompts : []).forEach((r) => {
+    if (r && r.index != null && typeof r.text === 'string' && r.text.trim()) byIndex[r.index] = r;
+  });
+  const emptyIndexes = [];
+  for (let i = 1; i <= capacity; i += 1) if (!byIndex[i]) emptyIndexes.push(i);
+  const clean = (Array.isArray(texts) ? texts : [])
+    .map((t) => (typeof t === 'string' ? t.trim() : ''))
+    .filter(Boolean);
+  const fillCount = Math.min(emptyIndexes.length, clean.length);
+  for (let k = 0; k < fillCount; k += 1) {
+    const idx = emptyIndexes[k];
+    byIndex[idx] = { index: idx, text: clean[k], status: 'saved' };
+  }
+  state.image_prompts = Object.values(byIndex).sort((a, b) => a.index - b.index);
+  state.stage = inferStage(state);
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
 function saveInfographicPrompts(projectId, texts, options = {}) {
   const dir = stateDir(projectId, options);
   const state = loadProject(projectId, options);
@@ -427,7 +461,9 @@ module.exports = {
   listProjects,
   saveTitle,
   saveScript,
+  IMAGE_PROMPT_CAPACITY,
   saveImagePrompts,
+  fillEmptyImagePrompts,
   saveInfographicPrompts,
   saveImagePrompt,
   saveInfographicPrompt,
