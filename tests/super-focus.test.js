@@ -2576,3 +2576,58 @@ test("ollama-benchmark route reports model/provider/timing (explicit test)", asy
     assert.equal(d.presto, null); // not configured
   } finally { await close(server); }
 });
+
+// ============ Step 3 image-prompt builder: script grounding ============
+
+test("image builder: instructs script grounding and includes the script text", () => {
+  const req = sfPrompts.buildImagePromptsRequest("A blunt take on local render queues and gates.", 8);
+  assert.match(req.user, /grounded in THIS specific script/i);
+  assert.match(req.user, /A blunt take on local render queues and gates\./); // full script text included
+});
+
+test("image builder: requires coverage across beginning/middle/end via beats", () => {
+  const req = sfPrompts.buildImagePromptsRequest("script", 8);
+  assert.match(req.user, /opening hook \/ premise/i);
+  assert.match(req.user, /process \/ workflow steps/i);
+  assert.match(req.user, /conclusion \/ call-to-action/i);
+  assert.match(req.user, /the beginning, the middle, AND the end/i);
+  assert.match(req.user, /every third of the script/i);
+});
+
+test("image builder: sets the 70-85% grounded / 15-30% atmospheric balance", () => {
+  const req = sfPrompts.buildImagePromptsRequest("script", 8);
+  assert.match(req.user, /at least 70%/i);
+  assert.match(req.user, /70[–-]85%/);
+  assert.match(req.user, /no more than 30%/i);
+  assert.match(req.user, /SCRIPT_SPECIFIC/);
+  assert.match(req.user, /PROCESS_VISUAL/);
+  assert.match(req.user, /CONTRAST_VISUAL/);
+  assert.match(req.user, /ATMOSPHERIC/);
+});
+
+test("image builder: includes an anti-generic rule and a final self-check", () => {
+  const req = sfPrompts.buildImagePromptsRequest("script", 8);
+  assert.match(req.user, /ANTI-GENERIC RULE/);
+  assert.match(req.user, /Could this fit any VIDTOOLZ video/i);
+  assert.match(req.user, /futuristic AI control rooms/i); // names a tired motif to avoid
+  assert.match(req.user, /Before you answer, revise the list/i);
+  // The old generic-encouraging line is gone.
+  assert.doesNotMatch(req.user, /prefer visual metaphors, objects, rooms, machines, timelines, gates, pipelines, abstract systems/);
+});
+
+test("image builder: remaining generation still passes existing prompts as exclusions", () => {
+  const req = sfPrompts.buildImagePromptsRequest("script", 5, ["neon workflow pipeline", "abstract node network"]);
+  assert.match(req.user, /do NOT repeat or lightly reword any of them/i);
+  assert.match(req.user, /neon workflow pipeline/);
+  assert.match(req.user, /abstract node network/);
+  assert.match(req.user, /continue covering\s+DIFFERENT script beats/i);
+});
+
+test("image builder: output contract stays a JSON array of strings and parses back", () => {
+  const req = sfPrompts.buildImagePromptsRequest("script", 4);
+  assert.deepEqual(req.schema, { type: "array", items: { type: "string" } });
+  assert.match(req.user, /Return exactly 4 strings/);
+  // A model reply in that format still parses to N prompts (format unchanged).
+  const reply = JSON.stringify(["scene one", "scene two", "scene three", "scene four"]);
+  assert.equal(sfPrompts.parsePromptArray(reply, 4).length, 4);
+});

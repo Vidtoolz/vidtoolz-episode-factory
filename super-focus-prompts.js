@@ -81,25 +81,47 @@ function promptArraySchema() {
 function buildImagePromptsRequest(script, count, existingPrompts) {
   const n = clampCount(count, IMAGE_PROMPT_MAX);
   const lines = [
-    `Based on this script, create exactly ${n} distinct vertical background image prompts for an AI-native video production systems YouTube Short.`,
+    `Based on this script, create exactly ${n} distinct vertical background image prompts for a VIDTOOLZ YouTube Short.`,
+    'The prompts MUST be grounded in THIS specific script — not generic, reusable AI/tech imagery.',
     '',
     'Script:',
     String(script || '').trim(),
+    '',
+    'STEP 1 — read the script as a sequence of beats and note its: opening hook / premise, major',
+    'claims, concrete examples, contrasts (before/after or wrong/right), warnings, metaphors,',
+    'process / workflow steps, and conclusion / call-to-action.',
+    '',
+    `STEP 2 — create ${n} background-plate prompts that VISUALIZE those beats, distributed across the`,
+    'whole script — the beginning, the middle, AND the end. Do not over-cover the opening idea and',
+    'skip the conclusion; every third of the script should get coverage.',
+    '',
+    'Category balance for the set:',
+    '- at least 70% (aim 70–85%) must be SCRIPT-GROUNDED — each one directly visualizes a specific',
+    '  claim, example, metaphor, or contrast from the script (SCRIPT_SPECIFIC), or a workflow /',
+    '  pipeline / checklist / gate / decision the script describes (PROCESS_VISUAL), or a before/after',
+    '  or wrong/right contrast from the script (CONTRAST_VISUAL);',
+    '- no more than 30% (aim 15–30%) may be purely ATMOSPHERIC — abstract mood, transition, texture,',
+    '  or background support.',
     '',
     'These are BACKGROUND PLATES that sit behind a presenter overlay added later.',
     '',
     'Requirements:',
     '- 1080x1920 vertical composition implied',
     '- background-plate style; leave clean, uncluttered space in the lower-right for a presenter overlay',
-    '- visually varied across the set',
+    '- each prompt is ONE concrete scene: specific subject, setting, composition, mood, and visual action, specific enough for FLUX',
+    '- visually varied across the set; each prompt different from the others',
     '- no readable text, no fake text, no garbled letters, no lettering of any kind',
     '- no screenshots or mock-ups of real or fake software UIs',
     '- no presenter, no human, no host, no influencer, no editor figure, no camera operator, no people at all',
     '- no copyrighted characters or logos',
     '- no claims of real evidence',
-    '- prefer visual metaphors, objects, rooms, machines, timelines, gates, pipelines, abstract systems',
-    '- each prompt a clear single scene, specific enough for FLUX',
-    '- each prompt different from the others',
+    '- describe the image directly; do NOT write "visualize the idea of...", "this scene represents", or "the script says"',
+    '',
+    'ANTI-GENERIC RULE — reject prompts that could be reused unchanged for almost any AI/tech video.',
+    'For every prompt ask: "Could this fit any VIDTOOLZ video?" If yes, rewrite it with concrete',
+    'details drawn from THIS script. Use these tired motifs at most sparingly, and only when the',
+    'script genuinely calls for them: futuristic AI control rooms with glowing screens; abstract',
+    'networks of nodes and lines; a creator standing before a digital interface; neon workflow pipelines.',
   ];
   const exclusions = (Array.isArray(existingPrompts) ? existingPrompts : [])
     .map((p) => (typeof p === 'string' ? p.trim() : ''))
@@ -108,12 +130,17 @@ function buildImagePromptsRequest(script, count, existingPrompts) {
   if (exclusions.length) {
     lines.push(
       '',
-      'These prompts already exist — do NOT repeat or lightly reword any of them:',
+      'These prompts already exist — do NOT repeat or lightly reword any of them; continue covering',
+      'DIFFERENT script beats rather than re-using the same motif:',
       ...exclusions.map((p) => `- ${p}`),
       'Every new prompt must be clearly different from all of the above.'
     );
   }
   lines.push(
+    '',
+    'Before you answer, revise the list so that: at least 70% are grounded in specific script beats;',
+    'every third of the script has coverage; no more than 30% are purely atmospheric; repeated generic',
+    'motifs are removed; and every prompt is a concrete, single visual scene.',
     '',
     'Return strict JSON:',
     '[',
