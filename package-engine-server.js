@@ -127,6 +127,10 @@ const SUPER_FOCUS_CLEAR_VIDEO_API = '/api/super-focus/clear-video';
 const SUPER_FOCUS_REGENERATE_VIDEO_API = '/api/super-focus/regenerate-video';
 const SUPER_FOCUS_VIDEOS_STATUS_API = '/api/super-focus/videos-status';
 const SUPER_FOCUS_VIDEOS_CANCEL_API = '/api/super-focus/videos-cancel';
+const SUPER_FOCUS_QUEUE_VIDEO_API = '/api/super-focus/queue-video';
+const SUPER_FOCUS_QUEUE_MISSING_VIDEOS_API = '/api/super-focus/queue-missing-videos';
+const SUPER_FOCUS_VIDEO_QUEUE_API = '/api/super-focus/video-queue';
+const SUPER_FOCUS_CANCEL_QUEUED_VIDEO_API = '/api/super-focus/cancel-queued-video';
 const SUPER_FOCUS_VIDEO_FILE_API = '/api/super-focus/video';
 const EARTH_STUDIO_STATUS_API = '/api/earth-studio/status';
 const EARTH_STUDIO_PLAN_API = '/api/earth-studio/plan';
@@ -7587,6 +7591,154 @@ function startSuperFocusVideoJob(mediaDir, options = {}) {
   }, options.payload || {}, options);
 }
 
+// ── Super Focus PRESTO video QUEUE (single worker, multi-item) ───────────────
+// Execution stays single-worker (one PRESTO Wan2.2 render at a time); queueing
+// is multi-item. Queue is persisted to <mediaDir>/video-queue.json and drained
+// sequentially by pumpSuperFocusVideoQueue (event-driven on job close, plus
+// idempotent poll-driven advance for restart safety). Slot-safe: never starts a
+// render for a row that already has a video or lost its prerequisites.
+
+function superFocusVideoSubdir() {
+  return PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4';
+}
+
+function i2vTextHash(row) {
+  const t = (row && row.i2v_prompt && typeof row.i2v_prompt.text === 'string') ? row.i2v_prompt.text.trim() : '';
+  return crypto.createHash('sha1').update(t).digest('hex').slice(0, 16);
+}
+
+function videoQueueSummary(queue) {
+  const s = { queued: 0, running: 0, done: 0, failed: 0, cancelled: 0, skipped: 0 };
+  for (const it of (queue.items || [])) {
+    if (it.status === 'queued') s.queued += 1;
+    else if (it.status === 'running') s.running += 1;
+    else if (it.status === 'done') s.done += 1;
+    else if (it.status === 'failed') s.failed += 1;
+    else if (it.status === 'cancelled') s.cancelled += 1;
+    else s.skipped += 1;
+  }
+  return s;
+}
+
+// Is a row eligible for NORMAL video queueing right now? ctx = { sfRoot, sfMediaRoot, options }.
+function superFocusVideoEligibility(id, state, subdir, idx, ctx) {
+  const row = (state.image_prompts || []).find((r) => r.index === idx);
+  if (!row) return { ok: false, reason: 'no_row' };
+  const imgPath = superFocusMedia.safeImageFilePath(id, idx, { mediaRoot: ctx.sfMediaRoot });
+  if (!(imgPath && fs.existsSync(imgPath))) return { ok: false, reason: 'skipped_prereq' };
+  if (!superFocus.hasI2vPrompt(row)) return { ok: false, reason: 'skipped_prereq' };
+  const mediaDir = superFocusMedia.mediaDirFor(id, { mediaRoot: ctx.sfMediaRoot });
+  if (fs.existsSync(superFocusMedia.videoFilePath(mediaDir, subdir, idx))) return { ok: false, reason: 'skipped_exists' };
+  return { ok: true, row };
+}
+
+// Bring the queue in line with disk + the global PRESTO lock. Safe on restart:
+// a 'running' item with no active job for us is resolved by output existence
+// (done) or marked failed/stale (never blindly re-run).
+function reconcileSuperFocusVideoQueue(id, ctx) {
+  const state = superFocus.loadProject(id, { root: ctx.sfRoot });
+  const subdir = superFocusVideoSubdir();
+  const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: ctx.sfMediaRoot });
+  const mediaDir = superFocusMedia.mediaDirFor(id, { mediaRoot: ctx.sfMediaRoot });
+  const active = currentPrestoJobStatus().active;
+  const activeIsThis = Boolean(active && active.package_id === id);
+  const relVideo = (idx) => path.join('videos', subdir, superFocusMedia.videoFileName(idx));
+  let changed = false;
+  for (const item of queue.items) {
+    const idx = item.index;
+    const hasVideo = fs.existsSync(superFocusMedia.videoFilePath(mediaDir, subdir, idx));
+    if (item.status === 'running') {
+      if (activeIsThis) continue; // still rendering our job
+      if (hasVideo) {
+        item.status = 'done'; item.output_path = relVideo(idx); item.finished_at = item.finished_at || new Date().toISOString();
+      } else {
+        item.status = 'failed'; item.error = item.error || 'render did not complete (no output; job ended or server restarted)'; item.finished_at = new Date().toISOString();
+      }
+      changed = true;
+    } else if (item.status === 'queued') {
+      if (hasVideo) { item.status = 'skipped_exists'; item.finished_at = new Date().toISOString(); changed = true; continue; }
+      const el = superFocusVideoEligibility(id, state, subdir, idx, ctx);
+      if (!el.ok && el.reason === 'skipped_prereq') {
+        item.status = 'skipped_prereq'; item.error = 'missing still or i2v prompt'; item.finished_at = new Date().toISOString(); changed = true;
+      }
+    }
+  }
+  if (changed) superFocusMedia.writeVideoQueue(id, queue, { mediaRoot: ctx.sfMediaRoot });
+  return { state, subdir, queue };
+}
+
+// Start the next queued item IF the single PRESTO worker is free. Idempotent and
+// safe to call repeatedly (poll) or on job completion (event). Never runs two.
+async function pumpSuperFocusVideoQueue(id, ctx) {
+  const { state, subdir, queue } = reconcileSuperFocusVideoQueue(id, ctx);
+  if (currentPrestoJobStatus().active) return { started: null, queue, blocked: 'busy' };
+  if (queue.items.some((it) => it.status === 'running')) return { started: null, queue, blocked: 'running' };
+  const next = queue.items.find((it) => it.status === 'queued');
+  if (!next) return { started: null, queue };
+  const el = superFocusVideoEligibility(id, state, subdir, next.index, ctx);
+  if (!el.ok) {
+    next.status = el.reason === 'skipped_exists' ? 'skipped_exists' : 'skipped_prereq';
+    next.finished_at = new Date().toISOString();
+    superFocusMedia.writeVideoQueue(id, queue, { mediaRoot: ctx.sfMediaRoot });
+    return pumpSuperFocusVideoQueue(id, ctx); // try the following item
+  }
+  const reach = ctx.options.prestoReachableCheck || ctx.options.reachableCheck || prestoComfyuiReachable;
+  if (!(await reach(PRESTO_BASE_URL, ctx.options))) return { started: null, queue, blocked: 'unreachable' };
+  const materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, { mediaRoot: ctx.sfMediaRoot, rows: [el.row] });
+  let job;
+  try {
+    job = startSuperFocusVideoJob(materialized.mediaDir, {
+      projectId: id,
+      profile: DEFAULT_PRESTO_PROFILE,
+      comfyuiUrl: PRESTO_BASE_URL,
+      indexes: [next.index],
+      spawn: ctx.options.spawn,
+      productionScript: ctx.options.productionScript,
+      pythonBin: ctx.options.pythonBin,
+      payload: {},
+    });
+  } catch (e) {
+    return { started: null, queue, blocked: 'busy' }; // lock grabbed between checks
+  }
+  next.status = 'running';
+  next.started_at = new Date().toISOString();
+  next.job_id = job && job.job_id;
+  next.provider = { id: 'presto_comfyui', label: 'PRESTO ComfyUI', subdir };
+  superFocusMedia.writeVideoQueue(id, queue, { mediaRoot: ctx.sfMediaRoot });
+  // Event-driven advance: when this render finishes, drain the next item.
+  if (PRESTO_STATE.activeJob && PRESTO_STATE.activeJob.process && PRESTO_STATE.activeJob.process.once) {
+    PRESTO_STATE.activeJob.process.once('close', () => {
+      pumpSuperFocusVideoQueue(id, ctx).catch(() => {});
+    });
+  }
+  return { started: next, queue };
+}
+
+function enqueueSuperFocusVideos(id, indexes, ctx) {
+  const state = superFocus.loadProject(id, { root: ctx.sfRoot });
+  const subdir = superFocusVideoSubdir();
+  const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: ctx.sfMediaRoot });
+  const live = new Set(queue.items.filter((it) => it.status === 'queued' || it.status === 'running').map((it) => it.index));
+  const result = { queued: [], skipped: [] };
+  for (const raw of (Array.isArray(indexes) ? indexes : [])) {
+    const idx = Math.round(Number(raw));
+    if (!Number.isInteger(idx) || idx < 1) { result.skipped.push({ index: raw, reason: 'bad_index' }); continue; }
+    if (live.has(idx)) { result.skipped.push({ index: idx, reason: 'already_queued' }); continue; }
+    const el = superFocusVideoEligibility(id, state, subdir, idx, ctx);
+    if (!el.ok) { result.skipped.push({ index: idx, reason: el.reason }); continue; }
+    const item = {
+      item_id: `q${idx}-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+      index: idx, status: 'queued', i2v_hash: i2vTextHash(el.row),
+      queued_at: new Date().toISOString(), started_at: null, finished_at: null, error: null, output_path: null,
+    };
+    queue.items.push(item);
+    live.add(idx);
+    result.queued.push(item);
+  }
+  superFocusMedia.writeVideoQueue(id, queue, { mediaRoot: ctx.sfMediaRoot });
+  return result;
+}
+
 function cancelPrestoJob(options = {}) {
   const status = currentPrestoJobStatus();
   if (!status.active) {
@@ -11105,26 +11257,32 @@ function createServer(options = {}) {
 
     // Read-only: reconcile per-index video state from disk + PRESTO job status.
     if (req.method === 'GET' && url.pathname === SUPER_FOCUS_VIDEOS_STATUS_API) {
-      try {
-        const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
-        const state = superFocus.loadProject(id, { root: sfRoot });
-        const subdir = PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4';
-        const recon = superFocusMedia.reconcileVideos(id, state.image_prompts, subdir, { mediaRoot: sfMediaRoot });
-        const presto = currentPrestoJobStatus();
-        const active = presto.active || null;
-        sendJSON(res, 200, {
-          project_id: id,
-          presto_job: active || presto.completed || null,
-          job_is_this_project: Boolean(active && active.package_id === id),
-          busy_elsewhere: Boolean(active && active.package_id !== id),
-          subdir,
-          total: recon.total,
-          done: recon.done,
-          videos: recon.videos,
-        });
-      } catch (error) {
-        sendError(res, error.statusCode || 500, error.message, 'super-focus-videos-status-error');
-      }
+      const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+      const ctx = { sfRoot, sfMediaRoot, options };
+      // Drive the queue worker on each poll (idempotent; only starts if the
+      // single PRESTO worker is free). Then report reconciled disk + queue state.
+      Promise.resolve()
+        .then(() => pumpSuperFocusVideoQueue(id, ctx).catch(() => null))
+        .then(() => {
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          const subdir = superFocusVideoSubdir();
+          const recon = superFocusMedia.reconcileVideos(id, state.image_prompts, subdir, { mediaRoot: sfMediaRoot });
+          const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+          const presto = currentPrestoJobStatus();
+          const active = presto.active || null;
+          sendJSON(res, 200, {
+            project_id: id,
+            presto_job: active || presto.completed || null,
+            job_is_this_project: Boolean(active && active.package_id === id),
+            busy_elsewhere: Boolean(active && active.package_id !== id),
+            subdir,
+            total: recon.total,
+            done: recon.done,
+            videos: recon.videos,
+            queue: { summary: videoQueueSummary(queue), items: queue.items },
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-videos-status-error'));
       return;
     }
 
@@ -11137,6 +11295,102 @@ function createServer(options = {}) {
           sendJSON(res, 200, result);
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-videos-cancel-error'));
+      return;
+    }
+
+    // Enqueue ONE row's video onto the PRESTO queue. Returns queued even while
+    // another render is running (no 409). Slot-safe: skips existing/ineligible.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_QUEUE_VIDEO_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus queue-video API' });
+          const id = payload.id || payload.project_id || '';
+          superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown project
+          const ctx = { sfRoot, sfMediaRoot, options };
+          const result = enqueueSuperFocusVideos(id, [payload.index], ctx);
+          await pumpSuperFocusVideoQueue(id, ctx).catch(() => null);
+          const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+          sendJSON(res, 200, {
+            enqueued: result.queued.length > 0,
+            item: result.queued[0] || null,
+            skipped: result.skipped,
+            queue: { summary: videoQueueSummary(queue), items: queue.items },
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-queue-video-error'));
+      return;
+    }
+
+    // Enqueue all eligible missing-video rows (optional indexes[] subset).
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_QUEUE_MISSING_VIDEOS_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus queue-missing-videos API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          const ctx = { sfRoot, sfMediaRoot, options };
+          const subdir = superFocusVideoSubdir();
+          let indexes = superFocusMedia.eligibleMissingVideoRows(id, state.image_prompts, subdir, { mediaRoot: sfMediaRoot }).map((r) => r.index);
+          if (Array.isArray(payload.indexes) && payload.indexes.length) {
+            const wanted = payload.indexes.map((n) => Math.round(Number(n)));
+            indexes = indexes.filter((i) => wanted.includes(i));
+          }
+          const result = enqueueSuperFocusVideos(id, indexes, ctx);
+          await pumpSuperFocusVideoQueue(id, ctx).catch(() => null);
+          const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+          sendJSON(res, 200, {
+            enqueued_count: result.queued.length,
+            skipped: result.skipped,
+            queue: { summary: videoQueueSummary(queue), items: queue.items },
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-queue-missing-videos-error'));
+      return;
+    }
+
+    // Read-only: reconcile + drive the queue, return its state.
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_VIDEO_QUEUE_API) {
+      const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+      const ctx = { sfRoot, sfMediaRoot, options };
+      Promise.resolve()
+        .then(() => pumpSuperFocusVideoQueue(id, ctx).catch(() => null))
+        .then(() => {
+          const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+          const active = currentPrestoJobStatus().active;
+          sendJSON(res, 200, {
+            project_id: id,
+            subdir: superFocusVideoSubdir(),
+            summary: videoQueueSummary(queue),
+            items: queue.items,
+            presto_active: Boolean(active),
+            presto_active_is_this: Boolean(active && active.package_id === id),
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-video-queue-error'));
+      return;
+    }
+
+    // Cancel a QUEUED (not-yet-running) item. A running render is not cancelled.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_CANCEL_QUEUED_VIDEO_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus cancel-queued-video API' });
+          const id = payload.id || payload.project_id || '';
+          superFocus.loadProject(id, { root: sfRoot });
+          const idx = payload.index != null ? Math.round(Number(payload.index)) : null;
+          const itemId = payload.item_id || null;
+          const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+          const item = queue.items.find((it) => (itemId ? it.item_id === itemId : it.index === idx) && (it.status === 'queued' || it.status === 'running'));
+          if (!item) { sendJSON(res, 200, { cancelled: false, reason: 'not_found_or_not_live' }); return; }
+          if (item.status === 'running') {
+            sendJSON(res, 200, { cancelled: false, running: true, message: 'Running job cannot be cancelled safely yet.' });
+            return;
+          }
+          item.status = 'cancelled'; item.finished_at = new Date().toISOString();
+          superFocusMedia.writeVideoQueue(id, queue, { mediaRoot: sfMediaRoot });
+          sendJSON(res, 200, { cancelled: true, index: item.index, item_id: item.item_id, queue: { summary: videoQueueSummary(queue), items: queue.items } });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-cancel-queued-video-error'));
       return;
     }
 
@@ -13238,6 +13492,10 @@ module.exports = {
   SUPER_FOCUS_REGENERATE_VIDEO_API,
   SUPER_FOCUS_VIDEOS_STATUS_API,
   SUPER_FOCUS_VIDEOS_CANCEL_API,
+  SUPER_FOCUS_QUEUE_VIDEO_API,
+  SUPER_FOCUS_QUEUE_MISSING_VIDEOS_API,
+  SUPER_FOCUS_VIDEO_QUEUE_API,
+  SUPER_FOCUS_CANCEL_QUEUED_VIDEO_API,
   SUPER_FOCUS_VIDEO_FILE_API,
   superFocus,
   superFocusPrompts,

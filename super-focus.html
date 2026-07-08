@@ -282,11 +282,11 @@
         <div class="step">Step 7</div>
         <h2>Generated videos</h2>
         <div class="row">
-          <button class="btn primary" id="vidgen-generate">Generate missing videos</button>
+          <button class="btn primary" id="vidgen-generate">Queue missing videos</button>
           <button class="btn hidden" id="vidgen-cancel">Cancel</button>
           <span class="save-state" id="vidgen-status"></span>
         </div>
-        <div class="later-note">Runs PRESTO ComfyUI / Wan2.2 on rows that have BOTH a generated still and a saved image-to-video prompt. One clip at a time, slow (minutes each), resumes and skips finished clips. PRESTO must be running; it is never auto-started. Each clip appears next to its image above; or use the per-image “Generate video on PRESTO” button.</div>
+        <div class="later-note"><strong>Queues</strong> PRESTO ComfyUI / Wan2.2 for rows that have BOTH a generated still and a saved image-to-video prompt and no video yet. One clip renders at a time (slow, minutes each) but you can queue many and walk away — the queue drains automatically and survives a refresh. Existing videos and rows missing a still/i2v prompt are skipped. PRESTO must be running; it is never auto-started. Each clip appears next to its image above; or use the per-row “Queue video on PRESTO” button (Cancel queued removes a not-yet-running item).</div>
         <div class="imggen-progress hidden" id="vidgen-progress"></div>
         <div class="imggen-bar hidden" id="vidgen-barwrap"><div class="imggen-fill" id="vidgen-fill"></div></div>
       </div>
@@ -320,6 +320,9 @@
     var CLEAR_IMAGE_API = '/api/super-focus/clear-image';
     var REGEN_IMAGE_API = '/api/super-focus/regenerate-image';
     var GEN_VIDEOS_API = '/api/super-focus/generate-videos';
+    var QUEUE_VIDEO_API = '/api/super-focus/queue-video';
+    var QUEUE_MISSING_VIDEOS_API = '/api/super-focus/queue-missing-videos';
+    var CANCEL_QUEUED_VIDEO_API = '/api/super-focus/cancel-queued-video';
     var CLEAR_VIDEO_API = '/api/super-focus/clear-video';
     var REGEN_VIDEO_API = '/api/super-focus/regenerate-video';
     var VIDEOS_STATUS_API = '/api/super-focus/videos-status';
@@ -603,18 +606,36 @@
       var wrap = document.createElement('div'); wrap.className = 'pvid'; wrap.id = 'imgp-video-' + index;
       var label = document.createElement('div'); label.className = 'pvid-label'; label.textContent = 'Video (PRESTO Wan2.2)';
       var rowEl = document.createElement('div'); rowEl.className = 'pvid-row';
-      var genBtn = document.createElement('button'); genBtn.className = 'btn'; genBtn.textContent = 'Generate video on PRESTO';
+      var genBtn = document.createElement('button'); genBtn.className = 'btn pvid-gen'; genBtn.textContent = 'Queue video on PRESTO';
       // Regenerate/Clear only make sense once a clip exists; setVideo reveals them.
       var regenBtn = document.createElement('button'); regenBtn.className = 'btn pvid-regen'; regenBtn.textContent = 'Regenerate video'; regenBtn.style.display = 'none';
       var clearBtn = document.createElement('button'); clearBtn.className = 'btn pvid-clear'; clearBtn.textContent = 'Clear video'; clearBtn.style.display = 'none';
+      var cancelQBtn = document.createElement('button'); cancelQBtn.className = 'btn pvid-cancelq'; cancelQBtn.textContent = 'Cancel queued'; cancelQBtn.style.display = 'none';
       var st = document.createElement('span'); st.className = 'prow-status';
       genBtn.addEventListener('click', function () {
-        genBtn.classList.add('busy'); genBtn.disabled = true; setRowStatus(st, 'Starting on PRESTO…', '');
-        apiPost(GEN_VIDEOS_API, { id: currentId, indexes: [index] }).then(function (res) {
+        genBtn.classList.add('busy'); genBtn.disabled = true; setRowStatus(st, 'Queueing on PRESTO…', '');
+        apiPost(QUEUE_VIDEO_API, { id: currentId, index: index }).then(function (res) {
           genBtn.classList.remove('busy'); genBtn.disabled = false;
           if (!res.ok) { setRowStatus(st, (res.body && res.body.error) || 'failed', 'dirty'); return; }
-          setRowStatus(st, 'queued on PRESTO', 'ok'); startVideosPolling(); refreshVideosStatus();
+          var d = unwrap(res.body);
+          if (!d.enqueued) {
+            var why = (d.skipped && d.skipped[0] && d.skipped[0].reason) || 'not eligible';
+            setRowStatus(st, why === 'already_queued' ? 'already queued' : (why === 'skipped_exists' ? 'video exists' : 'not queued: ' + why), 'dirty');
+          } else {
+            setRowStatus(st, 'queued on PRESTO', 'ok');
+          }
+          startVideosPolling(); refreshVideosStatus();
         }).catch(function () { genBtn.classList.remove('busy'); genBtn.disabled = false; setRowStatus(st, 'failed', 'dirty'); });
+      });
+      cancelQBtn.addEventListener('click', function () {
+        cancelQBtn.disabled = true;
+        apiPost(CANCEL_QUEUED_VIDEO_API, { id: currentId, index: index }).then(function (res) {
+          cancelQBtn.disabled = false;
+          if (!res.ok) { setRowStatus(st, 'Cancel failed', 'dirty'); return; }
+          var d = unwrap(res.body);
+          setRowStatus(st, d.cancelled ? 'cancelled' : (d.message || 'could not cancel'), d.cancelled ? 'ok' : 'dirty');
+          refreshVideosStatus();
+        }).catch(function () { cancelQBtn.disabled = false; setRowStatus(st, 'Cancel failed', 'dirty'); });
       });
       regenBtn.addEventListener('click', function () {
         if (!confirm('Regenerate the video for row ' + index + '? The current clip is archived (not deleted) and a fresh render starts on PRESTO (slow).')) return;
@@ -635,7 +656,7 @@
           setRowStatus(st, 'cleared', 'ok'); refreshVideosStatus();
         }).catch(function () { clearBtn.disabled = false; setRowStatus(st, 'Clear failed', 'dirty'); });
       });
-      rowEl.appendChild(genBtn); rowEl.appendChild(regenBtn); rowEl.appendChild(clearBtn); rowEl.appendChild(st);
+      rowEl.appendChild(genBtn); rowEl.appendChild(cancelQBtn); rowEl.appendChild(regenBtn); rowEl.appendChild(clearBtn); rowEl.appendChild(st);
       wrap.appendChild(label); wrap.appendChild(rowEl);
       return wrap;
     }
@@ -898,12 +919,15 @@
     }
 
     // ---- Video generation (PRESTO Wan2.2) ----
-    function setVideo(index, row) {
+    function setVideo(index, row, qitem) {
       var el = document.getElementById('imgp-video-' + index);
       if (!el) return;
       var st = el.querySelector('.prow-status');
       var regen = el.querySelector('.pvid-regen');
       var clear = el.querySelector('.pvid-clear');
+      var gen = el.querySelector('.pvid-gen');
+      var cancelq = el.querySelector('.pvid-cancelq');
+      var showGen = false, showRegenClear = false, showCancelQ = false;
       if (row.status === 'done' && row.has_video) {
         if (!el.querySelector('video')) {
           var v = document.createElement('video');
@@ -911,23 +935,38 @@
           el.appendChild(v);
         }
         if (st) setRowStatus(st, row.duplicate_rejected ? 'duplicate rejected; previous kept' : 'done', row.duplicate_rejected ? 'dirty' : 'ok');
-        // A clip exists → offer explicit Regenerate/Clear; hide the plain generate.
-        if (regen) regen.style.display = '';
-        if (clear) clear.style.display = '';
-        var gen = el.querySelector('.pvid-row .btn:not(.pvid-regen):not(.pvid-clear)');
-        if (gen) gen.style.display = 'none';
+        showRegenClear = true; // a clip exists → explicit Regenerate/Clear
+      } else if (qitem && qitem.status === 'running') {
+        if (st) setRowStatus(st, 'running on PRESTO… (slow)', '');
+      } else if (qitem && qitem.status === 'queued') {
+        if (st) setRowStatus(st, qitem.position ? ('queued · position ' + qitem.position) : 'queued on PRESTO', '');
+        showCancelQ = true;
+      } else if (qitem && qitem.status === 'failed') {
+        if (st) setRowStatus(st, 'failed: ' + String(qitem.error || 'render error').slice(0, 60) + ' — retry', 'dirty');
+        showGen = true; // retry
+      } else if (qitem && qitem.status === 'cancelled') {
+        if (st) setRowStatus(st, 'cancelled', '');
+        showGen = true;
       } else {
-        if (regen) regen.style.display = 'none';
-        if (clear) clear.style.display = 'none';
-        var gen2 = el.querySelector('.pvid-row .btn:not(.pvid-regen):not(.pvid-clear)');
-        if (gen2) gen2.style.display = '';
+        showGen = true; // ready / not queued yet
       }
+      if (gen) gen.style.display = showGen ? '' : 'none';
+      if (cancelq) cancelq.style.display = showCancelQ ? '' : 'none';
+      if (regen) regen.style.display = showRegenClear ? '' : 'none';
+      if (clear) clear.style.display = showRegenClear ? '' : 'none';
     }
 
     function applyVideosStatus(d) {
-      (d.videos || []).forEach(function (row) { setVideo(row.index, row); });
-      // job_is_this_project is true only when the ACTIVE PRESTO job is ours.
-      var active = Boolean(d.job_is_this_project);
+      // Map the latest queue item per row index + compute queued positions.
+      var qByIndex = {};
+      var queue = (d.queue && d.queue.items) || [];
+      queue.forEach(function (it) { qByIndex[it.index] = it; });
+      var pos = 0;
+      queue.forEach(function (it) { if (it.status === 'queued') { pos += 1; it.position = pos; } });
+      (d.videos || []).forEach(function (row) { setVideo(row.index, row, qByIndex[row.index]); });
+
+      var summary = (d.queue && d.queue.summary) || { queued: 0, running: 0, done: 0, failed: 0, skipped: 0 };
+      var active = Boolean(d.job_is_this_project) || summary.running > 0;
       var prog = document.getElementById('vidgen-progress');
       var barwrap = document.getElementById('vidgen-barwrap');
       var fill = document.getElementById('vidgen-fill');
@@ -935,17 +974,22 @@
       if (d.total > 0 && (active || d.done > 0)) {
         prog.classList.remove('hidden'); barwrap.classList.remove('hidden');
         fill.style.width = pct + '%';
-        prog.textContent = d.done + '/' + d.total + ' clips done' + (active ? ' · rendering on PRESTO… (slow)' : '');
+        // Honest queue summary line.
+        prog.textContent = 'PRESTO video queue: ' + summary.running + ' running · ' + summary.queued
+          + ' queued · ' + summary.done + ' done' + (summary.failed ? (' · ' + summary.failed + ' failed') : '')
+          + (summary.skipped ? (' · ' + summary.skipped + ' skipped') : '');
       } else {
         prog.classList.add('hidden'); barwrap.classList.add('hidden');
       }
-      document.getElementById('vidgen-cancel').classList.toggle('hidden', !active);
+      document.getElementById('vidgen-cancel').classList.toggle('hidden', !Boolean(d.job_is_this_project));
       var genBtn = document.getElementById('vidgen-generate');
-      genBtn.disabled = active || d.busy_elsewhere; genBtn.classList.toggle('busy', active);
+      // The batch button only QUEUES; it stays usable during rendering.
+      genBtn.classList.toggle('busy', active);
       if (d.busy_elsewhere && !active) {
-        setStatus(document.getElementById('vidgen-status'), 'PRESTO busy with another job — try again shortly');
+        setStatus(document.getElementById('vidgen-status'), 'PRESTO busy with another project — your rows will queue');
       }
-      return active;
+      // Keep polling while anything is queued or running.
+      return active || summary.queued > 0;
     }
 
     function refreshVideosStatus() {
@@ -1157,16 +1201,16 @@
     document.getElementById('vidgen-generate').addEventListener('click', function () {
       if (!currentId) return;
       var el = document.getElementById('vidgen-status');
-      setStatus(el, 'Starting PRESTO Wan2.2 batch…');
-      apiPost(GEN_VIDEOS_API, { id: currentId }).then(function (res) {
-        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Could not start video generation', true); return; }
+      setStatus(el, 'Queueing missing videos on PRESTO…');
+      apiPost(QUEUE_MISSING_VIDEOS_API, { id: currentId }).then(function (res) {
+        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Could not queue videos', true); return; }
         var d = unwrap(res.body);
-        var parts = ['Batch started for ' + d.will_generate + ' clip(s)'];
-        if (d.skipped_existing_video) parts.push(d.skipped_existing_video + ' already have videos');
-        if (d.skipped_missing_prereq) parts.push(d.skipped_missing_prereq + ' skipped (need still + i2v prompt)');
-        setStatus(el, parts.join(' · '));
+        var s = d.queue && d.queue.summary ? d.queue.summary : {};
+        var parts = [d.enqueued_count + ' row(s) queued'];
+        if (d.enqueued_count === 0) parts = ['No new rows to queue (all rendered, running, queued, or missing a still/i2v prompt)'];
+        setStatus(el, parts.join(' · '), d.enqueued_count === 0);
         startVideosPolling(); refreshVideosStatus();
-      }).catch(function () { setStatus(el, 'Could not start video generation', true); });
+      }).catch(function () { setStatus(el, 'Could not queue videos', true); });
     });
 
     // ---- Step 6: create i2v prompts for generated images that don't have one ----

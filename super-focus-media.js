@@ -208,6 +208,32 @@ function resolveRegeneratedVideo(projectId, subdir, index, prevArchive, options 
 }
 
 const IMAGE_PROVIDER_FILENAME = 'image-provider.json';
+const VIDEO_QUEUE_FILENAME = 'video-queue.json';
+
+// Persistent PRESTO video queue for a project (survives page refresh / restart).
+// One item per (re)queued row; the server worker drains it single-file.
+function videoQueuePath(mediaDir) { return path.join(mediaDir, VIDEO_QUEUE_FILENAME); }
+
+function readVideoQueue(projectId, options = {}) {
+  const p = videoQueuePath(mediaDirFor(projectId, options));
+  if (!fs.existsSync(p)) return { version: 1, items: [] };
+  try {
+    const q = JSON.parse(fs.readFileSync(p, 'utf8'));
+    if (!Array.isArray(q.items)) q.items = [];
+    if (!q.version) q.version = 1;
+    return q;
+  } catch (_) { return { version: 1, items: [] }; }
+}
+
+function writeVideoQueue(projectId, queue, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  fs.mkdirSync(mediaDir, { recursive: true });
+  const outPath = videoQueuePath(mediaDir);
+  const tmp = `${outPath}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(queue, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmp, outPath);
+  return queue;
+}
 
 function resolveMediaRoot(options = {}) {
   const root = options.mediaRoot || process.env.SUPER_FOCUS_MEDIA_ROOT;
@@ -469,6 +495,8 @@ module.exports = {
   latestSupersededHash,
   writeImageProviderProvenance,
   readImageProviderProvenance,
+  readVideoQueue,
+  writeVideoQueue,
   readRegenOutcomes,
   recordRegenOutcome,
   resolveRegeneratedImage,

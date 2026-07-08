@@ -2717,3 +2717,204 @@ test("remaining image prompts: one retry fills slots when the second response is
     assert.equal(d.project.image_prompts.find((p) => p.index === 1).text, "dup a"); // existing preserved
   } finally { await close(server); }
 });
+
+// ================= PRESTO video QUEUE (single worker, multi-item) =================
+
+// A PRESTO spawn that writes an mp4 for every selection EXCEPT failIdx (which
+// closes 0 with no output -> reconciled as failed).
+function prestoSpawnFailIndex(failIdx) {
+  return function () {
+    const args = arguments[1] || [];
+    const pkg = args[args.indexOf("--package") + 1];
+    const profile = args[args.indexOf("--profile") + 1];
+    const subdir = profile === "wan22_hq_720p_5s_no_lightx2v" ? "mp4-hq-720p" : "mp4";
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stderr = new EventEmitter(); child.pid = 8;
+    child.kill = function () { setImmediate(() => child.emit("close", null, "SIGTERM")); };
+    setImmediate(() => {
+      const sel = JSON.parse(fs.readFileSync(path.join(pkg, "selected-images.json"), "utf8")).selections;
+      const dir = path.join(pkg, "videos", subdir);
+      fs.mkdirSync(dir, { recursive: true });
+      sel.forEach((s) => {
+        if (s.prompt_index === failIdx) return;
+        fs.writeFileSync(path.join(dir, String(s.prompt_index).padStart(3, "0") + ".mp4"), Buffer.from([0, 0, 0, 0]));
+      });
+      child.emit("close", 0, null);
+    });
+    return child;
+  };
+}
+
+function qs(server, id) {
+  return request(server, packageEngineServer.SUPER_FOCUS_VIDEO_QUEUE_API + "?id=" + encodeURIComponent(id));
+}
+
+test("video queue: queueing a row while a render runs returns queued (not 409)", async () => {
+  const { server, id } = videoServer(fakePrestoSpawn({ hang: true }), { promptCount: 2 });
+  await listen(server);
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } }); // starts running (hangs)
+    const r2 = await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 2 } });
+    assert.equal(r2.statusCode, 200, "no 409 while busy");
+    const d = unwrap(r2);
+    assert.equal(d.enqueued, true);
+    const items = d.queue.items;
+    assert.equal(items.find((i) => i.index === 1).status, "running");
+    assert.equal(items.find((i) => i.index === 2).status, "queued");
+    assert.equal(d.queue.summary.running, 1);
+    assert.equal(d.queue.summary.queued, 1);
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+test("video queue: worker drains multiple queued rows one at a time", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn(), { promptCount: 3 });
+  await listen(server);
+  try {
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_MISSING_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } }));
+    assert.equal(d.enqueued_count, 3);
+    await delay(120); // let the close-hook chain drain all three
+    const q = unwrap(await qs(server, id));
+    assert.equal(q.summary.done, 3, "all three rendered");
+    assert.equal(q.summary.queued, 0);
+    assert.equal(q.summary.running, 0);
+    [1, 2, 3].forEach((i) => {
+      assert.ok(fs.existsSync(path.join(mediaRoot, id, "videos", HQ_SUBDIR, String(i).padStart(3, "0") + ".mp4")));
+    });
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+test("video queue: rows with an existing video are skipped, not queued", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn({ hang: true }), { promptCount: 2 });
+  await listen(server);
+  try {
+    const dir = path.join(mediaRoot, id, "videos", HQ_SUBDIR);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "001.mp4"), Buffer.from([1, 2, 3])); // row 1 already has video
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_MISSING_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } }));
+    assert.equal(d.enqueued_count, 1); // only row 2
+    assert.ok(!d.queue.items.some((i) => i.index === 1 && (i.status === "queued" || i.status === "running")));
+    // Direct queue of the existing row is skipped honestly.
+    const one = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } }));
+    assert.equal(one.enqueued, false);
+    assert.ok(one.skipped.some((s) => s.index === 1 && s.reason === "skipped_exists"));
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+test("video queue: rows missing a still or i2v prompt are skipped", async () => {
+  const { server, root, id } = videoServer(fakePrestoSpawn({ hang: true }), { promptCount: 2, imageCount: 1, i2vCount: 2 });
+  await listen(server); // row2 has i2v but NO image
+  try {
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 2 } }));
+    assert.equal(d.enqueued, false);
+    assert.ok(d.skipped.some((s) => s.index === 2 && s.reason === "skipped_prereq"));
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+test("video queue: duplicate queue request for a live row is ignored (already_queued)", async () => {
+  const { server, id } = videoServer(fakePrestoSpawn({ hang: true }), { promptCount: 2 });
+  await listen(server);
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } }); // running
+    const dup = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } }));
+    assert.equal(dup.enqueued, false);
+    assert.ok(dup.skipped.some((s) => s.index === 1 && s.reason === "already_queued"));
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+test("video queue: persists to disk and is readable after a refresh", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn({ hang: true }), { promptCount: 2 });
+  await listen(server);
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 2 } });
+    assert.ok(fs.existsSync(path.join(mediaRoot, id, "video-queue.json")), "queue persisted");
+    const disk = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "video-queue.json"), "utf8"));
+    assert.equal(disk.items.length, 2);
+    // A fresh GET (simulated refresh) still reports both.
+    const q = unwrap(await qs(server, id));
+    assert.equal(q.items.length, 2);
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+test("video queue: stale running item is reconciled safely after restart", async () => {
+  // no active PRESTO job + no output -> failed; output present -> done.
+  const failCase = videoServer(fakePrestoSpawn(), { promptCount: 1 });
+  await listen(failCase.server);
+  try {
+    sfMedia.writeVideoQueue(failCase.id, { version: 1, items: [
+      { item_id: "stale1", index: 1, status: "running", started_at: "2026-01-01T00:00:00Z" },
+    ] }, { mediaRoot: failCase.mediaRoot });
+    packageEngineServer.PRESTO_STATE.activeJob = null; // as if restarted
+    const q = unwrap(await qs(failCase.server, failCase.id));
+    assert.equal(q.items.find((i) => i.index === 1).status, "failed");
+  } finally { await close(failCase.server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+
+  const doneCase = videoServer(fakePrestoSpawn(), { promptCount: 1 });
+  await listen(doneCase.server);
+  try {
+    const dir = path.join(doneCase.mediaRoot, doneCase.id, "videos", HQ_SUBDIR);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "001.mp4"), Buffer.from([9]));
+    sfMedia.writeVideoQueue(doneCase.id, { version: 1, items: [
+      { item_id: "stale2", index: 1, status: "running", started_at: "2026-01-01T00:00:00Z" },
+    ] }, { mediaRoot: doneCase.mediaRoot });
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+    const q = unwrap(await qs(doneCase.server, doneCase.id));
+    assert.equal(q.items.find((i) => i.index === 1).status, "done");
+  } finally { await close(doneCase.server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+test("video queue: a failed item does not stop the rest of the queue", async () => {
+  const { server, mediaRoot, id } = videoServer(prestoSpawnFailIndex(1), { promptCount: 2 });
+  await listen(server);
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_MISSING_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    await delay(120);
+    const q = unwrap(await qs(server, id));
+    assert.equal(q.items.find((i) => i.index === 1).status, "failed");
+    assert.equal(q.items.find((i) => i.index === 2).status, "done");
+    assert.ok(fs.existsSync(path.join(mediaRoot, id, "videos", HQ_SUBDIR, "002.mp4")));
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+test("video queue: cancel a queued item; a running item cannot be cancelled", async () => {
+  const { server, id } = videoServer(fakePrestoSpawn({ hang: true }), { promptCount: 2 });
+  await listen(server);
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } }); // running
+    await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 2 } }); // queued
+    const cancelQueued = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_CANCEL_QUEUED_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 2 } }));
+    assert.equal(cancelQueued.cancelled, true);
+    const cancelRunning = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_CANCEL_QUEUED_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } }));
+    assert.equal(cancelRunning.cancelled, false);
+    assert.equal(cancelRunning.running, true);
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+test("video queue routes are nonce-gated and guard the project id", async () => {
+  const { server, id } = videoServer(fakePrestoSpawn({ hang: true }), { promptCount: 1 });
+  await listen(server);
+  try {
+    const noNonce = await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, {
+      method: "POST", headers: { host: "127.0.0.1:8010" }, body: { id, index: 1 } });
+    assert.equal(noNonce.statusCode, 403);
+    const bad = await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id: "../etc", index: 1 } });
+    assert.equal(bad.statusCode, 400);
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
