@@ -100,6 +100,7 @@ const PROJECT_YOUTUBE_DRAFT_API = '/api/project/youtube-draft';
 const PROJECT_YOUTUBE_DRAFT_SAVE_API = '/api/project/youtube-draft/save';
 const SUPER_FOCUS_PROJECTS_API = '/api/super-focus/projects';
 const SUPER_FOCUS_PROJECT_API = '/api/super-focus/project';
+const SUPER_FOCUS_PROVIDERS_API = '/api/super-focus/providers';
 const SUPER_FOCUS_TITLE_API = '/api/super-focus/title';
 const SUPER_FOCUS_SCRIPT_API = '/api/super-focus/script';
 const SUPER_FOCUS_GENERATE_TOPIC_API = '/api/super-focus/generate-topic';
@@ -269,6 +270,7 @@ const projectVideoReview = require('./project-video-review.js');
 const superFocus = require('./super-focus.js');
 const superFocusPrompts = require('./super-focus-prompts.js');
 const superFocusMedia = require('./super-focus-media.js');
+const superFocusRouter = require('./super-focus-router.js');
 // Super Focus keeps its own local, file-backed project state (never on VIDNAS).
 // Root is env-overridable so it can follow a different disk without code edits.
 const SUPER_FOCUS_ROOT = process.env.SUPER_FOCUS_ROOT || path.join(ROOT, 'super-focus-projects');
@@ -4600,6 +4602,156 @@ async function callPrestoOllamaChat({ system, user, schema, model } = {}, option
     }
     throw error;
   }
+}
+
+// ── Super Focus load-aware Ollama routing ───────────────────────────────────
+// Avoid sending text generation to vidnux Ollama while vidnux ComfyUI is busy
+// with images; route to PRESTO Ollama when it is configured, healthy, and PRESTO
+// itself is not busy with video. Pure decision lives in super-focus-router.js.
+
+function superFocusProviderConfig(options = {}) {
+  const prestoBase = String(
+    options.prestoOllamaBaseUrl != null ? options.prestoOllamaBaseUrl
+      : (process.env.PRESTO_OLLAMA_BASE_URL || OLLAMA_PRESTO_BASE_URL || '')
+  ).replace(/\/+$/, '');
+  const prestoModel = String(process.env.PRESTO_OLLAMA_MODEL || OLLAMA_PRESTO_MODEL || OLLAMA_MODEL);
+  return {
+    mode: superFocusRouter.resolveRoutingMode(options.superFocusRoutingMode || process.env.SUPER_FOCUS_OLLAMA_ROUTING),
+    local: { base_url: OLLAMA_BASE_URL, model: OLLAMA_MODEL },
+    presto: { configured: Boolean(prestoBase), base_url: prestoBase, model: prestoModel },
+  };
+}
+
+// Read-only health probe: is the Ollama at baseUrl reachable, and is `model`
+// installed? Uses GET /api/tags with a short timeout. Injectable for tests.
+async function probeOllamaTags(baseUrl, model, options = {}) {
+  const fetchImpl = options.fetchImpl || (typeof fetch === 'function' ? fetch : null);
+  const base = String(baseUrl || '').replace(/\/+$/, '');
+  if (!fetchImpl || !base) return { reachable: false, model_ready: false, models: [] };
+  try {
+    const res = await fetchImpl(`${base}/api/tags`, { method: 'GET', signal: AbortSignal.timeout(4000) });
+    if (!res || !res.ok) return { reachable: false, model_ready: false, models: [] };
+    const data = await res.json().catch(() => ({}));
+    const names = Array.isArray(data && data.models) ? data.models.map((m) => String((m && m.name) || '')).filter(Boolean) : [];
+    const want = String(model || '').trim();
+    const ready = want ? names.some((n) => n === want || n.split(':')[0] === want.split(':')[0]) : names.length > 0;
+    return { reachable: true, model_ready: ready, models: names };
+  } catch (_) {
+    return { reachable: false, model_ready: false, models: [] };
+  }
+}
+
+// Gather live signals + run the pure router. Read-only. Probes PRESTO Ollama
+// only when it might actually be used (auto+local-busy, or forced presto).
+async function resolveSuperFocusOllamaProvider(task, options = {}) {
+  const cfg = superFocusProviderConfig(options);
+  const localBusy = options.superFocusLocalBusy != null
+    ? Boolean(options.superFocusLocalBusy)
+    : Boolean(currentFluxJobStatus().active);
+  const presto = Object.assign({ reachable: false, model_ready: false, comfyui_busy: false, comfyui_known: true }, cfg.presto);
+  const mightUsePresto = cfg.mode === 'presto' || (cfg.mode === 'auto' && localBusy);
+  if (cfg.presto.configured && mightUsePresto) {
+    const probe = options.prestoOllamaProbe || probeOllamaTags;
+    const health = await probe(cfg.presto.base_url, cfg.presto.model, options);
+    presto.reachable = Boolean(health && health.reachable);
+    presto.model_ready = Boolean(health && health.model_ready);
+    presto.comfyui_busy = options.superFocusPrestoBusy != null
+      ? Boolean(options.superFocusPrestoBusy)
+      : Boolean(currentPrestoJobStatus().active);
+    presto.comfyui_known = true; // our video lock is authoritative for our own jobs
+  }
+  const decision = superFocusRouter.selectOllamaProvider({ mode: cfg.mode, local: cfg.local, presto, localBusy });
+  decision.mode = cfg.mode;
+  decision.task = task || null;
+  decision.local_busy = localBusy;
+  return decision;
+}
+
+function publicProvider(decision) {
+  return {
+    id: decision.provider_id,
+    label: decision.label,
+    model: decision.model,
+    reason: decision.reason,
+    warnings: decision.warnings || [],
+  };
+}
+
+// Route + run one Super Focus text generation. Returns { content, provider }.
+// On failure the error message is enriched with provider/model/timeout/task/
+// count/routing context and carries error.provider.
+async function superFocusGenerate({ system, user, schema, task, requestedCount } = {}, options = {}) {
+  const decision = await resolveSuperFocusOllamaProvider(task, options);
+  if (decision.error) {
+    const e = new Error(decision.message || `No usable Ollama provider (${decision.error}).`);
+    e.statusCode = decision.error === 'not_configured' ? 400 : 503;
+    e.provider = { error: decision.error };
+    throw e;
+  }
+  try {
+    const content = await callOllamaChat(
+      { system, user, schema, model: decision.model, baseUrl: decision.base_url },
+      options
+    );
+    return { content, provider: publicProvider(decision) };
+  } catch (error) {
+    const secs = Math.ceil(OLLAMA_TIMEOUT_MS / 1000);
+    const ctx = [
+      `provider ${decision.label}`,
+      `model ${decision.model}`,
+      `timeout ${secs}s`,
+      `task ${task || 'generation'}`,
+      requestedCount ? `requested ${requestedCount}` : null,
+      decision.reason ? `routing: ${decision.reason}` : null,
+    ].filter(Boolean).join(' · ');
+    error.message = `${error.message} [${ctx}]`;
+    error.provider = publicProvider(decision);
+    throw error;
+  }
+}
+
+// Read-only provider status for the "Check providers" panel. All probes are
+// short-timeout GETs; no service is started/stopped. Injectable for tests.
+async function superFocusProviderStatus(options = {}) {
+  const cfg = superFocusProviderConfig(options);
+  const tagsProbe = options.prestoOllamaProbe || probeOllamaTags;
+  const localTagsProbe = options.localOllamaProbe || probeOllamaTags;
+  const comfyReach = options.comfyuiReachableCheck || prestoComfyuiReachable;
+
+  const localBusy = options.superFocusLocalBusy != null
+    ? Boolean(options.superFocusLocalBusy) : Boolean(currentFluxJobStatus().active);
+  const prestoBusy = options.superFocusPrestoBusy != null
+    ? Boolean(options.superFocusPrestoBusy) : Boolean(currentPrestoJobStatus().active);
+
+  const localOllama = await localTagsProbe(cfg.local.base_url, cfg.local.model, options);
+  const localOllamaStatus = !localOllama.reachable ? 'offline'
+    : !localOllama.model_ready ? 'model_missing' : 'ok';
+
+  const vidnuxComfyReachable = await comfyReach(LOCAL_IMAGE_PROVIDER.url, options);
+  const vidnuxComfyStatus = localBusy ? 'busy' : (vidnuxComfyReachable ? 'ok' : 'offline');
+
+  let prestoOllama = { reachable: false, model_ready: false, models: [] };
+  let prestoOllamaStatus = 'not_configured';
+  if (cfg.presto.configured) {
+    prestoOllama = await tagsProbe(cfg.presto.base_url, cfg.presto.model, options);
+    prestoOllamaStatus = !prestoOllama.reachable ? 'offline'
+      : !prestoOllama.model_ready ? 'model_missing' : 'ok';
+  }
+
+  let prestoComfyStatus = 'not_configured';
+  if (PRESTO_BASE_URL) {
+    if (prestoBusy) prestoComfyStatus = 'busy';
+    else prestoComfyStatus = (await comfyReach(PRESTO_BASE_URL, options)) ? 'ok' : 'offline';
+  }
+
+  return {
+    ok: true,
+    routing_mode: cfg.mode,
+    vidnux_ollama: { status: localOllamaStatus, base_url: cfg.local.base_url, model: cfg.local.model, busy_warning: localBusy },
+    vidnux_comfyui: { status: vidnuxComfyStatus },
+    presto_ollama: { status: prestoOllamaStatus, configured: cfg.presto.configured, base_url: cfg.presto.base_url, model: cfg.presto.model },
+    presto_comfyui: { status: prestoComfyStatus },
+  };
 }
 
 // Draft the five beginning-triage fields with the local Ollama LLM. Read-only:
@@ -9825,6 +9977,15 @@ function createServer(options = {}) {
       return;
     }
 
+    // Read-only provider status for the "Check providers" panel. Short-timeout
+    // probes only; never starts/stops a service. Explains routing decisions.
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_PROVIDERS_API) {
+      superFocusProviderStatus(options)
+        .then((status) => sendJSON(res, 200, status))
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-providers-error'));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === SUPER_FOCUS_TITLE_API) {
       readJsonBody(req, 1024 * 256)
         .then((payload) => {
@@ -9858,13 +10019,13 @@ function createServer(options = {}) {
           const id = payload.id || payload.project_id || '';
           superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown project
           const reqPrompt = superFocusPrompts.buildTopicRequest();
-          const content = await callOllamaChat(
-            { system: reqPrompt.system, user: reqPrompt.user, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL },
+          const gen = await superFocusGenerate(
+            { system: reqPrompt.system, user: reqPrompt.user, task: 'topic' },
             options
           );
-          const topic = superFocusPrompts.cleanTopic(content);
+          const topic = superFocusPrompts.cleanTopic(gen.content);
           if (!topic) { const e = new Error('Ollama returned an empty topic.'); e.statusCode = 502; throw e; }
-          sendJSON(res, 200, { topic, provider: 'ollama', provider_host: 'vidnux', model: OLLAMA_MODEL });
+          sendJSON(res, 200, { topic, provider: gen.provider, provider_host: gen.provider.id === 'presto_ollama' ? 'presto' : 'vidnux', model: gen.provider.model });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-topic-error'));
       return;
@@ -9882,13 +10043,13 @@ function createServer(options = {}) {
             const e = new Error('Save a title first, then generate the script.'); e.statusCode = 400; throw e;
           }
           const reqPrompt = superFocusPrompts.buildScriptRequest(state.title);
-          const content = await callOllamaChat(
-            { system: reqPrompt.system, user: reqPrompt.user, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL },
+          const gen = await superFocusGenerate(
+            { system: reqPrompt.system, user: reqPrompt.user, task: 'script' },
             options
           );
-          const script = superFocusPrompts.cleanScript(content);
+          const script = superFocusPrompts.cleanScript(gen.content);
           if (!script) { const e = new Error('Ollama returned an empty script.'); e.statusCode = 502; throw e; }
-          sendJSON(res, 200, { script, provider: 'ollama', provider_host: 'vidnux', model: OLLAMA_MODEL });
+          sendJSON(res, 200, { script, provider: gen.provider, provider_host: gen.provider.id === 'presto_ollama' ? 'presto' : 'vidnux', model: gen.provider.model });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-script-error'));
       return;
@@ -9912,13 +10073,13 @@ function createServer(options = {}) {
           // Operator-chosen count (1..MAX); absent keeps the historical up-to-MAX behavior.
           const count = validateSuperFocusCount(payload.count, superFocusPrompts.IMAGE_PROMPT_MAX, 'count');
           const reqPrompt = superFocusPrompts.buildImagePromptsRequest(state.script, count);
-          const content = await callOllamaChat(
-            { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL },
+          const gen = await superFocusGenerate(
+            { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, task: 'image_prompts', requestedCount: count },
             options
           );
-          const prompts = superFocusPrompts.parsePromptArray(content, count);
+          const prompts = superFocusPrompts.parsePromptArray(gen.content, count);
           const saved = superFocus.saveImagePrompts(id, prompts, { root: sfRoot });
-          sendJSON(res, 200, { project: saved, count: saved.image_prompts.length, provider: 'ollama', provider_host: 'vidnux', model: OLLAMA_MODEL });
+          sendJSON(res, 200, { project: saved, count: saved.image_prompts.length, provider: gen.provider, provider_host: gen.provider.id === 'presto_ollama' ? 'presto' : 'vidnux', model: gen.provider.model });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-image-prompts-error'));
       return;
@@ -9949,11 +10110,11 @@ function createServer(options = {}) {
           }
           const before = filledTexts.length;
           const reqPrompt = superFocusPrompts.buildImagePromptsRequest(state.script, emptyCount, filledTexts);
-          const content = await callOllamaChat(
-            { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL },
+          const gen = await superFocusGenerate(
+            { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, task: 'image_prompts_topup', requestedCount: emptyCount },
             options
           );
-          const generated = superFocusPrompts.parsePromptArray(content, emptyCount);
+          const generated = superFocusPrompts.parsePromptArray(gen.content, emptyCount);
           // Cheap exact-duplicate guard (case-insensitive) against what we have.
           const existingLower = new Set(filledTexts.map((t) => t.toLowerCase()));
           const distinct = generated.filter((p) => !existingLower.has(p.trim().toLowerCase()));
@@ -9965,7 +10126,7 @@ function createServer(options = {}) {
             empty_before: emptyCount,
             added: after - before,
             total_filled: after,
-            provider: 'ollama', provider_host: 'vidnux', model: OLLAMA_MODEL,
+            provider: gen.provider, provider_host: gen.provider.id === 'presto_ollama' ? 'presto' : 'vidnux', model: gen.provider.model,
           });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-remaining-image-prompts-error'));
@@ -9988,13 +10149,13 @@ function createServer(options = {}) {
           }
           const count = validateSuperFocusCount(payload.count, superFocusPrompts.INFOGRAPHIC_PROMPT_MAX, 'count');
           const reqPrompt = superFocusPrompts.buildInfographicPromptsRequest(state.script, count);
-          const content = await callOllamaChat(
-            { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL },
+          const gen = await superFocusGenerate(
+            { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, task: 'infographic_prompts', requestedCount: count },
             options
           );
-          const prompts = superFocusPrompts.parsePromptArray(content, count);
+          const prompts = superFocusPrompts.parsePromptArray(gen.content, count);
           const saved = superFocus.saveInfographicPrompts(id, prompts, { root: sfRoot });
-          sendJSON(res, 200, { project: saved, count: saved.infographic_prompts.length, provider: 'ollama', provider_host: 'vidnux', model: OLLAMA_MODEL });
+          sendJSON(res, 200, { project: saved, count: saved.infographic_prompts.length, provider: gen.provider, provider_host: gen.provider.id === 'presto_ollama' ? 'presto' : 'vidnux', model: gen.provider.model });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-infographic-prompts-error'));
       return;
@@ -10039,11 +10200,11 @@ function createServer(options = {}) {
           const willGenerate = Math.min(effectiveLimit, eligible);
           const before = filled.length;
           const reqPrompt = superFocusPrompts.buildInfographicPromptsRequest(state.script, willGenerate, filledTexts);
-          const content = await callOllamaChat(
-            { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL },
+          const gen = await superFocusGenerate(
+            { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, task: 'infographic_prompts_topup', requestedCount: willGenerate },
             options
           );
-          const generated = superFocusPrompts.parsePromptArray(content, willGenerate);
+          const generated = superFocusPrompts.parsePromptArray(gen.content, willGenerate);
           // Cheap exact-duplicate guard against what we already have.
           const existingLower = new Set(filledTexts.map((t) => t.toLowerCase()));
           const distinct = generated.filter((p) => !existingLower.has(p.trim().toLowerCase())).slice(0, willGenerate);
@@ -10060,7 +10221,7 @@ function createServer(options = {}) {
             total_filled: after,
             skipped_existing: before,
             remaining_eligible: eligible - (after - before),
-            provider: 'ollama', provider_host: 'vidnux', model: OLLAMA_MODEL,
+            provider: gen.provider, provider_host: gen.provider.id === 'presto_ollama' ? 'presto' : 'vidnux', model: gen.provider.model,
           });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-missing-infographic-prompts-error'));
@@ -12684,6 +12845,7 @@ module.exports = {
   PROJECT_YOUTUBE_DRAFT_SAVE_API,
   SUPER_FOCUS_PROJECTS_API,
   SUPER_FOCUS_PROJECT_API,
+  SUPER_FOCUS_PROVIDERS_API,
   SUPER_FOCUS_TITLE_API,
   SUPER_FOCUS_SCRIPT_API,
   SUPER_FOCUS_GENERATE_TOPIC_API,

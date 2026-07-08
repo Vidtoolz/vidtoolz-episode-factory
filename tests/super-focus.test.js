@@ -2080,3 +2080,174 @@ test("clearing an infographic prompt slot makes it eligible for top-up again", a
     assert.equal(d.project.infographic_prompts.find((p) => p.index === 5).text, "refill");
   } finally { await close(server); }
 });
+
+// ================= Load-aware Ollama provider routing =================
+
+const sfRouter = require("../super-focus-router.js");
+
+const RT_LOCAL = { base_url: "http://vidnux:11434", model: "qwen3:14b" };
+function rtPresto(over) {
+  return Object.assign({ configured: true, base_url: "http://presto:11434", model: "qwen3:14b", reachable: true, model_ready: true, comfyui_busy: false, comfyui_known: true }, over || {});
+}
+
+test("router: auto + vidnux idle -> vidnux Ollama", () => {
+  const d = sfRouter.selectOllamaProvider({ mode: "auto", local: RT_LOCAL, presto: rtPresto(), localBusy: false });
+  assert.equal(d.provider_id, "vidnux_ollama");
+  assert.match(d.reason, /idle/i);
+});
+
+test("router: auto + vidnux busy + PRESTO healthy + PRESTO idle -> PRESTO Ollama", () => {
+  const d = sfRouter.selectOllamaProvider({ mode: "auto", local: RT_LOCAL, presto: rtPresto(), localBusy: true });
+  assert.equal(d.provider_id, "presto_ollama");
+  assert.equal(d.base_url, "http://presto:11434");
+  assert.match(d.reason, /busy.*PRESTO/i);
+});
+
+test("router: auto + vidnux busy + PRESTO not configured -> vidnux with contention warning", () => {
+  const d = sfRouter.selectOllamaProvider({ mode: "auto", local: RT_LOCAL, presto: rtPresto({ configured: false }), localBusy: true });
+  assert.equal(d.provider_id, "vidnux_ollama");
+  assert.ok(d.warnings.some((w) => /busy/i.test(w)));
+});
+
+test("router: auto + vidnux busy + PRESTO model missing -> NOT PRESTO (falls to vidnux)", () => {
+  const d = sfRouter.selectOllamaProvider({ mode: "auto", local: RT_LOCAL, presto: rtPresto({ model_ready: false }), localBusy: true });
+  assert.equal(d.provider_id, "vidnux_ollama");
+  assert.ok(d.warnings.some((w) => /not installed|missing/i.test(w)));
+});
+
+test("router: auto + vidnux busy + PRESTO ComfyUI busy -> avoid PRESTO (no new contention)", () => {
+  const d = sfRouter.selectOllamaProvider({ mode: "auto", local: RT_LOCAL, presto: rtPresto({ comfyui_busy: true }), localBusy: true });
+  assert.equal(d.provider_id, "vidnux_ollama");
+  assert.ok(d.warnings.some((w) => /PRESTO ComfyUI busy/i.test(w)));
+});
+
+test("router: auto + vidnux busy + PRESTO ComfyUI status unknown -> avoid PRESTO", () => {
+  const d = sfRouter.selectOllamaProvider({ mode: "auto", local: RT_LOCAL, presto: rtPresto({ comfyui_known: false }), localBusy: true });
+  assert.equal(d.provider_id, "vidnux_ollama");
+  assert.ok(d.warnings.some((w) => /unknown/i.test(w)));
+});
+
+test("router: mode=local forces vidnux even when busy; mode=presto forces PRESTO when healthy", () => {
+  const local = sfRouter.selectOllamaProvider({ mode: "local", local: RT_LOCAL, presto: rtPresto(), localBusy: true });
+  assert.equal(local.provider_id, "vidnux_ollama");
+  const presto = sfRouter.selectOllamaProvider({ mode: "presto", local: RT_LOCAL, presto: rtPresto(), localBusy: false });
+  assert.equal(presto.provider_id, "presto_ollama");
+});
+
+test("router: mode=presto but not configured / model missing -> actionable error, never silent", () => {
+  const notCfg = sfRouter.selectOllamaProvider({ mode: "presto", local: RT_LOCAL, presto: rtPresto({ configured: false }) });
+  assert.equal(notCfg.error, "not_configured");
+  const missing = sfRouter.selectOllamaProvider({ mode: "presto", local: RT_LOCAL, presto: rtPresto({ model_ready: false }) });
+  assert.equal(missing.error, "model_missing");
+});
+
+// ---- route-level: provider metadata + live routing ----
+
+async function routingServer(opts = {}) {
+  const root = mkRoot();
+  const created = superFocus.createProject({ title: "Route" }, { root });
+  superFocus.saveScript(created.project_id, "a grounded script", { root });
+  const server = packageEngineServer.createServer(Object.assign({ superFocusRoot: root }, opts));
+  await listen(server);
+  return { root, server, id: created.project_id };
+}
+
+test("generation response includes provider metadata (id/label/model)", async () => {
+  const { server, id } = await routingServer({ fetchImpl: fakeOllama(jsonArray(3, "S")) });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 3 },
+    });
+    assert.equal(res.statusCode, 200);
+    const p = unwrap(res).provider;
+    assert.equal(p.id, "vidnux_ollama");
+    assert.equal(p.label, "vidnux Ollama");
+    assert.ok(p.model);
+    assert.ok("warnings" in p);
+  } finally { await close(server); }
+});
+
+test("auto routing sends text to PRESTO Ollama when vidnux ComfyUI is busy and PRESTO is healthy", async () => {
+  const { server, id } = await routingServer({
+    fetchImpl: fakeOllama(jsonArray(3, "S")),
+    superFocusLocalBusy: true,
+    prestoOllamaBaseUrl: "http://presto:11434",
+    prestoOllamaProbe: async () => ({ reachable: true, model_ready: true }),
+    superFocusPrestoBusy: false,
+  });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 3 },
+    });
+    assert.equal(res.statusCode, 200);
+    const d = unwrap(res);
+    assert.equal(d.provider.id, "presto_ollama");
+    assert.equal(d.provider_host, "presto");
+    assert.match(d.provider.reason, /busy/i);
+  } finally { await close(server); }
+});
+
+test("auto routing falls back to vidnux with a warning when busy but PRESTO not configured", async () => {
+  const { server, id } = await routingServer({
+    fetchImpl: fakeOllama(jsonArray(3, "S")),
+    superFocusLocalBusy: true,
+    prestoOllamaBaseUrl: "", // not configured
+  });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 3 },
+    });
+    assert.equal(res.statusCode, 200);
+    const d = unwrap(res);
+    assert.equal(d.provider.id, "vidnux_ollama");
+    assert.ok(d.provider.warnings.some((w) => /busy/i.test(w)));
+  } finally { await close(server); }
+});
+
+test("timeout errors include provider/model/task/timeout context", async () => {
+  const timeoutFetch = async () => { const e = new Error("timed out"); e.name = "TimeoutError"; throw e; };
+  const { server, id } = await routingServer({ fetchImpl: timeoutFetch });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 3 },
+    });
+    assert.equal(res.statusCode, 504);
+    assert.match(res.raw, /timed out/i);
+    assert.match(res.raw, /provider vidnux Ollama/);
+    assert.match(res.raw, /model /);
+    assert.match(res.raw, /task image_prompts/);
+  } finally { await close(server); }
+});
+
+test("providers status route reports each provider with injected probes", async () => {
+  const okProbe = async () => ({ reachable: true, model_ready: true, models: ["qwen3:14b"] });
+  const { server } = await routingServer({
+    localOllamaProbe: okProbe,
+    prestoOllamaProbe: okProbe,
+    comfyuiReachableCheck: async () => true,
+    prestoOllamaBaseUrl: "http://presto:11434",
+  });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_PROVIDERS_API);
+    assert.equal(res.statusCode, 200);
+    const d = unwrap(res);
+    assert.equal(d.vidnux_ollama.status, "ok");
+    assert.equal(d.presto_ollama.status, "ok");
+    assert.equal(d.vidnux_comfyui.status, "ok");
+    assert.ok(["ok", "busy", "offline", "not_configured"].indexOf(d.presto_comfyui.status) !== -1);
+  } finally { await close(server); }
+});
+
+test("providers status reports PRESTO Ollama not_configured when no base url", async () => {
+  const okProbe = async () => ({ reachable: true, model_ready: true });
+  const { server } = await routingServer({
+    localOllamaProbe: okProbe,
+    comfyuiReachableCheck: async () => true,
+    prestoOllamaBaseUrl: "",
+  });
+  try {
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_PROVIDERS_API));
+    assert.equal(d.presto_ollama.status, "not_configured");
+    assert.equal(d.presto_ollama.configured, false);
+  } finally { await close(server); }
+});

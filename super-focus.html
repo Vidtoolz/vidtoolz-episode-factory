@@ -110,6 +110,12 @@
     .prompt-row .pthumb .thumb-note.err { color: #f85149; }
     .thumb-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
     .thumb-controls .btn { padding: 6px 10px; font-size: 13px; }
+    .providers-panel { margin: 0 0 18px; padding: 12px 14px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--border); font-size: 13px; }
+    .providers-panel .prow { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+    .providers-panel .pname { color: var(--muted); }
+    .providers-panel .pstat.ok { color: var(--ok); }
+    .providers-panel .pstat.warn { color: #d29922; }
+    .providers-panel .pstat.bad { color: #f85149; }
     .prompt-row .pi2v { grid-column: 1 / -1; margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--border); }
     .prompt-row .pi2v .pi2v-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
     .prompt-row .pi2v textarea { min-height: 40px; margin: 0 0 6px; }
@@ -180,8 +186,12 @@
           <h1 style="font-size:22px;margin:0;" id="proj-heading">New video project</h1>
           <div class="meta" id="proj-id" style="color:var(--muted);font-size:12px;"></div>
         </div>
-        <button class="link-btn" data-home>← Back</button>
+        <div style="display:flex;gap:14px;align-items:center;">
+          <button class="link-btn" id="check-providers">Check providers</button>
+          <button class="link-btn" data-home>← Back</button>
+        </div>
       </div>
+      <div id="providers-panel" class="providers-panel hidden"></div>
 
       <!-- 1. Title -->
       <div class="section">
@@ -286,6 +296,7 @@
     var STATUS_API = '/api/package-engine/status';
     var PROJECTS_API = '/api/super-focus/projects';
     var PROJECT_API = '/api/super-focus/project';
+    var PROVIDERS_API = '/api/super-focus/providers';
     var TITLE_API = '/api/super-focus/title';
     var SCRIPT_API = '/api/super-focus/script';
     var GEN_TOPIC_API = '/api/super-focus/generate-topic';
@@ -392,6 +403,43 @@
       el.textContent = msg;
       el.classList.toggle('err', !!isErr);
     }
+
+    // Compact note about which Ollama provider was used, for generation statuses.
+    function providerNote(p) {
+      if (!p || !p.label) return '';
+      if (p.warnings && p.warnings.length) return 'Using ' + p.label + ' — ' + p.warnings[0];
+      return 'Using ' + p.label + (p.reason ? ' — ' + p.reason : '');
+    }
+    function withProvider(msg, p) {
+      var note = providerNote(p);
+      return note ? (msg + ' · ' + note) : msg;
+    }
+
+    // ---- Check providers panel ----
+    function renderProviders(d) {
+      var panel = document.getElementById('providers-panel');
+      panel.classList.remove('hidden');
+      var cls = function (s) { return s === 'ok' ? 'ok' : (s === 'busy' ? 'warn' : (s === 'not_configured' ? 'warn' : 'bad')); };
+      var rows = [
+        ['vidnux Ollama', d.vidnux_ollama.status + (d.vidnux_ollama.busy_warning ? ' (ComfyUI busy)' : ''), cls(d.vidnux_ollama.status)],
+        ['vidnux ComfyUI', d.vidnux_comfyui.status, cls(d.vidnux_comfyui.status)],
+        ['PRESTO Ollama', d.presto_ollama.status, cls(d.presto_ollama.status)],
+        ['PRESTO ComfyUI', d.presto_comfyui.status, cls(d.presto_comfyui.status)],
+      ];
+      panel.innerHTML = '<div class="prow"><span class="pname">Routing mode</span><span>' + d.routing_mode + '</span></div>' +
+        rows.map(function (r) {
+          return '<div class="prow"><span class="pname">' + r[0] + '</span><span class="pstat ' + r[2] + '">' + r[1] + '</span></div>';
+        }).join('');
+    }
+    document.getElementById('check-providers').addEventListener('click', function () {
+      var panel = document.getElementById('providers-panel');
+      panel.classList.remove('hidden');
+      panel.innerHTML = '<div class="prow"><span class="pname">Checking providers…</span></div>';
+      apiGet(PROVIDERS_API).then(function (res) {
+        if (!res.ok) { panel.innerHTML = '<div class="prow"><span class="pstat bad">Provider check failed</span></div>'; return; }
+        renderProviders(unwrap(res.body));
+      }).catch(function () { panel.innerHTML = '<div class="prow"><span class="pstat bad">Provider check failed</span></div>'; });
+    });
 
     // ---- Create ----
     document.getElementById('btn-create').addEventListener('click', function () {
@@ -929,7 +977,7 @@
       var btn = this, el = document.getElementById('title-status');
       runGenerate(btn, el, GEN_TOPIC_API, function (data) {
         document.getElementById('title-input').value = data.topic || '';
-        setStatus(el, 'Generated — click Save to keep it');
+        setStatus(el, withProvider('Generated — click Save to keep it', data.provider));
       });
     });
 
@@ -937,7 +985,7 @@
       var btn = this, el = document.getElementById('script-status');
       runGenerate(btn, el, GEN_SCRIPT_API, function (data) {
         document.getElementById('script-input').value = data.script || '';
-        setStatus(el, 'Generated — click Save to keep it');
+        setStatus(el, withProvider('Generated — click Save to keep it', data.provider));
       });
     });
 
@@ -968,7 +1016,7 @@
         updateStaleBanner('imgp-stale', d.project.stale && d.project.stale.image_prompts);
         var msg = d.count + ' prompts populated';
         if (d.count < count) msg += '; remaining slots are empty and editable';
-        setStatus(el, msg);
+        setStatus(el, withProvider(msg, d.provider));
         // Existing images/i2v prompts are preserved by index; surface any that
         // no longer match a regenerated prompt (mismatch badge on the thumbnail).
         refreshImagesStatus();
@@ -989,7 +1037,7 @@
         var d = unwrap(res.body);
         renderPromptGrid('imgp-list', d.project.image_prompts, IMG_MAX, IMGP_SAVE_API, true, 'imgp-thumb-');
         updateStaleBanner('imgp-stale', d.project.stale && d.project.stale.image_prompts);
-        setStatus(el, d.added + ' new prompt(s) added to empty slots (' + d.total_filled + '/' + d.capacity + ' filled)');
+        setStatus(el, withProvider(d.added + ' new prompt(s) added to empty slots (' + d.total_filled + '/' + d.capacity + ' filled)', d.provider));
         updateRemainingButton();
         refreshImagesStatus();
       }).catch(function () { stop(); btn.classList.remove('busy'); setStatus(el, 'Generation failed', true); updateRemainingButton(); });
@@ -1011,6 +1059,7 @@
         updateStaleBanner('infp-stale', d.project.stale && d.project.stale.infographic_prompts);
         var parts = [d.added + ' added to empty slots (' + d.total_filled + '/' + d.capacity + ' filled)'];
         if (d.remaining_eligible) parts.push(d.remaining_eligible + ' still eligible — run again to continue');
+        if (providerNote(d.provider)) parts.push(providerNote(d.provider));
         setStatus(el, parts.join(' · '));
         updateInfographicButton();
       }).catch(function () { stop(); btn.classList.remove('busy'); btn.disabled = false; setStatus(el, 'Generation failed', true); updateInfographicButton(); });
