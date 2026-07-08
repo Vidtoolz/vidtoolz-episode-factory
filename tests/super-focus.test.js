@@ -1205,7 +1205,9 @@ test("generate-images returns 503 (no fallback) when vidnux ComfyUI is unreachab
       method: "POST", headers: writeHeaders(), body: { id: created.project_id },
     });
     assert.equal(res.statusCode, 503);
-    assert.match(res.body.error, /no fallback/i);
+    // Auto mode, PRESTO image workflow not configured -> honest unavailable message.
+    assert.match(res.body.error, /unreachable/i);
+    assert.match(res.body.error, /PRESTO ComfyUI image fallback is not available/i);
   } finally {
     await close(server);
     packageEngineServer.FLUX_STATE.activeJob = null;
@@ -2249,5 +2251,174 @@ test("providers status reports PRESTO Ollama not_configured when no base url", a
     const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_PROVIDERS_API));
     assert.equal(d.presto_ollama.status, "not_configured");
     assert.equal(d.presto_ollama.configured, false);
+  } finally { await close(server); }
+});
+
+// ================= ComfyUI image provider routing (failover on UNREACHABLE) =================
+
+const IMG_VIDNUX = { base_url: "http://127.0.0.1:8188", workflow: "flux-gguf-1080x1920" };
+function imgPresto(over) {
+  return Object.assign({ configured: true, base_url: "http://presto:8188", image_workflow: "presto-flux-image-1080x1920", reachable: true, image_ready: true }, over || {});
+}
+
+test("image router: auto prefers vidnux when reachable", () => {
+  const d = sfRouter.selectComfyImageProvider({ mode: "auto", vidnux: Object.assign({ reachable: true }, IMG_VIDNUX), presto: imgPresto() });
+  assert.equal(d.provider_id, "vidnux_comfyui");
+});
+
+test("image router: auto falls back to PRESTO when vidnux unreachable and PRESTO image is capable", () => {
+  const d = sfRouter.selectComfyImageProvider({ mode: "auto", vidnux: Object.assign({ reachable: false }, IMG_VIDNUX), presto: imgPresto() });
+  assert.equal(d.provider_id, "presto_comfyui");
+  assert.equal(d.workflow, "presto-flux-image-1080x1920");
+  assert.match(d.reason, /unreachable.*PRESTO/i);
+});
+
+test("image router: auto fails clearly when vidnux unreachable and PRESTO image workflow missing", () => {
+  const notCfg = sfRouter.selectComfyImageProvider({ mode: "auto", vidnux: Object.assign({ reachable: false }, IMG_VIDNUX), presto: imgPresto({ configured: false }) });
+  assert.equal(notCfg.provider_id, null);
+  assert.equal(notCfg.status, "unavailable");
+  assert.match(notCfg.reason, /not configured/i);
+  const notReady = sfRouter.selectComfyImageProvider({ mode: "auto", vidnux: Object.assign({ reachable: false }, IMG_VIDNUX), presto: imgPresto({ image_ready: false }) });
+  assert.equal(notReady.provider_id, null);
+  assert.match(notReady.reason, /not yet enabled|validated/i);
+});
+
+test("image router: mode=vidnux never uses PRESTO; mode=presto fails clearly if not capable", () => {
+  const forcedVid = sfRouter.selectComfyImageProvider({ mode: "vidnux", vidnux: Object.assign({ reachable: false }, IMG_VIDNUX), presto: imgPresto() });
+  assert.equal(forcedVid.provider_id, null); // did NOT fall back to PRESTO
+  assert.match(forcedVid.reason, /no fallback|vidnux/i);
+  const forcedPresto = sfRouter.selectComfyImageProvider({ mode: "presto", vidnux: Object.assign({ reachable: true }, IMG_VIDNUX), presto: imgPresto({ image_workflow: "" }) });
+  assert.equal(forcedPresto.provider_id, null);
+  assert.match(forcedPresto.reason, /not configured/i);
+});
+
+// ---- route-level ----
+
+function imageRoutingServer(spawnImpl, serverOpts = {}, projOpts = {}) {
+  packageEngineServer.FLUX_STATE.activeJob = null;
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "ImgRoute" }, { root });
+  superFocus.saveScript(created.project_id, "a script", { root });
+  superFocus.saveImagePrompts(created.project_id, Array.from({ length: projOpts.promptCount || 3 }, (_, i) => "p" + (i + 1)), { root });
+  const server = packageEngineServer.createServer(Object.assign({
+    superFocusRoot: root, superFocusMediaRoot: mediaRoot,
+    fluxScript: fakeScript(), pythonBin: "python3", spawn: spawnImpl,
+  }, serverOpts));
+  return { server, root, mediaRoot, id: created.project_id };
+}
+
+test("generate-images response includes vidnux image provider metadata + writes provenance", async () => {
+  const { server, mediaRoot, id } = imageRoutingServer(fakeFluxSpawn(), { superFocusVidnuxComfyReachable: true });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 200);
+    const d = unwrap(res);
+    assert.equal(d.provider.id, "vidnux_comfyui");
+    assert.equal(d.provider_host, "vidnux");
+    assert.ok(d.provider.workflow);
+    const prov = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "image-provider.json"), "utf8"));
+    assert.equal(prov.provider_id, "vidnux_comfyui");
+  } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
+});
+
+test("generate-images auto: 503 with honest reason when vidnux down and PRESTO image not configured", async () => {
+  const { server, id } = imageRoutingServer(fakeFluxSpawn(), {
+    superFocusVidnuxComfyReachable: false,
+    prestoImageWorkflow: "", // not configured
+  });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 503);
+    assert.match(res.raw, /unreachable/i);
+    assert.match(res.raw, /PRESTO ComfyUI image fallback is not available/i);
+  } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
+});
+
+test("generate-images auto: routes to PRESTO when vidnux unreachable and PRESTO image is validated", async () => {
+  const { server, mediaRoot, id } = imageRoutingServer(fakeFluxSpawn(), {
+    superFocusVidnuxComfyReachable: false,
+    superFocusPrestoComfyReachable: true,
+    prestoComfyuiBaseUrl: "http://presto:8188",
+    prestoImageWorkflow: "presto-flux-image-1080x1920",
+    superFocusPrestoImageReady: true,
+  });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 200);
+    const d = unwrap(res);
+    assert.equal(d.provider.id, "presto_comfyui");
+    assert.equal(d.provider_host, "presto");
+    assert.match(d.provider.reason, /unreachable.*PRESTO/i);
+    const prov = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "image-provider.json"), "utf8"));
+    assert.equal(prov.provider_id, "presto_comfyui");
+    await delay(40);
+    const st = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_IMAGES_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(st.done, 3);
+  } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
+});
+
+test("generate-images forced vidnux does not use PRESTO even if PRESTO image is ready", async () => {
+  const { server, id } = imageRoutingServer(fakeFluxSpawn(), {
+    superFocusImageProvider: "vidnux",
+    superFocusVidnuxComfyReachable: false,
+    superFocusPrestoComfyReachable: true,
+    prestoImageWorkflow: "presto-flux-image-1080x1920",
+    superFocusPrestoImageReady: true,
+  });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 503);
+    assert.match(res.raw, /SUPER_FOCUS_IMAGE_PROVIDER=vidnux/);
+  } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
+});
+
+test("generate-images forced presto fails clearly when PRESTO image workflow is missing", async () => {
+  const { server, id } = imageRoutingServer(fakeFluxSpawn(), {
+    superFocusImageProvider: "presto",
+    superFocusPrestoComfyReachable: true,
+    prestoImageWorkflow: "", // not configured
+  });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 503);
+    assert.match(res.raw, /SUPER_FOCUS_IMAGE_PROVIDER=presto/);
+    assert.match(res.raw, /not configured/i);
+  } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
+});
+
+test("providers status route includes PRESTO ComfyUI image capability", async () => {
+  const okProbe = async () => ({ reachable: true, model_ready: true });
+  const server = packageEngineServer.createServer({
+    superFocusRoot: mkRoot(),
+    localOllamaProbe: okProbe, prestoOllamaProbe: okProbe,
+    comfyuiReachableCheck: async () => true,
+    prestoOllamaBaseUrl: "http://presto:11434",
+    prestoImageWorkflow: "", // image not configured by default
+  });
+  await listen(server);
+  try {
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_PROVIDERS_API));
+    assert.ok(d.presto_comfyui_image, "presto image capability reported");
+    assert.equal(d.presto_comfyui_image.status, "not_configured");
+    assert.equal(d.presto_comfyui.video_capable, true);
+    assert.equal(typeof d.image_provider_mode, "string");
+    assert.ok(d.restart && d.restart.vidnux_comfyui && d.restart.presto_comfyui);
+    assert.equal(d.restart.presto_comfyui.mode, "manual");
   } finally { await close(server); }
 });

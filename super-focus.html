@@ -420,16 +420,25 @@
       var panel = document.getElementById('providers-panel');
       panel.classList.remove('hidden');
       var cls = function (s) { return s === 'ok' ? 'ok' : (s === 'busy' ? 'warn' : (s === 'not_configured' ? 'warn' : 'bad')); };
+      var img = d.presto_comfyui_image || { status: 'unknown' };
       var rows = [
         ['vidnux Ollama', d.vidnux_ollama.status + (d.vidnux_ollama.busy_warning ? ' (ComfyUI busy)' : ''), cls(d.vidnux_ollama.status)],
         ['vidnux ComfyUI', d.vidnux_comfyui.status, cls(d.vidnux_comfyui.status)],
         ['PRESTO Ollama', d.presto_ollama.status, cls(d.presto_ollama.status)],
-        ['PRESTO ComfyUI', d.presto_comfyui.status, cls(d.presto_comfyui.status)],
+        ['PRESTO ComfyUI video', d.presto_comfyui.status, cls(d.presto_comfyui.status)],
+        ['PRESTO ComfyUI image', img.status, cls(img.status)],
       ];
-      panel.innerHTML = '<div class="prow"><span class="pname">Routing mode</span><span>' + d.routing_mode + '</span></div>' +
+      var restart = d.restart || {};
+      var restartHtml = '';
+      if (restart.vidnux_comfyui) restartHtml += '<div class="prow"><span class="pname">Restart local ComfyUI</span><span>manual: <code>' + restart.vidnux_comfyui.command + '</code></span></div>';
+      if (restart.presto_comfyui) restartHtml += '<div class="prow"><span class="pname">Restart PRESTO ComfyUI</span><span>manual (not configured)</span></div>';
+      panel.innerHTML = '<div class="prow"><span class="pname">Text routing mode</span><span>' + d.routing_mode + '</span></div>' +
+        '<div class="prow"><span class="pname">Image provider mode</span><span>' + (d.image_provider_mode || 'auto') + '</span></div>' +
         rows.map(function (r) {
           return '<div class="prow"><span class="pname">' + r[0] + '</span><span class="pstat ' + r[2] + '">' + r[1] + '</span></div>';
-        }).join('');
+        }).join('') +
+        (img.message ? '<div class="prow"><span class="pname"></span><span class="pname" style="text-align:right;">' + img.message + '</span></div>' : '') +
+        restartHtml;
     }
     document.getElementById('check-providers').addEventListener('click', function () {
       var panel = document.getElementById('providers-panel');
@@ -1080,6 +1089,8 @@
         if (d.skipped_existing) parts.push(d.skipped_existing + ' already have images');
         if (d.skipped_empty) parts.push(d.skipped_empty + ' empty prompt(s) skipped');
         if (d.remaining_eligible) parts.push(d.remaining_eligible + ' still eligible — run again to continue');
+        // Honest provider note (e.g. "Using PRESTO ComfyUI because vidnux is unreachable").
+        if (d.provider && d.provider.id === 'presto_comfyui') parts.push('Using PRESTO ComfyUI (vidnux unreachable)');
         setStatus(el, parts.join(' · '));
         startImagesPolling();
         refreshImagesStatus();

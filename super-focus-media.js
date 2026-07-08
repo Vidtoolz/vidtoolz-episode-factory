@@ -163,6 +163,36 @@ function resolveRegenerated(mediaDir, kind, index, canonical, ext, base, prevArc
   return { generated: true, duplicate_rejected: false };
 }
 
+// Record which ComfyUI provider/workflow served an image batch (provenance).
+// Written to the project media dir; honest even if the run later fails. Never
+// claims a provider that was not actually routed to.
+function writeImageProviderProvenance(projectId, entry, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  fs.mkdirSync(mediaDir, { recursive: true });
+  const outPath = path.join(mediaDir, IMAGE_PROVIDER_FILENAME);
+  const record = {
+    schema_version: 1,
+    provider_id: entry.provider_id || null,
+    label: entry.label || null,
+    base_url: entry.base_url || null,
+    workflow: entry.workflow || null,
+    reason: entry.reason || null,
+    run_id: entry.run_id || null,
+    indexes: Array.isArray(entry.indexes) ? entry.indexes : [],
+    recorded_at: entry.now || new Date().toISOString(),
+  };
+  const tmp = `${outPath}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmp, outPath);
+  return record;
+}
+
+function readImageProviderProvenance(projectId, options = {}) {
+  const p = path.join(mediaDirFor(projectId, options), IMAGE_PROVIDER_FILENAME);
+  if (!fs.existsSync(p)) return null;
+  try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_) { return null; }
+}
+
 function resolveRegeneratedImage(projectId, index, prevArchive, options = {}) {
   const mediaDir = mediaDirFor(projectId, options);
   const idx = Math.round(Number(index));
@@ -175,6 +205,8 @@ function resolveRegeneratedVideo(projectId, subdir, index, prevArchive, options 
   const sub = String(subdir || 'mp4');
   return resolveRegenerated(mediaDir, 'video', idx, videoFilePath(mediaDir, sub, idx), '.mp4', String(idx).padStart(3, '0'), prevArchive, options);
 }
+
+const IMAGE_PROVIDER_FILENAME = 'image-provider.json';
 
 function resolveMediaRoot(options = {}) {
   const root = options.mediaRoot || process.env.SUPER_FOCUS_MEDIA_ROOT;
@@ -434,6 +466,8 @@ module.exports = {
   archiveImage,
   archiveVideo,
   latestSupersededHash,
+  writeImageProviderProvenance,
+  readImageProviderProvenance,
   readRegenOutcomes,
   recordRegenOutcome,
   resolveRegeneratedImage,

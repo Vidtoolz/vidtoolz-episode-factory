@@ -95,4 +95,72 @@ function selectOllamaProvider(inputs = {}) {
   return usePresto('vidnux ComfyUI is busy; routed text generation to PRESTO Ollama.');
 }
 
-module.exports = { MODES, LOCAL_SLOW_WARNING, resolveRoutingMode, selectOllamaProvider };
+// ── Image ComfyUI provider routing ──────────────────────────────────────────
+// Failover for image generation is about vidnux ComfyUI being UNREACHABLE (not
+// busy). PRESTO is only chosen when it is configured, reachable, and its image
+// workflow is validated/enabled — otherwise fail clearly. No cloud fallback.
+
+const IMAGE_MODES = ['auto', 'vidnux', 'presto'];
+
+function resolveImageProviderMode(value) {
+  const v = String(value || 'auto').trim().toLowerCase();
+  return IMAGE_MODES.indexOf(v) !== -1 ? v : 'auto';
+}
+
+// inputs:
+//   mode   : 'auto' | 'vidnux' | 'presto'
+//   vidnux : { base_url, workflow, reachable }
+//   presto : { configured, base_url, image_workflow, reachable, image_ready }
+// returns { provider_id, label, base_url, workflow, reason, warnings } on success
+// or { provider_id:null, status:'unavailable', reason, warnings } on failure.
+function selectComfyImageProvider(inputs = {}) {
+  const mode = resolveImageProviderMode(inputs.mode);
+  const vidnux = inputs.vidnux || {};
+  const presto = inputs.presto || {};
+
+  const useVidnux = (reason, warnings) => ({
+    provider_id: 'vidnux_comfyui', label: 'vidnux ComfyUI',
+    base_url: vidnux.base_url, workflow: vidnux.workflow || 'flux-gguf-1080x1920',
+    reason, warnings: warnings || [],
+  });
+  const usePresto = (reason, warnings) => ({
+    provider_id: 'presto_comfyui', label: 'PRESTO ComfyUI',
+    base_url: presto.base_url, workflow: presto.image_workflow,
+    reason, warnings: warnings || [],
+  });
+  const unavailable = (reason, warnings) => ({
+    provider_id: null, status: 'unavailable', reason, warnings: warnings || [],
+  });
+  const prestoImageBlocker = () => {
+    if (!presto.configured || !presto.image_workflow) return 'PRESTO ComfyUI image workflow is not configured';
+    if (!presto.reachable) return `PRESTO ComfyUI is unreachable at ${presto.base_url}`;
+    if (!presto.image_ready) return 'PRESTO ComfyUI image generation is not yet enabled/validated';
+    return null;
+  };
+  const prestoCapable = Boolean(presto.configured && presto.reachable && presto.image_ready && presto.image_workflow);
+
+  if (mode === 'vidnux') {
+    return vidnux.reachable
+      ? useVidnux('vidnux ComfyUI is reachable (forced vidnux).')
+      : unavailable(`vidnux ComfyUI is unreachable at ${vidnux.base_url} (SUPER_FOCUS_IMAGE_PROVIDER=vidnux; no fallback).`);
+  }
+  if (mode === 'presto') {
+    return prestoCapable
+      ? usePresto('SUPER_FOCUS_IMAGE_PROVIDER=presto; using the PRESTO ComfyUI image workflow.')
+      : unavailable(`SUPER_FOCUS_IMAGE_PROVIDER=presto but PRESTO ComfyUI image is unavailable: ${prestoImageBlocker()}.`);
+  }
+  // auto — prefer vidnux; PRESTO only when vidnux is UNREACHABLE and PRESTO is image-capable.
+  if (vidnux.reachable) return useVidnux('vidnux ComfyUI is reachable.');
+  if (prestoCapable) {
+    return usePresto('vidnux ComfyUI is unreachable; using PRESTO ComfyUI image fallback.', ['vidnux ComfyUI unreachable']);
+  }
+  return unavailable(
+    `vidnux ComfyUI is unreachable at ${vidnux.base_url} and PRESTO ComfyUI image fallback is not available: ${prestoImageBlocker()}. Start vidnux ComfyUI or configure/enable the PRESTO image workflow.`,
+    ['vidnux ComfyUI unreachable', prestoImageBlocker()].filter(Boolean)
+  );
+}
+
+module.exports = {
+  MODES, LOCAL_SLOW_WARNING, resolveRoutingMode, selectOllamaProvider,
+  IMAGE_MODES, resolveImageProviderMode, selectComfyImageProvider,
+};

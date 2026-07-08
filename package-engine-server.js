@@ -4738,19 +4738,119 @@ async function superFocusProviderStatus(options = {}) {
       : !prestoOllama.model_ready ? 'model_missing' : 'ok';
   }
 
+  const imgCfg = superFocusImageProviderConfig(options);
+  const prestoComfyReachable = PRESTO_BASE_URL ? await comfyReach(PRESTO_BASE_URL, options) : false;
   let prestoComfyStatus = 'not_configured';
   if (PRESTO_BASE_URL) {
     if (prestoBusy) prestoComfyStatus = 'busy';
-    else prestoComfyStatus = (await comfyReach(PRESTO_BASE_URL, options)) ? 'ok' : 'offline';
+    else prestoComfyStatus = prestoComfyReachable ? 'ok' : 'offline';
+  }
+
+  // PRESTO ComfyUI IMAGE capability (separate from its video capability). In
+  // this build image dispatch is not yet validated, so it reports its blocker
+  // honestly rather than claiming capability.
+  const prestoImageReady = superFocusPrestoImageReady(options);
+  let prestoImageStatus;
+  let prestoImageMessage;
+  if (!imgCfg.presto.configured) {
+    prestoImageStatus = 'not_configured';
+    prestoImageMessage = 'No PRESTO image workflow configured (set PRESTO_COMFYUI_IMAGE_WORKFLOW). Repo routing is ready; PRESTO FLUX workflow + models are not installed/validated.';
+  } else if (!prestoComfyReachable) {
+    prestoImageStatus = 'offline';
+    prestoImageMessage = `PRESTO ComfyUI unreachable at ${imgCfg.presto.base_url}.`;
+  } else if (!prestoImageReady) {
+    prestoImageStatus = 'workflow_configured_dispatch_pending';
+    prestoImageMessage = 'Image workflow configured but dispatch is not enabled/validated (SUPER_FOCUS_PRESTO_IMAGE_READY). Requires run-handoff.py --comfyui-url support (Patch 2).';
+  } else {
+    prestoImageStatus = 'ok';
+    prestoImageMessage = 'PRESTO ComfyUI image fallback available.';
   }
 
   return {
     ok: true,
     routing_mode: cfg.mode,
+    image_provider_mode: imgCfg.mode,
     vidnux_ollama: { status: localOllamaStatus, base_url: cfg.local.base_url, model: cfg.local.model, busy_warning: localBusy },
-    vidnux_comfyui: { status: vidnuxComfyStatus },
+    vidnux_comfyui: { status: vidnuxComfyStatus, image_capable: vidnuxComfyReachable, video_capable: false, workflow: imgCfg.vidnux.workflow },
     presto_ollama: { status: prestoOllamaStatus, configured: cfg.presto.configured, base_url: cfg.presto.base_url, model: cfg.presto.model },
-    presto_comfyui: { status: prestoComfyStatus },
+    presto_comfyui: { status: prestoComfyStatus, video_capable: prestoComfyReachable, workflow: 'wan22_i2v_vertical_1080x1920_30fps' },
+    presto_comfyui_image: {
+      status: prestoImageStatus,
+      configured: imgCfg.presto.configured,
+      reachable: prestoComfyReachable,
+      workflow: imgCfg.presto.image_workflow || null,
+      image_ready: prestoImageReady,
+      message: prestoImageMessage,
+    },
+    restart: {
+      vidnux_comfyui: { mode: 'manual', command: 'bash ~/bin/start-vidnux-comfyui.sh', note: 'No wired restart button in this build. Run this locally on vidnux to (re)start ComfyUI.' },
+      presto_comfyui: { mode: 'manual', note: 'Remote restart is not configured (media-routing non-goal). Restart ComfyUI on PRESTO manually.' },
+    },
+  };
+}
+
+// ── Super Focus image ComfyUI provider routing (failover on UNREACHABLE) ─────
+// vidnux ComfyUI is the image provider. If it is unreachable, image jobs may
+// route to PRESTO ComfyUI — but ONLY when PRESTO is configured, reachable, and
+// its image workflow is validated/enabled. Default: PRESTO image dispatch is
+// NOT enabled (no validated PRESTO FLUX workflow / run-handoff.py has no target
+// URL arg yet — see docs), so auto fails clearly rather than mis-routing.
+
+function superFocusImageProviderConfig(options = {}) {
+  const prestoBase = String(
+    options.prestoComfyuiBaseUrl != null ? options.prestoComfyuiBaseUrl
+      : (process.env.PRESTO_COMFYUI_BASE_URL || process.env.AIGEN_PRESTO_BASE_URL || PRESTO_BASE_URL || '')
+  ).replace(/\/+$/, '');
+  const imageWorkflow = String(
+    options.prestoImageWorkflow != null ? options.prestoImageWorkflow : (process.env.PRESTO_COMFYUI_IMAGE_WORKFLOW || '')
+  ).trim();
+  return {
+    mode: superFocusRouter.resolveImageProviderMode(options.superFocusImageProvider || process.env.SUPER_FOCUS_IMAGE_PROVIDER),
+    vidnux: { base_url: LOCAL_IMAGE_PROVIDER.url, workflow: 'flux-gguf-1080x1920' },
+    presto: { base_url: prestoBase, image_workflow: imageWorkflow, configured: Boolean(prestoBase && imageWorkflow) },
+  };
+}
+
+// Whether PRESTO image DISPATCH is validated/enabled. Default false in this
+// build (repo-side routing is ready; actual dispatch needs a validated PRESTO
+// FLUX workflow + run-handoff.py --comfyui-url support). Injectable/env for
+// tests and a future Patch 2.
+function superFocusPrestoImageReady(options = {}) {
+  if (options.superFocusPrestoImageReady != null) return Boolean(options.superFocusPrestoImageReady);
+  return /^(1|true|yes|on)$/i.test(String(process.env.SUPER_FOCUS_PRESTO_IMAGE_READY || ''));
+}
+
+async function resolveSuperFocusImageProvider(options = {}) {
+  const cfg = superFocusImageProviderConfig(options);
+  const reach = options.fluxReachableCheck || options.reachableCheck || prestoComfyuiReachable;
+  const vidnuxReachable = options.superFocusVidnuxComfyReachable != null
+    ? Boolean(options.superFocusVidnuxComfyReachable)
+    : await reach(cfg.vidnux.base_url, options);
+  const presto = Object.assign({ reachable: false, image_ready: false }, cfg.presto);
+  const mightUsePresto = cfg.mode === 'presto' || (cfg.mode === 'auto' && !vidnuxReachable);
+  if (mightUsePresto && cfg.presto.configured) {
+    presto.reachable = options.superFocusPrestoComfyReachable != null
+      ? Boolean(options.superFocusPrestoComfyReachable)
+      : await reach(cfg.presto.base_url, options);
+    presto.image_ready = superFocusPrestoImageReady(options);
+  }
+  const decision = superFocusRouter.selectComfyImageProvider({
+    mode: cfg.mode,
+    vidnux: Object.assign({ reachable: vidnuxReachable }, cfg.vidnux),
+    presto,
+  });
+  decision.mode = cfg.mode;
+  return decision;
+}
+
+function publicImageProvider(decision) {
+  return {
+    id: decision.provider_id,
+    label: decision.label || null,
+    base_url: decision.base_url || null,
+    workflow: decision.workflow || null,
+    reason: decision.reason,
+    warnings: decision.warnings || [],
   };
 }
 
@@ -7742,6 +7842,9 @@ function launchFluxHandoffJob(config, payload = {}, options = {}) {
   if (config.limit > 0) args.push('--limit', String(config.limit));
   if (config.skipExisting) args.push('--skip-existing');
   if (config.dryRun) args.push('--dry-run');
+  // Only present for a routed-to-PRESTO image job; the default vidnux run omits
+  // it and generates in-place. run-handoff.py must honor --comfyui-url (Patch 2).
+  if (config.comfyuiUrl) args.push('--comfyui-url', String(config.comfyuiUrl));
   const genEnv = workflowGenerationEnv(payload);
   const spawnFn = options.spawn || childProcess.spawn;
   const child = spawnFn(config.pythonBin, args, {
@@ -7822,6 +7925,7 @@ function startSuperFocusImageJob(mediaDir, options = {}) {
     limit: Number(options.limit) > 0 ? Number(options.limit) : 0,
     skipExisting: options.skipExisting !== false,
     dryRun: Boolean(options.dryRun),
+    comfyuiUrl: options.comfyuiUrl || null,
     lane: 'super-focus',
   }, options.payload || {}, options);
 }
@@ -10266,13 +10370,18 @@ function createServer(options = {}) {
           if (!Array.isArray(state.image_prompts) || state.image_prompts.length === 0) {
             const e = new Error('Create image prompts first, then generate images.'); e.statusCode = 400; throw e;
           }
-          // Pre-flight: vidnux ComfyUI must be reachable. No cloud fallback.
-          const reach = options.fluxReachableCheck || options.reachableCheck || prestoComfyuiReachable;
-          const reachable = await reach(LOCAL_IMAGE_PROVIDER.url, options);
-          if (!reachable) {
-            const e = new Error(`vidnux ComfyUI is not reachable at ${LOCAL_IMAGE_PROVIDER.url}. Start ComfyUI on vidnux and retry (no fallback to cloud).`);
-            e.statusCode = 503; throw e;
+          // Pre-flight: resolve the image ComfyUI provider. vidnux is preferred;
+          // PRESTO is used only when vidnux is UNREACHABLE and PRESTO image is
+          // configured+reachable+validated. No cloud fallback. Fail clearly.
+          const imgDecision = await resolveSuperFocusImageProvider(options);
+          if (!imgDecision.provider_id) {
+            const e = new Error(imgDecision.reason);
+            e.statusCode = 503;
+            e.provider = { status: 'unavailable', warnings: imgDecision.warnings };
+            throw e;
           }
+          const imgProvider = publicImageProvider(imgDecision);
+          const comfyuiUrl = imgDecision.provider_id === 'presto_comfyui' ? imgDecision.base_url : null;
           // Determine the eligible target set BEFORE dispatch. A row is eligible
           // only if its prompt text is non-empty AND it has no image yet. Reuse
           // the on-disk reconciliation (files win) for existing-image detection.
@@ -10324,12 +10433,24 @@ function createServer(options = {}) {
             // canonical vidnux run-handoff.py.
             fluxScript: options.fluxScript || process.env.SUPER_FOCUS_FLUX_SCRIPT,
             pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN,
+            // Only set when routed to PRESTO — vidnux runs default in-place. run-
+            // handoff.py must honor --comfyui-url for this to reach PRESTO (Patch 2).
+            comfyuiUrl,
             payload,
           });
           // Every target row is a fresh image for a row that had none, so the new
           // image matches the current prompt — clear any lingering mismatch flag.
           const targetIndexes = targetRows.map((r) => r.index);
           if (targetIndexes.length) superFocus.clearImageStale(id, targetIndexes, { root: sfRoot });
+          // Provenance: record which provider/workflow served this batch (honest
+          // even if the run later fails). Never claims a provider it did not use.
+          try {
+            superFocusMedia.writeImageProviderProvenance(id, {
+              provider_id: imgProvider.id, label: imgProvider.label, workflow: imgProvider.workflow,
+              base_url: imgProvider.base_url, reason: imgProvider.reason, run_id: job && job.job_id,
+              indexes: targetIndexes,
+            }, { mediaRoot: sfMediaRoot });
+          } catch (_) { /* provenance is best-effort; never blocks generation */ }
           sendJSON(res, 200, {
             job,
             capacity,
@@ -10342,6 +10463,8 @@ function createServer(options = {}) {
             remaining_eligible: remainingEligible,
             materialized_count: materialized.count,
             media_dir: materialized.mediaDir,
+            provider: imgProvider,
+            provider_host: imgProvider.id === 'presto_comfyui' ? 'presto' : 'vidnux',
           });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-images-error'));
