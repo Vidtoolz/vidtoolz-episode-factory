@@ -1457,9 +1457,18 @@ function spyFluxSpawn() {
   return { fn, calls };
 }
 
-test("generate-images limit: dispatches --limit N and only the first N prompts render", async () => {
+// Pre-create generated images on disk for the given prompt indexes.
+function seedImages(mediaRoot, id, indexes) {
+  const dir = path.join(mediaRoot, id, "images", "flux-local");
+  fs.mkdirSync(dir, { recursive: true });
+  indexes.forEach((i) =>
+    fs.writeFileSync(path.join(dir, "flux-" + String(i).padStart(3, "0") + ".png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+  );
+}
+
+test("generate-images upper bound: entering N materializes only the first N eligible rows", async () => {
   const spy = spyFluxSpawn();
-  const { server, id } = imageServer(spy.fn, { promptCount: 5 }); // 5 saved prompts
+  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 5 }); // 5 saved prompts, no images
   await listen(server);
   try {
     const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
@@ -1467,31 +1476,172 @@ test("generate-images limit: dispatches --limit N and only the first N prompts r
     });
     assert.equal(gen.statusCode, 200);
     const d = unwrap(gen);
+    assert.equal(d.eligible, 5);
     assert.equal(d.will_generate, 2);
-    assert.equal(d.remaining_ungenerated, 3);
-    // run-handoff.py received --limit 2
-    const args = spy.calls[0];
-    assert.ok(args.includes("--limit") && args[args.indexOf("--limit") + 1] === "2");
-    assert.ok(args.includes("--skip-existing"));
+    assert.equal(d.remaining_eligible, 3);
+    // Only the first 2 eligible rows are enqueued for run-handoff (subset).
+    const written = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "image-prompts.json"), "utf8"));
+    assert.deepEqual(written.image_prompts.map((p) => p.index), [1, 2]);
+    assert.ok(spy.calls[0].includes("--skip-existing"));
     await delay(40);
     const st = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_IMAGES_STATUS_API + "?id=" + encodeURIComponent(id)));
     assert.equal(st.total, 5);
-    assert.equal(st.done, 2); // only first 2 generated; no manual row clearing needed
+    assert.equal(st.done, 2);
   } finally {
     await close(server);
     packageEngineServer.FLUX_STATE.activeJob = null;
   }
 });
 
-test("generate-images rejects out-of-range limit (400)", async () => {
+test("generate-images skips rows that already have an image (eligible = no-image rows only)", async () => {
+  const spy = spyFluxSpawn();
+  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 5 });
+  await listen(server);
+  try {
+    seedImages(mediaRoot, id, [1, 2]); // rows 1,2 already generated
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id }, // no limit -> all eligible
+    });
+    const d = unwrap(gen);
+    assert.equal(d.eligible, 3);
+    assert.equal(d.will_generate, 3);
+    assert.equal(d.skipped_existing, 2);
+    const written = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "image-prompts.json"), "utf8"));
+    assert.deepEqual(written.image_prompts.map((p) => p.index), [3, 4, 5]); // existing rows not enqueued
+    await delay(40);
+    const st = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_IMAGES_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(st.done, 5); // 2 pre-existing + 3 newly generated
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("generate-images never targets empty prompt slots (scattered gaps)", async () => {
+  const spy = spyFluxSpawn();
+  packageEngineServer.FLUX_STATE.activeJob = null;
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "Gaps" }, { root });
+  superFocus.saveScript(created.project_id, "s", { root });
+  // Fill only slots 1, 3, 5; slots 2, 4 (and 6..100) stay empty.
+  superFocus.saveImagePrompt(created.project_id, 1, "one", { root });
+  superFocus.saveImagePrompt(created.project_id, 3, "three", { root });
+  superFocus.saveImagePrompt(created.project_id, 5, "five", { root });
+  const server = packageEngineServer.createServer({
+    superFocusRoot: root, superFocusMediaRoot: mediaRoot,
+    fluxScript: fakeScript(), pythonBin: "python3", spawn: spy.fn, fluxReachableCheck: async () => true,
+  });
+  await listen(server);
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id: created.project_id },
+    });
+    const d = unwrap(gen);
+    assert.equal(d.eligible, 3);
+    assert.equal(d.will_generate, 3);
+    const written = JSON.parse(fs.readFileSync(path.join(mediaRoot, created.project_id, "image-prompts.json"), "utf8"));
+    assert.deepEqual(written.image_prompts.map((p) => p.index), [1, 3, 5]); // empty slots 2,4 never enqueued
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("generate-images treats the entered count as an upper bound (more than eligible -> only eligible)", async () => {
+  const spy = spyFluxSpawn();
+  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 5 });
+  await listen(server);
+  try {
+    seedImages(mediaRoot, id, [1, 2]); // eligible = 3
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id, limit: 50 }, // far more than eligible
+    });
+    const d = unwrap(gen);
+    assert.equal(d.eligible, 3);
+    assert.equal(d.will_generate, 3, "generates only the eligible rows, not 50");
+    assert.equal(d.remaining_eligible, 0);
+    assert.equal(d.skipped_existing, 2);
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("generate-images with limit 3 generates only the first 3 eligible rows", async () => {
+  const spy = spyFluxSpawn();
+  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 6 });
+  await listen(server);
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id, limit: 3 },
+    });
+    const d = unwrap(gen);
+    assert.equal(d.will_generate, 3);
+    assert.equal(d.remaining_eligible, 3);
+    const written = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "image-prompts.json"), "utf8"));
+    assert.deepEqual(written.image_prompts.map((p) => p.index), [1, 2, 3]);
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("generate-images returns 400 when every prompt already has an image (nothing eligible)", async () => {
+  const { server, mediaRoot, id } = imageServer(fakeFluxSpawn(), { promptCount: 3 });
+  await listen(server);
+  try {
+    seedImages(mediaRoot, id, [1, 2, 3]);
+    const r = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(r.statusCode, 400);
+    assert.match(r.raw, /need an image|already/i);
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("generate-images rejects invalid limit values (400) but NOT values above capacity", async () => {
   const { server, id } = imageServer(fakeFluxSpawn(), { promptCount: 3 });
   await listen(server);
   try {
-    for (const bad of [0, 101]) {
+    // Invalid: non-integer, zero, negative, non-numeric.
+    for (const bad of [0, -5, 1.5, "abc"]) {
       const r = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
         method: "POST", headers: writeHeaders(), body: { id, limit: bad } });
-      assert.equal(r.statusCode, 400);
+      assert.equal(r.statusCode, 400, "invalid limit " + JSON.stringify(bad) + " rejected");
     }
+    packageEngineServer.FLUX_STATE.activeJob = null;
+    // Above capacity is NOT invalid — it is clamped and accepted.
+    const ok = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id, limit: 101 } });
+    assert.equal(ok.statusCode, 200, "101 is accepted (clamped), not rejected");
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("generate-images accepts a limit above capacity, clamps it, and never over-claims", async () => {
+  const spy = spyFluxSpawn();
+  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 5 });
+  await listen(server);
+  try {
+    seedImages(mediaRoot, id, [1, 2]); // eligible = 3 (well within the 100-slot capacity)
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id, limit: 120 },
+    });
+    assert.equal(gen.statusCode, 200, "limit above capacity is accepted, not 400");
+    const d = unwrap(gen);
+    assert.equal(d.requested_limit, 120, "reports the operator's original requested value");
+    assert.equal(d.effective_limit, 100, "clamped to the canonical capacity");
+    assert.equal(d.eligible, 3);
+    assert.equal(d.will_generate, 3, "generates only the eligible rows, never 120");
+    assert.equal(d.skipped_existing, 2);
+    const written = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "image-prompts.json"), "utf8"));
+    assert.deepEqual(written.image_prompts.map((p) => p.index), [3, 4, 5]);
   } finally {
     await close(server);
     packageEngineServer.FLUX_STATE.activeJob = null;

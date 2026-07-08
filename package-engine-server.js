@@ -10038,18 +10038,49 @@ function createServer(options = {}) {
             const e = new Error(`vidnux ComfyUI is not reachable at ${LOCAL_IMAGE_PROVIDER.url}. Start ComfyUI on vidnux and retry (no fallback to cloud).`);
             e.statusCode = 503; throw e;
           }
-          const materialized = superFocusMedia.materializeImagePrompts(id, state.image_prompts, { mediaRoot: sfMediaRoot });
-          // "Images to generate": generate/resume only the first N saved prompts
-          // (run-handoff.py --limit takes prompts[:N]); absent = all prompts.
-          const limit = payload.limit === undefined || payload.limit === null || payload.limit === ''
-            ? 0
-            : validateSuperFocusCount(payload.limit, superFocusPrompts.IMAGE_PROMPT_MAX, 'limit');
-          const totalPrompts = materialized.count;
-          const willGenerate = limit > 0 ? Math.min(limit, totalPrompts) : totalPrompts;
-          const remaining = Math.max(0, totalPrompts - willGenerate);
+          // Determine the eligible target set BEFORE dispatch. A row is eligible
+          // only if its prompt text is non-empty AND it has no image yet. Reuse
+          // the on-disk reconciliation (files win) for existing-image detection.
+          const capacity = superFocusPrompts.IMAGE_PROMPT_MAX;
+          const recon = superFocusMedia.reconcileImages(id, state.image_prompts, { mediaRoot: sfMediaRoot });
+          const hasImage = new Set(recon.images.filter((r) => r.has_image).map((r) => r.index));
+          const slots = state.image_prompts.filter((r) => r && r.index >= 1 && r.index <= capacity);
+          const withText = slots.filter((r) => typeof r.text === 'string' && r.text.trim());
+          const skippedEmpty = slots.length - withText.length;
+          const eligibleRows = withText
+            .filter((r) => !hasImage.has(r.index))
+            .sort((a, b) => a.index - b.index);
+          const skippedExisting = withText.length - eligibleRows.length;
+          if (eligibleRows.length === 0) {
+            const e = new Error('No rows need an image. Every prompt with text already has a generated image.');
+            e.statusCode = 400; throw e;
+          }
+          // "Images to generate" is an UPPER BOUND over eligible rows — not a
+          // forced count, and never applied to empty or already-generated rows.
+          // A value above the capacity is CLAMPED to capacity (not rejected):
+          // there are only `capacity` slots, so a larger bound just means "all".
+          // Only non-integer / zero / negative values are invalid. Absent = all
+          // eligible.
+          const hasLimit = !(payload.limit === undefined || payload.limit === null || payload.limit === '');
+          let requestedLimit = null;
+          let effectiveLimit = eligibleRows.length;
+          if (hasLimit) {
+            const n = Number(payload.limit);
+            if (!Number.isInteger(n) || n < 1) {
+              const e = new Error('limit must be a positive integer.'); e.statusCode = 400; throw e;
+            }
+            requestedLimit = n;
+            effectiveLimit = Math.min(n, capacity);
+          }
+          const targetRows = eligibleRows.slice(0, effectiveLimit);
+          const willGenerate = targetRows.length;
+          const remainingEligible = eligibleRows.length - willGenerate;
+          // Materialize ONLY the target rows so run-handoff.py generates exactly
+          // those indexes — empty and already-imaged rows are never enqueued.
+          const materialized = superFocusMedia.materializeImagePrompts(id, targetRows, { mediaRoot: sfMediaRoot });
           const job = startSuperFocusImageJob(materialized.mediaDir, {
             projectId: id,
-            limit,
+            limit: 0, // the materialized file already contains exactly the target set
             skipExisting: payload.skip_existing !== false,
             dryRun: Boolean(payload.dry_run),
             spawn: options.spawn,
@@ -10060,23 +10091,21 @@ function createServer(options = {}) {
             pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN,
             payload,
           });
-          // A freshly (re)generated image matches the current prompt again, so
-          // clear its mismatch flag. Rows whose existing image is kept
-          // (skip_existing) stay flagged — the kept old image still does not
-          // match a changed prompt. Only clear once the job actually started.
-          const skipExisting = payload.skip_existing !== false;
-          const freshIndexes = [];
-          for (let i = 1; i <= willGenerate; i += 1) {
-            const exists = fs.existsSync(superFocusMedia.imageFilePath(materialized.mediaDir, i));
-            if (!skipExisting || !exists) freshIndexes.push(i);
-          }
-          if (freshIndexes.length) superFocus.clearImageStale(id, freshIndexes, { root: sfRoot });
+          // Every target row is a fresh image for a row that had none, so the new
+          // image matches the current prompt — clear any lingering mismatch flag.
+          const targetIndexes = targetRows.map((r) => r.index);
+          if (targetIndexes.length) superFocus.clearImageStale(id, targetIndexes, { root: sfRoot });
           sendJSON(res, 200, {
             job,
-            materialized_count: materialized.count,
-            limit: limit || null,
+            capacity,
+            eligible: eligibleRows.length,
             will_generate: willGenerate,
-            remaining_ungenerated: remaining,
+            requested_limit: requestedLimit,
+            effective_limit: hasLimit ? effectiveLimit : null,
+            skipped_existing: skippedExisting,
+            skipped_empty: skippedEmpty,
+            remaining_eligible: remainingEligible,
+            materialized_count: materialized.count,
             media_dir: materialized.mediaDir,
           });
         })

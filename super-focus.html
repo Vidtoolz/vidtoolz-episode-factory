@@ -234,7 +234,7 @@
           <button class="btn hidden" id="imggen-cancel">Cancel</button>
           <span class="save-state" id="imggen-status"></span>
         </div>
-        <div class="later-note">Generates/resumes the first N saved prompts (vidnux ComfyUI / FLUX). Existing images are skipped. One batch at a time; images appear next to each prompt above as they finish. ComfyUI must be running.</div>
+        <div class="later-note"><strong>Images to generate</strong> is an upper bound. The batch only targets rows that have a prompt and no image yet (rows with an existing image or an empty prompt are skipped), in row order — so entering more than are eligible just generates the eligible ones. Run again to continue where it left off. One batch at a time (vidnux ComfyUI / FLUX); images appear next to each prompt above as they finish. ComfyUI must be running.</div>
         <div class="imggen-progress hidden" id="imggen-progress"></div>
         <div class="imggen-bar hidden" id="imggen-barwrap"><div class="imggen-fill" id="imggen-fill"></div></div>
       </div>
@@ -887,9 +887,11 @@
           return;
         }
         var d = unwrap(res.body);
-        var msg = 'Generating first ' + d.will_generate + ' saved prompt(s)';
-        if (d.remaining_ungenerated > 0) msg += '; ' + d.remaining_ungenerated + ' saved prompt(s) remain ungenerated';
-        setStatus(el, msg);
+        var parts = ['Generating ' + d.will_generate + ' image(s)'];
+        if (d.skipped_existing) parts.push(d.skipped_existing + ' already have images');
+        if (d.skipped_empty) parts.push(d.skipped_empty + ' empty prompt(s) skipped');
+        if (d.remaining_eligible) parts.push(d.remaining_eligible + ' still eligible — run again to continue');
+        setStatus(el, parts.join(' · '));
         startImagesPolling();
         refreshImagesStatus();
       }).catch(function () { setStatus(el, 'Could not start image generation', true); });
