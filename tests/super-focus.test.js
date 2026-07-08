@@ -704,7 +704,7 @@ function fakeScript() {
   return p;
 }
 
-function imageServer(spawnImpl, { promptCount = 3 } = {}) {
+function imageServer(spawnImpl, { promptCount = 3 } = {}, extra = {}) {
   packageEngineServer.FLUX_STATE.activeJob = null; // isolate from other tests
   const root = mkRoot();
   const mediaRoot = mkRoot();
@@ -715,16 +715,19 @@ function imageServer(spawnImpl, { promptCount = 3 } = {}) {
     Array.from({ length: promptCount }, (_, i) => "prompt " + (i + 1)),
     { root }
   );
-  const server = packageEngineServer.createServer({
+  const server = packageEngineServer.createServer(Object.assign({
     superFocusRoot: root,
     superFocusMediaRoot: mediaRoot,
     fluxScript: fakeScript(),
     pythonBin: "python3",
     spawn: spawnImpl,
     fluxReachableCheck: async () => true,
-  });
+  }, extra));
   return { server, root, mediaRoot, id: created.project_id };
 }
+
+// A seed-capable handoff (simulates a run-handoff.py that accepts --seed).
+const SEED_CAPABLE = { fluxHandoffSeedProbe: () => true };
 
 test("generate-images materializes image-prompts.json and dispatches; images reconcile as done", async () => {
   const { server, mediaRoot, id } = imageServer(fakeFluxSpawn());
@@ -1796,7 +1799,7 @@ test("invariant: clear-image archives the file (not deleted) and re-opens the ro
 // (6) Per-image regenerate: supersede old + fresh forced run + provenance.
 test("invariant: regenerate-image supersedes the old image and dispatches a fresh forced run", async () => {
   const spy = spyFluxSpawn();
-  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 2 });
+  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 2 }, SEED_CAPABLE);
   await listen(server);
   try {
     seedImages(mediaRoot, id, [1]);
@@ -1817,7 +1820,7 @@ test("invariant: regenerate-image supersedes the old image and dispatches a fres
 // (7) Regenerate that returns a byte-identical image is rejected; previous kept.
 test("invariant: regenerate-image rejects a byte-identical result and keeps the previous image", async () => {
   const spy = spyFluxSpawn(); // writes the same bytes seedImages uses -> identical
-  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 1 });
+  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 1 }, SEED_CAPABLE);
   await listen(server);
   try {
     seedImages(mediaRoot, id, [1]);
@@ -1840,7 +1843,7 @@ test("invariant: regenerate-image rejects a byte-identical result and keeps the 
 // (7b) A distinct regenerated image is promoted; the previous is superseded.
 test("invariant: regenerate-image promotes a NEW distinct image and supersedes the previous", async () => {
   const spy = spyFluxSpawn();
-  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 1 });
+  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 1 }, SEED_CAPABLE);
   await listen(server);
   try {
     const fluxDir = path.join(mediaRoot, id, "images", "flux-local");
@@ -2630,4 +2633,87 @@ test("image builder: output contract stays a JSON array of strings and parses ba
   // A model reply in that format still parses to N prompts (format unchanged).
   const reply = JSON.stringify(["scene one", "scene two", "scene three", "scene four"]);
   assert.equal(sfPrompts.parsePromptArray(reply, 4).length, 4);
+});
+
+// ========== Regression: seed-varied regeneration + honest zero-add top-up ==========
+
+// Fake Ollama: returns `first` on call 1, `second` afterwards (dups then fresh).
+function dupThenFresh(first, second) {
+  let call = 0;
+  return async () => {
+    call += 1;
+    const arr = call === 1 ? first : second;
+    return { ok: true, json: async () => ({ message: { content: JSON.stringify(arr) } }) };
+  };
+}
+
+test("regenerate-image passes a fresh --seed per request when the handoff supports seed", async () => {
+  const spy = spyFluxSpawn();
+  let n = 0;
+  const seeds = [11111, 22222];
+  const { server, id } = imageServer(spy.fn, { promptCount: 1 }, { fluxHandoffSeedProbe: () => true, superFocusSeedProvider: () => seeds[n++] });
+  await listen(server);
+  try {
+    const r1 = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_IMAGE_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } }));
+    assert.equal(r1.seed_variation_supported, true);
+    assert.equal(r1.seed, 11111);
+    await delay(40);
+    const r2 = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_IMAGE_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } }));
+    assert.equal(r2.seed, 22222);
+    const seedArgs = spy.calls.map((a) => a[a.indexOf("--seed") + 1]);
+    assert.ok(seedArgs.indexOf("11111") !== -1 && seedArgs.indexOf("22222") !== -1, "both seeds dispatched");
+    assert.notEqual(seedArgs[0], seedArgs[1], "two regenerates use different seeds");
+  } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
+});
+
+test("regenerate-image reports honestly and does NOT dispatch when handoff lacks seed support", async () => {
+  const spy = spyFluxSpawn();
+  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 1 }); // default probe: stub script has no --seed
+  await listen(server);
+  try {
+    seedImages(mediaRoot, id, [1]);
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_IMAGE_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } }));
+    assert.equal(d.regenerated, false);
+    assert.equal(d.seed_variation_supported, false);
+    assert.equal(d.reason, "seed_variation_unsupported");
+    assert.equal(spy.calls.length, 0, "no FLUX job dispatched");
+    // Image untouched, nothing archived (no pointless duplicate churn).
+    assert.ok(fs.existsSync(path.join(mediaRoot, id, "images", "flux-local", "flux-001.png")));
+    assert.ok(!fs.existsSync(path.join(mediaRoot, id, "superseded")));
+  } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
+});
+
+test("remaining image prompts: all-duplicate candidates -> no_progress with honest reason", async () => {
+  const { server, id, root } = await makeProjectServer(fakeOllama(JSON.stringify(["dup a", "dup b"])), { script: "s" });
+  try {
+    superFocus.saveImagePrompts(id, ["dup a", "dup b"], { root }); // 2 filled, 98 empty
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_REMAINING_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } }));
+    assert.equal(d.added, 0);
+    assert.equal(d.no_progress, true);
+    assert.equal(d.reason, "all_candidates_duplicate_existing_prompts");
+    assert.ok(d.candidates_returned >= 2);
+    assert.ok(d.duplicates_dropped >= 2);
+    assert.equal(d.remaining_eligible, 98);
+    assert.equal(d.retried, true); // it tried a second time before giving up
+    // Existing prompts preserved (slot-safe).
+    assert.equal(d.project.image_prompts.find((p) => p.index === 1).text, "dup a");
+  } finally { await close(server); }
+});
+
+test("remaining image prompts: one retry fills slots when the second response is distinct", async () => {
+  const { server, id, root } = await makeProjectServer(dupThenFresh(["dup a"], ["fresh 1", "fresh 2", "fresh 3"]), { script: "s" });
+  try {
+    superFocus.saveImagePrompts(id, ["dup a"], { root }); // 1 filled, 99 empty
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_REMAINING_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } }));
+    assert.equal(d.retried, true);
+    assert.equal(d.added, 3);
+    assert.equal(d.no_progress, false);
+    assert.ok(d.reason === null || d.reason === undefined);
+    assert.equal(d.project.image_prompts.find((p) => p.index === 1).text, "dup a"); // existing preserved
+  } finally { await close(server); }
 });

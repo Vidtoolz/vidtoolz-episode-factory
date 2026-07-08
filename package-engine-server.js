@@ -4949,6 +4949,30 @@ function publicImageProvider(decision) {
   };
 }
 
+function fluxHandoffScriptPath(options = {}) {
+  return options.fluxScript || process.env.SUPER_FOCUS_FLUX_SCRIPT || FLUX_STATE.script;
+}
+
+// Does the configured run-handoff.py expose a seed-variation CLI option? A
+// read-only source check; fail-CLOSED (false) so we never pass an unknown arg to
+// a script whose argparse would then error. Injectable for tests.
+function fluxHandoffSupportsSeed(options = {}) {
+  if (typeof options.fluxHandoffSeedProbe === 'function') return Boolean(options.fluxHandoffSeedProbe());
+  try {
+    const src = fs.readFileSync(fluxHandoffScriptPath(options), 'utf8');
+    return /--seed\b|--random-seed\b/.test(src);
+  } catch (_) { return false; }
+}
+
+// A fresh seed per explicit regenerate request (so a rerun actually varies).
+function superFocusRegenSeed(options = {}) {
+  if (typeof options.superFocusSeedProvider === 'function') {
+    const s = Math.abs(Math.round(Number(options.superFocusSeedProvider())));
+    return Number.isFinite(s) && s > 0 ? s : 1;
+  }
+  return crypto.randomInt(1, 2147483647);
+}
+
 // Draft the five beginning-triage fields with the local Ollama LLM. Read-only:
 // returns generated text; it does not write any file or workflow state.
 async function generateBeginningTriageDraft(payload = {}, options = {}) {
@@ -7940,6 +7964,10 @@ function launchFluxHandoffJob(config, payload = {}, options = {}) {
   // Only present for a routed-to-PRESTO image job; the default vidnux run omits
   // it and generates in-place. run-handoff.py must honor --comfyui-url (Patch 2).
   if (config.comfyuiUrl) args.push('--comfyui-url', String(config.comfyuiUrl));
+  // Only set by explicit regeneration when the handoff advertises seed support;
+  // forces a fresh sample so a rerun is not byte-identical. Normal batch runs
+  // never pass it (deterministic behavior preserved).
+  if (config.seed != null && Number.isFinite(Number(config.seed))) args.push('--seed', String(Math.round(Number(config.seed))));
   const genEnv = workflowGenerationEnv(payload);
   const spawnFn = options.spawn || childProcess.spawn;
   const child = spawnFn(config.pythonBin, args, {
@@ -8021,6 +8049,7 @@ function startSuperFocusImageJob(mediaDir, options = {}) {
     skipExisting: options.skipExisting !== false,
     dryRun: Boolean(options.dryRun),
     comfyuiUrl: options.comfyuiUrl || null,
+    seed: options.seed != null ? options.seed : null,
     lane: 'super-focus',
   }, options.payload || {}, options);
 }
@@ -10317,24 +10346,48 @@ function createServer(options = {}) {
             const e = new Error(`All ${capacity} prompt slots are already filled.`); e.statusCode = 400; throw e;
           }
           const before = filledTexts.length;
-          const reqPrompt = superFocusPrompts.buildImagePromptsRequest(state.script, emptyCount, filledTexts);
-          const gen = await superFocusGenerate(
-            { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, task: 'image_prompts_topup', requestedCount: emptyCount },
-            options
-          );
-          const generated = superFocusPrompts.parsePromptArray(gen.content, emptyCount);
-          // Cheap exact-duplicate guard (case-insensitive) against what we have.
           const existingLower = new Set(filledTexts.map((t) => t.toLowerCase()));
-          const distinct = generated.filter((p) => !existingLower.has(p.trim().toLowerCase()));
+          const reqPrompt = superFocusPrompts.buildImagePromptsRequest(state.script, emptyCount, filledTexts);
+          const runAttempt = async () => {
+            const g = await superFocusGenerate(
+              { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, task: 'image_prompts_topup', requestedCount: emptyCount },
+              options
+            );
+            const parsed = superFocusPrompts.parsePromptArray(g.content, emptyCount);
+            const distinct = parsed.filter((p) => !existingLower.has(p.trim().toLowerCase()));
+            return { provider: g.provider, parsed, distinct };
+          };
+          // First attempt; if it yields zero usable (all duplicates) prompts, retry
+          // ONCE — the model (temperature > 0) usually returns fresh candidates.
+          let attempt = await runAttempt();
+          let retried = false;
+          if (attempt.distinct.length === 0) { retried = true; attempt = await runAttempt(); }
+          const candidatesReturned = attempt.parsed.length;
+          const distinct = attempt.distinct;
+          const provider = attempt.provider;
           const saved = superFocus.fillEmptyImagePrompts(id, distinct, { root: sfRoot, capacity });
           const after = (saved.image_prompts || []).filter((r) => r && r.text && r.text.trim()).length;
+          const added = after - before;
+          const noProgress = added === 0 && emptyCount > 0;
+          const reason = !noProgress ? null
+            : (candidatesReturned > 0 ? 'all_candidates_duplicate_existing_prompts' : 'model_returned_no_usable_prompts');
           sendJSON(res, 200, {
             project: saved,
             capacity,
             empty_before: emptyCount,
-            added: after - before,
+            requested_limit: emptyCount,
+            effective_limit: emptyCount,
+            eligible: emptyCount,
+            candidates_returned: candidatesReturned,
+            candidates_parsed: candidatesReturned,
+            duplicates_dropped: Math.max(0, candidatesReturned - distinct.length),
+            added,
             total_filled: after,
-            provider: gen.provider, provider_host: gen.provider.id === 'presto_ollama' ? 'presto' : 'vidnux', model: gen.provider.model,
+            remaining_eligible: emptyCount - added,
+            no_progress: noProgress,
+            reason,
+            retried,
+            provider, provider_host: provider.id === 'presto_ollama' ? 'presto' : 'vidnux', model: provider.model,
           });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-remaining-image-prompts-error'));
@@ -10845,6 +10898,21 @@ function createServer(options = {}) {
           if (!row || !row.text || !row.text.trim()) {
             const e = new Error(`No image prompt at index ${payload.index} to regenerate.`); e.statusCode = 400; throw e;
           }
+          // A rerun only produces a DIFFERENT image if the handoff can vary the
+          // seed. If it can't, an explicit regenerate would just reproduce the
+          // same pixels and be rejected as a duplicate — so report that honestly
+          // and do nothing (keep the current image), rather than churn.
+          const seedSupported = fluxHandoffSupportsSeed(options);
+          if (!seedSupported) {
+            sendJSON(res, 200, {
+              regenerated: false,
+              seed_variation_supported: false,
+              index: idx,
+              reason: 'seed_variation_unsupported',
+              message: 'Regenerate image requires seed-varied FLUX handoff support. The current run-handoff.py has no --seed option, so a rerun would reproduce the same image. Add --seed support to enable meaningful regeneration; the previous image is kept.',
+            });
+            return;
+          }
           // Refuse before archiving if the single FLUX lock is held — otherwise we
           // would move the image aside and then fail to start the replacement.
           const cur = currentFluxJobStatus();
@@ -10853,6 +10921,7 @@ function createServer(options = {}) {
           if (!(await reach(LOCAL_IMAGE_PROVIDER.url, options))) {
             const e = new Error(`vidnux ComfyUI is not reachable at ${LOCAL_IMAGE_PROVIDER.url}. Start ComfyUI on vidnux and retry (no fallback to cloud).`); e.statusCode = 503; throw e;
           }
+          const seed = superFocusRegenSeed(options); // fresh seed => a real fresh attempt
           const archived = superFocusMedia.archiveImage(id, idx, { mediaRoot: sfMediaRoot });
           const materialized = superFocusMedia.materializeImagePrompts(id, [row], { mediaRoot: sfMediaRoot });
           const job = startSuperFocusImageJob(materialized.mediaDir, {
@@ -10863,9 +10932,18 @@ function createServer(options = {}) {
             spawn: options.spawn,
             fluxScript: options.fluxScript || process.env.SUPER_FOCUS_FLUX_SCRIPT,
             pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN,
+            seed,
             payload,
           });
           superFocus.clearImageStale(id, [idx], { root: sfRoot });
+          // Provenance for the attempt (seed + run id + provider/workflow).
+          try {
+            superFocusMedia.writeImageProviderProvenance(id, {
+              provider_id: 'vidnux_comfyui', label: 'vidnux ComfyUI', workflow: 'flux-gguf-1080x1920',
+              base_url: LOCAL_IMAGE_PROVIDER.url, reason: 'explicit regenerate', run_id: job && job.job_id,
+              seed, indexes: [idx],
+            }, { mediaRoot: sfMediaRoot });
+          } catch (_) { /* best-effort provenance */ }
           // Duplicate handling runs when the run finishes (the only hashing): the
           // new file is compared to the previous (archived) one and, if identical,
           // rejected — the previous image is restored as active. Surfaced on
@@ -10877,6 +10955,8 @@ function createServer(options = {}) {
           }
           sendJSON(res, 200, {
             job, index: idx, regenerated: true,
+            seed_variation_supported: true,
+            seed,
             superseded: archived.archived,
             superseded_path: archived.archived_path || null,
             duplicate_check: archived.archived ? 'on-completion' : 'none',

@@ -798,7 +798,15 @@
         apiPost(REGEN_IMAGE_API, { id: currentId, index: index }).then(function (res) {
           regen.classList.remove('busy'); regen.disabled = false;
           if (!res.ok) { st.textContent = (res.body && res.body.error) || 'failed'; st.className = 'thumb-note err'; return; }
-          st.textContent = 'queued'; startImagesPolling(); refreshImagesStatus();
+          var d = unwrap(res.body);
+          if (d && d.regenerated === false && d.seed_variation_supported === false) {
+            // Honest: a rerun can't vary the image with the current handoff.
+            st.textContent = 'Regeneration needs seed-varied FLUX handoff (no --seed support) — image kept';
+            st.className = 'thumb-note err';
+            regen.disabled = true; regen.textContent = 'Regenerate unavailable';
+            return;
+          }
+          st.textContent = 'queued (seed ' + (d && d.seed != null ? d.seed : '?') + ')'; startImagesPolling(); refreshImagesStatus();
         }).catch(function () { regen.classList.remove('busy'); regen.disabled = false; st.textContent = 'failed'; st.className = 'thumb-note err'; });
       });
       clear.addEventListener('click', function () {
@@ -1068,7 +1076,17 @@
         var d = unwrap(res.body);
         renderPromptGrid('imgp-list', d.project.image_prompts, IMG_MAX, IMGP_SAVE_API, true, 'imgp-thumb-');
         updateStaleBanner('imgp-stale', d.project.stale && d.project.stale.image_prompts);
-        setStatus(el, withProvider(d.added + ' new prompt(s) added to empty slots (' + d.total_filled + '/' + d.capacity + ' filled)', d.provider));
+        if (d.no_progress) {
+          // Zero added while slots remain is NOT success — surface why (amber/red).
+          var why = d.reason === 'all_candidates_duplicate_existing_prompts'
+            ? 'the model returned only prompts that duplicate existing ones'
+            : (d.reason === 'model_returned_no_usable_prompts' ? 'the model returned no usable prompts' : 'no usable prompts');
+          setStatus(el, withProvider('No new prompts added — ' + why + '; ' + (d.remaining_eligible || 0) + ' slot(s) still empty. Try again.', d.provider), true);
+        } else {
+          var msg = d.added + ' new prompt(s) added to empty slots (' + d.total_filled + '/' + d.capacity + ' filled)';
+          if (d.remaining_eligible) msg += ' · ' + d.remaining_eligible + ' still empty';
+          setStatus(el, withProvider(msg, d.provider));
+        }
         updateRemainingButton();
         refreshImagesStatus();
       }).catch(function () { stop(); btn.classList.remove('busy'); setStatus(el, 'Generation failed', true); updateRemainingButton(); });

@@ -178,6 +178,7 @@ function writeImageProviderProvenance(projectId, entry, options = {}) {
     workflow: entry.workflow || null,
     reason: entry.reason || null,
     run_id: entry.run_id || null,
+    seed: entry.seed != null ? entry.seed : null,
     indexes: Array.isArray(entry.indexes) ? entry.indexes : [],
     recorded_at: entry.now || new Date().toISOString(),
   };
