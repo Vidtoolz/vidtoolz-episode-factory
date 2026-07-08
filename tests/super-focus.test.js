@@ -1974,3 +1974,109 @@ test("invariant: regenerate-video supersedes the old clip and dispatches a fresh
     assert.ok(fs.existsSync(path.join(dir, "001.mp4")), "fresh clip written");
   } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
 });
+
+// ===== Step 5 infographic prompts: slot-safe top-up (mirrors the image top-up) =====
+
+test("infographic top-up fills only empty slots and preserves existing prompts", async () => {
+  const { server, id, root } = await makeProjectServer(fakeOllama(jsonArray(30, "Info")), { script: "a real script" });
+  try {
+    superFocus.saveInfographicPrompts(id, ["KEEP one", "KEEP two"], { root }); // 2 filled, 28 empty
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id }, // no count -> all eligible
+    });
+    assert.equal(res.statusCode, 200, "no replace confirm / no 409");
+    const d = unwrap(res);
+    assert.equal(d.capacity, 30);
+    assert.equal(d.eligible, 28);
+    assert.equal(d.will_generate, 28);
+    assert.equal(d.added, 28);
+    assert.equal(d.total_filled, 30);
+    assert.equal(d.skipped_existing, 2);
+    const rows = d.project.infographic_prompts;
+    assert.equal(rows.find((p) => p.index === 1).text, "KEEP one", "populated slot preserved");
+    assert.equal(rows.find((p) => p.index === 2).text, "KEEP two", "populated slot preserved");
+  } finally { await close(server); }
+});
+
+test("infographic top-up treats Prompt count as an upper bound", async () => {
+  const { server, id, root } = await makeProjectServer(fakeOllama(jsonArray(30, "Info")), { script: "s" });
+  try {
+    superFocus.saveInfographicPrompts(id, ["a", "b"], { root }); // 2 filled -> 28 eligible
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 3 },
+    });
+    const d = unwrap(res);
+    assert.equal(d.will_generate, 3);
+    assert.equal(d.added, 3);
+    assert.equal(d.total_filled, 5);
+    assert.equal(d.remaining_eligible, 25);
+  } finally { await close(server); }
+});
+
+test("infographic top-up accepts a count above capacity and clamps it (no 400)", async () => {
+  const { server, id, root } = await makeProjectServer(fakeOllama(jsonArray(30, "Info")), { script: "s" });
+  try {
+    superFocus.saveInfographicPrompts(id, ["a"], { root }); // 1 filled -> 29 eligible
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 120 },
+    });
+    assert.equal(res.statusCode, 200);
+    const d = unwrap(res);
+    assert.equal(d.requested_limit, 120);
+    assert.equal(d.effective_limit, 30);
+    assert.equal(d.will_generate, 29); // min(capacity, eligible)
+    assert.equal(d.total_filled, 30);
+  } finally { await close(server); }
+});
+
+test("infographic top-up fills a scattered cleared slot by its original index", async () => {
+  const { server, id, root } = await makeProjectServer(fakeOllama(JSON.stringify(["fresh A"])), { script: "s" });
+  try {
+    superFocus.saveInfographicPrompts(id, ["one", "two", "three"], { root }); // idx 1,2,3
+    superFocus.saveInfographicPrompt(id, 2, "", { root }); // clear the middle slot
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 1 },
+    });
+    const d = unwrap(res);
+    assert.equal(d.will_generate, 1);
+    assert.equal(d.project.infographic_prompts.find((p) => p.index === 2).text, "fresh A", "cleared gap refilled by index");
+    assert.equal(d.project.infographic_prompts.find((p) => p.index === 1).text, "one");
+    assert.equal(d.project.infographic_prompts.find((p) => p.index === 3).text, "three");
+  } finally { await close(server); }
+});
+
+test("infographic top-up returns an honest 400 when all slots are full (no replace)", async () => {
+  const { server, id, root } = await makeProjectServer(fakeOllama(jsonArray(30, "Info")), { script: "s" });
+  try {
+    superFocus.saveInfographicPrompts(id, Array.from({ length: 30 }, (_, i) => "x" + (i + 1)), { root });
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 400);
+    assert.match(res.raw, /already filled/i);
+  } finally { await close(server); }
+});
+
+test("clearing an infographic prompt slot makes it eligible for top-up again", async () => {
+  const { server, id, root } = await makeProjectServer(fakeOllama(JSON.stringify(["refill"])), { script: "s" });
+  try {
+    superFocus.saveInfographicPrompts(id, Array.from({ length: 30 }, (_, i) => "x" + (i + 1)), { root }); // full
+    const none = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(none.statusCode, 400);
+    // Clear slot 5 via the per-row save-empty route (must persist to state).
+    const cleared = await request(server, packageEngineServer.SUPER_FOCUS_INFOGRAPHIC_PROMPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 5, text: "" },
+    });
+    assert.equal(cleared.statusCode, 200);
+    assert.ok(!unwrap(cleared).project.infographic_prompts.find((p) => p.index === 5), "slot 5 persisted empty");
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    const d = unwrap(res);
+    assert.equal(d.eligible, 1);
+    assert.equal(d.added, 1);
+    assert.equal(d.project.infographic_prompts.find((p) => p.index === 5).text, "refill");
+  } finally { await close(server); }
+});

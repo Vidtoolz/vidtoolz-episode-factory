@@ -126,9 +126,11 @@ function buildImagePromptsRequest(script, count, existingPrompts) {
   return { system: PROMPTS_SYSTEM, user: lines.join('\n'), schema: promptArraySchema() };
 }
 
-function buildInfographicPromptsRequest(script, count) {
+// `existingPrompts` (optional) are infographic prompts the project already has;
+// passed as "do not repeat" context so a top-up run yields distinct prompts.
+function buildInfographicPromptsRequest(script, count, existingPrompts) {
   const n = clampCount(count, INFOGRAPHIC_PROMPT_MAX);
-  const user = [
+  const lines = [
     `Based on this script, create exactly ${n} infographic image prompts.`,
     '',
     'Script:',
@@ -145,10 +147,21 @@ function buildInfographicPromptsRequest(script, count) {
     '- no unsupported factual claims',
     '- each prompt should describe the infographic clearly',
     '- suitable for local image generation',
-    '',
-    `Return a strict JSON array of exactly ${n} strings and no commentary.`,
-  ].join('\n');
-  return { system: PROMPTS_SYSTEM, user, schema: promptArraySchema() };
+  ];
+  const exclusions = (Array.isArray(existingPrompts) ? existingPrompts : [])
+    .map((p) => (typeof p === 'string' ? p.trim() : ''))
+    .filter(Boolean)
+    .slice(0, 30);
+  if (exclusions.length) {
+    lines.push(
+      '',
+      'These prompts already exist — do NOT repeat or lightly reword any of them:',
+      ...exclusions.map((p) => `- ${p}`),
+      'Every new prompt must be clearly different from all of the above.'
+    );
+  }
+  lines.push('', `Return a strict JSON array of exactly ${n} strings and no commentary.`);
+  return { system: PROMPTS_SYSTEM, user: lines.join('\n'), schema: promptArraySchema() };
 }
 
 const I2V_SYSTEM =

@@ -361,6 +361,40 @@ function fillEmptyImagePrompts(projectId, texts, options = {}) {
   return state;
 }
 
+// Infographic-prompt slot capacity. Mirrors super-focus-prompts.INFOGRAPHIC_PROMPT_MAX;
+// the server passes the canonical value via options.capacity, this is the fallback.
+const INFOGRAPHIC_PROMPT_CAPACITY = 30;
+
+// Fill the currently-empty infographic-prompt slots (up to capacity) with newly
+// generated texts, BY INDEX. Existing filled rows are preserved untouched and
+// never renumbered; new rows land in the empty index gaps (scattered or a
+// trailing block). Mirrors fillEmptyImagePrompts (infographics have no
+// downstream media). `texts` are consumed in slot order.
+function fillEmptyInfographicPrompts(projectId, texts, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  const capacity = Number(options.capacity) > 0 ? Math.round(Number(options.capacity)) : INFOGRAPHIC_PROMPT_CAPACITY;
+  const byIndex = {};
+  (Array.isArray(state.infographic_prompts) ? state.infographic_prompts : []).forEach((r) => {
+    if (r && r.index != null && typeof r.text === 'string' && r.text.trim()) byIndex[r.index] = r;
+  });
+  const emptyIndexes = [];
+  for (let i = 1; i <= capacity; i += 1) if (!byIndex[i]) emptyIndexes.push(i);
+  const clean = (Array.isArray(texts) ? texts : [])
+    .map((t) => (typeof t === 'string' ? t.trim() : ''))
+    .filter(Boolean);
+  const fillCount = Math.min(emptyIndexes.length, clean.length);
+  for (let k = 0; k < fillCount; k += 1) {
+    const idx = emptyIndexes[k];
+    byIndex[idx] = { index: idx, text: clean[k], status: 'saved' };
+  }
+  state.infographic_prompts = Object.values(byIndex).sort((a, b) => a.index - b.index);
+  state.stage = inferStage(state);
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
 function saveInfographicPrompts(projectId, texts, options = {}) {
   const dir = stateDir(projectId, options);
   const state = loadProject(projectId, options);
@@ -483,8 +517,10 @@ module.exports = {
   saveTitle,
   saveScript,
   IMAGE_PROMPT_CAPACITY,
+  INFOGRAPHIC_PROMPT_CAPACITY,
   saveImagePrompts,
   fillEmptyImagePrompts,
+  fillEmptyInfographicPrompts,
   saveInfographicPrompts,
   saveImagePrompt,
   saveInfographicPrompt,

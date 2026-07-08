@@ -246,11 +246,11 @@
         <div class="step">Step 5</div>
         <h2>Infographic prompts</h2>
         <div class="row">
-          <button class="btn" id="infp-generate">Create infographic prompts based on the script</button>
+          <button class="btn" id="infp-generate">Create missing infographic prompts</button>
           <label class="count-field">Prompt count <input type="number" id="infp-count" min="1" max="30" value="6" /></label>
           <span class="save-state" id="infp-status"></span>
         </div>
-        <div class="later-note">Generates the chosen number of still-infographic prompts (1–30) from the saved script (local Ollama on vidnux). Edit any box, then Copy or Save changes.</div>
+        <div class="later-note"><strong>Prompt count</strong> is an upper bound. This fills only empty infographic slots (up to 30) from the saved script — existing prompts are preserved, never replaced. Run again to add more; clear a row to free its slot. Edit any box, then Copy / Save / Clear.</div>
         <div class="stale-banner hidden" id="infp-stale">⚠ The script changed after these prompts were generated. They may be stale — regenerate, or keep your edits.</div>
         <div class="prompt-grid" id="infp-list"></div>
       </div>
@@ -293,6 +293,7 @@
     var GEN_IMGP_API = '/api/super-focus/generate-image-prompts';
     var GEN_REMAINING_IMGP_API = '/api/super-focus/generate-remaining-image-prompts';
     var GEN_INFP_API = '/api/super-focus/generate-infographic-prompts';
+    var GEN_MISSING_INFP_API = '/api/super-focus/generate-missing-infographic-prompts';
     var IMGP_SAVE_API = '/api/super-focus/image-prompt';
     var INFP_SAVE_API = '/api/super-focus/infographic-prompt';
     var GEN_IMAGES_API = '/api/super-focus/generate-images';
@@ -625,6 +626,7 @@
                 refreshImagesStatus();
               }
               updateRemainingButton();
+              updateInfographicButton();
             }).catch(function () { clearBtn.disabled = false; setRowStatus(st, 'Clear failed', 'dirty'); });
           });
           ctrl.appendChild(copyBtn); ctrl.appendChild(saveBtn); ctrl.appendChild(clearBtn); ctrl.appendChild(st);
@@ -662,6 +664,22 @@
       }
     }
 
+    // Same idea for the infographic (Step 5) top-up button.
+    function updateInfographicButton() {
+      var btn = document.getElementById('infp-generate');
+      if (!btn) return;
+      var inputs = document.getElementById('infp-list').querySelectorAll('.pinput');
+      var empty = inputs.length ? 0 : INF_MAX;
+      Array.prototype.forEach.call(inputs, function (t) { if (!t.value.trim()) empty += 1; });
+      if (empty <= 0) {
+        btn.disabled = true;
+        btn.textContent = 'All infographic prompt slots filled';
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Create missing infographic prompts (' + empty + ' empty)';
+      }
+    }
+
     function openProject(proj) {
       currentId = proj.project_id;
       document.getElementById('proj-heading').textContent =
@@ -680,6 +698,7 @@
       updateStaleBanner('imgp-stale', proj.stale && proj.stale.image_prompts);
       updateStaleBanner('infp-stale', proj.stale && proj.stale.infographic_prompts);
       updateRemainingButton();
+      updateInfographicButton();
       stopImagesPolling(); stopVideosPolling();
       setStatus(document.getElementById('imggen-status'), '');
       setStatus(document.getElementById('vidgen-status'), '');
@@ -976,24 +995,25 @@
       }).catch(function () { stop(); btn.classList.remove('busy'); setStatus(el, 'Generation failed', true); updateRemainingButton(); });
     });
 
+    // Slot-safe top-up: fill only empty infographic slots (never replaces
+    // populated ones — no confirm). "Prompt count" is an upper bound.
     document.getElementById('infp-generate').addEventListener('click', function () {
-      var btn = this, el = document.getElementById('infp-status');
-      var existing = [...document.getElementById('infp-list').querySelectorAll('.pinput')].filter(function (t) { return t.value.trim(); }).length;
-      if (existing > 0 && !confirm('Replace the ' + existing + ' existing infographic prompts?')) return;
       if (!currentId) return;
+      var btn = this, el = document.getElementById('infp-status');
       var count = boundedField('infp-count', 1, 30, 6);
       btn.classList.add('busy'); btn.disabled = true;
-      var stop = elapsedTicker(el, 'Generating ' + count + ' prompts… (local Ollama on vidnux)');
-      apiPost(GEN_INFP_API, { id: currentId, count: count, confirm_replace: existing > 0 }).then(function (res) {
-        stop(); btn.classList.remove('busy'); btn.disabled = false;
-        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Generation failed', true); return; }
+      var stop = elapsedTicker(el, 'Filling up to ' + count + ' empty infographic slot(s)… (local Ollama on vidnux)');
+      apiPost(GEN_MISSING_INFP_API, { id: currentId, count: count }).then(function (res) {
+        stop(); btn.classList.remove('busy');
+        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Generation failed', true); updateInfographicButton(); return; }
         var d = unwrap(res.body);
         renderPromptGrid('infp-list', d.project.infographic_prompts, INF_MAX, INFP_SAVE_API);
         updateStaleBanner('infp-stale', d.project.stale && d.project.stale.infographic_prompts);
-        var msg = d.count + ' prompts populated';
-        if (d.count < count) msg += '; remaining slots are empty and editable';
-        setStatus(el, msg);
-      }).catch(function () { stop(); btn.classList.remove('busy'); btn.disabled = false; setStatus(el, 'Generation failed', true); });
+        var parts = [d.added + ' added to empty slots (' + d.total_filled + '/' + d.capacity + ' filled)'];
+        if (d.remaining_eligible) parts.push(d.remaining_eligible + ' still eligible — run again to continue');
+        setStatus(el, parts.join(' · '));
+        updateInfographicButton();
+      }).catch(function () { stop(); btn.classList.remove('busy'); btn.disabled = false; setStatus(el, 'Generation failed', true); updateInfographicButton(); });
     });
 
     document.getElementById('imggen-generate').addEventListener('click', function () {

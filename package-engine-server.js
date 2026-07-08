@@ -107,6 +107,7 @@ const SUPER_FOCUS_GENERATE_SCRIPT_API = '/api/super-focus/generate-script';
 const SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API = '/api/super-focus/generate-image-prompts';
 const SUPER_FOCUS_GENERATE_REMAINING_IMAGE_PROMPTS_API = '/api/super-focus/generate-remaining-image-prompts';
 const SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API = '/api/super-focus/generate-infographic-prompts';
+const SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API = '/api/super-focus/generate-missing-infographic-prompts';
 const SUPER_FOCUS_IMAGE_PROMPT_API = '/api/super-focus/image-prompt';
 const SUPER_FOCUS_INFOGRAPHIC_PROMPT_API = '/api/super-focus/infographic-prompt';
 const SUPER_FOCUS_GENERATE_IMAGES_API = '/api/super-focus/generate-images';
@@ -9999,6 +10000,73 @@ function createServer(options = {}) {
       return;
     }
 
+    // Top-up (slot-safe, default Step-5 action): generate infographic prompts
+    // ONLY for currently-empty slots (up to capacity) and drop them into those
+    // index gaps. Existing infographic prompts are preserved by index and never
+    // overwritten or renumbered. No confirm_replace gate. "count" is an UPPER
+    // BOUND (clamped to capacity; a value above capacity is accepted, not rejected).
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus missing-infographic-prompts generation API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          if (!state.script || !state.script.trim()) {
+            const e = new Error('Save a script first, then create infographic prompts.'); e.statusCode = 400; throw e;
+          }
+          const capacity = superFocusPrompts.INFOGRAPHIC_PROMPT_MAX;
+          const records = Array.isArray(state.infographic_prompts) ? state.infographic_prompts : [];
+          const filled = records.filter((r) => r && r.text && r.text.trim());
+          const filledIndexes = new Set(filled.map((r) => r.index));
+          const filledTexts = filled.map((r) => r.text.trim());
+          let eligible = 0;
+          for (let i = 1; i <= capacity; i += 1) if (!filledIndexes.has(i)) eligible += 1;
+          if (eligible === 0) {
+            const e = new Error(`All ${capacity} infographic prompt slots are already filled.`); e.statusCode = 400; throw e;
+          }
+          // "count" (or "limit") is an upper bound: clamp to capacity, reject only
+          // non-integer/zero/negative. Absent = all eligible empty slots.
+          const raw = payload.count !== undefined ? payload.count : payload.limit;
+          const hasLimit = !(raw === undefined || raw === null || raw === '');
+          let requestedLimit = null;
+          let effectiveLimit = eligible;
+          if (hasLimit) {
+            const nNum = Number(raw);
+            if (!Number.isInteger(nNum) || nNum < 1) { const e = new Error('count must be a positive integer.'); e.statusCode = 400; throw e; }
+            requestedLimit = nNum;
+            effectiveLimit = Math.min(nNum, capacity);
+          }
+          const willGenerate = Math.min(effectiveLimit, eligible);
+          const before = filled.length;
+          const reqPrompt = superFocusPrompts.buildInfographicPromptsRequest(state.script, willGenerate, filledTexts);
+          const content = await callOllamaChat(
+            { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model: OLLAMA_MODEL, baseUrl: OLLAMA_BASE_URL },
+            options
+          );
+          const generated = superFocusPrompts.parsePromptArray(content, willGenerate);
+          // Cheap exact-duplicate guard against what we already have.
+          const existingLower = new Set(filledTexts.map((t) => t.toLowerCase()));
+          const distinct = generated.filter((p) => !existingLower.has(p.trim().toLowerCase())).slice(0, willGenerate);
+          const saved = superFocus.fillEmptyInfographicPrompts(id, distinct, { root: sfRoot, capacity });
+          const after = (saved.infographic_prompts || []).filter((r) => r && r.text && r.text.trim()).length;
+          sendJSON(res, 200, {
+            project: saved,
+            capacity,
+            requested_limit: requestedLimit,
+            effective_limit: hasLimit ? effectiveLimit : null,
+            eligible,
+            will_generate: willGenerate,
+            added: after - before,
+            total_filled: after,
+            skipped_existing: before,
+            remaining_eligible: eligible - (after - before),
+            provider: 'ollama', provider_host: 'vidnux', model: OLLAMA_MODEL,
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-missing-infographic-prompts-error'));
+      return;
+    }
+
     // Save a single image prompt slot by 1-based index (per-row "Save changes").
     if (req.method === 'POST' && url.pathname === SUPER_FOCUS_IMAGE_PROMPT_API) {
       readJsonBody(req, 1024 * 64)
@@ -12623,6 +12691,7 @@ module.exports = {
   SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API,
   SUPER_FOCUS_GENERATE_REMAINING_IMAGE_PROMPTS_API,
   SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API,
+  SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API,
   SUPER_FOCUS_IMAGE_PROMPT_API,
   SUPER_FOCUS_INFOGRAPHIC_PROMPT_API,
   SUPER_FOCUS_GENERATE_IMAGES_API,
