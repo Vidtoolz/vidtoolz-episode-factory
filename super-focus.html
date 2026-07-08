@@ -188,6 +188,7 @@
         </div>
         <div style="display:flex;gap:14px;align-items:center;">
           <button class="link-btn" id="check-providers">Check providers</button>
+          <button class="link-btn" id="test-ollama">Test Ollama model</button>
           <button class="link-btn" data-home>← Back</button>
         </div>
       </div>
@@ -297,6 +298,7 @@
     var PROJECTS_API = '/api/super-focus/projects';
     var PROJECT_API = '/api/super-focus/project';
     var PROVIDERS_API = '/api/super-focus/providers';
+    var OLLAMA_BENCHMARK_API = '/api/super-focus/ollama-benchmark';
     var TITLE_API = '/api/super-focus/title';
     var SCRIPT_API = '/api/super-focus/script';
     var GEN_TOPIC_API = '/api/super-focus/generate-topic';
@@ -448,6 +450,26 @@
         if (!res.ok) { panel.innerHTML = '<div class="prow"><span class="pstat bad">Provider check failed</span></div>'; return; }
         renderProviders(unwrap(res.body));
       }).catch(function () { panel.innerHTML = '<div class="prow"><span class="pstat bad">Provider check failed</span></div>'; });
+    });
+
+    // Explicit model performance test (measures real 1- and 3-prompt timing).
+    function benchLine(b) {
+      if (!b) return '';
+      if (!b.ok) return '<div class="prow"><span class="pname">' + b.label + '</span><span class="pstat bad">' + (b.error || 'failed') + '</span></div>';
+      return '<div class="prow"><span class="pname">' + b.label + ' (' + b.model + ')</span><span class="pstat ok">1 prompt ' + Math.round(b.one_prompt_ms / 1000) + 's · 3 prompts ' + Math.round(b.three_prompt_ms / 1000) + 's</span></div>';
+    }
+    document.getElementById('test-ollama').addEventListener('click', function () {
+      var panel = document.getElementById('providers-panel');
+      panel.classList.remove('hidden');
+      panel.innerHTML = '<div class="prow"><span class="pname">Testing Ollama model… (this generates a few real prompts)</span></div>';
+      apiGet(OLLAMA_BENCHMARK_API).then(function (res) {
+        if (!res.ok) { panel.innerHTML = '<div class="prow"><span class="pstat bad">Benchmark failed: ' + ((res.body && res.body.error) || 'error') + '</span></div>'; return; }
+        var d = unwrap(res.body);
+        var html = benchLine(d.vidnux) + benchLine(d.presto);
+        html += '<div class="prow"><span class="pname">Recommended chunk size</span><span>' + d.recommended_chunk_size + ' (current ' + d.chunk_size + ')</span></div>';
+        if (d.faster) html += '<div class="prow"><span class="pname">Faster for this task</span><span>' + d.faster + '</span></div>';
+        panel.innerHTML = html;
+      }).catch(function () { panel.innerHTML = '<div class="prow"><span class="pstat bad">Benchmark failed</span></div>'; });
     });
 
     // ---- Create ----
@@ -1059,16 +1081,24 @@
       var btn = this, el = document.getElementById('infp-status');
       var count = boundedField('infp-count', 1, 30, 6);
       btn.classList.add('busy'); btn.disabled = true;
-      var stop = elapsedTicker(el, 'Filling up to ' + count + ' empty infographic slot(s)… (local Ollama on vidnux)');
+      var stop = elapsedTicker(el, 'Generating infographic prompts in small chunks… (' + count + ' requested)');
       apiPost(GEN_MISSING_INFP_API, { id: currentId, count: count }).then(function (res) {
         stop(); btn.classList.remove('busy');
         if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Generation failed', true); updateInfographicButton(); return; }
         var d = unwrap(res.body);
         renderPromptGrid('infp-list', d.project.infographic_prompts, INF_MAX, INFP_SAVE_API);
         updateStaleBanner('infp-stale', d.project.stale && d.project.stale.infographic_prompts);
-        var parts = [d.added + ' added to empty slots (' + d.total_filled + '/' + d.capacity + ' filled)'];
-        if (d.remaining_eligible) parts.push(d.remaining_eligible + ' still eligible — run again to continue');
+        var parts = [d.added + ' added (' + d.total_filled + '/' + d.capacity + ' filled)'];
+        if (d.chunk_size) parts.push('chunks of ' + d.chunk_size);
+        if (d.partial_success && d.error) {
+          parts.push('partial: ' + (d.error.kind === 'timeout'
+            ? ('next chunk timed out; ' + d.remaining_eligible + ' still eligible — run again')
+            : (d.error.kind + '; ' + d.remaining_eligible + ' still eligible')));
+        } else if (d.remaining_eligible) {
+          parts.push(d.remaining_eligible + ' still eligible — run again to continue');
+        }
         if (providerNote(d.provider)) parts.push(providerNote(d.provider));
+        // Partial success is not a total failure; show it plainly (not red).
         setStatus(el, parts.join(' · '));
         updateInfographicButton();
       }).catch(function () { stop(); btn.classList.remove('busy'); btn.disabled = false; setStatus(el, 'Generation failed', true); updateInfographicButton(); });

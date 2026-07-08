@@ -1980,7 +1980,7 @@ test("invariant: regenerate-video supersedes the old clip and dispatches a fresh
 // ===== Step 5 infographic prompts: slot-safe top-up (mirrors the image top-up) =====
 
 test("infographic top-up fills only empty slots and preserves existing prompts", async () => {
-  const { server, id, root } = await makeProjectServer(fakeOllama(jsonArray(30, "Info")), { script: "a real script" });
+  const { server, id, root } = await makeProjectServer(chunkingOllama("Info"), { script: "a real script" });
   try {
     superFocus.saveInfographicPrompts(id, ["KEEP one", "KEEP two"], { root }); // 2 filled, 28 empty
     const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
@@ -2016,7 +2016,7 @@ test("infographic top-up treats Prompt count as an upper bound", async () => {
 });
 
 test("infographic top-up accepts a count above capacity and clamps it (no 400)", async () => {
-  const { server, id, root } = await makeProjectServer(fakeOllama(jsonArray(30, "Info")), { script: "s" });
+  const { server, id, root } = await makeProjectServer(chunkingOllama("Info"), { script: "s" });
   try {
     superFocus.saveInfographicPrompts(id, ["a"], { root }); // 1 filled -> 29 eligible
     const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
@@ -2420,5 +2420,159 @@ test("providers status route includes PRESTO ComfyUI image capability", async ()
     assert.equal(typeof d.image_provider_mode, "string");
     assert.ok(d.restart && d.restart.vidnux_comfyui && d.restart.presto_comfyui);
     assert.equal(d.restart.presto_comfyui.mode, "manual");
+  } finally { await close(server); }
+});
+
+// ================= Step 5 chunked infographic generation =================
+
+// Stateful fake Ollama: returns 6 FRESH distinct prompts per call, so chunked
+// generation with cross-chunk dedup can keep making progress (unlike a fixed
+// fake that echoes the same array every call).
+function chunkingOllama(prefix) {
+  let call = 0;
+  return async () => {
+    call += 1;
+    const base = (call - 1) * 6;
+    const arr = Array.from({ length: 6 }, (_, i) => (prefix || "Info") + " " + (base + i + 1) + " distinct scene");
+    return { ok: true, json: async () => ({ message: { content: JSON.stringify(arr) } }) };
+  };
+}
+
+// Succeeds (fresh distinct prompts) for the first `succeedChunks` calls, then
+// throws a TimeoutError — simulates a chunk timing out mid-job.
+function chunkThenTimeout(succeedChunks, prefix) {
+  let call = 0;
+  return async () => {
+    call += 1;
+    if (call > succeedChunks) { const e = new Error("timeout"); e.name = "TimeoutError"; throw e; }
+    const base = (call - 1) * 6;
+    const arr = Array.from({ length: 6 }, (_, i) => (prefix || "Info") + " " + (base + i + 1));
+    return { ok: true, json: async () => ({ message: { content: JSON.stringify(arr) } }) };
+  };
+}
+
+test("chunked infographic: generates in chunks of 3 (not one huge request)", async () => {
+  const { server, id, root } = await makeProjectServer(chunkingOllama("Info"), { script: "s" });
+  try {
+    superFocus.saveInfographicPrompts(id, [], { root });
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 9 },
+    });
+    const d = unwrap(res);
+    assert.equal(d.chunk_size, 3);
+    assert.equal(d.added, 9);
+    assert.equal(d.chunks_attempted, 3); // 9 / 3
+    assert.equal(d.chunks_succeeded, 3);
+    assert.equal(d.partial_success, false);
+    assert.equal(d.error, null);
+    assert.ok(Array.isArray(d.timing.per_chunk_ms) && d.timing.per_chunk_ms.length === 3);
+  } finally { await close(server); }
+});
+
+test("chunked infographic: timeout after successful chunks -> partial success, saved prompts kept", async () => {
+  const { server, id, root } = await makeProjectServer(chunkThenTimeout(3, "Info"), { script: "s" });
+  try {
+    superFocus.saveInfographicPrompts(id, Array.from({ length: 12 }, (_, i) => "keep" + (i + 1)), { root }); // 12 filled, 18 eligible
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 18 },
+    });
+    assert.equal(res.statusCode, 200); // partial success is a 200, not a hard failure
+    const d = unwrap(res);
+    assert.equal(d.added, 9);                // 3 chunks * 3
+    assert.equal(d.chunks_attempted, 4);
+    assert.equal(d.chunks_succeeded, 3);
+    assert.equal(d.partial_success, true);
+    assert.equal(d.remaining_eligible, 9);
+    assert.equal(d.error.kind, "timeout");
+    // Slot-safe: the 12 existing prompts are preserved by index; 9 new added.
+    const rows = d.project.infographic_prompts;
+    assert.equal(rows.filter((r) => r.text && r.text.trim()).length, 21);
+    assert.equal(rows.find((p) => p.index === 1).text, "keep1");
+    // Persisted before the failing chunk: reloading shows the 9 saved.
+    const reload = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(id))).project;
+    assert.equal(reload.infographic_prompts.filter((r) => r.text && r.text.trim()).length, 21);
+  } finally { await close(server); }
+});
+
+test("chunked infographic: timeout before any chunk succeeds -> clear failure with context", async () => {
+  const { server, id, root } = await makeProjectServer(chunkThenTimeout(0, "Info"), { script: "s" });
+  try {
+    superFocus.saveInfographicPrompts(id, [], { root });
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 6 },
+    });
+    assert.equal(res.statusCode, 504);
+    assert.match(res.raw, /timed out/i);
+    assert.match(res.raw, /provider vidnux Ollama/);
+    assert.match(res.raw, /model /);
+    assert.match(res.raw, /task infographic_prompts_topup/);
+    assert.doesNotMatch(res.raw, /smaller model via OLLAMA_MODEL/); // old blunt advice removed
+  } finally { await close(server); }
+});
+
+test("chunked infographic: partial success is slot-safe (existing preserved, no overwrite, by index)", async () => {
+  const { server, id, root } = await makeProjectServer(chunkThenTimeout(2, "Info"), { script: "s" });
+  try {
+    // Fill scattered slots 1 and 3; clear nothing. Eligible = 2,4,5,... (28).
+    superFocus.saveInfographicPrompt(id, 1, "orig1", { root });
+    superFocus.saveInfographicPrompt(id, 3, "orig3", { root });
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 12 },
+    });
+    const d = unwrap(res);
+    assert.equal(d.added, 6); // 2 chunks * 3 before timeout
+    assert.equal(d.partial_success, true);
+    const rows = d.project.infographic_prompts;
+    assert.equal(rows.find((p) => p.index === 1).text, "orig1", "existing not overwritten");
+    assert.equal(rows.find((p) => p.index === 3).text, "orig3", "existing not overwritten");
+    assert.equal(rows.find((p) => p.index === 2).text.indexOf("Info"), 0, "empty slot filled by index");
+  } finally { await close(server); }
+});
+
+test("chunked infographic: chunk size is clamped to 1..6", async () => {
+  const big = await makeProjectServer(chunkingOllama("A"), { script: "s" });
+  try {
+    superFocus.saveInfographicPrompts(big.id, [], { root: big.root });
+    const server2 = packageEngineServer.createServer({ superFocusRoot: big.root, fetchImpl: chunkingOllama("A"), superFocusChunkSize: 99 });
+    await listen(server2);
+    try {
+      const d = unwrap(await request(server2, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
+        method: "POST", headers: writeHeaders(), body: { id: big.id, count: 6 } }));
+      assert.equal(d.chunk_size, 6); // 99 clamped to 6
+    } finally { await close(server2); }
+  } finally { await close(big.server); }
+});
+
+test("chunked infographic: response includes provider metadata + count stays an upper bound", async () => {
+  const { server, id, root } = await makeProjectServer(chunkingOllama("Info"), { script: "s" });
+  try {
+    superFocus.saveInfographicPrompts(id, Array.from({ length: 28 }, (_, i) => "f" + (i + 1)), { root }); // 28 filled, 2 eligible
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, count: 50 } }));
+    assert.equal(d.will_generate, 2);        // upper bound clamped to the 2 eligible
+    assert.equal(d.added, 2);
+    assert.equal(d.provider.id, "vidnux_ollama");
+    assert.ok(d.provider.model);
+    assert.match(d.provider.reason, /idle|local/i);
+  } finally { await close(server); }
+});
+
+test("ollama-benchmark route reports model/provider/timing (explicit test)", async () => {
+  const server = packageEngineServer.createServer({
+    superFocusRoot: mkRoot(),
+    fetchImpl: fakeOllama(JSON.stringify(["one short infographic prompt"])),
+    prestoOllamaBaseUrl: "", // presto not configured -> vidnux only
+  });
+  await listen(server);
+  try {
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_OLLAMA_BENCHMARK_API));
+    assert.equal(d.ok, true);
+    assert.equal(d.vidnux.ok, true);
+    assert.ok(d.vidnux.model);
+    assert.equal(typeof d.vidnux.one_prompt_ms, "number");
+    assert.equal(typeof d.vidnux.three_prompt_ms, "number");
+    assert.ok(d.recommended_chunk_size >= 1 && d.recommended_chunk_size <= 6);
+    assert.equal(typeof d.timeout_ms, "number");
+    assert.equal(d.presto, null); // not configured
   } finally { await close(server); }
 });

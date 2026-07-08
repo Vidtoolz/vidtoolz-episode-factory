@@ -101,6 +101,7 @@ const PROJECT_YOUTUBE_DRAFT_SAVE_API = '/api/project/youtube-draft/save';
 const SUPER_FOCUS_PROJECTS_API = '/api/super-focus/projects';
 const SUPER_FOCUS_PROJECT_API = '/api/super-focus/project';
 const SUPER_FOCUS_PROVIDERS_API = '/api/super-focus/providers';
+const SUPER_FOCUS_OLLAMA_BENCHMARK_API = '/api/super-focus/ollama-benchmark';
 const SUPER_FOCUS_TITLE_API = '/api/super-focus/title';
 const SUPER_FOCUS_SCRIPT_API = '/api/super-focus/script';
 const SUPER_FOCUS_GENERATE_TOPIC_API = '/api/super-focus/generate-topic';
@@ -4562,14 +4563,17 @@ async function callOllamaChat({ system, user, schema, model, baseUrl } = {}, opt
         ...(schema ? { format: schema } : {}),
         options: { temperature: 0.6 },
       }),
-      signal: options.signal || AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
+      // Per-call timeout: callers (e.g. chunked generation) pass a task-specific
+      // timeoutMs so a big job is split into bounded chunks, not one 120s attempt.
+      signal: options.signal || AbortSignal.timeout(Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : OLLAMA_TIMEOUT_MS),
     });
   } catch (error) {
     const timedOut = error && (error.name === 'AbortError' || error.name === 'TimeoutError');
     const detail = String((error && (error.message || (error.cause && error.cause.code))) || '');
     const refused = /ECONNREFUSED|fetch failed|ENOTFOUND|ECONNRESET/i.test(detail);
+    const secs = Math.ceil((Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : OLLAMA_TIMEOUT_MS) / 1000);
     const message = timedOut
-      ? `Ollama generation timed out after ${Math.ceil(OLLAMA_TIMEOUT_MS / 1000)}s. Try a smaller model via OLLAMA_MODEL.`
+      ? `Ollama generation timed out after ${secs}s.`
       : refused
       ? `Could not reach Ollama at ${resolvedBase}. Is it running on that host? Start it with: ollama serve (no fallback to another host).`
       : `Ollama request failed: ${detail || 'unknown network error'}`;
@@ -4680,6 +4684,46 @@ function publicProvider(decision) {
 // Route + run one Super Focus text generation. Returns { content, provider }.
 // On failure the error message is enriched with provider/model/timeout/task/
 // count/routing context and carries error.provider.
+// Task-specific Super Focus Ollama timeout (PER CHUNK / per request), not a
+// single budget for a whole multi-prompt job. Env overrides, default 120s.
+function superFocusOllamaTimeoutMs(task, options = {}) {
+  if (Number(options.superFocusOllamaTimeoutMs) > 0) return Number(options.superFocusOllamaTimeoutMs);
+  if (/infographic/i.test(String(task || '')) && Number(process.env.SUPER_FOCUS_INFOGRAPHIC_TIMEOUT_MS) > 0) {
+    return Number(process.env.SUPER_FOCUS_INFOGRAPHIC_TIMEOUT_MS);
+  }
+  if (Number(process.env.SUPER_FOCUS_OLLAMA_TIMEOUT_MS) > 0) return Number(process.env.SUPER_FOCUS_OLLAMA_TIMEOUT_MS);
+  return OLLAMA_TIMEOUT_MS;
+}
+
+// Chunk size for multi-prompt Super Focus generation. Default 3, clamped 1–6.
+function superFocusChunkSize(options = {}) {
+  const raw = options.superFocusChunkSize != null ? options.superFocusChunkSize : process.env.SUPER_FOCUS_OLLAMA_CHUNK_SIZE;
+  const n = Math.round(Number(raw));
+  if (!Number.isFinite(n) || n < 1) return 3;
+  return Math.min(6, Math.max(1, n));
+}
+
+// Enrich an Ollama error with provider/model/timeout/task/count/routing context
+// plus preserve-safe, actionable advice (never a blunt "use a smaller model").
+function enrichOllamaError(error, decision, task, requestedCount, timeoutMs) {
+  const secs = Math.ceil((Number(timeoutMs) > 0 ? Number(timeoutMs) : OLLAMA_TIMEOUT_MS) / 1000);
+  const ctx = [
+    `provider ${decision.label}`,
+    `model ${decision.model}`,
+    `timeout ${secs}s`,
+    `task ${task || 'generation'}`,
+    requestedCount ? `requested ${requestedCount}` : null,
+    decision.reason ? `routing: ${decision.reason}` : null,
+  ].filter(Boolean).join(' · ');
+  const timedOut = error && error.statusCode === 504;
+  const advice = timedOut
+    ? ' Existing prompts were preserved. Run Test Ollama model, reduce chunk size, raise the per-chunk timeout, or route to PRESTO Ollama if available.'
+    : '';
+  error.message = `${error.message} [${ctx}]${advice}`;
+  error.provider = publicProvider(decision);
+  return error;
+}
+
 async function superFocusGenerate({ system, user, schema, task, requestedCount } = {}, options = {}) {
   const decision = await resolveSuperFocusOllamaProvider(task, options);
   if (decision.error) {
@@ -4688,25 +4732,15 @@ async function superFocusGenerate({ system, user, schema, task, requestedCount }
     e.provider = { error: decision.error };
     throw e;
   }
+  const timeoutMs = superFocusOllamaTimeoutMs(task, options);
   try {
     const content = await callOllamaChat(
       { system, user, schema, model: decision.model, baseUrl: decision.base_url },
-      options
+      Object.assign({}, options, { timeoutMs })
     );
     return { content, provider: publicProvider(decision) };
   } catch (error) {
-    const secs = Math.ceil(OLLAMA_TIMEOUT_MS / 1000);
-    const ctx = [
-      `provider ${decision.label}`,
-      `model ${decision.model}`,
-      `timeout ${secs}s`,
-      `task ${task || 'generation'}`,
-      requestedCount ? `requested ${requestedCount}` : null,
-      decision.reason ? `routing: ${decision.reason}` : null,
-    ].filter(Boolean).join(' · ');
-    error.message = `${error.message} [${ctx}]`;
-    error.provider = publicProvider(decision);
-    throw error;
+    throw enrichOllamaError(error, decision, task, requestedCount, timeoutMs);
   }
 }
 
@@ -4786,6 +4820,67 @@ async function superFocusProviderStatus(options = {}) {
       vidnux_comfyui: { mode: 'manual', command: 'bash ~/bin/start-vidnux-comfyui.sh', note: 'No wired restart button in this build. Run this locally on vidnux to (re)start ComfyUI.' },
       presto_comfyui: { mode: 'manual', note: 'Remote restart is not configured (media-routing non-goal). Restart ComfyUI on PRESTO manually.' },
     },
+  };
+}
+
+// Explicit, manual model performance check ("Test Ollama model"). Times a small
+// 1-prompt and 3-prompt infographic generation on vidnux Ollama (and PRESTO if
+// configured+healthy), and recommends a chunk size that fits the per-chunk
+// timeout. Read-only re: project state. Not run on page load. Injectable for tests.
+async function superFocusOllamaBenchmark(options = {}) {
+  const cfg = superFocusProviderConfig(options);
+  const timeoutMs = superFocusOllamaTimeoutMs('infographic_prompts_topup', options);
+  const script = 'A short explainer about building a local AI video production pipeline for a solo creator.';
+  const benchOne = async (label, model, baseUrl) => {
+    const result = { label, model, base_url: baseUrl, ok: false, one_prompt_ms: null, three_prompt_ms: null, one_prompt_count: 0, three_prompt_count: 0, error: null };
+    try {
+      const r1 = superFocusPrompts.buildInfographicPromptsRequest(script, 1);
+      const s1 = Date.now();
+      const c1 = await callOllamaChat({ system: r1.system, user: r1.user, schema: r1.schema, model, baseUrl }, Object.assign({}, options, { timeoutMs }));
+      result.one_prompt_ms = Date.now() - s1;
+      result.one_prompt_count = superFocusPrompts.parsePromptArray(c1, 1).length;
+      const r3 = superFocusPrompts.buildInfographicPromptsRequest(script, 3);
+      const s3 = Date.now();
+      const c3 = await callOllamaChat({ system: r3.system, user: r3.user, schema: r3.schema, model, baseUrl }, Object.assign({}, options, { timeoutMs }));
+      result.three_prompt_ms = Date.now() - s3;
+      result.three_prompt_count = superFocusPrompts.parsePromptArray(c3, 3).length;
+      result.ok = true;
+    } catch (error) {
+      result.error = error.message;
+    }
+    return result;
+  };
+
+  const vidnux = await benchOne('vidnux Ollama', cfg.local.model, cfg.local.base_url);
+  let presto = null;
+  if (cfg.presto.configured) {
+    const probe = options.prestoOllamaProbe || probeOllamaTags;
+    const health = await probe(cfg.presto.base_url, cfg.presto.model, options);
+    if (health.reachable && health.model_ready) {
+      presto = await benchOne('PRESTO Ollama', cfg.presto.model, cfg.presto.base_url);
+    } else {
+      presto = { label: 'PRESTO Ollama', model: cfg.presto.model, base_url: cfg.presto.base_url, ok: false, error: health.reachable ? 'model not installed on PRESTO Ollama' : 'PRESTO Ollama unreachable' };
+    }
+  }
+
+  // Recommend a chunk size that fits ~70% of the per-chunk timeout by the
+  // measured single-prompt time (only measurement drives this — never a guess).
+  let recommendedChunkSize = superFocusChunkSize(options);
+  if (vidnux.ok && vidnux.one_prompt_ms > 0) {
+    recommendedChunkSize = Math.max(1, Math.min(6, Math.floor((timeoutMs * 0.7) / vidnux.one_prompt_ms)));
+  }
+  let faster = null;
+  if (vidnux.ok && presto && presto.ok && vidnux.three_prompt_ms != null && presto.three_prompt_ms != null) {
+    faster = presto.three_prompt_ms < vidnux.three_prompt_ms ? 'presto' : 'vidnux';
+  }
+  return {
+    ok: true,
+    timeout_ms: timeoutMs,
+    chunk_size: superFocusChunkSize(options),
+    recommended_chunk_size: recommendedChunkSize,
+    faster,
+    vidnux,
+    presto,
   };
 }
 
@@ -10090,6 +10185,15 @@ function createServer(options = {}) {
       return;
     }
 
+    // Explicit "Test Ollama model" — measures real 1-prompt/3-prompt timing on
+    // vidnux (and PRESTO if healthy). Read-only re: project state; not automatic.
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_OLLAMA_BENCHMARK_API) {
+      superFocusOllamaBenchmark(options)
+        .then((result) => sendJSON(res, 200, result))
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-ollama-benchmark-error'));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === SUPER_FOCUS_TITLE_API) {
       readJsonBody(req, 1024 * 256)
         .then((payload) => {
@@ -10303,29 +10407,88 @@ function createServer(options = {}) {
           }
           const willGenerate = Math.min(effectiveLimit, eligible);
           const before = filled.length;
-          const reqPrompt = superFocusPrompts.buildInfographicPromptsRequest(state.script, willGenerate, filledTexts);
-          const gen = await superFocusGenerate(
-            { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, task: 'infographic_prompts_topup', requestedCount: willGenerate },
-            options
-          );
-          const generated = superFocusPrompts.parsePromptArray(gen.content, willGenerate);
-          // Cheap exact-duplicate guard against what we already have.
-          const existingLower = new Set(filledTexts.map((t) => t.toLowerCase()));
-          const distinct = generated.filter((p) => !existingLower.has(p.trim().toLowerCase())).slice(0, willGenerate);
-          const saved = superFocus.fillEmptyInfographicPrompts(id, distinct, { root: sfRoot, capacity });
-          const after = (saved.infographic_prompts || []).filter((r) => r && r.text && r.text.trim()).length;
+
+          // Resolve the provider ONCE so every chunk uses the same lane and the
+          // reported provider is stable. Fail early if no provider is usable.
+          const decision = await resolveSuperFocusOllamaProvider('infographic_prompts_topup', options);
+          if (decision.error) {
+            const e = new Error(decision.message || `No usable Ollama provider (${decision.error}).`);
+            e.statusCode = decision.error === 'not_configured' ? 400 : 503;
+            throw e;
+          }
+          const chunkSize = superFocusChunkSize(options);
+          const timeoutMs = superFocusOllamaTimeoutMs('infographic_prompts_topup', options);
+
+          // CHUNKED generation: many small Ollama calls instead of one oversized
+          // request. Each successful chunk is parsed, deduped, and SAVED before
+          // the next chunk runs (partial success survives a later timeout).
+          let added = 0;
+          let chunksAttempted = 0;
+          let chunksSucceeded = 0;
+          let errorInfo = null;
+          const perChunkMs = [];
+          const addedTexts = [];
+          let latest = state;
+          const t0 = Date.now();
+          while (added < willGenerate) {
+            const remaining = willGenerate - added;
+            const n = Math.min(chunkSize, remaining);
+            chunksAttempted += 1;
+            const exclusions = filledTexts.concat(addedTexts);
+            const reqPrompt = superFocusPrompts.buildInfographicPromptsRequest(state.script, n, exclusions);
+            const cStart = Date.now();
+            let content;
+            try {
+              content = await callOllamaChat(
+                { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model: decision.model, baseUrl: decision.base_url },
+                Object.assign({}, options, { timeoutMs })
+              );
+            } catch (error) {
+              perChunkMs.push(Date.now() - cStart);
+              enrichOllamaError(error, decision, 'infographic_prompts_topup', n, timeoutMs);
+              errorInfo = { kind: error.statusCode === 504 ? 'timeout' : (error.statusCode === 503 ? 'unreachable' : 'error'), message: error.message, status: error.statusCode || 500 };
+              break;
+            }
+            perChunkMs.push(Date.now() - cStart);
+            const parsed = superFocusPrompts.parsePromptArray(content, n);
+            const seen = new Set(exclusions.map((t) => t.toLowerCase()));
+            const distinct = parsed.filter((p) => !seen.has(p.trim().toLowerCase())).slice(0, n);
+            if (distinct.length === 0) break; // model only echoed dups — stop (no progress)
+            latest = superFocus.fillEmptyInfographicPrompts(id, distinct, { root: sfRoot, capacity }); // PARTIAL SAVE
+            const nowFilled = (latest.infographic_prompts || []).filter((r) => r && r.text && r.text.trim()).length;
+            const newlyAdded = (nowFilled - before) - added;
+            if (newlyAdded <= 0) break; // no empty slot took it — avoid an infinite loop
+            distinct.slice(0, newlyAdded).forEach((t) => addedTexts.push(t));
+            added += newlyAdded;
+            chunksSucceeded += 1;
+          }
+
+          // No chunk succeeded and we hit an error -> clear failure (with context).
+          if (added === 0 && errorInfo) {
+            const e = new Error(errorInfo.message); e.statusCode = errorInfo.status || 504; throw e;
+          }
+
+          const provider = publicProvider(decision);
           sendJSON(res, 200, {
-            project: saved,
+            project: latest,
             capacity,
             requested_limit: requestedLimit,
             effective_limit: hasLimit ? effectiveLimit : null,
             eligible,
             will_generate: willGenerate,
-            added: after - before,
-            total_filled: after,
+            added,
+            total_filled: before + added,
             skipped_existing: before,
-            remaining_eligible: eligible - (after - before),
-            provider: gen.provider, provider_host: gen.provider.id === 'presto_ollama' ? 'presto' : 'vidnux', model: gen.provider.model,
+            remaining_eligible: eligible - added,
+            chunk_size: chunkSize,
+            chunks_attempted: chunksAttempted,
+            chunks_succeeded: chunksSucceeded,
+            partial_success: Boolean(errorInfo) && added > 0,
+            timing: { total_ms: Date.now() - t0, per_chunk_ms: perChunkMs },
+            error: errorInfo ? { kind: errorInfo.kind, message: errorInfo.message } : null,
+            provider,
+            provider_host: provider.id === 'presto_ollama' ? 'presto' : 'vidnux',
+            model: provider.model,
           });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-missing-infographic-prompts-error'));
@@ -12969,6 +13132,7 @@ module.exports = {
   SUPER_FOCUS_PROJECTS_API,
   SUPER_FOCUS_PROJECT_API,
   SUPER_FOCUS_PROVIDERS_API,
+  SUPER_FOCUS_OLLAMA_BENCHMARK_API,
   SUPER_FOCUS_TITLE_API,
   SUPER_FOCUS_SCRIPT_API,
   SUPER_FOCUS_GENERATE_TOPIC_API,
