@@ -114,6 +114,9 @@ function reconcileImages(projectId, imagePrompts, options = {}) {
       index: idx,
       status,
       has_image: fileExists,
+      // The prompt text for this row changed after its image was generated, so
+      // the on-disk image no longer cleanly matches (surfaced in the UI).
+      prompt_changed: Boolean(p.image_stale),
       error: item && item.error ? String(item.error) : null,
       generated_at: item && item.generated_at ? item.generated_at : null,
     };

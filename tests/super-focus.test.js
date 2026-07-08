@@ -585,6 +585,79 @@ test("per-row edit does NOT trigger script-staleness (manual downstream edit)", 
   assert.equal(edited.image_prompts.find((p) => p.index === 1).text, "one edited");
 });
 
+test("editing an image prompt row flags BOTH its i2v prompt and generated image stale", () => {
+  const root = mkRoot();
+  const created = superFocus.createProject({ title: "Edit" }, { root });
+  superFocus.saveScript(created.project_id, "s", { root });
+  superFocus.saveImagePrompts(created.project_id, ["first", "second"], { root });
+  superFocus.setI2vPrompt(created.project_id, 1, "motion", { root });
+  const edited = superFocus.saveImagePrompt(created.project_id, 1, "first EDITED", { root });
+  const row = edited.image_prompts.find((p) => p.index === 1);
+  assert.equal(row.i2v_prompt.text, "motion", "i2v prompt preserved");
+  assert.equal(row.i2v_prompt.stale, true, "i2v prompt flagged stale immediately");
+  assert.equal(row.image_stale, true, "generated image flagged mismatched immediately");
+  // An unedited row is untouched.
+  assert.ok(!edited.image_prompts.find((p) => p.index === 2).image_stale);
+});
+
+test("regenerating image prompts preserves i2v by index and flags stale only on text change", () => {
+  const root = mkRoot();
+  const created = superFocus.createProject({ title: "Regen" }, { root });
+  superFocus.saveScript(created.project_id, "script", { root });
+  superFocus.saveImagePrompts(created.project_id, ["alpha", "beta", "gamma"], { root });
+  superFocus.setI2vPrompt(created.project_id, 1, "motion one", { root });
+  superFocus.setI2vPrompt(created.project_id, 2, "motion two", { root });
+  // Regenerate: index 1 unchanged, index 2 + 3 changed.
+  const after = superFocus.saveImagePrompts(
+    created.project_id, ["alpha", "beta CHANGED", "delta"], { root }
+  );
+  const r1 = after.image_prompts.find((p) => p.index === 1);
+  const r2 = after.image_prompts.find((p) => p.index === 2);
+  const r3 = after.image_prompts.find((p) => p.index === 3);
+  // Downstream i2v prompts are preserved by index (NOT wiped by regeneration).
+  assert.equal(r1.i2v_prompt.text, "motion one");
+  assert.equal(r2.i2v_prompt.text, "motion two");
+  // Unchanged prompt keeps its i2v/image clean; changed prompt flags both stale.
+  assert.ok(!r1.i2v_prompt.stale, "unchanged prompt keeps i2v fresh");
+  assert.ok(!r1.image_stale, "unchanged prompt keeps image clean");
+  assert.equal(r2.i2v_prompt.stale, true, "changed prompt flags i2v stale");
+  assert.equal(r2.image_stale, true, "changed prompt flags image mismatched");
+  assert.equal(r3.image_stale, true, "changed prompt (no i2v) still flags image mismatched");
+});
+
+test("reconcileImages surfaces prompt_changed for a regenerated (mismatched) image row", () => {
+  const mediaRoot = mkRoot();
+  const projectId = "recon-mismatch-abcd1234";
+  const dir = path.join(mediaRoot, projectId, "images", "flux-local");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "flux-001.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  const prompts = [
+    { index: 1, text: "new prompt", status: "saved", image_stale: true },
+    { index: 2, text: "clean prompt", status: "saved" },
+  ];
+  const recon = sfMedia.reconcileImages(projectId, prompts, { mediaRoot });
+  const row1 = recon.images.find((r) => r.index === 1);
+  const row2 = recon.images.find((r) => r.index === 2);
+  assert.equal(row1.status, "done");
+  assert.equal(row1.has_image, true);
+  assert.equal(row1.prompt_changed, true, "mismatched image row is flagged");
+  assert.equal(row2.prompt_changed, false, "clean row is not flagged");
+});
+
+test("clearImageStale resolves the mismatch flag for the requested indexes only", () => {
+  const root = mkRoot();
+  const created = superFocus.createProject({ title: "Clear" }, { root });
+  superFocus.saveScript(created.project_id, "s", { root });
+  superFocus.saveImagePrompts(created.project_id, ["one", "two"], { root });
+  // Regenerate with changed text -> both rows flagged image_stale.
+  const staled = superFocus.saveImagePrompts(created.project_id, ["one X", "two X"], { root });
+  assert.equal(staled.image_prompts.find((p) => p.index === 1).image_stale, true);
+  assert.equal(staled.image_prompts.find((p) => p.index === 2).image_stale, true);
+  const cleared = superFocus.clearImageStale(created.project_id, [1], { root });
+  assert.ok(!cleared.image_prompts.find((p) => p.index === 1).image_stale, "index 1 cleared");
+  assert.equal(cleared.image_prompts.find((p) => p.index === 2).image_stale, true, "index 2 untouched");
+});
+
 // ==================== Slice 4: image generation (stubbed FLUX) ====================
 
 function delay(ms) { return new Promise((r) => setTimeout(r, ms)); }

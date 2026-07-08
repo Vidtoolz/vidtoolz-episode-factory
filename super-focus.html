@@ -539,6 +539,16 @@
               savedValue = ta.value;
               row.className = 'prompt-row' + (ta.value.trim() ? ' filled' : '');
               setRowStatus(st, ta.value.trim() ? 'Saved ✓' : 'cleared', 'ok');
+              if (withThumb) {
+                // Editing the prompt text may have flagged this row's i2v prompt
+                // and its generated image stale on the server. Reflect that now,
+                // without waiting for the project to be reopened.
+                var proj = unwrap(res.body).project;
+                var updated = proj ? (proj.image_prompts || []).find(function (x) { return x.index === index; }) : null;
+                var oldI2v = row.querySelector('.pi2v');
+                if (oldI2v) row.replaceChild(buildI2vBlock(index, updated), oldI2v);
+                refreshImagesStatus();
+              }
             }).catch(function () { saveBtn.disabled = false; setRowStatus(st, 'Save failed', 'dirty'); });
           });
           ctrl.appendChild(copyBtn); ctrl.appendChild(saveBtn); ctrl.appendChild(st);
@@ -594,6 +604,12 @@
         img.src = IMAGE_FILE_API + '?id=' + encodeURIComponent(currentId) + '&index=' + index + '&t=' + row.generated_at;
         img.alt = 'Generated image ' + index;
         el.appendChild(img);
+        if (row.prompt_changed) {
+          var warn = document.createElement('span');
+          warn.className = 'thumb-note err';
+          warn.textContent = '⚠ prompt changed after this image — may not match; regenerate';
+          el.appendChild(warn);
+        }
       } else if (row.status === 'failed') {
         el.innerHTML = '<span class="thumb-note err">failed: ' + (row.error ? String(row.error).slice(0, 80) : 'generation error') + '</span>';
       } else if (row.status === 'missing_file') {
@@ -793,6 +809,9 @@
         var msg = d.count + ' prompts populated';
         if (d.count < count) msg += '; remaining slots are empty and editable';
         setStatus(el, msg);
+        // Existing images/i2v prompts are preserved by index; surface any that
+        // no longer match a regenerated prompt (mismatch badge on the thumbnail).
+        refreshImagesStatus();
       }).catch(function () { stop(); btn.classList.remove('busy'); btn.disabled = false; setStatus(el, 'Generation failed', true); });
     });
 

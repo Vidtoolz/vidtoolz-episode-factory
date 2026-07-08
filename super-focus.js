@@ -263,10 +263,59 @@ function normalizePromptRecords(texts) {
   return records;
 }
 
+// Regenerate the prompt set while preserving each row's downstream work BY INDEX
+// (never a blanket wipe). New prompt text at an index that DIFFERS from the
+// previous text at that index flags the carried-over i2v prompt AND any image
+// generated for that row as possibly stale — never deletes them. Identical text
+// keeps the row's derived state clean. New indexes (beyond the old set) start
+// fresh; indexes that fall away when the set shrinks are dropped.
+function mergeRegeneratedPrompts(previous, texts) {
+  const byIndex = {};
+  (Array.isArray(previous) ? previous : []).forEach((r) => { if (r && r.index != null) byIndex[r.index] = r; });
+  const records = [];
+  (Array.isArray(texts) ? texts : []).forEach((text) => {
+    const clean = typeof text === 'string' ? text.trim() : '';
+    if (!clean) return;
+    const index = records.length + 1;
+    const old = byIndex[index] || null;
+    const rec = { index, text: clean, status: 'saved' };
+    if (old) {
+      const changed = old.text !== clean;
+      if (old.i2v_prompt) {
+        rec.i2v_prompt = Object.assign({}, old.i2v_prompt);
+        if (changed) rec.i2v_prompt.stale = true;
+      }
+      // A changed prompt (or an already-flagged row) leaves its generated image
+      // mismatched until the image is regenerated.
+      if (changed || old.image_stale) rec.image_stale = true;
+    }
+    records.push(rec);
+  });
+  return records;
+}
+
+// Clear the per-row image-mismatch flag for the given indexes. Called when a
+// fresh image will actually be (re)generated for a row, so the on-disk image
+// matches the current prompt again. Never touches i2v staleness.
+function clearImageStale(projectId, indexes, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  const set = new Set((Array.isArray(indexes) ? indexes : []).map((n) => Math.round(Number(n))));
+  let changed = false;
+  (Array.isArray(state.image_prompts) ? state.image_prompts : []).forEach((r) => {
+    if (set.has(r.index) && r.image_stale) { delete r.image_stale; changed = true; }
+  });
+  if (changed) {
+    state.updated_at = nowIso();
+    writeStateAtomic(dir, state);
+  }
+  return state;
+}
+
 function saveImagePrompts(projectId, texts, options = {}) {
   const dir = stateDir(projectId, options);
   const state = loadProject(projectId, options);
-  state.image_prompts = normalizePromptRecords(texts);
+  state.image_prompts = mergeRegeneratedPrompts(state.image_prompts, texts);
   state.sources = state.sources || {};
   state.stale = state.stale || {};
   // Record the script this set was generated from; clear any stale flag.
@@ -305,11 +354,13 @@ function upsertPromptSlot(records, index, text) {
   const list = (Array.isArray(records) ? records : []).filter((r) => r.index !== idx);
   if (clean) {
     // Preserve downstream fields (i2v_prompt, images) attached to this row; only
-    // the text changes. If an i2v prompt exists and the source text changed,
-    // flag it as possibly stale — never delete it.
+    // the text changes. If the source text changed, flag the derived work as
+    // possibly stale — never delete it: the i2v prompt (if any) AND any image
+    // that was generated from the old text (it no longer cleanly matches).
     const merged = Object.assign({}, existing || {}, { index: idx, text: clean, status: 'saved' });
-    if (merged.i2v_prompt && existing && existing.text !== clean) {
-      merged.i2v_prompt = Object.assign({}, merged.i2v_prompt, { stale: true });
+    if (existing && existing.text !== clean) {
+      if (merged.i2v_prompt) merged.i2v_prompt = Object.assign({}, merged.i2v_prompt, { stale: true });
+      merged.image_stale = true;
     }
     list.push(merged);
   }
@@ -381,4 +432,5 @@ module.exports = {
   saveImagePrompt,
   saveInfographicPrompt,
   setI2vPrompt,
+  clearImageStale,
 };

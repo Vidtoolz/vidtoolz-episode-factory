@@ -10011,6 +10011,17 @@ function createServer(options = {}) {
             pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN,
             payload,
           });
+          // A freshly (re)generated image matches the current prompt again, so
+          // clear its mismatch flag. Rows whose existing image is kept
+          // (skip_existing) stay flagged — the kept old image still does not
+          // match a changed prompt. Only clear once the job actually started.
+          const skipExisting = payload.skip_existing !== false;
+          const freshIndexes = [];
+          for (let i = 1; i <= willGenerate; i += 1) {
+            const exists = fs.existsSync(superFocusMedia.imageFilePath(materialized.mediaDir, i));
+            if (!skipExisting || !exists) freshIndexes.push(i);
+          }
+          if (freshIndexes.length) superFocus.clearImageStale(id, freshIndexes, { root: sfRoot });
           sendJSON(res, 200, {
             job,
             materialized_count: materialized.count,
