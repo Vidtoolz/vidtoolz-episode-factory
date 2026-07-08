@@ -445,6 +445,27 @@ function setI2vPrompt(projectId, index, text, options = {}) {
   return state;
 }
 
+// Manually clear a row's image-to-video prompt (operator "Clear i2v prompt").
+// Removes the i2v_prompt entirely so the row becomes eligible for normal i2v
+// generation again. No-op if the row or its i2v prompt is absent.
+function clearI2vPrompt(projectId, index, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  const idx = Math.round(Number(index));
+  const row = (Array.isArray(state.image_prompts) ? state.image_prompts : []).find((r) => r.index === idx);
+  if (row && row.i2v_prompt) {
+    delete row.i2v_prompt;
+    state.updated_at = nowIso();
+    writeStateAtomic(dir, state);
+  }
+  return state;
+}
+
+// True when a row has a non-empty i2v prompt (a populated i2v slot).
+function hasI2vPrompt(row) {
+  return Boolean(row && row.i2v_prompt && typeof row.i2v_prompt.text === 'string' && row.i2v_prompt.text.trim());
+}
+
 module.exports = {
   SCHEMA_VERSION,
   STATE_FILENAME,
@@ -468,5 +489,7 @@ module.exports = {
   saveImagePrompt,
   saveInfographicPrompt,
   setI2vPrompt,
+  clearI2vPrompt,
+  hasI2vPrompt,
   clearImageStale,
 };

@@ -1667,3 +1667,310 @@ test("image prompt template hardening: exact count + no-text/no-people/backgroun
   assert.match(req.user, /no screenshots or mock-ups of real or fake software UIs/i);
   assert.match(req.user, /Return exactly 8 strings/);
 });
+
+// ============ Non-destructive generation invariant (clear + regenerate) ============
+
+async function i2vServer(fetchImpl, { promptCount = 2, imageCount = 2, i2vCount = 0 } = {}) {
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "I2Vinv" }, { root });
+  superFocus.saveScript(created.project_id, "a grounded script", { root });
+  superFocus.saveImagePrompts(created.project_id, Array.from({ length: promptCount }, (_, i) => "p" + (i + 1)), { root });
+  const flux = path.join(mediaRoot, created.project_id, "images", "flux-local");
+  fs.mkdirSync(flux, { recursive: true });
+  for (let i = 1; i <= imageCount; i++) fs.writeFileSync(path.join(flux, "flux-" + String(i).padStart(3, "0") + ".png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  for (let j = 1; j <= i2vCount; j++) superFocus.setI2vPrompt(created.project_id, j, "motion " + j, { root });
+  const server = packageEngineServer.createServer(fetchImpl
+    ? { superFocusRoot: root, superFocusMediaRoot: mediaRoot, fetchImpl }
+    : { superFocusRoot: root, superFocusMediaRoot: mediaRoot });
+  await listen(server);
+  return { root, mediaRoot, server, id: created.project_id };
+}
+
+// (1) Normal prompt generation never overwrites populated prompt slots.
+test("invariant: normal (remaining) prompt generation does not overwrite populated slots", async () => {
+  const { server, id, root } = await makeProjectServer(fakeOllama(jsonArray(100, "TopUp")), { script: "s" });
+  try {
+    superFocus.saveImagePrompts(id, ["KEEP one", "KEEP two"], { root });
+    await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_REMAINING_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    const reload = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(id))).project;
+    assert.equal(reload.image_prompts.find((p) => p.index === 1).text, "KEEP one");
+    assert.equal(reload.image_prompts.find((p) => p.index === 2).text, "KEEP two");
+  } finally { await close(server); }
+});
+
+// (2) Manually cleared prompt slots become eligible again.
+test("invariant: a manually cleared prompt slot becomes eligible for top-up again", async () => {
+  const { server, id, root } = await makeProjectServer(fakeOllama(JSON.stringify(["fresh A"])), { script: "s" });
+  try {
+    superFocus.saveImagePrompts(id, ["one", "two"], { root });
+    // Clear slot 1 by saving empty text (removes the slot).
+    await request(server, packageEngineServer.SUPER_FOCUS_IMAGE_PROMPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1, text: "" } });
+    let reload = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(id))).project;
+    assert.ok(!reload.image_prompts.find((p) => p.index === 1), "slot 1 is now empty");
+    // Top-up refills the freed slot (lowest empty index first).
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_REMAINING_IMAGE_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(unwrap(res).project.image_prompts.find((p) => p.index === 1).text, "fresh A");
+  } finally { await close(server); }
+});
+
+// (8) Normal i2v: per-row create refuses to overwrite; batch fills empties only.
+test("invariant: i2v per-row create refuses to overwrite a populated slot; regenerate replaces", async () => {
+  const { server, id } = await i2vServer(fakeOllama("Fresh motion prompt."), { promptCount: 2, imageCount: 2, i2vCount: 1 });
+  try {
+    const blocked = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_I2V_PROMPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    assert.equal(blocked.statusCode, 409);
+    const ok = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_I2V_PROMPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1, regenerate: true } });
+    assert.equal(ok.statusCode, 200);
+    assert.match(unwrap(ok).project.image_prompts.find((r) => r.index === 1).i2v_prompt.text, /Fresh motion/);
+  } finally { await close(server); }
+});
+
+test("invariant: generate-missing-i2v-prompts fills only image rows without an i2v prompt", async () => {
+  const { server, id } = await i2vServer(fakeOllama("Auto motion."), { promptCount: 3, imageCount: 3, i2vCount: 1 });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_I2V_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(res.statusCode, 200);
+    const d = unwrap(res);
+    assert.equal(d.eligible, 2);
+    assert.equal(d.generated, 2);
+    assert.equal(d.skipped_populated, 1);
+    const rows = d.project.image_prompts;
+    assert.match(rows.find((r) => r.index === 1).i2v_prompt.text, /motion 1/, "populated slot untouched");
+    assert.match(rows.find((r) => r.index === 2).i2v_prompt.text, /Auto motion/);
+  } finally { await close(server); }
+});
+
+// (9) Manually cleared i2v prompt slots become eligible again.
+test("invariant: a cleared i2v prompt slot becomes eligible for missing-i2v again", async () => {
+  const { server, id } = await i2vServer(fakeOllama("Auto motion."), { promptCount: 2, imageCount: 2, i2vCount: 2 });
+  try {
+    const none = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_I2V_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(none.statusCode, 400); // both populated -> nothing eligible
+    const cleared = await request(server, packageEngineServer.SUPER_FOCUS_CLEAR_I2V_PROMPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    assert.equal(cleared.statusCode, 200);
+    assert.ok(!unwrap(cleared).project.image_prompts.find((r) => r.index === 1).i2v_prompt);
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_MISSING_I2V_PROMPTS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(unwrap(res).eligible, 1);
+    assert.equal(unwrap(res).generated, 1);
+  } finally { await close(server); }
+});
+
+// (5) Manually cleared image slots become eligible again (archive, not delete).
+test("invariant: clear-image archives the file (not deleted) and re-opens the row", async () => {
+  const spy = spyFluxSpawn();
+  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 3 });
+  await listen(server);
+  try {
+    seedImages(mediaRoot, id, [1, 2, 3]);
+    const full = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(full.statusCode, 400); // all have images -> nothing eligible
+    const cleared = await request(server, packageEngineServer.SUPER_FOCUS_CLEAR_IMAGE_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 2 } });
+    assert.equal(cleared.statusCode, 200);
+    assert.equal(unwrap(cleared).archived, true);
+    assert.ok(!fs.existsSync(path.join(mediaRoot, id, "images", "flux-local", "flux-002.png")), "canonical file moved");
+    const sup = path.join(mediaRoot, id, "superseded");
+    assert.ok(fs.existsSync(sup) && fs.readdirSync(sup).some((f) => f.startsWith("flux-002__")), "archived, not deleted");
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(gen.statusCode, 200);
+    assert.equal(unwrap(gen).eligible, 1);
+    const written = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "image-prompts.json"), "utf8"));
+    assert.deepEqual(written.image_prompts.map((p) => p.index), [2]);
+  } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
+});
+
+// (6) Per-image regenerate: supersede old + fresh forced run + provenance.
+test("invariant: regenerate-image supersedes the old image and dispatches a fresh forced run", async () => {
+  const spy = spyFluxSpawn();
+  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 2 });
+  await listen(server);
+  try {
+    seedImages(mediaRoot, id, [1]);
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_IMAGE_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    assert.equal(res.statusCode, 200);
+    assert.equal(unwrap(res).regenerated, true);
+    assert.equal(unwrap(res).superseded, true);
+    const man = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "superseded-manifest.json"), "utf8"));
+    assert.ok(man.entries.some((e) => e.kind === "image" && e.index === 1 && e.sha256), "provenance recorded");
+    await delay(40);
+    assert.ok(fs.existsSync(path.join(mediaRoot, id, "images", "flux-local", "flux-001.png")), "fresh image written");
+    const args = spy.calls[spy.calls.length - 1];
+    assert.ok(!args.includes("--skip-existing"), "forced regen does not skip");
+  } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
+});
+
+// (7) Regenerate that returns a byte-identical image is rejected; previous kept.
+test("invariant: regenerate-image rejects a byte-identical result and keeps the previous image", async () => {
+  const spy = spyFluxSpawn(); // writes the same bytes seedImages uses -> identical
+  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 1 });
+  await listen(server);
+  try {
+    seedImages(mediaRoot, id, [1]);
+    await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_IMAGE_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    await delay(40);
+    // Previous image kept active at the canonical path (not deleted).
+    assert.ok(fs.existsSync(path.join(mediaRoot, id, "images", "flux-local", "flux-001.png")));
+    // The duplicate attempt was archived (moved aside), not promoted.
+    const sup = path.join(mediaRoot, id, "superseded");
+    assert.ok(fs.readdirSync(sup).some((f) => f.indexOf("rejected") !== -1), "duplicate attempt archived as rejected");
+    // Status reports the rejection honestly.
+    const st = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_IMAGES_STATUS_API + "?id=" + encodeURIComponent(id)));
+    const row1 = st.images.find((r) => r.index === 1);
+    assert.equal(row1.has_image, true);
+    assert.equal(row1.duplicate_rejected, true);
+  } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
+});
+
+// (7b) A distinct regenerated image is promoted; the previous is superseded.
+test("invariant: regenerate-image promotes a NEW distinct image and supersedes the previous", async () => {
+  const spy = spyFluxSpawn();
+  const { server, mediaRoot, id } = imageServer(spy.fn, { promptCount: 1 });
+  await listen(server);
+  try {
+    const fluxDir = path.join(mediaRoot, id, "images", "flux-local");
+    fs.mkdirSync(fluxDir, { recursive: true });
+    fs.writeFileSync(path.join(fluxDir, "flux-001.png"), Buffer.from([1, 2, 3, 4, 5])); // distinct previous
+    await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_IMAGE_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    await delay(40);
+    // Canonical now holds the NEW (spy) bytes; previous distinct file is archived.
+    assert.deepEqual([...fs.readFileSync(path.join(fluxDir, "flux-001.png"))], [0x89, 0x50, 0x4e, 0x47]);
+    const sup = path.join(mediaRoot, id, "superseded");
+    assert.ok(fs.readdirSync(sup).some((f) => f.indexOf("flux-001__") === 0 && f.indexOf("rejected") === -1), "previous archived (not rejected)");
+    const st = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_IMAGES_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(st.images.find((r) => r.index === 1).duplicate_rejected, false);
+  } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
+});
+
+// (13b) Regenerate that returns a byte-identical video is rejected; previous kept.
+test("invariant: regenerate-video rejects a byte-identical clip and keeps the previous video", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn(), { promptCount: 1 });
+  await listen(server);
+  try {
+    const dir = path.join(mediaRoot, id, "videos", HQ_SUBDIR);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "001.mp4"), Buffer.from([0, 0, 0, 0])); // same bytes fakePrestoSpawn writes
+    await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    await delay(40);
+    assert.ok(fs.existsSync(path.join(dir, "001.mp4")), "previous clip kept active");
+    const sup = path.join(mediaRoot, id, "superseded");
+    assert.ok(fs.readdirSync(sup).some((f) => f.indexOf("rejected") !== -1), "duplicate clip archived as rejected");
+    const st = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
+    const v1 = st.videos.find((v) => v.index === 1);
+    assert.equal(v1.has_video, true);
+    assert.equal(v1.duplicate_rejected, true);
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+// (13c) A distinct regenerated clip is promoted; the previous is superseded.
+test("invariant: regenerate-video promotes a NEW distinct clip and supersedes the previous", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn(), { promptCount: 1 });
+  await listen(server);
+  try {
+    const dir = path.join(mediaRoot, id, "videos", HQ_SUBDIR);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "001.mp4"), Buffer.from([7, 7, 7])); // distinct previous
+    await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    await delay(40);
+    assert.deepEqual([...fs.readFileSync(path.join(dir, "001.mp4"))], [0, 0, 0, 0], "new distinct clip promoted");
+    const st = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(st.videos.find((v) => v.index === 1).duplicate_rejected, false);
+    const sup = path.join(mediaRoot, id, "superseded");
+    assert.ok(fs.readdirSync(sup).some((f) => f.indexOf("001__") === 0 && f.indexOf("rejected") === -1), "previous archived (not rejected)");
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+// (10) Normal video generation skips rows with existing videos.
+test("invariant: generate-videos skips rows that already have a video", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn(), { promptCount: 2 });
+  await listen(server);
+  try {
+    const dir = path.join(mediaRoot, id, "videos", HQ_SUBDIR);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "001.mp4"), Buffer.from([1, 2, 3]));
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(gen.statusCode, 200);
+    const d = unwrap(gen);
+    assert.equal(d.materialized_count, 1);
+    assert.equal(d.skipped_existing_video, 1);
+    assert.deepEqual(d.requested, [2]);
+    assert.deepEqual([...fs.readFileSync(path.join(dir, "001.mp4"))], [1, 2, 3], "existing clip untouched");
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+// (11) Normal video generation skips rows missing a still or an i2v prompt.
+test("invariant: generate-videos skips rows missing a still or an i2v prompt", async () => {
+  const { server, root, id } = videoServer(fakePrestoSpawn(), { promptCount: 3, imageCount: 2, i2vCount: 0 });
+  superFocus.setI2vPrompt(id, 1, "m1", { root }); // row1: image + i2v -> ready
+  superFocus.setI2vPrompt(id, 3, "m3", { root }); // row3: i2v but no image -> not ready
+  await listen(server);
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(gen.statusCode, 200);
+    const d = unwrap(gen);
+    assert.equal(d.materialized_count, 1);
+    assert.deepEqual(d.requested, [1]);
+    assert.equal(d.skipped_missing_prereq, 2);
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+// (12) Manually cleared video slots become eligible again.
+test("invariant: clear-video archives the clip and re-opens the row", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn(), { promptCount: 1 });
+  await listen(server);
+  try {
+    const dir = path.join(mediaRoot, id, "videos", HQ_SUBDIR);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "001.mp4"), Buffer.from([9]));
+    const none = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(none.statusCode, 400);
+    const cleared = await request(server, packageEngineServer.SUPER_FOCUS_CLEAR_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    assert.equal(cleared.statusCode, 200);
+    assert.equal(unwrap(cleared).archived, true);
+    assert.ok(!fs.existsSync(path.join(dir, "001.mp4")), "canonical clip moved");
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(gen.statusCode, 200);
+    assert.equal(unwrap(gen).materialized_count, 1);
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+// (13) Per-video regenerate: supersede old + fresh run + provenance.
+test("invariant: regenerate-video supersedes the old clip and dispatches a fresh run", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn(), { promptCount: 1 });
+  await listen(server);
+  try {
+    const dir = path.join(mediaRoot, id, "videos", HQ_SUBDIR);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "001.mp4"), Buffer.from([5, 5, 5]));
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    assert.equal(res.statusCode, 200);
+    assert.equal(unwrap(res).regenerated, true);
+    assert.equal(unwrap(res).superseded, true);
+    const man = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "superseded-manifest.json"), "utf8"));
+    assert.ok(man.entries.some((e) => e.kind === "video" && e.index === 1 && e.sha256), "provenance recorded");
+    await delay(40);
+    assert.ok(fs.existsSync(path.join(dir, "001.mp4")), "fresh clip written");
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});

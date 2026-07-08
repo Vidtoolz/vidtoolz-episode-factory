@@ -114,8 +114,14 @@ const SUPER_FOCUS_IMAGES_STATUS_API = '/api/super-focus/images-status';
 const SUPER_FOCUS_IMAGES_CANCEL_API = '/api/super-focus/images-cancel';
 const SUPER_FOCUS_IMAGE_FILE_API = '/api/super-focus/image';
 const SUPER_FOCUS_GENERATE_I2V_PROMPT_API = '/api/super-focus/generate-i2v-prompt';
+const SUPER_FOCUS_GENERATE_MISSING_I2V_PROMPTS_API = '/api/super-focus/generate-missing-i2v-prompts';
 const SUPER_FOCUS_I2V_PROMPT_API = '/api/super-focus/i2v-prompt';
+const SUPER_FOCUS_CLEAR_I2V_PROMPT_API = '/api/super-focus/clear-i2v-prompt';
+const SUPER_FOCUS_CLEAR_IMAGE_API = '/api/super-focus/clear-image';
+const SUPER_FOCUS_REGENERATE_IMAGE_API = '/api/super-focus/regenerate-image';
 const SUPER_FOCUS_GENERATE_VIDEOS_API = '/api/super-focus/generate-videos';
+const SUPER_FOCUS_CLEAR_VIDEO_API = '/api/super-focus/clear-video';
+const SUPER_FOCUS_REGENERATE_VIDEO_API = '/api/super-focus/regenerate-video';
 const SUPER_FOCUS_VIDEOS_STATUS_API = '/api/super-focus/videos-status';
 const SUPER_FOCUS_VIDEOS_CANCEL_API = '/api/super-focus/videos-cancel';
 const SUPER_FOCUS_VIDEO_FILE_API = '/api/super-focus/video';
@@ -10179,6 +10185,12 @@ function createServer(options = {}) {
           if (!row || !row.text) {
             const e = new Error(`No image prompt at index ${payload.index}.`); e.statusCode = 400; throw e;
           }
+          // Non-destructive invariant: a normal "create" must not overwrite an
+          // existing i2v prompt. Replacing one is explicit (regenerate:true) or
+          // done by clearing the slot first.
+          if (superFocus.hasI2vPrompt(row) && !payload.regenerate && !payload.force) {
+            const e = new Error('This row already has an i2v prompt. Clear it or use Regenerate to replace it.'); e.statusCode = 409; throw e;
+          }
           // Include the generated still's path as metadata when it exists.
           let imageMetadata = '(still not generated yet; base the motion on the image prompt)';
           const filePath = superFocusMedia.safeImageFilePath(id, idx, { mediaRoot: sfMediaRoot });
@@ -10215,6 +10227,151 @@ function createServer(options = {}) {
       return;
     }
 
+    // Manually clear a row's i2v prompt so it becomes eligible for generation
+    // again (nonce-gated). Non-destructive to the image/prompt.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_CLEAR_I2V_PROMPT_API) {
+      readJsonBody(req, 1024 * 8)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus clear-i2v-prompt API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.clearI2vPrompt(id, Math.round(Number(payload.index)), { root: sfRoot });
+          sendJSON(res, 200, { project: state });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-clear-i2v-prompt-error'));
+      return;
+    }
+
+    // Top-up: create i2v prompts ONLY for generated-image rows that don't have
+    // one yet. Populated i2v slots are never overwritten (that is Regenerate).
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_GENERATE_MISSING_I2V_PROMPTS_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus missing-i2v-prompts API' });
+          const id = payload.id || payload.project_id || '';
+          let state = superFocus.loadProject(id, { root: sfRoot });
+          const withImage = (state.image_prompts || []).filter((r) => {
+            if (!r || !r.text || !r.text.trim()) return false;
+            const fp = superFocusMedia.safeImageFilePath(id, r.index, { mediaRoot: sfMediaRoot });
+            return fp && fs.existsSync(fp);
+          });
+          const eligible = withImage.filter((r) => !superFocus.hasI2vPrompt(r));
+          const skippedPopulated = withImage.length - eligible.length;
+          if (eligible.length === 0) {
+            const e = new Error('No rows need an i2v prompt. Each generated image with a prompt already has one.'); e.statusCode = 400; throw e;
+          }
+          let generated = 0;
+          const errors = [];
+          for (const r of eligible) {
+            try {
+              const imageMetadata = `${superFocusMedia.imageFileName(r.index)} (vertical 1080x1920 still, generator flux-local-vidnux)`;
+              const reqPrompt = superFocusPrompts.buildI2vPromptRequest({ script: state.script, imagePrompt: r.text, imageMetadata });
+              const content = await callPrestoOllamaChat({ system: reqPrompt.system, user: reqPrompt.user }, options);
+              const text = superFocusPrompts.cleanI2vPrompt(content);
+              if (!text) { errors.push({ index: r.index, error: 'empty i2v prompt' }); continue; }
+              state = superFocus.setI2vPrompt(id, r.index, text, { root: sfRoot, status: 'generated' });
+              generated += 1;
+            } catch (err) {
+              errors.push({ index: r.index, error: err.message });
+              // A connection/503 failure means PRESTO is down — the rest will fail
+              // too. Surface it honestly rather than a misleading partial 200.
+              if (err.statusCode === 503 || /ECONNREFUSED|not reachable|fetch failed/i.test(err.message || '')) {
+                if (generated === 0) throw err;
+                break;
+              }
+            }
+          }
+          sendJSON(res, 200, {
+            project: state,
+            eligible: eligible.length,
+            generated,
+            failed: errors.length,
+            skipped_populated: skippedPopulated,
+            errors,
+            provider: 'ollama', provider_host: 'presto',
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-missing-i2v-prompts-error'));
+      return;
+    }
+
+    // Manually clear (archive/supersede) a row's generated image so the row is
+    // eligible for normal image generation again. Safe: the file is moved to
+    // superseded/ with provenance, never destructively deleted. Nonce-gated.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_CLEAR_IMAGE_API) {
+      readJsonBody(req, 1024 * 8)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus clear-image API' });
+          const id = payload.id || payload.project_id || '';
+          superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown project
+          const idx = Math.round(Number(payload.index));
+          if (!Number.isInteger(idx) || idx < 1) { const e = new Error('index must be a positive integer.'); e.statusCode = 400; throw e; }
+          const result = superFocusMedia.archiveImage(id, idx, { mediaRoot: sfMediaRoot });
+          // The image is gone, so a stale prompt/image mismatch no longer applies.
+          if (result.archived) superFocus.clearImageStale(id, [idx], { root: sfRoot });
+          sendJSON(res, 200, { ok: true, index: idx, archived: result.archived, archived_path: result.archived_path || null });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-clear-image-error'));
+      return;
+    }
+
+    // Explicit per-row image regeneration. Distinct from the top-up batch: it
+    // archives the existing image (supersede, never overwrite in place), records
+    // provenance, and dispatches a fresh forced run for this one row. Byte-
+    // identical results are surfaced on status as duplicate_of_previous (the
+    // external run-handoff.py does not yet vary the seed — see docs/super-focus).
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_REGENERATE_IMAGE_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus regenerate-image API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          const idx = Math.round(Number(payload.index));
+          const row = (state.image_prompts || []).find((r) => r.index === idx);
+          if (!row || !row.text || !row.text.trim()) {
+            const e = new Error(`No image prompt at index ${payload.index} to regenerate.`); e.statusCode = 400; throw e;
+          }
+          // Refuse before archiving if the single FLUX lock is held — otherwise we
+          // would move the image aside and then fail to start the replacement.
+          const cur = currentFluxJobStatus();
+          if (cur.active) { const e = new Error('A FLUX image job is already running. Wait for it to finish.'); e.statusCode = 409; e.active = cur; throw e; }
+          const reach = options.fluxReachableCheck || options.reachableCheck || prestoComfyuiReachable;
+          if (!(await reach(LOCAL_IMAGE_PROVIDER.url, options))) {
+            const e = new Error(`vidnux ComfyUI is not reachable at ${LOCAL_IMAGE_PROVIDER.url}. Start ComfyUI on vidnux and retry (no fallback to cloud).`); e.statusCode = 503; throw e;
+          }
+          const archived = superFocusMedia.archiveImage(id, idx, { mediaRoot: sfMediaRoot });
+          const materialized = superFocusMedia.materializeImagePrompts(id, [row], { mediaRoot: sfMediaRoot });
+          const job = startSuperFocusImageJob(materialized.mediaDir, {
+            projectId: id,
+            limit: 0,
+            skipExisting: false, // forced: the canonical slot was just archived empty
+            dryRun: Boolean(payload.dry_run),
+            spawn: options.spawn,
+            fluxScript: options.fluxScript || process.env.SUPER_FOCUS_FLUX_SCRIPT,
+            pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN,
+            payload,
+          });
+          superFocus.clearImageStale(id, [idx], { root: sfRoot });
+          // Duplicate handling runs when the run finishes (the only hashing): the
+          // new file is compared to the previous (archived) one and, if identical,
+          // rejected — the previous image is restored as active. Surfaced on
+          // images-status as duplicate_rejected.
+          if (archived.archived && FLUX_STATE.activeJob && FLUX_STATE.activeJob.process) {
+            FLUX_STATE.activeJob.process.once('close', () => {
+              try { superFocusMedia.resolveRegeneratedImage(id, idx, archived, { mediaRoot: sfMediaRoot }); } catch (_) {}
+            });
+          }
+          sendJSON(res, 200, {
+            job, index: idx, regenerated: true,
+            superseded: archived.archived,
+            superseded_path: archived.archived_path || null,
+            duplicate_check: archived.archived ? 'on-completion' : 'none',
+            media_dir: materialized.mediaDir,
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-regenerate-image-error'));
+      return;
+    }
+
     // Start a supervised video batch on PRESTO (Wan2.2). Materializes
     // selected-images.json + video-prompts.json for the eligible rows (still on
     // disk + i2v prompt), then dispatches run-production.py. Optional indexes[]
@@ -10225,16 +10382,25 @@ function createServer(options = {}) {
           validateLocalWriteRequest(req, payload, { label: 'Super Focus video generation API' });
           const id = payload.id || payload.project_id || '';
           const state = superFocus.loadProject(id, { root: sfRoot });
-          const materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, { mediaRoot: sfMediaRoot });
-          if (materialized.count === 0) {
-            const e = new Error('No video-ready rows. Each video needs a generated still AND a saved image-to-video prompt.'); e.statusCode = 400; throw e;
-          }
-          // Optional per-image subset: keep only requested indexes that are eligible.
-          let indexes;
+          const subdir = PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4';
+          // Eligibility: still + i2v prompt, and NO existing video. Rows that
+          // already have a video are skipped by default (Regenerate replaces one).
+          const readyRows = superFocusMedia.eligibleVideoRows(id, state.image_prompts, { mediaRoot: sfMediaRoot });
+          const missingRows = superFocusMedia.eligibleMissingVideoRows(id, state.image_prompts, subdir, { mediaRoot: sfMediaRoot });
+          const totalRows = (state.image_prompts || []).filter((r) => r && r.text && r.text.trim()).length;
+          const skippedPrereq = totalRows - readyRows.length;
+          const skippedExistingVideo = readyRows.length - missingRows.length;
+          // Optional per-image subset: keep only requested rows that still need one.
+          let targetRows = missingRows;
           if (Array.isArray(payload.indexes) && payload.indexes.length) {
             const wanted = payload.indexes.map((n) => Math.round(Number(n)));
-            indexes = materialized.indexes.filter((i) => wanted.includes(i));
-            if (indexes.length === 0) { const e = new Error('None of the requested rows are video-ready.'); e.statusCode = 400; throw e; }
+            targetRows = missingRows.filter((r) => wanted.includes(r.index));
+            if (targetRows.length === 0) {
+              const e = new Error('None of the requested rows need a video (missing a still/i2v prompt, or already rendered).'); e.statusCode = 400; throw e;
+            }
+          }
+          if (targetRows.length === 0) {
+            const e = new Error('No rows need a video. Each needs a still, an i2v prompt, and no existing video (use Regenerate to replace one).'); e.statusCode = 400; throw e;
           }
           // Pre-flight: PRESTO ComfyUI must be reachable. No cloud fallback, no auto-start.
           const reach = options.prestoReachableCheck || options.reachableCheck || prestoComfyuiReachable;
@@ -10243,11 +10409,12 @@ function createServer(options = {}) {
             const e = new Error(`PRESTO ComfyUI is not reachable at ${PRESTO_BASE_URL}. Start ComfyUI on PRESTO and retry (no fallback).`);
             e.statusCode = 503; throw e;
           }
+          const materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, { mediaRoot: sfMediaRoot, rows: targetRows });
           const job = startSuperFocusVideoJob(materialized.mediaDir, {
             projectId: id,
             profile: DEFAULT_PRESTO_PROFILE,
             comfyuiUrl: PRESTO_BASE_URL,
-            indexes,
+            indexes: materialized.indexes,
             spawn: options.spawn,
             productionScript: options.productionScript,
             pythonBin: options.pythonBin,
@@ -10256,12 +10423,88 @@ function createServer(options = {}) {
           sendJSON(res, 200, {
             job,
             materialized_count: materialized.count,
-            requested: indexes || materialized.indexes,
+            will_generate: materialized.count,
+            requested: materialized.indexes,
+            eligible_missing: missingRows.length,
+            skipped_existing_video: skippedExistingVideo,
+            skipped_missing_prereq: skippedPrereq,
             media_dir: materialized.mediaDir,
-            subdir: PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4',
+            subdir,
           });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-videos-error'));
+      return;
+    }
+
+    // Manually clear (archive/supersede) a row's generated video so the row is
+    // eligible for normal video generation again. Safe move, not delete.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_CLEAR_VIDEO_API) {
+      readJsonBody(req, 1024 * 8)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus clear-video API' });
+          const id = payload.id || payload.project_id || '';
+          superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown project
+          const idx = Math.round(Number(payload.index));
+          if (!Number.isInteger(idx) || idx < 1) { const e = new Error('index must be a positive integer.'); e.statusCode = 400; throw e; }
+          const subdir = PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4';
+          const result = superFocusMedia.archiveVideo(id, subdir, idx, { mediaRoot: sfMediaRoot });
+          sendJSON(res, 200, { ok: true, index: idx, archived: result.archived, archived_path: result.archived_path || null, subdir });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-clear-video-error'));
+      return;
+    }
+
+    // Explicit per-row video regeneration. Archives the existing clip (supersede,
+    // never overwrite in place), then dispatches a fresh forced run for this one
+    // row. Requires a still + i2v prompt. Reuses the single PRESTO lock.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_REGENERATE_VIDEO_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus regenerate-video API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          const idx = Math.round(Number(payload.index));
+          const row = (state.image_prompts || []).find((r) => r.index === idx);
+          const imgPath = superFocusMedia.safeImageFilePath(id, idx, { mediaRoot: sfMediaRoot });
+          const hasImage = imgPath && fs.existsSync(imgPath);
+          if (!row || !hasImage || !superFocus.hasI2vPrompt(row)) {
+            const e = new Error('Regenerate needs a row with a generated still and a saved i2v prompt.'); e.statusCode = 400; throw e;
+          }
+          const cur = currentPrestoJobStatus();
+          if (cur.active) { const e = new Error('A PRESTO video job is already running. Wait for it to finish.'); e.statusCode = 409; throw e; }
+          const reach = options.prestoReachableCheck || options.reachableCheck || prestoComfyuiReachable;
+          if (!(await reach(PRESTO_BASE_URL, options))) {
+            const e = new Error(`PRESTO ComfyUI is not reachable at ${PRESTO_BASE_URL}. Start ComfyUI on PRESTO and retry (no fallback).`); e.statusCode = 503; throw e;
+          }
+          const subdir = PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4';
+          const archived = superFocusMedia.archiveVideo(id, subdir, idx, { mediaRoot: sfMediaRoot });
+          const materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, { mediaRoot: sfMediaRoot, rows: [row] });
+          const job = startSuperFocusVideoJob(materialized.mediaDir, {
+            projectId: id,
+            profile: DEFAULT_PRESTO_PROFILE,
+            comfyuiUrl: PRESTO_BASE_URL,
+            indexes: [idx],
+            spawn: options.spawn,
+            productionScript: options.productionScript,
+            pythonBin: options.pythonBin,
+            payload,
+          });
+          // Duplicate handling on completion (only hashing): compare the new clip
+          // to the previous (archived) one; reject + restore previous if identical.
+          if (archived.archived && PRESTO_STATE.activeJob && PRESTO_STATE.activeJob.process) {
+            PRESTO_STATE.activeJob.process.once('close', () => {
+              try { superFocusMedia.resolveRegeneratedVideo(id, subdir, idx, archived, { mediaRoot: sfMediaRoot }); } catch (_) {}
+            });
+          }
+          sendJSON(res, 200, {
+            job, index: idx, regenerated: true,
+            superseded: archived.archived,
+            superseded_path: archived.archived_path || null,
+            duplicate_check: archived.archived ? 'on-completion' : 'none',
+            subdir, media_dir: materialized.mediaDir,
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-regenerate-video-error'));
       return;
     }
 
@@ -12387,8 +12630,14 @@ module.exports = {
   SUPER_FOCUS_IMAGES_CANCEL_API,
   SUPER_FOCUS_IMAGE_FILE_API,
   SUPER_FOCUS_GENERATE_I2V_PROMPT_API,
+  SUPER_FOCUS_GENERATE_MISSING_I2V_PROMPTS_API,
   SUPER_FOCUS_I2V_PROMPT_API,
+  SUPER_FOCUS_CLEAR_I2V_PROMPT_API,
+  SUPER_FOCUS_CLEAR_IMAGE_API,
+  SUPER_FOCUS_REGENERATE_IMAGE_API,
   SUPER_FOCUS_GENERATE_VIDEOS_API,
+  SUPER_FOCUS_CLEAR_VIDEO_API,
+  SUPER_FOCUS_REGENERATE_VIDEO_API,
   SUPER_FOCUS_VIDEOS_STATUS_API,
   SUPER_FOCUS_VIDEOS_CANCEL_API,
   SUPER_FOCUS_VIDEO_FILE_API,

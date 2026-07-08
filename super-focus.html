@@ -108,6 +108,8 @@
     .prompt-row .pthumb img { max-width: 120px; border-radius: 6px; border: 1px solid var(--border); display: block; }
     .prompt-row .pthumb .thumb-note { font-size: 12px; color: var(--muted); }
     .prompt-row .pthumb .thumb-note.err { color: #f85149; }
+    .thumb-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+    .thumb-controls .btn { padding: 6px 10px; font-size: 13px; }
     .prompt-row .pi2v { grid-column: 1 / -1; margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--border); }
     .prompt-row .pi2v .pi2v-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
     .prompt-row .pi2v textarea { min-height: 40px; margin: 0 0 6px; }
@@ -229,7 +231,7 @@
         <div class="step">Step 4</div>
         <h2>Generated images</h2>
         <div class="row">
-          <button class="btn primary" id="imggen-generate">Generate images based on the image prompts</button>
+          <button class="btn primary" id="imggen-generate">Generate missing images</button>
           <label class="count-field">Images to generate <input type="number" id="imggen-limit" min="1" max="100" value="3" /></label>
           <button class="btn hidden" id="imggen-cancel">Cancel</button>
           <span class="save-state" id="imggen-status"></span>
@@ -254,14 +256,22 @@
       </div>
 
       <!-- 6. Image-to-video prompts live inline in each image row above (Create a video prompt). -->
-      <div class="section disabled"><div class="step">Step 6</div><h2>Image-to-video prompts</h2><div class="later">Each generated image above has its own “Create a video prompt” box (PRESTO Ollama lane).</div></div>
+      <div class="section">
+        <div class="step">Step 6</div>
+        <h2>Image-to-video prompts</h2>
+        <div class="row">
+          <button class="btn primary" id="i2v-missing-generate">Create missing i2v prompts</button>
+          <span class="save-state" id="i2v-missing-status"></span>
+        </div>
+        <div class="later-note">Fills an image-to-video prompt only for generated images that don't have one yet (PRESTO Ollama lane). Existing i2v prompts are never overwritten. Each image row above also has its own <strong>Create / Regenerate / Clear i2v prompt</strong> controls.</div>
+      </div>
 
       <!-- 7. Generated videos -->
       <div class="section">
         <div class="step">Step 7</div>
         <h2>Generated videos</h2>
         <div class="row">
-          <button class="btn primary" id="vidgen-generate">Generate videos for all ready images</button>
+          <button class="btn primary" id="vidgen-generate">Generate missing videos</button>
           <button class="btn hidden" id="vidgen-cancel">Cancel</button>
           <span class="save-state" id="vidgen-status"></span>
         </div>
@@ -290,8 +300,14 @@
     var IMAGES_CANCEL_API = '/api/super-focus/images-cancel';
     var IMAGE_FILE_API = '/api/super-focus/image';
     var GEN_I2V_API = '/api/super-focus/generate-i2v-prompt';
+    var GEN_MISSING_I2V_API = '/api/super-focus/generate-missing-i2v-prompts';
     var I2V_SAVE_API = '/api/super-focus/i2v-prompt';
+    var CLEAR_I2V_API = '/api/super-focus/clear-i2v-prompt';
+    var CLEAR_IMAGE_API = '/api/super-focus/clear-image';
+    var REGEN_IMAGE_API = '/api/super-focus/regenerate-image';
     var GEN_VIDEOS_API = '/api/super-focus/generate-videos';
+    var CLEAR_VIDEO_API = '/api/super-focus/clear-video';
+    var REGEN_VIDEO_API = '/api/super-focus/regenerate-video';
     var VIDEOS_STATUS_API = '/api/super-focus/videos-status';
     var VIDEOS_CANCEL_API = '/api/super-focus/videos-cancel';
     var VIDEO_FILE_API = '/api/super-focus/video';
@@ -450,26 +466,33 @@
     // Per-image image-to-video prompt block (PRESTO Ollama lane).
     function buildI2vBlock(index, rec) {
       var i2v = rec && rec.i2v_prompt ? rec.i2v_prompt : null;
+      var populated = Boolean(i2v && i2v.text && i2v.text.trim());
       var wrap = document.createElement('div'); wrap.className = 'pi2v';
       var label = document.createElement('div'); label.className = 'pi2v-label'; label.textContent = 'Image-to-video prompt';
-      var ta = document.createElement('textarea'); ta.value = i2v && i2v.text ? i2v.text : ''; ta.setAttribute('aria-label', 'I2V prompt ' + index);
+      var ta = document.createElement('textarea'); ta.value = populated ? i2v.text : ''; ta.setAttribute('aria-label', 'I2V prompt ' + index);
       var rowEl = document.createElement('div'); rowEl.className = 'pi2v-row';
-      var genBtn = document.createElement('button'); genBtn.className = 'btn'; genBtn.textContent = 'Create a video prompt';
+      // Normal create fills an empty slot; when populated the same button becomes
+      // an explicit Regenerate (never a silent overwrite).
+      var genBtn = document.createElement('button'); genBtn.className = 'btn'; genBtn.textContent = populated ? 'Regenerate prompt' : 'Create a video prompt';
       var copyBtn = document.createElement('button'); copyBtn.className = 'btn'; copyBtn.textContent = 'Copy';
       var saveBtn = document.createElement('button'); saveBtn.className = 'btn primary'; saveBtn.textContent = 'Save changes';
+      var clearBtn = document.createElement('button'); clearBtn.className = 'btn'; clearBtn.textContent = 'Clear i2v prompt';
+      if (!populated) clearBtn.style.display = 'none';
       var st = document.createElement('span'); st.className = 'prow-status';
-      if (i2v && i2v.text) { st.textContent = i2v.stale ? 'stale' : (i2v.status === 'generated' ? 'generated' : 'saved'); st.classList.add(i2v.stale ? 'dirty' : 'ok'); }
+      if (populated) { st.textContent = i2v.stale ? 'stale' : (i2v.status === 'generated' ? 'generated' : 'saved'); st.classList.add(i2v.stale ? 'dirty' : 'ok'); }
       var stale = document.createElement('span'); stale.className = 'pi2v-stale';
       stale.textContent = (i2v && i2v.stale) ? '⚠ image prompt changed since this was written' : '';
+      function replaceFrom(proj) {
+        var r = proj ? (proj.image_prompts || []).find(function (x) { return x.index === index; }) : null;
+        if (wrap.parentNode) wrap.parentNode.replaceChild(buildI2vBlock(index, r), wrap);
+      }
       genBtn.addEventListener('click', function () {
+        if (populated && !confirm('Regenerate the i2v prompt for row ' + index + '? This replaces the current one.')) return;
         genBtn.classList.add('busy'); genBtn.disabled = true; setRowStatus(st, 'Generating… (PRESTO Ollama)', '');
-        apiPost(GEN_I2V_API, { id: currentId, index: index }).then(function (res) {
+        apiPost(GEN_I2V_API, { id: currentId, index: index, regenerate: populated }).then(function (res) {
           genBtn.classList.remove('busy'); genBtn.disabled = false;
           if (!res.ok) { setRowStatus(st, (res.body && res.body.error) || 'failed', 'dirty'); return; }
-          var proj = unwrap(res.body).project;
-          var r = (proj.image_prompts || []).find(function (x) { return x.index === index; });
-          ta.value = r && r.i2v_prompt ? r.i2v_prompt.text : '';
-          setRowStatus(st, 'generated', 'ok'); stale.textContent = '';
+          replaceFrom(unwrap(res.body).project);
         }).catch(function () { genBtn.classList.remove('busy'); genBtn.disabled = false; setRowStatus(st, 'failed', 'dirty'); });
       });
       copyBtn.addEventListener('click', function () { copyText(ta.value, st); });
@@ -478,10 +501,18 @@
         apiPost(I2V_SAVE_API, { id: currentId, index: index, text: ta.value }).then(function (res) {
           saveBtn.disabled = false;
           if (!res.ok) { setRowStatus(st, 'Save failed', 'dirty'); return; }
-          setRowStatus(st, 'Saved ✓', 'ok'); stale.textContent = '';
+          replaceFrom(unwrap(res.body).project);
         }).catch(function () { saveBtn.disabled = false; setRowStatus(st, 'Save failed', 'dirty'); });
       });
-      rowEl.appendChild(genBtn); rowEl.appendChild(copyBtn); rowEl.appendChild(saveBtn); rowEl.appendChild(st); rowEl.appendChild(stale);
+      clearBtn.addEventListener('click', function () {
+        if (!confirm('Clear the i2v prompt for row ' + index + '? The row can generate one again.')) return;
+        clearBtn.disabled = true;
+        apiPost(CLEAR_I2V_API, { id: currentId, index: index }).then(function (res) {
+          if (!res.ok) { clearBtn.disabled = false; setRowStatus(st, 'Clear failed', 'dirty'); return; }
+          replaceFrom(unwrap(res.body).project);
+        }).catch(function () { clearBtn.disabled = false; setRowStatus(st, 'Clear failed', 'dirty'); });
+      });
+      rowEl.appendChild(genBtn); rowEl.appendChild(copyBtn); rowEl.appendChild(saveBtn); rowEl.appendChild(clearBtn); rowEl.appendChild(st); rowEl.appendChild(stale);
       wrap.appendChild(label); wrap.appendChild(ta); wrap.appendChild(rowEl);
       return wrap;
     }
@@ -493,6 +524,9 @@
       var label = document.createElement('div'); label.className = 'pvid-label'; label.textContent = 'Video (PRESTO Wan2.2)';
       var rowEl = document.createElement('div'); rowEl.className = 'pvid-row';
       var genBtn = document.createElement('button'); genBtn.className = 'btn'; genBtn.textContent = 'Generate video on PRESTO';
+      // Regenerate/Clear only make sense once a clip exists; setVideo reveals them.
+      var regenBtn = document.createElement('button'); regenBtn.className = 'btn pvid-regen'; regenBtn.textContent = 'Regenerate video'; regenBtn.style.display = 'none';
+      var clearBtn = document.createElement('button'); clearBtn.className = 'btn pvid-clear'; clearBtn.textContent = 'Clear video'; clearBtn.style.display = 'none';
       var st = document.createElement('span'); st.className = 'prow-status';
       genBtn.addEventListener('click', function () {
         genBtn.classList.add('busy'); genBtn.disabled = true; setRowStatus(st, 'Starting on PRESTO…', '');
@@ -502,7 +536,26 @@
           setRowStatus(st, 'queued on PRESTO', 'ok'); startVideosPolling(); refreshVideosStatus();
         }).catch(function () { genBtn.classList.remove('busy'); genBtn.disabled = false; setRowStatus(st, 'failed', 'dirty'); });
       });
-      rowEl.appendChild(genBtn); rowEl.appendChild(st);
+      regenBtn.addEventListener('click', function () {
+        if (!confirm('Regenerate the video for row ' + index + '? The current clip is archived (not deleted) and a fresh render starts on PRESTO (slow).')) return;
+        regenBtn.classList.add('busy'); regenBtn.disabled = true; setRowStatus(st, 'Starting regen on PRESTO…', '');
+        apiPost(REGEN_VIDEO_API, { id: currentId, index: index }).then(function (res) {
+          regenBtn.classList.remove('busy'); regenBtn.disabled = false;
+          if (!res.ok) { setRowStatus(st, (res.body && res.body.error) || 'failed', 'dirty'); return; }
+          setRowStatus(st, 'regen queued on PRESTO', 'ok'); startVideosPolling(); refreshVideosStatus();
+        }).catch(function () { regenBtn.classList.remove('busy'); regenBtn.disabled = false; setRowStatus(st, 'failed', 'dirty'); });
+      });
+      clearBtn.addEventListener('click', function () {
+        if (!confirm('Clear (archive) the video for row ' + index + '? It is moved aside, not deleted, and the row can render again.')) return;
+        clearBtn.disabled = true;
+        apiPost(CLEAR_VIDEO_API, { id: currentId, index: index }).then(function (res) {
+          clearBtn.disabled = false;
+          if (!res.ok) { setRowStatus(st, 'Clear failed', 'dirty'); return; }
+          var v = wrap.querySelector('video'); if (v) v.remove();
+          setRowStatus(st, 'cleared', 'ok'); refreshVideosStatus();
+        }).catch(function () { clearBtn.disabled = false; setRowStatus(st, 'Clear failed', 'dirty'); });
+      });
+      rowEl.appendChild(genBtn); rowEl.appendChild(regenBtn); rowEl.appendChild(clearBtn); rowEl.appendChild(st);
       wrap.appendChild(label); wrap.appendChild(rowEl);
       return wrap;
     }
@@ -527,6 +580,7 @@
           var ctrl = document.createElement('div'); ctrl.className = 'pctrl';
           var copyBtn = document.createElement('button'); copyBtn.className = 'btn'; copyBtn.textContent = 'Copy';
           var saveBtn = document.createElement('button'); saveBtn.className = 'btn primary'; saveBtn.textContent = 'Save changes';
+          var clearBtn = document.createElement('button'); clearBtn.className = 'btn'; clearBtn.textContent = 'Clear prompt';
           var st = document.createElement('div'); setRowStatus(st, text ? 'saved' : '', text ? 'ok' : '');
           var savedValue = text;
           ta.addEventListener('input', function () {
@@ -554,7 +608,26 @@
               }
             }).catch(function () { saveBtn.disabled = false; setRowStatus(st, 'Save failed', 'dirty'); });
           });
-          ctrl.appendChild(copyBtn); ctrl.appendChild(saveBtn); ctrl.appendChild(st);
+          clearBtn.addEventListener('click', function () {
+            if (savedValue && !confirm('Clear prompt ' + index + '? The slot becomes empty and eligible for generation again.')) return;
+            clearBtn.disabled = true;
+            apiPost(saveApi, { id: currentId, index: index, text: '' }).then(function (res) {
+              clearBtn.disabled = false;
+              if (!res.ok) { setRowStatus(st, 'Clear failed', 'dirty'); return; }
+              ta.value = ''; savedValue = '';
+              row.className = 'prompt-row';
+              setRowStatus(st, 'cleared', 'ok');
+              if (withThumb) {
+                var proj = unwrap(res.body).project;
+                var updated = proj ? (proj.image_prompts || []).find(function (x) { return x.index === index; }) : null;
+                var oldI2v = row.querySelector('.pi2v');
+                if (oldI2v) row.replaceChild(buildI2vBlock(index, updated), oldI2v);
+                refreshImagesStatus();
+              }
+              updateRemainingButton();
+            }).catch(function () { clearBtn.disabled = false; setRowStatus(st, 'Clear failed', 'dirty'); });
+          });
+          ctrl.appendChild(copyBtn); ctrl.appendChild(saveBtn); ctrl.appendChild(clearBtn); ctrl.appendChild(st);
           row.appendChild(num); row.appendChild(ta); row.appendChild(ctrl);
           if (withThumb) {
             var thumb = document.createElement('div');
@@ -615,6 +688,34 @@
       show('project');
     }
 
+    // Per-image Clear + Regenerate controls (shown under a generated thumbnail).
+    function buildImageControls(index) {
+      var box = document.createElement('div'); box.className = 'thumb-controls';
+      var regen = document.createElement('button'); regen.className = 'btn'; regen.textContent = 'Regenerate image';
+      var clear = document.createElement('button'); clear.className = 'btn'; clear.textContent = 'Clear image';
+      var st = document.createElement('span'); st.className = 'thumb-note';
+      regen.addEventListener('click', function () {
+        if (!confirm('Regenerate image ' + index + '? The current image is archived (not deleted) and a fresh render starts on vidnux.')) return;
+        regen.classList.add('busy'); regen.disabled = true; st.textContent = 'regenerating…';
+        apiPost(REGEN_IMAGE_API, { id: currentId, index: index }).then(function (res) {
+          regen.classList.remove('busy'); regen.disabled = false;
+          if (!res.ok) { st.textContent = (res.body && res.body.error) || 'failed'; st.className = 'thumb-note err'; return; }
+          st.textContent = 'queued'; startImagesPolling(); refreshImagesStatus();
+        }).catch(function () { regen.classList.remove('busy'); regen.disabled = false; st.textContent = 'failed'; st.className = 'thumb-note err'; });
+      });
+      clear.addEventListener('click', function () {
+        if (!confirm('Clear image ' + index + '? It is archived (not deleted) and the row can generate again.')) return;
+        clear.disabled = true;
+        apiPost(CLEAR_IMAGE_API, { id: currentId, index: index }).then(function (res) {
+          clear.disabled = false;
+          if (!res.ok) { st.textContent = 'clear failed'; st.className = 'thumb-note err'; return; }
+          refreshImagesStatus(); updateRemainingButton();
+        }).catch(function () { clear.disabled = false; st.textContent = 'clear failed'; st.className = 'thumb-note err'; });
+      });
+      box.appendChild(regen); box.appendChild(clear); box.appendChild(st);
+      return box;
+    }
+
     // ---- Image generation (vidnux FLUX via the existing dispatch) ----
     function setThumb(index, row) {
       var el = document.getElementById('imgp-thumb-' + index);
@@ -631,6 +732,13 @@
           warn.textContent = '⚠ prompt changed after this image — may not match; regenerate';
           el.appendChild(warn);
         }
+        if (row.duplicate_rejected) {
+          var dup = document.createElement('span');
+          dup.className = 'thumb-note err';
+          dup.textContent = 'Duplicate image result rejected; previous image kept.';
+          el.appendChild(dup);
+        }
+        el.appendChild(buildImageControls(index));
       } else if (row.status === 'failed') {
         el.innerHTML = '<span class="thumb-note err">failed: ' + (row.error ? String(row.error).slice(0, 80) : 'generation error') + '</span>';
       } else if (row.status === 'missing_file') {
@@ -688,13 +796,25 @@
       var el = document.getElementById('imgp-video-' + index);
       if (!el) return;
       var st = el.querySelector('.prow-status');
+      var regen = el.querySelector('.pvid-regen');
+      var clear = el.querySelector('.pvid-clear');
       if (row.status === 'done' && row.has_video) {
         if (!el.querySelector('video')) {
           var v = document.createElement('video');
           v.controls = true; v.src = VIDEO_FILE_API + '?id=' + encodeURIComponent(currentId) + '&index=' + index;
           el.appendChild(v);
         }
-        if (st) setRowStatus(st, 'done', 'ok');
+        if (st) setRowStatus(st, row.duplicate_rejected ? 'duplicate rejected; previous kept' : 'done', row.duplicate_rejected ? 'dirty' : 'ok');
+        // A clip exists → offer explicit Regenerate/Clear; hide the plain generate.
+        if (regen) regen.style.display = '';
+        if (clear) clear.style.display = '';
+        var gen = el.querySelector('.pvid-row .btn:not(.pvid-regen):not(.pvid-clear)');
+        if (gen) gen.style.display = 'none';
+      } else {
+        if (regen) regen.style.display = 'none';
+        if (clear) clear.style.display = 'none';
+        var gen2 = el.querySelector('.pvid-row .btn:not(.pvid-regen):not(.pvid-clear)');
+        if (gen2) gen2.style.display = '';
       }
     }
 
@@ -913,9 +1033,31 @@
       apiPost(GEN_VIDEOS_API, { id: currentId }).then(function (res) {
         if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Could not start video generation', true); return; }
         var d = unwrap(res.body);
-        setStatus(el, 'Batch started for ' + d.materialized_count + ' ready clip(s)');
+        var parts = ['Batch started for ' + d.will_generate + ' clip(s)'];
+        if (d.skipped_existing_video) parts.push(d.skipped_existing_video + ' already have videos');
+        if (d.skipped_missing_prereq) parts.push(d.skipped_missing_prereq + ' skipped (need still + i2v prompt)');
+        setStatus(el, parts.join(' · '));
         startVideosPolling(); refreshVideosStatus();
       }).catch(function () { setStatus(el, 'Could not start video generation', true); });
+    });
+
+    // ---- Step 6: create i2v prompts for generated images that don't have one ----
+    document.getElementById('i2v-missing-generate').addEventListener('click', function () {
+      if (!currentId) return;
+      var btn = this, el = document.getElementById('i2v-missing-status');
+      btn.classList.add('busy'); btn.disabled = true;
+      var stop = elapsedTicker(el, 'Creating i2v prompts for images without one… (PRESTO Ollama)');
+      apiPost(GEN_MISSING_I2V_API, { id: currentId }).then(function (res) {
+        stop(); btn.classList.remove('busy'); btn.disabled = false;
+        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Could not create i2v prompts', true); return; }
+        var d = unwrap(res.body);
+        var parts = [d.generated + ' i2v prompt(s) created'];
+        if (d.skipped_populated) parts.push(d.skipped_populated + ' already had one');
+        if (d.failed) parts.push(d.failed + ' failed');
+        setStatus(el, parts.join(' · '));
+        // Reflect the new i2v prompts in the rows above.
+        loadProject(currentId);
+      }).catch(function () { stop(); btn.classList.remove('busy'); btn.disabled = false; setStatus(el, 'Could not create i2v prompts', true); });
     });
 
     document.getElementById('vidgen-cancel').addEventListener('click', function () {

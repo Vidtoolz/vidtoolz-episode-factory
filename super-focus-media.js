@@ -12,11 +12,169 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const superFocus = require('./super-focus.js');
 
 const IMAGE_PROMPTS_FILENAME = 'image-prompts.json';
 const FLUX_MANIFEST_FILENAME = 'flux-generation-manifest.json';
 const FLUX_IMAGES_SUBDIR = path.join('images', 'flux-local');
+
+// Superseded (archived) media lives here after a Clear/Regenerate — files are
+// never destructively deleted, only moved aside with sha256 + timestamp
+// provenance so a regenerated asset can be told apart from the one it replaced.
+const SUPERSEDED_SUBDIR = 'superseded';
+const SUPERSEDED_MANIFEST_FILENAME = 'superseded-manifest.json';
+
+function hashFileSha256(filePath) {
+  try { return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex'); }
+  catch (_) { return null; }
+}
+
+function supersededDir(mediaDir) { return path.join(mediaDir, SUPERSEDED_SUBDIR); }
+function supersededManifestPath(mediaDir) { return path.join(mediaDir, SUPERSEDED_MANIFEST_FILENAME); }
+
+function readSupersededManifest(mediaDir) {
+  const p = supersededManifestPath(mediaDir);
+  if (!fs.existsSync(p)) return { version: 1, entries: [] };
+  try {
+    const m = JSON.parse(fs.readFileSync(p, 'utf8'));
+    if (!Array.isArray(m.entries)) m.entries = [];
+    return m;
+  } catch (_) { return { version: 1, entries: [] }; }
+}
+
+function writeSupersededManifest(mediaDir, manifest) {
+  const outPath = supersededManifestPath(mediaDir);
+  const tmp = `${outPath}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmp, outPath);
+}
+
+function nowStamp(options) {
+  return (options && options.now ? options.now : new Date().toISOString());
+}
+
+// Move an existing on-disk asset out of its canonical path into superseded/,
+// recording sha256 + timestamp provenance. Never deletes. Returns
+// { archived:false } when there is nothing to archive.
+function archiveAsset(mediaDir, kind, index, srcPath, ext, extra = {}, options = {}) {
+  if (!fs.existsSync(srcPath)) return { archived: false, index };
+  const sha256 = hashFileSha256(srcPath);
+  const iso = nowStamp(options);
+  const stamp = String(iso).replace(/[:.]/g, '-');
+  const base = kind === 'video' ? String(index).padStart(3, '0') : `flux-${String(index).padStart(3, '0')}`;
+  const dir = supersededDir(mediaDir);
+  fs.mkdirSync(dir, { recursive: true });
+  let dest = path.join(dir, `${base}__${stamp}${ext}`);
+  let n = 1;
+  while (fs.existsSync(dest)) { dest = path.join(dir, `${base}__${stamp}-${n}${ext}`); n += 1; }
+  fs.renameSync(srcPath, dest);
+  const manifest = readSupersededManifest(mediaDir);
+  const entry = Object.assign({ kind, index, archived_path: path.relative(mediaDir, dest), sha256, archived_at: iso }, extra);
+  manifest.entries.push(entry);
+  writeSupersededManifest(mediaDir, manifest);
+  return { archived: true, index, archived_path: entry.archived_path, sha256 };
+}
+
+// Archive (supersede) the canonical image for a slot. Safe: move, not delete.
+function archiveImage(projectId, index, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  return archiveAsset(mediaDir, 'image', Math.round(Number(index)), imageFilePath(mediaDir, index), '.png', {}, options);
+}
+
+// Archive (supersede) the canonical video for a slot. Safe: move, not delete.
+function archiveVideo(projectId, subdir, index, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  const sub = String(subdir || 'mp4');
+  return archiveAsset(mediaDir, 'video', Math.round(Number(index)), videoFilePath(mediaDir, sub, index), '.mp4', { subdir: sub }, options);
+}
+
+// The most recent archived sha256 for a slot (used to detect a regenerated asset
+// that came back byte-identical to the one it replaced).
+function latestSupersededHash(mediaDir, kind, index) {
+  const entries = readSupersededManifest(mediaDir).entries
+    .filter((e) => e.kind === kind && e.index === index && e.sha256);
+  return entries.length ? entries[entries.length - 1].sha256 : null;
+}
+
+// Per-index outcome of the last explicit regeneration ({image:{}, video:{}}).
+// Reconcile/status reads this (a plain lookup) instead of hashing every poll.
+const REGEN_OUTCOMES_FILENAME = 'regen-outcomes.json';
+
+function readRegenOutcomes(mediaDir) {
+  const p = path.join(mediaDir, REGEN_OUTCOMES_FILENAME);
+  if (!fs.existsSync(p)) return { image: {}, video: {} };
+  try {
+    const o = JSON.parse(fs.readFileSync(p, 'utf8'));
+    o.image = o.image || {}; o.video = o.video || {};
+    return o;
+  } catch (_) { return { image: {}, video: {} }; }
+}
+
+function recordRegenOutcome(mediaDir, kind, index, outcome) {
+  const o = readRegenOutcomes(mediaDir);
+  o[kind] = o[kind] || {};
+  o[kind][String(index)] = outcome;
+  const outPath = path.join(mediaDir, REGEN_OUTCOMES_FILENAME);
+  const tmp = `${outPath}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(o, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmp, outPath);
+}
+
+// Resolve a completed explicit regeneration. Hashes ONLY the freshly generated
+// canonical file and compares it to the previous (archived) hash — the only two
+// hashes taken, and only on a regenerate. Behavior:
+//  - no new file (generation failed): restore the previous file so the slot is
+//    never stranded; outcome 'failed'.
+//  - byte-identical to previous: reject — archive the new file as a rejected
+//    attempt, restore the previous as the active file; outcome 'duplicate_rejected'.
+//  - distinct: keep the new file active, previous stays superseded; 'regenerated'.
+function resolveRegenerated(mediaDir, kind, index, canonical, ext, base, prevArchive, options = {}) {
+  const iso = nowStamp(options);
+  const restorePrevious = () => {
+    if (prevArchive && prevArchive.archived_path) {
+      const abs = path.join(mediaDir, prevArchive.archived_path);
+      if (fs.existsSync(abs)) { fs.mkdirSync(path.dirname(canonical), { recursive: true }); fs.renameSync(abs, canonical); }
+    }
+  };
+  if (!fs.existsSync(canonical)) {
+    restorePrevious();
+    recordRegenOutcome(mediaDir, kind, index, { status: 'failed', at: iso });
+    return { generated: false, duplicate_rejected: false };
+  }
+  const newHash = hashFileSha256(canonical);
+  const prevHash = prevArchive && prevArchive.sha256;
+  if (prevHash && newHash && newHash === prevHash) {
+    const dir = supersededDir(mediaDir);
+    fs.mkdirSync(dir, { recursive: true });
+    const stamp = String(iso).replace(/[:.]/g, '-');
+    let dest = path.join(dir, `${base}__${stamp}-rejected${ext}`);
+    let n = 1;
+    while (fs.existsSync(dest)) { dest = path.join(dir, `${base}__${stamp}-rejected-${n}${ext}`); n += 1; }
+    fs.renameSync(canonical, dest); // move the duplicate attempt aside (not deleted)
+    restorePrevious();              // previous stays the active asset
+    const manifest = readSupersededManifest(mediaDir);
+    manifest.entries.push({ kind, index, archived_path: path.relative(mediaDir, dest), sha256: newHash, archived_at: iso, duplicate_rejected: true });
+    writeSupersededManifest(mediaDir, manifest);
+    recordRegenOutcome(mediaDir, kind, index, { status: 'duplicate_rejected', at: iso });
+    return { generated: true, duplicate_rejected: true };
+  }
+  recordRegenOutcome(mediaDir, kind, index, { status: 'regenerated', at: iso });
+  return { generated: true, duplicate_rejected: false };
+}
+
+function resolveRegeneratedImage(projectId, index, prevArchive, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  const idx = Math.round(Number(index));
+  return resolveRegenerated(mediaDir, 'image', idx, imageFilePath(mediaDir, idx), '.png', `flux-${String(idx).padStart(3, '0')}`, prevArchive, options);
+}
+
+function resolveRegeneratedVideo(projectId, subdir, index, prevArchive, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  const idx = Math.round(Number(index));
+  const sub = String(subdir || 'mp4');
+  return resolveRegenerated(mediaDir, 'video', idx, videoFilePath(mediaDir, sub, idx), '.mp4', String(idx).padStart(3, '0'), prevArchive, options);
+}
 
 function resolveMediaRoot(options = {}) {
   const root = options.mediaRoot || process.env.SUPER_FOCUS_MEDIA_ROOT;
@@ -95,6 +253,9 @@ function reconcileImages(projectId, imagePrompts, options = {}) {
   const items = (manifest && Array.isArray(manifest.items)) ? manifest.items : [];
   const byIndex = {};
   items.forEach((it) => { if (it && it.prompt_index != null) byIndex[it.prompt_index] = it; });
+  // Duplicate detection runs at regenerate time (not here). Reconcile only reads
+  // the recorded per-index outcome — a cheap lookup, never a file hash.
+  const regenImage = readRegenOutcomes(mediaDir).image || {};
 
   let doneCount = 0;
   let failedCount = 0;
@@ -117,6 +278,9 @@ function reconcileImages(projectId, imagePrompts, options = {}) {
       // The prompt text for this row changed after its image was generated, so
       // the on-disk image no longer cleanly matches (surfaced in the UI).
       prompt_changed: Boolean(p.image_stale),
+      // A prior explicit regeneration produced a byte-identical image and was
+      // rejected — the previous image was kept active (set at regenerate time).
+      duplicate_rejected: Boolean(regenImage[idx] && regenImage[idx].status === 'duplicate_rejected'),
       error: item && item.error ? String(item.error) : null,
       generated_at: item && item.generated_at ? item.generated_at : null,
     };
@@ -174,11 +338,22 @@ function eligibleVideoRows(projectId, imagePrompts, options = {}) {
   });
 }
 
-// Write selected-images.json + video-prompts.json for run-production.py from the
-// eligible rows (still on disk + i2v prompt). Returns the eligible indexes.
+// Rows eligible for NORMAL (top-up) video generation: image + i2v prompt AND no
+// video yet in the target subdir. Rows that already have a video are skipped.
+function eligibleMissingVideoRows(projectId, imagePrompts, subdir, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  const sub = subdir || 'mp4';
+  return eligibleVideoRows(projectId, imagePrompts, options)
+    .filter((p) => !fs.existsSync(videoFilePath(mediaDir, sub, p.index)));
+}
+
+// Write selected-images.json + video-prompts.json for run-production.py. By
+// default it uses every video-eligible row (still on disk + i2v prompt); pass
+// options.rows to materialize an explicit subset (top-up / per-row regenerate).
+// Returns the materialized indexes.
 function materializeVideoInputs(projectId, imagePrompts, options = {}) {
   const mediaDir = mediaDirFor(projectId, options);
-  const eligible = eligibleVideoRows(projectId, imagePrompts, options);
+  const eligible = Array.isArray(options.rows) ? options.rows : eligibleVideoRows(projectId, imagePrompts, options);
   const selections = eligible.map((p) => ({
     prompt_index: p.index,
     index: p.index,
@@ -203,11 +378,17 @@ function materializeVideoInputs(projectId, imagePrompts, options = {}) {
 function reconcileVideos(projectId, imagePrompts, subdir, options = {}) {
   const mediaDir = mediaDirFor(projectId, options);
   const eligible = eligibleVideoRows(projectId, imagePrompts, options);
+  const regenVideo = readRegenOutcomes(mediaDir).video || {}; // lookup only, no hashing
   let done = 0;
   const videos = eligible.map((p) => {
     const fileExists = fs.existsSync(videoFilePath(mediaDir, subdir, p.index));
     if (fileExists) done += 1;
-    return { index: p.index, status: fileExists ? 'done' : 'pending', has_video: fileExists };
+    return {
+      index: p.index,
+      status: fileExists ? 'done' : 'pending',
+      has_video: fileExists,
+      duplicate_rejected: Boolean(regenVideo[p.index] && regenVideo[p.index].status === 'duplicate_rejected'),
+    };
   });
   return { media_dir: mediaDir, subdir: subdir || 'mp4', total: videos.length, done, videos };
 }
@@ -243,7 +424,18 @@ module.exports = {
   videosDir,
   videoFilePath,
   eligibleVideoRows,
+  eligibleMissingVideoRows,
   materializeVideoInputs,
   reconcileVideos,
   safeVideoFilePath,
+  hashFileSha256,
+  supersededDir,
+  readSupersededManifest,
+  archiveImage,
+  archiveVideo,
+  latestSupersededHash,
+  readRegenOutcomes,
+  recordRegenOutcome,
+  resolveRegeneratedImage,
+  resolveRegeneratedVideo,
 };
