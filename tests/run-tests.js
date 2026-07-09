@@ -52,6 +52,7 @@ require("./quick-action-endpoints.test.js");
 require("./artifact-access-foundation.test.js");
 require("./remotion-lane.test.js");
 require("./super-focus.test.js");
+require("./script-evaluator.test.js");
 
 async function runTests() {
   let passed = 0;
