@@ -101,6 +101,8 @@ const PROJECT_YOUTUBE_DRAFT_SAVE_API = '/api/project/youtube-draft/save';
 const SUPER_FOCUS_PROJECTS_API = '/api/super-focus/projects';
 const SUPER_FOCUS_PROJECT_API = '/api/super-focus/project';
 const SUPER_FOCUS_PROVIDERS_API = '/api/super-focus/providers';
+const SUPER_FOCUS_EVALUATE_SCRIPT_API = '/api/super-focus/evaluate-script';
+const SUPER_FOCUS_SCRIPT_EVALUATION_API = '/api/super-focus/script-evaluation';
 const SUPER_FOCUS_OLLAMA_BENCHMARK_API = '/api/super-focus/ollama-benchmark';
 const SUPER_FOCUS_TITLE_API = '/api/super-focus/title';
 const SUPER_FOCUS_SCRIPT_API = '/api/super-focus/script';
@@ -276,6 +278,7 @@ const superFocus = require('./super-focus.js');
 const superFocusPrompts = require('./super-focus-prompts.js');
 const superFocusMedia = require('./super-focus-media.js');
 const superFocusRouter = require('./super-focus-router.js');
+const scriptEvaluator = require('./script-evaluator.js');
 // Super Focus keeps its own local, file-backed project state (never on VIDNAS).
 // Root is env-overridable so it can follow a different disk without code edits.
 const SUPER_FOCUS_ROOT = process.env.SUPER_FOCUS_ROOT || path.join(ROOT, 'super-focus-projects');
@@ -10375,6 +10378,62 @@ function createServer(options = {}) {
       return;
     }
 
+    // ADVISORY script evaluation (local Ollama, semantic pass). Persists an
+    // evaluation to state.script_evaluation. NEVER approves the script, advances
+    // stage, or generates prompts/media. No fallback: Ollama down -> 503;
+    // unusable model output -> 502 with nothing written.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_EVALUATE_SCRIPT_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus script-evaluation API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown id
+          if (!state.script || !state.script.trim()) {
+            const e = new Error('Save a script first, then evaluate it.'); e.statusCode = 400; throw e;
+          }
+          const sentences = scriptEvaluator.splitScriptIntoSentences(state.script);
+          const prompt = scriptEvaluator.buildScriptEvaluationPrompt(state.script, sentences, {});
+          // Route through the existing load-aware local-Ollama path (no fallback).
+          // Throws 503 (unreachable) / enriched errors before any write.
+          const gen = await superFocusGenerate(
+            { system: prompt.system, user: prompt.user, schema: prompt.schema, task: 'script_evaluation' },
+            options
+          );
+          // Parser throws 502 on unusable output -> nothing is persisted.
+          const parsed = scriptEvaluator.parseScriptEvaluationOutput(gen.content);
+          const normalized = scriptEvaluator.normalizeScriptEvaluation(parsed, sentences);
+          const scored = scriptEvaluator.scoreScriptEvaluation(normalized);
+          const evaluation = Object.assign({}, scored, {
+            script_hash: scriptEvaluator.hashScriptText(state.script),
+            evaluated_at: new Date().toISOString(),
+            stale: false,
+            model: {
+              provider: 'ollama',
+              lane: 'script_evaluation',
+              model: gen.provider ? gen.provider.model : null,
+              host: gen.provider ? gen.provider.id : null,
+            },
+          });
+          const saved = superFocus.saveScriptEvaluation(id, evaluation, { root: sfRoot });
+          sendJSON(res, 200, { project_id: id, script_evaluation: saved.script_evaluation, provider: gen.provider });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-evaluate-script-error'));
+      return;
+    }
+
+    // Read-only: return the saved evaluation with a freshly-computed stale flag.
+    // Does not call Ollama and does not mutate state.
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_SCRIPT_EVALUATION_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+        const evaluation = superFocus.readScriptEvaluation(id, { root: sfRoot });
+        sendJSON(res, 200, { project_id: id, script_evaluation: evaluation || null, stale: evaluation ? Boolean(evaluation.stale) : false });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-script-evaluation-error');
+      }
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === SUPER_FOCUS_TITLE_API) {
       readJsonBody(req, 1024 * 256)
         .then((payload) => {
@@ -13467,6 +13526,8 @@ module.exports = {
   SUPER_FOCUS_PROJECT_API,
   SUPER_FOCUS_PROVIDERS_API,
   SUPER_FOCUS_OLLAMA_BENCHMARK_API,
+  SUPER_FOCUS_EVALUATE_SCRIPT_API,
+  SUPER_FOCUS_SCRIPT_EVALUATION_API,
   SUPER_FOCUS_TITLE_API,
   SUPER_FOCUS_SCRIPT_API,
   SUPER_FOCUS_GENERATE_TOPIC_API,

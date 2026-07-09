@@ -14,6 +14,9 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+// Shared hash so stale detection here matches the hash the evaluator stores.
+// (script-evaluator.js depends only on `crypto` — no import cycle.)
+const scriptEvaluator = require('./script-evaluator.js');
 
 const SCHEMA_VERSION = 1;
 const STATE_FILENAME = 'super-focus.json';
@@ -105,6 +108,9 @@ function emptyState(fields = {}) {
     // Staleness flags: set true when upstream text changed after a derived set
     // existed. Downstream is preserved; the operator regenerates explicitly.
     stale: {},
+    // Advisory script evaluation (set by the evaluator endpoint). Never approves
+    // or advances anything; marked stale (never deleted) when the script changes.
+    script_evaluation: null,
     created_at: created,
     updated_at: fields.updated_at || created,
   };
@@ -243,10 +249,49 @@ function saveScript(projectId, script, options = {}) {
   };
   markStale(state.image_prompts, 'image_prompts_script_hash', 'image_prompts');
   markStale(state.infographic_prompts, 'infographic_prompts_script_hash', 'infographic_prompts');
+  // A saved script change makes any existing evaluation stale (never delete it;
+  // re-evaluation is always explicit). If the script reverts to exactly the
+  // evaluated text, the evaluation becomes fresh again.
+  if (state.script_evaluation && state.script_evaluation.script_hash) {
+    const changed = scriptEvaluator.hashScriptText(state.script) !== state.script_evaluation.script_hash;
+    state.script_evaluation.stale = changed;
+    if (changed) state.script_evaluation.stale_reason = 'Script changed after this evaluation. Re-run evaluation.';
+    else delete state.script_evaluation.stale_reason;
+  }
   state.stage = inferStage(state);
   state.updated_at = nowIso();
   writeStateAtomic(dir, state);
   return state;
+}
+
+// Persist a fresh script evaluation (from the evaluator endpoint). Replaces any
+// prior evaluation, clears stale, and stamps the current script hash. This is
+// the ONLY downstream write the evaluator makes — it never approves the script
+// or generates prompts/media.
+function saveScriptEvaluation(projectId, evaluation, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  const ev = Object.assign({}, evaluation || {});
+  ev.stale = false;
+  delete ev.stale_reason;
+  if (!ev.script_hash) ev.script_hash = scriptEvaluator.hashScriptText(state.script);
+  state.script_evaluation = ev;
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
+// Read-only: the saved evaluation with a freshly-computed `stale` (compares the
+// current script against the evaluated hash). Does not mutate state.
+function readScriptEvaluation(projectId, options = {}) {
+  const state = loadProject(projectId, options);
+  const ev = state.script_evaluation;
+  if (!ev) return null;
+  const stale = Boolean(ev.stale) || (ev.script_hash ? scriptEvaluator.hashScriptText(state.script) !== ev.script_hash : false);
+  return Object.assign({}, ev, {
+    stale,
+    stale_reason: stale ? (ev.stale_reason || 'Script changed after this evaluation. Re-run evaluation.') : undefined,
+  });
 }
 
 // Store an "up to N" set of generated prompts as numbered, index-keyed records.
@@ -528,4 +573,6 @@ module.exports = {
   clearI2vPrompt,
   hasI2vPrompt,
   clearImageStale,
+  saveScriptEvaluation,
+  readScriptEvaluation,
 };

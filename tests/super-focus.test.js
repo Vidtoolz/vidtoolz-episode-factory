@@ -2918,3 +2918,172 @@ test("video queue routes are nonce-gated and guard the project id", async () => 
     assert.equal(bad.statusCode, 400);
   } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
 });
+
+// ================= Script evaluator endpoints (Slice 2) =================
+
+const scriptEval = require("../script-evaluator.js");
+
+// A complete, well-formed model output for the given script's sentence ids so
+// the stubbed provider returns a valid PRODUCE evaluation (no real Ollama).
+function fullScriptEvalJson(script) {
+  const ids = scriptEval.splitScriptIntoSentences(script).map((s) => s.sentence_id);
+  const categories = scriptEval.CATEGORIES.map((c) => ({ id: c.id, score: 100, status: "pass", positives: ["p"], negatives: [], recommendation: "keep" }));
+  const hard_gates = scriptEval.HARD_GATES.map((g) => ({ id: g.id, status: "pass", reason: "ok", suggested_fix: "" }));
+  const checklist = scriptEval.CHECKLIST.map((c) => ({ id: c.id, status: "pass", reason: "ok" }));
+  const sentences = ids.map((sid) => ({ sentence_id: sid, role: "claim", score: 90, status: "strong", positives: ["x"], negatives: [], highlighted_phrases: [], edit_suggestion: "keep", optional_rewrite: "" }));
+  return JSON.stringify({ summary: "ok", categories, hard_gates, checklist, sentences, top_strengths: ["spine"], top_problems: [], fix_plan: ["ship"], next_edit: "nothing" });
+}
+
+const EVAL_SCRIPT = "The plate did not render. So I built a gate.";
+
+test("evaluate-script: is nonce-gated (403 without the write nonce)", async () => {
+  const { server, id } = await makeProjectServer(fakeOllama(fullScriptEvalJson(EVAL_SCRIPT)), { script: EVAL_SCRIPT });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, {
+      method: "POST", headers: { host: "127.0.0.1:8010" }, body: { id } });
+    assert.equal(res.statusCode, 403);
+  } finally { await close(server); }
+});
+
+test("evaluate-script: empty script returns 400 and writes nothing", async () => {
+  const { server, id } = await makeProjectServer(fakeOllama("{}"), { title: "T" }); // no script saved
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(res.statusCode, 400);
+    const ev = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_EVALUATION_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(ev.script_evaluation, null);
+  } finally { await close(server); }
+});
+
+test("evaluate-script: stubbed provider persists a scored evaluation; GET returns it", async () => {
+  const { server, id, root } = await makeProjectServer(fakeOllama(fullScriptEvalJson(EVAL_SCRIPT)), { script: EVAL_SCRIPT });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(res.statusCode, 200);
+    const d = unwrap(res);
+    assert.equal(d.script_evaluation.verdict, "PRODUCE");
+    assert.equal(d.script_evaluation.total_score, 100);
+    assert.equal(d.script_evaluation.stale, false);
+    assert.ok(d.script_evaluation.script_hash);
+    assert.equal(d.script_evaluation.model.lane, "script_evaluation");
+    assert.equal(d.script_evaluation.sentences.length, scriptEval.splitScriptIntoSentences(EVAL_SCRIPT).length);
+    // Persisted to disk.
+    const reloaded = superFocus.loadProject(id, { root });
+    assert.equal(reloaded.script_evaluation.verdict, "PRODUCE");
+    // GET returns it.
+    const got = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_EVALUATION_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(got.script_evaluation.verdict, "PRODUCE");
+    assert.equal(got.stale, false);
+  } finally { await close(server); }
+});
+
+test("evaluate-script: Ollama unavailable returns 503 (no fallback) and persists nothing", async () => {
+  const { server, id } = await makeProjectServer(refusedFetch(), { script: EVAL_SCRIPT });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(res.statusCode, 503);
+    const ev = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_EVALUATION_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(ev.script_evaluation, null);
+  } finally { await close(server); }
+});
+
+test("evaluate-script: invalid model output returns 502 and persists nothing", async () => {
+  const { server, id } = await makeProjectServer(fakeOllama("the model rambled with no json"), { script: EVAL_SCRIPT });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(res.statusCode, 502);
+    const ev = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_EVALUATION_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(ev.script_evaluation, null);
+  } finally { await close(server); }
+});
+
+test("evaluate-script: editing the script marks the evaluation stale (not deleted); re-eval clears it", async () => {
+  const scriptA = "First line here. Second line here.";
+  const scriptB = "Changed line here. Another line here."; // same sentence count -> same ids
+  const { server, id, root } = await makeProjectServer(fakeOllama(fullScriptEvalJson(scriptA)), { script: scriptA });
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, { method: "POST", headers: writeHeaders(), body: { id } });
+    const firstHash = superFocus.loadProject(id, { root }).script_evaluation.script_hash;
+    // Change the saved script -> evaluation preserved but stale.
+    await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_API, { method: "POST", headers: writeHeaders(), body: { id, script: scriptB } });
+    const afterEdit = superFocus.loadProject(id, { root });
+    assert.ok(afterEdit.script_evaluation, "evaluation preserved, not deleted");
+    assert.equal(afterEdit.script_evaluation.stale, true);
+    assert.equal(afterEdit.script_evaluation.script_hash, firstHash, "old script_hash preserved");
+    const gotStale = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_EVALUATION_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(gotStale.stale, true);
+    // Re-evaluate explicitly -> stale cleared, hash updated to the new script.
+    await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, { method: "POST", headers: writeHeaders(), body: { id } });
+    const afterReeval = superFocus.loadProject(id, { root });
+    assert.equal(afterReeval.script_evaluation.stale, false);
+    assert.equal(afterReeval.script_evaluation.script_hash, scriptEval.hashScriptText(scriptB));
+    assert.notEqual(afterReeval.script_evaluation.script_hash, firstHash);
+  } finally { await close(server); }
+});
+
+test("evaluate-script: reverting the script to the evaluated text clears stale", async () => {
+  const scriptA = "First line here. Second line here.";
+  const { server, id, root } = await makeProjectServer(fakeOllama(fullScriptEvalJson(scriptA)), { script: scriptA });
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, { method: "POST", headers: writeHeaders(), body: { id } });
+    await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_API, { method: "POST", headers: writeHeaders(), body: { id, script: "different text entirely one. two." } });
+    assert.equal(superFocus.loadProject(id, { root }).script_evaluation.stale, true);
+    await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_API, { method: "POST", headers: writeHeaders(), body: { id, script: scriptA } });
+    assert.equal(superFocus.loadProject(id, { root }).script_evaluation.stale, false, "revert to evaluated text clears stale");
+  } finally { await close(server); }
+});
+
+test("evaluate-script: advises only — never approves the script or generates image prompts", async () => {
+  const { server, id, root } = await makeProjectServer(fakeOllama(fullScriptEvalJson(EVAL_SCRIPT)), { script: EVAL_SCRIPT });
+  try {
+    const before = superFocus.loadProject(id, { root });
+    await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, { method: "POST", headers: writeHeaders(), body: { id } });
+    const after = superFocus.loadProject(id, { root });
+    // approval untouched, no image prompts created, stage not advanced.
+    assert.deepEqual(after.approval, before.approval);
+    assert.equal((after.image_prompts || []).length, (before.image_prompts || []).length);
+    assert.equal((after.image_prompts || []).length, 0);
+    assert.equal(after.stage, before.stage);
+  } finally { await close(server); }
+});
+
+test("evaluate-script: invented sentence ids ignored + omitted ids warned, through the endpoint", async () => {
+  const script = "One line. Two line. Three line."; // ids 1,2,3
+  // stub returns only sentence 1 + an invented id 99
+  const stub = (function () {
+    const categories = scriptEval.CATEGORIES.map((c) => ({ id: c.id, score: 80, status: "pass", positives: [], negatives: [], recommendation: "" }));
+    const hard_gates = scriptEval.HARD_GATES.map((g) => ({ id: g.id, status: "pass", reason: "", suggested_fix: "" }));
+    const checklist = scriptEval.CHECKLIST.map((c) => ({ id: c.id, status: "pass", reason: "" }));
+    const sentences = [
+      { sentence_id: 1, role: "hook", score: 80, status: "okay", positives: [], negatives: [], highlighted_phrases: [], edit_suggestion: "x", optional_rewrite: "" },
+      { sentence_id: 99, role: "claim", score: 50, status: "revise", positives: [], negatives: [], highlighted_phrases: [], edit_suggestion: "y", optional_rewrite: "" },
+    ];
+    return JSON.stringify({ summary: "", categories, hard_gates, checklist, sentences, top_strengths: [], top_problems: [], fix_plan: [], next_edit: "" });
+  })();
+  const { server, id, root } = await makeProjectServer(fakeOllama(stub), { script });
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, { method: "POST", headers: writeHeaders(), body: { id } });
+    const ev = superFocus.loadProject(id, { root }).script_evaluation;
+    assert.deepEqual(ev.sentences.map((s) => s.sentence_id), [1, 2, 3]);
+    assert.equal(ev.sentences.find((s) => s.sentence_id === 2).status, "unevaluated");
+    assert.equal(ev.sentences.find((s) => s.sentence_id === 3).status, "unevaluated");
+    assert.ok(ev.warnings.some((w) => /invented sentence id 99/.test(w)));
+    assert.ok(ev.warnings.some((w) => /sentence 2 was not evaluated/.test(w)));
+  } finally { await close(server); }
+});
+
+test("super-focus state: script_evaluation saves, reloads, and survives reopen", () => {
+  const root = mkRoot();
+  const created = superFocus.createProject({ title: "Ev" }, { root });
+  superFocus.saveScript(created.project_id, "A script.", { root });
+  const evaluation = { schema_version: 1, verdict: "REVISE", total_score: 72, categories: [], hard_gates: [], checklist: [], sentences: [], warnings: [] };
+  superFocus.saveScriptEvaluation(created.project_id, evaluation, { root });
+  const reopened = superFocus.loadProject(created.project_id, { root });
+  assert.equal(reopened.script_evaluation.verdict, "REVISE");
+  assert.equal(reopened.script_evaluation.stale, false);
+  assert.ok(reopened.script_evaluation.script_hash, "hash stamped on save");
+});
