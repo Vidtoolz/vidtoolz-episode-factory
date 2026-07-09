@@ -255,3 +255,198 @@ test("docs/motion-graphics-studio.md: states local-first, no cloud, no auto-rend
   assert.match(doc, /MOTION_GRAPHICS_ROOT/);
   assert.match(doc, /aigen\/motion-graphics/);
 });
+
+// ==================== Slice 2: HyperFrames render adapter ====================
+const mgRender = require("../motion-graphics-renderers.js");
+
+// Stub HyperFrames runner: writes a fake MP4 (like the CLI would) + a log, and
+// returns the { ok, command } shape of runHyperframesRenderCommand.
+function stubRunner(recorder) {
+  return function (source, output, log) {
+    if (recorder) recorder.push({ source, output, log });
+    fs.mkdirSync(path.dirname(output), { recursive: true });
+    fs.writeFileSync(output, Buffer.from([0, 0, 0, 0]));
+    fs.writeFileSync(log, "stub ok");
+    return { ok: true, command: "npx --no-install hyperframes render <dir> -c sources/x.html -o out.mp4" };
+  };
+}
+function failRunner() {
+  return function () { const e = new Error("hyperframes not found"); e.statusCode = 500; e.command = "npx --no-install hyperframes render ..."; throw e; };
+}
+function mgServerR(runRender) {
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const server = packageEngineServer.createServer({ superFocusRoot: mkRoot(), motionGraphicsRoot: root, motionGraphicsMediaRoot: mediaRoot, hyperframesRenderer: runRender });
+  return { server, root, mediaRoot };
+}
+function seedCard(root, type) {
+  const p = mgState.createProject({ title: "R" }, { root });
+  const { card } = mgState.addCard(p.project_id, { type: type || "title" }, { root });
+  const params = type === "comparison" ? { wrong: "one lucky prompt", better: "a script + gates" } : (type === "lower_third" ? { name: "Mikko" } : { title: "Prompts are not a plan" });
+  mgState.updateCardParams(p.project_id, card.card_id, { params }, { root });
+  return { project: mgState.loadProject(p.project_id, { root }), cardId: card.card_id };
+}
+
+// ── pure adapter ──
+test("mg-render: writes source HTML + manifest, calls runner with -c/-o under media root, returns rendered record", () => {
+  const root = mkRoot(); const mediaRoot = mkRoot();
+  const { project, cardId } = seedCard(root, "title");
+  const card = mgState.findCard(project, cardId);
+  const calls = [];
+  const out = mgRender.renderCard({ project, card }, { mediaRoot, runRender: stubRunner(calls), renderId: "r-0011223344", now: "2026-07-09T00:00:00Z" });
+  assert.equal(out.ok, true);
+  assert.equal(out.record.status, "rendered");
+  assert.equal(out.record.engine, "hyperframes");
+  assert.equal(out.record.path, path.join("renders", cardId, "r-0011223344.mp4"));
+  assert.equal(out.record.width, 1080);
+  // source HTML written under sources/ and deterministic/escaped
+  const srcPath = path.join(mediaRoot, project.project_id, "sources", cardId + ".html");
+  assert.ok(fs.existsSync(srcPath));
+  assert.match(fs.readFileSync(srcPath, "utf8"), /Prompts are not a plan/);
+  // runner was called with the source + output paths
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].source.endsWith(path.join("sources", cardId + ".html")));
+  assert.ok(calls[0].output.endsWith(path.join("renders", cardId, "r-0011223344.mp4")));
+  // manifest written (paths only, valid JSON, no binaries)
+  const man = path.join(mediaRoot, project.project_id, "manifests", "r-0011223344.json");
+  assert.ok(fs.existsSync(man));
+  const parsed = JSON.parse(fs.readFileSync(man, "utf8"));
+  assert.equal(parsed.status, "rendered");
+  assert.equal(parsed.card_id, cardId);
+});
+
+test("mg-render: runner failure yields a failed record + manifest (no throw to caller)", () => {
+  const root = mkRoot(); const mediaRoot = mkRoot();
+  const { project, cardId } = seedCard(root, "title");
+  const card = mgState.findCard(project, cardId);
+  const out = mgRender.renderCard({ project, card }, { mediaRoot, runRender: failRunner(), renderId: "r-aabbccdd" });
+  assert.equal(out.ok, false);
+  assert.equal(out.record.status, "failed");
+  assert.match(out.record.error, /hyperframes not found/);
+  assert.equal(out.record.path, null);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(mediaRoot, project.project_id, "manifests", "r-aabbccdd.json"), "utf8")).status, "failed");
+});
+
+test("mg-render: refuses Remotion (later slice) and incomplete params", () => {
+  const root = mkRoot(); const mediaRoot = mkRoot();
+  const { project, cardId } = seedCard(root, "title");
+  const card = mgState.findCard(project, cardId);
+  assert.throws(() => mgRender.renderCard({ project, card: Object.assign({}, card, { engine: "remotion" }) }, { mediaRoot, runRender: stubRunner() }), (e) => e.statusCode === 400);
+  assert.throws(() => mgRender.renderCard({ project, card: Object.assign({}, card, { params: {} }) }, { mediaRoot, runRender: stubRunner() }), (e) => e.statusCode === 400);
+});
+
+test("mg-render: resolveRenderMediaFile guards unknown ids and traversal paths", () => {
+  const mediaRoot = mkRoot();
+  const proj = { project_id: "proj-00000000", cards: [{ renders: [{ render_id: "r-11111111", status: "rendered", path: "../../etc/passwd" }] }] };
+  assert.throws(() => mgRender.resolveRenderMediaFile(proj, "../etc"), (e) => e.statusCode === 400); // bad render id
+  assert.equal(mgRender.resolveRenderMediaFile(proj, "r-99999999", { mediaRoot }), null); // unknown id
+  assert.equal(mgRender.resolveRenderMediaFile(proj, "r-11111111", { mediaRoot }), null); // traversal path refused
+});
+
+// ── endpoints ──
+test("mg-api: render-card nonce-gated; stubbed render persists a rendered record; media serves the mp4", async () => {
+  const { server, root, mediaRoot } = mgServerR(stubRunner());
+  await listen(server);
+  try {
+    const created = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_PROJECTS_API, { method: "POST", headers: writeHeaders(), body: { title: "Reel" } }));
+    const id = created.project.project_id;
+    const add = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, type: "title" } }));
+    const cardId = add.card.card_id;
+    await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_PARAMS_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: cardId, params: { title: "Ship a system" } } });
+
+    // nonce gate
+    const noNonce = await request(server, packageEngineServer.MOTION_GRAPHICS_RENDER_CARD_API, { method: "POST", headers: { host: "127.0.0.1:8010" }, body: { id, card_id: cardId } });
+    assert.equal(noNonce.statusCode, 403);
+
+    const rendered = await request(server, packageEngineServer.MOTION_GRAPHICS_RENDER_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: cardId } });
+    assert.equal(rendered.statusCode, 200);
+    const d = unwrap(rendered);
+    assert.equal(d.render.status, "rendered");
+    const renderId = d.render.render_id;
+    // persisted to local state (reopen)
+    const reload = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_PROJECT_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(reload.project.cards[0].renders.length, 1);
+    assert.equal(reload.project.cards[0].current_render_id, renderId);
+    // render-status history
+    const st = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_RENDER_STATUS_API + "?id=" + encodeURIComponent(id) + "&card_id=" + encodeURIComponent(cardId)));
+    assert.equal(st.renders.length, 1);
+    assert.equal(st.status, "rendered");
+    // media serve (path-guarded)
+    const addr = server.address();
+    const media = await new Promise((resolve) => {
+      http.get({ hostname: "127.0.0.1", port: addr.port, path: packageEngineServer.MOTION_GRAPHICS_MEDIA_API + "?id=" + encodeURIComponent(id) + "&render_id=" + encodeURIComponent(renderId) }, (r) => {
+        const chunks = []; r.on("data", (c) => chunks.push(c)); r.on("end", () => resolve({ status: r.statusCode, type: r.headers["content-type"], bytes: Buffer.concat(chunks).length }));
+      });
+    });
+    assert.equal(media.status, 200);
+    assert.match(media.type, /video\/mp4/);
+    assert.ok(media.bytes >= 1);
+    // unknown render id -> 404; bad render id -> 400
+    const unknown = await request(server, packageEngineServer.MOTION_GRAPHICS_MEDIA_API + "?id=" + encodeURIComponent(id) + "&render_id=r-99999999");
+    assert.equal(unknown.statusCode, 404);
+    const badid = await request(server, packageEngineServer.MOTION_GRAPHICS_MEDIA_API + "?id=" + encodeURIComponent(id) + "&render_id=" + encodeURIComponent("../../etc"));
+    assert.equal(badid.statusCode, 400);
+    // state root untouched by media (state has no absolute media path)
+    assert.doesNotMatch(fs.readFileSync(path.join(root, id, "motion-graphics.json"), "utf8"), /\/mnt\/vidnas/);
+    void mediaRoot;
+  } finally { await close(server); }
+});
+
+test("mg-api: render failure persists a failed record and returns an error (honest)", async () => {
+  const { server } = mgServerR(failRunner());
+  await listen(server);
+  try {
+    const created = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_PROJECTS_API, { method: "POST", headers: writeHeaders(), body: { title: "F" } }));
+    const id = created.project.project_id;
+    const add = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, type: "title" } }));
+    const cardId = add.card.card_id;
+    await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_PARAMS_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: cardId, params: { title: "x" } } });
+    const res = await request(server, packageEngineServer.MOTION_GRAPHICS_RENDER_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: cardId } });
+    assert.notEqual(res.statusCode, 200);
+    assert.match((res.body && res.body.error) || "", /hyperframes not found/);
+    // failed record persisted
+    const st = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_RENDER_STATUS_API + "?id=" + encodeURIComponent(id) + "&card_id=" + encodeURIComponent(cardId)));
+    assert.equal(st.renders.length, 1);
+    assert.equal(st.renders[0].status, "failed");
+  } finally { await close(server); }
+});
+
+test("mg-api: rendering a Remotion-engine card is refused (400), no Remotion attempted", async () => {
+  let called = false;
+  const { server } = mgServerR(function () { called = true; return { ok: true }; });
+  await listen(server);
+  try {
+    const created = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_PROJECTS_API, { method: "POST", headers: writeHeaders(), body: { title: "Rmt" } }));
+    const id = created.project.project_id;
+    const add = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, type: "title" } }));
+    const cardId = add.card.card_id;
+    await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_PARAMS_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: cardId, params: { title: "x" }, engine: "remotion" } });
+    const res = await request(server, packageEngineServer.MOTION_GRAPHICS_RENDER_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: cardId } });
+    assert.equal(res.statusCode, 400);
+    assert.match((res.body && res.body.error) || "", /Remotion render adapter is a later slice/i);
+    assert.equal(called, false, "the HyperFrames runner is never invoked for a Remotion card");
+  } finally { await close(server); }
+});
+
+test("mg-api: render-card rejects unknown project/card", async () => {
+  const { server } = mgServerR(stubRunner());
+  await listen(server);
+  try {
+    const noProj = await request(server, packageEngineServer.MOTION_GRAPHICS_RENDER_CARD_API, { method: "POST", headers: writeHeaders(), body: { id: "nope-00000000", card_id: "card-000000" } });
+    assert.equal(noProj.statusCode, 404);
+  } finally { await close(server); }
+});
+
+test("motion-graphics-studio.html: render button wired to the job; history + Remotion-later note", async () => {
+  const { server } = mgServerR(stubRunner());
+  await listen(server);
+  try {
+    const res = await request(server, "/motion-graphics-studio.html");
+    assert.equal(res.statusCode, 200);
+    assert.match(res.raw, /RENDER_CARD_API\s*=\s*'\/api\/motion-graphics\/render-card'/);
+    assert.match(res.raw, /id="btn-render"[^>]*>Render selected card</);
+    assert.match(res.raw, /id="render-history"/);
+    assert.match(res.raw, /Remotion render adapter is a later slice/);
+    assert.match(res.raw, /MEDIA_API\s*=\s*'\/api\/motion-graphics\/media'/);
+  } finally { await close(server); }
+});

@@ -73,6 +73,9 @@ const MOTION_GRAPHICS_SOURCE_API = '/api/motion-graphics/source';
 const MOTION_GRAPHICS_CARD_API = '/api/motion-graphics/card';
 const MOTION_GRAPHICS_CARD_PARAMS_API = '/api/motion-graphics/card-params';
 const MOTION_GRAPHICS_PREVIEW_API = '/api/motion-graphics/preview';
+const MOTION_GRAPHICS_RENDER_CARD_API = '/api/motion-graphics/render-card';
+const MOTION_GRAPHICS_RENDER_STATUS_API = '/api/motion-graphics/render-status';
+const MOTION_GRAPHICS_MEDIA_API = '/api/motion-graphics/media';
 const FINAL_REVIEW_API = '/api/package-runs/final-review';
 const EXPORT_CHECKLIST_API = '/api/package-runs/export-checklist';
 const PUBLICATION_METADATA_API = '/api/package-runs/publication-metadata';
@@ -293,6 +296,7 @@ const superFocusRouter = require('./super-focus-router.js');
 const scriptEvaluator = require('./script-evaluator.js');
 const motionGraphicsState = require('./motion-graphics-state.js');
 const motionGraphicsTemplates = require('./motion-graphics-templates.js');
+const motionGraphicsRenderers = require('./motion-graphics-renderers.js');
 // Super Focus keeps its own local, file-backed project state (never on VIDNAS).
 // Root is env-overridable so it can follow a different disk without code edits.
 const SUPER_FOCUS_ROOT = process.env.SUPER_FOCUS_ROOT || path.join(ROOT, 'super-focus-projects');
@@ -10383,6 +10387,9 @@ function createServer(options = {}) {
     const sfRoot = serverOptions.superFocusRoot || SUPER_FOCUS_ROOT;
     const sfMediaRoot = serverOptions.superFocusMediaRoot || SUPER_FOCUS_MEDIA_ROOT;
     const mgOpts = { root: serverOptions.motionGraphicsRoot || undefined }; // undefined → module default (env/local dir)
+    const mgMediaRoot = serverOptions.motionGraphicsMediaRoot || MOTION_GRAPHICS_MEDIA_ROOT;
+    // Injectable HyperFrames runner (tests pass a stub; default reuses the lane's wrapper).
+    const mgRunRender = serverOptions.hyperframesRenderer || runHyperframesRenderCommand;
 
     if (req.method === 'GET' && url.pathname === SUPER_FOCUS_PROJECTS_API) {
       try {
@@ -13086,6 +13093,59 @@ function createServer(options = {}) {
       return;
     }
 
+    // Render a selected card via HyperFrames into the media namespace. Explicit
+    // operator action only; synchronous for this slice; never auto-approves.
+    if (req.method === 'POST' && url.pathname === MOTION_GRAPHICS_RENDER_CARD_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Motion Graphics render-card API' });
+          const id = payload.id || '';
+          const cardId = payload.card_id || '';
+          const state = motionGraphicsState.loadProject(id, mgOpts);
+          const card = motionGraphicsState.findCard(state, cardId);
+          if (!card) { const e = new Error('Card not found.'); e.statusCode = 404; throw e; }
+          const out = motionGraphicsRenderers.renderCard(
+            { project: state, card },
+            { mediaRoot: mgMediaRoot, runRender: mgRunRender }
+          );
+          const saved = motionGraphicsState.recordCardRender(id, cardId, out.record, mgOpts);
+          if (!out.ok) {
+            // Failed render is persisted honestly, then surfaced as an error.
+            sendError(res, out.statusCode || 500, out.record.error || 'HyperFrames render failed.', 'motion-graphics-render-failed', { render: out.record, card: saved.card });
+            return;
+          }
+          sendJSON(res, 200, { project: saved.state, card: saved.card, render: out.record });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'motion-graphics-render-error'));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === MOTION_GRAPHICS_RENDER_STATUS_API) {
+      try {
+        const id = url.searchParams.get('id') || '';
+        const cardId = url.searchParams.get('card_id') || '';
+        const state = motionGraphicsState.loadProject(id, mgOpts);
+        const card = motionGraphicsState.findCard(state, cardId);
+        if (!card) { sendError(res, 404, 'Card not found.', 'motion-graphics-render-status-missing'); return; }
+        sendJSON(res, 200, { project_id: state.project_id, card_id: card.card_id, status: card.status, current_render_id: card.current_render_id || null, renders: card.renders || [] });
+      } catch (error) { sendError(res, error.statusCode || 500, error.message, 'motion-graphics-render-status-error'); }
+      return;
+    }
+
+    // Serve a rendered MP4, guarded to the project's own media dir + render id.
+    if (req.method === 'GET' && url.pathname === MOTION_GRAPHICS_MEDIA_API) {
+      try {
+        const id = url.searchParams.get('id') || '';
+        const renderId = url.searchParams.get('render_id') || '';
+        const state = motionGraphicsState.loadProject(id, mgOpts);
+        const filePath = motionGraphicsRenderers.resolveRenderMediaFile(state, renderId, { mediaRoot: mgMediaRoot });
+        if (!filePath) { sendError(res, 404, 'Render not found.', 'motion-graphics-media-missing'); return; }
+        res.writeHead(200, { 'Content-Type': 'video/mp4', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+        fs.createReadStream(filePath).pipe(res);
+      } catch (error) { sendError(res, error.statusCode || 500, error.message, 'motion-graphics-media-error'); }
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === HYPERFRAMES_STATUS_API) {
       try {
         sendJSON(res, 200, discoverHyperframesCompositions({ runId: url.searchParams.get('runId') || '' }, { root: serverOptions.root || ROOT }));
@@ -13572,6 +13632,9 @@ module.exports = {
   MOTION_GRAPHICS_CARD_API,
   MOTION_GRAPHICS_CARD_PARAMS_API,
   MOTION_GRAPHICS_PREVIEW_API,
+  MOTION_GRAPHICS_RENDER_CARD_API,
+  MOTION_GRAPHICS_RENDER_STATUS_API,
+  MOTION_GRAPHICS_MEDIA_API,
   IMAGE_PROMPTS_READ_API,
   IMAGE_PROMPTS_SAVE_API,
   IMAGE_PROMPTS_VALIDATE_API,

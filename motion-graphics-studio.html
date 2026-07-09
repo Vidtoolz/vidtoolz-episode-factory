@@ -122,11 +122,12 @@
         </div>
         <div class="row">
           <button class="primary" id="btn-save-card">Save changes</button>
-          <button id="btn-render" disabled title="Rendering ships in the next slice">Render selected card</button>
+          <button id="btn-render">Render selected card</button>
           <span class="status" id="card-status"></span>
         </div>
         <div class="later-note" id="candidate-note"></div>
-        <div class="later-note">Rendering (HyperFrames) is added in the next slice. This slice designs and previews cards only.</div>
+        <div class="later-note" id="render-engine-note"></div>
+        <div id="render-history"></div>
       </div>
 
       <!-- Preview -->
@@ -149,6 +150,9 @@
   var CARD_API = '/api/motion-graphics/card';
   var CARD_PARAMS_API = '/api/motion-graphics/card-params';
   var PREVIEW_API = '/api/motion-graphics/preview';
+  var RENDER_CARD_API = '/api/motion-graphics/render-card';
+  var RENDER_STATUS_API = '/api/motion-graphics/render-status';
+  var MEDIA_API = '/api/motion-graphics/media';
 
   var nonce = null, nonceHeader = 'x-vidtoolz-local-write-nonce';
   var TEMPLATES = [], currentProject = null, currentCardId = null;
@@ -252,8 +256,46 @@
     el('engine-note').textContent=c.recommendation_reason||'';
     el('candidate-note').textContent=c.candidate_only?('Candidate-only: '+((TEMPLATES.find(function(t){return t.type===c.type;})||{}).note||'not validated for Resolve-ready alpha.')):'';
     el('fmt-duration').value=c.format.duration_seconds; el('fmt-fps').value=c.format.fps; el('fmt-size').value=c.format.width+'x'+c.format.height;
-    renderParamFields(c); renderCardList(); refreshPreview();
+    renderParamFields(c); renderCardList(); refreshPreview(); updateRenderControls(c); renderHistory(c);
   }
+  function isRemotion(){ return el('card-engine').value==='remotion'; }
+  function updateRenderControls(c){
+    var note=el('render-engine-note');
+    if(isRemotion()){ el('btn-render').disabled=true; note.textContent='Remotion render adapter is a later slice. Choose HyperFrames (or Recommended) to render this card.'; }
+    else { el('btn-render').disabled=false; note.textContent='HyperFrames renders locally into the media namespace on your click. Nothing is auto-approved.'; }
+  }
+  el('card-engine').addEventListener('change',function(){ var c=cardById(currentCardId); if(c) updateRenderControls(c); });
+  function renderHistory(c){
+    var wrap=el('render-history'); wrap.innerHTML='';
+    var rs=(c&&c.renders)||[]; if(!rs.length){ return; }
+    var h='<label>Render history</label>';
+    rs.slice().reverse().forEach(function(r){
+      var mediaUrl=MEDIA_API+'?id='+encodeURIComponent(currentProject.project_id)+'&render_id='+encodeURIComponent(r.render_id);
+      h+='<div class="item" style="margin-bottom:6px">'
+        +'<div class="t">'+esc(r.render_id)+' · '+esc(r.status)+' · '+esc(r.engine)+' · '+esc(r.created_at||'')+'</div>';
+      if(r.status==='rendered'){
+        h+='<video src="'+mediaUrl+'" controls style="width:100%;max-height:38vh;background:#000;border-radius:8px;margin-top:6px"></video>'
+          +'<div class="row"><button data-copy="'+esc(r.path||'')+'" class="btn-copypath">Copy path</button><span class="t">'+esc(r.path||'')+'</span></div>';
+      } else { h+='<div class="status err">'+esc(r.error||'render failed')+'</div>'; }
+      h+='</div>';
+    });
+    wrap.innerHTML=h;
+    Array.prototype.forEach.call(wrap.querySelectorAll('.btn-copypath'),function(b){ b.addEventListener('click',function(){ copyText(b.getAttribute('data-copy')); setStatus(el('card-status'),'Path copied ✓','ok'); }); });
+  }
+  function copyText(t){ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t); } }
+
+  el('btn-render').addEventListener('click',function(){
+    if(!currentProject||!currentCardId) return;
+    if(isRemotion()){ setStatus(el('card-status'),'Remotion render adapter is a later slice.','warn'); return; }
+    var btn=this; btn.disabled=true; setStatus(el('card-status'),'Rendering… (HyperFrames, local)');
+    apiPost(RENDER_CARD_API,{id:currentProject.project_id,card_id:currentCardId}).then(function(res){
+      btn.disabled=false;
+      if(!res.ok){ setStatus(el('card-status'),(res.body&&res.body.error)||'Render failed','err'); if(res.body&&res.body.card){ currentProject.cards=currentProject.cards.map(function(c){return c.card_id===currentCardId?res.body.card:c;}); renderHistory(cardById(currentCardId)); } return; }
+      var d=unwrap(res.body); currentProject=d.project;
+      setStatus(el('card-status'),'Rendered ✓ '+esc(d.render.render_id),'ok');
+      renderCardList(); renderHistory(cardById(currentCardId));
+    }).catch(function(){ btn.disabled=false; setStatus(el('card-status'),'Render failed','err'); });
+  });
   function renderParamFields(c){
     var wrap=el('param-fields'); wrap.innerHTML='';
     var tpl=TEMPLATES.find(function(t){return t.type===c.type;}); if(!tpl) return;

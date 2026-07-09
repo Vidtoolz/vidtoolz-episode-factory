@@ -62,6 +62,31 @@ Later: checklist, framework, timeline, outro, quote, chart, chapter cards.
   MP4 via HyperFrames into the media namespace with a manifest/provenance record.
   Nothing auto-renders; there is no hidden approval.
 
+## Rendering (Slice 2 — HyperFrames)
+Rendering is **explicit** (operator clicks *Render selected card*), **synchronous**
+for now, **local-only**, and **never auto-approved**.
+- The card's deterministic `buildCardHtml` is written to
+  `<media_root>/<project_id>/sources/<card_id>.html` (with an `index.html`
+  project marker); the studio reuses the **same** HyperFrames command wrapper as
+  the package-run lane (`hyperframes render <projectDir> -c sources/<card>.html
+  -o …`) — it is not a second HyperFrames integration, only a different output
+  location.
+- Output MP4 → `<media_root>/<project_id>/renders/<card_id>/<render_id>.mp4`;
+  provenance → `manifests/<render_id>.json` (command, engine, format, paths,
+  timestamps — **paths only, no binaries**).
+- A **render record** is appended to the card in local state
+  (`render_id`, `status: rendered|failed`, `path`, `source_path`, `command`,
+  format, `created_at`, `error`). Local state stores **relative** media paths
+  only — never absolute VIDNAS paths.
+- Only **HyperFrames** (or *Recommended*, which resolves to HyperFrames) renders.
+  A Remotion-engine card is refused with *"Remotion render adapter is a later
+  slice"* — no Remotion is invoked.
+- **API:** `POST /api/motion-graphics/render-card {id,card_id}` (nonce-gated;
+  failed renders persist a failed record and return an error — no silent
+  success); `GET /api/motion-graphics/render-status?id=&card_id=` (read-only
+  history); `GET /api/motion-graphics/media?id=&render_id=` (path-guarded MP4
+  serve; rejects unknown/traversal render ids). No cloud/Lambda.
+
 ## API (Slice 1)
 All reads are path-guarded; all writes are nonce + local-Host + Origin gated.
 - `GET /api/motion-graphics/templates` — card catalog + defaults.

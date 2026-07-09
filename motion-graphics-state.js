@@ -162,9 +162,24 @@ function updateCardParams(projectId, cardId, patch = {}, options = {}) {
   return { state, card };
 }
 
+// Persist a render record onto a card (never auto-approves; never touches other
+// cards). Sets the card's current_render_id and status from the record.
+function recordCardRender(projectId, cardId, record, options = {}) {
+  const st = loadProject(projectId, options);
+  const card = findCard(st, cardId);
+  if (!card) { const e = new Error('Card not found.'); e.statusCode = 404; throw e; }
+  if (!Array.isArray(card.renders)) card.renders = [];
+  card.renders.push(record);
+  card.current_render_id = record.render_id;
+  card.status = record.status === 'rendered' ? 'rendered' : 'failed';
+  saveState(st, options);
+  return { state: st, card };
+}
+
 module.exports = {
   SCHEMA_VERSION,
   STATE_FILENAME,
+  recordCardRender,
   ID_RE,
   CARD_ID_RE,
   slugify,
