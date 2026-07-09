@@ -82,3 +82,52 @@ Reverting the script to the evaluated text clears the stale flag.
 - Pure scoring/prompt/parse/normalize logic lives in `script-evaluator.js`
   (fully unit-tested, no I/O). Persistence and staleness live in
   `super-focus.js`.
+
+## Three-panel workspace (`script-evaluator.html`)
+
+A standalone side-by-side workspace for evaluating and rewriting a script that is
+**not** tied to a Super Focus project. Open `http://127.0.0.1:8010/script-evaluator.html`.
+
+- **Panel 1 — Original script.** Paste/edit the script, click **Generate
+  evaluation**. The original text stays editable in the textarea; a highlighted
+  rendered view is shown alongside it — **green** = approved passages, **red** =
+  needs revision (hover for the fix) — plus a compact summary (verdict, headline
+  scores, key suggestions). Empty script → "Paste a script first."
+- **Panel 2 — Corrected version.** Click **Generate corrected script** to get a
+  revised draft from the original + evaluation (requires an evaluation first:
+  "Generate evaluation first."). It is editable and never overwrites Panel 1 or 3.
+- **Panel 3 — Manual final script.** Starts empty, fully editable. Copy/paste the
+  parts you want from Panel 1/2, edit, then **Save changes**.
+
+Everything runs on **local Ollama** (no cloud, no fallback), one click at a time.
+
+### Highlighting (safe by construction)
+- Green/red spans are derived from the evaluator's per-sentence status
+  (`strong|okay` → approved, `revise|cut` → disapproved) and mapped back to the
+  **exact** original text by forward-scanning offsets (`script-highlight.js`).
+- Spans are normalized to a gap-free, **non-overlapping** tiling of the script;
+  overlaps are clipped and out-of-range spans dropped — corrupt input can't
+  produce corrupt output.
+- A passage that can't be located exactly is **not invented as a span** — its
+  feedback goes into a notes list instead.
+- The rendered HTML is produced by escaping every slice of the original text and
+  every model-authored reason/suggestion before it reaches the DOM, so a script
+  containing `<script>`/`<img onerror>` can never inject markup.
+
+### Save behavior
+- **Save changes** writes only the manually-assembled final script to a
+  **standalone workspace store** (`script-evaluator-workspace/<id>.json`, atomic
+  write, local filesystem). It never touches `super-focus.json`, an original
+  source script, or any evaluation. The workspace id is a strict slug validated
+  server-side (path-traversal safe).
+
+### API (all nonce + local-Host + Origin gated; local Ollama only)
+- **POST** `/api/script-evaluator/evaluate` `{script}` → `{summary, verdict,
+  total_score, scores, spans, highlighted_html, approved, disapproved,
+  suggested_corrections, notes, evaluation, provider}`. Stateless (persists
+  nothing). 400 empty, 502 unparseable, 503 Ollama down.
+- **POST** `/api/script-evaluator/rewrite` `{script, evaluation}` →
+  `{corrected_script, notes, provider}`. Requires both; persists nothing.
+- **POST** `/api/script-evaluator/save-final` `{final_script, source, id?}` →
+  workspace store. 400 on empty.
+- **GET** `/api/script-evaluator/final?id=` — read-only load.

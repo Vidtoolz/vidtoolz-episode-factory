@@ -7,6 +7,9 @@
 # Super Focus local, file-backed project state (never committed; never on VIDNAS)
 /super-focus-projects/
 
+# Script Evaluator three-panel workspace: operator-assembled final scripts (local only)
+/script-evaluator-workspace/
+
 # Dependencies
 node_modules/
 

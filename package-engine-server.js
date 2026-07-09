@@ -103,6 +103,11 @@ const SUPER_FOCUS_PROJECT_API = '/api/super-focus/project';
 const SUPER_FOCUS_PROVIDERS_API = '/api/super-focus/providers';
 const SUPER_FOCUS_EVALUATE_SCRIPT_API = '/api/super-focus/evaluate-script';
 const SUPER_FOCUS_SCRIPT_EVALUATION_API = '/api/super-focus/script-evaluation';
+// Standalone three-panel Script Evaluator workspace (raw text in, no project).
+const SCRIPT_EVALUATOR_EVALUATE_API = '/api/script-evaluator/evaluate';
+const SCRIPT_EVALUATOR_REWRITE_API = '/api/script-evaluator/rewrite';
+const SCRIPT_EVALUATOR_SAVE_FINAL_API = '/api/script-evaluator/save-final';
+const SCRIPT_EVALUATOR_FINAL_API = '/api/script-evaluator/final';
 const SUPER_FOCUS_OLLAMA_BENCHMARK_API = '/api/super-focus/ollama-benchmark';
 const SUPER_FOCUS_TITLE_API = '/api/super-focus/title';
 const SUPER_FOCUS_SCRIPT_API = '/api/super-focus/script';
@@ -282,6 +287,9 @@ const superFocusPrompts = require('./super-focus-prompts.js');
 const superFocusMedia = require('./super-focus-media.js');
 const superFocusRouter = require('./super-focus-router.js');
 const scriptEvaluator = require('./script-evaluator.js');
+const scriptHighlight = require('./script-highlight.js');
+const scriptRewrite = require('./script-rewrite.js');
+const scriptEvaluatorWorkspace = require('./script-evaluator-workspace.js');
 // Super Focus keeps its own local, file-backed project state (never on VIDNAS).
 // Root is env-overridable so it can follow a different disk without code edits.
 const SUPER_FOCUS_ROOT = process.env.SUPER_FOCUS_ROOT || path.join(ROOT, 'super-focus-projects');
@@ -10368,6 +10376,7 @@ function createServer(options = {}) {
     // create/list/load/save-title/save-script only. All writes are nonce-gated.
     const sfRoot = serverOptions.superFocusRoot || SUPER_FOCUS_ROOT;
     const sfMediaRoot = serverOptions.superFocusMediaRoot || SUPER_FOCUS_MEDIA_ROOT;
+    const seWorkspaceRoot = serverOptions.scriptEvaluatorWorkspaceRoot || undefined;
 
     if (req.method === 'GET' && url.pathname === SUPER_FOCUS_PROJECTS_API) {
       try {
@@ -10473,6 +10482,106 @@ function createServer(options = {}) {
         sendJSON(res, 200, { project_id: id, script_evaluation: evaluation || null, stale: evaluation ? Boolean(evaluation.stale) : false });
       } catch (error) {
         sendError(res, error.statusCode || 500, error.message, 'super-focus-script-evaluation-error');
+      }
+      return;
+    }
+
+    // ── Standalone three-panel Script Evaluator workspace ─────────────────────
+    // Stateless evaluate/rewrite on RAW pasted text (no project id, nothing
+    // persisted); save-final writes ONLY to the workspace store. Local Ollama
+    // only (no fallback). All writes nonce + Host + Origin gated.
+
+    // Panel 1: evaluate raw script text → summary/scores + safe green/red spans.
+    if (req.method === 'POST' && url.pathname === SCRIPT_EVALUATOR_EVALUATE_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Script Evaluator evaluate API' });
+          const script = typeof payload.script === 'string' ? payload.script : '';
+          if (!script.trim()) { const e = new Error('Paste a script first.'); e.statusCode = 400; throw e; }
+          const sentences = scriptEvaluator.splitScriptIntoSentences(script);
+          const prompt = scriptEvaluator.buildScriptEvaluationPrompt(script, sentences, {});
+          const gen = await superFocusGenerate(
+            { system: prompt.system, user: prompt.user, schema: prompt.schema, task: 'script_evaluation' },
+            options
+          );
+          const parsed = scriptEvaluator.parseScriptEvaluationOutput(gen.content); // 502 on garbage
+          const normalized = scriptEvaluator.normalizeScriptEvaluation(parsed, sentences);
+          const evaluation = scriptEvaluator.scoreScriptEvaluation(normalized);
+          const model = { provider: 'ollama', lane: 'script_evaluation', model: gen.provider ? gen.provider.model : null, host: gen.provider ? gen.provider.id : null };
+          const hl = scriptHighlight.buildHighlightModel(script, evaluation);
+          sendJSON(res, 200, {
+            summary: evaluation.summary || '',
+            verdict: evaluation.verdict || null,
+            total_score: evaluation.total_score != null ? evaluation.total_score : null,
+            scores: scriptHighlight.summarizeScores(evaluation),
+            spans: hl.spans,
+            highlighted_html: scriptHighlight.renderHighlightedHtml(script, hl.spans),
+            approved: hl.approved,
+            disapproved: hl.disapproved,
+            suggested_corrections: (Array.isArray(evaluation.fix_plan) ? evaluation.fix_plan : []).concat(evaluation.next_edit ? [evaluation.next_edit] : []),
+            notes: hl.notes,
+            evaluation, // full structured object, echoed back for the rewrite step
+            provider: gen.provider,
+            model,
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'script-evaluator-evaluate-error'));
+      return;
+    }
+
+    // Panel 2: rewrite raw script using the evaluation. Requires both. Never
+    // persists; the corrected script is returned only (operator copies it).
+    if (req.method === 'POST' && url.pathname === SCRIPT_EVALUATOR_REWRITE_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Script Evaluator rewrite API' });
+          const script = typeof payload.script === 'string' ? payload.script : '';
+          if (!script.trim()) { const e = new Error('Paste a script first.'); e.statusCode = 400; throw e; }
+          const evaluation = payload.evaluation && typeof payload.evaluation === 'object' ? payload.evaluation : null;
+          if (!evaluation) { const e = new Error('Generate evaluation first.'); e.statusCode = 400; throw e; }
+          const prompt = scriptRewrite.buildRewritePrompt(script, evaluation);
+          const gen = await superFocusGenerate(
+            { system: prompt.system, user: prompt.user, schema: prompt.schema, task: 'script_rewrite' },
+            options
+          );
+          const out = scriptRewrite.parseRewriteOutput(gen.content); // 502 on unusable output
+          sendJSON(res, 200, {
+            corrected_script: out.corrected_script,
+            notes: out.notes,
+            provider: gen.provider,
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'script-evaluator-rewrite-error'));
+      return;
+    }
+
+    // Panel 3: persist the manually-assembled final script to the workspace
+    // store. Never touches super-focus.json, the original, or any evaluation.
+    if (req.method === 'POST' && url.pathname === SCRIPT_EVALUATOR_SAVE_FINAL_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Script Evaluator save-final API' });
+          const finalScript = typeof payload.final_script === 'string' ? payload.final_script : '';
+          if (!finalScript.trim()) { const e = new Error('Final script is empty.'); e.statusCode = 400; throw e; }
+          const id = payload.id || payload.workspace_id || 'default';
+          const record = scriptEvaluatorWorkspace.saveFinalScript(
+            { id, finalScript, source: payload.source || 'script-evaluator-three-panel' },
+            { workspaceRoot: seWorkspaceRoot }
+          );
+          sendJSON(res, 200, { saved: true, id: record.id, saved_at: record.saved_at, chars: record.final_script.length });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'script-evaluator-save-final-error'));
+      return;
+    }
+
+    // Read-only: load a previously saved final script (path-guarded id).
+    if (req.method === 'GET' && url.pathname === SCRIPT_EVALUATOR_FINAL_API) {
+      try {
+        const id = url.searchParams.get('id') || 'default';
+        const record = scriptEvaluatorWorkspace.readFinalScript(id, { workspaceRoot: seWorkspaceRoot });
+        sendJSON(res, 200, { id, final: record || null });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'script-evaluator-final-error');
       }
       return;
     }
@@ -13694,6 +13803,10 @@ module.exports = {
   SUPER_FOCUS_OLLAMA_BENCHMARK_API,
   SUPER_FOCUS_EVALUATE_SCRIPT_API,
   SUPER_FOCUS_SCRIPT_EVALUATION_API,
+  SCRIPT_EVALUATOR_EVALUATE_API,
+  SCRIPT_EVALUATOR_REWRITE_API,
+  SCRIPT_EVALUATOR_SAVE_FINAL_API,
+  SCRIPT_EVALUATOR_FINAL_API,
   SUPER_FOCUS_TITLE_API,
   SUPER_FOCUS_SCRIPT_API,
   SUPER_FOCUS_GENERATE_TOPIC_API,
