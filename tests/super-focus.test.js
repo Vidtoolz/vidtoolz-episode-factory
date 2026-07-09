@@ -3268,6 +3268,24 @@ test("super-focus.html: toggling a section is unsaved-edit safe (no reload / no 
   assert.doesNotMatch(fnBody(SF_HTML, "setSectionCollapsed"), /innerHTML/);
 });
 
+test("super-focus.html: provider and media error panels escape API text before innerHTML", () => {
+  const renderProviders = fnBody(SF_HTML, "renderProviders");
+  assert.match(renderProviders, /esc\(d\.routing_mode\)/);
+  assert.match(renderProviders, /esc\(d\.image_provider_mode \|\| 'auto'\)/);
+  assert.match(renderProviders, /esc\(restart\.vidnux_comfyui\.command\)/);
+  assert.match(renderProviders, /esc\(img\.message\)/);
+  assert.match(renderProviders, /esc\(r\[1\]\)/);
+
+  const benchLine = fnBody(SF_HTML, "benchLine");
+  assert.match(benchLine, /esc\(b\.label\)/);
+  assert.match(benchLine, /esc\(b\.model\)/);
+  assert.match(benchLine, /esc\(b\.error \|\| 'failed'\)/);
+
+  const setThumb = fnBody(SF_HTML, "setThumb");
+  assert.match(setThumb, /failed\.textContent = 'failed: ' \+/);
+  assert.doesNotMatch(setThumb, /failed:[^;]*row\.error[^;]*innerHTML/);
+});
+
 test("super-focus.html: evaluator focus route forces the Script step open (not trapped collapsed)", () => {
   const body = fnBody(SF_HTML, "openProject");
   assert.match(body, /if \(evalFocus\)/);

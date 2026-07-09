@@ -646,6 +646,12 @@
       el.classList.toggle('err', !!isErr);
     }
 
+    function esc(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+      });
+    }
+
     // Compact note about which Ollama provider was used, for generation statuses.
     function providerNote(p) {
       if (!p || !p.label) return '';
@@ -672,14 +678,14 @@
       ];
       var restart = d.restart || {};
       var restartHtml = '';
-      if (restart.vidnux_comfyui) restartHtml += '<div class="prow"><span class="pname">Restart local ComfyUI</span><span>manual: <code>' + restart.vidnux_comfyui.command + '</code></span></div>';
+      if (restart.vidnux_comfyui) restartHtml += '<div class="prow"><span class="pname">Restart local ComfyUI</span><span>manual: <code>' + esc(restart.vidnux_comfyui.command) + '</code></span></div>';
       if (restart.presto_comfyui) restartHtml += '<div class="prow"><span class="pname">Restart PRESTO ComfyUI</span><span>manual (not configured)</span></div>';
-      panel.innerHTML = '<div class="prow"><span class="pname">Text routing mode</span><span>' + d.routing_mode + '</span></div>' +
-        '<div class="prow"><span class="pname">Image provider mode</span><span>' + (d.image_provider_mode || 'auto') + '</span></div>' +
+      panel.innerHTML = '<div class="prow"><span class="pname">Text routing mode</span><span>' + esc(d.routing_mode) + '</span></div>' +
+        '<div class="prow"><span class="pname">Image provider mode</span><span>' + esc(d.image_provider_mode || 'auto') + '</span></div>' +
         rows.map(function (r) {
-          return '<div class="prow"><span class="pname">' + r[0] + '</span><span class="pstat ' + r[2] + '">' + r[1] + '</span></div>';
+          return '<div class="prow"><span class="pname">' + esc(r[0]) + '</span><span class="pstat ' + esc(r[2]) + '">' + esc(r[1]) + '</span></div>';
         }).join('') +
-        (img.message ? '<div class="prow"><span class="pname"></span><span class="pname" style="text-align:right;">' + img.message + '</span></div>' : '') +
+        (img.message ? '<div class="prow"><span class="pname"></span><span class="pname" style="text-align:right;">' + esc(img.message) + '</span></div>' : '') +
         restartHtml;
     }
     document.getElementById('check-providers').addEventListener('click', function () {
@@ -695,19 +701,19 @@
     // Explicit model performance test (measures real 1- and 3-prompt timing).
     function benchLine(b) {
       if (!b) return '';
-      if (!b.ok) return '<div class="prow"><span class="pname">' + b.label + '</span><span class="pstat bad">' + (b.error || 'failed') + '</span></div>';
-      return '<div class="prow"><span class="pname">' + b.label + ' (' + b.model + ')</span><span class="pstat ok">1 prompt ' + Math.round(b.one_prompt_ms / 1000) + 's · 3 prompts ' + Math.round(b.three_prompt_ms / 1000) + 's</span></div>';
+      if (!b.ok) return '<div class="prow"><span class="pname">' + esc(b.label) + '</span><span class="pstat bad">' + esc(b.error || 'failed') + '</span></div>';
+      return '<div class="prow"><span class="pname">' + esc(b.label) + ' (' + esc(b.model) + ')</span><span class="pstat ok">1 prompt ' + Math.round(b.one_prompt_ms / 1000) + 's · 3 prompts ' + Math.round(b.three_prompt_ms / 1000) + 's</span></div>';
     }
     document.getElementById('test-ollama').addEventListener('click', function () {
       var panel = document.getElementById('providers-panel');
       panel.classList.remove('hidden');
       panel.innerHTML = '<div class="prow"><span class="pname">Testing Ollama model… (this generates a few real prompts)</span></div>';
       apiGet(OLLAMA_BENCHMARK_API).then(function (res) {
-        if (!res.ok) { panel.innerHTML = '<div class="prow"><span class="pstat bad">Benchmark failed: ' + ((res.body && res.body.error) || 'error') + '</span></div>'; return; }
+        if (!res.ok) { panel.innerHTML = '<div class="prow"><span class="pstat bad">Benchmark failed: ' + esc((res.body && res.body.error) || 'error') + '</span></div>'; return; }
         var d = unwrap(res.body);
         var html = benchLine(d.vidnux) + benchLine(d.presto);
-        html += '<div class="prow"><span class="pname">Recommended chunk size</span><span>' + d.recommended_chunk_size + ' (current ' + d.chunk_size + ')</span></div>';
-        if (d.faster) html += '<div class="prow"><span class="pname">Faster for this task</span><span>' + d.faster + '</span></div>';
+        html += '<div class="prow"><span class="pname">Recommended chunk size</span><span>' + esc(d.recommended_chunk_size) + ' (current ' + esc(d.chunk_size) + ')</span></div>';
+        if (d.faster) html += '<div class="prow"><span class="pname">Faster for this task</span><span>' + esc(d.faster) + '</span></div>';
         panel.innerHTML = html;
       }).catch(function () { panel.innerHTML = '<div class="prow"><span class="pstat bad">Benchmark failed</span></div>'; });
     });
@@ -1125,7 +1131,11 @@
         }
         el.appendChild(buildImageControls(index));
       } else if (row.status === 'failed') {
-        el.innerHTML = '<span class="thumb-note err">failed: ' + (row.error ? String(row.error).slice(0, 80) : 'generation error') + '</span>';
+        el.innerHTML = '';
+        var failed = document.createElement('span');
+        failed.className = 'thumb-note err';
+        failed.textContent = 'failed: ' + (row.error ? String(row.error).slice(0, 80) : 'generation error');
+        el.appendChild(failed);
       } else if (row.status === 'missing_file') {
         el.innerHTML = '<span class="thumb-note err">manifest done but file missing</span>';
       } else {
