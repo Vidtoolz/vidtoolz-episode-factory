@@ -46,6 +46,7 @@ test("script-eval: prompt includes standard, rubric+weights, hard gates, and sen
   assert.match(req.user, /Do NOT pretend to verify the internet|Anti-fact-checking/i);
   assert.match(req.user, /PENALIZE generic glowing-AI/i);
   assert.match(req.user, /"sentence_id":1/); // deterministic id list embedded
+  assert.match(req.user, /put the EXACT id shown above in an "id" field/i);
   assert.match(req.user, /Do not invent extra sentence IDs/i);
   assert.ok(req.schema && req.schema.type === "object");
 });
@@ -135,6 +136,71 @@ test("script-eval: a failing hard gate caps a PRODUCE score at REVISE", () => {
   assert.equal(scored.verdict, "REVISE", "PRODUCE capped to REVISE by failing gate");
   assert.equal(scored.verdict_capped_by_gate, true);
   assert.ok(scored.warnings.some((w) => /capped at REVISE.*generates_useful_visuals/.test(w)));
+});
+
+// (11) robustness: categories keyed by "name" (not "id") are still matched.
+// Real qwen3:14b output uses {"name":"core_claim",...}; the old normalizer keyed
+// only on "id" and silently scored every category 0 -> a false REWRITE/0.
+test("script-eval: normalizer matches categories keyed by name (not id)", () => {
+  const sentences = ev.splitScriptIntoSentences("Hook. Claim.");
+  const parsed = fullModelOutput([1, 2]);
+  // Re-key every category object from id -> name, dropping id entirely.
+  parsed.categories = parsed.categories.map((c) => {
+    const { id, ...rest } = c; return Object.assign({ name: id }, rest);
+  });
+  const scored = ev.scoreScriptEvaluation(ev.normalizeScriptEvaluation(parsed, sentences));
+  assert.equal(scored.total_score, 100, "name-keyed categories score normally");
+  assert.equal(scored.verdict, "PRODUCE");
+  assert.ok(!scored.warnings.some((w) => /missing from model output/.test(w)), "no false 'missing category' warnings");
+});
+
+// (12) robustness: hard_gates returned positionally with NO id field.
+// Real qwen3:14b output returns [{status,reason,suggested_fix}, ...] in the
+// canonical gate order. Positional fallback must align them to the 3 gates.
+test("script-eval: normalizer aligns positional (id-less) hard_gates by order", () => {
+  const sentences = ev.splitScriptIntoSentences("Hook. Claim.");
+  const parsed = fullModelOutput([1, 2]);
+  parsed.hard_gates = [
+    { status: "pass", reason: "one sentence", suggested_fix: "" },
+    { status: "pass", reason: "reads aloud", suggested_fix: "" },
+    { status: "fail", reason: "generic robots", suggested_fix: "name a concrete object" },
+  ];
+  const norm = ev.normalizeScriptEvaluation(parsed, sentences);
+  assert.deepEqual(norm.hard_gates.map((g) => g.id),
+    ["central_claim_one_sentence", "speakable_naturally", "generates_useful_visuals"]);
+  assert.deepEqual(norm.hard_gates.map((g) => g.status), ["pass", "pass", "fail"]);
+  assert.equal(norm.hard_gates[2].suggested_fix, "name a concrete object");
+  assert.ok(!norm.warnings.some((w) => /hard gate .* missing/.test(w)), "no false 'missing gate' warnings");
+  // And the failing gate still caps the verdict.
+  const scored = ev.scoreScriptEvaluation(norm);
+  assert.equal(scored.verdict, "REVISE");
+  assert.equal(scored.verdict_capped_by_gate, true);
+});
+
+// (13) robustness: checklist keyed by "item" (not "id"). Old code defaulted all
+// 10 items to "warn" with no warning; the model's real statuses were dropped.
+test("script-eval: normalizer matches checklist keyed by item (not id)", () => {
+  const sentences = ev.splitScriptIntoSentences("Hook. Claim.");
+  const parsed = fullModelOutput([1, 2]);
+  parsed.checklist = parsed.checklist.map((c, i) => ({ item: c.id, status: i === 0 ? "fail" : "pass", reason: "r" }));
+  const norm = ev.normalizeScriptEvaluation(parsed, sentences);
+  assert.equal(norm.checklist[0].status, "fail", "model's real status is used, not the 'warn' default");
+  assert.ok(norm.checklist.slice(1).every((c) => c.status === "pass"));
+});
+
+// (14) partial keying must NOT trigger positional fallback (avoid mis-alignment):
+// if the model keyed some categories, an absent id genuinely means "missing".
+test("script-eval: keyed lists do not fall back to positional alignment", () => {
+  const sentences = ev.splitScriptIntoSentences("Hook. Claim.");
+  const parsed = fullModelOutput([1, 2]);
+  // Keep ids on all but core_claim; give core_claim a bogus id. It must be
+  // reported missing (score 0), NOT positionally back-filled from array[0].
+  parsed.categories = parsed.categories.map((c) =>
+    (c.id === "core_claim" ? Object.assign({}, c, { id: "totally_made_up", score: 100 }) : c));
+  const scored = ev.scoreScriptEvaluation(ev.normalizeScriptEvaluation(parsed, sentences));
+  const core = scored.categories.find((c) => c.id === "core_claim");
+  assert.equal(core.score, 0);
+  assert.ok(scored.warnings.some((w) => /category "core_claim" missing/.test(w)));
 });
 
 // bonus: end-to-end with a stubbed provider (no network) + empty-script guard

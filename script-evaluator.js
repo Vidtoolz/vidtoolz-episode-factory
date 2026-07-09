@@ -171,6 +171,8 @@ function buildScriptEvaluationPrompt(scriptText, sentenceList, options = {}) {
     '10-ITEM CHECKLIST (each: status pass|warn|fail + one-sentence reason):',
     ...checklistLines,
     '',
+    'In categories[], hard_gates[], and checklist[], put the EXACT id shown above in an "id" field on each object (e.g. {"id":"core_claim",...}). Keep them in the order listed.',
+    '',
     'RULES:',
     '- Anti-fact-checking: do NOT pretend to verify the internet. Flag claims as supportable / needs support / too broad / likely hype / unsupported as written.',
     '- Do NOT reward influencer / LinkedIn / corporate language — penalize it.',
@@ -267,15 +269,52 @@ function indexBy(list, key) {
   return map;
 }
 
+// Align a model-provided list of objects to canonical definitions (given IN
+// ORDER). Small local models are inconsistent about the identifier key: some
+// return `{"id": "core_claim"}`, some `{"name": "core_claim"}` or
+// `{"item": "..."}`, and some return an ordered list with NO id field at all
+// (relying on position, as the prompt numbers them). Match by any id-like key
+// first (case-insensitive); if the model exposed NO recognizable id keys, fall
+// back to positional alignment so we don't discard a perfectly good, ordered
+// evaluation over a key-name mismatch. Returns get(defId, index) -> src|null.
+function alignToDefs(list, idKeys) {
+  const arr = Array.isArray(list) ? list.filter((x) => x && typeof x === 'object') : [];
+  const byId = {};
+  let anyKeyed = false;
+  arr.forEach((item) => {
+    idKeys.forEach((k) => {
+      if (item[k] != null && String(item[k]).trim()) {
+        anyKeyed = true;
+        const norm = String(item[k]).trim().toLowerCase();
+        if (!(norm in byId)) byId[norm] = item;
+      }
+    });
+  });
+  return function get(defId, index) {
+    const hit = byId[String(defId).trim().toLowerCase()];
+    if (hit) return hit;
+    // Positional fallback ONLY when the model returned an unkeyed ordered list;
+    // if it keyed some rows, an absent id genuinely means "not evaluated".
+    if (!anyKeyed && arr[index]) return arr[index];
+    return null;
+  };
+}
+
 function normalizeScriptEvaluation(parsed, sentenceList) {
   const warnings = [];
   const p = parsed && typeof parsed === 'object' ? parsed : {};
 
-  // Categories can arrive as an array (with id) or an object keyed by id.
-  const catSource = Array.isArray(p.categories) ? indexBy(p.categories, 'id') : (p.categories && typeof p.categories === 'object' ? p.categories : {});
-  const categories = CATEGORIES.map((def) => {
-    const src = catSource[def.id] || {};
-    const missing = !catSource[def.id];
+  // Categories/gates/checklist: match by any id-like key the model used (id,
+  // name, category, item…) with a positional fallback for unkeyed ordered
+  // lists. An object keyed by id is also accepted (get() reads the array form;
+  // object form is handled below).
+  const catList = Array.isArray(p.categories) ? p.categories
+    : (p.categories && typeof p.categories === 'object'
+      ? Object.keys(p.categories).map((k) => Object.assign({ id: k }, p.categories[k])) : []);
+  const getCat = alignToDefs(catList, ['id', 'name', 'category', 'key']);
+  const categories = CATEGORIES.map((def, i) => {
+    const src = getCat(def.id, i) || {};
+    const missing = !getCat(def.id, i);
     if (missing) warnings.push(`category "${def.id}" missing from model output`);
     return {
       id: def.id,
@@ -290,23 +329,29 @@ function normalizeScriptEvaluation(parsed, sentenceList) {
     };
   });
 
-  const gateSource = Array.isArray(p.hard_gates) ? indexBy(p.hard_gates, 'id') : (p.hard_gates && typeof p.hard_gates === 'object' ? p.hard_gates : {});
-  const hard_gates = HARD_GATES.map((def) => {
-    const src = gateSource[def.id] || {};
-    const missing = !gateSource[def.id];
+  const gateList = Array.isArray(p.hard_gates) ? p.hard_gates
+    : (p.hard_gates && typeof p.hard_gates === 'object'
+      ? Object.keys(p.hard_gates).map((k) => Object.assign({ id: k }, p.hard_gates[k])) : []);
+  const getGate = alignToDefs(gateList, ['id', 'name', 'gate', 'key']);
+  const hard_gates = HARD_GATES.map((def, i) => {
+    const src = getGate(def.id, i) || {};
+    const missing = !getGate(def.id, i);
     if (missing) warnings.push(`hard gate "${def.id}" missing from model output`);
     return {
       id: def.id,
       label: def.label,
-      status: normStatus(src.status, GATE_STATUSES, missing ? 'warn' : 'warn'),
+      status: normStatus(src.status, GATE_STATUSES, 'warn'),
       reason: asStr(src.reason),
       suggested_fix: asStr(src.suggested_fix),
     };
   });
 
-  const checkSource = Array.isArray(p.checklist) ? indexBy(p.checklist, 'id') : (p.checklist && typeof p.checklist === 'object' ? p.checklist : {});
-  const checklist = CHECKLIST.map((def) => {
-    const src = checkSource[def.id] || {};
+  const checkList = Array.isArray(p.checklist) ? p.checklist
+    : (p.checklist && typeof p.checklist === 'object'
+      ? Object.keys(p.checklist).map((k) => Object.assign({ id: k }, p.checklist[k])) : []);
+  const getCheck = alignToDefs(checkList, ['id', 'item', 'name', 'key']);
+  const checklist = CHECKLIST.map((def, i) => {
+    const src = getCheck(def.id, i) || {};
     return {
       id: def.id,
       label: def.label,
