@@ -7546,6 +7546,7 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
   });
   const job = {
     process: child,
+    job_id: `pjob-${crypto.randomBytes(4).toString('hex')}`,
     packageId: config.packageId,
     lane: config.lane || 'aigen',
     comfyuiUrl: config.comfyuiUrl,
@@ -7580,6 +7581,7 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
   return {
     ok: true,
     job_started: true,
+    job_id: job.job_id,
     package_id: config.packageId,
     comfyui_url: config.comfyuiUrl,
     profile: config.profile,
@@ -7750,6 +7752,18 @@ async function pumpSuperFocusVideoQueue(id, ctx) {
   }
   const reach = ctx.options.prestoReachableCheck || ctx.options.reachableCheck || prestoComfyuiReachable;
   if (!(await reach(PRESTO_BASE_URL, ctx.options))) return { started: null, queue, blocked: 'unreachable' };
+  // The reachability probe is an await window during which another handler
+  // (a concurrent enqueue/cancel/pause, or another poll's pump) may have
+  // rewritten the queue file. readVideoQueue/writeVideoQueue is a non-atomic
+  // read-modify-write, so re-read the queue NOW and re-validate before launching
+  // — otherwise we would clobber those concurrent writes (lost update) or start
+  // a render for an item that was cancelled/paused mid-window.
+  const fresh = superFocusMedia.readVideoQueue(id, { mediaRoot: ctx.sfMediaRoot });
+  if (fresh.paused) return { started: null, queue: fresh, blocked: 'paused' };
+  if (currentPrestoJobStatus().active) return { started: null, queue: fresh, blocked: 'busy' };
+  if (fresh.items.some((it) => it.status === 'running')) return { started: null, queue: fresh, blocked: 'running' };
+  const freshItem = fresh.items.find((it) => it.item_id === next.item_id);
+  if (!freshItem || freshItem.status !== 'queued') return { started: null, queue: fresh, blocked: 'raced' };
   const materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, { mediaRoot: ctx.sfMediaRoot, rows: [el.row] });
   let job;
   try {
@@ -7757,27 +7771,28 @@ async function pumpSuperFocusVideoQueue(id, ctx) {
       projectId: id,
       profile: DEFAULT_PRESTO_PROFILE,
       comfyuiUrl: PRESTO_BASE_URL,
-      indexes: [next.index],
+      indexes: [freshItem.index],
       spawn: ctx.options.spawn,
       productionScript: ctx.options.productionScript,
       pythonBin: ctx.options.pythonBin,
       payload: {},
     });
   } catch (e) {
-    return { started: null, queue, blocked: 'busy' }; // lock grabbed between checks
+    return { started: null, queue: fresh, blocked: 'busy' }; // lock grabbed between checks
   }
-  next.status = 'running';
-  next.started_at = new Date().toISOString();
-  next.job_id = job && job.job_id;
-  next.provider = { id: 'presto_comfyui', label: 'PRESTO ComfyUI', subdir };
-  superFocusMedia.writeVideoQueue(id, queue, { mediaRoot: ctx.sfMediaRoot });
+  freshItem.status = 'running';
+  freshItem.started_at = new Date().toISOString();
+  freshItem.job_id = job && job.job_id;
+  freshItem.provider = { id: 'presto_comfyui', label: 'PRESTO ComfyUI', subdir };
+  superFocusMedia.writeVideoQueue(id, fresh, { mediaRoot: ctx.sfMediaRoot });
+  const next2 = freshItem; // keep the tail below referring to the launched item
   // Event-driven advance: when this render finishes, drain the next item.
   if (PRESTO_STATE.activeJob && PRESTO_STATE.activeJob.process && PRESTO_STATE.activeJob.process.once) {
     PRESTO_STATE.activeJob.process.once('close', () => {
       pumpSuperFocusVideoQueue(id, ctx).catch(() => {});
     });
   }
-  return { started: next, queue };
+  return { started: next2, queue: fresh };
 }
 
 function enqueueSuperFocusVideos(id, indexes, ctx) {
@@ -11491,6 +11506,7 @@ function createServer(options = {}) {
       const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
       const ctx = { sfRoot, sfMediaRoot, options };
       Promise.resolve()
+        .then(() => superFocus.loadProject(id, { root: sfRoot })) // 404 for an unknown/typo'd project id (don't fake an empty queue)
         .then(() => pumpSuperFocusVideoQueue(id, ctx).catch(() => null))
         .then(() => {
           const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
@@ -13110,7 +13126,17 @@ function createServer(options = {}) {
             { project: state, card },
             { mediaRoot: mgMediaRoot, runRender: mgRunRender }
           );
-          const saved = motionGraphicsState.recordCardRender(id, cardId, out.record, mgOpts);
+          // The render (MP4+manifest on disk) and the card-state record are two
+          // writes. If persisting the record fails, don't silently lose a real
+          // render — surface the orphan (its render_id/manifest are on disk).
+          let saved;
+          try {
+            saved = motionGraphicsState.recordCardRender(id, cardId, out.record, mgOpts);
+          } catch (persistErr) {
+            const e = new Error('Render produced output (' + (out.record.path || out.record.manifest_path) + ') but the project state record could not be saved: ' + persistErr.message + '. The render is on disk; retry to re-record.');
+            e.statusCode = persistErr.statusCode || 500;
+            throw e;
+          }
           if (!out.ok) {
             // Failed render is persisted honestly, then surfaced as an error.
             sendError(res, out.statusCode || 500, out.record.error || 'HyperFrames render failed.', 'motion-graphics-render-failed', { render: out.record, card: saved.card });

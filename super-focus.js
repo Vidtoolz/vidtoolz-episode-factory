@@ -150,7 +150,22 @@ function writeStateAtomic(dir, state) {
 function readStateDir(dir) {
   const file = path.join(dir, STATE_FILENAME);
   const raw = fs.readFileSync(file, 'utf8');
-  const parsed = JSON.parse(raw);
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (_) {
+    // Corrupt state (truncated write, disk full, manual edit) must surface as a
+    // clear 422, not an opaque 500 — otherwise the project lists but can never
+    // be opened/repaired. (listProjects wraps this and skips corrupt entries.)
+    const e = new Error('Super Focus project state is corrupt or unreadable (invalid JSON).');
+    e.statusCode = 422;
+    throw e;
+  }
+  if (!parsed || typeof parsed !== 'object') {
+    const e = new Error('Super Focus project state is not a valid object.');
+    e.statusCode = 422;
+    throw e;
+  }
   // Normalize so missing/older fields never crash a reader.
   return Object.assign(emptyState(), parsed, {
     approval: Object.assign(emptyApproval(), parsed.approval || {}),

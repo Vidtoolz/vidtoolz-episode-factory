@@ -103,7 +103,8 @@ Mapping (verified read-only against `vidtoolz-brandkit-remotion/src/render-props
 
 The base brandkit compositions render landscape 1920×1080; if the card is vertical
 the spec notes the mismatch. The brandkit repo path is taken from the existing
-`remotion-lane` (`BRANDKIT_ROOT`) — no hardcoded path in feature code.
+`remotion-lane` (`BRANDKIT_ROOT`, env-overridable via `BRANDKIT_REMOTION_ROOT`);
+the pure spec module hardcodes no path.
 
 - **API:** `GET /api/motion-graphics/remotion-spec?id=&card_id=` (read-only spec);
   `POST /api/motion-graphics/remotion-spec {id,card_id}` (nonce-gated) writes ONLY

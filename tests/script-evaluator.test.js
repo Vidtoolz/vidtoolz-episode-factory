@@ -138,6 +138,41 @@ test("script-eval: a failing hard gate caps a PRODUCE score at REVISE", () => {
   assert.ok(scored.warnings.some((w) => /capped at REVISE.*generates_useful_visuals/.test(w)));
 });
 
+// (10b) AUDIT FIX: a MISSING hard gate must cap the verdict (default fail, not
+// warn) — previously an omitted gate defaulted to 'warn' and let PRODUCE through.
+test("script-eval: a missing hard gate defaults to fail and caps the verdict", () => {
+  const sentences = ev.splitScriptIntoSentences("Hook. Claim.");
+  const parsed = fullModelOutput([1, 2]); // all 100 -> would be PRODUCE
+  parsed.hard_gates = parsed.hard_gates.filter((g) => g.id !== "speakable_naturally"); // omit one gate
+  const scored = ev.scoreScriptEvaluation(ev.normalizeScriptEvaluation(parsed, sentences));
+  assert.equal(scored.total_score, 100);
+  assert.equal(scored.verdict, "REVISE", "missing gate must cap PRODUCE");
+  assert.equal(scored.verdict_capped_by_gate, true);
+  assert.equal(scored.hard_gates.find((g) => g.id === "speakable_naturally").status, "fail");
+});
+
+// (10c) AUDIT FIX: an unrecognized gate status token ("failed") is treated as
+// fail (conservative), not silently downgraded to warn.
+test("script-eval: an unrecognized hard-gate status is treated as fail", () => {
+  const sentences = ev.splitScriptIntoSentences("Hook. Claim.");
+  const parsed = fullModelOutput([1, 2]);
+  parsed.hard_gates = parsed.hard_gates.map((g) => (g.id === "generates_useful_visuals" ? Object.assign({}, g, { status: "failed" }) : g));
+  const scored = ev.scoreScriptEvaluation(ev.normalizeScriptEvaluation(parsed, sentences));
+  assert.equal(scored.verdict, "REVISE");
+  assert.equal(scored.hard_gates.find((g) => g.id === "generates_useful_visuals").status, "fail");
+});
+
+// A legitimate 'warn' gate is preserved (does NOT cap on its own) — guards
+// against over-capping from the conservative default.
+test("script-eval: a legitimate 'warn' hard gate is preserved and does not cap", () => {
+  const sentences = ev.splitScriptIntoSentences("Hook. Claim.");
+  const parsed = fullModelOutput([1, 2]);
+  parsed.hard_gates = parsed.hard_gates.map((g) => (g.id === "speakable_naturally" ? Object.assign({}, g, { status: "warn" }) : g));
+  const scored = ev.scoreScriptEvaluation(ev.normalizeScriptEvaluation(parsed, sentences));
+  assert.equal(scored.hard_gates.find((g) => g.id === "speakable_naturally").status, "warn");
+  assert.equal(scored.verdict_capped_by_gate, false, "a warn gate alone must not cap");
+});
+
 // (11) robustness: categories keyed by "name" (not "id") are still matched.
 // Real qwen3:14b output uses {"name":"core_claim",...}; the old normalizer keyed
 // only on "id" and silently scored every category 0 -> a false REWRITE/0.

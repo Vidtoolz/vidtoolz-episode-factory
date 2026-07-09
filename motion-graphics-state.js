@@ -82,7 +82,15 @@ function createProject(input = {}, options = {}) {
 function loadProject(projectId, options = {}) {
   const file = projectFile(projectId, options);
   if (!fs.existsSync(file)) { const e = new Error('Motion Graphics project not found.'); e.statusCode = 404; throw e; }
-  const state = JSON.parse(fs.readFileSync(file, 'utf8'));
+  let state;
+  try {
+    state = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (_) {
+    const e = new Error('Motion Graphics project state is corrupt or unreadable (invalid JSON). The file exists but could not be parsed.');
+    e.statusCode = 422;
+    throw e;
+  }
+  if (!state || typeof state !== 'object') { const e = new Error('Motion Graphics project state is not a valid object.'); e.statusCode = 422; throw e; }
   if (!Array.isArray(state.cards)) state.cards = [];
   if (!Array.isArray(state.jobs)) state.jobs = [];
   if (!state.source || typeof state.source !== 'object') state.source = { type: 'manual', source_id: null, script_hash: null, script: '' };

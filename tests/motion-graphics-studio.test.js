@@ -558,3 +558,12 @@ test("motion-graphics-studio.html: Remotion engine → Export Remotion spec (spe
     assert.match(res.raw, /function exportRemotionSpec/);
   } finally { await close(server); }
 });
+
+// ==================== Audit fix (2026-07-09) ====================
+test("audit: motion-graphics loadProject on corrupt state JSON throws 422, not 500", () => {
+  const root = mkRoot();
+  const p = mgState.createProject({ title: "Corrupt MG" }, { root });
+  fs.writeFileSync(path.join(root, p.project_id, "motion-graphics.json"), "{ broken", "utf8");
+  assert.throws(() => mgState.loadProject(p.project_id, { root }), (e) => e.statusCode === 422);
+  assert.doesNotThrow(() => mgState.listProjects({ root })); // list still tolerates it
+});

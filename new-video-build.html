@@ -676,7 +676,10 @@
         if (!plain) return;
         var m = plain.match(/\(Steps?\s*(\d+)/i);
         var link = m ? ' <a href="#step' + m[1] + '">Go to Step ' + m[1] + '</a>' : '';
-        el.innerHTML = 'Next action: ' + plain.replace(/</g, '&lt;') + link;
+        var escPlain = String(plain).replace(/[&<>"']/g, function (ch) {
+          return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+        });
+        el.innerHTML = 'Next action: ' + escPlain + link;
         el.style.display = 'block';
       })
       .catch(function () { /* build page works fine without it */ });

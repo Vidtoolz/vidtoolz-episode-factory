@@ -337,10 +337,17 @@ function normalizeScriptEvaluation(parsed, sentenceList) {
     const src = getGate(def.id, i) || {};
     const missing = !getGate(def.id, i);
     if (missing) warnings.push(`hard gate "${def.id}" missing from model output`);
+    // Hard gates are readiness gates: a missing or unrecognized status must NOT
+    // read as pass-through. Default to 'fail' (conservative) so an omitted gate
+    // or a near-miss token ("failed", "no") still caps the verdict — matching
+    // the "a failing gate blocks PRODUCE" contract (categories likewise default
+    // missing -> fail). A legitimate 'warn' from the model is preserved.
+    const gateStatus = normStatus(src.status, GATE_STATUSES, 'fail');
+    if (missing && gateStatus === 'fail') warnings.push(`hard gate "${def.id}" treated as FAIL (missing) — verdict will not be PRODUCE`);
     return {
       id: def.id,
       label: def.label,
-      status: normStatus(src.status, GATE_STATUSES, 'warn'),
+      status: gateStatus,
       reason: asStr(src.reason),
       suggested_fix: asStr(src.suggested_fix),
     };

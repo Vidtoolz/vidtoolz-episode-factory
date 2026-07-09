@@ -1024,7 +1024,7 @@ function videoServer(spawnImpl, opts = {}) {
   const server = packageEngineServer.createServer({
     superFocusRoot: root, superFocusMediaRoot: mediaRoot,
     productionScript: fakeScript(), pythonBin: "python3", spawn: spawnImpl,
-    prestoReachableCheck: async () => true,
+    prestoReachableCheck: opts.reach || (async () => true),
   });
   return { server, root, mediaRoot, id: created.project_id };
 }
@@ -3529,4 +3529,98 @@ test("super-focus.html: video queue controls + labels present; landing unchanged
   } finally {
     await close(server);
   }
+});
+
+// ==================== Audit fixes (2026-07-09) ====================
+
+test("audit: loadProject on corrupt state JSON throws 422, not an opaque 500", () => {
+  const root = mkRoot();
+  const p = superFocus.createProject({ title: "Corrupt" }, { root });
+  fs.writeFileSync(path.join(root, p.project_id, "super-focus.json"), "{ this is not valid json", "utf8");
+  assert.throws(() => superFocus.loadProject(p.project_id, { root }), (e) => e.statusCode === 422);
+  // list still tolerates it (skips), so the project remains discoverable.
+  assert.doesNotThrow(() => superFocus.listProjects({ root }));
+});
+
+test("audit: GET /video-queue for a nonexistent project returns 404 (not a fake empty queue)", async () => {
+  const { server } = videoServer(fakePrestoSpawn());
+  await listen(server);
+  try {
+    const bogus = await request(server, packageEngineServer.SUPER_FOCUS_VIDEO_QUEUE_API + "?id=nope-00000000");
+    assert.equal(bogus.statusCode, 404);
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+test("audit: a launched queue item records a real job_id (pjob-…), not undefined", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn({ hang: true }));
+  await listen(server);
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, { method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    await delay(30);
+    const q = sfMedia.readVideoQueue(id, { mediaRoot });
+    const running = q.items.find((it) => it.index === 1 && it.status === "running");
+    assert.ok(running, "item 1 launched");
+    assert.match(running.job_id || "", /^pjob-[a-f0-9]{8}$/);
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+test("audit: concurrent enqueue during the reachability await is not clobbered (queue lost-update fix)", async () => {
+  const ref = {};
+  let injected = false;
+  const reach = async () => {
+    if (!injected) { // simulate a concurrent enqueue writing to the queue file mid-await
+      injected = true;
+      const q = sfMedia.readVideoQueue(ref.id, { mediaRoot: ref.mediaRoot });
+      q.items.push({ item_id: "concurrent-x", index: 2, status: "queued", queued_at: "t" });
+      sfMedia.writeVideoQueue(ref.id, q, { mediaRoot: ref.mediaRoot });
+    }
+    return true;
+  };
+  const s = videoServer(fakePrestoSpawn({ hang: true }), { promptCount: 2, reach });
+  ref.id = s.id; ref.mediaRoot = s.mediaRoot;
+  await listen(s.server);
+  try {
+    await request(s.server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, { method: "POST", headers: writeHeaders(), body: { id: s.id, index: 1 } });
+    await delay(40);
+    const q = sfMedia.readVideoQueue(s.id, { mediaRoot: s.mediaRoot });
+    assert.ok(q.items.find((it) => it.index === 1 && it.status === "running"), "launched item recorded");
+    assert.ok(q.items.find((it) => it.item_id === "concurrent-x"), "concurrent enqueue survived (not clobbered)");
+  } finally { await close(s.server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+test("audit: superseded manifest annotates a restored entry after a failed regenerate", () => {
+  const mediaRoot = mkRoot();
+  const projectId = "regen-000000";
+  const mediaDir = path.join(mediaRoot, projectId);
+  const flux = path.join(mediaDir, "images", "flux-local");
+  fs.mkdirSync(flux, { recursive: true });
+  const canonical = path.join(flux, "flux-001.png");
+  fs.writeFileSync(canonical, Buffer.from([1, 2, 3]));
+  // Archive the current image (moves it aside + records a manifest entry).
+  const arch = sfMedia.archiveImage(projectId, 1, { mediaRoot });
+  assert.equal(arch.archived, true);
+  assert.ok(!fs.existsSync(canonical), "canonical moved aside");
+  // Regenerate FAILS (no new canonical produced) -> resolveRegeneratedImage restores previous.
+  const out = sfMedia.resolveRegeneratedImage(projectId, 1, arch, { mediaRoot });
+  assert.equal(out.generated, false);
+  assert.ok(fs.existsSync(canonical), "previous image restored to canonical");
+  const manifest = JSON.parse(fs.readFileSync(path.join(mediaDir, "superseded-manifest.json"), "utf8"));
+  const entry = manifest.entries.find((e) => e.archived_path === arch.archived_path);
+  assert.ok(entry && entry.restored_at, "restored entry is annotated, not left dangling");
+});
+
+test("audit: ollama-benchmark failure branch is honest (no fabricated timings when Ollama is down)", async () => {
+  const server = packageEngineServer.createServer({
+    superFocusRoot: mkRoot(),
+    fetchImpl: refusedFetch(), // vidnux Ollama unreachable
+    prestoOllamaBaseUrl: "",   // presto not configured
+  });
+  await listen(server);
+  try {
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_OLLAMA_BENCHMARK_API));
+    assert.equal(d.vidnux.ok, false);
+    assert.ok(d.vidnux.error, "failure reports an error string");
+    assert.equal(d.vidnux.one_prompt_ms, null, "no fabricated timing on failure");
+    assert.equal(d.vidnux.three_prompt_ms, null);
+  } finally { await close(server); }
 });

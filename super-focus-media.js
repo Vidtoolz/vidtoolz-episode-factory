@@ -134,7 +134,15 @@ function resolveRegenerated(mediaDir, kind, index, canonical, ext, base, prevArc
   const restorePrevious = () => {
     if (prevArchive && prevArchive.archived_path) {
       const abs = path.join(mediaDir, prevArchive.archived_path);
-      if (fs.existsSync(abs)) { fs.mkdirSync(path.dirname(canonical), { recursive: true }); fs.renameSync(abs, canonical); }
+      if (fs.existsSync(abs)) {
+        fs.mkdirSync(path.dirname(canonical), { recursive: true });
+        fs.renameSync(abs, canonical);
+        // The archived file just moved back to canonical — annotate its ledger
+        // entry so provenance readers don't point at a path that no longer exists.
+        const manifest = readSupersededManifest(mediaDir);
+        const entry = manifest.entries.find((e) => e.archived_path === prevArchive.archived_path && !e.restored_at);
+        if (entry) { entry.restored_at = iso; entry.restored_to_canonical = true; writeSupersededManifest(mediaDir, manifest); }
+      }
     }
   };
   if (!fs.existsSync(canonical)) {

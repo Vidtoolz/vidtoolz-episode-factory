@@ -9,8 +9,11 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const BRANDKIT_ROOT = '/home/vidtoolz/vidtoolz-brandkit-remotion';
-const SANDBOX_MP4_DIR = '/mnt/vidnas_public/VIDTOOLZ/99_SANDBOX/remotion-brandkit-pilot/mp4';
+// Env-overridable so no machine-specific absolute path is baked into feature
+// output (the Motion Graphics Remotion spec's render_hint/brandkit_repo comes
+// from this). Defaults preserve current behavior.
+const BRANDKIT_ROOT = process.env.BRANDKIT_REMOTION_ROOT || '/home/vidtoolz/vidtoolz-brandkit-remotion';
+const SANDBOX_MP4_DIR = process.env.BRANDKIT_REMOTION_SANDBOX_MP4 || '/mnt/vidnas_public/VIDTOOLZ/99_SANDBOX/remotion-brandkit-pilot/mp4';
 const COMPLETED_TTL_MS = 60 * 60 * 1000;
 
 // Compositions render:all produces (from src/Root.tsx).
