@@ -3087,3 +3087,110 @@ test("super-focus state: script_evaluation saves, reloads, and survives reopen",
   assert.equal(reopened.script_evaluation.stale, false);
   assert.ok(reopened.script_evaluation.script_hash, "hash stamped on save");
 });
+
+// ---- Slice 3: UI wiring (static assertions on the served page) ----
+test("super-focus.html: script-evaluator UI is wired (button, panel, endpoints, focus mode)", async () => {
+  const server = packageEngineServer.createServer({ superFocusRoot: mkRoot() });
+  await listen(server);
+  try {
+    const res = await request(server, "/super-focus.html");
+    assert.equal(res.statusCode, 200);
+    // Evaluate button + panel container present.
+    assert.match(res.raw, /id="eval-run"/);
+    assert.match(res.raw, />Evaluate script</);
+    assert.match(res.raw, /id="script-eval-panel"/);
+    assert.match(res.raw, /id="eval-stale"/);
+    // Both endpoints referenced from the client.
+    assert.match(res.raw, /EVALUATE_SCRIPT_API\s*=\s*'\/api\/super-focus\/evaluate-script'/);
+    assert.match(res.raw, /SCRIPT_EVALUATION_API\s*=\s*'\/api\/super-focus\/script-evaluation'/);
+    // Advisory framing is on the page (no approval / no generation).
+    assert.match(res.raw, /advisory only; never approves, advances, or generates media/i);
+    // Focus mode: reads ?focus=script-evaluator and shows a hint.
+    assert.match(res.raw, /focus['"]?\)\s*===\s*'script-evaluator'/);
+    assert.match(res.raw, /Script Evaluator: open or create a project, then evaluate the saved script\./);
+    assert.match(res.raw, /id="eval-focus-hint"/);
+  } finally {
+    await close(server);
+  }
+});
+
+test("super-focus.html: landing still shows exactly two choices (evaluator adds no third landing option)", async () => {
+  const server = packageEngineServer.createServer({ superFocusRoot: mkRoot() });
+  await listen(server);
+  try {
+    const res = await request(server, "/super-focus.html");
+    // The landing view (#view-landing) must offer only Create / Open. The
+    // evaluator lives inside a project, never on the landing screen.
+    const landing = res.raw.slice(res.raw.indexOf('id="view-landing"'), res.raw.indexOf('id="view-open"'));
+    assert.match(landing, /Create a new video project/);
+    assert.match(landing, /Open an existing video project/);
+    assert.doesNotMatch(landing, /Evaluate script/);
+    assert.doesNotMatch(landing, /script-eval-panel/);
+  } finally {
+    await close(server);
+  }
+});
+
+// ---- Slice 3: desktop shortcut installer ----
+const child_process = require("node:child_process");
+const INSTALLER = path.join(__dirname, "..", "scripts", "install-script-evaluator-shortcut.sh");
+const SUPER_FOCUS_INSTALLER = path.join(__dirname, "..", "scripts", "install-super-focus-shortcut.sh");
+
+// Run the installer against a throwaway HOME that has a stub launcher.
+function runEvaluatorInstaller(port) {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "sf-shortcut-home-"));
+  const bin = path.join(home, "bin");
+  fs.mkdirSync(bin, { recursive: true });
+  const launcher = path.join(bin, "open-episode-factory-page");
+  fs.writeFileSync(launcher, "#!/usr/bin/env sh\nexit 0\n");
+  fs.chmodSync(launcher, 0o755);
+  const args = ["-e", INSTALLER];
+  if (port != null) args.push(String(port));
+  const out = child_process.execFileSync("sh", args, { env: { ...process.env, HOME: home }, encoding: "utf8" });
+  const desktop = path.join(home, ".local", "share", "applications", "VIDTOOLZ Script Evaluator.desktop");
+  return { home, desktop, out };
+}
+
+test("install-script-evaluator-shortcut.sh: passes sh -n and targets the focus-mode page", () => {
+  child_process.execFileSync("sh", ["-n", INSTALLER]); // throws on syntax error
+  const { desktop } = runEvaluatorInstaller();
+  assert.ok(fs.existsSync(desktop), "desktop entry written");
+  const body = fs.readFileSync(desktop, "utf8");
+  assert.match(body, /Name=VIDTOOLZ Script Evaluator/);
+  assert.match(body, /Exec=\S*open-episode-factory-page super-focus\.html\?focus=script-evaluator 8010/);
+  // Advisory framing in the shortcut comment; never a "generate/approve" tool.
+  assert.match(body, /never approves or generates/i);
+});
+
+test("install-script-evaluator-shortcut.sh: is idempotent and honours a custom port", () => {
+  const first = runEvaluatorInstaller();
+  const a = fs.readFileSync(first.desktop, "utf8");
+  // Re-running into the same HOME yields a byte-identical file.
+  const home = first.home;
+  child_process.execFileSync("sh", [INSTALLER], { env: { ...process.env, HOME: home }, encoding: "utf8" });
+  const b = fs.readFileSync(first.desktop, "utf8");
+  assert.equal(a, b, "second run produces an identical file");
+  // Custom port flows through to both Exec and the printed URL target.
+  const custom = runEvaluatorInstaller(8011);
+  assert.match(fs.readFileSync(custom.desktop, "utf8"), /super-focus\.html\?focus=script-evaluator 8011/);
+});
+
+test("install-script-evaluator-shortcut.sh: does not touch the Super Focus shortcut", () => {
+  const { home } = runEvaluatorInstaller();
+  const superFocusDesktop = path.join(home, ".local", "share", "applications", "VIDTOOLZ Super Focus.desktop");
+  assert.ok(!fs.existsSync(superFocusDesktop), "evaluator installer writes only its own entry");
+  // And the installer script itself never references the Super Focus entry.
+  const script = fs.readFileSync(INSTALLER, "utf8");
+  assert.doesNotMatch(script, /VIDTOOLZ Super Focus\.desktop/);
+  // The Super Focus installer is unchanged and still exists as a separate file.
+  assert.ok(fs.existsSync(SUPER_FOCUS_INSTALLER));
+});
+
+// ---- Slice 3: docs ----
+test("docs/script-evaluator.md: states advisory-only and no external fact-checking", () => {
+  const doc = fs.readFileSync(path.join(__dirname, "..", "docs", "script-evaluator.md"), "utf8");
+  assert.match(doc, /never approves the script, never advances the project, and never generates\s+media/i);
+  assert.match(doc, /no external fact-checking/i);
+  assert.match(doc, /no cloud fallback/i);
+  assert.match(doc, /super-focus\.html\?focus=script-evaluator/);
+});

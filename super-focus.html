@@ -140,6 +140,38 @@
     .imggen-fill { height: 100%; width: 0; background: var(--accent); transition: width .3s ease; }
     .btn.busy { opacity: .6; cursor: progress; }
     .hidden { display: none; }
+    /* Script evaluator panel */
+    .eval-focus-hint { margin-bottom: 14px; padding: 10px 14px; border-radius: 8px; background: rgba(47,129,247,.12); border: 1px solid #2f4f7d; color: #9ec1ff; font-size: 14px; }
+    .eval-advisory { color: var(--muted); font-size: 12px; font-weight: 400; }
+    .eval-panel { margin-top: 12px; }
+    .eval-empty { color: var(--muted); font-size: 13px; }
+    .eval-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
+    .eval-score { font-size: 26px; font-weight: 700; }
+    .eval-verdict { font-size: 15px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+    .eval-verdict.produce { background: rgba(46,160,67,.18); color: var(--ok); border: 1px solid #2ea04355; }
+    .eval-verdict.revise { background: rgba(210,153,34,.16); color: #e3b341; border: 1px solid #6b5320; }
+    .eval-verdict.rewrite { background: rgba(248,81,73,.14); color: #ff9d97; border: 1px solid #7d2b28; }
+    .eval-band { color: var(--muted); font-size: 13px; }
+    .eval-summary { color: var(--text); font-size: 14px; margin: 6px 0 12px; }
+    .eval-block { margin: 14px 0 0; }
+    .eval-block h3 { font-size: 14px; margin: 0 0 6px; }
+    .eval-item { border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); padding: 8px 10px; margin-bottom: 6px; }
+    .eval-item .eval-row { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+    .eval-item .eval-name { font-weight: 600; }
+    .pill { font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); }
+    .pill.pass, .pill.strong { color: var(--ok); border-color: #2ea04355; }
+    .pill.warn, .pill.okay { color: #e3b341; border-color: #6b5320; }
+    .pill.fail, .pill.revise, .pill.cut { color: #ff9d97; border-color: #7d2b28; }
+    .pill.unevaluated { color: var(--muted); }
+    .eval-pos { color: var(--ok); }
+    .eval-neg { color: #f85149; }
+    .eval-warn { color: #e3b341; }
+    .eval-muted { color: var(--muted); font-size: 12px; }
+    .eval-fix { color: #9ec1ff; font-size: 13px; }
+    .eval-sentence .stext { color: var(--muted); font-style: italic; }
+    .eval-warnings { color: #e3b341; font-size: 13px; }
+    .eval-list { margin: 4px 0 0; padding-left: 18px; }
+    .eval-list li { font-size: 13px; }
   </style>
 </head>
 <body>
@@ -149,6 +181,7 @@
       Restart the cockpit service, then reload:
       <code>systemctl --user restart vidtoolz-cockpit.service</code>
     </div>
+    <div id="eval-focus-hint" class="eval-focus-hint hidden">Script Evaluator: open or create a project, then evaluate the saved script.</div>
     <div class="brand">VIDTOOLZ · Super Focus</div>
 
     <!-- LANDING -->
@@ -209,7 +242,7 @@
       </div>
 
       <!-- 2. Script -->
-      <div class="section">
+      <div class="section" id="script-section">
         <div class="step">Step 2</div>
         <h2>Script / voiceover</h2>
         <label for="script-input">Spoken script (~3 minutes)</label>
@@ -220,6 +253,20 @@
           <span class="save-state" id="script-status"></span>
         </div>
         <div class="later-note">Generate writes a local-Ollama (vidnux) script from the saved title — click Save to keep it.</div>
+      </div>
+
+      <!-- 2b. Script evaluation (advisory) -->
+      <div class="section" id="script-eval-section">
+        <div class="step">Check</div>
+        <h2>Script evaluation <span class="eval-advisory">— advisory only; never approves, advances, or generates media</span></h2>
+        <label>Score the saved script against the VIDTOOLZ standard (local Ollama on vidnux).</label>
+        <div class="row">
+          <button class="btn primary" id="eval-run">Evaluate script</button>
+          <span class="save-state" id="eval-status"></span>
+        </div>
+        <div id="eval-stale" class="stale-banner hidden">⚠ Script changed after this evaluation — re-run to refresh.</div>
+        <div id="script-eval-panel" class="eval-panel"><p class="eval-empty">No script evaluation yet. Save a script, then click Evaluate.</p></div>
+        <div class="later-note">Reads the saved script only; unsaved edits are ignored. The verdict is guidance for you — it does not gate or advance the project.</div>
       </div>
 
       <!-- 3. Main image prompts -->
@@ -301,6 +348,8 @@
     var OLLAMA_BENCHMARK_API = '/api/super-focus/ollama-benchmark';
     var TITLE_API = '/api/super-focus/title';
     var SCRIPT_API = '/api/super-focus/script';
+    var EVALUATE_SCRIPT_API = '/api/super-focus/evaluate-script';
+    var SCRIPT_EVALUATION_API = '/api/super-focus/script-evaluation';
     var GEN_TOPIC_API = '/api/super-focus/generate-topic';
     var GEN_SCRIPT_API = '/api/super-focus/generate-script';
     var GEN_IMGP_API = '/api/super-focus/generate-image-prompts';
@@ -336,6 +385,10 @@
     var nonce = null;
     var nonceHeader = 'x-vidtoolz-local-write-nonce';
     var currentId = null;
+    // Script-evaluator focus mode (?focus=script-evaluator): adds a hint and
+    // scrolls to the evaluation section on open. The landing itself is unchanged.
+    var evalFocus = false;
+    try { evalFocus = (new URLSearchParams(window.location.search)).get('focus') === 'script-evaluator'; } catch (e) { evalFocus = false; }
 
     function unwrap(body) { return (body && body.data) ? body.data : body; }
 
@@ -804,7 +857,14 @@
       setStatus(document.getElementById('vidgen-status'), '');
       refreshImagesStatus(); // reconcile any already-generated images from disk
       refreshVideosStatus(); // reconcile any already-generated videos from disk
+      updateEvalButton();
+      renderScriptEvaluation(null); // reset panel, then load persisted evaluation (if any)
+      loadScriptEvaluation();
       show('project');
+      if (evalFocus) {
+        var sec = document.getElementById('script-eval-section');
+        if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
 
     // Per-image Clear + Regenerate controls (shown under a generated thumbnail).
@@ -1052,6 +1112,10 @@
         updateStaleBanner('imgp-stale', proj.stale && proj.stale.image_prompts);
         updateStaleBanner('infp-stale', proj.stale && proj.stale.infographic_prompts);
         setStatus(el, 'Saved ✓', false);
+        // A saved script also makes any existing evaluation stale, and enables
+        // (or disables) the Evaluate button. Reflect both from the backend.
+        updateEvalButton();
+        loadScriptEvaluation();
       });
     });
 
@@ -1070,6 +1134,218 @@
         document.getElementById('script-input').value = data.script || '';
         setStatus(el, withProvider('Generated — click Save to keep it', data.provider));
       });
+    });
+
+    // ---- Script evaluation (advisory; local Ollama on vidnux) ----
+    // Enabled only with an open project whose SAVED script is non-empty. Unsaved
+    // textarea edits do not count — the evaluator reads the persisted script.
+    function updateEvalButton() {
+      var btn = document.getElementById('eval-run');
+      if (!btn) return;
+      var el = document.getElementById('script-input');
+      var hasSaved = Boolean(currentId) && Boolean(el && el.value && el.value.trim());
+      btn.disabled = !hasSaved;
+      btn.title = hasSaved ? '' : 'Save a non-empty script first.';
+    }
+
+    function pill(text, cls) {
+      var s = document.createElement('span');
+      s.className = 'pill' + (cls ? ' ' + cls : '');
+      s.textContent = text;
+      return s;
+    }
+    function evalBlock(title) {
+      var b = document.createElement('div'); b.className = 'eval-block';
+      var h = document.createElement('h3'); h.textContent = title; b.appendChild(h);
+      return b;
+    }
+    function bulletList(items, cls) {
+      var ul = document.createElement('ul'); ul.className = 'eval-list' + (cls ? ' ' + cls : '');
+      (items || []).forEach(function (t) {
+        if (!t) return;
+        var li = document.createElement('li'); li.textContent = t; ul.appendChild(li);
+      });
+      return ul;
+    }
+
+    // Render the evaluation panel. Pass null to reset to the empty state.
+    function renderScriptEvaluation(ev, stale) {
+      var panel = document.getElementById('script-eval-panel');
+      var staleBanner = document.getElementById('eval-stale');
+      if (!panel) return;
+      panel.innerHTML = '';
+      if (!ev) {
+        staleBanner.classList.add('hidden');
+        var p = document.createElement('p'); p.className = 'eval-empty';
+        p.textContent = 'No script evaluation yet. Save a script, then click Evaluate.';
+        panel.appendChild(p);
+        return;
+      }
+      staleBanner.classList.toggle('hidden', !stale);
+
+      // Header: score / verdict / band / summary.
+      var head = document.createElement('div'); head.className = 'eval-head';
+      var score = document.createElement('span'); score.className = 'eval-score';
+      var band = String(ev.score_band || ev.verdict || '');
+      var scoreCls = /REWRITE/.test(band) ? 'eval-neg' : (/REVISE/.test(band) ? 'eval-warn' : 'eval-pos');
+      score.className = 'eval-score ' + scoreCls;
+      score.textContent = (ev.total_score != null ? ev.total_score : '—') + ' / 100';
+      head.appendChild(score);
+      var verdict = String(ev.verdict || '').toUpperCase();
+      var vCls = verdict.indexOf('REWRITE') >= 0 ? 'rewrite' : (verdict.indexOf('REVISE') >= 0 ? 'revise' : 'produce');
+      var vspan = document.createElement('span'); vspan.className = 'eval-verdict ' + vCls; vspan.textContent = verdict || '—';
+      head.appendChild(vspan);
+      if (ev.score_band && ev.score_band !== verdict) {
+        var bspan = document.createElement('span'); bspan.className = 'eval-band'; bspan.textContent = 'Band: ' + ev.score_band;
+        head.appendChild(bspan);
+      }
+      panel.appendChild(head);
+
+      if (ev.verdict_capped_by_gate) {
+        var cap = document.createElement('div'); cap.className = 'eval-warn eval-muted';
+        cap.textContent = 'Verdict capped at REVISE by a failed hard gate (score alone would rank higher).';
+        panel.appendChild(cap);
+      }
+      if (ev.summary) {
+        var sum = document.createElement('div'); sum.className = 'eval-summary'; sum.textContent = ev.summary;
+        panel.appendChild(sum);
+      }
+
+      // Single next edit — the one thing to do next.
+      if (ev.next_edit) {
+        var nx = evalBlock('Next edit');
+        var nd = document.createElement('div'); nd.className = 'eval-fix'; nd.textContent = ev.next_edit;
+        nx.appendChild(nd); panel.appendChild(nx);
+      }
+
+      // Hard gates (pass/fail).
+      if (ev.hard_gates && ev.hard_gates.length) {
+        var hg = evalBlock('Hard gates');
+        ev.hard_gates.forEach(function (g) {
+          var item = document.createElement('div'); item.className = 'eval-item';
+          var row = document.createElement('div'); row.className = 'eval-row';
+          var name = document.createElement('span'); name.className = 'eval-name'; name.textContent = g.id;
+          row.appendChild(name);
+          row.appendChild(pill(g.status, g.status === 'pass' ? 'pass' : 'fail'));
+          item.appendChild(row);
+          if (g.reason) { var r = document.createElement('div'); r.className = 'eval-muted'; r.textContent = g.reason; item.appendChild(r); }
+          if (g.status !== 'pass' && g.suggested_fix) { var f = document.createElement('div'); f.className = 'eval-fix'; f.textContent = 'Fix: ' + g.suggested_fix; item.appendChild(f); }
+          hg.appendChild(item);
+        });
+        panel.appendChild(hg);
+      }
+
+      // Categories (weighted).
+      if (ev.categories && ev.categories.length) {
+        var cat = evalBlock('Categories');
+        ev.categories.forEach(function (c) {
+          var item = document.createElement('div'); item.className = 'eval-item';
+          var row = document.createElement('div'); row.className = 'eval-row';
+          var name = document.createElement('span'); name.className = 'eval-name'; name.textContent = c.id;
+          row.appendChild(name);
+          var scoreTxt = (c.score != null ? c.score : '—');
+          if (c.weighted_score != null) scoreTxt += ' → ' + c.weighted_score + ' pts';
+          var sc = document.createElement('span'); sc.className = 'eval-muted'; sc.textContent = scoreTxt; row.appendChild(sc);
+          var st = String(c.status || '');
+          row.appendChild(pill(st || 'n/a', st === 'pass' || st === 'strong' ? 'strong' : (st === 'fail' ? 'fail' : 'warn')));
+          item.appendChild(row);
+          if (c.negatives && c.negatives.length) item.appendChild(bulletList(c.negatives, 'eval-neg'));
+          if (c.recommendation) { var rec = document.createElement('div'); rec.className = 'eval-fix'; rec.textContent = c.recommendation; item.appendChild(rec); }
+          cat.appendChild(item);
+        });
+        panel.appendChild(cat);
+      }
+
+      // 10-item checklist.
+      if (ev.checklist && ev.checklist.length) {
+        var cl = evalBlock('Checklist');
+        ev.checklist.forEach(function (c) {
+          var item = document.createElement('div'); item.className = 'eval-item';
+          var row = document.createElement('div'); row.className = 'eval-row';
+          var name = document.createElement('span'); name.className = 'eval-name'; name.textContent = c.id;
+          row.appendChild(name);
+          row.appendChild(pill(c.status, c.status === 'pass' ? 'pass' : (c.status === 'fail' ? 'fail' : 'warn')));
+          item.appendChild(row);
+          if (c.reason) { var r = document.createElement('div'); r.className = 'eval-muted'; r.textContent = c.reason; item.appendChild(r); }
+          cl.appendChild(item);
+        });
+        panel.appendChild(cl);
+      }
+
+      // Strengths / problems.
+      if (ev.top_strengths && ev.top_strengths.length) {
+        var st2 = evalBlock('Top strengths'); st2.appendChild(bulletList(ev.top_strengths, 'eval-pos')); panel.appendChild(st2);
+      }
+      if (ev.top_problems && ev.top_problems.length) {
+        var tp = evalBlock('Top problems'); tp.appendChild(bulletList(ev.top_problems, 'eval-neg')); panel.appendChild(tp);
+      }
+
+      // Per-sentence rows with rewrites.
+      if (ev.sentences && ev.sentences.length) {
+        var sb = evalBlock('Per-sentence');
+        ev.sentences.forEach(function (s) {
+          var item = document.createElement('div'); item.className = 'eval-item eval-sentence';
+          var row = document.createElement('div'); row.className = 'eval-row';
+          var name = document.createElement('span'); name.className = 'eval-name'; name.textContent = '#' + s.sentence_id + (s.role ? ' · ' + s.role : '');
+          row.appendChild(name);
+          if (s.score != null) { var sc = document.createElement('span'); sc.className = 'eval-muted'; sc.textContent = s.score; row.appendChild(sc); }
+          var stt = String(s.status || '');
+          row.appendChild(pill(stt || 'n/a', stt === 'strong' ? 'strong' : (stt === 'unevaluated' ? 'unevaluated' : (stt === 'cut' ? 'cut' : (stt === 'okay' ? 'okay' : 'warn')))));
+          item.appendChild(row);
+          if (s.text) { var tx = document.createElement('div'); tx.className = 'stext'; tx.textContent = '“' + s.text + '”'; item.appendChild(tx); }
+          if (s.edit_suggestion) { var es = document.createElement('div'); es.className = 'eval-fix'; es.textContent = 'Edit: ' + s.edit_suggestion; item.appendChild(es); }
+          if (s.optional_rewrite) { var or = document.createElement('div'); or.className = 'eval-fix'; or.textContent = 'Rewrite: ' + s.optional_rewrite; item.appendChild(or); }
+          sb.appendChild(item);
+        });
+        panel.appendChild(sb);
+      }
+
+      // Fix plan.
+      if (ev.fix_plan && ev.fix_plan.length) {
+        var fp = evalBlock('Fix plan'); fp.appendChild(bulletList(ev.fix_plan, 'eval-fix')); panel.appendChild(fp);
+      }
+
+      // Warnings (invented/omitted sentence ids, gate caps, etc.).
+      if (ev.warnings && ev.warnings.length) {
+        var w = evalBlock('Warnings'); w.appendChild(bulletList(ev.warnings, 'eval-warnings')); panel.appendChild(w);
+      }
+
+      // Provenance footer — honest about what produced this.
+      var foot = document.createElement('div'); foot.className = 'eval-muted';
+      var m = ev.model || {};
+      var bits = [];
+      if (ev.evaluated_at) bits.push('Evaluated ' + ev.evaluated_at);
+      if (m.model) bits.push(m.model + (m.host ? ' @ ' + m.host : ''));
+      foot.textContent = bits.join(' · ');
+      if (bits.length) panel.appendChild(foot);
+    }
+
+    // Read-only fetch of the persisted evaluation for the open project. No Ollama.
+    function loadScriptEvaluation() {
+      if (!currentId) { renderScriptEvaluation(null); return; }
+      apiGet(SCRIPT_EVALUATION_API + '?id=' + encodeURIComponent(currentId)).then(function (res) {
+        if (!res.ok) { renderScriptEvaluation(null); return; }
+        var d = unwrap(res.body);
+        renderScriptEvaluation(d && d.script_evaluation, d && d.stale);
+      }).catch(function () { renderScriptEvaluation(null); });
+    }
+
+    document.getElementById('eval-run').addEventListener('click', function () {
+      if (!currentId) return;
+      var btn = this, el = document.getElementById('eval-status');
+      btn.classList.add('busy'); btn.disabled = true;
+      var stop = elapsedTicker(el, 'Evaluating script against the VIDTOOLZ standard… (local Ollama on vidnux)');
+      apiPost(EVALUATE_SCRIPT_API, { id: currentId }).then(function (res) {
+        stop(); btn.classList.remove('busy'); updateEvalButton();
+        if (!res.ok) {
+          setStatus(el, (res.body && res.body.error) || 'Evaluation failed', true);
+          return;
+        }
+        var d = unwrap(res.body);
+        var ev = d && (d.script_evaluation || d.evaluation || d);
+        renderScriptEvaluation(ev, d && d.stale);
+        setStatus(el, 'Evaluated ✓ — ' + (ev && ev.total_score != null ? ev.total_score + '/100 · ' : '') + (ev && ev.verdict ? ev.verdict : '') + ' (advisory)', false);
+      }).catch(function () { stop(); btn.classList.remove('busy'); updateEvalButton(); setStatus(el, 'Evaluation failed', true); });
     });
 
     // Keep the UI obviously alive during a long synchronous generation by ticking
@@ -1241,6 +1517,7 @@
       });
     });
 
+    if (evalFocus) document.getElementById('eval-focus-hint').classList.remove('hidden');
     goHome();
   </script>
 </body>
