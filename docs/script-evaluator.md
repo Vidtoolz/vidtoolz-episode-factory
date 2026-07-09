@@ -121,11 +121,36 @@ Everything runs on **local Ollama** (no cloud, no fallback), one click at a time
   source script, or any evaluation. The workspace id is a strict slug validated
   server-side (path-traversal safe).
 
+### Chunked evaluation (avoids one giant Ollama request)
+A full ~3-minute script is **split into small ordered chunks** (bounded by
+sentence count and character budget) and each chunk is evaluated in its own
+Ollama call, then combined into one evaluation. This prevents the single huge
+request that timed out at 120s on `qwen3:14b`.
+- Per-chunk timeout, chunk size, and char budget are configurable:
+  `SCRIPT_EVALUATOR_TIMEOUT_MS` (default 120000), `SCRIPT_EVALUATOR_CHUNK_SIZE`
+  (default 6 sentences), `SCRIPT_EVALUATOR_MAX_CHUNK_CHARS` (default 1400).
+- **Partial evaluation is honest.** If a later chunk times out/fails, the
+  completed chunks are still returned (`partial: true`, `chunks_completed`/
+  `chunks_total`, `partial_message`); highlights show for the completed chunks
+  and the rest of the script stays **neutral**. Zero completed chunks → a
+  Script Evaluator-specific error naming the provider/model/timeout and the
+  `SCRIPT_EVALUATOR_*` knobs (never Super Focus "prompts/chunk size" wording).
+- Rewrite is **blocked on a partial evaluation** ("Evaluation is partial.
+  Complete or retry evaluation before generating corrected script.").
+- Chunking never corrupts highlighting: combined sentences stay in original
+  order with exact original text, so `script-highlight.js` maps every span to
+  the full-script offsets by its existing safe forward scan.
+- Provider routing uses the load-aware local lane with task labels
+  `script-evaluator-evaluate` / `script-evaluator-rewrite`; provider/model
+  metadata stays visible in errors and responses.
+
 ### API (all nonce + local-Host + Origin gated; local Ollama only)
 - **POST** `/api/script-evaluator/evaluate` `{script}` → `{summary, verdict,
   total_score, scores, spans, highlighted_html, approved, disapproved,
-  suggested_corrections, notes, evaluation, provider}`. Stateless (persists
-  nothing). 400 empty, 502 unparseable, 503 Ollama down.
+  suggested_corrections, notes, partial, chunks_total, chunks_completed,
+  partial_message, evaluation, provider}`. Stateless (persists nothing).
+  200 (incl. partial), 400 empty, Script Evaluator-specific error when no chunk
+  completes.
 - **POST** `/api/script-evaluator/rewrite` `{script, evaluation}` →
   `{corrected_script, notes, provider}`. Requires both; persists nothing.
 - **POST** `/api/script-evaluator/save-final` `{final_script, source, id?}` →

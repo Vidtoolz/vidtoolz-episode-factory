@@ -289,6 +289,7 @@ const superFocusRouter = require('./super-focus-router.js');
 const scriptEvaluator = require('./script-evaluator.js');
 const scriptHighlight = require('./script-highlight.js');
 const scriptRewrite = require('./script-rewrite.js');
+const scriptEvaluatorChunk = require('./script-evaluator-chunk.js');
 const scriptEvaluatorWorkspace = require('./script-evaluator-workspace.js');
 // Super Focus keeps its own local, file-backed project state (never on VIDNAS).
 // Root is env-overridable so it can follow a different disk without code edits.
@@ -10492,36 +10493,85 @@ function createServer(options = {}) {
     // only (no fallback). All writes nonce + Host + Origin gated.
 
     // Panel 1: evaluate raw script text → summary/scores + safe green/red spans.
+    // A full script is split into small ORDERED chunks (one Ollama call each) to
+    // avoid one giant fragile request. Completed chunks are combined; if a later
+    // chunk times out/fails we return a PARTIAL evaluation honestly (200) rather
+    // than discarding the chunks that succeeded. Zero completed → a Script
+    // Evaluator-specific error (never Super Focus "prompts/chunk size" wording).
     if (req.method === 'POST' && url.pathname === SCRIPT_EVALUATOR_EVALUATE_API) {
       readJsonBody(req)
         .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Script Evaluator evaluate API' });
           const script = typeof payload.script === 'string' ? payload.script : '';
           if (!script.trim()) { const e = new Error('Paste a script first.'); e.statusCode = 400; throw e; }
-          const sentences = scriptEvaluator.splitScriptIntoSentences(script);
-          const prompt = scriptEvaluator.buildScriptEvaluationPrompt(script, sentences, {});
-          const gen = await superFocusGenerate(
-            { system: prompt.system, user: prompt.user, schema: prompt.schema, task: 'script_evaluation' },
-            options
-          );
-          const parsed = scriptEvaluator.parseScriptEvaluationOutput(gen.content); // 502 on garbage
-          const normalized = scriptEvaluator.normalizeScriptEvaluation(parsed, sentences);
-          const evaluation = scriptEvaluator.scoreScriptEvaluation(normalized);
-          const model = { provider: 'ollama', lane: 'script_evaluation', model: gen.provider ? gen.provider.model : null, host: gen.provider ? gen.provider.id : null };
-          const hl = scriptHighlight.buildHighlightModel(script, evaluation);
+          const allSentences = scriptEvaluator.splitScriptIntoSentences(script);
+          const chunks = scriptEvaluatorChunk.chunkScriptSentences(allSentences, options);
+          const perChunkTimeout = scriptEvaluatorChunk.resolveTimeoutMs(options);
+          const timeoutSecs = Math.ceil(perChunkTimeout / 1000);
+          const chunkEvals = [];
+          let provider = null;
+          let lastError = null;
+          for (const chunk of chunks) {
+            const prompt = scriptEvaluator.buildScriptEvaluationPrompt(chunk.text, chunk.sentences, {});
+            try {
+              const gen = await superFocusGenerate(
+                { system: prompt.system, user: prompt.user, schema: prompt.schema, task: 'script-evaluator-evaluate' },
+                Object.assign({}, options, { superFocusOllamaTimeoutMs: perChunkTimeout })
+              );
+              provider = gen.provider || provider;
+              const parsed = scriptEvaluator.parseScriptEvaluationOutput(gen.content);
+              const normalized = scriptEvaluator.normalizeScriptEvaluation(parsed, chunk.sentences);
+              chunkEvals.push(scriptEvaluator.scoreScriptEvaluation(normalized));
+            } catch (err) {
+              lastError = err; // discard the (Super Focus-flavored) enriched message
+              break; // stop at the first failure; keep the chunks that completed
+            }
+          }
+          const total = chunks.length;
+          const completed = chunkEvals.length;
+          const pLabel = (provider && provider.label) || 'local Ollama';
+          const pModel = (provider && provider.model) || OLLAMA_MODEL;
+          if (completed === 0) {
+            const code = (lastError && lastError.statusCode) || 503;
+            let msg;
+            if (code === 504) {
+              msg = `Script evaluation timed out before any chunk completed (0/${total}) on ${pLabel} using ${pModel}, per-chunk timeout ${timeoutSecs}s. Try reducing SCRIPT_EVALUATOR_MAX_CHUNK_CHARS, raising SCRIPT_EVALUATOR_TIMEOUT_MS, or using PRESTO Ollama. [task script-evaluator-evaluate]`;
+            } else if (code === 502) {
+              msg = `The evaluator model returned unusable output on ${pLabel} using ${pModel} — no chunk completed (0/${total}). Try Test Ollama model, reduce SCRIPT_EVALUATOR_MAX_CHUNK_CHARS, or route to PRESTO Ollama. [task script-evaluator-evaluate]`;
+            } else {
+              msg = `Could not reach ${pLabel} using ${pModel} for script evaluation — no chunk completed (0/${total}). Start Ollama and retry (no fallback), or route to PRESTO Ollama. [task script-evaluator-evaluate]`;
+            }
+            const e = new Error(msg); e.statusCode = code; throw e;
+          }
+          const combined = scriptEvaluatorChunk.combineChunkEvaluations(chunkEvals);
+          const hl = scriptHighlight.buildHighlightModel(script, combined);
+          const partial = completed < total;
+          let partial_message = null;
+          if (partial) {
+            const timedOut = lastError && lastError.statusCode === 504;
+            partial_message = timedOut
+              ? `Script evaluation timed out after ${timeoutSecs}s on ${pLabel} using ${pModel}. The script was split into ${total} chunks; ${completed} completed before the timeout. Completed chunks were preserved in the partial evaluation. Try a smaller evaluator model, reduce evaluator chunk size, raise SCRIPT_EVALUATOR_TIMEOUT_MS, or route text generation to PRESTO Ollama if available.`
+              : `Partial evaluation: ${completed}/${total} chunks completed on ${pLabel} using ${pModel}. Completed chunks were preserved; unevaluated text is left neutral. Retry to evaluate the rest.`;
+          }
+          const model = { provider: 'ollama', lane: 'script-evaluator-evaluate', model: pModel, host: provider ? provider.id : null };
+          const evaluation = Object.assign({}, combined, { partial, chunks_total: total, chunks_completed: completed });
           sendJSON(res, 200, {
-            summary: evaluation.summary || '',
-            verdict: evaluation.verdict || null,
-            total_score: evaluation.total_score != null ? evaluation.total_score : null,
-            scores: scriptHighlight.summarizeScores(evaluation),
+            summary: combined.summary || '',
+            verdict: combined.verdict || null,
+            total_score: combined.total_score != null ? combined.total_score : null,
+            scores: scriptHighlight.summarizeScores(combined),
             spans: hl.spans,
             highlighted_html: scriptHighlight.renderHighlightedHtml(script, hl.spans),
             approved: hl.approved,
             disapproved: hl.disapproved,
-            suggested_corrections: (Array.isArray(evaluation.fix_plan) ? evaluation.fix_plan : []).concat(evaluation.next_edit ? [evaluation.next_edit] : []),
+            suggested_corrections: (Array.isArray(combined.fix_plan) ? combined.fix_plan : []).concat(combined.next_edit ? [combined.next_edit] : []),
             notes: hl.notes,
-            evaluation, // full structured object, echoed back for the rewrite step
-            provider: gen.provider,
+            partial,
+            chunks_total: total,
+            chunks_completed: completed,
+            partial_message,
+            evaluation, // full structured object (+ partial flags), echoed back for rewrite
+            provider,
             model,
           });
         })
@@ -10539,11 +10589,34 @@ function createServer(options = {}) {
           if (!script.trim()) { const e = new Error('Paste a script first.'); e.statusCode = 400; throw e; }
           const evaluation = payload.evaluation && typeof payload.evaluation === 'object' ? payload.evaluation : null;
           if (!evaluation) { const e = new Error('Generate evaluation first.'); e.statusCode = 400; throw e; }
+          // Safer default: refuse to rewrite from a partial evaluation.
+          if (evaluation.partial === true) {
+            const e = new Error('Evaluation is partial. Complete or retry evaluation before generating corrected script.');
+            e.statusCode = 400; throw e;
+          }
+          const perChunkTimeout = scriptEvaluatorChunk.resolveTimeoutMs(options);
+          const timeoutSecs = Math.ceil(perChunkTimeout / 1000);
           const prompt = scriptRewrite.buildRewritePrompt(script, evaluation);
-          const gen = await superFocusGenerate(
-            { system: prompt.system, user: prompt.user, schema: prompt.schema, task: 'script_rewrite' },
-            options
-          );
+          let gen;
+          try {
+            gen = await superFocusGenerate(
+              { system: prompt.system, user: prompt.user, schema: prompt.schema, task: 'script-evaluator-rewrite' },
+              Object.assign({}, options, { superFocusOllamaTimeoutMs: perChunkTimeout })
+            );
+          } catch (err) {
+            // Script Evaluator-specific wording (never Super Focus "prompts").
+            const pLabel = (err.provider && err.provider.label) || 'local Ollama';
+            const pModel = (err.provider && err.provider.model) || OLLAMA_MODEL;
+            let msg;
+            if (err.statusCode === 504) {
+              msg = `Corrected-script generation timed out after ${timeoutSecs}s on ${pLabel} using ${pModel}. Try a smaller evaluator model, raise SCRIPT_EVALUATOR_TIMEOUT_MS, or route text generation to PRESTO Ollama if available. [task script-evaluator-rewrite]`;
+            } else if (err.statusCode === 502) {
+              msg = `The model returned unusable output while generating the corrected script on ${pLabel} using ${pModel}. Try again, or route to PRESTO Ollama. [task script-evaluator-rewrite]`;
+            } else {
+              msg = `Could not reach ${pLabel} using ${pModel} to generate the corrected script. Start Ollama and retry (no fallback). [task script-evaluator-rewrite]`;
+            }
+            const e = new Error(msg); e.statusCode = err.statusCode || 503; throw e;
+          }
           const out = scriptRewrite.parseRewriteOutput(gen.content); // 502 on unusable output
           sendJSON(res, 200, {
             corrected_script: out.corrected_script,

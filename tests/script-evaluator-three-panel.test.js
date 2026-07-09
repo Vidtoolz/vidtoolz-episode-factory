@@ -3,6 +3,7 @@ const ev = require("../script-evaluator.js");
 const hl = require("../script-highlight.js");
 const rw = require("../script-rewrite.js");
 const ws = require("../script-evaluator-workspace.js");
+const chunk = require("../script-evaluator-chunk.js");
 
 // ── local test helpers (mirror the super-focus endpoint test harness) ────────
 function mkRoot() { return fs.mkdtempSync(path.join(os.tmpdir(), "se-3panel-")); }
@@ -293,5 +294,161 @@ test("script-evaluator.html: three panels + buttons served; safe by construction
     assert.match(res.raw, /75vh/);
     assert.match(res.raw, /approved-highlight/);
     assert.match(res.raw, /rejected-highlight/);
+  } finally { await close(server); }
+});
+
+// ==================== Chunked evaluation + partial/timeout handling ====================
+
+// A multi-sentence script that will split into several chunks.
+const LONG_SCRIPT = [
+  "Prompts are not a production plan.",
+  "They are instructions for one asset.",
+  "If your video depends on one lucky prompt, you are gambling with prettier dice.",
+  "A serious creator needs a script.",
+  "You also need visual beats.",
+  "Approval gates keep you honest.",
+  "Every clip should have a reason to exist.",
+  "That reason is your job, not the model's.",
+].join(" ");
+
+function evalJsonForIds(ids) {
+  const categories = ev.CATEGORIES.map((c) => ({ id: c.id, score: 80, status: "pass", positives: ["p"], negatives: [], recommendation: "keep" }));
+  const hard_gates = ev.HARD_GATES.map((g) => ({ id: g.id, status: "pass", reason: "ok", suggested_fix: "" }));
+  const checklist = ev.CHECKLIST.map((c) => ({ id: c.id, status: "pass", reason: "ok" }));
+  const sentences = ids.map((sid, i) => ({
+    sentence_id: sid, role: "claim", score: i % 2 ? 40 : 90, status: i % 2 ? "revise" : "strong",
+    positives: i % 2 ? [] : ["clear"], negatives: i % 2 ? ["too vague"] : [],
+    highlighted_phrases: [], edit_suggestion: i % 2 ? "add a concrete example" : "", optional_rewrite: "",
+  }));
+  return JSON.stringify({ summary: "chunk ok", categories, hard_gates, checklist, sentences, top_strengths: ["spine"], top_problems: ["vague bits"], fix_plan: ["tighten"], next_edit: "cut the abstract line" });
+}
+
+// Stateful fake Ollama: returns a per-chunk evaluation whose ids match the chunk;
+// chunks at/after `failFrom` throw a TimeoutError (callOllamaChat -> 504).
+function chunkFake(opts = {}) {
+  let call = -1;
+  return async (_url, o) => {
+    call += 1;
+    if (opts.failFrom != null && call >= opts.failFrom) {
+      const e = new Error("simulated ollama timeout"); e.name = "TimeoutError"; throw e;
+    }
+    let ids = [1];
+    try {
+      const user = JSON.parse(o.body).messages[1].content;
+      const arrLine = user.split("\n").find((l) => l.trim().startsWith("[{") || l.trim().startsWith("["));
+      ids = JSON.parse(arrLine).map((s) => s.sentence_id);
+    } catch (_) {}
+    const content = evalJsonForIds(ids);
+    return { ok: true, json: async () => ({ message: { content } }) };
+  };
+}
+
+function chunkServer(fakeOpts, extra = {}) {
+  const sfRoot = mkRoot();
+  const wsRoot = mkRoot();
+  const server = packageEngineServer.createServer(Object.assign({
+    superFocusRoot: sfRoot, scriptEvaluatorWorkspaceRoot: wsRoot,
+    fetchImpl: chunkFake(fakeOpts), scriptEvaluatorChunkSize: 2, // force several small chunks
+  }, extra));
+  return { server, sfRoot, wsRoot };
+}
+
+test("chunk: chunkScriptSentences splits by sentence count and char budget", () => {
+  const sentences = ev.splitScriptIntoSentences(LONG_SCRIPT);
+  const bySize = chunk.chunkScriptSentences(sentences, { scriptEvaluatorChunkSize: 2, scriptEvaluatorMaxChunkChars: 9999 });
+  assert.ok(bySize.length >= 4, "8 sentences at 2/chunk -> >=4 chunks");
+  bySize.forEach((c) => { assert.ok(c.sentences.length <= 2); assert.equal(c.sentences[0].sentence_id, 1); assert.ok(c.text.length > 0); });
+  const byChars = chunk.chunkScriptSentences(sentences, { scriptEvaluatorChunkSize: 99, scriptEvaluatorMaxChunkChars: 40 });
+  assert.ok(byChars.length > 1, "small char budget forces multiple chunks");
+});
+
+test("chunk: combineChunkEvaluations concatenates sentences and re-scores", () => {
+  const s = ev.splitScriptIntoSentences(LONG_SCRIPT);
+  const chunks = chunk.chunkScriptSentences(s, { scriptEvaluatorChunkSize: 2 });
+  const evals = chunks.map((c) => ev.scoreScriptEvaluation(ev.normalizeScriptEvaluation(JSON.parse(evalJsonForIds(c.sentences.map((x) => x.sentence_id))), c.sentences)));
+  const combined = chunk.combineChunkEvaluations(evals);
+  const totalSentences = chunks.reduce((n, c) => n + c.sentences.length, 0);
+  assert.equal(combined.sentences.length, totalSentences, "all chunk sentences combined");
+  assert.ok(Number.isFinite(combined.total_score), "combined is re-scored");
+  assert.ok(combined.verdict, "combined has a verdict");
+});
+
+test("evaluate: full script is split into multiple chunks; spans map to original offsets", async () => {
+  const { server } = chunkServer({});
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SCRIPT_EVALUATOR_EVALUATE_API, { method: "POST", headers: writeHeaders(), body: { script: LONG_SCRIPT } });
+    assert.equal(res.statusCode, 200);
+    const d = unwrap(res);
+    assert.ok(d.chunks_total >= 4, "split into multiple chunks");
+    assert.equal(d.chunks_completed, d.chunks_total, "all chunks completed");
+    assert.equal(d.partial, false);
+    assert.ok(d.approved.length >= 1 && d.disapproved.length >= 1);
+    // Every span maps back to the exact ORIGINAL full-script offsets.
+    d.approved.concat(d.disapproved).forEach((sp) => assert.equal(LONG_SCRIPT.slice(sp.start, sp.end), sp.text));
+    // spans tile the whole original exactly.
+    let cursor = 0; d.spans.forEach((s) => { assert.equal(s.start, cursor); cursor = s.end; });
+    assert.equal(cursor, LONG_SCRIPT.length);
+    assert.doesNotMatch(d.highlighted_html, /<img|<script>/i);
+  } finally { await close(server); }
+});
+
+test("evaluate: timeout after some chunks returns a PARTIAL evaluation (200), not total failure", async () => {
+  const { server } = chunkServer({ failFrom: 1 }); // first chunk ok, rest time out
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SCRIPT_EVALUATOR_EVALUATE_API, { method: "POST", headers: writeHeaders(), body: { script: LONG_SCRIPT } });
+    assert.equal(res.statusCode, 200, "partial success, not an error");
+    const d = unwrap(res);
+    assert.equal(d.partial, true);
+    assert.equal(d.chunks_completed, 1);
+    assert.ok(d.chunks_total > d.chunks_completed);
+    assert.match(d.partial_message || "", /1 completed|1\/|chunks completed|split into/i);
+    assert.match(d.partial_message || "", /SCRIPT_EVALUATOR_TIMEOUT_MS/);
+    // Completed chunk produced highlights; the rest of the script is neutral.
+    assert.ok((d.approved.length + d.disapproved.length) >= 1, "highlights for completed chunk");
+    assert.ok(d.spans.some((s) => s.kind === "neutral"), "unevaluated text left neutral");
+    assert.doesNotMatch(d.partial_message || "", /Existing prompts were preserved/);
+  } finally { await close(server); }
+});
+
+test("evaluate: timeout before any chunk returns a Script Evaluator-specific error (no Super Focus wording)", async () => {
+  const { server } = chunkServer({ failFrom: 0 }); // every chunk times out
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SCRIPT_EVALUATOR_EVALUATE_API, { method: "POST", headers: writeHeaders(), body: { script: LONG_SCRIPT } });
+    assert.notEqual(res.statusCode, 200);
+    const msg = (res.body && res.body.error) || "";
+    assert.match(msg, /before any chunk completed/i);
+    assert.match(msg, /SCRIPT_EVALUATOR_TIMEOUT_MS/);
+    assert.match(msg, /task script-evaluator-evaluate/);
+    assert.doesNotMatch(msg, /Existing prompts were preserved/);
+    assert.doesNotMatch(msg, /reduce chunk size, raise the per-chunk timeout/); // Super Focus infographic advice
+  } finally { await close(server); }
+});
+
+test("rewrite: blocked (400) when the evaluation is partial", async () => {
+  const { server } = chunkServer({});
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SCRIPT_EVALUATOR_REWRITE_API, {
+      method: "POST", headers: writeHeaders(), body: { script: LONG_SCRIPT, evaluation: { partial: true, sentences: [] } },
+    });
+    assert.equal(res.statusCode, 400);
+    assert.match((res.body && res.body.error) || "", /Evaluation is partial/i);
+  } finally { await close(server); }
+});
+
+test("rewrite: timeout produces Script Evaluator-specific wording (no 'prompts')", async () => {
+  const { server } = chunkServer({ failFrom: 0 }); // rewrite call times out
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SCRIPT_EVALUATOR_REWRITE_API, {
+      method: "POST", headers: writeHeaders(), body: { script: LONG_SCRIPT, evaluation: { partial: false, sentences: [] } },
+    });
+    assert.notEqual(res.statusCode, 200);
+    const msg = (res.body && res.body.error) || "";
+    assert.match(msg, /task script-evaluator-rewrite/);
+    assert.doesNotMatch(msg, /Existing prompts were preserved/);
   } finally { await close(server); }
 });

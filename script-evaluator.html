@@ -70,6 +70,7 @@
   .status { font-size: 12px; color: var(--muted); }
   .status.err { color: #ff9d97; }
   .status.ok { color: var(--ok); }
+  .status.warn { color: var(--warn); }
   .toggle-line { font-size: 12px; color: var(--muted); }
   .toggle-line a { color: var(--accent); cursor: pointer; }
 </style>
@@ -183,6 +184,10 @@
     var s = el('p1-summary');
     var sc = d.scores || {};
     var parts = [];
+    if (d.partial && d.partial_message) {
+      var pm = document.createElement('div'); pm.textContent = d.partial_message;
+      parts.push('<div style="color:var(--warn);margin-bottom:6px">⚠ ' + pm.innerHTML + '</div>');
+    }
     parts.push('<div class="verdict">' + (d.verdict || '—') + (d.total_score != null ? ' · ' + d.total_score + '/100' : '') + '</div>');
     parts.push('<div class="scores">clarity ' + fmt(sc.clarity) + ' · structure ' + fmt(sc.structure) + ' · voice ' + fmt(sc.voice) + ' · retention ' + fmt(sc.retention) + ' · production ' + fmt(sc.production_fit) + '</div>');
     if (d.summary) { var sm = document.createElement('div'); sm.textContent = d.summary; parts.push('<div>' + sm.innerHTML + '</div>'); }
@@ -224,7 +229,12 @@
       el('p1-rendered').innerHTML = d.highlighted_html || '';
       renderSummary(d);
       setP1View(true);
-      setStatus(st, 'Evaluated ✓ — ' + (d.verdict || '') + (d.provider ? ' · ' + (d.provider.label || d.provider.model || '') : ''), 'ok');
+      if (d.partial) {
+        // Honest partial state: highlights for completed chunks, rest neutral.
+        setStatus(st, 'Partial evaluation: ' + d.chunks_completed + '/' + d.chunks_total + ' chunks completed — retry to finish.', 'warn');
+      } else {
+        setStatus(st, 'Evaluated ✓ — ' + (d.verdict || '') + (d.provider ? ' · ' + (d.provider.label || d.provider.model || '') : ''), 'ok');
+      }
     }).catch(function () { busy(btn, false); setStatus(st, 'Evaluation failed', 'err'); });
   });
 
@@ -232,6 +242,7 @@
   el('btn-rewrite').addEventListener('click', function () {
     var btn = this, st = el('p2-status');
     if (!lastEvaluation) { setStatus(st, 'Generate evaluation first.', 'err'); return; }
+    if (lastEvaluation.partial === true) { setStatus(st, 'Evaluation is partial. Complete or retry evaluation before generating corrected script.', 'err'); return; }
     var script = el('p1-input').value;
     if (!script.trim()) { setStatus(st, 'Paste a script first.', 'err'); return; }
     busy(btn, true); setStatus(st, 'Generating corrected script…');
