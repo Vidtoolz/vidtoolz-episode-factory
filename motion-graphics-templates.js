@@ -197,7 +197,7 @@ function buildCardHtml(card = {}) {
   .mg-safe-label{position:absolute;bottom:1%;left:6%;font-size:${Math.round(fmt.width*0.02)}px;color:#586069;}
 </style></head>
 <body>
-  <div class="mg-stage" data-type="${escapeHtml(type)}" data-w="${fmt.width}" data-h="${fmt.height}">
+  <div id="root" class="mg-stage" data-type="${escapeHtml(type)}" data-composition-id="${escapeHtml(card.card_id || type)}" data-start="0" data-duration="${fmt.duration_seconds}" data-width="${fmt.width}" data-height="${fmt.height}" data-fps="${fmt.fps}">
     <div class="mg-brand">VIDTOOLZ</div>
     ${body}
     <div class="mg-safe ${overlayClass}"></div>

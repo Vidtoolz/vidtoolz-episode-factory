@@ -74,6 +74,19 @@ test("mg-templates: buildCardHtml escapes injection and is self-contained", () =
   assert.match(html, /presenter-safe area/);
 });
 
+test("mg-templates: buildCardHtml root carries HyperFrames composition markers (id/duration/fps)", () => {
+  // Regression: HyperFrames needs a root <div id="root" data-composition-id
+  // data-duration …> or it fails with "reported zero duration" (real-smoke bug).
+  const html = mgTpl.buildCardHtml({ type: "title", card_id: "card-abc123", params: { title: "T" }, format: { width: 1080, height: 1920, fps: 30, duration_seconds: 5 } });
+  assert.match(html, /id="root"/);
+  assert.match(html, /data-composition-id="card-abc123"/);
+  assert.match(html, /data-start="0"/);
+  assert.match(html, /data-duration="5"/);
+  assert.match(html, /data-width="1080"/);
+  assert.match(html, /data-height="1920"/);
+  assert.match(html, /data-fps="30"/);
+});
+
 // ── state module ─────────────────────────────────────────────────────────────
 test("mg-state: create/list/load, add/update card, atomic file, no binaries", () => {
   const root = mkRoot();
