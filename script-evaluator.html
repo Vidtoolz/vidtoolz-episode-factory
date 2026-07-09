@@ -98,6 +98,7 @@
       </div>
       <div class="footer">
         <button class="primary" id="btn-evaluate">Generate evaluation</button>
+        <button class="link-btn hidden" id="eval-cancel">Cancel evaluation</button>
         <span class="status" id="p1-status"></span>
       </div>
     </section>
@@ -140,7 +141,8 @@
 
 <script>
   var STATUS_API = '/api/package-engine/status';
-  var EVALUATE_API = '/api/script-evaluator/evaluate';
+  var EVALUATE_JOB_API = '/api/script-evaluator/evaluate-job';
+  var CANCEL_JOB_API = '/api/script-evaluator/cancel-evaluation-job';
   var REWRITE_API = '/api/script-evaluator/rewrite';
   var SAVE_FINAL_API = '/api/script-evaluator/save-final';
   var WORKSPACE_ID = 'default';
@@ -148,6 +150,8 @@
   var nonce = null;
   var nonceHeader = 'x-vidtoolz-local-write-nonce';
   var lastEvaluation = null; // structured evaluation object for the rewrite step
+  var evalJobId = null;      // current evaluation job id
+  var evalPollTimer = null;  // status poll timer
 
   function unwrap(body) { return (body && body.data) ? body.data : body; }
   function el(id) { return document.getElementById(id); }
@@ -175,6 +179,11 @@
       return fetch(path, { method: 'POST', headers: headers, body: JSON.stringify(body) })
         .then(function (r) { return parseBody(r).then(function (b) { return { ok: r.ok, status: r.status, body: b }; }); });
     });
+  }
+
+  function apiGet(path) {
+    return fetch(path, { headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return parseBody(r).then(function (b) { return { ok: r.ok, status: r.status, body: b }; }); });
   }
 
   function busy(btn, on) { btn.classList.toggle('busy', on); btn.disabled = on; }
@@ -215,27 +224,80 @@
   }
   el('p1-toggle').addEventListener('click', function () { setP1View(!p1ShowingRendered); });
 
+  // Render a job snapshot into Panel 1 (partial highlights as chunks complete).
+  function applyEvalSnapshot(d) {
+    // Progressive highlights: whenever the job has produced any spans, show them.
+    if (d.highlighted_html) {
+      el('p1-rendered').innerHTML = d.highlighted_html; // server-escaped; safe to inject
+      renderSummary(d);
+      setP1View(true);
+    }
+    lastEvaluation = d.evaluation || null;
+  }
+
+  function stopEvalPolling() { if (evalPollTimer) { clearInterval(evalPollTimer); evalPollTimer = null; } }
+
+  function finishEval(d) {
+    stopEvalPolling();
+    evalJobId = null;
+    busy(el('btn-evaluate'), false);
+    el('eval-cancel').classList.add('hidden');
+    var st = el('p1-status');
+    applyEvalSnapshot(d);
+    if (d.status === 'done') {
+      setStatus(st, 'Evaluated ✓ — ' + (d.verdict || '') + (d.provider ? ' · ' + (d.provider.label || d.provider.model || '') : ''), 'ok');
+    } else if (d.status === 'partial') {
+      setStatus(st, 'Partial evaluation: ' + d.chunks_completed + '/' + d.chunks_total + ' chunks completed — retry to finish.', 'warn');
+    } else if (d.status === 'cancelled') {
+      setStatus(st, d.message || 'Evaluation cancelled.', 'warn');
+    } else { // failed
+      setStatus(st, (d.error) || 'Evaluation failed.', 'err');
+    }
+  }
+
+  function pollEvalJob() {
+    if (!evalJobId) return;
+    apiGet(EVALUATE_JOB_API + '?id=' + encodeURIComponent(evalJobId)).then(function (res) {
+      if (!res.ok) {
+        stopEvalPolling(); evalJobId = null; busy(el('btn-evaluate'), false); el('eval-cancel').classList.add('hidden');
+        setStatus(el('p1-status'), (res.body && res.body.error) || 'Lost the evaluation job.', 'err');
+        return;
+      }
+      var d = unwrap(res.body);
+      if (d.status === 'queued' || d.status === 'running') {
+        applyEvalSnapshot(d); // show partial highlights so far
+        setStatus(el('p1-status'), d.message || ('Evaluating ' + d.chunks_completed + '/' + d.chunks_total + '…'));
+      } else {
+        finishEval(d);
+      }
+    }).catch(function () { /* transient; keep polling */ });
+  }
+
   el('btn-evaluate').addEventListener('click', function () {
     var btn = this, st = el('p1-status');
     var script = el('p1-input').value;
     if (!script.trim()) { setStatus(st, 'Paste a script first.', 'err'); return; }
-    busy(btn, true); setStatus(st, 'Evaluating with local Ollama…');
-    apiPost(EVALUATE_API, { script: script }).then(function (res) {
-      busy(btn, false);
-      if (!res.ok) { setStatus(st, (res.body && res.body.error) || 'Evaluation failed', 'err'); return; }
-      var d = unwrap(res.body);
-      lastEvaluation = d.evaluation || null;
-      // Server-escaped HTML: safe to inject. The original text stays in the textarea.
-      el('p1-rendered').innerHTML = d.highlighted_html || '';
-      renderSummary(d);
-      setP1View(true);
-      if (d.partial) {
-        // Honest partial state: highlights for completed chunks, rest neutral.
-        setStatus(st, 'Partial evaluation: ' + d.chunks_completed + '/' + d.chunks_total + ' chunks completed — retry to finish.', 'warn');
-      } else {
-        setStatus(st, 'Evaluated ✓ — ' + (d.verdict || '') + (d.provider ? ' · ' + (d.provider.label || d.provider.model || '') : ''), 'ok');
+    busy(btn, true); setStatus(st, 'Starting evaluation…');
+    apiPost(EVALUATE_JOB_API, { script: script }).then(function (res) {
+      if (!res.ok) {
+        busy(btn, false);
+        setStatus(st, (res.body && res.body.error) || 'Could not start evaluation', 'err');
+        return;
       }
-    }).catch(function () { busy(btn, false); setStatus(st, 'Evaluation failed', 'err'); });
+      var d = unwrap(res.body);
+      evalJobId = d.job_id;
+      el('eval-cancel').classList.remove('hidden');
+      setStatus(st, d.message || ('Queued… (' + d.chunks_total + ' chunks)'));
+      stopEvalPolling();
+      evalPollTimer = setInterval(pollEvalJob, 2500);
+      pollEvalJob(); // immediate first poll
+    }).catch(function () { busy(btn, false); setStatus(st, 'Could not start evaluation', 'err'); });
+  });
+
+  el('eval-cancel').addEventListener('click', function () {
+    if (!evalJobId) return;
+    setStatus(el('p1-status'), 'Cancelling…', 'warn');
+    apiPost(CANCEL_JOB_API, { id: evalJobId }).then(function () { pollEvalJob(); });
   });
 
   // ── Panel 2: rewrite ────────────────────────────────────────────────────────

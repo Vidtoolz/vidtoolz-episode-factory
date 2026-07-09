@@ -4,6 +4,7 @@ const hl = require("../script-highlight.js");
 const rw = require("../script-rewrite.js");
 const ws = require("../script-evaluator-workspace.js");
 const chunk = require("../script-evaluator-chunk.js");
+const jobs = require("../script-evaluator-jobs.js");
 
 // ── local test helpers (mirror the super-focus endpoint test harness) ────────
 function mkRoot() { return fs.mkdtempSync(path.join(os.tmpdir(), "se-3panel-")); }
@@ -450,5 +451,186 @@ test("rewrite: timeout produces Script Evaluator-specific wording (no 'prompts')
     const msg = (res.body && res.body.error) || "";
     assert.match(msg, /task script-evaluator-rewrite/);
     assert.doesNotMatch(msg, /Existing prompts were preserved/);
+  } finally { await close(server); }
+});
+
+// ==================== Async evaluation jobs (progress + partial + concurrency) ====================
+function waitFor(fn, ms) {
+  const t0 = Date.now();
+  return (async () => {
+    for (;;) {
+      const v = await fn();
+      if (v) return v;
+      if (Date.now() - t0 > (ms || 3000)) throw new Error("waitFor timeout");
+      await new Promise((r) => setTimeout(r, 10));
+    }
+  })();
+}
+async function waitForJob(server, id, ms) {
+  return waitFor(async () => {
+    const r = await request(server, packageEngineServer.SCRIPT_EVALUATOR_EVALUATE_JOB_API + "?id=" + encodeURIComponent(id));
+    const d = unwrap(r);
+    return (d && ["done", "partial", "failed", "cancelled"].includes(d.status)) ? d : null;
+  }, ms);
+}
+
+// ---- pure job manager ----
+test("job manager: start returns immediately (running, 0 completed) then progresses to done", async () => {
+  const mgr = jobs.createEvaluationJobManager({});
+  const snap = mgr.start({
+    chunks: [{}, {}],
+    processChunk: async () => { await new Promise((r) => setTimeout(r, 5)); return { scored: {}, provider: { label: "vidnux Ollama", model: "qwen3:14b" } }; },
+    assemble: (evals, done) => ({ summary: "s", highlighted_html: evals.length ? "<span>x</span>" : "", evaluation: { partial: !done } }),
+    formatError: (e, c, t) => "err " + c + "/" + t,
+    partialMessage: (c, t) => "partial " + c + "/" + t,
+    providerHint: { label: "vidnux Ollama", model: "qwen3:14b" }, timeoutSeconds: 120,
+  });
+  assert.match(snap.job_id, /^se-[a-f0-9]{16}$/);
+  assert.equal(snap.status, "running");
+  assert.equal(snap.chunks_total, 2);
+  assert.equal(snap.chunks_completed, 0, "returns before any chunk completes");
+  const done = await waitFor(() => { const s = mgr.get(snap.job_id); return s.status === "done" ? s : null; });
+  assert.equal(done.chunks_completed, 2);
+  assert.equal(done.evaluation.partial, false);
+});
+
+test("job manager: one active job at a time (409)", () => {
+  const mgr = jobs.createEvaluationJobManager({});
+  mgr.start({ chunks: [{}], processChunk: () => new Promise(() => {}), assemble: () => ({ evaluation: {} }), providerHint: {} });
+  assert.throws(() => mgr.start({ chunks: [{}], processChunk: () => new Promise(() => {}), assemble: () => ({}) }), (e) => e.statusCode === 409);
+});
+
+test("job manager: cancel stops before the next chunk (keeps completed)", async () => {
+  const mgr = jobs.createEvaluationJobManager({});
+  let startedResolve; const started = new Promise((r) => { startedResolve = r; });
+  let gate; const p = new Promise((r) => { gate = r; });
+  let i = 0;
+  const snap = mgr.start({
+    chunks: [{}, {}],
+    processChunk: async () => { i += 1; if (i === 1) { startedResolve(); await p; return { scored: {}, provider: {} }; } throw new Error("should not reach chunk 2 after cancel"); },
+    assemble: (evals, done) => ({ evaluation: { partial: !done }, highlighted_html: "x" }),
+    providerHint: {},
+  });
+  await started;           // chunk 1 is now in flight
+  mgr.cancel(snap.job_id); // request cancel while chunk 1 runs
+  gate();                  // let chunk 1 finish; loop should stop before chunk 2
+  const term = await waitFor(() => { const s = mgr.get(snap.job_id); return s.status === "cancelled" ? s : null; });
+  assert.equal(term.status, "cancelled");
+  assert.equal(term.chunks_completed, 1);
+});
+
+test("job manager: assertValidJobId rejects unsafe ids", () => {
+  assert.throws(() => jobs.assertValidJobId("../etc/passwd"), (e) => e.statusCode === 400);
+  assert.throws(() => jobs.assertValidJobId("se-NOTHEX"), (e) => e.statusCode === 400);
+  assert.doesNotThrow(() => jobs.assertValidJobId("se-0123456789abcdef"));
+});
+
+// ---- job endpoints ----
+test("evaluate-job: returns immediately with a job id (0 completed) and progresses to done", async () => {
+  const { server } = chunkServer({});
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SCRIPT_EVALUATOR_EVALUATE_JOB_API, { method: "POST", headers: writeHeaders(), body: { script: LONG_SCRIPT } });
+    assert.equal(res.statusCode, 200);
+    const d0 = unwrap(res);
+    assert.match(d0.job_id, /^se-[a-f0-9]{16}$/);
+    assert.ok(d0.status === "running" || d0.status === "queued");
+    assert.ok(d0.chunks_total >= 2);
+    assert.equal(d0.chunks_completed, 0, "does not wait for chunks");
+    assert.ok(d0.provider && d0.provider.model, "provider metadata present up front");
+    const done = await waitForJob(server, d0.job_id);
+    assert.equal(done.status, "done");
+    assert.equal(done.chunks_completed, done.chunks_total);
+    assert.ok(done.approved.length >= 1 && done.highlighted_html.length > 0);
+    assert.equal(done.evaluation.partial, false);
+    assert.doesNotMatch(done.highlighted_html, /<img|<script>/i);
+    done.approved.concat(done.disapproved).forEach((sp) => assert.equal(LONG_SCRIPT.slice(sp.start, sp.end), sp.text));
+  } finally { await close(server); }
+});
+
+test("evaluate-job: failure after some chunks -> partial (highlights kept, neutral remainder, no Super Focus wording)", async () => {
+  const { server } = chunkServer({ failFrom: 1 });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SCRIPT_EVALUATOR_EVALUATE_JOB_API, { method: "POST", headers: writeHeaders(), body: { script: LONG_SCRIPT } });
+    const d0 = unwrap(res);
+    const term = await waitForJob(server, d0.job_id);
+    assert.equal(term.status, "partial");
+    assert.equal(term.chunks_completed, 1);
+    assert.ok(term.chunks_total > 1);
+    assert.ok((term.approved.length + term.disapproved.length) >= 1, "completed chunk highlights kept");
+    assert.ok(term.spans.some((s) => s.kind === "neutral"), "unevaluated text neutral");
+    assert.equal(term.evaluation.partial, true);
+    assert.doesNotMatch(JSON.stringify(term), /Existing prompts were preserved/);
+  } finally { await close(server); }
+});
+
+test("evaluate-job: failure before any chunk -> failed with Script Evaluator-specific error", async () => {
+  const { server } = chunkServer({ failFrom: 0 });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SCRIPT_EVALUATOR_EVALUATE_JOB_API, { method: "POST", headers: writeHeaders(), body: { script: LONG_SCRIPT } });
+    const d0 = unwrap(res);
+    const term = await waitForJob(server, d0.job_id);
+    assert.equal(term.status, "failed");
+    assert.equal(term.chunks_completed, 0);
+    assert.match(term.error || "", /before any chunk completed/i);
+    assert.match(term.error || "", /SCRIPT_EVALUATOR_TIMEOUT_MS/);
+    assert.match(term.error || "", /task script-evaluator-evaluate/);
+    assert.doesNotMatch(term.error || "", /Existing prompts were preserved/);
+  } finally { await close(server); }
+});
+
+test("evaluate-job GET: rejects an unsafe job id (path traversal) with 400", async () => {
+  const { server } = chunkServer({});
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SCRIPT_EVALUATOR_EVALUATE_JOB_API + "?id=" + encodeURIComponent("../../etc/passwd"));
+    assert.equal(res.statusCode, 400);
+  } finally { await close(server); }
+});
+
+test("evaluate-job: 409 when another evaluation is already running", async () => {
+  const stub = { hasActive: () => true, start() { throw new Error("should not start"); }, get() { return null; }, cancel() { return null; } };
+  const server = packageEngineServer.createServer({ superFocusRoot: mkRoot(), fetchImpl: chunkFake({}), scriptEvaluatorJobManager: stub });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SCRIPT_EVALUATOR_EVALUATE_JOB_API, { method: "POST", headers: writeHeaders(), body: { script: LONG_SCRIPT } });
+    assert.equal(res.statusCode, 409);
+    assert.match((res.body && res.body.error) || "", /already running/i);
+  } finally { await close(server); }
+});
+
+test("evaluate-job: is nonce-gated (403 without the write nonce)", async () => {
+  const { server } = chunkServer({});
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SCRIPT_EVALUATOR_EVALUATE_JOB_API, { method: "POST", headers: { host: "127.0.0.1:8010" }, body: { script: LONG_SCRIPT } });
+    assert.equal(res.statusCode, 403);
+  } finally { await close(server); }
+});
+
+test("cancel-evaluation-job: rejects unsafe id (400) and unknown id (404)", async () => {
+  const { server } = chunkServer({});
+  await listen(server);
+  try {
+    const bad = await request(server, packageEngineServer.SCRIPT_EVALUATOR_CANCEL_JOB_API, { method: "POST", headers: writeHeaders(), body: { id: "../nope" } });
+    assert.equal(bad.statusCode, 400);
+    const unknown = await request(server, packageEngineServer.SCRIPT_EVALUATOR_CANCEL_JOB_API, { method: "POST", headers: writeHeaders(), body: { id: "se-0123456789abcdef" } });
+    assert.equal(unknown.statusCode, 404);
+  } finally { await close(server); }
+});
+
+test("script-evaluator.html: uses the async job endpoints + has a cancel control", async () => {
+  const server = packageEngineServer.createServer({ superFocusRoot: mkRoot() });
+  await listen(server);
+  try {
+    const res = await request(server, "/script-evaluator.html");
+    assert.equal(res.statusCode, 200);
+    assert.match(res.raw, /EVALUATE_JOB_API\s*=\s*'\/api\/script-evaluator\/evaluate-job'/);
+    assert.match(res.raw, /CANCEL_JOB_API\s*=\s*'\/api\/script-evaluator\/cancel-evaluation-job'/);
+    assert.match(res.raw, /id="eval-cancel"[^>]*>Cancel evaluation</);
+    assert.match(res.raw, /setInterval\(pollEvalJob/);
+    assert.doesNotMatch(res.raw, /Existing prompts were preserved/);
   } finally { await close(server); }
 });

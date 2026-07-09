@@ -144,6 +144,26 @@ request that timed out at 120s on `qwen3:14b`.
   `script-evaluator-evaluate` / `script-evaluator-rewrite`; provider/model
   metadata stays visible in errors and responses.
 
+### Async evaluation jobs (progress, not a frozen spinner)
+Because each chunk can take ~85–100s, the UI uses a **background job** instead of
+one blocking request:
+- **POST** `/api/script-evaluator/evaluate-job` `{script}` returns immediately
+  with `{job_id, status:'running', chunks_total, chunks_completed:0, provider}`.
+- The client polls **GET** `/api/script-evaluator/evaluate-job?id=<job_id>` every
+  few seconds; status shows `Evaluating chunk N/M with vidnux Ollama…` and
+  **partial highlights appear as chunks complete**.
+- Terminal states: `done` (final highlights; rewrite unblocked), `partial`
+  (some chunks done, rest neutral; rewrite stays blocked), `failed` (no chunk;
+  Script Evaluator-specific error), `cancelled`.
+- **POST** `/api/script-evaluator/cancel-evaluation-job` `{id}` requests cancel;
+  it stops **before the next chunk** (an in-flight Ollama call is not killed).
+- Policy: **one active evaluation job at a time** (per cockpit); a second start
+  returns `409 "Another script evaluation is already running. Wait or cancel it."`
+- Jobs are **in-memory** (a cockpit restart drops them → the UI reports the job
+  is gone and you retry). Job ids are server-generated (`se-<16 hex>`) and
+  validated; no user-controlled paths. The old blocking
+  `POST /api/script-evaluator/evaluate` route remains for compatibility.
+
 ### API (all nonce + local-Host + Origin gated; local Ollama only)
 - **POST** `/api/script-evaluator/evaluate` `{script}` → `{summary, verdict,
   total_score, scores, spans, highlighted_html, approved, disapproved,

@@ -105,6 +105,8 @@ const SUPER_FOCUS_EVALUATE_SCRIPT_API = '/api/super-focus/evaluate-script';
 const SUPER_FOCUS_SCRIPT_EVALUATION_API = '/api/super-focus/script-evaluation';
 // Standalone three-panel Script Evaluator workspace (raw text in, no project).
 const SCRIPT_EVALUATOR_EVALUATE_API = '/api/script-evaluator/evaluate';
+const SCRIPT_EVALUATOR_EVALUATE_JOB_API = '/api/script-evaluator/evaluate-job';
+const SCRIPT_EVALUATOR_CANCEL_JOB_API = '/api/script-evaluator/cancel-evaluation-job';
 const SCRIPT_EVALUATOR_REWRITE_API = '/api/script-evaluator/rewrite';
 const SCRIPT_EVALUATOR_SAVE_FINAL_API = '/api/script-evaluator/save-final';
 const SCRIPT_EVALUATOR_FINAL_API = '/api/script-evaluator/final';
@@ -290,6 +292,7 @@ const scriptEvaluator = require('./script-evaluator.js');
 const scriptHighlight = require('./script-highlight.js');
 const scriptRewrite = require('./script-rewrite.js');
 const scriptEvaluatorChunk = require('./script-evaluator-chunk.js');
+const scriptEvaluatorJobs = require('./script-evaluator-jobs.js');
 const scriptEvaluatorWorkspace = require('./script-evaluator-workspace.js');
 // Super Focus keeps its own local, file-backed project state (never on VIDNAS).
 // Root is env-overridable so it can follow a different disk without code edits.
@@ -10327,8 +10330,54 @@ function handlePipelineStatus(req, res, url) {
   });
 }
 
+// Build the client-facing evaluate payload from completed chunk evaluations.
+// Shared by the async job path (per-chunk partial rebuilds + final). isDone
+// controls evaluation.partial, which gates the rewrite step.
+function assembleScriptEvaluatorPayload(script, chunkEvals, isDone) {
+  const combined = scriptEvaluatorChunk.combineChunkEvaluations(chunkEvals);
+  const hl = scriptHighlight.buildHighlightModel(script, combined);
+  return {
+    summary: combined.summary || '',
+    verdict: combined.verdict || null,
+    total_score: combined.total_score != null ? combined.total_score : null,
+    scores: scriptHighlight.summarizeScores(combined),
+    spans: hl.spans,
+    highlighted_html: scriptHighlight.renderHighlightedHtml(script, hl.spans),
+    approved: hl.approved,
+    disapproved: hl.disapproved,
+    suggested_corrections: (Array.isArray(combined.fix_plan) ? combined.fix_plan : []).concat(combined.next_edit ? [combined.next_edit] : []),
+    notes: hl.notes,
+    evaluation: Object.assign({}, combined, { partial: !isDone }),
+  };
+}
+
+// Script Evaluator-specific chunk error wording (never Super Focus "prompts").
+function scriptEvaluatorChunkErrorMessage(err, completed, total, provider, timeoutSecs) {
+  const label = (provider && provider.label) || 'vidnux Ollama';
+  const model = (provider && provider.model) || OLLAMA_MODEL;
+  const code = err && err.statusCode;
+  if (code === 504) {
+    return completed > 0
+      ? `Script evaluation chunk timed out after ${timeoutSecs}s on ${label} using ${model}. ${completed}/${total} chunks completed. Completed chunks are shown; the rest remains neutral. Raise SCRIPT_EVALUATOR_TIMEOUT_MS, reduce SCRIPT_EVALUATOR_CHUNK_SIZE, or route to PRESTO Ollama.`
+      : `Script evaluation timed out before any chunk completed (0/${total}) on ${label} using ${model}, per-chunk timeout ${timeoutSecs}s. Reduce SCRIPT_EVALUATOR_MAX_CHUNK_CHARS, raise SCRIPT_EVALUATOR_TIMEOUT_MS, or use PRESTO Ollama. [task script-evaluator-evaluate]`;
+  }
+  if (code === 502) {
+    return `The evaluator model returned unusable output on ${label} using ${model} (${completed}/${total} chunks completed). Try Test Ollama model, reduce SCRIPT_EVALUATOR_CHUNK_SIZE, or route to PRESTO Ollama. [task script-evaluator-evaluate]`;
+  }
+  return `Could not reach ${label} using ${model} for script evaluation (${completed}/${total} chunks completed). Start Ollama and retry (no fallback), or route to PRESTO Ollama. [task script-evaluator-evaluate]`;
+}
+
+function scriptEvaluatorPartialMessage(completed, total, provider, timeoutSecs) {
+  const label = (provider && provider.label) || 'vidnux Ollama';
+  const model = (provider && provider.model) || OLLAMA_MODEL;
+  return `Partial evaluation: ${completed}/${total} chunks completed on ${label} using ${model} (per-chunk timeout ${timeoutSecs}s). Completed chunks are shown; the rest remains neutral. Retry to evaluate the rest.`;
+}
+
 function createServer(options = {}) {
   const serverOptions = options && typeof options === 'object' ? options : {};
+  // One evaluation job at a time, scoped to THIS server instance.
+  const scriptEvaluatorJobManager = serverOptions.scriptEvaluatorJobManager
+    || scriptEvaluatorJobs.createEvaluationJobManager({});
   return http.createServer((req, res) => {
     const host = req.headers.host || 'localhost';
     let url;
@@ -10576,6 +10625,89 @@ function createServer(options = {}) {
           });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'script-evaluator-evaluate-error'));
+      return;
+    }
+
+    // Panel 1 (async): start a background evaluation job and return immediately.
+    // The client polls GET evaluate-job for progress + partial highlights. One
+    // job at a time (409 otherwise). Nothing is persisted.
+    if (req.method === 'POST' && url.pathname === SCRIPT_EVALUATOR_EVALUATE_JOB_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Script Evaluator evaluate-job API' });
+          const script = typeof payload.script === 'string' ? payload.script : '';
+          if (!script.trim()) { const e = new Error('Paste a script first.'); e.statusCode = 400; throw e; }
+          if (scriptEvaluatorJobManager.hasActive()) {
+            const e = new Error('Another script evaluation is already running. Wait or cancel it.'); e.statusCode = 409; throw e;
+          }
+          const allSentences = scriptEvaluator.splitScriptIntoSentences(script);
+          const chunks = scriptEvaluatorChunk.chunkScriptSentences(allSentences, options);
+          const perChunkTimeout = scriptEvaluatorChunk.resolveTimeoutMs(options);
+          const timeoutSecs = Math.ceil(perChunkTimeout / 1000);
+          // Provider metadata up front (best-effort) so status shows it before chunk 1.
+          let providerHint = null;
+          try {
+            const decision = await resolveSuperFocusOllamaProvider('script-evaluator-evaluate', options);
+            if (!decision.error) providerHint = publicProvider(decision);
+          } catch (_) { /* status just omits provider until first chunk */ }
+          if (!providerHint) providerHint = { id: 'vidnux_ollama', label: 'vidnux Ollama', model: OLLAMA_MODEL };
+          const processChunk = async (chunk) => {
+            const prompt = scriptEvaluator.buildScriptEvaluationPrompt(chunk.text, chunk.sentences, {});
+            const gen = await superFocusGenerate(
+              { system: prompt.system, user: prompt.user, schema: prompt.schema, task: 'script-evaluator-evaluate' },
+              Object.assign({}, options, { superFocusOllamaTimeoutMs: perChunkTimeout })
+            );
+            const parsed = scriptEvaluator.parseScriptEvaluationOutput(gen.content);
+            const normalized = scriptEvaluator.normalizeScriptEvaluation(parsed, chunk.sentences);
+            return { scored: scriptEvaluator.scoreScriptEvaluation(normalized), provider: gen.provider };
+          };
+          const total = chunks.length;
+          const assemble = (evals, isDone) => {
+            const p = assembleScriptEvaluatorPayload(script, evals, isDone);
+            p.evaluation = Object.assign({}, p.evaluation, { chunks_total: total, chunks_completed: evals.length });
+            return p;
+          };
+          const snap = scriptEvaluatorJobManager.start({
+            chunks,
+            providerHint,
+            timeoutSeconds: timeoutSecs,
+            processChunk,
+            assemble,
+            formatError: (err, completed) => scriptEvaluatorChunkErrorMessage(err, completed, total, providerHint, timeoutSecs),
+            partialMessage: (completed) => scriptEvaluatorPartialMessage(completed, total, providerHint, timeoutSecs),
+          });
+          sendJSON(res, 200, snap);
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'script-evaluator-evaluate-job-error'));
+      return;
+    }
+
+    // Poll evaluation job status (read-only). Safe id only.
+    if (req.method === 'GET' && url.pathname === SCRIPT_EVALUATOR_EVALUATE_JOB_API) {
+      try {
+        const id = url.searchParams.get('id') || '';
+        scriptEvaluatorJobs.assertValidJobId(id); // 400 on unsafe/traversal ids
+        const snap = scriptEvaluatorJobManager.get(id);
+        if (!snap) { sendError(res, 404, 'Evaluation job not found (it may have finished long ago, or the cockpit restarted). Run Generate evaluation again.', 'script-evaluator-job-not-found'); return; }
+        sendJSON(res, 200, snap);
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'script-evaluator-evaluate-job-error');
+      }
+      return;
+    }
+
+    // Cancel a queued/running evaluation job (stops before the next chunk).
+    if (req.method === 'POST' && url.pathname === SCRIPT_EVALUATOR_CANCEL_JOB_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Script Evaluator cancel-evaluation-job API' });
+          const id = payload.id || payload.job_id || '';
+          scriptEvaluatorJobs.assertValidJobId(id);
+          const snap = scriptEvaluatorJobManager.cancel(id);
+          if (!snap) { sendError(res, 404, 'Evaluation job not found.', 'script-evaluator-job-not-found'); return; }
+          sendJSON(res, 200, snap);
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'script-evaluator-cancel-evaluation-job-error'));
       return;
     }
 
@@ -13877,6 +14009,8 @@ module.exports = {
   SUPER_FOCUS_EVALUATE_SCRIPT_API,
   SUPER_FOCUS_SCRIPT_EVALUATION_API,
   SCRIPT_EVALUATOR_EVALUATE_API,
+  SCRIPT_EVALUATOR_EVALUATE_JOB_API,
+  SCRIPT_EVALUATOR_CANCEL_JOB_API,
   SCRIPT_EVALUATOR_REWRITE_API,
   SCRIPT_EVALUATOR_SAVE_FINAL_API,
   SCRIPT_EVALUATOR_FINAL_API,
