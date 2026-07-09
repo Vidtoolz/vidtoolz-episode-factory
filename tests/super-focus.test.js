@@ -3194,3 +3194,96 @@ test("docs/script-evaluator.md: states advisory-only and no external fact-checki
   assert.match(doc, /no cloud fallback/i);
   assert.match(doc, /super-focus\.html\?focus=script-evaluator/);
 });
+
+// ---- Collapsible steps + script full-height (UI usability slice) ----
+// The collapse buttons are built at runtime by initCollapsibleSections(); no
+// jsdom/node_modules exist in this repo, so we assert the served markup + the
+// inline-script wiring (the pattern used by the other Super Focus UI tests) and
+// verify the unsaved-edit-safety property at the source level. Interactive
+// behavior is exercised in the manual rendering proof.
+const SF_HTML = fs.readFileSync(path.join(__dirname, "..", "super-focus.html"), "utf8");
+const COLLAPSE_SECTION_KEYS = ["title", "script", "script-eval", "image-prompts", "images", "infographics", "i2v", "videos"];
+// Return the body of a named JS function from the inline script (brace-matched).
+function fnBody(src, name) {
+  const start = src.indexOf("function " + name + "(");
+  assert.notEqual(start, -1, "function " + name + " should exist");
+  const open = src.indexOf("{", start);
+  let depth = 0;
+  for (let i = open; i < src.length; i += 1) {
+    if (src[i] === "{") depth += 1;
+    else if (src[i] === "}") { depth -= 1; if (depth === 0) return src.slice(open, i + 1); }
+  }
+  throw new Error("unbalanced braces for " + name);
+}
+
+test("super-focus.html: every project step is collapsible (markers + a11y wiring)", async () => {
+  const server = packageEngineServer.createServer({ superFocusRoot: mkRoot() });
+  await listen(server);
+  try {
+    const res = await request(server, "/super-focus.html");
+    assert.equal(res.statusCode, 200);
+    COLLAPSE_SECTION_KEYS.forEach((k) => assert.match(res.raw, new RegExp('data-section="' + k + '"'), "missing data-section " + k));
+    assert.match(res.raw, /function initCollapsibleSections\(/);
+    assert.match(res.raw, /className = 'collapse-btn'/);
+    assert.match(res.raw, /createElement\('button'\)/);
+    assert.match(res.raw, /setAttribute\('aria-expanded'/);
+    assert.match(res.raw, /setAttribute\('aria-controls', 'body-' \+ key\)/);
+    assert.match(res.raw, /btn\.textContent = collapsed \? 'Expand' : 'Collapse'/);
+    // Toggling flips only visibility (display:none), keeping the header visible.
+    assert.match(res.raw, /body\.classList\.toggle\('hidden', collapsed\)/);
+  } finally {
+    await close(server);
+  }
+});
+
+test("super-focus.html: script panel has a full-height Expand/Collapse control", () => {
+  assert.match(SF_HTML, /id="script-fullheight-toggle"[^>]*aria-controls="script-input"/);
+  assert.match(SF_HTML, />Expand script</);
+  assert.match(SF_HTML, /function setScriptFullHeight\(/);
+  assert.match(SF_HTML, /'script-full'/);
+  assert.match(SF_HTML, /'Compact script'/);
+  // Full-height mode only changes height — it must not touch the value.
+  const body = fnBody(SF_HTML, "setScriptFullHeight");
+  assert.match(body, /style\.height/);
+  assert.doesNotMatch(body, /\.value\s*=/, "must never overwrite the script text");
+});
+
+test("super-focus.html: collapse/script-height state is browser-local, not project JSON", () => {
+  assert.match(SF_HTML, /superFocus\.sectionState\./);
+  assert.match(SF_HTML, /superFocus\.scriptExpanded\./);
+  assert.match(SF_HTML, /localStorage\.setItem/);
+  assert.match(SF_HTML, /'superFocus\.sectionState\.' \+ \(currentId \|\| '_none'\)/);
+});
+
+test("super-focus.html: toggling a section is unsaved-edit safe (no reload / no row rebuild / no API)", () => {
+  ["setSectionCollapsed", "toggleSection", "applySectionState"].forEach((name) => {
+    const body = fnBody(SF_HTML, name);
+    assert.doesNotMatch(body, /loadProject\(/, name + " must not reload the project");
+    assert.doesNotMatch(body, /renderPromptGrid\(/, name + " must not rebuild rows");
+    assert.doesNotMatch(body, /apiPost\(|apiGet\(/, name + " must not call an API");
+  });
+  assert.doesNotMatch(fnBody(SF_HTML, "setSectionCollapsed"), /innerHTML/);
+});
+
+test("super-focus.html: evaluator focus route forces the Script step open (not trapped collapsed)", () => {
+  const body = fnBody(SF_HTML, "openProject");
+  assert.match(body, /if \(evalFocus\)/);
+  assert.match(body, /setSectionCollapsed\('script', false, false\)/);
+  assert.match(body, /setSectionCollapsed\('script-eval', false, false\)/);
+});
+
+test("super-focus.html: landing has no collapse controls and still exactly two choices", async () => {
+  const server = packageEngineServer.createServer({ superFocusRoot: mkRoot() });
+  await listen(server);
+  try {
+    const res = await request(server, "/super-focus.html");
+    const landing = res.raw.slice(res.raw.indexOf('id="view-landing"'), res.raw.indexOf('id="view-open"'));
+    assert.match(landing, /Create a new video project/);
+    assert.match(landing, /Open an existing video project/);
+    assert.doesNotMatch(landing, /data-section=/, "no collapsible sections on the landing");
+    assert.doesNotMatch(landing, /collapse-btn/);
+    assert.doesNotMatch(landing, /Expand script/);
+  } finally {
+    await close(server);
+  }
+});

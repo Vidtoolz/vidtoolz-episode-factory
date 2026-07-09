@@ -26,6 +26,24 @@ Nothing generates or advances itself. Every generate/save is an explicit click
 prompts need a saved script; a video needs both a generated still and a saved
 image-to-video prompt.
 
+## Collapsing steps and the script panel
+
+- Every project step has a **Collapse / Expand** button in its header. Collapsing
+  hides that step's body while keeping the header and a short summary visible
+  (e.g. saved title, script word count, populated prompts `/ 100`, generated
+  count). Collapsing only hides the body — it never reloads state, rebuilds
+  prompt rows, or calls an API, so unsaved edits are safe.
+- The Script step has an extra **Expand script / Compact script** control that
+  grows the text box to show the whole script without an inner scrollbar (capped
+  to a share of the window). It is independent of the Step 2 collapse, does not
+  auto-save, evaluate, or generate, and preserves unsaved text and the caret.
+- Collapse and script-height state is **browser-local UI preference**
+  (`localStorage`, keyed per project), **not** project production state — it is
+  never written to `super-focus.json`. Steps default to expanded; a collapsed
+  step stays collapsed for that project on reload. The
+  `?focus=script-evaluator` route always forces the Script step open so the
+  evaluator stays reachable regardless of the saved preference.
+
 ## State and media
 
 - **Canonical state is local and file-based:** `super-focus-projects/<project_id>/super-focus.json`

@@ -55,6 +55,22 @@
     .section .step { color: var(--muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
     .section.disabled { opacity: .55; }
     .section.disabled .later { color: var(--muted); font-size: 13px; margin-top: 8px; }
+    /* Collapsible section header (added by initCollapsibleSections) */
+    .section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .section-head-main { min-width: 0; }
+    .section-head-ctl { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .section-summary { color: var(--muted); font-size: 12px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .section.collapsed .section-summary { color: var(--text); }
+    .collapse-btn {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      border-radius: 6px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer;
+    }
+    .collapse-btn:hover { border-color: var(--accent); color: var(--text); }
+    .collapse-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .section-body { margin-top: 4px; }
+    .section.collapsed { padding-bottom: 16px; }
+    .script-view-row { margin-top: 8px; }
+    textarea.script-full { min-height: 220px; }
     label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
     input[type="text"], textarea {
       width: 100%; background: var(--panel-2); color: var(--text);
@@ -228,7 +244,7 @@
       <div id="providers-panel" class="providers-panel hidden"></div>
 
       <!-- 1. Title -->
-      <div class="section">
+      <div class="section" data-section="title">
         <div class="step">Step 1</div>
         <h2>Title</h2>
         <label for="title-input">Video title / topic</label>
@@ -242,11 +258,14 @@
       </div>
 
       <!-- 2. Script -->
-      <div class="section" id="script-section">
+      <div class="section" id="script-section" data-section="script">
         <div class="step">Step 2</div>
         <h2>Script / voiceover</h2>
         <label for="script-input">Spoken script (~3 minutes)</label>
         <textarea id="script-input" placeholder="Paste or write your script, or generate one…"></textarea>
+        <div class="row script-view-row">
+          <button type="button" class="link-btn" id="script-fullheight-toggle" aria-pressed="false" aria-controls="script-input">Expand script</button>
+        </div>
         <div class="row">
           <button class="btn" id="script-generate">Generate</button>
           <button class="btn primary" id="script-save">Save</button>
@@ -256,7 +275,7 @@
       </div>
 
       <!-- 2b. Script evaluation (advisory) -->
-      <div class="section" id="script-eval-section">
+      <div class="section" id="script-eval-section" data-section="script-eval">
         <div class="step">Check</div>
         <h2>Script evaluation <span class="eval-advisory">— advisory only; never approves, advances, or generates media</span></h2>
         <label>Score the saved script against the VIDTOOLZ standard (local Ollama on vidnux).</label>
@@ -270,7 +289,7 @@
       </div>
 
       <!-- 3. Main image prompts -->
-      <div class="section">
+      <div class="section" data-section="image-prompts">
         <div class="step">Step 3</div>
         <h2>Main image prompts</h2>
         <div class="row">
@@ -285,7 +304,7 @@
       </div>
 
       <!-- 4. Generated images -->
-      <div class="section">
+      <div class="section" data-section="images">
         <div class="step">Step 4</div>
         <h2>Generated images</h2>
         <div class="row">
@@ -300,7 +319,7 @@
       </div>
 
       <!-- 5. Infographic prompts -->
-      <div class="section">
+      <div class="section" data-section="infographics">
         <div class="step">Step 5</div>
         <h2>Infographic prompts</h2>
         <div class="row">
@@ -314,7 +333,7 @@
       </div>
 
       <!-- 6. Image-to-video prompts live inline in each image row above (Create a video prompt). -->
-      <div class="section">
+      <div class="section" data-section="i2v">
         <div class="step">Step 6</div>
         <h2>Image-to-video prompts</h2>
         <div class="row">
@@ -325,7 +344,7 @@
       </div>
 
       <!-- 7. Generated videos -->
-      <div class="section">
+      <div class="section" data-section="videos">
         <div class="step">Step 7</div>
         <h2>Generated videos</h2>
         <div class="row">
@@ -455,6 +474,160 @@
       if (typeof stopImagesPolling === 'function') stopImagesPolling();
       if (typeof stopVideosPolling === 'function') stopVideosPolling();
       currentId = null; show('landing');
+    }
+
+    // ── Collapsible project steps (operator UI state only) ───────────────────
+    // Browser-local UI preference — NOT project production state. Collapsing a
+    // step only toggles CSS visibility (display:none) of its body: it never
+    // rebuilds rows, reloads from disk, resets inputs, or calls any API, so
+    // unsaved script/prompt edits always survive a toggle.
+    var SECTION_KEYS = ['title', 'script', 'script-eval', 'image-prompts', 'images', 'infographics', 'i2v', 'videos'];
+    var lastEvalSummary = ''; // set by renderScriptEvaluation for the collapsed summary
+
+    // One-time DOM transform: give each project .section a header row with a
+    // real Collapse/Expand button + a collapsed-state summary, and wrap the
+    // body in an aria-controlled container. Moving existing nodes preserves
+    // their ids, values, and attached event listeners.
+    function initCollapsibleSections() {
+      var sections = document.querySelectorAll('#view-project .section[data-section]');
+      Array.prototype.forEach.call(sections, function (sec) {
+        if (sec.getAttribute('data-collapsible-ready')) return;
+        var key = sec.getAttribute('data-section');
+        var step = sec.querySelector('.step');
+        var h2 = sec.querySelector('h2');
+        var head = document.createElement('div'); head.className = 'section-head';
+        var main = document.createElement('div'); main.className = 'section-head-main';
+        if (step) main.appendChild(step);
+        if (h2) main.appendChild(h2);
+        var ctl = document.createElement('div'); ctl.className = 'section-head-ctl';
+        var summary = document.createElement('span'); summary.className = 'section-summary'; summary.id = 'sum-' + key;
+        var btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'collapse-btn'; btn.id = 'toggle-' + key;
+        btn.setAttribute('aria-controls', 'body-' + key);
+        btn.setAttribute('aria-expanded', 'true');
+        btn.textContent = 'Collapse';
+        ctl.appendChild(summary); ctl.appendChild(btn);
+        head.appendChild(main); head.appendChild(ctl);
+        var body = document.createElement('div'); body.className = 'section-body'; body.id = 'body-' + key;
+        while (sec.firstChild) { body.appendChild(sec.firstChild); } // step/h2 already moved into head
+        sec.appendChild(head);
+        sec.appendChild(body);
+        btn.addEventListener('click', function () { toggleSection(key); });
+        sec.setAttribute('data-collapsible-ready', '1');
+      });
+    }
+
+    function sectionStorageKey() { return 'superFocus.sectionState.' + (currentId || '_none'); }
+    function getSectionState() {
+      try { return JSON.parse(localStorage.getItem(sectionStorageKey()) || '{}') || {}; } catch (e) { return {}; }
+    }
+    function saveSectionState(state) {
+      try { localStorage.setItem(sectionStorageKey(), JSON.stringify(state)); } catch (e) { /* ignore quota/private-mode */ }
+    }
+
+    // collapsed=true hides the body; persist=false skips writing the preference
+    // (used by the evaluator focus route so it never clobbers the saved state).
+    function setSectionCollapsed(key, collapsed, persist) {
+      var body = document.getElementById('body-' + key);
+      var btn = document.getElementById('toggle-' + key);
+      var sec = document.querySelector('#view-project .section[data-section="' + key + '"]');
+      if (!body || !btn || !sec) return;
+      body.classList.toggle('hidden', collapsed);
+      sec.classList.toggle('collapsed', collapsed);
+      btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      btn.textContent = collapsed ? 'Expand' : 'Collapse';
+      updateSectionSummary(key); // keep the summary fresh (only visible when collapsed)
+      if (persist !== false) {
+        var st = getSectionState();
+        st[key] = collapsed ? 'collapsed' : 'expanded';
+        saveSectionState(st);
+      }
+    }
+
+    function toggleSection(key) {
+      var body = document.getElementById('body-' + key);
+      var currentlyExpanded = body && !body.classList.contains('hidden');
+      setSectionCollapsed(key, currentlyExpanded, true); // expanded -> collapse, collapsed -> expand
+    }
+
+    // Restore saved collapsed prefs for the open project. Default is expanded.
+    function applySectionState() {
+      var st = getSectionState();
+      SECTION_KEYS.forEach(function (key) {
+        setSectionCollapsed(key, st[key] === 'collapsed', false);
+      });
+    }
+
+    function wordCount(s) { s = String(s == null ? '' : s).trim(); return s ? s.split(/\s+/).length : 0; }
+    function countFilled(sel) {
+      return Array.prototype.filter.call(document.querySelectorAll(sel), function (t) { return t.value && t.value.trim(); }).length;
+    }
+
+    // Short, calm summary shown when a step is collapsed. Reads live DOM only —
+    // no API calls, no project reload.
+    function updateSectionSummary(key) {
+      var el = document.getElementById('sum-' + key);
+      if (!el) return;
+      var txt = '';
+      if (key === 'title') {
+        var t = (document.getElementById('title-input').value || '').trim();
+        txt = t ? ('“' + (t.length > 42 ? t.slice(0, 42) + '…' : t) + '”') : 'No title';
+      } else if (key === 'script') {
+        var w = wordCount(document.getElementById('script-input').value);
+        txt = w ? (w + ' words') : 'No script';
+        if (lastEvalSummary) txt += ' · ' + lastEvalSummary;
+      } else if (key === 'script-eval') {
+        txt = lastEvalSummary || 'Not evaluated';
+      } else if (key === 'image-prompts') {
+        txt = countFilled('#imgp-list .pinput') + ' / ' + IMG_MAX + ' prompts';
+      } else if (key === 'images') {
+        txt = document.querySelectorAll('#imgp-list img').length + ' generated';
+      } else if (key === 'infographics') {
+        txt = countFilled('#infp-list .pinput') + ' / ' + INF_MAX + ' prompts';
+      } else if (key === 'i2v') {
+        txt = countFilled('#imgp-list .pi2v textarea') + ' prompts';
+      } else if (key === 'videos') {
+        txt = document.querySelectorAll('#imgp-list video').length + ' generated';
+      }
+      el.textContent = txt;
+    }
+    function updateSectionSummaries() { SECTION_KEYS.forEach(updateSectionSummary); }
+
+    // ── Script text area: compact vs full-height (independent of Step 2 collapse) ──
+    function scriptExpandStorageKey() { return 'superFocus.scriptExpanded.' + (currentId || '_none'); }
+    // Grow the textarea to fit its content (no internal scroll), capped to a
+    // practical share of the viewport. Only touches style.height — never the
+    // value or the caret.
+    function fitScriptHeight() {
+      var ta = document.getElementById('script-input');
+      if (!ta || !ta.classList.contains('script-full')) return;
+      ta.style.height = 'auto';
+      var cap = Math.max(320, Math.round(window.innerHeight * 0.8));
+      ta.style.height = Math.min(ta.scrollHeight + 4, cap) + 'px';
+    }
+    function setScriptFullHeight(expanded, persist) {
+      var ta = document.getElementById('script-input');
+      var btn = document.getElementById('script-fullheight-toggle');
+      if (!ta || !btn) return;
+      if (expanded) {
+        ta.classList.add('script-full');
+        btn.textContent = 'Compact script';
+        btn.setAttribute('aria-pressed', 'true');
+        fitScriptHeight();
+      } else {
+        ta.classList.remove('script-full');
+        ta.style.height = ''; // back to the CSS default height
+        btn.textContent = 'Expand script';
+        btn.setAttribute('aria-pressed', 'false');
+      }
+      if (persist !== false) {
+        try { localStorage.setItem(scriptExpandStorageKey(), expanded ? '1' : '0'); } catch (e) { /* ignore */ }
+      }
+    }
+    function applyScriptFullHeight() {
+      var pref = '0';
+      try { pref = localStorage.getItem(scriptExpandStorageKey()) || '0'; } catch (e) { pref = '0'; }
+      setScriptFullHeight(pref === '1', false);
     }
 
     function setStatus(el, msg, isErr) {
@@ -794,6 +967,9 @@
           grid.appendChild(row);
         })(i);
       }
+      // Keep collapsed-state summaries current after a (re)render.
+      if (elId === 'imgp-list') { updateSectionSummary('image-prompts'); updateSectionSummary('images'); updateSectionSummary('i2v'); }
+      else if (elId === 'infp-list') { updateSectionSummary('infographics'); }
     }
 
     function updateStaleBanner(bannerId, isStale) {
@@ -860,8 +1036,19 @@
       updateEvalButton();
       renderScriptEvaluation(null); // reset panel, then load persisted evaluation (if any)
       loadScriptEvaluation();
+      // Operator UI state (browser-local, per project): restore collapsed
+      // sections and the script full-height preference. These only toggle CSS
+      // visibility/height — they never reload state or reset field values.
+      applyScriptFullHeight();
+      applySectionState();
+      updateSectionSummaries();
       show('project');
       if (evalFocus) {
+        // The evaluator focus route must never be blocked by a saved "collapsed"
+        // preference: force the Script and Script-evaluation steps open (without
+        // clobbering the stored preference), then scroll to the evaluator.
+        setSectionCollapsed('script', false, false);
+        setSectionCollapsed('script-eval', false, false);
         var sec = document.getElementById('script-eval-section');
         if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
@@ -967,6 +1154,7 @@
         var active = applyImagesStatus(unwrap(res.body));
         if (active && !imagesPollTimer) startImagesPolling();
         if (!active) stopImagesPolling();
+        updateSectionSummary('images'); updateSectionSummary('i2v');
       });
     }
 
@@ -1059,6 +1247,7 @@
         var active = applyVideosStatus(unwrap(res.body));
         if (active && !videosPollTimer) startVideosPolling();
         if (!active) stopVideosPolling();
+        updateSectionSummary('videos');
       });
     }
     function startVideosPolling() {
@@ -1098,6 +1287,7 @@
         document.getElementById('proj-heading').textContent =
           (proj.title && proj.title.trim()) ? proj.title : 'New video project';
         setStatus(el, 'Saved ✓', false);
+        updateSectionSummary('title');
       });
     });
 
@@ -1116,6 +1306,7 @@
         // (or disables) the Evaluate button. Reflect both from the backend.
         updateEvalButton();
         loadScriptEvaluation();
+        updateSectionSummary('script');
       });
     });
 
@@ -1133,7 +1324,22 @@
       runGenerate(btn, el, GEN_SCRIPT_API, function (data) {
         document.getElementById('script-input').value = data.script || '';
         setStatus(el, withProvider('Generated — click Save to keep it', data.provider));
+        fitScriptHeight(); // grow if the script panel is in full-height mode
+        updateSectionSummary('script');
       });
+    });
+
+    // Script full-height toggle: a pure view control. It never saves, evaluates,
+    // generates, or reloads — it only changes the textarea height, so unsaved
+    // text and the caret are preserved.
+    document.getElementById('script-fullheight-toggle').addEventListener('click', function () {
+      var expanded = document.getElementById('script-input').classList.contains('script-full');
+      setScriptFullHeight(!expanded, true);
+    });
+    // Keep the full-height box fitting the content as the user types (no scroll).
+    document.getElementById('script-input').addEventListener('input', function () {
+      fitScriptHeight();
+      updateSectionSummary('script');
     });
 
     // ---- Script evaluation (advisory; local Ollama on vidnux) ----
@@ -1176,12 +1382,19 @@
       panel.innerHTML = '';
       if (!ev) {
         staleBanner.classList.add('hidden');
+        lastEvalSummary = '';
+        if (typeof updateSectionSummary === 'function') { updateSectionSummary('script'); updateSectionSummary('script-eval'); }
         var p = document.createElement('p'); p.className = 'eval-empty';
         p.textContent = 'No script evaluation yet. Save a script, then click Evaluate.';
         panel.appendChild(p);
         return;
       }
       staleBanner.classList.toggle('hidden', !stale);
+      // Feed the collapsed-state summaries (e.g. "94/100 PRODUCE").
+      lastEvalSummary = (ev.total_score != null ? ev.total_score + '/100 ' : '') + (ev.verdict || '');
+      if (stale) lastEvalSummary += ' (stale)';
+      lastEvalSummary = lastEvalSummary.trim();
+      if (typeof updateSectionSummary === 'function') { updateSectionSummary('script'); updateSectionSummary('script-eval'); }
 
       // Header: score / verdict / band / summary.
       var head = document.createElement('div'); head.className = 'eval-head';
@@ -1517,6 +1730,7 @@
       });
     });
 
+    initCollapsibleSections(); // one-time DOM transform for the project steps
     if (evalFocus) document.getElementById('eval-focus-hint').classList.remove('hidden');
     goHome();
   </script>
