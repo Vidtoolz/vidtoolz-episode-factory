@@ -64,6 +64,15 @@ const REMOTION_CANCEL_API = '/api/remotion/cancel';
 const HYPERFRAMES_STATUS_API = '/api/hyperframes/status';
 const HYPERFRAMES_PREVIEW_API = '/api/hyperframes/preview';
 const HYPERFRAMES_RENDER_API = '/api/hyperframes/render';
+// Motion Graphics Studio — standalone deterministic motion-card workspace.
+const MOTION_GRAPHICS_TEMPLATES_API = '/api/motion-graphics/templates';
+const MOTION_GRAPHICS_PROJECTS_API = '/api/motion-graphics/projects';
+const MOTION_GRAPHICS_PROJECT_API = '/api/motion-graphics/project';
+const MOTION_GRAPHICS_PROJECT_TITLE_API = '/api/motion-graphics/project-title';
+const MOTION_GRAPHICS_SOURCE_API = '/api/motion-graphics/source';
+const MOTION_GRAPHICS_CARD_API = '/api/motion-graphics/card';
+const MOTION_GRAPHICS_CARD_PARAMS_API = '/api/motion-graphics/card-params';
+const MOTION_GRAPHICS_PREVIEW_API = '/api/motion-graphics/preview';
 const FINAL_REVIEW_API = '/api/package-runs/final-review';
 const EXPORT_CHECKLIST_API = '/api/package-runs/export-checklist';
 const PUBLICATION_METADATA_API = '/api/package-runs/publication-metadata';
@@ -282,12 +291,17 @@ const superFocusPrompts = require('./super-focus-prompts.js');
 const superFocusMedia = require('./super-focus-media.js');
 const superFocusRouter = require('./super-focus-router.js');
 const scriptEvaluator = require('./script-evaluator.js');
+const motionGraphicsState = require('./motion-graphics-state.js');
+const motionGraphicsTemplates = require('./motion-graphics-templates.js');
 // Super Focus keeps its own local, file-backed project state (never on VIDNAS).
 // Root is env-overridable so it can follow a different disk without code edits.
 const SUPER_FOCUS_ROOT = process.env.SUPER_FOCUS_ROOT || path.join(ROOT, 'super-focus-projects');
 // Generated media (media-only) lives on VIDNAS under a dedicated Super Focus
 // namespace, separate from aigen script-packages. Env-overridable.
 const SUPER_FOCUS_MEDIA_ROOT = process.env.SUPER_FOCUS_MEDIA_ROOT || path.join(VIDNAS_AIGEN_ROOT, 'super-focus');
+// Motion Graphics Studio media namespace (VIDNAS, media-only; used from Slice 2
+// when rendering. Canonical project STATE stays local, see motion-graphics-state.js).
+const MOTION_GRAPHICS_MEDIA_ROOT = process.env.MOTION_GRAPHICS_MEDIA_ROOT || path.join(VIDNAS_AIGEN_ROOT, 'motion-graphics');
 
 // Validate an optional operator-supplied count/limit for Super Focus. Absent
 // (undefined/null/'') returns `fallback`; otherwise it must be an integer 1..max.
@@ -10368,6 +10382,7 @@ function createServer(options = {}) {
     // create/list/load/save-title/save-script only. All writes are nonce-gated.
     const sfRoot = serverOptions.superFocusRoot || SUPER_FOCUS_ROOT;
     const sfMediaRoot = serverOptions.superFocusMediaRoot || SUPER_FOCUS_MEDIA_ROOT;
+    const mgOpts = { root: serverOptions.motionGraphicsRoot || undefined }; // undefined → module default (env/local dir)
 
     if (req.method === 'GET' && url.pathname === SUPER_FOCUS_PROJECTS_API) {
       try {
@@ -12970,6 +12985,107 @@ function createServer(options = {}) {
       return;
     }
 
+    // ── Motion Graphics Studio (standalone deterministic motion cards) ────────
+    // Local, file-backed project state; reads path-guarded; writes nonce + Host +
+    // Origin gated. Slice 1: project/card CRUD + deterministic HTML preview. No
+    // render yet (Slice 2). Never touches Super Focus / package-run / aigen state.
+
+    if (req.method === 'GET' && url.pathname === MOTION_GRAPHICS_TEMPLATES_API) {
+      sendJSON(res, 200, {
+        templates: motionGraphicsTemplates.TEMPLATES,
+        format_default: motionGraphicsTemplates.FORMAT_DEFAULT,
+        style_default: motionGraphicsTemplates.STYLE_DEFAULT,
+      });
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === MOTION_GRAPHICS_PROJECTS_API) {
+      try { sendJSON(res, 200, { projects: motionGraphicsState.listProjects(mgOpts) }); }
+      catch (error) { sendError(res, error.statusCode || 500, error.message, 'motion-graphics-projects-error'); }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === MOTION_GRAPHICS_PROJECTS_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Motion Graphics projects API' });
+          const state = motionGraphicsState.createProject({ title: payload.title }, mgOpts);
+          sendJSON(res, 200, { project: state });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'motion-graphics-create-error'));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === MOTION_GRAPHICS_PROJECT_API) {
+      try {
+        const id = url.searchParams.get('id') || '';
+        sendJSON(res, 200, { project: motionGraphicsState.loadProject(id, mgOpts) });
+      } catch (error) { sendError(res, error.statusCode || 500, error.message, 'motion-graphics-project-error'); }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === MOTION_GRAPHICS_PROJECT_TITLE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Motion Graphics project-title API' });
+          const state = motionGraphicsState.saveProjectTitle(payload.id || '', payload.title, mgOpts);
+          sendJSON(res, 200, { project: state });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'motion-graphics-title-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === MOTION_GRAPHICS_SOURCE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Motion Graphics source API' });
+          const state = motionGraphicsState.saveSource(payload.id || '', payload.source || { script: payload.script }, mgOpts);
+          sendJSON(res, 200, { project: state });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'motion-graphics-source-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === MOTION_GRAPHICS_CARD_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Motion Graphics card API' });
+          const out = motionGraphicsState.addCard(payload.id || '', { type: payload.type, params: payload.params }, mgOpts);
+          sendJSON(res, 200, { project: out.state, card: out.card });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'motion-graphics-card-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === MOTION_GRAPHICS_CARD_PARAMS_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Motion Graphics card-params API' });
+          const patch = { type: payload.type, params: payload.params, format: payload.format, style: payload.style, engine: payload.engine };
+          const out = motionGraphicsState.updateCardParams(payload.id || '', payload.card_id || '', patch, mgOpts);
+          const validation = motionGraphicsTemplates.validateCardParams(out.card.type, out.card.params);
+          sendJSON(res, 200, { project: out.state, card: out.card, validation });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'motion-graphics-card-params-error'));
+      return;
+    }
+
+    // Deterministic HTML preview for a card (read-only; no render, no file write).
+    // The same builder is the HyperFrames composition source in Slice 2.
+    if (req.method === 'GET' && url.pathname === MOTION_GRAPHICS_PREVIEW_API) {
+      try {
+        const id = url.searchParams.get('id') || '';
+        const cardId = url.searchParams.get('card_id') || '';
+        const state = motionGraphicsState.loadProject(id, mgOpts);
+        const card = motionGraphicsState.findCard(state, cardId);
+        if (!card) { sendError(res, 404, 'Card not found.', 'motion-graphics-preview-missing'); return; }
+        const html = motionGraphicsTemplates.buildCardHtml(card);
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+        res.end(html);
+      } catch (error) { sendError(res, error.statusCode || 500, error.message, 'motion-graphics-preview-error'); }
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === HYPERFRAMES_STATUS_API) {
       try {
         sendJSON(res, 200, discoverHyperframesCompositions({ runId: url.searchParams.get('runId') || '' }, { root: serverOptions.root || ROOT }));
@@ -13448,6 +13564,14 @@ module.exports = {
   HYPERFRAMES_PREVIEW_API,
   HYPERFRAMES_RENDER_API,
   HYPERFRAMES_STATUS_API,
+  MOTION_GRAPHICS_TEMPLATES_API,
+  MOTION_GRAPHICS_PROJECTS_API,
+  MOTION_GRAPHICS_PROJECT_API,
+  MOTION_GRAPHICS_PROJECT_TITLE_API,
+  MOTION_GRAPHICS_SOURCE_API,
+  MOTION_GRAPHICS_CARD_API,
+  MOTION_GRAPHICS_CARD_PARAMS_API,
+  MOTION_GRAPHICS_PREVIEW_API,
   IMAGE_PROMPTS_READ_API,
   IMAGE_PROMPTS_SAVE_API,
   IMAGE_PROMPTS_VALIDATE_API,

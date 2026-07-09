@@ -7,6 +7,9 @@
 # Super Focus local, file-backed project state (never committed; never on VIDNAS)
 /super-focus-projects/
 
+# Motion Graphics Studio local, file-backed project state (never committed; never on VIDNAS)
+/motion-graphics-projects/
+
 # Dependencies
 node_modules/
 

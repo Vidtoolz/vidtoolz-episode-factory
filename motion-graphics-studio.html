@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- VIDTOOLZ Motion Graphics Studio — standalone deterministic motion-card workspace.
+     Separate from Super Focus. Local-first; nothing renders/saves without an
+     explicit click. Slice 1: design + preview (no render engine wired yet). -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VIDTOOLZ · Motion Graphics Studio</title>
+<style>
+  :root {
+    --bg:#0d1117; --panel:#161b22; --panel-2:#0b0f14; --border:#30363d;
+    --text:#e6edf3; --muted:#8b949e; --accent:#2f81f7; --ok:#2ea043; --warn:#e3b341; --radius:12px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { padding:18px 22px 28px; max-width:1500px; margin:0 auto; }
+  .brand { font-weight:700; letter-spacing:.05em; color:var(--muted); font-size:13px; text-transform:uppercase; }
+  h1 { font-size:22px; margin:4px 0 2px; }
+  .lede { color:var(--muted); font-size:13px; margin:0 0 16px; }
+  .hidden { display:none; }
+  section.card { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; margin:0 0 16px; }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:12px; margin:0 0 12px; }
+  label { display:block; font-size:12px; color:var(--muted); margin:12px 0 5px; }
+  input[type=text], textarea, select {
+    width:100%; background:var(--panel-2); color:var(--text); border:1px solid var(--border);
+    border-radius:8px; padding:10px 12px; font:inherit; font-size:14px; }
+  textarea { resize:vertical; min-height:70px; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+  button { background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:8px;
+    padding:9px 14px; font:inherit; font-size:13px; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  button:hover { border-color:var(--accent); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .status { font-size:12px; color:var(--muted); }
+  .status.err { color:#ff9d97; } .status.ok { color:var(--ok); } .status.warn { color:var(--warn); }
+  .editor { display:grid; grid-template-columns:280px 1fr 1fr; gap:16px; align-items:start; }
+  @media (max-width:1100px){ .editor { grid-template-columns:1fr; } }
+  .cardlist { display:flex; flex-direction:column; gap:6px; }
+  .cardlist .item { border:1px solid var(--border); background:var(--panel-2); border-radius:8px; padding:8px 10px; cursor:pointer; font-size:13px; }
+  .cardlist .item.active { border-color:var(--accent); }
+  .cardlist .item .t { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+  .previewwrap { border:1px solid var(--border); border-radius:10px; background:#000; overflow:hidden; }
+  .previewwrap iframe { width:100%; height:62vh; border:0; background:#000; display:block; }
+  .engine-note { font-size:12px; color:var(--muted); margin-top:6px; }
+  .pill { font-size:11px; border:1px solid var(--border); border-radius:999px; padding:2px 8px; color:var(--muted); }
+  .later-note { font-size:12px; color:var(--warn); margin-top:8px; }
+  .projlist .item { display:flex; justify-content:space-between; gap:10px; }
+  a.link { color:var(--accent); text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">VIDTOOLZ · Motion Graphics Studio</div>
+  <h1>Deterministic motion cards</h1>
+  <p class="lede">Design clean, branded, readable motion graphics — title/claim cards, wrong-way/better-way, lower thirds — for VIDTOOLZ videos. Separate from <a class="link" href="super-focus.html">Super Focus</a>. Nothing renders or saves without your click.</p>
+
+  <!-- Landing -->
+  <section class="card" id="view-landing">
+    <h2>Motion graphics projects</h2>
+    <p class="sub">Create a new project or open an existing one.</p>
+    <div class="row">
+      <input type="text" id="new-title" placeholder="New project title (optional)" style="max-width:360px" />
+      <button class="primary" id="btn-create">Create new motion graphics project</button>
+      <span class="status" id="landing-status"></span>
+    </div>
+    <label>Open an existing motion graphics project</label>
+    <div class="projlist cardlist" id="project-list"><span class="sub">No projects yet.</span></div>
+  </section>
+
+  <!-- Editor -->
+  <section class="card hidden" id="view-editor">
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <h2 id="proj-heading">Motion graphics project</h2>
+        <div class="sub" id="proj-id"></div>
+      </div>
+      <button id="btn-home">← Back to projects</button>
+    </div>
+
+    <label for="proj-title">Project title</label>
+    <div class="row">
+      <input type="text" id="proj-title" style="max-width:420px" />
+      <button id="btn-save-title">Save title</button>
+      <span class="status" id="title-status"></span>
+    </div>
+
+    <label for="source-script">Source script / idea (optional, manual paste — read-only import from Super Focus comes later)</label>
+    <div class="row" style="align-items:flex-start">
+      <textarea id="source-script" placeholder="Paste the script or idea these motion cards support…" style="min-height:80px"></textarea>
+    </div>
+    <div class="row"><button id="btn-save-source">Save source</button><span class="status" id="source-status"></span></div>
+
+    <div class="editor" style="margin-top:16px">
+      <!-- Card list + add -->
+      <div>
+        <label>Cards</label>
+        <div class="cardlist" id="card-list"></div>
+        <label for="new-card-type">Add a card</label>
+        <select id="new-card-type"></select>
+        <div class="row"><button class="primary" id="btn-add-card">Add card</button></div>
+      </div>
+
+      <!-- Selected card editor -->
+      <div id="card-editor" class="hidden">
+        <label>Card type</label>
+        <select id="card-type"></select>
+        <label>Render engine <span class="pill" id="engine-rec"></span></label>
+        <select id="card-engine">
+          <option value="recommended">Recommended</option>
+          <option value="hyperframes">HyperFrames</option>
+          <option value="remotion">Remotion (spec/export only)</option>
+        </select>
+        <div class="engine-note" id="engine-note"></div>
+        <div id="param-fields"></div>
+        <div class="row">
+          <label style="margin:0">Duration (s) <input type="text" id="fmt-duration" style="width:70px" /></label>
+          <label style="margin:0">FPS <input type="text" id="fmt-fps" style="width:60px" /></label>
+          <label style="margin:0">Size <input type="text" id="fmt-size" style="width:120px" placeholder="1080x1920" /></label>
+        </div>
+        <div class="row">
+          <button class="primary" id="btn-save-card">Save changes</button>
+          <button id="btn-render" disabled title="Rendering ships in the next slice">Render selected card</button>
+          <span class="status" id="card-status"></span>
+        </div>
+        <div class="later-note" id="candidate-note"></div>
+        <div class="later-note">Rendering (HyperFrames) is added in the next slice. This slice designs and previews cards only.</div>
+      </div>
+
+      <!-- Preview -->
+      <div>
+        <label>Preview <span class="sub" id="preview-meta"></span></label>
+        <div class="previewwrap"><iframe id="preview-frame" title="card preview"></iframe></div>
+        <div class="engine-note">Deterministic HTML preview (green/red, safe-area guide). Not a rendered frame.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  var STATUS_API = '/api/package-engine/status';
+  var TEMPLATES_API = '/api/motion-graphics/templates';
+  var PROJECTS_API = '/api/motion-graphics/projects';
+  var PROJECT_API = '/api/motion-graphics/project';
+  var PROJECT_TITLE_API = '/api/motion-graphics/project-title';
+  var SOURCE_API = '/api/motion-graphics/source';
+  var CARD_API = '/api/motion-graphics/card';
+  var CARD_PARAMS_API = '/api/motion-graphics/card-params';
+  var PREVIEW_API = '/api/motion-graphics/preview';
+
+  var nonce = null, nonceHeader = 'x-vidtoolz-local-write-nonce';
+  var TEMPLATES = [], currentProject = null, currentCardId = null;
+
+  function el(id){ return document.getElementById(id); }
+  function unwrap(b){ return (b && b.data) ? b.data : b; }
+  function setStatus(node,msg,cls){ node.textContent=msg||''; node.className='status'+(cls?' '+cls:''); }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function ensureNonce(){
+    if (nonce) return Promise.resolve(nonce);
+    return fetch(STATUS_API,{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(p){
+      var d=unwrap(p); nonce=d.localWriteNonce||(p&&p.localWriteNonce); nonceHeader=d.nonceHeader||(p&&p.nonceHeader)||nonceHeader; return nonce;
+    });
+  }
+  function parseBody(r){ return r.text().then(function(t){ try{return JSON.parse(t);}catch(e){return {error:(t||'').slice(0,300)};} }); }
+  function apiGet(path){ return fetch(path,{headers:{'Accept':'application/json'}}).then(function(r){return parseBody(r).then(function(b){return {ok:r.ok,status:r.status,body:b};});}); }
+  function apiPost(path,payload){
+    return ensureNonce().then(function(n){
+      var h={'Content-Type':'application/json','Accept':'application/json'}; h[nonceHeader]=n;
+      return fetch(path,{method:'POST',headers:h,body:JSON.stringify(Object.assign({},payload,{localWriteNonce:n}))})
+        .then(function(r){return parseBody(r).then(function(b){return {ok:r.ok,status:r.status,body:b};});});
+    });
+  }
+
+  function show(view){ el('view-landing').classList.toggle('hidden',view!=='landing'); el('view-editor').classList.toggle('hidden',view!=='editor'); window.scrollTo(0,0); }
+
+  // ── landing ──
+  function loadProjects(){
+    apiGet(PROJECTS_API).then(function(res){
+      var list=el('project-list'); list.innerHTML='';
+      var projs=(unwrap(res.body)||{}).projects||[];
+      if(!projs.length){ list.innerHTML='<span class="sub">No projects yet.</span>'; return; }
+      projs.forEach(function(p){
+        var d=document.createElement('div'); d.className='item';
+        d.innerHTML='<span>'+esc(p.title||'(untitled)')+' <span class="t">'+esc(p.project_id)+'</span></span><span class="t">'+(p.card_count||0)+' cards</span>';
+        d.addEventListener('click',function(){ openProject(p.project_id); });
+        list.appendChild(d);
+      });
+    });
+  }
+  el('btn-create').addEventListener('click',function(){
+    apiPost(PROJECTS_API,{title:el('new-title').value}).then(function(res){
+      if(!res.ok){ setStatus(el('landing-status'),(res.body&&res.body.error)||'Create failed','err'); return; }
+      openProject(unwrap(res.body).project.project_id);
+    });
+  });
+  el('btn-home').addEventListener('click',function(){ currentProject=null; currentCardId=null; show('landing'); loadProjects(); });
+
+  // ── editor ──
+  function openProject(id){
+    apiGet(PROJECT_API+'?id='+encodeURIComponent(id)).then(function(res){
+      if(!res.ok){ alert('Could not open project.'); return; }
+      currentProject=unwrap(res.body).project; currentCardId=null;
+      el('proj-heading').textContent=currentProject.title||'Motion graphics project';
+      el('proj-id').textContent=currentProject.project_id;
+      el('proj-title').value=currentProject.title||'';
+      el('source-script').value=(currentProject.source&&currentProject.source.script)||'';
+      renderCardList(); el('card-editor').classList.add('hidden');
+      show('editor');
+    });
+  }
+  el('btn-save-title').addEventListener('click',function(){
+    apiPost(PROJECT_TITLE_API,{id:currentProject.project_id,title:el('proj-title').value}).then(function(res){
+      if(!res.ok){ setStatus(el('title-status'),'Save failed','err'); return; }
+      currentProject=unwrap(res.body).project; el('proj-heading').textContent=currentProject.title||'Motion graphics project';
+      setStatus(el('title-status'),'Saved ✓','ok');
+    });
+  });
+  el('btn-save-source').addEventListener('click',function(){
+    apiPost(SOURCE_API,{id:currentProject.project_id,source:{type:'manual',script:el('source-script').value}}).then(function(res){
+      setStatus(el('source-status'),res.ok?'Saved ✓':'Save failed',res.ok?'ok':'err');
+    });
+  });
+
+  function renderCardList(){
+    var list=el('card-list'); list.innerHTML='';
+    (currentProject.cards||[]).forEach(function(c){
+      var d=document.createElement('div'); d.className='item'+(c.card_id===currentCardId?' active':'');
+      var titleish=(c.params&&(c.params.title||c.params.name||c.params.wrong))||'(empty)';
+      d.innerHTML='<div class="t">'+esc(c.type)+' · '+esc(c.status)+'</div><div>'+esc(titleish)+'</div>';
+      d.addEventListener('click',function(){ selectCard(c.card_id); });
+      list.appendChild(d);
+    });
+    if(!(currentProject.cards||[]).length){ list.innerHTML='<span class="sub">No cards yet — add one below.</span>'; }
+  }
+  el('btn-add-card').addEventListener('click',function(){
+    apiPost(CARD_API,{id:currentProject.project_id,type:el('new-card-type').value}).then(function(res){
+      if(!res.ok){ alert('Add card failed'); return; }
+      currentProject=unwrap(res.body).project; selectCard(unwrap(res.body).card.card_id);
+    });
+  });
+
+  function cardById(id){ return (currentProject.cards||[]).find(function(c){return c.card_id===id;}); }
+  function selectCard(id){
+    currentCardId=id; var c=cardById(id); if(!c) return;
+    el('card-editor').classList.remove('hidden');
+    setSelectValue('card-type',c.type);
+    setSelectValue('card-engine',c.engine||'recommended');
+    el('engine-rec').textContent='recommended: '+(c.recommended_engine||'hyperframes');
+    el('engine-note').textContent=c.recommendation_reason||'';
+    el('candidate-note').textContent=c.candidate_only?('Candidate-only: '+((TEMPLATES.find(function(t){return t.type===c.type;})||{}).note||'not validated for Resolve-ready alpha.')):'';
+    el('fmt-duration').value=c.format.duration_seconds; el('fmt-fps').value=c.format.fps; el('fmt-size').value=c.format.width+'x'+c.format.height;
+    renderParamFields(c); renderCardList(); refreshPreview();
+  }
+  function renderParamFields(c){
+    var wrap=el('param-fields'); wrap.innerHTML='';
+    var tpl=TEMPLATES.find(function(t){return t.type===c.type;}); if(!tpl) return;
+    tpl.fields.forEach(function(f){
+      var lab=document.createElement('label'); lab.textContent=f.label+(f.required?' *':'');
+      var inp=f.kind==='line'?document.createElement('input'):document.createElement('textarea');
+      if(f.kind==='line'){ inp.type='text'; }
+      inp.id='pf-'+f.key; inp.value=(c.params&&c.params[f.key])||'';
+      wrap.appendChild(lab); wrap.appendChild(inp);
+    });
+  }
+  function setSelectValue(id,val){ var s=el(id); for(var i=0;i<s.options.length;i++){ if(s.options[i].value===val){ s.selectedIndex=i; return; } } }
+
+  function collectParams(c){
+    var tpl=TEMPLATES.find(function(t){return t.type===el('card-type').value;}); var params={};
+    (tpl?tpl.fields:[]).forEach(function(f){ var n=el('pf-'+f.key); if(n) params[f.key]=n.value; });
+    var size=(el('fmt-size').value||'').split('x');
+    return { params:params, type:el('card-type').value, engine:el('card-engine').value,
+      format:{ duration_seconds:el('fmt-duration').value, fps:el('fmt-fps').value, width:size[0], height:size[1] } };
+  }
+  el('card-type').addEventListener('change',function(){
+    // Switching type reloads default fields for the new type on next save; re-render fields now.
+    var c=cardById(currentCardId); if(!c) return; c.type=el('card-type').value; renderParamFields(c);
+    var tpl=TEMPLATES.find(function(t){return t.type===c.type;}); el('candidate-note').textContent=(tpl&&tpl.candidate_only)?('Candidate-only: '+(tpl.note||'')):'';
+  });
+  el('btn-save-card').addEventListener('click',function(){
+    var patch=collectParams(cardById(currentCardId)); patch.id=currentProject.project_id; patch.card_id=currentCardId;
+    apiPost(CARD_PARAMS_API,patch).then(function(res){
+      if(!res.ok){ setStatus(el('card-status'),(res.body&&res.body.error)||'Save failed','err'); return; }
+      var d=unwrap(res.body); currentProject=d.project;
+      var v=d.validation; setStatus(el('card-status'), v&&!v.ok?('Saved — '+v.errors.join(' ')):'Saved ✓', v&&!v.ok?'warn':'ok');
+      renderCardList(); refreshPreview();
+    });
+  });
+
+  function refreshPreview(){
+    if(!currentProject||!currentCardId) return;
+    var c=cardById(currentCardId);
+    el('preview-meta').textContent=c?(c.format.width+'x'+c.format.height+' · '+c.format.duration_seconds+'s · '+(c.engine==='recommended'?('→'+c.recommended_engine):c.engine)):'';
+    el('preview-frame').src=PREVIEW_API+'?id='+encodeURIComponent(currentProject.project_id)+'&card_id='+encodeURIComponent(currentCardId)+'&t='+Date.now();
+  }
+
+  // ── boot ──
+  apiGet(TEMPLATES_API).then(function(res){
+    TEMPLATES=((unwrap(res.body)||{}).templates)||[];
+    var opts=TEMPLATES.map(function(t){ return '<option value="'+esc(t.type)+'">'+esc(t.label)+'</option>'; }).join('');
+    el('new-card-type').innerHTML=opts; el('card-type').innerHTML=opts;
+  });
+  loadProjects();
+  show('landing');
+</script>
+</body>
+</html>
