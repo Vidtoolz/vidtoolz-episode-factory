@@ -132,6 +132,9 @@ const SUPER_FOCUS_VIDEOS_CANCEL_API = '/api/super-focus/videos-cancel';
 const SUPER_FOCUS_QUEUE_VIDEO_API = '/api/super-focus/queue-video';
 const SUPER_FOCUS_QUEUE_MISSING_VIDEOS_API = '/api/super-focus/queue-missing-videos';
 const SUPER_FOCUS_VIDEO_QUEUE_API = '/api/super-focus/video-queue';
+const SUPER_FOCUS_VIDEO_QUEUE_PAUSE_API = '/api/super-focus/video-queue/pause';
+const SUPER_FOCUS_VIDEO_QUEUE_RESUME_API = '/api/super-focus/video-queue/resume';
+const SUPER_FOCUS_VIDEO_QUEUE_STOP_CURRENT_API = '/api/super-focus/video-queue/stop-current';
 const SUPER_FOCUS_CANCEL_QUEUED_VIDEO_API = '/api/super-focus/cancel-queued-video';
 const SUPER_FOCUS_VIDEO_FILE_API = '/api/super-focus/video';
 const EARTH_STUDIO_STATUS_API = '/api/earth-studio/status';
@@ -7611,16 +7614,31 @@ function i2vTextHash(row) {
 }
 
 function videoQueueSummary(queue) {
-  const s = { queued: 0, running: 0, done: 0, failed: 0, cancelled: 0, skipped: 0 };
+  const s = { queued: 0, running: 0, done: 0, failed: 0, cancelled: 0, skipped: 0, interrupted: 0, stopped: 0, paused: Boolean(queue && queue.paused) };
   for (const it of (queue.items || [])) {
     if (it.status === 'queued') s.queued += 1;
     else if (it.status === 'running') s.running += 1;
     else if (it.status === 'done') s.done += 1;
     else if (it.status === 'failed') s.failed += 1;
     else if (it.status === 'cancelled') s.cancelled += 1;
+    else if (it.status === 'interrupted') s.interrupted += 1;
+    else if (it.status === 'stopped_by_operator') s.stopped += 1;
     else s.skipped += 1;
   }
   return s;
+}
+
+// The operator queue-control view (paused flag + provenance), read-only shape
+// derived from the persisted queue. UI copy is built from this.
+function videoQueueControl(queue) {
+  return {
+    paused: Boolean(queue && queue.paused),
+    paused_at: (queue && queue.paused_at) || null,
+    paused_by: (queue && queue.paused_by) || null,
+    pause_reason: (queue && queue.pause_reason) || null,
+    resumed_at: (queue && queue.resumed_at) || null,
+    stop_requested_at: (queue && queue.stop_requested_at) || null,
+  };
 }
 
 // Is a row eligible for NORMAL video queueing right now? ctx = { sfRoot, sfMediaRoot, options }.
@@ -7646,6 +7664,8 @@ function reconcileSuperFocusVideoQueue(id, ctx) {
   const active = currentPrestoJobStatus().active;
   const activeIsThis = Boolean(active && active.package_id === id);
   const relVideo = (idx) => path.join('videos', subdir, superFocusMedia.videoFileName(idx));
+  const completed = currentPrestoJobStatus().completed;
+  const completedIsThis = Boolean(completed && completed.package_id === id);
   let changed = false;
   for (const item of queue.items) {
     const idx = item.index;
@@ -7654,8 +7674,27 @@ function reconcileSuperFocusVideoQueue(id, ctx) {
       if (activeIsThis) continue; // still rendering our job
       if (hasVideo) {
         item.status = 'done'; item.output_path = relVideo(idx); item.finished_at = item.finished_at || new Date().toISOString();
+      } else if (item.stop_requested_at || (completedIsThis && completed.signal)) {
+        // Operator asked to stop this render (SIGTERM/SIGKILL). Honest: the
+        // local process was stopped; the item is eligible for explicit requeue.
+        item.status = 'stopped_by_operator';
+        item.error = item.error || 'Stopped by operator before completion. Requeue to retry.';
+        item.finished_at = new Date().toISOString();
+      } else if (completedIsThis) {
+        // The render process ran to completion IN THIS PROCESS but produced no
+        // output → a genuine failure (non-zero exit, or clean exit with no file).
+        item.status = 'failed';
+        item.error = (completed.exit_code != null && completed.exit_code !== 0)
+          ? 'Render failed (exit ' + completed.exit_code + '). Requeue to retry.'
+          : 'Render finished without producing a video. Requeue to retry.';
+        item.finished_at = new Date().toISOString();
       } else {
-        item.status = 'failed'; item.error = item.error || 'render did not complete (no output; job ended or server restarted)'; item.finished_at = new Date().toISOString();
+        // No output and NO record of a completed process for us: the render was
+        // interrupted (PRESTO/ComfyUI stopped, or the cockpit restarted mid-job).
+        // Never mark done; preserve for explicit requeue.
+        item.status = 'interrupted';
+        item.error = 'Render interrupted — PRESTO/ComfyUI may have been stopped, or the cockpit restarted. Requeue when ready.';
+        item.finished_at = new Date().toISOString();
       }
       changed = true;
     } else if (item.status === 'queued') {
@@ -7674,6 +7713,10 @@ function reconcileSuperFocusVideoQueue(id, ctx) {
 // safe to call repeatedly (poll) or on job completion (event). Never runs two.
 async function pumpSuperFocusVideoQueue(id, ctx) {
   const { state, subdir, queue } = reconcileSuperFocusVideoQueue(id, ctx);
+  // Operator pause: never START a new PRESTO render while paused. A render that
+  // is already running is left alone (Stop current render is a separate action);
+  // remaining items stay queued for later.
+  if (queue.paused) return { started: null, queue, blocked: 'paused' };
   if (currentPrestoJobStatus().active) return { started: null, queue, blocked: 'busy' };
   if (queue.items.some((it) => it.status === 'running')) return { started: null, queue, blocked: 'running' };
   const next = queue.items.find((it) => it.status === 'queued');
@@ -11188,6 +11231,17 @@ function createServer(options = {}) {
           validateLocalWriteRequest(req, payload, { label: 'Super Focus video generation API' });
           const id = payload.id || payload.project_id || '';
           const state = superFocus.loadProject(id, { root: sfRoot });
+          // Respect an operator pause: never start a PRESTO render while paused.
+          const pausedQueue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+          if (pausedQueue.paused) {
+            sendJSON(res, 200, {
+              started: false,
+              paused: true,
+              message: 'Video queue is paused — no PRESTO render was started. Resume the queue to render.',
+              queue: { summary: videoQueueSummary(pausedQueue), items: pausedQueue.items, control: videoQueueControl(pausedQueue) },
+            });
+            return;
+          }
           const subdir = PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4';
           // Eligibility: still + i2v prompt, and NO existing video. Rows that
           // already have a video are skipped by default (Regenerate replaces one).
@@ -11338,7 +11392,8 @@ function createServer(options = {}) {
             total: recon.total,
             done: recon.done,
             videos: recon.videos,
-            queue: { summary: videoQueueSummary(queue), items: queue.items },
+            paused: Boolean(queue.paused),
+            queue: { summary: videoQueueSummary(queue), items: queue.items, control: videoQueueControl(queue) },
           });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-videos-status-error'));
@@ -11419,6 +11474,8 @@ function createServer(options = {}) {
           sendJSON(res, 200, {
             project_id: id,
             subdir: superFocusVideoSubdir(),
+            paused: Boolean(queue.paused),
+            control: videoQueueControl(queue),
             summary: videoQueueSummary(queue),
             items: queue.items,
             presto_active: Boolean(active),
@@ -11426,6 +11483,115 @@ function createServer(options = {}) {
           });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-video-queue-error'));
+      return;
+    }
+
+    // Pause the queue: no NEW PRESTO render starts; running one is left alone;
+    // queued items are preserved. Persists to disk (survives cockpit restart).
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_VIDEO_QUEUE_PAUSE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus video-queue pause API' });
+          const id = payload.id || payload.project_id || '';
+          superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown project
+          const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+          queue.paused = true;
+          queue.paused_at = new Date().toISOString();
+          queue.paused_by = 'operator';
+          queue.pause_reason = typeof payload.reason === 'string' && payload.reason.trim() ? payload.reason.trim().slice(0, 200) : 'operator_pause';
+          queue.resumed_at = null;
+          superFocusMedia.writeVideoQueue(id, queue, { mediaRoot: sfMediaRoot });
+          const active = currentPrestoJobStatus().active;
+          sendJSON(res, 200, {
+            paused: true,
+            message: 'Queue paused — no new PRESTO videos will start.',
+            active_render: Boolean(active && active.package_id === id),
+            control: videoQueueControl(queue),
+            summary: videoQueueSummary(queue),
+            items: queue.items,
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-video-queue-pause-error'));
+      return;
+    }
+
+    // Resume the queue: clear paused, then let the normal runner start the next
+    // eligible item IF the PRESTO lock is free and PRESTO is reachable. Never
+    // auto-starts PRESTO/ComfyUI; never bypasses eligibility/slot-safety.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_VIDEO_QUEUE_RESUME_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus video-queue resume API' });
+          const id = payload.id || payload.project_id || '';
+          superFocus.loadProject(id, { root: sfRoot });
+          const ctx = { sfRoot, sfMediaRoot, options };
+          const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+          queue.paused = false;
+          queue.resumed_at = new Date().toISOString();
+          queue.stop_requested_at = null;
+          superFocusMedia.writeVideoQueue(id, queue, { mediaRoot: sfMediaRoot });
+          const pump = await pumpSuperFocusVideoQueue(id, ctx).catch(() => null);
+          const after = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+          sendJSON(res, 200, {
+            paused: false,
+            message: 'Queue resumed.',
+            started: Boolean(pump && pump.started),
+            blocked: pump && pump.blocked ? pump.blocked : null,
+            control: videoQueueControl(after),
+            summary: videoQueueSummary(after),
+            items: after.items,
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-video-queue-resume-error'));
+      return;
+    }
+
+    // Stop the current render: pause the queue first, then best-effort stop the
+    // LOCAL render process. HONEST LIMIT: killing the local process cannot
+    // guarantee the remote PRESTO ComfyUI GPU job stops — that is reported via
+    // remote_may_continue. The active item is marked stopped_by_operator (never
+    // done) and stays eligible for explicit requeue.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_VIDEO_QUEUE_STOP_CURRENT_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus video-queue stop-current API' });
+          const id = payload.id || payload.project_id || '';
+          superFocus.loadProject(id, { root: sfRoot });
+          const ctx = { sfRoot, sfMediaRoot, options };
+          // 1) Pause first, so nothing new starts regardless of the stop outcome.
+          const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+          queue.paused = true;
+          queue.paused_at = new Date().toISOString();
+          queue.paused_by = 'operator';
+          queue.pause_reason = 'stop_current_render';
+          queue.stop_requested_at = new Date().toISOString();
+          // Flag the running item (for this project) so reconcile classifies it
+          // as stopped_by_operator, not a generic failure.
+          const runningItem = queue.items.find((it) => it.status === 'running');
+          if (runningItem) runningItem.stop_requested_at = queue.stop_requested_at;
+          superFocusMedia.writeVideoQueue(id, queue, { mediaRoot: sfMediaRoot });
+
+          const active = currentPrestoJobStatus().active;
+          const activeIsThis = Boolean(active && active.package_id === id);
+          let result;
+          if (!active) {
+            result = { status: 'no_active_job', stopped: false, message: 'Queue paused. No render is currently active.' };
+          } else if (!activeIsThis) {
+            result = { status: 'busy_elsewhere', stopped: false, message: 'Queue paused. The active PRESTO render belongs to another project and was not stopped.' };
+          } else {
+            // Best-effort local stop of run-production.py (SIGTERM then SIGKILL).
+            const stop = await cancelPrestoJob(options).catch((e) => ({ ok: false, error: e.message }));
+            // Reconcile so the running item flips to stopped_by_operator now.
+            await pumpSuperFocusVideoQueue(id, ctx).catch(() => null);
+            result = stop && stop.ok
+              ? { status: 'stopped', stopped: true, remote_may_continue: true,
+                  message: 'Local render process stopped and queue paused. If PRESTO ComfyUI had already started the GPU render, it may keep running on PRESTO until it finishes or you stop it there.' }
+              : { status: 'stop_failed', stopped: false, message: 'Could not stop the local render process: ' + ((stop && stop.error) || 'unknown error') + '. Queue is paused so nothing new will start.' };
+          }
+          const after = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+          sendJSON(res, 200, Object.assign({ paused: true, control: videoQueueControl(after), summary: videoQueueSummary(after), items: after.items }, result));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-video-queue-stop-current-error'));
       return;
     }
 
@@ -13556,6 +13722,9 @@ module.exports = {
   SUPER_FOCUS_QUEUE_VIDEO_API,
   SUPER_FOCUS_QUEUE_MISSING_VIDEOS_API,
   SUPER_FOCUS_VIDEO_QUEUE_API,
+  SUPER_FOCUS_VIDEO_QUEUE_PAUSE_API,
+  SUPER_FOCUS_VIDEO_QUEUE_RESUME_API,
+  SUPER_FOCUS_VIDEO_QUEUE_STOP_CURRENT_API,
   SUPER_FOCUS_CANCEL_QUEUED_VIDEO_API,
   SUPER_FOCUS_VIDEO_FILE_API,
   superFocus,

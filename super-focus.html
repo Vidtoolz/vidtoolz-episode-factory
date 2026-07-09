@@ -71,6 +71,7 @@
     .section.collapsed { padding-bottom: 16px; }
     .script-view-row { margin-top: 8px; }
     textarea.script-full { min-height: 220px; }
+    .queue-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 10px 0 4px; }
     label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
     input[type="text"], textarea {
       width: 100%; background: var(--panel-2); color: var(--text);
@@ -352,7 +353,14 @@
           <button class="btn hidden" id="vidgen-cancel">Cancel</button>
           <span class="save-state" id="vidgen-status"></span>
         </div>
-        <div class="later-note"><strong>Queues</strong> PRESTO ComfyUI / Wan2.2 for rows that have BOTH a generated still and a saved image-to-video prompt and no video yet. One clip renders at a time (slow, minutes each) but you can queue many and walk away — the queue drains automatically and survives a refresh. Existing videos and rows missing a still/i2v prompt are skipped. PRESTO must be running; it is never auto-started. Each clip appears next to its image above; or use the per-row “Queue video on PRESTO” button (Cancel queued removes a not-yet-running item).</div>
+        <div class="queue-controls" id="vidqueue-controls">
+          <button class="btn" id="vidqueue-pause">Pause queue</button>
+          <button class="btn hidden" id="vidqueue-resume">Resume queue</button>
+          <button class="btn" id="vidqueue-stop">Stop current render</button>
+          <span class="save-state" id="vidqueue-status"></span>
+        </div>
+        <div id="vidqueue-paused-banner" class="stale-banner hidden">⏸ Queue paused — no new PRESTO videos will start. A render already running is left alone; use <strong>Stop current render</strong> to stop it. Resume the queue tonight.</div>
+        <div class="later-note"><strong>PRESTO video rendering is expensive (~55 min per clip) and runs one clip at a time.</strong> <strong>Queues</strong> PRESTO ComfyUI / Wan2.2 for rows that have BOTH a generated still and a saved image-to-video prompt and no video yet — you can queue many and walk away; the queue drains automatically and survives a refresh. Existing videos and rows missing a still/i2v prompt are skipped. PRESTO must be running; it is never auto-started. <strong>Day/night workflow:</strong> pause the queue during the day, resume at night. <strong>Stop current render</strong> stops the local render process and pauses the queue; a partial/failed clip may be left and the remote PRESTO GPU render may keep running until it finishes there — retry the row explicitly later. Each clip appears next to its image above; or use the per-row “Queue video on PRESTO” button (Cancel queued removes a not-yet-running item).</div>
         <div class="imggen-progress hidden" id="vidgen-progress"></div>
         <div class="imggen-bar hidden" id="vidgen-barwrap"><div class="imggen-fill" id="vidgen-fill"></div></div>
       </div>
@@ -390,6 +398,9 @@
     var GEN_VIDEOS_API = '/api/super-focus/generate-videos';
     var QUEUE_VIDEO_API = '/api/super-focus/queue-video';
     var QUEUE_MISSING_VIDEOS_API = '/api/super-focus/queue-missing-videos';
+    var VIDEO_QUEUE_PAUSE_API = '/api/super-focus/video-queue/pause';
+    var VIDEO_QUEUE_RESUME_API = '/api/super-focus/video-queue/resume';
+    var VIDEO_QUEUE_STOP_CURRENT_API = '/api/super-focus/video-queue/stop-current';
     var CANCEL_QUEUED_VIDEO_API = '/api/super-focus/cancel-queued-video';
     var CLEAR_VIDEO_API = '/api/super-focus/clear-video';
     var REGEN_VIDEO_API = '/api/super-focus/regenerate-video';
@@ -1213,18 +1224,22 @@
       queue.forEach(function (it) { if (it.status === 'queued') { pos += 1; it.position = pos; } });
       (d.videos || []).forEach(function (row) { setVideo(row.index, row, qByIndex[row.index]); });
 
-      var summary = (d.queue && d.queue.summary) || { queued: 0, running: 0, done: 0, failed: 0, skipped: 0 };
+      var summary = (d.queue && d.queue.summary) || { queued: 0, running: 0, done: 0, failed: 0, skipped: 0, interrupted: 0, stopped: 0 };
+      var paused = Boolean(d.paused || summary.paused);
       var active = Boolean(d.job_is_this_project) || summary.running > 0;
       var prog = document.getElementById('vidgen-progress');
       var barwrap = document.getElementById('vidgen-barwrap');
       var fill = document.getElementById('vidgen-fill');
       var pct = d.total ? Math.round((d.done / d.total) * 100) : 0;
-      if (d.total > 0 && (active || d.done > 0)) {
+      if (d.total > 0 && (active || d.done > 0 || summary.queued > 0 || summary.interrupted > 0 || summary.stopped > 0)) {
         prog.classList.remove('hidden'); barwrap.classList.remove('hidden');
         fill.style.width = pct + '%';
-        // Honest queue summary line.
+        // Honest queue summary line — includes interrupted/stopped counts.
         prog.textContent = 'PRESTO video queue: ' + summary.running + ' running · ' + summary.queued
-          + ' queued · ' + summary.done + ' done' + (summary.failed ? (' · ' + summary.failed + ' failed') : '')
+          + ' queued · ' + summary.done + ' done'
+          + (summary.interrupted ? (' · ' + summary.interrupted + ' interrupted') : '')
+          + (summary.stopped ? (' · ' + summary.stopped + ' stopped') : '')
+          + (summary.failed ? (' · ' + summary.failed + ' failed') : '')
           + (summary.skipped ? (' · ' + summary.skipped + ' skipped') : '');
       } else {
         prog.classList.add('hidden'); barwrap.classList.add('hidden');
@@ -1233,10 +1248,19 @@
       var genBtn = document.getElementById('vidgen-generate');
       // The batch button only QUEUES; it stays usable during rendering.
       genBtn.classList.toggle('busy', active);
-      if (d.busy_elsewhere && !active) {
+      // Reflect queue-control state: paused banner + Pause/Resume toggle.
+      document.getElementById('vidqueue-paused-banner').classList.toggle('hidden', !paused);
+      document.getElementById('vidqueue-pause').classList.toggle('hidden', paused);
+      document.getElementById('vidqueue-resume').classList.toggle('hidden', !paused);
+      // Stop current render only makes sense while THIS project is rendering.
+      document.getElementById('vidqueue-stop').disabled = !active;
+      if (paused) {
+        setStatus(document.getElementById('vidqueue-status'), 'Paused — no new PRESTO videos will start' + (active ? ' (a render is still finishing)' : ''));
+      } else if (d.busy_elsewhere && !active) {
         setStatus(document.getElementById('vidgen-status'), 'PRESTO busy with another project — your rows will queue');
       }
-      // Keep polling while anything is queued or running.
+      // Keep polling while anything is queued or running (even while paused, so a
+      // finishing render and interrupted/stopped transitions are reflected).
       return active || summary.queued > 0;
     }
 
@@ -1690,6 +1714,9 @@
     document.getElementById('vidgen-generate').addEventListener('click', function () {
       if (!currentId) return;
       var el = document.getElementById('vidgen-status');
+      // Batch safety: rendering is expensive (~55 min/clip). Confirm before
+      // queueing all eligible rows, so a full batch is never a one-click accident.
+      if (!confirm('Queue ALL eligible missing videos? PRESTO rendering is expensive (~55 min per clip) and runs one at a time. Tip: render one clip first, and pause the queue during the day.')) return;
       setStatus(el, 'Queueing missing videos on PRESTO…');
       apiPost(QUEUE_MISSING_VIDEOS_API, { id: currentId }).then(function (res) {
         if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Could not queue videos', true); return; }
@@ -1728,6 +1755,42 @@
         setStatus(el, res.ok ? 'Cancel signal sent' : 'Cancel failed', !res.ok);
         refreshVideosStatus();
       });
+    });
+
+    // ---- Video queue controls: pause / resume / stop current render ----
+    document.getElementById('vidqueue-pause').addEventListener('click', function () {
+      if (!currentId) return;
+      var el = document.getElementById('vidqueue-status');
+      apiPost(VIDEO_QUEUE_PAUSE_API, { id: currentId, reason: 'operator_daytime_pause' }).then(function (res) {
+        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Pause failed', true); return; }
+        setStatus(el, 'Queue paused — no new PRESTO videos will start');
+        refreshVideosStatus();
+      }).catch(function () { setStatus(el, 'Pause failed', true); });
+    });
+
+    document.getElementById('vidqueue-resume').addEventListener('click', function () {
+      if (!currentId) return;
+      var el = document.getElementById('vidqueue-status');
+      apiPost(VIDEO_QUEUE_RESUME_API, { id: currentId }).then(function (res) {
+        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Resume failed', true); return; }
+        var d = unwrap(res.body);
+        setStatus(el, d && d.started ? 'Queue resumed — next clip starting' : 'Queue resumed');
+        startVideosPolling(); refreshVideosStatus();
+      }).catch(function () { setStatus(el, 'Resume failed', true); });
+    });
+
+    document.getElementById('vidqueue-stop').addEventListener('click', function () {
+      if (!currentId) return;
+      if (!confirm('Stop the current PRESTO render and pause the queue? The clip may be left partial/failed and the remote PRESTO render may keep running until it finishes there. Queued jobs are preserved; retry the row explicitly later.')) return;
+      var el = document.getElementById('vidqueue-status');
+      setStatus(el, 'Requesting stop…');
+      apiPost(VIDEO_QUEUE_STOP_CURRENT_API, { id: currentId }).then(function (res) {
+        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Stop failed', true); return; }
+        var d = unwrap(res.body);
+        var msg = (d && d.message) || 'Stop requested';
+        setStatus(el, msg, d && (d.status === 'stop_failed'));
+        stopVideosPolling(); refreshVideosStatus();
+      }).catch(function () { setStatus(el, 'Stop failed', true); });
     });
 
     initCollapsibleSections(); // one-time DOM transform for the project steps

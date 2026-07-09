@@ -44,6 +44,45 @@ image-to-video prompt.
   `?focus=script-evaluator` route always forces the Script step open so the
   evaluator stays reachable regardless of the saved preference.
 
+## Video queue: pause / resume / stop (day-night control)
+
+PRESTO Wan2.2 renders are long (~55 min per HQ clip) and run one at a time. The
+video step has operator queue controls so you can stop daytime rendering and
+resume at night without losing queued work:
+
+- **Pause queue** — no *new* PRESTO render starts. A render already running is
+  left alone; queued items are preserved. The pause is persisted to the queue
+  file and **survives a cockpit restart**. This is the safe daytime control.
+- **Resume queue** — clears the pause and lets the normal runner start the next
+  eligible clip *only if* the PRESTO lock is free and PRESTO is reachable. It
+  never auto-starts PRESTO/ComfyUI and never bypasses slot-safety/eligibility.
+- **Stop current render** — pauses the queue, then stops the **local** render
+  process and marks that item `stopped_by_operator` (never `done`), leaving it
+  eligible for explicit requeue. Honest limit: stopping the local process cannot
+  guarantee the **remote** PRESTO ComfyUI GPU job stops — it may keep running on
+  PRESTO until it finishes there. A partial/failed clip may be left; retry the
+  row explicitly later.
+- **Batch** ("Queue missing videos") asks for confirmation, since rendering is
+  expensive. Per-image "Queue video on PRESTO" is the safest default.
+
+Recommended workflow: **pause during the day, resume at night.**
+
+### Recovery after PRESTO/ComfyUI was shut down mid-render
+
+If PRESTO ComfyUI is stopped or the cockpit restarts while a clip is rendering,
+the queue reconciles honestly on the next status read:
+
+- an item left `running` with **no live process and no output** becomes
+  `interrupted` (a completed-but-empty in-process job becomes `failed`) — it is
+  **never** marked `done`;
+- queued jobs are **preserved**, not deleted;
+- **retry = requeue the row** (per-image "Queue video on PRESTO", or "Queue
+  missing videos") — an interrupted/failed/stopped item is re-eligible.
+
+Queue-control state lives in the media-side `video-queue.json` (job control
+only), not in `super-focus.json`. No auto-start of PRESTO/ComfyUI; no cloud
+fallback.
+
 ## State and media
 
 - **Canonical state is local and file-based:** `super-focus-projects/<project_id>/super-focus.json`

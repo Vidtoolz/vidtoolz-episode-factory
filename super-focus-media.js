@@ -216,13 +216,16 @@ function videoQueuePath(mediaDir) { return path.join(mediaDir, VIDEO_QUEUE_FILEN
 
 function readVideoQueue(projectId, options = {}) {
   const p = videoQueuePath(mediaDirFor(projectId, options));
-  if (!fs.existsSync(p)) return { version: 1, items: [] };
+  if (!fs.existsSync(p)) return { version: 1, paused: false, items: [] };
   try {
     const q = JSON.parse(fs.readFileSync(p, 'utf8'));
     if (!Array.isArray(q.items)) q.items = [];
     if (!q.version) q.version = 1;
+    // Backward-compatible operator queue-control fields. Older queue files
+    // (pre-pause) simply default to not-paused.
+    if (typeof q.paused !== 'boolean') q.paused = false;
     return q;
-  } catch (_) { return { version: 1, items: [] }; }
+  } catch (_) { return { version: 1, paused: false, items: [] }; }
 }
 
 function writeVideoQueue(projectId, queue, options = {}) {

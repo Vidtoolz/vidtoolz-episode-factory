@@ -2847,7 +2847,8 @@ test("video queue: persists to disk and is readable after a refresh", async () =
 });
 
 test("video queue: stale running item is reconciled safely after restart", async () => {
-  // no active PRESTO job + no output -> failed; output present -> done.
+  // no active PRESTO job + no output -> interrupted (honest: process gone, not a
+  // clean failure and never done); output present -> done.
   const failCase = videoServer(fakePrestoSpawn(), { promptCount: 1 });
   await listen(failCase.server);
   try {
@@ -2856,7 +2857,9 @@ test("video queue: stale running item is reconciled safely after restart", async
     ] }, { mediaRoot: failCase.mediaRoot });
     packageEngineServer.PRESTO_STATE.activeJob = null; // as if restarted
     const q = unwrap(await qs(failCase.server, failCase.id));
-    assert.equal(q.items.find((i) => i.index === 1).status, "failed");
+    const item = q.items.find((i) => i.index === 1);
+    assert.equal(item.status, "interrupted");
+    assert.ok(item.status !== "done", "an interrupted render is never marked done");
   } finally { await close(failCase.server); packageEngineServer.PRESTO_STATE.activeJob = null; }
 
   const doneCase = videoServer(fakePrestoSpawn(), { promptCount: 1 });
@@ -3283,6 +3286,228 @@ test("super-focus.html: landing has no collapse controls and still exactly two c
     assert.doesNotMatch(landing, /data-section=/, "no collapsible sections on the landing");
     assert.doesNotMatch(landing, /collapse-btn/);
     assert.doesNotMatch(landing, /Expand script/);
+  } finally {
+    await close(server);
+  }
+});
+
+// ==================== Video queue controls: pause / resume / stop / recovery ====================
+function readQueueFile(mediaRoot, id) {
+  return JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "video-queue.json"), "utf8"));
+}
+function writeQueueFile(mediaRoot, id, queue) {
+  const dir = path.join(mediaRoot, id);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "video-queue.json"), JSON.stringify(queue, null, 2) + "\n", "utf8");
+}
+const PAUSE_API = () => packageEngineServer.SUPER_FOCUS_VIDEO_QUEUE_PAUSE_API;
+const RESUME_API = () => packageEngineServer.SUPER_FOCUS_VIDEO_QUEUE_RESUME_API;
+const STOP_API = () => packageEngineServer.SUPER_FOCUS_VIDEO_QUEUE_STOP_CURRENT_API;
+const QUEUE_VIDEO = () => packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API;
+const VIDEO_QUEUE = () => packageEngineServer.SUPER_FOCUS_VIDEO_QUEUE_API;
+
+test("video-queue/pause: nonce-gated, sets paused, persists, does not kill a running render", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn({ hang: true }), { promptCount: 2 });
+  await listen(server);
+  try {
+    // Start a (hanging) render for index 1, then queue index 2.
+    await request(server, QUEUE_VIDEO(), { method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    await request(server, QUEUE_VIDEO(), { method: "POST", headers: writeHeaders(), body: { id, index: 2 } });
+    assert.ok(packageEngineServer.PRESTO_STATE.activeJob, "a render is active before pause");
+
+    // Nonce gate.
+    const noNonce = await request(server, PAUSE_API(), { method: "POST", headers: { host: "127.0.0.1:8010" }, body: { id } });
+    assert.equal(noNonce.statusCode, 403);
+
+    const res = await request(server, PAUSE_API(), { method: "POST", headers: writeHeaders(), body: { id, reason: "operator_daytime_pause" } });
+    assert.equal(res.statusCode, 200);
+    assert.equal(unwrap(res).paused, true);
+    assert.equal(unwrap(res).active_render, true);
+    // Persisted to disk (survives restart).
+    const q = readQueueFile(mediaRoot, id);
+    assert.equal(q.paused, true);
+    assert.equal(q.pause_reason, "operator_daytime_pause");
+    // The running render was NOT killed by pause.
+    assert.ok(packageEngineServer.PRESTO_STATE.activeJob, "pause left the active render alone");
+    // Queued item 2 preserved.
+    assert.ok(q.items.find((it) => it.index === 2 && it.status === "queued"));
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("queue runner paused: a queued item does not start while paused; resume starts it", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn(), { promptCount: 1 });
+  await listen(server);
+  try {
+    // Pause BEFORE queueing anything.
+    await request(server, PAUSE_API(), { method: "POST", headers: writeHeaders(), body: { id } });
+    // Queue index 1 — enqueue succeeds but the runner must NOT start it.
+    await request(server, QUEUE_VIDEO(), { method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    await delay(30);
+    assert.equal(packageEngineServer.PRESTO_STATE.activeJob, null, "no render started while paused");
+    let q = readQueueFile(mediaRoot, id);
+    assert.equal(q.items.find((it) => it.index === 1).status, "queued", "item stays queued while paused");
+
+    // Resume — now the runner may start it.
+    const resume = await request(server, RESUME_API(), { method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(resume.statusCode, 200);
+    assert.equal(unwrap(resume).paused, false);
+    assert.equal(unwrap(resume).started, true, "resume started the next eligible item");
+    await delay(40);
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(d.done, 1, "the clip rendered after resume");
+    assert.equal(d.paused, false);
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("video-queue/stop-current: pauses + stops local render, marks stopped_by_operator, keeps queued jobs", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn({ hang: true }), { promptCount: 2 });
+  await listen(server);
+  try {
+    await request(server, QUEUE_VIDEO(), { method: "POST", headers: writeHeaders(), body: { id, index: 1 } }); // running (hang)
+    await request(server, QUEUE_VIDEO(), { method: "POST", headers: writeHeaders(), body: { id, index: 2 } }); // queued (busy)
+    assert.ok(packageEngineServer.PRESTO_STATE.activeJob, "render active before stop");
+
+    const res = await request(server, STOP_API(), { method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(res.statusCode, 200);
+    const d = unwrap(res);
+    assert.equal(d.status, "stopped");
+    assert.equal(d.stopped, true);
+    assert.equal(d.remote_may_continue, true, "honest: remote PRESTO render may continue");
+    assert.equal(d.paused, true, "queue is paused after stopping");
+    await delay(20);
+    const q = readQueueFile(mediaRoot, id);
+    assert.equal(q.paused, true);
+    const item1 = q.items.find((it) => it.index === 1);
+    assert.equal(item1.status, "stopped_by_operator", "active item marked stopped_by_operator (not done)");
+    assert.ok(item1.status !== "done");
+    // Queued job preserved for later.
+    assert.equal(q.items.find((it) => it.index === 2).status, "queued");
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("video-queue/stop-current: honest no_active_job when nothing is rendering (still pauses)", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn(), { promptCount: 1 });
+  await listen(server);
+  try {
+    const res = await request(server, STOP_API(), { method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(res.statusCode, 200);
+    const d = unwrap(res);
+    assert.equal(d.status, "no_active_job");
+    assert.equal(d.stopped, false);
+    assert.equal(d.paused, true);
+    assert.equal(readQueueFile(mediaRoot, id).paused, true);
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("recovery: a persisted running item with no live process becomes interrupted; queued jobs preserved", async () => {
+  // Build a project + a queue file that looks like a mid-render shutdown.
+  packageEngineServer.PRESTO_STATE.activeJob = null;
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "Recover" }, { root });
+  const id = created.project_id;
+  superFocus.saveImagePrompts(id, ["a", "b"], { root });
+  const flux = path.join(mediaRoot, id, "images", "flux-local");
+  fs.mkdirSync(flux, { recursive: true });
+  fs.writeFileSync(path.join(flux, "flux-001.png"), Buffer.from([0x89]));
+  fs.writeFileSync(path.join(flux, "flux-002.png"), Buffer.from([0x89]));
+  superFocus.setI2vPrompt(id, 1, "m1", { root });
+  superFocus.setI2vPrompt(id, 2, "m2", { root });
+  writeQueueFile(mediaRoot, id, {
+    version: 1, paused: false,
+    items: [
+      { item_id: "a", index: 1, status: "running", queued_at: "t", started_at: "t" },
+      { item_id: "b", index: 2, status: "queued", queued_at: "t" },
+    ],
+  });
+  // PRESTO unreachable so the runner reconciles item 1 but cannot auto-start item 2.
+  const server = packageEngineServer.createServer({
+    superFocusRoot: root, superFocusMediaRoot: mediaRoot,
+    productionScript: fakeScript(), pythonBin: "python3", spawn: fakePrestoSpawn(),
+    prestoReachableCheck: async () => false,
+  });
+  await listen(server);
+  try {
+    const res = await request(server, VIDEO_QUEUE() + "?id=" + encodeURIComponent(id));
+    assert.equal(res.statusCode, 200);
+    const q = readQueueFile(mediaRoot, id);
+    const item1 = q.items.find((it) => it.index === 1);
+    assert.equal(item1.status, "interrupted", "running-without-process becomes interrupted, not done/failed");
+    assert.match(item1.error || "", /interrupted/i);
+    assert.equal(q.items.find((it) => it.index === 2).status, "queued", "queued jobs preserved");
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("generate-videos respects pause: refuses to start a render while paused (no dispatch)", async () => {
+  const { server, id } = videoServer(fakePrestoSpawn(), { promptCount: 1 });
+  await listen(server);
+  try {
+    await request(server, PAUSE_API(), { method: "POST", headers: writeHeaders(), body: { id } });
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 200);
+    assert.equal(unwrap(res).paused, true);
+    assert.equal(unwrap(res).started, false);
+    assert.equal(packageEngineServer.PRESTO_STATE.activeJob, null, "no render dispatched while paused");
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("second video batch still 409s while one is active (pause does not break the global lock)", async () => {
+  const { server, id } = videoServer(fakePrestoSpawn({ hang: true }), { promptCount: 2 });
+  await listen(server);
+  try {
+    const first = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, { method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(first.statusCode, 200);
+    const second = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, { method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(second.statusCode, 409);
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("super-focus.html: video queue controls + labels present; landing unchanged; batch confirmed", async () => {
+  const server = packageEngineServer.createServer({ superFocusRoot: mkRoot() });
+  await listen(server);
+  try {
+    const res = await request(server, "/super-focus.html");
+    assert.equal(res.statusCode, 200);
+    assert.match(res.raw, /id="vidqueue-pause"[^>]*>Pause queue</);
+    assert.match(res.raw, /id="vidqueue-resume"[^>]*>Resume queue</);
+    assert.match(res.raw, /id="vidqueue-stop"[^>]*>Stop current render</);
+    assert.match(res.raw, /Queue paused — no new PRESTO videos will start/);
+    // Honest interrupted/stopped surfacing in the status line.
+    assert.match(res.raw, /interrupted/);
+    assert.match(res.raw, /stopped/);
+    // New endpoints referenced by the client.
+    assert.match(res.raw, /VIDEO_QUEUE_PAUSE_API\s*=\s*'\/api\/super-focus\/video-queue\/pause'/);
+    assert.match(res.raw, /VIDEO_QUEUE_STOP_CURRENT_API\s*=\s*'\/api\/super-focus\/video-queue\/stop-current'/);
+    // Batch remains explicitly confirmed (anti-accidental multi-hour render).
+    assert.match(res.raw, /Queue ALL eligible missing videos\?/);
+    // Landing still exactly two choices.
+    const landing = res.raw.slice(res.raw.indexOf('id="view-landing"'), res.raw.indexOf('id="view-open"'));
+    assert.match(landing, /Create a new video project/);
+    assert.match(landing, /Open an existing video project/);
+    assert.doesNotMatch(landing, /vidqueue-pause/);
   } finally {
     await close(server);
   }
