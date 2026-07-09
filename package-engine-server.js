@@ -76,6 +76,7 @@ const MOTION_GRAPHICS_PREVIEW_API = '/api/motion-graphics/preview';
 const MOTION_GRAPHICS_RENDER_CARD_API = '/api/motion-graphics/render-card';
 const MOTION_GRAPHICS_RENDER_STATUS_API = '/api/motion-graphics/render-status';
 const MOTION_GRAPHICS_MEDIA_API = '/api/motion-graphics/media';
+const MOTION_GRAPHICS_REMOTION_SPEC_API = '/api/motion-graphics/remotion-spec';
 const FINAL_REVIEW_API = '/api/package-runs/final-review';
 const EXPORT_CHECKLIST_API = '/api/package-runs/export-checklist';
 const PUBLICATION_METADATA_API = '/api/package-runs/publication-metadata';
@@ -297,6 +298,7 @@ const scriptEvaluator = require('./script-evaluator.js');
 const motionGraphicsState = require('./motion-graphics-state.js');
 const motionGraphicsTemplates = require('./motion-graphics-templates.js');
 const motionGraphicsRenderers = require('./motion-graphics-renderers.js');
+const motionGraphicsRemotion = require('./motion-graphics-remotion.js');
 // Super Focus keeps its own local, file-backed project state (never on VIDNAS).
 // Root is env-overridable so it can follow a different disk without code edits.
 const SUPER_FOCUS_ROOT = process.env.SUPER_FOCUS_ROOT || path.join(ROOT, 'super-focus-projects');
@@ -13146,6 +13148,48 @@ function createServer(options = {}) {
       return;
     }
 
+    // Remotion SPEC/EXPORT (no render, no dependency, no brandkit mutation).
+    // GET returns the brandkit composition + props mapping for a card.
+    if (req.method === 'GET' && url.pathname === MOTION_GRAPHICS_REMOTION_SPEC_API) {
+      try {
+        const id = url.searchParams.get('id') || '';
+        const cardId = url.searchParams.get('card_id') || '';
+        const state = motionGraphicsState.loadProject(id, mgOpts);
+        const card = motionGraphicsState.findCard(state, cardId);
+        if (!card) { sendError(res, 404, 'Card not found.', 'motion-graphics-remotion-spec-missing'); return; }
+        const spec = motionGraphicsRemotion.buildRemotionSpec(card, { brandkitRoot: remotionLane.BRANDKIT_ROOT });
+        sendJSON(res, 200, { spec });
+      } catch (error) { sendError(res, error.statusCode || 500, error.message, 'motion-graphics-remotion-spec-error'); }
+      return;
+    }
+
+    // POST writes ONLY the props JSON to the card's media sources/ (spec/export;
+    // never renders). Refuses unmapped card types (400 with the note).
+    if (req.method === 'POST' && url.pathname === MOTION_GRAPHICS_REMOTION_SPEC_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Motion Graphics remotion-spec API' });
+          const id = payload.id || '';
+          const cardId = payload.card_id || '';
+          const state = motionGraphicsState.loadProject(id, mgOpts);
+          const card = motionGraphicsState.findCard(state, cardId);
+          if (!card) { const e = new Error('Card not found.'); e.statusCode = 404; throw e; }
+          const spec = motionGraphicsRemotion.buildRemotionSpec(card, { brandkitRoot: remotionLane.BRANDKIT_ROOT });
+          if (!spec.mapped) { const e = new Error(spec.notes[spec.notes.length - 1] || 'No brandkit composition maps to this card type.'); e.statusCode = 400; throw e; }
+          const mediaDir = motionGraphicsRenderers.projectMediaDir(id, { mediaRoot: mgMediaRoot });
+          const propsFile = path.join(mediaDir, 'sources', `${path.basename(motionGraphicsState.assertValidCardId(cardId))}.remotion.json`);
+          fs.mkdirSync(path.dirname(propsFile), { recursive: true });
+          const tmp = `${propsFile}.${process.pid}.tmp`;
+          fs.writeFileSync(tmp, `${JSON.stringify(spec.props, null, 2)}\n`, 'utf8');
+          fs.renameSync(tmp, propsFile);
+          spec.props_file = propsFile;
+          spec.render_hint = spec.render_hint ? spec.render_hint.replace('<PROPS_FILE>', propsFile) : spec.render_hint;
+          sendJSON(res, 200, { spec, props_file: propsFile });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'motion-graphics-remotion-spec-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === HYPERFRAMES_STATUS_API) {
       try {
         sendJSON(res, 200, discoverHyperframesCompositions({ runId: url.searchParams.get('runId') || '' }, { root: serverOptions.root || ROOT }));
@@ -13635,6 +13679,7 @@ module.exports = {
   MOTION_GRAPHICS_RENDER_CARD_API,
   MOTION_GRAPHICS_RENDER_STATUS_API,
   MOTION_GRAPHICS_MEDIA_API,
+  MOTION_GRAPHICS_REMOTION_SPEC_API,
   IMAGE_PROMPTS_READ_API,
   IMAGE_PROMPTS_SAVE_API,
   IMAGE_PROMPTS_VALIDATE_API,

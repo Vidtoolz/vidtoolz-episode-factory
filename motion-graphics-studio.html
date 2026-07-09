@@ -153,6 +153,7 @@
   var RENDER_CARD_API = '/api/motion-graphics/render-card';
   var RENDER_STATUS_API = '/api/motion-graphics/render-status';
   var MEDIA_API = '/api/motion-graphics/media';
+  var REMOTION_SPEC_API = '/api/motion-graphics/remotion-spec';
 
   var nonce = null, nonceHeader = 'x-vidtoolz-local-write-nonce';
   var TEMPLATES = [], currentProject = null, currentCardId = null;
@@ -260,9 +261,9 @@
   }
   function isRemotion(){ return el('card-engine').value==='remotion'; }
   function updateRenderControls(c){
-    var note=el('render-engine-note');
-    if(isRemotion()){ el('btn-render').disabled=true; note.textContent='Remotion render adapter is a later slice. Choose HyperFrames (or Recommended) to render this card.'; }
-    else { el('btn-render').disabled=false; note.textContent='HyperFrames renders locally into the media namespace on your click. Nothing is auto-approved.'; }
+    var note=el('render-engine-note'), btn=el('btn-render');
+    if(isRemotion()){ btn.disabled=false; btn.textContent='Export Remotion spec'; note.textContent='Remotion is spec/export only here — this exports a brandkit composition + props to render manually in vidtoolz-brandkit-remotion. No render, no dependency.'; }
+    else { btn.disabled=false; btn.textContent='Render selected card'; note.textContent='HyperFrames renders locally into the media namespace on your click. Nothing is auto-approved.'; }
   }
   el('card-engine').addEventListener('change',function(){ var c=cardById(currentCardId); if(c) updateRenderControls(c); });
   function renderHistory(c){
@@ -284,9 +285,31 @@
   }
   function copyText(t){ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t); } }
 
+  function exportRemotionSpec(){
+    var st=el('card-status'); setStatus(st,'Building Remotion spec…');
+    apiGet(REMOTION_SPEC_API+'?id='+encodeURIComponent(currentProject.project_id)+'&card_id='+encodeURIComponent(currentCardId)).then(function(res){
+      if(!res.ok){ setStatus(st,(res.body&&res.body.error)||'Spec failed','err'); return; }
+      var spec=unwrap(res.body).spec; var wrap=el('render-history');
+      var json=JSON.stringify(spec,null,2);
+      var h='<label>Remotion spec (export only — render manually in the brandkit repo)</label>';
+      h+='<div class="item"><div class="t">'+(spec.mapped?('composition: '+esc(spec.composition_id)):'no brandkit composition for this card type')+'</div>';
+      h+='<pre style="white-space:pre-wrap;font-size:12px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:10px;overflow:auto;max-height:40vh">'+esc(json)+'</pre>';
+      if(spec.render_hint){ h+='<div class="engine-note">Render hint: <code>'+esc(spec.render_hint)+'</code></div>'; }
+      (spec.notes||[]).forEach(function(n){ h+='<div class="later-note">'+esc(n)+'</div>'; });
+      h+='<div class="row"><button id="mg-copy-spec">Copy spec JSON</button><button id="mg-dl-spec">Download spec JSON</button>';
+      if(spec.mapped){ h+='<button id="mg-save-spec">Save props file to media</button>'; }
+      h+='</div></div>';
+      wrap.innerHTML=h;
+      el('mg-copy-spec').addEventListener('click',function(){ copyText(json); setStatus(st,'Spec copied ✓','ok'); });
+      el('mg-dl-spec').addEventListener('click',function(){ var b=new Blob([json],{type:'application/json'}); var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=(spec.card_id||'card')+'.remotion.json'; a.click(); URL.revokeObjectURL(a.href); });
+      var save=el('mg-save-spec'); if(save){ save.addEventListener('click',function(){ apiPost(REMOTION_SPEC_API,{id:currentProject.project_id,card_id:currentCardId}).then(function(r){ if(!r.ok){ setStatus(st,(r.body&&r.body.error)||'Save failed','err'); return; } setStatus(st,'Props file saved ✓ '+esc(unwrap(r.body).props_file||''),'ok'); }); }); }
+      setStatus(st, spec.mapped?'Remotion spec ready ✓ (export only)':'No brandkit composition for this card type','ok');
+    }).catch(function(){ setStatus(st,'Spec failed','err'); });
+  }
+
   el('btn-render').addEventListener('click',function(){
     if(!currentProject||!currentCardId) return;
-    if(isRemotion()){ setStatus(el('card-status'),'Remotion render adapter is a later slice.','warn'); return; }
+    if(isRemotion()){ exportRemotionSpec(); return; }
     var btn=this; btn.disabled=true; setStatus(el('card-status'),'Rendering… (HyperFrames, local)');
     apiPost(RENDER_CARD_API,{id:currentProject.project_id,card_id:currentCardId}).then(function(res){
       btn.disabled=false;

@@ -87,6 +87,31 @@ for now, **local-only**, and **never auto-approved**.
   history); `GET /api/motion-graphics/media?id=&render_id=` (path-guarded MP4
   serve; rejects unknown/traversal render ids). No cloud/Lambda.
 
+## Remotion (Slice 3 — spec/export only, no render)
+Remotion is **spec/export only** in this module — it **never renders**, adds no
+dependency, and never mutates the separate `vidtoolz-brandkit-remotion` repo.
+When a card's engine is **Remotion**, the button becomes **Export Remotion spec**,
+which maps the card to a brandkit composition + props you can render **manually /
+later** in that repo (local only; no cloud/Lambda).
+
+Mapping (verified read-only against `vidtoolz-brandkit-remotion/src/render-props/`):
+- **title / claim → `IntroSting`** `{ title, subtitle }` (a `claim` with no slot is
+  reported as dropped).
+- **lower_third → `LowerThird`** `{ name, role }` (role ← descriptor).
+- **comparison → unmapped** — no brandkit composition renders a two-column
+  wrong-way/better-way yet; use HyperFrames for it (the spec says so honestly).
+
+The base brandkit compositions render landscape 1920×1080; if the card is vertical
+the spec notes the mismatch. The brandkit repo path is taken from the existing
+`remotion-lane` (`BRANDKIT_ROOT`) — no hardcoded path in feature code.
+
+- **API:** `GET /api/motion-graphics/remotion-spec?id=&card_id=` (read-only spec);
+  `POST /api/motion-graphics/remotion-spec {id,card_id}` (nonce-gated) writes ONLY
+  the props JSON to `<media_root>/<project_id>/sources/<card_id>.remotion.json`
+  and returns a runnable `render_hint` — it creates **no render record and no
+  MP4**. Unmapped card types are refused (400). No Remotion process is ever
+  spawned by this module.
+
 ## API (Slice 1)
 All reads are path-guarded; all writes are nonce + local-Host + Origin gated.
 - `GET /api/motion-graphics/templates` — card catalog + defaults.

@@ -459,7 +459,102 @@ test("motion-graphics-studio.html: render button wired to the job; history + Rem
     assert.match(res.raw, /RENDER_CARD_API\s*=\s*'\/api\/motion-graphics\/render-card'/);
     assert.match(res.raw, /id="btn-render"[^>]*>Render selected card</);
     assert.match(res.raw, /id="render-history"/);
-    assert.match(res.raw, /Remotion render adapter is a later slice/);
+    assert.match(res.raw, /Remotion is spec\/export only here/); // Slice 3: Remotion → spec export, not "later slice"
     assert.match(res.raw, /MEDIA_API\s*=\s*'\/api\/motion-graphics\/media'/);
+  } finally { await close(server); }
+});
+
+// ==================== Slice 3: Remotion spec/export (no render) ====================
+const mgRemotion = require("../motion-graphics-remotion.js");
+
+test("mg-remotion: maps title->IntroSting and lower_third->LowerThird with brandkit prop names", () => {
+  const title = mgRemotion.buildRemotionSpec({ type: "title", card_id: "card-1", params: { title: "Prompts are not a plan", subtitle: "sub", claim: "the claim" }, format: { width: 1080, height: 1920, fps: 30, duration_seconds: 5 } }, { brandkitRoot: "/x/brandkit" });
+  assert.equal(title.engine, "remotion");
+  assert.equal(title.export_only, true);
+  assert.equal(title.mapped, true);
+  assert.equal(title.composition_id, "IntroSting");
+  assert.deepEqual(title.props, { title: "Prompts are not a plan", subtitle: "sub" });
+  assert.match(title.render_hint, /cd \/x\/brandkit && npx remotion render src\/index\.tsx IntroSting/);
+  assert.ok(title.notes.some((n) => /does NOT render Remotion|render manually/i.test(n)));
+  // subtitle present + claim present -> claim reported dropped; vertical caveat noted
+  assert.ok(title.notes.some((n) => /claim/i.test(n)));
+  assert.ok(title.notes.some((n) => /vertical/i.test(n)));
+
+  const lt = mgRemotion.buildRemotionSpec({ type: "lower_third", params: { name: "Mikko", descriptor: "Video systems" } }, { brandkitRoot: "/x/brandkit" });
+  assert.equal(lt.composition_id, "LowerThird");
+  assert.deepEqual(lt.props, { name: "Mikko", role: "Video systems" });
+});
+
+test("mg-remotion: comparison has no brandkit composition (unmapped, honest note, no hint)", () => {
+  const cmp = mgRemotion.buildRemotionSpec({ type: "comparison", params: { wrong: "w", better: "b" } }, { brandkitRoot: "/x/brandkit" });
+  assert.equal(cmp.mapped, false);
+  assert.equal(cmp.composition_id, null);
+  assert.equal(cmp.props, null);
+  assert.equal(cmp.render_hint, null);
+  assert.ok(cmp.notes.some((n) => /No brandkit composition|two-column|HyperFrames/i.test(n)));
+});
+
+test("mg-api: GET remotion-spec returns a mapped spec; unmapped card is honest; unknown card 404", async () => {
+  const { server, root } = mgServer();
+  await listen(server);
+  try {
+    const created = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_PROJECTS_API, { method: "POST", headers: writeHeaders(), body: { title: "Spec" } }));
+    const id = created.project.project_id;
+    const add = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, type: "title" } }));
+    const cardId = add.card.card_id;
+    await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_PARAMS_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: cardId, params: { title: "T" } } });
+    const spec = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_REMOTION_SPEC_API + "?id=" + encodeURIComponent(id) + "&card_id=" + encodeURIComponent(cardId))).spec;
+    assert.equal(spec.composition_id, "IntroSting");
+    assert.equal(spec.export_only, true);
+    const missing = await request(server, packageEngineServer.MOTION_GRAPHICS_REMOTION_SPEC_API + "?id=" + encodeURIComponent(id) + "&card_id=card-deadbeef");
+    assert.equal(missing.statusCode, 404);
+    void root;
+  } finally { await close(server); }
+});
+
+test("mg-api: POST remotion-spec writes ONLY a props file to media (no render, no render record); unmapped 400; nonce-gated", async () => {
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const server = packageEngineServer.createServer({ superFocusRoot: mkRoot(), motionGraphicsRoot: root, motionGraphicsMediaRoot: mediaRoot });
+  await listen(server);
+  try {
+    const created = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_PROJECTS_API, { method: "POST", headers: writeHeaders(), body: { title: "Exp" } }));
+    const id = created.project.project_id;
+    const add = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, type: "lower_third" } }));
+    const cardId = add.card.card_id;
+    await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_PARAMS_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: cardId, params: { name: "Mikko", descriptor: "Systems" } } });
+
+    // nonce gate
+    const noNonce = await request(server, packageEngineServer.MOTION_GRAPHICS_REMOTION_SPEC_API, { method: "POST", headers: { host: "127.0.0.1:8010" }, body: { id, card_id: cardId } });
+    assert.equal(noNonce.statusCode, 403);
+
+    const res = await request(server, packageEngineServer.MOTION_GRAPHICS_REMOTION_SPEC_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: cardId } });
+    assert.equal(res.statusCode, 200);
+    const propsFile = path.join(mediaRoot, id, "sources", cardId + ".remotion.json");
+    assert.ok(fs.existsSync(propsFile), "props file written to media");
+    assert.deepEqual(JSON.parse(fs.readFileSync(propsFile, "utf8")), { name: "Mikko", role: "Systems" });
+    // No render happened: no renders/ dir, no render record on the card.
+    assert.ok(!fs.existsSync(path.join(mediaRoot, id, "renders")), "no render output produced by spec export");
+    const reload = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_PROJECT_API + "?id=" + encodeURIComponent(id)));
+    assert.equal((reload.project.cards[0].renders || []).length, 0, "spec export creates no render record");
+
+    // Unmapped (comparison) -> 400 (nothing written)
+    const cmp = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, type: "comparison" } }));
+    await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_PARAMS_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: cmp.card.card_id, params: { wrong: "w", better: "b" } } });
+    const cmpRes = await request(server, packageEngineServer.MOTION_GRAPHICS_REMOTION_SPEC_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: cmp.card.card_id } });
+    assert.equal(cmpRes.statusCode, 400);
+  } finally { await close(server); }
+});
+
+test("motion-graphics-studio.html: Remotion engine → Export Remotion spec (spec/export wording, not render)", async () => {
+  const { server } = mgServer();
+  await listen(server);
+  try {
+    const res = await request(server, "/motion-graphics-studio.html");
+    assert.equal(res.statusCode, 200);
+    assert.match(res.raw, /REMOTION_SPEC_API\s*=\s*'\/api\/motion-graphics\/remotion-spec'/);
+    assert.match(res.raw, /Export Remotion spec/);
+    assert.match(res.raw, /spec\/export only/i);
+    assert.match(res.raw, /function exportRemotionSpec/);
   } finally { await close(server); }
 });
