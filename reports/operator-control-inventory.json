@@ -1,0 +1,91 @@
+{
+  "generated": "2026-07-10",
+  "repo": "vidtoolz-episode-factory",
+  "baseline": {
+    "branch": "main",
+    "head": "f424f51",
+    "working_tree_at_start": "clean (one unrelated parked stash on super-focus.html)",
+    "tests_at_start": "1772/1772 passed",
+    "service": "vidtoolz-cockpit.service (user) active on 127.0.0.1:8010"
+  },
+  "method": "control -> event handler -> client validation -> API route/nav target -> server handler -> persisted state -> refreshed UI -> error recovery. Every literal client fetch URL cross-referenced against the ~197 server route constants; every relative nav/link target checked on disk.",
+  "wiring_crosschecks": {
+    "client_fetch_urls_literal": 49,
+    "client_fetch_urls_unresolved": 0,
+    "dynamic_prefix_routes_ok": ["/api/aigen/flux-images/"],
+    "dead_relative_links_found": 2,
+    "dead_relative_links_fixed": 2
+  },
+  "pages": [
+    { "page": "super-focus.html", "cluster": "super-focus", "entry": "landing -> open/create -> project", "controls_traced": 22, "dynamic_controls": "per-row prompt/image/i2v/video controls (delegated build)", "verdict": "PASS", "note": "slot-safety, single-lock video queue, PRESTO/vidnux routing, path-guards, per-row clear/regenerate/retry, full-res viewers, esc()-escaped output all verified" },
+    { "page": "index.html", "cluster": "cockpit", "controls_traced": 22, "verdict": "PASS", "note": "orientation panel + planning board; DEF cache-buster mismatch (P3, backlog)" },
+    { "page": "projects.html", "cluster": "cockpit", "controls_traced": 8, "verdict": "PASS" },
+    { "page": "project-focus.html", "cluster": "cockpit", "controls_traced": 7, "verdict": "PASS", "note": "PRESTO video next-task confirm wording understated (P2, backlog)" },
+    { "page": "project-workspace.html", "cluster": "cockpit", "controls_traced": 9, "verdict": "PASS" },
+    { "page": "resume.html", "cluster": "cockpit", "controls_traced": 7, "verdict": "PASS", "note": "harmless double-bind on Continue (P3, backlog)" },
+    { "page": "package-engine.html", "cluster": "package-engine", "controls_traced": 29, "verdict": "PASS", "note": "cancel-confirm stale state + blob-url leak FIXED; re-review pasted-JSON relies on server validation (P3, backlog)" },
+    { "page": "package-runs-dashboard.html", "cluster": "package-engine", "controls_traced": 25, "verdict": "PASS", "note": "media Refresh no-op feedback FIXED" },
+    { "page": "package-run-artifact-panel.js", "cluster": "package-engine", "controls_traced": 5, "verdict": "PASS" },
+    { "page": "mission-control.html", "cluster": "package-engine", "controls_traced": 20, "verdict": "PASS", "note": "2 dead package-run Script links FIXED; hardcoded Parked section still stale (P2, backlog)" },
+    { "page": "production-pipeline.html", "cluster": "media", "controls_traced": 18, "verdict": "PASS", "note": "PRESTO submit gate is client-side; server-side gate suggested (P2, backlog)" },
+    { "page": "image-prompts-editor.html", "cluster": "media", "controls_traced": 12, "verdict": "PASS" },
+    { "page": "image-selector.html", "cluster": "media", "controls_traced": 8, "verdict": "PASS", "note": "manual upload slot-overwrite (P0) FIXED: confirm_replace + archive" },
+    { "page": "aigen-review.html", "cluster": "media", "controls_traced": 4, "verdict": "PASS" },
+    { "page": "project-media-kit.html", "cluster": "media", "controls_traced": 10, "verdict": "PASS" },
+    { "page": "project-i2v-prompts.html", "cluster": "media", "controls_traced": 6, "verdict": "PASS" },
+    { "page": "media-gallery.js", "cluster": "media", "controls_traced": 2, "verdict": "PASS", "note": "lightbox innerHTML XSS FIXED (DOM-node construction)" },
+    { "page": "publish-gate.html", "cluster": "export", "controls_traced": 12, "verdict": "PASS", "note": "rough-cut blank result panel FIXED; human gate decisions non-persistent (P2, backlog)" },
+    { "page": "project-resolve-handoff.html", "cluster": "export", "controls_traced": 6, "verdict": "PASS" },
+    { "page": "production-day-dashboard.html", "cluster": "export", "controls_traced": 12, "verdict": "PASS", "note": "non-persistent timer is by-design and disclosed" },
+    { "page": "project-video-review.html", "cluster": "export", "controls_traced": 8, "verdict": "PASS", "note": "clip-hidden-on-ffprobe-failure (P2) FIXED: viewability keyed on file existence" },
+    { "page": "project-script.html", "cluster": "export", "controls_traced": 4, "verdict": "PASS" },
+    { "page": "new-video-build.html", "cluster": "export", "controls_traced": 20, "verdict": "PASS" },
+    { "page": "topic-scout.html", "cluster": "secondary", "controls_traced": 4, "verdict": "PASS", "note": "Submit + Delete&replace dead in default nav state (P1) FIXED: run-writability gate + explanation" },
+    { "page": "daily-idea-scout.html", "cluster": "secondary", "controls_traced": 9, "verdict": "PASS" },
+    { "page": "score-engine.html", "cluster": "secondary", "controls_traced": 8, "verdict": "PASS" },
+    { "page": "score-project.html", "cluster": "secondary", "controls_traced": 16, "verdict": "PASS", "note": "esc() does not escape single quotes in inline handlers; server-controlled paths only (P3, backlog)" },
+    { "page": "motion-graphics-studio.html", "cluster": "secondary", "controls_traced": 12, "verdict": "PASS", "note": "no auto-render on load; refuses cloud/Remotion (verified)" },
+    { "page": "project-earth-studio.html", "cluster": "secondary", "controls_traced": 8, "verdict": "PASS", "note": "MISSING Cancel-render control ADDED (wired to existing /api/earth-studio/cancel)" },
+    { "page": "shorts-workflow.html", "cluster": "secondary", "controls_traced": 10, "verdict": "PASS", "note": "live vertical lane (not a stale super-focus duplicate); unclosed Step-3 div FIXED; upload slot-overwrite FIXED with super-focus fix" }
+  ],
+  "defects": [
+    { "id": "P0-1", "severity": "P0", "class": "slot-safety / data-integrity", "page": "image-selector.html + shorts-workflow.html -> uploadAigenImage", "file": "package-engine-server.js:6101", "summary": "Manual GPT-image upload overwrote a populated flux-NNN.png with no existence check and no confirmation, destroying generated media.", "status": "FIXED", "fix": "Server rejects an occupied slot with 409 unless confirm_replace; on replace it archives the existing file to images/flux-local/superseded/ (never deletes). Both clients catch 409 and confirm before resending with confirm_replace.", "tests": ["workflow-path.test.js: occupied->409 + original preserved", "workflow-path.test.js: confirm_replace archives old + installs new", "operator-control-fixes.test.js: clients confirm_replace + 409 handling"] },
+    { "id": "P1-1", "severity": "P1", "class": "broken normal production", "page": "topic-scout.html", "file": "topic-scout.html:357", "summary": "Submit for review and Delete & replace 404 in the default nav-reachable state (RUN_ID hardcoded to a non-existent run; nav carries no ?run=).", "status": "FIXED", "fix": "Page probes run-writability up front; when no real package-runs/<id>/ folder exists it disables Submit + all Delete&replace buttons and shows an explanation. Server still 404s appropriately (invariant enforced both sides). Proven live in headless Chrome.", "tests": ["topic-scout-nonce.test.js: writability gate, submit refusal, delete disabled, init order"] },
+    { "id": "P2-1", "severity": "P2", "class": "misleading", "page": "publish-gate.html", "file": "publish-gate.html:303", "summary": "Rough-cut review result panel rendered blank on a PASS: renderResult read payload.summary but the route returns payload.review (camelCase).", "status": "FIXED", "fix": "renderResult falls back to payload.review; rough-cut uses camelCase keys; booleans render Yes/No.", "tests": ["operator-control-fixes.test.js: review fallback + camelCase labels"] },
+    { "id": "P2-2", "severity": "P2", "class": "artifact unopenable / misleading", "page": "project-video-review.html", "file": "package-engine-server.js:5604", "summary": "A clip present on disk was hidden and labelled 'missing' when ffprobe failed or timed out (e.g. large VIDNAS clips).", "status": "FIXED", "fix": "mp4_url is now keyed on fs.existsSync (clip always playable if present); probe failure surfaces as 'spec unknown' (exists:true, spec_known:false) rather than 'missing'.", "tests": ["project-video-review.test.js: present-but-unprobed clip stays viewable"] },
+    { "id": "P2-3", "severity": "P2", "class": "XSS", "page": "media-gallery.js", "file": "media-gallery.js:45", "summary": "Lightbox templated src/name into innerHTML; a filename/path with a double quote could break out of the attribute.", "status": "FIXED", "fix": "Lightbox media built with createElement + property assignment (not an HTML-parsing sink).", "tests": ["operator-control-fixes.test.js: openLightbox uses DOM API, no innerHTML templating"] },
+    { "id": "P2-4", "severity": "P2", "class": "missing control", "page": "project-earth-studio.html", "file": "project-earth-studio.html", "summary": "No GUI Cancel for a long-running frames->MP4 render, though /api/earth-studio/cancel + lane.cancelRender exist.", "status": "FIXED (new control added)", "fix": "Added a Cancel render button visible only while a render is active, wired to the existing cancel route.", "tests": ["earth-studio.test.js: lane cancelRender + HTML wiring"] },
+    { "id": "P2-5", "severity": "P2", "class": "broken link", "page": "mission-control.html", "file": "mission-control.html:121,161", "summary": "Two 'Script' links pointed at purged package-runs/<run>/final-script.md (404).", "status": "FIXED", "fix": "Removed the two dead links (valid 'Open full page' links kept).", "tests": ["operator-control-fixes.test.js: no dead final-script.md links"] },
+    { "id": "P3-1", "severity": "P3", "class": "stale UI state", "page": "package-engine.html", "file": "package-engine.js:1477", "summary": "Cancelling the confirm dialog left the card 'Pending selection' and Download buttons enabled.", "status": "FIXED", "fix": "Cancel clears pendingSelectedId and re-renders.", "tests": ["operator-control-fixes.test.js: cancel clears pendingSelectedId + render"] },
+    { "id": "P3-2", "severity": "P3", "class": "resource leak", "page": "package-engine.html", "file": "package-engine.js:1150", "summary": "Outline .md download never revoked its blob object URL.", "status": "FIXED", "fix": "revokeObjectURL after click.", "tests": ["operator-control-fixes.test.js: outline download revokes url"] },
+    { "id": "P3-3", "severity": "P3", "class": "layout", "page": "shorts-workflow.html", "file": "shorts-workflow.html:125", "summary": "Step 3's .shorts-step div was never closed; Steps 4-7 rendered nested inside it.", "status": "FIXED", "fix": "Added the missing </div>; file div balance 42/42.", "tests": ["operator-control-fixes.test.js: balanced div tags"] },
+    { "id": "P3-4", "severity": "P3", "class": "feedback", "page": "package-runs-dashboard.html", "file": "package-runs-dashboard.js:5293", "summary": "Media Refresh was a silent no-op when no run was focused.", "status": "FIXED", "fix": "Shows a 'focus a run first' message.", "tests": ["operator-control-fixes.test.js: media refresh message"] }
+  ],
+  "backlog": [
+    { "id": "B1", "severity": "P2", "page": "mission-control.html", "summary": "Hardcoded Parked/Approved cards describe purged runs; make data-driven or mark as a static historical note. Broader change than the audit's narrow-fix scope." },
+    { "id": "B2", "severity": "P2", "page": "production-pipeline.html", "summary": "PRESTO submit eligibility (video-prompts present) is enforced client-side only; add a server-side 409 guard in handlePrestoSubmit before spawning run-production.py. Touches the real-render path; verify with a stubbed-spawn route test." },
+    { "id": "B3", "severity": "P2", "page": "publish-gate.html", "summary": "Human gate decisions + pre-flight checklist + YouTube URL do not persist across reload/run-switch. Persist per-run (localStorage or nonce-gated write) and restore on run change." },
+    { "id": "B4", "severity": "P2", "page": "media provenance", "summary": "Manual uploads still live under images/flux-local/ and are double-listed/mislabelled as LOCAL-FLUX by package-media-index + media-gallery. Store under a distinct dir (e.g. images/gpt-manual/) as manual-media-import.js does." },
+    { "id": "B5", "severity": "P3", "page": "package-engine.html", "summary": "Re-review applies arbitrary pasted JSON; filter through model.editableCandidateFields() client-side to mirror the edit form (server whitelist to be confirmed independently)." },
+    { "id": "B6", "severity": "P3", "page": "project-focus.html / project-workspace.html", "summary": "PRESTO video next-task control offers only a real-run button with an understated confirm; add dry-run parity and/or a specific confirm ('Start a real Wan2.2 render on PRESTO?')." },
+    { "id": "B7", "severity": "P3", "page": "score-project.html", "summary": "esc() does not escape single quotes used in inline onclick args (server-controlled paths only); move to delegated data-copy or extend esc." },
+    { "id": "B8", "severity": "P3", "page": "index.html", "summary": "styles.css ?v= and JS ?v= cache-busters are out of lockstep; align on release." }
+  ],
+  "dead_or_unreachable_routes": [
+    { "route": "/api/topic-scout/get", "assessment": "internal/diagnostic; no UI caller" },
+    { "route": "/api/topic-scout/update-status", "assessment": "backend capability with no UI; not a blocker for the current workflow" },
+    { "route": "/api/earth-studio/cancel", "assessment": "was unreachable; NOW WIRED to the new Cancel render button" },
+    { "route": "/api/earth-studio/job-status", "assessment": "status is served via /api/earth-studio/status; this variant unused" },
+    { "route": "/api/media-routing (GET)", "assessment": "config read; consumed server-side, no UI" },
+    { "route": "/api/aigen/package-media-index", "assessment": "diagnostic index; no direct UI caller" },
+    { "route": "/api/package-runs/production-gps", "assessment": "dashboard computes GPS client-side; server route unused" },
+    { "route": "/api/package-runs/second-cut-inspector", "assessment": "dashboard renders inspector client-side; server route unused" }
+  ],
+  "rejected_control_proposals": [
+    { "proposal": "Persisted publish-gate checklist save button", "reason": "Real gap (B3) but larger than the audit's narrow-fix scope; belongs in a scoped follow-up, not this pass." },
+    { "proposal": "Mission Control Parked-section rebuild", "reason": "Would be a broad UI redesign; the concrete broken controls (dead links) were fixed instead." },
+    { "proposal": "PRESTO video 'dry run' button on focus/workspace", "reason": "Backlogged (B6) as a judgment call about workflow shape; not added speculatively." },
+    { "proposal": "Super Focus 'clear/retry all failed queue items' batch control", "reason": "Per-row retry (re-queue) + cancel-queued already cover recovery; a batch button would add clutter without a demonstrated blocker." },
+    { "proposal": "UI for /api/topic-scout/update-status", "reason": "No operator workflow currently requires manual topic-status editing; adding a control would be speculative." }
+  ]
+}

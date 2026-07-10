@@ -102,7 +102,21 @@ test("pvr: buildValidation flags off-spec clips and missing files", () => {
   assert.ok(bad.warnings.length >= 3, "off-spec warnings");
   const missing = pvr.buildValidation(null);
   assert.equal(missing.exists, false);
+  assert.equal(missing.spec_known, false);
   assert.match(missing.warnings[0], /missing/i);
+});
+
+test("pvr: a present clip whose spec can't be probed stays viewable (exists, spec_known:false), not 'missing'", () => {
+  // probe null but the file is on disk (ffprobe failed/timed out) → the clip must
+  // NOT be reported as missing; it stays exists:true so mp4_url is served/playable.
+  const v = pvr.buildValidation(null, undefined, true);
+  assert.equal(v.exists, true, "file present → viewable");
+  assert.equal(v.spec_known, false, "spec could not be read");
+  assert.match(v.warnings[0], /could not be read|playable/i);
+  assert.doesNotMatch(v.warnings.join(" "), /file is missing/i);
+  // A genuinely absent file is still reported missing.
+  const gone = pvr.buildValidation(null, undefined, false);
+  assert.equal(gone.exists, false);
 });
 
 test("pvr: mp4RelPath zero-pads prompt_index", () => {

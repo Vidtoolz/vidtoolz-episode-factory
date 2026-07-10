@@ -123,6 +123,7 @@
         <button type="button" id="upBtn" class="secondary-btn">Upload image</button>
         <span class="status" id="upStatus"></span>
       </div>
+    </div>
 
     <!-- 4. I2V prompts -->
     <div class="shorts-step">
@@ -394,19 +395,32 @@
     var btn = document.getElementById("upBtn");
     btn.disabled = true; setStatus(st, "Uploading…", "");
     var reader = new FileReader();
-    reader.onload = function () {
+    // Slot-safety: server rejects an occupied slot with 409 unless confirm_replace.
+    // Ask the operator once, then resubmit; the existing image is archived aside
+    // (never destroyed) before replacement.
+    function doUpload(confirmReplace) {
       var h = { "Content-Type": "application/json" }; h[nonceHeader] = nonce;
-      fetch("/api/aigen/upload-image", { method: "POST", headers: h,
-        body: JSON.stringify({ package_id: pkg, prompt_index: idx, data_base64: String(reader.result || ""), localWriteNonce: nonce }) })
-        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      var body = { package_id: pkg, prompt_index: idx, data_base64: String(reader.result || ""), localWriteNonce: nonce };
+      if (confirmReplace) body.confirm_replace = true;
+      fetch("/api/aigen/upload-image", { method: "POST", headers: h, body: JSON.stringify(body) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
         .then(function (res) {
-          btn.disabled = false;
           var d = res.j && res.j.data !== undefined ? res.j.data : res.j;
+          if (!res.ok && (res.status === 409 || (d && d.occupied))) {
+            if (confirm("Slot " + idx + " already has an image. Replace it? The current image is archived (moved aside, not deleted) before the upload.")) {
+              doUpload(true);
+            } else {
+              btn.disabled = false; setStatus(st, "Upload cancelled — existing image kept.", "");
+            }
+            return;
+          }
+          btn.disabled = false;
           if (!res.ok || (d && d.ok === false)) throw new Error((d && d.error) || "Upload failed.");
-          setStatus(st, "Uploaded as " + (d.path || "flux image") + ". It now appears in Select images → PRESTO.", "success");
+          setStatus(st, "Uploaded as " + (d.path || "flux image") + (d.replaced ? " (previous archived)" : "") + ". It now appears in Select images → PRESTO.", "success");
         })
         .catch(function (e) { btn.disabled = false; setStatus(st, e.message, "error"); });
-    };
+    }
+    reader.onload = function () { doUpload(false); };
     reader.onerror = function () { btn.disabled = false; setStatus(st, "Could not read the file.", "error"); };
     reader.readAsDataURL(file);
   });

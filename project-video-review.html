@@ -144,12 +144,14 @@
       root.replaceChildren();
       clips.forEach((clip) => {
         const v = clip.validation || {};
-        const specBadges = v.exists
+        const specBadges = (v.spec_known !== false && v.exists)
           ? `<span class="badge ${v.width === 1080 && v.height === 1920 ? "ok" : "warn"}">${v.width || "?"}x${v.height || "?"}</span>` +
             `<span class="badge ${v.fps && Math.round(v.fps) === 30 ? "ok" : "warn"}">${v.fps ? Math.round(v.fps) : "?"}fps</span>` +
             `<span class="badge ${v.frames === 81 ? "ok" : "warn"}">${v.frames || "?"} frames</span>` +
             `<span class="badge ${v.duration ? "ok" : "warn"}">${v.duration ? v.duration.toFixed(1) : "?"}s</span>`
-          : `<span class="badge warn">missing clip</span>`;
+          : (clip.mp4_exists
+            ? `<span class="badge warn">spec unknown</span>`
+            : `<span class="badge warn">missing clip</span>`);
         const warns = (v.warnings || []).length ? `<div class="warnmsg vr-meta">⚠ ${esc((v.warnings || []).join(" "))}</div>` : "";
         const card = document.createElement("div");
         card.className = "vr-card";
