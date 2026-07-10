@@ -79,14 +79,30 @@
     return `${m}m ${s}s`;
   }
 
-  // classifyMedia(filename, pathOrSource?) returns a provenance-aware badge.
-  // Manual-external media (GPT images / KlingAI videos imported by Mikko) is
-  // labeled distinctly from local FLUX/Wan2.2 output and is NEVER hidden.
-  function classifyMedia(filename, pathOrSource) {
+  // classifyMedia(filename, pathOrSource?, entry?) returns a provenance-aware
+  // badge. When the server provided explicit provenance on the entry
+  // (source_type / generation_mode), that is AUTHORITATIVE — the directory name
+  // (e.g. flux-local/) must never override it, or a manual upload stored there
+  // for pipeline compatibility would be mislabeled as FLUX-generated. Only when
+  // no explicit provenance exists (legacy entries) do we fall back to heuristics.
+  function classifyMedia(filename, pathOrSource, entry) {
     const lower = filename.toLowerCase();
     const ctx = (String(pathOrSource || "") + " " + lower).toLowerCase();
     const isImageExt = !!lower.match(/\.(png|jpg|jpeg|webp)$/);
     const isVideoExt = !!lower.match(/\.(mp4|webm|mov|mkv)$/);
+    if (entry && typeof entry === "object") {
+      const st = entry.source_type;
+      const gm = entry.generation_mode;
+      const gp = String(entry.generation_provider || "").toLowerCase();
+      if (st === "manual_upload" || gm === "manual_external" || gm === "unknown") {
+        if (gp.indexOf("gpt") !== -1) return { type: isVideoExt ? "video" : "image", badge: "gpt", label: "Manual · GPT", external: true };
+        if (gp.indexOf("kling") !== -1) return { type: "video", badge: "klingai", label: "Manual · KlingAI", external: true };
+        return { type: isVideoExt ? "video" : "image", badge: "manual", label: "Manual upload", external: true };
+      }
+      if (st === "legacy_unknown") return { type: isVideoExt ? "video" : "image", badge: "legacy", label: "Legacy · source unknown", external: false };
+      if (st === "generated" || (gm === "local" && gp.indexOf("flux") !== -1)) return { type: "image", badge: "flux", label: "Generated · FLUX local", external: false };
+      if (gm === "local" && (gp.indexOf("wan") !== -1 || gp.indexOf("comfyui") !== -1)) return { type: "video", badge: "wan", label: "LOCAL · Wan2.2", external: false };
+    }
     // Manual external first (folder/source hints), so it isn't mislabeled local.
     if (ctx.includes("gpt-manual") || ctx.includes("gpt_manual")) return { type: "image", badge: "gpt", label: "MANUAL · GPT", external: true };
     if (ctx.includes("klingai") || ctx.includes("kling-manual") || (ctx.includes("kling") && ctx.includes("manual"))) return { type: "video", badge: "klingai", label: "MANUAL · KlingAI", external: true };
@@ -148,7 +164,7 @@
     // Group by category
     const categories = {};
     assets.forEach((a) => {
-      const cls = classifyMedia(a.name, a.path || a.url || a.source || "");
+      const cls = classifyMedia(a.name, a.path || a.url || a.source || "", a);
       const cat = cls.label;
       if (!categories[cat]) categories[cat] = [];
       categories[cat].push({ ...a, ...cls });
@@ -175,7 +191,7 @@
     // Gallery grid
     html += '<div class="media-gallery">';
     assets.forEach((a) => {
-      const cls = classifyMedia(a.name, a.path || a.url || a.source || "");
+      const cls = classifyMedia(a.name, a.path || a.url || a.source || "", a);
       const isVideo = cls.type === "video";
       const src = a.url || a.path;
       const thumb = a.thumbnail || (isVideo ? src : src);
