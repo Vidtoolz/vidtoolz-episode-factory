@@ -11665,9 +11665,47 @@ function createServer(options = {}) {
         const id = url.searchParams.get('id') || '';
         superFocus.assertValidProjectId(id);
         const subdir = PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4';
+        // Same guarded resolution as before: validated project id + slot index,
+        // path confined to the media root (traversal defense unchanged).
         const filePath = superFocusMedia.safeVideoFilePath(id, subdir, url.searchParams.get('index'), { mediaRoot: sfMediaRoot });
         if (!filePath || !fs.existsSync(filePath)) { sendError(res, 404, 'Video not found.', 'super-focus-video-missing'); return; }
-        res.writeHead(200, { 'Content-Type': 'video/mp4', 'Cache-Control': 'no-store' });
+        const total = fs.statSync(filePath).size;
+        // Byte-range support so the viewer's <video> can seek to unbuffered
+        // positions (a plain 200 without Accept-Ranges is not seekable until
+        // fully buffered — proven in a controlled headless-Chrome A/B).
+        const rangeHeader = req.headers.range;
+        if (rangeHeader) {
+          const m = /^bytes=(\d*)-(\d*)$/.exec(String(rangeHeader).trim());
+          let start; let end;
+          if (m && !(m[1] === '' && m[2] === '')) {
+            if (m[1] === '') { // suffix: final N bytes
+              const n = parseInt(m[2], 10);
+              start = Number.isFinite(n) && n > 0 ? Math.max(0, total - n) : NaN;
+              end = total - 1;
+            } else {
+              start = parseInt(m[1], 10);
+              end = m[2] === '' ? total - 1 : parseInt(m[2], 10);
+            }
+          } else { start = NaN; end = NaN; }
+          if (!Number.isFinite(start) || !Number.isFinite(end) || start > end || start >= total) {
+            res.writeHead(416, { 'Content-Range': `bytes */${total}`, 'Content-Type': 'video/mp4', 'Cache-Control': 'no-store' });
+            res.end();
+            return;
+          }
+          if (end >= total) end = total - 1;
+          res.writeHead(206, {
+            'Content-Type': 'video/mp4',
+            'Accept-Ranges': 'bytes',
+            'Content-Range': `bytes ${start}-${end}/${total}`,
+            'Content-Length': end - start + 1,
+            'Cache-Control': 'no-store',
+          });
+          fs.createReadStream(filePath, { start, end }).pipe(res);
+          return;
+        }
+        // No Range header: full file, but advertise range support so the browser
+        // knows it may seek (issues subsequent Range requests).
+        res.writeHead(200, { 'Content-Type': 'video/mp4', 'Accept-Ranges': 'bytes', 'Content-Length': total, 'Cache-Control': 'no-store' });
         fs.createReadStream(filePath).pipe(res);
       } catch (error) {
         sendError(res, error.statusCode || 500, error.message, 'super-focus-video-error');

@@ -3700,3 +3700,196 @@ test("audit: ollama-benchmark failure branch is honest (no fabricated timings wh
     assert.equal(d.vidnux.three_prompt_ms, null);
   } finally { await close(server); }
 });
+
+// ======================================================================
+// Full-resolution media viewers (2026-07-10)
+// Source/structure assertions (SF_HTML + fnBody). A real headless-Chrome smoke
+// (separate, run outside the unit suite) verifies live open/close/play/seek.
+// ======================================================================
+function countOcc(hay, needle) { return hay.split(needle).length - 1; }
+
+test("super-focus.html: exactly one media-viewer overlay with unique image/video/close ids and dialog semantics", () => {
+  ["mediaViewer", "mediaViewerImage", "mediaViewerVideo", "mediaViewerClose", "mediaViewerBackdrop", "mediaViewerWindow", "mediaViewerError", "mediaViewerLoading"].forEach((id) => {
+    assert.equal(countOcc(SF_HTML, 'id="' + id + '"'), 1, "exactly one #" + id);
+  });
+  assert.match(SF_HTML, /id="mediaViewer"[^>]*role="dialog"[^>]*aria-modal="true"[^>]*aria-labelledby="mediaViewerTitle"/, "dialog semantics on the overlay");
+  assert.match(SF_HTML, /id="mediaViewerClose"[^>]*aria-label="Close media viewer"/, "close has an accessible name");
+  // media-pair layout from the prior task is intact (image before video, prompt after)
+  const grid = fnBody(SF_HTML, "renderPromptGrid");
+  assert.ok(grid.indexOf("pair.appendChild(imgCol)") < grid.indexOf("pair.appendChild(buildVideoBlock(index))"));
+  assert.ok(grid.indexOf("row.appendChild(pair)") < grid.indexOf("row.appendChild(buildI2vBlock(index, rec))"));
+});
+
+test("super-focus.html: image trigger is attached ONLY when a real generated image exists", () => {
+  const body = fnBody(SF_HTML, "setThumb");
+  // The buildMediaTrigger call must sit inside the done+has_image branch.
+  const iBranch = body.indexOf("row.status === 'done' && row.has_image");
+  const iTrigger = body.indexOf("buildMediaTrigger(img");
+  const iFailed = body.indexOf("row.status === 'failed'");
+  assert.ok(iBranch !== -1 && iTrigger !== -1, "trigger built in setThumb");
+  assert.ok(iTrigger > iBranch && (iFailed === -1 || iTrigger < iFailed), "trigger only in the has_image branch");
+  assert.match(body, /mode: 'image', url: imgUrl/, "image viewer uses the guarded image URL (same as preview)");
+  assert.match(body, /ariaLabel: 'Open generated image ' \+ index \+ ' in full-resolution viewer'/);
+  assert.match(body, /stale: Boolean\(row\.prompt_changed\)/, "stale indicator uses canonical state");
+});
+
+test("super-focus.html: video trigger is attached ONLY when a playable completed video exists (not queued/running/failed)", () => {
+  const body = fnBody(SF_HTML, "setVideo");
+  const iDone = body.indexOf("row.status === 'done' && row.has_video");
+  const iTrigger = body.indexOf("media-open-video");
+  const iQueued = body.indexOf("qitem.status === 'queued'");
+  const iFailed = body.indexOf("qitem.status === 'failed'");
+  assert.ok(iDone !== -1 && iTrigger !== -1, "video trigger built in setVideo");
+  assert.ok(iTrigger > iDone, "trigger inside the done+has_video branch");
+  assert.ok(iTrigger < iQueued && iTrigger < iFailed, "trigger appears before (i.e. not inside) the queued/failed branches");
+  assert.match(body, /mode: 'video', url: vurl/, "video viewer uses the guarded MP4 URL (same as preview)");
+  assert.match(body, /ariaLabel: 'Open generated video ' \+ index \+ ' in full-resolution player'/);
+  // preview video is a click target only: muted, playsinline, no inline controls
+  assert.match(body, /v\.muted = true; v\.setAttribute\('playsinline'/);
+  assert.doesNotMatch(body, /v\.controls = true/, "preview video must NOT carry inline controls (it is a trigger)");
+});
+
+test("super-focus.html: opening loads the guarded original URL, image fits by default, zoom is bounded, dims shown after load", () => {
+  const open = fnBody(SF_HTML, "openMediaViewer");
+  assert.match(open, /img\.className = 'fit'/, "image starts in fit mode");
+  assert.match(open, /img\.src = opts\.url/, "image loads the passed guarded URL");
+  assert.match(open, /img\.naturalWidth \+ ' × ' \+ img\.naturalHeight/, "natural dimensions shown after load (not before)");
+  assert.match(open, /img\.onerror = function/, "image load error handled");
+  const zoom = fnBody(SF_HTML, "mvApplyZoom");
+  assert.match(zoom, /Math\.min\(8, cur \* 1\.5\)/, "zoom-in bounded to 8x");
+  assert.match(zoom, /Math\.max\(0\.1, cur \/ 1\.5\)/, "zoom-out bounded");
+  assert.match(zoom, /kind === '100' \? 1/, "100% maps to scale 1 (native pixels)");
+});
+
+test("super-focus.html: video opens paused with native controls, no autoplay/loop/muted-lock, metadata + error handled", () => {
+  const open = fnBody(SF_HTML, "openMediaViewer");
+  assert.match(open, /vid\.controls = true/, "native controls");
+  assert.match(open, /vid\.setAttribute\('playsinline'/);
+  assert.match(open, /vid\.autoplay = false/, "no autoplay");
+  assert.match(open, /vid\.loop = false/, "no forced loop");
+  assert.match(open, /vid\.muted = false/, "no permanent muted lock");
+  assert.doesNotMatch(open, /vid\.play\(\)/, "must not start playback on open");
+  assert.match(open, /vid\.src = opts\.url; vid\.load\(\)/, "loads the guarded MP4 URL, starts paused");
+  assert.match(open, /vid\.videoWidth \+ ' × ' \+ vid\.videoHeight/, "shows metadata dimensions when available");
+  assert.match(open, /vid\.onerror = function/, "video load error handled");
+});
+
+test("super-focus.html: closing pauses + detaches the video, restores scroll/overflow, returns focus to the trigger", () => {
+  const close = fnBody(SF_HTML, "closeMediaViewer");
+  assert.match(close, /vid\.pause\(\)/, "pause on close");
+  assert.match(close, /vid\.removeAttribute\('src'\)/, "detach source");
+  assert.match(close, /vid\.load\(\)/, "release decoder/audio via load()");
+  assert.match(close, /document\.body\.style\.overflow = mediaViewer\.prevOverflow/, "restore body overflow");
+  assert.match(close, /window\.scrollTo\(0, mediaViewer\.scrollY\)/, "restore scroll position");
+  assert.match(close, /trigger\.focus\(\)/, "return focus to the trigger");
+});
+
+test("super-focus.html: only backdrop-itself click closes; Escape closes; Enter/Space open (Space prevented)", () => {
+  const init = fnBody(SF_HTML, "initMediaViewer");
+  assert.match(init, /if \(e\.target === backdrop\) closeMediaViewer\(\)/, "backdrop closes only when the backdrop itself is clicked");
+  const key = fnBody(SF_HTML, "mvKeydown");
+  assert.match(key, /e\.key === 'Escape'[\s\S]*closeMediaViewer\(\)/, "Escape closes");
+  assert.match(key, /e\.key === 'Tab'/, "focus trap on Tab");
+  const trig = fnBody(SF_HTML, "buildMediaTrigger");
+  assert.match(trig, /role', 'button'/); assert.match(trig, /tabindex', '0'/);
+  assert.match(trig, /e\.key === 'Enter' \|\| e\.key === ' '[\s\S]*e\.preventDefault\(\)/, "Enter/Space open; Space prevented (no scroll/submit)");
+});
+
+test("super-focus.html: viewer open/close/trigger dispatch NO API and never rebuild the prompt grid", () => {
+  ["openMediaViewer", "closeMediaViewer", "buildMediaTrigger", "mvApplyZoom", "mvKeydown"].forEach((fn) => {
+    const b = fnBody(SF_HTML, fn);
+    assert.doesNotMatch(b, /apiPost\(/, fn + " must not POST any API");
+    assert.doesNotMatch(b, /renderPromptGrid\(/, fn + " must not rebuild the grid");
+  });
+  // Only one viewer open at a time.
+  assert.match(fnBody(SF_HTML, "openMediaViewer"), /if \(mediaViewer\.open\) return/);
+});
+
+test("super-focus.html: media action controls stay OUTSIDE the trigger (no accidental viewer opening)", () => {
+  // Image controls are appended to the thumb container as a sibling of the trigger.
+  const thumb = fnBody(SF_HTML, "setThumb");
+  assert.match(thumb, /el\.appendChild\(buildImageControls\(index\)\)/, "image controls are siblings, not inside the trigger");
+  // Video action buttons live in the .pvid-row, separate from the .media-open-video trigger.
+  const vblock = fnBody(SF_HTML, "buildVideoBlock");
+  assert.match(vblock, /rowEl\.appendChild\(genBtn\)/);
+  assert.match(vblock, /pvid-gen/);
+  // Preview media is pointer-events:none so clicks land on the trigger, not the media.
+  assert.match(SF_HTML, /\.media-open img, \.media-open video \{[^}]*pointer-events: none/);
+  // Clear stays slot-safe and removes the whole trigger wrapper.
+  assert.match(vblock, /wrap\.querySelector\('\.media-open-video'\)/);
+});
+
+// ======================================================================
+// Video route byte-range support (2026-07-10) — added because a controlled
+// headless-Chrome A/B proved the viewer <video> cannot seek without it.
+// ======================================================================
+function getRaw(server, pathname, headers) {
+  const addr = server.address();
+  return new Promise((resolve, reject) => {
+    const req = http.get({ hostname: "127.0.0.1", port: addr.port, path: pathname, headers: headers || {} }, (r) => {
+      const chunks = []; r.on("data", (c) => chunks.push(c));
+      r.on("end", () => resolve({ status: r.statusCode, headers: r.headers, body: Buffer.concat(chunks) }));
+    });
+    req.on("error", reject);
+  });
+}
+
+test("super-focus video route: Range support (206 + headers), full 200 advertises ranges, malformed/traversal/missing safe", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn());
+  await listen(server);
+  try {
+    // Deterministic 10-byte "video" at the canonical slot path (same file the
+    // preview + viewer resolve through the guarded route).
+    const dir = path.join(mediaRoot, id, "videos", HQ_SUBDIR);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "001.mp4"), Buffer.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
+    const base = packageEngineServer.SUPER_FOCUS_VIDEO_FILE_API + "?id=" + encodeURIComponent(id) + "&index=1";
+
+    // Full request → 200, advertises Accept-Ranges, correct length + bytes.
+    const full = await getRaw(server, base);
+    assert.equal(full.status, 200);
+    assert.match(full.headers["content-type"], /video\/mp4/);
+    assert.equal(full.headers["accept-ranges"], "bytes", "full response advertises range support");
+    assert.equal(full.headers["content-length"], "10");
+    assert.deepEqual([...full.body], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+    // Valid range → 206 with correct Content-Range/Length and the exact slice.
+    const part = await getRaw(server, base, { Range: "bytes=2-5" });
+    assert.equal(part.status, 206);
+    assert.equal(part.headers["content-range"], "bytes 2-5/10");
+    assert.equal(part.headers["content-length"], "4");
+    assert.equal(part.headers["accept-ranges"], "bytes");
+    assert.match(part.headers["content-type"], /video\/mp4/, "content-type retained on 206");
+    assert.deepEqual([...part.body], [2, 3, 4, 5]);
+
+    // Open-ended range → to end of file.
+    const open = await getRaw(server, base, { Range: "bytes=7-" });
+    assert.equal(open.status, 206);
+    assert.equal(open.headers["content-range"], "bytes 7-9/10");
+    assert.deepEqual([...open.body], [7, 8, 9]);
+
+    // Suffix range → final N bytes.
+    const suffix = await getRaw(server, base, { Range: "bytes=-3" });
+    assert.equal(suffix.status, 206);
+    assert.equal(suffix.headers["content-range"], "bytes 7-9/10");
+    assert.deepEqual([...suffix.body], [7, 8, 9]);
+
+    // Unsatisfiable range (start beyond EOF) → 416, never a crash or full body.
+    const unsat = await getRaw(server, base, { Range: "bytes=50-60" });
+    assert.equal(unsat.status, 416);
+    assert.equal(unsat.headers["content-range"], "bytes */10");
+
+    // Malformed range → 416 (safe rejection).
+    const bad = await getRaw(server, base, { Range: "bytes=abc" });
+    assert.equal(bad.status, 416);
+
+    // Traversal + missing defenses unchanged, even with a Range header present.
+    const trav = await getRaw(server, packageEngineServer.SUPER_FOCUS_VIDEO_FILE_API + "?id=" + encodeURIComponent("../etc") + "&index=1", { Range: "bytes=0-1" });
+    assert.equal(trav.status, 400);
+    const missing = await getRaw(server, packageEngineServer.SUPER_FOCUS_VIDEO_FILE_API + "?id=" + encodeURIComponent(id) + "&index=99", { Range: "bytes=0-1" });
+    assert.equal(missing.status, 404);
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});

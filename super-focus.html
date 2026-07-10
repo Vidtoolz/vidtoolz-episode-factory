@@ -163,6 +163,43 @@
     /* Narrow screens: stack the pair to a single column — image, then video, then
        (below the pair) the I2V prompt. Never image → prompt → video. */
     @media (max-width: 720px) { .prompt-row .media-pair { grid-template-columns: 1fr; } }
+    /* Media preview triggers: the image / video preview is a focusable button
+       that opens the full-resolution viewer. Bare styling (it IS the preview);
+       action buttons live OUTSIDE the trigger so they never open the viewer. */
+    .media-open { display: block; padding: 0; margin: 0; border: 0; background: none; cursor: zoom-in; border-radius: 6px; width: 100%; text-align: left; }
+    .media-open:focus-visible { outline: 2px solid var(--accent, #58a6ff); outline-offset: 2px; }
+    .media-open img, .media-open video { display: block; max-width: 150px; border-radius: 6px; border: 1px solid var(--border); pointer-events: none; }
+    .media-open .media-open-hint { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; }
+    /* Full-resolution media viewer overlay. */
+    #mediaViewer { position: fixed; inset: 0; z-index: 9000; }
+    #mediaViewer.hidden { display: none; }
+    #mediaViewerBackdrop { position: absolute; inset: 0; background: rgba(0,0,0,.82); }
+    #mediaViewerWindow {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 96vw; height: 94vh; max-width: 96vw; max-height: 94vh;
+      background: #0b0e13; border: 1px solid var(--border); border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.6); display: flex; flex-direction: column; overflow: hidden;
+    }
+    #mediaViewerHeader { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--panel-2); flex-wrap: wrap; }
+    #mediaViewerTitle { font-weight: 600; font-size: 15px; }
+    #mediaViewerMetadata { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    #mediaViewerZoom { display: flex; gap: 6px; }
+    #mediaViewerZoom.hidden { display: none; }
+    #mediaViewerZoom .btn { padding: 4px 10px; font-size: 13px; }
+    #mediaViewerClose { margin-left: auto; padding: 6px 14px; }
+    #mediaViewerContent { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; background: #05070a; }
+    #mediaViewerLoading, #mediaViewerError { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 14px; text-align: center; padding: 0 20px; }
+    #mediaViewerLoading.hidden, #mediaViewerError.hidden { display: none; }
+    #mediaViewerError { color: #f85149; }
+    /* Image: scroll container fills content; the image fits by default, and at
+       100% it can exceed the box and scroll inside the viewer. */
+    #mediaViewerImageScroll { width: 100%; height: 100%; overflow: auto; display: flex; align-items: center; justify-content: center; }
+    #mediaViewerImage { display: block; }
+    #mediaViewerImage.hidden { display: none; }
+    #mediaViewerImage.fit { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+    /* Video fits inside the viewport while preserving aspect ratio. */
+    #mediaViewerVideo { max-width: 100%; max-height: 100%; width: auto; height: auto; background: #000; }
+    #mediaViewerVideo.hidden { display: none; }
     .backend-stale {
       margin-bottom: 18px; padding: 14px 16px; border-radius: 8px;
       background: rgba(248,81,73,.12); border: 1px solid #7d2b28; color: #ff9d97; font-size: 14px; line-height: 1.5;
@@ -918,7 +955,8 @@
         apiPost(CLEAR_VIDEO_API, { id: currentId, index: index }).then(function (res) {
           clearBtn.disabled = false;
           if (!res.ok) { setRowStatus(st, 'Clear failed', 'dirty'); return; }
-          var v = wrap.querySelector('video'); if (v) v.remove();
+          var trig = wrap.querySelector('.media-open-video');
+          if (trig) trig.remove(); else { var v = wrap.querySelector('video'); if (v) v.remove(); }
           setRowStatus(st, 'cleared', 'ok'); refreshVideosStatus();
         }).catch(function () { clearBtn.disabled = false; setRowStatus(st, 'Clear failed', 'dirty'); });
       });
@@ -1140,16 +1178,144 @@
       return box;
     }
 
+    // ---- Full-resolution media viewer (shared image + video overlay) ----
+    // One closable overlay above Super Focus. Opening/closing dispatches NO API,
+    // never rebuilds the prompt grid, and preserves scroll, unsaved prompt text,
+    // and collapsed-section state. Only one viewer open at a time.
+    var mediaViewer = { open: false, mode: null, trigger: null, scrollY: 0, prevOverflow: '', zoom: 'fit', zoomScale: 1, naturalW: 0, naturalH: 0 };
+    function mvEl(id) { return document.getElementById(id); }
+    function mvShowError(msg) { var e = mvEl('mediaViewerError'); e.textContent = msg; e.classList.remove('hidden'); }
+
+    function openMediaViewer(opts) {
+      if (mediaViewer.open) return; // only one at a time
+      mediaViewer.open = true;
+      mediaViewer.mode = opts.mode;
+      mediaViewer.trigger = opts.trigger || null;
+      mediaViewer.scrollY = window.scrollY || window.pageYOffset || 0;
+      mediaViewer.prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden'; // lock background scroll
+      mvEl('mediaViewerError').classList.add('hidden'); mvEl('mediaViewerError').textContent = '';
+      mvEl('mediaViewerLoading').classList.remove('hidden');
+      mvEl('mediaViewerTitle').textContent = opts.label || 'Media';
+      mvEl('mediaViewerMetadata').textContent = opts.stale ? '⚠ stale (image prompt changed since generation)' : '';
+      var img = mvEl('mediaViewerImage'); var vid = mvEl('mediaViewerVideo'); var zoomBox = mvEl('mediaViewerZoom');
+      if (opts.mode === 'image') {
+        vid.classList.add('hidden'); zoomBox.classList.remove('hidden');
+        mediaViewer.zoom = 'fit'; mediaViewer.zoomScale = 1; mediaViewer.naturalW = 0; mediaViewer.naturalH = 0;
+        img.className = 'fit'; img.style.width = ''; img.style.height = ''; img.classList.remove('hidden');
+        img.alt = opts.label || 'Generated image';
+        img.onload = function () {
+          mvEl('mediaViewerLoading').classList.add('hidden');
+          mediaViewer.naturalW = img.naturalWidth; mediaViewer.naturalH = img.naturalHeight;
+          mvEl('mediaViewerMetadata').textContent = (opts.stale ? '⚠ stale · ' : '') + img.naturalWidth + ' × ' + img.naturalHeight;
+          mvApplyZoom('fit');
+        };
+        img.onerror = function () { mvEl('mediaViewerLoading').classList.add('hidden'); img.classList.add('hidden'); mvShowError('Could not load the image file.'); };
+        img.src = opts.url; // same guarded route as the preview → the original file
+      } else {
+        img.classList.add('hidden'); zoomBox.classList.add('hidden'); vid.classList.remove('hidden');
+        vid.controls = true; vid.setAttribute('playsinline', ''); vid.autoplay = false; vid.loop = false; vid.muted = false;
+        vid.onloadedmetadata = function () {
+          mvEl('mediaViewerLoading').classList.add('hidden');
+          var dur = isFinite(vid.duration) ? (Math.round(vid.duration * 10) / 10) + 's' : '';
+          var dim = (vid.videoWidth && vid.videoHeight) ? (vid.videoWidth + ' × ' + vid.videoHeight) : '';
+          mvEl('mediaViewerMetadata').textContent = dim + (dim && dur ? ' · ' : '') + dur;
+        };
+        vid.oncanplay = function () { mvEl('mediaViewerLoading').classList.add('hidden'); }; // never block forever
+        vid.onerror = function () { mvEl('mediaViewerLoading').classList.add('hidden'); vid.classList.add('hidden'); mvShowError('Could not load the video file.'); };
+        vid.src = opts.url; vid.load(); // starts paused — no autoplay
+      }
+      mvEl('mediaViewer').classList.remove('hidden');
+      document.addEventListener('keydown', mvKeydown, true);
+      mvEl('mediaViewerClose').focus();
+    }
+
+    function closeMediaViewer() {
+      if (!mediaViewer.open) return;
+      var vid = mvEl('mediaViewerVideo'); var img = mvEl('mediaViewerImage');
+      // Video teardown: pause, detach source, release decoder/audio.
+      try { vid.pause(); } catch (e) {}
+      vid.removeAttribute('src'); vid.onloadedmetadata = null; vid.oncanplay = null; vid.onerror = null;
+      try { vid.load(); } catch (e) {}
+      vid.classList.add('hidden');
+      img.onload = null; img.onerror = null; img.removeAttribute('src'); img.classList.add('hidden');
+      mvEl('mediaViewerError').classList.add('hidden'); mvEl('mediaViewerLoading').classList.add('hidden');
+      mvEl('mediaViewerMetadata').textContent = '';
+      mvEl('mediaViewer').classList.add('hidden');
+      document.removeEventListener('keydown', mvKeydown, true);
+      document.body.style.overflow = mediaViewer.prevOverflow;
+      window.scrollTo(0, mediaViewer.scrollY);
+      var trigger = mediaViewer.trigger;
+      mediaViewer.open = false; mediaViewer.mode = null; mediaViewer.trigger = null;
+      if (trigger && trigger.focus) trigger.focus(); // return focus to the clicked preview
+    }
+
+    function mvApplyZoom(kind) {
+      if (mediaViewer.mode !== 'image') return;
+      var img = mvEl('mediaViewerImage');
+      if (kind === 'fit') { mediaViewer.zoom = 'fit'; mediaViewer.zoomScale = 1; img.className = 'fit'; img.style.width = ''; img.style.height = ''; return; }
+      var w = mediaViewer.naturalW || img.naturalWidth || 0;
+      var cur = mediaViewer.zoom === 'fit' ? 1 : (mediaViewer.zoomScale || 1);
+      var scale = kind === '100' ? 1 : kind === 'in' ? Math.min(8, cur * 1.5) : kind === 'out' ? Math.max(0.1, cur / 1.5) : 1;
+      mediaViewer.zoom = 'scaled'; mediaViewer.zoomScale = scale;
+      img.className = ''; img.style.width = Math.round(w * scale) + 'px'; img.style.height = 'auto';
+    }
+
+    function mvKeydown(e) {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMediaViewer(); return; }
+      if (e.key === 'Tab') {
+        var win = mvEl('mediaViewerWindow');
+        var nodes = win.querySelectorAll('button, video, [tabindex]:not([tabindex="-1"])');
+        var list = Array.prototype.filter.call(nodes, function (n) { return !n.disabled && n.offsetParent !== null; });
+        if (!list.length) return;
+        var first = list[0], last = list[list.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+
+    // Wire the static viewer chrome once (close button, backdrop, zoom controls).
+    (function initMediaViewer() {
+      var closeBtn = mvEl('mediaViewerClose'); if (closeBtn) closeBtn.addEventListener('click', closeMediaViewer);
+      var backdrop = mvEl('mediaViewerBackdrop');
+      if (backdrop) backdrop.addEventListener('click', function (e) { if (e.target === backdrop) closeMediaViewer(); });
+      var zoom = mvEl('mediaViewerZoom');
+      if (zoom) zoom.addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('.mv-zoom') : null; if (b) mvApplyZoom(b.getAttribute('data-zoom')); });
+    })();
+
+    // A focusable media trigger (role=button) that opens the viewer. `child` is
+    // the <img>/<video> preview (pointer-events:none), so the click lands here,
+    // never on the media itself, and never on the sibling action buttons.
+    function buildMediaTrigger(child, opts) {
+      var t = document.createElement('div');
+      t.className = 'media-open' + (opts.extraClass ? ' ' + opts.extraClass : '');
+      t.setAttribute('role', 'button'); t.setAttribute('tabindex', '0'); t.setAttribute('aria-label', opts.ariaLabel);
+      t.appendChild(child);
+      function fire() { openMediaViewer({ mode: opts.mode, url: opts.url, label: opts.label, index: opts.index, stale: opts.stale, trigger: t }); }
+      t.addEventListener('click', fire);
+      t.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); fire(); } });
+      return t;
+    }
+
     // ---- Image generation (vidnux FLUX via the existing dispatch) ----
     function setThumb(index, row) {
       var el = document.getElementById('imgp-thumb-' + index);
       if (!el) return;
       if (row.status === 'done' && row.has_image) {
         el.innerHTML = '';
+        var imgUrl = IMAGE_FILE_API + '?id=' + encodeURIComponent(currentId) + '&index=' + index + '&t=' + row.generated_at;
         var img = document.createElement('img');
-        img.src = IMAGE_FILE_API + '?id=' + encodeURIComponent(currentId) + '&index=' + index + '&t=' + row.generated_at;
+        img.src = imgUrl;
         img.alt = 'Generated image ' + index;
-        el.appendChild(img);
+        // A real image exists → the preview is a viewer trigger. The mismatch/
+        // duplicate notes and the Regenerate/Clear controls are appended AFTER as
+        // siblings, so they never open the viewer.
+        el.appendChild(buildMediaTrigger(img, {
+          mode: 'image', url: imgUrl, index: index,
+          label: 'Image ' + index + ' — full resolution',
+          ariaLabel: 'Open generated image ' + index + ' in full-resolution viewer',
+          stale: Boolean(row.prompt_changed),
+        }));
         if (row.prompt_changed) {
           var warn = document.createElement('span');
           warn.className = 'thumb-note err';
@@ -1232,10 +1398,22 @@
       var empty = el.querySelector('.pvid-empty');
       var showGen = false, showRegenClear = false, showCancelQ = false, showEmpty = false;
       if (row.status === 'done' && row.has_video) {
-        if (!el.querySelector('video')) {
+        // A playable output exists → the preview is a click-to-open trigger for
+        // the full-resolution player. The preview <video> has no inline controls
+        // (it is only a frame/thumb); real playback happens in the viewer. Guard
+        // makes this idempotent across status polls so edits/triggers persist.
+        if (!el.querySelector('.media-open-video')) {
+          var vurl = VIDEO_FILE_API + '?id=' + encodeURIComponent(currentId) + '&index=' + index;
           var v = document.createElement('video');
-          v.controls = true; v.src = VIDEO_FILE_API + '?id=' + encodeURIComponent(currentId) + '&index=' + index;
-          el.appendChild(v);
+          v.muted = true; v.setAttribute('playsinline', ''); v.preload = 'metadata'; v.src = vurl;
+          var trigger = buildMediaTrigger(v, {
+            mode: 'video', url: vurl, index: index, extraClass: 'media-open-video',
+            label: 'Video ' + index + ' — full-resolution player',
+            ariaLabel: 'Open generated video ' + index + ' in full-resolution player',
+          });
+          var hint = document.createElement('span'); hint.className = 'media-open-hint'; hint.textContent = '▶ Open full-resolution player';
+          trigger.appendChild(hint);
+          el.appendChild(trigger);
         }
         if (st) setRowStatus(st, row.duplicate_rejected ? 'duplicate rejected; previous kept' : 'done', row.duplicate_rejected ? 'dirty' : 'ok');
         showRegenClear = true; // a clip exists → explicit Regenerate/Clear
@@ -1846,5 +2024,31 @@
     if (evalFocus) document.getElementById('eval-focus-hint').classList.remove('hidden');
     goHome();
   </script>
+
+  <!-- Full-resolution media viewer (2026-07-10): one shared, closable overlay
+       above Super Focus for the generated image (image mode) or the completed
+       generated video (video mode). Hidden until a media trigger opens it. -->
+  <div id="mediaViewer" class="hidden" role="dialog" aria-modal="true" aria-labelledby="mediaViewerTitle">
+    <div id="mediaViewerBackdrop"></div>
+    <div id="mediaViewerWindow" role="document">
+      <div id="mediaViewerHeader">
+        <div id="mediaViewerTitle">Media</div>
+        <div id="mediaViewerMetadata" aria-live="polite"></div>
+        <div id="mediaViewerZoom" class="hidden">
+          <button type="button" class="btn mv-zoom" data-zoom="fit">Fit</button>
+          <button type="button" class="btn mv-zoom" data-zoom="100">100%</button>
+          <button type="button" class="btn mv-zoom" data-zoom="out" aria-label="Zoom out">−</button>
+          <button type="button" class="btn mv-zoom" data-zoom="in" aria-label="Zoom in">+</button>
+        </div>
+        <button type="button" id="mediaViewerClose" class="btn" aria-label="Close media viewer">✕ Close</button>
+      </div>
+      <div id="mediaViewerContent">
+        <div id="mediaViewerLoading" class="hidden">Loading…</div>
+        <div id="mediaViewerError" class="hidden" role="alert"></div>
+        <div id="mediaViewerImageScroll"><img id="mediaViewerImage" class="hidden" alt=""></div>
+        <video id="mediaViewerVideo" class="hidden" playsinline preload="metadata"></video>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
