@@ -385,19 +385,22 @@ test("package-engine.js stamps the workflow path on save-selected", () => {
 
 const PNG_1x1_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
 
-test("uploadAigenImage saves a base64 image as flux-NNN.png in the package", () => {
+test("uploadAigenImage saves a manual upload under the truthful manual-upload namespace (not flux-local)", () => {
   const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), "up-pkg-"));
   fs.mkdirSync(path.join(scriptPackages, "pkg-a"), { recursive: true });
   const res = packageEngineServer.uploadAigenImage(
     { package_id: "pkg-a", prompt_index: 3, data_base64: "data:image/png;base64," + PNG_1x1_B64 },
     { scriptPackages });
-  assert.equal(res.path, "images/flux-local/flux-003.png");
+  assert.equal(res.path, "images/manual-upload/manual-003.png");
+  assert.equal(res.source_type, "manual_upload");
   assert.equal(res.format, "png");
-  const saved = fs.readFileSync(path.join(scriptPackages, "pkg-a", "images", "flux-local", "flux-003.png"));
+  // Never written under the FLUX-generated namespace.
+  assert.ok(!fs.existsSync(path.join(scriptPackages, "pkg-a", "images", "flux-local", "flux-003.png")));
+  const saved = fs.readFileSync(path.join(scriptPackages, "pkg-a", "images", "manual-upload", "manual-003.png"));
   assert.equal(saved[0], 0x89); // PNG magic
 });
 
-test("uploadAigenImage records manual provenance and selection carries it forward", () => {
+test("uploadAigenImage records manual_upload provenance and selection carries it forward", () => {
   const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), "up-pkg-prov-"));
   fs.mkdirSync(path.join(scriptPackages, "pkg-prov"), { recursive: true });
   const res = packageEngineServer.uploadAigenImage(
@@ -411,17 +414,20 @@ test("uploadAigenImage records manual provenance and selection carries it forwar
     },
     { scriptPackages });
 
-  assert.equal(res.path, "images/flux-local/flux-002.png");
-  assert.equal(res.provenance.generation_mode, "manual_external");
+  assert.equal(res.path, "images/manual-upload/manual-002.png");
+  assert.equal(res.source_type, "manual_upload");
+  assert.equal(res.provenance.source_type, "manual_upload");
   assert.equal(res.provenance.generation_provider, "gpt-manual");
   const sidecar = JSON.parse(fs.readFileSync(path.join(scriptPackages, "pkg-prov", "external-media-manifest.json"), "utf8"));
   assert.equal(sidecar.images.length, 1);
-  assert.equal(sidecar.images[0].path, "images/flux-local/flux-002.png");
-  assert.equal(sidecar.images[0].generation_mode, "manual_external");
+  assert.equal(sidecar.images[0].path, "images/manual-upload/manual-002.png");
+  assert.equal(sidecar.images[0].source_type, "manual_upload");
 
   packageEngineServer.writeSelectedImages({ package_id: "pkg-prov", selected_indices: [2] }, { scriptPackages });
   const selected = JSON.parse(fs.readFileSync(path.join(scriptPackages, "pkg-prov", "selected-images.json"), "utf8"));
-  assert.equal(selected.selections[0].selected_source, "manual-external");
+  assert.equal(selected.selections[0].source_type, "manual_upload");
+  assert.equal(selected.selections[0].selected_source, "manual-upload");
+  assert.equal(selected.selections[0].selected_path, "images/manual-upload/manual-002.png");
   assert.equal(selected.selections[0].generator, "gpt-manual");
   assert.equal(selected.selections[0].provenance.source, "external-media-manifest");
 });
@@ -445,7 +451,7 @@ test("uploadAigenImage refuses to overwrite an occupied slot without confirm_rep
   packageEngineServer.uploadAigenImage(
     { package_id: "pkg-slot", prompt_index: 4, data_base64: pngB.toString("base64") },
     { scriptPackages });
-  const canonical = path.join(scriptPackages, "pkg-slot", "images", "flux-local", "flux-004.png");
+  const canonical = path.join(scriptPackages, "pkg-slot", "images", "manual-upload", "manual-004.png");
   const before = fs.readFileSync(canonical);
   // Second upload of the SAME slot, no confirm_replace → 409, original untouched.
   const pngC = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from("REPLACEMENT")]);
@@ -457,10 +463,26 @@ test("uploadAigenImage refuses to overwrite an occupied slot without confirm_rep
   } catch (e) { err = e; }
   assert.ok(err, "expected a throw for occupied slot");
   assert.equal(err.statusCode, 409);
+  assert.equal(err.code, "MEDIA_SLOT_OCCUPIED");
   assert.equal(err.occupied, true);
   assert.match(err.message, /already has an image/i);
   assert.deepEqual(fs.readFileSync(canonical), before, "original image must be preserved");
-  assert.ok(!fs.existsSync(path.join(scriptPackages, "pkg-slot", "images", "flux-local", "superseded")), "nothing archived on a rejected upload");
+  assert.ok(!fs.existsSync(path.join(scriptPackages, "pkg-slot", "images", "superseded")), "nothing archived on a rejected upload");
+});
+
+test("uploadAigenImage rejects an occupied LEGACY flux-local slot (cross-namespace occupancy)", () => {
+  const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), "up-legacy-"));
+  const fluxDir = path.join(scriptPackages, "pkg-legacy", "images", "flux-local");
+  fs.mkdirSync(fluxDir, { recursive: true });
+  // A legacy FLUX-generated file already occupies slot 7.
+  fs.writeFileSync(path.join(fluxDir, "flux-007.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]));
+  let err;
+  try {
+    packageEngineServer.uploadAigenImage(
+      { package_id: "pkg-legacy", prompt_index: 7, data_base64: PNG_1x1_B64 }, { scriptPackages });
+  } catch (e) { err = e; }
+  assert.ok(err); assert.equal(err.statusCode, 409); assert.equal(err.code, "MEDIA_SLOT_OCCUPIED");
+  assert.match(err.message, /flux-local\/flux-007\.png/);
 });
 
 test("uploadAigenImage with confirm_replace archives the old image (non-destructive) and installs the new one", () => {
@@ -472,7 +494,7 @@ test("uploadAigenImage with confirm_replace archives the old image (non-destruct
     { package_id: "pkg-repl", prompt_index: 5, data_base64: original.toString("base64") },
     { scriptPackages });
   assert.equal(first.replaced, false);
-  const canonical = path.join(scriptPackages, "pkg-repl", "images", "flux-local", "flux-005.png");
+  const canonical = path.join(scriptPackages, "pkg-repl", "images", "manual-upload", "manual-005.png");
   const res = packageEngineServer.uploadAigenImage(
     { package_id: "pkg-repl", prompt_index: 5, confirm_replace: true, data_base64: replacement.toString("base64") },
     { scriptPackages });
@@ -483,6 +505,19 @@ test("uploadAigenImage with confirm_replace archives the old image (non-destruct
   // The original bytes survive in the archive (moved aside, never deleted).
   const archived = fs.readFileSync(path.join(scriptPackages, "pkg-repl", res.superseded_path));
   assert.deepEqual(archived, original);
+});
+
+test("uploadAigenImage cannot be tricked into claiming FLUX provenance via client provider", () => {
+  const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), "up-claim-"));
+  fs.mkdirSync(path.join(scriptPackages, "pkg-claim"), { recursive: true });
+  const res = packageEngineServer.uploadAigenImage(
+    { package_id: "pkg-claim", prompt_index: 1, provider: "flux-local", data_base64: PNG_1x1_B64 },
+    { scriptPackages });
+  // Server is authoritative: a manual upload is manual_upload regardless of the
+  // client-supplied provider, and the provider label is never left as flux/local.
+  assert.equal(res.source_type, "manual_upload");
+  assert.notEqual(res.provenance.generation_provider, "flux-local");
+  assert.doesNotMatch(String(res.provenance.generation_provider), /flux|local/i);
 });
 
 test("upload-image API rejects POST without nonce", async () => {

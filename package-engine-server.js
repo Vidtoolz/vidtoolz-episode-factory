@@ -276,7 +276,8 @@ const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS) > 0 ? Number(pro
 // must NOT fall back to vidnux Ollama. Endpoints are env-overridable so the
 // policy can follow the real LAN. See media-routing.js / config/media-routing.json.
 const mediaRouting = require('./media-routing.js');
-const { buildPackageMediaIndex } = require('./package-media-index.js');
+const packageMediaIndex = require('./package-media-index.js');
+const { buildPackageMediaIndex } = packageMediaIndex;
 const { importManualMedia, readSidecar, writeSidecar } = require('./manual-media-import.js');
 const { resolveProjectState } = require('./project-state-resolver.js');
 const { chooseNextTask } = require('./next-task-engine.js');
@@ -6037,28 +6038,65 @@ async function generateOneTopicCandidate(payload = {}, options = {}) {
   return { runId, candidate };
 }
 
-// Save a manually-generated (e.g. GPT) image into a package's images/flux-local/
-// as flux-NNN.png so it is indistinguishable from a FLUX image to the existing
-// image-selector and PRESTO I2V pipeline. Image bytes arrive base64-encoded in
-// JSON. Confined to the resolved package dir; gated on a nonce by the route.
+// Store an operator-supplied ("manual") image into a package under the TRUTHFUL
+// manual-upload namespace (images/manual-upload/manual-NNN.png) — never under
+// images/flux-local/, whose name claims FLUX generation. The image still flows
+// through the index-keyed selection→PRESTO pipeline (writeSelectedImages /
+// listFluxImages resolve a slot from EITHER namespace) but now carries explicit
+// manual_upload provenance. Bytes arrive base64 in JSON; confined to the package
+// dir; nonce-gated by the route.
 const MANUAL_IMAGE_MAX_BYTES = 25 * 1024 * 1024;
-function recordManualFluxUpload(packageDir, packageId, details = {}) {
-  const nowIso = new Date().toISOString();
+
+function manualUploadImageRel(index) {
+  return `images/manual-upload/manual-${String(index).padStart(3, '0')}.png`;
+}
+function legacyFluxImageRel(index) {
+  return `images/flux-local/flux-${String(index).padStart(3, '0')}.png`;
+}
+
+// The single canonical image occupying slot `index`: manual-upload namespace
+// first (truthful), then the legacy/generated flux-local slot. Returns
+// { rel, abs, source_type } or null. source_type is evidence-based.
+function resolveSlotImage(packageDir, index, evidence) {
+  const ev = evidence || packageMediaIndex.buildImageEvidence(packageDir);
+  for (const rel of [manualUploadImageRel(index), legacyFluxImageRel(index)]) {
+    const abs = path.join(packageDir, rel);
+    try {
+      if (fs.existsSync(abs) && fs.statSync(abs).isFile()) {
+        return { rel, abs, source_type: packageMediaIndex.classifyImageSource(rel, ev) };
+      }
+    } catch (_) { /* fall through */ }
+  }
+  return null;
+}
+
+// Record an operator upload in the external-media sidecar with AUTHORITATIVE
+// manual provenance. The server — not the client — owns source_type; a
+// client-supplied provider is recorded for reference but can never claim FLUX
+// generation. Replaces any prior sidecar entry for the same slot path.
+function recordManualUpload(packageDir, packageId, details = {}) {
+  const nowIso = details.now || new Date().toISOString();
   const sidecar = readSidecar(packageDir);
-  const images = Array.isArray(sidecar.images) ? sidecar.images.filter((entry) => entry.path !== details.relative) : [];
-  const provider = String(details.payload.provider || details.payload.source || 'manual_upload').trim() || 'manual_upload';
+  const images = Array.isArray(sidecar.images)
+    ? sidecar.images.filter((entry) => entry.path !== details.relative && entry.prompt_index !== details.promptIndex)
+    : [];
+  // Provider is reference-only and never FLUX/local for a manual upload.
+  let provider = String(details.payload.provider || details.payload.source || 'manual_upload').trim() || 'manual_upload';
+  if (/^flux/i.test(provider) || /local/i.test(provider)) provider = 'manual_upload';
   const entry = {
     media_type: 'image',
-    generation_mode: 'manual_external',
+    source_type: 'manual_upload',      // server-authoritative
+    generation_mode: 'manual_external', // retained for index count back-compat
     generation_provider: provider,
-    generation_host: 'manual',
-    variant: 'manual_upload',
+    generation_host: 'operator_upload',
+    variant: 'manual-upload',
     imported_at: nowIso,
-    original_filename: String(details.payload.filename || details.filename),
+    original_filename: String(details.payload.filename || details.filename || ''),
     path: details.relative,
     sha256: crypto.createHash('sha256').update(details.buf).digest('hex'),
     prompt_index: details.promptIndex,
     prompt_text: String(details.payload.prompt || details.payload.prompt_text || ''),
+    legacy_inference: false,
     validation: { ok: true, warnings: [], format: details.isPng ? 'png' : 'jpeg' },
   };
   sidecar.package = sidecar.package || packageId;
@@ -6073,7 +6111,7 @@ function uploadAigenImage(payload = {}, options = {}) {
   const promptIndex = Number(payload.prompt_index);
   if (!Number.isInteger(promptIndex) || promptIndex < 1 || promptIndex > 999) {
     const error = new Error('prompt_index must be an integer from 1 to 999.');
-    error.statusCode = 400;
+    error.statusCode = 400; error.code = 'INVALID_SLOT';
     throw error;
   }
   let b64 = String(payload.data_base64 || payload.data || '');
@@ -6082,80 +6120,121 @@ function uploadAigenImage(payload = {}, options = {}) {
   b64 = b64.trim();
   if (!b64) {
     const error = new Error('data_base64 is required.');
-    error.statusCode = 400;
+    error.statusCode = 400; error.code = 'MALFORMED_UPLOAD';
     throw error;
   }
   let buf;
   try { buf = Buffer.from(b64, 'base64'); } catch (_e) { buf = null; }
   if (!buf || !buf.length) {
     const error = new Error('Could not decode image data.');
-    error.statusCode = 400;
+    error.statusCode = 400; error.code = 'MALFORMED_UPLOAD';
     throw error;
   }
   if (buf.length > MANUAL_IMAGE_MAX_BYTES) {
     const error = new Error(`Image too large (max ${Math.floor(MANUAL_IMAGE_MAX_BYTES / 1024 / 1024)} MB).`);
-    error.statusCode = 413;
+    error.statusCode = 413; error.code = 'MEDIA_TOO_LARGE';
     throw error;
   }
   const isPng = buf.length > 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
   const isJpeg = buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
   if (!isPng && !isJpeg) {
     const error = new Error('Only PNG or JPEG images are supported.');
-    error.statusCode = 400;
+    error.statusCode = 415; error.code = 'UNSUPPORTED_MEDIA_TYPE';
     throw error;
   }
-  const filename = `flux-${String(promptIndex).padStart(3, '0')}.png`;
-  const dir = path.join(packageDir, 'images', 'flux-local');
-  fs.mkdirSync(dir, { recursive: true });
-  const outPath = path.join(dir, filename);
-  // Slot-safety: a manual upload must NOT silently overwrite an image that
-  // already occupies this slot (generated FLUX or a prior upload). Replacing is
-  // explicit (confirm_replace) and never destructive — the existing file is
-  // archived aside with a timestamp before the new bytes are written.
-  const slotOccupied = fs.existsSync(outPath);
-  if (slotOccupied && !payload.confirm_replace) {
-    const error = new Error(`Slot ${promptIndex} already has an image (images/flux-local/${filename}). Clear it first, or resubmit with confirm_replace to archive-and-replace it.`);
-    error.statusCode = 409;
-    error.occupied = true;
+  const evidence = packageMediaIndex.buildImageEvidence(packageDir);
+  // Slot-safety (preserved from the operator-control audit, now cross-namespace):
+  // reject an occupied slot — whether the occupant is a generated FLUX image, a
+  // legacy manual image under flux-local/, or a prior manual upload — unless the
+  // operator explicitly confirms replacement. Replacement archives the prior
+  // asset (never deletes) before the new file is written.
+  const existing = resolveSlotImage(packageDir, promptIndex, evidence);
+  if (existing && !payload.confirm_replace) {
+    const error = new Error(`Slot ${promptIndex} already has an image (${existing.rel}). Clear it first, or resubmit with confirm_replace to archive-and-replace it.`);
+    error.statusCode = 409; error.code = 'MEDIA_SLOT_OCCUPIED'; error.occupied = true;
     throw error;
   }
+  // Destination is always the truthful manual-upload namespace.
+  const relative = manualUploadImageRel(promptIndex);
+  const dir = path.join(packageDir, 'images', 'manual-upload');
+  const outPath = path.join(dir, `manual-${String(promptIndex).padStart(3, '0')}.png`);
+  // Path containment defence-in-depth (index is an int, but never trust the join).
+  if (path.resolve(outPath) !== path.resolve(path.join(packageDir, relative))
+    || !path.resolve(outPath).startsWith(path.resolve(packageDir) + path.sep)) {
+    const error = new Error('Resolved upload path is outside the package.');
+    error.statusCode = 400; error.code = 'PATH_OUTSIDE_PROJECT';
+    throw error;
+  }
+
   let supersededPath = null;
-  if (slotOccupied) {
-    const archiveDir = path.join(dir, 'superseded');
+  if (existing) {
+    // Archive the prior occupant (from whichever namespace) under superseded/,
+    // preserving its provenance in the sidecar history. Never deleted.
+    const archiveDir = path.join(packageDir, 'images', 'superseded');
     fs.mkdirSync(archiveDir, { recursive: true });
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const baseName = `flux-${String(promptIndex).padStart(3, '0')}`;
+    const baseName = path.basename(existing.rel, path.extname(existing.rel));
     let dest = path.join(archiveDir, `${baseName}__${stamp}.png`);
     let n = 1;
     while (fs.existsSync(dest)) { dest = path.join(archiveDir, `${baseName}__${stamp}-${n}.png`); n += 1; }
-    fs.renameSync(outPath, dest); // move aside (never deleted)
+    fs.renameSync(existing.abs, dest); // move aside (never deleted)
     supersededPath = path.relative(packageDir, dest);
+    // Preserve the superseded asset's provenance in sidecar history.
+    try {
+      const sc = readSidecar(packageDir);
+      sc.superseded = Array.isArray(sc.superseded) ? sc.superseded : [];
+      sc.superseded.push({
+        prompt_index: promptIndex,
+        prior_path: existing.rel,
+        prior_source_type: existing.source_type,
+        archived_path: supersededPath,
+        archived_at: new Date().toISOString(),
+      });
+      writeSidecar(packageDir, sc, new Date().toISOString());
+    } catch (_) { /* best-effort history; the file is already safely archived */ }
   }
-  const tmpPath = `${outPath}.tmp`;
-  fs.writeFileSync(tmpPath, buf);
-  fs.renameSync(tmpPath, outPath);
-  const relative = `images/flux-local/${filename}`;
-  const provenance = recordManualFluxUpload(packageDir, packageId, {
-    relative,
-    filename,
-    promptIndex,
-    buf,
-    isPng,
-    payload,
-  });
+
+  // Stage the new bytes atomically. A failed file write must leave existing
+  // media untouched (the prior asset is already safely archived above).
+  fs.mkdirSync(dir, { recursive: true });
+  const tmpPath = `${outPath}.${process.pid}.tmp`;
+  try {
+    fs.writeFileSync(tmpPath, buf);
+    fs.renameSync(tmpPath, outPath);
+  } catch (e) {
+    try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (_) {}
+    const error = new Error(`Failed to write uploaded image: ${e.message}`);
+    error.statusCode = 500; error.code = 'UPLOAD_WRITE_FAILED';
+    throw error;
+  }
+  // Persist authoritative provenance. If this fails AFTER the file is staged,
+  // clean up ONLY the newly staged file so no phantom current asset remains.
+  let provenance;
+  try {
+    provenance = recordManualUpload(packageDir, packageId, { relative, promptIndex, buf, isPng, payload });
+  } catch (e) {
+    try { if (fs.existsSync(outPath)) fs.unlinkSync(outPath); } catch (_) {}
+    const error = new Error(`Failed to record upload provenance: ${e.message}`);
+    error.statusCode = 500; error.code = 'PROVENANCE_WRITE_FAILED';
+    throw error;
+  }
   return {
     package_id: packageId,
     prompt_index: promptIndex,
-    filename,
+    filename: path.basename(relative),
     path: relative,
+    source_type: 'manual_upload',
     bytes: buf.length,
     format: isPng ? 'png' : 'jpeg',
-    replaced: slotOccupied,
+    replaced: Boolean(existing),
     superseded_path: supersededPath,
     provenance: {
+      source_type: 'manual_upload',
       generation_mode: provenance.generation_mode,
       generation_provider: provenance.generation_provider,
       generation_host: provenance.generation_host,
+      original_filename: provenance.original_filename,
+      legacy_inference: false,
     },
   };
 }
@@ -7204,30 +7283,42 @@ function aigenAssetPath(packageId, relativePath, options = {}) {
 
 function listFluxImages(packageId, options = {}) {
   const { packageId: id, packageDir } = resolveAigenPackageDir(packageId, options);
-  const fluxDir = path.join(packageDir, 'images', 'flux-local');
   const promptsByIndex = loadImagePromptsByIndex(packageDir);
   const selectedData = safeReadJson(path.join(packageDir, 'selected-images.json'), null);
   const selected = selectedData ? selectedIndicesFromData(selectedData) : [];
-  const images = safeDirEntries(fluxDir)
-    .filter((entry) => entry.isFile() && /^flux-\d+\.png$/i.test(entry.name))
-    .map((entry) => {
-      const index = fluxIndexFromFilename(entry.name);
-      const relative = `images/flux-local/${entry.name}`;
-      const absolute = path.join(fluxDir, entry.name);
-      let sizeBytes = 0;
-      try { sizeBytes = fs.statSync(absolute).size; } catch (_) {}
-      return {
-        index,
-        path: relative,
-        absolute_path: absolute,
-        asset_url: `${AIGEN_ASSETS_PREFIX}script-packages/${encodeURIComponent(id)}/images/flux-local/${encodeURIComponent(entry.name)}`,
-        prompt: promptsByIndex.get(index) || '',
-        label: path.basename(entry.name, path.extname(entry.name)),
-        exists: fs.existsSync(absolute),
-        size_bytes: sizeBytes,
-      };
-    })
-    .sort((a, b) => a.index - b.index);
+  const evidence = packageMediaIndex.buildImageEvidence(packageDir);
+  // One entry per slot index, drawn from BOTH namespaces so a manual upload
+  // still appears in the selector. manual-upload wins the slot when present
+  // (server-side occupancy already prevents both from coexisting for a slot).
+  const byIndex = new Map();
+  const addFrom = (subdir, re, preferred) => {
+    const dir = path.join(packageDir, ...subdir.split('/'));
+    safeDirEntries(dir)
+      .filter((entry) => entry.isFile() && re.test(entry.name))
+      .forEach((entry) => {
+        const index = packageMediaIndex.promptIndexFromName(entry.name);
+        if (index == null) return;
+        if (byIndex.has(index) && !preferred) return; // don't override a preferred-namespace slot
+        const relative = `${subdir}/${entry.name}`;
+        const absolute = path.join(dir, entry.name);
+        let sizeBytes = 0;
+        try { sizeBytes = fs.statSync(absolute).size; } catch (_) {}
+        byIndex.set(index, {
+          index,
+          path: relative,
+          absolute_path: absolute,
+          asset_url: `${AIGEN_ASSETS_PREFIX}script-packages/${encodeURIComponent(id)}/${relative.split('/').map(encodeURIComponent).join('/')}`,
+          prompt: promptsByIndex.get(index) || '',
+          label: path.basename(entry.name, path.extname(entry.name)),
+          source_type: packageMediaIndex.classifyImageSource(relative, evidence),
+          exists: fs.existsSync(absolute),
+          size_bytes: sizeBytes,
+        });
+      });
+  };
+  addFrom('images/manual-upload', /^manual-\d+\.(png|jpe?g)$/i, true);
+  addFrom('images/flux-local', /^flux-\d+\.png$/i, false);
+  const images = [...byIndex.values()].sort((a, b) => a.index - b.index);
   return {
     ok: true,
     package_id: id,
@@ -7262,27 +7353,36 @@ function writeSelectedImages(payload = {}, options = {}) {
   );
   const uniqueIndices = [...new Set(selectedIndices)];
   const selectedAt = new Date().toISOString();
+  const evidence = packageMediaIndex.buildImageEvidence(packageDir);
   const selections = uniqueIndices.map((index) => {
-    const filename = `flux-${String(index).padStart(3, '0')}.png`;
-    const relative = `images/flux-local/${filename}`;
-    const absolute = aigenAssetPath(id, relative, options);
-    if (!fs.existsSync(absolute) || !fs.statSync(absolute).isFile()) {
-      const error = new Error(`Selected FLUX image does not exist for index ${index}: ${relative}`);
-      error.statusCode = 400;
+    // Resolve the slot from EITHER namespace (truthful manual-upload first, then
+    // legacy/generated flux-local) so a manual upload is selectable and carries
+    // its real path + provenance downstream — never a fabricated flux-local one.
+    const resolved = resolveSlotImage(packageDir, index, evidence);
+    if (!resolved) {
+      const error = new Error(`Selected image does not exist for index ${index}.`);
+      error.statusCode = 400; error.code = 'SOURCE_FILE_MISSING';
       throw error;
     }
-    const manual = manualImages.get(relative);
+    const sourceType = resolved.source_type;
+    const isManual = sourceType === 'manual_upload';
+    const manual = manualImages.get(resolved.rel);
+    const selectedSource = isManual ? 'manual-upload' : (sourceType === 'legacy_unknown' ? 'legacy-unknown' : 'flux-local');
     return {
       prompt_index: index,
       index,
-      selected_source: manual ? 'manual-external' : 'flux-local',
-      selected_path: relative,
-      path: relative,
+      source_type: sourceType,
+      selected_source: selectedSource,
+      selected_path: resolved.rel,
+      path: resolved.rel,
       prompt: promptsByIndex.get(index) || '',
       label: selectedLabel(index, Boolean(payload.labels)),
-      generator: manual ? (manual.generation_provider || 'manual-external') : 'flux-local-vidnux',
+      generator: isManual
+        ? ((manual && manual.generation_provider) || 'operator_upload')
+        : (sourceType === 'legacy_unknown' ? 'legacy-unknown' : 'flux-local-vidnux'),
       ...(manual ? {
         provenance: {
+          source_type: 'manual_upload',
           generation_mode: manual.generation_mode,
           generation_provider: manual.generation_provider,
           generation_host: manual.generation_host,
@@ -12830,7 +12930,7 @@ function createServer(options = {}) {
           validateLocalWriteRequest(req, payload);
           sendJSON(res, 200, uploadAigenImage(payload));
         })
-        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'aigen-upload-image-error', error.occupied ? { occupied: true } : undefined));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'aigen-upload-image-error', error.occupied ? { occupied: true } : undefined));
       return;
     }
 

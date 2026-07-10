@@ -146,7 +146,7 @@
         <strong style="font-size:13px;">Add a manual (GPT) image:</strong>
         <label style="font-size:12px;">Prompt #: <input id="up-prompt-index" type="number" value="1" min="1" max="999" style="width:64px;" /></label>
         <input id="up-file" type="file" accept="image/png,image/jpeg" />
-        <button id="up-button" type="button">Upload as flux image</button>
+        <button id="up-button" type="button">Upload manual image</button>
         <span id="up-status" style="font-size:12px;color:var(--muted,#8b949e);"></span>
       </section>
 
@@ -231,10 +231,17 @@
           const title = document.createElement("div");
           title.className = "image-title";
           title.textContent = `[${String(image.index).padStart(3, "0")}] ${image.label}`;
+          const src = document.createElement("div");
+          src.className = "image-source";
+          src.style.cssText = "font-size:11px;color:var(--muted,#8b949e);margin:2px 0;";
+          // Truthful, server-provided source classification (never guessed from path).
+          src.textContent = image.source_type === "manual_upload" ? "Manual upload"
+            : image.source_type === "legacy_unknown" ? "Legacy · source unknown"
+            : "Generated · FLUX local";
           const prompt = document.createElement("div");
           prompt.className = "image-prompt";
           prompt.textContent = image.prompt || "No prompt text found";
-          meta.append(title, prompt);
+          meta.append(title, src, prompt);
           const toggle = () => {
             if (selected.has(image.index)) selected.delete(image.index);
             else selected.add(image.index);
