@@ -40,16 +40,21 @@
     return f || 'index.html';
   }
   function linkHtml(l, here) {
+    var active = l.href.toLowerCase() === here;
     var cls = [];
-    if (l.href.toLowerCase() === here) cls.push('active');
+    if (active) cls.push('active');
     if (l.star) cls.push('ef-nav-star');
     var c = cls.length ? ' class="' + cls.join(' ') + '"' : '';
+    // Programmatic current-page indication for assistive tech (not colour alone).
+    var cur = active ? ' aria-current="page"' : '';
     var star = l.star ? '★ ' : '';
-    return '<a href="' + esc(l.href) + '"' + c + '>' + star + esc(l.label) + '</a>';
+    return '<a href="' + esc(l.href) + '"' + c + cur + '>' + star + esc(l.label) + '</a>';
   }
 
   function build(mount) {
     var here = currentPage();
+    // Label the single global nav landmark for assistive tech.
+    if (!mount.getAttribute('aria-label')) mount.setAttribute('aria-label', 'Primary');
     var moreActive = MORE.some(function (l) { return l.href.toLowerCase() === here; });
     mount.innerHTML =
       '<span class="ef-nav-brand">EF</span>' +

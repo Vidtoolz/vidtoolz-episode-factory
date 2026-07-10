@@ -181,6 +181,12 @@ test("shared nav: representative pages mount the shared component, which exposes
   assert.match(nav, /super-focus\.html/, "shared nav makes Super Focus a primary link");
 });
 
+test("shared nav accessibility: active link gets aria-current, nav landmark is labelled", () => {
+  const nav = fs.readFileSync(path.resolve(__dirname, "..", "ef-nav.js"), "utf8");
+  assert.match(nav, /active \? ' aria-current="page"'/, "aria-current=page is emitted only for the active link");
+  assert.match(nav, /setAttribute\('aria-label', 'Primary'\)/, "nav landmark gets an accessible label");
+});
+
 // ── Backward compatibility ──────────────────────────────────────────────────
 
 test("backward compat: a media-rich existing-style package still resolves", () => {
