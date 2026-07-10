@@ -7530,6 +7530,18 @@ function startPrestoPackageJob(payload = {}, options = {}) {
     throw error;
   }
   const config = validatePrestoSubmitPayload(payload, options);
+  // Authoritative eligibility re-check INSIDE the locked check-and-spawn boundary
+  // (single-threaded: no await between the lock check above and the synchronous
+  // spawn below, so this is atomic against a concurrent submit). Protects every
+  // caller — not just the HTTP handler — from spawning a render for a package
+  // with no renderable work.
+  const eligibility = evaluatePrestoSubmitEligibility(config.packageId, { ...options, profile: config.profile });
+  if (!eligibility.ok) {
+    const error = new Error(eligibility.message);
+    error.statusCode = prestoEligibilityStatus(eligibility.code);
+    error.code = eligibility.code;
+    throw error;
+  }
   return launchPrestoProductionJob({
     productionScript: config.productionScript,
     pythonBin: config.pythonBin,
@@ -7966,6 +7978,90 @@ function readPrestoResults(packageId, options = {}) {
   };
 }
 
+// Authoritative server-side eligibility for an AIGEN-lane PRESTO video
+// submission. The single source of truth for "does this package have renderable
+// work?" — no aigen route may spawn run-production.py for a package with none.
+// Reuses readPackageVideoPrompts (selections + one-to-one I2V-prompt match +
+// per-row source-image existence; throws 409 on a prompts/selections mismatch)
+// and the staged-clip set for the target profile's variant (occupied slots).
+// Never trusts the stored selected_path: each source image is re-resolved and
+// confined under the package dir. Returns a structured, testable verdict; hard
+// identity errors (invalid/missing package) propagate as thrown 400/404 to match
+// the existing route conventions.
+//
+// The Super Focus lane has its own authoritative check (superFocusVideoEligibility)
+// against its distinct state model (super-focus.json rows + video-queue.json);
+// both lanes enforce the SAME contract — present source image + saved I2V prompt
+// + unoccupied target slot + single-GPU lock — via lane-appropriate state. This
+// function is the aigen lane's authority; it does not duplicate or diverge from
+// the Super Focus rules, it mirrors them for the aigen state shape.
+function evaluatePrestoSubmitEligibility(packageId, options = {}) {
+  const { packageId: id, packageDir } = resolveAigenPackageDir(packageId, options); // throws 400/404
+  // Selections first: a package with no selected images can never be submitted,
+  // regardless of prompt state (readPackageVideoPrompts would otherwise report
+  // the missing prompts, masking the real blocker).
+  if (readPackageSelections(packageDir).length === 0) {
+    return { ok: false, code: 'NO_SELECTIONS', message: 'Select images for Wan2.2 before submitting to PRESTO.', project_id: id, eligible: [], eligible_count: 0, occupied: [], skipped: [] };
+  }
+  let prep;
+  try {
+    prep = readPackageVideoPrompts(id, options);
+  } catch (error) {
+    if (error.statusCode === 409 && !error.code) error.code = 'PROMPTS_MISMATCH';
+    throw error;
+  }
+  if (prep.state === 'not_prepared') {
+    return { ok: false, code: 'PROMPTS_NOT_PREPARED', message: 'Generate and save I2V prompts (video-prompts.json) before submitting to PRESTO.', project_id: id, selections_count: prep.selections_count, eligible: [], eligible_count: 0, occupied: [], skipped: [] };
+  }
+  if (!Array.isArray(prep.entries) || prep.entries.length === 0) {
+    return { ok: false, code: 'NO_SELECTIONS', message: 'Select images for Wan2.2 before submitting to PRESTO.', project_id: id, eligible: [], eligible_count: 0, occupied: [], skipped: [] };
+  }
+  const profile = normalizePrestoProfile(options.profile);
+  const variant = PRESTO_PROFILE_OUTPUT_SUBDIRS[profile] || DEFAULT_VIDEO_VARIANT;
+  const clipSet = readVariantClipSet(packageDir, variant);
+  const resolvedRoot = path.resolve(packageDir);
+  const eligible = [];
+  const occupied = [];
+  const skipped = [];
+  for (const entry of prep.entries) {
+    const idx = entry.prompt_index;
+    // Path containment: never trust the persisted selected_path. A record that
+    // resolves outside the package dir is rejected, never rendered.
+    const rel = String(entry.selected_path || '');
+    const abs = path.resolve(packageDir, rel);
+    if (!rel || (abs !== resolvedRoot && !abs.startsWith(resolvedRoot + path.sep))) {
+      skipped.push({ index: idx, reason: 'SOURCE_IMAGE_PATH_INVALID' });
+      continue;
+    }
+    if (!entry.image_exists) { skipped.push({ index: idx, reason: 'SOURCE_IMAGE_MISSING' }); continue; }
+    if (!entry.prompt_text || !entry.prompt_text.trim()) { skipped.push({ index: idx, reason: 'PROMPT_MISSING' }); continue; }
+    const staged = idx != null && clipSet.has(`${String(idx).padStart(3, '0')}.mp4`);
+    if (staged) { occupied.push({ index: idx, reason: 'VIDEO_SLOT_OCCUPIED' }); continue; }
+    eligible.push(idx);
+  }
+  if (eligible.length === 0) {
+    const allOccupied = occupied.length > 0 && skipped.length === 0;
+    return {
+      ok: false,
+      code: allOccupied ? 'ALL_SLOTS_OCCUPIED' : 'NO_ELIGIBLE_ITEMS',
+      message: allOccupied
+        ? 'Every selected image already has a rendered video for this profile. Nothing to submit (use Regenerate to replace one).'
+        : 'No selection is ready to render — each needs a present source image and a saved I2V prompt.',
+      project_id: id, profile, video_variant: variant,
+      eligible: [], eligible_count: 0, occupied, skipped,
+    };
+  }
+  return { ok: true, code: 'ELIGIBLE', project_id: id, profile, video_variant: variant, eligible, eligible_count: eligible.length, occupied, skipped };
+}
+
+// Map an eligibility reason code to the HTTP status used when a submission is
+// rejected. Incomplete prerequisites (well-formed request, missing inputs) → 422;
+// state conflicts (occupied / nothing renderable / prompt-selection mismatch) → 409.
+function prestoEligibilityStatus(code) {
+  if (code === 'PROMPTS_NOT_PREPARED' || code === 'NO_SELECTIONS') return 422;
+  return 409; // ALL_SLOTS_OCCUPIED, NO_ELIGIBLE_ITEMS, PROMPTS_MISMATCH
+}
+
 function handlePrestoSubmit(req, res, options = {}) {
   readJsonBody(req)
     .then((payload) => {
@@ -7978,6 +8074,20 @@ function handlePrestoSubmit(req, res, options = {}) {
         return null;
       }
       const config = validatePrestoSubmitPayload(payload, options);
+      // Authoritative eligibility BEFORE the network probe: the server — not the
+      // page — decides whether there is renderable work. A crafted/stale/direct
+      // request for a package with no ready selection, no saved I2V prompt, or an
+      // already-fully-rendered slot set is rejected honestly (no doomed spawn, no
+      // false 200). Re-checked inside startPrestoPackageJob's locked boundary too.
+      const eligibility = evaluatePrestoSubmitEligibility(config.packageId, { ...options, profile: config.profile });
+      if (!eligibility.ok) {
+        sendError(res, prestoEligibilityStatus(eligibility.code), eligibility.message, eligibility.code, {
+          project_id: eligibility.project_id,
+          occupied: eligibility.occupied,
+          skipped: eligibility.skipped,
+        });
+        return null;
+      }
       // Pre-flight: confirm PRESTO ComfyUI is reachable before spawning, so a dead worker
       // fails fast with a clear message instead of a job that silently times out.
       const reachableCheck = options.prestoReachableCheck || prestoComfyuiReachable;
@@ -7997,10 +8107,10 @@ function handlePrestoSubmit(req, res, options = {}) {
     })
     .catch((error) => {
       if (error.statusCode === 409) {
-        sendError(res, 409, error.message, null, { active: error.active });
+        sendError(res, 409, error.message, error.code || null, { active: error.active });
         return;
       }
-      sendError(res, error.statusCode || 500, error.message, null);
+      sendError(res, error.statusCode || 500, error.message, error.code || null);
     });
 }
 
@@ -13952,6 +14062,7 @@ module.exports = {
   writeSelectedImages,
   startFluxPackageJob,
   startPrestoPackageJob,
+  evaluatePrestoSubmitEligibility,
   prestoComfyuiReachable,
   normalizePrestoProfile,
   PRESTO_PROFILES,
