@@ -41,11 +41,22 @@
   function openLightbox(src, type, name) {
     ensureLightbox();
     const mediaContainer = lightboxEl.querySelector(".media-lightbox-media");
+    // Build the media node with the DOM API and assign src/alt as properties.
+    // Never template src/name into innerHTML: a filename or path containing a
+    // double quote (e.g. a manual-external download) would otherwise break out
+    // of the attribute (XSS). Property assignment is not an HTML-parsing sink.
+    mediaContainer.innerHTML = "";
+    let node;
     if (type === "video") {
-      mediaContainer.innerHTML = `<video src="${src}" controls autoplay></video>`;
+      node = document.createElement("video");
+      node.controls = true;
+      node.autoplay = true;
     } else {
-      mediaContainer.innerHTML = `<img src="${src}" alt="${name || ""}" />`;
+      node = document.createElement("img");
+      node.alt = name || "";
     }
+    node.src = src;
+    mediaContainer.appendChild(node);
     lightboxEl.classList.add("open");
   }
 

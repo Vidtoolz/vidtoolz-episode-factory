@@ -437,6 +437,54 @@ test("uploadAigenImage rejects non-image data and bad prompt_index", () => {
     /prompt_index/);
 });
 
+test("uploadAigenImage refuses to overwrite an occupied slot without confirm_replace (slot-safety)", () => {
+  const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), "up-slot-"));
+  fs.mkdirSync(path.join(scriptPackages, "pkg-slot"), { recursive: true });
+  // A distinct valid-magic PNG so we can prove the original bytes are preserved.
+  const pngB = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from("ORIGINAL-BYTES")]);
+  packageEngineServer.uploadAigenImage(
+    { package_id: "pkg-slot", prompt_index: 4, data_base64: pngB.toString("base64") },
+    { scriptPackages });
+  const canonical = path.join(scriptPackages, "pkg-slot", "images", "flux-local", "flux-004.png");
+  const before = fs.readFileSync(canonical);
+  // Second upload of the SAME slot, no confirm_replace → 409, original untouched.
+  const pngC = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from("REPLACEMENT")]);
+  let err;
+  try {
+    packageEngineServer.uploadAigenImage(
+      { package_id: "pkg-slot", prompt_index: 4, data_base64: pngC.toString("base64") },
+      { scriptPackages });
+  } catch (e) { err = e; }
+  assert.ok(err, "expected a throw for occupied slot");
+  assert.equal(err.statusCode, 409);
+  assert.equal(err.occupied, true);
+  assert.match(err.message, /already has an image/i);
+  assert.deepEqual(fs.readFileSync(canonical), before, "original image must be preserved");
+  assert.ok(!fs.existsSync(path.join(scriptPackages, "pkg-slot", "images", "flux-local", "superseded")), "nothing archived on a rejected upload");
+});
+
+test("uploadAigenImage with confirm_replace archives the old image (non-destructive) and installs the new one", () => {
+  const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), "up-repl-"));
+  fs.mkdirSync(path.join(scriptPackages, "pkg-repl"), { recursive: true });
+  const original = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from("ORIGINAL")]);
+  const replacement = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from("REPLACEMENT")]);
+  const first = packageEngineServer.uploadAigenImage(
+    { package_id: "pkg-repl", prompt_index: 5, data_base64: original.toString("base64") },
+    { scriptPackages });
+  assert.equal(first.replaced, false);
+  const canonical = path.join(scriptPackages, "pkg-repl", "images", "flux-local", "flux-005.png");
+  const res = packageEngineServer.uploadAigenImage(
+    { package_id: "pkg-repl", prompt_index: 5, confirm_replace: true, data_base64: replacement.toString("base64") },
+    { scriptPackages });
+  assert.equal(res.replaced, true);
+  assert.ok(res.superseded_path, "a superseded archive path is reported");
+  // Canonical slot now holds the replacement bytes.
+  assert.deepEqual(fs.readFileSync(canonical), replacement);
+  // The original bytes survive in the archive (moved aside, never deleted).
+  const archived = fs.readFileSync(path.join(scriptPackages, "pkg-repl", res.superseded_path));
+  assert.deepEqual(archived, original);
+});
+
 test("upload-image API rejects POST without nonce", async () => {
   const { root } = makeRunRoot("2026-06-01-up-route", "# Package Run State\n");
   const server = packageEngineServer.createServer({ root });

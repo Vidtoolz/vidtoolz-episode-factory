@@ -40,9 +40,16 @@ function mp4RelPath(promptIndex, variant = 'mp4') {
 }
 
 // Turn a raw ffprobe result (or null) into a validation record + spec warnings.
-function buildValidation(probe, expected = EXPECTED) {
+// `fileExists` distinguishes a genuinely-missing clip from one that is present
+// on disk but whose spec could not be read (ffprobe failed/timed out): the
+// latter is `exists: true, spec_known: false` so the clip stays viewable and is
+// never mislabelled "missing".
+function buildValidation(probe, expected = EXPECTED, fileExists = false) {
   if (!probe) {
-    return { exists: false, width: null, height: null, fps: null, frames: null, duration: null, warnings: ['Clip file is missing.'] };
+    if (fileExists) {
+      return { exists: true, spec_known: false, width: null, height: null, fps: null, frames: null, duration: null, warnings: ['Clip is present but its spec could not be read (ffprobe failed or timed out). Clip is still playable.'] };
+    }
+    return { exists: false, spec_known: false, width: null, height: null, fps: null, frames: null, duration: null, warnings: ['Clip file is missing.'] };
   }
   const warnings = [];
   const width = Number(probe.width) || null;
@@ -58,7 +65,7 @@ function buildValidation(probe, expected = EXPECTED) {
   if (duration != null && Math.abs(duration - expected.duration) > DURATION_TOLERANCE) {
     warnings.push(`Duration ${duration.toFixed(2)}s differs from expected ~${expected.duration}s.`);
   }
-  return { exists: true, width, height, fps, frames, duration, warnings };
+  return { exists: true, spec_known: true, width, height, fps, frames, duration, warnings };
 }
 
 function normalizeDecision(value) {

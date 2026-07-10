@@ -360,6 +360,39 @@
     const LIST_API = '/api/topic-scout/list?runId=' + RUN_ID;
     let localWriteNonce = '';
     let nonceHeader = 'x-vidtoolz-local-write-nonce';
+    // The Submit + Delete&replace write paths operate on a real
+    // package-runs/<runId>/ folder. When the current run has no such folder
+    // (e.g. the default run when Topic Scout is opened straight from the nav),
+    // those writes 404. We detect that up front and DISABLE the write controls
+    // with a clear explanation instead of letting a click fail confusingly —
+    // browsing the candidate list still works read-only.
+    let runWritable = false;
+
+    async function checkRunWritable() {
+      try {
+        const res = await fetch(`package-runs/${RUN_ID}/package-candidates.json`, { cache: 'no-store' });
+        runWritable = res.ok;
+      } catch (err) { runWritable = false; }
+    }
+
+    function applyWritableState() {
+      const btn = document.getElementById('submitBtn');
+      const status = document.getElementById('submitStatus');
+      if (!runWritable) {
+        btn.disabled = true;
+        btn.title = 'No active ideation run for this page.';
+        if (status && !status.textContent) {
+          status.textContent = `No package run "${RUN_ID}" to submit into. Open Topic Scout for a real run (Package Engine → create/select a run, or add ?run=<run-id> to the URL). You can still browse the candidates below.`;
+          status.className = 'submit-status';
+        }
+      }
+      document.querySelectorAll('.topic-delete-replace').forEach((b) => {
+        if (!runWritable) {
+          b.disabled = true;
+          b.title = 'Open this page for a real package run to delete/replace candidates.';
+        }
+      });
+    }
 
     function normalizePayload(json) {
       if (json && typeof json === 'object' && json.data && typeof json.data === 'object') {
@@ -488,6 +521,11 @@
       if (!text) return;
       const btn = document.getElementById('submitBtn');
       const status = document.getElementById('submitStatus');
+      if (!runWritable) {
+        status.textContent = `No package run "${RUN_ID}" to submit into. Open Topic Scout for a real run.`;
+        status.className = 'submit-status error';
+        return;
+      }
       if (!localWriteNonce) {
         status.textContent = 'Cannot submit: local write nonce is missing. Refresh the page to retry.';
         status.className = 'submit-status error';
@@ -566,7 +604,7 @@
     document.getElementById('topicInput').addEventListener('input', (e) => {
       const len = e.target.value.length;
       document.getElementById('charCount').textContent = len;
-      document.getElementById('submitBtn').disabled = len < 5;
+      document.getElementById('submitBtn').disabled = len < 5 || !runWritable;
     });
     // "Delete & replace": soft-delete this candidate, then generate one new idea (Ollama).
     async function handleCandidateAction(e) {
@@ -575,6 +613,7 @@
       const id = btn.dataset.candId;
       const statusEl = btn.parentElement.querySelector('.topic-action-status');
       const setStatus = (m) => { if (statusEl) statusEl.textContent = m; };
+      if (!runWritable) { setStatus('Open this page for a real package run to delete/replace.'); return; }
       if (!id) { setStatus('No candidate id.'); return; }
       if (!localWriteNonce) { setStatus('Local write nonce unavailable. Refresh.'); return; }
       if (!confirm('Delete this idea and generate a new one to replace it?')) return;
@@ -604,8 +643,9 @@
 
     // Init
     (async () => {
-      await loadNonce();
+      await Promise.all([loadNonce(), checkRunWritable()]);
       await Promise.all([loadCandidates(), loadSubmittedTopics()]);
+      applyWritableState();
     })();
   </script>
 </body>
