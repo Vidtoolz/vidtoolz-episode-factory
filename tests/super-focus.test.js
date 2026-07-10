@@ -3293,6 +3293,82 @@ test("super-focus.html: evaluator focus route forces the Script step open (not t
   assert.match(body, /setSectionCollapsed\('script-eval', false, false\)/);
 });
 
+// ---- Step 3 media pair: source image beside resulting video (2026-07-10) ----
+test("super-focus.html: each slot renders a media-pair with the image and video as siblings, prompt after", () => {
+  const body = fnBody(SF_HTML, "renderPromptGrid");
+  // A media-pair container is created and both the image column and the video
+  // block are appended into it (immediate siblings).
+  assert.match(body, /className = 'media-pair'/, "media-pair container exists");
+  const iImgCol = body.indexOf("pair.appendChild(imgCol)");
+  const iVid = body.indexOf("pair.appendChild(buildVideoBlock(index))");
+  assert.ok(iImgCol !== -1 && iVid !== -1, "image column and video block are both children of the pair");
+  assert.ok(iImgCol < iVid, "image appears before video in DOM order inside the pair");
+  // The image column holds the actual image thumb (keyed by the stable id).
+  assert.match(body, /imgCol\.appendChild\(thumb\)/, "the source image lives in the image column of the pair");
+  assert.match(body, /thumb\.id = thumbPrefix \+ index/, "stable image slot id preserved");
+});
+
+test("super-focus.html: the I2V prompt is appended AFTER the media pair, never between image and video", () => {
+  const body = fnBody(SF_HTML, "renderPromptGrid");
+  const iPair = body.indexOf("row.appendChild(pair)");
+  const iI2v = body.indexOf("row.appendChild(buildI2vBlock(index, rec))");
+  const iVideoBuild = body.indexOf("buildVideoBlock(index)");
+  assert.ok(iPair !== -1 && iI2v !== -1, "both the pair and the i2v block are appended to the row");
+  assert.ok(iPair < iI2v, "the media pair is appended before the i2v prompt (prompt sits below the pair)");
+  // The video is built INTO the pair, so it cannot be after the prompt.
+  assert.ok(iVideoBuild < iI2v, "the video is part of the pair, appended before the prompt");
+  // Guard against the old bug: image → prompt → video (i2v must not precede the pair).
+  assert.doesNotMatch(body, /row\.appendChild\(buildI2vBlock[\s\S]*row\.appendChild\(pair\)/, "prompt must not be appended before the media pair");
+});
+
+test("super-focus.html: desktop CSS makes the media-pair two columns; narrow screens stack to one", () => {
+  assert.match(SF_HTML, /\.prompt-row \.media-pair \{[^}]*grid-template-columns: 1fr 1fr/, "two-column desktop grid");
+  assert.match(SF_HTML, /@media \(max-width: 720px\) \{ \.prompt-row \.media-pair \{ grid-template-columns: 1fr;/, "single-column stack on narrow screens");
+  // The nested video panel must not keep its standalone full-width span inside the pair.
+  assert.match(SF_HTML, /\.prompt-row \.media-pair > \.media-col-image,\s*\.prompt-row \.media-pair > \.pvid \{ grid-column: auto/, "panels are columns, not full-width, inside the pair");
+});
+
+test("super-focus.html: media panels are clearly labelled source vs result, with a desktop empty state", () => {
+  const grid = fnBody(SF_HTML, "renderPromptGrid");
+  assert.match(grid, /Generated image <span class="media-col-sub">source still<\/span>/, "image labelled as source still");
+  const vid = fnBody(SF_HTML, "buildVideoBlock");
+  assert.match(vid, /Generated video <span class="media-col-sub">resulting clip/, "video labelled as resulting clip");
+  assert.match(vid, /className = 'pvid-empty'; empty\.textContent = 'No generated video yet\.'/, "empty state message present in the video panel");
+});
+
+test("super-focus.html: video empty state toggles only in the ready state (not queued/failed/done)", () => {
+  const body = fnBody(SF_HTML, "setVideo");
+  assert.match(body, /var empty = el\.querySelector\('\.pvid-empty'\)/, "setVideo reads the empty-state element");
+  assert.match(body, /showEmpty = true; \/\/ no clip, no queue\/failure state/, "empty shown only in the ready branch");
+  assert.match(body, /empty\.style\.display = \(showEmpty && !el\.querySelector\('video'\)\) \? '' : 'none'/, "empty hidden whenever a clip exists");
+});
+
+test("super-focus.html: image/video/prompt controls remain wired and slot ids stable after the layout change", () => {
+  const vid = fnBody(SF_HTML, "buildVideoBlock");
+  // Video-side controls stay in the video panel.
+  ["pvid-gen", "pvid-regen", "pvid-clear", "pvid-cancelq"].forEach((c) => assert.match(vid, new RegExp(c), "video control " + c + " preserved"));
+  assert.match(vid, /wrap\.id = 'imgp-video-' \+ index/, "stable video slot id preserved");
+  assert.match(vid, /QUEUE_VIDEO_API|REGEN_VIDEO_API|CLEAR_VIDEO_API|CANCEL_QUEUED_VIDEO_API/, "video actions still call their APIs on click");
+  // Image-side controls stay with the image.
+  const imgCtrl = fnBody(SF_HTML, "buildImageControls");
+  assert.match(imgCtrl, /Regenerate image/);
+  assert.match(imgCtrl, /Clear image/);
+  // Prompt-side controls stay with the prompt.
+  const i2v = fnBody(SF_HTML, "buildI2vBlock");
+  ["Create a video prompt", "Save changes", "Clear i2v prompt", "Copy"].forEach((t) => assert.match(i2v, new RegExp(t.replace(/[()]/g, "\\$&"))));
+});
+
+test("super-focus.html: rendering a slot dispatches no generation/queue API (build-time is inert)", () => {
+  // Building the video panel only ATTACHES click handlers; it must not call a
+  // dispatch/queue API during construction (rendering the page = no render).
+  const vid = fnBody(SF_HTML, "buildVideoBlock");
+  // Every API call in the block is inside an addEventListener('click', ...) body.
+  const withoutHandlers = vid.replace(/addEventListener\('click', function \(\) \{[\s\S]*?\}\);/g, "");
+  assert.doesNotMatch(withoutHandlers, /apiPost\(/, "no API dispatch at build time — only on explicit click");
+  const grid = fnBody(SF_HTML, "renderPromptGrid");
+  assert.doesNotMatch(grid, /apiPost\(QUEUE_VIDEO_API|apiPost\(REGEN_VIDEO_API|apiPost\(GEN_I2V_API/, "rendering the grid queues/generates nothing");
+});
+
 test("super-focus.html: landing has no collapse controls and still exactly two choices", async () => {
   const server = packageEngineServer.createServer({ superFocusRoot: mkRoot() });
   await listen(server);

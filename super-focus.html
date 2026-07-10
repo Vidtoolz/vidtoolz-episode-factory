@@ -144,6 +144,25 @@
     .prompt-row .pvid video { max-width: 160px; border-radius: 6px; border: 1px solid var(--border); display: block; margin-top: 6px; }
     .prompt-row .pvid .pvid-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .prompt-row .pvid .btn { padding: 6px 10px; font-size: 13px; }
+    /* Media-comparison pair (2026-07-10): source image | resulting video, side by
+       side on desktop. The I2V prompt (.pi2v) sits BELOW this pair, never between
+       the source image and its resulting video. */
+    .prompt-row .media-pair {
+      grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+      margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--border); align-items: start;
+    }
+    /* Neutralize the standalone full-width/border styling of the panels now that
+       they live INSIDE the pair as its two columns. */
+    .prompt-row .media-pair > .media-col-image,
+    .prompt-row .media-pair > .pvid { grid-column: auto; margin-top: 0; padding-top: 0; border-top: none; min-width: 0; }
+    .media-col-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .media-col-sub { text-transform: none; letter-spacing: 0; opacity: .75; margin-left: 6px; }
+    .prompt-row .media-pair .pthumb { margin-top: 0; }
+    .prompt-row .media-pair .pthumb img, .prompt-row .media-pair .pvid video { max-width: 150px; margin-top: 0; }
+    .prompt-row .pvid-empty { font-size: 12px; color: var(--muted); margin: 4px 0; }
+    /* Narrow screens: stack the pair to a single column — image, then video, then
+       (below the pair) the I2V prompt. Never image → prompt → video. */
+    @media (max-width: 720px) { .prompt-row .media-pair { grid-template-columns: 1fr; } }
     .backend-stale {
       margin-bottom: 18px; padding: 14px 16px; border-radius: 8px;
       background: rgba(248,81,73,.12); border: 1px solid #7d2b28; color: #ff9d97; font-size: 14px; line-height: 1.5;
@@ -847,7 +866,11 @@
     // the staged clip once done; the batch button lives in Step 7.
     function buildVideoBlock(index) {
       var wrap = document.createElement('div'); wrap.className = 'pvid'; wrap.id = 'imgp-video-' + index;
-      var label = document.createElement('div'); label.className = 'pvid-label'; label.textContent = 'Video (PRESTO Wan2.2)';
+      var label = document.createElement('div'); label.className = 'pvid-label';
+      label.innerHTML = 'Generated video <span class="media-col-sub">resulting clip · PRESTO Wan2.2</span>';
+      // Desktop empty state so the eventual clip never jumps to an unrelated place;
+      // setVideo toggles it off once a clip/queue/failure state applies.
+      var empty = document.createElement('div'); empty.className = 'pvid-empty'; empty.textContent = 'No generated video yet.';
       var rowEl = document.createElement('div'); rowEl.className = 'pvid-row';
       var genBtn = document.createElement('button'); genBtn.className = 'btn pvid-gen'; genBtn.textContent = 'Queue video on PRESTO';
       // Regenerate/Clear only make sense once a clip exists; setVideo reveals them.
@@ -900,7 +923,7 @@
         }).catch(function () { clearBtn.disabled = false; setRowStatus(st, 'Clear failed', 'dirty'); });
       });
       rowEl.appendChild(genBtn); rowEl.appendChild(cancelQBtn); rowEl.appendChild(regenBtn); rowEl.appendChild(clearBtn); rowEl.appendChild(st);
-      wrap.appendChild(label); wrap.appendChild(rowEl);
+      wrap.appendChild(label); wrap.appendChild(empty); wrap.appendChild(rowEl);
       return wrap;
     }
 
@@ -975,11 +998,21 @@
           ctrl.appendChild(copyBtn); ctrl.appendChild(saveBtn); ctrl.appendChild(clearBtn); ctrl.appendChild(st);
           row.appendChild(num); row.appendChild(ta); row.appendChild(ctrl);
           if (withThumb) {
+            // Media-comparison pair: the generated image (source still) and the
+            // generated video (resulting clip) are immediate siblings, side by
+            // side on desktop. The I2V prompt is appended AFTER the pair so it
+            // never sits between the source image and its resulting video.
             var thumb = document.createElement('div');
             thumb.className = 'pthumb'; thumb.id = thumbPrefix + index;
-            row.appendChild(thumb);
-            row.appendChild(buildI2vBlock(index, rec));
-            row.appendChild(buildVideoBlock(index));
+            var imgCol = document.createElement('div'); imgCol.className = 'media-col media-col-image';
+            var imgLabel = document.createElement('div'); imgLabel.className = 'media-col-label';
+            imgLabel.innerHTML = 'Generated image <span class="media-col-sub">source still</span>';
+            imgCol.appendChild(imgLabel); imgCol.appendChild(thumb);
+            var pair = document.createElement('div'); pair.className = 'media-pair';
+            pair.appendChild(imgCol);                  // left: source image
+            pair.appendChild(buildVideoBlock(index));  // right: resulting video
+            row.appendChild(pair);
+            row.appendChild(buildI2vBlock(index, rec)); // prompt BELOW the pair
           }
           grid.appendChild(row);
         })(i);
@@ -1196,7 +1229,8 @@
       var clear = el.querySelector('.pvid-clear');
       var gen = el.querySelector('.pvid-gen');
       var cancelq = el.querySelector('.pvid-cancelq');
-      var showGen = false, showRegenClear = false, showCancelQ = false;
+      var empty = el.querySelector('.pvid-empty');
+      var showGen = false, showRegenClear = false, showCancelQ = false, showEmpty = false;
       if (row.status === 'done' && row.has_video) {
         if (!el.querySelector('video')) {
           var v = document.createElement('video');
@@ -1218,11 +1252,16 @@
         showGen = true;
       } else {
         showGen = true; // ready / not queued yet
+        showEmpty = true; // no clip, no queue/failure state → show the empty state
       }
       if (gen) gen.style.display = showGen ? '' : 'none';
       if (cancelq) cancelq.style.display = showCancelQ ? '' : 'none';
       if (regen) regen.style.display = showRegenClear ? '' : 'none';
       if (clear) clear.style.display = showRegenClear ? '' : 'none';
+      // The empty-state note only shows in the pure ready state; a queued/running/
+      // failed/cancelled row communicates through the status line, and a done row
+      // shows the clip itself.
+      if (empty) empty.style.display = (showEmpty && !el.querySelector('video')) ? '' : 'none';
     }
 
     function applyVideosStatus(d) {
