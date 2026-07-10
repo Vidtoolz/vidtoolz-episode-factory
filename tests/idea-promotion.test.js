@@ -164,14 +164,21 @@ test("provenance UI: workspace renders a promoted-from-idea panel; focus shows c
 
 // ── Shared navigation ───────────────────────────────────────────────────────
 
-test("shared nav: representative pages link to Projects and Ideas", () => {
+// The nav is now a single shared component (ef-nav.js) injected into a mount, not
+// hardcoded per page. Representative pages must mount + load it, and the shared
+// component must still expose Projects and Ideas (now under "More"), so those
+// destinations remain reachable from the nav.
+test("shared nav: representative pages mount the shared component, which exposes Projects and Ideas", () => {
   const repoRoot = path.resolve(__dirname, "..");
   for (const page of ["index.html", "package-runs-dashboard.html", "production-pipeline.html", "daily-idea-scout.html", "resume.html"]) {
     const html = fs.readFileSync(path.join(repoRoot, page), "utf8");
-    const nav = (html.match(/<nav class="ef-nav">[\s\S]*?<\/nav>/) || [""])[0];
-    assert.match(nav, /projects\.html/, `${page} nav links to Projects`);
-    assert.match(nav, /daily-idea-scout\.html/, `${page} nav links to Ideas`);
+    assert.match(html, /<nav class="ef-nav" data-ef-nav><\/nav>/, `${page} has the shared nav mount`);
+    assert.match(html, /<script src="ef-nav\.js"><\/script>/, `${page} loads the shared nav component`);
   }
+  const nav = fs.readFileSync(path.join(repoRoot, "ef-nav.js"), "utf8");
+  assert.match(nav, /projects\.html/, "shared nav exposes Projects");
+  assert.match(nav, /daily-idea-scout\.html/, "shared nav exposes Ideas");
+  assert.match(nav, /super-focus\.html/, "shared nav makes Super Focus a primary link");
 });
 
 // ── Backward compatibility ──────────────────────────────────────────────────

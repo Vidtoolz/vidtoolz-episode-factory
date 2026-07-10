@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VIDTOOLZ Episode Factory</title>
     <link rel="stylesheet" href="styles.css?v=1.9.6" />
-  </head>
+    <script src="ef-nav.js"></script>
+</head>
   <body>
-  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html" class="active">Episode Board</a><a href="new-video-build.html">Build New Video</a><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a><a href="score-engine.html">Score Engine</a></nav>
+  <nav class="ef-nav" data-ef-nav></nav>
 <section id="operatorOrientation" class="operator-orientation" aria-label="Operator orientation" style="margin:10px 16px;padding:14px 16px;border:1px solid var(--border);border-radius:8px;background:var(--panel);">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
     <strong style="font-size:15px;">📍 Where am I? — live operator orientation</strong>
@@ -15,7 +16,7 @@
   </div>
   <div id="ooBody" style="margin-top:8px;font-size:13px;line-height:1.5;">Loading current state…</div>
 </section>
-<details class="page-guide" open>
+<details class="page-guide">
   <summary>Page Guide — What is this?</summary>
   <div class="page-guide-body">
     <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Episode planning board. Create and organize episodes, manage the production queue, and see overall status.</span></div>
@@ -324,5 +325,5 @@
           });
       })();
     </script>
-  </body>
+</body>
 </html>

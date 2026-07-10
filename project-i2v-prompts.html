@@ -22,11 +22,12 @@
     .links a { margin-right: 12px; }
     #export-sheet { width: 100%; min-height: 160px; font-family: ui-monospace, monospace; font-size: 12px; background: #0d1117; color: #e6edf3; border: 1px solid var(--border, #30363d); border-radius: 6px; padding: 8px; box-sizing: border-box; }
   </style>
+  <script src="ef-nav.js"></script>
 </head>
 <body>
-  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="resume.html">Resume</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="production-pipeline.html">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="project-i2v-prompts.html" class="active">I2V Prompts</a><a href="aigen-review.html">AIGEN Review</a></nav>
+  <nav class="ef-nav" data-ef-nav></nav>
 
-  <details class="page-guide" open>
+  <details class="page-guide">
     <summary>Page Guide — What is this?</summary>
     <div class="page-guide-body">
       <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Generate one image-to-video (I2V) motion prompt per selected image, using local Ollama on PRESTO. These prompts drive PRESTO Wan2.2 video generation (or manual KlingAI).</span></div>

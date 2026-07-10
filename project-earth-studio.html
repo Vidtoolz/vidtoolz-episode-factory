@@ -29,11 +29,12 @@
       video{max-width:320px;border-radius:8px;border:1px solid var(--border,#30363d);background:#0d1117;}
       #copy-status{position:fixed;bottom:16px;right:16px;background:#238636;color:#fff;padding:7px 14px;border-radius:8px;font-size:13px;display:none;z-index:50;}
     </style>
-  </head>
+    <script src="ef-nav.js"></script>
+</head>
   <body>
-    <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="daily-idea-scout.html">Ideas</a><a href="production-pipeline.html">Pipeline</a></nav>
+    <nav class="ef-nav" data-ef-nav></nav>
     <div class="es">
-      <details class="page-guide" open>
+      <details class="page-guide">
         <summary>Page Guide — What is this?</summary>
         <div class="page-guide-body">
           <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Guided Google Earth Studio map-animation workspace for one project. Describe a camera move in plain words, get an importable .esp, export frames from Earth Studio into the project folder, and render them to MP4 — step by step, with each step lighting up when it's done.</span></div>
@@ -206,5 +207,5 @@
       }
       load();
     </script>
-  </body>
+</body>
 </html>

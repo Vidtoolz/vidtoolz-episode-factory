@@ -57,9 +57,10 @@
       code{font-size:11px;background:var(--panel-3,#21262d);padding:1px 5px;border-radius:4px;word-break:break-all;}
       #copy-status{position:fixed;bottom:16px;right:16px;background:#238636;color:#fff;padding:7px 14px;border-radius:8px;font-size:13px;display:none;z-index:50;}
     </style>
-  </head>
+    <script src="ef-nav.js"></script>
+</head>
   <body>
-    <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="production-pipeline.html">Pipeline</a><a href="score-engine.html">Score Engine</a></nav>
+    <nav class="ef-nav" data-ef-nav></nav>
     <div class="sp">
       <details class="page-guide">
         <summary>Page Guide — What is this?</summary>
@@ -415,5 +416,5 @@
 
       load();
     </script>
-  </body>
+</body>
 </html>

@@ -32,9 +32,10 @@
       .result{font-size:12px;white-space:pre-wrap;background:var(--panel-3,#21262d);border-radius:6px;padding:10px;margin-top:10px;display:none;}
       .focus-link{float:right;}
     </style>
-  </head>
+    <script src="ef-nav.js"></script>
+</head>
   <body>
-    <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="daily-idea-scout.html">Ideas</a><a href="production-pipeline.html">Pipeline</a></nav>
+    <nav class="ef-nav" data-ef-nav></nav>
     <div class="pw">
       <div class="pw-back"><a href="projects.html">← Back to projects</a> · <a href="daily-idea-scout.html">Ideas</a></div>
       <div id="pw-body"><p class="meta">Loading project…</p></div>
@@ -150,5 +151,5 @@
       }
       load();
     </script>
-  </body>
+</body>
 </html>

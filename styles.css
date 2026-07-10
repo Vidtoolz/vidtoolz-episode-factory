@@ -5725,6 +5725,48 @@ body[data-package-engine-view-mode="focused"] .package-engine-shell #generatedTh
   .ef-nav-divider { flex-shrink: 0; }
   .ef-nav a { white-space: nowrap; flex-shrink: 0; padding: 6px 8px; }
 }
+/* Slim-nav additions (declutter slice #1): the Super Focus star + the "More"
+   dropdown that holds the secondary destinations. */
+.ef-nav-star {
+  color: var(--accent);
+  border-color: rgba(63, 185, 80, 0.5) !important;
+  background: rgba(63, 185, 80, 0.12);
+  font-weight: 700;
+}
+.ef-nav-star:hover { background: rgba(63, 185, 80, 0.2); }
+.ef-nav-more { position: relative; display: inline-flex; }
+.ef-nav-more-btn {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+.ef-nav-more-btn:hover { color: var(--text); background: var(--panel-2); border-color: var(--border); }
+.ef-nav-more-btn.active { color: var(--accent); border-color: rgba(63, 185, 80, 0.4); background: rgba(63, 185, 80, 0.08); }
+.ef-nav-more-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  max-height: 70vh;
+  overflow-y: auto;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+}
+.ef-nav-more-menu.open { display: flex; }
+.ef-nav-more-menu a { display: block; }
 
 /* ===== Page Guide (integrated micro-help) ===== */
 .page-guide {

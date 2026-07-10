@@ -31,11 +31,12 @@
     .warnmsg { color: #d29922; }
     .okmsg { color: #3fb950; }
   </style>
+  <script src="ef-nav.js"></script>
 </head>
 <body>
-  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="resume.html">Resume</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="production-pipeline.html">Pipeline</a><a href="image-selector.html">Image Select</a><a href="project-i2v-prompts.html">I2V Prompts</a><a href="project-video-review.html" class="active">Video Review</a><a href="aigen-review.html">AIGEN Review</a></nav>
+  <nav class="ef-nav" data-ef-nav></nav>
 
-  <details class="page-guide" open>
+  <details class="page-guide">
     <summary>Page Guide — What is this?</summary>
     <div class="page-guide-body">
       <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Cockpit-native review of this project's generated PRESTO Wan2.2 clips — each clip with its source image, I2V prompt, and spec validation. Mark Keep / Flag / Reject.</span></div>

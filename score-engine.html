@@ -25,11 +25,12 @@
       #copy-status{position:fixed;bottom:16px;right:16px;background:#238636;color:#fff;padding:7px 14px;border-radius:8px;font-size:13px;display:none;z-index:50;}
       details.section{margin:14px 0;} details.section>summary{cursor:pointer;font-weight:600;padding:8px 0;}
     </style>
-  </head>
+    <script src="ef-nav.js"></script>
+</head>
   <body>
-    <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="daily-idea-scout.html">Ideas</a><a href="production-pipeline.html">Pipeline</a><a href="score-engine.html" class="active">Score Engine</a></nav>
+    <nav class="ef-nav" data-ef-nav></nav>
     <div class="se">
-      <details class="page-guide" open>
+      <details class="page-guide">
         <summary>Page Guide — What is this?</summary>
         <div class="page-guide-body">
           <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Score Engine (Scorecraft) creates ORIGINAL music cues for your videos: cue sheet → palette → seeded MIDI candidates → sketch preview → REAPER/Ableton handoff → approved export into the video package. AI plans structure (optional); a deterministic composer writes the notes; you approve everything.</span></div>
@@ -249,5 +250,5 @@
 
       loadProjects(); loadPackages(); loadSettings().catch(e=>showErr(e.message)); loadProfiles();
     </script>
-  </body>
+</body>
 </html>

@@ -209,10 +209,11 @@
         .metrics { grid-template-columns: 1fr; }
       }
     </style>
-  </head>
+    <script src="ef-nav.js"></script>
+</head>
   <body>
-  <nav class="ef-nav"><span class="ef-nav-brand">EF</span><a href="projects.html">Projects</a><a href="resume.html">Resume</a><a href="topic-scout.html">Topic Scout</a><a href="package-engine.html">Package Engine</a><a href="package-runs-dashboard.html">Dashboard</a><a href="mission-control.html">Mission Control</a><span class="ef-nav-divider"></span><a href="index.html">Episode Board</a><a href="new-video-build.html">Build New Video</a><a href="production-pipeline.html" class="active">Pipeline</a><a href="image-prompts-editor.html">Image Prompts</a><a href="image-selector.html">Image Select</a><a href="aigen-review.html">AIGEN Review</a><span class="ef-nav-divider"></span><a href="production-day-dashboard.html">Production Day</a><a href="publish-gate.html">Publish Gate</a><a href="daily-idea-scout.html">Daily Ideas</a><a href="score-engine.html">Score Engine</a></nav>
-<details class="page-guide" open>
+  <nav class="ef-nav" data-ef-nav></nav>
+<details class="page-guide">
   <summary>Page Guide — What is this?</summary>
   <div class="page-guide-body">
     <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">AI generation pipeline: FLUX images, image selection, Wan2.2 video generation on PRESTO (or manual Kling). Shows live PRESTO/ComfyUI status.</span></div>
@@ -1280,5 +1281,5 @@
         projEl.addEventListener("change", sync);
       })();
     </script>
-  </body>
+</body>
 </html>
