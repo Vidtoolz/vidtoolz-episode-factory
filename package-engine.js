@@ -1151,9 +1151,13 @@
               dlBtn.addEventListener("click", () => {
                 const blob = new Blob([data.outlinePrompt || ""], { type: "text/markdown" });
                 const a = document.createElement("a");
-                a.href = URL.createObjectURL(blob);
+                const url = URL.createObjectURL(blob);
+                a.href = url;
                 a.download = "outline-prompt.md";
                 a.click();
+                // Release the blob URL so repeated downloads don't leak it for
+                // the page lifetime (matches downloadTextFile's cleanup).
+                setTimeout(() => URL.revokeObjectURL(url), 0);
               });
             }
           })
@@ -1472,6 +1476,11 @@
   els.confirmSaveBtn.addEventListener("click", handleConfirmSave);
   els.cancelConfirmBtn.addEventListener("click", () => {
     els.confirmPanel.classList.add("hidden");
+    // Cancelling the confirm dialog must also drop the pending selection, so the
+    // card stops showing "Pending selection" and the Download buttons (which are
+    // enabled off a live selection) revert to their real persisted state.
+    pendingSelectedId = "";
+    render();
   });
   document.querySelectorAll("[data-package-engine-view-mode-button]").forEach((button) => {
     button.addEventListener("click", () => setPackageEngineViewMode(button.dataset.packageEngineViewModeButton));

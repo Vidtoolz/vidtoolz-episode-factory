@@ -5294,6 +5294,10 @@ Return 3 alternative but equally promising video candidate angles. For each, inc
         const galleryContainer = doc.querySelector("#mediaGalleryContainer");
         if (galleryContainer && globalScope.MediaGallery && galleryContainer.dataset.runFolder) {
           globalScope.MediaGallery.mount(galleryContainer, { runFolder: galleryContainer.dataset.runFolder });
+        } else if (galleryContainer) {
+          // No focused run → don't silently do nothing; explain why there is
+          // nothing to refresh so the operator isn't left wondering.
+          galleryContainer.textContent = "No active run — focus a run above to load its media gallery, then Refresh.";
         }
       });
     }

@@ -353,20 +353,34 @@
         const btn = document.getElementById("up-button");
         btn.disabled = true; setUp("Uploading…");
         const reader = new FileReader();
-        reader.onload = () => {
+        // Slot-safety: the server rejects an occupied slot with 409 unless
+        // confirm_replace is set. On that one case we ask the operator, then
+        // resubmit with confirm_replace so the existing image is archived aside
+        // (never destroyed) before the upload replaces it.
+        const doUpload = (confirmReplace) => {
           const h = { "Content-Type": "application/json" }; h[nonceHeader] = localWriteNonce;
-          fetch("/api/aigen/upload-image", { method: "POST", headers: h,
-            body: JSON.stringify({ package_id: packageId, prompt_index: idx, data_base64: String(reader.result || ""), localWriteNonce }) })
-            .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
-            .then(({ ok, j }) => {
-              btn.disabled = false;
+          const body = { package_id: packageId, prompt_index: idx, data_base64: String(reader.result || ""), localWriteNonce };
+          if (confirmReplace) body.confirm_replace = true;
+          fetch("/api/aigen/upload-image", { method: "POST", headers: h, body: JSON.stringify(body) })
+            .then((r) => r.json().then((j) => ({ ok: r.ok, status: r.status, j })))
+            .then(({ ok, status, j }) => {
               const d = j && j.data !== undefined ? j.data : j;
+              if (!ok && (status === 409 || (d && d.occupied))) {
+                if (confirm("Slot " + idx + " already has an image. Replace it? The current image is archived (moved aside, not deleted) before the upload.")) {
+                  doUpload(true);
+                } else {
+                  btn.disabled = false; setUp("Upload cancelled — existing image kept.", "var(--muted,#8b949e)");
+                }
+                return;
+              }
+              btn.disabled = false;
               if (!ok || (d && d.ok === false)) throw new Error((d && d.error) || "Upload failed.");
-              setUp("Uploaded " + (d.path || "image") + ". Refreshing…", "var(--success,#34d399)");
+              setUp("Uploaded " + (d.path || "image") + (d.replaced ? " (previous archived)" : "") + ". Refreshing…", "var(--success,#34d399)");
               loadImages();
             })
             .catch((e) => { btn.disabled = false; setUp(e.message, "var(--danger,#f87171)"); });
         };
+        reader.onload = () => { doUpload(false); };
         reader.onerror = () => { btn.disabled = false; setUp("Could not read the file.", "var(--danger,#f87171)"); };
         reader.readAsDataURL(file);
       });

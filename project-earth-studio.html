@@ -141,7 +141,9 @@
           <div class="step ${rendered?'done':''} ${active===4?'active':''}">
             <div class="step-head">4 · Render frames → MP4 ${stepBadge(rendered,false)}</div>
             <div style="margin:6px 0;"><button type="button" class="btn btn-go" id="es-render" ${hasFrames?'':'disabled'}>Render ${s.frame_count||0} frames → MP4</button>
-              ${renderJob.exit_state && renderJob.exit_state!=='idle' ? `<span class="meta">render ${esc(renderJob.exit_state)}${renderJob.active?' · '+renderJob.elapsed_seconds+'s':''}</span>` : ''}</div>
+              ${renderJob.active?'<button type="button" class="btn" id="es-cancel">Cancel render</button>':''}
+              ${renderJob.exit_state && renderJob.exit_state!=='idle' ? `<span class="meta">render ${esc(renderJob.exit_state)}${renderJob.active?' · '+renderJob.elapsed_seconds+'s':''}</span>` : ''}
+              <span class="meta" id="es-cancel-status"></span></div>
             <pre id="es-log" style="display:${renderJob.exit_state && renderJob.exit_state!=='idle'?'block':'none'};">${esc((renderJob.stderr_tail||'').slice(-800))}</pre>
             ${rendered?`<div style="margin-top:8px;"><video controls preload="metadata" src="${esc(renderedUrl)}"></video>
               <div class="meta">${esc(s.rendered_mp4)} · ${Math.round((s.rendered_bytes||0)/1024)} KB</div></div>`:''}
@@ -162,6 +164,7 @@
         document.getElementById('es-generate').onclick = generate;
         document.getElementById('es-refresh').onclick = refresh;
         const rbtn = document.getElementById('es-render'); if (rbtn) rbtn.onclick = startRender;
+        const cbtnEl = document.getElementById('es-cancel'); if (cbtnEl) cbtnEl.onclick = cancelRender;
         const sbtn = document.getElementById('es-stage'); if (sbtn) sbtn.onclick = stage;
 
         // auto-poll: waiting for frames, or an active render
@@ -181,6 +184,18 @@
       async function startRender(){
         try{ await post('/api/earth-studio/render', { id: ID }); toast('Render started'); await refresh(); }
         catch(e){ toast('Render failed: '+(e.message||e), false); const log=document.getElementById('es-log'); if(log){log.style.display='block';log.textContent=e.message||e;} }
+      }
+      async function cancelRender(){
+        const st=document.getElementById('es-cancel-status');
+        const btn=document.getElementById('es-cancel');
+        if(btn) btn.disabled=true; if(st) st.textContent='Cancelling…';
+        try{
+          const r=await post('/api/earth-studio/cancel', { id: ID });
+          const sig = r && r.signal_sent;
+          if(st) st.textContent = (sig && sig !== 'none (no active render)') ? 'Render cancelled (stop signal sent).' : 'No active render to cancel.';
+          toast('Render cancel requested');
+          await refresh();
+        }catch(e){ if(btn) btn.disabled=false; if(st) st.textContent='Cancel failed: '+(e.message||e); toast('Cancel failed', false); }
       }
       async function stage(){
         const st=document.getElementById('es-stage-status');

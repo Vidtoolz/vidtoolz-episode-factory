@@ -191,3 +191,33 @@ test("earth-studio GUI: workspace and media kit link to the guided page", () => 
     assert.match(html, /project-earth-studio\.html\?id=/, `${f} must link to the Earth Studio workspace`);
   }
 });
+
+// ---- Cancel render control (new, backed by the existing cancel route) ----
+
+test("earth-studio lane: cancelRender signals an active render and is a no-op when idle", () => {
+  const { root, pkg } = tmpPackage();
+  lane.STATE.activeJob = null;
+  const idle = lane.cancelRender();
+  assert.equal(idle.ok, true);
+  assert.match(String(idle.signal_sent), /no active render/i);
+
+  lane.writeJob(pkg, { jobName: "J", description: "fly to Paris in 3 seconds" });
+  fs.writeFileSync(path.join(lane.laneDir(pkg), "frames", "Frame_0000.jpeg"), "x");
+  lane.startRender(pkg, "es-test-project", { spawn: () => fakeChild() });
+  let sentSignal = null;
+  const res = lane.cancelRender({ kill: (sig) => { sentSignal = sig; } });
+  assert.equal(res.ok, true);
+  assert.equal(sentSignal, "SIGTERM");
+  assert.equal(res.signal_sent, "SIGTERM");
+  lane.STATE.activeJob = null;
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("project-earth-studio.html wires a Cancel render control to the cancel route, shown only while rendering", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "project-earth-studio.html"), "utf8");
+  // Button is rendered only when a render is active.
+  assert.match(html, /renderJob\.active\?'<button[^>]*id="es-cancel"/);
+  // Handler is wired and posts to the cancel route.
+  assert.match(html, /es-cancel'\);\s*if\s*\(cbtnEl\)\s*cbtnEl\.onclick\s*=\s*cancelRender/);
+  assert.match(html, /async function cancelRender[\s\S]*?\/api\/earth-studio\/cancel/);
+});

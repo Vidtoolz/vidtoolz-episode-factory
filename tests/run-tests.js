@@ -55,6 +55,7 @@ require("./remotion-lane.test.js");
 require("./super-focus.test.js");
 require("./script-evaluator.test.js");
 require("./motion-graphics-studio.test.js");
+require("./operator-control-fixes.test.js");
 
 async function runTests() {
   let passed = 0;

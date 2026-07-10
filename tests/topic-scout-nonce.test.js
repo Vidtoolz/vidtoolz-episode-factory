@@ -134,6 +134,41 @@ test("topic-scout.html submitTopic calls renderReviewInline to show criteria aft
   assert.match(html, /renderReviewInline\s*\(/);
 });
 
+// ── Frontend: write controls are gated on a real package run ──
+// Regression: opening Topic Scout from the nav uses a default run id whose
+// package-runs/<id>/ folder does not exist, so Submit and Delete&replace 404.
+// The page must detect that up front and disable the write controls with a
+// clear explanation instead of firing a doomed request.
+test("topic-scout.html detects run writability and gates write controls", () => {
+  const html = readTopicScoutHtml();
+  assert.match(html, /let runWritable\s*=\s*false/);
+  assert.match(html, /async function checkRunWritable/);
+  // Writability is probed against the run-scoped candidates file.
+  assert.match(html, /package-runs\/\$\{RUN_ID\}\/package-candidates\.json`,\s*\{\s*cache/);
+  assert.match(html, /function applyWritableState/);
+});
+
+test("topic-scout.html submitTopic refuses when the run is not writable", () => {
+  const html = readTopicScoutHtml();
+  // submitTopic must bail on !runWritable with an explanation, not POST.
+  assert.match(html, /if\s*\(\s*!runWritable\s*\)\s*\{[\s\S]*?to submit into[\s\S]*?return;/);
+  // The Submit button stays disabled while not writable, even as the user types.
+  assert.match(html, /submitBtn'\)\.disabled\s*=\s*len\s*<\s*5\s*\|\|\s*!runWritable/);
+});
+
+test("topic-scout.html Delete&replace is disabled and guarded when the run is not writable", () => {
+  const html = readTopicScoutHtml();
+  // handleCandidateAction bails on !runWritable, and applyWritableState disables the buttons.
+  assert.match(html, /handleCandidateAction[\s\S]*?if\s*\(\s*!runWritable\s*\)/);
+  assert.match(html, /topic-delete-replace'\)\.forEach[\s\S]*?disabled\s*=\s*true/);
+});
+
+test("topic-scout.html init resolves writability before applying control state", () => {
+  const html = readTopicScoutHtml();
+  assert.match(html, /checkRunWritable\(\)/);
+  assert.match(html, /applyWritableState\(\)/);
+});
+
 test("topic-scout.html renderReviewInline renders each criterion with pass/fail and detail", () => {
   const html = readTopicScoutHtml();
   assert.match(html, /function renderReviewInline/);

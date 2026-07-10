@@ -5601,7 +5601,12 @@ function readProjectVideoReview(packageId, options = {}) {
     const promptIndex = Number.isInteger(Number(s.prompt_index)) ? Number(s.prompt_index) : (i + 1);
     const mp4Rel = projectVideoReview.mp4RelPath(promptIndex, videoVariant);
     const mp4Abs = path.join(packageDir, mp4Rel);
-    const validation = projectVideoReview.buildValidation(fs.existsSync(mp4Abs) ? probeVideo(mp4Abs) : null, expected);
+    // A clip that is physically on disk must always be viewable. ffprobe can
+    // fail or time out (e.g. a large clip streamed from VIDNAS) even when the
+    // file is fine — that only makes the SPEC unknown, it must never hide the
+    // clip or mislabel a present file as "missing".
+    const mp4Exists = fs.existsSync(mp4Abs);
+    const validation = projectVideoReview.buildValidation(mp4Exists ? probeVideo(mp4Abs) : null, expected, mp4Exists);
     const srcRel = String(s.selected_path || s.path || '');
     const vp = vpByIndex.get(promptIndex) || null;
     const rev = reviewByIndex.get(promptIndex) || null;
@@ -5609,7 +5614,8 @@ function readProjectVideoReview(packageId, options = {}) {
       prompt_index: promptIndex,
       label: String(s.label || labelFromSelectedPath(srcRel) || `clip-${promptIndex}`),
       mp4_path: mp4Rel,
-      mp4_url: validation.exists ? assetUrl(id, mp4Rel) : '',
+      mp4_exists: mp4Exists,
+      mp4_url: mp4Exists ? assetUrl(id, mp4Rel) : '',
       source_image_path: srcRel,
       source_image_url: srcRel ? assetUrl(id, srcRel) : '',
       source_image_exists: srcRel ? fs.existsSync(path.join(packageDir, srcRel)) : false,
@@ -6102,6 +6108,29 @@ function uploadAigenImage(payload = {}, options = {}) {
   const dir = path.join(packageDir, 'images', 'flux-local');
   fs.mkdirSync(dir, { recursive: true });
   const outPath = path.join(dir, filename);
+  // Slot-safety: a manual upload must NOT silently overwrite an image that
+  // already occupies this slot (generated FLUX or a prior upload). Replacing is
+  // explicit (confirm_replace) and never destructive — the existing file is
+  // archived aside with a timestamp before the new bytes are written.
+  const slotOccupied = fs.existsSync(outPath);
+  if (slotOccupied && !payload.confirm_replace) {
+    const error = new Error(`Slot ${promptIndex} already has an image (images/flux-local/${filename}). Clear it first, or resubmit with confirm_replace to archive-and-replace it.`);
+    error.statusCode = 409;
+    error.occupied = true;
+    throw error;
+  }
+  let supersededPath = null;
+  if (slotOccupied) {
+    const archiveDir = path.join(dir, 'superseded');
+    fs.mkdirSync(archiveDir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const baseName = `flux-${String(promptIndex).padStart(3, '0')}`;
+    let dest = path.join(archiveDir, `${baseName}__${stamp}.png`);
+    let n = 1;
+    while (fs.existsSync(dest)) { dest = path.join(archiveDir, `${baseName}__${stamp}-${n}.png`); n += 1; }
+    fs.renameSync(outPath, dest); // move aside (never deleted)
+    supersededPath = path.relative(packageDir, dest);
+  }
   const tmpPath = `${outPath}.tmp`;
   fs.writeFileSync(tmpPath, buf);
   fs.renameSync(tmpPath, outPath);
@@ -6121,6 +6150,8 @@ function uploadAigenImage(payload = {}, options = {}) {
     path: relative,
     bytes: buf.length,
     format: isPng ? 'png' : 'jpeg',
+    replaced: slotOccupied,
+    superseded_path: supersededPath,
     provenance: {
       generation_mode: provenance.generation_mode,
       generation_provider: provenance.generation_provider,
@@ -12689,7 +12720,7 @@ function createServer(options = {}) {
           validateLocalWriteRequest(req, payload);
           sendJSON(res, 200, uploadAigenImage(payload));
         })
-        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'aigen-upload-image-error'));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'aigen-upload-image-error', error.occupied ? { occupied: true } : undefined));
       return;
     }
 

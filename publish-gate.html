@@ -300,9 +300,17 @@
         ).join("");
       }
 
+      function fmtResultValue(v) {
+        if (v === true) return "Yes";
+        if (v === false) return "No";
+        return String(v == null ? "" : v);
+      }
       function renderResult(targetId, payload, labels = {}) {
-        const summary = payload.summary || {};
-        const rows = Object.entries(labels).map(([key, label]) => `<div><strong>${escapeHtml(label)}:</strong> ${escapeHtml(summary[key] || "")}</div>`).join("");
+        // The rough-cut route returns its parsed verdict under `review`
+        // (camelCase keys); the other four gates use `summary` (snake_case). Fall
+        // back so the rough-cut panel is not silently blank on a real PASS.
+        const summary = payload.summary || payload.review || {};
+        const rows = Object.entries(labels).map(([key, label]) => `<div><strong>${escapeHtml(label)}:</strong> ${escapeHtml(fmtResultValue(summary[key]))}</div>`).join("");
         const command = payload.command ? `<div><strong>Command:</strong> <code>${escapeHtml(payload.command)}</code></div>` : "";
         const stderr = payload.stderr ? `<details><summary>stderr</summary><pre>${escapeHtml(payload.stderr)}</pre></details>` : "";
         $(targetId).innerHTML = `${command}${rows || `<pre>${escapeHtml(payload.stdout || JSON.stringify(payload, null, 2))}</pre>`}${stderr}`;
@@ -356,7 +364,7 @@
       async function runRoughCut() {
         const output = await postJson(API.rough, { runId: selectedRunId() });
         state.results.rough = output;
-        renderResult("roughCutResult", output, { rough_cut_review_status: "Review status", second_cut_ready: "Second-cut ready", reason: "Reason" });
+        renderResult("roughCutResult", output, { roughCutReviewStatus: "Review status", secondCutReady: "Second-cut ready", reason: "Reason" });
         updateGates();
       }
       async function runFinalReview() {
