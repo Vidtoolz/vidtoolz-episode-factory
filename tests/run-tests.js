@@ -32,6 +32,7 @@ require("./package-run-archive.test.js");
 require("./media-routing.test.js");
 require("./project-cockpit.test.js");
 require("./idea-promotion.test.js");
+require("./homepage-declutter.test.js");
 require("./topic-idea-scout.test.js");
 require("./project-script.test.js");
 require("./backfill-score-explanation.test.js");
