@@ -83,6 +83,10 @@ const PUBLICATION_METADATA_API = '/api/package-runs/publication-metadata';
 const ARCHIVE_MANIFEST_API = '/api/package-runs/archive-manifest';
 const ROUGH_CUT_SAVE_API = '/api/package-runs/rough-cut/watch-notes';
 const ROUGH_CUT_REVIEW_API = '/api/package-runs/rough-cut/review';
+const PUBLISH_GATE_DECISION_API = '/api/package-runs/publish-gate/decision';
+const PUBLISH_GATE_APPROVE_API = '/api/package-runs/publish-gate/approve';
+const PUBLISH_GATE_REJECT_API = '/api/package-runs/publish-gate/reject';
+const PUBLISH_GATE_REVOKE_API = '/api/package-runs/publish-gate/revoke';
 const ROUGH_CUT_REGENERATE_DERIVED_API = '/api/package-runs/rough-cut/regenerate-derived';
 const ROUGH_CUT_OPEN_API = '/api/package-runs/rough-cut/open';
 const PACKAGE_RUNS_OPEN_API = '/api/package-runs/open';
@@ -291,6 +295,7 @@ const projectScript = require('./project-script.js');
 const projectImagePrompts = require('./project-image-prompts.js');
 const projectI2vPrompts = require('./project-i2v-prompts.js');
 const projectVideoReview = require('./project-video-review.js');
+const publishGateDecision = require('./publish-gate-decision.js');
 const superFocus = require('./super-focus.js');
 const superFocusPrompts = require('./super-focus-prompts.js');
 const superFocusMedia = require('./super-focus-media.js');
@@ -13757,6 +13762,33 @@ function createServer(options = {}) {
       return;
     }
 
+    // ── Publish-gate operator decision (durable, package-run-scoped) ──────────
+    // Distinct from the automated gate result: an explicit approve/reject/revoke
+    // that survives reload + restart, bound to the evidence revision it was made
+    // against, and stale-aware. Never publishes, uploads, renders, or advances
+    // irreversible state. GET is read-only; writes are nonce-gated.
+    if (req.method === 'GET' && url.pathname === PUBLISH_GATE_DECISION_API) {
+      try {
+        const { runDir } = resolvePackageRunDir(url.searchParams.get('runId') || url.searchParams.get('run') || '', { root: serverOptions.root || ROOT });
+        sendJSON(res, 200, publishGateDecision.buildView(runDir));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, error.code || null);
+      }
+      return;
+    }
+    const publishGateWrite = (action) => {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Publish-gate decision API' });
+          const { runDir } = resolvePackageRunDir(payload.runId || payload.run || '', { root: serverOptions.root || ROOT });
+          sendJSON(res, 200, action(runDir, payload));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || null));
+    };
+    if (req.method === 'POST' && url.pathname === PUBLISH_GATE_APPROVE_API) { publishGateWrite(publishGateDecision.approve); return; }
+    if (req.method === 'POST' && url.pathname === PUBLISH_GATE_REJECT_API) { publishGateWrite(publishGateDecision.reject); return; }
+    if (req.method === 'POST' && url.pathname === PUBLISH_GATE_REVOKE_API) { publishGateWrite(publishGateDecision.revoke); return; }
+
     if (req.method === 'POST' && url.pathname === ROUGH_CUT_REGENERATE_DERIVED_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -14052,6 +14084,10 @@ module.exports = {
   ROUGH_CUT_OPEN_API,
   ROUGH_CUT_REGENERATE_DERIVED_API,
   ROUGH_CUT_REVIEW_API,
+  PUBLISH_GATE_DECISION_API,
+  PUBLISH_GATE_APPROVE_API,
+  PUBLISH_GATE_REJECT_API,
+  PUBLISH_GATE_REVOKE_API,
   ROUGH_CUT_SAVE_API,
   ROUGH_CUT_STATUS_API,
   ROUGH_CUT_WATCH_NOTES_FILE,

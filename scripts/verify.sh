@@ -106,6 +106,7 @@ node --check scripts/supervised-capture.js
 node --check scripts/earth-studio-job-plan.js
 node --check scripts/docs-authority-check.js
 node --check scripts/manual-upload-provenance-audit.js
+node --check publish-gate-decision.js
 
 # Operator-clarity guards: canonical spec stays in sync with pipeline-tracker.js,
 # and authoritative docs keep no hardcoded test counts / stale phrases.

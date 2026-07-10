@@ -210,6 +210,26 @@
           </div>
         </article>
 
+        <article class="step" data-step="decision">
+          <div class="step-header">
+            <div class="step-title"><span class="step-number">◆</span><div><h2>Operator Decision</h2><p class="muted">Durable, evidence-bound decision. An automated PASS is <strong>not</strong> approval — you decide explicitly. Survives reload and restart. This never publishes or uploads.</p></div></div>
+            <span id="decisionBadge" class="badge">—</span>
+          </div>
+          <div class="box result">
+            <div id="autoGateLine" class="status-line"></div>
+            <div id="decisionLine" class="status-line"></div>
+            <div id="decisionStale" class="status-line hidden"></div>
+            <label class="result">Decision note (optional)<input id="decisionNote" type="text" maxlength="500" placeholder="Short reason (optional)" /></label>
+            <div class="button-row">
+              <button id="approveBtn" class="primary" type="button" disabled>Approve for publishing</button>
+              <button id="rejectBtn" type="button" disabled>Reject</button>
+              <button id="revokeBtn" type="button" disabled>Revoke approval</button>
+            </div>
+            <div id="decisionStatus" class="status-line" role="status"></div>
+            <details id="decisionHistoryWrap" class="hidden"><summary>Decision history</summary><div id="decisionHistory"></div></details>
+          </div>
+        </article>
+
         <article class="step" data-step="5">
           <div class="step-header">
             <div class="step-title"><span class="step-number">5</span><div><h2>Archive & Learn</h2><p class="muted">Create archive manifests and a post-publish learning note.</p></div></div>
@@ -235,6 +255,10 @@
         exportChecklist: "/api/package-runs/export-checklist",
         metadata: "/api/package-runs/publication-metadata",
         archive: "/api/package-runs/archive-manifest",
+        decision: "/api/package-runs/publish-gate/decision",
+        approve: "/api/package-runs/publish-gate/approve",
+        reject: "/api/package-runs/publish-gate/reject",
+        revoke: "/api/package-runs/publish-gate/revoke",
       };
       const state = { runs: [], selected: null, nonce: "", nonceHeader: "x-vidtoolz-local-write-nonce", results: {} };
       const $ = (id) => document.getElementById(id);
@@ -316,6 +340,87 @@
         $(targetId).innerHTML = `${command}${rows || `<pre>${escapeHtml(payload.stdout || JSON.stringify(payload, null, 2))}</pre>`}${stderr}`;
       }
 
+      // ── Operator decision (durable, evidence-bound) ──────────────────────────
+      // Loads the authoritative decision from the server and renders the
+      // automated gate result and the operator decision as SEPARATE lines. An
+      // automated PASS never shows as approval; a stale approval is labelled and
+      // never treated as current.
+      async function loadDecision() {
+        const runId = selectedRunId();
+        if (!runId) { state.decisionView = null; renderDecision(null); return; }
+        try {
+          state.decisionView = await fetchJson(`${API.decision}?runId=${encodeURIComponent(runId)}`);
+        } catch (e) {
+          state.decisionView = null;
+          $("autoGateLine").textContent = "";
+          $("decisionLine").textContent = `Could not load decision: ${e.message}`;
+        }
+        renderDecision(state.decisionView);
+      }
+
+      function renderDecision(view) {
+        const approve = $("approveBtn"), reject = $("rejectBtn"), revoke = $("revokeBtn");
+        const stale = $("decisionStale");
+        approve.disabled = reject.disabled = revoke.disabled = true;
+        stale.classList.add("hidden");
+        if (!view) { setBadge("decisionBadge", "—", ""); $("autoGateLine").textContent = ""; $("decisionLine").textContent = ""; return; }
+        const evalResult = view.evaluation.result; // pass | fail | not_evaluated
+        const autoLabel = evalResult === "pass" ? "Automated gate: PASS"
+          : evalResult === "fail" ? "Automated gate: FAIL"
+          : "Automated gate: not evaluated";
+        $("autoGateLine").innerHTML = `<strong>${escapeHtml(autoLabel)}</strong>`
+          + (view.evaluation.blockers && view.evaluation.blockers.length ? ` — ${escapeHtml(view.evaluation.blockers.join("; "))}` : "");
+        const d = view.decision || { status: "undecided" };
+        const decLabel = d.status === "approved" ? (d.stale ? "Approval STALE — project changed after approval" : "Operator decision: Approved for publishing")
+          : d.status === "rejected" ? (d.stale ? "Rejection stale — project changed since" : "Operator decision: Rejected")
+          : d.status === "revoked" ? "Operator decision: Approval revoked"
+          : "No decision recorded";
+        $("decisionLine").innerHTML = `<strong>${escapeHtml(decLabel)}</strong>`
+          + (d.note ? ` — <span>${escapeHtml(d.note)}</span>` : "")
+          + (d.decided_at ? ` <span class="muted">(${escapeHtml(d.decided_at)})</span>` : "");
+        setBadge("decisionBadge",
+          view.publish_approved ? "APPROVED" : d.stale ? "STALE" : d.status === "rejected" ? "REJECTED" : d.status === "revoked" ? "REVOKED" : "NO DECISION",
+          view.publish_approved ? "pass" : (d.status === "undecided" ? "" : "warn"));
+        if (d.stale) { stale.textContent = `⚠ ${d.stale_reason || "Decision no longer matches current evidence."}`; stale.classList.remove("hidden"); }
+        // Control rules: Approve only for a current automated PASS. Reject when an
+        // evaluation exists. Revoke only for a current (non-stale) approval.
+        approve.disabled = !(evalResult === "pass");
+        approve.title = evalResult === "pass" ? "" : (evalResult === "not_evaluated" ? "Run the final review first" : "Automated gate is failing");
+        reject.disabled = (evalResult === "not_evaluated");
+        revoke.disabled = !(d.status === "approved");
+        // History (escaped).
+        const hist = view.history || [];
+        const wrap = $("decisionHistoryWrap");
+        if (hist.length) {
+          wrap.classList.remove("hidden");
+          $("decisionHistory").innerHTML = hist.slice().reverse().map((h) =>
+            `<div class="muted">${escapeHtml(h.at || "")} — ${escapeHtml(h.type || "")}${h.previous_status ? ` (was ${escapeHtml(h.previous_status)})` : ""}${h.note ? `: ${escapeHtml(h.note)}` : ""}</div>`
+          ).join("");
+        } else { wrap.classList.add("hidden"); }
+      }
+
+      async function decide(kind, url) {
+        const buttons = [$("approveBtn"), $("rejectBtn"), $("revokeBtn")];
+        buttons.forEach((b) => { b.disabled = true; });
+        $("decisionStatus").textContent = `${kind}…`;
+        const view = state.decisionView || {};
+        try {
+          await postJson(url, {
+            runId: selectedRunId(),
+            note: $("decisionNote").value.trim(),
+            base_evidence_revision: view.evaluation ? view.evaluation.evidence_revision : undefined,
+            base_decision_version: typeof view.decision_version === "number" ? view.decision_version : undefined,
+          });
+          $("decisionNote").value = "";
+          $("decisionStatus").textContent = `${kind} recorded.`;
+        } catch (e) {
+          // Conflict / stale / blocked: show the server's actionable message and
+          // refresh so the operator sees current state. Never a false success.
+          $("decisionStatus").textContent = e.message;
+        }
+        await loadDecision(); // always reconcile from the server
+      }
+
       async function loadStatus() {
         const status = await fetchJson(API.status);
         state.nonce = status.publishGate?.localWriteNonce || status.roughCutInputConsole?.localWriteNonce || "";
@@ -340,7 +445,10 @@
         ["roughCutResult","finalReviewResult","exportResult","metadataResult","archiveResult"].forEach((id) => $(id).textContent = "No result yet.");
         ["roughApproved","roughFixes","finalApproved","finalFixes","metadataConfirmed","publishedConfirm"].forEach((id) => { $(id).checked = false; });
         $("youtubeUrl").value = "";
+        $("decisionNote").value = "";
+        $("decisionStatus").textContent = "";
         updateGates();
+        await loadDecision();
       }
 
       function updateGates() {
@@ -404,6 +512,9 @@
         $("exportBtn").addEventListener("click", () => runExportChecklist().catch((e) => $("exportResult").textContent = e.message));
         $("metadataBtn").addEventListener("click", () => runMetadata().catch((e) => $("metadataResult").textContent = e.message));
         $("archiveBtn").addEventListener("click", () => runArchive().catch((e) => $("archiveResult").textContent = e.message));
+        $("approveBtn").addEventListener("click", () => decide("Approving", API.approve));
+        $("rejectBtn").addEventListener("click", () => decide("Rejecting", API.reject));
+        $("revokeBtn").addEventListener("click", () => decide("Revoking", API.revoke));
         document.addEventListener("change", updateGates);
         try {
           await loadStatus();
