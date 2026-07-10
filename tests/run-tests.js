@@ -58,6 +58,7 @@ require("./motion-graphics-studio.test.js");
 require("./operator-control-fixes.test.js");
 require("./presto-eligibility.test.js");
 require("./manual-upload-provenance.test.js");
+require("./publish-gate-decision.test.js");
 
 async function runTests() {
   let passed = 0;
