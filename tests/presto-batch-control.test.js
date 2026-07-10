@@ -29,8 +29,24 @@ function createPrestoFixture(options = {}) {
     version: 1,
     selections: [{ prompt_index: 6, selected_path: "images/flux-local/flux-006.png" }],
   });
+  // `eligible: true` makes the package a genuinely-submittable one for the
+  // server-side PRESTO eligibility gate: a present source image + a saved I2V
+  // prompt for the selection, and NO staged clip (empty target slot). Used by
+  // the spawn/timeout/profile tests, which need a package that actually has
+  // renderable work now that the server rejects ineligible submissions.
+  if (options.eligible) {
+    const imgDir = path.join(packageDir, "images", "flux-local");
+    fs.mkdirSync(imgDir, { recursive: true });
+    fs.writeFileSync(path.join(imgDir, "flux-006.png"), "png", "utf8");
+    writeJson(path.join(packageDir, "video-prompts.json"), {
+      version: 1,
+      prompt_type: "image_to_video",
+      prompts: [{ prompt_index: 6, prompt: "slow push-in on the subject" }],
+    });
+  }
   // Package-facing staged MP4 for selection 6: package-scoped completion source.
-  if (!options.noStagedMp4) {
+  // (Skipped for eligible fixtures so the target slot is empty and submittable.)
+  if (!options.noStagedMp4 && !options.eligible) {
     const mp4Dir = path.join(packageDir, "videos", "mp4");
     fs.mkdirSync(mp4Dir, { recursive: true });
     fs.writeFileSync(path.join(mp4Dir, "006.mp4"), "mp4", "utf8");
@@ -318,7 +334,9 @@ const SUBMIT_HEADERS = () => ({
 });
 
 test("PRESTO submit returns 503 when ComfyUI is unreachable (no job spawned)", async () => {
-  const fixture = createPrestoFixture();
+  // Eligible package so the request passes the eligibility gate and reaches the
+  // reachability probe — that is the path this test exercises.
+  const fixture = createPrestoFixture({ eligible: true });
   const captured = {};
   const server = packageEngineServer.createServer({
     prestoReachableCheck: async () => false,
@@ -347,7 +365,7 @@ test("PRESTO submit returns 503 when ComfyUI is unreachable (no job spawned)", a
 });
 
 test("PRESTO submit spawns with --timeout 5400 when ComfyUI is reachable", async () => {
-  const fixture = createPrestoFixture();
+  const fixture = createPrestoFixture({ eligible: true });
   const captured = {};
   const server = packageEngineServer.createServer({
     prestoReachableCheck: async () => true,
@@ -377,7 +395,7 @@ test("PRESTO submit spawns with --timeout 5400 when ComfyUI is reachable", async
 });
 
 test("startPrestoPackageJob honors AIGEN_PRESTO_TIMEOUT_SECONDS override", async () => {
-  const fixture = createPrestoFixture();
+  const fixture = createPrestoFixture({ eligible: true });
   const captured = {};
   try {
     await withPrestoEnv(fixture, async () => {
@@ -397,7 +415,7 @@ test("startPrestoPackageJob honors AIGEN_PRESTO_TIMEOUT_SECONDS override", async
 });
 
 test("startPrestoPackageJob defaults to the recommended HQ profile", async () => {
-  const fixture = createPrestoFixture();
+  const fixture = createPrestoFixture({ eligible: true });
   const captured = {};
   try {
     await withPrestoEnv(fixture, async () => {
@@ -416,7 +434,7 @@ test("startPrestoPackageJob defaults to the recommended HQ profile", async () =>
 });
 
 test("startPrestoPackageJob honors an explicit profile and rejects unknown ones", async () => {
-  const fixture = createPrestoFixture();
+  const fixture = createPrestoFixture({ eligible: true });
   const captured = {};
   try {
     await withPrestoEnv(fixture, async () => {
