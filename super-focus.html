@@ -282,7 +282,7 @@
         <button class="link-btn" data-home>← Back</button>
       </div>
       <ul class="proj-list" id="proj-list"></ul>
-      <p class="empty hidden" id="proj-empty">No Super Focus projects yet. Go back and create one.</p>
+      <p class="empty hidden" id="proj-empty" role="status" aria-live="polite">No Super Focus projects yet. Go back and create one.</p>
     </section>
 
     <!-- PROJECT FORM -->
@@ -423,6 +423,7 @@
     </section>
   </div>
 
+  <script src="super-focus-project-io.js"></script>
   <script>
     var STATUS_API = '/api/package-engine/status';
     var PROJECTS_API = '/api/super-focus/projects';
@@ -774,48 +775,53 @@
       }).catch(function () { panel.innerHTML = '<div class="prow"><span class="pstat bad">Benchmark failed</span></div>'; });
     });
 
-    // ---- Create ----
-    document.getElementById('btn-create').addEventListener('click', function () {
-      apiPost(PROJECTS_API, { title: '' }).then(function (res) {
-        if (!res.ok) {
-          // A stale backend is explained by the visible banner (handleResp); don't
-          // stack a generic alert on top of it.
-          if (!res.staleBackend) alert('Could not create project: ' + ((res.body && res.body.error) || 'error'));
-          return;
-        }
-        var proj = unwrap(res.body).project;
-        openProject(proj);
+    // ---- Create & Open (honest project I/O feedback, Slice A) ----
+    // Robust request lifecycle lives in SuperFocusProjectIO (unit tested); this
+    // is thin DOM glue. In-flight guard = one action creates at most one project;
+    // navigation happens only after an authoritative, validated success.
+    // If the module fails to load, skip wiring (and log) rather than throwing,
+    // so the rest of this inline script keeps working.
+    (function () {
+      if (typeof SuperFocusProjectIO === 'undefined') {
+        if (typeof console !== 'undefined') console.error('SuperFocusProjectIO failed to load; project create/open buttons are inactive.');
+        return;
+      }
+      var btnCreate = document.getElementById('btn-create');
+      var createLabelEl = btnCreate.querySelector('.label');
+      var createLabelText = createLabelEl ? createLabelEl.textContent : '';
+      var createCtl = SuperFocusProjectIO.makeCreateController({
+        apiPost: apiPost, unwrap: unwrap, projectsApi: PROJECTS_API,
+        onPending: function () {
+          btnCreate.disabled = true;
+          btnCreate.setAttribute('aria-busy', 'true');
+          if (createLabelEl) createLabelEl.textContent = 'Creating…';
+        },
+        onRestore: function () {
+          btnCreate.disabled = false;
+          btnCreate.removeAttribute('aria-busy');
+          if (createLabelEl) createLabelEl.textContent = createLabelText;
+        },
+        onSuccess: function (proj) { openProject(proj); },
+        onError: function (msg) { alert(msg); }
       });
-    });
+      btnCreate.addEventListener('click', createCtl.run);
 
-    // ---- Open list ----
-    document.getElementById('btn-open').addEventListener('click', function () {
-      apiGet(PROJECTS_API).then(function (res) {
-        var list = document.getElementById('proj-list');
-        var empty = document.getElementById('proj-empty');
-        list.innerHTML = '';
-        var projects = res.ok ? (unwrap(res.body).projects || []) : [];
-        empty.classList.toggle('hidden', projects.length > 0);
-        projects.forEach(function (p) {
-          var li = document.createElement('li');
-          var left = document.createElement('div');
-          var title = document.createElement('div');
-          title.textContent = p.title && p.title.trim() ? p.title : '(untitled)';
-          title.style.fontWeight = '600';
-          var meta = document.createElement('div');
-          meta.className = 'meta';
-          meta.textContent = 'stage: ' + p.stage + ' · updated ' + (p.updated_at || '').slice(0, 16).replace('T', ' ');
-          left.appendChild(title); left.appendChild(meta);
-          var btn = document.createElement('button');
-          btn.className = 'btn';
-          btn.textContent = 'Open →';
-          btn.addEventListener('click', function () { loadProject(p.project_id); });
-          li.appendChild(left); li.appendChild(btn);
-          list.appendChild(li);
-        });
-        show('open');
+      // ---- Open list ---- distinguishes loading / empty / error honestly.
+      var openCtl = SuperFocusProjectIO.makeOpenController({
+        apiGet: apiGet, unwrap: unwrap, projectsApi: PROJECTS_API,
+        onState: function (state, projects) {
+          SuperFocusProjectIO.applyListState(
+            document,
+            { listEl: document.getElementById('proj-list'), emptyEl: document.getElementById('proj-empty') },
+            state, projects, function (id) { loadProject(id); }
+          );
+        }
       });
-    });
+      document.getElementById('btn-open').addEventListener('click', function () {
+        show('open');
+        openCtl.run();
+      });
+    })();
 
     Array.prototype.forEach.call(document.querySelectorAll('[data-home]'), function (b) {
       b.addEventListener('click', goHome);

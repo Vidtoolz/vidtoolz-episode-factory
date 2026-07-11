@@ -53,6 +53,7 @@ require("./quick-action-endpoints.test.js");
 require("./artifact-access-foundation.test.js");
 require("./remotion-lane.test.js");
 require("./super-focus.test.js");
+require("./super-focus-project-io.test.js");
 require("./script-evaluator.test.js");
 require("./motion-graphics-studio.test.js");
 require("./operator-control-fixes.test.js");
