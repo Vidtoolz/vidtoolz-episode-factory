@@ -100,7 +100,7 @@ hardcoded cards), and treats an empty `runs` as a valid empty result.
 |---|---|---|
 | `mission-control.html` | 4 hardcoded Parked cards + 1 hardcoded Approved-Ideas card | Two `<div>` roots (`parked-runs-root`, `approved-ideas-root`) + `<script src="mission-control-parked.js">` + `init()` |
 | `mission-control-parked.js` (new) | — | Read-only module: `isParkedRun`/`selectParkedRuns`/`freshness`/`parseApprovedIdeas` (pure) + render/loader (injectable `doc`/`fetchImpl`, in-flight guards) |
-| `tests/mission-control-parked.test.js` (new) | — | 33 tests (classification, freshness, parsing, render states, XSS, no-overlap, HTML regression) |
+| `tests/mission-control-parked.test.js` (new) | — | 34 tests (classification, freshness, parsing, render states, XSS, no-overlap, HTML regression) |
 | `tests/run-tests.js` | — | registers the new suite once |
 
 ## Verification (exact)
