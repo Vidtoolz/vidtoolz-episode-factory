@@ -101,100 +101,15 @@
       <div id="published-videos-root"></div>
 
       <p class="mc-section-title">Parked</p>
-
-      <!-- 2026-05-02 AI Video Idea Filter -->
-      <article class="mc-video-card parked">
-        <div class="mc-thumb">
-          <div class="mc-thumb-placeholder">AVOID BAD<br>AI IDEAS<br><span style="font-size:10px;color:var(--muted)">(concept only)</span></div>
-        </div>
-        <div class="mc-card-body">
-          <div class="mc-card-top">
-            <span class="mc-date">2026-05-02</span>
-            <span class="mc-badge parked-badge">Parked</span>
-          </div>
-          <h2 class="mc-topic"><a href="mission-control/2026-05-02-ai-video-idea-filter.md">Avoid Bad AI Video Ideas Before You Script</a></h2>
-          <div class="mc-stage">Production Prep — script done, prep artifacts generated, not captured</div>
-          <div class="mc-blocker">Parked behind active run · scoring caveat unverified (score 94)</div>
-          <div class="mc-card-footer">
-            <a href="mission-control/2026-05-02-ai-video-idea-filter.md">Open full page →</a>
-          </div>
-        </div>
-      </article>
-
-      <!-- 2026-05-02 Next VIDTOOLZ Video -->
-      <article class="mc-video-card parked">
-        <div class="mc-thumb">
-          <div class="mc-thumb-placeholder">No topic<br>selected</div>
-        </div>
-        <div class="mc-card-body">
-          <div class="mc-card-top">
-            <span class="mc-date">2026-05-02</span>
-            <span class="mc-badge parked-badge">Parked</span>
-          </div>
-          <h2 class="mc-topic"><a href="mission-control/2026-05-02-next-vidtoolz-video.md">Next VIDTOOLZ Video</a></h2>
-          <div class="mc-stage">Pre-selection — no package selected yet</div>
-          <div class="mc-blocker">Parked · no winning package · no topic · no script</div>
-          <div class="mc-card-footer">
-            <a href="mission-control/2026-05-02-next-vidtoolz-video.md">Open full page →</a>
-          </div>
-        </div>
-      </article>
-
-      <!-- 2026-05-06 AI Video Proof Plan (superseded) -->
-      <article class="mc-video-card parked">
-        <div class="mc-thumb">
-          <div class="mc-thumb-placeholder">PROOF PLAN<br><span style="font-size:10px;color:var(--muted)">(superseded)</span></div>
-        </div>
-        <div class="mc-card-body">
-          <div class="mc-card-top">
-            <span class="mc-date">2026-05-06</span>
-            <span class="mc-badge parked-badge">Parked</span>
-          </div>
-          <h2 class="mc-topic"><a href="mission-control/2026-05-06-ai-video-proof-plan.md">Stop Planning AI Videos Until You Have a Proof Plan</a></h2>
-          <div class="mc-stage">Abandoned as published video — long theoretical script superseded by short concrete version</div>
-          <div class="mc-blocker">Superseded by published short: "Stop chasing AI tools. Do this instead."</div>
-          <div class="mc-card-footer">
-            <a href="mission-control/2026-05-06-ai-video-proof-plan.md">Open full page →</a>
-          </div>
-        </div>
-      </article>
-
-      <!-- AI Replace Editors (superseded — shipped as The Microwave Learned to Cook) -->
-      <article class="mc-video-card parked">
-        <div class="mc-thumb">
-          <div class="mc-thumb-placeholder">AI REPLACE<br>EDITORS<br><span style="font-size:10px;color:var(--muted)">(superseded)</span></div>
-        </div>
-        <div class="mc-card-body">
-          <div class="mc-card-top">
-            <span class="mc-date">2026-06</span>
-            <span class="mc-badge parked-badge">Parked</span>
-          </div>
-          <h2 class="mc-topic">AI Replace Editors Is the Wrong Question</h2>
-          <div class="mc-stage">Working title — evolved into published video: "The Microwave Learned to Cook — What Editing Means Now"</div>
-          <div class="mc-blocker">Superseded by published video. Working title only; no separate package-run.</div>
-          <div class="mc-card-footer">
-            <span style="font-size:12px;color:var(--muted)">Shipped under final title. Same proven pattern: short conversational script, green screen + AI backgrounds.</span>
-          </div>
-        </div>
-      </article>
+      <!-- Data-derived from /api/package-runs/list; a run is parked ONLY when its
+           explicit lifecycle marker packageRunState.state === "parked". See
+           mission-control-parked.js. No hardcoded parked cards. -->
+      <div id="parked-runs-root" style="color:var(--muted);font-size:13px;padding:16px 0;">Loading parked runs…</div>
 
       <p class="mc-section-title">Approved Ideas</p>
-
-      <article class="mc-video-card parked">
-        <div class="mc-thumb">
-          <div class="mc-thumb-placeholder">AWAITING<br>APPROVED<br>IDEAS</div>
-        </div>
-        <div class="mc-card-body">
-          <div class="mc-card-top">
-            <span class="mc-badge parked-badge">Queue</span>
-          </div>
-          <h2 class="mc-topic">No approved ideas yet</h2>
-          <div class="mc-stage">When Mikko greenlights a video idea, it appears here before package-run creation</div>
-          <div class="mc-card-footer">
-            <a href="mission-control/approved-ideas.md">Open approved-ideas.md →</a>
-          </div>
-        </div>
-      </article>
+      <!-- Data-derived from mission-control/approved-ideas.md (its declared single
+           source of truth). No hardcoded idea cards. -->
+      <div id="approved-ideas-root" style="color:var(--muted);font-size:13px;padding:16px 0;">Loading approved ideas…</div>
 
     </div>
     <script>
@@ -424,6 +339,18 @@
             publishedRoot.textContent = "Published video registry failed to load.";
             console.error(error);
           });
+      })();
+    </script>
+    <script src="mission-control-parked.js"></script>
+    <script>
+      (function () {
+        if (typeof MissionControlParked === "undefined") return;
+        function start() { MissionControlParked.init(); }
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", start);
+        } else {
+          start();
+        }
       })();
     </script>
 </body>

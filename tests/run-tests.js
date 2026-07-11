@@ -56,6 +56,7 @@ require("./super-focus.test.js");
 require("./script-evaluator.test.js");
 require("./motion-graphics-studio.test.js");
 require("./operator-control-fixes.test.js");
+require("./mission-control-parked.test.js");
 require("./presto-eligibility.test.js");
 require("./manual-upload-provenance.test.js");
 require("./publish-gate-decision.test.js");
