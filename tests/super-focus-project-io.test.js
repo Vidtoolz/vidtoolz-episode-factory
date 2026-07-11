@@ -320,3 +320,10 @@ test("super-focus.html: no inline false-empty mapping remains", () => {
   // The old bug: res.ok ? (...projects) : []  → showed empty on failure.
   assert.doesNotMatch(html, /res\.ok \? \(unwrap\(res\.body\)\.projects/);
 });
+
+test("super-focus.html: wiring is guarded so a failed module load does not cascade", () => {
+  const html = read("super-focus.html");
+  // The glue must bail out (not throw) if the external module is missing, so
+  // the rest of the inline page script keeps running.
+  assert.match(html, /if \(typeof SuperFocusProjectIO === 'undefined'\)/);
+});

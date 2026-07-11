@@ -775,12 +775,17 @@
       }).catch(function () { panel.innerHTML = '<div class="prow"><span class="pstat bad">Benchmark failed</span></div>'; });
     });
 
-    // ---- Create ----
-    // ---- Create ---- (honest project I/O feedback, Slice A)
+    // ---- Create & Open (honest project I/O feedback, Slice A) ----
     // Robust request lifecycle lives in SuperFocusProjectIO (unit tested); this
     // is thin DOM glue. In-flight guard = one action creates at most one project;
     // navigation happens only after an authoritative, validated success.
+    // If the module fails to load, skip wiring (and log) rather than throwing,
+    // so the rest of this inline script keeps working.
     (function () {
+      if (typeof SuperFocusProjectIO === 'undefined') {
+        if (typeof console !== 'undefined') console.error('SuperFocusProjectIO failed to load; project create/open buttons are inactive.');
+        return;
+      }
       var btnCreate = document.getElementById('btn-create');
       var createLabelEl = btnCreate.querySelector('.label');
       var createLabelText = createLabelEl ? createLabelEl.textContent : '';

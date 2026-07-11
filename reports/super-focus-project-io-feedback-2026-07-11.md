@@ -82,7 +82,15 @@ Explicit states via `makeOpenController` → `onState`:
   (nonce + Host/Origin). Both already return honest non-2xx on error; neither
   fakes success; project ids/paths remain validated. **No server code changed.**
 
-## Tests (30 new; full suite `1915/1915`)
+## Module-load robustness
+
+The glue is guarded (`if (typeof SuperFocusProjectIO === 'undefined') return;`)
+so that if the external module ever fails to load, the wiring is skipped (with a
+console error) instead of throwing — which would otherwise cascade and break the
+rest of the inline page script. Proven in a real browser: with the module absent,
+code after the glue still runs and no uncaught error is raised.
+
+## Tests (31 new; full suite `1916/1916`)
 
 `tests/super-focus-project-io.test.js` (registered once), fake DOM + injected API:
 - **Create (11):** one-request-per-click; double-invocation → one request; pending
