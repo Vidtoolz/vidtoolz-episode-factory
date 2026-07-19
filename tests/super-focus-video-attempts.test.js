@@ -496,6 +496,20 @@ test('video-attempts: super-focus.html surfaces the three render-source states (
   assert.ok(page.includes('Source image changed since this clip was rendered'), 'pre-review drift head warning');
 });
 
+test('video-attempts: attempt-storage UI is read-only — GET only, no nonce, textContent rendering', () => {
+  const page = fs.readFileSync(path.join(__dirname, '..', 'super-focus.html'), 'utf8');
+  assert.ok(page.includes('id="vidattempts-report"'), 'report button present');
+  assert.ok(page.includes('id="vidattempts-out"'), 'output panel present');
+  const start = page.indexOf("getElementById('vidattempts-report').addEventListener");
+  assert.ok(start !== -1, 'button is wired');
+  const end = page.indexOf('---- Step 6', start);
+  const slice = page.slice(start, end === -1 ? start + 4000 : end);
+  assert.ok(slice.includes("'/api/super-focus/attempt-storage?id='"), 'wired to the audit GET');
+  assert.ok(!/apiPost|method:\s*'POST'|localWriteNonce/.test(slice), 'no writes, no nonce — read-only');
+  assert.ok(!/innerHTML/.test(slice), 'renders via textContent only');
+  assert.ok(slice.includes('nothing is ever deleted here'), 'report-only copy');
+});
+
 test('video-attempts: docs describe attempts, staged sources, and completion ownership', () => {
   const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'super-focus.md'), 'utf8');
   assert.ok(doc.includes('video-attempts.json'));

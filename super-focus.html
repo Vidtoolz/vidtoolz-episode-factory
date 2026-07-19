@@ -479,6 +479,11 @@
         <div class="later-note"><strong>PRESTO video rendering is expensive (~55 min per clip) and runs one clip at a time.</strong> <strong>Queues</strong> PRESTO ComfyUI / Wan2.2 for rows that have BOTH a generated still and a saved image-to-video prompt and no video yet — you can queue many and walk away; the queue drains automatically and survives a refresh. Existing videos and rows missing a still/i2v prompt are skipped. PRESTO must be running; it is never auto-started. <strong>Day/night workflow:</strong> pause the queue during the day, resume at night. <strong>Stop current render</strong> stops the local render process and pauses the queue; a partial/failed clip may be left and the remote PRESTO GPU render may keep running until it finishes there — retry the row explicitly later. Each clip appears next to its image above; or use the per-row “Queue video on PRESTO” button (Cancel queued removes a not-yet-running item).</div>
         <div class="imggen-progress hidden" id="vidgen-progress"></div>
         <div class="imggen-bar hidden" id="vidgen-barwrap"><div class="imggen-fill" id="vidgen-fill"></div></div>
+        <div class="row">
+          <button class="btn" id="vidattempts-report">Attempt storage report</button>
+          <span class="save-state" id="vidattempts-status"></span>
+        </div>
+        <div class="later-note hidden" id="vidattempts-out"></div>
       </div>
 
       <!-- Continue: Super Focus ends at generated videos; point the operator at the next lane. -->
@@ -2991,6 +2996,48 @@
         setStatus(el, parts.join(' · '), d.enqueued_count === 0);
         startVideosPolling(); refreshVideosStatus();
       }).catch(function () { setStatus(el, 'Could not queue videos', true); });
+    });
+
+    // ---- Attempt storage report (read-only; fetch on demand, never polls) ----
+    document.getElementById('vidattempts-report').addEventListener('click', function () {
+      if (!currentId) return;
+      var el = document.getElementById('vidattempts-status');
+      var out = document.getElementById('vidattempts-out');
+      setStatus(el, 'Reading attempt storage…');
+      fetch('/api/super-focus/attempt-storage?id=' + encodeURIComponent(currentId), { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+        .then(function (res) {
+          if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Could not read attempt storage', true); return; }
+          var d = unwrap(res.body);
+          out.textContent = '';
+          var addLine = function (text, warn) {
+            var line = document.createElement('div');
+            if (warn) line.className = 'eval-warn';
+            line.textContent = text;
+            out.appendChild(line);
+          };
+          var statuses = Object.keys(d.by_status || {}).sort().map(function (s) { return d.by_status[s] + ' ' + s.replace(/_/g, ' '); });
+          addLine('Attempts: ' + (d.record_count || 0) + (statuses.length ? ' (' + statuses.join(', ') + ')' : ''));
+          addLine('Staged evidence on disk: ' + (d.staged ? d.staged.files_on_disk : 0) + ' file(s), '
+            + ((d.staged ? d.staged.bytes_on_disk : 0) / (1024 * 1024)).toFixed(1) + ' MB');
+          addLine('Evidence-locked (never safe to clean): ' + (d.evidence_locked || []).length);
+          if ((d.dispatched_in_flight || []).length) addLine('In flight: ' + d.dispatched_in_flight.length + ' dispatched attempt(s)');
+          var integ = d.integrity || {};
+          var problems = (integ.orphan_dirs || []).length + (integ.missing_staged || []).length + (integ.size_mismatched_staged || []).length;
+          if (problems) {
+            addLine('Integrity: ' + (integ.orphan_dirs || []).length + ' orphan dir(s), '
+              + (integ.missing_staged || []).length + ' missing staged, '
+              + (integ.size_mismatched_staged || []).length + ' size-mismatched', true);
+          } else {
+            addLine('Integrity: clean (no orphans, nothing missing, no size drift)');
+          }
+          addLine('Cleanup candidates (report only — nothing is ever deleted here): '
+            + (d.cleanup_candidates || []).length + ' attempt(s), '
+            + ((d.cleanup_candidate_bytes || 0) / (1024 * 1024)).toFixed(1) + ' MB');
+          out.classList.remove('hidden');
+          setStatus(el, 'Report loaded (read-only)');
+        })
+        .catch(function () { setStatus(el, 'Could not read attempt storage', true); });
     });
 
     // ---- Step 6: create i2v prompts for generated images that don't have one ----
