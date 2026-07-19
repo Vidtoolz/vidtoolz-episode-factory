@@ -129,6 +129,7 @@ const SUPER_FOCUS_IMAGE_REVIEW_API = '/api/super-focus/image-review';
 const SUPER_FOCUS_IMAGE_REVIEW_ACTION_PREFIX = '/api/super-focus/image-review/';
 const SUPER_FOCUS_VIDEO_REVIEW_API = '/api/super-focus/video-review';
 const SUPER_FOCUS_ATTEMPT_STORAGE_API = '/api/super-focus/attempt-storage';
+const SUPER_FOCUS_VIDEO_QUEUE_AUDIT_API = '/api/super-focus/video-queue-audit';
 const SUPER_FOCUS_VIDEO_REVIEW_ACTION_PREFIX = '/api/super-focus/video-review/';
 const SUPER_FOCUS_TITLE_API = '/api/super-focus/title';
 const SUPER_FOCUS_SCRIPT_API = '/api/super-focus/script';
@@ -7831,6 +7832,141 @@ function videoQueueControl(queue) {
   };
 }
 
+// ── Read-only queue audit ────────────────────────────────────────────────────
+// Classifies every LIVE (queued/running) item of a project's persisted video
+// queue against CURRENT project truth, without any side effects: no pump, no
+// reconcile, no queue write, no attempt creation, no PRESTO contact. This is
+// the safe inspection path for a paused queue — the video-queue and
+// videos-status GETs both drive the pump (whose reconciliation may rewrite
+// the queue file even while paused) and must NOT be used for auditing.
+//
+// Dispositions (first match wins, most-blocking first):
+//   invalid_identity        row for the item's index no longer exists
+//   missing_source          still is gone from disk
+//   missing_prompt          i2v prompt is gone
+//   already_satisfied       a clip exists — resume marks skipped_exists (no-op)
+//   duplicate_queue_item    an earlier live item targets the same slot
+//   active_attempt_exists   a dispatched generation attempt owns the slot
+//   source_unapproved       current image-review gate refuses the row
+//   stale_prompt            enqueue-time i2v hash ≠ current canonical hash, or
+//                           the prompt is flagged stale by an upstream edit
+//                           (resume would render the CURRENT text — surfaced,
+//                           not blocking, exactly like the live drift badge)
+//   stale_assignment        the row's visual-plan assignment was revised
+//   legacy_compatibility    dispatchable ONLY under the documented legacy rule
+//                           (no review + no provenance = unknown_legacy):
+//                           eligible and labeled, but approval is unproven
+//   safe_to_resume          every current gate passes with a real approval
+//
+// Historical intent limits (never invented): pre-attempt queue items store
+// only the enqueue-time canonical i2v hash. Source-image bytes, assignment,
+// and motion contract at enqueue time were not recorded, so "unchanged since
+// enqueue" can only be proven for the prompt hash. Everything else is judged
+// against CURRENT state and labeled accordingly.
+const VIDEO_QUEUE_AUDIT_DISPATCHABLE = new Set(['safe_to_resume', 'legacy_compatibility', 'stale_prompt', 'stale_assignment']);
+// Measured HQ render wall time (54m51s — see launchPrestoProductionJob).
+const VIDEO_QUEUE_AUDIT_SECONDS_PER_CLIP = 3291;
+
+function auditSuperFocusVideoQueue(state, sfMediaRoot) {
+  const id = state.project_id;
+  const subdir = superFocusVideoSubdir();
+  const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+  const attempts = superFocusMedia.readVideoAttempts(id, { mediaRoot: sfMediaRoot });
+  const mediaDir = superFocusMedia.mediaDirFor(id, { mediaRoot: sfMediaRoot });
+  const rowByIndex = new Map((state.image_prompts || []).filter((r) => r && r.text && String(r.text).trim()).map((r) => [r.index, r]));
+  const history = {};
+  const summary = {};
+  const items = [];
+  const liveSeen = new Set();
+  let position = 0;
+  for (const item of queue.items) {
+    position += 1;
+    if (item.status !== 'queued' && item.status !== 'running') {
+      history[item.status] = (history[item.status] || 0) + 1;
+      continue;
+    }
+    const idx = item.index;
+    const row = rowByIndex.get(idx) || null;
+    const imgPath = superFocusMedia.safeImageFilePath(id, idx, { mediaRoot: sfMediaRoot });
+    const imageExists = Boolean(imgPath && fs.existsSync(imgPath));
+    const videoExists = fs.existsSync(superFocusMedia.videoFilePath(mediaDir, subdir, idx));
+    const activeAttemptId = attempts.active[String(idx)];
+    const activeAttempt = activeAttemptId ? attempts.attempts[activeAttemptId] : null;
+    const currentHash = row && superFocus.hasI2vPrompt(row) ? i2vTextHash(row) : null;
+    const reasons = [];
+    let disposition = null;
+    let gateStatus = null;
+    if (!row) {
+      disposition = 'invalid_identity'; reasons.push(`no current row with index ${idx}`);
+    } else if (!imageExists) {
+      disposition = 'missing_source'; reasons.push('still image is missing from disk');
+    } else if (!superFocus.hasI2vPrompt(row)) {
+      disposition = 'missing_prompt'; reasons.push('row no longer has an i2v prompt');
+    } else if (videoExists) {
+      disposition = 'already_satisfied'; reasons.push('a clip already exists — resume marks this item skipped_exists');
+    } else if (liveSeen.has(idx)) {
+      disposition = 'duplicate_queue_item'; reasons.push('an earlier live queue item already targets this slot');
+    } else if (activeAttempt && activeAttempt.status === 'dispatched') {
+      disposition = 'active_attempt_exists'; reasons.push(`attempt ${activeAttemptId} is dispatched for this slot`);
+    } else {
+      const gate = superFocusImageReview.imageReviewGate(row, buildImageReviewContext(state, row, sfMediaRoot));
+      gateStatus = gate.effective_status;
+      if (!gate.eligible) {
+        disposition = 'source_unapproved'; reasons.push(gate.reason || 'image not cleared by review');
+      } else if (item.i2v_hash && currentHash && item.i2v_hash !== currentHash) {
+        disposition = 'stale_prompt'; reasons.push('i2v text changed after enqueue — resume renders the CURRENT text');
+      } else if (row.i2v_prompt && row.i2v_prompt.stale) {
+        disposition = 'stale_prompt'; reasons.push('i2v prompt flagged stale by an upstream image-prompt edit');
+      } else if (row.assignment_stale) {
+        disposition = 'stale_assignment'; reasons.push('visual-plan assignment changed since this prompt was written');
+      } else if (gate.effective_status === 'unknown_legacy') {
+        disposition = 'legacy_compatibility';
+        reasons.push('dispatchable under legacy compatibility (no review, no provenance) — image approval is unproven, not refused');
+      } else {
+        disposition = 'safe_to_resume';
+      }
+    }
+    if (row && imageExists) liveSeen.add(idx);
+    summary[disposition] = (summary[disposition] || 0) + 1;
+    items.push({
+      position,
+      item_id: item.item_id || null,
+      index: idx,
+      status: item.status,
+      queued_at: item.queued_at || null,
+      disposition,
+      reasons,
+      image_exists: imageExists,
+      video_exists: videoExists,
+      i2v_hash_queued: item.i2v_hash || null,
+      i2v_hash_current: currentHash,
+      image_review_status: gateStatus,
+      active_attempt: activeAttempt ? { attempt_id: activeAttemptId, status: activeAttempt.status } : null,
+      would_dispatch_on_resume: VIDEO_QUEUE_AUDIT_DISPATCHABLE.has(disposition),
+      estimated_seconds: VIDEO_QUEUE_AUDIT_DISPATCHABLE.has(disposition) ? VIDEO_QUEUE_AUDIT_SECONDS_PER_CLIP : 0,
+    });
+  }
+  const dispatchable = items.filter((it) => it.would_dispatch_on_resume);
+  const queuedTimes = items.map((it) => it.queued_at).filter(Boolean).sort();
+  return {
+    project_id: id,
+    paused: Boolean(queue.paused),
+    pause: videoQueueControl(queue),
+    subdir,
+    queue_count: queue.items.length,
+    live_count: items.length,
+    history,
+    summary,
+    oldest_queued_at: queuedTimes[0] || null,
+    newest_queued_at: queuedTimes[queuedTimes.length - 1] || null,
+    would_dispatch_on_resume: dispatchable.length,
+    estimated_runtime_seconds: dispatchable.length * VIDEO_QUEUE_AUDIT_SECONDS_PER_CLIP,
+    seconds_per_clip: VIDEO_QUEUE_AUDIT_SECONDS_PER_CLIP,
+    policy: 'report_only',
+    items,
+  };
+}
+
 // Is a row eligible for NORMAL video queueing right now? ctx = { sfRoot, sfMediaRoot, options }.
 function superFocusVideoEligibility(id, state, subdir, idx, ctx) {
   const row = (state.image_prompts || []).find((r) => r.index === idx);
@@ -11139,6 +11275,21 @@ function createServer(options = {}) {
     }
 
     // ── Video review (clip evidence vs the production contract) ──────────
+
+    // Read-only queue audit: classifies live queue items against current
+    // project truth WITHOUT the pump (the video-queue/videos-status GETs
+    // reconcile-and-may-rewrite; this route never writes, never dispatches,
+    // never contacts PRESTO). Safe on a paused production queue.
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_VIDEO_QUEUE_AUDIT_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+        const state = superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown project
+        sendJSON(res, 200, auditSuperFocusVideoQueue(state, sfMediaRoot));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-video-queue-audit-error');
+      }
+      return;
+    }
 
     // Read-only attempt-storage audit: staged-source retention, evidence
     // locks, orphan/missing staging, and cleanup CANDIDATES (report only —
@@ -15057,6 +15208,7 @@ module.exports = {
   SUPER_FOCUS_IMAGE_REVIEW_API,
   SUPER_FOCUS_VIDEO_REVIEW_API,
   SUPER_FOCUS_ATTEMPT_STORAGE_API,
+  SUPER_FOCUS_VIDEO_QUEUE_AUDIT_API,
   SUPER_FOCUS_TITLE_API,
   SUPER_FOCUS_SCRIPT_API,
   SUPER_FOCUS_GENERATE_TOPIC_API,
