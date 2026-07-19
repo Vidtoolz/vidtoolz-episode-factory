@@ -514,6 +514,240 @@ function readVideoProvenanceHashes(projectId, options = {}) {
   return out;
 }
 
+// ── Render-time generation attempts (video-attempts.json) ────────────────────
+//
+// WHY THIS LAYER EXISTS — the state model before it, and the gaps it closes.
+//
+// Before attempts, a render's inputs were only PARTIALLY pinned at dispatch:
+// pumpSuperFocusVideoQueue → materializeVideoInputs wrote selected-images.json
+// pointing at the CANONICAL still (images/flux-local/flux-NNN.png) and
+// video-provenance.json recorded the canonical i2v hash. run-production.py then
+// read the still's BYTES at UPLOAD time (an HTTP upload to PRESTO's ComfyUI,
+// seconds-to-minutes after dispatch) — so the bytes that actually produced a
+// clip were never recorded anywhere. A still regenerated/restored inside the
+// dispatch→upload window silently changed the render's true source, and nothing
+// could later prove which bytes PRESTO received. Completion attribution was
+// file-existence-per-index (reconcile sees videos/<subdir>/NNN.mp4 appear), so
+// a clip on disk could not be tied to the dispatch that produced it (filename
+// reuse across regenerations, late files after a cancel, retries).
+//
+// The attempts layer closes both gaps:
+//  * Attempt identity + immutable source capture — every dispatch mints an
+//    attempt record (attempt_id) carrying the exact inputs: the source image is
+//    COPIED to an attempt-private staged path (attempts/<attempt_id>/…) which
+//    selected-images.json then points at, so the sha256 recorded here is of the
+//    very file run-production.py uploads — recorded bytes === uploaded bytes.
+//    The dispatched i2v text is captured verbatim (full text + sha256 + the
+//    canonical 16-hex i2vPromptHash), with assignment id, profile, subdir and
+//    the requested output path.
+//  * Completion ownership — only the slot's ACTIVE 'dispatched' attempt may
+//    complete. Cancelled / superseded / failed attempts refuse completion (the
+//    refusal is recorded as an event on the attempt) so a late file never
+//    inherits another dispatch's provenance. Completing records the OUTPUT
+//    clip's sha256 + size + mtime, binding clip bytes → attempt BY CONTENT,
+//    and re-hashes the staged source to prove it stayed immutable
+//    (source_verified).
+//
+// Statuses: dispatched → completed | cancelled | failed | superseded.
+// Legacy clips (no attempt record) keep their exact previous behavior: render
+// provenance is null — unknown, surfaced as unknown, NEVER invented.
+
+const VIDEO_ATTEMPTS_FILENAME = 'video-attempts.json';
+const VIDEO_ATTEMPTS_SUBDIR = 'attempts';
+
+function readVideoAttempts(projectId, options = {}) {
+  const p = path.join(mediaDirFor(projectId, options), VIDEO_ATTEMPTS_FILENAME);
+  if (!fs.existsSync(p)) return { version: 1, active: {}, attempts: {} };
+  try {
+    const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
+    return {
+      version: 1,
+      active: parsed && parsed.active && typeof parsed.active === 'object' ? parsed.active : {},
+      attempts: parsed && parsed.attempts && typeof parsed.attempts === 'object' ? parsed.attempts : {},
+    };
+  } catch (_) {
+    return { version: 1, active: {}, attempts: {} }; // partially-written file → unknown, never crash a read
+  }
+}
+
+function writeVideoAttempts(projectId, data, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  fs.mkdirSync(mediaDir, { recursive: true });
+  const outPath = path.join(mediaDir, VIDEO_ATTEMPTS_FILENAME);
+  const tmp = `${outPath}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmp, outPath);
+  return data;
+}
+
+function attemptEvent(attempt, event, detail) {
+  attempt.events = Array.isArray(attempt.events) ? attempt.events : [];
+  attempt.events.push({ at: new Date().toISOString(), event, detail: detail || null });
+}
+
+// Mint a new dispatch attempt for one row: stage the canonical still to an
+// attempt-private copy, hash THE COPY, and record every render-affecting input.
+// Supersedes any still-dispatched previous attempt for the same slot. Throws
+// when the canonical still is unreadable — the caller must fail the dispatch
+// honestly rather than render with unproven inputs.
+function createVideoAttempt(projectId, row, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  const idx = Math.round(Number(row && row.index));
+  if (!Number.isInteger(idx) || idx < 1) throw new Error('createVideoAttempt: row.index must be a positive integer');
+  const text = row && row.i2v_prompt && typeof row.i2v_prompt.text === 'string' ? row.i2v_prompt.text.trim() : '';
+  if (!text) throw new Error('createVideoAttempt: row has no i2v prompt text');
+  const canonical = imageFilePath(mediaDir, idx);
+  const attemptId = `att-${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}`;
+  const stagedRel = path.join(VIDEO_ATTEMPTS_SUBDIR, attemptId, imageFileName(idx));
+  const stagedAbs = path.join(mediaDir, stagedRel);
+  fs.mkdirSync(path.dirname(stagedAbs), { recursive: true });
+  fs.copyFileSync(canonical, stagedAbs); // throws if the still vanished — caller fails the dispatch
+  const sha = hashFileSha256(stagedAbs); // hash of the exact file run-production uploads
+  if (!sha) { try { fs.unlinkSync(stagedAbs); } catch (_) {} throw new Error('createVideoAttempt: could not hash the staged source image'); }
+  let origMtime = null;
+  let origSize = null;
+  try { const st = fs.statSync(canonical); origMtime = Math.round(st.mtimeMs); origSize = st.size; } catch (_) {}
+  const subdir = String(options.subdir || 'mp4');
+  const now = new Date().toISOString();
+  const data = readVideoAttempts(projectId, options);
+  const prevId = data.active[String(idx)];
+  if (prevId && data.attempts[prevId] && data.attempts[prevId].status === 'dispatched') {
+    data.attempts[prevId].status = 'superseded';
+    data.attempts[prevId].reason = 'superseded_by_new_dispatch';
+    data.attempts[prevId].finished_at = now;
+    attemptEvent(data.attempts[prevId], 'superseded', `by ${attemptId}`);
+  }
+  const record = {
+    attempt_id: attemptId,
+    index: idx,
+    item_id: options.itemId || null,
+    job_id: null,
+    status: 'dispatched',
+    reason: null,
+    dispatched_at: now,
+    finished_at: null,
+    source: {
+      original_rel: path.relative(mediaDir, canonical),
+      original_mtime_ms: origMtime,
+      original_size: origSize,
+      staged_rel: stagedRel,
+      sha256: sha,
+      size: fs.statSync(stagedAbs).size,
+    },
+    i2v: {
+      text,
+      canonical_hash: i2vPromptHash(text),
+      sha256: crypto.createHash('sha256').update(text, 'utf8').digest('hex'),
+    },
+    assignment_id: (row && row.assignment_id) || null,
+    profile: options.profile || null,
+    subdir,
+    output_rel: path.join('videos', subdir, videoFileName(idx)),
+    source_verified: null,
+    output: null,
+    events: [],
+  };
+  data.attempts[attemptId] = record;
+  data.active[String(idx)] = attemptId;
+  writeVideoAttempts(projectId, data, options);
+  return record;
+}
+
+// Completion ownership: ONLY the slot's active 'dispatched' attempt completes.
+// Anything else (cancelled, superseded, failed, already completed, or not the
+// active attempt) refuses — recorded on the attempt as an ignored completion,
+// never overwriting newer work. On success: hash the output clip (content
+// binding) and re-hash the staged source (immutability proof → source_verified).
+function completeVideoAttempt(projectId, attemptId, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  const data = readVideoAttempts(projectId, options);
+  const attempt = data.attempts[attemptId];
+  if (!attempt) return { completed: false, reason: 'unknown attempt' };
+  const refuse = (reason) => {
+    attemptEvent(attempt, 'completion_ignored', reason);
+    writeVideoAttempts(projectId, data, options);
+    return { completed: false, reason };
+  };
+  if (attempt.status !== 'dispatched') return refuse(`attempt already ${attempt.status} — not the active attempt`);
+  if (data.active[String(attempt.index)] !== attemptId) return refuse('not the active attempt for this slot');
+  const outputAbs = path.join(mediaDir, attempt.output_rel);
+  let st = null;
+  try { st = fs.statSync(outputAbs); } catch (_) { st = null; }
+  if (!st) return refuse('output file missing');
+  const outputSha = hashFileSha256(outputAbs);
+  if (!outputSha) return refuse('output file unreadable');
+  const stagedAbs = path.join(mediaDir, attempt.source.staged_rel);
+  const stagedShaNow = hashFileSha256(stagedAbs);
+  attempt.source_verified = Boolean(stagedShaNow && stagedShaNow === attempt.source.sha256);
+  if (!attempt.source_verified) attemptEvent(attempt, 'source_verification_failed', stagedShaNow ? 'staged bytes changed' : 'staged copy missing');
+  attempt.output = { sha256: outputSha, size: st.size, mtime_ms: Math.round(st.mtimeMs) };
+  attempt.status = 'completed';
+  attempt.finished_at = new Date().toISOString();
+  writeVideoAttempts(projectId, data, options);
+  return { completed: true, attempt };
+}
+
+// Terminal non-completion transitions (cancelled / failed), only from
+// 'dispatched'. Idempotent: repeated or out-of-order marks are no-ops.
+function markVideoAttempt(projectId, attemptId, status, reason, options = {}) {
+  if (status !== 'cancelled' && status !== 'failed') return { changed: false, reason: 'invalid status' };
+  const data = readVideoAttempts(projectId, options);
+  const attempt = data.attempts[attemptId];
+  if (!attempt || attempt.status !== 'dispatched') return { changed: false, reason: attempt ? `attempt already ${attempt.status}` : 'unknown attempt' };
+  attempt.status = status;
+  attempt.reason = reason || null;
+  attempt.finished_at = new Date().toISOString();
+  writeVideoAttempts(projectId, data, options);
+  return { changed: true, attempt };
+}
+
+// Resolve WHICH completed attempt produced the clip currently on disk for a
+// slot, by content: probe the attempt's recorded output mtime+size first (the
+// repo's lazy-hash economics — no sha256 on routine reads), and only hash the
+// clip when the probe diverges. Returns a read-only provenance summary or null
+// (legacy / unattributed clip — never invented). source_matches_current_row
+// compares the render-time source bytes to the row's CURRENT still, again
+// probe-first (mtime) with sha256 only on divergence; null when undeterminable.
+function videoRenderProvenance(projectId, index, options = {}) {
+  const idx = Math.round(Number(index));
+  const data = readVideoAttempts(projectId, options);
+  const completed = Object.values(data.attempts)
+    .filter((a) => a && a.index === idx && a.status === 'completed' && a.output)
+    .sort((a, b) => String(b.finished_at || '').localeCompare(String(a.finished_at || '')));
+  if (!completed.length) return null;
+  let match = null;
+  if (options.videoMtimeMs != null && options.videoSize != null) {
+    match = completed.find((a) => a.output.mtime_ms === options.videoMtimeMs && a.output.size === options.videoSize) || null;
+  }
+  if (!match && typeof options.hashVideo === 'function') {
+    const sha = options.hashVideo();
+    if (sha) match = completed.find((a) => a.output.sha256 === sha) || null;
+  }
+  if (!match) return null;
+  let sourceMatches = null;
+  if (options.imageExists === false) {
+    sourceMatches = false;
+  } else if (options.imageMtimeMs != null && match.source.original_mtime_ms != null
+      && options.imageMtimeMs === match.source.original_mtime_ms) {
+    sourceMatches = true; // unchanged since staging (mtime probe)
+  } else if (typeof options.hashImage === 'function') {
+    const h = options.hashImage();
+    sourceMatches = h ? h === match.source.sha256 : null;
+  }
+  return {
+    attempt_id: match.attempt_id,
+    dispatched_at: match.dispatched_at,
+    completed_at: match.finished_at,
+    profile: match.profile || null,
+    source_sha256: match.source.sha256,
+    source_verified: match.source_verified === true,
+    source_matches_current_row: sourceMatches,
+    i2v_canonical_hash: (match.i2v && match.i2v.canonical_hash) || null,
+    i2v_text_sha256: (match.i2v && match.i2v.sha256) || null,
+    assignment_id: match.assignment_id || null,
+  };
+}
+
 // A row is video-eligible only when it has BOTH a generated still on disk AND a
 // saved i2v motion prompt. Returns the eligible rows (with the still's rel path).
 // options.regenerate documents (and enforces nothing against) explicit
@@ -545,11 +779,18 @@ function eligibleMissingVideoRows(projectId, imagePrompts, subdir, options = {})
 function materializeVideoInputs(projectId, imagePrompts, options = {}) {
   const mediaDir = mediaDirFor(projectId, options);
   const eligible = Array.isArray(options.rows) ? options.rows : eligibleVideoRows(projectId, imagePrompts, options);
+  // options.selectedPathByIndex: attempt-staged source overrides ({index: rel
+  // path under mediaDir}). run-production.py uploads the file selected_path
+  // names, so pointing it at the immutable staged copy is what makes the
+  // attempt's recorded source hash the hash of the bytes actually uploaded.
+  const pathOverrides = options.selectedPathByIndex && typeof options.selectedPathByIndex === 'object' ? options.selectedPathByIndex : {};
   const selections = eligible.map((p) => ({
     prompt_index: p.index,
     index: p.index,
     selected_source: 'flux-local',
-    selected_path: path.join('images', 'flux-local', imageFileName(p.index)),
+    selected_path: typeof pathOverrides[p.index] === 'string' && pathOverrides[p.index]
+      ? pathOverrides[p.index]
+      : path.join('images', 'flux-local', imageFileName(p.index)),
     label: `flux-${String(p.index).padStart(3, '0')}`,
   }));
   const prompts = eligible.map((p) => ({ prompt_index: p.index, prompt: p.i2v_prompt.text.trim() }));
@@ -700,6 +941,11 @@ module.exports = {
   readVideoProvenance,
   writeVideoProvenance,
   readVideoProvenanceHashes,
+  readVideoAttempts,
+  createVideoAttempt,
+  completeVideoAttempt,
+  markVideoAttempt,
+  videoRenderProvenance,
   hashFileSha256,
   supersededDir,
   readSupersededManifest,
