@@ -125,6 +125,8 @@ const SUPER_FOCUS_VISUAL_PLAN_API = '/api/super-focus/visual-plan';
 const SUPER_FOCUS_VISUAL_PLAN_READINESS_API = '/api/super-focus/visual-plan/readiness';
 const SUPER_FOCUS_VISUAL_PLAN_ACTION_PREFIX = '/api/super-focus/visual-plan/';
 const SUPER_FOCUS_PROMPTS_FROM_ASSIGNMENTS_API = '/api/super-focus/image-prompts/from-assignments';
+const SUPER_FOCUS_IMAGE_REVIEW_API = '/api/super-focus/image-review';
+const SUPER_FOCUS_IMAGE_REVIEW_ACTION_PREFIX = '/api/super-focus/image-review/';
 const SUPER_FOCUS_TITLE_API = '/api/super-focus/title';
 const SUPER_FOCUS_SCRIPT_API = '/api/super-focus/script';
 const SUPER_FOCUS_GENERATE_TOPIC_API = '/api/super-focus/generate-topic';
@@ -304,6 +306,7 @@ const projectVideoReview = require('./project-video-review.js');
 const publishGateDecision = require('./publish-gate-decision.js');
 const superFocus = require('./super-focus.js');
 const superFocusVisualPlan = require('./super-focus-visual-plan.js');
+const superFocusImageReview = require('./super-focus-image-review.js');
 const superFocusPrompts = require('./super-focus-prompts.js');
 const superFocusMedia = require('./super-focus-media.js');
 const superFocusRouter = require('./super-focus-router.js');
@@ -10612,6 +10615,46 @@ function handlePipelineStatus(req, res, url) {
   });
 }
 
+// ── Image review helpers (domain: super-focus-image-review.js) ──────────────
+
+// Build the on-disk/plan truth one row's review is judged against. Hashing is
+// LAZY: the sha256 runs only when the mtime probe diverges from the reviewed
+// snapshot (or at review start), never on routine status reads.
+function buildImageReviewContext(state, row, sfMediaRoot) {
+  const filePath = superFocusMedia.safeImageFilePath(state.project_id, row.index, { mediaRoot: sfMediaRoot });
+  let mtime = null;
+  if (filePath) { try { mtime = Math.round(fs.statSync(filePath).mtimeMs); } catch (_) { mtime = null; } }
+  const exists = mtime != null;
+  const plan = state.visual_plan || null;
+  const assignment = row.assignment_id && plan
+    ? (plan.assignments || []).find((a) => a.assignment_id === row.assignment_id) || null
+    : null;
+  const planStale = Boolean(plan && plan.stale);
+  return {
+    image_exists: exists,
+    image_mtime_ms: mtime,
+    image_hash: null,
+    hash_image: () => (exists ? superFocusMedia.hashFileSha256(filePath) : null),
+    assignment,
+    assignment_fresh: Boolean(assignment && assignment.status === 'approved' && !assignment.stale && !planStale),
+    prompt_text: row.text || '',
+  };
+}
+
+// The narrow I2V gate the video dispatch routes consume: a PNG on disk is not
+// approval. Legacy rows (no review, no assignment provenance) pass in
+// compatibility mode; everything else must be approved and hash-current.
+function applyImageReviewGate(state, rows, sfMediaRoot) {
+  const allowed = [];
+  const skipped = [];
+  (rows || []).forEach((row) => {
+    const gate = superFocusImageReview.imageReviewGate(row, buildImageReviewContext(state, row, sfMediaRoot));
+    if (gate.eligible) allowed.push(row);
+    else skipped.push({ index: row.index, reason: gate.reason });
+  });
+  return { allowed, skipped };
+}
+
 function createServer(options = {}) {
   const serverOptions = options && typeof options === 'object' ? options : {};
   return http.createServer((req, res) => {
@@ -10947,6 +10990,102 @@ function createServer(options = {}) {
           });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-prompts-from-assignments-error'));
+      return;
+    }
+
+    // ── Image review (evidence vs acceptance criteria; operator decides) ──
+
+    // Read-only: every row with an image or a review, with its EFFECTIVE
+    // status (hash-recomputed), approval blockers, criteria diff, readiness.
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_IMAGE_REVIEW_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+        const state = superFocus.loadProject(id, { root: sfRoot });
+        const rows = (state.image_prompts || []).filter((r) => r && r.text && r.text.trim());
+        const contexts = rows.map((row) => buildImageReviewContext(state, row, sfMediaRoot));
+        const reviews = rows.map((row, i) => {
+          const context = contexts[i];
+          const eff = superFocusImageReview.effectiveReview(row, context);
+          return {
+            index: row.index,
+            assignment_id: row.assignment_id || null,
+            image_exists: context.image_exists,
+            effective_status: eff.status,
+            reasons: eff.reasons,
+            criteria: eff.criteria,
+            removed_criteria: eff.removed_criteria,
+            override: eff.override,
+            review: row.image_review || null,
+            approval: row.image_review ? superFocusImageReview.approvalBlockers(row, context) : null,
+            gate: superFocusImageReview.imageReviewGate(row, context),
+            assignment: context.assignment ? {
+              assignment_id: context.assignment.assignment_id,
+              beat_id: context.assignment.beat_id,
+              viewer_task: context.assignment.viewer_task,
+              visual_function: context.assignment.visual_function,
+              media_type: context.assignment.media_type,
+              assignment: context.assignment.assignment,
+              status: context.assignment.status,
+            } : null,
+          };
+        });
+        const withImages = rows.filter((_, i) => contexts[i].image_exists);
+        sendJSON(res, 200, {
+          project_id: id,
+          reviews,
+          readiness: superFocusImageReview.computeImageReviewReadiness(rows, contexts),
+          images_present: withImages.length,
+        });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-image-review-error');
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname.startsWith(SUPER_FOCUS_IMAGE_REVIEW_ACTION_PREFIX)) {
+      const action = url.pathname.slice(SUPER_FOCUS_IMAGE_REVIEW_ACTION_PREFIX.length);
+      const KNOWN = ['start', 'set-criterion', 'save-notes', 'approve', 'approve-override', 'reject', 'revoke', 'reopen', 'clear'];
+      if (KNOWN.indexOf(action) === -1) {
+        sendError(res, 404, `Unknown image-review action: ${action}`, 'super-focus-image-review-error');
+        return;
+      }
+      readJsonBody(req, 1024 * 128)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: `Super Focus image-review ${action} API` });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot }); // 404 unknown id
+          const idx = Math.round(Number(payload.index));
+          const row = (state.image_prompts || []).find((r) => r.index === idx);
+          if (!row) { const e = new Error(`No image prompt at index ${payload.index}.`); e.statusCode = 404; throw e; }
+          const context = buildImageReviewContext(state, row, sfMediaRoot);
+          const ir = superFocusImageReview;
+          let review;
+          if (action === 'start') review = ir.startReview(row, context);
+          else if (action === 'reopen') review = ir.reopen(row, context);
+          else if (action === 'set-criterion') review = ir.setCriterion(row, String(payload.criterion_hash || ''), String(payload.result || ''), payload.note);
+          else if (action === 'save-notes') review = ir.saveNotes(row, payload.notes);
+          else if (action === 'approve') review = ir.approve(row, context);
+          else if (action === 'approve-override') review = ir.approveWithOverride(row, context, payload.reason);
+          else if (action === 'reject') review = ir.reject(row, payload.reason);
+          else if (action === 'revoke') review = ir.revoke(row);
+          else review = ir.clearReview(row); // 'clear' → null when safe
+          const saved = superFocus.setImageReview(id, idx, review, { root: sfRoot });
+          const savedRow = (saved.image_prompts || []).find((r) => r.index === idx);
+          const freshContext = buildImageReviewContext(saved, savedRow, sfMediaRoot);
+          const eff = ir.effectiveReview(savedRow, freshContext);
+          sendJSON(res, 200, {
+            project_id: id,
+            index: idx,
+            review: savedRow.image_review || null,
+            effective_status: eff.status,
+            reasons: eff.reasons,
+            criteria: eff.criteria,
+            removed_criteria: eff.removed_criteria,
+            approval: savedRow.image_review ? ir.approvalBlockers(savedRow, freshContext) : null,
+            gate: ir.imageReviewGate(savedRow, freshContext),
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-image-review-error'));
       return;
     }
 
@@ -11784,6 +11923,14 @@ function createServer(options = {}) {
           if (targetRows.length === 0) {
             const e = new Error('No rows need a video. Each needs a still, an i2v prompt, and no existing video (use Regenerate to replace one).'); e.statusCode = 400; throw e;
           }
+          // Image-review gate: unreviewed / rejected / stale-approved images
+          // must not reach PRESTO. Every excluded row gets an explicit reason.
+          const reviewGate = applyImageReviewGate(state, targetRows, sfMediaRoot);
+          targetRows = reviewGate.allowed;
+          if (targetRows.length === 0) {
+            const e = new Error(`No rows are cleared for video generation: ${reviewGate.skipped.map((s) => `#${s.index} ${s.reason}`).join('; ')}`);
+            e.statusCode = 409; throw e;
+          }
           // Pre-flight: PRESTO ComfyUI must be reachable. No cloud fallback, no auto-start.
           const reach = options.prestoReachableCheck || options.reachableCheck || prestoComfyuiReachable;
           const reachable = await reach(PRESTO_BASE_URL, options);
@@ -11830,6 +11977,7 @@ function createServer(options = {}) {
             requested: materialized.indexes,
             eligible_missing: missingRows.length,
             skipped_existing_video: skippedExistingVideo,
+            review_skipped: reviewGate.skipped,
             skipped_missing_prereq: skippedPrereq,
             media_dir: materialized.mediaDir,
             subdir,
@@ -11886,6 +12034,10 @@ function createServer(options = {}) {
             const e = new Error(`PRESTO ComfyUI is not reachable at ${PRESTO_BASE_URL}. Start ComfyUI on PRESTO and retry (no fallback).`); e.statusCode = 503; throw e;
           }
           const subdir = PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4';
+          {
+            const gate = superFocusImageReview.imageReviewGate(row, buildImageReviewContext(state, row, sfMediaRoot));
+            if (!gate.eligible) { const e = new Error(`This image is not cleared for video generation: ${gate.reason}.`); e.statusCode = 409; throw e; }
+          }
           const archived = superFocusMedia.archiveVideo(id, subdir, idx, { mediaRoot: sfMediaRoot });
           let materialized;
           let job;
@@ -11993,8 +12145,24 @@ function createServer(options = {}) {
         .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Super Focus queue-video API' });
           const id = payload.id || payload.project_id || '';
-          superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown project
+          const state = superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown project
           const ctx = { sfRoot, sfMediaRoot, options };
+          {
+            // Review-gate only rows that HAVE an image: a missing still stays
+            // the queue's own 'skipped_prereq' concern (review judges images).
+            const idx = Math.round(Number(payload.index));
+            const row = (state.image_prompts || []).find((r) => r.index === idx);
+            if (row) {
+              const gateContext = buildImageReviewContext(state, row, sfMediaRoot);
+              if (gateContext.image_exists) {
+                const gate = superFocusImageReview.imageReviewGate(row, gateContext);
+                if (!gate.eligible) {
+                  sendJSON(res, 200, { enqueued: false, item: null, skipped: [{ index: idx, reason: gate.reason }], queue: null });
+                  return;
+                }
+              }
+            }
+          }
           const result = enqueueSuperFocusVideos(id, [payload.index], ctx);
           await pumpSuperFocusVideoQueue(id, ctx).catch(() => null);
           const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
@@ -12018,12 +12186,15 @@ function createServer(options = {}) {
           const state = superFocus.loadProject(id, { root: sfRoot });
           const ctx = { sfRoot, sfMediaRoot, options };
           const subdir = superFocusVideoSubdir();
-          let indexes = superFocusMedia.eligibleMissingVideoRows(id, state.image_prompts, subdir, { mediaRoot: sfMediaRoot }).map((r) => r.index);
+          const missingRows = superFocusMedia.eligibleMissingVideoRows(id, state.image_prompts, subdir, { mediaRoot: sfMediaRoot });
+          const reviewGate = applyImageReviewGate(state, missingRows, sfMediaRoot);
+          let indexes = reviewGate.allowed.map((r) => r.index);
           if (Array.isArray(payload.indexes) && payload.indexes.length) {
             const wanted = payload.indexes.map((n) => Math.round(Number(n)));
             indexes = indexes.filter((i) => wanted.includes(i));
           }
           const result = enqueueSuperFocusVideos(id, indexes, ctx);
+          result.skipped = (result.skipped || []).concat(reviewGate.skipped);
           await pumpSuperFocusVideoQueue(id, ctx).catch(() => null);
           const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
           sendJSON(res, 200, {
@@ -14585,6 +14756,7 @@ module.exports = {
   SUPER_FOCUS_VISUAL_PLAN_API,
   SUPER_FOCUS_VISUAL_PLAN_READINESS_API,
   SUPER_FOCUS_PROMPTS_FROM_ASSIGNMENTS_API,
+  SUPER_FOCUS_IMAGE_REVIEW_API,
   SUPER_FOCUS_TITLE_API,
   SUPER_FOCUS_SCRIPT_API,
   SUPER_FOCUS_GENERATE_TOPIC_API,
