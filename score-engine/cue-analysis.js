@@ -25,7 +25,10 @@ function round1(n) { return Math.round(n * 10) / 10; }
  */
 function analyzeCueSheet(project = {}, cues = []) {
   const duration = isNum(project.duration_seconds) ? project.duration_seconds : 0;
-  const dialogueHeavy = ["heavy", "medium"].includes(project.dialogue_density);
+  // Valid enum is low|medium|high (score-schemas): "heavy" never occurs — the
+  // old check silently disabled dialogue-risk analysis on the DEFAULT
+  // narration-heavy configuration, the exact case the feature exists for.
+  const dialogueHeavy = ["high", "medium"].includes(project.dialogue_density);
   const warnings = [];
   const list = (Array.isArray(cues) ? cues : []).filter((c) => c && isNum(c.start_seconds) && isNum(c.end_seconds));
 

@@ -4674,7 +4674,13 @@ async function probeOllamaTags(baseUrl, model, options = {}) {
     const data = await res.json().catch(() => ({}));
     const names = Array.isArray(data && data.models) ? data.models.map((m) => String((m && m.name) || '')).filter(Boolean) : [];
     const want = String(model || '').trim();
-    const ready = want ? names.some((n) => n === want || n.split(':')[0] === want.split(':')[0]) : names.length > 0;
+    // A model configured WITH a tag must match that exact tag: "qwen3:8b"
+    // installed must NOT report "qwen3:14b" as ready (generation would then
+    // fail as an opaque 502 instead of the router's clean model_missing).
+    // A tagless configured name still accepts any installed tag of that base.
+    const ready = want
+      ? names.some((n) => n === want || (!want.includes(':') && n.split(':')[0] === want))
+      : names.length > 0;
     return { reachable: true, model_ready: ready, models: names };
   } catch (_) {
     return { reachable: false, model_ready: false, models: [] };
@@ -10904,7 +10910,8 @@ function createServer(options = {}) {
           const candidatesReturned = attempt.parsed.length;
           const distinct = attempt.distinct;
           const provider = attempt.provider;
-          const saved = superFocus.fillEmptyImagePrompts(id, distinct, { root: sfRoot, capacity });
+          const generatedPromptHashesByIndex = superFocusMedia.generatedPromptHashesByIndex(id, { mediaRoot: sfMediaRoot });
+          const saved = superFocus.fillEmptyImagePrompts(id, distinct, { root: sfRoot, capacity, generatedPromptHashesByIndex });
           const after = (saved.image_prompts || []).filter((r) => r && r.text && r.text.trim()).length;
           const added = after - before;
           const noProgress = added === 0 && emptyCount > 0;
@@ -11093,7 +11100,8 @@ function createServer(options = {}) {
         .then((payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Super Focus image-prompt save API' });
           const id = payload.id || payload.project_id || '';
-          const state = superFocus.saveImagePrompt(id, payload.index, payload.text, { root: sfRoot });
+          const generatedPromptHashesByIndex = superFocusMedia.generatedPromptHashesByIndex(id, { mediaRoot: sfMediaRoot });
+          const state = superFocus.saveImagePrompt(id, payload.index, payload.text, { root: sfRoot, generatedPromptHashesByIndex });
           sendJSON(res, 200, { project: state });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-image-prompt-error'));
@@ -11143,12 +11151,14 @@ function createServer(options = {}) {
           const capacity = superFocusPrompts.IMAGE_PROMPT_MAX;
           const recon = superFocusMedia.reconcileImages(id, state.image_prompts, { mediaRoot: sfMediaRoot });
           const hasImage = new Set(recon.images.filter((r) => r.has_image).map((r) => r.index));
+          const promptChanged = new Set(recon.images.filter((r) => r.prompt_changed).map((r) => r.index));
           const slots = state.image_prompts.filter((r) => r && r.index >= 1 && r.index <= capacity);
           const withText = slots.filter((r) => typeof r.text === 'string' && r.text.trim());
           const skippedEmpty = slots.length - withText.length;
           const eligibleRows = withText
-            .filter((r) => !hasImage.has(r.index))
+            .filter((r) => !hasImage.has(r.index) || promptChanged.has(r.index))
             .sort((a, b) => a.index - b.index);
+          const promptChangedEligible = eligibleRows.filter((r) => promptChanged.has(r.index)).length;
           const skippedExisting = withText.length - eligibleRows.length;
           if (eligibleRows.length === 0) {
             const e = new Error('No rows need an image. Every prompt with text already has a generated image.');
@@ -11174,6 +11184,14 @@ function createServer(options = {}) {
           const targetRows = eligibleRows.slice(0, effectiveLimit);
           const willGenerate = targetRows.length;
           const remainingEligible = eligibleRows.length - willGenerate;
+          // Refuse BEFORE materializing while a batch is running — otherwise the
+          // 409 below would land only after image-prompts.json (the running
+          // job's input file) had already been rewritten with a different set.
+          const curFlux = currentFluxJobStatus();
+          if (curFlux.active) {
+            const e = new Error('A FLUX image job is already running. Wait for it to finish.');
+            e.statusCode = 409; e.active = curFlux; throw e;
+          }
           // Materialize ONLY the target rows so run-handoff.py generates exactly
           // those indexes — empty and already-imaged rows are never enqueued.
           const materialized = superFocusMedia.materializeImagePrompts(id, targetRows, { mediaRoot: sfMediaRoot });
@@ -11193,9 +11211,14 @@ function createServer(options = {}) {
             comfyuiUrl,
             payload,
           });
-          // Every target row is a fresh image for a row that had none, so the new
-          // image matches the current prompt — clear any lingering mismatch flag.
-          const targetIndexes = targetRows.map((r) => r.index);
+          // Only clear mismatch markers for rows that definitely get a fresh file
+          // under existing skip/force semantics. If a prompt_changed row still has
+          // an on-disk image and normal skip_existing is active, keep it flagged
+          // so the operator sees the mismatch instead of a silent "done".
+          const dispatchedIndexes = targetRows.map((r) => r.index);
+          const targetIndexes = targetRows
+            .filter((r) => !hasImage.has(r.index) || payload.skip_existing === false)
+            .map((r) => r.index);
           if (targetIndexes.length) superFocus.clearImageStale(id, targetIndexes, { root: sfRoot });
           // Provenance: record which provider/workflow served this batch (honest
           // even if the run later fails). Never claims a provider it did not use.
@@ -11203,7 +11226,7 @@ function createServer(options = {}) {
             superFocusMedia.writeImageProviderProvenance(id, {
               provider_id: imgProvider.id, label: imgProvider.label, workflow: imgProvider.workflow,
               base_url: imgProvider.base_url, reason: imgProvider.reason, run_id: job && job.job_id,
-              indexes: targetIndexes,
+              indexes: dispatchedIndexes,
             }, { mediaRoot: sfMediaRoot });
           } catch (_) { /* provenance is best-effort; never blocks generation */ }
           sendJSON(res, 200, {
@@ -11214,6 +11237,7 @@ function createServer(options = {}) {
             requested_limit: requestedLimit,
             effective_limit: hasLimit ? effectiveLimit : null,
             skipped_existing: skippedExisting,
+            prompt_changed: promptChangedEligible,
             skipped_empty: skippedEmpty,
             remaining_eligible: remainingEligible,
             materialized_count: materialized.count,
@@ -11272,7 +11296,12 @@ function createServer(options = {}) {
         const filePath = superFocusMedia.safeImageFilePath(id, url.searchParams.get('index'), { mediaRoot: sfMediaRoot });
         if (!filePath || !fs.existsSync(filePath)) { sendError(res, 404, 'Image not found.', 'super-focus-image-missing'); return; }
         res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'no-store' });
-        fs.createReadStream(filePath).pipe(res);
+        // The PNG can be archived (renamed) between the exists check and the
+        // stream open, and the NAS can fail mid-stream — an unguarded stream
+        // error would leave the response hanging (or crash an embedding process).
+        const stream = fs.createReadStream(filePath);
+        stream.on('error', (err) => { console.error('Super Focus image stream error:', err.message); res.destroy(); });
+        stream.pipe(res);
       } catch (error) {
         sendError(res, error.statusCode || 500, error.message, 'super-focus-image-error');
       }
@@ -11462,18 +11491,30 @@ function createServer(options = {}) {
           }
           const seed = superFocusRegenSeed(options); // fresh seed => a real fresh attempt
           const archived = superFocusMedia.archiveImage(id, idx, { mediaRoot: sfMediaRoot });
-          const materialized = superFocusMedia.materializeImagePrompts(id, [row], { mediaRoot: sfMediaRoot });
-          const job = startSuperFocusImageJob(materialized.mediaDir, {
-            projectId: id,
-            limit: 0,
-            skipExisting: false, // forced: the canonical slot was just archived empty
-            dryRun: Boolean(payload.dry_run),
-            spawn: options.spawn,
-            fluxScript: options.fluxScript || process.env.SUPER_FOCUS_FLUX_SCRIPT,
-            pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN,
-            seed,
-            payload,
-          });
+          let materialized;
+          let job;
+          try {
+            materialized = superFocusMedia.materializeImagePrompts(id, [row], { mediaRoot: sfMediaRoot });
+            job = startSuperFocusImageJob(materialized.mediaDir, {
+              projectId: id,
+              limit: 0,
+              skipExisting: false, // forced: the canonical slot was just archived empty
+              dryRun: Boolean(payload.dry_run),
+              spawn: options.spawn,
+              fluxScript: options.fluxScript || process.env.SUPER_FOCUS_FLUX_SCRIPT,
+              pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN,
+              seed,
+              payload,
+            });
+          } catch (error) {
+            // The replacement never started (lock lost during the reach probe,
+            // missing script, materialize failure) — put the archived image back
+            // so a failed regenerate can never strand the slot empty.
+            if (archived.archived) {
+              try { superFocusMedia.restoreArchivedImage(id, idx, archived, { mediaRoot: sfMediaRoot }); } catch (_) { /* best-effort restore */ }
+            }
+            throw error;
+          }
           superFocus.clearImageStale(id, [idx], { root: sfRoot });
           // Provenance for the attempt (seed + run id + provider/workflow).
           try {
@@ -11554,6 +11595,27 @@ function createServer(options = {}) {
             const e = new Error(`PRESTO ComfyUI is not reachable at ${PRESTO_BASE_URL}. Start ComfyUI on PRESTO and retry (no fallback).`);
             e.statusCode = 503; throw e;
           }
+          // Re-check the pause AFTER the awaited probe: an operator pause landing
+          // during the (up to ~4s) reach window must still win — the contract is
+          // that no new PRESTO render starts while paused.
+          const recheckedQueue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+          if (recheckedQueue.paused) {
+            sendJSON(res, 200, {
+              started: false,
+              paused: true,
+              message: 'Video queue was paused while checking PRESTO — no render was started. Resume the queue to render.',
+              queue: { summary: videoQueueSummary(recheckedQueue), items: recheckedQueue.items, control: videoQueueControl(recheckedQueue) },
+            });
+            return;
+          }
+          // Refuse BEFORE materializing while a render is running — otherwise the
+          // 409 from the job lock would land only after selected-images.json /
+          // video-prompts.json (the running job's input files) were rewritten.
+          const curPresto = currentPrestoJobStatus();
+          if (curPresto.active) {
+            const e = new Error('A PRESTO video job is already running. Wait for it to finish.');
+            e.statusCode = 409; throw e;
+          }
           const materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, { mediaRoot: sfMediaRoot, rows: targetRows });
           const job = startSuperFocusVideoJob(materialized.mediaDir, {
             projectId: id,
@@ -11615,6 +11677,12 @@ function createServer(options = {}) {
           if (!row || !hasImage || !superFocus.hasI2vPrompt(row)) {
             const e = new Error('Regenerate needs a row with a generated still and a saved i2v prompt.'); e.statusCode = 400; throw e;
           }
+          // Respect an operator pause: regenerate also starts a PRESTO render,
+          // and the pause contract is that no new render starts while paused.
+          const pausedQueue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+          if (pausedQueue.paused) {
+            const e = new Error('Video queue is paused — no PRESTO render was started. Resume the queue, then regenerate.'); e.statusCode = 409; throw e;
+          }
           const cur = currentPrestoJobStatus();
           if (cur.active) { const e = new Error('A PRESTO video job is already running. Wait for it to finish.'); e.statusCode = 409; throw e; }
           const reach = options.prestoReachableCheck || options.reachableCheck || prestoComfyuiReachable;
@@ -11623,17 +11691,30 @@ function createServer(options = {}) {
           }
           const subdir = PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4';
           const archived = superFocusMedia.archiveVideo(id, subdir, idx, { mediaRoot: sfMediaRoot });
-          const materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, { mediaRoot: sfMediaRoot, rows: [row] });
-          const job = startSuperFocusVideoJob(materialized.mediaDir, {
-            projectId: id,
-            profile: DEFAULT_PRESTO_PROFILE,
-            comfyuiUrl: PRESTO_BASE_URL,
-            indexes: [idx],
-            spawn: options.spawn,
-            productionScript: options.productionScript,
-            pythonBin: options.pythonBin,
-            payload,
-          });
+          let materialized;
+          let job;
+          try {
+            materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, { mediaRoot: sfMediaRoot, rows: [row] });
+            job = startSuperFocusVideoJob(materialized.mediaDir, {
+              projectId: id,
+              profile: DEFAULT_PRESTO_PROFILE,
+              comfyuiUrl: PRESTO_BASE_URL,
+              indexes: [idx],
+              spawn: options.spawn,
+              productionScript: options.productionScript,
+              pythonBin: options.pythonBin,
+              payload,
+            });
+          } catch (error) {
+            // The replacement never started (PRESTO lock lost during the reach
+            // probe — e.g. a status-poll pump started a queued render — or a
+            // dispatch failure). Restore the archived clip so a failed
+            // regenerate can never strand the slot empty.
+            if (archived.archived) {
+              try { superFocusMedia.restoreArchivedVideo(id, subdir, idx, archived, { mediaRoot: sfMediaRoot }); } catch (_) { /* best-effort restore */ }
+            }
+            throw error;
+          }
           // Duplicate handling on completion (only hashing): compare the new clip
           // to the previous (archived) one; reject + restore previous if identical.
           if (archived.archived && PRESTO_STATE.activeJob && PRESTO_STATE.activeJob.process) {
@@ -11946,13 +12027,18 @@ function createServer(options = {}) {
             'Content-Length': end - start + 1,
             'Cache-Control': 'no-store',
           });
-          fs.createReadStream(filePath, { start, end }).pipe(res);
+          // Guarded like the image route: the MP4 can be archived mid-request.
+          const rangeStream = fs.createReadStream(filePath, { start, end });
+          rangeStream.on('error', (err) => { console.error('Super Focus video stream error:', err.message); res.destroy(); });
+          rangeStream.pipe(res);
           return;
         }
         // No Range header: full file, but advertise range support so the browser
         // knows it may seek (issues subsequent Range requests).
         res.writeHead(200, { 'Content-Type': 'video/mp4', 'Accept-Ranges': 'bytes', 'Content-Length': total, 'Cache-Control': 'no-store' });
-        fs.createReadStream(filePath).pipe(res);
+        const fullStream = fs.createReadStream(filePath);
+        fullStream.on('error', (err) => { console.error('Super Focus video stream error:', err.message); res.destroy(); });
+        fullStream.pipe(res);
       } catch (error) {
         sendError(res, error.statusCode || 500, error.message, 'super-focus-video-error');
       }
@@ -12446,9 +12532,10 @@ function createServer(options = {}) {
     }
     if (req.method === 'POST' && url.pathname === SCORE_REAPER_OPEN_API) {
       readJsonBody(req)
-        .then((payload) => {
+        .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Score REAPER open API' });
-          sendJSON(res, 200, scoreLane.openInReaper(payload.project_id || '', payload.candidate_id || '', scoreOptions()));
+          // Awaited: the launch result is now honest (spawn failure → 500).
+          sendJSON(res, 200, await scoreLane.openInReaper(payload.project_id || '', payload.candidate_id || '', scoreOptions()));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-reaper-open-error'));
       return;
@@ -12538,9 +12625,9 @@ function createServer(options = {}) {
     }
     if (req.method === 'POST' && url.pathname === SCORE_OPEN_FOLDER_API) {
       readJsonBody(req)
-        .then((payload) => {
+        .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Score open folder API' });
-          sendJSON(res, 200, scoreLane.openFolder(payload.project_id || '', payload.path || '', scoreOptions()));
+          sendJSON(res, 200, await scoreLane.openFolder(payload.project_id || '', payload.path || '', scoreOptions()));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-open-folder-error'));
       return;
@@ -12552,7 +12639,12 @@ function createServer(options = {}) {
         const ext = require('node:path').extname(filePath).toLowerCase();
         const types = { '.wav': 'audio/wav', '.mid': 'audio/midi', '.json': 'application/json', '.md': 'text/markdown; charset=utf-8', '.rpp': 'text/plain; charset=utf-8', '.csv': 'text/csv; charset=utf-8', '.txt': 'text/plain; charset=utf-8' };
         res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream', 'Content-Length': fs.statSync(filePath).size, 'Cache-Control': 'no-store' });
-        fs.createReadStream(filePath).pipe(res);
+        // Guarded like the other media routes: the file can vanish between the
+        // stat and the stream open — an unguarded error leaves the response
+        // hanging with headers already sent.
+        const scoreStream = fs.createReadStream(filePath);
+        scoreStream.on('error', (err) => { console.error('Score file stream error:', err.message); res.destroy(); });
+        scoreStream.pipe(res);
       } catch (error) { sendError(res, error.statusCode || 500, error.message, 'score-file-error'); }
       return;
     }
@@ -14119,6 +14211,7 @@ module.exports = {
   createThumbnailResponse,
   currentFluxJobStatus,
   currentPrestoJobStatus,
+  probeOllamaTags,
   buildProductionGps,
   buildProductionGpsTimeline,
   buildExportDeliveryConsole,

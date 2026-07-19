@@ -304,7 +304,15 @@ function compose(cueSheet, options = {}) {
 
     // Generators push grid.event() results directly; clipped-out notes are null.
     notes.push(...out.filter(Boolean));
-    cueStartTick += Math.round(beats * PPQ);
+    // Advance by the cue length PLUS any silence gap before the next cue —
+    // gaps are a supported scoring choice, and dropping them made every MIDI
+    // deliverable play post-gap material early relative to the video (the
+    // seconds-based WAV previews and .rpp items were unaffected, so the
+    // deliverables contradicted each other). Gap ticks use this cue's tempo,
+    // which is the tempo in force until the next cue's tempo event.
+    const nextCue = cues[cueIndex + 1];
+    const gapSeconds = nextCue ? Math.max(0, nextCue.start_seconds - cue.end_seconds) : 0;
+    cueStartTick += Math.round((beats + gapSeconds / beatSeconds) * PPQ);
   });
 
   notes.sort((a, b) => a.tick - b.tick || a.lane.localeCompare(b.lane) || a.note - b.note);

@@ -159,7 +159,10 @@ function verifyApprovedExports(dir, options = {}) {
   const markers = path.join(approvedDir, "resolve-import", "cue-markers.csv");
   if (fs.existsSync(markers)) {
     const rows = fs.readFileSync(markers, "utf8").trim().split("\n").length - 1;
-    const cueCount = (provenance.cues || provenance.generation && provenance.generation.cues || []).length || null;
+    // Provenance stores the cue array as cue_sheet (buildCandidateProvenance);
+    // the old keys made the strong row-count check dead code — a truncated
+    // cue-markers.csv passed "deep" verification.
+    const cueCount = (provenance.cue_sheet || provenance.cues || (provenance.generation && provenance.generation.cues) || []).length || null;
     if (cueCount) check(`cue markers rows = ${cueCount}`, rows === cueCount, `got ${rows}`);
     else check("cue markers non-empty", rows > 0, "no marker rows");
   }

@@ -35,6 +35,44 @@ function slugify(text) {
 }
 function httpError(message, statusCode = 400) { const e = new Error(message); e.statusCode = statusCode; return e; }
 
+// Per-lane gain multipliers persist into candidate.json and reach the final
+// approved render — a non-numeric value produced NaN samples that Node wrote
+// as silence with no error anywhere. Reject instead.
+function validateLaneGains(laneGains) {
+  if (laneGains === undefined || laneGains === null) return {};
+  if (typeof laneGains !== "object" || Array.isArray(laneGains)) throw httpError("lane_gains must be an object of {lane: number}", 400);
+  for (const [lane, value] of Object.entries(laneGains)) {
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 4) {
+      throw httpError(`lane_gains.${lane} must be a finite number between 0 and 4 (got ${JSON.stringify(value)})`, 400);
+    }
+  }
+  return { ...laneGains };
+}
+
+// Settle a detached spawn honestly: ENOENT arrives asynchronously, so the old
+// fire-and-forget version returned launched:true while nothing launched (and an
+// unhandled 'error' event crashes any embedder without an uncaughtException
+// handler). Fake children in tests may emit neither event — settle after 150ms.
+function awaitSpawnOutcome(child) {
+  if (!child || typeof child.once !== "function") return Promise.resolve({ launched: true });
+  return new Promise((resolve) => {
+    let settled = false;
+    const settle = (outcome) => { if (!settled) { settled = true; resolve(outcome); } };
+    child.once("error", (error) => settle({ launched: false, error: error.message }));
+    child.once("spawn", () => { if (child.unref) child.unref(); settle({ launched: true }); });
+    setTimeout(() => { if (child.unref) child.unref(); settle({ launched: true }); }, 150).unref();
+  });
+}
+
+// A candidate folder without candidate.json is a stranded partial build (a
+// failure mid-generation). Routes must answer 409 with a repair hint instead
+// of TypeError-500ing on null.
+function requireCandidateMeta(candidateDir, candidateId) {
+  const meta = readJson(path.join(candidateDir, "candidate.json"));
+  if (!meta) throw httpError(`Candidate ${candidateId} is incomplete (no candidate.json — likely a failed build). Delete the folder ${candidateDir} and regenerate.`, 409);
+  return meta;
+}
+
 // ── settings ──
 function loadSettings(options = {}) {
   const settingsPath = options.settingsPath || DEFAULT_SETTINGS_PATH;
@@ -66,6 +104,12 @@ function loadProfiles(settings) {
   const stored = readJson(file);
   if (stored && Array.isArray(stored.profiles)) return stored.profiles;
   fs.mkdirSync(settings.music_root, { recursive: true });
+  // A malformed EXISTING file is the operator's customized data (hand-edit
+  // typo, partial write) — archive it aside before reseeding, never clobber
+  // it with the starters ("nothing overwritten").
+  if (fs.existsSync(file)) {
+    fs.renameSync(file, uniquePath(path.join(settings.music_root, `instrument-profiles.corrupt-${stamp()}.json`)));
+  }
   writeJson(file, { version: 1, profiles: schemas.STARTER_INSTRUMENT_PROFILES });
   return [...schemas.STARTER_INSTRUMENT_PROFILES];
 }
@@ -257,10 +301,22 @@ function listProjects(options = {}) {
 // ── cue sheet ──
 function saveProject(dir, project) { writeJson(path.join(dir, "score-project.json"), project); }
 
+// Collision-safe destination: stamp() has second resolution, so two archives
+// within the same second must get distinct names instead of overwriting
+// ("nothing overwritten", even on a double-click).
+function uniquePath(candidate) {
+  if (!fs.existsSync(candidate)) return candidate;
+  const ext = path.extname(candidate);
+  const base = candidate.slice(0, candidate.length - ext.length);
+  let n = 1;
+  while (fs.existsSync(`${base}-${n}${ext}`)) n += 1;
+  return `${base}-${n}${ext}`;
+}
+
 function archiveIfExists(dir, fileName) {
   const file = path.join(dir, fileName);
   if (fs.existsSync(file)) {
-    const archived = path.join(dir, "history", `${path.basename(fileName, ".json")}-${stamp()}.json`);
+    const archived = uniquePath(path.join(dir, "history", `${path.basename(fileName, ".json")}-${stamp()}.json`));
     fs.mkdirSync(path.dirname(archived), { recursive: true });
     fs.copyFileSync(file, archived);
     return archived;
@@ -303,6 +359,10 @@ function saveCueSheetEdits(projectId, cues, options = {}) {
   archiveIfExists(dir, "cue-sheet.json");
   writeJson(path.join(dir, "cue-sheet.json"), { cues, generator: "operator_edited", generated_at: nowIso() });
   project.cues = cues;
+  // An edit invalidates the human approval — otherwise candidates could be
+  // composed from a structure nobody approved (the GUI's Approve button
+  // saves-then-approves, so the normal flow re-approves immediately).
+  project.cue_sheet_approved = false;
   saveProject(dir, project);
   return { saved: true, cue_count: cues.length };
 }
@@ -359,7 +419,7 @@ function generateCandidates(projectId, input = {}, options = {}) {
     created.push(buildOneCandidate(dir, project, musicPlan, {
       seed: baseSeed + i,
       palette_id: input.palette_id || project.palette_id,
-      lane_gains: input.lane_gains || {},
+      lane_gains: validateLaneGains(input.lane_gains),
       cues: project.cues,
       parent_candidate: input.parent_candidate || null,
       revision: input.revision || null,
@@ -511,7 +571,7 @@ function setCandidateStatus(projectId, candidateId, status, note, options = {}) 
   const settings = loadSettings(options);
   const { dir } = resolveProjectDir(settings, projectId);
   const candidateDir = candidateDirOf(dir, candidateId);
-  const meta = readJson(path.join(candidateDir, "candidate.json"));
+  const meta = requireCandidateMeta(candidateDir, candidateId);
   meta.status = status;
   if (note !== undefined) meta.notes = String(note || "");
   writeJson(path.join(candidateDir, "candidate.json"), meta);
@@ -522,7 +582,7 @@ function reviseCandidate(projectId, candidateId, requestText, options = {}) {
   const settings = loadSettings(options);
   const { dir } = resolveProjectDir(settings, projectId);
   const candidateDir = candidateDirOf(dir, candidateId);
-  const meta = readJson(path.join(candidateDir, "candidate.json"));
+  const meta = requireCandidateMeta(candidateDir, candidateId);
   const cueSheetUsed = readJson(path.join(candidateDir, "cue-sheet-used.json"));
   const plan = planner.planRevision(requestText);
   const revised = planner.applyRevision(cueSheetUsed, { seed: meta.seed, palette_id: meta.palette_id, lane_gains: meta.lane_gains || {} }, plan);
@@ -586,7 +646,7 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
   const project = readJson(path.join(dir, "score-project.json"));
   const musicPlan = readJson(path.join(dir, "music-plan.json"));
   const cues = readJson(path.join(candidateDir, "cue-sheet-used.json")).cues;
-  const meta = readJson(path.join(candidateDir, "candidate.json"));
+  const meta = requireCandidateMeta(candidateDir, candidateId);
   const composition = composerEngine.compose({ cues }, compositionOptionsFromMeta(project, meta));
 
   const reaperDir = path.join(candidateDir, "reaper");
@@ -650,8 +710,10 @@ function openInReaper(projectId, candidateId, options = {}) {
   if (!command) throw httpError("REAPER executable path is not configured. Set it in Score Engine settings, or open the .rpp manually (path is shown on the candidate card).", 400);
   const spawn = options.spawnImpl || childProcess.spawn;
   const child = spawn(command.command, command.args, { detached: true, stdio: "ignore" });
-  if (child && child.unref) child.unref();
-  return { launched: true, command: `${command.command} ${command.args.join(" ")}` };
+  return awaitSpawnOutcome(child).then((outcome) => {
+    if (!outcome.launched) throw httpError(`REAPER failed to launch: ${outcome.error}. Check reaper_executable_path in Score Engine settings.`, 500);
+    return { launched: true, command: `${command.command} ${command.args.join(" ")}` };
+  });
 }
 
 function buildAbletonHandoff(projectId, candidateId, options = {}) {
@@ -661,7 +723,7 @@ function buildAbletonHandoff(projectId, candidateId, options = {}) {
   const project = readJson(path.join(dir, "score-project.json"));
   const musicPlan = readJson(path.join(dir, "music-plan.json"));
   const cues = readJson(path.join(candidateDir, "cue-sheet-used.json")).cues;
-  const meta = readJson(path.join(candidateDir, "candidate.json"));
+  const meta = requireCandidateMeta(candidateDir, candidateId);
 
   const abletonDir = path.join(candidateDir, "ableton");
   fs.mkdirSync(path.join(abletonDir, "midi"), { recursive: true });
@@ -714,7 +776,7 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
   const { dir } = resolveProjectDir(settings, projectId);
   const candidateDir = candidateDirOf(dir, candidateId);
   const project = readJson(path.join(dir, "score-project.json"));
-  const meta = readJson(path.join(candidateDir, "candidate.json"));
+  const meta = requireCandidateMeta(candidateDir, candidateId);
   const cues = readJson(path.join(candidateDir, "cue-sheet-used.json")).cues;
   const musicPlan = readJson(path.join(dir, "music-plan.json"));
   const durationExact = exportOptions.durationExact !== undefined
@@ -722,56 +784,70 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
     : settings.duration_exact_export !== false;
 
   const approvedDir = path.join(dir, "approved");
+  // Render into a BUILD dir first; the existing approval is archived only
+  // after the replacement fully rendered. The old order (archive first, then
+  // render) stranded the project with NO approved export when any render/copy
+  // step failed — while listProjects still claimed approved:true.
+  const buildDir = uniquePath(path.join(dir, `approved-build-${stamp()}`));
+  let provenance; // assigned inside the build block, referenced after the swap
+  fs.mkdirSync(path.join(buildDir, "stems"), { recursive: true });
+  fs.mkdirSync(path.join(buildDir, "resolve-import", "stems"), { recursive: true });
+  fs.mkdirSync(path.join(buildDir, "midi"), { recursive: true });
+
+  try {
+    // Full-quality render at export sample rate, with stems (§13).
+    const composition = composerEngine.compose({ cues }, compositionOptionsFromMeta(project, meta));
+    const sampleRate = settings.default_export_sample_rate || 48000;
+    const bitDepth = settings.default_export_bit_depth === 24 ? 24 : 16;
+    const full = synth.renderMix(composition, project.duration_seconds, { sampleRate, bitDepth, stems: true, laneGains: meta.lane_gains || {}, durationExact });
+    fs.writeFileSync(path.join(buildDir, "mix.wav"), full.mix);
+    const safe = synth.renderMix(composition, project.duration_seconds, { sampleRate, bitDepth, dialogueSafe: true, laneGains: meta.lane_gains || {}, durationExact });
+    fs.writeFileSync(path.join(buildDir, "mix-dialogue-safe.wav"), safe.mix);
+    for (const [lane, buffer] of Object.entries(full.stems)) {
+      fs.writeFileSync(path.join(buildDir, "stems", `${lane}.wav`), buffer);
+    }
+    for (const lane of meta.lanes) {
+      fs.copyFileSync(path.join(candidateDir, "midi", `${lane}.mid`), path.join(buildDir, "midi", `${lane}.mid`));
+    }
+    fs.copyFileSync(path.join(candidateDir, "midi", "all-lanes.mid"), path.join(buildDir, "midi", "all-lanes.mid"));
+
+    // Resolve import folder: mixes + stems + cue markers CSV (§8.7, §13).
+    fs.copyFileSync(path.join(buildDir, "mix.wav"), path.join(buildDir, "resolve-import", "mix.wav"));
+    fs.copyFileSync(path.join(buildDir, "mix-dialogue-safe.wav"), path.join(buildDir, "resolve-import", "mix-dialogue-safe.wav"));
+    for (const [lane] of Object.entries(full.stems)) {
+      fs.copyFileSync(path.join(buildDir, "stems", `${lane}.wav`), path.join(buildDir, "resolve-import", "stems", `${lane}.wav`));
+    }
+    const markersCsv = ["Name,Start (seconds),End (seconds)"].concat(cues.map((c) => `"${c.cue_id} ${c.name}",${c.start_seconds},${c.end_seconds}`)).join("\n") + "\n";
+    fs.writeFileSync(path.join(buildDir, "resolve-import", "cue-markers.csv"), markersCsv);
+    fs.writeFileSync(path.join(buildDir, "resolve-import", "README.md"),
+      `# Resolve import — ${project.name}\n\nDrag mix.wav (or the dialogue-safe mix under narration) into the Resolve media\npool. stems/ has per-lane WAVs for finer mixing. cue-markers.csv lists cue\nboundaries to place as timeline markers.\n\nNOTE: these WAVs are the Score Engine sketch renders. For final-quality audio,\nrender from the REAPER/Ableton handoff with your real instruments and drop the\nresult here (a new approval will archive this folder, never overwrite it).\n`);
+
+    provenance = {
+      ...buildCandidateProvenance(project, musicPlan, meta, { cues, seed: meta.seed, palette_id: meta.palette_id, parent_candidate: meta.parent_candidate, revision: meta.revision }),
+      approval_status: "approved",
+      approved_at: nowIso(),
+      approved_candidate: candidateId,
+      render: {
+        sample_rate: sampleRate,
+        bit_depth: bitDepth,
+        renderer: "score-engine preview synth (sketch quality)",
+        duration_exact: durationExact,
+        export_mode: durationExact ? "duration_exact (trimmed + 150ms boundary fade)" : "tail_preserving (release rings past project end)",
+      },
+      exported_files: ["approved/mix.wav", "approved/mix-dialogue-safe.wav", "approved/stems/", "approved/midi/", "approved/resolve-import/"],
+    };
+    writeJson(path.join(buildDir, "provenance.json"), provenance);
+    fs.writeFileSync(path.join(buildDir, "provenance.md"), renderProvenanceMarkdown(provenance));
+  } catch (error) {
+    fs.rmSync(buildDir, { recursive: true, force: true }); // discard the partial build; previous approval untouched
+    throw error;
+  }
+
+  // The replacement is fully rendered — NOW retire the previous approval.
   if (fs.existsSync(approvedDir)) {
-    fs.renameSync(approvedDir, path.join(dir, `approved-archive-${stamp()}`)); // never overwrite a previous approval
+    fs.renameSync(approvedDir, uniquePath(path.join(dir, `approved-archive-${stamp()}`))); // never overwrite a previous approval
   }
-  fs.mkdirSync(path.join(approvedDir, "stems"), { recursive: true });
-  fs.mkdirSync(path.join(approvedDir, "resolve-import", "stems"), { recursive: true });
-  fs.mkdirSync(path.join(approvedDir, "midi"), { recursive: true });
-
-  // Full-quality render at export sample rate, with stems (§13).
-  const composition = composerEngine.compose({ cues }, compositionOptionsFromMeta(project, meta));
-  const sampleRate = settings.default_export_sample_rate || 48000;
-  const bitDepth = settings.default_export_bit_depth === 24 ? 24 : 16;
-  const full = synth.renderMix(composition, project.duration_seconds, { sampleRate, bitDepth, stems: true, laneGains: meta.lane_gains || {}, durationExact });
-  fs.writeFileSync(path.join(approvedDir, "mix.wav"), full.mix);
-  const safe = synth.renderMix(composition, project.duration_seconds, { sampleRate, bitDepth, dialogueSafe: true, laneGains: meta.lane_gains || {}, durationExact });
-  fs.writeFileSync(path.join(approvedDir, "mix-dialogue-safe.wav"), safe.mix);
-  for (const [lane, buffer] of Object.entries(full.stems)) {
-    fs.writeFileSync(path.join(approvedDir, "stems", `${lane}.wav`), buffer);
-  }
-  for (const lane of meta.lanes) {
-    fs.copyFileSync(path.join(candidateDir, "midi", `${lane}.mid`), path.join(approvedDir, "midi", `${lane}.mid`));
-  }
-  fs.copyFileSync(path.join(candidateDir, "midi", "all-lanes.mid"), path.join(approvedDir, "midi", "all-lanes.mid"));
-
-  // Resolve import folder: mixes + stems + cue markers CSV (§8.7, §13).
-  fs.copyFileSync(path.join(approvedDir, "mix.wav"), path.join(approvedDir, "resolve-import", "mix.wav"));
-  fs.copyFileSync(path.join(approvedDir, "mix-dialogue-safe.wav"), path.join(approvedDir, "resolve-import", "mix-dialogue-safe.wav"));
-  for (const [lane] of Object.entries(full.stems)) {
-    fs.copyFileSync(path.join(approvedDir, "stems", `${lane}.wav`), path.join(approvedDir, "resolve-import", "stems", `${lane}.wav`));
-  }
-  const markersCsv = ["Name,Start (seconds),End (seconds)"].concat(cues.map((c) => `"${c.cue_id} ${c.name}",${c.start_seconds},${c.end_seconds}`)).join("\n") + "\n";
-  fs.writeFileSync(path.join(approvedDir, "resolve-import", "cue-markers.csv"), markersCsv);
-  fs.writeFileSync(path.join(approvedDir, "resolve-import", "README.md"),
-    `# Resolve import — ${project.name}\n\nDrag mix.wav (or the dialogue-safe mix under narration) into the Resolve media\npool. stems/ has per-lane WAVs for finer mixing. cue-markers.csv lists cue\nboundaries to place as timeline markers.\n\nNOTE: these WAVs are the Score Engine sketch renders. For final-quality audio,\nrender from the REAPER/Ableton handoff with your real instruments and drop the\nresult here (a new approval will archive this folder, never overwrite it).\n`);
-
-  const provenance = {
-    ...buildCandidateProvenance(project, musicPlan, meta, { cues, seed: meta.seed, palette_id: meta.palette_id, parent_candidate: meta.parent_candidate, revision: meta.revision }),
-    approval_status: "approved",
-    approved_at: nowIso(),
-    approved_candidate: candidateId,
-    render: {
-      sample_rate: sampleRate,
-      bit_depth: bitDepth,
-      renderer: "score-engine preview synth (sketch quality)",
-      duration_exact: durationExact,
-      export_mode: durationExact ? "duration_exact (trimmed + 150ms boundary fade)" : "tail_preserving (release rings past project end)",
-    },
-    exported_files: ["approved/mix.wav", "approved/mix-dialogue-safe.wav", "approved/stems/", "approved/midi/", "approved/resolve-import/"],
-  };
-  writeJson(path.join(approvedDir, "provenance.json"), provenance);
-  fs.writeFileSync(path.join(approvedDir, "provenance.md"), renderProvenanceMarkdown(provenance));
+  fs.renameSync(buildDir, approvedDir);
 
   meta.status = "approved";
   writeJson(path.join(candidateDir, "candidate.json"), meta);
@@ -785,7 +861,10 @@ function probeDuration(filePath, options = {}) {
   const settings = loadSettings(options);
   if (!filePath || !fs.existsSync(filePath)) throw httpError(`Video/audio file not found: ${filePath}`, 400);
   const spawnSync = options.spawnSyncImpl || childProcess.spawnSync;
-  const result = spawnSync(settings.ffprobe_path || "ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filePath], { encoding: "utf8" });
+  // timeout is load-bearing: this runs synchronously inside the shared HTTP
+  // handler — an ffprobe hung on a wedged NAS mount would block EVERY route
+  // on the cockpit server, not just this one.
+  const result = spawnSync(settings.ffprobe_path || "ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filePath], { encoding: "utf8", timeout: 30000 });
   if (result.error || result.status !== 0) {
     throw httpError(`ffprobe failed for ${filePath}: ${result.error ? result.error.message : (result.stderr || "unknown error").trim()}. Check ffprobe_path in Score Engine settings.`, 500);
   }
@@ -802,8 +881,10 @@ function openFolder(projectId, relativePath, options = {}) {
   if (!fs.existsSync(target)) throw httpError(`Folder not found: ${target}`, 404);
   const spawn = options.spawnImpl || childProcess.spawn;
   const child = spawn("xdg-open", [target], { detached: true, stdio: "ignore" });
-  if (child && child.unref) child.unref();
-  return { opened: target };
+  return awaitSpawnOutcome(child).then((outcome) => {
+    if (!outcome.launched) throw httpError(`Could not open the folder (xdg-open failed: ${outcome.error}).`, 500);
+    return { opened: target };
+  });
 }
 
 module.exports = {

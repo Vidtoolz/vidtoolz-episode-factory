@@ -45,6 +45,26 @@ const TEMPLATES = [
     candidate_only: true,
     note: 'Rendered on an opaque branded plate. Transparent/alpha output is not implemented or validated yet — do not treat as Resolve-ready alpha.',
   },
+  {
+    type: 'chapter',
+    label: 'Chapter card',
+    fields: [
+      { key: 'chapter', label: 'Chapter number / label', kind: 'line', required: true },
+      { key: 'title', label: 'Chapter title', kind: 'line', required: true },
+      { key: 'subtitle', label: 'Subtitle (optional)', kind: 'line', required: false },
+    ],
+    candidate_only: false,
+  },
+  {
+    type: 'proof_gate',
+    label: 'Proof-gate card',
+    fields: [
+      { key: 'claim', label: 'The claim', kind: 'line', required: true },
+      { key: 'evidence', label: 'The evidence', kind: 'text', required: true },
+      { key: 'verdict', label: 'Verdict (optional)', kind: 'line', required: false },
+    ],
+    candidate_only: false,
+  },
 ];
 
 const TEMPLATE_TYPES = TEMPLATES.map((t) => t.type);
@@ -88,6 +108,8 @@ function normalizeStyle(style = {}) {
 function defaultParamsForType(type) {
   if (type === 'comparison') return { wrong: '', better: '', explanation: '' };
   if (type === 'lower_third') return { name: '', descriptor: '' };
+  if (type === 'chapter') return { chapter: '', title: '', subtitle: '' };
+  if (type === 'proof_gate') return { claim: '', evidence: '', verdict: '' };
   return { title: '', subtitle: '', claim: '' }; // title
 }
 
@@ -159,6 +181,23 @@ function buildCardHtml(card = {}) {
         <div class="mg-lt-name">${escapeHtml(p.name)}</div>
         ${p.descriptor ? `<div class="mg-lt-desc">${escapeHtml(p.descriptor)}</div>` : ''}
       </div>`;
+  } else if (type === 'chapter') {
+    body = `
+      <div class="mg-chapter-block">
+        <div class="mg-chapter-kicker">${escapeHtml(p.chapter)}</div>
+        <div class="mg-chapter-rule"></div>
+        <div class="mg-chapter-title">${escapeHtml(p.title)}</div>
+        ${p.subtitle ? `<div class="mg-chapter-sub">${escapeHtml(p.subtitle)}</div>` : ''}
+      </div>`;
+  } else if (type === 'proof_gate') {
+    body = `
+      <div class="mg-proof-block">
+        <div class="mg-tag">Claim</div>
+        <div class="mg-proof-claim">${escapeHtml(p.claim)}</div>
+        <div class="mg-tag mg-tag-ev">Evidence</div>
+        <div class="mg-proof-ev">${escapeHtml(p.evidence)}</div>
+        ${p.verdict ? `<div class="mg-proof-verdict">${escapeHtml(p.verdict)}</div>` : ''}
+      </div>`;
   } else { // title / claim
     body = `
       <div class="mg-title-block">
@@ -190,6 +229,16 @@ function buildCardHtml(card = {}) {
   .mg-lower-third{position:absolute;left:6%;bottom:14%;right:30%;background:rgba(13,17,23,.86);border-left:8px solid #2f81f7;border-radius:0 12px 12px 0;padding:3% 4%;}
   .mg-lt-name{font-size:${Math.round(fmt.width*0.05)}px;font-weight:800;}
   .mg-lt-desc{margin-top:1%;font-size:${Math.round(fmt.width*0.032)}px;color:#9ec1ff;font-weight:600;}
+  .mg-chapter-block{position:absolute;top:26%;left:8%;right:8%;}
+  .mg-chapter-kicker{font-size:${Math.round(fmt.width*0.034)}px;letter-spacing:.22em;text-transform:uppercase;color:#9ec1ff;font-weight:700;}
+  .mg-chapter-rule{width:14%;height:6px;background:#2f81f7;border-radius:3px;margin:3% 0 4%;}
+  .mg-chapter-title{font-size:${Math.round(fmt.width*0.078)}px;line-height:1.1;font-weight:800;}
+  .mg-chapter-sub{margin-top:3%;font-size:${Math.round(fmt.width*0.04)}px;color:#8b949e;font-weight:600;}
+  .mg-proof-block{position:absolute;top:18%;left:8%;right:8%;}
+  .mg-tag-ev{margin-top:5%;}
+  .mg-proof-claim{font-size:${Math.round(fmt.width*0.058)}px;line-height:1.15;font-weight:800;margin-top:2%;}
+  .mg-proof-ev{margin-top:2%;font-size:${Math.round(fmt.width*0.04)}px;line-height:1.3;color:#e6edf3;background:rgba(47,129,247,.10);border:1px solid #2f81f755;border-radius:14px;padding:4% 5%;}
+  .mg-proof-verdict{margin-top:4%;font-size:${Math.round(fmt.width*0.044)}px;font-weight:700;color:#2ea043;}
   .mg-safe{position:absolute;width:34%;height:26%;border:2px dashed rgba(158,193,255,.35);border-radius:12px;}
   .mg-overlay-lr{right:6%;bottom:8%;}
   .mg-overlay-ll{left:6%;bottom:8%;}

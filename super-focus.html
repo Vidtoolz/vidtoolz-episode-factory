@@ -103,6 +103,8 @@
     .proj-list button { flex: 0 0 auto; }
     .empty { color: var(--muted); padding: 16px 0; }
     .later-note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .sf-continue-link { display: inline-block; text-decoration: none; border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; color: var(--text); font-size: 13px; }
+    .sf-continue-link:hover { border-color: var(--accent); color: var(--accent); }
     .prompt-grid { margin: 14px 0 0; }
     .prompt-row {
       display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: start;
@@ -420,6 +422,17 @@
         <div class="imggen-progress hidden" id="vidgen-progress"></div>
         <div class="imggen-bar hidden" id="vidgen-barwrap"><div class="imggen-fill" id="vidgen-fill"></div></div>
       </div>
+
+      <!-- Continue: Super Focus ends at generated videos; point the operator at the next lane. -->
+      <div class="section" data-section="continue" id="sf-continue">
+        <div class="step">Next</div>
+        <h2>Continue after video generation</h2>
+        <div class="later-note">Super Focus ends here — it produces the clips. To review them and assemble the Resolve handoff, continue in the production lane (these are plain links; they change nothing):</div>
+        <div class="row">
+          <a href="aigen-review.html" id="sf-continue-review" class="sf-continue-link">Review clips (AIGEN Review) →</a>
+          <a href="production-pipeline.html" id="sf-continue-pipeline" class="sf-continue-link">Assemble Resolve handoff (Pipeline) →</a>
+        </div>
+      </div>
     </section>
   </div>
 
@@ -549,7 +562,7 @@
     // step only toggles CSS visibility (display:none) of its body: it never
     // rebuilds rows, reloads from disk, resets inputs, or calls any API, so
     // unsaved script/prompt edits always survive a toggle.
-    var SECTION_KEYS = ['title', 'script', 'script-eval', 'image-prompts', 'images', 'infographics', 'i2v', 'videos'];
+    var SECTION_KEYS = ['title', 'script', 'script-eval', 'image-prompts', 'images', 'infographics', 'i2v', 'videos', 'continue'];
     var lastEvalSummary = ''; // set by renderScriptEvaluation for the collapsed summary
 
     // One-time DOM transform: give each project .section a header row with a
@@ -831,7 +844,7 @@
       apiGet(PROJECT_API + '?id=' + encodeURIComponent(id)).then(function (res) {
         if (!res.ok) { alert('Could not open project.'); return; }
         openProject(unwrap(res.body).project);
-      });
+      }).catch(function () { alert('Could not open project.'); });
     }
 
     function copyText(text, statusEl) {
@@ -1307,9 +1320,17 @@
     function setThumb(index, row) {
       var el = document.getElementById('imgp-thumb-' + index);
       if (!el) return;
+      // Idempotence across status polls: rebuild only when something the row
+      // shows actually changed (file mtime, status, badges). This preserves
+      // transient control feedback ("regenerating…") and avoids DOM churn, and
+      // the mtime in the key cache-busts a regenerated file.
+      var thumbKey = [row.status, row.has_image ? (row.mtime_ms || row.generated_at || 0) : '',
+        row.prompt_changed ? 1 : 0, row.duplicate_rejected ? 1 : 0, row.error || ''].join('|');
+      if (el.getAttribute('data-thumb-key') === thumbKey) return;
+      el.setAttribute('data-thumb-key', thumbKey);
       if (row.status === 'done' && row.has_image) {
         el.innerHTML = '';
-        var imgUrl = IMAGE_FILE_API + '?id=' + encodeURIComponent(currentId) + '&index=' + index + '&t=' + row.generated_at;
+        var imgUrl = IMAGE_FILE_API + '?id=' + encodeURIComponent(currentId) + '&index=' + index + '&t=' + encodeURIComponent(row.mtime_ms || row.generated_at || 0);
         var img = document.createElement('img');
         img.src = imgUrl;
         img.alt = 'Generated image ' + index;
@@ -1381,7 +1402,7 @@
         if (active && !imagesPollTimer) startImagesPolling();
         if (!active) stopImagesPolling();
         updateSectionSummary('images'); updateSectionSummary('i2v');
-      });
+      }).catch(function () { /* transient poll failure (e.g. server restart) — next tick retries */ });
     }
 
     function startImagesPolling() {
@@ -1407,9 +1428,14 @@
         // A playable output exists → the preview is a click-to-open trigger for
         // the full-resolution player. The preview <video> has no inline controls
         // (it is only a frame/thumb); real playback happens in the viewer. Guard
-        // makes this idempotent across status polls so edits/triggers persist.
-        if (!el.querySelector('.media-open-video')) {
-          var vurl = VIDEO_FILE_API + '?id=' + encodeURIComponent(currentId) + '&index=' + index;
+        // makes this idempotent across status polls so edits/triggers persist —
+        // keyed on the file mtime, so a REGENERATED clip rebuilds the trigger
+        // with a cache-busted URL instead of keeping the stale preview.
+        var vkey = String(row.mtime_ms || 0);
+        var oldTrig = el.querySelector('.media-open-video');
+        if (oldTrig && oldTrig.getAttribute('data-video-key') !== vkey) { oldTrig.remove(); oldTrig = null; }
+        if (!oldTrig) {
+          var vurl = VIDEO_FILE_API + '?id=' + encodeURIComponent(currentId) + '&index=' + index + '&t=' + encodeURIComponent(vkey);
           var v = document.createElement('video');
           v.muted = true; v.setAttribute('playsinline', ''); v.preload = 'metadata'; v.src = vurl;
           var trigger = buildMediaTrigger(v, {
@@ -1417,6 +1443,7 @@
             label: 'Video ' + index + ' — full-resolution player',
             ariaLabel: 'Open generated video ' + index + ' in full-resolution player',
           });
+          trigger.setAttribute('data-video-key', vkey);
           var hint = document.createElement('span'); hint.className = 'media-open-hint'; hint.textContent = '▶ Open full-resolution player';
           trigger.appendChild(hint);
           el.appendChild(trigger);
@@ -1437,6 +1464,12 @@
       } else {
         showGen = true; // ready / not queued yet
         showEmpty = true; // no clip, no queue/failure state → show the empty state
+      }
+      if (!(row.status === 'done' && row.has_video)) {
+        // No clip on disk (archived by regenerate/clear, or still rendering) —
+        // an old preview must not keep showing a clip that is no longer there.
+        var staleTrig = el.querySelector('.media-open-video');
+        if (staleTrig) staleTrig.remove();
       }
       if (gen) gen.style.display = showGen ? '' : 'none';
       if (cancelq) cancelq.style.display = showCancelQ ? '' : 'none';
@@ -1505,7 +1538,7 @@
         if (active && !videosPollTimer) startVideosPolling();
         if (!active) stopVideosPolling();
         updateSectionSummary('videos');
-      });
+      }).catch(function () { /* transient poll failure (e.g. server restart) — next tick retries */ });
     }
     function startVideosPolling() {
       if (videosPollTimer) return;
@@ -1545,7 +1578,7 @@
           (proj.title && proj.title.trim()) ? proj.title : 'New video project';
         setStatus(el, 'Saved ✓', false);
         updateSectionSummary('title');
-      });
+      }).catch(function () { setStatus(document.getElementById('title-status'), 'Save failed', true); });
     });
 
     document.getElementById('script-save').addEventListener('click', function () {
@@ -1564,7 +1597,7 @@
         updateEvalButton();
         loadScriptEvaluation();
         updateSectionSummary('script');
-      });
+      }).catch(function () { setStatus(document.getElementById('script-status'), 'Save failed', true); });
     });
 
     // ---- Generation (local Ollama, vidnux lane) ----
@@ -1941,7 +1974,7 @@
       apiPost(IMAGES_CANCEL_API, { id: currentId }).then(function (res) {
         setStatus(el, res.ok ? 'Cancel signal sent' : 'Cancel failed', !res.ok);
         refreshImagesStatus();
-      });
+      }).catch(function () { setStatus(el, 'Cancel failed', true); });
     });
 
     document.getElementById('vidgen-generate').addEventListener('click', function () {
@@ -1987,7 +2020,7 @@
       apiPost(VIDEOS_CANCEL_API, { id: currentId }).then(function (res) {
         setStatus(el, res.ok ? 'Cancel signal sent' : 'Cancel failed', !res.ok);
         refreshVideosStatus();
-      });
+      }).catch(function () { setStatus(el, 'Cancel failed', true); });
     });
 
     // ---- Video queue controls: pause / resume / stop current render ----

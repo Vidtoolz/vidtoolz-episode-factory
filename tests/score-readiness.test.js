@@ -31,7 +31,7 @@ const okProbeFor = (state) => (file) => ({ ok: true, sample_rate: 48000, channel
 // ── cue analysis ──
 
 test("score map analysis: coverage, gaps and gap-warnings are found; full coverage has none", () => {
-  const project = { duration_seconds: 60, dialogue_density: "light" };
+  const project = { duration_seconds: 60, dialogue_density: "low" };
   const cues = [
     { cue_id: "cue-01", name: "open", start_seconds: 0, end_seconds: 20, function: "hook", energy: 3, density: 2, dialogue_safe: true },
     { cue_id: "cue-02", name: "close", start_seconds: 35, end_seconds: 55, function: "outro", energy: 2, density: 1, dialogue_safe: true },
@@ -48,7 +48,7 @@ test("score map analysis: coverage, gaps and gap-warnings are found; full covera
 });
 
 test("score map analysis: dialogue risk grading is advisory and dialogue-density aware", () => {
-  const heavy = { duration_seconds: 60, dialogue_density: "heavy" };
+  const heavy = { duration_seconds: 60, dialogue_density: "high" };
   const cues = [
     { cue_id: "busy", start_seconds: 0, end_seconds: 30, energy: 5, density: 4, dialogue_safe: false },
     { cue_id: "calm", start_seconds: 30, end_seconds: 60, energy: 2, density: 1, dialogue_safe: false },
@@ -57,14 +57,14 @@ test("score map analysis: dialogue risk grading is advisory and dialogue-density
   assert.equal(a.cues[0].dialogue_risk, "high", "busy unsafe music under heavy dialogue = high risk");
   assert.equal(a.cues[1].dialogue_risk, "medium");
   assert.ok(a.warnings.some((w) => w.kind === "dialogue-risk" && /fight the score/.test(w.message)));
-  const light = analyzeCueSheet({ duration_seconds: 60, dialogue_density: "light" }, cues);
+  const light = analyzeCueSheet({ duration_seconds: 60, dialogue_density: "low" }, cues);
   assert.ok(light.cues.every((c) => c.dialogue_risk === "none"), "no dialogue pressure, no nagging");
   const safe = analyzeCueSheet(heavy, [{ cue_id: "s", start_seconds: 0, end_seconds: 60, energy: 5, density: 4, dialogue_safe: true }]);
   assert.equal(safe.cues[0].dialogue_risk, "none", "explicitly dialogue-safe cues are trusted");
 });
 
 test("score map analysis: short cues and out-of-range hit points warn", () => {
-  const a = analyzeCueSheet({ duration_seconds: 30, dialogue_density: "light" }, [
+  const a = analyzeCueSheet({ duration_seconds: 30, dialogue_density: "low" }, [
     { cue_id: "blip", start_seconds: 0, end_seconds: 1.2, energy: 3, density: 2, dialogue_safe: true, hit_points: [5] },
   ]);
   assert.ok(a.warnings.some((w) => w.kind === "short-cue"));
@@ -173,4 +173,19 @@ test("ui: score workspace has the Score Map, readiness panel, and honest empty s
   assert.ok(html.includes('id="step-readiness"'), "readiness panel");
   assert.ok(html.includes("Copy command"), "copyable verifier command");
   assert.ok(html.includes("never claims that without probed evidence"), "no unverified Resolve-ready light");
+});
+
+test("ui: score workspace robustness — no inline onclick paths, in-flight guards, stale-load guard", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "score-project.html"), "utf8");
+  // Copy buttons carry the path in a data attribute wired via listener — an
+  // inline onclick with an interpolated path breaks on any quote in the path.
+  assert.ok(!/onclick="copyText\(/.test(html), "no inline onclick copy handlers");
+  assert.ok(html.includes("data-copy-text="), "copy buttons use data attributes");
+  assert.ok(html.includes("data-copy-text')"), "delegated copy listener present");
+  // Heavy actions cannot be double-clicked into concurrent runs.
+  assert.ok(html.includes("if (btn.disabled) return;"), "in-flight guard on heavy buttons");
+  assert.match(html, /cands-generate[\s\S]{0,400}btn\.disabled=true/, "candidate generation guarded");
+  // A slow project fetch must not overwrite newer state.
+  assert.ok(html.includes("let loadSeq = 0;"), "monotonic load counter");
+  assert.ok(html.includes("if (seq !== loadSeq) return;"), "superseded loads bail");
 });

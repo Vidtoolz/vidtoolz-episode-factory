@@ -23,8 +23,12 @@
       code{font-size:12px;background:var(--panel-3,#21262d);padding:1px 5px;border-radius:4px;word-break:break-all;}
       ol.steps{font-size:13px;line-height:1.7;padding-left:20px;} ol.steps li{margin:4px 0;}
       .blk{color:#f85149;} .result{font-size:12px;white-space:pre-wrap;background:var(--panel-3,#21262d);border-radius:6px;padding:10px;margin-top:10px;display:none;}
+      .rh-copyrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;}
+      .rh-copybtn{border:1px solid var(--border,#30363d);background:var(--panel-3,#21262d);color:inherit;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;}
+      .rh-copybtn:hover{border-color:#3fb950;color:#3fb950;}
     </style>
     <script src="ef-nav.js"></script>
+    <script src="clipboard.js?v=1"></script>
 </head>
   <body>
     <nav class="ef-nav" data-ef-nav></nav>
@@ -45,6 +49,41 @@
       const ID = new URLSearchParams(location.search).get('id') || '';
       const body = document.getElementById('rh-body');
       const client = ProjectClient();
+
+      // Clipboard-only via the shared helper (clipboard.js); no state change, no API call.
+      let copyStatusTimer = null;
+      function copyText(text, statusEl) {
+        const show = (msg, autoClear) => {
+          if (!statusEl) return;
+          clearTimeout(copyStatusTimer);
+          statusEl.textContent = msg;
+          if (autoClear) copyStatusTimer = setTimeout(() => { statusEl.textContent = ''; }, 2000);
+        };
+        window.copyToClipboard(text,
+          () => show('Copied ✓', true),
+          () => show('Copy failed — copy manually'));
+      }
+      // Pure builder (kept simple so it can be reasoned about / tested): assembles a
+      // paste-ready handoff summary from already-rendered state. No API calls.
+      function buildHandoffSummary(s, lane, handoffDir, clipDir, included, excluded) {
+        const lines = [
+          'Resolve Handoff — ' + (s.title || s.project_id || ''),
+          'Package: ' + (s.project_id || ''),
+          'Clip lane: videos/' + lane + '/',
+        ];
+        if (included && included.length) lines.push('Clips included: ' + included.length);
+        if (excluded && excluded.length) lines.push('Excluded indexes: ' + excluded.join(', '));
+        lines.push('');
+        lines.push('Handoff folder (VIDNAS): ' + handoffDir);
+        lines.push('Clip import folder (VIDNAS): ' + clipDir);
+        lines.push('');
+        lines.push('Import into DaVinci Resolve:');
+        lines.push('1. Create/open the Resolve project; set a vertical 1080x1920 timeline.');
+        lines.push('2. Media Pool -> Import Media -> import the clip folder above.');
+        lines.push('3. Read assembly-plan.md in the handoff folder for clip order; assembly-plan.csv is the same order.');
+        lines.push('4. Clips are 720x1280 — scale to fill on the 1080x1920 timeline.');
+        return lines.join('\n');
+      }
 
       async function fetchJson(url) {
         const r = await fetch(url, { cache: 'no-store' });
@@ -131,6 +170,11 @@
               <li>Clips are <b>720x1280</b> — on the 1080x1920 timeline set clip scaling to fill (Resolve's default "Scale to fit" is fine; they upscale cleanly).</li>
               <li>Mikko's talking-head/voiceover is the primary layer; these clips are background/B-roll candidates. Clip order and durations are suggestions, not edit decisions.</li>
             </ol>
+            <div class="rh-copyrow">
+              <button type="button" class="rh-copybtn" id="rh-copy-path" title="Copy the VIDNAS clip import folder to the clipboard">Copy import path</button>
+              <button type="button" class="rh-copybtn" id="rh-copy-summary" title="Copy a plain-text handoff summary (paths + import steps)">Copy handoff summary</button>
+              <span class="meta" id="rh-copy-status" role="status"></span>
+            </div>
             <div class="meta">The system's scope ends here — editing, export, and publishing are manual and yours.</div>
           </div>` : ''}
 
@@ -143,6 +187,14 @@
           </div>
         `;
         client.renderAction(document.getElementById('rh-action'), nt, () => load(), document.getElementById('rh-result'));
+
+        if (s.has_resolve_handoff) {
+          const statusEl = document.getElementById('rh-copy-status');
+          const pathBtn = document.getElementById('rh-copy-path');
+          const sumBtn = document.getElementById('rh-copy-summary');
+          if (pathBtn) pathBtn.addEventListener('click', () => copyText(clipDir, statusEl));
+          if (sumBtn) sumBtn.addEventListener('click', () => copyText(buildHandoffSummary(s, lane, handoffDir, clipDir, included, excluded), statusEl));
+        }
       }
       load();
     </script>

@@ -195,6 +195,7 @@ async function callAiProvider(provider, promptText, settings = {}, fetchImpl = f
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
       body: JSON.stringify({ model: settings.openai_model || "gpt-4o-mini", messages: [{ role: "user", content: promptText }], temperature: 0.4 }),
+      signal: AbortSignal.timeout(120000), // a hung provider must not hold the route open forever
     });
     if (!response.ok) throw new Error(`OpenAI HTTP ${response.status}`);
     const data = await response.json();
@@ -207,6 +208,7 @@ async function callAiProvider(provider, promptText, settings = {}, fetchImpl = f
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({ model: settings.anthropic_model || "claude-haiku-4-5-20251001", max_tokens: 4000, messages: [{ role: "user", content: promptText }] }),
+      signal: AbortSignal.timeout(120000), // a hung provider must not hold the route open forever
     });
     if (!response.ok) throw new Error(`Anthropic HTTP ${response.status}`);
     const data = await response.json();

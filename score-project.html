@@ -149,18 +149,27 @@
       function fileUrl(rel){ return '/api/score/file?id='+encodeURIComponent(ID)+'&path='+encodeURIComponent(rel); }
       function copyText(text,label){ navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text).then(()=>toast('Copied: '+label),()=>toast('Copy failed',false)) : toast('Copy unsupported',false); }
 
+      // Monotonic load guard: a slow response must never overwrite newer state
+      // (several actions fire load() and responses can resolve out of order).
+      let loadSeq = 0;
       async function load(){
+        const seq = ++loadSeq;
         try{
-          ST = await fetchJson('/api/score/project?id='+encodeURIComponent(ID));
+          const st = await fetchJson('/api/score/project?id='+encodeURIComponent(ID));
+          if (seq !== loadSeq) return; // superseded by a newer load
+          ST = st;
           showErr('');
           render();
-        }catch(e){ showErr(e.message); document.getElementById('title').textContent='Score not found'; }
+        }catch(e){ if (seq === loadSeq){ showErr(e.message); document.getElementById('title').textContent='Score not found'; } }
       }
 
       function render(){
         const p = ST.project;
         document.getElementById('title').textContent = '🎼 ' + (p.name || p.project_id);
-        document.getElementById('subtitle').innerHTML = `${p.duration_seconds}s · ${esc(p.target_platform)} · ${esc(p.music_role)} · dialogue ${esc(p.dialogue_density)} · seed ${p.seed} · <code>${esc(ST.dir)}</code> <button class="btn" style="padding:1px 8px;font-size:11px;" onclick="copyText('${esc(ST.dir)}','project path')">Copy path</button>`;
+        // The copy button is wired via listener + dataset — never an inline
+        // onclick with an interpolated path (a quote in the path would break
+        // out of the JS string).
+        document.getElementById('subtitle').innerHTML = `${p.duration_seconds}s · ${esc(p.target_platform)} · ${esc(p.music_role)} · dialogue ${esc(p.dialogue_density)} · seed ${p.seed} · <code>${esc(ST.dir)}</code> <button class="btn" style="padding:1px 8px;font-size:11px;" data-copy-text="${esc(ST.dir)}" data-copy-label="project path">Copy path</button>`;
         CUES = (ST.cue_sheet && ST.cue_sheet.cues) ? JSON.parse(JSON.stringify(ST.cue_sheet.cues)) : [];
         renderReadiness(); renderCues(); renderPalette(); renderCandidates(); renderExport();
       }
@@ -331,7 +340,7 @@
           </table>
           <audio controls preload="none" src="${fileUrl('approved/mix.wav')}"></audio>
           <div>
-            <button class="btn" onclick="copyText('${esc(base)}/resolve-import','Resolve import path')">Copy Resolve import path</button>
+            <button class="btn" data-copy-text="${esc(base)}/resolve-import" data-copy-label="Resolve import path">Copy Resolve import path</button>
             <button class="btn" data-open="approved">Open output folder</button>
             <button class="btn" data-open="approved/resolve-import">Open Resolve import folder</button>
             <a class="btn" href="${fileUrl('approved/provenance.md')}" target="_blank">Provenance report</a>
@@ -361,7 +370,11 @@
         try{ const d=await fetchJson('/api/score/prompt?task=cue_sheet&id='+encodeURIComponent(ID)); copyText(d.prompt,'cue-sheet prompt'); }catch(e){ toast(e.message,false); }
       };
       document.getElementById('ai-call').onclick = async ()=>{
+        const btn=document.getElementById('ai-call');
+        if (btn.disabled) return; // one provider call at a time
+        btn.disabled=true; const orig=btn.textContent; btn.textContent='Asking provider…';
         try{ const d=await post('/api/score/cues/ai-call',{project_id:ID}); toast('AI cue sheet applied ('+d.provider+')'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
+        btn.disabled=false; btn.textContent=orig;
       };
       document.getElementById('ai-apply').onclick = async ()=>{
         try{ await post('/api/score/cues/ai-apply',{project_id:ID,response_text:document.getElementById('ai-paste').value}); toast('AI response validated + applied'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
@@ -371,6 +384,11 @@
         try{ await post('/api/score/palette',{project_id:ID,palette_id:sel?sel.getAttribute('data-palette'):ST.project.palette_id}); toast('Palette applied'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
       };
       document.getElementById('cands-generate').onclick = async ()=>{
+        // In-flight guard: candidate generation renders N MIDI files + WAV
+        // previews — a double-click must not start a second concurrent batch.
+        const btn=document.getElementById('cands-generate');
+        if (btn.disabled) return;
+        btn.disabled=true;
         const busy=document.getElementById('cands-busy'); busy.textContent='Generating candidates (MIDI + previews)…';
         try{
           const body={project_id:ID,count:Number(document.getElementById('cand-count').value)||3};
@@ -379,11 +397,13 @@
           const d=await post('/api/score/candidates/generate',body); toast(d.candidates.length+' candidates generated');
         }
         catch(e){ toast(e.message,false); showErr(e.message); }
-        busy.textContent=''; load();
+        btn.disabled=false; busy.textContent=''; load();
       };
 
       document.addEventListener('click', async (ev)=>{
         const t=ev.target;
+        const copyAttr = t.getAttribute && t.getAttribute('data-copy-text');
+        if (copyAttr != null){ copyText(copyAttr, t.getAttribute('data-copy-label')||'text'); return; }
         if (t.classList && t.classList.contains('palette-card')){ document.querySelectorAll('.palette-card').forEach(el=>el.classList.remove('sel')); t.classList.add('sel'); return; }
         if (t.closest && t.closest('.palette-card')){ document.querySelectorAll('.palette-card').forEach(el=>el.classList.remove('sel')); t.closest('.palette-card').classList.add('sel'); return; }
         const del = t.getAttribute && t.getAttribute('data-delcue');

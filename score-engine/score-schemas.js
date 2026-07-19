@@ -130,6 +130,10 @@ const DEFAULT_SETTINGS = {
   max_for_live_bridge_enabled: false,
   openai_api_key_env: "OPENAI_API_KEY",
   anthropic_api_key_env: "ANTHROPIC_API_KEY",
+  // Model overrides for the optional AI planning call. Present here so
+  // saveSettings keeps them (it drops unknown keys); empty = provider default.
+  openai_model: "",
+  anthropic_model: "",
   default_ai_provider: "manual",
   default_palette: "tech_noir_pulse",
   default_candidate_count: 3,
@@ -229,12 +233,40 @@ function validatePalette(palette) {
   return errors;
 }
 
+// Settings whose value must be a string when present. Without this a
+// wrong-typed music_root (e.g. a number) was accepted, persisted, and then
+// bricked EVERY score read route with a path TypeError until the settings
+// file was hand-edited.
+const STRING_SETTINGS = [
+  "music_root", "default_video_package_root", "ffmpeg_path", "ffprobe_path",
+  "reaper_executable_path", "reaper_resource_path", "reaper_project_template_path",
+  "reaper_track_template_folder", "ableton_template_path",
+  "openai_api_key_env", "anthropic_api_key_env", "openai_model", "anthropic_model",
+  "default_palette",
+];
+
 function validateSettings(settings) {
   const errors = [];
   if (!settings || typeof settings !== "object") return ["settings is not an object"];
+  for (const key of STRING_SETTINGS) {
+    if (settings[key] !== undefined && settings[key] !== null && typeof settings[key] !== "string") {
+      errors.push(`${key} must be a string`);
+    }
+  }
+  if (settings.default_palette && !Object.prototype.hasOwnProperty.call(DEFAULT_PALETTES, settings.default_palette)) {
+    errors.push(`default_palette must be one of ${Object.keys(DEFAULT_PALETTES).join("|")}`);
+  }
   if (settings.default_ai_provider && !AI_PROVIDERS.includes(settings.default_ai_provider)) errors.push(`default_ai_provider must be ${AI_PROVIDERS.join("|")}`);
   if (settings.default_candidate_count !== undefined && (!Number.isInteger(settings.default_candidate_count) || settings.default_candidate_count < 1 || settings.default_candidate_count > 5)) errors.push("default_candidate_count must be integer 1-5");
   if (settings.default_dialogue_density && !DIALOGUE_DENSITIES.includes(settings.default_dialogue_density)) errors.push(`default_dialogue_density must be ${DIALOGUE_DENSITIES.join("|")}`);
+  // Wrong-typed render numbers previously produced silently corrupt 44-byte
+  // header-only WAV "exports" (NaN frame count) with no error anywhere.
+  if (settings.default_export_sample_rate !== undefined && (!Number.isInteger(settings.default_export_sample_rate) || settings.default_export_sample_rate < 8000 || settings.default_export_sample_rate > 192000)) {
+    errors.push("default_export_sample_rate must be an integer between 8000 and 192000");
+  }
+  if (settings.default_export_bit_depth !== undefined && ![16, 24].includes(settings.default_export_bit_depth)) {
+    errors.push("default_export_bit_depth must be 16 or 24");
+  }
   for (const key of ["openai_api_key", "anthropic_api_key", "api_key"]) {
     if (settings[key]) errors.push(`${key}: raw API keys must not be stored in settings — use *_api_key_env names`);
   }

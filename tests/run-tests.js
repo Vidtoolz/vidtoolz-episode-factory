@@ -61,6 +61,7 @@ require("./mission-control-parked.test.js");
 require("./presto-eligibility.test.js");
 require("./manual-upload-provenance.test.js");
 require("./publish-gate-decision.test.js");
+require("./cockpit-continuity-buttons.test.js");
 
 async function runTests() {
   let passed = 0;

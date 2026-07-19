@@ -19,6 +19,13 @@ const IMAGE_PROMPTS_FILENAME = 'image-prompts.json';
 const FLUX_MANIFEST_FILENAME = 'flux-generation-manifest.json';
 const FLUX_IMAGES_SUBDIR = path.join('images', 'flux-local');
 
+// File mtime in whole ms, or null when the file is absent/unreadable. Used by
+// reconcile as a stable cache key that changes exactly when the file changes
+// (a regenerated asset gets a fresh key; an untouched one keeps its key).
+function fileMtimeMs(filePath) {
+  try { return Math.round(fs.statSync(filePath).mtimeMs); } catch (_) { return null; }
+}
+
 // Superseded (archived) media lives here after a Clear/Regenerate — files are
 // never destructively deleted, only moved aside with sha256 + timestamp
 // provenance so a regenerated asset can be told apart from the one it replaced.
@@ -121,6 +128,38 @@ function recordRegenOutcome(mediaDir, kind, index, outcome) {
   fs.renameSync(tmp, outPath);
 }
 
+// Move an archived asset back to its canonical path and annotate its ledger
+// entry (so provenance readers don't point at a path that no longer exists).
+// Safe no-op when there is nothing to restore. Returns { restored: bool }.
+function restoreArchivedToCanonical(mediaDir, prevArchive, canonical, iso) {
+  if (!prevArchive || !prevArchive.archived_path) return { restored: false };
+  const abs = path.join(mediaDir, prevArchive.archived_path);
+  if (!fs.existsSync(abs)) return { restored: false };
+  fs.mkdirSync(path.dirname(canonical), { recursive: true });
+  fs.renameSync(abs, canonical);
+  const manifest = readSupersededManifest(mediaDir);
+  const entry = manifest.entries.find((e) => e.archived_path === prevArchive.archived_path && !e.restored_at);
+  if (entry) { entry.restored_at = iso; entry.restored_to_canonical = true; writeSupersededManifest(mediaDir, manifest); }
+  return { restored: true };
+}
+
+// Undo an archiveImage/archiveVideo whose replacement generation never started
+// (lock lost to a concurrent job, dispatch/materialize failure): put the
+// archived file back as the canonical asset so a failed regenerate can never
+// strand the slot empty.
+function restoreArchivedImage(projectId, index, prevArchive, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  const idx = Math.round(Number(index));
+  return restoreArchivedToCanonical(mediaDir, prevArchive, imageFilePath(mediaDir, idx), nowStamp(options));
+}
+
+function restoreArchivedVideo(projectId, subdir, index, prevArchive, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  const idx = Math.round(Number(index));
+  const sub = String(subdir || 'mp4');
+  return restoreArchivedToCanonical(mediaDir, prevArchive, videoFilePath(mediaDir, sub, idx), nowStamp(options));
+}
+
 // Resolve a completed explicit regeneration. Hashes ONLY the freshly generated
 // canonical file and compares it to the previous (archived) hash — the only two
 // hashes taken, and only on a regenerate. Behavior:
@@ -131,20 +170,7 @@ function recordRegenOutcome(mediaDir, kind, index, outcome) {
 //  - distinct: keep the new file active, previous stays superseded; 'regenerated'.
 function resolveRegenerated(mediaDir, kind, index, canonical, ext, base, prevArchive, options = {}) {
   const iso = nowStamp(options);
-  const restorePrevious = () => {
-    if (prevArchive && prevArchive.archived_path) {
-      const abs = path.join(mediaDir, prevArchive.archived_path);
-      if (fs.existsSync(abs)) {
-        fs.mkdirSync(path.dirname(canonical), { recursive: true });
-        fs.renameSync(abs, canonical);
-        // The archived file just moved back to canonical — annotate its ledger
-        // entry so provenance readers don't point at a path that no longer exists.
-        const manifest = readSupersededManifest(mediaDir);
-        const entry = manifest.entries.find((e) => e.archived_path === prevArchive.archived_path && !e.restored_at);
-        if (entry) { entry.restored_at = iso; entry.restored_to_canonical = true; writeSupersededManifest(mediaDir, manifest); }
-      }
-    }
-  };
+  const restorePrevious = () => { restoreArchivedToCanonical(mediaDir, prevArchive, canonical, iso); };
   if (!fs.existsSync(canonical)) {
     restorePrevious();
     recordRegenOutcome(mediaDir, kind, index, { status: 'failed', at: iso });
@@ -314,6 +340,21 @@ function readFluxManifest(mediaDir) {
   }
 }
 
+function generatedPromptHashesByIndex(projectId, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  const manifest = readFluxManifest(mediaDir);
+  const items = (manifest && Array.isArray(manifest.items)) ? manifest.items : [];
+  const out = {};
+  items.forEach((it) => {
+    const idx = Math.round(Number(it && it.prompt_index));
+    if (!Number.isInteger(idx) || idx < 1) return;
+    const storedHash = superFocus.normalizeGeneratedPromptHash(it.generated_prompt_hash || it.prompt_hash);
+    if (storedHash) { out[idx] = storedHash; return; }
+    if (typeof it.prompt === 'string' && it.prompt.trim()) out[idx] = superFocus.generatedPromptHash(it.prompt.trim());
+  });
+  return out;
+}
+
 // Reconcile prompt records against on-disk truth: the manifest AND the actual
 // PNG files (files win — a file present means done even if the manifest lags).
 // Returns one row per prompt index with a normalized status.
@@ -332,7 +373,8 @@ function reconcileImages(projectId, imagePrompts, options = {}) {
   const rows = (Array.isArray(imagePrompts) ? imagePrompts : []).map((p) => {
     const idx = p.index;
     const item = byIndex[idx] || null;
-    const fileExists = fs.existsSync(imageFilePath(mediaDir, idx));
+    const mtimeMs = fileMtimeMs(imageFilePath(mediaDir, idx));
+    const fileExists = mtimeMs != null;
     let status;
     if (fileExists) status = 'done';
     else if (item && item.status === 'failed') status = 'failed';
@@ -341,13 +383,18 @@ function reconcileImages(projectId, imagePrompts, options = {}) {
     else status = 'pending';
     if (status === 'done') doneCount += 1;
     if (status === 'failed') failedCount += 1;
+    const promptHash = superFocus.normalizeGeneratedPromptHash(p.generated_prompt_hash);
+    const promptHashMismatch = Boolean(fileExists && promptHash && promptHash !== superFocus.generatedPromptHash(p.text || ''));
     return {
       index: idx,
       status,
       has_image: fileExists,
+      // Cache key for the served image file; changes when the file changes.
+      mtime_ms: mtimeMs,
       // The prompt text for this row changed after its image was generated, so
-      // the on-disk image no longer cleanly matches (surfaced in the UI).
-      prompt_changed: Boolean(p.image_stale),
+      // the on-disk image no longer cleanly matches (surfaced in the UI). Legacy
+      // rows with no generated_prompt_hash are "unknown" and not mass-flagged.
+      prompt_changed: Boolean(p.image_stale || promptHashMismatch),
       // A prior explicit regeneration produced a byte-identical image and was
       // rejected — the previous image was kept active (set at regenerate time).
       duplicate_rejected: Boolean(regenImage[idx] && regenImage[idx].status === 'duplicate_rejected'),
@@ -451,12 +498,15 @@ function reconcileVideos(projectId, imagePrompts, subdir, options = {}) {
   const regenVideo = readRegenOutcomes(mediaDir).video || {}; // lookup only, no hashing
   let done = 0;
   const videos = eligible.map((p) => {
-    const fileExists = fs.existsSync(videoFilePath(mediaDir, subdir, p.index));
+    const mtimeMs = fileMtimeMs(videoFilePath(mediaDir, subdir, p.index));
+    const fileExists = mtimeMs != null;
     if (fileExists) done += 1;
     return {
       index: p.index,
       status: fileExists ? 'done' : 'pending',
       has_video: fileExists,
+      // Cache key for the served clip; changes when the file changes.
+      mtime_ms: mtimeMs,
       duplicate_rejected: Boolean(regenVideo[p.index] && regenVideo[p.index].status === 'duplicate_rejected'),
     };
   });
@@ -488,6 +538,7 @@ module.exports = {
   imagePromptsPayload,
   materializeImagePrompts,
   readFluxManifest,
+  generatedPromptHashesByIndex,
   reconcileImages,
   safeImageFilePath,
   videoFileName,
@@ -512,4 +563,6 @@ module.exports = {
   recordRegenOutcome,
   resolveRegeneratedImage,
   resolveRegeneratedVideo,
+  restoreArchivedImage,
+  restoreArchivedVideo,
 };

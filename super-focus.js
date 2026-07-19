@@ -120,6 +120,26 @@ function scriptHash(script) {
   return crypto.createHash('sha1').update(String(script || '')).digest('hex').slice(0, 16);
 }
 
+function generatedPromptHash(text) {
+  return crypto.createHash('sha256').update(String(text || '')).digest('hex');
+}
+
+function normalizeGeneratedPromptHash(value) {
+  const hash = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return /^[a-f0-9]{64}$/.test(hash) ? hash : '';
+}
+
+function generatedPromptHashesByIndex(options = {}) {
+  const source = options.generatedPromptHashesByIndex || options.generated_prompt_hashes_by_index || {};
+  const out = {};
+  Object.keys(source || {}).forEach((key) => {
+    const idx = Math.round(Number(key));
+    const hash = normalizeGeneratedPromptHash(source[key]);
+    if (Number.isInteger(idx) && idx >= 1 && hash) out[idx] = hash;
+  });
+  return out;
+}
+
 // Furthest-evidence-wins stage inference, mirroring the aigen resolver's spirit.
 // Extended per slice; still limited to the text spine (through image_prompts).
 function inferStage(state) {
@@ -341,6 +361,8 @@ function mergeRegeneratedPrompts(previous, texts) {
     const rec = { index, text: clean, status: 'saved' };
     if (old) {
       const changed = old.text !== clean;
+      const oldGeneratedHash = normalizeGeneratedPromptHash(old.generated_prompt_hash);
+      if (oldGeneratedHash) rec.generated_prompt_hash = oldGeneratedHash;
       if (old.i2v_prompt) {
         rec.i2v_prompt = Object.assign({}, old.i2v_prompt);
         if (changed) rec.i2v_prompt.stale = true;
@@ -363,7 +385,16 @@ function clearImageStale(projectId, indexes, options = {}) {
   const set = new Set((Array.isArray(indexes) ? indexes : []).map((n) => Math.round(Number(n))));
   let changed = false;
   (Array.isArray(state.image_prompts) ? state.image_prompts : []).forEach((r) => {
-    if (set.has(r.index) && r.image_stale) { delete r.image_stale; changed = true; }
+    if (!set.has(r.index)) return;
+    if (r.image_stale) { delete r.image_stale; changed = true; }
+    // Backward compatibility: legacy rows without generated_prompt_hash are
+    // treated as unknown and are NOT mass-flagged on load. We only stamp the
+    // hash when an image is actually generated/confirmed for the row, so future
+    // prompt replacements can be compared honestly by exact sha256(text).
+    if (typeof r.text === 'string' && r.text.trim()) {
+      const hash = generatedPromptHash(r.text.trim());
+      if (r.generated_prompt_hash !== hash) { r.generated_prompt_hash = hash; changed = true; }
+    }
   });
   if (changed) {
     state.updated_at = nowIso();
@@ -400,6 +431,7 @@ function fillEmptyImagePrompts(projectId, texts, options = {}) {
   const dir = stateDir(projectId, options);
   const state = loadProject(projectId, options);
   const capacity = Number(options.capacity) > 0 ? Math.round(Number(options.capacity)) : IMAGE_PROMPT_CAPACITY;
+  const knownGeneratedHashes = generatedPromptHashesByIndex(options);
   const byIndex = {};
   (Array.isArray(state.image_prompts) ? state.image_prompts : []).forEach((r) => {
     if (r && r.index != null && typeof r.text === 'string' && r.text.trim()) byIndex[r.index] = r;
@@ -412,7 +444,13 @@ function fillEmptyImagePrompts(projectId, texts, options = {}) {
   const fillCount = Math.min(emptyIndexes.length, clean.length);
   for (let k = 0; k < fillCount; k += 1) {
     const idx = emptyIndexes[k];
-    byIndex[idx] = { index: idx, text: clean[k], status: 'saved' };
+    const rec = { index: idx, text: clean[k], status: 'saved' };
+    const generatedHash = knownGeneratedHashes[idx];
+    if (generatedHash) {
+      rec.generated_prompt_hash = generatedHash;
+      if (generatedHash !== generatedPromptHash(clean[k])) rec.image_stale = true;
+    }
+    byIndex[idx] = rec;
   }
   state.image_prompts = Object.values(byIndex).sort((a, b) => a.index - b.index);
   state.stage = inferStage(state);
@@ -472,13 +510,14 @@ function saveInfographicPrompts(projectId, texts, options = {}) {
 // Save/clear a single prompt slot by 1-based index (per-row "Save changes").
 // Empty text removes the slot (empty slots are never persisted). Editing one
 // row does not change the set's script-derived staleness — it is a manual edit.
-function upsertPromptSlot(records, index, text) {
+function upsertPromptSlot(records, index, text, options = {}) {
   const idx = Math.round(Number(index));
   if (!Number.isFinite(idx) || idx < 1) {
     const e = new Error('Prompt index must be a positive integer.'); e.statusCode = 400; throw e;
   }
   const clean = typeof text === 'string' ? text.trim() : '';
   const existing = (Array.isArray(records) ? records : []).find((r) => r.index === idx) || null;
+  const knownGeneratedHash = generatedPromptHashesByIndex(options)[idx] || '';
   const list = (Array.isArray(records) ? records : []).filter((r) => r.index !== idx);
   if (clean) {
     // Preserve downstream fields (i2v_prompt, images) attached to this row; only
@@ -486,8 +525,12 @@ function upsertPromptSlot(records, index, text) {
     // possibly stale — never delete it: the i2v prompt (if any) AND any image
     // that was generated from the old text (it no longer cleanly matches).
     const merged = Object.assign({}, existing || {}, { index: idx, text: clean, status: 'saved' });
+    const previousHash = normalizeGeneratedPromptHash(merged.generated_prompt_hash) || knownGeneratedHash;
+    if (previousHash) merged.generated_prompt_hash = previousHash;
     if (existing && existing.text !== clean) {
       if (merged.i2v_prompt) merged.i2v_prompt = Object.assign({}, merged.i2v_prompt, { stale: true });
+      merged.image_stale = true;
+    } else if (!existing && previousHash && previousHash !== generatedPromptHash(clean)) {
       merged.image_stale = true;
     }
     list.push(merged);
@@ -499,7 +542,7 @@ function upsertPromptSlot(records, index, text) {
 function saveImagePrompt(projectId, index, text, options = {}) {
   const dir = stateDir(projectId, options);
   const state = loadProject(projectId, options);
-  state.image_prompts = upsertPromptSlot(state.image_prompts, index, text);
+  state.image_prompts = upsertPromptSlot(state.image_prompts, index, text, options);
   state.stage = inferStage(state);
   state.updated_at = nowIso();
   writeStateAtomic(dir, state);
@@ -578,6 +621,8 @@ module.exports = {
   saveScript,
   IMAGE_PROMPT_CAPACITY,
   INFOGRAPHIC_PROMPT_CAPACITY,
+  generatedPromptHash,
+  normalizeGeneratedPromptHash,
   saveImagePrompts,
   fillEmptyImagePrompts,
   fillEmptyInfographicPrompts,

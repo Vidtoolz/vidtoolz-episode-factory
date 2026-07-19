@@ -387,7 +387,7 @@ test("score-engine reaper: RPP is balanced, has 6 lane tracks, cue markers, and 
   assert.ok(fs.readdirSync(reaperDir).some((f) => f.endsWith(".rpp.bak")));
 });
 
-test("score-engine reaper: open-in-reaper needs config; spawns injected command when configured", () => {
+test("score-engine reaper: open-in-reaper needs config; spawns injected command when configured", async () => {
   const { options } = tmpEnv();
   const project = readyProject(options, { duration_seconds: 20 });
   lane.generateCandidates(project.project_id, { count: 1 }, options);
@@ -397,7 +397,8 @@ test("score-engine reaper: open-in-reaper needs config; spawns injected command 
   lane.saveSettings({ reaper_executable_path: "/fake/reaper" }, options);
   const calls = [];
   const spawnImpl = (cmd, args) => { calls.push({ cmd, args }); return { unref: () => {} }; };
-  const result = lane.openInReaper(project.project_id, "candidate-001", { ...options, spawnImpl });
+  // openInReaper now settles the spawn outcome (honest launch reporting).
+  const result = await lane.openInReaper(project.project_id, "candidate-001", { ...options, spawnImpl });
   assert.equal(result.launched, true);
   assert.equal(calls[0].cmd, "/fake/reaper");
   assert.ok(calls[0].args[0].endsWith("project.rpp"));
@@ -689,4 +690,110 @@ test("score-engine v1.1: template folder fallback resolves <lane>.RTrackTemplate
   lane.saveSettings({ reaper_track_template_folder: folder }, options);
   const built = lane.buildReaperHandoff(project.project_id, "candidate-001", options);
   assert.equal(built.templates_used.bass, path.join(folder, "bass.RTrackTemplate"));
+});
+
+// ── Hardening pass (audit 2026-07-18) ────────────────────────────────────────
+
+test("score-engine hardening: settings reject wrong-typed music_root and render numbers", () => {
+  const { options } = tmpEnv();
+  // music_root:123 previously persisted and bricked every score read route.
+  assert.throws(() => lane.saveSettings({ music_root: 123 }, options), /music_root must be a string/);
+  // "abc" sample rate previously produced silent 44-byte header-only WAVs.
+  assert.throws(() => lane.saveSettings({ default_export_sample_rate: "abc" }, options), /sample_rate/);
+  assert.throws(() => lane.saveSettings({ default_export_bit_depth: 20 }, options), /bit_depth must be 16 or 24/);
+  assert.throws(() => lane.saveSettings({ default_palette: "no_such_palette" }, options), /default_palette/);
+  // Valid values still save.
+  const saved = lane.saveSettings({ default_export_sample_rate: 44100 }, options);
+  assert.equal(saved.default_export_sample_rate, 44100);
+});
+
+test("score-engine hardening: non-numeric lane_gains are rejected, never rendered as silence", () => {
+  const { options } = tmpEnv();
+  const project = readyProject(options, { duration_seconds: 20 });
+  assert.throws(
+    () => lane.generateCandidates(project.project_id, { count: 1, lane_gains: { bass: "loud" } }, options),
+    /lane_gains\.bass must be a finite number/
+  );
+});
+
+test("score-engine hardening: cue-sheet edits reset the human approval flag", () => {
+  const { options } = tmpEnv();
+  const project = readyProject(options, { duration_seconds: 20 }); // approved by helper
+  const before = lane.getProject(project.project_id, options);
+  assert.equal(before.project.cue_sheet_approved, true);
+  lane.saveCueSheetEdits(project.project_id, before.cue_sheet.cues, options);
+  const after = lane.getProject(project.project_id, options);
+  assert.equal(after.project.cue_sheet_approved, false, "an edit invalidates approval — candidates must not compose from an unapproved structure");
+});
+
+test("score-engine hardening: a failed re-approval keeps the previous approved export intact", () => {
+  const { options } = tmpEnv();
+  const project = readyProject(options, { duration_seconds: 20 });
+  lane.generateCandidates(project.project_id, { count: 1 }, options);
+  const first = lane.approveCandidate(project.project_id, "candidate-001", options);
+  const approvedDir = first.approved_dir;
+  const beforeBytes = fs.readFileSync(path.join(approvedDir, "mix.wav"));
+  // Sabotage the candidate so the RE-approval render fails mid-way.
+  const midiDir = path.join(path.dirname(approvedDir), "candidates", "candidate-001", "midi");
+  fs.rmSync(midiDir, { recursive: true, force: true });
+  assert.throws(() => lane.approveCandidate(project.project_id, "candidate-001", options));
+  // Previous approval survives (old order archived it FIRST and stranded the project).
+  assert.ok(fs.existsSync(path.join(approvedDir, "mix.wav")), "previous approved mix still in place");
+  assert.deepEqual(fs.readFileSync(path.join(approvedDir, "mix.wav")), beforeBytes, "previous export byte-identical");
+  const leftovers = fs.readdirSync(path.dirname(approvedDir)).filter((n) => n.startsWith("approved-build-"));
+  assert.deepEqual(leftovers, [], "partial build cleaned up");
+});
+
+test("score-engine hardening: corrupt instrument-profiles.json is archived aside, never clobbered", () => {
+  const { options } = tmpEnv();
+  const settings = lane.loadSettings(options);
+  fs.mkdirSync(settings.music_root, { recursive: true });
+  const file = path.join(settings.music_root, "instrument-profiles.json");
+  fs.writeFileSync(file, "{ operator data, broken json");
+  const profiles = lane.loadProfiles(settings);
+  assert.ok(profiles.length > 0, "starters served");
+  const archived = fs.readdirSync(settings.music_root).filter((n) => n.startsWith("instrument-profiles.corrupt-"));
+  assert.equal(archived.length, 1, "the malformed file was archived, not overwritten");
+  assert.ok(fs.readFileSync(path.join(settings.music_root, archived[0]), "utf8").includes("operator data"), "original bytes preserved");
+});
+
+test("score-engine hardening: a candidate folder without candidate.json answers 409, not a 500 TypeError", () => {
+  const { options } = tmpEnv();
+  const project = readyProject(options, { duration_seconds: 20 });
+  lane.generateCandidates(project.project_id, { count: 1 }, options);
+  // Locate the project dir via the registry-backed project payload.
+  const payload = lane.getProject(project.project_id, options);
+  const ghost = path.join(payload.dir, "candidates", "candidate-099");
+  fs.mkdirSync(ghost, { recursive: true });
+  try { lane.setCandidateStatus(project.project_id, "candidate-099", "rejected", undefined, options); assert.fail("expected 409"); }
+  catch (error) { assert.equal(error.statusCode, 409); assert.match(error.message, /incomplete/); }
+});
+
+test("score-engine hardening: MIDI timeline preserves silence gaps between cues", () => {
+  const cues = [
+    { cue_id: "C001", name: "A", start_seconds: 0, end_seconds: 10, function: "hook", emotion: "curious", energy: 2, density: 2, tempo_bpm: 120, key: "D minor", time_signature: "4/4", instrument_roles: {}, hit_points: [], dialogue_safe: true },
+    { cue_id: "C002", name: "B", start_seconds: 20, end_seconds: 30, function: "button", emotion: "curious", energy: 2, density: 2, tempo_bpm: 120, key: "D minor", time_signature: "4/4", instrument_roles: {}, hit_points: [], dialogue_safe: true },
+  ];
+  const composition = composer.compose({ cues }, { seed: 1, palette_id: "tech_noir_pulse" });
+  // 10s cue at 120 BPM = 20 beats; the 10s GAP adds another 20 beats. The old
+  // code dropped the gap, playing C002 at wall-clock 10s instead of 20s.
+  const ppq = composition.markers[1].tick / 40;
+  assert.equal(composition.markers[1].tick, 40 * ppq);
+  assert.ok(Number.isInteger(ppq) && ppq > 0, "C002 marker sits at 40 beats (20 cue + 20 gap)");
+  const noGap = composer.compose({ cues: [cues[0], { ...cues[1], start_seconds: 10, end_seconds: 20 }] }, { seed: 1, palette_id: "tech_noir_pulse" });
+  assert.equal(composition.markers[1].tick, noGap.markers[1].tick * 2, "gap doubles the tick offset vs contiguous cues");
+});
+
+test("score-engine hardening: spawn failure reports launched:false as a 500, not a success toast", async () => {
+  const { options } = tmpEnv();
+  const project = readyProject(options, { duration_seconds: 20 });
+  lane.generateCandidates(project.project_id, { count: 1 }, options);
+  lane.buildReaperHandoff(project.project_id, "candidate-001", options);
+  lane.saveSettings({ reaper_executable_path: "/no/such/reaper" }, options);
+  const { EventEmitter } = require("node:events");
+  const spawnImpl = () => { const child = new EventEmitter(); process.nextTick(() => child.emit("error", new Error("spawn ENOENT"))); return child; };
+  await assert.rejects(
+    () => lane.openInReaper(project.project_id, "candidate-001", { ...options, spawnImpl }),
+    /REAPER failed to launch/
+  );
 });

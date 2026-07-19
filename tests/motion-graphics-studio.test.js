@@ -36,11 +36,11 @@ function mgServer() {
 }
 
 // ── pure template model ──────────────────────────────────────────────────────
-test("mg-templates: vertical 1080x1920 default, presenter safe area, three first-slice types", () => {
+test("mg-templates: vertical 1080x1920 default, presenter safe area, five first-slice types", () => {
   assert.equal(mgTpl.FORMAT_DEFAULT.width, 1080);
   assert.equal(mgTpl.FORMAT_DEFAULT.height, 1920);
   assert.equal(mgTpl.STYLE_DEFAULT.safe_area.presenter_overlay, "lower_right");
-  assert.deepEqual(mgTpl.TEMPLATE_TYPES.sort(), ["comparison", "lower_third", "title"]);
+  assert.deepEqual(mgTpl.TEMPLATE_TYPES.sort(), ["chapter", "comparison", "lower_third", "proof_gate", "title"]);
 });
 
 test("mg-templates: param validation for each type", () => {
@@ -50,6 +50,15 @@ test("mg-templates: param validation for each type", () => {
   assert.equal(mgTpl.validateCardParams("comparison", { wrong: "x" }).ok, false); // missing better
   assert.equal(mgTpl.validateCardParams("lower_third", { name: "Mikko" }).ok, true);
   assert.equal(mgTpl.validateCardParams("lower_third", {}).ok, false);
+  // chapter: both chapter label and title are required
+  assert.equal(mgTpl.validateCardParams("chapter", { chapter: "Part 2", title: "The Script Is the Spine" }).ok, true);
+  assert.equal(mgTpl.validateCardParams("chapter", { chapter: "Part 2" }).ok, false); // missing title
+  assert.equal(mgTpl.validateCardParams("chapter", { title: "x" }).ok, false); // missing chapter label
+  // proof_gate: claim and evidence are required; verdict optional
+  assert.equal(mgTpl.validateCardParams("proof_gate", { claim: "It works", evidence: "ran verify.sh, 12/12 ok" }).ok, true);
+  assert.equal(mgTpl.validateCardParams("proof_gate", { claim: "It works" }).ok, false); // missing evidence
+  assert.equal(mgTpl.validateCardParams("proof_gate", { evidence: "some evidence" }).ok, false); // missing claim
+  assert.equal(mgTpl.validateCardParams("proof_gate", { claim: "It works", evidence: "e", verdict: "Approved" }).ok, true);
   assert.equal(mgTpl.validateCardParams("nope", {}).ok, false);
 });
 
@@ -85,6 +94,34 @@ test("mg-templates: buildCardHtml root carries HyperFrames composition markers (
   assert.match(html, /data-width="1080"/);
   assert.match(html, /data-height="1920"/);
   assert.match(html, /data-fps="30"/);
+});
+
+test("mg-templates: buildCardHtml for chapter and proof_gate uses the dedicated classes and escapes params", () => {
+  const chapter = mgTpl.buildCardHtml({ type: "chapter", params: { chapter: 'Part 2 <script>x</script>', title: "The Script Is the Spine", subtitle: "sub" } });
+  assert.match(chapter, /mg-chapter-kicker/);
+  assert.match(chapter, /mg-chapter-title/);
+  assert.match(chapter, /The Script Is the Spine/);
+  assert.doesNotMatch(chapter, /<script>x<\/script>/);
+  assert.match(chapter, /&lt;script&gt;/);
+  const proof = mgTpl.buildCardHtml({ type: "proof_gate", params: { claim: "It renders", evidence: "<img src=x onerror=alert(1)>", verdict: "Pass" } });
+  assert.match(proof, /mg-proof-claim/);
+  assert.match(proof, /mg-proof-ev/);
+  assert.match(proof, /mg-tag-ev">Evidence</);
+  assert.doesNotMatch(proof, /<img src=x/);
+  assert.match(proof, /&lt;img/);
+});
+
+test("mg-templates: buildDefaultCard for chapter and proof_gate fills the right default params and engine", () => {
+  const ch = mgTpl.buildDefaultCard("chapter");
+  assert.equal(ch.type, "chapter");
+  assert.equal(ch.engine, "hyperframes");
+  assert.equal(ch.format.width, 1080);
+  assert.equal(ch.format.height, 1920);
+  assert.deepEqual(ch.params, { chapter: "", title: "", subtitle: "" });
+  const pg = mgTpl.buildDefaultCard("proof_gate");
+  assert.equal(pg.type, "proof_gate");
+  assert.equal(pg.engine, "hyperframes");
+  assert.deepEqual(pg.params, { claim: "", evidence: "", verdict: "" });
 });
 
 // ── state module ─────────────────────────────────────────────────────────────
@@ -132,7 +169,7 @@ test("mg-api: templates catalog is served", async () => {
   await listen(server);
   try {
     const d = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_TEMPLATES_API));
-    assert.ok(Array.isArray(d.templates) && d.templates.length === 3);
+    assert.ok(Array.isArray(d.templates) && d.templates.length === 5);
     assert.equal(d.format_default.height, 1920);
   } finally { await close(server); }
 });

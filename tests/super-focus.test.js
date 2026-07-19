@@ -1,5 +1,6 @@
 const { test, assert, packageEngineServer, fs, os, path, http } = require("./_helpers.js");
 const { EventEmitter } = require("node:events");
+const crypto = require("node:crypto");
 const superFocus = require("../super-focus.js");
 const sfPrompts = require("../super-focus-prompts.js");
 const sfMedia = require("../super-focus-media.js");
@@ -13,6 +14,9 @@ function refusedFetch() {
 }
 function jsonArray(n, prefix) {
   return JSON.stringify(Array.from({ length: n }, (_, i) => (prefix || "Prompt") + " " + (i + 1) + " distinct vertical scene"));
+}
+function promptHash(text) {
+  return crypto.createHash("sha256").update(String(text || "")).digest("hex");
 }
 
 // ---- local helpers (mirror the flux/presto endpoint-test pattern) ----
@@ -644,6 +648,55 @@ test("reconcileImages surfaces prompt_changed for a regenerated (mismatched) ima
   assert.equal(row2.prompt_changed, false, "clean row is not flagged");
 });
 
+test("reconcileImages exposes the file mtime as a cache key (null when absent)", () => {
+  const mediaRoot = mkRoot();
+  const projectId = "recon-mtime-abcd1234";
+  const dir = path.join(mediaRoot, projectId, "images", "flux-local");
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, "flux-001.png");
+  fs.writeFileSync(file, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  const prompts = [
+    { index: 1, text: "has image", status: "saved" },
+    { index: 2, text: "no image", status: "saved" },
+  ];
+  const recon = sfMedia.reconcileImages(projectId, prompts, { mediaRoot });
+  const row1 = recon.images.find((r) => r.index === 1);
+  const row2 = recon.images.find((r) => r.index === 2);
+  assert.equal(typeof row1.mtime_ms, "number", "existing file carries a numeric mtime key");
+  assert.equal(row1.mtime_ms, Math.round(fs.statSync(file).mtimeMs), "key IS the file mtime");
+  assert.equal(row2.mtime_ms, null, "absent file has a null key");
+  // The key changes exactly when the file changes (regenerate → fresh key).
+  const past = new Date(Date.now() - 60000);
+  fs.utimesSync(file, past, past);
+  const again = sfMedia.reconcileImages(projectId, prompts, { mediaRoot });
+  assert.notEqual(again.images.find((r) => r.index === 1).mtime_ms, row1.mtime_ms);
+});
+
+test("reconcileVideos exposes the clip mtime as a cache key (null when pending)", () => {
+  const mediaRoot = mkRoot();
+  const projectId = "recon-vid-mtime-abcd1234";
+  const imgDir = path.join(mediaRoot, projectId, "images", "flux-local");
+  const vidDir = path.join(mediaRoot, projectId, "videos", "mp4");
+  fs.mkdirSync(imgDir, { recursive: true });
+  fs.mkdirSync(vidDir, { recursive: true });
+  // Both rows are video-eligible (still + i2v prompt); only row 1 has a clip.
+  fs.writeFileSync(path.join(imgDir, "flux-001.png"), Buffer.from([1]));
+  fs.writeFileSync(path.join(imgDir, "flux-002.png"), Buffer.from([2]));
+  const clip = path.join(vidDir, "001.mp4");
+  fs.writeFileSync(clip, Buffer.from([3]));
+  const prompts = [
+    { index: 1, text: "p1", status: "saved", i2v_prompt: { text: "motion 1" } },
+    { index: 2, text: "p2", status: "saved", i2v_prompt: { text: "motion 2" } },
+  ];
+  const recon = sfMedia.reconcileVideos(projectId, prompts, "mp4", { mediaRoot });
+  const row1 = recon.videos.find((r) => r.index === 1);
+  const row2 = recon.videos.find((r) => r.index === 2);
+  assert.equal(row1.status, "done");
+  assert.equal(row1.mtime_ms, Math.round(fs.statSync(clip).mtimeMs), "done clip carries its mtime");
+  assert.equal(row2.status, "pending");
+  assert.equal(row2.mtime_ms, null, "pending row has a null key");
+});
+
 test("clearImageStale resolves the mismatch flag for the requested indexes only", () => {
   const root = mkRoot();
   const created = superFocus.createProject({ title: "Clear" }, { root });
@@ -656,6 +709,68 @@ test("clearImageStale resolves the mismatch flag for the requested indexes only"
   const cleared = superFocus.clearImageStale(created.project_id, [1], { root });
   assert.ok(!cleared.image_prompts.find((p) => p.index === 1).image_stale, "index 1 cleared");
   assert.equal(cleared.image_prompts.find((p) => p.index === 2).image_stale, true, "index 2 untouched");
+});
+
+test("refilling a cleared image-prompt slot with different text flags the old on-disk image prompt_changed", () => {
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "Refill" }, { root });
+  superFocus.saveImagePrompts(created.project_id, ["old prompt"], { root });
+  const imageDir = path.join(mediaRoot, created.project_id, "images", "flux-local");
+  fs.mkdirSync(imageDir, { recursive: true });
+  const imagePath = path.join(imageDir, "flux-001.png");
+  const originalBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x01]);
+  fs.writeFileSync(imagePath, originalBytes);
+
+  superFocus.saveImagePrompt(created.project_id, 1, "", { root });
+  const refilled = superFocus.fillEmptyImagePrompts(created.project_id, ["new prompt"], {
+    root,
+    capacity: 1,
+    generatedPromptHashesByIndex: { 1: promptHash("old prompt") },
+  });
+  const row = refilled.image_prompts.find((p) => p.index === 1);
+  assert.equal(row.image_stale, true, "different refill marks the carried image stale");
+  assert.equal(row.generated_prompt_hash, promptHash("old prompt"), "old generated prompt hash is retained for comparison");
+
+  const recon = sfMedia.reconcileImages(created.project_id, refilled.image_prompts, { mediaRoot });
+  assert.equal(recon.images.find((r) => r.index === 1).prompt_changed, true);
+  assert.deepEqual(fs.readFileSync(imagePath), originalBytes, "refill detection does not delete or mutate the image file");
+});
+
+test("refilling a cleared image-prompt slot with identical text keeps prompt_changed false", () => {
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "Same Refill" }, { root });
+  superFocus.saveImagePrompts(created.project_id, ["same prompt"], { root });
+  const imageDir = path.join(mediaRoot, created.project_id, "images", "flux-local");
+  fs.mkdirSync(imageDir, { recursive: true });
+  fs.writeFileSync(path.join(imageDir, "flux-001.png"), Buffer.from([0x89, 0x50]));
+
+  superFocus.saveImagePrompt(created.project_id, 1, "", { root });
+  const refilled = superFocus.fillEmptyImagePrompts(created.project_id, ["same prompt"], {
+    root,
+    capacity: 1,
+    generatedPromptHashesByIndex: { 1: promptHash("same prompt") },
+  });
+  const row = refilled.image_prompts.find((p) => p.index === 1);
+  assert.ok(!row.image_stale, "byte-identical prompt refill does not stale the image");
+  const recon = sfMedia.reconcileImages(created.project_id, refilled.image_prompts, { mediaRoot });
+  assert.equal(recon.images.find((r) => r.index === 1).prompt_changed, false);
+});
+
+test("old Super Focus image rows without generated_prompt_hash do not mass-flag on load", () => {
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "Legacy" }, { root });
+  superFocus.saveImagePrompts(created.project_id, ["legacy prompt"], { root });
+  const imageDir = path.join(mediaRoot, created.project_id, "images", "flux-local");
+  fs.mkdirSync(imageDir, { recursive: true });
+  fs.writeFileSync(path.join(imageDir, "flux-001.png"), Buffer.from([0x89, 0x50]));
+
+  const loaded = superFocus.loadProject(created.project_id, { root });
+  assert.ok(!("generated_prompt_hash" in loaded.image_prompts[0]), "legacy row has no new hash field");
+  const recon = sfMedia.reconcileImages(created.project_id, loaded.image_prompts, { mediaRoot });
+  assert.equal(recon.images.find((r) => r.index === 1).prompt_changed, false);
 });
 
 // ==================== Slice 4: image generation (stubbed FLUX) ====================
@@ -752,6 +867,50 @@ test("generate-images materializes image-prompts.json and dispatches; images rec
     assert.equal(d.done, 3);
     assert.equal(d.failed, 0);
     assert.equal(d.flux_job.active, false);
+  } finally {
+    await close(server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("generate-images treats prompt_changed image rows as eligible without clearing the mismatch on default skip-existing", async () => {
+  packageEngineServer.FLUX_STATE.activeJob = null;
+  const root = mkRoot();
+  const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "Stale Generate" }, { root });
+  superFocus.saveScript(created.project_id, "a script", { root });
+  superFocus.saveImagePrompts(created.project_id, ["old prompt"], { root });
+  superFocus.clearImageStale(created.project_id, [1], { root });
+  superFocus.saveImagePrompt(created.project_id, 1, "", { root });
+  superFocus.fillEmptyImagePrompts(created.project_id, ["new prompt"], {
+    root,
+    capacity: 1,
+    generatedPromptHashesByIndex: { 1: promptHash("old prompt") },
+  });
+  const imageDir = path.join(mediaRoot, created.project_id, "images", "flux-local");
+  fs.mkdirSync(imageDir, { recursive: true });
+  fs.writeFileSync(path.join(imageDir, "flux-001.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  const server = packageEngineServer.createServer({
+    superFocusRoot: root,
+    superFocusMediaRoot: mediaRoot,
+    fluxScript: fakeScript(),
+    pythonBin: "python3",
+    spawn: fakeFluxSpawn(),
+    fluxReachableCheck: async () => true,
+  });
+  await listen(server);
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id: created.project_id },
+    });
+    assert.equal(gen.statusCode, 200);
+    const data = unwrap(gen);
+    assert.equal(data.prompt_changed, 1, "stale existing image is surfaced in the generation response");
+    assert.equal(data.materialized_count, 1, "stale existing image row is still included in the run input");
+    const written = JSON.parse(fs.readFileSync(path.join(mediaRoot, created.project_id, "image-prompts.json"), "utf8"));
+    assert.equal(written.image_prompts[0].prompt, "new prompt");
+    const status = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_IMAGES_STATUS_API + "?id=" + encodeURIComponent(created.project_id)));
+    assert.equal(status.images.find((r) => r.index === 1).prompt_changed, true, "default skip-existing keeps operator-visible mismatch until explicit regeneration/force");
   } finally {
     await close(server);
     packageEngineServer.FLUX_STATE.activeJob = null;
@@ -3892,4 +4051,237 @@ test("super-focus video route: Range support (206 + headers), full 200 advertise
     await close(server);
     packageEngineServer.PRESTO_STATE.activeJob = null;
   }
+});
+
+// ---- Media preview cache keys (regenerated file must not show stale bytes) ----
+test("super-focus.html: image thumbs are idempotent across polls and cache-keyed on file mtime", () => {
+  const body = (() => {
+    const start = SF_HTML.indexOf("function setThumb(");
+    const open = SF_HTML.indexOf("{", start);
+    let depth = 0;
+    for (let i = open; i < SF_HTML.length; i += 1) {
+      if (SF_HTML[i] === "{") depth += 1;
+      else if (SF_HTML[i] === "}") { depth -= 1; if (depth === 0) return SF_HTML.slice(open, i + 1); }
+    }
+    throw new Error("unbalanced setThumb");
+  })();
+  // Idempotence guard: identical row state skips the DOM rebuild (no 3s churn,
+  // transient "regenerating…" feedback survives the poll).
+  assert.match(body, /data-thumb-key/, "thumb guard attribute present");
+  assert.match(body, /if \(el\.getAttribute\('data-thumb-key'\) === thumbKey\) return;/, "unchanged row returns early");
+  // Cache key: the served URL varies with the file mtime, so a regenerated
+  // image is refetched instead of served from the browser cache.
+  assert.match(body, /row\.mtime_ms \|\| row\.generated_at \|\| 0/, "mtime-based cache buster");
+  assert.doesNotMatch(body, /'&t=' \+ row\.generated_at(?!\W*\|\|)/, "raw generated_at (can be null) is no longer the key");
+});
+
+test("super-focus.html: video preview rebuilds on a changed clip and never shows an archived one", () => {
+  const start = SF_HTML.indexOf("function setVideo(");
+  const end = SF_HTML.indexOf("\n    function applyVideosStatus", start);
+  assert.ok(start !== -1 && end > start, "setVideo present");
+  const body = SF_HTML.slice(start, end);
+  // The trigger is keyed on the clip's mtime: same clip → kept (idempotent);
+  // regenerated clip → old trigger removed and rebuilt with a cache-busted URL.
+  assert.match(body, /data-video-key/, "video trigger carries its cache key");
+  assert.match(body, /getAttribute\('data-video-key'\) !== vkey/, "changed clip discards the old trigger");
+  assert.match(body, /'&t=' \+ encodeURIComponent\(vkey\)/, "clip URL is cache-busted by mtime");
+  // When no clip is on disk (archived by regenerate/clear, still rendering),
+  // any lingering preview is removed — the UI never shows a clip that is gone.
+  assert.match(body, /if \(!\(row\.status === 'done' && row\.has_video\)\)/, "non-done state clears the preview");
+});
+
+test("super-focus.html: save/open/poll/cancel handlers all have honest failure handling", () => {
+  // Every fetch chain that feeds user-visible state must catch a network-level
+  // failure (server restart mid-poll, connection refused) — no unhandled
+  // rejections, no silently-stuck UI.
+  assert.match(SF_HTML, /\}\)\.catch\(function \(\) \{ alert\('Could not open project\.'\); \}\);/, "loadProject catches");
+  const saveFails = SF_HTML.match(/\.catch\(function \(\) \{ setStatus\(document\.getElementById\('(title|script)-status'\), 'Save failed', true\); \}\);/g) || [];
+  assert.equal(saveFails.length, 2, "title + script saves catch network failure");
+  const pollCatches = SF_HTML.match(/transient poll failure/g) || [];
+  assert.equal(pollCatches.length, 2, "both status pollers tolerate a transient failure");
+  const cancelCatches = SF_HTML.match(/\.catch\(function \(\) \{ setStatus\(el, 'Cancel failed', true\); \}\);/g) || [];
+  assert.equal(cancelCatches.length, 2, "both cancel buttons catch network failure");
+});
+
+// ===== Regenerate safety: a failed dispatch must never strand the slot =====
+
+test("regenerate-image restores the archived image when dispatch fails (slot never stranded)", async () => {
+  const { server, mediaRoot, id } = imageServer(fakeFluxSpawn(), { promptCount: 1 },
+    Object.assign({}, SEED_CAPABLE, { fluxScript: path.join(mkRoot(), "missing-run-handoff.py") }));
+  await listen(server);
+  try {
+    const fluxDir = path.join(mediaRoot, id, "images", "flux-local");
+    fs.mkdirSync(fluxDir, { recursive: true });
+    const img = path.join(fluxDir, "flux-001.png");
+    fs.writeFileSync(img, Buffer.from([1, 2, 3]));
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_IMAGE_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    assert.equal(res.statusCode, 500, "dispatch failure surfaces (missing run-handoff.py)");
+    assert.ok(fs.existsSync(img), "image restored to canonical after the failed dispatch");
+    assert.deepEqual([...fs.readFileSync(img)], [1, 2, 3], "restored bytes are the original image");
+    const man = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "superseded-manifest.json"), "utf8"));
+    assert.ok(man.entries.some((e) => e.kind === "image" && e.index === 1 && e.restored_to_canonical),
+      "ledger records the restore");
+  } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
+});
+
+test("regenerate-video restores the archived clip when dispatch fails (slot never stranded)", async () => {
+  packageEngineServer.PRESTO_STATE.activeJob = null;
+  const root = mkRoot(); const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "RegenRestore" }, { root });
+  const id = created.project_id;
+  superFocus.saveScript(id, "s", { root });
+  superFocus.saveImagePrompts(id, ["p1"], { root });
+  const flux = path.join(mediaRoot, id, "images", "flux-local");
+  fs.mkdirSync(flux, { recursive: true });
+  fs.writeFileSync(path.join(flux, "flux-001.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  superFocus.setI2vPrompt(id, 1, "motion 1", { root });
+  const server = packageEngineServer.createServer({
+    superFocusRoot: root, superFocusMediaRoot: mediaRoot,
+    productionScript: path.join(mkRoot(), "missing-run-production.py"), // dispatch throws AFTER archive
+    pythonBin: "python3", spawn: fakePrestoSpawn(),
+    prestoReachableCheck: async () => true,
+  });
+  await listen(server);
+  try {
+    const dir = path.join(mediaRoot, id, "videos", HQ_SUBDIR);
+    fs.mkdirSync(dir, { recursive: true });
+    const clip = path.join(dir, "001.mp4");
+    fs.writeFileSync(clip, Buffer.from([5, 5, 5]));
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    assert.equal(res.statusCode, 500, "dispatch failure surfaces (missing run-production.py)");
+    assert.ok(fs.existsSync(clip), "clip restored to canonical after the failed dispatch");
+    assert.deepEqual([...fs.readFileSync(clip)], [5, 5, 5], "restored bytes are the original clip");
+    const man = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "superseded-manifest.json"), "utf8"));
+    assert.ok(man.entries.some((e) => e.kind === "video" && e.index === 1 && e.restored_to_canonical),
+      "ledger records the restore");
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+// ===== Busy lock ordering: refuse BEFORE rewriting a running job's inputs =====
+
+test("generate-images 409s while a batch runs WITHOUT rewriting image-prompts.json", async () => {
+  const { server, mediaRoot, id } = imageServer(fakeFluxSpawn({ hang: true }), { promptCount: 2 });
+  await listen(server);
+  try {
+    const first = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(first.statusCode, 200);
+    // Tamper-detect: mark the running job's materialized input file.
+    const promptsFile = path.join(mediaRoot, id, "image-prompts.json");
+    const sentinel = JSON.stringify({ sentinel: "running-job-input" });
+    fs.writeFileSync(promptsFile, sentinel);
+    const second = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(second.statusCode, 409, "second start refused while the batch runs");
+    assert.equal(fs.readFileSync(promptsFile, "utf8"), sentinel,
+      "the running job's input file was NOT rewritten by the refused request");
+  } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
+});
+
+test("generate-videos 409s while a render runs WITHOUT rewriting its input files", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn({ hang: true }), { promptCount: 2 });
+  await listen(server);
+  try {
+    const first = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, indexes: [1] } });
+    assert.equal(first.statusCode, 200);
+    const selFile = path.join(mediaRoot, id, "selected-images.json");
+    const vpFile = path.join(mediaRoot, id, "video-prompts.json");
+    const selSentinel = JSON.stringify({ sentinel: "sel" });
+    const vpSentinel = JSON.stringify({ sentinel: "vp" });
+    fs.writeFileSync(selFile, selSentinel);
+    fs.writeFileSync(vpFile, vpSentinel);
+    const second = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id, indexes: [2] } });
+    assert.equal(second.statusCode, 409, "second start refused while the render runs");
+    assert.equal(fs.readFileSync(selFile, "utf8"), selSentinel, "selected-images.json untouched");
+    assert.equal(fs.readFileSync(vpFile, "utf8"), vpSentinel, "video-prompts.json untouched");
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+// ===== Pause contract: no NEW PRESTO render starts while paused =====
+
+test("generate-videos re-checks the pause AFTER the reach probe (pause during probe wins)", async () => {
+  packageEngineServer.PRESTO_STATE.activeJob = null;
+  const root = mkRoot(); const mediaRoot = mkRoot();
+  const created = superFocus.createProject({ title: "PauseRace" }, { root });
+  const id = created.project_id;
+  superFocus.saveScript(id, "s", { root });
+  superFocus.saveImagePrompts(id, ["p1"], { root });
+  const flux = path.join(mediaRoot, id, "images", "flux-local");
+  fs.mkdirSync(flux, { recursive: true });
+  fs.writeFileSync(path.join(flux, "flux-001.png"), Buffer.from([1]));
+  superFocus.setI2vPrompt(id, 1, "m1", { root });
+  const server = packageEngineServer.createServer({
+    superFocusRoot: root, superFocusMediaRoot: mediaRoot,
+    productionScript: fakeScript(), pythonBin: "python3", spawn: fakePrestoSpawn(),
+    // The operator pauses the queue exactly while the reach probe is in flight.
+    prestoReachableCheck: async () => {
+      sfMedia.writeVideoQueue(id, { version: 1, paused: true, items: [] }, { mediaRoot });
+      return true;
+    },
+  });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id } });
+    assert.equal(res.statusCode, 200);
+    const d = unwrap(res);
+    assert.equal(d.started, false, "no render started");
+    assert.equal(d.paused, true, "pause reported");
+    assert.ok(!fs.existsSync(path.join(mediaRoot, id, "selected-images.json")),
+      "input files were not materialized for a refused start");
+    assert.ok(!packageEngineServer.PRESTO_STATE.activeJob, "no PRESTO job took the lock");
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+test("regenerate-video refuses while the queue is paused (regenerate is also a new render)", async () => {
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn(), { promptCount: 1 });
+  await listen(server);
+  try {
+    const dir = path.join(mediaRoot, id, "videos", HQ_SUBDIR);
+    fs.mkdirSync(dir, { recursive: true });
+    const clip = path.join(dir, "001.mp4");
+    fs.writeFileSync(clip, Buffer.from([9, 9]));
+    sfMedia.writeVideoQueue(id, { version: 1, paused: true, items: [] }, { mediaRoot });
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+    assert.equal(res.statusCode, 409);
+    assert.match(String(res.body && res.body.error), /paused/i);
+    assert.ok(fs.existsSync(clip), "clip was NOT archived by the refused regenerate");
+    assert.ok(!fs.existsSync(path.join(mediaRoot, id, "superseded")), "nothing superseded");
+  } finally { await close(server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+});
+
+// ===== Ollama model probe: a configured tag must match exactly =====
+
+test("probeOllamaTags: configured model WITH a tag is only ready on an exact tag match", async () => {
+  const fetchImpl = async () => ({ ok: true, json: async () => ({ models: [{ name: "qwen3:8b" }] }) });
+  const mismatch = await packageEngineServer.probeOllamaTags("http://x", "qwen3:14b", { fetchImpl });
+  assert.equal(mismatch.reachable, true);
+  assert.equal(mismatch.model_ready, false, "qwen3:8b must NOT satisfy configured qwen3:14b");
+  const exact = await packageEngineServer.probeOllamaTags("http://x", "qwen3:8b", { fetchImpl });
+  assert.equal(exact.model_ready, true, "exact tag matches");
+  const tagless = await packageEngineServer.probeOllamaTags("http://x", "qwen3", { fetchImpl });
+  assert.equal(tagless.model_ready, true, "tagless configured name accepts any installed tag");
+});
+
+// ===== Media file routes: a stream error must terminate, never hang/crash =====
+
+test("image file route terminates the response on a stream error (no hang, no crash)", async () => {
+  const { server, mediaRoot, id } = imageServer(fakeFluxSpawn(), { promptCount: 1 });
+  // A DIRECTORY at the PNG path passes the exists check but errors on read
+  // (EISDIR) — the same failure mode as a file archived mid-request.
+  fs.mkdirSync(path.join(mediaRoot, id, "images", "flux-local", "flux-001.png"), { recursive: true });
+  await listen(server);
+  try {
+    const outcome = await Promise.race([
+      request(server, packageEngineServer.SUPER_FOCUS_IMAGE_FILE_API + "?id=" + encodeURIComponent(id) + "&index=1")
+        .then(() => "closed", () => "closed"),
+      delay(2000).then(() => "hung"),
+    ]);
+    assert.equal(outcome, "closed", "response ends (destroyed) instead of hanging forever");
+  } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
 });

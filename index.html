@@ -229,6 +229,7 @@
       </div>
     </details>
 
+    <script src="clipboard.js?v=1"></script>
     <script src="episode-model.js?v=1.7.4"></script>
     <script src="storage-adapter.js?v=1.7.4"></script>
     <script src="app.js?v=1.7.4"></script>
@@ -253,6 +254,20 @@
             '<span style="min-width:140px;color:var(--muted);">' + esc(label) + "</span>" +
             "<span>" + esc(value) + "</span></div>"
           );
+        }
+        // Clipboard copy of the exact next command, so the operator does not retype
+        // it. Clipboard only (shared clipboard.js helper) — no state change, no API call.
+        var ooCopyTimer = null;
+        function ooCopy(text, statusEl) {
+          function show(msg, autoClear) {
+            if (!statusEl) return;
+            clearTimeout(ooCopyTimer);
+            statusEl.textContent = msg;
+            if (autoClear) ooCopyTimer = setTimeout(function () { statusEl.textContent = ""; }, 2000);
+          }
+          window.copyToClipboard(text,
+            function () { show("Copied ✓", true); },
+            function () { show("Copy failed — copy manually"); });
         }
         fetch("/api/cockpit-orientation", { cache: "no-store" })
           .then(function (r) {
@@ -327,6 +342,16 @@
             if (f.stale) {
               body.innerHTML +=
                 '<div style="margin-top:6px;color:var(--danger);font-size:12px;">⚠ ' + esc(f.message) + "</div>";
+            }
+            if (o.nextCommand) {
+              body.innerHTML +=
+                '<div style="margin-top:10px;">' +
+                '<button type="button" id="ooCopyCmd" style="border:1px solid var(--border);background:var(--panel);color:inherit;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;">Copy next command</button> ' +
+                '<span id="ooCopyStatus" class="muted" role="status" style="font-size:12px;"></span></div>';
+              var copyBtn = document.getElementById("ooCopyCmd");
+              if (copyBtn) copyBtn.addEventListener("click", function () {
+                ooCopy(o.nextCommand, document.getElementById("ooCopyStatus"));
+              });
             }
           })
           .catch(function () {
