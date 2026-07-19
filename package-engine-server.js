@@ -7915,6 +7915,21 @@ function auditSuperFocusVideoQueue(state, sfMediaRoot) {
   const attempts = superFocusMedia.readVideoAttempts(id, { mediaRoot: sfMediaRoot });
   const mediaDir = superFocusMedia.mediaDirFor(id, { mediaRoot: sfMediaRoot });
   const rowByIndex = new Map((state.image_prompts || []).filter((r) => r && r.text && String(r.text).trim()).map((r) => [r.index, r]));
+  // Structural duplicate detection — ORTHOGONAL to disposition precedence.
+  // Canonical render-target identity within a project's queue is the row
+  // INDEX: the dispatcher renders --indexes [index] into the index-named
+  // output slot (videos/<subdir>/NNN.mp4), and enqueue dedups live items per
+  // index. Two live items sharing an index target the same work regardless
+  // of what their primary disposition says, so ALL members of a duplicate
+  // group carry the flag (the condition belongs to the group, not to
+  // insertion order). This is reported truth only — nothing deduplicates.
+  const liveIndexCounts = {};
+  for (const item of queue.items) {
+    if (item.status === 'queued' || item.status === 'running') {
+      liveIndexCounts[item.index] = (liveIndexCounts[item.index] || 0) + 1;
+    }
+  }
+  const duplicateGroupSizes = Object.values(liveIndexCounts).filter((n) => n > 1);
   const history = {};
   const summary = {};
   const items = [];
@@ -7986,6 +8001,7 @@ function auditSuperFocusVideoQueue(state, sfMediaRoot) {
       would_dispatch_on_resume: VIDEO_QUEUE_AUDIT_DISPATCHABLE.has(disposition),
       estimated_seconds: VIDEO_QUEUE_AUDIT_DISPATCHABLE.has(disposition) ? VIDEO_QUEUE_AUDIT_SECONDS_PER_CLIP : 0,
       recommended_action: VIDEO_QUEUE_AUDIT_ACTIONS[disposition] || 'manual_identity_review',
+      structural_flags: liveIndexCounts[idx] > 1 ? ['duplicate_queue_item'] : [],
     });
   }
   const dispatchable = items.filter((it) => it.would_dispatch_on_resume);
@@ -8005,6 +8021,14 @@ function auditSuperFocusVideoQueue(state, sfMediaRoot) {
     estimated_runtime_seconds: dispatchable.length * VIDEO_QUEUE_AUDIT_SECONDS_PER_CLIP,
     seconds_per_clip: VIDEO_QUEUE_AUDIT_SECONDS_PER_CLIP,
     policy: 'report_only',
+    // Structural aggregate (diagnostic only; NEVER feeds the recommendation,
+    // which stays driven by operational dispositions): item count = queue
+    // entries participating in any duplicate group; group count = distinct
+    // duplicated render targets (indexes).
+    structural: {
+      duplicate_item_count: duplicateGroupSizes.reduce((s, n) => s + n, 0),
+      duplicate_group_count: duplicateGroupSizes.length,
+    },
     recommendation: videoQueueAuditRecommendation(summary, items.length),
     items,
   };

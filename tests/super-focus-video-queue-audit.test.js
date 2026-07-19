@@ -317,6 +317,103 @@ test('queue-audit: path-traversal project ids are rejected, never resolved', asy
   } finally { await close(fx.server); }
 });
 
+// ── Structural duplicate flags (orthogonal to disposition — F1 fix) ──────────
+// Canonical duplicate identity: live items sharing a row INDEX target the
+// same render output (videos/<subdir>/NNN.mp4, dispatched --indexes [index]).
+// ALL members of a duplicate group are flagged; the primary operational
+// disposition is NEVER altered by duplicate membership.
+
+function pushLive(mediaRoot, id, entries) {
+  const queue = superFocusMedia.readVideoQueue(id, { mediaRoot });
+  for (const e of entries) {
+    queue.items.push(Object.assign({ status: 'queued', queued_at: '2026-07-08T15:00:00.000Z' }, e));
+  }
+  superFocusMedia.writeVideoQueue(id, queue, { mediaRoot });
+}
+
+test('queue-audit: duplicates masked as already_satisfied keep their disposition AND expose the structural flag (F1 repro)', async () => {
+  const fx = auditFixture(1);
+  await listen(fx.server);
+  try {
+    writeVideo(fx.mediaRoot, fx.id, 1, Buffer.from('CLIP'));
+    pushLive(fx.mediaRoot, fx.id, [{ item_id: 'dup-b', index: 1, i2v_hash: superFocusMedia.i2vPromptHash('motion 1') }]);
+    const before = queueFileState(fx.mediaRoot, fx.id);
+    const d = unwrap(await request(fx.server, `${AUDIT}?id=${fx.id}`));
+    assert.equal(d.items.length, 2);
+    for (const it of d.items) {
+      assert.equal(it.disposition, 'already_satisfied', 'operational disposition preserved');
+      assert.deepEqual(it.structural_flags, ['duplicate_queue_item'], 'ALL group members flagged');
+    }
+    assert.deepEqual(d.structural, { duplicate_item_count: 2, duplicate_group_count: 1 });
+    // Advisory purity: reported only, never removed.
+    assert.deepEqual(queueFileState(fx.mediaRoot, fx.id), before, 'queue byte-identical — nothing deduplicated');
+  } finally { await close(fx.server); }
+});
+
+test('queue-audit: duplicates masked as missing_source and missing_prompt stay visible via structural flags', async () => {
+  const fx = auditFixture(2);
+  await listen(fx.server);
+  try {
+    const { root, mediaRoot, id } = fx;
+    fs.rmSync(path.join(mediaRoot, id, 'images', 'flux-local', 'flux-001.png')); // row 1 → missing_source
+    superFocus.clearI2vPrompt(id, 2, { root });                                  // row 2 → missing_prompt
+    pushLive(mediaRoot, id, [
+      { item_id: 'dup-1b', index: 1, i2v_hash: 'aaaaaaaaaaaaaaaa' },
+      { item_id: 'dup-2b', index: 2, i2v_hash: 'bbbbbbbbbbbbbbbb' },
+    ]);
+    const d = unwrap(await request(fx.server, `${AUDIT}?id=${id}`));
+    const ofIndex = (i) => d.items.filter((it) => it.index === i);
+    assert.deepEqual(ofIndex(1).map((it) => it.disposition), ['missing_source', 'missing_source']);
+    assert.deepEqual(ofIndex(2).map((it) => it.disposition), ['missing_prompt', 'missing_prompt']);
+    for (const it of d.items) assert.deepEqual(it.structural_flags, ['duplicate_queue_item']);
+    assert.deepEqual(d.structural, { duplicate_item_count: 4, duplicate_group_count: 2 }, 'two groups of two — groups ≠ items');
+  } finally { await close(fx.server); }
+});
+
+test('queue-audit: a mixed-disposition duplicate group keeps each item’s own disposition, all flagged', async () => {
+  const fx = auditFixture(1);
+  await listen(fx.server);
+  try {
+    // First item is dispatchable (legacy); the second reaches the precedence
+    // chain's own duplicate_queue_item branch — both share the group flag.
+    pushLive(fx.mediaRoot, fx.id, [{ item_id: 'dup-b', index: 1, i2v_hash: superFocusMedia.i2vPromptHash('motion 1') }]);
+    const d = unwrap(await request(fx.server, `${AUDIT}?id=${fx.id}`));
+    assert.deepEqual(d.items.map((it) => it.disposition), ['legacy_compatibility', 'duplicate_queue_item'], 'existing dispositions unchanged');
+    for (const it of d.items) assert.deepEqual(it.structural_flags, ['duplicate_queue_item']);
+    // Recommendation stays driven by operational dispositions only.
+    assert.equal(d.recommendation.choice, 'retain_safe_subset_later');
+  } finally { await close(fx.server); }
+});
+
+test('queue-audit: three entries for one slot flag all three; distinct indexes never flag; clean queues report empty structural fields', async () => {
+  const fx = auditFixture(2);
+  await listen(fx.server);
+  try {
+    // Clean queue first: two live items, distinct indexes → no flags.
+    const clean = unwrap(await request(fx.server, `${AUDIT}?id=${fx.id}`));
+    for (const it of clean.items) assert.deepEqual(it.structural_flags, [], 'no false duplicates across distinct indexes');
+    assert.deepEqual(clean.structural, { duplicate_item_count: 0, duplicate_group_count: 0 });
+    assert.equal(clean.recommendation.choice, 'keep_paused');
+    // Triple group on index 1.
+    pushLive(fx.mediaRoot, fx.id, [
+      { item_id: 'dup-b', index: 1, i2v_hash: superFocusMedia.i2vPromptHash('motion 1') },
+      { item_id: 'dup-c', index: 1, i2v_hash: superFocusMedia.i2vPromptHash('motion 1') },
+    ]);
+    const d = unwrap(await request(fx.server, `${AUDIT}?id=${fx.id}`));
+    const group = d.items.filter((it) => it.index === 1);
+    assert.equal(group.length, 3);
+    for (const it of group) assert.deepEqual(it.structural_flags, ['duplicate_queue_item']);
+    assert.deepEqual(d.items.find((it) => it.index === 2).structural_flags, [], 'non-member untouched');
+    assert.deepEqual(d.structural, { duplicate_item_count: 3, duplicate_group_count: 1 });
+    // The recommendation is driven by OPERATIONAL dispositions only: the two
+    // later entries carry the pre-existing duplicate_queue_item disposition
+    // (blocked), which legitimately shifts the choice — the new STRUCTURAL
+    // fields themselves never feed the recommendation (pinned by the clean
+    // and mixed-group tests above, where flags exist without changing it).
+    assert.equal(d.recommendation.choice, 'retain_safe_subset_later');
+  } finally { await close(fx.server); }
+});
+
 // ── UI + docs wiring (static assertions) ─────────────────────────────────────
 
 test('queue-audit: GUI is read-only — GET only, no nonce, no apiPost, textContent rendering, explicit no-mutation copy', () => {
@@ -331,6 +428,13 @@ test('queue-audit: GUI is read-only — GET only, no nonce, no apiPost, textCont
   assert.ok(!/apiPost|method:\s*'POST'|localWriteNonce|setInterval/.test(slice), 'no writes, no nonce, no polling');
   assert.ok(!/innerHTML/.test(slice), 'renders via textContent only');
   assert.ok(slice.includes('nothing was resumed, cancelled, deleted, or dispatched'), 'explicit read-only copy');
+  // Structural duplicate rendering: aggregate warning + per-item flag note,
+  // with the primary disposition still on the same line and explicit
+  // never-removed / not-rendered-twice copy.
+  assert.ok(slice.includes('duplicates are reported only, never removed'), 'structural no-mutation copy');
+  assert.ok(slice.includes('nothing was rendered twice'), 'no double-render implication');
+  assert.ok(slice.includes('structural_flags'), 'per-item flags rendered');
+  assert.ok(slice.includes('it.disposition.replace'), 'primary disposition still rendered alongside flags');
   const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'super-focus.md'), 'utf8');
   assert.ok(doc.includes('video-queue-audit'), 'docs cover the audit route');
   assert.ok(doc.includes('skipped_review'), 'docs cover the dispatch-time gate');

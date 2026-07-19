@@ -181,7 +181,16 @@ resume at night without losing queued work:
   reconciliation may rewrite the queue file even while paused. Dispositions
   are explicit (safe_to_resume / legacy_compatibility / stale_prompt /
   source_unapproved / already_satisfied / …) with an estimated serial GPU
-  runtime for what resume would actually dispatch.
+  runtime for what resume would actually dispatch. **Structural findings are
+  reported separately from the operational disposition**: live queue entries
+  sharing one render target (the row index — the dispatcher's canonical
+  identity) ALL carry `structural_flags: ["duplicate_queue_item"]` while
+  keeping their own disposition, and the report exposes
+  `structural.duplicate_item_count` (entries participating in duplicate
+  groups) vs `structural.duplicate_group_count` (distinct duplicated slots).
+  Duplicates are reported only — the audit never deduplicates, and duplicate
+  findings never change the operational recommendation (on resume the extra
+  entries resolve through normal skip behavior).
 - **Dispatch-time review gate** — the queue pump re-checks the image-review
   gate before every render: an approval revoked (or a review opened/rejected)
   after an item was queued marks it `skipped_review` instead of dispatching.

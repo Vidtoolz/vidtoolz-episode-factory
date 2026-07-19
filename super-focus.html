@@ -3188,12 +3188,22 @@
           if (d.recommendation) {
             addLine('Recommendation: ' + String(d.recommendation.choice || '').replace(/_/g, ' ') + ' — ' + (d.recommendation.reason || ''));
           }
-          // Per-item diagnostics only for items that need operator attention.
-          (d.items || []).filter(function (it) { return it.disposition !== 'legacy_compatibility' && it.disposition !== 'safe_to_resume'; })
+          if (d.structural && d.structural.duplicate_item_count) {
+            addLine('Structural: ' + d.structural.duplicate_item_count + ' queue entries share '
+              + d.structural.duplicate_group_count + ' slot(s) — duplicates are reported only, never removed; nothing was rendered twice.', true);
+          }
+          // Per-item diagnostics: items needing operator attention, plus any
+          // item carrying a structural flag (even when its disposition is fine).
+          (d.items || []).filter(function (it) {
+            return (it.disposition !== 'legacy_compatibility' && it.disposition !== 'safe_to_resume')
+              || (it.structural_flags && it.structural_flags.length);
+          })
             .slice(0, 30)
             .forEach(function (it) {
+              var flagNote = (it.structural_flags && it.structural_flags.length)
+                ? ' ⚑ ' + it.structural_flags.join(', ').replace(/_/g, ' ') : '';
               addLine('  #' + it.index + ' [' + (it.item_id || '?') + '] ' + it.disposition.replace(/_/g, ' ')
-                + ' — ' + (it.reasons[0] || '') + ' → ' + String(it.recommended_action || '').replace(/_/g, ' '), true);
+                + ' — ' + (it.reasons[0] || '') + ' → ' + String(it.recommended_action || '').replace(/_/g, ' ') + flagNote, true);
             });
           addLine('This report is read-only: nothing was resumed, cancelled, deleted, or dispatched.');
           out.classList.remove('hidden');
