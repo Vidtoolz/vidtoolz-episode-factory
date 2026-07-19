@@ -255,6 +255,22 @@
     .passign { grid-column: 1 / -1; font-size: 12px; color: var(--muted); border-left: 3px solid var(--border); padding: 2px 8px; margin: 2px 0; }
     .passign.stale { border-left-color: #d29922; }
     .passign .pa-line { white-space: pre-wrap; }
+    /* Image review (evidence vs acceptance criteria) */
+    .irev { grid-column: 1 / -1; border-top: 1px dashed var(--border); margin-top: 4px; padding-top: 6px; font-size: 12px; }
+    .irev-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .irev-detail { display: grid; gap: 6px; margin-top: 6px; }
+    .irev-crit { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; padding: 3px 0; }
+    .irev-crit .ctext { flex: 1 1 260px; }
+    .irev-crit.c-fail .ctext { color: #ff9d97; }
+    .irev-crit.c-pass .ctext { color: var(--ok); }
+    .irev-crit.c-new .ctext::after { content: ' (new)'; color: #e3b341; }
+    .irev-removed { color: var(--muted); text-decoration: line-through; }
+    .irev-preview { position: relative; display: inline-block; max-width: 220px; }
+    .irev-preview img { width: 100%; border-radius: 6px; display: block; }
+    .irev-overlay { position: absolute; right: 0; bottom: 0; width: 45%; height: 22%;
+      border: 2px dashed #e3b341; border-radius: 4px; pointer-events: none;
+      background: rgba(227,179,65,.12); }
+    .irev-overlay-label { position: absolute; right: 2px; bottom: 2px; font-size: 9px; color: #e3b341; }
     .eval-pos { color: var(--ok); }
     .eval-neg { color: #f85149; }
     .eval-warn { color: #e3b341; }
@@ -1203,6 +1219,8 @@
       loadScriptEvaluation();
       VP.expanded = {};
       loadVisualPlan(); // Visual Plan + prompt provenance decoration
+      IREV.expanded = {}; IREV.overlay = {};
+      loadImageReviews(); // image review badges on prompt rows
       // Operator UI state (browser-local, per project): restore collapsed
       // sections and the script full-height preference. These only toggle CSS
       // visibility/height — they never reload state or reset field values.
@@ -1460,7 +1478,7 @@
         if (!res.ok) return;
         var active = applyImagesStatus(unwrap(res.body));
         if (active && !imagesPollTimer) startImagesPolling();
-        if (!active) stopImagesPolling();
+        if (!active) { stopImagesPolling(); loadImageReviews(); } // freshly finished images get review badges
         updateSectionSummary('images'); updateSectionSummary('i2v');
       }).catch(function () { /* transient poll failure (e.g. server restart) — next tick retries */ });
     }
@@ -2242,6 +2260,235 @@
         }
         if (stale) line('⚠', 'Assignment changed — prompt needs review');
         row.appendChild(box);
+      });
+    }
+
+    // ---- Image review (evidence vs acceptance criteria; operator decides) ----
+    var IREV_API = '/api/super-focus/image-review';
+    var IREV = { byIndex: {}, readiness: null, expanded: {}, overlay: {} };
+
+    function loadImageReviews() {
+      if (!currentId) { IREV.byIndex = {}; IREV.readiness = null; decorateImageReviews(); return Promise.resolve(); }
+      return apiGet(IREV_API + '?id=' + encodeURIComponent(currentId)).then(function (res) {
+        if (!res.ok) return;
+        var d = unwrap(res.body);
+        IREV.byIndex = {};
+        (d.reviews || []).forEach(function (r) { IREV.byIndex[r.index] = r; });
+        IREV.readiness = d.readiness || null;
+        decorateImageReviews();
+      }).catch(function () {});
+    }
+
+    function irevPost(action, body, btn) {
+      if (btn) btn.disabled = true;
+      return apiPost(IREV_API + '/' + action, Object.assign({ id: currentId }, body)).then(function (res) {
+        if (btn) btn.disabled = false;
+        if (!res.ok) { alert((res.body && res.body.error) || 'Review action failed'); return null; }
+        var d = unwrap(res.body);
+        var cached = IREV.byIndex[d.index] || {};
+        IREV.byIndex[d.index] = Object.assign({}, cached, {
+          review: d.review, effective_status: d.effective_status, reasons: d.reasons,
+          criteria: d.criteria, removed_criteria: d.removed_criteria, approval: d.approval, gate: d.gate,
+        });
+        decorateImageReviews();
+        return d;
+      }).catch(function () { if (btn) btn.disabled = false; return null; });
+    }
+
+    var IREV_BADGES = {
+      not_reviewed: ['Not reviewed', 'warn'],
+      in_review: ['In review', 'warn'],
+      approved: ['Image approved', 'pass'],
+      rejected: ['Image rejected', 'fail'],
+      review_required: ['Needs re-review', 'warn'],
+      unknown_legacy: ['Legacy — review provenance unknown', 'unevaluated'],
+    };
+
+    function irevBtn(label, primary, handler) {
+      var b = document.createElement('button');
+      b.className = 'btn' + (primary ? ' primary' : '');
+      b.textContent = label;
+      b.addEventListener('click', function () { handler(b); });
+      return b;
+    }
+
+    function buildReviewBlock(index, info) {
+      var box = document.createElement('div');
+      box.className = 'irev';
+      var head = document.createElement('div');
+      head.className = 'irev-head';
+      var badge = IREV_BADGES[info.effective_status] || [info.effective_status, 'warn'];
+      var pill = document.createElement('span');
+      pill.className = 'pill ' + badge[1];
+      pill.textContent = badge[0];
+      head.appendChild(pill);
+      var crits = info.criteria || [];
+      if (crits.length) {
+        var passed = crits.filter(function (c) { return c.result === 'pass' || c.result === 'not_applicable'; }).length;
+        var count = document.createElement('span');
+        count.className = 'eval-muted';
+        count.textContent = passed + '/' + crits.length + ' criteria passed';
+        head.appendChild(count);
+      }
+      if (info.reasons && info.reasons.length) {
+        var why = document.createElement('span');
+        why.className = 'eval-warn';
+        why.textContent = info.reasons[0];
+        head.appendChild(why);
+      }
+      var expand = irevBtn(IREV.expanded[index] ? 'Close review' : 'Review', false, function () {
+        IREV.expanded[index] = !IREV.expanded[index];
+        decorateImageReviews();
+      });
+      head.appendChild(expand);
+      // Fast-path primary action.
+      var r = info.review;
+      if (!r && info.effective_status !== 'unknown_legacy' && info.image_exists) {
+        head.appendChild(irevBtn('Start review', true, function (b) { IREV.expanded[index] = true; irevPost('start', { index: index }, b); }));
+      }
+      if (info.effective_status === 'review_required') {
+        head.appendChild(irevBtn('Reopen review', true, function (b) { IREV.expanded[index] = true; irevPost('reopen', { index: index }, b); }));
+      }
+      box.appendChild(head);
+      if (IREV.expanded[index]) box.appendChild(buildReviewDetail(index, info));
+      return box;
+    }
+
+    function buildReviewDetail(index, info) {
+      var d = document.createElement('div');
+      d.className = 'irev-detail';
+      // Assignment context (the contract being reviewed against).
+      if (info.assignment) {
+        var a = document.createElement('div');
+        a.className = 'eval-muted';
+        a.textContent = 'Assignment (' + String(info.assignment.visual_function || '').replace(/_/g, ' ')
+          + ' · ' + String(info.assignment.media_type || '').replace(/_/g, ' ') + '): ' + (info.assignment.assignment || '');
+        d.appendChild(a);
+        if (info.assignment.viewer_task) {
+          var vt = document.createElement('div'); vt.className = 'eval-muted';
+          vt.textContent = 'Viewer task: ' + info.assignment.viewer_task;
+          d.appendChild(vt);
+        }
+      }
+      // Presenter-safe overlay preview (review aid only; toggleable).
+      if (info.image_exists) {
+        var wrap = document.createElement('div');
+        var prev = document.createElement('span');
+        prev.className = 'irev-preview';
+        var img = document.createElement('img');
+        img.alt = 'Image ' + index + ' review preview';
+        img.src = '/api/super-focus/image?id=' + encodeURIComponent(currentId) + '&index=' + index;
+        prev.appendChild(img);
+        if (IREV.overlay[index]) {
+          var ov = document.createElement('span'); ov.className = 'irev-overlay';
+          var lab = document.createElement('span'); lab.className = 'irev-overlay-label'; lab.textContent = 'presenter';
+          prev.appendChild(ov); prev.appendChild(lab);
+        }
+        wrap.appendChild(prev);
+        var tog = irevBtn(IREV.overlay[index] ? 'Hide presenter-safe area' : 'Show presenter-safe area', false, function () {
+          IREV.overlay[index] = !IREV.overlay[index];
+          decorateImageReviews();
+        });
+        wrap.appendChild(tog);
+        d.appendChild(wrap);
+      }
+      var r = info.review;
+      var inReview = r && r.status === 'in_review';
+      (info.criteria || []).forEach(function (c) {
+        var rowEl = document.createElement('div');
+        rowEl.className = 'irev-crit c-' + c.result + (c.is_new ? ' c-new' : '');
+        var t = document.createElement('span'); t.className = 'ctext'; t.textContent = c.criterion_text;
+        rowEl.appendChild(t);
+        var st = document.createElement('span'); st.className = 'eval-muted';
+        st.textContent = c.result.replace(/_/g, ' ');
+        rowEl.appendChild(st);
+        if (inReview) {
+          rowEl.appendChild(irevBtn('Pass', false, function (b) { irevPost('set-criterion', { index: index, criterion_hash: c.criterion_hash, result: 'pass' }, b); }));
+          rowEl.appendChild(irevBtn('Fail', false, function (b) {
+            var note = prompt('Why does this criterion fail? (optional note)') || '';
+            irevPost('set-criterion', { index: index, criterion_hash: c.criterion_hash, result: 'fail', note: note }, b);
+          }));
+          rowEl.appendChild(irevBtn('N/A', false, function (b) {
+            var note = prompt('Why is this criterion not applicable? (required)');
+            if (!note || !note.trim()) return;
+            irevPost('set-criterion', { index: index, criterion_hash: c.criterion_hash, result: 'not_applicable', note: note }, b);
+          }));
+        }
+        if (c.operator_note) {
+          var n = document.createElement('div'); n.className = 'eval-muted'; n.textContent = 'Note: ' + c.operator_note;
+          rowEl.appendChild(n);
+        }
+        d.appendChild(rowEl);
+      });
+      (info.removed_criteria || []).forEach(function (c) {
+        var rm = document.createElement('div'); rm.className = 'irev-removed';
+        rm.textContent = 'No longer current: ' + c.criterion_text + ' (was ' + c.result.replace(/_/g, ' ') + ')';
+        d.appendChild(rm);
+      });
+      // Actions per state.
+      var actions = document.createElement('div'); actions.className = 'row';
+      if (!r && info.image_exists) actions.appendChild(irevBtn('Start review', true, function (b) { irevPost('start', { index: index }, b); }));
+      if (inReview) {
+        var canApprove = info.approval && info.approval.ok;
+        var ap = irevBtn('Approve image', true, function (b) { irevPost('approve', { index: index }, b); });
+        ap.disabled = !canApprove;
+        if (!canApprove && info.approval) ap.title = info.approval.blockers.join(' ');
+        actions.appendChild(ap);
+        var hasFail = (info.criteria || []).some(function (c) { return c.result === 'fail'; });
+        if (hasFail) {
+          actions.appendChild(irevBtn('Approve with override…', false, function (b) {
+            var reason = prompt('Override reason (required — recorded in provenance):');
+            if (!reason || !reason.trim()) return;
+            if (!confirm('Approve DESPITE a failed criterion? This is recorded as an override.')) return;
+            irevPost('approve-override', { index: index, reason: reason }, b);
+          }));
+        }
+        actions.appendChild(irevBtn('Reject image', false, function (b) {
+          var reason = prompt('Rejection reason (optional):') || '';
+          irevPost('reject', { index: index, reason: reason }, b);
+        }));
+        actions.appendChild(irevBtn('Clear draft review', false, function (b) {
+          if (!confirm('Clear this review? Only allowed before any criterion decision.')) return;
+          irevPost('clear', { index: index }, b);
+        }));
+        actions.appendChild(irevBtn('Save note', false, function (b) {
+          var notes = prompt('Overall operator note:', (r && r.operator_notes) || '') ;
+          if (notes == null) return;
+          irevPost('save-notes', { index: index, notes: notes }, b);
+        }));
+      }
+      if (r && r.status === 'approved') actions.appendChild(irevBtn('Revoke approval', false, function (b) { irevPost('revoke', { index: index }, b); }));
+      if (r && (r.status === 'rejected' || info.effective_status === 'review_required')) {
+        actions.appendChild(irevBtn('Reopen review', true, function (b) { irevPost('reopen', { index: index }, b); }));
+      }
+      d.appendChild(actions);
+      if (r && r.override && r.override_reason) {
+        var ovr = document.createElement('div'); ovr.className = 'eval-warn';
+        ovr.textContent = 'Approved with override: ' + r.override_reason;
+        d.appendChild(ovr);
+      }
+      if (r && r.operator_notes) {
+        var on = document.createElement('div'); on.className = 'eval-muted';
+        on.textContent = 'Notes: ' + r.operator_notes;
+        d.appendChild(on);
+      }
+      return d;
+    }
+
+    // Attach/refresh a review block on every image row that has an image or a
+    // review. Safe DOM only — model/operator text always goes through textContent.
+    function decorateImageReviews() {
+      var grid = document.getElementById('imgp-list');
+      if (!grid) return;
+      grid.querySelectorAll('.prompt-row').forEach(function (rowEl) {
+        var numEl = rowEl.querySelector('.pnum');
+        var index = numEl ? Math.round(Number(numEl.textContent)) : NaN;
+        var old = rowEl.querySelector('.irev');
+        if (old) old.remove();
+        if (!Number.isInteger(index)) return;
+        var info = IREV.byIndex[index];
+        if (!info || (!info.image_exists && !info.review)) return;
+        rowEl.appendChild(buildReviewBlock(index, info));
       });
     }
 

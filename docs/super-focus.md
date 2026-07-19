@@ -41,6 +41,29 @@ A project is one linear sheet, in order:
    Save changes). Prompts are background-plate style: no text, no people,
    clean lower-right space for a presenter overlay.
 4. **Generated images** — set **Images to generate** (1–100, default 3) and generate/resume the first N saved prompts (vidnux ComfyUI / FLUX, `--skip-existing`); thumbnails appear inline per row. No need to clear rows to scope a small run.
+4b. **Image review** — every generated image is EVIDENCE, reviewed against
+   its assignment's acceptance criteria before it may become a video. The
+   assignment defines the job; the criteria define success; the operator —
+   never a model — decides. Start a review (snapshots the exact image bytes,
+   assignment version, criteria, and prompt by sha256), mark each criterion
+   pass / fail / not-applicable (N/A needs a note), then **Approve image** or
+   **Reject image**. A failed criterion blocks normal approval; *Approve with
+   override* exists as a separate, confirmed action with a mandatory recorded
+   reason. Rejection keeps the image on disk, visible, with its results.
+   Approval stays current only while the reviewed hashes match reality:
+   regenerated image bytes, an edited assignment, or changed criteria flip it
+   to **Needs re-review** (nothing is deleted; byte-identical restores
+   resolve automatically; unchanged criteria keep their decisions when a
+   review reopens). Prompt-text edits do NOT invalidate a review — the review
+   judges the image against the criteria, and prompt/image mismatch stays
+   visible separately as `prompt_changed`. **I2V gate:** video generation
+   only consumes approved-and-current images; unreviewed, in-review,
+   rejected, or stale rows are excluded with explicit reasons. **Legacy
+   images** (no review, no assignment provenance) show
+   `Legacy — review provenance unknown` and remain video-eligible in
+   compatibility mode — they are never auto-failed, auto-approved, or
+   blocked retroactively. A toggleable presenter-safe overlay (lower-right
+   quarter) is available on the review preview as a visual aid only.
 5. **Infographic prompts** — choose a **Prompt count** (1–30, default 6) still-infographic prompts from the script (prompt-only).
 6. **Image-to-video prompts** — one per generated image (**Create a video prompt**, PRESTO Ollama lane).
 7. **Generated videos** — batch or per-image (PRESTO ComfyUI / Wan2.2); clips appear inline per row.
@@ -175,6 +198,13 @@ items, so it is safe to re-run to resume.
   `reject-assignment`, `revoke-assignment`, `clear-assignment` (rejected needs
   `confirm_rejected: true`), `set-disposition`, `split-beat`, `merge-beats`,
   `reanchor`. Editing/generating/approving against a stale plan returns 409.
+- `GET /image-review?id=` — per-row effective review state (hash-recomputed:
+  approved / rejected / in review / needs re-review / not reviewed / legacy),
+  criteria diff, approval blockers, I2V gate verdicts, and review readiness.
+- `POST /image-review/<action>` — narrow validated actions: `start`,
+  `set-criterion`, `save-notes`, `approve`, `approve-override` (mandatory
+  reason), `reject`, `revoke`, `reopen`, `clear` (only before any criterion
+  decision). Conflicting/stale mutations return 409; unknown actions 404.
 - `POST /image-prompts/from-assignments` — the approval gate: writes prompts
   only from approved, fresh, image-lane assignments into empty slots; every
   ineligible row is returned in `skipped[]` with its reason. Rows carry

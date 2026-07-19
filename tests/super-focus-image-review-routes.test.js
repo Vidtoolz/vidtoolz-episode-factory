@@ -293,3 +293,33 @@ test('image-review routes: readiness counts + next action never suggest video fo
     assert.ok(!/video/i.test(g.readiness.blockers.join('|')));
   } finally { await close(server); }
 });
+
+// ---- UI wiring (static page assertions) ----
+
+test('image-review UI: review block wired safely into image rows', async () => {
+  const { server } = await reviewServer();
+  try {
+    const res = await request(server, '/super-focus.html');
+    assert.equal(res.statusCode, 200);
+    assert.match(res.raw, /IREV_API = '\/api\/super-focus\/image-review'/);
+    assert.match(res.raw, /function buildReviewBlock\(/);
+    assert.match(res.raw, /function decorateImageReviews\(/);
+    // Safe DOM: criterion + notes text rendered via textContent, never innerHTML.
+    assert.match(res.raw, /t\.className = 'ctext'; t\.textContent = c\.criterion_text/);
+    const irevSection = res.raw.slice(
+      res.raw.indexOf('---- Image review (evidence'),
+      res.raw.indexOf("document.getElementById('vp-create-beats').addEventListener")
+    );
+    assert.ok(irevSection.length > 1000, 'review section found');
+    assert.ok(!irevSection.includes('.innerHTML'), 'no innerHTML at all in the review UI section');
+    // Human-readable badges incl. legacy wording; override visually distinct + confirmed.
+    assert.match(res.raw, /Legacy — review provenance unknown/);
+    assert.match(res.raw, /Approve with override…/);
+    assert.match(res.raw, /recorded as an override/);
+    // Presenter-safe overlay is a toggleable review aid.
+    assert.match(res.raw, /Show presenter-safe area/);
+    assert.match(res.raw, /irev-overlay/);
+    // Normal approve disabled while blockers exist.
+    assert.match(res.raw, /ap\.disabled = !canApprove/);
+  } finally { await close(server); }
+});
