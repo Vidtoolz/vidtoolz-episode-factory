@@ -195,7 +195,13 @@ fallback.
   copies under `attempts/<attempt_id>/`. Staged copies are small PNG stills
   retained as evidence; they are never modified after dispatch and never
   cleaned up automatically (documented growth trade-off — bounded by how
-  often you regenerate).
+  often you regenerate). `GET /api/super-focus/attempt-storage?id=` returns a
+  **report-only** storage audit: attempt counts by status, staged bytes on
+  disk, evidence-locked attempts (completed, or referenced by a review's
+  render binding — never safe to clean), orphan/missing staging, in-flight
+  dispatches, and cleanup *candidates* (terminal non-completed, unlocked).
+  No cleanup route exists by design; deleting staging is an explicit
+  operator action outside the cockpit.
 - Media state is reconciled from disk on every status poll and on project open
   (the files are the source of truth, so it survives a server restart).
 

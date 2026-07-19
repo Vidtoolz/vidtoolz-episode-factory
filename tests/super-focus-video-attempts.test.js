@@ -591,6 +591,59 @@ test('video-attempts: a pause landing in the regenerate reach window wins — no
   } finally { await close(server); }
 });
 
+// ── Attempt storage audit (report-only) ──────────────────────────────────────
+
+test('video-attempts: storage audit reports statuses, bytes, evidence locks, and cleanup candidates without writing', async () => {
+  const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
+  try {
+    await queueAndFinish(server, id, mediaRoot, 1);
+    const completed = completedAttemptFor(mediaRoot, id, 1);
+    // A terminal non-completed attempt with staging on disk → cleanup candidate.
+    const row2 = { index: 2, i2v_prompt: { text: I2V_TWO }, assignment_id: null };
+    const ghost = superFocusMedia.createVideoAttempt(id, row2, { mediaRoot, subdir: VIDEO_SUBDIR });
+    superFocusMedia.markVideoAttempt(id, ghost.attempt_id, 'cancelled', 'stopped_by_operator', { mediaRoot });
+    // An orphan staging dir (no record) and a record with missing staging.
+    fs.mkdirSync(path.join(mediaRoot, id, 'attempts', 'att-orphan-dir'), { recursive: true });
+    const victim = superFocusMedia.createVideoAttempt(id, row2, { mediaRoot, subdir: VIDEO_SUBDIR });
+    superFocusMedia.markVideoAttempt(id, victim.attempt_id, 'failed', 'render_failed', { mediaRoot });
+    fs.rmSync(path.join(mediaRoot, id, victim.source.staged_rel));
+    const before = fs.statSync(path.join(mediaRoot, id, 'video-attempts.json')).mtimeMs;
+    const report = unwrap(await request(server, `/api/super-focus/attempt-storage?id=${id}`));
+    assert.equal(report.policy, 'report_only');
+    assert.equal(report.record_count, 3);
+    assert.equal(report.by_status.completed, 1);
+    assert.equal(report.by_status.cancelled, 1);
+    assert.equal(report.by_status.failed, 1);
+    assert.ok(report.evidence_locked.includes(completed.attempt_id), 'completed attempt is evidence-locked');
+    assert.deepEqual(report.integrity.orphan_dirs, ['att-orphan-dir']);
+    assert.deepEqual(report.integrity.missing_staged, [victim.attempt_id]);
+    assert.equal(report.cleanup_candidates.length, 1, 'only the cancelled attempt with staging on disk is a candidate');
+    assert.equal(report.cleanup_candidates[0].attempt_id, ghost.attempt_id);
+    assert.ok(report.cleanup_candidate_bytes > 0);
+    assert.ok(report.staged.bytes_on_disk >= report.cleanup_candidate_bytes);
+    // Report-only: the audit wrote nothing and deleted nothing.
+    assert.equal(fs.statSync(path.join(mediaRoot, id, 'video-attempts.json')).mtimeMs, before, 'audit never writes the attempts file');
+    assert.ok(fs.existsSync(path.join(mediaRoot, id, ghost.source.staged_rel)), 'candidate staging is NOT deleted');
+  } finally { await close(server); }
+});
+
+test('video-attempts: storage audit locks staging referenced by a review render binding', async () => {
+  const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
+  try {
+    await queueAndFinish(server, id, mediaRoot, 1);
+    const completed = completedAttemptFor(mediaRoot, id, 1);
+    const vrPost = (action, body) => request(server, `/api/super-focus/video-review/${action}`, { method: 'POST', headers: writeHeaders(), body });
+    const started = await vrPost('start', { id, index: 1 });
+    assert.equal(started.statusCode, 200);
+    const report = unwrap(await request(server, `/api/super-focus/attempt-storage?id=${id}`));
+    assert.ok(report.evidence_locked.includes(completed.attempt_id), 'review-bound attempt is evidence-locked');
+    assert.equal(report.cleanup_candidates.length, 0);
+    // Unknown project → 404, not an empty report.
+    const missing = await request(server, '/api/super-focus/attempt-storage?id=no-such-project');
+    assert.equal(missing.statusCode, 404);
+  } finally { await close(server); }
+});
+
 test('video-attempts: corrupt video-attempts.json reads as empty (unknown, never a crash or invented provenance)', async () => {
   const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
   try {

@@ -128,6 +128,7 @@ const SUPER_FOCUS_PROMPTS_FROM_ASSIGNMENTS_API = '/api/super-focus/image-prompts
 const SUPER_FOCUS_IMAGE_REVIEW_API = '/api/super-focus/image-review';
 const SUPER_FOCUS_IMAGE_REVIEW_ACTION_PREFIX = '/api/super-focus/image-review/';
 const SUPER_FOCUS_VIDEO_REVIEW_API = '/api/super-focus/video-review';
+const SUPER_FOCUS_ATTEMPT_STORAGE_API = '/api/super-focus/attempt-storage';
 const SUPER_FOCUS_VIDEO_REVIEW_ACTION_PREFIX = '/api/super-focus/video-review/';
 const SUPER_FOCUS_TITLE_API = '/api/super-focus/title';
 const SUPER_FOCUS_SCRIPT_API = '/api/super-focus/script';
@@ -11139,6 +11140,21 @@ function createServer(options = {}) {
 
     // ── Video review (clip evidence vs the production contract) ──────────
 
+    // Read-only attempt-storage audit: staged-source retention, evidence
+    // locks, orphan/missing staging, and cleanup CANDIDATES (report only —
+    // nothing here deletes, and no cleanup route exists by design).
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_ATTEMPT_STORAGE_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+        const state = superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown project
+        const report = superFocusMedia.auditVideoAttemptStorage(id, state.image_prompts, { mediaRoot: sfMediaRoot });
+        sendJSON(res, 200, report);
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-attempt-storage-error');
+      }
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === SUPER_FOCUS_VIDEO_REVIEW_API) {
       try {
         const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
@@ -15040,6 +15056,7 @@ module.exports = {
   SUPER_FOCUS_PROMPTS_FROM_ASSIGNMENTS_API,
   SUPER_FOCUS_IMAGE_REVIEW_API,
   SUPER_FOCUS_VIDEO_REVIEW_API,
+  SUPER_FOCUS_ATTEMPT_STORAGE_API,
   SUPER_FOCUS_TITLE_API,
   SUPER_FOCUS_SCRIPT_API,
   SUPER_FOCUS_GENERATE_TOPIC_API,

@@ -748,6 +748,90 @@ function videoRenderProvenance(projectId, index, options = {}) {
   };
 }
 
+// ── Attempt storage audit (report-only, never deletes) ──────────────────────
+// Read-only visibility into staged-source retention: what attempts/<id>/
+// holds on disk, how it reconciles against the attempt records, which staged
+// copies are EVIDENCE-LOCKED (referenced by a completed attempt or by a
+// video review's render binding — must never be cleaned), and which terminal
+// non-completed attempts' staging would be safe cleanup *candidates*. This
+// function reports; any actual cleanup is a separate, explicitly operator-
+// approved action. Directory names come from readdir only and symlinks are
+// skipped (lstat), so the walk cannot escape the project's attempts root.
+function auditVideoAttemptStorage(projectId, imagePrompts, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  const data = readVideoAttempts(projectId, options);
+  const attempts = Object.values(data.attempts);
+  const byStatus = {};
+  for (const a of attempts) byStatus[a.status] = (byStatus[a.status] || 0) + 1;
+  // Evidence locks: completed attempts (their staged bytes are the render-
+  // source proof) and any attempt a review's render binding points at.
+  const evidenceLocked = new Set(attempts.filter((a) => a.status === 'completed').map((a) => a.attempt_id));
+  for (const row of (Array.isArray(imagePrompts) ? imagePrompts : [])) {
+    const ref = row && row.video_review && row.video_review.reviewed_render_attempt_id;
+    if (ref) evidenceLocked.add(ref);
+  }
+  // On-disk staging, reconciled against records.
+  const attemptsRoot = path.join(mediaDir, VIDEO_ATTEMPTS_SUBDIR);
+  const orphanDirs = [];
+  let dirsOnDisk = 0;
+  let filesOnDisk = 0;
+  let bytesOnDisk = 0;
+  if (fs.existsSync(attemptsRoot)) {
+    for (const name of fs.readdirSync(attemptsRoot)) {
+      const dirAbs = path.join(attemptsRoot, name);
+      let st = null;
+      try { st = fs.lstatSync(dirAbs); } catch (_) { continue; }
+      if (!st.isDirectory()) continue; // symlinks and stray files are ignored, never followed
+      dirsOnDisk += 1;
+      if (!data.attempts[name]) orphanDirs.push(name);
+      for (const f of fs.readdirSync(dirAbs)) {
+        let fst = null;
+        try { fst = fs.lstatSync(path.join(dirAbs, f)); } catch (_) { continue; }
+        if (!fst.isFile()) continue;
+        filesOnDisk += 1;
+        bytesOnDisk += fst.size;
+      }
+    }
+  }
+  // Records whose staged copy is gone (evidence loss — surfaced, not repaired).
+  const missingStaged = attempts
+    .filter((a) => a.source && a.source.staged_rel && !fs.existsSync(path.join(mediaDir, a.source.staged_rel)))
+    .map((a) => a.attempt_id);
+  // Cheap integrity probe: staged size vs recorded size (no hashing on a
+  // routine report; byte-level verification stays in completeVideoAttempt).
+  const sizeMismatchedStaged = attempts
+    .filter((a) => {
+      if (!a.source || !a.source.staged_rel || a.source.size == null) return false;
+      try { return fs.statSync(path.join(mediaDir, a.source.staged_rel)).size !== a.source.size; } catch (_) { return false; }
+    })
+    .map((a) => a.attempt_id);
+  // In-flight attempts (single-flight design means at most one should exist).
+  const dispatched = attempts
+    .filter((a) => a.status === 'dispatched')
+    .map((a) => ({ attempt_id: a.attempt_id, index: a.index, dispatched_at: a.dispatched_at }));
+  // Cleanup CANDIDATES (report-only): terminal, non-completed, not evidence-
+  // locked, staged copy still on disk. Never includes active or completed.
+  const cleanupCandidates = attempts
+    .filter((a) => ['failed', 'cancelled', 'superseded'].includes(a.status)
+      && !evidenceLocked.has(a.attempt_id)
+      && data.active[String(a.index)] !== a.attempt_id
+      && a.source && a.source.staged_rel && fs.existsSync(path.join(mediaDir, a.source.staged_rel)))
+    .map((a) => ({ attempt_id: a.attempt_id, index: a.index, status: a.status, staged_rel: a.source.staged_rel, bytes: a.source.size || 0 }));
+  return {
+    project_id: projectId,
+    record_count: attempts.length,
+    by_status: byStatus,
+    active_slots: Object.assign({}, data.active),
+    staged: { dirs_on_disk: dirsOnDisk, files_on_disk: filesOnDisk, bytes_on_disk: bytesOnDisk },
+    evidence_locked: Array.from(evidenceLocked).sort(),
+    dispatched_in_flight: dispatched,
+    integrity: { orphan_dirs: orphanDirs.sort(), missing_staged: missingStaged.sort(), size_mismatched_staged: sizeMismatchedStaged.sort() },
+    cleanup_candidates: cleanupCandidates,
+    cleanup_candidate_bytes: cleanupCandidates.reduce((s, c) => s + (c.bytes || 0), 0),
+    policy: 'report_only',
+  };
+}
+
 // A row is video-eligible only when it has BOTH a generated still on disk AND a
 // saved i2v motion prompt. Returns the eligible rows (with the still's rel path).
 // options.regenerate documents (and enforces nothing against) explicit
@@ -946,6 +1030,7 @@ module.exports = {
   completeVideoAttempt,
   markVideoAttempt,
   videoRenderProvenance,
+  auditVideoAttemptStorage,
   hashFileSha256,
   supersededDir,
   readSupersededManifest,
