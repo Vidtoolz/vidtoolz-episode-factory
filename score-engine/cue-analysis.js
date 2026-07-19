@@ -87,4 +87,32 @@ function analyzeCueSheet(project = {}, cues = []) {
   };
 }
 
-module.exports = { analyzeCueSheet, GAP_EPSILON, SHORT_CUE_SECONDS };
+function cueBoundaryDiagnostics(cues = [], duration_seconds = 0) {
+  const list = (Array.isArray(cues) ? cues : []).filter((c) => c && isNum(c.start_seconds) && isNum(c.end_seconds));
+  if (list.length < 2) return [];
+  const sorted = [...list].sort((a, b) => a.start_seconds - b.start_seconds);
+  const markers = new Map(sorted.map((c) => [c.cue_id, { cue_id: c.cue_id, overlap_with: null, gap_before: null }]));
+  let cursor = sorted[0].end_seconds;
+  let cursorCueId = sorted[0].cue_id;
+  for (let i = 1; i < sorted.length; i += 1) {
+    const cue = sorted[i];
+    if (cue.start_seconds < cursor - GAP_EPSILON) {
+      const seconds = round1(cursor - cue.start_seconds);
+      const prev = markers.get(cursorCueId);
+      const cur = markers.get(cue.cue_id);
+      if (prev) prev.overlap_with = { other_cue_id: cue.cue_id, seconds };
+      if (cur) cur.overlap_with = { other_cue_id: cursorCueId, seconds };
+    } else if (cue.start_seconds > cursor + GAP_EPSILON) {
+      const cur = markers.get(cue.cue_id);
+      if (cur) cur.gap_before = { seconds: round1(cue.start_seconds - cursor) };
+    }
+    if (cue.end_seconds > cursor) {
+      cursor = cue.end_seconds;
+      cursorCueId = cue.cue_id;
+    }
+  }
+  void duration_seconds; // reserved for parity with analyzeCueSheet callers; no tail marker is per-cue.
+  return Array.from(markers.values()).filter((m) => m.overlap_with || m.gap_before);
+}
+
+module.exports = { analyzeCueSheet, cueBoundaryDiagnostics, GAP_EPSILON, SHORT_CUE_SECONDS };

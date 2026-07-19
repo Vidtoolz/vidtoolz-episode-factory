@@ -38,6 +38,7 @@
       .smap-legend .sw{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:3px;}
       .smap-warnings{margin:6px 0 0;font-size:12px;}
       .smap-warnings li{margin:2px 0;}
+      .cue-diag{font-size:11px;margin-top:3px;line-height:1.35;}
       .ready-grid{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0;}
       .ready-stage{border:1px solid var(--border,#30363d);border-radius:8px;padding:6px 12px;font-size:12px;line-height:1.5;}
       .ready-stage.done{border-color:rgba(63,185,80,.55);color:#3fb950;}
@@ -79,7 +80,9 @@
         <div class="ready-grid" id="ready-stages"></div>
         <div class="meta" id="ready-next"></div>
         <div class="meta" style="margin-top:6px;">Deep verification (files + ffprobe against provenance — the only Resolve-ready proof):
-          <code id="ready-cmd"></code> <button class="btn" style="padding:1px 8px;font-size:11px;" id="ready-copy">Copy command</button></div>
+          <code id="ready-cmd"></code> <button class="btn" style="padding:1px 8px;font-size:11px;" id="ready-copy">Copy command</button>
+          <button class="btn" style="padding:1px 8px;font-size:11px;" id="ready-verify">Verify approved export</button></div>
+        <pre id="ready-report" style="display:none;"></pre>
       </div>
 
       <div class="step" id="step-cues">
@@ -137,6 +140,11 @@
       const EMOTIONS = ['curious','tense','warm','clinical','playful','dark','optimistic','urgent'];
       const PALETTES = ['tech_noir_pulse','broadcast_explainer','ai_lab','dry_comedy_underscore','serious_system_builder'];
       const CUE_COLORS = ['#3fb950','#58a6ff','#d29922','#a371f7','#f85149','#79c0ff','#ffa657','#7ee787'];
+      const SCORE_VERIFY_API = '/api/score/verify';
+      // Mirrors score-engine/cue-analysis.js GAP_EPSILON exactly; keep static tests in sync.
+      const CUE_GAP_EPSILON = 0.25;
+      let verifyInFlight = false;
+      let verifySeq = 0;
 
       function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
       function unwrap(j){return j && typeof j==='object' && j.data!==undefined ? j.data : j;}
@@ -188,6 +196,39 @@
           + (R.approved_export_exists ? ' <span class="warn">Approved export exists — run the verifier to confirm it is Resolve-safe; the panel never claims that without probed evidence.</span>' : '');
         document.getElementById('ready-cmd').textContent = R.verify_command;
         document.getElementById('ready-copy').onclick = ()=>copyText(R.verify_command,'verify command');
+        setVerifyState(verifyInFlight ? 'verifying' : 'idle');
+      }
+
+      function setVerifyState(state, payload){
+        const btn=document.getElementById('ready-verify');
+        const report=document.getElementById('ready-report');
+        if(!btn || !report) return;
+        btn.disabled = state==='verifying';
+        btn.textContent = state==='verifying' ? 'Verifying…' : 'Verify approved export';
+        report.style.display = state==='idle' ? 'none' : 'block';
+        report.className = state==='pass' ? 'ok' : (state==='fail' || state==='request-error') ? 'err' : '';
+        if(state==='idle') report.textContent = '';
+        else if(state==='verifying') report.textContent = 'Verifying approved export…';
+        else report.textContent = (payload && payload.report) || (payload && payload.message) || '';
+      }
+
+      async function verifyApprovedExport(){
+        if(verifyInFlight) return;
+        verifyInFlight = true;
+        const seq = ++verifySeq;
+        setVerifyState('verifying');
+        try{
+          const result = await post(SCORE_VERIFY_API,{project_id:ID});
+          if(seq !== verifySeq) return;
+          if(result && result.verified===true){ setVerifyState('pass',{report:result.report||'PASS'}); toast('Approved export verified'); }
+          else { setVerifyState('fail',{report:(result&&result.report)||'FAIL — approved export did not verify.'}); toast('Verifier found problems',false); }
+        }catch(e){
+          if(seq !== verifySeq) return;
+          setVerifyState('request-error',{message:e.message});
+          toast(e.message,false);
+        }finally{
+          if(seq === verifySeq){ verifyInFlight = false; const btn=document.getElementById('ready-verify'); if(btn) btn.disabled=false; }
+        }
       }
 
       // Score Map: the plan as a picture. Height = energy, color = function,
@@ -229,7 +270,7 @@
         if(!CUES.length){ document.getElementById('cue-table').innerHTML='<div class="meta">No cues yet — click Generate cue sheet.</div>'; return; }
         document.getElementById('cue-table').innerHTML = '<table><tr><th>id</th><th>Name</th><th>Start</th><th>End</th><th>Function</th><th>Emotion</th><th>Energy</th><th>Density</th><th>BPM</th><th>Key</th><th>Hit points (s)</th><th>Dlg-safe</th><th></th></tr>'+
           CUES.map((c,i)=>`<tr>
-            <td><b style="color:${CUE_COLORS[i%CUE_COLORS.length]}">${esc(c.cue_id)}</b></td>
+            <td><b style="color:${CUE_COLORS[i%CUE_COLORS.length]}">${esc(c.cue_id)}</b><div class="cue-diag warn" data-cue-diag="${i}"></div></td>
             <td><input type="text" data-cue="${i}" data-k="name" value="${esc(c.name)}"></td>
             <td><input type="number" step="0.1" data-cue="${i}" data-k="start_seconds" value="${c.start_seconds}"></td>
             <td><input type="number" step="0.1" data-cue="${i}" data-k="end_seconds" value="${c.end_seconds}"></td>
@@ -243,6 +284,45 @@
             <td style="text-align:center;"><input type="checkbox" data-cue="${i}" data-k="dialogue_safe"${c.dialogue_safe?' checked':''}></td>
             <td><button class="btn" data-delcue="${i}" title="Delete cue">✕</button></td>
           </tr>`).join('')+'</table>';
+        renderCueBoundaryDiagnostics();
+      }
+
+      // Client-side mirror of score-engine/cue-analysis.js cueBoundaryDiagnostics().
+      function cueBoundaryDiagnosticsClient(cues, duration_seconds){
+        const list=(Array.isArray(cues)?cues:[]).filter(c=>c&&Number.isFinite(c.start_seconds)&&Number.isFinite(c.end_seconds));
+        if(list.length<2) return [];
+        const sorted=[...list].sort((a,b)=>a.start_seconds-b.start_seconds);
+        const markers=new Map(sorted.map(c=>[c.cue_id,{cue_id:c.cue_id,overlap_with:null,gap_before:null}]));
+        let cursor=sorted[0].end_seconds, cursorCueId=sorted[0].cue_id;
+        for(let i=1;i<sorted.length;i+=1){
+          const cue=sorted[i];
+          if(cue.start_seconds < cursor - CUE_GAP_EPSILON){
+            const seconds=Math.round((cursor-cue.start_seconds)*10)/10;
+            const prev=markers.get(cursorCueId), cur=markers.get(cue.cue_id);
+            if(prev) prev.overlap_with={other_cue_id:cue.cue_id,seconds};
+            if(cur) cur.overlap_with={other_cue_id:cursorCueId,seconds};
+          } else if(cue.start_seconds > cursor + CUE_GAP_EPSILON){
+            const cur=markers.get(cue.cue_id);
+            if(cur) cur.gap_before={seconds:Math.round((cue.start_seconds-cursor)*10)/10};
+          }
+          if(cue.end_seconds>cursor){ cursor=cue.end_seconds; cursorCueId=cue.cue_id; }
+        }
+        void duration_seconds;
+        return Array.from(markers.values()).filter(m=>m.overlap_with||m.gap_before);
+      }
+
+      function renderCueBoundaryDiagnostics(){
+        document.querySelectorAll('[data-cue-diag]').forEach(el=>{ el.textContent=''; });
+        const markers=cueBoundaryDiagnosticsClient(CUES, ST&&ST.project?ST.project.duration_seconds:0);
+        markers.forEach(m=>{
+          const index=CUES.findIndex(c=>c.cue_id===m.cue_id);
+          const el=document.querySelector(`[data-cue-diag="${index}"]`);
+          if(!el) return;
+          const lines=[];
+          if(m.overlap_with) lines.push(`Overlap with ${m.overlap_with.other_cue_id}: ${m.overlap_with.seconds.toFixed(2)}s`);
+          if(m.gap_before) lines.push(`Gap before ${m.cue_id}: ${m.gap_before.seconds.toFixed(2)}s`);
+          lines.forEach((line, i)=>{ if(i) el.appendChild(document.createElement('br')); const span=document.createElement('span'); span.textContent=line; el.appendChild(span); });
+        });
       }
 
       function collectCues(){
@@ -402,6 +482,7 @@
 
       document.addEventListener('click', async (ev)=>{
         const t=ev.target;
+        if (t && t.id==='ready-verify'){ await verifyApprovedExport(); return; }
         const copyAttr = t.getAttribute && t.getAttribute('data-copy-text');
         if (copyAttr != null){ copyText(copyAttr, t.getAttribute('data-copy-label')||'text'); return; }
         if (t.classList && t.classList.contains('palette-card')){ document.querySelectorAll('.palette-card').forEach(el=>el.classList.remove('sel')); t.classList.add('sel'); return; }
@@ -428,10 +509,20 @@
             if(!window.confirm('Approve '+cand+' and export to music/approved/ ('+(exact?'duration-exact':'tail-preserving')+')? A previous approval would be archived, not overwritten.')) return;
             await post('/api/score/candidates/approve',{project_id:ID,candidate_id:cand,duration_exact:exact}); toast('Approved + exported ('+(exact?'duration-exact':'tail-preserving')+')');
           }
-          else if (act==='reject'){ await post('/api/score/candidates/status',{project_id:ID,candidate_id:cand,status:'rejected'}); toast('Rejected'); }
+          else if (act==='reject'){
+            if(!window.confirm(`Reject ${cand}? This marks it rejected (reversible — you can flip status back). It is not deleted.`)) return;
+            await post('/api/score/candidates/status',{project_id:ID,candidate_id:cand,status:'rejected'}); toast('Rejected');
+          }
           else if (act==='revise'){ const req=document.getElementById('rev-'+cand).value.trim(); if(!req) return toast('Describe the revision first',false); const d=await post('/api/score/candidates/revise',{project_id:ID,candidate_id:cand,request:req}); toast('Revised → '+d.candidate.candidate_id+(d.revision_plan.unmatched?' (no rule matched — new seed variation)':'')); }
           load();
         }catch(e){ toast(e.message,false); showErr(e.message); }
+      });
+
+      document.getElementById('cue-table').addEventListener('input', (ev)=>{
+        if(ev.target && ev.target.getAttribute && ev.target.getAttribute('data-cue')!==null){ collectCues(); renderScoreMap(); renderCueBoundaryDiagnostics(); }
+      });
+      document.getElementById('cue-table').addEventListener('change', (ev)=>{
+        if(ev.target && ev.target.getAttribute && ev.target.getAttribute('data-cue')!==null){ collectCues(); renderScoreMap(); renderCueBoundaryDiagnostics(); }
       });
 
       load();

@@ -3,7 +3,7 @@
 // no REAPER, no ffprobe binary required, no writes outside os.tmpdir().
 const { assert, fs, os, path, test } = require("./_helpers.js");
 const lane = require("../score-engine/score-lane.js");
-const { analyzeCueSheet } = require("../score-engine/cue-analysis.js");
+const { analyzeCueSheet, cueBoundaryDiagnostics } = require("../score-engine/cue-analysis.js");
 const { assessReadiness, verifyApprovedExports, formatVerifierReport } = require("../score-engine/score-readiness.js");
 
 function tmpEnv() {
@@ -69,6 +69,50 @@ test("score map analysis: short cues and out-of-range hit points warn", () => {
   ]);
   assert.ok(a.warnings.some((w) => w.kind === "short-cue"));
   assert.ok(a.warnings.some((w) => w.kind === "hit-point" && /outside the cue/.test(w.message)));
+});
+
+test("cue boundary diagnostics: adjacent overlap flags both cues with rounded seconds", () => {
+  const markers = cueBoundaryDiagnostics([
+    { cue_id: "C001", start_seconds: 0, end_seconds: 10 },
+    { cue_id: "C002", start_seconds: 8.8, end_seconds: 20 },
+  ], 20);
+  assert.deepEqual(markers, [
+    { cue_id: "C001", overlap_with: { other_cue_id: "C002", seconds: 1.2 }, gap_before: null },
+    { cue_id: "C002", overlap_with: { other_cue_id: "C001", seconds: 1.2 }, gap_before: null },
+  ]);
+});
+
+test("cue boundary diagnostics: gap before next cue is advisory only", () => {
+  const markers = cueBoundaryDiagnostics([
+    { cue_id: "C003", start_seconds: 0, end_seconds: 12 },
+    { cue_id: "C004", start_seconds: 12.75, end_seconds: 20 },
+  ], 20);
+  assert.deepEqual(markers, [
+    { cue_id: "C004", overlap_with: null, gap_before: { seconds: 0.8 } },
+  ]);
+});
+
+test("cue boundary diagnostics: sub-epsilon seams and tiny overlaps produce no marker", () => {
+  assert.deepEqual(cueBoundaryDiagnostics([
+    { cue_id: "C001", start_seconds: 0, end_seconds: 10 },
+    { cue_id: "C002", start_seconds: 10.25, end_seconds: 20 },
+    { cue_id: "C003", start_seconds: 19.75, end_seconds: 30 },
+  ], 30), []);
+});
+
+test("cue boundary diagnostics: unsorted input is sorted internally", () => {
+  const markers = cueBoundaryDiagnostics([
+    { cue_id: "C002", start_seconds: 11, end_seconds: 20 },
+    { cue_id: "C001", start_seconds: 0, end_seconds: 10 },
+  ], 20);
+  assert.deepEqual(markers, [
+    { cue_id: "C002", overlap_with: null, gap_before: { seconds: 1 } },
+  ]);
+});
+
+test("cue boundary diagnostics: empty or single cue has no markers", () => {
+  assert.deepEqual(cueBoundaryDiagnostics([], 0), []);
+  assert.deepEqual(cueBoundaryDiagnostics([{ cue_id: "C001", start_seconds: 0, end_seconds: 10 }], 10), []);
 });
 
 // ── staged readiness ──
@@ -188,4 +232,41 @@ test("ui: score workspace robustness — no inline onclick paths, in-flight guar
   // A slow project fetch must not overwrite newer state.
   assert.ok(html.includes("let loadSeq = 0;"), "monotonic load counter");
   assert.ok(html.includes("if (seq !== loadSeq) return;"), "superseded loads bail");
+});
+
+test("ui: score workspace wires verifier button safely and keeps terminal fallback", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "score-project.html"), "utf8");
+  assert.ok(html.includes('id="ready-cmd"'), "terminal verifier command remains visible");
+  assert.ok(html.includes('id="ready-copy"'), "copy-command fallback remains");
+  assert.ok(html.includes('id="ready-verify"'), "verify button present");
+  assert.ok(html.includes("Verify approved export"), "button label present");
+  assert.ok(html.includes("const SCORE_VERIFY_API = '/api/score/verify';"), "UI posts to verify route");
+  assert.ok(html.includes("if(verifyInFlight) return;"), "double submit guard");
+  assert.ok(html.includes("btn.disabled = state==='verifying'"), "verifying disables the button");
+  assert.ok(html.includes("Verifying…"), "verifying label wired");
+  assert.ok(html.includes("result && result.verified===true"), "PASS requires verified true");
+  assert.ok(html.includes("state==='request-error'"), "request-error state exists");
+  assert.ok(html.includes("report.textContent"), "report uses textContent");
+  assert.ok(!/ready-report[\s\S]{0,400}innerHTML/.test(html), "report is not rendered with innerHTML");
+});
+
+test("ui: score workspace confirms reject with candidate id and reversible status", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "score-project.html"), "utf8");
+  assert.ok(html.includes("window.confirm(`Reject ${cand}?"), "reject confirmation interpolates candidate id");
+  assert.ok(html.includes("reversible — you can flip status back"), "confirmation explains reversible status");
+  assert.ok(html.includes("status:'rejected'"), "reject still posts reversible status");
+});
+
+test("ui: score workspace renders cue boundary diagnostics with mirrored epsilon", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "score-project.html"), "utf8");
+  assert.ok(html.includes("const CUE_GAP_EPSILON = 0.25;"), "UI references the same epsilon value");
+  assert.ok(html.includes("Mirrors score-engine/cue-analysis.js GAP_EPSILON exactly"), "mirror comment present");
+  assert.ok(html.includes("cueBoundaryDiagnosticsClient"), "client diagnostics helper present");
+  assert.ok(html.includes("addEventListener('input'"), "input event delegation wired");
+  assert.ok(html.includes("addEventListener('change'"), "change event delegation wired");
+  assert.ok(html.includes("renderCueBoundaryDiagnostics"), "diagnostics renderer present");
+  assert.ok(html.includes("Overlap with ${m.overlap_with.other_cue_id}: ${m.overlap_with.seconds.toFixed(2)}s"), "overlap advisory format exact");
+  assert.ok(html.includes("Gap before ${m.cue_id}: ${m.gap_before.seconds.toFixed(2)}s"), "gap advisory format exact");
+  assert.ok(html.includes("document.createElement('span')"), "diagnostic text nodes built safely");
+  assert.ok(html.includes("span.textContent=line"), "diagnostics use textContent");
 });

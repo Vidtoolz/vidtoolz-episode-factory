@@ -898,6 +898,7 @@ module.exports = {
   loadRegistry,
   createScoreProject,
   listProjects,
+  resolveProjectDir,
   getProject,
   resolveProjectFile,
   generateCuesForProject,

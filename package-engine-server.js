@@ -184,6 +184,7 @@ const SCORE_PROBE_API = '/api/score/probe';
 const SCORE_PROMPT_API = '/api/score/prompt';
 const SCORE_AI_APPLY_API = '/api/score/cues/ai-apply';
 const SCORE_AI_CALL_API = '/api/score/cues/ai-call';
+const SCORE_VERIFY_API = '/api/score/verify';
 const SCORE_OPEN_FOLDER_API = '/api/score/open-folder';
 const SCORE_FILE_API = '/api/score/file';
 const PROJECT_VIDEO_REVIEW_SAVE_API = '/api/project/video-review/save';
@@ -292,6 +293,7 @@ const { chooseNextTask } = require('./next-task-engine.js');
 const projectDiscovery = require('./project-discovery.js');
 const earthStudioLane = require('./earth-studio-lane.js');
 const scoreLane = require('./score-engine/score-lane.js');
+const { verifyApprovedExports, formatVerifierReport } = require('./score-engine/score-readiness.js');
 const scorePlanner = require('./score-engine/cue-planner.js');
 const ideaPromotion = require('./idea-promotion.js');
 const topicScout = require('./topic-idea-scout.js');
@@ -12725,6 +12727,19 @@ function createServer(options = {}) {
           sendJSON(res, 200, scoreLane.reviseCandidate(payload.project_id || '', payload.candidate_id || '', payload.request || '', scoreOptions()));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-candidate-revise-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_VERIFY_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score verify API' });
+          const project_id = payload.project_id || '';
+          const settings = scoreLane.loadSettings(scoreOptions());
+          const { dir } = scoreLane.resolveProjectDir(settings, project_id);
+          const result = verifyApprovedExports(dir, {});
+          sendJSON(res, 200, { project_id, dir, verified: result.verified, no_approved_export: !!result.no_approved_export, failures: result.failures, checks: result.checks, report: formatVerifierReport(result, dir) });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-verify-error'));
       return;
     }
     if (req.method === 'POST' && url.pathname === SCORE_REAPER_BUILD_API) {

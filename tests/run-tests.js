@@ -45,6 +45,7 @@ require("./project-media-kit.test.js");
 require("./earth-studio.test.js");
 require("./score-engine.test.js");
 require("./score-readiness.test.js");
+require("./score-verify.test.js");
 require("./workflow-path.test.js");
 require("./script-commitment-check.test.js");
 require("./resolve-handoff-readiness.test.js");
