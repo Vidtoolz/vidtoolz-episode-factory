@@ -1496,10 +1496,31 @@
         }
         if (st) setRowStatus(st, row.duplicate_rejected ? 'duplicate rejected; previous kept' : 'done', row.duplicate_rejected ? 'dirty' : 'ok');
         showRegenClear = true; // a clip exists → explicit Regenerate/Clear
+        // Staleness: the clip on disk was rendered from text that has since
+        // changed (or its upstream inputs went stale). The file is never hidden
+        // — the badge is review-required, not an error.
+        if (row.video_stale) {
+          var sbadge = document.createElement('span');
+          sbadge.className = 'status status-dirty';
+          sbadge.title = 'Regenerate to re-render from the current I2V prompt';
+          sbadge.textContent = '⚠ ' + (
+            row.video_stale_reason === 'i2v_prompt_stale' ? 'I2V prompt stale (image prompt changed)'
+            : row.video_stale_reason === 'assignment_stale' ? 'assignment changed — motion context may have drifted'
+            : 'I2V prompt changed since render');
+          el.appendChild(sbadge);
+        }
       } else if (qitem && qitem.status === 'running') {
         if (st) setRowStatus(st, 'running on PRESTO… (slow)', '');
       } else if (qitem && qitem.status === 'queued') {
         if (st) setRowStatus(st, qitem.position ? ('queued · position ' + qitem.position) : 'queued on PRESTO', '');
+        // The queued render still carries the text from enqueue time; flag it if
+        // the operator edited the I2V prompt afterwards.
+        if (qitem.i2v_stale) {
+          var qbadge = document.createElement('span');
+          qbadge.className = 'status status-dirty';
+          qbadge.textContent = '⚠ prompt edited since queueing — cancel + re-queue to use the new text';
+          el.appendChild(qbadge);
+        }
         showCancelQ = true;
       } else if (qitem && qitem.status === 'failed') {
         if (st) setRowStatus(st, 'failed: ' + String(qitem.error || 'render error').slice(0, 60) + ' — retry', 'dirty');
@@ -1552,7 +1573,8 @@
           + (summary.interrupted ? (' · ' + summary.interrupted + ' interrupted') : '')
           + (summary.stopped ? (' · ' + summary.stopped + ' stopped') : '')
           + (summary.failed ? (' · ' + summary.failed + ' failed') : '')
-          + (summary.skipped ? (' · ' + summary.skipped + ' skipped') : '');
+          + (summary.skipped ? (' · ' + summary.skipped + ' skipped') : '')
+          + (d.stale ? (' · ' + d.stale + ' stale') : '');
       } else {
         prog.classList.add('hidden'); barwrap.classList.add('hidden');
       }
