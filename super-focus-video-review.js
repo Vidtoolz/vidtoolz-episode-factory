@@ -24,6 +24,14 @@
 //     image_review_status,       // effective image-review status for the row
 //     assignment, assignment_fresh,
 //     observed_duration_seconds, // browser-measured, null when unknown
+//     render_provenance,         // OPTIONAL: generation-attempt summary for the
+//                                //   on-disk clip ({ attempt_id, source_sha256,
+//                                //   source_verified, source_matches_current_row,
+//                                //   i2v_canonical_hash, … }) or null. When
+//                                //   present, startVideoReview binds the review
+//                                //   to the RENDER-TIME source hash instead of
+//                                //   the review-time current image. Never
+//                                //   invented: null = legacy/unattributed.
 //   }
 //
 // Persistence: row.video_review on the image-prompt row (same home as
@@ -322,7 +330,9 @@ function effectiveVideoReview(row, context) {
     const imgHash = typeof context.source_image.hash_image === 'function' ? context.source_image.hash_image() : null;
     if (!context.source_image.exists || (imgHash && imgHash !== review.reviewed_source_image_hash)) {
       required = true; out.mismatches.push('source_mismatch');
-      out.reasons.push('The source image changed since this review.');
+      out.reasons.push(review.reviewed_source_binding === 'render_time'
+        ? 'The current source image differs from the image that produced this video.'
+        : 'The source image changed since this review.');
     }
   }
   if (context.assignment && review.reviewed_assignment_hash
@@ -376,13 +386,23 @@ function startVideoReview(row, context, options = {}) {
   });
   const imgHash = context.source_image && typeof context.source_image.hash_image === 'function'
     ? context.source_image.hash_image() : null;
+  // Source binding: prefer the RENDER-TIME source hash (the staged bytes that
+  // actually produced this clip, from the generation-attempt record) over the
+  // review-time current image. With render binding, a still that drifted
+  // before the review even started still surfaces as source_mismatch — the
+  // review is bound to what made the video, not to whatever the row shows now.
+  // Legacy clips (no attempt) keep the review-time binding unchanged.
+  const renderProv = context.render_provenance || null;
+  const renderBound = Boolean(renderProv && renderProv.source_sha256);
   const stamp = options.now || nowIso();
   return validateVideoReview({
     status: 'in_review',
     reviewed_video_hash: hash,
     reviewed_video_mtime_ms: context.video_mtime_ms != null ? Number(context.video_mtime_ms) : null,
     reviewed_video_size: context.video_size != null ? Number(context.video_size) : null,
-    reviewed_source_image_hash: imgHash,
+    reviewed_source_image_hash: renderBound ? renderProv.source_sha256 : imgHash,
+    reviewed_source_binding: renderBound ? 'render_time' : 'review_time',
+    reviewed_render_attempt_id: renderBound ? renderProv.attempt_id : null,
     reviewed_assignment_hash: context.assignment ? context.assignment.assignment_hash : null,
     reviewed_motion_hash: motionContractHash(context.assignment, context.current_i2v_text),
     reviewed_i2v_prompt_hash: typeof context.i2v_prompt_hash === 'function'

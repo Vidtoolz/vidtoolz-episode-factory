@@ -97,9 +97,27 @@ A project is one linear sheet, in order:
    stays recorded. **Legacy clips** (no review, no recorded generation
    provenance) show `Legacy — review provenance unknown` and stay
    edit-eligible in compatibility mode, explicitly labeled as *not an
-   approval*. Known limitation: the render lane does not record which image
-   bytes fed a render, so the review binds the clip to the source image as
-   it exists at review time plus the image review's own currency.
+   approval*. **Render-time source provenance**: every video dispatch (queue
+   pump, batch, regenerate) mints a generation *attempt*
+   (`video-attempts.json`) that stages an immutable copy of the source still
+   under `attempts/<attempt_id>/` and points `selected-images.json` at it —
+   so the sha256 the attempt records is of the exact bytes
+   `run-production.py` uploads to PRESTO, and a still edited after dispatch
+   can no longer silently change what a render used. The attempt also
+   captures the dispatched I2V text verbatim (plus its canonical hash),
+   assignment id, profile, and output path. **Completion ownership**: only
+   the slot's active dispatched attempt may complete; cancelled, superseded,
+   and failed attempts refuse completion (the refusal is recorded), so a
+   late-arriving file never inherits another dispatch's provenance.
+   Completed attempts record the output clip's sha256+size+mtime, binding
+   clip bytes to their attempt by content. Reviews started on an
+   attempt-backed clip bind `reviewed_source_image_hash` to the
+   **render-time** source hash (`reviewed_source_binding: render_time`) —
+   the review compares against the bytes that produced the clip, not
+   whatever the row shows at review time. The review UI shows one of three
+   honest states: *proven* (current image is the render source), *changed
+   since render*, or *unknown (legacy)* — clips predating the attempts layer
+   have no record and none is invented.
 
 Nothing generates or advances itself. Every generate/save is an explicit click
 (soft gates): generating the script needs a saved title; image/infographic
@@ -172,6 +190,12 @@ fallback.
   inputs (`image-prompts.json`, `selected-images.json`, `video-prompts.json`),
   and the FLUX/PRESTO manifests. This is a dedicated namespace, separate from
   `aigen/script-packages/`.
+- **Render-time provenance:** `video-attempts.json` (per-dispatch attempt
+  records; see the video review step above) plus immutable staged source
+  copies under `attempts/<attempt_id>/`. Staged copies are small PNG stills
+  retained as evidence; they are never modified after dispatch and never
+  cleaned up automatically (documented growth trade-off — bounded by how
+  often you regenerate).
 - Media state is reconciled from disk on every status poll and on project open
   (the files are the source of truth, so it survives a server restart).
 

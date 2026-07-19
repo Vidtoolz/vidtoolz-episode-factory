@@ -371,6 +371,61 @@ test('video-attempts: review GET exposes render provenance for attempt-backed cl
   } finally { await close(server); }
 });
 
+test('video-attempts: review started on an attempt-backed clip binds to the render-time source hash', async () => {
+  const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
+  try {
+    await queueAndFinish(server, id, mediaRoot, 1);
+    const vrPost = (action, body) => request(server, `/api/super-focus/video-review/${action}`, { method: 'POST', headers: writeHeaders(), body });
+    const started = await vrPost('start', { id, index: 1 });
+    assert.equal(started.statusCode, 200);
+    for (const c of unwrap(started).criteria) {
+      await vrPost('set-criterion', { id, index: 1, criterion_hash: c.criterion_hash, result: 'pass' });
+    }
+    await vrPost('set-usable-range', { id, index: 1, usable_range: { full_clip: true } });
+    const approved = await vrPost('approve', { id, index: 1 });
+    assert.equal(approved.statusCode, 200);
+    let g = unwrap(await request(server, `/api/super-focus/video-review?id=${id}`));
+    let r1 = g.reviews.find((r) => r.index === 1);
+    assert.equal(r1.review.reviewed_source_binding, 'render_time');
+    assert.equal(r1.review.reviewed_source_image_hash, sha256(IMG_ONE), 'review bound to the bytes that produced the clip');
+    assert.equal(r1.review.reviewed_render_attempt_id, completedAttemptFor(mediaRoot, id, 1).attempt_id);
+    assert.equal(r1.effective_status, 'approved');
+    // Now drift the still: render binding surfaces the drift with the
+    // render-specific reason copy (the review compares against the bytes
+    // that produced the clip, not whatever the reviewer last looked at).
+    writeImage(mediaRoot, id, 1, Buffer.from('DRIFTED-AFTER-APPROVAL'));
+    g = unwrap(await request(server, `/api/super-focus/video-review?id=${id}`));
+    r1 = g.reviews.find((r) => r.index === 1);
+    assert.equal(r1.effective_status, 'review_required');
+    assert.ok(r1.mismatches.indexOf('source_mismatch') !== -1, 'drift surfaces as source_mismatch under render binding');
+    assert.ok(r1.reasons.some((m) => /differs from the image that produced this video/.test(m)), 'render-binding reason copy');
+    // And a review started AFTER a pre-existing drift is blocked upstream by
+    // image-review staleness (defense in depth): the image gate 409s approval.
+    const reApproved = await vrPost('approve', { id, index: 1 });
+    assert.equal(reApproved.statusCode, 409, 'stale upstream state cannot be converted into approval');
+  } finally { await close(server); }
+});
+
+test('video-attempts: review on a legacy clip keeps review-time binding (unchanged behavior)', async () => {
+  const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
+  try {
+    const legacyOut = videoOut(mediaRoot, id, 2);
+    fs.mkdirSync(path.dirname(legacyOut), { recursive: true });
+    fs.writeFileSync(legacyOut, Buffer.from('LEGACY-CLIP'));
+    const started = await request(server, '/api/super-focus/video-review/start', {
+      method: 'POST', headers: writeHeaders(), body: { id, index: 2 },
+    });
+    assert.equal(started.statusCode, 200);
+    const g = unwrap(await request(server, `/api/super-focus/video-review?id=${id}`));
+    const r2 = g.reviews.find((r) => r.index === 2);
+    assert.equal(r2.review.reviewed_source_binding, 'review_time');
+    assert.equal(r2.review.reviewed_source_image_hash, sha256(IMG_TWO), 'legacy binding: current image at review time');
+    assert.equal(r2.review.reviewed_render_attempt_id, null);
+  } finally { await close(server); }
+});
+
+// ── Lazy-hash economics + persistence shape ──────────────────────────────────
+
 test('video-attempts: routine reads resolve by mtime+size probe (metadata persisted; no hash needed when unchanged)', async () => {
   const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
   try {
@@ -431,6 +486,23 @@ test('video-attempts: batch generate-videos records one attempt per row with sta
 });
 
 // ── UI wiring (static page assertions) ───────────────────────────────────────
+
+test('video-attempts: super-focus.html surfaces the three render-source states (proven / changed / unknown)', () => {
+  const page = fs.readFileSync(path.join(__dirname, '..', 'super-focus.html'), 'utf8');
+  assert.ok(page.includes('render_provenance'), 'page consumes render provenance');
+  assert.ok(page.includes('Render source: proven'), 'proven state copy');
+  assert.ok(page.includes('differs from the image that produced this clip'), 'changed-since-render state copy');
+  assert.ok(page.includes('Render source: unknown — no render-time record'), 'legacy unknown state copy');
+  assert.ok(page.includes('Source image changed since this clip was rendered'), 'pre-review drift head warning');
+});
+
+test('video-attempts: docs describe attempts, staged sources, and completion ownership', () => {
+  const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'super-focus.md'), 'utf8');
+  assert.ok(doc.includes('video-attempts.json'));
+  assert.ok(/attempts\/<attempt_id>\//.test(doc));
+  assert.ok(doc.includes('Completion ownership'));
+  assert.ok(doc.includes('reviewed_source_binding'));
+});
 
 test('video-attempts: corrupt video-attempts.json reads as empty (unknown, never a crash or invented provenance)', async () => {
   const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });

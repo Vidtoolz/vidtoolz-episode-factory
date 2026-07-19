@@ -2357,6 +2357,12 @@
         var why = document.createElement('span'); why.className = 'eval-warn';
         why.textContent = info.reasons[0];
         head.appendChild(why);
+      } else if (info.render_provenance && info.render_provenance.source_matches_current_row === false) {
+        // No review yet, but render provenance already shows the current image
+        // is not the one that produced this clip — surface it before review.
+        var drift = document.createElement('span'); drift.className = 'eval-warn';
+        drift.textContent = 'Source image changed since this clip was rendered';
+        head.appendChild(drift);
       }
       if (info.edit) {
         var ed = document.createElement('span');
@@ -2399,6 +2405,28 @@
       var st = document.createElement('div'); st.className = 'eval-muted';
       st.textContent = 'Source image review: ' + String(info.image_review_status || 'unknown').replace(/_/g, ' ');
       d.appendChild(st);
+      // Render-time provenance: which bytes actually produced this clip.
+      // Three honest states — proven / changed since render / unknown (legacy).
+      var rp = info.render_provenance;
+      var rpEl = document.createElement('div');
+      if (rp) {
+        var shaShort = String(rp.source_sha256 || '').slice(0, 8);
+        if (rp.source_matches_current_row === false) {
+          rpEl.className = 'eval-warn';
+          rpEl.textContent = 'Render source: the current image differs from the image that produced this clip (rendered from sha ' + shaShort + '…).';
+        } else if (rp.source_matches_current_row === true) {
+          rpEl.className = 'eval-muted';
+          rpEl.textContent = 'Render source: proven — rendered from the current image (sha ' + shaShort + '…'
+            + (rp.source_verified ? ', staged copy verified' : ', staged copy NOT verified') + ').';
+        } else {
+          rpEl.className = 'eval-muted';
+          rpEl.textContent = 'Render source: recorded (sha ' + shaShort + '…); current-image comparison unavailable.';
+        }
+      } else {
+        rpEl.className = 'eval-muted';
+        rpEl.textContent = 'Render source: unknown — no render-time record for this clip (legacy).';
+      }
+      d.appendChild(rpEl);
 
       // Review player: paused, metadata-only, with presenter-safe overlay and
       // playhead-driven usable-range capture. Never mutates the media.
