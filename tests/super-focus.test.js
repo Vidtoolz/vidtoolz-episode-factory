@@ -697,6 +697,31 @@ test("reconcileVideos exposes the clip mtime as a cache key (null when pending)"
   assert.equal(row2.mtime_ms, null, "pending row has a null key");
 });
 
+test("writeVideoQueue keeps live items and bounds terminal history", () => {
+  const mediaRoot = mkRoot();
+  const projectId = "queue-prune-abcd1234";
+  const terminal = Array.from({ length: 25 }, (_, i) => ({
+    item_id: "done-" + String(i + 1),
+    index: i + 1,
+    status: "done",
+    finished_at: "2026-01-01T00:00:" + String(i + 1).padStart(2, "0") + "Z",
+  }));
+  sfMedia.writeVideoQueue(projectId, { version: 1, items: [
+    terminal[0],
+    { item_id: "queued-live", index: 101, status: "queued", queued_at: "2026-01-02T00:00:00Z" },
+    terminal[1],
+    { item_id: "running-live", index: 102, status: "running", started_at: "2026-01-02T00:01:00Z" },
+    ...terminal.slice(2),
+  ] }, { mediaRoot });
+  const q = sfMedia.readVideoQueue(projectId, { mediaRoot });
+  assert.ok(q.items.some((it) => it.item_id === "queued-live"), "queued item is never pruned");
+  assert.ok(q.items.some((it) => it.item_id === "running-live"), "running item is never pruned");
+  const retainedTerminal = q.items.filter((it) => it.status === "done");
+  assert.equal(retainedTerminal.length, 20, "terminal queue history is bounded");
+  assert.equal(retainedTerminal[0].item_id, "done-6", "oldest terminal entries are pruned first");
+  assert.equal(retainedTerminal[19].item_id, "done-25", "newest terminal entries are retained");
+});
+
 test("clearImageStale resolves the mismatch flag for the requested indexes only", () => {
   const root = mkRoot();
   const created = superFocus.createProject({ title: "Clear" }, { root });
@@ -1283,6 +1308,55 @@ test("a second video batch is refused while one is active (single PRESTO lock)",
   }
 });
 
+test("videos-cancel is project-scoped and handles no active job honestly", async () => {
+  const idle = videoServer(fakePrestoSpawn());
+  await listen(idle.server);
+  try {
+    const res = await request(idle.server, packageEngineServer.SUPER_FOCUS_VIDEOS_CANCEL_API, {
+      method: "POST", headers: writeHeaders(), body: { id: idle.id },
+    });
+    assert.equal(res.statusCode, 200);
+    assert.equal(unwrap(res).ok, false);
+    assert.match(unwrap(res).error, /No active job/);
+  } finally { await close(idle.server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+
+  const own = videoServer(fakePrestoSpawn({ hang: true }));
+  await listen(own.server);
+  try {
+    await request(own.server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id: own.id },
+    });
+    const res = await request(own.server, packageEngineServer.SUPER_FOCUS_VIDEOS_CANCEL_API, {
+      method: "POST", headers: writeHeaders(), body: { id: own.id },
+    });
+    assert.equal(res.statusCode, 200);
+    assert.equal(unwrap(res).cancelled, true);
+    const status = unwrap(await request(own.server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(own.id)));
+    assert.equal(status.job_is_this_project, false);
+  } finally { await close(own.server); packageEngineServer.PRESTO_STATE.activeJob = null; }
+
+  const a = videoServer(fakePrestoSpawn({ hang: true }));
+  const b = videoServer(fakePrestoSpawn());
+  await listen(a.server);
+  await listen(b.server);
+  try {
+    await request(a.server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id: a.id },
+    });
+    const res = await request(b.server, packageEngineServer.SUPER_FOCUS_VIDEOS_CANCEL_API, {
+      method: "POST", headers: writeHeaders(), body: { id: b.id },
+    });
+    assert.equal(res.statusCode, 409);
+    assert.equal(unwrap(res).error, "busy_elsewhere");
+    const status = unwrap(await request(a.server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(a.id)));
+    assert.equal(status.job_is_this_project, true, "other project's render was not stopped");
+  } finally {
+    await close(a.server);
+    await close(b.server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
 test("generate-videos is nonce-gated; video file endpoint serves mp4 and guards index/traversal", async () => {
   const { server, id } = videoServer(fakePrestoSpawn());
   await listen(server);
@@ -1326,6 +1400,29 @@ test("videos-status reconciles from disk alone (survives restart)", async () => 
     assert.equal(d.done, 1);
   } finally {
     await close(server);
+  }
+});
+
+test("videos-status reports failed/stopped rows at top level", async () => {
+  packageEngineServer.PRESTO_STATE.activeJob = null;
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn(), { promptCount: 3 });
+  await listen(server);
+  try {
+    sfMedia.writeVideoQueue(id, { version: 1, items: [
+      { item_id: "q-failed", index: 1, status: "failed", error: "boom", finished_at: "2026-01-01T00:00:01Z" },
+      { item_id: "q-stopped", index: 2, status: "stopped_by_operator", finished_at: "2026-01-01T00:00:02Z" },
+      { item_id: "q-cancelled", index: 3, status: "cancelled", finished_at: "2026-01-01T00:00:03Z" },
+    ] }, { mediaRoot });
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(d.total, 3);
+    assert.equal(d.done, 0);
+    assert.equal(d.failed, 2);
+    assert.equal(d.videos.find((v) => v.index === 1).status, "failed");
+    assert.equal(d.videos.find((v) => v.index === 2).status, "stopped_by_operator");
+    assert.equal(d.videos.find((v) => v.index === 3).status, "pending", "cancelled queue items are not counted as failed/stopped rows");
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
   }
 });
 
@@ -1418,6 +1515,55 @@ test("images-status reports busy_elsewhere when the FLUX lock is held by another
     const d = unwrap(await request(b.server, packageEngineServer.SUPER_FOCUS_IMAGES_STATUS_API + "?id=" + encodeURIComponent(b.id)));
     assert.equal(d.busy_elsewhere, true);
     assert.equal(d.job_is_this_project, false);
+  } finally {
+    await close(a.server);
+    await close(b.server);
+    packageEngineServer.FLUX_STATE.activeJob = null;
+  }
+});
+
+test("images-cancel is project-scoped and handles no active job honestly", async () => {
+  const idle = imageServer(fakeFluxSpawn());
+  await listen(idle.server);
+  try {
+    const res = await request(idle.server, packageEngineServer.SUPER_FOCUS_IMAGES_CANCEL_API, {
+      method: "POST", headers: writeHeaders(), body: { id: idle.id },
+    });
+    assert.equal(res.statusCode, 200);
+    assert.equal(unwrap(res).ok, true);
+  } finally { await close(idle.server); packageEngineServer.FLUX_STATE.activeJob = null; }
+
+  const own = imageServer(fakeFluxSpawn({ hang: true }));
+  await listen(own.server);
+  try {
+    await request(own.server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id: own.id },
+    });
+    const res = await request(own.server, packageEngineServer.SUPER_FOCUS_IMAGES_CANCEL_API, {
+      method: "POST", headers: writeHeaders(), body: { id: own.id },
+    });
+    assert.equal(res.statusCode, 200);
+    assert.equal(unwrap(res).package_id, own.id);
+    const status = unwrap(await request(own.server, packageEngineServer.SUPER_FOCUS_IMAGES_STATUS_API + "?id=" + encodeURIComponent(own.id)));
+    assert.equal(status.flux_job.active, false);
+  } finally { await close(own.server); packageEngineServer.FLUX_STATE.activeJob = null; }
+
+  const a = imageServer(fakeFluxSpawn({ hang: true }));
+  const b = imageServer(fakeFluxSpawn());
+  await listen(a.server);
+  await listen(b.server);
+  try {
+    await request(a.server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
+      method: "POST", headers: writeHeaders(), body: { id: a.id },
+    });
+    const res = await request(b.server, packageEngineServer.SUPER_FOCUS_IMAGES_CANCEL_API, {
+      method: "POST", headers: writeHeaders(), body: { id: b.id },
+    });
+    assert.equal(res.statusCode, 409);
+    assert.equal(unwrap(res).error, "busy_elsewhere");
+    const status = unwrap(await request(a.server, packageEngineServer.SUPER_FOCUS_IMAGES_STATUS_API + "?id=" + encodeURIComponent(a.id)));
+    assert.equal(status.flux_job.active, true, "other project's job was not stopped");
+    assert.equal(status.flux_job.package_id, a.id);
   } finally {
     await close(a.server);
     await close(b.server);

@@ -11275,12 +11275,18 @@ function createServer(options = {}) {
       return;
     }
 
-    // Cancel the active FLUX job (nonce-gated). The lock is global; this stops
-    // whatever image batch is running.
+    // Cancel the active FLUX job (nonce-gated). Project-scoped: do not stop
+    // another project's image batch just because the lock is global.
     if (req.method === 'POST' && url.pathname === SUPER_FOCUS_IMAGES_CANCEL_API) {
       readJsonBody(req)
         .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Super Focus image cancel API' });
+          const id = payload && payload.id;
+          const active = currentFluxJobStatus();
+          if (active.active && active.package_id !== id) {
+            sendJSON(res, 409, { error: 'busy_elsewhere', message: 'The active image batch belongs to another project and was not stopped.' });
+            return;
+          }
           const result = await cancelFluxJob(options);
           sendJSON(res, 200, result);
         })
@@ -11757,6 +11763,7 @@ function createServer(options = {}) {
             subdir,
             total: recon.total,
             done: recon.done,
+            failed: recon.failed,
             videos: recon.videos,
             paused: Boolean(queue.paused),
             queue: { summary: videoQueueSummary(queue), items: queue.items, control: videoQueueControl(queue) },
@@ -11766,11 +11773,18 @@ function createServer(options = {}) {
       return;
     }
 
-    // Cancel the active PRESTO job (nonce-gated). The lock is global.
+    // Cancel the active PRESTO job (nonce-gated). Project-scoped: do not stop
+    // another project's render just because the lock is global.
     if (req.method === 'POST' && url.pathname === SUPER_FOCUS_VIDEOS_CANCEL_API) {
       readJsonBody(req)
         .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Super Focus video cancel API' });
+          const id = payload && payload.id;
+          const active = currentPrestoJobStatus().active;
+          if (active && active.package_id !== id) {
+            sendJSON(res, 409, { error: 'busy_elsewhere', message: 'The active video render belongs to another project and was not stopped.' });
+            return;
+          }
           const result = await cancelPrestoJob(options);
           sendJSON(res, 200, result);
         })

@@ -96,14 +96,6 @@ function archiveVideo(projectId, subdir, index, options = {}) {
   return archiveAsset(mediaDir, 'video', Math.round(Number(index)), videoFilePath(mediaDir, sub, index), '.mp4', { subdir: sub }, options);
 }
 
-// The most recent archived sha256 for a slot (used to detect a regenerated asset
-// that came back byte-identical to the one it replaced).
-function latestSupersededHash(mediaDir, kind, index) {
-  const entries = readSupersededManifest(mediaDir).entries
-    .filter((e) => e.kind === kind && e.index === index && e.sha256);
-  return entries.length ? entries[entries.length - 1].sha256 : null;
-}
-
 // Per-index outcome of the last explicit regeneration ({image:{}, video:{}}).
 // Reconcile/status reads this (a plain lookup) instead of hashing every poll.
 const REGEN_OUTCOMES_FILENAME = 'regen-outcomes.json';
@@ -243,6 +235,9 @@ function resolveRegeneratedVideo(projectId, subdir, index, prevArchive, options 
 
 const IMAGE_PROVIDER_FILENAME = 'image-provider.json';
 const VIDEO_QUEUE_FILENAME = 'video-queue.json';
+const VIDEO_QUEUE_TERMINAL_RETAIN = 20;
+const VIDEO_QUEUE_TERMINAL_STATUSES = new Set(['done', 'failed', 'cancelled', 'interrupted', 'stopped_by_operator', 'skipped_exists', 'skipped_prereq']);
+const VIDEO_FAILURE_STATUSES = new Set(['failed', 'interrupted', 'stopped_by_operator']);
 
 // Persistent PRESTO video queue for a project (survives page refresh / restart).
 // One item per (re)queued row; the server worker drains it single-file.
@@ -265,6 +260,22 @@ function readVideoQueue(projectId, options = {}) {
 function writeVideoQueue(projectId, queue, options = {}) {
   const mediaDir = mediaDirFor(projectId, options);
   fs.mkdirSync(mediaDir, { recursive: true });
+  if (!Array.isArray(queue.items)) queue.items = [];
+  // Keep all live work; cap historical terminal entries so requeues cannot grow
+  // video-queue.json without bound. Partition in a single pass (O(n)) and keep
+  // each item's original position, then prune the oldest terminal entries and
+  // restore original relative order — so the queue's on-disk order is stable.
+  const decorated = queue.items.map((it, i) => ({
+    it,
+    i,
+    terminal: VIDEO_QUEUE_TERMINAL_STATUSES.has(it.status),
+  }));
+  const terminalSeen = decorated.filter((d) => d.terminal).length;
+  let terminalToDrop = Math.max(0, terminalSeen - VIDEO_QUEUE_TERMINAL_RETAIN);
+  queue.items = decorated
+    .filter((d) => !d.terminal || terminalToDrop-- <= 0)
+    .sort((a, b) => a.i - b.i)
+    .map((d) => d.it);
   const outPath = videoQueuePath(mediaDir);
   const tmp = `${outPath}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, `${JSON.stringify(queue, null, 2)}\n`, 'utf8');
@@ -496,21 +507,27 @@ function reconcileVideos(projectId, imagePrompts, subdir, options = {}) {
   const mediaDir = mediaDirFor(projectId, options);
   const eligible = eligibleVideoRows(projectId, imagePrompts, options);
   const regenVideo = readRegenOutcomes(mediaDir).video || {}; // lookup only, no hashing
+  const queueByIndex = {};
+  readVideoQueue(projectId, options).items.forEach((it) => { queueByIndex[it.index] = it; });
   let done = 0;
+  let failed = 0;
   const videos = eligible.map((p) => {
     const mtimeMs = fileMtimeMs(videoFilePath(mediaDir, subdir, p.index));
     const fileExists = mtimeMs != null;
     if (fileExists) done += 1;
+    const queueStatus = queueByIndex[p.index] && queueByIndex[p.index].status;
+    const status = fileExists ? 'done' : (VIDEO_FAILURE_STATUSES.has(queueStatus) ? queueStatus : 'pending');
+    if (VIDEO_FAILURE_STATUSES.has(status)) failed += 1;
     return {
       index: p.index,
-      status: fileExists ? 'done' : 'pending',
+      status,
       has_video: fileExists,
       // Cache key for the served clip; changes when the file changes.
       mtime_ms: mtimeMs,
       duplicate_rejected: Boolean(regenVideo[p.index] && regenVideo[p.index].status === 'duplicate_rejected'),
     };
   });
-  return { media_dir: mediaDir, subdir: subdir || 'mp4', total: videos.length, done, videos };
+  return { media_dir: mediaDir, subdir: subdir || 'mp4', total: videos.length, done, failed, videos };
 }
 
 function safeVideoFilePath(projectId, subdir, index, options = {}) {
@@ -554,7 +571,6 @@ module.exports = {
   readSupersededManifest,
   archiveImage,
   archiveVideo,
-  latestSupersededHash,
   writeImageProviderProvenance,
   readImageProviderProvenance,
   readVideoQueue,
