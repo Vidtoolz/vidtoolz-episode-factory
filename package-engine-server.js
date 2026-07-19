@@ -7861,14 +7861,28 @@ function reconcileSuperFocusVideoQueue(id, ctx) {
     const hasVideo = fs.existsSync(superFocusMedia.videoFilePath(mediaDir, subdir, idx));
     if (item.status === 'running') {
       if (activeIsThis) continue; // still rendering our job
+      // Settle this item's generation attempt alongside the item itself.
+      // Ownership lives in the attempt layer: completeVideoAttempt refuses
+      // unless this is still the slot's active dispatched attempt, so a late
+      // or superseded completion can never overwrite newer provenance. These
+      // calls must never break reconciliation (best-effort, attempt-recorded).
+      const settleAttempt = (kind, reason) => {
+        if (!item.attempt_id) return; // legacy in-flight item — no attempt, none invented
+        try {
+          if (kind === 'complete') superFocusMedia.completeVideoAttempt(id, item.attempt_id, { mediaRoot: ctx.sfMediaRoot });
+          else superFocusMedia.markVideoAttempt(id, item.attempt_id, kind, reason, { mediaRoot: ctx.sfMediaRoot });
+        } catch (_) { /* provenance write failure must not wedge the queue */ }
+      };
       if (hasVideo) {
         item.status = 'done'; item.output_path = relVideo(idx); item.finished_at = item.finished_at || new Date().toISOString();
+        settleAttempt('complete');
       } else if (item.stop_requested_at || (completedIsThis && completed.signal)) {
         // Operator asked to stop this render (SIGTERM/SIGKILL). Honest: the
         // local process was stopped; the item is eligible for explicit requeue.
         item.status = 'stopped_by_operator';
         item.error = item.error || 'Stopped by operator before completion. Requeue to retry.';
         item.finished_at = new Date().toISOString();
+        settleAttempt('cancelled', 'stopped_by_operator');
       } else if (completedIsThis) {
         // The render process ran to completion IN THIS PROCESS but produced no
         // output → a genuine failure (non-zero exit, or clean exit with no file).
@@ -7877,6 +7891,7 @@ function reconcileSuperFocusVideoQueue(id, ctx) {
           ? 'Render failed (exit ' + completed.exit_code + '). Requeue to retry.'
           : 'Render finished without producing a video. Requeue to retry.';
         item.finished_at = new Date().toISOString();
+        settleAttempt('failed', 'render_failed');
       } else {
         // No output and NO record of a completed process for us: the render was
         // interrupted (PRESTO/ComfyUI stopped, or the cockpit restarted mid-job).
@@ -7884,6 +7899,7 @@ function reconcileSuperFocusVideoQueue(id, ctx) {
         item.status = 'interrupted';
         item.error = 'Render interrupted — PRESTO/ComfyUI may have been stopped, or the cockpit restarted. Requeue when ready.';
         item.finished_at = new Date().toISOString();
+        settleAttempt('failed', 'interrupted');
       }
       changed = true;
     } else if (item.status === 'queued') {
@@ -7931,7 +7947,29 @@ async function pumpSuperFocusVideoQueue(id, ctx) {
   if (fresh.items.some((it) => it.status === 'running')) return { started: null, queue: fresh, blocked: 'running' };
   const freshItem = fresh.items.find((it) => it.item_id === next.item_id);
   if (!freshItem || freshItem.status !== 'queued') return { started: null, queue: fresh, blocked: 'raced' };
-  const materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, { mediaRoot: ctx.sfMediaRoot, rows: [el.row] });
+  // Render-time provenance: mint the generation attempt FIRST (stages an
+  // immutable copy of the still and records every dispatched input), then
+  // materialize selected-images.json pointing at the staged copy — so the
+  // bytes run-production.py uploads are exactly the bytes the attempt hashed.
+  let attempt = null;
+  try {
+    attempt = superFocusMedia.createVideoAttempt(id, el.row, {
+      mediaRoot: ctx.sfMediaRoot, subdir, profile: DEFAULT_PRESTO_PROFILE, itemId: freshItem.item_id,
+    });
+  } catch (e) {
+    // The still vanished between the eligibility check and staging. Never
+    // dispatch with unproven inputs: fail the item honestly, try the next.
+    freshItem.status = 'failed';
+    freshItem.error = `Source image unavailable at dispatch: ${e.message}`;
+    freshItem.finished_at = new Date().toISOString();
+    superFocusMedia.writeVideoQueue(id, fresh, { mediaRoot: ctx.sfMediaRoot });
+    return pumpSuperFocusVideoQueue(id, ctx);
+  }
+  const materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, {
+    mediaRoot: ctx.sfMediaRoot,
+    rows: [el.row],
+    selectedPathByIndex: { [el.row.index]: attempt.source.staged_rel },
+  });
   let job;
   try {
     job = startSuperFocusVideoJob(materialized.mediaDir, {
@@ -7945,8 +7983,11 @@ async function pumpSuperFocusVideoQueue(id, ctx) {
       payload: {},
     });
   } catch (e) {
-    return { started: null, queue: fresh, blocked: 'busy' }; // lock grabbed between checks
+    // Launch refused (lock grabbed between checks): the attempt never ran.
+    superFocusMedia.markVideoAttempt(id, attempt.attempt_id, 'cancelled', 'launch_blocked', { mediaRoot: ctx.sfMediaRoot });
+    return { started: null, queue: fresh, blocked: 'busy' };
   }
+  freshItem.attempt_id = attempt.attempt_id;
   freshItem.status = 'running';
   freshItem.started_at = new Date().toISOString();
   freshItem.job_id = job && job.job_id;
@@ -10661,12 +10702,30 @@ function buildVideoReviewContext(state, row, sfMediaRoot, subdir) {
   try {
     generatedHash = superFocusMedia.readVideoProvenanceHashes(state.project_id, { mediaRoot: sfMediaRoot })[row.index] || null;
   } catch (_) { generatedHash = null; }
+  // Render-time provenance: WHICH staged bytes actually produced the on-disk
+  // clip (attempt layer; lazy — probes recorded mtime+size before any sha256).
+  // null = legacy/unattributed clip; provenance is surfaced, never invented.
+  let renderProvenance = null;
+  if (exists) {
+    try {
+      renderProvenance = superFocusMedia.videoRenderProvenance(state.project_id, row.index, {
+        mediaRoot: sfMediaRoot,
+        videoMtimeMs: mtime,
+        videoSize: size,
+        hashVideo: () => superFocusMedia.hashFileSha256(filePath),
+        imageExists: imgCtx.image_exists,
+        imageMtimeMs: imgCtx.image_mtime_ms,
+        hashImage: imgCtx.hash_image,
+      });
+    } catch (_) { renderProvenance = null; }
+  }
   return {
     video_exists: exists,
     video_mtime_ms: mtime,
     video_size: size,
     hash_video: () => (exists ? superFocusMedia.hashFileSha256(filePath) : null),
     generated_i2v_hash: generatedHash,
+    render_provenance: renderProvenance,
     current_i2v_text: row.i2v_prompt && typeof row.i2v_prompt.text === 'string' ? row.i2v_prompt.text : '',
     i2v_prompt_hash: superFocusMedia.i2vPromptHash,
     source_image: { exists: imgCtx.image_exists, mtime_ms: imgCtx.image_mtime_ms, hash_image: imgCtx.hash_image },
@@ -11094,6 +11153,7 @@ function createServer(options = {}) {
             index: row.index,
             assignment_id: row.assignment_id || null,
             video_exists: context.video_exists,
+            render_provenance: context.render_provenance || null,
             image_review_status: context.image_review_status,
             effective_status: eff.status,
             reasons: eff.reasons,
@@ -12095,19 +12155,64 @@ function createServer(options = {}) {
             const e = new Error('A PRESTO video job is already running. Wait for it to finish.');
             e.statusCode = 409; throw e;
           }
-          const materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, { mediaRoot: sfMediaRoot, rows: targetRows });
-          const job = startSuperFocusVideoJob(materialized.mediaDir, {
-            projectId: id,
-            profile: DEFAULT_PRESTO_PROFILE,
-            comfyuiUrl: PRESTO_BASE_URL,
-            indexes: materialized.indexes,
-            spawn: options.spawn,
-            productionScript: options.productionScript,
-            pythonBin: options.pythonBin,
-            payload,
+          // Render-time provenance: one attempt per row, staged source copies,
+          // selected-images.json pointed at the staged bytes (see the attempts
+          // note in super-focus-media.js). A row whose still vanished between
+          // eligibility and staging is dropped honestly, never dispatched.
+          const attemptsByIndex = {};
+          const selectedPathByIndex = {};
+          const stagingFailed = [];
+          targetRows = targetRows.filter((row) => {
+            try {
+              const attempt = superFocusMedia.createVideoAttempt(id, row, {
+                mediaRoot: sfMediaRoot, subdir, profile: DEFAULT_PRESTO_PROFILE,
+              });
+              attemptsByIndex[row.index] = attempt;
+              selectedPathByIndex[row.index] = attempt.source.staged_rel;
+              return true;
+            } catch (error) {
+              stagingFailed.push({ index: row.index, reason: `source unavailable at dispatch: ${error.message}` });
+              return false;
+            }
           });
+          if (targetRows.length === 0) {
+            const e = new Error(`No rows could be staged for dispatch: ${stagingFailed.map((s) => `#${s.index} ${s.reason}`).join('; ')}`);
+            e.statusCode = 409; throw e;
+          }
+          const materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, { mediaRoot: sfMediaRoot, rows: targetRows, selectedPathByIndex });
+          let job;
+          try {
+            job = startSuperFocusVideoJob(materialized.mediaDir, {
+              projectId: id,
+              profile: DEFAULT_PRESTO_PROFILE,
+              comfyuiUrl: PRESTO_BASE_URL,
+              indexes: materialized.indexes,
+              spawn: options.spawn,
+              productionScript: options.productionScript,
+              pythonBin: options.pythonBin,
+              payload,
+            });
+          } catch (error) {
+            for (const a of Object.values(attemptsByIndex)) {
+              try { superFocusMedia.markVideoAttempt(id, a.attempt_id, 'cancelled', 'launch_blocked', { mediaRoot: sfMediaRoot }); } catch (_) {}
+            }
+            throw error;
+          }
+          // Settle every attempt when the batch process closes: an attempt whose
+          // output landed completes (ownership-checked); one with no output fails.
+          if (PRESTO_STATE.activeJob && PRESTO_STATE.activeJob.process && PRESTO_STATE.activeJob.process.once) {
+            PRESTO_STATE.activeJob.process.once('close', () => {
+              for (const a of Object.values(attemptsByIndex)) {
+                try {
+                  const done = superFocusMedia.completeVideoAttempt(id, a.attempt_id, { mediaRoot: sfMediaRoot });
+                  if (!done.completed) superFocusMedia.markVideoAttempt(id, a.attempt_id, 'failed', done.reason, { mediaRoot: sfMediaRoot });
+                } catch (_) { /* best-effort provenance settle */ }
+              }
+            });
+          }
           sendJSON(res, 200, {
             job,
+            staging_failed: stagingFailed,
             materialized_count: materialized.count,
             will_generate: materialized.count,
             requested: materialized.indexes,
@@ -12177,8 +12282,18 @@ function createServer(options = {}) {
           const archived = superFocusMedia.archiveVideo(id, subdir, idx, { mediaRoot: sfMediaRoot });
           let materialized;
           let job;
+          let attempt = null;
           try {
-            materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, { mediaRoot: sfMediaRoot, rows: [row] });
+            // Render-time provenance: stage + record the attempt first, then
+            // materialize pointing at the staged copy (uploaded bytes = recorded
+            // bytes). See the attempts note in super-focus-media.js.
+            attempt = superFocusMedia.createVideoAttempt(id, row, {
+              mediaRoot: sfMediaRoot, subdir, profile: DEFAULT_PRESTO_PROFILE,
+            });
+            materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, {
+              mediaRoot: sfMediaRoot, rows: [row],
+              selectedPathByIndex: { [idx]: attempt.source.staged_rel },
+            });
             job = startSuperFocusVideoJob(materialized.mediaDir, {
               projectId: id,
               profile: DEFAULT_PRESTO_PROFILE,
@@ -12192,18 +12307,35 @@ function createServer(options = {}) {
           } catch (error) {
             // The replacement never started (PRESTO lock lost during the reach
             // probe — e.g. a status-poll pump started a queued render — or a
-            // dispatch failure). Restore the archived clip so a failed
+            // dispatch/staging failure). Restore the archived clip so a failed
             // regenerate can never strand the slot empty.
+            if (attempt) {
+              try { superFocusMedia.markVideoAttempt(id, attempt.attempt_id, 'cancelled', 'launch_blocked', { mediaRoot: sfMediaRoot }); } catch (_) {}
+            }
             if (archived.archived) {
               try { superFocusMedia.restoreArchivedVideo(id, subdir, idx, archived, { mediaRoot: sfMediaRoot }); } catch (_) { /* best-effort restore */ }
             }
             throw error;
           }
-          // Duplicate handling on completion (only hashing): compare the new clip
-          // to the previous (archived) one; reject + restore previous if identical.
-          if (archived.archived && PRESTO_STATE.activeJob && PRESTO_STATE.activeJob.process) {
+          // On completion: duplicate handling first (only hashing — compare the
+          // new clip to the previous archived one; reject + restore previous if
+          // identical), then settle the attempt. generated:false means the render
+          // produced NO new file and the previous clip was restored — the attempt
+          // must FAIL, never claim the restored old bytes as its output.
+          if (PRESTO_STATE.activeJob && PRESTO_STATE.activeJob.process) {
             PRESTO_STATE.activeJob.process.once('close', () => {
-              try { superFocusMedia.resolveRegeneratedVideo(id, subdir, idx, archived, { mediaRoot: sfMediaRoot }); } catch (_) {}
+              let outcome = null;
+              if (archived.archived) {
+                try { outcome = superFocusMedia.resolveRegeneratedVideo(id, subdir, idx, archived, { mediaRoot: sfMediaRoot }); } catch (_) {}
+              }
+              try {
+                if (outcome && outcome.generated === false) {
+                  superFocusMedia.markVideoAttempt(id, attempt.attempt_id, 'failed', 'render_produced_no_output', { mediaRoot: sfMediaRoot });
+                } else {
+                  const done = superFocusMedia.completeVideoAttempt(id, attempt.attempt_id, { mediaRoot: sfMediaRoot });
+                  if (!done.completed) superFocusMedia.markVideoAttempt(id, attempt.attempt_id, 'failed', done.reason, { mediaRoot: sfMediaRoot });
+                }
+              } catch (_) { /* best-effort provenance settle */ }
             });
           }
           sendJSON(res, 200, {

@@ -1376,7 +1376,14 @@ test("generate-videos materializes selected-images + video-prompts and dispatche
     assert.equal(unwrap(gen).materialized_count, 2);
     const sel = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "selected-images.json"), "utf8"));
     assert.equal(sel.selections.length, 2);
-    assert.equal(sel.selections[0].selected_path, path.join("images", "flux-local", "flux-001.png"));
+    // Render-time provenance: dispatch points selected_path at the attempt's
+    // immutable staged copy (attempts/<attempt_id>/flux-NNN.png), byte-equal
+    // to the canonical still at dispatch time.
+    assert.match(sel.selections[0].selected_path, /^attempts\/att-[a-z0-9-]+\/flux-001\.png$/);
+    assert.deepEqual(
+      fs.readFileSync(path.join(mediaRoot, id, sel.selections[0].selected_path)),
+      fs.readFileSync(path.join(mediaRoot, id, "images", "flux-local", "flux-001.png"))
+    );
     const vp = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "video-prompts.json"), "utf8"));
     assert.equal(vp.prompt_type, "image_to_video");
     assert.equal(vp.prompts[0].prompt, "motion 1");

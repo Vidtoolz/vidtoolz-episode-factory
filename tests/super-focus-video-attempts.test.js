@@ -188,6 +188,103 @@ async function queueAndFinish(server, id, mediaRoot, index) {
 
 // ── Scenarios A + C + H: bytes swapped inside the dispatch→upload window ────
 
+test('video-attempts: provenance records the exact staged bytes the render uploads, not the mutated canonical (Scenarios A/C/H)', async () => {
+  const { server, mediaRoot, id } = await attemptServer({ delayMs: 300 });
+  try {
+    const swapped = Buffer.from('IMAGE-I2-DIFFERENT');
+    const q = await request(server, '/api/super-focus/queue-video', {
+      method: 'POST', headers: writeHeaders(), body: { id, index: 1 },
+    });
+    assert.equal(unwrap(q).enqueued, true);
+    // The fake render "uploads" ~300ms after spawn; swap the canonical still
+    // NOW — inside the dispatch→upload window that used to be unprovable.
+    await new Promise((r) => setTimeout(r, 60));
+    writeImage(mediaRoot, id, 1, swapped);
+    await waitFor(() => completedAttemptFor(mediaRoot, id, 1));
+    const done = completedAttemptFor(mediaRoot, id, 1);
+    // The attempt recorded the DISPATCH-staged bytes (I1)...
+    assert.equal(done.source.sha256, sha256(IMG_ONE), 'attempt records dispatch-staged bytes');
+    assert.notEqual(done.source.sha256, sha256(swapped));
+    // ...and the captured "upload" proves the render received exactly those
+    // bytes (it read the immutable staged copy, not the mutated canonical).
+    const uploaded = fs.readFileSync(path.join(mediaRoot, id, 'FAKE-uploaded-1.bin'));
+    assert.equal(sha256(uploaded), done.source.sha256, 'uploaded bytes === staged bytes === recorded hash');
+    assert.equal(done.source_verified, true, 'staged copy re-hashed unchanged at completion');
+    // The output clip is bound to the attempt BY CONTENT.
+    assert.equal(done.output.sha256, sha256(fs.readFileSync(videoOut(mediaRoot, id, 1))));
+    // Current row now differs from the render source — derivable, surfaced.
+    assert.notEqual(sha256(fs.readFileSync(imgPath(mediaRoot, id, 1))), done.source.sha256);
+  } finally { await close(server); }
+});
+
+// ── Scenario B: prompt drift after dispatch never rewrites the attempt ──────
+
+test('video-attempts: i2v text edited after dispatch never rewrites the attempt prompt provenance (Scenario B)', async () => {
+  const { server, root, mediaRoot, id } = await attemptServer({ delayMs: 250 });
+  try {
+    const q = await request(server, '/api/super-focus/queue-video', {
+      method: 'POST', headers: writeHeaders(), body: { id, index: 1 },
+    });
+    assert.equal(unwrap(q).enqueued, true);
+    await new Promise((r) => setTimeout(r, 50));
+    superFocus.setI2vPrompt(id, 1, 'A COMPLETELY different motion.', { root });
+    await waitFor(() => completedAttemptFor(mediaRoot, id, 1));
+    const done = completedAttemptFor(mediaRoot, id, 1);
+    assert.equal(done.i2v.text, I2V_ONE, 'attempt keeps the dispatched prompt verbatim');
+    assert.equal(done.i2v.canonical_hash, superFocusMedia.i2vPromptHash(I2V_ONE));
+    assert.equal(done.i2v.sha256, sha256(Buffer.from(I2V_ONE)));
+    assert.notEqual(done.i2v.canonical_hash, superFocusMedia.i2vPromptHash('A COMPLETELY different motion.'));
+  } finally { await close(server); }
+});
+
+// ── Scenario D: sequential slots complete without cross-attribution ─────────
+
+test('video-attempts: two queued slots complete with distinct attempts and per-slot sources (Scenario D)', async () => {
+  const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
+  try {
+    await queueAndFinish(server, id, mediaRoot, 1);
+    await queueAndFinish(server, id, mediaRoot, 2);
+    const a1 = completedAttemptFor(mediaRoot, id, 1);
+    const a2 = completedAttemptFor(mediaRoot, id, 2);
+    assert.ok(a1 && a2 && a1.attempt_id !== a2.attempt_id);
+    assert.equal(a1.source.sha256, sha256(IMG_ONE));
+    assert.equal(a2.source.sha256, sha256(IMG_TWO));
+    assert.equal(a1.output.sha256, sha256(fs.readFileSync(videoOut(mediaRoot, id, 1))));
+    assert.equal(a2.output.sha256, sha256(fs.readFileSync(videoOut(mediaRoot, id, 2))));
+    assert.equal(a1.i2v.canonical_hash, superFocusMedia.i2vPromptHash(I2V_ONE));
+    assert.equal(a2.i2v.canonical_hash, superFocusMedia.i2vPromptHash(I2V_TWO));
+  } finally { await close(server); }
+});
+
+// ── Scenarios E/F: retry identity + completion ownership refusals ───────────
+
+test('video-attempts: regenerate mints a new attempt; a non-active attempt refuses completion (Scenarios E/F)', async () => {
+  const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
+  try {
+    await queueAndFinish(server, id, mediaRoot, 1);
+    const a1 = completedAttemptFor(mediaRoot, id, 1);
+    const rq = await request(server, '/api/super-focus/regenerate-video', {
+      method: 'POST', headers: writeHeaders(), body: { id, index: 1 },
+    });
+    assert.equal(rq.statusCode, 200);
+    await waitFor(() => {
+      const data = superFocusMedia.readVideoAttempts(id, { mediaRoot });
+      return Object.values(data.attempts).some((a) => a.index === 1 && a.attempt_id !== a1.attempt_id && a.status !== 'dispatched');
+    });
+    const data = superFocusMedia.readVideoAttempts(id, { mediaRoot });
+    const all1 = Object.values(data.attempts).filter((a) => a.index === 1);
+    assert.ok(all1.length >= 2, 'retry created a distinct attempt identity');
+    assert.equal(data.attempts[a1.attempt_id].source.sha256, a1.source.sha256, 'historical attempt provenance untouched');
+    // Completion ownership: the earlier attempt is no longer the slot's active
+    // dispatched attempt — completing it must refuse and record the refusal.
+    const refused = superFocusMedia.completeVideoAttempt(id, a1.attempt_id, { mediaRoot });
+    assert.equal(refused.completed, false);
+    assert.match(refused.reason, /already|not the active attempt/i);
+    const after = superFocusMedia.readVideoAttempts(id, { mediaRoot });
+    assert.ok((after.attempts[a1.attempt_id].events || []).some((e) => e.event === 'completion_ignored'), 'refusal recorded as an event');
+  } finally { await close(server); }
+});
+
 test('video-attempts: a cancelled attempt never completes even when its output file appears later (Scenario E)', async () => {
   const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
   try {
@@ -246,3 +343,103 @@ test('video-attempts: missing source before dispatch fails honestly with no inve
 });
 
 // ── Video Review integration + legacy ────────────────────────────────────────
+
+test('video-attempts: review GET exposes render provenance for attempt-backed clips, null for legacy, and derives current-row drift', async () => {
+  const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
+  try {
+    // Legacy: a clip on disk for row 2 with NO attempt record.
+    const legacyOut = videoOut(mediaRoot, id, 2);
+    fs.mkdirSync(path.dirname(legacyOut), { recursive: true });
+    fs.writeFileSync(legacyOut, Buffer.from('LEGACY-CLIP'));
+    // Attempt-backed: row 1 through the real pump.
+    await queueAndFinish(server, id, mediaRoot, 1);
+    const g = unwrap(await request(server, `/api/super-focus/video-review?id=${id}`));
+    const r1 = g.reviews.find((r) => r.index === 1);
+    const r2 = g.reviews.find((r) => r.index === 2);
+    assert.ok(r1.render_provenance, 'attempt-backed clip exposes render provenance');
+    assert.equal(r1.render_provenance.source_sha256, sha256(IMG_ONE));
+    assert.equal(r1.render_provenance.source_verified, true);
+    assert.equal(r1.render_provenance.source_matches_current_row, true);
+    assert.equal(r1.render_provenance.i2v_canonical_hash, superFocusMedia.i2vPromptHash(I2V_ONE));
+    assert.equal(r2.render_provenance, null, 'legacy clip: provenance null — never invented');
+    // Drift the CURRENT still for row 1: render provenance pins the change.
+    writeImage(mediaRoot, id, 1, Buffer.from('NEWER-IMAGE-BYTES'));
+    const g2 = unwrap(await request(server, `/api/super-focus/video-review?id=${id}`));
+    const r1b = g2.reviews.find((r) => r.index === 1);
+    assert.equal(r1b.render_provenance.source_matches_current_row, false, 'current row no longer matches the render source');
+    assert.equal(r1b.render_provenance.source_sha256, sha256(IMG_ONE), 'recorded render source unchanged by the drift');
+  } finally { await close(server); }
+});
+
+test('video-attempts: routine reads resolve by mtime+size probe (metadata persisted; no hash needed when unchanged)', async () => {
+  const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
+  try {
+    await queueAndFinish(server, id, mediaRoot, 1);
+    const done = completedAttemptFor(mediaRoot, id, 1);
+    assert.ok(Number.isFinite(done.output.mtime_ms) && Number.isFinite(done.output.size), 'probe metadata persisted on the attempt');
+    // A probe-only lookup (no hash functions supplied) must resolve the clip.
+    const st = fs.statSync(videoOut(mediaRoot, id, 1));
+    const prov = superFocusMedia.videoRenderProvenance(id, 1, {
+      mediaRoot, videoMtimeMs: Math.round(st.mtimeMs), videoSize: st.size,
+    });
+    assert.ok(prov && prov.attempt_id === done.attempt_id, 'mtime+size probe alone attributes the clip');
+    // Content lookup still works when the probe diverges (touched file).
+    const bytes = fs.readFileSync(videoOut(mediaRoot, id, 1));
+    const prov2 = superFocusMedia.videoRenderProvenance(id, 1, {
+      mediaRoot, videoMtimeMs: 0, videoSize: st.size, hashVideo: () => sha256(bytes),
+    });
+    assert.ok(prov2 && prov2.attempt_id === done.attempt_id, 'content hash attributes a probe-diverged clip');
+  } finally { await close(server); }
+});
+
+test('video-attempts: foreign clip bytes are never attributed (content binding)', async () => {
+  const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
+  try {
+    await queueAndFinish(server, id, mediaRoot, 1);
+    // Replace the clip with foreign bytes: no attempt owns them → null.
+    fs.writeFileSync(videoOut(mediaRoot, id, 1), Buffer.from('FOREIGN-REPLACEMENT'));
+    const st = fs.statSync(videoOut(mediaRoot, id, 1));
+    const prov = superFocusMedia.videoRenderProvenance(id, 1, {
+      mediaRoot, videoMtimeMs: Math.round(st.mtimeMs), videoSize: st.size,
+      hashVideo: () => sha256(Buffer.from('FOREIGN-REPLACEMENT')),
+    });
+    assert.equal(prov, null, 'a swapped-in clip gets NO provenance — never invented');
+    // And the review GET degrades to the legacy shape for that row.
+    const g = unwrap(await request(server, `/api/super-focus/video-review?id=${id}`));
+    assert.equal(g.reviews.find((r) => r.index === 1).render_provenance, null);
+  } finally { await close(server); }
+});
+
+test('video-attempts: batch generate-videos records one attempt per row with staged sources', async () => {
+  const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
+  try {
+    const resp = await request(server, '/api/super-focus/generate-videos', {
+      method: 'POST', headers: writeHeaders(), body: { id },
+    });
+    assert.equal(resp.statusCode, 200);
+    await waitFor(() => completedAttemptFor(mediaRoot, id, 1) && completedAttemptFor(mediaRoot, id, 2));
+    const a1 = completedAttemptFor(mediaRoot, id, 1);
+    const a2 = completedAttemptFor(mediaRoot, id, 2);
+    assert.equal(a1.source.sha256, sha256(IMG_ONE));
+    assert.equal(a2.source.sha256, sha256(IMG_TWO));
+    assert.equal(a1.source_verified, true);
+    assert.equal(a2.source_verified, true);
+    // Both uploads read the staged copies.
+    assert.equal(sha256(fs.readFileSync(path.join(mediaRoot, id, 'FAKE-uploaded-1.bin'))), sha256(IMG_ONE));
+    assert.equal(sha256(fs.readFileSync(path.join(mediaRoot, id, 'FAKE-uploaded-2.bin'))), sha256(IMG_TWO));
+  } finally { await close(server); }
+});
+
+// ── UI wiring (static page assertions) ───────────────────────────────────────
+
+test('video-attempts: corrupt video-attempts.json reads as empty (unknown, never a crash or invented provenance)', async () => {
+  const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
+  try {
+    await queueAndFinish(server, id, mediaRoot, 1);
+    fs.writeFileSync(path.join(mediaRoot, id, 'video-attempts.json'), '{ not json');
+    const data = superFocusMedia.readVideoAttempts(id, { mediaRoot });
+    assert.deepEqual(data, { version: 1, active: {}, attempts: {} });
+    const g = unwrap(await request(server, `/api/super-focus/video-review?id=${id}`));
+    assert.equal(g.reviews.find((r) => r.index === 1).render_provenance, null, 'unreadable provenance = unknown, not invented');
+  } finally { await close(server); }
+});
