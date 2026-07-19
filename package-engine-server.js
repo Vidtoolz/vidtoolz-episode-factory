@@ -12274,6 +12274,20 @@ function createServer(options = {}) {
           if (!(await reach(PRESTO_BASE_URL, options))) {
             const e = new Error(`PRESTO ComfyUI is not reachable at ${PRESTO_BASE_URL}. Start ComfyUI on PRESTO and retry (no fallback).`); e.statusCode = 503; throw e;
           }
+          // Re-check pause and the PRESTO lock AFTER the awaited probe (same
+          // contract as batch generation): an operator pause or a poll-driven
+          // queue dispatch landing inside the reach window must win. Without
+          // this recheck, regenerate would rewrite selected-images.json
+          // underneath a render that just started — corrupting its launch
+          // inputs before the child process reads them — or start a render
+          // while the queue is paused.
+          const recheckedQueue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+          if (recheckedQueue.paused) {
+            const e = new Error('Video queue was paused while checking PRESTO — no render was started. Resume the queue, then regenerate.'); e.statusCode = 409; throw e;
+          }
+          if (currentPrestoJobStatus().active) {
+            const e = new Error('A PRESTO video job started while checking PRESTO. Wait for it to finish, then regenerate.'); e.statusCode = 409; throw e;
+          }
           const subdir = PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4';
           {
             const gate = superFocusImageReview.imageReviewGate(row, buildImageReviewContext(state, row, sfMediaRoot));

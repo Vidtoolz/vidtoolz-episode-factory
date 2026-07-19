@@ -121,7 +121,7 @@ async function attemptServer(behavior = {}) {
     superFocusMediaRoot: mediaRoot,
     spawn: fakeProductionSpawn(behavior),
     productionScript: __filename, // must exist; the fake spawn ignores it
-    prestoReachableCheck: async () => true,
+    prestoReachableCheck: behavior.reach || (async () => true),
   });
   await listen(server);
   const proj = superFocus.createProject({ title: 'VA' }, { root });
@@ -502,6 +502,93 @@ test('video-attempts: docs describe attempts, staged sources, and completion own
   assert.ok(/attempts\/<attempt_id>\//.test(doc));
   assert.ok(doc.includes('Completion ownership'));
   assert.ok(doc.includes('reviewed_source_binding'));
+});
+
+// ── Dispatch races around the awaited PRESTO reach probe ─────────────────────
+// The regenerate route awaits the reachability probe AFTER its pause and
+// PRESTO-lock checks. Anything landing inside that await window (a poll-driven
+// queue dispatch grabbing the lock, or an operator pause) must WIN — regenerate
+// must re-check afterwards, exactly like batch generation does. Without the
+// recheck, regenerate rewrites selected-images.json underneath a render that
+// just started (corrupting its launch inputs) or starts a render while paused.
+
+test('video-attempts: regenerate landing in the reach window never rewrites a running render’s launch inputs', async () => {
+  let releaseReach;
+  const gate = new Promise((r) => { releaseReach = r; });
+  let reachCalls = 0;
+  const reach = async () => {
+    reachCalls += 1;
+    if (reachCalls === 1) await gate; // first caller (the regenerate) stalls in the window
+    return true;
+  };
+  const { server, mediaRoot, id } = await attemptServer({ delayMs: 900, reach });
+  try {
+    // (1) Regenerate row 2 enters its reach await (lock free at its checks).
+    const regenPromise = request(server, '/api/super-focus/regenerate-video', {
+      method: 'POST', headers: writeHeaders(), body: { id, index: 2 },
+    });
+    await waitFor(() => reachCalls >= 1);
+    // (2) A queue dispatch for row 1 grabs the PRESTO lock inside the window.
+    const q = await request(server, '/api/super-focus/queue-video', {
+      method: 'POST', headers: writeHeaders(), body: { id, index: 1 },
+    });
+    assert.equal(unwrap(q).enqueued, true);
+    await waitFor(() => {
+      const queue = superFocusMedia.readVideoQueue(id, { mediaRoot });
+      return queue.items.some((it) => it.index === 1 && it.status === 'running');
+    });
+    const runningAttempt = Object.values(superFocusMedia.readVideoAttempts(id, { mediaRoot }).attempts)
+      .find((a) => a.index === 1 && a.status === 'dispatched');
+    assert.ok(runningAttempt, 'row 1 render dispatched with its attempt');
+    // (3) Release the regenerate: it must refuse — the lock is held.
+    releaseReach();
+    const regen = await regenPromise;
+    assert.equal(regen.statusCode, 409, 'regenerate refuses after the window');
+    // (4) The running render's launch inputs were NOT rewritten...
+    const sel = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, 'selected-images.json'), 'utf8'));
+    assert.equal(sel.selections.length, 1);
+    assert.equal(sel.selections[0].prompt_index, 1, 'selected-images.json still belongs to the running render');
+    assert.equal(sel.selections[0].selected_path, runningAttempt.source.staged_rel, 'still points at the running attempt’s staged source');
+    // ...and no attempt was minted (then cancelled) for the refused regenerate.
+    const attempts = superFocusMedia.readVideoAttempts(id, { mediaRoot });
+    assert.ok(!Object.values(attempts.attempts).some((a) => a.index === 2), 'no attempt churn for the refused regenerate');
+    // Let the real render finish so the shared PRESTO lock is clean.
+    await waitFor(() => {
+      const queue = superFocusMedia.readVideoQueue(id, { mediaRoot });
+      return queue.items.some((it) => it.index === 1 && it.status === 'done');
+    }, 10000);
+  } finally { await close(server); }
+});
+
+test('video-attempts: a pause landing in the regenerate reach window wins — no render starts while paused', async () => {
+  let releaseReach;
+  const gate = new Promise((r) => { releaseReach = r; });
+  let reachCalls = 0;
+  const reach = async () => {
+    reachCalls += 1;
+    if (reachCalls === 1) await gate;
+    return true;
+  };
+  const { server, mediaRoot, id } = await attemptServer({ delayMs: 40, reach });
+  try {
+    const regenPromise = request(server, '/api/super-focus/regenerate-video', {
+      method: 'POST', headers: writeHeaders(), body: { id, index: 1 },
+    });
+    await waitFor(() => reachCalls >= 1);
+    const paused = await request(server, '/api/super-focus/video-queue/pause', {
+      method: 'POST', headers: writeHeaders(), body: { id, reason: 'operator pause during reach window' },
+    });
+    assert.equal(paused.statusCode, 200);
+    releaseReach();
+    const regen = await regenPromise;
+    assert.equal(regen.statusCode, 409, 'pause wins over an in-flight regenerate');
+    // The global job slot may hold a COMPLETED record from an earlier test;
+    // the pause contract is about a RUNNING render for this project.
+    const aj = packageEngineServer.PRESTO_STATE.activeJob;
+    assert.ok(!aj || aj.completedAt || aj.packageId !== id, 'no render was started while paused');
+    const attempts = superFocusMedia.readVideoAttempts(id, { mediaRoot });
+    assert.deepEqual(attempts.attempts, {}, 'no attempt minted for the refused regenerate');
+  } finally { await close(server); }
 });
 
 test('video-attempts: corrupt video-attempts.json reads as empty (unknown, never a crash or invented provenance)', async () => {
