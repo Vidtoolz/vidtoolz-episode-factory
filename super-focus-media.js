@@ -235,6 +235,7 @@ function resolveRegeneratedVideo(projectId, subdir, index, prevArchive, options 
 
 const IMAGE_PROVIDER_FILENAME = 'image-provider.json';
 const VIDEO_QUEUE_FILENAME = 'video-queue.json';
+const VIDEO_PROVENANCE_FILENAME = 'video-provenance.json';
 const VIDEO_QUEUE_TERMINAL_RETAIN = 20;
 const VIDEO_QUEUE_TERMINAL_STATUSES = new Set(['done', 'failed', 'cancelled', 'interrupted', 'stopped_by_operator', 'skipped_exists', 'skipped_prereq']);
 const VIDEO_FAILURE_STATUSES = new Set(['failed', 'interrupted', 'stopped_by_operator']);
@@ -455,8 +456,70 @@ function videoFilePath(mediaDir, subdir, index) {
   return path.join(videosDir(mediaDir, subdir), videoFileName(index));
 }
 
+// Canonical hash of the exact I2V prompt text a video is (to be) rendered
+// from. Same construction as the server's enqueue-time hash (sha1(trim(text)),
+// 16 hex chars) — kept here so enqueue, materialize, and reconcile can never
+// drift apart.
+function i2vPromptHash(text) {
+  const t = typeof text === 'string' ? text.trim() : '';
+  return crypto.createHash('sha1').update(t).digest('hex').slice(0, 16);
+}
+
+// ── Per-index video generation provenance (video-provenance.json) ───────────
+// Durable record of WHICH canonical I2V prompt text produced the on-disk clip
+// for each slot. Written by every render dispatch (batch, queue worker,
+// regenerate) and merged — never replaced wholesale, never deleted
+// automatically. Legacy projects have no file: their rows reconcile as
+// "unknown" (no stale flag), matching the image-lane legacy rule.
+function readVideoProvenance(projectId, options = {}) {
+  const p = path.join(mediaDirFor(projectId, options), VIDEO_PROVENANCE_FILENAME);
+  if (!fs.existsSync(p)) return { version: 1, rows: {} };
+  try {
+    const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
+    const rows = parsed && typeof parsed === 'object' && parsed.rows && typeof parsed.rows === 'object' ? parsed.rows : {};
+    return { version: 1, rows };
+  } catch (_) {
+    return { version: 1, rows: {} }; // partially-written file → unknown, never crash a read
+  }
+}
+
+// Merge per-index entries ({index: {i2v_hash}}) into the provenance file
+// (atomic). Only indexes with a real hash are recorded; other slots' entries
+// are preserved untouched.
+function writeVideoProvenance(projectId, entries, options = {}) {
+  const mediaDir = mediaDirFor(projectId, options);
+  fs.mkdirSync(mediaDir, { recursive: true });
+  const current = readVideoProvenance(projectId, options);
+  for (const key of Object.keys(entries || {})) {
+    const idx = Math.round(Number(key));
+    const hash = entries[key] && typeof entries[key].i2v_hash === 'string' ? entries[key].i2v_hash.trim() : '';
+    if (!Number.isInteger(idx) || idx < 1 || !/^[a-f0-9]{16}$/i.test(hash)) continue;
+    current.rows[String(idx)] = { i2v_hash: hash.toLowerCase(), recorded_at: new Date().toISOString() };
+  }
+  const outPath = path.join(mediaDir, VIDEO_PROVENANCE_FILENAME);
+  const tmp = `${outPath}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(current, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmp, outPath);
+  return current;
+}
+
+function readVideoProvenanceHashes(projectId, options = {}) {
+  const out = {};
+  const rows = readVideoProvenance(projectId, options).rows;
+  for (const key of Object.keys(rows)) {
+    const idx = Math.round(Number(key));
+    const hash = rows[key] && typeof rows[key].i2v_hash === 'string' ? rows[key].i2v_hash.trim().toLowerCase() : '';
+    if (Number.isInteger(idx) && idx >= 1 && /^[a-f0-9]{16}$/.test(hash)) out[idx] = hash;
+  }
+  return out;
+}
+
 // A row is video-eligible only when it has BOTH a generated still on disk AND a
 // saved i2v motion prompt. Returns the eligible rows (with the still's rel path).
+// options.regenerate documents (and enforces nothing against) explicit
+// regeneration: mismatched/stale rows are renderable rows and MUST stay
+// reachable here — slot occupancy is the caller's concern (regenerate archives
+// first), never a reason to drop the row from this set.
 function eligibleVideoRows(projectId, imagePrompts, options = {}) {
   const mediaDir = mediaDirFor(projectId, options);
   return (Array.isArray(imagePrompts) ? imagePrompts : []).filter((p) => {
@@ -499,35 +562,102 @@ function materializeVideoInputs(projectId, imagePrompts, options = {}) {
   fs.mkdirSync(mediaDir, { recursive: true });
   writeJson(SELECTED_IMAGES_FILENAME, { version: 1, selections });
   writeJson(VIDEO_PROMPTS_FILENAME, { version: 1, prompt_type: 'image_to_video', prompts });
+  // Durable per-slot generation provenance: WHICH canonical I2V text this
+  // materialization renders. Reconciliation compares it against the current
+  // text — this is what makes a post-render text edit visible as video_stale.
+  writeVideoProvenance(projectId, Object.fromEntries(
+    eligible.map((p) => [p.index, { i2v_hash: i2vPromptHash(p.i2v_prompt.text) }])
+  ), options);
   return { mediaDir, count: selections.length, indexes: selections.map((s) => s.prompt_index) };
 }
 
-// Reconcile per-index video state from disk (the staged MP4 files win).
+// Reconcile per-index video state from disk (the staged MP4 files win), queue
+// history, and durable generation provenance. Staleness contract (mirrors the
+// image lane): a row whose CURRENT canonical I2V text differs from the hash
+// recorded at render dispatch is flagged video_stale — surfaced, never hidden,
+// never auto-regenerated. Rows with NO recorded provenance (legacy clips,
+// renders predating video-provenance.json) are "unknown" and are NOT
+// mass-flagged. Upstream staleness (i2v prompt flagged stale by an image-prompt
+// edit; assignment_stale from the Visual Plan) propagates as review-required
+// even when the text itself is unchanged. A byte-identical text restoration
+// matches the recorded hash again and clears the flag.
 function reconcileVideos(projectId, imagePrompts, subdir, options = {}) {
   const mediaDir = mediaDirFor(projectId, options);
   const eligible = eligibleVideoRows(projectId, imagePrompts, options);
   const regenVideo = readRegenOutcomes(mediaDir).video || {}; // lookup only, no hashing
+  const generatedHashes = readVideoProvenanceHashes(projectId, options);
+  // Latest queue item per index decides the row's failure context AND carries
+  // the enqueue-time text hash (drift between enqueue and now is surfaced).
   const queueByIndex = {};
   readVideoQueue(projectId, options).items.forEach((it) => { queueByIndex[it.index] = it; });
   let done = 0;
   let failed = 0;
+  let stale = 0;
   const videos = eligible.map((p) => {
     const mtimeMs = fileMtimeMs(videoFilePath(mediaDir, subdir, p.index));
     const fileExists = mtimeMs != null;
-    if (fileExists) done += 1;
-    const queueStatus = queueByIndex[p.index] && queueByIndex[p.index].status;
-    const status = fileExists ? 'done' : (VIDEO_FAILURE_STATUSES.has(queueStatus) ? queueStatus : 'pending');
+    const queueItem = queueByIndex[p.index] || null;
+    const queueStatus = queueItem && queueItem.status;
+    const lastRenderFailed = VIDEO_FAILURE_STATUSES.has(queueStatus);
+    // A file is proof of a COMPLETED render only when the queue does not record
+    // a failed/interrupted/stopped render as this slot's latest outcome — a
+    // partial leftover from a killed render is NOT done (still shown, though).
+    const effectivelyDone = fileExists && !lastRenderFailed;
+    const status = effectivelyDone
+      ? 'done'
+      : (lastRenderFailed ? queueStatus : 'pending');
+    if (effectivelyDone) done += 1;
     if (VIDEO_FAILURE_STATUSES.has(status)) failed += 1;
+    // Staleness: compare current canonical text to the recorded generated hash.
+    const currentHash = i2vPromptHash(p.i2v_prompt && p.i2v_prompt.text);
+    const generatedHash = generatedHashes[p.index] || null;
+    let videoStale = false;
+    let staleReason = null;
+    if (p.i2v_prompt && p.i2v_prompt.stale) {
+      videoStale = true; staleReason = 'i2v_prompt_stale';
+    } else if (p.assignment_stale) {
+      videoStale = true; staleReason = 'assignment_stale';
+    } else if (generatedHash && generatedHash !== currentHash) {
+      videoStale = true; staleReason = 'i2v_text_changed';
+    }
+    if (videoStale) stale += 1;
     return {
       index: p.index,
       status,
       has_video: fileExists,
       // Cache key for the served clip; changes when the file changes.
       mtime_ms: mtimeMs,
+      video_stale: videoStale,
+      video_stale_reason: staleReason,
+      // null = unknown provenance (legacy clip; deliberately not flagged).
+      generated_i2v_hash: generatedHash,
       duplicate_rejected: Boolean(regenVideo[p.index] && regenVideo[p.index].status === 'duplicate_rejected'),
     };
   });
-  return { media_dir: mediaDir, subdir: subdir || 'mp4', total: videos.length, done, failed, videos };
+  // Surface enqueue-time drift on live queue items WITHOUT mutating the queue
+  // (a text edit after enqueue means the queued render would use old text —
+  //  the operator sees it and can cancel/requeue).
+  const hashByIndex = {};
+  eligible.forEach((p) => { hashByIndex[p.index] = i2vPromptHash(p.i2v_prompt && p.i2v_prompt.text); });
+  const queueItems = readVideoQueue(projectId, options).items.map((it) => {
+    const copy = Object.assign({}, it);
+    if ((copy.status === 'queued' || copy.status === 'running')
+        && typeof copy.i2v_hash === 'string' && copy.i2v_hash
+        && hashByIndex[copy.index] && copy.i2v_hash !== hashByIndex[copy.index]) {
+      copy.i2v_stale = true;
+    }
+    return copy;
+  });
+  return {
+    media_dir: mediaDir,
+    subdir: subdir || 'mp4',
+    total: videos.length,
+    done,
+    failed,
+    stale,
+    videos,
+    queue: { items: queueItems },
+  };
 }
 
 function safeVideoFilePath(projectId, subdir, index, options = {}) {
@@ -566,6 +696,10 @@ module.exports = {
   materializeVideoInputs,
   reconcileVideos,
   safeVideoFilePath,
+  i2vPromptHash,
+  readVideoProvenance,
+  writeVideoProvenance,
+  readVideoProvenanceHashes,
   hashFileSha256,
   supersededDir,
   readSupersededManifest,
