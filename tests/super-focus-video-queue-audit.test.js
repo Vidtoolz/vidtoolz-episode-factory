@@ -270,6 +270,53 @@ test('queue-audit: pump skips (never dispatches) a queued item whose image revie
   } finally { await close(fx.server); }
 });
 
+// ── Advisory recommendations (never executed) ────────────────────────────────
+
+test('queue-audit: every item carries a recommended_action and the project gets an advisory recommendation', async () => {
+  const fx = auditFixture(2);
+  await listen(fx.server);
+  try {
+    const { root, mediaRoot, id } = fx;
+    writeVideo(mediaRoot, id, 1, Buffer.from('CLIP')); // item 1 → already_satisfied
+    const d = unwrap(await request(fx.server, `${AUDIT}?id=${id}`));
+    const by = {};
+    d.items.forEach((it) => { by[it.index] = it; });
+    assert.equal(by[1].recommended_action, 'remove_later_as_already_satisfied');
+    assert.equal(by[2].recommended_action, 'review_image_first', 'legacy compatibility → review the image first');
+    assert.equal(d.recommendation.choice, 'retain_safe_subset_later');
+    assert.match(d.recommendation.reason, /separate them before any resume/);
+    // All-legacy queue → keep_paused with review-first guidance.
+    fs.rmSync(path.join(mediaRoot, id, 'videos', VIDEO_SUBDIR, '001.mp4'));
+    const d2 = unwrap(await request(fx.server, `${AUDIT}?id=${id}`));
+    assert.equal(d2.recommendation.choice, 'keep_paused');
+    assert.match(d2.recommendation.reason, /Review the images first/);
+    // Fully approved queue → resume_as_is_later.
+    for (const index of [1, 2]) {
+      const started = unwrap(await request(fx.server, '/api/super-focus/image-review/start', { method: 'POST', headers: writeHeaders(), body: { id, index } }));
+      for (const c of started.criteria) {
+        await request(fx.server, '/api/super-focus/image-review/set-criterion', { method: 'POST', headers: writeHeaders(), body: { id, index, criterion_hash: c.criterion_hash, result: 'pass' } });
+      }
+      await request(fx.server, '/api/super-focus/image-review/approve', { method: 'POST', headers: writeHeaders(), body: { id, index } });
+    }
+    const d3 = unwrap(await request(fx.server, `${AUDIT}?id=${id}`));
+    assert.equal(d3.summary.safe_to_resume, 2);
+    assert.equal(d3.recommendation.choice, 'resume_as_is_later');
+    d3.items.forEach((it) => assert.equal(it.recommended_action, 'keep_queued'));
+    void root;
+  } finally { await close(fx.server); }
+});
+
+test('queue-audit: path-traversal project ids are rejected, never resolved', async () => {
+  const fx = auditFixture(1);
+  await listen(fx.server);
+  try {
+    for (const evil of ['../../etc', '..%2F..%2Fetc', 'a/../b', '..']) {
+      const res = await request(fx.server, `${AUDIT}?id=${encodeURIComponent(evil)}`);
+      assert.ok(res.statusCode === 404 || res.statusCode === 400, `${evil} → ${res.statusCode} (refused)`);
+    }
+  } finally { await close(fx.server); }
+});
+
 // ── UI + docs wiring (static assertions) ─────────────────────────────────────
 
 test('queue-audit: GUI is read-only — GET only, no nonce, no apiPost, textContent rendering, explicit no-mutation copy', () => {

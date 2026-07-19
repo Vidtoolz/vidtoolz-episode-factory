@@ -7866,6 +7866,47 @@ function videoQueueControl(queue) {
 const VIDEO_QUEUE_AUDIT_DISPATCHABLE = new Set(['safe_to_resume', 'legacy_compatibility', 'stale_prompt', 'stale_assignment']);
 // Measured HQ render wall time (54m51s — see launchPrestoProductionJob).
 const VIDEO_QUEUE_AUDIT_SECONDS_PER_CLIP = 3291;
+// Advisory operator action per disposition — recommendations ONLY. The audit
+// never executes any of these; every one is a manual operator step elsewhere.
+const VIDEO_QUEUE_AUDIT_ACTIONS = {
+  safe_to_resume: 'keep_queued',
+  legacy_compatibility: 'review_image_first',
+  stale_prompt: 'cancel_and_requeue_later',
+  stale_assignment: 'reapprove_assignment_then_requeue',
+  source_unapproved: 'review_image_first',
+  already_satisfied: 'remove_later_as_already_satisfied',
+  duplicate_queue_item: 'remove_later_as_duplicate',
+  active_attempt_exists: 'manual_identity_review',
+  missing_source: 'do_not_render',
+  missing_prompt: 'regenerate_prompt_then_requeue',
+  invalid_identity: 'manual_identity_review',
+};
+
+// Project-level advisory: which of the four operator options the evidence
+// supports. Pure derivation from disposition counts — never executed here.
+function videoQueueAuditRecommendation(summary, liveCount) {
+  if (!liveCount) return { choice: 'nothing_to_do', reason: 'No live queue items.' };
+  const safe = summary.safe_to_resume || 0;
+  const legacy = summary.legacy_compatibility || 0;
+  const blocked = liveCount - safe - legacy;
+  if (safe === liveCount) {
+    return { choice: 'resume_as_is_later', reason: 'Every live item passes every current gate with a real approval.' };
+  }
+  if (legacy > 0 && blocked === 0) {
+    return {
+      choice: 'keep_paused',
+      reason: `${legacy} item(s) are dispatchable only under legacy compatibility (image approval unproven). `
+        + 'Review the images first; items become individually resumable as their reviews are approved.',
+    };
+  }
+  if (blocked > 0 && (safe + legacy) > 0) {
+    return {
+      choice: 'retain_safe_subset_later',
+      reason: `${blocked} item(s) are blocked or obsolete while ${safe + legacy} could dispatch — separate them before any resume.`,
+    };
+  }
+  return { choice: 'rebuild_later', reason: 'No live item is currently dispatchable — requeue from current eligible rows when ready.' };
+}
 
 function auditSuperFocusVideoQueue(state, sfMediaRoot) {
   const id = state.project_id;
@@ -7944,6 +7985,7 @@ function auditSuperFocusVideoQueue(state, sfMediaRoot) {
       active_attempt: activeAttempt ? { attempt_id: activeAttemptId, status: activeAttempt.status } : null,
       would_dispatch_on_resume: VIDEO_QUEUE_AUDIT_DISPATCHABLE.has(disposition),
       estimated_seconds: VIDEO_QUEUE_AUDIT_DISPATCHABLE.has(disposition) ? VIDEO_QUEUE_AUDIT_SECONDS_PER_CLIP : 0,
+      recommended_action: VIDEO_QUEUE_AUDIT_ACTIONS[disposition] || 'manual_identity_review',
     });
   }
   const dispatchable = items.filter((it) => it.would_dispatch_on_resume);
@@ -7963,6 +8005,7 @@ function auditSuperFocusVideoQueue(state, sfMediaRoot) {
     estimated_runtime_seconds: dispatchable.length * VIDEO_QUEUE_AUDIT_SECONDS_PER_CLIP,
     seconds_per_clip: VIDEO_QUEUE_AUDIT_SECONDS_PER_CLIP,
     policy: 'report_only',
+    recommendation: videoQueueAuditRecommendation(summary, items.length),
     items,
   };
 }
