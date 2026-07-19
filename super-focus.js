@@ -379,6 +379,7 @@ function mergeRegeneratedPrompts(previous, texts) {
       // assignment criteria — it must survive prompt-set regeneration
       // (currency is recomputed from hashes at read time, never trusted).
       if (old.image_review) rec.image_review = old.image_review;
+      if (old.video_review) rec.video_review = old.video_review;
       if (old.i2v_prompt) {
         rec.i2v_prompt = Object.assign({}, old.i2v_prompt);
         if (changed) rec.i2v_prompt.stale = true;
@@ -640,6 +641,23 @@ function setImageReview(projectId, index, review, options = {}) {
   return state;
 }
 
+// Set (or delete, when `review` is null) one row's video_review. The row must
+// exist — a review can only attach to a real prompt slot.
+function setVideoReview(projectId, index, review, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  const idx = Math.round(Number(index));
+  const row = (Array.isArray(state.image_prompts) ? state.image_prompts : []).find((r) => r.index === idx);
+  if (!row) {
+    const e = new Error(`No image prompt at index ${index}.`); e.statusCode = 404; throw e;
+  }
+  if (review == null) delete row.video_review;
+  else row.video_review = review;
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
 // ── Visual Plan persistence (domain logic lives in super-focus-visual-plan.js) ──
 
 // Recompute per-row assignment provenance staleness on the image prompts.
@@ -768,4 +786,5 @@ module.exports = {
   saveVisualPlan,
   fillPromptsFromAssignments,
   setImageReview,
+  setVideoReview,
 };
