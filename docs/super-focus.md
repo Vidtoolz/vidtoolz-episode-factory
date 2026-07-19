@@ -135,6 +135,12 @@ image-to-video prompt.
   grows the text box to show the whole script without an inner scrollbar (capped
   to a share of the window). It is independent of the Step 2 collapse, does not
   auto-save, evaluate, or generate, and preserves unsaved text and the caret.
+- **Prompt-slot density**: the image/infographic prompt grids render every slot
+  (all 100/30 stay in the DOM — counts, per-row ids, and save payloads are
+  unaffected) but visually hide empty rows beyond a short tail after the last
+  filled slot. A summary line ("N of 100 slots filled · M empty slots hidden")
+  and a **Show all slots** toggle sit above each grid; the toggle is
+  session-only, never persisted, and never changes project state.
 - Collapse and script-height state is **browser-local UI preference**
   (`localStorage`, keyed per project), **not** project production state — it is
   never written to `super-focus.json`. Steps default to expanded; a collapsed

@@ -119,6 +119,10 @@
     .prompt-row .prow-status.ok { color: var(--ok); }
     .prompt-row .prow-status.dirty { color: #d29922; }
     .prompt-row.filled { border-color: #33404d; }
+    /* Slot density: hidden rows stay in the DOM (scans/ids intact), only display is off. */
+    .prompt-row.slot-hidden { display: none; }
+    .slot-density { display: flex; gap: 10px; align-items: center; margin: 8px 0 4px; color: var(--muted); font-size: 13px; }
+    .slot-density .btn { padding: 4px 10px; font-size: 12px; }
     .stale-banner {
       margin-top: 12px; padding: 10px 14px; border-radius: 8px;
       background: rgba(210,153,34,.12); border: 1px solid #6b5320; color: #e3b341; font-size: 14px;
@@ -1069,6 +1073,59 @@
     // Build a fixed grid of `max` numbered, editable prompt slots pre-filled from
     // `records` (index-keyed). Empty slots are editable and can be saved too.
     // withThumb adds a per-row image container (id thumbPrefix + index).
+    // ---- Prompt-slot density (hide, never remove) ----
+    // Recovers the intent of the 2026-07-09 usability stash WITHOUT its state
+    // refactor: every slot row stays in the DOM, so all `.prompt-row` /
+    // `.pinput` scans, per-row ids, thumb/video mounts, and save payloads are
+    // untouched — empty rows beyond a short tail after the last filled slot
+    // are only CLASS-hidden. The toggle is session-only (not project state).
+    var SLOT_DENSITY = { visibleEmptyTail: 5, showAll: {} };
+    function applySlotDensity(elId) {
+      var grid = document.getElementById(elId);
+      if (!grid) return;
+      var rows = Array.prototype.slice.call(grid.querySelectorAll('.prompt-row'));
+      if (!rows.length) return;
+      var lastFilled = 0;
+      var filledCount = 0;
+      rows.forEach(function (row, i) {
+        var ta = row.querySelector('.pinput');
+        if (ta && ta.value.trim()) { lastFilled = i + 1; filledCount += 1; }
+      });
+      var cutoff = lastFilled + SLOT_DENSITY.visibleEmptyTail;
+      var showAll = Boolean(SLOT_DENSITY.showAll[elId]);
+      var hidden = 0;
+      rows.forEach(function (row, i) {
+        var ta = row.querySelector('.pinput');
+        var empty = !(ta && ta.value.trim());
+        var hide = !showAll && empty && (i + 1) > cutoff;
+        row.classList.toggle('slot-hidden', hide);
+        if (hide) hidden += 1;
+      });
+      var bar = document.getElementById(elId + '-density');
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.className = 'slot-density';
+        bar.id = elId + '-density';
+        var label = document.createElement('span');
+        label.className = 'slot-density-label';
+        var btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.type = 'button';
+        btn.addEventListener('click', function () {
+          SLOT_DENSITY.showAll[elId] = !SLOT_DENSITY.showAll[elId];
+          applySlotDensity(elId);
+        });
+        bar.appendChild(label);
+        bar.appendChild(btn);
+        grid.parentNode.insertBefore(bar, grid);
+      }
+      bar.querySelector('.slot-density-label').textContent =
+        filledCount + ' of ' + rows.length + ' slots filled' + (hidden ? ' · ' + hidden + ' empty slots hidden' : '');
+      var toggleBtn = bar.querySelector('button');
+      toggleBtn.textContent = showAll ? 'Hide trailing empty slots' : 'Show all slots';
+      toggleBtn.classList.toggle('hidden', hidden === 0 && !showAll);
+    }
+
     function renderPromptGrid(elId, records, max, saveApi, withThumb, thumbPrefix) {
       var grid = document.getElementById(elId);
       grid.innerHTML = '';
@@ -1107,6 +1164,7 @@
               savedValue = ta.value;
               row.className = 'prompt-row' + (ta.value.trim() ? ' filled' : '');
               setRowStatus(st, ta.value.trim() ? 'Saved ✓' : 'cleared', 'ok');
+              applySlotDensity(elId); // filling/clearing a slot moves the density cutoff
               if (withThumb) {
                 // Editing the prompt text may have flagged this row's i2v prompt
                 // and its generated image stale on the server. Reflect that now,
@@ -1129,6 +1187,7 @@
               ta.value = ''; savedValue = '';
               row.className = 'prompt-row';
               setRowStatus(st, 'cleared', 'ok');
+              applySlotDensity(elId);
               if (withThumb) {
                 var proj = unwrap(res.body).project;
                 var updated = proj ? (proj.image_prompts || []).find(function (x) { return x.index === index; }) : null;
@@ -1165,6 +1224,7 @@
       // Keep collapsed-state summaries current after a (re)render.
       if (elId === 'imgp-list') { updateSectionSummary('image-prompts'); updateSectionSummary('images'); updateSectionSummary('i2v'); }
       else if (elId === 'infp-list') { updateSectionSummary('infographics'); }
+      applySlotDensity(elId);
     }
 
     function updateStaleBanner(bannerId, isStale) {

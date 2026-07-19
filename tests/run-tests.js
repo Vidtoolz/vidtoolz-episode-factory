@@ -63,6 +63,7 @@ require("./super-focus-video-review.test.js");
 require("./super-focus-video-review-routes.test.js");
 require("./super-focus-video-attempts.test.js");
 require("./super-focus-video-queue-audit.test.js");
+require("./super-focus-slot-density.test.js");
 require("./script-evaluator.test.js");
 require("./motion-graphics-studio.test.js");
 require("./operator-control-fixes.test.js");
