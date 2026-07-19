@@ -467,6 +467,20 @@
           <a href="production-pipeline.html" id="sf-continue-pipeline" class="sf-continue-link">Assemble Resolve handoff (Pipeline) →</a>
         </div>
       </div>
+
+      <!-- User guide (hard requirement for GUI pages): what this page does and
+           how to read the video-lane states, including staleness badges. -->
+      <div class="section" data-section="user-guide">
+        <div class="step">Guide</div>
+        <h2>User guide</h2>
+        <div class="later-note">
+          <strong>What this page is.</strong> Super Focus turns one idea into the assets for a single short vertical explainer: title, script/voiceover text, an advisory script evaluation, a visual plan, image prompts, generated stills, image-to-video prompts, and PRESTO-rendered video clips. It ends at generated videos; review and Resolve handoff happen in the next lane (links above).<br><br>
+          <strong>Typical flow.</strong> Open or create a project → write or generate the script → run the advisory evaluation (it never approves or generates anything) → build the Visual Plan and approve it → generate image prompts → generate stills → write/generate I2V prompts per row → queue videos on PRESTO. Each step saves per project; nothing carries over to the next project.<br><br>
+          <strong>Video lane states.</strong> A row shows <em>done</em> when a clip exists on disk that matches the current text. A clip rendered from text that has since changed is <strong>never hidden</strong> — it gets a <span class="status status-dirty">⚠ stale</span> badge instead: "I2V prompt changed since render", "I2V prompt stale (image prompt changed)" when the upstream image prompt moved, or "assignment changed" when the visual-plan assignment was revised. A stale clip still plays and is never deleted or auto-regenerated; use the row's explicit <em>Regenerate</em> when you want it re-rendered from the current text. Rows rendered before staleness tracking existed have no recorded provenance and are treated as <em>unknown</em>, never mass-flagged.<br><br>
+          <strong>Queue.</strong> "Queue missing videos" enqueues rows that have both a still and a saved I2V prompt. Items are processed one at a time (~55 min/clip). If you edit an I2V prompt after queueing, the queued item shows a drift badge — cancel it and re-queue to render the new text. Pause/resume for day/night operation; "Stop current render" stops the local process (the remote PRESTO job may finish anyway). A failed or interrupted render leaves the queue entry visible; an existing partial file does not count as done.<br><br>
+          <strong>Nothing here publishes anything.</strong> Generation requires PRESTO running (never auto-started). Approval gates in the Visual Plan and evaluation steps are advisory/planning only — the publish decision lives in the pipeline lane.
+        </div>
+      </div>
     </section>
   </div>
 

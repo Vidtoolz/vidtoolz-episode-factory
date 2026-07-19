@@ -93,6 +93,24 @@ test("super-focus.html landing shows exactly the two main options and no cockpit
   }
 });
 
+test("super-focus.html includes a user guide section (hard requirement for GUI pages)", async () => {
+  const server = packageEngineServer.createServer({ superFocusRoot: mkRoot() });
+  await listen(server);
+  try {
+    const res = await request(server, "/super-focus.html");
+    assert.equal(res.statusCode, 200);
+    // Hard requirement: every GUI page carries an operator-facing guide.
+    assert.match(res.raw, /data-section="user-guide"/);
+    assert.match(res.raw, /<h2>User guide<\/h2>/);
+    // The guide must explain the staleness semantics the video lane surfaces.
+    assert.match(res.raw, /never hidden/);
+    assert.match(res.raw, /stale/);
+    assert.match(res.raw, /unknown/);
+  } finally {
+    await close(server);
+  }
+});
+
 // ---- create ----
 test("POST /api/super-focus/projects creates a project and does NOT trigger generation", async () => {
   const root = mkRoot();
