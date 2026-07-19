@@ -160,6 +160,20 @@ resume at night without losing queued work:
   guarantee the **remote** PRESTO ComfyUI GPU job stops — it may keep running on
   PRESTO until it finishes there. A partial/failed clip may be left; retry the
   row explicitly later.
+- **Queue audit** — `GET /api/super-focus/video-queue-audit?id=` (and the
+  "Audit paused video queue" button) classifies every live queue item against
+  CURRENT project truth without side effects: no pump, no reconcile, no queue
+  write, no PRESTO contact. This is the only safe way to inspect a paused
+  queue — the `video-queue` and `videos-status` GETs drive the pump, whose
+  reconciliation may rewrite the queue file even while paused. Dispositions
+  are explicit (safe_to_resume / legacy_compatibility / stale_prompt /
+  source_unapproved / already_satisfied / …) with an estimated serial GPU
+  runtime for what resume would actually dispatch.
+- **Dispatch-time review gate** — the queue pump re-checks the image-review
+  gate before every render: an approval revoked (or a review opened/rejected)
+  after an item was queued marks it `skipped_review` instead of dispatching.
+  Legacy rows (no review, no provenance) remain eligible under the documented
+  compatibility rule, so pre-gate queues keep draining unchanged.
 - **Batch** ("Queue missing videos") asks for confirmation, since rendering is
   expensive. Per-image "Queue video on PRESTO" is the safest default.
 

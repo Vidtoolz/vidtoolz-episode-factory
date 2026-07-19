@@ -481,9 +481,11 @@
         <div class="imggen-bar hidden" id="vidgen-barwrap"><div class="imggen-fill" id="vidgen-fill"></div></div>
         <div class="row">
           <button class="btn" id="vidattempts-report">Attempt storage report</button>
+          <button class="btn" id="vidqueue-audit">Audit paused video queue</button>
           <span class="save-state" id="vidattempts-status"></span>
         </div>
         <div class="later-note hidden" id="vidattempts-out"></div>
+        <div class="later-note hidden" id="vidqueue-audit-out"></div>
       </div>
 
       <!-- Continue: Super Focus ends at generated videos; point the operator at the next lane. -->
@@ -3038,6 +3040,49 @@
           setStatus(el, 'Report loaded (read-only)');
         })
         .catch(function () { setStatus(el, 'Could not read attempt storage', true); });
+    });
+
+    // ---- Queue audit (read-only; one GET per click, never pumps/resumes) ----
+    document.getElementById('vidqueue-audit').addEventListener('click', function () {
+      if (!currentId) return;
+      var el = document.getElementById('vidattempts-status');
+      var out = document.getElementById('vidqueue-audit-out');
+      setStatus(el, 'Auditing queue (read-only)…');
+      fetch('/api/super-focus/video-queue-audit?id=' + encodeURIComponent(currentId), { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+        .then(function (res) {
+          if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Could not audit the queue', true); return; }
+          var d = unwrap(res.body);
+          out.textContent = '';
+          var addLine = function (text, warn) {
+            var line = document.createElement('div');
+            if (warn) line.className = 'eval-warn';
+            line.textContent = text;
+            out.appendChild(line);
+          };
+          addLine('Queue: ' + d.queue_count + ' item(s) total, ' + d.live_count + ' live'
+            + (d.paused ? ' — PAUSED (' + (d.pause.pause_reason || 'no reason recorded') + ')' : ' — active'));
+          var hist = Object.keys(d.history || {}).sort().map(function (s) { return d.history[s] + ' ' + s.replace(/_/g, ' '); });
+          if (hist.length) addLine('History: ' + hist.join(', '));
+          Object.keys(d.summary || {}).sort().forEach(function (k) {
+            var warn = k !== 'safe_to_resume' && k !== 'already_satisfied' && k !== 'legacy_compatibility';
+            addLine('· ' + d.summary[k] + ' × ' + k.replace(/_/g, ' '), warn);
+          });
+          addLine('Would dispatch on resume: ' + d.would_dispatch_on_resume + ' item(s) ≈ '
+            + (d.estimated_runtime_seconds / 3600).toFixed(1) + ' h serial GPU time ('
+            + Math.round(d.seconds_per_clip / 60) + ' min/clip measured)');
+          if (d.oldest_queued_at) addLine('Queued between ' + d.oldest_queued_at + ' and ' + d.newest_queued_at);
+          // Per-item diagnostics only for items that need operator attention.
+          (d.items || []).filter(function (it) { return it.disposition !== 'legacy_compatibility' && it.disposition !== 'safe_to_resume'; })
+            .slice(0, 30)
+            .forEach(function (it) {
+              addLine('  #' + it.index + ' [' + (it.item_id || '?') + '] ' + it.disposition.replace(/_/g, ' ') + ' — ' + (it.reasons[0] || ''), true);
+            });
+          addLine('This report is read-only: nothing was resumed, cancelled, deleted, or dispatched.');
+          out.classList.remove('hidden');
+          setStatus(el, 'Queue audit loaded (read-only)');
+        })
+        .catch(function () { setStatus(el, 'Could not audit the queue', true); });
     });
 
     // ---- Step 6: create i2v prompts for generated images that don't have one ----

@@ -272,6 +272,23 @@ test('queue-audit: pump skips (never dispatches) a queued item whose image revie
 
 // ── UI + docs wiring (static assertions) ─────────────────────────────────────
 
+test('queue-audit: GUI is read-only — GET only, no nonce, no apiPost, textContent rendering, explicit no-mutation copy', () => {
+  const page = fs.readFileSync(path.join(__dirname, '..', 'super-focus.html'), 'utf8');
+  assert.ok(page.includes('id="vidqueue-audit"'), 'audit button present');
+  assert.ok(page.includes('id="vidqueue-audit-out"'), 'output panel present');
+  const start = page.indexOf("getElementById('vidqueue-audit').addEventListener");
+  assert.ok(start !== -1, 'button is wired');
+  const end = page.indexOf('---- Step 6', start);
+  const slice = page.slice(start, end === -1 ? start + 5000 : end);
+  assert.ok(slice.includes("'/api/super-focus/video-queue-audit?id='"), 'wired to the audit GET');
+  assert.ok(!/apiPost|method:\s*'POST'|localWriteNonce|setInterval/.test(slice), 'no writes, no nonce, no polling');
+  assert.ok(!/innerHTML/.test(slice), 'renders via textContent only');
+  assert.ok(slice.includes('nothing was resumed, cancelled, deleted, or dispatched'), 'explicit read-only copy');
+  const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'super-focus.md'), 'utf8');
+  assert.ok(doc.includes('video-queue-audit'), 'docs cover the audit route');
+  assert.ok(doc.includes('skipped_review'), 'docs cover the dispatch-time gate');
+});
+
 test('queue-audit: hostile pause-reason text is rendered inert (textContent, not markup)', async () => {
   const fx = auditFixture(1);
   await listen(fx.server);
