@@ -375,6 +375,10 @@ function mergeRegeneratedPrompts(previous, texts) {
       const changed = old.text !== clean;
       const oldGeneratedHash = normalizeGeneratedPromptHash(old.generated_prompt_hash);
       if (oldGeneratedHash) rec.generated_prompt_hash = oldGeneratedHash;
+      // Image review is a production record tied to the IMAGE bytes and the
+      // assignment criteria — it must survive prompt-set regeneration
+      // (currency is recomputed from hashes at read time, never trusted).
+      if (old.image_review) rec.image_review = old.image_review;
       if (old.i2v_prompt) {
         rec.i2v_prompt = Object.assign({}, old.i2v_prompt);
         if (changed) rec.i2v_prompt.stale = true;
@@ -619,6 +623,23 @@ function hasI2vPrompt(row) {
   return Boolean(row && row.i2v_prompt && typeof row.i2v_prompt.text === 'string' && row.i2v_prompt.text.trim());
 }
 
+// Set (or delete, when `review` is null) one image-prompt row's image_review.
+// The row must exist — a review can only attach to a real prompt slot.
+function setImageReview(projectId, index, review, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  const idx = Math.round(Number(index));
+  const row = (Array.isArray(state.image_prompts) ? state.image_prompts : []).find((r) => r.index === idx);
+  if (!row) {
+    const e = new Error(`No image prompt at index ${index}.`); e.statusCode = 404; throw e;
+  }
+  if (review == null) delete row.image_review;
+  else row.image_review = review;
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
 // ── Visual Plan persistence (domain logic lives in super-focus-visual-plan.js) ──
 
 // Recompute per-row assignment provenance staleness on the image prompts.
@@ -746,4 +767,5 @@ module.exports = {
   readVisualPlan,
   saveVisualPlan,
   fillPromptsFromAssignments,
+  setImageReview,
 };
