@@ -697,6 +697,140 @@ test("reconcileVideos exposes the clip mtime as a cache key (null when pending)"
   assert.equal(row2.mtime_ms, null, "pending row has a null key");
 });
 
+// ── Video-lane staleness reproduction tests (review findings C1/C2/H1) ──────
+// Fixture helper: a project dir with stills + clips for the given indexes.
+function mkVideoFixture(mediaRoot, projectId, indexes) {
+  const imgDir = path.join(mediaRoot, projectId, "images", "flux-local");
+  const vidDir = path.join(mediaRoot, projectId, "videos", "mp4");
+  fs.mkdirSync(imgDir, { recursive: true });
+  fs.mkdirSync(vidDir, { recursive: true });
+  indexes.forEach((i) => {
+    fs.writeFileSync(path.join(imgDir, "flux-" + String(i).padStart(3, "0") + ".png"), Buffer.from([i]));
+    fs.writeFileSync(path.join(vidDir, String(i).padStart(3, "0") + ".mp4"), Buffer.from([i, i]));
+  });
+  return { imgDir, vidDir };
+}
+
+test("REPRO C1/C2: an I2V prompt edit after render leaves the stale video reported done with no mismatch flag", () => {
+  const mediaRoot = mkRoot();
+  const projectId = "repro-stale-vid-abcd1234";
+  mkVideoFixture(mediaRoot, projectId, [1]);
+  // On-disk provenance: the clip for row 1 was rendered from "old motion".
+  sfMedia.writeVideoProvenance(projectId, { 1: { i2v_hash: sfMedia.i2vPromptHash("old motion") } }, { mediaRoot });
+  const prompts = [
+    { index: 1, text: "p1", status: "saved", i2v_prompt: { text: "NEW motion — edited after render" } },
+  ];
+  const recon = sfMedia.reconcileVideos(projectId, prompts, "mp4", { mediaRoot });
+  const row = recon.videos.find((r) => r.index === 1);
+  assert.equal(row.has_video, true);
+  assert.equal(row.video_stale, true, "text drift vs recorded generated hash flags the video stale");
+  assert.equal(row.status, "done", "file presence still reports done (never hides the asset)");
+  assert.equal(recon.stale, 1, "stale count is surfaced");
+});
+
+test("REPRO C2: byte-identical restoration of the I2V text clears the video stale flag", () => {
+  const mediaRoot = mkRoot();
+  const projectId = "repro-restore-abcd1234";
+  mkVideoFixture(mediaRoot, projectId, [1]);
+  sfMedia.writeVideoProvenance(projectId, { 1: { i2v_hash: sfMedia.i2vPromptHash("motion A") } }, { mediaRoot });
+  const drifted = [{ index: 1, text: "p1", status: "saved", i2v_prompt: { text: "motion B" } }];
+  assert.equal(sfMedia.reconcileVideos(projectId, drifted, "mp4", { mediaRoot }).videos[0].video_stale, true);
+  const restored = [{ index: 1, text: "p1", status: "saved", i2v_prompt: { text: "motion A" } }];
+  const recon = sfMedia.reconcileVideos(projectId, restored, "mp4", { mediaRoot });
+  assert.equal(recon.videos[0].video_stale, false, "identical text matches the generated hash again");
+  assert.equal(recon.stale, 0);
+});
+
+test("REPRO: upstream image-prompt/i2v/assignment staleness propagates to the video row as review-required", () => {
+  const mediaRoot = mkRoot();
+  const projectId = "repro-upstream-abcd1234";
+  mkVideoFixture(mediaRoot, projectId, [1, 2, 3]);
+  // All clips rendered from current text (matching hashes recorded).
+  const hash = (t) => sfMedia.i2vPromptHash(t);
+  sfMedia.writeVideoProvenance(projectId, {
+    1: { i2v_hash: hash("m1") }, 2: { i2v_hash: hash("m2") }, 3: { i2v_hash: hash("m3") },
+  }, { mediaRoot });
+  const prompts = [
+    // Row 1: upstream image prompt changed after the i2v prompt was derived.
+    { index: 1, text: "p1", status: "saved", image_stale: true, i2v_prompt: { text: "m1", stale: true } },
+    // Row 2: assignment changed (motion context drift) — text unchanged.
+    { index: 2, text: "p2", status: "saved", assignment_stale: true, i2v_prompt: { text: "m2" } },
+    // Row 3: fully current control row.
+    { index: 3, text: "p3", status: "saved", i2v_prompt: { text: "m3" } },
+  ];
+  const recon = sfMedia.reconcileVideos(projectId, prompts, "mp4", { mediaRoot });
+  assert.equal(recon.videos.find((r) => r.index === 1).video_stale, true, "i2v stale (from image prompt change) propagates");
+  assert.equal(recon.videos.find((r) => r.index === 2).video_stale, true, "assignment staleness propagates");
+  assert.equal(recon.videos.find((r) => r.index === 3).video_stale, false, "current row stays clean");
+  assert.equal(recon.videos.find((r) => r.index === 1).video_stale_reason, "i2v_prompt_stale");
+  assert.equal(recon.videos.find((r) => r.index === 2).video_stale_reason, "assignment_stale");
+});
+
+test("REPRO legacy rule: a video row with NO recorded provenance is unknown, never mass-flagged", () => {
+  const mediaRoot = mkRoot();
+  const projectId = "repro-legacy-abcd1234";
+  mkVideoFixture(mediaRoot, projectId, [1]);
+  // No writeVideoProvenance call — legacy project (pre-provenance clip on disk).
+  const prompts = [{ index: 1, text: "p1", status: "saved", i2v_prompt: { text: "anything" } }];
+  const recon = sfMedia.reconcileVideos(projectId, prompts, "mp4", { mediaRoot });
+  const row = recon.videos[0];
+  assert.equal(row.status, "done");
+  assert.equal(row.video_stale, false, "no provenance → unknown, not stale");
+  assert.equal(row.video_stale_reason, null);
+});
+
+test("REPRO H1: an interrupted/failed render that left a partial file is not reported done", () => {
+  const mediaRoot = mkRoot();
+  const projectId = "repro-partial-abcd1234";
+  mkVideoFixture(mediaRoot, projectId, [1]);
+  sfMedia.writeVideoQueue(projectId, { version: 1, items: [
+    { item_id: "q1-x", index: 1, status: "interrupted", i2v_hash: sfMedia.i2vPromptHash("m1"),
+      queued_at: "2026-01-01T00:00:00Z", finished_at: "2026-01-01T00:10:00Z" },
+  ] }, { mediaRoot });
+  const prompts = [{ index: 1, text: "p1", status: "saved", i2v_prompt: { text: "m1" } }];
+  const recon = sfMedia.reconcileVideos(projectId, prompts, "mp4", { mediaRoot });
+  const row = recon.videos[0];
+  assert.equal(row.has_video, true, "the partial file is still shown (never hidden)");
+  assert.notEqual(row.status, "done", "a file whose last render failed is NOT done");
+  assert.equal(row.status, "interrupted");
+  assert.equal(recon.done, 0, "partial file does not count as done");
+  assert.equal(recon.failed, 1, "it counts as failed for the operator");
+});
+
+test("REPRO H2/M2: default skip-existing keeps the mismatch visible; explicit regeneration still reaches the row", () => {
+  const mediaRoot = mkRoot();
+  const projectId = "repro-skipvis-abcd1234";
+  mkVideoFixture(mediaRoot, projectId, [1]);
+  sfMedia.writeVideoProvenance(projectId, { 1: { i2v_hash: sfMedia.i2vPromptHash("old motion") } }, { mediaRoot });
+  const prompts = [{ index: 1, text: "p1", status: "saved", i2v_prompt: { text: "new motion" } }];
+  // Default top-up path: the existing file still skips…
+  const missing = sfMedia.eligibleMissingVideoRows(projectId, prompts, "mp4", { mediaRoot });
+  assert.equal(missing.length, 0, "skip-existing still holds (no silent overwrite)");
+  // …but the mismatch is visible in reconciliation…
+  const recon = sfMedia.reconcileVideos(projectId, prompts, "mp4", { mediaRoot });
+  assert.equal(recon.videos[0].video_stale, true, "mismatch remains visible under skip-existing");
+  // …and an explicit regeneration request includes the mismatched row.
+  const regen = sfMedia.eligibleVideoRows(projectId, prompts, { mediaRoot, regenerate: true });
+  assert.equal(regen.length, 1, "explicit regeneration includes the mismatched row");
+});
+
+test("REPRO queue: a queued item whose text changed since enqueue is surfaced as stale, not silently rendered", () => {
+  const mediaRoot = mkRoot();
+  const projectId = "repro-qhash-abcd1234";
+  const imgDir = path.join(mediaRoot, projectId, "images", "flux-local");
+  fs.mkdirSync(imgDir, { recursive: true });
+  fs.writeFileSync(path.join(imgDir, "flux-001.png"), Buffer.from([1]));
+  sfMedia.writeVideoQueue(projectId, { version: 1, items: [
+    { item_id: "q1-y", index: 1, status: "queued", i2v_hash: sfMedia.i2vPromptHash("motion at enqueue"),
+      queued_at: "2026-01-01T00:00:00Z" },
+  ] }, { mediaRoot });
+  // The operator edited the I2V text AFTER queueing.
+  const prompts = [{ index: 1, text: "p1", status: "saved", i2v_prompt: { text: "edited after enqueue" } }];
+  const recon = sfMedia.reconcileVideos(projectId, prompts, "mp4", { mediaRoot });
+  const item = recon.queue.items.find((it) => it.item_id === "q1-y");
+  assert.equal(item.i2v_stale, true, "queued item is flagged when its text drifted since enqueue");
+});
+
 test("writeVideoQueue keeps live items and bounds terminal history", () => {
   const mediaRoot = mkRoot();
   const projectId = "queue-prune-abcd1234";
@@ -1234,6 +1368,155 @@ test("generate-videos materializes selected-images + video-prompts and dispatche
     assert.equal(d.subdir, HQ_SUBDIR);
     assert.equal(d.total, 2);
     assert.equal(d.done, 2);
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("end-to-end: dispatch records provenance; an I2V edit surfaces video_stale in videos-status; byte-identical restore clears it", async () => {
+  const { server, mediaRoot, root, id } = videoServer(fakePrestoSpawn(), { promptCount: 2 });
+  await listen(server);
+  try {
+    const gen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(gen.statusCode, 200);
+    await delay(40);
+    // Provenance persisted on disk at dispatch time (durable, per-slot).
+    const prov = JSON.parse(fs.readFileSync(path.join(mediaRoot, id, "video-provenance.json"), "utf8"));
+    assert.equal(Object.keys(prov.rows).length, 2);
+    assert.ok(/^[a-f0-9]{16}$/.test(prov.rows["1"].i2v_hash));
+    // Baseline: both clips current.
+    let d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(d.stale, 0);
+    assert.equal(d.videos.every((v) => v.video_stale === false), true);
+    // Edit row 1's I2V prompt AFTER the render → only that clip goes stale.
+    superFocus.setI2vPrompt(id, 1, "motion 1 — rewritten after render", { root });
+    d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
+    const v1 = d.videos.find((v) => v.index === 1);
+    const v2 = d.videos.find((v) => v.index === 2);
+    assert.equal(v1.status, "done", "the file is never hidden");
+    assert.equal(v1.video_stale, true, "post-render text edit is visible");
+    assert.equal(v1.video_stale_reason, "i2v_text_changed");
+    assert.equal(v2.video_stale_reason, null, "untouched row stays current");
+    assert.equal(d.stale, 1);
+    // Skip-existing still holds for the stale row (no silent overwrite)…
+    const regen = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(regen.statusCode, 400, "nothing top-up-eligible while both slots have clips");
+    // …and a byte-identical restoration clears the stale state.
+    superFocus.setI2vPrompt(id, 1, "motion 1", { root });
+    d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(d.videos.find((v) => v.index === 1).video_stale, false, "identical restore matches the generated hash");
+    assert.equal(d.stale, 0);
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("regenerate-video refreshes provenance so the replaced clip reconciles current", async () => {
+  const { server, root, id } = videoServer(fakePrestoSpawn(), { promptCount: 2 });
+  await listen(server);
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    await delay(40);
+    // Edit row 1 → stale.
+    superFocus.setI2vPrompt(id, 1, "motion 1 v2", { root });
+    let d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(d.videos.find((v) => v.index === 1).video_stale, true);
+    // Explicit regeneration re-renders from the CURRENT text and re-stamps provenance.
+    const regen = await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 },
+    });
+    assert.equal(regen.statusCode, 200);
+    await delay(40);
+    d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
+    const v1 = d.videos.find((v) => v.index === 1);
+    assert.equal(v1.status, "done");
+    assert.equal(v1.video_stale, false, "regenerated clip matches current text");
+    assert.equal(d.stale, 0);
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("queued item drift: editing I2V text after enqueue flags the item i2v_stale in videos-status", async () => {
+  const { server, root, id } = videoServer(fakePrestoSpawn({ hang: true }), { promptCount: 2 });
+  await listen(server);
+  try {
+    // Occupy the PRESTO lock with row 1 so row 2 stays queued.
+    await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 1 },
+    });
+    await request(server, packageEngineServer.SUPER_FOCUS_QUEUE_VIDEO_API, {
+      method: "POST", headers: writeHeaders(), body: { id, index: 2 },
+    });
+    superFocus.setI2vPrompt(id, 2, "motion 2 — edited while queued", { root });
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
+    const item2 = d.queue.items.find((it) => it.index === 2);
+    assert.equal(item2.status, "queued");
+    assert.equal(item2.i2v_stale, true, "drift since enqueue is surfaced on the queued item");
+    const item1 = d.queue.items.find((it) => it.index === 1);
+    assert.equal(item1.i2v_stale, undefined, "unedited running row is not flagged");
+  } finally {
+    await close(server);
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("provenance merges per slot: a slot refill (delete + re-add at the same index) does NOT inherit the old row's provenance", async () => {
+  // Stable-ID check: provenance is recorded per slot index at materialize time.
+  // If a row is deleted and a new one lands on the same index, re-materializing
+  // must re-stamp THAT slot's hash (merge), never carry the old row's hash over
+  // — otherwise the new row would reconcile against the old row's text.
+  const mediaRoot = mkRoot();
+  const projectId = "slot-refill-abcd1234";
+  mkVideoFixture(mediaRoot, projectId, [1, 2]);
+  const prompts = [
+    { index: 1, text: "p1", status: "saved", i2v_prompt: { text: "old slot-1 text" } },
+    { index: 2, text: "p2", status: "saved", i2v_prompt: { text: "slot 2 text" } },
+  ];
+  // First materialization stamps both slots.
+  sfMedia.materializeVideoInputs(projectId, prompts, { mediaRoot });
+  let hashes = sfMedia.readVideoProvenanceHashes(projectId, { mediaRoot });
+  assert.equal(hashes[1], sfMedia.i2vPromptHash("old slot-1 text"));
+  // Slot refill: index 1 now holds a NEW row with new text; re-materialize.
+  const refilled = [
+    { index: 1, text: "p1b", status: "saved", i2v_prompt: { text: "NEW row now in slot 1" } },
+    { index: 2, text: "p2", status: "saved", i2v_prompt: { text: "slot 2 text" } },
+  ];
+  sfMedia.materializeVideoInputs(projectId, refilled, { mediaRoot });
+  hashes = sfMedia.readVideoProvenanceHashes(projectId, { mediaRoot });
+  assert.equal(hashes[1], sfMedia.i2vPromptHash("NEW row now in slot 1"), "refilled slot re-stamped with its own text");
+  assert.equal(hashes[2], sfMedia.i2vPromptHash("slot 2 text"), "untouched slot's provenance preserved");
+  // And the refilled row reconciles CURRENT (its clip is old, but its provenance
+  // matches its own text — the clip replacement is the render's business).
+  const recon = sfMedia.reconcileVideos(projectId, refilled, "mp4", { mediaRoot });
+  assert.equal(recon.videos.find((r) => r.index === 1).video_stale, false);
+});
+
+test("legacy project with NO provenance file: clips reconcile done + unknown, never mass-flagged", async () => {
+  // A project rendered before video-provenance.json existed: videos-status must
+  // report the clips done with video_stale=false (unknown), not flag everything.
+  const { server, mediaRoot, id } = videoServer(fakePrestoSpawn(), { promptCount: 2 });
+  await listen(server);
+  try {
+    await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    await delay(40);
+    // Simulate the legacy state: delete the provenance file (clip stays).
+    fs.unlinkSync(path.join(mediaRoot, id, "video-provenance.json"));
+    const d = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(d.done, 2);
+    assert.equal(d.stale, 0, "no provenance → nothing mass-flagged");
+    assert.equal(d.videos.every((v) => v.video_stale === false && v.generated_i2v_hash == null), true);
   } finally {
     await close(server);
     packageEngineServer.PRESTO_STATE.activeJob = null;

@@ -7790,8 +7790,8 @@ function superFocusVideoSubdir() {
 }
 
 function i2vTextHash(row) {
-  const t = (row && row.i2v_prompt && typeof row.i2v_prompt.text === 'string') ? row.i2v_prompt.text.trim() : '';
-  return crypto.createHash('sha1').update(t).digest('hex').slice(0, 16);
+  // Canonical: same hash the media layer records/compares (never a local variant).
+  return superFocusMedia.i2vPromptHash(row && row.i2v_prompt && row.i2v_prompt.text);
 }
 
 function videoQueueSummary(queue) {
@@ -11943,6 +11943,9 @@ function createServer(options = {}) {
           const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
           const presto = currentPrestoJobStatus();
           const active = presto.active || null;
+          // Queue items annotated (copies) with enqueue-time text drift; the
+          // persisted queue itself is untouched by reconciliation.
+          const displayItems = (recon.queue && recon.queue.items) || queue.items;
           sendJSON(res, 200, {
             project_id: id,
             presto_job: active || presto.completed || null,
@@ -11952,9 +11955,10 @@ function createServer(options = {}) {
             total: recon.total,
             done: recon.done,
             failed: recon.failed,
+            stale: recon.stale,
             videos: recon.videos,
             paused: Boolean(queue.paused),
-            queue: { summary: videoQueueSummary(queue), items: queue.items, control: videoQueueControl(queue) },
+            queue: { summary: videoQueueSummary(queue), items: displayItems, control: videoQueueControl(queue) },
           });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-videos-status-error'));
