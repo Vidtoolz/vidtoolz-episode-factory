@@ -60,6 +60,7 @@ require("./super-focus-visual-plan-routes.test.js");
 require("./super-focus-image-review.test.js");
 require("./super-focus-image-review-routes.test.js");
 require("./super-focus-video-review.test.js");
+require("./super-focus-video-review-routes.test.js");
 require("./script-evaluator.test.js");
 require("./motion-graphics-studio.test.js");
 require("./operator-control-fixes.test.js");

@@ -127,6 +127,8 @@ const SUPER_FOCUS_VISUAL_PLAN_ACTION_PREFIX = '/api/super-focus/visual-plan/';
 const SUPER_FOCUS_PROMPTS_FROM_ASSIGNMENTS_API = '/api/super-focus/image-prompts/from-assignments';
 const SUPER_FOCUS_IMAGE_REVIEW_API = '/api/super-focus/image-review';
 const SUPER_FOCUS_IMAGE_REVIEW_ACTION_PREFIX = '/api/super-focus/image-review/';
+const SUPER_FOCUS_VIDEO_REVIEW_API = '/api/super-focus/video-review';
+const SUPER_FOCUS_VIDEO_REVIEW_ACTION_PREFIX = '/api/super-focus/video-review/';
 const SUPER_FOCUS_TITLE_API = '/api/super-focus/title';
 const SUPER_FOCUS_SCRIPT_API = '/api/super-focus/script';
 const SUPER_FOCUS_GENERATE_TOPIC_API = '/api/super-focus/generate-topic';
@@ -307,6 +309,7 @@ const publishGateDecision = require('./publish-gate-decision.js');
 const superFocus = require('./super-focus.js');
 const superFocusVisualPlan = require('./super-focus-visual-plan.js');
 const superFocusImageReview = require('./super-focus-image-review.js');
+const superFocusVideoReview = require('./super-focus-video-review.js');
 const superFocusPrompts = require('./super-focus-prompts.js');
 const superFocusMedia = require('./super-focus-media.js');
 const superFocusRouter = require('./super-focus-router.js');
@@ -10641,6 +10644,39 @@ function buildImageReviewContext(state, row, sfMediaRoot) {
   };
 }
 
+// Build the on-disk/plan truth one row's VIDEO review is judged against.
+// Same lazy-hashing discipline as images, but with mtime+size probes because
+// clips are large; the canonical i2vPromptHash and per-slot generation
+// provenance come from the committed video lane (super-focus-media.js).
+function buildVideoReviewContext(state, row, sfMediaRoot, subdir) {
+  const filePath = superFocusMedia.safeVideoFilePath(state.project_id, subdir, row.index, { mediaRoot: sfMediaRoot });
+  let mtime = null;
+  let size = null;
+  if (filePath) {
+    try { const st = fs.statSync(filePath); mtime = Math.round(st.mtimeMs); size = st.size; } catch (_) { mtime = null; size = null; }
+  }
+  const exists = mtime != null;
+  const imgCtx = buildImageReviewContext(state, row, sfMediaRoot);
+  let generatedHash = null;
+  try {
+    generatedHash = superFocusMedia.readVideoProvenanceHashes(state.project_id, { mediaRoot: sfMediaRoot })[row.index] || null;
+  } catch (_) { generatedHash = null; }
+  return {
+    video_exists: exists,
+    video_mtime_ms: mtime,
+    video_size: size,
+    hash_video: () => (exists ? superFocusMedia.hashFileSha256(filePath) : null),
+    generated_i2v_hash: generatedHash,
+    current_i2v_text: row.i2v_prompt && typeof row.i2v_prompt.text === 'string' ? row.i2v_prompt.text : '',
+    i2v_prompt_hash: superFocusMedia.i2vPromptHash,
+    source_image: { exists: imgCtx.image_exists, mtime_ms: imgCtx.image_mtime_ms, hash_image: imgCtx.hash_image },
+    image_review_status: superFocusImageReview.effectiveReview(row, imgCtx).status,
+    assignment: imgCtx.assignment,
+    assignment_fresh: imgCtx.assignment_fresh,
+    observed_duration_seconds: null,
+  };
+}
+
 // The narrow I2V gate the video dispatch routes consume: a PNG on disk is not
 // approval. Legacy rows (no review, no assignment provenance) pass in
 // compatibility mode; everything else must be approved and hash-current.
@@ -11039,6 +11075,106 @@ function createServer(options = {}) {
       } catch (error) {
         sendError(res, error.statusCode || 500, error.message, 'super-focus-image-review-error');
       }
+      return;
+    }
+
+    // ── Video review (clip evidence vs the production contract) ──────────
+
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_VIDEO_REVIEW_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+        const state = superFocus.loadProject(id, { root: sfRoot });
+        const subdir = superFocusVideoSubdir();
+        const rows = (state.image_prompts || []).filter((r) => r && r.text && r.text.trim());
+        const contexts = rows.map((row) => buildVideoReviewContext(state, row, sfMediaRoot, subdir));
+        const reviews = rows.map((row, i) => {
+          const context = contexts[i];
+          const eff = superFocusVideoReview.effectiveVideoReview(row, context);
+          return {
+            index: row.index,
+            assignment_id: row.assignment_id || null,
+            video_exists: context.video_exists,
+            image_review_status: context.image_review_status,
+            effective_status: eff.status,
+            reasons: eff.reasons,
+            mismatches: eff.mismatches,
+            criteria: eff.criteria,
+            removed_criteria: eff.removed_criteria,
+            usable_range: row.video_review ? row.video_review.usable_range : null,
+            usable_range_current: eff.usable_range_current,
+            override: eff.override,
+            review: row.video_review || null,
+            approval: row.video_review ? superFocusVideoReview.videoApprovalBlockers(row, context) : null,
+            edit: superFocusVideoReview.videoEditEligibility(row, context),
+            assignment: context.assignment ? {
+              assignment_id: context.assignment.assignment_id,
+              beat_id: context.assignment.beat_id,
+              viewer_task: context.assignment.viewer_task,
+              visual_function: context.assignment.visual_function,
+              media_type: context.assignment.media_type,
+              assignment: context.assignment.assignment,
+              status: context.assignment.status,
+            } : null,
+            i2v_prompt_text: context.current_i2v_text,
+          };
+        });
+        sendJSON(res, 200, {
+          project_id: id,
+          reviews,
+          readiness: superFocusVideoReview.computeVideoReviewReadiness(rows, contexts),
+        });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-video-review-error');
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname.startsWith(SUPER_FOCUS_VIDEO_REVIEW_ACTION_PREFIX)) {
+      const action = url.pathname.slice(SUPER_FOCUS_VIDEO_REVIEW_ACTION_PREFIX.length);
+      const KNOWN = ['start', 'set-criterion', 'save-notes', 'set-usable-range', 'approve', 'approve-override', 'reject', 'revoke', 'reopen', 'clear'];
+      if (KNOWN.indexOf(action) === -1) {
+        sendError(res, 404, `Unknown video-review action: ${action}`, 'super-focus-video-review-error');
+        return;
+      }
+      readJsonBody(req, 1024 * 128)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: `Super Focus video-review ${action} API` });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          const idx = Math.round(Number(payload.index));
+          const row = (state.image_prompts || []).find((r) => r.index === idx);
+          if (!row) { const e = new Error(`No image prompt at index ${payload.index}.`); e.statusCode = 404; throw e; }
+          const context = buildVideoReviewContext(state, row, sfMediaRoot, superFocusVideoSubdir());
+          const vrApi = superFocusVideoReview;
+          let review;
+          if (action === 'start') review = vrApi.startVideoReview(row, context);
+          else if (action === 'reopen') review = vrApi.reopenVideoReview(row, context);
+          else if (action === 'set-criterion') review = vrApi.setVideoCriterion(row, String(payload.criterion_hash || ''), String(payload.result || ''), payload.note);
+          else if (action === 'save-notes') review = vrApi.saveVideoNotes(row, payload.notes);
+          else if (action === 'set-usable-range') review = vrApi.setUsableRange(row, payload.usable_range, payload.observed_duration_seconds);
+          else if (action === 'approve') review = vrApi.approveVideo(row, context);
+          else if (action === 'approve-override') review = vrApi.approveVideoWithOverride(row, context, payload.reason);
+          else if (action === 'reject') review = vrApi.rejectVideo(row, payload.reason);
+          else if (action === 'revoke') review = vrApi.revokeVideoApproval(row);
+          else review = vrApi.clearVideoReview(row);
+          const saved = superFocus.setVideoReview(id, idx, review, { root: sfRoot });
+          const savedRow = (saved.image_prompts || []).find((r) => r.index === idx);
+          const freshContext = buildVideoReviewContext(saved, savedRow, sfMediaRoot, superFocusVideoSubdir());
+          const eff = vrApi.effectiveVideoReview(savedRow, freshContext);
+          sendJSON(res, 200, {
+            project_id: id,
+            index: idx,
+            review: savedRow.video_review || null,
+            effective_status: eff.status,
+            reasons: eff.reasons,
+            mismatches: eff.mismatches,
+            criteria: eff.criteria,
+            removed_criteria: eff.removed_criteria,
+            approval: savedRow.video_review ? vrApi.videoApprovalBlockers(savedRow, freshContext) : null,
+            edit: vrApi.videoEditEligibility(savedRow, freshContext),
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-video-review-error'));
       return;
     }
 
@@ -14757,6 +14893,7 @@ module.exports = {
   SUPER_FOCUS_VISUAL_PLAN_READINESS_API,
   SUPER_FOCUS_PROMPTS_FROM_ASSIGNMENTS_API,
   SUPER_FOCUS_IMAGE_REVIEW_API,
+  SUPER_FOCUS_VIDEO_REVIEW_API,
   SUPER_FOCUS_TITLE_API,
   SUPER_FOCUS_SCRIPT_API,
   SUPER_FOCUS_GENERATE_TOPIC_API,
