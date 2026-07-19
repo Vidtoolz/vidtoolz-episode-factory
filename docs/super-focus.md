@@ -67,6 +67,39 @@ A project is one linear sheet, in order:
 5. **Infographic prompts** — choose a **Prompt count** (1–30, default 6) still-infographic prompts from the script (prompt-only).
 6. **Image-to-video prompts** — one per generated image (**Create a video prompt**, PRESTO Ollama lane).
 7. **Generated videos** — batch or per-image (PRESTO ComfyUI / Wan2.2); clips appear inline per row.
+7b. **Video review** — the clip is EVIDENCE, reviewed against the production
+   contract before it may enter the edit: the assignment defines the visual
+   job, the approved image the starting point, the I2V prompt the motion
+   intent, and the OPERATOR decides. Starting a review snapshots the exact
+   clip bytes (sha256, mtime+size lazily probed on later reads), the source
+   image bytes, the assignment hash, the motion contract, and the canonical
+   I2V prompt hash (the same `i2vPromptHash` the render lane records in
+   `video-provenance.json`). Criteria come in categories — the assignment's
+   own acceptance criteria (a still-image pass does not transfer to motion),
+   presenter composition, motion (serves the assignment, subject/environment/
+   camera match intent, no prohibited motion, subject stays recognizable),
+   and technical usability (decodes, clean first/last frames, no morphing/
+   flicker/freeze, edit-clean start and end). A **usable range** (seconds,
+   validated against the browser-observed duration, or an explicit “full
+   clip usable”) is required before approval; it stales with the clip bytes.
+   A failed criterion blocks normal approval; *Approve with override*
+   requires a recorded reason and logs exactly which criteria were
+   overridden — it can never bypass a missing clip, changed source image,
+   stale assignment, drifted I2V prompt, or unreviewed criteria. Rejection
+   preserves the clip, its provenance, and every result. **Staleness is
+   recomputed from hashes**: changed clip bytes, source image, assignment,
+   motion intent, or I2V prompt flip approval to *needs re-review* (an I2V
+   edit keeps the approval as history against the old prompt — never current
+   for the new one); byte-identical restores resolve automatically.
+   **Edit/handoff eligibility** requires an approved-and-current review, a
+   current usable range, AND current source-image approval — revoking the
+   image approval blocks the clip downstream while the clip's own approval
+   stays recorded. **Legacy clips** (no review, no recorded generation
+   provenance) show `Legacy — review provenance unknown` and stay
+   edit-eligible in compatibility mode, explicitly labeled as *not an
+   approval*. Known limitation: the render lane does not record which image
+   bytes fed a render, so the review binds the clip to the source image as
+   it exists at review time plus the image review's own currency.
 
 Nothing generates or advances itself. Every generate/save is an explicit click
 (soft gates): generating the script needs a saved title; image/infographic
@@ -198,6 +231,16 @@ items, so it is safe to re-run to resume.
   `reject-assignment`, `revoke-assignment`, `clear-assignment` (rejected needs
   `confirm_rejected: true`), `set-disposition`, `split-beat`, `merge-beats`,
   `reanchor`. Editing/generating/approving against a stale plan returns 409.
+- `GET /video-review?id=` — per-row effective clip-review state (hash-
+  recomputed, with mismatch tags: video_changed / source_mismatch /
+  prompt_mismatch / motion_mismatch), criteria by category, usable range,
+  approval blockers, edit/handoff eligibility with reasons, and readiness.
+- `POST /video-review/<action>` — narrow validated actions: `start`,
+  `set-criterion`, `save-notes`, `set-usable-range`, `approve`,
+  `approve-override` (mandatory reason; overridden criteria recorded),
+  `reject`, `revoke`, `reopen`, `clear` (only before any decision). 409 on
+  stale/conflicting state; 404 on unknown actions; review actions never
+  contact PRESTO or start any generation.
 - `GET /image-review?id=` — per-row effective review state (hash-recomputed:
   approved / rejected / in review / needs re-review / not reviewed / legacy),
   criteria diff, approval blockers, I2V gate verdicts, and review readiness.

@@ -305,3 +305,38 @@ test('video-review routes: review actions never start jobs or contact PRESTO', a
     assert.ok(!(ist.job || {}).active, 'no image job');
   } finally { await close(server); }
 });
+
+// ---- UI wiring (static page assertions) ----
+
+test('video-review UI: review block wired safely into video rows', async () => {
+  const { server } = await videoReviewServer();
+  try {
+    const res = await request(server, '/super-focus.html');
+    assert.equal(res.statusCode, 200);
+    assert.match(res.raw, /VREV_API = '\/api\/super-focus\/video-review'/);
+    assert.match(res.raw, /function buildVideoReviewBlock\(/);
+    assert.match(res.raw, /function decorateVideoReviews\(/);
+    // Safe DOM in the whole video-review section: zero innerHTML.
+    const section = res.raw.slice(
+      res.raw.indexOf('---- Video review (clip evidence'),
+      res.raw.indexOf('---- Image review (evidence')
+    );
+    assert.ok(section.length > 1000, 'video-review section found');
+    assert.ok(!section.includes('.innerHTML'), 'no innerHTML in video-review UI');
+    // Criterion text renders via textContent; categories grouped.
+    assert.match(section, /t\.className = 'ctext'; t\.textContent = c\.criterion_text/);
+    assert.match(section, /vrev-cat/);
+    // Playback aids + range-from-playhead + presenter overlay; media never mutated.
+    assert.match(section, /Range start = playhead/);
+    assert.match(section, /Full clip usable/);
+    assert.match(section, /Show presenter-safe area/);
+    assert.match(section, /playbackRate/);
+    // Override distinct + confirmed; approve disabled on blockers.
+    assert.match(section, /Approve clip with override…/);
+    assert.match(section, /recorded as an override/);
+    assert.match(section, /ap\.disabled = !canApprove/);
+    // Legacy wording; edit eligibility surfaced with compatibility label.
+    assert.match(section, /Legacy clip — review provenance unknown/);
+    assert.match(section, /legacy compatibility — not an approval/);
+  } finally { await close(server); }
+});

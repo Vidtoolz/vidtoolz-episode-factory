@@ -271,6 +271,14 @@
       border: 2px dashed #e3b341; border-radius: 4px; pointer-events: none;
       background: rgba(227,179,65,.12); }
     .irev-overlay-label { position: absolute; right: 2px; bottom: 2px; font-size: 9px; color: #e3b341; }
+    /* Video review */
+    .vrev { grid-column: 1 / -1; border-top: 1px dashed var(--border); margin-top: 4px; padding-top: 6px; font-size: 12px; }
+    .vrev-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .vrev-detail { display: grid; gap: 6px; margin-top: 6px; }
+    .vrev-cat { font-weight: 600; color: var(--muted); margin-top: 4px; text-transform: uppercase; font-size: 10px; letter-spacing: .06em; }
+    .vrev-player-wrap { position: relative; display: inline-block; max-width: 260px; }
+    .vrev-player-wrap video { width: 100%; border-radius: 6px; display: block; }
+    .vrev-range { color: var(--muted); }
     .eval-pos { color: var(--ok); }
     .eval-neg { color: #f85149; }
     .eval-warn { color: #e3b341; }
@@ -1221,6 +1229,8 @@
       loadVisualPlan(); // Visual Plan + prompt provenance decoration
       IREV.expanded = {}; IREV.overlay = {};
       loadImageReviews(); // image review badges on prompt rows
+      VREV.expanded = {}; VREV.overlay = {};
+      loadVideoReviews(); // clip review badges on video rows
       // Operator UI state (browser-local, per project): restore collapsed
       // sections and the script full-height preference. These only toggle CSS
       // visibility/height — they never reload state or reset field values.
@@ -1636,7 +1646,7 @@
         if (!res.ok) return;
         var active = applyVideosStatus(unwrap(res.body));
         if (active && !videosPollTimer) startVideosPolling();
-        if (!active) stopVideosPolling();
+        if (!active) { stopVideosPolling(); loadVideoReviews(); } // freshly finished clips get review badges
         updateSectionSummary('videos');
       }).catch(function () { /* transient poll failure (e.g. server restart) — next tick retries */ });
     }
@@ -2260,6 +2270,281 @@
         }
         if (stale) line('⚠', 'Assignment changed — prompt needs review');
         row.appendChild(box);
+      });
+    }
+
+    // ---- Video review (clip evidence vs the production contract) ----
+    var VREV_API = '/api/super-focus/video-review';
+    var VREV = { byIndex: {}, readiness: null, expanded: {}, overlay: {} };
+
+    function loadVideoReviews() {
+      if (!currentId) { VREV.byIndex = {}; VREV.readiness = null; decorateVideoReviews(); return Promise.resolve(); }
+      return apiGet(VREV_API + '?id=' + encodeURIComponent(currentId)).then(function (res) {
+        if (!res.ok) return;
+        var d = unwrap(res.body);
+        VREV.byIndex = {};
+        (d.reviews || []).forEach(function (r) { VREV.byIndex[r.index] = r; });
+        VREV.readiness = d.readiness || null;
+        decorateVideoReviews();
+      }).catch(function () {});
+    }
+
+    function vrevPost(action, body, btn) {
+      if (btn) btn.disabled = true;
+      return apiPost(VREV_API + '/' + action, Object.assign({ id: currentId }, body)).then(function (res) {
+        if (btn) btn.disabled = false;
+        if (!res.ok) { alert((res.body && res.body.error) || 'Video review action failed'); return null; }
+        var d = unwrap(res.body);
+        var cached = VREV.byIndex[d.index] || {};
+        VREV.byIndex[d.index] = Object.assign({}, cached, {
+          review: d.review, effective_status: d.effective_status, reasons: d.reasons,
+          mismatches: d.mismatches, criteria: d.criteria, removed_criteria: d.removed_criteria,
+          approval: d.approval, edit: d.edit,
+          usable_range: d.review ? d.review.usable_range : null,
+        });
+        decorateVideoReviews();
+        return d;
+      }).catch(function () { if (btn) btn.disabled = false; return null; });
+    }
+
+    var VREV_BADGES = {
+      not_reviewed: ['Clip not reviewed', 'warn'],
+      in_review: ['Clip in review', 'warn'],
+      approved: ['Clip approved', 'pass'],
+      rejected: ['Clip rejected', 'fail'],
+      review_required: ['Clip needs re-review', 'warn'],
+      unknown_legacy: ['Legacy clip — review provenance unknown', 'unevaluated'],
+    };
+
+    function vrevBtn(label, primary, handler) {
+      var b = document.createElement('button');
+      b.className = 'btn' + (primary ? ' primary' : '');
+      b.textContent = label;
+      b.addEventListener('click', function () { handler(b); });
+      return b;
+    }
+
+    function vrevRangeText(range) {
+      if (!range) return 'No usable range set';
+      if (range.full_clip) return 'Full clip usable';
+      return 'Usable ' + range.start_seconds + 's–' + range.end_seconds + 's'
+        + (range.duration_seconds ? ' of ' + range.duration_seconds + 's' : '');
+    }
+
+    function buildVideoReviewBlock(index, info) {
+      var box = document.createElement('div');
+      box.className = 'vrev';
+      var head = document.createElement('div');
+      head.className = 'vrev-head';
+      var badge = VREV_BADGES[info.effective_status] || [info.effective_status, 'warn'];
+      var pill = document.createElement('span');
+      pill.className = 'pill ' + badge[1];
+      pill.textContent = badge[0];
+      head.appendChild(pill);
+      var crits = info.criteria || [];
+      if (crits.length) {
+        var reviewed = crits.filter(function (c) { return c.result !== 'unreviewed'; }).length;
+        var count = document.createElement('span');
+        count.className = 'eval-muted';
+        count.textContent = reviewed + '/' + crits.length + ' reviewed';
+        head.appendChild(count);
+      }
+      var rangeEl = document.createElement('span');
+      rangeEl.className = 'vrev-range';
+      rangeEl.textContent = vrevRangeText(info.usable_range);
+      head.appendChild(rangeEl);
+      if (info.reasons && info.reasons.length) {
+        var why = document.createElement('span'); why.className = 'eval-warn';
+        why.textContent = info.reasons[0];
+        head.appendChild(why);
+      }
+      if (info.edit) {
+        var ed = document.createElement('span');
+        ed.className = info.edit.eligible ? 'eval-muted' : 'eval-warn';
+        ed.textContent = info.edit.eligible
+          ? (info.edit.compatibility ? 'Edit-eligible (legacy compatibility — not an approval)' : 'Ready for edit')
+          : ('Not edit-eligible: ' + (info.edit.reasons[0] || ''));
+        head.appendChild(ed);
+      }
+      var expand = vrevBtn(VREV.expanded[index] ? 'Close clip review' : 'Review clip', false, function () {
+        VREV.expanded[index] = !VREV.expanded[index];
+        decorateVideoReviews();
+      });
+      head.appendChild(expand);
+      if (!info.review && info.video_exists && info.effective_status !== 'unknown_legacy') {
+        head.appendChild(vrevBtn('Start clip review', true, function (b) { VREV.expanded[index] = true; vrevPost('start', { index: index }, b); }));
+      }
+      if (info.effective_status === 'review_required') {
+        head.appendChild(vrevBtn('Reopen clip review', true, function (b) { VREV.expanded[index] = true; vrevPost('reopen', { index: index }, b); }));
+      }
+      box.appendChild(head);
+      if (VREV.expanded[index]) box.appendChild(buildVideoReviewDetail(index, info));
+      return box;
+    }
+
+    function buildVideoReviewDetail(index, info) {
+      var d = document.createElement('div');
+      d.className = 'vrev-detail';
+      if (info.assignment) {
+        var a = document.createElement('div'); a.className = 'eval-muted';
+        a.textContent = 'Assignment (' + String(info.assignment.visual_function || '').replace(/_/g, ' ') + '): '
+          + (info.assignment.assignment || '');
+        d.appendChild(a);
+      }
+      if (info.i2v_prompt_text) {
+        var mp = document.createElement('div'); mp.className = 'eval-muted';
+        mp.textContent = 'Motion intent (I2V prompt): ' + info.i2v_prompt_text;
+        d.appendChild(mp);
+      }
+      var st = document.createElement('div'); st.className = 'eval-muted';
+      st.textContent = 'Source image review: ' + String(info.image_review_status || 'unknown').replace(/_/g, ' ');
+      d.appendChild(st);
+
+      // Review player: paused, metadata-only, with presenter-safe overlay and
+      // playhead-driven usable-range capture. Never mutates the media.
+      var wrap = document.createElement('div');
+      var pw = document.createElement('span'); pw.className = 'vrev-player-wrap';
+      var vid = document.createElement('video');
+      vid.controls = true; vid.preload = 'metadata'; vid.muted = true;
+      vid.src = '/api/super-focus/video?id=' + encodeURIComponent(currentId) + '&index=' + index;
+      pw.appendChild(vid);
+      if (VREV.overlay[index]) {
+        var ov = document.createElement('span'); ov.className = 'irev-overlay';
+        var lab = document.createElement('span'); lab.className = 'irev-overlay-label'; lab.textContent = 'presenter';
+        pw.appendChild(ov); pw.appendChild(lab);
+      }
+      wrap.appendChild(pw);
+      var aids = document.createElement('div'); aids.className = 'row';
+      aids.appendChild(vrevBtn(VREV.overlay[index] ? 'Hide presenter-safe area' : 'Show presenter-safe area', false, function () {
+        VREV.overlay[index] = !VREV.overlay[index];
+        decorateVideoReviews();
+      }));
+      aids.appendChild(vrevBtn('Loop', false, function () { vid.loop = !vid.loop; }));
+      aids.appendChild(vrevBtn('0.5×', false, function () { vid.playbackRate = vid.playbackRate === 0.5 ? 1 : 0.5; }));
+      var r = info.review;
+      var inReview = r && r.status === 'in_review';
+      var rangeDraft = { start: null, end: null };
+      if (inReview) {
+        aids.appendChild(vrevBtn('Range start = playhead', false, function () {
+          rangeDraft.start = Math.round(vid.currentTime * 100) / 100;
+        }));
+        aids.appendChild(vrevBtn('Range end = playhead', false, function (b) {
+          rangeDraft.end = Math.round(vid.currentTime * 100) / 100;
+          if (rangeDraft.start == null || rangeDraft.end == null) return;
+          vrevPost('set-usable-range', {
+            index: index,
+            usable_range: { start_seconds: rangeDraft.start, end_seconds: rangeDraft.end },
+            observed_duration_seconds: Number.isFinite(vid.duration) ? vid.duration : null,
+          }, b);
+        }));
+        aids.appendChild(vrevBtn('Full clip usable', false, function (b) {
+          vrevPost('set-usable-range', { index: index, usable_range: { full_clip: true },
+            observed_duration_seconds: Number.isFinite(vid.duration) ? vid.duration : null }, b);
+        }));
+      }
+      wrap.appendChild(aids);
+      d.appendChild(wrap);
+
+      // Criteria grouped by category.
+      var byCat = {};
+      (info.criteria || []).forEach(function (c) { (byCat[c.category] = byCat[c.category] || []).push(c); });
+      ['assignment', 'presenter_composition', 'motion', 'technical', 'continuity'].forEach(function (cat) {
+        var list = byCat[cat];
+        if (!list || !list.length) return;
+        var h = document.createElement('div'); h.className = 'vrev-cat'; h.textContent = cat.replace(/_/g, ' ');
+        d.appendChild(h);
+        list.forEach(function (c) {
+          var rowEl = document.createElement('div');
+          rowEl.className = 'irev-crit c-' + c.result + (c.is_new ? ' c-new' : '');
+          var t = document.createElement('span'); t.className = 'ctext'; t.textContent = c.criterion_text;
+          rowEl.appendChild(t);
+          var rs = document.createElement('span'); rs.className = 'eval-muted'; rs.textContent = c.result.replace(/_/g, ' ');
+          rowEl.appendChild(rs);
+          if (inReview) {
+            rowEl.appendChild(vrevBtn('Pass', false, function (b) { vrevPost('set-criterion', { index: index, criterion_hash: c.criterion_hash, result: 'pass' }, b); }));
+            rowEl.appendChild(vrevBtn('Fail', false, function (b) {
+              var note = prompt('Why does this criterion fail? (optional)') || '';
+              vrevPost('set-criterion', { index: index, criterion_hash: c.criterion_hash, result: 'fail', note: note }, b);
+            }));
+            rowEl.appendChild(vrevBtn('N/A', false, function (b) {
+              var note = prompt('Why is this criterion not applicable? (required)');
+              if (!note || !note.trim()) return;
+              vrevPost('set-criterion', { index: index, criterion_hash: c.criterion_hash, result: 'not_applicable', note: note }, b);
+            }));
+          }
+          if (c.operator_note) {
+            var n = document.createElement('div'); n.className = 'eval-muted'; n.textContent = 'Note: ' + c.operator_note;
+            rowEl.appendChild(n);
+          }
+          d.appendChild(rowEl);
+        });
+      });
+      (info.removed_criteria || []).forEach(function (c) {
+        var rm = document.createElement('div'); rm.className = 'irev-removed';
+        rm.textContent = 'No longer current: ' + c.criterion_text + ' (was ' + c.result.replace(/_/g, ' ') + ')';
+        d.appendChild(rm);
+      });
+
+      var actions = document.createElement('div'); actions.className = 'row';
+      if (inReview) {
+        var canApprove = info.approval && info.approval.ok;
+        var ap = vrevBtn('Approve clip', true, function (b) { vrevPost('approve', { index: index }, b); });
+        ap.disabled = !canApprove;
+        if (!canApprove && info.approval) ap.title = info.approval.blockers.join(' ');
+        actions.appendChild(ap);
+        var hasFail = (info.criteria || []).some(function (c) { return c.result === 'fail'; });
+        if (hasFail) {
+          actions.appendChild(vrevBtn('Approve clip with override…', false, function (b) {
+            var reason = prompt('Override reason (required — recorded with the overridden criteria):');
+            if (!reason || !reason.trim()) return;
+            if (!confirm('Approve DESPITE failed criteria? This is recorded as an override.')) return;
+            vrevPost('approve-override', { index: index, reason: reason }, b);
+          }));
+        }
+        actions.appendChild(vrevBtn('Reject clip', false, function (b) {
+          var reason = prompt('Rejection reason (optional):') || '';
+          vrevPost('reject', { index: index, reason: reason }, b);
+        }));
+        actions.appendChild(vrevBtn('Clear draft review', false, function (b) {
+          if (!confirm('Clear this clip review? Only allowed before any decision.')) return;
+          vrevPost('clear', { index: index }, b);
+        }));
+        actions.appendChild(vrevBtn('Save note', false, function (b) {
+          var notes = prompt('Overall operator note:', (r && r.operator_notes) || '');
+          if (notes == null) return;
+          vrevPost('save-notes', { index: index, notes: notes }, b);
+        }));
+      }
+      if (r && r.status === 'approved') actions.appendChild(vrevBtn('Revoke clip approval', false, function (b) { vrevPost('revoke', { index: index }, b); }));
+      if (r && (r.status === 'rejected' || info.effective_status === 'review_required')) {
+        actions.appendChild(vrevBtn('Reopen clip review', true, function (b) { vrevPost('reopen', { index: index }, b); }));
+      }
+      d.appendChild(actions);
+      if (r && r.override && r.override_reason) {
+        var ovr = document.createElement('div'); ovr.className = 'eval-warn';
+        ovr.textContent = 'Approved with override: ' + r.override_reason;
+        d.appendChild(ovr);
+      }
+      if (r && r.operator_notes) {
+        var on = document.createElement('div'); on.className = 'eval-muted';
+        on.textContent = 'Notes: ' + r.operator_notes;
+        d.appendChild(on);
+      }
+      return d;
+    }
+
+    function decorateVideoReviews() {
+      var grid = document.getElementById('imgp-list');
+      if (!grid) return;
+      grid.querySelectorAll('.prompt-row').forEach(function (rowEl) {
+        var numEl = rowEl.querySelector('.pnum');
+        var index = numEl ? Math.round(Number(numEl.textContent)) : NaN;
+        var old = rowEl.querySelector('.vrev');
+        if (old) old.remove();
+        if (!Number.isInteger(index)) return;
+        var info = VREV.byIndex[index];
+        if (!info || (!info.video_exists && !info.review)) return;
+        rowEl.appendChild(buildVideoReviewBlock(index, info));
       });
     }
 
