@@ -141,6 +141,13 @@ image-to-video prompt.
   filled slot. A summary line ("N of 100 slots filled · M empty slots hidden")
   and a **Show all slots** toggle sit above each grid; the toggle is
   session-only, never persisted, and never changes project state.
+- **Prerequisite-aware generate buttons**: Generate script / Create image
+  prompts / Generate missing images are disabled with a tooltip reason until
+  their prerequisite is SAVED (title → script → at least one prompt). This
+  mirrors the server's soft gates as visible affordances — the server checks
+  stay authoritative, and gating reads persisted state, never unsaved input.
+- The page also adapts below 640px viewport width (stacked topbar, two-column
+  prompt rows with horizontal row controls).
 - Collapse and script-height state is **browser-local UI preference**
   (`localStorage`, keyed per project), **not** project production state — it is
   never written to `super-focus.json`. Steps default to expanded; a collapsed

@@ -123,6 +123,14 @@
     .prompt-row.slot-hidden { display: none; }
     .slot-density { display: flex; gap: 10px; align-items: center; margin: 8px 0 4px; color: var(--muted); font-size: 13px; }
     .slot-density .btn { padding: 4px 10px; font-size: 12px; }
+    /* Narrow-viewport layout (slice B of the 2026-07-09 usability stash). */
+    @media (max-width: 640px) {
+      .wrap { padding: 28px 14px 64px; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .prompt-row { grid-template-columns: 28px 1fr; }
+      .prompt-row .pctrl { grid-column: 2; flex-direction: row; flex-wrap: wrap; min-width: 0; }
+      .prompt-row .pctrl .btn { flex: 1 1 120px; }
+    }
     .stale-banner {
       margin-top: 12px; padding: 10px 14px; border-radius: 8px;
       background: rgba(210,153,34,.12); border: 1px solid #6b5320; color: #e3b341; font-size: 14px;
@@ -648,6 +656,7 @@
     var SECTION_KEYS = ['title', 'script', 'script-eval', 'visual-plan', 'image-prompts', 'images', 'infographics', 'i2v', 'videos', 'continue'];
     var lastEvalSummary = ''; // set by renderScriptEvaluation for the collapsed summary
     var lastSavedScript = ''; // the PERSISTED script — the evaluator reads this, not the textarea
+    var lastSavedTitle = '';  // the PERSISTED title — prerequisite gating reads this, not the input
 
     // One-time DOM transform: give each project .section a header row with a
     // real Collapse/Expand button + a collapsed-state summary, and wrap the
@@ -1073,6 +1082,39 @@
     // Build a fixed grid of `max` numbered, editable prompt slots pre-filled from
     // `records` (index-keyed). Empty slots are editable and can be saved too.
     // withThumb adds a per-row image container (id thumbPrefix + index).
+    // ---- Prerequisite-aware generate buttons (slice C of the 07-09 stash) ----
+    // Reimplemented on narrow sources — lastSavedTitle / lastSavedScript plus
+    // the page's existing DOM scan of prompt inputs — NOT the stash's full
+    // client state model. The server's soft gates stay authoritative; this
+    // only mirrors them as disabled-with-reason affordances so the next
+    // required step is visible before a click fails.
+    function updatePrereqButtons() {
+      var titleReady = Boolean(lastSavedTitle && lastSavedTitle.trim());
+      var scriptReady = Boolean(lastSavedScript && lastSavedScript.trim());
+      var promptCount = 0;
+      var list = document.getElementById('imgp-list');
+      if (list) {
+        Array.prototype.forEach.call(list.querySelectorAll('.pinput'), function (t) {
+          if (t.value.trim()) promptCount += 1;
+        });
+      }
+      var scriptGen = document.getElementById('script-generate');
+      if (scriptGen) {
+        scriptGen.disabled = !titleReady;
+        scriptGen.title = titleReady ? '' : 'Save a title first — the script is generated from it.';
+      }
+      var imgpGen = document.getElementById('imgp-generate');
+      if (imgpGen) {
+        imgpGen.disabled = !scriptReady;
+        imgpGen.title = scriptReady ? '' : 'Save a script first — image prompts are created from it.';
+      }
+      var imggen = document.getElementById('imggen-generate');
+      if (imggen) {
+        imggen.disabled = !promptCount;
+        imggen.title = promptCount ? '' : 'Create or save at least one image prompt first.';
+      }
+    }
+
     // ---- Prompt-slot density (hide, never remove) ----
     // Recovers the intent of the 2026-07-09 usability stash WITHOUT its state
     // refactor: every slot row stays in the DOM, so all `.prompt-row` /
@@ -1165,6 +1207,7 @@
               row.className = 'prompt-row' + (ta.value.trim() ? ' filled' : '');
               setRowStatus(st, ta.value.trim() ? 'Saved ✓' : 'cleared', 'ok');
               applySlotDensity(elId); // filling/clearing a slot moves the density cutoff
+              updatePrereqButtons();
               if (withThumb) {
                 // Editing the prompt text may have flagged this row's i2v prompt
                 // and its generated image stale on the server. Reflect that now,
@@ -1188,6 +1231,7 @@
               row.className = 'prompt-row';
               setRowStatus(st, 'cleared', 'ok');
               applySlotDensity(elId);
+              updatePrereqButtons();
               if (withThumb) {
                 var proj = unwrap(res.body).project;
                 var updated = proj ? (proj.image_prompts || []).find(function (x) { return x.index === index; }) : null;
@@ -1272,6 +1316,7 @@
       document.getElementById('title-input').value = proj.title || '';
       document.getElementById('script-input').value = proj.script || '';
       lastSavedScript = proj.script || '';
+      lastSavedTitle = proj.title || '';
       setStatus(document.getElementById('title-status'), '');
       setStatus(document.getElementById('script-status'), '');
       setStatus(document.getElementById('imgp-status'),
@@ -1284,6 +1329,7 @@
       updateStaleBanner('infp-stale', proj.stale && proj.stale.infographic_prompts);
       updateRemainingButton();
       updateInfographicButton();
+      updatePrereqButtons();
       stopImagesPolling(); stopVideosPolling();
       setStatus(document.getElementById('imggen-status'), '');
       setStatus(document.getElementById('vidgen-status'), '');
@@ -1543,6 +1589,10 @@
       cancelBtn.classList.toggle('hidden', !active);
       genBtn.disabled = active || d.busy_elsewhere;
       genBtn.classList.toggle('busy', active);
+      // When idle, hand the button back to prerequisite gating (a project with
+      // zero saved prompts keeps it disabled WITH the reason) instead of
+      // unconditionally re-enabling it on every status poll.
+      if (!active && !d.busy_elsewhere) updatePrereqButtons();
       if (d.busy_elsewhere && !active) {
         setStatus(document.getElementById('imggen-status'), 'GPU busy with another job — try again shortly');
       }
@@ -1753,8 +1803,10 @@
         var proj = unwrap(res.body).project;
         document.getElementById('proj-heading').textContent =
           (proj.title && proj.title.trim()) ? proj.title : 'New video project';
+        lastSavedTitle = proj.title || '';
         setStatus(el, 'Saved ✓', false);
         updateSectionSummary('title');
+        updatePrereqButtons();
       }).catch(function () { setStatus(document.getElementById('title-status'), 'Save failed', true); });
     });
 
@@ -1776,6 +1828,7 @@
         loadScriptEvaluation();
         loadVisualPlan(); // saved script change may stale the visual plan
         updateSectionSummary('script');
+        updatePrereqButtons();
       }).catch(function () { setStatus(document.getElementById('script-status'), 'Save failed', true); });
     });
 
