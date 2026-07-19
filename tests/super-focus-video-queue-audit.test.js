@@ -245,6 +245,33 @@ test('queue-audit: a dispatched attempt owning the slot classifies as active_att
 // the meantime. The pump must re-check the gate at dispatch time: gate-refused
 // items become 'skipped_review' (explicit, requeue-able), and NEVER spawn.
 
+test('queue-audit: pump skips (never dispatches) a queued item whose image review no longer clears the gate', async () => {
+  const fx = auditFixture(2);
+  await listen(fx.server);
+  try {
+    const { root, mediaRoot, id } = fx;
+    // Row 1's image goes into review (in_review → gate refuses). Row 2 stays
+    // legacy-eligible so the pump has a following item to prove it moves on.
+    const started = await request(fx.server, '/api/super-focus/image-review/start', { method: 'POST', headers: writeHeaders(), body: { id, index: 1 } });
+    assert.equal(started.statusCode, 200);
+    // Resume the queue (the fixture pauses it); the resume route pumps.
+    const resumed = await request(fx.server, '/api/super-focus/video-queue/resume', { method: 'POST', headers: writeHeaders(), body: { id } });
+    assert.equal(resumed.statusCode, 200);
+    await new Promise((r) => setTimeout(r, 100));
+    const queue = superFocusMedia.readVideoQueue(id, { mediaRoot });
+    const item1 = queue.items.find((it) => it.index === 1);
+    assert.equal(item1.status, 'skipped_review', 'gate-refused item is skipped explicitly, not dispatched');
+    assert.match(item1.error, /not cleared by review/i);
+    // The guard spawn throws if ever called; row 2 (legacy-eligible) should
+    // have been ATTEMPTED next — its dispatch fails on the throwing spawn,
+    // which is exactly the proof the pump moved past row 1 to a legal row.
+    assert.equal(queue.items.find((it) => it.index === 2).status !== 'skipped_review', true);
+    void root;
+  } finally { await close(fx.server); }
+});
+
+// ── UI + docs wiring (static assertions) ─────────────────────────────────────
+
 test('queue-audit: hostile pause-reason text is rendered inert (textContent, not markup)', async () => {
   const fx = auditFixture(1);
   await listen(fx.server);

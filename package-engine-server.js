@@ -8070,6 +8070,25 @@ async function pumpSuperFocusVideoQueue(id, ctx) {
     superFocusMedia.writeVideoQueue(id, queue, { mediaRoot: ctx.sfMediaRoot });
     return pumpSuperFocusVideoQueue(id, ctx); // try the following item
   }
+  // Image-review gate at DISPATCH time, not just enqueue time: an approval
+  // revoked (or a review opened/rejected) AFTER an item was queued must stop
+  // the render — same contract as the enqueue/batch/regenerate gates
+  // ("unreviewed / rejected / stale-approved images must not reach PRESTO").
+  // Legacy rows (no review, no provenance) stay eligible under the documented
+  // compatibility rule, so pre-gate queues keep draining unchanged.
+  {
+    const gateCtx = buildImageReviewContext(state, el.row, ctx.sfMediaRoot);
+    if (gateCtx.image_exists) {
+      const gate = superFocusImageReview.imageReviewGate(el.row, gateCtx);
+      if (!gate.eligible) {
+        next.status = 'skipped_review';
+        next.error = `Image not cleared by review: ${gate.reason}. Approve the image, then requeue.`;
+        next.finished_at = new Date().toISOString();
+        superFocusMedia.writeVideoQueue(id, queue, { mediaRoot: ctx.sfMediaRoot });
+        return pumpSuperFocusVideoQueue(id, ctx); // try the following item
+      }
+    }
+  }
   const reach = ctx.options.prestoReachableCheck || ctx.options.reachableCheck || prestoComfyuiReachable;
   if (!(await reach(PRESTO_BASE_URL, ctx.options))) return { started: null, queue, blocked: 'unreachable' };
   // The reachability probe is an await window during which another handler
