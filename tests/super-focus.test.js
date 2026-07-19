@@ -4285,3 +4285,25 @@ test("image file route terminates the response on a stream error (no hang, no cr
     assert.equal(outcome, "closed", "response ends (destroyed) instead of hanging forever");
   } finally { await close(server); packageEngineServer.FLUX_STATE.activeJob = null; }
 });
+
+test("super-focus.html: evaluator fine-tune — saved-script gating, labels, phrase highlights", async () => {
+  const server = packageEngineServer.createServer({ superFocusRoot: mkRoot() });
+  await listen(server);
+  try {
+    const res = await request(server, "/super-focus.html");
+    assert.equal(res.statusCode, 200);
+    // Evaluate button gates on the PERSISTED script, not the live textarea.
+    assert.match(res.raw, /var lastSavedScript = ''/);
+    assert.match(res.raw, /lastSavedScript && lastSavedScript\.trim\(\)/);
+    // Rows render human labels with id fallback.
+    assert.match(res.raw, /g\.label \|\| g\.id/);
+    assert.match(res.raw, /c\.label \|\| c\.id/);
+    // Highlighted phrases render as safe DOM spans with CSS present.
+    assert.match(res.raw, /function sentenceTextNode\(/);
+    assert.match(res.raw, /\.phrase-pos \{/);
+    assert.match(res.raw, /\.phrase-neg \{/);
+    assert.match(res.raw, /sentenceTextNode\(s\.text, s\.highlighted_phrases\)/);
+  } finally {
+    await close(server);
+  }
+});

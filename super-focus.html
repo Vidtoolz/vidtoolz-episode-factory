@@ -238,6 +238,8 @@
     .pill.warn, .pill.okay { color: #e3b341; border-color: #6b5320; }
     .pill.fail, .pill.revise, .pill.cut { color: #ff9d97; border-color: #7d2b28; }
     .pill.unevaluated { color: var(--muted); }
+    .phrase-pos { background: rgba(63,185,80,.18); border-bottom: 1px solid #3fb950; border-radius: 2px; }
+    .phrase-neg { background: rgba(248,81,73,.16); border-bottom: 1px solid #f85149; border-radius: 2px; }
     .eval-pos { color: var(--ok); }
     .eval-neg { color: #f85149; }
     .eval-warn { color: #e3b341; }
@@ -564,6 +566,7 @@
     // unsaved script/prompt edits always survive a toggle.
     var SECTION_KEYS = ['title', 'script', 'script-eval', 'image-prompts', 'images', 'infographics', 'i2v', 'videos', 'continue'];
     var lastEvalSummary = ''; // set by renderScriptEvaluation for the collapsed summary
+    var lastSavedScript = ''; // the PERSISTED script — the evaluator reads this, not the textarea
 
     // One-time DOM transform: give each project .section a header row with a
     // real Collapse/Expand button + a collapsed-state summary, and wrap the
@@ -1123,6 +1126,7 @@
       document.getElementById('proj-id').textContent = proj.project_id;
       document.getElementById('title-input').value = proj.title || '';
       document.getElementById('script-input').value = proj.script || '';
+      lastSavedScript = proj.script || '';
       setStatus(document.getElementById('title-status'), '');
       setStatus(document.getElementById('script-status'), '');
       setStatus(document.getElementById('imgp-status'),
@@ -1588,6 +1592,7 @@
         var el = document.getElementById('script-status');
         if (!res.ok) { setStatus(el, 'Save failed', true); return; }
         var proj = unwrap(res.body).project;
+        lastSavedScript = proj.script || val;
         // Saving the script may flag existing prompt sets as possibly stale.
         updateStaleBanner('imgp-stale', proj.stale && proj.stale.image_prompts);
         updateStaleBanner('infp-stale', proj.stale && proj.stale.infographic_prompts);
@@ -1638,8 +1643,9 @@
     function updateEvalButton() {
       var btn = document.getElementById('eval-run');
       if (!btn) return;
-      var el = document.getElementById('script-input');
-      var hasSaved = Boolean(currentId) && Boolean(el && el.value && el.value.trim());
+      // Gate on the SAVED script (what the evaluator actually reads) — the
+      // textarea may hold unsaved edits in either direction.
+      var hasSaved = Boolean(currentId) && Boolean(lastSavedScript && lastSavedScript.trim());
       btn.disabled = !hasSaved;
       btn.title = hasSaved ? '' : 'Save a non-empty script first.';
     }
@@ -1662,6 +1668,36 @@
         var li = document.createElement('li'); li.textContent = t; ul.appendChild(li);
       });
       return ul;
+    }
+    // Sentence text with the model's highlighted phrases marked inline
+    // (green = positive, red = negative; hover shows the reason). Built with
+    // text nodes + spans only — no innerHTML, phrases are model output.
+    function sentenceTextNode(text, phrases) {
+      var div = document.createElement('div'); div.className = 'stext';
+      var marks = [];
+      (phrases || []).forEach(function (h) {
+        if (!h || !h.text) return;
+        var idx = text.indexOf(h.text);
+        if (idx < 0) return; // phrase not actually in this sentence — skip
+        var end = idx + h.text.length;
+        var overlaps = marks.some(function (m) { return idx < m.end && end > m.start; });
+        if (!overlaps) marks.push({ start: idx, end: end, type: h.type, reason: h.reason });
+      });
+      marks.sort(function (a, b) { return a.start - b.start; });
+      div.appendChild(document.createTextNode('“'));
+      var pos = 0;
+      marks.forEach(function (m) {
+        if (m.start > pos) div.appendChild(document.createTextNode(text.slice(pos, m.start)));
+        var sp = document.createElement('span');
+        sp.className = m.type === 'positive' ? 'phrase-pos' : 'phrase-neg';
+        if (m.reason) sp.title = m.reason;
+        sp.textContent = text.slice(m.start, m.end);
+        div.appendChild(sp);
+        pos = m.end;
+      });
+      if (pos < text.length) div.appendChild(document.createTextNode(text.slice(pos)));
+      div.appendChild(document.createTextNode('”'));
+      return div;
     }
 
     // Render the evaluation panel. Pass null to reset to the empty state.
@@ -1727,7 +1763,7 @@
         ev.hard_gates.forEach(function (g) {
           var item = document.createElement('div'); item.className = 'eval-item';
           var row = document.createElement('div'); row.className = 'eval-row';
-          var name = document.createElement('span'); name.className = 'eval-name'; name.textContent = g.id;
+          var name = document.createElement('span'); name.className = 'eval-name'; name.textContent = g.label || g.id;
           row.appendChild(name);
           row.appendChild(pill(g.status, g.status === 'pass' ? 'pass' : 'fail'));
           item.appendChild(row);
@@ -1744,7 +1780,7 @@
         ev.categories.forEach(function (c) {
           var item = document.createElement('div'); item.className = 'eval-item';
           var row = document.createElement('div'); row.className = 'eval-row';
-          var name = document.createElement('span'); name.className = 'eval-name'; name.textContent = c.id;
+          var name = document.createElement('span'); name.className = 'eval-name'; name.textContent = c.label || c.id;
           row.appendChild(name);
           var scoreTxt = (c.score != null ? c.score : '—');
           if (c.weighted_score != null) scoreTxt += ' → ' + c.weighted_score + ' pts';
@@ -1765,7 +1801,7 @@
         ev.checklist.forEach(function (c) {
           var item = document.createElement('div'); item.className = 'eval-item';
           var row = document.createElement('div'); row.className = 'eval-row';
-          var name = document.createElement('span'); name.className = 'eval-name'; name.textContent = c.id;
+          var name = document.createElement('span'); name.className = 'eval-name'; name.textContent = c.label || c.id;
           row.appendChild(name);
           row.appendChild(pill(c.status, c.status === 'pass' ? 'pass' : (c.status === 'fail' ? 'fail' : 'warn')));
           item.appendChild(row);
@@ -1795,7 +1831,7 @@
           var stt = String(s.status || '');
           row.appendChild(pill(stt || 'n/a', stt === 'strong' ? 'strong' : (stt === 'unevaluated' ? 'unevaluated' : (stt === 'cut' ? 'cut' : (stt === 'okay' ? 'okay' : 'warn')))));
           item.appendChild(row);
-          if (s.text) { var tx = document.createElement('div'); tx.className = 'stext'; tx.textContent = '“' + s.text + '”'; item.appendChild(tx); }
+          if (s.text) { item.appendChild(sentenceTextNode(s.text, s.highlighted_phrases)); }
           if (s.edit_suggestion) { var es = document.createElement('div'); es.className = 'eval-fix'; es.textContent = 'Edit: ' + s.edit_suggestion; item.appendChild(es); }
           if (s.optional_rewrite) { var or = document.createElement('div'); or.className = 'eval-fix'; or.textContent = 'Rewrite: ' + s.optional_rewrite; item.appendChild(or); }
           sb.appendChild(item);

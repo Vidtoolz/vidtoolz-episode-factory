@@ -257,3 +257,67 @@ test("script-eval: evaluateScriptWithProvider runs the pure pipeline with a stub
   );
   assert.equal(called, false, "provider not called for empty script");
 });
+
+// (15) FINE-TUNE: decimals and version numbers must not split sentences.
+// Every VIDTOOLZ script mentions tool versions (Wan 2.2, FLUX.1, DaVinci
+// 21.0.2) — the old splitter shattered them into fragments, poisoning the
+// sentence IDs the whole evaluation is keyed on.
+test("script-eval: splitter keeps decimals and version numbers whole", () => {
+  const s = ev.splitScriptIntoSentences("Wan 2.2 renders fast. FLUX.1 makes the plates. DaVinci 21.0.2 is stable.");
+  assert.deepEqual(s.map((x) => x.text), [
+    "Wan 2.2 renders fast.",
+    "FLUX.1 makes the plates.",
+    "DaVinci 21.0.2 is stable.",
+  ]);
+  const t = ev.splitScriptIntoSentences("It took 2.5 seconds! Then done.");
+  assert.deepEqual(t.map((x) => x.text), ["It took 2.5 seconds!", "Then done."]);
+  // Plain sentences still split normally.
+  assert.equal(ev.splitScriptIntoSentences("One. Two.").length, 2);
+});
+
+// (16) FINE-TUNE: 0–10 scale confusion is detected and corrected (with warning).
+// A model that scores 8/10 while saying "pass" everywhere meant 80/100 — the
+// old code silently produced total ~8/100 -> false REWRITE.
+test("script-eval: all-≤10 category scores with pass statuses are read as a 0–10 scale", () => {
+  const sentences = ev.splitScriptIntoSentences("Hook. Claim.");
+  const parsed = fullModelOutput([1, 2]);
+  parsed.categories = parsed.categories.map((c) => Object.assign({}, c, { score: 9, status: "pass" }));
+  const scored = ev.scoreScriptEvaluation(ev.normalizeScriptEvaluation(parsed, sentences));
+  assert.equal(scored.total_score, 90, "9/10 across the board reads as 90/100");
+  assert.equal(scored.verdict, "PRODUCE");
+  assert.ok(scored.warnings.some((w) => /0–10 scale/.test(w)));
+});
+
+// (16b) negative control: a genuinely terrible script (low scores, fail
+// statuses) is NOT rescaled — the guard requires mostly-pass statuses.
+test("script-eval: low scores with fail statuses are NOT rescaled", () => {
+  const sentences = ev.splitScriptIntoSentences("Hook. Claim.");
+  const parsed = fullModelOutput([1, 2]);
+  parsed.categories = parsed.categories.map((c) => Object.assign({}, c, { score: 5, status: "fail" }));
+  const scored = ev.scoreScriptEvaluation(ev.normalizeScriptEvaluation(parsed, sentences));
+  assert.equal(scored.total_score, 5, "5/100 stays 5/100 when statuses say fail");
+  assert.equal(scored.verdict, "REWRITE");
+  assert.ok(!scored.warnings.some((w) => /0–10 scale/.test(w)));
+});
+
+// (16c) sentence scores get the same scale sniff (display-level).
+test("script-eval: all-≤10 sentence scores with strong statuses are rescaled", () => {
+  const sentences = ev.splitScriptIntoSentences("Hook. Claim.");
+  const parsed = fullModelOutput([1, 2]);
+  parsed.sentences = parsed.sentences.map((s) => Object.assign({}, s, { score: 8, status: "strong" }));
+  const norm = ev.normalizeScriptEvaluation(parsed, sentences);
+  assert.ok(norm.sentences.every((s) => s.score === 80));
+  assert.ok(norm.warnings.some((w) => /sentence scores looked like a 0–10 scale/.test(w)));
+});
+
+// (17) FINE-TUNE: a matched category with no numeric score warns instead of
+// silently contributing 0 points.
+test("script-eval: category present without a numeric score warns", () => {
+  const sentences = ev.splitScriptIntoSentences("Hook. Claim.");
+  const parsed = fullModelOutput([1, 2]);
+  parsed.categories = parsed.categories.map((c) =>
+    (c.id === "core_claim" ? Object.assign({}, c, { score: "solid" }) : c));
+  const norm = ev.normalizeScriptEvaluation(parsed, sentences);
+  assert.ok(norm.warnings.some((w) => /core_claim.*no numeric score/.test(w)));
+  assert.equal(norm.categories.find((c) => c.id === "core_claim").score, 0);
+});

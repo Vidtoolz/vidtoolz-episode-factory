@@ -104,6 +104,8 @@ function normStatus(v, allowed, fallback) {
 
 // ── deterministic sentence splitter (backend owns the IDs) ───────────────────
 
+const DOT_SENTINEL = '';
+
 function splitScriptIntoSentences(scriptText) {
   const text = String(scriptText == null ? '' : scriptText).replace(/\r\n?/g, '\n').trim();
   if (!text) return [];
@@ -113,9 +115,15 @@ function splitScriptIntoSentences(scriptText) {
   text.split('\n').forEach((line) => {
     const trimmedLine = line.trim();
     if (!trimmedLine) return;
-    const matches = trimmedLine.match(/[^.!?]+[.!?]+|[^.!?]+$/g);
-    if (!matches) { pieces.push(trimmedLine); return; }
-    matches.forEach((m) => { const t = m.trim(); if (t) pieces.push(t); });
+    // A dot immediately followed by a digit is never a sentence end — it is a
+    // decimal or version number ("2.5 seconds", "Wan 2.2", "FLUX.1",
+    // "DaVinci 21.0.2"). Protect it so tool-version-heavy scripts don't
+    // shatter into fragments (real sentence ends have whitespace after).
+    const guarded = trimmedLine.replace(/\.(?=\d)/g, DOT_SENTINEL);
+    const matches = guarded.match(/[^.!?]+[.!?]+|[^.!?]+$/g);
+    const restore = (s) => s.split(DOT_SENTINEL).join('.');
+    if (!matches) { pieces.push(restore(guarded)); return; }
+    matches.forEach((m) => { const t = restore(m).trim(); if (t) pieces.push(t); });
   });
   return pieces.map((t, i) => ({ sentence_id: i + 1, text: t }));
 }
@@ -160,7 +168,7 @@ function buildScriptEvaluationPrompt(scriptText, sentenceList, options = {}) {
     VIDTOOLZ_STANDARD,
     '',
     'Score the whole script /100 using these weighted categories (weights sum to 100).',
-    'Each category returns: score (0–100), status (pass|warn|fail), positives[], negatives[], recommendation (name the fix, not the symptom):',
+    'Each category returns: score (an integer on the 0–100 scale — NEVER 0–10; 8/10 quality must be written as 80), status (pass|warn|fail), positives[], negatives[], recommendation (name the fix, not the symptom):',
     ...catLines,
     '',
     'Judgment & taste is NOT a separate score — it modifies channel_fit, accuracy_trust, and production_feasibility, and it drives the written recommendation (does the script reject bad options, treat generation as material to curate rather than success, keep human approval as the authority?).',
@@ -312,15 +320,30 @@ function normalizeScriptEvaluation(parsed, sentenceList) {
     : (p.categories && typeof p.categories === 'object'
       ? Object.keys(p.categories).map((k) => Object.assign({ id: k }, p.categories[k])) : []);
   const getCat = alignToDefs(catList, ['id', 'name', 'category', 'key']);
+  // Scale sniff: some small models return category scores on a 0–10 scale
+  // despite the 0–100 instruction, silently tanking the total to single
+  // digits. Treat as 0–10 ONLY when every provided score is ≤10, at least one
+  // is >0, and at least half the statuses say pass — a genuinely terrible
+  // script (all ≤10 on the 0–100 scale) fails that last condition.
+  const providedCats = CATEGORIES
+    .map((def, i) => getCat(def.id, i))
+    .filter((src) => src && Number.isFinite(Number(src.score)));
+  const catScaleTen = providedCats.length > 0
+    && providedCats.every((src) => Number(src.score) >= 0 && Number(src.score) <= 10)
+    && providedCats.some((src) => Number(src.score) > 0)
+    && providedCats.filter((src) => normStatus(src.status, GATE_STATUSES, 'warn') === 'pass').length * 2 >= providedCats.length;
+  if (catScaleTen) warnings.push('category scores looked like a 0–10 scale — multiplied by 10');
   const categories = CATEGORIES.map((def, i) => {
     const src = getCat(def.id, i) || {};
     const missing = !getCat(def.id, i);
     if (missing) warnings.push(`category "${def.id}" missing from model output`);
+    else if (!Number.isFinite(Number(src.score))) warnings.push(`category "${def.id}" returned no numeric score — treated as 0`);
+    const rawScore = Number(src.score);
     return {
       id: def.id,
       label: def.label,
       weight: def.weight,
-      score: missing ? 0 : clampScore(src.score),
+      score: missing ? 0 : clampScore(catScaleTen && Number.isFinite(rawScore) ? rawScore * 10 : src.score),
       weighted_score: 0, // filled by scoreScriptEvaluation
       status: normStatus(src.status, GATE_STATUSES, missing ? 'fail' : 'warn'),
       positives: asStringList(src.positives),
@@ -377,6 +400,16 @@ function normalizeScriptEvaluation(parsed, sentenceList) {
     if (!validIds.has(sid)) { warnings.push(`ignored invented sentence id ${sid} from model output`); return; }
     bySentenceId[sid] = s;
   });
+  // Same 0–10 scale sniff for sentence scores (display-only, but the numbers
+  // should not read as 8/100 when the model meant 8/10).
+  const providedSents = Object.keys(bySentenceId)
+    .map((k) => bySentenceId[k])
+    .filter((s) => Number.isFinite(Number(s.score)));
+  const sentScaleTen = providedSents.length > 0
+    && providedSents.every((s) => Number(s.score) >= 0 && Number(s.score) <= 10)
+    && providedSents.some((s) => Number(s.score) > 0)
+    && providedSents.filter((s) => ['strong', 'okay'].indexOf(normStatus(s.status, SENTENCE_STATUSES, '')) !== -1).length * 2 >= providedSents.length;
+  if (sentScaleTen) warnings.push('sentence scores looked like a 0–10 scale — multiplied by 10');
   const sentences = (Array.isArray(sentenceList) ? sentenceList : []).map((base) => {
     const sid = Number(base.sentence_id);
     const src = bySentenceId[sid];
@@ -398,7 +431,7 @@ function normalizeScriptEvaluation(parsed, sentenceList) {
       sentence_id: sid,
       text: base.text, // backend text is authoritative
       role: normStatus(src.role, SENTENCE_ROLES, 'unclear'),
-      score: clampScore(src.score),
+      score: clampScore(sentScaleTen && Number.isFinite(Number(src.score)) ? Number(src.score) * 10 : src.score),
       status: normStatus(src.status, SENTENCE_STATUSES, 'okay'),
       positives: asStringList(src.positives),
       negatives: asStringList(src.negatives),
