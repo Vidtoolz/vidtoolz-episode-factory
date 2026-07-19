@@ -121,6 +121,10 @@ const SUPER_FOCUS_PROVIDERS_API = '/api/super-focus/providers';
 const SUPER_FOCUS_EVALUATE_SCRIPT_API = '/api/super-focus/evaluate-script';
 const SUPER_FOCUS_SCRIPT_EVALUATION_API = '/api/super-focus/script-evaluation';
 const SUPER_FOCUS_OLLAMA_BENCHMARK_API = '/api/super-focus/ollama-benchmark';
+const SUPER_FOCUS_VISUAL_PLAN_API = '/api/super-focus/visual-plan';
+const SUPER_FOCUS_VISUAL_PLAN_READINESS_API = '/api/super-focus/visual-plan/readiness';
+const SUPER_FOCUS_VISUAL_PLAN_ACTION_PREFIX = '/api/super-focus/visual-plan/';
+const SUPER_FOCUS_PROMPTS_FROM_ASSIGNMENTS_API = '/api/super-focus/image-prompts/from-assignments';
 const SUPER_FOCUS_TITLE_API = '/api/super-focus/title';
 const SUPER_FOCUS_SCRIPT_API = '/api/super-focus/script';
 const SUPER_FOCUS_GENERATE_TOPIC_API = '/api/super-focus/generate-topic';
@@ -297,6 +301,7 @@ const projectI2vPrompts = require('./project-i2v-prompts.js');
 const projectVideoReview = require('./project-video-review.js');
 const publishGateDecision = require('./publish-gate-decision.js');
 const superFocus = require('./super-focus.js');
+const superFocusVisualPlan = require('./super-focus-visual-plan.js');
 const superFocusPrompts = require('./super-focus-prompts.js');
 const superFocusMedia = require('./super-focus-media.js');
 const superFocusRouter = require('./super-focus-router.js');
@@ -10768,6 +10773,181 @@ function createServer(options = {}) {
       return;
     }
 
+    // ── Visual Plan (beats + visual assignments) ─────────────────────────
+    // The authoritative upstream object between the saved script and the
+    // image prompts. All mutations are nonce-gated, narrowly validated, and
+    // slot-safe; the operator is the only approval authority.
+
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_VISUAL_PLAN_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+        const state = superFocus.loadProject(id, { root: sfRoot });
+        const plan = superFocus.readVisualPlan(id, { root: sfRoot });
+        sendJSON(res, 200, {
+          project_id: id,
+          visual_plan: plan,
+          readiness: superFocusVisualPlan.computeVisualPlanReadiness(plan, state.script),
+        });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-visual-plan-error');
+      }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_VISUAL_PLAN_READINESS_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+        const state = superFocus.loadProject(id, { root: sfRoot });
+        const plan = superFocus.readVisualPlan(id, { root: sfRoot });
+        sendJSON(res, 200, {
+          project_id: id,
+          readiness: superFocusVisualPlan.computeVisualPlanReadiness(plan, state.script),
+        });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-visual-plan-readiness-error');
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname.startsWith(SUPER_FOCUS_VISUAL_PLAN_ACTION_PREFIX)) {
+      const action = url.pathname.slice(SUPER_FOCUS_VISUAL_PLAN_ACTION_PREFIX.length);
+      const KNOWN_ACTIONS = [
+        'create-beats', 'generate-assignments', 'save-assignment',
+        'approve-assignment', 'reject-assignment', 'revoke-assignment',
+        'clear-assignment', 'set-disposition', 'split-beat', 'merge-beats',
+        'reanchor',
+      ];
+      if (KNOWN_ACTIONS.indexOf(action) === -1) {
+        sendError(res, 404, `Unknown visual-plan action: ${action}`, 'super-focus-visual-plan-error');
+        return;
+      }
+      readJsonBody(req, 1024 * 256)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: `Super Focus visual-plan ${action} API` });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown id
+          const vpApi = superFocusVisualPlan;
+          const existing = superFocus.readVisualPlan(id, { root: sfRoot });
+          const requirePlan = () => {
+            if (!existing) { const e = new Error('No visual plan yet. Create beats from the saved script first.'); e.statusCode = 400; throw e; }
+            return existing;
+          };
+          // Editing/generating/approving against a stale plan writes work that
+          // no longer matches the script — re-anchor first (explicit action).
+          const requireFresh = (plan) => {
+            if (plan.stale) { const e = new Error(plan.stale_reason || 'The visual plan is stale against the saved script. Re-anchor it first.'); e.statusCode = 409; throw e; }
+            return plan;
+          };
+          let plan;
+          let extra = {};
+          if (action === 'create-beats') {
+            plan = vpApi.createBeats(state.script, existing, { replace: payload.replace === true });
+          } else if (action === 'reanchor') {
+            plan = vpApi.reanchorPlan(requirePlan(), state.script);
+          } else if (action === 'set-disposition') {
+            plan = vpApi.setBeatDisposition(requirePlan(), state.script, String(payload.beat_id || ''), payload.disposition);
+          } else if (action === 'split-beat') {
+            plan = vpApi.splitBeat(requirePlan(), state.script, String(payload.beat_id || ''), payload.at);
+          } else if (action === 'merge-beats') {
+            plan = vpApi.mergeWithNext(requirePlan(), state.script, String(payload.beat_id || ''));
+          } else if (action === 'save-assignment') {
+            plan = vpApi.saveAssignment(requireFresh(requirePlan()), state.script, String(payload.beat_id || ''), payload);
+          } else if (action === 'approve-assignment') {
+            plan = vpApi.approveAssignment(requireFresh(requirePlan()), state.script, String(payload.assignment_id || ''));
+          } else if (action === 'reject-assignment') {
+            plan = vpApi.rejectAssignment(requirePlan(), state.script, String(payload.assignment_id || ''));
+          } else if (action === 'revoke-assignment') {
+            plan = vpApi.revokeAssignment(requirePlan(), state.script, String(payload.assignment_id || ''));
+          } else if (action === 'clear-assignment') {
+            plan = vpApi.clearAssignment(requirePlan(), state.script, String(payload.assignment_id || ''), {
+              allowRejected: payload.confirm_rejected === true,
+            });
+          } else if (action === 'generate-assignments') {
+            const fresh = requireFresh(requirePlan());
+            const selection = vpApi.selectBeatsForGeneration(fresh, {
+              beatIds: Array.isArray(payload.beat_ids) ? payload.beat_ids.map(String) : null,
+              batch: Number.isInteger(payload.batch) ? payload.batch : undefined,
+            });
+            plan = fresh;
+            const generated = [];
+            const failures = [];
+            for (const beat of selection.beats) {
+              try {
+                const reqSpec = vpApi.buildAssignmentRequest(state.script, plan, beat);
+                const gen = await superFocusGenerate(
+                  { system: reqSpec.system, user: reqSpec.user, schema: reqSpec.schema, task: 'visual_assignment' },
+                  options
+                );
+                const content = vpApi.parseGeneratedAssignment(gen.content); // 502 → nothing persisted for this beat
+                plan = vpApi.saveAssignment(plan, state.script, beat.beat_id, content, { createdBy: 'local-model' });
+                generated.push({ beat_id: beat.beat_id, order: beat.order });
+              } catch (err) {
+                failures.push({ beat_id: beat.beat_id, order: beat.order, error: err.message });
+              }
+            }
+            extra = { generated, failures, skipped: selection.skipped, truncated: selection.truncated };
+          }
+          const saved = superFocus.saveVisualPlan(id, plan, { root: sfRoot });
+          sendJSON(res, 200, Object.assign({
+            project_id: id,
+            visual_plan: saved.visual_plan,
+            readiness: superFocusVisualPlan.computeVisualPlanReadiness(saved.visual_plan, saved.script),
+          }, extra));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-visual-plan-error'));
+      return;
+    }
+
+    // Create image prompts FROM approved assignments (the approval gate). The
+    // model writes each prompt from the assignment context; ineligible rows
+    // are skipped with explicit reasons; existing rows are never overwritten.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_PROMPTS_FROM_ASSIGNMENTS_API) {
+      readJsonBody(req, 1024 * 256)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus prompts-from-assignments API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          const plan = superFocus.readVisualPlan(id, { root: sfRoot });
+          if (!plan) { const e = new Error('No visual plan yet. Create beats and approve assignments first.'); e.statusCode = 400; throw e; }
+          if (plan.stale) { const e = new Error(plan.stale_reason || 'The visual plan is stale. Re-anchor it before creating prompts.'); e.statusCode = 409; throw e; }
+          const selection = superFocusVisualPlan.selectAssignmentsForPromptCreation(plan, state.image_prompts, {
+            assignmentIds: Array.isArray(payload.assignment_ids) ? payload.assignment_ids.map(String) : null,
+          });
+          const items = [];
+          const failures = [];
+          for (const { beat, assignment } of selection.eligible) {
+            try {
+              const reqSpec = superFocusVisualPlan.buildPromptFromAssignmentRequest(beat, assignment, {});
+              const gen = await superFocusGenerate(
+                { system: reqSpec.system, user: reqSpec.user, task: 'image_prompt_from_assignment' },
+                options
+              );
+              const text = String(gen.content || '')
+                .replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/<think>[\s\S]*$/i, '')
+                .replace(/```[a-zA-Z]*\s*([\s\S]*?)```/g, '$1').replace(/```/g, '')
+                .replace(/^["'\s]+|["'\s]+$/g, '').slice(0, 4000).trim();
+              if (!text) { const e = new Error('The model returned an empty prompt.'); e.statusCode = 502; throw e; }
+              items.push({ text, assignment });
+            } catch (err) {
+              failures.push({ assignment_id: assignment.assignment_id, beat_id: beat.beat_id, error: err.message });
+            }
+          }
+          const result = superFocus.fillPromptsFromAssignments(id, items, {
+            root: sfRoot, capacity: superFocusPrompts.IMAGE_PROMPT_MAX,
+          });
+          sendJSON(res, 200, {
+            project_id: id,
+            placed: result.placed,
+            overflow: result.overflow,
+            skipped: selection.skipped,
+            failures,
+            image_prompts: result.state.image_prompts,
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-prompts-from-assignments-error'));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === SUPER_FOCUS_TITLE_API) {
       readJsonBody(req, 1024 * 256)
         .then((payload) => {
@@ -11341,6 +11521,9 @@ function createServer(options = {}) {
           }
           const reqPrompt = superFocusPrompts.buildI2vPromptRequest({
             script: state.script, imagePrompt: row.text, imageMetadata,
+            assignment: row.assignment_id && state.visual_plan
+              ? (state.visual_plan.assignments || []).find((x) => x.assignment_id === row.assignment_id) || null
+              : null,
           });
           // PRESTO Ollama lane only; unreachable -> canonical 503 blocked state.
           const content = await callPrestoOllamaChat(
@@ -11406,7 +11589,12 @@ function createServer(options = {}) {
           for (const r of eligible) {
             try {
               const imageMetadata = `${superFocusMedia.imageFileName(r.index)} (vertical 1080x1920 still, generator flux-local-vidnux)`;
-              const reqPrompt = superFocusPrompts.buildI2vPromptRequest({ script: state.script, imagePrompt: r.text, imageMetadata });
+              const reqPrompt = superFocusPrompts.buildI2vPromptRequest({
+                script: state.script, imagePrompt: r.text, imageMetadata,
+                assignment: r.assignment_id && state.visual_plan
+                  ? (state.visual_plan.assignments || []).find((x) => x.assignment_id === r.assignment_id) || null
+                  : null,
+              });
               const content = await callPrestoOllamaChat({ system: reqPrompt.system, user: reqPrompt.user }, options);
               const text = superFocusPrompts.cleanI2vPrompt(content);
               if (!text) { errors.push({ index: r.index, error: 'empty i2v prompt' }); continue; }
@@ -14375,6 +14563,9 @@ module.exports = {
   SUPER_FOCUS_OLLAMA_BENCHMARK_API,
   SUPER_FOCUS_EVALUATE_SCRIPT_API,
   SUPER_FOCUS_SCRIPT_EVALUATION_API,
+  SUPER_FOCUS_VISUAL_PLAN_API,
+  SUPER_FOCUS_VISUAL_PLAN_READINESS_API,
+  SUPER_FOCUS_PROMPTS_FROM_ASSIGNMENTS_API,
   SUPER_FOCUS_TITLE_API,
   SUPER_FOCUS_SCRIPT_API,
   SUPER_FOCUS_GENERATE_TOPIC_API,

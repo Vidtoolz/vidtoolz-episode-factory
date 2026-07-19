@@ -196,6 +196,21 @@ const I2V_SYSTEM =
   'Always write in English. Return ONLY the video prompt text — no preamble, no headings, no markdown, no quotes.';
 
 function buildI2vPromptRequest(fields = {}) {
+  // Optional visual-assignment context (Visual Plan rows): the motion must
+  // serve the visual's JOB in the argument, not decorate the frame.
+  const a = fields.assignment && typeof fields.assignment === 'object' ? fields.assignment : null;
+  const assignmentLines = a ? [
+    '',
+    'VISUAL ASSIGNMENT (the job this visual performs — the motion must serve it):',
+    `Assignment: ${String(a.assignment || '').trim()}`,
+    a.viewer_task ? `Viewer task: ${String(a.viewer_task).trim()}` : '',
+    a.visual_function ? `Visual function: ${String(a.visual_function).trim()}` : '',
+    Array.isArray(a.acceptance_criteria) && a.acceptance_criteria.length
+      ? `Acceptance criteria: ${a.acceptance_criteria.join(' · ')}` : '',
+  ].filter(Boolean) : [];
+  const assignmentRequirement = a
+    ? ['- the motion must make the assignment clearer — no generic filler like "subtle cinematic movement", "slow zoom", or "floating particles"']
+    : [];
   const user = [
     'Create one image-to-video prompt for PRESTO ComfyUI based on this still image prompt and the script context.',
     '',
@@ -204,11 +219,13 @@ function buildI2vPromptRequest(fields = {}) {
     '',
     'Image prompt:',
     String(fields.imagePrompt || '').trim(),
+    ...assignmentLines,
     '',
     'Image path/metadata:',
     String(fields.imageMetadata || '(still not generated yet; base the motion on the image prompt)').trim(),
     '',
     'Requirements:',
+    ...assignmentRequirement,
     '- describe motion/evolution from the still image',
     '- keep it grounded and controllable',
     '- no camera chaos',

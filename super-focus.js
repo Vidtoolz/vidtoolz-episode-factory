@@ -17,6 +17,8 @@ const crypto = require('crypto');
 // Shared hash so stale detection here matches the hash the evaluator stores.
 // (script-evaluator.js depends only on `crypto` — no import cycle.)
 const scriptEvaluator = require('./script-evaluator.js');
+// Visual Plan domain logic (pure, no I/O — persistence stays in this module).
+const visualPlan = require('./super-focus-visual-plan.js');
 
 const SCHEMA_VERSION = 1;
 const STATE_FILENAME = 'super-focus.json';
@@ -111,6 +113,10 @@ function emptyState(fields = {}) {
     // Advisory script evaluation (set by the evaluator endpoint). Never approves
     // or advances anything; marked stale (never deleted) when the script changes.
     script_evaluation: null,
+    // Visual Plan (beats + visual assignments) — the authoritative upstream
+    // object image prompts are derived from. null = not created (legacy
+    // projects open unchanged and simply show "not created").
+    visual_plan: null,
     created_at: created,
     updated_at: fields.updated_at || created,
   };
@@ -292,6 +298,12 @@ function saveScript(projectId, script, options = {}) {
     state.script_evaluation.stale = changed;
     if (changed) state.script_evaluation.stale_reason = 'Script changed after this evaluation. Re-run evaluation.';
     else delete state.script_evaluation.stale_reason;
+  }
+  // A saved script change marks the visual plan stale (never deleted; the
+  // operator re-anchors or re-creates beats explicitly). A byte-identical
+  // revert makes it fresh again.
+  if (state.visual_plan) {
+    state.visual_plan = visualPlan.refreshPlanStaleness(state.visual_plan, state.script);
   }
   state.stage = inferStage(state);
   state.updated_at = nowIso();
@@ -527,6 +539,10 @@ function upsertPromptSlot(records, index, text, options = {}) {
     const merged = Object.assign({}, existing || {}, { index: idx, text: clean, status: 'saved' });
     const previousHash = normalizeGeneratedPromptHash(merged.generated_prompt_hash) || knownGeneratedHash;
     if (previousHash) merged.generated_prompt_hash = previousHash;
+    // Assignment-provenance rows: prompt_hash tracks the CURRENT prompt text
+    // (assignment_id/assignment_hash keep the upstream link; the text hash
+    // must not go stale when the operator hand-edits the prompt).
+    if (merged.prompt_hash) merged.prompt_hash = generatedPromptHash(clean);
     if (existing && existing.text !== clean) {
       if (merged.i2v_prompt) merged.i2v_prompt = Object.assign({}, merged.i2v_prompt, { stale: true });
       merged.image_stale = true;
@@ -603,6 +619,98 @@ function hasI2vPrompt(row) {
   return Boolean(row && row.i2v_prompt && typeof row.i2v_prompt.text === 'string' && row.i2v_prompt.text.trim());
 }
 
+// ── Visual Plan persistence (domain logic lives in super-focus-visual-plan.js) ──
+
+// Recompute per-row assignment provenance staleness on the image prompts.
+// Rows created from an assignment carry assignment_id + assignment_hash; when
+// the assignment's content hash changes the row is flagged (never deleted),
+// and a byte-identical assignment revert clears the flag. Legacy rows without
+// provenance are left alone (unknown, never mass-flagged).
+function applyAssignmentStaleness(state) {
+  const plan = state.visual_plan;
+  const rows = Array.isArray(state.image_prompts) ? state.image_prompts : [];
+  rows.forEach((row) => {
+    if (!row || !row.assignment_id) return;
+    const current = plan
+      ? (plan.assignments || []).find((a) => a.assignment_id === row.assignment_id) || null
+      : null;
+    if (!current) {
+      row.assignment_stale = true;
+      row.assignment_stale_reason = 'The assignment this prompt came from no longer exists.';
+      return;
+    }
+    if (row.assignment_hash && current.assignment_hash !== row.assignment_hash) {
+      row.assignment_stale = true;
+      row.assignment_stale_reason = 'Assignment changed — review this prompt against it.';
+    } else {
+      delete row.assignment_stale;
+      delete row.assignment_stale_reason;
+    }
+  });
+}
+
+// Read-only: the plan with freshly computed staleness against the saved script.
+function readVisualPlan(projectId, options = {}) {
+  const state = loadProject(projectId, options);
+  if (!state.visual_plan) return null;
+  return visualPlan.refreshPlanStaleness(state.visual_plan, state.script);
+}
+
+// Persist a plan produced by a domain operation. Validates before writing (a
+// stale plan skips range validation — it references the old script), then
+// refreshes downstream prompt provenance flags.
+function saveVisualPlan(projectId, plan, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  const refreshed = visualPlan.refreshPlanStaleness(plan, state.script);
+  visualPlan.validatePlan(refreshed, refreshed.stale ? undefined : state.script);
+  state.visual_plan = refreshed;
+  applyAssignmentStaleness(state);
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
+// Fill empty image-prompt slots with prompts created FROM approved assignments,
+// carrying full provenance. Existing rows are never touched; new rows land in
+// the first empty index gaps (same slot discipline as fillEmptyImagePrompts).
+function fillPromptsFromAssignments(projectId, items, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  const capacity = Number(options.capacity) > 0 ? Math.round(Number(options.capacity)) : IMAGE_PROMPT_CAPACITY;
+  const byIndex = {};
+  (Array.isArray(state.image_prompts) ? state.image_prompts : []).forEach((r) => {
+    if (r && r.index != null && typeof r.text === 'string' && r.text.trim()) byIndex[r.index] = r;
+  });
+  const emptyIndexes = [];
+  for (let i = 1; i <= capacity; i += 1) if (!byIndex[i]) emptyIndexes.push(i);
+  const clean = (Array.isArray(items) ? items : []).filter((it) => it
+    && typeof it.text === 'string' && it.text.trim()
+    && it.assignment && it.assignment.assignment_id);
+  const placed = [];
+  const overflow = [];
+  clean.forEach((it, k) => {
+    if (k >= emptyIndexes.length) { overflow.push(it.assignment.assignment_id); return; }
+    const idx = emptyIndexes[k];
+    byIndex[idx] = {
+      index: idx,
+      text: it.text.trim(),
+      status: 'saved',
+      prompt_source: 'assignment',
+      assignment_id: it.assignment.assignment_id,
+      assignment_hash: it.assignment.assignment_hash,
+      prompt_hash: generatedPromptHash(it.text.trim()),
+      beat_id: it.assignment.beat_id,
+    };
+    placed.push({ index: idx, assignment_id: it.assignment.assignment_id });
+  });
+  state.image_prompts = Object.values(byIndex).sort((a, b) => a.index - b.index);
+  state.stage = inferStage(state);
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return { state, placed, overflow };
+}
+
 module.exports = {
   SCHEMA_VERSION,
   STATE_FILENAME,
@@ -635,4 +743,7 @@ module.exports = {
   clearImageStale,
   saveScriptEvaluation,
   readScriptEvaluation,
+  readVisualPlan,
+  saveVisualPlan,
+  fillPromptsFromAssignments,
 };
