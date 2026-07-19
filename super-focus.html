@@ -240,6 +240,21 @@
     .pill.unevaluated { color: var(--muted); }
     .phrase-pos { background: rgba(63,185,80,.18); border-bottom: 1px solid #3fb950; border-radius: 2px; }
     .phrase-neg { background: rgba(248,81,73,.16); border-bottom: 1px solid #f85149; border-radius: 2px; }
+    /* Visual Plan: compact beat list + expandable detail editor */
+    .vp-row { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; margin: 6px 0; flex-wrap: wrap; }
+    .vp-row.vp-stale { border-color: #6b5320; }
+    .vp-num { font-weight: 700; color: var(--muted); min-width: 22px; }
+    .vp-excerpt { flex: 1 1 260px; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .vp-row select { font-size: 12px; background: #0d1117; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 2px 4px; }
+    .vp-detail { width: 100%; border-top: 1px dashed var(--border); margin-top: 6px; padding-top: 8px; display: grid; gap: 6px; }
+    .vp-detail .beat-text { font-size: 13px; color: var(--muted); white-space: pre-wrap; }
+    .vp-detail textarea, .vp-detail input[type=text] { width: 100%; box-sizing: border-box; background: #0d1117; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px; font-size: 13px; font-family: inherit; }
+    .vp-detail label { font-size: 12px; color: var(--muted); margin: 0; }
+    .vp-summary-chips { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 6px 0; }
+    .vp-next { color: var(--text); }
+    .passign { grid-column: 1 / -1; font-size: 12px; color: var(--muted); border-left: 3px solid var(--border); padding: 2px 8px; margin: 2px 0; }
+    .passign.stale { border-left-color: #d29922; }
+    .passign .pa-line { white-space: pre-wrap; }
     .eval-pos { color: var(--ok); }
     .eval-neg { color: #f85149; }
     .eval-warn { color: #e3b341; }
@@ -347,6 +362,23 @@
         <div id="eval-stale" class="stale-banner hidden">⚠ Script changed after this evaluation — re-run to refresh.</div>
         <div id="script-eval-panel" class="eval-panel"><p class="eval-empty">No script evaluation yet. Save a script, then click Evaluate.</p></div>
         <div class="later-note">Reads the saved script only; unsaved edits are ignored. The verdict is guidance for you — it does not gate or advance the project.</div>
+      </div>
+
+      <!-- 2c. Visual Plan — the job each visual performs, decided before prompts -->
+      <div class="section" id="visual-plan-section" data-section="visual-plan">
+        <div class="step">Plan</div>
+        <h2>Visual Plan <span class="eval-advisory">— a prompt says what to generate; an assignment says what job the visual must do</span></h2>
+        <div class="row">
+          <button class="btn primary" id="vp-create-beats">Create beats from saved script</button>
+          <button class="btn" id="vp-generate">Generate missing assignments (3)</button>
+          <button class="btn hidden" id="vp-reanchor">Re-anchor to saved script</button>
+          <button class="btn" id="vp-create-prompts">Create prompts from approved assignments</button>
+          <span class="save-state" id="vp-status"></span>
+        </div>
+        <div class="stale-banner hidden" id="vp-stale">⚠ Script changed after this plan — re-anchor it, or re-create beats.</div>
+        <div class="vp-summary-chips" id="vp-chips"></div>
+        <div id="vp-list"><p class="eval-empty">No visual plan yet. Save a script, then create beats.</p></div>
+        <div class="later-note">Approve an assignment before it can create an image prompt. Nothing here overwrites your work: generation fills only missing assignments, and edits mark downstream prompts for review instead of changing them.</div>
       </div>
 
       <!-- 3. Main image prompts -->
@@ -564,7 +596,7 @@
     // step only toggles CSS visibility (display:none) of its body: it never
     // rebuilds rows, reloads from disk, resets inputs, or calls any API, so
     // unsaved script/prompt edits always survive a toggle.
-    var SECTION_KEYS = ['title', 'script', 'script-eval', 'image-prompts', 'images', 'infographics', 'i2v', 'videos', 'continue'];
+    var SECTION_KEYS = ['title', 'script', 'script-eval', 'visual-plan', 'image-prompts', 'images', 'infographics', 'i2v', 'videos', 'continue'];
     var lastEvalSummary = ''; // set by renderScriptEvaluation for the collapsed summary
     var lastSavedScript = ''; // the PERSISTED script — the evaluator reads this, not the textarea
 
@@ -662,6 +694,8 @@
         if (lastEvalSummary) txt += ' · ' + lastEvalSummary;
       } else if (key === 'script-eval') {
         txt = lastEvalSummary || 'Not evaluated';
+      } else if (key === 'visual-plan') {
+        txt = lastVpSummary || 'Not created';
       } else if (key === 'image-prompts') {
         txt = countFilled('#imgp-list .pinput') + ' / ' + IMG_MAX + ' prompts';
       } else if (key === 'images') {
@@ -1001,6 +1035,12 @@
           var text = rec ? (rec.text || '') : '';
           var row = document.createElement('div');
           row.className = 'prompt-row' + (text ? ' filled' : '');
+          // Assignment provenance (visual-plan rows only; infographic records
+          // never carry these fields). Rendered by decoratePromptProvenance().
+          if (rec && rec.assignment_id) {
+            row.setAttribute('data-assignment-id', rec.assignment_id);
+            if (rec.assignment_stale) row.setAttribute('data-assignment-stale', '1');
+          }
           var num = document.createElement('div'); num.className = 'pnum'; num.textContent = index;
           var ta = document.createElement('textarea');
           ta.className = 'pinput'; ta.value = text; ta.setAttribute('aria-label', 'Prompt ' + index);
@@ -1147,6 +1187,8 @@
       updateEvalButton();
       renderScriptEvaluation(null); // reset panel, then load persisted evaluation (if any)
       loadScriptEvaluation();
+      VP.expanded = {};
+      loadVisualPlan(); // Visual Plan + prompt provenance decoration
       // Operator UI state (browser-local, per project): restore collapsed
       // sections and the script full-height preference. These only toggle CSS
       // visibility/height — they never reload state or reset field values.
@@ -1601,6 +1643,7 @@
         // (or disables) the Evaluate button. Reflect both from the backend.
         updateEvalButton();
         loadScriptEvaluation();
+        loadVisualPlan(); // saved script change may stale the visual plan
         updateSectionSummary('script');
       }).catch(function () { setStatus(document.getElementById('script-status'), 'Save failed', true); });
     });
@@ -1885,6 +1928,329 @@
         renderScriptEvaluation(ev, d && d.stale);
         setStatus(el, 'Evaluated ✓ — ' + (ev && ev.total_score != null ? ev.total_score + '/100 · ' : '') + (ev && ev.verdict ? ev.verdict : '') + ' (advisory)', false);
       }).catch(function () { stop(); btn.classList.remove('busy'); updateEvalButton(); setStatus(el, 'Evaluation failed', true); });
+    });
+
+    // ---- Visual Plan (beats + visual assignments; approval gates prompts) ----
+    var VP_API = '/api/super-focus/visual-plan';
+    var VP = { plan: null, readiness: null, expanded: {} };
+    var lastVpSummary = '';
+    var VP_FUNCTIONS = ['clarify', 'prove', 'demonstrate', 'contrast', 'intensify', 'structure', 'orient', 'illustrate', 'reset_attention', 'establish_mood', 'custom'];
+    var VP_MEDIA = ['generated_still', 'image_to_video', 'infographic', 'text_graphic', 'screen_capture', 'existing_footage', 'reusable_motif', 'presenter_only'];
+    var VP_DISPOSITIONS = ['visual_required', 'visual_optional', 'presenter_only', 'reuse_previous', 'text_graphic', 'unresolved'];
+    function vpLabel(v) { return String(v || '').replace(/_/g, ' '); }
+
+    function vpAssignmentFor(beatId) {
+      if (!VP.plan) return null;
+      return (VP.plan.assignments || []).find(function (a) { return a.beat_id === beatId; }) || null;
+    }
+
+    function vpStatusEl() { return document.getElementById('vp-status'); }
+
+    function loadVisualPlan() {
+      if (!currentId) { VP.plan = null; VP.readiness = null; renderVisualPlan(); return Promise.resolve(); }
+      return apiGet(VP_API + '?id=' + encodeURIComponent(currentId)).then(function (res) {
+        var d = res.ok ? unwrap(res.body) : null;
+        VP.plan = d ? d.visual_plan : null;
+        VP.readiness = d ? d.readiness : null;
+        renderVisualPlan();
+        decoratePromptProvenance();
+      }).catch(function () { VP.plan = null; VP.readiness = null; renderVisualPlan(); });
+    }
+
+    function vpPost(action, body, busyBtn) {
+      var el = vpStatusEl();
+      if (busyBtn) busyBtn.disabled = true;
+      setStatus(el, 'Working…');
+      return apiPost(VP_API + '/' + action, Object.assign({ id: currentId }, body || {})).then(function (res) {
+        if (busyBtn) busyBtn.disabled = false;
+        if (!res.ok) {
+          setStatus(el, (res.body && res.body.error) || 'Action failed', true);
+          return null;
+        }
+        var d = unwrap(res.body);
+        VP.plan = d.visual_plan; VP.readiness = d.readiness;
+        renderVisualPlan();
+        decoratePromptProvenance();
+        setStatus(el, '');
+        return d;
+      }).catch(function () {
+        if (busyBtn) busyBtn.disabled = false;
+        setStatus(el, 'Action failed', true);
+        return null;
+      });
+    }
+
+    function vpPill(text, cls) {
+      var s = document.createElement('span');
+      s.className = 'pill' + (cls ? ' ' + cls : '');
+      s.textContent = text;
+      return s;
+    }
+
+    function vpSelect(values, current, ariaLabel) {
+      var sel = document.createElement('select');
+      sel.setAttribute('aria-label', ariaLabel);
+      values.forEach(function (v) {
+        var o = document.createElement('option');
+        o.value = v; o.textContent = vpLabel(v);
+        if (v === current) o.selected = true;
+        sel.appendChild(o);
+      });
+      return sel;
+    }
+
+    function vpStatusPill(beat, a) {
+      if (beat.visual_disposition === 'presenter_only') return vpPill('Presenter only', 'unevaluated');
+      if (beat.visual_disposition === 'reuse_previous') return vpPill('Reuse previous', 'unevaluated');
+      if (!a) return vpPill('No assignment', 'warn');
+      if (a.stale) return vpPill('Needs review', 'warn');
+      if (a.status === 'approved') return vpPill('Approved', 'pass');
+      if (a.status === 'rejected') return vpPill('Rejected', 'fail');
+      return vpPill('Needs review', 'warn');
+    }
+
+    // One editable detail block (rendered only for the expanded beat).
+    function vpDetail(beat, a) {
+      var box = document.createElement('div'); box.className = 'vp-detail';
+      var bt = document.createElement('div'); bt.className = 'beat-text'; bt.textContent = beat.script_text;
+      box.appendChild(bt);
+
+      var assignLabel = document.createElement('label'); assignLabel.textContent = 'What must the visual show?';
+      var assignTa = document.createElement('textarea'); assignTa.rows = 2;
+      assignTa.value = a ? (a.assignment || '') : '';
+      box.appendChild(assignLabel); box.appendChild(assignTa);
+
+      var row1 = document.createElement('div'); row1.className = 'row';
+      var fnSel = vpSelect(VP_FUNCTIONS, a ? a.visual_function : 'illustrate', 'Visual function');
+      var customIn = document.createElement('input'); customIn.type = 'text'; customIn.placeholder = 'Custom function name';
+      customIn.value = a && a.visual_function_custom ? a.visual_function_custom : '';
+      customIn.style.display = (a && a.visual_function === 'custom') ? '' : 'none';
+      fnSel.addEventListener('change', function () { customIn.style.display = fnSel.value === 'custom' ? '' : 'none'; });
+      var mediaSel = vpSelect(VP_MEDIA, a ? a.media_type : 'image_to_video', 'Media type');
+      row1.appendChild(fnSel); row1.appendChild(customIn); row1.appendChild(mediaSel);
+      box.appendChild(row1);
+
+      var why = document.createElement('details');
+      var whySum = document.createElement('summary'); whySum.textContent = 'Why this visual?';
+      why.appendChild(whySum);
+      var vtLabel = document.createElement('label'); vtLabel.textContent = 'What should the viewer understand?';
+      var vtIn = document.createElement('input'); vtIn.type = 'text'; vtIn.value = a ? (a.viewer_task || '') : '';
+      var critLabel = document.createElement('label'); critLabel.textContent = 'Acceptance criteria (one per line)';
+      var critTa = document.createElement('textarea'); critTa.rows = 3;
+      critTa.value = a && a.acceptance_criteria ? a.acceptance_criteria.join('\n') : '';
+      var notesLabel = document.createElement('label'); notesLabel.textContent = 'Notes';
+      var notesIn = document.createElement('input'); notesIn.type = 'text'; notesIn.value = a ? (a.operator_notes || '') : '';
+      why.appendChild(vtLabel); why.appendChild(vtIn);
+      why.appendChild(critLabel); why.appendChild(critTa);
+      why.appendChild(notesLabel); why.appendChild(notesIn);
+      box.appendChild(why);
+
+      if (a && a.stale && a.stale_reason) {
+        var warn = document.createElement('div'); warn.className = 'stale-banner'; warn.textContent = '⚠ ' + a.stale_reason;
+        box.appendChild(warn);
+      }
+
+      var actions = document.createElement('div'); actions.className = 'row';
+      function actionBtn(label, primary, handler) {
+        var b = document.createElement('button');
+        b.className = 'btn' + (primary ? ' primary' : '');
+        b.textContent = label;
+        b.addEventListener('click', function () { handler(b); });
+        actions.appendChild(b);
+        return b;
+      }
+      actionBtn('Save', true, function (b) {
+        vpPost('save-assignment', {
+          beat_id: beat.beat_id,
+          assignment: assignTa.value,
+          visual_function: fnSel.value,
+          visual_function_custom: customIn.value,
+          media_type: mediaSel.value,
+          viewer_task: vtIn.value,
+          acceptance_criteria: critTa.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean),
+          operator_notes: notesIn.value,
+        }, b);
+      });
+      if (a && a.status === 'draft' && !a.stale) {
+        actionBtn('Approve', false, function (b) { vpPost('approve-assignment', { assignment_id: a.assignment_id }, b); });
+      }
+      if (a && a.status === 'draft') {
+        actionBtn('Reject', false, function (b) { vpPost('reject-assignment', { assignment_id: a.assignment_id }, b); });
+        actionBtn('Clear draft', false, function (b) {
+          if (!confirm('Clear this draft assignment?')) return;
+          vpPost('clear-assignment', { assignment_id: a.assignment_id }, b);
+        });
+      }
+      if (a && a.status === 'approved') {
+        actionBtn('Revoke approval', false, function (b) { vpPost('revoke-assignment', { assignment_id: a.assignment_id }, b); });
+      }
+      if (a && a.status === 'rejected') {
+        actionBtn('Clear rejected', false, function (b) {
+          if (!confirm('Clear the rejected assignment? This removes the record.')) return;
+          vpPost('clear-assignment', { assignment_id: a.assignment_id, confirm_rejected: true }, b);
+        });
+      }
+      if (!a) {
+        actionBtn('Generate assignment', false, function (b) { vpPost('generate-assignments', { beat_ids: [beat.beat_id] }, b); });
+      }
+      actionBtn('Split beat', false, function (b) {
+        var words = prompt('Paste the first few words where the SECOND beat should start:');
+        if (!words || !words.trim()) return;
+        var at = beat.script_text.indexOf(words.trim());
+        if (at <= 0) { setStatus(vpStatusEl(), 'Text not found inside this beat.', true); return; }
+        vpPost('split-beat', { beat_id: beat.beat_id, at: beat.start_char + at }, b);
+      });
+      actionBtn('Merge with next', false, function (b) {
+        if (!confirm('Merge this beat with the next one?')) return;
+        vpPost('merge-beats', { beat_id: beat.beat_id }, b);
+      });
+      box.appendChild(actions);
+      return box;
+    }
+
+    function renderVisualPlan() {
+      var list = document.getElementById('vp-list');
+      var chips = document.getElementById('vp-chips');
+      var staleBanner = document.getElementById('vp-stale');
+      var reanchorBtn = document.getElementById('vp-reanchor');
+      if (!list) return;
+      list.innerHTML = ''; chips.innerHTML = '';
+      var plan = VP.plan; var r = VP.readiness;
+      var stale = Boolean(plan && plan.stale);
+      staleBanner.classList.toggle('hidden', !stale);
+      reanchorBtn.classList.toggle('hidden', !stale);
+      document.getElementById('vp-create-beats').textContent = plan ? 'Re-create beats from saved script' : 'Create beats from saved script';
+      if (!plan) {
+        lastVpSummary = 'Not created';
+        updateSectionSummary('visual-plan');
+        var p = document.createElement('p'); p.className = 'eval-empty';
+        p.textContent = 'No visual plan yet. Save a script, then create beats.';
+        list.appendChild(p);
+        return;
+      }
+      if (r) {
+        lastVpSummary = r.assignments_approved + '/' + r.assignments_required + ' approved' + (stale ? ' (stale)' : (r.ready ? ' · ready' : ''));
+        updateSectionSummary('visual-plan');
+        [r.total_beats + ' beats', r.presenter_only + ' presenter-only',
+         r.assignments_approved + '/' + r.assignments_required + ' approved',
+         r.assignments_draft + ' to review', r.assignments_rejected + ' rejected',
+         r.uncovered_beats + ' without assignment'].forEach(function (t) {
+          var c = document.createElement('span'); c.textContent = t; chips.appendChild(c);
+        });
+        var next = document.createElement('span'); next.className = 'vp-next';
+        next.textContent = 'Next: ' + r.next_action;
+        chips.appendChild(next);
+      }
+      (plan.beats || []).forEach(function (beat) {
+        var a = vpAssignmentFor(beat.beat_id);
+        var row = document.createElement('div');
+        row.className = 'vp-row' + ((beat.stale || (a && a.stale)) ? ' vp-stale' : '');
+        var num = document.createElement('span'); num.className = 'vp-num'; num.textContent = beat.order;
+        row.appendChild(num);
+        var excerpt = document.createElement('span'); excerpt.className = 'vp-excerpt';
+        excerpt.textContent = a && a.assignment ? a.assignment : beat.script_text;
+        excerpt.title = beat.script_text;
+        row.appendChild(excerpt);
+        var dispSel = vpSelect(VP_DISPOSITIONS, beat.visual_disposition, 'Visual disposition');
+        dispSel.addEventListener('change', function () {
+          vpPost('set-disposition', { beat_id: beat.beat_id, disposition: dispSel.value });
+        });
+        row.appendChild(dispSel);
+        if (a) row.appendChild(vpPill(vpLabel(a.media_type), 'unevaluated'));
+        row.appendChild(vpStatusPill(beat, a));
+        var editBtn = document.createElement('button'); editBtn.className = 'btn';
+        editBtn.textContent = VP.expanded[beat.beat_id] ? 'Close' : 'Edit';
+        editBtn.addEventListener('click', function () {
+          VP.expanded[beat.beat_id] = !VP.expanded[beat.beat_id];
+          renderVisualPlan();
+        });
+        row.appendChild(editBtn);
+        if (a && a.status === 'draft' && !a.stale && !VP.expanded[beat.beat_id]) {
+          var quickApprove = document.createElement('button'); quickApprove.className = 'btn primary'; quickApprove.textContent = 'Approve';
+          quickApprove.addEventListener('click', function () { vpPost('approve-assignment', { assignment_id: a.assignment_id }, quickApprove); });
+          row.appendChild(quickApprove);
+        }
+        if (VP.expanded[beat.beat_id]) row.appendChild(vpDetail(beat, a));
+        list.appendChild(row);
+      });
+    }
+
+    // Upstream intent beside each prompt row created from an assignment: the
+    // operator can tell a weak assignment from a weak translation from a weak
+    // image. Renders with textContent only.
+    function decoratePromptProvenance() {
+      var grid = document.getElementById('imgp-list');
+      if (!grid) return;
+      grid.querySelectorAll('.prompt-row[data-assignment-id]').forEach(function (row) {
+        var old = row.querySelector('.passign');
+        if (old) old.remove();
+        var aid = row.getAttribute('data-assignment-id');
+        var a = VP.plan ? (VP.plan.assignments || []).find(function (x) { return x.assignment_id === aid; }) : null;
+        var stale = row.getAttribute('data-assignment-stale') === '1';
+        var box = document.createElement('div');
+        box.className = 'passign' + (stale ? ' stale' : '');
+        function line(label, text) {
+          if (!text) return;
+          var d = document.createElement('div'); d.className = 'pa-line';
+          d.textContent = label + ': ' + text;
+          box.appendChild(d);
+        }
+        if (!a) {
+          line('From assignment', aid + (VP.plan ? ' (no longer in the plan)' : ''));
+        } else {
+          var beat = (VP.plan.beats || []).find(function (b) { return b.beat_id === a.beat_id; });
+          if (beat) line('Beat ' + beat.order, beat.script_text);
+          line('Assignment', a.assignment);
+          line('Job', vpLabel(a.visual_function) + ' · ' + vpLabel(a.media_type) + ' · ' + (a.status === 'approved' ? 'Approved' : a.status));
+          if (a.acceptance_criteria && a.acceptance_criteria.length) line('Criteria', a.acceptance_criteria.join(' · '));
+        }
+        if (stale) line('⚠', 'Assignment changed — prompt needs review');
+        row.appendChild(box);
+      });
+    }
+
+    document.getElementById('vp-create-beats').addEventListener('click', function () {
+      if (!currentId) return;
+      var replace = Boolean(VP.plan);
+      if (replace && !confirm('Re-create beats from the saved script? Existing assignments are kept only via Re-anchor; this replaces the beat list.')) return;
+      vpPost('create-beats', replace ? { replace: true } : {}, this);
+    });
+    document.getElementById('vp-generate').addEventListener('click', function () {
+      if (!currentId) return;
+      var btn = this; var el = vpStatusEl();
+      var stop = elapsedTicker(el, 'Writing visual assignments (local Ollama on vidnux)');
+      vpPost('generate-assignments', {}, btn).then(function (d) {
+        stop();
+        if (!d) return;
+        var bits = [];
+        if (d.generated && d.generated.length) bits.push(d.generated.length + ' written');
+        if (d.failures && d.failures.length) bits.push(d.failures.length + ' failed');
+        if (d.skipped && d.skipped.length) bits.push(d.skipped.length + ' skipped');
+        setStatus(el, bits.join(' · ') || 'Nothing to generate', d.failures && d.failures.length > 0);
+      });
+    });
+    document.getElementById('vp-reanchor').addEventListener('click', function () {
+      if (!currentId) return;
+      vpPost('reanchor', {}, this);
+    });
+    document.getElementById('vp-create-prompts').addEventListener('click', function () {
+      if (!currentId) return;
+      var btn = this; var el = vpStatusEl();
+      btn.disabled = true;
+      var stop = elapsedTicker(el, 'Writing prompts from approved assignments (local Ollama)');
+      apiPost('/api/super-focus/image-prompts/from-assignments', { id: currentId }).then(function (res) {
+        stop(); btn.disabled = false;
+        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Failed', true); return; }
+        var d = unwrap(res.body);
+        var bits = [];
+        bits.push((d.placed ? d.placed.length : 0) + ' prompt(s) created');
+        if (d.skipped && d.skipped.length) bits.push(d.skipped.length + ' skipped (' + d.skipped.slice(0, 3).map(function (s) { return s.reason; }).join('; ') + (d.skipped.length > 3 ? '; …' : '') + ')');
+        if (d.failures && d.failures.length) bits.push(d.failures.length + ' failed');
+        setStatus(el, bits.join(' · '), false);
+        renderPromptGrid('imgp-list', d.image_prompts || [], IMG_MAX, IMGP_SAVE_API, true, 'imgp-thumb-');
+        decoratePromptProvenance();
+        updateSectionSummary('image-prompts');
+      }).catch(function () { stop(); btn.disabled = false; setStatus(el, 'Failed', true); });
     });
 
     // Keep the UI obviously alive during a long synchronous generation by ticking

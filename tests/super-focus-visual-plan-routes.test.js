@@ -339,6 +339,45 @@ test('vp-routes: script/HTML content in assignment fields is stored inert (no ex
   } finally { await close(server); }
 });
 
+// ---- UI wiring (static page assertions, mirroring the evaluator pattern) ----
+
+test('vp-ui: Visual Plan section sits between Script evaluation and Image prompts', async () => {
+  const { server } = await projectServer(null);
+  try {
+    const res = await request(server, '/super-focus.html');
+    assert.equal(res.statusCode, 200);
+    const evalAt = res.raw.indexOf('data-section="script-eval"');
+    const vpAt = res.raw.indexOf('data-section="visual-plan"');
+    const promptsAt = res.raw.indexOf('data-section="image-prompts"');
+    assert.ok(evalAt > -1 && vpAt > -1 && promptsAt > -1);
+    assert.ok(evalAt < vpAt && vpAt < promptsAt, 'Visual Plan between Script and Image Prompts');
+    // Operator-facing wording and the central product rule on the page.
+    assert.match(res.raw, /a prompt says what to generate; an assignment says what job the visual must do/i);
+    assert.match(res.raw, /Why this visual\?/);
+    assert.match(res.raw, /What should the viewer understand\?/);
+    assert.match(res.raw, /Create prompts from approved assignments/);
+    // Safe rendering: the VP renderer builds DOM nodes; the only innerHTML
+    // uses are the empty-container resets.
+    assert.match(res.raw, /excerpt\.textContent = /);
+    assert.match(res.raw, /d\.className = 'pa-line';\s*\n\s*d\.textContent = /);
+    // All endpoints wired.
+    assert.match(res.raw, /\/api\/super-focus\/visual-plan/);
+    assert.match(res.raw, /\/api\/super-focus\/image-prompts\/from-assignments/);
+    // Provenance decoration hook present on prompt rows.
+    assert.match(res.raw, /data-assignment-id/);
+    assert.match(res.raw, /decoratePromptProvenance/);
+  } finally { await close(server); }
+});
+
+test('vp-ui: visual-plan section participates in collapse summaries', async () => {
+  const { server } = await projectServer(null);
+  try {
+    const res = await request(server, '/super-focus.html');
+    assert.match(res.raw, /'script-eval', 'visual-plan', 'image-prompts'/);
+    assert.match(res.raw, /lastVpSummary \|\| 'Not created'/);
+  } finally { await close(server); }
+});
+
 test('vp-routes: hand-editing a provenance prompt row keeps the assignment link and refreshes prompt_hash', async () => {
   const { server, id, root } = await projectServer(smartFakeFetch());
   try {

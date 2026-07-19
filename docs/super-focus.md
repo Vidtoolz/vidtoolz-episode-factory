@@ -15,7 +15,31 @@ A project is one linear sheet, in order:
 
 1. **Title** — type one, or **Generate a topic for VIDTOOLZ** (local Ollama). Save to keep.
 2. **Script / voiceover** — write one, or **Generate** from the saved title (local Ollama). Save to keep.
-3. **Main image prompts** — choose a **Prompt count** (1–100, default 8) and generate from the saved script; all 100 slots stay editable (Copy / Save changes). Prompts are background-plate style: no text, no people, clean lower-right space for a presenter overlay.
+3. **Visual Plan** — beats + visual assignments, created from the **saved** script.
+   The central rule: *a prompt says what to generate; a visual assignment says
+   what job the visual must perform in the argument.* Create beats (version
+   numbers like `Wan 2.2` never split a beat), mark beats presenter-only /
+   reuse-previous, generate missing assignments in small batches (local Ollama,
+   never overwriting existing ones), edit, then **approve** — approval is
+   yours alone; the model never approves anything. Each assignment carries a
+   viewer task, visual function, what the visual must show, acceptance
+   criteria, and a media type (collapsed under **Why this visual?** in the
+   editor). Split/merge beats safely; assignments survive and are flagged
+   **Needs review** instead of being changed. When the saved script changes,
+   the plan is marked stale (never deleted) — **Re-anchor** rebinds unchanged
+   beats and flags the rest.
+4. **Main image prompts** — **Create prompts from approved assignments** writes
+   one prompt per approved, fresh, image-lane assignment (skipped rows always
+   say why: presenter-only, not approved, rejected, prompt already exists, …).
+   Rows created this way show the beat, assignment, and criteria beside the
+   prompt, so a weak assignment, a weak prompt translation, and a weak image
+   stay distinguishable. Editing the assignment later marks the prompt
+   **needs review** — nothing downstream is ever deleted or overwritten;
+   reverting the assignment to byte-identical content clears the flag. The
+   older script-wide **Prompt count** generation (1–100, default 8) still
+   works for projects without a plan; all 100 slots stay editable (Copy /
+   Save changes). Prompts are background-plate style: no text, no people,
+   clean lower-right space for a presenter overlay.
 4. **Generated images** — set **Images to generate** (1–100, default 3) and generate/resume the first N saved prompts (vidnux ComfyUI / FLUX, `--skip-existing`); thumbnails appear inline per row. No need to clear rows to scope a small run.
 5. **Infographic prompts** — choose a **Prompt count** (1–30, default 6) still-infographic prompts from the script (prompt-only).
 6. **Image-to-video prompts** — one per generated image (**Create a video prompt**, PRESTO Ollama lane).
@@ -142,6 +166,21 @@ items, so it is safe to re-run to resume.
 - `POST /generate-images`, `GET /images-status?id=`, `POST /images-cancel`, `GET /image?id=&index=`
 - `POST /generate-i2v-prompt`, `POST /i2v-prompt`
 - `POST /generate-videos` (optional `indexes[]`), `GET /videos-status?id=`, `POST /videos-cancel`, `GET /video?id=&index=`
+- `GET /visual-plan?id=`, `GET /visual-plan/readiness?id=` — the plan with
+  freshly-computed staleness, plus explicit readiness blockers (never a
+  percentage)
+- `POST /visual-plan/<action>` — narrow validated actions: `create-beats`,
+  `generate-assignments` (small batch, missing-only; rejected only when its
+  beat is explicitly selected), `save-assignment`, `approve-assignment`,
+  `reject-assignment`, `revoke-assignment`, `clear-assignment` (rejected needs
+  `confirm_rejected: true`), `set-disposition`, `split-beat`, `merge-beats`,
+  `reanchor`. Editing/generating/approving against a stale plan returns 409.
+- `POST /image-prompts/from-assignments` — the approval gate: writes prompts
+  only from approved, fresh, image-lane assignments into empty slots; every
+  ineligible row is returned in `skipped[]` with its reason. Rows carry
+  `assignment_id` / `assignment_hash` / `prompt_hash` provenance; a later
+  assignment edit flags the row (`assignment_stale`) instead of changing it.
+  Legacy rows without provenance are left alone (unknown, never mass-flagged).
 
 ## After a deploy: restart the cockpit
 
