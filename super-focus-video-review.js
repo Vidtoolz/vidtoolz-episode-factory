@@ -208,7 +208,11 @@ function validateUsableRange(range, observedDurationSeconds) {
 function structurallyValidStoredReview(review) {
   return Boolean(review && typeof review === 'object' && !Array.isArray(review)
     && VIDEO_REVIEW_STATUSES.indexOf(review.status) !== -1
-    && Array.isArray(review.criteria));
+    && Array.isArray(review.criteria)
+    // Entries are dereferenced during derivation — each must be a plain
+    // object (a null/primitive entry crashes the read paths just like a
+    // non-array criteria field did).
+    && review.criteria.every((c) => Boolean(c) && typeof c === 'object' && !Array.isArray(c)));
 }
 
 const MALFORMED_REVIEW_MESSAGE = 'The stored video review record is malformed — start a new review to rebuild it.';

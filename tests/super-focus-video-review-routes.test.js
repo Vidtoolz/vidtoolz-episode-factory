@@ -366,6 +366,17 @@ test('video-review routes: a malformed stored review record fails CLOSED — nev
     assert.equal((await vrPost(server, 'approve', { id, index: 1 })).statusCode, 409);
     assert.equal((await vrPost(server, 'set-criterion', { id, index: 1, criterion_hash: 'a'.repeat(64), result: 'pass' })).statusCode, 409);
     assert.equal((await vrPost(server, 'revoke', { id, index: 1 })).statusCode, 409);
+    // Malformed criteria ENTRIES (valid array, junk elements) fail closed too.
+    const st2 = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+    st2.image_prompts.find((r) => r.index === 1).video_review = {
+      status: 'approved', criteria: [null, 'junk', 42], reviewed_video_hash: 'a'.repeat(64),
+    };
+    fs.writeFileSync(stateFile, JSON.stringify(st2));
+    const g2 = await request(server, `/api/super-focus/video-review?id=${id}`);
+    assert.equal(g2.statusCode, 200, 'junk criteria entries must not 500');
+    const row2 = unwrap(g2).reviews.find((r) => r.index === 1);
+    assert.equal(row2.effective_status, 'review_required');
+    assert.equal(row2.edit.eligible, false);
     // Recovery: start rebuilds a fresh valid review from current truth.
     const restarted = await vrPost(server, 'start', { id, index: 1 });
     assert.equal(restarted.statusCode, 200);

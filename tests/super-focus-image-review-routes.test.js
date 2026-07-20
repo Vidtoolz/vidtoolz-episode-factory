@@ -350,6 +350,18 @@ test('image-review routes: a malformed stored review record fails CLOSED — GET
     // Mutations on the corrupt record are clean 409s, not crashes.
     assert.equal((await irPost(server, 'approve', { id, index: 2 })).statusCode, 409);
     assert.equal((await irPost(server, 'revoke', { id, index: 2 })).statusCode, 409);
+    // Malformed criteria ENTRIES (valid array, junk elements) fail closed too.
+    const st2 = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+    st2.image_prompts.find((r) => r.index === 2).image_review = {
+      status: 'approved', criteria: [null, 'junk', 42], reviewed_image_hash: 'b'.repeat(64),
+    };
+    fs.writeFileSync(stateFile, JSON.stringify(st2));
+    const g2 = await request(server, `/api/super-focus/image-review?id=${id}`);
+    assert.equal(g2.statusCode, 200, 'junk criteria entries must not 500');
+    assert.equal(unwrap(g2).reviews.find((r) => r.index === 2).effective_status, 'review_required');
+    const wb2 = await request(server, `/api/super-focus/image-review-workbench?id=${id}&index=2`);
+    assert.equal(wb2.statusCode, 200, 'workbench must not 500 on junk criteria entries');
+    assert.equal(unwrap(wb2).selected.gate.eligible, false);
     // Recovery: an explicit hash-bound workbench decision rebuilds a fresh
     // valid review from the exact current bytes and approves it.
     const hash = unwrap(wb).selected.image.sha256;
