@@ -158,7 +158,7 @@ settings live in `aigen/image-to-video/profiles.json`; `run-production.py` reads
 them via `--profile`, and the cockpit passes the operator's choice through.
 
 - **`wan22_hq_720p_5s_no_lightx2v`** (recommended, cockpit default): no LightX2V,
-  30 steps, cfg 4, 720×1280 · 25 fps · 101 frames (~4.04 s), clean **motion**
+  30 steps, cfg 4, 720×1280 · 24 fps · 97 frames (~4.04 s), clean **motion**
   prompt + source-image obedience wrapper + people-suppression negative, random
   per-clip seed. Diagnostics proved this removes the recurring hallucinated-person
   artifact (indexes 002/021/025). ~54 min/clip on the RTX 4090 → ~9 h for 10

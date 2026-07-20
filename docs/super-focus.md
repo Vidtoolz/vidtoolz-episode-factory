@@ -294,6 +294,16 @@ falls back to another host or a cloud service. PRESTO is never auto-started.
 | Image-to-video prompts | PRESTO Ollama |
 | Videos | PRESTO ComfyUI / Wan2.2 (`run-production.py`, HQ profile) |
 
+**PRESTO vertical video output** (HQ profile `wan22_hq_720p_5s_no_lightx2v`, the
+Super Focus default): **720 × 1280 (portrait 9:16), 24 fps, 97 frames,
+≈ 4.04 s** per clip (97 = 4×24 + 1, the Wan `length = 4n+1` constraint; 97/24 =
+4.0417 s). The canonical profile + ComfyUI workflow live git-tracked under
+`config/presto/` and are deployed to the VIDNAS Wan lane that `run-production.py`
+reads. This applies to **new** video attempts only — completed clips and
+immutable historical attempts keep their recorded settings and are never
+re-rendered or resized. Visual quality of the new spec is judged by the operator
+on a real generation, not by the system.
+
 Image and video jobs each reuse the single global FLUX / PRESTO lock (one GPU
 job at a time; a second submit returns 409). A batch skips already-finished
 items, so it is safe to re-run to resume.

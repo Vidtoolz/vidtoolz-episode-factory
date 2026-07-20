@@ -46,6 +46,16 @@ The currently-running instance uses exactly `main.py --listen 0.0.0.0 --port 818
     --package <pkg> --comfyui-url http://192.168.50.187:8188 [--dry-run | --status | --limit N]
   ```
 
+## Output spec (HQ profile — the Super Focus default)
+
+`wan22_hq_720p_5s_no_lightx2v` renders **720 × 1280 (portrait 9:16), 24 fps,
+97 frames, ≈ 4.04 s** per clip (97 = 4×24 + 1, Wan `length = 4n+1`). The
+canonical profile + workflow are git-tracked under `config/presto/` and deployed
+to the VIDNAS Wan lane (`image-to-video/profiles.json` +
+`image-to-video/workflows/`) that `run-production.py` reads; PRESTO ComfyUI keeps
+no persistent workflow file — the graph is submitted per job over the API. New
+attempts use this spec; completed clips are never re-rendered.
+
 ## Notes / gotchas
 - Two `python.exe` processes were seen running `main.py --listen 0.0.0.0`; only one can bind `:8188`. If a submit fails to connect, check for a stale duplicate ComfyUI and keep a single instance.
 - Don't start a real Wan job just to test reachability — use `--dry-run`/`--status` or the `curl` checks above.

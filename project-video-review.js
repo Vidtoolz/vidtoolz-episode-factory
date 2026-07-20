@@ -13,11 +13,13 @@
 
 // The Wan2.2 i2v contract every clip is checked against, per video variant
 // (videos/<variant>/ staging folder). 'mp4' = legacy fast lane; 'mp4-hq-720p'
-// = the HQ no-LightX2V lane (720x1280 / 25fps / 101f / ~4.04s).
+// = the HQ no-LightX2V lane (720x1280 / 24fps / 97f / ~4.04s). The HQ numbers
+// mirror the canonical profile in config/presto/profiles.json
+// (wan22_hq_720p_5s_no_lightx2v); keep them in sync when that profile changes.
 const EXPECTED = Object.freeze({ width: 1080, height: 1920, fps: 30, frames: 81, duration: 2.7 });
 const EXPECTED_BY_VARIANT = Object.freeze({
   'mp4': EXPECTED,
-  'mp4-hq-720p': Object.freeze({ width: 720, height: 1280, fps: 25, frames: 101, duration: 4.04 }),
+  'mp4-hq-720p': Object.freeze({ width: 720, height: 1280, fps: 24, frames: 97, duration: 4.04 }),
 });
 const DURATION_TOLERANCE = 0.5; // seconds
 const VALID_DECISIONS = Object.freeze(['unreviewed', 'keep', 'flag', 'reject']);

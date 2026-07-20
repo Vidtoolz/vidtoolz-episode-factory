@@ -120,7 +120,7 @@ function collectLocalImages(packageDir) {
 // variants — an HQ-only package must not report zero local videos.
 const VIDEO_VARIANT_WORKFLOWS = {
   'mp4': 'wan22_i2v_vertical_1080x1920_30fps',
-  'mp4-hq-720p': 'wan22_i2v_vertical_720x1280_25fps_101f_hq_no_lightx2v',
+  'mp4-hq-720p': 'wan22_i2v_vertical_720x1280_24fps_97f_hq_no_lightx2v',
 };
 const SAFE_VARIANT_NAME = /^[A-Za-z0-9._-]+$/;
 

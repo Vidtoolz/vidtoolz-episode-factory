@@ -132,17 +132,21 @@ test("pvr: mp4RelPath accepts a video variant folder", () => {
 test("pvr: expectedForVariant returns the HQ contract for mp4-hq-720p", () => {
   assert.deepEqual(pvr.expectedForVariant("mp4"), pvr.EXPECTED);
   const hq = pvr.expectedForVariant("mp4-hq-720p");
-  assert.deepEqual(hq, { width: 720, height: 1280, fps: 25, frames: 101, duration: 4.04 });
+  assert.deepEqual(hq, { width: 720, height: 1280, fps: 24, frames: 97, duration: 4.04 });
   // Unknown variants fall back to the legacy fast contract.
   assert.deepEqual(pvr.expectedForVariant("nonexistent"), pvr.EXPECTED);
 });
 
 test("pvr: buildValidation validates against a variant-specific expected spec", () => {
   const hq = pvr.expectedForVariant("mp4-hq-720p");
-  const ok = pvr.buildValidation({ width: 720, height: 1280, fps: 25, frames: 101, duration: 4.04 }, hq);
+  const ok = pvr.buildValidation({ width: 720, height: 1280, fps: 24, frames: 97, duration: 4.04 }, hq);
   assert.equal(ok.warnings.length, 0, `HQ-spec clip must not warn: ${ok.warnings.join(" | ")}`);
+  // A clip at the OLD HQ spec (25fps/101f) must now warn against the new contract.
+  const oldHqSpec = pvr.buildValidation({ width: 720, height: 1280, fps: 25, frames: 101, duration: 4.04 }, hq);
+  assert.ok(oldHqSpec.warnings.some((w) => /Frame rate/.test(w)) && oldHqSpec.warnings.some((w) => /Frame count/.test(w)),
+    "old 25fps/101f HQ clip should warn on fps and frame count against the new 24fps/97f contract");
   // The same probe against the default (fast) spec warns on every axis.
-  const wrongSpec = pvr.buildValidation({ width: 720, height: 1280, fps: 25, frames: 101, duration: 4.04 });
+  const wrongSpec = pvr.buildValidation({ width: 720, height: 1280, fps: 24, frames: 97, duration: 4.04 });
   assert.ok(wrongSpec.warnings.length >= 3, "HQ clip vs fast spec should warn");
 });
 
@@ -226,7 +230,7 @@ test("video-review GET: HQ-only package auto-detects mp4-hq-720p and uses the HQ
       assert.equal(res.statusCode, 200);
       const d = res.body.data;
       assert.equal(d.video_variant, "mp4-hq-720p");
-      assert.deepEqual(d.expected, { width: 720, height: 1280, fps: 25, frames: 101, duration: 4.04 });
+      assert.deepEqual(d.expected, { width: 720, height: 1280, fps: 24, frames: 97, duration: 4.04 });
       assert.equal(d.clips.length, 3);
       // Every clip path must resolve inside the HQ variant folder, never videos/mp4/.
       for (const clip of d.clips) {

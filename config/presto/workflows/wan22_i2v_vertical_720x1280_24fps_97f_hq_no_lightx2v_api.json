@@ -1,0 +1,241 @@
+{
+  "97": {
+    "inputs": {
+      "image": "vidtoolz_At_the_doorway_of_a_lonely_woodland_cottage_grandmot_7d46381e-6844-4207-9099-b671e1265a38_2.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Start Frame Image"
+    }
+  },
+  "108": {
+    "inputs": {
+      "filename_prefix": "diagnostics/hq-fullsteps-5s",
+      "format": "auto",
+      "codec": "auto",
+      "video": [
+        "117",
+        0
+      ]
+    },
+    "class_type": "SaveVideo",
+    "_meta": {
+      "title": "Save Video"
+    }
+  },
+  "105": {
+    "inputs": {
+      "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "106": {
+    "inputs": {
+      "vae_name": "wan_2.1_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "122": {
+    "inputs": {
+      "unet_name": "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "123": {
+    "inputs": {
+      "unet_name": "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "124": {
+    "inputs": {
+      "shift": 5.000000000000001,
+      "model": [
+        "123",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingSD3",
+    "_meta": {
+      "title": "ModelSamplingSD3"
+    }
+  },
+  "107": {
+    "inputs": {
+      "text": "Subtle natural ambient motion only. Do not add any new people or subjects; keep empty areas empty. Preserve the source image composition, subject identity, and object layout. No new objects, no text, no logos, no morphing. Stable vertical 1080x1920 composition.",
+      "clip": [
+        "105",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "125": {
+    "inputs": {
+      "text": "多余的人物, 路人, 行人, 人群, 有人走入画面, 第二个人, 字幕, 文字, 水印, 标志, 界面, extra person, additional people, another person walking into frame, passerby, bystander, crowd, second person, new human appearing, text, subtitles, captions, watermark, logo, signage, UI, interface, morphing, melting, extra limbs, extra fingers, deformed hands, distorted face, flicker, fast camera motion, scene change, low quality, jpeg artifacts",
+      "clip": [
+        "105",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Negative Prompt)"
+    }
+  },
+  "109": {
+    "inputs": {
+      "shift": 5.000000000000001,
+      "model": [
+        "122",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingSD3",
+    "_meta": {
+      "title": "ModelSamplingSD3"
+    }
+  },
+  "128": {
+    "inputs": {
+      "width": 720,
+      "height": 1280,
+      "length": 97,
+      "batch_size": 1,
+      "positive": [
+        "107",
+        0
+      ],
+      "negative": [
+        "125",
+        0
+      ],
+      "vae": [
+        "106",
+        0
+      ],
+      "start_image": [
+        "97",
+        0
+      ]
+    },
+    "class_type": "WanImageToVideo",
+    "_meta": {
+      "title": "WanImageToVideo"
+    }
+  },
+  "110": {
+    "inputs": {
+      "add_noise": "enable",
+      "noise_seed": 0,
+      "steps": 30,
+      "cfg": 4.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "start_at_step": 0,
+      "end_at_step": 15,
+      "return_with_leftover_noise": "enable",
+      "model": [
+        "109",
+        0
+      ],
+      "positive": [
+        "128",
+        0
+      ],
+      "negative": [
+        "128",
+        1
+      ],
+      "latent_image": [
+        "128",
+        2
+      ]
+    },
+    "class_type": "KSamplerAdvanced",
+    "_meta": {
+      "title": "KSampler (Advanced)"
+    }
+  },
+  "111": {
+    "inputs": {
+      "add_noise": "disable",
+      "noise_seed": 0,
+      "steps": 30,
+      "cfg": 4.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "start_at_step": 15,
+      "end_at_step": 30,
+      "return_with_leftover_noise": "disable",
+      "model": [
+        "124",
+        0
+      ],
+      "positive": [
+        "128",
+        0
+      ],
+      "negative": [
+        "128",
+        1
+      ],
+      "latent_image": [
+        "110",
+        0
+      ]
+    },
+    "class_type": "KSamplerAdvanced",
+    "_meta": {
+      "title": "KSampler (Advanced)"
+    }
+  },
+  "117": {
+    "inputs": {
+      "fps": 24,
+      "images": [
+        "129",
+        0
+      ]
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "Create Video"
+    }
+  },
+  "129": {
+    "inputs": {
+      "samples": [
+        "111",
+        0
+      ],
+      "vae": [
+        "106",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  }
+}

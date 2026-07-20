@@ -41,6 +41,7 @@ require("./project-image-prompts.test.js");
 require("./project-i2v-prompts.test.js");
 require("./aigen-review-routing.test.js");
 require("./project-video-review.test.js");
+require("./presto-video-profile.test.js");
 require("./project-media-kit.test.js");
 require("./earth-studio.test.js");
 require("./score-engine.test.js");
