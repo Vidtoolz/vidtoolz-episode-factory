@@ -1580,14 +1580,20 @@
       }
     }
 
-    // Wire the static viewer chrome once (close button, backdrop, zoom controls).
-    (function initMediaViewer() {
+    // Wire the static viewer chrome once (close button, backdrop, zoom
+    // controls). The #mediaViewer markup sits AFTER this script in the
+    // document, so wiring must wait for the DOM: at parse time these
+    // getElementById calls return null and the old immediate IIFE silently
+    // skipped every listener — a dead ✕ Close / backdrop / zoom bar.
+    function wireMediaViewerChrome() {
       var closeBtn = mvEl('mediaViewerClose'); if (closeBtn) closeBtn.addEventListener('click', closeMediaViewer);
       var backdrop = mvEl('mediaViewerBackdrop');
       if (backdrop) backdrop.addEventListener('click', function (e) { if (e.target === backdrop) closeMediaViewer(); });
       var zoom = mvEl('mediaViewerZoom');
       if (zoom) zoom.addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('.mv-zoom') : null; if (b) mvApplyZoom(b.getAttribute('data-zoom')); });
-    })();
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wireMediaViewerChrome);
+    else wireMediaViewerChrome();
 
     // A focusable media trigger (role=button) that opens the viewer. `child` is
     // the <img>/<video> preview (pointer-events:none), so the click lands here,
@@ -3503,7 +3509,8 @@
         var mvOpts = { mode: 'image', url: url, label: 'Image #' + s.index + ' — ' + s.image.file_name, index: s.index, ariaLabel: 'Open image ' + s.index + ' full-resolution' };
         wrap.appendChild(buildMediaTrigger(img, mvOpts));
         fullresBtn.disabled = false;
-        fullresBtn.onclick = function () { openMediaViewer(mvOpts); };
+        // Pass the button as trigger so closing returns focus to it.
+        fullresBtn.onclick = function () { openMediaViewer(Object.assign({}, mvOpts, { trigger: fullresBtn })); };
       } else {
         var missing = document.createElement('div');
         missing.className = 'wb-kv';

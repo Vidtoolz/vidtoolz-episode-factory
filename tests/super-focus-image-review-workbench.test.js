@@ -544,8 +544,9 @@ test('workbench UI: view, explicit decision buttons, hash-bound approve, conflic
     assert.match(html, /function wbAdvanceAfter\(/);
     // 39. Filter is state that survives refreshes.
     assert.match(html, /WB\.filter = wbEl\('wb-filter'\)\.value/);
-    // 40. Full-resolution viewing is the shared viewer, never a decision.
-    assert.match(html, /fullresBtn\.onclick = function \(\) \{ openMediaViewer\(mvOpts\); \};/);
+    // 40. Full-resolution viewing is the shared viewer, never a decision, and
+    // it passes the button as trigger so closing returns focus to it.
+    assert.match(html, /fullresBtn\.onclick = function \(\) \{ openMediaViewer\(Object\.assign\(\{\}, mvOpts, \{ trigger: fullresBtn \}\)\); \};/);
     // 41/42. Untrusted text goes through textContent; no innerHTML in the block.
     const wbBlock = html.slice(html.indexOf('---- Image Review Workbench'), html.indexOf('initCollapsibleSections();'));
     assert.ok(wbBlock.length > 1000, 'workbench block found');

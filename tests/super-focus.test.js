@@ -4398,7 +4398,11 @@ test("super-focus.html: closing pauses + detaches the video, restores scroll/ove
 });
 
 test("super-focus.html: only backdrop-itself click closes; Escape closes; Enter/Space open (Space prevented)", () => {
-  const init = fnBody(SF_HTML, "initMediaViewer");
+  // Chrome wiring is deferred: the #mediaViewer markup sits after the inline
+  // script, so an immediate IIFE saw null elements and silently wired nothing
+  // (dead ✕ Close). See super-focus-media-viewer.test.js for the behavior.
+  const init = fnBody(SF_HTML, "wireMediaViewerChrome");
+  assert.match(init, /closeBtn\.addEventListener\('click', closeMediaViewer\)/, "close button wired");
   assert.match(init, /if \(e\.target === backdrop\) closeMediaViewer\(\)/, "backdrop closes only when the backdrop itself is clicked");
   const key = fnBody(SF_HTML, "mvKeydown");
   assert.match(key, /e\.key === 'Escape'[\s\S]*closeMediaViewer\(\)/, "Escape closes");
