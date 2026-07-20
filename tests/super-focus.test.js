@@ -3900,10 +3900,35 @@ test("super-focus.html: provider and media error panels escape API text before i
 });
 
 test("super-focus.html: evaluator focus route forces the Script step open (not trapped collapsed)", () => {
+  // evalFocus reveals the evaluator through the shared revealScriptEvaluation()
+  // helper (also used by the "Check script →" jump link) — the force-open logic
+  // lives in that one function, not duplicated in the branch.
   const body = fnBody(SF_HTML, "openProject");
   assert.match(body, /if \(evalFocus\)/);
-  assert.match(body, /setSectionCollapsed\('script', false, false\)/);
-  assert.match(body, /setSectionCollapsed\('script-eval', false, false\)/);
+  assert.match(body, /revealScriptEvaluation\(\)/);
+  const reveal = fnBody(SF_HTML, "revealScriptEvaluation");
+  assert.match(reveal, /setSectionCollapsed\('script', false, false\)/);
+  assert.match(reveal, /setSectionCollapsed\('script-eval', false, false\)/);
+  assert.match(reveal, /scrollIntoView\(\{ behavior: 'smooth', block: 'start' \}\)/);
+});
+
+test("super-focus.html: 'Check script' jump button exists after Save and its click reuses the shared reveal", () => {
+  // The additive navigation affordance: a real type=button link-button placed
+  // after the Script Save control, wired to the same revealScriptEvaluation()
+  // as the ?focus=script-evaluator route (no separate/duplicated behavior).
+  const scriptSection = SF_HTML.slice(SF_HTML.indexOf('id="script-section"'), SF_HTML.indexOf('id="script-eval-section"'));
+  assert.match(scriptSection, /<button type="button" class="link-btn" id="script-eval-jump">Check script/, "type=button link-button present in the Script step");
+  // Placement: the jump button comes after the Save button.
+  assert.ok(
+    scriptSection.indexOf('id="script-save"') < scriptSection.indexOf('id="script-eval-jump"'),
+    "jump button is placed after Save",
+  );
+  // Click wiring goes to the shared reveal helper, not a bespoke handler.
+  assert.match(
+    SF_HTML,
+    /getElementById\('script-eval-jump'\)\.addEventListener\('click', revealScriptEvaluation\)/,
+    "click listener invokes the shared revealScriptEvaluation",
+  );
 });
 
 // ---- Step 3 media pair: source image beside resulting video (2026-07-10) ----

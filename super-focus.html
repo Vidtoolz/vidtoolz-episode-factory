@@ -410,6 +410,7 @@
         <div class="row">
           <button class="btn" id="script-generate">Generate</button>
           <button class="btn primary" id="script-save">Save</button>
+          <button type="button" class="link-btn" id="script-eval-jump">Check script →</button>
           <span class="save-state" id="script-status"></span>
         </div>
         <div class="later-note">Generate writes a local-Ollama (vidnux) script from the saved title — click Save to keep it.</div>
@@ -802,6 +803,17 @@
         st[key] = collapsed ? 'collapsed' : 'expanded';
         saveSectionState(st);
       }
+    }
+
+    // Reveal the Script evaluation step: force the Script and Script-evaluation
+    // steps open (without clobbering the stored collapse preference), then
+    // scroll the evaluator into view. Shared by the ?focus=script-evaluator URL
+    // route and the "Check script →" jump link in the Script step.
+    function revealScriptEvaluation() {
+      setSectionCollapsed('script', false, false);
+      setSectionCollapsed('script-eval', false, false);
+      var sec = document.getElementById('script-eval-section');
+      if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function toggleSection(key) {
@@ -1441,10 +1453,7 @@
         // The evaluator focus route must never be blocked by a saved "collapsed"
         // preference: force the Script and Script-evaluation steps open (without
         // clobbering the stored preference), then scroll to the evaluator.
-        setSectionCollapsed('script', false, false);
-        setSectionCollapsed('script-eval', false, false);
-        var sec = document.getElementById('script-eval-section');
-        if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        revealScriptEvaluation();
       }
     }
 
@@ -1950,6 +1959,8 @@
       var expanded = document.getElementById('script-input').classList.contains('script-full');
       setScriptFullHeight(!expanded, true);
     });
+    // Additive navigation: reveal + scroll to the Script evaluation step.
+    document.getElementById('script-eval-jump').addEventListener('click', revealScriptEvaluation);
     // Keep the full-height box fitting the content as the user types (no scroll).
     document.getElementById('script-input').addEventListener('input', function () {
       fitScriptHeight();
