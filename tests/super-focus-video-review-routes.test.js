@@ -340,3 +340,61 @@ test('video-review UI: review block wired safely into video rows', async () => {
     assert.match(section, /legacy compatibility — not an approval/);
   } finally { await close(server); }
 });
+
+// ---- malformed stored state fails closed (found by the 2026-07-20 audit) ----
+
+test('video-review routes: a malformed stored review record fails CLOSED — never 500, never approved, recoverable via start', async () => {
+  const { server, root, mediaRoot, id } = await videoReviewServer();
+  try {
+    await fullApproveVideo(server, id);
+    // Corrupt the persisted record out-of-band (hand edit / partial write).
+    const stateFile = path.join(root, id, 'super-focus.json');
+    const st = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+    st.image_prompts.find((r) => r.index === 1).video_review = {
+      status: 'approved', criteria: 'NOT-AN-ARRAY', reviewed_video_hash: 12345, usable_range: { full_clip: true },
+    };
+    fs.writeFileSync(stateFile, JSON.stringify(st));
+    // GET stays alive and reports fail-closed truth for the whole project.
+    const g = await request(server, `/api/super-focus/video-review?id=${id}`);
+    assert.equal(g.statusCode, 200, 'project view must not 500 on one corrupt record');
+    const row = unwrap(g).reviews.find((r) => r.index === 1);
+    assert.equal(row.effective_status, 'review_required');
+    assert.match(row.reasons.join(' '), /malformed/i);
+    assert.equal(row.edit.eligible, false, 'malformed record is never downstream-eligible');
+    assert.equal(row.approval.ok, false);
+    // Mutations on the corrupt record are clean 409s, not crashes.
+    assert.equal((await vrPost(server, 'approve', { id, index: 1 })).statusCode, 409);
+    assert.equal((await vrPost(server, 'set-criterion', { id, index: 1, criterion_hash: 'a'.repeat(64), result: 'pass' })).statusCode, 409);
+    assert.equal((await vrPost(server, 'revoke', { id, index: 1 })).statusCode, 409);
+    // Recovery: start rebuilds a fresh valid review from current truth.
+    const restarted = await vrPost(server, 'start', { id, index: 1 });
+    assert.equal(restarted.statusCode, 200);
+    assert.equal(unwrap(restarted).effective_status, 'in_review');
+    assert.ok(Array.isArray(unwrap(restarted).review.criteria));
+  } finally { await close(server); }
+});
+
+test('video-review routes: repeated approve is a deterministic 409; approve after clip replacement is refused at the route', async () => {
+  const { server, mediaRoot, id } = await videoReviewServer();
+  try {
+    await fullApproveVideo(server, id);
+    // Duplicate approve on an already-approved review: deterministic 409.
+    const dup = await vrPost(server, 'approve', { id, index: 1 });
+    assert.equal(dup.statusCode, 409);
+    assert.match(dup.body.error, /approved, not in review/);
+    // Fresh review, then the clip is replaced before the operator approves:
+    // the route must refuse rather than approve the new bytes.
+    await vrPost(server, 'reopen', { id, index: 1 });
+    const started = (await vrGet(server, id)).reviews.find((r) => r.index === 1);
+    for (const c of started.criteria) {
+      await vrPost(server, 'set-criterion', { id, index: 1, criterion_hash: c.criterion_hash, result: 'pass' });
+    }
+    await vrPost(server, 'set-usable-range', { id, index: 1, usable_range: { full_clip: true } });
+    const clip = writeVideoFixture(mediaRoot, id, 1, Buffer.from('video-bytes-REPLACED'));
+    const bumped = Date.now() + 3000;
+    fs.utimesSync(clip, new Date(bumped), new Date(bumped));
+    const stale = await vrPost(server, 'approve', { id, index: 1 });
+    assert.equal(stale.statusCode, 409, 'replaced bytes cannot be approved by a stale operator flow');
+    assert.match(stale.body.error, /video changed/i);
+  } finally { await close(server); }
+});

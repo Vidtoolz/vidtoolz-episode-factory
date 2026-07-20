@@ -100,6 +100,19 @@ function snapshotCriteria(assignment) {
 
 // ── validation ───────────────────────────────────────────────────────────────
 
+// Structural sanity for a STORED review record (hand-edited or partially
+// corrupted files reach the read paths without going through validateReview).
+// A malformed record must fail CLOSED: never treated as approved, never
+// allowed to crash the whole project view (or the Image Review Workbench),
+// always recoverable by starting a fresh review.
+function structurallyValidStoredReview(review) {
+  return Boolean(review && typeof review === 'object' && !Array.isArray(review)
+    && REVIEW_STATUSES.indexOf(review.status) !== -1
+    && Array.isArray(review.criteria));
+}
+
+const MALFORMED_REVIEW_MESSAGE = 'The stored image review record is malformed — start a new review to rebuild it.';
+
 function validateReview(review) {
   if (!review || typeof review !== 'object' || Array.isArray(review)) {
     fail('image_review must be an object.', 422);
@@ -189,7 +202,8 @@ function diffCriteria(review, assignment) {
 // Compute the review's EFFECTIVE state against current on-disk/plan truth.
 // Never mutates. reasons[] explains any divergence in operator language.
 function effectiveReview(row, context) {
-  const review = row && row.image_review ? row.image_review : null;
+  const stored = row && row.image_review ? row.image_review : null;
+  const review = stored && structurallyValidStoredReview(stored) ? stored : null;
   const out = {
     status: 'not_reviewed',
     reasons: [],
@@ -198,6 +212,12 @@ function effectiveReview(row, context) {
     image_current: false,
     override: Boolean(review && review.override),
   };
+  if (stored && !review) {
+    // Fail closed, not crashed: the record exists but cannot be trusted.
+    out.status = 'review_required';
+    out.reasons.push(MALFORMED_REVIEW_MESSAGE);
+    return out;
+  }
   if (!context.image_exists) {
     out.status = review ? 'review_required' : 'not_reviewed';
     if (review) out.reasons.push('The reviewed image is missing from disk.');
@@ -254,7 +274,9 @@ function startReview(row, context, options = {}) {
   if (!context.image_exists) fail('No generated image to review for this row.', 409);
   const hash = typeof context.hash_image === 'function' ? context.hash_image() : context.image_hash;
   if (!hash) fail('Could not hash the image file for review.', 500);
-  const prior = row.image_review || null;
+  // A malformed stored record is treated as absent: start rebuilds a fresh,
+  // valid review (the recovery path) instead of crashing on its shape.
+  const prior = structurallyValidStoredReview(row.image_review) ? row.image_review : null;
   const fresh = snapshotCriteria(context.assignment);
   // Carry over decisions for criteria whose normalized text is unchanged.
   const priorByHash = {};
@@ -283,6 +305,7 @@ function startReview(row, context, options = {}) {
 
 function requireReview(row) {
   if (!row || !row.image_review) fail('No review has been started for this image.', 409);
+  if (!structurallyValidStoredReview(row.image_review)) fail(MALFORMED_REVIEW_MESSAGE, 409);
   return row.image_review;
 }
 
@@ -328,6 +351,10 @@ function approvalBlockers(row, context) {
   const blockers = [];
   const review = row && row.image_review;
   if (!review) { blockers.push('No review has been started.'); return { ok: false, blockers }; }
+  if (!structurallyValidStoredReview(review)) {
+    blockers.push(MALFORMED_REVIEW_MESSAGE);
+    return { ok: false, blockers };
+  }
   if (review.status !== 'in_review') blockers.push(`The review is ${review.status.replace(/_/g, ' ')}, not in review.`);
   if (!context.image_exists) blockers.push('The image file is missing.');
   const eff = effectiveReview(row, context);

@@ -200,6 +200,19 @@ function validateUsableRange(range, observedDurationSeconds) {
 
 // ── validation ───────────────────────────────────────────────────────────────
 
+// Structural sanity for a STORED review record (hand-edited or partially
+// corrupted files reach the read paths without going through
+// validateVideoReview). A malformed record must fail CLOSED: never treated
+// as approved, never allowed to crash the whole project view, always
+// recoverable by starting a fresh review.
+function structurallyValidStoredReview(review) {
+  return Boolean(review && typeof review === 'object' && !Array.isArray(review)
+    && VIDEO_REVIEW_STATUSES.indexOf(review.status) !== -1
+    && Array.isArray(review.criteria));
+}
+
+const MALFORMED_REVIEW_MESSAGE = 'The stored video review record is malformed — start a new review to rebuild it.';
+
 function validateVideoReview(review) {
   if (!review || typeof review !== 'object' || Array.isArray(review)) fail('video_review must be an object.', 422);
   if (VIDEO_REVIEW_STATUSES.indexOf(review.status) === -1) {
@@ -280,7 +293,8 @@ function diffCriteria(review, assignment) {
 // ── effective status ─────────────────────────────────────────────────────────
 
 function effectiveVideoReview(row, context) {
-  const review = row && row.video_review ? row.video_review : null;
+  const stored = row && row.video_review ? row.video_review : null;
+  const review = stored && structurallyValidStoredReview(stored) ? stored : null;
   const out = {
     status: 'not_reviewed',
     reasons: [],
@@ -291,6 +305,12 @@ function effectiveVideoReview(row, context) {
     usable_range_current: false,
     override: Boolean(review && review.override),
   };
+  if (stored && !review) {
+    // Fail closed, not crashed: the record exists but cannot be trusted.
+    out.status = 'review_required';
+    out.reasons.push(MALFORMED_REVIEW_MESSAGE);
+    return out;
+  }
   if (!context.video_exists) {
     out.status = review ? 'review_required' : 'not_reviewed';
     if (review) { out.reasons.push('The reviewed video is missing from disk.'); out.mismatches.push('video_changed'); }
@@ -376,7 +396,9 @@ function startVideoReview(row, context, options = {}) {
   if (!context.video_exists) fail('No generated video to review for this row.', 409);
   const hash = typeof context.hash_video === 'function' ? context.hash_video() : null;
   if (!hash) fail('Could not hash the video file for review.', 500);
-  const prior = row.video_review || null;
+  // A malformed stored record is treated as absent: start rebuilds a fresh,
+  // valid review (the recovery path) instead of crashing on its shape.
+  const prior = structurallyValidStoredReview(row.video_review) ? row.video_review : null;
   const fresh = snapshotCriteria(context.assignment);
   const priorByHash = {};
   if (prior) (prior.criteria || []).forEach((c) => { priorByHash[c.criterion_hash] = c; });
@@ -421,6 +443,7 @@ function startVideoReview(row, context, options = {}) {
 
 function requireVideoReview(row) {
   if (!row || !row.video_review) fail('No review has been started for this video.', 409);
+  if (!structurallyValidStoredReview(row.video_review)) fail(MALFORMED_REVIEW_MESSAGE, 409);
   return row.video_review;
 }
 
@@ -473,6 +496,10 @@ function videoApprovalBlockers(row, context) {
   const blockers = [];
   const review = row && row.video_review;
   if (!review) { blockers.push('No review has been started.'); return { ok: false, blockers }; }
+  if (!structurallyValidStoredReview(review)) {
+    blockers.push(MALFORMED_REVIEW_MESSAGE);
+    return { ok: false, blockers };
+  }
   if (review.status !== 'in_review') blockers.push(`The review is ${review.status.replace(/_/g, ' ')}, not in review.`);
   if (!context.video_exists) blockers.push('The video file is missing.');
   const eff = effectiveVideoReview(row, context);

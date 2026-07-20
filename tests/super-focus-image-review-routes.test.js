@@ -323,3 +323,41 @@ test('image-review UI: review block wired safely into image rows', async () => {
     assert.match(res.raw, /ap\.disabled = !canApprove/);
   } finally { await close(server); }
 });
+
+// ---- malformed stored state fails closed (found by the 2026-07-20 audit) ----
+
+test('image-review routes: a malformed stored review record fails CLOSED — GET and workbench stay alive, mutations 409, decision recovers', async () => {
+  const { server, root, mediaRoot, id } = await reviewServer();
+  try {
+    writeImageFixture(mediaRoot, id, 2, Buffer.from('png-bytes-2'));
+    // Corrupt the legacy row's persisted record out-of-band.
+    const stateFile = path.join(root, id, 'super-focus.json');
+    const st = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+    st.image_prompts.find((r) => r.index === 2).image_review = {
+      status: 'approved', criteria: 'NOT-AN-ARRAY', reviewed_image_hash: 999,
+    };
+    fs.writeFileSync(stateFile, JSON.stringify(st));
+    // Project review GET and the Image Review Workbench GET must not 500.
+    const g = await request(server, `/api/super-focus/image-review?id=${id}`);
+    assert.equal(g.statusCode, 200, 'image-review view must not 500 on one corrupt record');
+    const row = unwrap(g).reviews.find((r) => r.index === 2);
+    assert.equal(row.effective_status, 'review_required');
+    assert.match(row.reasons.join(' '), /malformed/i);
+    assert.equal(row.gate.eligible, false, 'malformed record never satisfies the I2V gate');
+    const wb = await request(server, `/api/super-focus/image-review-workbench?id=${id}&index=2`);
+    assert.equal(wb.statusCode, 200, 'workbench must not 500 on one corrupt record');
+    assert.equal(unwrap(wb).selected.effective_status, 'review_required');
+    // Mutations on the corrupt record are clean 409s, not crashes.
+    assert.equal((await irPost(server, 'approve', { id, index: 2 })).statusCode, 409);
+    assert.equal((await irPost(server, 'revoke', { id, index: 2 })).statusCode, 409);
+    // Recovery: an explicit hash-bound workbench decision rebuilds a fresh
+    // valid review from the exact current bytes and approves it.
+    const hash = unwrap(wb).selected.image.sha256;
+    const decided = await request(server, '/api/super-focus/image-review/workbench-decision', {
+      method: 'POST', headers: writeHeaders(), body: { id, index: 2, decision: 'approve', expected_image_hash: hash },
+    });
+    assert.equal(decided.statusCode, 200);
+    assert.equal(unwrap(decided).effective_status, 'approved');
+    assert.ok(Array.isArray(unwrap(decided).review.criteria), 'rebuilt record is structurally valid');
+  } finally { await close(server); }
+});
