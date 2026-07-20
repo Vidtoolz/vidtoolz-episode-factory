@@ -127,6 +127,7 @@ const SUPER_FOCUS_VISUAL_PLAN_ACTION_PREFIX = '/api/super-focus/visual-plan/';
 const SUPER_FOCUS_PROMPTS_FROM_ASSIGNMENTS_API = '/api/super-focus/image-prompts/from-assignments';
 const SUPER_FOCUS_IMAGE_REVIEW_API = '/api/super-focus/image-review';
 const SUPER_FOCUS_IMAGE_REVIEW_ACTION_PREFIX = '/api/super-focus/image-review/';
+const SUPER_FOCUS_IMAGE_REVIEW_WORKBENCH_API = '/api/super-focus/image-review-workbench';
 const SUPER_FOCUS_VIDEO_REVIEW_API = '/api/super-focus/video-review';
 const SUPER_FOCUS_ATTEMPT_STORAGE_API = '/api/super-focus/attempt-storage';
 const SUPER_FOCUS_VIDEO_QUEUE_AUDIT_API = '/api/super-focus/video-queue-audit';
@@ -8034,6 +8035,298 @@ function auditSuperFocusVideoQueue(state, sfMediaRoot) {
   };
 }
 
+// ── Image Review Workbench (read-only assembly) ─────────────────────────────
+// One focused payload for reviewing images one item at a time: deterministic
+// candidate ordering, counts, queue linkage, and an advisory consequence
+// preview. Queue truth comes from the SAME read-only audit the operator
+// already trusts (auditSuperFocusVideoQueue) — never a second eligibility
+// engine. Nothing here writes project, queue, or attempt state; the current
+// image hash is computed ONLY for the single selected candidate so the
+// operator's decision can bind to the exact displayed bytes.
+
+// "Immediately unlockable": image approval is the ONLY remaining review gate
+// for at least one live queued item — after approval the audit would classify
+// that item safe_to_resume. It never means generation starts: dispatch stays
+// behind the separate, explicit operator resume while the queue is paused.
+// (Pinned by test: post-approval re-audit must report safe_to_resume.)
+function workbenchItemUnlockable(row, auditItem) {
+  if (!auditItem) return false;
+  if (auditItem.disposition === 'legacy_compatibility') return true; // prompt/assignment already proven current by audit precedence
+  if (auditItem.disposition !== 'source_unapproved') return false;
+  if (auditItem.video_exists) return false;
+  if (auditItem.i2v_hash_queued && auditItem.i2v_hash_current
+      && auditItem.i2v_hash_queued !== auditItem.i2v_hash_current) return false;
+  if (row.i2v_prompt && row.i2v_prompt.stale) return false;
+  if (row.assignment_stale) return false;
+  return true;
+}
+
+// Advisory consequence preview for the selected candidate — derived facts
+// only (audit dispositions, gate verdict, pause state). Never a promise to
+// dispatch, never a quality judgment.
+function workbenchConsequence(row, eff, linked, paused, imageExists) {
+  const approve = [];
+  const reject = [];
+  const revoke = [];
+  if (!imageExists) {
+    approve.push('No image is on disk for this slot — approval is not possible.');
+  } else if (eff.status === 'approved') {
+    approve.push('This image is already approved and current. Approving again changes nothing.');
+  } else {
+    linked.forEach((it) => {
+      if (it.video_exists) {
+        approve.push(`Queue item ${it.item_id} (position ${it.position}): the expected video already exists — on resume it is skipped. Approval will not dispatch or overwrite it.`);
+      } else if (workbenchItemUnlockable(row, it)) {
+        approve.push(`Approval would clear the image-review gate for queue item ${it.item_id} (position ${it.position}).`);
+      } else {
+        approve.push(`Approval alone would not make queue item ${it.item_id} (position ${it.position}) ready: ${(it.reasons || []).join('; ') || it.disposition}.`);
+      }
+    });
+    if (!linked.length) {
+      approve.push('This image is not linked to a live queued video item. Approval affects only future queueing.');
+    }
+  }
+  if (paused) approve.push('The queue remains paused — nothing dispatches until you separately resume eligible items.');
+  reject.push('Rejection records your decision; linked queue items are refused at dispatch time (skipped_review).');
+  reject.push('The image stays on disk and nothing is regenerated automatically — regeneration is a separate explicit action.');
+  if (eff.status === 'approved') {
+    revoke.push('Revoking removes the review-gate satisfaction; linked queue items will not dispatch on resume.');
+  }
+  return { approve, reject, revoke, queue_paused: Boolean(paused) };
+}
+
+function buildImageReviewWorkbench(state, sfMediaRoot, options = {}) {
+  const audit = auditSuperFocusVideoQueue(state, sfMediaRoot); // read-only by contract
+  const liveByIndex = new Map();
+  audit.items.forEach((it) => {
+    if (!liveByIndex.has(it.index)) liveByIndex.set(it.index, []);
+    liveByIndex.get(it.index).push(it);
+  });
+  const rows = (state.image_prompts || []).filter((r) => r && r.text && String(r.text).trim());
+  const mediaDir = superFocusMedia.mediaDirFor(state.project_id, { mediaRoot: sfMediaRoot });
+  const entries = [];
+  rows.forEach((row) => {
+    const context = buildImageReviewContext(state, row, sfMediaRoot);
+    if (!context.image_exists && !row.image_review) return; // nothing to review, nothing reviewed
+    const eff = superFocusImageReview.effectiveReview(row, context);
+    const linked = liveByIndex.get(row.index) || [];
+    const unlockable = superFocusImageReview.workbenchNeedsDecision(eff.status)
+      && linked.some((it) => workbenchItemUnlockable(row, it));
+    const videoExists = fs.existsSync(superFocusMedia.videoFilePath(mediaDir, audit.subdir, row.index));
+    entries.push({ row, context, eff, linked, unlockable, videoExists });
+  });
+  const candidates = entries.map(({ row, context, eff, linked, unlockable, videoExists }) => ({
+    index: row.index,
+    bucket: superFocusImageReview.workbenchBucket({
+      effective_status: eff.status,
+      queue_linked: linked.length > 0,
+    }),
+    effective_status: eff.status,
+    needs_decision: superFocusImageReview.workbenchNeedsDecision(eff.status),
+    queue_linked: linked.length > 0,
+    image_exists: context.image_exists,
+    video_exists: videoExists,
+    unlockable,
+    structural_flags: linked.length ? linked[0].structural_flags : [],
+    disposition: linked.length ? linked[0].disposition : null,
+  })).sort((a, b) => a.bucket - b.bucket || a.index - b.index);
+  const counts = {
+    total_candidates: candidates.length,
+    needs_decision: candidates.filter((c) => c.needs_decision).length,
+    unreviewed: candidates.filter((c) => ['not_reviewed', 'unknown_legacy', 'in_review'].indexOf(c.effective_status) !== -1).length,
+    stale: candidates.filter((c) => c.effective_status === 'review_required').length,
+    rejected: candidates.filter((c) => c.effective_status === 'rejected').length,
+    approved: candidates.filter((c) => c.effective_status === 'approved').length,
+    queue_linked: candidates.filter((c) => c.queue_linked).length,
+    immediately_unlockable: candidates.filter((c) => c.unlockable).length,
+  };
+  // Selected candidate: explicit ?index when it is a candidate, else the
+  // first needs-decision candidate in order, else the first candidate.
+  let selectedEntry = null;
+  if (options.selectedIndex != null) {
+    selectedEntry = entries.find((e) => e.row.index === options.selectedIndex) || null;
+    if (!selectedEntry) {
+      const err = new Error(`Slot ${options.selectedIndex} is not a review candidate (no image and no review).`);
+      err.statusCode = 404;
+      throw err;
+    }
+  } else {
+    const firstNeeds = candidates.find((c) => c.needs_decision) || candidates[0] || null;
+    if (firstNeeds) selectedEntry = entries.find((e) => e.row.index === firstNeeds.index) || null;
+  }
+  let selected = null;
+  if (selectedEntry) {
+    const { row, context, eff, linked, unlockable, videoExists } = selectedEntry;
+    const currentHash = context.image_exists ? context.hash_image() : null;
+    const plan = state.visual_plan || null;
+    const assignment = context.assignment;
+    const beat = assignment && plan
+      ? (plan.beats || []).find((b) => b.beat_id === assignment.beat_id) || null
+      : null;
+    selected = {
+      index: row.index,
+      image: {
+        exists: context.image_exists,
+        file_name: superFocusMedia.imageFileName(row.index),
+        mtime_ms: context.image_mtime_ms,
+        sha256: currentHash,
+      },
+      prompt_text: row.text || '',
+      prompt_hash: superFocusImageReview.sha256(String(row.text || '')),
+      prompt_source: row.prompt_source || null,
+      assignment_stale: Boolean(row.assignment_stale),
+      i2v_prompt: row.i2v_prompt
+        ? { exists: true, text: row.i2v_prompt.text || '', stale: Boolean(row.i2v_prompt.stale) }
+        : { exists: false, text: '', stale: false },
+      assignment: assignment ? {
+        assignment_id: assignment.assignment_id,
+        beat_id: assignment.beat_id,
+        viewer_task: assignment.viewer_task,
+        visual_function: assignment.visual_function,
+        assignment: assignment.assignment,
+        media_type: assignment.media_type,
+        status: assignment.status,
+        fresh: context.assignment_fresh,
+      } : null,
+      beat_text: beat ? beat.script_text : null,
+      review: row.image_review || null,
+      effective_status: eff.status,
+      reasons: eff.reasons,
+      image_current: eff.image_current,
+      // Before a review starts eff.criteria is empty; show the assignment's
+      // CURRENT acceptance criteria (unreviewed snapshot) so the operator
+      // sees what an approval would be judged against.
+      criteria: eff.criteria.length ? eff.criteria
+        : (assignment ? superFocusImageReview.snapshotCriteria(assignment) : []),
+      removed_criteria: eff.removed_criteria,
+      override: eff.override,
+      approval: row.image_review ? superFocusImageReview.approvalBlockers(row, context) : null,
+      gate: superFocusImageReview.imageReviewGate(row, context),
+      queue_items: linked,
+      video_exists: videoExists,
+      unlockable,
+      consequence: workbenchConsequence(row, eff, linked, audit.paused, context.image_exists),
+    };
+  }
+  return {
+    project_id: state.project_id,
+    queue: {
+      paused: audit.paused,
+      pause: audit.pause,
+      queue_count: audit.queue_count,
+      live_count: audit.live_count,
+      recommendation: audit.recommendation,
+      structural: audit.structural,
+    },
+    counts,
+    candidates,
+    selected,
+  };
+}
+
+// ── Image Review Workbench decision (hash-bound, atomic, idempotent) ────────
+// One explicit operator action = one decision on the EXACT image the operator
+// saw. The request must carry the sha256 the workbench displayed; if the
+// on-disk bytes differ at decision time the request fails closed with 409
+// image_changed and nothing is written — approval can never transfer to a
+// replacement image that landed in the same slot. Approve/reject compose the
+// domain's startReview snapshot with the decision IN MEMORY and persist once,
+// so a blocked decision (e.g. undecided acceptance criteria) leaves no trace.
+// Duplicate requests for an already-recorded decision on the same exact image
+// return 200 unchanged. The human presses the button; the model, the pump,
+// and this handler never decide that an image is acceptable.
+function handleImageReviewWorkbenchDecision(res, state, payload, ctx) {
+  const failWith = (statusCode, message) => {
+    const e = new Error(message);
+    e.statusCode = statusCode;
+    throw e;
+  };
+  const id = state.project_id;
+  const decision = payload.decision;
+  if (['approve', 'reject', 'revoke'].indexOf(decision) === -1) {
+    failWith(400, 'decision must be one of: approve, reject, revoke.');
+  }
+  if (!Number.isInteger(payload.index)) {
+    failWith(400, 'index must be an integer slot number.');
+  }
+  const idx = payload.index;
+  if (idx < 1 || idx > superFocusPrompts.IMAGE_PROMPT_MAX) {
+    failWith(400, `index must be between 1 and ${superFocusPrompts.IMAGE_PROMPT_MAX}.`);
+  }
+  const expected = payload.expected_image_hash;
+  if (typeof expected !== 'string' || !/^[a-f0-9]{64}$/.test(expected)) {
+    failWith(400, 'expected_image_hash must be the 64-hex sha256 of the displayed image.');
+  }
+  const row = (state.image_prompts || []).find((r) => r.index === idx);
+  if (!row) failWith(404, `No image prompt at index ${idx}.`);
+  const context = buildImageReviewContext(state, row, ctx.sfMediaRoot);
+  if (!context.image_exists) failWith(409, 'No image is on disk for this slot — nothing can be decided.');
+  // Hash once, reuse everywhere (start/currency would otherwise re-hash).
+  let cachedHash = null;
+  const hashOnce = context.hash_image;
+  context.hash_image = () => { if (cachedHash == null) cachedHash = hashOnce(); return cachedHash; };
+  const currentHash = context.hash_image();
+  if (currentHash !== expected) {
+    sendError(res, 409,
+      'The image on disk is not the image you were shown — no decision was recorded. Reload the workbench and review the current image.',
+      'image_changed',
+      { index: idx, expected_image_hash: expected, current_image_hash: currentHash });
+    return;
+  }
+  const ir = superFocusImageReview;
+  const respond = (savedState, unchanged) => {
+    const savedRow = (savedState.image_prompts || []).find((r) => r.index === idx);
+    const freshContext = buildImageReviewContext(savedState, savedRow, ctx.sfMediaRoot);
+    const eff = ir.effectiveReview(savedRow, freshContext);
+    sendJSON(res, 200, {
+      project_id: id,
+      index: idx,
+      decision,
+      unchanged: Boolean(unchanged),
+      decided_image_hash: currentHash,
+      review: savedRow.image_review || null,
+      effective_status: eff.status,
+      reasons: eff.reasons,
+      criteria: eff.criteria,
+      removed_criteria: eff.removed_criteria,
+      approval: savedRow.image_review ? ir.approvalBlockers(savedRow, freshContext) : null,
+      gate: ir.imageReviewGate(savedRow, freshContext),
+    });
+  };
+  const existing = row.image_review || null;
+  const eff0 = ir.effectiveReview(row, context);
+  // Idempotency: the same decision on the same exact bytes is a no-op 200.
+  if (decision === 'approve' && eff0.status === 'approved' && existing && existing.reviewed_image_hash === currentHash) {
+    respond(state, true);
+    return;
+  }
+  if (decision === 'reject' && eff0.status === 'rejected' && existing && existing.reviewed_image_hash === currentHash) {
+    respond(state, true);
+    return;
+  }
+  if (decision === 'revoke' && existing && existing.status === 'in_review') {
+    respond(state, true); // approval already absent — a repeated revoke changes nothing
+    return;
+  }
+  let review;
+  if (decision === 'revoke') {
+    review = ir.revoke(row); // 409 unless currently approved (domain rule)
+  } else {
+    // Compose snapshot + decision in memory; persist only if the decision
+    // succeeds. The snapshot binds reviewed_image_hash to the verified bytes.
+    const work = Object.assign({}, row);
+    if (!work.image_review || work.image_review.status !== 'in_review') {
+      work.image_review = ir.startReview(work, context);
+    }
+    review = decision === 'approve'
+      ? ir.approve(work, context)
+      : ir.reject(work, payload.reason);
+  }
+  const saved = superFocus.setImageReview(id, idx, review, { root: ctx.sfRoot });
+  respond(saved, false);
+}
+
+
 // Is a row eligible for NORMAL video queueing right now? ctx = { sfRoot, sfMediaRoot, options }.
 function superFocusVideoEligibility(id, state, subdir, idx, ctx) {
   const row = (state.image_prompts || []).find((r) => r.index === idx);
@@ -11360,6 +11653,31 @@ function createServer(options = {}) {
       return;
     }
 
+    // Read-only Image Review Workbench: deterministic candidates + counts +
+    // one selected candidate with its exact current image hash and an
+    // advisory consequence preview. GET never mutates project, queue, or
+    // attempt state; decisions go through the nonce-gated POST action.
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_IMAGE_REVIEW_WORKBENCH_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+        const state = superFocus.loadProject(id, { root: sfRoot }); // validates id, 404 unknown
+        const rawIndex = url.searchParams.get('index');
+        let selectedIndex = null;
+        if (rawIndex != null && rawIndex !== '') {
+          const n = Number(rawIndex);
+          if (!Number.isInteger(n) || n < 1 || n > superFocusPrompts.IMAGE_PROMPT_MAX) {
+            sendError(res, 400, `index must be an integer between 1 and ${superFocusPrompts.IMAGE_PROMPT_MAX}.`, 'super-focus-image-review-workbench-error');
+            return;
+          }
+          selectedIndex = n;
+        }
+        sendJSON(res, 200, buildImageReviewWorkbench(state, sfMediaRoot, { selectedIndex }));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-image-review-workbench-error');
+      }
+      return;
+    }
+
     // ── Video review (clip evidence vs the production contract) ──────────
 
     // Read-only queue audit: classifies live queue items against current
@@ -11493,7 +11811,7 @@ function createServer(options = {}) {
 
     if (req.method === 'POST' && url.pathname.startsWith(SUPER_FOCUS_IMAGE_REVIEW_ACTION_PREFIX)) {
       const action = url.pathname.slice(SUPER_FOCUS_IMAGE_REVIEW_ACTION_PREFIX.length);
-      const KNOWN = ['start', 'set-criterion', 'save-notes', 'approve', 'approve-override', 'reject', 'revoke', 'reopen', 'clear'];
+      const KNOWN = ['start', 'set-criterion', 'save-notes', 'approve', 'approve-override', 'reject', 'revoke', 'reopen', 'clear', 'workbench-decision'];
       if (KNOWN.indexOf(action) === -1) {
         sendError(res, 404, `Unknown image-review action: ${action}`, 'super-focus-image-review-error');
         return;
@@ -11503,6 +11821,12 @@ function createServer(options = {}) {
           validateLocalWriteRequest(req, payload, { label: `Super Focus image-review ${action} API` });
           const id = payload.id || payload.project_id || '';
           const state = superFocus.loadProject(id, { root: sfRoot }); // 404 unknown id
+          // Workbench decisions bind to the exact displayed image and are
+          // handled atomically (see the dedicated handler below).
+          if (action === 'workbench-decision') {
+            handleImageReviewWorkbenchDecision(res, state, payload, { sfRoot, sfMediaRoot });
+            return;
+          }
           const idx = Math.round(Number(payload.index));
           const row = (state.image_prompts || []).find((r) => r.index === idx);
           if (!row) { const e = new Error(`No image prompt at index ${payload.index}.`); e.statusCode = 404; throw e; }

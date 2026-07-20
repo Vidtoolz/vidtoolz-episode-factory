@@ -59,6 +59,7 @@ require("./super-focus-visual-plan.test.js");
 require("./super-focus-visual-plan-routes.test.js");
 require("./super-focus-image-review.test.js");
 require("./super-focus-image-review-routes.test.js");
+require("./super-focus-image-review-workbench.test.js");
 require("./super-focus-video-review.test.js");
 require("./super-focus-video-review-routes.test.js");
 require("./super-focus-video-attempts.test.js");

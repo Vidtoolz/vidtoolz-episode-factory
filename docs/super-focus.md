@@ -64,6 +64,46 @@ A project is one linear sheet, in order:
    compatibility mode — they are never auto-failed, auto-approved, or
    blocked retroactively. A toggleable presenter-safe overlay (lower-right
    quarter) is available on the review preview as a visual aid only.
+4c. **Image Review Workbench** — a focused mode (opened from the images or
+   videos step; never a separate app) for working through pending image
+   decisions **one item at a time**: one dominant image, one context panel
+   (slot, filename, abbreviated sha256, prompt, script beat, assignment,
+   acceptance criteria, I2V prompt, linked queue items, review freshness), one
+   explicit decision bar, and a compact candidate strip.
+   **Human-only approval**: Approve / Reject / Revoke are explicit buttons —
+   there is no batch approve, no model approve, no keyboard-only silent
+   approve, and opening/zooming the full-resolution viewer never decides
+   anything. **Exact-image binding**: every decision POSTs the sha256 of the
+   image the operator was shown; the server re-hashes the file and refuses
+   with `409 image_changed` (recording nothing) if the bytes differ — an
+   approval can never transfer to a replacement image in the same slot.
+   Duplicate identical decisions are idempotent no-ops. A one-click approve is
+   only possible for rows without undecided acceptance criteria (e.g. legacy
+   rows); assignment-backed rows still require their per-criterion decisions
+   in the image row first — the workbench shows the criteria and the blockers.
+   **Candidate order** is deterministic: (1) queue-linked never-decided rows,
+   (2) queue-linked rows whose decision went stale (`review_required` covers
+   both approved-then-changed and rejected-then-changed), (3) non-queued rows
+   needing a decision, (4) decided rows (approved-/rejected-and-current) —
+   ascending slot index within each group; stable across refreshes unless
+   state changes. **Filters** (`Needs decision` default — excludes current
+   approved items; Queue-linked / Unreviewed / Stale / Rejected / Approved /
+   All) are views over those facts and survive refreshes. **Immediately
+   unlockable** means: image approval is the ONLY remaining review gate for at
+   least one live queued item — after approval the queue audit classifies that
+   item `safe_to_resume`. It never means generation starts. **Queue
+   consequence preview**: each candidate shows an advisory, server-derived
+   statement of what approve/reject/revoke would change for the linked queue
+   items (derived from the same read-only queue audit — never a second
+   eligibility engine), always ending with the fact that **the queue remains
+   paused** — resuming eligible items stays a separate explicit operator
+   action in the project view. After a decision the workbench refreshes
+   authoritative state and advances to the next unresolved candidate;
+   rejection never regenerates or clears the image (regeneration remains the
+   row's explicit action), and the no-candidates state reports counts without
+   offering a queue resume. The workbench GET is read-only (no queue write, no
+   pump, no attempt creation, no PRESTO contact); decisions ride the existing
+   nonce + Host + Origin protections.
 5. **Infographic prompts** — choose a **Prompt count** (1–30, default 6) still-infographic prompts from the script (prompt-only).
 6. **Image-to-video prompts** — one per generated image (**Create a video prompt**, PRESTO Ollama lane).
 7. **Generated videos** — batch or per-image (PRESTO ComfyUI / Wan2.2); clips appear inline per row.
@@ -314,6 +354,19 @@ items, so it is safe to re-run to resume.
   `set-criterion`, `save-notes`, `approve`, `approve-override` (mandatory
   reason), `reject`, `revoke`, `reopen`, `clear` (only before any criterion
   decision). Conflicting/stale mutations return 409; unknown actions 404.
+- `GET /image-review-workbench?id=&index=` — read-only workbench payload:
+  deterministically ordered review candidates with counts (including
+  queue-linked and immediately-unlockable), plus full detail for one selected
+  candidate — current image sha256 (the hash a decision must bind to), prompt,
+  beat, assignment, criteria, linked queue-audit items, and the advisory
+  consequence preview. Never writes project, queue, or attempt state.
+- `POST /image-review/workbench-decision` — one explicit operator decision
+  (`decision`: `approve` / `reject` / `revoke`) bound to the exact displayed
+  image via a required `expected_image_hash` (64-hex sha256). Fails closed
+  with `409 image_changed` (nothing recorded) when the on-disk bytes differ;
+  approval blockers (e.g. undecided criteria) also 409 without persisting;
+  duplicate identical decisions are idempotent 200s. Never mutates the queue,
+  never dispatches, never resumes.
 - `POST /image-prompts/from-assignments` — the approval gate: writes prompts
   only from approved, fresh, image-lane assignments into empty slots; every
   ineligible row is returned in `skipped[]` with its reason. Rows carry

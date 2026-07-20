@@ -300,6 +300,35 @@
     .eval-warnings { color: #e3b341; font-size: 13px; }
     .eval-list { margin: 4px 0 0; padding-left: 18px; }
     .eval-list li { font-size: 13px; }
+    /* Image Review Workbench: one dominant image, one context panel, one
+       decision bar. Restrained on purpose — clarity over controls. */
+    .wb-toolbar { align-items: center; }
+    .wb-toolbar select { background: var(--panel, #161b22); color: inherit; border: 1px solid var(--border, #30363d); border-radius: 6px; padding: 4px 8px; font-size: 13px; }
+    .wb-counts { color: var(--muted, #8b949e); font-size: 13px; margin: 6px 0; }
+    .wb-strip { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; max-height: 96px; overflow-y: auto; }
+    .wb-chip { border: 1px solid var(--border, #30363d); background: transparent; color: inherit; border-radius: 6px; font-size: 12px; padding: 2px 7px; cursor: pointer; }
+    .wb-chip.selected { outline: 2px solid var(--accent, #58a6ff); }
+    .wb-chip.st-approved { border-color: #2ea043; }
+    .wb-chip.st-rejected { border-color: #f85149; }
+    .wb-chip.st-review_required { border-color: #e3b341; }
+    .wb-main { display: flex; gap: 16px; align-items: flex-start; margin: 10px 0; }
+    .wb-imagebox { flex: 1 1 55%; min-width: 0; }
+    .wb-imagebox img { max-width: 100%; height: auto; display: block; border: 1px solid var(--border, #30363d); border-radius: 8px; }
+    .wb-context { flex: 1 1 45%; min-width: 0; font-size: 13px; }
+    .wb-kv { margin: 0 0 8px; }
+    .wb-kv .wb-k { color: var(--muted, #8b949e); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+    .wb-kv .wb-v { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .wb-consequence { border-left: 3px solid var(--accent, #58a6ff); padding: 6px 10px; margin: 8px 0; font-size: 13px; }
+    .wb-consequence li { margin: 2px 0; }
+    .wb-decisions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; position: sticky; bottom: 0; background: var(--bg, #0d1117); padding: 8px 0; border-top: 1px solid var(--border, #30363d); }
+    .wb-banner { border: 1px solid var(--border, #30363d); border-radius: 8px; padding: 8px 12px; margin: 8px 0; font-size: 13px; }
+    .wb-banner.ok { border-color: #2ea043; }
+    .wb-banner.error { border-color: #f85149; }
+    @media (max-width: 720px) {
+      .wb-main { flex-direction: column; }
+      .wb-imagebox, .wb-context { flex: 1 1 auto; width: 100%; }
+      .wb-decisions { position: static; }
+    }
   </style>
 </head>
 <body>
@@ -445,6 +474,10 @@
         <div class="later-note"><strong>Images to generate</strong> is an upper bound. The batch only targets rows that have a prompt and no image yet (rows with an existing image or an empty prompt are skipped), in row order — so entering more than are eligible just generates the eligible ones. Run again to continue where it left off. One batch at a time (vidnux ComfyUI / FLUX); images appear next to each prompt above as they finish. ComfyUI must be running.</div>
         <div class="imggen-progress hidden" id="imggen-progress"></div>
         <div class="imggen-bar hidden" id="imggen-barwrap"><div class="imggen-fill" id="imggen-fill"></div></div>
+        <div class="row">
+          <button class="btn" id="wb-open-images">Open Image Review Workbench</button>
+        </div>
+        <div class="later-note">The workbench walks pending image reviews one at a time — queue-linked images first — with the prompt, assignment, and queue consequence beside each image. You decide; viewing never approves.</div>
       </div>
 
       <!-- 5. Infographic prompts -->
@@ -494,6 +527,7 @@
         <div class="row">
           <button class="btn" id="vidattempts-report">Attempt storage report</button>
           <button class="btn" id="vidqueue-audit">Audit paused video queue</button>
+          <button class="btn" id="wb-open-videos">Open Image Review Workbench</button>
           <span class="save-state" id="vidattempts-status"></span>
         </div>
         <div class="later-note hidden" id="vidattempts-out"></div>
@@ -524,6 +558,58 @@
           <strong>Nothing here publishes anything.</strong> Generation requires PRESTO running (never auto-started). Approval gates in the Visual Plan and evaluation steps are advisory/planning only — the publish decision lives in the pipeline lane.
         </div>
       </div>
+    </section>
+
+    <!-- IMAGE REVIEW WORKBENCH: one image, one decision at a time. Viewing is
+         never approval; every decision is an explicit button bound by hash to
+         the exact displayed image. Nothing here resumes or pumps the queue. -->
+    <section id="view-workbench" class="hidden">
+      <div class="topbar">
+        <div>
+          <h1 style="font-size:22px;margin:0;">Image Review Workbench</h1>
+          <div class="meta" id="wb-project-label" style="color:var(--muted);font-size:12px;"></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:center;">
+          <button class="link-btn" id="wb-back">← Back to project</button>
+        </div>
+      </div>
+      <div class="row wb-toolbar">
+        <label>Filter
+          <select id="wb-filter">
+            <option value="needs" selected>Needs decision</option>
+            <option value="queue">Queue-linked</option>
+            <option value="unreviewed">Unreviewed</option>
+            <option value="stale">Stale</option>
+            <option value="rejected">Rejected</option>
+            <option value="approved">Approved</option>
+            <option value="all">All</option>
+          </select>
+        </label>
+        <button class="btn" id="wb-refresh">Refresh</button>
+        <span class="save-state" id="wb-progress"></span>
+      </div>
+      <div class="wb-counts" id="wb-counts"></div>
+      <div class="wb-strip" id="wb-strip"></div>
+      <div class="wb-banner hidden" id="wb-banner"></div>
+      <div class="later-note hidden" id="wb-empty"></div>
+      <div class="wb-main hidden" id="wb-main">
+        <div class="wb-imagebox">
+          <div id="wb-imagewrap"></div>
+          <div class="row">
+            <button class="btn" id="wb-fullres">Open full-resolution image</button>
+          </div>
+        </div>
+        <div class="wb-context" id="wb-context"></div>
+      </div>
+      <div class="wb-decisions hidden" id="wb-decisions">
+        <button class="btn primary" id="wb-approve">Approve image</button>
+        <button class="btn" id="wb-reject">Reject image</button>
+        <button class="btn hidden" id="wb-revoke">Revoke approval</button>
+        <button class="btn" id="wb-skip">Skip for now</button>
+        <button class="btn" id="wb-prev">Previous</button>
+        <button class="btn" id="wb-next">Next unresolved</button>
+      </div>
+      <div class="later-note">Approve and Reject are explicit decisions bound to the exact image shown (hash-verified by the server; if the file changed since it was displayed, the decision is refused and nothing is recorded). Viewing, zooming, and navigating never approve anything. The video queue stays paused regardless of decisions made here — resuming eligible items is a separate, explicit operator action in the project view.</div>
     </section>
   </div>
 
@@ -636,7 +722,7 @@
     }
 
     function show(view) {
-      ['landing', 'open', 'project'].forEach(function (v) {
+      ['landing', 'open', 'project', 'workbench'].forEach(function (v) {
         document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
       });
       window.scrollTo(0, 0);
@@ -3275,6 +3361,312 @@
         stopVideosPolling(); refreshVideosStatus();
       }).catch(function () { setStatus(el, 'Stop failed', true); });
     });
+
+    // ---- Image Review Workbench (one image, one explicit human decision) ----
+    // The server is authoritative: candidates, ordering, counts, queue linkage,
+    // and the consequence preview all come from the read-only workbench GET.
+    // Decisions POST the exact sha256 the operator was shown; the server
+    // re-verifies the bytes and refuses (409 image_changed) on any drift.
+    // Nothing in this block resumes, pumps, or mutates the video queue, and
+    // all model/operator text is rendered with textContent — no innerHTML.
+    var WB_API = '/api/super-focus/image-review-workbench';
+    var WB_DECISION_API = '/api/super-focus/image-review/workbench-decision';
+    var WB_FILTER_LABELS = {
+      needs: 'Needs decision', queue: 'Queue-linked', unreviewed: 'Unreviewed',
+      stale: 'Stale', rejected: 'Rejected', approved: 'Approved', all: 'All',
+    };
+    var WB = { data: null, filter: 'needs', busy: false };
+
+    function wbEl(id) { return document.getElementById(id); }
+
+    function wbFilterMatch(c, filter) {
+      if (filter === 'queue') return c.queue_linked;
+      if (filter === 'unreviewed') return c.effective_status === 'not_reviewed' || c.effective_status === 'unknown_legacy' || c.effective_status === 'in_review';
+      if (filter === 'stale') return c.effective_status === 'review_required';
+      if (filter === 'rejected') return c.effective_status === 'rejected';
+      if (filter === 'approved') return c.effective_status === 'approved';
+      if (filter === 'all') return true;
+      return c.needs_decision; // 'needs' (default): excludes current approved items
+    }
+
+    function wbFiltered() {
+      if (!WB.data) return [];
+      var f = WB.filter;
+      return WB.data.candidates.filter(function (c) { return wbFilterMatch(c, f); });
+    }
+
+    function wbSetBanner(text, kind) {
+      var b = wbEl('wb-banner');
+      if (!text) { b.classList.add('hidden'); b.textContent = ''; b.className = 'wb-banner hidden'; return; }
+      b.className = 'wb-banner' + (kind ? ' ' + kind : '');
+      b.textContent = text;
+    }
+
+    function openWorkbench() {
+      if (!currentId) return;
+      show('workbench');
+      wbEl('wb-project-label').textContent = currentId;
+      wbEl('wb-filter').value = WB.filter;
+      wbSetBanner('');
+      loadWorkbench(null);
+    }
+
+    function loadWorkbench(index) {
+      var url = WB_API + '?id=' + encodeURIComponent(currentId) + (index ? '&index=' + index : '');
+      wbEl('wb-progress').textContent = 'Loading…';
+      apiGet(url).then(function (res) {
+        if (!res.ok) {
+          wbEl('wb-progress').textContent = '';
+          wbSetBanner((res.body && res.body.error) || ('Could not load the workbench (HTTP ' + res.status + ').'), 'error');
+          return;
+        }
+        WB.data = unwrap(res.body);
+        renderWorkbench();
+      }).catch(function () {
+        wbEl('wb-progress').textContent = '';
+        wbSetBanner('Could not load the workbench (network error).', 'error');
+      });
+    }
+
+    function wbKv(label, value) {
+      var box = document.createElement('div'); box.className = 'wb-kv';
+      var k = document.createElement('div'); k.className = 'wb-k'; k.textContent = label;
+      var v = document.createElement('div'); v.className = 'wb-v'; v.textContent = value;
+      box.appendChild(k); box.appendChild(v);
+      return box;
+    }
+
+    function wbStatusLabel(status) {
+      var b = IREV_BADGES[status];
+      return b ? b[0] : status;
+    }
+
+    function renderWorkbench() {
+      var d = WB.data;
+      if (!d) return;
+      var list = wbFiltered();
+      var c = d.counts;
+      wbEl('wb-counts').textContent =
+        c.needs_decision + ' need a decision · ' + c.queue_linked + ' queue-linked · '
+        + c.immediately_unlockable + ' unlockable on approval · ' + c.stale + ' stale · '
+        + c.rejected + ' rejected · ' + c.approved + ' approved · ' + c.total_candidates + ' total'
+        + (d.queue.paused ? ' · queue PAUSED' : '');
+      // Candidate strip (deterministic server order, filtered client-side).
+      var strip = wbEl('wb-strip');
+      strip.textContent = '';
+      var sel = d.selected ? d.selected.index : null;
+      list.forEach(function (cand) {
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'wb-chip st-' + cand.effective_status + (cand.index === sel ? ' selected' : '');
+        chip.textContent = '#' + cand.index;
+        chip.title = wbStatusLabel(cand.effective_status) + (cand.queue_linked ? ' · queue-linked' : '') + (cand.unlockable ? ' · unlockable' : '');
+        chip.addEventListener('click', function () { wbSetBanner(''); loadWorkbench(cand.index); });
+        strip.appendChild(chip);
+      });
+      // Progress: position within the current filter.
+      var pos = -1;
+      list.forEach(function (cand, i) { if (cand.index === sel) pos = i; });
+      wbEl('wb-progress').textContent = list.length
+        ? ((pos >= 0 ? ('Item ' + (pos + 1) + ' of ' + list.length) : (list.length + ' item(s)')) + ' — ' + (WB_FILTER_LABELS[WB.filter] || WB.filter))
+        : ('No items match "' + (WB_FILTER_LABELS[WB.filter] || WB.filter) + '"');
+      // Empty state: counts only. Never offers queue resume — resuming stays a
+      // separate explicit operator action in the project view.
+      var empty = wbEl('wb-empty');
+      if (!list.length || !d.selected) {
+        empty.classList.remove('hidden');
+        empty.textContent = c.needs_decision === 0
+          ? 'No candidates need a decision. ' + c.approved + ' approved, ' + c.rejected + ' rejected, ' + c.total_candidates + ' total. The queue remains paused; resuming eligible items is a separate action in the project view.'
+          : 'No items match this filter. ' + c.needs_decision + ' item(s) still need a decision under "Needs decision".';
+        wbEl('wb-main').classList.add('hidden');
+        wbEl('wb-decisions').classList.add('hidden');
+        if (!d.selected) return;
+      } else {
+        empty.classList.add('hidden');
+        wbEl('wb-main').classList.remove('hidden');
+        wbEl('wb-decisions').classList.remove('hidden');
+      }
+      renderWorkbenchSelected(d.selected);
+    }
+
+    function renderWorkbenchSelected(s) {
+      var wrap = wbEl('wb-imagewrap');
+      wrap.textContent = '';
+      var fullresBtn = wbEl('wb-fullres');
+      if (s.image.exists) {
+        var url = IMAGE_FILE_API + '?id=' + encodeURIComponent(currentId) + '&index=' + s.index + '&t=' + (s.image.mtime_ms || 0);
+        var img = document.createElement('img');
+        img.alt = 'Image #' + s.index + ' (' + s.image.file_name + ')';
+        img.src = url;
+        // Full-resolution inspection opens the shared viewer — it never
+        // approves anything (decisions are the explicit buttons below).
+        var mvOpts = { mode: 'image', url: url, label: 'Image #' + s.index + ' — ' + s.image.file_name, index: s.index, ariaLabel: 'Open image ' + s.index + ' full-resolution' };
+        wrap.appendChild(buildMediaTrigger(img, mvOpts));
+        fullresBtn.disabled = false;
+        fullresBtn.onclick = function () { openMediaViewer(mvOpts); };
+      } else {
+        var missing = document.createElement('div');
+        missing.className = 'wb-kv';
+        missing.textContent = 'No image file on disk for this slot' + (s.review ? ' — the reviewed image is missing.' : '.');
+        wrap.appendChild(missing);
+        fullresBtn.disabled = true;
+        fullresBtn.onclick = null;
+      }
+      // Context panel: persisted/derived facts only.
+      var ctx = wbEl('wb-context');
+      ctx.textContent = '';
+      var statusLine = wbStatusLabel(s.effective_status);
+      if (s.reasons && s.reasons.length) statusLine += ' — ' + s.reasons.join(' ');
+      ctx.appendChild(wbKv('Slot', '#' + s.index + ' · ' + s.image.file_name + (s.image.mtime_ms ? '' : ' (missing)')));
+      ctx.appendChild(wbKv('Image sha256', s.image.sha256 ? (s.image.sha256.slice(0, 16) + '… (decision binds to this exact file)') : 'n/a'));
+      ctx.appendChild(wbKv('Review status', statusLine));
+      if (s.review && s.review.reviewed_at) {
+        ctx.appendChild(wbKv('Decided', s.review.status + ' at ' + s.review.reviewed_at + (s.review.override ? ' (override: ' + s.review.override_reason + ')' : '')));
+      }
+      ctx.appendChild(wbKv('Image prompt', s.prompt_text || '(empty)'));
+      if (s.beat_text) ctx.appendChild(wbKv('Script beat', s.beat_text));
+      if (s.assignment) {
+        ctx.appendChild(wbKv('Viewer task', s.assignment.viewer_task || '—'));
+        ctx.appendChild(wbKv('Visual function', (s.assignment.visual_function || '—') + ' · ' + (s.assignment.media_type || '—') + (s.assignment.fresh ? '' : ' · assignment NOT fresh')));
+        ctx.appendChild(wbKv('Assignment', s.assignment.assignment || '—'));
+      }
+      if (s.criteria && s.criteria.length) {
+        var lines = s.criteria.map(function (cr) { return '[' + cr.result + '] ' + cr.criterion_text; });
+        ctx.appendChild(wbKv('Acceptance criteria (decide these in the image row)', lines.join('\n')));
+      }
+      if (s.i2v_prompt && s.i2v_prompt.exists) {
+        ctx.appendChild(wbKv('I2V prompt' + (s.i2v_prompt.stale ? ' (stale)' : ''), s.i2v_prompt.text));
+      }
+      if (s.queue_items && s.queue_items.length) {
+        var qlines = s.queue_items.map(function (it) {
+          return 'Position ' + it.position + ' (' + it.item_id + '): ' + it.disposition
+            + (it.structural_flags && it.structural_flags.length ? ' · structural: ' + it.structural_flags.join(',') : '')
+            + ' · advisory: ' + it.recommended_action;
+        });
+        ctx.appendChild(wbKv('Queued video item(s)', qlines.join('\n')));
+      } else {
+        ctx.appendChild(wbKv('Queued video item(s)', 'None — not linked to a live queue item.'));
+      }
+      ctx.appendChild(wbKv('Video on disk', s.video_exists ? 'Yes — approval will not dispatch or overwrite it.' : 'No'));
+      // Consequence preview (server-derived, advisory).
+      var cons = document.createElement('div');
+      cons.className = 'wb-consequence';
+      var consTitle = document.createElement('div'); consTitle.className = 'wb-k';
+      consTitle.textContent = 'If you decide now';
+      cons.appendChild(consTitle);
+      var ul = document.createElement('ul');
+      (s.consequence.approve || []).forEach(function (line) {
+        var li = document.createElement('li'); li.textContent = 'Approve: ' + line; ul.appendChild(li);
+      });
+      (s.consequence.reject || []).forEach(function (line) {
+        var li = document.createElement('li'); li.textContent = 'Reject: ' + line; ul.appendChild(li);
+      });
+      (s.consequence.revoke || []).forEach(function (line) {
+        var li = document.createElement('li'); li.textContent = 'Revoke: ' + line; ul.appendChild(li);
+      });
+      cons.appendChild(ul);
+      ctx.appendChild(cons);
+      // Decision buttons name the exact slot; revoke only when approved.
+      var canDecide = Boolean(s.image.exists && s.image.sha256) && !WB.busy;
+      var approveBtn = wbEl('wb-approve');
+      approveBtn.textContent = 'Approve image #' + s.index;
+      approveBtn.disabled = !canDecide || s.effective_status === 'approved';
+      var rejectBtn = wbEl('wb-reject');
+      rejectBtn.textContent = 'Reject image #' + s.index;
+      rejectBtn.disabled = !canDecide || s.effective_status === 'rejected';
+      var revokeBtn = wbEl('wb-revoke');
+      revokeBtn.classList.toggle('hidden', s.effective_status !== 'approved');
+      revokeBtn.disabled = !canDecide;
+    }
+
+    // Advance to the next unresolved candidate AFTER the decided slot in the
+    // current filter's deterministic order (wrapping to the first).
+    function wbAdvanceAfter(prevIndex) {
+      apiGet(WB_API + '?id=' + encodeURIComponent(currentId)).then(function (res) {
+        if (!res.ok) { wbSetBanner((res.body && res.body.error) || 'Refresh failed.', 'error'); return; }
+        WB.data = unwrap(res.body);
+        var unresolved = wbFiltered().filter(function (c) { return c.needs_decision; });
+        var next = null;
+        unresolved.forEach(function (c) { if (next === null && c.index > prevIndex) next = c.index; });
+        if (next === null && unresolved.length) next = unresolved[0].index;
+        if (next !== null) { loadWorkbench(next); return; }
+        renderWorkbench();
+      });
+    }
+
+    function wbDecide(decision) {
+      if (WB.busy || !WB.data || !WB.data.selected || !currentId) return;
+      var s = WB.data.selected;
+      if (!s.image.exists || !s.image.sha256) { wbSetBanner('No image on disk — nothing to decide.', 'error'); return; }
+      var payload = { id: currentId, index: s.index, decision: decision, expected_image_hash: s.image.sha256 };
+      if (decision === 'reject') {
+        var reason = window.prompt('Rejection reason (optional — recorded with the decision):', '');
+        if (reason === null) return; // cancelled: no decision is made
+        if (reason.trim()) payload.reason = reason.trim();
+      }
+      WB.busy = true;
+      renderWorkbenchSelected(s); // disable buttons while in flight
+      apiPost(WB_DECISION_API, payload).then(function (res) {
+        WB.busy = false;
+        if (res.ok) {
+          var d = unwrap(res.body);
+          var verb = decision === 'approve' ? 'Approved' : decision === 'reject' ? 'Rejected' : 'Approval revoked for';
+          wbSetBanner(verb + ' image #' + s.index + (d.unchanged ? ' (already recorded — nothing changed)' : '') + '. The queue remains paused.', 'ok');
+          if (typeof loadImageReviews === 'function') loadImageReviews(); // keep the project rows honest
+          wbAdvanceAfter(s.index);
+          return;
+        }
+        if (res.status === 409 && res.body && res.body.code === 'image_changed') {
+          wbSetBanner('The image on disk changed after it was displayed — no decision was recorded. Showing the current image; review it again before deciding.', 'error');
+          loadWorkbench(s.index);
+          return;
+        }
+        wbSetBanner((res.body && res.body.error) || ('Decision failed (HTTP ' + res.status + ').'), 'error');
+        loadWorkbench(s.index);
+      }).catch(function () {
+        WB.busy = false;
+        wbSetBanner('Decision failed (network error) — nothing may have been recorded. Reload before retrying.', 'error');
+        loadWorkbench(s.index);
+      });
+    }
+
+    function wbStep(direction) {
+      if (!WB.data || !WB.data.selected) return;
+      var list = wbFiltered();
+      if (!list.length) return;
+      var sel = WB.data.selected.index;
+      var pos = -1;
+      list.forEach(function (c, i) { if (c.index === sel) pos = i; });
+      var target = null;
+      if (direction === 'prev') {
+        target = pos > 0 ? list[pos - 1] : list[list.length - 1];
+      } else { // next unresolved after the current position (wrapping)
+        for (var i = 1; i <= list.length; i++) {
+          var cand = list[(pos + i + list.length) % list.length];
+          if (cand.needs_decision && cand.index !== sel) { target = cand; break; }
+        }
+      }
+      if (target) { wbSetBanner(''); loadWorkbench(target.index); }
+      else wbSetBanner('No other unresolved item under this filter.', '');
+    }
+
+    wbEl('wb-open-images').addEventListener('click', openWorkbench);
+    wbEl('wb-open-videos').addEventListener('click', openWorkbench);
+    wbEl('wb-back').addEventListener('click', function () {
+      show('project');
+      if (typeof loadImageReviews === 'function') loadImageReviews();
+    });
+    wbEl('wb-refresh').addEventListener('click', function () { wbSetBanner(''); loadWorkbench(WB.data && WB.data.selected ? WB.data.selected.index : null); });
+    wbEl('wb-filter').addEventListener('change', function () {
+      WB.filter = wbEl('wb-filter').value; // survives refreshes; changing it never decides anything
+      renderWorkbench();
+    });
+    wbEl('wb-approve').addEventListener('click', function () { wbDecide('approve'); });
+    wbEl('wb-reject').addEventListener('click', function () { wbDecide('reject'); });
+    wbEl('wb-revoke').addEventListener('click', function () { wbDecide('revoke'); });
+    wbEl('wb-skip').addEventListener('click', function () { wbStep('next'); });
+    wbEl('wb-next').addEventListener('click', function () { wbStep('next'); });
+    wbEl('wb-prev').addEventListener('click', function () { wbStep('prev'); });
 
     initCollapsibleSections(); // one-time DOM transform for the project steps
     if (evalFocus) document.getElementById('eval-focus-hint').classList.remove('hidden');

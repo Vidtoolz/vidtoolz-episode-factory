@@ -461,6 +461,34 @@ function imageReviewGate(row, context) {
   return { eligible: false, effective_status: eff.status, reason: reasonByStatus[eff.status] || 'Image not approved' };
 }
 
+// ── Image Review Workbench (candidate ordering; pure) ───────────────────────
+
+// Does this row still need an operator decision? Never-reviewed rows
+// (including legacy-unknown), open reviews, and hash-stale decisions all do.
+// A rejected-and-current row is a made decision (excluded by default); a
+// rejected image whose bytes/assignment changed since is already surfaced by
+// effectiveReview as review_required, so it re-enters through that status —
+// an effective 'rejected' status always means the decision is still current.
+function workbenchNeedsDecision(effectiveStatus) {
+  return ['not_reviewed', 'unknown_legacy', 'in_review', 'review_required'].indexOf(effectiveStatus) !== -1;
+}
+
+// Deterministic candidate bucket (lower reviews first). Queue-linked work a
+// decision can unlock outranks non-queued housekeeping; within a bucket the
+// caller orders by ascending slot index, so the full order is stable across
+// polls unless underlying state changes.
+//   1  queue-linked, never decided (not_reviewed / unknown_legacy / in_review)
+//   2  queue-linked, a decision went stale (review_required — covers both
+//      approved-then-changed and rejected-then-changed, per effectiveReview)
+//   3  not queue-linked, still needs a decision
+//   4  no decision needed (approved-and-current, rejected-and-current)
+function workbenchBucket({ effective_status, queue_linked }) {
+  if (!workbenchNeedsDecision(effective_status)) return 4;
+  if (!queue_linked) return 3;
+  if (effective_status === 'review_required') return 2;
+  return 1;
+}
+
 // ── readiness ────────────────────────────────────────────────────────────────
 
 function computeImageReviewReadiness(rows, contexts) {
@@ -521,5 +549,7 @@ module.exports = {
   reopen,
   clearReview,
   imageReviewGate,
+  workbenchNeedsDecision,
+  workbenchBucket,
   computeImageReviewReadiness,
 };
