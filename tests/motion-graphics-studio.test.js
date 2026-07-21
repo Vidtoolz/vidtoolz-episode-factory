@@ -604,3 +604,91 @@ test("audit: motion-graphics loadProject on corrupt state JSON throws 422, not 5
   assert.throws(() => mgState.loadProject(p.project_id, { root }), (e) => e.statusCode === 422);
   assert.doesNotThrow(() => mgState.listProjects({ root })); // list still tolerates it
 });
+
+// ============ Production proof hardening (2026-07-21) ============
+// Found preparing the first real Resolve proof: the safe-area guide box and its
+// debug label rendered INTO the deliverable MP4, and render provenance carried
+// no renderer version and no output hash.
+
+const cryptoMod = require("node:crypto");
+function sha256Of(file) { return cryptoMod.createHash("sha256").update(fs.readFileSync(file)).digest("hex"); }
+
+test("mg-templates: preview keeps safe-area guides; render source excludes them (never in the deliverable)", () => {
+  const card = mgTpl.buildDefaultCard("title", { params: { title: "Prompts are not a plan" } });
+  const preview = mgTpl.buildCardHtml(card);
+  assert.match(preview, /mg-safe /);
+  assert.match(preview, /presenter-safe area:/);
+  const renderSource = mgTpl.buildCardHtml(card, { include_guides: false });
+  assert.doesNotMatch(renderSource, /mg-safe /);
+  assert.doesNotMatch(renderSource, /presenter-safe area:/);
+  // Content is identical apart from the guides.
+  assert.match(renderSource, /Prompts are not a plan/);
+  assert.match(renderSource, /class="mg-brand"/);
+});
+
+test("mg-render: source on disk carries no guides; provenance records renderer version + source/output hashes", () => {
+  const root = mkRoot(); const mediaRoot = mkRoot();
+  const { project, cardId } = seedCard(root, "title");
+  const card = mgState.findCard(project, cardId);
+  const out = mgRender.renderCard({ project, card }, { mediaRoot, runRender: stubRunner(), renderId: "r-cafe0001", rendererVersion: "9.9.9-test" });
+  assert.equal(out.ok, true);
+  const srcPath = path.join(mediaRoot, project.project_id, "sources", cardId + ".html");
+  assert.doesNotMatch(fs.readFileSync(srcPath, "utf8"), /mg-safe |presenter-safe area:/);
+  // Provenance: version + hashes + bytes are recorded and truthful.
+  assert.equal(out.record.renderer_version, "9.9.9-test");
+  assert.equal(out.record.source_sha256, sha256Of(srcPath));
+  const outPath = path.join(mediaRoot, project.project_id, "renders", cardId, "r-cafe0001.mp4");
+  assert.equal(out.record.output_sha256, sha256Of(outPath));
+  assert.equal(out.record.output_bytes, fs.statSync(outPath).size);
+  // Manifest carries the params snapshot for reproducibility.
+  const man = JSON.parse(fs.readFileSync(path.join(mediaRoot, project.project_id, "manifests", "r-cafe0001.json"), "utf8"));
+  assert.equal(man.renderer_version, "9.9.9-test");
+  assert.equal(man.output_sha256, out.record.output_sha256);
+  assert.equal(man.params.title, "Prompts are not a plan");
+});
+
+test("mg-api: render records the probed HyperFrames version; render-status warns on drift (warning, never failure)", async () => {
+  const root = mkRoot(); const mediaRoot = mkRoot();
+  const mkServer = (version) => packageEngineServer.createServer({
+    superFocusRoot: mkRoot(), motionGraphicsRoot: root, motionGraphicsMediaRoot: mediaRoot,
+    hyperframesRenderer: stubRunner(), hyperframesProbe: () => ({ available: true, version }),
+  });
+  const s1 = mkServer("0.7.45");
+  await listen(s1);
+  let id; let cardId;
+  try {
+    const created = unwrap(await request(s1, packageEngineServer.MOTION_GRAPHICS_PROJECTS_API, { method: "POST", headers: writeHeaders(), body: { title: "Drift" } }));
+    id = created.project.project_id;
+    const add = unwrap(await request(s1, packageEngineServer.MOTION_GRAPHICS_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, type: "title" } }));
+    cardId = add.card.card_id;
+    await request(s1, packageEngineServer.MOTION_GRAPHICS_CARD_PARAMS_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: cardId, params: { title: "Generated is not produced" } } });
+    const rendered = unwrap(await request(s1, packageEngineServer.MOTION_GRAPHICS_RENDER_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: cardId } }));
+    assert.equal(rendered.render.renderer_version, "0.7.45");
+    const status = unwrap(await request(s1, packageEngineServer.MOTION_GRAPHICS_RENDER_STATUS_API + "?id=" + encodeURIComponent(id) + "&card_id=" + encodeURIComponent(cardId)));
+    assert.equal(status.hyperframes_installed_version, "0.7.45");
+    assert.equal(status.hyperframes_version_drift, false);
+  } finally { await close(s1); }
+
+  // Same project reopened against a NEWER installed CLI → drift warning.
+  const s2 = mkServer("0.8.0");
+  await listen(s2);
+  try {
+    const status = unwrap(await request(s2, packageEngineServer.MOTION_GRAPHICS_RENDER_STATUS_API + "?id=" + encodeURIComponent(id) + "&card_id=" + encodeURIComponent(cardId)));
+    assert.equal(status.hyperframes_version_drift, true);
+    assert.match(status.hyperframes_version_drift_note, /0\.7\.45/);
+    assert.match(status.hyperframes_version_drift_note, /0\.8\.0/);
+    assert.match(status.hyperframes_version_drift_note, /warning only/i);
+  } finally { await close(s2); }
+});
+
+test("mg-gui: render history surfaces renderer version and the drift warning wiring", async () => {
+  const { server } = mgServer();
+  await listen(server);
+  try {
+    const res = await request(server, "/motion-graphics-studio.html");
+    assert.equal(res.statusCode, 200);
+    assert.match(res.raw, /r\.renderer_version/);
+    assert.match(res.raw, /hyperframes_version_drift/);
+    assert.match(res.raw, /RENDER_STATUS_API\+'\?id='/);
+  } finally { await close(server); }
+});

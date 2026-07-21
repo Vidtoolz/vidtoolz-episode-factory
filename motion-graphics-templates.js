@@ -161,7 +161,12 @@ function validateCardParams(type, params = {}) {
 // ── deterministic, safe HTML for preview / render source ─────────────────────
 // A self-contained page sized to the card's aspect ratio, with a presenter
 // safe-area guide. All params are escaped. Kept intentionally calm/branded.
-function buildCardHtml(card = {}) {
+// options.include_guides (default true) controls the safe-area guide box and
+// its label: previews SHOW them (layout aid), the render source EXCLUDES them
+// — a dashed guide rectangle baked into a production MP4 is a defect, found
+// during the 2026-07-21 production proof.
+function buildCardHtml(card = {}, options = {}) {
+  const includeGuides = !options || options.include_guides !== false;
   const type = (templateFor(card.type) ? card.type : 'title');
   const fmt = normalizeFormat(card.format || {});
   const style = normalizeStyle(card.style || {});
@@ -249,8 +254,8 @@ function buildCardHtml(card = {}) {
   <div id="root" class="mg-stage" data-type="${escapeHtml(type)}" data-composition-id="${escapeHtml(card.card_id || type)}" data-start="0" data-duration="${fmt.duration_seconds}" data-width="${fmt.width}" data-height="${fmt.height}" data-fps="${fmt.fps}">
     <div class="mg-brand">VIDTOOLZ</div>
     ${body}
-    <div class="mg-safe ${overlayClass}"></div>
-    <div class="mg-safe-label">presenter-safe area: ${escapeHtml(overlay)}</div>
+    ${includeGuides ? `<div class="mg-safe ${overlayClass}"></div>
+    <div class="mg-safe-label">presenter-safe area: ${escapeHtml(overlay)}</div>` : ''}
   </div>
 </body></html>`;
 }

@@ -14749,9 +14749,13 @@ function createServer(options = {}) {
           const state = motionGraphicsState.loadProject(id, mgOpts);
           const card = motionGraphicsState.findCard(state, cardId);
           if (!card) { const e = new Error('Card not found.'); e.statusCode = 404; throw e; }
+          // Record the exact renderer version in the render provenance — the
+          // global HyperFrames CLI self-updates, so the version must be pinned
+          // per render, not assumed (production proof 2026-07-21).
+          const hfProbe = (serverOptions.hyperframesProbe || probeHyperframesAvailability)();
           const out = motionGraphicsRenderers.renderCard(
             { project: state, card },
-            { mediaRoot: mgMediaRoot, runRender: mgRunRender }
+            { mediaRoot: mgMediaRoot, runRender: mgRunRender, rendererVersion: hfProbe.version || null }
           );
           // The render (MP4+manifest on disk) and the card-state record are two
           // writes. If persisting the record fails, don't silently lose a real
@@ -14782,7 +14786,19 @@ function createServer(options = {}) {
         const state = motionGraphicsState.loadProject(id, mgOpts);
         const card = motionGraphicsState.findCard(state, cardId);
         if (!card) { sendError(res, 404, 'Card not found.', 'motion-graphics-render-status-missing'); return; }
-        sendJSON(res, 200, { project_id: state.project_id, card_id: card.card_id, status: card.status, current_render_id: card.current_render_id || null, renders: card.renders || [] });
+        // Version-drift warning (never a failure): the last rendered record's
+        // renderer version vs the currently installed global CLI. Old renders
+        // without a recorded version cannot drift — they predate provenance.
+        const hfNow = (serverOptions.hyperframesProbe || probeHyperframesAvailability)();
+        const lastRendered = (card.renders || []).filter((r) => r.status === 'rendered' && r.renderer_version).slice(-1)[0] || null;
+        const drift = Boolean(lastRendered && hfNow.version && lastRendered.renderer_version !== hfNow.version);
+        sendJSON(res, 200, {
+          project_id: state.project_id, card_id: card.card_id, status: card.status,
+          current_render_id: card.current_render_id || null, renders: card.renders || [],
+          hyperframes_installed_version: hfNow.version || null,
+          hyperframes_version_drift: drift,
+          hyperframes_version_drift_note: drift ? `Last render used HyperFrames ${lastRendered.renderer_version}; installed is ${hfNow.version}. A re-render may differ — warning only, existing renders stay valid.` : null,
+        });
       } catch (error) { sendError(res, error.statusCode || 500, error.message, 'motion-graphics-render-status-error'); }
       return;
     }

@@ -65,6 +65,10 @@ function writeJsonAtomic(filePath, obj) {
   fs.renameSync(tmp, filePath);
 }
 
+function sha256File(filePath) {
+  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+}
+
 // Render one card via the injected HyperFrames runner. Returns { record, manifest }.
 // runRender(sourcePath, outputPath, logPath, options) mirrors
 // runHyperframesRenderCommand: it renders (real) or is stubbed (tests), returns
@@ -98,13 +102,19 @@ function renderCard(input = {}, options = {}) {
   const markerPath = path.join(mediaDir, 'index.html');
   if (!fs.existsSync(markerPath)) fs.writeFileSync(markerPath, '<!doctype html><meta charset="utf-8"><title>VIDTOOLZ Motion Graphics</title>\n', 'utf8');
   fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
-  fs.writeFileSync(sourcePath, templates.buildCardHtml(card), 'utf8');
+  // Render source EXCLUDES the preview-only safe-area guides — a dashed guide
+  // box belongs in the preview, never in the deliverable MP4.
+  fs.writeFileSync(sourcePath, templates.buildCardHtml(card, { include_guides: false }), 'utf8');
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 
   const baseRecord = {
     render_id: renderId,
     engine,
+    // Provenance for reproducibility (2026-07-21 production proof): the exact
+    // renderer version and the hash of the composition source that was rendered.
+    renderer_version: options.rendererVersion || null,
     source_path: relSource,
+    source_sha256: sha256File(sourcePath),
     manifest_path: relManifest,
     log_path: path.relative(mediaDir, logPath),
     created_at: now,
@@ -123,10 +133,13 @@ function renderCard(input = {}, options = {}) {
     const record = Object.assign({}, baseRecord, {
       status: 'rendered',
       path: relOutput,
+      output_sha256: sha256File(outputPath),
+      output_bytes: fs.statSync(outputPath).size,
       command: result.command || null,
       error: null,
     });
-    writeJsonAtomic(manifestPath(projectId, renderId, options), Object.assign({ schema_version: 1, project_id: projectId, card_id: cardId, card_type: card.type }, record));
+    writeJsonAtomic(manifestPath(projectId, renderId, options), Object.assign(
+      { schema_version: 1, project_id: projectId, card_id: cardId, card_type: card.type, params: card.params || {} }, record));
     return { record, ok: true };
   } catch (error) {
     const record = Object.assign({}, baseRecord, {
@@ -135,7 +148,8 @@ function renderCard(input = {}, options = {}) {
       command: error.command || null,
       error: String(error.message || 'HyperFrames render failed.'),
     });
-    writeJsonAtomic(manifestPath(projectId, renderId, options), Object.assign({ schema_version: 1, project_id: projectId, card_id: cardId, card_type: card.type }, record));
+    writeJsonAtomic(manifestPath(projectId, renderId, options), Object.assign(
+      { schema_version: 1, project_id: projectId, card_id: cardId, card_type: card.type, params: card.params || {} }, record));
     return { record, ok: false, statusCode: error.statusCode || 500 };
   }
 }

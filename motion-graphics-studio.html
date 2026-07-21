@@ -273,7 +273,7 @@
     rs.slice().reverse().forEach(function(r){
       var mediaUrl=MEDIA_API+'?id='+encodeURIComponent(currentProject.project_id)+'&render_id='+encodeURIComponent(r.render_id);
       h+='<div class="item" style="margin-bottom:6px">'
-        +'<div class="t">'+esc(r.render_id)+' · '+esc(r.status)+' · '+esc(r.engine)+' · '+esc(r.created_at||'')+'</div>';
+        +'<div class="t">'+esc(r.render_id)+' · '+esc(r.status)+' · '+esc(r.engine)+(r.renderer_version?(' '+esc(r.renderer_version)):'')+' · '+esc(r.created_at||'')+'</div>';
       if(r.status==='rendered'){
         h+='<video src="'+mediaUrl+'" controls style="width:100%;max-height:38vh;background:#000;border-radius:8px;margin-top:6px"></video>'
           +'<div class="row"><button data-copy="'+esc(r.path||'')+'" class="btn-copypath">Copy path</button><span class="t">'+esc(r.path||'')+'</span></div>';
@@ -282,6 +282,16 @@
     });
     wrap.innerHTML=h;
     Array.prototype.forEach.call(wrap.querySelectorAll('.btn-copypath'),function(b){ b.addEventListener('click',function(){ copyText(b.getAttribute('data-copy')); setStatus(el('card-status'),'Path copied ✓','ok'); }); });
+    // Version-drift warning (advisory only): the global HyperFrames CLI
+    // self-updates, so a re-render may not match the last recorded render.
+    apiGet(RENDER_STATUS_API+'?id='+encodeURIComponent(currentProject.project_id)+'&card_id='+encodeURIComponent(c.card_id)).then(function(res){
+      var d=res.ok?unwrap(res.body):null;
+      if(d&&d.hyperframes_version_drift&&d.hyperframes_version_drift_note){
+        var warn=document.createElement('div'); warn.className='later-note';
+        warn.textContent='⚠ '+d.hyperframes_version_drift_note;
+        wrap.insertBefore(warn,wrap.firstChild);
+      }
+    }).catch(function(){});
   }
   function copyText(t){ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t); } }
 
