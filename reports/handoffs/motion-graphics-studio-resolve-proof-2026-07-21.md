@@ -130,3 +130,43 @@ support in Resolve is doubtful), an output-contract change in
 `motion-graphics-renderers.js`, and its own supervised Resolve proof over real
 footage (clean edges, correct premultiplication). Do not start it before §D
 has a verdict. The existing lower-third caveat in the docs stays.
+
+---
+
+## Operator Result / Close-out (recorded 2026-07-21)
+
+| Fact | Value |
+|---|---|
+| **Verdict** | **CLEAN** |
+| **Verdict date** | 2026-07-21 |
+| **Operator** | Mikko |
+| **Artifact** | `/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/motion-graphics/vidtoolz-production-proof-2026-07-21-26eb1083/renders/card-742fee6f9d/r-c60761261.mp4` |
+| **Artifact SHA-256** | `4c9dcb7feeab20ca6a5e7352ff40fc9bbd83910881eb7622091cf309c358a94f` (re-verified from disk at close-out; matches §A) |
+| **Artifact bytes** | 117,157 (unchanged since render; mtime 2026-07-21 10:10:12) |
+| **Timeline format** | not supplied by operator — artifact is 1080×1920, 30 fps (see §A) |
+| **Direct import** | succeeded (per verdict contract) |
+| **Repair / transcode** | none required (per verdict contract) |
+| **Usable in a real edit** | yes (per verdict contract) |
+
+**What the CLEAN verdict proves** (and nothing more — the operator supplied only
+the verdict, so this close-out records only what the §D verdict contract covers):
+the card imported and worked in a real edit without undocumented repair or a
+material visual or technical defect. No claims are recorded here about banding,
+gamma, trimming detail, export behaviour, animation quality, or typography —
+§E was not filled in by the operator, and inventing those observations would be
+a false claim.
+
+**What remains unproven** (for the record): export behaviour with this card
+inside it (the protocol's optional export step is not confirmed), long-form
+reuse across different timeline frame rates, and any fine-typography judgement
+beyond "no material defect".
+
+**Closure statement:** this closes the **first real-edit production proof for
+the existing opaque Motion Graphics Studio card path** (card created through the
+Studio's real state/API path → rendered through HyperFrames → technically
+validated → hash-pinned → imported into Resolve → usable in a real edit without
+material repair). The §G gate is now satisfied for the alpha lower-third slice;
+that slice is specified in
+`reports/handoffs/motion-graphics-studio-alpha-lower-third-implementation-spec-2026-07-21.md`.
+All other §G items (new template types, Super Focus import, AI suggestions,
+batch/async, Remotion execution) remain gated.
