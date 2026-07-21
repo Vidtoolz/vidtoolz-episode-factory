@@ -159,12 +159,21 @@ function updateCardParams(projectId, cardId, patch = {}, options = {}) {
     card.recommended_engine = fresh.recommended_engine;
     card.recommendation_reason = fresh.recommendation_reason;
     card.candidate_only = fresh.candidate_only;
+    // A transparent lower third switched to another type must not keep a mode
+    // the new type does not support — reset to the type's default (opaque).
+    card.output_mode = fresh.output_mode;
   } else if (patch.params && typeof patch.params === 'object') {
     card.params = Object.assign({}, templates.defaultParamsForType(card.type), card.params, patch.params);
   }
   if (patch.format && typeof patch.format === 'object') card.format = templates.normalizeFormat(Object.assign({}, card.format, patch.format));
   if (patch.style && typeof patch.style === 'object') card.style = templates.normalizeStyle(Object.assign({}, card.style, patch.style));
   if (typeof patch.engine === 'string' && ['hyperframes', 'remotion'].indexOf(patch.engine) !== -1) card.engine = patch.engine;
+  if (patch.output_mode !== undefined) {
+    // Explicit opt-in only; refuses unsupported card-type/mode combinations.
+    const check = templates.validateOutputMode(card.type, patch.output_mode);
+    if (!check.ok) { const e = new Error(check.error); e.statusCode = 400; throw e; }
+    card.output_mode = patch.output_mode;
+  }
   card.status = 'draft';
   saveState(state, options);
   return { state, card };

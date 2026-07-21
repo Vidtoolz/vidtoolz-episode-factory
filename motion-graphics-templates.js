@@ -12,6 +12,27 @@
 const FORMAT_DEFAULT = Object.freeze({ width: 1080, height: 1920, fps: 30, duration_seconds: 5 });
 const STYLE_DEFAULT = Object.freeze({ preset: 'vidtoolz_default', safe_area: { presenter_overlay: 'lower_right' } });
 
+// Output modes (alpha slice, 2026-07-21 spec §7): opaque MP4 stays the default
+// for every card; transparent_overlay (MOV ProRes 4444) is opt-in and supported
+// ONLY for lower thirds in this slice. Absent field on old cards = opaque.
+const OUTPUT_MODES = Object.freeze(['opaque_card', 'transparent_overlay']);
+const OUTPUT_MODE_DEFAULT = 'opaque_card';
+const TRANSPARENT_CAPABLE_TYPES = Object.freeze(['lower_third']);
+
+function normalizeOutputMode(type, mode) {
+  return mode === 'transparent_overlay' && TRANSPARENT_CAPABLE_TYPES.indexOf(type) !== -1 ? 'transparent_overlay' : OUTPUT_MODE_DEFAULT;
+}
+
+function validateOutputMode(type, mode) {
+  if (OUTPUT_MODES.indexOf(mode) === -1) {
+    return { ok: false, error: `output_mode must be ${OUTPUT_MODES.join('|')}, got "${String(mode)}".` };
+  }
+  if (mode === 'transparent_overlay' && TRANSPARENT_CAPABLE_TYPES.indexOf(type) === -1) {
+    return { ok: false, error: `transparent_overlay is supported only for ${TRANSPARENT_CAPABLE_TYPES.join('|')} cards in this slice — "${String(type)}" cards render opaque.` };
+  }
+  return { ok: true, error: null };
+}
+
 // First-slice card types (title/claim, wrong-way/better-way, lower third).
 const TEMPLATES = [
   {
@@ -41,9 +62,10 @@ const TEMPLATES = [
       { key: 'name', label: 'Name / title line', kind: 'line', required: true },
       { key: 'descriptor', label: 'Descriptor', kind: 'line', required: false },
     ],
-    // Alpha/transparent output is NOT claimed Resolve-ready without validation.
+    // Transparent output exists but is NOT claimed Resolve-ready until the
+    // supervised compositing proof records a verdict (spec 2026-07-21).
     candidate_only: true,
-    note: 'Rendered on an opaque branded plate. Transparent/alpha output is not implemented or validated yet — do not treat as Resolve-ready alpha.',
+    note: 'Opaque plate by default. Transparent overlay (MOV ProRes 4444) is opt-in via Output mode — alpha is validated technically at render time, but do not treat it as Resolve-ready alpha until the supervised compositing proof records a verdict.',
   },
   {
     type: 'chapter',
@@ -136,6 +158,7 @@ function buildDefaultCard(type, overrides = {}) {
     recommended_engine: rec.engine,
     recommendation_reason: rec.recommendation_reason,
     candidate_only: Boolean(t.candidate_only),
+    output_mode: normalizeOutputMode(t.type, overrides.output_mode),
     params: Object.assign(defaultParamsForType(t.type), overrides.params || {}),
     format: normalizeFormat(overrides.format || {}),
     style: normalizeStyle(overrides.style || {}),
@@ -212,12 +235,22 @@ function buildCardHtml(card = {}, options = {}) {
       </div>`;
   }
   const overlayClass = overlay === 'lower_left' ? 'mg-overlay-ll' : (overlay === 'none' ? 'mg-overlay-none' : 'mg-overlay-lr');
+  // Output-mode backgrounds (alpha slice 2026-07-21): transparent_overlay keeps
+  // the page + stage fully transparent so the render carries a real alpha
+  // channel — the lower-third plate keeps its designed semi-transparent fill.
+  // The checkerboard is a PREVIEW aid only (same rule as the safe-area guides:
+  // includeGuides marks preview context); the render source never contains it.
+  const transparent = normalizeOutputMode(type, card.output_mode) === 'transparent_overlay';
+  const pageBg = transparent
+    ? (includeGuides ? 'repeating-conic-gradient(#3a3f45 0% 25%, #23272d 0% 50%) 0 0/32px 32px' : 'transparent')
+    : '#0d1117';
+  const stageBg = transparent ? 'transparent' : 'linear-gradient(160deg,#0d1117,#161b22)';
   // Inline CSS only; no external assets (works as a HyperFrames composition too).
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
 <style>
-  html,body{margin:0;padding:0;background:#0d1117;}
-  .mg-stage{position:relative;width:${fmt.width}px;height:${fmt.height}px;background:linear-gradient(160deg,#0d1117,#161b22);color:#e6edf3;
+  html,body{margin:0;padding:0;background:${pageBg};}
+  .mg-stage{position:relative;width:${fmt.width}px;height:${fmt.height}px;background:${stageBg};color:#e6edf3;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;overflow:hidden;box-sizing:border-box;padding:8% 8% 12%;}
   .mg-brand{position:absolute;top:5%;left:8%;font-size:${Math.round(fmt.width*0.022)}px;letter-spacing:.14em;text-transform:uppercase;color:#8b949e;font-weight:700;}
   .mg-title-block{position:absolute;top:22%;left:8%;right:8%;}
@@ -263,6 +296,11 @@ function buildCardHtml(card = {}, options = {}) {
 module.exports = {
   FORMAT_DEFAULT,
   STYLE_DEFAULT,
+  OUTPUT_MODES,
+  OUTPUT_MODE_DEFAULT,
+  TRANSPARENT_CAPABLE_TYPES,
+  normalizeOutputMode,
+  validateOutputMode,
   TEMPLATES,
   TEMPLATE_TYPES,
   templateFor,

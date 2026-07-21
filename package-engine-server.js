@@ -330,6 +330,13 @@ const SUPER_FOCUS_MEDIA_ROOT = process.env.SUPER_FOCUS_MEDIA_ROOT || path.join(V
 // Motion Graphics Studio media namespace (VIDNAS, media-only; used from Slice 2
 // when rendering. Canonical project STATE stays local, see motion-graphics-state.js).
 const MOTION_GRAPHICS_MEDIA_ROOT = process.env.MOTION_GRAPHICS_MEDIA_ROOT || path.join(VIDNAS_AIGEN_ROOT, 'motion-graphics');
+// Approved HyperFrames version for TRANSPARENT lower-third renders (alpha
+// slice spec §14): alpha encode behavior (pix_fmt/profile/metadata) is version-
+// sensitive and the global CLI self-updates, so transparent renders refuse on
+// any other version (409). Opaque renders keep the advisory-only drift warning.
+// Deliberate remedies on refusal: review + update this constant, or reinstall
+// the approved CLI. Never auto-upgrade/downgrade.
+const MOTION_GRAPHICS_APPROVED_HYPERFRAMES_VERSION = '0.7.65';
 
 // Validate an optional operator-supplied count/limit for Super Focus. Absent
 // (undefined/null/'') returns `fallback`; otherwise it must be an integer 1..max.
@@ -1173,18 +1180,21 @@ function probeHyperframesAvailability(options = {}) {
   return value;
 }
 
-function hyperframesRenderCommand(sourcePath, outputPath) {
+function hyperframesRenderCommand(sourcePath, outputPath, renderFormat) {
   // hyperframes 0.7.x renders a PROJECT DIR: `render <dir> -c <composition> -o <output>`.
   // The run's hyperframes/ dir is the project (it carries an index.html marker); the
   // composition is referenced relative to it. (Earlier `render <file> <output>` form was
   // incompatible with the installed CLI.)
+  // renderFormat (alpha slice 2026-07-21): 'mov' appends `--format mov` (ProRes
+  // 4444 with alpha). Absent/null keeps the command byte-identical to before.
   const projectDir = path.dirname(path.dirname(sourcePath));
   const compositionRel = path.relative(projectDir, sourcePath);
-  return [...HYPERFRAMES_RENDER_COMMAND, projectDir, '-c', compositionRel, '-o', outputPath];
+  const formatArgs = renderFormat === 'mov' ? ['--format', 'mov'] : [];
+  return [...HYPERFRAMES_RENDER_COMMAND, projectDir, '-c', compositionRel, '-o', outputPath, ...formatArgs];
 }
 
 function runHyperframesRenderCommand(sourcePath, outputPath, logPath, options = {}) {
-  const command = options.renderCommand || hyperframesRenderCommand(sourcePath, outputPath);
+  const command = options.renderCommand || hyperframesRenderCommand(sourcePath, outputPath, options.renderFormat);
   const runner = options.runner || childProcess.spawnSync;
   const result = runner(command[0], command.slice(1), {
     cwd: options.cwd || ROOT,
@@ -14713,7 +14723,7 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Motion Graphics card-params API' });
-          const patch = { type: payload.type, params: payload.params, format: payload.format, style: payload.style, engine: payload.engine };
+          const patch = { type: payload.type, params: payload.params, format: payload.format, style: payload.style, engine: payload.engine, output_mode: payload.output_mode };
           const out = motionGraphicsState.updateCardParams(payload.id || '', payload.card_id || '', patch, mgOpts);
           const validation = motionGraphicsTemplates.validateCardParams(out.card.type, out.card.params);
           sendJSON(res, 200, { project: out.state, card: out.card, validation });
@@ -14753,9 +14763,21 @@ function createServer(options = {}) {
           // global HyperFrames CLI self-updates, so the version must be pinned
           // per render, not assumed (production proof 2026-07-21).
           const hfProbe = (serverOptions.hyperframesProbe || probeHyperframesAvailability)();
+          // Approved-version GATE for transparent renders (alpha spec §14):
+          // alpha encode behavior is version-sensitive — hard 409, never a
+          // silent render on a drifted CLI. Opaque stays advisory-only.
+          const mgApprovedVersion = serverOptions.motionGraphicsApprovedHyperframesVersion || MOTION_GRAPHICS_APPROVED_HYPERFRAMES_VERSION;
+          if ((card.output_mode || 'opaque_card') === 'transparent_overlay' && hfProbe.version !== mgApprovedVersion) {
+            const e = new Error(`Transparent renders are gated to HyperFrames ${mgApprovedVersion}; installed is ${hfProbe.version || 'unknown'}. Deliberate remedies: review the new CLI and update MOTION_GRAPHICS_APPROVED_HYPERFRAMES_VERSION, or reinstall hyperframes@${mgApprovedVersion}. No auto-upgrade.`);
+            e.statusCode = 409;
+            throw e;
+          }
           const out = motionGraphicsRenderers.renderCard(
             { project: state, card },
-            { mediaRoot: mgMediaRoot, runRender: mgRunRender, rendererVersion: hfProbe.version || null }
+            {
+              mediaRoot: mgMediaRoot, runRender: mgRunRender, rendererVersion: hfProbe.version || null,
+              probeVideo: serverOptions.motionGraphicsProbeVideo, alphaSanity: serverOptions.motionGraphicsAlphaSanity,
+            }
           );
           // The render (MP4+manifest on disk) and the card-state record are two
           // writes. If persisting the record fails, don't silently lose a real
@@ -14811,7 +14833,10 @@ function createServer(options = {}) {
         const state = motionGraphicsState.loadProject(id, mgOpts);
         const filePath = motionGraphicsRenderers.resolveRenderMediaFile(state, renderId, { mediaRoot: mgMediaRoot });
         if (!filePath) { sendError(res, 404, 'Render not found.', 'motion-graphics-media-missing'); return; }
-        res.writeHead(200, { 'Content-Type': 'video/mp4', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+        // MIME from the resolved record path (never from request input):
+        // transparent overlays are MOV/ProRes, opaque cards MP4.
+        const mgMime = filePath.endsWith('.mov') ? 'video/quicktime' : 'video/mp4';
+        res.writeHead(200, { 'Content-Type': mgMime, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
         fs.createReadStream(filePath).pipe(res);
       } catch (error) { sendError(res, error.statusCode || 500, error.message, 'motion-graphics-media-error'); }
       return;

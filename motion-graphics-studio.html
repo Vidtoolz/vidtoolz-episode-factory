@@ -114,6 +114,14 @@
           <option value="remotion">Remotion (spec/export only)</option>
         </select>
         <div class="engine-note" id="engine-note"></div>
+        <div id="output-mode-row" class="hidden">
+          <label>Output</label>
+          <select id="card-output-mode">
+            <option value="opaque_card">Opaque card (MP4)</option>
+            <option value="transparent_overlay">Transparent overlay (MOV ProRes 4444 — for Resolve compositing)</option>
+          </select>
+          <div class="engine-note" id="output-mode-note"></div>
+        </div>
         <div id="param-fields"></div>
         <div class="row">
           <label style="margin:0">Duration (s) <input type="text" id="fmt-duration" style="width:70px" /></label>
@@ -134,7 +142,7 @@
       <div>
         <label>Preview <span class="sub" id="preview-meta"></span></label>
         <div class="previewwrap"><iframe id="preview-frame" title="card preview"></iframe></div>
-        <div class="engine-note">Deterministic HTML preview (green/red, safe-area guide). Not a rendered frame.</div>
+        <div class="engine-note">Deterministic HTML preview (green/red, safe-area guide; transparent overlays show a checkerboard behind transparent areas). Preview aids never appear in the rendered file. Not a rendered frame.</div>
       </div>
     </div>
   </section>
@@ -257,8 +265,22 @@
     el('engine-note').textContent=c.recommendation_reason||'';
     el('candidate-note').textContent=c.candidate_only?('Candidate-only: '+((TEMPLATES.find(function(t){return t.type===c.type;})||{}).note||'not validated for Resolve-ready alpha.')):'';
     el('fmt-duration').value=c.format.duration_seconds; el('fmt-fps').value=c.format.fps; el('fmt-size').value=c.format.width+'x'+c.format.height;
+    updateOutputModeControl(c);
     renderParamFields(c); renderCardList(); refreshPreview(); updateRenderControls(c); renderHistory(c);
   }
+  // Output-mode control: lower thirds only (this slice). Transparent overlay is
+  // opt-in; alpha is technically validated at render time but stays
+  // proof-pending until Mikko records the supervised Resolve verdict.
+  function updateOutputModeControl(c){
+    var row=el('output-mode-row');
+    if(!c||c.type!=='lower_third'){ row.classList.add('hidden'); return; }
+    row.classList.remove('hidden');
+    setSelectValue('card-output-mode',c.output_mode||'opaque_card');
+    el('output-mode-note').textContent=(el('card-output-mode').value==='transparent_overlay')
+      ? 'MOV ProRes 4444 with a real alpha channel; preview shows a checkerboard behind transparent areas (preview only). Renders are gated to the approved HyperFrames version and validated for alpha — the Resolve compositing proof is still required before production use.'
+      : 'Standard opaque MP4 card (the proven path).';
+  }
+  el('card-output-mode').addEventListener('change',function(){ var c=cardById(currentCardId); if(c){ c.output_mode=this.value; updateOutputModeControl(c); } });
   function isRemotion(){ return el('card-engine').value==='remotion'; }
   function updateRenderControls(c){
     var note=el('render-engine-note'), btn=el('btn-render');
@@ -272,8 +294,11 @@
     var h='<label>Render history</label>';
     rs.slice().reverse().forEach(function(r){
       var mediaUrl=MEDIA_API+'?id='+encodeURIComponent(currentProject.project_id)+'&render_id='+encodeURIComponent(r.render_id);
+      var modeTag=r.output_mode==='transparent_overlay'?(' · transparent overlay ('+esc(r.container||'mov').toUpperCase()+')'):'';
+      var alphaTag=(r.output_mode==='transparent_overlay'&&r.status==='rendered')
+        ?(r.alpha_detected?' · <b>Alpha detected — Resolve proof pending</b>':' · <b style="color:var(--red)">alpha NOT detected</b>'):'';
       h+='<div class="item" style="margin-bottom:6px">'
-        +'<div class="t">'+esc(r.render_id)+' · '+esc(r.status)+' · '+esc(r.engine)+(r.renderer_version?(' '+esc(r.renderer_version)):'')+' · '+esc(r.created_at||'')+'</div>';
+        +'<div class="t">'+esc(r.render_id)+' · '+esc(r.status)+' · '+esc(r.engine)+(r.renderer_version?(' '+esc(r.renderer_version)):'')+modeTag+alphaTag+' · '+esc(r.created_at||'')+'</div>';
       if(r.status==='rendered'){
         h+='<video src="'+mediaUrl+'" controls style="width:100%;max-height:38vh;background:#000;border-radius:8px;margin-top:6px"></video>'
           +'<div class="row"><button data-copy="'+esc(r.path||'')+'" class="btn-copypath">Copy path</button><span class="t">'+esc(r.path||'')+'</span></div>';
@@ -346,13 +371,16 @@
     var tpl=TEMPLATES.find(function(t){return t.type===el('card-type').value;}); var params={};
     (tpl?tpl.fields:[]).forEach(function(f){ var n=el('pf-'+f.key); if(n) params[f.key]=n.value; });
     var size=(el('fmt-size').value||'').split('x');
-    return { params:params, type:el('card-type').value, engine:el('card-engine').value,
+    var out={ params:params, type:el('card-type').value, engine:el('card-engine').value,
       format:{ duration_seconds:el('fmt-duration').value, fps:el('fmt-fps').value, width:size[0], height:size[1] } };
+    if(el('card-type').value==='lower_third'){ out.output_mode=el('card-output-mode').value; }
+    return out;
   }
   el('card-type').addEventListener('change',function(){
     // Switching type reloads default fields for the new type on next save; re-render fields now.
     var c=cardById(currentCardId); if(!c) return; c.type=el('card-type').value; renderParamFields(c);
     var tpl=TEMPLATES.find(function(t){return t.type===c.type;}); el('candidate-note').textContent=(tpl&&tpl.candidate_only)?('Candidate-only: '+(tpl.note||'')):'';
+    updateOutputModeControl(c);
   });
   el('btn-save-card').addEventListener('click',function(){
     var patch=collectParams(cardById(currentCardId)); patch.id=currentProject.project_id; patch.card_id=currentCardId;

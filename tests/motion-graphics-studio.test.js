@@ -692,3 +692,243 @@ test("mg-gui: render history surfaces renderer version and the drift warning wir
     assert.match(res.raw, /RENDER_STATUS_API\+'\?id='/);
   } finally { await close(server); }
 });
+
+// ============ Transparent-alpha lower-third slice (2026-07-21 spec) ============
+// Spec: reports/handoffs/motion-graphics-studio-alpha-lower-third-implementation-spec-2026-07-21.md
+// opaque_card stays byte-identical; transparent_overlay is opt-in, lower_third
+// only, MOV ProRes 4444, gated to the approved HyperFrames version, and never
+// "rendered" without passing technical alpha validation.
+
+const PASSING_PROBE = Object.freeze({
+  ok: true, format_name: "mov,mp4,m4a,3gp,3g2,mj2", video_streams: 1, audio_streams: 0,
+  codec_name: "prores", profile: "4444", pix_fmt: "yuva444p10le",
+  width: 1080, height: 1920, avg_frame_rate: "30/1", nb_frames: 150, duration_s: 5.0,
+});
+const PASSING_ALPHA = Object.freeze({ ok: true, failures: [], samples: [{ frame: 0, point: "corner", r: 255, g: 0, b: 255 }] });
+
+function seedLowerThird(root, outputMode) {
+  const p = mgState.createProject({ title: "Alpha" }, { root });
+  const { card } = mgState.addCard(p.project_id, { type: "lower_third" }, { root });
+  mgState.updateCardParams(p.project_id, card.card_id, { params: { name: "MIKKO PAKKALA", descriptor: "Video Production Systems Specialist" }, output_mode: outputMode }, { root });
+  return { project: mgState.loadProject(p.project_id, { root }), cardId: card.card_id };
+}
+
+test("mg-alpha: output-mode model — default opaque, transparent only for lower_third, old cards unchanged", () => {
+  assert.equal(mgTpl.OUTPUT_MODE_DEFAULT, "opaque_card");
+  assert.deepEqual([...mgTpl.TRANSPARENT_CAPABLE_TYPES], ["lower_third"]);
+  assert.equal(mgTpl.validateOutputMode("lower_third", "transparent_overlay").ok, true);
+  assert.equal(mgTpl.validateOutputMode("title", "transparent_overlay").ok, false);
+  assert.equal(mgTpl.validateOutputMode("lower_third", "translucent").ok, false);
+  // A pre-slice card object with NO output_mode field is opaque.
+  const legacy = { type: "lower_third", params: { name: "X" }, format: mgTpl.normalizeFormat({}), style: mgTpl.normalizeStyle({}) };
+  assert.equal(mgRender.cardOutputMode(legacy), "opaque_card");
+  // buildDefaultCard carries the default explicitly.
+  assert.equal(mgTpl.buildDefaultCard("title").output_mode, "opaque_card");
+});
+
+test("mg-alpha: state persists output_mode; refuses it on unsupported types; type switch resets it", () => {
+  const root = mkRoot();
+  const p = mgState.createProject({ title: "Modes" }, { root });
+  const { card } = mgState.addCard(p.project_id, { type: "lower_third" }, { root });
+  const upd = mgState.updateCardParams(p.project_id, card.card_id, { output_mode: "transparent_overlay" }, { root });
+  assert.equal(upd.card.output_mode, "transparent_overlay");
+  assert.equal(mgState.loadProject(p.project_id, { root }).cards[0].output_mode, "transparent_overlay");
+  // Unsupported combination refuses with 400.
+  const t = mgState.addCard(p.project_id, { type: "title" }, { root });
+  assert.throws(() => mgState.updateCardParams(p.project_id, t.card.card_id, { output_mode: "transparent_overlay" }, { root }), (e) => e.statusCode === 400);
+  // Switching a transparent lower third to another type resets the mode.
+  const sw = mgState.updateCardParams(p.project_id, card.card_id, { type: "title" }, { root });
+  assert.equal(sw.card.output_mode, "opaque_card");
+});
+
+test("mg-alpha: opaque composition source is byte-identical with and without the new field", () => {
+  const base = mgTpl.buildDefaultCard("lower_third", { params: { name: "MIKKO PAKKALA", descriptor: "Video Production Systems Specialist" } });
+  const legacy = JSON.parse(JSON.stringify(base));
+  delete legacy.output_mode;
+  assert.equal(mgTpl.buildCardHtml(legacy, { include_guides: false }), mgTpl.buildCardHtml(base, { include_guides: false }));
+  const opaque = mgTpl.buildCardHtml(base, { include_guides: false });
+  assert.match(opaque, /background:#0d1117/);
+  assert.match(opaque, /linear-gradient\(160deg,#0d1117,#161b22\)/);
+  assert.doesNotMatch(opaque, /repeating-conic-gradient/);
+});
+
+test("mg-alpha: transparent render source has a transparent canvas, keeps the plate, and carries no preview aids", () => {
+  const card = mgTpl.buildDefaultCard("lower_third", { output_mode: "transparent_overlay", params: { name: "MIKKO PAKKALA", descriptor: "Video Production Systems Specialist" } });
+  const source = mgTpl.buildCardHtml(card, { include_guides: false });
+  assert.match(source, /html,body\{margin:0;padding:0;background:transparent;\}/);
+  assert.match(source, /\.mg-stage\{[^}]*background:transparent/);
+  assert.doesNotMatch(source, /linear-gradient\(160deg,#0d1117,#161b22\)/);
+  assert.doesNotMatch(source, /repeating-conic-gradient/, "checkerboard is preview-only");
+  assert.doesNotMatch(source, /mg-safe |presenter-safe area:/, "guides stay excluded");
+  assert.match(source, /rgba\(13,17,23,\.86\)/, "the designed plate fill stays — transparent canvas, not translucent graphic");
+  // Preview (guides context) shows the checkerboard behind the stage.
+  const preview = mgTpl.buildCardHtml(card);
+  assert.match(preview, /repeating-conic-gradient/);
+  assert.match(preview, /mg-safe /);
+});
+
+test("mg-alpha: render command threading — --format mov only in transparent mode, opaque byte-identical", () => {
+  const calls = [];
+  const runner = (bin, args) => { calls.push([bin, ...args]); return { status: 0, stdout: "", stderr: "" }; };
+  const tmp = mkRoot();
+  const src = path.join(tmp, "proj", "sources", "c.html");
+  fs.mkdirSync(path.dirname(src), { recursive: true });
+  fs.writeFileSync(src, "x");
+  const logA = path.join(tmp, "a.log"); const logB = path.join(tmp, "b.log");
+  packageEngineServer.runHyperframesRenderCommand(src, path.join(tmp, "o.mp4"), logA, { runner });
+  packageEngineServer.runHyperframesRenderCommand(src, path.join(tmp, "o.mov"), logB, { runner, renderFormat: "mov" });
+  assert.ok(!calls[0].includes("--format"), "opaque command must stay byte-identical (no --format flag)");
+  const i = calls[1].indexOf("--format");
+  assert.ok(i !== -1 && calls[1][i + 1] === "mov", "transparent command appends --format mov");
+});
+
+test("mg-alpha: renderCard transparent — .mov artifact, contract fields, alpha detected, proof pending", () => {
+  const root = mkRoot(); const mediaRoot = mkRoot();
+  const { project, cardId } = seedLowerThird(root, "transparent_overlay");
+  const card = mgState.findCard(project, cardId);
+  const out = mgRender.renderCard({ project, card }, {
+    mediaRoot, runRender: stubRunner(), renderId: "r-a1fa0001", rendererVersion: "0.7.65",
+    probeVideo: () => ({ ...PASSING_PROBE }), alphaSanity: () => ({ ...PASSING_ALPHA }),
+  });
+  assert.equal(out.ok, true, JSON.stringify(out.record));
+  assert.equal(out.record.output_mode, "transparent_overlay");
+  assert.equal(out.record.container, "mov");
+  assert.ok(out.record.path.endsWith("r-a1fa0001.mov"));
+  assert.equal(out.record.expected_codec, "prores");
+  assert.equal(out.record.expected_profile, "4444");
+  assert.equal(out.record.expected_pix_fmt, "yuva444p10le");
+  assert.equal(out.record.alpha_expected, true);
+  assert.equal(out.record.alpha_detected, true);
+  assert.equal(out.record.resolve_proof, "pending", "technical detection is never a Resolve verdict");
+  assert.equal(out.record.log_path, path.join("renders", cardId, "r-a1fa0001.log"));
+  const man = JSON.parse(fs.readFileSync(path.join(mediaRoot, project.project_id, "manifests", "r-a1fa0001.json"), "utf8"));
+  assert.equal(man.output_mode, "transparent_overlay");
+  assert.equal(man.alpha_expected, true);
+  assert.equal(man.alpha_detected, true);
+  assert.equal(man.resolve_proof, "pending");
+  assert.equal(man.params.name, "MIKKO PAKKALA");
+  fs.rmSync(root, { recursive: true, force: true }); fs.rmSync(mediaRoot, { recursive: true, force: true });
+});
+
+test("mg-alpha: a technically opaque artifact FAILS a transparent render; evidence preserved", () => {
+  const root = mkRoot(); const mediaRoot = mkRoot();
+  const { project, cardId } = seedLowerThird(root, "transparent_overlay");
+  const card = mgState.findCard(project, cardId);
+  const out = mgRender.renderCard({ project, card }, {
+    mediaRoot, runRender: stubRunner(), renderId: "r-a1fa0002", rendererVersion: "0.7.65",
+    probeVideo: () => ({ ...PASSING_PROBE, pix_fmt: "yuv420p" }), alphaSanity: () => ({ ...PASSING_ALPHA }),
+  });
+  assert.equal(out.ok, false);
+  assert.equal(out.record.status, "failed");
+  assert.match(out.record.error, /yuv420p/);
+  assert.match(out.record.error, /codec name alone is not proof/i);
+  assert.equal(out.record.alpha_detected, false);
+  assert.ok(fs.existsSync(path.join(mediaRoot, project.project_id, "renders", cardId, "r-a1fa0002.mov")), "failed artifact preserved as evidence");
+  assert.equal(out.record.evidence_path, path.join("renders", cardId, "r-a1fa0002.mov"));
+  fs.rmSync(root, { recursive: true, force: true }); fs.rmSync(mediaRoot, { recursive: true, force: true });
+});
+
+test("mg-alpha: alpha sanity failure (opaque canvas over composite) also fails the render", () => {
+  const root = mkRoot(); const mediaRoot = mkRoot();
+  const { project, cardId } = seedLowerThird(root, "transparent_overlay");
+  const card = mgState.findCard(project, cardId);
+  const out = mgRender.renderCard({ project, card }, {
+    mediaRoot, runRender: stubRunner(), renderId: "r-a1fa0003",
+    probeVideo: () => ({ ...PASSING_PROBE }),
+    alphaSanity: () => ({ ok: false, failures: ["frame 0: canvas corner is not transparent (got rgb(0,0,0) over magenta — opaque canvas or black matte)"], samples: [] }),
+  });
+  assert.equal(out.ok, false);
+  assert.match(out.record.error, /canvas corner is not transparent/);
+  fs.rmSync(root, { recursive: true, force: true }); fs.rmSync(mediaRoot, { recursive: true, force: true });
+});
+
+test("mg-alpha: renderCard refuses transparent mode on a non-lower_third card", () => {
+  const root = mkRoot(); const mediaRoot = mkRoot();
+  const { project, cardId } = seedCard(root, "title");
+  const card = Object.assign({}, mgState.findCard(project, cardId), { output_mode: "transparent_overlay" });
+  assert.throws(() => mgRender.renderCard({ project, card }, { mediaRoot, runRender: stubRunner() }), (e) => e.statusCode === 400);
+  fs.rmSync(root, { recursive: true, force: true }); fs.rmSync(mediaRoot, { recursive: true, force: true });
+});
+
+test("mg-alpha: approved-version gate — transparent render 409s on a drifted CLI; opaque unaffected", async () => {
+  const root = mkRoot(); const mediaRoot = mkRoot();
+  const server = packageEngineServer.createServer({
+    superFocusRoot: mkRoot(), motionGraphicsRoot: root, motionGraphicsMediaRoot: mediaRoot,
+    hyperframesRenderer: stubRunner(),
+    hyperframesProbe: () => ({ available: true, version: "0.7.99" }), // drifted
+    motionGraphicsProbeVideo: () => ({ ...PASSING_PROBE }),
+    motionGraphicsAlphaSanity: () => ({ ...PASSING_ALPHA }),
+  });
+  await listen(server);
+  try {
+    const created = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_PROJECTS_API, { method: "POST", headers: writeHeaders(), body: { title: "Gate" } }));
+    const id = created.project.project_id;
+    const lt = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, type: "lower_third" } }));
+    await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_PARAMS_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: lt.card.card_id, params: { name: "MIKKO PAKKALA" }, output_mode: "transparent_overlay" } });
+    const refused = await request(server, packageEngineServer.MOTION_GRAPHICS_RENDER_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: lt.card.card_id } });
+    assert.equal(refused.statusCode, 409);
+    assert.match(refused.body.error, /0\.7\.65/);
+    assert.match(refused.body.error, /0\.7\.99/);
+    assert.match(refused.body.error, /No auto-upgrade/);
+    // Opaque render on the SAME drifted server still works (advisory only).
+    const t = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, type: "title" } }));
+    await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_PARAMS_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: t.card.card_id, params: { title: "Still opaque" } } });
+    const okRender = await request(server, packageEngineServer.MOTION_GRAPHICS_RENDER_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: t.card.card_id } });
+    assert.equal(okRender.statusCode, 200);
+  } finally { await close(server); }
+});
+
+test("mg-alpha: approved version passes the gate; media route serves video/quicktime for the .mov", async () => {
+  const root = mkRoot(); const mediaRoot = mkRoot();
+  const server = packageEngineServer.createServer({
+    superFocusRoot: mkRoot(), motionGraphicsRoot: root, motionGraphicsMediaRoot: mediaRoot,
+    hyperframesRenderer: stubRunner(),
+    hyperframesProbe: () => ({ available: true, version: "0.7.65" }),
+    motionGraphicsProbeVideo: () => ({ ...PASSING_PROBE }),
+    motionGraphicsAlphaSanity: () => ({ ...PASSING_ALPHA }),
+  });
+  await listen(server);
+  try {
+    const created = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_PROJECTS_API, { method: "POST", headers: writeHeaders(), body: { title: "Overlay" } }));
+    const id = created.project.project_id;
+    const lt = unwrap(await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, type: "lower_third" } }));
+    await request(server, packageEngineServer.MOTION_GRAPHICS_CARD_PARAMS_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: lt.card.card_id, params: { name: "MIKKO PAKKALA", descriptor: "Video Production Systems Specialist" }, output_mode: "transparent_overlay" } });
+    const rendered = await request(server, packageEngineServer.MOTION_GRAPHICS_RENDER_CARD_API, { method: "POST", headers: writeHeaders(), body: { id, card_id: lt.card.card_id } });
+    assert.equal(rendered.statusCode, 200, JSON.stringify(rendered.body));
+    const d = unwrap(rendered);
+    assert.equal(d.render.renderer_version, "0.7.65");
+    assert.ok(d.render.path.endsWith(".mov"));
+    // Media route MIME comes from the record path, not request input.
+    const address = server.address();
+    const mediaPath = packageEngineServer.MOTION_GRAPHICS_MEDIA_API + "?id=" + encodeURIComponent(id) + "&render_id=" + encodeURIComponent(d.render.render_id);
+    const mime = await new Promise((resolve, reject) => {
+      http.get({ hostname: "127.0.0.1", port: address.port, path: mediaPath }, (res) => { res.resume(); resolve(res.headers["content-type"]); }).on("error", reject);
+    });
+    assert.equal(mime, "video/quicktime");
+  } finally { await close(server); }
+});
+
+test("mg-alpha: GUI carries the opt-in control and honest proof-pending language, never 'Resolve-ready'", () => {
+  const page = fs.readFileSync(path.join(__dirname, "..", "motion-graphics-studio.html"), "utf8");
+  assert.match(page, /Opaque card \(MP4\)/);
+  assert.match(page, /Transparent overlay \(MOV ProRes 4444/);
+  assert.match(page, /Alpha detected — Resolve proof pending/);
+  assert.match(page, /alpha NOT detected/);
+  assert.match(page, /checkerboard/i);
+  // The page must never make an AFFIRMATIVE readiness claim; the only allowed
+  // occurrence is the pre-existing negated fallback "not validated for
+  // Resolve-ready alpha."
+  const claims = (page.match(/Resolve-ready/g) || []).length;
+  const negated = (page.match(/not validated for Resolve-ready alpha/g) || []).length;
+  assert.equal(claims, negated, "every 'Resolve-ready' mention must be the negated caveat, never a claim");
+});
+
+test("mg-alpha: docs state the shipped contract and keep the proof-pending caveat", () => {
+  const doc = fs.readFileSync(path.join(__dirname, "..", "docs", "motion-graphics-studio.md"), "utf8");
+  assert.match(doc, /transparent_overlay/);
+  assert.match(doc, /ProRes 4444/);
+  assert.match(doc, /yuva444p10le/);
+  assert.match(doc, /MOTION_GRAPHICS_APPROVED_HYPERFRAMES_VERSION/);
+  assert.match(doc, /Resolve-ready alpha/i);
+  assert.match(doc, /supervised Resolve compositing proof/i);
+});

@@ -43,9 +43,24 @@ The card editor shows the **recommended engine and why** before any render.
 ## Templates (first slice)
 - **Title / claim** — title, subtitle, sharp claim.
 - **Wrong-way / better-way** — wrong, better, optional why.
-- **Lower third** — name/title line, descriptor. **Candidate-only:** rendered on
-  an opaque branded plate; transparent/alpha output is **not** implemented or
-  validated — do **not** treat it as Resolve-ready alpha.
+- **Lower third** — name/title line, descriptor. Two output modes (2026-07-21):
+  - `opaque_card` (default) — the branded opaque plate MP4, exactly as before.
+  - `transparent_overlay` (opt-in) — **MOV ProRes 4444** (`prores_ks`, profile
+    4444, `yuva444p10le`) with a real alpha channel: the page and stage render
+    fully transparent; the plate keeps its designed semi-transparent fill.
+    Renders are **gated to the approved HyperFrames version**
+    (`MOTION_GRAPHICS_APPROVED_HYPERFRAMES_VERSION`, currently 0.7.65 — a 409
+    with deliberate remedies on any other version) and validated at render
+    time: ffprobe contract (container/codec/pix_fmt/dimensions/fps/frames/
+    duration/single-silent-stream) **plus** an alpha sanity composite over a
+    synthetic background on first/middle/last frames. A file that fails
+    validation is recorded as a failed render with the artifact preserved as
+    evidence. **Candidate-only:** technical alpha detection is not a
+    compositing judgment — do **not** treat it as Resolve-ready alpha until the
+    supervised Resolve compositing proof records a CLEAN/PARTIAL verdict
+    (protocol: `reports/handoffs/motion-graphics-studio-alpha-lower-third-resolve-proof-2026-07-21.md`).
+    Transparent mode is limited to lower thirds in this slice; every other
+    card type refuses it (400).
 
 All cards default to vertical **1080×1920, 30fps, 5s**, with a **presenter-safe
 area** guide (lower-right by default).
