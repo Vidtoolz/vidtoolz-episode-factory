@@ -44,6 +44,7 @@ require("./project-video-review.test.js");
 require("./presto-video-profile.test.js");
 require("./project-media-kit.test.js");
 require("./earth-studio.test.js");
+require("./earth-studio-proof.test.js");
 require("./score-engine.test.js");
 require("./score-readiness.test.js");
 require("./score-verify.test.js");

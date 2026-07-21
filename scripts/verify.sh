@@ -41,6 +41,7 @@ node --check trailer-cue-generator.js
 node --check music-cue-generator.js
 node --check supervised-capture.js
 node --check earth-studio-job-planner.js
+node --check scripts/verify-earth-studio-proof.js
 node --check score-engine/score-schemas.js
 node --check score-engine/midi-writer.js
 node --check score-engine/composer.js
