@@ -348,6 +348,74 @@ function computeGateVerdict(gateResult, expectedLane) {
   }
   return { allow: true, code: 'route', reason: 'ok' };
 }
+
+// sha256 of a file's bytes, or null if absent/unreadable/too large. Never throws.
+function sha256FileSafe(filePath, maxBytes = 5 * 1024 * 1024) {
+  try {
+    if (!filePath) return null;
+    const st = fs.statSync(filePath);
+    if (!st.isFile() || st.size > maxBytes) return null;
+    return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+  } catch (_) {
+    return null;
+  }
+}
+
+// Job-level binding to the exact rendered inputs: a stable hash over the two
+// dispatch input manifests (which stills, which motion prompts). null when the
+// package dir has neither (e.g. a non-aigen lane). This is provenance evidence,
+// not a gate — it never blocks a dispatch.
+function hashDispatchInputs(packageDir) {
+  const parts = [];
+  for (const name of ['selected-images.json', 'video-prompts.json']) {
+    const h = sha256FileSafe(path.join(packageDir, name));
+    if (h) parts.push(`${name}:${h}`);
+  }
+  return parts.length ? crypto.createHash('sha256').update(parts.join('|')).digest('hex') : null;
+}
+
+// Build the durable provenance receipt for a compute-gated PRESTO dispatch from
+// the selector result that authorized it. Fields the selector legitimately omits
+// (registry_version, fallback_used) are recorded as null = UNKNOWN — never
+// fabricated. Dynamic fields (job_id, dispatch_timestamp, workflow_hash,
+// inputs_hash) are filled in at spawn time by launchPrestoProductionJob.
+function buildComputeDispatchReceipt(input = {}) {
+  const g = input.gateResult && typeof input.gateResult === 'object' ? input.gateResult : {};
+  const verdict = input.verdict || {};
+  return {
+    schema_version: 1,
+    lane: input.lane || null,
+    decision: g.decision || null,
+    gate_code: verdict.code || null,
+    selected_host: g.selected_host || null,
+    selected_endpoint: g.endpoint || g.selected_endpoint || null,
+    selector_reason: g.reason || null,
+    registry_version: g.registry_version || null,
+    fallback_used: g.fallback_used === true ? true : (g.fallback_used === false ? false : null),
+    checks: g.checks && typeof g.checks === 'object' ? g.checks : {},
+    profile: input.profile || null,
+    comfyui_url: input.comfyuiUrl || null,
+    job_id: null,
+    dispatch_timestamp: null,
+    workflow_hash: null,
+    inputs_hash: null,
+  };
+}
+
+// Best-effort durable write of the dispatch receipt into the package dir. A
+// write failure NEVER fails a dispatch — the in-memory receipt (surfaced via the
+// job-status API) is authoritative; the file is an additive provenance artifact.
+function persistDispatchReceipt(packageDir, receipt) {
+  try {
+    const outPath = path.join(packageDir, 'presto-dispatch-receipt.json');
+    const tmp = `${outPath}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+    fs.renameSync(tmp, outPath);
+    return outPath;
+  } catch (_) {
+    return null;
+  }
+}
 const RESOLVE_HANDOFF_FILES = ['assembly-plan.md', 'assembly-plan.csv', 'media-manifest.json'];
 const PRESTO_OUTPUT_LIMIT_BYTES = 100 * 1024;
 const PRESTO_OUTPUT_TAIL_BYTES = 4 * 1024;
@@ -7668,6 +7736,7 @@ function serializePrestoJob(job, running, now = Date.now()) {
     signal: job.signal || null,
     stdout_tail: tailOutput(job.stdout),
     stderr_tail: tailOutput(job.stderr),
+    compute_receipt: job.compute_receipt || null,
   };
 }
 
@@ -7778,6 +7847,7 @@ function startPrestoPackageJob(payload = {}, options = {}) {
     packageId: config.packageId,
     profile: config.profile,
     comfyuiUrl: config.comfyuiUrl,
+    computeReceipt: options.computeReceipt || null,
   }, payload, options);
 }
 
@@ -7833,6 +7903,24 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
     stdout: '',
     stderr: '',
   };
+  // Finalize + record the compute dispatch receipt (if this dispatch was
+  // compute-gated). Dynamic provenance is stamped here: the job id, the spawn
+  // timestamp, the canonical workflow hash, and a hash binding to the exact
+  // dispatch inputs. Durable write is best-effort and never fails the spawn.
+  if (config.computeReceipt) {
+    const receipt = config.computeReceipt;
+    receipt.job_id = job.job_id;
+    receipt.dispatch_timestamp = job.startedAt;
+    receipt.workflow_hash = sha256FileSafe(genEnv.workflowPath);
+    try {
+      const { packageDir } = resolveAigenPackageDir(config.packageId, options);
+      receipt.inputs_hash = hashDispatchInputs(packageDir);
+      receipt.receipt_path = persistDispatchReceipt(packageDir, receipt);
+    } catch (_) {
+      // Non-aigen lane or unresolved package dir → keep the in-memory receipt only.
+    }
+    job.compute_receipt = receipt;
+  }
   PRESTO_STATE.activeJob = job;
   if (child.stdout && child.stdout.on) {
     child.stdout.on('data', (chunk) => { job.stdout = appendCappedOutput(job.stdout, chunk); });
@@ -7857,6 +7945,7 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
     package_id: config.packageId,
     comfyui_url: config.comfyuiUrl,
     profile: config.profile,
+    compute_receipt: job.compute_receipt || null,
   };
 }
 
@@ -8910,7 +8999,11 @@ function handlePrestoSubmit(req, res, options = {}) {
             );
             return;
           }
-          const result = startPrestoPackageJob(payload, options);
+          // Durable provenance: record WHY this dispatch was allowed (the compute
+          // gate's authorizing ROUTE) so a rendered clip can be traced back to the
+          // lane/host/endpoint/selector reason that produced it.
+          const receipt = buildComputeDispatchReceipt({ lane, gateResult, verdict, profile: config.profile, comfyuiUrl: config.comfyuiUrl });
+          const result = startPrestoPackageJob(payload, { ...options, computeReceipt: receipt });
           sendJSON(res, 200, result);
         });
       });
@@ -15695,6 +15788,7 @@ module.exports = {
   COMPUTE_SELECT_API,
   computeGateVerdict,
   isValidComputeLane,
+  buildComputeDispatchReceipt,
   CAPTURE_EVIDENCE_APPLY_API,
   CAPTURE_EVIDENCE_PREVIEW_API,
   CAPTURE_EVIDENCE_AUDIT_FILE,

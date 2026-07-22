@@ -339,4 +339,74 @@ test("ui: super-focus provider row is a display-only Wan I2V lane gate with esca
   assert.ok(!/compute-gate-row[\s\S]{0,400}disabled/.test(html), "gate row does not disable a submit control");
 });
 
+// ── Dispatch receipt (provenance of a compute-gated dispatch) ────────────────
+function getJson(server, apiPath) {
+  const a = server.address();
+  return new Promise((resolve, reject) => {
+    const req = http.request({ hostname: "127.0.0.1", port: a.port, path: apiPath, method: "GET" }, (res) => {
+      let raw = ""; res.setEncoding("utf8"); res.on("data", (c) => { raw += c; });
+      res.on("end", () => { let b = null; try { b = JSON.parse(raw); } catch (_) {} resolve({ statusCode: res.statusCode, body: b }); });
+    });
+    req.on("error", reject); req.end();
+  });
+}
+
+test("receipt builder: records selector fields; omitted fields are null (never fabricated)", () => {
+  const build = packageEngineServer.buildComputeDispatchReceipt;
+  const r = build({ lane: "wan_i2v", gateResult: { decision: "ROUTE", selected_host: "presto", endpoint: "http://x:8188", reason: "ok", checks: { a: "pass" } }, verdict: { code: "route" }, profile: "mp4-hq-720p", comfyuiUrl: "http://192.168.50.187:8188" });
+  assert.equal(r.schema_version, 1);
+  assert.equal(r.selected_host, "presto");
+  assert.equal(r.selected_endpoint, "http://x:8188");
+  assert.equal(r.selector_reason, "ok");
+  assert.equal(r.registry_version, null); // selector omitted it → unknown, not fabricated
+  assert.equal(r.fallback_used, null);
+  // Explicit selector values are preserved verbatim.
+  const r2 = build({ lane: "wan_i2v", gateResult: { decision: "ROUTE", selected_host: "presto", fallback_used: false, registry_version: "v3" }, verdict: { code: "route" } });
+  assert.equal(r2.fallback_used, false);
+  assert.equal(r2.registry_version, "v3");
+});
+
+test("receipt: a compute-gated dispatch records provenance (submit result, status API, and durable file)", async () => {
+  const fx = makeEligiblePkg();
+  const pkgDir = path.join(fx.scriptPackages, fx.id);
+  const gate = async () => ({ ok: true, decision: "ROUTE", selected_host: "presto", endpoint: "http://192.168.61.185:8188", reason: "all checks pass", checks: { ssh_reachable: "pass", comfyui_reachable: "pass" } });
+  await withGateSubmit(fx, { gate, reachable: true }, async (server, captured) => {
+    const res = await postSubmit(server, { package_id: fx.id });
+    assert.equal(res.statusCode, 200);
+    assert.equal(captured.count, 1);
+    const receipt = res.body.data.compute_receipt;
+    assert.ok(receipt, "submit result carries a compute_receipt");
+    assert.equal(receipt.lane, "wan_i2v");
+    assert.equal(receipt.decision, "ROUTE");
+    assert.equal(receipt.selected_host, "presto");
+    assert.equal(receipt.selected_endpoint, "http://192.168.61.185:8188");
+    assert.equal(receipt.selector_reason, "all checks pass");
+    assert.ok(receipt.job_id, "job_id stamped at spawn");
+    assert.ok(receipt.dispatch_timestamp, "dispatch_timestamp stamped at spawn");
+    assert.ok(typeof receipt.inputs_hash === "string" && receipt.inputs_hash.length === 64, "bound to the exact dispatch inputs by hash");
+    assert.equal(receipt.registry_version, null); // omitted by selector → recorded null
+    // Durable receipt file written into the package dir, matching the in-memory one.
+    const onDisk = JSON.parse(fs.readFileSync(path.join(pkgDir, "presto-dispatch-receipt.json"), "utf8"));
+    assert.equal(onDisk.job_id, receipt.job_id);
+    assert.equal(onDisk.inputs_hash, receipt.inputs_hash);
+    assert.equal(onDisk.selected_host, "presto");
+    // The job-status API surfaces the same receipt (survives beyond the submit response).
+    const st = await getJson(server, packageEngineServer.PRESTO_JOB_STATUS_API);
+    const view = st.body.data.active || st.body.data.completed;
+    assert.ok(view && view.compute_receipt, "job-status exposes the receipt");
+    assert.equal(view.compute_receipt.job_id, receipt.job_id);
+  });
+});
+
+test("receipt: a BLOCKED dispatch writes no receipt file (nothing was dispatched)", async () => {
+  const fx = makeEligiblePkg();
+  const pkgDir = path.join(fx.scriptPackages, fx.id);
+  await withGateSubmit(fx, { gate: async () => ({ ok: false, decision: "BLOCKED", reason: "resolve_not_running: fail" }) }, async (server, captured) => {
+    const res = await postSubmit(server, { package_id: fx.id });
+    assert.equal(res.statusCode, 503);
+    assert.equal(captured.count, undefined);
+    assert.equal(fs.existsSync(path.join(pkgDir, "presto-dispatch-receipt.json")), false);
+  });
+});
+
 console.log("compute-registry-gate tests passed");
