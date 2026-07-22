@@ -1361,6 +1361,10 @@ function videoServer(spawnImpl, opts = {}) {
     superFocusRoot: root, superFocusMediaRoot: mediaRoot,
     productionScript: fakeScript(), pythonBin: "python3", spawn: spawnImpl,
     prestoReachableCheck: opts.reach || (async () => true),
+    // Inject a deterministic compute gate so the SF render pump never touches the
+    // real ~/vidtoolz-compute selector. Default: a consistent Wan I2V ROUTE to
+    // PRESTO. Tests that exercise a blocked/errored lane override opts.computeGateFn.
+    computeGateFn: opts.computeGateFn || (async () => ({ ok: true, decision: "ROUTE", lane: "wan_i2v", selected_host: "presto", endpoint: "http://192.168.61.185:8188", reason: "Lane 'wan_i2v' is available on presto.", fallback_used: false, checks: { ssh_reachable: "pass", comfyui_reachable: "pass", resolve_not_running: "pass", canonical_workflow_present: "pass" }, registry_version: 1 })),
   });
   return { server, root, mediaRoot, id: created.project_id };
 }
@@ -1795,6 +1799,7 @@ test("generate-videos returns 503 (no fallback) when PRESTO ComfyUI is unreachab
   const server = packageEngineServer.createServer({
     superFocusRoot: root, superFocusMediaRoot: mediaRoot,
     productionScript: fakeScript(), spawn: fakePrestoSpawn(),
+    computeGateFn: async () => ({ ok: true, decision: "ROUTE", selected_host: "presto", checks: {} }),
     prestoReachableCheck: async () => false, // PRESTO down
   });
   await listen(server);
@@ -4168,6 +4173,7 @@ test("recovery: a persisted running item with no live process becomes interrupte
   const server = packageEngineServer.createServer({
     superFocusRoot: root, superFocusMediaRoot: mediaRoot,
     productionScript: fakeScript(), pythonBin: "python3", spawn: fakePrestoSpawn(),
+    computeGateFn: async () => ({ ok: true, decision: "ROUTE", selected_host: "presto", checks: {} }),
     prestoReachableCheck: async () => false,
   });
   await listen(server);
@@ -4623,6 +4629,7 @@ test("regenerate-video restores the archived clip when dispatch fails (slot neve
     superFocusRoot: root, superFocusMediaRoot: mediaRoot,
     productionScript: path.join(mkRoot(), "missing-run-production.py"), // dispatch throws AFTER archive
     pythonBin: "python3", spawn: fakePrestoSpawn(),
+    computeGateFn: async () => ({ ok: true, decision: "ROUTE", selected_host: "presto", checks: {} }),
     prestoReachableCheck: async () => true,
   });
   await listen(server);
@@ -4700,6 +4707,7 @@ test("generate-videos re-checks the pause AFTER the reach probe (pause during pr
   const server = packageEngineServer.createServer({
     superFocusRoot: root, superFocusMediaRoot: mediaRoot,
     productionScript: fakeScript(), pythonBin: "python3", spawn: fakePrestoSpawn(),
+    computeGateFn: async () => ({ ok: true, decision: "ROUTE", selected_host: "presto", checks: {} }),
     // The operator pauses the queue exactly while the reach probe is in flight.
     prestoReachableCheck: async () => {
       sfMedia.writeVideoQueue(id, { version: 1, paused: true, items: [] }, { mediaRoot });

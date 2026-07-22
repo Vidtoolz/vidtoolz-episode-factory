@@ -77,6 +77,11 @@ function auditFixture(rowCount = 3) {
     spawn: () => { spawnCalls += 1; throw new Error('audit must never spawn'); },
     productionScript: __filename,
     prestoReachableCheck: async () => { reachCalls += 1; throw new Error('audit must never probe PRESTO'); },
+    // Deterministic allowing compute gate: the read-only audit endpoint never
+    // pumps (so it never calls this), and the resume-pump test must not touch the
+    // real selector — the pump reaching the reachability probe (which throws) is
+    // what proves no dispatch, exactly as before this gate existed.
+    computeGateFn: async () => ({ ok: true, decision: 'ROUTE', lane: 'wan_i2v', selected_host: 'presto', endpoint: 'http://192.168.61.185:8188', reason: 'ready', fallback_used: false, checks: {}, registry_version: 1 }),
   });
   const proj = superFocus.createProject({ title: 'QA' }, { root });
   const id = proj.project_id;
