@@ -208,6 +208,8 @@ const PRESTO_SUBMIT_API = '/api/presto/submit';
 const PRESTO_JOB_STATUS_API = '/api/presto/job-status';
 const PRESTO_CANCEL_API = '/api/presto/cancel';
 const PRESTO_RESULTS_API = '/api/presto/results';
+const COMPUTE_STATUS_API = '/api/compute/status';
+const COMPUTE_SELECT_API = '/api/compute/select';
 const PACKAGE_VIDEO_PROMPTS_API = '/api/package/video-prompts';
 const FLUX_SUBMIT_API = '/api/flux/submit';
 const FLUX_JOB_STATUS_API = '/api/flux/job-status';
@@ -260,6 +262,160 @@ const VIDNAS_ARCHIVED_VIDEO_DIR = path.join(VIDNAS_ARCHIVED_MEDIA_ROOT, 'VIDEO')
 const ARCHIVE_IMAGE_EXT = /\.(png|jpg|jpeg|webp|gif|bmp)$/i;
 const ARCHIVE_VIDEO_EXT = /\.(mp4|webm|mov|avi|mkv)$/i;
 const PRESTO_BASE_URL = 'http://192.168.50.187:8188';
+
+// ---------------------------------------------------------------------------
+// Compute registry integration (read-only, vidnux-owned lane selector)
+// The selector lives at ~/vidtoolz-compute/vidtoolz-compute.py and provides
+// lane-keyed readiness checks (SSH, ComfyUI, Resolve-not-running, workflow
+// hash). This integration adds a gate before PRESTO submit: if the selector
+// says BLOCKED, the submit is rejected with a clear reason.
+// ---------------------------------------------------------------------------
+const { execFile } = childProcess;
+const COMPUTE_REGISTRY_DIR = path.join(process.env.HOME || '/home/vidtoolz', 'vidtoolz-compute');
+const COMPUTE_SELECTOR = path.join(COMPUTE_REGISTRY_DIR, 'vidtoolz-compute.py');
+const COMPUTE_REGISTRY_TIMEOUT_MS = 20000;
+// The only compute lane this cockpit integration supports (Wan I2V → PRESTO).
+// Image routing and other hosts (e.g. vidlap2) are deliberately out of scope for
+// this branch; any other lane id is rejected before the selector is ever spawned.
+const COMPUTE_LANES = new Set(['wan_i2v']);
+// The host a wan_i2v ROUTE must resolve to for a PRESTO submit to proceed.
+const COMPUTE_WAN_I2V_HOST = 'presto';
+
+// Strict lane-id validation for the query-facing selector route: charset + length
+// bound first (so traversal, shell metacharacters, and overlong input can never
+// reach the spawned child), then a registered-lane allowlist. Selector invocation
+// uses execFile with an argument array — no shell — so even a well-formed value is
+// never interpreted; this guard additionally prevents a stray child process.
+function isValidComputeLane(lane) {
+  return typeof lane === 'string' && /^[a-z][a-z0-9_]{0,63}$/.test(lane) && COMPUTE_LANES.has(lane);
+}
+
+function computeRegistrySelect(lane) {
+  return new Promise((resolve) => {
+    // Defense in depth: never spawn the selector for an unregistered/unsafe lane.
+    if (!isValidComputeLane(lane)) {
+      resolve({ ok: false, decision: 'BLOCKED', reason: `invalid or unregistered lane '${String(lane).slice(0, 64)}'`, checks: {}, fallback_used: false });
+      return;
+    }
+    execFile('python3', [COMPUTE_SELECTOR, 'select', lane, '--json'], {
+      cwd: COMPUTE_REGISTRY_DIR,
+      timeout: COMPUTE_REGISTRY_TIMEOUT_MS,
+    }, (err, stdout, stderr) => {
+      if (err) {
+        resolve({ ok: false, decision: 'BLOCKED', reason: `selector error: ${(stderr || err.message || '').slice(0, 300)}`, checks: {}, fallback_used: false });
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout));
+      } catch (parseErr) {
+        resolve({ ok: false, decision: 'BLOCKED', reason: `selector JSON parse error: ${(parseErr.message || '').slice(0, 200)}`, checks: {}, fallback_used: false });
+      }
+    });
+  });
+}
+
+async function computeReadinessGate(lane) {
+  const result = await computeRegistrySelect(lane);
+  return result;
+}
+
+// Fail-closed verdict on a selector result, evaluated fresh before every PRESTO
+// submit. A submit is allowed ONLY when the result is internally consistent for
+// the requested lane: a genuine ROUTE decision, to the canonical PRESTO host,
+// with no fallback. "ROUTE" is never accepted as a bare boolean — any
+// missing/unknown/mismatched identity field blocks. It matches the selector's
+// observed ROUTE shape ({decision:'ROUTE', selected_host:'presto', ...}): fields
+// the selector may legitimately omit (lane, fallback_used) only block when
+// PRESENT and wrong, never merely by being absent. Returns { allow, code, reason }.
+function computeGateVerdict(gateResult, expectedLane) {
+  if (!gateResult || typeof gateResult !== 'object') {
+    return { allow: false, code: 'gate_malformed', reason: 'selector returned no usable result' };
+  }
+  if (gateResult.ok === false || gateResult.decision === 'BLOCKED') {
+    return { allow: false, code: 'lane_blocked', reason: gateResult.reason || 'blocked by selector' };
+  }
+  if (gateResult.decision !== 'ROUTE') {
+    return { allow: false, code: 'unexpected_decision', reason: `unexpected selector decision '${String(gateResult.decision).slice(0, 40)}'` };
+  }
+  if (gateResult.lane != null && gateResult.lane !== expectedLane) {
+    return { allow: false, code: 'lane_mismatch', reason: `selector routed lane '${String(gateResult.lane).slice(0, 40)}', expected '${expectedLane}'` };
+  }
+  if (gateResult.selected_host !== COMPUTE_WAN_I2V_HOST) {
+    return { allow: false, code: 'host_mismatch', reason: `selector routed to host '${String(gateResult.selected_host).slice(0, 40)}', expected '${COMPUTE_WAN_I2V_HOST}'` };
+  }
+  if (gateResult.fallback_used === true) {
+    return { allow: false, code: 'fallback_used', reason: 'selector used a fallback route; refusing PRESTO submit' };
+  }
+  return { allow: true, code: 'route', reason: 'ok' };
+}
+
+// sha256 of a file's bytes, or null if absent/unreadable/too large. Never throws.
+function sha256FileSafe(filePath, maxBytes = 5 * 1024 * 1024) {
+  try {
+    if (!filePath) return null;
+    const st = fs.statSync(filePath);
+    if (!st.isFile() || st.size > maxBytes) return null;
+    return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+  } catch (_) {
+    return null;
+  }
+}
+
+// Job-level binding to the exact rendered inputs: a stable hash over the two
+// dispatch input manifests (which stills, which motion prompts). null when the
+// package dir has neither (e.g. a non-aigen lane). This is provenance evidence,
+// not a gate — it never blocks a dispatch.
+function hashDispatchInputs(packageDir) {
+  const parts = [];
+  for (const name of ['selected-images.json', 'video-prompts.json']) {
+    const h = sha256FileSafe(path.join(packageDir, name));
+    if (h) parts.push(`${name}:${h}`);
+  }
+  return parts.length ? crypto.createHash('sha256').update(parts.join('|')).digest('hex') : null;
+}
+
+// Build the durable provenance receipt for a compute-gated PRESTO dispatch from
+// the selector result that authorized it. Fields the selector legitimately omits
+// (registry_version, fallback_used) are recorded as null = UNKNOWN — never
+// fabricated. Dynamic fields (job_id, dispatch_timestamp, workflow_hash,
+// inputs_hash) are filled in at spawn time by launchPrestoProductionJob.
+function buildComputeDispatchReceipt(input = {}) {
+  const g = input.gateResult && typeof input.gateResult === 'object' ? input.gateResult : {};
+  const verdict = input.verdict || {};
+  return {
+    schema_version: 1,
+    lane: input.lane || null,
+    decision: g.decision || null,
+    gate_code: verdict.code || null,
+    selected_host: g.selected_host || null,
+    selected_endpoint: g.endpoint || g.selected_endpoint || null,
+    selector_reason: g.reason || null,
+    registry_version: g.registry_version || null,
+    fallback_used: g.fallback_used === true ? true : (g.fallback_used === false ? false : null),
+    checks: g.checks && typeof g.checks === 'object' ? g.checks : {},
+    profile: input.profile || null,
+    comfyui_url: input.comfyuiUrl || null,
+    job_id: null,
+    dispatch_timestamp: null,
+    workflow_hash: null,
+    inputs_hash: null,
+  };
+}
+
+// Best-effort durable write of the dispatch receipt into the package dir. A
+// write failure NEVER fails a dispatch — the in-memory receipt (surfaced via the
+// job-status API) is authoritative; the file is an additive provenance artifact.
+function persistDispatchReceipt(packageDir, receipt) {
+  try {
+    const outPath = path.join(packageDir, 'presto-dispatch-receipt.json');
+    const tmp = `${outPath}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+    fs.renameSync(tmp, outPath);
+    return outPath;
+  } catch (_) {
+    return null;
+  }
+}
 const RESOLVE_HANDOFF_FILES = ['assembly-plan.md', 'assembly-plan.csv', 'media-manifest.json'];
 const PRESTO_OUTPUT_LIMIT_BYTES = 100 * 1024;
 const PRESTO_OUTPUT_TAIL_BYTES = 4 * 1024;
@@ -7580,6 +7736,7 @@ function serializePrestoJob(job, running, now = Date.now()) {
     signal: job.signal || null,
     stdout_tail: tailOutput(job.stdout),
     stderr_tail: tailOutput(job.stderr),
+    compute_receipt: job.compute_receipt || null,
   };
 }
 
@@ -7690,6 +7847,7 @@ function startPrestoPackageJob(payload = {}, options = {}) {
     packageId: config.packageId,
     profile: config.profile,
     comfyuiUrl: config.comfyuiUrl,
+    computeReceipt: options.computeReceipt || null,
   }, payload, options);
 }
 
@@ -7745,6 +7903,24 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
     stdout: '',
     stderr: '',
   };
+  // Finalize + record the compute dispatch receipt (if this dispatch was
+  // compute-gated). Dynamic provenance is stamped here: the job id, the spawn
+  // timestamp, the canonical workflow hash, and a hash binding to the exact
+  // dispatch inputs. Durable write is best-effort and never fails the spawn.
+  if (config.computeReceipt) {
+    const receipt = config.computeReceipt;
+    receipt.job_id = job.job_id;
+    receipt.dispatch_timestamp = job.startedAt;
+    receipt.workflow_hash = sha256FileSafe(genEnv.workflowPath);
+    try {
+      const { packageDir } = resolveAigenPackageDir(config.packageId, options);
+      receipt.inputs_hash = hashDispatchInputs(packageDir);
+      receipt.receipt_path = persistDispatchReceipt(packageDir, receipt);
+    } catch (_) {
+      // Non-aigen lane or unresolved package dir → keep the in-memory receipt only.
+    }
+    job.compute_receipt = receipt;
+  }
   PRESTO_STATE.activeJob = job;
   if (child.stdout && child.stdout.on) {
     child.stdout.on('data', (chunk) => { job.stdout = appendCappedOutput(job.stdout, chunk); });
@@ -7769,6 +7945,7 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
     package_id: config.packageId,
     comfyui_url: config.comfyuiUrl,
     profile: config.profile,
+    compute_receipt: job.compute_receipt || null,
   };
 }
 
@@ -8785,19 +8962,50 @@ function handlePrestoSubmit(req, res, options = {}) {
       }
       // Pre-flight: confirm PRESTO ComfyUI is reachable before spawning, so a dead worker
       // fails fast with a clear message instead of a job that silently times out.
-      const reachableCheck = options.prestoReachableCheck || prestoComfyuiReachable;
-      return Promise.resolve(reachableCheck(config.comfyuiUrl, options)).then((reachable) => {
-        if (!reachable) {
+      // Compute registry gate: check lane readiness (SSH, ComfyUI, Resolve-not-running,
+      // canonical workflow hash) via the read-only selector. If BLOCKED, reject with
+      // the selector's reason — do NOT proceed to spawn run-production.py.
+      const computeGate = options.computeGateFn || computeReadinessGate;
+      const lane = options.computeLane || 'wan_i2v';
+      return Promise.resolve()
+        .then(() => computeGate(lane))
+        // Any throw/rejection in the gate is itself a fail-closed BLOCK — a gate
+        // that cannot run must never let a submit through.
+        .catch((gateErr) => ({ ok: false, decision: 'BLOCKED', reason: `gate error: ${(((gateErr && gateErr.message) || 'exception')).slice(0, 200)}`, checks: {} }))
+        .then((gateResult) => {
+        // Authoritative, identity-bound verdict (fresh, server-side). A submit
+        // proceeds ONLY on a consistent ROUTE for this lane to PRESTO; every
+        // other result — BLOCKED, unknown decision, wrong host, fallback used,
+        // malformed — is refused here, before the reachability probe and spawn.
+        const verdict = computeGateVerdict(gateResult, lane);
+        if (!verdict.allow) {
           sendError(
             res,
             503,
-            `PRESTO ComfyUI is not reachable at ${config.comfyuiUrl}. Start ComfyUI on PRESTO (192.168.50.187:8188) and retry.`,
-            'presto_unreachable',
+            `Compute registry: lane '${lane}' is BLOCKED — ${verdict.reason}`,
+            'compute_lane_blocked',
+            { lane, gate_code: verdict.code, checks: (gateResult && gateResult.checks) || {}, manual_action_required: (gateResult && gateResult.manual_action_required) || null },
           );
           return;
         }
-        const result = startPrestoPackageJob(payload, options);
-        sendJSON(res, 200, result);
+        const reachableCheck = options.prestoReachableCheck || prestoComfyuiReachable;
+        return Promise.resolve(reachableCheck(config.comfyuiUrl, options)).then((reachable) => {
+          if (!reachable) {
+            sendError(
+              res,
+              503,
+              `PRESTO ComfyUI is not reachable at ${config.comfyuiUrl}. Start ComfyUI on PRESTO (192.168.50.187:8188) and retry.`,
+              'presto_unreachable',
+            );
+            return;
+          }
+          // Durable provenance: record WHY this dispatch was allowed (the compute
+          // gate's authorizing ROUTE) so a rendered clip can be traced back to the
+          // lane/host/endpoint/selector reason that produced it.
+          const receipt = buildComputeDispatchReceipt({ lane, gateResult, verdict, profile: config.profile, comfyuiUrl: config.comfyuiUrl });
+          const result = startPrestoPackageJob(payload, { ...options, computeReceipt: receipt });
+          sendJSON(res, 200, result);
+        });
       });
     })
     .catch((error) => {
@@ -14468,6 +14676,37 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === COMPUTE_STATUS_API) {
+      execFile('python3', [COMPUTE_SELECTOR, 'status', '--json'], {
+        cwd: COMPUTE_REGISTRY_DIR,
+        timeout: COMPUTE_REGISTRY_TIMEOUT_MS,
+      }, (err, stdout, stderr) => {
+        if (err) {
+          sendError(res, 500, `compute status error: ${(stderr || err.message || '').slice(0, 300)}`, 'compute-status-error');
+          return;
+        }
+        try { sendJSON(res, 200, JSON.parse(stdout)); }
+        catch (e) { sendError(res, 500, `compute status JSON parse error: ${e.message}`, 'compute-status-parse-error'); }
+      });
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === COMPUTE_SELECT_API) {
+      const lane = url.searchParams.get('lane') || 'wan_i2v';
+      // Reject unregistered/unsafe lane ids with a controlled 400 before the
+      // selector is spawned (traversal, shell-like, overlong, or unknown lanes).
+      if (!isValidComputeLane(lane)) {
+        sendError(res, 400, `Invalid or unregistered compute lane '${String(lane).slice(0, 64)}'. Supported: ${Array.from(COMPUTE_LANES).join(', ')}.`, 'invalid_lane');
+        return;
+      }
+      computeReadinessGate(lane).then((result) => {
+        sendJSON(res, 200, result);
+      }).catch((error) => {
+        sendError(res, 500, error.message || 'compute select error', 'compute-select-error');
+      });
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === PACKAGE_VIDEO_PROMPTS_API) {
       handlePackageVideoPrompts(req, res, url);
       return;
@@ -15545,6 +15784,11 @@ module.exports = {
   PRESTO_RESULTS_API,
   PRESTO_STATE,
   PRESTO_SUBMIT_API,
+  COMPUTE_STATUS_API,
+  COMPUTE_SELECT_API,
+  computeGateVerdict,
+  isValidComputeLane,
+  buildComputeDispatchReceipt,
   CAPTURE_EVIDENCE_APPLY_API,
   CAPTURE_EVIDENCE_PREVIEW_API,
   CAPTURE_EVIDENCE_AUDIT_FILE,

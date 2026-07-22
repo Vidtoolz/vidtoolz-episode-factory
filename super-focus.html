@@ -1010,7 +1010,26 @@
           return '<div class="prow"><span class="pname">' + esc(r[0]) + '</span><span class="pstat ' + esc(r[2]) + '">' + esc(r[1]) + '</span></div>';
         }).join('') +
         (img.message ? '<div class="prow"><span class="pname"></span><span class="pname" style="text-align:right;">' + esc(img.message) + '</span></div>' : '') +
-        restartHtml;
+        restartHtml +
+        '<div class="prow" id="compute-gate-row"><span class="pname">Wan I2V lane gate</span><span class="pname">Checking…</span></div>';
+      // Fetch compute registry gate status (read-only, no side effects)
+      fetch('/api/compute/select?lane=wan_i2v', { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          var gateRow = document.getElementById('compute-gate-row');
+          if (!gateRow) return;
+          var g = (res.data || res);
+          if (g.decision === 'ROUTE') {
+            gateRow.innerHTML = '<span class="pname">Wan I2V lane gate</span><span class="pstat ok">READY · ' + esc(g.selected_host || 'presto') + '</span>';
+          } else {
+            var reason = g.reason || g.decision || 'blocked';
+            gateRow.innerHTML = '<span class="pname">Wan I2V lane gate</span><span class="pstat bad">BLOCKED · ' + esc(reason.slice(0, 80)) + '</span>';
+          }
+        })
+        .catch(function () {
+          var gateRow = document.getElementById('compute-gate-row');
+          if (gateRow) gateRow.innerHTML = '<span class="pname">Wan I2V lane gate</span><span class="pstat warn">unavailable</span>';
+        });
     }
     document.getElementById('check-providers').addEventListener('click', function () {
       var panel = document.getElementById('providers-panel');

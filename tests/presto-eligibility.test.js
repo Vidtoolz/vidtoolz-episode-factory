@@ -216,7 +216,7 @@ async function withSubmitServer(fx, spawnFn, fn, { reachable = true } = {}) {
   process.env.AIGEN_SCRIPT_PACKAGES = fx.scriptPackages;
   process.env.AIGEN_PRODUCTION_SCRIPT = productionScript;
   packageEngineServer.PRESTO_STATE.activeJob = null;
-  const server = packageEngineServer.createServer({ prestoReachableCheck: async () => reachable, spawn: spawnFn });
+  const server = packageEngineServer.createServer({ prestoReachableCheck: async () => reachable, computeGateFn: async () => ({ ok: true, decision: "ROUTE", selected_host: "presto", checks: {} }), spawn: spawnFn });
   try {
     await listen(server);
     await fn(server);

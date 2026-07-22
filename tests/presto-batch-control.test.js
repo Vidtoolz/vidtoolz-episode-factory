@@ -340,6 +340,7 @@ test("PRESTO submit returns 503 when ComfyUI is unreachable (no job spawned)", a
   const captured = {};
   const server = packageEngineServer.createServer({
     prestoReachableCheck: async () => false,
+    computeGateFn: async () => ({ ok: true, decision: "ROUTE", selected_host: "presto", checks: {} }),
     spawn: captureSpawn(captured),
   });
   try {
@@ -369,6 +370,7 @@ test("PRESTO submit spawns with --timeout 5400 when ComfyUI is reachable", async
   const captured = {};
   const server = packageEngineServer.createServer({
     prestoReachableCheck: async () => true,
+    computeGateFn: async () => ({ ok: true, decision: "ROUTE", selected_host: "presto", checks: {} }),
     spawn: captureSpawn(captured),
   });
   try {
