@@ -116,6 +116,8 @@ const PROJECT_MEDIA_KIT_API = '/api/project/media-kit';
 const PROJECT_YOUTUBE_DRAFT_API = '/api/project/youtube-draft';
 const PROJECT_YOUTUBE_DRAFT_SAVE_API = '/api/project/youtube-draft/save';
 const SUPER_FOCUS_PROJECTS_API = '/api/super-focus/projects';
+const SUPER_FOCUS_PROJECTS_HEALTH_API = '/api/super-focus/projects-health';
+const SUPER_FOCUS_PROJECT_HEALTH_API = '/api/super-focus/project-health';
 const SUPER_FOCUS_ARCHIVED_PROJECTS_API = '/api/super-focus/archived-projects';
 const SUPER_FOCUS_ARCHIVE_PROJECT_API = '/api/super-focus/archive-project';
 const SUPER_FOCUS_RESTORE_PROJECT_API = '/api/super-focus/restore-project';
@@ -319,6 +321,7 @@ const superFocusImageReview = require('./super-focus-image-review.js');
 const superFocusVideoReview = require('./super-focus-video-review.js');
 const superFocusPrompts = require('./super-focus-prompts.js');
 const superFocusMedia = require('./super-focus-media.js');
+const superFocusProjectHealth = require('./super-focus-project-health.js');
 const superFocusRouter = require('./super-focus-router.js');
 const scriptEvaluator = require('./script-evaluator.js');
 const motionGraphicsState = require('./motion-graphics-state.js');
@@ -11388,6 +11391,32 @@ function createServer(options = {}) {
       return;
     }
 
+    // Read-only project health & recovery summary. Safe GETs (no nonce, like
+    // the project-list read): they never mutate — they load canonical state and
+    // read cheap disk evidence (existence + small JSON; no ffprobe). The
+    // aggregate mirrors listProjects ordering and additionally surfaces corrupt
+    // projects as unreadable rows so they can be recovered from the picker.
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_PROJECTS_HEALTH_API) {
+      try {
+        sendJSON(res, 200, superFocusProjectHealth.listProjectsHealth({ sfRoot, sfMediaRoot }));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-projects-health-error');
+      }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_PROJECT_HEALTH_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+        sendJSON(res, 200, { health: superFocusProjectHealth.computeProjectHealth(id, { sfRoot, sfMediaRoot }) });
+      } catch (error) {
+        // 400 invalid id, 404 missing, 422 corrupt — all controlled, from the
+        // same assertions loadProject uses.
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-project-health-error');
+      }
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === SUPER_FOCUS_PROJECTS_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -15784,6 +15813,8 @@ module.exports = {
   PROJECT_YOUTUBE_DRAFT_API,
   PROJECT_YOUTUBE_DRAFT_SAVE_API,
   SUPER_FOCUS_PROJECTS_API,
+  SUPER_FOCUS_PROJECTS_HEALTH_API,
+  SUPER_FOCUS_PROJECT_HEALTH_API,
   SUPER_FOCUS_PROJECT_API,
   SUPER_FOCUS_PROVIDERS_API,
   SUPER_FOCUS_OLLAMA_BENCHMARK_API,
