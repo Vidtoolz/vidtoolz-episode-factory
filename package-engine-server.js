@@ -208,6 +208,8 @@ const PRESTO_SUBMIT_API = '/api/presto/submit';
 const PRESTO_JOB_STATUS_API = '/api/presto/job-status';
 const PRESTO_CANCEL_API = '/api/presto/cancel';
 const PRESTO_RESULTS_API = '/api/presto/results';
+const COMPUTE_STATUS_API = '/api/compute/status';
+const COMPUTE_SELECT_API = '/api/compute/select';
 const PACKAGE_VIDEO_PROMPTS_API = '/api/package/video-prompts';
 const FLUX_SUBMIT_API = '/api/flux/submit';
 const FLUX_JOB_STATUS_API = '/api/flux/job-status';
@@ -260,6 +262,42 @@ const VIDNAS_ARCHIVED_VIDEO_DIR = path.join(VIDNAS_ARCHIVED_MEDIA_ROOT, 'VIDEO')
 const ARCHIVE_IMAGE_EXT = /\.(png|jpg|jpeg|webp|gif|bmp)$/i;
 const ARCHIVE_VIDEO_EXT = /\.(mp4|webm|mov|avi|mkv)$/i;
 const PRESTO_BASE_URL = 'http://192.168.50.187:8188';
+
+// ---------------------------------------------------------------------------
+// Compute registry integration (read-only, vidnux-owned lane selector)
+// The selector lives at ~/vidtoolz-compute/vidtoolz-compute.py and provides
+// lane-keyed readiness checks (SSH, ComfyUI, Resolve-not-running, workflow
+// hash). This integration adds a gate before PRESTO submit: if the selector
+// says BLOCKED, the submit is rejected with a clear reason.
+// ---------------------------------------------------------------------------
+const { execFile } = childProcess;
+const COMPUTE_REGISTRY_DIR = path.join(process.env.HOME || '/home/vidtoolz', 'vidtoolz-compute');
+const COMPUTE_SELECTOR = path.join(COMPUTE_REGISTRY_DIR, 'vidtoolz-compute.py');
+const COMPUTE_REGISTRY_TIMEOUT_MS = 20000;
+
+function computeRegistrySelect(lane) {
+  return new Promise((resolve) => {
+    execFile('python3', [COMPUTE_SELECTOR, 'select', lane, '--json'], {
+      cwd: COMPUTE_REGISTRY_DIR,
+      timeout: COMPUTE_REGISTRY_TIMEOUT_MS,
+    }, (err, stdout, stderr) => {
+      if (err) {
+        resolve({ ok: false, decision: 'BLOCKED', reason: `selector error: ${(stderr || err.message || '').slice(0, 300)}`, checks: {}, fallback_used: false });
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout));
+      } catch (parseErr) {
+        resolve({ ok: false, decision: 'BLOCKED', reason: `selector JSON parse error: ${(parseErr.message || '').slice(0, 200)}`, checks: {}, fallback_used: false });
+      }
+    });
+  });
+}
+
+async function computeReadinessGate(lane) {
+  const result = await computeRegistrySelect(lane);
+  return result;
+}
 const RESOLVE_HANDOFF_FILES = ['assembly-plan.md', 'assembly-plan.csv', 'media-manifest.json'];
 const PRESTO_OUTPUT_LIMIT_BYTES = 100 * 1024;
 const PRESTO_OUTPUT_TAIL_BYTES = 4 * 1024;
@@ -8785,19 +8823,36 @@ function handlePrestoSubmit(req, res, options = {}) {
       }
       // Pre-flight: confirm PRESTO ComfyUI is reachable before spawning, so a dead worker
       // fails fast with a clear message instead of a job that silently times out.
-      const reachableCheck = options.prestoReachableCheck || prestoComfyuiReachable;
-      return Promise.resolve(reachableCheck(config.comfyuiUrl, options)).then((reachable) => {
-        if (!reachable) {
+      // Compute registry gate: check lane readiness (SSH, ComfyUI, Resolve-not-running,
+      // canonical workflow hash) via the read-only selector. If BLOCKED, reject with
+      // the selector's reason — do NOT proceed to spawn run-production.py.
+      const computeGate = options.computeGateFn || computeReadinessGate;
+      const lane = options.computeLane || 'wan_i2v';
+      return Promise.resolve(computeGate(lane)).then((gateResult) => {
+        if (!gateResult.ok || gateResult.decision === 'BLOCKED') {
           sendError(
             res,
             503,
-            `PRESTO ComfyUI is not reachable at ${config.comfyuiUrl}. Start ComfyUI on PRESTO (192.168.50.187:8188) and retry.`,
-            'presto_unreachable',
+            `Compute registry: lane '${lane}' is BLOCKED — ${gateResult.reason || 'unknown reason'}`,
+            'compute_lane_blocked',
+            { lane, checks: gateResult.checks, manual_action_required: gateResult.manual_action_required || null },
           );
           return;
         }
-        const result = startPrestoPackageJob(payload, options);
-        sendJSON(res, 200, result);
+        const reachableCheck = options.prestoReachableCheck || prestoComfyuiReachable;
+        return Promise.resolve(reachableCheck(config.comfyuiUrl, options)).then((reachable) => {
+          if (!reachable) {
+            sendError(
+              res,
+              503,
+              `PRESTO ComfyUI is not reachable at ${config.comfyuiUrl}. Start ComfyUI on PRESTO (192.168.50.187:8188) and retry.`,
+              'presto_unreachable',
+            );
+            return;
+          }
+          const result = startPrestoPackageJob(payload, options);
+          sendJSON(res, 200, result);
+        });
       });
     })
     .catch((error) => {
@@ -14468,6 +14523,31 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === COMPUTE_STATUS_API) {
+      execFile('python3', [COMPUTE_SELECTOR, 'status', '--json'], {
+        cwd: COMPUTE_REGISTRY_DIR,
+        timeout: COMPUTE_REGISTRY_TIMEOUT_MS,
+      }, (err, stdout, stderr) => {
+        if (err) {
+          sendError(res, 500, `compute status error: ${(stderr || err.message || '').slice(0, 300)}`, 'compute-status-error');
+          return;
+        }
+        try { sendJSON(res, 200, JSON.parse(stdout)); }
+        catch (e) { sendError(res, 500, `compute status JSON parse error: ${e.message}`, 'compute-status-parse-error'); }
+      });
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === COMPUTE_SELECT_API) {
+      const lane = url.searchParams.get('lane') || 'wan_i2v';
+      computeReadinessGate(lane).then((result) => {
+        sendJSON(res, 200, result);
+      }).catch((error) => {
+        sendError(res, 500, error.message || 'compute select error', 'compute-select-error');
+      });
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === PACKAGE_VIDEO_PROMPTS_API) {
       handlePackageVideoPrompts(req, res, url);
       return;
@@ -15545,6 +15625,8 @@ module.exports = {
   PRESTO_RESULTS_API,
   PRESTO_STATE,
   PRESTO_SUBMIT_API,
+  COMPUTE_STATUS_API,
+  COMPUTE_SELECT_API,
   CAPTURE_EVIDENCE_APPLY_API,
   CAPTURE_EVIDENCE_PREVIEW_API,
   CAPTURE_EVIDENCE_AUDIT_FILE,
