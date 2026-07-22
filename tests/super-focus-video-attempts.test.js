@@ -122,6 +122,9 @@ async function attemptServer(behavior = {}) {
     spawn: fakeProductionSpawn(behavior),
     productionScript: __filename, // must exist; the fake spawn ignores it
     prestoReachableCheck: behavior.reach || (async () => true),
+    // Deterministic compute gate so the render pump never touches the real
+    // ~/vidtoolz-compute selector (default: a consistent Wan I2V ROUTE to PRESTO).
+    computeGateFn: behavior.computeGateFn || (async () => ({ ok: true, decision: 'ROUTE', lane: 'wan_i2v', selected_host: 'presto', endpoint: 'http://192.168.61.185:8188', reason: 'ready', fallback_used: false, checks: { ssh_reachable: 'pass', comfyui_reachable: 'pass', resolve_not_running: 'pass', canonical_workflow_present: 'pass' }, registry_version: 1 })),
   });
   await listen(server);
   const proj = superFocus.createProject({ title: 'VA' }, { root });

@@ -416,6 +416,31 @@ function persistDispatchReceipt(packageDir, receipt) {
     return null;
   }
 }
+
+// Shared Super Focus Wan I2V lane gate. Same fail-closed, route-identity policy
+// the AIGEN PRESTO submit path enforces, evaluated fresh at each SF dispatch.
+// Returns { allow, gateResult, verdict }. Injectable via options.computeGateFn so
+// tests never touch the real selector; a throw/reject is itself a fail-closed
+// BLOCK. The queue pump treats a non-allow as a HOLD (item stays queued); the
+// direct batch/regenerate handlers turn it into a 503 (see superFocusLaneBlockedError).
+async function evaluateSuperFocusComputeLane(options = {}) {
+  const gate = options.computeGateFn || computeReadinessGate;
+  let gateResult;
+  try {
+    gateResult = await gate('wan_i2v');
+  } catch (gateErr) {
+    gateResult = { ok: false, decision: 'BLOCKED', reason: `gate error: ${(((gateErr && gateErr.message) || 'exception')).slice(0, 200)}`, checks: {} };
+  }
+  const verdict = computeGateVerdict(gateResult, 'wan_i2v');
+  return { allow: verdict.allow, gateResult, verdict };
+}
+
+function superFocusLaneBlockedError(verdict) {
+  const e = new Error(`Compute registry: Wan I2V lane is BLOCKED — ${(verdict && verdict.reason) || 'unknown reason'}`);
+  e.statusCode = 503;
+  e.code = 'compute_lane_blocked';
+  return e;
+}
 const RESOLVE_HANDOFF_FILES = ['assembly-plan.md', 'assembly-plan.csv', 'media-manifest.json'];
 const PRESTO_OUTPUT_LIMIT_BYTES = 100 * 1024;
 const PRESTO_OUTPUT_TAIL_BYTES = 4 * 1024;
@@ -7912,12 +7937,18 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
     receipt.job_id = job.job_id;
     receipt.dispatch_timestamp = job.startedAt;
     receipt.workflow_hash = sha256FileSafe(genEnv.workflowPath);
-    try {
-      const { packageDir } = resolveAigenPackageDir(config.packageId, options);
-      receipt.inputs_hash = hashDispatchInputs(packageDir);
-      receipt.receipt_path = persistDispatchReceipt(packageDir, receipt);
-    } catch (_) {
-      // Non-aigen lane or unresolved package dir → keep the in-memory receipt only.
+    // Durable package-dir write is the AIGEN lane's provenance artifact. The
+    // Super Focus lane keys packageArg to a media dir (not an AIGEN package) and
+    // carries its own render provenance (video-attempts.json + the compute
+    // receipt on the queue item), so it does not write here.
+    if (config.lane !== 'super-focus') {
+      try {
+        const { packageDir } = resolveAigenPackageDir(config.packageId, options);
+        receipt.inputs_hash = hashDispatchInputs(packageDir);
+        receipt.receipt_path = persistDispatchReceipt(packageDir, receipt);
+      } catch (_) {
+        // Unresolved package dir → keep the in-memory receipt only.
+      }
     }
     job.compute_receipt = receipt;
   }
@@ -7977,6 +8008,7 @@ function startSuperFocusVideoJob(mediaDir, options = {}) {
     indexes: options.indexes,
     limit: options.limit,
     lane: 'super-focus',
+    computeReceipt: options.computeReceipt || null,
   }, options.payload || {}, options);
 }
 
@@ -8640,6 +8672,15 @@ async function pumpSuperFocusVideoQueue(id, ctx) {
       }
     }
   }
+  // Supervised compute gate — the SAME lane policy the AIGEN PRESTO submit path
+  // enforces, now applied to the Super Focus render lane it previously bypassed.
+  // A non-ROUTE verdict HOLDS the item (it stays queued, like an unreachable
+  // worker, and is NEVER marked failed) so the render waits until the lane clears
+  // (e.g. Mikko closes Resolve, or ComfyUI comes up). Fail-closed; injectable.
+  const laneGate = await evaluateSuperFocusComputeLane(ctx.options);
+  if (!laneGate.allow) {
+    return { started: null, queue, blocked: 'compute_lane_blocked', gate: { code: laneGate.verdict.code, reason: laneGate.verdict.reason, checks: (laneGate.gateResult && laneGate.gateResult.checks) || {} } };
+  }
   const reach = ctx.options.prestoReachableCheck || ctx.options.reachableCheck || prestoComfyuiReachable;
   if (!(await reach(PRESTO_BASE_URL, ctx.options))) return { started: null, queue, blocked: 'unreachable' };
   // The reachability probe is an await window during which another handler
@@ -8699,6 +8740,16 @@ async function pumpSuperFocusVideoQueue(id, ctx) {
   freshItem.started_at = new Date().toISOString();
   freshItem.job_id = job && job.job_id;
   freshItem.provider = { id: 'presto_comfyui', label: 'PRESTO ComfyUI', subdir };
+  // Durable dispatch provenance: record the compute gate's authorizing ROUTE
+  // (host / endpoint / reason / registry_version + readiness checks) that
+  // permitted THIS render, bound to the queue item and persisted in
+  // video-queue.json. The exact rendered inputs are already bound separately by
+  // attempt_id → video-attempts.json (immutable staged still + dispatched inputs).
+  const receipt = buildComputeDispatchReceipt({ lane: 'wan_i2v', gateResult: laneGate.gateResult, verdict: laneGate.verdict, profile: DEFAULT_PRESTO_PROFILE, comfyuiUrl: PRESTO_BASE_URL });
+  receipt.job_id = job && job.job_id;
+  receipt.dispatch_timestamp = freshItem.started_at;
+  receipt.attempt_id = attempt.attempt_id;
+  freshItem.compute_receipt = receipt;
   superFocusMedia.writeVideoQueue(id, fresh, { mediaRoot: ctx.sfMediaRoot });
   const next2 = freshItem; // keep the tail below referring to the launched item
   // Event-driven advance: when this render finishes, drain the next item.
@@ -13058,6 +13109,11 @@ function createServer(options = {}) {
             const e = new Error(`No rows are cleared for video generation: ${reviewGate.skipped.map((s) => `#${s.index} ${s.reason}`).join('; ')}`);
             e.statusCode = 409; throw e;
           }
+          // Supervised compute gate (same lane policy as the queue pump and the
+          // AIGEN submit): fail-closed, route-identity-bound readiness. A blocked
+          // lane refuses the batch with 503 BEFORE any attempt is staged or spawned.
+          const laneGate = await evaluateSuperFocusComputeLane(options);
+          if (!laneGate.allow) throw superFocusLaneBlockedError(laneGate.verdict);
           // Pre-flight: PRESTO ComfyUI must be reachable. No cloud fallback, no auto-start.
           const reach = options.prestoReachableCheck || options.reachableCheck || prestoComfyuiReachable;
           const reachable = await reach(PRESTO_BASE_URL, options);
@@ -13122,6 +13178,7 @@ function createServer(options = {}) {
               productionScript: options.productionScript,
               pythonBin: options.pythonBin,
               payload,
+              computeReceipt: buildComputeDispatchReceipt({ lane: 'wan_i2v', gateResult: laneGate.gateResult, verdict: laneGate.verdict, profile: DEFAULT_PRESTO_PROFILE, comfyuiUrl: PRESTO_BASE_URL }),
             });
           } catch (error) {
             for (const a of Object.values(attemptsByIndex)) {
@@ -13155,7 +13212,7 @@ function createServer(options = {}) {
             subdir,
           });
         })
-        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-generate-videos-error'));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'super-focus-generate-videos-error'));
       return;
     }
 
@@ -13201,6 +13258,9 @@ function createServer(options = {}) {
           }
           const cur = currentPrestoJobStatus();
           if (cur.active) { const e = new Error('A PRESTO video job is already running. Wait for it to finish.'); e.statusCode = 409; throw e; }
+          // Supervised compute gate: fail-closed lane readiness before a render.
+          const laneGate = await evaluateSuperFocusComputeLane(options);
+          if (!laneGate.allow) throw superFocusLaneBlockedError(laneGate.verdict);
           const reach = options.prestoReachableCheck || options.reachableCheck || prestoComfyuiReachable;
           if (!(await reach(PRESTO_BASE_URL, options))) {
             const e = new Error(`PRESTO ComfyUI is not reachable at ${PRESTO_BASE_URL}. Start ComfyUI on PRESTO and retry (no fallback).`); e.statusCode = 503; throw e;
@@ -13247,6 +13307,7 @@ function createServer(options = {}) {
               spawn: options.spawn,
               productionScript: options.productionScript,
               pythonBin: options.pythonBin,
+              computeReceipt: buildComputeDispatchReceipt({ lane: 'wan_i2v', gateResult: laneGate.gateResult, verdict: laneGate.verdict, profile: DEFAULT_PRESTO_PROFILE, comfyuiUrl: PRESTO_BASE_URL }),
               payload,
             });
           } catch (error) {
@@ -13291,7 +13352,7 @@ function createServer(options = {}) {
             subdir, media_dir: materialized.mediaDir,
           });
         })
-        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-regenerate-video-error'));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'super-focus-regenerate-video-error'));
       return;
     }
 
@@ -13303,7 +13364,7 @@ function createServer(options = {}) {
       // single PRESTO worker is free). Then report reconciled disk + queue state.
       Promise.resolve()
         .then(() => pumpSuperFocusVideoQueue(id, ctx).catch(() => null))
-        .then(() => {
+        .then((pumpResult) => {
           const state = superFocus.loadProject(id, { root: sfRoot });
           const subdir = superFocusVideoSubdir();
           const recon = superFocusMedia.reconcileVideos(id, state.image_prompts, subdir, { mediaRoot: sfMediaRoot });
@@ -13325,6 +13386,11 @@ function createServer(options = {}) {
             stale: recon.stale,
             videos: recon.videos,
             paused: Boolean(queue.paused),
+            // Why the queue is not advancing right now (read-only; not persisted).
+            // 'compute_lane_blocked' carries the gate reason/checks so the operator
+            // sees the exact readiness blocker (e.g. Resolve running) — the same
+            // truth as the "Wan I2V lane gate" advisory row, tied to the queue.
+            dispatch_hold: pumpResult && pumpResult.blocked ? { reason: pumpResult.blocked, gate: pumpResult.gate || null } : null,
             queue: { summary: videoQueueSummary(queue), items: displayItems, control: videoQueueControl(queue) },
           });
         })

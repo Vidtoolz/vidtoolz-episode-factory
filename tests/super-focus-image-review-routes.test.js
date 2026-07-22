@@ -59,7 +59,15 @@ function writeImageFixture(mediaRoot, projectId, index, bytes) {
 async function reviewServer() {
   const root = mkdirTmp('sf-ir-root-');
   const mediaRoot = mkdirTmp('sf-ir-media-');
-  const server = packageEngineServer.createServer({ superFocusRoot: root, superFocusMediaRoot: mediaRoot });
+  const server = packageEngineServer.createServer({
+    superFocusRoot: root, superFocusMediaRoot: mediaRoot,
+    // These tests exercise the image-review queue gate at enqueue time, not an
+    // actual render. Keep the render pump deterministic and free of real calls:
+    // an allowing compute gate (no real selector) and an unreachable PRESTO so a
+    // queued row holds instead of dispatching.
+    computeGateFn: async () => ({ ok: true, decision: 'ROUTE', lane: 'wan_i2v', selected_host: 'presto', endpoint: 'http://192.168.61.185:8188', reason: 'ready', fallback_used: false, checks: {}, registry_version: 1 }),
+    prestoReachableCheck: async () => false,
+  });
   await listen(server);
   const proj = superFocus.createProject({ title: 'IR Routes' }, { root });
   const id = proj.project_id;
