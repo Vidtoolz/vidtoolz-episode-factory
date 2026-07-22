@@ -102,6 +102,35 @@
     .proj-list .meta { color: var(--muted); font-size: 13px; }
     .proj-list button { flex: 0 0 auto; }
     .empty { color: var(--muted); padding: 16px 0; }
+    /* Project lifecycle (archive / restore / permanent delete) */
+    button.btn.danger { border-color: #f85149; color: #f85149; background: var(--panel-2); }
+    button.btn.danger:hover:not(:disabled) { background: #f85149; color: #fff; border-color: #f85149; }
+    .proj-actions { display: flex; gap: 8px; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; }
+    .proj-actions .btn { padding: 8px 12px; font-size: 13px; }
+    .open-mode-note { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+    .lifecycle-confirm {
+      border: 1px solid var(--border); border-radius: 8px; padding: 16px;
+      margin-top: 18px; background: var(--panel-2);
+    }
+    .lifecycle-confirm.danger-mode { border-color: #f85149; }
+    .lifecycle-confirm h2 { margin: 0 0 6px; font-size: 17px; }
+    .lifecycle-confirm .meta { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    .lifecycle-confirm p { margin: 0 0 12px; }
+    .lifecycle-confirm label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    .lifecycle-confirm input {
+      font: inherit; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--panel); color: var(--text); margin-bottom: 12px; width: 220px; max-width: 100%;
+    }
+    .lc-error { color: #f85149; font-size: 13px; min-height: 18px; margin: 10px 0 0; }
+    .archived-banner {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      border: 1px solid #d29922; border-radius: 8px; padding: 12px 16px; margin-bottom: 18px;
+      background: rgba(210, 153, 34, 0.08); color: var(--text);
+    }
+    .archived-banner .badge {
+      background: #d29922; color: #1a1a1a; font-weight: 700; font-size: 12px;
+      border-radius: 999px; padding: 2px 10px; letter-spacing: .04em;
+    }
     .later-note { color: var(--muted); font-size: 12px; margin-top: 6px; }
     .sf-continue-link { display: inline-block; text-decoration: none; border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; color: var(--text); font-size: 13px; }
     .sf-continue-link:hover { border-color: var(--accent); color: var(--accent); }
@@ -362,11 +391,29 @@
     <!-- OPEN / LIST -->
     <section id="view-open" class="hidden">
       <div class="topbar">
-        <h1 style="font-size:22px;margin:0;">Open a project</h1>
-        <button class="link-btn" data-home>← Back</button>
+        <h1 style="font-size:22px;margin:0;" id="open-heading">Open a project</h1>
+        <div style="display:flex;gap:14px;align-items:center;">
+          <button class="link-btn" id="btn-archived-toggle" aria-pressed="false">Archived Projects</button>
+          <button class="link-btn" data-home>← Back</button>
+        </div>
       </div>
+      <p class="open-mode-note hidden" id="open-mode-note">Archived projects stay out of the normal list but remain openable and editable. Restore moves one back to the normal list; Delete is permanent.</p>
       <ul class="proj-list" id="proj-list"></ul>
       <p class="empty hidden" id="proj-empty" role="status" aria-live="polite">No Super Focus projects yet. Go back and create one.</p>
+      <div class="lifecycle-confirm hidden" id="lc-panel" role="dialog" aria-labelledby="lc-title" aria-describedby="lc-message">
+        <h2 id="lc-title"></h2>
+        <div class="meta" id="lc-meta"></div>
+        <p id="lc-message"></p>
+        <div id="lc-input-wrap" class="hidden">
+          <label for="lc-input">Type DELETE to confirm permanent deletion</label>
+          <input type="text" id="lc-input" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="row">
+          <button class="btn" id="lc-cancel">Cancel</button>
+          <button class="btn danger" id="lc-confirm"></button>
+        </div>
+        <p class="lc-error" id="lc-error" role="alert"></p>
+      </div>
     </section>
 
     <!-- PROJECT FORM -->
@@ -383,6 +430,13 @@
         </div>
       </div>
       <div id="providers-panel" class="providers-panel hidden"></div>
+
+      <div class="archived-banner hidden" id="proj-archived-banner">
+        <span class="badge">ARCHIVED</span>
+        <span>This project is archived: it is hidden from the normal project list, but stays fully editable — every save lands inside its archived location.</span>
+        <button class="btn" id="proj-restore-btn">Restore Project</button>
+        <span class="save-state" id="proj-restore-status" role="status" aria-live="polite"></span>
+      </div>
 
       <!-- 1. Title -->
       <div class="section" data-section="title">
@@ -618,6 +672,10 @@
   <script>
     var STATUS_API = '/api/package-engine/status';
     var PROJECTS_API = '/api/super-focus/projects';
+    var ARCHIVED_PROJECTS_API = '/api/super-focus/archived-projects';
+    var ARCHIVE_PROJECT_API = '/api/super-focus/archive-project';
+    var RESTORE_PROJECT_API = '/api/super-focus/restore-project';
+    var DELETE_PROJECT_API = '/api/super-focus/delete-project';
     var PROJECT_API = '/api/super-focus/project';
     var PROVIDERS_API = '/api/super-focus/providers';
     var OLLAMA_BENCHMARK_API = '/api/super-focus/ollama-benchmark';
@@ -663,6 +721,9 @@
     var nonce = null;
     var nonceHeader = 'x-vidtoolz-local-write-nonce';
     var currentId = null;
+    // Lifecycle status of the open project ('active' | 'archived'). Kept next
+    // to currentId so the UI always knows both the id AND where it lives.
+    var currentLifecycle = 'active';
     // Script-evaluator focus mode (?focus=script-evaluator): adds a hint and
     // scrolls to the evaluation section on open. The landing itself is unchanged.
     var evalFocus = false;
@@ -732,7 +793,7 @@
     function goHome() {
       if (typeof stopImagesPolling === 'function') stopImagesPolling();
       if (typeof stopVideosPolling === 'function') stopVideosPolling();
-      currentId = null; show('landing');
+      currentId = null; currentLifecycle = 'active'; show('landing');
     }
 
     // ── Collapsible project steps (operator UI state only) ───────────────────
@@ -1012,20 +1073,114 @@
       });
       btnCreate.addEventListener('click', createCtl.run);
 
-      // ---- Open list ---- distinguishes loading / empty / error honestly.
-      var openCtl = SuperFocusProjectIO.makeOpenController({
-        apiGet: apiGet, unwrap: unwrap, projectsApi: PROJECTS_API,
-        onState: function (state, projects) {
-          SuperFocusProjectIO.applyListState(
+      // ---- Open list (lifecycle-aware picker) ----
+      // Two modes: the normal project list and Archived Projects. Every
+      // refresh refetches BOTH lists as one snapshot (server authoritative);
+      // a superseded response is dropped whole, so a stale list can never
+      // resurrect an archived/restored/deleted project. Row actions carry the
+      // immutable project_id; confirmation is required before Archive and a
+      // typed DELETE before permanent deletion.
+      var lcEls = {
+        panel: document.getElementById('lc-panel'),
+        title: document.getElementById('lc-title'),
+        meta: document.getElementById('lc-meta'),
+        message: document.getElementById('lc-message'),
+        inputWrap: document.getElementById('lc-input-wrap'),
+        input: document.getElementById('lc-input'),
+        error: document.getElementById('lc-error'),
+        confirmBtn: document.getElementById('lc-confirm'),
+        cancelBtn: document.getElementById('lc-cancel')
+      };
+      var archivedToggle = document.getElementById('btn-archived-toggle');
+      var openHeading = document.getElementById('open-heading');
+      var openModeNote = document.getElementById('open-mode-note');
+
+      var pickerCtl = SuperFocusProjectIO.makePickerController({
+        apiGet: apiGet, unwrap: unwrap,
+        projectsApi: PROJECTS_API, archivedProjectsApi: ARCHIVED_PROJECTS_API,
+        onRender: function (mode, state, projects, archivedCount) {
+          var archived = mode === 'archived';
+          openHeading.textContent = archived ? 'Archived projects' : 'Open a project';
+          archivedToggle.textContent = archived
+            ? '← Back to projects'
+            : 'Archived Projects' + (archivedCount == null ? '' : ' (' + archivedCount + ')');
+          archivedToggle.setAttribute('aria-pressed', archived ? 'true' : 'false');
+          openModeNote.classList.toggle('hidden', !archived);
+          SuperFocusProjectIO.applyPickerState(
             document,
             { listEl: document.getElementById('proj-list'), emptyEl: document.getElementById('proj-empty') },
-            state, projects, function (id) { loadProject(id); }
+            state, projects, mode,
+            {
+              onOpen: function (id) { loadProject(id); },
+              onArchive: function (id, p) { confirmCtl.open('archive', p); },
+              onRestore: function (id) { runRestore(id); },
+              onDelete: function (id, p) { confirmCtl.open('delete', p); }
+            }
           );
         }
       });
+
+      var confirmCtl = SuperFocusProjectIO.makeLifecycleConfirmController({
+        els: lcEls,
+        request: function (action, projectId) {
+          if (action === 'archive') return apiPost(ARCHIVE_PROJECT_API, { id: projectId });
+          return apiPost(DELETE_PROJECT_API, { id: projectId, confirm: 'DELETE' });
+        },
+        onDone: function (action, projectId) {
+          if (action === 'delete') {
+            // Drop the deleted project's browser-local UI preferences.
+            try {
+              localStorage.removeItem('superFocus.sectionState.' + projectId);
+              localStorage.removeItem('superFocus.scriptExpanded.' + projectId);
+            } catch (e) { /* ignore private-mode */ }
+          }
+          // Defensive: if the mutated project is somehow the open one, keep
+          // the in-memory state coherent (the picker is normally only shown
+          // with no project open).
+          if (projectId === currentId) {
+            if (action === 'delete') { currentId = null; currentLifecycle = 'active'; }
+            else if (action === 'archive') { currentLifecycle = 'archived'; }
+          }
+          pickerCtl.refresh(); // server-authoritative refresh of both lists
+        }
+      });
+      lcEls.confirmBtn.addEventListener('click', function () { confirmCtl.confirm(); });
+      lcEls.cancelBtn.addEventListener('click', function () { confirmCtl.close(); });
+      lcEls.input.addEventListener('input', function () { confirmCtl.updateConfirmEnabled(); });
+      lcEls.input.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') { ev.preventDefault(); confirmCtl.confirm(); } // guarded: invalid input is a no-op
+        if (ev.key === 'Escape') confirmCtl.close();                            // safe: never closes mid-request
+      });
+
+      // Restore is non-destructive: no confirm dialog, but a busy state and a
+      // deterministic conflict message when a normal project with the same id
+      // already exists (the archived project is left untouched).
+      var restoreInFlight = false;
+      function runRestore(id) {
+        if (restoreInFlight) return;
+        restoreInFlight = true;
+        apiPost(RESTORE_PROJECT_API, { id: id }).then(function (res) {
+          restoreInFlight = false;
+          if (!res.ok) {
+            alert('Could not restore project: ' + ((res.body && res.body.error) || 'unexpected error'));
+            pickerCtl.refresh();
+            return;
+          }
+          if (id === currentId) currentLifecycle = 'active';
+          pickerCtl.refresh();
+        }).catch(function () {
+          restoreInFlight = false;
+          alert('Could not restore project. Please try again.');
+        });
+      }
+      archivedToggle.addEventListener('click', function () {
+        confirmCtl.close();
+        pickerCtl.setMode(pickerCtl.getMode() === 'archived' ? 'active' : 'archived');
+      });
       document.getElementById('btn-open').addEventListener('click', function () {
+        confirmCtl.close();
         show('open');
-        openCtl.run();
+        pickerCtl.setMode('active');
       });
     })();
 
@@ -1036,7 +1191,8 @@
     function loadProject(id) {
       apiGet(PROJECT_API + '?id=' + encodeURIComponent(id)).then(function (res) {
         if (!res.ok) { alert('Could not open project.'); return; }
-        openProject(unwrap(res.body).project);
+        var d = unwrap(res.body);
+        openProject(d.project, d.lifecycle);
       }).catch(function () { alert('Could not open project.'); });
     }
 
@@ -1406,8 +1562,33 @@
       }
     }
 
-    function openProject(proj) {
+    // Archived banner + Restore in the project view. Opening an archived
+    // project never restores it — the badge stays until an explicit Restore.
+    function applyLifecycleBanner() {
+      var banner = document.getElementById('proj-archived-banner');
+      banner.classList.toggle('hidden', currentLifecycle !== 'archived');
+      setStatus(document.getElementById('proj-restore-status'), '');
+    }
+    (function () {
+      var btn = document.getElementById('proj-restore-btn');
+      var st = document.getElementById('proj-restore-status');
+      btn.addEventListener('click', function () {
+        if (!currentId) return;
+        btn.disabled = true;
+        setStatus(st, 'Restoring…');
+        apiPost(RESTORE_PROJECT_API, { id: currentId }).then(function (res) {
+          btn.disabled = false;
+          if (!res.ok) { setStatus(st, 'Restore failed: ' + ((res.body && res.body.error) || 'unexpected error'), true); return; }
+          currentLifecycle = 'active';
+          applyLifecycleBanner();
+        }).catch(function () { btn.disabled = false; setStatus(st, 'Restore failed. Please try again.', true); });
+      });
+    })();
+
+    function openProject(proj, lifecycle) {
       currentId = proj.project_id;
+      currentLifecycle = lifecycle === 'archived' ? 'archived' : 'active';
+      applyLifecycleBanner();
       document.getElementById('proj-heading').textContent =
         (proj.title && proj.title.trim()) ? proj.title : 'New video project';
       document.getElementById('proj-id').textContent = proj.project_id;

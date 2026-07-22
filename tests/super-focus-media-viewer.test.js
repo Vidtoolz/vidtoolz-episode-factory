@@ -146,6 +146,9 @@ function loadPage() {
     SuperFocusProjectIO: {
       makeCreateController() { return { submit() {}, bind() {} }; },
       makeOpenController() { return { open() {}, refresh() {}, bind() {} }; },
+      makePickerController() { return { refresh() { return Promise.resolve(); }, setMode() { return Promise.resolve(); }, getMode() { return 'active'; } }; },
+      makeLifecycleConfirmController() { return { open() {}, close() { return true; }, confirm() { return Promise.resolve(); }, updateConfirmEnabled() {}, isBusy() { return false; }, current() { return { action: null, projectId: null }; } }; },
+      applyPickerState() {},
     },
   };
   sandbox.window.document = doc;

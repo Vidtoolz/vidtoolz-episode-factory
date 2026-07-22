@@ -299,8 +299,10 @@ test("super-focus.html: loads the module and wires both controllers", () => {
   const html = read("super-focus.html");
   assert.match(html, /<script src="super-focus-project-io\.js">/);
   assert.match(html, /SuperFocusProjectIO\.makeCreateController/);
-  assert.match(html, /SuperFocusProjectIO\.makeOpenController/);
-  assert.match(html, /SuperFocusProjectIO\.applyListState/);
+  // The open list is served by the lifecycle-aware picker (same module; the
+  // legacy makeOpenController stays exported + unit-tested above).
+  assert.match(html, /SuperFocusProjectIO\.makePickerController/);
+  assert.match(html, /SuperFocusProjectIO\.applyPickerState/);
 });
 
 test("super-focus.html: create pending state is accessible (aria-busy + Creating…)", () => {

@@ -257,6 +257,62 @@ Queue-control state lives in the media-side `video-queue.json` (job control
 only), not in `super-focus.json`. No auto-start of PRESTO/ComfyUI; no cloud
 fallback.
 
+## Project lifecycle: Archive, Restore, Delete
+
+The **Open a project** view owns the project lifecycle. Every row in the
+normal list has three labeled actions: **Open**, **Archive**, **Delete**.
+The **Archived Projects (N)** control in the top bar switches the same view to
+the archived list (with **← Back to projects** to return); archived rows offer
+**Open**, **Restore**, **Delete**. Row actions always act on the immutable
+project id shown in the row meta line, never on the display title, so
+duplicate titles stay unambiguous.
+
+- **Archive (reversible).** One explicit confirmation. The project directory
+  is atomically renamed from `super-focus-projects/<id>/` to
+  `super-focus-projects/.archived/<id>/` on the same filesystem. Nothing else
+  moves: generated media stays in its VIDNAS namespace untouched. The project
+  disappears from the normal list and appears under Archived Projects.
+- **Archived projects stay openable and EDITABLE.** Opening one never
+  restores it — the project view shows an **ARCHIVED** banner with a
+  **Restore Project** button. Every save (title, script, prompts, reviews,
+  plans) re-resolves the project's canonical location per request, so edits
+  land inside `.archived/<id>/` and can never recreate the old active path.
+  Generation and media reconciliation are unaffected because media is keyed
+  by project id under the separate media root, which never moves.
+- **Restore.** No confirmation (non-destructive): the directory is renamed
+  back into the normal root with identity and contents intact. If a normal
+  project with the same id already exists, restore is refused with a conflict
+  (409 `restore_collision`) and neither project is touched — nothing is ever
+  overwritten or silently renamed.
+- **Delete (permanent).** Requires typing `DELETE` into the confirmation (the
+  button stays disabled until it matches exactly), and the API additionally
+  requires `confirm: "DELETE"` in the request body. Deletion is staged: the
+  directory is atomically renamed into `super-focus-projects/.trash/` (it
+  vanishes from every list and every resolvable path in one step), then
+  removed recursively. **Scope:** only the canonical project directory
+  (active or archived) is removed. Referenced VIDNAS media, render-attempt
+  evidence under the media root, handoffs, and anything reached through a
+  symlink are intentionally preserved — symlinks are unlinked, never
+  followed. If recursive cleanup fails after staging, the response reports
+  `cleanup_complete: false` and the staged remains stay invisible to all
+  listings (diagnose under `.trash/`).
+- **Busy refusal.** Archive, restore, and delete return 409 (`project_busy`)
+  while a FLUX image job or PRESTO video job is running for that project —
+  the cockpit never claims to cancel remote work. Repeat operations are
+  deterministic: re-archive → 409 `already_archived`, re-restore → 409
+  `already_active`, re-delete → 404.
+- **Containment.** Project ids are validated against the strict id pattern on
+  every lifecycle route (traversal, separators, absolute paths → 400), paths
+  are re-verified to sit inside their expected roots, and a project directory
+  that is itself a symlink is refused (403). The browser never supplies a
+  filesystem path. The `.archived/` and `.trash/` directories can never match
+  a project id, so they are never listed or openable as projects.
+- Failures keep the confirmation open with the error and the same project
+  context (retry or cancel); list refreshes after a lifecycle change refetch
+  both lists from the server as one snapshot, and a superseded (stale) list
+  response is dropped whole — it can never resurrect a moved or deleted
+  project into the wrong list.
+
 ## State and media
 
 - **Canonical state is local and file-based:** `super-focus-projects/<project_id>/super-focus.json`
@@ -331,7 +387,13 @@ items, so it is safe to re-run to resume.
 
 ## API (all under `/api/super-focus/`, writes nonce + local-Host + Origin gated)
 
-- `GET/POST /projects`, `GET /project?id=`
+- `GET/POST /projects`, `GET /project?id=` (response includes `lifecycle`:
+  `active` | `archived`)
+- `GET /archived-projects` — archived list (never mixed into `/projects`)
+- `POST /archive-project` `{id}`, `POST /restore-project` `{id}`,
+  `POST /delete-project` `{id, confirm:"DELETE"}` — see "Project lifecycle"
+  above; 409 on collision/busy/repeat, 404 on missing, 400 on invalid id or
+  missing confirm token
 - `POST /title`, `POST /script`
 - `POST /generate-topic`, `/generate-script`, `/generate-image-prompts`, `/generate-infographic-prompts`
 - `POST /image-prompt`, `/infographic-prompt` (per-row save)

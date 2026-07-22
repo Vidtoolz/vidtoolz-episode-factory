@@ -116,6 +116,10 @@ const PROJECT_MEDIA_KIT_API = '/api/project/media-kit';
 const PROJECT_YOUTUBE_DRAFT_API = '/api/project/youtube-draft';
 const PROJECT_YOUTUBE_DRAFT_SAVE_API = '/api/project/youtube-draft/save';
 const SUPER_FOCUS_PROJECTS_API = '/api/super-focus/projects';
+const SUPER_FOCUS_ARCHIVED_PROJECTS_API = '/api/super-focus/archived-projects';
+const SUPER_FOCUS_ARCHIVE_PROJECT_API = '/api/super-focus/archive-project';
+const SUPER_FOCUS_RESTORE_PROJECT_API = '/api/super-focus/restore-project';
+const SUPER_FOCUS_DELETE_PROJECT_API = '/api/super-focus/delete-project';
 const SUPER_FOCUS_PROJECT_API = '/api/super-focus/project';
 const SUPER_FOCUS_PROVIDERS_API = '/api/super-focus/providers';
 const SUPER_FOCUS_EVALUATE_SCRIPT_API = '/api/super-focus/evaluate-script';
@@ -8969,6 +8973,50 @@ function currentFluxJobStatus(now = Date.now()) {
   return serializeFluxJob(null, false, now);
 }
 
+// ── Super Focus project lifecycle guards ─────────────────────────────────────
+// A lifecycle mutation (archive / restore / permanent delete) must not race an
+// active generation job that could write into the project, nor another
+// lifecycle mutation on the same project. Busy detection is honest: it refuses
+// only when a live FLUX or PRESTO job is bound to THIS project id; it never
+// claims to cancel remote work.
+const SUPER_FOCUS_LIFECYCLE_LOCKS = new Set();
+
+function superFocusProjectBusyReason(id) {
+  const flux = currentFluxJobStatus();
+  if (flux.active && flux.package_id === id) {
+    return 'an image generation job is currently running for this project';
+  }
+  const presto = currentPrestoJobStatus();
+  if (presto.active && presto.active.package_id === id) {
+    return 'a video generation job is currently running for this project';
+  }
+  return null;
+}
+
+// Runs one lifecycle mutation under the per-project lock with the busy check.
+// `busyCheck` is injectable (tests); defaults to the live job inspection.
+function runSuperFocusLifecycleOp(id, label, busyCheck, op) {
+  if (SUPER_FOCUS_LIFECYCLE_LOCKS.has(id)) {
+    const error = new Error(`Another lifecycle operation is already running for this project.`);
+    error.statusCode = 409;
+    error.code = 'lifecycle_locked';
+    throw error;
+  }
+  const busy = (busyCheck || superFocusProjectBusyReason)(id);
+  if (busy) {
+    const error = new Error(`Cannot ${label} this project: ${busy}. Wait for it to finish (or cancel it) and try again.`);
+    error.statusCode = 409;
+    error.code = 'project_busy';
+    throw error;
+  }
+  SUPER_FOCUS_LIFECYCLE_LOCKS.add(id);
+  try {
+    return op();
+  } finally {
+    SUPER_FOCUS_LIFECYCLE_LOCKS.delete(id);
+  }
+}
+
 function validateFluxSubmitPayload(payload = {}, options = {}) {
   const { packageId, paths } = resolveAigenPackageDir(payload.package_id, options);
   const fluxScript = options.fluxScript || paths.fluxScript;
@@ -11358,10 +11406,98 @@ function createServer(options = {}) {
       try {
         const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
         const state = superFocus.loadProject(id, { root: sfRoot });
-        sendJSON(res, 200, { project: state });
+        // Lifecycle status rides along so the UI can show an Archived banner —
+        // archived projects are openable and editable; opening never restores.
+        sendJSON(res, 200, { project: state, lifecycle: superFocus.projectLifecycle(id, { root: sfRoot }) });
       } catch (error) {
         sendError(res, error.statusCode || 500, error.message, 'super-focus-load-error');
       }
+      return;
+    }
+
+    // ── Super Focus project lifecycle (archive / restore / permanent delete) ──
+    // Storage model: archived projects live in <root>/.archived/<id>; staged
+    // deletions in <root>/.trash/. Both are invisible to every project list.
+    // All paths are server-derived from the validated project id — the browser
+    // never supplies a filesystem path. Writes are nonce + Host + Origin gated.
+    const sfLifecycleBusyCheck = serverOptions.superFocusBusyCheck || null;
+
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_ARCHIVED_PROJECTS_API) {
+      try {
+        sendJSON(res, 200, { projects: superFocus.listArchivedProjects({ root: sfRoot }) });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-archived-list-error');
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_ARCHIVE_PROJECT_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus project archive API' });
+          const id = superFocus.assertValidProjectId(payload && payload.id);
+          const result = runSuperFocusLifecycleOp(id, 'archive', sfLifecycleBusyCheck, () =>
+            superFocus.archiveProject(id, { root: sfRoot }));
+          console.log(`[super-focus-lifecycle] archived project ${id}`);
+          sendJSON(res, 200, { project_id: result.project_id, status: 'archived' });
+        })
+        .catch((error) => {
+          console.log(`[super-focus-lifecycle] archive refused (${error.code || error.statusCode || 'error'}): ${error.message}`);
+          sendError(res, error.statusCode || 500, error.message, error.code || 'super-focus-archive-error');
+        });
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_RESTORE_PROJECT_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus project restore API' });
+          const id = superFocus.assertValidProjectId(payload && payload.id);
+          const result = runSuperFocusLifecycleOp(id, 'restore', sfLifecycleBusyCheck, () =>
+            superFocus.restoreProject(id, { root: sfRoot }));
+          console.log(`[super-focus-lifecycle] restored project ${id}`);
+          sendJSON(res, 200, { project_id: result.project_id, status: 'active' });
+        })
+        .catch((error) => {
+          console.log(`[super-focus-lifecycle] restore refused (${error.code || error.statusCode || 'error'}): ${error.message}`);
+          sendError(res, error.statusCode || 500, error.message, error.code || 'super-focus-restore-error');
+        });
+      return;
+    }
+
+    // Permanent delete. Deliberate double gate: the nonce (as every write) AND
+    // an explicit confirm token, so no accidental client call can delete.
+    // Scope: removes ONLY the canonical project directory (active or archived).
+    // Referenced external assets — the VIDNAS media directory, handoffs, other
+    // projects, anything reached through a symlink — are never touched.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_DELETE_PROJECT_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus project delete API' });
+          const id = superFocus.assertValidProjectId(payload && payload.id);
+          if (!payload || payload.confirm !== 'DELETE') {
+            const error = new Error('Permanent deletion requires confirm: "DELETE".');
+            error.statusCode = 400;
+            error.code = 'confirm_required';
+            throw error;
+          }
+          const result = runSuperFocusLifecycleOp(id, 'permanently delete', sfLifecycleBusyCheck, () =>
+            superFocus.deleteProject(id, { root: sfRoot }));
+          if (!result.cleanup_complete) {
+            console.error(`[super-focus-lifecycle] delete staged but cleanup incomplete for ${id} (previous status: ${result.previous_status}); staged remains are not listed or openable.`);
+          } else {
+            console.log(`[super-focus-lifecycle] permanently deleted project ${id} (previous status: ${result.previous_status})`);
+          }
+          sendJSON(res, 200, {
+            deleted_project_id: result.project_id,
+            previous_status: result.previous_status,
+            cleanup_complete: result.cleanup_complete,
+          });
+        })
+        .catch((error) => {
+          console.log(`[super-focus-lifecycle] delete refused (${error.code || error.statusCode || 'error'}): ${error.message}`);
+          sendError(res, error.statusCode || 500, error.message, error.code || 'super-focus-delete-error');
+        });
       return;
     }
 

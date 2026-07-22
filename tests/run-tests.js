@@ -57,6 +57,8 @@ require("./artifact-access-foundation.test.js");
 require("./remotion-lane.test.js");
 require("./super-focus.test.js");
 require("./super-focus-project-io.test.js");
+require("./super-focus-lifecycle.test.js");
+require("./super-focus-lifecycle-ui.test.js");
 require("./super-focus-visual-plan.test.js");
 require("./super-focus-visual-plan-routes.test.js");
 require("./super-focus-image-review.test.js");

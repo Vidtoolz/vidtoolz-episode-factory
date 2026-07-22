@@ -49,10 +49,25 @@ const APPROVAL_KEYS = [
 // caller-supplied id can never escape the projects root.
 const PROJECT_ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+// Lifecycle directories live INSIDE the projects root. Both names start with a
+// dot, which PROJECT_ID_RE can never match, so neither is ever listed or
+// openable as a project. `.archived/<id>` holds archived projects (reversible);
+// `.trash/` holds staged permanent deletions (never listed, never restored).
+const ARCHIVED_DIRNAME = '.archived';
+const TRASH_DIRNAME = '.trash';
+
 function resolveRoot(options = {}) {
   if (options && options.root) return options.root;
   if (process.env.SUPER_FOCUS_ROOT) return process.env.SUPER_FOCUS_ROOT;
   return path.join(__dirname, 'super-focus-projects');
+}
+
+function resolveArchivedRoot(options = {}) {
+  return path.join(resolveRoot(options), ARCHIVED_DIRNAME);
+}
+
+function resolveTrashRoot(options = {}) {
+  return path.join(resolveRoot(options), TRASH_DIRNAME);
 }
 
 function slugify(text) {
@@ -156,8 +171,66 @@ function inferStage(state) {
   return stage;
 }
 
+// Defense-in-depth containment check. PROJECT_ID_RE already makes traversal
+// impossible, but every lifecycle filesystem operation re-verifies that the
+// candidate is a strict child of its expected root using path boundaries
+// (path.relative), never naive string prefixes ("/projects/foo" is not the
+// parent of "/projects/foobar").
+function assertContainedIn(candidate, root, label) {
+  const resolvedRoot = path.resolve(root);
+  const resolvedCandidate = path.resolve(candidate);
+  const rel = path.relative(resolvedRoot, resolvedCandidate);
+  if (
+    !rel || rel === '' || rel.startsWith('..') || path.isAbsolute(rel) ||
+    resolvedCandidate === resolvedRoot || resolvedCandidate === path.parse(resolvedCandidate).root
+  ) {
+    const error = new Error(`Refusing unsafe ${label || 'project'} path.`);
+    error.statusCode = 403;
+    throw error;
+  }
+  return resolvedCandidate;
+}
+
+// Lifecycle operations refuse project directories that are symlinks: a rename
+// or recursive delete must never follow a link out of the managed roots.
+function assertNotSymlink(dir, label) {
+  let st = null;
+  try { st = fs.lstatSync(dir); } catch (_) { return; /* absent is handled by callers */ }
+  if (st.isSymbolicLink()) {
+    const error = new Error(`Refusing ${label || 'lifecycle operation'}: project directory is a symlink.`);
+    error.statusCode = 403;
+    throw error;
+  }
+}
+
+function hasStateFile(dir) {
+  return fs.existsSync(path.join(dir, STATE_FILENAME));
+}
+
+// Where a project currently lives: 'active' | 'archived' | null (not found).
+// Staged deletions under .trash/ are deliberately invisible here — a staged
+// project can never be resolved, opened, or restored.
+function projectLifecycle(projectId, options = {}) {
+  const id = assertValidProjectId(projectId);
+  if (hasStateFile(path.join(resolveRoot(options), id))) return 'active';
+  if (hasStateFile(path.join(resolveArchivedRoot(options), id))) return 'archived';
+  return null;
+}
+
+// Canonical directory for a project, lifecycle-aware: the active location wins,
+// then the archived location. Every read AND write re-resolves through here,
+// so opening/editing an archived project keeps all saves inside the archive
+// directory, and a stale request after archive/restore follows the project to
+// its current canonical location instead of recreating the old path. Falls
+// back to the active path when the project exists nowhere (callers that need
+// existence go through loadProject, which 404s).
 function stateDir(projectId, options) {
-  return path.join(resolveRoot(options), assertValidProjectId(projectId));
+  const id = assertValidProjectId(projectId);
+  const activeDir = path.join(resolveRoot(options), id);
+  if (hasStateFile(activeDir)) return activeDir;
+  const archivedDir = path.join(resolveArchivedRoot(options), id);
+  if (hasStateFile(archivedDir)) return archivedDir;
+  return activeDir;
 }
 
 function statePath(projectId, options) {
@@ -212,7 +285,9 @@ function createProject(input = {}, options = {}) {
   });
   state.stage = inferStage(state);
   const dir = path.join(resolveRoot(options), projectId);
-  if (fs.existsSync(dir)) {
+  // Collision includes the archived location: a new project must never shadow
+  // an archived one with the same id (restore would then be ambiguous).
+  if (fs.existsSync(dir) || fs.existsSync(path.join(resolveArchivedRoot(options), projectId))) {
     const error = new Error('Super Focus project id collision.');
     error.statusCode = 409;
     throw error;
@@ -231,8 +306,11 @@ function loadProject(projectId, options = {}) {
   return readStateDir(dir);
 }
 
-function listProjects(options = {}) {
-  const root = resolveRoot(options);
+// Shared directory scan for both lifecycle lists. Only direct children whose
+// name is a valid project id AND that contain a readable state file are
+// projects — dot-directories (.archived, .trash), staging leftovers, and
+// corrupt entries are skipped, never listed.
+function scanProjectsRoot(root) {
   if (!fs.existsSync(root)) return [];
   const entries = fs.readdirSync(root, { withFileTypes: true });
   const projects = [];
@@ -258,6 +336,130 @@ function listProjects(options = {}) {
   }
   projects.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
   return projects;
+}
+
+function listProjects(options = {}) {
+  return scanProjectsRoot(resolveRoot(options));
+}
+
+// Archived projects only — never mixed into the normal list.
+function listArchivedProjects(options = {}) {
+  return scanProjectsRoot(resolveArchivedRoot(options));
+}
+
+// ── Project lifecycle: archive / restore / permanent delete ─────────────────
+// All three are single atomic renames on the same filesystem (archive root and
+// trash root live inside the projects root). Each operation validates identity,
+// refuses symlinked project directories, and re-verifies path containment.
+
+function archiveProject(projectId, options = {}) {
+  const id = assertValidProjectId(projectId);
+  const root = resolveRoot(options);
+  const archivedRoot = resolveArchivedRoot(options);
+  const source = assertContainedIn(path.join(root, id), root, 'archive source');
+  const dest = assertContainedIn(path.join(archivedRoot, id), archivedRoot, 'archive destination');
+  assertNotSymlink(source, 'archive');
+  if (!hasStateFile(source)) {
+    if (hasStateFile(dest)) {
+      const error = new Error('Project is already archived.');
+      error.statusCode = 409;
+      error.code = 'already_archived';
+      throw error;
+    }
+    const error = new Error('Super Focus project not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+  if (fs.existsSync(dest)) {
+    const error = new Error('An archived project with this id already exists. Refusing to overwrite it.');
+    error.statusCode = 409;
+    error.code = 'archive_collision';
+    throw error;
+  }
+  fs.mkdirSync(archivedRoot, { recursive: true });
+  fs.renameSync(source, dest);
+  const state = readStateDir(dest);
+  return {
+    project_id: state.project_id || id,
+    title: state.title || '',
+    status: 'archived',
+  };
+}
+
+function restoreProject(projectId, options = {}) {
+  const id = assertValidProjectId(projectId);
+  const root = resolveRoot(options);
+  const archivedRoot = resolveArchivedRoot(options);
+  const source = assertContainedIn(path.join(archivedRoot, id), archivedRoot, 'restore source');
+  const dest = assertContainedIn(path.join(root, id), root, 'restore destination');
+  assertNotSymlink(source, 'restore');
+  if (!hasStateFile(source)) {
+    if (hasStateFile(dest)) {
+      const error = new Error('Project is already in the normal project list.');
+      error.statusCode = 409;
+      error.code = 'already_active';
+      throw error;
+    }
+    const error = new Error('Archived Super Focus project not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+  if (fs.existsSync(dest)) {
+    const error = new Error(`A normal project with id "${id}" already exists. Refusing to overwrite it; resolve the conflict manually.`);
+    error.statusCode = 409;
+    error.code = 'restore_collision';
+    throw error;
+  }
+  fs.renameSync(source, dest);
+  const state = readStateDir(dest);
+  return {
+    project_id: state.project_id || id,
+    title: state.title || '',
+    status: 'active',
+  };
+}
+
+// Permanent deletion, staged: the project directory is atomically renamed into
+// .trash/ first (it disappears from every list and every resolvable path in one
+// step — stale writes then 404), then removed recursively. fs.rmSync does not
+// follow symlinks (links are unlinked, their targets untouched), so referenced
+// external media — VIDNAS media dirs, handoffs, other projects — is preserved.
+// If recursive cleanup fails the staged remains are reported honestly
+// (cleanup_complete:false) and stay invisible to all listings.
+function deleteProject(projectId, options = {}) {
+  const id = assertValidProjectId(projectId);
+  const root = resolveRoot(options);
+  const lifecycle = projectLifecycle(id, options);
+  if (!lifecycle) {
+    const error = new Error('Super Focus project not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+  const sourceRoot = lifecycle === 'archived' ? resolveArchivedRoot(options) : root;
+  const source = assertContainedIn(path.join(sourceRoot, id), sourceRoot, 'delete target');
+  assertNotSymlink(source, 'delete');
+  const trashRoot = resolveTrashRoot(options);
+  fs.mkdirSync(trashRoot, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  let staged = assertContainedIn(path.join(trashRoot, `${id}.${stamp}.${process.pid}`), trashRoot, 'delete staging');
+  let n = 1;
+  while (fs.existsSync(staged)) {
+    staged = assertContainedIn(path.join(trashRoot, `${id}.${stamp}.${process.pid}-${n}`), trashRoot, 'delete staging');
+    n += 1;
+  }
+  fs.renameSync(source, staged);
+  let cleanupComplete = true;
+  try {
+    fs.rmSync(staged, { recursive: true, force: true });
+    cleanupComplete = !fs.existsSync(staged);
+  } catch (_) {
+    cleanupComplete = false;
+  }
+  return {
+    project_id: id,
+    previous_status: lifecycle,
+    cleanup_complete: cleanupComplete,
+  };
 }
 
 function saveTitle(projectId, title, options = {}) {
@@ -756,7 +958,11 @@ module.exports = {
   STAGES,
   APPROVAL_KEYS,
   PROJECT_ID_RE,
+  ARCHIVED_DIRNAME,
+  TRASH_DIRNAME,
   resolveRoot,
+  resolveArchivedRoot,
+  resolveTrashRoot,
   slugify,
   assertValidProjectId,
   emptyState,
@@ -764,6 +970,11 @@ module.exports = {
   createProject,
   loadProject,
   listProjects,
+  listArchivedProjects,
+  projectLifecycle,
+  archiveProject,
+  restoreProject,
+  deleteProject,
   saveTitle,
   saveScript,
   IMAGE_PROMPT_CAPACITY,

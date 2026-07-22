@@ -173,6 +173,243 @@
     renderListState(doc, els.emptyEl, state);
   }
 
+  // ── Project lifecycle picker (archive / restore / permanent delete) ───────
+  // Extends the Open-a-Project view with two modes (normal + archived) and
+  // per-row lifecycle actions. Same discipline as above: injected api + fake
+  // document for unit tests, textContent for all user-controlled text, and a
+  // shared sequence token so a stale list response (either mode) can never
+  // repaint over a newer one — e.g. resurrect a just-archived project into the
+  // normal list. The server stays authoritative: every refresh refetches BOTH
+  // lists in one snapshot.
+
+  var ARCHIVED_LIST_STATE_TEXT = {
+    loading: 'Loading archived projects…',
+    error: 'Could not load archived projects. Choose "Archived Projects" again to retry.',
+    loaded_empty: 'No archived projects.'
+  };
+
+  // Build one project row with Open + lifecycle actions. The immutable
+  // project_id is captured per row (closures act on the exact id, never a
+  // shared mutable variable), so duplicate display titles stay unambiguous.
+  // handlers: { onOpen, onArchive, onDelete } (normal) / { onOpen, onRestore,
+  // onDelete } (archived) — each receives (project_id, projectSummary).
+  function renderLifecycleRows(doc, listEl, projects, mode, handlers) {
+    if (!listEl) return { rendered: 0, skipped: 0 };
+    listEl.innerHTML = '';
+    var archived = mode === 'archived';
+    var h = handlers || {};
+    var rendered = 0, skipped = 0;
+    (projects || []).forEach(function (p) {
+      if (!isValidProject(p)) { skipped += 1; return; }
+      var pid = p.project_id;                       // immutable id for this row's closures
+      var li = doc.createElement('li');
+      var left = doc.createElement('div');
+      var title = doc.createElement('div');
+      title.textContent = (p.title && String(p.title).trim()) ? p.title : '(untitled)';
+      title.style.fontWeight = '600';
+      var meta = doc.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = pid + ' · stage: ' + (p.stage || 'unknown') + ' · updated ' + String(p.updated_at || '').slice(0, 16).replace('T', ' ');
+      left.appendChild(title); left.appendChild(meta);
+      var actions = doc.createElement('div');
+      actions.className = 'proj-actions';
+      function actionBtn(label, cls, fn) {
+        var b = doc.createElement('button');
+        b.className = cls;
+        b.textContent = label;
+        b.addEventListener('click', function () { if (fn) fn(pid, p); });
+        actions.appendChild(b);
+        return b;
+      }
+      actionBtn('Open', 'btn primary', h.onOpen);
+      if (archived) actionBtn('Restore', 'btn', h.onRestore);
+      else actionBtn('Archive', 'btn', h.onArchive);
+      actionBtn('Delete', 'btn danger', h.onDelete);
+      li.appendChild(left); li.appendChild(actions);
+      listEl.appendChild(li);
+      rendered += 1;
+    });
+    return { rendered: rendered, skipped: skipped };
+  }
+
+  // Apply one list state to the picker DOM for the given mode (normal vs
+  // archived wording differs; behaviour is identical).
+  function applyPickerState(doc, els, state, projects, mode, handlers) {
+    els = els || {};
+    if (state === 'loaded_nonempty') {
+      renderLifecycleRows(doc, els.listEl, projects, mode, handlers);
+    } else if (els.listEl) {
+      els.listEl.innerHTML = '';
+    }
+    var el = els.emptyEl;
+    if (!el) return;
+    var textMap = mode === 'archived' ? ARCHIVED_LIST_STATE_TEXT : LIST_STATE_TEXT;
+    el.setAttribute('data-state', state);
+    if (state === 'loaded_nonempty') { el.classList.add('hidden'); el.textContent = ''; return; }
+    el.textContent = textMap[state] || '';
+    el.classList.remove('hidden');
+  }
+
+  // Picker controller: owns the current mode and one shared sequence across
+  // BOTH lists. refresh() fetches the normal and archived lists together (one
+  // authoritative snapshot — a lifecycle change refreshes both, so the moved
+  // project appears in exactly one list). A superseded response is dropped
+  // whole: it can neither repaint the visible list nor update the count.
+  // deps: apiGet, unwrap, projectsApi, archivedProjectsApi,
+  //       onRender(mode, state, projects, archivedCount)
+  function makePickerController(deps) {
+    var seq = 0;
+    var mode = 'active';
+    function fetchList(api) {
+      return Promise.resolve()
+        .then(function () { return deps.apiGet(api); })
+        .then(function (res) { return resolveListOutcome(res, deps.unwrap); })
+        .catch(function () { return { state: 'error' }; });
+    }
+    function refresh() {
+      var mySeq = ++seq;
+      var myMode = mode;
+      if (deps.onRender) deps.onRender(myMode, 'loading', null, null);
+      return Promise.all([fetchList(deps.projectsApi), fetchList(deps.archivedProjectsApi)])
+        .then(function (outcomes) {
+          if (mySeq !== seq) return;                 // superseded — drop whole snapshot
+          var active = outcomes[0], archived = outcomes[1];
+          var archivedCount = archived.state === 'error' ? null : (archived.projects || []).length;
+          var visible = (mode === 'archived') ? archived : active;
+          if (deps.onRender) deps.onRender(mode, visible.state, visible.projects || null, archivedCount);
+        });
+    }
+    function setMode(next) {
+      mode = next === 'archived' ? 'archived' : 'active';
+      return refresh();
+    }
+    return {
+      refresh: refresh,
+      setMode: setMode,
+      getMode: function () { return mode; }
+    };
+  }
+
+  // ── Lifecycle confirmation controller ─────────────────────────────────────
+  // One inline confirmation panel serves Archive (single explicit confirm —
+  // reversible) and Delete (typed "DELETE" gate — permanent). Restore is not
+  // confirmed here (non-destructive; it runs directly with a busy state).
+  // The panel never closes on failure: the error stays visible with the same
+  // project context so the operator can retry or cancel. While a request is in
+  // flight the confirm button is disabled — repeated clicks send one request.
+  var DELETE_CONFIRM_TOKEN = 'DELETE';
+
+  function deleteConfirmReady(value) {
+    return String(value || '') === DELETE_CONFIRM_TOKEN;
+  }
+
+  var CONFIRM_COPY = {
+    archive: {
+      heading: function (t) { return 'Archive “' + t + '”?'; },
+      message: 'The project will be removed from the normal project list but preserved in Archived Projects. It can be opened or restored later. Its generated media stays where it is.',
+      confirmLabel: 'Archive Project',
+      busyLabel: 'Archiving…'
+    },
+    delete: {
+      heading: function (t) { return 'Permanently delete “' + t + '”?'; },
+      message: 'This permanently removes the Super Focus project and the files inside its project directory. Generated media referenced outside the project directory (e.g. on VIDNAS) is NOT deleted. This action cannot be undone.',
+      confirmLabel: 'Permanently Delete',
+      busyLabel: 'Deleting…'
+    }
+  };
+
+  // deps: els { panel, title, meta, message, inputWrap, input, error,
+  //             confirmBtn, cancelBtn }, request(action, projectId) -> Promise
+  //       of {ok, status, body}, onDone(action, projectId, res), createErrorMessage
+  // All labels/text go through textContent (titles stay escaped).
+  function makeLifecycleConfirmController(deps) {
+    var els = deps.els || {};
+    var state = { action: null, projectId: null, busy: false };
+
+    function setError(msg) { if (els.error) els.error.textContent = msg || ''; }
+
+    function updateConfirmEnabled() {
+      if (!els.confirmBtn) return;
+      if (state.busy) { els.confirmBtn.disabled = true; return; }
+      if (state.action === 'delete') {
+        els.confirmBtn.disabled = !deleteConfirmReady(els.input ? els.input.value : '');
+      } else {
+        els.confirmBtn.disabled = false;
+      }
+    }
+
+    function open(action, project) {
+      var copy = CONFIRM_COPY[action];
+      if (!copy || !project || !project.project_id) return;
+      state.action = action;
+      state.projectId = project.project_id;   // immutable id — never the display title
+      state.busy = false;
+      var displayTitle = (project.title && String(project.title).trim()) ? project.title : '(untitled)';
+      if (els.title) els.title.textContent = copy.heading(displayTitle);
+      if (els.meta) els.meta.textContent = 'Project id: ' + project.project_id;
+      if (els.message) els.message.textContent = copy.message;
+      if (els.confirmBtn) els.confirmBtn.textContent = copy.confirmLabel;
+      if (els.input) els.input.value = '';
+      if (els.inputWrap) els.inputWrap.classList.toggle('hidden', action !== 'delete');
+      // Archive is reversible — visually secondary. Only permanent deletion
+      // gets the destructive treatment.
+      if (els.panel) els.panel.classList.toggle('danger-mode', action === 'delete');
+      if (els.confirmBtn && els.confirmBtn.classList) els.confirmBtn.classList.toggle('danger', action === 'delete');
+      setError('');
+      updateConfirmEnabled();
+      if (els.panel) els.panel.classList.remove('hidden');
+    }
+
+    function close() {
+      if (state.busy) return false;           // never close mid-request
+      state.action = null;
+      state.projectId = null;
+      if (els.input) els.input.value = '';
+      setError('');
+      if (els.panel) els.panel.classList.add('hidden');
+      return true;
+    }
+
+    function confirm() {
+      if (state.busy || !state.action || !state.projectId) return Promise.resolve();
+      if (state.action === 'delete' && !deleteConfirmReady(els.input ? els.input.value : '')) {
+        return Promise.resolve();             // Enter cannot trigger an invalid deletion
+      }
+      var action = state.action;
+      var projectId = state.projectId;
+      var copy = CONFIRM_COPY[action];
+      state.busy = true;
+      setError('');
+      if (els.confirmBtn) { els.confirmBtn.disabled = true; els.confirmBtn.textContent = copy.busyLabel; }
+      if (els.cancelBtn) els.cancelBtn.disabled = true;
+      return Promise.resolve()
+        .then(function () { return deps.request(action, projectId); })
+        .catch(function () { return { ok: false, status: 0, body: { error: 'request failed — check the cockpit service and try again' } }; })
+        .then(function (res) {
+          state.busy = false;
+          if (els.confirmBtn) els.confirmBtn.textContent = copy.confirmLabel;
+          if (els.cancelBtn) els.cancelBtn.disabled = false;
+          if (!res || !res.ok) {
+            // Keep the panel open with full context; operator can retry or cancel.
+            setError('Could not ' + action + ' project: ' + (deps.createErrorMessage || createErrorMessage)(res));
+            updateConfirmEnabled();
+            return;
+          }
+          close();
+          if (deps.onDone) deps.onDone(action, projectId, res);
+        });
+    }
+
+    return {
+      open: open,
+      close: close,
+      confirm: confirm,
+      updateConfirmEnabled: updateConfirmEnabled,
+      isBusy: function () { return state.busy; },
+      current: function () { return { action: state.action, projectId: state.projectId }; }
+    };
+  }
+
   return {
     createErrorMessage: createErrorMessage,
     isValidProject: isValidProject,
@@ -182,6 +419,13 @@
     renderListState: renderListState,
     renderProjectList: renderProjectList,
     applyListState: applyListState,
-    LIST_STATE_TEXT: LIST_STATE_TEXT
+    LIST_STATE_TEXT: LIST_STATE_TEXT,
+    ARCHIVED_LIST_STATE_TEXT: ARCHIVED_LIST_STATE_TEXT,
+    DELETE_CONFIRM_TOKEN: DELETE_CONFIRM_TOKEN,
+    deleteConfirmReady: deleteConfirmReady,
+    renderLifecycleRows: renderLifecycleRows,
+    applyPickerState: applyPickerState,
+    makePickerController: makePickerController,
+    makeLifecycleConfirmController: makeLifecycleConfirmController
   };
 });
