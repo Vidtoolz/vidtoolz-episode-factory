@@ -274,9 +274,29 @@ const { execFile } = childProcess;
 const COMPUTE_REGISTRY_DIR = path.join(process.env.HOME || '/home/vidtoolz', 'vidtoolz-compute');
 const COMPUTE_SELECTOR = path.join(COMPUTE_REGISTRY_DIR, 'vidtoolz-compute.py');
 const COMPUTE_REGISTRY_TIMEOUT_MS = 20000;
+// The only compute lane this cockpit integration supports (Wan I2V → PRESTO).
+// Image routing and other hosts (e.g. vidlap2) are deliberately out of scope for
+// this branch; any other lane id is rejected before the selector is ever spawned.
+const COMPUTE_LANES = new Set(['wan_i2v']);
+// The host a wan_i2v ROUTE must resolve to for a PRESTO submit to proceed.
+const COMPUTE_WAN_I2V_HOST = 'presto';
+
+// Strict lane-id validation for the query-facing selector route: charset + length
+// bound first (so traversal, shell metacharacters, and overlong input can never
+// reach the spawned child), then a registered-lane allowlist. Selector invocation
+// uses execFile with an argument array — no shell — so even a well-formed value is
+// never interpreted; this guard additionally prevents a stray child process.
+function isValidComputeLane(lane) {
+  return typeof lane === 'string' && /^[a-z][a-z0-9_]{0,63}$/.test(lane) && COMPUTE_LANES.has(lane);
+}
 
 function computeRegistrySelect(lane) {
   return new Promise((resolve) => {
+    // Defense in depth: never spawn the selector for an unregistered/unsafe lane.
+    if (!isValidComputeLane(lane)) {
+      resolve({ ok: false, decision: 'BLOCKED', reason: `invalid or unregistered lane '${String(lane).slice(0, 64)}'`, checks: {}, fallback_used: false });
+      return;
+    }
     execFile('python3', [COMPUTE_SELECTOR, 'select', lane, '--json'], {
       cwd: COMPUTE_REGISTRY_DIR,
       timeout: COMPUTE_REGISTRY_TIMEOUT_MS,
@@ -297,6 +317,36 @@ function computeRegistrySelect(lane) {
 async function computeReadinessGate(lane) {
   const result = await computeRegistrySelect(lane);
   return result;
+}
+
+// Fail-closed verdict on a selector result, evaluated fresh before every PRESTO
+// submit. A submit is allowed ONLY when the result is internally consistent for
+// the requested lane: a genuine ROUTE decision, to the canonical PRESTO host,
+// with no fallback. "ROUTE" is never accepted as a bare boolean — any
+// missing/unknown/mismatched identity field blocks. It matches the selector's
+// observed ROUTE shape ({decision:'ROUTE', selected_host:'presto', ...}): fields
+// the selector may legitimately omit (lane, fallback_used) only block when
+// PRESENT and wrong, never merely by being absent. Returns { allow, code, reason }.
+function computeGateVerdict(gateResult, expectedLane) {
+  if (!gateResult || typeof gateResult !== 'object') {
+    return { allow: false, code: 'gate_malformed', reason: 'selector returned no usable result' };
+  }
+  if (gateResult.ok === false || gateResult.decision === 'BLOCKED') {
+    return { allow: false, code: 'lane_blocked', reason: gateResult.reason || 'blocked by selector' };
+  }
+  if (gateResult.decision !== 'ROUTE') {
+    return { allow: false, code: 'unexpected_decision', reason: `unexpected selector decision '${String(gateResult.decision).slice(0, 40)}'` };
+  }
+  if (gateResult.lane != null && gateResult.lane !== expectedLane) {
+    return { allow: false, code: 'lane_mismatch', reason: `selector routed lane '${String(gateResult.lane).slice(0, 40)}', expected '${expectedLane}'` };
+  }
+  if (gateResult.selected_host !== COMPUTE_WAN_I2V_HOST) {
+    return { allow: false, code: 'host_mismatch', reason: `selector routed to host '${String(gateResult.selected_host).slice(0, 40)}', expected '${COMPUTE_WAN_I2V_HOST}'` };
+  }
+  if (gateResult.fallback_used === true) {
+    return { allow: false, code: 'fallback_used', reason: 'selector used a fallback route; refusing PRESTO submit' };
+  }
+  return { allow: true, code: 'route', reason: 'ok' };
 }
 const RESOLVE_HANDOFF_FILES = ['assembly-plan.md', 'assembly-plan.csv', 'media-manifest.json'];
 const PRESTO_OUTPUT_LIMIT_BYTES = 100 * 1024;
@@ -8828,14 +8878,24 @@ function handlePrestoSubmit(req, res, options = {}) {
       // the selector's reason — do NOT proceed to spawn run-production.py.
       const computeGate = options.computeGateFn || computeReadinessGate;
       const lane = options.computeLane || 'wan_i2v';
-      return Promise.resolve(computeGate(lane)).then((gateResult) => {
-        if (!gateResult.ok || gateResult.decision === 'BLOCKED') {
+      return Promise.resolve()
+        .then(() => computeGate(lane))
+        // Any throw/rejection in the gate is itself a fail-closed BLOCK — a gate
+        // that cannot run must never let a submit through.
+        .catch((gateErr) => ({ ok: false, decision: 'BLOCKED', reason: `gate error: ${(((gateErr && gateErr.message) || 'exception')).slice(0, 200)}`, checks: {} }))
+        .then((gateResult) => {
+        // Authoritative, identity-bound verdict (fresh, server-side). A submit
+        // proceeds ONLY on a consistent ROUTE for this lane to PRESTO; every
+        // other result — BLOCKED, unknown decision, wrong host, fallback used,
+        // malformed — is refused here, before the reachability probe and spawn.
+        const verdict = computeGateVerdict(gateResult, lane);
+        if (!verdict.allow) {
           sendError(
             res,
             503,
-            `Compute registry: lane '${lane}' is BLOCKED — ${gateResult.reason || 'unknown reason'}`,
+            `Compute registry: lane '${lane}' is BLOCKED — ${verdict.reason}`,
             'compute_lane_blocked',
-            { lane, checks: gateResult.checks, manual_action_required: gateResult.manual_action_required || null },
+            { lane, gate_code: verdict.code, checks: (gateResult && gateResult.checks) || {}, manual_action_required: (gateResult && gateResult.manual_action_required) || null },
           );
           return;
         }
@@ -14540,6 +14600,12 @@ function createServer(options = {}) {
 
     if (req.method === 'GET' && url.pathname === COMPUTE_SELECT_API) {
       const lane = url.searchParams.get('lane') || 'wan_i2v';
+      // Reject unregistered/unsafe lane ids with a controlled 400 before the
+      // selector is spawned (traversal, shell-like, overlong, or unknown lanes).
+      if (!isValidComputeLane(lane)) {
+        sendError(res, 400, `Invalid or unregistered compute lane '${String(lane).slice(0, 64)}'. Supported: ${Array.from(COMPUTE_LANES).join(', ')}.`, 'invalid_lane');
+        return;
+      }
       computeReadinessGate(lane).then((result) => {
         sendJSON(res, 200, result);
       }).catch((error) => {
@@ -15627,6 +15693,8 @@ module.exports = {
   PRESTO_SUBMIT_API,
   COMPUTE_STATUS_API,
   COMPUTE_SELECT_API,
+  computeGateVerdict,
+  isValidComputeLane,
   CAPTURE_EVIDENCE_APPLY_API,
   CAPTURE_EVIDENCE_PREVIEW_API,
   CAPTURE_EVIDENCE_AUDIT_FILE,
