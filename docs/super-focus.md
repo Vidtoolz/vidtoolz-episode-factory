@@ -18,10 +18,11 @@ A project is one linear sheet, in order:
 3. **Visual Plan** — beats + visual assignments, created from the **saved** script.
    The central rule: *a prompt says what to generate; a visual assignment says
    what job the visual must perform in the argument.* Create beats (version
-   numbers like `Wan 2.2` never split a beat), mark beats presenter-only /
-   reuse-previous, generate missing assignments in small batches (local Ollama,
-   never overwriting existing ones), edit, then **approve** — approval is
-   yours alone; the model never approves anything. Each assignment carries a
+   numbers like `Wan 2.2` never split a beat). Every script beat is assumed to
+   require a visual — there is no per-beat visual-requirement choice to make.
+   Generate missing assignments in small batches (local Ollama, only for beats
+   that have no assignment yet, never overwriting existing ones), edit, then
+   **approve** — approval is yours alone; the model never approves anything. Each assignment carries a
    viewer task, visual function, what the visual must show, acceptance
    criteria, and a media type (collapsed under **Why this visual?** in the
    editor). Split/merge beats safely; assignments survive and are flagged

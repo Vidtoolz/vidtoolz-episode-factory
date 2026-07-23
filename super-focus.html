@@ -2423,7 +2423,6 @@
     var lastVpSummary = '';
     var VP_FUNCTIONS = ['clarify', 'prove', 'demonstrate', 'contrast', 'intensify', 'structure', 'orient', 'illustrate', 'reset_attention', 'establish_mood', 'custom'];
     var VP_MEDIA = ['generated_still', 'image_to_video', 'infographic', 'text_graphic', 'screen_capture', 'existing_footage', 'reusable_motif', 'presenter_only'];
-    var VP_DISPOSITIONS = ['visual_required', 'visual_optional', 'presenter_only', 'reuse_previous', 'text_graphic', 'unresolved'];
     function vpLabel(v) { return String(v || '').replace(/_/g, ' '); }
 
     function vpAssignmentFor(beatId) {
@@ -2618,7 +2617,7 @@
       if (r) {
         lastVpSummary = r.assignments_approved + '/' + r.assignments_required + ' approved' + (stale ? ' (stale)' : (r.ready ? ' · ready' : ''));
         updateSectionSummary('visual-plan');
-        [r.total_beats + ' beats', r.presenter_only + ' presenter-only',
+        [r.total_beats + ' beats',
          r.assignments_approved + '/' + r.assignments_required + ' approved',
          r.assignments_draft + ' to review', r.assignments_rejected + ' rejected',
          r.uncovered_beats + ' without assignment'].forEach(function (t) {
@@ -2638,11 +2637,8 @@
         excerpt.textContent = a && a.assignment ? a.assignment : beat.script_text;
         excerpt.title = beat.script_text;
         row.appendChild(excerpt);
-        var dispSel = vpSelect(VP_DISPOSITIONS, beat.visual_disposition, 'Visual disposition');
-        dispSel.addEventListener('change', function () {
-          vpPost('set-disposition', { beat_id: beat.beat_id, disposition: dispSel.value });
-        });
-        row.appendChild(dispSel);
+        // Every beat requires a visual (canonical domain rule) — there is no
+        // per-beat visual-requirement dropdown. Media type + review state follow.
         if (a) row.appendChild(vpPill(vpLabel(a.media_type), 'unevaluated'));
         row.appendChild(vpStatusPill(beat, a));
         var editBtn = document.createElement('button'); editBtn.className = 'btn';

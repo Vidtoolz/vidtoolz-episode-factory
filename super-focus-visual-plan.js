@@ -77,6 +77,17 @@ const IMAGE_LANE_MEDIA_TYPES = ['generated_still', 'image_to_video', 'reusable_m
 // Beat dispositions that never require an assignment.
 const NO_ASSIGNMENT_DISPOSITIONS = ['presenter_only', 'reuse_previous'];
 
+// Canonical domain rule: every standard Visual Plan beat requires a visual, so
+// beats default to `visual_required` and there is no per-beat visual-requirement
+// decision. `unresolved` is a legacy value from the removed dropdown — it is
+// still accepted for tolerant parsing of older projects but normalized to
+// `visual_required` here so it never persists or surfaces as an operator choice.
+// presenter_only / reuse_previous are left untouched (intentional legacy
+// no-assignment beats); they are never created by the current workflow.
+function canonicalDisposition(value) {
+  return value === 'unresolved' ? 'visual_required' : value;
+}
+
 // ── bounds (defensive; scripts are short-form ~2-3 min) ─────────────────────
 
 const BOUNDS = {
@@ -297,9 +308,9 @@ function shapeBeat(scriptText, fields) {
     end_char: end,
     script_text: text,
     estimated_duration_seconds: estimateDurationSeconds(scriptText, start, end),
-    visual_disposition: enumValue(
-      fields.visual_disposition, VISUAL_DISPOSITIONS, 'visual_disposition', 'unresolved'
-    ),
+    visual_disposition: canonicalDisposition(enumValue(
+      fields.visual_disposition, VISUAL_DISPOSITIONS, 'visual_disposition', 'visual_required'
+    )),
     stale: Boolean(fields.stale),
     ...(fields.stale_reason ? { stale_reason: String(fields.stale_reason) } : {}),
   };
@@ -427,7 +438,7 @@ function createBeats(scriptText, existingPlan, options = {}) {
     const id = makeBeatId(ids);
     ids.add(id);
     return shapeBeat(text, {
-      beat_id: id, start_char: span.start, end_char: span.end, visual_disposition: 'unresolved',
+      beat_id: id, start_char: span.start, end_char: span.end, visual_disposition: 'visual_required',
     });
   }));
   return validatePlan(plan, text);
@@ -495,7 +506,7 @@ function splitBeat(plan, scriptText, beatId, atOffset, options = {}) {
   }));
   const second = shapeBeat(text, {
     beat_id: secondId, start_char: secondSpan.start, end_char: secondSpan.end,
-    visual_disposition: 'unresolved',
+    visual_disposition: 'visual_required',
   });
   const beats = plan.beats.filter((b) => b.beat_id !== beatId).concat([first, second]);
   const assignments = plan.assignments.map((a) => (a.beat_id === beatId
@@ -527,7 +538,7 @@ function mergeWithNext(plan, scriptText, beatId, options = {}) {
     beat_id: a.beat_id,
     start_char: a.start_char,
     end_char: b.end_char,
-    visual_disposition: a.visual_disposition === b.visual_disposition ? a.visual_disposition : 'unresolved',
+    visual_disposition: a.visual_disposition === b.visual_disposition ? a.visual_disposition : 'visual_required',
   });
   const beats = ordered.filter((x) => x.beat_id !== a.beat_id && x.beat_id !== b.beat_id).concat([merged]);
   const keep = assignA || assignB;
@@ -758,7 +769,16 @@ function normalizeGeneratedEnum(value, allowed, fallback) {
 function refreshPlanStaleness(plan, scriptText) {
   if (!plan) return plan;
   const fresh = sha256(String(scriptText == null ? '' : scriptText)) === plan.source_script_hash;
-  const out = Object.assign({}, plan, { stale: !fresh });
+  // Narrow legacy compatibility: normalize the retired `unresolved` disposition
+  // to the canonical `visual_required` on read so older projects converge on
+  // their next save. presenter_only / reuse_previous are deliberately left as-is
+  // (intentional historical no-assignment beats are never silently rewritten).
+  const beats = Array.isArray(plan.beats)
+    ? plan.beats.map((b) => (b && b.visual_disposition === 'unresolved'
+      ? Object.assign({}, b, { visual_disposition: 'visual_required' })
+      : b))
+    : plan.beats;
+  const out = Object.assign({}, plan, { beats, stale: !fresh });
   if (!fresh) {
     out.stale_reason = 'Script changed after this plan was created. Re-anchor the plan or re-create beats.';
   } else {
@@ -932,7 +952,7 @@ function computeVisualPlanReadiness(plan, scriptText) {
   if (draft) blockers.push(`Beat${draft > 1 ? 's' : ''} ${draftOrders.join(', ')} ${draft > 1 ? 'are' : 'is'} still draft — review and approve`);
   let nextAction = 'Create image prompts from approved assignments';
   if (fresh.stale) nextAction = 'Re-anchor the plan to the saved script';
-  else if (uncovered) nextAction = `Generate assignments for ${Math.min(uncovered, DEFAULT_GENERATION_BATCH)} unresolved beat${uncovered > 1 ? 's' : ''}`;
+  else if (uncovered) nextAction = `Generate assignments for ${Math.min(uncovered, DEFAULT_GENERATION_BATCH)} beat${uncovered > 1 ? 's' : ''} with no assignment yet`;
   else if (rejected) nextAction = `Resolve the rejected assignment for beat ${rejectedOrders[0]}`;
   else if (draft) nextAction = `Review ${draft} draft assignment${draft > 1 ? 's' : ''}`;
   return {
