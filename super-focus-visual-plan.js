@@ -682,8 +682,8 @@ function buildAssignmentRequest(scriptText, plan, beat) {
     prev ? `PREVIOUS BEAT:\n${JSON.stringify(prev.script_text)}\n` : '',
     next ? `NEXT BEAT:\n${JSON.stringify(next.script_text)}\n` : '',
     'CHANNEL FORMAT:',
-    'Vertical 9:16 explainer. Presenter occupies less than one quarter of the lower-right frame.',
-    'Background visuals support the argument. The lower-right presenter-safe area must stay visually quiet.',
+    'Vertical 9:16 explainer. Each visual is a complete full-screen 9:16 image that uses the entire frame to serve the argument.',
+    'Do not reserve space for a presenter; a presenter overlay, if added later, is handled in editing and is outside this assignment.',
     '',
     'TASK:',
     'Create ONE visual assignment, not an image prompt.',
@@ -693,7 +693,7 @@ function buildAssignmentRequest(scriptText, plan, beat) {
     `- viewer_task: one sentence, what the viewer should understand (max ${BOUNDS.viewer_task_max} chars)`,
     `- visual_function: one of ${VISUAL_FUNCTIONS.filter((f) => f !== 'custom').join(' | ')}`,
     `- assignment: what the visual must show, concrete, no camera/style jargon (max ${BOUNDS.assignment_max} chars)`,
-    `- acceptance_criteria: 2-4 short checks a human can verify on the finished image (each max ${BOUNDS.criterion_max_chars} chars; include one about the lower-right presenter-safe area staying quiet)`,
+    `- acceptance_criteria: 2-4 short checks a human can verify on the finished image (each max ${BOUNDS.criterion_max_chars} chars; include one that the image reads as a complete full-frame 9:16 composition)`,
     `- media_type: one of ${MEDIA_TYPES.join(' | ')}`,
   ].filter(Boolean).join('\n');
   const schema = {
@@ -863,9 +863,10 @@ function selectAssignmentsForPromptCreation(plan, imagePromptRows, options = {})
 // Build the image-prompt generation request for one approved assignment. The
 // PROMPT is the technical attempt; the assignment is the job it must fulfil.
 function buildPromptFromAssignmentRequest(beat, assignment, context = {}) {
-  const system = 'You write ONE image generation prompt for a photorealistic vertical 9:16 background '
-    + 'plate. No readable text in the image, no logos, no watermarks. The lower-right quarter of the '
-    + 'frame must stay visually quiet (a presenter overlay goes there). Return ONLY the prompt text — '
+  const system = 'You write ONE image generation prompt for a photorealistic, full-screen vertical 9:16 '
+    + 'image — a complete standalone composition that uses the entire frame. No readable text in the '
+    + 'image, no logos, no watermarks. Do not reserve space for a presenter; a presenter overlay, if '
+    + 'added later, is a separate editorial step outside this prompt. Return ONLY the prompt text — '
     + 'no preamble, no quotes, no markdown.';
   const user = [
     'The prompt must fulfil this VISUAL ASSIGNMENT (the job the image performs in the argument):',

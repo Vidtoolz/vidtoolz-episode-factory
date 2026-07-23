@@ -2280,13 +2280,15 @@ test("unknown /api/super-focus route returns 404 (the signal the UI maps to a re
   } finally { await close(server); }
 });
 
-test("image prompt template hardening: exact count + no-text/no-people/background-plate constraints", () => {
+test("image prompt template hardening: exact count + no-text/no-people/full-screen constraints", () => {
   const req = sfPrompts.buildImagePromptsRequest("SCRIPT", 8);
-  assert.match(req.user, /create exactly 8 distinct vertical background image prompts/i);
-  assert.match(req.user, /background-plate style/i);
-  assert.match(req.user, /lower-right/i);
+  assert.match(req.user, /create exactly 8 distinct full-screen vertical image prompts/i);
+  // Full-screen composition, no presenter reservation.
+  assert.match(req.user, /full-frame composition/i);
+  assert.match(req.user, /do NOT reserve[^\n]*presenter/i);
+  assert.doesNotMatch(req.user, /background[- ]plate|lower[- ]right|negative space|presenter-safe|leave (clean|room|uncluttered)/i);
   assert.match(req.user, /no readable text, no fake text, no garbled letters/i);
-  assert.match(req.user, /no presenter, no human, no host/i);
+  assert.match(req.user, /no presenter, no human, no host/i); // no-people rule preserved
   assert.match(req.user, /no screenshots or mock-ups of real or fake software UIs/i);
   assert.match(req.user, /Return exactly 8 strings/);
 });

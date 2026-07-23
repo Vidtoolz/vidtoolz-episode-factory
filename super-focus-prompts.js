@@ -81,7 +81,7 @@ function promptArraySchema() {
 function buildImagePromptsRequest(script, count, existingPrompts) {
   const n = clampCount(count, IMAGE_PROMPT_MAX);
   const lines = [
-    `Based on this script, create exactly ${n} distinct vertical background image prompts for a VIDTOOLZ YouTube Short.`,
+    `Based on this script, create exactly ${n} distinct full-screen vertical image prompts for a VIDTOOLZ YouTube Short.`,
     'The prompts MUST be grounded in THIS specific script — not generic, reusable AI/tech imagery.',
     '',
     'Script:',
@@ -91,7 +91,7 @@ function buildImagePromptsRequest(script, count, existingPrompts) {
     'claims, concrete examples, contrasts (before/after or wrong/right), warnings, metaphors,',
     'process / workflow steps, and conclusion / call-to-action.',
     '',
-    `STEP 2 — create ${n} background-plate prompts that VISUALIZE those beats, distributed across the`,
+    `STEP 2 — create ${n} full-screen image prompts that VISUALIZE those beats, distributed across the`,
     'whole script — the beginning, the middle, AND the end. Do not over-cover the opening idea and',
     'skip the conclusion; every third of the script should get coverage.',
     '',
@@ -103,11 +103,11 @@ function buildImagePromptsRequest(script, count, existingPrompts) {
     '- no more than 30% (aim 15–30%) may be purely ATMOSPHERIC — abstract mood, transition, texture,',
     '  or background support.',
     '',
-    'These are BACKGROUND PLATES that sit behind a presenter overlay added later.',
+    'These are COMPLETE FULL-SCREEN vertical images — each one is a standalone composition that fills the entire 9:16 frame.',
     '',
     'Requirements:',
-    '- 1080x1920 vertical composition implied',
-    '- background-plate style; leave clean, uncluttered space in the lower-right for a presenter overlay',
+    '- 1080x1920 vertical composition implied — a complete full-screen 9:16 image',
+    '- full-frame composition: use the entire frame for the subject, focal point, and detail; the main subject may be centered or placed wherever the strongest composition requires; do NOT reserve any empty area for a presenter — a presenter, if added later, is a separate editorial overlay outside this prompt',
     '- each prompt is ONE concrete scene: specific subject, setting, composition, mood, and visual action, specific enough for FLUX',
     '- visually varied across the set; each prompt different from the others',
     '- no readable text, no fake text, no garbled letters, no lettering of any kind',

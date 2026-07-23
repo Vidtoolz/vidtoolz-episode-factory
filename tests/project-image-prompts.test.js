@@ -1,7 +1,7 @@
 /**
  * VIDTOOLZ Episode Factory Tests — project-scoped image-prompt generation.
  *
- * Build instruction (anti-text, vertical, negative space, script extraction),
+ * Build instruction (anti-text, vertical, full-frame composition, script extraction),
  * strict parse/normalize/validate (exact count, normalization, dedup reject,
  * screen-cap reject), canonical schema + resolver advance, and the editor panel.
  */
@@ -67,10 +67,13 @@ function modelOutput(n, opts = {}) {
 
 // ── Build instruction ────────────────────────────────────────────────────────
 
-test("imgprompts: build instruction carries vertical/photoreal/negative-space + script extraction", () => {
+test("imgprompts: build instruction carries vertical/photoreal/full-frame + script extraction", () => {
   const r = pip.buildImagePromptRequest({ title: "T", premise: "P", script: "SCRIPT BODY", count: 25 });
   assert.match(r.system, /1080x1920/);
-  assert.match(r.system, /negative space/i);
+  // Full-screen composition, not presenter-safe negative space.
+  assert.match(r.system, /full-frame composition using the entire canvas/i);
+  assert.match(r.system, /do NOT reserve[^\n]*presenter/i);
+  assert.doesNotMatch(r.system, /presenter-safe|negative space|lower[- ]right|leave room for|sits (left|upper|off)/i);
   assert.match(r.system, /photorealistic/i);
   assert.match(r.system, /NO readable text/i);
   assert.match(r.system, /extract|metaphor|session players|recording studio/i); // script-specific extraction
@@ -80,14 +83,15 @@ test("imgprompts: build instruction carries vertical/photoreal/negative-space + 
 
 // ── Normalization + parse ─────────────────────────────────────────────────────
 
-test("imgprompts: every parsed prompt is normalized to vertical/photoreal/negative-space/no-text", () => {
+test("imgprompts: every parsed prompt is normalized to vertical/photoreal/full-frame/no-text", () => {
   const recs = pip.parseImagePrompts(modelOutput(25), 25, { projectId: "demo", nowIso: "T" });
   assert.equal(recs.length, 25);
   assert.equal(recs[0].index, 1);
   assert.equal(recs[24].index, 25);
   assert.ok(recs.every((r) => /vertical 1080x1920/i.test(r.prompt)), "vertical");
   assert.ok(recs.every((r) => /photorealistic/i.test(r.prompt)), "photorealistic");
-  assert.ok(recs.every((r) => /presenter-safe negative space/i.test(r.prompt)), "negative space");
+  assert.ok(recs.every((r) => /full-frame composition/i.test(r.prompt)), "full-frame");
+  assert.ok(recs.every((r) => !/presenter-safe|negative space|lower[- ]right/i.test(r.prompt)), "no presenter-safe framing");
   assert.ok(recs.every((r) => /no readable text/i.test(r.prompt)), "no-text");
   assert.equal(recs[0].prompt_provider, "ollama");
   assert.equal(recs[0].source, "local_ollama_vidnux");

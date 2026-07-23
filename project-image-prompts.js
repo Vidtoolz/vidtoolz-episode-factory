@@ -9,7 +9,7 @@
  *
  * Quality contract enforced here:
  *  - every prompt is NORMALIZED to carry the same constraint line: photorealistic,
- *    vertical 1080x1920, presenter-safe negative space lower-right, and the
+ *    photorealistic, vertical 1080x1920 full-frame composition, and the
  *    anti-text doctrine (no readable text/captions/signs/logos/UI);
  *  - the batch is REJECTED (502, nothing written) if the count is wrong, if
  *    near-duplicate prompts appear (model looping), or if too many screen/
@@ -24,7 +24,7 @@ const DUP_SIMILARITY = 0.82;
 
 // The single constraint line appended to every prompt (guarantees the global
 // language regardless of what the model returns).
-const CONSTRAINTS = 'Photorealistic, vertical 1080x1920 composition, strong presenter-safe negative space in the lower-right for an on-camera host. No readable text, captions, signs, logos, or UI.';
+const CONSTRAINTS = 'Photorealistic, vertical 1080x1920 full-frame composition that uses the entire 9:16 frame as a complete standalone image. No readable text, captions, signs, logos, or UI.';
 const NO_TEXT_CLAUSE = CONSTRAINTS; // back-compat export
 
 const BEATS = ['opening hook', 'problem', 'contrast', 'example / proof', 'decision point', 'process / gates', 'conclusion'];
@@ -34,11 +34,11 @@ function buildImagePromptRequest(ctx = {}) {
   const script = String(ctx.script || '').slice(0, 8000);
   const system = [
     'You write FLUX text-to-image prompts for VIDTOOLZ — vertical YouTube videos for serious solo AI-video creators.',
-    'Each prompt describes ONE photorealistic background/source image that will sit BEHIND an on-camera presenter and later be animated (image-to-video).',
+    'Each prompt describes ONE photorealistic, full-screen vertical image — a complete standalone composition that may later be animated (image-to-video).',
     '',
     'HARD RULES for EVERY prompt:',
-    '- photorealistic; vertical 1080x1920 composition;',
-    '- strong presenter-safe NEGATIVE SPACE in the lower-right (leave room for a host); the main subject sits left/upper or off-centre;',
+    '- photorealistic; vertical 1080x1920 composition; a complete full-screen 9:16 image;',
+    '- full-frame composition using the entire canvas; place the main subject wherever the strongest composition requires (centered is fine); do NOT reserve empty space for a presenter — a presenter, if added later, is a separate editorial overlay outside this prompt;',
     '- NO readable text, captions, signs, labels, logos, or UI anywhere in the image; no fake charts/graphs with unreadable text;',
     '- AVOID visible computer interfaces/screens; if a screen must appear it is powered-off, abstract glow, or heavily blurred — and use at most ' + MAX_SCREEN_PROMPTS + ' such prompts total;',
     '- at most ' + MAX_FACE_CLOSEUPS + ' tight face close-ups in the whole set;',
@@ -137,7 +137,7 @@ function parseImagePrompts(content, count, ctx = {}) {
       : (parsed && Array.isArray(parsed.image_prompts) ? parsed.image_prompts : null));
   if (!list) { const e = new Error('Model returned no prompts array.'); e.statusCode = 502; throw e; }
 
-  // Greedy selection: keep `count` DISTINCT, presenter-safe scenes — skipping
+  // Greedy selection: keep `count` DISTINCT, full-screen scenes — skipping
   // near-duplicates (model looping), too-short/baked, and screen/face over the
   // caps. The endpoint over-generates candidates so dedup has headroom; we only
   // fail (502) when the model genuinely can't supply `count` distinct prompts.
@@ -170,7 +170,7 @@ function parseImagePrompts(content, count, ctx = {}) {
     if (scenes.length === count) break;
   }
   if (scenes.length < count) {
-    const e = new Error(`Model produced only ${scenes.length} distinct presenter-safe prompt(s); ${count} required (skipped ${skipped.dup} near-duplicate, ${skipped.screen} extra-screen, ${skipped.face} extra-face, ${skipped.short} too-short/text). Try again.`);
+    const e = new Error(`Model produced only ${scenes.length} distinct full-screen prompt(s); ${count} required (skipped ${skipped.dup} near-duplicate, ${skipped.screen} extra-screen, ${skipped.face} extra-face, ${skipped.short} too-short/text). Try again.`);
     e.statusCode = 502; throw e;
   }
 

@@ -38,8 +38,10 @@ A project is one linear sheet, in order:
    reverting the assignment to byte-identical content clears the flag. The
    older script-wide **Prompt count** generation (1–100, default 8) still
    works for projects without a plan; all 100 slots stay editable (Copy /
-   Save changes). Prompts are background-plate style: no text, no people,
-   clean lower-right space for a presenter overlay.
+   Save changes). Prompts are complete full-screen 9:16 images: no text, no
+   people, using the entire frame — no space is reserved for a presenter.
+   (Presenter placement, if any, is a later editing/compositing concern and is
+   not considered by the image-prompt generator.)
 4. **Generated images** — set **Images to generate** (1–100, default 3) and generate/resume the first N saved prompts (vidnux ComfyUI / FLUX, `--skip-existing`); thumbnails appear inline per row. No need to clear rows to scope a small run.
 4b. **Image review** — every generated image is EVIDENCE, reviewed against
    its assignment's acceptance criteria before it may become a video. The

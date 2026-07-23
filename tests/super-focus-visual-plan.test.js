@@ -278,7 +278,10 @@ test('visual-plan: assignment request is explicitly not an image prompt and carr
   assert.match(req.system, /never write image\s+prompts/);
   assert.match(req.user, /PREVIOUS BEAT/);
   assert.match(req.user, /NEXT BEAT/);
-  assert.match(req.user, /presenter-safe/);
+  // Full-screen composition intent; no presenter-safe framing baked into the assignment.
+  assert.match(req.user, /complete full-screen 9:16 image that uses the entire frame/i);
+  assert.match(req.user, /do not reserve space for a presenter/i);
+  assert.doesNotMatch(req.user, /presenter-safe|negative space|lower[- ]right|stay.*quiet/i);
   assert.ok(req.schema.required.indexOf('acceptance_criteria') !== -1);
 });
 
@@ -325,14 +328,17 @@ test('visual-plan: only approved, fresh, image-lane assignments create prompts; 
   assert.ok(sel2.skipped.some((s) => /Prompt already exists/.test(s.reason)));
 });
 
-test('visual-plan: prompt request carries assignment, criteria, and presenter constraint', () => {
+test('visual-plan: prompt request is full-screen, carries assignment + style, no presenter reservation', () => {
   const { plan, beat } = draftedPlan(SCRIPT);
   const a = vp.assignmentForBeat(plan, beat.beat_id);
   const req = vp.buildPromptFromAssignmentRequest(beat, a, { styleNotes: 'Nordic minimal grey' });
   assert.match(req.user, /VISUAL ASSIGNMENT/);
-  assert.match(req.user, /Lower-right stays quiet/);
   assert.match(req.user, /PROJECT VISUAL STYLE: Nordic minimal grey/);
-  assert.match(req.system, /lower-right quarter/);
+  // The canonical model instruction is full-screen with no presenter-safe framing.
+  assert.match(req.system, /full-screen vertical 9:16/i);
+  assert.match(req.system, /uses the entire frame/i);
+  assert.match(req.system, /do not reserve space for a presenter/i);
+  assert.doesNotMatch(req.system, /lower[- ]right|negative space|background\s+plate|presenter-safe|stay.*quiet/i);
 });
 
 // ── readiness ────────────────────────────────────────────────────────────────

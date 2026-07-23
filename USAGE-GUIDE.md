@@ -77,7 +77,9 @@ The system resolves each project through these stages. The Next-task card tells 
    context: title, stage, topic, and an "Approved script found" confirmation.
    Click **Generate image prompts from approved script** — local Ollama on vidnux
    turns the script into 25 vertical 1080x1920, photorealistic, no-text FLUX
-   prompts, each carrying presenter-safe negative space in the lower-right. The
+   prompts, each a complete full-screen 9:16 composition that uses the entire
+   frame (no space reserved for a presenter — presenter placement is a later
+   editing/compositing concern). The
    generator over-generates candidates and then selects a distinct, varied set:
    it drops near-duplicates, caps on-screen/interface scenes (≤3) and face
    close-ups (≤3), and extracts the script's own imagery (named examples,
