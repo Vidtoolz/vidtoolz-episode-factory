@@ -121,24 +121,43 @@ test('visual-required: next action names assignment work, not a visual-requireme
 
 // ── the retained write route enforces the invariant ────────────────────────
 
-test('visual-required: setBeatDisposition cannot create an assignment-excluded beat', () => {
+test('visual-required: setBeatDisposition cannot newly write any non-visual_required disposition', () => {
   const plan = freshPlan();
   const beatId = plan.beats[0].beat_id;
-  // presenter_only / reuse_previous are rejected with a clear 400 compat error.
-  for (const bad of ['presenter_only', 'reuse_previous']) {
+  // Every obsolete dropdown-era value is rejected with a clear 400 compat error
+  // (presenter_only / reuse_previous exclude a beat; visual_optional / text_graphic
+  // are simply no longer selectable — the route may only assert visual_required).
+  for (const bad of ['presenter_only', 'reuse_previous', 'visual_optional', 'text_graphic']) {
     assert.throws(
       () => vp.setBeatDisposition(plan, SCRIPT, beatId, bad),
       (e) => e.statusCode === 400 && /every beat requires a visual/i.test(e.message),
       `${bad} must be rejected`,
     );
   }
-  // Legacy `unresolved` is accepted but normalized to visual_required.
-  const out = vp.setBeatDisposition(plan, SCRIPT, beatId, 'unresolved');
-  assert.equal(out.beats.find((b) => b.beat_id === beatId).visual_disposition, 'visual_required');
+  // Legacy `unresolved` is accepted and normalized to visual_required (cannot newly write unresolved).
+  const norm = vp.setBeatDisposition(plan, SCRIPT, beatId, 'unresolved');
+  assert.equal(norm.beats.find((b) => b.beat_id === beatId).visual_disposition, 'visual_required');
+  // The one permitted write, visual_required, results in visual_required.
+  const ok = vp.setBeatDisposition(plan, SCRIPT, beatId, 'visual_required');
+  assert.equal(ok.beats.find((b) => b.beat_id === beatId).visual_disposition, 'visual_required');
   // Truly invalid input still fails enum validation.
   assert.throws(() => vp.setBeatDisposition(plan, SCRIPT, beatId, 'sideways'), /visual_disposition/);
-  // The resulting plan has no beat excluded from assignment generation.
-  assert.equal(vp.selectBeatsForGeneration(out).skipped.length, 0);
+  // No accepted outcome leaves a beat excluded from assignment generation.
+  assert.equal(vp.selectBeatsForGeneration(ok).skipped.length, 0);
+});
+
+test('visual-required: assignment-level media_type presenter_only is a separate concept, unaffected', () => {
+  let plan = freshPlan();
+  // A visual assignment may still declare media_type presenter_only (an editorial
+  // media choice) — the disposition invariant does not touch media_type.
+  plan = vp.saveAssignment(plan, SCRIPT, plan.beats[0].beat_id, {
+    viewer_task: 'It.', visual_function: 'clarify', assignment: 'A talking-head moment.',
+    acceptance_criteria: ['ok'], media_type: 'presenter_only',
+  }, { now: '2026-07-23T00:02:00Z' });
+  const a = vp.assignmentForBeat(plan, plan.beats[0].beat_id);
+  assert.equal(a.media_type, 'presenter_only', 'assignment media_type preserved');
+  // The beat itself still requires a visual (disposition unchanged).
+  assert.equal(plan.beats[0].visual_disposition, 'visual_required');
 });
 
 // ── rendered DOM: tag-aware stub running the page's real inline script ──────

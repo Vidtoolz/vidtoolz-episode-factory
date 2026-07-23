@@ -465,20 +465,21 @@ function touchPlan(plan, options = {}) {
 }
 
 // (Re)assert a beat's visual disposition. Canonical rule: every normal beat
-// requires a visual, so this write path can no longer create a beat that is
-// EXCLUDED from assignment generation — `presenter_only` / `reuse_previous` are
-// rejected with a clear compatibility error, and the legacy `unresolved` value
-// is normalized to `visual_required`. Existing persisted presenter_only /
-// reuse_previous beats stay readable (they are rejected only as NEW writes
-// here). media_type: 'presenter_only' is a separate, preserved assignment-level
-// concept and is unaffected by this route.
+// requires a visual, so the ONLY value an active write may (re)assert is
+// `visual_required`. The legacy `unresolved` default normalizes to
+// `visual_required`; every other (obsolete dropdown-era) value —
+// `presenter_only`, `reuse_previous`, `visual_optional`, `text_graphic` — is
+// rejected with a clear compatibility error, so no active write path can create
+// a beat that is not "requires a visual". Existing persisted excluded beats stay
+// READABLE (they are rejected only as NEW writes here). Assignment-level
+// media_type: 'presenter_only' is a separate, preserved concept, untouched here.
 function setBeatDisposition(plan, scriptText, beatId, disposition, options = {}) {
   findBeat(plan, beatId);
   const requested = enumValue(disposition, VISUAL_DISPOSITIONS, 'visual_disposition');
-  if (NO_ASSIGNMENT_DISPOSITIONS.indexOf(requested) !== -1) {
+  const clean = canonicalDisposition(requested); // legacy `unresolved` -> visual_required
+  if (clean !== 'visual_required') {
     fail(`Beats can no longer be set to "${requested.replace(/_/g, ' ')}" — every beat requires a visual assignment.`, 400);
   }
-  const clean = canonicalDisposition(requested); // legacy `unresolved` -> visual_required
   const beats = plan.beats.map((b) => (b.beat_id === beatId ? Object.assign({}, b, { visual_disposition: clean }) : b));
   return validatePlan(touchPlan(Object.assign({}, plan, { beats: sortPlanBeats(beats) }), options), scriptText);
 }
