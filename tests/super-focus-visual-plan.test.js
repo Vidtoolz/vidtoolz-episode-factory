@@ -22,6 +22,17 @@ function draftedPlan(script) {
   return { plan, beat };
 }
 
+// Simulate a LEGACY persisted beat disposition without going through the guarded
+// write route (setBeatDisposition now rejects assignment-excluding dispositions).
+// This models a project saved before the "every beat requires a visual" rule.
+function forceDisposition(plan, beatId, disposition) {
+  return Object.assign({}, plan, {
+    beats: plan.beats.map((b) => (b.beat_id === beatId
+      ? Object.assign({}, b, { visual_disposition: disposition })
+      : b)),
+  });
+}
+
 // ── segmentation ─────────────────────────────────────────────────────────────
 
 test('visual-plan: beats keep version numbers and decimals whole', () => {
@@ -176,8 +187,8 @@ test('visual-plan: split/merge refuse to run against a stale plan', () => {
 test('visual-plan: generation selects only missing; skips populated/approved/rejected/presenter/reuse', () => {
   let { plan } = draftedPlan(SCRIPT); // beat[0] has a draft
   const ordered = plan.beats;
-  plan = vp.setBeatDisposition(plan, SCRIPT, ordered[1].beat_id, 'presenter_only');
-  plan = vp.setBeatDisposition(plan, SCRIPT, ordered[2].beat_id, 'reuse_previous');
+  plan = forceDisposition(plan, ordered[1].beat_id, 'presenter_only'); // legacy stored beat
+  plan = forceDisposition(plan, ordered[2].beat_id, 'reuse_previous'); // legacy stored beat
   const picked = vp.selectBeatsForGeneration(plan, {});
   assert.ok(!picked.beats.some((b) => b.beat_id === ordered[0].beat_id), 'draft not overwritten');
   assert.ok(!picked.beats.some((b) => b.beat_id === ordered[1].beat_id), 'presenter-only skipped');
@@ -346,7 +357,7 @@ test('visual-plan: prompt request is full-screen, carries assignment + style, no
 test('visual-plan: readiness excludes presenter-only, names blockers, tracks next action', () => {
   let { plan } = draftedPlan(SCRIPT); // beat0: draft
   const ordered = plan.beats;
-  plan = vp.setBeatDisposition(plan, SCRIPT, ordered[1].beat_id, 'presenter_only');
+  plan = forceDisposition(plan, ordered[1].beat_id, 'presenter_only'); // legacy stored beat
   let r = vp.computeVisualPlanReadiness(plan, SCRIPT);
   assert.equal(r.exists, true);
   assert.equal(r.ready, false);
@@ -387,7 +398,7 @@ test('visual-plan: rejected assignment blocks readiness with a named beat', () =
   // Park the other beats so the rejected one is the only blocker (uncovered
   // beats correctly outrank rejected ones in next_action priority).
   plan.beats.forEach((b) => {
-    if (b.beat_id !== beat.beat_id) plan = vp.setBeatDisposition(plan, SCRIPT, b.beat_id, 'presenter_only');
+    if (b.beat_id !== beat.beat_id) plan = forceDisposition(plan, b.beat_id, 'presenter_only'); // legacy stored beats
   });
   const a = vp.assignmentForBeat(plan, beat.beat_id);
   plan = vp.rejectAssignment(plan, SCRIPT, a.assignment_id);

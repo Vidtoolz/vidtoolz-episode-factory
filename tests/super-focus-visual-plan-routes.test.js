@@ -205,6 +205,29 @@ test('vp-routes: save/approve/revoke/reject/clear round trip', async () => {
   } finally { await close(server); }
 });
 
+// ---- the visual-required invariant on the retained write route ----
+
+test('vp-routes: set-disposition cannot create an assignment-excluded beat', async () => {
+  const { server, id } = await projectServer(smartFakeFetch());
+  try {
+    await post(server, 'create-beats', { id });
+    let plan = unwrap(await request(server, `/api/super-focus/visual-plan?id=${id}`)).visual_plan;
+    const beatId = plan.beats[0].beat_id;
+    // Assignment-excluding dispositions are rejected with a compatibility error.
+    for (const bad of ['presenter_only', 'reuse_previous']) {
+      const res = await post(server, 'set-disposition', { id, beat_id: beatId, disposition: bad });
+      assert.equal(res.statusCode, 400, `${bad} must be rejected`);
+    }
+    // Legacy `unresolved` normalizes to visual_required (no error).
+    const ok = await post(server, 'set-disposition', { id, beat_id: beatId, disposition: 'unresolved' });
+    assert.equal(ok.statusCode, 200);
+    plan = unwrap(await request(server, `/api/super-focus/visual-plan?id=${id}`)).visual_plan;
+    assert.equal(plan.beats.find((b) => b.beat_id === beatId).visual_disposition, 'visual_required');
+    // No beat in the plan is excluded from assignment generation.
+    assert.ok(!plan.beats.some((b) => b.visual_disposition === 'presenter_only' || b.visual_disposition === 'reuse_previous'));
+  } finally { await close(server); }
+});
+
 // ---- the approval gate + provenance ----
 
 test('vp-routes: prompts only from approved assignments; skips reasoned; rows carry provenance; no overwrite', async () => {
@@ -213,13 +236,13 @@ test('vp-routes: prompts only from approved assignments; skips reasoned; rows ca
     await post(server, 'create-beats', { id });
     let plan = unwrap(await request(server, `/api/super-focus/visual-plan?id=${id}`)).visual_plan;
     const [b1, b2, b3] = plan.beats;
-    // b1: approved; b2: draft; b3: presenter-only.
+    // b1: approved; b2: draft; b3: no assignment (every beat requires a visual).
+    void b3;
     await post(server, 'save-assignment', Object.assign({ id, beat_id: b1.beat_id }, FAKE_ASSIGNMENT));
     plan = unwrap(await request(server, `/api/super-focus/visual-plan?id=${id}`)).visual_plan;
     const a1 = plan.assignments.find((a) => a.beat_id === b1.beat_id);
     await post(server, 'approve-assignment', { id, assignment_id: a1.assignment_id });
     await post(server, 'save-assignment', Object.assign({ id, beat_id: b2.beat_id }, FAKE_ASSIGNMENT, { assignment: 'Draft only.' }));
-    await post(server, 'set-disposition', { id, beat_id: b3.beat_id, disposition: 'presenter_only' });
 
     const res = await request(server, '/api/super-focus/image-prompts/from-assignments', {
       method: 'POST', headers: writeHeaders(), body: { id },
@@ -229,7 +252,7 @@ test('vp-routes: prompts only from approved assignments; skips reasoned; rows ca
     assert.equal(d.placed.length, 1);
     const reasons = d.skipped.map((s) => s.reason).join('|');
     assert.match(reasons, /not approved yet/);
-    assert.match(reasons, /Presenter only/);
+    assert.match(reasons, /No assignment yet/);
     const row = d.image_prompts.find((r) => r.assignment_id === a1.assignment_id);
     assert.ok(row, 'prompt row carries assignment_id');
     assert.equal(row.assignment_hash, a1.assignment_hash);

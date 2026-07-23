@@ -464,21 +464,23 @@ function touchPlan(plan, options = {}) {
   return Object.assign({}, plan, { updated_at: options.now || nowIso() });
 }
 
-// Set a beat's visual disposition (presenter-only, reuse-previous, …).
+// (Re)assert a beat's visual disposition. Canonical rule: every normal beat
+// requires a visual, so this write path can no longer create a beat that is
+// EXCLUDED from assignment generation — `presenter_only` / `reuse_previous` are
+// rejected with a clear compatibility error, and the legacy `unresolved` value
+// is normalized to `visual_required`. Existing persisted presenter_only /
+// reuse_previous beats stay readable (they are rejected only as NEW writes
+// here). media_type: 'presenter_only' is a separate, preserved assignment-level
+// concept and is unaffected by this route.
 function setBeatDisposition(plan, scriptText, beatId, disposition, options = {}) {
-  const beat = findBeat(plan, beatId);
-  const clean = enumValue(disposition, VISUAL_DISPOSITIONS, 'visual_disposition');
-  const beats = plan.beats.map((b) => (b.beat_id === beatId ? Object.assign({}, b, { visual_disposition: clean }) : b));
-  let assignments = plan.assignments;
-  // Moving a beat with an assignment to a no-assignment disposition keeps the
-  // assignment (never delete operator work) but flags it for review.
-  if (NO_ASSIGNMENT_DISPOSITIONS.indexOf(clean) !== -1 && assignmentForBeat(plan, beatId)) {
-    assignments = plan.assignments.map((a) => (a.beat_id === beatId
-      ? Object.assign({}, a, { stale: true, stale_reason: `Beat is now ${clean.replace('_', ' ')} — this assignment may no longer be needed.` })
-      : a));
+  findBeat(plan, beatId);
+  const requested = enumValue(disposition, VISUAL_DISPOSITIONS, 'visual_disposition');
+  if (NO_ASSIGNMENT_DISPOSITIONS.indexOf(requested) !== -1) {
+    fail(`Beats can no longer be set to "${requested.replace(/_/g, ' ')}" — every beat requires a visual assignment.`, 400);
   }
-  void beat;
-  return validatePlan(touchPlan(Object.assign({}, plan, { beats: sortPlanBeats(beats), assignments }), options), scriptText);
+  const clean = canonicalDisposition(requested); // legacy `unresolved` -> visual_required
+  const beats = plan.beats.map((b) => (b.beat_id === beatId ? Object.assign({}, b, { visual_disposition: clean }) : b));
+  return validatePlan(touchPlan(Object.assign({}, plan, { beats: sortPlanBeats(beats) }), options), scriptText);
 }
 
 // Split a beat at an absolute script offset. The existing assignment (if any)

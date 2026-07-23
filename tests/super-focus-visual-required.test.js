@@ -35,6 +35,13 @@ function draft(plan, beatId, extra) {
     media_type: 'image_to_video',
   }, extra || {}), { now: '2026-07-23T00:01:00Z' });
 }
+// Simulate a LEGACY persisted disposition without the guarded write route.
+function forceDisposition(plan, beatId, disposition) {
+  return Object.assign({}, plan, {
+    beats: plan.beats.map((b) => (b.beat_id === beatId
+      ? Object.assign({}, b, { visual_disposition: disposition }) : b)),
+  });
+}
 
 // ── domain: default + legacy normalization ──────────────────────────────────
 
@@ -70,7 +77,7 @@ test('visual-required: legacy `unresolved` beats normalize to visual_required on
 
 test('visual-required: legacy presenter_only beats are preserved on read (not silently rewritten)', () => {
   let plan = freshPlan();
-  plan = vp.setBeatDisposition(plan, SCRIPT, plan.beats[0].beat_id, 'presenter_only');
+  plan = forceDisposition(plan, plan.beats[0].beat_id, 'presenter_only'); // legacy stored beat
   const loaded = vp.refreshPlanStaleness(plan, SCRIPT);
   assert.equal(loaded.beats.find((b) => b.beat_id === plan.beats[0].beat_id).visual_disposition, 'presenter_only');
   // presenter_only still excluded from generation + counted separately in readiness.
@@ -110,6 +117,28 @@ test('visual-required: next action names assignment work, not a visual-requireme
   const r = vp.computeVisualPlanReadiness(freshPlan(), SCRIPT);
   assert.match(r.next_action, /Generate assignments for \d+ beats? with no assignment yet/);
   assert.doesNotMatch(r.next_action, /unresolved/i);
+});
+
+// ── the retained write route enforces the invariant ────────────────────────
+
+test('visual-required: setBeatDisposition cannot create an assignment-excluded beat', () => {
+  const plan = freshPlan();
+  const beatId = plan.beats[0].beat_id;
+  // presenter_only / reuse_previous are rejected with a clear 400 compat error.
+  for (const bad of ['presenter_only', 'reuse_previous']) {
+    assert.throws(
+      () => vp.setBeatDisposition(plan, SCRIPT, beatId, bad),
+      (e) => e.statusCode === 400 && /every beat requires a visual/i.test(e.message),
+      `${bad} must be rejected`,
+    );
+  }
+  // Legacy `unresolved` is accepted but normalized to visual_required.
+  const out = vp.setBeatDisposition(plan, SCRIPT, beatId, 'unresolved');
+  assert.equal(out.beats.find((b) => b.beat_id === beatId).visual_disposition, 'visual_required');
+  // Truly invalid input still fails enum validation.
+  assert.throws(() => vp.setBeatDisposition(plan, SCRIPT, beatId, 'sideways'), /visual_disposition/);
+  // The resulting plan has no beat excluded from assignment generation.
+  assert.equal(vp.selectBeatsForGeneration(out).skipped.length, 0);
 });
 
 // ── rendered DOM: tag-aware stub running the page's real inline script ──────
