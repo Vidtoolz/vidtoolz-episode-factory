@@ -108,6 +108,31 @@
     .proj-actions { display: flex; gap: 8px; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; }
     .proj-actions .btn { padding: 8px 12px; font-size: 13px; }
     .open-mode-note { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+    /* Project health & recovery summary (read-only) */
+    .proj-list li > div:first-child { flex: 1 1 auto; min-width: 0; }
+    .sf-health-summary { margin-top: 8px; font-size: 13px; display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
+    .sf-health-line { color: var(--muted); }
+    .sf-health-badge {
+      font-size: 11px; letter-spacing: .04em; text-transform: uppercase;
+      border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; color: var(--muted);
+    }
+    /* State carried by text (badge label) first; colour is a secondary cue only. */
+    .sf-health-summary[data-health-state="healthy"] .sf-health-badge { border-color: #2ea043; color: #3fb950; }
+    .sf-health-summary[data-health-state="needs_review"] .sf-health-badge { border-color: #d29922; color: #d29922; }
+    .sf-health-summary[data-health-state="blocked"] .sf-health-badge { border-color: #bb8009; color: #d29922; }
+    .sf-health-summary[data-health-state="recovery_needed"] .sf-health-badge,
+    .sf-health-summary[data-health-state="unreadable"] .sf-health-badge { border-color: #f85149; color: #f85149; }
+    .sf-health-next { margin-top: 4px; font-size: 13px; color: var(--text); }
+    .sf-health-block { margin-top: 8px; }
+    .sf-health-toggle { padding: 4px 10px; font-size: 12px; }
+    .sf-health-details {
+      margin-top: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--panel); font-size: 13px; display: grid; gap: 3px;
+    }
+    .sf-health-detail-key { color: var(--muted); }
+    .sf-health-detail-val { color: var(--text); font-variant-numeric: tabular-nums; }
+    .sf-health-detail-note { color: var(--muted); margin-top: 6px; }
+    .sf-health-unreadable { border-color: #f85149 !important; }
     .lifecycle-confirm {
       border: 1px solid var(--border); border-radius: 8px; padding: 16px;
       margin-top: 18px; background: var(--panel-2);
@@ -672,6 +697,7 @@
   <script>
     var STATUS_API = '/api/package-engine/status';
     var PROJECTS_API = '/api/super-focus/projects';
+    var PROJECTS_HEALTH_API = '/api/super-focus/projects-health';
     var ARCHIVED_PROJECTS_API = '/api/super-focus/archived-projects';
     var ARCHIVE_PROJECT_API = '/api/super-focus/archive-project';
     var RESTORE_PROJECT_API = '/api/super-focus/restore-project';
@@ -1117,7 +1143,8 @@
       var pickerCtl = SuperFocusProjectIO.makePickerController({
         apiGet: apiGet, unwrap: unwrap,
         projectsApi: PROJECTS_API, archivedProjectsApi: ARCHIVED_PROJECTS_API,
-        onRender: function (mode, state, projects, archivedCount) {
+        healthApi: PROJECTS_HEALTH_API,
+        onRender: function (mode, state, projects, archivedCount, healthList) {
           var archived = mode === 'archived';
           openHeading.textContent = archived ? 'Archived projects' : 'Open a project';
           archivedToggle.textContent = archived
@@ -1134,7 +1161,8 @@
               onArchive: function (id, p) { confirmCtl.open('archive', p); },
               onRestore: function (id) { runRestore(id); },
               onDelete: function (id, p) { confirmCtl.open('delete', p); }
-            }
+            },
+            healthList
           );
         }
       });

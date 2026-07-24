@@ -316,6 +316,83 @@ duplicate titles stay unambiguous.
   response is dropped whole — it can never resurrect a moved or deleted
   project into the wrong list.
 
+## Project health and recovery summary
+
+Every row in the **Open a project** view (both the normal and archived lists)
+carries a compact, **read-only** health summary so you can tell — without
+opening each project and reading several sections — what stage it is in, what
+exists, what is missing, whether anything is stale, whether a render queue is
+busy or paused, whether recovery is needed, and **what the next safe action
+is**. A **Details** button (keyboard reachable, `aria-expanded`) discloses the
+full per-project breakdown. The picker fetches the whole set once from the
+aggregate endpoint; expanding a row reveals data already loaded and makes no
+further request.
+
+**What the summary shows** — a one-line badge + facts (e.g.
+`Needs review · Images · 2 prompts · 12 images · 4 videos · 2 stale`) and a
+`Next: …` line, plus an expandable detail list: stage, image-prompt count,
+motion-prompt count, images on disk, videos on disk, stale images, stale
+videos, failed/interrupted videos, clips of unknown provenance, and the video
+queue state.
+
+**Which facts are direct vs inferred.**
+
+- **Direct (from canonical state):** title saved, script saved, image-prompt
+  count, motion-prompt count, script-evaluation freshness.
+- **Direct (from current disk):** images and videos on disk, failed/interrupted
+  renders, and the video-queue state. These reuse the **same read-only
+  reconcilers the media views use** (`reconcileImages` / `reconcileVideos` /
+  the video-queue reader), so a health count never disagrees with what you see
+  inside the project.
+- **Inferred (from the above):** the single **health state** and the **next
+  safe action**.
+
+**Health states.**
+
+- **Healthy** — every image prompt has an image, every eligible clip (still +
+  motion prompt) is rendered and current, and nothing is stale. This means the
+  media spine is complete and current; it is **not** a publish approval.
+- **In progress** — normal forward work; the next action names the next
+  workflow step.
+- **Needs review** — something upstream changed after a derived asset existed
+  (a stale image/video, or the script changed since it was evaluated). Nothing
+  is deleted; you regenerate what no longer matches, explicitly.
+- **Blocked** — the video queue is paused with live items; resume it to finish.
+- **Recovery needed** — a partial/interrupted operation left artifacts
+  inconsistent (a failed/interrupted render, or an image recorded as generated
+  but missing on disk).
+- **Archived** — an archived project (see "Project lifecycle"). An archived
+  project is **never** shown as active.
+
+**Next safe action** is deliberately conservative: it names a workflow step,
+prefers "review/confirm" verbs when evidence is ambiguous, never claims
+publish-readiness, and never asserts a disk fact it could not read.
+
+**Truthfulness and legacy behavior.**
+
+- A count the summary **could not read** (media root not configured / a read
+  failed) is shown as **unknown**, never as a fabricated `0`. A media directory
+  that simply does not exist yet is a verifiable `0` (nothing generated), which
+  is a different, honest fact.
+- Legacy media with **no recorded provenance** is reported as **unknown**, never
+  mass-flagged stale (mirrors the media lane). Unknown-provenance clips are
+  surfaced with a count but never, on their own, mark a project stale.
+- Readiness is **not** inferred from downstream artifacts alone: a video counts
+  toward completion only when its upstream (still + motion prompt) exists, and
+  unknown-provenance clips never promote a project to Healthy.
+
+**Read-only and no auto-repair.** Loading or expanding the summary performs no
+mutation: it never saves project JSON, rebuilds a manifest, creates missing
+files, clears stale flags, advances a stage, changes the active selection, or
+restores/starts anything. It only reads.
+
+**Corrupt projects are surfaced, not hidden.** Unlike the normal project list
+(which silently skips an unreadable project), the health aggregate emits an
+`unreadable` **Recovery needed** row for any project whose state file will not
+parse — with a clear "Project state could not be read. Recovery inspection
+required." message and only safe recovery actions (**Delete**, plus **Restore**
+when archived; no **Open**). Nothing is auto-repaired.
+
 ## State and media
 
 - **Canonical state is local and file-based:** `super-focus-projects/<project_id>/super-focus.json`
@@ -393,6 +470,14 @@ items, so it is safe to re-run to resume.
 - `GET/POST /projects`, `GET /project?id=` (response includes `lifecycle`:
   `active` | `archived`)
 - `GET /archived-projects` — archived list (never mixed into `/projects`)
+- `GET /projects-health` — read-only aggregate health for the picker:
+  `{ active: [...], archived: [...] }`, each an array of health rows (see
+  "Project health and recovery summary"). Active rows are newest-first
+  (mirrors `/projects`); corrupt projects appear as `readable: false`
+  unreadable rows (never omitted). No nonce (safe GET); performs no mutation.
+- `GET /project-health?id=` — read-only health for one project:
+  `{ health: {...} }`. `400` invalid id, `404` missing, `422` corrupt (same
+  assertions as `/project`). No nonce; no mutation.
 - `POST /archive-project` `{id}`, `POST /restore-project` `{id}`,
   `POST /delete-project` `{id, confirm:"DELETE"}` — see "Project lifecycle"
   above; 409 on collision/busy/repeat, 404 on missing, 400 on invalid id or
