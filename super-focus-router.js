@@ -74,7 +74,7 @@ function selectOllamaProvider(inputs = {}) {
 
   // auto
   if (!localBusy) {
-    return useLocal('vidnux ComfyUI is idle; using local Ollama.');
+    return useLocal('Text generation: using vidnux Ollama (local; vidnux ComfyUI GPU is idle).');
   }
   // vidnux ComfyUI is busy — prefer PRESTO Ollama only when it is clearly safe.
   if (!presto.configured) {
@@ -92,7 +92,7 @@ function selectOllamaProvider(inputs = {}) {
   if (!presto.model_ready) {
     return useLocal(`PRESTO Ollama model "${presto.model}" missing; using local provider despite ComfyUI load.`, [LOCAL_SLOW_WARNING, `PRESTO model "${presto.model}" not installed`]);
   }
-  return usePresto('vidnux ComfyUI is busy; routed text generation to PRESTO Ollama.');
+  return usePresto('Text generation: routed to PRESTO Ollama (remote; vidnux ComfyUI GPU is busy).');
 }
 
 // ── Image ComfyUI provider routing ──────────────────────────────────────────

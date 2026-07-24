@@ -276,11 +276,66 @@ test('visual-required (DOM): the summary shows actionable state, not presenter-o
   const joined = texts.join(' | ');
   assert.ok(texts.some((t) => /3 beats/.test(t)));
   assert.ok(texts.some((t) => /1\/3 approved/.test(t)));
-  assert.ok(texts.some((t) => /1 to review/.test(t)));
   assert.ok(texts.some((t) => /1 without assignment/.test(t)));
   assert.doesNotMatch(joined, /presenter-only/i);
   assert.doesNotMatch(joined, /unresolved/i);
+  // Redundant-status cleanup: the draft count lives ONLY in the single
+  // "Next:" element — there is no separate "N to review" chip duplicating it,
+  // and zero-count chips (e.g. "0 rejected") are dropped entirely.
+  assert.doesNotMatch(joined, /to review/);
+  assert.doesNotMatch(joined, /0 rejected/);
   assert.ok(texts.some((t) => /^Next: Generate assignments for 1 beat with no assignment yet$/.test(t)), joined);
+});
+
+test('visual-required (DOM): collapsed rows have NO one-click Approve; approval lives only inside the expanded editor', () => {
+  const collapsed = renderedSandbox(false);
+  const collapsedButtons = [];
+  (function walk(el) {
+    (el.children || []).forEach((c) => { if (c && c.tagName === 'BUTTON') collapsedButtons.push(c.textContent); walk(c); });
+  }(collapsed.sb.document.getElementById('vp-list')));
+  assert.ok(!collapsedButtons.includes('Approve'), 'no Approve button on any collapsed row');
+  // Expanding beat 1 (the draft) exposes Approve inside the editor, where the
+  // script beat, viewer task, function, assignment, criteria, and media type
+  // are all visible.
+  const { sb, plan } = (function () {
+    let p = freshPlan();
+    p = draft(p, p.beats[0].beat_id);
+    const r = vp.computeVisualPlanReadiness(p, SCRIPT);
+    const s = loadPage();
+    s.VP.plan = p; s.VP.readiness = r;
+    s.VP.expanded = {}; s.VP.expanded[p.beats[0].beat_id] = true;
+    s.renderVisualPlan();
+    return { sb: s, plan: p };
+  }());
+  const expandedButtons = [];
+  (function walk(el) {
+    (el.children || []).forEach((c) => { if (c && c.tagName === 'BUTTON') expandedButtons.push(c.textContent); walk(c); });
+  }(sb.document.getElementById('vp-list')));
+  assert.ok(expandedButtons.includes('Approve'), 'Approve available inside the open editor');
+  assert.ok(plan.assignments.length === 1);
+});
+
+test('visual-required (DOM): row hierarchy — script excerpt primary, assignment subordinate; batch label is live', () => {
+  const { sb, plan } = renderedSandbox();
+  const list = sb.document.getElementById('vp-list');
+  const firstRow = list.children[0];
+  let primary = null; let sub = null;
+  (function walk(el) {
+    (el.children || []).forEach((c) => {
+      if (c && /vp-script-primary/.test(c.className || '')) primary = c;
+      if (c && /vp-assign-sub/.test(c.className || '')) sub = c;
+      walk(c);
+    });
+  }(firstRow));
+  assert.ok(primary, 'primary script line rendered');
+  const beat = plan.beats[0];
+  assert.ok(beat.script_text.startsWith(primary.textContent.replace(/…$/, '')), 'primary text is the script excerpt');
+  assert.ok(primary.textContent.length <= 91, 'visual truncation at ~90 chars');
+  assert.ok(sub, 'assignment rendered as subordinate line');
+  assert.match(sub.textContent, /^Visual: /);
+  // Live batch label: 1 beat uncovered -> "final 1".
+  const genBtn = sb.document.getElementById('vp-generate');
+  assert.equal(genBtn.textContent, 'Generate missing assignments — final 1');
 });
 
 test('visual-required (DOM): expanding a beat still offers Media type + Visual function selects (no unrelated dropdown removed)', () => {

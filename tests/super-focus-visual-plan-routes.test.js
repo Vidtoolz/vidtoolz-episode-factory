@@ -381,7 +381,10 @@ test('vp-ui: Visual Plan section sits between Script evaluation and Image prompt
     assert.match(res.raw, /Create prompts from approved assignments/);
     // Safe rendering: the VP renderer builds DOM nodes; the only innerHTML
     // uses are the empty-container resets.
-    assert.match(res.raw, /excerpt\.textContent = /);
+    // Row hierarchy renders the SCRIPT as primary text and the assignment as
+    // a subordinate line — both via textContent (no HTML injection surface).
+    assert.match(res.raw, /primary\.textContent = /);
+    assert.match(res.raw, /sub\.textContent = /);
     assert.match(res.raw, /d\.className = 'pa-line';\s*\n\s*d\.textContent = /);
     // All endpoints wired.
     assert.match(res.raw, /\/api\/super-focus\/visual-plan/);

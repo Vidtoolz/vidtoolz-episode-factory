@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const childProcess = require('child_process');
+const os = require('os');
 
 const packageRunDoctor = require('./scripts/package-run-doctor.js');
 const roughCutReviewScript = require('./scripts/package-run-rough-cut-review.js');
@@ -146,6 +147,8 @@ const SUPER_FOCUS_GENERATE_INFOGRAPHIC_PROMPTS_API = '/api/super-focus/generate-
 const SUPER_FOCUS_GENERATE_MISSING_INFOGRAPHIC_PROMPTS_API = '/api/super-focus/generate-missing-infographic-prompts';
 const SUPER_FOCUS_IMAGE_PROMPT_API = '/api/super-focus/image-prompt';
 const SUPER_FOCUS_INFOGRAPHIC_PROMPT_API = '/api/super-focus/infographic-prompt';
+const SUPER_FOCUS_CLEAR_UNLINKED_PREVIEW_API = '/api/super-focus/image-prompts/clear-unlinked-preview';
+const SUPER_FOCUS_CLEAR_UNLINKED_API = '/api/super-focus/image-prompts/clear-unlinked';
 const SUPER_FOCUS_GENERATE_IMAGES_API = '/api/super-focus/generate-images';
 const SUPER_FOCUS_IMAGES_STATUS_API = '/api/super-focus/images-status';
 const SUPER_FOCUS_IMAGES_CANCEL_API = '/api/super-focus/images-cancel';
@@ -455,6 +458,54 @@ const FLUX_STATE = {
   activeJob: null,
   script: path.join(VIDNAS_AIGEN_ROOT, 'image-generation', 'flux-gguf', 'run-handoff.py'),
 };
+// The FLUX dispatch chain shells out to the ComfyUI CLI (`comfy run`) from
+// run-handoff.py. When the cockpit runs under systemd (user unit) the service
+// PATH is the bare system default and lacks ~/.local/bin — where pip/pipx puts
+// comfy-cli — so the spawned chain failed per-row with the raw Python error
+// "[Errno 2] No such file or directory: 'comfy'". Two-part repair:
+//   1. every FLUX spawn gets a repaired PATH (fluxDispatchPath), and
+//   2. dispatch pre-flights CLI resolvability (comfyCliResolvable) so a missing
+//      CLI is a clear 503 blocked state, never a doomed spawned job.
+// SUPER_FOCUS_COMFY_BIN_DIR adds one extra directory without code edits.
+function fluxDispatchPath(basePath) {
+  const base = basePath != null ? String(basePath) : String(process.env.PATH || '');
+  const parts = base.split(path.delimiter).filter(Boolean);
+  const have = new Set(parts);
+  const extras = [path.join(os.homedir(), '.local', 'bin')];
+  const envDir = String(process.env.SUPER_FOCUS_COMFY_BIN_DIR || '').trim();
+  if (envDir) extras.push(envDir);
+  extras.forEach((dir) => {
+    if (!have.has(dir)) { parts.push(dir); have.add(dir); }
+  });
+  return parts.join(path.delimiter);
+}
+
+// True when the `comfy` CLI resolves from the repaired dispatch PATH.
+// Injectable (options.comfyCliCheck) for tests; performs only fs access checks.
+function comfyCliResolvable(options = {}) {
+  if (typeof options.comfyCliCheck === 'function') return Boolean(options.comfyCliCheck());
+  for (const dir of fluxDispatchPath().split(path.delimiter)) {
+    if (!dir) continue;
+    try {
+      fs.accessSync(path.join(dir, 'comfy'), fs.constants.X_OK);
+      return true;
+    } catch (_) { /* keep scanning */ }
+  }
+  return false;
+}
+
+// Clear blocked-state error for a missing image CLI: names the lane, host,
+// engine, and remedy. Thrown BEFORE any spawn so no per-row failure occurs.
+function comfyCliBlockedError() {
+  const e = new Error(
+    'Text-to-image lane blocked: the ComfyUI CLI (`comfy`) is not available to the cockpit process. '
+    + 'FLUX images run locally on vidnux via comfy-cli → ComfyUI (http://127.0.0.1:8188). '
+    + 'Fix: ensure ~/.local/bin is on the cockpit service PATH, or set SUPER_FOCUS_COMFY_BIN_DIR to the directory containing `comfy`.'
+  );
+  e.statusCode = 503;
+  e.code = 'image_lane_blocked_cli_missing';
+  return e;
+}
 // VIDTOOLZ policy: OpenAI must NOT be used for image generation. Image generation
 // runs locally via vidnux ComfyUI / FLUX. The OpenAI Images API path has been
 // removed; any image/thumbnail request for provider=openai is hard-disabled below
@@ -535,6 +586,101 @@ function validateSuperFocusCount(value, max, label = 'count') {
   }
   return n;
 }
+// Visual Plan governance: once a project has one or more visual assignments,
+// assignment-derived prompt creation is the canonical path and script-wide
+// generation is a LEGACY EXCEPTION requiring an explicit override flag.
+// Projects with no plan — or a plan with no assignments yet — keep the
+// historic behavior unchanged. Cancellation (no override) mutates nothing.
+function assertScriptWideLegacyAllowed(state, payload) {
+  const plan = state && state.visual_plan;
+  const assignments = plan && Array.isArray(plan.assignments) ? plan.assignments.length : 0;
+  if (assignments === 0) return;
+  if (payload && payload.legacy_override === true) return;
+  const e = new Error(
+    `This project has a Visual Plan with ${assignments} assignment(s) — assignment-derived prompt creation is the canonical path. `
+    + 'Script-wide generation is a legacy exception: the resulting prompts will NOT be linked to beats or assignments, '
+    + 'will NOT inherit viewer tasks or acceptance criteria, cannot satisfy Visual Plan provenance, and may occupy '
+    + 'capacity needed by approved assignments. Re-submit with legacy_override:true to use script-wide legacy generation anyway.'
+  );
+  e.statusCode = 409;
+  e.code = 'visual_plan_governs';
+  throw e;
+}
+
+// Shared read-only preview for the unlinked-prompt recovery workflow:
+// eligibility, refusals (linked rows; rows guarded by a live video-queue
+// item), per-row downstream artifacts (image/video on disk), and the capacity
+// consequence for approved assignments. Never mutates anything.
+//
+// FAIL-CLOSED contract: this preview gates a destructive clear, so it never
+// treats an unreadable protection signal as "no protection". A corrupt video
+// queue (readVideoQueue throws video_queue_unreadable) and any reconcile
+// failure other than a legitimately-absent media directory refuse the whole
+// preview with a 409 — the operator inspects and repairs instead of clearing
+// blind. "Media dir absent" alone means no artifacts, and stays non-fatal.
+function buildClearUnlinkedPreview(id, state, indexes, sfRoot, sfMediaRoot) {
+  const capacity = superFocusPrompts.IMAGE_PROMPT_MAX;
+  const protectedBy = {};
+  // Queue read errors propagate (video_queue_unreadable → 409): a queue that
+  // cannot be read is NOT an empty queue, and clearing must not proceed on
+  // the assumption that no row is guarded by a live queued/running item.
+  const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
+  (queue.items || []).forEach((it) => {
+    if (it && (it.status === 'queued' || it.status === 'running') && Number.isInteger(it.index)) {
+      protectedBy[it.index] = `Row has a ${it.status} video-queue item — clearing is refused while the job is live.`;
+    }
+  });
+  const selection = superFocus.selectClearableUnlinkedPrompts(state, indexes, { protected: protectedBy });
+  // Absent media directory is a legitimate "no artifacts yet" state (ENOENT);
+  // anything else — including the corrupt-queue error reconcileVideos can
+  // surface — must refuse rather than report a false "no artifacts".
+  const mediaDirMissing = (err) => err && err.code === 'ENOENT';
+  const reconcileRefusal = (lane, err) => {
+    const e = new Error(`Cannot establish ${lane} artifact truth for project "${id}" (${err && err.message ? err.message : err}). Refusing to preview a clear without it — inspect or repair the media state.`);
+    e.statusCode = 409;
+    e.code = 'artifact_truth_unavailable';
+    throw e;
+  };
+  let imageByIndex = {};
+  let videoByIndex = {};
+  try {
+    (superFocusMedia.reconcileImages(id, state.image_prompts, { mediaRoot: sfMediaRoot }).images || [])
+      .forEach((r) => { imageByIndex[r.index] = Boolean(r.has_image); });
+  } catch (err) { if (mediaDirMissing(err)) { /* no media dir -> no image artifacts */ } else reconcileRefusal('image', err); }
+  try {
+    ((superFocusMedia.reconcileVideos(id, state.image_prompts, undefined, { mediaRoot: sfMediaRoot }) || {}).videos || [])
+      .forEach((r) => { videoByIndex[r.index] = Boolean(r.has_video); });
+  } catch (err) { if (mediaDirMissing(err)) { /* no media dir -> no video artifacts */ } else reconcileRefusal('video', err); }
+  const eligible = selection.eligible.map((r) => ({
+    index: r.index,
+    text_preview: String(r.text || '').slice(0, 120),
+    has_image: Boolean(imageByIndex[r.index]),
+    has_video: Boolean(videoByIndex[r.index]),
+  }));
+  const artifactImages = eligible.filter((r) => r.has_image).length;
+  const artifactVideos = eligible.filter((r) => r.has_video).length;
+  const plan = state.visual_plan || null;
+  const integrity = superFocusVisualPlan.computePlanIntegrity(plan, state.image_prompts, capacity);
+  const emptyAfter = integrity.empty_slots + eligible.length;
+  return {
+    project_id: id,
+    capacity,
+    eligible,
+    eligible_count: eligible.length,
+    eligible_indexes: eligible.map((r) => r.index),
+    refused: selection.refused,
+    missing: selection.missing,
+    protected_by: protectedBy,
+    artifacts: { images: artifactImages, videos: artifactVideos },
+    requires_artifact_acknowledgement: artifactImages + artifactVideos > 0,
+    approved_needing_prompts: integrity.approved_needing_prompts,
+    empty_slots_now: integrity.empty_slots,
+    empty_slots_after: emptyAfter,
+    blocked_by_capacity_after: Math.max(0, integrity.approved_needing_prompts - emptyAfter),
+    integrity,
+  };
+}
+
 const OLLAMA_PRESTO_BASE_URL = mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT);
 const OLLAMA_PRESTO_MODEL = mediaRouting.resolveModel(mediaRouting.LANE.I2V_PROMPT);
 
@@ -5053,12 +5199,52 @@ async function superFocusProviderStatus(options = {}) {
     prestoImageMessage = 'PRESTO ComfyUI image fallback available.';
   }
 
+  // Text-to-image dispatch needs BOTH vidnux ComfyUI (HTTP) and the `comfy`
+  // CLI on the dispatch PATH. A reachable ComfyUI with a missing CLI is a
+  // blocked lane — reported explicitly, never attempted.
+  const comfyCli = comfyCliResolvable(options);
+  const t2iStatus = !vidnuxComfyReachable ? 'offline'
+    : !comfyCli ? 'blocked_cli_missing'
+      : (localBusy ? 'busy' : 'ok');
+  const t2iBlockingReason = !vidnuxComfyReachable
+    ? `vidnux ComfyUI unreachable at ${LOCAL_IMAGE_PROVIDER.url}. Start it with: bash ~/bin/start-vidnux-comfyui.sh`
+    : !comfyCli
+      ? 'The ComfyUI CLI (`comfy`) is not on the cockpit dispatch PATH — fix the service PATH or set SUPER_FOCUS_COMFY_BIN_DIR.'
+      : null;
+
   return {
     ok: true,
     routing_mode: cfg.mode,
     image_provider_mode: imgCfg.mode,
+    // Workload-separated readiness. Ollama is a TEXT engine only — it is never
+    // an image-generation substitute; each lane names its host and locality.
+    lanes: {
+      text_generation: {
+        lane: 'text_generation', engine: 'ollama', host: 'vidnux', locality: 'local',
+        status: localOllamaStatus,
+        blocking_reason: localOllamaStatus === 'ok' ? null
+          : (localOllamaStatus === 'offline' ? `vidnux Ollama unreachable at ${cfg.local.base_url}.` : `Model "${cfg.local.model}" is not installed on vidnux Ollama.`),
+        note: 'Generates topics, scripts, and prompt TEXT. Never generates images.',
+      },
+      text_to_image_generation: {
+        lane: 'text_to_image_generation', engine: 'comfyui_flux', host: 'vidnux', locality: 'local',
+        status: t2iStatus,
+        comfy_cli: comfyCli,
+        blocking_reason: t2iBlockingReason,
+        note: 'FLUX still images via comfy-cli → vidnux ComfyUI. No Ollama fallback exists for images.',
+      },
+      image_to_video_generation: {
+        lane: 'image_to_video_generation', engine: 'comfyui_wan22', host: 'presto', locality: 'remote',
+        status: prestoComfyStatus,
+        blocking_reason: prestoComfyStatus === 'ok' ? null
+          : (prestoComfyStatus === 'not_configured' ? 'PRESTO ComfyUI is not configured.'
+            : prestoComfyStatus === 'busy' ? 'PRESTO is busy with a video job.'
+              : `PRESTO ComfyUI unreachable at ${PRESTO_BASE_URL}.`),
+        note: 'Wan2.2 image-to-video on PRESTO. No fallback.',
+      },
+    },
     vidnux_ollama: { status: localOllamaStatus, base_url: cfg.local.base_url, model: cfg.local.model, busy_warning: localBusy },
-    vidnux_comfyui: { status: vidnuxComfyStatus, image_capable: vidnuxComfyReachable, video_capable: false, workflow: imgCfg.vidnux.workflow },
+    vidnux_comfyui: { status: vidnuxComfyStatus, image_capable: vidnuxComfyReachable, comfy_cli: comfyCli, video_capable: false, workflow: imgCfg.vidnux.workflow },
     presto_ollama: { status: prestoOllamaStatus, configured: cfg.presto.configured, base_url: cfg.presto.base_url, model: cfg.presto.model },
     presto_comfyui: { status: prestoComfyStatus, video_capable: prestoComfyReachable, workflow: 'wan22_i2v_vertical_1080x1920_30fps' },
     presto_comfyui_image: {
@@ -9308,6 +9494,10 @@ function startFluxPackageJob(payload = {}, options = {}) {
     error.active = current;
     throw error;
   }
+  // Pre-flight: run-handoff.py drives generation through the `comfy` CLI; a
+  // missing CLI must refuse here (clear 503), not fail every row after spawn.
+  // Checked before payload validation — the lane is blocked regardless of input.
+  if (!comfyCliResolvable(options)) throw comfyCliBlockedError();
   const config = validateFluxSubmitPayload(payload, options);
   return launchFluxHandoffJob({
     fluxScript: config.fluxScript,
@@ -9345,7 +9535,9 @@ function launchFluxHandoffJob(config, payload = {}, options = {}) {
   const child = spawnFn(config.pythonBin, args, {
     cwd: path.dirname(config.fluxScript),
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, ...genEnv.env },
+    // PATH is repaired so run-handoff.py can resolve the `comfy` CLI even when
+    // the cockpit itself was launched with a minimal service PATH (systemd).
+    env: { ...process.env, PATH: fluxDispatchPath(), ...genEnv.env },
   });
   const job = {
     process: child,
@@ -9412,6 +9604,8 @@ function startSuperFocusImageJob(mediaDir, options = {}) {
     error.statusCode = 500;
     throw error;
   }
+  // Pre-flight: the dispatch chain needs the `comfy` CLI (see comfyCliResolvable).
+  if (!comfyCliResolvable(options)) throw comfyCliBlockedError();
   return launchFluxHandoffJob({
     fluxScript,
     pythonBin: options.pythonBin || 'python3',
@@ -11848,6 +12042,8 @@ function createServer(options = {}) {
           project_id: id,
           visual_plan: plan,
           readiness: superFocusVisualPlan.computeVisualPlanReadiness(plan, state.script),
+          integrity: superFocusVisualPlan.computePlanIntegrity(plan, state.image_prompts, superFocusPrompts.IMAGE_PROMPT_MAX),
+          duplicate_subject_advisories: superFocusVisualPlan.findDuplicateSubjectAdvisories(plan),
         });
       } catch (error) {
         sendError(res, error.statusCode || 500, error.message, 'super-focus-visual-plan-error');
@@ -11863,6 +12059,7 @@ function createServer(options = {}) {
         sendJSON(res, 200, {
           project_id: id,
           readiness: superFocusVisualPlan.computeVisualPlanReadiness(plan, state.script),
+          integrity: superFocusVisualPlan.computePlanIntegrity(plan, state.image_prompts, superFocusPrompts.IMAGE_PROMPT_MAX),
         });
       } catch (error) {
         sendError(res, error.statusCode || 500, error.message, 'super-focus-visual-plan-readiness-error');
@@ -11956,6 +12153,84 @@ function createServer(options = {}) {
           }, extra));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-visual-plan-error'));
+      return;
+    }
+
+    // ── Unlinked-prompt recovery (Visual Plan governance) ──────────────────
+    // Read-only preview: which unlinked (script-wide legacy) prompts are
+    // eligible to clear, which are refused and why, which have downstream
+    // artifacts (generated image/video on disk — never deleted by this
+    // workflow), and the capacity consequence for approved assignments.
+    if (req.method === 'GET' && url.pathname === SUPER_FOCUS_CLEAR_UNLINKED_PREVIEW_API) {
+      try {
+        const id = url.searchParams.get('id') || url.searchParams.get('project_id') || '';
+        const state = superFocus.loadProject(id, { root: sfRoot });
+        const rawIndexes = url.searchParams.get('indexes');
+        const indexes = rawIndexes == null || rawIndexes === '' ? null
+          : String(rawIndexes).split(',').map((s) => Math.round(Number(s.trim())));
+        sendJSON(res, 200, buildClearUnlinkedPreview(id, state, indexes, sfRoot, sfMediaRoot));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'super-focus-clear-unlinked-preview-error');
+      }
+      return;
+    }
+
+    // Commit: clear ONLY confirmed eligible unlinked prompts, snapshot-first.
+    // Staged (not pretending to be atomic with generation): this route ONLY
+    // clears; assignment-derived generation is the existing from-assignments
+    // route, run afterwards. Media files are never touched.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_CLEAR_UNLINKED_API) {
+      readJsonBody(req, 1024 * 256)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus clear-unlinked-prompts API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot });
+          const indexes = Array.isArray(payload.indexes) ? payload.indexes.map((n) => Math.round(Number(n))) : null;
+          // Refuse while THIS project's FLUX batch is live — its materialized
+          // prompt set and manifest reconciliation must not race a clear.
+          const flux = currentFluxJobStatus();
+          if (flux.active && FLUX_STATE.activeJob && FLUX_STATE.activeJob.packageId === id) {
+            const e = new Error('A FLUX image job is running for this project. Wait for it to finish before clearing prompts.');
+            e.statusCode = 409; throw e;
+          }
+          const preview = buildClearUnlinkedPreview(id, state, indexes, sfRoot, sfMediaRoot);
+          // Stale-selection protection: the operator confirmed a specific count.
+          const confirmCount = Math.round(Number(payload.confirm_count));
+          if (!Number.isInteger(confirmCount) || confirmCount !== preview.eligible_count) {
+            const e = new Error(`Confirmation count (${payload.confirm_count}) does not match the current eligible set (${preview.eligible_count}). The selection changed — review the preview again.`);
+            e.statusCode = 409; e.code = 'confirmation_mismatch'; throw e;
+          }
+          if (preview.missing.length) {
+            const e = new Error(`No prompt at index(es): ${preview.missing.join(', ')}. Reload and re-select.`);
+            e.statusCode = 400; throw e;
+          }
+          if (preview.eligible_count === 0) {
+            const e = new Error('No eligible unlinked prompts to clear.');
+            e.statusCode = 400; throw e;
+          }
+          // Downstream artifacts require their own explicit acknowledgement.
+          if (preview.requires_artifact_acknowledgement && payload.acknowledge_artifacts !== true) {
+            const e = new Error(`${preview.artifacts.images} generated image(s) and ${preview.artifacts.videos} video(s) belong to prompts in this selection. They will NOT be deleted, but they become orphaned records. Re-submit with acknowledge_artifacts:true to proceed.`);
+            e.statusCode = 409; e.code = 'artifacts_acknowledgement_required'; throw e;
+          }
+          const result = superFocus.clearUnlinkedImagePrompts(id, indexes, {
+            root: sfRoot,
+            protected: preview.protected_by,
+            artifacts: preview.eligible.filter((r) => r.has_image || r.has_video),
+            reason: 'operator_clear_unlinked',
+          });
+          const plan = superFocus.readVisualPlan(id, { root: sfRoot });
+          sendJSON(res, 200, {
+            project_id: id,
+            cleared_indexes: result.cleared_indexes,
+            cleared_count: result.cleared_indexes.length,
+            refused: result.refused,
+            snapshot_path: result.snapshot_path,
+            image_prompts: result.state.image_prompts,
+            integrity: superFocusVisualPlan.computePlanIntegrity(plan, result.state.image_prompts, superFocusPrompts.IMAGE_PROMPT_MAX),
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-clear-unlinked-error'));
       return;
     }
 
@@ -12347,6 +12622,7 @@ function createServer(options = {}) {
           if (!state.script || !state.script.trim()) {
             const e = new Error('Save a script first, then create image prompts.'); e.statusCode = 400; throw e;
           }
+          assertScriptWideLegacyAllowed(state, payload);
           if (Array.isArray(state.image_prompts) && state.image_prompts.length > 0 && !payload.confirm_replace) {
             const e = new Error(`${state.image_prompts.length} image prompt(s) already exist. Re-submit with confirm_replace to regenerate.`);
             e.statusCode = 409; throw e;
@@ -12380,6 +12656,7 @@ function createServer(options = {}) {
           if (!state.script || !state.script.trim()) {
             const e = new Error('Save a script first, then create image prompts.'); e.statusCode = 400; throw e;
           }
+          assertScriptWideLegacyAllowed(state, payload);
           const capacity = superFocusPrompts.IMAGE_PROMPT_MAX;
           const records = Array.isArray(state.image_prompts) ? state.image_prompts : [];
           const filledIndexes = new Set(records.filter((r) => r && r.text && r.text.trim()).map((r) => r.index));
@@ -12700,6 +12977,7 @@ function createServer(options = {}) {
             skipExisting: payload.skip_existing !== false,
             dryRun: Boolean(payload.dry_run),
             spawn: options.spawn,
+            comfyCliCheck: options.comfyCliCheck,
             // Dispatch script/python are env-overridable so the lane can follow
             // the real host (or a stub) without code edits; falls back to the
             // canonical vidnux run-handoff.py.
@@ -13014,6 +13292,7 @@ function createServer(options = {}) {
               skipExisting: false, // forced: the canonical slot was just archived empty
               dryRun: Boolean(payload.dry_run),
               spawn: options.spawn,
+              comfyCliCheck: options.comfyCliCheck,
               fluxScript: options.fluxScript || process.env.SUPER_FOCUS_FLUX_SCRIPT,
               pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN,
               seed,
@@ -16117,6 +16396,8 @@ module.exports = {
   SUPER_FOCUS_IMAGE_PROMPT_API,
   SUPER_FOCUS_INFOGRAPHIC_PROMPT_API,
   SUPER_FOCUS_GENERATE_IMAGES_API,
+  SUPER_FOCUS_CLEAR_UNLINKED_PREVIEW_API,
+  SUPER_FOCUS_CLEAR_UNLINKED_API,
   SUPER_FOCUS_IMAGES_STATUS_API,
   SUPER_FOCUS_IMAGES_CANCEL_API,
   SUPER_FOCUS_IMAGE_FILE_API,
@@ -16146,6 +16427,11 @@ module.exports = {
   startSuperFocusImageJob,
   startSuperFocusVideoJob,
   launchFluxHandoffJob,
+  fluxDispatchPath,
+  comfyCliResolvable,
+  superFocusProviderStatus,
+  assertScriptWideLegacyAllowed,
+  buildClearUnlinkedPreview,
   launchPrestoProductionJob,
   EARTH_STUDIO_STATUS_API,
   EARTH_STUDIO_PLAN_API,

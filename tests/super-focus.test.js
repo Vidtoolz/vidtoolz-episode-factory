@@ -2725,7 +2725,10 @@ test("router: auto + vidnux busy + PRESTO healthy + PRESTO idle -> PRESTO Ollama
   const d = sfRouter.selectOllamaProvider({ mode: "auto", local: RT_LOCAL, presto: rtPresto(), localBusy: true });
   assert.equal(d.provider_id, "presto_ollama");
   assert.equal(d.base_url, "http://presto:11434");
-  assert.match(d.reason, /busy.*PRESTO/i);
+  // Lane-explicit wording: names the workload (text generation), the routed
+  // host, and the busy GPU — never reads as an image-generation substitute.
+  assert.match(d.reason, /PRESTO Ollama.*busy/i);
+  assert.match(d.reason, /text generation/i);
 });
 
 test("router: auto + vidnux busy + PRESTO not configured -> vidnux with contention warning", () => {

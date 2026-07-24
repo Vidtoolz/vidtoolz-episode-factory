@@ -293,6 +293,16 @@
     .vp-detail label { font-size: 12px; color: var(--muted); margin: 0; }
     .vp-summary-chips { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 6px 0; }
     .vp-next { color: var(--text); }
+    /* Row hierarchy: the SCRIPT is primary; the assignment is subordinate. */
+    .vp-main { flex: 1 1 260px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .vp-script-primary { font-size: 13px; color: var(--text); }
+    .vp-assign-sub { font-size: 11.5px; color: var(--muted); }
+    .vp-advisory { border-left: 3px solid #6b5320; padding-left: 8px; margin: 4px 0; }
+    /* Prompt provenance badges: linked / script-wide legacy / malformed. */
+    .prov-badge { font-size: 10.5px; border-radius: 999px; padding: 1px 8px; border: 1px solid var(--border); white-space: nowrap; }
+    .prov-linked { color: #7ee2a8; border-color: #2e5d43; }
+    .prov-legacy { color: #e2c97e; border-color: #6b5320; }
+    .prov-missing { color: #e28c7e; border-color: #6b2f20; }
     .passign { grid-column: 1 / -1; font-size: 12px; color: var(--muted); border-left: 3px solid var(--border); padding: 2px 8px; margin: 2px 0; }
     .passign.stale { border-left-color: #d29922; }
     .passign .pa-line { white-space: pre-wrap; }
@@ -490,13 +500,14 @@
         <h2>Visual Plan <span class="eval-advisory">— a prompt says what to generate; an assignment says what job the visual must do</span></h2>
         <div class="row">
           <button class="btn primary" id="vp-create-beats">Create beats from saved script</button>
-          <button class="btn" id="vp-generate">Generate missing assignments (3)</button>
+          <button class="btn" id="vp-generate">Generate missing assignments</button>
           <button class="btn hidden" id="vp-reanchor">Re-anchor to saved script</button>
           <button class="btn" id="vp-create-prompts">Create prompts from approved assignments</button>
           <span class="save-state" id="vp-status"></span>
         </div>
         <div class="stale-banner hidden" id="vp-stale">⚠ Script changed after this plan — re-anchor it, or re-create beats.</div>
         <div class="vp-summary-chips" id="vp-chips"></div>
+        <div id="vp-advisories"></div>
         <div id="vp-list"><p class="eval-empty">No visual plan yet. Save a script, then create beats.</p></div>
         <div class="later-note">Approve an assignment before it can create an image prompt. Nothing here overwrites your work: generation fills only missing assignments, and edits mark downstream prompts for review instead of changing them.</div>
       </div>
@@ -505,13 +516,21 @@
       <div class="section" data-section="image-prompts">
         <div class="step">Step 3</div>
         <h2>Main image prompts</h2>
+        <div class="vp-summary-chips" id="imgp-integrity"></div>
+        <div class="stale-banner hidden" id="imgp-capacity-blocked"></div>
+        <div class="row hidden" id="imgp-canonical-row">
+          <button class="btn primary" id="imgp-from-assignments">Create prompts from approved assignments</button>
+          <button class="btn hidden" id="imgp-clear-unlinked">Clear unlinked prompts and generate from approved assignments</button>
+          <button class="btn" id="imgp-legacy-toggle">Use script-wide legacy generation</button>
+        </div>
+        <div class="later-note hidden" id="imgp-legacy-note">⚠ Script-wide legacy generation is active for this session. Prompts it creates are NOT linked to beats or assignments and do not satisfy the Visual Plan gate.</div>
         <div class="row">
           <button class="btn" id="imgp-generate">Create image prompts based on the script</button>
-          <label class="count-field">Prompt count <input type="number" id="imgp-count" min="1" max="100" value="8" /></label>
+          <label class="count-field" id="imgp-count-field">Prompt count <input type="number" id="imgp-count" min="1" max="100" value="8" /></label>
           <button class="btn" id="imgp-remaining">Create remaining prompts</button>
           <span class="save-state" id="imgp-status"></span>
         </div>
-        <div class="later-note"><strong>Create image prompts</strong> replaces the whole set (asks first). <strong>Create remaining prompts</strong> fills only the empty slots — up to 100 — and leaves your existing prompts, images, and video prompts untouched. All 100 slots stay editable; edit any box, then Copy or Save changes.</div>
+        <div class="later-note"><strong>Create image prompts</strong> replaces the whole set (asks first). <strong>Create remaining prompts</strong> fills only the empty slots — up to 100 — and leaves your existing prompts, images, and video prompts untouched. All 100 slots stay editable; edit any box, then Copy or Save changes. When the Visual Plan has assignments, prompts are created from approved assignments; script-wide generation becomes a legacy exception behind an explicit override.</div>
         <div class="stale-banner hidden" id="imgp-stale">⚠ The script changed after these prompts were generated. They may be stale — regenerate, or keep your edits.</div>
         <div class="prompt-grid" id="imgp-list"></div>
       </div>
@@ -1004,7 +1023,26 @@
       var restartHtml = '';
       if (restart.vidnux_comfyui) restartHtml += '<div class="prow"><span class="pname">Restart local ComfyUI</span><span>manual: <code>' + esc(restart.vidnux_comfyui.command) + '</code></span></div>';
       if (restart.presto_comfyui) restartHtml += '<div class="prow"><span class="pname">Restart PRESTO ComfyUI</span><span>manual (not configured)</span></div>';
-      panel.innerHTML = '<div class="prow"><span class="pname">Text routing mode</span><span>' + esc(d.routing_mode) + '</span></div>' +
+      // Workload-separated readiness: each lane names its engine, host, and
+      // locality, with an explicit blocking reason. Ollama is text-only — it is
+      // never presented as an image-generation substitute.
+      var lanesHtml = '';
+      if (d.lanes) {
+        var laneRows = [
+          ['Text generation', d.lanes.text_generation],
+          ['Text → image (FLUX)', d.lanes.text_to_image_generation],
+          ['Image → video (Wan2.2)', d.lanes.image_to_video_generation],
+        ];
+        lanesHtml = laneRows.map(function (lr) {
+          var L = lr[1];
+          if (!L) return '';
+          var detail = esc(L.engine) + ' on ' + esc(L.host) + ' (' + esc(L.locality) + ')';
+          var stat = esc(L.status) + (L.blocking_reason ? ' — ' + esc(L.blocking_reason) : '');
+          return '<div class="prow"><span class="pname">' + esc(lr[0]) + ' · ' + detail + '</span><span class="pstat ' + cls(L.status) + '">' + stat + '</span></div>';
+        }).join('');
+      }
+      panel.innerHTML = lanesHtml +
+        '<div class="prow"><span class="pname">Text routing mode</span><span>' + esc(d.routing_mode) + '</span></div>' +
         '<div class="prow"><span class="pname">Image provider mode</span><span>' + esc(d.image_provider_mode || 'auto') + '</span></div>' +
         rows.map(function (r) {
           return '<div class="prow"><span class="pname">' + esc(r[0]) + '</span><span class="pstat ' + esc(r[2]) + '">' + esc(r[1]) + '</span></div>';
@@ -1459,6 +1497,29 @@
             if (rec.assignment_stale) row.setAttribute('data-assignment-stale', '1');
           }
           var num = document.createElement('div'); num.className = 'pnum'; num.textContent = index;
+          // Provenance state badge (main image prompts only): every filled row
+          // shows exactly one of Assignment-linked / Assignment missing /
+          // Script-wide legacy — an unlinked row never looks gate-compliant.
+          if (elId === 'imgp-list' && rec && text.trim()) {
+            var prov = document.createElement('span');
+            var missingAssignment = rec.assignment_id && rec.assignment_stale
+              && /no longer exists/i.test(String(rec.assignment_stale_reason || ''));
+            if (rec.assignment_id && !missingAssignment) {
+              prov.className = 'prov-badge prov-linked';
+              prov.textContent = 'Assignment-linked' + (rec.assignment_stale ? ' · needs review' : '');
+              prov.title = 'Created from Visual Plan assignment ' + rec.assignment_id;
+            } else if (missingAssignment) {
+              prov.className = 'prov-badge prov-missing';
+              prov.textContent = 'Assignment missing';
+              prov.title = 'This prompt references an assignment that no longer exists in the Visual Plan.';
+            } else {
+              prov.className = 'prov-badge prov-legacy';
+              prov.textContent = 'Script-wide legacy';
+              prov.title = 'Not linked to any beat or assignment — does not satisfy the Visual Plan gate.';
+            }
+            num.appendChild(document.createElement('br'));
+            num.appendChild(prov);
+          }
           var ta = document.createElement('textarea');
           ta.className = 'pinput'; ta.value = text; ta.setAttribute('aria-label', 'Prompt ' + index);
           var ctrl = document.createElement('div'); ctrl.className = 'pctrl';
@@ -1631,6 +1692,12 @@
       stopImagesPolling(); stopVideosPolling();
       setStatus(document.getElementById('imggen-status'), '');
       setStatus(document.getElementById('vidgen-status'), '');
+      // Transient generation-result messages must never survive a project
+      // switch — a "N prompt(s) created" line from project A shown on project B
+      // is a stale, misleading claim.
+      setStatus(vpStatusEl(), '');
+      var i2vMissingStatus = document.getElementById('i2v-missing-status');
+      if (i2vMissingStatus) setStatus(i2vMissingStatus, '');
       refreshImagesStatus(); // reconcile any already-generated images from disk
       refreshVideosStatus(); // reconcile any already-generated videos from disk
       updateEvalButton();
@@ -2419,8 +2486,11 @@
 
     // ---- Visual Plan (beats + visual assignments; approval gates prompts) ----
     var VP_API = '/api/super-focus/visual-plan';
-    var VP = { plan: null, readiness: null, expanded: {} };
+    var VP = { plan: null, readiness: null, integrity: null, advisories: [], expanded: {} };
     var lastVpSummary = '';
+    // Per-project, per-session legacy override arming. Never persisted: every
+    // page load / project switch starts with script-wide generation gated again.
+    var legacyArmed = {};
     var VP_FUNCTIONS = ['clarify', 'prove', 'demonstrate', 'contrast', 'intensify', 'structure', 'orient', 'illustrate', 'reset_attention', 'establish_mood', 'custom'];
     var VP_MEDIA = ['generated_still', 'image_to_video', 'infographic', 'text_graphic', 'screen_capture', 'existing_footage', 'reusable_motif', 'presenter_only'];
     function vpLabel(v) { return String(v || '').replace(/_/g, ' '); }
@@ -2433,14 +2503,39 @@
     function vpStatusEl() { return document.getElementById('vp-status'); }
 
     function loadVisualPlan() {
-      if (!currentId) { VP.plan = null; VP.readiness = null; renderVisualPlan(); return Promise.resolve(); }
+      if (!currentId) {
+        VP.plan = null; VP.readiness = null; VP.integrity = null; VP.advisories = [];
+        renderVisualPlan(); renderPromptIntegrity(); updatePromptAuthorityUI();
+        return Promise.resolve();
+      }
       return apiGet(VP_API + '?id=' + encodeURIComponent(currentId)).then(function (res) {
         var d = res.ok ? unwrap(res.body) : null;
         VP.plan = d ? d.visual_plan : null;
         VP.readiness = d ? d.readiness : null;
+        VP.integrity = d ? d.integrity : null;
+        VP.advisories = d && d.duplicate_subject_advisories ? d.duplicate_subject_advisories : [];
         renderVisualPlan();
         decoratePromptProvenance();
-      }).catch(function () { VP.plan = null; VP.readiness = null; renderVisualPlan(); });
+        renderPromptIntegrity();
+        updatePromptAuthorityUI();
+      }).catch(function () {
+        VP.plan = null; VP.readiness = null; VP.integrity = null; VP.advisories = [];
+        renderVisualPlan(); renderPromptIntegrity(); updatePromptAuthorityUI();
+      });
+    }
+
+    // Refresh integrity + advisories after a plan action or prompt change
+    // (approve/revoke/prompt-create all shift the linked/blocked counts).
+    function refreshPlanIntegrity() {
+      if (!currentId) return Promise.resolve();
+      return apiGet(VP_API + '?id=' + encodeURIComponent(currentId)).then(function (res) {
+        if (!res.ok) return;
+        var d = unwrap(res.body);
+        VP.integrity = d.integrity || null;
+        VP.advisories = d.duplicate_subject_advisories || [];
+        renderPromptIntegrity();
+        updatePromptAuthorityUI();
+      }).catch(function () {});
     }
 
     function vpPost(action, body, busyBtn) {
@@ -2457,6 +2552,9 @@
         VP.plan = d.visual_plan; VP.readiness = d.readiness;
         renderVisualPlan();
         decoratePromptProvenance();
+        // Approval/revocation/clearing shifts linked/blocked counts — recompute
+        // instead of leaving a stale integrity strip.
+        refreshPlanIntegrity();
         setStatus(el, '');
         return d;
       }).catch(function () {
@@ -2606,9 +2704,13 @@
       staleBanner.classList.toggle('hidden', !stale);
       reanchorBtn.classList.toggle('hidden', !stale);
       document.getElementById('vp-create-beats').textContent = plan ? 'Re-create beats from saved script' : 'Create beats from saved script';
+      var advBox = document.getElementById('vp-advisories');
+      if (advBox) advBox.innerHTML = '';
+      var genBtn = document.getElementById('vp-generate');
       if (!plan) {
         lastVpSummary = 'Not created';
         updateSectionSummary('visual-plan');
+        if (genBtn) { genBtn.textContent = 'Generate missing assignments'; genBtn.disabled = false; }
         var p = document.createElement('p'); p.className = 'eval-empty';
         p.textContent = 'No visual plan yet. Save a script, then create beats.';
         list.appendChild(p);
@@ -2617,15 +2719,37 @@
       if (r) {
         lastVpSummary = r.assignments_approved + '/' + r.assignments_required + ' approved' + (stale ? ' (stale)' : (r.ready ? ' · ready' : ''));
         updateSectionSummary('visual-plan');
-        [r.total_beats + ' beats',
-         r.assignments_approved + '/' + r.assignments_required + ' approved',
-         r.assignments_draft + ' to review', r.assignments_rejected + ' rejected',
-         r.uncovered_beats + ' without assignment'].forEach(function (t) {
+        // Each chip answers a DISTINCT operator question; the draft count lives
+        // only in "Next:" (no duplicate "N to review" chip), and zero-count
+        // chips are dropped as noise.
+        var chipTexts = [r.total_beats + ' beats', r.assignments_approved + '/' + r.assignments_required + ' approved'];
+        if (r.assignments_rejected) chipTexts.push(r.assignments_rejected + ' rejected');
+        if (r.uncovered_beats) chipTexts.push(r.uncovered_beats + ' without assignment');
+        chipTexts.forEach(function (t) {
           var c = document.createElement('span'); c.textContent = t; chips.appendChild(c);
         });
         var next = document.createElement('span'); next.className = 'vp-next';
         next.textContent = 'Next: ' + r.next_action;
         chips.appendChild(next);
+        // Live batch label: the batch stays 3; the label says what this click does.
+        if (genBtn) {
+          var missing = r.uncovered_beats || 0;
+          if (missing === 0) genBtn.textContent = 'Generate missing assignments';
+          else if (missing <= 3) genBtn.textContent = 'Generate missing assignments — final ' + missing;
+          else genBtn.textContent = 'Generate missing assignments — next 3 of ' + missing;
+          genBtn.disabled = missing === 0;
+        }
+      }
+      // Duplicate-subject advisories: warning only, never an approval block.
+      if (advBox && VP.advisories && VP.advisories.length) {
+        VP.advisories.forEach(function (w) {
+          var d = document.createElement('div');
+          d.className = 'later-note vp-advisory';
+          d.textContent = '⚠ Advisory: beats ' + (w.beat_orders || []).join(' and ')
+            + ' may reuse substantially the same subject/action — ' + (w.reason || 'similar concepts')
+            + '. This is informational only and never blocks approval.';
+          advBox.appendChild(d);
+        });
       }
       (plan.beats || []).forEach(function (beat) {
         var a = vpAssignmentFor(beat.beat_id);
@@ -2633,10 +2757,23 @@
         row.className = 'vp-row' + ((beat.stale || (a && a.stale)) ? ' vp-stale' : '');
         var num = document.createElement('span'); num.className = 'vp-num'; num.textContent = beat.order;
         row.appendChild(num);
-        var excerpt = document.createElement('span'); excerpt.className = 'vp-excerpt';
-        excerpt.textContent = a && a.assignment ? a.assignment : beat.script_text;
-        excerpt.title = beat.script_text;
-        row.appendChild(excerpt);
+        // Row hierarchy: the exact SCRIPT excerpt is primary (the operator
+        // judges the assignment against the spoken words without hovering);
+        // the proposed assignment is a smaller, subordinate second line.
+        var main = document.createElement('span'); main.className = 'vp-main';
+        var scriptText = String(beat.script_text || '');
+        var primary = document.createElement('span'); primary.className = 'vp-script-primary vp-excerpt';
+        primary.textContent = scriptText.length > 90 ? scriptText.slice(0, 90) + '…' : scriptText;
+        primary.title = scriptText; // full text preserved via tooltip; expand for the editor view
+        main.appendChild(primary);
+        if (a && a.assignment) {
+          var assignText = String(a.assignment);
+          var sub = document.createElement('span'); sub.className = 'vp-assign-sub';
+          sub.textContent = 'Visual: ' + (assignText.length > 120 ? assignText.slice(0, 120) + '…' : assignText);
+          sub.title = assignText;
+          main.appendChild(sub);
+        }
+        row.appendChild(main);
         // Every beat requires a visual (canonical domain rule) — there is no
         // per-beat visual-requirement dropdown. Media type + review state follow.
         if (a) row.appendChild(vpPill(vpLabel(a.media_type), 'unevaluated'));
@@ -2648,11 +2785,9 @@
           renderVisualPlan();
         });
         row.appendChild(editBtn);
-        if (a && a.status === 'draft' && !a.stale && !VP.expanded[beat.beat_id]) {
-          var quickApprove = document.createElement('button'); quickApprove.className = 'btn primary'; quickApprove.textContent = 'Approve';
-          quickApprove.addEventListener('click', function () { vpPost('approve-assignment', { assignment_id: a.assignment_id }, quickApprove); });
-          row.appendChild(quickApprove);
-        }
+        // Deliberately NO collapsed one-click Approve: approval happens only
+        // inside the open editor, where the operator can see the script beat,
+        // viewer task, visual function, assignment, criteria, and media type.
         if (VP.expanded[beat.beat_id]) row.appendChild(vpDetail(beat, a));
         list.appendChild(row);
       });
@@ -2690,6 +2825,174 @@
         if (stale) line('⚠', 'Assignment changed — prompt needs review');
         row.appendChild(box);
       });
+    }
+
+    // ---- Visual Plan authority over prompt generation ----
+
+    // The plan governs prompt creation once it has at least one assignment.
+    function planGoverns() {
+      return Boolean(VP.plan && (VP.plan.assignments || []).length > 0);
+    }
+
+    // When the plan governs: assignment-derived creation is primary; the
+    // script-wide controls are hidden behind an explicit legacy override
+    // (session-scoped, per project — never persisted).
+    function updatePromptAuthorityUI() {
+      var governs = planGoverns();
+      var armed = Boolean(currentId && legacyArmed[currentId]);
+      var canonicalRow = document.getElementById('imgp-canonical-row');
+      var legacyToggle = document.getElementById('imgp-legacy-toggle');
+      var legacyNote = document.getElementById('imgp-legacy-note');
+      var genBtn = document.getElementById('imgp-generate');
+      var countField = document.getElementById('imgp-count-field');
+      var remBtn = document.getElementById('imgp-remaining');
+      var clearBtn = document.getElementById('imgp-clear-unlinked');
+      if (!canonicalRow || !genBtn) return;
+      canonicalRow.classList.toggle('hidden', !governs);
+      var hideScriptWide = governs && !armed;
+      [genBtn, countField, remBtn].forEach(function (el) { if (el) el.classList.toggle('hidden', hideScriptWide); });
+      if (legacyToggle) legacyToggle.classList.toggle('hidden', !governs || armed);
+      if (legacyNote) legacyNote.classList.toggle('hidden', !(governs && armed));
+      // Recovery entry point: only meaningful when unlinked prompts exist AND
+      // the plan has assignments to generate from.
+      var I = VP.integrity;
+      if (clearBtn) clearBtn.classList.toggle('hidden', !(governs && I && I.unlinked_prompts > 0));
+    }
+
+    // Plan-integrity strip: linked / unlinked / malformed / empty, plus what
+    // approved assignments still need — and an explicit capacity-blocked state.
+    function renderPromptIntegrity() {
+      var el = document.getElementById('imgp-integrity');
+      var blocked = document.getElementById('imgp-capacity-blocked');
+      if (!el) return;
+      el.innerHTML = '';
+      if (blocked) { blocked.classList.add('hidden'); blocked.textContent = ''; }
+      var I = VP.integrity;
+      if (!I) return;
+      var chips = [
+        I.linked_prompts + ' linked',
+        I.unlinked_prompts + ' unlinked',
+        I.empty_slots + ' empty',
+      ];
+      if (I.malformed_provenance) chips.push(I.malformed_provenance + ' with missing assignments');
+      if (I.plan_exists && I.draft_assignments) chips.push(I.draft_assignments + ' assignments awaiting approval');
+      if (I.plan_exists && I.approved_needing_prompts) chips.push(I.approved_needing_prompts + ' approved awaiting prompts');
+      chips.forEach(function (t) {
+        var c = document.createElement('span'); c.textContent = t; el.appendChild(c);
+      });
+      if (blocked && I.approved_needing_prompts > 0 && I.blocked_by_capacity > 0) {
+        blocked.textContent = '⚠ Cannot generate ' + I.blocked_by_capacity + ' linked prompt(s) from approved assignments — '
+          + 'all ' + I.capacity + ' slots are occupied (' + I.unlinked_prompts + ' by script-wide legacy prompts). '
+          + 'Use "Clear unlinked prompts and generate from approved assignments" to free capacity.';
+        blocked.classList.remove('hidden');
+      }
+    }
+
+    // Shared assignment-derived generation runner (Visual Plan button and the
+    // canonical prompts-section button call the same path).
+    function runCreatePromptsFromAssignments(btn) {
+      if (!currentId) return Promise.resolve();
+      var el = vpStatusEl();
+      if (btn) btn.disabled = true;
+      var stop = elapsedTicker(el, 'Writing prompts from approved assignments (local Ollama)');
+      return apiPost('/api/super-focus/image-prompts/from-assignments', { id: currentId }).then(function (res) {
+        stop(); if (btn) btn.disabled = false;
+        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Failed', true); return null; }
+        var d = unwrap(res.body);
+        var bits = [];
+        bits.push((d.placed ? d.placed.length : 0) + ' prompt(s) created');
+        if (d.overflow && d.overflow.length) bits.push(d.overflow.length + ' blocked by capacity (no empty slots)');
+        if (d.skipped && d.skipped.length) bits.push(d.skipped.length + ' skipped (' + d.skipped.slice(0, 3).map(function (s) { return s.reason; }).join('; ') + (d.skipped.length > 3 ? '; …' : '') + ')');
+        if (d.failures && d.failures.length) bits.push(d.failures.length + ' failed');
+        setStatus(el, bits.join(' · '), false);
+        renderPromptGrid('imgp-list', d.image_prompts || [], IMG_MAX, IMGP_SAVE_API, true, 'imgp-thumb-');
+        decoratePromptProvenance();
+        refreshPlanIntegrity();
+        updateSectionSummary('image-prompts');
+        return d;
+      }).catch(function () { stop(); if (btn) btn.disabled = false; setStatus(el, 'Failed', true); return null; });
+    }
+
+    // ---- Unlinked-prompt recovery (clear legacy prompts → generate linked) ----
+    //
+    // Staged, honestly non-atomic: (1) read-only preview, (2) confirmed clear
+    // with snapshot on the server, (3) optional assignment generation into the
+    // freed slots. Every stage can be cancelled with zero mutation.
+    function runClearUnlinkedRecovery(btn) {
+      if (!currentId) return;
+      var el = document.getElementById('imgp-status');
+      var scopeInput = prompt(
+        'Clear unlinked (script-wide legacy) prompts.\n\n'
+        + 'Type "all" to clear ALL eligible unlinked prompts, or enter slot numbers to clear only those (e.g. 1,2,5).\n'
+        + 'Assignment-linked prompts are never touched. Cancel = no change.',
+        'all'
+      );
+      if (scopeInput == null) return; // cancelled — zero mutation
+      var scope = String(scopeInput).trim().toLowerCase();
+      var indexesParam = '';
+      if (scope !== 'all' && scope !== '') {
+        if (!/^[0-9]+(\s*,\s*[0-9]+)*$/.test(scope)) { setStatus(el, 'Enter "all" or slot numbers like 1,2,5.', true); return; }
+        indexesParam = '&indexes=' + encodeURIComponent(scope.replace(/\s+/g, ''));
+      }
+      if (btn) btn.disabled = true;
+      setStatus(el, 'Checking which prompts are eligible…');
+      apiGet('/api/super-focus/image-prompts/clear-unlinked-preview?id=' + encodeURIComponent(currentId) + indexesParam).then(function (res) {
+        if (btn) btn.disabled = false;
+        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Preview failed', true); return; }
+        var p = unwrap(res.body);
+        if (p.missing && p.missing.length) { setStatus(el, 'No prompt at index(es): ' + p.missing.join(', '), true); return; }
+        if (!p.eligible_count) { setStatus(el, 'No eligible unlinked prompts in that selection.', true); return; }
+        var slotList = p.eligible_indexes.length <= 25
+          ? p.eligible_indexes.join(', ')
+          : p.eligible_indexes.slice(0, 25).join(', ') + ', … (' + p.eligible_indexes.length + ' total)';
+        var lines = [
+          'Clear ' + p.eligible_count + ' unlinked prompt(s)?',
+          '',
+          'Slots: ' + slotList,
+          'Approved assignments still needing prompts: ' + p.approved_needing_prompts,
+          'Empty slots after clearing: ' + p.empty_slots_after + ' of ' + p.capacity,
+        ];
+        if (p.refused && p.refused.length) lines.push('Refused (kept): ' + p.refused.length + ' row(s) — linked or protected by a live job.');
+        if (p.requires_artifact_acknowledgement) {
+          lines.push('Generated media exists for this selection: ' + p.artifacts.images + ' image(s), ' + p.artifacts.videos + ' video(s). Files are NOT deleted.');
+        }
+        lines.push('', 'A recovery snapshot (full prompt text + provenance) is written first, so this is manually restorable.');
+        if (!confirm(lines.join('\n'))) { setStatus(el, 'Cancelled — nothing changed.'); return; }
+        var proceed = Promise.resolve(true);
+        if (p.requires_artifact_acknowledgement) {
+          proceed = Promise.resolve(confirm(
+            'Separate acknowledgement required:\n\n'
+            + p.artifacts.images + ' generated image(s) and ' + p.artifacts.videos + ' video(s) belong to prompts being cleared. '
+            + 'The media files stay on disk, but they become orphaned records no prompt row points to.\n\n'
+            + 'OK = acknowledge and clear. Cancel = abort with no change.'
+          ));
+        }
+        proceed.then(function (ack) {
+          if (!ack) { setStatus(el, 'Cancelled — nothing changed.'); return; }
+          if (btn) btn.disabled = true;
+          setStatus(el, 'Clearing ' + p.eligible_count + ' unlinked prompt(s)…');
+          var body = { id: currentId, confirm_count: p.eligible_count };
+          if (indexesParam) body.indexes = p.eligible_indexes;
+          if (p.requires_artifact_acknowledgement) body.acknowledge_artifacts = true;
+          apiPost('/api/super-focus/image-prompts/clear-unlinked', body).then(function (res2) {
+            if (btn) btn.disabled = false;
+            if (!res2.ok) { setStatus(el, (res2.body && res2.body.error) || 'Clear failed', true); return; }
+            var d = unwrap(res2.body);
+            renderPromptGrid('imgp-list', d.image_prompts || [], IMG_MAX, IMGP_SAVE_API, true, 'imgp-thumb-');
+            decoratePromptProvenance();
+            VP.integrity = d.integrity || VP.integrity;
+            renderPromptIntegrity();
+            updatePromptAuthorityUI();
+            refreshImagesStatus();
+            updateRemainingButton();
+            setStatus(el, d.cleared_count + ' unlinked prompt(s) cleared · snapshot saved');
+            if (VP.integrity && VP.integrity.approved_needing_prompts > 0
+                && confirm('Generate ' + VP.integrity.approved_needing_prompts + ' linked prompt(s) from approved assignments into the freed slots now?')) {
+              runCreatePromptsFromAssignments(btn);
+            }
+          }).catch(function () { if (btn) btn.disabled = false; setStatus(el, 'Clear failed', true); });
+        });
+      }).catch(function () { if (btn) btn.disabled = false; setStatus(el, 'Preview failed', true); });
     }
 
     // ---- Video review (clip evidence vs the production contract) ----
@@ -3249,23 +3552,33 @@
       vpPost('reanchor', {}, this);
     });
     document.getElementById('vp-create-prompts').addEventListener('click', function () {
-      if (!currentId) return;
-      var btn = this; var el = vpStatusEl();
-      btn.disabled = true;
-      var stop = elapsedTicker(el, 'Writing prompts from approved assignments (local Ollama)');
-      apiPost('/api/super-focus/image-prompts/from-assignments', { id: currentId }).then(function (res) {
-        stop(); btn.disabled = false;
-        if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Failed', true); return; }
-        var d = unwrap(res.body);
-        var bits = [];
-        bits.push((d.placed ? d.placed.length : 0) + ' prompt(s) created');
-        if (d.skipped && d.skipped.length) bits.push(d.skipped.length + ' skipped (' + d.skipped.slice(0, 3).map(function (s) { return s.reason; }).join('; ') + (d.skipped.length > 3 ? '; …' : '') + ')');
-        if (d.failures && d.failures.length) bits.push(d.failures.length + ' failed');
-        setStatus(el, bits.join(' · '), false);
-        renderPromptGrid('imgp-list', d.image_prompts || [], IMG_MAX, IMGP_SAVE_API, true, 'imgp-thumb-');
-        decoratePromptProvenance();
-        updateSectionSummary('image-prompts');
-      }).catch(function () { stop(); btn.disabled = false; setStatus(el, 'Failed', true); });
+      runCreatePromptsFromAssignments(this);
+    });
+    document.getElementById('imgp-from-assignments').addEventListener('click', function () {
+      runCreatePromptsFromAssignments(this);
+    });
+    document.getElementById('imgp-clear-unlinked').addEventListener('click', function () {
+      runClearUnlinkedRecovery(this);
+    });
+    // Explicit legacy override: script-wide generation stays hidden while a
+    // Visual Plan governs, until the operator confirms this exact warning.
+    // Cancel arms nothing and mutates nothing.
+    document.getElementById('imgp-legacy-toggle').addEventListener('click', function () {
+      if (!currentId || !planGoverns()) return;
+      var ok = confirm(
+        'Use script-wide legacy generation?\n\n'
+        + 'Prompts created this way:\n'
+        + '• will NOT be linked to beats or assignments;\n'
+        + '• will NOT inherit viewer tasks;\n'
+        + '• will NOT inherit acceptance criteria;\n'
+        + '• cannot satisfy Visual Plan provenance;\n'
+        + '• may occupy capacity needed by approved assignments.\n\n'
+        + 'OK = enable for this project this session. Cancel = keep the Visual Plan as the only path.'
+      );
+      if (!ok) return;
+      legacyArmed[currentId] = true;
+      updatePromptAuthorityUI();
+      setStatus(document.getElementById('imgp-status'), 'Script-wide legacy generation enabled for this session.');
     });
 
     // Keep the UI obviously alive during a long synchronous generation by ticking
@@ -3287,7 +3600,11 @@
       var count = boundedField('imgp-count', 1, 100, 8);
       btn.classList.add('busy'); btn.disabled = true;
       var stop = elapsedTicker(el, 'Generating ' + count + ' prompts… (local Ollama on vidnux)');
-      apiPost(GEN_IMGP_API, { id: currentId, count: count, confirm_replace: existing > 0 }).then(function (res) {
+      var payload = { id: currentId, count: count, confirm_replace: existing > 0 };
+      // Only reachable while the plan governs when the operator armed the
+      // explicit legacy override; declare it to the server honestly.
+      if (planGoverns() && legacyArmed[currentId]) payload.legacy_override = true;
+      apiPost(GEN_IMGP_API, payload).then(function (res) {
         stop(); btn.classList.remove('busy'); btn.disabled = false;
         if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Generation failed', true); return; }
         var d = unwrap(res.body);
@@ -3300,6 +3617,8 @@
         // no longer match a regenerated prompt (mismatch badge on the thumbnail).
         refreshImagesStatus();
         updateRemainingButton();
+        decoratePromptProvenance();
+        refreshPlanIntegrity();
       }).catch(function () { stop(); btn.classList.remove('busy'); btn.disabled = false; setStatus(el, 'Generation failed', true); });
     });
 
@@ -3310,7 +3629,9 @@
       var btn = this, el = document.getElementById('imgp-status');
       btn.classList.add('busy'); btn.disabled = true;
       var stop = elapsedTicker(el, 'Filling empty prompt slots… (local Ollama on vidnux)');
-      apiPost(GEN_REMAINING_IMGP_API, { id: currentId }).then(function (res) {
+      var remainingPayload = { id: currentId };
+      if (planGoverns() && legacyArmed[currentId]) remainingPayload.legacy_override = true;
+      apiPost(GEN_REMAINING_IMGP_API, remainingPayload).then(function (res) {
         stop(); btn.classList.remove('busy');
         if (!res.ok) { setStatus(el, (res.body && res.body.error) || 'Generation failed', true); updateRemainingButton(); return; }
         var d = unwrap(res.body);
@@ -3329,6 +3650,8 @@
         }
         updateRemainingButton();
         refreshImagesStatus();
+        decoratePromptProvenance();
+        refreshPlanIntegrity();
       }).catch(function () { stop(); btn.classList.remove('busy'); setStatus(el, 'Generation failed', true); updateRemainingButton(); });
     });
 

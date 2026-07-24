@@ -29,22 +29,49 @@ A project is one linear sheet, in order:
    **Needs review** instead of being changed. When the saved script changes,
    the plan is marked stale (never deleted) — **Re-anchor** rebinds unchanged
    beats and flags the rest.
-4. **Main image prompts** — **Create prompts from approved assignments** writes
-   one prompt per approved, fresh, image-lane assignment (skipped rows always
-   say why: presenter-only, not approved, rejected, prompt already exists, …).
-   Rows created this way show the beat, assignment, and criteria beside the
+4. **Main image prompts** — when the Visual Plan has one or more assignments,
+   **assignment-derived generation is the canonical path**: **Create prompts
+   from approved assignments** writes one prompt per approved, fresh,
+   image-lane assignment (skipped rows always say why: presenter-only, not
+   approved, rejected, prompt already exists, …), stamped with full provenance
+   (`assignment_id`, `assignment_hash`, `beat_id`, `prompt_source`). Rows
+   created this way show the beat, assignment, and criteria beside the
    prompt, so a weak assignment, a weak prompt translation, and a weak image
-   stay distinguishable. Editing the assignment later marks the prompt
-   **needs review** — nothing downstream is ever deleted or overwritten;
-   reverting the assignment to byte-identical content clears the flag. The
-   older script-wide **Prompt count** generation (1–100, default 8) still
-   works for projects without a plan; all 100 slots stay editable (Copy /
-   Save changes). Prompts are complete full-screen 9:16 images: no text, no
-   people, using the entire frame — no space is reserved for a presenter.
-   (Presenter placement, if any, is a later editing/compositing concern and is
-   not considered by the image-prompt generator.)
-4. **Generated images** — set **Images to generate** (1–100, default 3) and generate/resume the first N saved prompts (vidnux ComfyUI / FLUX, `--skip-existing`); thumbnails appear inline per row. No need to clear rows to scope a small run.
-4b. **Image review** — every generated image is EVIDENCE, reviewed against
+   stay distinguishable. Every filled row shows one provenance badge:
+   **Assignment-linked**, **Script-wide legacy** (does not satisfy the Visual
+   Plan gate), or **Assignment missing** (orphaned provenance — never silently
+   relinked). An integrity strip counts linked / unlinked / empty slots,
+   assignments awaiting approval, approved assignments awaiting prompts, and
+   prompts **blocked by capacity** (approved assignments that cannot generate
+   because all 100 slots are occupied — stated explicitly, never silently).
+   Script-wide generation (**Prompt count**, 1–100, default 8, and **Create
+   remaining prompts**) remains the normal path for projects WITHOUT a plan;
+   once a plan has assignments it is hidden behind an explicit **Use
+   script-wide legacy generation** override (confirmed per project per
+   session; the server also refuses without `legacy_override`). The override
+   confirmation states that legacy prompts are not linked to beats or
+   assignments, inherit no viewer tasks or acceptance criteria, cannot
+   satisfy Visual Plan provenance, and may occupy capacity needed by approved
+   assignments; cancelling changes nothing. **Recovery for stranded
+   projects** (all slots occupied by unlinked prompts): **Clear unlinked
+   prompts and generate from approved assignments** is a staged workflow —
+   read-only preview (eligible slots, refusals, downstream artifacts), a
+   count-bound confirmation, a separate acknowledgement when generated
+   images/videos exist for the selection (media files are never deleted), a
+   recovery snapshot written under `<project>/recovery/` (full prompt text,
+   slot ids, provenance, timestamps) BEFORE any mutation, then clearing only
+   the confirmed unlinked rows. Assignment-linked prompts, rows guarded by a
+   live video-queue item, and rows in a project with an active FLUX batch are
+   never cleared. Editing an assignment later marks its prompt **needs
+   review** — nothing downstream is ever deleted or overwritten; reverting
+   the assignment to byte-identical content clears the flag. All 100 slots
+   stay editable (Copy / Save changes). Prompts are complete full-screen 9:16
+   images: no text, no people, using the entire frame — no space is reserved
+   for a presenter. (Presenter placement, if any, is a later
+   editing/compositing concern and is not considered by the image-prompt
+   generator.)
+5. **Generated images** — set **Images to generate** (1–100, default 3) and generate/resume the first N saved prompts (vidnux ComfyUI / FLUX, `--skip-existing`); thumbnails appear inline per row. No need to clear rows to scope a small run. Dispatch pre-flights BOTH vidnux ComfyUI reachability and the `comfy` CLI on the cockpit's repaired dispatch PATH — a missing CLI is a clear 503 blocked state, never a spawned job that fails per row.
+5b. **Image review** — every generated image is EVIDENCE, reviewed against
    its assignment's acceptance criteria before it may become a video. The
    assignment defines the job; the criteria define success; the operator —
    never a model — decides. Start a review (snapshots the exact image bytes,
@@ -67,7 +94,7 @@ A project is one linear sheet, in order:
    compatibility mode — they are never auto-failed, auto-approved, or
    blocked retroactively. A toggleable presenter-safe overlay (lower-right
    quarter) is available on the review preview as a visual aid only.
-4c. **Image Review Workbench** — a focused mode (opened from the images or
+5c. **Image Review Workbench** — a focused mode (opened from the images or
    videos step; never a separate app) for working through pending image
    decisions **one item at a time**: one dominant image, one context panel
    (slot, filename, abbreviated sha256, prompt, script beat, assignment,
@@ -107,10 +134,10 @@ A project is one linear sheet, in order:
    offering a queue resume. The workbench GET is read-only (no queue write, no
    pump, no attempt creation, no PRESTO contact); decisions ride the existing
    nonce + Host + Origin protections.
-5. **Infographic prompts** — choose a **Prompt count** (1–30, default 6) still-infographic prompts from the script (prompt-only).
-6. **Image-to-video prompts** — one per generated image (**Create a video prompt**, PRESTO Ollama lane).
-7. **Generated videos** — batch or per-image (PRESTO ComfyUI / Wan2.2); clips appear inline per row.
-7b. **Video review** — the clip is EVIDENCE, reviewed against the production
+6. **Infographic prompts** — choose a **Prompt count** (1–30, default 6) still-infographic prompts from the script (prompt-only).
+7. **Image-to-video prompts** — one per generated image (**Create a video prompt**, PRESTO Ollama lane).
+8. **Generated videos** — batch or per-image (PRESTO ComfyUI / Wan2.2); clips appear inline per row.
+8b. **Video review** — the clip is EVIDENCE, reviewed against the production
    contract before it may enter the edit: the assignment defines the visual
    job, the approved image the starting point, the I2V prompt the motion
    intent, and the OPERATOR decides. Starting a review snapshots the exact
@@ -399,13 +426,24 @@ items, so it is safe to re-run to resume.
   missing confirm token
 - `POST /title`, `POST /script`
 - `POST /generate-topic`, `/generate-script`, `/generate-image-prompts`, `/generate-infographic-prompts`
+  — the script-wide image-prompt routes (`/generate-image-prompts`,
+  `/generate-remaining-image-prompts`) are governed by the Visual Plan: once
+  the project has one or more assignments they return `409
+  visual_plan_governs` unless the request carries `legacy_override: true`
+  (the UI's explicit "Use script-wide legacy generation" confirmation).
+  Projects without a plan (or with an empty plan) behave as before.
 - `POST /image-prompt`, `/infographic-prompt` (per-row save)
 - `POST /generate-images`, `GET /images-status?id=`, `POST /images-cancel`, `GET /image?id=&index=`
 - `POST /generate-i2v-prompt`, `POST /i2v-prompt`
 - `POST /generate-videos` (optional `indexes[]`), `GET /videos-status?id=`, `POST /videos-cancel`, `GET /video?id=&index=`
 - `GET /visual-plan?id=`, `GET /visual-plan/readiness?id=` — the plan with
   freshly-computed staleness, plus explicit readiness blockers (never a
-  percentage)
+  percentage). Both responses now include `integrity` (linked / unlinked /
+  malformed-provenance prompt counts, empty slots, approved assignments still
+  needing prompts, and `blocked_by_capacity`); the full GET also returns
+  `duplicate_subject_advisories` — a deterministic, warning-only heuristic
+  flagging assignment pairs that appear to reuse the same subject/action
+  (never blocks approval).
 - `POST /visual-plan/<action>` — narrow validated actions: `create-beats`,
   `generate-assignments` (small batch, missing-only; rejected only when its
   beat is explicitly selected), `save-assignment`, `approve-assignment`,
@@ -448,6 +486,24 @@ items, so it is safe to re-run to resume.
   `assignment_id` / `assignment_hash` / `prompt_hash` provenance; a later
   assignment edit flags the row (`assignment_stale`) instead of changing it.
   Legacy rows without provenance are left alone (unknown, never mass-flagged).
+- `GET /image-prompts/clear-unlinked-preview?id=&indexes=` — read-only
+  recovery preview: eligible unlinked prompts (with per-row `has_image` /
+  `has_video`), refusals with reasons (assignment-linked rows; rows guarded
+  by a live video-queue item), unknown indexes, artifact counts, and the
+  capacity consequence (`approved_needing_prompts`, `empty_slots_after`,
+  `blocked_by_capacity_after`).
+- `POST /image-prompts/clear-unlinked` `{id, indexes?, confirm_count,
+  acknowledge_artifacts?}` — snapshot-first clear of ONLY eligible unlinked
+  prompts. Refuses when the project has a live FLUX batch (409), when
+  `confirm_count` no longer matches the eligible set (409
+  `confirmation_mismatch`), and when downstream artifacts exist without
+  `acknowledge_artifacts: true` (409 `artifacts_acknowledgement_required`).
+  Writes a deterministic recovery record to `<project>/recovery/`
+  (`unlinked-prompts-<stamp>.json`: full removed rows, slot ids, timestamps,
+  project id, provenance, artifact info) with the atomic tmp+rename
+  convention BEFORE mutating state. Media files are never deleted;
+  assignment-linked prompts are never touched; generation into the freed
+  slots stays a separate explicit step (`/image-prompts/from-assignments`).
 
 ## After a deploy: restart the cockpit
 

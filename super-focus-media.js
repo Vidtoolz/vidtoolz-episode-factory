@@ -247,15 +247,51 @@ function videoQueuePath(mediaDir) { return path.join(mediaDir, VIDEO_QUEUE_FILEN
 function readVideoQueue(projectId, options = {}) {
   const p = videoQueuePath(mediaDirFor(projectId, options));
   if (!fs.existsSync(p)) return { version: 1, paused: false, items: [] };
+  let q;
   try {
-    const q = JSON.parse(fs.readFileSync(p, 'utf8'));
-    if (!Array.isArray(q.items)) q.items = [];
-    if (!q.version) q.version = 1;
-    // Backward-compatible operator queue-control fields. Older queue files
-    // (pre-pause) simply default to not-paused.
-    if (typeof q.paused !== 'boolean') q.paused = false;
-    return q;
-  } catch (_) { return { version: 1, paused: false, items: [] }; }
+    q = JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (_) {
+    // Fail closed: an unreadable queue is NOT an empty queue. Callers that
+    // gate destructive work (e.g. unlinked-prompt recovery) must not proceed
+    // on the assumption that nothing is queued/running.
+    const e = new Error(`Video queue for project "${projectId}" exists but is unreadable (${p}). Refusing to treat it as empty — inspect or repair the file.`);
+    e.statusCode = 409;
+    e.code = 'video_queue_unreadable';
+    throw e;
+  }
+  if (!q || typeof q !== 'object' || Array.isArray(q)) {
+    const e = new Error(`Video queue for project "${projectId}" has a malformed root shape (${p}). Refusing to treat it as empty — inspect or repair the file.`);
+    e.statusCode = 409;
+    e.code = 'video_queue_unreadable';
+    throw e;
+  }
+  // Only a genuinely-ABSENT items field defaults to empty (legacy/minimal
+  // queue file). A PRESENT-but-null or non-array items field is a corrupt
+  // protection signal — the live guards it encodes cannot be enumerated, so
+  // refuse rather than coerce to empty and let destructive callers proceed
+  // blind.
+  if (q.items === undefined) {
+    q.items = [];
+  } else if (q.items === null || !Array.isArray(q.items)) {
+    const e = new Error(`Video queue for project "${projectId}" has a non-array "items" field (${p}). Refusing to treat it as empty — inspect or repair the file.`);
+    e.statusCode = 409;
+    e.code = 'video_queue_unreadable';
+    throw e;
+  }
+  // Every element must be an object: a junk element ("queued", 42, null) could
+  // be hiding a live guard a downstream check cannot see, so it fails closed
+  // rather than being silently skipped.
+  if (q.items.some((it) => !it || typeof it !== 'object' || Array.isArray(it))) {
+    const e = new Error(`Video queue for project "${projectId}" has a malformed item entry (${p}). Refusing to treat the queue as readable — inspect or repair the file.`);
+    e.statusCode = 409;
+    e.code = 'video_queue_unreadable';
+    throw e;
+  }
+  if (!q.version) q.version = 1;
+  // Backward-compatible operator queue-control fields. Older queue files
+  // (pre-pause) simply default to not-paused.
+  if (typeof q.paused !== 'boolean') q.paused = false;
+  return q;
 }
 
 function writeVideoQueue(projectId, queue, options = {}) {

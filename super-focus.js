@@ -952,6 +952,123 @@ function fillPromptsFromAssignments(projectId, items, options = {}) {
   return { state, placed, overflow };
 }
 
+// ── Unlinked-prompt recovery (Visual Plan governance) ───────────────────────
+//
+// A project can be stranded with every slot occupied by script-wide legacy
+// prompts (no assignment provenance), leaving the Visual Plan lane no capacity.
+// The recovery workflow clears ONLY eligible unlinked prompts, snapshot-first,
+// so the operation is inspectable and manually restorable. Nothing here ever
+// touches assignment-linked rows, media files, or any other prompt class.
+
+const RECOVERY_DIRNAME = 'recovery';
+
+// Eligibility: only rows with text and NO assignment_id may be cleared through
+// the recovery workflow. Rows with any assignment provenance — including
+// orphaned provenance whose assignment no longer exists — are refused: that is
+// a historical record to resolve manually, never bulk-cleared. Callers may pass
+// `options.protected` ({ index: reason }) for rows guarded by an active job or
+// queue item; those are refused with the given reason.
+function selectClearableUnlinkedPrompts(state, indexes, options = {}) {
+  const rows = Array.isArray(state.image_prompts) ? state.image_prompts : [];
+  const filled = rows.filter((r) => r && typeof r.text === 'string' && r.text.trim());
+  const requested = indexes == null
+    ? null
+    : new Set((Array.isArray(indexes) ? indexes : []).map((n) => Math.round(Number(n))));
+  const protectedBy = options.protected && typeof options.protected === 'object' ? options.protected : {};
+  const missing = [];
+  if (requested) {
+    requested.forEach((idx) => {
+      if (!Number.isInteger(idx) || idx < 1 || !filled.some((r) => r.index === idx)) missing.push(idx);
+    });
+  }
+  const eligible = [];
+  const refused = [];
+  filled.forEach((r) => {
+    if (requested && !requested.has(r.index)) return;
+    if (r.assignment_id) {
+      refused.push({ index: r.index, reason: 'Assignment-linked prompt — never cleared by this workflow.' });
+    } else if (protectedBy[r.index]) {
+      refused.push({ index: r.index, reason: String(protectedBy[r.index]) });
+    } else {
+      eligible.push(r);
+    }
+  });
+  missing.sort((a, b) => a - b);
+  return { eligible, refused, missing };
+}
+
+// Write one deterministic, manually-restorable recovery record under
+// <project>/recovery/. Same atomic tmp+rename convention as the state file.
+function writeRecoverySnapshot(projectId, snapshot, options = {}) {
+  const dir = stateDir(projectId, options);
+  const recoveryDir = path.join(dir, RECOVERY_DIRNAME);
+  fs.mkdirSync(recoveryDir, { recursive: true });
+  const stamp = String(snapshot.created_at || nowIso()).replace(/[:.]/g, '-');
+  let outPath = path.join(recoveryDir, `unlinked-prompts-${stamp}.json`);
+  let n = 1;
+  while (fs.existsSync(outPath)) {
+    outPath = path.join(recoveryDir, `unlinked-prompts-${stamp}-${n}.json`);
+    n += 1;
+  }
+  const tmp = `${outPath}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmp, outPath);
+  return outPath;
+}
+
+// Clear eligible unlinked (script-wide legacy) prompts, snapshot-first:
+//   1. validate selection (unknown indexes and zero-eligible refuse the whole
+//      operation — no partial surprise);
+//   2. write the recovery snapshot (full removed rows, slot ids, timestamps,
+//      project id, generation provenance, plus caller-supplied artifact info);
+//   3. remove ONLY the confirmed rows from image_prompts (atomic state write).
+// Media files are never touched — clearing a prompt never deletes an image.
+function clearUnlinkedImagePrompts(projectId, indexes, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  const selection = selectClearableUnlinkedPrompts(state, indexes, options);
+  if (selection.missing.length) {
+    const e = new Error(`No prompt at index(es): ${selection.missing.join(', ')}. Reload and re-select.`);
+    e.statusCode = 400;
+    throw e;
+  }
+  if (!selection.eligible.length) {
+    const e = new Error('No eligible unlinked prompts to clear.');
+    e.statusCode = 400;
+    throw e;
+  }
+  const stampIso = nowIso();
+  const snapshot = {
+    schema_version: 1,
+    kind: 'unlinked-prompt-recovery-snapshot',
+    project_id: state.project_id || projectId,
+    created_at: stampIso,
+    reason: typeof options.reason === 'string' && options.reason ? options.reason : 'clear_unlinked_prompts',
+    scope: indexes == null ? 'all_unlinked' : 'selected_unlinked',
+    cleared_count: selection.eligible.length,
+    cleared_indexes: selection.eligible.map((r) => r.index),
+    refused: selection.refused,
+    // Which cleared rows had generated images/videos at clearing time
+    // (caller-supplied from media reconciliation; informational).
+    artifacts: options.artifacts || null,
+    // Full removed rows — text, hashes, i2v prompts, reviews — restorable by hand.
+    rows: selection.eligible.map((r) => JSON.parse(JSON.stringify(r))),
+  };
+  const snapshotPath = writeRecoverySnapshot(projectId, snapshot, options);
+  const clearSet = new Set(selection.eligible.map((r) => r.index));
+  state.image_prompts = (Array.isArray(state.image_prompts) ? state.image_prompts : [])
+    .filter((r) => !(r && clearSet.has(r.index)));
+  state.stage = inferStage(state);
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return {
+    state,
+    cleared_indexes: snapshot.cleared_indexes,
+    refused: selection.refused,
+    snapshot_path: snapshotPath,
+  };
+}
+
 module.exports = {
   SCHEMA_VERSION,
   STATE_FILENAME,
@@ -996,6 +1113,10 @@ module.exports = {
   readVisualPlan,
   saveVisualPlan,
   fillPromptsFromAssignments,
+  RECOVERY_DIRNAME,
+  selectClearableUnlinkedPrompts,
+  writeRecoverySnapshot,
+  clearUnlinkedImagePrompts,
   setImageReview,
   setVideoReview,
 };

@@ -709,6 +709,12 @@ function buildAssignmentRequest(scriptText, plan, beat) {
     `- assignment: what the visual must show, concrete, no camera/style jargon (max ${BOUNDS.assignment_max} chars)`,
     `- acceptance_criteria: 2-4 short checks a human can verify on the finished image (each max ${BOUNDS.criterion_max_chars} chars; include one that the image reads as a complete full-frame 9:16 composition)`,
     `- media_type: one of ${MEDIA_TYPES.join(' | ')}`,
+    '',
+    'ACCEPTANCE-CRITERIA RULES — every criterion must be checkable by LOOKING at the generated image:',
+    '- FORBIDDEN: readable text, rendered words, labels, captions, typography, lettering, or logos in the image (generation cannot render reliable text; images are produced with no readable text)',
+    '- FORBIDDEN: presenter placement, empty presenter space, green-screen layout, or any assumption about later compositing or overlays',
+    '- FORBIDDEN: subjective claims with no observable visual test (e.g. "feels premium", "is engaging")',
+    '- ALLOWED: visible, reviewable evidence — the subject, its action, a relationship between elements, composition, contrast, environment, an emotional or directional cue, or a countable/spatial property',
   ].filter(Boolean).join('\n');
   const schema = {
     type: 'object',
@@ -974,6 +980,157 @@ function computeVisualPlanReadiness(plan, scriptText) {
   };
 }
 
+// ── prompt provenance & plan integrity ──────────────────────────────────────
+
+// Classify ONE image-prompt row's provenance against the plan. Returns one of:
+//   'assignment_linked'  — carries an assignment_id that exists in the plan
+//   'assignment_missing' — carries an assignment_id the plan no longer has
+//                          (malformed/orphaned provenance; historically truthful,
+//                          never silently relinked)
+//   'script_wide_legacy' — no assignment provenance at all
+// A row with provenance in a project with NO plan is also 'assignment_missing'.
+function classifyPromptProvenance(row, plan) {
+  if (!row || typeof row.text !== 'string' || !row.text.trim()) return null;
+  if (!row.assignment_id) return 'script_wide_legacy';
+  const exists = plan && Array.isArray(plan.assignments)
+    && plan.assignments.some((a) => a && a.assignment_id === row.assignment_id);
+  return exists ? 'assignment_linked' : 'assignment_missing';
+}
+
+// Deterministic integrity metrics over the plan + the image-prompt slot set.
+// Pure derivation — safe to recompute on every read; never persisted.
+function computePlanIntegrity(plan, imagePromptRows, capacity) {
+  const cap = Number(capacity) > 0 ? Math.round(Number(capacity)) : 100;
+  const rows = (Array.isArray(imagePromptRows) ? imagePromptRows : [])
+    .filter((r) => r && typeof r.text === 'string' && r.text.trim());
+  let linked = 0;
+  let unlinked = 0;
+  let malformed = 0;
+  rows.forEach((r) => {
+    const kind = classifyPromptProvenance(r, plan);
+    if (kind === 'assignment_linked') linked += 1;
+    else if (kind === 'assignment_missing') malformed += 1;
+    else unlinked += 1;
+  });
+  const filled = rows.length;
+  const emptySlots = Math.max(0, cap - filled);
+  const assignments = plan && Array.isArray(plan.assignments) ? plan.assignments : [];
+  const draft = assignments.filter((a) => a && a.status === 'draft').length;
+  const approved = assignments.filter((a) => a && a.status === 'approved').length;
+  const rejected = assignments.filter((a) => a && a.status === 'rejected').length;
+  // Approved assignments that still need a prompt = the gate's own eligibility
+  // selection (fresh, image-lane media type, no linked prompt yet).
+  const needing = plan
+    ? selectAssignmentsForPromptCreation(plan, rows).eligible.length
+    : 0;
+  return {
+    plan_exists: Boolean(plan),
+    capacity: cap,
+    total_assignments: assignments.length,
+    draft_assignments: draft,
+    approved_assignments: approved,
+    rejected_assignments: rejected,
+    linked_prompts: linked,
+    unlinked_prompts: unlinked,
+    malformed_provenance: malformed,
+    filled_slots: filled,
+    empty_slots: emptySlots,
+    approved_needing_prompts: needing,
+    blocked_by_capacity: Math.max(0, needing - emptySlots),
+  };
+}
+
+// ── duplicate-subject advisory (deterministic heuristic, warning-only) ──────
+//
+// Flags assignment pairs that appear to reuse substantially the same
+// subject/action concept. Never blocks approval. Normalized token overlap
+// (light stemming, stopwords removed) over the assignment text approximates
+// "same subject/action"; a pair is SUPPRESSED when the two assignments do
+// materially different jobs (different visual_function AND low viewer-task
+// overlap). Deliberately not a semantic-analysis subsystem.
+
+const ADVISORY_STOPWORDS = new Set([
+  'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'onto', 'over',
+  'under', 'its', 'their', 'has', 'have', 'are', 'was', 'were', 'will', 'not',
+  'one', 'two', 'three', 'all', 'each', 'any', 'more', 'most', 'other', 'some',
+  'such', 'than', 'then', 'them', 'they', 'there', 'where', 'which', 'while',
+  'show', 'shows', 'showing', 'shown', 'image', 'visual', 'frame', 'full',
+  'screen', 'vertical', 'composition', 'scene', 'viewer', 'across', 'between',
+  'against', 'without', 'through', 'being', 'both', 'but', 'can', 'cannot',
+]);
+
+function advisoryStem(word) {
+  let w = word;
+  if (w.length > 5 && w.endsWith('ing')) w = w.slice(0, -3);
+  else if (w.length > 4 && w.endsWith('ed')) w = w.slice(0, -2);
+  else if (w.length > 3 && w.endsWith('es')) w = w.slice(0, -2);
+  else if (w.length > 3 && w.endsWith('s')) w = w.slice(0, -1);
+  return w;
+}
+
+function conceptTokens(text) {
+  return new Set(String(text || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && !ADVISORY_STOPWORDS.has(w))
+    .map(advisoryStem));
+}
+
+function jaccard(a, b) {
+  if (!a.size || !b.size) return 0;
+  let inter = 0;
+  a.forEach((t) => { if (b.has(t)) inter += 1; });
+  return inter / (a.size + b.size - inter);
+}
+
+const DUPLICATE_SUBJECT_THRESHOLD = 0.5;
+const VIEWER_TASK_DISTINCT_THRESHOLD = 0.35;
+
+// Returns advisory groups: [{ beat_orders, beat_ids, assignment_ids,
+// similarity, reason }] for pairs above the subject/action threshold.
+// Pairs where the visual functions differ AND the viewer tasks barely overlap
+// are allowed (materially different jobs on a similar subject).
+function findDuplicateSubjectAdvisories(plan, options = {}) {
+  if (!plan || !Array.isArray(plan.assignments)) return [];
+  const threshold = Number(options.threshold) > 0 ? Number(options.threshold) : DUPLICATE_SUBJECT_THRESHOLD;
+  const ordered = sortPlanBeats(plan.beats || []);
+  const orderOf = {};
+  ordered.forEach((b) => { orderOf[b.beat_id] = b.order; });
+  const active = plan.assignments.filter((a) => a && a.status !== 'rejected');
+  const entries = active.map((a) => ({
+    assignment: a,
+    concept: conceptTokens(a.assignment),
+    task: conceptTokens(a.viewer_task),
+  }));
+  const advisories = [];
+  for (let i = 0; i < entries.length; i += 1) {
+    for (let j = i + 1; j < entries.length; j += 1) {
+      const A = entries[i];
+      const B = entries[j];
+      const similarity = jaccard(A.concept, B.concept);
+      if (similarity < threshold) continue;
+      const sameFunction = A.assignment.visual_function === B.assignment.visual_function;
+      const taskOverlap = jaccard(A.task, B.task);
+      // Materially different job: different function AND clearly different
+      // viewer tasks → similar subject is allowed, no advisory.
+      if (!sameFunction && taskOverlap < VIEWER_TASK_DISTINCT_THRESHOLD) continue;
+      advisories.push({
+        beat_ids: [A.assignment.beat_id, B.assignment.beat_id],
+        beat_orders: [orderOf[A.assignment.beat_id] || 0, orderOf[B.assignment.beat_id] || 0],
+        assignment_ids: [A.assignment.assignment_id, B.assignment.assignment_id],
+        similarity: Math.round(similarity * 100) / 100,
+        reason: sameFunction
+          ? 'Similar subject/action with the same visual function'
+          : 'Similar subject/action serving similar viewer tasks',
+      });
+    }
+  }
+  advisories.sort((x, y) => y.similarity - x.similarity);
+  return advisories;
+}
+
 module.exports = {
   VISUAL_PLAN_SCHEMA_VERSION,
   VISUAL_DISPOSITIONS,
@@ -1013,4 +1170,8 @@ module.exports = {
   selectAssignmentsForPromptCreation,
   buildPromptFromAssignmentRequest,
   computeVisualPlanReadiness,
+  classifyPromptProvenance,
+  computePlanIntegrity,
+  findDuplicateSubjectAdvisories,
+  conceptTokens,
 };
