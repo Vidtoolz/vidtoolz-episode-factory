@@ -231,6 +231,15 @@ const IDEAS_PROMOTE_API = '/api/ideas/promote';
 const IDEAS_GENERATE_FROM_TOPIC_API = '/api/ideas/generate-from-topic';
 const IDEAS_TOPIC_RUNS_API = '/api/ideas/topic-runs';
 const IDEAS_TOPIC_RUN_API = '/api/ideas/topic-run';
+const IDEA_ENGINE_STATE_API = '/api/idea-engine/state';
+const IDEA_ENGINE_CATEGORIES_API = '/api/idea-engine/categories';
+const IDEA_ENGINE_CATEGORY_API = '/api/idea-engine/category';
+const IDEA_ENGINE_IDEA_API = '/api/idea-engine/idea';
+const IDEA_ENGINE_REFRESH_CATEGORY_API = '/api/idea-engine/refresh-category';
+const IDEA_ENGINE_REFRESH_ALL_API = '/api/idea-engine/refresh-all';
+const IDEA_ENGINE_REFRESH_STATUS_API = '/api/idea-engine/refresh-status';
+const IDEA_ENGINE_REVIEW_API = '/api/idea-engine/review';
+const IDEA_ENGINE_PROMOTE_API = '/api/idea-engine/promote';
 const PACKAGE_RUNS_REINDEX_API = '/api/package-runs/reindex';
 const TOPIC_SCOUT_LIST_API = '/api/topic-scout/list';
 const TOPIC_SCOUT_SUBMIT_API = '/api/topic-scout/submit';
@@ -540,6 +549,8 @@ const { verifyApprovedExports, formatVerifierReport } = require('./score-engine/
 const scorePlanner = require('./score-engine/cue-planner.js');
 const ideaPromotion = require('./idea-promotion.js');
 const topicScout = require('./topic-idea-scout.js');
+const ideaEngine = require('./idea-engine.js');
+const ideaEnginePrompts = require('./idea-engine-prompts.js');
 const projectScript = require('./project-script.js');
 const projectImagePrompts = require('./project-image-prompts.js');
 const projectI2vPrompts = require('./project-i2v-prompts.js');
@@ -560,6 +571,8 @@ const motionGraphicsRemotion = require('./motion-graphics-remotion.js');
 // Super Focus keeps its own local, file-backed project state (never on VIDNAS).
 // Root is env-overridable so it can follow a different disk without code edits.
 const SUPER_FOCUS_ROOT = process.env.SUPER_FOCUS_ROOT || path.join(ROOT, 'super-focus-projects');
+// Idea Engine keeps its own local, file-backed idea state (never on VIDNAS).
+const IDEA_ENGINE_ROOT = process.env.IDEA_ENGINE_ROOT || path.join(ROOT, 'idea-engine-state');
 // Generated media (media-only) lives on VIDNAS under a dedicated Super Focus
 // namespace, separate from aigen script-packages. Env-overridable.
 const SUPER_FOCUS_MEDIA_ROOT = process.env.SUPER_FOCUS_MEDIA_ROOT || path.join(VIDNAS_AIGEN_ROOT, 'super-focus');
@@ -5141,6 +5154,237 @@ async function superFocusGenerate({ system, user, schema, task, requestedCount }
   } catch (error) {
     throw enrichOllamaError(error, decision, task, requestedCount, timeoutMs);
   }
+}
+
+// ── Idea Engine generation (chunked, staged, all-or-nothing activation) ──────
+// TEXT lane only: local vidnux Ollama via callOllamaChat. Never touches the
+// compute registry, FLUX, PRESTO, or any image/video route — promotion and
+// generation here can never start downstream production work.
+
+const IDEA_ENGINE_CATEGORY_LOCKS = new Set();
+const IDEA_ENGINE_PROMOTE_LOCKS = new Set();
+let ideaEngineRefreshAllJob = null;
+
+// Chunk size for idea generation. Default 6, clamped 1–10 (idea objects are
+// heavier than prompt strings; 6 keeps one call well inside local-model reach).
+function ideaEngineChunkSize(options = {}) {
+  const raw = options.ideaEngineChunkSize != null ? options.ideaEngineChunkSize : process.env.IDEA_ENGINE_CHUNK_SIZE;
+  const n = Math.round(Number(raw));
+  if (!Number.isFinite(n) || n < 1) return 6;
+  return Math.min(ideaEnginePrompts.MAX_IDEAS_PER_CALL, Math.max(1, n));
+}
+
+function ideaEngineTimeoutMs(options = {}) {
+  if (Number(options.ideaEngineTimeoutMs) > 0) return Number(options.ideaEngineTimeoutMs);
+  if (Number(process.env.IDEA_ENGINE_OLLAMA_TIMEOUT_MS) > 0) return Number(process.env.IDEA_ENGINE_OLLAMA_TIMEOUT_MS);
+  return OLLAMA_TIMEOUT_MS;
+}
+
+function ideaEngineModel(options = {}) {
+  return String(options.ideaEngineModel || process.env.IDEA_ENGINE_OLLAMA_MODEL || OLLAMA_MODEL);
+}
+
+// Generates one category's full replacement set. CHUNKED staging: many small
+// Ollama calls; accepted candidates accumulate IN MEMORY and are activated
+// only when the complete set of exactly IDEAS_PER_CATEGORY validates — the
+// stored last-known-good set is never touched by a partial or failed run.
+// Throws (502/503/504) on failure; the caller records the failure state.
+async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpts = {}) {
+  const t0 = Date.now();
+  const state = ideaEngine.loadState(ieOpts);
+  const batchId = ideaEngine.newBatchId();
+  // Promoted titles first (they matter most under the prompt's exclusion cap).
+  const exclusions = ideaEngine.exclusionTitles(state, category.id);
+  const chunkSize = ideaEngineChunkSize(serverOptions);
+  const timeoutMs = ideaEngineTimeoutMs(serverOptions);
+  const model = ideaEngineModel(serverOptions);
+  const target = ideaEngine.IDEAS_PER_CATEGORY;
+  const accepted = [];
+  let rejectedCount = 0;
+  let chunksAttempted = 0;
+  let zeroProgress = 0;
+  let lastRejected = [];
+  // Local models at fixed temperature re-emit favourite titles once the obvious
+  // angles are taken; tolerate a few no-progress chunks (with a diversification
+  // push in the retry prompt) before failing closed.
+  const ZERO_PROGRESS_LIMIT = 3;
+  // Attempt budget: duplicate-heavy chunks accept fewer than n, so allow 4x
+  // the minimum chunk count — a stuck model can never loop forever.
+  const maxChunks = Math.ceil(target / Math.max(1, chunkSize)) * 4;
+  while (accepted.length < target && chunksAttempted < maxChunks) {
+    const n = Math.min(chunkSize, target - accepted.length);
+    const reqPrompt = ideaEnginePrompts.buildCategoryIdeasRequest(
+      category,
+      n,
+      accepted.map((i) => i.title).concat(exclusions),
+      { retry: zeroProgress > 0 }
+    );
+    chunksAttempted += 1;
+    const content = await callOllamaChat(
+      { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model },
+      Object.assign({}, serverOptions, { timeoutMs })
+    );
+    const parsed = ideaEnginePrompts.parseIdeaBatch(content);
+    if (!parsed.ok) {
+      zeroProgress += 1;
+      if (zeroProgress >= ZERO_PROGRESS_LIMIT) {
+        const e = new Error(`Idea generation failed: ${parsed.error} (${ZERO_PROGRESS_LIMIT} chunks in a row).`);
+        e.statusCode = 502;
+        e.code = 'idea_output_unparseable';
+        throw e;
+      }
+      continue;
+    }
+    const result = ideaEngine.acceptCandidates(parsed.items, {
+      categoryId: category.id,
+      batchId,
+      existingTitles: exclusions,
+      acceptedSoFar: accepted,
+    });
+    rejectedCount += result.rejected.length;
+    if (result.rejected.length > 0) lastRejected = result.rejected;
+    if (result.accepted.length === 0) {
+      zeroProgress += 1;
+      if (zeroProgress >= ZERO_PROGRESS_LIMIT) {
+        const reasons = lastRejected.slice(0, 3)
+          .map((r) => `"${String(r.title).slice(0, 50)}": ${r.reasons.join(', ')}`)
+          .join(' | ');
+        const e = new Error(`Idea generation stalled: ${ZERO_PROGRESS_LIMIT} chunks in a row produced only duplicate or invalid ideas.${reasons ? ` Last rejections: ${reasons}` : ''}`);
+        e.statusCode = 502;
+        e.code = 'idea_generation_stalled';
+        throw e;
+      }
+      continue;
+    }
+    zeroProgress = 0;
+    for (const idea of result.accepted) {
+      if (accepted.length < target) accepted.push(idea);
+    }
+  }
+  if (accepted.length !== target) {
+    const e = new Error(`Idea generation incomplete: ${accepted.length}/${target} valid ideas after ${chunksAttempted} attempts. The previous set was preserved.`);
+    e.statusCode = 502;
+    e.code = 'idea_generation_incomplete';
+    throw e;
+  }
+  return {
+    ideas: accepted,
+    batchMeta: {
+      batch_id: batchId,
+      generated_at: new Date().toISOString(),
+      model,
+      provider: 'ollama-local',
+      duration_ms: Date.now() - t0,
+      chunks: chunksAttempted,
+      rejected_candidates: rejectedCount,
+    },
+  };
+}
+
+// One-category refresh: locked, transactional, failure-recording. Used by the
+// refresh-category route and by each step of the refresh-all job.
+async function runIdeaEngineCategoryRefresh(categoryId, serverOptions = {}, ieOpts = {}, { bypassGlobalGuard = false } = {}) {
+  const categories = ideaEngine.loadCategories(ieOpts);
+  const category = ideaEngine.categoryById(categories, ideaEngine.assertValidCategoryId(categoryId));
+  if (!category) {
+    const e = new Error('Unknown Idea Engine category id.');
+    e.statusCode = 404;
+    throw e;
+  }
+  if (!bypassGlobalGuard && ideaEngineRefreshAllJob && !ideaEngineRefreshAllJob.done) {
+    const e = new Error('A refresh of all categories is already running.');
+    e.statusCode = 409;
+    e.code = 'generation_in_progress';
+    throw e;
+  }
+  if (IDEA_ENGINE_CATEGORY_LOCKS.has(category.id)) {
+    const e = new Error(`Category "${category.name}" is already generating.`);
+    e.statusCode = 409;
+    e.code = 'generation_in_progress';
+    throw e;
+  }
+  IDEA_ENGINE_CATEGORY_LOCKS.add(category.id);
+  try {
+    const generated = await generateIdeaEngineCategorySet(category, serverOptions, ieOpts);
+    ideaEngine.activateCategorySet(category.id, generated.ideas, generated.batchMeta, ieOpts);
+    return { category, batch: generated.batchMeta, accepted: generated.ideas.length };
+  } catch (error) {
+    try {
+      ideaEngine.recordCategoryFailure(category.id, { message: error.message, code: error.code, status: error.statusCode }, ieOpts);
+    } catch (_) { /* failure bookkeeping must never mask the original error */ }
+    throw error;
+  } finally {
+    IDEA_ENGINE_CATEGORY_LOCKS.delete(category.id);
+  }
+}
+
+// Refresh-all: an in-process sequential background job (one Ollama, one GPU —
+// parallel generation would only thrash it). PER-CATEGORY TRANSACTIONAL
+// strategy: each category validates and activates independently and atomically;
+// a failure affects only that category (recorded on it, reported per category).
+// There is no global partial state to corrupt, and no global success is claimed
+// unless every category succeeded.
+function startIdeaEngineRefreshAll(serverOptions = {}, ieOpts = {}) {
+  if (ideaEngineRefreshAllJob && !ideaEngineRefreshAllJob.done) {
+    const e = new Error('A refresh of all categories is already running.');
+    e.statusCode = 409;
+    e.code = 'generation_in_progress';
+    throw e;
+  }
+  if (IDEA_ENGINE_CATEGORY_LOCKS.size > 0) {
+    const e = new Error('A single-category refresh is currently running; wait for it to finish.');
+    e.statusCode = 409;
+    e.code = 'generation_in_progress';
+    throw e;
+  }
+  const categories = ideaEngine.loadCategories(ieOpts);
+  const job = {
+    job_id: `iej-${Date.now().toString(36)}-${Math.floor(Math.random() * 0xffff).toString(16)}`,
+    started_at: new Date().toISOString(),
+    finished_at: null,
+    done: false,
+    succeeded: 0,
+    failed: 0,
+    categories: categories.map((c) => ({ id: c.id, name: c.name, status: 'pending', message: null, accepted: 0 })),
+  };
+  ideaEngineRefreshAllJob = job;
+  (async () => {
+    for (const entry of job.categories) {
+      entry.status = 'running';
+      try {
+        const result = await runIdeaEngineCategoryRefresh(entry.id, serverOptions, ieOpts, { bypassGlobalGuard: true });
+        entry.status = 'succeeded';
+        entry.accepted = result.accepted;
+        job.succeeded += 1;
+      } catch (error) {
+        entry.status = 'failed';
+        entry.message = String(error.message || 'generation failed').slice(0, 300);
+        job.failed += 1;
+      }
+    }
+  })().catch((error) => {
+    // Defensive: the loop above never throws, but a job must always terminate.
+    job.error = String(error && error.message || 'refresh-all job crashed');
+  }).finally(() => {
+    job.done = true;
+    job.finished_at = new Date().toISOString();
+  });
+  return job;
+}
+
+function ideaEngineRefreshStatus() {
+  return {
+    job: ideaEngineRefreshAllJob,
+    category_locks: Array.from(IDEA_ENGINE_CATEGORY_LOCKS),
+  };
+}
+
+// Test hook: reset in-memory job/locks between test servers (module state is
+// process-wide; tests run many servers in one process).
+function resetIdeaEngineRuntimeState() {
+  ideaEngineRefreshAllJob = null;
+  IDEA_ENGINE_CATEGORY_LOCKS.clear();
+  IDEA_ENGINE_PROMOTE_LOCKS.clear();
 }
 
 // Read-only provider status for the "Check providers" panel. All probes are
@@ -11832,6 +12076,216 @@ function createServer(options = {}) {
     // Injectable HyperFrames runner (tests pass a stub; default reuses the lane's wrapper).
     const mgRunRender = serverOptions.hyperframesRenderer || runHyperframesRenderCommand;
 
+    // ---- Idea Engine: 12 categories x 30 generated Shorts sub-topics ----------
+    // Separate bounded subsystem UPSTREAM of production: generate/review ideas,
+    // then explicitly promote one into a new Super Focus project. TEXT lane only
+    // (local Ollama); never dispatches images, videos, PRESTO, or compute lanes.
+    const ieOpts = { root: serverOptions.ideaEngineRoot || IDEA_ENGINE_ROOT };
+
+    if (req.method === 'GET' && url.pathname === IDEA_ENGINE_STATE_API) {
+      try {
+        sendJSON(res, 200, Object.assign(ideaEngine.stateView(ieOpts), { refresh: ideaEngineRefreshStatus() }));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'idea-engine-state-error');
+      }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === IDEA_ENGINE_CATEGORIES_API) {
+      try {
+        sendJSON(res, 200, { categories: ideaEngine.loadCategories(ieOpts) });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'idea-engine-categories-error');
+      }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === IDEA_ENGINE_CATEGORY_API) {
+      try {
+        const id = ideaEngine.assertValidCategoryId(url.searchParams.get('id') || '');
+        const categories = ideaEngine.loadCategories(ieOpts);
+        const category = ideaEngine.categoryById(categories, id);
+        if (!category) {
+          const e = new Error('Unknown Idea Engine category id.');
+          e.statusCode = 404;
+          throw e;
+        }
+        const state = ideaEngine.loadState(ieOpts);
+        const block = state.categories[id] || { batch: null, ideas: [], last_failure: null, promoted_history: [] };
+        sendJSON(res, 200, Object.assign(ideaEngine.summarizeCategory(category, block), {
+          ideas: block.ideas,
+          promoted_history: block.promoted_history,
+        }));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'idea-engine-category-error');
+      }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === IDEA_ENGINE_IDEA_API) {
+      try {
+        const id = ideaEngine.assertValidIdeaId(url.searchParams.get('id') || '');
+        const found = ideaEngine.findIdea(ideaEngine.loadState(ieOpts), id);
+        if (!found) {
+          const e = new Error('Unknown Idea Engine idea id.');
+          e.statusCode = 404;
+          throw e;
+        }
+        sendJSON(res, 200, { idea: found.idea, category_id: found.category_id, from: found.from });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'idea-engine-idea-error');
+      }
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === IDEA_ENGINE_REFRESH_STATUS_API) {
+      sendJSON(res, 200, ideaEngineRefreshStatus());
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === IDEA_ENGINE_REFRESH_CATEGORY_API) {
+      readJsonBody(req, 1024 * 16)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Idea Engine refresh API' });
+          // Replacing the visible unpromoted set is destructive-adjacent: the
+          // server enforces the explicit confirmation the GUI collects.
+          if (payload.confirm !== true) {
+            const e = new Error('Refreshing a category replaces its current unpromoted ideas; pass confirm: true.');
+            e.statusCode = 400;
+            e.code = 'confirm_required';
+            throw e;
+          }
+          const result = await runIdeaEngineCategoryRefresh(payload.category_id, serverOptions, ieOpts);
+          const state = ideaEngine.loadState(ieOpts);
+          const block = state.categories[result.category.id];
+          sendJSON(res, 200, Object.assign(ideaEngine.summarizeCategory(result.category, block), {
+            ideas: block.ideas,
+            promoted_history: block.promoted_history,
+          }));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-refresh-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === IDEA_ENGINE_REFRESH_ALL_API) {
+      readJsonBody(req, 1024 * 16)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Idea Engine refresh API' });
+          if (payload.confirm !== true) {
+            const e = new Error('Refreshing all categories replaces every current unpromoted idea set; pass confirm: true.');
+            e.statusCode = 400;
+            e.code = 'confirm_required';
+            throw e;
+          }
+          const job = startIdeaEngineRefreshAll(serverOptions, ieOpts);
+          sendJSON(res, 200, { job });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-refresh-all-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === IDEA_ENGINE_REVIEW_API) {
+      readJsonBody(req, 1024 * 16)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Idea Engine review API' });
+          sendJSON(res, 200, { idea: ideaEngine.markReviewed(payload.idea_id, ieOpts) });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'idea-engine-review-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === IDEA_ENGINE_PROMOTE_API) {
+      readJsonBody(req, 1024 * 16)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Idea Engine promote API' });
+          const ideaId = ideaEngine.assertValidIdeaId(payload.idea_id);
+          if (IDEA_ENGINE_PROMOTE_LOCKS.has(ideaId)) {
+            const e = new Error('This idea is already being promoted.');
+            e.statusCode = 409;
+            e.code = 'promotion_in_progress';
+            throw e;
+          }
+          IDEA_ENGINE_PROMOTE_LOCKS.add(ideaId);
+          try {
+            const state = ideaEngine.loadState(ieOpts);
+            const found = ideaEngine.findIdea(state, ideaId);
+            if (!found) {
+              const e = new Error('Unknown Idea Engine idea id.');
+              e.statusCode = 404;
+              throw e;
+            }
+            const idea = found.idea;
+            // Duplicate-safe primary action: an already-promoted idea whose
+            // project still exists opens that project, never creates another.
+            if (idea.promotion.state === 'promoted' && idea.promotion.project_id) {
+              const lifecycle = superFocus.projectLifecycle(idea.promotion.project_id, { root: sfRoot });
+              if (lifecycle) {
+                sendJSON(res, 200, {
+                  already_promoted: true,
+                  project_id: idea.promotion.project_id,
+                  lifecycle,
+                  href: `super-focus.html?project=${encodeURIComponent(idea.promotion.project_id)}`,
+                  idea,
+                });
+                return;
+              }
+              // Recorded project no longer exists (deleted in Super Focus):
+              // fall through and create a fresh one — documented behavior.
+            }
+            const categories = ideaEngine.loadCategories(ieOpts);
+            const category = ideaEngine.categoryById(categories, idea.category_id);
+            let project;
+            try {
+              // The canonical Super Focus creation path — same domain function
+              // as the Super Focus GUI. Creates exactly one project; starts
+              // NO image/video/PRESTO/downstream work of any kind.
+              project = superFocus.createProject({ title: idea.title }, { root: sfRoot });
+            } catch (error) {
+              ideaEngine.recordPromotionResult(ideaId, { ok: false, error: error.message }, ieOpts);
+              throw error;
+            }
+            // Provenance sidecar in the project dir (precedent: aigen's
+            // promoted-from-idea.json). super-focus.json itself is untouched
+            // beyond what createProject wrote — the SF schema is not modified.
+            try {
+              const originPath = path.join(sfRoot, project.project_id, 'idea-engine-origin.json');
+              const tmp = `${originPath}.${process.pid}.tmp`;
+              fs.writeFileSync(tmp, `${JSON.stringify({
+                schema_version: 1,
+                source: 'idea-engine',
+                idea_id: idea.id,
+                batch_id: idea.batch_id,
+                category_id: idea.category_id,
+                category_name: category ? category.name : idea.category_id,
+                title: idea.title,
+                premise: idea.premise,
+                why_vidtoolz: idea.why_vidtoolz,
+                why_short: idea.why_short,
+                tension: idea.tension,
+                hook: idea.hook || null,
+                promoted_at: new Date().toISOString(),
+              }, null, 2)}\n`, 'utf8');
+              fs.renameSync(tmp, originPath);
+            } catch (error) {
+              // The project exists; provenance failure is reported, not fatal.
+              console.error(`Idea Engine origin sidecar write failed: ${error.message}`);
+            }
+            const updated = ideaEngine.recordPromotionResult(ideaId, { ok: true, project_id: project.project_id }, ieOpts);
+            sendJSON(res, 200, {
+              already_promoted: false,
+              project_id: project.project_id,
+              lifecycle: 'active',
+              href: `super-focus.html?project=${encodeURIComponent(project.project_id)}`,
+              idea: updated,
+            });
+          } finally {
+            IDEA_ENGINE_PROMOTE_LOCKS.delete(ideaId);
+          }
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-promote-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === SUPER_FOCUS_PROJECTS_API) {
       try {
         sendJSON(res, 200, { projects: superFocus.listProjects({ root: sfRoot }) });
@@ -16446,6 +16900,23 @@ module.exports = {
   IDEAS_GENERATE_FROM_TOPIC_API,
   IDEAS_TOPIC_RUNS_API,
   IDEAS_TOPIC_RUN_API,
+  IDEA_ENGINE_STATE_API,
+  IDEA_ENGINE_CATEGORIES_API,
+  IDEA_ENGINE_CATEGORY_API,
+  IDEA_ENGINE_IDEA_API,
+  IDEA_ENGINE_REFRESH_CATEGORY_API,
+  IDEA_ENGINE_REFRESH_ALL_API,
+  IDEA_ENGINE_REFRESH_STATUS_API,
+  IDEA_ENGINE_REVIEW_API,
+  IDEA_ENGINE_PROMOTE_API,
+  ideaEngine,
+  ideaEnginePrompts,
+  generateIdeaEngineCategorySet,
+  runIdeaEngineCategoryRefresh,
+  startIdeaEngineRefreshAll,
+  ideaEngineRefreshStatus,
+  resetIdeaEngineRuntimeState,
+  ideaEngineChunkSize,
   OLLAMA_PRESTO_BASE_URL,
   OLLAMA_PRESTO_MODEL,
   uploadAigenImage,

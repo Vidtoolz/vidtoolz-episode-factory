@@ -45,6 +45,7 @@ image selection → Wan2.2 video generation (PRESTO) → Resolve handoff → pub
 | `production-day-dashboard.html` | Focused 10-hour production sprint with timer |
 | `publish-gate.html` | 5-gate quality review before publishing |
 | `daily-idea-scout.html` | Daily AI candidate ideas (discovery, not production) |
+| `idea-engine.html` | Idea Engine: 12 categories × 30 generated Shorts ideas; explicit promote into Super Focus (see `docs/idea-engine.md`) |
 
 ## Design Principles
 - **"What next?" is the central UX question.** Every page must answer: what am I looking at, 

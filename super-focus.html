@@ -1253,6 +1253,15 @@
       }).catch(function () { alert('Could not open project.'); });
     }
 
+    // Deep link (?project=<id>): open one project directly. Used by the Idea
+    // Engine's "Open in Super Focus" after promotion (mirrors the ?focus=
+    // precedent). Invalid/unknown ids fall through to the normal landing.
+    (function () {
+      var deepLinkId = null;
+      try { deepLinkId = (new URLSearchParams(window.location.search)).get('project'); } catch (e) { deepLinkId = null; }
+      if (deepLinkId) loadProject(deepLinkId);
+    })();
+
     function copyText(text, statusEl) {
       function done() { setRowStatus(statusEl, 'Copied', 'ok'); }
       if (navigator.clipboard && navigator.clipboard.writeText) {

@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Idea Engine — VIDTOOLZ Cockpit</title>
+  <link rel="stylesheet" href="styles.css?v=1.9.6">
+  <style>
+    .container { max-width: 1640px; margin: 0 auto; padding: 18px; }
+    .ie-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 10px 0 14px; }
+    .ie-toolbar input[type="search"] {
+      flex: 1 1 260px; max-width: 420px; background: var(--panel, #161b22);
+      color: var(--text, #e6edf3); border: 1px solid var(--border, #30363d);
+      border-radius: 6px; padding: 7px 10px; font-size: 0.92rem;
+    }
+    .ie-status { color: var(--muted, #8b949e); font-size: 0.86rem; }
+    .ie-status.err { color: var(--danger, #f85149); }
+    .ie-status.ok { color: var(--accent, #3fb950); }
+    .ie-grid { display: grid; grid-template-columns: 280px minmax(360px, 1fr) minmax(340px, 480px); gap: 14px; align-items: start; }
+    @media (max-width: 1100px) { .ie-grid { grid-template-columns: 1fr; } }
+    .ie-panel { background: var(--panel, #161b22); border: 1px solid var(--border, #30363d); border-radius: 8px; padding: 12px; }
+    .ie-panel h2 { margin: 0 0 10px; font-size: 1.02rem; }
+    .ie-cat-btn {
+      display: block; width: 100%; text-align: left; background: transparent;
+      color: var(--text, #e6edf3); border: 1px solid transparent; border-radius: 6px;
+      padding: 7px 9px; margin: 2px 0; cursor: pointer; font-size: 0.9rem;
+    }
+    .ie-cat-btn:hover { border-color: var(--border, #30363d); }
+    .ie-cat-btn.active { border-color: var(--accent-blue, #58a6ff); background: rgba(88, 166, 255, 0.08); }
+    .ie-cat-counts { display: block; color: var(--muted, #8b949e); font-size: 0.76rem; margin-top: 2px; }
+    .ie-cat-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
+    .dot-empty { background: var(--muted, #8b949e); }
+    .dot-ok { background: var(--accent, #3fb950); }
+    .dot-fail { background: var(--danger, #f85149); }
+    .dot-running { background: var(--accent-blue, #58a6ff); }
+    .ie-idea-row {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+      width: 100%; text-align: left; background: transparent; color: var(--text, #e6edf3);
+      border: 1px solid transparent; border-bottom: 1px solid var(--border, #30363d);
+      border-radius: 0; padding: 8px 6px; cursor: pointer; font-size: 0.9rem;
+    }
+    .ie-idea-row:hover { background: rgba(88, 166, 255, 0.05); }
+    .ie-idea-row.active { border-color: var(--accent-blue, #58a6ff); border-radius: 6px; }
+    .ie-idea-row .t { flex: 1 1 auto; }
+    .ie-badge { flex: 0 0 auto; font-size: 0.72rem; border-radius: 10px; padding: 2px 8px; border: 1px solid var(--border, #30363d); color: var(--muted, #8b949e); white-space: nowrap; }
+    .badge-promoted { color: var(--accent, #3fb950); border-color: var(--accent, #3fb950); }
+    .badge-failed { color: var(--danger, #f85149); border-color: var(--danger, #f85149); }
+    .badge-reviewed { color: var(--accent-blue, #58a6ff); border-color: var(--accent-blue, #58a6ff); }
+    .ie-detail dt { color: var(--muted, #8b949e); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 12px; }
+    .ie-detail dd { margin: 3px 0 0; font-size: 0.92rem; line-height: 1.45; }
+    .ie-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .ie-btn {
+      background: var(--panel, #161b22); color: var(--text, #e6edf3);
+      border: 1px solid var(--border, #30363d); border-radius: 6px;
+      padding: 7px 12px; cursor: pointer; font-size: 0.88rem;
+    }
+    .ie-btn:hover:not(:disabled) { border-color: var(--accent-blue, #58a6ff); }
+    .ie-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .ie-btn.primary { border-color: var(--accent, #3fb950); color: var(--accent, #3fb950); }
+    .ie-btn.danger { border-color: var(--danger, #f85149); color: var(--danger, #f85149); }
+    .ie-empty { color: var(--muted, #8b949e); padding: 18px 6px; font-size: 0.9rem; }
+    .ie-fail-note { color: var(--danger, #f85149); font-size: 0.84rem; margin: 8px 0; }
+    .ie-progress li { font-size: 0.86rem; margin: 2px 0; }
+    .ie-confirm-overlay {
+      position: fixed; inset: 0; background: rgba(1, 4, 9, 0.7);
+      display: flex; align-items: center; justify-content: center; z-index: 60;
+    }
+    .ie-confirm-panel { background: var(--panel, #161b22); border: 1px solid var(--border, #30363d); border-radius: 8px; padding: 18px; max-width: 480px; }
+    .ie-confirm-panel p { margin: 0 0 14px; line-height: 1.5; }
+    .hidden { display: none !important; }
+    .ie-diag { margin-top: 14px; }
+    .ie-diag pre { white-space: pre-wrap; font-size: 0.76rem; color: var(--muted, #8b949e); max-height: 240px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <script src="ef-nav.js"></script>
+  <script src="idea-engine-ui.js"></script>
+  <nav class="ef-nav" data-ef-nav></nav>
+<details class="page-guide">
+  <summary>Page Guide — What is this?</summary>
+  <div class="page-guide-body">
+    <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Idea Engine: 12 topic categories × 30 generated YouTube Shorts ideas. An exploration layer — generated ideas are proposals, not production commitments.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Pick a category, open ideas to read what each video would examine, refresh sets you don't like, and <b>Promote to Super Focus</b> when one deserves to become a video project.</span></div>
+    <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Category list with counts, idea list with New/Reviewed/Promoted badges, detail panel with premise/relevance/tension, per-category and all-category refresh with confirmation, search across all 360 ideas.</span></div>
+  </div>
+</details>
+
+  <div class="container">
+    <h1>Idea Engine</h1>
+    <div class="ie-toolbar">
+      <input id="ie-search" type="search" placeholder="Search all ideas by title or premise…" aria-label="Search ideas">
+      <button id="ie-refresh-all" class="ie-btn danger">Refresh all 12 categories</button>
+      <button id="ie-reload" class="ie-btn">Reload</button>
+      <span id="ie-status" class="ie-status" role="status">Loading…</span>
+    </div>
+
+    <div id="ie-progress-wrap" class="ie-panel hidden" style="margin-bottom: 14px;">
+      <h2>Refresh progress</h2>
+      <div id="ie-progress-summary" class="ie-status"></div>
+      <ul id="ie-progress" class="ie-progress"></ul>
+    </div>
+
+    <div class="ie-grid">
+      <div class="ie-panel">
+        <h2>Categories</h2>
+        <div id="ie-cats" role="listbox" aria-label="Topic categories"></div>
+      </div>
+      <div class="ie-panel">
+        <h2 id="ie-ideas-title">Ideas</h2>
+        <div id="ie-ideas" role="listbox" aria-label="Ideas in selected category"></div>
+      </div>
+      <div class="ie-panel">
+        <h2 id="ie-detail-title">Details</h2>
+        <div id="ie-detail"><div class="ie-empty">Select a category or an idea.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ie-confirm" class="ie-confirm-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ie-confirm-msg">
+    <div class="ie-confirm-panel">
+      <p id="ie-confirm-msg"></p>
+      <div class="ie-actions">
+        <button id="ie-confirm-yes" class="ie-btn danger">Replace ideas</button>
+        <button id="ie-confirm-no" class="ie-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+    var STATUS_API = '/api/package-engine/status';
+    var STATE_API = '/api/idea-engine/state';
+    var REFRESH_CATEGORY_API = '/api/idea-engine/refresh-category';
+    var REFRESH_ALL_API = '/api/idea-engine/refresh-all';
+    var REFRESH_STATUS_API = '/api/idea-engine/refresh-status';
+    var REVIEW_API = '/api/idea-engine/review';
+    var PROMOTE_API = '/api/idea-engine/promote';
+
+    var UI = window.IdeaEngineUI;
+    var nonce = null;
+    var nonceHeader = 'x-vidtoolz-local-write-nonce';
+    var view = { categories: [], selectedCategory: null, selectedIdea: null, search: '' };
+    var busyCategory = null; // category id currently refreshing via this page
+
+    function unwrap(body) { return (body && body.data) ? body.data : body; }
+    function parseBody(r) {
+      return r.text().then(function (t) {
+        try { return JSON.parse(t); } catch (e) { return { error: (t || '').slice(0, 200) }; }
+      });
+    }
+    function apiGet(path) {
+      return fetch(path, { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return parseBody(r).then(function (b) { return { ok: r.ok, status: r.status, body: b }; }); });
+    }
+    function ensureNonce() {
+      if (nonce) return Promise.resolve(nonce);
+      return apiGet(STATUS_API).then(function (res) {
+        var d = unwrap(res.body) || {};
+        nonce = d.localWriteNonce;
+        nonceHeader = d.nonceHeader || nonceHeader;
+        return nonce;
+      });
+    }
+    function apiPost(path, payload) {
+      return ensureNonce().then(function (n) {
+        var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        headers[nonceHeader] = n;
+        return fetch(path, { method: 'POST', headers: headers, body: JSON.stringify(Object.assign({}, payload, { localWriteNonce: n })) })
+          .then(function (r) { return parseBody(r).then(function (b) { return { ok: r.ok, status: r.status, body: b }; }); });
+      });
+    }
+
+    var statusEl = document.getElementById('ie-status');
+    function setStatus(msg, cls) {
+      statusEl.textContent = msg || '';
+      statusEl.className = 'ie-status' + (cls ? ' ' + cls : '');
+    }
+
+    var confirmCtl = UI.makeConfirmController({
+      panel: document.getElementById('ie-confirm'),
+      message: document.getElementById('ie-confirm-msg'),
+      confirmBtn: document.getElementById('ie-confirm-yes'),
+      cancelBtn: document.getElementById('ie-confirm-no'),
+    });
+    var promoteCtl = UI.makePromoteController({ apiPost: apiPost, unwrap: unwrap, promoteApi: PROMOTE_API });
+    var poller = UI.makeRefreshAllPoller({
+      apiGet: apiGet, apiPost: apiPost, unwrap: unwrap,
+      refreshAllApi: REFRESH_ALL_API, statusApi: REFRESH_STATUS_API,
+      onUpdate: renderJob,
+      onDone: function (job) { renderJob(job); load(); },
+    });
+
+    function generationBusy() {
+      return poller.isActive() || busyCategory !== null;
+    }
+
+    function categoryDot(category) {
+      if (busyCategory === category.id) return 'dot-running';
+      if (category.last_failure) return 'dot-fail';
+      if (category.idea_count > 0) return 'dot-ok';
+      return 'dot-empty';
+    }
+
+    function el(tag, cls, text) {
+      var node = document.createElement(tag);
+      if (cls) node.className = cls;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function renderCategories() {
+      var mount = document.getElementById('ie-cats');
+      mount.innerHTML = '';
+      view.categories.forEach(function (category) {
+        var btn = el('button', 'ie-cat-btn' + (view.selectedCategory === category.id ? ' active' : ''));
+        btn.setAttribute('role', 'option');
+        var dot = el('span', 'ie-cat-dot ' + categoryDot(category));
+        btn.appendChild(dot);
+        btn.appendChild(document.createTextNode(category.name));
+        var counts = category.idea_count + ' ideas · ' + category.promoted_count + ' promoted' +
+          (category.last_failure ? ' · last refresh FAILED' : '');
+        btn.appendChild(el('span', 'ie-cat-counts', counts));
+        btn.addEventListener('click', function () {
+          view.selectedCategory = category.id;
+          view.selectedIdea = null;
+          view.search = '';
+          document.getElementById('ie-search').value = '';
+          renderAll();
+          renderCategoryDetail(category);
+        });
+        mount.appendChild(btn);
+      });
+    }
+
+    function currentCategory() {
+      for (var i = 0; i < view.categories.length; i += 1) {
+        if (view.categories[i].id === view.selectedCategory) return view.categories[i];
+      }
+      return null;
+    }
+
+    function renderIdeas() {
+      var mount = document.getElementById('ie-ideas');
+      var title = document.getElementById('ie-ideas-title');
+      mount.innerHTML = '';
+      if (view.search) {
+        var matches = UI.filterIdeas(view.categories, view.search);
+        title.textContent = 'Search: ' + matches.length + ' match' + (matches.length === 1 ? '' : 'es');
+        if (matches.length === 0) { mount.appendChild(el('div', 'ie-empty', 'No ideas match.')); return; }
+        matches.forEach(function (m) { mount.appendChild(ideaRow(m.idea, m.category)); });
+        return;
+      }
+      var category = currentCategory();
+      if (!category) { title.textContent = 'Ideas'; mount.appendChild(el('div', 'ie-empty', 'Select a category on the left.')); return; }
+      title.textContent = category.name + ' — ' + category.idea_count + ' ideas';
+      if (category.last_failure) {
+        mount.appendChild(el('div', 'ie-fail-note',
+          'Last refresh failed (' + UI.formatTimestamp(category.last_failure.at) + '). The previous idea set below is preserved.'));
+      }
+      if (!category.ideas || category.ideas.length === 0) {
+        mount.appendChild(el('div', 'ie-empty', 'No ideas generated yet. Open the category details and refresh it.'));
+        return;
+      }
+      category.ideas.forEach(function (idea) { mount.appendChild(ideaRow(idea, category)); });
+    }
+
+    function ideaRow(idea, category) {
+      var row = el('button', 'ie-idea-row' + (view.selectedIdea === idea.id ? ' active' : ''));
+      row.appendChild(el('span', 't', idea.title));
+      var badge = UI.promotionBadge(idea);
+      row.appendChild(el('span', 'ie-badge ' + badge.cls, badge.label));
+      row.addEventListener('click', function () {
+        view.selectedIdea = idea.id;
+        view.selectedCategory = category.id;
+        renderAll();
+        renderIdeaDetail(idea, category);
+        if (idea.status === 'generated') {
+          apiPost(REVIEW_API, { idea_id: idea.id }).then(function (res) {
+            if (res.ok) { idea.status = 'reviewed'; renderIdeas(); }
+          });
+        }
+      });
+      return row;
+    }
+
+    function detailField(dl, label, value) {
+      if (!value) return;
+      dl.appendChild(el('dt', null, label));
+      dl.appendChild(el('dd', null, value));
+    }
+
+    function renderCategoryDetail(category) {
+      var mount = document.getElementById('ie-detail');
+      document.getElementById('ie-detail-title').textContent = 'Category';
+      mount.innerHTML = '';
+      var dl = el('dl', 'ie-detail');
+      detailField(dl, 'Name', category.name);
+      detailField(dl, 'What it covers', category.description);
+      detailField(dl, 'Why VIDTOOLZ covers it', category.channel_relevance);
+      detailField(dl, 'Current sub-topics', String(category.idea_count));
+      if (category.batch) {
+        detailField(dl, 'Generated', UI.formatTimestamp(category.batch.generated_at) + ' · model ' + (category.batch.model || '?') +
+          ' · ' + Math.round((category.batch.duration_ms || 0) / 1000) + 's · batch ' + (category.batch.batch_id || '?'));
+      }
+      mount.appendChild(dl);
+      if (category.last_failure) {
+        mount.appendChild(el('div', 'ie-fail-note', 'Last refresh failed: ' + category.last_failure.message));
+      }
+      var actions = el('div', 'ie-actions');
+      var refreshBtn = el('button', 'ie-btn danger', 'Refresh this category (replace 30 ideas)');
+      refreshBtn.disabled = generationBusy();
+      refreshBtn.addEventListener('click', function () {
+        confirmCtl.ask('Replace all unpromoted ideas in "' + category.name + '" with a freshly generated set of 30? Promoted ideas keep their history. The current set is only replaced if the new set fully validates.')
+          .then(function (yes) { if (yes) refreshCategory(category, refreshBtn); });
+      });
+      actions.appendChild(refreshBtn);
+      mount.appendChild(actions);
+      var diag = el('details', 'ie-diag');
+      diag.appendChild(el('summary', null, 'Diagnostics'));
+      var pre = el('pre', null, JSON.stringify({ batch: category.batch, last_failure: category.last_failure }, null, 2));
+      diag.appendChild(pre);
+      mount.appendChild(diag);
+    }
+
+    function renderIdeaDetail(idea, category) {
+      var mount = document.getElementById('ie-detail');
+      document.getElementById('ie-detail-title').textContent = 'Idea';
+      mount.innerHTML = '';
+      var dl = el('dl', 'ie-detail');
+      detailField(dl, 'Working title', idea.title);
+      detailField(dl, 'Premise', idea.premise);
+      detailField(dl, 'Why VIDTOOLZ should cover it', idea.why_vidtoolz);
+      detailField(dl, 'Why it suits a Short', idea.why_short);
+      detailField(dl, 'Central tension / misconception', idea.tension);
+      detailField(dl, 'Suggested hook', idea.hook);
+      detailField(dl, 'Category', category ? category.name : idea.category_id);
+      detailField(dl, 'Generated', UI.formatTimestamp(idea.created_at) + ' · batch ' + (idea.batch_id || '?'));
+      var badge = UI.promotionBadge(idea);
+      detailField(dl, 'Status', badge.label + (idea.promotion.state === 'promoted' && idea.promotion.promoted_at
+        ? ' · ' + UI.formatTimestamp(idea.promotion.promoted_at) : ''));
+      if (idea.promotion.state === 'failed' && idea.promotion.error) {
+        detailField(dl, 'Promotion error', idea.promotion.error);
+      }
+      mount.appendChild(dl);
+
+      var actions = el('div', 'ie-actions');
+      if (idea.promotion.state === 'promoted' && idea.promotion.project_id) {
+        var openBtn = el('button', 'ie-btn primary', 'Open in Super Focus');
+        openBtn.addEventListener('click', function () {
+          window.location.href = 'super-focus.html?project=' + encodeURIComponent(idea.promotion.project_id);
+        });
+        actions.appendChild(openBtn);
+        actions.appendChild(el('span', 'ie-status', 'Project: ' + idea.promotion.project_id));
+      } else {
+        var promoteBtn = el('button', 'ie-btn primary',
+          idea.promotion.state === 'failed' ? 'Retry promotion to Super Focus' : 'Promote to Super Focus');
+        promoteBtn.addEventListener('click', function () {
+          promoteBtn.disabled = true;
+          promoteBtn.setAttribute('aria-busy', 'true');
+          promoteBtn.textContent = 'Promoting…';
+          setStatus('Creating Super Focus project…');
+          promoteCtl.promote(idea.id).then(function (result) {
+            promoteBtn.removeAttribute('aria-busy');
+            if (result.skipped) return;
+            if (!result.ok) {
+              promoteBtn.disabled = false;
+              promoteBtn.textContent = 'Retry promotion to Super Focus';
+              setStatus('Promotion failed: ' + (result.error || 'unknown error'), 'err');
+              load();
+              return;
+            }
+            setStatus(result.data.already_promoted
+              ? 'Already promoted — opening existing project.'
+              : 'Promoted. Super Focus project created: ' + result.data.project_id, 'ok');
+            load().then(function () {
+              var refreshed = findIdeaInView(idea.id);
+              if (refreshed) renderIdeaDetail(refreshed.idea, refreshed.category);
+            });
+          });
+        });
+        actions.appendChild(promoteBtn);
+      }
+      mount.appendChild(actions);
+    }
+
+    function findIdeaInView(ideaId) {
+      for (var i = 0; i < view.categories.length; i += 1) {
+        var c = view.categories[i];
+        for (var j = 0; j < (c.ideas || []).length; j += 1) {
+          if (c.ideas[j].id === ideaId) return { idea: c.ideas[j], category: c };
+        }
+      }
+      return null;
+    }
+
+    function refreshCategory(category, btn) {
+      busyCategory = category.id;
+      btn.disabled = true;
+      btn.setAttribute('aria-busy', 'true');
+      setStatus('Generating 30 ideas for "' + category.name + '"… this runs on local Ollama and can take a few minutes.');
+      renderCategories();
+      apiPost(REFRESH_CATEGORY_API, { category_id: category.id, confirm: true }).then(function (res) {
+        busyCategory = null;
+        var data = unwrap(res.body);
+        if (!res.ok) {
+          setStatus('Refresh failed: ' + ((data && data.error) || 'unknown error') + ' — the previous set is preserved.', 'err');
+        } else {
+          setStatus('"' + category.name + '" refreshed: ' + data.idea_count + ' ideas.', 'ok');
+        }
+        load();
+      }).catch(function () {
+        busyCategory = null;
+        setStatus('Refresh failed: network error — the previous set is preserved.', 'err');
+        load();
+      });
+    }
+
+    function renderJob(job) {
+      var wrap = document.getElementById('ie-progress-wrap');
+      var listEl = document.getElementById('ie-progress');
+      var summary = document.getElementById('ie-progress-summary');
+      if (!job) { wrap.classList.add('hidden'); updateRefreshAllButton(); return; }
+      wrap.classList.remove('hidden');
+      summary.textContent = UI.summarizeJob(job);
+      listEl.innerHTML = '';
+      (job.categories || []).forEach(function (c) {
+        var mark = c.status === 'succeeded' ? '✔' : c.status === 'failed' ? '✖' : c.status === 'running' ? '…' : '·';
+        listEl.appendChild(el('li', null, mark + ' ' + c.name + (c.message ? ' — ' + c.message : '')));
+      });
+      updateRefreshAllButton();
+    }
+
+    var refreshAllBtn = document.getElementById('ie-refresh-all');
+    function updateRefreshAllButton() {
+      refreshAllBtn.disabled = generationBusy();
+      refreshAllBtn.setAttribute('aria-busy', poller.isActive() ? 'true' : 'false');
+    }
+    refreshAllBtn.addEventListener('click', function () {
+      confirmCtl.ask('Replace the unpromoted idea sets of ALL 12 categories with freshly generated sets (12 × 30)? This runs one category at a time and can take a while. Each category only replaces its set if the new set fully validates; promoted ideas keep their history.')
+        .then(function (yes) {
+          if (!yes) return;
+          setStatus('Refreshing all categories…');
+          poller.start().then(function (result) {
+            updateRefreshAllButton();
+            if (!result.ok && !result.skipped) setStatus('Could not start refresh: ' + (result.error || 'unknown error'), 'err');
+          });
+        });
+    });
+
+    document.getElementById('ie-reload').addEventListener('click', function () { load(); });
+    document.getElementById('ie-search').addEventListener('input', function (e) {
+      view.search = e.target.value;
+      view.selectedIdea = null;
+      renderIdeas();
+    });
+
+    function renderAll() {
+      renderCategories();
+      renderIdeas();
+      updateRefreshAllButton();
+    }
+
+    function load() {
+      return apiGet(STATE_API).then(function (res) {
+        if (!res.ok) {
+          var data = unwrap(res.body);
+          setStatus('Could not load Idea Engine state: ' + ((data && data.error) || ('HTTP ' + res.status)) +
+            (res.status === 404 ? ' — the cockpit may be running old code; restart it.' : ''), 'err');
+          return;
+        }
+        var data2 = unwrap(res.body);
+        view.categories = data2.categories || [];
+        if (!view.selectedCategory && view.categories.length > 0) view.selectedCategory = view.categories[0].id;
+        setStatus(view.categories.length + ' categories · ' +
+          view.categories.reduce(function (n, c) { return n + (c.idea_count || 0); }, 0) + ' ideas · updated ' +
+          UI.formatTimestamp(data2.updated_at));
+        renderAll();
+        var job = data2.refresh && data2.refresh.job;
+        if (job) {
+          renderJob(job);
+          if (!job.done) poller.resume();
+        }
+        var category = currentCategory();
+        if (category && !view.selectedIdea) renderCategoryDetail(category);
+      }).catch(function () {
+        setStatus('Could not reach the cockpit server.', 'err');
+      });
+    }
+
+    load();
+  })();
+  </script>
+</body>
+</html>

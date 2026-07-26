@@ -224,6 +224,12 @@ image-to-video prompt.
   step stays collapsed for that project on reload. The
   `?focus=script-evaluator` route always forces the Script step open so the
   evaluator stays reachable regardless of the saved preference.
+- **Deep link `?project=<project-id>`** opens that project directly (invalid or
+  unknown ids fall through to the normal landing). Used by the Idea Engine's
+  "Open in Super Focus" after promotion (`docs/idea-engine.md`). A project
+  promoted from the Idea Engine additionally carries a provenance sidecar
+  `idea-engine-origin.json` in its project directory — read-only provenance;
+  `super-focus.json` itself is unchanged.
 
 ## Video queue: pause / resume / stop (day-night control)
 

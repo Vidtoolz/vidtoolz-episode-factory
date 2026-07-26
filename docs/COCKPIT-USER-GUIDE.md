@@ -113,8 +113,8 @@ links plus a **More ▾** dropdown:
 
 - **Always visible:** `★ Super Focus` · `Dashboard` · `Home` · `Publish Gate`
 - **Under More ▾:** Projects · Resume · Mission Control · Build New Video ·
-  Topic Scout · Daily Ideas · Package Engine · Pipeline · Image Prompts ·
-  Image Select · AIGEN Review · Production Day · Score Engine
+  Topic Scout · Idea Engine · Daily Ideas · Package Engine · Pipeline ·
+  Image Prompts · Image Select · AIGEN Review · Production Day · Score Engine
 
 The active page is highlighted; the dropdown closes on outside-click / Escape.
 
@@ -242,6 +242,12 @@ have to remember where you left off.
   (idempotent — re-promoting opens the existing project and records provenance).
 - **User-seeded topics** — type your own topic to generate 10 ideas via local
   Ollama on vidnux; it does *not* overwrite the daily set.
+- **`idea-engine.html`** — 12 topic categories × 30 generated Shorts sub-topics
+  (exploration layer, not production). Open ideas to read premise / relevance /
+  tension, refresh weak sets (old set survives any failed refresh), and
+  **Promote to Super Focus** — creates exactly one Super Focus project with
+  provenance and opens it via `super-focus.html?project=<id>`. Re-promoting
+  opens the existing project. See `docs/idea-engine.md`.
 
 ---
 

@@ -57,6 +57,19 @@ Option C: From scratch
    Opens the guided step-by-step build page.
 2. Follow the steps on screen. Each step has buttons that open the right tool.
 
+Option D: From the Idea Engine (Super Focus lane)
+1. Open Idea Engine (nav: More ▾ → Idea Engine, or idea-engine.html).
+   12 topic categories × 30 generated Shorts ideas. Generated ideas are
+   proposals, not production commitments.
+2. Pick a category and open ideas to read the premise, relevance, and central
+   tension. Refresh a category (or all 12) when a set is weak — the old set is
+   only replaced by a fully valid new one; promoted ideas keep their history.
+3. On an idea worth making, click Promote to Super Focus.
+   Creates exactly one Super Focus project with provenance. Re-promoting opens
+   the existing project instead of duplicating it. Nothing downstream starts.
+4. Click Open in Super Focus and continue with the normal Super Focus flow.
+   Details: docs/idea-engine.md
+
 ---
 
 ## THE PRODUCTION STAGES

@@ -22,6 +22,7 @@
     { href: 'mission-control.html', label: 'Mission Control' },
     { href: 'new-video-build.html', label: 'Build New Video' },
     { href: 'topic-scout.html', label: 'Topic Scout' },
+    { href: 'idea-engine.html', label: 'Idea Engine' },
     { href: 'daily-idea-scout.html', label: 'Daily Ideas' },
     { href: 'package-engine.html', label: 'Package Engine' },
     { href: 'production-pipeline.html', label: 'Pipeline' },

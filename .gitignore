@@ -10,6 +10,9 @@
 # Motion Graphics Studio local, file-backed project state (never committed; never on VIDNAS)
 /motion-graphics-projects/
 
+# Idea Engine local, file-backed idea state (never committed; never on VIDNAS)
+/idea-engine-state/
+
 # Dependencies
 node_modules/
 
