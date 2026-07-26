@@ -21,5 +21,8 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Run source-of-truth verification
         run: ./scripts/verify.sh

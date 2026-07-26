@@ -27,12 +27,12 @@ function requestJson(server, pathname, options = {}) {
   });
 }
 
-async function withScoreServer(options, fn) {
+async function withScoreServer(options, fn, serverOptions = {}) {
   const previousSettings = process.env.SCORE_ENGINE_SETTINGS_PATH;
   const previousRoot = process.env.SCORE_ENGINE_MUSIC_ROOT;
   process.env.SCORE_ENGINE_SETTINGS_PATH = options.settingsPath;
   process.env.SCORE_ENGINE_MUSIC_ROOT = options.musicRoot;
-  const server = packageEngineServer.createServer();
+  const server = packageEngineServer.createServer(serverOptions);
   try {
     await listen(server);
     const host = { host: "127.0.0.1:8010" };
@@ -61,6 +61,53 @@ function makeApprovedProject(options) {
   return lane.getProject(project.project_id, options);
 }
 
+function wavInfo(file) {
+  const buf = fs.readFileSync(file);
+  if (buf.length < 44 || buf.toString("ascii", 0, 4) !== "RIFF" || buf.toString("ascii", 8, 12) !== "WAVE") return null;
+  let offset = 12;
+  let fmt = null;
+  let dataSize = null;
+  while (offset + 8 <= buf.length) {
+    const chunk = buf.toString("ascii", offset, offset + 4);
+    const size = buf.readUInt32LE(offset + 4);
+    const start = offset + 8;
+    if (chunk === "fmt " && start + 16 <= buf.length) {
+      fmt = {
+        channels: buf.readUInt16LE(start + 2),
+        sampleRate: buf.readUInt32LE(start + 4),
+        bitsPerSample: buf.readUInt16LE(start + 14),
+      };
+    } else if (chunk === "data" && start + size <= buf.length) {
+      dataSize = size;
+    }
+    offset = start + size + (size % 2);
+  }
+  if (!fmt || !dataSize || !fmt.sampleRate || !fmt.channels || !fmt.bitsPerSample) return null;
+  return {
+    ...fmt,
+    duration: dataSize / (fmt.sampleRate * fmt.channels * (fmt.bitsPerSample / 8)),
+  };
+}
+
+function fakeFfprobeSpawnSync(_command, args) {
+  const file = args[args.length - 1];
+  const info = wavInfo(file);
+  if (!info) return { status: 1, stderr: "invalid WAV", stdout: "" };
+  return {
+    status: 0,
+    stderr: "",
+    stdout: JSON.stringify({
+      streams: [{
+        codec_type: "audio",
+        sample_rate: String(info.sampleRate),
+        channels: info.channels,
+        codec_name: info.bitsPerSample === 24 ? "pcm_s24le" : "pcm_s16le",
+      }],
+      format: { duration: String(info.duration) },
+    }),
+  };
+}
+
 test("score verify API: approved export PASSes through the real verifier", async () => {
   const { options } = tmpEnv();
   const state = makeApprovedProject(options);
@@ -74,7 +121,7 @@ test("score verify API: approved export PASSes through the real verifier", async
     assert.equal(body.no_approved_export, false);
     assert.match(body.report, /PASS — approved export verified/);
     assert.ok(body.checks.length > 0, "real checks returned to UI");
-  });
+  }, { spawnSyncImpl: fakeFfprobeSpawnSync });
 });
 
 test("score verify API: damaged approved WAV returns verified false with failures", async () => {
@@ -88,7 +135,7 @@ test("score verify API: damaged approved WAV returns verified false with failure
     assert.equal(body.verified, false);
     assert.ok(body.failures.some((f) => /byte-identical|probe: mix\.wav/.test(f)), body.failures.join("; "));
     assert.match(body.report, /FAIL —/);
-  });
+  }, { spawnSyncImpl: fakeFfprobeSpawnSync });
 });
 
 test("score verify API: project with no approval is a clear non-pass", async () => {

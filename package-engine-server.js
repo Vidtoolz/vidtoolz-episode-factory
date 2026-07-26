@@ -15281,7 +15281,7 @@ function createServer(options = {}) {
           const project_id = payload.project_id || '';
           const settings = scoreLane.loadSettings(scoreOptions());
           const { dir } = scoreLane.resolveProjectDir(settings, project_id);
-          const result = verifyApprovedExports(dir, {});
+          const result = verifyApprovedExports(dir, serverOptions);
           sendJSON(res, 200, { project_id, dir, verified: result.verified, no_approved_export: !!result.no_approved_export, failures: result.failures, checks: result.checks, report: formatVerifierReport(result, dir) });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-verify-error'));

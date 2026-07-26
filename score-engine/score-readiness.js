@@ -80,9 +80,9 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
 
 /* ── deep verifier (CLI + tests) ── */
 
-function defaultProbe(file) {
-  const r = spawnSync("ffprobe", ["-v", "quiet", "-print_format", "json", "-show_streams", "-show_format", file], { encoding: "utf8", timeout: 30000 });
-  if (r.status !== 0) return { ok: false, reason: `ffprobe failed: ${(r.stderr || "").slice(0, 200)}` };
+function defaultProbe(file, spawnSyncImpl = spawnSync) {
+  const r = spawnSyncImpl("ffprobe", ["-v", "quiet", "-print_format", "json", "-show_streams", "-show_format", file], { encoding: "utf8", timeout: 30000 });
+  if (r.error || r.status !== 0) return { ok: false, reason: `ffprobe failed: ${(r.error ? r.error.message : r.stderr || "").slice(0, 200)}` };
   try {
     const data = JSON.parse(r.stdout);
     const a = (data.streams || []).find((s) => s.codec_type === "audio");
@@ -98,7 +98,8 @@ function defaultProbe(file) {
 }
 
 function verifyApprovedExports(dir, options = {}) {
-  const probe = options.probeImpl || defaultProbe;
+  const spawnSyncImpl = options.spawnSyncImpl || spawnSync;
+  const probe = options.probeImpl || ((file) => defaultProbe(file, spawnSyncImpl));
   const failures = [];
   const checks = [];
   const check = (name, ok, detail) => { checks.push({ name, ok, detail: ok ? null : detail || null }); if (!ok) failures.push(`${name}${detail ? ` — ${detail}` : ""}`); };
