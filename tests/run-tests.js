@@ -87,8 +87,18 @@ require("./idea-engine.test.js");
 require("./idea-engine-ui.test.js");
 require("./idea-engine-phase2.test.js");
 
+// Diagnostic run-all mode (opt-in): pass `--all` or `--continue`, or set
+// RUN_ALL=1, to keep running after failures and list every failing test in a
+// final summary — so one failure cannot hide independent later failures.
+// Default (no trigger) stays fail-fast: stop at the first failure, exit 1.
+const continueAfterFailure =
+  process.argv.includes("--all") ||
+  process.argv.includes("--continue") ||
+  process.env.RUN_ALL === "1";
+
 async function runTests() {
   let passed = 0;
+  const failedTests = [];
   for (const item of tests) {
     try {
       await item.fn();
@@ -98,11 +108,22 @@ async function runTests() {
       console.error(`not ok - ${item.name}`);
       console.error(error);
       process.exitCode = 1;
-      break;
+      if (!continueAfterFailure) break;
+      failedTests.push(item.name);
     }
   }
 
-  if (process.exitCode !== 1) {
+  if (continueAfterFailure) {
+    console.log(`${passed}/${tests.length} tests passed, ${failedTests.length} failed`);
+    if (failedTests.length > 0) {
+      console.error("Failed tests:");
+      for (const name of failedTests) console.error(`- ${name}`);
+      // Re-assert AFTER the loop: a full run crosses tests that can touch
+      // process.exitCode, so the aggregate verdict is derived from the
+      // tracked failures, never from ambient exit-code state.
+      process.exitCode = 1;
+    }
+  } else if (process.exitCode !== 1) {
     console.log(`${passed}/${tests.length} tests passed`);
   }
 }
