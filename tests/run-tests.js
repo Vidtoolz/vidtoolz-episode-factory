@@ -85,6 +85,7 @@ require("./cockpit-continuity-buttons.test.js");
 require("./test-compute-registry-gate.js");
 require("./idea-engine.test.js");
 require("./idea-engine-ui.test.js");
+require("./idea-engine-phase2.test.js");
 
 async function runTests() {
   let passed = 0;

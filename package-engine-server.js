@@ -240,6 +240,12 @@ const IDEA_ENGINE_REFRESH_ALL_API = '/api/idea-engine/refresh-all';
 const IDEA_ENGINE_REFRESH_STATUS_API = '/api/idea-engine/refresh-status';
 const IDEA_ENGINE_REVIEW_API = '/api/idea-engine/review';
 const IDEA_ENGINE_PROMOTE_API = '/api/idea-engine/promote';
+const IDEA_ENGINE_EDIT_API = '/api/idea-engine/edit';
+const IDEA_ENGINE_REMOVE_API = '/api/idea-engine/remove';
+const IDEA_ENGINE_RESTORE_API = '/api/idea-engine/restore';
+const IDEA_ENGINE_REMOVED_API = '/api/idea-engine/removed';
+const IDEA_ENGINE_REPLACE_ONE_API = '/api/idea-engine/replace-one';
+const IDEA_ENGINE_FILL_VACANCIES_API = '/api/idea-engine/fill-vacancies';
 const PACKAGE_RUNS_REINDEX_API = '/api/package-runs/reindex';
 const TOPIC_SCOUT_LIST_API = '/api/topic-scout/list';
 const TOPIC_SCOUT_SUBMIT_API = '/api/topic-scout/submit';
@@ -4967,7 +4973,9 @@ async function callOllamaChat({ system, user, schema, model, baseUrl } = {}, opt
         stream: false,
         think: false,
         ...(schema ? { format: schema } : {}),
-        options: { temperature: 0.6 },
+        // Callers may raise temperature on corrective retries (local models at
+        // a fixed temperature collapse onto the same outputs); default 0.6.
+        options: { temperature: Number(options.temperature) > 0 ? Number(options.temperature) : 0.6 },
       }),
       // Per-call timeout: callers (e.g. chunked generation) pass a task-specific
       // timeoutMs so a big job is split into bounded chunks, not one 120s attempt.
@@ -5162,8 +5170,21 @@ async function superFocusGenerate({ system, user, schema, task, requestedCount }
 // generation here can never start downstream production work.
 
 const IDEA_ENGINE_CATEGORY_LOCKS = new Set();
-const IDEA_ENGINE_PROMOTE_LOCKS = new Set();
+// One per-idea mutation lock shared by edit / remove / restore / promote so
+// concurrent conflicting mutations of the same topic serialize (409 for the
+// loser) — a client-side disabled button is never the only protection.
+const IDEA_ENGINE_IDEA_LOCKS = new Set();
 let ideaEngineRefreshAllJob = null;
+
+function acquireIdeaEngineIdeaLock(ideaId, label) {
+  if (IDEA_ENGINE_IDEA_LOCKS.has(ideaId)) {
+    const e = new Error(`Another ${label || 'operation'} on this topic is already running.`);
+    e.statusCode = 409;
+    e.code = 'idea_locked';
+    throw e;
+  }
+  IDEA_ENGINE_IDEA_LOCKS.add(ideaId);
+}
 
 // Chunk size for idea generation. Default 6, clamped 1–10 (idea objects are
 // heavier than prompt strings; 6 keeps one call well inside local-model reach).
@@ -5213,16 +5234,23 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
   const maxChunks = Math.ceil(target / Math.max(1, chunkSize)) * 4;
   while (accepted.length < target && chunksAttempted < maxChunks) {
     const n = Math.min(chunkSize, target - accepted.length);
+    // Oversample: duplicate pressure grows as the set fills, so ask for a few
+    // more candidates than needed and keep the distinct ones (the final-set
+    // gate still enforces exactly IDEAS_PER_CATEGORY at activation).
+    const ask = Math.min(ideaEnginePrompts.MAX_IDEAS_PER_CALL, n + (zeroProgress > 0 ? 4 : 2));
     const reqPrompt = ideaEnginePrompts.buildCategoryIdeasRequest(
       category,
-      n,
+      ask,
       accepted.map((i) => i.title).concat(exclusions),
       { retry: zeroProgress > 0 }
     );
     chunksAttempted += 1;
+    // Escalate temperature after no-progress chunks — the standard remedy for
+    // a local model collapsing onto its favourite titles.
+    const temperature = Math.min(0.95, 0.6 + zeroProgress * 0.15);
     const content = await callOllamaChat(
       { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model },
-      Object.assign({}, serverOptions, { timeoutMs })
+      Object.assign({}, serverOptions, { timeoutMs, temperature })
     );
     const parsed = ideaEnginePrompts.parseIdeaBatch(content);
     if (!parsed.ok) {
@@ -5240,6 +5268,7 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
       batchId,
       existingTitles: exclusions,
       acceptedSoFar: accepted,
+      model,
     });
     rejectedCount += result.rejected.length;
     if (result.rejected.length > 0) lastRejected = result.rejected;
@@ -5305,8 +5334,14 @@ async function runIdeaEngineCategoryRefresh(categoryId, serverOptions = {}, ieOp
   }
   IDEA_ENGINE_CATEGORY_LOCKS.add(category.id);
   try {
+    // Capture the category revision BEFORE generating: if an edit/removal/
+    // restore lands while the model runs, activation refuses (409) instead of
+    // silently archiving the newer manual work.
+    const startState = ideaEngine.loadState(ieOpts);
+    const startBlock = startState.categories[category.id];
+    const expectedRevision = startBlock ? startBlock.revision : 0;
     const generated = await generateIdeaEngineCategorySet(category, serverOptions, ieOpts);
-    ideaEngine.activateCategorySet(category.id, generated.ideas, generated.batchMeta, ieOpts);
+    ideaEngine.activateCategorySet(category.id, generated.ideas, generated.batchMeta, Object.assign({}, ieOpts, { expectedRevision }));
     return { category, batch: generated.batchMeta, accepted: generated.ideas.length };
   } catch (error) {
     try {
@@ -5372,6 +5407,113 @@ function startIdeaEngineRefreshAll(serverOptions = {}, ieOpts = {}) {
   return job;
 }
 
+// Generates and activates exactly ONE replacement idea for a category vacancy,
+// with bounded corrective retries (malformed output, wrong count, duplicates,
+// too-similar-to-removed all trigger a retry with a diversification push).
+// Failure preserves the vacancy and the removal history untouched.
+async function generateIdeaEngineReplacementIdea(category, removedIdea, serverOptions = {}, ieOpts = {}) {
+  const timeoutMs = ideaEngineTimeoutMs(serverOptions);
+  const model = ideaEngineModel(serverOptions);
+  const batchId = `ier-${Date.now().toString(36)}-${Math.floor(Math.random() * 0xffff).toString(16)}`;
+  const MAX_ATTEMPTS = 4;
+  let lastError = null;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    const state = ideaEngine.loadState(ieOpts);
+    const block = state.categories[category.id];
+    if (block && block.ideas.length >= ideaEngine.IDEAS_PER_CATEGORY) {
+      const e = new Error('No vacancy left in this category.');
+      e.statusCode = 409;
+      e.code = 'category_full';
+      throw e;
+    }
+    const activeTitles = block ? block.ideas.map((i) => i.title) : [];
+    const removedTitles = block
+      ? block.removed.filter((i) => i.removed && i.removed.reason !== 'superseded_by_refresh').map((i) => i.title)
+      : [];
+    const promotedTitles = [];
+    for (const key of Object.keys(state.categories)) {
+      for (const p of state.categories[key].promoted_history) promotedTitles.push(p.title);
+      for (const i of state.categories[key].ideas) if (i.promotion.state === 'promoted') promotedTitles.push(i.title);
+    }
+    const otherCategories = ideaEngine.loadCategories(ieOpts).filter((c) => c.id !== category.id).map((c) => c.name);
+    const reqPrompt = ideaEnginePrompts.buildReplacementRequest(category, {
+      removedIdea,
+      removalReason: removedIdea && removedIdea.removed ? removedIdea.removed.reason : null,
+      activeTitles,
+      removedTitles,
+      promotedTitles,
+      otherCategories,
+      retry: attempt > 1,
+    });
+    const content = await callOllamaChat(
+      { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model },
+      Object.assign({}, serverOptions, { timeoutMs, temperature: Math.min(0.95, 0.6 + (attempt - 1) * 0.15) })
+    );
+    const parsed = ideaEnginePrompts.parseIdeaBatch(content);
+    if (!parsed.ok) { lastError = `model output unparseable (${parsed.error})`; continue; }
+    if (parsed.items.length !== 1) {
+      // Exactly one was requested; extra results are rejected, never trimmed.
+      lastError = `model returned ${parsed.items.length} ideas; exactly 1 was requested`;
+      continue;
+    }
+    const result = ideaEngine.acceptCandidates(parsed.items, {
+      categoryId: category.id,
+      batchId,
+      existingTitles: ideaEngine.exclusionTitles(state, category.id).concat(removedIdea ? [removedIdea.title] : []),
+      model,
+      contentOrigin: 'replacement_generated',
+    });
+    if (result.accepted.length !== 1) {
+      lastError = result.rejected.length > 0
+        ? `candidate rejected: ${result.rejected[0].reasons.join(', ')}`
+        : 'no valid candidate produced';
+      continue;
+    }
+    try {
+      const activation = ideaEngine.activateReplacement(
+        category.id,
+        result.accepted[0],
+        removedIdea ? removedIdea.id : null,
+        ieOpts
+      );
+      return { idea: activation.idea, active_count: activation.active_count, attempts: attempt, model, batch_id: batchId };
+    } catch (error) {
+      if (error.code === 'category_full') throw error; // vacancy vanished (restore raced) — honest stop
+      lastError = error.message;
+      continue;
+    }
+  }
+  const e = new Error(`Replacement generation failed after ${MAX_ATTEMPTS} attempts: ${lastError || 'unknown reason'}. The vacancy and removal history are preserved.`);
+  e.statusCode = 502;
+  e.code = 'replacement_failed';
+  throw e;
+}
+
+// Durable promotion-origin lookup: scans Super Focus project dirs (active and
+// archived) for an idea-engine-origin.json carrying this idea id. This is the
+// crash-recovery half of the one-project-per-idea invariant — it works even
+// when the Idea Engine promotion record was never written (crash between
+// project creation and state write), and it survives Idea Engine edits and
+// removals because the sidecar is keyed by the immutable idea id.
+function findSuperFocusProjectByIdeaOrigin(ideaId, sfRoot) {
+  const roots = [sfRoot, path.join(sfRoot, '.archived')];
+  for (const root of roots) {
+    let entries = [];
+    try { entries = fs.readdirSync(root, { withFileTypes: true }); } catch (_) { continue; }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+      const originPath = path.join(root, entry.name, 'idea-engine-origin.json');
+      try {
+        const origin = JSON.parse(fs.readFileSync(originPath, 'utf8'));
+        if (origin && origin.source === 'idea-engine' && origin.idea_id === ideaId) {
+          return { project_id: entry.name, lifecycle: root === sfRoot ? 'active' : 'archived' };
+        }
+      } catch (_) { /* no sidecar or unreadable — not a match */ }
+    }
+  }
+  return null;
+}
+
 function ideaEngineRefreshStatus() {
   return {
     job: ideaEngineRefreshAllJob,
@@ -5384,7 +5526,7 @@ function ideaEngineRefreshStatus() {
 function resetIdeaEngineRuntimeState() {
   ideaEngineRefreshAllJob = null;
   IDEA_ENGINE_CATEGORY_LOCKS.clear();
-  IDEA_ENGINE_PROMOTE_LOCKS.clear();
+  IDEA_ENGINE_IDEA_LOCKS.clear();
 }
 
 // Read-only provider status for the "Check providers" panel. All probes are
@@ -12111,9 +12253,10 @@ function createServer(options = {}) {
           throw e;
         }
         const state = ideaEngine.loadState(ieOpts);
-        const block = state.categories[id] || { batch: null, ideas: [], last_failure: null, promoted_history: [] };
+        const block = state.categories[id] || { batch: null, ideas: [], removed: [], last_failure: null, promoted_history: [], revision: 0 };
         sendJSON(res, 200, Object.assign(ideaEngine.summarizeCategory(category, block), {
           ideas: block.ideas,
+          removed: block.removed,
           promoted_history: block.promoted_history,
         }));
       } catch (error) {
@@ -12194,18 +12337,199 @@ function createServer(options = {}) {
       return;
     }
 
+    // ── Idea Engine Phase 2: topic editing / removal / restore / replacement ──
+
+    if (req.method === 'POST' && url.pathname === IDEA_ENGINE_EDIT_API) {
+      readJsonBody(req, 1024 * 32)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Idea Engine edit API' });
+          const ideaId = ideaEngine.assertValidIdeaId(payload.idea_id);
+          acquireIdeaEngineIdeaLock(ideaId, 'edit');
+          try {
+            const idea = ideaEngine.editIdea(
+              ideaId,
+              payload.fields,
+              Number.isInteger(payload.expected_revision) ? payload.expected_revision : NaN,
+              ieOpts
+            );
+            sendJSON(res, 200, { idea });
+          } finally {
+            IDEA_ENGINE_IDEA_LOCKS.delete(ideaId);
+          }
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-edit-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === IDEA_ENGINE_REMOVE_API) {
+      readJsonBody(req, 1024 * 16)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Idea Engine remove API' });
+          const ideaId = ideaEngine.assertValidIdeaId(payload.idea_id);
+          acquireIdeaEngineIdeaLock(ideaId, 'removal');
+          try {
+            const result = ideaEngine.removeIdea(ideaId, { reason: payload.reason, note: payload.note }, ieOpts);
+            const state = ideaEngine.loadState(ieOpts);
+            const categories = ideaEngine.loadCategories(ieOpts);
+            const category = ideaEngine.categoryById(categories, result.category_id);
+            sendJSON(res, 200, {
+              idea: result.idea,
+              category: ideaEngine.summarizeCategory(category, state.categories[result.category_id]),
+            });
+          } finally {
+            IDEA_ENGINE_IDEA_LOCKS.delete(ideaId);
+          }
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-remove-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === IDEA_ENGINE_RESTORE_API) {
+      readJsonBody(req, 1024 * 16)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Idea Engine restore API' });
+          const ideaId = ideaEngine.assertValidIdeaId(payload.idea_id);
+          acquireIdeaEngineIdeaLock(ideaId, 'restore');
+          try {
+            const result = ideaEngine.restoreIdea(ideaId, ieOpts);
+            const state = ideaEngine.loadState(ieOpts);
+            const categories = ideaEngine.loadCategories(ieOpts);
+            const category = ideaEngine.categoryById(categories, result.category_id);
+            sendJSON(res, 200, {
+              idea: result.idea,
+              category: ideaEngine.summarizeCategory(category, state.categories[result.category_id]),
+            });
+          } finally {
+            IDEA_ENGINE_IDEA_LOCKS.delete(ideaId);
+          }
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-restore-error'));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === IDEA_ENGINE_REMOVED_API) {
+      try {
+        const id = ideaEngine.assertValidCategoryId(url.searchParams.get('category_id') || url.searchParams.get('id') || '');
+        sendJSON(res, 200, { category_id: id, removed: ideaEngine.listRemoved(id, ieOpts) });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'idea-engine-removed-error');
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === IDEA_ENGINE_REPLACE_ONE_API) {
+      readJsonBody(req, 1024 * 16)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Idea Engine replacement API' });
+          const categoryId = ideaEngine.assertValidCategoryId(payload.category_id);
+          if (ideaEngineRefreshAllJob && !ideaEngineRefreshAllJob.done) {
+            const e = new Error('A refresh of all categories is running; wait for it to finish.');
+            e.statusCode = 409; e.code = 'generation_in_progress'; throw e;
+          }
+          if (IDEA_ENGINE_CATEGORY_LOCKS.has(categoryId)) {
+            const e = new Error('This category is already generating.');
+            e.statusCode = 409; e.code = 'generation_in_progress'; throw e;
+          }
+          const categories = ideaEngine.loadCategories(ieOpts);
+          const category = ideaEngine.categoryById(categories, categoryId);
+          if (!category) {
+            const e = new Error('Unknown Idea Engine category id.');
+            e.statusCode = 404; throw e;
+          }
+          let removedIdea = null;
+          if (payload.removed_idea_id) {
+            const removedId = ideaEngine.assertValidIdeaId(payload.removed_idea_id);
+            const found = ideaEngine.findIdea(ideaEngine.loadState(ieOpts), removedId);
+            if (found && found.from === 'removed' && found.category_id === categoryId) removedIdea = found.idea;
+          }
+          IDEA_ENGINE_CATEGORY_LOCKS.add(categoryId);
+          try {
+            const result = await generateIdeaEngineReplacementIdea(category, removedIdea, serverOptions, ieOpts);
+            const state = ideaEngine.loadState(ieOpts);
+            sendJSON(res, 200, {
+              idea: result.idea,
+              attempts: result.attempts,
+              model: result.model,
+              category: ideaEngine.summarizeCategory(category, state.categories[categoryId]),
+            });
+          } finally {
+            IDEA_ENGINE_CATEGORY_LOCKS.delete(categoryId);
+          }
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-replace-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === IDEA_ENGINE_FILL_VACANCIES_API) {
+      readJsonBody(req, 1024 * 16)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Idea Engine replacement API' });
+          const categoryId = ideaEngine.assertValidCategoryId(payload.category_id);
+          if (ideaEngineRefreshAllJob && !ideaEngineRefreshAllJob.done) {
+            const e = new Error('A refresh of all categories is running; wait for it to finish.');
+            e.statusCode = 409; e.code = 'generation_in_progress'; throw e;
+          }
+          if (IDEA_ENGINE_CATEGORY_LOCKS.has(categoryId)) {
+            const e = new Error('This category is already generating.');
+            e.statusCode = 409; e.code = 'generation_in_progress'; throw e;
+          }
+          const categories = ideaEngine.loadCategories(ieOpts);
+          const category = ideaEngine.categoryById(categories, categoryId);
+          if (!category) {
+            const e = new Error('Unknown Idea Engine category id.');
+            e.statusCode = 404; throw e;
+          }
+          IDEA_ENGINE_CATEGORY_LOCKS.add(categoryId);
+          try {
+            let state = ideaEngine.loadState(ieOpts);
+            let block = state.categories[categoryId];
+            const vacancies = block ? Math.max(0, ideaEngine.IDEAS_PER_CATEGORY - block.ideas.length) : 0;
+            if (vacancies === 0) {
+              const e = new Error('This category has no vacancies.');
+              e.statusCode = 400; e.code = 'no_vacancies'; throw e;
+            }
+            // Map vacancies to the most recent unreplaced deliberate removals
+            // so each replacement can carry its removed topic's reason.
+            const unreplaced = (block ? block.removed : [])
+              .filter((i) => i.removed && i.removed.reason !== 'superseded_by_refresh' && !i.replaced_by_idea_id)
+              .sort((a, b) => (a.removed.at < b.removed.at ? 1 : -1));
+            const results = [];
+            let filled = 0;
+            for (let slot = 0; slot < vacancies; slot += 1) {
+              const removedIdea = unreplaced[slot] || null;
+              try {
+                const result = await generateIdeaEngineReplacementIdea(category, removedIdea, serverOptions, ieOpts);
+                results.push({ ok: true, idea: result.idea, attempts: result.attempts, replaced: removedIdea ? removedIdea.id : null });
+                filled += 1;
+              } catch (error) {
+                results.push({ ok: false, error: String(error.message || 'generation failed').slice(0, 300), replaced: removedIdea ? removedIdea.id : null });
+                if (error.code === 'category_full') break;
+              }
+            }
+            state = ideaEngine.loadState(ieOpts);
+            block = state.categories[categoryId];
+            sendJSON(res, 200, {
+              requested: vacancies,
+              filled,
+              failed: results.filter((r) => !r.ok).length,
+              partial_success: filled > 0 && filled < vacancies,
+              results,
+              category: ideaEngine.summarizeCategory(category, block),
+            });
+          } finally {
+            IDEA_ENGINE_CATEGORY_LOCKS.delete(categoryId);
+          }
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-fill-vacancies-error'));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === IDEA_ENGINE_PROMOTE_API) {
       readJsonBody(req, 1024 * 16)
         .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Idea Engine promote API' });
           const ideaId = ideaEngine.assertValidIdeaId(payload.idea_id);
-          if (IDEA_ENGINE_PROMOTE_LOCKS.has(ideaId)) {
-            const e = new Error('This idea is already being promoted.');
-            e.statusCode = 409;
-            e.code = 'promotion_in_progress';
-            throw e;
-          }
-          IDEA_ENGINE_PROMOTE_LOCKS.add(ideaId);
+          acquireIdeaEngineIdeaLock(ideaId, 'promotion');
           try {
             const state = ideaEngine.loadState(ieOpts);
             const found = ideaEngine.findIdea(state, ideaId);
@@ -12217,6 +12541,7 @@ function createServer(options = {}) {
             const idea = found.idea;
             // Duplicate-safe primary action: an already-promoted idea whose
             // project still exists opens that project, never creates another.
+            // This also covers promoted-then-removed ideas opened from history.
             if (idea.promotion.state === 'promoted' && idea.promotion.project_id) {
               const lifecycle = superFocus.projectLifecycle(idea.promotion.project_id, { root: sfRoot });
               if (lifecycle) {
@@ -12231,6 +12556,31 @@ function createServer(options = {}) {
               }
               // Recorded project no longer exists (deleted in Super Focus):
               // fall through and create a fresh one — documented behavior.
+            }
+            // Crash recovery (one-project invariant): the promotion record may
+            // be missing even though the project exists (crash between project
+            // creation and state write). The origin sidecar is the durable
+            // source of truth — reconcile instead of creating a duplicate.
+            const orphan = findSuperFocusProjectByIdeaOrigin(ideaId, sfRoot);
+            if (orphan) {
+              const reconciled = ideaEngine.recordPromotionResult(ideaId, { ok: true, project_id: orphan.project_id }, ieOpts);
+              sendJSON(res, 200, {
+                already_promoted: true,
+                reconciled: true,
+                project_id: orphan.project_id,
+                lifecycle: orphan.lifecycle,
+                href: `super-focus.html?project=${encodeURIComponent(orphan.project_id)}`,
+                idea: reconciled,
+              });
+              return;
+            }
+            // Only ACTIVE unpromoted suggestions may create a new project; a
+            // removed unpromoted topic must be restored first (explicitly).
+            if (found.from !== 'active') {
+              const e = new Error('This topic is removed from active suggestions. Restore it before promoting.');
+              e.statusCode = 409;
+              e.code = 'idea_not_active';
+              throw e;
             }
             const categories = ideaEngine.loadCategories(ieOpts);
             const category = ideaEngine.categoryById(categories, idea.category_id);
@@ -12251,18 +12601,28 @@ function createServer(options = {}) {
               const originPath = path.join(sfRoot, project.project_id, 'idea-engine-origin.json');
               const tmp = `${originPath}.${process.pid}.tmp`;
               fs.writeFileSync(tmp, `${JSON.stringify({
-                schema_version: 1,
+                schema_version: 2,
                 source: 'idea-engine',
                 idea_id: idea.id,
                 batch_id: idea.batch_id,
+                model: idea.model || null,
                 category_id: idea.category_id,
                 category_name: category ? category.name : idea.category_id,
+                // The content transferred at promotion time (current wording,
+                // including any manual edits made before promotion).
                 title: idea.title,
                 premise: idea.premise,
                 why_vidtoolz: idea.why_vidtoolz,
                 why_short: idea.why_short,
                 tension: idea.tension,
                 hook: idea.hook || null,
+                viewer_takeaway: idea.viewer_takeaway || null,
+                visual_opportunity: idea.visual_opportunity || null,
+                // Editorial provenance: how this content came to be.
+                content_origin: idea.content_origin,
+                edit_revision: idea.edit_revision,
+                original_generated_content: idea.original_content,
+                replacement_for_idea_id: idea.replacement_for_idea_id,
                 promoted_at: new Date().toISOString(),
               }, null, 2)}\n`, 'utf8');
               fs.renameSync(tmp, originPath);
@@ -12279,7 +12639,7 @@ function createServer(options = {}) {
               idea: updated,
             });
           } finally {
-            IDEA_ENGINE_PROMOTE_LOCKS.delete(ideaId);
+            IDEA_ENGINE_IDEA_LOCKS.delete(ideaId);
           }
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-promote-error'));
@@ -16909,9 +17269,17 @@ module.exports = {
   IDEA_ENGINE_REFRESH_STATUS_API,
   IDEA_ENGINE_REVIEW_API,
   IDEA_ENGINE_PROMOTE_API,
+  IDEA_ENGINE_EDIT_API,
+  IDEA_ENGINE_REMOVE_API,
+  IDEA_ENGINE_RESTORE_API,
+  IDEA_ENGINE_REMOVED_API,
+  IDEA_ENGINE_REPLACE_ONE_API,
+  IDEA_ENGINE_FILL_VACANCIES_API,
   ideaEngine,
   ideaEnginePrompts,
   generateIdeaEngineCategorySet,
+  generateIdeaEngineReplacementIdea,
+  findSuperFocusProjectByIdeaOrigin,
   runIdeaEngineCategoryRefresh,
   startIdeaEngineRefreshAll,
   ideaEngineRefreshStatus,

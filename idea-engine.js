@@ -42,6 +42,35 @@ const CATEGORY_ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const PROMOTION_STATES = ['none', 'promoted', 'failed'];
 const IDEA_STATUSES = ['generated', 'reviewed'];
 
+// How the CURRENT content of an idea came to be. A record is born 'generated'
+// or 'replacement_generated'; any manual edit moves it to 'manually_edited'
+// (the pre-edit content survives in edit_history / original_content).
+const CONTENT_ORIGINS = ['generated', 'manually_edited', 'replacement_generated'];
+
+// The fields a manual edit may change. Everything else (id, category,
+// provenance, promotion) is server-owned and immutable through editing.
+const EDITABLE_FIELDS = [
+  'title', 'premise', 'why_vidtoolz', 'why_short', 'tension',
+  'hook', 'viewer_takeaway', 'visual_opportunity',
+];
+const OPTIONAL_EDIT_FIELDS = ['hook', 'viewer_takeaway', 'visual_opportunity'];
+
+// Structured removal reasons (bounded editorial metadata — these enum values
+// may steer replacement prompts; free-text notes never enter a prompt).
+// 'superseded_by_refresh' is system-assigned by a full category refresh and is
+// excluded from duplicate-exclusion logic so a refresh never poisons future
+// generation the way a deliberate human removal should.
+const REMOVAL_REASONS = [
+  'duplicate', 'too_broad', 'too_narrow', 'weak_vidtoolz_fit', 'poor_shorts_fit',
+  'already_covered', 'too_tool_specific', 'weak_tension', 'not_visually_explainable',
+  'inaccurate', 'superseded_by_refresh', 'other',
+];
+const MAX_REMOVAL_NOTE_LEN = 500;
+
+// Reject tag-like sequences in content fields ("<script", "</b", "<!--");
+// plain "<" followed by space/digit stays legal ("a < b", "<3 minutes").
+const TAG_LIKE_RE = /<[a-z!/]/i;
+
 // Initial configurable category set. No canonical 12-category taxonomy exists
 // in the estate (verified 2026-07-26: the only 12-item doctrine artifact is the
 // 12-EPISODE doctrine series in vidtoolz-strategy-and-schedule.md), so this is
@@ -254,6 +283,14 @@ function normalizeIdea(entry) {
   const id = String(entry.id || '').trim();
   if (!IDEA_ID_RE.test(id)) return null;
   const promotion = entry.promotion && typeof entry.promotion === 'object' ? entry.promotion : {};
+  const created = typeof entry.created_at === 'string' ? entry.created_at : nowIso();
+  const removed = entry.removed && typeof entry.removed === 'object'
+    ? {
+        at: typeof entry.removed.at === 'string' ? entry.removed.at : nowIso(),
+        reason: REMOVAL_REASONS.includes(entry.removed.reason) ? entry.removed.reason : 'other',
+        note: typeof entry.removed.note === 'string' ? entry.removed.note.slice(0, MAX_REMOVAL_NOTE_LEN) : '',
+      }
+    : null;
   return {
     id,
     category_id: String(entry.category_id || '').trim(),
@@ -263,32 +300,62 @@ function normalizeIdea(entry) {
     why_short: String(entry.why_short || '').trim(),
     tension: String(entry.tension || '').trim(),
     hook: typeof entry.hook === 'string' ? entry.hook.trim() : '',
+    viewer_takeaway: typeof entry.viewer_takeaway === 'string' ? entry.viewer_takeaway.trim() : '',
+    visual_opportunity: typeof entry.visual_opportunity === 'string' ? entry.visual_opportunity.trim() : '',
     status: IDEA_STATUSES.includes(entry.status) ? entry.status : 'generated',
     reviewed_at: typeof entry.reviewed_at === 'string' ? entry.reviewed_at : null,
-    created_at: typeof entry.created_at === 'string' ? entry.created_at : nowIso(),
+    created_at: created,
+    updated_at: typeof entry.updated_at === 'string' ? entry.updated_at : created,
     batch_id: String(entry.batch_id || '').trim(),
+    model: typeof entry.model === 'string' ? entry.model : '',
+    // Editorial lifecycle (Phase 2). Legacy records normalize to the defaults:
+    // model-generated, unedited, active.
+    content_origin: CONTENT_ORIGINS.includes(entry.content_origin) ? entry.content_origin : 'generated',
+    edit_revision: Number.isInteger(entry.edit_revision) && entry.edit_revision >= 0 ? entry.edit_revision : 0,
+    edit_history: Array.isArray(entry.edit_history) ? entry.edit_history.filter((e) => e && typeof e === 'object') : [],
+    original_content: entry.original_content && typeof entry.original_content === 'object' ? entry.original_content : null,
+    removed,
+    removal_history: Array.isArray(entry.removal_history) ? entry.removal_history.filter((e) => e && typeof e === 'object') : [],
+    replacement_for_idea_id: typeof entry.replacement_for_idea_id === 'string' ? entry.replacement_for_idea_id : null,
+    replaced_by_idea_id: typeof entry.replaced_by_idea_id === 'string' ? entry.replaced_by_idea_id : null,
     promotion: {
       state: PROMOTION_STATES.includes(promotion.state) ? promotion.state : 'none',
       project_id: typeof promotion.project_id === 'string' ? promotion.project_id : null,
       promoted_at: typeof promotion.promoted_at === 'string' ? promotion.promoted_at : null,
+      promoted_revision: Number.isInteger(promotion.promoted_revision) ? promotion.promoted_revision : null,
       error: typeof promotion.error === 'string' ? promotion.error : null,
     },
   };
 }
 
+// Snapshot of the editable content of an idea (for edit history / provenance).
+function contentSnapshot(idea) {
+  const out = {};
+  for (const field of EDITABLE_FIELDS) out[field] = idea[field] || '';
+  return out;
+}
+
 function emptyCategoryBlock() {
-  return { batch: null, ideas: [], last_failure: null, promoted_history: [] };
+  return { batch: null, ideas: [], removed: [], last_failure: null, promoted_history: [], revision: 0 };
 }
 
 function normalizeCategoryBlock(block) {
   const src = block && typeof block === 'object' ? block : {};
   return {
     batch: src.batch && typeof src.batch === 'object' ? src.batch : null,
+    // `ideas` is the ACTIVE list (≤ IDEAS_PER_CATEGORY). Removed topics move to
+    // `removed` — history, never physically deleted by ordinary use. Legacy
+    // Phase 1 state has no `removed`/`revision`; the defaults migrate it.
     ideas: Array.isArray(src.ideas) ? src.ideas.map(normalizeIdea).filter(Boolean) : [],
+    removed: Array.isArray(src.removed) ? src.removed.map(normalizeIdea).filter(Boolean) : [],
     last_failure: src.last_failure && typeof src.last_failure === 'object' ? src.last_failure : null,
     promoted_history: Array.isArray(src.promoted_history)
       ? src.promoted_history.map(normalizeIdea).filter(Boolean)
       : [],
+    // Category revision: bumped on every content mutation so long-running
+    // generation can detect that the category changed under it (stale-write
+    // protection at the category level).
+    revision: Number.isInteger(src.revision) && src.revision >= 0 ? src.revision : 0,
   };
 }
 
@@ -325,6 +392,7 @@ function findIdea(state, ideaId) {
   for (const key of Object.keys(state.categories)) {
     const block = state.categories[key];
     for (const idea of block.ideas) if (idea.id === ideaId) return { idea, category_id: key, from: 'active' };
+    for (const idea of block.removed) if (idea.id === ideaId) return { idea, category_id: key, from: 'removed' };
     for (const idea of block.promoted_history) if (idea.id === ideaId) return { idea, category_id: key, from: 'history' };
   }
   return null;
@@ -360,15 +428,22 @@ function titlesNearDuplicate(a, b) {
 // All normalized titles that a new set for `categoryId` must not collide with:
 // every other category's active ideas, plus every promoted idea anywhere
 // (history included), plus the target category's own current titles (a refresh
-// should produce fresh ideas, not echoes of the set it replaces).
+// should produce fresh ideas, not echoes of the set it replaces), plus the
+// target category's DELIBERATELY removed topics (a human said no to those;
+// refresh-superseded history is excluded so old batches don't poison future
+// generation forever).
 function exclusionTitles(state, categoryId) {
   const titles = [];
   for (const key of Object.keys(state.categories)) {
     const block = state.categories[key];
     for (const idea of block.ideas) titles.push(idea.title);
     for (const idea of block.promoted_history) titles.push(idea.title);
+    if (key === categoryId) {
+      for (const idea of block.removed) {
+        if (idea.removed && idea.removed.reason !== 'superseded_by_refresh') titles.push(idea.title);
+      }
+    }
   }
-  void categoryId; // target category titles are already included above
   return titles.filter(Boolean);
 }
 
@@ -394,9 +469,16 @@ function validateCandidate(item) {
     if (len > max) problems.push(`${field} exceeds ${max} characters`);
     if (field !== 'title' && len < MIN_FIELD_LEN) problems.push(`${field} is too short to be useful`);
   }
-  if (item.hook !== undefined && item.hook !== null) {
-    if (typeof item.hook !== 'string') problems.push('hook is not a string');
-    else if (item.hook.trim().length > MAX_HOOK_LEN) problems.push(`hook exceeds ${MAX_HOOK_LEN} characters`);
+  for (const field of OPTIONAL_EDIT_FIELDS) {
+    if (item[field] === undefined || item[field] === null) continue;
+    if (typeof item[field] !== 'string') { problems.push(`${field} is not a string`); continue; }
+    const max = field === 'hook' ? MAX_HOOK_LEN : MAX_FIELD_LEN;
+    if (item[field].trim().length > max) problems.push(`${field} exceeds ${max} characters`);
+  }
+  for (const field of EDITABLE_FIELDS) {
+    if (typeof item[field] === 'string' && TAG_LIKE_RE.test(item[field])) {
+      problems.push(`${field} contains HTML-like markup`);
+    }
   }
   return problems;
 }
@@ -406,7 +488,7 @@ function validateCandidate(item) {
 // duplicates (exact + near) within the batch and against `existingTitles`.
 // Returns { accepted, rejected } — rejected entries carry their reasons so
 // failures are explainable, never silent.
-function acceptCandidates(rawItems, { categoryId, batchId, existingTitles = [], acceptedSoFar = [] } = {}) {
+function acceptCandidates(rawItems, { categoryId, batchId, existingTitles = [], acceptedSoFar = [], model = '', contentOrigin = 'generated' } = {}) {
   const accepted = [];
   const rejected = [];
   const seenNormalized = new Set(existingTitles.map(normalizeTitle));
@@ -439,7 +521,7 @@ function acceptCandidates(rawItems, { categoryId, batchId, existingTitles = [], 
     }
     seenNormalized.add(normalized);
     seenTitles.push(title);
-    accepted.push({
+    accepted.push(normalizeIdea({
       id: newIdeaId(),
       category_id: categoryId,
       title,
@@ -448,12 +530,16 @@ function acceptCandidates(rawItems, { categoryId, batchId, existingTitles = [], 
       why_short: item.why_short.trim(),
       tension: item.tension.trim(),
       hook: typeof item.hook === 'string' ? item.hook.trim() : '',
+      viewer_takeaway: typeof item.viewer_takeaway === 'string' ? item.viewer_takeaway.trim() : '',
+      visual_opportunity: typeof item.visual_opportunity === 'string' ? item.visual_opportunity.trim() : '',
       status: 'generated',
       reviewed_at: null,
       created_at: nowIso(),
       batch_id: batchId,
+      model,
+      content_origin: contentOrigin === 'replacement_generated' ? 'replacement_generated' : 'generated',
       promotion: emptyPromotion(),
-    });
+    }));
   }
   return { accepted, rejected };
 }
@@ -493,17 +579,35 @@ function assertCompleteSet(ideas, categoryId, count = IDEAS_PER_CATEGORY) {
 
 // Replaces one category's idea set. Runs the complete-set gate FIRST, then
 // re-reads the state from disk (stale in-memory copies can never clobber a
-// newer accepted set), moves the outgoing set's promoted ideas into
-// promoted_history (promotion provenance survives every refresh), replaces
-// the set, clears last_failure, and writes atomically. The previous valid set
-// is only ever replaced by a fully valid successor.
+// newer accepted set), archives the outgoing set (promoted ideas into
+// promoted_history, everything else — including manual edits — into `removed`
+// as 'superseded_by_refresh' so no history is ever physically deleted),
+// replaces the set, clears last_failure, and writes atomically. The previous
+// valid set is only ever replaced by a fully valid successor.
+// options.expectedRevision: category revision captured when generation began —
+// if the category changed since (edit/remove/restore landed mid-generation),
+// activation refuses with 409 rather than silently archiving newer work.
 function activateCategorySet(categoryId, ideas, batchMeta, options = {}) {
   const id = assertValidCategoryId(categoryId);
   assertCompleteSet(ideas, id);
   const state = loadState(options);
   const block = categoryBlock(state, id);
-  const keptHistory = block.ideas.filter((idea) => idea.promotion && idea.promotion.state === 'promoted');
-  block.promoted_history = block.promoted_history.concat(keptHistory);
+  if (options.expectedRevision !== undefined && options.expectedRevision !== null
+      && block.revision !== options.expectedRevision) {
+    const error = new Error('Category changed while generating (an edit, removal, or restore landed); the generated set was NOT activated. Refresh again if still wanted.');
+    error.statusCode = 409;
+    error.code = 'category_revision_conflict';
+    throw error;
+  }
+  const promoted = block.ideas.filter((idea) => idea.promotion && idea.promotion.state === 'promoted');
+  block.promoted_history = block.promoted_history.concat(promoted);
+  const supersededAt = nowIso();
+  const superseded = block.ideas
+    .filter((idea) => !(idea.promotion && idea.promotion.state === 'promoted'))
+    .map((idea) => Object.assign(idea, {
+      removed: { at: supersededAt, reason: 'superseded_by_refresh', note: '' },
+    }));
+  block.removed = block.removed.concat(superseded);
   block.ideas = ideas;
   block.batch = {
     batch_id: String(batchMeta && batchMeta.batch_id || newBatchId()),
@@ -517,6 +621,7 @@ function activateCategorySet(categoryId, ideas, batchMeta, options = {}) {
     rejected_candidates: Number(batchMeta && batchMeta.rejected_candidates) || 0,
   };
   block.last_failure = null;
+  block.revision += 1;
   writeState(state, options);
   return state;
 }
@@ -534,6 +639,256 @@ function recordCategoryFailure(categoryId, failure, options = {}) {
   };
   writeState(state, options);
   return state;
+}
+
+// ── Topic editing / removal / restore / replacement (Phase 2) ────────────────
+
+function notFoundError() {
+  const error = new Error('Unknown Idea Engine idea id.');
+  error.statusCode = 404;
+  return error;
+}
+
+// Validates a full edited-content object (all EDITABLE_FIELDS present after
+// merging) against field rules + duplicate titles across ALL active ideas
+// (excluding the idea itself). Returns [] when acceptable.
+function validateEditedContent(content, state, selfId) {
+  const problems = validateCandidate(content);
+  const normalized = normalizeTitle(content.title);
+  for (const key of Object.keys(state.categories)) {
+    for (const other of state.categories[key].ideas) {
+      if (other.id === selfId) continue;
+      if (normalizeTitle(other.title) === normalized) {
+        problems.push(`duplicate title (matches active idea "${other.title.slice(0, 60)}")`);
+      } else if (titlesNearDuplicate(other.title, content.title)) {
+        problems.push(`near-duplicate title of active idea "${other.title.slice(0, 60)}"`);
+      }
+    }
+  }
+  return problems;
+}
+
+// Manual edit: content-only, id/category/provenance/promotion immutable, no
+// model involvement. `expectedRevision` is the edit_revision the client loaded
+// — a stale tab gets a 409 instead of clobbering a newer revision.
+function editIdea(ideaId, fields, expectedRevision, options = {}) {
+  const id = assertValidIdeaId(ideaId);
+  const state = loadState(options);
+  const found = findIdea(state, id);
+  if (!found) throw notFoundError();
+  if (found.from !== 'active') {
+    const error = new Error('Only active suggestions can be edited. Restore the topic first.');
+    error.statusCode = 409;
+    error.code = 'idea_not_active';
+    throw error;
+  }
+  const idea = found.idea;
+  if (!Number.isInteger(expectedRevision) || expectedRevision !== idea.edit_revision) {
+    const error = new Error(`Stale edit: this topic is at revision ${idea.edit_revision}, but the edit was based on revision ${String(expectedRevision)}. Reload and re-apply.`);
+    error.statusCode = 409;
+    error.code = 'stale_revision';
+    throw error;
+  }
+  const source = fields && typeof fields === 'object' ? fields : {};
+  const next = contentSnapshot(idea);
+  let changed = false;
+  for (const field of EDITABLE_FIELDS) {
+    if (source[field] === undefined) continue;
+    if (typeof source[field] !== 'string') {
+      const error = new Error(`Field ${field} must be a string.`);
+      error.statusCode = 400;
+      throw error;
+    }
+    const value = source[field].trim();
+    if (value !== next[field]) { next[field] = value; changed = true; }
+  }
+  if (!changed) {
+    const error = new Error('No changes to save.');
+    error.statusCode = 400;
+    error.code = 'no_changes';
+    throw error;
+  }
+  const problems = validateEditedContent(next, state, idea.id);
+  if (problems.length > 0) {
+    const error = new Error(`Edit rejected: ${problems.slice(0, 5).join('; ')}`);
+    error.statusCode = 400;
+    error.code = 'edit_invalid';
+    throw error;
+  }
+  const previous = contentSnapshot(idea);
+  if (!idea.original_content) idea.original_content = previous;
+  idea.edit_history.push({ revision: idea.edit_revision, edited_at: nowIso(), previous });
+  Object.assign(idea, next);
+  idea.edit_revision += 1;
+  idea.updated_at = nowIso();
+  idea.content_origin = 'manually_edited';
+  categoryBlock(state, found.category_id).revision += 1;
+  writeState(state, options);
+  return idea;
+}
+
+function normalizeRemovalReason(reason) {
+  const value = String(reason || '').trim();
+  if (!value) return 'other';
+  return REMOVAL_REASONS.includes(value) && value !== 'superseded_by_refresh' ? value : 'other';
+}
+
+// Removal: moves an active idea into the category's removed history. Never
+// deletes the record, never touches promotion state or any Super Focus
+// project. Removing an already-removed idea is a clear 409 conflict.
+function removeIdea(ideaId, { reason, note } = {}, options = {}) {
+  const id = assertValidIdeaId(ideaId);
+  const state = loadState(options);
+  const found = findIdea(state, id);
+  if (!found) throw notFoundError();
+  if (found.from === 'removed') {
+    const error = new Error('This topic is already removed.');
+    error.statusCode = 409;
+    error.code = 'already_removed';
+    throw error;
+  }
+  if (found.from !== 'active') {
+    const error = new Error('Only active suggestions can be removed.');
+    error.statusCode = 409;
+    error.code = 'idea_not_active';
+    throw error;
+  }
+  const block = categoryBlock(state, found.category_id);
+  const idea = found.idea;
+  idea.removed = {
+    at: nowIso(),
+    reason: normalizeRemovalReason(reason),
+    note: String(note || '').slice(0, MAX_REMOVAL_NOTE_LEN),
+  };
+  idea.updated_at = nowIso();
+  block.ideas = block.ideas.filter((i) => i.id !== idea.id);
+  block.removed.push(idea);
+  block.revision += 1;
+  writeState(state, options);
+  return { idea, category_id: found.category_id };
+}
+
+// Restore: moves a removed idea back to the active list under the SAME id.
+// Refuses when the category is full (never silently displaces another topic)
+// or when restoration would create a duplicate against the active set.
+function restoreIdea(ideaId, options = {}) {
+  const id = assertValidIdeaId(ideaId);
+  const state = loadState(options);
+  const found = findIdea(state, id);
+  if (!found) throw notFoundError();
+  if (found.from === 'active') {
+    const error = new Error('This topic is already active.');
+    error.statusCode = 409;
+    error.code = 'already_active';
+    throw error;
+  }
+  if (found.from !== 'removed') {
+    const error = new Error('Only removed suggestions can be restored.');
+    error.statusCode = 409;
+    error.code = 'idea_not_removed';
+    throw error;
+  }
+  const block = categoryBlock(state, found.category_id);
+  if (block.ideas.length >= IDEAS_PER_CATEGORY) {
+    const error = new Error(`Category already has ${IDEAS_PER_CATEGORY} active topics. Remove one first, then restore.`);
+    error.statusCode = 409;
+    error.code = 'category_full';
+    throw error;
+  }
+  const idea = found.idea;
+  const problems = validateEditedContent(contentSnapshot(idea), state, idea.id);
+  if (problems.some((p) => p.includes('duplicate'))) {
+    const error = new Error(`Restore rejected: ${problems.filter((p) => p.includes('duplicate')).slice(0, 3).join('; ')}`);
+    error.statusCode = 409;
+    error.code = 'restore_duplicate';
+    throw error;
+  }
+  idea.removal_history.push({ restored_at: nowIso(), previous_removal: idea.removed });
+  idea.removed = null;
+  idea.updated_at = nowIso();
+  block.removed = block.removed.filter((i) => i.id !== idea.id);
+  block.ideas.push(idea);
+  block.revision += 1;
+  writeState(state, options);
+  return { idea, category_id: found.category_id };
+}
+
+// Activates ONE validated replacement candidate into a category vacancy and
+// links it to the removed topic it replaces (both directions). The removed
+// record is never restored, reused, or overwritten. Capacity and duplicates
+// re-checked against CURRENT disk state at activation (stale-safe).
+function activateReplacement(categoryId, newIdea, removedIdeaId, options = {}) {
+  const id = assertValidCategoryId(categoryId);
+  const problems = validateCandidate(newIdea);
+  if (problems.length > 0 || !IDEA_ID_RE.test(String(newIdea && newIdea.id || ''))) {
+    const error = new Error(`Replacement rejected: ${problems.concat(!IDEA_ID_RE.test(String(newIdea && newIdea.id || '')) ? ['invalid id'] : []).slice(0, 5).join('; ')}`);
+    error.statusCode = 502;
+    error.code = 'replacement_invalid';
+    throw error;
+  }
+  const state = loadState(options);
+  const block = categoryBlock(state, id);
+  if (block.ideas.length >= IDEAS_PER_CATEGORY) {
+    const error = new Error(`Category already has ${IDEAS_PER_CATEGORY} active topics; no vacancy to fill.`);
+    error.statusCode = 409;
+    error.code = 'category_full';
+    throw error;
+  }
+  let removedRef = null;
+  if (removedIdeaId) {
+    const removedFound = findIdea(state, removedIdeaId);
+    if (removedFound && removedFound.category_id === id && removedFound.from === 'removed') {
+      removedRef = removedFound.idea;
+    }
+  }
+  const dupProblems = validateEditedContent(contentSnapshot(newIdea), state, newIdea.id);
+  // Beyond active ideas: promoted history, deliberately removed titles in this
+  // category, and the specific topic being replaced (a replacement must not be
+  // a reworded copy of what the human just rejected).
+  for (const key of Object.keys(state.categories)) {
+    for (const promoted of state.categories[key].promoted_history) {
+      if (titlesNearDuplicate(promoted.title, newIdea.title)) {
+        dupProblems.push(`too similar to promoted idea "${promoted.title.slice(0, 60)}"`);
+      }
+    }
+  }
+  for (const past of block.removed) {
+    if (past.removed && past.removed.reason !== 'superseded_by_refresh'
+        && titlesNearDuplicate(past.title, newIdea.title)) {
+      dupProblems.push(`too similar to removed idea "${past.title.slice(0, 60)}"`);
+    }
+  }
+  if (removedRef && titlesNearDuplicate(removedRef.title, newIdea.title)) {
+    dupProblems.push(`too similar to the replaced idea "${removedRef.title.slice(0, 60)}"`);
+  }
+  if (dupProblems.length > 0) {
+    const error = new Error(`Replacement rejected: ${dupProblems.slice(0, 3).join('; ')}`);
+    error.statusCode = 502;
+    error.code = 'replacement_duplicate';
+    throw error;
+  }
+  newIdea.category_id = id;
+  newIdea.content_origin = 'replacement_generated';
+  if (removedRef) {
+    newIdea.replacement_for_idea_id = removedRef.id;
+    removedRef.replaced_by_idea_id = newIdea.id;
+  }
+  block.ideas.push(newIdea);
+  block.revision += 1;
+  writeState(state, options);
+  return { idea: newIdea, category_id: id, active_count: block.ideas.length };
+}
+
+// Removed-topics view for one category (most recent removal first).
+function listRemoved(categoryId, options = {}) {
+  const id = assertValidCategoryId(categoryId);
+  const state = loadState(options);
+  const block = state.categories[id] || emptyCategoryBlock();
+  return block.removed.slice().sort((a, b) => {
+    const ta = a.removed ? a.removed.at : '';
+    const tb = b.removed ? b.removed.at : '';
+    return ta < tb ? 1 : ta > tb ? -1 : 0;
+  });
 }
 
 // ── Review / promotion bookkeeping ───────────────────────────────────────────
@@ -571,6 +926,9 @@ function recordPromotionResult(ideaId, result, options = {}) {
       state: 'promoted',
       project_id: String(result.project_id || ''),
       promoted_at: nowIso(),
+      // The edit revision whose content went into the project — the GUI flags
+      // "edited after promotion" when edit_revision has moved past this.
+      promoted_revision: found.idea.edit_revision,
       error: null,
     };
   } else {
@@ -578,6 +936,8 @@ function recordPromotionResult(ideaId, result, options = {}) {
       state: 'failed',
       project_id: found.idea.promotion && found.idea.promotion.project_id || null,
       promoted_at: found.idea.promotion && found.idea.promotion.promoted_at || null,
+      promoted_revision: found.idea.promotion && Number.isInteger(found.idea.promotion.promoted_revision)
+        ? found.idea.promotion.promoted_revision : null,
       error: String(result && result.error || 'promotion failed').slice(0, 500),
     };
   }
@@ -589,6 +949,8 @@ function recordPromotionResult(ideaId, result, options = {}) {
 
 function summarizeCategory(category, block) {
   const ideas = block ? block.ideas : [];
+  const removed = block ? block.removed : [];
+  const vacancies = Math.max(0, IDEAS_PER_CATEGORY - ideas.length);
   return {
     id: category.id,
     name: category.name,
@@ -596,10 +958,19 @@ function summarizeCategory(category, block) {
     channel_relevance: category.channel_relevance,
     generation_guidance: category.generation_guidance,
     idea_count: ideas.length,
+    active_count: ideas.length,
+    removed_count: removed.length,
+    // Deliberate human removals awaiting replacement (refresh-superseded
+    // history is archival, not a vacancy driver).
+    vacancy_count: vacancies,
+    completeness: vacancies === 0 && ideas.length > 0 ? 'complete' : (ideas.length === 0 ? 'empty' : 'incomplete'),
     reviewed_count: ideas.filter((i) => i.status === 'reviewed').length,
     promoted_count: ideas.filter((i) => i.promotion.state === 'promoted').length
-      + (block ? block.promoted_history.length : 0),
+      + (block ? block.promoted_history.length : 0)
+      + removed.filter((i) => i.promotion.state === 'promoted').length,
     failed_count: ideas.filter((i) => i.promotion.state === 'failed').length,
+    edited_count: ideas.filter((i) => i.content_origin === 'manually_edited').length,
+    revision: block ? block.revision : 0,
     batch: block ? block.batch : null,
     last_failure: block ? block.last_failure : null,
   };
@@ -618,6 +989,7 @@ function stateView(options = {}) {
       const block = state.categories[category.id] || emptyCategoryBlock();
       return Object.assign(summarizeCategory(category, block), {
         ideas: block.ideas,
+        removed: block.removed,
         promoted_history: block.promoted_history,
       });
     }),
@@ -655,4 +1027,13 @@ module.exports = {
   assertValidIdeaId,
   assertValidCategoryId,
   newBatchId,
+  newIdeaId,
+  EDITABLE_FIELDS,
+  REMOVAL_REASONS,
+  contentSnapshot,
+  editIdea,
+  removeIdea,
+  restoreIdea,
+  activateReplacement,
+  listRemoved,
 };

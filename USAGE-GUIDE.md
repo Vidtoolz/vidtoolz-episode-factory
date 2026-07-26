@@ -62,8 +62,11 @@ Option D: From the Idea Engine (Super Focus lane)
    12 topic categories × 30 generated Shorts ideas. Generated ideas are
    proposals, not production commitments.
 2. Pick a category and open ideas to read the premise, relevance, and central
-   tension. Refresh a category (or all 12) when a set is weak — the old set is
-   only replaced by a fully valid new one; promoted ideas keep their history.
+   tension. Improve the set by hand: Edit topic (form, history kept), Remove
+   topic (with a reason; restorable), Generate replacement for removed slots.
+   Refresh a category (or all 12) when a set is weak — the old set is only
+   replaced by a fully valid new one; edited, removed, and promoted topics
+   remain in history.
 3. On an idea worth making, click Promote to Super Focus.
    Creates exactly one Super Focus project with provenance. Re-promoting opens
    the existing project instead of duplicating it. Nothing downstream starts.

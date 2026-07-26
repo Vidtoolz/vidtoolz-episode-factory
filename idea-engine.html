@@ -33,6 +33,27 @@
     .dot-ok { background: var(--accent, #3fb950); }
     .dot-fail { background: var(--danger, #f85149); }
     .dot-running { background: var(--accent-blue, #58a6ff); }
+    .dot-incomplete { background: #d29922; }
+    .ie-vacancy-note { color: #d29922; font-size: 0.84rem; margin: 8px 0; }
+    .ie-origin-note { color: var(--muted, #8b949e); font-size: 0.8rem; }
+    .ie-warn-note { color: #d29922; font-size: 0.84rem; margin: 8px 0; }
+    .ie-form label { display: block; color: var(--muted, #8b949e); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 12px; }
+    .ie-form input[type="text"], .ie-form textarea {
+      width: 100%; box-sizing: border-box; background: var(--bg, #0d1117);
+      color: var(--text, #e6edf3); border: 1px solid var(--border, #30363d);
+      border-radius: 6px; padding: 6px 8px; font-size: 0.9rem; font-family: inherit;
+      margin-top: 3px;
+    }
+    .ie-form textarea { min-height: 58px; resize: vertical; }
+    .ie-form .ie-form-error { color: var(--danger, #f85149); font-size: 0.84rem; margin-top: 10px; min-height: 1.2em; }
+    .ie-remove-field { margin-top: 12px; }
+    .ie-remove-field label { display: block; color: var(--muted, #8b949e); font-size: 0.8rem; margin-bottom: 3px; }
+    .ie-remove-field select, .ie-remove-field input[type="text"] {
+      width: 100%; box-sizing: border-box; background: var(--bg, #0d1117);
+      color: var(--text, #e6edf3); border: 1px solid var(--border, #30363d);
+      border-radius: 6px; padding: 6px 8px; font-size: 0.88rem;
+    }
+    .ie-toolbar .ie-search-scope { display: flex; align-items: center; gap: 5px; color: var(--muted, #8b949e); font-size: 0.82rem; white-space: nowrap; }
     .ie-idea-row {
       display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
       width: 100%; text-align: left; background: transparent; color: var(--text, #e6edf3);
@@ -89,6 +110,7 @@
     <h1>Idea Engine</h1>
     <div class="ie-toolbar">
       <input id="ie-search" type="search" placeholder="Search all ideas by title or premise…" aria-label="Search ideas">
+      <span class="ie-search-scope"><input type="checkbox" id="ie-search-removed" aria-label="Include removed topics in search"><label for="ie-search-removed">include removed</label></span>
       <button id="ie-refresh-all" class="ie-btn danger">Refresh all 12 categories</button>
       <button id="ie-reload" class="ie-btn">Reload</button>
       <span id="ie-status" class="ie-status" role="status">Loading…</span>
@@ -126,6 +148,38 @@
     </div>
   </div>
 
+  <div id="ie-remove-dialog" class="ie-confirm-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ie-remove-title">
+    <div class="ie-confirm-panel">
+      <p>Remove this suggested topic from the active list? It stays in the category's removed-topics history and can be restored.</p>
+      <p id="ie-remove-title" style="font-weight: 600;"></p>
+      <div class="ie-remove-field">
+        <label for="ie-remove-reason">Reason (optional, improves future generation)</label>
+        <select id="ie-remove-reason">
+          <option value="other">Other / unspecified</option>
+          <option value="duplicate">Duplicate</option>
+          <option value="too_broad">Too broad</option>
+          <option value="too_narrow">Too narrow</option>
+          <option value="weak_vidtoolz_fit">Weak VIDTOOLZ fit</option>
+          <option value="poor_shorts_fit">Poor Shorts fit</option>
+          <option value="already_covered">Already covered</option>
+          <option value="too_tool_specific">Too tool-specific</option>
+          <option value="weak_tension">Weak tension</option>
+          <option value="not_visually_explainable">Not visually explainable</option>
+          <option value="inaccurate">Inaccurate or misleading</option>
+        </select>
+      </div>
+      <div class="ie-remove-field">
+        <label for="ie-remove-note">Note (optional)</label>
+        <input type="text" id="ie-remove-note" maxlength="500">
+      </div>
+      <div class="ie-actions">
+        <button id="ie-remove-only" class="ie-btn danger">Remove only</button>
+        <button id="ie-remove-replace" class="ie-btn danger">Remove and generate replacement</button>
+        <button id="ie-remove-cancel" class="ie-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <script>
   (function () {
     'use strict';
@@ -136,12 +190,22 @@
     var REFRESH_STATUS_API = '/api/idea-engine/refresh-status';
     var REVIEW_API = '/api/idea-engine/review';
     var PROMOTE_API = '/api/idea-engine/promote';
+    var EDIT_API = '/api/idea-engine/edit';
+    var REMOVE_API = '/api/idea-engine/remove';
+    var RESTORE_API = '/api/idea-engine/restore';
+    var REPLACE_ONE_API = '/api/idea-engine/replace-one';
+    var FILL_VACANCIES_API = '/api/idea-engine/fill-vacancies';
 
     var UI = window.IdeaEngineUI;
     var nonce = null;
     var nonceHeader = 'x-vidtoolz-local-write-nonce';
-    var view = { categories: [], selectedCategory: null, selectedIdea: null, search: '' };
-    var busyCategory = null; // category id currently refreshing via this page
+    var view = {
+      categories: [], selectedCategory: null, selectedIdea: null, search: '',
+      searchRemoved: false,
+      listMode: 'active', // 'active' | 'removed' — which list the middle panel shows
+      editing: null,      // idea id currently open in the edit form
+    };
+    var busyCategory = null; // category id currently generating via this page
 
     function unwrap(body) { return (body && body.data) ? body.data : body; }
     function parseBody(r) {
@@ -184,6 +248,16 @@
       cancelBtn: document.getElementById('ie-confirm-no'),
     });
     var promoteCtl = UI.makePromoteController({ apiPost: apiPost, unwrap: unwrap, promoteApi: PROMOTE_API });
+    var editCtl = UI.makeEditController({ apiPost: apiPost, unwrap: unwrap, editApi: EDIT_API });
+    var removeDialogCtl = UI.makeRemoveDialogController({
+      panel: document.getElementById('ie-remove-dialog'),
+      title: document.getElementById('ie-remove-title'),
+      reason: document.getElementById('ie-remove-reason'),
+      note: document.getElementById('ie-remove-note'),
+      cancelBtn: document.getElementById('ie-remove-cancel'),
+      removeBtn: document.getElementById('ie-remove-only'),
+      removeReplaceBtn: document.getElementById('ie-remove-replace'),
+    });
     var poller = UI.makeRefreshAllPoller({
       apiGet: apiGet, apiPost: apiPost, unwrap: unwrap,
       refreshAllApi: REFRESH_ALL_API, statusApi: REFRESH_STATUS_API,
@@ -198,6 +272,7 @@
     function categoryDot(category) {
       if (busyCategory === category.id) return 'dot-running';
       if (category.last_failure) return 'dot-fail';
+      if (category.vacancy_count > 0 && category.idea_count > 0) return 'dot-incomplete';
       if (category.idea_count > 0) return 'dot-ok';
       return 'dot-empty';
     }
@@ -218,13 +293,17 @@
         var dot = el('span', 'ie-cat-dot ' + categoryDot(category));
         btn.appendChild(dot);
         btn.appendChild(document.createTextNode(category.name));
-        var counts = category.idea_count + ' ideas · ' + category.promoted_count + ' promoted' +
-          (category.last_failure ? ' · last refresh FAILED' : '');
+        var counts = 'Active: ' + category.active_count + ' / 30' +
+          (category.vacancy_count > 0 ? ' · ' + category.vacancy_count + ' vacanc' + (category.vacancy_count === 1 ? 'y' : 'ies') : '') +
+          ' · ' + category.promoted_count + ' promoted' +
+          (category.last_failure ? ' · last generation FAILED' : '');
         btn.appendChild(el('span', 'ie-cat-counts', counts));
         btn.addEventListener('click', function () {
           view.selectedCategory = category.id;
           view.selectedIdea = null;
           view.search = '';
+          view.listMode = 'active';
+          view.editing = null;
           document.getElementById('ie-search').value = '';
           renderAll();
           renderCategoryDetail(category);
@@ -245,37 +324,62 @@
       var title = document.getElementById('ie-ideas-title');
       mount.innerHTML = '';
       if (view.search) {
-        var matches = UI.filterIdeas(view.categories, view.search);
-        title.textContent = 'Search: ' + matches.length + ' match' + (matches.length === 1 ? '' : 'es');
+        var matches = UI.filterIdeas(view.categories, view.search, { includeRemoved: view.searchRemoved });
+        title.textContent = 'Search: ' + matches.length + ' match' + (matches.length === 1 ? '' : 'es') +
+          (view.searchRemoved ? ' (incl. removed)' : '');
         if (matches.length === 0) { mount.appendChild(el('div', 'ie-empty', 'No ideas match.')); return; }
-        matches.forEach(function (m) { mount.appendChild(ideaRow(m.idea, m.category)); });
+        matches.forEach(function (m) { mount.appendChild(ideaRow(m.idea, m.category, m.from === 'removed')); });
         return;
       }
       var category = currentCategory();
-      if (!category) { title.textContent = 'Ideas'; mount.appendChild(el('div', 'ie-empty', 'Select a category on the left.')); return; }
-      title.textContent = category.name + ' — ' + category.idea_count + ' ideas';
+      if (!category) { title.textContent = 'Suggested topics'; mount.appendChild(el('div', 'ie-empty', 'Select a main category on the left.')); return; }
+      if (view.listMode === 'removed') {
+        var removedList = category.removed || [];
+        title.textContent = category.name + ' — removed topics (' + removedList.length + ')';
+        var backBtn = el('button', 'ie-btn', '← Back to active topics');
+        backBtn.addEventListener('click', function () { view.listMode = 'active'; renderIdeas(); });
+        mount.appendChild(backBtn);
+        if (removedList.length === 0) { mount.appendChild(el('div', 'ie-empty', 'No removed topics in this category.')); return; }
+        removedList.slice().reverse().forEach(function (idea) { mount.appendChild(ideaRow(idea, category, true)); });
+        return;
+      }
+      title.textContent = category.name + ' — Active: ' + category.active_count + ' / 30';
       if (category.last_failure) {
         mount.appendChild(el('div', 'ie-fail-note',
-          'Last refresh failed (' + UI.formatTimestamp(category.last_failure.at) + '). The previous idea set below is preserved.'));
+          'Last generation failed (' + UI.formatTimestamp(category.last_failure.at) + '). The previous ideas below are preserved.'));
+      }
+      if (category.vacancy_count > 0 && category.active_count > 0) {
+        mount.appendChild(el('div', 'ie-vacancy-note',
+          category.vacancy_count + ' vacanc' + (category.vacancy_count === 1 ? 'y' : 'ies') +
+          ' — this category is incomplete. Use "Generate replacement" or "Fill all vacancies" in the category details.'));
       }
       if (!category.ideas || category.ideas.length === 0) {
         mount.appendChild(el('div', 'ie-empty', 'No ideas generated yet. Open the category details and refresh it.'));
         return;
       }
-      category.ideas.forEach(function (idea) { mount.appendChild(ideaRow(idea, category)); });
+      category.ideas.forEach(function (idea) { mount.appendChild(ideaRow(idea, category, false)); });
     }
 
-    function ideaRow(idea, category) {
+    function ideaRow(idea, category, isRemoved) {
       var row = el('button', 'ie-idea-row' + (view.selectedIdea === idea.id ? ' active' : ''));
-      row.appendChild(el('span', 't', idea.title));
-      var badge = UI.promotionBadge(idea);
-      row.appendChild(el('span', 'ie-badge ' + badge.cls, badge.label));
+      var label = idea.title + (idea.content_origin === 'manually_edited' ? ' ✎' : '');
+      row.appendChild(el('span', 't', label));
+      if (isRemoved) {
+        row.appendChild(el('span', 'ie-badge', 'Removed'));
+        if (idea.promotion && idea.promotion.state === 'promoted') {
+          row.appendChild(el('span', 'ie-badge badge-promoted', 'Promoted'));
+        }
+      } else {
+        var badge = UI.promotionBadge(idea);
+        row.appendChild(el('span', 'ie-badge ' + badge.cls, badge.label));
+      }
       row.addEventListener('click', function () {
         view.selectedIdea = idea.id;
         view.selectedCategory = category.id;
+        view.editing = null;
         renderAll();
         renderIdeaDetail(idea, category);
-        if (idea.status === 'generated') {
+        if (!isRemoved && idea.status === 'generated') {
           apiPost(REVIEW_API, { idea_id: idea.id }).then(function (res) {
             if (res.ok) { idea.status = 'reviewed'; renderIdeas(); }
           });
@@ -292,26 +396,51 @@
 
     function renderCategoryDetail(category) {
       var mount = document.getElementById('ie-detail');
-      document.getElementById('ie-detail-title').textContent = 'Category';
+      document.getElementById('ie-detail-title').textContent = 'Main category';
       mount.innerHTML = '';
       var dl = el('dl', 'ie-detail');
       detailField(dl, 'Name', category.name);
       detailField(dl, 'What it covers', category.description);
       detailField(dl, 'Why VIDTOOLZ covers it', category.channel_relevance);
-      detailField(dl, 'Current sub-topics', String(category.idea_count));
+      detailField(dl, 'Active suggested topics', category.active_count + ' / 30' +
+        (category.vacancy_count > 0 ? ' (' + category.vacancy_count + ' vacanc' + (category.vacancy_count === 1 ? 'y' : 'ies') + ')' : ''));
+      detailField(dl, 'Completeness', category.completeness);
+      if (category.removed_count > 0) detailField(dl, 'Removed topics (history)', String(category.removed_count));
+      if (category.edited_count > 0) detailField(dl, 'Manually edited', String(category.edited_count));
       if (category.batch) {
-        detailField(dl, 'Generated', UI.formatTimestamp(category.batch.generated_at) + ' · model ' + (category.batch.model || '?') +
+        detailField(dl, 'Last full generation', UI.formatTimestamp(category.batch.generated_at) + ' · model ' + (category.batch.model || '?') +
           ' · ' + Math.round((category.batch.duration_ms || 0) / 1000) + 's · batch ' + (category.batch.batch_id || '?'));
       }
       mount.appendChild(dl);
       if (category.last_failure) {
-        mount.appendChild(el('div', 'ie-fail-note', 'Last refresh failed: ' + category.last_failure.message));
+        mount.appendChild(el('div', 'ie-fail-note', 'Last generation failed: ' + category.last_failure.message));
       }
       var actions = el('div', 'ie-actions');
-      var refreshBtn = el('button', 'ie-btn danger', 'Refresh this category (replace 30 ideas)');
+      if (category.vacancy_count > 0) {
+        var replBtn = el('button', 'ie-btn primary', 'Generate replacement');
+        replBtn.disabled = generationBusy();
+        replBtn.addEventListener('click', function () { replaceOne(category, null, replBtn); });
+        actions.appendChild(replBtn);
+        if (category.vacancy_count > 1) {
+          var fillBtn = el('button', 'ie-btn primary', 'Fill all ' + category.vacancy_count + ' vacancies');
+          fillBtn.disabled = generationBusy();
+          fillBtn.addEventListener('click', function () { fillVacancies(category, fillBtn); });
+          actions.appendChild(fillBtn);
+        }
+      }
+      if (category.removed_count > 0) {
+        var removedBtn = el('button', 'ie-btn', 'Removed topics (' + category.removed_count + ')');
+        removedBtn.addEventListener('click', function () {
+          view.listMode = view.listMode === 'removed' ? 'active' : 'removed';
+          view.selectedIdea = null;
+          renderIdeas();
+        });
+        actions.appendChild(removedBtn);
+      }
+      var refreshBtn = el('button', 'ie-btn danger', 'Refresh this category (replace all 30)');
       refreshBtn.disabled = generationBusy();
       refreshBtn.addEventListener('click', function () {
-        confirmCtl.ask('Replace all unpromoted ideas in "' + category.name + '" with a freshly generated set of 30? Promoted ideas keep their history. The current set is only replaced if the new set fully validates.')
+        confirmCtl.ask('This replaces the current active suggestions for "' + category.name + '" with a freshly generated set of 30. Edited, removed, and promoted topics remain in history. The current set is only replaced if the new set fully validates.')
           .then(function (yes) { if (yes) refreshCategory(category, refreshBtn); });
       });
       actions.appendChild(refreshBtn);
@@ -323,10 +452,13 @@
       mount.appendChild(diag);
     }
 
+    function ideaIsRemoved(idea) { return !!idea.removed; }
+
     function renderIdeaDetail(idea, category) {
       var mount = document.getElementById('ie-detail');
-      document.getElementById('ie-detail-title').textContent = 'Idea';
+      document.getElementById('ie-detail-title').textContent = ideaIsRemoved(idea) ? 'Removed topic' : 'Suggested topic';
       mount.innerHTML = '';
+      if (view.editing === idea.id) { renderEditForm(mount, idea, category); return; }
       var dl = el('dl', 'ie-detail');
       detailField(dl, 'Working title', idea.title);
       detailField(dl, 'Premise', idea.premise);
@@ -334,8 +466,22 @@
       detailField(dl, 'Why it suits a Short', idea.why_short);
       detailField(dl, 'Central tension / misconception', idea.tension);
       detailField(dl, 'Suggested hook', idea.hook);
-      detailField(dl, 'Category', category ? category.name : idea.category_id);
+      detailField(dl, 'Viewer takeaway', idea.viewer_takeaway);
+      detailField(dl, 'Visual opportunity', idea.visual_opportunity);
+      detailField(dl, 'Main category', category ? category.name : idea.category_id);
+      detailField(dl, 'Origin', UI.originLabel(idea) + (idea.model ? ' · ' + idea.model : ''));
       detailField(dl, 'Generated', UI.formatTimestamp(idea.created_at) + ' · batch ' + (idea.batch_id || '?'));
+      if (idea.edit_history && idea.edit_history.length > 0) {
+        detailField(dl, 'Edit history', idea.edit_history.length + ' earlier version' + (idea.edit_history.length === 1 ? '' : 's') +
+          ' · last edited ' + UI.formatTimestamp(idea.updated_at));
+      }
+      if (idea.replacement_for_idea_id) detailField(dl, 'Replacement for', idea.replacement_for_idea_id);
+      if (idea.replaced_by_idea_id) detailField(dl, 'Replaced by', idea.replaced_by_idea_id);
+      if (ideaIsRemoved(idea)) {
+        detailField(dl, 'Removed', UI.formatTimestamp(idea.removed.at) + ' · ' +
+          (UI.REMOVAL_REASON_LABELS[idea.removed.reason] || idea.removed.reason) +
+          (idea.removed.note ? ' — ' + idea.removed.note : ''));
+      }
       var badge = UI.promotionBadge(idea);
       detailField(dl, 'Status', badge.label + (idea.promotion.state === 'promoted' && idea.promotion.promoted_at
         ? ' · ' + UI.formatTimestamp(idea.promotion.promoted_at) : ''));
@@ -343,16 +489,43 @@
         detailField(dl, 'Promotion error', idea.promotion.error);
       }
       mount.appendChild(dl);
+      if (UI.editedAfterPromotion(idea)) {
+        mount.appendChild(el('div', 'ie-warn-note',
+          'This topic was edited after promotion. The Super Focus project keeps the content transferred at promotion time; changes here do not modify it.'));
+      }
 
       var actions = el('div', 'ie-actions');
-      if (idea.promotion.state === 'promoted' && idea.promotion.project_id) {
+      var isActive = !ideaIsRemoved(idea);
+      var isPromoted = idea.promotion.state === 'promoted' && idea.promotion.project_id;
+
+      if (isActive) {
+        var editBtn = el('button', 'ie-btn', 'Edit topic');
+        editBtn.addEventListener('click', function () { view.editing = idea.id; renderIdeaDetail(idea, category); });
+        actions.appendChild(editBtn);
+        var removeBtn = el('button', 'ie-btn danger', isPromoted ? 'Remove from suggestions' : 'Remove topic');
+        removeBtn.addEventListener('click', function () { removeFlow(idea, category, isPromoted); });
+        actions.appendChild(removeBtn);
+      } else {
+        var restoreBtn = el('button', 'ie-btn', 'Restore topic');
+        restoreBtn.disabled = generationBusy();
+        restoreBtn.addEventListener('click', function () { restoreFlow(idea, restoreBtn); });
+        actions.appendChild(restoreBtn);
+        if (!idea.replaced_by_idea_id && !isPromoted && idea.removed && idea.removed.reason !== 'superseded_by_refresh') {
+          var replForBtn = el('button', 'ie-btn primary', 'Generate replacement for this slot');
+          replForBtn.disabled = generationBusy();
+          replForBtn.addEventListener('click', function () { replaceOne(category, idea.id, replForBtn); });
+          actions.appendChild(replForBtn);
+        }
+      }
+
+      if (isPromoted) {
         var openBtn = el('button', 'ie-btn primary', 'Open in Super Focus');
         openBtn.addEventListener('click', function () {
           window.location.href = 'super-focus.html?project=' + encodeURIComponent(idea.promotion.project_id);
         });
         actions.appendChild(openBtn);
         actions.appendChild(el('span', 'ie-status', 'Project: ' + idea.promotion.project_id));
-      } else {
+      } else if (isActive) {
         var promoteBtn = el('button', 'ie-btn primary',
           idea.promotion.state === 'failed' ? 'Retry promotion to Super Focus' : 'Promote to Super Focus');
         promoteBtn.addEventListener('click', function () {
@@ -384,11 +557,172 @@
       mount.appendChild(actions);
     }
 
+    var EDIT_FORM_FIELDS = [
+      { key: 'title', label: 'Working title', kind: 'input', required: true },
+      { key: 'premise', label: 'Premise', kind: 'textarea', required: true },
+      { key: 'why_vidtoolz', label: 'Why VIDTOOLZ should cover it', kind: 'textarea', required: true },
+      { key: 'why_short', label: 'Why it suits a Short', kind: 'textarea', required: true },
+      { key: 'tension', label: 'Central tension / misconception', kind: 'textarea', required: true },
+      { key: 'hook', label: 'Suggested hook (optional)', kind: 'textarea', required: false },
+      { key: 'viewer_takeaway', label: 'Viewer takeaway (optional)', kind: 'textarea', required: false },
+      { key: 'visual_opportunity', label: 'Visual opportunity (optional)', kind: 'textarea', required: false },
+    ];
+
+    function renderEditForm(mount, idea, category) {
+      document.getElementById('ie-detail-title').textContent = 'Edit topic';
+      var form = el('div', 'ie-form');
+      var inputs = {};
+      EDIT_FORM_FIELDS.forEach(function (spec) {
+        var label = el('label', null, spec.label);
+        label.setAttribute('for', 'ie-edit-' + spec.key);
+        form.appendChild(label);
+        var input = document.createElement(spec.kind === 'input' ? 'input' : 'textarea');
+        if (spec.kind === 'input') input.type = 'text';
+        input.id = 'ie-edit-' + spec.key;
+        input.value = idea[spec.key] || '';
+        form.appendChild(input);
+        inputs[spec.key] = input;
+      });
+      var errorEl = el('div', 'ie-form-error', '');
+      form.appendChild(errorEl);
+      if (idea.promotion.state === 'promoted') {
+        form.appendChild(el('div', 'ie-warn-note',
+          'This topic has already been promoted. Changes here will not modify the existing Super Focus project.'));
+      }
+      var actions = el('div', 'ie-actions');
+      var saveBtn = el('button', 'ie-btn primary', 'Save');
+      var cancelBtn = el('button', 'ie-btn', 'Cancel');
+      saveBtn.addEventListener('click', function () {
+        var fields = {};
+        for (var key in inputs) fields[key] = inputs[key].value;
+        saveBtn.disabled = true;
+        saveBtn.setAttribute('aria-busy', 'true');
+        errorEl.textContent = '';
+        editCtl.save(idea.id, idea.edit_revision, fields).then(function (result) {
+          saveBtn.removeAttribute('aria-busy');
+          if (result.skipped) return;
+          if (!result.ok) {
+            saveBtn.disabled = false;
+            errorEl.textContent = result.error || 'Edit failed.';
+            return;
+          }
+          view.editing = null;
+          setStatus('Topic saved (revision ' + result.idea.edit_revision + ').', 'ok');
+          load().then(function () {
+            var refreshed = findIdeaInView(idea.id);
+            if (refreshed) renderIdeaDetail(refreshed.idea, refreshed.category);
+          });
+        });
+      });
+      cancelBtn.addEventListener('click', function () {
+        view.editing = null;
+        renderIdeaDetail(idea, category);
+      });
+      actions.appendChild(saveBtn);
+      actions.appendChild(cancelBtn);
+      form.appendChild(actions);
+      mount.appendChild(form);
+    }
+
+    function removeFlow(idea, category, isPromoted) {
+      removeDialogCtl.ask(idea.title, { hideReplace: isPromoted }).then(function (choice) {
+        if (choice.action === 'cancel') return;
+        setStatus('Removing topic…');
+        apiPost(REMOVE_API, { idea_id: idea.id, reason: choice.reason, note: choice.note }).then(function (res) {
+          var data = unwrap(res.body);
+          if (!res.ok) {
+            setStatus('Removal failed: ' + ((data && data.error) || 'unknown error'), 'err');
+            load();
+            return;
+          }
+          var suffix = isPromoted ? ' Its Super Focus project is unchanged.' : '';
+          setStatus('Topic removed (' + data.category.active_count + ' / 30 active).' + suffix, 'ok');
+          view.selectedIdea = null;
+          if (choice.action === 'remove_replace' && !isPromoted) {
+            load().then(function () {
+              var cat = currentCategory();
+              if (cat) replaceOne(cat, idea.id, null);
+            });
+          } else {
+            load();
+          }
+        });
+      });
+    }
+
+    function restoreFlow(idea, btn) {
+      if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+      setStatus('Restoring topic…');
+      apiPost(RESTORE_API, { idea_id: idea.id }).then(function (res) {
+        var data = unwrap(res.body);
+        if (!res.ok) {
+          if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); }
+          setStatus('Restore failed: ' + ((data && data.error) || 'unknown error'), 'err');
+          load();
+          return;
+        }
+        setStatus('Topic restored (' + data.category.active_count + ' / 30 active).', 'ok');
+        view.listMode = 'active';
+        load();
+      });
+    }
+
+    function replaceOne(category, removedIdeaId, btn) {
+      busyCategory = category.id;
+      if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+      setStatus('Generating one replacement topic for "' + category.name + '"… this runs on local Ollama and can take a minute.');
+      renderCategories();
+      updateRefreshAllButton();
+      apiPost(REPLACE_ONE_API, { category_id: category.id, removed_idea_id: removedIdeaId || undefined }).then(function (res) {
+        busyCategory = null;
+        var data = unwrap(res.body);
+        if (!res.ok) {
+          setStatus('Replacement failed: ' + ((data && data.error) || 'unknown error') + ' The vacancy is preserved.', 'err');
+        } else {
+          setStatus('Replacement added: "' + data.idea.title + '" (' + data.category.active_count + ' / 30 active, ' + data.attempts + ' attempt' + (data.attempts === 1 ? '' : 's') + ').', 'ok');
+          view.selectedIdea = data.idea.id;
+        }
+        view.listMode = 'active';
+        load();
+      }).catch(function () {
+        busyCategory = null;
+        setStatus('Replacement failed: network error. The vacancy is preserved.', 'err');
+        load();
+      });
+    }
+
+    function fillVacancies(category, btn) {
+      busyCategory = category.id;
+      if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+      setStatus('Filling ' + category.vacancy_count + ' vacancies in "' + category.name + '"… one topic at a time on local Ollama.');
+      renderCategories();
+      updateRefreshAllButton();
+      apiPost(FILL_VACANCIES_API, { category_id: category.id }).then(function (res) {
+        busyCategory = null;
+        var data = unwrap(res.body);
+        if (!res.ok) {
+          setStatus('Fill vacancies failed: ' + ((data && data.error) || 'unknown error'), 'err');
+        } else if (data.failed > 0) {
+          setStatus('Filled ' + data.filled + ' of ' + data.requested + ' vacancies; ' + data.failed + ' failed. Remaining vacancies are preserved and shown honestly.', 'err');
+        } else {
+          setStatus('All ' + data.filled + ' vacancies filled (' + data.category.active_count + ' / 30 active).', 'ok');
+        }
+        load();
+      }).catch(function () {
+        busyCategory = null;
+        setStatus('Fill vacancies failed: network error.', 'err');
+        load();
+      });
+    }
+
     function findIdeaInView(ideaId) {
       for (var i = 0; i < view.categories.length; i += 1) {
         var c = view.categories[i];
         for (var j = 0; j < (c.ideas || []).length; j += 1) {
           if (c.ideas[j].id === ideaId) return { idea: c.ideas[j], category: c };
+        }
+        for (var k = 0; k < (c.removed || []).length; k += 1) {
+          if (c.removed[k].id === ideaId) return { idea: c.removed[k], category: c };
         }
       }
       return null;
@@ -453,6 +787,10 @@
       view.search = e.target.value;
       view.selectedIdea = null;
       renderIdeas();
+    });
+    document.getElementById('ie-search-removed').addEventListener('change', function (e) {
+      view.searchRemoved = !!e.target.checked;
+      if (view.search) renderIdeas();
     });
 
     function renderAll() {

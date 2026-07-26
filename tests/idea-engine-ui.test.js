@@ -24,6 +24,11 @@ function makeEl() {
       add(c) { this._s.add(c); },
       remove(c) { this._s.delete(c); },
       contains(c) { return this._s.has(c); },
+      toggle(c, on) {
+        if (on === undefined) { this._s.has(c) ? this._s.delete(c) : this._s.add(c); }
+        else if (on) this._s.add(c); else this._s.delete(c);
+        return this._s.has(c);
+      },
     },
     addEventListener(ev, fn) { (this._listeners[ev] = this._listeners[ev] || []).push(fn); },
     click() { (this._listeners.click || []).forEach((fn) => fn({})); },
@@ -177,6 +182,97 @@ test("idea-engine-ui refresh poller reports a failed start and re-arms", async (
   assert.ok(!poller.isActive(), "a failed start must not leave the poller stuck active");
 });
 
+// ── Phase 2: origin labels, removed search, edit + removal controllers ──────
+
+test("idea-engine-ui origin label and edited-after-promotion detection", async () => {
+  assert.equal(ui.originLabel({ content_origin: "generated" }), "Model-generated");
+  assert.equal(ui.originLabel({ content_origin: "manually_edited", edit_revision: 2 }), "Manually edited (revision 2)");
+  assert.equal(ui.originLabel({ content_origin: "replacement_generated" }), "Replacement-generated");
+  assert.equal(ui.editedAfterPromotion({ promotion: { state: "promoted", promoted_revision: 1 }, edit_revision: 2 }), true);
+  assert.equal(ui.editedAfterPromotion({ promotion: { state: "promoted", promoted_revision: 2 }, edit_revision: 2 }), false);
+  assert.equal(ui.editedAfterPromotion({ promotion: { state: "none" }, edit_revision: 5 }), false);
+  assert.equal(ui.editedAfterPromotion(null), false);
+});
+
+test("idea-engine-ui search covers active by default and removed only when opted in", async () => {
+  const categories = [{
+    id: "a",
+    ideas: [{ id: "ie-1", title: "Gates beat tools", premise: "active" }],
+    removed: [{ id: "ie-2", title: "Gates removed topic", premise: "gone" }],
+  }];
+  assert.equal(ui.filterIdeas(categories, "gates").length, 1, "default excludes removed");
+  const withRemoved = ui.filterIdeas(categories, "gates", { includeRemoved: true });
+  assert.equal(withRemoved.length, 2);
+  assert.ok(withRemoved.some((m) => m.from === "removed"));
+});
+
+test("idea-engine-ui edit controller blocks duplicate saves and surfaces conflicts", async () => {
+  let resolveApi;
+  let calls = 0;
+  let sentBody = null;
+  const ctl = ui.makeEditController({
+    editApi: "/api/idea-engine/edit",
+    unwrap: (b) => (b && b.data) ? b.data : b,
+    apiPost: (p, body) => { calls += 1; sentBody = body; return new Promise((r) => { resolveApi = r; }); },
+  });
+  const first = ctl.save("ie-11111111", 3, { title: "New" });
+  const dupe = await ctl.save("ie-11111111", 3, { title: "New" });
+  assert.equal(dupe.skipped, true);
+  assert.equal(calls, 1);
+  assert.equal(sentBody.expected_revision, 3, "loaded revision is sent for stale-write protection");
+  resolveApi({ ok: false, status: 409, body: { error: "Stale edit", code: "stale_revision" } });
+  const result = await first;
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 409);
+  assert.ok(!ctl.isPending("ie-11111111"));
+});
+
+function dialogEls() {
+  return {
+    panel: makeEl(), title: makeEl(),
+    reason: Object.assign(makeEl(), { value: "other" }),
+    note: Object.assign(makeEl(), { value: "" }),
+    cancelBtn: makeEl(), removeBtn: makeEl(), removeReplaceBtn: makeEl(),
+  };
+}
+
+test("idea-engine-ui removal dialog returns action + reason + note and never stacks", async () => {
+  const els = dialogEls();
+  const ctl = ui.makeRemoveDialogController(els);
+  const p1 = ctl.ask("Some topic");
+  assert.ok(!els.panel.classList.contains("hidden"));
+  assert.equal(els.title.textContent, "Some topic");
+  const stacked = await ctl.ask("Another");
+  assert.equal(stacked.action, "cancel");
+  els.reason.value = "too_broad";
+  els.note.value = "sprawls";
+  els.removeBtn.click();
+  const result = await p1;
+  assert.equal(result.action, "remove");
+  assert.equal(result.reason, "too_broad");
+  assert.equal(result.note, "sprawls");
+  assert.ok(els.panel.classList.contains("hidden"));
+  const p2 = ctl.ask("Replace flow");
+  els.removeReplaceBtn.click();
+  assert.equal((await p2).action, "remove_replace");
+  const p3 = ctl.ask("Cancel flow");
+  els.cancelBtn.click();
+  assert.equal((await p3).action, "cancel");
+});
+
+test("idea-engine-ui removal dialog hides Remove-and-replace for promoted topics", async () => {
+  const els = dialogEls();
+  const ctl = ui.makeRemoveDialogController(els);
+  const p = ctl.ask("Promoted topic", { hideReplace: true });
+  assert.ok(els.removeReplaceBtn.classList.contains("hidden"));
+  els.cancelBtn.click();
+  await p;
+  const p2 = ctl.ask("Normal topic");
+  assert.ok(!els.removeReplaceBtn.classList.contains("hidden"));
+  els.cancelBtn.click();
+  await p2;
+});
+
 // ── page wiring (string assertions, same pattern as super-focus pages) ──────
 
 test("idea-engine.html is wired to the API, the shared UI module, and uses no native confirm", async () => {
@@ -192,6 +288,23 @@ test("idea-engine.html is wired to the API, the shared UI module, and uses no na
     "/api/idea-engine/refresh-status",
     "/api/idea-engine/review",
     "/api/idea-engine/promote",
+    "/api/idea-engine/edit",
+    "/api/idea-engine/remove",
+    "/api/idea-engine/restore",
+    "/api/idea-engine/replace-one",
+    "/api/idea-engine/fill-vacancies",
+    'id="ie-remove-dialog"',
+    'id="ie-remove-reason"',
+    'id="ie-remove-note"',
+    'id="ie-remove-only"',
+    'id="ie-remove-replace"',
+    'id="ie-remove-cancel"',
+    'id="ie-search-removed"',
+    "Fill all",
+    "Removed topics (",
+    "Restore topic",
+    "Edit topic",
+    "vacanc",
     'id="ie-search"',
     'id="ie-refresh-all"',
     'id="ie-cats"',

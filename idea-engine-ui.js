@@ -30,18 +30,60 @@
   }
 
   // Case-insensitive title/premise search across every category (flat results).
-  function filterIdeas(categories, query) {
+  // Default scope: ACTIVE ideas. opts.includeRemoved extends it to removed
+  // history (results carry from: 'active' | 'removed').
+  function filterIdeas(categories, query, opts) {
     var q = String(query || '').trim().toLowerCase();
     if (!q) return [];
+    var includeRemoved = !!(opts && opts.includeRemoved);
     var out = [];
+    function match(idea) {
+      var hay = (String(idea.title || '') + ' ' + String(idea.premise || '')).toLowerCase();
+      return hay.indexOf(q) !== -1;
+    }
     (categories || []).forEach(function (category) {
       (category.ideas || []).forEach(function (idea) {
-        var hay = (String(idea.title || '') + ' ' + String(idea.premise || '')).toLowerCase();
-        if (hay.indexOf(q) !== -1) out.push({ idea: idea, category: category });
+        if (match(idea)) out.push({ idea: idea, category: category, from: 'active' });
       });
+      if (includeRemoved) {
+        (category.removed || []).forEach(function (idea) {
+          if (match(idea)) out.push({ idea: idea, category: category, from: 'removed' });
+        });
+      }
     });
     return out;
   }
+
+  // Content-origin label for the detail panel.
+  function originLabel(idea) {
+    if (!idea) return '';
+    if (idea.content_origin === 'manually_edited') return 'Manually edited (revision ' + (idea.edit_revision || 0) + ')';
+    if (idea.content_origin === 'replacement_generated') return 'Replacement-generated';
+    return 'Model-generated';
+  }
+
+  // True when the Idea Engine wording has moved past what was transferred into
+  // the Super Focus project at promotion time.
+  function editedAfterPromotion(idea) {
+    if (!idea || !idea.promotion || idea.promotion.state !== 'promoted') return false;
+    if (typeof idea.promotion.promoted_revision !== 'number') return false;
+    return (idea.edit_revision || 0) > idea.promotion.promoted_revision;
+  }
+
+  var REMOVAL_REASON_LABELS = {
+    duplicate: 'Duplicate',
+    too_broad: 'Too broad',
+    too_narrow: 'Too narrow',
+    weak_vidtoolz_fit: 'Weak VIDTOOLZ fit',
+    poor_shorts_fit: 'Poor Shorts fit',
+    already_covered: 'Already covered',
+    too_tool_specific: 'Too tool-specific',
+    weak_tension: 'Weak tension',
+    not_visually_explainable: 'Not visually explainable',
+    inaccurate: 'Inaccurate or misleading',
+    superseded_by_refresh: 'Superseded by refresh',
+    other: 'Other',
+  };
 
   function summarizeJob(job) {
     if (!job) return 'No refresh has been run.';
@@ -103,6 +145,68 @@
     };
   }
 
+  // Edit controller: per-idea in-flight guard; sends the loaded revision so a
+  // stale tab gets a 409 conflict instead of clobbering newer content.
+  function makeEditController(deps) {
+    var pending = {};
+    return {
+      isPending: function (ideaId) { return pending[ideaId] === true; },
+      save: function (ideaId, expectedRevision, fields) {
+        if (pending[ideaId]) return Promise.resolve({ ok: false, skipped: true });
+        pending[ideaId] = true;
+        return deps.apiPost(deps.editApi, { idea_id: ideaId, expected_revision: expectedRevision, fields: fields })
+          .then(function (res) {
+            var data = deps.unwrap(res.body);
+            if (!res.ok) return { ok: false, status: res.status, error: (data && data.error) || 'Edit failed.' };
+            return { ok: true, idea: data.idea };
+          })
+          .catch(function (error) {
+            return { ok: false, error: String((error && error.message) || 'Edit failed.') };
+          })
+          .then(function (result) { delete pending[ideaId]; return result; });
+      },
+    };
+  }
+
+  // Removal dialog controller (custom, no native confirm): shows the topic
+  // title, structured reason select, optional note, and three explicit
+  // actions. ask() resolves { action: 'cancel'|'remove'|'remove_replace',
+  // reason, note }. One dialog at a time.
+  function makeRemoveDialogController(els) {
+    var pending = null;
+    function close(action) {
+      if (els.panel && els.panel.classList) els.panel.classList.add('hidden');
+      if (pending) {
+        var resolve = pending;
+        pending = null;
+        resolve({
+          action: action,
+          reason: els.reason ? String(els.reason.value || 'other') : 'other',
+          note: els.note ? String(els.note.value || '') : '',
+        });
+      }
+    }
+    if (els.cancelBtn) els.cancelBtn.addEventListener('click', function () { close('cancel'); });
+    if (els.removeBtn) els.removeBtn.addEventListener('click', function () { close('remove'); });
+    if (els.removeReplaceBtn) els.removeReplaceBtn.addEventListener('click', function () { close('remove_replace'); });
+    return {
+      ask: function (title, options) {
+        if (pending) return Promise.resolve({ action: 'cancel', reason: 'other', note: '' });
+        if (els.title) els.title.textContent = title;
+        if (els.reason) els.reason.value = 'other';
+        if (els.note) els.note.value = '';
+        // Promoted topics: replacement stays available, but the copy must say
+        // the Super Focus project is untouched; caller controls visibility.
+        if (els.removeReplaceBtn && els.removeReplaceBtn.classList) {
+          els.removeReplaceBtn.classList.toggle('hidden', !!(options && options.hideReplace));
+        }
+        if (els.panel && els.panel.classList) els.panel.classList.remove('hidden');
+        return new Promise(function (resolve) { pending = resolve; });
+      },
+      isOpen: function () { return pending !== null; },
+    };
+  }
+
   // Refresh-all poller: POST once, then poll refresh-status until job.done.
   // setTimeoutImpl is injectable for deterministic tests.
   function makeRefreshAllPoller(deps) {
@@ -155,9 +259,14 @@
     formatTimestamp: formatTimestamp,
     promotionBadge: promotionBadge,
     filterIdeas: filterIdeas,
+    originLabel: originLabel,
+    editedAfterPromotion: editedAfterPromotion,
+    REMOVAL_REASON_LABELS: REMOVAL_REASON_LABELS,
     summarizeJob: summarizeJob,
     makeConfirmController: makeConfirmController,
     makePromoteController: makePromoteController,
+    makeEditController: makeEditController,
+    makeRemoveDialogController: makeRemoveDialogController,
     makeRefreshAllPoller: makeRefreshAllPoller,
   };
 });

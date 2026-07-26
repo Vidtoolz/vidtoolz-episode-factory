@@ -46,17 +46,107 @@ Each category: `id` (slug), `name`, `description`, `channel_relevance`,
 `generation_guidance`.
 
 `ideas.json` — per category: `batch` (batch_id, generated_at, model, provider,
-requested, accepted, duration_ms, chunks, rejected_candidates), `ideas[30]`,
-`last_failure`, `promoted_history[]`.
-Each idea: `id` (`ie-<8hex>`, always server-generated — model ids are never
-trusted), `category_id`, `title`, `premise`, `why_vidtoolz`, `why_short`,
-`tension`, `hook?`, `status` (`generated` | `reviewed`), `reviewed_at`,
-`created_at`, `batch_id`, `promotion` (`state`: `none` | `promoted` | `failed`,
-`project_id`, `promoted_at`, `error`).
+requested, accepted, duration_ms, chunks, rejected_candidates), `ideas[≤30]`
+(the ACTIVE list), `removed[]` (removal history — never physically deleted by
+ordinary use), `promoted_history[]`, `last_failure`, `revision` (bumped on
+every content mutation; stale-write protection for long-running generation).
 
-Schema evolution: `loadState`/`loadCategories` normalize missing fields
-(mirrors `super-focus.js readStateDir`), so adding fields never breaks stored
-sets. All writes are atomic (tmp + rename). Corrupt JSON surfaces as 422.
+Each idea: `id` (`ie-<8hex>`, always server-generated — model ids are never
+trusted), `category_id`, content fields (`title`, `premise`, `why_vidtoolz`,
+`why_short`, `tension`, `hook?`, `viewer_takeaway?`, `visual_opportunity?`),
+`status` (`generated` | `reviewed`), `reviewed_at`, `created_at`, `updated_at`,
+`batch_id`, `model`, and the Phase 2 editorial lifecycle:
+
+- `content_origin`: `generated` | `manually_edited` | `replacement_generated`
+- `edit_revision` (int) + `edit_history[]` (each entry: revision, edited_at,
+  previous content snapshot) + `original_content` (the pre-first-edit snapshot)
+- `removed`: `null` or `{at, reason, note}` (reason from the structured set:
+  duplicate, too_broad, too_narrow, weak_vidtoolz_fit, poor_shorts_fit,
+  already_covered, too_tool_specific, weak_tension, not_visually_explainable,
+  inaccurate, superseded_by_refresh, other) + `removal_history[]` (restores)
+- `replacement_for_idea_id` / `replaced_by_idea_id` (replacement provenance,
+  both directions; a removed topic's id is never reused)
+- `promotion` (`state`: `none` | `promoted` | `failed`, `project_id`,
+  `promoted_at`, `promoted_revision` — the edit revision whose content went
+  into the project — and `error`)
+
+Schema evolution / migration: `loadState`/`loadCategories` normalize missing
+fields (mirrors `super-focus.js readStateDir`), so Phase 1 state migrates on
+read — legacy ideas gain `content_origin: generated`, `edit_revision: 0`,
+empty histories, `removed: null`; categories gain `removed: []` and
+`revision: 0`. Existing ids, batch ids, and promotion links stay valid
+(covered by a legacy-state test). All writes are atomic (tmp + rename).
+Corrupt JSON surfaces as 422.
+
+## Topic lifecycle: edit, remove, restore, replace
+
+A generated topic is a proposal the operator can improve before deciding
+anything. Independent concerns are stored separately: content origin, review
+state, availability (active/removed), and promotion state.
+
+**Edit topic** (`POST /api/idea-engine/edit`): structured form in the detail
+panel (Save/Cancel; no raw JSON). Content-only — id, category, batch/model
+provenance, and promotion identity are immutable through editing, and no model
+call happens. Every save validates required fields, length limits, HTML-like
+markup, and exact/near-duplicate titles against all active topics; records an
+edit revision; keeps the previous version in `edit_history` (the first edit
+also freezes `original_content`); and marks the topic `manually_edited`.
+Stale-write protection: the client sends the revision it loaded
+(`expected_revision`); a mismatch returns 409 `stale_revision` so two tabs can
+never silently overwrite each other. Editing an already-promoted topic updates
+only the Idea Engine record — the GUI states plainly that the Super Focus
+project keeps the content transferred at promotion time.
+
+**Remove topic** (`POST /api/idea-engine/remove`): explicit action behind a
+custom dialog showing the title, an optional structured reason, an optional
+note, and three unambiguous buttons — Cancel / Remove only / Remove and
+generate replacement. Removal moves the record to the category's removed
+history with all provenance, edit history, and promotion metadata intact;
+active count drops, vacancy count rises, and the category is shown as
+`incomplete` — never padded with placeholders. Removing an already-removed
+topic returns 409 `already_removed`. Removing a PROMOTED topic hides it from
+active suggestions only; the UI says its Super Focus project is unchanged, and
+no removal can ever delete, archive, or modify a project.
+
+**Removed topics view**: per-category history list (`GET
+/api/idea-engine/removed?category_id=`) with title, removal date/reason,
+origin, edit-history indicator, promotion state, and replacement links.
+Promoted removed topics stay discoverable and openable. Default search covers
+active topics; an "include removed" toggle extends it to history.
+
+**Restore topic** (`POST /api/idea-engine/restore`): same id, history kept
+(the removal record moves into `removal_history`). Refused with a clear 409
+when the category already has 30 active topics (`category_full` — nothing is
+silently displaced; remove something first) or when restoring would duplicate
+an active title (`restore_duplicate`).
+
+**Generate replacement** (`POST /api/idea-engine/replace-one`): generates
+exactly ONE candidate for a vacancy via a dedicated prompt that carries the
+category definition, the removed topic (with an instruction not to reproduce
+it), fixed guidance mapped from its structured removal reason (free-text notes
+NEVER enter prompts), current active titles, deliberately removed titles,
+promoted history, and the other 11 categories to avoid drifting into. Bounded
+corrective retries (4 attempts; wrong item counts are rejected, never
+trimmed); every candidate is validated against active topics everywhere,
+promoted history, removed history, and the replaced topic itself, then
+activated only if a vacancy still exists. The new idea gets a NEW server id
+and is linked both ways (`replacement_for_idea_id` / `replaced_by_idea_id`).
+Failure preserves the vacancy and the removal history untouched.
+
+**Fill all vacancies** (`POST /api/idea-engine/fill-vacancies`): explicit
+action; runs one replacement per vacancy sequentially, mapping vacancies to
+the most recent unreplaced deliberate removals so each replacement carries its
+removal reason as negative guidance. Reports `filled` / `failed` /
+`partial_success` per slot honestly and can never exceed 30 active topics.
+
+## Category capacity
+
+The target is 30 active topics per category. After removals a category
+honestly shows e.g. `Active: 28 / 30 · 2 vacancies` with completeness
+`complete` | `incomplete` | `empty` (plus a live "generating" indicator while
+a lane is busy). Deliberately removed titles are excluded from future
+generation (validator always; prompt within its cap); refresh-superseded
+history is archival and does not constrain future batches.
 
 ## Generation flow
 
@@ -82,8 +172,17 @@ sets. All writes are atomic (tmp + rename). Corrupt JSON surfaces as 422.
 
 - **Refresh one category** (`POST /api/idea-engine/refresh-category`,
   `{category_id, confirm:true}`) — replaces only that category; requires the
-  explicit confirm flag (the GUI collects it in a custom dialog); 409
+  explicit confirm flag (the GUI collects it in a custom dialog and states:
+  "This replaces the current active suggestions for this category. Edited,
+  removed, and promoted topics remain in history."); 409
   `generation_in_progress` if that category or a refresh-all is running.
+  **History interaction:** on activation, promoted old actives move to
+  `promoted_history`, everything else (manual edits included) is archived to
+  `removed` as `superseded_by_refresh` — nothing is physically deleted and
+  edit histories survive. **Mid-generation edits are protected:** the refresh
+  captures the category `revision` before generating; if an edit/removal/
+  restore lands while the model runs, activation refuses with 409
+  `category_revision_conflict` and the newer manual work stays untouched.
 - **Refresh all** (`POST /api/idea-engine/refresh-all`, `{confirm:true}`) —
   starts an in-process background job that runs the 12 categories
   **sequentially** (one local GPU) with a **per-category transactional
@@ -97,24 +196,40 @@ sets. All writes are atomic (tmp + rename). Corrupt JSON surfaces as 422.
 
 `POST /api/idea-engine/promote` `{idea_id}`:
 
-1. Validates the idea id; 404 unknown, 400 malformed.
+1. Validates the idea id; 404 unknown, 400 malformed. Only ACTIVE topics (or
+   already-promoted ones opened from history) can be promoted — a removed
+   unpromoted topic returns 409 `idea_not_active` (restore it first).
 2. **Already promoted + project still exists → opens the existing project**
    (`already_promoted: true`), never creates a second one. (If the recorded
    project was deleted in Super Focus, a fresh promotion creates a new one.)
-3. Otherwise creates **exactly one** project via `superFocus.createProject`
-   — the same canonical domain function the Super Focus GUI uses (title =
-   idea title; slug/id/collision rules unchanged).
-4. Writes a provenance sidecar `idea-engine-origin.json` into the project dir
-   (idea id, batch id, category, premise, relevance, suitability, tension,
-   hook, promoted_at) — the `super-focus.json` schema itself is not modified
-   (precedent: aigen's `promoted-from-idea.json`).
-5. Records the result on the idea: success → `promoted` + `project_id`;
-   failure → `failed` + error, never falsely `promoted`.
-6. Returns `project_id` and an `href` to `super-focus.html?project=<id>` (a
-   deep link added for this flow, mirroring the `?focus=` precedent).
-7. **Never** starts image generation, video generation, PRESTO, or any other
+3. **Crash recovery (one-project invariant):** if the promotion record is
+   missing but a project carrying this idea id in its origin sidecar exists
+   (active or archived), the route reconciles the Idea Engine record and
+   returns the existing project (`reconciled: true`) instead of creating a
+   duplicate. The sidecar — written immediately after project creation — is
+   the durable origin key; it survives Idea Engine edits and removals because
+   it is keyed by the immutable idea id. The residual window is one write
+   wide (crash between project creation and sidecar write).
+4. Otherwise creates **exactly one** project via `superFocus.createProject`
+   — the same canonical domain function the Super Focus GUI uses. The
+   CURRENT content transfers (manual edits included: title = current title).
+5. Writes the provenance sidecar `idea-engine-origin.json` (schema_version 2)
+   into the project dir: idea id, batch id, model, category, the full content
+   transferred at promotion time, `content_origin`, `edit_revision`,
+   `original_generated_content` (the pre-edit model version, when edited),
+   `replacement_for_idea_id`, promoted_at — the `super-focus.json` schema
+   itself is not modified (precedent: aigen's `promoted-from-idea.json`).
+6. Records the result on the idea: success → `promoted` + `project_id` +
+   `promoted_revision`; failure → `failed` + error, never falsely `promoted`.
+7. Returns `project_id` and an `href` to `super-focus.html?project=<id>`.
+8. **Editing after promotion** changes only the Idea Engine record; the GUI
+   flags "edited after promotion" (edit_revision > promoted_revision) and
+   never rewrites the project. **Removing after promotion** hides the topic
+   from active suggestions only; the project, its provenance, and the Open in
+   Super Focus action remain (available from the removed-topics history).
+9. **Never** starts image generation, video generation, PRESTO, or any other
    downstream action — the promote path performs no model call and no lane
-   dispatch (guarded by tests). A per-idea in-flight lock plus client-side
+   dispatch (guarded by tests). A per-idea mutation lock plus client-side
    guard prevents rapid double-click duplication.
 
 ## API inventory
@@ -126,10 +241,23 @@ sets. All writes are atomic (tmp + rename). Corrupt JSON surfaces as 422.
 | GET | `/api/idea-engine/category?id=` | one category + its ideas |
 | GET | `/api/idea-engine/idea?id=` | one idea |
 | GET | `/api/idea-engine/refresh-status` | refresh-all job progress + locks |
+| GET | `/api/idea-engine/removed?category_id=` | one category's removed-topics history |
 | POST | `/api/idea-engine/refresh-category` | replace one category (confirm required) |
 | POST | `/api/idea-engine/refresh-all` | start the sequential all-category job |
 | POST | `/api/idea-engine/review` | mark an idea reviewed/opened |
-| POST | `/api/idea-engine/promote` | promote one idea into Super Focus |
+| POST | `/api/idea-engine/edit` | edit one topic (expected_revision required) |
+| POST | `/api/idea-engine/remove` | remove one topic to history (reason/note optional) |
+| POST | `/api/idea-engine/restore` | restore a removed topic (capacity/dup guarded) |
+| POST | `/api/idea-engine/replace-one` | generate exactly one replacement for a vacancy |
+| POST | `/api/idea-engine/fill-vacancies` | fill all vacancies, one topic at a time |
+| POST | `/api/idea-engine/promote` | promote one idea into Super Focus (idempotent) |
+
+Concurrency rules: one mutation lock per idea (edit/remove/restore/promote
+serialize; losers get 409), one generation lock per category (refresh /
+replacement / fill), one refresh-all job at a time, per-idea `edit_revision`
+checks against stale browser tabs, and per-category `revision` checks against
+stale generation results. Locks are backed by server-side state — disabled
+buttons are UX, never the protection.
 
 All POSTs are nonce + local-Host + Origin gated (`validateLocalWriteRequest`)
 with bounded bodies (16 KB); errors use the repo's `{ok:false, error, code}`
@@ -157,25 +285,36 @@ cd /home/vidtoolz/vidtoolz-episode-factory
 ```
 
 Idea Engine tests: `tests/idea-engine.test.js` (domain, prompts, routes,
-concurrency, security — all model output via fixtures) and
-`tests/idea-engine-ui.test.js` (GUI logic + page wiring). Manual smoke: open
-`idea-engine.html`, refresh one category, open a sub-topic, promote a
-disposable idea, confirm exactly one Super Focus project appears and opens via
-the returned link, then archive/delete the disposable project in Super Focus.
+concurrency, security), `tests/idea-engine-phase2.test.js` (editing, removal,
+restore, replacement, vacancy fills, refresh/edit conflicts, legacy-state
+migration, promotion crash recovery), and `tests/idea-engine-ui.test.js`
+(GUI logic + page wiring) — all model output via fixtures. Manual smoke: open
+`idea-engine.html`, refresh one category, edit a topic and reload, remove a
+topic with a reason, restore it, remove again and Generate replacement,
+promote a disposable idea, confirm exactly one Super Focus project appears
+and opens via the returned link, then archive/delete the disposable project
+in Super Focus.
 
 ## Boundaries and known limitations
 
 - Generation quality depends on the local model; a category refresh takes
-  minutes on `qwen3:14b`. The refresh-one HTTP request stays open for the
-  duration (local-only, matching the existing generate routes).
+  minutes on `qwen3:14b` (a single replacement is much faster). The refresh-one
+  / replace-one / fill-vacancies HTTP requests stay open for the duration
+  (local-only, matching the existing generate routes).
 - Exclusion lists sent to the model are capped (120 titles), so with a full
   360-idea estate the *prompt-side* discouragement is partial — the
   *validator-side* duplicate rejection always sees everything.
 - The refresh-all job is in-memory: a server restart mid-job loses the job
   record (not the per-category transactional state; finished categories stay
   activated, unfinished ones keep their previous sets).
-- If a promotion crashes between project creation and state write, the idea
-  can show unpromoted while the project exists; re-promoting would create a
-  second project. The window is one atomic write wide.
+- Promotion crash recovery is sidecar-based; the residual unrecoverable window
+  is a crash between `createProject` and the sidecar write (one write wide).
+  Retrying inside that window could create a second project.
+- Removed-topic history and refresh-superseded archives grow without bound by
+  design (nothing is physically deleted); with heavy long-term use the state
+  file grows accordingly.
+- Near-duplicate detection is deterministic token-overlap (Jaccard 0.8 on
+  titles); it catches renames and cosmetic variants, not deep semantic
+  duplicates with disjoint vocabulary.
 - No evaluator scoring is applied (the Idea Module's evaluator is advisory and
   bound to its own store); human review + promotion remains the decisive gate.

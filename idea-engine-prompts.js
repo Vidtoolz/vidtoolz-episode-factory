@@ -64,11 +64,25 @@ function ideaItemSchema() {
       why_short: { type: 'string' },
       tension: { type: 'string' },
       hook: { type: 'string' },
+      viewer_takeaway: { type: 'string' },
+      visual_opportunity: { type: 'string' },
     },
     required: ['title', 'premise', 'why_vidtoolz', 'why_short', 'tension'],
     additionalProperties: false,
   };
 }
+
+const IDEA_FIELD_SPEC = [
+  'For each idea provide:',
+  '- title: a blunt claim-style working title (under 100 characters)',
+  '- premise: 1–2 sentences on what the video examines (concrete, not vague)',
+  '- why_vidtoolz: 1–2 sentences on why this matters to VIDTOOLZ viewers specifically',
+  '- why_short: 1–2 sentences on why this works as one ~3-minute vertical Short',
+  '- tension: the central misconception, tension, problem, or decision the video exposes',
+  '- hook: (optional) a blunt spoken first line for the video',
+  '- viewer_takeaway: the one practical rule or model the viewer leaves with',
+  '- visual_opportunity: how generated images, infographics, demonstrations, or contrasts could clarify it',
+];
 
 function ideaBatchSchema() {
   return {
@@ -123,13 +137,7 @@ function buildCategoryIdeasRequest(category, count, exclusions = [], opts = {}) 
     '',
     EXCLUSIONS_SPEC,
     '',
-    'For each idea provide:',
-    '- title: a blunt claim-style working title (under 100 characters)',
-    '- premise: 1–2 sentences on what the video examines (concrete, not vague)',
-    '- why_vidtoolz: 1–2 sentences on why this matters to VIDTOOLZ viewers specifically',
-    '- why_short: 1–2 sentences on why this works as one ~3-minute vertical Short',
-    '- tension: the central misconception, tension, problem, or decision the video exposes',
-    '- hook: (optional) a blunt spoken first line for the video',
+    ...IDEA_FIELD_SPEC,
     '',
     'Every idea must be clearly distinct from the others in this batch — different principle, different failure, or different decision. No two ideas may share their core claim.'
   );
@@ -144,6 +152,73 @@ function buildCategoryIdeasRequest(category, count, exclusions = [], opts = {}) 
     lines.push('', DIVERSIFICATION_HINT);
   }
   lines.push('', `Return exactly ${n} ideas as JSON matching the required schema. No commentary.`);
+  return {
+    system: CHANNEL_POSITIONING,
+    user: lines.join('\n'),
+    schema: ideaBatchSchema(),
+  };
+}
+
+// Fixed guidance per structured removal reason. Removal reasons are bounded
+// editorial metadata: only these enum-mapped strings ever enter a prompt —
+// free-text removal notes are NEVER injected (untrusted-instruction guard).
+const REMOVAL_REASON_GUIDANCE = {
+  duplicate: 'The removed topic was a duplicate. Generate a conceptually different topic, not a renamed version.',
+  too_broad: 'The removed topic was too broad. Generate a narrower, directly actionable topic within the category.',
+  too_narrow: 'The removed topic was too narrow. Generate a topic with wider creator relevance while staying concrete.',
+  weak_vidtoolz_fit: 'The removed topic fit the channel poorly. Anchor the new topic firmly in AI video production systems for serious solo creators.',
+  poor_shorts_fit: 'The removed topic did not suit a short video. The new topic must be explainable bluntly in under 3 minutes.',
+  already_covered: 'The removed topic was already covered. Generate a clearly distinct subject.',
+  too_tool_specific: 'The removed topic was too tool-specific. Generate a durable production principle, not a tool feature.',
+  weak_tension: 'The removed topic lacked tension. The new topic must expose a sharp misconception, problem, or decision.',
+  not_visually_explainable: 'The removed topic could not be shown visually. The new topic must be clarifiable with generated images, infographics, demonstrations, or contrasts.',
+  inaccurate: 'The removed topic was inaccurate or misleading. The new topic must be verifiably true for working creators.',
+};
+
+// Builds a request for exactly ONE replacement sub-topic filling a vacancy.
+// Dedicated builder (not the 30-set prompt): it carries the removed topic,
+// its structured removal reason, the current active set, deliberately removed
+// neighbours, promoted history, and the other categories to avoid drifting
+// into. Output shape/schema matches the batch builder so parsing is shared.
+function buildReplacementRequest(category, opts = {}) {
+  const removedIdea = opts.removedIdea || null;
+  const activeTitles = (Array.isArray(opts.activeTitles) ? opts.activeTitles : []).filter(Boolean).slice(0, MAX_EXCLUSION_TITLES);
+  const removedTitles = (Array.isArray(opts.removedTitles) ? opts.removedTitles : []).filter(Boolean).slice(0, 20);
+  const promotedTitles = (Array.isArray(opts.promotedTitles) ? opts.promotedTitles : []).filter(Boolean).slice(0, 20);
+  const otherCategories = (Array.isArray(opts.otherCategories) ? opts.otherCategories : []).filter(Boolean).slice(0, 12);
+  const lines = [
+    'Generate exactly 1 distinct replacement YouTube Shorts video idea for the VIDTOOLZ topic category below. A weak suggestion was removed from the category and you are filling its slot with a BETTER, DIFFERENT idea.',
+    '',
+    `CATEGORY: ${category.name}`,
+    `WHAT THIS CATEGORY COVERS: ${category.description}`,
+    `WHY THE CHANNEL COVERS IT: ${category.channel_relevance}`,
+  ];
+  if (category.generation_guidance) lines.push(`CATEGORY GUIDANCE: ${category.generation_guidance}`);
+  if (removedIdea) {
+    lines.push(
+      '',
+      'THE REMOVED TOPIC (do NOT reproduce its premise, angle, or a reworded version of it):',
+      `- Title: ${String(removedIdea.title || '').slice(0, 140)}`,
+      `- Premise: ${String(removedIdea.premise || '').slice(0, 300)}`
+    );
+    const guidance = REMOVAL_REASON_GUIDANCE[opts.removalReason];
+    if (guidance) lines.push(guidance);
+  }
+  lines.push('', SUITABLE_TOPIC_SPEC, '', EXCLUSIONS_SPEC, '', ...IDEA_FIELD_SPEC);
+  if (activeTitles.length > 0) {
+    lines.push('', 'CURRENT ACTIVE TOPICS in this category and its neighbours — the new idea must be clearly distinct from every one of these:', ...activeTitles.map((t) => `- ${t}`));
+  }
+  if (promotedTitles.length > 0) {
+    lines.push('', 'ALREADY PROMOTED TO PRODUCTION — never propose these or close variants:', ...promotedTitles.map((t) => `- ${t}`));
+  }
+  if (removedTitles.length > 0) {
+    lines.push('', 'PREVIOUSLY REMOVED BY THE EDITOR — do not bring these back:', ...removedTitles.map((t) => `- ${t}`));
+  }
+  if (otherCategories.length > 0) {
+    lines.push('', `STAY INSIDE THIS CATEGORY. The channel has separate categories for: ${otherCategories.join('; ')}. If the idea belongs more naturally in one of those, discard it and propose one that is unmistakably "${category.name}".`);
+  }
+  if (opts.retry) lines.push('', DIVERSIFICATION_HINT);
+  lines.push('', 'Return exactly 1 idea as JSON matching the required schema. No commentary.');
   return {
     system: CHANNEL_POSITIONING,
     user: lines.join('\n'),
@@ -221,6 +296,8 @@ module.exports = {
   EXCLUSIONS_SPEC,
   ideaBatchSchema,
   buildCategoryIdeasRequest,
+  buildReplacementRequest,
+  REMOVAL_REASON_GUIDANCE,
   stripThinkingAndFences,
   firstBalancedObject,
   parseIdeaBatch,

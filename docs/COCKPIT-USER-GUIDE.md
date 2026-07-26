@@ -242,12 +242,16 @@ have to remember where you left off.
   (idempotent — re-promoting opens the existing project and records provenance).
 - **User-seeded topics** — type your own topic to generate 10 ideas via local
   Ollama on vidnux; it does *not* overwrite the daily set.
-- **`idea-engine.html`** — 12 topic categories × 30 generated Shorts sub-topics
-  (exploration layer, not production). Open ideas to read premise / relevance /
-  tension, refresh weak sets (old set survives any failed refresh), and
-  **Promote to Super Focus** — creates exactly one Super Focus project with
-  provenance and opens it via `super-focus.html?project=<id>`. Re-promoting
-  opens the existing project. See `docs/idea-engine.md`.
+- **`idea-engine.html`** — 12 main categories × 30 generated Shorts sub-topics
+  (exploration layer, not production). Open topics to read premise / relevance /
+  tension; **Edit topic** (structured form, history kept), **Remove topic**
+  (structured reason, restorable history, honest vacancy counts), **Generate
+  replacement** / **Fill all vacancies** for removed slots, refresh weak sets
+  (edited/removed/promoted topics remain in history), and **Promote to Super
+  Focus** — creates exactly one project with provenance and opens it via
+  `super-focus.html?project=<id>`. Re-promoting opens the existing project;
+  removing a promoted topic never touches its project.
+  See `docs/idea-engine.md`.
 
 ---
 
