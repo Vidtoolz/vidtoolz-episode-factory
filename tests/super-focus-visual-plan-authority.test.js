@@ -490,14 +490,24 @@ test('dispatch: a missing comfy CLI is a clear 503 blocked state, not a spawned 
 });
 
 test('dispatch: startFluxPackageJob pre-flights the CLI too (aigen lane)', () => {
-  assert.throws(
-    () => packageEngineServer.startFluxPackageJob({ package_id: 'pkg-x' }, {
-      comfyCliCheck: () => false,
-      fluxScript: __filename, // exists; validation passes to the CLI gate
-      pythonBin: 'python3',
-    }),
-    (e) => e.statusCode === 503 && /Text-to-image lane blocked/i.test(e.message)
-  );
+  // A VALID request (real package + script) so payload validation passes and
+  // the CLI pre-flight is what refuses (input errors stay 400s; the lane gate
+  // fires only for otherwise-dispatchable requests).
+  const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-aigen-cli-gate-'));
+  fs.mkdirSync(path.join(scriptPackages, 'pkg-x'), { recursive: true });
+  try {
+    assert.throws(
+      () => packageEngineServer.startFluxPackageJob({ package_id: 'pkg-x' }, {
+        comfyCliCheck: () => false,
+        scriptPackages,
+        fluxScript: __filename, // exists; validation passes to the CLI gate
+        pythonBin: 'python3',
+      }),
+      (e) => e.statusCode === 503 && /Text-to-image lane blocked/i.test(e.message)
+    );
+  } finally {
+    fs.rmSync(scriptPackages, { recursive: true, force: true });
+  }
 });
 
 test('dispatch: provider status separates lanes and reports the CLI blocker without an Ollama image fallback', async () => {

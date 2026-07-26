@@ -9880,11 +9880,13 @@ function startFluxPackageJob(payload = {}, options = {}) {
     error.active = current;
     throw error;
   }
-  // Pre-flight: run-handoff.py drives generation through the `comfy` CLI; a
-  // missing CLI must refuse here (clear 503), not fail every row after spawn.
-  // Checked before payload validation — the lane is blocked regardless of input.
-  if (!comfyCliResolvable(options)) throw comfyCliBlockedError();
+  // Validate the request FIRST (bad input is 400 whatever the lane state),
+  // THEN pre-flight the lane: run-handoff.py drives generation through the
+  // `comfy` CLI, and a missing CLI must refuse here (clear 503) before any
+  // spawn — never as a per-row failure after it. Ordering matters: hosts
+  // without the CLI (e.g. CI) still report input errors as input errors.
   const config = validateFluxSubmitPayload(payload, options);
+  if (!comfyCliResolvable(options)) throw comfyCliBlockedError();
   return launchFluxHandoffJob({
     fluxScript: config.fluxScript,
     pythonBin: config.pythonBin,
@@ -10104,11 +10106,11 @@ function readFluxResults(packageId, options = {}) {
   };
 }
 
-function handleFluxSubmit(req, res) {
+function handleFluxSubmit(req, res, options = {}) {
   readJsonBody(req)
     .then((payload) => {
       validateLocalWriteRequest(req, payload);
-      const result = startFluxPackageJob(payload);
+      const result = startFluxPackageJob(payload, options);
       sendJSON(res, 200, result);
     })
     .catch((error) => {
@@ -15872,7 +15874,7 @@ function createServer(options = {}) {
     }
 
     if (req.method === 'POST' && url.pathname === FLUX_SUBMIT_API) {
-      handleFluxSubmit(req, res);
+      handleFluxSubmit(req, res, serverOptions);
       return;
     }
 

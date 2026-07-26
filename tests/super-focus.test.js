@@ -1014,6 +1014,9 @@ function imageServer(spawnImpl, { promptCount = 3 } = {}, extra = {}) {
     pythonBin: "python3",
     spawn: spawnImpl,
     fluxReachableCheck: async () => true,
+    // comfy CLI resolvability is host state (absent on CI); tests that verify
+    // the blocked lane override this with () => false via `extra`.
+    comfyCliCheck: () => true,
   }, extra));
   return { server, root, mediaRoot, id: created.project_id };
 }
@@ -1074,6 +1077,7 @@ test("generate-images treats prompt_changed image rows as eligible without clear
     pythonBin: "python3",
     spawn: fakeFluxSpawn(),
     fluxReachableCheck: async () => true,
+    comfyCliCheck: () => true, // host CLI state is not what this test measures
   });
   await listen(server);
   try {
@@ -1118,7 +1122,7 @@ test("generate-images requires prompts (400) and is nonce-gated (403)", async ()
   packageEngineServer.FLUX_STATE.activeJob = null;
   const root = mkRoot();
   const created = superFocus.createProject({ title: "NoPrompts" }, { root });
-  const server = packageEngineServer.createServer({ superFocusRoot: root, superFocusMediaRoot: mkRoot(), fluxScript: fakeScript(), spawn: fakeFluxSpawn() });
+  const server = packageEngineServer.createServer({ superFocusRoot: root, superFocusMediaRoot: mkRoot(), fluxScript: fakeScript(), spawn: fakeFluxSpawn(), comfyCliCheck: () => true });
   await listen(server);
   try {
     const noPrompts = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_IMAGES_API, {
@@ -1768,7 +1772,8 @@ test("generate-images returns 503 (no fallback) when vidnux ComfyUI is unreachab
   const server = packageEngineServer.createServer({
     superFocusRoot: root, superFocusMediaRoot: mkRoot(),
     fluxScript: fakeScript(), spawn: fakeFluxSpawn(),
-    fluxReachableCheck: async () => false, // ComfyUI down
+    comfyCliCheck: () => true,             // CLI resolves…
+    fluxReachableCheck: async () => false, // …but ComfyUI is down
   });
   await listen(server);
   try {
@@ -2154,6 +2159,7 @@ test("generate-images never targets empty prompt slots (scattered gaps)", async 
   const server = packageEngineServer.createServer({
     superFocusRoot: root, superFocusMediaRoot: mediaRoot,
     fluxScript: fakeScript(), pythonBin: "python3", spawn: spy.fn, fluxReachableCheck: async () => true,
+    comfyCliCheck: () => true, // host CLI state is not what this test measures
   });
   await listen(server);
   try {
@@ -2930,6 +2936,9 @@ function imageRoutingServer(spawnImpl, serverOpts = {}, projOpts = {}) {
   const server = packageEngineServer.createServer(Object.assign({
     superFocusRoot: root, superFocusMediaRoot: mediaRoot,
     fluxScript: fakeScript(), pythonBin: "python3", spawn: spawnImpl,
+    // comfy CLI resolvability is host state (absent on CI); override via
+    // serverOpts when a test verifies the blocked lane.
+    comfyCliCheck: () => true,
   }, serverOpts));
   return { server, root, mediaRoot, id: created.project_id };
 }

@@ -218,7 +218,9 @@ test("FLUX submit rejects when a job is already active", async () => {
 
 test("FLUX submit succeeds and returns job id and pid", async () => {
   const fixture = createFluxFixture();
-  const server = packageEngineServer.createServer();
+  // comfy CLI resolvability is host state (absent on CI runners); inject the
+  // pre-flight so this test exercises the submit path deterministically.
+  const server = packageEngineServer.createServer({ comfyCliCheck: () => true });
   try {
     await withFluxEnv(fixture, async () => {
       await listen(server);
@@ -252,6 +254,7 @@ test("FLUX submit dry_run true appends dry-run flag and records mode", async () 
       const result = packageEngineServer.startFluxPackageJob(
         { package_id: fixture.packageId, dry_run: true },
         {
+          comfyCliCheck: () => true, // host CLI state is not what this test measures
           spawn: (_bin, args) => {
             spawnedArgs = args;
             return child;
@@ -277,6 +280,7 @@ test("FLUX submit limit and skip_existing flags build expected CLI args", async 
       packageEngineServer.startFluxPackageJob(
         { package_id: fixture.packageId, limit: 2, skip_existing: false },
         {
+          comfyCliCheck: () => true, // host CLI state is not what this test measures
           spawn: (_bin, args) => {
             spawnedArgs = args;
             return child;
