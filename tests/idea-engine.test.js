@@ -320,6 +320,71 @@ test("idea-engine prompt builder binds category guidance, count, exclusions, and
   assert.ok(retry.user.includes("previous batch repeated"));
 });
 
+test("idea-engine prompt rotates concept shapes per chunk and enforces title variety", async () => {
+  const category = ideaEngine.DEFAULT_CATEGORIES[0];
+  assert.equal(iePrompts.CONCEPT_SHAPES.length, 4);
+  const markers = ["MISCONCEPTION", "INVERSION", "FAILURE STORY", "HARD DECISION"];
+  for (let i = 0; i < 8; i += 1) {
+    const req = iePrompts.buildCategoryIdeasRequest(category, 6, [], { chunkIndex: i });
+    assert.ok(req.user.includes(markers[i % 4]), `chunk ${i} should carry shape ${markers[i % 4]}`);
+    // Exactly one shape per chunk — the others must be absent.
+    for (const other of markers) {
+      if (other !== markers[i % 4]) assert.ok(!req.user.includes(other), `chunk ${i} must not carry ${other}`);
+    }
+    assert.ok(req.user.includes("TITLE VARIETY"), "anti-formula rule present in every chunk");
+    assert.ok(req.user.includes("same two words"));
+  }
+  // Missing/invalid chunkIndex falls back to the first shape (stable default).
+  assert.ok(iePrompts.buildCategoryIdeasRequest(category, 6, []).user.includes("MISCONCEPTION"));
+  assert.equal(iePrompts.conceptShapeFor(-3), iePrompts.CONCEPT_SHAPES[0]);
+  assert.equal(iePrompts.conceptShapeFor(7), iePrompts.CONCEPT_SHAPES[3]);
+  // The formula-family ban is loop-driven: absent by default, present on flag.
+  assert.ok(!iePrompts.buildCategoryIdeasRequest(category, 6, []).user.includes("HARD BAN"));
+  assert.ok(iePrompts.buildCategoryIdeasRequest(category, 6, [], { banFormulaFamily: true }).user.includes("HARD BAN"));
+});
+
+test("idea-engine caps title-formula collapse per batch (same opening + AI-can't family)", async () => {
+  function moldItem(i, title) {
+    return { ...fixtureItem(0, i), title };
+  }
+  // Same-opening cap: 4th "Gates before X..." title is rejected, others accepted.
+  const sameOpening = ideaEngine.acceptCandidates(
+    [
+      moldItem(0, "Gates before prompts save your week"),
+      moldItem(1, "Gates before renders catch drift early"),
+      moldItem(2, "Gates before publish protect the channel"),
+      moldItem(3, "Gates before scripting waste momentum"),
+    ],
+    { categoryId: "c-a", batchId: "b1" }
+  );
+  assert.equal(sameOpening.accepted.length, 3);
+  assert.equal(sameOpening.rejected.length, 1);
+  assert.ok(sameOpening.rejected[0].reasons[0].includes("opening"));
+  // Family cap: with 10 family titles already in the batch, an 11th is rejected
+  // while a non-family title still passes; counters seed from acceptedSoFar.
+  const priorFamily = Array.from({ length: 10 }, (_, i) =>
+    ideaEngine.acceptCandidates(
+      [moldItem(i, `AI Can't ${["plan","edit","frame","cut","grade","mix","light","score","direct","review"][i]} your production ${i}`)],
+      { categoryId: "c-a", batchId: "b1" }
+    ).accepted[0]
+  );
+  assert.equal(priorFamily.filter(Boolean).length, 10);
+  const capped = ideaEngine.acceptCandidates(
+    [
+      moldItem(20, "AI Doesn't Rescue a Broken Timeline"),
+      moldItem(21, "Version locks beat vigilance every time"),
+    ],
+    { categoryId: "c-a", batchId: "b1", acceptedSoFar: priorFamily }
+  );
+  assert.equal(capped.accepted.length, 1);
+  assert.equal(capped.accepted[0].title, "Version locks beat vigilance every time");
+  assert.ok(capped.rejected[0].reasons[0].includes("mold capped"));
+  // Curly-apostrophe variants count into the family too.
+  assert.ok(ideaEngine.TITLE_FORMULA_FAMILY_RE.test("AI Can’t Replace the Editor"));
+  assert.ok(ideaEngine.TITLE_FORMULA_FAMILY_RE.test("AI Doesn't Fix a Weak Script"));
+  assert.ok(!ideaEngine.TITLE_FORMULA_FAMILY_RE.test("More Gates Don't Mean Better Control"));
+});
+
 test("idea-engine parses model output defensively and rejects garbage without throwing", async () => {
   const items = [fixtureItem(0, 0)];
   assert.deepEqual(iePrompts.parseIdeaBatch(JSON.stringify({ ideas: items })).items, items);

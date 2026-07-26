@@ -39,9 +39,31 @@ const SUITABLE_TOPIC_SPEC = [
   '3. It can be explained bluntly in under 3 minutes by one presenter, without specialist knowledge.',
   '4. It is narrow enough to cover coherently, yet substantial enough to justify a video.',
   '5. It can be clarified with generated images, infographics, demonstrations, or contrasts.',
-  'The strongest shape is misconception-first: "Most creators think X. Actually, the important thing is Y. Here is the practical rule."',
   'Titles sound like blunt claims (e.g. "Prompts Are Not a Production Plan", "The Script Is the Spine"), never like "tips and tricks".',
 ].join('\n');
+
+// Concept shapes, rotated per generation chunk. Phase 0 calibration
+// (2026-07-26) showed that leading every request with the misconception shape
+// collapses a batch onto one title mold ("AI Can't Replace X" was 48/60);
+// rotating the requested shape forces structural diversity at the source.
+const CONCEPT_SHAPES = [
+  'Shape for THIS batch — MISCONCEPTION: each idea names something most creators believe, shows why it is wrong in practice, and gives the working rule. ("Most creators think X. Actually Y. Here is the rule.")',
+  'Shape for THIS batch — INVERSION: each idea takes an accepted best practice or popular habit and shows a concrete situation where following it backfires, ending with the sharper rule. No idea may be phrased as "AI can\'t/doesn\'t do X".',
+  'Shape for THIS batch — FAILURE STORY: each idea is built around one specific, recognizable production failure (a wasted day, a broken handoff, a video that died at review) and the durable rule that prevents it. Name the failure concretely in the premise. No idea may be phrased as "AI can\'t/doesn\'t do X".',
+  'Shape for THIS batch — HARD DECISION: each idea centers a real trade-off a solo creator must decide (speed vs review, generate more vs finish, automate vs supervise), and gives a usable decision rule. No idea may be phrased as "AI can\'t/doesn\'t do X".',
+];
+
+const TITLE_VARIETY_RULE = [
+  'TITLE VARIETY (hard rule): do not begin more than ONE title in this batch with the same two words.',
+  'Do not overuse any single title formula — in particular "AI Can\'t …", "AI Doesn\'t …", and "X Is Not Y" must not dominate.',
+  'Vary the grammatical form: statements, warnings, rules, questions turned into claims.',
+].join('\n');
+
+// Injected by the generation loop once the "AI Can't/Doesn't" family quota for
+// the batch is used up — the validator rejects further family titles anyway,
+// so telling the model directly recovers chunk yield instead of wasting calls.
+const FORMULA_BAN_LINE =
+  'HARD BAN for this batch: no title may begin with "AI Can\'t", "AI Doesn\'t", "AI Won\'t", or "AI Isn\'t" — that title family is already used up. Every title must take a different grammatical form (rule, warning, contrast, consequence, decision).';
 
 const EXCLUSIONS_SPEC = [
   'Never propose:',
@@ -115,6 +137,13 @@ const DIVERSIFICATION_HINT = [
 // category. `exclusions` are working titles that must not be repeated or
 // lightly reworded (already-generated, already-promoted, other categories).
 // opts.retry adds the diversification push after a rejected/stalled chunk.
+// opts.chunkIndex (0-based) rotates the requested concept shape so successive
+// chunks approach the category from different structural angles.
+function conceptShapeFor(chunkIndex) {
+  const idx = Number.isInteger(chunkIndex) && chunkIndex >= 0 ? chunkIndex : 0;
+  return CONCEPT_SHAPES[idx % CONCEPT_SHAPES.length];
+}
+
 function buildCategoryIdeasRequest(category, count, exclusions = [], opts = {}) {
   const n = clampCallCount(count);
   const excluded = (Array.isArray(exclusions) ? exclusions : [])
@@ -134,6 +163,11 @@ function buildCategoryIdeasRequest(category, count, exclusions = [], opts = {}) 
   lines.push(
     '',
     SUITABLE_TOPIC_SPEC,
+    '',
+    conceptShapeFor(opts && opts.chunkIndex),
+    '',
+    TITLE_VARIETY_RULE,
+    ...(opts && opts.banFormulaFamily ? ['', FORMULA_BAN_LINE] : []),
     '',
     EXCLUSIONS_SPEC,
     '',
@@ -297,6 +331,10 @@ module.exports = {
   ideaBatchSchema,
   buildCategoryIdeasRequest,
   buildReplacementRequest,
+  CONCEPT_SHAPES,
+  conceptShapeFor,
+  TITLE_VARIETY_RULE,
+  FORMULA_BAN_LINE,
   REMOVAL_REASON_GUIDANCE,
   stripThinkingAndFences,
   firstBalancedObject,

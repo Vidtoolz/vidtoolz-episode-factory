@@ -412,6 +412,19 @@ function titleTokens(title) {
   return new Set(normalizeTitle(title).split(' ').filter((t) => t.length > 2));
 }
 
+// Title-formula diversity (Phase 0 calibration, 2026-07-26): local models
+// collapse batches onto one title mold — 48/60 titles were "AI Can't/Doesn't
+// Replace X", and prompt-side shape rotation alone still left 22/30. These
+// deterministic per-batch caps make the surplus rejectable so the chunked
+// generation loop must supply structurally different ideas instead.
+const TITLE_FORMULA_FAMILY_RE = /^ai\s+(?:can|does|won|is)n?[''`’]?t\b/i;
+const MAX_SAME_OPENING_PER_BATCH = 3; // identical first-two-word opening
+const MAX_FORMULA_FAMILY_PER_BATCH = Math.ceil(IDEAS_PER_CATEGORY / 3); // the known-degenerate family
+
+function titleOpeningBigram(title) {
+  return normalizeTitle(title).split(' ').slice(0, 2).join(' ');
+}
+
 // Near-duplicate check for cosmetic variations: token Jaccard over normalized
 // titles. Cheap, deterministic, and deliberately conservative (0.8) so honest
 // same-theme neighbours are not rejected.
@@ -498,6 +511,16 @@ function acceptCandidates(rawItems, { categoryId, batchId, existingTitles = [], 
     seenTitles.push(prior.title);
   }
   const items = Array.isArray(rawItems) ? rawItems : [];
+  // Per-batch formula counters seeded from what this batch already accepted
+  // (cross-category/global exclusions deliberately do NOT count — the caps
+  // govern diversity WITHIN the set being built).
+  const openingCounts = new Map();
+  let formulaFamilyCount = 0;
+  for (const prior of acceptedSoFar) {
+    const bigram = titleOpeningBigram(prior.title);
+    openingCounts.set(bigram, (openingCounts.get(bigram) || 0) + 1);
+    if (TITLE_FORMULA_FAMILY_RE.test(prior.title)) formulaFamilyCount += 1;
+  }
   for (const item of items) {
     const problems = validateCandidate(item);
     if (problems.length > 0) {
@@ -519,6 +542,18 @@ function acceptCandidates(rawItems, { categoryId, batchId, existingTitles = [], 
       rejected.push({ title, reasons: [`near-duplicate of "${String(near).slice(0, 80)}"`] });
       continue;
     }
+    const bigram = titleOpeningBigram(title);
+    if ((openingCounts.get(bigram) || 0) >= MAX_SAME_OPENING_PER_BATCH) {
+      rejected.push({ title, reasons: [`opening "${bigram}" already used ${MAX_SAME_OPENING_PER_BATCH}x in this batch`] });
+      continue;
+    }
+    const inFamily = TITLE_FORMULA_FAMILY_RE.test(title);
+    if (inFamily && formulaFamilyCount >= MAX_FORMULA_FAMILY_PER_BATCH) {
+      rejected.push({ title, reasons: [`"AI can't/doesn't" title mold capped at ${MAX_FORMULA_FAMILY_PER_BATCH} per batch`] });
+      continue;
+    }
+    openingCounts.set(bigram, (openingCounts.get(bigram) || 0) + 1);
+    if (inFamily) formulaFamilyCount += 1;
     seenNormalized.add(normalized);
     seenTitles.push(title);
     accepted.push(normalizeIdea({
@@ -1014,6 +1049,10 @@ module.exports = {
   findIdea,
   normalizeTitle,
   titlesNearDuplicate,
+  titleOpeningBigram,
+  TITLE_FORMULA_FAMILY_RE,
+  MAX_SAME_OPENING_PER_BATCH,
+  MAX_FORMULA_FAMILY_PER_BATCH,
   exclusionTitles,
   validateCandidate,
   acceptCandidates,

@@ -5238,11 +5238,22 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
     // more candidates than needed and keep the distinct ones (the final-set
     // gate still enforces exactly IDEAS_PER_CATEGORY at activation).
     const ask = Math.min(ideaEnginePrompts.MAX_IDEAS_PER_CALL, n + (zeroProgress > 0 ? 4 : 2));
+    // Steer the model off the "AI Can't/Doesn't" title mold BEFORE the
+    // validator's per-batch family cap starts rejecting everything it sends
+    // (two slots of headroom so the ban lands before the wall).
+    const familyCount = accepted.filter((i) => ideaEngine.TITLE_FORMULA_FAMILY_RE.test(i.title)).length;
     const reqPrompt = ideaEnginePrompts.buildCategoryIdeasRequest(
       category,
       ask,
       accepted.map((i) => i.title).concat(exclusions),
-      { retry: zeroProgress > 0 }
+      // chunkIndex rotates the requested concept shape (misconception /
+      // inversion / failure story / decision) so a batch cannot collapse
+      // onto one title mold (Phase 0 finding, 2026-07-26).
+      {
+        retry: zeroProgress > 0,
+        chunkIndex: chunksAttempted,
+        banFormulaFamily: familyCount >= ideaEngine.MAX_FORMULA_FAMILY_PER_BATCH - 2,
+      }
     );
     chunksAttempted += 1;
     // Escalate temperature after no-progress chunks — the standard remedy for

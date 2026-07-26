@@ -152,8 +152,13 @@ history is archival and does not constrain future batches.
 
 1. Prompts come from `idea-engine-prompts.js`: doctrine-grounded system prompt
    (blunt production realist, 2:15–2:50 miniature evergreen explainer, 18-month
-   durability test, misconception-first shape) + category guidance + exclusion
-   list + strict JSON schema, returned as one `{system, user, schema}` unit.
+   durability test) + category guidance + exclusion list + strict JSON schema,
+   returned as one `{system, user, schema}` unit. Each chunk rotates its
+   concept shape (misconception / inversion / failure story / hard decision)
+   and carries a title-variety rule; the validator additionally caps identical
+   title openings (3/batch) and the degenerate "AI Can't/Doesn't …" family
+   (10/batch), with the loop injecting a hard-ban instruction as the family
+   quota fills (Phase 0 calibration, 2026-07-26: mold share 29/30 → 6/30).
 2. The server generates in **chunks** (default 6 ideas/call, `IDEA_ENGINE_CHUNK_SIZE`,
    clamped 1–10; per-call timeout `IDEA_ENGINE_OLLAMA_TIMEOUT_MS` → `OLLAMA_TIMEOUT_MS`).
    Accepted candidates accumulate **in memory** — never in the active set.
