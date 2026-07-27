@@ -438,6 +438,35 @@ test("idea-engine parses model output defensively and rejects garbage without th
   assert.equal(iePrompts.parseIdeaBatch("<think>unterminated think block").ok, false);
 });
 
+test("idea-engine coerces qwen3.5 non-string field values at the parse boundary (live failure 2026-07-27)", async () => {
+  const base = fixtureItem(0, 0);
+  // The exact live failure: visual_opportunity emitted as null stalled whole
+  // categories with "visual_opportunity is not a string". Null → '' → valid.
+  let [item] = iePrompts.parseIdeaBatch(JSON.stringify({ ideas: [{ ...base, visual_opportunity: null }] })).items;
+  assert.equal(item.visual_opportunity, "");
+  assert.deepEqual(ideaEngine.validateCandidate(item), [], "null optional field no longer rejects the candidate");
+  // Array of strings → joined; number → stringified; wrapper object → unwrapped.
+  [item] = iePrompts.parseIdeaBatch(JSON.stringify({ ideas: [{
+    ...base,
+    visual_opportunity: ["split-screen contrast", "before/after grid"],
+    hook: { description: "You are shipping a pile, not a video." },
+    viewer_takeaway: 42,
+  }] })).items;
+  assert.equal(item.visual_opportunity, "split-screen contrast before/after grid");
+  assert.equal(item.hook, "You are shipping a pile, not a video.");
+  assert.equal(item.viewer_takeaway, "42");
+  assert.deepEqual(ideaEngine.validateCandidate(item), []);
+  // Uncoercible shapes still fail validation with the honest reason.
+  [item] = iePrompts.parseIdeaBatch(JSON.stringify({ ideas: [{ ...base, visual_opportunity: { a: 1, b: 2 } }] })).items;
+  assert.ok(ideaEngine.validateCandidate(item).some((p) => p.includes("visual_opportunity is not a string")));
+  // A null REQUIRED field coerces to '' and is still rejected as missing.
+  [item] = iePrompts.parseIdeaBatch(JSON.stringify({ ideas: [{ ...base, title: null }] })).items;
+  assert.ok(ideaEngine.validateCandidate(item).some((p) => p.includes("missing or empty title")));
+  // Coercion also covers the bare-object single-item shape (replacement path).
+  const bare = iePrompts.parseIdeaBatch(JSON.stringify({ ...base, visual_opportunity: null })).items[0];
+  assert.equal(bare.visual_opportunity, "");
+});
+
 // ── server: read routes ─────────────────────────────────────────────────────
 
 test("idea-engine GET state/category/idea routes return the persisted view", async () => {
@@ -571,6 +600,48 @@ test("idea-engine stalls fail closed when the model only echoes duplicates (neve
     const block = state.categories[categories[0].id];
     assert.ok(!block || block.ideas.length === 0, "no partial set may activate");
     assert.ok(block.last_failure.message.includes("duplicate") || block.last_failure.code === "idea_generation_stalled");
+  } finally {
+    await close(server);
+  }
+});
+
+test("idea-engine escalates diversification on LOW-yield chunks, not only zero-yield (qwen3.5 limp mode)", async () => {
+  const categories = ideaEngine.DEFAULT_CATEGORIES;
+  let call = 0;
+  let sawEscalation = false;
+  const { server, ieRoot } = ideServer({
+    fetchImpl: async (url, init) => {
+      call += 1;
+      const user = JSON.parse(init.body).messages[1].content;
+      const n = Math.round(Number(/exactly (\d+) distinct/.exec(user)[1]));
+      let items;
+      if (call === 1) {
+        items = fixturePool(0).slice(0, 10); // full yield
+      } else if (call === 2) {
+        // LOW yield: 9 duplicates of chunk 1 + one fresh idea → accepted 1 of 10,
+        // never zero — the old loop kept temperature flat and no hint fired.
+        items = fixturePool(0).slice(0, 9).concat([fixtureItem(1, 20)]);
+      } else {
+        // The chunk after a low-yield chunk must carry the diversification push.
+        if (user.includes("previous batch repeated")) sawEscalation = true;
+        const start = 11 + (call - 3) * 10;
+        items = Array.from({ length: n }, (_, i) => ({
+          ...fixtureItem(2, (start + i) % 30),
+          title: `fresh ${NUM_WORDS[(start + i) % 30]} ledger angle ${call}-${i}`,
+        }));
+      }
+      return { ok: true, json: async () => ({ message: { content: JSON.stringify({ ideas: items }) } }) };
+    },
+  });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.IDEA_ENGINE_REFRESH_CATEGORY_API, {
+      method: "POST", headers: writeHeaders(), body: { category_id: categories[0].id, confirm: true },
+    });
+    assert.equal(res.statusCode, 200, res.raw);
+    assert.ok(sawEscalation, "low-yield chunk triggered the diversification hint without any zero-yield chunk");
+    const state = ideaEngine.loadState({ root: ieRoot });
+    assert.equal(state.categories[categories[0].id].ideas.length, 30, "run completed");
   } finally {
     await close(server);
   }

@@ -110,6 +110,7 @@ const IDEA_FIELD_SPEC = [
   '- hook: (optional) a blunt spoken first line for the video',
   '- viewer_takeaway: the one practical rule or model the viewer leaves with',
   '- visual_opportunity: how generated images, infographics, demonstrations, or contrasts could clarify it',
+  'Every field value must be a plain JSON string — never null and never a list or object. Leave an optional field out entirely if you have nothing for it.',
 ];
 
 function ideaBatchSchema() {
@@ -320,6 +321,47 @@ function firstBalancedObject(text) {
 // Parses one model reply into a raw candidate array. Accepts {"ideas":[...]}
 // (the schema shape) or a bare array. Returns {ok, items} | {ok:false, error};
 // validation of each item happens in idea-engine.js (this only locates JSON).
+// The candidate fields the schema requests — mirror of ideaItemSchema().
+const CANDIDATE_FIELDS = [
+  'title', 'premise', 'why_vidtoolz', 'why_short', 'tension',
+  'hook', 'viewer_takeaway', 'visual_opportunity',
+];
+
+// qwen3.5:9b intermittently violates the JSON-schema `format` grammar and
+// emits null / arrays / wrapper objects for string fields (live 2026-07-27:
+// whole categories stalled on "visual_opportunity is not a string"). Coerce
+// the obviously-recoverable shapes into strings BEFORE validation; anything
+// genuinely uncoercible is left as-is so the validator still rejects it
+// honestly. Coercion never invents content — it only unwraps or joins what
+// the model already wrote.
+function coerceFieldValue(value) {
+  if (typeof value === 'string') return value;
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) {
+    const parts = value.map(coerceFieldValue).filter((s) => typeof s === 'string' && s.trim());
+    if (parts.length === value.length || parts.length > 0) return parts.join(' ');
+    return value; // nothing string-like inside: reject downstream
+  }
+  if (typeof value === 'object') {
+    for (const key of ['text', 'value', 'description', 'content']) {
+      if (typeof value[key] === 'string') return value[key];
+    }
+    const strings = Object.keys(value).map((k) => value[k]).filter((v) => typeof v === 'string');
+    if (strings.length === 1) return strings[0];
+  }
+  return value; // uncoercible: validator rejects with the honest reason
+}
+
+function coerceCandidate(item) {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return item;
+  const out = Object.assign({}, item);
+  for (const field of CANDIDATE_FIELDS) {
+    if (field in out) out[field] = coerceFieldValue(out[field]);
+  }
+  return out;
+}
+
 function parseIdeaBatch(raw) {
   const cleaned = stripThinkingAndFences(raw);
   if (!cleaned) return { ok: false, error: 'model returned empty output' };
@@ -346,7 +388,7 @@ function parseIdeaBatch(raw) {
     ? [parsed]
     : null;
   if (!items) return { ok: false, error: 'model output has no ideas array' };
-  return { ok: true, items };
+  return { ok: true, items: items.map(coerceCandidate) };
 }
 
 module.exports = {
@@ -366,6 +408,8 @@ module.exports = {
   FORMULA_BAN_LINE,
   REMOVAL_REASON_GUIDANCE,
   stripThinkingAndFences,
+  coerceFieldValue,
+  coerceCandidate,
   firstBalancedObject,
   parseIdeaBatch,
 };

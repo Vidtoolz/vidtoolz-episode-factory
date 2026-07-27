@@ -5248,20 +5248,32 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
   // Titles this run already produced and had rejected, echoed back in later
   // chunk prompts — without this the model never learns which favourites are
   // burned and resubmits them until the run stalls (seen live 2026-07-27).
+  // Ranked by REPEAT COUNT, not recency: qwen3.5:9b fixates on a few
+  // attractor titles and resubmits them chunk after chunk; a recency window
+  // let them churn out of the feedback list while they kept burning budget
+  // (same title rejected across a whole 30-chunk run, live 2026-07-27).
+  const rejectedCounts = new Map(); // normalized title -> { title, count, at }
   let rejectedFeedback = [];
   // Local models at fixed temperature re-emit favourite titles once the obvious
   // angles are taken; tolerate a few no-progress chunks (with rejected-title
   // feedback + a diversification push in the retry prompt) before failing closed.
   const ZERO_PROGRESS_LIMIT = 4;
-  // Attempt budget: duplicate-heavy chunks accept fewer than n, so allow 4x
-  // the minimum chunk count — a stuck model can never loop forever.
-  const maxChunks = Math.ceil(target / Math.max(1, chunkSize)) * 4;
+  // Duplicate-collapse pressure is not binary: qwen3.5:9b often LIMPS —
+  // chunks yield 1–3 of 8 asked (exact re-emissions of excluded titles) while
+  // never hitting zero, so zero-progress escalation never fired and runs died
+  // at the budget with e.g. 17/30 (live 2026-07-27). Track a low-yield streak
+  // and escalate diversification + temperature on it exactly as on zero
+  // progress; give the budget 6x headroom instead of 4x so escalated chunks
+  // have room to finish the set. A stuck model still terminates.
+  let lowYieldStreak = 0;
+  const maxChunks = Math.ceil(target / Math.max(1, chunkSize)) * 6;
   while (accepted.length < target && chunksAttempted < maxChunks) {
     const n = Math.min(chunkSize, target - accepted.length);
+    const pressure = Math.max(zeroProgress, lowYieldStreak);
     // Oversample: duplicate pressure grows as the set fills, so ask for a few
     // more candidates than needed and keep the distinct ones (the final-set
     // gate still enforces exactly IDEAS_PER_CATEGORY at activation).
-    const ask = Math.min(ideaEnginePrompts.MAX_IDEAS_PER_CALL, n + (zeroProgress > 0 ? 4 : 2));
+    const ask = Math.min(ideaEnginePrompts.MAX_IDEAS_PER_CALL, n + (pressure > 0 ? 4 : 2));
     // Steer the model off the "AI Can't/Doesn't" title mold BEFORE the
     // validator's per-batch family cap starts rejecting everything it sends
     // (two slots of headroom so the ban lands before the wall).
@@ -5274,7 +5286,7 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
       // inversion / failure story / decision) so a batch cannot collapse
       // onto one title mold (Phase 0 finding, 2026-07-26).
       {
-        retry: zeroProgress > 0,
+        retry: pressure > 0,
         chunkIndex: chunksAttempted,
         banFormulaFamily: familyCount >= ideaEngine.MAX_FORMULA_FAMILY_PER_BATCH - 2,
         rejectedTitles: rejectedFeedback,
@@ -5283,7 +5295,7 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
     chunksAttempted += 1;
     // Escalate temperature after no-progress chunks — the standard remedy for
     // a local model collapsing onto its favourite titles.
-    const temperature = Math.min(0.95, 0.6 + zeroProgress * 0.15);
+    const temperature = Math.min(0.95, 0.6 + pressure * 0.15);
     const content = await callOllamaChat(
       { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model },
       Object.assign({}, serverOptions, { timeoutMs, temperature })
@@ -5309,16 +5321,22 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
     rejectedCount += result.rejected.length;
     if (result.rejected.length > 0) {
       lastRejected = result.rejected;
-      const seen = new Set(rejectedFeedback.map((t) => t.toLowerCase()));
       for (const r of result.rejected) {
         const title = String(r.title || '').trim();
-        if (title && !seen.has(title.toLowerCase())) {
-          rejectedFeedback.push(title);
-          seen.add(title.toLowerCase());
-        }
+        if (!title) continue;
+        const key = title.toLowerCase();
+        const entry = rejectedCounts.get(key) || { title, count: 0, at: 0 };
+        entry.count += 1;
+        entry.at = chunksAttempted;
+        rejectedCounts.set(key, entry);
       }
-      // Keep the most recent rejections — those are the model's live attractors.
-      rejectedFeedback = rejectedFeedback.slice(-ideaEnginePrompts.MAX_REJECTED_FEEDBACK_TITLES);
+      // Worst repeat offenders first (count desc, then most recent), with the
+      // resubmission count spelled out — confronting the model with "already
+      // submitted 4x" suppresses an attractor better than listing it once.
+      rejectedFeedback = Array.from(rejectedCounts.values())
+        .sort((a, b) => (b.count - a.count) || (b.at - a.at))
+        .slice(0, ideaEnginePrompts.MAX_REJECTED_FEEDBACK_TITLES)
+        .map((e) => e.count > 1 ? `${e.title} (already submitted ${e.count}x)` : e.title);
     }
     if (result.accepted.length === 0) {
       zeroProgress += 1;
@@ -5334,12 +5352,18 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
       continue;
     }
     zeroProgress = 0;
+    // A chunk that yields under half of what was needed keeps the pressure on.
+    if (result.accepted.length * 2 < Math.min(n, ask)) lowYieldStreak += 1;
+    else lowYieldStreak = 0;
     for (const idea of result.accepted) {
       if (accepted.length < target) accepted.push(idea);
     }
   }
   if (accepted.length !== target) {
-    const e = new Error(`Idea generation incomplete: ${accepted.length}/${target} valid ideas after ${chunksAttempted} attempts. The previous set was preserved.`);
+    const reasons = lastRejected.slice(0, 3)
+      .map((r) => `"${String(r.title).slice(0, 50)}": ${r.reasons.join(', ')}`)
+      .join(' | ');
+    const e = new Error(`Idea generation incomplete: ${accepted.length}/${target} valid ideas after ${chunksAttempted} attempts. The previous set was preserved.${reasons ? ` Last rejections: ${reasons}` : ''}`);
     e.statusCode = 502;
     e.code = 'idea_generation_incomplete';
     throw e;
