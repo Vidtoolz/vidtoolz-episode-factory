@@ -412,3 +412,37 @@ test("idea-engine-status conflicting generation is refused (409) without disturb
     await close(server);
   }
 });
+
+test("idea-engine-status records the resolved model and structured failure diagnostics", async () => {
+  const categories = ideaEngine.DEFAULT_CATEGORIES;
+  let call = 0;
+  const { server } = ideServer({
+    ideaEngineModel: "fixture-model-x",
+    fetchImpl: async () => {
+      call += 1;
+      if (call === 1) return { ok: true, json: async () => ({ message: { content: "not json at all" } }) };
+      if (call === 2) return { ok: true, json: async () => ({ message: { content: JSON.stringify({ wrong: true }) } }) };
+      // Then: one duplicate pair + fresh items so rejection kinds get tallied.
+      const items = fixturePool(0).slice((call - 3) * 10, (call - 2) * 10);
+      if (call === 3) items[1] = { ...items[0] }; // in-batch duplicate
+      return { ok: true, json: async () => ({ message: { content: JSON.stringify({ ideas: items }) } }) };
+    },
+  });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.IDEA_ENGINE_REFRESH_CATEGORY_API, {
+      method: "POST", headers: writeHeaders(), body: { category_id: categories[0].id, confirm: true },
+    });
+    const s = await getStatus(server);
+    assert.equal(s.model, "fixture-model-x", "resolved model recorded in the status record");
+    assert.ok(s.diagnostics, "diagnostics present");
+    assert.equal(s.diagnostics.parse_failures, 2);
+    assert.equal(s.diagnostics.parse_failure_kinds.invalid_json, 1);
+    assert.equal(s.diagnostics.parse_failure_kinds.unsupported_envelope, 1);
+    assert.ok(s.diagnostics.rejection_kinds.duplicate_title >= 1, JSON.stringify(s.diagnostics));
+    assert.ok(s.diagnostics.model_calls >= 4);
+    assert.ok(res.statusCode === 200 || res.statusCode === 502, res.raw);
+  } finally {
+    await close(server);
+  }
+});

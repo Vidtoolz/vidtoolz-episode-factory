@@ -424,3 +424,13 @@ test("idea-engine-ui generation status poller: overlap skip, stale-response guar
   assert.equal(ctl.consecutiveErrors(), 0);
   assert.equal(updates.length, 2, "only real status payloads reach the renderer");
 });
+
+test("idea-engine-ui generation status shows the model quietly; legacy records without model still render", () => {
+  const withModel = ui.generationStatusView({ state: "running", operation: "refresh_category", model: "qwen3:30b" }, Date.now());
+  assert.ok(withModel.detail.includes("with qwen3:30b"), withModel.detail);
+  const legacy = ui.generationStatusView({ state: "completed", operation: "refresh_category" }, Date.now());
+  assert.ok(!legacy.detail.includes("with "), "no model field, no model text");
+  assert.ok(!legacy.detail.includes("undefined"));
+  const junkModel = ui.generationStatusView({ state: "running", operation: "replace_one", model: { a: 1 } }, Date.now());
+  assert.ok(!junkModel.detail.includes("[object"), "non-string model never renders as [object Object]");
+});

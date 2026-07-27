@@ -5259,6 +5259,8 @@ function ieStatusBegin(operation, meta = {}, ieOpts = {}) {
     active_category_name: meta.category_name || null,
     requested_topics: Number.isFinite(meta.requested_topics) ? meta.requested_topics : null,
     created_topics: 0,
+    model: String(meta.model || ''),
+    diagnostics: null,
     message: String(meta.message || 'Starting generation…'),
     last_error: null,
   };
@@ -5376,6 +5378,34 @@ function ideaEngineModel(options = {}) {
   return String(options.ideaEngineModel || process.env.IDEA_ENGINE_OLLAMA_MODEL || OLLAMA_MODEL);
 }
 
+// Classifies parser/validator rejection evidence into stable diagnostic
+// codes so failed runs report WHAT went wrong, not just that something did.
+// Model-neutral: the same classes apply to every model.
+function classifyParseError(message) {
+  const m = String(message || '');
+  if (m.includes('empty output')) return 'empty_output';
+  if (m.includes('no ideas array')) return 'unsupported_envelope';
+  if (m.includes('not parseable JSON')) return 'invalid_json';
+  return 'parse_other';
+}
+function classifyRejectionReason(reason, title, exclusionSet) {
+  const r = String(reason || '');
+  if (r.startsWith('duplicate title')) {
+    const normalized = ideaEngine.normalizeTitle(String(title || ''));
+    return exclusionSet && exclusionSet.has(normalized) ? 'excluded_title_collision' : 'duplicate_title';
+  }
+  if (r.startsWith('near-duplicate')) return 'near_duplicate_title';
+  if (r.includes('already used') && r.includes('opening')) return 'opening_cap';
+  if (r.includes('title mold capped')) return 'formula_family_cap';
+  if (r.includes('is not a string') || r.includes('not a string')) return 'field_not_string';
+  if (r.includes('missing or empty')) return 'field_missing';
+  if (r.includes('exceeds')) return 'field_too_long';
+  if (r.includes('too short')) return 'field_too_short';
+  if (r.includes('HTML-like markup')) return 'field_markup';
+  return 'validation_other';
+}
+function tally(map, key) { map[key] = (map[key] || 0) + 1; }
+
 // Generates one category's full replacement set. CHUNKED staging: many small
 // Ollama calls; accepted candidates accumulate IN MEMORY and are activated
 // only when the complete set of exactly IDEAS_PER_CATEGORY validates — the
@@ -5404,6 +5434,9 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
   const accepted = [];
   let rejectedCount = 0;
   let chunksAttempted = 0;
+  // Structured failure evidence (persisted via status + batch meta).
+  const diagnostics = { model_calls: 0, parse_failures: 0, parse_failure_kinds: {}, rejection_kinds: {} };
+  const exclusionSet = new Set(exclusions.map((t) => ideaEngine.normalizeTitle(t)));
   let zeroProgress = 0;
   let lastRejected = [];
   // Titles this run already produced and had rejected, echoed back in later
@@ -5470,8 +5503,12 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
       { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model },
       Object.assign({}, serverOptions, { timeoutMs, temperature })
     );
+    diagnostics.model_calls += 1;
     const parsed = ideaEnginePrompts.parseIdeaBatch(content);
     if (!parsed.ok) {
+      diagnostics.parse_failures += 1;
+      tally(diagnostics.parse_failure_kinds, classifyParseError(parsed.error));
+      if (statusOp) statusOp.update({ diagnostics });
       zeroProgress += 1;
       if (zeroProgress >= ZERO_PROGRESS_LIMIT) {
         const e = new Error(`Idea generation failed: ${parsed.error} (${ZERO_PROGRESS_LIMIT} chunks in a row).`);
@@ -5489,6 +5526,10 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
       model,
     });
     rejectedCount += result.rejected.length;
+    for (const r of result.rejected) {
+      for (const reason of r.reasons) tally(diagnostics.rejection_kinds, classifyRejectionReason(reason, r.title, exclusionSet));
+    }
+    if (statusOp) statusOp.update({ diagnostics });
     if (result.rejected.length > 0) {
       lastRejected = result.rejected;
       for (const r of result.rejected) {
@@ -5556,6 +5597,7 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
       duration_ms: Date.now() - t0,
       chunks: chunksAttempted,
       rejected_candidates: rejectedCount,
+      diagnostics,
     },
   };
 }
@@ -5588,6 +5630,7 @@ async function runIdeaEngineCategoryRefresh(categoryId, serverOptions = {}, ieOp
   const ownStatus = statusOp ? null : ieStatusBegin('refresh_category', {
     category_id: category.id,
     category_name: category.name,
+    model: ideaEngineModel(serverOptions),
     message: `Refreshing "${category.name}"…`,
   }, ieOpts);
   const status = statusOp || ownStatus;
@@ -5654,6 +5697,7 @@ function startIdeaEngineRefreshAll(serverOptions = {}, ieOpts = {}) {
   ideaEngineRefreshAllJob = job;
   const status = ieStatusBegin('refresh_all', {
     requested_categories: job.categories.length,
+    model: ideaEngineModel(serverOptions),
     message: `Refreshing all ${job.categories.length} categories…`,
   }, ieOpts);
   (async () => {
@@ -12773,6 +12817,7 @@ function createServer(options = {}) {
           const replStatus = ieStatusBegin('replace_one', {
             category_id: category.id,
             category_name: category.name,
+            model: ideaEngineModel(serverOptions),
             requested_topics: 1,
             message: `Generating one replacement topic for "${category.name}"…`,
           }, ieOpts);
@@ -12834,6 +12879,7 @@ function createServer(options = {}) {
             fillStatus = ieStatusBegin('fill_vacancies', {
               category_id: category.id,
               category_name: category.name,
+              model: ideaEngineModel(serverOptions),
               requested_topics: vacancies,
               message: `Filling ${vacancies} vacancies in "${category.name}"…`,
             }, ieOpts);

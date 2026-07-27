@@ -292,6 +292,9 @@
     var parts = [];
     var op = GEN_OPERATION_LABELS[s.operation];
     if (op && s.state !== 'idle') parts.push(op);
+    // Model identity, quiet but present ("with qwen3:30b"); legacy status
+    // records without a model field simply omit it.
+    if (typeof s.model === 'string' && s.model.trim() && s.state !== 'idle') parts.push('with ' + s.model.trim());
     if (active && isFinite(s.requested_categories) && s.requested_categories > 1) {
       var done = (Number(s.completed_categories) || 0) + (Number(s.failed_categories) || 0);
       parts.push('category ' + Math.min(done + 1, s.requested_categories) + ' of ' + s.requested_categories);
