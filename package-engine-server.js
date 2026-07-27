@@ -5377,6 +5377,23 @@ function ieGenerationStatus(ieOpts) {
   };
 }
 
+// Any Idea Engine generation in flight anywhere (any category, or the
+// refresh-all job) blocks a new one: vidnux has ONE GPU, so concurrent
+// generations only thrash it, and the operational rule was already
+// "one generation at a time". Per-category locks remain for precise
+// messaging; this is the outer guard.
+function assertNoIdeaEngineGenerationRunning(ieOpts) {
+  if (ideaEngineRefreshAllJob && !ideaEngineRefreshAllJob.done) {
+    const e = new Error('A top-up of all categories is running; wait for it to finish.');
+    e.statusCode = 409; e.code = 'generation_in_progress'; throw e;
+  }
+  if (IDEA_ENGINE_CATEGORY_LOCKS.size > 0) {
+    const busy = Array.from(IDEA_ENGINE_CATEGORY_LOCKS)[0];
+    const e = new Error(`Another category ("${busy}") is generating; only one Idea Engine generation runs at a time (single GPU).`);
+    e.statusCode = 409; e.code = 'generation_in_progress'; throw e;
+  }
+}
+
 function acquireIdeaEngineIdeaLock(ideaId, label) {
   if (IDEA_ENGINE_IDEA_LOCKS.has(ideaId)) {
     const e = new Error(`Another ${label || 'operation'} on this topic is already running.`);
@@ -5640,18 +5657,13 @@ async function runIdeaEngineCategoryRefresh(categoryId, serverOptions = {}, ieOp
     e.statusCode = 404;
     throw e;
   }
-  if (!bypassGlobalGuard && ideaEngineRefreshAllJob && !ideaEngineRefreshAllJob.done) {
-    const e = new Error('A refresh of all categories is already running.');
-    e.statusCode = 409;
-    e.code = 'generation_in_progress';
-    throw e;
-  }
   if (IDEA_ENGINE_CATEGORY_LOCKS.has(category.id)) {
     const e = new Error(`Category "${category.name}" is already generating.`);
     e.statusCode = 409;
     e.code = 'generation_in_progress';
     throw e;
   }
+  if (!bypassGlobalGuard) assertNoIdeaEngineGenerationRunning(ieOpts);
   IDEA_ENGINE_CATEGORY_LOCKS.add(category.id);
   // When called by the refresh-all job, the job owns the status record;
   // standalone refreshes own their own.
@@ -5801,8 +5813,15 @@ function startIdeaEngineRefreshAll(serverOptions = {}, ieOpts = {}) {
       // separate deliberate per-category action), empty categories get a full
       // batch generation, and anything in between gets an incremental
       // vacancy fill that never rotates out existing inventory.
+      // 2026-07-27 campaign evidence: batch activation is all-or-nothing and
+      // banked NOTHING for all six empty categories across repeated attempts,
+      // while incremental fill took four of them to 30/30 with the same model.
+      // Empty categories have no inventory to protect, so top-up uses the
+      // incremental path for everything below target; all-or-nothing batch
+      // remains only where its semantics are a feature — the deliberate
+      // per-category "replace all 30" refresh.
       const readiness = ideaEngine.deriveCategoryReadiness(ideaEngine.loadState(ieOpts).categories[entry.id]);
-      entry.action = readiness.state === 'full' ? 'skip' : (readiness.state === 'empty' ? 'generate' : 'fill');
+      entry.action = readiness.state === 'full' ? 'skip' : 'fill';
       try {
         if (entry.action === 'skip') {
           entry.status = 'skipped';
@@ -12934,14 +12953,11 @@ function createServer(options = {}) {
         .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Idea Engine replacement API' });
           const categoryId = ideaEngine.assertValidCategoryId(payload.category_id);
-          if (ideaEngineRefreshAllJob && !ideaEngineRefreshAllJob.done) {
-            const e = new Error('A refresh of all categories is running; wait for it to finish.');
-            e.statusCode = 409; e.code = 'generation_in_progress'; throw e;
-          }
           if (IDEA_ENGINE_CATEGORY_LOCKS.has(categoryId)) {
             const e = new Error('This category is already generating.');
             e.statusCode = 409; e.code = 'generation_in_progress'; throw e;
           }
+          assertNoIdeaEngineGenerationRunning(ieOpts);
           const categories = ideaEngine.activeCategories(ieOpts);
           const category = ideaEngine.categoryById(categories, categoryId);
           if (!category) {
@@ -12991,14 +13007,11 @@ function createServer(options = {}) {
         .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Idea Engine replacement API' });
           const categoryId = ideaEngine.assertValidCategoryId(payload.category_id);
-          if (ideaEngineRefreshAllJob && !ideaEngineRefreshAllJob.done) {
-            const e = new Error('A refresh of all categories is running; wait for it to finish.');
-            e.statusCode = 409; e.code = 'generation_in_progress'; throw e;
-          }
           if (IDEA_ENGINE_CATEGORY_LOCKS.has(categoryId)) {
             const e = new Error('This category is already generating.');
             e.statusCode = 409; e.code = 'generation_in_progress'; throw e;
           }
+          assertNoIdeaEngineGenerationRunning(ieOpts);
           const categories = ideaEngine.activeCategories(ieOpts);
           const category = ideaEngine.categoryById(categories, categoryId);
           if (!category) {
