@@ -99,6 +99,7 @@ const PICKUP_PLAN_SAVE_API = '/api/package-runs/pickup-plan/save';
 const AIGEN_STATUS_API = '/api/aigen/production-pipeline/status';
 const AIGEN_RESOLVE_ASSEMBLY_API = '/api/aigen/resolve-assembly/create';
 const MEDIA_ROUTING_API = '/api/media-routing';
+const MODULE_NAV_JS_API = '/module-nav.js';
 const PACKAGE_MEDIA_INDEX_API = '/api/aigen/package-media-index';
 const PROJECTS_LIST_API = '/api/projects';
 const PROJECT_STATE_API = '/api/project-state';
@@ -12236,6 +12237,24 @@ function createServer(options = {}) {
       return;
     }
 
+    // Global module navigation asset: the canonical manifest
+    // (config/vidtoolz-modules.json) embedded ahead of the shared renderer, so
+    // EVERY VIDTOOLZ module (this cockpit and the standalone units) loads one
+    // identical dropdown from one source of truth. Manifest corruption fails
+    // closed with 500 — consumers simply render no dropdown and keep working.
+    if (req.method === 'GET' && url.pathname === MODULE_NAV_JS_API) {
+      try {
+        const manifestRaw = fs.readFileSync(path.join(ROOT, 'config', 'vidtoolz-modules.json'), 'utf8');
+        JSON.parse(manifestRaw); // validate before serving
+        const renderer = fs.readFileSync(path.join(ROOT, 'vidtoolz-module-nav.js'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+        res.end(`window.VIDTOOLZ_MODULES = ${manifestRaw};\n${renderer}`);
+      } catch (error) {
+        sendError(res, 500, 'Module navigation asset unavailable (manifest or renderer unreadable).', 'module-nav-error');
+      }
+      return;
+    }
+
     // Read-only unified package media index (local + manual-external together).
     if (req.method === 'GET' && url.pathname === PACKAGE_MEDIA_INDEX_API) {
       try {
@@ -17304,6 +17323,7 @@ module.exports = {
   resolveProjectState,
   chooseNextTask,
   MEDIA_ROUTING_API,
+  MODULE_NAV_JS_API,
   PACKAGE_MEDIA_INDEX_API,
   PROJECTS_LIST_API,
   PROJECT_STATE_API,

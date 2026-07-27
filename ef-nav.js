@@ -80,7 +80,23 @@
     for (var i = 0; i < mounts.length; i++) {
       if (!mounts[i].getAttribute('data-ef-built')) { mounts[i].setAttribute('data-ef-built', '1'); build(mounts[i]); }
     }
+    loadModuleNav();
   }
+
+  // Global VIDTOOLZ module navigation (shared across ALL modules, not just
+  // Episode Factory). One dynamic load here covers every EF page, present and
+  // future; the canonical manifest lives in config/vidtoolz-modules.json and
+  // is served embedded via /module-nav.js. Failure is safe: no dropdown, page
+  // untouched.
+  function loadModuleNav() {
+    if (document.querySelector('script[data-vidtoolz-module-nav]')) return;
+    var s = document.createElement('script');
+    s.src = 'module-nav.js';
+    s.defer = true;
+    s.setAttribute('data-vidtoolz-module-nav', '1');
+    document.head.appendChild(s);
+  }
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();

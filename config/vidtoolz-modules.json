@@ -1,0 +1,139 @@
+{
+  "_comment": "CANONICAL VIDTOOLZ global module-navigation manifest — the single source of truth for module identity, display names, workflow order, and destinations. Served (embedded) via GET /module-nav.js and rendered by vidtoolz-module-nav.js on every participating module. Workflow order evidence: unit port sequence 8020→8030→8035→8040 (ideas→script→beats→media), Idea Engine sits upstream of the Idea Module curation gate (docs/idea-engine.md), Super Focus carries production (images→videos→review), Scorecraft and Package Runs finish, Help Guide is reference. Renaming, reordering, or adding a module happens HERE — never on individual pages.",
+  "schema_version": 1,
+  "updated_at": "2026-07-27",
+  "modules": [
+    {
+      "id": "cockpit",
+      "label": "Cockpit",
+      "group": "Home",
+      "workflow_order": 10,
+      "url": "http://127.0.0.1:8010/index.html",
+      "origin": "http://127.0.0.1:8010",
+      "match_paths": ["/", "/index.html"],
+      "service": "vidtoolz-cockpit.service",
+      "availability_mode": "always",
+      "description": "Episode Factory home: orientation, boards, production overview"
+    },
+    {
+      "id": "idea-engine",
+      "label": "Idea Engine",
+      "group": "Ideas",
+      "workflow_order": 20,
+      "url": "http://127.0.0.1:8010/idea-engine.html",
+      "origin": "http://127.0.0.1:8010",
+      "match_paths": ["/idea-engine.html"],
+      "service": "vidtoolz-cockpit.service",
+      "availability_mode": "always",
+      "description": "Topic exploration: 12 categories x 30 ideas, promote into Super Focus"
+    },
+    {
+      "id": "idea-module",
+      "label": "Idea Module",
+      "group": "Ideas",
+      "workflow_order": 30,
+      "url": "http://127.0.0.1:8020/",
+      "origin": "http://127.0.0.1:8020",
+      "match_paths": ["/", "/index.html"],
+      "service": "manual: 00-Start-All-Units",
+      "availability_mode": "manual-start",
+      "description": "Curated idea pool with WIP limits"
+    },
+    {
+      "id": "script-builder",
+      "label": "Script Builder",
+      "group": "Writing and planning",
+      "workflow_order": 40,
+      "url": "http://127.0.0.1:8030/",
+      "origin": "http://127.0.0.1:8030",
+      "match_paths": ["/", "/index.html"],
+      "service": "manual: 00-Start-All-Units",
+      "availability_mode": "manual-start",
+      "description": "Unit A: sectioned script development and finalization"
+    },
+    {
+      "id": "beat-sheet",
+      "label": "Beat Sheet",
+      "group": "Writing and planning",
+      "workflow_order": 50,
+      "url": "http://127.0.0.1:8035/",
+      "origin": "http://127.0.0.1:8035",
+      "match_paths": ["/", "/index.html"],
+      "service": "manual: 00-Start-All-Units",
+      "availability_mode": "manual-start",
+      "description": "Unit A.5: visual beat planning from finalized scripts"
+    },
+    {
+      "id": "media-pipeline",
+      "label": "Media Pipeline",
+      "group": "Writing and planning",
+      "workflow_order": 60,
+      "url": "http://127.0.0.1:8040/",
+      "origin": "http://127.0.0.1:8040",
+      "match_paths": ["/", "/index.html"],
+      "service": "manual: 00-Start-All-Units",
+      "availability_mode": "manual-start",
+      "description": "Unit B: beat handoffs into sections and prompt drafts"
+    },
+    {
+      "id": "super-focus",
+      "label": "Super Focus",
+      "group": "Production",
+      "workflow_order": 70,
+      "url": "http://127.0.0.1:8010/super-focus.html",
+      "origin": "http://127.0.0.1:8010",
+      "match_paths": ["/super-focus.html"],
+      "service": "vidtoolz-cockpit.service",
+      "availability_mode": "always",
+      "description": "Single-flow production: idea, script, images, videos, review"
+    },
+    {
+      "id": "motion-graphics-studio",
+      "label": "Motion Graphics Studio",
+      "group": "Production",
+      "workflow_order": 80,
+      "url": "http://127.0.0.1:8010/motion-graphics-studio.html",
+      "origin": "http://127.0.0.1:8010",
+      "match_paths": ["/motion-graphics-studio.html"],
+      "service": "vidtoolz-cockpit.service",
+      "availability_mode": "always",
+      "description": "Reusable VIDTOOLZ motion assets"
+    },
+    {
+      "id": "scorecraft",
+      "label": "Scorecraft",
+      "group": "Finishing",
+      "workflow_order": 90,
+      "url": "http://127.0.0.1:8010/score-engine.html",
+      "origin": "http://127.0.0.1:8010",
+      "match_paths": ["/score-engine.html", "/score-project.html"],
+      "service": "vidtoolz-cockpit.service",
+      "availability_mode": "always",
+      "description": "Score and music for approved videos"
+    },
+    {
+      "id": "package-runs",
+      "label": "Package Runs Dashboard",
+      "group": "Finishing",
+      "workflow_order": 100,
+      "url": "http://127.0.0.1:8010/package-runs-dashboard.html",
+      "origin": "http://127.0.0.1:8010",
+      "match_paths": ["/package-runs-dashboard.html"],
+      "service": "vidtoolz-cockpit.service",
+      "availability_mode": "always",
+      "description": "Run status, gates, and publishing"
+    },
+    {
+      "id": "help-guide",
+      "label": "Help Guide",
+      "group": "Reference",
+      "workflow_order": 110,
+      "url": "http://127.0.0.1:8050/",
+      "origin": "http://127.0.0.1:8050",
+      "match_paths": ["/", "/index.html"],
+      "service": "manual: 00-Start-All-Units",
+      "availability_mode": "manual-start",
+      "description": "Evidence-grounded guide to the whole system"
+    }
+  ]
+}
