@@ -30,7 +30,7 @@ banner).
 
 Image-prompt generation (and the script / triage / topic LLM helpers) use the
 local Ollama on vidnux at `OLLAMA_BASE_URL` (default `http://127.0.0.1:11434`,
-model `OLLAMA_MODEL`, default `qwen3.5:9b`; `qwen3:14b` remains installed as the rollback model). No cloud LLM is called. Override the
+model `OLLAMA_MODEL`, default `qwen3.5:9b`, confirmed 2026-07-27; rollback = re-pull `qwen3:14b` and set the env var). No cloud LLM is called. Override the
 endpoint/model with the `OLLAMA_URL` / `OLLAMA_MODEL` environment variables.
 
 ## 2. Images — local ComfyUI / FLUX on vidnux
