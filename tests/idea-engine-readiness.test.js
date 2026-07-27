@@ -468,16 +468,14 @@ test("idea-engine-readiness refresh-all: skips full, fills partial (no replaceme
       "usable partial inventory was topped up, never replaced");
     // Aggregates come from final committed blocks and exclude archived cats.
     // Readiness is aggregated from FINAL COMMITTED blocks, independent of the
-    // operation outcomes: the skipped category and the incrementally filled
-    // one are full, while the empty category whose ALL-OR-NOTHING batch fell
-    // short committed nothing and stays empty. That contrast is the point of
-    // the contract — incremental fills bank partial progress, batches do not.
+    // operation outcomes. Since the 2026-07-27 campaign, EVERY below-target
+    // category (empty included) takes the incremental path, so the previously
+    // empty category now banks whatever the model produced instead of losing
+    // it to an all-or-nothing activation.
     assert.equal(job.readiness_summary.categories_total, 3);
-    assert.equal(job.readiness_summary.categories_full, 2);
-    assert.equal(job.readiness_summary.categories_empty, 1);
-    const generated = job.categories.find((c) => c.action === "generate");
-    assert.equal(generated.status, "failed", "batch generation is all-or-nothing");
-    assert.equal(job.partial + job.failed >= 1, true);
+    assert.equal(job.readiness_summary.categories_empty, 0, "no category is left empty by a top-up");
+    assert.ok(!job.categories.some((c) => c.action === "generate"), "batch is never used by top-up");
+    assert.deepEqual(job.categories.map((c) => c.action).sort(), ["fill", "fill", "skip"]);
   } finally {
     await close(server);
   }
@@ -508,4 +506,97 @@ test("idea-engine-readiness revision conflict still 409s; readiness comes from t
   assert.ok(live.some((i) => i.id === manual.idea.id), "manual topic preserved");
   assert.ok(!live.some((i) => i.title.includes("stale")), "no stale generated topic overwrote committed state");
   assert.ok(ideas.every((i) => live.some((l) => l.id === i.id)), "original inventory intact");
+});
+
+// ── campaign-driven architecture changes (2026-07-27) ───────────────────────
+
+test("idea-engine-readiness refresh-all uses INCREMENTAL fill for empty categories too (batch banks nothing)", async () => {
+  // Campaign evidence: all-or-nothing batch left six empty categories at 0
+  // across repeated attempts; incremental fill banked inventory in every one.
+  // Refresh-all must therefore never route an empty category to the batch
+  // path — a model that dies partway must still leave committed topics.
+  let call = 0;
+  const { server, ieRoot } = ideServer({
+    fetchImpl: async () => {
+      call += 1;
+      if (call > 12) { const e = new Error("fetch failed"); e.cause = { code: "ECONNREFUSED" }; throw e; }
+      return { ok: true, json: async () => ({ message: { content: JSON.stringify({ ideas: [{
+        ...fixtureItem(6, call % 30), title: `banked ${NUM_WORDS[call % 32]} decision ${call}` }] }) } }) };
+    },
+  });
+  const cats = ideaEngine.loadCategories({ root: ieRoot });
+  for (const c of cats.slice(1)) ideaEngine.removeCategory(c.id, { root: ieRoot }); // one empty category
+  await listen(server);
+  try {
+    const start = await request(server, packageEngineServer.IDEA_ENGINE_REFRESH_ALL_API, {
+      method: "POST", headers: writeHeaders(), body: { confirm: true },
+    });
+    assert.equal(start.statusCode, 200, start.raw);
+    let job = null;
+    for (let i = 0; i < 400; i += 1) {
+      job = unwrap(await request(server, packageEngineServer.IDEA_ENGINE_REFRESH_STATUS_API)).job;
+      if (job && job.done) break;
+      await new Promise((r) => setTimeout(r, 25));
+    }
+    assert.ok(job && job.done);
+    assert.equal(job.categories[0].action, "fill", "empty category routed to the incremental path, not batch");
+    const readiness = readinessOf(ieRoot, cats[0].id);
+    assert.ok(readiness.active_topic_count > 0,
+      "a model failing partway still leaves committed topics — the whole point of the change");
+    assert.equal(readiness.state, "incomplete");
+    assert.equal(job.readiness_summary.categories_incomplete, 1);
+  } finally {
+    await close(server);
+  }
+});
+
+test("idea-engine-readiness ONE generation at a time: a second category is refused 409 (single GPU)", async () => {
+  // Found live during the campaign: a fill on a DIFFERENT category used to be
+  // accepted, running two Ollama generations against one GPU.
+  const categories = ideaEngine.DEFAULT_CATEGORIES;
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const { server, ieRoot } = ideServer({
+    fetchImpl: async () => {
+      await gate;
+      return { ok: true, json: async () => ({ message: { content: JSON.stringify({ ideas: [{
+        ...fixtureItem(7, 1), title: "Gated replacement topic for the lock test" }] }) } }) };
+    },
+  });
+  seedCount(ieRoot, 0, 29);
+  seedCount(ieRoot, 1, 29);
+  await listen(server);
+  try {
+    const first = request(server, packageEngineServer.IDEA_ENGINE_FILL_VACANCIES_API, {
+      method: "POST", headers: writeHeaders(), body: { category_id: categories[0].id },
+    });
+    await new Promise((r) => setTimeout(r, 120));
+    // Different category -> now refused.
+    const other = await request(server, packageEngineServer.IDEA_ENGINE_FILL_VACANCIES_API, {
+      method: "POST", headers: writeHeaders(), body: { category_id: categories[1].id },
+    });
+    assert.equal(other.statusCode, 409, other.raw);
+    assert.equal(other.body.code, "generation_in_progress");
+    assert.ok(other.body.error.includes("one Idea Engine generation"), other.body.error);
+    // Same category and refresh-all stay refused as before.
+    const same = await request(server, packageEngineServer.IDEA_ENGINE_FILL_VACANCIES_API, {
+      method: "POST", headers: writeHeaders(), body: { category_id: categories[0].id },
+    });
+    assert.equal(same.statusCode, 409);
+    const all = await request(server, packageEngineServer.IDEA_ENGINE_REFRESH_ALL_API, {
+      method: "POST", headers: writeHeaders(), body: { confirm: true },
+    });
+    assert.equal(all.statusCode, 409);
+    const during = unwrap(await request(server, packageEngineServer.IDEA_ENGINE_GENERATION_STATUS_API));
+    assert.equal(during.concurrent_operations, 1, "no second job was ever created");
+    release();
+    await first;
+    // After the run finishes, another category may generate again.
+    const after = await request(server, packageEngineServer.IDEA_ENGINE_FILL_VACANCIES_API, {
+      method: "POST", headers: writeHeaders(), body: { category_id: categories[1].id },
+    });
+    assert.equal(after.statusCode, 200, after.raw);
+  } finally {
+    await close(server);
+  }
 });

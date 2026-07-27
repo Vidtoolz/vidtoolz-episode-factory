@@ -257,6 +257,24 @@ never silently rotated out to chase the last few slots. Nothing retries
 automatically: a bounded run ends, readiness is derived, and further filling
 is an explicit action.
 
+**Generation is one-at-a-time (2026-07-27).** vidnux has a single GPU, so any
+Idea Engine generation in flight — any category, or the top-up job — refuses a
+new one with 409 `generation_in_progress`. Per-category locks remain for
+precise messaging; the global guard is the outer rule. (Before this, a fill on
+a *different* category was accepted and two Ollama runs contended for the same
+VRAM; found live during the fill campaign.)
+
+**Batch activation is restricted to deliberate replacement (2026-07-27
+campaign evidence).** Six empty categories had repeatedly produced nothing
+through the all-or-nothing batch path: activation requires a fully validated
+set, so a run that plateaus at 26/30 commits ZERO. Filling the same six
+incrementally with the same model (`qwen3.5:9b`) took four to 30/30, one to
+27/30 and one to 20/30 — 0 → 167 committed topics. Top-up (`refresh-all`)
+therefore routes **every** below-target category, empty included, through
+incremental `fill_vacancies`; the all-or-nothing batch remains only behind the
+explicit per-category "replace all 30" refresh, where refusing a partial set
+protects the existing inventory and is the desired semantic.
+
 **Refresh-all summaries report two independent axes**: operation outcomes
 (completed / partial / failed / skipped) and category readiness aggregated
 from final committed blocks (`categories_full`, `categories_usable_partial`,
