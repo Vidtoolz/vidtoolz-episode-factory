@@ -5298,10 +5298,38 @@ function ieStatusFinishFromError(handle, error) {
     handle.finish('completed', { message: 'Nothing eligible to generate — every topic is protected (manual, edited, reviewed, or promoted).' });
     return;
   }
+  if (error && error.code === 'no_vacancies') {
+    handle.finish('completed', { message: 'Nothing to fill — the category is already at target.' });
+    return;
+  }
   handle.finish('failed', {
     message,
     last_error: { code: String((error && error.code) || 'generation_failed'), message },
   });
+}
+
+// Job lifecycle + CURRENT category readiness are independent axes: the job
+// record describes one generation operation; readiness is derived here at
+// read time from the latest COMMITTED block (never persisted, never taken
+// from in-flight uncommitted candidates). A failed job can therefore appear
+// alongside a usable_partial category, and both are shown.
+function ieGenerationStatusWithReadiness(ieOpts) {
+  const base = ieGenerationStatus(ieOpts);
+  const view = Object.assign({}, base);
+  try {
+    if (base.active_category_id) {
+      const state = ideaEngine.loadState(ieOpts);
+      const readiness = ideaEngine.deriveCategoryReadiness(state.categories[base.active_category_id]);
+      view.category = Object.assign({ id: base.active_category_id, name: base.active_category_name }, readiness, {
+        readiness: readiness.state,
+        readiness_evaluated_at: new Date().toISOString(),
+      });
+    }
+    if (base.operation === 'refresh_all') {
+      view.readiness_summary = ieReadinessSummary(ieOpts);
+    }
+  } catch (_) { /* readiness decoration must never break the status route */ }
+  return view;
 }
 
 // Read-only view for the status route: memory first (live ops for this
@@ -5665,6 +5693,59 @@ async function runIdeaEngineCategoryRefresh(categoryId, serverOptions = {}, ieOp
   }
 }
 
+// Fills a category's vacancies one committed replacement at a time — the
+// INCREMENTAL path: every accepted topic is committed immediately, so a
+// bounded run that plateaus below target still leaves a usable_partial
+// inventory (this is how partial inventories legitimately come to exist).
+// Vacancies come from the canonical readiness counting. Caller must hold the
+// category lock; statusOp is updated per slot but never finished here.
+async function runIdeaEngineFillVacancies(category, serverOptions = {}, ieOpts = {}, statusOp = null) {
+  let state = ideaEngine.loadState(ieOpts);
+  let block = state.categories[category.id];
+  const vacancies = ideaEngine.deriveCategoryReadiness(block).vacancies;
+  if (vacancies === 0) {
+    const e = new Error('This category has no vacancies.');
+    e.statusCode = 400; e.code = 'no_vacancies'; throw e;
+  }
+  if (statusOp) {
+    statusOp.update({
+      active_category_id: category.id,
+      active_category_name: category.name,
+      requested_topics: vacancies,
+      created_topics: 0,
+      message: `Filling ${vacancies} vacancies in "${category.name}"…`,
+    });
+  }
+  // Map vacancies to the most recent unreplaced deliberate removals
+  // so each replacement can carry its removed topic's reason.
+  const unreplaced = (block ? block.removed : [])
+    .filter((i) => i.removed && i.removed.reason !== 'superseded_by_refresh' && !i.replaced_by_idea_id)
+    .sort((a, b) => (a.removed.at < b.removed.at ? 1 : -1));
+  const results = [];
+  let filled = 0;
+  for (let slot = 0; slot < vacancies; slot += 1) {
+    const removedIdea = unreplaced[slot] || null;
+    try {
+      const result = await generateIdeaEngineReplacementIdea(category, removedIdea, serverOptions, ieOpts);
+      results.push({ ok: true, idea: result.idea, attempts: result.attempts, replaced: removedIdea ? removedIdea.id : null });
+      filled += 1;
+      if (statusOp) statusOp.update({ created_topics: filled, message: `Filling "${category.name}" — ${filled} of ${vacancies} vacancies filled` });
+    } catch (error) {
+      results.push({ ok: false, error: String(error.message || 'generation failed').slice(0, 300), replaced: removedIdea ? removedIdea.id : null });
+      if (error.code === 'category_full') break;
+    }
+  }
+  state = ideaEngine.loadState(ieOpts);
+  block = state.categories[category.id];
+  return {
+    vacancies,
+    filled,
+    failed: results.filter((r) => !r.ok).length,
+    results,
+    block,
+  };
+}
+
 // Refresh-all: an in-process sequential background job (one Ollama, one GPU —
 // parallel generation would only thrash it). PER-CATEGORY TRANSACTIONAL
 // strategy: each category validates and activates independently and atomically;
@@ -5695,10 +5776,12 @@ function startIdeaEngineRefreshAll(serverOptions = {}, ieOpts = {}) {
     categories: categories.map((c) => ({ id: c.id, name: c.name, status: 'pending', message: null, accepted: 0 })),
   };
   ideaEngineRefreshAllJob = job;
+  job.skipped = 0;
+  job.partial = 0;
   const status = ieStatusBegin('refresh_all', {
     requested_categories: job.categories.length,
     model: ideaEngineModel(serverOptions),
-    message: `Refreshing all ${job.categories.length} categories…`,
+    message: `Topping up all ${job.categories.length} categories…`,
   }, ieOpts);
   (async () => {
     for (let i = 0; i < job.categories.length; i += 1) {
@@ -5713,11 +5796,48 @@ function startIdeaEngineRefreshAll(serverOptions = {}, ieOpts = {}) {
         created_topics: 0,
         message: `Category ${i + 1} of ${job.categories.length}: ${entry.name}`,
       });
+      // READINESS-AWARE action choice from the COMMITTED block (2026-07-27):
+      // full categories are left untouched (replacement refresh stays a
+      // separate deliberate per-category action), empty categories get a full
+      // batch generation, and anything in between gets an incremental
+      // vacancy fill that never rotates out existing inventory.
+      const readiness = ideaEngine.deriveCategoryReadiness(ideaEngine.loadState(ieOpts).categories[entry.id]);
+      entry.action = readiness.state === 'full' ? 'skip' : (readiness.state === 'empty' ? 'generate' : 'fill');
       try {
-        const result = await runIdeaEngineCategoryRefresh(entry.id, serverOptions, ieOpts, { bypassGlobalGuard: true, statusOp: status });
-        entry.status = 'succeeded';
-        entry.accepted = result.accepted;
-        job.succeeded += 1;
+        if (entry.action === 'skip') {
+          entry.status = 'skipped';
+          entry.message = 'Already full — left unchanged.';
+          job.skipped += 1;
+          continue;
+        }
+        if (entry.action === 'generate') {
+          const result = await runIdeaEngineCategoryRefresh(entry.id, serverOptions, ieOpts, { bypassGlobalGuard: true, statusOp: status });
+          entry.status = 'succeeded';
+          entry.accepted = result.accepted;
+          job.succeeded += 1;
+          continue;
+        }
+        // fill: incremental, preserves the entire current inventory
+        const categories = ideaEngine.activeCategories(ieOpts);
+        const category = ideaEngine.categoryById(categories, entry.id);
+        IDEA_ENGINE_CATEGORY_LOCKS.add(entry.id);
+        let run;
+        try {
+          run = await runIdeaEngineFillVacancies(category, serverOptions, ieOpts, status);
+        } finally {
+          IDEA_ENGINE_CATEGORY_LOCKS.delete(entry.id);
+        }
+        entry.accepted = run.filled;
+        if (run.failed === 0) { entry.status = 'succeeded'; job.succeeded += 1; }
+        else if (run.filled > 0) {
+          entry.status = 'partial';
+          entry.message = `Filled ${run.filled} of ${run.vacancies}; accepted topics are committed.`;
+          job.partial += 1;
+        } else {
+          entry.status = 'failed';
+          entry.message = `No vacancies could be filled (${run.failed} attempts failed).`;
+          job.failed += 1;
+        }
       } catch (error) {
         entry.status = 'failed';
         entry.message = String(error.message || 'generation failed').slice(0, 300);
@@ -5730,21 +5850,42 @@ function startIdeaEngineRefreshAll(serverOptions = {}, ieOpts = {}) {
   }).finally(() => {
     job.done = true;
     job.finished_at = new Date().toISOString();
-    const state = job.succeeded === 0 ? 'failed' : (job.failed > 0 ? 'partial' : 'completed');
+    // Category readiness aggregated from FINAL COMMITTED blocks — independent
+    // of the per-operation outcomes above (a failed fill can still leave a
+    // usable_partial category, and that is reported as such).
+    job.readiness_summary = ieReadinessSummary(ieOpts);
+    const state = (job.failed === 0 && job.partial === 0) ? 'completed' : ((job.succeeded + job.partial + job.skipped) > 0 ? 'partial' : 'failed');
+    const r = job.readiness_summary;
     status.finish(state, {
       completed_categories: job.succeeded,
       failed_categories: job.failed,
       active_category_id: null,
       active_category_name: null,
-      message: state === 'completed'
-        ? `All ${job.succeeded} categories refreshed.`
-        : state === 'partial'
-        ? `${job.succeeded} categories refreshed, ${job.failed} failed — retry the failed categories individually.`
-        : `Every category failed (${job.failed} of ${job.categories.length}).`,
-      last_error: job.failed > 0 ? { code: 'category_failures', message: `${job.failed} categories failed` } : null,
+      message: `Operations: ${job.succeeded} completed, ${job.partial} partial, ${job.failed} failed, ${job.skipped} skipped (already full). ` +
+        `Category readiness: ${r.categories_full} full, ${r.categories_usable_partial} usable partial, ${r.categories_incomplete} incomplete, ${r.categories_empty} empty.`,
+      last_error: job.failed > 0 ? { code: 'category_failures', message: `${job.failed} category operations failed` } : null,
     });
   });
   return job;
+}
+
+// Aggregates readiness across ACTIVE categories from committed state
+// (archived categories are excluded entirely).
+function ieReadinessSummary(ieOpts) {
+  const state = ideaEngine.loadState(ieOpts);
+  const summary = {
+    categories_total: 0,
+    categories_full: 0,
+    categories_usable_partial: 0,
+    categories_incomplete: 0,
+    categories_empty: 0,
+  };
+  for (const category of ideaEngine.activeCategories(ieOpts)) {
+    const readiness = ideaEngine.deriveCategoryReadiness(state.categories[category.id]);
+    summary.categories_total += 1;
+    summary[`categories_${readiness.state}`] += 1;
+  }
+  return summary;
 }
 
 // Generates and activates exactly ONE replacement idea for a category vacancy,
@@ -12588,7 +12729,7 @@ function createServer(options = {}) {
 
     if (req.method === 'GET' && url.pathname === IDEA_ENGINE_GENERATION_STATUS_API) {
       try {
-        sendJSON(res, 200, ieGenerationStatus(ieOpts));
+        sendJSON(res, 200, ieGenerationStatusWithReadiness(ieOpts));
       } catch (error) {
         sendError(res, error.statusCode || 500, error.message, 'idea-engine-generation-status-error');
       }
@@ -12597,7 +12738,7 @@ function createServer(options = {}) {
 
     if (req.method === 'GET' && url.pathname === IDEA_ENGINE_STATE_API) {
       try {
-        sendJSON(res, 200, Object.assign(ideaEngine.stateView(ieOpts), { refresh: ideaEngineRefreshStatus(), generation: ieGenerationStatus(ieOpts) }));
+        sendJSON(res, 200, Object.assign(ideaEngine.stateView(ieOpts), { refresh: ideaEngineRefreshStatus(), generation: ieGenerationStatusWithReadiness(ieOpts) }));
       } catch (error) {
         sendError(res, error.statusCode || 500, error.message, 'idea-engine-state-error');
       }
@@ -12686,7 +12827,7 @@ function createServer(options = {}) {
         .then((payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Idea Engine refresh API' });
           if (payload.confirm !== true) {
-            const e = new Error('Refreshing all categories replaces every current unpromoted idea set; pass confirm: true.');
+            const e = new Error('Topping up all categories generates missing topics (full categories are left unchanged); pass confirm: true.');
             e.statusCode = 400;
             e.code = 'confirm_required';
             throw e;
@@ -12865,67 +13006,34 @@ function createServer(options = {}) {
             e.statusCode = 404; throw e;
           }
           IDEA_ENGINE_CATEGORY_LOCKS.add(categoryId);
-          let fillStatus = null;
+          const fillStatus = ieStatusBegin('fill_vacancies', {
+            category_id: category.id,
+            category_name: category.name,
+            model: ideaEngineModel(serverOptions),
+            message: `Filling vacancies in "${category.name}"…`,
+          }, ieOpts);
           try {
-            let state = ideaEngine.loadState(ieOpts);
-            let block = state.categories[categoryId];
-            // A category with no state block yet has 30 vacancies, not 0 —
-            // must match summarizeCategory, which the GUI's button relies on.
-            const vacancies = Math.max(0, ideaEngine.IDEAS_PER_CATEGORY - (block ? block.ideas.length : 0));
-            if (vacancies === 0) {
-              const e = new Error('This category has no vacancies.');
-              e.statusCode = 400; e.code = 'no_vacancies'; throw e;
-            }
-            fillStatus = ieStatusBegin('fill_vacancies', {
-              category_id: category.id,
-              category_name: category.name,
-              model: ideaEngineModel(serverOptions),
-              requested_topics: vacancies,
-              message: `Filling ${vacancies} vacancies in "${category.name}"…`,
-            }, ieOpts);
-            // Map vacancies to the most recent unreplaced deliberate removals
-            // so each replacement can carry its removed topic's reason.
-            const unreplaced = (block ? block.removed : [])
-              .filter((i) => i.removed && i.removed.reason !== 'superseded_by_refresh' && !i.replaced_by_idea_id)
-              .sort((a, b) => (a.removed.at < b.removed.at ? 1 : -1));
-            const results = [];
-            let filled = 0;
-            for (let slot = 0; slot < vacancies; slot += 1) {
-              const removedIdea = unreplaced[slot] || null;
-              try {
-                const result = await generateIdeaEngineReplacementIdea(category, removedIdea, serverOptions, ieOpts);
-                results.push({ ok: true, idea: result.idea, attempts: result.attempts, replaced: removedIdea ? removedIdea.id : null });
-                filled += 1;
-                fillStatus.update({ created_topics: filled, message: `Filling "${category.name}" — ${filled} of ${vacancies} vacancies filled` });
-              } catch (error) {
-                results.push({ ok: false, error: String(error.message || 'generation failed').slice(0, 300), replaced: removedIdea ? removedIdea.id : null });
-                if (error.code === 'category_full') break;
-              }
-            }
-            state = ideaEngine.loadState(ieOpts);
-            block = state.categories[categoryId];
-            const failedCount = results.filter((r) => !r.ok).length;
+            const run = await runIdeaEngineFillVacancies(category, serverOptions, ieOpts, fillStatus);
             fillStatus.finish(
-              failedCount === 0 ? 'completed' : (filled > 0 ? 'partial' : 'failed'),
+              run.failed === 0 ? 'completed' : (run.filled > 0 ? 'partial' : 'failed'),
               {
-                created_topics: filled,
-                failed_categories: 0,
-                message: failedCount === 0
-                  ? `All ${filled} vacancies in "${category.name}" filled.`
-                  : `Filled ${filled} of ${vacancies} vacancies in "${category.name}"; ${failedCount} failed. Remaining vacancies are preserved.`,
-                last_error: failedCount > 0 ? { code: 'vacancies_unfilled', message: `${failedCount} vacancies could not be filled` } : null,
+                created_topics: run.filled,
+                message: run.failed === 0
+                  ? `All ${run.filled} vacancies in "${category.name}" filled.`
+                  : `Filled ${run.filled} of ${run.vacancies} vacancies in "${category.name}"; ${run.failed} failed. Accepted topics are committed; remaining vacancies are preserved.`,
+                last_error: run.failed > 0 ? { code: 'vacancies_unfilled', message: `${run.failed} vacancies could not be filled` } : null,
               }
             );
             sendJSON(res, 200, {
-              requested: vacancies,
-              filled,
-              failed: failedCount,
-              partial_success: filled > 0 && filled < vacancies,
-              results,
-              category: ideaEngine.summarizeCategory(category, block),
+              requested: run.vacancies,
+              filled: run.filled,
+              failed: run.failed,
+              partial_success: run.filled > 0 && run.filled < run.vacancies,
+              results: run.results,
+              category: ideaEngine.summarizeCategory(category, run.block),
             });
           } catch (error) {
-            if (fillStatus) ieStatusFinishFromError(fillStatus, error);
+            ieStatusFinishFromError(fillStatus, error);
             throw error;
           } finally {
             IDEA_ENGINE_CATEGORY_LOCKS.delete(categoryId);
