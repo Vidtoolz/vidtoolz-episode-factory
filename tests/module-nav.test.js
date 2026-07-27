@@ -312,6 +312,14 @@ test("module-nav wiring: ef-nav loads the shared dropdown on every EF page exact
   assert.ok(efNav.includes("module-nav.js"), "shared asset loaded");
 });
 
+test("module-nav wiring: focus-mode pages without the cockpit nav bar embed the dropdown directly", () => {
+  for (const [page, id] of [["super-focus.html", "super-focus"], ["motion-graphics-studio.html", "motion-graphics-studio"]]) {
+    const html = fs.readFileSync(path.join(__dirname, "..", page), "utf8");
+    assert.ok(html.includes('data-vidtoolz-module-nav="1"'), `${page} loads the shared asset`);
+    assert.ok(html.includes(`data-vidtoolz-module="${id}"`), `${page} declares its module id`);
+  }
+});
+
 test("module-nav wiring: standalone unit repos on this machine embed the shared dropdown (skipped where absent)", () => {
   const units = {
     "vidtoolz-idea-module": "idea-module",

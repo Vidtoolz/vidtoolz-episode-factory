@@ -50,8 +50,11 @@
   .projlist .item { display:flex; justify-content:space-between; gap:10px; }
   a.link { color:var(--accent); text-decoration:none; }
 </style>
+  <!-- Global VIDTOOLZ module navigation (this page deliberately has no cockpit nav bar;
+       the shared dropdown mounts directly). -->
+  <script src="module-nav.js" defer data-vidtoolz-module-nav="1"></script>
 </head>
-<body>
+<body data-vidtoolz-module="motion-graphics-studio">
 <div class="wrap">
   <div class="brand">VIDTOOLZ · Motion Graphics Studio</div>
   <h1>Deterministic motion cards</h1>

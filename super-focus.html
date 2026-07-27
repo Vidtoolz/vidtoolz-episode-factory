@@ -369,8 +369,11 @@
       .wb-decisions { position: static; }
     }
   </style>
+  <!-- Global VIDTOOLZ module navigation (this page deliberately has no cockpit nav bar;
+       the shared dropdown mounts directly). -->
+  <script src="module-nav.js" defer data-vidtoolz-module-nav="1"></script>
 </head>
-<body>
+<body data-vidtoolz-module="super-focus">
   <div class="wrap">
     <div id="backend-stale" class="backend-stale hidden">
       ⚠ The Super Focus page is newer than the running cockpit backend (its API routes are missing).
