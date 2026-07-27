@@ -86,6 +86,7 @@ require("./test-compute-registry-gate.js");
 require("./idea-engine.test.js");
 require("./idea-engine-ui.test.js");
 require("./idea-engine-phase2.test.js");
+require("./idea-engine-phase3.test.js");
 
 // Diagnostic run-all mode (opt-in): pass `--all` or `--continue`, or set
 // RUN_ALL=1, to keep running after failures and list every failing test in a

@@ -213,7 +213,7 @@ test("idea-engine complete-set gate rejects wrong counts, duplicate ids, and cat
 
 // ── domain: persistence, last-known-good, promotion bookkeeping ─────────────
 
-test("idea-engine state persists across reloads and preserves promoted history through refresh", async () => {
+test("idea-engine state persists across reloads and a refresh keeps promoted topics ACTIVE", async () => {
   const root = mkRoot();
   const { category, ideas } = await seedCategory(root, 0);
   // Reload from disk (fresh process-equivalent read).
@@ -221,21 +221,32 @@ test("idea-engine state persists across reloads and preserves promoted history t
   assert.equal(state.categories[category.id].ideas.length, 30);
   assert.ok(state.updated_at);
 
-  // Promote one idea, then replace the set: promotion history must survive.
+  // Promote one idea, then refresh: the promoted topic is RETAINED in the
+  // active list (2026-07-27 preservation invariant) and only the 29 untouched
+  // generated topics are replaced.
   ideaEngine.recordPromotionResult(ideas[3].id, { ok: true, project_id: "proj-abc12345" }, { root });
   const replacement = ideaEngine.acceptCandidates(
     fixturePool(1).map((i) => ({ ...i, title: i.title.replace(/gates/, "review") })),
     { categoryId: category.id, batchId: "b2" }
-  ).accepted;
+  ).accepted.slice(0, 29);
   ideaEngine.activateCategorySet(category.id, replacement, { model: "fixture" }, { root });
   const after = ideaEngine.loadState({ root });
   const block = after.categories[category.id];
   assert.equal(block.ideas.length, 30);
-  assert.equal(block.promoted_history.length, 1);
-  assert.equal(block.promoted_history[0].promotion.project_id, "proj-abc12345");
-  // The promoted idea remains findable by id after the refresh.
   const found = ideaEngine.findIdea(after, ideas[3].id);
-  assert.ok(found && found.from === "history");
+  assert.ok(found && found.from === "active", "promoted topic stays active through a refresh");
+  assert.equal(found.idea.promotion.project_id, "proj-abc12345");
+  // Legacy promoted_history from earlier refreshes still counts as promoted.
+  assert.equal(ideaEngine.summarizeCategory(category, block).promoted_count, 1);
+  // A full 30-item set must now be REJECTED while one slot is retained.
+  const tooMany = ideaEngine.acceptCandidates(
+    fixturePool(2).map((i) => ({ ...i, title: i.title.replace(/gates/, "ledger") })),
+    { categoryId: category.id, batchId: "b3" }
+  ).accepted;
+  assert.throws(
+    () => ideaEngine.activateCategorySet(category.id, tooMany, {}, { root }),
+    (e) => e.code === "idea_set_invalid"
+  );
 });
 
 test("idea-engine failed refresh preserves the previous valid set and records the failure", async () => {
@@ -417,6 +428,10 @@ test("idea-engine parses model output defensively and rejects garbage without th
     iePrompts.parseIdeaBatch(`Here you go: ${JSON.stringify({ ideas: items })} hope that helps!`).items,
     items
   );
+  // One bare idea object (qwen3.5:9b replacement-call shape, live 2026-07-27)
+  // normalizes to a single-item batch; extra model-invented keys are ignored.
+  assert.deepEqual(iePrompts.parseIdeaBatch(JSON.stringify({ topic_id: "SYS-1", ...items[0] })).items,
+    [{ topic_id: "SYS-1", ...items[0] }]);
   assert.equal(iePrompts.parseIdeaBatch("").ok, false);
   assert.equal(iePrompts.parseIdeaBatch("no json here at all").ok, false);
   assert.equal(iePrompts.parseIdeaBatch("{\"wrong\": true}").ok, false);

@@ -57,6 +57,7 @@
   // Content-origin label for the detail panel.
   function originLabel(idea) {
     if (!idea) return '';
+    if (idea.content_origin === 'manual') return 'Manually added';
     if (idea.content_origin === 'manually_edited') return 'Manually edited (revision ' + (idea.edit_revision || 0) + ')';
     if (idea.content_origin === 'replacement_generated') return 'Replacement-generated';
     return 'Model-generated';
@@ -107,10 +108,14 @@
     }
     if (els.confirmBtn) els.confirmBtn.addEventListener('click', function () { close(true); });
     if (els.cancelBtn) els.cancelBtn.addEventListener('click', function () { close(false); });
+    var defaultConfirmLabel = els.confirmBtn ? els.confirmBtn.textContent : '';
     return {
-      ask: function (message) {
+      // opts.confirmLabel relabels the confirm button for this ask only (the
+      // default "Replace ideas" is wrong for e.g. category removal).
+      ask: function (message, opts) {
         if (pending) return Promise.resolve(false); // one confirmation at a time
         if (els.message) els.message.textContent = message;
+        if (els.confirmBtn) els.confirmBtn.textContent = (opts && opts.confirmLabel) || defaultConfirmLabel;
         if (els.panel && els.panel.classList) els.panel.classList.remove('hidden');
         return new Promise(function (resolve) { pending = resolve; });
       },

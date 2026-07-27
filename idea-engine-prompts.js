@@ -333,7 +333,18 @@ function parseIdeaBatch(raw) {
     }
   }
   if (parsed === null || parsed === undefined) return { ok: false, error: 'model output is not parseable JSON' };
-  const items = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.ideas) ? parsed.ideas : null);
+  // Accept the three shapes local models actually produce for the same
+  // schema: the requested {ideas:[...]} wrapper, a bare top-level array, and
+  // — for single-item requests — one bare idea object (qwen3.5:9b does this
+  // for replacement calls, observed live 2026-07-27). The validator judges
+  // every item either way; this only normalizes the envelope.
+  const items = Array.isArray(parsed)
+    ? parsed
+    : (parsed && Array.isArray(parsed.ideas))
+    ? parsed.ideas
+    : (parsed && typeof parsed === 'object' && typeof parsed.title === 'string')
+    ? [parsed]
+    : null;
   if (!items) return { ok: false, error: 'model output has no ideas array' };
   return { ok: true, items };
 }

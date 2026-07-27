@@ -343,17 +343,19 @@ test("idea-engine-p2 replacement links both directions, fills the vacancy, and r
 
 // ── full refresh vs history (domain) ─────────────────────────────────────────
 
-test("idea-engine-p2 full refresh archives old actives (edits included) and detects revision conflicts", async () => {
+test("idea-engine-p2 full refresh keeps protected topics active, archives eligible actives, detects revision conflicts", async () => {
   const root = mkRoot();
   const { category, ideas } = seedCategory(root, 0);
   ideaEngine.editIdea(ideas[2].id, { title: "Edited before the refresh happened" }, 0, { root });
   ideaEngine.recordPromotionResult(ideas[8].id, { ok: true, project_id: "proj-p2-11223344" }, { root });
   const blockBefore = ideaEngine.loadState({ root }).categories[category.id];
   const revisionAtStart = blockBefore.revision;
+  // Three topics will be protected by activation time (edited x2, promoted x1)
+  // → the replacement set must hold exactly 27 fresh ideas.
   const replacementSet = ideaEngine.acceptCandidates(
     fixturePool(1).map((i) => ({ ...i, title: i.title.replace(/gates/, "review") })),
     { categoryId: category.id, batchId: "b-refresh", model: "fixture-model" }
-  ).accepted;
+  ).accepted.slice(0, 27);
   // Simulate an edit landing AFTER generation began → activation must refuse.
   ideaEngine.editIdea(ideas[4].id, { title: "Mid-generation manual edit landed" }, 0, { root });
   let conflict = null;
@@ -363,20 +365,24 @@ test("idea-engine-p2 full refresh archives old actives (edits included) and dete
   assert.equal(conflict.code, "category_revision_conflict");
   const surviving = ideaEngine.findIdea(ideaEngine.loadState({ root }), ideas[4].id);
   assert.equal(surviving.idea.title, "Mid-generation manual edit landed", "newer edit survived the stale refresh");
-  // With the current revision, activation succeeds and archives everything.
+  // With the current revision, activation succeeds: protected topics stay
+  // ACTIVE (2026-07-27 preservation invariant), eligible ones are archived.
   const currentRevision = ideaEngine.loadState({ root }).categories[category.id].revision;
   ideaEngine.activateCategorySet(category.id, replacementSet, {}, { root, expectedRevision: currentRevision });
   const after = ideaEngine.loadState({ root }).categories[category.id];
   assert.equal(after.ideas.length, 30);
-  assert.equal(after.promoted_history.length, 1, "promoted idea in promotion history");
-  assert.equal(after.removed.length, 29, "unpromoted old actives archived, not deleted");
+  assert.equal(after.removed.length, 27, "eligible old actives archived, not deleted");
   assert.ok(after.removed.every((i) => i.removed && i.removed.reason === "superseded_by_refresh"));
-  const editedArchived = ideaEngine.findIdea(ideaEngine.loadState({ root }), ideas[2].id);
-  assert.equal(editedArchived.from, "removed");
-  assert.equal(editedArchived.idea.edit_history.length, 1, "edit history survives the refresh");
-  // Superseded history does NOT poison future generation exclusions...
+  const editedKept = ideaEngine.findIdea(ideaEngine.loadState({ root }), ideas[2].id);
+  assert.equal(editedKept.from, "active", "user-edited topic survived the refresh in place");
+  assert.equal(editedKept.idea.edit_history.length, 1, "edit history intact");
+  const promotedKept = ideaEngine.findIdea(ideaEngine.loadState({ root }), ideas[8].id);
+  assert.equal(promotedKept.from, "active", "promoted topic survived the refresh in place");
+  // Superseded history does NOT poison future generation exclusions (the
+  // edited title stays excluded — but as an ACTIVE title, which is correct)...
+  const supersededTitle = after.removed[0].title;
   const exclusions = ideaEngine.exclusionTitles(ideaEngine.loadState({ root }), category.id).map(ideaEngine.normalizeTitle);
-  assert.ok(!exclusions.includes(ideaEngine.normalizeTitle("Edited before the refresh happened")));
+  assert.ok(!exclusions.includes(ideaEngine.normalizeTitle(supersededTitle)));
   // ...but a deliberate removal does.
   const target = ideaEngine.loadState({ root }).categories[category.id].ideas[0];
   ideaEngine.removeIdea(target.id, { reason: "weak_tension" }, { root });

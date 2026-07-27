@@ -195,6 +195,11 @@
     var RESTORE_API = '/api/idea-engine/restore';
     var REPLACE_ONE_API = '/api/idea-engine/replace-one';
     var FILL_VACANCIES_API = '/api/idea-engine/fill-vacancies';
+    var CATEGORY_CREATE_API = '/api/idea-engine/category-create';
+    var CATEGORY_UPDATE_API = '/api/idea-engine/category-update';
+    var CATEGORY_MOVE_API = '/api/idea-engine/category-move';
+    var CATEGORY_REMOVE_API = '/api/idea-engine/category-remove';
+    var ADD_TOPIC_API = '/api/idea-engine/add-topic';
 
     var UI = window.IdeaEngineUI;
     var nonce = null;
@@ -204,6 +209,9 @@
       searchRemoved: false,
       listMode: 'active', // 'active' | 'removed' — which list the middle panel shows
       editing: null,      // idea id currently open in the edit form
+      addingCategory: false,   // "+ Add category" form open in the detail panel
+      editingCategory: null,   // category id whose name/description form is open
+      addingTopicFor: null,    // category id whose "+ Add topic" form is open
     };
     var busyCategory = null; // category id currently generating via this page
 
@@ -304,12 +312,29 @@
           view.search = '';
           view.listMode = 'active';
           view.editing = null;
+          view.addingCategory = false;
+          view.editingCategory = null;
+          view.addingTopicFor = null;
           document.getElementById('ie-search').value = '';
           renderAll();
           renderCategoryDetail(category);
         });
         mount.appendChild(btn);
       });
+      if (view.categories.length === 0) {
+        mount.appendChild(el('div', 'ie-empty', 'No categories yet. Add one below.'));
+      }
+      var addBtn = el('button', 'ie-btn', '+ Add category');
+      addBtn.id = 'ie-add-category';
+      addBtn.style.margin = '10px 0 0 0';
+      addBtn.addEventListener('click', function () {
+        view.addingCategory = true;
+        view.editingCategory = null;
+        view.addingTopicFor = null;
+        view.selectedIdea = null;
+        renderAddCategoryForm();
+      });
+      mount.appendChild(addBtn);
     }
 
     function currentCategory() {
@@ -354,7 +379,7 @@
           ' — this category is incomplete. Use "Generate replacement" or "Fill all vacancies" in the category details.'));
       }
       if (!category.ideas || category.ideas.length === 0) {
-        mount.appendChild(el('div', 'ie-empty', 'No ideas generated yet. Use "Generate 30 topics" in the category details below.'));
+        mount.appendChild(el('div', 'ie-empty', 'No topics yet. Use "Generate 30 topics" or "+ Add topic" in the category details below.'));
         return;
       }
       category.ideas.forEach(function (idea) { mount.appendChild(ideaRow(idea, category, false)); });
@@ -362,7 +387,7 @@
 
     function ideaRow(idea, category, isRemoved) {
       var row = el('button', 'ie-idea-row' + (view.selectedIdea === idea.id ? ' active' : ''));
-      var label = idea.title + (idea.content_origin === 'manually_edited' ? ' ✎' : '');
+      var label = idea.title + (idea.content_origin === 'manually_edited' ? ' ✎' : (idea.content_origin === 'manual' ? ' ✍' : ''));
       row.appendChild(el('span', 't', label));
       if (isRemoved) {
         row.appendChild(el('span', 'ie-badge', 'Removed'));
@@ -394,8 +419,157 @@
       dl.appendChild(el('dd', null, value));
     }
 
+    // Shared builder for the small manual-management forms (add/edit category,
+    // add topic). Returns { form, inputs, errorEl, actions } — caller wires the
+    // Save/Cancel buttons. All values render through .value/textContent (never
+    // innerHTML), so user text is always escaped.
+    function buildForm(fields) {
+      var form = el('div', 'ie-form');
+      var inputs = {};
+      fields.forEach(function (spec) {
+        var label = el('label', null, spec.label);
+        label.setAttribute('for', spec.id);
+        form.appendChild(label);
+        var input = document.createElement(spec.kind === 'input' ? 'input' : 'textarea');
+        if (spec.kind === 'input') input.type = 'text';
+        input.id = spec.id;
+        input.value = spec.value || '';
+        if (spec.placeholder) input.placeholder = spec.placeholder;
+        form.appendChild(input);
+        inputs[spec.key] = input;
+      });
+      var errorEl = el('div', 'ie-form-error', '');
+      form.appendChild(errorEl);
+      var actions = el('div', 'ie-actions');
+      form.appendChild(actions);
+      return { form: form, inputs: inputs, errorEl: errorEl, actions: actions };
+    }
+
+    function wireSaveCancel(f, saveLabel, onSave, onCancel) {
+      var saveBtn = el('button', 'ie-btn primary', saveLabel);
+      var cancelBtn = el('button', 'ie-btn', 'Cancel');
+      saveBtn.addEventListener('click', function () {
+        saveBtn.disabled = true;
+        saveBtn.setAttribute('aria-busy', 'true');
+        f.errorEl.textContent = '';
+        onSave().then(function (errorMessage) {
+          if (errorMessage) {
+            saveBtn.disabled = false;
+            saveBtn.removeAttribute('aria-busy');
+            f.errorEl.textContent = errorMessage;
+          }
+        });
+      });
+      cancelBtn.addEventListener('click', onCancel);
+      f.actions.appendChild(saveBtn);
+      f.actions.appendChild(cancelBtn);
+      return saveBtn;
+    }
+
+    function renderAddCategoryForm() {
+      var mount = document.getElementById('ie-detail');
+      document.getElementById('ie-detail-title').textContent = 'Add category';
+      mount.innerHTML = '';
+      var f = buildForm([
+        { key: 'name', id: 'ie-cat-name', label: 'Category name (required)', kind: 'input' },
+        { key: 'description', id: 'ie-cat-desc', label: 'Short description (optional)', kind: 'textarea' },
+      ]);
+      mount.appendChild(el('div', 'ie-empty',
+        'A manual category starts empty — no topics are generated until you ask for them.'));
+      wireSaveCancel(f, 'Add category', function () {
+        var name = f.inputs.name.value.trim();
+        if (!name) return Promise.resolve('A category name is required.');
+        return apiPost(CATEGORY_CREATE_API, { name: name, description: f.inputs.description.value }).then(function (res) {
+          var data = unwrap(res.body);
+          if (!res.ok) return (data && data.error) || 'Could not add the category.';
+          view.addingCategory = false;
+          view.selectedCategory = data.category.id;
+          setStatus('Category "' + data.category.name + '" added. Add topics manually or generate them.', 'ok');
+          load();
+          return null;
+        });
+      }, function () {
+        view.addingCategory = false;
+        var category = currentCategory();
+        if (category) renderCategoryDetail(category);
+        else { document.getElementById('ie-detail').innerHTML = ''; document.getElementById('ie-detail').appendChild(el('div', 'ie-empty', 'Select a category or an idea.')); }
+      });
+      mount.appendChild(f.form);
+      f.inputs.name.focus();
+    }
+
+    function renderCategoryEditForm(category) {
+      var mount = document.getElementById('ie-detail');
+      document.getElementById('ie-detail-title').textContent = 'Edit category';
+      mount.innerHTML = '';
+      var f = buildForm([
+        { key: 'name', id: 'ie-cat-name', label: 'Category name', kind: 'input', value: category.name },
+        { key: 'description', id: 'ie-cat-desc', label: 'Short description (empty is fine)', kind: 'textarea', value: category.description },
+      ]);
+      mount.appendChild(el('div', 'ie-empty',
+        'Renaming keeps the category ID, all its topics, their order, and all history.'));
+      wireSaveCancel(f, 'Save', function () {
+        return apiPost(CATEGORY_UPDATE_API, {
+          category_id: category.id, name: f.inputs.name.value, description: f.inputs.description.value,
+        }).then(function (res) {
+          var data = unwrap(res.body);
+          if (!res.ok) {
+            if (data && data.code === 'no_changes') { view.editingCategory = null; renderCategoryDetail(category); return null; }
+            return (data && data.error) || 'Could not save the category.';
+          }
+          view.editingCategory = null;
+          setStatus('Category saved: "' + data.category.name + '".', 'ok');
+          load();
+          return null;
+        });
+      }, function () {
+        view.editingCategory = null;
+        renderCategoryDetail(category);
+      });
+      mount.appendChild(f.form);
+      f.inputs.name.focus();
+    }
+
+    function renderAddTopicForm(category) {
+      var mount = document.getElementById('ie-detail');
+      document.getElementById('ie-detail-title').textContent = 'Add topic';
+      mount.innerHTML = '';
+      mount.appendChild(el('div', 'ie-empty', 'Adding to "' + category.name + '". No model is called — this topic is yours and refreshes will never replace it.'));
+      var f = buildForm([
+        { key: 'title', id: 'ie-topic-title', label: 'Working title (required)', kind: 'input' },
+        { key: 'premise', id: 'ie-topic-premise', label: 'Premise / rationale (optional — can stay empty)', kind: 'textarea' },
+        { key: 'why_vidtoolz', id: 'ie-topic-why', label: 'Why VIDTOOLZ should cover it (optional)', kind: 'textarea' },
+      ]);
+      wireSaveCancel(f, 'Add topic', function () {
+        var title = f.inputs.title.value.trim();
+        if (!title) return Promise.resolve('A topic title is required.');
+        return apiPost(ADD_TOPIC_API, {
+          category_id: category.id,
+          title: title,
+          premise: f.inputs.premise.value,
+          why_vidtoolz: f.inputs.why_vidtoolz.value,
+        }).then(function (res) {
+          var data = unwrap(res.body);
+          if (!res.ok) return (data && data.error) || 'Could not add the topic.';
+          view.addingTopicFor = null;
+          view.selectedIdea = data.idea.id;
+          setStatus('Topic added: "' + data.idea.title + '" (' + data.category.active_count + ' / 30 active).', 'ok');
+          load();
+          return null;
+        });
+      }, function () {
+        view.addingTopicFor = null;
+        renderCategoryDetail(category);
+      });
+      mount.appendChild(f.form);
+      f.inputs.title.focus();
+    }
+
     function renderCategoryDetail(category) {
       var mount = document.getElementById('ie-detail');
+      if (view.addingCategory) { renderAddCategoryForm(); return; }
+      if (view.editingCategory === category.id) { renderCategoryEditForm(category); return; }
+      if (view.addingTopicFor === category.id) { renderAddTopicForm(category); return; }
       document.getElementById('ie-detail-title').textContent = 'Main category';
       mount.innerHTML = '';
       var dl = el('dl', 'ie-detail');
@@ -416,6 +590,15 @@
         mount.appendChild(el('div', 'ie-fail-note', 'Last generation failed: ' + category.last_failure.message));
       }
       var actions = el('div', 'ie-actions');
+      if (category.active_count < 30) {
+        var addTopicBtn = el('button', 'ie-btn', '+ Add topic');
+        addTopicBtn.addEventListener('click', function () {
+          view.addingTopicFor = category.id;
+          view.selectedIdea = null;
+          renderAddTopicForm(category);
+        });
+        actions.appendChild(addTopicBtn);
+      }
       // A category that has never been generated (no active topics, no removal
       // history) has no removal reasons for the one-at-a-time replacement path
       // to work from — batch generation below is the honest first step.
@@ -441,16 +624,70 @@
         });
         actions.appendChild(removedBtn);
       }
+      var retained = category.retained_count || 0;
+      var eligible = category.active_count - retained;
       var refreshBtn = el('button', neverGenerated ? 'ie-btn primary' : 'ie-btn danger',
-        neverGenerated ? 'Generate 30 topics' : 'Refresh this category (replace all 30)');
-      refreshBtn.disabled = generationBusy();
+        neverGenerated ? 'Generate 30 topics'
+          : 'Refresh this category (replace ' + eligible + ' generated topic' + (eligible === 1 ? '' : 's') + ')');
+      refreshBtn.disabled = generationBusy() || (!neverGenerated && retained >= 30);
       refreshBtn.addEventListener('click', function () {
         if (neverGenerated) { refreshCategory(category, refreshBtn); return; }
-        confirmCtl.ask('This replaces the current active suggestions for "' + category.name + '" with a freshly generated set of 30. Edited, removed, and promoted topics remain in history. The current set is only replaced if the new set fully validates.')
+        confirmCtl.ask('Refresh "' + category.name + '": KEEPS the ' + retained +
+          ' protected topic' + (retained === 1 ? '' : 's') + ' (manually added, edited, reviewed, or promoted) and replaces the ' +
+          eligible + ' eligible generated topic' + (eligible === 1 ? '' : 's') + ' with fresh ones. Replaced topics move to removed history. Nothing changes unless the new set fully validates.')
           .then(function (yes) { if (yes) refreshCategory(category, refreshBtn); });
       });
       actions.appendChild(refreshBtn);
       mount.appendChild(actions);
+
+      // Manual category management (Phase 3): rename/description, ordering,
+      // removal. Removal archives — topics and history stay on disk.
+      var manage = el('div', 'ie-actions');
+      var editCatBtn = el('button', 'ie-btn', 'Edit category');
+      editCatBtn.addEventListener('click', function () {
+        view.editingCategory = category.id;
+        renderCategoryEditForm(category);
+      });
+      manage.appendChild(editCatBtn);
+      var upBtn = el('button', 'ie-btn', 'Move up');
+      var downBtn = el('button', 'ie-btn', 'Move down');
+      function moveCat(direction, btn) {
+        btn.disabled = true;
+        apiPost(CATEGORY_MOVE_API, { category_id: category.id, direction: direction }).then(function (res) {
+          var data = unwrap(res.body);
+          if (!res.ok) { btn.disabled = false; setStatus('Move failed: ' + ((data && data.error) || 'unknown error'), 'err'); return; }
+          setStatus('Category moved ' + direction + '.', 'ok');
+          load();
+        });
+      }
+      upBtn.addEventListener('click', function () { moveCat('up', upBtn); });
+      downBtn.addEventListener('click', function () { moveCat('down', downBtn); });
+      var catIndex = view.categories.findIndex(function (c) { return c.id === category.id; });
+      upBtn.disabled = catIndex <= 0;
+      downBtn.disabled = catIndex === -1 || catIndex >= view.categories.length - 1;
+      manage.appendChild(upBtn);
+      manage.appendChild(downBtn);
+      var removeCatBtn = el('button', 'ie-btn danger', 'Remove category');
+      removeCatBtn.disabled = generationBusy();
+      removeCatBtn.addEventListener('click', function () {
+        confirmCtl.ask('Remove the category "' + category.name + '"? It currently holds ' + category.active_count +
+          ' active topic' + (category.active_count === 1 ? '' : 's') + ' (plus ' + category.removed_count +
+          ' in removed history). The category and its topics are ARCHIVED together — hidden from the Idea Engine and from generation, never deleted from disk, and promoted Super Focus projects are unaffected.',
+          { confirmLabel: 'Remove category' })
+          .then(function (yes) {
+            if (!yes) return;
+            apiPost(CATEGORY_REMOVE_API, { category_id: category.id, confirm: true }).then(function (res) {
+              var data = unwrap(res.body);
+              if (!res.ok) { setStatus('Remove failed: ' + ((data && data.error) || 'unknown error'), 'err'); return; }
+              view.selectedCategory = null;
+              view.selectedIdea = null;
+              setStatus('Category "' + data.category.name + '" removed (archived with ' + data.archived_active_topics + ' topics).', 'ok');
+              load();
+            });
+          });
+      });
+      manage.appendChild(removeCatBtn);
+      mount.appendChild(manage);
       var diag = el('details', 'ie-diag');
       diag.appendChild(el('summary', null, 'Diagnostics'));
       var pre = el('pre', null, JSON.stringify({ batch: category.batch, last_failure: category.last_failure }, null, 2));
@@ -476,7 +713,12 @@
       detailField(dl, 'Visual opportunity', idea.visual_opportunity);
       detailField(dl, 'Main category', category ? category.name : idea.category_id);
       detailField(dl, 'Origin', UI.originLabel(idea) + (idea.model ? ' · ' + idea.model : ''));
-      detailField(dl, 'Generated', UI.formatTimestamp(idea.created_at) + ' · batch ' + (idea.batch_id || '?'));
+      if (idea.content_origin === 'manual') {
+        detailField(dl, 'Created', UI.formatTimestamp(idea.created_at) + ' · added by hand (no model, no batch)');
+        if (!idea.premise) detailField(dl, 'Premise', '— none yet. Use "Edit topic" to add one; promotion works either way.');
+      } else {
+        detailField(dl, 'Generated', UI.formatTimestamp(idea.created_at) + ' · batch ' + (idea.batch_id || '?'));
+      }
       if (idea.edit_history && idea.edit_history.length > 0) {
         detailField(dl, 'Edit history', idea.edit_history.length + ' earlier version' + (idea.edit_history.length === 1 ? '' : 's') +
           ' · last edited ' + UI.formatTimestamp(idea.updated_at));

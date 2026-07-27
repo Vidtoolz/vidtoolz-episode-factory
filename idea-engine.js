@@ -42,10 +42,14 @@ const CATEGORY_ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const PROMOTION_STATES = ['none', 'promoted', 'failed'];
 const IDEA_STATUSES = ['generated', 'reviewed'];
 
-// How the CURRENT content of an idea came to be. A record is born 'generated'
-// or 'replacement_generated'; any manual edit moves it to 'manually_edited'
-// (the pre-edit content survives in edit_history / original_content).
-const CONTENT_ORIGINS = ['generated', 'manually_edited', 'replacement_generated'];
+// How the CURRENT content of an idea came to be. A record is born 'generated',
+// 'replacement_generated', or 'manual' (typed in by the operator, no model
+// involved); any manual edit moves it to 'manually_edited' (the pre-edit
+// content survives in edit_history / original_content).
+const CONTENT_ORIGINS = ['generated', 'manually_edited', 'replacement_generated', 'manual'];
+// Origins that make a topic AUTHORITATIVE: refresh and vacancy fill must
+// never replace it. Promoted and reviewed topics are protected independently.
+const AUTHORITATIVE_ORIGINS = ['manual', 'manually_edited'];
 
 // The fields a manual edit may change. Everything else (id, category,
 // provenance, promotion) is server-owned and immutable through editing.
@@ -233,16 +237,30 @@ function readJsonFile(filePath, label) {
 
 // ── Categories ───────────────────────────────────────────────────────────────
 
-function normalizeCategory(entry) {
+const CATEGORY_STATUSES = ['active', 'removed'];
+const CATEGORY_SOURCES = ['seed', 'manual'];
+const MAX_CATEGORY_NAME_LEN = 80;
+
+function normalizeCategory(entry, index = 0) {
   if (!entry || typeof entry !== 'object') return null;
   const id = String(entry.id || '').trim();
   if (!CATEGORY_ID_RE.test(id)) return null;
+  const created = typeof entry.created_at === 'string' ? entry.created_at : null;
   return {
     id,
     name: String(entry.name || id).trim(),
     description: String(entry.description || '').trim(),
     channel_relevance: String(entry.channel_relevance || '').trim(),
     generation_guidance: String(entry.generation_guidance || '').trim(),
+    // Management metadata (Phase 3). Legacy entries normalize to seed/active
+    // with their file order as position — deterministic across loads because
+    // the file order is stable and positions are persisted on first mutation.
+    source: CATEGORY_SOURCES.includes(entry.source) ? entry.source : 'seed',
+    status: CATEGORY_STATUSES.includes(entry.status) ? entry.status : 'active',
+    position: Number.isInteger(entry.position) ? entry.position : index,
+    created_at: created,
+    updated_at: typeof entry.updated_at === 'string' ? entry.updated_at : created,
+    removed_at: typeof entry.removed_at === 'string' ? entry.removed_at : null,
   };
 }
 
@@ -255,10 +273,13 @@ function loadCategories(options = {}) {
   const file = path.join(resolveRoot(options), CATEGORIES_FILENAME);
   const existing = readJsonFile(file, 'categories');
   if (existing && Array.isArray(existing.categories)) {
-    const normalized = existing.categories.map(normalizeCategory).filter(Boolean);
+    const normalized = existing.categories
+      .map((entry, index) => normalizeCategory(entry, index))
+      .filter(Boolean)
+      .sort((a, b) => a.position - b.position);
     if (normalized.length > 0) return normalized;
   }
-  const seeded = DEFAULT_CATEGORIES.map(normalizeCategory).filter(Boolean);
+  const seeded = DEFAULT_CATEGORIES.map((entry, index) => normalizeCategory(entry, index)).filter(Boolean);
   writeJsonAtomic(file, {
     schema_version: SCHEMA_VERSION,
     seeded_at: nowIso(),
@@ -266,6 +287,210 @@ function loadCategories(options = {}) {
     categories: seeded,
   });
   return seeded;
+}
+
+// Removed categories stay on disk (their idea blocks and history remain in
+// ideas.json untouched) but are hidden from every view and generation path.
+function activeCategories(options = {}) {
+  return loadCategories(options).filter((c) => c.status === 'active');
+}
+
+function writeCategories(categories, options = {}) {
+  if (!Array.isArray(categories) || categories.length === 0) {
+    const error = new Error('Refusing to write an empty or invalid category list.');
+    error.statusCode = 500;
+    throw error;
+  }
+  const normalized = categories.map((entry, index) => normalizeCategory(entry, index)).filter(Boolean);
+  if (normalized.length !== categories.length) {
+    const error = new Error('Refusing to write categories: one or more entries failed validation.');
+    error.statusCode = 500;
+    throw error;
+  }
+  const file = path.join(resolveRoot(options), CATEGORIES_FILENAME);
+  const existing = readJsonFile(file, 'categories') || {};
+  writeJsonAtomic(file, {
+    schema_version: SCHEMA_VERSION,
+    seeded_at: typeof existing.seeded_at === 'string' ? existing.seeded_at : nowIso(),
+    updated_at: nowIso(),
+    categories: normalized,
+  });
+  return normalized;
+}
+
+function normalizeCategoryName(name) {
+  return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function categorySlug(name) {
+  const slug = String(name || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+  return slug || 'category';
+}
+
+function assertCategoryName(name, categories, selfId = null) {
+  const trimmed = String(name || '').trim();
+  if (!trimmed) {
+    const error = new Error('A category name is required.');
+    error.statusCode = 400;
+    error.code = 'category_name_required';
+    throw error;
+  }
+  if (trimmed.length > MAX_CATEGORY_NAME_LEN) {
+    const error = new Error(`Category name exceeds ${MAX_CATEGORY_NAME_LEN} characters.`);
+    error.statusCode = 400;
+    error.code = 'category_name_too_long';
+    throw error;
+  }
+  if (TAG_LIKE_RE.test(trimmed)) {
+    const error = new Error('Category name contains HTML-like markup.');
+    error.statusCode = 400;
+    error.code = 'category_name_invalid';
+    throw error;
+  }
+  const normalized = normalizeCategoryName(trimmed);
+  const clash = categories.find((c) => c.status === 'active' && c.id !== selfId
+    && normalizeCategoryName(c.name) === normalized);
+  if (clash) {
+    const error = new Error(`A category named "${clash.name}" already exists.`);
+    error.statusCode = 409;
+    error.code = 'category_name_duplicate';
+    throw error;
+  }
+  return trimmed;
+}
+
+// Creates a MANUAL category. No topics are generated; the category starts
+// empty and the operator adds or generates topics explicitly.
+function createCategory(fields, options = {}) {
+  const source = fields && typeof fields === 'object' ? fields : {};
+  const categories = loadCategories(options);
+  const name = assertCategoryName(source.name, categories);
+  const description = String(source.description || '').trim().slice(0, MAX_FIELD_LEN);
+  if (TAG_LIKE_RE.test(description)) {
+    const error = new Error('Category description contains HTML-like markup.');
+    error.statusCode = 400;
+    throw error;
+  }
+  let id = categorySlug(name);
+  while (categories.some((c) => c.id === id)) id = `${categorySlug(name)}-${shortId().slice(0, 4)}`;
+  const category = normalizeCategory({
+    id,
+    name,
+    description,
+    source: 'manual',
+    status: 'active',
+    position: categories.reduce((max, c) => Math.max(max, c.position), -1) + 1,
+    created_at: nowIso(),
+    updated_at: nowIso(),
+  });
+  writeCategories(categories.concat([category]), options);
+  return category;
+}
+
+// Rename / edit description. The category ID is stable across renames — all
+// topic records reference the ID, so child topics and history are untouched.
+function updateCategory(categoryId, fields, options = {}) {
+  const id = assertValidCategoryId(categoryId);
+  const source = fields && typeof fields === 'object' ? fields : {};
+  const categories = loadCategories(options);
+  const category = categories.find((c) => c.id === id);
+  if (!category) {
+    const error = new Error('Unknown Idea Engine category id.');
+    error.statusCode = 404;
+    throw error;
+  }
+  let changed = false;
+  if (source.name !== undefined) {
+    const name = assertCategoryName(source.name, categories, id);
+    if (name !== category.name) { category.name = name; changed = true; }
+  }
+  if (source.description !== undefined) {
+    const description = String(source.description || '').trim().slice(0, MAX_FIELD_LEN);
+    if (TAG_LIKE_RE.test(description)) {
+      const error = new Error('Category description contains HTML-like markup.');
+      error.statusCode = 400;
+      throw error;
+    }
+    if (description !== category.description) { category.description = description; changed = true; }
+  }
+  if (!changed) {
+    const error = new Error('No changes to save.');
+    error.statusCode = 400;
+    error.code = 'no_changes';
+    throw error;
+  }
+  category.updated_at = nowIso();
+  writeCategories(categories, options);
+  return category;
+}
+
+// Move a category one step up or down in the persisted display order.
+function moveCategory(categoryId, direction, options = {}) {
+  const id = assertValidCategoryId(categoryId);
+  if (direction !== 'up' && direction !== 'down') {
+    const error = new Error('direction must be "up" or "down".');
+    error.statusCode = 400;
+    throw error;
+  }
+  const categories = loadCategories(options);
+  const actives = categories.filter((c) => c.status === 'active');
+  const index = actives.findIndex((c) => c.id === id);
+  if (index === -1) {
+    const error = new Error('Unknown Idea Engine category id.');
+    error.statusCode = 404;
+    throw error;
+  }
+  const target = direction === 'up' ? index - 1 : index + 1;
+  if (target < 0 || target >= actives.length) {
+    const error = new Error(`Category is already at the ${direction === 'up' ? 'top' : 'bottom'}.`);
+    error.statusCode = 400;
+    error.code = 'already_at_edge';
+    throw error;
+  }
+  const a = actives[index];
+  const b = actives[target];
+  const tmp = a.position; a.position = b.position; b.position = tmp;
+  a.updated_at = nowIso(); b.updated_at = nowIso();
+  writeCategories(categories, options);
+  return a;
+}
+
+// Archive a category: status -> removed. Its topics are NOT deleted — the
+// ideas.json block (active topics, removal history, promoted history) stays
+// intact and out of view, so removal never orphans or destroys topic data and
+// is reversible by flipping status back to active. Promoted Super Focus
+// projects are independent copies and are unaffected.
+function removeCategory(categoryId, options = {}) {
+  const id = assertValidCategoryId(categoryId);
+  const categories = loadCategories(options);
+  const category = categories.find((c) => c.id === id);
+  if (!category) {
+    const error = new Error('Unknown Idea Engine category id.');
+    error.statusCode = 404;
+    throw error;
+  }
+  if (category.status === 'removed') {
+    const error = new Error('This category is already removed.');
+    error.statusCode = 409;
+    error.code = 'category_already_removed';
+    throw error;
+  }
+  category.status = 'removed';
+  category.removed_at = nowIso();
+  category.updated_at = category.removed_at;
+  writeCategories(categories, options);
+  const state = loadState(options);
+  const block = state.categories[id];
+  return {
+    category,
+    archived_active_topics: block ? block.ideas.length : 0,
+  };
 }
 
 function categoryById(categories, categoryId) {
@@ -622,9 +847,19 @@ function assertCompleteSet(ideas, categoryId, count = IDEAS_PER_CATEGORY) {
 // options.expectedRevision: category revision captured when generation began —
 // if the category changed since (edit/remove/restore landed mid-generation),
 // activation refuses with 409 rather than silently archiving newer work.
+// True when a refresh must keep this active idea in place: the operator
+// wrote it, edited it, reviewed it, or promoted it. Only untouched generated
+// ideas are eligible for replacement.
+function ideaIsRetained(idea) {
+  if (!idea) return false;
+  if (AUTHORITATIVE_ORIGINS.includes(idea.content_origin)) return true;
+  if (idea.status === 'reviewed') return true;
+  if (idea.promotion && idea.promotion.state === 'promoted') return true;
+  return false;
+}
+
 function activateCategorySet(categoryId, ideas, batchMeta, options = {}) {
   const id = assertValidCategoryId(categoryId);
-  assertCompleteSet(ideas, id);
   const state = loadState(options);
   const block = categoryBlock(state, id);
   if (options.expectedRevision !== undefined && options.expectedRevision !== null
@@ -634,22 +869,35 @@ function activateCategorySet(categoryId, ideas, batchMeta, options = {}) {
     error.code = 'category_revision_conflict';
     throw error;
   }
-  const promoted = block.ideas.filter((idea) => idea.promotion && idea.promotion.state === 'promoted');
-  block.promoted_history = block.promoted_history.concat(promoted);
+  // Retained topics (manual, edited, reviewed, promoted) stay ACTIVE and are
+  // never superseded by a refresh; only untouched generated ideas rotate out.
+  const retained = block.ideas.filter(ideaIsRetained);
+  assertCompleteSet(ideas, id, IDEAS_PER_CATEGORY - retained.length);
+  const combined = new Set(retained.map((idea) => normalizeTitle(idea.title)));
+  for (const idea of ideas) {
+    const norm = normalizeTitle(idea.title);
+    if (combined.has(norm)) {
+      const error = new Error(`Generated set collides with a retained topic: "${String(idea.title).slice(0, 60)}". The set was NOT activated.`);
+      error.statusCode = 502;
+      error.code = 'idea_set_invalid';
+      throw error;
+    }
+    combined.add(norm);
+  }
   const supersededAt = nowIso();
   const superseded = block.ideas
-    .filter((idea) => !(idea.promotion && idea.promotion.state === 'promoted'))
+    .filter((idea) => !ideaIsRetained(idea))
     .map((idea) => Object.assign(idea, {
       removed: { at: supersededAt, reason: 'superseded_by_refresh', note: '' },
     }));
   block.removed = block.removed.concat(superseded);
-  block.ideas = ideas;
+  block.ideas = retained.concat(ideas);
   block.batch = {
     batch_id: String(batchMeta && batchMeta.batch_id || newBatchId()),
     generated_at: String(batchMeta && batchMeta.generated_at || nowIso()),
     model: String(batchMeta && batchMeta.model || ''),
     provider: String(batchMeta && batchMeta.provider || 'ollama-local'),
-    requested: IDEAS_PER_CATEGORY,
+    requested: Number(batchMeta && batchMeta.requested) || ideas.length,
     accepted: ideas.length,
     duration_ms: Number(batchMeta && batchMeta.duration_ms) || 0,
     chunks: Number(batchMeta && batchMeta.chunks) || 0,
@@ -687,8 +935,32 @@ function notFoundError() {
 // Validates a full edited-content object (all EDITABLE_FIELDS present after
 // merging) against field rules + duplicate titles across ALL active ideas
 // (excluding the idea itself). Returns [] when acceptable.
-function validateEditedContent(content, state, selfId) {
-  const problems = validateCandidate(content);
+// Field checks for MANUAL records: a title is required, everything else is
+// optional (empty rationale is a valid state) — only bounds and markup are
+// enforced. Generated records keep the full completeness gate.
+function validateManualContent(content) {
+  const problems = [];
+  const title = String(content && content.title || '').trim();
+  if (!title) problems.push('missing or empty title');
+  if (title.length > MAX_TITLE_LEN) problems.push(`title exceeds ${MAX_TITLE_LEN} characters`);
+  for (const field of EDITABLE_FIELDS) {
+    if (field === 'title') continue;
+    const value = content[field];
+    if (value === undefined || value === null || value === '') continue;
+    if (typeof value !== 'string') { problems.push(`${field} is not a string`); continue; }
+    const max = field === 'hook' ? MAX_HOOK_LEN : MAX_FIELD_LEN;
+    if (value.trim().length > max) problems.push(`${field} exceeds ${max} characters`);
+  }
+  for (const field of EDITABLE_FIELDS) {
+    if (typeof content[field] === 'string' && TAG_LIKE_RE.test(content[field])) {
+      problems.push(`${field} contains HTML-like markup`);
+    }
+  }
+  return problems;
+}
+
+function validateEditedContent(content, state, selfId, { manual = false } = {}) {
+  const problems = manual ? validateManualContent(content) : validateCandidate(content);
   const normalized = normalizeTitle(content.title);
   for (const key of Object.keys(state.categories)) {
     for (const other of state.categories[key].ideas) {
@@ -743,7 +1015,7 @@ function editIdea(ideaId, fields, expectedRevision, options = {}) {
     error.code = 'no_changes';
     throw error;
   }
-  const problems = validateEditedContent(next, state, idea.id);
+  const problems = validateEditedContent(next, state, idea.id, { manual: idea.content_origin === 'manual' });
   if (problems.length > 0) {
     const error = new Error(`Edit rejected: ${problems.slice(0, 5).join('; ')}`);
     error.statusCode = 400;
@@ -756,7 +1028,10 @@ function editIdea(ideaId, fields, expectedRevision, options = {}) {
   Object.assign(idea, next);
   idea.edit_revision += 1;
   idea.updated_at = nowIso();
-  idea.content_origin = 'manually_edited';
+  // A manual record stays 'manual' through edits (it was never model content);
+  // editing a generated record moves it to 'manually_edited'. Both origins are
+  // authoritative: refresh and vacancy fill never replace them.
+  if (idea.content_origin !== 'manual') idea.content_origin = 'manually_edited';
   categoryBlock(state, found.category_id).revision += 1;
   writeState(state, options);
   return idea;
@@ -1005,21 +1280,118 @@ function summarizeCategory(category, block) {
       + removed.filter((i) => i.promotion.state === 'promoted').length,
     failed_count: ideas.filter((i) => i.promotion.state === 'failed').length,
     edited_count: ideas.filter((i) => i.content_origin === 'manually_edited').length,
+    manual_count: ideas.filter((i) => i.content_origin === 'manual').length,
+    // Topics a refresh will KEEP (manual, edited, reviewed, promoted) vs rotate.
+    retained_count: ideas.filter(ideaIsRetained).length,
     revision: block ? block.revision : 0,
     batch: block ? block.batch : null,
     last_failure: block ? block.last_failure : null,
   };
 }
 
+// Manual topic entry: the operator types a topic directly into a category.
+// No model call, no batch, no quota. Title is required; every other field is
+// optional (an empty rationale is valid and shown as an honest empty state).
+// Duplicate checks run against ALL active topics exactly like manual edits.
+function createManualIdea(categoryId, fields, options = {}) {
+  const id = assertValidCategoryId(categoryId);
+  const categories = loadCategories(options);
+  const category = categories.find((c) => c.id === id && c.status === 'active');
+  if (!category) {
+    const error = new Error('Unknown Idea Engine category id.');
+    error.statusCode = 404;
+    throw error;
+  }
+  const source = fields && typeof fields === 'object' ? fields : {};
+  const title = String(source.title || '').trim();
+  if (!title) {
+    const error = new Error('A topic title is required.');
+    error.statusCode = 400;
+    error.code = 'title_required';
+    throw error;
+  }
+  if (title.length > MAX_TITLE_LEN) {
+    const error = new Error(`Title exceeds ${MAX_TITLE_LEN} characters.`);
+    error.statusCode = 400;
+    throw error;
+  }
+  const content = { title };
+  for (const field of EDITABLE_FIELDS) {
+    if (field === 'title') continue;
+    const value = source[field];
+    if (value === undefined || value === null) { content[field] = ''; continue; }
+    if (typeof value !== 'string') {
+      const error = new Error(`Field ${field} must be a string.`);
+      error.statusCode = 400;
+      throw error;
+    }
+    const max = field === 'hook' ? MAX_HOOK_LEN : MAX_FIELD_LEN;
+    if (value.trim().length > max) {
+      const error = new Error(`${field} exceeds ${max} characters.`);
+      error.statusCode = 400;
+      throw error;
+    }
+    content[field] = value.trim();
+  }
+  for (const field of EDITABLE_FIELDS) {
+    if (TAG_LIKE_RE.test(content[field] || '')) {
+      const error = new Error(`${field} contains HTML-like markup.`);
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+  const state = loadState(options);
+  const block = categoryBlock(state, id);
+  if (block.ideas.length >= IDEAS_PER_CATEGORY) {
+    const error = new Error(`Category already has ${IDEAS_PER_CATEGORY} active topics. Remove one first.`);
+    error.statusCode = 409;
+    error.code = 'category_full';
+    throw error;
+  }
+  const normalized = normalizeTitle(title);
+  for (const key of Object.keys(state.categories)) {
+    for (const other of state.categories[key].ideas) {
+      if (normalizeTitle(other.title) === normalized) {
+        const error = new Error(`Duplicate title: matches active topic "${other.title.slice(0, 60)}".`);
+        error.statusCode = 409;
+        error.code = 'duplicate_title';
+        throw error;
+      }
+      if (titlesNearDuplicate(other.title, title)) {
+        const error = new Error(`Near-duplicate title of active topic "${other.title.slice(0, 60)}".`);
+        error.statusCode = 409;
+        error.code = 'duplicate_title';
+        throw error;
+      }
+    }
+  }
+  const idea = normalizeIdea(Object.assign({}, content, {
+    id: newIdeaId(),
+    category_id: id,
+    status: 'generated',
+    batch_id: '',
+    model: '',
+    content_origin: 'manual',
+    created_at: nowIso(),
+    updated_at: nowIso(),
+  }));
+  block.ideas.push(idea);
+  block.revision += 1;
+  writeState(state, options);
+  return { idea, category };
+}
+
 // Full GUI view: category definitions + summaries + ideas, one fetch.
 function stateView(options = {}) {
-  const categories = loadCategories(options);
+  const all = loadCategories(options);
+  const categories = all.filter((c) => c.status === 'active');
   const state = loadState(options);
   return {
     schema_version: SCHEMA_VERSION,
     updated_at: state.updated_at,
     ideas_per_category: IDEAS_PER_CATEGORY,
     category_count: categories.length,
+    removed_category_count: all.length - categories.length,
     categories: categories.map((category) => {
       const block = state.categories[category.id] || emptyCategoryBlock();
       return Object.assign(summarizeCategory(category, block), {
@@ -1043,6 +1415,14 @@ module.exports = {
   IDEAS_FILENAME,
   resolveRoot,
   loadCategories,
+  activeCategories,
+  writeCategories,
+  createCategory,
+  updateCategory,
+  moveCategory,
+  removeCategory,
+  createManualIdea,
+  ideaIsRetained,
   categoryById,
   loadState,
   writeState,

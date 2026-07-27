@@ -246,6 +246,11 @@ const IDEA_ENGINE_RESTORE_API = '/api/idea-engine/restore';
 const IDEA_ENGINE_REMOVED_API = '/api/idea-engine/removed';
 const IDEA_ENGINE_REPLACE_ONE_API = '/api/idea-engine/replace-one';
 const IDEA_ENGINE_FILL_VACANCIES_API = '/api/idea-engine/fill-vacancies';
+const IDEA_ENGINE_CATEGORY_CREATE_API = '/api/idea-engine/category-create';
+const IDEA_ENGINE_CATEGORY_UPDATE_API = '/api/idea-engine/category-update';
+const IDEA_ENGINE_CATEGORY_MOVE_API = '/api/idea-engine/category-move';
+const IDEA_ENGINE_CATEGORY_REMOVE_API = '/api/idea-engine/category-remove';
+const IDEA_ENGINE_ADD_TOPIC_API = '/api/idea-engine/add-topic';
 const PACKAGE_RUNS_REINDEX_API = '/api/package-runs/reindex';
 const TOPIC_SCOUT_LIST_API = '/api/topic-scout/list';
 const TOPIC_SCOUT_SUBMIT_API = '/api/topic-scout/submit';
@@ -5223,7 +5228,17 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
   const chunkSize = ideaEngineChunkSize(serverOptions);
   const timeoutMs = ideaEngineTimeoutMs(serverOptions);
   const model = ideaEngineModel(serverOptions);
-  const target = ideaEngine.IDEAS_PER_CATEGORY;
+  // Retained topics (manual, edited, reviewed, promoted) stay in place; a
+  // refresh generates only enough fresh ideas to fill the remaining slots.
+  const startBlock = state.categories[category.id];
+  const retainedCount = startBlock ? startBlock.ideas.filter(ideaEngine.ideaIsRetained).length : 0;
+  const target = ideaEngine.IDEAS_PER_CATEGORY - retainedCount;
+  if (target <= 0) {
+    const e = new Error('Every topic in this category is protected (manual, edited, reviewed, or promoted) — there is nothing eligible to refresh.');
+    e.statusCode = 400;
+    e.code = 'nothing_eligible';
+    throw e;
+  }
   const accepted = [];
   let rejectedCount = 0;
   let chunksAttempted = 0;
@@ -5335,6 +5350,7 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
       generated_at: new Date().toISOString(),
       model,
       provider: 'ollama-local',
+      requested: target,
       duration_ms: Date.now() - t0,
       chunks: chunksAttempted,
       rejected_candidates: rejectedCount,
@@ -5345,7 +5361,7 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
 // One-category refresh: locked, transactional, failure-recording. Used by the
 // refresh-category route and by each step of the refresh-all job.
 async function runIdeaEngineCategoryRefresh(categoryId, serverOptions = {}, ieOpts = {}, { bypassGlobalGuard = false } = {}) {
-  const categories = ideaEngine.loadCategories(ieOpts);
+  const categories = ideaEngine.activeCategories(ieOpts);
   const category = ideaEngine.categoryById(categories, ideaEngine.assertValidCategoryId(categoryId));
   if (!category) {
     const e = new Error('Unknown Idea Engine category id.');
@@ -5404,7 +5420,7 @@ function startIdeaEngineRefreshAll(serverOptions = {}, ieOpts = {}) {
     e.code = 'generation_in_progress';
     throw e;
   }
-  const categories = ideaEngine.loadCategories(ieOpts);
+  const categories = ideaEngine.activeCategories(ieOpts);
   const job = {
     job_id: `iej-${Date.now().toString(36)}-${Math.floor(Math.random() * 0xffff).toString(16)}`,
     started_at: new Date().toISOString(),
@@ -5467,7 +5483,7 @@ async function generateIdeaEngineReplacementIdea(category, removedIdea, serverOp
       for (const p of state.categories[key].promoted_history) promotedTitles.push(p.title);
       for (const i of state.categories[key].ideas) if (i.promotion.state === 'promoted') promotedTitles.push(i.title);
     }
-    const otherCategories = ideaEngine.loadCategories(ieOpts).filter((c) => c.id !== category.id).map((c) => c.name);
+    const otherCategories = ideaEngine.activeCategories(ieOpts).filter((c) => c.id !== category.id).map((c) => c.name);
     const reqPrompt = ideaEnginePrompts.buildReplacementRequest(category, {
       removedIdea,
       removalReason: removedIdea && removedIdea.removed ? removedIdea.removed.reason : null,
@@ -12269,7 +12285,7 @@ function createServer(options = {}) {
 
     if (req.method === 'GET' && url.pathname === IDEA_ENGINE_CATEGORIES_API) {
       try {
-        sendJSON(res, 200, { categories: ideaEngine.loadCategories(ieOpts) });
+        sendJSON(res, 200, { categories: ideaEngine.activeCategories(ieOpts) });
       } catch (error) {
         sendError(res, error.statusCode || 500, error.message, 'idea-engine-categories-error');
       }
@@ -12464,7 +12480,7 @@ function createServer(options = {}) {
             const e = new Error('This category is already generating.');
             e.statusCode = 409; e.code = 'generation_in_progress'; throw e;
           }
-          const categories = ideaEngine.loadCategories(ieOpts);
+          const categories = ideaEngine.activeCategories(ieOpts);
           const category = ideaEngine.categoryById(categories, categoryId);
           if (!category) {
             const e = new Error('Unknown Idea Engine category id.');
@@ -12507,7 +12523,7 @@ function createServer(options = {}) {
             const e = new Error('This category is already generating.');
             e.statusCode = 409; e.code = 'generation_in_progress'; throw e;
           }
-          const categories = ideaEngine.loadCategories(ieOpts);
+          const categories = ideaEngine.activeCategories(ieOpts);
           const category = ideaEngine.categoryById(categories, categoryId);
           if (!category) {
             const e = new Error('Unknown Idea Engine category id.');
@@ -12557,6 +12573,89 @@ function createServer(options = {}) {
           }
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-fill-vacancies-error'));
+      return;
+    }
+
+    // ── Manual category management (Phase 3) ────────────────────────────────
+    // Pure state mutations: no model call, no quota, synchronous atomic writes.
+
+    if (req.method === 'POST' && url.pathname === IDEA_ENGINE_CATEGORY_CREATE_API) {
+      readJsonBody(req, 1024 * 16)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Idea Engine category API' });
+          const category = ideaEngine.createCategory({ name: payload.name, description: payload.description }, ieOpts);
+          sendJSON(res, 200, { category });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-category-create-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === IDEA_ENGINE_CATEGORY_UPDATE_API) {
+      readJsonBody(req, 1024 * 16)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Idea Engine category API' });
+          const category = ideaEngine.updateCategory(payload.category_id, { name: payload.name, description: payload.description }, ieOpts);
+          sendJSON(res, 200, { category });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-category-update-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === IDEA_ENGINE_CATEGORY_MOVE_API) {
+      readJsonBody(req, 1024 * 16)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Idea Engine category API' });
+          const category = ideaEngine.moveCategory(payload.category_id, payload.direction, ieOpts);
+          sendJSON(res, 200, { category, categories: ideaEngine.activeCategories(ieOpts) });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-category-move-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === IDEA_ENGINE_CATEGORY_REMOVE_API) {
+      readJsonBody(req, 1024 * 16)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Idea Engine category API' });
+          // Archiving a category mid-generation would let the running job write
+          // into a hidden block; refuse while its generation lock is held.
+          if (payload.confirm !== true) {
+            const e = new Error('Removing a category archives it and hides its topics; pass confirm: true.');
+            e.statusCode = 400;
+            e.code = 'confirm_required';
+            throw e;
+          }
+          const categoryId = ideaEngine.assertValidCategoryId(payload.category_id);
+          if ((ideaEngineRefreshAllJob && !ideaEngineRefreshAllJob.done) || IDEA_ENGINE_CATEGORY_LOCKS.has(categoryId)) {
+            const e = new Error('Generation is running; wait for it to finish before removing a category.');
+            e.statusCode = 409;
+            e.code = 'generation_in_progress';
+            throw e;
+          }
+          sendJSON(res, 200, ideaEngine.removeCategory(categoryId, ieOpts));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-category-remove-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === IDEA_ENGINE_ADD_TOPIC_API) {
+      readJsonBody(req, 1024 * 32)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Idea Engine topic API' });
+          const categoryId = ideaEngine.assertValidCategoryId(payload.category_id);
+          if (IDEA_ENGINE_CATEGORY_LOCKS.has(categoryId)) {
+            const e = new Error('This category is generating; wait for it to finish before adding a topic.');
+            e.statusCode = 409;
+            e.code = 'generation_in_progress';
+            throw e;
+          }
+          const result = ideaEngine.createManualIdea(categoryId, payload, ieOpts);
+          const state = ideaEngine.loadState(ieOpts);
+          sendJSON(res, 200, {
+            idea: result.idea,
+            category: ideaEngine.summarizeCategory(result.category, state.categories[categoryId]),
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'idea-engine-add-topic-error'));
       return;
     }
 
@@ -17311,6 +17410,11 @@ module.exports = {
   IDEA_ENGINE_REMOVED_API,
   IDEA_ENGINE_REPLACE_ONE_API,
   IDEA_ENGINE_FILL_VACANCIES_API,
+  IDEA_ENGINE_CATEGORY_CREATE_API,
+  IDEA_ENGINE_CATEGORY_UPDATE_API,
+  IDEA_ENGINE_CATEGORY_MOVE_API,
+  IDEA_ENGINE_CATEGORY_REMOVE_API,
+  IDEA_ENGINE_ADD_TOPIC_API,
   ideaEngine,
   ideaEnginePrompts,
   generateIdeaEngineCategorySet,

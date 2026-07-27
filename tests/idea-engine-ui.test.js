@@ -92,6 +92,17 @@ test("idea-engine-ui confirm controller resolves confirm/cancel and refuses stac
   const p2 = ctl.ask("Again?");
   els.cancelBtn.click();
   assert.equal(await p2, false);
+  // Per-ask confirm label override (used by category removal), with the
+  // default label restored on the next plain ask.
+  const defaultLabel = els.confirmBtn.textContent;
+  const p3 = ctl.ask("Remove?", { confirmLabel: "Remove category" });
+  assert.equal(els.confirmBtn.textContent, "Remove category");
+  els.confirmBtn.click();
+  assert.equal(await p3, true);
+  const p4 = ctl.ask("Plain again?");
+  assert.equal(els.confirmBtn.textContent, defaultLabel, "default label restored");
+  els.cancelBtn.click();
+  await p4;
 });
 
 // ── promote controller (double-click safety) ────────────────────────────────
@@ -293,6 +304,18 @@ test("idea-engine.html is wired to the API, the shared UI module, and uses no na
     "/api/idea-engine/restore",
     "/api/idea-engine/replace-one",
     "/api/idea-engine/fill-vacancies",
+    "/api/idea-engine/category-create",
+    "/api/idea-engine/category-update",
+    "/api/idea-engine/category-move",
+    "/api/idea-engine/category-remove",
+    "/api/idea-engine/add-topic",
+    "+ Add category",
+    "+ Add topic",
+    "Edit category",
+    "Move up",
+    "Move down",
+    "Remove category",
+    "ie-add-category",
     'id="ie-remove-dialog"',
     'id="ie-remove-reason"',
     'id="ie-remove-note"',

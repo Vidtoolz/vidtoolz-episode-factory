@@ -43,7 +43,9 @@ canonical 12-category taxonomy existed in the estate; the seed is grounded in
 the Tier-1 doctrine docs and the five content pillars). Persisted domain data:
 edit the file to change names/guidance; edits win over the seed.
 Each category: `id` (slug), `name`, `description`, `channel_relevance`,
-`generation_guidance`.
+`generation_guidance`, plus management metadata (Phase 3): `source`
+(`seed` | `manual`), `status` (`active` | `removed`), `position`,
+`created_at`, `updated_at`, `removed_at`.
 
 `ideas.json` — per category: `batch` (batch_id, generated_at, model, provider,
 requested, accepted, duration_ms, chunks, rejected_candidates), `ideas[≤30]`
@@ -57,7 +59,7 @@ trusted), `category_id`, content fields (`title`, `premise`, `why_vidtoolz`,
 `status` (`generated` | `reviewed`), `reviewed_at`, `created_at`, `updated_at`,
 `batch_id`, `model`, and the Phase 2 editorial lifecycle:
 
-- `content_origin`: `generated` | `manually_edited` | `replacement_generated`
+- `content_origin`: `generated` | `manually_edited` | `replacement_generated` | `manual`
 - `edit_revision` (int) + `edit_history[]` (each entry: revision, edited_at,
   previous content snapshot) + `original_content` (the pre-first-edit snapshot)
 - `removed`: `null` or `{at, reason, note}` (reason from the structured set:
@@ -90,7 +92,9 @@ provenance, and promotion identity are immutable through editing, and no model
 call happens. Every save validates required fields, length limits, HTML-like
 markup, and exact/near-duplicate titles against all active topics; records an
 edit revision; keeps the previous version in `edit_history` (the first edit
-also freezes `original_content`); and marks the topic `manually_edited`.
+also freezes `original_content`); and marks a generated topic
+`manually_edited` (a `manual` record stays `manual`, with relaxed
+completeness rules — its optional fields may stay empty).
 Stale-write protection: the client sends the revision it loaded
 (`expected_revision`); a mismatch returns 409 `stale_revision` so two tabs can
 never silently overwrite each other. Editing an already-promoted topic updates
@@ -176,20 +180,23 @@ history is archival and does not constrain future batches.
 ## Refresh semantics
 
 - **Refresh one category** (`POST /api/idea-engine/refresh-category`,
-  `{category_id, confirm:true}`) — replaces only that category; requires the
-  explicit confirm flag (the GUI collects it in a custom dialog and states:
-  "This replaces the current active suggestions for this category. Edited,
-  removed, and promoted topics remain in history."); 409
-  `generation_in_progress` if that category or a refresh-all is running.
-  **History interaction:** on activation, promoted old actives move to
-  `promoted_history`, everything else (manual edits included) is archived to
+  `{category_id, confirm:true}`) — refreshes only that category; requires the
+  explicit confirm flag (the GUI dialog states exactly what is kept and what
+  is replaced); 409 `generation_in_progress` if that category or a refresh-all
+  is running. **Preservation invariant (2026-07-27):** topics that are
+  manually added (`content_origin: manual`), user-edited (`manually_edited`),
+  reviewed, or promoted are RETAINED in the active list — a refresh generates
+  only enough fresh ideas to fill the eligible (untouched generated) slots and
+  activates `retained + fresh = 30` atomically. If every topic is protected
+  the refresh fails closed with 400 `nothing_eligible` and calls no model.
+  **History interaction:** replaced eligible actives are archived to
   `removed` as `superseded_by_refresh` — nothing is physically deleted and
   edit histories survive. **Mid-generation edits are protected:** the refresh
   captures the category `revision` before generating; if an edit/removal/
   restore lands while the model runs, activation refuses with 409
   `category_revision_conflict` and the newer manual work stays untouched.
 - **Refresh all** (`POST /api/idea-engine/refresh-all`, `{confirm:true}`) —
-  starts an in-process background job that runs the 12 categories
+  starts an in-process background job that runs every ACTIVE category
   **sequentially** (one local GPU) with a **per-category transactional
   strategy**: each category validates and activates independently and
   atomically, a failure affects only that category, and the job reports
@@ -256,6 +263,37 @@ history is archival and does not constrain future batches.
 | POST | `/api/idea-engine/replace-one` | generate exactly one replacement for a vacancy |
 | POST | `/api/idea-engine/fill-vacancies` | fill all vacancies, one topic at a time |
 | POST | `/api/idea-engine/promote` | promote one idea into Super Focus (idempotent) |
+| POST | `/api/idea-engine/category-create` | add a manual category (name required, unique; starts empty, no generation) |
+| POST | `/api/idea-engine/category-update` | rename / edit description (ID stable; topics and order untouched) |
+| POST | `/api/idea-engine/category-move` | move a category up/down in the persisted display order |
+| POST | `/api/idea-engine/category-remove` | archive a category (confirm required; topics stay on disk, hidden with it) |
+| POST | `/api/idea-engine/add-topic` | add a manual topic (title required, rationale optional; no model call) |
+
+## Manual management (Phase 3, 2026-07-27)
+
+Categories carry management metadata: `source` (`seed` \| `manual`), `status`
+(`active` \| `removed`), `position` (persisted display order), timestamps.
+Legacy `categories.json` entries normalize to `seed`/`active`/file-order and
+keep their text fields; IDs are slugs, stable across renames, and never
+derived from display names at lookup time.
+
+- **Add category** — starts empty; topics come only from an explicit
+  "+ Add topic" or a generation action. Duplicate names (normalized) are 409.
+- **Remove category** — archives (`status: removed`): the category and its
+  entire ideas block (active + removed history + promoted history) leave
+  every view and every generation path together, so topics are never orphaned
+  and nothing is deleted from disk. Reversible by setting `status` back to
+  `active` in `categories.json`. Promoted Super Focus projects are unaffected.
+  Blocked (409) while that category is generating or a refresh-all runs.
+- **Add topic** (`content_origin: manual`) — no model call, no batch, empty
+  rationale is a valid state (the GUI shows an honest empty state and Edit
+  topic adds one later). Manual records validate with relaxed completeness
+  (title + bounds + markup + duplicates) and STAY `manual` through edits.
+  Capacity is still 30: adding into a full category is 409 `category_full`.
+- **Authoritative content** — `manual` and `manually_edited` topics, plus
+  reviewed and promoted ones, are never replaced by refresh or vacancy fill
+  (see Refresh semantics above). Vacancy fill counts them as active, so it
+  only generates the true gap.
 
 Concurrency rules: one mutation lock per idea (edit/remove/restore/promote
 serialize; losers get 409), one generation lock per category (refresh /
