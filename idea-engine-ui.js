@@ -360,7 +360,59 @@
     };
   }
 
+  // ── Category readiness (2026-07-27 contract) ─────────────────────────────
+  // Renders BACKEND-derived readiness only — the browser never holds copies
+  // of the 24/30 thresholds. Legacy payloads without readiness degrade to a
+  // neutral, honest "unavailable" display.
+  var READINESS_META = {
+    full: { label: 'Complete', tone: 'ok' },
+    usable_partial: { label: 'Usable partial', tone: 'warn' },
+    incomplete: { label: 'Incomplete', tone: 'muted' },
+    empty: { label: 'Empty', tone: 'muted' },
+  };
+  function categoryReadinessView(category) {
+    var c = category && typeof category === 'object' ? category : {};
+    var meta = READINESS_META[c.readiness];
+    if (!meta || !isFinite(c.active_topic_count) || !isFinite(c.target_topics)) {
+      return { known: false, state: null, tone: 'muted', label: 'Topic count unavailable', counts: '', detail: '', canFill: false, isFull: false };
+    }
+    var vacancies = isFinite(c.vacancies) ? c.vacancies : Math.max(0, c.target_topics - c.active_topic_count);
+    var counts = c.active_topic_count + ' of ' + c.target_topics + ' validated topics';
+    var detail = '';
+    if (c.readiness === 'usable_partial' || c.readiness === 'incomplete') {
+      detail = vacancies + ' vacanc' + (vacancies === 1 ? 'y' : 'ies') + ' remain';
+    } else if (c.readiness === 'full' && isFinite(c.over_target_count) && c.over_target_count > 0) {
+      detail = c.over_target_count + ' over target';
+    }
+    return {
+      known: true,
+      state: c.readiness,
+      tone: meta.tone,
+      label: meta.label,
+      counts: counts,
+      detail: detail,
+      vacancies: vacancies,
+      // Fill is the top-up action for anything below target; a full category
+      // has nothing to fill (replacement refresh stays a separate action).
+      canFill: vacancies > 0,
+      isFull: c.readiness === 'full',
+      isUsable: c.is_usable === true,
+      // Accessible one-liner (never color-only).
+      ariaText: meta.label + ': ' + counts + (detail ? ', ' + detail : ''),
+    };
+  }
+
+  // Aggregate readiness line for refresh-all summaries (backend-provided).
+  function readinessSummaryView(summary) {
+    var s = summary && typeof summary === 'object' ? summary : null;
+    if (!s || !isFinite(s.categories_total)) return '';
+    return s.categories_full + ' full · ' + s.categories_usable_partial + ' usable partial · ' +
+      s.categories_incomplete + ' incomplete · ' + s.categories_empty + ' empty';
+  }
+
   return {
+    categoryReadinessView: categoryReadinessView,
+    readinessSummaryView: readinessSummaryView,
     generationStatusView: generationStatusView,
     makeGenerationStatusPoller: makeGenerationStatusPoller,
     formatTimestamp: formatTimestamp,

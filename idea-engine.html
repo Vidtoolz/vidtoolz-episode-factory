@@ -45,6 +45,12 @@
     .dot-running { background: var(--accent-blue, #58a6ff); }
     .dot-incomplete { background: #d29922; }
     .ie-vacancy-note { color: #d29922; font-size: 0.84rem; margin: 8px 0; }
+    /* Category readiness — label text always present (never color-only). */
+    .ie-ready { font-size: 0.84rem; margin: 8px 0; }
+    .ie-ready .r-label { font-weight: 600; }
+    .ie-ready.tone-ok .r-label { color: var(--accent, #3fb950); }
+    .ie-ready.tone-warn .r-label { color: #d29922; }
+    .ie-ready.tone-muted .r-label { color: var(--muted, #8b949e); }
     .ie-origin-note { color: var(--muted, #8b949e); font-size: 0.8rem; }
     .ie-warn-note { color: #d29922; font-size: 0.84rem; margin: 8px 0; }
     .ie-form label { display: block; color: var(--muted, #8b949e); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 12px; }
@@ -121,7 +127,7 @@
     <div class="ie-toolbar">
       <input id="ie-search" type="search" placeholder="Search all ideas by title or premise…" aria-label="Search ideas">
       <span class="ie-search-scope"><input type="checkbox" id="ie-search-removed" aria-label="Include removed topics in search"><label for="ie-search-removed">include removed</label></span>
-      <button id="ie-refresh-all" class="ie-btn danger">Refresh all 12 categories</button>
+      <button id="ie-refresh-all" class="ie-btn">Top up all categories</button>
       <button id="ie-reload" class="ie-btn">Reload</button>
       <span id="ie-status" class="ie-status" role="status">Loading…</span>
       <span id="ie-gen-status" class="ie-genstatus" role="status" aria-live="polite" aria-atomic="true"></span>
@@ -346,12 +352,15 @@
       return poller.isActive() || busyCategory !== null || genStatusActive;
     }
 
+    // Dot follows READINESS (backend-derived), not the last job outcome: a
+    // usable_partial category must never be painted with failure red.
     function categoryDot(category) {
       if (busyCategory === category.id) return 'dot-running';
-      if (category.last_failure) return 'dot-fail';
-      if (category.vacancy_count > 0 && category.idea_count > 0) return 'dot-incomplete';
-      if (category.idea_count > 0) return 'dot-ok';
-      return 'dot-empty';
+      if (category.readiness === 'full') return 'dot-ok';
+      if (category.readiness === 'usable_partial') return 'dot-incomplete';
+      if (category.readiness === 'empty') return 'dot-empty';
+      if (category.readiness === 'incomplete') return category.last_failure ? 'dot-fail' : 'dot-incomplete';
+      return category.last_failure ? 'dot-fail' : 'dot-empty';
     }
 
     function el(tag, cls, text) {
@@ -370,10 +379,10 @@
         var dot = el('span', 'ie-cat-dot ' + categoryDot(category));
         btn.appendChild(dot);
         btn.appendChild(document.createTextNode(category.name));
-        var counts = 'Active: ' + category.active_count + ' / 30' +
-          (category.vacancy_count > 0 ? ' · ' + category.vacancy_count + ' vacanc' + (category.vacancy_count === 1 ? 'y' : 'ies') : '') +
+        var rv = UI.categoryReadinessView(category);
+        var counts = (rv.known ? rv.label + ' · ' + rv.counts + (rv.detail ? ' · ' + rv.detail : '') : rv.label) +
           ' · ' + category.promoted_count + ' promoted' +
-          (category.last_failure ? ' · last generation FAILED' : '');
+          (category.last_failure ? ' · last generation failed' : '');
         btn.appendChild(el('span', 'ie-cat-counts', counts));
         btn.addEventListener('click', function () {
           view.selectedCategory = category.id;
@@ -645,9 +654,11 @@
       detailField(dl, 'Name', category.name);
       detailField(dl, 'What it covers', category.description);
       detailField(dl, 'Why VIDTOOLZ covers it', category.channel_relevance);
-      detailField(dl, 'Active suggested topics', category.active_count + ' / 30' +
-        (category.vacancy_count > 0 ? ' (' + category.vacancy_count + ' vacanc' + (category.vacancy_count === 1 ? 'y' : 'ies') + ')' : ''));
-      detailField(dl, 'Completeness', category.completeness);
+      var rv = UI.categoryReadinessView(category);
+      detailField(dl, 'Category readiness', rv.known ? rv.ariaText : rv.label);
+      if (category.readiness_evaluated_at) {
+        detailField(dl, 'Readiness evaluated', UI.formatTimestamp(category.readiness_evaluated_at));
+      }
       if (category.removed_count > 0) detailField(dl, 'Removed topics (history)', String(category.removed_count));
       if (category.edited_count > 0) detailField(dl, 'Manually edited', String(category.edited_count));
       if (category.batch) {
@@ -658,6 +669,23 @@
       if (category.last_failure) {
         mount.appendChild(el('div', 'ie-fail-note', 'Last generation failed: ' + category.last_failure.message));
       }
+      // Readiness line above the actions: label + counts + vacancies, with a
+      // plain-language note for partial inventories (never failure styling).
+      if (rv.known) {
+        var readyEl = el('div', 'ie-ready tone-' + rv.tone);
+        var rLabel = el('span', 'r-label', rv.label);
+        readyEl.appendChild(rLabel);
+        readyEl.appendChild(document.createTextNode(' — ' + rv.counts + (rv.detail ? ' · ' + rv.detail : '')));
+        if (rv.state === 'usable_partial') {
+          readyEl.appendChild(el('div', 'ie-origin-note',
+            'Editorially usable: enough topics to work from, though not full. Use "Fill vacancies" to top it up — existing topics are kept.'));
+        } else if (rv.state === 'incomplete' && category.last_failure) {
+          readyEl.appendChild(el('div', 'ie-origin-note',
+            'Generation could not produce enough unique topics. Accepted topics are kept; fill or add topics to continue.'));
+        }
+        mount.appendChild(readyEl);
+      }
+
       var actions = el('div', 'ie-actions');
       if (category.active_count < 30) {
         var addTopicBtn = el('button', 'ie-btn', '+ Add topic');
@@ -672,14 +700,15 @@
       // history) has no removal reasons for the one-at-a-time replacement path
       // to work from — batch generation below is the honest first step.
       var neverGenerated = category.idea_count === 0 && category.removed_count === 0;
-      if (category.vacancy_count > 0 && !neverGenerated) {
+      if (rv.canFill && !neverGenerated) {
         var replBtn = el('button', 'ie-btn primary', 'Generate replacement');
         replBtn.disabled = generationBusy();
         replBtn.addEventListener('click', function () { replaceOne(category, null, replBtn); });
         actions.appendChild(replBtn);
-        if (category.vacancy_count > 1) {
-          var fillBtn = el('button', 'ie-btn primary', 'Fill all ' + category.vacancy_count + ' vacancies');
+        if (rv.vacancies > 1) {
+          var fillBtn = el('button', 'ie-btn primary', 'Fill ' + rv.vacancies + ' vacancies');
           fillBtn.disabled = generationBusy();
+          fillBtn.setAttribute('aria-label', 'Fill ' + rv.vacancies + ' vacancies in ' + category.name + ' — existing topics are kept');
           fillBtn.addEventListener('click', function () { fillVacancies(category, fillBtn); });
           actions.appendChild(fillBtn);
         }
@@ -1077,6 +1106,10 @@
       if (!job) { wrap.classList.add('hidden'); updateRefreshAllButton(); return; }
       wrap.classList.remove('hidden');
       summary.textContent = UI.summarizeJob(job);
+      var readinessLine = UI.readinessSummaryView(job.readiness_summary);
+      if (readinessLine) {
+        summary.appendChild(el('div', 'ie-origin-note', 'Category readiness: ' + readinessLine));
+      }
       listEl.innerHTML = '';
       (job.categories || []).forEach(function (c) {
         var mark = c.status === 'succeeded' ? '✔' : c.status === 'failed' ? '✖' : c.status === 'running' ? '…' : '·';
@@ -1091,7 +1124,7 @@
       refreshAllBtn.setAttribute('aria-busy', poller.isActive() ? 'true' : 'false');
     }
     refreshAllBtn.addEventListener('click', function () {
-      confirmCtl.ask('Replace the unpromoted idea sets of ALL 12 categories with freshly generated sets (12 × 30)? This runs one category at a time and can take a while. Each category only replaces its set if the new set fully validates; promoted ideas keep their history.')
+      confirmCtl.ask('Top up every category to 30 topics? Full categories are left unchanged, empty ones get a fresh set, and partial ones are filled incrementally — existing topics are never replaced. This runs one category at a time and can take a long time.', { confirmLabel: 'Top up categories' })
         .then(function (yes) {
           if (!yes) return;
           setStatus('Refreshing all categories…');
