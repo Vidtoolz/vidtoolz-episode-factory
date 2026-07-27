@@ -14,7 +14,7 @@ explicitly promotes it into Super Focus.
 - **State:** `idea-engine-state/` (git-ignored, local, never on VIDNAS;
   env-overridable via `IDEA_ENGINE_ROOT`) — `categories.json` + `ideas.json`
 - **Generation:** local vidnux Ollama only (`/api/chat`, JSON-schema `format`,
-  `think:false`), model `IDEA_ENGINE_OLLAMA_MODEL` → `OLLAMA_MODEL` → `qwen3:14b`
+  `think:false`), model `IDEA_ENGINE_OLLAMA_MODEL` → `OLLAMA_MODEL` → `qwen3.5:9b`
 
 ## Relationship to the existing Idea Module (~/vidtoolz-idea-module)
 
@@ -303,7 +303,7 @@ in Super Focus.
 ## Boundaries and known limitations
 
 - Generation quality depends on the local model; a category refresh takes
-  minutes on `qwen3:14b` (a single replacement is much faster). The refresh-one
+  minutes on the local default model (a single replacement is much faster). The refresh-one
   / replace-one / fill-vacancies HTTP requests stay open for the duration
   (local-only, matching the existing generate routes).
 - Exclusion lists sent to the model are capped (120 titles), so with a full

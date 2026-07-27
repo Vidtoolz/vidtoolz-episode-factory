@@ -409,7 +409,7 @@ items, so it is safe to re-run to resume.
 | `SUPER_FOCUS_FLUX_SCRIPT` | canonical `run-handoff.py` | Image dispatch script |
 | `SUPER_FOCUS_PRODUCTION_SCRIPT` | canonical `run-production.py` | Video dispatch script |
 | `SUPER_FOCUS_PYTHON_BIN` | `python3` | Interpreter for the dispatch scripts |
-| `OLLAMA_MODEL` | `qwen3:14b` | vidnux text model |
+| `OLLAMA_MODEL` | `qwen3.5:9b` | vidnux text model (default migrated from `qwen3:14b` 2026-07-27; the old model stays installed as rollback) |
 | `OLLAMA_PRESTO_MODEL` | `vidtoolz-presto:latest` | PRESTO i2v-prompt model |
 
 > **PRESTO i2v model routing:** the PRESTO i2v-prompt model is declared in the

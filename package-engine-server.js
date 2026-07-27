@@ -536,7 +536,10 @@ const LOCAL_IMAGE_PROVIDER = Object.freeze({
 // Local Ollama LLM (no credentials, localhost only). Used for browser-local
 // idea-triage drafting. Configurable via env so a different host/model can be used.
 const OLLAMA_BASE_URL = String(process.env.OLLAMA_URL || process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
-const OLLAMA_MODEL = String(process.env.OLLAMA_MODEL || 'qwen3:14b');
+// Local default migrated qwen3:14b -> qwen3.5:9b on 2026-07-27; qwen3:14b
+// stays installed as the rollback model. Must match the image_prompt_generation
+// lane default in config/media-routing.json (guarded by media-routing.test.js).
+const OLLAMA_MODEL = String(process.env.OLLAMA_MODEL || 'qwen3.5:9b');
 const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS) > 0 ? Number(process.env.OLLAMA_TIMEOUT_MS) : 120000;
 // Media routing policy: image prompts -> vidnux Ollama (above); I2V prompts ->
 // PRESTO Ollama (below). These are SEPARATE hosts by hard policy — I2V prompts

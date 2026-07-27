@@ -12,7 +12,7 @@
       "endpoint_env": ["OLLAMA_URL", "OLLAMA_BASE_URL"],
       "endpoint_default": "http://127.0.0.1:11434",
       "model_env": "OLLAMA_MODEL",
-      "model_default": "qwen3:14b",
+      "model_default": "qwen3.5:9b",
       "operator_text": "Image prompts: local Ollama on vidnux",
       "manual_copy_allowed": true
     },

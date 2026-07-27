@@ -50,6 +50,22 @@ test("routing: image prompts route to vidnux Ollama, local, no fallback", () => 
   assert.equal(routing.assertLocalLane(routing.LANE.IMAGE_PROMPT), true);
 });
 
+test("routing: local default model is qwen3.5:9b, env-overridable, PRESTO lane untouched (2026-07-27 migration)", () => {
+  // Active vidnux default — a reversion to the retired qwen3:14b default is a regression.
+  assert.equal(routing.resolveModel(routing.LANE.IMAGE_PROMPT, {}), "qwen3.5:9b");
+  assert.notEqual(routing.resolveModel(routing.LANE.IMAGE_PROMPT, {}), "qwen3:14b");
+  // Explicit env selection still wins (qwen3:14b remains selectable as rollback).
+  assert.equal(routing.resolveModel(routing.LANE.IMAGE_PROMPT, { OLLAMA_MODEL: "qwen3:14b" }), "qwen3:14b");
+  // The PRESTO I2V-prompt lane is a separate route and must not have moved.
+  assert.equal(routing.resolveModel(routing.LANE.I2V_PROMPT, {}), "vidtoolz-presto:latest");
+  // The server's OLLAMA_MODEL literal must agree with the routing lane default —
+  // two contradictory defaults for the same lane is exactly the drift this guards.
+  const serverSource = fs.readFileSync(path.join(__dirname, "..", "package-engine-server.js"), "utf8");
+  const literal = /const OLLAMA_MODEL = String\(process\.env\.OLLAMA_MODEL \|\| '([^']+)'\)/.exec(serverSource);
+  assert.ok(literal, "OLLAMA_MODEL default literal found in package-engine-server.js");
+  assert.equal(literal[1], routing.resolveModel(routing.LANE.IMAGE_PROMPT, {}));
+});
+
 test("routing: T2I routes to vidnux ComfyUI, local, no fallback", () => {
   const lane = routing.getLane(routing.LANE.TEXT_TO_IMAGE);
   assert.equal(lane.host, "vidnux");
