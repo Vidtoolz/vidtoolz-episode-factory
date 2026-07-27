@@ -204,6 +204,37 @@ history is archival and does not constrain future batches.
   result. Progress: `GET /api/idea-engine/refresh-status` (the GUI polls it and
   resumes polling after a page reload). One job at a time (409 on duplicates).
 
+## Model routing (Idea Engine only)
+
+Resolution chain (route-isolated — no other VIDTOOLZ route is affected):
+`options.ideaEngineModel` (tests) → **`IDEA_ENGINE_OLLAMA_MODEL`** env →
+`OLLAMA_MODEL` env → the global default (currently `qwen3.5:9b`). Every
+generation status record carries the resolved `model`, so the live route is
+inspectable at any time via `GET /api/idea-engine/generation-status` (the GUI
+shows "with <model>" during and after runs).
+
+To pin the Idea Engine to a different installed model (e.g. for a stubborn
+category), add a cockpit drop-in and restart:
+
+```
+# ~/.config/systemd/user/vidtoolz-cockpit.service.d/override.conf
+[Service]
+Environment=IDEA_ENGINE_OLLAMA_MODEL=qwen3:30b
+```
+
+then `~/bin/restart-cockpit`, run the generation, and roll back by removing
+the line + restarting. Verify via the status record's `model` field.
+
+**2026-07-27 comparison (vidnux-local evidence, this workload only):**
+`qwen3:30b` (MoE, ~2× slower, partial offload) vs `qwen3.5:9b` on 3 failed
+categories + 1 control through the real pipeline in isolated state: completion
+near-parity (30b 3/4, 9b 2/3; both fail scripts-and-storytelling), parse
+failures equal after the envelope/field coercion, blinded quality +0.2/5 for
+30b (n=12/model). Verdict: **qwen3.5:9b retained**; failures concentrate in
+`excluded_title_collision` (estate saturation), so retry-first — and if a
+category repeatedly plateaus, the binding constraint is the 30-topic contract
+under full-estate exclusions, not model capability.
+
 ## Generation status (2026-07-27)
 
 One canonical lifecycle record per generation operation (`refresh_all`,
