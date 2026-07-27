@@ -316,6 +316,10 @@ test("idea-engine.html is wired to the API, the shared UI module, and uses no na
     "Move down",
     "Remove category",
     "ie-add-category",
+    "categoryReadinessView",
+    "readinessSummaryView",
+    "Top up all categories",
+    "ie-ready tone-",
     'id="ie-gen-status"',
     "/api/idea-engine/generation-status",
     'aria-live="polite"',
@@ -433,4 +437,51 @@ test("idea-engine-ui generation status shows the model quietly; legacy records w
   assert.ok(!legacy.detail.includes("undefined"));
   const junkModel = ui.generationStatusView({ state: "running", operation: "replace_one", model: { a: 1 } }, Date.now());
   assert.ok(!junkModel.detail.includes("[object"), "non-string model never renders as [object Object]");
+});
+
+// ── category readiness rendering (2026-07-27 contract) ──────────────────────
+
+test("idea-engine-ui categoryReadinessView renders all four states from backend values only", () => {
+  const full = ui.categoryReadinessView({ readiness: "full", active_topic_count: 30, target_topics: 30, vacancies: 0, is_usable: true });
+  assert.equal(full.label, "Complete");
+  assert.equal(full.tone, "ok");
+  assert.equal(full.counts, "30 of 30 validated topics");
+  assert.equal(full.canFill, false, "a full category offers no fill action");
+  const partial = ui.categoryReadinessView({ readiness: "usable_partial", active_topic_count: 26, target_topics: 30, vacancies: 4, is_usable: true });
+  assert.equal(partial.label, "Usable partial");
+  assert.notEqual(partial.tone, "err", "usable partial must never use failure styling");
+  assert.equal(partial.detail, "4 vacancies remain");
+  assert.equal(partial.canFill, true);
+  assert.equal(partial.isUsable, true);
+  assert.ok(partial.ariaText.includes("Usable partial") && partial.ariaText.includes("26 of 30"), partial.ariaText);
+  const incomplete = ui.categoryReadinessView({ readiness: "incomplete", active_topic_count: 13, target_topics: 30, vacancies: 17 });
+  assert.equal(incomplete.label, "Incomplete");
+  assert.equal(incomplete.detail, "17 vacancies remain");
+  assert.equal(incomplete.isUsable, false);
+  const empty = ui.categoryReadinessView({ readiness: "empty", active_topic_count: 0, target_topics: 30, vacancies: 30 });
+  assert.equal(empty.label, "Empty");
+  assert.equal(empty.counts, "0 of 30 validated topics");
+  const one = ui.categoryReadinessView({ readiness: "usable_partial", active_topic_count: 29, target_topics: 30, vacancies: 1 });
+  assert.equal(one.detail, "1 vacancy remains".replace("remains", "remain"), "singular vacancy wording");
+  const over = ui.categoryReadinessView({ readiness: "full", active_topic_count: 32, target_topics: 30, vacancies: 0, over_target_count: 2 });
+  assert.equal(over.detail, "2 over target");
+});
+
+test("idea-engine-ui readiness rendering degrades safely for legacy and malformed payloads", () => {
+  for (const junk of [null, undefined, {}, { readiness: "??" }, { readiness: "full" }, { active_topic_count: 5 }]) {
+    const v = ui.categoryReadinessView(junk);
+    assert.equal(v.known, false, "no readiness fields -> neutral display");
+    assert.equal(v.label, "Topic count unavailable");
+    assert.equal(v.canFill, false);
+    for (const s of [v.label, v.counts, v.detail]) {
+      assert.ok(!String(s).includes("undefined") && !String(s).includes("NaN") && !String(s).includes("[object"), s);
+    }
+  }
+});
+
+test("idea-engine-ui readinessSummaryView renders the aggregate line, empty for legacy jobs", () => {
+  const line = ui.readinessSummaryView({ categories_total: 12, categories_full: 4, categories_usable_partial: 5, categories_incomplete: 2, categories_empty: 1 });
+  assert.equal(line, "4 full · 5 usable partial · 2 incomplete · 1 empty");
+  assert.equal(ui.readinessSummaryView(null), "", "legacy job without a summary renders nothing");
+  assert.equal(ui.readinessSummaryView({}), "");
 });

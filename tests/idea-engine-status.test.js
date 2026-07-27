@@ -300,7 +300,14 @@ test("idea-engine-status refresh-all: per-category progress and honest partial t
     assert.equal(s.state, "partial", JSON.stringify(s));
     assert.equal(s.completed_categories, 1);
     assert.equal(s.failed_categories, 1);
-    assert.ok(s.message.includes("retry the failed categories"), s.message);
+    // Dual-axis summary: operation outcomes AND committed category readiness.
+    assert.ok(s.message.includes("1 completed") && s.message.includes("1 failed"), s.message);
+    assert.ok(s.message.includes("Category readiness:"), s.message);
+    assert.deepEqual(
+      { full: s.readiness_summary.categories_full, empty: s.readiness_summary.categories_empty, total: s.readiness_summary.categories_total },
+      { full: 1, empty: 1, total: 2 },
+      "readiness aggregated from final committed blocks, not from operation outcomes"
+    );
   } finally {
     await close(server);
     delete global.__ieStatusCursor;

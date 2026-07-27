@@ -774,11 +774,11 @@ test("idea-engine refresh-all runs all 12 categories sequentially and reports fu
   }
 });
 
-test("idea-engine refresh-all reports partial failure honestly and keeps failed categories intact", async () => {
+test("idea-engine refresh-all: full categories are SKIPPED (never replaced), others generated, readiness aggregated", async () => {
   const categories = ideaEngine.DEFAULT_CATEGORIES;
   const failName = categories[4].name;
   const { server, ieRoot } = ideServer({ fetchImpl: fixtureOllama({ categories, failFor: [failName] }) });
-  const seeded = await seedCategory(ieRoot, 4); // pre-existing set for the failing category
+  const seeded = await seedCategory(ieRoot, 4); // this category is already FULL
   await listen(server);
   try {
     const start = await request(server, packageEngineServer.IDEA_ENGINE_REFRESH_ALL_API, {
@@ -786,19 +786,29 @@ test("idea-engine refresh-all reports partial failure honestly and keeps failed 
     });
     assert.equal(start.statusCode, 200, start.raw);
     const job = await waitForJobDone(server);
+    // 2026-07-27 readiness contract: refresh-all tops up; a full category is
+    // left untouched, so the fixture's failing model is never even called for
+    // it — replacement refresh stays a deliberate per-category action.
     assert.equal(job.succeeded, 11);
-    assert.equal(job.failed, 1);
-    const failedEntry = job.categories.find((c) => c.id === seeded.category.id);
-    assert.equal(failedEntry.status, "failed");
-    assert.ok(failedEntry.message);
-    // The failed category keeps its previous valid set (transactional per category).
+    assert.equal(job.skipped, 1);
+    assert.equal(job.failed, 0);
+    const skippedEntry = job.categories.find((c) => c.id === seeded.category.id);
+    assert.equal(skippedEntry.status, "skipped");
+    assert.equal(skippedEntry.action, "skip");
+    assert.ok(skippedEntry.message.includes("full"));
+    // Aggregated from FINAL COMMITTED blocks, independent of operations.
+    assert.equal(job.readiness_summary.categories_total, 12);
+    assert.equal(job.readiness_summary.categories_full, 12);
+    assert.equal(job.readiness_summary.categories_usable_partial, 0);
+    // The skipped category keeps its exact previous set.
     const state = ideaEngine.loadState({ root: ieRoot });
     assert.equal(state.categories[seeded.category.id].ideas.length, 30);
     assert.deepEqual(
       state.categories[seeded.category.id].ideas.map((i) => i.title),
       seeded.ideas.map((i) => i.title)
     );
-    assert.ok(state.categories[seeded.category.id].last_failure);
+    assert.equal(state.categories[seeded.category.id].last_failure, null,
+      "a skipped category records no failure — nothing was attempted against it");
   } finally {
     await close(server);
   }

@@ -204,6 +204,72 @@ history is archival and does not constrain future batches.
   result. Progress: `GET /api/idea-engine/refresh-status` (the GUI polls it and
   resumes polling after a page reload). One job at a time (409 on duplicates).
 
+## Category readiness contract (2026-07-27)
+
+`TARGET_TOPICS = 30` and `MINIMUM_USABLE_TOPICS = 24` are defined and exported
+**once**, in `idea-engine.js` (`IDEAS_PER_CATEGORY` remains a compatibility
+alias assigned from `TARGET_TOPICS`). Nothing else — server, GUI, or tests —
+holds its own copy of those numbers. 24 is **provisional**: it is the
+editorial floor at which a category is judged workable, not a quality
+certification, and it should be revisited with real usage evidence.
+
+Four states, derived by `deriveCategoryReadiness(block, config)` from the
+CURRENT COMMITTED block:
+
+| Count | State | Usable | Meaning |
+|---|---|---|---|
+| 0 | `empty` | no | nothing generated yet |
+| 1 … 23 | `incomplete` | no | some inventory, below the editorial floor |
+| 24 … 29 | `usable_partial` | yes | **editorially usable, not full** |
+| ≥ 30 | `full` | yes | at target (over-target counts are kept and exposed) |
+
+**Counting rule** (`countCategoryInventoryTopics`): structurally valid ACTIVE
+topics in `block.ideas` — any `content_origin` (generated / manual /
+manually_edited / replacement_generated), reviewed or not, promoted or not,
+retained or replaceable. Excluded: removed topics, malformed records
+(bad id / empty title), duplicate record identities. This deliberately
+**differs from `ideaIsRetained()`**: retention answers "may a refresh replace
+this?", readiness answers "what inventory exists?" — a plain generated topic
+is replaceable yet still counts.
+
+**Never persisted.** Readiness is derived on read (state view, category
+payloads, generation status, refresh-all summaries) because topics move
+across origin/status/promotion axes constantly; a stored flag would go stale
+on every mutation. `readiness_evaluated_at` means only "readiness was derived
+from committed state at this moment" — it is not a history of when a category
+became usable, and it is not written to disk.
+
+**Lifecycle and readiness are independent axes.** A job (`idle`, `starting`,
+`running`, `completed`, `partial`, `failed`, `interrupted`) describes one
+generation operation; readiness describes current inventory. `failed` +
+`usable_partial` is a normal, honest pairing and both are shown. A failed job
+is never relabelled as success because the inventory is usable.
+
+**Fill vs refresh.** `fill_vacancies` is **reused** — no new lifecycle
+operation was added. It requests only `target − active_topic_count` slots,
+commits each accepted topic immediately (so a bounded run that plateaus still
+banks a usable inventory), and never touches existing topics. Batch
+generation via `activateCategorySet` is replacement-oriented and
+all-or-nothing; it stays a deliberate per-category action. **Refresh all is
+now a top-up**: full categories are skipped untouched, empty ones get a batch
+generation, and partial ones are filled incrementally — usable inventory is
+never silently rotated out to chase the last few slots. Nothing retries
+automatically: a bounded run ends, readiness is derived, and further filling
+is an explicit action.
+
+**Refresh-all summaries report two independent axes**: operation outcomes
+(completed / partial / failed / skipped) and category readiness aggregated
+from final committed blocks (`categories_full`, `categories_usable_partial`,
+`categories_incomplete`, `categories_empty`), excluding archived categories.
+
+**Concurrency unchanged**: stale activation still returns 409
+`category_revision_conflict`, and readiness after a conflict is derived from
+the newer committed block — never from stale in-memory candidates.
+
+**Rollback**: revert the readiness commits and restart the cockpit. Because
+readiness is derived and never written, no category, topic, or history data
+is touched by adding or removing this contract.
+
 ## Model routing (Idea Engine only)
 
 Resolution chain (route-isolated — no other VIDTOOLZ route is affected):

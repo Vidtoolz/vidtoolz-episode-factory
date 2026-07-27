@@ -87,6 +87,7 @@ require("./idea-engine.test.js");
 require("./idea-engine-ui.test.js");
 require("./idea-engine-phase2.test.js");
 require("./idea-engine-phase3.test.js");
+require("./idea-engine-readiness.test.js");
 require("./idea-engine-status.test.js");
 require("./module-nav.test.js");
 
