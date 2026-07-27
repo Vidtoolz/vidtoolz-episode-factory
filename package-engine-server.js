@@ -239,6 +239,7 @@ const IDEA_ENGINE_IDEA_API = '/api/idea-engine/idea';
 const IDEA_ENGINE_REFRESH_CATEGORY_API = '/api/idea-engine/refresh-category';
 const IDEA_ENGINE_REFRESH_ALL_API = '/api/idea-engine/refresh-all';
 const IDEA_ENGINE_REFRESH_STATUS_API = '/api/idea-engine/refresh-status';
+const IDEA_ENGINE_GENERATION_STATUS_API = '/api/idea-engine/generation-status';
 const IDEA_ENGINE_REVIEW_API = '/api/idea-engine/review';
 const IDEA_ENGINE_PROMOTE_API = '/api/idea-engine/promote';
 const IDEA_ENGINE_EDIT_API = '/api/idea-engine/edit';
@@ -5186,6 +5187,166 @@ const IDEA_ENGINE_CATEGORY_LOCKS = new Set();
 const IDEA_ENGINE_IDEA_LOCKS = new Set();
 let ideaEngineRefreshAllJob = null;
 
+// ── Idea Engine generation status (authoritative lifecycle) ─────────────────
+// ONE canonical record per generation operation (refresh_all /
+// refresh_category / fill_vacancies / replace_one): starting → running →
+// completed | partial | failed, with honest progress (categories, topics,
+// active category) updated from the real generation loop — never a
+// frontend-only animation. The current op lives in memory (keyed by state
+// root so test servers don't cross-talk) and is persisted atomically to
+// <root>/generation-status.json, so a page reload shows the running job and
+// a cockpit restart mid-run surfaces as 'interrupted', never as a false
+// 'running' or a silent 'idle'. Category/idea data files are never touched.
+const IDEA_ENGINE_STATUS_FILENAME = 'generation-status.json';
+const IDEA_ENGINE_GENERATION_STATES = ['idle', 'starting', 'running', 'completed', 'partial', 'failed', 'interrupted'];
+const ideaEngineActiveOps = new Map(); // job_id -> op (with _root)
+const ideaEngineLastTerminal = new Map(); // root -> terminal op view
+
+function ieStatusRoot(ieOpts) {
+  return (ieOpts && ieOpts.root) || IDEA_ENGINE_ROOT;
+}
+
+function ieStatusPublicView(op) {
+  if (!op) return null;
+  const view = {};
+  for (const key of Object.keys(op)) {
+    if (key[0] !== '_') view[key] = op[key];
+  }
+  return view;
+}
+
+function ieStatusPersist(root) {
+  try {
+    const actives = Array.from(ideaEngineActiveOps.values())
+      .filter((op) => op._root === root)
+      .sort((a, b) => (a.started_at < b.started_at ? 1 : -1));
+    const file = path.join(root, IDEA_ENGINE_STATUS_FILENAME);
+    fs.mkdirSync(root, { recursive: true });
+    const tmp = `${file}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, `${JSON.stringify({
+      schema_version: 1,
+      updated_at: new Date().toISOString(),
+      current: ieStatusPublicView(actives[0]) || null,
+      concurrent_operations: actives.length,
+      last: ideaEngineLastTerminal.get(root) || null,
+    }, null, 2)}\n`, 'utf8');
+    fs.renameSync(tmp, file);
+  } catch (error) {
+    // Status bookkeeping must never break generation or corrupt content state.
+    console.error(`[idea-engine-status] persist failed: ${error.message}`);
+  }
+}
+
+// Begins one generation operation; returns a handle whose update()/finish()
+// keep memory + disk in sync. finish() is idempotent, and callers wrap work
+// so an unexpected exception always lands the op in a terminal state.
+function ieStatusBegin(operation, meta = {}, ieOpts = {}) {
+  const root = ieStatusRoot(ieOpts);
+  const now = new Date().toISOString();
+  const op = {
+    _root: root,
+    _finished: false,
+    job_id: `ieg-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`,
+    state: 'starting',
+    operation,
+    started_at: now,
+    updated_at: now,
+    completed_at: null,
+    requested_categories: Number.isFinite(meta.requested_categories) ? meta.requested_categories : null,
+    completed_categories: 0,
+    failed_categories: 0,
+    active_category_id: meta.category_id || null,
+    active_category_name: meta.category_name || null,
+    requested_topics: Number.isFinite(meta.requested_topics) ? meta.requested_topics : null,
+    created_topics: 0,
+    message: String(meta.message || 'Starting generation…'),
+    last_error: null,
+  };
+  ideaEngineActiveOps.set(op.job_id, op);
+  ieStatusPersist(root);
+  return {
+    op,
+    update(fields = {}) {
+      if (op._finished) return;
+      Object.assign(op, fields);
+      if (op.state === 'starting') op.state = 'running';
+      op.updated_at = new Date().toISOString();
+      ieStatusPersist(root);
+    },
+    finish(state, fields = {}) {
+      if (op._finished) return;
+      op._finished = true;
+      Object.assign(op, fields);
+      op.state = IDEA_ENGINE_GENERATION_STATES.includes(state) ? state : 'failed';
+      op.completed_at = new Date().toISOString();
+      op.updated_at = op.completed_at;
+      ideaEngineActiveOps.delete(op.job_id);
+      ideaEngineLastTerminal.set(root, ieStatusPublicView(op));
+      ieStatusPersist(root);
+    },
+  };
+}
+
+// Maps a generation error to a terminal status. 'Nothing eligible' is a
+// clean completed outcome, not a failure (every topic was protected).
+function ieStatusFinishFromError(handle, error) {
+  if (!handle || handle.op._finished) return;
+  const message = String((error && error.message) || 'generation failed').slice(0, 300);
+  if (error && error.code === 'nothing_eligible') {
+    handle.finish('completed', { message: 'Nothing eligible to generate — every topic is protected (manual, edited, reviewed, or promoted).' });
+    return;
+  }
+  handle.finish('failed', {
+    message,
+    last_error: { code: String((error && error.code) || 'generation_failed'), message },
+  });
+}
+
+// Read-only view for the status route: memory first (live ops for this
+// root), else the persisted file. A persisted CURRENT op with no matching
+// in-memory op means the service restarted (or crashed) mid-generation —
+// reported as 'interrupted', never silently converted to idle. Reading never
+// writes; the stale record is replaced on the next generation start.
+function ieGenerationStatus(ieOpts) {
+  const root = ieStatusRoot(ieOpts);
+  const actives = Array.from(ideaEngineActiveOps.values())
+    .filter((op) => op._root === root)
+    .sort((a, b) => (a.started_at < b.started_at ? 1 : -1));
+  if (actives.length > 0) {
+    return Object.assign(ieStatusPublicView(actives[0]), { concurrent_operations: actives.length });
+  }
+  let stored = null;
+  try {
+    stored = JSON.parse(fs.readFileSync(path.join(root, IDEA_ENGINE_STATUS_FILENAME), 'utf8'));
+  } catch (_) {
+    stored = null; // absent or malformed: fall through to idle (warned below)
+  }
+  if (stored && stored.current && typeof stored.current === 'object') {
+    return Object.assign({}, stored.current, {
+      state: 'interrupted',
+      completed_at: null,
+      concurrent_operations: 0,
+      message: 'Generation was interrupted (the cockpit restarted mid-run). The affected category kept its previous topics — start the generation again.',
+      last_error: { code: 'interrupted', message: 'service restart during generation' },
+    });
+  }
+  const last = (stored && stored.last && typeof stored.last === 'object' && IDEA_ENGINE_GENERATION_STATES.includes(stored.last.state))
+    ? stored.last
+    : ideaEngineLastTerminal.get(root) || null;
+  if (last) return Object.assign({}, last, { concurrent_operations: 0 });
+  return {
+    state: 'idle',
+    operation: null,
+    job_id: null,
+    started_at: null,
+    updated_at: null,
+    completed_at: null,
+    message: 'No generation has run yet.',
+    last_error: null,
+    concurrent_operations: 0,
+  };
+}
+
 function acquireIdeaEngineIdeaLock(ideaId, label) {
   if (IDEA_ENGINE_IDEA_LOCKS.has(ideaId)) {
     const e = new Error(`Another ${label || 'operation'} on this topic is already running.`);
@@ -5220,7 +5381,7 @@ function ideaEngineModel(options = {}) {
 // only when the complete set of exactly IDEAS_PER_CATEGORY validates — the
 // stored last-known-good set is never touched by a partial or failed run.
 // Throws (502/503/504) on failure; the caller records the failure state.
-async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpts = {}) {
+async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpts = {}, statusOp = null) {
   const t0 = Date.now();
   const state = ideaEngine.loadState(ieOpts);
   const batchId = ideaEngine.newBatchId();
@@ -5293,6 +5454,15 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
       }
     );
     chunksAttempted += 1;
+    if (statusOp) {
+      statusOp.update({
+        requested_topics: target,
+        created_topics: accepted.length,
+        active_category_id: category.id,
+        active_category_name: category.name,
+        message: `Generating "${category.name}" — ${accepted.length} of ${target} topics accepted (chunk ${chunksAttempted})`,
+      });
+    }
     // Escalate temperature after no-progress chunks — the standard remedy for
     // a local model collapsing onto its favourite titles.
     const temperature = Math.min(0.95, 0.6 + pressure * 0.15);
@@ -5368,6 +5538,13 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
     e.code = 'idea_generation_incomplete';
     throw e;
   }
+  if (statusOp) {
+    statusOp.update({
+      requested_topics: target,
+      created_topics: accepted.length,
+      message: `Generated ${accepted.length} of ${target} topics for "${category.name}" — validating the set…`,
+    });
+  }
   return {
     ideas: accepted,
     batchMeta: {
@@ -5385,7 +5562,7 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
 
 // One-category refresh: locked, transactional, failure-recording. Used by the
 // refresh-category route and by each step of the refresh-all job.
-async function runIdeaEngineCategoryRefresh(categoryId, serverOptions = {}, ieOpts = {}, { bypassGlobalGuard = false } = {}) {
+async function runIdeaEngineCategoryRefresh(categoryId, serverOptions = {}, ieOpts = {}, { bypassGlobalGuard = false, statusOp = null } = {}) {
   const categories = ideaEngine.activeCategories(ieOpts);
   const category = ideaEngine.categoryById(categories, ideaEngine.assertValidCategoryId(categoryId));
   if (!category) {
@@ -5406,6 +5583,14 @@ async function runIdeaEngineCategoryRefresh(categoryId, serverOptions = {}, ieOp
     throw e;
   }
   IDEA_ENGINE_CATEGORY_LOCKS.add(category.id);
+  // When called by the refresh-all job, the job owns the status record;
+  // standalone refreshes own their own.
+  const ownStatus = statusOp ? null : ieStatusBegin('refresh_category', {
+    category_id: category.id,
+    category_name: category.name,
+    message: `Refreshing "${category.name}"…`,
+  }, ieOpts);
+  const status = statusOp || ownStatus;
   try {
     // Capture the category revision BEFORE generating: if an edit/removal/
     // restore lands while the model runs, activation refuses (409) instead of
@@ -5413,15 +5598,26 @@ async function runIdeaEngineCategoryRefresh(categoryId, serverOptions = {}, ieOp
     const startState = ideaEngine.loadState(ieOpts);
     const startBlock = startState.categories[category.id];
     const expectedRevision = startBlock ? startBlock.revision : 0;
-    const generated = await generateIdeaEngineCategorySet(category, serverOptions, ieOpts);
+    const generated = await generateIdeaEngineCategorySet(category, serverOptions, ieOpts, status);
     ideaEngine.activateCategorySet(category.id, generated.ideas, generated.batchMeta, Object.assign({}, ieOpts, { expectedRevision }));
+    if (ownStatus) {
+      ownStatus.finish('completed', {
+        completed_categories: 1,
+        message: `"${category.name}" refreshed — ${generated.ideas.length} fresh topics accepted.`,
+      });
+    }
     return { category, batch: generated.batchMeta, accepted: generated.ideas.length };
   } catch (error) {
     try {
       ideaEngine.recordCategoryFailure(category.id, { message: error.message, code: error.code, status: error.statusCode }, ieOpts);
     } catch (_) { /* failure bookkeeping must never mask the original error */ }
+    if (ownStatus) ieStatusFinishFromError(ownStatus, error);
     throw error;
   } finally {
+    if (ownStatus && !ownStatus.op._finished) {
+      // Unexpected non-throw path: never leave a stuck 'running' record.
+      ieStatusFinishFromError(ownStatus, new Error('generation ended unexpectedly'));
+    }
     IDEA_ENGINE_CATEGORY_LOCKS.delete(category.id);
   }
 }
@@ -5456,11 +5652,25 @@ function startIdeaEngineRefreshAll(serverOptions = {}, ieOpts = {}) {
     categories: categories.map((c) => ({ id: c.id, name: c.name, status: 'pending', message: null, accepted: 0 })),
   };
   ideaEngineRefreshAllJob = job;
+  const status = ieStatusBegin('refresh_all', {
+    requested_categories: job.categories.length,
+    message: `Refreshing all ${job.categories.length} categories…`,
+  }, ieOpts);
   (async () => {
-    for (const entry of job.categories) {
+    for (let i = 0; i < job.categories.length; i += 1) {
+      const entry = job.categories[i];
       entry.status = 'running';
+      status.update({
+        active_category_id: entry.id,
+        active_category_name: entry.name,
+        completed_categories: job.succeeded,
+        failed_categories: job.failed,
+        requested_topics: null,
+        created_topics: 0,
+        message: `Category ${i + 1} of ${job.categories.length}: ${entry.name}`,
+      });
       try {
-        const result = await runIdeaEngineCategoryRefresh(entry.id, serverOptions, ieOpts, { bypassGlobalGuard: true });
+        const result = await runIdeaEngineCategoryRefresh(entry.id, serverOptions, ieOpts, { bypassGlobalGuard: true, statusOp: status });
         entry.status = 'succeeded';
         entry.accepted = result.accepted;
         job.succeeded += 1;
@@ -5476,6 +5686,19 @@ function startIdeaEngineRefreshAll(serverOptions = {}, ieOpts = {}) {
   }).finally(() => {
     job.done = true;
     job.finished_at = new Date().toISOString();
+    const state = job.succeeded === 0 ? 'failed' : (job.failed > 0 ? 'partial' : 'completed');
+    status.finish(state, {
+      completed_categories: job.succeeded,
+      failed_categories: job.failed,
+      active_category_id: null,
+      active_category_name: null,
+      message: state === 'completed'
+        ? `All ${job.succeeded} categories refreshed.`
+        : state === 'partial'
+        ? `${job.succeeded} categories refreshed, ${job.failed} failed — retry the failed categories individually.`
+        : `Every category failed (${job.failed} of ${job.categories.length}).`,
+      last_error: job.failed > 0 ? { code: 'category_failures', message: `${job.failed} categories failed` } : null,
+    });
   });
   return job;
 }
@@ -5600,6 +5823,8 @@ function resetIdeaEngineRuntimeState() {
   ideaEngineRefreshAllJob = null;
   IDEA_ENGINE_CATEGORY_LOCKS.clear();
   IDEA_ENGINE_IDEA_LOCKS.clear();
+  ideaEngineActiveOps.clear();
+  ideaEngineLastTerminal.clear();
 }
 
 // Read-only provider status for the "Check providers" panel. All probes are
@@ -12317,9 +12542,18 @@ function createServer(options = {}) {
     // (local Ollama); never dispatches images, videos, PRESTO, or compute lanes.
     const ieOpts = { root: serverOptions.ideaEngineRoot || IDEA_ENGINE_ROOT };
 
+    if (req.method === 'GET' && url.pathname === IDEA_ENGINE_GENERATION_STATUS_API) {
+      try {
+        sendJSON(res, 200, ieGenerationStatus(ieOpts));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'idea-engine-generation-status-error');
+      }
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === IDEA_ENGINE_STATE_API) {
       try {
-        sendJSON(res, 200, Object.assign(ideaEngine.stateView(ieOpts), { refresh: ideaEngineRefreshStatus() }));
+        sendJSON(res, 200, Object.assign(ideaEngine.stateView(ieOpts), { refresh: ideaEngineRefreshStatus(), generation: ieGenerationStatus(ieOpts) }));
       } catch (error) {
         sendError(res, error.statusCode || 500, error.message, 'idea-engine-state-error');
       }
@@ -12536,15 +12770,28 @@ function createServer(options = {}) {
             if (found && found.from === 'removed' && found.category_id === categoryId) removedIdea = found.idea;
           }
           IDEA_ENGINE_CATEGORY_LOCKS.add(categoryId);
+          const replStatus = ieStatusBegin('replace_one', {
+            category_id: category.id,
+            category_name: category.name,
+            requested_topics: 1,
+            message: `Generating one replacement topic for "${category.name}"…`,
+          }, ieOpts);
           try {
             const result = await generateIdeaEngineReplacementIdea(category, removedIdea, serverOptions, ieOpts);
             const state = ideaEngine.loadState(ieOpts);
+            replStatus.finish('completed', {
+              created_topics: 1,
+              message: `Replacement added to "${category.name}": "${String(result.idea.title).slice(0, 60)}"`,
+            });
             sendJSON(res, 200, {
               idea: result.idea,
               attempts: result.attempts,
               model: result.model,
               category: ideaEngine.summarizeCategory(category, state.categories[categoryId]),
             });
+          } catch (error) {
+            ieStatusFinishFromError(replStatus, error);
+            throw error;
           } finally {
             IDEA_ENGINE_CATEGORY_LOCKS.delete(categoryId);
           }
@@ -12573,6 +12820,7 @@ function createServer(options = {}) {
             e.statusCode = 404; throw e;
           }
           IDEA_ENGINE_CATEGORY_LOCKS.add(categoryId);
+          let fillStatus = null;
           try {
             let state = ideaEngine.loadState(ieOpts);
             let block = state.categories[categoryId];
@@ -12583,6 +12831,12 @@ function createServer(options = {}) {
               const e = new Error('This category has no vacancies.');
               e.statusCode = 400; e.code = 'no_vacancies'; throw e;
             }
+            fillStatus = ieStatusBegin('fill_vacancies', {
+              category_id: category.id,
+              category_name: category.name,
+              requested_topics: vacancies,
+              message: `Filling ${vacancies} vacancies in "${category.name}"…`,
+            }, ieOpts);
             // Map vacancies to the most recent unreplaced deliberate removals
             // so each replacement can carry its removed topic's reason.
             const unreplaced = (block ? block.removed : [])
@@ -12596,6 +12850,7 @@ function createServer(options = {}) {
                 const result = await generateIdeaEngineReplacementIdea(category, removedIdea, serverOptions, ieOpts);
                 results.push({ ok: true, idea: result.idea, attempts: result.attempts, replaced: removedIdea ? removedIdea.id : null });
                 filled += 1;
+                fillStatus.update({ created_topics: filled, message: `Filling "${category.name}" — ${filled} of ${vacancies} vacancies filled` });
               } catch (error) {
                 results.push({ ok: false, error: String(error.message || 'generation failed').slice(0, 300), replaced: removedIdea ? removedIdea.id : null });
                 if (error.code === 'category_full') break;
@@ -12603,14 +12858,29 @@ function createServer(options = {}) {
             }
             state = ideaEngine.loadState(ieOpts);
             block = state.categories[categoryId];
+            const failedCount = results.filter((r) => !r.ok).length;
+            fillStatus.finish(
+              failedCount === 0 ? 'completed' : (filled > 0 ? 'partial' : 'failed'),
+              {
+                created_topics: filled,
+                failed_categories: 0,
+                message: failedCount === 0
+                  ? `All ${filled} vacancies in "${category.name}" filled.`
+                  : `Filled ${filled} of ${vacancies} vacancies in "${category.name}"; ${failedCount} failed. Remaining vacancies are preserved.`,
+                last_error: failedCount > 0 ? { code: 'vacancies_unfilled', message: `${failedCount} vacancies could not be filled` } : null,
+              }
+            );
             sendJSON(res, 200, {
               requested: vacancies,
               filled,
-              failed: results.filter((r) => !r.ok).length,
+              failed: failedCount,
               partial_success: filled > 0 && filled < vacancies,
               results,
               category: ideaEngine.summarizeCategory(category, block),
             });
+          } catch (error) {
+            if (fillStatus) ieStatusFinishFromError(fillStatus, error);
+            throw error;
           } finally {
             IDEA_ENGINE_CATEGORY_LOCKS.delete(categoryId);
           }
@@ -17446,6 +17716,7 @@ module.exports = {
   IDEA_ENGINE_REFRESH_CATEGORY_API,
   IDEA_ENGINE_REFRESH_ALL_API,
   IDEA_ENGINE_REFRESH_STATUS_API,
+  IDEA_ENGINE_GENERATION_STATUS_API,
   IDEA_ENGINE_REVIEW_API,
   IDEA_ENGINE_PROMOTE_API,
   IDEA_ENGINE_EDIT_API,

@@ -316,6 +316,10 @@ test("idea-engine.html is wired to the API, the shared UI module, and uses no na
     "Move down",
     "Remove category",
     "ie-add-category",
+    'id="ie-gen-status"',
+    "/api/idea-engine/generation-status",
+    'aria-live="polite"',
+    "kickGenStatus",
     'id="ie-remove-dialog"',
     'id="ie-remove-reason"',
     'id="ie-remove-note"',
@@ -352,4 +356,71 @@ test("super-focus.html supports the ?project= deep link used after promotion", a
   const html = read("super-focus.html");
   assert.ok(html.includes(".get('project')"), "deep-link param parse present");
   assert.ok(html.includes("loadProject(deepLinkId)"), "deep link opens the project");
+});
+
+// ── generation status view + poller (2026-07-27) ────────────────────────────
+
+test("idea-engine-ui generationStatusView maps every backend state honestly and safely", () => {
+  const v = (s, now) => ui.generationStatusView(s, now);
+  assert.deepEqual(
+    [v({ state: "idle" }).tone, v({ state: "idle" }).active], ["idle", false]);
+  const running = v({
+    state: "running", operation: "refresh_all",
+    requested_categories: 12, completed_categories: 3, failed_categories: 1,
+    requested_topics: 30, created_topics: 12,
+    started_at: new Date(Date.now() - 120000).toISOString(),
+    message: "Category 5 of 12: Workflow Control",
+  }, Date.now());
+  assert.equal(running.tone, "busy");
+  assert.equal(running.active, true);
+  assert.ok(running.detail.includes("category 5 of 12"), running.detail);
+  assert.ok(running.detail.includes("12 of 30 topics"), running.detail);
+  assert.ok(running.detail.includes("started 2 min ago"), running.detail);
+  const partial = v({ state: "partial", operation: "refresh_all", requested_categories: 12, completed_categories: 7, failed_categories: 5, last_error: { code: "category_failures", message: "5 categories failed" } });
+  assert.equal(partial.tone, "warn");
+  assert.ok(partial.label.includes("Partially"));
+  assert.ok(partial.detail.includes("7 of 12 categories completed, 5 failed"), partial.detail);
+  assert.equal(partial.error, "5 categories failed", "structured error becomes text, never [object Object]");
+  const failed = v({ state: "failed", operation: "refresh_category", last_error: { code: "idea_generation_stalled" } });
+  assert.equal(failed.tone, "err");
+  assert.equal(failed.error, "idea_generation_stalled");
+  assert.equal(v({ state: "interrupted" }).tone, "warn");
+  assert.equal(v({ state: "completed" }).tone, "ok");
+  // Defensive: garbage in, neutral idle out — no undefined, no crashes.
+  for (const junk of [null, undefined, {}, { state: "??" }, { state: "running", last_error: {} }]) {
+    const out = v(junk, Date.now());
+    assert.ok(typeof out.label === "string" && !out.label.includes("undefined"));
+    assert.ok(!out.message.includes("[object"));
+    assert.ok(!out.error.includes("[object"));
+  }
+});
+
+test("idea-engine-ui generation status poller: overlap skip, stale-response guard, errors keep last status", async () => {
+  let resolvers = [];
+  const updates = [];
+  const ctl = ui.makeGenerationStatusPoller({
+    statusApi: "/api/idea-engine/generation-status",
+    unwrap: (b) => (b && b.data) ? b.data : b,
+    apiGet: () => new Promise((resolve) => { resolvers.push(resolve); }),
+    onUpdate: (s) => updates.push(s),
+  });
+  const p1 = ctl.poll();
+  const skipped = await ctl.poll(); // overlapping poll must not double-request
+  assert.equal(skipped.skipped, true);
+  assert.equal(resolvers.length, 1, "one request in flight");
+  resolvers[0]({ ok: true, status: 200, body: { data: { state: "running" } } });
+  await p1;
+  assert.equal(ctl.latest().state, "running");
+  // Endpoint failure: last status stays, errors are counted, no idle reset.
+  const p2 = ctl.poll();
+  resolvers[1]({ ok: false, status: 500, body: null });
+  await p2;
+  assert.equal(ctl.latest().state, "running", "one failure never resets the display");
+  assert.equal(ctl.consecutiveErrors(), 1);
+  // Success clears the error streak.
+  const p3 = ctl.poll();
+  resolvers[2]({ ok: true, status: 200, body: { data: { state: "completed" } } });
+  await p3;
+  assert.equal(ctl.consecutiveErrors(), 0);
+  assert.equal(updates.length, 2, "only real status payloads reach the renderer");
 });

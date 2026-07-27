@@ -14,6 +14,16 @@
       border-radius: 6px; padding: 7px 10px; font-size: 0.92rem;
     }
     .ie-status { color: var(--muted, #8b949e); font-size: 0.86rem; }
+    /* Generation status: full toolbar row of its own so progress-text changes
+       never shift the controls around it. */
+    .ie-genstatus { flex: 1 1 100%; font-size: 0.86rem; color: var(--muted, #8b949e); min-height: 1.3em; }
+    .ie-genstatus .g-label { font-weight: 600; }
+    .ie-genstatus.tone-busy .g-label { color: var(--accent-blue, #58a6ff); }
+    .ie-genstatus.tone-ok .g-label { color: var(--accent, #3fb950); }
+    .ie-genstatus.tone-warn .g-label { color: #d29922; }
+    .ie-genstatus.tone-err .g-label { color: var(--danger, #f85149); }
+    .ie-genstatus.tone-busy .g-pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-blue, #58a6ff); margin-right: 6px; animation: ie-gen-pulse 1.2s ease-in-out infinite; }
+    @keyframes ie-gen-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
     .ie-status.err { color: var(--danger, #f85149); }
     .ie-status.ok { color: var(--accent, #3fb950); }
     .ie-grid { display: grid; grid-template-columns: 280px minmax(360px, 1fr) minmax(340px, 480px); gap: 14px; align-items: start; }
@@ -114,6 +124,7 @@
       <button id="ie-refresh-all" class="ie-btn danger">Refresh all 12 categories</button>
       <button id="ie-reload" class="ie-btn">Reload</button>
       <span id="ie-status" class="ie-status" role="status">Loading…</span>
+      <span id="ie-gen-status" class="ie-genstatus" role="status" aria-live="polite" aria-atomic="true"></span>
     </div>
 
     <div id="ie-progress-wrap" class="ie-panel hidden" style="margin-bottom: 14px;">
@@ -188,6 +199,7 @@
     var REFRESH_CATEGORY_API = '/api/idea-engine/refresh-category';
     var REFRESH_ALL_API = '/api/idea-engine/refresh-all';
     var REFRESH_STATUS_API = '/api/idea-engine/refresh-status';
+    var GEN_STATUS_API = '/api/idea-engine/generation-status';
     var REVIEW_API = '/api/idea-engine/review';
     var PROMOTE_API = '/api/idea-engine/promote';
     var EDIT_API = '/api/idea-engine/edit';
@@ -273,8 +285,65 @@
       onDone: function (job) { renderJob(job); load(); },
     });
 
+    // ── Generation status (authoritative, from /api/idea-engine/generation-status)
+    var genStatusActive = false;
+    var genTimer = null;
+    var genTickCount = 0;
+    function renderGenStatus(status) {
+      var el = document.getElementById('ie-gen-status');
+      var view = UI.generationStatusView(status, Date.now());
+      el.className = 'ie-genstatus tone-' + view.tone;
+      el.textContent = '';
+      if (view.tone === 'busy') {
+        var pulse = document.createElement('span');
+        pulse.className = 'g-pulse';
+        pulse.setAttribute('aria-hidden', 'true');
+        el.appendChild(pulse);
+      }
+      var label = document.createElement('span');
+      label.className = 'g-label';
+      label.textContent = 'Generation: ' + view.label;
+      el.appendChild(label);
+      var text = view.message || view.detail;
+      var extra = view.message && view.detail ? view.detail : '';
+      if (text) el.appendChild(document.createTextNode(' — ' + text));
+      if (extra) el.appendChild(document.createTextNode(' (' + extra + ')'));
+      if (view.error && view.error !== view.message) el.appendChild(document.createTextNode(' · ' + view.error));
+      if (genStatusActive !== view.active) {
+        var becameIdle = genStatusActive && !view.active;
+        genStatusActive = view.active;
+        renderAll();
+        if (becameIdle) load();
+      }
+      if (!view.active) stopGenPolling();
+    }
+    var genStatusCtl = UI.makeGenerationStatusPoller({
+      apiGet: apiGet, unwrap: unwrap, statusApi: GEN_STATUS_API,
+      onUpdate: renderGenStatus,
+    });
+    function stopGenPolling() {
+      if (genTimer) { clearInterval(genTimer); genTimer = null; }
+    }
+    function startGenPolling() {
+      if (genTimer) return;
+      genTickCount = 0;
+      genTimer = setInterval(function () {
+        genTickCount += 1;
+        // Modest backoff: after 3 consecutive endpoint failures poll every
+        // 10s instead of 2s. The last known status stays on screen.
+        if (genStatusCtl.consecutiveErrors() >= 3 && genTickCount % 5 !== 0) return;
+        genStatusCtl.poll();
+      }, 2000);
+    }
+    // Called whenever this page starts a generation action: show it now and
+    // keep following it (also picks up work started elsewhere on reload).
+    function kickGenStatus() {
+      startGenPolling();
+      genStatusCtl.poll();
+    }
+
     function generationBusy() {
-      return poller.isActive() || busyCategory !== null;
+      return poller.isActive() || busyCategory !== null || genStatusActive;
     }
 
     function categoryDot(category) {
@@ -919,6 +988,7 @@
       busyCategory = category.id;
       if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
       setStatus('Generating one replacement topic for "' + category.name + '"… this runs on local Ollama and can take a minute.');
+      kickGenStatus();
       renderCategories();
       updateRefreshAllButton();
       apiPost(REPLACE_ONE_API, { category_id: category.id, removed_idea_id: removedIdeaId || undefined }).then(function (res) {
@@ -943,6 +1013,7 @@
       busyCategory = category.id;
       if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
       setStatus('Filling ' + category.vacancy_count + ' vacancies in "' + category.name + '"… one topic at a time on local Ollama.');
+      kickGenStatus();
       renderCategories();
       updateRefreshAllButton();
       apiPost(FILL_VACANCIES_API, { category_id: category.id }).then(function (res) {
@@ -981,6 +1052,7 @@
       btn.disabled = true;
       btn.setAttribute('aria-busy', 'true');
       setStatus('Generating 30 ideas for "' + category.name + '"… this runs on local Ollama and can take a few minutes.');
+      kickGenStatus();
       renderCategories();
       apiPost(REFRESH_CATEGORY_API, { category_id: category.id, confirm: true }).then(function (res) {
         busyCategory = null;
@@ -1056,6 +1128,10 @@
           return;
         }
         var data2 = unwrap(res.body);
+        if (data2.generation) {
+          genStatusCtl.seed(data2.generation);
+          if (data2.generation.state === 'starting' || data2.generation.state === 'running') startGenPolling();
+        }
         view.categories = data2.categories || [];
         if (!view.selectedCategory && view.categories.length > 0) view.selectedCategory = view.categories[0].id;
         setStatus(view.categories.length + ' categories · ' +

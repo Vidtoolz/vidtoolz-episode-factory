@@ -260,7 +260,106 @@
     };
   }
 
+  // ── Generation status (authoritative backend lifecycle) ───────────────────
+  // Maps a /api/idea-engine/generation-status payload to a render model.
+  // Pure and defensive: missing/odd fields never yield 'undefined' or
+  // '[object Object]' in the GUI; unknown states render as idle-neutral.
+  var GEN_STATE_META = {
+    idle: { tone: 'idle', label: 'Idle' },
+    starting: { tone: 'busy', label: 'Starting…' },
+    running: { tone: 'busy', label: 'Generating' },
+    completed: { tone: 'ok', label: '✓ Completed' },
+    partial: { tone: 'warn', label: '⚠ Partially completed' },
+    failed: { tone: 'err', label: '✕ Failed' },
+    interrupted: { tone: 'warn', label: '⚠ Interrupted' },
+  };
+  var GEN_OPERATION_LABELS = {
+    refresh_all: 'Refresh all categories',
+    refresh_category: 'Refresh category',
+    fill_vacancies: 'Fill vacancies',
+    replace_one: 'Generate replacement',
+  };
+  function asText(value) {
+    if (typeof value === 'string') return value;
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') return String(value.message || value.code || '');
+    return String(value);
+  }
+  function generationStatusView(status, nowMs) {
+    var s = status && typeof status === 'object' ? status : {};
+    var meta = GEN_STATE_META[s.state] || GEN_STATE_META.idle;
+    var active = s.state === 'starting' || s.state === 'running';
+    var parts = [];
+    var op = GEN_OPERATION_LABELS[s.operation];
+    if (op && s.state !== 'idle') parts.push(op);
+    if (active && isFinite(s.requested_categories) && s.requested_categories > 1) {
+      var done = (Number(s.completed_categories) || 0) + (Number(s.failed_categories) || 0);
+      parts.push('category ' + Math.min(done + 1, s.requested_categories) + ' of ' + s.requested_categories);
+    }
+    if (!active && isFinite(s.requested_categories) && s.requested_categories > 1) {
+      parts.push((Number(s.completed_categories) || 0) + ' of ' + s.requested_categories + ' categories completed'
+        + ((Number(s.failed_categories) || 0) > 0 ? ', ' + s.failed_categories + ' failed' : ''));
+    }
+    if (isFinite(s.requested_topics) && s.requested_topics > 0 && (active || (Number(s.created_topics) || 0) > 0)) {
+      parts.push((Number(s.created_topics) || 0) + ' of ' + s.requested_topics + ' topics');
+    }
+    if (active && typeof s.started_at === 'string' && isFinite(nowMs)) {
+      var mins = Math.max(0, Math.round((nowMs - Date.parse(s.started_at)) / 60000));
+      if (isFinite(mins)) parts.push(mins === 0 ? 'just started' : 'started ' + mins + ' min ago');
+    }
+    var errText = s.state === 'failed' || s.state === 'partial' || s.state === 'interrupted' ? asText(s.last_error) : '';
+    return {
+      state: GEN_STATE_META[s.state] ? s.state : 'idle',
+      tone: meta.tone,
+      label: meta.label,
+      message: asText(s.message),
+      detail: parts.join(' · '),
+      error: errText,
+      active: active,
+    };
+  }
+
+  // Polling controller for the status endpoint. The PAGE owns the timer; this
+  // owns correctness: overlapping polls are skipped, stale responses cannot
+  // overwrite newer ones, and a transient endpoint failure keeps the LAST
+  // known status (never a false reset to idle) while counting errors so the
+  // page can back off.
+  function makeGenerationStatusPoller(deps) {
+    var seq = 0;
+    var inFlight = false;
+    var errors = 0;
+    var latest = null;
+    function accept(status) {
+      latest = status;
+      deps.onUpdate(status);
+    }
+    return {
+      latest: function () { return latest; },
+      consecutiveErrors: function () { return errors; },
+      seed: accept,
+      poll: function () {
+        if (inFlight) return Promise.resolve({ skipped: true });
+        inFlight = true;
+        var mySeq = ++seq;
+        return deps.apiGet(deps.statusApi).then(function (res) {
+          inFlight = false;
+          if (mySeq !== seq) return { stale: true };
+          if (!res.ok) { errors += 1; return { error: true, errors: errors }; }
+          errors = 0;
+          accept(deps.unwrap(res.body));
+          return { status: latest };
+        }).catch(function () {
+          inFlight = false;
+          errors += 1;
+          return { error: true, errors: errors };
+        });
+      },
+    };
+  }
+
   return {
+    generationStatusView: generationStatusView,
+    makeGenerationStatusPoller: makeGenerationStatusPoller,
     formatTimestamp: formatTimestamp,
     promotionBadge: promotionBadge,
     filterIdeas: filterIdeas,

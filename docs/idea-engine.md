@@ -204,6 +204,41 @@ history is archival and does not constrain future batches.
   result. Progress: `GET /api/idea-engine/refresh-status` (the GUI polls it and
   resumes polling after a page reload). One job at a time (409 on duplicates).
 
+## Generation status (2026-07-27)
+
+One canonical lifecycle record per generation operation (`refresh_all`,
+`refresh_category`, `fill_vacancies`, `replace_one`):
+`starting → running → completed | partial | failed`, plus `interrupted`
+(derived) and `idle` (nothing recorded). "Nothing eligible to generate" is a
+clean `completed`, never a failure. Progress fields are honest — categories
+completed/failed, the active category, and topics accepted so far, updated
+from the real generation loop (per chunk / per vacancy slot / per category).
+
+- **Endpoint:** `GET /api/idea-engine/generation-status` (read-only, never
+  triggers or mutates anything; also embedded in `GET /api/idea-engine/state`
+  as `generation`). Returns the live op, else the persisted last terminal
+  result, else idle.
+- **Persistence:** `idea-engine-state/generation-status.json` (atomic
+  tmp+rename; holds the current op and the last terminal op only — no
+  unbounded history). A page reload therefore shows a running job; a cockpit
+  restart mid-run is reported as **interrupted** ("the affected category kept
+  its previous topics — start the generation again"), never a false `running`
+  and never a silent reset to idle. A malformed status file degrades to idle
+  without touching category/idea data.
+- **Concurrency:** unchanged from the existing model — one generation lock
+  per category plus a global refresh-all exclusion; conflicting requests get
+  409 and never create a second status record. Different categories CAN
+  generate independently via the API; the status reports the newest op plus a
+  `concurrent_operations` count (the GUI disables all generation buttons
+  while anything is active).
+- **GUI:** a persistent status line in the Idea Engine toolbar
+  (`role="status"`, `aria-live="polite"`, text + color, pulse dot only as an
+  accent). Polls every 2 s while a job is active (10 s after repeated endpoint
+  failures — the last known status stays on screen), stops on terminal state,
+  seeds from the state payload on load, and re-checks whenever this page
+  starts a generation action. Operator recovery for `interrupted`/`failed`:
+  the affected category preserved its previous set — re-run the generation.
+
 ## Promotion into Super Focus
 
 `POST /api/idea-engine/promote` `{idea_id}`:
