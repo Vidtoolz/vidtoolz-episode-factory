@@ -22,7 +22,13 @@ const IDEAS_PER_CATEGORY = 30;
 const MAX_IDEAS_PER_CALL = 10;
 // Exclusion lists are capped so the prompt stays within a sane local-model
 // context. Promoted titles are passed first by callers (they matter most).
-const MAX_EXCLUSION_TITLES = 120;
+// 200 keeps a mid-estate list (accepted-so-far + ~150 estate titles) fully
+// visible; a full 360-idea estate still truncates — the validator sees all.
+const MAX_EXCLUSION_TITLES = 200;
+// Titles the model just produced and had rejected, echoed back verbatim in
+// the retry prompt. Small on purpose: it is a "stop resubmitting these"
+// signal, not a second exclusion list.
+const MAX_REJECTED_FEEDBACK_TITLES = 18;
 
 const CHANNEL_POSITIONING = [
   'You generate YouTube Shorts topic ideas for VIDTOOLZ, a Shorts-native expert channel about AI video production systems for serious solo creators.',
@@ -182,6 +188,17 @@ function buildCategoryIdeasRequest(category, count, exclusions = [], opts = {}) 
       ...excluded.map((t) => `- ${t}`)
     );
   }
+  const justRejected = (Array.isArray(opts && opts.rejectedTitles) ? opts.rejectedTitles : [])
+    .map((t) => String(t || '').trim())
+    .filter(Boolean)
+    .slice(-MAX_REJECTED_FEEDBACK_TITLES);
+  if (justRejected.length > 0) {
+    lines.push(
+      '',
+      'JUST REJECTED — you already submitted these in this batch and they were rejected as duplicates or invalid. Submitting them again, or a light rewording of them, wastes the attempt. Take a genuinely different angle:',
+      ...justRejected.map((t) => `- ${t}`)
+    );
+  }
   if (opts && opts.retry) {
     lines.push('', DIVERSIFICATION_HINT);
   }
@@ -325,6 +342,7 @@ module.exports = {
   IDEAS_PER_CATEGORY,
   MAX_IDEAS_PER_CALL,
   MAX_EXCLUSION_TITLES,
+  MAX_REJECTED_FEEDBACK_TITLES,
   CHANNEL_POSITIONING,
   SUITABLE_TOPIC_SPEC,
   EXCLUSIONS_SPEC,

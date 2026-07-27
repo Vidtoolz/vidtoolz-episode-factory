@@ -306,9 +306,11 @@ in Super Focus.
   minutes on the local default model (a single replacement is much faster). The refresh-one
   / replace-one / fill-vacancies HTTP requests stay open for the duration
   (local-only, matching the existing generate routes).
-- Exclusion lists sent to the model are capped (120 titles), so with a full
+- Exclusion lists sent to the model are capped (200 titles), so with a full
   360-idea estate the *prompt-side* discouragement is partial — the
-  *validator-side* duplicate rejection always sees everything.
+  *validator-side* duplicate rejection always sees everything. Titles the
+  model already had rejected within the current run are echoed back in later
+  chunk prompts ("JUST REJECTED") so it stops resubmitting burned favourites.
 - The refresh-all job is in-memory: a server restart mid-job loses the job
   record (not the per-category transactional state; finished categories stay
   activated, unfinished ones keep their previous sets).

@@ -5229,10 +5229,14 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
   let chunksAttempted = 0;
   let zeroProgress = 0;
   let lastRejected = [];
+  // Titles this run already produced and had rejected, echoed back in later
+  // chunk prompts — without this the model never learns which favourites are
+  // burned and resubmits them until the run stalls (seen live 2026-07-27).
+  let rejectedFeedback = [];
   // Local models at fixed temperature re-emit favourite titles once the obvious
-  // angles are taken; tolerate a few no-progress chunks (with a diversification
-  // push in the retry prompt) before failing closed.
-  const ZERO_PROGRESS_LIMIT = 3;
+  // angles are taken; tolerate a few no-progress chunks (with rejected-title
+  // feedback + a diversification push in the retry prompt) before failing closed.
+  const ZERO_PROGRESS_LIMIT = 4;
   // Attempt budget: duplicate-heavy chunks accept fewer than n, so allow 4x
   // the minimum chunk count — a stuck model can never loop forever.
   const maxChunks = Math.ceil(target / Math.max(1, chunkSize)) * 4;
@@ -5257,6 +5261,7 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
         retry: zeroProgress > 0,
         chunkIndex: chunksAttempted,
         banFormulaFamily: familyCount >= ideaEngine.MAX_FORMULA_FAMILY_PER_BATCH - 2,
+        rejectedTitles: rejectedFeedback,
       }
     );
     chunksAttempted += 1;
@@ -5286,7 +5291,19 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
       model,
     });
     rejectedCount += result.rejected.length;
-    if (result.rejected.length > 0) lastRejected = result.rejected;
+    if (result.rejected.length > 0) {
+      lastRejected = result.rejected;
+      const seen = new Set(rejectedFeedback.map((t) => t.toLowerCase()));
+      for (const r of result.rejected) {
+        const title = String(r.title || '').trim();
+        if (title && !seen.has(title.toLowerCase())) {
+          rejectedFeedback.push(title);
+          seen.add(title.toLowerCase());
+        }
+      }
+      // Keep the most recent rejections — those are the model's live attractors.
+      rejectedFeedback = rejectedFeedback.slice(-ideaEnginePrompts.MAX_REJECTED_FEEDBACK_TITLES);
+    }
     if (result.accepted.length === 0) {
       zeroProgress += 1;
       if (zeroProgress >= ZERO_PROGRESS_LIMIT) {
@@ -12500,7 +12517,9 @@ function createServer(options = {}) {
           try {
             let state = ideaEngine.loadState(ieOpts);
             let block = state.categories[categoryId];
-            const vacancies = block ? Math.max(0, ideaEngine.IDEAS_PER_CATEGORY - block.ideas.length) : 0;
+            // A category with no state block yet has 30 vacancies, not 0 —
+            // must match summarizeCategory, which the GUI's button relies on.
+            const vacancies = Math.max(0, ideaEngine.IDEAS_PER_CATEGORY - (block ? block.ideas.length : 0));
             if (vacancies === 0) {
               const e = new Error('This category has no vacancies.');
               e.statusCode = 400; e.code = 'no_vacancies'; throw e;

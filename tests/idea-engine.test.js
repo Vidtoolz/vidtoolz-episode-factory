@@ -320,6 +320,26 @@ test("idea-engine prompt builder binds category guidance, count, exclusions, and
   assert.ok(retry.user.includes("previous batch repeated"));
 });
 
+test("idea-engine prompt echoes just-rejected titles back, bounded, and omits the section when empty", async () => {
+  const category = ideaEngine.DEFAULT_CATEGORIES[0];
+  const plain = iePrompts.buildCategoryIdeasRequest(category, 6, []);
+  assert.ok(!plain.user.includes("JUST REJECTED"), "no rejected section without rejections");
+  const withRejected = iePrompts.buildCategoryIdeasRequest(category, 6, [], {
+    rejectedTitles: ["Generated Assets Need a Human Filter", "  ", null],
+  });
+  assert.ok(withRejected.user.includes("JUST REJECTED"));
+  assert.ok(withRejected.user.includes("- Generated Assets Need a Human Filter"));
+  // Bounded: only the most recent MAX_REJECTED_FEEDBACK_TITLES survive.
+  const many = Array.from({ length: 50 }, (_, i) => `Rejected ${i}`);
+  const capped = iePrompts.buildCategoryIdeasRequest(category, 6, [], { rejectedTitles: many });
+  assert.ok(!capped.user.includes("- Rejected 0\n"), "oldest rejected titles are dropped");
+  assert.ok(capped.user.includes(`- Rejected ${50 - 1}`), "newest rejected titles are kept");
+  assert.equal(
+    (capped.user.match(/- Rejected \d+/g) || []).length,
+    iePrompts.MAX_REJECTED_FEEDBACK_TITLES
+  );
+});
+
 test("idea-engine prompt rotates concept shapes per chunk and enforces title variety", async () => {
   const category = ideaEngine.DEFAULT_CATEGORIES[0];
   assert.equal(iePrompts.CONCEPT_SHAPES.length, 4);
@@ -536,6 +556,44 @@ test("idea-engine stalls fail closed when the model only echoes duplicates (neve
     const block = state.categories[categories[0].id];
     assert.ok(!block || block.ideas.length === 0, "no partial set may activate");
     assert.ok(block.last_failure.message.includes("duplicate") || block.last_failure.code === "idea_generation_stalled");
+  } finally {
+    await close(server);
+  }
+});
+
+test("idea-engine feeds rejected titles back into the next chunk prompt and the run recovers", async () => {
+  const categories = ideaEngine.DEFAULT_CATEGORIES;
+  let call = 0;
+  let sawFeedbackPrompt = false;
+  const { server, ieRoot } = ideServer({
+    fetchImpl: async (url, init) => {
+      call += 1;
+      const user = JSON.parse(init.body).messages[1].content;
+      let items;
+      if (call === 1) {
+        assert.ok(!user.includes("JUST REJECTED"), "first chunk has no rejected feedback");
+        items = fixturePool(0).slice(0, 10);
+      } else if (call === 2) {
+        items = fixturePool(0).slice(0, 10); // pure duplicates of chunk 1 → all rejected
+      } else {
+        // The chunk after a duplicate-only chunk must name the burned titles.
+        if (user.includes("JUST REJECTED") && user.includes("- amber one gates decision")) {
+          sawFeedbackPrompt = true;
+        }
+        items = fixturePool(0).slice((call - 2) * 10, (call - 1) * 10);
+      }
+      return { ok: true, json: async () => ({ message: { content: JSON.stringify({ ideas: items }) } }) };
+    },
+  });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.IDEA_ENGINE_REFRESH_CATEGORY_API, {
+      method: "POST", headers: writeHeaders(), body: { category_id: categories[0].id, confirm: true },
+    });
+    assert.equal(res.statusCode, 200, res.raw);
+    assert.ok(sawFeedbackPrompt, "retry prompt carried the just-rejected titles");
+    const state = ideaEngine.loadState({ root: ieRoot });
+    assert.equal(state.categories[categories[0].id].ideas.length, 30, "run recovered to a full set");
   } finally {
     await close(server);
   }

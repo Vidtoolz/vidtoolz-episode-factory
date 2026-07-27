@@ -611,11 +611,41 @@ test("idea-engine-p2 fill-vacancies fills the exact count, reports partial failu
     assert.equal(data.category.active_count, 29);
     assert.equal(data.category.vacancy_count, 1);
     assert.ok(data.results.some((r) => r.ok) && data.results.some((r) => !r.ok));
-    // No vacancies → 400.
+    // A FULL category (not a never-generated one) has no vacancies → 400.
+    seedCategory(ieRoot, 1);
     const none = await request(server, packageEngineServer.IDEA_ENGINE_FILL_VACANCIES_API, {
       method: "POST", headers: writeHeaders(), body: { category_id: categories[1].id },
     });
-    assert.equal(none.statusCode, 400);
+    assert.equal(none.statusCode, 400, none.raw);
+    assert.equal(none.body.code, "no_vacancies");
+  } finally {
+    await close(server);
+  }
+});
+
+test("idea-engine-p2 fill-vacancies works on a never-generated category (GUI shows 30 vacancies, not 0)", async () => {
+  const categories = ideaEngine.DEFAULT_CATEGORIES;
+  let call = 0;
+  const { server, ieRoot } = ideServer({
+    fetchImpl: async () => {
+      call += 1;
+      return { ok: true, json: async () => ({ message: { content: JSON.stringify({ ideas: [fixtureItem(0, call - 1)] }) } }) };
+    },
+  });
+  await listen(server);
+  try {
+    const res = await request(server, packageEngineServer.IDEA_ENGINE_FILL_VACANCIES_API, {
+      method: "POST", headers: writeHeaders(), body: { category_id: categories[0].id },
+    });
+    assert.equal(res.statusCode, 200, res.raw);
+    const data = unwrap(res);
+    assert.equal(data.requested, 30, "a category with no state block has 30 vacancies, matching the GUI");
+    assert.equal(data.filled, 30);
+    assert.equal(data.failed, 0);
+    assert.equal(data.category.active_count, 30);
+    assert.equal(data.category.vacancy_count, 0);
+    const state = ideaEngine.loadState({ root: ieRoot });
+    assert.equal(state.categories[categories[0].id].ideas.length, 30, "block created and filled");
   } finally {
     await close(server);
   }

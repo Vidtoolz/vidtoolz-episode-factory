@@ -354,7 +354,7 @@
           ' — this category is incomplete. Use "Generate replacement" or "Fill all vacancies" in the category details.'));
       }
       if (!category.ideas || category.ideas.length === 0) {
-        mount.appendChild(el('div', 'ie-empty', 'No ideas generated yet. Open the category details and refresh it.'));
+        mount.appendChild(el('div', 'ie-empty', 'No ideas generated yet. Use "Generate 30 topics" in the category details below.'));
         return;
       }
       category.ideas.forEach(function (idea) { mount.appendChild(ideaRow(idea, category, false)); });
@@ -416,7 +416,11 @@
         mount.appendChild(el('div', 'ie-fail-note', 'Last generation failed: ' + category.last_failure.message));
       }
       var actions = el('div', 'ie-actions');
-      if (category.vacancy_count > 0) {
+      // A category that has never been generated (no active topics, no removal
+      // history) has no removal reasons for the one-at-a-time replacement path
+      // to work from — batch generation below is the honest first step.
+      var neverGenerated = category.idea_count === 0 && category.removed_count === 0;
+      if (category.vacancy_count > 0 && !neverGenerated) {
         var replBtn = el('button', 'ie-btn primary', 'Generate replacement');
         replBtn.disabled = generationBusy();
         replBtn.addEventListener('click', function () { replaceOne(category, null, replBtn); });
@@ -437,9 +441,11 @@
         });
         actions.appendChild(removedBtn);
       }
-      var refreshBtn = el('button', 'ie-btn danger', 'Refresh this category (replace all 30)');
+      var refreshBtn = el('button', neverGenerated ? 'ie-btn primary' : 'ie-btn danger',
+        neverGenerated ? 'Generate 30 topics' : 'Refresh this category (replace all 30)');
       refreshBtn.disabled = generationBusy();
       refreshBtn.addEventListener('click', function () {
+        if (neverGenerated) { refreshCategory(category, refreshBtn); return; }
         confirmCtl.ask('This replaces the current active suggestions for "' + category.name + '" with a freshly generated set of 30. Edited, removed, and promoted topics remain in history. The current set is only replaced if the new set fully validates.')
           .then(function (yes) { if (yes) refreshCategory(category, refreshBtn); });
       });
