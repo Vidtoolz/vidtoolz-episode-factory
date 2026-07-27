@@ -27,7 +27,18 @@ const CATEGORIES_FILENAME = 'categories.json';
 const IDEAS_FILENAME = 'ideas.json';
 
 const CATEGORY_COUNT = 12;
-const IDEAS_PER_CATEGORY = 30;
+// Category readiness contract (2026-07-27). TARGET_TOPICS stays the
+// generation target; MINIMUM_USABLE_TOPICS is the PROVISIONAL editorial
+// floor above which a category is operationally usable even though not full
+// (the model comparison showed exclusion saturation, not model capability,
+// is what keeps hard categories short of 30). ONE canonical source: every
+// consumer (server, GUI payloads, tests) reads these exports —
+// IDEAS_PER_CATEGORY remains as a compatibility alias for existing call
+// sites and MUST stay assigned from TARGET_TOPICS.
+const TARGET_TOPICS = 30;
+const IDEAS_PER_CATEGORY = TARGET_TOPICS;
+const MINIMUM_USABLE_TOPICS = 24;
+const READINESS_STATES = ['empty', 'incomplete', 'usable_partial', 'full'];
 
 // Field bounds: model output is untrusted input; anything outside these is
 // rejected during validation, never truncated silently.
@@ -1257,11 +1268,73 @@ function recordPromotionResult(ideaId, result, options = {}) {
 
 // ── Read views ───────────────────────────────────────────────────────────────
 
+// CANONICAL editorial-inventory count: structurally valid ACTIVE topics in
+// the committed block. Counts regardless of origin (generated / manual /
+// manually_edited / replacement_generated), review status, retention, or
+// promotion — this is "what inventory exists", NOT "what a refresh may
+// replace" (that is ideaIsRetained(), which deliberately differs: a valid
+// generated topic is replaceable yet still counts here). Does not count:
+// removed topics (they live in block.removed, not block.ideas), malformed
+// records (bad id / empty title), or duplicate record identities.
+function countCategoryInventoryTopics(block) {
+  const ideas = block && Array.isArray(block.ideas) ? block.ideas : [];
+  const seen = new Set();
+  let count = 0;
+  for (const idea of ideas) {
+    if (!idea || typeof idea !== 'object') continue;
+    if (!IDEA_ID_RE.test(String(idea.id || ''))) continue;
+    if (seen.has(idea.id)) continue;
+    if (typeof idea.title !== 'string' || !idea.title.trim()) continue;
+    if (idea.removed) continue; // defensive: active list never holds removed
+    seen.add(idea.id);
+    count += 1;
+  }
+  return count;
+}
+
+// Pure readiness derivation from a committed block — NEVER persisted (topics
+// move across origin/status/promotion axes constantly; persisting readiness
+// would go stale on every mutation). Boundaries:
+//   0                     -> empty
+//   1 .. minimum-1        -> incomplete
+//   minimum .. target-1   -> usable_partial (editorially usable, not full)
+//   target and above      -> full (over-target kept, exposed, never trimmed)
+function deriveCategoryReadiness(block, config = {}) {
+  const targetTopics = Number.isInteger(config.targetTopics) ? config.targetTopics : TARGET_TOPICS;
+  const minimumUsableTopics = Number.isInteger(config.minimumUsableTopics) ? config.minimumUsableTopics : MINIMUM_USABLE_TOPICS;
+  const count = countCategoryInventoryTopics(block);
+  const state = count === 0 ? 'empty'
+    : count < minimumUsableTopics ? 'incomplete'
+    : count < targetTopics ? 'usable_partial'
+    : 'full';
+  return {
+    state,
+    active_topic_count: count,
+    target_topics: targetTopics,
+    minimum_usable_topics: minimumUsableTopics,
+    vacancies: Math.max(0, targetTopics - count),
+    over_target_count: Math.max(0, count - targetTopics),
+    is_usable: state === 'usable_partial' || state === 'full',
+    is_full: state === 'full',
+  };
+}
+
 function summarizeCategory(category, block) {
   const ideas = block ? block.ideas : [];
   const removed = block ? block.removed : [];
-  const vacancies = Math.max(0, IDEAS_PER_CATEGORY - ideas.length);
+  const readiness = deriveCategoryReadiness(block);
+  const vacancies = readiness.vacancies;
   return {
+    // Readiness contract (derived, never persisted). `completeness` below is
+    // the LEGACY tri-state kept for existing consumers: complete === full.
+    readiness: readiness.state,
+    active_topic_count: readiness.active_topic_count,
+    target_topics: readiness.target_topics,
+    minimum_usable_topics: readiness.minimum_usable_topics,
+    over_target_count: readiness.over_target_count,
+    is_usable: readiness.is_usable,
+    is_full: readiness.is_full,
+    readiness_evaluated_at: nowIso(),
     id: category.id,
     name: category.name,
     description: category.description,
@@ -1273,6 +1346,9 @@ function summarizeCategory(category, block) {
     // Deliberate human removals awaiting replacement (refresh-superseded
     // history is archival, not a vacancy driver).
     vacancy_count: vacancies,
+    // Canonical readiness name for new consumers; vacancy_count above is the
+    // legacy alias kept for existing callers (identical value).
+    vacancies,
     completeness: vacancies === 0 && ideas.length > 0 ? 'complete' : (ideas.length === 0 ? 'empty' : 'incomplete'),
     reviewed_count: ideas.filter((i) => i.status === 'reviewed').length,
     promoted_count: ideas.filter((i) => i.promotion.state === 'promoted').length
@@ -1390,6 +1466,8 @@ function stateView(options = {}) {
     schema_version: SCHEMA_VERSION,
     updated_at: state.updated_at,
     ideas_per_category: IDEAS_PER_CATEGORY,
+    target_topics: TARGET_TOPICS,
+    minimum_usable_topics: MINIMUM_USABLE_TOPICS,
     category_count: categories.length,
     removed_category_count: all.length - categories.length,
     categories: categories.map((category) => {
@@ -1407,6 +1485,11 @@ module.exports = {
   SCHEMA_VERSION,
   CATEGORY_COUNT,
   IDEAS_PER_CATEGORY,
+  TARGET_TOPICS,
+  MINIMUM_USABLE_TOPICS,
+  READINESS_STATES,
+  countCategoryInventoryTopics,
+  deriveCategoryReadiness,
   MAX_TITLE_LEN,
   MAX_FIELD_LEN,
   MAX_HOOK_LEN,
