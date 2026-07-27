@@ -380,7 +380,7 @@
     var counts = c.active_topic_count + ' of ' + c.target_topics + ' validated topics';
     var detail = '';
     if (c.readiness === 'usable_partial' || c.readiness === 'incomplete') {
-      detail = vacancies + ' vacanc' + (vacancies === 1 ? 'y' : 'ies') + ' remain';
+      detail = vacancies + ' vacanc' + (vacancies === 1 ? 'y remains' : 'ies remain');
     } else if (c.readiness === 'full' && isFinite(c.over_target_count) && c.over_target_count > 0) {
       detail = c.over_target_count + ' over target';
     }

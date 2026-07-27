@@ -382,7 +382,10 @@
         var rv = UI.categoryReadinessView(category);
         var counts = (rv.known ? rv.label + ' · ' + rv.counts + (rv.detail ? ' · ' + rv.detail : '') : rv.label) +
           ' · ' + category.promoted_count + ' promoted' +
-          (category.last_failure ? ' · last generation failed' : '');
+          // Only surface a past failure while the category is still below the
+          // usable floor — a later fill that reached usable_partial/full has
+          // superseded it, and repeating it would contradict the readiness.
+          ((category.last_failure && !category.is_usable) ? ' · last generation failed' : '');
         btn.appendChild(el('span', 'ie-cat-counts', counts));
         btn.addEventListener('click', function () {
           view.selectedCategory = category.id;

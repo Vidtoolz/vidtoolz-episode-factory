@@ -462,7 +462,7 @@ test("idea-engine-ui categoryReadinessView renders all four states from backend 
   assert.equal(empty.label, "Empty");
   assert.equal(empty.counts, "0 of 30 validated topics");
   const one = ui.categoryReadinessView({ readiness: "usable_partial", active_topic_count: 29, target_topics: 30, vacancies: 1 });
-  assert.equal(one.detail, "1 vacancy remains".replace("remains", "remain"), "singular vacancy wording");
+  assert.equal(one.detail, "1 vacancy remains", "singular vacancy wording");
   const over = ui.categoryReadinessView({ readiness: "full", active_topic_count: 32, target_topics: 30, vacancies: 0, over_target_count: 2 });
   assert.equal(over.detail, "2 over target");
 });
