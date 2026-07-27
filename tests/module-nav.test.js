@@ -213,6 +213,26 @@ test("module-nav mount: body declaration beats route matching; second mount is r
   assert.equal(nav.mount(m.doc, m.win), null, "no duplicate mount / duplicate listeners");
 });
 
+test("module-nav mount: SUPER FOCUS regression — trigger, single current, full ordered menu, suppressed self-nav", () => {
+  // Guards the 2026-07-27 defect report: super-focus.html has no cockpit nav
+  // bar, so it must carry the direct mount and resolve exactly like any page.
+  const m = mountNav({ pathname: "/super-focus.html", declared: "super-focus" });
+  assert.equal(m.trigger.children[0].textContent, "VIDTOOLZ Modules");
+  assert.equal(m.trigger.children[1].textContent, "Super Focus");
+  const current = m.items.filter((i) => i.attrs["aria-current"] === "page");
+  assert.equal(current.length, 1, "exactly one current item");
+  assert.equal(current[0].attrs["data-module-id"], "super-focus");
+  assert.ok(current[0].children[0].textContent.includes("— Current"));
+  assert.deepEqual(m.items.map((i) => i.attrs["data-module-id"]),
+    nav.prepare(MANIFEST.modules).modules.map((mm) => mm.id), "identical canonical workflow order");
+  const evt = {};
+  current[0].fire("click", evt);
+  assert.equal(evt._prevented, true, "self-navigation suppressed");
+  // Route matching alone (no declaration) also resolves super-focus.
+  const routed = mountNav({ pathname: "/super-focus.html" });
+  assert.equal(routed.trigger.children[1].textContent, "Super Focus");
+});
+
 test("module-nav mount: one invalid manifest entry is dropped, the rest render (fail-safe)", () => {
   const broken = [{ id: "evil", label: "Evil", url: "javascript:alert(1)", origin: "http://127.0.0.1:1", match_paths: ["/"], workflow_order: 1 }]
     .concat(MANIFEST.modules);

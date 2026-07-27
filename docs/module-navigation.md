@@ -51,6 +51,13 @@ Fusion Replica Builder (no browser destination).
 
 ## Integration contract
 
+- **Super Focus note (2026-07-27):** a missing-dropdown report against
+  super-focus.html did not reproduce — the direct mount (below) renders in
+  both the landing and the project view; a browser tab opened before the
+  integration deploy shows the old page until reloaded (pages are served
+  `Cache-Control: no-store`, so any reload gets current HTML). A dedicated
+  regression test now pins the Super Focus mount, trigger label, single
+  current item, order, and self-navigation suppression.
 - **EF pages:** `ef-nav.js` dynamically loads `/module-nav.js` once per page
   (marker `data-vidtoolz-module-nav`) — every existing and future EF page that
   uses the shared nav gets the dropdown with zero per-page edits. Active
