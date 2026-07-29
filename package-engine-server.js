@@ -5667,9 +5667,11 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
   };
 }
 
-// One-category refresh: locked, transactional, failure-recording. Used by the
-// refresh-category route and by each step of the refresh-all job.
-async function runIdeaEngineCategoryRefresh(categoryId, serverOptions = {}, ieOpts = {}, { bypassGlobalGuard = false, statusOp = null } = {}) {
+// One-category refresh: locked, transactional, failure-recording. The
+// deliberate per-category "replace all 30" path — the ONLY caller is the
+// refresh-category route (refresh-all routes every below-target category
+// through incremental fill and never calls this; readiness tests pin that).
+async function runIdeaEngineCategoryRefresh(categoryId, serverOptions = {}, ieOpts = {}) {
   const categories = ideaEngine.activeCategories(ieOpts);
   const category = ideaEngine.categoryById(categories, ideaEngine.assertValidCategoryId(categoryId));
   if (!category) {
@@ -5683,17 +5685,15 @@ async function runIdeaEngineCategoryRefresh(categoryId, serverOptions = {}, ieOp
     e.code = 'generation_in_progress';
     throw e;
   }
-  if (!bypassGlobalGuard) assertNoIdeaEngineGenerationRunning(ieOpts);
+  assertNoIdeaEngineGenerationRunning(ieOpts);
   IDEA_ENGINE_CATEGORY_LOCKS.add(category.id);
-  // When called by the refresh-all job, the job owns the status record;
-  // standalone refreshes own their own.
-  const ownStatus = statusOp ? null : ieStatusBegin('refresh_category', {
+  const ownStatus = ieStatusBegin('refresh_category', {
     category_id: category.id,
     category_name: category.name,
     model: ideaEngineModel(serverOptions),
     message: `Refreshing "${category.name}"…`,
   }, ieOpts);
-  const status = statusOp || ownStatus;
+  const status = ownStatus;
   try {
     // Capture the category revision BEFORE generating: if an edit/removal/
     // restore lands while the model runs, activation refuses (409) instead of
@@ -5703,21 +5703,19 @@ async function runIdeaEngineCategoryRefresh(categoryId, serverOptions = {}, ieOp
     const expectedRevision = startBlock ? startBlock.revision : 0;
     const generated = await generateIdeaEngineCategorySet(category, serverOptions, ieOpts, status);
     ideaEngine.activateCategorySet(category.id, generated.ideas, generated.batchMeta, Object.assign({}, ieOpts, { expectedRevision }));
-    if (ownStatus) {
-      ownStatus.finish('completed', {
-        completed_categories: 1,
-        message: `"${category.name}" refreshed — ${generated.ideas.length} fresh topics accepted.`,
-      });
-    }
+    ownStatus.finish('completed', {
+      completed_categories: 1,
+      message: `"${category.name}" refreshed — ${generated.ideas.length} fresh topics accepted.`,
+    });
     return { category, batch: generated.batchMeta, accepted: generated.ideas.length };
   } catch (error) {
     try {
       ideaEngine.recordCategoryFailure(category.id, { message: error.message, code: error.code, status: error.statusCode }, ieOpts);
     } catch (_) { /* failure bookkeeping must never mask the original error */ }
-    if (ownStatus) ieStatusFinishFromError(ownStatus, error);
+    ieStatusFinishFromError(ownStatus, error);
     throw error;
   } finally {
-    if (ownStatus && !ownStatus.op._finished) {
+    if (!ownStatus.op._finished) {
       // Unexpected non-throw path: never leave a stuck 'running' record.
       ieStatusFinishFromError(ownStatus, new Error('generation ended unexpectedly'));
     }
@@ -5848,19 +5846,16 @@ function startIdeaEngineRefreshAll(serverOptions = {}, ieOpts = {}) {
       // remains only where its semantics are a feature — the deliberate
       // per-category "replace all 30" refresh.
       const readiness = ideaEngine.deriveCategoryReadiness(ideaEngine.loadState(ieOpts).categories[entry.id]);
+      // Top-up knows exactly two actions: 'skip' (already full) and 'fill'
+      // (incremental, empty categories included). The all-or-nothing batch
+      // path is NEVER reachable from here — it exists only behind the
+      // deliberate per-category "replace all 30" refresh route.
       entry.action = readiness.state === 'full' ? 'skip' : 'fill';
       try {
         if (entry.action === 'skip') {
           entry.status = 'skipped';
           entry.message = 'Already full — left unchanged.';
           job.skipped += 1;
-          continue;
-        }
-        if (entry.action === 'generate') {
-          const result = await runIdeaEngineCategoryRefresh(entry.id, serverOptions, ieOpts, { bypassGlobalGuard: true, statusOp: status });
-          entry.status = 'succeeded';
-          entry.accepted = result.accepted;
-          job.succeeded += 1;
           continue;
         }
         // fill: incremental, preserves the entire current inventory
