@@ -30,6 +30,17 @@ const MAX_EXCLUSION_TITLES = 200;
 // signal, not a second exclusion list.
 const MAX_REJECTED_FEEDBACK_TITLES = 18;
 
+// Prompt versions: every builder stamps its returned request with a stable
+// identifier so provenance can answer "which prompt produced this topic?".
+// Bump the version when a builder's behavioral content changes materially
+// (doctrine text, shape rotation, exclusion rules, field spec) — not for
+// whitespace or comment edits. Accepted ideas, batch metadata, and the
+// promotion sidecar all record this value.
+const PROMPT_VERSIONS = {
+  category_ideas: 'ie-category-ideas.v1',
+  replacement: 'ie-replacement.v1',
+};
+
 const CHANNEL_POSITIONING = [
   'You generate YouTube Shorts topic ideas for VIDTOOLZ, a Shorts-native expert channel about AI video production systems for serious solo creators.',
   'Channel promise: help serious video creators use AI in real production without drowning in tools, losing creative control, or mistaking generated assets for finished videos.',
@@ -208,6 +219,7 @@ function buildCategoryIdeasRequest(category, count, exclusions = [], opts = {}) 
     system: CHANNEL_POSITIONING,
     user: lines.join('\n'),
     schema: ideaBatchSchema(),
+    prompt_version: PROMPT_VERSIONS.category_ideas,
   };
 }
 
@@ -275,6 +287,7 @@ function buildReplacementRequest(category, opts = {}) {
     system: CHANNEL_POSITIONING,
     user: lines.join('\n'),
     schema: ideaBatchSchema(),
+    prompt_version: PROMPT_VERSIONS.replacement,
   };
 }
 
@@ -396,6 +409,7 @@ module.exports = {
   MAX_IDEAS_PER_CALL,
   MAX_EXCLUSION_TITLES,
   MAX_REJECTED_FEEDBACK_TITLES,
+  PROMPT_VERSIONS,
   CHANNEL_POSITIONING,
   SUITABLE_TOPIC_SPEC,
   EXCLUSIONS_SPEC,

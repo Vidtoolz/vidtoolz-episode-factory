@@ -47,8 +47,9 @@ Each category: `id` (slug), `name`, `description`, `channel_relevance`,
 (`seed` | `manual`), `status` (`active` | `removed`), `position`,
 `created_at`, `updated_at`, `removed_at`.
 
-`ideas.json` — per category: `batch` (batch_id, generated_at, model, provider,
-requested, accepted, duration_ms, chunks, rejected_candidates), `ideas[≤30]`
+`ideas.json` — per category: `batch` (batch_id, generated_at, model,
+prompt_version, provider, requested, accepted, duration_ms, chunks,
+rejected_candidates), `ideas[≤30]`
 (the ACTIVE list), `removed[]` (removal history — never physically deleted by
 ordinary use), `promoted_history[]`, `last_failure`, `revision` (bumped on
 every content mutation; stale-write protection for long-running generation).
@@ -57,7 +58,7 @@ Each idea: `id` (`ie-<8hex>`, always server-generated — model ids are never
 trusted), `category_id`, content fields (`title`, `premise`, `why_vidtoolz`,
 `why_short`, `tension`, `hook?`, `viewer_takeaway?`, `visual_opportunity?`),
 `status` (`generated` | `reviewed`), `reviewed_at`, `created_at`, `updated_at`,
-`batch_id`, `model`, and the Phase 2 editorial lifecycle:
+`batch_id`, `model`, `prompt_version`, and the Phase 2 editorial lifecycle:
 
 - `content_origin`: `generated` | `manually_edited` | `replacement_generated` | `manual`
 - `edit_revision` (int) + `edit_history[]` (each entry: revision, edited_at,
@@ -75,8 +76,9 @@ trusted), `category_id`, content fields (`title`, `premise`, `why_vidtoolz`,
 Schema evolution / migration: `loadState`/`loadCategories` normalize missing
 fields (mirrors `super-focus.js readStateDir`), so Phase 1 state migrates on
 read — legacy ideas gain `content_origin: generated`, `edit_revision: 0`,
-empty histories, `removed: null`; categories gain `removed: []` and
-`revision: 0`. Existing ids, batch ids, and promotion links stay valid
+empty histories, `removed: null`, `prompt_version: ''` (unknown, never
+guessed; manual topics legitimately have no prompt version); categories gain
+`removed: []` and `revision: 0`. Existing ids, batch ids, and promotion links stay valid
 (covered by a legacy-state test). All writes are atomic (tmp + rename).
 Corrupt JSON surfaces as 422.
 
@@ -142,6 +144,9 @@ action; runs one replacement per vacancy sequentially, mapping vacancies to
 the most recent unreplaced deliberate removals so each replacement carries its
 removal reason as negative guidance. Reports `filled` / `failed` /
 `partial_success` per slot honestly and can never exceed 30 active topics.
+Aggregates ONE classified `diagnostics` record across all slots (same shape
+as the batch path — see Diagnostics below), returned in the response and
+recorded on the generation-status record.
 
 ## Category capacity
 
@@ -157,7 +162,17 @@ history is archival and does not constrain future batches.
 1. Prompts come from `idea-engine-prompts.js`: doctrine-grounded system prompt
    (blunt production realist, 2:15–2:50 miniature evergreen explainer, 18-month
    durability test) + category guidance + exclusion list + strict JSON schema,
-   returned as one `{system, user, schema}` unit. Each chunk rotates its
+   returned as one `{system, user, schema, prompt_version}` unit.
+   **Prompt versioning:** each builder stamps a stable identifier from
+   `PROMPT_VERSIONS` (`ie-category-ideas.v1` for batch generation,
+   `ie-replacement.v1` for replacement/fill). Bump the version when a
+   builder's behavioral content changes materially — doctrine text, shape
+   rotation, exclusion rules, field spec — never for cosmetic edits. Accepted
+   ideas (`idea.prompt_version`), the category batch record
+   (`batch.prompt_version`), and the promotion sidecar all carry it, so any
+   topic can answer "which model and which prompt produced this?".
+   Adding a new AI operation means adding a versioned builder here — never
+   prompt text in a route handler. Each chunk rotates its
    concept shape (misconception / inversion / failure story / hard decision)
    and carries a title-variety rule; the validator additionally caps identical
    title openings (3/batch) and the degenerate "AI Can't/Doesn't …" family
@@ -354,6 +369,29 @@ from the real generation loop (per chunk / per vacancy slot / per category).
   starts a generation action. Operator recovery for `interrupted`/`failed`:
   the affected category preserved its previous set — re-run the generation.
 
+## Diagnostics (classified failure evidence)
+
+Every generation path — batch refresh, single replacement, and vacancy fill —
+tallies the same classified `diagnostics` shape, updated live on the status
+record and returned in replace-one / fill-vacancies responses:
+
+- `model_calls` — Ollama calls actually made
+- `parse_failures` + `parse_failure_kinds` — `empty_output`, `invalid_json`,
+  `unsupported_envelope`, `parse_other`
+- `rejection_kinds` — `excluded_title_collision`, `duplicate_title`,
+  `near_duplicate_title`, `opening_cap`, `formula_family_cap`,
+  `field_missing`, `field_not_string`, `field_too_long`, `field_too_short`,
+  `field_markup`, `wrong_item_count`, `activation_duplicate`,
+  `activation_rejected`, `validation_other`
+- `last_unparseable_sample` — a BOUNDED excerpt (≤240 chars) of the most
+  recent output the parser refused, so "unparseable JSON N chunks in a row"
+  is diagnosable without logging full raw responses (which are never stored)
+
+A failed replacement/fill attaches its diagnostics to the terminal `failed`
+status record; a partial fill keeps the aggregate visible alongside the
+per-slot results. Model reasoning is never recorded — only operational
+evidence.
+
 ## Promotion into Super Focus
 
 `POST /api/idea-engine/promote` `{idea_id}`:
@@ -376,7 +414,8 @@ from the real generation loop (per chunk / per vacancy slot / per category).
    — the same canonical domain function the Super Focus GUI uses. The
    CURRENT content transfers (manual edits included: title = current title).
 5. Writes the provenance sidecar `idea-engine-origin.json` (schema_version 2)
-   into the project dir: idea id, batch id, model, category, the full content
+   into the project dir: idea id, batch id, model, prompt_version, category,
+   the full content
    transferred at promotion time, `content_origin`, `edit_revision`,
    `original_generated_content` (the pre-edit model version, when edited),
    `replacement_for_idea_id`, promoted_at — the `super-focus.json` schema
@@ -480,8 +519,11 @@ cd /home/vidtoolz/vidtoolz-episode-factory
 Idea Engine tests: `tests/idea-engine.test.js` (domain, prompts, routes,
 concurrency, security), `tests/idea-engine-phase2.test.js` (editing, removal,
 restore, replacement, vacancy fills, refresh/edit conflicts, legacy-state
-migration, promotion crash recovery), and `tests/idea-engine-ui.test.js`
-(GUI logic + page wiring) — all model output via fixtures. Manual smoke: open
+migration, promotion crash recovery), `tests/idea-engine-provenance.test.js`
+(prompt versioning, provenance on ideas / batch / sidecar, fill and
+replacement diagnostics, bounded unparseable samples), and
+`tests/idea-engine-ui.test.js` (GUI logic + page wiring) — all model output
+via fixtures. Manual smoke: open
 `idea-engine.html`, refresh one category, edit a topic and reload, remove a
 topic with a reason, restore it, remove again and Generate replacement,
 promote a disposable idea, confirm exactly one Super Focus project appears

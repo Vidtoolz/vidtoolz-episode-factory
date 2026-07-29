@@ -5304,6 +5304,9 @@ function ieStatusFinishFromError(handle, error) {
   }
   handle.finish('failed', {
     message,
+    // Classified evidence travels with the failure when the generation path
+    // attached it (replacement/fill do; batch updates diagnostics live).
+    ...(error && error.diagnostics ? { diagnostics: error.diagnostics } : {}),
     last_error: { code: String((error && error.code) || 'generation_failed'), message },
   });
 }
@@ -5433,6 +5436,19 @@ function classifyParseError(message) {
   if (m.includes('not parseable JSON')) return 'invalid_json';
   return 'parse_other';
 }
+// One diagnostics shape shared by every generation path (batch refresh,
+// replacement, vacancy fill) so failed runs are equally explainable
+// regardless of which path ran. last_unparseable_sample is a BOUNDED
+// excerpt of the most recent output the parser refused — enough to see
+// WHAT the model emitted, never a full-response log.
+function newIdeaEngineDiagnostics() {
+  return { model_calls: 0, parse_failures: 0, parse_failure_kinds: {}, rejection_kinds: {}, last_unparseable_sample: null };
+}
+const MAX_UNPARSEABLE_SAMPLE_LEN = 240;
+function recordUnparseableSample(diagnostics, content) {
+  const sample = String(content || '').trim().slice(0, MAX_UNPARSEABLE_SAMPLE_LEN);
+  diagnostics.last_unparseable_sample = sample || '(empty output)';
+}
 function classifyRejectionReason(reason, title, exclusionSet) {
   const r = String(reason || '');
   if (r.startsWith('duplicate title')) {
@@ -5476,11 +5492,12 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
     e.code = 'nothing_eligible';
     throw e;
   }
+  const promptVersion = ideaEnginePrompts.PROMPT_VERSIONS.category_ideas;
   const accepted = [];
   let rejectedCount = 0;
   let chunksAttempted = 0;
   // Structured failure evidence (persisted via status + batch meta).
-  const diagnostics = { model_calls: 0, parse_failures: 0, parse_failure_kinds: {}, rejection_kinds: {} };
+  const diagnostics = newIdeaEngineDiagnostics();
   const exclusionSet = new Set(exclusions.map((t) => ideaEngine.normalizeTitle(t)));
   let zeroProgress = 0;
   let lastRejected = [];
@@ -5553,6 +5570,7 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
     if (!parsed.ok) {
       diagnostics.parse_failures += 1;
       tally(diagnostics.parse_failure_kinds, classifyParseError(parsed.error));
+      recordUnparseableSample(diagnostics, content);
       if (statusOp) statusOp.update({ diagnostics });
       zeroProgress += 1;
       if (zeroProgress >= ZERO_PROGRESS_LIMIT) {
@@ -5569,6 +5587,7 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
       existingTitles: exclusions,
       acceptedSoFar: accepted,
       model,
+      promptVersion,
     });
     rejectedCount += result.rejected.length;
     for (const r of result.rejected) {
@@ -5637,6 +5656,7 @@ async function generateIdeaEngineCategorySet(category, serverOptions = {}, ieOpt
       batch_id: batchId,
       generated_at: new Date().toISOString(),
       model,
+      prompt_version: promptVersion,
       provider: 'ollama-local',
       requested: target,
       duration_ms: Date.now() - t0,
@@ -5735,15 +5755,21 @@ async function runIdeaEngineFillVacancies(category, serverOptions = {}, ieOpts =
     .sort((a, b) => (a.removed.at < b.removed.at ? 1 : -1));
   const results = [];
   let filled = 0;
+  // ONE classified diagnostics record for the whole fill (aggregated across
+  // slots) so a fill run is as explainable as a batch refresh — parse
+  // failures and rejection kinds were previously only tallied on the batch
+  // path, leaving fills with per-slot error strings only.
+  const diagnostics = newIdeaEngineDiagnostics();
   for (let slot = 0; slot < vacancies; slot += 1) {
     const removedIdea = unreplaced[slot] || null;
     try {
-      const result = await generateIdeaEngineReplacementIdea(category, removedIdea, serverOptions, ieOpts);
+      const result = await generateIdeaEngineReplacementIdea(category, removedIdea, serverOptions, ieOpts, { diagnostics });
       results.push({ ok: true, idea: result.idea, attempts: result.attempts, replaced: removedIdea ? removedIdea.id : null });
       filled += 1;
-      if (statusOp) statusOp.update({ created_topics: filled, message: `Filling "${category.name}" — ${filled} of ${vacancies} vacancies filled` });
+      if (statusOp) statusOp.update({ created_topics: filled, diagnostics, message: `Filling "${category.name}" — ${filled} of ${vacancies} vacancies filled` });
     } catch (error) {
       results.push({ ok: false, error: String(error.message || 'generation failed').slice(0, 300), replaced: removedIdea ? removedIdea.id : null });
+      if (statusOp) statusOp.update({ diagnostics });
       if (error.code === 'category_full') break;
     }
   }
@@ -5754,6 +5780,7 @@ async function runIdeaEngineFillVacancies(category, serverOptions = {}, ieOpts =
     filled,
     failed: results.filter((r) => !r.ok).length,
     results,
+    diagnostics,
     block,
   };
 }
@@ -5911,12 +5938,16 @@ function ieReadinessSummary(ieOpts) {
 // with bounded corrective retries (malformed output, wrong count, duplicates,
 // too-similar-to-removed all trigger a retry with a diversification push).
 // Failure preserves the vacancy and the removal history untouched.
-async function generateIdeaEngineReplacementIdea(category, removedIdea, serverOptions = {}, ieOpts = {}) {
+async function generateIdeaEngineReplacementIdea(category, removedIdea, serverOptions = {}, ieOpts = {}, { diagnostics = null } = {}) {
   const timeoutMs = ideaEngineTimeoutMs(serverOptions);
   const model = ideaEngineModel(serverOptions);
+  const promptVersion = ideaEnginePrompts.PROMPT_VERSIONS.replacement;
   const batchId = `ier-${Date.now().toString(36)}-${Math.floor(Math.random() * 0xffff).toString(16)}`;
   const MAX_ATTEMPTS = 4;
   let lastError = null;
+  // Classified evidence, same shape as the batch path — callers (fill) may
+  // pass a shared object to aggregate across slots.
+  const diag = diagnostics || newIdeaEngineDiagnostics();
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     const state = ideaEngine.loadState(ieOpts);
     const block = state.categories[category.id];
@@ -5949,20 +5980,34 @@ async function generateIdeaEngineReplacementIdea(category, removedIdea, serverOp
       { system: reqPrompt.system, user: reqPrompt.user, schema: reqPrompt.schema, model },
       Object.assign({}, serverOptions, { timeoutMs, temperature: Math.min(0.95, 0.6 + (attempt - 1) * 0.15) })
     );
+    diag.model_calls += 1;
     const parsed = ideaEnginePrompts.parseIdeaBatch(content);
-    if (!parsed.ok) { lastError = `model output unparseable (${parsed.error})`; continue; }
+    if (!parsed.ok) {
+      diag.parse_failures += 1;
+      tally(diag.parse_failure_kinds, classifyParseError(parsed.error));
+      recordUnparseableSample(diag, content);
+      lastError = `model output unparseable (${parsed.error})`;
+      continue;
+    }
     if (parsed.items.length !== 1) {
       // Exactly one was requested; extra results are rejected, never trimmed.
+      tally(diag.rejection_kinds, 'wrong_item_count');
       lastError = `model returned ${parsed.items.length} ideas; exactly 1 was requested`;
       continue;
     }
+    const exclusionTitles = ideaEngine.exclusionTitles(state, category.id).concat(removedIdea ? [removedIdea.title] : []);
+    const exclusionSet = new Set(exclusionTitles.map((t) => ideaEngine.normalizeTitle(t)));
     const result = ideaEngine.acceptCandidates(parsed.items, {
       categoryId: category.id,
       batchId,
-      existingTitles: ideaEngine.exclusionTitles(state, category.id).concat(removedIdea ? [removedIdea.title] : []),
+      existingTitles: exclusionTitles,
       model,
+      promptVersion,
       contentOrigin: 'replacement_generated',
     });
+    for (const r of result.rejected) {
+      for (const reason of r.reasons) tally(diag.rejection_kinds, classifyRejectionReason(reason, r.title, exclusionSet));
+    }
     if (result.accepted.length !== 1) {
       lastError = result.rejected.length > 0
         ? `candidate rejected: ${result.rejected[0].reasons.join(', ')}`
@@ -5976,9 +6021,12 @@ async function generateIdeaEngineReplacementIdea(category, removedIdea, serverOp
         removedIdea ? removedIdea.id : null,
         ieOpts
       );
-      return { idea: activation.idea, active_count: activation.active_count, attempts: attempt, model, batch_id: batchId };
+      return { idea: activation.idea, active_count: activation.active_count, attempts: attempt, model, batch_id: batchId, diagnostics: diag };
     } catch (error) {
       if (error.code === 'category_full') throw error; // vacancy vanished (restore raced) — honest stop
+      // Activation refusals (duplicate against newer disk state, too similar
+      // to promoted/removed) are validation rejections, classified as such.
+      tally(diag.rejection_kinds, error.code === 'replacement_duplicate' ? 'activation_duplicate' : 'activation_rejected');
       lastError = error.message;
       continue;
     }
@@ -5986,6 +6034,7 @@ async function generateIdeaEngineReplacementIdea(category, removedIdea, serverOp
   const e = new Error(`Replacement generation failed after ${MAX_ATTEMPTS} attempts: ${lastError || 'unknown reason'}. The vacancy and removal history are preserved.`);
   e.statusCode = 502;
   e.code = 'replacement_failed';
+  e.diagnostics = diag;
   throw e;
 }
 
@@ -12983,12 +13032,14 @@ function createServer(options = {}) {
             const state = ideaEngine.loadState(ieOpts);
             replStatus.finish('completed', {
               created_topics: 1,
+              diagnostics: result.diagnostics,
               message: `Replacement added to "${category.name}": "${String(result.idea.title).slice(0, 60)}"`,
             });
             sendJSON(res, 200, {
               idea: result.idea,
               attempts: result.attempts,
               model: result.model,
+              diagnostics: result.diagnostics,
               category: ideaEngine.summarizeCategory(category, state.categories[categoryId]),
             });
           } catch (error) {
@@ -13043,6 +13094,7 @@ function createServer(options = {}) {
               failed: run.failed,
               partial_success: run.filled > 0 && run.filled < run.vacancies,
               results: run.results,
+              diagnostics: run.diagnostics,
               category: ideaEngine.summarizeCategory(category, run.block),
             });
           } catch (error) {
@@ -13221,6 +13273,7 @@ function createServer(options = {}) {
                 idea_id: idea.id,
                 batch_id: idea.batch_id,
                 model: idea.model || null,
+                prompt_version: idea.prompt_version || null,
                 category_id: idea.category_id,
                 category_name: category ? category.name : idea.category_id,
                 // The content transferred at promotion time (current wording,

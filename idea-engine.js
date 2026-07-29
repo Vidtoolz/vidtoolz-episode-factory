@@ -544,6 +544,10 @@ function normalizeIdea(entry) {
     updated_at: typeof entry.updated_at === 'string' ? entry.updated_at : created,
     batch_id: String(entry.batch_id || '').trim(),
     model: typeof entry.model === 'string' ? entry.model : '',
+    // Prompt provenance: which versioned prompt builder produced this content.
+    // Legacy records (pre prompt-versioning) normalize to '' — unknown, never
+    // guessed. Manual topics legitimately have no prompt version.
+    prompt_version: typeof entry.prompt_version === 'string' ? entry.prompt_version : '',
     // Editorial lifecycle (Phase 2). Legacy records normalize to the defaults:
     // model-generated, unedited, active.
     content_origin: CONTENT_ORIGINS.includes(entry.content_origin) ? entry.content_origin : 'generated',
@@ -737,7 +741,7 @@ function validateCandidate(item) {
 // duplicates (exact + near) within the batch and against `existingTitles`.
 // Returns { accepted, rejected } — rejected entries carry their reasons so
 // failures are explainable, never silent.
-function acceptCandidates(rawItems, { categoryId, batchId, existingTitles = [], acceptedSoFar = [], model = '', contentOrigin = 'generated' } = {}) {
+function acceptCandidates(rawItems, { categoryId, batchId, existingTitles = [], acceptedSoFar = [], model = '', promptVersion = '', contentOrigin = 'generated' } = {}) {
   const accepted = [];
   const rejected = [];
   const seenNormalized = new Set(existingTitles.map(normalizeTitle));
@@ -808,6 +812,7 @@ function acceptCandidates(rawItems, { categoryId, batchId, existingTitles = [], 
       created_at: nowIso(),
       batch_id: batchId,
       model,
+      prompt_version: promptVersion,
       content_origin: contentOrigin === 'replacement_generated' ? 'replacement_generated' : 'generated',
       promotion: emptyPromotion(),
     }));
@@ -907,6 +912,7 @@ function activateCategorySet(categoryId, ideas, batchMeta, options = {}) {
     batch_id: String(batchMeta && batchMeta.batch_id || newBatchId()),
     generated_at: String(batchMeta && batchMeta.generated_at || nowIso()),
     model: String(batchMeta && batchMeta.model || ''),
+    prompt_version: String(batchMeta && batchMeta.prompt_version || ''),
     provider: String(batchMeta && batchMeta.provider || 'ollama-local'),
     requested: Number(batchMeta && batchMeta.requested) || ideas.length,
     accepted: ideas.length,

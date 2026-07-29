@@ -89,6 +89,7 @@ require("./idea-engine-phase2.test.js");
 require("./idea-engine-phase3.test.js");
 require("./idea-engine-readiness.test.js");
 require("./idea-engine-status.test.js");
+require("./idea-engine-provenance.test.js");
 require("./module-nav.test.js");
 
 // Diagnostic run-all mode (opt-in): pass `--all` or `--continue`, or set
