@@ -21,6 +21,7 @@ node --check media-provenance.js
 node --check package-media-index.js
 node --check manual-media-import.js
 node --check aigen-authority-chain.js
+node --check aigen-authority-review.js
 node --check project-state-resolver.js
 node --check next-task-engine.js
 node --check project-action-registry.js

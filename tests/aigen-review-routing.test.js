@@ -31,6 +31,13 @@ test("aigen-review: routes to /review-view/ for both the iframe and the external
   assert.match(html, /frame\.src\s*=\s*REVIEW_URL/, "iframe src is the review-view URL");
 });
 
+test("aigen-review: exposes the separate retrospective authority reconstruction workspace", () => {
+  const html = readPage("aigen-review.html");
+  assert.match(html, /id="authorityReviewLink"/);
+  assert.match(html, /aigen-authority-review\.html\?package=/);
+  assert.match(html, /Retrospective Authority Reconstruction/);
+});
+
 test("aigen-review: accepts package/package_id/id and forwards them to review-view", () => {
   const html = readPage("aigen-review.html");
   assert.match(html, /params\.get\('package'\)/);

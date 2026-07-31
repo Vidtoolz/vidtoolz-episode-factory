@@ -26,6 +26,7 @@ const packageEngineModel = require('./package-engine-model.js');
 const workflowPathModel = require('./workflow-path.js');
 const scriptCommitmentModel = require('./script-commitment-check.js');
 const resolveReadinessModel = require('./resolve-handoff-readiness.js');
+const aigenAuthorityReview = require('./aigen-authority-review.js');
 const { slugify, escapeXml, markdownCell, markdownText, lineValue } = require('./package-engine-text-utils.js');
 
 const ROOT = __dirname;
@@ -98,6 +99,9 @@ const OPEN_FILE_API = '/api/package-runs/open-file';
 const PICKUP_PLAN_SAVE_API = '/api/package-runs/pickup-plan/save';
 const AIGEN_STATUS_API = '/api/aigen/production-pipeline/status';
 const AIGEN_RESOLVE_ASSEMBLY_API = '/api/aigen/resolve-assembly/create';
+const AIGEN_AUTHORITY_REVIEW_API = '/api/aigen/authority-review';
+const AIGEN_AUTHORITY_REVIEW_INITIALIZE_API = '/api/aigen/authority-review/initialize';
+const AIGEN_AUTHORITY_REVIEW_DECISION_API = '/api/aigen/authority-review/decision';
 const MEDIA_ROUTING_API = '/api/media-routing';
 const MODULE_NAV_JS_API = '/module-nav.js';
 const PACKAGE_MEDIA_INDEX_API = '/api/aigen/package-media-index';
@@ -942,6 +946,7 @@ function inferMime(file) {
   if (ext === '.png') return 'image/png';
   if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
   if (ext === '.webp') return 'image/webp';
+  if (ext === '.mp4') return 'video/mp4';
   return 'application/octet-stream';
 }
 
@@ -8181,6 +8186,62 @@ function resolveAigenPackageDir(packageId, options = {}) {
     throw error;
   }
   return { packageId: id, packageDir, paths };
+}
+
+function aigenAuthorityReviewDir(paths, packageId) {
+  const root = path.resolve(paths.aigenRoot, 'authority-review');
+  const reviewDir = path.resolve(root, packageId);
+  if (!reviewDir.startsWith(root + path.sep)) {
+    const error = new Error('Resolved authority-review path is outside the review root.');
+    error.statusCode = 400;
+    throw error;
+  }
+  return reviewDir;
+}
+
+function authorityReviewOptions(serverOptions = {}) {
+  return {
+    aigenRoot: serverOptions.aigenRoot,
+    scriptPackages: serverOptions.scriptPackages,
+  };
+}
+
+function addAuthorityReviewAssetUrls(view) {
+  view.slots.forEach((row) => {
+    row.selected_image.asset_url = assetUrl(view.package_id, row.selected_image.artifact_path);
+    row.clip.asset_url = assetUrl(view.package_id, row.clip.artifact_path);
+    if (row.slot_21) {
+      row.slot_21.original_image.asset_url = assetUrl(view.package_id, row.slot_21.original_image.artifact_path);
+      row.slot_21.selected_v2_image.asset_url = assetUrl(view.package_id, row.slot_21.selected_v2_image.artifact_path);
+    }
+  });
+  view.localWriteNonce = LOCAL_WRITE_NONCE;
+  view.nonceHeader = LOCAL_WRITE_NONCE_HEADER;
+  return view;
+}
+
+function readAigenAuthorityReview(packageId, options = {}) {
+  const resolved = resolveAigenPackageDir(packageId, options);
+  const reviewDir = aigenAuthorityReviewDir(resolved.paths, resolved.packageId);
+  return addAuthorityReviewAssetUrls(
+    aigenAuthorityReview.buildReviewView(resolved.packageDir, reviewDir),
+  );
+}
+
+function initializeAigenAuthorityReview(payload = {}, options = {}) {
+  const resolved = resolveAigenPackageDir(payload.package_id, options);
+  const reviewDir = aigenAuthorityReviewDir(resolved.paths, resolved.packageId);
+  return addAuthorityReviewAssetUrls(
+    aigenAuthorityReview.initializeWorkspace(resolved.packageDir, reviewDir, payload),
+  );
+}
+
+function recordAigenAuthorityReviewDecision(payload = {}, options = {}) {
+  const resolved = resolveAigenPackageDir(payload.package_id, options);
+  const reviewDir = aigenAuthorityReviewDir(resolved.paths, resolved.packageId);
+  const result = aigenAuthorityReview.appendDecision(resolved.packageDir, reviewDir, payload);
+  result.view = addAuthorityReviewAssetUrls(result.view);
+  return result;
 }
 
 // Record the chosen video variant + which selections were included/excluded in the
@@ -16587,6 +16648,49 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === AIGEN_AUTHORITY_REVIEW_API) {
+      try {
+        const options = authorityReviewOptions(serverOptions);
+        sendJSON(res, 200, readAigenAuthorityReview(
+          url.searchParams.get('package') || url.searchParams.get('package_id') || '',
+          options,
+        ));
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, error.code || 'aigen-authority-review-error');
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === AIGEN_AUTHORITY_REVIEW_INITIALIZE_API) {
+      readJsonBody(req, 1024 * 256)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'AIGEN retrospective review initialize API' });
+          sendJSON(res, 200, initializeAigenAuthorityReview(payload, authorityReviewOptions(serverOptions)));
+        })
+        .catch((error) => sendError(
+          res,
+          error.statusCode || 500,
+          error.message,
+          error.code || 'aigen-authority-review-initialize-error',
+        ));
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === AIGEN_AUTHORITY_REVIEW_DECISION_API) {
+      readJsonBody(req, 1024 * 32)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'AIGEN retrospective review decision API' });
+          sendJSON(res, 200, recordAigenAuthorityReviewDecision(payload, authorityReviewOptions(serverOptions)));
+        })
+        .catch((error) => sendError(
+          res,
+          error.statusCode || 500,
+          error.message,
+          error.code || 'aigen-authority-review-decision-error',
+        ));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === AIGEN_RESOLVE_ASSEMBLY_API) {
       handleAigenResolveAssemblyCreate(req, res);
       return;
@@ -17720,6 +17824,9 @@ module.exports = {
   runDailyIdeaScoutNow,
   rebuildPackageRunsIndex,
   AIGEN_ASSETS_PREFIX,
+  AIGEN_AUTHORITY_REVIEW_API,
+  AIGEN_AUTHORITY_REVIEW_INITIALIZE_API,
+  AIGEN_AUTHORITY_REVIEW_DECISION_API,
   AIGEN_FLUX_IMAGES_API_PREFIX,
   AIGEN_RESOLVE_ASSEMBLY_API,
   runResolveAssemblyCreate,
@@ -17732,6 +17839,9 @@ module.exports = {
   PRESTO_PROFILE_OUTPUT_SUBDIRS,
   AIGEN_SELECTED_IMAGES_API,
   AIGEN_STATUS_API,
+  readAigenAuthorityReview,
+  initializeAigenAuthorityReview,
+  recordAigenAuthorityReviewDecision,
   FLUX_CANCEL_API,
   FLUX_JOB_STATUS_API,
   FLUX_RESULTS_API,

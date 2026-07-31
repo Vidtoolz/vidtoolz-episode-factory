@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Retrospective Authority Reconstruction · VIDTOOLZ</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d10;
+      --panel: #14181e;
+      --panel2: #1b2129;
+      --line: #303946;
+      --text: #edf1f5;
+      --muted: #aab5c1;
+      --blue: #72b7ff;
+      --green: #69d597;
+      --amber: #f3c969;
+      --red: #ff7f87;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, sans-serif; }
+    main { width: min(1500px, 96vw); margin: 0 auto; padding: 28px 0 64px; }
+    h1, h2, h3 { line-height: 1.15; }
+    h1 { margin: 0 0 8px; font-size: clamp(26px, 4vw, 42px); }
+    h2 { margin: 34px 0 12px; }
+    h3 { margin: 0 0 10px; }
+    code, pre, textarea, input { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    code { overflow-wrap: anywhere; }
+    button, input, textarea { font: inherit; }
+    button { border: 1px solid var(--line); background: #252d37; color: var(--text); padding: 8px 12px; border-radius: 7px; cursor: pointer; }
+    button:hover:not(:disabled) { border-color: var(--blue); }
+    button:disabled { opacity: .42; cursor: not-allowed; }
+    button.approve { border-color: #34704d; }
+    button.reject { border-color: #7a3940; }
+    button.rework { border-color: #775f2e; }
+    input, textarea { width: 100%; border: 1px solid var(--line); background: #0f1216; color: var(--text); padding: 9px; border-radius: 6px; }
+    textarea { min-height: 90px; resize: vertical; }
+    .lede, .muted { color: var(--muted); }
+    .banner { border: 1px solid #735d2c; background: #2a2416; padding: 14px 16px; border-radius: 9px; margin: 16px 0; }
+    .danger { border-color: #77373d; background: #2b171a; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); gap: 10px; }
+    .metric, .card { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 14px; }
+    .metric strong { display: block; font-size: 24px; }
+    .toolbar { display: grid; grid-template-columns: minmax(240px, 1fr) auto; gap: 10px; align-items: end; margin: 18px 0; }
+    .hash { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+    .script { white-space: pre-wrap; max-height: 520px; overflow: auto; background: #0e1115; border: 1px solid var(--line); padding: 18px; border-radius: 8px; }
+    .decisions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .state { display: inline-block; padding: 3px 8px; border-radius: 99px; background: #303946; font-size: 12px; }
+    .state.approved { background: #214c35; color: #a8ecc5; }
+    .state.rejected, .state.invalidated { background: #55262c; color: #ffc2c6; }
+    .state.requires_rework { background: #5b4823; color: #ffe4a4; }
+    .slots { display: grid; gap: 18px; }
+    .slot { border-left: 5px solid #44566b; }
+    .slot.force-rework { border-left-color: var(--red); }
+    .assignment-grid { display: grid; grid-template-columns: 130px 130px 1fr; gap: 8px; }
+    .chain { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-top: 14px; }
+    .stage { background: var(--panel2); border: 1px solid var(--line); padding: 11px; border-radius: 8px; min-width: 0; }
+    .stage img, .stage video { width: 100%; aspect-ratio: 9/16; object-fit: contain; background: #050607; border-radius: 5px; }
+    .stage .text { white-space: pre-wrap; max-height: 230px; overflow: auto; font-size: 13px; }
+    .warning { color: var(--amber); }
+    .error { color: var(--red); }
+    .ok { color: var(--green); }
+    .hidden { display: none !important; }
+    .sticky { position: sticky; top: 0; z-index: 3; background: rgba(11,13,16,.95); backdrop-filter: blur(8px); padding: 9px 0; }
+    @media (max-width: 1050px) { .chain { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+    @media (max-width: 650px) { .chain, .assignment-grid, .toolbar { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="muted"><a href="/aigen-review.html" style="color:var(--blue)">AIGEN</a> / authority review</p>
+  <h1>Retrospective Authority Reconstruction</h1>
+  <p class="lede">This workspace records decisions made now. It does not convert legacy files into historical approvals.</p>
+  <div id="notice" class="banner">Loading the review workspace…</div>
+  <section id="app" class="hidden">
+    <div class="sticky">
+      <div class="toolbar">
+        <label>Operator identity
+          <input id="operator" autocomplete="name" placeholder="Enter your identity before recording a decision">
+        </label>
+        <button id="reload">Reload current hashes and decisions</button>
+      </div>
+    </div>
+
+    <div id="warnings"></div>
+    <div id="summary" class="summary"></div>
+
+    <h2>1. Current final script</h2>
+    <section class="card">
+      <div id="scriptMeta" class="hash"></div>
+      <p class="warning">No historical hash-bound script approval exists. Approving this script does not approve downstream visual artifacts.</p>
+      <pre id="scriptText" class="script"></pre>
+      <div id="scriptState"></div>
+      <div id="scriptActions" class="decisions"></div>
+    </section>
+
+    <h2>2. Proposed script-to-slot assignments</h2>
+    <p class="muted">Offsets are Unicode-safe UTF-16 code-unit offsets into the exact script hash shown above. Changing a proposal creates a new hash-bound decision; it does not edit the script or legacy files.</p>
+    <div id="slots" class="slots"></div>
+
+    <h2>3. Package summary</h2>
+    <section id="handoff" class="card"></section>
+    <h2>4. Append-only decision history</h2>
+    <section id="history" class="card"></section>
+  </section>
+</main>
+<script>
+(() => {
+  'use strict';
+  const API = '/api/aigen/authority-review';
+  const DECISION_API = '/api/aigen/authority-review/decision';
+  const packageId = new URLSearchParams(location.search).get('package') || '';
+  const byId = (id) => document.getElementById(id);
+  let view = null;
+
+  function esc(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function short(hash) { return hash ? `${hash.slice(0, 12)}…${hash.slice(-8)}` : '—'; }
+  function stateHtml(state) {
+    const status = state && state.status ? state.status : 'not_reviewed';
+    const reason = state && state.invalidation_reason ? `<div class="error">${esc(state.invalidation_reason)}</div>` : '';
+    const identity = state && state.operator_identity
+      ? `<div class="hash">Decision ${esc(state.decision_id)} · ${esc(state.operator_identity)} · ${esc(state.decision_timestamp)}</div>`
+      : '';
+    return `<span class="state ${esc(status)}">${esc(status.replace(/_/g, ' '))}</span>${reason}${identity}`;
+  }
+  function previousFor(state) { return state && state.decision_id ? state.decision_id : null; }
+  function operator() {
+    const identity = byId('operator').value.trim();
+    if (!identity) throw new Error('Enter your operator identity before recording a decision.');
+    return identity;
+  }
+  async function decide(type, slot, decision, state, extra = {}) {
+    const label = `${decision.replace(/_/g, ' ')} ${type.replace(/_/g, ' ')}${slot == null ? '' : ` for slot ${slot}`}`;
+    if (!window.confirm(`Record this retrospective decision now?\n\n${label}\n\nThis is append-only and bound to the exact displayed hashes.`)) return;
+    const body = {
+      package_id: view.package_id,
+      decision_type: type,
+      slot_id: slot,
+      decision,
+      operator_identity: operator(),
+      previous_decision_id: previousFor(state),
+      ...extra,
+    };
+    const response = await fetch(DECISION_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', [view.nonceHeader]: view.localWriteNonce },
+      body: JSON.stringify(body),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || `Decision failed (${response.status})`);
+    view = result.data.view;
+    render();
+  }
+  function actionButtons(type, slot, state, options = {}) {
+    const approvalsAllowed = options.approvalsAllowed !== false;
+    const buttons = [];
+    if (approvalsAllowed) buttons.push(`<button class="approve" data-outcome="approved">Approve</button>`);
+    buttons.push('<button class="reject" data-outcome="rejected">Reject</button>');
+    buttons.push('<button class="rework" data-outcome="requires_rework">Require rework</button>');
+    return `<div class="decisions" data-actions="${esc(type)}" data-slot="${slot == null ? '' : slot}">${buttons.join('')}</div>`;
+  }
+  function bindActions(container, type, slot, state, options = {}) {
+    container.querySelectorAll(`[data-actions="${type}"][data-slot="${slot == null ? '' : slot}"] button`).forEach((button) => {
+      button.addEventListener('click', async () => {
+        try {
+          let extra = {};
+          if (type === 'assignment') {
+            const root = button.closest('.slot');
+            const start = Number(root.querySelector('[data-field=start]').value);
+            const end = Number(root.querySelector('[data-field=end]').value);
+            const text = view.script.text.slice(start, end);
+            extra.assignment = {
+              start_char: start,
+              end_char: end,
+              exact_text: text,
+              selected_text_sha256: null,
+              communicative_purpose: root.querySelector('[data-field=purpose]').value,
+              forensic_confidence: root.querySelector('[data-field=confidence]').value,
+              forensic_warning: root.querySelector('[data-field=warning]').value,
+            };
+          }
+          await decide(type, slot, button.dataset.outcome, state, extra);
+        } catch (error) {
+          window.alert(error.message);
+        }
+      });
+    });
+  }
+  function renderSummary() {
+    const r = view.readiness;
+    byId('summary').innerHTML = [
+      ['Package', view.package_id],
+      ['Authority', r.authority],
+      ['Retained slots', view.retained_slots.length],
+      ['Reviewable chains', 9],
+      ['Rework chains', 1],
+      ['Completed', `${r.completed_decisions}/${r.required_decisions}`],
+      ['Remaining', r.remaining_decisions],
+      ['Invalidated', r.invalidated_decisions],
+    ].map(([label, value]) => `<div class="metric"><span class="muted">${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('');
+  }
+  function renderScript() {
+    byId('scriptMeta').innerHTML =
+      `Package <code>${esc(view.package_id)}</code><br>Path <code>${esc(view.script.path)}</code><br>SHA-256 <code>${esc(view.script.sha256)}</code>` +
+      `<br>Identical copies: ${view.script.identical_copies.length ? view.script.identical_copies.map(esc).join(', ') : 'none proven'}`;
+    byId('scriptText').textContent = view.script.text;
+    byId('scriptState').innerHTML = stateHtml(view.decisions.script);
+    byId('scriptActions').innerHTML = actionButtons('script', null, view.decisions.script);
+    bindActions(byId('scriptActions'), 'script', null, view.decisions.script);
+  }
+  function stageCard(title, type, slot, artifact, state, content, approvalsAllowed = true) {
+    return `<section class="stage">
+      <h3>${esc(title)}</h3>
+      ${content}
+      <div class="hash">Path: ${esc(artifact.artifact_path)}<br>SHA-256: ${esc(artifact.artifact_sha256)}</div>
+      ${stateHtml(state)}
+      ${actionButtons(type, slot, state, { approvalsAllowed })}
+    </section>`;
+  }
+  function renderSlots() {
+    const slotMap = new Map(view.slots.map((row) => [row.slot_id, row]));
+    byId('slots').innerHTML = view.review_order.map((slot) => {
+      const row = slotMap.get(slot);
+      const state = view.decisions.slots[String(slot)];
+      const a = row.current_assignment || row.assignment;
+      const special21 = row.slot_21 ? `
+        <div class="banner">
+          <strong>Slot 21 source normalization</strong><br>
+          Original legacy image: <code>${esc(row.slot_21.original_image.artifact_path)}</code><br>
+          SHA-256: <code>${esc(row.slot_21.original_image.artifact_sha256)}</code><br>
+          Exact v2 selected bytes: <code>${esc(row.slot_21.selected_v2_image.artifact_sha256)}</code><br>
+          Historical replacement sidecar: ${row.slot_21.historical_sidecar ? `<code>${esc(row.slot_21.historical_sidecar.artifact_path)}</code> (${short(row.slot_21.historical_sidecar.artifact_sha256)})` : 'missing'}<br>
+          <img src="${esc(row.slot_21.original_image.asset_url)}" alt="Slot 21 original legacy image" style="width:min(180px,40%);aspect-ratio:9/16;object-fit:contain">
+          <img src="${esc(row.slot_21.selected_v2_image.asset_url)}" alt="Slot 21 selected v2 image" style="width:min(180px,40%);aspect-ratio:9/16;object-fit:contain">
+          <p class="warning">The sidecar is credible legacy evidence, not approval. The legacy I2V source path is stale; any new I2V approval binds its displayed text to these exact v2 bytes.</p>
+        </div>` : '';
+      const slot22 = row.force_rework
+        ? '<div class="banner danger"><strong>Confirmed mismatch.</strong> Approval is unavailable for this selected image, I2V prompt, and clip. Record rejection or requires-rework; generation remains blocked.</div>'
+        : '';
+      return `<article class="card slot ${row.force_rework ? 'force-rework' : ''}" data-slot-root="${slot}">
+        <h3>Slot ${slot}</h3>
+        ${row.warnings.map((warning) => `<p class="warning">${esc(warning)}</p>`).join('')}
+        <div class="assignment-grid">
+          <label>Start offset<input data-field="start" type="number" min="0" value="${a.start_char}"></label>
+          <label>End offset<input data-field="end" type="number" min="1" value="${a.end_char}"></label>
+          <label>Communicative purpose<input data-field="purpose" value="${esc(a.communicative_purpose)}"></label>
+        </div>
+        <label>Exact proposed passage<textarea readonly>${esc(a.exact_text)}</textarea></label>
+        <input data-field="confidence" type="hidden" value="${esc(a.forensic_confidence)}">
+        <input data-field="warning" type="hidden" value="${esc(a.forensic_warning)}">
+        <div class="hash">Final script: ${esc(a.final_script_sha256)}<br>Selected text: ${esc(a.selected_text_sha256)}<br>Assignment: ${esc(state.assignment.artifact_sha256 || row.assignment_artifact.artifact_sha256)}</div>
+        ${stateHtml(state.assignment)}
+        ${actionButtons('assignment', slot, state.assignment)}
+        ${special21}${slot22}
+        <div class="chain">
+          ${stageCard('Image prompt', 'image_prompt', slot, row.image_prompt, state.image_prompt, `<div class="text">${esc(row.image_prompt.text)}</div>`)}
+          ${stageCard('Selected image', 'selected_image', slot, row.selected_image, state.selected_image, `<img src="${esc(row.selected_image.asset_url)}" alt="Selected image for slot ${slot}">`, !row.force_rework)}
+          ${stageCard('I2V prompt', 'i2v_prompt', slot, row.i2v_prompt, state.i2v_prompt, `<div class="text">${esc(row.i2v_prompt.text)}</div><div class="hash">Legacy source path: ${esc(row.i2v_prompt.legacy_source_image || 'not recorded')}</div>`, !row.force_rework)}
+          ${stageCard('Current HQ clip', 'clip', slot, row.clip, state.clip, `<video controls preload="metadata" src="${esc(row.clip.asset_url)}"></video><div class="hash">Resolve position: ${esc(row.handoff.position)}</div>`, !row.force_rework)}
+        </div>
+      </article>`;
+    }).join('');
+    byId('slots').querySelectorAll('[data-slot-root]').forEach((root) => {
+      const slot = Number(root.dataset.slotRoot);
+      const states = view.decisions.slots[String(slot)];
+      ['assignment', 'image_prompt', 'selected_image', 'i2v_prompt', 'clip'].forEach((type) => {
+        bindActions(root, type, slot, states[type]);
+      });
+      const start = root.querySelector('[data-field=start]');
+      const end = root.querySelector('[data-field=end]');
+      const passage = root.querySelector('textarea');
+      const update = () => { passage.value = view.script.text.slice(Number(start.value), Number(end.value)); };
+      start.addEventListener('input', update);
+      end.addEventListener('input', update);
+    });
+  }
+  function renderHandoff() {
+    const r = view.readiness;
+    byId('handoff').innerHTML = `
+      <h3>Resolve handoff</h3>
+      <p>Ordered slots: ${view.handoff.ordered_slots.join(' → ')}</p>
+      <div class="hash">Manifest: ${esc(view.handoff.manifest.artifact_path)}<br>SHA-256: ${esc(view.handoff.manifest.artifact_sha256)}<br>Ordered clip set: ${esc(view.handoff.ordered_clip_set_sha256)}</div>
+      ${stateHtml(view.decisions.handoff)}
+      <p class="warning">The legacy handoff cannot become current authority until slot 22 is reconstructed and every exact clip is approved. Binding is always a separate action.</p>
+      <p><strong>Next action:</strong> ${esc(r.next_action)}</p>
+      <p><strong>Package blocker:</strong> ${esc(r.blocker)}</p>`;
+  }
+  function renderHistory() {
+    const rows = view.ledger.history || [];
+    byId('history').innerHTML = rows.length ? rows.slice().reverse().map((record) => `
+      <div style="padding:10px 0;border-bottom:1px solid var(--line)">
+        <strong>${esc(record.decision_type.replace(/_/g, ' '))}${record.slot_id == null ? '' : ` · slot ${record.slot_id}`}</strong>
+        <span class="state ${esc(record.decision)}">${esc(record.decision.replace(/_/g, ' '))}</span>
+        ${record.invalidated ? `<span class="state invalidated">invalidated</span>` : ''}
+        <div class="hash">${esc(record.decision_id)} · ${esc(record.operator_identity)} · ${esc(record.decision_timestamp)}<br>
+        Artifact ${esc(record.artifact.artifact_sha256)}<br>Upstream ${esc(record.upstream.upstream_sha256)}</div>
+        ${record.invalidation_reason ? `<div class="error">${esc(record.invalidation_reason)}</div>` : ''}
+        ${record.operator_note ? `<div>${esc(record.operator_note)}</div>` : ''}
+      </div>`).join('') : '<p class="muted">No reconstructed decisions exist. Legacy evidence has not been treated as approval.</p>';
+  }
+  function render() {
+    byId('notice').classList.add('hidden');
+    byId('app').classList.remove('hidden');
+    byId('warnings').innerHTML = view.warnings.map((warning) => `<div class="banner">${esc(warning)}</div>`).join('');
+    renderSummary();
+    renderScript();
+    renderSlots();
+    renderHandoff();
+    renderHistory();
+  }
+  async function load() {
+    if (!packageId) throw new Error('Open this page with ?package=<package-id>.');
+    const response = await fetch(`${API}?package=${encodeURIComponent(packageId)}`, { cache: 'no-store' });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || `Review workspace unavailable (${response.status})`);
+    view = result.data;
+    render();
+  }
+  byId('reload').addEventListener('click', () => load().catch((error) => window.alert(error.message)));
+  load().catch((error) => {
+    byId('notice').classList.add('danger');
+    byId('notice').textContent = error.message;
+  });
+})();
+</script>
+</body>
+</html>
