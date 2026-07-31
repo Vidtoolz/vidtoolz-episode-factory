@@ -488,6 +488,34 @@ test('video-attempts: batch generate-videos records one attempt per row with sta
   } finally { await close(server); }
 });
 
+test('video-attempts: stale upstream authority blocks batch and regenerate before staging or replacing a clip', async () => {
+  const { server, root, mediaRoot, id } = await attemptServer({ delayMs: 40 });
+  try {
+    // Prompt edits deliberately do not revoke the still-image review, so this
+    // isolates the downstream I2V authority gate rather than the image gate.
+    const changed = superFocus.saveImagePrompt(id, 1, 'A changed scene prompt.', { root });
+    assert.equal(changed.image_prompts.find((row) => row.index === 1).i2v_prompt.stale, true);
+    const batch = await request(server, '/api/super-focus/generate-videos', {
+      method: 'POST', headers: writeHeaders(), body: { id, indexes: [1] },
+    });
+    assert.equal(batch.statusCode, 409);
+    assert.match(batch.raw, /current video authority|stale/i);
+    assert.ok(!fs.existsSync(path.join(mediaRoot, id, 'video-attempts.json')), 'batch created no attempt');
+
+    const existing = Buffer.from('EXISTING-CLIP');
+    const out = videoOut(mediaRoot, id, 1);
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(out, existing);
+    const regen = await request(server, '/api/super-focus/regenerate-video', {
+      method: 'POST', headers: writeHeaders(), body: { id, index: 1 },
+    });
+    assert.equal(regen.statusCode, 409);
+    assert.match(regen.raw, /stale|regenerate/i);
+    assert.deepEqual(fs.readFileSync(out), existing, 'regenerate refusal keeps the current clip byte-identical');
+    assert.ok(!fs.existsSync(path.join(mediaRoot, id, 'video-attempts.json')), 'regenerate created no attempt');
+  } finally { await close(server); }
+});
+
 // ── UI wiring (static page assertions) ───────────────────────────────────────
 
 test('video-attempts: super-focus.html surfaces the three render-source states (proven / changed / unknown)', () => {
@@ -661,14 +689,35 @@ test('video-attempts: storage audit locks staging referenced by a review render 
   } finally { await close(server); }
 });
 
-test('video-attempts: corrupt video-attempts.json reads as empty (unknown, never a crash or invented provenance)', async () => {
+test('video-attempts: corrupt provenance files fail closed and are never overwritten', async () => {
   const { server, mediaRoot, id } = await attemptServer({ delayMs: 40 });
   try {
     await queueAndFinish(server, id, mediaRoot, 1);
-    fs.writeFileSync(path.join(mediaRoot, id, 'video-attempts.json'), '{ not json');
-    const data = superFocusMedia.readVideoAttempts(id, { mediaRoot });
-    assert.deepEqual(data, { version: 1, active: {}, attempts: {} });
-    const g = unwrap(await request(server, `/api/super-focus/video-review?id=${id}`));
-    assert.equal(g.reviews.find((r) => r.index === 1).render_provenance, null, 'unreadable provenance = unknown, not invented');
+    const attemptsPath = path.join(mediaRoot, id, 'video-attempts.json');
+    const provenancePath = path.join(mediaRoot, id, 'video-provenance.json');
+    fs.writeFileSync(attemptsPath, '{ not json');
+    fs.writeFileSync(provenancePath, '{ not json');
+    assert.throws(
+      () => superFocusMedia.readVideoAttempts(id, { mediaRoot }),
+      (e) => e.code === 'video_attempts_unreadable' && e.statusCode === 409
+    );
+    assert.throws(
+      () => superFocusMedia.readVideoProvenance(id, { mediaRoot }),
+      (e) => e.code === 'video_provenance_unreadable' && e.statusCode === 409
+    );
+    assert.throws(
+      () => superFocusMedia.createVideoAttempt(id, {
+        index: 1, i2v_prompt: { text: I2V_ONE }, assignment_id: null,
+      }, { mediaRoot, subdir: VIDEO_SUBDIR }),
+      (e) => e.code === 'video_attempts_unreadable'
+    );
+    assert.throws(
+      () => superFocusMedia.writeVideoProvenance(id, { 1: { i2v_hash: superFocusMedia.i2vPromptHash(I2V_ONE) } }, { mediaRoot }),
+      (e) => e.code === 'video_provenance_unreadable'
+    );
+    assert.equal(fs.readFileSync(attemptsPath, 'utf8'), '{ not json', 'attempt evidence remains byte-identical');
+    assert.equal(fs.readFileSync(provenancePath, 'utf8'), '{ not json', 'provenance evidence remains byte-identical');
+    const g = await request(server, `/api/super-focus/video-review?id=${id}`);
+    assert.equal(g.statusCode, 409, 'operator view surfaces corrupt authority instead of showing unknown provenance');
   } finally { await close(server); }
 });

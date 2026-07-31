@@ -237,7 +237,7 @@ const IMAGE_PROVIDER_FILENAME = 'image-provider.json';
 const VIDEO_QUEUE_FILENAME = 'video-queue.json';
 const VIDEO_PROVENANCE_FILENAME = 'video-provenance.json';
 const VIDEO_QUEUE_TERMINAL_RETAIN = 20;
-const VIDEO_QUEUE_TERMINAL_STATUSES = new Set(['done', 'failed', 'cancelled', 'interrupted', 'stopped_by_operator', 'skipped_exists', 'skipped_prereq']);
+const VIDEO_QUEUE_TERMINAL_STATUSES = new Set(['done', 'failed', 'cancelled', 'interrupted', 'stopped_by_operator', 'skipped_exists', 'skipped_prereq', 'skipped_stale']);
 const VIDEO_FAILURE_STATUSES = new Set(['failed', 'interrupted', 'stopped_by_operator']);
 
 // Persistent PRESTO video queue for a project (survives page refresh / restart).
@@ -510,13 +510,23 @@ function i2vPromptHash(text) {
 function readVideoProvenance(projectId, options = {}) {
   const p = path.join(mediaDirFor(projectId, options), VIDEO_PROVENANCE_FILENAME);
   if (!fs.existsSync(p)) return { version: 1, rows: {} };
+  let parsed;
   try {
-    const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
-    const rows = parsed && typeof parsed === 'object' && parsed.rows && typeof parsed.rows === 'object' ? parsed.rows : {};
-    return { version: 1, rows };
+    parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
   } catch (_) {
-    return { version: 1, rows: {} }; // partially-written file → unknown, never crash a read
+    const e = new Error(`Video provenance for project "${projectId}" exists but is unreadable (${p}). Refusing to treat recorded render authority as empty.`);
+    e.statusCode = 409;
+    e.code = 'video_provenance_unreadable';
+    throw e;
   }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)
+      || !parsed.rows || typeof parsed.rows !== 'object' || Array.isArray(parsed.rows)) {
+    const e = new Error(`Video provenance for project "${projectId}" has a malformed shape (${p}). Refusing to treat recorded render authority as empty.`);
+    e.statusCode = 409;
+    e.code = 'video_provenance_unreadable';
+    throw e;
+  }
+  return { version: 1, rows: parsed.rows };
 }
 
 // Merge per-index entries ({index: {i2v_hash}}) into the provenance file
@@ -594,16 +604,24 @@ const VIDEO_ATTEMPTS_SUBDIR = 'attempts';
 function readVideoAttempts(projectId, options = {}) {
   const p = path.join(mediaDirFor(projectId, options), VIDEO_ATTEMPTS_FILENAME);
   if (!fs.existsSync(p)) return { version: 1, active: {}, attempts: {} };
+  let parsed;
   try {
-    const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
-    return {
-      version: 1,
-      active: parsed && parsed.active && typeof parsed.active === 'object' ? parsed.active : {},
-      attempts: parsed && parsed.attempts && typeof parsed.attempts === 'object' ? parsed.attempts : {},
-    };
+    parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
   } catch (_) {
-    return { version: 1, active: {}, attempts: {} }; // partially-written file → unknown, never crash a read
+    const e = new Error(`Video attempts for project "${projectId}" exists but is unreadable (${p}). Refusing to treat render-attempt authority as empty.`);
+    e.statusCode = 409;
+    e.code = 'video_attempts_unreadable';
+    throw e;
   }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)
+      || !parsed.active || typeof parsed.active !== 'object' || Array.isArray(parsed.active)
+      || !parsed.attempts || typeof parsed.attempts !== 'object' || Array.isArray(parsed.attempts)) {
+    const e = new Error(`Video attempts for project "${projectId}" has a malformed shape (${p}). Refusing to treat render-attempt authority as empty.`);
+    e.statusCode = 409;
+    e.code = 'video_attempts_unreadable';
+    throw e;
+  }
+  return { version: 1, active: parsed.active, attempts: parsed.attempts };
 }
 
 function writeVideoAttempts(projectId, data, options = {}) {
@@ -632,6 +650,9 @@ function createVideoAttempt(projectId, row, options = {}) {
   if (!Number.isInteger(idx) || idx < 1) throw new Error('createVideoAttempt: row.index must be a positive integer');
   const text = row && row.i2v_prompt && typeof row.i2v_prompt.text === 'string' ? row.i2v_prompt.text.trim() : '';
   if (!text) throw new Error('createVideoAttempt: row has no i2v prompt text');
+  // Validate existing durable history before creating any staging directory or
+  // copy. A corrupt attempts file is evidence to preserve, not an empty ledger.
+  const data = readVideoAttempts(projectId, options);
   const canonical = imageFilePath(mediaDir, idx);
   const attemptId = `att-${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}`;
   const stagedRel = path.join(VIDEO_ATTEMPTS_SUBDIR, attemptId, imageFileName(idx));
@@ -645,7 +666,6 @@ function createVideoAttempt(projectId, row, options = {}) {
   try { const st = fs.statSync(canonical); origMtime = Math.round(st.mtimeMs); origSize = st.size; } catch (_) {}
   const subdir = String(options.subdir || 'mp4');
   const now = new Date().toISOString();
-  const data = readVideoAttempts(projectId, options);
   const prevId = data.active[String(idx)];
   if (prevId && data.attempts[prevId] && data.attempts[prevId].status === 'dispatched') {
     data.attempts[prevId].status = 'superseded';

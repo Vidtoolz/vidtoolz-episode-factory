@@ -193,7 +193,8 @@ test('queue-audit: already-satisfied, missing-source, missing-prompt, stale-prom
     assert.equal(by['q1-fixture-1'].would_dispatch_on_resume, false);
     assert.equal(by['q2-fixture-2'].disposition, 'stale_prompt');
     assert.notEqual(by['q2-fixture-2'].i2v_hash_queued, by['q2-fixture-2'].i2v_hash_current);
-    assert.equal(by['q2-fixture-2'].would_dispatch_on_resume, true, 'stale prompt still dispatches — with CURRENT text');
+    assert.equal(by['q2-fixture-2'].would_dispatch_on_resume, false, 'stale prompt must require an explicit requeue');
+    assert.equal(by['q2-fixture-2'].estimated_seconds, 0);
     assert.equal(by['q3-fixture-3'].disposition, 'missing_source');
     assert.equal(by['q99-ghost'].disposition, 'invalid_identity');
     assert.equal(by['q2-dup'].disposition, 'duplicate_queue_item');
@@ -272,6 +273,25 @@ test('queue-audit: pump skips (never dispatches) a queued item whose image revie
     // which is exactly the proof the pump moved past row 1 to a legal row.
     assert.equal(queue.items.find((it) => it.index === 2).status !== 'skipped_review', true);
     void root;
+  } finally { await close(fx.server); }
+});
+
+test('queue-audit: pump skips (never dispatches) a queued item whose prompt changed after enqueue', async () => {
+  const fx = auditFixture(1);
+  await listen(fx.server);
+  try {
+    const { root, mediaRoot, id } = fx;
+    superFocus.setI2vPrompt(id, 1, 'motion 1 CHANGED', { root });
+    const resumed = await request(fx.server, '/api/super-focus/video-queue/resume', {
+      method: 'POST', headers: writeHeaders(), body: { id },
+    });
+    assert.equal(resumed.statusCode, 200);
+    const queue = superFocusMedia.readVideoQueue(id, { mediaRoot });
+    assert.equal(queue.items[0].status, 'skipped_stale');
+    assert.match(queue.items[0].error, /changed after enqueue/i);
+    assert.equal(fx.reach(), 0, 'stale authority is refused before any PRESTO probe');
+    assert.equal(fx.spawn(), 0, 'stale authority never starts a render');
+    assert.ok(!fs.existsSync(path.join(mediaRoot, id, 'video-attempts.json')), 'no attempt state created');
   } finally { await close(fx.server); }
 });
 

@@ -9146,6 +9146,25 @@ function i2vTextHash(row) {
   return superFocusMedia.i2vPromptHash(row && row.i2v_prompt && row.i2v_prompt.text);
 }
 
+// A render must use the authority explicitly queued or approved for this row.
+// Stale rows are not silently refreshed to current text at dispatch time:
+// the operator must regenerate/reapprove and enqueue a new item whose receipt
+// matches that authority.
+function superFocusVideoAuthorityBlocker(row, queuedHash) {
+  if (!row) return { code: 'invalid_identity', message: 'The queued row no longer exists.' };
+  const currentHash = i2vTextHash(row);
+  if (queuedHash && currentHash && queuedHash !== currentHash) {
+    return { code: 'stale_prompt', message: 'I2V prompt changed after enqueue. Review the current prompt and requeue explicitly.' };
+  }
+  if (row.i2v_prompt && row.i2v_prompt.stale) {
+    return { code: 'stale_prompt', message: 'I2V prompt is stale after an upstream image-prompt change. Regenerate it before queueing.' };
+  }
+  if (row.assignment_stale) {
+    return { code: 'stale_assignment', message: 'Visual-plan assignment changed after this row was derived. Reapprove the assignment and rebuild downstream prompts.' };
+  }
+  return null;
+}
+
 function videoQueueSummary(queue) {
   const s = { queued: 0, running: 0, done: 0, failed: 0, cancelled: 0, skipped: 0, interrupted: 0, stopped: 0, paused: Boolean(queue && queue.paused) };
   for (const it of (queue.items || [])) {
@@ -9191,9 +9210,8 @@ function videoQueueControl(queue) {
 //   active_attempt_exists   a dispatched generation attempt owns the slot
 //   source_unapproved       current image-review gate refuses the row
 //   stale_prompt            enqueue-time i2v hash ≠ current canonical hash, or
-//                           the prompt is flagged stale by an upstream edit
-//                           (resume would render the CURRENT text — surfaced,
-//                           not blocking, exactly like the live drift badge)
+//                           the prompt is flagged stale by an upstream edit;
+//                           resume refuses it until an explicit current requeue
 //   stale_assignment        the row's visual-plan assignment was revised
 //   legacy_compatibility    dispatchable ONLY under the documented legacy rule
 //                           (no review + no provenance = unknown_legacy):
@@ -9205,7 +9223,7 @@ function videoQueueControl(queue) {
 // and motion contract at enqueue time were not recorded, so "unchanged since
 // enqueue" can only be proven for the prompt hash. Everything else is judged
 // against CURRENT state and labeled accordingly.
-const VIDEO_QUEUE_AUDIT_DISPATCHABLE = new Set(['safe_to_resume', 'legacy_compatibility', 'stale_prompt', 'stale_assignment']);
+const VIDEO_QUEUE_AUDIT_DISPATCHABLE = new Set(['safe_to_resume', 'legacy_compatibility']);
 // Measured HQ render wall time (54m51s — see launchPrestoProductionJob).
 const VIDEO_QUEUE_AUDIT_SECONDS_PER_CLIP = 3291;
 // Advisory operator action per disposition — recommendations ONLY. The audit
@@ -9312,7 +9330,7 @@ function auditSuperFocusVideoQueue(state, sfMediaRoot) {
       if (!gate.eligible) {
         disposition = 'source_unapproved'; reasons.push(gate.reason || 'image not cleared by review');
       } else if (item.i2v_hash && currentHash && item.i2v_hash !== currentHash) {
-        disposition = 'stale_prompt'; reasons.push('i2v text changed after enqueue — resume renders the CURRENT text');
+        disposition = 'stale_prompt'; reasons.push('i2v text changed after enqueue — explicit review and requeue required');
       } else if (row.i2v_prompt && row.i2v_prompt.stale) {
         disposition = 'stale_prompt'; reasons.push('i2v prompt flagged stale by an upstream image-prompt edit');
       } else if (row.assignment_stale) {
@@ -9764,6 +9782,15 @@ async function pumpSuperFocusVideoQueue(id, ctx) {
   if (queue.items.some((it) => it.status === 'running')) return { started: null, queue, blocked: 'running' };
   const next = queue.items.find((it) => it.status === 'queued');
   if (!next) return { started: null, queue };
+  const currentRow = (state.image_prompts || []).find((row) => row.index === next.index) || null;
+  const authorityBlocker = superFocusVideoAuthorityBlocker(currentRow, next.i2v_hash);
+  if (authorityBlocker) {
+    next.status = 'skipped_stale';
+    next.error = `${authorityBlocker.message} No render was started.`;
+    next.finished_at = new Date().toISOString();
+    superFocusMedia.writeVideoQueue(id, queue, { mediaRoot: ctx.sfMediaRoot });
+    return pumpSuperFocusVideoQueue(id, ctx);
+  }
   const el = superFocusVideoEligibility(id, state, subdir, next.index, ctx);
   if (!el.ok) {
     next.status = el.reason === 'skipped_exists' ? 'skipped_exists' : 'skipped_prereq';
@@ -9891,6 +9918,8 @@ function enqueueSuperFocusVideos(id, indexes, ctx) {
     if (live.has(idx)) { result.skipped.push({ index: idx, reason: 'already_queued' }); continue; }
     const el = superFocusVideoEligibility(id, state, subdir, idx, ctx);
     if (!el.ok) { result.skipped.push({ index: idx, reason: el.reason }); continue; }
+    const authorityBlocker = superFocusVideoAuthorityBlocker(el.row);
+    if (authorityBlocker) { result.skipped.push({ index: idx, reason: authorityBlocker.code, message: authorityBlocker.message }); continue; }
     const item = {
       item_id: `q${idx}-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
       index: idx, status: 'queued', i2v_hash: i2vTextHash(el.row),
@@ -12659,26 +12688,21 @@ function buildVideoReviewContext(state, row, sfMediaRoot, subdir) {
   }
   const exists = mtime != null;
   const imgCtx = buildImageReviewContext(state, row, sfMediaRoot);
-  let generatedHash = null;
-  try {
-    generatedHash = superFocusMedia.readVideoProvenanceHashes(state.project_id, { mediaRoot: sfMediaRoot })[row.index] || null;
-  } catch (_) { generatedHash = null; }
+  const generatedHash = superFocusMedia.readVideoProvenanceHashes(state.project_id, { mediaRoot: sfMediaRoot })[row.index] || null;
   // Render-time provenance: WHICH staged bytes actually produced the on-disk
   // clip (attempt layer; lazy — probes recorded mtime+size before any sha256).
   // null = legacy/unattributed clip; provenance is surfaced, never invented.
   let renderProvenance = null;
   if (exists) {
-    try {
-      renderProvenance = superFocusMedia.videoRenderProvenance(state.project_id, row.index, {
-        mediaRoot: sfMediaRoot,
-        videoMtimeMs: mtime,
-        videoSize: size,
-        hashVideo: () => superFocusMedia.hashFileSha256(filePath),
-        imageExists: imgCtx.image_exists,
-        imageMtimeMs: imgCtx.image_mtime_ms,
-        hashImage: imgCtx.hash_image,
-      });
-    } catch (_) { renderProvenance = null; }
+    renderProvenance = superFocusMedia.videoRenderProvenance(state.project_id, row.index, {
+      mediaRoot: sfMediaRoot,
+      videoMtimeMs: mtime,
+      videoSize: size,
+      hashVideo: () => superFocusMedia.hashFileSha256(filePath),
+      imageExists: imgCtx.image_exists,
+      imageMtimeMs: imgCtx.image_mtime_ms,
+      hashImage: imgCtx.hash_image,
+    });
   }
   return {
     video_exists: exists,
@@ -14865,6 +14889,17 @@ function createServer(options = {}) {
             const e = new Error(`No rows are cleared for video generation: ${reviewGate.skipped.map((s) => `#${s.index} ${s.reason}`).join('; ')}`);
             e.statusCode = 409; throw e;
           }
+          const authoritySkipped = [];
+          targetRows = targetRows.filter((row) => {
+            const blocker = superFocusVideoAuthorityBlocker(row);
+            if (!blocker) return true;
+            authoritySkipped.push({ index: row.index, reason: blocker.code, message: blocker.message });
+            return false;
+          });
+          if (targetRows.length === 0) {
+            const e = new Error(`No rows have current video authority: ${authoritySkipped.map((s) => `#${s.index} ${s.message}`).join('; ')}`);
+            e.statusCode = 409; throw e;
+          }
           // Supervised compute gate (same lane policy as the queue pump and the
           // AIGEN submit): fail-closed, route-identity-bound readiness. A blocked
           // lane refuses the batch with 503 BEFORE any attempt is staged or spawned.
@@ -14963,6 +14998,7 @@ function createServer(options = {}) {
             eligible_missing: missingRows.length,
             skipped_existing_video: skippedExistingVideo,
             review_skipped: reviewGate.skipped,
+            authority_skipped: authoritySkipped,
             skipped_missing_prereq: skippedPrereq,
             media_dir: materialized.mediaDir,
             subdir,
@@ -15005,6 +15041,10 @@ function createServer(options = {}) {
           const hasImage = imgPath && fs.existsSync(imgPath);
           if (!row || !hasImage || !superFocus.hasI2vPrompt(row)) {
             const e = new Error('Regenerate needs a row with a generated still and a saved i2v prompt.'); e.statusCode = 400; throw e;
+          }
+          {
+            const blocker = superFocusVideoAuthorityBlocker(row);
+            if (blocker) { const e = new Error(blocker.message); e.statusCode = 409; e.code = blocker.code; throw e; }
           }
           // Respect an operator pause: regenerate also starts a PRESTO render,
           // and the pause contract is that no new render starts while paused.
@@ -15223,13 +15263,20 @@ function createServer(options = {}) {
           const subdir = superFocusVideoSubdir();
           const missingRows = superFocusMedia.eligibleMissingVideoRows(id, state.image_prompts, subdir, { mediaRoot: sfMediaRoot });
           const reviewGate = applyImageReviewGate(state, missingRows, sfMediaRoot);
-          let indexes = reviewGate.allowed.map((r) => r.index);
+          const authoritySkipped = [];
+          const authorityAllowed = reviewGate.allowed.filter((row) => {
+            const blocker = superFocusVideoAuthorityBlocker(row);
+            if (!blocker) return true;
+            authoritySkipped.push({ index: row.index, reason: blocker.code, message: blocker.message });
+            return false;
+          });
+          let indexes = authorityAllowed.map((r) => r.index);
           if (Array.isArray(payload.indexes) && payload.indexes.length) {
             const wanted = payload.indexes.map((n) => Math.round(Number(n)));
             indexes = indexes.filter((i) => wanted.includes(i));
           }
           const result = enqueueSuperFocusVideos(id, indexes, ctx);
-          result.skipped = (result.skipped || []).concat(reviewGate.skipped);
+          result.skipped = (result.skipped || []).concat(reviewGate.skipped, authoritySkipped);
           await pumpSuperFocusVideoQueue(id, ctx).catch(() => null);
           const queue = superFocusMedia.readVideoQueue(id, { mediaRoot: sfMediaRoot });
           sendJSON(res, 200, {

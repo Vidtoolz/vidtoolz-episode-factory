@@ -257,7 +257,11 @@ resume at night without losing queued work:
   reconciliation may rewrite the queue file even while paused. Dispositions
   are explicit (safe_to_resume / legacy_compatibility / stale_prompt /
   source_unapproved / already_satisfied / …) with an estimated serial GPU
-  runtime for what resume would actually dispatch. **Structural findings are
+  runtime for what resume would actually dispatch. A `stale_prompt` or
+  `stale_assignment` item is **not dispatchable**: resume marks it
+  `skipped_stale`; the operator must review/reapprove the current authority and
+  enqueue a new item. The worker never substitutes current text for the
+  enqueue-time authority. **Structural findings are
   reported separately from the operational disposition**: live queue entries
   sharing one render target (the row index — the dispatcher's canonical
   identity) ALL carry `structural_flags: ["duplicate_queue_item"]` while
@@ -270,6 +274,9 @@ resume at night without losing queued work:
 - **Dispatch-time review gate** — the queue pump re-checks the image-review
   gate before every render: an approval revoked (or a review opened/rejected)
   after an item was queued marks it `skipped_review` instead of dispatching.
+  It also re-checks the enqueue-time I2V hash and upstream stale flags; drift
+  marks the item `skipped_stale` before any PRESTO readiness probe or attempt
+  staging.
   Legacy rows (no review, no provenance) remain eligible under the documented
   compatibility rule, so pre-gate queues keep draining unchanged.
 - **Batch** ("Queue missing videos") asks for confirmation, since rendering is
@@ -370,6 +377,10 @@ duplicate titles stay unambiguous.
   dispatches, and cleanup *candidates* (terminal non-completed, unlocked).
   No cleanup route exists by design; deleting staging is an explicit
   operator action outside the cockpit.
+- A present but malformed `video-attempts.json` or `video-provenance.json`
+  fails closed with HTTP 409. It is never coerced to an empty legacy record,
+  and generation/review writes refuse to overwrite it; preserve and inspect
+  the file before recovery.
 - Media state is reconciled from disk on every status poll and on project open
   (the files are the source of truth, so it survives a server restart).
 

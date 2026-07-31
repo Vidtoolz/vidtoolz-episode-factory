@@ -176,6 +176,9 @@ STEP 7 · GENERATED VIDEOS
                       a paused queue. Read-only: no pump, no PRESTO contact.
                       Classifies each item (safe_to_resume / stale_prompt /
                       source_unapproved / …) with estimated GPU runtime.
+                      stale_prompt / stale_assignment are NOT dispatched:
+                      resume marks them skipped_stale until you explicitly
+                      review/reapprove and enqueue the current authority.
 
     RECOMMENDED WORKFLOW:  pause during the day, resume at night.
 
