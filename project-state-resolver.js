@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { buildPackageMediaIndex } = require('./package-media-index.js');
+const aigenAuthority = require('./aigen-authority-chain.js');
 
 // Normalized aigen-media stages, in pipeline order.
 // Production pathways (tempo lanes). The aigen script-package lane is the
@@ -279,6 +280,38 @@ function resolveProjectState(packageDir, options = {}) {
     if (m.exists === false) warnings.push(`Missing file referenced in manifest: ${m.path}`);
   }
 
+  // Content authority is stricter than physical progress.  The first derived
+  // stage whose recorded source/artifact hashes are missing, corrupt, or stale
+  // becomes the operator's current stage.  Later files remain on disk as
+  // recoverable evidence, but can no longer advance the project.
+  const authority = {
+    status: 'not_applicable',
+    first_invalid_stage: null,
+    code: null,
+    message: '',
+    stages: {},
+  };
+  const checks = [];
+  if (counts.image_prompts > 0) checks.push(['image_prompts', 'image_prompts']);
+  if (counts.selected_images > 0) checks.push(['selected_images', 'image_review']);
+  if (counts.i2v_prompts > 0) checks.push(['i2v_prompts', 'i2v_prompts']);
+  if (counts.total_videos > 0) checks.push(['videos', 'video_generation']);
+  if (hasHandoff) checks.push(['resolve_handoff', 'video_review']);
+  for (const [authorityStage, fallbackStage] of checks) {
+    const result = aigenAuthority.validateStage(packageDir, authorityStage);
+    authority.stages[authorityStage] = result;
+    if (!result.ok && !authority.first_invalid_stage) {
+      authority.status = result.status;
+      authority.first_invalid_stage = authorityStage;
+      authority.code = result.code;
+      authority.message = result.message;
+      stage = fallbackStage;
+      blockers.push(`Stale AIGEN authority (${authorityStage}): ${result.message}`);
+      break;
+    }
+  }
+  if (checks.length > 0 && !authority.first_invalid_stage) authority.status = 'fresh';
+
   return {
     project_id: path.basename(packageDir),
     title,
@@ -293,6 +326,7 @@ function resolveProjectState(packageDir, options = {}) {
     has_script: hasScript,
     has_resolve_handoff: hasHandoff,
     handoff_video_variant: handoffVideoVariant,
+    authority,
     counts,
     blockers,
     warnings,

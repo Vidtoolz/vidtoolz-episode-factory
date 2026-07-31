@@ -20,6 +20,7 @@ node --check media-routing.js
 node --check media-provenance.js
 node --check package-media-index.js
 node --check manual-media-import.js
+node --check aigen-authority-chain.js
 node --check project-state-resolver.js
 node --check next-task-engine.js
 node --check project-action-registry.js
@@ -51,6 +52,7 @@ node --check score-engine/reaper-backend.js
 node --check score-engine/score-lane.js
 node --check scripts/episode-factory.js
 node --check scripts/resolve-handoff.js
+node --check scripts/aigen-authority-chain.js
 node --check scripts/package-engine-new-run.js
 node --check scripts/package-engine-new-outline.js
 node --check scripts/package-engine-new-script.js

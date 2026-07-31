@@ -557,6 +557,7 @@ const mediaRouting = require('./media-routing.js');
 const packageMediaIndex = require('./package-media-index.js');
 const { buildPackageMediaIndex } = packageMediaIndex;
 const { importManualMedia, readSidecar, writeSidecar } = require('./manual-media-import.js');
+const aigenAuthority = require('./aigen-authority-chain.js');
 const { resolveProjectState } = require('./project-state-resolver.js');
 const { chooseNextTask } = require('./next-task-engine.js');
 const projectDiscovery = require('./project-discovery.js');
@@ -6685,6 +6686,11 @@ async function generateI2vPrompts(payload = {}, options = {}) {
 // prompt_index values in order so PRESTO's 1:1 expectation holds.
 function saveI2vPrompts(payload = {}, options = {}) {
   const { packageId, packageDir } = resolveAigenPackageDir(payload.package_id || payload.packageId, options);
+  aigenAuthority.readAuthorityLedger(packageDir);
+  // Saving new I2V prompts is an authority transition, not a free-standing file
+  // write.  Refuse before touching video-prompts.json unless the selected image
+  // bytes and their script/prompt authority are current.
+  aigenAuthority.assertStageFresh(packageDir, 'selected_images');
   const provided = Array.isArray(payload.prompts) ? payload.prompts : [];
   const texts = provided.map((p) => (p && typeof p === 'object' ? String(p.prompt || '') : String(p || ''))).map((s) => s.trim());
   if (!texts.some(Boolean)) {
@@ -6722,6 +6728,7 @@ function saveI2vPrompts(payload = {}, options = {}) {
   };
   fs.writeFileSync(tmpPath, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
   fs.renameSync(tmpPath, outPath);
+  aigenAuthority.recordStage(packageDir, 'i2v_prompts');
   return { package_id: packageId, path: 'video-prompts.json', count: prompts.length };
 }
 
@@ -6743,10 +6750,13 @@ function readProjectVideoPromptsRaw(packageDir) {
 // Atomic write of the canonical video-prompts.json, preserving the enriched
 // per-prompt review fields produced by project-i2v-prompts.js.
 function writeProjectVideoPrompts(packageDir, fileObj) {
+  aigenAuthority.readAuthorityLedger(packageDir);
+  aigenAuthority.assertStageFresh(packageDir, 'selected_images');
   const outPath = path.join(packageDir, 'video-prompts.json');
   const tmpPath = `${outPath}.tmp`;
   fs.writeFileSync(tmpPath, `${JSON.stringify(fileObj, null, 2)}\n`, 'utf8');
   fs.renameSync(tmpPath, outPath);
+  aigenAuthority.recordStage(packageDir, 'i2v_prompts');
   return outPath;
 }
 
@@ -7899,6 +7909,13 @@ function readWanLock(lockPath) {
 
 function buildPackagePipelineStatus(packageDir, wanLabels) {
   const id = path.basename(packageDir);
+  const resolvedState = resolveProjectState(packageDir);
+  const projectAuthority = resolvedState.authority || {
+    status: 'not_applicable',
+    first_invalid_stage: null,
+    code: null,
+    message: '',
+  };
   const selected = safeReadJson(path.join(packageDir, 'selected-images.json'), null);
   const imagePrompts = safeReadJson(path.join(packageDir, 'image-prompts.json'), null);
   const fluxManifestPath = path.join(packageDir, 'flux-generation-manifest.json');
@@ -7946,6 +7963,10 @@ function buildPackagePipelineStatus(packageDir, wanLabels) {
   } else {
     wanNextAction = 'Wan selections complete';
   }
+  if (projectAuthority.first_invalid_stage) {
+    wanNextAction = `Blocked: ${projectAuthority.first_invalid_stage} authority is ${projectAuthority.status} — ${projectAuthority.message}`;
+  }
+  const projectStatus = safeReadJson(path.join(packageDir, 'project-status.json'), null);
   return {
     id,
     has_selections: Boolean(selected),
@@ -7963,7 +7984,11 @@ function buildPackagePipelineStatus(packageDir, wanLabels) {
     handoff_video_variant: handoffVideoVariant,
     // Operator status from project-status.json (active/editing/parked/archived/
     // published); null when the package predates the projects lane.
-    project_status: (safeReadJson(path.join(packageDir, 'project-status.json'), null) || {}).status || null,
+    project_status: (projectStatus || {}).status || null,
+    authority_status: projectAuthority.status,
+    authority_first_invalid_stage: projectAuthority.first_invalid_stage,
+    authority_code: projectAuthority.code,
+    authority_message: projectAuthority.message,
     wan_next_action: wanNextAction,
   };
 }
@@ -8197,6 +8222,10 @@ function runResolveAssemblyCreate(packageId, options = {}) {
   const missingClips = staged.pending.filter((item) => !excludeIndexes.includes(item.prompt_index));
   const includedIndexes = includedClips.map((item) => item.prompt_index);
   const excludedIndexes = excludedClips.map((item) => item.prompt_index);
+  const videoAuthority = aigenAuthority.validateStage(packageDir, 'videos', {
+    variant,
+    indexes: includedIndexes.length ? includedIndexes : undefined,
+  });
 
   // Dry-run: enumerate exactly which clips the handoff would include from the
   // chosen variant folder, and never spawn Python or write any handoff file.
@@ -8213,6 +8242,8 @@ function runResolveAssemblyCreate(packageId, options = {}) {
       included_clips: includedClips,
       missing_clips: missingClips,
       excluded_clips: excludedClips,
+      authority_ready: videoAuthority.ok,
+      authority: videoAuthority,
       would_write: RESOLVE_HANDOFF_FILES,
       output_dir: path.join(packageDir, 'resolve-handoff'),
     });
@@ -8247,6 +8278,13 @@ function runResolveAssemblyCreate(packageId, options = {}) {
       exit_code: 1,
     });
   }
+  // All physical clips exist; now require proof that each exact slot was
+  // rendered from the current selected-image and I2V authority.  This is still
+  // before Python is spawned or any handoff file is written.
+  aigenAuthority.assertStageFresh(packageDir, 'videos', {
+    variant,
+    indexes: includedIndexes,
+  });
   if (!fs.existsSync(paths.topicToPackageScript)) {
     return Promise.resolve({
       ok: false,
@@ -8304,6 +8342,7 @@ function runResolveAssemblyCreate(packageId, options = {}) {
         // operator sees an error while readiness sees the files). Report
         // success with an explicit warning instead.
         let manifestVariantRecorded = false;
+        let manifestAuthorityRecorded = false;
         let stampWarning = null;
         try {
           manifestVariantRecorded = stampManifestVariant(packageDir, {
@@ -8317,6 +8356,17 @@ function runResolveAssemblyCreate(packageId, options = {}) {
           stampWarning = `Handoff files were written, but re-stamping media-manifest.json failed: ${error.message}. `
             + 'The assembler records the variant fields itself; verify media-manifest.json manually.';
         }
+        try {
+          aigenAuthority.recordStage(packageDir, 'resolve_handoff', {
+            variant,
+            indexes: includedIndexes,
+          });
+          manifestAuthorityRecorded = true;
+        } catch (error) {
+          const authorityWarning = `Handoff files were written, but their content authority could not be recorded: ${error.message}. `
+            + 'The resolver will keep this handoff blocked until authority is explicitly repaired.';
+          stampWarning = stampWarning ? `${stampWarning} ${authorityWarning}` : authorityWarning;
+        }
         resolve({
           ok: true,
           package_id: id,
@@ -8327,6 +8377,7 @@ function runResolveAssemblyCreate(packageId, options = {}) {
           included_indexes: includedIndexes,
           excluded_indexes: excludedIndexes,
           manifest_variant_recorded: manifestVariantRecorded,
+          manifest_authority_recorded: manifestAuthorityRecorded,
           warning: stampWarning,
           output_dir: resolveDir,
           stdout,
@@ -8560,6 +8611,7 @@ function validateImagePromptsForPackage(payload = {}, options = {}) {
 
 function saveImagePrompts(payload = {}, options = {}) {
   const { packageId: id, packageDir } = resolveAigenPackageDir(payload.package_id, options);
+  aigenAuthority.readAuthorityLedger(packageDir);
   const filePath = imagePromptsPathForPackage(packageDir);
   const scriptRoot = path.resolve(aigenPaths(options).scriptPackages);
   if (!filePath.startsWith(scriptRoot + path.sep) || path.basename(filePath) !== 'image-prompts.json') {
@@ -8574,9 +8626,13 @@ function saveImagePrompts(payload = {}, options = {}) {
     error.validation = validation;
     throw error;
   }
+  // The final script is the structural authority.  Check it after payload
+  // validation (bad input remains a 400) but before touching the prompt file.
+  aigenAuthority.finalScriptSnapshot(packageDir);
   const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
   fs.writeFileSync(tmpPath, `${JSON.stringify(validation.model, null, 2)}\n`, 'utf8');
   fs.renameSync(tmpPath, filePath);
+  aigenAuthority.recordStage(packageDir, 'image_prompts');
   const stat = fs.statSync(filePath);
   console.log(`[image-prompts] ${id}: wrote ${validation.count} prompts to ${filePath}`);
   return {
@@ -8686,6 +8742,7 @@ function writeSelectedImages(payload = {}, options = {}) {
     throw error;
   }
   const { packageId: id, packageDir } = resolveAigenPackageDir(payload.package_id, options);
+  aigenAuthority.readAuthorityLedger(packageDir);
   const promptsByIndex = loadImagePromptsByIndex(packageDir);
   const sidecar = readSidecar(packageDir);
   const manualImages = new Map(
@@ -8732,6 +8789,10 @@ function writeSelectedImages(payload = {}, options = {}) {
       selected_at: selectedAt,
     };
   });
+  // Selection is the human approval gate for exact image bytes.  Resolve and
+  // validate every requested slot first (preserving precise 400 errors), then
+  // require current prompt authority before writing the approval file.
+  aigenAuthority.assertStageFresh(packageDir, 'image_prompts');
   const selectedPath = path.join(packageDir, 'selected-images.json');
   const overwrotePrevious = fs.existsSync(selectedPath);
   const output = {
@@ -8744,6 +8805,7 @@ function writeSelectedImages(payload = {}, options = {}) {
   const tmpPath = `${selectedPath}.${process.pid}.${Date.now()}.tmp`;
   fs.writeFileSync(tmpPath, `${JSON.stringify(output, null, 2)}\n`, 'utf8');
   fs.renameSync(tmpPath, selectedPath);
+  aigenAuthority.recordStage(packageDir, 'selected_images');
   console.log(`[image-selector] ${id}: wrote ${selections.length} selections to ${selectedPath}`);
   return {
     ok: true,
@@ -8880,6 +8942,8 @@ function serializePrestoJob(job, running, now = Date.now()) {
     stdout_tail: tailOutput(job.stdout),
     stderr_tail: tailOutput(job.stderr),
     compute_receipt: job.compute_receipt || null,
+    authority_binding: job.authority_binding || null,
+    authority_binding_error: job.authority_binding_error || null,
   };
 }
 
@@ -8991,6 +9055,12 @@ function startPrestoPackageJob(payload = {}, options = {}) {
     profile: config.profile,
     comfyuiUrl: config.comfyuiUrl,
     computeReceipt: options.computeReceipt || null,
+    authorityIndexes: eligibility.eligible,
+    authorityVariant: eligibility.video_variant,
+    authoritySourceRevisions: aigenAuthority.captureSourceRevisions(
+      resolveAigenPackageDir(config.packageId, options).packageDir,
+      'videos',
+    ),
   }, payload, options);
 }
 
@@ -9045,6 +9115,8 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
     signal: null,
     stdout: '',
     stderr: '',
+    authority_binding: null,
+    authority_binding_error: null,
   };
   // Finalize + record the compute dispatch receipt (if this dispatch was
   // compute-gated). Dynamic provenance is stamped here: the job id, the spawn
@@ -9085,6 +9157,28 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
   child.on('close', (code, signal) => {
     job.exitCode = code;
     job.signal = signal || null;
+    if (code === 0 && config.lane !== 'super-focus' && Array.isArray(config.authorityIndexes) && config.authorityIndexes.length) {
+      try {
+        const { packageDir } = resolveAigenPackageDir(config.packageId, options);
+        aigenAuthority.recordVideoSlots(packageDir, {
+          variant: config.authorityVariant,
+          indexes: config.authorityIndexes,
+          expectedSourceRevisions: config.authoritySourceRevisions,
+        });
+        job.authority_binding = {
+          status: 'fresh',
+          variant: config.authorityVariant,
+          indexes: config.authorityIndexes,
+        };
+      } catch (error) {
+        // The render may have completed, but it is not safe production evidence
+        // unless its bytes can be bound to the exact dispatch authority.
+        job.authority_binding_error = {
+          code: error.code || 'VIDEO_AUTHORITY_BIND_FAILED',
+          message: error.message,
+        };
+      }
+    }
     job.completedAt = job.completedAt || new Date().toISOString();
   });
   return {
@@ -10121,6 +10215,11 @@ function evaluatePrestoSubmitEligibility(packageId, options = {}) {
       eligible: [], eligible_count: 0, occupied, skipped,
     };
   }
+  // Structural errors above retain their specific operator diagnosis.  Any
+  // package that would actually dispatch must additionally prove current,
+  // content-bound script → selection → I2V authority before the caller probes
+  // PRESTO or starts a process.
+  aigenAuthority.assertStageFresh(packageDir, 'i2v_prompts');
   return { ok: true, code: 'ELIGIBLE', project_id: id, profile, video_variant: variant, eligible, eligible_count: eligible.length, occupied, skipped };
 }
 
@@ -10461,6 +10560,8 @@ function startFluxPackageJob(payload = {}, options = {}) {
   // spawn — never as a per-row failure after it. Ordering matters: hosts
   // without the CLI (e.g. CI) still report input errors as input errors.
   const config = validateFluxSubmitPayload(payload, options);
+  const { packageDir } = resolveAigenPackageDir(config.packageId, options);
+  aigenAuthority.assertStageFresh(packageDir, 'image_prompts');
   if (!comfyCliResolvable(options)) throw comfyCliBlockedError();
   return launchFluxHandoffJob({
     fluxScript: config.fluxScript,
@@ -15617,7 +15718,13 @@ function createServer(options = {}) {
         .then((payload) => {
           validateLocalWriteRequest(req, payload);
           const resolved = resolveAigenPackageDir(payload.id || payload.package_id || payload.package || '', { root: serverOptions.root || ROOT });
+          // Refuse before changing the script if existing authority evidence is
+          // corrupt; never overwrite or silently normalize a damaged ledger.
+          aigenAuthority.readAuthorityLedger(resolved.packageDir);
           const approved = projectScript.approveFinal(resolved.packageDir, payload.text, Boolean(payload.confirm_replace));
+          aigenAuthority.invalidateFrom(resolved.packageDir, 'script', {
+            reason: 'The approved final script changed; every downstream AIGEN artifact requires explicit regeneration or re-approval.',
+          });
           const state = resolveProjectState(resolved.packageDir);
           const next = chooseNextTask(state);
           sendJSON(res, 200, Object.assign({ project_id: resolved.packageId }, approved, {

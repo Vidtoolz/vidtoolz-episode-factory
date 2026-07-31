@@ -189,7 +189,7 @@ test("shared nav accessibility: active link gets aria-current, nav landmark is l
 
 // ── Backward compatibility ──────────────────────────────────────────────────
 
-test("backward compat: a media-rich existing-style package still resolves", () => {
+test("backward compat: a media-rich legacy package remains discoverable but cannot bypass unbound authority", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "compat-"));
   const pkg = path.join(root, "vidtoolz-existing");
   fs.mkdirSync(path.join(pkg, "images", "flux-local"), { recursive: true });
@@ -203,6 +203,8 @@ test("backward compat: a media-rich existing-style package still resolves", () =
   fs.mkdirSync(path.join(pkg, "resolve-handoff"), { recursive: true });
   fs.writeFileSync(path.join(pkg, "resolve-handoff", "media-manifest.json"), JSON.stringify({ clips: [] }));
   const state = resolveProjectState(pkg);
-  assert.equal(state.stage, "resolve_handoff");
-  assert.equal(chooseNextTask(state).id, "edit_in_resolve");
+  assert.equal(state.stage, "image_review");
+  assert.equal(state.authority.status, "unbound");
+  assert.equal(state.authority.code, "AUTHORITY_LEDGER_MISSING");
+  assert.equal(chooseNextTask(state).blocked, true);
 });

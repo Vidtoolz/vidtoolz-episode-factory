@@ -13,6 +13,7 @@ const pip = require("../project-i2v-prompts.js");
 const { resolveProjectState } = require("../project-state-resolver.js");
 const { chooseNextTask } = require("../next-task-engine.js");
 const { resolveAction } = require("../project-action-registry.js");
+const { bindI2vPrompts, bindSelections } = require("./aigen-authority-test-helper.js");
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -53,13 +54,26 @@ function createPackage(opts = {}) {
   if (opts.script !== false) fs.writeFileSync(path.join(pkg, "script", "script-final.md"), "# Final\n" + "x".repeat(160));
   if (opts.selected !== false) {
     const n = opts.selected || 3;
-    fs.writeFileSync(path.join(pkg, "selected-images.json"), JSON.stringify({ version: 1, selections: makeSelections(n) }));
+    const selections = makeSelections(n);
+    fs.writeFileSync(path.join(pkg, "selected-images.json"), JSON.stringify({ version: 1, selections }));
+    fs.writeFileSync(path.join(pkg, "image-prompts.json"), JSON.stringify({
+      image_prompts: selections.map((item) => ({ index: item.prompt_index, prompt: item.prompt })),
+    }));
+    for (const item of selections) {
+      const target = path.join(pkg, item.selected_path);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, `image-${item.prompt_index}`, "utf8");
+    }
   }
   if (opts.i2v) {
     fs.writeFileSync(path.join(pkg, "video-prompts.json"), JSON.stringify({
       version: 1, prompt_type: "image_to_video",
       prompts: Array.from({ length: opts.i2v }, (_, i) => ({ prompt_index: i + 1, prompt: `motion ${i + 1}` })),
     }));
+  }
+  if (opts.script !== false && opts.selected !== false) {
+    if (opts.i2v) bindI2vPrompts(pkg);
+    else bindSelections(pkg);
   }
   return { root, aigenRoot, scriptPackages, packageId, pkg };
 }
@@ -325,6 +339,7 @@ test("i2v resolver: selected>0 / i2v=0 -> i2v_prompts; full coverage -> video_ge
   assert.equal(chooseNextTask(state).id, "generate_i2v_prompts");
 
   fs.writeFileSync(path.join(fx.pkg, "video-prompts.json"), JSON.stringify({ prompts: Array.from({ length: 5 }, (_, i) => ({ prompt_index: i + 1, prompt: "m" })) }));
+  require("../aigen-authority-chain.js").recordStage(fx.pkg, "i2v_prompts");
   state = resolveProjectState(fx.pkg);
   assert.equal(state.counts.i2v_prompts, 5);
   assert.equal(state.stage, "video_generation");

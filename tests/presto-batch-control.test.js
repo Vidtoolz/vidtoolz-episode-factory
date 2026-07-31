@@ -9,6 +9,7 @@ const {
   packageEngineServer,
   test,
 } = require("./_helpers.js");
+const { bindI2vPrompts } = require("./aigen-authority-test-helper.js");
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -43,6 +44,7 @@ function createPrestoFixture(options = {}) {
       prompt_type: "image_to_video",
       prompts: [{ prompt_index: 6, prompt: "slow push-in on the subject" }],
     });
+    bindI2vPrompts(packageDir);
   }
   // Package-facing staged MP4 for selection 6: package-scoped completion source.
   // (Skipped for eligible fixtures so the target slot is empty and submittable.)

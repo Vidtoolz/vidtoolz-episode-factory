@@ -14,6 +14,7 @@ require("./topic-scout.test.js");
 require("./submitted-topics.test.js");
 require("./published-videos.test.js");
 require("./aigen-production-pipeline.test.js");
+require("./aigen-authority-chain.test.js");
 require("./aigen-resolve-assembly.test.js");
 require("./presto-batch-control.test.js");
 require("./image-selector.test.js");

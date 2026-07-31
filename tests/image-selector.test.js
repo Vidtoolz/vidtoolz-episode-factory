@@ -7,6 +7,7 @@ const {
   packageEngineServer,
   test,
 } = require("./_helpers.js");
+const { bindImagePrompts, bindSelections } = require("./aigen-authority-test-helper.js");
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -32,6 +33,7 @@ function createImageSelectorFixture(options = {}) {
       { index: 7, prompt: "Prompt seven" },
     ],
   });
+  bindImagePrompts(packageDir);
   if (options.selected) {
     writeJson(path.join(packageDir, "selected-images.json"), {
       version: 1,
@@ -41,6 +43,7 @@ function createImageSelectorFixture(options = {}) {
         { prompt_index: 7, selected_path: "images/flux-local/flux-007.png" },
       ],
     });
+    bindSelections(packageDir);
   }
   return { root, aigenRoot, packageId, packageDir, fluxDir };
 }

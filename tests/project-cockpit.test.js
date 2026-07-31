@@ -19,6 +19,7 @@ const { resolveProjectState, STAGES } = require("../project-state-resolver.js");
 const { chooseNextTask } = require("../next-task-engine.js");
 const { REGISTRY, resolveAction } = require("../project-action-registry.js");
 const { listProjects, summarizeProject } = require("../project-discovery.js");
+const aigenAuthority = require("../aigen-authority-chain.js");
 
 // Build a temp package whose files represent a given pipeline position.
 function makePkg(spec = {}) {
@@ -35,12 +36,35 @@ function makePkg(spec = {}) {
   if (spec.imagePrompts) w("image-prompts.json", JSON.stringify({ image_prompts: Array.from({ length: spec.imagePrompts }, (_, i) => ({ index: i + 1, prompt: "p" })) }));
   if (spec.images) {
     w("flux-generation-manifest.json", JSON.stringify({ workflow: "flux-gguf-1080x1920", items: Array.from({ length: spec.images }, (_, i) => ({ prompt_index: i + 1, status: "complete", output_path: `images/flux-local/flux-00${i + 1}.png` })) }));
+    for (let i = 1; i <= spec.images; i++) w(`images/flux-local/flux-00${i}.png`, `IMG-${i}`);
   }
   if (spec.selected) w("selected-images.json", JSON.stringify({ selections: Array.from({ length: spec.selected }, (_, i) => ({ prompt_index: i + 1, selected_path: `images/flux-local/flux-00${i + 1}.png` })) }));
   if (spec.i2v) w("video-prompts.json", JSON.stringify({ prompts: Array.from({ length: spec.i2v }, (_, i) => ({ prompt_index: i + 1, prompt: "motion" })) }));
   if (spec.videos) for (let i = 1; i <= spec.videos; i++) w(`videos/mp4/00${i}.mp4`, "VID");
-  if (spec.handoff) w("resolve-handoff/media-manifest.json", JSON.stringify({ clips: [] }));
+  if (spec.handoff) {
+    w("resolve-handoff/media-manifest.json", JSON.stringify({
+      clips: Array.from({ length: spec.videos || 0 }, (_, i) => ({
+        prompt_index: i + 1,
+        staged_video_relative_path: `videos/mp4/00${i + 1}.mp4`,
+      })),
+    }));
+  }
   if (spec.status) w("project-status.json", JSON.stringify({ status: spec.status }));
+  if (spec.script && spec.imagePrompts) aigenAuthority.recordStage(pkg, "image_prompts");
+  if (spec.selected) aigenAuthority.recordStage(pkg, "selected_images");
+  if (spec.i2v) aigenAuthority.recordStage(pkg, "i2v_prompts");
+  if (spec.videos && spec.i2v) {
+    aigenAuthority.recordVideoSlots(pkg, {
+      variant: "mp4",
+      indexes: Array.from({ length: spec.videos }, (_, i) => i + 1),
+    });
+  }
+  if (spec.handoff && spec.videos && spec.i2v) {
+    aigenAuthority.recordStage(pkg, "resolve_handoff", {
+      variant: "mp4",
+      indexes: Array.from({ length: spec.videos }, (_, i) => i + 1),
+    });
+  }
   return { root, pkg };
 }
 
@@ -92,9 +116,10 @@ test("cockpit: alternate import action offered when images/videos missing", () =
 });
 
 test("cockpit: data-gap warning when later artifacts exist but metadata missing", () => {
-  // handoff + videos but no selected-package.json/manifest -> warning, still edit_in_resolve.
+  // Later physical files cannot bypass a missing I2V authority record.
   const { state, task } = nextOf({ script: true, imagePrompts: 5, images: 5, selected: 5, videos: 5, handoff: true });
-  assert.equal(task.id, "edit_in_resolve");
+  assert.equal(task.id, "submit_video_generation");
+  assert.equal(task.blocked, true);
   assert.ok(state.warnings.some((w) => /metadata/i.test(w)), "metadata gap warned");
 });
 
@@ -260,7 +285,8 @@ test("resolver: exposes the handoff's recorded video variant (null for legacy ma
   const hqState = resolveProjectState(hq.pkg);
   assert.equal(hqState.has_resolve_handoff, true);
   assert.equal(hqState.handoff_video_variant, "mp4-hq-720p");
-  assert.equal(hqState.stage, "resolve_handoff");
+  assert.equal(hqState.stage, "video_review");
+  assert.equal(hqState.authority.status, "unbound");
 });
 
 test("state resolver: script evidence respects the exact minimum-size boundary", () => {

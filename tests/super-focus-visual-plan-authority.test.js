@@ -494,7 +494,12 @@ test('dispatch: startFluxPackageJob pre-flights the CLI too (aigen lane)', () =>
   // the CLI pre-flight is what refuses (input errors stay 400s; the lane gate
   // fires only for otherwise-dispatchable requests).
   const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-aigen-cli-gate-'));
-  fs.mkdirSync(path.join(scriptPackages, 'pkg-x'), { recursive: true });
+  const packageDir = path.join(scriptPackages, 'pkg-x');
+  fs.mkdirSync(packageDir, { recursive: true });
+  fs.writeFileSync(path.join(packageDir, 'image-prompts.json'), JSON.stringify({
+    image_prompts: [{ index: 1, prompt: 'A valid authority-bound image prompt.' }],
+  }));
+  require('./aigen-authority-test-helper.js').bindImagePrompts(packageDir);
   try {
     assert.throws(
       () => packageEngineServer.startFluxPackageJob({ package_id: 'pkg-x' }, {

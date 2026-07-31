@@ -8,6 +8,7 @@
 // stubbed and all state lives in temp dirs.
 const { EventEmitter } = require("node:events");
 const { assert, fs, http, os, path, packageEngineServer, test } = require("./_helpers.js");
+const { bindI2vPrompts } = require("./aigen-authority-test-helper.js");
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -49,6 +50,13 @@ function makePkg(opts = {}) {
     fs.mkdirSync(vdir, { recursive: true });
     for (const i of indexes) fs.writeFileSync(path.join(vdir, `${String(i).padStart(3, "0")}.mp4`), "mp4", "utf8");
   }
+  const sourceFilesPresent = opts.selectedFile !== null
+    && !opts.noImages
+    && selections.every((selection) => {
+      const rel = String(selection.selected_path || "");
+      return rel && !rel.includes("..") && fs.existsSync(path.join(dir, rel));
+    });
+  if (!opts.noPrompts && sourceFilesPresent) bindI2vPrompts(dir);
   return { root, scriptPackages, id, dir };
 }
 
@@ -153,7 +161,7 @@ test("eligibility: an occupied slot in a DIFFERENT profile variant does not bloc
   fs.rmSync(fx.root, { recursive: true, force: true });
 });
 
-test("eligibility: mixed batch reports eligible + occupied + skipped accurately", () => {
+test("eligibility: a selected-image byte disappearance blocks the whole mixed batch as stale authority", () => {
   const fx = makePkg({
     selections: [
       { prompt_index: 1, selected_path: "images/flux-local/flux-001.png" }, // eligible
@@ -169,11 +177,10 @@ test("eligibility: mixed batch reports eligible + occupied + skipped accurately"
   });
   // Delete flux-003.png to make row 3 image-missing.
   fs.rmSync(path.join(fx.dir, "images", "flux-local", "flux-003.png"), { force: true });
-  const r = packageEngineServer.evaluatePrestoSubmitEligibility(fx.id, { scriptPackages: fx.scriptPackages });
-  assert.equal(r.ok, true);
-  assert.deepEqual(r.eligible, [1]);
-  assert.ok(r.occupied.some((o) => o.index === 2));
-  assert.ok(r.skipped.some((s) => s.index === 3 && s.reason === "SOURCE_IMAGE_MISSING"));
+  assert.throws(
+    () => packageEngineServer.evaluatePrestoSubmitEligibility(fx.id, { scriptPackages: fx.scriptPackages }),
+    (error) => error.statusCode === 409 && /authority/i.test(error.message),
+  );
   fs.rmSync(fx.root, { recursive: true, force: true });
 });
 

@@ -9,6 +9,7 @@ const {
   packageEngineServer,
   test,
 } = require("./_helpers.js");
+const { bindImagePrompts } = require("./aigen-authority-test-helper.js");
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -30,6 +31,7 @@ function createFluxFixture(options = {}) {
       { index: 2, prompt: "Prompt two" },
     ],
   });
+  bindImagePrompts(packageDir);
   if (!options.missingScript) {
     fs.writeFileSync(
       fluxScript,

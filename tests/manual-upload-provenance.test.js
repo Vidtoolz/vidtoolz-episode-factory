@@ -8,6 +8,7 @@
 const { assert, fs, os, path, packageEngineServer, test } = require("./_helpers.js");
 const idx = require("../package-media-index.js");
 const audit = require("../scripts/manual-upload-provenance-audit.js");
+const { bindImagePrompts } = require("./aigen-authority-test-helper.js");
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 function png(tag) { return Buffer.concat([PNG, Buffer.from(String(tag))]).toString("base64"); }
@@ -97,6 +98,10 @@ test("storage: a legacy manual upload under flux-local/ remains readable + selec
   fs.mkdirSync(path.join(dir, "images", "flux-local"), { recursive: true });
   fs.writeFileSync(path.join(dir, "images", "flux-local", "flux-006.png"), PNG);
   writeJson(path.join(dir, "external-media-manifest.json"), { version: 1, images: [{ path: "images/flux-local/flux-006.png", generation_mode: "manual_external", generation_provider: "gpt-manual" }] });
+  writeJson(path.join(dir, "image-prompts.json"), {
+    image_prompts: [{ index: 6, prompt: "Legacy manual image approved for slot 6." }],
+  });
+  bindImagePrompts(dir);
   const listed = packageEngineServer.listFluxImages("pkg-legacy-sel", { scriptPackages });
   const row = listed.images.find((i) => i.index === 6);
   assert.ok(row, "legacy image still listed");

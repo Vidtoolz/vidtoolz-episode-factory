@@ -7,6 +7,11 @@ const {
   packageEngineServer,
   test,
 } = require("./_helpers.js");
+const authority = require("../aigen-authority-chain.js");
+const {
+  bindI2vPrompts,
+  bindSelections,
+} = require("./aigen-authority-test-helper.js");
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -43,6 +48,7 @@ function createAigenFixture() {
     ],
   });
   writeJson(path.join(packageDir, "flux-generation-manifest.json"), { items: [] });
+  bindSelections(packageDir);
   fs.mkdirSync(wanLane, { recursive: true });
   fs.writeFileSync(
     path.join(wanLane, "completed.txt"),
@@ -125,6 +131,7 @@ function createScopingFixture() {
     image_prompts: indices.map((index) => ({ index, prompt: `prompt ${index}` })),
   });
   writeJson(path.join(packageDir, "flux-generation-manifest.json"), { items: [] });
+  bindSelections(packageDir);
   // Global Wan lane completed labels from unrelated runs/packages.
   fs.writeFileSync(
     path.join(wanLane, "completed.txt"),
@@ -159,10 +166,12 @@ test("Wan counts are package-scoped to staged MP4s, ignoring colliding global la
     assert.equal(pkg.wan_pending, 3);
     assert.equal(pkg.wan_failed, 0);
     assert.equal(pkg.resolve_handoff_ready, false);
-    // No video-prompts.json yet → the I2V prompt gate holds the workflow back
-    // from a PRESTO submit (this is the fix for the reported bug).
+    // The two pre-existing clips cannot bypass the missing I2V-prompt
+    // authority. Their bytes remain countable evidence, but the operator action
+    // fails closed instead of suggesting another PRESTO submission.
     assert.equal(pkg.video_prompts_count, 0);
-    assert.equal(pkg.wan_next_action, "Generate I2V prompts first (PRESTO Ollama)");
+    assert.equal(pkg.authority_first_invalid_stage, "videos");
+    assert.match(pkg.wan_next_action, /^Blocked: videos authority is stale/);
   } finally {
     await close(server);
     if (previous.root === undefined) delete process.env.AIGEN_VIDNAS_ROOT; else process.env.AIGEN_VIDNAS_ROOT = previous.root;
@@ -222,6 +231,11 @@ test("Wan counts detect the HQ variant folder for an HQ-only package", async () 
   writeJson(path.join(fixture.packageDir, "video-prompts.json"), {
     prompts: [1, 2, 3, 4, 5].map((index) => ({ prompt_index: index, prompt: `motion ${index}` })),
   });
+  bindI2vPrompts(fixture.packageDir);
+  authority.recordVideoSlots(fixture.packageDir, {
+    variant: "mp4-hq-720p",
+    indexes: [1, 2, 3, 4, 5],
+  });
   const previous = {
     root: process.env.AIGEN_VIDNAS_ROOT,
     presto: process.env.AIGEN_PRESTO_BASE_URL,
@@ -260,6 +274,11 @@ test("I2V prompt gate opens once video-prompts.json covers every selection", asy
     version: 1,
     prompt_type: "image_to_video",
     prompts: [1, 2, 3, 4, 5].map((index) => ({ prompt_index: index, prompt: `motion prompt ${index}` })),
+  });
+  bindI2vPrompts(fixture.packageDir);
+  authority.recordVideoSlots(fixture.packageDir, {
+    variant: "mp4",
+    indexes: [2, 5],
   });
   const previous = { root: process.env.AIGEN_VIDNAS_ROOT, presto: process.env.AIGEN_PRESTO_BASE_URL, timeout: process.env.AIGEN_PRESTO_TIMEOUT_MS };
   process.env.AIGEN_VIDNAS_ROOT = fixture.aigenRoot;
@@ -514,6 +533,13 @@ test("global next_action prefers the ACTIVE project over stale packages with pen
     // The active project's truthful state wins; the stale package must not hijack it.
     assert.match(nextAction, /my-active-video/);
     assert.doesNotMatch(nextAction, /old-stale-package/);
+    const activeStatus = response.body.data.packages.find((item) => item.id === "my-active-video");
+    assert.equal(activeStatus.authority_status, "unbound");
+    assert.equal(activeStatus.authority_first_invalid_stage, "image_prompts");
+    assert.equal(activeStatus.authority_code, "AUTHORITY_LEDGER_MISSING");
+    assert.match(activeStatus.wan_next_action, /^Blocked: image_prompts authority is unbound/);
+    assert.match(nextAction, /^Blocked: image_prompts authority is unbound/);
+    assert.doesNotMatch(nextAction, /Wan selections complete/);
 
     // Legacy behavior preserved: with NO active-status package, dormant pending
     // work still surfaces (explicitly labeled).

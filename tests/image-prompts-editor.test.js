@@ -7,6 +7,7 @@ const {
   packageEngineServer,
   test,
 } = require("./_helpers.js");
+const { ensureFinalScript } = require("./aigen-authority-test-helper.js");
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -19,6 +20,7 @@ function createPromptFixture(options = {}) {
   const packageId = options.packageId || "vidtoolz-youtube-ideas-20260611";
   const packageDir = path.join(aigenRoot, "script-packages", packageId);
   fs.mkdirSync(packageDir, { recursive: true });
+  ensureFinalScript(packageDir);
   if (!options.missingPrompts) {
     writeJson(path.join(packageDir, "image-prompts.json"), {
       image_prompts: [

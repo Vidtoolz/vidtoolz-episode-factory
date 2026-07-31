@@ -13,6 +13,7 @@ const {
   writeTestFile,
   test,
 } = require("./_helpers.js");
+const { bindImagePrompts, bindSelections } = require("./aigen-authority-test-helper.js");
 const { Readable } = require("node:stream");
 
 const WorkflowPath = require("../workflow-path.js");
@@ -295,6 +296,9 @@ test("saveI2vPrompts maps prompts onto selected-images prompt_index and writes v
   fs.writeFileSync(path.join(dir, "selected-images.json"), JSON.stringify({
     version: 1, selections: [{ prompt_index: 6, selected_path: "a.png" }, { prompt_index: 8, selected_path: "b.png" }],
   }), "utf8");
+  fs.writeFileSync(path.join(dir, "a.png"), "image-a", "utf8");
+  fs.writeFileSync(path.join(dir, "b.png"), "image-b", "utf8");
+  bindSelections(dir);
   const res = packageEngineServer.saveI2vPrompts(
     { package_id: "pkg-a", prompts: [{ prompt: "zoom in" }, { prompt: "pan left" }] }, { scriptPackages });
   assert.equal(res.count, 2);
@@ -304,19 +308,20 @@ test("saveI2vPrompts maps prompts onto selected-images prompt_index and writes v
   assert.equal(saved.prompts[0].prompt, "zoom in");
 });
 
-test("saveI2vPrompts falls back to positional index when selected-images prompt_index is non-integer", () => {
+test("saveI2vPrompts rejects a malformed selected-image slot identity instead of normalizing it", () => {
   const scriptPackages = fs.mkdtempSync(path.join(os.tmpdir(), "i2v-nan-"));
   const dir = path.join(scriptPackages, "pkg-nan");
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "selected-images.json"), JSON.stringify({
     version: 1, selections: [{ prompt_index: "abc", selected_path: "a.png" }, { prompt_index: 8, selected_path: "b.png" }],
   }), "utf8");
-  const res = packageEngineServer.saveI2vPrompts(
-    { package_id: "pkg-nan", prompts: [{ prompt: "zoom in" }, { prompt: "pan left" }] }, { scriptPackages });
-  const saved = JSON.parse(fs.readFileSync(path.join(dir, "video-prompts.json"), "utf8"));
-  assert.equal(saved.prompts[0].prompt_index, 1); // fell back from "abc" → positional 1
-  assert.equal(saved.prompts[1].prompt_index, 8);
-  assert.ok(saved.prompts.every((p) => Number.isInteger(p.prompt_index)), "no NaN prompt_index");
+  bindImagePrompts(dir);
+  assert.throws(
+    () => packageEngineServer.saveI2vPrompts(
+      { package_id: "pkg-nan", prompts: [{ prompt: "zoom in" }, { prompt: "pan left" }] }, { scriptPackages }),
+    /authority|slot identity/i,
+  );
+  assert.equal(fs.existsSync(path.join(dir, "video-prompts.json")), false);
 });
 
 test("shorts i2v-prompts API rejects POST without nonce", async () => {
@@ -423,6 +428,10 @@ test("uploadAigenImage records manual_upload provenance and selection carries it
   assert.equal(sidecar.images[0].path, "images/manual-upload/manual-002.png");
   assert.equal(sidecar.images[0].source_type, "manual_upload");
 
+  fs.writeFileSync(path.join(scriptPackages, "pkg-prov", "image-prompts.json"), JSON.stringify({
+    image_prompts: [{ index: 2, prompt: "manual shot prompt" }],
+  }));
+  bindImagePrompts(path.join(scriptPackages, "pkg-prov"));
   packageEngineServer.writeSelectedImages({ package_id: "pkg-prov", selected_indices: [2] }, { scriptPackages });
   const selected = JSON.parse(fs.readFileSync(path.join(scriptPackages, "pkg-prov", "selected-images.json"), "utf8"));
   assert.equal(selected.selections[0].source_type, "manual_upload");

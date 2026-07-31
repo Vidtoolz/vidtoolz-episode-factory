@@ -12,6 +12,7 @@ const {
   packageEngineServer,
   test,
 } = require("./_helpers.js");
+const { bindI2vPrompts } = require("./aigen-authority-test-helper.js");
 
 const {
   createServer,
@@ -165,7 +166,11 @@ function makeEligiblePkg() {
   const img = path.join(dir, "images/flux-local/flux-006.png");
   fs.mkdirSync(path.dirname(img), { recursive: true });
   fs.writeFileSync(img, "png", "utf8");
+  writeJson(path.join(dir, "image-prompts.json"), {
+    image_prompts: [{ index: 6, prompt: "Authority-bound source prompt." }],
+  });
   writeJson(path.join(dir, "video-prompts.json"), { version: 1, prompt_type: "image_to_video", prompts: [{ prompt_index: 6, prompt: "slow push-in" }] });
+  bindI2vPrompts(dir);
   return { root, scriptPackages, id };
 }
 function captureSpawn(captured) {

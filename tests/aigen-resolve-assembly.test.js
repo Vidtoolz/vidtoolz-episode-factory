@@ -7,6 +7,7 @@ const {
   packageEngineServer,
   test,
 } = require("./_helpers.js");
+const aigenAuthority = require("../aigen-authority-chain.js");
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -50,6 +51,24 @@ function createAigenFixture(options = {}) {
       { index: 8, prompt: "prompt 8" },
     ],
   });
+  fs.mkdirSync(path.join(packageDir, "script"), { recursive: true });
+  fs.writeFileSync(
+    path.join(packageDir, "script", "script-final.md"),
+    `# Final Script\n\n${"Approved authority fixture. ".repeat(10)}\n`,
+    "utf8"
+  );
+  writeJson(path.join(packageDir, "video-prompts.json"), {
+    prompts: [
+      { prompt_index: 6, prompt: "Slow push in with subtle environmental motion." },
+      { prompt_index: 8, prompt: "Gentle parallax with stable subject framing." },
+    ],
+  });
+  aigenAuthority.recordStage(packageDir, "image_prompts");
+  aigenAuthority.recordStage(packageDir, "selected_images");
+  aigenAuthority.recordStage(packageDir, "i2v_prompts");
+  if (!options.missingStagedMp4) {
+    aigenAuthority.recordVideoSlots(packageDir, { variant: "mp4", indexes: [6, 8] });
+  }
   fs.writeFileSync(
     path.join(wanLane, "completed.txt"),
     [
@@ -271,6 +290,7 @@ function stageVariant(fixture, variant, indexes) {
   for (const index of indexes) {
     fs.writeFileSync(path.join(dir, `${index.toString().padStart(3, "0")}.mp4`), "mp4", "utf8");
   }
+  aigenAuthority.recordVideoSlots(fixture.packageDir, { variant, indexes });
 }
 
 function readManifest(fixture) {
