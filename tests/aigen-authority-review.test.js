@@ -109,12 +109,16 @@ function cleanup(fx) {
 let decisionSequence = 0;
 function append(fx, decisionType, slotId, decision = 'approved', extra = {}) {
   decisionSequence += 1;
+  const expectedScriptHash = decisionType === 'script'
+    ? review.sha256(fs.readFileSync(path.join(fx.packageDir, 'script/script-final.md')))
+    : null;
   return review.appendDecision(fx.packageDir, fx.reviewDir, {
     package_id: fx.packageId,
     decision_type: decisionType,
     slot_id: slotId,
     decision,
     operator_identity: 'fixture-operator',
+    ...(expectedScriptHash ? { expected_artifact_sha256: expectedScriptHash } : {}),
     ...extra,
   }, {
     nowIso: `2026-07-31T09:${String(decisionSequence % 60).padStart(2, '0')}:00.000Z`,
@@ -211,6 +215,36 @@ test('retrospective review: script approval is explicit, hash-bound, and source-
     assert.equal(result.record.artifact.artifact_sha256, fx.payload.expected_script_sha256);
     assert.equal(result.record.source, 'retrospective_operator_review');
     assert.equal(result.view.decisions.script.authority_valid, true);
+  } finally { cleanup(fx); }
+});
+
+test('retrospective review: stale displayed script hash fails closed without appending a decision', () => {
+  const fx = fixture();
+  try {
+    const displayedHash = fx.payload.expected_script_sha256;
+    write(fx.packageDir, 'script/script-final.md', `${fx.script}\nChanged after display.\n`);
+    assert.throws(
+      () => append(fx, 'script', null, 'approved', { expected_artifact_sha256: displayedHash }),
+      (error) => error.code === 'AUTHORITY_REVIEW_ARTIFACT_STALE',
+    );
+    assert.equal(review.readLedger(fx.reviewDir, fx.packageId).records.length, 0);
+  } finally { cleanup(fx); }
+});
+
+test('retrospective review: script decisions require an explicit displayed artifact hash', () => {
+  const fx = fixture();
+  try {
+    assert.throws(
+      () => review.appendDecision(fx.packageDir, fx.reviewDir, {
+        package_id: fx.packageId,
+        decision_type: 'script',
+        slot_id: null,
+        decision: 'approved',
+        operator_identity: 'fixture-operator',
+      }),
+      (error) => error.code === 'AUTHORITY_REVIEW_EXPECTED_HASH_REQUIRED',
+    );
+    assert.equal(review.readLedger(fx.reviewDir, fx.packageId).records.length, 0);
   } finally { cleanup(fx); }
 });
 
@@ -544,6 +578,7 @@ test('retrospective review routes: GET and decision POST are review-only with no
         slot_id: null,
         decision: 'approved',
         operator_identity: 'route-test-operator',
+        expected_artifact_sha256: fx.payload.expected_script_sha256,
       },
       { 'x-vidtoolz-local-write-nonce': nonce },
     );
@@ -558,11 +593,51 @@ test('retrospective review routes: GET and decision POST are review-only with no
   }
 });
 
+test('retrospective review route: stale displayed script hash returns conflict and appends nothing', async () => {
+  const fx = fixture({ slots: LEGACY_SLOTS });
+  const server = serverModule.createServer({
+    aigenRoot: fx.aigenRoot,
+    scriptPackages: fx.scriptPackages,
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const get = await request(server, 'GET', `${serverModule.AIGEN_AUTHORITY_REVIEW_API}?package=${fx.packageId}`);
+    assert.equal(get.status, 200);
+    const displayedHash = get.body.data.script.sha256;
+    write(fx.packageDir, 'script/script-final.md', `${fx.script}\nChanged after browser load.\n`);
+    const post = await request(
+      server,
+      'POST',
+      serverModule.AIGEN_AUTHORITY_REVIEW_DECISION_API,
+      {
+        package_id: fx.packageId,
+        decision_type: 'script',
+        slot_id: null,
+        decision: 'approved',
+        operator_identity: 'route-test-operator',
+        expected_artifact_sha256: displayedHash,
+      },
+      { 'x-vidtoolz-local-write-nonce': get.body.data.localWriteNonce },
+    );
+    assert.equal(post.status, 409);
+    assert.equal(post.body.code, 'AUTHORITY_REVIEW_ARTIFACT_STALE');
+    assert.equal(review.readLedger(fx.reviewDir, fx.packageId).records.length, 0);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    cleanup(fx);
+  }
+});
+
 test('retrospective review UI: exposes exact artifacts, separate decisions, warnings, and no automatic approval or generation action', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'aigen-authority-review.html'), 'utf8');
   assert.match(html, /Retrospective Authority Reconstruction/);
   assert.match(html, /Operator identity/);
   assert.match(html, /Current final script/);
+  assert.match(html, /Optional decision note/);
+  assert.match(html, /Approve current script/);
+  assert.match(html, /Reject current script/);
+  assert.match(html, /Require revision/);
+  assert.match(html, /expected_artifact_sha256\s*=\s*view\.script\.sha256/);
   assert.match(html, /data-outcome="approved"/);
   assert.match(html, /image_prompt.*selected_image.*i2v_prompt.*clip/s);
   assert.match(html, /Slot 21 source normalization/);

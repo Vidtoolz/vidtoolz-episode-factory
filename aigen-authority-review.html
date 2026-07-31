@@ -92,6 +92,9 @@
       <p class="warning">No historical hash-bound script approval exists. Approving this script does not approve downstream visual artifacts.</p>
       <pre id="scriptText" class="script"></pre>
       <div id="scriptState"></div>
+      <label>Optional decision note
+        <textarea id="scriptNote" placeholder="Optional: explain why you approved, rejected, or require revision"></textarea>
+      </label>
       <div id="scriptActions" class="decisions"></div>
     </section>
 
@@ -135,14 +138,22 @@
     return identity;
   }
   async function decide(type, slot, decision, state, extra = {}) {
-    const label = `${decision.replace(/_/g, ' ')} ${type.replace(/_/g, ' ')}${slot == null ? '' : ` for slot ${slot}`}`;
+    const identity = operator();
+    const scriptLabels = {
+      approved: 'Approve current script',
+      rejected: 'Reject current script',
+      requires_rework: 'Require revision',
+    };
+    const label = type === 'script'
+      ? scriptLabels[decision]
+      : `${decision.replace(/_/g, ' ')} ${type.replace(/_/g, ' ')}${slot == null ? '' : ` for slot ${slot}`}`;
     if (!window.confirm(`Record this retrospective decision now?\n\n${label}\n\nThis is append-only and bound to the exact displayed hashes.`)) return;
     const body = {
       package_id: view.package_id,
       decision_type: type,
       slot_id: slot,
       decision,
-      operator_identity: operator(),
+      operator_identity: identity,
       previous_decision_id: previousFor(state),
       ...extra,
     };
@@ -158,10 +169,11 @@
   }
   function actionButtons(type, slot, state, options = {}) {
     const approvalsAllowed = options.approvalsAllowed !== false;
+    const labels = options.labels || {};
     const buttons = [];
-    if (approvalsAllowed) buttons.push(`<button class="approve" data-outcome="approved">Approve</button>`);
-    buttons.push('<button class="reject" data-outcome="rejected">Reject</button>');
-    buttons.push('<button class="rework" data-outcome="requires_rework">Require rework</button>');
+    if (approvalsAllowed) buttons.push(`<button class="approve" data-outcome="approved">${esc(labels.approved || 'Approve')}</button>`);
+    buttons.push(`<button class="reject" data-outcome="rejected">${esc(labels.rejected || 'Reject')}</button>`);
+    buttons.push(`<button class="rework" data-outcome="requires_rework">${esc(labels.requires_rework || 'Require rework')}</button>`);
     return `<div class="decisions" data-actions="${esc(type)}" data-slot="${slot == null ? '' : slot}">${buttons.join('')}</div>`;
   }
   function bindActions(container, type, slot, state, options = {}) {
@@ -169,6 +181,10 @@
       button.addEventListener('click', async () => {
         try {
           let extra = {};
+          if (type === 'script') {
+            extra.expected_artifact_sha256 = view.script.sha256;
+            extra.operator_note = byId('scriptNote').value.trim();
+          }
           if (type === 'assignment') {
             const root = button.closest('.slot');
             const start = Number(root.querySelector('[data-field=start]').value);
@@ -210,7 +226,13 @@
       `<br>Identical copies: ${view.script.identical_copies.length ? view.script.identical_copies.map(esc).join(', ') : 'none proven'}`;
     byId('scriptText').textContent = view.script.text;
     byId('scriptState').innerHTML = stateHtml(view.decisions.script);
-    byId('scriptActions').innerHTML = actionButtons('script', null, view.decisions.script);
+    byId('scriptActions').innerHTML = actionButtons('script', null, view.decisions.script, {
+      labels: {
+        approved: 'Approve current script',
+        rejected: 'Reject current script',
+        requires_rework: 'Require revision',
+      },
+    });
     bindActions(byId('scriptActions'), 'script', null, view.decisions.script);
   }
   function stageCard(title, type, slot, artifact, state, content, approvalsAllowed = true) {

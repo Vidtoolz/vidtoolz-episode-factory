@@ -1053,6 +1053,23 @@ function appendDecision(packageDir, reviewDir, payload = {}, options = {}) {
     assignmentOverride = assignmentFromPayload(current.script, slot, payload.assignment);
   }
   const raw = rawArtifactForDecision(type, row, current, assignmentOverride);
+  if (type === 'script') {
+    const expectedHash = String(payload.expected_artifact_sha256 || '');
+    if (!HASH_RE.test(expectedHash)) {
+      throw reviewError(
+        'Script decisions require the exact displayed script hash.',
+        'AUTHORITY_REVIEW_EXPECTED_HASH_REQUIRED',
+        400,
+      );
+    }
+    if (expectedHash !== raw.artifact.artifact_sha256) {
+      throw reviewError(
+        'The final script changed after it was displayed. Reload and review the current script before deciding.',
+        'AUTHORITY_REVIEW_ARTIFACT_STALE',
+        409,
+      );
+    }
+  }
   const prerequisite = prerequisiteStateFor(type, slot, states);
   if (outcome === 'approved' && prerequisite && !prerequisite.authority_valid) {
     throw reviewError(

@@ -102,5 +102,7 @@ http://127.0.0.1:8010/aigen-authority-review.html?package=<package-id>
 ```
 
 Enter a real operator identity. Nothing is preselected. Each decision requires
-an explicit button press and confirmation. Begin with the current final script,
-then review assignments and downstream stages in the displayed order.
+an explicit button press and confirmation. Script decisions also carry the
+exact hash displayed in the browser; the server rejects the decision if the
+script changes before submission. Begin with the current final script, then
+review assignments and downstream stages in the displayed order.
