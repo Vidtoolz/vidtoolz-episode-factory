@@ -11,6 +11,9 @@ const INSTRUMENT_ROLES = ["pulse", "bass", "harmony", "melody", "texture", "impa
 const TARGET_PLATFORMS = ["youtube_shorts", "youtube_longform", "documentary_segment", "generic_video"];
 const CANDIDATE_STATUSES = ["planned", "midi_generated", "daw_built", "preview_rendered", "approved", "rejected"];
 const AI_PROVIDERS = ["manual", "openai", "anthropic"];
+const SUPPORTED_KEY_TONICS = ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
+const SUPPORTED_KEY_MODES = ["major", "minor", "dorian", "lydian", "mixolydian", "phrygian"];
+const SUPPORTED_TIME_SIGNATURES = ["2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "9/8", "12/8"];
 
 // ── Default palettes (abstract musical attributes only — never named artists) ──
 const DEFAULT_PALETTES = {
@@ -147,6 +150,14 @@ const DEFAULT_SETTINGS = {
 
 function isFiniteNumber(v) { return typeof v === "number" && Number.isFinite(v); }
 function isNonEmptyString(v) { return typeof v === "string" && v.trim().length > 0; }
+function parseSupportedKey(value) {
+  const match = /^([A-Ga-g])([#b]?)\s+(major|minor|dorian|lydian|mixolydian|phrygian)$/i.exec(String(value || "").trim());
+  if (!match) return null;
+  const tonic = match[1].toUpperCase() + match[2];
+  const mode = match[3].toLowerCase();
+  if (!SUPPORTED_KEY_TONICS.includes(tonic) || !SUPPORTED_KEY_MODES.includes(mode)) return null;
+  return { tonic, mode, label: `${tonic} ${mode}` };
+}
 
 function validateCue(cue, index = 0) {
   const errors = [];
@@ -161,8 +172,8 @@ function validateCue(cue, index = 0) {
   if (!Number.isInteger(cue.energy) || cue.energy < 1 || cue.energy > 5) errors.push(`${tag}: energy must be integer 1-5`);
   if (!Number.isInteger(cue.density) || cue.density < 1 || cue.density > 5) errors.push(`${tag}: density must be integer 1-5`);
   if (!isFiniteNumber(cue.tempo_bpm) || cue.tempo_bpm < 40 || cue.tempo_bpm > 220) errors.push(`${tag}: tempo_bpm must be 40-220`);
-  if (!isNonEmptyString(cue.key)) errors.push(`${tag}: key required (e.g. "D minor")`);
-  if (!/^\d+\/\d+$/.test(String(cue.time_signature || ""))) errors.push(`${tag}: time_signature must look like 4/4`);
+  if (!parseSupportedKey(cue.key)) errors.push(`${tag}: key must use a supported tonic and mode (e.g. "D minor")`);
+  if (!SUPPORTED_TIME_SIGNATURES.includes(cue.time_signature)) errors.push(`${tag}: time_signature must be one of ${SUPPORTED_TIME_SIGNATURES.join("|")}`);
   if (!Array.isArray(cue.hit_points)) errors.push(`${tag}: hit_points must be an array`);
   else cue.hit_points.forEach((h, i) => { if (!isFiniteNumber(h) || h < cue.start_seconds || h > cue.end_seconds) errors.push(`${tag}: hit_points[${i}] must be a number within the cue`); });
   if (typeof cue.dialogue_safe !== "boolean") errors.push(`${tag}: dialogue_safe must be boolean`);
@@ -201,7 +212,7 @@ function validateScoreProject(project) {
   if (!isNonEmptyString(project.project_id)) errors.push("project_id required");
   if (!isFiniteNumber(project.duration_seconds) || project.duration_seconds <= 0) errors.push("duration_seconds must be > 0");
   if (!isFiniteNumber(project.global_tempo_bpm) || project.global_tempo_bpm < 40 || project.global_tempo_bpm > 220) errors.push("global_tempo_bpm must be 40-220");
-  if (!isNonEmptyString(project.global_key)) errors.push("global_key required");
+  if (!parseSupportedKey(project.global_key)) errors.push("global_key must use a supported tonic and mode (e.g. D minor)");
   if (!DIALOGUE_DENSITIES.includes(project.dialogue_density)) errors.push(`dialogue_density must be ${DIALOGUE_DENSITIES.join("|")}`);
   if (!MUSIC_ROLES.includes(project.music_role)) errors.push(`music_role must be ${MUSIC_ROLES.join("|")}`);
   if (project.cues && project.cues.length) errors.push(...validateCueSheet({ cues: project.cues }, { duration_seconds: project.duration_seconds }));
@@ -282,9 +293,13 @@ module.exports = {
   TARGET_PLATFORMS,
   CANDIDATE_STATUSES,
   AI_PROVIDERS,
+  SUPPORTED_KEY_TONICS,
+  SUPPORTED_KEY_MODES,
+  SUPPORTED_TIME_SIGNATURES,
   DEFAULT_PALETTES,
   STARTER_INSTRUMENT_PROFILES,
   DEFAULT_SETTINGS,
+  parseSupportedKey,
   validateCue,
   validateCueSheet,
   validateScoreProject,

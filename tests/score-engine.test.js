@@ -62,6 +62,22 @@ test("score-engine schemas: valid cue sheet passes, broken cues are rejected wit
   assert.ok(errors.some((e) => e.includes("emotion")));
 });
 
+test("score-engine schemas: supported keys and time signatures are explicit and composer never substitutes", () => {
+  for (const key of ["C major", "F# minor", "Bb dorian", "Eb lydian", "A mixolydian", "C phrygian"]) {
+    assert.deepEqual(schemas.validateCue({ ...scoreCue("key", 0, 8), key }), [], key);
+  }
+  for (const key of ["banana", "H major", "C", "Cb major", "D harmonic minor", ""]) {
+    assert.ok(schemas.validateCue({ ...scoreCue("bad-key", 0, 8), key }).some((error) => /key/.test(error)), key || "empty");
+    assert.throws(() => composer.parseKey(key), /Unsupported musical key/);
+  }
+  for (const time_signature of ["2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "9/8", "12/8"]) {
+    assert.deepEqual(schemas.validateCue({ ...scoreCue("meter", 0, 8), time_signature }), [], time_signature);
+  }
+  for (const time_signature of ["4/3", "0/4", "4/0", "17/16", "common time", ""]) {
+    assert.ok(schemas.validateCue({ ...scoreCue("bad-meter", 0, 8), time_signature }).some((error) => /time_signature/.test(error)), time_signature || "empty");
+  }
+});
+
 test("score-engine schemas: settings validator refuses raw API keys in files", () => {
   assert.ok(schemas.validateSettings({ openai_api_key: "sk-123" }).length > 0);
   assert.deepEqual(schemas.validateSettings({ default_ai_provider: "manual", default_candidate_count: 3 }), []);

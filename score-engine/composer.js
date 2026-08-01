@@ -5,17 +5,19 @@
 "use strict";
 
 const { PPQ } = require("./midi-writer.js");
+const { parseSupportedKey, SUPPORTED_TIME_SIGNATURES } = require("./score-schemas.js");
 
 // Persisted provenance binds candidates to this explicit algorithm contract.
 // Any material change to note generation or its defaults must bump the version.
 const COMPOSER_CONTRACT = Object.freeze({
   schema_version: 1,
-  algorithm_version: "scorecraft-deterministic-composer-v1.1",
+  algorithm_version: "scorecraft-deterministic-composer-v1.2",
   ppq: PPQ,
   default_pulse_register: "low_mid",
   default_harmonic_drift: false,
   default_harmonic_drift_threshold_seconds: 35,
   lanes: ["pulse", "bass", "harmony", "texture", "melody", "impact"],
+  supported_time_signatures: SUPPORTED_TIME_SIGNATURES,
 });
 
 // ── seeded PRNG (mulberry32) ──
@@ -48,11 +50,9 @@ const MODES = {
 };
 
 function parseKey(keyText) {
-  const match = /^([A-G](?:#|b)?)\s+(major|minor|dorian|lydian|mixolydian|phrygian)$/i.exec(String(keyText || "").trim());
-  if (!match) return { tonic: 2, mode: "minor", intervals: MODES.minor, label: "D minor" };
-  const tonicName = match[1][0].toUpperCase() + match[1].slice(1);
-  const mode = match[2].toLowerCase();
-  return { tonic: PITCH_CLASSES[tonicName] ?? 2, mode, intervals: MODES[mode] || MODES.minor, label: `${tonicName} ${mode}` };
+  const parsed = parseSupportedKey(keyText);
+  if (!parsed) throw new Error(`Unsupported musical key: ${JSON.stringify(keyText)}. Correct the cue before composing.`);
+  return { tonic: PITCH_CLASSES[parsed.tonic], mode: parsed.mode, intervals: MODES[parsed.mode], label: parsed.label };
 }
 
 // Scale degree (0-based, any octave offset) to MIDI note around a center.
@@ -265,11 +265,14 @@ function compose(cueSheet, options = {}) {
 
   cues.forEach((cue, cueIndex) => {
     const key = parseKey(cue.key);
+    if (!Number.isFinite(cue.tempo_bpm) || cue.tempo_bpm < 40 || cue.tempo_bpm > 220) throw new Error(`Unsupported tempo_bpm for ${cue.cue_id || `cue ${cueIndex + 1}`}: ${cue.tempo_bpm}`);
+    if (!SUPPORTED_TIME_SIGNATURES.includes(cue.time_signature)) throw new Error(`Unsupported time_signature for ${cue.cue_id || `cue ${cueIndex + 1}`}: ${cue.time_signature}`);
     const eff = effectiveCueSettings(cue, options);
     const cueSeconds = cue.end_seconds - cue.start_seconds;
     const beatSeconds = 60 / cue.tempo_bpm;
     const beats = cueSeconds / beatSeconds;
-    const beatsPerBar = Number(String(cue.time_signature || "4/4").split("/")[0]) || 4;
+    const [meterNumerator, meterDenominator] = cue.time_signature.split("/").map(Number);
+    const beatsPerBar = meterNumerator * 4 / meterDenominator;
     const barCount = Math.max(1, Math.ceil(beats / beatsPerBar));
     const bars = [];
     for (let i = 0; i < barCount; i += 1) {
