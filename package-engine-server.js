@@ -16082,7 +16082,7 @@ function createServer(options = {}) {
         sendJSON(res, 200, {
           project, cue_sheet: state.cue_sheet, music_plan: musicPlan, candidates: state.candidates,
           approved, reaper_ready: state.reaper_ready, analysis: state.analysis, readiness,
-          daw_configuration: state.daw_configuration,
+          narration: state.narration, daw_configuration: state.daw_configuration,
         });
       }
       catch (error) { sendError(res, error.statusCode || 500, error.message, 'score-project-error'); }
