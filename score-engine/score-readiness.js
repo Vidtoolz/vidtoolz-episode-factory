@@ -84,6 +84,12 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
     if (!verified && !reasons.includes("production_mix_hash_mismatch")) reasons.push("verification_outdated");
   }
 
+  // Resolve delivery is downstream of production verification. A missing or
+  // stale Resolve copy must make resolve_ready false, but it must not revoke a
+  // current verification of the imported production bytes themselves. Keep
+  // the production-authority verdict before appending Resolve-only reasons.
+  const productionCurrent = reasons.length === 0;
+
   let resolveReady = false;
   const resolvePointer = readJson(path.join(productionRoot, "resolve", "current.json"));
   const expectedResolveDir = `production/resolve/${production.production_mix_id}`;
@@ -132,14 +138,13 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
   }
 
   const uniqueReasons = [...new Set(reasons)];
-  const current = uniqueReasons.length === 0;
   return {
-    state: !current ? "stale" : verified ? "verified" : "imported",
-    current,
-    verified: current && verified,
+    state: !productionCurrent ? "stale" : verified ? "verified" : "imported",
+    current: productionCurrent,
+    verified: productionCurrent && verified,
     reasons: uniqueReasons,
     production_mix_id: production.production_mix_id,
-    resolve_ready: current && verified && resolveReady,
+    resolve_ready: productionCurrent && verified && resolveReady,
   };
 }
 

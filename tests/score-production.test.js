@@ -125,6 +125,25 @@ test("score production: verification binds exact audio and upstream authority", 
   assert.equal(racedState.readiness.production.verified, false);
 });
 
+test("score production: a verified replacement remains current while the prior Resolve pointer is stale", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  lane.importProductionMix(project.project_id, { original_filename: "v1.wav", bytes: makeWav(3, 48000, 24, 0.1) }, { ...options, probeImpl: wavProbe });
+  lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  lane.prepareProductionResolvePackage(project.project_id, options);
+
+  const replacement = lane.importProductionMix(project.project_id, { original_filename: "v2.wav", bytes: makeWav(3, 48000, 24, 0.2) }, { ...options, probeImpl: wavProbe });
+  lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+
+  const state = lane.getProject(project.project_id, options);
+  assert.equal(state.readiness.production.production_mix_id, replacement.production_mix_id);
+  assert.equal(state.readiness.production.state, "verified");
+  assert.equal(state.readiness.production.current, true);
+  assert.equal(state.readiness.production.verified, true);
+  assert.equal(state.readiness.production.resolve_ready, false);
+  assert.ok(state.readiness.production.reasons.includes("resolve_copy_missing"));
+});
+
 test("score production: a generated REAPER handoff is approval-bound and corruption fails closed", () => {
   const { options } = tmpEnv();
   const project = approvedProject(options);
