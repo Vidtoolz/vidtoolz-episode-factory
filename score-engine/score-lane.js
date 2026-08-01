@@ -1238,7 +1238,8 @@ function verifyProductionMix(projectId, options = {}) {
   } finally {
     fs.rmSync(verificationBuildDir, { recursive: true, force: true });
   }
-  const latestApproval = requireCurrentSketchApproval(dir, readJson(path.join(dir, "score-project.json")), settings).approved;
+  const latestSettings = loadSettings(options);
+  const latestApproval = requireCurrentSketchApproval(dir, readJson(path.join(dir, "score-project.json")), latestSettings).approved;
   if (!sameApprovalBinding(approved, latestApproval)) throw httpError("The sketch approval changed during production verification; no verification was recorded.", 409);
   const verificationIdentity = provenanceLib.productionVerificationIdentity({
     productionMixSha256: postProbeHash,
@@ -1266,6 +1267,18 @@ function verifyProductionMix(projectId, options = {}) {
     || provenanceLib.sha256File(mixPath) !== postProbeHash) {
     try { fs.unlinkSync(verificationPath); } catch {}
     throw httpError("The production mix changed during verification; no verification was recorded.", 409);
+  }
+  try {
+    const publishedSettings = loadSettings(options);
+    const publishedApproval = requireCurrentSketchApproval(
+      dir, readJson(path.join(dir, "score-project.json")), publishedSettings,
+    ).approved;
+    if (!sameApprovalBinding(approved, publishedApproval)) {
+      throw httpError("The sketch approval or render contract changed during production verification; no verification was recorded.", 409);
+    }
+  } catch (error) {
+    try { fs.unlinkSync(verificationPath); } catch {}
+    throw error;
   }
   return result;
 }
@@ -1356,13 +1369,46 @@ function prepareProductionResolvePackage(projectId, options = {}) {
   if (provenanceLib.sha256File(mixPath) !== mixHash || !markersCurrent()) {
     throw httpError("Production source artifacts changed while preparing Resolve; the package was not made current.", 409);
   }
-  const latestApproval = requireCurrentSketchApproval(dir, readJson(path.join(dir, "score-project.json")), settings).approved;
+  const latestSettings = loadSettings(options);
+  const latestApproval = requireCurrentSketchApproval(dir, readJson(path.join(dir, "score-project.json")), latestSettings).approved;
   if (!sameApprovalBinding(approved, latestApproval)) throw httpError("The sketch approval changed while preparing Resolve; the package was not made current.", 409);
-  writeJsonAtomic(path.join(resolveRoot, "current.json"), {
+  const resolvePointerPath = path.join(resolveRoot, "current.json");
+  const previousResolvePointer = readJson(resolvePointerPath);
+  const publishedResolvePointer = {
     schema_version: PRODUCTION_SCHEMA_VERSION,
     production_mix_id: current.provenance.production_mix_id,
     relative_dir: relativeDir,
-  });
+  };
+  writeJsonAtomic(resolvePointerPath, publishedResolvePointer);
+  try {
+    const publishedProvenance = readJson(path.join(packageDir, "resolve-provenance.json"));
+    const publishedManifest = publishedProvenance && publishedProvenance.artifact_manifest;
+    const publishedManifestCheck = provenanceLib.verifyArtifactManifest(packageDir, publishedManifest);
+    if (!publishedProvenance || !publishedManifestCheck.valid
+      || publishedProvenance.source_production_mix_sha256 !== mixHash
+      || publishedProvenance.verification_identity !== verification.verification_identity
+      || publishedProvenance.approved_cue_markers_sha256 !== approvedMarkers.sha256
+      || publishedProvenance.artifact_manifest_hash !== provenanceLib.artifactManifestHash(publishedManifest)
+      || provenanceLib.sha256File(mixPath) !== mixHash || !markersCurrent()) {
+      throw httpError("Resolve package artifacts changed before pointer publication; the package was not made current.", 409);
+    }
+    const publishedSettings = loadSettings(options);
+    const publishedApproval = requireCurrentSketchApproval(
+      dir, readJson(path.join(dir, "score-project.json")), publishedSettings,
+    ).approved;
+    if (!sameApprovalBinding(approved, publishedApproval)) {
+      throw httpError("The sketch approval or render contract changed while preparing Resolve; the package was not made current.", 409);
+    }
+  } catch (error) {
+    const livePointer = readJson(resolvePointerPath);
+    if (livePointer && livePointer.schema_version === publishedResolvePointer.schema_version
+      && livePointer.production_mix_id === publishedResolvePointer.production_mix_id
+      && livePointer.relative_dir === publishedResolvePointer.relative_dir) {
+      if (previousResolvePointer) writeJsonAtomic(resolvePointerPath, previousResolvePointer);
+      else { try { fs.unlinkSync(resolvePointerPath); } catch {} }
+    }
+    throw error;
+  }
   return { production_mix_id: current.provenance.production_mix_id, relative_dir: relativeDir };
 }
 

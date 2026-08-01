@@ -224,6 +224,22 @@ test("score production: upstream mutation during verification publishes no verif
   assert.equal(fs.existsSync(path.join(state.dir, "production", "imports", imported.production_mix_id, "verification.json")), false);
 });
 
+test("score production: render-contract settings mutation during verification publishes no authority", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const imported = lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe });
+  assert.throws(() => lane.verifyProductionMix(project.project_id, {
+    ...options,
+    probeImpl: (file) => {
+      const result = wavProbe(file);
+      lane.saveSettings({ default_export_sample_rate: 44100 }, options);
+      return result;
+    },
+  }), /current sketch approval|render contract changed/i);
+  const state = lane.getProject(project.project_id, options);
+  assert.equal(fs.existsSync(path.join(state.dir, "production", "imports", imported.production_mix_id, "verification.json")), false);
+});
+
 test("score production: malformed persisted current pointers fail closed inside project storage", () => {
   const { options } = tmpEnv();
   const project = approvedProject(options);
@@ -308,6 +324,35 @@ test("score production: Resolve markers are bound to the approved marker bytes a
   }
   assert.equal(raced, true);
   assert.equal(lane.getProject(project.project_id, options).readiness.resolve_ready, false);
+});
+
+test("score production: Resolve destination corruption before pointer publication returns no trusted success", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const imported = lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe });
+  lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  const state = lane.getProject(project.project_id, options);
+  const destinationMix = path.join(state.dir, "production", "resolve", imported.production_mix_id, "mix.wav");
+  const originalWrite = fs.writeFileSync;
+  let raced = false;
+  fs.writeFileSync = function corruptBeforeResolvePointer(file, ...args) {
+    if (!raced && String(file).includes(`${path.sep}production${path.sep}resolve${path.sep}current.json.tmp-`)) {
+      raced = true;
+      fs.appendFileSync(destinationMix, "race-before-pointer");
+    }
+    return originalWrite.call(fs, file, ...args);
+  };
+  try {
+    assert.throws(
+      () => lane.prepareProductionResolvePackage(project.project_id, options),
+      /changed|failed provenance|not made current/i,
+    );
+  } finally {
+    fs.writeFileSync = originalWrite;
+  }
+  assert.equal(raced, true);
+  assert.equal(lane.getProject(project.project_id, options).readiness.resolve_ready, false);
+  assert.equal(fs.existsSync(path.join(state.dir, "production", "resolve", "current.json")), false);
 });
 
 test("score production API: nonce-gated base64 upload accepts bytes and never accepts a server path", async () => {
