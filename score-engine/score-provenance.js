@@ -289,6 +289,14 @@ function assessSketchApprovalAuthority({ project = {}, cues = [], musicPlan = nu
       reasons.push("approved_candidate_hash_mismatch");
     }
     const candidateDir = path.join(dir, "candidates", candidateId);
+    try {
+      if (!candidate.render_contract
+        || hashCanonical(candidate.render_contract) !== candidate.identity.render_contract_hash) {
+        reasons.push("render_contract_changed");
+      }
+    } catch {
+      reasons.push("render_contract_changed");
+    }
     const candidateManifest = verifyArtifactManifest(candidateDir, candidate.artifact_manifest);
     for (const failure of candidateManifest.failures) reasons.push(failure.reason);
     try {
@@ -301,6 +309,25 @@ function assessSketchApprovalAuthority({ project = {}, cues = [], musicPlan = nu
         reasons.push("approved_candidate_hash_mismatch");
       }
     } catch {
+      reasons.push("artifact_manifest_incomplete");
+    }
+
+    const handoffManifest = candidate.handoff_artifact_manifest;
+    const handoffIdentityHash = candidate.identity.handoff_artifact_manifest_hash;
+    const approvedHandoffHash = approved.identity.candidate_handoff_artifact_manifest_hash;
+    if (handoffManifest) {
+      const handoffCheck = verifyArtifactManifest(candidateDir, handoffManifest);
+      for (const failure of handoffCheck.failures) reasons.push(failure.reason);
+      try {
+        const liveHandoffHash = artifactManifestHash(handoffManifest);
+        if (liveHandoffHash !== handoffIdentityHash || liveHandoffHash !== approvedHandoffHash) {
+          reasons.push("approved_candidate_hash_mismatch");
+        }
+      } catch {
+        reasons.push("artifact_manifest_incomplete");
+      }
+    } else if (handoffIdentityHash || approvedHandoffHash
+      || fs.existsSync(path.join(candidateDir, "reaper", "project.rpp"))) {
       reasons.push("artifact_manifest_incomplete");
     }
   }

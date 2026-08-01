@@ -125,6 +125,40 @@ test("score production: verification binds exact audio and upstream authority", 
   assert.equal(racedState.readiness.production.verified, false);
 });
 
+test("score production: a generated REAPER handoff is approval-bound and corruption fails closed", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const built = lane.buildReaperHandoff(project.project_id, "candidate-001", options);
+  let state = lane.getProject(project.project_id, options);
+  assert.equal(state.readiness.sketch_approval_current, true);
+
+  const bytes = fs.readFileSync(built.rpp);
+  bytes[Math.min(100, bytes.length - 1)] ^= 1;
+  fs.writeFileSync(built.rpp, bytes);
+
+  state = lane.getProject(project.project_id, options);
+  assert.equal(state.readiness.sketch_approval_current, false);
+  assert.ok(state.readiness.approval_authority.reasons.includes("candidate_artifact_hash_mismatch"));
+  assert.throws(
+    () => lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe }),
+    /current sketch approval/,
+  );
+});
+
+test("score production: candidate render-contract metadata is checked against its identity", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const state = lane.getProject(project.project_id, options);
+  const candidatePath = path.join(state.dir, "candidates", "candidate-001", "candidate.json");
+  const candidate = JSON.parse(fs.readFileSync(candidatePath, "utf8"));
+  candidate.render_contract.target_duration_seconds -= 1;
+  fs.writeFileSync(candidatePath, JSON.stringify(candidate, null, 2) + "\n");
+
+  const changed = lane.getProject(project.project_id, options);
+  assert.equal(changed.readiness.sketch_approval_current, false);
+  assert.ok(changed.readiness.approval_authority.reasons.includes("render_contract_changed"));
+});
+
 test("score production: mutation during verification-record publication cannot return verified", () => {
   const { options } = tmpEnv();
   const project = approvedProject(options);

@@ -759,8 +759,38 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
     projectName: project.name, cues, musicPlan, settings, templates, templateWarnings: warnings,
   }));
 
+  // The handoff is derived from an approved candidate, but it is still an
+  // operator-facing production artifact. Bind every generated handoff file so
+  // later byte corruption cannot coexist with a current sketch approval or a
+  // trusted production return. This supplemental manifest deliberately does
+  // not alter the portable candidate-content identity: REAPER scripts contain
+  // project-local output paths, while the musical inputs and candidate audio
+  // remain location-independent.
+  const handoffArtifactManifest = provenanceLib.buildArtifactManifest(candidateDir, [
+    { logical_role: "reaper_project", relative_path: "reaper/project.rpp" },
+    { logical_role: "reaper_render_script", relative_path: "reaper/render-scorecraft-mix.lua" },
+    { logical_role: "reaper_template_script", relative_path: "reaper/build-scorecraft-from-templates.lua" },
+    { logical_role: "reaper_readme", relative_path: "reaper/README-reaper.md" },
+  ]);
+  const handoffArtifactManifestHash = provenanceLib.artifactManifestHash(handoffArtifactManifest);
+  meta.handoff_artifact_manifest = handoffArtifactManifest;
+  meta.identity = { ...(meta.identity || {}), handoff_artifact_manifest_hash: handoffArtifactManifestHash };
   meta.status = meta.status === "approved" ? "approved" : "daw_built";
-  writeJson(path.join(candidateDir, "candidate.json"), meta);
+  writeJsonAtomic(path.join(candidateDir, "candidate.json"), meta);
+  const candidateProvenancePath = path.join(candidateDir, "provenance.json");
+  const candidateProvenance = readJson(candidateProvenancePath);
+  if (candidateProvenance) {
+    candidateProvenance.identity = meta.identity;
+    candidateProvenance.handoff_artifact_manifest = handoffArtifactManifest;
+    writeJsonAtomic(candidateProvenancePath, candidateProvenance);
+  }
+  const approvalPath = path.join(dir, "approved", "provenance.json");
+  const approval = readJson(approvalPath);
+  if (approval && approval.identity && approval.approved_candidate === candidateId
+    && approval.identity.candidate_content_hash === meta.identity.candidate_content_hash) {
+    approval.identity.candidate_handoff_artifact_manifest_hash = handoffArtifactManifestHash;
+    writeJsonAtomic(approvalPath, approval);
+  }
   return {
     rpp: rppPath,
     readme: path.join(reaperDir, "README-reaper.md"),
@@ -768,6 +798,7 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
     template_script: path.join(reaperDir, "build-scorecraft-from-templates.lua"),
     templates_used: templates,
     template_warnings: warnings,
+    handoff_artifact_manifest_hash: handoffArtifactManifestHash,
     midi_only: Object.keys(templates).length === 0,
     open_command: reaper.openInReaperCommand(settings, rppPath),
   };
@@ -953,6 +984,7 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
         ...approvalIdentityBase,
         candidate_content_hash: meta.identity.candidate_content_hash,
         candidate_artifact_manifest_hash: meta.identity.artifact_manifest_hash,
+        candidate_handoff_artifact_manifest_hash: meta.identity.handoff_artifact_manifest_hash || null,
         approval_artifact_manifest_hash: approvalManifestHash,
       } : null,
       artifact_manifest: approvalManifest,
