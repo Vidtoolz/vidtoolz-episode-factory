@@ -21,6 +21,10 @@ Hard rules baked in:
 - **Approval is exact.** Current inputs, candidates, approvals, production WAVs,
   verification records, and Resolve copies are SHA-256-bound. A material edit
   makes downstream state stale without deleting historical artifacts.
+- **Narration authority is separate.** A canonical voiceover must be explicitly
+  selected, hash-bound, timeline-aligned, and verified before a voiceover-context
+  review. This does not alter music verification, Resolve music readiness, or
+  human artistic approval.
 
 ## First setup (once)
 
@@ -71,6 +75,28 @@ Hard rules baked in:
    supporting artifacts.
 6. **Prepare Resolve package** atomically copies only the verified production
    mix and cue markers. Resolve-ready remains false if that copy is changed.
+
+### Canonical narration for context review
+
+The score workspace has a separate **Voiceover context authority** panel. Use
+**Register canonical narration** only after the operator has identified the
+exact approved recording and its timeline start. Browser upload is required;
+server filesystem paths are not accepted. The original source is never edited.
+
+Registration copies the selected bytes into
+`narration/imports/<content-id>/`, records the source SHA-256, media properties,
+explicit offset, script/package identities, and the operator's authority basis,
+then atomically publishes `narration/current.json`. **Verify narration** probes
+a snapshot and rechecks the source plus script/package authority before making
+the narration review-ready. Replacing a binding creates/selects another
+immutable identity; clearing archives only the pointer and preserves imports.
+
+Supported registration containers are WAV, FLAC, MP3, AAC/M4A, audio-bearing
+MP4/MOV, and MKV/WebM with common PCM, FLAC, MP3, AAC, Opus, or Vorbis audio.
+The file must be decodable, non-silent, and end within the score timeline at
+the explicit offset. Scorecraft rejects bytes identical to its own sketch or
+production music artifacts. It cannot infer that an arbitrary recording is the
+approved narration; operator authority remains mandatory.
 
 ## Instrument profiles
 
@@ -147,11 +173,20 @@ State flow:
 
 `cue sheet current → candidate generated → sketch approved → production mix imported → production mix verified → Resolve package prepared`
 
+Independent narration flow:
+
+`no narration → operator-bound narration registered → narration media verified → voiceover-context review-ready`
+
+The two flows remain independent: a stale narration blocks context-review
+claims, but does not revoke an otherwise valid music-only production or Resolve
+music package.
+
 Invalidation:
 
 - cue/music-plan/composer/render-contract change → candidate and downstream approval/production state stale
 - imported file mutation or deletion → production verification stale
 - Resolve copy mutation or deletion → Resolve-ready false
+- narration source/script/package/offset/pointer change → narration review-ready false
 
 Typical stale reasons include `cue_sheet_changed`, `music_plan_changed`,
 `composer_contract_changed`, `render_contract_changed`,
@@ -181,6 +216,9 @@ Unsupported values are rejected before composition; there is no fallback key.
 - `production/current.json` — atomic pointer to the selected import.
 - `production/resolve/<content-id>/` — verified production mix, cue markers,
   manifest, and README.
+- `narration/imports/<content-id>/` — immutable external narration bytes,
+  provenance, and verification; never production music.
+- `narration/current.json` — atomic pointer to the operator-selected narration.
 
 Production import currently accepts stereo PCM WAV only. Sample rate, bit depth,
 and duration must match the approved render contract (default 48 kHz / 24-bit,
@@ -198,9 +236,10 @@ stereo-mix contract.
 | "A current sketch approval is required" | The approval is missing, legacy, or stale. Regenerate/reapprove from current inputs. |
 | Production WAV rejected | Export stereo PCM WAV at the contract rate/bit depth and exact target duration. |
 | Production or Resolve state is stale | Read the listed reason; do not overwrite history. Restore exact bytes/inputs or import and verify a new render. |
+| Narration context review is blocked | Register the exact operator-approved narration with an explicit timeline start, then verify it. A plausible filename or duration is not authority. |
 | "A score project already exists for this package" | One score project per package; open it from the home list. |
 | Previews sound thin/synthetic | By design — they are structural mockups. Judge timing/energy here; judge sound in the DAW. |
 
 All state lives in plain files under the project folder (`score-project.json`,
-`cue-sheet.json`, `music-plan.json`, `candidates/`, `approved/`, `production/`, `history/`) —
+`cue-sheet.json`, `music-plan.json`, `candidates/`, `approved/`, `production/`, `narration/`, `history/`) —
 nothing hidden, everything versioned.
