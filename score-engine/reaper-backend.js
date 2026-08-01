@@ -301,11 +301,13 @@ local function exists(p) if not p then return false end local f = io.open(p, "rb
 reaper.Main_OnCommand(40859, 0) -- new project tab (keeps any open project untouched)
 reaper.SetCurrentBPM(0, TEMPO, false)
 for _, marker in ipairs(TEMPO_MARKERS) do
-  -- Keep Scorecraft's authoritative video-time position. REAPER's
-  -- GetSetTempoTimeSigMarkerFlag "new measure" flags quantize fractional cue
-  -- boundaries to musical measure starts; SetTempoTimeSigMarker already stores
-  -- the requested tempo and signature without that destructive adjustment.
+  local marker_idx = reaper.CountTempoTimeSigMarkers(proj)
+  -- A time-signature insert initially snaps to the next measure boundary.
+  -- Allow a partial preceding measure, then write the authoritative video-time
+  -- position again. The second write remains exact in REAPER 7.67.
   reaper.SetTempoTimeSigMarker(proj, -1, marker.pos, -1, -1, marker.bpm, marker.num, marker.den, false)
+  reaper.GetSetTempoTimeSigMarkerFlag(proj, marker_idx, 4, true) -- allow a partial preceding measure
+  reaper.SetTempoTimeSigMarker(proj, marker_idx, marker.pos, -1, -1, marker.bpm, marker.num, marker.den, false)
 end
 
 for i, role in ipairs(ROLES) do

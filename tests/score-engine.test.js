@@ -517,11 +517,12 @@ test("score-engine reaper template script: tempo markers remain at exact video-t
   ];
   const lua = reaperBackend.buildTemplateScript({ projectName: "Exact markers", roles: [], cues, savePath: "/tmp/test.rpp", tempo: 120 });
   assert.match(lua, /\{ pos = 10\.25, bpm = 72, num = 7, den = 8 \}/);
-  assert.doesNotMatch(
+  assert.match(
     lua,
-    /reaper\.GetSetTempoTimeSigMarkerFlag/,
-    "REAPER's new-measure flags quantize video-time tempo markers to musical measure boundaries",
+    /SetTempoTimeSigMarker\([^\n]+\)\n\s+reaper\.GetSetTempoTimeSigMarkerFlag\(proj, marker_idx, 4, true\)[^\n]*\n\s+reaper\.SetTempoTimeSigMarker\([^\n]+\)/,
+    "REAPER requires allow-partial-measure followed by an exact-position reset for time-signature markers",
   );
+  assert.doesNotMatch(lua, /GetSetTempoTimeSigMarkerFlag\(proj, marker_idx, 1, true\)/, "do not request another measure-boundary quantization");
 });
 
 test("score-engine reaper timing: time signatures, precise lengths, and source offsets are explicit", () => {
