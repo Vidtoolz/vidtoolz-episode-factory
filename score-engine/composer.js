@@ -6,6 +6,18 @@
 
 const { PPQ } = require("./midi-writer.js");
 
+// Persisted provenance binds candidates to this explicit algorithm contract.
+// Any material change to note generation or its defaults must bump the version.
+const COMPOSER_CONTRACT = Object.freeze({
+  schema_version: 1,
+  algorithm_version: "scorecraft-deterministic-composer-v1.1",
+  ppq: PPQ,
+  default_pulse_register: "low_mid",
+  default_harmonic_drift: false,
+  default_harmonic_drift_threshold_seconds: 35,
+  lanes: ["pulse", "bass", "harmony", "texture", "melody", "impact"],
+});
+
 // ── seeded PRNG (mulberry32) ──
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -334,4 +346,4 @@ function compose(cueSheet, options = {}) {
   };
 }
 
-module.exports = { compose, mulberry32, hashString, parseKey, effectiveCueSettings, LANES, PROGRESSION_POOLS, MODES, PULSE_REGISTER_BASES };
+module.exports = { compose, mulberry32, hashString, parseKey, effectiveCueSettings, LANES, PROGRESSION_POOLS, MODES, PULSE_REGISTER_BASES, COMPOSER_CONTRACT };

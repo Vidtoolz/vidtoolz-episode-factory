@@ -142,8 +142,62 @@ test("readiness: approved export flips the stage but still points at verificatio
   const { options } = tmpEnv();
   const st = approvedProject(options);
   assert.equal(st.readiness.approved_export_exists, true);
-  assert.ok(st.readiness.stages.every((s) => s.state === "done"));
-  assert.match(st.readiness.next_action, /Run the deep verifier/);
+  assert.equal(st.readiness.approval_authority.state, "current");
+  assert.equal(st.readiness.stages.find((s) => s.id === "approval").state, "done");
+  assert.match(st.readiness.next_action, /Import a DAW production mix/);
+});
+
+test("readiness provenance: cue edits make an existing sketch approval stale without deleting history", () => {
+  const { options } = tmpEnv();
+  const before = approvedProject(options, { duration_seconds: 30 });
+  const cues = before.cue_sheet.cues.map((cue, i) => i === 0 ? { ...cue, name: "CHANGED AFTER EXPORT" } : cue);
+  lane.saveCueSheetEdits(before.project.project_id, cues, options);
+  const after = lane.getProject(before.project.project_id, options);
+  assert.equal(after.readiness.approved_export_exists, true, "historical sketch export is preserved");
+  assert.equal(after.readiness.approval_authority.state, "stale");
+  assert.ok(after.readiness.approval_authority.reasons.includes("cue_sheet_changed"));
+  assert.notEqual(after.readiness.stages.find((s) => s.id === "approval").state, "done");
+});
+
+test("readiness provenance: music-plan and render-contract changes stale exact approvals", () => {
+  const first = tmpEnv();
+  const planState = approvedProject(first.options, { duration_seconds: 30 });
+  lane.setPalette(planState.project.project_id, "broadcast_explainer", first.options);
+  let after = lane.getProject(planState.project.project_id, first.options);
+  assert.ok(after.readiness.approval_authority.reasons.includes("music_plan_changed"));
+
+  const second = tmpEnv();
+  const renderState = approvedProject(second.options, { duration_seconds: 30 });
+  lane.saveSettings({ default_export_sample_rate: 44100 }, second.options);
+  after = lane.getProject(renderState.project.project_id, second.options);
+  assert.ok(after.readiness.approval_authority.reasons.includes("render_contract_changed"));
+});
+
+test("readiness provenance: approved candidate artifact mutation and deletion fail closed", () => {
+  const first = tmpEnv();
+  const mutated = approvedProject(first.options, { duration_seconds: 30 });
+  fs.appendFileSync(path.join(mutated.dir, "candidates", "candidate-001", "midi", "all-lanes.mid"), "tamper");
+  let after = lane.getProject(mutated.project.project_id, first.options);
+  assert.ok(after.readiness.approval_authority.reasons.includes("candidate_artifact_hash_mismatch"));
+
+  const second = tmpEnv();
+  const missing = approvedProject(second.options, { duration_seconds: 30 });
+  fs.rmSync(path.join(missing.dir, "candidates", "candidate-001", "renders", "preview-mix.wav"));
+  after = lane.getProject(missing.project.project_id, second.options);
+  assert.ok(after.readiness.approval_authority.reasons.includes("candidate_artifact_missing"));
+});
+
+test("readiness provenance: legacy approval files remain visible but are never current", () => {
+  const { options } = tmpEnv();
+  const st = approvedProject(options, { duration_seconds: 30 });
+  const provenancePath = path.join(st.dir, "approved", "provenance.json");
+  const provenance = JSON.parse(fs.readFileSync(provenancePath, "utf8"));
+  delete provenance.identity;
+  delete provenance.provenance_schema_version;
+  fs.writeFileSync(provenancePath, JSON.stringify(provenance, null, 2) + "\n");
+  const legacy = lane.getProject(st.project.project_id, options);
+  assert.equal(legacy.readiness.approval_authority.state, "legacy_unverified");
+  assert.ok(legacy.readiness.approval_authority.reasons.includes("legacy_approval_unverified"));
 });
 
 test("readiness: listProjects cue_count comes from the cue sheet (was always 0 before v1.2)", () => {

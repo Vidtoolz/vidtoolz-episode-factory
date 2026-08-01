@@ -16,8 +16,9 @@ const composerEngine = require("./composer.js");
 const midiWriter = require("./midi-writer.js");
 const synth = require("./preview-synth.js");
 const reaper = require("./reaper-backend.js");
+const provenanceLib = require("./score-provenance.js");
 
-const ENGINE_VERSION = "1.1.0";
+const ENGINE_VERSION = "1.3.0";
 const PULSE_REGISTERS = ["low_mid", "mid_high", "high"];
 const DEFAULT_SETTINGS_PATH = path.join(os.homedir(), ".vidtoolz", "score-engine-settings.json");
 
@@ -251,18 +252,19 @@ function getProject(projectId, options = {}) {
   const musicPlan = readJson(path.join(dir, "music-plan.json"));
   const candidates = listCandidates(dir);
   const approvedDir = path.join(dir, "approved");
+  const approved = fs.existsSync(path.join(approvedDir, "provenance.json")) ? readJson(path.join(approvedDir, "provenance.json")) : null;
   // Score Map + readiness data (v1.2): pure analysis of the plan and a staged
   // readiness assessment ride along with every project GET — the UI never
   // computes truth client-side, and deep verification stays a CLI concern.
   const readinessLib = require("./score-readiness.js");
-  const readiness = readinessLib.assessReadiness({ project, cueSheet, musicPlan, candidates, dir });
+  const readiness = readinessLib.assessReadiness({ project, cueSheet, musicPlan, candidates, approved, dir, settings });
   return {
     project,
     dir,
     cue_sheet: cueSheet,
     music_plan: musicPlan,
     candidates,
-    approved: fs.existsSync(path.join(approvedDir, "provenance.json")) ? readJson(path.join(approvedDir, "provenance.json")) : null,
+    approved,
     reaper_ready: candidates.some((c) => c.reaper_built),
     analysis: readiness.analysis,
     readiness,
@@ -462,6 +464,11 @@ function buildOneCandidate(dir, project, musicPlan, generation, settings) {
   const safeMix = synth.renderMix(composition, project.duration_seconds, { sampleRate: previewRate, dialogueSafe: true, laneGains: generation.lane_gains });
   fs.writeFileSync(path.join(candidateDir, "renders", "preview-dialogue-safe.wav"), safeMix.mix);
 
+  // Immutable input snapshots make later handoffs independent of mutable
+  // project-level cue and instrument-plan files.
+  writeJson(path.join(candidateDir, "cue-sheet-used.json"), { cues: generation.cues });
+  writeJson(path.join(candidateDir, "music-plan-used.json"), musicPlan || {});
+
   const meta = {
     candidate_id: candidateId,
     created_at: nowIso(),
@@ -486,8 +493,38 @@ function buildOneCandidate(dir, project, musicPlan, generation, settings) {
     },
     notes: "",
   };
+  const contract = provenanceLib.renderContract({ project, candidate: meta, settings });
+  const identity = provenanceLib.candidateIdentity({
+    project,
+    cues: generation.cues,
+    musicPlan,
+    candidate: meta,
+    composerContract: composerEngine.COMPOSER_CONTRACT,
+    contract,
+  });
+  const declarations = [
+    ...composition.meta.lanes.map((lane) => ({ logical_role: `midi_lane_${lane}`, relative_path: `midi/${lane}.mid` })),
+    { logical_role: "midi_all_lanes", relative_path: "midi/all-lanes.mid" },
+    { logical_role: "sketch_mix", relative_path: "renders/preview-mix.wav", media: { sample_rate: previewRate, bit_depth: 16, channels: 2 } },
+    { logical_role: "sketch_dialogue_safe_mix", relative_path: "renders/preview-dialogue-safe.wav", media: { sample_rate: previewRate, bit_depth: 16, channels: 2 } },
+    { logical_role: "cue_sheet_snapshot", relative_path: "cue-sheet-used.json" },
+    { logical_role: "music_plan_snapshot", relative_path: "music-plan-used.json" },
+  ];
+  const artifactManifest = provenanceLib.buildArtifactManifest(candidateDir, declarations);
+  const artifactManifestHash = provenanceLib.artifactManifestHash(artifactManifest);
+  meta.provenance_schema_version = provenanceLib.PROVENANCE_SCHEMA_VERSION;
+  meta.render_contract = contract;
+  meta.artifact_manifest = artifactManifest;
+  meta.identity = {
+    ...identity,
+    artifact_manifest_hash: artifactManifestHash,
+    candidate_content_hash: provenanceLib.hashCanonical({
+      schema_version: provenanceLib.HASH_SCHEMA_VERSION,
+      candidate_input_hash: identity.candidate_input_hash,
+      artifact_manifest_hash: artifactManifestHash,
+    }),
+  };
   writeJson(path.join(candidateDir, "candidate.json"), meta);
-  writeJson(path.join(candidateDir, "cue-sheet-used.json"), { cues: generation.cues });
   const provenance = buildCandidateProvenance(project, musicPlan, meta, generation);
   writeJson(path.join(candidateDir, "provenance.json"), provenance);
   fs.writeFileSync(path.join(candidateDir, "provenance.md"), renderProvenanceMarkdown(provenance));
@@ -496,6 +533,7 @@ function buildOneCandidate(dir, project, musicPlan, generation, settings) {
 
 function buildCandidateProvenance(project, musicPlan, meta, generation) {
   return {
+    provenance_schema_version: meta.provenance_schema_version || 1,
     engine: `vidtoolz-score-engine ${ENGINE_VERSION}`,
     created_at: meta.created_at,
     project_id: project.project_id,
@@ -513,6 +551,9 @@ function buildCandidateProvenance(project, musicPlan, meta, generation) {
     ai_planning: generation.revision ? { revision_request: generation.revision.request, changes: generation.revision.changes } : null,
     parent_candidate: generation.parent_candidate,
     files: meta.files,
+    identity: meta.identity || null,
+    render_contract: meta.render_contract || null,
+    artifact_manifest: meta.artifact_manifest || null,
     approval_status: "pending",
   };
 }
@@ -587,7 +628,10 @@ function reviseCandidate(projectId, candidateId, requestText, options = {}) {
   const plan = planner.planRevision(requestText);
   const revised = planner.applyRevision(cueSheetUsed, { seed: meta.seed, palette_id: meta.palette_id, lane_gains: meta.lane_gains || {} }, plan);
   const project = readJson(path.join(dir, "score-project.json"));
-  const musicPlan = readJson(path.join(dir, "music-plan.json"));
+  let musicPlan = readJson(path.join(candidateDir, "music-plan-used.json")) || readJson(path.join(dir, "music-plan.json"));
+  if (revised.generation.palette_id && (!musicPlan || musicPlan.palette_id !== revised.generation.palette_id)) {
+    musicPlan = planner.buildMusicPlan({ cues: revised.cues }, revised.generation.palette_id, loadProfiles(settings));
+  }
   const result = buildOneCandidate(dir, project, musicPlan, {
     seed: revised.generation.seed,
     palette_id: revised.generation.palette_id || meta.palette_id,
@@ -644,7 +688,7 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
   const { dir } = resolveProjectDir(settings, projectId);
   const candidateDir = candidateDirOf(dir, candidateId);
   const project = readJson(path.join(dir, "score-project.json"));
-  const musicPlan = readJson(path.join(dir, "music-plan.json"));
+  const musicPlan = readJson(path.join(candidateDir, "music-plan-used.json")) || readJson(path.join(dir, "music-plan.json"));
   const cues = readJson(path.join(candidateDir, "cue-sheet-used.json")).cues;
   const meta = requireCandidateMeta(candidateDir, candidateId);
   const composition = composerEngine.compose({ cues }, compositionOptionsFromMeta(project, meta));
@@ -721,7 +765,7 @@ function buildAbletonHandoff(projectId, candidateId, options = {}) {
   const { dir } = resolveProjectDir(settings, projectId);
   const candidateDir = candidateDirOf(dir, candidateId);
   const project = readJson(path.join(dir, "score-project.json"));
-  const musicPlan = readJson(path.join(dir, "music-plan.json"));
+  const musicPlan = readJson(path.join(candidateDir, "music-plan-used.json")) || readJson(path.join(dir, "music-plan.json"));
   const cues = readJson(path.join(candidateDir, "cue-sheet-used.json")).cues;
   const meta = requireCandidateMeta(candidateDir, candidateId);
 
@@ -778,10 +822,35 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
   const project = readJson(path.join(dir, "score-project.json"));
   const meta = requireCandidateMeta(candidateDir, candidateId);
   const cues = readJson(path.join(candidateDir, "cue-sheet-used.json")).cues;
-  const musicPlan = readJson(path.join(dir, "music-plan.json"));
+  const musicPlan = readJson(path.join(candidateDir, "music-plan-used.json")) || readJson(path.join(dir, "music-plan.json"));
   const durationExact = exportOptions.durationExact !== undefined
     ? Boolean(exportOptions.durationExact)
     : settings.duration_exact_export !== false;
+
+  // A v2 candidate may only be approved while its immutable input snapshots
+  // still match the current authoritative project. Historical v1 candidates
+  // remain approvable as sketches for compatibility, but their approval is
+  // explicitly classified legacy/unverified by readiness.
+  if (meta.provenance_schema_version === provenanceLib.PROVENANCE_SCHEMA_VERSION && meta.identity) {
+    const currentPlan = readJson(path.join(dir, "music-plan.json"));
+    const currentContract = provenanceLib.renderContract({ project, candidate: meta, settings });
+    const currentIdentity = provenanceLib.candidateIdentity({
+      project,
+      cues: project.cues || [],
+      musicPlan: currentPlan,
+      candidate: meta,
+      composerContract: composerEngine.COMPOSER_CONTRACT,
+      contract: currentContract,
+    });
+    const stale = [];
+    if (currentIdentity.cue_sheet_hash !== meta.identity.cue_sheet_hash) stale.push("cue_sheet_changed");
+    if (currentIdentity.music_plan_hash !== meta.identity.music_plan_hash) stale.push("music_plan_changed");
+    if (currentIdentity.composer_contract_hash !== meta.identity.composer_contract_hash) stale.push("composer_contract_changed");
+    if (currentIdentity.render_contract_hash !== meta.identity.render_contract_hash) stale.push("render_contract_changed");
+    const manifestCheck = provenanceLib.verifyArtifactManifest(candidateDir, meta.artifact_manifest);
+    stale.push(...manifestCheck.failures.map((failure) => failure.reason));
+    if (stale.length) throw httpError(`Candidate ${candidateId} is stale and cannot be approved: ${[...new Set(stale)].join(", ")}. Regenerate from the current score state.`, 409);
+  }
 
   const approvedDir = path.join(dir, "approved");
   // Render into a BUILD dir first; the existing approval is archived only
@@ -822,11 +891,42 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
     fs.writeFileSync(path.join(buildDir, "resolve-import", "README.md"),
       `# Resolve import — ${project.name}\n\nDrag mix.wav (or the dialogue-safe mix under narration) into the Resolve media\npool. stems/ has per-lane WAVs for finer mixing. cue-markers.csv lists cue\nboundaries to place as timeline markers.\n\nNOTE: these WAVs are the Score Engine sketch renders. For final-quality audio,\nrender from the REAPER/Ableton handoff with your real instruments and drop the\nresult here (a new approval will archive this folder, never overwrite it).\n`);
 
+    const approvalContract = provenanceLib.renderContract({ project, candidate: meta, settings, durationExact });
+    const approvalIdentityBase = meta.identity ? provenanceLib.candidateIdentity({
+      project,
+      cues,
+      musicPlan,
+      candidate: meta,
+      composerContract: composerEngine.COMPOSER_CONTRACT,
+      contract: approvalContract,
+    }) : null;
+    const approvalManifest = provenanceLib.buildArtifactManifest(buildDir, [
+      { logical_role: "sketch_mix", relative_path: "mix.wav", media: { sample_rate: sampleRate, bit_depth: bitDepth, channels: 2 } },
+      { logical_role: "sketch_dialogue_safe_mix", relative_path: "mix-dialogue-safe.wav", media: { sample_rate: sampleRate, bit_depth: bitDepth, channels: 2 } },
+      ...Object.keys(full.stems).map((lane) => ({ logical_role: `sketch_stem_${lane}`, relative_path: `stems/${lane}.wav`, media: { sample_rate: sampleRate, bit_depth: bitDepth, channels: 2 } })),
+      ...meta.lanes.map((lane) => ({ logical_role: `midi_lane_${lane}`, relative_path: `midi/${lane}.mid` })),
+      { logical_role: "midi_all_lanes", relative_path: "midi/all-lanes.mid" },
+      { logical_role: "resolve_sketch_mix", relative_path: "resolve-import/mix.wav" },
+      { logical_role: "resolve_sketch_dialogue_safe_mix", relative_path: "resolve-import/mix-dialogue-safe.wav" },
+      ...Object.keys(full.stems).map((lane) => ({ logical_role: `resolve_sketch_stem_${lane}`, relative_path: `resolve-import/stems/${lane}.wav` })),
+      { logical_role: "cue_markers", relative_path: "resolve-import/cue-markers.csv" },
+      { logical_role: "resolve_sketch_readme", relative_path: "resolve-import/README.md" },
+    ]);
+    const approvalManifestHash = provenanceLib.artifactManifestHash(approvalManifest);
     provenance = {
       ...buildCandidateProvenance(project, musicPlan, meta, { cues, seed: meta.seed, palette_id: meta.palette_id, parent_candidate: meta.parent_candidate, revision: meta.revision }),
+      provenance_schema_version: meta.identity ? provenanceLib.PROVENANCE_SCHEMA_VERSION : 1,
       approval_status: "approved",
+      approval_scope: "sketch_only",
       approved_at: nowIso(),
       approved_candidate: candidateId,
+      identity: approvalIdentityBase ? {
+        ...approvalIdentityBase,
+        candidate_content_hash: meta.identity.candidate_content_hash,
+        candidate_artifact_manifest_hash: meta.identity.artifact_manifest_hash,
+        approval_artifact_manifest_hash: approvalManifestHash,
+      } : null,
+      artifact_manifest: approvalManifest,
       render: {
         sample_rate: sampleRate,
         bit_depth: bitDepth,
@@ -834,6 +934,7 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
         duration_exact: durationExact,
         export_mode: durationExact ? "duration_exact (trimmed + 150ms boundary fade)" : "tail_preserving (release rings past project end)",
       },
+      production: { state: "not_imported", production_mix_id: null, verified: false, resolve_ready: false },
       exported_files: ["approved/mix.wav", "approved/mix-dialogue-safe.wav", "approved/stems/", "approved/midi/", "approved/resolve-import/"],
     };
     writeJson(path.join(buildDir, "provenance.json"), provenance);

@@ -12,6 +12,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { analyzeCueSheet } = require("./cue-analysis.js");
+const provenanceLib = require("./score-provenance.js");
+const { COMPOSER_CONTRACT } = require("./composer.js");
 
 function readJson(file, fallback = null) {
   try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return fallback; }
@@ -19,11 +21,15 @@ function readJson(file, fallback = null) {
 
 /* ── staged readiness (cheap, UI-friendly) ── */
 
-function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, candidates = [], dir = "" }) {
+function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, candidates = [], approved = null, dir = "", settings = {} }) {
   const cues = (cueSheet && cueSheet.cues) || [];
   const analysis = analyzeCueSheet(project, cues);
   const approvedDir = path.join(dir, "approved");
   const hasApproval = Boolean(dir) && fs.existsSync(path.join(approvedDir, "provenance.json"));
+  const approvalRecord = approved || (hasApproval ? readJson(path.join(approvedDir, "provenance.json")) : null);
+  const approvalAuthority = provenanceLib.assessSketchApprovalAuthority({
+    project, cues, musicPlan, candidates, approved: approvalRecord, dir, settings, composerContract: COMPOSER_CONTRACT,
+  });
   const previewable = candidates.filter((c) => c.files && c.files.preview_mix);
   const reaperBuilt = candidates.some((c) => c.reaper_built);
 
@@ -45,8 +51,12 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
     },
     {
       id: "approval", label: "Approved export",
-      state: hasApproval ? "done" : "todo",
-      detail: hasApproval ? "mix + dialogue-safe mix + stems + resolve-import/ exported" : "audition, then approve ONE candidate to export",
+      state: approvalAuthority.current ? "done" : hasApproval ? "draft" : "todo",
+      detail: approvalAuthority.current
+        ? "sketch approval is hash-bound and current; production mix is still required"
+        : hasApproval
+          ? `${approvalAuthority.state}: ${approvalAuthority.reasons.join(", ")}`
+          : "audition, then approve ONE candidate as a sketch",
     },
   ];
 
@@ -57,8 +67,9 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
     : !project.cue_sheet_approved ? "Review the Score Map, then approve the cue sheet."
       : !musicPlan ? "Pick a palette (step 2)."
         : !previewable.length ? "Generate music candidates (step 3), then audition the sketch previews."
-          : !hasApproval ? "Audition the previews (A/B compare) and approve one candidate to export."
-            : "Run the deep verifier below, then import approved/resolve-import/ into Resolve.";
+          : !approvalAuthority.current
+            ? hasApproval ? "The preserved sketch approval is stale or legacy; regenerate/reapprove deliberately from the current score state." : "Audition the previews (A/B compare) and approve one candidate as a sketch."
+            : "Import a DAW production mix bound to this current sketch approval.";
 
   return {
     analysis,
@@ -66,6 +77,8 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
     ready_to_render: readyToRender,
     reaper_built: reaperBuilt,
     approved_export_exists: hasApproval,
+    sketch_approval_current: approvalAuthority.current,
+    approval_authority: approvalAuthority,
     // Resolve readiness is only ever CLAIMED by the deep verifier — the panel
     // reports "approved, verify to confirm", never a green Resolve light
     // without probed evidence.
