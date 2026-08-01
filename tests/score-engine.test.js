@@ -28,6 +28,26 @@ function readyProject(options, extra = {}) {
   return project;
 }
 
+function scoreCue(cueId, start, end, bpm = 120, fn = "explanation") {
+  return {
+    cue_id: cueId,
+    name: cueId,
+    start_seconds: start,
+    end_seconds: end,
+    function: fn,
+    emotion: "clinical",
+    energy: 2,
+    density: 2,
+    tempo_bpm: bpm,
+    key: "D minor",
+    time_signature: "4/4",
+    instrument_roles: {},
+    arrangement_notes: "",
+    hit_points: [],
+    dialogue_safe: true,
+  };
+}
+
 // ── schemas ──
 test("score-engine schemas: valid cue sheet passes, broken cues are rejected with reasons", () => {
   const good = planner.generateCueSheet({ duration_seconds: 60 });
@@ -40,6 +60,22 @@ test("score-engine schemas: valid cue sheet passes, broken cues are rejected wit
   assert.ok(errors.some((e) => e.includes("energy")));
   assert.ok(errors.some((e) => e.includes("end_seconds")));
   assert.ok(errors.some((e) => e.includes("emotion")));
+});
+
+test("score-engine schemas: supported keys and time signatures are explicit and composer never substitutes", () => {
+  for (const key of ["C major", "F# minor", "Bb dorian", "Eb lydian", "A mixolydian", "C phrygian"]) {
+    assert.deepEqual(schemas.validateCue({ ...scoreCue("key", 0, 8), key }), [], key);
+  }
+  for (const key of ["banana", "H major", "C", "Cb major", "D harmonic minor", ""]) {
+    assert.ok(schemas.validateCue({ ...scoreCue("bad-key", 0, 8), key }).some((error) => /key/.test(error)), key || "empty");
+    assert.throws(() => composer.parseKey(key), /Unsupported musical key/);
+  }
+  for (const time_signature of ["2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "9/8", "12/8"]) {
+    assert.deepEqual(schemas.validateCue({ ...scoreCue("meter", 0, 8), time_signature }), [], time_signature);
+  }
+  for (const time_signature of ["4/3", "0/4", "4/0", "17/16", "common time", ""]) {
+    assert.ok(schemas.validateCue({ ...scoreCue("bad-meter", 0, 8), time_signature }).some((error) => /time_signature/.test(error)), time_signature || "empty");
+  }
 });
 
 test("score-engine schemas: settings validator refuses raw API keys in files", () => {
@@ -92,10 +128,24 @@ test("score-engine planner: palette validation + music plan resolves instrument 
   assert.equal(plan.palette_id, "tech_noir_pulse");
   assert.equal(plan.roles.bass.vendor, "Arturia");
   assert.ok(plan.mix_guidance.length >= 3);
-  assert.throws(() => planner.buildMusicPlan(sheet, "nope"), /Unknown palette/);
+  assert.throws(() => planner.buildMusicPlan(sheet, "nope"), /Unknown orchestration profile/);
   for (const palette of Object.values(schemas.DEFAULT_PALETTES)) {
     assert.deepEqual(schemas.validatePalette(palette), [], palette.palette_id);
   }
+});
+
+test("score-engine orchestration profiles are honestly assignment-only with palette_id compatibility", () => {
+  const cues = planner.generateCueSheet({ duration_seconds: 12 }).cues;
+  const tech = composer.compose({ cues }, { seed: 9, palette_id: "tech_noir_pulse" });
+  const comedy = composer.compose({ cues }, { seed: 9, palette_id: "dry_comedy_underscore" });
+  assert.deepEqual(tech.notes, comedy.notes, "profile selection does not claim to alter note composition");
+  assert.equal(schemas.DEFAULT_ASSIGNMENT_PROFILES, schemas.DEFAULT_PALETTES);
+  const plan = planner.buildMusicPlan({ cues }, "tech_noir_pulse", schemas.STARTER_INSTRUMENT_PROFILES);
+  assert.equal(plan.assignment_profile_id, "tech_noir_pulse");
+  assert.equal(plan.palette_id, plan.assignment_profile_id, "legacy persistence alias remains readable");
+  const html = fs.readFileSync(path.join(__dirname, "..", "score-project.html"), "utf8");
+  assert.match(html, /Orchestration profile &amp; instruments/);
+  assert.match(html, /Apply orchestration profile/);
 });
 
 // ── composer ──
@@ -332,6 +382,28 @@ test("score-engine lane: candidate generation produces valid MIDI, previews, pro
   assert.notEqual(state.candidates[0].seed, state.candidates[1].seed);
 });
 
+test("score-engine lane: music-plan timestamps do not change candidate content identity", () => {
+  const first = tmpEnv();
+  const second = tmpEnv();
+  const firstProject = readyProject(first.options, { duration_seconds: 30, seed: 77 });
+  const secondProject = readyProject(second.options, { duration_seconds: 30, seed: 77 });
+
+  const secondState = lane.getProject(secondProject.project_id, second.options);
+  const secondPlanPath = path.join(secondState.dir, "music-plan.json");
+  const secondPlan = JSON.parse(fs.readFileSync(secondPlanPath, "utf8"));
+  secondPlan.generated_at = "2099-12-31T23:59:59.999Z";
+  fs.writeFileSync(secondPlanPath, JSON.stringify(secondPlan, null, 2) + "\n");
+
+  lane.generateCandidates(firstProject.project_id, { count: 1, seed: 77 }, first.options);
+  lane.generateCandidates(secondProject.project_id, { count: 1, seed: 77 }, second.options);
+  const firstCandidate = lane.getProject(firstProject.project_id, first.options).candidates[0];
+  const secondCandidate = lane.getProject(secondProject.project_id, second.options).candidates[0];
+
+  assert.equal(firstCandidate.identity.candidate_input_hash, secondCandidate.identity.candidate_input_hash);
+  assert.equal(firstCandidate.identity.artifact_manifest_hash, secondCandidate.identity.artifact_manifest_hash);
+  assert.equal(firstCandidate.identity.candidate_content_hash, secondCandidate.identity.candidate_content_hash);
+});
+
 test("score-engine lane: approve exports mix, dialogue-safe mix, stems, MIDI, Resolve folder + provenance", () => {
   const { options } = tmpEnv();
   const project = readyProject(options, { duration_seconds: 30 });
@@ -366,6 +438,108 @@ test("score-engine lane: revision request derives a new candidate with structure
 });
 
 // ── REAPER backend ──
+function parseRppTiming(rpp) {
+  const tempos = [];
+  const tempoChunk = rpp.match(/<TEMPOENVEX\n([\s\S]*?)\n  >/);
+  if (tempoChunk) {
+    for (const match of tempoChunk[1].matchAll(/^\s*PT\s+([\d.]+)\s+([\d.]+).*$/gm)) {
+      const fields = match[0].trim().split(/\s+/);
+      const encodedSignature = Number(fields[4] || 0);
+      tempos.push({
+        position: Number(match[1]), bpm: Number(match[2]),
+        timeSignature: encodedSignature ? `${encodedSignature & 0xffff}/${encodedSignature >>> 16}` : null,
+      });
+    }
+  }
+  const items = [];
+  for (const match of rpp.matchAll(/^\s{4}<ITEM\n([\s\S]*?)^\s{4}>$/gm)) {
+    const body = match[1];
+    const name = (body.match(/^\s*NAME\s+"([^"]+)"/m) || [])[1] || "";
+    const position = Number((body.match(/^\s*POSITION\s+([\d.]+)/m) || [])[1]);
+    const length = Number((body.match(/^\s*LENGTH\s+([\d.]+)/m) || [])[1]);
+    let sourceTick = 0;
+    const noteOnTicks = [];
+    for (const event of body.matchAll(/^\s*E\s+(\d+)\s+([0-9a-f]{2})\s+/gmi)) {
+      sourceTick += Number(event[1]);
+      if (event[2].toLowerCase() === "90") noteOnTicks.push(sourceTick);
+    }
+    const sourceOffset = Number((body.match(/^\s*SOFFS\s+([\d.-]+)/m) || [])[1] || 0);
+    items.push({ name, position, length, sourceOffset, noteOnTicks });
+  }
+  return { tempos, items };
+}
+
+function buildTimingFixture(cues) {
+  const composition = composer.compose({ cues }, { seed: 9, palette_id: "tech_noir_pulse" });
+  return reaperBackend.buildRppText({ projectName: "Timing fixture", cues, composition });
+}
+
+test("score-engine reaper timing: adjacent same-tempo cues are cue-local and deterministic", () => {
+  const cues = [scoreCue("C001", 0, 10, 120, "hook"), scoreCue("C002", 10, 20, 120, "hook")];
+  const rpp = buildTimingFixture(cues);
+  const parsed = parseRppTiming(rpp);
+  const secondImpact = parsed.items.find((item) => item.name === "C002 impact");
+  assert.deepEqual(parsed.tempos, [{ position: 0, bpm: 120, timeSignature: "4/4" }, { position: 10, bpm: 120, timeSignature: "4/4" }]);
+  assert.equal(secondImpact.position, 10);
+  assert.equal(secondImpact.length, 10);
+  assert.equal(Math.min(...secondImpact.noteOnTicks), 0, "the second cue source starts at cue-local tick zero");
+  assert.equal(rpp, buildTimingFixture(cues), "identical inputs produce byte-identical .rpp text");
+});
+
+test("score-engine reaper timing: a 10-second timeline gap stays between items, not inside MIDI source", () => {
+  const cues = [scoreCue("C001", 0, 10, 120, "hook"), scoreCue("C002", 20, 30, 120, "hook")];
+  const rpp = buildTimingFixture(cues);
+  const parsed = parseRppTiming(rpp);
+  const secondImpact = parsed.items.find((item) => item.name === "C002 impact");
+  assert.equal(secondImpact.position, 20);
+  assert.equal(Math.min(...secondImpact.noteOnTicks), 0, "the 10-second gap must not become leading source ticks");
+});
+
+test("score-engine reaper timing: per-cue tempo markers preserve adjacent and gapped BPM changes", () => {
+  const adjacent = [scoreCue("C001", 0, 10, 120), scoreCue("C002", 10, 20, 72)];
+  assert.deepEqual(parseRppTiming(buildTimingFixture(adjacent)).tempos, [
+    { position: 0, bpm: 120, timeSignature: "4/4" }, { position: 10, bpm: 72, timeSignature: "4/4" },
+  ]);
+  const gapped = [scoreCue("C001", 0, 10, 120), scoreCue("C002", 20.5, 30.5, 72)];
+  const parsed = parseRppTiming(buildTimingFixture(gapped));
+  assert.deepEqual(parsed.tempos, [{ position: 0, bpm: 120, timeSignature: "4/4" }, { position: 20.5, bpm: 72, timeSignature: "4/4" }]);
+  assert.ok(parsed.items.some((item) => item.name === "C002 pulse" && item.position === 20.5), "fractional timeline start preserved");
+  const lua = reaperBackend.buildTemplateScript({ projectName: "Tempo", roles: [], cues: gapped, savePath: "/tmp/test.rpp", tempo: 120 });
+  assert.match(lua, /\{ pos = 0, bpm = 120, num = 4, den = 4 \}/);
+  assert.match(lua, /\{ pos = 20\.5, bpm = 72, num = 4, den = 4 \}/);
+  assert.match(lua, /SetTempoTimeSigMarker/);
+});
+
+test("score-engine reaper timing: time signatures, precise lengths, and source offsets are explicit", () => {
+  const cues = [
+    { ...scoreCue("C001", 0, 0.5004, 120), time_signature: "6/8" },
+    { ...scoreCue("C002", 0.5004, 2.0004, 90), time_signature: "7/8" },
+  ];
+  const rpp = buildTimingFixture(cues);
+  const parsed = parseRppTiming(rpp);
+  assert.deepEqual(parsed.tempos, [
+    { position: 0, bpm: 120, timeSignature: "6/8" },
+    { position: 0.5004, bpm: 90, timeSignature: "7/8" },
+  ]);
+  const first = parsed.items.find((item) => item.name.startsWith("C001 "));
+  assert.ok(first, "short legal cue still produces at least one MIDI item");
+  assert.equal(first.length, 0.5004, "legal fractional cue length is not rounded to milliseconds");
+  assert.equal(first.sourceOffset, 0);
+  assert.equal((rpp.match(/^\s*PT .* 5$/gm) || []).length, cues.length, "meter markers set the signature and allow a partial preceding measure");
+});
+
+test("score-engine reaper timing: malformed cross-boundary composition is rejected", () => {
+  const cues = [scoreCue("C001", 0, 1, 120)];
+  const composition = composer.compose({ cues }, { seed: 9, palette_id: "tech_noir_pulse" });
+  composition.notes.push({ lane: "pulse", seconds: 0.9, dur_seconds: 0.2, tick: 864, dur_ticks: 192, note: 60, velocity: 80 });
+  assert.throws(() => reaperBackend.buildRppText({ projectName: "Malformed", cues, composition }), /crosses cue boundary/);
+});
+
+test("score-engine reaper timing: malformed tempo fails before project text generation", () => {
+  const cues = [scoreCue("C001", 0, 10, 0)];
+  assert.throws(() => buildTimingFixture(cues), /tempo_bpm/);
+});
+
 test("score-engine reaper: RPP is balanced, has 6 lane tracks, cue markers, and embedded MIDI", () => {
   const { options } = tmpEnv();
   const project = readyProject(options, { duration_seconds: 30 });
@@ -444,6 +618,16 @@ test("score-engine lane: project file serving refuses traversal and wrong types"
   assert.throws(() => lane.resolveProjectFile(settings, project.project_id, "candidates/candidate-001/renders/x.exe"), /not servable/);
 });
 
+test("score-engine lane: project file serving refuses symlink escapes", () => {
+  const { root, options } = tmpEnv();
+  const { project } = makeProject(options, { duration_seconds: 3 });
+  const state = lane.getProject(project.project_id, options);
+  const outside = path.join(root, "outside.txt");
+  fs.writeFileSync(outside, "outside project authority");
+  fs.symlinkSync(outside, path.join(state.dir, "linked.txt"));
+  assert.throws(() => lane.resolveProjectFile(lane.loadSettings(options), project.project_id, "linked.txt"), /symbolic link|symlink/i);
+});
+
 // ── API routes ──
 function listen(server) { return new Promise((resolve) => server.listen(0, "127.0.0.1", resolve)); }
 function closeServer(server) { return new Promise((resolve) => server.close(resolve)); }
@@ -494,6 +678,8 @@ test("score-engine API: nonce-gated create + full GUI flow over HTTP", async () 
     const state = await requestJson(server, `/api/score/project?id=${encodeURIComponent(projectId)}`);
     assert.equal(state.statusCode, 200);
     assert.equal(unwrap(state).project.approved_candidate, "candidate-001");
+    assert.equal(Object.prototype.hasOwnProperty.call(unwrap(state), "dir"), false, "browser state omits absolute project path");
+    assert.equal(Object.prototype.hasOwnProperty.call(unwrap(state).readiness, "verify_command"), false, "browser state omits absolute CLI command");
     // Read-only listing + settings survive without nonce.
     const projects = await requestJson(server, "/api/score/projects");
     assert.equal(projects.statusCode, 200);
@@ -690,6 +876,17 @@ test("score-engine v1.1: template folder fallback resolves <lane>.RTrackTemplate
   lane.saveSettings({ reaper_track_template_folder: folder }, options);
   const built = lane.buildReaperHandoff(project.project_id, "candidate-001", options);
   assert.equal(built.templates_used.bass, path.join(folder, "bass.RTrackTemplate"));
+});
+
+test("score-engine: missing configured REAPER template folder is visible and read-only", () => {
+  const { root, options } = tmpEnv();
+  const { project } = makeProject(options, { duration_seconds: 10 });
+  lane.saveSettings({ reaper_track_template_folder: path.join(root, "missing-templates") }, options);
+  const before = fs.readFileSync(path.join(root, "settings.json"));
+  const state = lane.getProject(project.project_id, options);
+  assert.equal(state.daw_configuration.reaper_template_folder.state, "missing");
+  assert.match(state.daw_configuration.reaper_template_folder.message, /fall back to .*plain MIDI/);
+  assert.ok(before.equals(fs.readFileSync(path.join(root, "settings.json"))), "inspection does not rewrite settings");
 });
 
 // ── Hardening pass (audit 2026-07-18) ────────────────────────────────────────

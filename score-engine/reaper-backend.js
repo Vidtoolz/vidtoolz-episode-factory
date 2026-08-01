@@ -8,6 +8,7 @@
 
 const path = require("node:path");
 const { PPQ } = require("./midi-writer.js");
+const schemas = require("./score-schemas.js");
 
 const LANE_TRACKS = [
   { lane: "pulse", name: "01 Pulse", color: [63, 185, 80], volume: 0.85, pan: -0.15 },
@@ -21,14 +22,55 @@ const LANE_TRACKS = [
 function reaperColor([r, g, b]) { return 0x01000000 | (b << 16) | (g << 8) | r; }
 function hex(value) { return value.toString(16).padStart(2, "0"); }
 function quote(text) { return `"${String(text).replace(/"/g, "'")}"`; }
+function rppNumber(value) {
+  if (!Number.isFinite(value)) throw new Error("Cannot build REAPER project: timing values must be finite.");
+  return String(Object.is(value, -0) ? 0 : value);
+}
+function encodedTimeSignature(signature) {
+  const [numerator, denominator] = String(signature).split("/").map(Number);
+  return (denominator << 16) | numerator;
+}
 
-// Build embedded-MIDI item source lines for the notes of one lane within one cue.
-// Event ticks are item-relative; REAPER "E" lines are: E <delta> <status> <d1> <d2>.
-function midiSourceLines(notes, cueStartTick) {
+function validateComposition(cues, composition) {
+  if (!composition || !Array.isArray(composition.notes) || !Array.isArray(composition.markers) || composition.markers.length !== cues.length) {
+    throw new Error("Cannot build REAPER project: composition must contain notes and one marker per cue.");
+  }
+  let previousMarker = -1;
+  composition.markers.forEach((marker, index) => {
+    if (!marker || !Number.isFinite(marker.tick) || marker.tick < 0 || marker.tick < previousMarker) {
+      throw new Error(`Cannot build REAPER project: invalid marker tick for cue ${cues[index].cue_id}.`);
+    }
+    previousMarker = marker.tick;
+  });
+  const laneNames = new Set(LANE_TRACKS.map((track) => track.lane));
+  for (const note of composition.notes) {
+    if (!note || !laneNames.has(note.lane)
+      || !Number.isFinite(note.seconds) || !Number.isFinite(note.dur_seconds)
+      || !Number.isFinite(note.tick) || !Number.isFinite(note.dur_ticks)
+      || note.dur_seconds <= 0 || note.dur_ticks <= 0) {
+      throw new Error("Cannot build REAPER project: composition contains a malformed note event.");
+    }
+    const cueIndex = cues.findIndex((cue) => note.seconds >= cue.start_seconds - 1e-9 && note.seconds < cue.end_seconds - 1e-9);
+    if (cueIndex < 0) throw new Error("Cannot build REAPER project: note event is outside every cue.");
+    if (note.seconds + note.dur_seconds > cues[cueIndex].end_seconds + 1e-9) {
+      throw new Error(`Cannot build REAPER project: note event crosses cue boundary for ${cues[cueIndex].cue_id}.`);
+    }
+    if (note.tick < composition.markers[cueIndex].tick - 1e-9) {
+      throw new Error(`Cannot build REAPER project: note event precedes cue-local source start for ${cues[cueIndex].cue_id}.`);
+    }
+  }
+}
+
+// Build embedded-MIDI item source lines for one lane within one cue. The caller
+// supplies the candidate-global tick of the cue marker; subtracting it makes
+// every item source cue-local even when the candidate-global MIDI timeline has
+// intentional silence gaps. REAPER "E" lines are:
+// E <delta> <status> <d1> <d2>.
+function midiSourceLines(notes, cueMarkerTick) {
   const events = [];
   for (const n of notes) {
-    events.push({ tick: n.tick - cueStartTick, bytes: ["90", hex(Math.min(127, Math.max(0, Math.round(n.note)))), hex(Math.min(127, Math.max(1, Math.round(n.velocity))))] });
-    events.push({ tick: n.tick - cueStartTick + n.dur_ticks, bytes: ["80", hex(Math.min(127, Math.max(0, Math.round(n.note)))), "00"] });
+    events.push({ tick: n.tick - cueMarkerTick, bytes: ["90", hex(Math.min(127, Math.max(0, Math.round(n.note)))), hex(Math.min(127, Math.max(1, Math.round(n.velocity))))] });
+    events.push({ tick: n.tick - cueMarkerTick + n.dur_ticks, bytes: ["80", hex(Math.min(127, Math.max(0, Math.round(n.note)))), "00"] });
   }
   events.sort((a, b) => a.tick - b.tick);
   const lines = [];
@@ -47,10 +89,14 @@ function midiSourceLines(notes, cueStartTick) {
 // one click — 48 kHz 24-bit stereo WAV, entire project, into rendersDir
 // (RENDER_CFG "ZXZhdxgAAA==" = 'evaw' + 24-bit flag, the standard WAV config).
 function buildRppText({ projectName, cues, composition, sampleRate = 48000, rendersDir = null }) {
+  const cueErrors = schemas.validateCueSheet({ cues });
+  if (cueErrors.length) throw new Error(`Cannot build REAPER project: ${cueErrors.join("; ")}`);
+  validateComposition(cues, composition);
   const firstTempo = cues[0] ? cues[0].tempo_bpm : 90;
+  const [firstNumerator, firstDenominator] = cues[0] ? cues[0].time_signature.split("/").map(Number) : [4, 4];
   const lines = [];
   lines.push(`<REAPER_PROJECT 0.1 "7.0/vidtoolz-score-engine" 0`);
-  lines.push(`  TEMPO ${firstTempo} 4 4`);
+  lines.push(`  TEMPO ${rppNumber(firstTempo)} ${firstNumerator} ${firstDenominator}`);
   lines.push(`  SAMPLERATE ${sampleRate} 0 0`);
   lines.push(`  TITLE ${quote(projectName)}`);
   if (rendersDir) {
@@ -64,16 +110,26 @@ function buildRppText({ projectName, cues, composition, sampleRate = 48000, rend
     lines.push("  >");
   }
   cues.forEach((cue, i) => {
-    lines.push(`  MARKER ${i + 1} ${cue.start_seconds} ${quote(`${cue.cue_id} ${cue.name}`)} 0`);
+    lines.push(`  MARKER ${i + 1} ${rppNumber(cue.start_seconds)} ${quote(`${cue.cue_id} ${cue.name}`)} 0`);
   });
-
-  // Cue start ticks mirror composer's accumulation (per-cue tempo aware).
-  const cueStartTicks = [];
-  let tick = 0;
+  // Authoritative REAPER timing model:
+  // - timeline position/length are video seconds;
+  // - each MIDI item source starts at cue-local tick zero;
+  // - square tempo points at cue starts govern the cue's musical tick rate;
+  // - gaps remain empty project time between items (never leading source ticks).
+  lines.push("  <TEMPOENVEX");
+  lines.push("    ACT 1 -1");
+  lines.push("    VIS 1 0 1");
+  lines.push("    LANEHEIGHT 0 0");
+  lines.push("    ARM 0");
+  lines.push("    DEFSHAPE 1 -1 -1");
   for (const cue of cues) {
-    cueStartTicks.push(tick);
-    tick += Math.round(((cue.end_seconds - cue.start_seconds) / (60 / cue.tempo_bpm)) * PPQ);
+    // Shape 1 is square. The encoded signature makes meter changes explicit;
+    // Flags 1+4 set the signature/start a measure while permitting a partial
+    // preceding measure at arbitrary video-time cuts.
+    lines.push(`    PT ${rppNumber(cue.start_seconds)} ${rppNumber(cue.tempo_bpm)} 1 ${encodedTimeSignature(cue.time_signature)} 0 5`);
   }
+  lines.push("  >");
 
   for (const track of LANE_TRACKS) {
     const laneNotes = composition.notes.filter((n) => n.lane === track.lane);
@@ -86,12 +142,14 @@ function buildRppText({ projectName, cues, composition, sampleRate = 48000, rend
       const cueNotes = laneNotes.filter((n) => n.seconds >= cue.start_seconds - 1e-6 && n.seconds < cue.end_seconds);
       if (!cueNotes.length) return;
       lines.push("    <ITEM");
-      lines.push(`      POSITION ${cue.start_seconds}`);
-      lines.push(`      LENGTH ${Math.round((cue.end_seconds - cue.start_seconds) * 1000) / 1000}`);
+      lines.push(`      POSITION ${rppNumber(cue.start_seconds)}`);
+      lines.push(`      LENGTH ${rppNumber(cue.end_seconds - cue.start_seconds)}`);
+      lines.push("      SOFFS 0");
       lines.push(`      NAME ${quote(`${cue.cue_id} ${track.lane}`)}`);
       lines.push("      <SOURCE MIDI");
       lines.push(`        HASDATA 1 ${PPQ} QN`);
-      for (const line of midiSourceLines(cueNotes, cueStartTicks[cueIndex])) lines.push(`        ${line}`);
+      const cueMarkerTick = composition.markers[cueIndex].tick;
+      for (const line of midiSourceLines(cueNotes, cueMarkerTick)) lines.push(`        ${line}`);
       lines.push("      >");
       lines.push("    >");
     });
@@ -146,9 +204,8 @@ ${roleLines.join("\n")}
 - Cue markers: ${cues.map((c) => `${c.cue_id} @ ${c.start_seconds}s`).join(" · ")}
 - Tracks use conservative volume/pan defaults — mix to taste.
 - Stems: select all six lane tracks, File → Render → Source "Stems (selected tracks)".
-- Multi-tempo: the project grid uses the first cue's tempo
-  (${cues[0] ? cues[0].tempo_bpm : "?"} BPM); item positions are time-locked in
-  seconds, and \`../midi/\` carries the full tempo map.
+- Multi-tempo: square tempo markers at every cue start preserve each cue's BPM;
+  item positions are time-locked in seconds and intentional gaps remain empty.
 
 Generated by VIDTOOLZ Score Engine. Regenerated on every REAPER build (previous
 .rpp versions are kept as .rpp.bak) — edit the copy you open, not this handoff.
@@ -217,6 +274,10 @@ function buildTemplateScript({ projectName, roles, cues, savePath, tempo }) {
     return `  { lane = ${luaQuote(role.lane)}, name = ${luaQuote(role.name)}, template = ${role.template ? luaQuote(role.template) : "nil"},\n    items = {\n${itemLines.join("\n")}\n    } },`;
   });
   const markerLines = cues.map((c, i) => `  { pos = ${c.start_seconds}, name = ${luaQuote(`${c.cue_id} ${c.name}`)}, idx = ${i + 1} },`);
+  const tempoLines = cues.map((c) => {
+    const [numerator, denominator] = String(c.time_signature || "4/4").split("/").map(Number);
+    return `  { pos = ${c.start_seconds}, bpm = ${c.tempo_bpm}, num = ${numerator}, den = ${denominator} },`;
+  });
   return `-- build-scorecraft-from-templates.lua — generated by VIDTOOLZ Score Engine.
 -- Run inside REAPER (new/empty project is fine). Creates one track per role
 -- from your configured .RTrackTemplate files (falling back to plain MIDI
@@ -228,6 +289,9 @@ ${roleLines.join("\n")}
 local MARKERS = {
 ${markerLines.join("\n")}
 }
+local TEMPO_MARKERS = {
+${tempoLines.join("\n")}
+}
 local SAVE_PATH = ${luaQuote(savePath)}
 local TEMPO = ${tempo}
 local proj = 0
@@ -236,6 +300,12 @@ local function exists(p) if not p then return false end local f = io.open(p, "rb
 
 reaper.Main_OnCommand(40859, 0) -- new project tab (keeps any open project untouched)
 reaper.SetCurrentBPM(0, TEMPO, false)
+for _, marker in ipairs(TEMPO_MARKERS) do
+  local marker_idx = reaper.CountTempoTimeSigMarkers(proj)
+  reaper.SetTempoTimeSigMarker(proj, -1, marker.pos, -1, -1, marker.bpm, marker.num, marker.den, false)
+  reaper.GetSetTempoTimeSigMarkerFlag(proj, marker_idx, 1, true) -- set signature and start a new measure
+  reaper.GetSetTempoTimeSigMarkerFlag(proj, marker_idx, 4, true) -- allow partial preceding measure at video-time cut
+end
 
 for i, role in ipairs(ROLES) do
   reaper.InsertTrackAtIndex(i - 1, true)

@@ -33,8 +33,8 @@
       <details class="page-guide">
         <summary>Page Guide — What is this?</summary>
         <div class="page-guide-body">
-          <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Score Engine (Scorecraft) creates ORIGINAL music cues for your videos: cue sheet → palette → seeded MIDI candidates → sketch preview → REAPER/Ableton handoff → approved export into the video package. AI plans structure (optional); a deterministic composer writes the notes; you approve everything.</span></div>
-          <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Create a score below (or open a recent one). Each score opens its own workspace page where you edit cues, pick a palette, generate and preview candidates, and export.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Score Engine (Scorecraft) creates ORIGINAL music cues for your videos: cue sheet → orchestration profile → seeded MIDI candidates → sketch preview → REAPER/Ableton handoff → production import and verification. AI plans structure (optional); a deterministic composer writes the notes; you approve everything.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Create a score below (or open a recent one). Each score opens its own workspace page where you edit cues, choose an instrument-assignment profile, generate and preview candidates, and complete the DAW return gate.</span></div>
           <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Recent scores · New score wizard · DAW connection status · Instrument profiles · Settings.</span></div>
         </div>
       </details>
@@ -60,7 +60,7 @@
           <label class="field">Music role<select id="w-role"><option value="underscore" selected>Full underscore</option><option value="intro">Intro only</option><option value="transition">Transitions only</option><option value="outro">Outro/button</option><option value="mixed">Full package (mixed)</option></select></label>
           <label class="field">Dialogue density<select id="w-dialogue"><option value="high" selected>High (narration-heavy)</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
           <label class="field">Overall mood<select id="w-mood"><option>curious</option><option>clinical</option><option>warm</option><option>tense</option><option>playful</option><option>dark</option><option>optimistic</option><option>urgent</option></select></label>
-          <label class="field">Default palette<select id="w-palette"></select></label>
+          <label class="field">Default orchestration profile<select id="w-palette"></select></label>
           <label class="field">Candidates<input type="number" id="w-count" min="1" max="5" value="3"></label>
           <label class="field">Seed<input type="number" id="w-seed" min="1" value="1"></label>
         </div>
@@ -119,7 +119,7 @@
         ['reaper_project_template_path','REAPER project template'],['reaper_track_template_folder','REAPER track template folder'],
         ['ableton_template_path','Ableton template set path'],
         ['openai_api_key_env','OpenAI key env var name'],['anthropic_api_key_env','Anthropic key env var name'],
-        ['default_ai_provider','AI provider (manual|openai|anthropic)'],['default_palette','Default palette'],
+        ['default_ai_provider','AI provider (manual|openai|anthropic)'],['default_palette','Default orchestration profile (legacy settings key)'],
         ['default_candidate_count','Default candidate count'],['default_dialogue_density','Default dialogue density'],
         ['default_export_sample_rate','Export sample rate'],['default_export_bit_depth','Export bit depth'],
       ];
@@ -238,7 +238,7 @@
             music_role:document.getElementById('w-role').value,
             dialogue_density:document.getElementById('w-dialogue').value,
             overall_mood:document.getElementById('w-mood').value,
-            palette_id:document.getElementById('w-palette').value,
+            assignment_profile_id:document.getElementById('w-palette').value,
             candidate_count:Number(document.getElementById('w-count').value)||3,
             seed:Number(document.getElementById('w-seed').value)||1,
           };

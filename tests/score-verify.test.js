@@ -116,10 +116,11 @@ test("score verify API: approved export PASSes through the real verifier", async
     assert.equal(res.statusCode, 200);
     const body = unwrap(res);
     assert.equal(body.project_id, state.project.project_id);
-    assert.equal(body.dir, state.dir);
+    assert.equal(Object.prototype.hasOwnProperty.call(body, "dir"), false, "absolute server project path is not returned to the browser");
+    assert.doesNotMatch(body.report, new RegExp(state.dir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     assert.equal(body.verified, true, body.report);
     assert.equal(body.no_approved_export, false);
-    assert.match(body.report, /PASS — approved export verified/);
+    assert.match(body.report, /PASS — approved sketch package verified/);
     assert.ok(body.checks.length > 0, "real checks returned to UI");
   }, { spawnSyncImpl: fakeFfprobeSpawnSync });
 });

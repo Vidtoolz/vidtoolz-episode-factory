@@ -1,9 +1,10 @@
 # VIDTOOLZ Score Engine (Scorecraft) — Operator Guide
 
-Score Engine creates ORIGINAL music cues for your videos: cue sheet → palette →
-seeded MIDI candidates → sketch preview → REAPER/Ableton handoff → approved
-export into the video package. Everything is local-first and GUI-operable; no
-terminal needed after setup. It supersedes the single-cue v0.1
+Score Engine creates ORIGINAL music cues for your videos: cue sheet →
+orchestration profile → seeded MIDI sketch candidates → REAPER/Ableton handoff
+→ imported DAW production mix → verified Resolve package. Everything is
+local-first and GUI-operable; no terminal needed after setup. It supersedes the
+single-cue v0.1
 `music-cue-generator.js` CLI (which remains untouched for compatibility).
 
 Hard rules baked in:
@@ -14,7 +15,12 @@ Hard rules baked in:
   composer writes every note; you approve every durable step.
 - **Nothing is overwritten.** Cue-sheet saves archive to `history/`, REAPER
   rebuilds keep `.rpp.bak` copies, re-approval archives the previous
-  `approved/` folder.
+  `approved/` folder, and DAW imports are content-addressed and immutable.
+- **Sketch is not production.** The built-in synth is for timing and structure.
+  Sketch approval never means production verification or Resolve readiness.
+- **Approval is exact.** Current inputs, candidates, approvals, production WAVs,
+  verification records, and Resolve copies are SHA-256-bound. A material edit
+  makes downstream state stale without deleting historical artifacts.
 
 ## First setup (once)
 
@@ -43,17 +49,28 @@ Hard rules baked in:
       configured AI provider* directly.
    2. Edit cues in the table (times, function, emotion, energy, density, BPM,
       key, hit points, dialogue-safe) → **Save cue edits** → **Approve cue sheet**.
-   3. Pick a palette card → **Apply palette** (shows role → instrument profile
-      mapping and mix guidance).
+   3. Pick an orchestration profile → **Apply orchestration profile** (shows
+      role → instrument mapping and mix guidance). Persisted `palette_id` is a
+      backward-compatible alias; the selector does not change note composition.
    4. **Generate music candidates** (1-5). Each candidate = deterministic MIDI
       per lane + a sketch preview mix + a dialogue-safe preview + provenance.
       Same seed = same notes, always.
    5. Preview in the page (A/B compare when ≥2). Revise in plain words
       ("less busy under speech", "stronger ending button", "reduce bass") —
       a structured change list derives a new candidate; the original stays.
-3. **Approve + export** on the winning candidate writes `music/approved/`:
+3. **Approve sketch** on the winning candidate writes `music/approved/`:
    `mix.wav`, `mix-dialogue-safe.wav`, `stems/`, `midi/`, `resolve-import/`
-   (with `cue-markers.csv`), plus `provenance.json` + `provenance.md`.
+   (a clearly labeled sketch reference with `cue-markers.csv`), plus
+   `provenance.json` + `provenance.md`.
+4. Finish the score in REAPER or Ableton and export one stereo PCM WAV matching
+   the approved render contract. **Import production render** copies uploaded
+   bytes into project-owned immutable storage; arbitrary server paths are not
+   accepted. Import does not imply verification.
+5. **Verify production mix** rechecks decode, SHA-256, duration, sample rate,
+   channels, bit depth, current sketch approval, render contract, and required
+   supporting artifacts.
+6. **Prepare Resolve package** atomically copies only the verified production
+   mix and cue markers. Resolve-ready remains false if that copy is changed.
 
 ## Instrument profiles
 
@@ -61,9 +78,9 @@ Score Engine is template-first: it never pretends to remote-control
 Omnisphere/UVI/Arturia. Profiles describe *what to reach for* (vendor, role,
 preset hint, optional REAPER track template path). Manage them on the Score
 Engine home page (add/edit/duplicate by loading a row into the editor and
-changing the id). Palettes reference profiles by id.
+changing the id). Orchestration profiles reference instrument profiles by id.
 
-## REAPER integration (v1.1)
+## REAPER integration
 
 "Build REAPER project" writes `candidates/<id>/reaper/` with:
 - `project.rpp` — six role tracks, embedded MIDI items per lane×cue, cue
@@ -90,19 +107,85 @@ length with a 150 ms boundary fade); untick "Duration-exact package export" on
 the workspace to keep the release tail instead. The mode is recorded in
 provenance.
 
+### REAPER timing model
+
+- Cue positions and item lengths use video-timeline seconds.
+- Each cue/track MIDI item starts at cue-local tick zero.
+- Candidate-global MIDI ticks may include intentional gaps, but those gap ticks
+  are subtracted from each embedded REAPER item source.
+- Silence gaps remain empty REAPER timeline space.
+- Square tempo/time-signature markers are written at every cue start in both
+  the generated `.rpp` and template-building ReaScript. Each marker starts the
+  declared meter and allows a partial preceding measure, so fractional
+  video-time cuts do not move the cue.
+- Item source offsets are explicitly zero and fractional timeline/item values
+  are serialized without millisecond rounding.
+- Cue IDs remain in marker and item names for inspection.
+
 ## Ableton support (current state)
 
 Phase A handoff only: `candidates/<id>/ableton/` contains per-lane `.mid`
-files, `cue-sheet.json`, `palette.json`, `suggested-track-layout.json`, the
+files, `cue-sheet.json`, legacy-named `palette.json`,
+`suggested-track-layout.json`, the
 sketch preview, and a README describing the drag-import into your template.
 No `.als` generation, no Max for Live bridge yet (planned Phase C).
 
-## Exporting for Resolve
+## Provenance, staleness, and state
 
-`approved/resolve-import/` is drag-ready: `mix.wav`, `mix-dialogue-safe.wav`,
-`stems/`, `cue-markers.csv`. The WAVs are sketch renders — for final quality,
-render from the REAPER handoff with your real instruments and drop the result
-into the package (a new approval archives the old folder, never overwrites).
+Canonical identities use stable-key-order UTF-8 serialization and SHA-256;
+finite numbers retain their exact JSON representation, invalid/omitted values
+fail, and Unicode strings are preserved byte-for-byte without normalization.
+Absolute project/template paths and timestamps are excluded from identity.
+Candidate provenance binds cue sheet, music plan, composer contract, render
+contract, candidate content, and a per-file manifest. Approval binds that exact
+candidate. Production verification probes a project-owned immutable byte
+snapshot, then binds the imported file hash plus current approval/render
+hashes. Resolve provenance binds both its audio copy and approved cue-marker
+bytes back to verification.
+
+State flow:
+
+`cue sheet current → candidate generated → sketch approved → production mix imported → production mix verified → Resolve package prepared`
+
+Invalidation:
+
+- cue/music-plan/composer/render-contract change → candidate and downstream approval/production state stale
+- imported file mutation or deletion → production verification stale
+- Resolve copy mutation or deletion → Resolve-ready false
+
+Typical stale reasons include `cue_sheet_changed`, `music_plan_changed`,
+`composer_contract_changed`, `render_contract_changed`,
+`approved_candidate_hash_mismatch`, `production_mix_missing`,
+`production_mix_hash_mismatch`, `artifact_manifest_incomplete`,
+`verification_outdated`, and `resolve_copy_hash_mismatch`.
+
+Legacy candidates/approvals without hashes remain visible as
+`legacy_unverified`, `legacy_approval_unverified`, or
+`legacy_artifacts_unverified`; file existence is never upgraded into trust.
+Regenerate/reapprove deliberately when production authority is required.
+
+## Supported musical input
+
+- BPM: 40–220.
+- Keys: C through B using supported sharp/flat spellings, with `major`, `minor`,
+  `dorian`, `lydian`, `mixolydian`, or `phrygian` (for example `Bb dorian`).
+- Time signatures: `2/4`, `3/4`, `4/4`, `5/4`, `6/8`, `7/8`, `9/8`, `12/8`.
+
+Unsupported values are rejected before composition; there is no fallback key.
+
+## Production storage
+
+- `approved/` — approved sketch reference package, never production-certified.
+- `production/imports/<content-id>/` — immutable imported WAV + provenance and
+  verification.
+- `production/current.json` — atomic pointer to the selected import.
+- `production/resolve/<content-id>/` — verified production mix, cue markers,
+  manifest, and README.
+
+Production import currently accepts stereo PCM WAV only. Sample rate, bit depth,
+and duration must match the approved render contract (default 48 kHz / 24-bit,
+duration within 0.05 seconds). Production stems are not required by the current
+stereo-mix contract.
 
 ## Troubleshooting
 
@@ -112,9 +195,12 @@ into the package (a new approval archives the old folder, never overwrites).
 | "REAPER executable path is not configured" | Settings → `reaper_executable_path`, or open the `.rpp` manually (path on the candidate card). |
 | "AI provider is set to manual" | Use Copy prompt + paste, or pick a provider in Settings (env key must exist). |
 | "Approve the cue sheet first" | Candidates only generate from an approved cue sheet — that's the human gate. |
+| "A current sketch approval is required" | The approval is missing, legacy, or stale. Regenerate/reapprove from current inputs. |
+| Production WAV rejected | Export stereo PCM WAV at the contract rate/bit depth and exact target duration. |
+| Production or Resolve state is stale | Read the listed reason; do not overwrite history. Restore exact bytes/inputs or import and verify a new render. |
 | "A score project already exists for this package" | One score project per package; open it from the home list. |
 | Previews sound thin/synthetic | By design — they are structural mockups. Judge timing/energy here; judge sound in the DAW. |
 
 All state lives in plain files under the project folder (`score-project.json`,
-`cue-sheet.json`, `music-plan.json`, `candidates/`, `approved/`, `history/`) —
+`cue-sheet.json`, `music-plan.json`, `candidates/`, `approved/`, `production/`, `history/`) —
 nothing hidden, everything versioned.

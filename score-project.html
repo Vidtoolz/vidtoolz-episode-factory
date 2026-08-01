@@ -66,8 +66,8 @@
       <details class="page-guide">
         <summary>Page Guide — What is this?</summary>
         <div class="page-guide-body">
-          <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Workspace for ONE score: edit the cue sheet, approve it, choose a palette, generate seeded candidates, preview the sketch mixes, request revisions in plain words, build the REAPER/Ableton handoff, approve one candidate, and export mix + dialogue-safe mix + stems + Resolve import folder.</span></div>
-          <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Work top to bottom. Previews are deliberately sketch-quality — final sound comes from your instruments via the DAW handoff.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Workspace for ONE score: plan cues, audition deterministic sketches, approve one sketch, finish the music in a DAW, import and verify the production WAV, then prepare its Resolve package.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Work top to bottom. Sketch approval records the musical direction; it never certifies production audio.</span></div>
         </div>
       </details>
       <div class="meta"><a href="score-engine.html">← Score Engine</a></div>
@@ -79,9 +79,8 @@
         <div class="step-head">Score readiness <span class="badge todo" id="ready-badge">…</span></div>
         <div class="ready-grid" id="ready-stages"></div>
         <div class="meta" id="ready-next"></div>
-        <div class="meta" style="margin-top:6px;">Deep verification (files + ffprobe against provenance — the only Resolve-ready proof):
-          <code id="ready-cmd"></code> <button class="btn" style="padding:1px 8px;font-size:11px;" id="ready-copy">Copy command</button>
-          <button class="btn" style="padding:1px 8px;font-size:11px;" id="ready-verify">Verify approved export</button></div>
+        <div class="meta" style="margin-top:6px;">Sketch-package integrity check (files + ffprobe against provenance):
+          <button class="btn" style="padding:1px 8px;font-size:11px;" id="ready-verify">Verify sketch package</button></div>
         <pre id="ready-report" style="display:none;"></pre>
       </div>
 
@@ -91,7 +90,7 @@
         <div id="cue-table"></div>
         <div style="margin-top:8px;">
           <button class="btn" id="cues-generate">Generate cue sheet</button>
-          <button class="btn" id="cues-add">Add cue</button>
+          <button class="btn" id="cues-split">Split selected cue</button>
           <button class="btn" id="cues-save">Save cue edits</button>
           <button class="btn btn-go" id="cues-approve">Approve cue sheet</button>
         </div>
@@ -105,10 +104,10 @@
       </div>
 
       <div class="step" id="step-palette">
-        <div class="step-head">2 · Palette &amp; instruments <span class="badge todo" id="palette-badge">todo</span></div>
+        <div class="step-head">2 · Orchestration profile &amp; instruments <span class="badge todo" id="palette-badge">todo</span></div>
         <div id="palette-cards"></div>
         <div id="palette-roles"></div>
-        <button class="btn btn-go" id="palette-apply">Apply palette</button>
+        <button class="btn btn-go" id="palette-apply">Apply orchestration profile</button>
       </div>
 
       <div class="step" id="step-cands">
@@ -128,11 +127,24 @@
       </div>
 
       <div class="step" id="step-export">
-        <div class="step-head">4 · Approved export <span class="badge todo" id="export-badge">todo</span></div>
-        <div id="export-body" class="meta">Approve a candidate above to export mix, dialogue-safe mix, stems, MIDI, and the Resolve import folder into <code>music/approved/</code>.</div>
+        <div class="step-head">4 · Sketch approval <span class="badge todo" id="export-badge">todo</span></div>
+        <div id="export-body" class="meta">Approve a candidate above to freeze a hash-bound sketch package for the DAW handoff.</div>
+      </div>
+
+      <div class="step" id="step-production">
+        <div class="step-head">5 · DAW production mix &amp; Resolve <span class="badge todo" id="production-badge">not imported</span></div>
+        <div id="production-body" class="meta">A current sketch approval is required before importing a production WAV.</div>
+        <div style="margin-top:8px;">
+          <input type="file" id="production-file" accept="audio/wav,.wav">
+          <button class="btn" id="production-import">Import production render</button>
+          <button class="btn" id="production-verify">Verify production mix</button>
+          <button class="btn btn-go" id="production-resolve">Prepare Resolve package</button>
+        </div>
       </div>
     </div>
     <div id="copy-status"></div>
+    <script src="score-engine/cue-analysis.js"></script>
+    <script src="score-engine/cue-editor.js"></script>
     <script>
       const ID = new URLSearchParams(location.search).get('id') || '';
       let ST = null; let CUES = [];
@@ -141,8 +153,10 @@
       const PALETTES = ['tech_noir_pulse','broadcast_explainer','ai_lab','dry_comedy_underscore','serious_system_builder'];
       const CUE_COLORS = ['#3fb950','#58a6ff','#d29922','#a371f7','#f85149','#79c0ff','#ffa657','#7ee787'];
       const SCORE_VERIFY_API = '/api/score/verify';
-      // Mirrors score-engine/cue-analysis.js GAP_EPSILON exactly; keep static tests in sync.
-      const CUE_GAP_EPSILON = 0.25;
+      const SCORE_PRODUCTION_IMPORT_API = '/api/score/production/import';
+      const SCORE_PRODUCTION_VERIFY_API = '/api/score/production/verify';
+      const SCORE_PRODUCTION_RESOLVE_API = '/api/score/production/resolve';
+      let SELECTED_CUE_INDEX = 0;
       let verifyInFlight = false;
       let verifySeq = 0;
 
@@ -174,12 +188,9 @@
       function render(){
         const p = ST.project;
         document.getElementById('title').textContent = '🎼 ' + (p.name || p.project_id);
-        // The copy button is wired via listener + dataset — never an inline
-        // onclick with an interpolated path (a quote in the path would break
-        // out of the JS string).
-        document.getElementById('subtitle').innerHTML = `${p.duration_seconds}s · ${esc(p.target_platform)} · ${esc(p.music_role)} · dialogue ${esc(p.dialogue_density)} · seed ${p.seed} · <code>${esc(ST.dir)}</code> <button class="btn" style="padding:1px 8px;font-size:11px;" data-copy-text="${esc(ST.dir)}" data-copy-label="project path">Copy path</button>`;
+        document.getElementById('subtitle').textContent = `${p.duration_seconds}s · ${p.target_platform} · ${p.music_role} · dialogue ${p.dialogue_density} · seed ${p.seed}`;
         CUES = (ST.cue_sheet && ST.cue_sheet.cues) ? JSON.parse(JSON.stringify(ST.cue_sheet.cues)) : [];
-        renderReadiness(); renderCues(); renderPalette(); renderCandidates(); renderExport();
+        renderReadiness(); renderCues(); renderPalette(); renderCandidates(); renderExport(); renderProduction();
       }
 
       const FN_COLOR = {hook:'#3fb950',setup:'#79c0ff',explanation:'#58a6ff',turn:'#d29922',reveal:'#a371f7',climax:'#f85149',button:'#ffa657',outro:'#7ee787'};
@@ -193,9 +204,8 @@
         document.getElementById('ready-stages').innerHTML = R.stages.map(s=>
           `<span class="ready-stage ${s.state}"><b>${esc(s.label)}</b> ${s.state==='done'?'✓':s.state==='draft'?'· draft':'· todo'}<span class="meta">${esc(s.detail)}</span></span>`).join('');
         document.getElementById('ready-next').innerHTML = '<b>Next:</b> '+esc(R.next_action)
-          + (R.approved_export_exists ? ' <span class="warn">Approved export exists — run the verifier to confirm it is Resolve-safe; the panel never claims that without probed evidence.</span>' : '');
-        document.getElementById('ready-cmd').textContent = R.verify_command;
-        document.getElementById('ready-copy').onclick = ()=>copyText(R.verify_command,'verify command');
+          + (R.approved_export_exists && !R.sketch_approval_current ? ' <span class="warn">The preserved sketch approval is stale or legacy and cannot authorize production work.</span>' : '')
+          + (ST.daw_configuration&&ST.daw_configuration.reaper_template_folder&&ST.daw_configuration.reaper_template_folder.state==='missing' ? ' <span class="warn">'+esc(ST.daw_configuration.reaper_template_folder.message)+'</span>' : '');
         setVerifyState(verifyInFlight ? 'verifying' : 'idle');
       }
 
@@ -204,11 +214,11 @@
         const report=document.getElementById('ready-report');
         if(!btn || !report) return;
         btn.disabled = state==='verifying';
-        btn.textContent = state==='verifying' ? 'Verifying…' : 'Verify approved export';
+        btn.textContent = state==='verifying' ? 'Verifying…' : 'Verify sketch package';
         report.style.display = state==='idle' ? 'none' : 'block';
         report.className = state==='pass' ? 'ok' : (state==='fail' || state==='request-error') ? 'err' : '';
         if(state==='idle') report.textContent = '';
-        else if(state==='verifying') report.textContent = 'Verifying approved export…';
+        else if(state==='verifying') report.textContent = 'Verifying sketch package…';
         else report.textContent = (payload && payload.report) || (payload && payload.message) || '';
       }
 
@@ -220,7 +230,7 @@
         try{
           const result = await post(SCORE_VERIFY_API,{project_id:ID});
           if(seq !== verifySeq) return;
-          if(result && result.verified===true){ setVerifyState('pass',{report:result.report||'PASS'}); toast('Approved export verified'); }
+          if(result && result.verified===true){ setVerifyState('pass',{report:result.report||'PASS'}); toast('Sketch package verified'); }
           else { setVerifyState('fail',{report:(result&&result.report)||'FAIL — approved export did not verify.'}); toast('Verifier found problems',false); }
         }catch(e){
           if(seq !== verifySeq) return;
@@ -236,7 +246,7 @@
       // dashed slots = planned silence (visible, never accidental).
       function renderScoreMap(){
         const el = document.getElementById('score-map');
-        const A = ST.analysis;
+        const A = ScoreCueAnalysis.analyzeCueSheet(ST.project,CUES);
         if(!A || !A.cues.length){
           el.innerHTML = '<div class="meta" style="padding:14px 4px;">No cues yet — the Score Map appears as soon as a cue sheet exists. Click <b>Generate cue sheet</b> below for a deterministic starting plan, or use the AI-assisted option.</div>';
           return;
@@ -268,17 +278,19 @@
         document.getElementById('step-cues').className = 'step'+(approved?' done':'');
         renderScoreMap();
         if(!CUES.length){ document.getElementById('cue-table').innerHTML='<div class="meta">No cues yet — click Generate cue sheet.</div>'; return; }
-        document.getElementById('cue-table').innerHTML = '<table><tr><th>id</th><th>Name</th><th>Start</th><th>End</th><th>Function</th><th>Emotion</th><th>Energy</th><th>Density</th><th>BPM</th><th>Key</th><th>Hit points (s)</th><th>Dlg-safe</th><th></th></tr>'+
+        if(SELECTED_CUE_INDEX>=CUES.length) SELECTED_CUE_INDEX=Math.max(0,CUES.length-1);
+        document.getElementById('cue-table').innerHTML = '<table><tr><th>Split</th><th>id</th><th>Name</th><th>Start</th><th>End</th><th>Function</th><th>Emotion</th><th>Energy</th><th>Density</th><th>BPM</th><th>Key</th><th>Hit points (s)</th><th>Dlg-safe</th><th></th></tr>'+
           CUES.map((c,i)=>`<tr>
+            <td><input type="radio" name="cue-selection" data-selectcue="${i}"${i===SELECTED_CUE_INDEX?' checked':''} aria-label="Select ${esc(c.cue_id)} to split"></td>
             <td><b style="color:${CUE_COLORS[i%CUE_COLORS.length]}">${esc(c.cue_id)}</b><div class="cue-diag warn" data-cue-diag="${i}"></div></td>
             <td><input type="text" data-cue="${i}" data-k="name" value="${esc(c.name)}"></td>
-            <td><input type="number" step="0.1" data-cue="${i}" data-k="start_seconds" value="${c.start_seconds}"></td>
-            <td><input type="number" step="0.1" data-cue="${i}" data-k="end_seconds" value="${c.end_seconds}"></td>
+            <td><input type="number" step="0.1" data-cue="${i}" data-k="start_seconds" value="${esc(c.start_seconds)}"></td>
+            <td><input type="number" step="0.1" data-cue="${i}" data-k="end_seconds" value="${esc(c.end_seconds)}"></td>
             <td><select data-cue="${i}" data-k="function">${FUNCTIONS.map(f=>`<option${f===c.function?' selected':''}>${f}</option>`).join('')}</select></td>
             <td><select data-cue="${i}" data-k="emotion">${EMOTIONS.map(f=>`<option${f===c.emotion?' selected':''}>${f}</option>`).join('')}</select></td>
-            <td><input type="number" min="1" max="5" data-cue="${i}" data-k="energy" value="${c.energy}"></td>
-            <td><input type="number" min="1" max="5" data-cue="${i}" data-k="density" value="${c.density}"></td>
-            <td><input type="number" min="40" max="220" data-cue="${i}" data-k="tempo_bpm" value="${c.tempo_bpm}"></td>
+            <td><input type="number" min="1" max="5" data-cue="${i}" data-k="energy" value="${esc(c.energy)}"></td>
+            <td><input type="number" min="1" max="5" data-cue="${i}" data-k="density" value="${esc(c.density)}"></td>
+            <td><input type="number" min="40" max="220" data-cue="${i}" data-k="tempo_bpm" value="${esc(c.tempo_bpm)}"></td>
             <td><input type="text" style="width:80px;" data-cue="${i}" data-k="key" value="${esc(c.key)}"></td>
             <td><input type="text" style="width:90px;" data-cue="${i}" data-k="hit_points" value="${esc((c.hit_points||[]).join(', '))}" placeholder="e.g. 4.5, 9"></td>
             <td style="text-align:center;"><input type="checkbox" data-cue="${i}" data-k="dialogue_safe"${c.dialogue_safe?' checked':''}></td>
@@ -287,33 +299,9 @@
         renderCueBoundaryDiagnostics();
       }
 
-      // Client-side mirror of score-engine/cue-analysis.js cueBoundaryDiagnostics().
-      function cueBoundaryDiagnosticsClient(cues, duration_seconds){
-        const list=(Array.isArray(cues)?cues:[]).filter(c=>c&&Number.isFinite(c.start_seconds)&&Number.isFinite(c.end_seconds));
-        if(list.length<2) return [];
-        const sorted=[...list].sort((a,b)=>a.start_seconds-b.start_seconds);
-        const markers=new Map(sorted.map(c=>[c.cue_id,{cue_id:c.cue_id,overlap_with:null,gap_before:null}]));
-        let cursor=sorted[0].end_seconds, cursorCueId=sorted[0].cue_id;
-        for(let i=1;i<sorted.length;i+=1){
-          const cue=sorted[i];
-          if(cue.start_seconds < cursor - CUE_GAP_EPSILON){
-            const seconds=Math.round((cursor-cue.start_seconds)*10)/10;
-            const prev=markers.get(cursorCueId), cur=markers.get(cue.cue_id);
-            if(prev) prev.overlap_with={other_cue_id:cue.cue_id,seconds};
-            if(cur) cur.overlap_with={other_cue_id:cursorCueId,seconds};
-          } else if(cue.start_seconds > cursor + CUE_GAP_EPSILON){
-            const cur=markers.get(cue.cue_id);
-            if(cur) cur.gap_before={seconds:Math.round((cue.start_seconds-cursor)*10)/10};
-          }
-          if(cue.end_seconds>cursor){ cursor=cue.end_seconds; cursorCueId=cue.cue_id; }
-        }
-        void duration_seconds;
-        return Array.from(markers.values()).filter(m=>m.overlap_with||m.gap_before);
-      }
-
       function renderCueBoundaryDiagnostics(){
         document.querySelectorAll('[data-cue-diag]').forEach(el=>{ el.textContent=''; });
-        const markers=cueBoundaryDiagnosticsClient(CUES, ST&&ST.project?ST.project.duration_seconds:0);
+        const markers=ScoreCueAnalysis.cueBoundaryDiagnostics(CUES, ST&&ST.project?ST.project.duration_seconds:0);
         markers.forEach(m=>{
           const index=CUES.findIndex(c=>c.cue_id===m.cue_id);
           const el=document.querySelector(`[data-cue-diag="${index}"]`);
@@ -340,9 +328,9 @@
       function renderPalette(){
         const hasPlan = Boolean(ST.music_plan);
         document.getElementById('palette-badge').className='badge '+(hasPlan?'done':'todo');
-        document.getElementById('palette-badge').textContent=hasPlan?('applied: '+ST.music_plan.palette_id):'todo';
+        document.getElementById('palette-badge').textContent=hasPlan?('applied: '+(ST.music_plan.assignment_profile_id||ST.music_plan.palette_id)):'todo';
         document.getElementById('step-palette').className='step'+(hasPlan?' done':'');
-        const current = ST.project.palette_id;
+        const current = ST.project.assignment_profile_id||ST.project.palette_id;
         document.getElementById('palette-cards').innerHTML = PALETTES.map(id=>
           `<div class="palette-card${id===current?' sel':''}" data-palette="${id}"><b>${esc(id.replace(/_/g,' '))}</b>${id===current?' <span class="chip ok">selected</span>':''}</div>`).join('');
         if (hasPlan){
@@ -354,7 +342,8 @@
 
       function candStatusChip(c){
         const map={planned:'',midi_generated:'',daw_built:'chip',preview_rendered:'',approved:'ok',rejected:'err'};
-        return `<span class="chip ${map[c.status]||''}">${esc(c.status.replace(/_/g,' '))}</span>`;
+        const status=String(c&&c.status||'unknown');
+        return `<span class="chip ${map[status]||''}">${esc(status.replace(/_/g,' '))}</span>`;
       }
 
       function renderCandidates(){
@@ -365,9 +354,9 @@
         document.getElementById('cands').innerHTML = cands.map(c=>`
           <div class="cand${c.status==='approved'?' approved':''}" id="cand-${esc(c.candidate_id)}">
             <div class="cand-head">${esc(c.candidate_id)} ${candStatusChip(c)}
-              <span class="chip">seed ${c.seed}</span><span class="chip">${esc(c.palette_id)}</span>
-              <span class="chip">${c.cue_count} cues</span><span class="chip">${c.tempo_bpm} BPM · ${esc(c.key)}</span>
-              <span class="chip">${c.note_count} notes</span>
+              <span class="chip">seed ${esc(c.seed)}</span><span class="chip">profile ${esc(c.assignment_profile_id||c.palette_id)}</span>
+              <span class="chip">${esc(c.cue_count)} cues</span><span class="chip">${esc(c.tempo_bpm)} BPM · ${esc(c.key)}</span>
+              <span class="chip">${esc(c.note_count)} notes</span>
               ${c.pulse_register?`<span class="chip">pulse ${esc(c.pulse_register)}</span>`:''}${c.harmonic_drift?'<span class="chip">drift</span>':''}
               ${c.parent_candidate?`<span class="chip">revised from ${esc(c.parent_candidate)}</span>`:''}
               ${c.reaper_built?'<span class="chip ok">REAPER built</span>':''}${c.ableton_built?'<span class="chip ok">Ableton handoff</span>':''}
@@ -381,7 +370,7 @@
               <button class="btn" data-act="reaper-open" data-cand="${esc(c.candidate_id)}">Open in REAPER</button>
               <button class="btn" data-act="ableton" data-cand="${esc(c.candidate_id)}">Build Ableton handoff</button>
               <a class="btn" href="${fileUrl('candidates/'+c.candidate_id+'/provenance.md')}" target="_blank">Provenance</a>
-              <button class="btn btn-go" data-act="approve" data-cand="${esc(c.candidate_id)}">Approve + export</button>
+              <button class="btn btn-go" data-act="approve" data-cand="${esc(c.candidate_id)}">Approve sketch</button>
               <button class="btn btn-warn" data-act="reject" data-cand="${esc(c.candidate_id)}">Reject</button>
             </div>
             <div class="meta">REAPER project is MIDI-only until instruments/templates are patched — the handoff README covers both routes. Render defaults are pre-seeded (48 kHz/24-bit); <code>render-scorecraft-mix.lua</code> gives a versioned one-click render.</div>
@@ -405,27 +394,50 @@
 
       function renderExport(){
         const approved = ST.approved;
-        document.getElementById('export-badge').className='badge '+(approved?'done':'todo');
-        document.getElementById('export-badge').textContent=approved?('approved: '+(ST.project.approved_candidate||'')):'todo';
-        document.getElementById('step-export').className='step'+(approved?' done':'');
+        const current = Boolean(ST.readiness && ST.readiness.sketch_approval_current);
+        document.getElementById('export-badge').className='badge '+(current?'done':'todo');
+        document.getElementById('export-badge').textContent=current?('current: '+(ST.project.approved_candidate||'')):approved?'stale / legacy':'todo';
+        document.getElementById('step-export').className='step'+(current?' done':'');
         if(!approved) return;
-        const base = ST.dir.replace(/\/$/,'')+'/approved';
         document.getElementById('export-body').innerHTML = `
           <table>
-            <tr><th>Stereo mix</th><td><code>${esc(base)}/mix.wav</code></td></tr>
-            <tr><th>Dialogue-safe mix</th><td><code>${esc(base)}/mix-dialogue-safe.wav</code></td></tr>
-            <tr><th>Stems</th><td><code>${esc(base)}/stems/</code></td></tr>
-            <tr><th>MIDI</th><td><code>${esc(base)}/midi/</code></td></tr>
-            <tr><th>Resolve import</th><td><code>${esc(base)}/resolve-import/</code> (mixes + stems + cue-markers.csv)</td></tr>
+            <tr><th>Stereo mix</th><td><code>approved/mix.wav</code></td></tr>
+            <tr><th>Dialogue-safe mix</th><td><code>approved/mix-dialogue-safe.wav</code></td></tr>
+            <tr><th>Stems</th><td><code>approved/stems/</code></td></tr>
+            <tr><th>MIDI</th><td><code>approved/midi/</code></td></tr>
+            <tr><th>Sketch reference package</th><td><code>approved/resolve-import/</code> (not production-certified)</td></tr>
           </table>
           <audio controls preload="none" src="${fileUrl('approved/mix.wav')}"></audio>
           <div>
-            <button class="btn" data-copy-text="${esc(base)}/resolve-import" data-copy-label="Resolve import path">Copy Resolve import path</button>
             <button class="btn" data-open="approved">Open output folder</button>
-            <button class="btn" data-open="approved/resolve-import">Open Resolve import folder</button>
+            <button class="btn" data-open="approved/resolve-import">Open sketch reference folder</button>
             <a class="btn" href="${fileUrl('approved/provenance.md')}" target="_blank">Provenance report</a>
           </div>
-          <div class="meta" style="margin-top:6px;">These WAVs are Score Engine sketch renders — for final quality, render from REAPER/Ableton with your real instruments (README in the handoff explains it) and drop the result into the package.</div>`;
+          <div class="meta" style="margin-top:6px;">These WAVs are Score Engine sketch renders. Finish the approved direction in REAPER/Ableton, then use the production import below. Sketch audio is never promoted to Resolve-ready.</div>`;
+      }
+
+      function renderProduction(){
+        const R=ST.readiness||{}, P=R.production||{state:'not_imported',reasons:[],resolve_ready:false};
+        const badge=document.getElementById('production-badge');
+        badge.className='badge '+(P.resolve_ready?'done':'todo');
+        badge.textContent=P.resolve_ready?'Resolve-ready':P.state.replace(/_/g,' ');
+        document.getElementById('step-production').className='step'+(P.resolve_ready?' done':'');
+        const reasons=(P.reasons||[]).length?`<div class="err">Stale: ${esc(P.reasons.join(', '))}</div>`:'';
+        const id=P.production_mix_id?`<span class="chip">${esc(P.production_mix_id)}</span>`:'';
+        document.getElementById('production-body').innerHTML = `${id}${reasons}`+
+          (P.resolve_ready?'Verified production mix is hash-checked in the prepared Resolve package.'
+            :P.state==='verified'?'Production WAV verified. Prepare the immutable Resolve delivery copy.'
+              :P.state==='imported'?'Production WAV imported but not verified.'
+                :P.state==='stale'?'The historical import remains on disk, but cannot authorize Resolve delivery.'
+                  :'Select the completed stereo WAV exported from your DAW. Import does not imply verification.');
+        document.getElementById('production-verify').disabled=P.state!=='imported';
+        document.getElementById('production-resolve').disabled=P.state!=='verified';
+      }
+
+      function bytesToBase64(bytes){
+        let binary=''; const chunk=0x8000;
+        for(let i=0;i<bytes.length;i+=chunk) binary+=String.fromCharCode(...bytes.subarray(i,Math.min(i+chunk,bytes.length)));
+        return btoa(binary);
       }
 
       // ── actions ──
@@ -433,12 +445,9 @@
         if (CUES.length && !window.confirm('Regenerate the cue sheet? The current one is archived to history/, not lost.')) return;
         try{ await post('/api/score/cues/generate',{project_id:ID}); toast('Cue sheet generated'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
       };
-      document.getElementById('cues-add').onclick = ()=>{
-        collectCues();
-        const last = CUES[CUES.length-1];
-        const start = last ? last.end_seconds : 0;
-        CUES.push({cue_id:'C'+String(CUES.length+1).padStart(3,'0'),name:'New cue',start_seconds:start,end_seconds:Math.min(ST.project.duration_seconds,start+10),function:'explanation',emotion:'clinical',energy:2,density:2,tempo_bpm:ST.project.global_tempo_bpm,key:ST.project.global_key,time_signature:'4/4',instrument_roles:{pulse:'',bass:'',harmony:'',melody:'',texture:'',impact:''},arrangement_notes:'',hit_points:[],dialogue_safe:true});
-        renderCues();
+      document.getElementById('cues-split').onclick = ()=>{
+        try{ collectCues(); CUES=ScoreCueEditor.splitCue(CUES,SELECTED_CUE_INDEX); SELECTED_CUE_INDEX+=1; renderCues(); renderScoreMap(); }
+        catch(e){ toast(e.message,false); }
       };
       document.getElementById('cues-save').onclick = async ()=>{
         try{ await post('/api/score/cues/save',{project_id:ID,cues:collectCues()}); toast('Cue sheet saved (previous archived)'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
@@ -461,7 +470,7 @@
       };
       document.getElementById('palette-apply').onclick = async ()=>{
         const sel=document.querySelector('.palette-card.sel');
-        try{ await post('/api/score/palette',{project_id:ID,palette_id:sel?sel.getAttribute('data-palette'):ST.project.palette_id}); toast('Palette applied'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
+        try{ await post('/api/score/palette',{project_id:ID,assignment_profile_id:sel?sel.getAttribute('data-palette'):(ST.project.assignment_profile_id||ST.project.palette_id)}); toast('Orchestration profile applied'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
       };
       document.getElementById('cands-generate').onclick = async ()=>{
         // In-flight guard: candidate generation renders N MIDI files + WAV
@@ -480,6 +489,34 @@
         btn.disabled=false; busy.textContent=''; load();
       };
 
+      document.getElementById('production-import').onclick = async ()=>{
+        const input=document.getElementById('production-file'), file=input.files&&input.files[0];
+        if(!file) return toast('Select a production WAV first',false);
+        if(!/\.wav$/i.test(file.name)) return toast('Production import currently accepts WAV only',false);
+        const btn=document.getElementById('production-import'); if(btn.disabled) return;
+        btn.disabled=true; btn.textContent='Importing…';
+        try{
+          const bytes=new Uint8Array(await file.arrayBuffer());
+          await post(SCORE_PRODUCTION_IMPORT_API,{project_id:ID,original_filename:file.name,data_base64:bytesToBase64(bytes)});
+          toast('Production render imported — verification still required'); await load();
+        }catch(e){ toast(e.message,false); showErr(e.message); }
+        finally{ btn.disabled=false; btn.textContent='Import production render'; }
+      };
+      document.getElementById('production-verify').onclick = async ()=>{
+        const btn=document.getElementById('production-verify'); if(btn.disabled) return;
+        btn.disabled=true; btn.textContent='Verifying…';
+        try{ await post(SCORE_PRODUCTION_VERIFY_API,{project_id:ID}); toast('Production mix verified'); await load(); }
+        catch(e){ toast(e.message,false); showErr(e.message); }
+        finally{ btn.disabled=false; btn.textContent='Verify production mix'; }
+      };
+      document.getElementById('production-resolve').onclick = async ()=>{
+        const btn=document.getElementById('production-resolve'); if(btn.disabled) return;
+        btn.disabled=true; btn.textContent='Preparing…';
+        try{ await post(SCORE_PRODUCTION_RESOLVE_API,{project_id:ID}); toast('Verified production package prepared for Resolve'); await load(); }
+        catch(e){ toast(e.message,false); showErr(e.message); }
+        finally{ btn.disabled=false; btn.textContent='Prepare Resolve package'; }
+      };
+
       document.addEventListener('click', async (ev)=>{
         const t=ev.target;
         if (t && t.id==='ready-verify'){ await verifyApprovedExport(); return; }
@@ -488,7 +525,7 @@
         if (t.classList && t.classList.contains('palette-card')){ document.querySelectorAll('.palette-card').forEach(el=>el.classList.remove('sel')); t.classList.add('sel'); return; }
         if (t.closest && t.closest('.palette-card')){ document.querySelectorAll('.palette-card').forEach(el=>el.classList.remove('sel')); t.closest('.palette-card').classList.add('sel'); return; }
         const del = t.getAttribute && t.getAttribute('data-delcue');
-        if (del!==null && del!==undefined && del!==''){ collectCues(); CUES.splice(Number(del),1); renderCues(); return; }
+        if (del!==null && del!==undefined && del!==''){ collectCues(); CUES.splice(Number(del),1); SELECTED_CUE_INDEX=Math.min(SELECTED_CUE_INDEX,Math.max(0,CUES.length-1)); renderCues(); renderScoreMap(); return; }
         const open = t.getAttribute && t.getAttribute('data-open');
         if (open){ try{ await post('/api/score/open-folder',{project_id:ID,path:open}); toast('Opened folder'); }catch(e){ toast(e.message,false);} return; }
         const act = t.getAttribute && t.getAttribute('data-act');
@@ -506,8 +543,8 @@
           else if (act==='ableton'){ await post('/api/score/ableton/build',{project_id:ID,candidate_id:cand}); toast('Ableton handoff built'); }
           else if (act==='approve'){
             const exact=document.getElementById('export-exact').checked;
-            if(!window.confirm('Approve '+cand+' and export to music/approved/ ('+(exact?'duration-exact':'tail-preserving')+')? A previous approval would be archived, not overwritten.')) return;
-            await post('/api/score/candidates/approve',{project_id:ID,candidate_id:cand,duration_exact:exact}); toast('Approved + exported ('+(exact?'duration-exact':'tail-preserving')+')');
+            if(!window.confirm('Approve '+cand+' as the sketch direction ('+(exact?'duration-exact':'tail-preserving')+')? A previous approval would be archived, not overwritten. Production verification remains a separate step.')) return;
+            await post('/api/score/candidates/approve',{project_id:ID,candidate_id:cand,duration_exact:exact}); toast('Sketch approved ('+(exact?'duration-exact':'tail-preserving')+')');
           }
           else if (act==='reject'){
             if(!window.confirm(`Reject ${cand}? This marks it rejected (reversible — you can flip status back). It is not deleted.`)) return;
@@ -522,6 +559,7 @@
         if(ev.target && ev.target.getAttribute && ev.target.getAttribute('data-cue')!==null){ collectCues(); renderScoreMap(); renderCueBoundaryDiagnostics(); }
       });
       document.getElementById('cue-table').addEventListener('change', (ev)=>{
+        if(ev.target && ev.target.getAttribute && ev.target.getAttribute('data-selectcue')!==null){ SELECTED_CUE_INDEX=Number(ev.target.getAttribute('data-selectcue')); return; }
         if(ev.target && ev.target.getAttribute && ev.target.getAttribute('data-cue')!==null){ collectCues(); renderScoreMap(); renderCueBoundaryDiagnostics(); }
       });
 

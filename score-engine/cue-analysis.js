@@ -3,6 +3,11 @@
 // to SEE: coverage, music gaps, dialogue-safety risks, and per-cue sanity
 // warnings. Advisory by design — warnings inform the human, they never block
 // (the schema validator owns hard failures). No I/O, fully deterministic.
+(function exposeCueAnalysis(root, factory) {
+  const api = factory();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  if (root) root.ScoreCueAnalysis = api;
+})(typeof globalThis !== "undefined" ? globalThis : this, function cueAnalysisFactory() {
 "use strict";
 
 const GAP_EPSILON = 0.25; // sub-quarter-second seams are layout noise, not gaps
@@ -115,4 +120,5 @@ function cueBoundaryDiagnostics(cues = [], duration_seconds = 0) {
   return Array.from(markers.values()).filter((m) => m.overlap_with || m.gap_before);
 }
 
-module.exports = { analyzeCueSheet, cueBoundaryDiagnostics, GAP_EPSILON, SHORT_CUE_SECONDS };
+return { analyzeCueSheet, cueBoundaryDiagnostics, GAP_EPSILON, SHORT_CUE_SECONDS };
+});

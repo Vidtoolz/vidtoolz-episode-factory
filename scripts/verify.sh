@@ -6,6 +6,8 @@ cd "$(dirname "$0")/.."
 node tests/run-tests.js
 node --check episode-model.js
 node --check score-engine/cue-analysis.js
+node --check score-engine/cue-editor.js
+node --check score-engine/score-provenance.js
 node --check score-engine/score-readiness.js
 node --check scripts/verify-score-package.js
 node --check storage-adapter.js
