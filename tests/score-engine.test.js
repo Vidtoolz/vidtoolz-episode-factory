@@ -510,6 +510,20 @@ test("score-engine reaper timing: per-cue tempo markers preserve adjacent and ga
   assert.match(lua, /SetTempoTimeSigMarker/);
 });
 
+test("score-engine reaper template script: tempo markers remain at exact video-time positions", () => {
+  const cues = [
+    { ...scoreCue("C001", 0, 10, 120), time_signature: "4/4" },
+    { ...scoreCue("C002", 10.25, 20.25, 72), time_signature: "7/8" },
+  ];
+  const lua = reaperBackend.buildTemplateScript({ projectName: "Exact markers", roles: [], cues, savePath: "/tmp/test.rpp", tempo: 120 });
+  assert.match(lua, /\{ pos = 10\.25, bpm = 72, num = 7, den = 8 \}/);
+  assert.doesNotMatch(
+    lua,
+    /reaper\.GetSetTempoTimeSigMarkerFlag/,
+    "REAPER's new-measure flags quantize video-time tempo markers to musical measure boundaries",
+  );
+});
+
 test("score-engine reaper timing: time signatures, precise lengths, and source offsets are explicit", () => {
   const cues = [
     { ...scoreCue("C001", 0, 0.5004, 120), time_signature: "6/8" },
