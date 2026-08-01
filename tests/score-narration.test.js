@@ -257,8 +257,18 @@ test("score narration API: nonce, local Host, JSON, canonical base64, and no ser
     const req = http.request({ hostname: "127.0.0.1", port: server.address().port, path: route, method: "POST", headers: { Host: "127.0.0.1:8010", "Content-Type": "application/json", "Content-Length": bytes.length, ...headers } }, (res) => { let raw = ""; res.on("data", (chunk) => { raw += chunk; }); res.on("end", () => resolve({ status: res.statusCode, body: raw.startsWith("{") ? JSON.parse(raw) : raw })); });
     req.on("error", reject); req.end(bytes);
   });
+  const get = (route) => new Promise((resolve, reject) => {
+    http.get({ hostname: "127.0.0.1", port: server.address().port, path: route, headers: { Host: "127.0.0.1:8010" } }, (res) => {
+      let raw = "";
+      res.on("data", (chunk) => { raw += chunk; });
+      res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(raw) }));
+    }).on("error", reject);
+  });
   const payload = { project_id: project.project_id, original_filename: "voice.wav", timeline_start_seconds: 1, authority_basis: "Explicit operator selection.", data_base64: makeWav().toString("base64") };
   try {
+    const projectState = await get(`/api/score/project?id=${encodeURIComponent(project.project_id)}`);
+    assert.equal(projectState.status, 200);
+    assert.equal(projectState.body.data.narration.state, "not_registered");
     assert.equal((await request(payload)).status, 403);
     const auth = { "x-vidtoolz-local-write-nonce": packageEngineServer.localWriteNonce() };
     assert.equal((await request({ ...payload, path: "/tmp/voice.wav" }, auth)).status, 400);
