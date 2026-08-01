@@ -105,10 +105,10 @@
       </div>
 
       <div class="step" id="step-palette">
-        <div class="step-head">2 · Palette &amp; instruments <span class="badge todo" id="palette-badge">todo</span></div>
+        <div class="step-head">2 · Orchestration profile &amp; instruments <span class="badge todo" id="palette-badge">todo</span></div>
         <div id="palette-cards"></div>
         <div id="palette-roles"></div>
-        <button class="btn btn-go" id="palette-apply">Apply palette</button>
+        <button class="btn btn-go" id="palette-apply">Apply orchestration profile</button>
       </div>
 
       <div class="step" id="step-cands">
@@ -333,9 +333,9 @@
       function renderPalette(){
         const hasPlan = Boolean(ST.music_plan);
         document.getElementById('palette-badge').className='badge '+(hasPlan?'done':'todo');
-        document.getElementById('palette-badge').textContent=hasPlan?('applied: '+ST.music_plan.palette_id):'todo';
+        document.getElementById('palette-badge').textContent=hasPlan?('applied: '+(ST.music_plan.assignment_profile_id||ST.music_plan.palette_id)):'todo';
         document.getElementById('step-palette').className='step'+(hasPlan?' done':'');
-        const current = ST.project.palette_id;
+        const current = ST.project.assignment_profile_id||ST.project.palette_id;
         document.getElementById('palette-cards').innerHTML = PALETTES.map(id=>
           `<div class="palette-card${id===current?' sel':''}" data-palette="${id}"><b>${esc(id.replace(/_/g,' '))}</b>${id===current?' <span class="chip ok">selected</span>':''}</div>`).join('');
         if (hasPlan){
@@ -358,7 +358,7 @@
         document.getElementById('cands').innerHTML = cands.map(c=>`
           <div class="cand${c.status==='approved'?' approved':''}" id="cand-${esc(c.candidate_id)}">
             <div class="cand-head">${esc(c.candidate_id)} ${candStatusChip(c)}
-              <span class="chip">seed ${c.seed}</span><span class="chip">${esc(c.palette_id)}</span>
+              <span class="chip">seed ${c.seed}</span><span class="chip">profile ${esc(c.assignment_profile_id||c.palette_id)}</span>
               <span class="chip">${c.cue_count} cues</span><span class="chip">${c.tempo_bpm} BPM · ${esc(c.key)}</span>
               <span class="chip">${c.note_count} notes</span>
               ${c.pulse_register?`<span class="chip">pulse ${esc(c.pulse_register)}</span>`:''}${c.harmonic_drift?'<span class="chip">drift</span>':''}
@@ -476,7 +476,7 @@
       };
       document.getElementById('palette-apply').onclick = async ()=>{
         const sel=document.querySelector('.palette-card.sel');
-        try{ await post('/api/score/palette',{project_id:ID,palette_id:sel?sel.getAttribute('data-palette'):ST.project.palette_id}); toast('Palette applied'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
+        try{ await post('/api/score/palette',{project_id:ID,assignment_profile_id:sel?sel.getAttribute('data-palette'):(ST.project.assignment_profile_id||ST.project.palette_id)}); toast('Orchestration profile applied'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
       };
       document.getElementById('cands-generate').onclick = async ()=>{
         // In-flight guard: candidate generation renders N MIDI files + WAV

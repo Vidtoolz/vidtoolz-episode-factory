@@ -110,10 +110,10 @@ function estimateDurationFromScript(scriptText) {
   return Math.max(15, Math.round((words / 150) * 60));
 }
 
-// ── music plan (palette applied to cue sheet) ──
+// ── music plan (orchestration profile applied to cue sheet) ──
 function buildMusicPlan(cueSheet, paletteId, profiles = []) {
   const palette = schemas.DEFAULT_PALETTES[paletteId];
-  if (!palette) throw new Error(`Unknown palette: ${paletteId}. Available: ${Object.keys(schemas.DEFAULT_PALETTES).join(", ")}`);
+  if (!palette) throw new Error(`Unknown orchestration profile (palette_id alias): ${paletteId}. Available: ${Object.keys(schemas.DEFAULT_PALETTES).join(", ")}`);
   const profileById = new Map(profiles.map((p) => [p.profile_id, p]));
   const roles = {};
   for (const [role, spec] of Object.entries(palette.roles)) {
@@ -129,6 +129,10 @@ function buildMusicPlan(cueSheet, paletteId, profiles = []) {
     };
   }
   return {
+    assignment_profile_id: palette.palette_id,
+    assignment_profile_display_name: palette.display_name,
+    // Backward-compatible persisted aliases. New readers prefer the
+    // assignment_profile_* names when present.
     palette_id: palette.palette_id,
     palette_display_name: palette.display_name,
     description: palette.description,

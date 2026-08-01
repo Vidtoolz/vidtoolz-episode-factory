@@ -220,7 +220,8 @@ function createScoreProject(input = {}, options = {}) {
     overall_mood: input.overall_mood || "curious",
     dialogue_density: schemas.DIALOGUE_DENSITIES.includes(input.dialogue_density) ? input.dialogue_density : settings.default_dialogue_density,
     music_role: schemas.MUSIC_ROLES.includes(input.music_role) ? input.music_role : "underscore",
-    palette_id: schemas.DEFAULT_PALETTES[input.palette_id] ? input.palette_id : settings.default_palette,
+    palette_id: schemas.DEFAULT_PALETTES[input.assignment_profile_id || input.palette_id] ? (input.assignment_profile_id || input.palette_id) : settings.default_palette,
+    assignment_profile_id: schemas.DEFAULT_PALETTES[input.assignment_profile_id || input.palette_id] ? (input.assignment_profile_id || input.palette_id) : settings.default_palette,
     candidate_count: Math.min(5, Math.max(1, Number(input.candidate_count) || settings.default_candidate_count)),
     seed: Number.isInteger(input.seed) ? input.seed : 1,
     cue_sheet_approved: false,
@@ -245,7 +246,7 @@ function buildScoreBrief(project) {
 - Duration: ${project.duration_seconds}s · Platform: ${project.target_platform}
 - Music role: ${project.music_role} · Dialogue density: ${project.dialogue_density}
 - Key: ${project.global_key} · Tempo: ${project.global_tempo_bpm} BPM · Mood: ${project.overall_mood}
-- Palette: ${project.palette_id} · Seed: ${project.seed}
+- Orchestration profile: ${project.assignment_profile_id || project.palette_id} · Seed: ${project.seed}
 - Package: ${project.video_package_path || "(standalone)"}
 
 Original music only. All material is generated from abstract musical attributes
@@ -399,6 +400,7 @@ function setPalette(projectId, paletteId, options = {}) {
   archiveIfExists(dir, "music-plan.json");
   writeJson(path.join(dir, "music-plan.json"), { ...plan, generated_at: nowIso() });
   project.palette_id = paletteId;
+  project.assignment_profile_id = paletteId;
   saveProject(dir, project);
   return { music_plan: plan };
 }
@@ -453,6 +455,7 @@ function buildOneCandidate(dir, project, musicPlan, generation, settings) {
   const cueSheet = { cues: generation.cues };
   const composition = composerEngine.compose(cueSheet, {
     seed: generation.seed,
+    assignment_profile_id: generation.assignment_profile_id || generation.palette_id,
     palette_id: generation.palette_id,
     dialogue_density: project.dialogue_density,
     pulse_register: generation.pulse_register,
@@ -552,6 +555,7 @@ function buildCandidateProvenance(project, musicPlan, meta, generation) {
     source: { video_package_path: project.video_package_path, video_path: project.video_path, script_path: project.script_path },
     candidate_id: meta.candidate_id,
     seed: meta.seed,
+    assignment_profile_id: meta.assignment_profile_id || meta.palette_id,
     palette_id: meta.palette_id,
     dialogue_density: project.dialogue_density,
     pulse_register: meta.pulse_register || "low_mid",
@@ -574,7 +578,7 @@ function renderProvenanceMarkdown(provenance) {
     `# Provenance — ${provenance.project_name} / ${provenance.candidate_id}`,
     "",
     `- Engine: ${provenance.engine} · Created: ${provenance.created_at}`,
-    `- Seed: ${provenance.seed} · Palette: ${provenance.palette_id} · Dialogue density: ${provenance.dialogue_density}`,
+    `- Seed: ${provenance.seed} · Orchestration profile: ${provenance.palette_id} · Dialogue density: ${provenance.dialogue_density}`,
     `- Pulse register: ${provenance.pulse_register || "low_mid"} · Harmonic drift: ${provenance.harmonic_drift ? "on" : "off"}${provenance.render ? ` · Export: ${provenance.render.export_mode || ""}` : ""}`,
     `- Note generation: ${provenance.generation_method}`,
     `- Sources: package=${provenance.source.video_package_path || "-"} video=${provenance.source.video_path || "-"} script=${provenance.source.script_path || "-"}`,

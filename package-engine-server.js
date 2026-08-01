@@ -16112,7 +16112,7 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Score palette API' });
-          sendJSON(res, 200, scoreLane.setPalette(payload.project_id || '', payload.palette_id || '', scoreOptions()));
+          sendJSON(res, 200, scoreLane.setPalette(payload.project_id || '', payload.assignment_profile_id || payload.palette_id || '', scoreOptions()));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-palette-error'));
       return;

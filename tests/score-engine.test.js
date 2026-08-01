@@ -128,10 +128,24 @@ test("score-engine planner: palette validation + music plan resolves instrument 
   assert.equal(plan.palette_id, "tech_noir_pulse");
   assert.equal(plan.roles.bass.vendor, "Arturia");
   assert.ok(plan.mix_guidance.length >= 3);
-  assert.throws(() => planner.buildMusicPlan(sheet, "nope"), /Unknown palette/);
+  assert.throws(() => planner.buildMusicPlan(sheet, "nope"), /Unknown orchestration profile/);
   for (const palette of Object.values(schemas.DEFAULT_PALETTES)) {
     assert.deepEqual(schemas.validatePalette(palette), [], palette.palette_id);
   }
+});
+
+test("score-engine orchestration profiles are honestly assignment-only with palette_id compatibility", () => {
+  const cues = planner.generateCueSheet({ duration_seconds: 12 }).cues;
+  const tech = composer.compose({ cues }, { seed: 9, palette_id: "tech_noir_pulse" });
+  const comedy = composer.compose({ cues }, { seed: 9, palette_id: "dry_comedy_underscore" });
+  assert.deepEqual(tech.notes, comedy.notes, "profile selection does not claim to alter note composition");
+  assert.equal(schemas.DEFAULT_ASSIGNMENT_PROFILES, schemas.DEFAULT_PALETTES);
+  const plan = planner.buildMusicPlan({ cues }, "tech_noir_pulse", schemas.STARTER_INSTRUMENT_PROFILES);
+  assert.equal(plan.assignment_profile_id, "tech_noir_pulse");
+  assert.equal(plan.palette_id, plan.assignment_profile_id, "legacy persistence alias remains readable");
+  const html = fs.readFileSync(path.join(__dirname, "..", "score-project.html"), "utf8");
+  assert.match(html, /Orchestration profile &amp; instruments/);
+  assert.match(html, /Apply orchestration profile/);
 });
 
 // ── composer ──

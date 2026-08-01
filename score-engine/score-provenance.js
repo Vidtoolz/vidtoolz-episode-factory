@@ -84,6 +84,8 @@ function portableMusicPlan(musicPlan = null) {
     };
   }
   return {
+    assignment_profile_id: musicPlan.assignment_profile_id || musicPlan.palette_id || null,
+    assignment_profile_display_name: musicPlan.assignment_profile_display_name || musicPlan.palette_display_name || null,
     palette_id: musicPlan.palette_id || null,
     palette_display_name: musicPlan.palette_display_name || null,
     description: musicPlan.description || "",
@@ -97,6 +99,7 @@ function musicPlanIdentity({ project = {}, musicPlan = null, generation = {} } =
     schema_version: HASH_SCHEMA_VERSION,
     plan: portableMusicPlan(musicPlan),
     generation: {
+      assignment_profile_id: generation.assignment_profile_id || generation.palette_id || project.assignment_profile_id || project.palette_id || null,
       palette_id: generation.palette_id || project.palette_id || null,
       seed: generation.seed,
       dialogue_density: generation.dialogue_density || project.dialogue_density || null,

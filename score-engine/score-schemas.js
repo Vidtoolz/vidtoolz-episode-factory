@@ -15,7 +15,9 @@ const SUPPORTED_KEY_TONICS = ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", 
 const SUPPORTED_KEY_MODES = ["major", "minor", "dorian", "lydian", "mixolydian", "phrygian"];
 const SUPPORTED_TIME_SIGNATURES = ["2/4", "3/4", "4/4", "5/4", "6/8", "7/8", "9/8", "12/8"];
 
-// ── Default palettes (abstract musical attributes only — never named artists) ──
+// These are orchestration/instrument-assignment profiles. `palette_id` and
+// DEFAULT_PALETTES remain durable compatibility names; profiles do not alter
+// the deterministic composer's note-generation rules.
 const DEFAULT_PALETTES = {
   tech_noir_pulse: {
     palette_id: "tech_noir_pulse",
@@ -88,6 +90,7 @@ const DEFAULT_PALETTES = {
     },
   },
 };
+const DEFAULT_ASSIGNMENT_PROFILES = DEFAULT_PALETTES;
 
 // ── Starter instrument profiles (template-first abstraction; §7) ──
 // These reference owned-tool CATEGORIES, not reverse-engineered plugin APIs.
@@ -297,6 +300,7 @@ module.exports = {
   SUPPORTED_KEY_MODES,
   SUPPORTED_TIME_SIGNATURES,
   DEFAULT_PALETTES,
+  DEFAULT_ASSIGNMENT_PROFILES,
   STARTER_INSTRUMENT_PROFILES,
   DEFAULT_SETTINGS,
   parseSupportedKey,

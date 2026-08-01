@@ -124,9 +124,9 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
       detail: cues.length ? `${cues.length} cue(s), ${analysis.coverage_pct}% of ${analysis.duration_seconds}s covered${analysis.gaps.length ? `, ${analysis.gaps.length} silence gap(s)` : ""}` : "no cues yet — generate or write the cue sheet",
     },
     {
-      id: "palette", label: "Palette / music plan",
+      id: "palette", label: "Orchestration profile / music plan",
       state: musicPlan ? "done" : "todo",
-      detail: musicPlan ? `${musicPlan.palette_id}` : "pick a palette to map cue roles to instruments",
+      detail: musicPlan ? `${musicPlan.assignment_profile_id || musicPlan.palette_id}` : "pick an orchestration profile to map cue roles to instruments",
     },
     {
       id: "candidates", label: "Music candidates",
@@ -162,7 +162,7 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
   const readyToRender = Boolean(project.cue_sheet_approved && musicPlan);
   const nextAction = !cues.length ? "Generate the cue sheet (step 1)."
     : !project.cue_sheet_approved ? "Review the Score Map, then approve the cue sheet."
-      : !musicPlan ? "Pick a palette (step 2)."
+      : !musicPlan ? "Pick an orchestration profile (step 2)."
         : !previewable.length ? "Generate music candidates (step 3), then audition the sketch previews."
           : !approvalAuthority.current
             ? hasApproval ? "The preserved sketch approval is stale or legacy; regenerate/reapprove deliberately from the current score state." : "Audition the previews (A/B compare) and approve one candidate as a sketch."
