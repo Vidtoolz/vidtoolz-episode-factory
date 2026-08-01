@@ -375,11 +375,11 @@ test("ui: score workspace confirms reject with candidate id and reversible statu
   assert.ok(html.includes("status:'rejected'"), "reject still posts reversible status");
 });
 
-test("ui: score workspace renders cue boundary diagnostics with mirrored epsilon", () => {
+test("ui: score workspace renders cue boundary diagnostics from the shared analysis module", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "score-project.html"), "utf8");
-  assert.ok(html.includes("const CUE_GAP_EPSILON = 0.25;"), "UI references the same epsilon value");
-  assert.ok(html.includes("Mirrors score-engine/cue-analysis.js GAP_EPSILON exactly"), "mirror comment present");
-  assert.ok(html.includes("cueBoundaryDiagnosticsClient"), "client diagnostics helper present");
+  assert.ok(html.includes('<script src="score-engine/cue-analysis.js"></script>'), "shared analysis module loaded");
+  assert.ok(html.includes("ScoreCueAnalysis.cueBoundaryDiagnostics"), "shared boundary diagnostics used");
+  assert.ok(!html.includes("cueBoundaryDiagnosticsClient"), "no drift-prone client mirror remains");
   assert.ok(html.includes("addEventListener('input'"), "input event delegation wired");
   assert.ok(html.includes("addEventListener('change'"), "change event delegation wired");
   assert.ok(html.includes("renderCueBoundaryDiagnostics"), "diagnostics renderer present");

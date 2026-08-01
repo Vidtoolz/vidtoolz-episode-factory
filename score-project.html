@@ -91,7 +91,7 @@
         <div id="cue-table"></div>
         <div style="margin-top:8px;">
           <button class="btn" id="cues-generate">Generate cue sheet</button>
-          <button class="btn" id="cues-add">Add cue</button>
+          <button class="btn" id="cues-split">Split selected cue</button>
           <button class="btn" id="cues-save">Save cue edits</button>
           <button class="btn btn-go" id="cues-approve">Approve cue sheet</button>
         </div>
@@ -144,6 +144,8 @@
       </div>
     </div>
     <div id="copy-status"></div>
+    <script src="score-engine/cue-analysis.js"></script>
+    <script src="score-engine/cue-editor.js"></script>
     <script>
       const ID = new URLSearchParams(location.search).get('id') || '';
       let ST = null; let CUES = [];
@@ -155,8 +157,7 @@
       const SCORE_PRODUCTION_IMPORT_API = '/api/score/production/import';
       const SCORE_PRODUCTION_VERIFY_API = '/api/score/production/verify';
       const SCORE_PRODUCTION_RESOLVE_API = '/api/score/production/resolve';
-      // Mirrors score-engine/cue-analysis.js GAP_EPSILON exactly; keep static tests in sync.
-      const CUE_GAP_EPSILON = 0.25;
+      let SELECTED_CUE_INDEX = 0;
       let verifyInFlight = false;
       let verifySeq = 0;
 
@@ -250,7 +251,7 @@
       // dashed slots = planned silence (visible, never accidental).
       function renderScoreMap(){
         const el = document.getElementById('score-map');
-        const A = ST.analysis;
+        const A = ScoreCueAnalysis.analyzeCueSheet(ST.project,CUES);
         if(!A || !A.cues.length){
           el.innerHTML = '<div class="meta" style="padding:14px 4px;">No cues yet — the Score Map appears as soon as a cue sheet exists. Click <b>Generate cue sheet</b> below for a deterministic starting plan, or use the AI-assisted option.</div>';
           return;
@@ -282,8 +283,10 @@
         document.getElementById('step-cues').className = 'step'+(approved?' done':'');
         renderScoreMap();
         if(!CUES.length){ document.getElementById('cue-table').innerHTML='<div class="meta">No cues yet — click Generate cue sheet.</div>'; return; }
-        document.getElementById('cue-table').innerHTML = '<table><tr><th>id</th><th>Name</th><th>Start</th><th>End</th><th>Function</th><th>Emotion</th><th>Energy</th><th>Density</th><th>BPM</th><th>Key</th><th>Hit points (s)</th><th>Dlg-safe</th><th></th></tr>'+
+        if(SELECTED_CUE_INDEX>=CUES.length) SELECTED_CUE_INDEX=Math.max(0,CUES.length-1);
+        document.getElementById('cue-table').innerHTML = '<table><tr><th>Split</th><th>id</th><th>Name</th><th>Start</th><th>End</th><th>Function</th><th>Emotion</th><th>Energy</th><th>Density</th><th>BPM</th><th>Key</th><th>Hit points (s)</th><th>Dlg-safe</th><th></th></tr>'+
           CUES.map((c,i)=>`<tr>
+            <td><input type="radio" name="cue-selection" data-selectcue="${i}"${i===SELECTED_CUE_INDEX?' checked':''} aria-label="Select ${esc(c.cue_id)} to split"></td>
             <td><b style="color:${CUE_COLORS[i%CUE_COLORS.length]}">${esc(c.cue_id)}</b><div class="cue-diag warn" data-cue-diag="${i}"></div></td>
             <td><input type="text" data-cue="${i}" data-k="name" value="${esc(c.name)}"></td>
             <td><input type="number" step="0.1" data-cue="${i}" data-k="start_seconds" value="${c.start_seconds}"></td>
@@ -301,33 +304,9 @@
         renderCueBoundaryDiagnostics();
       }
 
-      // Client-side mirror of score-engine/cue-analysis.js cueBoundaryDiagnostics().
-      function cueBoundaryDiagnosticsClient(cues, duration_seconds){
-        const list=(Array.isArray(cues)?cues:[]).filter(c=>c&&Number.isFinite(c.start_seconds)&&Number.isFinite(c.end_seconds));
-        if(list.length<2) return [];
-        const sorted=[...list].sort((a,b)=>a.start_seconds-b.start_seconds);
-        const markers=new Map(sorted.map(c=>[c.cue_id,{cue_id:c.cue_id,overlap_with:null,gap_before:null}]));
-        let cursor=sorted[0].end_seconds, cursorCueId=sorted[0].cue_id;
-        for(let i=1;i<sorted.length;i+=1){
-          const cue=sorted[i];
-          if(cue.start_seconds < cursor - CUE_GAP_EPSILON){
-            const seconds=Math.round((cursor-cue.start_seconds)*10)/10;
-            const prev=markers.get(cursorCueId), cur=markers.get(cue.cue_id);
-            if(prev) prev.overlap_with={other_cue_id:cue.cue_id,seconds};
-            if(cur) cur.overlap_with={other_cue_id:cursorCueId,seconds};
-          } else if(cue.start_seconds > cursor + CUE_GAP_EPSILON){
-            const cur=markers.get(cue.cue_id);
-            if(cur) cur.gap_before={seconds:Math.round((cue.start_seconds-cursor)*10)/10};
-          }
-          if(cue.end_seconds>cursor){ cursor=cue.end_seconds; cursorCueId=cue.cue_id; }
-        }
-        void duration_seconds;
-        return Array.from(markers.values()).filter(m=>m.overlap_with||m.gap_before);
-      }
-
       function renderCueBoundaryDiagnostics(){
         document.querySelectorAll('[data-cue-diag]').forEach(el=>{ el.textContent=''; });
-        const markers=cueBoundaryDiagnosticsClient(CUES, ST&&ST.project?ST.project.duration_seconds:0);
+        const markers=ScoreCueAnalysis.cueBoundaryDiagnostics(CUES, ST&&ST.project?ST.project.duration_seconds:0);
         markers.forEach(m=>{
           const index=CUES.findIndex(c=>c.cue_id===m.cue_id);
           const el=document.querySelector(`[data-cue-diag="${index}"]`);
@@ -472,12 +451,9 @@
         if (CUES.length && !window.confirm('Regenerate the cue sheet? The current one is archived to history/, not lost.')) return;
         try{ await post('/api/score/cues/generate',{project_id:ID}); toast('Cue sheet generated'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
       };
-      document.getElementById('cues-add').onclick = ()=>{
-        collectCues();
-        const last = CUES[CUES.length-1];
-        const start = last ? last.end_seconds : 0;
-        CUES.push({cue_id:'C'+String(CUES.length+1).padStart(3,'0'),name:'New cue',start_seconds:start,end_seconds:Math.min(ST.project.duration_seconds,start+10),function:'explanation',emotion:'clinical',energy:2,density:2,tempo_bpm:ST.project.global_tempo_bpm,key:ST.project.global_key,time_signature:'4/4',instrument_roles:{pulse:'',bass:'',harmony:'',melody:'',texture:'',impact:''},arrangement_notes:'',hit_points:[],dialogue_safe:true});
-        renderCues();
+      document.getElementById('cues-split').onclick = ()=>{
+        try{ collectCues(); CUES=ScoreCueEditor.splitCue(CUES,SELECTED_CUE_INDEX); SELECTED_CUE_INDEX+=1; renderCues(); renderScoreMap(); }
+        catch(e){ toast(e.message,false); }
       };
       document.getElementById('cues-save').onclick = async ()=>{
         try{ await post('/api/score/cues/save',{project_id:ID,cues:collectCues()}); toast('Cue sheet saved (previous archived)'); load(); }catch(e){ toast(e.message,false); showErr(e.message); }
@@ -555,7 +531,7 @@
         if (t.classList && t.classList.contains('palette-card')){ document.querySelectorAll('.palette-card').forEach(el=>el.classList.remove('sel')); t.classList.add('sel'); return; }
         if (t.closest && t.closest('.palette-card')){ document.querySelectorAll('.palette-card').forEach(el=>el.classList.remove('sel')); t.closest('.palette-card').classList.add('sel'); return; }
         const del = t.getAttribute && t.getAttribute('data-delcue');
-        if (del!==null && del!==undefined && del!==''){ collectCues(); CUES.splice(Number(del),1); renderCues(); return; }
+        if (del!==null && del!==undefined && del!==''){ collectCues(); CUES.splice(Number(del),1); SELECTED_CUE_INDEX=Math.min(SELECTED_CUE_INDEX,Math.max(0,CUES.length-1)); renderCues(); renderScoreMap(); return; }
         const open = t.getAttribute && t.getAttribute('data-open');
         if (open){ try{ await post('/api/score/open-folder',{project_id:ID,path:open}); toast('Opened folder'); }catch(e){ toast(e.message,false);} return; }
         const act = t.getAttribute && t.getAttribute('data-act');
@@ -589,6 +565,7 @@
         if(ev.target && ev.target.getAttribute && ev.target.getAttribute('data-cue')!==null){ collectCues(); renderScoreMap(); renderCueBoundaryDiagnostics(); }
       });
       document.getElementById('cue-table').addEventListener('change', (ev)=>{
+        if(ev.target && ev.target.getAttribute && ev.target.getAttribute('data-selectcue')!==null){ SELECTED_CUE_INDEX=Number(ev.target.getAttribute('data-selectcue')); return; }
         if(ev.target && ev.target.getAttribute && ev.target.getAttribute('data-cue')!==null){ collectCues(); renderScoreMap(); renderCueBoundaryDiagnostics(); }
       });
 
