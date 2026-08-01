@@ -135,7 +135,7 @@ test("readiness: approved plan without candidates is ready-to-render, not Resolv
   assert.equal(st.readiness.approved_export_exists, false);
   assert.match(st.readiness.next_action, /Generate music candidates/);
   assert.ok(st.analysis && st.analysis.cues.length > 0, "analysis rides along on the project GET");
-  assert.match(st.readiness.resolve_ready_requires, /verify-score-package/, "Resolve readiness is only claimed by the verifier");
+  assert.match(st.readiness.resolve_ready_requires, /verified production WAV \+ hash-checked Resolve copy/, "Resolve readiness requires the production gate");
 });
 
 test("readiness: approved export flips the stage but still points at verification", () => {
@@ -239,6 +239,70 @@ test("verifier: missing stem, diverged Resolve mirror, wrong rate, wrong duratio
   assert.ok(r.failures.some((f) => /sample rate 48000/.test(f)));
   r = verifyApprovedExports(st2.dir, { probeImpl: (f) => ({ ok: true, sample_rate: 48000, channels: 2, codec: "pcm_s24le", duration: 31.2 }) });
   assert.ok(r.failures.some((f) => /duration exact 30s/.test(f)), "duration-exact contract enforced from provenance");
+});
+
+test("verifier completeness: deleting the same expected lane stem from approved and Resolve fails", () => {
+  const st = approvedProject(tmpEnv().options, { duration_seconds: 3 });
+  fs.rmSync(path.join(st.dir, "approved", "stems", "bass.wav"));
+  fs.rmSync(path.join(st.dir, "approved", "resolve-import", "stems", "bass.wav"));
+  const r = verifyApprovedExports(st.dir, { probeImpl: okProbeFor({ duration: 3 }) });
+  assert.equal(r.verified, false, "one remaining stem must never satisfy a declared six-lane contract");
+  assert.ok(r.failures.some((failure) => /bass/.test(failure)), r.failures.join("; "));
+});
+
+test("verifier completeness: missing MIDI, undeclared stem, and manifest hash mismatch fail", () => {
+  const missing = approvedProject(tmpEnv().options, { duration_seconds: 3 });
+  fs.rmSync(path.join(missing.dir, "approved", "midi", "bass.mid"));
+  let r = verifyApprovedExports(missing.dir, { probeImpl: okProbeFor({ duration: 3 }) });
+  assert.equal(r.verified, false);
+  assert.ok(r.failures.some((failure) => /bass\.mid|midi_lane_bass/.test(failure)), r.failures.join("; "));
+
+  const extra = approvedProject(tmpEnv().options, { duration_seconds: 3 });
+  fs.copyFileSync(path.join(extra.dir, "approved", "stems", "bass.wav"), path.join(extra.dir, "approved", "stems", "undeclared.wav"));
+  fs.copyFileSync(path.join(extra.dir, "approved", "stems", "bass.wav"), path.join(extra.dir, "approved", "resolve-import", "stems", "undeclared.wav"));
+  r = verifyApprovedExports(extra.dir, { probeImpl: okProbeFor({ duration: 3 }) });
+  assert.equal(r.verified, false);
+  assert.ok(r.failures.some((failure) => /undeclared/.test(failure)), r.failures.join("; "));
+
+  const changed = approvedProject(tmpEnv().options, { duration_seconds: 3 });
+  fs.appendFileSync(path.join(changed.dir, "approved", "stems", "bass.wav"), "tamper");
+  fs.appendFileSync(path.join(changed.dir, "approved", "resolve-import", "stems", "bass.wav"), "tamper");
+  r = verifyApprovedExports(changed.dir, { probeImpl: okProbeFor({ duration: 3 }) });
+  assert.equal(r.verified, false);
+  assert.ok(r.failures.some((failure) => /hash|manifest/.test(failure)), r.failures.join("; "));
+});
+
+test("verifier completeness: cue markers must match IDs, names, values, and order", () => {
+  for (const mutation of [
+    (rows) => { const values = rows[1].split(","); values[1] = "0.5"; rows[1] = values.join(","); },
+    (rows) => { if (rows.length > 2) [rows[1], rows[2]] = [rows[2], rows[1]]; else rows[1] = rows[1].replace(/^"[^"]+"/, '"WRONG cue"'); },
+    (rows) => { rows[1] = rows[1].replace(/^"[^"]+"/, '"WRONG cue"'); },
+  ]) {
+    const st = approvedProject(tmpEnv().options, { duration_seconds: 3 });
+    const markerPath = path.join(st.dir, "approved", "resolve-import", "cue-markers.csv");
+    const rows = fs.readFileSync(markerPath, "utf8").trim().split("\n");
+    mutation(rows);
+    fs.writeFileSync(markerPath, `${rows.join("\n")}\n`);
+    const r = verifyApprovedExports(st.dir, { probeImpl: okProbeFor({ duration: 3 }) });
+    assert.equal(r.verified, false);
+    assert.ok(r.failures.some((failure) => /cue marker|manifest/.test(failure)), r.failures.join("; "));
+  }
+});
+
+test("verifier completeness: a required truncated stem and legacy manifest absence fail closed", () => {
+  const truncated = approvedProject(tmpEnv().options, { duration_seconds: 3 });
+  let r = verifyApprovedExports(truncated.dir, { probeImpl: (file) => ({ ok: true, sample_rate: 48000, channels: 2, codec: "pcm_s24le", duration: /stems[\\/]bass\.wav$/.test(file) ? 2 : 3 }) });
+  assert.equal(r.verified, false);
+  assert.ok(r.failures.some((failure) => /bass\.wav/.test(failure) && /duration/.test(failure)), r.failures.join("; "));
+
+  const legacy = approvedProject(tmpEnv().options, { duration_seconds: 3 });
+  const provenancePath = path.join(legacy.dir, "approved", "provenance.json");
+  const provenance = JSON.parse(fs.readFileSync(provenancePath, "utf8"));
+  delete provenance.artifact_manifest;
+  fs.writeFileSync(provenancePath, JSON.stringify(provenance, null, 2) + "\n");
+  r = verifyApprovedExports(legacy.dir, { probeImpl: okProbeFor({ duration: 3 }) });
+  assert.equal(r.verified, false);
+  assert.ok(r.failures.some((failure) => /legacy|manifest/.test(failure)), r.failures.join("; "));
 });
 
 test("verifier: probe failure blocks Resolve readiness; no approved export is NOT a pass", () => {

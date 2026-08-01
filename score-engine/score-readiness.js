@@ -210,6 +210,21 @@ function defaultProbe(file, spawnSyncImpl = spawnSync) {
   } catch (e) { return { ok: false, reason: e.message }; }
 }
 
+function parseCsvRow(line) {
+  const values = [];
+  let value = "";
+  let quoted = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    if (quoted && char === '"' && line[index + 1] === '"') { value += '"'; index += 1; }
+    else if (char === '"') quoted = !quoted;
+    else if (char === "," && !quoted) { values.push(value); value = ""; }
+    else value += char;
+  }
+  values.push(value);
+  return quoted ? null : values;
+}
+
 function verifyApprovedExports(dir, options = {}) {
   const spawnSyncImpl = options.spawnSyncImpl || spawnSync;
   const probe = options.probeImpl || ((file) => defaultProbe(file, spawnSyncImpl));
@@ -230,19 +245,60 @@ function verifyApprovedExports(dir, options = {}) {
   const durationExact = render.duration_exact !== false;
   const wantDuration = project.duration_seconds;
 
-  // 1. Expected files exist.
-  const expected = ["mix.wav", "mix-dialogue-safe.wav", "provenance.json", "provenance.md",
-    path.join("midi", "all-lanes.mid"),
-    path.join("resolve-import", "mix.wav"), path.join("resolve-import", "mix-dialogue-safe.wav"),
-    path.join("resolve-import", "cue-markers.csv"), path.join("resolve-import", "README.md")];
-  for (const rel of expected) {
+  // 1. Expected artifacts derive from the immutable approval contract, never
+  // from whichever files happen to remain in a directory.
+  const contract = provenance.render_contract || {};
+  const lanes = Array.isArray(contract.expected_lanes) ? contract.expected_lanes : [];
+  check("artifact manifest current", Boolean(provenance.artifact_manifest), "legacy_artifacts_unverified — no authoritative manifest");
+  check("render contract declares expected lanes", lanes.length > 0, "expected_lanes missing");
+  const expectedRoles = new Map([
+    ["sketch_mix", "mix.wav"],
+    ["sketch_dialogue_safe_mix", "mix-dialogue-safe.wav"],
+    ["midi_all_lanes", "midi/all-lanes.mid"],
+    ["resolve_sketch_mix", "resolve-import/mix.wav"],
+    ["resolve_sketch_dialogue_safe_mix", "resolve-import/mix-dialogue-safe.wav"],
+    ["cue_markers", "resolve-import/cue-markers.csv"],
+    ["resolve_sketch_readme", "resolve-import/README.md"],
+  ]);
+  for (const lane of lanes) {
+    expectedRoles.set(`sketch_stem_${lane}`, `stems/${lane}.wav`);
+    expectedRoles.set(`midi_lane_${lane}`, `midi/${lane}.mid`);
+    expectedRoles.set(`resolve_sketch_stem_${lane}`, `resolve-import/stems/${lane}.wav`);
+  }
+  const manifestEntries = provenance.artifact_manifest && Array.isArray(provenance.artifact_manifest.entries)
+    ? provenance.artifact_manifest.entries : [];
+  const manifestByRole = new Map(manifestEntries.map((entry) => [entry.logical_role, entry]));
+  for (const [role, expectedPath] of expectedRoles) {
+    const entry = manifestByRole.get(role);
+    check(`manifest role: ${role}`, Boolean(entry), `missing expected ${expectedPath}`);
+    if (entry) check(`manifest path: ${role}`, entry.relative_path === expectedPath, `expected ${expectedPath}, got ${entry.relative_path}`);
+  }
+  for (const entry of manifestEntries) {
+    check(`declared role allowed: ${entry.logical_role}`, expectedRoles.has(entry.logical_role), `undeclared role/path ${entry.relative_path}`);
+  }
+  if (provenance.artifact_manifest) {
+    const manifestCheck = provenanceLib.verifyArtifactManifest(approvedDir, provenance.artifact_manifest);
+    for (const failure of manifestCheck.failures) check(`manifest artifact: ${failure.detail || failure.reason}`, false, failure.reason);
+  }
+  for (const rel of ["provenance.json", "provenance.md"]) {
     check(`exists: approved/${rel}`, fs.existsSync(path.join(approvedDir, rel)), "missing");
   }
-  const stems = fs.existsSync(path.join(approvedDir, "stems")) ? fs.readdirSync(path.join(approvedDir, "stems")).filter((f) => f.endsWith(".wav")) : [];
-  check("stems present", stems.length > 0, "approved/stems/ has no WAVs");
 
-  // 2. Resolve mirror is byte-identical (a diverged copy is a silent lie).
-  for (const rel of ["mix.wav", "mix-dialogue-safe.wav", ...stems.map((s) => path.join("stems", s))]) {
+  const expectedDirectoryFiles = [
+    ["stems", lanes.map((lane) => `${lane}.wav`)],
+    ["midi", [...lanes.map((lane) => `${lane}.mid`), "all-lanes.mid"]],
+    [path.join("resolve-import", "stems"), lanes.map((lane) => `${lane}.wav`)],
+  ];
+  for (const [relativeDir, expectedFiles] of expectedDirectoryFiles) {
+    const directory = path.join(approvedDir, relativeDir);
+    const actualFiles = fs.existsSync(directory) ? fs.readdirSync(directory).filter((name) => fs.statSync(path.join(directory, name)).isFile()).sort() : [];
+    const expectedSorted = [...expectedFiles].sort();
+    for (const extra of actualFiles.filter((name) => !expectedSorted.includes(name))) check(`undeclared artifact: ${relativeDir}/${extra}`, false, "not present in render contract");
+    for (const missing of expectedSorted.filter((name) => !actualFiles.includes(name))) check(`expected artifact: ${relativeDir}/${missing}`, false, "missing");
+  }
+
+  // 2. Every declared Resolve sketch mirror is byte-identical.
+  for (const rel of ["mix.wav", "mix-dialogue-safe.wav", ...lanes.map((lane) => path.join("stems", `${lane}.wav`))]) {
     const a = path.join(approvedDir, rel);
     const b = path.join(approvedDir, "resolve-import", rel);
     if (fs.existsSync(a) && fs.existsSync(b)) {
@@ -253,7 +309,7 @@ function verifyApprovedExports(dir, options = {}) {
   }
 
   // 3. Every WAV honors the provenance's own render contract.
-  const wavs = ["mix.wav", "mix-dialogue-safe.wav", ...stems.map((s) => path.join("stems", s))];
+  const wavs = ["mix.wav", "mix-dialogue-safe.wav", ...lanes.map((lane) => path.join("stems", `${lane}.wav`))];
   for (const rel of wavs) {
     const file = path.join(approvedDir, rel);
     if (!fs.existsSync(file)) continue; // already failed above
@@ -269,16 +325,24 @@ function verifyApprovedExports(dir, options = {}) {
     }
   }
 
-  // 4. Cue markers CSV covers the approved cue count.
+  // 4. Cue marker identity, values, and ordering match the approved cue
+  // snapshot. Row count alone cannot detect reordered or shifted markers.
   const markers = path.join(approvedDir, "resolve-import", "cue-markers.csv");
   if (fs.existsSync(markers)) {
-    const rows = fs.readFileSync(markers, "utf8").trim().split("\n").length - 1;
-    // Provenance stores the cue array as cue_sheet (buildCandidateProvenance);
-    // the old keys made the strong row-count check dead code — a truncated
-    // cue-markers.csv passed "deep" verification.
-    const cueCount = (provenance.cue_sheet || provenance.cues || (provenance.generation && provenance.generation.cues) || []).length || null;
-    if (cueCount) check(`cue markers rows = ${cueCount}`, rows === cueCount, `got ${rows}`);
-    else check("cue markers non-empty", rows > 0, "no marker rows");
+    const lines = fs.readFileSync(markers, "utf8").trim().split(/\r?\n/);
+    const rows = lines.slice(1).map(parseCsvRow);
+    const cues = provenance.cue_sheet || [];
+    check(`cue markers rows = ${cues.length}`, rows.length === cues.length, `got ${rows.length}`);
+    const tolerance = 0.001;
+    for (let index = 0; index < Math.min(rows.length, cues.length); index += 1) {
+      const row = rows[index];
+      const cue = cues[index];
+      if (!row || row.length !== 3) { check(`cue marker ${index + 1}`, false, "malformed CSV row"); continue; }
+      const expectedName = `${cue.cue_id} ${cue.name}`;
+      check(`cue marker ${index + 1} identity`, row[0] === expectedName, `expected ${expectedName}, got ${row[0]}`);
+      check(`cue marker ${index + 1} start`, Number.isFinite(Number(row[1])) && Math.abs(Number(row[1]) - Number(cue.start)) <= tolerance, `expected ${cue.start}, got ${row[1]}`);
+      check(`cue marker ${index + 1} end`, Number.isFinite(Number(row[2])) && Math.abs(Number(row[2]) - Number(cue.end)) <= tolerance, `expected ${cue.end}, got ${row[2]}`);
+    }
   }
 
   check("provenance names the approved candidate", Boolean(provenance.approved_candidate), "approved_candidate missing");

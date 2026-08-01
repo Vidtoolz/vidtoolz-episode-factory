@@ -897,7 +897,7 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
     for (const [lane] of Object.entries(full.stems)) {
       fs.copyFileSync(path.join(buildDir, "stems", `${lane}.wav`), path.join(buildDir, "resolve-import", "stems", `${lane}.wav`));
     }
-    const markersCsv = ["Name,Start (seconds),End (seconds)"].concat(cues.map((c) => `"${c.cue_id} ${c.name}",${c.start_seconds},${c.end_seconds}`)).join("\n") + "\n";
+    const markersCsv = ["Name,Start (seconds),End (seconds)"].concat(cues.map((c) => `"${`${c.cue_id} ${c.name}`.replace(/"/g, '""')}",${c.start_seconds},${c.end_seconds}`)).join("\n") + "\n";
     fs.writeFileSync(path.join(buildDir, "resolve-import", "cue-markers.csv"), markersCsv);
     fs.writeFileSync(path.join(buildDir, "resolve-import", "README.md"),
       `# Resolve import — ${project.name}\n\nDrag mix.wav (or the dialogue-safe mix under narration) into the Resolve media\npool. stems/ has per-lane WAVs for finer mixing. cue-markers.csv lists cue\nboundaries to place as timeline markers.\n\nNOTE: these WAVs are the Score Engine sketch renders. For final-quality audio,\nrender from the REAPER/Ableton handoff with your real instruments and drop the\nresult here (a new approval will archive this folder, never overwrite it).\n`);
@@ -931,6 +931,7 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
       approval_scope: "sketch_only",
       approved_at: nowIso(),
       approved_candidate: candidateId,
+      render_contract: approvalContract,
       identity: approvalIdentityBase ? {
         ...approvalIdentityBase,
         candidate_content_hash: meta.identity.candidate_content_hash,
