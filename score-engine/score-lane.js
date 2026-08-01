@@ -270,6 +270,16 @@ function getProject(projectId, options = {}) {
   // computes truth client-side, and deep verification stays a CLI concern.
   const readinessLib = require("./score-readiness.js");
   const readiness = readinessLib.assessReadiness({ project, cueSheet, musicPlan, candidates, approved, dir, settings });
+  const configuredTemplateFolder = String(settings.reaper_track_template_folder || "").trim();
+  let templateFolderAvailable = false;
+  try { templateFolderAvailable = Boolean(configuredTemplateFolder) && fs.statSync(configuredTemplateFolder).isDirectory(); } catch {}
+  const templateFolderState = !configuredTemplateFolder ? {
+    state: "not_configured", message: "No shared REAPER track-template folder is configured; handoffs use profile templates or plain MIDI tracks.",
+  } : templateFolderAvailable ? {
+    state: "available", message: "Configured REAPER track-template folder is available.",
+  } : {
+    state: "missing", message: "Configured REAPER track-template folder is missing; handoffs will fall back to profile templates or plain MIDI tracks.",
+  };
   return {
     project,
     dir,
@@ -280,6 +290,7 @@ function getProject(projectId, options = {}) {
     reaper_ready: candidates.some((c) => c.reaper_built),
     analysis: readiness.analysis,
     readiness,
+    daw_configuration: { reaper_template_folder: templateFolderState },
   };
 }
 

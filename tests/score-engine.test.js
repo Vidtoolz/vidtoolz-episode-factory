@@ -475,6 +475,10 @@ test("score-engine reaper timing: per-cue tempo markers preserve adjacent and ga
   const parsed = parseRppTiming(buildTimingFixture(gapped));
   assert.deepEqual(parsed.tempos, [{ position: 0, bpm: 120 }, { position: 20.5, bpm: 72 }]);
   assert.ok(parsed.items.some((item) => item.name === "C002 pulse" && item.position === 20.5), "fractional timeline start preserved");
+  const lua = reaperBackend.buildTemplateScript({ projectName: "Tempo", roles: [], cues: gapped, savePath: "/tmp/test.rpp", tempo: 120 });
+  assert.match(lua, /\{ pos = 0, bpm = 120, num = 4, den = 4 \}/);
+  assert.match(lua, /\{ pos = 20\.5, bpm = 72, num = 4, den = 4 \}/);
+  assert.match(lua, /SetTempoTimeSigMarker/);
 });
 
 test("score-engine reaper timing: malformed tempo fails before project text generation", () => {
@@ -806,6 +810,17 @@ test("score-engine v1.1: template folder fallback resolves <lane>.RTrackTemplate
   lane.saveSettings({ reaper_track_template_folder: folder }, options);
   const built = lane.buildReaperHandoff(project.project_id, "candidate-001", options);
   assert.equal(built.templates_used.bass, path.join(folder, "bass.RTrackTemplate"));
+});
+
+test("score-engine: missing configured REAPER template folder is visible and read-only", () => {
+  const { root, options } = tmpEnv();
+  const { project } = makeProject(options, { duration_seconds: 10 });
+  lane.saveSettings({ reaper_track_template_folder: path.join(root, "missing-templates") }, options);
+  const before = fs.readFileSync(path.join(root, "settings.json"));
+  const state = lane.getProject(project.project_id, options);
+  assert.equal(state.daw_configuration.reaper_template_folder.state, "missing");
+  assert.match(state.daw_configuration.reaper_template_folder.message, /fall back to .*plain MIDI/);
+  assert.ok(before.equals(fs.readFileSync(path.join(root, "settings.json"))), "inspection does not rewrite settings");
 });
 
 // ── Hardening pass (audit 2026-07-18) ────────────────────────────────────────

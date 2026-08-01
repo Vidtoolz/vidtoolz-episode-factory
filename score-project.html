@@ -208,7 +208,8 @@
         document.getElementById('ready-stages').innerHTML = R.stages.map(s=>
           `<span class="ready-stage ${s.state}"><b>${esc(s.label)}</b> ${s.state==='done'?'✓':s.state==='draft'?'· draft':'· todo'}<span class="meta">${esc(s.detail)}</span></span>`).join('');
         document.getElementById('ready-next').innerHTML = '<b>Next:</b> '+esc(R.next_action)
-          + (R.approved_export_exists && !R.sketch_approval_current ? ' <span class="warn">The preserved sketch approval is stale or legacy and cannot authorize production work.</span>' : '');
+          + (R.approved_export_exists && !R.sketch_approval_current ? ' <span class="warn">The preserved sketch approval is stale or legacy and cannot authorize production work.</span>' : '')
+          + (ST.daw_configuration&&ST.daw_configuration.reaper_template_folder&&ST.daw_configuration.reaper_template_folder.state==='missing' ? ' <span class="warn">'+esc(ST.daw_configuration.reaper_template_folder.message)+'</span>' : '');
         document.getElementById('ready-cmd').textContent = R.verify_command;
         document.getElementById('ready-copy').onclick = ()=>copyText(R.verify_command,'verify command');
         setVerifyState(verifyInFlight ? 'verifying' : 'idle');

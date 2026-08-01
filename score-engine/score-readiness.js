@@ -1,6 +1,6 @@
 // VIDTOOLZ Score Engine — readiness + approved-export verification (v1.2).
 // Answers the operator's real questions: Can I render? What is missing? What
-// is safe to import into Resolve? What command proves it? Two layers:
+// is the sketch package internally complete? Two layers:
 //   assessReadiness  — cheap staged status (fs existence only, no probing)
 //   verifyApprovedExports — deep verifier: every expected file present, every
 //     WAV ffprobe-verified against the provenance's own render contract
@@ -358,7 +358,7 @@ function formatVerifierReport(result, dir) {
   }
   for (const c of result.checks) lines.push(`${c.ok ? "  ok  " : " FAIL "} ${c.name}${!c.ok && c.detail ? ` — ${c.detail}` : ""}`);
   lines.push("", result.verified
-    ? `PASS — approved export verified against its own provenance (${result.provenance_render.sample_rate} Hz / ${result.provenance_render.bit_depth}-bit / ${result.provenance_render.duration_exact !== false ? `duration-exact ${result.project_duration}s` : "tail-preserving"}). Safe to import approved/resolve-import/ into Resolve.`
+    ? `PASS — approved sketch package verified against its own provenance (${result.provenance_render.sample_rate} Hz / ${result.provenance_render.bit_depth}-bit / ${result.provenance_render.duration_exact !== false ? `duration-exact ${result.project_duration}s` : "tail-preserving"}). This is not production verification; Resolve-ready requires a verified imported DAW mix.`
     : `FAIL — ${result.failures.length} problem(s):\n${result.failures.map((f) => `  - ${f}`).join("\n")}`);
   return lines.join("\n");
 }

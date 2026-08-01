@@ -215,7 +215,7 @@ test("verifier: real approved export passes with a contract-matching probe", () 
   const r = verifyApprovedExports(st.dir, { probeImpl: okProbeFor({ duration: 30 }) });
   assert.equal(r.verified, true, `expected PASS: ${r.failures.join("; ")}`);
   assert.ok(r.checks.length >= 15, "a real battery of checks");
-  assert.match(formatVerifierReport(r, st.dir), /^PASS — approved export verified/m);
+  assert.match(formatVerifierReport(r, st.dir), /^PASS — approved sketch package verified/m);
 });
 
 test("verifier: missing stem, diverged Resolve mirror, wrong rate, wrong duration all fail loudly", () => {
