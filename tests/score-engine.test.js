@@ -382,6 +382,28 @@ test("score-engine lane: candidate generation produces valid MIDI, previews, pro
   assert.notEqual(state.candidates[0].seed, state.candidates[1].seed);
 });
 
+test("score-engine lane: music-plan timestamps do not change candidate content identity", () => {
+  const first = tmpEnv();
+  const second = tmpEnv();
+  const firstProject = readyProject(first.options, { duration_seconds: 30, seed: 77 });
+  const secondProject = readyProject(second.options, { duration_seconds: 30, seed: 77 });
+
+  const secondState = lane.getProject(secondProject.project_id, second.options);
+  const secondPlanPath = path.join(secondState.dir, "music-plan.json");
+  const secondPlan = JSON.parse(fs.readFileSync(secondPlanPath, "utf8"));
+  secondPlan.generated_at = "2099-12-31T23:59:59.999Z";
+  fs.writeFileSync(secondPlanPath, JSON.stringify(secondPlan, null, 2) + "\n");
+
+  lane.generateCandidates(firstProject.project_id, { count: 1, seed: 77 }, first.options);
+  lane.generateCandidates(secondProject.project_id, { count: 1, seed: 77 }, second.options);
+  const firstCandidate = lane.getProject(firstProject.project_id, first.options).candidates[0];
+  const secondCandidate = lane.getProject(secondProject.project_id, second.options).candidates[0];
+
+  assert.equal(firstCandidate.identity.candidate_input_hash, secondCandidate.identity.candidate_input_hash);
+  assert.equal(firstCandidate.identity.artifact_manifest_hash, secondCandidate.identity.artifact_manifest_hash);
+  assert.equal(firstCandidate.identity.candidate_content_hash, secondCandidate.identity.candidate_content_hash);
+});
+
 test("score-engine lane: approve exports mix, dialogue-safe mix, stems, MIDI, Resolve folder + provenance", () => {
   const { options } = tmpEnv();
   const project = readyProject(options, { duration_seconds: 30 });

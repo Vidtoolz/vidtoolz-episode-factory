@@ -493,7 +493,12 @@ function buildOneCandidate(dir, project, musicPlan, generation, settings) {
   // Immutable input snapshots make later handoffs independent of mutable
   // project-level cue and instrument-plan files.
   writeJson(path.join(candidateDir, "cue-sheet-used.json"), { cues: generation.cues });
-  writeJson(path.join(candidateDir, "music-plan-used.json"), musicPlan || {});
+  // generated_at is audit metadata, not a composition input. Keeping it in the
+  // immutable snapshot made otherwise identical candidates acquire different
+  // artifact manifests and candidate-content hashes solely because the plan
+  // was saved at a different wall-clock time.
+  const { generated_at: _musicPlanGeneratedAt, ...musicPlanSnapshot } = musicPlan || {};
+  writeJson(path.join(candidateDir, "music-plan-used.json"), musicPlanSnapshot);
 
   const meta = {
     candidate_id: candidateId,
