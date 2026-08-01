@@ -270,7 +270,7 @@ test("ui: score workspace has the Score Map, readiness panel, and honest empty s
   assert.ok(html.includes("No cues yet — the Score Map appears"), "empty state explains next step");
   assert.ok(html.includes('id="step-readiness"'), "readiness panel");
   assert.ok(html.includes("Copy command"), "copyable verifier command");
-  assert.ok(html.includes("never claims that without probed evidence"), "no unverified Resolve-ready light");
+  assert.ok(html.includes("Sketch audio is never promoted to Resolve-ready"), "no unverified Resolve-ready light");
 });
 
 test("ui: score workspace robustness — no inline onclick paths, in-flight guards, stale-load guard", () => {
@@ -293,7 +293,7 @@ test("ui: score workspace wires verifier button safely and keeps terminal fallba
   assert.ok(html.includes('id="ready-cmd"'), "terminal verifier command remains visible");
   assert.ok(html.includes('id="ready-copy"'), "copy-command fallback remains");
   assert.ok(html.includes('id="ready-verify"'), "verify button present");
-  assert.ok(html.includes("Verify approved export"), "button label present");
+  assert.ok(html.includes("Verify sketch package"), "button label is explicit about sketch scope");
   assert.ok(html.includes("const SCORE_VERIFY_API = '/api/score/verify';"), "UI posts to verify route");
   assert.ok(html.includes("if(verifyInFlight) return;"), "double submit guard");
   assert.ok(html.includes("btn.disabled = state==='verifying'"), "verifying disables the button");

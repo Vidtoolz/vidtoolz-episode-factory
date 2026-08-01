@@ -19,6 +19,89 @@ function readJson(file, fallback = null) {
   try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return fallback; }
 }
 
+function assessProductionAuthority({ dir, approvalAuthority, approved }) {
+  const productionRoot = path.join(dir, "production");
+  const pointerFile = path.join(productionRoot, "current.json");
+  if (!fs.existsSync(pointerFile)) return { state: "not_imported", current: false, verified: false, reasons: [], production_mix_id: null, resolve_ready: false };
+  const reasons = [];
+  const pointer = readJson(pointerFile);
+  if (!pointer || pointer.schema_version !== 1 || !pointer.production_mix_id || !pointer.provenance_path) {
+    return { state: "stale", current: false, verified: false, reasons: ["production_provenance_missing"], production_mix_id: null, resolve_ready: false };
+  }
+  let provenancePath;
+  try { provenancePath = provenanceLib.resolveManifestPath(dir, pointer.provenance_path).target; }
+  catch { return { state: "stale", current: false, verified: false, reasons: ["production_provenance_invalid"], production_mix_id: pointer.production_mix_id, resolve_ready: false }; }
+  const production = readJson(provenancePath);
+  if (!production || production.schema_version !== 1 || production.production_mix_id !== pointer.production_mix_id) {
+    return { state: "stale", current: false, verified: false, reasons: ["production_provenance_missing"], production_mix_id: pointer.production_mix_id, resolve_ready: false };
+  }
+  if (!approvalAuthority.current || !approved || !approved.identity) reasons.push("verification_outdated");
+  if (approved && approved.identity) {
+    if (production.approved_candidate_id !== approved.approved_candidate
+      || production.approved_candidate_content_hash !== approved.identity.candidate_content_hash) reasons.push("approved_candidate_hash_mismatch");
+    if (production.cue_sheet_hash !== approved.identity.cue_sheet_hash) reasons.push("cue_sheet_changed");
+    if (production.music_plan_hash !== approved.identity.music_plan_hash) reasons.push("music_plan_changed");
+    if (production.composer_contract_hash !== approved.identity.composer_contract_hash) reasons.push("composer_contract_changed");
+    if (production.render_contract_hash !== approved.identity.render_contract_hash) reasons.push("render_contract_changed");
+  }
+  let mixPath = null;
+  try { mixPath = provenanceLib.resolveManifestPath(dir, production.relative_path).target; }
+  catch { reasons.push("production_mix_missing"); }
+  if (mixPath && (!fs.existsSync(mixPath) || !fs.statSync(mixPath).isFile())) reasons.push("production_mix_missing");
+  let actualHash = null;
+  if (mixPath && fs.existsSync(mixPath) && fs.statSync(mixPath).isFile()) {
+    actualHash = provenanceLib.sha256File(mixPath);
+    if (actualHash !== production.imported_file_sha256 || fs.statSync(mixPath).size !== production.byte_size) reasons.push("production_mix_hash_mismatch");
+  }
+
+  const verification = readJson(path.join(path.dirname(provenancePath), "verification.json"));
+  let verified = false;
+  if (verification) {
+    verified = verification.schema_version === 1
+      && verification.verified === true
+      && verification.production_mix_id === production.production_mix_id
+      && verification.production_mix_sha256 === actualHash
+      && approved && approved.identity
+      && verification.approved_candidate_content_hash === approved.identity.candidate_content_hash
+      && verification.render_contract_hash === approved.identity.render_contract_hash
+      && reasons.length === 0;
+    if (!verified && !reasons.includes("production_mix_hash_mismatch")) reasons.push("verification_outdated");
+  }
+
+  let resolveReady = false;
+  const resolvePointer = readJson(path.join(productionRoot, "resolve", "current.json"));
+  if (resolvePointer && resolvePointer.production_mix_id === production.production_mix_id && resolvePointer.relative_dir) {
+    try {
+      const resolveDir = provenanceLib.resolveManifestPath(dir, `${resolvePointer.relative_dir}/resolve-provenance.json`).target;
+      const resolveProvenance = readJson(resolveDir);
+      if (resolveProvenance && verified
+        && resolveProvenance.source_production_mix_sha256 === actualHash
+        && resolveProvenance.verification_identity === verification.verification_identity) {
+        const manifest = provenanceLib.verifyArtifactManifest(path.dirname(resolveDir), resolveProvenance.artifact_manifest);
+        resolveReady = manifest.valid;
+        for (const failure of manifest.failures) {
+          reasons.push(failure.reason === "candidate_artifact_missing" ? "resolve_copy_missing" : "resolve_copy_hash_mismatch");
+        }
+      } else if (resolveProvenance) {
+        reasons.push("resolve_copy_hash_mismatch");
+      }
+    } catch {
+      reasons.push("resolve_copy_missing");
+    }
+  }
+
+  const uniqueReasons = [...new Set(reasons)];
+  const current = uniqueReasons.length === 0;
+  return {
+    state: !current ? "stale" : verified ? "verified" : "imported",
+    current,
+    verified: current && verified,
+    reasons: uniqueReasons,
+    production_mix_id: production.production_mix_id,
+    resolve_ready: current && verified && resolveReady,
+  };
+}
+
 /* ── staged readiness (cheap, UI-friendly) ── */
 
 function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, candidates = [], approved = null, dir = "", settings = {} }) {
@@ -32,6 +115,7 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
   });
   const previewable = candidates.filter((c) => c.files && c.files.preview_mix);
   const reaperBuilt = candidates.some((c) => c.reaper_built);
+  const production = assessProductionAuthority({ dir, approvalAuthority, approved: approvalRecord });
 
   const stages = [
     {
@@ -58,6 +142,19 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
           ? `${approvalAuthority.state}: ${approvalAuthority.reasons.join(", ")}`
           : "audition, then approve ONE candidate as a sketch",
     },
+    {
+      id: "production", label: "DAW production mix",
+      state: production.verified ? "done" : production.state === "imported" ? "draft" : production.state === "stale" ? "draft" : "todo",
+      detail: production.state === "verified" ? "production mix is hash-bound and verified"
+        : production.state === "imported" ? "production mix imported; run verification"
+          : production.state === "stale" ? `stale: ${production.reasons.join(", ")}`
+            : "import a completed DAW WAV after sketch approval",
+    },
+    {
+      id: "resolve", label: "Resolve delivery",
+      state: production.resolve_ready ? "done" : "todo",
+      detail: production.resolve_ready ? "verified production mix copied and hash-checked" : "prepare from a verified production mix",
+    },
   ];
 
   const missing = stages.filter((s) => s.state !== "done").map((s) => `${s.label}: ${s.detail}`);
@@ -69,7 +166,11 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
         : !previewable.length ? "Generate music candidates (step 3), then audition the sketch previews."
           : !approvalAuthority.current
             ? hasApproval ? "The preserved sketch approval is stale or legacy; regenerate/reapprove deliberately from the current score state." : "Audition the previews (A/B compare) and approve one candidate as a sketch."
-            : "Import a DAW production mix bound to this current sketch approval.";
+            : production.state === "not_imported" ? "Import a DAW production mix bound to this current sketch approval."
+              : production.state === "imported" ? "Verify the imported production mix."
+                : production.state === "stale" ? `Repair stale production state: ${production.reasons.join(", ")}.`
+                  : !production.resolve_ready ? "Prepare the verified production mix for Resolve."
+                    : "Production score package is verified and Resolve-ready.";
 
   return {
     analysis,
@@ -79,10 +180,9 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
     approved_export_exists: hasApproval,
     sketch_approval_current: approvalAuthority.current,
     approval_authority: approvalAuthority,
-    // Resolve readiness is only ever CLAIMED by the deep verifier — the panel
-    // reports "approved, verify to confirm", never a green Resolve light
-    // without probed evidence.
-    resolve_ready_requires: "node scripts/verify-score-package.js — PASS is the only Resolve-ready proof",
+    production,
+    resolve_ready: production.resolve_ready,
+    resolve_ready_requires: "current hash-bound sketch approval + verified production WAV + hash-checked Resolve copy",
     dialogue_risk_count: dialogueRisks.length,
     missing,
     warnings: analysis.warnings,

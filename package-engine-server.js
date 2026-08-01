@@ -204,6 +204,9 @@ const SCORE_PROMPT_API = '/api/score/prompt';
 const SCORE_AI_APPLY_API = '/api/score/cues/ai-apply';
 const SCORE_AI_CALL_API = '/api/score/cues/ai-call';
 const SCORE_VERIFY_API = '/api/score/verify';
+const SCORE_PRODUCTION_IMPORT_API = '/api/score/production/import';
+const SCORE_PRODUCTION_VERIFY_API = '/api/score/production/verify';
+const SCORE_PRODUCTION_RESOLVE_API = '/api/score/production/resolve';
 const SCORE_OPEN_FOLDER_API = '/api/score/open-folder';
 const SCORE_FILE_API = '/api/score/file';
 const PROJECT_VIDEO_REVIEW_SAVE_API = '/api/project/video-review/save';
@@ -16161,6 +16164,39 @@ function createServer(options = {}) {
           sendJSON(res, 200, { project_id, dir, verified: result.verified, no_approved_export: !!result.no_approved_export, failures: result.failures, checks: result.checks, report: formatVerifierReport(result, dir) });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-verify-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_PRODUCTION_IMPORT_API) {
+      readJsonBody(req, 1024 * 1024 * 256)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score production import API' });
+          if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw Object.assign(new Error('Request body must be an object.'), { statusCode: 400 });
+          if (Object.prototype.hasOwnProperty.call(payload, 'path')) throw Object.assign(new Error('Server filesystem paths are not accepted. Upload the selected WAV bytes.'), { statusCode: 400 });
+          const encoded = typeof payload.data_base64 === 'string' ? payload.data_base64 : '';
+          if (!encoded || encoded.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) throw Object.assign(new Error('data_base64 must contain a valid base64 WAV upload.'), { statusCode: 400 });
+          const bytes = Buffer.from(encoded, 'base64');
+          if (bytes.toString('base64') !== encoded) throw Object.assign(new Error('data_base64 is not canonical base64.'), { statusCode: 400 });
+          sendJSON(res, 200, scoreLane.importProductionMix(payload.project_id || '', { original_filename: payload.original_filename, bytes }, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-production-import-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_PRODUCTION_VERIFY_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score production verify API' });
+          sendJSON(res, 200, scoreLane.verifyProductionMix(payload.project_id || '', scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-production-verify-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_PRODUCTION_RESOLVE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score production Resolve API' });
+          sendJSON(res, 200, scoreLane.prepareProductionResolvePackage(payload.project_id || '', scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-production-resolve-error'));
       return;
     }
     if (req.method === 'POST' && url.pathname === SCORE_REAPER_BUILD_API) {
