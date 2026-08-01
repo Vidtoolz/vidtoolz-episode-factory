@@ -28,6 +28,26 @@ function readyProject(options, extra = {}) {
   return project;
 }
 
+function scoreCue(cueId, start, end, bpm = 120, fn = "explanation") {
+  return {
+    cue_id: cueId,
+    name: cueId,
+    start_seconds: start,
+    end_seconds: end,
+    function: fn,
+    emotion: "clinical",
+    energy: 2,
+    density: 2,
+    tempo_bpm: bpm,
+    key: "D minor",
+    time_signature: "4/4",
+    instrument_roles: {},
+    arrangement_notes: "",
+    hit_points: [],
+    dialogue_safe: true,
+  };
+}
+
 // ── schemas ──
 test("score-engine schemas: valid cue sheet passes, broken cues are rejected with reasons", () => {
   const good = planner.generateCueSheet({ duration_seconds: 60 });
@@ -366,6 +386,72 @@ test("score-engine lane: revision request derives a new candidate with structure
 });
 
 // ── REAPER backend ──
+function parseRppTiming(rpp) {
+  const tempos = [];
+  const tempoChunk = rpp.match(/<TEMPOENVEX\n([\s\S]*?)\n  >/);
+  if (tempoChunk) {
+    for (const match of tempoChunk[1].matchAll(/^\s*PT\s+([\d.]+)\s+([\d.]+)\s+/gm)) {
+      tempos.push({ position: Number(match[1]), bpm: Number(match[2]) });
+    }
+  }
+  const items = [];
+  for (const match of rpp.matchAll(/^\s{4}<ITEM\n([\s\S]*?)^\s{4}>$/gm)) {
+    const body = match[1];
+    const name = (body.match(/^\s*NAME\s+"([^"]+)"/m) || [])[1] || "";
+    const position = Number((body.match(/^\s*POSITION\s+([\d.]+)/m) || [])[1]);
+    const length = Number((body.match(/^\s*LENGTH\s+([\d.]+)/m) || [])[1]);
+    let sourceTick = 0;
+    const noteOnTicks = [];
+    for (const event of body.matchAll(/^\s*E\s+(\d+)\s+([0-9a-f]{2})\s+/gmi)) {
+      sourceTick += Number(event[1]);
+      if (event[2].toLowerCase() === "90") noteOnTicks.push(sourceTick);
+    }
+    items.push({ name, position, length, noteOnTicks });
+  }
+  return { tempos, items };
+}
+
+function buildTimingFixture(cues) {
+  const composition = composer.compose({ cues }, { seed: 9, palette_id: "tech_noir_pulse" });
+  return reaperBackend.buildRppText({ projectName: "Timing fixture", cues, composition });
+}
+
+test("score-engine reaper timing: adjacent same-tempo cues are cue-local and deterministic", () => {
+  const cues = [scoreCue("C001", 0, 10, 120, "hook"), scoreCue("C002", 10, 20, 120, "hook")];
+  const rpp = buildTimingFixture(cues);
+  const parsed = parseRppTiming(rpp);
+  const secondImpact = parsed.items.find((item) => item.name === "C002 impact");
+  assert.deepEqual(parsed.tempos, [{ position: 0, bpm: 120 }, { position: 10, bpm: 120 }]);
+  assert.equal(secondImpact.position, 10);
+  assert.equal(secondImpact.length, 10);
+  assert.equal(Math.min(...secondImpact.noteOnTicks), 0, "the second cue source starts at cue-local tick zero");
+  assert.equal(rpp, buildTimingFixture(cues), "identical inputs produce byte-identical .rpp text");
+});
+
+test("score-engine reaper timing: a 10-second timeline gap stays between items, not inside MIDI source", () => {
+  const cues = [scoreCue("C001", 0, 10, 120, "hook"), scoreCue("C002", 20, 30, 120, "hook")];
+  const parsed = parseRppTiming(buildTimingFixture(cues));
+  const secondImpact = parsed.items.find((item) => item.name === "C002 impact");
+  assert.equal(secondImpact.position, 20);
+  assert.equal(Math.min(...secondImpact.noteOnTicks), 0, "the 10-second gap must not become leading source ticks");
+});
+
+test("score-engine reaper timing: per-cue tempo markers preserve adjacent and gapped BPM changes", () => {
+  const adjacent = [scoreCue("C001", 0, 10, 120), scoreCue("C002", 10, 20, 72)];
+  assert.deepEqual(parseRppTiming(buildTimingFixture(adjacent)).tempos, [
+    { position: 0, bpm: 120 }, { position: 10, bpm: 72 },
+  ]);
+  const gapped = [scoreCue("C001", 0, 10, 120), scoreCue("C002", 20.5, 30.5, 72)];
+  const parsed = parseRppTiming(buildTimingFixture(gapped));
+  assert.deepEqual(parsed.tempos, [{ position: 0, bpm: 120 }, { position: 20.5, bpm: 72 }]);
+  assert.ok(parsed.items.some((item) => item.name === "C002 pulse" && item.position === 20.5), "fractional timeline start preserved");
+});
+
+test("score-engine reaper timing: malformed tempo fails before project text generation", () => {
+  const cues = [scoreCue("C001", 0, 10, 0)];
+  assert.throws(() => buildTimingFixture(cues), /tempo_bpm/);
+});
+
 test("score-engine reaper: RPP is balanced, has 6 lane tracks, cue markers, and embedded MIDI", () => {
   const { options } = tmpEnv();
   const project = readyProject(options, { duration_seconds: 30 });

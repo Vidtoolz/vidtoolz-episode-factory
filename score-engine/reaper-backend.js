@@ -8,6 +8,7 @@
 
 const path = require("node:path");
 const { PPQ } = require("./midi-writer.js");
+const schemas = require("./score-schemas.js");
 
 const LANE_TRACKS = [
   { lane: "pulse", name: "01 Pulse", color: [63, 185, 80], volume: 0.85, pan: -0.15 },
@@ -22,13 +23,16 @@ function reaperColor([r, g, b]) { return 0x01000000 | (b << 16) | (g << 8) | r; 
 function hex(value) { return value.toString(16).padStart(2, "0"); }
 function quote(text) { return `"${String(text).replace(/"/g, "'")}"`; }
 
-// Build embedded-MIDI item source lines for the notes of one lane within one cue.
-// Event ticks are item-relative; REAPER "E" lines are: E <delta> <status> <d1> <d2>.
-function midiSourceLines(notes, cueStartTick) {
+// Build embedded-MIDI item source lines for one lane within one cue. The caller
+// supplies the candidate-global tick of the cue marker; subtracting it makes
+// every item source cue-local even when the candidate-global MIDI timeline has
+// intentional silence gaps. REAPER "E" lines are:
+// E <delta> <status> <d1> <d2>.
+function midiSourceLines(notes, cueMarkerTick) {
   const events = [];
   for (const n of notes) {
-    events.push({ tick: n.tick - cueStartTick, bytes: ["90", hex(Math.min(127, Math.max(0, Math.round(n.note)))), hex(Math.min(127, Math.max(1, Math.round(n.velocity))))] });
-    events.push({ tick: n.tick - cueStartTick + n.dur_ticks, bytes: ["80", hex(Math.min(127, Math.max(0, Math.round(n.note)))), "00"] });
+    events.push({ tick: n.tick - cueMarkerTick, bytes: ["90", hex(Math.min(127, Math.max(0, Math.round(n.note)))), hex(Math.min(127, Math.max(1, Math.round(n.velocity))))] });
+    events.push({ tick: n.tick - cueMarkerTick + n.dur_ticks, bytes: ["80", hex(Math.min(127, Math.max(0, Math.round(n.note)))), "00"] });
   }
   events.sort((a, b) => a.tick - b.tick);
   const lines = [];
@@ -47,6 +51,11 @@ function midiSourceLines(notes, cueStartTick) {
 // one click — 48 kHz 24-bit stereo WAV, entire project, into rendersDir
 // (RENDER_CFG "ZXZhdxgAAA==" = 'evaw' + 24-bit flag, the standard WAV config).
 function buildRppText({ projectName, cues, composition, sampleRate = 48000, rendersDir = null }) {
+  const cueErrors = schemas.validateCueSheet({ cues });
+  if (cueErrors.length) throw new Error(`Cannot build REAPER project: ${cueErrors.join("; ")}`);
+  if (!composition || !Array.isArray(composition.notes) || !Array.isArray(composition.markers) || composition.markers.length !== cues.length) {
+    throw new Error("Cannot build REAPER project: composition must contain notes and one marker per cue.");
+  }
   const firstTempo = cues[0] ? cues[0].tempo_bpm : 90;
   const lines = [];
   lines.push(`<REAPER_PROJECT 0.1 "7.0/vidtoolz-score-engine" 0`);
@@ -66,14 +75,19 @@ function buildRppText({ projectName, cues, composition, sampleRate = 48000, rend
   cues.forEach((cue, i) => {
     lines.push(`  MARKER ${i + 1} ${cue.start_seconds} ${quote(`${cue.cue_id} ${cue.name}`)} 0`);
   });
-
-  // Cue start ticks mirror composer's accumulation (per-cue tempo aware).
-  const cueStartTicks = [];
-  let tick = 0;
-  for (const cue of cues) {
-    cueStartTicks.push(tick);
-    tick += Math.round(((cue.end_seconds - cue.start_seconds) / (60 / cue.tempo_bpm)) * PPQ);
-  }
+  // Authoritative REAPER timing model:
+  // - timeline position/length are video seconds;
+  // - each MIDI item source starts at cue-local tick zero;
+  // - square tempo points at cue starts govern the cue's musical tick rate;
+  // - gaps remain empty project time between items (never leading source ticks).
+  lines.push("  <TEMPOENVEX");
+  lines.push("    ACT 1 -1");
+  lines.push("    VIS 1 0 1");
+  lines.push("    LANEHEIGHT 0 0");
+  lines.push("    ARM 0");
+  lines.push("    DEFSHAPE 1 -1 -1");
+  for (const cue of cues) lines.push(`    PT ${cue.start_seconds} ${cue.tempo_bpm} 1`);
+  lines.push("  >");
 
   for (const track of LANE_TRACKS) {
     const laneNotes = composition.notes.filter((n) => n.lane === track.lane);
@@ -91,7 +105,8 @@ function buildRppText({ projectName, cues, composition, sampleRate = 48000, rend
       lines.push(`      NAME ${quote(`${cue.cue_id} ${track.lane}`)}`);
       lines.push("      <SOURCE MIDI");
       lines.push(`        HASDATA 1 ${PPQ} QN`);
-      for (const line of midiSourceLines(cueNotes, cueStartTicks[cueIndex])) lines.push(`        ${line}`);
+      const cueMarkerTick = composition.markers[cueIndex].tick;
+      for (const line of midiSourceLines(cueNotes, cueMarkerTick)) lines.push(`        ${line}`);
       lines.push("      >");
       lines.push("    >");
     });
