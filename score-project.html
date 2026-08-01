@@ -141,6 +141,21 @@
           <button class="btn btn-go" id="production-resolve">Prepare Resolve package</button>
         </div>
       </div>
+
+      <div class="step" id="step-narration">
+        <div class="step-head">Voiceover context authority <span class="badge todo" id="narration-badge">not registered</span></div>
+        <div id="narration-body" class="meta">No canonical narration is bound. Music verification and Resolve readiness remain separate from voiceover-context review.</div>
+        <div style="margin-top:8px;">
+          <input type="file" id="narration-file" accept="audio/*,video/mp4,video/quicktime,.mkv">
+          <label class="meta">Timeline start (seconds) <input type="number" id="narration-offset" min="0" step="0.001" placeholder="required" style="width:100px;"></label>
+          <textarea id="narration-authority" rows="2" style="width:100%;margin-top:6px;" placeholder="Authority basis: why this exact file is the canonical final narration (required)"></textarea>
+          <button class="btn" id="narration-register">Register canonical narration</button>
+          <button class="btn" id="narration-replace">Replace canonical narration</button>
+          <button class="btn" id="narration-verify">Verify narration</button>
+          <button class="btn btn-warn" id="narration-clear">Clear current narration binding</button>
+        </div>
+        <div class="meta" style="margin-top:6px;">Registration is hash-bound operator authority, not voiceover-context acceptance or human artistic approval. Narration remains separate from sketch and production music.</div>
+      </div>
     </div>
     <div id="copy-status"></div>
     <script src="score-engine/cue-analysis.js"></script>
@@ -156,6 +171,9 @@
       const SCORE_PRODUCTION_IMPORT_API = '/api/score/production/import';
       const SCORE_PRODUCTION_VERIFY_API = '/api/score/production/verify';
       const SCORE_PRODUCTION_RESOLVE_API = '/api/score/production/resolve';
+      const SCORE_NARRATION_REGISTER_API = '/api/score/narration/register';
+      const SCORE_NARRATION_VERIFY_API = '/api/score/narration/verify';
+      const SCORE_NARRATION_CLEAR_API = '/api/score/narration/clear';
       let SELECTED_CUE_INDEX = 0;
       let verifyInFlight = false;
       let verifySeq = 0;
@@ -190,7 +208,7 @@
         document.getElementById('title').textContent = '🎼 ' + (p.name || p.project_id);
         document.getElementById('subtitle').textContent = `${p.duration_seconds}s · ${p.target_platform} · ${p.music_role} · dialogue ${p.dialogue_density} · seed ${p.seed}`;
         CUES = (ST.cue_sheet && ST.cue_sheet.cues) ? JSON.parse(JSON.stringify(ST.cue_sheet.cues)) : [];
-        renderReadiness(); renderCues(); renderPalette(); renderCandidates(); renderExport(); renderProduction();
+        renderReadiness(); renderCues(); renderPalette(); renderCandidates(); renderExport(); renderProduction(); renderNarration();
       }
 
       const FN_COLOR = {hook:'#3fb950',setup:'#79c0ff',explanation:'#58a6ff',turn:'#d29922',reveal:'#a371f7',climax:'#f85149',button:'#ffa657',outro:'#7ee787'};
@@ -434,6 +452,29 @@
         document.getElementById('production-resolve').disabled=P.state!=='verified';
       }
 
+      function renderNarration(){
+        const N=ST.narration||{state:'not_registered',reasons:[],review_ready:false};
+        const badge=document.getElementById('narration-badge');
+        badge.className='badge '+(N.review_ready?'done':'todo');
+        badge.textContent=N.review_ready?'review-ready':String(N.state||'not_registered').replace(/_/g,' ');
+        document.getElementById('step-narration').className='step'+(N.review_ready?' done':'');
+        const identity=N.source_sha256?`<span class="chip">SHA-256 ${esc(N.source_sha256.slice(0,12))}…</span>`:'';
+        const filename=N.original_filename?`<span class="chip">${esc(N.original_filename)}</span>`:'';
+        const media=N.detected_media?`<span class="chip">${esc(N.detected_media.codec)} · ${esc(N.detected_media.channels)} ch · ${esc(N.detected_media.sample_rate)} Hz · ${esc(Number(N.detected_media.duration).toFixed(3))}s</span>`:'';
+        const offset=N.timeline_start_seconds!==undefined?`<span class="chip">timeline ${esc(N.timeline_start_seconds)}–${esc(N.timeline_end_seconds)}s</span>`:'';
+        const authority=N.authority_basis?`<div class="meta">Authority basis: ${esc(N.authority_basis)}</div>`:'';
+        const reasons=(N.reasons||[]).length?`<div class="warn">${esc(N.reasons.join(', '))}</div>`:'';
+        document.getElementById('narration-body').innerHTML = identity+filename+media+offset+authority+reasons+
+          (N.review_ready?'<div>Narration bytes and timeline binding are current. Voiceover-context review may proceed; human artistic approval is still pending.</div>'
+            :N.state==='registered'?'<div>Narration is registered but must be verified before context review.</div>'
+              :N.state==='stale'?'<div>The preserved narration binding is stale and cannot authorize context review.</div>'
+                :'<div>No canonical narration is registered. Music production validity is unchanged.</div>');
+        document.getElementById('narration-register').style.display=N.narration_id?'none':'inline-block';
+        document.getElementById('narration-replace').style.display=N.narration_id?'inline-block':'none';
+        document.getElementById('narration-verify').disabled=!(N.state==='registered'||N.state==='stale');
+        document.getElementById('narration-clear').disabled=!N.narration_id;
+      }
+
       function bytesToBase64(bytes){
         let binary=''; const chunk=0x8000;
         for(let i=0;i<bytes.length;i+=chunk) binary+=String.fromCharCode(...bytes.subarray(i,Math.min(i+chunk,bytes.length)));
@@ -515,6 +556,40 @@
         try{ await post(SCORE_PRODUCTION_RESOLVE_API,{project_id:ID}); toast('Verified production package prepared for Resolve'); await load(); }
         catch(e){ toast(e.message,false); showErr(e.message); }
         finally{ btn.disabled=false; btn.textContent='Prepare Resolve package'; }
+      };
+
+      async function registerNarration(){
+        const input=document.getElementById('narration-file'), file=input.files&&input.files[0];
+        const offset=Number(document.getElementById('narration-offset').value);
+        const authority=document.getElementById('narration-authority').value.trim();
+        if(!file) return toast('Select the canonical narration file first',false);
+        if(document.getElementById('narration-offset').value===''||!Number.isFinite(offset)||offset<0) return toast('Enter the authoritative timeline start',false);
+        if(!authority) return toast('Record the authority basis before registration',false);
+        const buttons=[document.getElementById('narration-register'),document.getElementById('narration-replace')];
+        if(buttons.some(button=>button.disabled)) return;
+        buttons.forEach(button=>button.disabled=true);
+        try{
+          const bytes=new Uint8Array(await file.arrayBuffer());
+          await post(SCORE_NARRATION_REGISTER_API,{project_id:ID,original_filename:file.name,data_base64:bytesToBase64(bytes),timeline_start_seconds:offset,authority_basis:authority});
+          toast('Canonical narration registered — verification still required'); await load();
+        }catch(e){ toast(e.message,false); showErr(e.message); }
+        finally{ buttons.forEach(button=>button.disabled=false); }
+      }
+      document.getElementById('narration-register').onclick=registerNarration;
+      document.getElementById('narration-replace').onclick=async()=>{
+        if(!window.confirm('Replace the current narration binding? Existing immutable narration evidence is preserved.')) return;
+        await registerNarration();
+      };
+      document.getElementById('narration-verify').onclick=async()=>{
+        const btn=document.getElementById('narration-verify'); if(btn.disabled)return; btn.disabled=true;
+        try{ await post(SCORE_NARRATION_VERIFY_API,{project_id:ID}); toast('Narration verified and review-ready'); await load(); }
+        catch(e){ toast(e.message,false); showErr(e.message); }
+        finally{ btn.disabled=false; }
+      };
+      document.getElementById('narration-clear').onclick=async()=>{
+        if(!window.confirm('Clear the current narration binding? Immutable imports remain preserved, but context review becomes blocked.')) return;
+        try{ await post(SCORE_NARRATION_CLEAR_API,{project_id:ID,confirm_clear:true}); toast('Current narration binding cleared; immutable evidence preserved'); await load(); }
+        catch(e){ toast(e.message,false); showErr(e.message); }
       };
 
       document.addEventListener('click', async (ev)=>{

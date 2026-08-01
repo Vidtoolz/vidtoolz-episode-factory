@@ -271,6 +271,9 @@ function getProject(projectId, options = {}) {
   // computes truth client-side, and deep verification stays a CLI concern.
   const readinessLib = require("./score-readiness.js");
   const readiness = readinessLib.assessReadiness({ project, cueSheet, musicPlan, candidates, approved, dir, settings });
+  const narration = assessNarrationAuthority(dir, project);
+  readiness.narration = narration;
+  readiness.narration_review_ready = narration.review_ready;
   const configuredTemplateFolder = String(settings.reaper_track_template_folder || "").trim();
   let templateFolderAvailable = false;
   try { templateFolderAvailable = Boolean(configuredTemplateFolder) && fs.statSync(configuredTemplateFolder).isDirectory(); } catch {}
@@ -291,6 +294,7 @@ function getProject(projectId, options = {}) {
     reaper_ready: candidates.some((c) => c.reaper_built),
     analysis: readiness.analysis,
     readiness,
+    narration,
     daw_configuration: { reaper_template_folder: templateFolderState },
   };
 }
@@ -1025,6 +1029,479 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
 const PRODUCTION_SCHEMA_VERSION = 1;
 const PRODUCTION_IMPORT_MAX_BYTES = 192 * 1024 * 1024;
 
+// Narration is an external editorial authority, not score audio. It is kept in
+// its own content-addressed namespace and never changes music verification or
+// Resolve readiness. Registration and media verification are deliberately
+// separate operator-visible transitions.
+const NARRATION_SCHEMA_VERSION = 1;
+const NARRATION_IMPORT_MAX_BYTES = 192 * 1024 * 1024;
+const NARRATION_EXTENSIONS = new Set([".wav", ".flac", ".mp3", ".m4a", ".aac", ".mp4", ".mov", ".mkv"]);
+const NARRATION_CONTAINERS = new Set(["wav", "flac", "mp3", "mov", "aac", "matroska", "webm"]);
+const NARRATION_CODECS = new Set(["pcm_s16le", "pcm_s24le", "pcm_s32le", "pcm_f32le", "flac", "mp3", "aac", "opus", "vorbis"]);
+
+function projectAuthorityBindings(dir, project) {
+  const packageRoot = project.video_package_path ? path.resolve(project.video_package_path) : null;
+  let scriptPath = project.script_path ? path.resolve(project.script_path) : path.join(dir, "script-snapshot.txt");
+  if (!fs.existsSync(scriptPath) || !fs.statSync(scriptPath).isFile()) {
+    throw httpError("The authoritative final script is missing; narration cannot be bound safely.", 409);
+  }
+  if (packageRoot && scriptPath !== packageRoot && !scriptPath.startsWith(packageRoot + path.sep)) {
+    throw httpError("The authoritative script path is outside the linked package.", 409);
+  }
+  const scriptIdentity = provenanceLib.hashCanonical({
+    schema_version: NARRATION_SCHEMA_VERSION,
+    role: "final_script",
+    sha256: provenanceLib.sha256File(scriptPath),
+  });
+  let packageIdentity;
+  if (packageRoot) {
+    const manifestPath = path.join(packageRoot, "manifest.json");
+    if (!fs.existsSync(manifestPath) || !fs.statSync(manifestPath).isFile()) {
+      throw httpError("The linked package manifest is missing; narration cannot be bound safely.", 409);
+    }
+    const manifest = readJson(manifestPath);
+    if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+      throw httpError("The linked package manifest is malformed; narration cannot be bound safely.", 409);
+    }
+    packageIdentity = provenanceLib.hashCanonical({
+      schema_version: NARRATION_SCHEMA_VERSION,
+      role: "video_package",
+      project_id: project.project_id,
+      package_id: typeof manifest.package_id === "string" ? manifest.package_id : null,
+      slug: typeof manifest.slug === "string" ? manifest.slug : null,
+      package_name: typeof manifest.package_name === "string" ? manifest.package_name : null,
+      source_idea_id: typeof manifest.source_idea_id === "string" ? manifest.source_idea_id : null,
+    });
+  } else {
+    packageIdentity = provenanceLib.hashCanonical({
+      schema_version: NARRATION_SCHEMA_VERSION,
+      role: "standalone_score_project",
+      project_id: project.project_id,
+    });
+  }
+  return { script_identity: scriptIdentity, package_identity: packageIdentity };
+}
+
+function normalizeNarrationMedia(probe) {
+  return {
+    container: String(probe.container || probe.format || "").toLowerCase(),
+    codec: String(probe.codec || "").toLowerCase(),
+    channels: Number(probe.channels),
+    sample_rate: Number(probe.sample_rate),
+    bit_depth: Number.isFinite(Number(probe.bit_depth)) ? Number(probe.bit_depth) : null,
+    duration: Number(probe.duration),
+  };
+}
+
+function narrationProbe(file, settings, options = {}) {
+  if (typeof options.narrationProbeImpl === "function") return options.narrationProbeImpl(file);
+  const spawnSync = options.spawnSyncImpl || childProcess.spawnSync;
+  const result = spawnSync(settings.ffprobe_path || "ffprobe", ["-v", "quiet", "-print_format", "json", "-show_streams", "-show_format", file], { encoding: "utf8", timeout: 30000, maxBuffer: 2 * 1024 * 1024 });
+  if (result.error || result.status !== 0) return { ok: false, reason: `ffprobe failed: ${(result.error ? result.error.message : result.stderr || "").slice(0, 200)}` };
+  try {
+    const data = JSON.parse(result.stdout);
+    const audio = (data.streams || []).find((stream) => stream.codec_type === "audio");
+    if (!audio) return { ok: false, reason: "no audio stream" };
+    const formatName = String(data.format && data.format.format_name || "").split(",")[0];
+    return {
+      ok: true,
+      container: formatName,
+      codec: audio.codec_name,
+      channels: Number(audio.channels),
+      sample_rate: Number(audio.sample_rate),
+      bit_depth: Number(audio.bits_per_raw_sample || audio.bits_per_sample) || null,
+      duration: Number(audio.duration || (data.format && data.format.duration)) || null,
+    };
+  } catch (error) {
+    return { ok: false, reason: `ffprobe returned malformed JSON: ${error.message}` };
+  }
+}
+
+function narrationSignalProbe(file, settings, options = {}) {
+  if (typeof options.narrationSignalProbeImpl === "function") return options.narrationSignalProbeImpl(file);
+  const spawnSync = options.spawnSyncImpl || childProcess.spawnSync;
+  const result = spawnSync(settings.ffmpeg_path || "ffmpeg", [
+    "-v", "error", "-i", file, "-map", "0:a:0", "-vn", "-ac", "1", "-ar", "8000", "-f", "s16le", "pipe:1",
+  ], { encoding: null, timeout: 30000, maxBuffer: 32 * 1024 * 1024 });
+  if (result.error || result.status !== 0 || !Buffer.isBuffer(result.stdout)) {
+    return { ok: false, reason: `ffmpeg signal check failed: ${(result.error ? result.error.message : result.stderr || "").toString().slice(0, 200)}` };
+  }
+  let sumSquares = 0;
+  let samples = 0;
+  let peak = 0;
+  for (let offset = 0; offset + 1 < result.stdout.length; offset += 2) {
+    const value = result.stdout.readInt16LE(offset) / 32768;
+    const absolute = Math.abs(value);
+    peak = Math.max(peak, absolute);
+    sumSquares += value * value;
+    samples += 1;
+  }
+  const rms = samples ? Math.sqrt(sumSquares / samples) : 0;
+  return { ok: true, non_silent: peak > 1 / 32768 && rms > 1e-6, peak_dbfs: peak ? 20 * Math.log10(peak) : -Infinity, rms_dbfs: rms ? 20 * Math.log10(rms) : -Infinity };
+}
+
+function narrationRegistrationIdentity(record) {
+  return provenanceLib.hashCanonical({
+    schema_version: NARRATION_SCHEMA_VERSION,
+    project_id: record.project_id,
+    role: "canonical_narration",
+    source_type: record.source_type,
+    source_sha256: record.source_sha256,
+    byte_size: record.byte_size,
+    detected_media: record.detected_media,
+    timeline_start_seconds: record.timeline_start_seconds,
+    timeline_end_seconds: record.timeline_end_seconds,
+    leading_silence_seconds: record.leading_silence_seconds,
+    trailing_silence_seconds: record.trailing_silence_seconds,
+    authority_basis: record.authority_basis,
+    selection_method: record.selection_method,
+    script_identity: record.script_identity,
+    package_identity: record.package_identity,
+  });
+}
+
+function narrationVerificationIdentity(record, detectedMedia) {
+  return provenanceLib.hashCanonical({
+    schema_version: NARRATION_SCHEMA_VERSION,
+    role: "canonical_narration_verification",
+    registration_identity: record.registration_identity,
+    source_sha256: record.source_sha256,
+    detected_media: detectedMedia,
+  });
+}
+
+function validateNarrationMedia(probe, signal, project, timelineStart) {
+  if (!probe || !probe.ok) throw httpError(`Narration is not decodable audio${probe && probe.reason ? `: ${probe.reason}` : "."}`, 400);
+  const media = normalizeNarrationMedia(probe);
+  if (!NARRATION_CONTAINERS.has(media.container) || !NARRATION_CODECS.has(media.codec)) {
+    throw httpError(`Narration format is unsupported (${media.container || "unknown"}/${media.codec || "unknown"}).`, 415);
+  }
+  if (!Number.isFinite(media.duration) || media.duration <= 0) throw httpError("Narration duration is missing or invalid.", 400);
+  if (!Number.isInteger(media.channels) || media.channels < 1 || media.channels > 8) throw httpError(`Narration channel count is unsupported (${media.channels}).`, 400);
+  if (!Number.isInteger(media.sample_rate) || media.sample_rate < 8000 || media.sample_rate > 384000) throw httpError(`Narration sample rate is unsupported (${media.sample_rate}).`, 400);
+  if (!signal || !signal.ok || signal.non_silent !== true) throw httpError("Narration is silent or contains no measurable audio signal.", 400);
+  const timelineEnd = Math.round((timelineStart + media.duration) * 1000) / 1000;
+  if (timelineEnd > Number(project.duration_seconds) + 0.05) {
+    throw httpError(`Narration ends after the project duration (${timelineEnd}s > ${project.duration_seconds}s).`, 400);
+  }
+  return { media, timelineEnd };
+}
+
+function musicArtifactHasHash(dir, hash) {
+  const roots = ["approved", "candidates", "production"];
+  const audioExtensions = new Set([".wav", ".flac", ".mp3", ".m4a", ".aac"]);
+  const visit = (absolute) => {
+    if (!fs.existsSync(absolute)) return false;
+    for (const entry of fs.readdirSync(absolute, { withFileTypes: true })) {
+      const target = path.join(absolute, entry.name);
+      if (entry.isSymbolicLink()) continue;
+      if (entry.isDirectory()) { if (visit(target)) return true; }
+      else if (entry.isFile() && audioExtensions.has(path.extname(entry.name).toLowerCase())
+        && provenanceLib.sha256File(target) === hash) return true;
+    }
+    return false;
+  };
+  return roots.some((root) => visit(path.join(dir, root)));
+}
+
+function currentNarrationRecord(dir) {
+  const pointerPath = path.join(dir, "narration", "current.json");
+  if (!fs.existsSync(pointerPath)) return { state: "not_registered", reasons: [] };
+  const pointer = readJson(pointerPath);
+  if (!pointer || pointer.schema_version !== NARRATION_SCHEMA_VERSION
+    || !/^narration-[a-f0-9]{20}$/.test(String(pointer.narration_id || ""))) {
+    return { state: "stale", reasons: ["narration_pointer_invalid"] };
+  }
+  const expectedPath = `narration/imports/${pointer.narration_id}/provenance.json`;
+  if (pointer.provenance_path !== expectedPath || !/^[a-f0-9]{64}$/.test(String(pointer.registration_identity || ""))) {
+    return { state: "stale", reasons: ["narration_pointer_invalid"] };
+  }
+  let provenancePath;
+  try { provenancePath = provenanceLib.resolveManifestPath(dir, pointer.provenance_path).target; }
+  catch { return { state: "stale", reasons: ["narration_pointer_unsafe"] }; }
+  const record = readJson(provenancePath);
+  const expectedSourcePrefix = `narration/imports/${pointer.narration_id}/source`;
+  const recordExtension = record && typeof record.relative_path === "string" ? path.extname(record.relative_path).toLowerCase() : "";
+  let recordIdentity = null;
+  try { recordIdentity = record && narrationRegistrationIdentity(record); } catch {}
+  const media = record && record.detected_media;
+  if (!record || record.schema_version !== NARRATION_SCHEMA_VERSION
+    || record.project_id === undefined || record.role !== "canonical_narration"
+    || record.source_type !== "controlled_immutable_import"
+    || record.narration_id !== pointer.narration_id
+    || !/^[a-f0-9]{64}$/.test(String(record.source_sha256 || ""))
+    || !Number.isInteger(record.byte_size) || record.byte_size <= 0
+    || typeof record.relative_path !== "string" || record.relative_path !== `${expectedSourcePrefix}${recordExtension}`
+    || !NARRATION_EXTENSIONS.has(recordExtension)
+    || typeof record.original_filename !== "string"
+    || typeof record.authority_basis !== "string" || !record.authority_basis.trim()
+    || record.selection_method !== "explicit_operator_upload"
+    || !media || typeof media !== "object" || Array.isArray(media)
+    || !NARRATION_CONTAINERS.has(String(media.container || "")) || !NARRATION_CODECS.has(String(media.codec || ""))
+    || !Number.isInteger(media.channels) || !Number.isInteger(media.sample_rate) || !Number.isFinite(media.duration)
+    || typeof record.timeline_start_seconds !== "number" || !Number.isFinite(record.timeline_start_seconds)
+    || typeof record.timeline_end_seconds !== "number" || !Number.isFinite(record.timeline_end_seconds)
+    || record.registration_identity !== pointer.registration_identity
+    || recordIdentity !== record.registration_identity) {
+    return { state: "stale", reasons: ["narration_provenance_invalid"] };
+  }
+  return { state: "registered", reasons: [], pointer, record, provenancePath, importDir: path.dirname(provenancePath) };
+}
+
+function assessNarrationAuthority(dir, project) {
+  const current = currentNarrationRecord(dir);
+  if (!current.record) return { state: current.state, current: false, media_verified: false, review_ready: false, reasons: current.reasons, narration_id: null };
+  const reasons = [];
+  const record = current.record;
+  if (record.project_id !== project.project_id) reasons.push("narration_project_mismatch");
+  let sourcePath;
+  try { sourcePath = provenanceLib.resolveManifestPath(dir, record.relative_path).target; }
+  catch { reasons.push("narration_source_unsafe"); }
+  if (sourcePath) {
+    try {
+      const stat = fs.statSync(sourcePath);
+      if (!stat.isFile()) reasons.push("narration_source_missing");
+      else if (stat.size !== record.byte_size || provenanceLib.sha256File(sourcePath) !== record.source_sha256) reasons.push("narration_hash_mismatch");
+    } catch { reasons.push("narration_source_missing"); }
+  }
+  try {
+    const bindings = projectAuthorityBindings(dir, project);
+    if (bindings.script_identity !== record.script_identity) reasons.push("narration_script_changed");
+    if (bindings.package_identity !== record.package_identity) reasons.push("narration_package_changed");
+  } catch { reasons.push("narration_authority_missing"); }
+  const expectedEnd = Math.round((Number(record.timeline_start_seconds) + Number(record.detected_media && record.detected_media.duration)) * 1000) / 1000;
+  if (!Number.isFinite(record.timeline_start_seconds) || record.timeline_start_seconds < 0
+    || record.timeline_end_seconds !== expectedEnd || expectedEnd > Number(project.duration_seconds) + 0.05) reasons.push("narration_alignment_invalid");
+  const verification = readJson(path.join(current.importDir, "verification.json"));
+  let expectedVerification = null;
+  let verificationMediaMatches = false;
+  try {
+    expectedVerification = verification && narrationVerificationIdentity(record, verification.detected_media);
+    verificationMediaMatches = Boolean(verification)
+      && provenanceLib.hashCanonical(verification.detected_media) === provenanceLib.hashCanonical(record.detected_media);
+  } catch {}
+  const verified = Boolean(verification && verification.schema_version === NARRATION_SCHEMA_VERSION && verification.verified === true
+    && verification.narration_id === record.narration_id
+    && verification.registration_identity === record.registration_identity
+    && verification.source_sha256 === record.source_sha256
+    && verificationMediaMatches
+    && verification.verification_identity === expectedVerification);
+  const authorityReasons = [...new Set(reasons)];
+  const uniqueReasons = verified ? authorityReasons : [...authorityReasons, "narration_verification_missing_or_outdated"];
+  return {
+    state: authorityReasons.length ? "stale" : verified ? "verified" : "registered",
+    current: authorityReasons.length === 0,
+    media_verified: authorityReasons.length === 0 && verified,
+    review_ready: authorityReasons.length === 0 && verified,
+    reasons: uniqueReasons,
+    narration_id: record.narration_id,
+    source_sha256: record.source_sha256,
+    original_filename: record.original_filename,
+    detected_media: record.detected_media,
+    timeline_start_seconds: record.timeline_start_seconds,
+    timeline_end_seconds: record.timeline_end_seconds,
+    authority_basis: record.authority_basis,
+    registration_identity: record.registration_identity,
+    verification_identity: verified ? verification.verification_identity : null,
+  };
+}
+
+function registerCanonicalNarration(projectId, input = {}, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  const project = readJson(path.join(dir, "score-project.json"));
+  const filename = String(input.original_filename || "");
+  const extension = path.extname(filename).toLowerCase();
+  if (!filename || filename.length > 255 || /[\x00-\x1f\x7f/\\]/.test(filename)
+    || path.isAbsolute(filename) || path.basename(filename) !== filename || !NARRATION_EXTENSIONS.has(extension)) {
+    throw httpError("Narration registration requires a safe supported filename without path components or control characters.", 400);
+  }
+  if (!Buffer.isBuffer(input.bytes)) throw httpError("Narration registration requires uploaded media bytes; server filesystem paths are not accepted.", 400);
+  if (input.bytes.length === 0 || input.bytes.length > NARRATION_IMPORT_MAX_BYTES) throw httpError(`Narration media must be non-empty and no larger than ${NARRATION_IMPORT_MAX_BYTES} bytes.`, 400);
+  if (typeof input.timeline_start_seconds !== "number" || !Number.isFinite(input.timeline_start_seconds) || input.timeline_start_seconds < 0) {
+    throw httpError("An explicit finite narration timeline offset is required.", 400);
+  }
+  const authorityBasis = String(input.authority_basis || "").trim();
+  if (!authorityBasis || authorityBasis.length > 1000) throw httpError("A concise authority basis is required for explicit operator binding.", 400);
+  const silenceValue = (value, label) => {
+    if (value === undefined || value === null || value === "") return null;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) throw httpError(`${label} must be a finite non-negative number when provided.`, 400);
+    return value;
+  };
+  const leadingSilence = silenceValue(input.leading_silence_seconds, "leading_silence_seconds");
+  const trailingSilence = silenceValue(input.trailing_silence_seconds, "trailing_silence_seconds");
+  const bindings = projectAuthorityBindings(dir, project);
+  const sourceHash = provenanceLib.sha256(input.bytes);
+  if (musicArtifactHasHash(dir, sourceHash)) throw httpError("The selected bytes are already a Scorecraft music artifact and cannot be registered as narration.", 400);
+  const narrationRoot = path.join(dir, "narration");
+  const importsRoot = path.join(narrationRoot, "imports");
+  fs.mkdirSync(importsRoot, { recursive: true });
+  const buildDir = fs.mkdtempSync(path.join(importsRoot, ".narration-build-"));
+  try {
+    const stagedPath = path.join(buildDir, `source${extension}`);
+    fs.writeFileSync(stagedPath, input.bytes, { flag: "wx" });
+    const signal = narrationSignalProbe(stagedPath, settings, options);
+    const { media, timelineEnd } = validateNarrationMedia(narrationProbe(stagedPath, settings, options), signal, project, input.timeline_start_seconds);
+    const identityBase = {
+      schema_version: NARRATION_SCHEMA_VERSION,
+      project_id: project.project_id,
+      role: "canonical_narration",
+      source_type: "controlled_immutable_import",
+      source_sha256: sourceHash,
+      byte_size: input.bytes.length,
+      detected_media: media,
+      timeline_start_seconds: input.timeline_start_seconds,
+      timeline_end_seconds: timelineEnd,
+      leading_silence_seconds: leadingSilence,
+      trailing_silence_seconds: trailingSilence,
+      authority_basis: authorityBasis,
+      selection_method: "explicit_operator_upload",
+      script_identity: bindings.script_identity,
+      package_identity: bindings.package_identity,
+    };
+    const registrationIdentity = narrationRegistrationIdentity(identityBase);
+    const narrationId = `narration-${registrationIdentity.slice(0, 20)}`;
+    const importDir = path.join(importsRoot, narrationId);
+    const relativePath = `narration/imports/${narrationId}/source${extension}`;
+    const provenancePath = `narration/imports/${narrationId}/provenance.json`;
+    const existing = readJson(path.join(importDir, "provenance.json"));
+    if (existing) {
+      let existingSource;
+      try { existingSource = provenanceLib.resolveManifestPath(dir, existing.relative_path).target; } catch {}
+      if (!existingSource || existing.registration_identity !== registrationIdentity
+        || narrationRegistrationIdentity(existing) !== registrationIdentity
+        || !fs.existsSync(existingSource) || fs.statSync(existingSource).size !== input.bytes.length
+        || provenanceLib.sha256File(existingSource) !== sourceHash) {
+        throw httpError(`Existing immutable narration import ${narrationId} does not match its content identity.`, 409);
+      }
+      fs.rmSync(buildDir, { recursive: true, force: true });
+      writeJsonAtomic(path.join(narrationRoot, "current.json"), { schema_version: NARRATION_SCHEMA_VERSION, narration_id: narrationId, registration_identity: registrationIdentity, provenance_path: provenancePath });
+      return { narration_id: narrationId, registration_identity: registrationIdentity, relative_path: existing.relative_path, timeline_end_seconds: existing.timeline_end_seconds, idempotent: true };
+    }
+    const record = {
+      ...identityBase,
+      narration_id: narrationId,
+      relative_path: relativePath,
+      original_filename: filename,
+      registered_at: nowIso(),
+      registration_tool: `vidtoolz-score-engine ${ENGINE_VERSION}`,
+      registration_identity: registrationIdentity,
+    };
+    writeJson(path.join(buildDir, "provenance.json"), record);
+    const latestProject = readJson(path.join(dir, "score-project.json"));
+    const latestBindings = projectAuthorityBindings(dir, latestProject);
+    if (latestBindings.script_identity !== bindings.script_identity || latestBindings.package_identity !== bindings.package_identity) {
+      throw httpError("Script or package authority changed during narration registration; no binding was published.", 409);
+    }
+    fs.renameSync(buildDir, importDir);
+    const publishedSource = path.join(importDir, `source${extension}`);
+    if (!fs.existsSync(publishedSource) || fs.statSync(publishedSource).size !== input.bytes.length || provenanceLib.sha256File(publishedSource) !== sourceHash) {
+      throw httpError("Narration bytes changed before authority publication; no binding was published.", 409);
+    }
+    const pointerPath = path.join(narrationRoot, "current.json");
+    const previousPointer = fs.existsSync(pointerPath) ? fs.readFileSync(pointerPath) : null;
+    writeJsonAtomic(pointerPath, { schema_version: NARRATION_SCHEMA_VERSION, narration_id: narrationId, registration_identity: registrationIdentity, provenance_path: provenancePath });
+    try {
+      const finalBindings = projectAuthorityBindings(dir, readJson(path.join(dir, "score-project.json")));
+      if (finalBindings.script_identity !== bindings.script_identity || finalBindings.package_identity !== bindings.package_identity
+        || !fs.existsSync(publishedSource) || fs.statSync(publishedSource).size !== input.bytes.length
+        || provenanceLib.sha256File(publishedSource) !== sourceHash) {
+        throw httpError("Narration or upstream authority changed during publication; the binding was not made current.", 409);
+      }
+    } catch (error) {
+      if (previousPointer) fs.writeFileSync(pointerPath, previousPointer);
+      else { try { fs.unlinkSync(pointerPath); } catch {} }
+      throw error;
+    }
+    return { narration_id: narrationId, registration_identity: registrationIdentity, relative_path: relativePath, timeline_end_seconds: timelineEnd, idempotent: false, media };
+  } catch (error) {
+    if (fs.existsSync(buildDir)) fs.rmSync(buildDir, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function verifyCanonicalNarration(projectId, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  const project = readJson(path.join(dir, "score-project.json"));
+  const current = currentNarrationRecord(dir);
+  if (!current.record) throw httpError("No valid current narration binding is available.", 409);
+  const record = current.record;
+  if (record.project_id !== project.project_id) throw httpError("The current narration binding belongs to a different project.", 409);
+  let sourcePath;
+  try { sourcePath = provenanceLib.resolveManifestPath(dir, record.relative_path).target; }
+  catch { throw httpError("The current narration source path is unsafe.", 409); }
+  if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) throw httpError("The current narration source is missing.", 409);
+  const sourceHash = provenanceLib.sha256File(sourcePath);
+  if (sourceHash !== record.source_sha256 || fs.statSync(sourcePath).size !== record.byte_size) throw httpError("The current narration source changed after registration.", 409);
+  const bindings = projectAuthorityBindings(dir, project);
+  if (bindings.script_identity !== record.script_identity || bindings.package_identity !== record.package_identity) throw httpError("The current narration binding is stale against script or package authority.", 409);
+  const snapshotDir = fs.mkdtempSync(path.join(current.importDir, ".verify-narration-"));
+  let detected;
+  try {
+    const extension = path.extname(sourcePath);
+    const snapshot = path.join(snapshotDir, `source${extension}`);
+    fs.copyFileSync(sourcePath, snapshot, fs.constants.COPYFILE_EXCL);
+    if (fs.statSync(snapshot).size !== record.byte_size || provenanceLib.sha256File(snapshot) !== sourceHash) throw httpError("Narration changed while creating the verification snapshot.", 409);
+    const signal = narrationSignalProbe(snapshot, settings, options);
+    const checked = validateNarrationMedia(narrationProbe(snapshot, settings, options), signal, project, record.timeline_start_seconds);
+    detected = checked.media;
+    if (checked.timelineEnd !== record.timeline_end_seconds || provenanceLib.hashCanonical(detected) !== provenanceLib.hashCanonical(record.detected_media)) {
+      throw httpError("Narration media properties changed after registration.", 409);
+    }
+    if (provenanceLib.sha256File(snapshot) !== sourceHash || provenanceLib.sha256File(sourcePath) !== sourceHash) throw httpError("Narration changed during verification.", 409);
+  } finally {
+    fs.rmSync(snapshotDir, { recursive: true, force: true });
+  }
+  const latestBindings = projectAuthorityBindings(dir, readJson(path.join(dir, "score-project.json")));
+  if (latestBindings.script_identity !== record.script_identity || latestBindings.package_identity !== record.package_identity) throw httpError("Narration authority changed during verification.", 409);
+  const verificationIdentity = narrationVerificationIdentity(record, detected);
+  const result = {
+    schema_version: NARRATION_SCHEMA_VERSION,
+    verified: true,
+    narration_id: record.narration_id,
+    source_sha256: sourceHash,
+    registration_identity: record.registration_identity,
+    detected_media: detected,
+    verified_at: nowIso(),
+    verification_identity: verificationIdentity,
+  };
+  const verificationPath = path.join(current.importDir, "verification.json");
+  const existing = readJson(verificationPath);
+  if (existing) {
+    if (existing.verification_identity !== verificationIdentity || narrationVerificationIdentity(record, existing.detected_media) !== verificationIdentity) {
+      throw httpError("Existing immutable narration verification does not match current authority.", 409);
+    }
+    if (!fs.existsSync(sourcePath) || fs.statSync(sourcePath).size !== record.byte_size || provenanceLib.sha256File(sourcePath) !== sourceHash) {
+      throw httpError("Narration changed during verification.", 409);
+    }
+    return { ...existing, idempotent: true };
+  }
+  writeJsonAtomic(verificationPath, result);
+  if (!fs.existsSync(sourcePath) || fs.statSync(sourcePath).size !== record.byte_size || provenanceLib.sha256File(sourcePath) !== sourceHash) {
+    try { fs.unlinkSync(verificationPath); } catch {}
+    throw httpError("Narration changed before verification publication.", 409);
+  }
+  const finalBindings = projectAuthorityBindings(dir, readJson(path.join(dir, "score-project.json")));
+  if (finalBindings.script_identity !== record.script_identity || finalBindings.package_identity !== record.package_identity) {
+    try { fs.unlinkSync(verificationPath); } catch {}
+    throw httpError("Narration authority changed before verification publication.", 409);
+  }
+  return { ...result, idempotent: false };
+}
+
+function clearCanonicalNarration(projectId, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  const pointer = path.join(dir, "narration", "current.json");
+  if (!fs.existsSync(pointer)) throw httpError("No current narration binding exists.", 409);
+  const history = path.join(dir, "narration", "history");
+  fs.mkdirSync(history, { recursive: true });
+  const archived = uniquePath(path.join(history, `current-${stamp()}.json`));
+  fs.renameSync(pointer, archived);
+  return { cleared: true, preserved_imports: true };
+}
+
 function requireCurrentSketchApproval(dir, project, settings) {
   const cueSheet = readJson(path.join(dir, "cue-sheet.json"));
   const musicPlan = readJson(path.join(dir, "music-plan.json"));
@@ -1471,6 +1948,9 @@ module.exports = {
   importProductionMix,
   verifyProductionMix,
   prepareProductionResolvePackage,
+  registerCanonicalNarration,
+  verifyCanonicalNarration,
+  clearCanonicalNarration,
   probeDuration,
   openFolder,
 };

@@ -207,6 +207,10 @@ const SCORE_VERIFY_API = '/api/score/verify';
 const SCORE_PRODUCTION_IMPORT_API = '/api/score/production/import';
 const SCORE_PRODUCTION_VERIFY_API = '/api/score/production/verify';
 const SCORE_PRODUCTION_RESOLVE_API = '/api/score/production/resolve';
+const SCORE_NARRATION_API = '/api/score/narration';
+const SCORE_NARRATION_REGISTER_API = '/api/score/narration/register';
+const SCORE_NARRATION_VERIFY_API = '/api/score/narration/verify';
+const SCORE_NARRATION_CLEAR_API = '/api/score/narration/clear';
 const SCORE_OPEN_FOLDER_API = '/api/score/open-folder';
 const SCORE_FILE_API = '/api/score/file';
 const PROJECT_VIDEO_REVIEW_SAVE_API = '/api/project/video-review/save';
@@ -16084,6 +16088,14 @@ function createServer(options = {}) {
       catch (error) { sendError(res, error.statusCode || 500, error.message, 'score-project-error'); }
       return;
     }
+    if (req.method === 'GET' && url.pathname === SCORE_NARRATION_API) {
+      try {
+        const state = scoreLane.getProject(url.searchParams.get('id') || '', scoreOptions());
+        sendJSON(res, 200, { project_id: state.project.project_id, narration: state.narration });
+      }
+      catch (error) { sendError(res, error.statusCode || 500, error.message, 'score-narration-error'); }
+      return;
+    }
     if (req.method === 'GET' && url.pathname === SCORE_PROFILES_API) {
       try { sendJSON(res, 200, { profiles: scoreLane.loadProfiles(scoreLane.loadSettings(scoreOptions())) }); }
       catch (error) { sendError(res, error.statusCode || 500, error.message, 'score-profiles-error'); }
@@ -16210,6 +16222,57 @@ function createServer(options = {}) {
           sendJSON(res, 200, scoreLane.importProductionMix(payload.project_id || '', { original_filename: payload.original_filename, bytes }, scoreOptions()));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-production-import-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_NARRATION_REGISTER_API) {
+      try { validateLocalWriteRequest(req, {}, { label: 'Score narration registration API' }); }
+      catch (error) { sendError(res, error.statusCode || 403, error.message, 'score-narration-register-auth-error'); return; }
+      if (String(req.headers['content-type'] || '').split(';', 1)[0].trim().toLowerCase() !== 'application/json') {
+        sendError(res, 415, 'Score narration registration requires Content-Type: application/json.', 'score-narration-register-media-type');
+        return;
+      }
+      readJsonBody(req, 1024 * 1024 * 256)
+        .then((payload) => {
+          if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw Object.assign(new Error('Request body must be an object.'), { statusCode: 400 });
+          if (Object.prototype.hasOwnProperty.call(payload, 'path') || Object.prototype.hasOwnProperty.call(payload, 'source_path')) {
+            throw Object.assign(new Error('Server filesystem paths are not accepted. Upload the explicitly selected narration bytes.'), { statusCode: 400 });
+          }
+          const encoded = typeof payload.data_base64 === 'string' ? payload.data_base64 : '';
+          const maxEncoded = Math.ceil((192 * 1024 * 1024) / 3) * 4;
+          if (!encoded || encoded.length > maxEncoded || encoded.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
+            throw Object.assign(new Error('data_base64 must contain a canonical bounded narration upload.'), { statusCode: encoded.length > maxEncoded ? 413 : 400 });
+          }
+          const bytes = Buffer.from(encoded, 'base64');
+          if (bytes.toString('base64') !== encoded) throw Object.assign(new Error('data_base64 is not canonical base64.'), { statusCode: 400 });
+          sendJSON(res, 200, scoreLane.registerCanonicalNarration(payload.project_id || '', {
+            original_filename: payload.original_filename,
+            bytes,
+            timeline_start_seconds: payload.timeline_start_seconds,
+            authority_basis: payload.authority_basis,
+            leading_silence_seconds: payload.leading_silence_seconds,
+            trailing_silence_seconds: payload.trailing_silence_seconds,
+          }, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-narration-register-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_NARRATION_VERIFY_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score narration verify API' });
+          sendJSON(res, 200, scoreLane.verifyCanonicalNarration(payload.project_id || '', scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-narration-verify-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_NARRATION_CLEAR_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score narration clear API' });
+          if (payload.confirm_clear !== true) throw Object.assign(new Error('Clearing the current narration binding requires confirm_clear: true.'), { statusCode: 400 });
+          sendJSON(res, 200, scoreLane.clearCanonicalNarration(payload.project_id || '', scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-narration-clear-error'));
       return;
     }
     if (req.method === 'POST' && url.pathname === SCORE_PRODUCTION_VERIFY_API) {
