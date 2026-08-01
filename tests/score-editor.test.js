@@ -45,8 +45,14 @@ test("score editor: split enforces minimum duration and keeps hit points in thei
   const source = [cue("C001", 0, 4, { hit_points: [0.5, 2, 3.5] })];
   assert.throws(() => editor.splitCue(source, 0, { split_seconds: 0.25, minimum_duration_seconds: 0.5 }), /minimum duration/);
   const split = editor.splitCue(source, 0, { split_seconds: 2 });
-  assert.deepEqual(split[0].hit_points, [0.5, 2]);
+  assert.deepEqual(split[0].hit_points, [0.5]);
   assert.deepEqual(split[1].hit_points, [2, 3.5]);
+});
+
+test("score editor: a hit point on the split boundary belongs to the new cue only", () => {
+  const split = editor.splitCue([cue("C001", 0, 10, { hit_points: [2, 5, 8] })], 0, { split_seconds: 5 });
+  assert.deepEqual(split[0].hit_points, [2]);
+  assert.deepEqual(split[1].hit_points, [5, 8]);
 });
 
 test("score editor: split IDs and timing survive project save and reload", () => {

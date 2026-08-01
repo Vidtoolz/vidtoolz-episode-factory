@@ -43,7 +43,8 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
   if (!approvalAuthority.current || !approved || !approved.identity) reasons.push("verification_outdated");
   if (approved && approved.identity) {
     if (production.approved_candidate_id !== approved.approved_candidate
-      || production.approved_candidate_content_hash !== approved.identity.candidate_content_hash) reasons.push("approved_candidate_hash_mismatch");
+      || production.approved_candidate_content_hash !== approved.identity.candidate_content_hash
+      || production.approved_candidate_aggregate_hash !== approved.identity.candidate_input_hash) reasons.push("approved_candidate_hash_mismatch");
     if (production.cue_sheet_hash !== approved.identity.cue_sheet_hash) reasons.push("cue_sheet_changed");
     if (production.music_plan_hash !== approved.identity.music_plan_hash) reasons.push("music_plan_changed");
     if (production.composer_contract_hash !== approved.identity.composer_contract_hash) reasons.push("composer_contract_changed");
@@ -62,6 +63,15 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
   const verification = readJson(path.join(path.dirname(provenancePath), "verification.json"));
   let verified = false;
   if (verification) {
+    let expectedVerificationIdentity = null;
+    try {
+      expectedVerificationIdentity = provenanceLib.productionVerificationIdentity({
+        productionMixSha256: verification.production_mix_sha256,
+        approvedCandidateContentHash: verification.approved_candidate_content_hash,
+        renderContractHash: verification.render_contract_hash,
+        detectedMedia: verification.detected_media,
+      });
+    } catch {}
     verified = verification.schema_version === 1
       && verification.verified === true
       && verification.production_mix_id === production.production_mix_id
@@ -69,21 +79,45 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
       && approved && approved.identity
       && verification.approved_candidate_content_hash === approved.identity.candidate_content_hash
       && verification.render_contract_hash === approved.identity.render_contract_hash
+      && verification.verification_identity === expectedVerificationIdentity
       && reasons.length === 0;
     if (!verified && !reasons.includes("production_mix_hash_mismatch")) reasons.push("verification_outdated");
   }
 
   let resolveReady = false;
   const resolvePointer = readJson(path.join(productionRoot, "resolve", "current.json"));
-  if (resolvePointer && resolvePointer.production_mix_id === production.production_mix_id && resolvePointer.relative_dir) {
+  const expectedResolveDir = `production/resolve/${production.production_mix_id}`;
+  if (resolvePointer && resolvePointer.schema_version === 1
+    && resolvePointer.production_mix_id === production.production_mix_id
+    && resolvePointer.relative_dir === expectedResolveDir) {
     try {
       const resolveDir = provenanceLib.resolveManifestPath(dir, `${resolvePointer.relative_dir}/resolve-provenance.json`).target;
       const resolveProvenance = readJson(resolveDir);
-      if (resolveProvenance && verified
+      const approvedMarkerEntries = approved && approved.artifact_manifest && Array.isArray(approved.artifact_manifest.entries)
+        ? approved.artifact_manifest.entries.filter((entry) => entry.logical_role === "cue_markers") : [];
+      const manifestHash = resolveProvenance && resolveProvenance.artifact_manifest
+        ? provenanceLib.artifactManifestHash(resolveProvenance.artifact_manifest) : null;
+      const manifestRoles = resolveProvenance && resolveProvenance.artifact_manifest && Array.isArray(resolveProvenance.artifact_manifest.entries)
+        ? resolveProvenance.artifact_manifest.entries.map((entry) => entry.logical_role).sort().join(",") : "";
+      if (resolveProvenance && resolveProvenance.schema_version === 1
+        && resolveProvenance.production_mix_id === production.production_mix_id
+        && verified
         && resolveProvenance.source_production_mix_sha256 === actualHash
-        && resolveProvenance.verification_identity === verification.verification_identity) {
+        && resolveProvenance.verification_identity === verification.verification_identity
+        && resolveProvenance.approved_candidate_content_hash === approved.identity.candidate_content_hash
+        && resolveProvenance.render_contract_hash === approved.identity.render_contract_hash
+        && approvedMarkerEntries.length === 1
+        && resolveProvenance.approved_cue_markers_sha256 === approvedMarkerEntries[0].sha256
+        && resolveProvenance.approved_cue_markers_byte_size === approvedMarkerEntries[0].byte_size
+        && resolveProvenance.artifact_manifest_hash === manifestHash
+        && manifestRoles === "cue_markers,production_mix,resolve_readme") {
         const manifest = provenanceLib.verifyArtifactManifest(path.dirname(resolveDir), resolveProvenance.artifact_manifest);
-        resolveReady = manifest.valid;
+        const resolveMarker = resolveProvenance.artifact_manifest.entries.find((entry) => entry.logical_role === "cue_markers");
+        const resolveMix = resolveProvenance.artifact_manifest.entries.find((entry) => entry.logical_role === "production_mix");
+        resolveReady = manifest.valid
+          && resolveMarker.sha256 === approvedMarkerEntries[0].sha256
+          && resolveMarker.byte_size === approvedMarkerEntries[0].byte_size
+          && resolveMix.sha256 === actualHash;
         for (const failure of manifest.failures) {
           reasons.push(failure.reason === "candidate_artifact_missing" ? "resolve_copy_missing" : "resolve_copy_hash_mismatch");
         }
@@ -93,6 +127,8 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
     } catch {
       reasons.push("resolve_copy_missing");
     }
+  } else if (resolvePointer) {
+    reasons.push("resolve_copy_missing");
   }
 
   const uniqueReasons = [...new Set(reasons)];
@@ -215,19 +251,37 @@ function defaultProbe(file, spawnSyncImpl = spawnSync) {
   } catch (e) { return { ok: false, reason: e.message }; }
 }
 
-function parseCsvRow(line) {
-  const values = [];
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
   let value = "";
   let quoted = false;
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    if (quoted && char === '"' && line[index + 1] === '"') { value += '"'; index += 1; }
-    else if (char === '"') quoted = !quoted;
-    else if (char === "," && !quoted) { values.push(value); value = ""; }
-    else value += char;
+  let closedQuote = false;
+  const pushValue = () => { row.push(value); value = ""; closedQuote = false; };
+  const pushRow = () => { pushValue(); rows.push(row); row = []; };
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (quoted) {
+      if (char === '"' && text[index + 1] === '"') { value += '"'; index += 1; }
+      else if (char === '"') { quoted = false; closedQuote = true; }
+      else value += char;
+    } else if (char === '"') {
+      if (value || closedQuote) return null;
+      quoted = true;
+    } else if (char === ",") {
+      pushValue();
+    } else if (char === "\n") {
+      pushRow();
+    } else if (char === "\r" && text[index + 1] === "\n") {
+      // CRLF record separator is consumed by the following LF.
+    } else {
+      if (closedQuote) return null;
+      value += char;
+    }
   }
-  values.push(value);
-  return quoted ? null : values;
+  if (quoted) return null;
+  if (value || row.length || closedQuote) pushRow();
+  return rows;
 }
 
 function verifyApprovedExports(dir, options = {}) {
@@ -249,6 +303,22 @@ function verifyApprovedExports(dir, options = {}) {
   const wantCodec = render.bit_depth === 24 ? "pcm_s24le" : "pcm_s16le";
   const durationExact = render.duration_exact !== false;
   const wantDuration = project.duration_seconds;
+
+  check("approval provenance schema", provenance.provenance_schema_version === provenanceLib.PROVENANCE_SCHEMA_VERSION && Boolean(provenance.identity), "legacy_approval_unverified");
+  if (provenance.identity) {
+    let renderContractHash = null;
+    let approvalManifestHash = null;
+    try { renderContractHash = provenanceLib.hashCanonical(provenance.render_contract); } catch {}
+    try { approvalManifestHash = provenanceLib.artifactManifestHash(provenance.artifact_manifest); } catch {}
+    check("render contract identity", renderContractHash === provenance.identity.render_contract_hash, "render_contract_changed");
+    check("approval artifact manifest identity", approvalManifestHash === provenance.identity.approval_artifact_manifest_hash, "approved manifest no longer matches approval identity");
+  }
+  check("render metadata matches contract", Boolean(provenance.render_contract)
+    && render.sample_rate === provenance.render_contract.sample_rate
+    && render.bit_depth === provenance.render_contract.bit_depth
+    && (render.duration_exact !== false) === (provenance.render_contract.duration_exact !== false)
+    && provenance.render_contract.target_duration_seconds === wantDuration,
+  "render metadata or project duration diverges from the hash-bound contract");
 
   // 1. Expected artifacts derive from the immutable approval contract, never
   // from whichever files happen to remain in a directory.
@@ -334,8 +404,12 @@ function verifyApprovedExports(dir, options = {}) {
   // snapshot. Row count alone cannot detect reordered or shifted markers.
   const markers = path.join(approvedDir, "resolve-import", "cue-markers.csv");
   if (fs.existsSync(markers)) {
-    const lines = fs.readFileSync(markers, "utf8").trim().split(/\r?\n/);
-    const rows = lines.slice(1).map(parseCsvRow);
+    const parsed = parseCsv(fs.readFileSync(markers, "utf8"));
+    const header = parsed && parsed[0];
+    check("cue markers header", Boolean(header) && header.length === 3
+      && header[0] === "Name" && header[1] === "Start (seconds)" && header[2] === "End (seconds)", "expected Name,Start (seconds),End (seconds)");
+    const rows = parsed ? parsed.slice(1) : [];
+    if (!parsed) check("cue markers CSV", false, "malformed quoting");
     const cues = provenance.cue_sheet || [];
     check(`cue markers rows = ${cues.length}`, rows.length === cues.length, `got ${rows.length}`);
     const tolerance = 0.001;

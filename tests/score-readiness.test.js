@@ -3,6 +3,7 @@
 // no REAPER, no ffprobe binary required, no writes outside os.tmpdir().
 const { assert, fs, os, path, test } = require("./_helpers.js");
 const lane = require("../score-engine/score-lane.js");
+const provenanceLib = require("../score-engine/score-provenance.js");
 const { analyzeCueSheet, cueBoundaryDiagnostics } = require("../score-engine/cue-analysis.js");
 const { assessReadiness, verifyApprovedExports, formatVerifierReport } = require("../score-engine/score-readiness.js");
 
@@ -187,6 +188,33 @@ test("readiness provenance: approved candidate artifact mutation and deletion fa
   assert.ok(after.readiness.approval_authority.reasons.includes("candidate_artifact_missing"));
 });
 
+test("readiness provenance: rewriting manifests cannot bless changed artifacts or render contracts", () => {
+  const first = tmpEnv();
+  const changed = approvedProject(first.options, { duration_seconds: 3 });
+  const candidateDir = path.join(changed.dir, "candidates", "candidate-001");
+  const candidatePath = path.join(candidateDir, "candidate.json");
+  const candidate = JSON.parse(fs.readFileSync(candidatePath, "utf8"));
+  const previewPath = path.join(candidateDir, "renders", "preview-mix.wav");
+  fs.appendFileSync(previewPath, "same-file-and-manifest-tamper");
+  const previewEntry = candidate.artifact_manifest.entries.find((entry) => entry.relative_path === "renders/preview-mix.wav");
+  previewEntry.byte_size = fs.statSync(previewPath).size;
+  previewEntry.sha256 = provenanceLib.sha256File(previewPath);
+  fs.writeFileSync(candidatePath, JSON.stringify(candidate, null, 2) + "\n");
+  let after = lane.getProject(changed.project.project_id, first.options);
+  assert.equal(after.readiness.approval_authority.current, false);
+  assert.ok(after.readiness.approval_authority.reasons.includes("approved_candidate_hash_mismatch"), after.readiness.approval_authority.reasons.join(", "));
+
+  const second = tmpEnv();
+  const contractState = approvedProject(second.options, { duration_seconds: 3 });
+  const approvalPath = path.join(contractState.dir, "approved", "provenance.json");
+  const approval = JSON.parse(fs.readFileSync(approvalPath, "utf8"));
+  approval.render_contract.sample_rate = 44100;
+  fs.writeFileSync(approvalPath, JSON.stringify(approval, null, 2) + "\n");
+  after = lane.getProject(contractState.project.project_id, second.options);
+  assert.equal(after.readiness.approval_authority.current, false);
+  assert.ok(after.readiness.approval_authority.reasons.includes("render_contract_changed"), after.readiness.approval_authority.reasons.join(", "));
+});
+
 test("readiness provenance: legacy approval files remain visible but are never current", () => {
   const { options } = tmpEnv();
   const st = approvedProject(options, { duration_seconds: 30 });
@@ -272,6 +300,49 @@ test("verifier completeness: missing MIDI, undeclared stem, and manifest hash mi
   assert.ok(r.failures.some((failure) => /hash|manifest/.test(failure)), r.failures.join("; "));
 });
 
+test("verifier completeness: rewritten manifests and render contracts cannot bless changed approval bytes", () => {
+  const st = approvedProject(tmpEnv().options, { duration_seconds: 3 });
+  const provenancePath = path.join(st.dir, "approved", "provenance.json");
+  const approval = JSON.parse(fs.readFileSync(provenancePath, "utf8"));
+  const mixPath = path.join(st.dir, "approved", "mix.wav");
+  fs.appendFileSync(mixPath, "rewritten");
+  const mixEntry = approval.artifact_manifest.entries.find((entry) => entry.logical_role === "sketch_mix");
+  mixEntry.byte_size = fs.statSync(mixPath).size;
+  mixEntry.sha256 = require("../score-engine/score-provenance.js").sha256File(mixPath);
+  approval.render_contract.sample_rate = 44100;
+  fs.writeFileSync(provenancePath, JSON.stringify(approval, null, 2) + "\n");
+  const result = verifyApprovedExports(st.dir, { probeImpl: okProbeFor({ duration: 3 }) });
+  assert.equal(result.verified, false);
+  assert.ok(result.failures.some((failure) => /manifest identity|render contract identity/.test(failure)), result.failures.join("; "));
+});
+
+test("verifier completeness: marker CSV supports quoted punctuation and rejects a wrong header", () => {
+  const fixture = tmpEnv();
+  const st = approvedProject(fixture.options, { duration_seconds: 3 });
+  const markerPath = path.join(st.dir, "approved", "resolve-import", "cue-markers.csv");
+  const approvalPath = path.join(st.dir, "approved", "provenance.json");
+  const approval = JSON.parse(fs.readFileSync(approvalPath, "utf8"));
+  approval.cue_sheet[0].name = 'A comma, a "quote"';
+  const csvName = (value) => `"${String(value).replace(/"/g, '""')}"`;
+  const markerRows = approval.cue_sheet.map((cue) => `${csvName(`${cue.cue_id} ${cue.name}`)},${cue.start},${cue.end}`);
+  fs.writeFileSync(markerPath, `Name,Start (seconds),End (seconds)\n${markerRows.join("\n")}\n`);
+  const markerEntry = approval.artifact_manifest.entries.find((entry) => entry.logical_role === "cue_markers");
+  markerEntry.byte_size = fs.statSync(markerPath).size;
+  markerEntry.sha256 = require("../score-engine/score-provenance.js").sha256File(markerPath);
+  approval.identity.approval_artifact_manifest_hash = require("../score-engine/score-provenance.js").artifactManifestHash(approval.artifact_manifest);
+  fs.writeFileSync(approvalPath, JSON.stringify(approval, null, 2) + "\n");
+  let result = verifyApprovedExports(st.dir, { probeImpl: okProbeFor({ duration: 3 }) });
+  assert.equal(result.failures.some((failure) => /cue marker/.test(failure)), false, result.failures.join("; "));
+
+  fs.writeFileSync(markerPath, `Wrong,Header,Fields\n${markerRows.join("\n")}\n`);
+  markerEntry.byte_size = fs.statSync(markerPath).size;
+  markerEntry.sha256 = require("../score-engine/score-provenance.js").sha256File(markerPath);
+  approval.identity.approval_artifact_manifest_hash = require("../score-engine/score-provenance.js").artifactManifestHash(approval.artifact_manifest);
+  fs.writeFileSync(approvalPath, JSON.stringify(approval, null, 2) + "\n");
+  result = verifyApprovedExports(st.dir, { probeImpl: okProbeFor({ duration: 3 }) });
+  assert.ok(result.failures.some((failure) => /cue markers header/.test(failure)), result.failures.join("; "));
+});
+
 test("verifier completeness: cue markers must match IDs, names, values, and order", () => {
   for (const mutation of [
     (rows) => { const values = rows[1].split(","); values[1] = "0.5"; rows[1] = values.join(","); },
@@ -333,17 +404,16 @@ test("ui: score workspace has the Score Map, readiness panel, and honest empty s
   assert.ok(html.includes("smap-gap"), "silence gaps visualized");
   assert.ok(html.includes("No cues yet — the Score Map appears"), "empty state explains next step");
   assert.ok(html.includes('id="step-readiness"'), "readiness panel");
-  assert.ok(html.includes("Copy command"), "copyable verifier command");
+  assert.ok(html.includes("Verify sketch package"), "in-page verifier remains available");
   assert.ok(html.includes("Sketch audio is never promoted to Resolve-ready"), "no unverified Resolve-ready light");
+  assert.ok(!html.includes("ST.dir"), "raw server project paths are not rendered into the workspace");
 });
 
 test("ui: score workspace robustness — no inline onclick paths, in-flight guards, stale-load guard", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "score-project.html"), "utf8");
-  // Copy buttons carry the path in a data attribute wired via listener — an
-  // inline onclick with an interpolated path breaks on any quote in the path.
+  // No path is interpolated into an inline click handler.
   assert.ok(!/onclick="copyText\(/.test(html), "no inline onclick copy handlers");
-  assert.ok(html.includes("data-copy-text="), "copy buttons use data attributes");
-  assert.ok(html.includes("data-copy-text')"), "delegated copy listener present");
+  assert.ok(!html.includes("data-copy-label=\"project path\""), "server project paths are not copyable from the page");
   // Heavy actions cannot be double-clicked into concurrent runs.
   assert.ok(html.includes("if (btn.disabled) return;"), "in-flight guard on heavy buttons");
   assert.match(html, /cands-generate[\s\S]{0,400}btn\.disabled=true/, "candidate generation guarded");
@@ -352,10 +422,10 @@ test("ui: score workspace robustness — no inline onclick paths, in-flight guar
   assert.ok(html.includes("if (seq !== loadSeq) return;"), "superseded loads bail");
 });
 
-test("ui: score workspace wires verifier button safely and keeps terminal fallback", () => {
+test("ui: score workspace wires verifier button safely without exposing terminal paths", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "score-project.html"), "utf8");
-  assert.ok(html.includes('id="ready-cmd"'), "terminal verifier command remains visible");
-  assert.ok(html.includes('id="ready-copy"'), "copy-command fallback remains");
+  assert.ok(!html.includes('id="ready-cmd"'), "absolute terminal command is not sent to the browser");
+  assert.ok(!html.includes('id="ready-copy"'), "absolute terminal command is not copyable from the browser");
   assert.ok(html.includes('id="ready-verify"'), "verify button present");
   assert.ok(html.includes("Verify sketch package"), "button label is explicit about sketch scope");
   assert.ok(html.includes("const SCORE_VERIFY_API = '/api/score/verify';"), "UI posts to verify route");

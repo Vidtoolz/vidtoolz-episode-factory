@@ -16,13 +16,26 @@ function normalizeForCanonical(value) {
   if (typeof value === "number") {
     if (!Number.isFinite(value)) throw new Error("Canonical identity cannot contain a non-finite number.");
     if (Object.is(value, -0)) return 0;
-    return Number(value.toPrecision(15));
+    return value;
   }
-  if (Array.isArray(value)) return value.map(normalizeForCanonical);
+  if (Array.isArray(value)) {
+    const out = [];
+    for (let index = 0; index < value.length; index += 1) {
+      if (!Object.prototype.hasOwnProperty.call(value, index)) {
+        throw new Error("Canonical identity cannot contain a sparse array.");
+      }
+      out.push(normalizeForCanonical(value[index]));
+    }
+    return out;
+  }
   if (value && typeof value === "object") {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new Error("Canonical identity can contain only plain objects.");
+    }
     const out = {};
     for (const key of Object.keys(value).sort()) {
-      if (value[key] !== undefined) out[key] = normalizeForCanonical(value[key]);
+      out[key] = normalizeForCanonical(value[key]);
     }
     return out;
   }
@@ -111,7 +124,7 @@ function musicPlanIdentity({ project = {}, musicPlan = null, generation = {} } =
 }
 
 function renderContract({ project = {}, candidate = {}, settings = {}, durationExact } = {}) {
-  const lanes = Array.isArray(candidate.lanes) ? [...candidate.lanes] : [];
+  const lanes = Array.isArray(candidate.lanes) ? [...candidate.lanes].sort() : [];
   const exact = durationExact !== undefined ? Boolean(durationExact) : settings.duration_exact_export !== false;
   return {
     schema_version: HASH_SCHEMA_VERSION,
@@ -144,13 +157,50 @@ function candidateIdentity({ project = {}, cues = [], musicPlan = null, candidat
   return { ...aggregate, candidate_input_hash: hashCanonical(aggregate) };
 }
 
+function candidateContentHash(candidateInputHash, manifestHash) {
+  return hashCanonical({
+    schema_version: HASH_SCHEMA_VERSION,
+    candidate_input_hash: candidateInputHash,
+    artifact_manifest_hash: manifestHash,
+  });
+}
+
+function productionVerificationIdentity({ productionMixSha256, approvedCandidateContentHash, renderContractHash, detectedMedia }) {
+  return hashCanonical({
+    schema_version: PROVENANCE_SCHEMA_VERSION,
+    production_mix_sha256: productionMixSha256,
+    approved_candidate_content_hash: approvedCandidateContentHash,
+    render_contract_hash: renderContractHash,
+    detected_media: detectedMedia,
+  });
+}
+
 function resolveManifestPath(root, relativePath) {
   const rel = String(relativePath || "").replace(/\\/g, "/");
   if (!rel || path.isAbsolute(rel) || rel.split("/").includes("..")) throw new Error(`Unsafe artifact path: ${relativePath}`);
   const resolvedRoot = path.resolve(root);
   const target = path.resolve(resolvedRoot, rel);
   if (target === resolvedRoot || !target.startsWith(resolvedRoot + path.sep)) throw new Error(`Artifact escapes manifest root: ${relativePath}`);
+  // Lexical containment is insufficient: stat/read calls follow symlinks. Reject
+  // any existing symlink below the authority root, including the final entry.
+  let current = resolvedRoot;
+  for (const segment of rel.split("/")) {
+    current = path.join(current, segment);
+    if (!fs.existsSync(current)) break;
+    if (fs.lstatSync(current).isSymbolicLink()) throw new Error(`Artifact path contains a symbolic link: ${relativePath}`);
+  }
   return { rel, target };
+}
+
+function normalizedManifestEntries(entries) {
+  return [...entries].sort((a, b) => {
+    const roleA = String(a.logical_role);
+    const roleB = String(b.logical_role);
+    if (roleA !== roleB) return roleA < roleB ? -1 : 1;
+    const pathA = String(a.relative_path);
+    const pathB = String(b.relative_path);
+    return pathA === pathB ? 0 : pathA < pathB ? -1 : 1;
+  });
 }
 
 function buildArtifactManifest(root, declarations = []) {
@@ -175,11 +225,12 @@ function buildArtifactManifest(root, declarations = []) {
       ...(declaration.media || {}),
     };
   });
-  return { schema_version: ARTIFACT_MANIFEST_VERSION, entries };
+  return { schema_version: ARTIFACT_MANIFEST_VERSION, entries: normalizedManifestEntries(entries) };
 }
 
 function artifactManifestHash(manifest) {
-  return hashCanonical({ schema_version: manifest.schema_version, entries: manifest.entries });
+  if (!manifest || !Array.isArray(manifest.entries)) throw new Error("Artifact manifest entries are required.");
+  return hashCanonical({ schema_version: manifest.schema_version, entries: normalizedManifestEntries(manifest.entries) });
 }
 
 function verifyArtifactManifest(root, manifest) {
@@ -232,6 +283,7 @@ function assessSketchApprovalAuthority({ project = {}, cues = [], musicPlan = nu
     if (current.music_plan_hash !== approved.identity.music_plan_hash) reasons.push("music_plan_changed");
     if (current.composer_contract_hash !== approved.identity.composer_contract_hash) reasons.push("composer_contract_changed");
     if (current.render_contract_hash !== approved.identity.render_contract_hash) reasons.push("render_contract_changed");
+    if (current.candidate_input_hash !== candidate.identity.candidate_input_hash) reasons.push("approved_candidate_hash_mismatch");
     if (candidate.identity.candidate_content_hash !== approved.identity.candidate_content_hash
       || candidate.identity.candidate_input_hash !== approved.identity.candidate_input_hash) {
       reasons.push("approved_candidate_hash_mismatch");
@@ -239,11 +291,37 @@ function assessSketchApprovalAuthority({ project = {}, cues = [], musicPlan = nu
     const candidateDir = path.join(dir, "candidates", candidateId);
     const candidateManifest = verifyArtifactManifest(candidateDir, candidate.artifact_manifest);
     for (const failure of candidateManifest.failures) reasons.push(failure.reason);
+    try {
+      const liveManifestHash = artifactManifestHash(candidate.artifact_manifest);
+      const liveContentHash = candidateContentHash(candidate.identity.candidate_input_hash, liveManifestHash);
+      if (liveManifestHash !== candidate.identity.artifact_manifest_hash
+        || liveManifestHash !== approved.identity.candidate_artifact_manifest_hash
+        || liveContentHash !== candidate.identity.candidate_content_hash
+        || liveContentHash !== approved.identity.candidate_content_hash) {
+        reasons.push("approved_candidate_hash_mismatch");
+      }
+    } catch {
+      reasons.push("artifact_manifest_incomplete");
+    }
+  }
+
+  try {
+    if (!approved.render_contract
+      || hashCanonical(approved.render_contract) !== approved.identity.render_contract_hash) reasons.push("render_contract_changed");
+  } catch {
+    reasons.push("render_contract_changed");
   }
 
   if (approved.artifact_manifest) {
     const approvedManifest = verifyArtifactManifest(path.join(dir, "approved"), approved.artifact_manifest);
     for (const failure of approvedManifest.failures) reasons.push(failure.reason === "candidate_artifact_missing" ? "artifact_manifest_incomplete" : failure.reason);
+    try {
+      if (artifactManifestHash(approved.artifact_manifest) !== approved.identity.approval_artifact_manifest_hash) {
+        reasons.push("approved_candidate_hash_mismatch");
+      }
+    } catch {
+      reasons.push("artifact_manifest_incomplete");
+    }
   } else {
     reasons.push("artifact_manifest_incomplete");
   }
@@ -270,6 +348,8 @@ module.exports = {
   portableMusicPlan,
   renderContract,
   candidateIdentity,
+  candidateContentHash,
+  productionVerificationIdentity,
   buildArtifactManifest,
   artifactManifestHash,
   verifyArtifactManifest,

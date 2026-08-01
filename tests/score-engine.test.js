@@ -420,8 +420,13 @@ function parseRppTiming(rpp) {
   const tempos = [];
   const tempoChunk = rpp.match(/<TEMPOENVEX\n([\s\S]*?)\n  >/);
   if (tempoChunk) {
-    for (const match of tempoChunk[1].matchAll(/^\s*PT\s+([\d.]+)\s+([\d.]+)\s+/gm)) {
-      tempos.push({ position: Number(match[1]), bpm: Number(match[2]) });
+    for (const match of tempoChunk[1].matchAll(/^\s*PT\s+([\d.]+)\s+([\d.]+).*$/gm)) {
+      const fields = match[0].trim().split(/\s+/);
+      const encodedSignature = Number(fields[4] || 0);
+      tempos.push({
+        position: Number(match[1]), bpm: Number(match[2]),
+        timeSignature: encodedSignature ? `${encodedSignature & 0xffff}/${encodedSignature >>> 16}` : null,
+      });
     }
   }
   const items = [];
@@ -436,7 +441,8 @@ function parseRppTiming(rpp) {
       sourceTick += Number(event[1]);
       if (event[2].toLowerCase() === "90") noteOnTicks.push(sourceTick);
     }
-    items.push({ name, position, length, noteOnTicks });
+    const sourceOffset = Number((body.match(/^\s*SOFFS\s+([\d.-]+)/m) || [])[1] || 0);
+    items.push({ name, position, length, sourceOffset, noteOnTicks });
   }
   return { tempos, items };
 }
@@ -451,7 +457,7 @@ test("score-engine reaper timing: adjacent same-tempo cues are cue-local and det
   const rpp = buildTimingFixture(cues);
   const parsed = parseRppTiming(rpp);
   const secondImpact = parsed.items.find((item) => item.name === "C002 impact");
-  assert.deepEqual(parsed.tempos, [{ position: 0, bpm: 120 }, { position: 10, bpm: 120 }]);
+  assert.deepEqual(parsed.tempos, [{ position: 0, bpm: 120, timeSignature: "4/4" }, { position: 10, bpm: 120, timeSignature: "4/4" }]);
   assert.equal(secondImpact.position, 10);
   assert.equal(secondImpact.length, 10);
   assert.equal(Math.min(...secondImpact.noteOnTicks), 0, "the second cue source starts at cue-local tick zero");
@@ -460,7 +466,8 @@ test("score-engine reaper timing: adjacent same-tempo cues are cue-local and det
 
 test("score-engine reaper timing: a 10-second timeline gap stays between items, not inside MIDI source", () => {
   const cues = [scoreCue("C001", 0, 10, 120, "hook"), scoreCue("C002", 20, 30, 120, "hook")];
-  const parsed = parseRppTiming(buildTimingFixture(cues));
+  const rpp = buildTimingFixture(cues);
+  const parsed = parseRppTiming(rpp);
   const secondImpact = parsed.items.find((item) => item.name === "C002 impact");
   assert.equal(secondImpact.position, 20);
   assert.equal(Math.min(...secondImpact.noteOnTicks), 0, "the 10-second gap must not become leading source ticks");
@@ -469,16 +476,41 @@ test("score-engine reaper timing: a 10-second timeline gap stays between items, 
 test("score-engine reaper timing: per-cue tempo markers preserve adjacent and gapped BPM changes", () => {
   const adjacent = [scoreCue("C001", 0, 10, 120), scoreCue("C002", 10, 20, 72)];
   assert.deepEqual(parseRppTiming(buildTimingFixture(adjacent)).tempos, [
-    { position: 0, bpm: 120 }, { position: 10, bpm: 72 },
+    { position: 0, bpm: 120, timeSignature: "4/4" }, { position: 10, bpm: 72, timeSignature: "4/4" },
   ]);
   const gapped = [scoreCue("C001", 0, 10, 120), scoreCue("C002", 20.5, 30.5, 72)];
   const parsed = parseRppTiming(buildTimingFixture(gapped));
-  assert.deepEqual(parsed.tempos, [{ position: 0, bpm: 120 }, { position: 20.5, bpm: 72 }]);
+  assert.deepEqual(parsed.tempos, [{ position: 0, bpm: 120, timeSignature: "4/4" }, { position: 20.5, bpm: 72, timeSignature: "4/4" }]);
   assert.ok(parsed.items.some((item) => item.name === "C002 pulse" && item.position === 20.5), "fractional timeline start preserved");
   const lua = reaperBackend.buildTemplateScript({ projectName: "Tempo", roles: [], cues: gapped, savePath: "/tmp/test.rpp", tempo: 120 });
   assert.match(lua, /\{ pos = 0, bpm = 120, num = 4, den = 4 \}/);
   assert.match(lua, /\{ pos = 20\.5, bpm = 72, num = 4, den = 4 \}/);
   assert.match(lua, /SetTempoTimeSigMarker/);
+});
+
+test("score-engine reaper timing: time signatures, precise lengths, and source offsets are explicit", () => {
+  const cues = [
+    { ...scoreCue("C001", 0, 0.5004, 120), time_signature: "6/8" },
+    { ...scoreCue("C002", 0.5004, 2.0004, 90), time_signature: "7/8" },
+  ];
+  const rpp = buildTimingFixture(cues);
+  const parsed = parseRppTiming(rpp);
+  assert.deepEqual(parsed.tempos, [
+    { position: 0, bpm: 120, timeSignature: "6/8" },
+    { position: 0.5004, bpm: 90, timeSignature: "7/8" },
+  ]);
+  const first = parsed.items.find((item) => item.name.startsWith("C001 "));
+  assert.ok(first, "short legal cue still produces at least one MIDI item");
+  assert.equal(first.length, 0.5004, "legal fractional cue length is not rounded to milliseconds");
+  assert.equal(first.sourceOffset, 0);
+  assert.equal((rpp.match(/^\s*PT .* 5$/gm) || []).length, cues.length, "meter markers set the signature and allow a partial preceding measure");
+});
+
+test("score-engine reaper timing: malformed cross-boundary composition is rejected", () => {
+  const cues = [scoreCue("C001", 0, 1, 120)];
+  const composition = composer.compose({ cues }, { seed: 9, palette_id: "tech_noir_pulse" });
+  composition.notes.push({ lane: "pulse", seconds: 0.9, dur_seconds: 0.2, tick: 864, dur_ticks: 192, note: 60, velocity: 80 });
+  assert.throws(() => reaperBackend.buildRppText({ projectName: "Malformed", cues, composition }), /crosses cue boundary/);
 });
 
 test("score-engine reaper timing: malformed tempo fails before project text generation", () => {
@@ -564,6 +596,16 @@ test("score-engine lane: project file serving refuses traversal and wrong types"
   assert.throws(() => lane.resolveProjectFile(settings, project.project_id, "candidates/candidate-001/renders/x.exe"), /not servable/);
 });
 
+test("score-engine lane: project file serving refuses symlink escapes", () => {
+  const { root, options } = tmpEnv();
+  const { project } = makeProject(options, { duration_seconds: 3 });
+  const state = lane.getProject(project.project_id, options);
+  const outside = path.join(root, "outside.txt");
+  fs.writeFileSync(outside, "outside project authority");
+  fs.symlinkSync(outside, path.join(state.dir, "linked.txt"));
+  assert.throws(() => lane.resolveProjectFile(lane.loadSettings(options), project.project_id, "linked.txt"), /symbolic link|symlink/i);
+});
+
 // ── API routes ──
 function listen(server) { return new Promise((resolve) => server.listen(0, "127.0.0.1", resolve)); }
 function closeServer(server) { return new Promise((resolve) => server.close(resolve)); }
@@ -614,6 +656,8 @@ test("score-engine API: nonce-gated create + full GUI flow over HTTP", async () 
     const state = await requestJson(server, `/api/score/project?id=${encodeURIComponent(projectId)}`);
     assert.equal(state.statusCode, 200);
     assert.equal(unwrap(state).project.approved_candidate, "candidate-001");
+    assert.equal(Object.prototype.hasOwnProperty.call(unwrap(state), "dir"), false, "browser state omits absolute project path");
+    assert.equal(Object.prototype.hasOwnProperty.call(unwrap(state).readiness, "verify_command"), false, "browser state omits absolute CLI command");
     // Read-only listing + settings survive without nonce.
     const projects = await requestJson(server, "/api/score/projects");
     assert.equal(projects.statusCode, 200);

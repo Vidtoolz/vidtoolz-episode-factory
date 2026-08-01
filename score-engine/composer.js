@@ -11,7 +11,7 @@ const { parseSupportedKey, SUPPORTED_TIME_SIGNATURES } = require("./score-schema
 // Any material change to note generation or its defaults must bump the version.
 const COMPOSER_CONTRACT = Object.freeze({
   schema_version: 1,
-  algorithm_version: "scorecraft-deterministic-composer-v1.2",
+  algorithm_version: "scorecraft-deterministic-composer-v1.3",
   ppq: PPQ,
   default_pulse_register: "low_mid",
   default_harmonic_drift: false,
@@ -93,9 +93,10 @@ function voiceLead(previousVoicing, targetPitches) {
 }
 
 const noteEvent = (lane, seconds, durSeconds, tick, durTicks, note, velocity) => ({
-  lane, seconds: round3(seconds), dur_seconds: round3(durSeconds), tick: Math.round(tick), dur_ticks: Math.max(1, Math.round(durTicks)), note, velocity,
+  // Preserve authoritative fractional cue boundaries. Millisecond rounding can
+  // move a clipped note past a legal sub-millisecond cue end.
+  lane, seconds, dur_seconds: durSeconds, tick: Math.round(tick), dur_ticks: Math.max(1, Math.round(durTicks)), note, velocity,
 });
-function round3(v) { return Math.round(v * 1000) / 1000; }
 
 // Effective per-cue constraints once dialogue-safe rules apply (§12, §13).
 function effectiveCueSettings(cue, options = {}) {

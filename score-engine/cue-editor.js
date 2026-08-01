@@ -34,7 +34,7 @@ function splitCue(cues, index, options = {}) {
     throw new Error(`Split must leave the minimum duration of ${minimum}s on both sides.`);
   }
   const hitPoints = Array.isArray(source.hit_points) ? source.hit_points : [];
-  const first = { ...source, end_seconds: round3(split), hit_points: hitPoints.filter((point) => point <= split) };
+  const first = { ...source, end_seconds: round3(split), hit_points: hitPoints.filter((point) => point < split) };
   const second = {
     ...source,
     cue_id: nextCueId(cues),

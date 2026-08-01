@@ -53,6 +53,22 @@ test("score production: valid WAV imports atomically and identical content is id
   assert.ok(fs.existsSync(path.join(state.dir, "production", "imports", first.production_mix_id, "mix.wav")));
 });
 
+test("score production: idempotent import refuses rewritten immutable provenance", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const bytes = makeWav();
+  const imported = lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes }, { ...options, probeImpl: wavProbe });
+  const state = lane.getProject(project.project_id, options);
+  const provenancePath = path.join(state.dir, "production", "imports", imported.production_mix_id, "provenance.json");
+  const record = JSON.parse(fs.readFileSync(provenancePath, "utf8"));
+  record.render_contract_hash = "0".repeat(64);
+  fs.writeFileSync(provenancePath, JSON.stringify(record, null, 2) + "\n");
+  assert.throws(
+    () => lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes }, { ...options, probeImpl: wavProbe }),
+    /does not match its content identity/,
+  );
+});
+
 test("score production: corrupt or contract-mismatched audio is rejected without a durable import", () => {
   const { options } = tmpEnv();
   const project = approvedProject(options);
@@ -105,7 +121,73 @@ test("score production: verification binds exact audio and upstream authority", 
   lane.importProductionMix(project3.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...raced.options, probeImpl: wavProbe });
   assert.throws(() => lane.verifyProductionMix(project3.project_id, { ...raced.options, probeImpl: (file) => { const result = wavProbe(file); fs.appendFileSync(file, "race"); return result; } }), /changed during verification/);
   const racedState = lane.getProject(project3.project_id, raced.options);
-  assert.equal(racedState.readiness.production.state, "stale");
+  assert.equal(racedState.readiness.production.state, "imported", "only the disposable verification snapshot was mutated");
+  assert.equal(racedState.readiness.production.verified, false);
+});
+
+test("score production: mutation during verification-record publication cannot return verified", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const imported = lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe });
+  const state = lane.getProject(project.project_id, options);
+  const mixPath = path.join(state.dir, "production", "imports", imported.production_mix_id, "mix.wav");
+  const originalWrite = fs.writeFileSync;
+  let raced = false;
+  fs.writeFileSync = function mutateBeforeVerificationWrite(file, ...args) {
+    if (!raced && String(file).includes("verification.json.tmp-")) {
+      raced = true;
+      fs.appendFileSync(mixPath, "race-after-inspection");
+    }
+    return originalWrite.call(fs, file, ...args);
+  };
+  try {
+    assert.throws(
+      () => lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe }),
+      /changed during verification/,
+    );
+  } finally {
+    fs.writeFileSync = originalWrite;
+  }
+  assert.equal(raced, true);
+  assert.equal(fs.existsSync(path.join(path.dirname(mixPath), "verification.json")), false, "no stale verification authority remains");
+});
+
+test("score production: verification probes an immutable snapshot of the imported bytes", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const imported = lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe });
+  const state = lane.getProject(project.project_id, options);
+  const sourcePath = path.join(state.dir, "production", "imports", imported.production_mix_id, "mix.wav");
+  const verified = lane.verifyProductionMix(project.project_id, {
+    ...options,
+    probeImpl: (inspectedPath) => {
+      assert.notEqual(inspectedPath, sourcePath, "ffprobe must inspect a controlled snapshot, not the mutable current pathname");
+      assert.deepEqual(fs.readFileSync(inspectedPath), fs.readFileSync(sourcePath));
+      return wavProbe(inspectedPath);
+    },
+  });
+  assert.equal(verified.verified, true);
+  assert.equal(fs.readdirSync(path.dirname(sourcePath)).some((name) => name.startsWith(".verify-")), false, "verification snapshots are cleaned");
+});
+
+test("score production: upstream mutation during verification publishes no verification authority", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const imported = lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe });
+  let mutated = false;
+  assert.throws(() => lane.verifyProductionMix(project.project_id, {
+    ...options,
+    probeImpl: (file) => {
+      const result = wavProbe(file);
+      const state = lane.getProject(project.project_id, options);
+      lane.saveCueSheetEdits(project.project_id, state.cue_sheet.cues.map((cue, index) => index ? cue : { ...cue, name: `${cue.name} changed` }), options);
+      mutated = true;
+      return result;
+    },
+  }), /current sketch approval|changed during production verification/);
+  assert.equal(mutated, true);
+  const state = lane.getProject(project.project_id, options);
+  assert.equal(fs.existsSync(path.join(state.dir, "production", "imports", imported.production_mix_id, "verification.json")), false);
 });
 
 test("score production: malformed persisted current pointers fail closed inside project storage", () => {
@@ -138,6 +220,62 @@ test("score production: Resolve package requires current verification and copy h
   assert.ok(state.readiness.production.reasons.includes("resolve_copy_hash_mismatch"));
 });
 
+test("score production: verification identities and Resolve pointers are self-authenticating", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const imported = lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe });
+  lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  const state = lane.getProject(project.project_id, options);
+  const verificationPath = path.join(state.dir, "production", "imports", imported.production_mix_id, "verification.json");
+  const verification = JSON.parse(fs.readFileSync(verificationPath, "utf8"));
+  verification.detected_media.duration = 2.5;
+  fs.writeFileSync(verificationPath, JSON.stringify(verification, null, 2) + "\n");
+  assert.equal(lane.getProject(project.project_id, options).readiness.production.verified, false);
+
+  verification.detected_media.duration = 3;
+  verification.verification_identity = require("../score-engine/score-provenance.js").productionVerificationIdentity({
+    productionMixSha256: verification.production_mix_sha256,
+    approvedCandidateContentHash: verification.approved_candidate_content_hash,
+    renderContractHash: verification.render_contract_hash,
+    detectedMedia: verification.detected_media,
+  });
+  fs.writeFileSync(verificationPath, JSON.stringify(verification, null, 2) + "\n");
+  const prepared = lane.prepareProductionResolvePackage(project.project_id, options);
+  const pointerPath = path.join(state.dir, "production", "resolve", "current.json");
+  const pointer = JSON.parse(fs.readFileSync(pointerPath, "utf8"));
+  pointer.relative_dir = `${prepared.relative_dir}/../${imported.production_mix_id}`;
+  fs.writeFileSync(pointerPath, JSON.stringify(pointer, null, 2) + "\n");
+  assert.equal(lane.getProject(project.project_id, options).readiness.resolve_ready, false);
+});
+
+test("score production: Resolve markers are bound to the approved marker bytes across copy races", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe });
+  lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  const state = lane.getProject(project.project_id, options);
+  const markerPath = path.join(state.dir, "approved", "resolve-import", "cue-markers.csv");
+  const originalMarkers = fs.readFileSync(markerPath);
+  const originalCopy = fs.copyFileSync;
+  let raced = false;
+  fs.copyFileSync = function substituteMarkersDuringCopy(source, destination, ...args) {
+    if (!raced && String(source) === markerPath) {
+      raced = true;
+      fs.writeFileSync(markerPath, 'Name,Start (seconds),End (seconds)\n"WRONG",0,3\n');
+      try { return originalCopy.call(fs, source, destination, ...args); }
+      finally { fs.writeFileSync(markerPath, originalMarkers); }
+    }
+    return originalCopy.call(fs, source, destination, ...args);
+  };
+  try {
+    assert.throws(() => lane.prepareProductionResolvePackage(project.project_id, options), /cue markers changed/i);
+  } finally {
+    fs.copyFileSync = originalCopy;
+  }
+  assert.equal(raced, true);
+  assert.equal(lane.getProject(project.project_id, options).readiness.resolve_ready, false);
+});
+
 test("score production API: nonce-gated base64 upload accepts bytes and never accepts a server path", async () => {
   assert.equal(typeof packageEngineServer.createServer, "function");
   const { options } = tmpEnv();
@@ -159,6 +297,33 @@ test("score production API: nonce-gated base64 upload accepts bytes and never ac
     assert.notEqual(denied.status, 200);
     const accepted = await request({ project_id: project.project_id, original_filename: "mix.wav", data_base64: makeWav().toString("base64") });
     assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    if (oldSettings === undefined) delete process.env.SCORE_ENGINE_SETTINGS_PATH; else process.env.SCORE_ENGINE_SETTINGS_PATH = oldSettings;
+    if (oldRoot === undefined) delete process.env.SCORE_ENGINE_MUSIC_ROOT; else process.env.SCORE_ENGINE_MUSIC_ROOT = oldRoot;
+  }
+});
+
+test("score production API: import rejects non-JSON content types and unsafe filename metadata", async () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const oldSettings = process.env.SCORE_ENGINE_SETTINGS_PATH;
+  const oldRoot = process.env.SCORE_ENGINE_MUSIC_ROOT;
+  process.env.SCORE_ENGINE_SETTINGS_PATH = options.settingsPath;
+  process.env.SCORE_ENGINE_MUSIC_ROOT = options.musicRoot;
+  const server = packageEngineServer.createServer({ scoreEngine: { probeImpl: wavProbe } });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const send = (body, contentType = "application/json") => new Promise((resolve, reject) => {
+    const bytes = Buffer.from(JSON.stringify(body));
+    const req = http.request({ hostname: "127.0.0.1", port: server.address().port, path: "/api/score/production/import", method: "POST", headers: { Host: "127.0.0.1:8010", "Content-Type": contentType, "Content-Length": bytes.length, "x-vidtoolz-local-write-nonce": packageEngineServer.localWriteNonce() } }, (res) => { let raw = ""; res.on("data", (chunk) => { raw += chunk; }); res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(raw) })); });
+    req.on("error", reject); req.end(bytes);
+  });
+  try {
+    const payload = { project_id: project.project_id, original_filename: "mix.wav", data_base64: makeWav().toString("base64") };
+    assert.equal((await send(payload, "text/plain")).status, 415);
+    assert.equal((await send({ ...payload, original_filename: "../mix.wav" })).status, 400);
+    assert.equal((await send({ ...payload, original_filename: "C:\\temp\\mix.wav" })).status, 400);
+    assert.equal((await send({ ...payload, original_filename: "bad\u0000.wav" })).status, 400);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     if (oldSettings === undefined) delete process.env.SCORE_ENGINE_SETTINGS_PATH; else process.env.SCORE_ENGINE_SETTINGS_PATH = oldSettings;

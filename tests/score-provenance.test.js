@@ -35,6 +35,17 @@ test("score provenance: canonical serialization and aggregate hashes are determi
   assert.deepEqual(identity(), identity());
 });
 
+test("score provenance: canonical identity rejects omissions and preserves distinct finite numbers", () => {
+  assert.throws(() => provenance.canonicalStringify({ material: undefined }), /undefined/);
+  assert.throws(() => provenance.canonicalStringify(new Array(1)), /sparse/);
+  assert.notEqual(
+    provenance.canonicalStringify({ value: 1.000000000000001 }),
+    provenance.canonicalStringify({ value: 1.000000000000002 }),
+    "distinct IEEE-754 inputs must not collapse through decimal rounding",
+  );
+  assert.throws(() => provenance.canonicalStringify({ value: Number.NaN }), /non-finite/);
+});
+
 test("score provenance: absolute project and template locations do not affect identity", () => {
   const a = identity({ projectPath: "/mnt/one/project" });
   const b = identity({ projectPath: "/srv/another/project" });
@@ -70,4 +81,29 @@ test("score provenance: artifact manifests bind roles, paths, bytes, and reject 
   fs.appendFileSync(path.join(root, "one.mid"), "tamper");
   assert.ok(provenance.verifyArtifactManifest(root, manifest).failures.some((failure) => failure.reason === "candidate_artifact_hash_mismatch"));
   assert.throws(() => provenance.buildArtifactManifest(root, [{ logical_role: "escape", relative_path: "../escape" }]), /Unsafe artifact path/);
+});
+
+test("score provenance: artifact manifest identity is independent of declaration order", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "score-manifest-order-"));
+  fs.writeFileSync(path.join(root, "a.txt"), "a");
+  fs.writeFileSync(path.join(root, "b.txt"), "b");
+  const declarations = [
+    { logical_role: "alpha", relative_path: "a.txt" },
+    { logical_role: "beta", relative_path: "b.txt" },
+  ];
+  const first = provenance.buildArtifactManifest(root, declarations);
+  const second = provenance.buildArtifactManifest(root, [...declarations].reverse());
+  assert.equal(provenance.artifactManifestHash(first), provenance.artifactManifestHash(second));
+  assert.deepEqual(first, second);
+});
+
+test("score provenance: manifest files cannot be symlinks outside the authority root", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "score-manifest-link-"));
+  const outside = path.join(path.dirname(root), `${path.basename(root)}-outside.mid`);
+  fs.writeFileSync(outside, "external midi");
+  fs.symlinkSync(outside, path.join(root, "linked.mid"));
+  assert.throws(
+    () => provenance.buildArtifactManifest(root, [{ logical_role: "midi", relative_path: "linked.mid" }]),
+    /symbolic link|symlink/i,
+  );
 });

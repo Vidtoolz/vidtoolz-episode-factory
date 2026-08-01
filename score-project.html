@@ -80,7 +80,6 @@
         <div class="ready-grid" id="ready-stages"></div>
         <div class="meta" id="ready-next"></div>
         <div class="meta" style="margin-top:6px;">Sketch-package integrity check (files + ffprobe against provenance):
-          <code id="ready-cmd"></code> <button class="btn" style="padding:1px 8px;font-size:11px;" id="ready-copy">Copy command</button>
           <button class="btn" style="padding:1px 8px;font-size:11px;" id="ready-verify">Verify sketch package</button></div>
         <pre id="ready-report" style="display:none;"></pre>
       </div>
@@ -189,10 +188,7 @@
       function render(){
         const p = ST.project;
         document.getElementById('title').textContent = '🎼 ' + (p.name || p.project_id);
-        // The copy button is wired via listener + dataset — never an inline
-        // onclick with an interpolated path (a quote in the path would break
-        // out of the JS string).
-        document.getElementById('subtitle').innerHTML = `${p.duration_seconds}s · ${esc(p.target_platform)} · ${esc(p.music_role)} · dialogue ${esc(p.dialogue_density)} · seed ${p.seed} · <code>${esc(ST.dir)}</code> <button class="btn" style="padding:1px 8px;font-size:11px;" data-copy-text="${esc(ST.dir)}" data-copy-label="project path">Copy path</button>`;
+        document.getElementById('subtitle').textContent = `${p.duration_seconds}s · ${p.target_platform} · ${p.music_role} · dialogue ${p.dialogue_density} · seed ${p.seed}`;
         CUES = (ST.cue_sheet && ST.cue_sheet.cues) ? JSON.parse(JSON.stringify(ST.cue_sheet.cues)) : [];
         renderReadiness(); renderCues(); renderPalette(); renderCandidates(); renderExport(); renderProduction();
       }
@@ -210,8 +206,6 @@
         document.getElementById('ready-next').innerHTML = '<b>Next:</b> '+esc(R.next_action)
           + (R.approved_export_exists && !R.sketch_approval_current ? ' <span class="warn">The preserved sketch approval is stale or legacy and cannot authorize production work.</span>' : '')
           + (ST.daw_configuration&&ST.daw_configuration.reaper_template_folder&&ST.daw_configuration.reaper_template_folder.state==='missing' ? ' <span class="warn">'+esc(ST.daw_configuration.reaper_template_folder.message)+'</span>' : '');
-        document.getElementById('ready-cmd').textContent = R.verify_command;
-        document.getElementById('ready-copy').onclick = ()=>copyText(R.verify_command,'verify command');
         setVerifyState(verifyInFlight ? 'verifying' : 'idle');
       }
 
@@ -290,13 +284,13 @@
             <td><input type="radio" name="cue-selection" data-selectcue="${i}"${i===SELECTED_CUE_INDEX?' checked':''} aria-label="Select ${esc(c.cue_id)} to split"></td>
             <td><b style="color:${CUE_COLORS[i%CUE_COLORS.length]}">${esc(c.cue_id)}</b><div class="cue-diag warn" data-cue-diag="${i}"></div></td>
             <td><input type="text" data-cue="${i}" data-k="name" value="${esc(c.name)}"></td>
-            <td><input type="number" step="0.1" data-cue="${i}" data-k="start_seconds" value="${c.start_seconds}"></td>
-            <td><input type="number" step="0.1" data-cue="${i}" data-k="end_seconds" value="${c.end_seconds}"></td>
+            <td><input type="number" step="0.1" data-cue="${i}" data-k="start_seconds" value="${esc(c.start_seconds)}"></td>
+            <td><input type="number" step="0.1" data-cue="${i}" data-k="end_seconds" value="${esc(c.end_seconds)}"></td>
             <td><select data-cue="${i}" data-k="function">${FUNCTIONS.map(f=>`<option${f===c.function?' selected':''}>${f}</option>`).join('')}</select></td>
             <td><select data-cue="${i}" data-k="emotion">${EMOTIONS.map(f=>`<option${f===c.emotion?' selected':''}>${f}</option>`).join('')}</select></td>
-            <td><input type="number" min="1" max="5" data-cue="${i}" data-k="energy" value="${c.energy}"></td>
-            <td><input type="number" min="1" max="5" data-cue="${i}" data-k="density" value="${c.density}"></td>
-            <td><input type="number" min="40" max="220" data-cue="${i}" data-k="tempo_bpm" value="${c.tempo_bpm}"></td>
+            <td><input type="number" min="1" max="5" data-cue="${i}" data-k="energy" value="${esc(c.energy)}"></td>
+            <td><input type="number" min="1" max="5" data-cue="${i}" data-k="density" value="${esc(c.density)}"></td>
+            <td><input type="number" min="40" max="220" data-cue="${i}" data-k="tempo_bpm" value="${esc(c.tempo_bpm)}"></td>
             <td><input type="text" style="width:80px;" data-cue="${i}" data-k="key" value="${esc(c.key)}"></td>
             <td><input type="text" style="width:90px;" data-cue="${i}" data-k="hit_points" value="${esc((c.hit_points||[]).join(', '))}" placeholder="e.g. 4.5, 9"></td>
             <td style="text-align:center;"><input type="checkbox" data-cue="${i}" data-k="dialogue_safe"${c.dialogue_safe?' checked':''}></td>
@@ -348,7 +342,8 @@
 
       function candStatusChip(c){
         const map={planned:'',midi_generated:'',daw_built:'chip',preview_rendered:'',approved:'ok',rejected:'err'};
-        return `<span class="chip ${map[c.status]||''}">${esc(c.status.replace(/_/g,' '))}</span>`;
+        const status=String(c&&c.status||'unknown');
+        return `<span class="chip ${map[status]||''}">${esc(status.replace(/_/g,' '))}</span>`;
       }
 
       function renderCandidates(){
@@ -359,9 +354,9 @@
         document.getElementById('cands').innerHTML = cands.map(c=>`
           <div class="cand${c.status==='approved'?' approved':''}" id="cand-${esc(c.candidate_id)}">
             <div class="cand-head">${esc(c.candidate_id)} ${candStatusChip(c)}
-              <span class="chip">seed ${c.seed}</span><span class="chip">profile ${esc(c.assignment_profile_id||c.palette_id)}</span>
-              <span class="chip">${c.cue_count} cues</span><span class="chip">${c.tempo_bpm} BPM · ${esc(c.key)}</span>
-              <span class="chip">${c.note_count} notes</span>
+              <span class="chip">seed ${esc(c.seed)}</span><span class="chip">profile ${esc(c.assignment_profile_id||c.palette_id)}</span>
+              <span class="chip">${esc(c.cue_count)} cues</span><span class="chip">${esc(c.tempo_bpm)} BPM · ${esc(c.key)}</span>
+              <span class="chip">${esc(c.note_count)} notes</span>
               ${c.pulse_register?`<span class="chip">pulse ${esc(c.pulse_register)}</span>`:''}${c.harmonic_drift?'<span class="chip">drift</span>':''}
               ${c.parent_candidate?`<span class="chip">revised from ${esc(c.parent_candidate)}</span>`:''}
               ${c.reaper_built?'<span class="chip ok">REAPER built</span>':''}${c.ableton_built?'<span class="chip ok">Ableton handoff</span>':''}
@@ -404,18 +399,16 @@
         document.getElementById('export-badge').textContent=current?('current: '+(ST.project.approved_candidate||'')):approved?'stale / legacy':'todo';
         document.getElementById('step-export').className='step'+(current?' done':'');
         if(!approved) return;
-        const base = ST.dir.replace(/\/$/,'')+'/approved';
         document.getElementById('export-body').innerHTML = `
           <table>
-            <tr><th>Stereo mix</th><td><code>${esc(base)}/mix.wav</code></td></tr>
-            <tr><th>Dialogue-safe mix</th><td><code>${esc(base)}/mix-dialogue-safe.wav</code></td></tr>
-            <tr><th>Stems</th><td><code>${esc(base)}/stems/</code></td></tr>
-            <tr><th>MIDI</th><td><code>${esc(base)}/midi/</code></td></tr>
-            <tr><th>Sketch reference package</th><td><code>${esc(base)}/resolve-import/</code> (not production-certified)</td></tr>
+            <tr><th>Stereo mix</th><td><code>approved/mix.wav</code></td></tr>
+            <tr><th>Dialogue-safe mix</th><td><code>approved/mix-dialogue-safe.wav</code></td></tr>
+            <tr><th>Stems</th><td><code>approved/stems/</code></td></tr>
+            <tr><th>MIDI</th><td><code>approved/midi/</code></td></tr>
+            <tr><th>Sketch reference package</th><td><code>approved/resolve-import/</code> (not production-certified)</td></tr>
           </table>
           <audio controls preload="none" src="${fileUrl('approved/mix.wav')}"></audio>
           <div>
-            <button class="btn" data-copy-text="${esc(base)}/resolve-import" data-copy-label="sketch reference path">Copy sketch reference path</button>
             <button class="btn" data-open="approved">Open output folder</button>
             <button class="btn" data-open="approved/resolve-import">Open sketch reference folder</button>
             <a class="btn" href="${fileUrl('approved/provenance.md')}" target="_blank">Provenance report</a>

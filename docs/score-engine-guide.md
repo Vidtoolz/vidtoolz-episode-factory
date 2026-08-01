@@ -115,7 +115,11 @@ provenance.
   are subtracted from each embedded REAPER item source.
 - Silence gaps remain empty REAPER timeline space.
 - Square tempo/time-signature markers are written at every cue start in both
-  the generated `.rpp` and template-building ReaScript.
+  the generated `.rpp` and template-building ReaScript. Each marker starts the
+  declared meter and allows a partial preceding measure, so fractional
+  video-time cuts do not move the cue.
+- Item source offsets are explicitly zero and fractional timeline/item values
+  are serialized without millisecond rounding.
 - Cue IDs remain in marker and item names for inspection.
 
 ## Ableton support (current state)
@@ -128,12 +132,16 @@ No `.als` generation, no Max for Live bridge yet (planned Phase C).
 
 ## Provenance, staleness, and state
 
-Canonical identities use stable-key-order UTF-8 serialization and SHA-256.
+Canonical identities use stable-key-order UTF-8 serialization and SHA-256;
+finite numbers retain their exact JSON representation, invalid/omitted values
+fail, and Unicode strings are preserved byte-for-byte without normalization.
 Absolute project/template paths and timestamps are excluded from identity.
 Candidate provenance binds cue sheet, music plan, composer contract, render
 contract, candidate content, and a per-file manifest. Approval binds that exact
-candidate. Production verification binds the imported file hash plus current
-approval/render hashes. Resolve provenance binds its copy back to verification.
+candidate. Production verification probes a project-owned immutable byte
+snapshot, then binds the imported file hash plus current approval/render
+hashes. Resolve provenance binds both its audio copy and approved cue-marker
+bytes back to verification.
 
 State flow:
 
