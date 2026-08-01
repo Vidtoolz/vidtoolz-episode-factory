@@ -1048,12 +1048,16 @@ function validateProductionMedia(probe, contract) {
 
 function currentProductionRecord(dir) {
   const pointer = readJson(path.join(dir, "production", "current.json"));
-  if (!pointer || pointer.schema_version !== PRODUCTION_SCHEMA_VERSION || !pointer.provenance_path) return null;
+  if (!pointer || pointer.schema_version !== PRODUCTION_SCHEMA_VERSION || !/^production-[a-f0-9]{20}$/.test(String(pointer.production_mix_id || ""))) return null;
+  const expectedProvenancePath = `production/imports/${pointer.production_mix_id}/provenance.json`;
+  if (pointer.provenance_path !== expectedProvenancePath) return null;
   let provenancePath;
   try { provenancePath = provenanceLib.resolveManifestPath(dir, pointer.provenance_path).target; }
   catch { return null; }
   const provenance = readJson(provenancePath);
-  return provenance ? { pointer, provenance, provenancePath, importDir: path.dirname(provenancePath) } : null;
+  if (!provenance || provenance.production_mix_id !== pointer.production_mix_id
+    || provenance.relative_path !== `production/imports/${pointer.production_mix_id}/mix.wav`) return null;
+  return { pointer, provenance, provenancePath, importDir: path.dirname(provenancePath) };
 }
 
 function importProductionMix(projectId, input = {}, options = {}) {
@@ -1153,9 +1157,11 @@ function verifyProductionMix(projectId, options = {}) {
   const contract = approved.render_contract;
   const detected = productionProbe(mixPath, settings, options);
   validateProductionMedia(detected, contract);
+  const postProbeHash = provenanceLib.sha256File(mixPath);
+  if (postProbeHash !== actualHash || fs.statSync(mixPath).size !== record.byte_size) throw httpError("The production mix changed during verification; no verification was recorded.", 409);
   const verificationIdentity = provenanceLib.hashCanonical({
     schema_version: PRODUCTION_SCHEMA_VERSION,
-    production_mix_sha256: actualHash,
+    production_mix_sha256: postProbeHash,
     approved_candidate_content_hash: approved.identity.candidate_content_hash,
     render_contract_hash: approved.identity.render_contract_hash,
     detected_media: detected,
@@ -1165,7 +1171,7 @@ function verifyProductionMix(projectId, options = {}) {
     verified: true,
     verified_at: nowIso(),
     production_mix_id: record.production_mix_id,
-    production_mix_sha256: actualHash,
+    production_mix_sha256: postProbeHash,
     approved_candidate_content_hash: approved.identity.candidate_content_hash,
     render_contract_hash: approved.identity.render_contract_hash,
     verification_identity: verificationIdentity,
@@ -1205,6 +1211,9 @@ function prepareProductionResolvePackage(projectId, options = {}) {
     const buildDir = fs.mkdtempSync(path.join(resolveRoot, ".resolve-build-"));
     try {
       fs.copyFileSync(mixPath, path.join(buildDir, "mix.wav"), fs.constants.COPYFILE_EXCL);
+      if (provenanceLib.sha256File(mixPath) !== mixHash || provenanceLib.sha256File(path.join(buildDir, "mix.wav")) !== mixHash) {
+        throw httpError("The production mix changed while preparing Resolve; no package was published.", 409);
+      }
       const markers = path.join(dir, "approved", "resolve-import", "cue-markers.csv");
       if (!fs.existsSync(markers)) throw httpError("Approved cue markers are missing; Resolve package cannot be complete.", 409);
       fs.copyFileSync(markers, path.join(buildDir, "cue-markers.csv"), fs.constants.COPYFILE_EXCL);

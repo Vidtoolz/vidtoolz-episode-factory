@@ -25,14 +25,19 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
   if (!fs.existsSync(pointerFile)) return { state: "not_imported", current: false, verified: false, reasons: [], production_mix_id: null, resolve_ready: false };
   const reasons = [];
   const pointer = readJson(pointerFile);
-  if (!pointer || pointer.schema_version !== 1 || !pointer.production_mix_id || !pointer.provenance_path) {
+  if (!pointer || pointer.schema_version !== 1 || !/^production-[a-f0-9]{20}$/.test(String(pointer.production_mix_id || "")) || !pointer.provenance_path) {
     return { state: "stale", current: false, verified: false, reasons: ["production_provenance_missing"], production_mix_id: null, resolve_ready: false };
+  }
+  const expectedProvenancePath = `production/imports/${pointer.production_mix_id}/provenance.json`;
+  if (pointer.provenance_path !== expectedProvenancePath) {
+    return { state: "stale", current: false, verified: false, reasons: ["production_provenance_invalid"], production_mix_id: pointer.production_mix_id, resolve_ready: false };
   }
   let provenancePath;
   try { provenancePath = provenanceLib.resolveManifestPath(dir, pointer.provenance_path).target; }
   catch { return { state: "stale", current: false, verified: false, reasons: ["production_provenance_invalid"], production_mix_id: pointer.production_mix_id, resolve_ready: false }; }
   const production = readJson(provenancePath);
-  if (!production || production.schema_version !== 1 || production.production_mix_id !== pointer.production_mix_id) {
+  if (!production || production.schema_version !== 1 || production.production_mix_id !== pointer.production_mix_id
+    || production.relative_path !== `production/imports/${pointer.production_mix_id}/mix.wav`) {
     return { state: "stale", current: false, verified: false, reasons: ["production_provenance_missing"], production_mix_id: pointer.production_mix_id, resolve_ready: false };
   }
   if (!approvalAuthority.current || !approved || !approved.identity) reasons.push("verification_outdated");

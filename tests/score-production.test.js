@@ -99,6 +99,28 @@ test("score production: verification binds exact audio and upstream authority", 
   const current = lane.getProject(project2.project_id, second.options);
   lane.saveCueSheetEdits(project2.project_id, current.cue_sheet.cues.map((cue, i) => i === 0 ? { ...cue, key: "E minor" } : cue), second.options);
   assert.equal(lane.getProject(project2.project_id, second.options).readiness.production.state, "stale");
+
+  const raced = tmpEnv();
+  const project3 = approvedProject(raced.options);
+  lane.importProductionMix(project3.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...raced.options, probeImpl: wavProbe });
+  assert.throws(() => lane.verifyProductionMix(project3.project_id, { ...raced.options, probeImpl: (file) => { const result = wavProbe(file); fs.appendFileSync(file, "race"); return result; } }), /changed during verification/);
+  const racedState = lane.getProject(project3.project_id, raced.options);
+  assert.equal(racedState.readiness.production.state, "stale");
+});
+
+test("score production: malformed persisted current pointers fail closed inside project storage", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe });
+  const state = lane.getProject(project.project_id, options);
+  const pointerPath = path.join(state.dir, "production", "current.json");
+  const pointer = JSON.parse(fs.readFileSync(pointerPath, "utf8"));
+  pointer.provenance_path = "approved/provenance.json";
+  fs.writeFileSync(pointerPath, JSON.stringify(pointer, null, 2) + "\n");
+  const malformed = lane.getProject(project.project_id, options);
+  assert.equal(malformed.readiness.production.state, "stale");
+  assert.ok(malformed.readiness.production.reasons.includes("production_provenance_invalid"));
+  assert.throws(() => lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe }), /No current production mix/);
 });
 
 test("score production: Resolve package requires current verification and copy hash remains authoritative", () => {
