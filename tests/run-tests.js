@@ -77,6 +77,7 @@ require("./super-focus-video-queue-audit.test.js");
 require("./super-focus-slot-density.test.js");
 require("./super-focus-compute-gate.test.js");
 require("./super-focus-media-viewer.test.js");
+require("./super-focus-media-mount-guard.test.js");
 require("./image-prompt-full-screen.test.js");
 require("./super-focus-visual-required.test.js");
 require("./super-focus-visual-plan-authority.test.js");

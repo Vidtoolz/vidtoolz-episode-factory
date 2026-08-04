@@ -177,6 +177,53 @@ const SUPER_FOCUS_VIDEO_QUEUE_RESUME_API = '/api/super-focus/video-queue/resume'
 const SUPER_FOCUS_VIDEO_QUEUE_STOP_CURRENT_API = '/api/super-focus/video-queue/stop-current';
 const SUPER_FOCUS_CANCEL_QUEUED_VIDEO_API = '/api/super-focus/cancel-queued-video';
 const SUPER_FOCUS_VIDEO_FILE_API = '/api/super-focus/video';
+
+// Super Focus routes that do sync filesystem work against the media root
+// (VIDNAS on vidnux). These — and ONLY these — are gated by the mount probe
+// before dispatch (2026-08-03 cockpit-wedge class): local-only routes
+// (projects/state/script/visual-plan/generators) must keep working when the
+// NAS is down. A media route missing from this list is fail-open (unguarded,
+// same as before the guard), never fail-closed.
+const SUPER_FOCUS_MEDIA_ROUTE_PATHS = new Set([
+  SUPER_FOCUS_CLEAR_UNLINKED_PREVIEW_API,
+  SUPER_FOCUS_CLEAR_UNLINKED_API,
+  SUPER_FOCUS_IMAGE_REVIEW_API,
+  SUPER_FOCUS_IMAGE_REVIEW_WORKBENCH_API,
+  SUPER_FOCUS_VIDEO_QUEUE_AUDIT_API,
+  SUPER_FOCUS_ATTEMPT_STORAGE_API,
+  SUPER_FOCUS_VIDEO_REVIEW_API,
+  SUPER_FOCUS_GENERATE_REMAINING_IMAGE_PROMPTS_API,
+  SUPER_FOCUS_IMAGE_PROMPT_API,
+  SUPER_FOCUS_GENERATE_IMAGES_API,
+  SUPER_FOCUS_IMAGES_STATUS_API,
+  SUPER_FOCUS_IMAGE_FILE_API,
+  SUPER_FOCUS_GENERATE_I2V_PROMPT_API,
+  SUPER_FOCUS_GENERATE_MISSING_I2V_PROMPTS_API,
+  SUPER_FOCUS_CLEAR_IMAGE_API,
+  SUPER_FOCUS_REGENERATE_IMAGE_API,
+  SUPER_FOCUS_GENERATE_VIDEOS_API,
+  SUPER_FOCUS_CLEAR_VIDEO_API,
+  SUPER_FOCUS_REGENERATE_VIDEO_API,
+  SUPER_FOCUS_VIDEOS_STATUS_API,
+  SUPER_FOCUS_VIDEOS_CANCEL_API,
+  SUPER_FOCUS_QUEUE_VIDEO_API,
+  SUPER_FOCUS_QUEUE_MISSING_VIDEOS_API,
+  SUPER_FOCUS_VIDEO_QUEUE_API,
+  SUPER_FOCUS_VIDEO_QUEUE_PAUSE_API,
+  SUPER_FOCUS_VIDEO_QUEUE_RESUME_API,
+  SUPER_FOCUS_VIDEO_QUEUE_STOP_CURRENT_API,
+  SUPER_FOCUS_CANCEL_QUEUED_VIDEO_API,
+  SUPER_FOCUS_VIDEO_FILE_API,
+]);
+const SUPER_FOCUS_MEDIA_ROUTE_PREFIXES = [
+  SUPER_FOCUS_IMAGE_REVIEW_ACTION_PREFIX,
+  SUPER_FOCUS_VIDEO_REVIEW_ACTION_PREFIX,
+];
+function isSuperFocusMediaRoute(pathname) {
+  const p = String(pathname || '');
+  return SUPER_FOCUS_MEDIA_ROUTE_PATHS.has(p) || SUPER_FOCUS_MEDIA_ROUTE_PREFIXES.some((prefix) => p.startsWith(prefix));
+}
+
 const EARTH_STUDIO_STATUS_API = '/api/earth-studio/status';
 const EARTH_STUDIO_PLAN_API = '/api/earth-studio/plan';
 const EARTH_STUDIO_RENDER_API = '/api/earth-studio/render';
@@ -12940,7 +12987,10 @@ function applyImageReviewGate(state, rows, sfMediaRoot) {
 
 function createServer(options = {}) {
   const serverOptions = options && typeof options === 'object' ? options : {};
-  return http.createServer((req, res) => {
+  // Named (re-enterable) request handler: Super Focus media routes are
+  // re-dispatched through handleRequest after the async VIDNAS mount probe
+  // resolves (see the gate below), with sfMediaProbed=true to skip re-probing.
+  const handleRequest = (req, res, sfMediaProbed) => {
     const host = req.headers.host || 'localhost';
     let url;
     try {
@@ -13006,6 +13056,28 @@ function createServer(options = {}) {
     // create/list/load/save-title/save-script only. All writes are nonce-gated.
     const sfRoot = serverOptions.superFocusRoot || SUPER_FOCUS_ROOT;
     const sfMediaRoot = serverOptions.superFocusMediaRoot || SUPER_FOCUS_MEDIA_ROOT;
+
+    // ── Super Focus media VIDNAS guard (2026-08-03 cockpit-wedge class) ─────
+    // Media routes do sync fs work against sfMediaRoot (a CIFS mount on
+    // vidnux); without a guard a dropped mount wedges the event loop per
+    // request. Probe the mount (bounded async stat + down-latch, same pattern
+    // as the Earth Studio lane, c380527) BEFORE dispatching any media route:
+    // a down mount fails fast with 503, and only the down state is latched —
+    // a healthy mount is probed live and non-/mnt roots skip the probe
+    // entirely, so the normal case is unchanged. On probe success the request
+    // re-enters handleRequest with sfMediaProbed=true and dispatches exactly
+    // as before. Local-only Super Focus routes are NOT gated and keep working
+    // when the NAS is down.
+    if (!sfMediaProbed && isSuperFocusMediaRoute(url.pathname)) {
+      superFocusMedia.probeMount(sfMediaRoot)
+        .then(() => handleRequest(req, res, true))
+        .catch((error) => {
+          console.error(`[super-focus-media] VIDNAS probe failed for ${url.pathname}: ${error.message}`);
+          sendError(res, error.statusCode || 503, error.message, 'super-focus-media-unavailable');
+        });
+      return;
+    }
+
     const mgOpts = { root: serverOptions.motionGraphicsRoot || undefined }; // undefined → module default (env/local dir)
     const mgMediaRoot = serverOptions.motionGraphicsMediaRoot || MOTION_GRAPHICS_MEDIA_ROOT;
     // Injectable HyperFrames runner (tests pass a stub; default reuses the lane's wrapper).
@@ -17962,7 +18034,8 @@ function createServer(options = {}) {
       stream.on('error', (err) => { console.error('Stream error:', err.message); if (!res.headersSent) send(res, 500, 'Internal server error'); else res.end(); });
       stream.pipe(res);
     });
-  });
+  };
+  return http.createServer((req, res) => handleRequest(req, res, false));
 }
 
 if (require.main === module) {

@@ -320,6 +320,63 @@ function writeVideoQueue(projectId, queue, options = {}) {
   return queue;
 }
 
+// ── VIDNAS availability guard ───────────────────────────────────────────────
+// Same pattern as the Earth Studio lane (commit c380527, ported from Mission
+// Control's slow-mount down-latch). Every Super Focus media handler does sync
+// fs work against the media root, which on vidnux is a CIFS mount under
+// /mnt/vidnas_public — when the mount drops, each sync fs call blocks the
+// event loop for the full mount timeout and wedges the cockpit (2026-08-03
+// wedge class). Callers probe the mount with a time-bounded async stat BEFORE
+// any sync fs work: a failed or timed-out probe latches the mount "down" for
+// MOUNT_DOWN_TTL_MS and every request inside that window fails fast with 503
+// instead of re-paying the timeout. Only the down state is cached — a healthy
+// mount is probed live on every request — and non-/mnt roots (local
+// checkouts, test tmp dirs) are never probed or latched, so the guard is
+// fully transparent when the media root is local or the mount is healthy.
+const SLOW_MOUNT_PREFIX = '/mnt/';
+const MOUNT_DOWN_TTL_MS = 60 * 1000;
+const MOUNT_PROBE_TIMEOUT_MS = 4000;
+const MOUNT_STATE = { downAt: 0, lastError: '' };
+
+function resetMountLatch() { MOUNT_STATE.downAt = 0; MOUNT_STATE.lastError = ''; }
+
+function vidnasUnavailableError(detail) {
+  const e = new Error(`VIDNAS is unreachable (${detail}). The Super Focus media root lives on the NAS mount — check VIDNAS and retry.`);
+  e.statusCode = 503;
+  return e;
+}
+
+function probeMount(rootPath, options = {}) {
+  const target = String(rootPath || '');
+  if (!target.startsWith(SLOW_MOUNT_PREFIX)) return Promise.resolve({ ok: true, skipped: true });
+  const now = options.now || Date.now;
+  const ttlMs = options.ttlMs || MOUNT_DOWN_TTL_MS;
+  if (MOUNT_STATE.downAt && now() - MOUNT_STATE.downAt < ttlMs) {
+    return Promise.reject(vidnasUnavailableError(MOUNT_STATE.lastError || 'recently unreachable'));
+  }
+  const stat = options.stat || fs.promises.stat;
+  const timeoutMs = options.timeoutMs || MOUNT_PROBE_TIMEOUT_MS;
+  let timer = null;
+  // The timer is deliberately NOT unref'd: when a wedged mount leaves the
+  // stat promise unsettled, the ref'd timer is what guarantees the race
+  // rejects (an unref'd timer can let a draining process exit first).
+  const timeout = new Promise((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`mount probe timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
+  return Promise.race([Promise.resolve().then(() => stat(target)), timeout])
+    .then((st) => {
+      clearTimeout(timer);
+      if (!st || typeof st.isDirectory !== 'function' || !st.isDirectory()) throw new Error('mount root is not a directory');
+      return { ok: true };
+    })
+    .catch((err) => {
+      clearTimeout(timer);
+      MOUNT_STATE.downAt = now();
+      MOUNT_STATE.lastError = (err && (err.code || err.message)) || 'probe failed';
+      throw vidnasUnavailableError(MOUNT_STATE.lastError);
+    });
+}
+
 function resolveMediaRoot(options = {}) {
   const root = options.mediaRoot || process.env.SUPER_FOCUS_MEDIA_ROOT;
   if (!root) {
@@ -1102,4 +1159,6 @@ module.exports = {
   resolveRegeneratedVideo,
   restoreArchivedImage,
   restoreArchivedVideo,
+  probeMount,
+  resetMountLatch,
 };
