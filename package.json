@@ -3,6 +3,6 @@
     "test": "node tests/run-tests.js"
   },
   "devDependencies": {
-    "hyperframes": "0.7.65"
+    "hyperframes": "0.7.90"
   }
 }
