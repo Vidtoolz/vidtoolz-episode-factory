@@ -1,0 +1,35 @@
+{
+  "global_nine": [
+    { "id": "core_claim", "score": 9, "status": "pass" },
+    { "id": "audience_pain", "score": 9, "status": "pass" },
+    { "id": "channel_fit", "score": 9, "status": "pass" },
+    { "id": "spoken_voice", "score": 9, "status": "pass" },
+    { "id": "structure_retention", "score": 9, "status": "pass" },
+    { "id": "visual_potential", "score": 9, "status": "pass" },
+    { "id": "production_feasibility", "score": 9, "status": "pass" },
+    { "id": "accuracy_trust", "score": 9, "status": "pass" },
+    { "id": "duration_density", "score": 9, "status": "pass" }
+  ],
+  "mixed": [
+    { "id": "core_claim", "score": 8, "status": "pass" },
+    { "id": "audience_pain", "score": 8, "status": "pass" },
+    { "id": "channel_fit", "score": 8, "status": "pass" },
+    { "id": "spoken_voice", "score": 8, "status": "pass" },
+    { "id": "structure_retention", "score": 8, "status": "pass" },
+    { "id": "visual_potential", "score": 75, "status": "pass" },
+    { "id": "production_feasibility", "score": 75, "status": "pass" },
+    { "id": "accuracy_trust", "score": 75, "status": "pass" },
+    { "id": "duration_density", "score": 75, "status": "pass" }
+  ],
+  "low_fail_among_hundreds": [
+    { "id": "core_claim", "score": 8, "status": "fail" },
+    { "id": "audience_pain", "score": 75, "status": "pass" },
+    { "id": "channel_fit", "score": 75, "status": "pass" },
+    { "id": "spoken_voice", "score": 75, "status": "pass" },
+    { "id": "structure_retention", "score": 75, "status": "pass" },
+    { "id": "visual_potential", "score": 75, "status": "pass" },
+    { "id": "production_feasibility", "score": 75, "status": "pass" },
+    { "id": "accuracy_trust", "score": 75, "status": "pass" },
+    { "id": "duration_density", "score": 75, "status": "pass" }
+  ]
+}

@@ -337,6 +337,8 @@
     .eval-fix { color: #9ec1ff; font-size: 13px; }
     .eval-sentence .stext { color: var(--muted); font-style: italic; }
     .eval-warnings { color: #e3b341; font-size: 13px; }
+    .eval-scale-ambiguity { margin: 10px 0 12px; padding: 12px 14px; border: 2px solid #d29922;
+      border-radius: 8px; background: rgba(210,153,34,.16); color: #f2cc60; font-size: 14px; font-weight: 600; }
     .eval-list { margin: 4px 0 0; padding-left: 18px; }
     .eval-list li { font-size: 13px; }
     /* Image Review Workbench: one dominant image, one context panel, one
@@ -2348,6 +2350,13 @@
         head.appendChild(bspan);
       }
       panel.appendChild(head);
+
+      if (ev.scale_ambiguous) {
+        var scaleWarning = document.createElement('div'); scaleWarning.className = 'eval-scale-ambiguity';
+        scaleWarning.setAttribute('role', 'alert');
+        scaleWarning.textContent = 'The model response may have used a 0–10 category scale. Scores were converted to 0–100, but the scale is ambiguous. The apparent verdict' + (verdict ? ' (' + verdict + ')' : '') + ' requires human review; review it manually before any production decision.';
+        panel.appendChild(scaleWarning);
+      }
 
       if (ev.verdict_capped_by_gate) {
         var cap = document.createElement('div'); cap.className = 'eval-warn eval-muted';

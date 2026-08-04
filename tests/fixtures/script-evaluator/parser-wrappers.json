@@ -1,0 +1,95 @@
+{
+  "direct": {
+    "categories": [],
+    "next_edit": "direct"
+  },
+  "one_level": {
+    "evaluation": {
+      "categories": [],
+      "next_edit": "one"
+    }
+  },
+  "two_levels": {
+    "result": {
+      "evaluation": {
+        "categories": [],
+        "next_edit": "two"
+      }
+    }
+  },
+  "three_levels": {
+    "response": {
+      "result": {
+        "evaluation": {
+          "categories": [],
+          "next_edit": "three"
+        }
+      }
+    }
+  },
+  "four_levels": {
+    "output": {
+      "response": {
+        "result": {
+          "evaluation": {
+            "categories": [],
+            "next_edit": "four"
+          }
+        }
+      }
+    }
+  },
+  "five_levels": {
+    "data": {
+      "output": {
+        "response": {
+          "result": {
+            "evaluation": {
+              "categories": [],
+              "next_edit": "five"
+            }
+          }
+        }
+      }
+    }
+  },
+  "unrelated": {
+    "metadata": {
+      "next_edit": "not an evaluation"
+    }
+  },
+  "ambiguous_preferred": {
+    "other": {
+      "categories": [],
+      "next_edit": "other"
+    },
+    "evaluation": {
+      "categories": [],
+      "next_edit": "preferred"
+    }
+  },
+  "ambiguous_stable": {
+    "first": {
+      "categories": [],
+      "next_edit": "first"
+    },
+    "second": {
+      "categories": [],
+      "next_edit": "second"
+    }
+  },
+  "ambiguous_nested": {
+    "result": {
+      "response": {
+        "other": {
+          "categories": [],
+          "next_edit": "nested other"
+        },
+        "evaluation": {
+          "categories": [],
+          "next_edit": "nested preferred"
+        }
+      }
+    }
+  }
+}

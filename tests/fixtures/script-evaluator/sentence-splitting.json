@@ -1,0 +1,77 @@
+[
+  {
+    "name": "numbered list markers",
+    "script": "1. Write the claim.\n2. Cut the fluff.\n10. Export the result.",
+    "sentences": ["1. Write the claim.", "2. Cut the fluff.", "10. Export the result."]
+  },
+  {
+    "name": "common abbreviations",
+    "script": "Use e.g. FLUX for plates. Dr. Smith agrees. Ask Mr. Jones, Mrs. Lee, and Ms. Ray. Compare A vs. B, i.e. the useful options, etc.",
+    "sentences": ["Use e.g. FLUX for plates.", "Dr. Smith agrees.", "Ask Mr. Jones, Mrs. Lee, and Ms. Ray.", "Compare A vs. B, i.e. the useful options, etc."]
+  },
+  {
+    "name": "abbreviation at a real boundary",
+    "script": "Use plates, props, etc. Then export.",
+    "sentences": ["Use plates, props, etc.", "Then export."]
+  },
+  {
+    "name": "domain-like token",
+    "script": "Go to vidtoolz.com now.",
+    "sentences": ["Go to vidtoolz.com now."]
+  },
+  {
+    "name": "domain path",
+    "script": "Open example.org/path first.",
+    "sentences": ["Open example.org/path first."]
+  },
+  {
+    "name": "https URL",
+    "script": "Open https://example.com/test now.",
+    "sentences": ["Open https://example.com/test now."]
+  },
+  {
+    "name": "www URL",
+    "script": "Open www.example.com now.",
+    "sentences": ["Open www.example.com now."]
+  },
+  {
+    "name": "URL at sentence end",
+    "script": "Open https://example.com/test. Then export.",
+    "sentences": ["Open https://example.com/test.", "Then export."]
+  },
+  {
+    "name": "parenthetical period",
+    "script": "(See the render log.) It shows the failure.",
+    "sentences": ["(See the render log.)", "It shows the failure."]
+  },
+  {
+    "name": "parenthetical without period",
+    "script": "Use the render log (the latest one) for proof. Then export.",
+    "sentences": ["Use the render log (the latest one) for proof.", "Then export."]
+  },
+  {
+    "name": "decimals versions and model names",
+    "script": "Use 3.14 seconds with v1.2.3 and FLUX.1. Then render.",
+    "sentences": ["Use 3.14 seconds with v1.2.3 and FLUX.1.", "Then render."]
+  },
+  {
+    "name": "ordinary prose",
+    "script": "Write the claim. Cut the fluff.",
+    "sentences": ["Write the claim.", "Cut the fluff."]
+  },
+  {
+    "name": "ellipsis",
+    "script": "Wait... Then cut.",
+    "sentences": ["Wait...", "Then cut."]
+  },
+  {
+    "name": "quotes and closing punctuation",
+    "script": "He said \"Cut it.\" Then he exported.",
+    "sentences": ["He said \"Cut it.\"", "Then he exported."]
+  },
+  {
+    "name": "stage directions and blank lines",
+    "script": "[CUT TO RENDER]\n\nThe plate appears.",
+    "sentences": ["[CUT TO RENDER]", "The plate appears."]
+  }
+]

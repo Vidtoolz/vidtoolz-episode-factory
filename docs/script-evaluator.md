@@ -43,17 +43,95 @@ scripts/install-script-evaluator-shortcut.sh 8011     # custom port
 
 - **Score / verdict / band** — total out of 100, one of `PRODUCE`,
   `PRODUCE_MINOR_EDITS`, `REVISE`, or `REWRITE`.
+- **Scale ambiguity advisory** — when category scores appear to use a global
+  0–10 scale, or mix likely 0–10 and 0–100 rows, the saved result carries
+  `scale_ambiguous: true`. The panel shows a separate warning banner beside the
+  score/verdict. This does not fail or cap the advisory verdict; it means the
+  normalized arithmetic and apparent verdict require human review.
 - **Hard gates** — three pass/fail gates (central claim in one sentence,
   speakable naturally, generates useful visuals). A failing gate **caps the
   verdict at REVISE** regardless of the numeric score, and the panel says so.
 - **Categories** — nine weighted categories (weights sum to 100) with the points
   each contributed and a recommendation.
 - **Checklist** — ten pass/warn/fail items.
-- **Top strengths / top problems**, **per-sentence** scores with concrete
+- **Top strengths / top problems**, **per-sentence** rows with concrete
   `edit_suggestion` / `optional_rewrite`, a **fix plan**, and the single
   **next edit**.
-- **Warnings** — e.g. the model invented or omitted a sentence id (omitted
-  sentences are shown as `unevaluated` using the backend's authoritative text).
+- **Warnings** — e.g. the model invented a sentence id, omitted the hook row,
+  or returned no sentence rows at all (in that last case sentences are shown
+  as `unevaluated` using the backend's authoritative text).
+
+### Selective sentence contract (speed)
+
+Output tokens dominate local-Ollama latency, so the prompt asks for sentence
+rows **only for sentences that need work** (status `revise` or `cut`), plus
+**always one row for the first sentence (the hook)**. An omitted sentence id
+means "okay — no change needed" and is rendered as an implied-`okay` row with
+no invented role or score. Per-sentence `positives` / `negatives` /
+`highlighted_phrases` are no longer requested; anything the model still emits
+for them is dropped (the fields stay in the saved shape, always empty). The
+actionable value — `edit_suggestion` and `optional_rewrite` — is unchanged.
+
+Fail-honest guardrails: if the model returns **zero** valid sentence rows, the
+contract was ignored, so every sentence is marked `unevaluated` with a single
+warning (never silently "all okay"). If rows come back but the hook row is
+missing, the hook is treated as okay and a warning says so.
+
+## Parser and normalization behavior
+
+The response parser accepts the existing strict JSON, fenced JSON, surrounding
+prose, and thinking-block cleanup paths. It can unwrap at most **four wrapper
+levels**. It follows one deterministic object path and never traverses arrays or
+performs an arbitrary deep-tree search. An evaluation deeper than four wrappers,
+or a response with no evaluation-shaped object, fails closed with no persisted
+evaluation.
+
+At each examined wrapper level, if several direct child objects independently
+look like evaluations, the parser chooses the `evaluation` key when present;
+otherwise it uses stable object-key order. It does not merge, average, or select
+by score. The normalized evaluation includes a warning naming the selected key.
+A nested object with only one familiar evaluation property is not sufficient to
+be accepted as an evaluation.
+
+Category scale handling is deterministic:
+
+- A wholly 0–10-looking category response keeps the compatible multiply-by-10
+  conversion and sets `scale_ambiguous: true`.
+- In a mixed response containing category scores above 10, a 0–10 category is
+  multiplied by 10 only when that category also has a recognized `pass` status.
+  The warning lists affected category IDs in canonical rubric order and the
+  same ambiguity field is set.
+- Low categories with failing or non-passing statuses are not upscaled. Normal
+  0–100 scoring and verdict bands are unchanged.
+
+The backend-generated sentence list and IDs remain authoritative. Duplicate
+normalized sentence IDs retain the compatible **last valid row wins** rule and
+emit a warning for each overwrite. Rows with missing or invalid/non-integer IDs
+are ignored with distinct warnings; valid integer IDs that are absent from the
+authoritative list keep the existing invented-ID warning. There is no positional
+sentence fallback. Under the selective contract, an authoritative sentence with
+no returned row is an implied `okay` (no warning) whenever at least one valid
+row was returned; with zero valid rows all sentences are `unevaluated`.
+
+Sentence splitting remains dependency-free, deterministic, and deliberately
+limited. It protects leading numbered-list markers, decimals and dotted
+versions/model names, the fixed abbreviations `e.g.`, `i.e.`, `Dr.`, `Mr.`,
+`Mrs.`, `Ms.`, `vs.`, and `etc.`, URL/domain dots, periods inside unmatched
+parentheses, and closing quote/parenthesis punctuation. Newlines remain hard
+script-line boundaries.
+
+## Prompt-content mitigation
+
+The prompt places the exact backend sentence list inside
+`SENTENCE_DATA_BEGIN` / `SENTENCE_DATA_END` and the exact full script inside
+`SCRIPT_DATA_BEGIN` / `SCRIPT_DATA_END`. The preceding instruction states that
+the delimited content is untrusted data, may contain commands as script text,
+and must not override the evaluator instructions. The content is not sanitized,
+omitted, or paraphrased.
+
+These delimiters reduce prompt-injection risk for small local models; they
+**do not** create a security boundary or guarantee instruction isolation. Results
+remain advisory and require human judgment.
 
 ## Staleness
 
@@ -70,7 +148,8 @@ Reverting the script to the evaluated text clears the stale flag.
   not whether real-world claims are true, and is prompted not to pretend to
   verify the internet.
 - Persisted to the project's `super-focus.json` as `script_evaluation`
-  (`schema_version` stamped); read back read-only on project open.
+  (`schema_version` stamped, including `scale_ambiguous`); read back read-only on
+  project open.
 
 ## State and API
 

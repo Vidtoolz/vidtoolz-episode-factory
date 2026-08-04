@@ -559,6 +559,8 @@ const OLLAMA_BASE_URL = String(process.env.OLLAMA_URL || process.env.OLLAMA_BASE
 // Must match the image_prompt_generation lane default in
 // config/media-routing.json (guarded by media-routing.test.js).
 const OLLAMA_MODEL = String(process.env.OLLAMA_MODEL || 'qwen3.5:9b');
+const SUPER_FOCUS_EVAL_MODEL = String(process.env.SUPER_FOCUS_EVAL_MODEL || 'qwen3:30b');
+const SUPER_FOCUS_EVAL_NUM_CTX = Number(process.env.SUPER_FOCUS_EVAL_NUM_CTX) > 0 ? Number(process.env.SUPER_FOCUS_EVAL_NUM_CTX) : 16384;
 const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS) > 0 ? Number(process.env.OLLAMA_TIMEOUT_MS) : 120000;
 // Media routing policy: image prompts -> vidnux Ollama (above); I2V prompts ->
 // PRESTO Ollama (below). These are SEPARATE hosts by hard policy — I2V prompts
@@ -4999,7 +5001,10 @@ async function callOllamaChat({ system, user, schema, model, baseUrl } = {}, opt
         ...(schema ? { format: schema } : {}),
         // Callers may raise temperature on corrective retries (local models at
         // a fixed temperature collapse onto the same outputs); default 0.6.
-        options: { temperature: Number(options.temperature) > 0 ? Number(options.temperature) : 0.6 },
+        options: {
+          temperature: Number(options.temperature) > 0 ? Number(options.temperature) : 0.6,
+          ...(Number(options.numCtx) > 0 ? { num_ctx: Number(options.numCtx) } : {}),
+        },
       }),
       // Per-call timeout: callers (e.g. chunked generation) pass a task-specific
       // timeoutMs so a big job is split into bounded chunks, not one 120s attempt.
@@ -5057,9 +5062,11 @@ function superFocusProviderConfig(options = {}) {
       : (process.env.PRESTO_OLLAMA_BASE_URL || OLLAMA_PRESTO_BASE_URL || '')
   ).replace(/\/+$/, '');
   const prestoModel = String(process.env.PRESTO_OLLAMA_MODEL || OLLAMA_PRESTO_MODEL || OLLAMA_MODEL);
+  const evalModel = String(options.superFocusEvalModel != null ? options.superFocusEvalModel : SUPER_FOCUS_EVAL_MODEL);
   return {
     mode: superFocusRouter.resolveRoutingMode(options.superFocusRoutingMode || process.env.SUPER_FOCUS_OLLAMA_ROUTING),
     local: { base_url: OLLAMA_BASE_URL, model: OLLAMA_MODEL },
+    eval_model: evalModel,
     presto: { configured: Boolean(prestoBase), base_url: prestoBase, model: prestoModel },
   };
 }
@@ -5112,6 +5119,23 @@ async function resolveSuperFocusOllamaProvider(task, options = {}) {
   decision.mode = cfg.mode;
   decision.task = task || null;
   decision.local_busy = localBusy;
+  if (decision.task === 'script_evaluation' && decision.provider_id === 'vidnux_ollama') {
+    decision.model = cfg.eval_model;
+    const localProbe = options.localOllamaProbe || probeOllamaTags;
+    const health = await localProbe(cfg.local.base_url, cfg.eval_model, options);
+    if (!health || !health.model_ready) {
+      return {
+        error: 'model_missing',
+        message: `SUPER_FOCUS_EVAL_MODEL "${cfg.eval_model}" is not installed on vidnux Ollama; run: ollama pull ${cfg.eval_model}`,
+        provider_id: decision.provider_id,
+        base_url: cfg.local.base_url,
+        model: cfg.eval_model,
+        mode: cfg.mode,
+        task: decision.task,
+        local_busy: localBusy,
+      };
+    }
+  }
   return decision;
 }
 
@@ -5135,8 +5159,17 @@ function superFocusOllamaTimeoutMs(task, options = {}) {
   if (/infographic/i.test(String(task || '')) && Number(process.env.SUPER_FOCUS_INFOGRAPHIC_TIMEOUT_MS) > 0) {
     return Number(process.env.SUPER_FOCUS_INFOGRAPHIC_TIMEOUT_MS);
   }
+  if (String(task || '') === 'script_evaluation') {
+    return Number(process.env.SUPER_FOCUS_EVAL_TIMEOUT_MS) > 0 ? Number(process.env.SUPER_FOCUS_EVAL_TIMEOUT_MS) : 300000;
+  }
   if (Number(process.env.SUPER_FOCUS_OLLAMA_TIMEOUT_MS) > 0) return Number(process.env.SUPER_FOCUS_OLLAMA_TIMEOUT_MS);
   return OLLAMA_TIMEOUT_MS;
+}
+
+function superFocusEvalNumCtx(options = {}) {
+  if (Number(options.superFocusEvalNumCtx) > 0) return Number(options.superFocusEvalNumCtx);
+  if (Number(process.env.SUPER_FOCUS_EVAL_NUM_CTX) > 0) return Number(process.env.SUPER_FOCUS_EVAL_NUM_CTX);
+  return SUPER_FOCUS_EVAL_NUM_CTX;
 }
 
 // Chunk size for multi-prompt Super Focus generation. Default 3, clamped 1–6.
@@ -5177,10 +5210,11 @@ async function superFocusGenerate({ system, user, schema, task, requestedCount }
     throw e;
   }
   const timeoutMs = superFocusOllamaTimeoutMs(task, options);
+  const numCtx = String(task || '') === 'script_evaluation' ? superFocusEvalNumCtx(options) : undefined;
   try {
     const content = await callOllamaChat(
       { system, user, schema, model: decision.model, baseUrl: decision.base_url },
-      Object.assign({}, options, { timeoutMs })
+      Object.assign({}, options, { timeoutMs, ...(Number(numCtx) > 0 ? { numCtx } : {}) })
     );
     return { content, provider: publicProvider(decision) };
   } catch (error) {
@@ -18297,6 +18331,8 @@ module.exports = {
   superFocusPrompts,
   superFocusMedia,
   validateSuperFocusCount,
+  resolveSuperFocusOllamaProvider,
+  superFocusOllamaTimeoutMs,
   startSuperFocusImageJob,
   startSuperFocusVideoJob,
   launchFluxHandoffJob,

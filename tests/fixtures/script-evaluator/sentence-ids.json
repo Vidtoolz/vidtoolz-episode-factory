@@ -1,0 +1,23 @@
+{
+  "integer_duplicate": [
+    { "sentence_id": 2, "role": "claim", "score": 40, "status": "revise", "edit_suggestion": "first" },
+    { "sentence_id": 2, "role": "claim", "score": 80, "status": "strong", "edit_suggestion": "second" }
+  ],
+  "string_integer_duplicate": [
+    { "sentence_id": "2", "role": "claim", "score": 40, "status": "revise", "edit_suggestion": "first" },
+    { "sentence_id": 2, "role": "claim", "score": 80, "status": "strong", "edit_suggestion": "second" }
+  ],
+  "float_equivalent_duplicate": [
+    { "sentence_id": 2, "role": "claim", "score": 40, "status": "revise", "edit_suggestion": "first" },
+    { "sentence_id": 2.0, "role": "claim", "score": 80, "status": "strong", "edit_suggestion": "second" }
+  ],
+  "invalid_ids": [
+    { "sentence_id": 1.5, "role": "claim", "score": 99, "status": "strong" },
+    { "sentence_id": "1.5", "role": "claim", "score": 99, "status": "strong" },
+    { "sentence_id": "NaN", "role": "claim", "score": 99, "status": "strong" },
+    { "sentence_id": null, "role": "claim", "score": 99, "status": "strong" },
+    { "role": "claim", "score": 99, "status": "strong" },
+    { "sentence_id": 99, "role": "claim", "score": 99, "status": "strong" },
+    { "sentence_id": 1, "role": "claim", "score": 80, "status": "strong", "edit_suggestion": "known" }
+  ]
+}

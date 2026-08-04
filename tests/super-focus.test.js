@@ -9,6 +9,19 @@ const sfMedia = require("../super-focus-media.js");
 function fakeOllama(content) {
   return async () => ({ ok: true, json: async () => ({ message: { content } }) });
 }
+function capturingOllama(content) {
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    calls.push({
+      url,
+      options,
+      body: JSON.parse(String(options.body || "{}")),
+    });
+    return { ok: true, json: async () => ({ message: { content } }) };
+  };
+  fetchImpl.calls = calls;
+  return fetchImpl;
+}
 function refusedFetch() {
   return async () => { const e = new Error("fetch failed"); e.cause = { code: "ECONNREFUSED" }; throw e; };
 }
@@ -312,9 +325,14 @@ test("super-focus model: create/list/load are isolated per root and stage-infer"
 
 // ============================ Slice 2: Ollama text ============================
 
-async function makeProjectServer(fetchImpl, { title, script } = {}) {
+async function makeProjectServer(fetchImpl, { title, script, serverOptions } = {}) {
   const root = mkRoot();
-  const server = packageEngineServer.createServer(fetchImpl ? { superFocusRoot: root, fetchImpl } : { superFocusRoot: root });
+  const baseOptions = { superFocusRoot: root };
+  if (fetchImpl) {
+    baseOptions.fetchImpl = fetchImpl;
+    baseOptions.localOllamaProbe = async () => ({ reachable: true, model_ready: true });
+  }
+  const server = packageEngineServer.createServer(Object.assign(baseOptions, serverOptions || {}));
   await listen(server);
   const proj = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_PROJECTS_API, {
     method: "POST", headers: writeHeaders(), body: { title: title || "" },
@@ -2801,6 +2819,145 @@ test("generation response includes provider metadata (id/label/model)", async ()
   } finally { await close(server); }
 });
 
+function lastCapturedChatBody(fetchImpl) {
+  const chatCalls = fetchImpl.calls.filter((call) => /\/api\/chat$/.test(String(call.url || "")));
+  assert.ok(chatCalls.length > 0, "expected a captured Ollama /api/chat call");
+  return chatCalls[chatCalls.length - 1].body;
+}
+
+test("evaluate-script sends default 16384 num_ctx to Ollama", async () => {
+  const fake = capturingOllama(fullScriptEvalJson(EVAL_SCRIPT));
+  const { server, id } = await makeProjectServer(fake, { script: EVAL_SCRIPT });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 200);
+    const body = lastCapturedChatBody(fake);
+    assert.equal(body.options.num_ctx, 16384);
+  } finally { await close(server); }
+});
+
+test("evaluate-script honors SUPER_FOCUS_EVAL_NUM_CTX env override", async () => {
+  const prev = process.env.SUPER_FOCUS_EVAL_NUM_CTX;
+  process.env.SUPER_FOCUS_EVAL_NUM_CTX = "12288";
+  const fake = capturingOllama(fullScriptEvalJson(EVAL_SCRIPT));
+  const { server, id } = await makeProjectServer(fake, { script: EVAL_SCRIPT });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 200);
+    const body = lastCapturedChatBody(fake);
+    assert.equal(body.options.num_ctx, 12288);
+  } finally {
+    await close(server);
+    if (prev == null) delete process.env.SUPER_FOCUS_EVAL_NUM_CTX;
+    else process.env.SUPER_FOCUS_EVAL_NUM_CTX = prev;
+  }
+});
+
+test("evaluate-script options override wins over env num_ctx", async () => {
+  const prev = process.env.SUPER_FOCUS_EVAL_NUM_CTX;
+  process.env.SUPER_FOCUS_EVAL_NUM_CTX = "12288";
+  const fake = capturingOllama(fullScriptEvalJson(EVAL_SCRIPT));
+  const { server, id } = await makeProjectServer(fake, {
+    script: EVAL_SCRIPT,
+    serverOptions: { superFocusEvalNumCtx: 16384 },
+  });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 200);
+    const body = lastCapturedChatBody(fake);
+    assert.equal(body.options.num_ctx, 16384);
+  } finally {
+    await close(server);
+    if (prev == null) delete process.env.SUPER_FOCUS_EVAL_NUM_CTX;
+    else process.env.SUPER_FOCUS_EVAL_NUM_CTX = prev;
+  }
+});
+
+test("generate-topic does not send num_ctx to Ollama", async () => {
+  const fake = capturingOllama("Topic that keeps the default Ollama context");
+  const { server, id } = await makeProjectServer(fake);
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_GENERATE_TOPIC_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 200);
+    const body = lastCapturedChatBody(fake);
+    assert.ok(body.options);
+    assert.equal(Object.prototype.hasOwnProperty.call(body.options, "num_ctx"), false);
+  } finally { await close(server); }
+});
+
+test("resolver: script_evaluation on vidnux uses the eval model override", async () => {
+  assert.equal(typeof packageEngineServer.resolveSuperFocusOllamaProvider, "function");
+  const decision = await packageEngineServer.resolveSuperFocusOllamaProvider("script_evaluation", {
+    superFocusRoutingMode: "local",
+    superFocusEvalModel: "qwen3:30b",
+    localOllamaProbe: async (_baseUrl, model) => ({ reachable: true, model_ready: model === "qwen3:30b" }),
+  });
+  assert.equal(decision.provider_id, "vidnux_ollama");
+  assert.equal(decision.model, "qwen3:30b");
+});
+
+test("resolver: non-eval text tasks keep the fast default model", async () => {
+  assert.equal(typeof packageEngineServer.resolveSuperFocusOllamaProvider, "function");
+  const decision = await packageEngineServer.resolveSuperFocusOllamaProvider("image_prompts", {
+    superFocusRoutingMode: "local",
+    superFocusEvalModel: "qwen3:30b",
+    localOllamaProbe: async () => { throw new Error("non-eval task should not probe eval model"); },
+  });
+  assert.equal(decision.provider_id, "vidnux_ollama");
+  assert.equal(decision.model, "qwen3.5:9b");
+});
+
+test("resolver: missing local eval model returns actionable model_missing error", async () => {
+  assert.equal(typeof packageEngineServer.resolveSuperFocusOllamaProvider, "function");
+  const decision = await packageEngineServer.resolveSuperFocusOllamaProvider("script_evaluation", {
+    superFocusRoutingMode: "local",
+    superFocusEvalModel: "qwen3:30b",
+    localOllamaProbe: async (_baseUrl, model) => ({ reachable: true, model_ready: model !== "qwen3:30b" }),
+    prestoOllamaProbe: async () => { throw new Error("PRESTO probe should not run for local eval model"); },
+  });
+  assert.equal(decision.error, "model_missing");
+  assert.match(decision.message, /SUPER_FOCUS_EVAL_MODEL "qwen3:30b" is not installed on vidnux Ollama/);
+  assert.match(decision.message, /ollama pull qwen3:30b/);
+});
+
+test("timeout: script_evaluation uses larger default and SUPER_FOCUS_EVAL_TIMEOUT_MS override", () => {
+  assert.equal(typeof packageEngineServer.superFocusOllamaTimeoutMs, "function");
+  const prev = process.env.SUPER_FOCUS_EVAL_TIMEOUT_MS;
+  try {
+    delete process.env.SUPER_FOCUS_EVAL_TIMEOUT_MS;
+    assert.equal(packageEngineServer.superFocusOllamaTimeoutMs("script_evaluation"), 300000);
+    process.env.SUPER_FOCUS_EVAL_TIMEOUT_MS = "123456";
+    assert.equal(packageEngineServer.superFocusOllamaTimeoutMs("script_evaluation"), 123456);
+  } finally {
+    if (prev == null) delete process.env.SUPER_FOCUS_EVAL_TIMEOUT_MS;
+    else process.env.SUPER_FOCUS_EVAL_TIMEOUT_MS = prev;
+  }
+});
+
+test("evaluate-script response provider metadata uses eval model", async () => {
+  const { server, id } = await makeProjectServer(fakeOllama(fullScriptEvalJson(EVAL_SCRIPT)), {
+    script: EVAL_SCRIPT,
+    serverOptions: { superFocusEvalModel: "qwen3:30b" },
+  });
+  try {
+    const res = await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    });
+    assert.equal(res.statusCode, 200);
+    const p = unwrap(res).provider;
+    assert.equal(p.id, "vidnux_ollama");
+    assert.equal(p.model, "qwen3:30b");
+  } finally { await close(server); }
+});
+
 test("auto routing sends text to PRESTO Ollama when vidnux ComfyUI is busy and PRESTO is healthy", async () => {
   const { server, id } = await routingServer({
     fetchImpl: fakeOllama(jsonArray(3, "S")),
@@ -3565,7 +3722,7 @@ function fullScriptEvalJson(script) {
   const categories = scriptEval.CATEGORIES.map((c) => ({ id: c.id, score: 100, status: "pass", positives: ["p"], negatives: [], recommendation: "keep" }));
   const hard_gates = scriptEval.HARD_GATES.map((g) => ({ id: g.id, status: "pass", reason: "ok", suggested_fix: "" }));
   const checklist = scriptEval.CHECKLIST.map((c) => ({ id: c.id, status: "pass", reason: "ok" }));
-  const sentences = ids.map((sid) => ({ sentence_id: sid, role: "claim", score: 90, status: "strong", positives: ["x"], negatives: [], highlighted_phrases: [], edit_suggestion: "keep", optional_rewrite: "" }));
+  const sentences = ids.map((sid) => ({ sentence_id: sid, role: "claim", score: 90, status: "strong", edit_suggestion: "keep", optional_rewrite: "" }));
   return JSON.stringify({ summary: "ok", categories, hard_gates, checklist, sentences, top_strengths: ["spine"], top_problems: [], fix_plan: ["ship"], next_edit: "nothing" });
 }
 
@@ -3611,6 +3768,22 @@ test("evaluate-script: stubbed provider persists a scored evaluation; GET return
     const got = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_EVALUATION_API + "?id=" + encodeURIComponent(id)));
     assert.equal(got.script_evaluation.verdict, "PRODUCE");
     assert.equal(got.stale, false);
+  } finally { await close(server); }
+});
+
+test("evaluate-script: scale ambiguity survives endpoint persistence and reload", async () => {
+  const modelOutput = JSON.parse(fullScriptEvalJson(EVAL_SCRIPT));
+  modelOutput.categories = modelOutput.categories.map((row) => Object.assign({}, row, { score: 9 }));
+  const { server, id, root } = await makeProjectServer(fakeOllama(JSON.stringify(modelOutput)), { script: EVAL_SCRIPT });
+  try {
+    const response = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id },
+    }));
+    assert.equal(response.script_evaluation.scale_ambiguous, true);
+    assert.equal(response.script_evaluation.total_score, 90);
+    assert.equal(superFocus.loadProject(id, { root }).script_evaluation.scale_ambiguous, true);
+    const reloaded = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_EVALUATION_API + "?id=" + encodeURIComponent(id)));
+    assert.equal(reloaded.script_evaluation.scale_ambiguous, true);
   } finally { await close(server); }
 });
 
@@ -3686,16 +3859,16 @@ test("evaluate-script: advises only — never approves the script or generates i
   } finally { await close(server); }
 });
 
-test("evaluate-script: invented sentence ids ignored + omitted ids warned, through the endpoint", async () => {
+test("evaluate-script: invented sentence ids ignored + omitted ids implied okay, through the endpoint", async () => {
   const script = "One line. Two line. Three line."; // ids 1,2,3
-  // stub returns only sentence 1 + an invented id 99
+  // stub returns only sentence 1 + an invented id 99; 2 and 3 omitted = okay
   const stub = (function () {
     const categories = scriptEval.CATEGORIES.map((c) => ({ id: c.id, score: 80, status: "pass", positives: [], negatives: [], recommendation: "" }));
     const hard_gates = scriptEval.HARD_GATES.map((g) => ({ id: g.id, status: "pass", reason: "", suggested_fix: "" }));
     const checklist = scriptEval.CHECKLIST.map((c) => ({ id: c.id, status: "pass", reason: "" }));
     const sentences = [
-      { sentence_id: 1, role: "hook", score: 80, status: "okay", positives: [], negatives: [], highlighted_phrases: [], edit_suggestion: "x", optional_rewrite: "" },
-      { sentence_id: 99, role: "claim", score: 50, status: "revise", positives: [], negatives: [], highlighted_phrases: [], edit_suggestion: "y", optional_rewrite: "" },
+      { sentence_id: 1, role: "hook", score: 80, status: "okay", edit_suggestion: "x", optional_rewrite: "" },
+      { sentence_id: 99, role: "claim", score: 50, status: "revise", edit_suggestion: "y", optional_rewrite: "" },
     ];
     return JSON.stringify({ summary: "", categories, hard_gates, checklist, sentences, top_strengths: [], top_problems: [], fix_plan: [], next_edit: "" });
   })();
@@ -3704,10 +3877,11 @@ test("evaluate-script: invented sentence ids ignored + omitted ids warned, throu
     await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, { method: "POST", headers: writeHeaders(), body: { id } });
     const ev = superFocus.loadProject(id, { root }).script_evaluation;
     assert.deepEqual(ev.sentences.map((s) => s.sentence_id), [1, 2, 3]);
-    assert.equal(ev.sentences.find((s) => s.sentence_id === 2).status, "unevaluated");
-    assert.equal(ev.sentences.find((s) => s.sentence_id === 3).status, "unevaluated");
+    assert.equal(ev.sentences.find((s) => s.sentence_id === 2).status, "okay");
+    assert.equal(ev.sentences.find((s) => s.sentence_id === 3).status, "okay");
+    assert.equal(ev.sentences.find((s) => s.sentence_id === 2).score, null, "implied okay carries no invented score");
     assert.ok(ev.warnings.some((w) => /invented sentence id 99/.test(w)));
-    assert.ok(ev.warnings.some((w) => /sentence 2 was not evaluated/.test(w)));
+    assert.ok(!ev.warnings.some((w) => /sentence 2/.test(w)), "contract-conform omission is not warned");
   } finally { await close(server); }
 });
 
@@ -3735,6 +3909,10 @@ test("super-focus.html: script-evaluator UI is wired (button, panel, endpoints, 
     assert.match(res.raw, />Evaluate script</);
     assert.match(res.raw, /id="script-eval-panel"/);
     assert.match(res.raw, /id="eval-stale"/);
+    assert.match(res.raw, /className = 'eval-scale-ambiguity'/);
+    assert.match(res.raw, /may have used a 0–10 category scale/i);
+    assert.match(res.raw, /converted to 0–100.*scale is ambiguous/i);
+    assert.match(res.raw, /apparent verdict.*review.*manually/i);
     // Both endpoints referenced from the client.
     assert.match(res.raw, /EVALUATE_SCRIPT_API\s*=\s*'\/api\/super-focus\/evaluate-script'/);
     assert.match(res.raw, /SCRIPT_EVALUATION_API\s*=\s*'\/api\/super-focus\/script-evaluation'/);
@@ -3828,6 +4006,12 @@ test("docs/script-evaluator.md: states advisory-only and no external fact-checki
   assert.match(doc, /no external fact-checking/i);
   assert.match(doc, /no cloud fallback/i);
   assert.match(doc, /super-focus\.html\?focus=script-evaluator/);
+  assert.match(doc, /at most \*\*four wrapper\s+levels\*\*/i);
+  assert.match(doc, /scale_ambiguous: true/);
+  assert.match(doc, /last valid row wins/i);
+  assert.match(doc, /SENTENCE_DATA_BEGIN.*SENTENCE_DATA_END/s);
+  assert.match(doc, /SCRIPT_DATA_BEGIN.*SCRIPT_DATA_END/s);
+  assert.match(doc, /\*\*do not\*\* create a security boundary/i);
 });
 
 // ---- Collapsible steps + script full-height (UI usability slice) ----
