@@ -213,6 +213,148 @@ test("earth-studio lane: cancelRender signals an active render and is a no-op wh
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+// ---- parser hardening (2026-08-03): coordinate separator + period splitting ----
+
+test("earth-studio planner: space-separated numbers are NOT coordinates; , and / are", () => {
+  assert.equal(planner.resolveLocation("Area 51 7"), null); // was lat 51, lng 7
+  assert.ok(planner.resolveLocation("35.65,139.84"));
+  assert.ok(planner.resolveLocation("35.65 , 139.84"));
+  assert.ok(planner.resolveLocation("35.65/139.84"));
+  const labeled = planner.resolveLocation("lat 42.3 lng -71"); // labeled form still covers spaces
+  assert.ok(labeled && labeled.latitude === 42.3 && labeled.longitude === -71);
+});
+
+test("earth-studio planner: periods do not shatter location names or add segments", () => {
+  const plan = planner.buildShotPlan("T", "fly to St. Petersburg in 4 seconds");
+  assert.equal(plan.segments.length, 1); // was 2: "St" + unresolved fragment
+  assert.match(plan.segments[0].location_name, /St\. Petersburg/);
+  // trailing sentence period is trimmed and the segment still resolves
+  const plan2 = planner.buildShotPlan("T", "orbit London for 5 seconds.");
+  assert.equal(plan2.segments.length, 1);
+  assert.equal(plan2.segments[0].resolution_status, "resolved");
+  // chaining via then / commas is unchanged
+  const plan3 = planner.buildShotPlan("T", "fly to 35.65,139.84 in 6 seconds, then orbit Tokyo for 5 seconds");
+  assert.equal(plan3.segments.length, 2);
+  assert.ok(plan3.segments.every((s) => s.resolution_status === "resolved"));
+});
+
+// ---- VIDNAS mount guard (2026-08-03): bounded probe + down-latch ----
+
+test("earth-studio lane: probeMount skips non-/mnt roots without touching fs", async () => {
+  lane.resetMountLatch();
+  let stats = 0;
+  const res = await lane.probeMount("/tmp/anywhere", { stat: () => { stats += 1; return Promise.resolve({ isDirectory: () => true }); } });
+  assert.equal(res.skipped, true);
+  assert.equal(stats, 0);
+});
+
+test("earth-studio lane: probeMount latches a downed mount and fails fast inside the TTL", async () => {
+  lane.resetMountLatch();
+  let stats = 0;
+  const downStat = () => { stats += 1; return Promise.reject(Object.assign(new Error("no device"), { code: "ENODEV" })); };
+  let t = 1000000;
+  const now = () => t;
+  await assert.rejects(() => lane.probeMount("/mnt/es-test", { stat: downStat, now }), /VIDNAS is unreachable/);
+  assert.equal(stats, 1);
+  // inside the TTL: rejected from the latch, stat NOT called again
+  t += 5000;
+  await assert.rejects(() => lane.probeMount("/mnt/es-test", { stat: downStat, now }), /VIDNAS is unreachable/);
+  assert.equal(stats, 1);
+  // after the TTL expires the mount is probed live again and can recover
+  t += lane.MOUNT_DOWN_TTL_MS + 1;
+  const ok = await lane.probeMount("/mnt/es-test", { stat: () => Promise.resolve({ isDirectory: () => true }), now });
+  assert.equal(ok.ok, true);
+  // healthy mount is never latched: an immediate re-probe hits stat again
+  const ok2 = await lane.probeMount("/mnt/es-test", { stat: () => { stats += 1; return Promise.resolve({ isDirectory: () => true }); }, now });
+  assert.equal(ok2.ok, true);
+  assert.equal(stats, 2);
+  lane.resetMountLatch();
+});
+
+test("earth-studio lane: probeMount bounds a hung mount with a timeout and latches", async () => {
+  lane.resetMountLatch();
+  const hungStat = () => new Promise(() => {}); // never settles, like a wedged autofs
+  await assert.rejects(() => lane.probeMount("/mnt/es-test", { stat: hungStat, timeoutMs: 25 }), /VIDNAS is unreachable.*timed out/);
+  await assert.rejects(() => lane.probeMount("/mnt/es-test", { stat: hungStat, timeoutMs: 25 }), /VIDNAS is unreachable/);
+  lane.resetMountLatch();
+});
+
+test("earth-studio API: a downed NAS root returns 503 fast instead of blocking", async () => {
+  const prev = { r: process.env.AIGEN_VIDNAS_ROOT, s: process.env.AIGEN_SCRIPT_PACKAGES };
+  // /mnt path that does not exist: the probe stats it once, fails, and latches.
+  process.env.AIGEN_VIDNAS_ROOT = "/mnt/es-test-nonexistent-aigen";
+  process.env.AIGEN_SCRIPT_PACKAGES = "/mnt/es-test-nonexistent-aigen/script-packages";
+  lane.resetMountLatch();
+  const server = packageEngineServer.createServer();
+  try {
+    await listen(server);
+    const st = await requestJson(server, `${packageEngineServer.EARTH_STUDIO_STATUS_API}?id=some-project`);
+    assert.equal(st.statusCode, 503);
+    assert.match(String(st.body.error || ""), /VIDNAS is unreachable/);
+  } finally {
+    await close(server);
+    lane.resetMountLatch();
+    if (prev.r === undefined) delete process.env.AIGEN_VIDNAS_ROOT; else process.env.AIGEN_VIDNAS_ROOT = prev.r;
+    if (prev.s === undefined) delete process.env.AIGEN_SCRIPT_PACKAGES; else process.env.AIGEN_SCRIPT_PACKAGES = prev.s;
+  }
+});
+
+// ---- stale-frames + frame-count guard (2026-08-03) ----
+
+test("earth-studio lane: frames exported after the plan are not stale; regenerating the plan marks them stale", () => {
+  const { root, pkg } = tmpPackage();
+  // plan generated a minute ago, frames exported now -> fresh
+  lane.writeJob(pkg, { jobName: "J", description: "fly to Paris in 3 seconds" }, { now: new Date(Date.now() - 60000).toISOString() });
+  const framesDir = path.join(lane.laneDir(pkg), "frames");
+  fs.writeFileSync(path.join(framesDir, "Frame_0000.jpeg"), "x");
+  assert.equal(lane.status(pkg, "p").frames_stale, false);
+  // plan regenerated now, frames dir mtime forced into the past -> stale
+  lane.writeJob(pkg, { jobName: "J", description: "fly to Paris in 4 seconds" });
+  const past = new Date(Date.now() - 3600000);
+  fs.utimesSync(framesDir, past, past);
+  const st = lane.status(pkg, "p");
+  assert.equal(st.frames_stale, true);
+  assert.equal(st.frame_count, 1);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("earth-studio lane: startRender warns on frame-count mismatch and stale frames but does not block", () => {
+  const { root, pkg } = tmpPackage();
+  lane.writeJob(pkg, { jobName: "J", description: "fly to Paris in 3 seconds" }); // plan expects 90 frames
+  const framesDir = path.join(lane.laneDir(pkg), "frames");
+  fs.writeFileSync(path.join(framesDir, "Frame_0000.jpeg"), "x");
+  const past = new Date(Date.now() - 3600000);
+  fs.utimesSync(framesDir, past, past); // also stale
+  lane.STATE.activeJob = null;
+  const out = lane.startRender(pkg, "p", { spawn: () => fakeChild() });
+  assert.equal(out.ok, true);
+  assert.equal(out.frame_count, 1);
+  assert.equal(out.frames_expected, 90);
+  assert.match(out.warnings.join("\n"), /differs from the plan/);
+  assert.match(out.warnings.join("\n"), /exported before the current plan/);
+  lane.STATE.activeJob = null;
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("earth-studio lane: cancelRender leaves job state untouched when the kill signal throws", () => {
+  const { root, pkg } = tmpPackage();
+  lane.writeJob(pkg, { jobName: "J", description: "fly to Paris in 3 seconds" });
+  fs.writeFileSync(path.join(lane.laneDir(pkg), "frames", "Frame_0000.jpeg"), "x");
+  lane.STATE.activeJob = null;
+  lane.startRender(pkg, "p", { spawn: () => fakeChild() });
+  assert.throws(() => lane.cancelRender({ kill: () => { throw Object.assign(new Error("no such process"), { code: "ESRCH" }); } }), /no such process/);
+  assert.equal(lane.STATE.activeJob.exitState, "running"); // not stuck on 'cancelled'
+  lane.STATE.activeJob = null;
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("project-earth-studio.html surfaces planned frame count and staleness", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "project-earth-studio.html"), "utf8");
+  assert.match(html, /of \$\{job\.total_frames\} planned/);
+  assert.match(html, /frames_stale/);
+  assert.match(html, /older than the current plan/);
+});
+
 test("project-earth-studio.html wires a Cancel render control to the cancel route, shown only while rendering", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "project-earth-studio.html"), "utf8");
   // Button is rendered only when a render is active.

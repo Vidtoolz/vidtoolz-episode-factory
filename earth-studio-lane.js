@@ -26,6 +26,62 @@ const FRAME_EXTENSIONS = ['jpeg', 'jpg', 'png'];
 
 const STATE = { activeJob: null };
 
+// ── VIDNAS availability guard ───────────────────────────────────────────────
+// Ported from Mission Control's slow-mount down-latch (hermes-mission-control
+// 7f5b0c7 + b827100). This lane lives on the VIDNAS aigen root and the guided
+// page polls status every few seconds; when the autofs mount is down, each
+// sync fs call blocks the event loop for the full mount timeout — enough to
+// wedge the cockpit and trip the healthcheck restart. Callers probe the mount
+// with a time-bounded async stat BEFORE any sync fs work: a failed or
+// timed-out probe latches the mount "down" for MOUNT_DOWN_TTL_MS and every
+// request inside that window fails fast with 503 instead of re-paying the
+// timeout. Only the down state is cached — a healthy mount is probed live on
+// every request — and non-/mnt roots (local checkouts, test tmp dirs) are
+// never probed or latched.
+const SLOW_MOUNT_PREFIX = '/mnt/';
+const MOUNT_DOWN_TTL_MS = 60 * 1000;
+const MOUNT_PROBE_TIMEOUT_MS = 4000;
+const MOUNT_STATE = { downAt: 0, lastError: '' };
+
+function resetMountLatch() { MOUNT_STATE.downAt = 0; MOUNT_STATE.lastError = ''; }
+
+function vidnasUnavailableError(detail) {
+  const e = new Error(`VIDNAS is unreachable (${detail}). The Earth Studio lane lives on the NAS mount — check VIDNAS and retry.`);
+  e.statusCode = 503;
+  return e;
+}
+
+function probeMount(rootPath, options = {}) {
+  const target = String(rootPath || '');
+  if (!target.startsWith(SLOW_MOUNT_PREFIX)) return Promise.resolve({ ok: true, skipped: true });
+  const now = options.now || Date.now;
+  const ttlMs = options.ttlMs || MOUNT_DOWN_TTL_MS;
+  if (MOUNT_STATE.downAt && now() - MOUNT_STATE.downAt < ttlMs) {
+    return Promise.reject(vidnasUnavailableError(MOUNT_STATE.lastError || 'recently unreachable'));
+  }
+  const stat = options.stat || fs.promises.stat;
+  const timeoutMs = options.timeoutMs || MOUNT_PROBE_TIMEOUT_MS;
+  let timer = null;
+  // The timer is deliberately NOT unref'd: when a wedged mount leaves the
+  // stat promise unsettled, the ref'd timer is what guarantees the race
+  // rejects (an unref'd timer can let a draining process exit first).
+  const timeout = new Promise((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`mount probe timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
+  return Promise.race([Promise.resolve().then(() => stat(target)), timeout])
+    .then((st) => {
+      clearTimeout(timer);
+      if (!st || typeof st.isDirectory !== 'function' || !st.isDirectory()) throw new Error('mount root is not a directory');
+      return { ok: true };
+    })
+    .catch((err) => {
+      clearTimeout(timer);
+      MOUNT_STATE.downAt = now();
+      MOUNT_STATE.lastError = (err && (err.code || err.message)) || 'probe failed';
+      throw vidnasUnavailableError(MOUNT_STATE.lastError);
+    });
+}
+
 function tail(str, max) { const s = String(str || ''); return s.length <= max ? s : s.slice(s.length - max); }
 
 function laneDir(packageDir) {
@@ -41,9 +97,10 @@ function writeJob(packageDir, payload = {}, options = {}) {
   fs.mkdirSync(dir, { recursive: true });
   fs.mkdirSync(path.join(dir, 'frames'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'renders'), { recursive: true });
-  const artifacts = planner.buildArtifacts(jobName, description);
+  const createdAt = options.now || new Date().toISOString();
+  const artifacts = planner.buildArtifacts(jobName, description, createdAt);
   Object.entries(artifacts).forEach(([file, content]) => fs.writeFileSync(path.join(dir, file), content));
-  const plan = planner.buildShotPlan(jobName, description);
+  const plan = planner.buildShotPlan(jobName, description, createdAt);
   const meta = {
     jobName,
     slug: planner.slugify(jobName),
@@ -52,7 +109,7 @@ function writeJob(packageDir, payload = {}, options = {}) {
     total_frames: plan.total_frames,
     total_duration_seconds: plan.total_duration_seconds,
     unresolved_count: plan.unresolved_items.length,
-    created_at: options.now || new Date().toISOString(),
+    created_at: createdAt,
   };
   fs.writeFileSync(path.join(dir, 'job.json'), `${JSON.stringify(meta, null, 2)}\n`);
   return {
@@ -90,6 +147,17 @@ function frameGlob(packageDir) {
   return null;
 }
 
+// Frames exported BEFORE the current plan was generated likely belong to an
+// older camera move: regenerating a plan never touches frames/, so the frames
+// dir mtime staying older than job.created_at is the staleness signal (one
+// stat — no per-frame scanning on the NAS mount).
+function framesStale(packageDir, job, frameCount) {
+  if (!frameCount || !job || !job.created_at) return false;
+  try {
+    return fs.statSync(path.join(laneDir(packageDir), 'frames')).mtimeMs < Date.parse(job.created_at);
+  } catch (_) { return false; }
+}
+
 function renderPath(packageDir) {
   const job = readJob(packageDir);
   const slug = (job && job.slug) || 'map-animation';
@@ -125,13 +193,15 @@ function status(packageDir, projectId) {
   const job = readJob(packageDir);
   const out = renderPath(packageDir);
   const rendered = fs.existsSync(out);
+  const frameCount = countFrames(packageDir);
   return {
     ok: true,
     project_id: projectId,
     job,
     has_plan: fs.existsSync(path.join(laneDir(packageDir), 'shot-plan.json')),
     has_esp: fs.existsSync(path.join(laneDir(packageDir), 'earth-studio.esp')),
-    frame_count: countFrames(packageDir),
+    frame_count: frameCount,
+    frames_stale: framesStale(packageDir, job, frameCount),
     frames_dir: path.join(laneDir(packageDir), 'frames'),
     rendered_mp4: rendered ? path.relative(packageDir, out) : null,
     rendered_bytes: rendered ? fs.statSync(out).size : 0,
@@ -148,6 +218,16 @@ function startRender(packageDir, projectId, options = {}) {
   if (!job) { const e = new Error('No Earth Studio job in this project. Generate the plan first.'); e.statusCode = 400; throw e; }
   const frames = frameGlob(packageDir);
   if (!frames) { const e = new Error('No exported frames found in earth-studio/frames/. Export the image sequence from Earth Studio into that folder first.'); e.statusCode = 400; throw e; }
+  // Advisory only — Mikko may legitimately adjust keyframes/length inside
+  // Earth Studio, so a count mismatch or stale export warns but never blocks.
+  const frameCount = countFrames(packageDir);
+  const warnings = [];
+  if (job.total_frames && frameCount !== job.total_frames) {
+    warnings.push(`Exported frame count (${frameCount}) differs from the plan (${job.total_frames} frames) — the render uses exactly what is in frames/.`);
+  }
+  if (framesStale(packageDir, job, frameCount)) {
+    warnings.push('Frames were exported before the current plan was generated — they may belong to an older camera move. Re-export from Earth Studio if unsure.');
+  }
   const out = renderPath(packageDir);
   fs.mkdirSync(path.dirname(out), { recursive: true });
   const fps = (job.frame_rate || 30);
@@ -169,15 +249,18 @@ function startRender(packageDir, projectId, options = {}) {
     child.on('error', (e) => { rec.stderr = tail(rec.stderr + `${e.message}\n`, 8192); rec.exitCode = 1; rec.exitState = 'failed'; rec.completedAt = rec.completedAt || new Date().toISOString(); });
     child.on('close', (code) => { rec.exitCode = code; if (rec.exitState !== 'cancelled') rec.exitState = code === 0 ? 'completed' : 'failed'; rec.completedAt = rec.completedAt || new Date().toISOString(); });
   }
-  return { ok: true, job_id: rec.jobId, project_id: projectId, frame_glob: frames.glob, fps, output: rec.output };
+  return { ok: true, job_id: rec.jobId, project_id: projectId, frame_glob: frames.glob, fps, output: rec.output, frame_count: frameCount, frames_expected: job.total_frames || null, warnings };
 }
 
 function cancelRender(options = {}) {
   const s = currentJobStatus();
   if (!s.active) return { ok: true, signal_sent: 'none (no active render)' };
   const job = STATE.activeJob;
-  job.exitState = 'cancelled';
+  // Signal first, mark second: if kill throws (process already gone), the job
+  // state is left untouched instead of stuck reading 'cancelled'. The 'close'
+  // handler fires on a later tick, so it always sees the cancelled marker.
   (options.kill || ((sig) => job.process && job.process.kill(sig)))('SIGTERM');
+  job.exitState = 'cancelled';
   return { ok: true, job_id: job.jobId, signal_sent: 'SIGTERM' };
 }
 
@@ -197,7 +280,8 @@ function stageToVidnas(packageDir, projectId, options = {}) {
 }
 
 module.exports = {
-  LANE_DIR, VIDNAS_STAGE_DIR, STATE,
-  laneDir, writeJob, readJob, countFrames, frameGlob, renderPath,
+  LANE_DIR, VIDNAS_STAGE_DIR, STATE, MOUNT_DOWN_TTL_MS, MOUNT_PROBE_TIMEOUT_MS,
+  laneDir, writeJob, readJob, countFrames, frameGlob, renderPath, framesStale,
   status, startRender, cancelRender, currentJobStatus, stageToVidnas,
+  probeMount, resetMountLatch,
 };

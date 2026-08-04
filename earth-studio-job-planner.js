@@ -37,9 +37,12 @@
   };
 
   // Parse an explicit coordinate phrase like "42.3555,-71.0565" or "lat 42.3 lng -71".
+  // The bare form requires a , or / separator — a bare space would make phrases
+  // with incidental numbers ("Area 51 7") silently resolve as coordinates; the
+  // labeled lat/lng form still covers space-separated input.
   function parseExplicitCoords(value) {
     const text = cleanString(value);
-    let m = text.match(/(-?\d{1,2}(?:\.\d+)?)\s*[,/ ]\s*(-?\d{1,3}(?:\.\d+)?)/);
+    let m = text.match(/(-?\d{1,2}(?:\.\d+)?)\s*[,/]\s*(-?\d{1,3}(?:\.\d+)?)/);
     const latLngLabel = text.match(/lat(?:itude)?\s*(-?\d{1,2}(?:\.\d+)?).*?l(?:ng|on|ongitude)?\s*(-?\d{1,3}(?:\.\d+)?)/i);
     if (latLngLabel) m = latLngLabel;
     if (!m) return null;
@@ -78,16 +81,19 @@
   }
 
   function splitSegments(description) {
-    // Protect "lat,lng" pairs and decimals so the , / . segment splitter does not
-    // shatter explicit coordinates like "35.65,139.84".
+    // Protect "lat,lng" pairs and decimals so the comma segment splitter does
+    // not shatter explicit coordinates like "35.65,139.84". Periods are NOT
+    // segment separators — they would shatter names like "St. Petersburg";
+    // segments chain on "then", commas, semicolons, or newlines, and stray
+    // sentence periods are trimmed from the segment edges.
     const DOT = "\u0001";
     const COMMA = "\u0002";
     const protectedText = cleanString(description)
       .replace(/-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?/g, (m) => m.replace(/\./g, DOT).replace(/,/g, COMMA))
       .replace(/\d+\.\d+/g, (m) => m.replace(/\./g, DOT));
     return protectedText
-      .split(/\bthen\b|[,.;\n]/i)
-      .map((part) => part.split(COMMA).join(",").split(DOT).join(".").trim())
+      .split(/\bthen\b|[,;\n]/i)
+      .map((part) => part.split(COMMA).join(",").split(DOT).join(".").replace(/^[\s.]+|[\s.]+$/g, ""))
       .filter(Boolean);
   }
 

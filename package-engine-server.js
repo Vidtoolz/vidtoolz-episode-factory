@@ -15994,12 +15994,18 @@ function createServer(options = {}) {
     }
 
     // ── Earth Studio map-animation lane (project-scoped, revived 2026-07-02) ──
+    // The lane lives on the VIDNAS aigen root: every NAS-touching handler runs
+    // earthStudioLane.probeMount() (bounded async stat + down-latch) BEFORE any
+    // sync fs work, so a downed autofs mount returns 503 fast instead of
+    // blocking the event loop per request (2026-08-03 cockpit-wedge class).
     if (req.method === 'GET' && url.pathname === EARTH_STUDIO_STATUS_API) {
-      try {
-        const id = url.searchParams.get('id') || url.searchParams.get('package_id') || url.searchParams.get('package') || '';
-        const { packageId, packageDir } = resolveAigenPackageDir(id, { root: serverOptions.root || ROOT });
-        sendJSON(res, 200, earthStudioLane.status(packageDir, packageId));
-      } catch (error) { sendError(res, error.statusCode || 500, error.message, 'earth-studio-status-error'); }
+      const id = url.searchParams.get('id') || url.searchParams.get('package_id') || url.searchParams.get('package') || '';
+      earthStudioLane.probeMount(aigenPaths({ root: serverOptions.root || ROOT }).scriptPackages)
+        .then(() => {
+          const { packageId, packageDir } = resolveAigenPackageDir(id, { root: serverOptions.root || ROOT });
+          sendJSON(res, 200, earthStudioLane.status(packageDir, packageId));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'earth-studio-status-error'));
       return;
     }
 
@@ -16013,6 +16019,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Earth Studio plan API' });
+          return earthStudioLane.probeMount(aigenPaths({ root: serverOptions.root || ROOT }).scriptPackages).then(() => payload);
+        })
+        .then((payload) => {
           const { packageId, packageDir } = resolveAigenPackageDir(payload.id || payload.package_id || '', { root: serverOptions.root || ROOT });
           sendJSON(res, 200, { project_id: packageId, ...earthStudioLane.writeJob(packageDir, payload) });
         })
@@ -16024,6 +16033,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Earth Studio render API' });
+          return earthStudioLane.probeMount(aigenPaths({ root: serverOptions.root || ROOT }).scriptPackages).then(() => payload);
+        })
+        .then((payload) => {
           const { packageId, packageDir } = resolveAigenPackageDir(payload.id || payload.package_id || '', { root: serverOptions.root || ROOT });
           sendJSON(res, 200, earthStudioLane.startRender(packageDir, packageId, serverOptions.earthStudio || {}));
         })
@@ -16045,6 +16057,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Earth Studio stage API' });
+          return earthStudioLane.probeMount(aigenPaths({ root: serverOptions.root || ROOT }).scriptPackages).then(() => payload);
+        })
+        .then((payload) => {
           const { packageId, packageDir } = resolveAigenPackageDir(payload.id || payload.package_id || '', { root: serverOptions.root || ROOT });
           sendJSON(res, 200, earthStudioLane.stageToVidnas(packageDir, packageId, serverOptions.earthStudio || {}));
         })

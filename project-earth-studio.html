@@ -133,9 +133,10 @@
             <div class="step-head">3 · Export frames into the project ${stepBadge(hasFrames,false)}</div>
             <div class="meta" style="margin:6px 0;">In Earth Studio: Render → image sequence, and save the frames into this folder (reachable from any machine via VIDNAS):</div>
             ${framesDir?`<div>${cbtn(framesDir,'frames folder (Linux)')}${cbtn('\\\\\\\\192.168.61.186\\\\Public\\\\VIDTOOLZ\\\\03_SHARED_MEDIA_LIBRARY\\\\aigen\\\\script-packages\\\\'+ID+'\\\\earth-studio\\\\frames','frames folder (Windows UNC)')}</div>`:''}
-            <div class="meta" style="margin-top:6px;">Exported frames detected: <b id="es-frame-count" class="${hasFrames?'ok':''}">${s.frame_count||0}</b>
+            <div class="meta" style="margin-top:6px;">Exported frames detected: <b id="es-frame-count" class="${hasFrames?'ok':''}">${s.frame_count||0}</b>${job&&job.total_frames?` <span class="meta">of ${job.total_frames} planned</span>`:''}
               <button type="button" class="btn" id="es-refresh">Refresh</button>
               ${!hasFrames&&s.has_plan?'<span class="meta">(auto-checking every few seconds…)</span>':''}</div>
+            ${s.frames_stale?'<div class="warn" style="font-size:12px;margin-top:6px;">⚠ These frames are older than the current plan — they may belong to a previous camera move. Re-export from Earth Studio (or keep them knowingly).</div>':''}
           </div>
 
           <div class="step ${rendered?'done':''} ${active===4?'active':''}">
@@ -182,7 +183,11 @@
         }catch(e){ st.textContent='Failed: '+(e.message||e); toast('Generate failed', false); }
       }
       async function startRender(){
-        try{ await post('/api/earth-studio/render', { id: ID }); toast('Render started'); await refresh(); }
+        try{
+          const r = await post('/api/earth-studio/render', { id: ID }); toast('Render started');
+          await refresh(); // rebuilds the step DOM — write warnings into the fresh log element after it
+          if (r.warnings && r.warnings.length){ const log=document.getElementById('es-log'); if(log){log.style.display='block';log.textContent='⚠ '+r.warnings.join('\n⚠ ');} }
+        }
         catch(e){ toast('Render failed: '+(e.message||e), false); const log=document.getElementById('es-log'); if(log){log.style.display='block';log.textContent=e.message||e;} }
       }
       async function cancelRender(){
