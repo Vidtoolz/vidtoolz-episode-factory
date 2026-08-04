@@ -1,5 +1,8 @@
 {
   "scripts": {
     "test": "node tests/run-tests.js"
+  },
+  "devDependencies": {
+    "hyperframes": "0.7.65"
   }
 }
