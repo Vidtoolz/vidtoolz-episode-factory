@@ -72,8 +72,12 @@ function brokenFakeFetch() {
 
 async function projectServer(fetchImpl, { script = SCRIPT } = {}) {
   const root = mkRoot();
+  // Local tmp media root: the VIDNAS mount guard skips non-/mnt roots, so the
+  // guarded media routes (e.g. image-prompt) are not 503-gated when the NAS is
+  // unmounted (CI). Keeps these tests independent of the real mount.
   const server = packageEngineServer.createServer(fetchImpl
-    ? { superFocusRoot: root, fetchImpl } : { superFocusRoot: root });
+    ? { superFocusRoot: root, superFocusMediaRoot: mkRoot(), fetchImpl }
+    : { superFocusRoot: root, superFocusMediaRoot: mkRoot() });
   await listen(server);
   const created = superFocus.createProject({ title: 'VP Test' }, { root });
   if (script != null) superFocus.saveScript(created.project_id, script, { root });

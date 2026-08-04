@@ -327,7 +327,12 @@ test("super-focus model: create/list/load are isolated per root and stage-infer"
 
 async function makeProjectServer(fetchImpl, { title, script, serverOptions } = {}) {
   const root = mkRoot();
-  const baseOptions = { superFocusRoot: root };
+  // Isolate the media root to a local tmp dir. Leaving it at the real VIDNAS
+  // /mnt default makes every media-route test depend on the NAS being mounted
+  // (fine on vidnux, 503 from the mount guard in CI where there is no mount).
+  // A local root is skipped by the mount probe, so these tests exercise their
+  // handlers. serverOptions can still override for tests that want a /mnt root.
+  const baseOptions = { superFocusRoot: root, superFocusMediaRoot: mkRoot() };
   if (fetchImpl) {
     baseOptions.fetchImpl = fetchImpl;
     baseOptions.localOllamaProbe = async () => ({ reachable: true, model_ready: true });
@@ -1247,7 +1252,13 @@ async function projectWithImagePrompts(fetchImpl, texts) {
   const created = superFocus.createProject({ title: "I2V" }, { root });
   superFocus.saveScript(created.project_id, "a grounded script about local pipelines", { root });
   superFocus.saveImagePrompts(created.project_id, texts || ["a dim studio desk", "flowing light ribbons"], { root });
-  const server = packageEngineServer.createServer(fetchImpl ? { superFocusRoot: root, fetchImpl } : { superFocusRoot: root });
+  // Local tmp media root so the VIDNAS mount guard (skips non-/mnt roots) does
+  // not 503 these media-route tests when the NAS is unmounted (e.g. in CI).
+  const mediaRoot = mkRoot();
+  const server = packageEngineServer.createServer(
+    fetchImpl
+      ? { superFocusRoot: root, superFocusMediaRoot: mediaRoot, fetchImpl }
+      : { superFocusRoot: root, superFocusMediaRoot: mediaRoot });
   await listen(server);
   return { root, server, id: created.project_id };
 }
