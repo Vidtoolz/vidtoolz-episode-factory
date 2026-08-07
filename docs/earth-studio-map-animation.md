@@ -55,6 +55,53 @@ type. Then **Generate plan + .esp**, **Open Earth Studio**, **Render frames → 
 Runs locally on vidnux; uses system `ffmpeg`. Does not log into Google, automate the Earth Studio
 browser, advance package-run state, or write approved media. PRESTO is not contacted.
 
+## Verification states — internal green is NOT external proof
+Everything above proves the tool against **our own model** of Earth Studio. The `.esp` format and
+camera semantics (rotationX = tilt-from-nadir, rotationY = heading, altitude in meters,
+counterclockwise = pan decreasing) are best-effort assumptions until real Earth Studio validates
+them. `scripts/earth-studio-v04-acceptance.js` formalizes this as a state machine:
+
+- **INTERNAL_VERIFIED** — parser/generator/renderer tests pass and the pre-import semantic
+  assertions pass (29 checks: 9:16 dimensions, real Helsinki→Paris distance, cinematic arc,
+  spatial orbit at the intended radius with target-facing heading, −720° accumulated pan,
+  eased anchored zoom, continuity). Earth Studio has seen nothing.
+- **EARTH_STUDIO_IMPORT_VERIFIED** — the real browser import happened and the structured human
+  observation record (`acceptance/import-observation.json`) accepts flight, orbit (direction,
+  target-facing, 2 revolutions), zoom, tilt, and 9:16. Real frames/render may still be pending.
+- **END_TO_END_VERIFIED** — plus a validated real Earth Studio frame export rendered to MP4
+  through the production lane path, ffprobe-checked, with every artifact SHA-256-pinned in
+  `acceptance/hashes.sha256`.
+
+Failure states: `INTERNAL_CHECKS_FAILED`, `IMPORT_DISCREPANCY_REPORTED` (observed Earth Studio
+behavior wins — diagnose narrowly, add a regression test, fix, regenerate a NEW proof round;
+never edit evidence in place).
+
+## v0.4 acceptance procedure
+Canonical fixture: `package-runs/2026-08-07-earth-studio-v04-acceptance/` — instruction
+`fly to Helsinki in 3 seconds, then fly to Paris at 2 km tilted 35 degrees, then orbit twice
+counterclockwise for 8 seconds, then zoom out to space in 6 seconds`, 9:16, 660 frames @ 30 fps.
+
+```bash
+node scripts/earth-studio-v04-acceptance.js generate   # (already committed)
+node scripts/earth-studio-v04-acceptance.js check      # 29 pre-import assertions
+# … the ONE manual step: acceptance/import-checklist.md (real Earth Studio) …
+node scripts/earth-studio-v04-acceptance.js ingest-observation
+node scripts/earth-studio-v04-acceptance.js validate-frames
+node scripts/earth-studio-v04-acceptance.js render     # production lane path + ffprobe
+node scripts/earth-studio-v04-acceptance.js hash
+node scripts/earth-studio-v04-acceptance.js status     # writes acceptance-report.md
+```
+
+Frame exports (`earth-studio/frames/`) and the rendered MP4 stay untracked (`.gitignore`);
+`acceptance/hashes.sha256` pins their integrity.
+
+## Historical London fixture
+`package-runs/2026-06-27-london-proof/` predates the v0.4 camera engine, records the **earlier**
+generator's output, and must stay byte-identical (sha256
+`33eab695b82e60fefd6d52aa8c06ddcd630aa92c3d10a9aba9a0433eed9d58d6`, regression-tested). It is NOT
+evidence that the rewritten v0.4 engine has been accepted by Earth Studio; the acceptance tool
+hard-refuses to operate on it.
+
 > Revived 2026-07-02 from branch `earth-studio-map-lane` and retargeted to the projects lane: artifacts now live in the aigen script-package (`<package>/earth-studio/`), the GUI project picker defaults to the active project, and shot-plan validation is generic (no fixture-specific coordinate checks).
 
 > v0.4 (2026-08-07): vibe grammar (location carry-over, per-action default durations, altitude/tilt/orbit modifiers), ~150-place gazetteer with aliases and terrain floors, cinematic keyframe engine (real orbits, eased zooms, flight arcs, cumulative pan — fixes the orbit-after-orbit and first-segment-zoom static bugs), aspect ratios incl. 9:16 Shorts, GUI presets + place search + ground-track map, CLI `--aspect`. Old shot plans without an `aspect` field still validate; the module default stays 16:9 so pre-v0.4 artifacts (incl. the pinned London proof) are unaffected.
