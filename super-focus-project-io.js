@@ -188,20 +188,160 @@
     loaded_empty: 'No archived projects.'
   };
 
+  // ── Project health decoration (read-only summary) ─────────────────────────
+  // Compact, honest per-row health surfaced from the aggregate health endpoint.
+  // Every value goes through textContent (no markup). Rendering NEVER dispatches
+  // a mutation — it only reads a health object already fetched read-only. Status
+  // is carried by TEXT (health_label + labelled facts), never colour alone.
+
+  // Human labels for the fact keys shown in the expandable details panel. Order
+  // matters: this is the disclosure order.
+  var HEALTH_FACT_ROWS = [
+    ['stage_label', 'Stage'],
+    ['image_prompt_count', 'Image prompts'],
+    ['i2v_prompt_count', 'Motion prompts'],
+    ['image_count', 'Images on disk'],
+    ['video_count', 'Videos on disk'],
+    ['stale_image_count', 'Stale images'],
+    ['stale_video_count', 'Stale videos'],
+    ['failed_video_count', 'Failed / interrupted videos'],
+    ['unknown_provenance_video_count', 'Clips of unknown provenance'],
+    ['queue_state', 'Video queue']
+  ];
+
+  // Value formatter: null/undefined → "unknown" (never fabricated as 0). This is
+  // the UI half of the truthfulness contract — a count we could not read is
+  // shown as unknown, not zero.
+  function healthFactValue(facts, key) {
+    if (key === 'stage_label') return facts && facts.stage_label ? facts.stage_label : '—';
+    if (key === 'queue_state') {
+      var q = facts && facts.queue_state;
+      if (!q || q === 'unknown') return 'unknown';
+      return q === 'none' ? 'idle' : q;
+    }
+    var v = facts ? facts[key] : null;
+    if (v == null) return 'unknown';
+    return String(v);
+  }
+
+  // Attach the compact summary line + an accessible, collapsible details panel
+  // to one already-built row. `left` gets the one-liner; the row gets a separate
+  // health block (as its own child so lifecycle action buttons are untouched).
+  function attachHealthToRow(doc, li, left, health) {
+    if (!health) return;
+    var summary = doc.createElement('div');
+    summary.className = 'sf-health-summary';
+    summary.setAttribute('data-health-state', health.health_state || '');
+    var badge = doc.createElement('span');
+    badge.className = 'sf-health-badge';
+    badge.textContent = health.health_label || '';
+    var line = doc.createElement('span');
+    line.className = 'sf-health-line';
+    line.textContent = health.summary_line ? (' ' + health.summary_line) : '';
+    summary.appendChild(badge); summary.appendChild(line);
+    left.appendChild(summary);
+
+    var next = doc.createElement('div');
+    next.className = 'sf-health-next';
+    next.textContent = 'Next: ' + (health.next_safe_action || '');
+    left.appendChild(next);
+
+    // Details: readable rows only (an unreadable row carries no facts).
+    if (!health.facts) return;
+    var block = doc.createElement('div');
+    block.className = 'sf-health-block';
+    var toggle = doc.createElement('button');
+    toggle.className = 'btn sf-health-toggle';
+    toggle.setAttribute('type', 'button');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.textContent = 'Details';
+    var panel = doc.createElement('div');
+    panel.className = 'sf-health-details';
+    panel.classList.add('hidden');
+    HEALTH_FACT_ROWS.forEach(function (row) {
+      var r = doc.createElement('div');
+      r.className = 'sf-health-detail-row';
+      var k = doc.createElement('span'); k.className = 'sf-health-detail-key'; k.textContent = row[1] + ': ';
+      var val = doc.createElement('span'); val.className = 'sf-health-detail-val'; val.textContent = healthFactValue(health.facts, row[0]);
+      r.appendChild(k); r.appendChild(val);
+      panel.appendChild(r);
+    });
+    if (!health.facts.media_available) {
+      var note = doc.createElement('div');
+      note.className = 'sf-health-detail-note';
+      note.textContent = 'Media evidence unavailable — open the project for per-asset status.';
+      panel.appendChild(note);
+    }
+    toggle.addEventListener('click', function () {
+      var open = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+      panel.classList.toggle('hidden', open);
+    });
+    block.appendChild(toggle); block.appendChild(panel);
+    // Appended inside `left` (not the row) so the flex row stays [left, actions]
+    // — lifecycle buttons and their positions are untouched.
+    left.appendChild(block);
+  }
+
+  // An unreadable/corrupt project row: surfaced with a clear recovery message,
+  // never silently omitted, never auto-repaired. Only safe recovery actions are
+  // offered (Delete, and Restore when archived) — no Open (it cannot be read).
+  function renderUnreadableRow(doc, listEl, entry, mode, handlers) {
+    var h = handlers || {};
+    var pid = entry.project_id;
+    var summary = { project_id: pid, title: '' };
+    var li = doc.createElement('li');
+    li.className = 'sf-health-unreadable';
+    var left = doc.createElement('div');
+    var title = doc.createElement('div');
+    title.textContent = pid;
+    title.style.fontWeight = '600';
+    var meta = doc.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = entry.summary_line || 'Project state could not be read. Recovery inspection required.';
+    left.appendChild(title); left.appendChild(meta);
+    var next = doc.createElement('div');
+    next.className = 'sf-health-next';
+    next.textContent = 'Next: ' + (entry.next_safe_action || '');
+    left.appendChild(next);
+    var actions = doc.createElement('div');
+    actions.className = 'proj-actions';
+    function actionBtn(label, cls, fn) {
+      var b = doc.createElement('button');
+      b.className = cls; b.textContent = label;
+      b.addEventListener('click', function () { if (fn) fn(pid, summary); });
+      actions.appendChild(b);
+    }
+    if (mode === 'archived') actionBtn('Restore', 'btn', h.onRestore);
+    actionBtn('Delete', 'btn danger', h.onDelete);
+    li.appendChild(left); li.appendChild(actions);
+    listEl.appendChild(li);
+  }
+
   // Build one project row with Open + lifecycle actions. The immutable
   // project_id is captured per row (closures act on the exact id, never a
   // shared mutable variable), so duplicate display titles stay unambiguous.
   // handlers: { onOpen, onArchive, onDelete } (normal) / { onOpen, onRestore,
   // onDelete } (archived) — each receives (project_id, projectSummary).
-  function renderLifecycleRows(doc, listEl, projects, mode, handlers) {
+  // healthList (optional): the aggregate health entries for THIS mode. Readable
+  // entries decorate their matching row (by project_id); unreadable entries not
+  // present in `projects` are appended as recovery rows (corrupt projects are
+  // never dropped).
+  function renderLifecycleRows(doc, listEl, projects, mode, handlers, healthList) {
     if (!listEl) return { rendered: 0, skipped: 0 };
     listEl.innerHTML = '';
     var archived = mode === 'archived';
     var h = handlers || {};
+    var healthById = {};
+    (Array.isArray(healthList) ? healthList : []).forEach(function (e) {
+      if (e && typeof e.project_id === 'string') healthById[e.project_id] = e;
+    });
+    var seen = {};
     var rendered = 0, skipped = 0;
     (projects || []).forEach(function (p) {
       if (!isValidProject(p)) { skipped += 1; return; }
       var pid = p.project_id;                       // immutable id for this row's closures
+      seen[pid] = true;
       var li = doc.createElement('li');
       var left = doc.createElement('div');
       var title = doc.createElement('div');
@@ -226,20 +366,41 @@
       else actionBtn('Archive', 'btn', h.onArchive);
       actionBtn('Delete', 'btn danger', h.onDelete);
       li.appendChild(left); li.appendChild(actions);
+      // Decorate with health only if a readable entry exists for this project.
+      var hEntry = healthById[pid];
+      if (hEntry && hEntry.readable !== false) attachHealthToRow(doc, li, left, hEntry);
       listEl.appendChild(li);
       rendered += 1;
     });
-    return { rendered: rendered, skipped: skipped };
+    // Append corrupt/unreadable projects that never made it into `projects`.
+    var unreadable = 0;
+    Object.keys(healthById).forEach(function (pid) {
+      var e = healthById[pid];
+      if (e && e.readable === false && !seen[pid]) { renderUnreadableRow(doc, listEl, e, mode, h); unreadable += 1; }
+    });
+    return { rendered: rendered, skipped: skipped, unreadable: unreadable };
   }
 
   // Apply one list state to the picker DOM for the given mode (normal vs
-  // archived wording differs; behaviour is identical).
-  function applyPickerState(doc, els, state, projects, mode, handlers) {
+  // archived wording differs; behaviour is identical). healthList (optional):
+  // the aggregate health entries for this mode, used to decorate rows and to
+  // surface corrupt projects. When a mode has ONLY unreadable projects, the
+  // list is still populated with recovery rows even though `state` is empty.
+  function applyPickerState(doc, els, state, projects, mode, handlers, healthList) {
     els = els || {};
-    if (state === 'loaded_nonempty') {
-      renderLifecycleRows(doc, els.listEl, projects, mode, handlers);
+    var unreadableHere = (Array.isArray(healthList) ? healthList : [])
+      .filter(function (e) { return e && e.readable === false; }).length;
+    if (state === 'loaded_nonempty' || unreadableHere > 0) {
+      renderLifecycleRows(doc, els.listEl, projects, mode, handlers, healthList);
     } else if (els.listEl) {
       els.listEl.innerHTML = '';
+    }
+    // A mode that is "empty" only because its sole projects are corrupt must not
+    // show the reassuring "no projects" line — the recovery rows are the truth.
+    if (state !== 'loaded_nonempty' && unreadableHere > 0) {
+      var el0 = els.emptyEl;
+      if (el0) { el0.setAttribute('data-state', state); el0.classList.add('hidden'); el0.textContent = ''; }
+      return;
     }
     var el = els.emptyEl;
     if (!el) return;
@@ -256,7 +417,11 @@
   // project appears in exactly one list). A superseded response is dropped
   // whole: it can neither repaint the visible list nor update the count.
   // deps: apiGet, unwrap, projectsApi, archivedProjectsApi,
-  //       onRender(mode, state, projects, archivedCount)
+  //       healthApi (optional), onRender(mode, state, projects, archivedCount, healthList)
+  // When healthApi is set, refresh() also fetches the read-only aggregate health
+  // ({ active, archived }) in the SAME snapshot and passes the current mode's
+  // entries as healthList. Health is best-effort: a failed/absent health fetch
+  // degrades to null (rows render without summaries) and never blocks the lists.
   function makePickerController(deps) {
     var seq = 0;
     var mode = 'active';
@@ -266,17 +431,29 @@
         .then(function (res) { return resolveListOutcome(res, deps.unwrap); })
         .catch(function () { return { state: 'error' }; });
     }
+    function fetchHealth() {
+      if (!deps.healthApi) return Promise.resolve(null);
+      return Promise.resolve()
+        .then(function () { return deps.apiGet(deps.healthApi); })
+        .then(function (res) {
+          if (!res || !res.ok) return null;
+          var body = deps.unwrap ? deps.unwrap(res.body) : res.body;
+          return body && typeof body === 'object' ? body : null;
+        })
+        .catch(function () { return null; });
+    }
     function refresh() {
       var mySeq = ++seq;
       var myMode = mode;
-      if (deps.onRender) deps.onRender(myMode, 'loading', null, null);
-      return Promise.all([fetchList(deps.projectsApi), fetchList(deps.archivedProjectsApi)])
+      if (deps.onRender) deps.onRender(myMode, 'loading', null, null, null);
+      return Promise.all([fetchList(deps.projectsApi), fetchList(deps.archivedProjectsApi), fetchHealth()])
         .then(function (outcomes) {
           if (mySeq !== seq) return;                 // superseded — drop whole snapshot
-          var active = outcomes[0], archived = outcomes[1];
+          var active = outcomes[0], archived = outcomes[1], health = outcomes[2];
           var archivedCount = archived.state === 'error' ? null : (archived.projects || []).length;
           var visible = (mode === 'archived') ? archived : active;
-          if (deps.onRender) deps.onRender(mode, visible.state, visible.projects || null, archivedCount);
+          var healthList = health ? (mode === 'archived' ? health.archived : health.active) : null;
+          if (deps.onRender) deps.onRender(mode, visible.state, visible.projects || null, archivedCount, healthList || null);
         });
     }
     function setMode(next) {
@@ -426,6 +603,10 @@
     renderLifecycleRows: renderLifecycleRows,
     applyPickerState: applyPickerState,
     makePickerController: makePickerController,
-    makeLifecycleConfirmController: makeLifecycleConfirmController
+    makeLifecycleConfirmController: makeLifecycleConfirmController,
+    attachHealthToRow: attachHealthToRow,
+    renderUnreadableRow: renderUnreadableRow,
+    healthFactValue: healthFactValue,
+    HEALTH_FACT_ROWS: HEALTH_FACT_ROWS
   };
 });
