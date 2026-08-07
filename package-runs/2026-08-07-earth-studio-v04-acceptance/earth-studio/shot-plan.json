@@ -1,8 +1,8 @@
 {
   "job_name": "v0.4 Real Import Paris",
-  "version": "0.6.0",
-  "generated_at": "2026-08-07T11:13:09.593Z",
-  "source_description": "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 24 seconds, then zoom out to space in 12 seconds",
+  "version": "0.6.1",
+  "generated_at": "2026-08-07T12:18:45.179Z",
+  "source_description": "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 36 seconds, then zoom out to space in 12 seconds",
   "parser_strategy": "offline_regex_with_manual_review_fallback",
   "frame_rate": 30,
   "frame_convention": {
@@ -14,8 +14,8 @@
     "width": 1080,
     "height": 1920
   },
-  "total_duration_seconds": 59,
-  "total_frames": 1770,
+  "total_duration_seconds": 71,
+  "total_frames": 2130,
   "locations": [
     {
       "name": "Helsinki",
@@ -85,7 +85,7 @@
     },
     {
       "segment_id": 3,
-      "source_text": "orbit twice counterclockwise for 24 seconds",
+      "source_text": "orbit twice counterclockwise for 36 seconds",
       "action": "orbit",
       "requested_action": "orbit",
       "location_name": "Paris",
@@ -101,10 +101,10 @@
       "tilt_source": "action_default",
       "duration_source": "explicit",
       "start_seconds": 23,
-      "end_seconds": 47,
-      "duration_seconds": 24,
+      "end_seconds": 59,
+      "duration_seconds": 36,
       "start_frame": 690,
-      "end_frame": 1410,
+      "end_frame": 1770,
       "resolution_status": "resolved",
       "warnings": [],
       "notes": [
@@ -130,11 +130,11 @@
       "tilt_deg": 35,
       "tilt_source": "action_default",
       "duration_source": "explicit",
-      "start_seconds": 47,
-      "end_seconds": 59,
+      "start_seconds": 59,
+      "end_seconds": 71,
       "duration_seconds": 12,
-      "start_frame": 1410,
-      "end_frame": 1770,
+      "start_frame": 1770,
+      "end_frame": 2130,
       "resolution_status": "resolved",
       "warnings": [],
       "notes": [

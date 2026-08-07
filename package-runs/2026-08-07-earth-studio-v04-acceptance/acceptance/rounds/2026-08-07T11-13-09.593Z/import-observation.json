@@ -1,0 +1,12 @@
+{
+  "observedAt": "2026-08-07T15:40:00+03:00",
+  "observer": "Mikko",
+  "importSucceeded": true,
+  "earthStudioWarnings": [],
+  "flight": { "correct": true, "notes": "played well (Mikko); Helsinki→Paris arc acceptable at 18s" },
+  "orbit": { "correct": true, "directionCorrect": null, "targetFacing": true, "revolutionsObserved": 2, "notes": "went around Paris twice, target centered — but 'the speed in the orbit was too fast when compared to how close the camera was' (12s/rev at ~4.3 km radius). Geometry correct; proximity-relative pacing too fast → v0.6.1 fix. On-screen direction not yet reported." },
+  "zoom": { "correct": true, "notes": "played well overall (Mikko), no complaint on the pull-out" },
+  "tilt": { "correct": true, "notes": "camera visibly tilted/oblique in the render-dialog preview screenshot; exact angle not measured" },
+  "aspectRatio": { "correct": true, "notes": "confirmed 1080x1920 in the ES render dialog + vertical preview + measured frame dimensions" },
+  "rawNotes": "Mikko round 3: 'yes it played well, orbit went around Paris twice but the speed in the orbit fast too fast when compared to how close the camera was.' Import + playback + duration honored; remaining open question: perceived orbit direction (engine ccw = pan decreasing). Pacing feedback → orbit default duration must scale with proximity (tilt-derived radius)."
+}

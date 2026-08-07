@@ -1,15 +1,15 @@
 {
   "proof_id": "2026-08-07-earth-studio-v04-acceptance",
-  "planner_version": "0.6.1",
-  "instruction": "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 36 seconds, then zoom out to space in 12 seconds",
+  "planner_version": "0.6.0",
+  "instruction": "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 24 seconds, then zoom out to space in 12 seconds",
   "aspect": "9:16",
   "render_dimensions": {
     "width": 1080,
     "height": 1920
   },
   "frame_rate": 30,
-  "total_frames": 2130,
-  "total_duration_seconds": 71,
+  "total_frames": 1770,
+  "total_duration_seconds": 59,
   "keyframe_totals": {
     "lng": 27,
     "lat": 28,
@@ -117,14 +117,14 @@
     {
       "segment_id": 3,
       "action": "orbit",
-      "source_text": "orbit twice counterclockwise for 36 seconds",
+      "source_text": "orbit twice counterclockwise for 24 seconds",
       "location": {
         "name": "Paris",
         "latitude": 48.8566,
         "longitude": 2.3522,
         "source": "carried_over"
       },
-      "duration_seconds": 36,
+      "duration_seconds": 24,
       "duration_source": "explicit",
       "altitude_m": 2500,
       "altitude_source": "action_default",
@@ -134,7 +134,7 @@
       "orbit_direction": -1,
       "window": {
         "start_frame": 690,
-        "end_frame": 1770
+        "end_frame": 1410
       },
       "start_state": {
         "frame": 690,
@@ -145,7 +145,7 @@
         "tilt_deg": 35
       },
       "end_state": {
-        "frame": 1770,
+        "frame": 1410,
         "latitude": 48.817702,
         "longitude": 2.3522,
         "altitude_m": 2500,
@@ -183,11 +183,11 @@
       "orbit_degrees": null,
       "orbit_direction": null,
       "window": {
-        "start_frame": 1770,
-        "end_frame": 2130
+        "start_frame": 1410,
+        "end_frame": 1770
       },
       "start_state": {
-        "frame": 1770,
+        "frame": 1410,
         "latitude": 48.817702,
         "longitude": 2.3522,
         "altitude_m": 2500,
@@ -195,7 +195,7 @@
         "tilt_deg": 60
       },
       "end_state": {
-        "frame": 2130,
+        "frame": 1770,
         "latitude": 48.8566,
         "longitude": 2.3522,
         "altitude_m": 12000000,

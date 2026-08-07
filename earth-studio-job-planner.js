@@ -2,7 +2,7 @@
   "use strict";
 
   const DEFAULT_OUTPUT_DIR = "/home/vidtoolz/Videos/vidtoolz-earth-studio-jobs";
-  const VERSION = "0.6.0"; // v0.6: magnitude-aware pacing (real ES playback of round 2 was "too fast to be intelligible") — default durations scale with flight distance / orbit revolutions / zoom ratio, advisory pacing notes on absurd explicit durations; v0.5 real .esp format retained
+  const VERSION = "0.6.1"; // v0.6.1: proximity-aware orbit pacing (round-3 real playback: geometry right, orbit "too fast compared to how close the camera was") — s/rev stretches by tan(tilt), advisory threshold relative to the tilt-suggested rate
   const FRAME_RATE = 30;
   const DEFAULT_ALTITUDE_M = 2500;
   const MIN_ALTITUDE_M = 150;
@@ -483,13 +483,24 @@
 
   // Duration a move NEEDS to read on screen, scaled by its magnitude:
   // flights by ground distance (~150 km/s cruise over a 4 s base, capped),
-  // orbits by revolutions, zooms by the altitude ratio (log scale).
-  function defaultDuration(action, { distanceM = null, orbitDegrees = 360, fromAltitudeM = DEFAULT_ALTITUDE_M, toAltitudeM = DEFAULT_ALTITUDE_M } = {}) {
+  // orbits by revolutions AND camera proximity, zooms by the altitude ratio
+  // (log scale). The proximity term comes from real Earth Studio playback
+  // (acceptance round 3): a tilted orbit puts the camera only alt·tan(tilt)
+  // from the target, and at close radius the ground rushes past — the same
+  // angular rate that reads calm top-down was "too fast compared to how
+  // close the camera was". Perceived ground speed grows ~tan(tilt), so the
+  // per-revolution time stretches by that factor (capped at 30 s/rev).
+  function orbitSecondsPerRevolution(tiltDeg) {
+    const tilt = Math.min(Math.max(typeof tiltDeg === "number" ? tiltDeg : DEFAULT_TILT_DEG.orbit, 0), 80);
+    return Math.min(30, DEFAULT_DURATION_S.orbit * Math.max(1, Math.tan(toRadians(tilt))));
+  }
+
+  function defaultDuration(action, { distanceM = null, orbitDegrees = 360, tiltDeg = null, fromAltitudeM = DEFAULT_ALTITUDE_M, toAltitudeM = DEFAULT_ALTITUDE_M } = {}) {
     if (action === "fly_to") {
       if (!Number.isFinite(distanceM)) return 5; // establishing dive onto the first location
       return Math.round(Math.min(25, Math.max(4, 4 + distanceM / 150000)));
     }
-    if (action === "orbit") return Math.max(6, Math.round((DEFAULT_DURATION_S.orbit * Math.abs(orbitDegrees || 360)) / 360));
+    if (action === "orbit") return Math.max(6, Math.round((orbitSecondsPerRevolution(tiltDeg) * Math.abs(orbitDegrees || 360)) / 360));
     if (action === "zoom_in" || action === "zoom_out") {
       const hi = Math.max(fromAltitudeM, toAltitudeM);
       const lo = Math.max(1, Math.min(fromAltitudeM, toAltitudeM));
@@ -531,6 +542,7 @@
     const magnitude = {
       distanceM,
       orbitDegrees: typeof orbitSpec.orbit_degrees === "number" ? orbitSpec.orbit_degrees : 360,
+      tiltDeg: typeof tiltSpec.tilt_deg === "number" ? tiltSpec.tilt_deg : (DEFAULT_TILT_DEG[actionInfo.action] != null ? DEFAULT_TILT_DEG[actionInfo.action] : 45),
       fromAltitudeM: previousAltitudeM,
       toAltitudeM: altitude.value,
     };
@@ -552,8 +564,12 @@
       if (actionInfo.action === "fly_to" && Number.isFinite(distanceM) && distanceM > 300000 && distanceM / durationSeconds > 200000) {
         notes.push(`pacing: ~${Math.round(distanceM / durationSeconds / 1000)} km/s flight — likely too fast to read; consider ~${suggested}s.`);
       }
-      if (actionInfo.action === "orbit" && Math.abs(magnitude.orbitDegrees) / durationSeconds > 60) {
-        notes.push(`pacing: orbit at ${Math.round(Math.abs(magnitude.orbitDegrees) / durationSeconds)}°/s — likely too fast to read; consider ~${suggested}s.`);
+      if (actionInfo.action === "orbit") {
+        const rate = Math.abs(magnitude.orbitDegrees) / durationSeconds;
+        const suggestedRate = 360 / orbitSecondsPerRevolution(magnitude.tiltDeg);
+        if (rate > 1.3 * suggestedRate) {
+          notes.push(`pacing: orbit at ${Math.round(rate)}°/s reads fast at this tilt (camera is close to the target) — consider ~${suggested}s.`);
+        }
       }
       if ((actionInfo.action === "zoom_in" || actionInfo.action === "zoom_out")
         && Math.max(magnitude.fromAltitudeM, magnitude.toAltitudeM) / Math.max(1, Math.min(magnitude.fromAltitudeM, magnitude.toAltitudeM)) > 50
@@ -1254,6 +1270,7 @@ This checklist is technical planning support only. It is not creative approval, 
     resolveLocation,
     parseExplicitCoords,
     defaultDuration,
+    orbitSecondsPerRevolution,
     parseDescription,
     buildShotPlan,
     buildArtifacts,

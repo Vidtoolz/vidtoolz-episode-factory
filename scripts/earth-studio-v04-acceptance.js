@@ -70,8 +70,10 @@ const ASPECT = "9:16";
 // explicit tilt, location carry-over, a multi-revolution counterclockwise
 // orbit (accumulated pan + target-facing heading), and a zoom-out to space.
 // Durations are intelligible-pace explicit values: round 2's real playback
-// proved the original fast pacing "unusable — too fast to be intelligible".
-const INSTRUCTION = "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 24 seconds, then zoom out to space in 12 seconds";
+// proved the original fast pacing "unusable — too fast to be intelligible",
+// and round 3 proved close tilted orbits need ~18s/revolution (the camera at
+// alt·tan(60°) ≈ 4.3 km reads "too fast" at 12s/rev).
+const INSTRUCTION = "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 36 seconds, then zoom out to space in 12 seconds";
 // Real-export window: 90 frames ending 30 frames into the zoom-out, so the
 // window spans genuine motion INCLUDING an action boundary (orbit → zoom).
 function exportWindow(plan) {
