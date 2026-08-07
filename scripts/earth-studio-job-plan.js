@@ -6,7 +6,7 @@ const path = require("node:path");
 
 const planner = require("../earth-studio-job-planner.js");
 
-const HELP_TEXT = `Usage: node scripts/earth-studio-job-plan.js --job <name> --description <text> [--out <dir>] [--dry-run | --write]
+const HELP_TEXT = `Usage: node scripts/earth-studio-job-plan.js --job <name> --description <text> [--aspect <ratio>] [--out <dir>] [--dry-run | --write]
        node scripts/earth-studio-job-plan.js --job <name> [--out <dir>] --verify
 
 Create or verify local Google Earth Studio planning artifacts.
@@ -14,6 +14,7 @@ Create or verify local Google Earth Studio planning artifacts.
 Options:
   --job <name>             Job folder name.
   --description <text>     Constrained shot description to parse.
+  --aspect <ratio>         Render aspect: ${Object.keys(planner.ASPECTS).join(", ")}. Default: ${planner.DEFAULT_ASPECT}
   --out <dir>              Output root. Default: ${planner.DEFAULT_OUTPUT_DIR}
   --dry-run                Print the output plan without writing files.
   --write                  Write the job folder and artifacts.
@@ -28,6 +29,7 @@ function parseArgs(argv = []) {
   const options = {
     job: "",
     description: "",
+    aspect: planner.DEFAULT_ASPECT,
     outDir: planner.DEFAULT_OUTPUT_DIR,
     mode: "",
     help: false,
@@ -39,6 +41,13 @@ function parseArgs(argv = []) {
     if (item === "--help" || item === "-h") options.help = true;
     else if (item === "--job") options.job = args.shift() || "";
     else if (item === "--description") options.description = args.shift() || "";
+    else if (item === "--aspect") {
+      options.aspect = args.shift() || "";
+      if (!planner.ASPECTS[options.aspect]) {
+        options.error = `--aspect must be one of: ${Object.keys(planner.ASPECTS).join(", ")}.`;
+        break;
+      }
+    }
     else if (item === "--out") options.outDir = args.shift() || "";
     else if (item === "--dry-run" || item === "--write" || item === "--verify") {
       if (options.mode) {
@@ -82,13 +91,14 @@ function writeFileIfSafe(filePath, content) {
 
 function runDryRun(options) {
   const jobDir = jobDirFor(options);
-  const plan = planner.buildShotPlan(options.job, options.description || "");
+  const plan = planner.buildShotPlan(options.job, options.description || "", undefined, { aspect: options.aspect });
   console.log(`Job: ${options.job}`);
   console.log("Mode: dry-run");
   console.log(`Output folder: ${jobDir}`);
   console.log(`Total duration: ${plan.total_duration_seconds} seconds`);
   console.log(`Frame rate: ${plan.frame_rate}`);
   console.log(`Total frames: ${plan.total_frames}`);
+  console.log(`Aspect: ${plan.aspect} (${plan.render_dimensions.width}x${plan.render_dimensions.height})`);
   console.log("Files:");
   planner.expectedFiles().forEach((filename) => console.log(`- ${path.join(jobDir, filename)}`));
   if (plan.warnings.length) {
@@ -102,7 +112,7 @@ function runDryRun(options) {
 function runWrite(options) {
   const jobDir = jobDirFor(options);
   fs.mkdirSync(jobDir, { recursive: true });
-  const artifacts = planner.buildArtifacts(options.job, options.description);
+  const artifacts = planner.buildArtifacts(options.job, options.description, undefined, { aspect: options.aspect });
   const results = Object.entries(artifacts).map(([filename, content]) => {
     const status = writeFileIfSafe(path.join(jobDir, filename), content);
     return [filename, status];

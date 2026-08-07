@@ -363,3 +363,174 @@ test("project-earth-studio.html wires a Cancel render control to the cancel rout
   assert.match(html, /es-cancel'\);\s*if\s*\(cbtnEl\)\s*cbtnEl\.onclick\s*=\s*cancelRender/);
   assert.match(html, /async function cancelRender[\s\S]*?\/api\/earth-studio\/cancel/);
 });
+
+// ---- v0.4: vibe grammar (carry-over, defaults, altitude/tilt/orbit modifiers) ----
+
+test("earth-studio planner v0.4: bare vibe description resolves via carry-over + default durations", () => {
+  const plan = planner.buildShotPlan("T", "fly to Paris, then orbit, then zoom in");
+  assert.equal(plan.segments.length, 3);
+  assert.ok(plan.segments.every((s) => s.resolution_status === "resolved"), JSON.stringify(plan.warnings));
+  assert.equal(plan.segments[1].location_name, "Paris"); // carried over
+  assert.equal(plan.segments[1].location.source, "carried_over");
+  assert.equal(plan.segments[0].duration_seconds, planner.DEFAULT_DURATION_S.fly_to);
+  assert.equal(plan.segments[1].duration_seconds, planner.DEFAULT_DURATION_S.orbit);
+  assert.match(plan.notes.join("\n"), /defaulted to/);
+  assert.match(plan.notes.join("\n"), /carried over/);
+});
+
+test("earth-studio planner v0.4: altitude modifiers (numeric, km, space, low/high, fixture, terrain floor)", () => {
+  const p1 = planner.buildShotPlan("T", "orbit Paris at 800m for 5 seconds");
+  assert.equal(p1.segments[0].altitude_m, 800);
+  assert.equal(p1.segments[0].location_name, "Paris"); // modifier stripped before location parse
+  const p2 = planner.buildShotPlan("T", "hover over Tokyo at 2 km for 3 seconds");
+  assert.equal(p2.segments[0].altitude_m, 2000);
+  const p3 = planner.buildShotPlan("T", "zoom out from Helsinki to space in 6 seconds");
+  assert.equal(p3.segments[0].altitude_m, planner.SPACE_ALTITUDE_M);
+  assert.equal(p3.segments[0].location_name, "Helsinki");
+  const p4 = planner.buildShotPlan("T", "hover low over Paris for 3 seconds");
+  assert.ok(p4.segments[0].altitude_m < planner.DEFAULT_ALTITUDE_M);
+  // landmark fixture altitude beats the generic default
+  const p5 = planner.buildShotPlan("T", "zoom in on Eiffel Tower for 3 seconds");
+  assert.equal(p5.segments[0].altitude_m, 1000);
+  // terrain floor: a zoom over high ground never targets below min_altitude_m
+  const p6 = planner.buildShotPlan("T", "zoom in on Denver for 3 seconds");
+  assert.ok(p6.segments[0].altitude_m >= 2600, `Denver zoom target ${p6.segments[0].altitude_m} below terrain floor`);
+});
+
+test("earth-studio planner v0.4: orbit amount + direction modifiers", () => {
+  const p1 = planner.buildShotPlan("T", "orbit Paris twice for 8 seconds");
+  assert.equal(p1.segments[0].orbit_degrees, 720);
+  assert.equal(p1.segments[0].location_name, "Paris");
+  const p2 = planner.buildShotPlan("T", "orbit London counterclockwise for 5 seconds");
+  assert.equal(p2.segments[0].orbit_direction, -1);
+  assert.equal(p2.segments[0].location_name, "London");
+  const p3 = planner.buildShotPlan("T", "orbit Tokyo 180 degrees for 4 seconds");
+  assert.equal(p3.segments[0].orbit_degrees, 180);
+  const p4 = planner.buildShotPlan("T", "orbit Rome for 5 seconds"); // defaults
+  assert.equal(p4.segments[0].orbit_degrees, 360);
+  assert.equal(p4.segments[0].orbit_direction, 1);
+});
+
+test("earth-studio planner v0.4: tilt modifiers and per-action defaults", () => {
+  const p1 = planner.buildShotPlan("T", "orbit Tokyo top-down for 5 seconds");
+  assert.equal(p1.segments[0].tilt_deg, 0);
+  assert.equal(p1.segments[0].location_name, "Tokyo");
+  const p2 = planner.buildShotPlan("T", "orbit Tokyo tilted 30 degrees for 5 seconds");
+  assert.equal(p2.segments[0].tilt_deg, 30);
+  const p3 = planner.buildShotPlan("T", "orbit Tokyo for 5 seconds");
+  assert.equal(p3.segments[0].tilt_deg, planner.DEFAULT_TILT_DEG.orbit);
+});
+
+test("earth-studio planner v0.4: gazetteer is worldwide with aliases and normalized lookups", () => {
+  assert.ok(Object.keys(planner.LOCATION_FIXTURES).length >= 140);
+  Object.entries(planner.LOCATION_FIXTURES).forEach(([key, l]) => {
+    assert.ok(Number.isFinite(l.latitude) && l.latitude >= -90 && l.latitude <= 90, `${key} latitude`);
+    assert.ok(Number.isFinite(l.longitude) && l.longitude >= -180 && l.longitude <= 180, `${key} longitude`);
+    assert.ok(l.name, `${key} name`);
+  });
+  Object.entries(planner.LOCATION_ALIASES).forEach(([alias, target]) => {
+    assert.ok(planner.LOCATION_FIXTURES[target], `alias "${alias}" points to missing fixture "${target}"`);
+  });
+  assert.equal(planner.resolveLocation("NYC").name, "New York");
+  assert.equal(planner.resolveLocation("the Eiffel Tower").name, "Eiffel Tower");
+  assert.equal(planner.resolveLocation("Bogotá").name, "Bogota"); // diacritics normalized
+  assert.equal(planner.resolveLocation("St. Petersburg").name, "St. Petersburg"); // punctuation normalized
+  assert.equal(planner.resolveLocation("Everest").name, "Mount Everest");
+});
+
+// ---- v0.4: keyframe engine (fixes the two held bugs + cinematic profiles) ----
+
+test("earth-studio esp: a first-segment zoom_in starts wide instead of copying the end state", () => {
+  const plan = planner.buildShotPlan("T", "zoom in on Helsinki for 3 seconds");
+  const kf = planner.buildEspKeyframes(plan);
+  assert.ok(kf.alt.length >= 2);
+  assert.ok(kf.alt[0].value > kf.alt[kf.alt.length - 1].value, `zoom_in should descend: ${kf.alt[0].value} -> ${kf.alt[kf.alt.length - 1].value}`);
+  assert.equal(kf.alt[kf.alt.length - 1].value, plan.segments[0].altitude_m);
+});
+
+test("earth-studio esp: consecutive orbits accumulate pan instead of going static", () => {
+  const plan = planner.buildShotPlan("T", "orbit London for 5 seconds, then orbit London for 5 seconds");
+  const kf = planner.buildEspKeyframes(plan);
+  const pans = kf.pan.map((k) => k.value);
+  assert.equal(pans[pans.length - 1] - pans[pans.length - 2], 360); // second orbit adds its full sweep
+});
+
+test("earth-studio esp: orbit emits circular position samples around the target", () => {
+  const plan = planner.buildShotPlan("T", "orbit Paris for 6 seconds");
+  const seg = plan.segments[0];
+  const kf = planner.buildEspKeyframes(plan);
+  assert.ok(kf.lat.length >= 12, `expected circle samples, got ${kf.lat.length}`);
+  const lats = kf.lat.map((k) => k.value);
+  const lngs = kf.lng.map((k) => k.value);
+  assert.ok(Math.max(...lats) > seg.location.latitude && Math.min(...lats) < seg.location.latitude, "orbit should pass both sides of the target latitude");
+  assert.ok(Math.max(...lngs) > seg.location.longitude && Math.min(...lngs) < seg.location.longitude, "orbit should pass both sides of the target longitude");
+});
+
+test("earth-studio esp: long flights get a cinematic altitude arc; short hops do not", () => {
+  const far = planner.buildShotPlan("T", "hover over Tokyo for 2 seconds, then fly to London in 4 seconds");
+  const kfFar = planner.buildEspKeyframes(far);
+  assert.ok(Math.max(...kfFar.alt.map((k) => k.value)) > 1000000, "intercontinental hop should arc high");
+  const near = planner.buildShotPlan("T", "hover over Big Ben for 2 seconds, then fly to Tower Bridge in 3 seconds");
+  const kfNear = planner.buildEspKeyframes(near);
+  assert.ok(Math.max(...kfNear.alt.map((k) => k.value)) < 10000, "cross-town hop should stay low");
+});
+
+test("earth-studio esp: tilt rides rotationX and pan stays continuous across a hold", () => {
+  const plan = planner.buildShotPlan("T", "fly to Paris in 3 seconds, then hover over Paris for 3 seconds, then orbit Paris for 6 seconds");
+  const esp = planner.buildEsp(plan);
+  const rotation = esp.scenes[0].attributes[0].attributes[1].attributes;
+  assert.equal(rotation[0].type, "rotationX");
+  assert.ok(rotation[0].value.keyframes.length >= 2, "tilt should animate between actions");
+  const pan = rotation[1].value.keyframes;
+  // anchor before the orbit: the pan change must not bleed back through fly+hover
+  const orbitStart = plan.segments[2].start_frame;
+  assert.ok(pan.some((k) => k.time === orbitStart), "missing pan anchor at orbit start");
+});
+
+// ---- v0.4: aspect ratios (Shorts-first rendering) ----
+
+test("earth-studio planner v0.4: aspect flows plan -> esp dimensions; validation accepts old plans", () => {
+  const vertical = planner.buildShotPlan("T", "fly to Paris in 3 seconds", undefined, { aspect: "9:16" });
+  assert.equal(vertical.aspect, "9:16");
+  assert.deepEqual(vertical.render_dimensions, { width: 1080, height: 1920 });
+  const esp = planner.buildEsp(vertical);
+  assert.equal(esp.width, 1080);
+  assert.equal(esp.height, 1920);
+  assert.deepEqual(planner.validateShotPlanPayload(vertical), []);
+  // default stays 16:9 (matches all pre-aspect artifacts)
+  const defaultPlan = planner.buildShotPlan("T", "fly to Paris in 3 seconds");
+  assert.equal(defaultPlan.aspect, "16:9");
+  assert.equal(planner.buildEsp(defaultPlan).width, 1920);
+  // plans predating v0.4 (no aspect field) still validate
+  const old = JSON.parse(JSON.stringify(defaultPlan));
+  delete old.aspect; delete old.render_dimensions;
+  assert.deepEqual(planner.validateShotPlanPayload(old), []);
+  const bad = JSON.parse(JSON.stringify(defaultPlan));
+  bad.aspect = "4:3";
+  assert.match(planner.validateShotPlanPayload(bad).join("\n"), /unknown aspect/);
+});
+
+test("earth-studio lane v0.4: writeJob stores the aspect and rejects unknown aspects", () => {
+  const { root, pkg } = tmpPackage();
+  const out = lane.writeJob(pkg, { jobName: "V", description: "fly to Paris in 3 seconds", aspect: "9:16" });
+  assert.equal(out.aspect, "9:16");
+  const job = lane.readJob(pkg);
+  assert.equal(job.aspect, "9:16");
+  assert.deepEqual(job.render_dimensions, { width: 1080, height: 1920 });
+  const esp = JSON.parse(fs.readFileSync(path.join(lane.laneDir(pkg), "earth-studio.esp"), "utf8"));
+  assert.equal(esp.width, 1080);
+  assert.equal(esp.height, 1920);
+  assert.throws(() => lane.writeJob(pkg, { jobName: "V", description: "fly to Paris in 3 seconds", aspect: "4:3" }), /unknown aspect/);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("project-earth-studio.html v0.4: presets, place search, aspect selector, and ground-track map", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "project-earth-studio.html"), "utf8");
+  assert.match(html, /data-preset/); // one-click preset moves
+  assert.match(html, /es-loc-search/); // searchable gazetteer
+  assert.match(html, /data-aspect/); // aspect selector chips
+  assert.match(html, /9:16/); // Shorts-first default present
+  assert.match(html, /pathSvg/); // camera ground-track preview
+  assert.match(html, /LOCATION_ALIASES/); // aliases searchable too
+  assert.match(html, /aspect:\s*ASPECT/); // aspect is sent to the plan route
+});

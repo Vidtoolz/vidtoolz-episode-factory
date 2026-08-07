@@ -93,18 +93,25 @@ function writeJob(packageDir, payload = {}, options = {}) {
   const jobName = String(payload.jobName || payload.job || 'Map Animation').slice(0, 120);
   const description = String(payload.description || '');
   if (!description.trim()) { const e = new Error('description is required.'); e.statusCode = 400; throw e; }
+  const aspect = payload.aspect ? String(payload.aspect) : planner.DEFAULT_ASPECT;
+  if (!planner.ASPECTS[aspect]) {
+    const e = new Error(`unknown aspect "${aspect}" — use one of: ${Object.keys(planner.ASPECTS).join(', ')}.`);
+    e.statusCode = 400; throw e;
+  }
   const dir = laneDir(packageDir);
   fs.mkdirSync(dir, { recursive: true });
   fs.mkdirSync(path.join(dir, 'frames'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'renders'), { recursive: true });
   const createdAt = options.now || new Date().toISOString();
-  const artifacts = planner.buildArtifacts(jobName, description, createdAt);
+  const artifacts = planner.buildArtifacts(jobName, description, createdAt, { aspect });
   Object.entries(artifacts).forEach(([file, content]) => fs.writeFileSync(path.join(dir, file), content));
-  const plan = planner.buildShotPlan(jobName, description, createdAt);
+  const plan = planner.buildShotPlan(jobName, description, createdAt, { aspect });
   const meta = {
     jobName,
     slug: planner.slugify(jobName),
     description,
+    aspect: plan.aspect,
+    render_dimensions: plan.render_dimensions,
     frame_rate: plan.frame_rate,
     total_frames: plan.total_frames,
     total_duration_seconds: plan.total_duration_seconds,

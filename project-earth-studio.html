@@ -22,11 +22,16 @@
       code{font-size:12px;background:var(--panel-3,#21262d);padding:1px 5px;border-radius:4px;word-break:break-all;}
       .chip{display:inline-block;font-size:11px;padding:2px 9px;border-radius:99px;background:var(--panel-3,#21262d);border:1px solid var(--border,#30363d);cursor:pointer;margin:2px 4px 2px 0;}
       .chip:hover{border-color:#3fb950;color:#3fb950;}
+      .chip.sel{border-color:#3fb950;color:#3fb950;background:rgba(63,185,80,.12);}
+      .chip.preset{border-color:#58a6ff55;color:#58a6ff;}
+      .chip.preset:hover{border-color:#58a6ff;}
       table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
       th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--border,#30363d);}
       .ok{color:#3fb950;} .warn{color:#d29922;} .blk{color:#f85149;}
       pre{background:#0d1117;border:1px solid var(--border,#30363d);border-radius:6px;padding:8px;font-size:12px;white-space:pre-wrap;max-height:160px;overflow:auto;}
       video{max-width:320px;border-radius:8px;border:1px solid var(--border,#30363d);background:#0d1117;}
+      .es-map{display:block;width:100%;max-width:560px;background:#0d1117;border:1px solid var(--border,#30363d);border-radius:8px;margin-top:8px;}
+      #es-loc-search{max-width:260px;display:inline-block;margin:4px 8px 4px 0;padding:4px 8px;font-size:12px;}
       #copy-status{position:fixed;bottom:16px;right:16px;background:#238636;color:#fff;padding:7px 14px;border-radius:8px;font-size:13px;display:none;z-index:50;}
     </style>
     <script src="ef-nav.js"></script>
@@ -39,7 +44,7 @@
         <div class="page-guide-body">
           <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Guided Google Earth Studio map-animation workspace for one project. Describe a camera move in plain words, get an importable .esp, export frames from Earth Studio into the project folder, and render them to MP4 — step by step, with each step lighting up when it's done.</span></div>
           <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Follow the steps top to bottom. Only the frame export inside Earth Studio is manual (it's browser-only, no API) — everything else runs here. Nothing publishes; renders stay in the project (and optionally a VIDNAS sandbox).</span></div>
-          <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Live parse preview while you type, known-location chips, copyable paths, live frame counter, render log, MP4 preview.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Live parse preview + camera-path map while you type, one-click preset moves, searchable known-place list (~150 places incl. landmarks), aspect selector (9:16 Shorts default), copyable paths, live frame counter, render log, MP4 preview.</span></div>
         </div>
       </details>
       <div class="meta"><a href="projects.html">← Projects</a> · <a id="link-workspace" href="#">Workspace</a> · <a id="link-mediakit" href="#">Media kit</a> · <a href="production-pipeline.html">Pipeline</a></div>
@@ -54,6 +59,8 @@
       const planner = window.EarthStudioJobPlanner;
       let ST = null;           // /api/earth-studio/status payload
       let PKG_PATH = '';       // absolute package path (from media-kit project info)
+      let ASPECT = '9:16';     // Shorts-first default; seeded from the stored job
+      let aspectTouched = false; // once the user picks, background refreshes stop reseeding
       let nonce = '', nonceHeader = 'x-vidtoolz-local-write-nonce';
       let pollTimer = null;
 
@@ -69,6 +76,16 @@
       async function ensureNonce(){ if(nonce) return nonce; try{ const p=await fetchJson('/api/package-engine/status'); if(p&&p.localWriteNonce){nonce=p.localWriteNonce;nonceHeader=p.nonceHeader||nonceHeader;} }catch(e){} return nonce; }
       async function post(path, body){ await ensureNonce(); const headers={'Content-Type':'application/json'}; headers[nonceHeader]=nonce; const r=await fetch(path,{method:'POST',headers,body:JSON.stringify(body)}); const j=await r.json(); if(!r.ok||(j&&j.ok===false)) throw new Error((j&&j.error)||('HTTP '+r.status)); return unwrap(j); }
 
+      // ── One-click preset moves (fill the description, then tweak freely).
+      const PRESETS = [
+        { label: '🏙 City reveal', job: 'City Reveal', text: 'zoom out from Helsinki to 8000m in 5 seconds, then orbit Helsinki for 6 seconds' },
+        { label: '🗼 Landmark orbit', job: 'Landmark Orbit', text: 'fly to Eiffel Tower in 4 seconds, then orbit Eiffel Tower twice for 10 seconds' },
+        { label: '🌍 Pull back to space', job: 'Space Pullback', text: 'hover over Helsinki for 2 seconds at 800m, then zoom out to space in 6 seconds' },
+        { label: '✈️ Two-city hop', job: 'Two City Hop', text: 'hover over London for 2 seconds, then fly to New York in 6 seconds, then orbit New York for 5 seconds' },
+        { label: '🔽 Top-down spin', job: 'Top Down Spin', text: 'orbit Tokyo top-down at 3000m for 6 seconds' },
+      ];
+      const CURATED = ['Helsinki','London','Paris','New York','Tokyo','Dubai','Eiffel Tower','Grand Canyon','Sydney Opera House','Mount Everest','San Francisco','Rio de Janeiro'];
+
       // ── Live parse preview (client-side; the planner is the same module the
       // server uses, so what you see here is exactly what Generate will write).
       function parsePreview(){
@@ -77,18 +94,61 @@
         if (!desc.trim()) { box.innerHTML = '<div class="meta">Preview appears here while you type.</div>'; return; }
         const parsed = planner.parseDescription(desc);
         const rows = parsed.segments.map((s)=>`<tr>
-          <td>${s.segment_id}</td><td>${esc(s.action)}</td><td>${esc(s.location_name||'—')}</td>
+          <td>${s.segment_id}</td><td>${esc(s.action)}${s.action==='orbit'&&s.orbit_degrees?` <span class="meta">${s.orbit_degrees}°${s.orbit_direction<0?' ccw':''}</span>`:''}</td><td>${esc(s.location_name||'—')}</td>
+          <td>${s.altitude_m>=1000000?(s.altitude_m/1000000)+'&thinsp;Mm':s.altitude_m+'&thinsp;m'}</td><td>${s.tilt_deg}°</td>
           <td>${s.start_seconds}–${s.end_seconds}s</td>
           <td class="${s.resolution_status==='resolved'?'ok':'warn'}">${esc(s.resolution_status)}</td></tr>`).join('');
         const warns = parsed.warnings.length ? `<div class="warn" style="font-size:12px;margin-top:6px;">⚠ ${parsed.warnings.map(esc).join('<br>⚠ ')}</div>` : '<div class="ok" style="font-size:12px;margin-top:6px;">✓ All segments resolved.</div>';
-        box.innerHTML = `<table><tr><th>#</th><th>Action</th><th>Location</th><th>Time</th><th>Status</th></tr>${rows}</table>
-          <div class="meta">Total: ${parsed.total_duration_seconds}s · ${parsed.total_frames} frames @ ${parsed.frame_rate}fps</div>${warns}`;
+        const notes = (parsed.notes||[]).length ? `<div class="meta" style="margin-top:4px;">ℹ ${parsed.notes.map(esc).join('<br>ℹ ')}</div>` : '';
+        box.innerHTML = `<table><tr><th>#</th><th>Action</th><th>Location</th><th>Altitude</th><th>Tilt</th><th>Time</th><th>Status</th></tr>${rows}</table>
+          <div class="meta">Total: ${parsed.total_duration_seconds}s · ${parsed.total_frames} frames @ ${parsed.frame_rate}fps · ${esc(ASPECT)}</div>${warns}${notes}${pathSvg(parsed)}`;
       }
 
-      function chipRow(){
+      // ── Camera ground-track map: locations, flight path, orbit rings.
+      // Offline inline SVG (no tiles) — enough to sanity-check the move shape.
+      function pathSvg(parsed){
+        const segs = parsed.segments.filter((s)=>s.location);
+        if (!segs.length) return '';
+        const pts = segs.map((s)=>({lat:s.location.latitude,lng:s.location.longitude,id:s.segment_id,action:s.action,
+          ring:s.action==='orbit'?planner.orbitRadiusMeters(s.altitude_m||2500,s.tilt_deg||60)/111320:0}));
+        const kx = Math.cos(((Math.min(...pts.map(p=>p.lat))+Math.max(...pts.map(p=>p.lat)))/2)*Math.PI/180)||1;
+        let minLat=Infinity,maxLat=-Infinity,minLng=Infinity,maxLng=-Infinity;
+        pts.forEach((p)=>{minLat=Math.min(minLat,p.lat-p.ring);maxLat=Math.max(maxLat,p.lat+p.ring);minLng=Math.min(minLng,p.lng-p.ring/kx);maxLng=Math.max(maxLng,p.lng+p.ring/kx);});
+        const spanLat=Math.max(maxLat-minLat,0.02), spanLng=Math.max(maxLng-minLng,0.02);
+        const W=560,H=180,P=22;
+        const sc=Math.min((W-2*P)/(spanLng*kx),(H-2*P)/spanLat);
+        const ox=(W-spanLng*kx*sc)/2, oy=(H-spanLat*sc)/2;
+        const X=(lng)=>ox+(lng-minLng)*kx*sc, Y=(lat)=>oy+(maxLat-lat)*sc;
+        const line = pts.map((p)=>`${X(p.lng).toFixed(1)},${Y(p.lat).toFixed(1)}`).join(' ');
+        const marks = pts.map((p)=>{
+          const x=X(p.lng), y=Y(p.lat);
+          const ring = p.ring? `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${Math.max(p.ring*sc,6).toFixed(1)}" fill="none" stroke="#58a6ff" stroke-dasharray="4 3" opacity="0.8"/>` : '';
+          return `${ring}<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="#3fb950"/><text x="${x.toFixed(1)}" y="${(y+3.5).toFixed(1)}" text-anchor="middle" font-size="8" fill="#0d1117" font-weight="bold">${p.id}</text>`;
+        }).join('');
+        return `<svg class="es-map" viewBox="0 0 ${W} ${H}" aria-label="camera ground track">
+          <polyline points="${line}" fill="none" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6 4"/>
+          ${marks}
+        </svg><div class="meta">Camera ground track — dots = segment targets, dashed rings = orbits. Not to real map scale.</div>`;
+      }
+
+      function locChips(query){
+        const q = String(query||'').trim().toLowerCase();
         const names = Object.values(planner.LOCATION_FIXTURES).map((l)=>l.name);
-        return names.map((n)=>`<span class="chip" data-ins="${esc(n)}">${esc(n)}</span>`).join('') +
-          `<span class="chip" data-ins="60.1699,24.9384" title="Explicit coordinates work too">lat,lng…</span>`;
+        const aliasHits = q ? Object.keys(planner.LOCATION_ALIASES||{}).filter((a)=>a.includes(q)).map((a)=>planner.LOCATION_FIXTURES[planner.LOCATION_ALIASES[a]]).filter(Boolean).map((l)=>l.name) : [];
+        const list = q ? [...new Set(names.filter((n)=>n.toLowerCase().includes(q)).concat(aliasHits))].slice(0,24) : CURATED;
+        const chips = list.map((n)=>`<span class="chip" data-ins="${esc(n)}">${esc(n)}</span>`).join('');
+        return chips + (q&&!list.length?'<span class="meta">no match — explicit coordinates always work: </span>':'') + `<span class="chip" data-ins="60.1699,24.9384" title="Explicit coordinates work anywhere">lat,lng…</span>`;
+      }
+
+      function presetRow(){
+        return PRESETS.map((p,i)=>`<span class="chip preset" data-preset="${i}" title="${esc(p.text)}">${esc(p.label)}</span>`).join('');
+      }
+
+      function aspectRow(){
+        return Object.keys(planner.ASPECTS).map((a)=>{
+          const d=planner.ASPECTS[a];
+          return `<span class="chip ${a===ASPECT?'sel':''}" data-aspect="${esc(a)}" title="${d.width}x${d.height}">${esc(a)}${a==='9:16'?' Shorts':''}</span>`;
+        }).join('');
       }
 
       function stepBadge(done, manual){ return done ? '<span class="badge done">done</span>' : manual ? '<span class="badge manual">manual step</span>' : '<span class="badge todo">to do</span>'; }
@@ -106,15 +166,17 @@
         const active = !s.has_plan ? 1 : !hasFrames ? (s.has_esp ? 3 : 2) : !rendered ? 4 : 5;
 
         document.getElementById('es-meta').innerHTML =
-          `Project <code>${esc(ID)}</code>${job ? ` · job <b>${esc(job.jobName)}</b> · ${job.total_frames} frames planned` : ' · no map-animation job yet'}`;
+          `Project <code>${esc(ID)}</code>${job ? ` · job <b>${esc(job.jobName)}</b> · ${job.total_frames} frames planned${job.aspect?` · ${esc(job.aspect)}`:''}` : ' · no map-animation job yet'}`;
 
         document.getElementById('es-steps').innerHTML = `
           <div class="step ${s.has_plan?'done':''} ${active===1?'active':''}">
             <div class="step-head">1 · Describe the camera move ${stepBadge(s.has_plan,false)}</div>
-            <div class="meta" style="margin:6px 0;">Plain words: <b>fly to</b> / <b>hover over</b> / <b>orbit</b> / <b>zoom in on</b> / <b>zoom out from</b> a place, each with a duration ("for 4 seconds"). Chain with "then". Known places (or click to insert):</div>
-            <div style="margin:4px 0 8px;">${chipRow()}</div>
+            <div class="meta" style="margin:6px 0;">Plain words: <b>fly to</b> / <b>hover over</b> / <b>orbit</b> / <b>zoom in on</b> / <b>zoom out from</b> a place. Chain with "then". Optional per segment: duration ("for 5 seconds"), altitude ("at 800m", "from space", "low", "high"), tilt ("top-down", "tilted", "toward the horizon"), orbit amount + direction ("twice", "180 degrees", "counterclockwise"). Skip the location to reuse the previous one; skip the duration for a sensible default.</div>
+            <div style="margin:4px 0;">${presetRow()}</div>
+            <div style="margin:4px 0 8px;"><input id="es-loc-search" type="text" placeholder="Search ${Object.keys(planner.LOCATION_FIXTURES).length} known places…"><span id="es-loc-chips">${locChips('')}</span></div>
             <input id="es-job" type="text" placeholder="Job name (e.g. Helsinki Flyover)" value="${esc(job?job.jobName:'')}">
             <textarea id="es-desc" rows="2" style="margin-top:6px;" placeholder="fly to Helsinki in 4 seconds, then orbit Helsinki for 5 seconds">${esc(job?job.description:'')}</textarea>
+            <div style="margin:6px 0 0;"><span class="meta">Aspect:</span> ${aspectRow()}</div>
             <div id="es-preview" style="margin-top:8px;"><div class="meta">Preview appears here while you type.</div></div>
             <div style="margin-top:8px;"><button type="button" class="btn btn-go" id="es-generate">${s.has_plan?'Regenerate plan + .esp':'Generate plan + .esp'}</button>
             <span class="meta" id="es-gen-status"></span></div>
@@ -160,7 +222,20 @@
         // wire handlers
         const desc = document.getElementById('es-desc');
         let deb=null; desc.addEventListener('input', ()=>{ clearTimeout(deb); deb=setTimeout(parsePreview,250); });
-        document.querySelectorAll('.chip').forEach((c)=>c.addEventListener('click',()=>{ desc.value=(desc.value?desc.value.replace(/\s*$/,' '):'')+c.getAttribute('data-ins'); desc.dispatchEvent(new Event('input')); desc.focus(); }));
+        const wireChips = ()=>document.querySelectorAll('#es-loc-chips .chip').forEach((c)=>c.addEventListener('click',()=>{ desc.value=(desc.value?desc.value.replace(/\s*$/,' '):'')+c.getAttribute('data-ins'); desc.dispatchEvent(new Event('input')); desc.focus(); }));
+        wireChips();
+        const search=document.getElementById('es-loc-search');
+        search.addEventListener('input', ()=>{ document.getElementById('es-loc-chips').innerHTML=locChips(search.value); wireChips(); });
+        document.querySelectorAll('.chip.preset').forEach((c)=>c.addEventListener('click',()=>{
+          const p = PRESETS[Number(c.getAttribute('data-preset'))]; if(!p) return;
+          const jobEl=document.getElementById('es-job'); if(jobEl && !jobEl.value) jobEl.value=p.job;
+          desc.value=p.text; desc.dispatchEvent(new Event('input')); desc.focus();
+        }));
+        document.querySelectorAll('[data-aspect]').forEach((c)=>c.addEventListener('click',()=>{
+          ASPECT=c.getAttribute('data-aspect'); aspectTouched=true;
+          document.querySelectorAll('[data-aspect]').forEach((x)=>x.classList.toggle('sel',x===c));
+          parsePreview();
+        }));
         parsePreview();
         document.getElementById('es-generate').onclick = generate;
         document.getElementById('es-refresh').onclick = refresh;
@@ -176,7 +251,7 @@
       async function generate(){
         const st = document.getElementById('es-gen-status'); st.textContent='Generating…';
         try{
-          const r = await post('/api/earth-studio/plan', { id: ID, jobName: document.getElementById('es-job').value || 'Map Animation', description: document.getElementById('es-desc').value });
+          const r = await post('/api/earth-studio/plan', { id: ID, jobName: document.getElementById('es-job').value || 'Map Animation', description: document.getElementById('es-desc').value, aspect: ASPECT });
           toast('Plan + .esp generated');
           if (r.unresolved_count) st.textContent = r.unresolved_count + ' unresolved segment(s) — fix the description or adjust manually in Earth Studio.';
           await refresh();
@@ -209,6 +284,7 @@
       }
       async function refresh(){
         try{ ST = await fetchJson('/api/earth-studio/status?id='+encodeURIComponent(ID)); }catch(e){ document.getElementById('es-meta').innerHTML='<span class="blk">Could not load: '+esc(e.message||e)+'</span>'; return; }
+        if (!aspectTouched && ST.job && ST.job.aspect && planner.ASPECTS[ST.job.aspect]) ASPECT = ST.job.aspect;
         // preserve in-progress typing across refreshes
         const descEl=document.getElementById('es-desc');
         const typing = descEl && (descEl.value !== (ST.job?ST.job.description:'')) && document.activeElement===descEl;
