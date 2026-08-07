@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "validated_at": "2026-08-07T12:09:33.274Z",
+  "frames_dir": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-07-earth-studio-v04-acceptance/earth-studio/frames",
+  "count": 90,
+  "first": "earth-studio_1350.jpeg",
+  "last": "earth-studio_1439.jpeg",
+  "window": {
+    "first_number": 1350,
+    "last_number": 1439
+  },
+  "extensions": [
+    "jpeg"
+  ],
+  "dimensions": [
+    "1080x1920"
+  ],
+  "identical_consecutive_pairs": 0,
+  "ignored_entries": [],
+  "min_frames": 50,
+  "failures": [],
+  "warnings": []
+}

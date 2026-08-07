@@ -20,4 +20,4 @@ parser/generator/.esp structure verified internally — real Earth Studio import
 Internal green is NOT external proof: only the real Earth Studio import
 observation and real exported frames advance the state past INTERNAL_VERIFIED.
 
-_Report regenerated 2026-08-07T11:13:09.635Z by scripts/earth-studio-v04-acceptance.js status._
+_Report regenerated 2026-08-07T12:09:50.417Z by scripts/earth-studio-v04-acceptance.js status._
