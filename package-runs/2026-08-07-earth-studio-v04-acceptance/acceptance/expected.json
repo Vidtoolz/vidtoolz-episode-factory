@@ -1,0 +1,218 @@
+{
+  "proof_id": "2026-08-07-earth-studio-v04-acceptance",
+  "planner_version": "0.4.0",
+  "instruction": "fly to Helsinki in 3 seconds, then fly to Paris at 2 km tilted 35 degrees in 5 seconds, then orbit twice counterclockwise for 8 seconds, then zoom out to space in 6 seconds",
+  "aspect": "9:16",
+  "render_dimensions": {
+    "width": 1080,
+    "height": 1920
+  },
+  "frame_rate": 30,
+  "total_frames": 660,
+  "total_duration_seconds": 22,
+  "keyframe_totals": {
+    "lng": 27,
+    "lat": 28,
+    "alt": 14,
+    "tilt": 5,
+    "pan": 3
+  },
+  "segments": [
+    {
+      "segment_id": 1,
+      "action": "fly_to",
+      "source_text": "fly to Helsinki in 3 seconds",
+      "location": {
+        "name": "Helsinki",
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "source": "gazetteer_fixture"
+      },
+      "duration_seconds": 3,
+      "duration_source": "explicit",
+      "altitude_m": 2500,
+      "altitude_source": "action_default",
+      "tilt_deg": 45,
+      "tilt_source": "action_default",
+      "orbit_degrees": null,
+      "orbit_direction": null,
+      "window": {
+        "start_frame": 0,
+        "end_frame": 90
+      },
+      "start_state": {
+        "frame": 0,
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "altitude_m": 10000,
+        "pan_deg": 0,
+        "tilt_deg": 45
+      },
+      "end_state": {
+        "frame": 90,
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "altitude_m": 2500,
+        "pan_deg": 0,
+        "tilt_deg": 45
+      },
+      "keyframes_in_window": {
+        "lng": 2,
+        "lat": 2,
+        "alt": 5,
+        "tilt": 2,
+        "pan": 1
+      },
+      "peak_altitude_m": 10000,
+      "notes": []
+    },
+    {
+      "segment_id": 2,
+      "action": "fly_to",
+      "source_text": "fly to Paris at 2 km tilted 35 degrees in 5 seconds",
+      "location": {
+        "name": "Paris",
+        "latitude": 48.8566,
+        "longitude": 2.3522,
+        "source": "gazetteer_fixture"
+      },
+      "duration_seconds": 5,
+      "duration_source": "explicit",
+      "altitude_m": 2000,
+      "altitude_source": "explicit",
+      "tilt_deg": 35,
+      "tilt_source": "explicit",
+      "orbit_degrees": null,
+      "orbit_direction": null,
+      "window": {
+        "start_frame": 90,
+        "end_frame": 240
+      },
+      "start_state": {
+        "frame": 90,
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "altitude_m": 2500,
+        "pan_deg": 0,
+        "tilt_deg": 45
+      },
+      "end_state": {
+        "frame": 240,
+        "latitude": 48.8566,
+        "longitude": 2.3522,
+        "altitude_m": 2000,
+        "pan_deg": 0,
+        "tilt_deg": 35
+      },
+      "keyframes_in_window": {
+        "lng": 1,
+        "lat": 1,
+        "alt": 4,
+        "tilt": 1,
+        "pan": 1
+      },
+      "peak_altitude_m": 670216,
+      "notes": []
+    },
+    {
+      "segment_id": 3,
+      "action": "orbit",
+      "source_text": "orbit twice counterclockwise for 8 seconds",
+      "location": {
+        "name": "Paris",
+        "latitude": 48.8566,
+        "longitude": 2.3522,
+        "source": "carried_over"
+      },
+      "duration_seconds": 8,
+      "duration_source": "explicit",
+      "altitude_m": 2500,
+      "altitude_source": "action_default",
+      "tilt_deg": 60,
+      "tilt_source": "action_default",
+      "orbit_degrees": 720,
+      "orbit_direction": -1,
+      "window": {
+        "start_frame": 240,
+        "end_frame": 480
+      },
+      "start_state": {
+        "frame": 240,
+        "latitude": 48.8566,
+        "longitude": 2.3522,
+        "altitude_m": 2000,
+        "pan_deg": 0,
+        "tilt_deg": 35
+      },
+      "end_state": {
+        "frame": 480,
+        "latitude": 48.817702,
+        "longitude": 2.3522,
+        "altitude_m": 2500,
+        "pan_deg": -720,
+        "tilt_deg": 60
+      },
+      "keyframes_in_window": {
+        "lng": 24,
+        "lat": 24,
+        "alt": 1,
+        "tilt": 1,
+        "pan": 1
+      },
+      "peak_altitude_m": 2500,
+      "notes": [
+        "location carried over: Paris."
+      ]
+    },
+    {
+      "segment_id": 4,
+      "action": "zoom_out",
+      "source_text": "zoom out to space in 6 seconds",
+      "location": {
+        "name": "Paris",
+        "latitude": 48.8566,
+        "longitude": 2.3522,
+        "source": "carried_over"
+      },
+      "duration_seconds": 6,
+      "duration_source": "explicit",
+      "altitude_m": 12000000,
+      "altitude_source": "semantic_space",
+      "tilt_deg": 35,
+      "tilt_source": "action_default",
+      "orbit_degrees": null,
+      "orbit_direction": null,
+      "window": {
+        "start_frame": 480,
+        "end_frame": 660
+      },
+      "start_state": {
+        "frame": 480,
+        "latitude": 48.817702,
+        "longitude": 2.3522,
+        "altitude_m": 2500,
+        "pan_deg": -720,
+        "tilt_deg": 60
+      },
+      "end_state": {
+        "frame": 660,
+        "latitude": 48.8566,
+        "longitude": 2.3522,
+        "altitude_m": 12000000,
+        "pan_deg": -720,
+        "tilt_deg": 35
+      },
+      "keyframes_in_window": {
+        "lng": 0,
+        "lat": 1,
+        "alt": 4,
+        "tilt": 1,
+        "pan": 0
+      },
+      "peak_altitude_m": 12000000,
+      "notes": [
+        "location carried over: Paris."
+      ]
+    }
+  ]
+}

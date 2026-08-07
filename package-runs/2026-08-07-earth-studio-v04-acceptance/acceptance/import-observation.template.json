@@ -1,0 +1,31 @@
+{
+  "_instructions": "Fill after the REAL Google Earth Studio import (see import-checklist.md). Save as import-observation.json in this folder. Booleans must be true/false, not strings. Preserve raw notes verbatim — a failed observation is valuable evidence.",
+  "observedAt": null,
+  "observer": "Mikko",
+  "importSucceeded": null,
+  "earthStudioWarnings": [],
+  "flight": {
+    "correct": null,
+    "notes": ""
+  },
+  "orbit": {
+    "correct": null,
+    "directionCorrect": null,
+    "targetFacing": null,
+    "revolutionsObserved": null,
+    "notes": ""
+  },
+  "zoom": {
+    "correct": null,
+    "notes": ""
+  },
+  "tilt": {
+    "correct": null,
+    "notes": ""
+  },
+  "aspectRatio": {
+    "correct": null,
+    "notes": ""
+  },
+  "rawNotes": ""
+}

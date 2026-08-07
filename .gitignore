@@ -23,3 +23,8 @@ package-runs/stale-runs/
 /reports/mutation-evidence-*/
 /reports/five-gate-dry-run-fixes-evidence-*/
 /reports/cockpit-*-evidence-*/
+
+# Earth Studio v0.4 acceptance proof: real frame exports + rendered MP4 stay
+# untracked (like all package-run media); acceptance/hashes.sha256 pins them.
+package-runs/2026-08-07-earth-studio-v04-acceptance/earth-studio/frames/
+package-runs/2026-08-07-earth-studio-v04-acceptance/earth-studio/renders/
