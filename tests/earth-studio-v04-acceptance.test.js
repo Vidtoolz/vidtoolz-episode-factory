@@ -2,6 +2,7 @@
 // (scripts/earth-studio-v04-acceptance.js). Injected ffmpeg spawn + header-only
 // synthetic PNGs + temp package dirs — no real renders, no network, and the
 // pinned London proof is never touched (there is a hard refusal test for it).
+const crypto = require("node:crypto");
 const { assert, fs, os, path, test } = require("./_helpers.js");
 const planner = require("../earth-studio-job-planner.js");
 const lane = require("../earth-studio-lane.js");
@@ -133,6 +134,38 @@ test("es-v04-acceptance: observation gate — incomplete stays internal, accepte
     const oneRev = acceptedObservation();
     oneRev.orbit.revolutionsObserved = 1;
     assert.match(acceptance.evaluateObservation(oneRev).discrepancies.join(";"), /revolutionsObserved=1/);
+    // a FAILED import is a complete observation even with playback fields
+    // unobservable (this is exactly round 1 of the real acceptance run)
+    const rejected = acceptance.observationTemplate();
+    rejected.importSucceeded = false;
+    rejected.rawNotes = "Earth Studio would not import the file";
+    const evaluated = acceptance.evaluateObservation(rejected);
+    assert.equal(evaluated.complete, true);
+    assert.equal(evaluated.accepted, false);
+    assert.match(evaluated.discrepancies.join(";"), /importSucceeded=false/);
+    fs.writeFileSync(path.join(pkg, acceptance.FILES.observation), JSON.stringify(rejected));
+    assert.equal(acceptance.computeStatus(pkg).state, "IMPORT_DISCREPANCY_REPORTED");
+  });
+});
+
+test("es-v04-acceptance: --force regenerate archives the prior round's evidence instead of clobbering it", () => {
+  withTmpRoot((pkg) => {
+    acceptance.generate(pkg);
+    const rejected = acceptance.observationTemplate();
+    rejected.importSucceeded = false;
+    rejected.rawNotes = "round 1: import failed";
+    fs.writeFileSync(path.join(pkg, acceptance.FILES.observation), JSON.stringify(rejected));
+    const oldEspSha = crypto.createHash("sha256").update(fs.readFileSync(path.join(pkg, "earth-studio", "earth-studio.esp"))).digest("hex");
+    const out = acceptance.generate(pkg, { force: true });
+    assert.ok(out.archived_round, "expected the prior round to be archived");
+    // active slot cleared → new round starts pending, not discrepant
+    assert.ok(!fs.existsSync(path.join(pkg, acceptance.FILES.observation)));
+    assert.equal(acceptance.computeStatus(pkg).state, "INTERNAL_VERIFIED");
+    // archived evidence preserved verbatim, incl. the exact .esp that failed
+    const archivedObs = JSON.parse(fs.readFileSync(path.join(out.archived_round, "import-observation.json"), "utf8"));
+    assert.equal(archivedObs.rawNotes, "round 1: import failed");
+    const archivedEspSha = crypto.createHash("sha256").update(fs.readFileSync(path.join(out.archived_round, "earth-studio.esp"))).digest("hex");
+    assert.equal(archivedEspSha, oldEspSha);
   });
 });
 

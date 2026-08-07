@@ -40,14 +40,32 @@ test("earth-studio planner: gazetteer expanded beyond the original two", () => {
   assert.ok(planner.resolveLocation("Helsinki"));
 });
 
-test("earth-studio planner: buildEsp emits camera position keyframes", () => {
+test("earth-studio planner: buildEsp emits the real Earth Studio project format (modelVersion 17)", () => {
   const plan = planner.buildShotPlan("Job", "hover over Tokyo for 2 seconds, then fly to London in 4 seconds");
   const esp = planner.buildEsp(plan);
-  assert.equal(esp.frameRate, 30);
-  assert.equal(esp.duration, plan.total_frames);
-  const camGroup = esp.scenes[0].attributes[0].attributes;
-  const lng = camGroup[0].attributes[0].value.keyframes;
-  assert.ok(lng.length >= 3); // frame 0 + per-segment end frames
+  // Real reverse-engineered envelope — the v0.4 from-scratch guess was
+  // refused by real Earth Studio (acceptance round 1, 2026-08-07).
+  assert.equal(esp.modelVersion, 17);
+  assert.equal(esp.settings.frameRate, 30);
+  assert.equal(esp.settings.duration, plan.total_frames);
+  assert.equal(esp.settings.timeFormat, "frames");
+  assert.equal(esp.playbackManager.range.end, plan.total_frames);
+  const cam = esp.scenes[0].attributes.find((a) => a.type === "cameraGroup");
+  const pos = cam.attributes.find((a) => a.type === "cameraPositionGroup");
+  const lng = pos.attributes.find((a) => a.type === "longitude");
+  assert.ok(lng.keyframes.length >= 3); // frame 0 + per-segment end frames
+  // keyframes sit BESIDE value, times are duration fractions, values normalized
+  assert.ok(lng.keyframes.every((k) => k.time >= 0 && k.time <= 1));
+  assert.ok(lng.keyframes.every((k) => k.value >= 0 && k.value <= 1));
+  assert.equal(lng.intimeline, true);
+  // longitude round trip: min + v·(180−min) reconstructs Tokyo at frame 0
+  const lonMin = lng.value.minValueRange;
+  const tokyo = lonMin + lng.keyframes[0].value * (180 - lonMin);
+  assert.ok(Math.abs(tokyo - 139.6503) < 1e-6, `round trip gave ${tokyo}`);
+  // altitude uses the empirical Earth Studio scale
+  const alt = pos.attributes.find((a) => a.type === "altitude");
+  const altMeters = alt.keyframes[0].value / 1.5356706349899208e-08;
+  assert.ok(Math.abs(altMeters - plan.segments[0].altitude_m) < 0.5, `altitude round trip gave ${altMeters}`);
   assert.ok(JSON.parse(JSON.stringify(esp))); // serializable
 });
 
@@ -475,16 +493,22 @@ test("earth-studio esp: long flights get a cinematic altitude arc; short hops do
   assert.ok(Math.max(...kfNear.alt.map((k) => k.value)) < 10000, "cross-town hop should stay low");
 });
 
-test("earth-studio esp: tilt rides rotationX and pan stays continuous across a hold", () => {
+test("earth-studio esp: pan rides rotationX, tilt rides rotationY, and pan stays continuous across a hold", () => {
   const plan = planner.buildShotPlan("T", "fly to Paris in 3 seconds, then hover over Paris for 3 seconds, then orbit Paris for 6 seconds");
   const esp = planner.buildEsp(plan);
-  const rotation = esp.scenes[0].attributes[0].attributes[1].attributes;
-  assert.equal(rotation[0].type, "rotationX");
-  assert.ok(rotation[0].value.keyframes.length >= 2, "tilt should animate between actions");
-  const pan = rotation[1].value.keyframes;
-  // anchor before the orbit: the pan change must not bleed back through fly+hover
-  const orbitStart = plan.segments[2].start_frame;
-  assert.ok(pan.some((k) => k.time === orbitStart), "missing pan anchor at orbit start");
+  const cam = esp.scenes[0].attributes.find((a) => a.type === "cameraGroup");
+  const rot = cam.attributes.find((a) => a.type === "cameraRotationGroup");
+  // Real Earth Studio semantics (reverse-engineered): rotationX = pan/heading,
+  // rotationY = tilt (deg/180) — the opposite of the v0.4 guess.
+  const tilt = rot.attributes.find((a) => a.type === "rotationY");
+  assert.ok(tilt.keyframes.length >= 2, "tilt should animate between actions");
+  assert.ok(tilt.keyframes.every((k) => k.value >= 0 && k.value <= 85 / 180), "tilt values must be deg/180");
+  const pan = rot.attributes.find((a) => a.type === "rotationX");
+  // anchor before the orbit: the pan change must not bleed back through
+  // fly+hover (times are duration fractions in the real format)
+  const orbitStartFraction = plan.segments[2].start_frame / plan.total_frames;
+  assert.ok(pan.keyframes.some((k) => Math.abs(k.time - orbitStartFraction) < 1e-9), "missing pan anchor at orbit start");
+  assert.equal(rot.attributes.find((a) => a.type === "rotationZ").keyframes, undefined); // static default
 });
 
 // ---- v0.4: aspect ratios (Shorts-first rendering) ----
@@ -494,13 +518,12 @@ test("earth-studio planner v0.4: aspect flows plan -> esp dimensions; validation
   assert.equal(vertical.aspect, "9:16");
   assert.deepEqual(vertical.render_dimensions, { width: 1080, height: 1920 });
   const esp = planner.buildEsp(vertical);
-  assert.equal(esp.width, 1080);
-  assert.equal(esp.height, 1920);
+  assert.deepEqual(esp.settings.dimensions, { width: 1080, height: 1920 });
   assert.deepEqual(planner.validateShotPlanPayload(vertical), []);
   // default stays 16:9 (matches all pre-aspect artifacts)
   const defaultPlan = planner.buildShotPlan("T", "fly to Paris in 3 seconds");
   assert.equal(defaultPlan.aspect, "16:9");
-  assert.equal(planner.buildEsp(defaultPlan).width, 1920);
+  assert.equal(planner.buildEsp(defaultPlan).settings.dimensions.width, 1920);
   // plans predating v0.4 (no aspect field) still validate
   const old = JSON.parse(JSON.stringify(defaultPlan));
   delete old.aspect; delete old.render_dimensions;
@@ -518,8 +541,7 @@ test("earth-studio lane v0.4: writeJob stores the aspect and rejects unknown asp
   assert.equal(job.aspect, "9:16");
   assert.deepEqual(job.render_dimensions, { width: 1080, height: 1920 });
   const esp = JSON.parse(fs.readFileSync(path.join(lane.laneDir(pkg), "earth-studio.esp"), "utf8"));
-  assert.equal(esp.width, 1080);
-  assert.equal(esp.height, 1920);
+  assert.deepEqual(esp.settings.dimensions, { width: 1080, height: 1920 });
   assert.throws(() => lane.writeJob(pkg, { jobName: "V", description: "fly to Paris in 3 seconds", aspect: "4:3" }), /unknown aspect/);
   fs.rmSync(root, { recursive: true, force: true });
 });

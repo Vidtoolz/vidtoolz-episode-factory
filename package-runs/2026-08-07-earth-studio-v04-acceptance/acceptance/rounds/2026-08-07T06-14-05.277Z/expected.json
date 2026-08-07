@@ -1,6 +1,6 @@
 {
   "proof_id": "2026-08-07-earth-studio-v04-acceptance",
-  "planner_version": "0.5.0",
+  "planner_version": "0.4.0",
   "instruction": "fly to Helsinki in 3 seconds, then fly to Paris at 2 km tilted 35 degrees in 5 seconds, then orbit twice counterclockwise for 8 seconds, then zoom out to space in 6 seconds",
   "aspect": "9:16",
   "render_dimensions": {
@@ -43,7 +43,7 @@
       "start_state": {
         "frame": 0,
         "latitude": 60.1699,
-        "longitude": 24.938399999999998,
+        "longitude": 24.9384,
         "altitude_m": 10000,
         "pan_deg": 0,
         "tilt_deg": 45
@@ -51,7 +51,7 @@
       "end_state": {
         "frame": 90,
         "latitude": 60.1699,
-        "longitude": 24.938399999999998,
+        "longitude": 24.9384,
         "altitude_m": 2500,
         "pan_deg": 0,
         "tilt_deg": 45
@@ -91,7 +91,7 @@
       "start_state": {
         "frame": 90,
         "latitude": 60.1699,
-        "longitude": 24.938399999999998,
+        "longitude": 24.9384,
         "altitude_m": 2500,
         "pan_deg": 0,
         "tilt_deg": 45

@@ -2,7 +2,7 @@
   "use strict";
 
   const DEFAULT_OUTPUT_DIR = "/home/vidtoolz/Videos/vidtoolz-earth-studio-jobs";
-  const VERSION = "0.4.0"; // v0.4: vibe grammar (altitude/tilt/orbit control, carry-over, defaults), ~150-place gazetteer, cinematic keyframe engine (real orbits, eased zooms, flight arcs, cumulative pan), aspect ratios
+  const VERSION = "0.5.0"; // v0.5: .esp serialization rewritten to the real reverse-engineered Earth Studio format (modelVersion 17) after real Earth Studio refused the v0.4 guess (acceptance round 1, 2026-08-07); keyframe engine and grammar unchanged from v0.4
   const FRAME_RATE = 30;
   const DEFAULT_ALTITUDE_M = 2500;
   const MIN_ALTITUDE_M = 150;
@@ -835,19 +835,6 @@ This checklist is technical planning support only. It is not creative approval, 
     return { time: Math.max(0, Math.round(frame)), value, transitionIn: { type: transition }, transitionOut: { type: transition } };
   }
 
-  function espNumberAttr(type, keyframes, range = {}) {
-    return {
-      type,
-      value: {
-        type: "number",
-        relative: false,
-        minValueRange: typeof range.min === "number" ? range.min : undefined,
-        maxValueRange: typeof range.max === "number" ? range.max : undefined,
-        keyframes,
-      },
-    };
-  }
-
   function toRadians(degrees) { return (degrees * Math.PI) / 180; }
   function round6(value) { return Math.round(value * 1e6) / 1e6; }
   function smoothstep(t) { return t * t * (3 - 2 * t); }
@@ -988,50 +975,150 @@ This checklist is technical planning support only. It is not creative approval, 
     return tracks;
   }
 
+  // ── Real .esp serialization ────────────────────────────────────────────────
+  // The v0.4 .esp was a from-scratch guess and REAL Earth Studio refused to
+  // import it (observed 2026-08-07, round 1 of the acceptance run). This
+  // serializer follows the reverse-engineered project format that is known to
+  // import: mkatzef/google-studio-utils (esp_template.esp + kml_to_esp.py,
+  // modelVersion 17). Key facts from that reference, all empirical:
+  //   - envelope: { modelVersion, settings{name,frameRate,dimensions,duration,
+  //     timeFormat:"frames"}, scenes[…], playbackManager{range} }
+  //   - keyframe `time` is a FRACTION [0,1] of the scene duration
+  //   - keyframes sit BESIDE `value` ({ type, value:{…}, keyframes, intimeline })
+  //   - keyframe values are normalized: longitude v = (lon−min)/(180−min) with
+  //     value.minValueRange = min; latitude likewise against 90; altitude
+  //     v = meters × 1.5356706349899208e-08; pan normalized against explicit
+  //     min/maxValueRange; tilt v = degrees/180
+  //   - rotationX = PAN/heading, rotationY = TILT (0 = straight down) — the
+  //     opposite of the v0.4 guess
+  //   - attributes with no keyframes are static: { type, value: {} }
+  const ESP_MODEL_VERSION = 17;
+  const ESP_ALTITUDE_SCALE = 1.5356706349899208e-08; // meters → ES altitude value (empirical)
+
+  function espLeaf(type, keyframes, valueMeta = {}) {
+    if (!keyframes || !keyframes.length) return { type, value: { ...valueMeta } };
+    return { type, value: { relative: 0, ...valueMeta }, keyframes, intimeline: true };
+  }
+
   function buildEsp(plan, options = {}) {
     const dims = plan.render_dimensions || ASPECTS[plan.aspect] || ASPECTS[DEFAULT_ASPECT];
     const width = options.width || dims.width;
     const height = options.height || dims.height;
     const totalFrames = Math.max(1, plan.total_frames || 1);
-    const kf = buildEspKeyframes(plan);
+    const tracks = buildEspKeyframes(plan);
+    const frac = (frame) => Math.min(1, Math.max(0, frame / totalFrames));
+    const kfs = (arr, mapValue) => arr.map((k) => ({ time: frac(k.time), value: mapValue(k.value) }));
+    const values = (arr) => arr.map((k) => k.value);
+
+    const lngVals = values(tracks.lng);
+    const latVals = values(tracks.lat);
+    const panVals = values(tracks.pan);
+    const lonMin = lngVals.length ? Math.min(...lngVals) : 0;
+    const lonSpan = (180 - lonMin) || 360;
+    const latMin = latVals.length ? Math.min(...latVals) : 0;
+    const latSpan = (90 - latMin) || 180;
+    const panMin = panVals.length ? Math.min(...panVals) : 0;
+    const panSpan = (panVals.length ? Math.max(...panVals) - panMin : 0) || 360;
+
     return {
-      url: "https://earth.google.com/studio/",
-      projectId: slugify(plan.job_name),
-      name: plan.job_name,
-      width,
-      height,
-      frameRate: plan.frame_rate,
-      duration: totalFrames,
-      numberOfFrames: totalFrames,
-      _vidtoolz_note: "Best-effort generated .esp. Import into Earth Studio (File > Import) and confirm the camera move before rendering. shot-plan.json/route.kml are manual fallbacks.",
+      modelVersion: ESP_MODEL_VERSION,
+      settings: {
+        name: plan.job_name,
+        frameRate: plan.frame_rate,
+        dimensions: { width, height },
+        duration: totalFrames,
+        timeFormat: "frames",
+      },
       scenes: [
         {
+          world: { kmls: [] },
+          animationModel: { roving: false, logarithmic: false, groupedPosition: true },
           duration: totalFrames,
           attributes: [
             {
               type: "cameraGroup",
+              inTimeline: true,
               attributes: [
                 {
                   type: "cameraPositionGroup",
+                  inTimeline: true,
                   attributes: [
-                    espNumberAttr("longitude", kf.lng, { min: -180, max: 180 }),
-                    espNumberAttr("latitude", kf.lat, { min: -90, max: 90 }),
-                    espNumberAttr("altitude", kf.alt, { min: 0, max: MAX_ALTITUDE_M }),
+                    espLeaf("longitude", kfs(tracks.lng, (v) => (v - lonMin) / lonSpan), { minValueRange: lonMin }),
+                    espLeaf("latitude", kfs(tracks.lat, (v) => (v - latMin) / latSpan), { minValueRange: latMin }),
+                    espLeaf("altitude", kfs(tracks.alt, (v) => v * ESP_ALTITUDE_SCALE), { logarithmic: false }),
+                  ],
+                },
+                {
+                  type: "cameraTargetEffect",
+                  attributes: [
+                    { type: "enabled", value: {} },
+                    {
+                      type: "poi",
+                      attributes: [
+                        { type: "longitudePOI", value: {} },
+                        { type: "latitudePOI", value: {} },
+                        { type: "altitudePOI", value: { logarithmic: false } },
+                      ],
+                    },
+                    { type: "influence", value: {} },
                   ],
                 },
                 {
                   type: "cameraRotationGroup",
+                  inTimeline: true,
                   attributes: [
-                    espNumberAttr("rotationX", kf.tilt.length ? kf.tilt : [espKeyframe(0, 0)]),
-                    espNumberAttr("rotationY", kf.pan),
-                    espNumberAttr("rotationZ", [espKeyframe(0, 0)]),
+                    espLeaf("rotationX", kfs(tracks.pan, (v) => (v - panMin) / panSpan),
+                      tracks.pan.length ? { minValueRange: panMin, maxValueRange: panMin + panSpan } : {}),
+                    espLeaf("rotationY", kfs(tracks.tilt, (v) => v / 180)),
+                    { type: "rotationZ", value: {} },
+                  ],
+                },
+                {
+                  type: "cameraLensGroup",
+                  attributes: [
+                    { type: "fov", value: {} },
+                    { type: "exposure", value: {} },
+                    { type: "aperture", value: {} },
+                    { type: "minFocusLength", value: {} },
                   ],
                 },
               ],
             },
+            {
+              type: "environmentGroup",
+              attributes: [
+                {
+                  type: "sunGroup",
+                  attributes: [
+                    { type: "sunVisibility", value: {} },
+                    { type: "worldTime", value: { relative: 0.5 } },
+                  ],
+                },
+                {
+                  type: "cloudGroup",
+                  attributes: [
+                    { type: "cloudVisibility", value: {} },
+                    { type: "cloudopacity", value: {} },
+                    { type: "cloudheight", value: {} },
+                    { type: "clouddate", value: {} },
+                  ],
+                },
+                { type: "starsPlanetsGroup", attributes: [{ type: "starsEnabled", value: {} }] },
+                {
+                  type: "seawaterGroup",
+                  attributes: [
+                    { type: "seawater", value: {} },
+                    { type: "influence", value: { relative: 1 } },
+                  ],
+                },
+                { type: "buildingsEnabled", value: {} },
+              ],
+            },
           ],
+          cameraExport: { logarithmic: false, modelVersion: 2 },
         },
       ],
+      playbackManager: { range: { start: 0, end: totalFrames } },
     };
   }
 

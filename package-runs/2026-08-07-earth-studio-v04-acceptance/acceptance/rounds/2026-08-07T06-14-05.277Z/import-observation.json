@@ -1,0 +1,12 @@
+{
+  "observedAt": "2026-08-07T13:50:00+03:00",
+  "observer": "Mikko",
+  "importSucceeded": false,
+  "earthStudioWarnings": [],
+  "flight": { "correct": null, "notes": "unobservable — import failed" },
+  "orbit": { "correct": null, "directionCorrect": null, "targetFacing": null, "revolutionsObserved": null, "notes": "unobservable — import failed" },
+  "zoom": { "correct": null, "notes": "unobservable — import failed" },
+  "tilt": { "correct": null, "notes": "unobservable — import failed" },
+  "aspectRatio": { "correct": null, "notes": "unobservable — import failed" },
+  "rawNotes": "Mikko: 'google earth studio wont import .../earth-studio.esp' (real Earth Studio editor, exact on-screen error text not captured). Root cause identified independently: the v0.4 generator's .esp schema does not match the real Earth Studio project format (missing modelVersion/settings envelope, keyframe times in frames instead of duration fractions, un-normalized values, keyframes nested inside value, rotationX/rotationY semantics inverted). Reference: mkatzef/google-studio-utils esp_template.esp (modelVersion 17), whose generated files import successfully."
+}

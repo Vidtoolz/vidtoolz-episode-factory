@@ -170,20 +170,33 @@ function trackValueAt(keyframes, time) {
   return keyframes[keyframes.length - 1].value;
 }
 
+// Parse the REAL .esp format (planner v0.5+, reverse-engineered modelVersion
+// 17) back into absolute-value tracks keyed by frame. Assertions therefore
+// verify the normalization round-trip: what Earth Studio will reconstruct,
+// not what the engine intended to write.
+//   time: fraction of scene duration → frames
+//   longitude: min + v·(180−min)   latitude: min + v·(90−min)
+//   altitude: v ÷ 1.5356706349899208e-08   tilt: v·180 (rotationY)
+//   pan: min + v·(max−min) (rotationX)
+const ESP_ALTITUDE_SCALE = 1.5356706349899208e-08;
+
 function espTracks(esp) {
-  const cam = esp.scenes[0].attributes.find((a) => a.type === "cameraGroup");
+  const scene = esp.scenes[0];
+  const duration = scene.duration || (esp.settings && esp.settings.duration) || 1;
+  const cam = scene.attributes.find((a) => a.type === "cameraGroup");
   const pos = cam.attributes.find((a) => a.type === "cameraPositionGroup");
   const rot = cam.attributes.find((a) => a.type === "cameraRotationGroup");
-  const get = (group, type) => {
+  const get = (group, type, denormalize) => {
     const attr = group.attributes.find((a) => a.type === type);
-    return attr ? attr.value.keyframes : [];
+    if (!attr || !attr.keyframes) return [];
+    return attr.keyframes.map((k) => ({ time: Math.round(k.time * duration), value: denormalize(k.value, attr.value || {}) }));
   };
   return {
-    lng: get(pos, "longitude"),
-    lat: get(pos, "latitude"),
-    alt: get(pos, "altitude"),
-    tilt: get(rot, "rotationX"),
-    pan: get(rot, "rotationY"),
+    lng: get(pos, "longitude", (v, meta) => (meta.minValueRange ?? -180) + v * (180 - (meta.minValueRange ?? -180))),
+    lat: get(pos, "latitude", (v, meta) => (meta.minValueRange ?? -90) + v * (90 - (meta.minValueRange ?? -90))),
+    alt: get(pos, "altitude", (v) => v / ESP_ALTITUDE_SCALE),
+    tilt: get(rot, "rotationY", (v) => v * 180),
+    pan: get(rot, "rotationX", (v, meta) => (meta.minValueRange ?? 0) + v * ((meta.maxValueRange ?? 360) - (meta.minValueRange ?? 0))),
   };
 }
 
@@ -330,11 +343,41 @@ package-run media payload; \`acceptance/hashes.sha256\` pins their integrity.
 `;
 }
 
+// A --force regenerate starts a NEW acceptance round: the prior round's real
+// evidence (observation, report) plus the exact artifacts it judged (.esp,
+// manifest, expected) are archived under acceptance/rounds/<generated_at>/ —
+// failed external proofs are valuable and must never be edited in place.
+function archivePriorRound(packageDir) {
+  let stamp = new Date().toISOString();
+  try { stamp = readJson(path.join(packageDir, FILES.manifest)).generated_at || stamp; } catch (_) { /* keep now() */ }
+  const roundDir = path.join(packageDir, ACCEPTANCE_DIR, "rounds", stamp.replace(/[:]/g, "-"));
+  fs.mkdirSync(roundDir, { recursive: true });
+  const preserve = [
+    [FILES.observation, "move"],
+    [FILES.report, "move"],
+    [path.join("earth-studio", "earth-studio.esp"), "copy"],
+    [FILES.manifest, "copy"],
+    [FILES.expected, "copy"],
+  ];
+  for (const [rel, mode] of preserve) {
+    const src = path.join(packageDir, rel);
+    if (!fs.existsSync(src)) continue;
+    const dest = path.join(roundDir, path.basename(rel));
+    fs.copyFileSync(src, dest);
+    if (mode === "move") fs.rmSync(src);
+  }
+  return roundDir;
+}
+
 function generate(packageDirArg, { force = false } = {}) {
   const packageDir = resolvePackageDir(packageDirArg, { create: true });
   const observationPath = path.join(packageDir, FILES.observation);
-  if (fs.existsSync(observationPath) && !force) {
-    throw usageError("import-observation.json already exists — refusing to regenerate over real evidence. Use --force only if you intend a NEW acceptance round (prior evidence stays on disk; frames become stale).");
+  let archivedRound = null;
+  if (fs.existsSync(observationPath)) {
+    if (!force) {
+      throw usageError("import-observation.json already exists — refusing to regenerate over real evidence. Use --force only if you intend a NEW acceptance round (prior evidence is archived under acceptance/rounds/).");
+    }
+    archivedRound = archivePriorRound(packageDir);
   }
   // Production write path — identical to POST /api/earth-studio/plan.
   const writeResult = lane.writeJob(packageDir, { jobName: JOB_NAME, description: INSTRUCTION, aspect: ASPECT });
@@ -366,7 +409,7 @@ function generate(packageDirArg, { force = false } = {}) {
   writeJson(path.join(packageDir, FILES.observationTemplate), observationTemplate());
   fs.writeFileSync(path.join(packageDir, FILES.checklist), buildChecklist(plan));
   fs.writeFileSync(path.join(packageDir, "README.md"), buildPackageReadme());
-  return { ok: true, package_dir: packageDir, manifest, lane: writeResult };
+  return { ok: true, package_dir: packageDir, archived_round: archivedRound, manifest, lane: writeResult };
 }
 
 // ── check: pre-import semantic assertions ────────────────────────────────────
@@ -385,9 +428,23 @@ function runSemanticChecks(packageDir) {
 
   // identity / composition
   record("aspect: plan is 9:16", plan.aspect === "9:16", `plan.aspect=${plan.aspect}`);
-  record("aspect: .esp dimensions are 1080x1920", esp.width === 1080 && esp.height === 1920, `${esp.width}x${esp.height}`);
-  record("esp: frame count and rate match the plan", esp.numberOfFrames === plan.total_frames && esp.frameRate === plan.frame_rate,
-    `esp ${esp.numberOfFrames}f@${esp.frameRate} vs plan ${plan.total_frames}f@${plan.frame_rate}`);
+  record("aspect: .esp dimensions are 1080x1920", esp.settings && esp.settings.dimensions
+    && esp.settings.dimensions.width === 1080 && esp.settings.dimensions.height === 1920,
+    esp.settings ? `${esp.settings.dimensions.width}x${esp.settings.dimensions.height}` : "no settings");
+  record("esp: real project envelope present (modelVersion, settings, playbackManager)",
+    esp.modelVersion === 17 && esp.settings && esp.settings.timeFormat === "frames"
+    && esp.playbackManager && esp.playbackManager.range && esp.playbackManager.range.end === plan.total_frames,
+    `modelVersion=${esp.modelVersion}`);
+  record("esp: frame count and rate match the plan",
+    esp.settings && esp.settings.duration === plan.total_frames && esp.settings.frameRate === plan.frame_rate,
+    esp.settings ? `esp ${esp.settings.duration}f@${esp.settings.frameRate} vs plan ${plan.total_frames}f@${plan.frame_rate}` : "no settings");
+  record("esp: keyframe times are duration fractions in [0,1]",
+    (() => {
+      const cam = esp.scenes[0].attributes.find((a) => a.type === "cameraGroup");
+      const leafs = [];
+      cam.attributes.forEach((g) => (g.attributes || []).forEach((a) => { if (a.keyframes) leafs.push(...a.keyframes); }));
+      return leafs.length > 0 && leafs.every((k) => k.time >= 0 && k.time <= 1);
+    })(), "raw keyframe times outside [0,1]");
   record("plan: all segments resolved", plan.unresolved_items.length === 0, JSON.stringify(plan.unresolved_items));
   record("plan: canonical action sequence", segs.length === 4
     && flyIn.action === "fly_to" && flight.action === "fly_to" && orbit.action === "orbit" && zoom.action === "zoom_out",
@@ -441,21 +498,22 @@ function runSemanticChecks(packageDir) {
   record("orbit: heading faces the target throughout (±2.5°)", headingErrors.every((e) => e < 2.5),
     `worst heading error ${Math.max(...headingErrors).toFixed(2)}°`);
   const panDelta = trackValueAt(tracks.pan, orbit.end_frame) - trackValueAt(tracks.pan, orbit.start_frame);
-  record("orbit: two revolutions accumulate (pan sweep = -720°, engine ccw = pan decreasing)", panDelta === -720, `pan sweep ${panDelta}°`);
+  record("orbit: two revolutions accumulate (pan sweep = -720°, engine ccw = pan decreasing)", Math.abs(panDelta + 720) < 0.01, `pan sweep ${panDelta}°`);
 
   // zoom
   const zoomAlt = inWindow(tracks.alt, zoom.start_frame, zoom.end_frame);
   record("zoom: begins anchored at the orbit's end altitude (no static first stretch)",
-    zoomAlt.length >= 4 && zoomAlt[0].time === zoom.start_frame && zoomAlt[0].value === orbit.altitude_m,
+    zoomAlt.length >= 4 && zoomAlt[0].time === zoom.start_frame && Math.abs(zoomAlt[0].value - orbit.altitude_m) < 0.5,
     `first zoom alt kf ${zoomAlt[0] && zoomAlt[0].time}:${zoomAlt[0] && zoomAlt[0].value}`);
   record("zoom: altitude strictly increases to space", zoomAlt.every((k, i) => i === 0 || k.value > zoomAlt[i - 1].value)
-    && zoomAlt[zoomAlt.length - 1].value === planner.SPACE_ALTITUDE_M,
+    && Math.abs(zoomAlt[zoomAlt.length - 1].value - planner.SPACE_ALTITUDE_M) < 1,
     zoomAlt.map((k) => Math.round(k.value)).join(" → "));
   record("zoom: interpolation has non-static intermediate states", zoomAlt.length >= 4, `${zoomAlt.length} keyframes`);
 
   // continuity
   const orbitAnchorLat = tracks.lat.find((k) => k.time === orbit.start_frame);
-  record("continuity: orbit starts from the flight's resolved end position", Boolean(orbitAnchorLat) && orbitAnchorLat.value === flight.location.latitude,
+  record("continuity: orbit starts from the flight's resolved end position",
+    Boolean(orbitAnchorLat) && Math.abs(orbitAnchorLat.value - flight.location.latitude) < 1e-6,
     `anchor ${orbitAnchorLat && orbitAnchorLat.value} vs Paris ${flight.location.latitude}`);
   const panAnchor = tracks.pan.find((k) => k.time === orbit.start_frame);
   record("continuity: pan change is anchored at the orbit start (no backward bleed)", Boolean(panAnchor), "no pan keyframe at orbit start");
@@ -478,6 +536,18 @@ const OBSERVATION_BOOL_FIELDS = [
 ];
 
 function evaluateObservation(observation) {
+  // A failed import is a COMPLETE observation: the playback checks are
+  // unobservable when Earth Studio refuses the file, and the failure itself
+  // is the discrepancy to report.
+  if (observation && observation.importSucceeded === false) {
+    return {
+      complete: true,
+      accepted: false,
+      missing: [],
+      discrepancies: ["importSucceeded=false (Earth Studio rejected or failed to import the .esp)"],
+      warnings: (observation.earthStudioWarnings) || [],
+    };
+  }
   const missing = [];
   const failed = [];
   for (const fieldPath of OBSERVATION_BOOL_FIELDS) {

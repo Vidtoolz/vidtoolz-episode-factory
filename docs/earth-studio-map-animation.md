@@ -18,14 +18,19 @@ frame export itself is always a manual in-browser step. Everything around it is 
    and terrain floors (`min_altitude_m`) so zooms over high ground never target below the surface.
    Explicit `lat,lng` coordinates still reach anywhere offline (no geocoding API). Aspect ratios:
    `16:9` (default), `9:16` (Shorts — the GUI default), `1:1`.
-2. **`.esp` generation** — a best-effort importable Earth Studio project with camera position +
-   rotation keyframes from a camera state machine: real circular orbits (position samples around
-   the target, heading facing center, cumulative pan across consecutive orbits), smoothstep-eased
+2. **`.esp` generation** — an importable Earth Studio project with camera position + rotation
+   keyframes from a camera state machine: real circular orbits (position samples around the
+   target, heading facing center, cumulative pan across consecutive orbits), smoothstep-eased
    zooms, a cinematic altitude arc on flights longer than ~30 km, an establishing start state for
-   the first segment (a zoom-in begins wide, a fly-to begins high), and per-action camera tilt on
-   `rotationX`. **Caveat:** Earth Studio can't be import-tested headlessly, so confirm the
-   generated `earth-studio.esp` with one manual import; `shot-plan.json` / `route.kml` are reliable
-   manual fallbacks.
+   the first segment (a zoom-in begins wide, a fly-to begins high), and per-action camera tilt.
+   Since v0.5 the serialization follows the **real reverse-engineered Earth Studio project format**
+   (modelVersion 17, per `mkatzef/google-studio-utils`): keyframe times as duration fractions,
+   normalized values (`minValueRange` offsets, altitude × 1.5356706349899208e-08, tilt ÷ 180), and
+   rotationX = pan / rotationY = tilt — real Earth Studio **refused** the earlier v0.4 from-scratch
+   guess (acceptance round 1, 2026-08-07, evidence archived in the acceptance package).
+   **Caveat:** Earth Studio can't be import-tested headlessly, so confirm the generated
+   `earth-studio.esp` with one manual import; `shot-plan.json` / `route.kml` are reliable manual
+   fallbacks.
 3. **Open Earth Studio**, import the `.esp`, render/export the image sequence into the run's
    `earth-studio/frames/` (the manual step).
 4. **Frames → MP4** — `ffmpeg` on vidnux assembles the exported frames into an MP4.
@@ -56,10 +61,11 @@ Runs locally on vidnux; uses system `ffmpeg`. Does not log into Google, automate
 browser, advance package-run state, or write approved media. PRESTO is not contacted.
 
 ## Verification states — internal green is NOT external proof
-Everything above proves the tool against **our own model** of Earth Studio. The `.esp` format and
-camera semantics (rotationX = tilt-from-nadir, rotationY = heading, altitude in meters,
-counterclockwise = pan decreasing) are best-effort assumptions until real Earth Studio validates
-them. `scripts/earth-studio-v04-acceptance.js` formalizes this as a state machine:
+Everything above proves the tool against **our own model** of Earth Studio. The `.esp` format now
+follows a community-reverse-engineered schema known to import, but the camera semantics
+(rotationX = pan/heading, rotationY = tilt-from-nadir, the empirical altitude scale,
+counterclockwise = pan decreasing) remain unproven for OUR generated moves until real Earth
+Studio validates them. `scripts/earth-studio-v04-acceptance.js` formalizes this as a state machine:
 
 - **INTERNAL_VERIFIED** — parser/generator/renderer tests pass and the pre-import semantic
   assertions pass (29 checks: 9:16 dimensions, real Helsinki→Paris distance, cinematic arc,
