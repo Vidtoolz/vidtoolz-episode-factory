@@ -463,14 +463,18 @@
 
   // The segment's END/target camera altitude: explicit spec beats the
   // gazetteer's per-place altitude, which beats the per-action default —
-  // always floored by the place's terrain minimum.
+  // always floored by the place's terrain minimum. Returns the value plus its
+  // provenance (`source`) so plans and acceptance diagnostics can state where
+  // every altitude came from.
   function targetAltitude(action, altitudeSpec, location) {
     const minAlt = (location && location.min_altitude_m) || 0;
-    if (altitudeSpec && typeof altitudeSpec.altitude_m === "number") return clampAltitude(altitudeSpec.altitude_m, minAlt);
+    if (altitudeSpec && typeof altitudeSpec.altitude_m === "number") {
+      return { value: clampAltitude(altitudeSpec.altitude_m, minAlt), source: altitudeSpec.source === "explicit" ? "explicit" : `semantic_${altitudeSpec.source}` };
+    }
     const fixtureAlt = location && typeof location.altitude_m === "number" ? location.altitude_m : null;
-    if (action === "zoom_in") return clampAltitude(fixtureAlt || ZOOM_IN_ALTITUDE_M, minAlt);
-    if (action === "zoom_out") return clampAltitude(Math.max(ZOOM_OUT_ALTITUDE_M, (fixtureAlt || 0) * 2), minAlt);
-    return clampAltitude(fixtureAlt || DEFAULT_ALTITUDE_M, minAlt);
+    if (action === "zoom_in") return { value: clampAltitude(fixtureAlt || ZOOM_IN_ALTITUDE_M, minAlt), source: fixtureAlt ? "gazetteer" : "action_default" };
+    if (action === "zoom_out") return { value: clampAltitude(Math.max(ZOOM_OUT_ALTITUDE_M, (fixtureAlt || 0) * 2), minAlt), source: fixtureAlt ? "gazetteer" : "action_default" };
+    return { value: clampAltitude(fixtureAlt || DEFAULT_ALTITUDE_M, minAlt), source: fixtureAlt ? "gazetteer" : "action_default" };
   }
 
   function parseSegment(text, segmentId, currentSeconds, frameRate = FRAME_RATE, previousLocation = null) {
@@ -489,11 +493,14 @@
     working = altitudeSpec.text;
 
     let durationSeconds = extractDurationSeconds(text);
+    let durationSource = "explicit";
     if (durationSeconds === null) {
       if (actionInfo.action !== "unresolved") {
         durationSeconds = DEFAULT_DURATION_S[actionInfo.action] || 4;
+        durationSource = "action_default";
         notes.push(`no duration given — defaulted to ${durationSeconds}s.`);
       } else {
+        durationSource = "missing";
         warnings.push("missing duration.");
       }
     }
@@ -515,6 +522,7 @@
     const endSeconds = startSeconds + effectiveDuration;
     const hasManualWarning = warnings.length > 0 || actionInfo.resolutionStatus === "manual_review";
 
+    const altitude = targetAltitude(actionInfo.action, altitudeSpec, location);
     const segment = {
       segment_id: segmentId,
       source_text: cleanString(text),
@@ -522,8 +530,11 @@
       requested_action: actionInfo.action,
       location_name: location ? location.name : locationPhrase || "",
       location,
-      altitude_m: targetAltitude(actionInfo.action, altitudeSpec, location),
+      altitude_m: altitude.value,
+      altitude_source: altitude.source,
       tilt_deg: typeof tiltSpec.tilt_deg === "number" ? tiltSpec.tilt_deg : (DEFAULT_TILT_DEG[actionInfo.action] != null ? DEFAULT_TILT_DEG[actionInfo.action] : 45),
+      tilt_source: typeof tiltSpec.tilt_deg === "number" ? "explicit" : "action_default",
+      duration_source: durationSource,
       start_seconds: startSeconds,
       end_seconds: endSeconds,
       duration_seconds: effectiveDuration,

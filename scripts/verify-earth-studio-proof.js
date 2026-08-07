@@ -476,4 +476,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { audit, parseArgs, imageDimensions, trailingNumber, APPROVED_MEDIA_PATTERN };
+module.exports = { audit, parseArgs, imageDimensions, trailingNumber, sha256File, ffprobeMp4, APPROVED_MEDIA_PATTERN };
