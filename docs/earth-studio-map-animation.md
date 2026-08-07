@@ -12,8 +12,11 @@ frame export itself is always a manual in-browser step. Everything around it is 
    with per-segment modifiers — duration (`for 5 seconds`), altitude (`at 800m`, `from space`,
    `low`, `high`), tilt (`top-down`, `tilted 30 degrees`, `toward the horizon`), and orbit amount +
    direction (`twice`, `180 degrees`, `counterclockwise`). Segments chain with `then`; a segment
-   without a location reuses the previous one, and a missing duration gets a per-action default
-   (recorded as a note, never silently). ~150-place worldwide gazetteer with aliases (`NYC`,
+   without a location reuses the previous one, and a missing duration gets a **magnitude-scaled**
+   default — flight distance (~150 km/s cruise, capped 4–25 s), orbit revolutions (10 s each),
+   zoom altitude ratio (log-scaled 3–12 s) — recorded as a note, never silently. Explicit
+   durations always win, but physically absurd speeds draw advisory pacing notes (real Earth
+   Studio playback of acceptance round 2 was "too fast to be intelligible"). ~150-place worldwide gazetteer with aliases (`NYC`,
    `Everest`), diacritic/punctuation-tolerant lookup, per-place default altitudes for landmarks,
    and terrain floors (`min_altitude_m`) so zooms over high ground never target below the surface.
    Explicit `lat,lng` coordinates still reach anywhere offline (no geocoding API). Aspect ratios:

@@ -1,0 +1,48 @@
+{
+  "proof_id": "2026-08-07-earth-studio-v04-acceptance",
+  "purpose": "Real Google Earth Studio import/playback acceptance of the v0.4 camera engine + real-frame render seam",
+  "planner_version": "0.5.0",
+  "git_head": "3938b8c136996e29ab786a01d4b9c401aeeefe82",
+  "generated_at": "2026-08-07T10:58:28.577Z",
+  "job_name": "v0.4 Real Import Paris",
+  "instruction": "fly to Helsinki in 3 seconds, then fly to Paris at 2 km tilted 35 degrees in 5 seconds, then orbit twice counterclockwise for 8 seconds, then zoom out to space in 6 seconds",
+  "aspect": "9:16",
+  "render_dimensions": {
+    "width": 1080,
+    "height": 1920
+  },
+  "frame_rate": 30,
+  "total_frames": 660,
+  "total_duration_seconds": 22,
+  "export_window": {
+    "start": 420,
+    "end": 509
+  },
+  "esp_sha256": "4502fa863667003dba73087b523a57356d6a9ed7e5fb6b393140b980538aaa5e",
+  "segment_boundaries": [
+    {
+      "segment_id": 1,
+      "action": "fly_to",
+      "start_frame": 0,
+      "end_frame": 90
+    },
+    {
+      "segment_id": 2,
+      "action": "fly_to",
+      "start_frame": 90,
+      "end_frame": 240
+    },
+    {
+      "segment_id": 3,
+      "action": "orbit",
+      "start_frame": 240,
+      "end_frame": 480
+    },
+    {
+      "segment_id": 4,
+      "action": "zoom_out",
+      "start_frame": 480,
+      "end_frame": 660
+    }
+  ]
+}

@@ -390,10 +390,37 @@ test("earth-studio planner v0.4: bare vibe description resolves via carry-over +
   assert.ok(plan.segments.every((s) => s.resolution_status === "resolved"), JSON.stringify(plan.warnings));
   assert.equal(plan.segments[1].location_name, "Paris"); // carried over
   assert.equal(plan.segments[1].location.source, "carried_over");
-  assert.equal(plan.segments[0].duration_seconds, planner.DEFAULT_DURATION_S.fly_to);
-  assert.equal(plan.segments[1].duration_seconds, planner.DEFAULT_DURATION_S.orbit);
+  assert.equal(plan.segments[0].duration_seconds, 5); // first fly_to = establishing dive default
+  assert.equal(plan.segments[1].duration_seconds, planner.DEFAULT_DURATION_S.orbit); // one revolution
   assert.match(plan.notes.join("\n"), /defaulted to/);
   assert.match(plan.notes.join("\n"), /carried over/);
+});
+
+test("earth-studio planner v0.6: default durations scale with the move's magnitude (real ES playback proved flat defaults unusable)", () => {
+  // intercontinental flight gets flight time, cross-town hop stays snappy
+  const far = planner.buildShotPlan("T", "hover over Helsinki for 2 seconds, then fly to Tokyo");
+  assert.ok(far.segments[1].duration_seconds >= 20, `Helsinki→Tokyo defaulted to ${far.segments[1].duration_seconds}s`);
+  const near = planner.buildShotPlan("T", "hover over Big Ben for 2 seconds, then fly to Tower Bridge");
+  assert.ok(near.segments[1].duration_seconds <= 5, `cross-town hop defaulted to ${near.segments[1].duration_seconds}s`);
+  // orbits scale per revolution
+  const twice = planner.buildShotPlan("T", "orbit Paris twice");
+  assert.equal(twice.segments[0].duration_seconds, 20);
+  // huge zooms get more time than small ones
+  const spaceZoom = planner.buildShotPlan("T", "hover over Paris for 2 seconds, then zoom out to space");
+  assert.equal(spaceZoom.segments[1].duration_seconds, 12);
+  assert.equal(planner.defaultDuration("zoom_in", { fromAltitudeM: 2500, toAltitudeM: 800 }), 4);
+});
+
+test("earth-studio planner v0.6: absurd explicit speeds draw advisory pacing notes but never block", () => {
+  const plan = planner.buildShotPlan("T", "fly to Helsinki in 3 seconds, then fly to Paris in 5 seconds, then orbit twice for 8 seconds, then zoom out to space in 3 seconds");
+  const pacing = plan.notes.filter((n) => n.includes("pacing:"));
+  assert.equal(pacing.length, 3, plan.notes.join(" | ")); // flight + orbit + zoom flagged
+  assert.match(pacing.join("\n"), /km\/s flight/);
+  assert.match(pacing.join("\n"), /°\/s/);
+  assert.ok(plan.segments.every((s) => s.resolution_status === "resolved"), "advisories must not block");
+  // sane explicit durations draw no pacing notes (the round-3 fixture)
+  const sane = planner.buildShotPlan("T", "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 24 seconds, then zoom out to space in 12 seconds");
+  assert.equal(sane.notes.filter((n) => n.includes("pacing:")).length, 0, sane.notes.join(" | "));
 });
 
 test("earth-studio planner v0.4: altitude modifiers (numeric, km, space, low/high, fixture, terrain floor)", () => {

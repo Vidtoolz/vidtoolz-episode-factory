@@ -1,0 +1,12 @@
+{
+  "observedAt": "2026-08-07T14:30:00+03:00",
+  "observer": "Mikko",
+  "importSucceeded": true,
+  "earthStudioWarnings": [],
+  "flight": { "correct": false, "notes": "animation unusable — too fast to be intelligible (1910 km flight in 5s ≈ 382 km/s as generated)" },
+  "orbit": { "correct": false, "directionCorrect": false, "targetFacing": false, "revolutionsObserved": 0, "notes": "could not assess at this speed (720° in 8s = 90°/s); false = not-confirmed, not observed-wrong" },
+  "zoom": { "correct": false, "notes": "could not assess at this speed (2.5 km → 12,000 km in 6s)" },
+  "tilt": { "correct": false, "notes": "could not assess at this speed" },
+  "aspectRatio": { "correct": false, "notes": "not assessed this round" },
+  "rawNotes": "Mikko: 'it imported now, playing the animation. the animation is unusable, too fast to be intelligible.' MAJOR: the v0.5 real-format .esp IMPORTS successfully — the round-1 format rejection is resolved. Remaining defect is pacing: the fixture durations produce physically absurd camera speeds. Semantic checks (direction, target-facing, revolutions, tilt, aspect) unobservable at this speed; 'correct: false' means not-confirmed rather than observed-wrong."
+}

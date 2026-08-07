@@ -69,10 +69,15 @@ const ASPECT = "9:16";
 // v0.4 behaviors most likely to expose wrong semantics: explicit altitude,
 // explicit tilt, location carry-over, a multi-revolution counterclockwise
 // orbit (accumulated pan + target-facing heading), and a zoom-out to space.
-const INSTRUCTION = "fly to Helsinki in 3 seconds, then fly to Paris at 2 km tilted 35 degrees in 5 seconds, then orbit twice counterclockwise for 8 seconds, then zoom out to space in 6 seconds";
-// Suggested real-export window: late orbit → zoom-out boundary (frame 480),
-// 90 frames of genuine motion including an action boundary.
-const EXPORT_WINDOW = { start: 420, end: 509 };
+// Durations are intelligible-pace explicit values: round 2's real playback
+// proved the original fast pacing "unusable — too fast to be intelligible".
+const INSTRUCTION = "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 24 seconds, then zoom out to space in 12 seconds";
+// Real-export window: 90 frames ending 30 frames into the zoom-out, so the
+// window spans genuine motion INCLUDING an action boundary (orbit → zoom).
+function exportWindow(plan) {
+  const zoom = plan.segments[plan.segments.length - 1];
+  return { start: Math.max(0, zoom.start_frame - 60), end: zoom.start_frame + 29 };
+}
 const DEFAULT_MIN_FRAMES = 50;
 
 const ACCEPTANCE_DIR = "acceptance";
@@ -292,14 +297,17 @@ Instruction: \`${INSTRUCTION}\`
 3. Note whether the import succeeds, warns, silently changes values, or fails.
 
 ## 2 · Play the full animation and check
-- **A Flight** (frames 0–240): starts high over Helsinki, descends; then flies
+First sanity-check the timeline itself: it must read **${plan.total_frames} frames
+(${plan.total_duration_seconds}s @ ${plan.frame_rate} fps)** — anything shorter means Earth Studio
+reinterpreted the project duration and pacing will be wrong; report that.
+- **A Flight** (frames 0–${plan.segments[1].end_frame}): starts high over Helsinki, descends; then flies
   Helsinki → Paris rising in a high arc (never skimming ground); ends over
   Paris at ~2 km, tilted ~35° from straight-down; no backwards jumps.
-- **B Orbit** (frames 240–480): camera physically circles Paris TWICE with
+- **B Orbit** (frames ${plan.segments[2].start_frame}–${plan.segments[2].end_frame}): camera physically circles Paris TWICE with
   Paris staying centered (not a stationary heading spin); second revolution
   continues from the first (no reset). Direction note: the generator's
   "counterclockwise" = pan DECREASING — record the direction you actually see.
-- **C Zoom-out** (frames 480–660): starts from the final orbit position with
+- **C Zoom-out** (frames ${plan.segments[3].start_frame}–${plan.segments[3].end_frame}): starts from the final orbit position with
   no static pause or snap, pulls smoothly away to a space-scale globe view.
 - **D Composition**: the project/viewport is genuinely vertical 9:16
   (1080×1920) and Paris framing is usable vertically.
@@ -309,8 +317,8 @@ Copy \`acceptance/import-observation.template.json\` →
 \`acceptance/import-observation.json\`, fill every field, save.
 
 ## 4 · Export real frames (only if playback is acceptable)
-1. In Earth Studio: Render → image sequence, frames **${EXPORT_WINDOW.start}–${EXPORT_WINDOW.end}**
-   (~${EXPORT_WINDOW.end - EXPORT_WINDOW.start + 1} frames spanning the orbit → zoom-out boundary), full ${plan.render_dimensions.width}x${plan.render_dimensions.height}.
+1. In Earth Studio: Render → image sequence, frames **${exportWindow(plan).start}–${exportWindow(plan).end}**
+   (~${exportWindow(plan).end - exportWindow(plan).start + 1} frames spanning the orbit → zoom-out boundary), full ${plan.render_dimensions.width}x${plan.render_dimensions.height}.
 2. Put the exported images (unzipped, no subfolders) into \`earth-studio/frames/\`.
 
 ## 5 · Back on vidnux
@@ -400,7 +408,7 @@ function generate(packageDirArg, { force = false } = {}) {
     frame_rate: plan.frame_rate,
     total_frames: plan.total_frames,
     total_duration_seconds: plan.total_duration_seconds,
-    export_window: EXPORT_WINDOW,
+    export_window: exportWindow(plan),
     esp_sha256: sha256(path.join(packageDir, "earth-studio", "earth-studio.esp")),
     segment_boundaries: plan.segments.map((s) => ({ segment_id: s.segment_id, action: s.action, start_frame: s.start_frame, end_frame: s.end_frame })),
   };
@@ -950,7 +958,7 @@ async function main() {
 if (require.main === module) main();
 
 module.exports = {
-  PROOF_ID, DEFAULT_PACKAGE_DIR, JOB_NAME, INSTRUCTION, ASPECT, EXPORT_WINDOW, FILES,
+  PROOF_ID, DEFAULT_PACKAGE_DIR, JOB_NAME, INSTRUCTION, ASPECT, exportWindow, FILES,
   resolvePackageDir, generate, runSemanticChecks, buildExpected,
   ingestObservation, evaluateObservation, observationTemplate,
   validateFrames, startAcceptanceRender, finalizeRenderResult,

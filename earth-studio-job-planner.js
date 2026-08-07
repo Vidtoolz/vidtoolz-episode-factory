@@ -2,7 +2,7 @@
   "use strict";
 
   const DEFAULT_OUTPUT_DIR = "/home/vidtoolz/Videos/vidtoolz-earth-studio-jobs";
-  const VERSION = "0.5.0"; // v0.5: .esp serialization rewritten to the real reverse-engineered Earth Studio format (modelVersion 17) after real Earth Studio refused the v0.4 guess (acceptance round 1, 2026-08-07); keyframe engine and grammar unchanged from v0.4
+  const VERSION = "0.6.0"; // v0.6: magnitude-aware pacing (real ES playback of round 2 was "too fast to be intelligible") — default durations scale with flight distance / orbit revolutions / zoom ratio, advisory pacing notes on absurd explicit durations; v0.5 real .esp format retained
   const FRAME_RATE = 30;
   const DEFAULT_ALTITUDE_M = 2500;
   const MIN_ALTITUDE_M = 150;
@@ -17,10 +17,14 @@
     "earth-studio.esp",
   ];
 
-  // Per-action defaults so a bare "fly to Paris, then orbit" still produces a
-  // complete, renderable plan. Durations in seconds; tilt in degrees from
-  // straight-down (0 = top-down map view, ~70 = toward the horizon).
-  const DEFAULT_DURATION_S = { fly_to: 4, hover: 3, orbit: 6, zoom_in: 3, zoom_out: 4 };
+  // Per-action BASE defaults so a bare "fly to Paris, then orbit" still
+  // produces a complete, renderable plan. Real Earth Studio playback of the
+  // first acceptance rounds proved flat defaults unusable ("too fast to be
+  // intelligible"), so defaults scale with the move's magnitude — flight
+  // distance, orbit revolutions, zoom altitude ratio — via defaultDuration().
+  // fly_to/zoom values are bases; orbit is seconds PER REVOLUTION. Tilt in
+  // degrees from straight-down (0 = top-down map view, ~70 = horizon).
+  const DEFAULT_DURATION_S = { fly_to: 4, hover: 3, orbit: 10, zoom_in: 3, zoom_out: 4 };
   const DEFAULT_TILT_DEG = { fly_to: 45, hover: 50, orbit: 60, zoom_in: 45, zoom_out: 35 };
   const ZOOM_IN_ALTITUDE_M = 800;
   const ZOOM_OUT_ALTITUDE_M = 6000;
@@ -477,7 +481,24 @@
     return { value: clampAltitude(fixtureAlt || DEFAULT_ALTITUDE_M, minAlt), source: fixtureAlt ? "gazetteer" : "action_default" };
   }
 
-  function parseSegment(text, segmentId, currentSeconds, frameRate = FRAME_RATE, previousLocation = null) {
+  // Duration a move NEEDS to read on screen, scaled by its magnitude:
+  // flights by ground distance (~150 km/s cruise over a 4 s base, capped),
+  // orbits by revolutions, zooms by the altitude ratio (log scale).
+  function defaultDuration(action, { distanceM = null, orbitDegrees = 360, fromAltitudeM = DEFAULT_ALTITUDE_M, toAltitudeM = DEFAULT_ALTITUDE_M } = {}) {
+    if (action === "fly_to") {
+      if (!Number.isFinite(distanceM)) return 5; // establishing dive onto the first location
+      return Math.round(Math.min(25, Math.max(4, 4 + distanceM / 150000)));
+    }
+    if (action === "orbit") return Math.max(6, Math.round((DEFAULT_DURATION_S.orbit * Math.abs(orbitDegrees || 360)) / 360));
+    if (action === "zoom_in" || action === "zoom_out") {
+      const hi = Math.max(fromAltitudeM, toAltitudeM);
+      const lo = Math.max(1, Math.min(fromAltitudeM, toAltitudeM));
+      return Math.round(Math.min(12, Math.max(3, 3 + 2.5 * Math.log10(hi / lo))));
+    }
+    return DEFAULT_DURATION_S[action] || 4;
+  }
+
+  function parseSegment(text, segmentId, currentSeconds, frameRate = FRAME_RATE, previousLocation = null, previousAltitudeM = DEFAULT_ALTITUDE_M) {
     const warnings = [];
     const notes = [];
     const actionInfo = detectAction(text);
@@ -492,19 +513,6 @@
     const altitudeSpec = extractAltitudeSpec(working);
     working = altitudeSpec.text;
 
-    let durationSeconds = extractDurationSeconds(text);
-    let durationSource = "explicit";
-    if (durationSeconds === null) {
-      if (actionInfo.action !== "unresolved") {
-        durationSeconds = DEFAULT_DURATION_S[actionInfo.action] || 4;
-        durationSource = "action_default";
-        notes.push(`no duration given — defaulted to ${durationSeconds}s.`);
-      } else {
-        durationSource = "missing";
-        warnings.push("missing duration.");
-      }
-    }
-
     const locationPhrase = extractLocationPhrase(working, actionInfo.action);
     let location = locationPhrase ? resolveLocation(locationPhrase) : null;
     if (locationPhrase && !location) warnings.push(`unknown location fixture: ${locationPhrase}`);
@@ -517,12 +525,48 @@
       }
     }
 
+    // Duration: explicit wins; otherwise scale to the move's magnitude.
+    const altitude = targetAltitude(actionInfo.action, altitudeSpec, location);
+    const distanceM = location && previousLocation ? haversineMeters(previousLocation, location) : null;
+    const magnitude = {
+      distanceM,
+      orbitDegrees: typeof orbitSpec.orbit_degrees === "number" ? orbitSpec.orbit_degrees : 360,
+      fromAltitudeM: previousAltitudeM,
+      toAltitudeM: altitude.value,
+    };
+    let durationSeconds = extractDurationSeconds(text);
+    let durationSource = "explicit";
+    if (durationSeconds === null) {
+      if (actionInfo.action !== "unresolved") {
+        durationSeconds = defaultDuration(actionInfo.action, magnitude);
+        durationSource = "action_default";
+        notes.push(`no duration given — defaulted to ${durationSeconds}s.`);
+      } else {
+        durationSource = "missing";
+        warnings.push("missing duration.");
+      }
+    } else if (durationSeconds > 0) {
+      // Advisory pacing notes: real Earth Studio playback proved absurd camera
+      // speeds unintelligible. Never blocks — the author may want speed.
+      const suggested = defaultDuration(actionInfo.action, magnitude);
+      if (actionInfo.action === "fly_to" && Number.isFinite(distanceM) && distanceM > 300000 && distanceM / durationSeconds > 200000) {
+        notes.push(`pacing: ~${Math.round(distanceM / durationSeconds / 1000)} km/s flight — likely too fast to read; consider ~${suggested}s.`);
+      }
+      if (actionInfo.action === "orbit" && Math.abs(magnitude.orbitDegrees) / durationSeconds > 60) {
+        notes.push(`pacing: orbit at ${Math.round(Math.abs(magnitude.orbitDegrees) / durationSeconds)}°/s — likely too fast to read; consider ~${suggested}s.`);
+      }
+      if ((actionInfo.action === "zoom_in" || actionInfo.action === "zoom_out")
+        && Math.max(magnitude.fromAltitudeM, magnitude.toAltitudeM) / Math.max(1, Math.min(magnitude.fromAltitudeM, magnitude.toAltitudeM)) > 50
+        && durationSeconds < 6) {
+        notes.push(`pacing: very large zoom in ${durationSeconds}s — likely too fast to read; consider ~${suggested}s.`);
+      }
+    }
+
     const startSeconds = currentSeconds;
     const effectiveDuration = durationSeconds || 0;
     const endSeconds = startSeconds + effectiveDuration;
     const hasManualWarning = warnings.length > 0 || actionInfo.resolutionStatus === "manual_review";
 
-    const altitude = targetAltitude(actionInfo.action, altitudeSpec, location);
     const segment = {
       segment_id: segmentId,
       source_text: cleanString(text),
@@ -559,16 +603,20 @@
     const segments = [];
     let currentSeconds = 0;
     let lastLocation = null;
+    let lastAltitude = DEFAULT_ALTITUDE_M;
 
     if (!parts.length) warnings.push("description did not contain any parseable segments.");
 
     parts.forEach((part, index) => {
-      const parsed = parseSegment(part, index + 1, currentSeconds, frameRate, lastLocation);
+      const parsed = parseSegment(part, index + 1, currentSeconds, frameRate, lastLocation, lastAltitude);
       segments.push(parsed.segment);
       warnings.push(...parsed.warnings.map((warning) => `segment ${index + 1}: ${warning}`));
       notes.push(...parsed.notes.map((note) => `segment ${index + 1}: ${note}`));
       currentSeconds = parsed.nextSeconds;
-      if (parsed.segment.location) lastLocation = parsed.segment.location;
+      if (parsed.segment.location) {
+        lastLocation = parsed.segment.location;
+        lastAltitude = parsed.segment.altitude_m;
+      }
     });
 
     return {
@@ -1205,6 +1253,7 @@ This checklist is technical planning support only. It is not creative approval, 
     normalizeLocationName,
     resolveLocation,
     parseExplicitCoords,
+    defaultDuration,
     parseDescription,
     buildShotPlan,
     buildArtifacts,

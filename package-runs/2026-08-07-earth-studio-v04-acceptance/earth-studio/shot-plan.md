@@ -1,8 +1,8 @@
 # Shot Plan: v0.4 Real Import Paris
 
-Total duration: 22 seconds
+Total duration: 59 seconds
 Frame rate: 30 fps
-Total frames: 660
+Total frames: 1770
 Aspect: 9:16 (1080x1920)
 Frame convention: start_frame inclusive, end_frame exclusive
 
@@ -10,10 +10,10 @@ Frame convention: start_frame inclusive, end_frame exclusive
 
 | # | Action | Location | Alt (m) | Tilt | Time | start_frame | end_frame | Status |
 |---|---|---|---:|---:|---:|---:|---:|---|
-| 1 | fly_to | Helsinki | 2500 | 45 | 0-3s | 0 | 90 | resolved |
-| 2 | fly_to | Paris | 2000 | 35 | 3-8s | 90 | 240 | resolved |
-| 3 | orbit | Paris | 2500 | 60 | 8-16s | 240 | 480 | resolved |
-| 4 | zoom_out | Paris | 12000000 | 35 | 16-22s | 480 | 660 | resolved |
+| 1 | fly_to | Helsinki | 2500 | 45 | 0-5s | 0 | 150 | resolved |
+| 2 | fly_to | Paris | 2000 | 35 | 5-23s | 150 | 690 | resolved |
+| 3 | orbit | Paris | 2500 | 60 | 23-47s | 690 | 1410 | resolved |
+| 4 | zoom_out | Paris | 12000000 | 35 | 47-59s | 1410 | 1770 | resolved |
 
 ## Locations
 
