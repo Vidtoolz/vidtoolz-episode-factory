@@ -365,6 +365,9 @@ function archivePriorRound(packageDir) {
   const preserve = [
     [FILES.observation, "move"],
     [FILES.report, "move"],
+    [FILES.framesValidation, "move"],
+    [FILES.renderResult, "move"],
+    [FILES.hashes, "move"],
     [path.join("earth-studio", "earth-studio.esp"), "copy"],
     [FILES.manifest, "copy"],
     [FILES.expected, "copy"],

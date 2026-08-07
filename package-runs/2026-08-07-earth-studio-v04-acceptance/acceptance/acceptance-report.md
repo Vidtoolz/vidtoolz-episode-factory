@@ -1,8 +1,8 @@
 # Earth Studio v0.4 acceptance report — 2026-08-07-earth-studio-v04-acceptance
 
-**Verification state: INTERNAL_VERIFIED**
+**Verification state: EARTH_STUDIO_IMPORT_VERIFIED**
 
-parser/generator/.esp structure verified internally — real Earth Studio import NOT yet observed; camera semantics remain best-effort assumptions
+real frame export not validated; production render not run; hashes.sha256 not written
 
 - Planner version: 0.6.1
 - Generated at: 2026-08-07T12:18:45.179Z (git 2bd6d93694a6)
@@ -12,7 +12,7 @@ parser/generator/.esp structure verified internally — real Earth Studio import
 
 ## Gates
 - Internal semantic checks: PASS (31 assertions)
-- Real Earth Studio import observation: PENDING — the one manual browser step (see import-checklist.md)
+- Real Earth Studio import observation: ACCEPTED
 - Real frame export validated: PENDING
 - Production frames→MP4 render: PENDING
 - Evidence hashes: not written
@@ -20,4 +20,4 @@ parser/generator/.esp structure verified internally — real Earth Studio import
 Internal green is NOT external proof: only the real Earth Studio import
 observation and real exported frames advance the state past INTERNAL_VERIFIED.
 
-_Report regenerated 2026-08-07T12:18:45.217Z by scripts/earth-studio-v04-acceptance.js status._
+_Report regenerated 2026-08-07T12:27:57.746Z by scripts/earth-studio-v04-acceptance.js status._

@@ -1,0 +1,12 @@
+{
+  "observedAt": "2026-08-07T16:20:00+03:00",
+  "observer": "Mikko",
+  "importSucceeded": true,
+  "earthStudioWarnings": [],
+  "flight": { "correct": true, "notes": "played well (round-3 wording, carried: same flight, unchanged in round 4)" },
+  "orbit": { "correct": true, "directionCorrect": true, "targetFacing": true, "revolutionsObserved": 2, "notes": "circled Paris twice, target centered; perceived direction COUNTERCLOCKWISE = engine convention (ccw = pan decreasing) confirmed; round-4 pacing (18s/rev) accepted" },
+  "zoom": { "correct": true, "notes": "no complaints across rounds 3-4" },
+  "tilt": { "correct": true, "notes": "visibly tilted/oblique as designed (render-dialog preview evidence)" },
+  "aspectRatio": { "correct": true, "notes": "1080x1920 confirmed in ES dialog, preview, and measured frames" },
+  "rawNotes": "Mikko round 4 closing verdict: 'accepted' (after 'counterclockwise' for the orbit direction). Round-3 orbit-speed complaint addressed by v0.6.1 proximity-aware pacing; acceptance declared without a new frame export — the frames->MP4 seam was proven with real ES frames in round 3 (archived)."
+}
