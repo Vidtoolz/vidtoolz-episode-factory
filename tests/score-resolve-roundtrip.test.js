@@ -4,6 +4,7 @@ const { assert, fs, http, os, path, packageEngineServer, test } = require("./_he
 const lane = require("../score-engine/score-lane.js");
 const provenance = require("../score-engine/score-provenance.js");
 const synth = require("../score-engine/preview-synth.js");
+const timelineEvidence = require("../score-engine/resolve-timeline-evidence.js");
 
 function tmpEnv() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "score-resolve-roundtrip-"));
@@ -85,6 +86,91 @@ function prepare(projectId, options) {
     frame_rate: "24/1", timeline_start_timecode: "01:00:00:00",
   }, options);
 }
+
+function timelineFixture(projectId, options) {
+  const state = lane.getProject(projectId, options);
+  const integration = state.resolve_integration;
+  const record = JSON.parse(fs.readFileSync(path.join(state.dir, integration.relative_dir, "resolve-integration.json"), "utf8"));
+  const timeline = record.integration_contract.timeline;
+  return {
+    contract: record.integration_contract,
+    evidence: {
+      schema_version: 1, role: "scorecraft_resolve_timeline_readback",
+      resolve_integration_identity: integration.resolve_integration_identity,
+      frame_rate: { ...timeline.frame_rate }, timeline_start_timecode: timeline.timeline_start_timecode,
+      timeline_duration_frames: timeline.expected_program_duration_frames,
+      clips: [
+        { source_kind: "music", source_sha256: record.integration_contract.production.production_mix_sha256, media_type: "audio", track_index: 2, start_frame: timeline.music_start_frame, duration_frames: timeline.expected_program_duration_frames, speed_percent: 100 },
+        { source_kind: "narration", source_sha256: record.integration_contract.narration.source_sha256, media_type: "audio", track_index: 1, start_frame: timeline.narration_start_frame, duration_frames: timeline.narration_end_frame - timeline.narration_start_frame, speed_percent: 100 },
+      ],
+      markers: timeline.cue_markers.map((cue) => ({ cue_id: cue.cue_id, name: cue.name, frame: cue.start_frame, duration_frames: Math.max(1, cue.end_frame - cue.start_frame) })),
+    },
+  };
+}
+
+test("score Resolve P7: semantic timeline readback binds exact selected music, narration, placement, and cues", () => {
+  const { options } = tmpEnv();
+  const { project } = projectFixture(options);
+  registerNarration(project.project_id, options); prepare(project.project_id, options);
+  const fixture = timelineFixture(project.project_id, options);
+  const checked = timelineEvidence.validateResolveTimelineEvidence(fixture.contract, fixture.evidence);
+  assert.match(checked.evidence_identity, /^[a-f0-9]{64}$/);
+  assert.deepEqual(checked.evidence.clips.map((clip) => clip.source_kind), ["narration", "music"]);
+});
+
+test("score Resolve P7: semantic timeline readback rejects source substitution, offset, retiming, and duplicates", () => {
+  const { options } = tmpEnv();
+  const { project } = projectFixture(options);
+  registerNarration(project.project_id, options); prepare(project.project_id, options);
+  const { contract, evidence } = timelineFixture(project.project_id, options);
+  for (const mutate of [
+    (copy) => { copy.clips.find((clip) => clip.source_kind === "music").source_sha256 = "0".repeat(64); },
+    (copy) => { copy.clips.find((clip) => clip.source_kind === "narration").source_sha256 = "1".repeat(64); },
+    (copy) => { copy.clips.find((clip) => clip.source_kind === "music").start_frame += 1; },
+    (copy) => { copy.clips.find((clip) => clip.source_kind === "narration").start_frame += 1; },
+    (copy) => { copy.clips.find((clip) => clip.source_kind === "music").speed_percent = 99; },
+    (copy) => { copy.clips.push({ ...copy.clips.find((clip) => clip.source_kind === "music") }); },
+  ]) {
+    const copy = structuredClone(evidence); mutate(copy);
+    assert.throws(() => timelineEvidence.validateResolveTimelineEvidence(contract, copy), /timeline evidence invalid/i);
+  }
+});
+
+test("score Resolve P7: semantic timeline readback rejects frame-rate, start-timecode, duration, and marker drift", () => {
+  const { options } = tmpEnv();
+  const { project } = projectFixture(options);
+  registerNarration(project.project_id, options); prepare(project.project_id, options);
+  const { contract, evidence } = timelineFixture(project.project_id, options);
+  for (const mutate of [
+    (copy) => { copy.frame_rate.numerator = 25; },
+    (copy) => { copy.timeline_start_timecode = "00:00:00:00"; },
+    (copy) => { copy.timeline_duration_frames += 2; },
+    (copy) => { copy.markers[0].frame += 1; },
+    (copy) => { copy.markers.pop(); },
+  ]) {
+    const copy = structuredClone(evidence); mutate(copy);
+    assert.throws(() => timelineEvidence.validateResolveTimelineEvidence(contract, copy), /timeline evidence invalid/i);
+  }
+});
+
+test("score Resolve P7: timeline evidence is durable, current, semantic, and non-gating for manual Resolve", () => {
+  const { options } = tmpEnv();
+  const { project } = projectFixture(options);
+  registerNarration(project.project_id, options); prepare(project.project_id, options);
+  const fixture = timelineFixture(project.project_id, options);
+  fixture.evidence.resolve_internal_object_id = "volatile-a";
+  const first = lane.recordResolveTimelineEvidence(project.project_id, {
+    evidence: fixture.evidence,
+    execution: { product: "DaVinci Resolve Studio", version: "21.0.3.7", automation: "official_python_api", project_name: "P7 fixture", timeline_name: "P7 timeline", database_type: "Disk" },
+  }, options);
+  fixture.evidence.resolve_internal_object_id = "volatile-b";
+  const second = lane.recordResolveTimelineEvidence(project.project_id, { evidence: fixture.evidence, execution: {} }, options);
+  assert.equal(first.resolve_timeline_evidence_identity, second.resolve_timeline_evidence_identity);
+  const state = lane.getProject(project.project_id, options);
+  assert.equal(state.resolve_timeline_evidence.current, true);
+  assert.equal(state.resolve_timeline_evidence.evidence_level, "resolve_timeline_verified");
+  assert.equal(state.resolve_roundtrip.state, "not_registered");
+});
 
 test("score Resolve P6: integration requires current narration and binds deterministic timing authority", () => {
   const { options } = tmpEnv();

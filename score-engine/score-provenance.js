@@ -379,6 +379,13 @@ function resolveIntegrationIdentity(contract) {
   return hashCanonical(contract);
 }
 
+function resolveTimelineEvidenceIdentity(evidence) {
+  if (!evidence || evidence.role !== "scorecraft_resolve_timeline_evidence" || evidence.schema_version !== 1) {
+    throw new Error("Supported semantic Resolve timeline evidence is required.");
+  }
+  return hashCanonical(evidence);
+}
+
 function resolveProgramVerificationIdentity({ programSha256, resolveIntegrationIdentity: integrationIdentity, detectedMedia, technicalAnalysis }) {
   if (!/^[a-f0-9]{64}$/.test(String(programSha256 || ""))) throw new Error("Program render SHA-256 is required.");
   if (!/^[a-f0-9]{64}$/.test(String(integrationIdentity || ""))) throw new Error("Resolve integration identity is required.");
@@ -619,6 +626,7 @@ module.exports = {
   productionRevisionIdentity,
   productionSelectionIdentity,
   resolveIntegrationIdentity,
+  resolveTimelineEvidenceIdentity,
   resolveProgramVerificationIdentity,
   resolveProgramReviewIdentity,
   buildArtifactManifest,

@@ -17,6 +17,7 @@ const midiWriter = require("./midi-writer.js");
 const synth = require("./preview-synth.js");
 const reaper = require("./reaper-backend.js");
 const provenanceLib = require("./score-provenance.js");
+const resolveTimelineEvidence = require("./resolve-timeline-evidence.js");
 
 const ENGINE_VERSION = "1.3.0";
 const PULSE_REGISTERS = ["low_mid", "mid_high", "high"];
@@ -287,8 +288,10 @@ function getProject(projectId, options = {}) {
   readiness.narration = narration;
   readiness.narration_review_ready = narration.review_ready;
   const resolveIntegration = assessResolveIntegration(dir, project, settings);
+  const timelineEvidence = assessResolveTimelineEvidence(dir, resolveIntegration);
   const resolveRoundtrip = assessResolveRoundtrip(dir, project, settings, resolveIntegration);
   readiness.resolve_integration = resolveIntegration;
+  readiness.resolve_timeline_evidence = timelineEvidence;
   readiness.resolve_roundtrip = resolveRoundtrip;
   const configuredTemplateFolder = String(settings.reaper_track_template_folder || "").trim();
   let templateFolderAvailable = false;
@@ -314,6 +317,7 @@ function getProject(projectId, options = {}) {
     active_production_mix_id: (productionMixCandidates.find((item) => item.active) || {}).production_mix_id || null,
     narration,
     resolve_integration: resolveIntegration,
+    resolve_timeline_evidence: timelineEvidence,
     resolve_roundtrip: resolveRoundtrip,
     resolve_programs: listResolveProgramsByDir(dir),
     daw_configuration: { reaper_template_folder: templateFolderState },
@@ -3274,6 +3278,94 @@ function prepareResolveIntegration(projectId, input = {}, options = {}) {
   return { resolve_integration_id: integrationId, resolve_integration_identity: integrationIdentity, relative_dir: relativeDir, return_inbox: "production/resolve-return-inbox" };
 }
 
+function resolveTimelineEvidenceRecord(dir, pointer) {
+  if (!pointer || pointer.schema_version !== 1 || !/^resolve-evidence-[a-f0-9]{20}$/.test(String(pointer.resolve_timeline_evidence_id || ""))) return null;
+  const expected = `production/resolve-timeline-evidence/${pointer.resolve_integration_id}/${pointer.resolve_timeline_evidence_id}.json`;
+  if (pointer.relative_path !== expected) return null;
+  try { return readJson(provenanceLib.resolveManifestPath(dir, expected).target); } catch { return null; }
+}
+
+function assessResolveTimelineEvidence(dir, integration) {
+  const pointer = readJson(path.join(dir, "production", "resolve-timeline-evidence", "current.json"));
+  if (!pointer) return { state: "not_recorded", current: false, evidence_level: "contract_only", reasons: [] };
+  const record = resolveTimelineEvidenceRecord(dir, pointer);
+  const reasons = [];
+  if (!record || record.schema_version !== 1 || record.role !== "scorecraft_resolve_timeline_evidence_receipt") reasons.push("resolve_timeline_evidence_invalid");
+  else {
+    let identity = null;
+    try { identity = provenanceLib.resolveTimelineEvidenceIdentity(record.evidence); } catch {}
+    if (identity !== record.resolve_timeline_evidence_identity || identity !== pointer.resolve_timeline_evidence_identity) reasons.push("resolve_timeline_evidence_identity_invalid");
+    if (!integration.current || record.resolve_integration_identity !== integration.resolve_integration_identity
+      || record.resolve_integration_id !== integration.resolve_integration_id) reasons.push("resolve_timeline_evidence_integration_stale");
+    let integrationRecord = integration.record || null;
+    if (!integrationRecord && integration.relative_dir) {
+      try { integrationRecord = readJson(provenanceLib.resolveManifestPath(dir, `${integration.relative_dir}/resolve-integration.json`).target); } catch {}
+    }
+    try {
+      if (!integrationRecord) throw new Error("integration unavailable");
+      resolveTimelineEvidence.validateResolveTimelineEvidence(integrationRecord.integration_contract, record.evidence);
+    } catch { reasons.push("resolve_timeline_evidence_contract_mismatch"); }
+  }
+  return {
+    state: reasons.length ? "stale" : "verified",
+    current: reasons.length === 0,
+    evidence_level: reasons.length ? "contract_only" : "resolve_timeline_verified",
+    reasons: [...new Set(reasons)],
+    resolve_timeline_evidence_id: record ? record.resolve_timeline_evidence_id : null,
+    resolve_timeline_evidence_identity: record ? record.resolve_timeline_evidence_identity : null,
+    resolve_integration_identity: record ? record.resolve_integration_identity : null,
+    resolve_product: record && record.execution ? record.execution.product : null,
+    resolve_version: record && record.execution ? record.execution.version : null,
+  };
+}
+
+function recordResolveTimelineEvidence(projectId, input = {}, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  const project = readJson(path.join(dir, "score-project.json"));
+  const integration = currentResolveIntegration(dir, project, settings);
+  if (!integration.current) throw httpError("A current Resolve integration contract is required before timeline evidence can be recorded.", 409);
+  const checked = resolveTimelineEvidence.validateResolveTimelineEvidence(integration.record.integration_contract, input.evidence);
+  const evidenceId = `resolve-evidence-${checked.evidence_identity.slice(0, 20)}`;
+  const relativePath = `production/resolve-timeline-evidence/${integration.resolve_integration_id}/${evidenceId}.json`;
+  const file = provenanceLib.resolveManifestPath(dir, relativePath).target;
+  const execution = input.execution && typeof input.execution === "object" ? {
+    product: String(input.execution.product || ""), version: String(input.execution.version || ""),
+    automation: String(input.execution.automation || ""), project_name: String(input.execution.project_name || ""),
+    timeline_name: String(input.execution.timeline_name || ""), database_type: String(input.execution.database_type || ""),
+  } : {};
+  const record = {
+    schema_version: 1,
+    role: "scorecraft_resolve_timeline_evidence_receipt",
+    resolve_timeline_evidence_id: evidenceId,
+    resolve_timeline_evidence_identity: checked.evidence_identity,
+    resolve_integration_id: integration.resolve_integration_id,
+    resolve_integration_identity: integration.resolve_integration_identity,
+    evidence: checked.evidence,
+    execution,
+    recorded_at: nowIso(),
+  };
+  const fileExists = fs.existsSync(file);
+  const existing = readJson(file);
+  if (fileExists && (!existing || provenanceLib.hashCanonical(existing.evidence) !== provenanceLib.hashCanonical(record.evidence))) {
+    throw httpError(`Existing immutable Resolve timeline evidence ${evidenceId} is invalid.`, 409);
+  }
+  if (!fileExists) writeJsonAtomic(file, record);
+  const pointerPath = path.join(dir, "production", "resolve-timeline-evidence", "current.json");
+  const previousPointer = readJson(pointerPath);
+  writeJsonAtomic(pointerPath, {
+    schema_version: 1, resolve_integration_id: integration.resolve_integration_id,
+    resolve_timeline_evidence_id: evidenceId, resolve_timeline_evidence_identity: checked.evidence_identity, relative_path: relativePath,
+  });
+  const current = assessResolveTimelineEvidence(dir, integration);
+  if (!current.current || current.resolve_timeline_evidence_identity !== checked.evidence_identity) {
+    if (previousPointer) writeJsonAtomic(pointerPath, previousPointer);
+    else { try { fs.unlinkSync(pointerPath); } catch {} }
+    throw httpError("Resolve timeline evidence changed during publication.", 409);
+  }
+  return current;
+}
+
 function programProbe(file, settings, options = {}) {
   if (typeof options.programProbeImpl === "function") return options.programProbeImpl(file);
   const spawnSync = options.spawnSyncImpl || childProcess.spawnSync;
@@ -3684,6 +3776,7 @@ module.exports = {
   selectProductionMix,
   prepareProductionResolvePackage,
   prepareResolveIntegration,
+  recordResolveTimelineEvidence,
   registerResolveProgram,
   verifyResolveProgram,
   reviewResolveProgram,

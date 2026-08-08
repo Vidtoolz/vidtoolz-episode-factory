@@ -149,6 +149,35 @@ and timeline contract, render into the project's return inbox, then register,
 verify, and review it from Scorecraft. Until that real external step occurs,
 status is **internal contract verified — external Resolve execution pending**.
 
+For machines with Resolve Studio 21 and its official Python API installed, the
+separate real-application acceptance gate is:
+
+```bash
+node scripts/verify-scorecraft-resolve-real.js --keep
+```
+
+This starts Resolve with temporary support, configuration, log, cache, and
+disk-project-library roots. It copies only four non-database preference files
+needed to bypass first-run onboarding; live `.activedb`, `.dblist`, and
+`.recentprojects` files are never copied or written. Preflight requires exactly
+one empty local disk library before creating a uniquely prefixed disposable
+project. The official API builds V1 video, A1 narration, and A2 Scorecraft
+music, applies the timeline rate/start and cue markers, then reads the timeline
+back before rendering. Readback source paths are constrained to the disposable
+fixture and hashed incrementally. A mismatch in source SHA, placement, rate,
+start timecode, duration, retiming, or cue markers aborts before render.
+
+Normalized evidence is stored separately under
+`production/resolve-timeline-evidence/` and binds semantic readback—not volatile
+Resolve object IDs, absolute temp paths, or timestamps—to the P6 integration
+identity. This yields two honest evidence levels: manual Resolve remains
+`contract_only`; the official-API harness can establish
+`resolve_timeline_verified`. Neither level implies human picture/sound approval.
+The real render still enters Scorecraft through the ordinary P6 registration
+and technical-QC path, and the disposable Resolve project is deleted by exact
+generated name. `--keep` preserves only temp filesystem evidence/media for
+inspection; it does not preserve the Resolve project.
+
 ## Instrument profiles
 
 Score Engine is template-first: it never pretends to remote-control
