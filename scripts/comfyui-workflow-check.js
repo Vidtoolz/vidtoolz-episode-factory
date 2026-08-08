@@ -40,10 +40,22 @@
 //                                                                      #   (may read tens of GB on the remote disk — the
 //                                                                      #    command itself is the authorization)
 //
+// PRESTO operational-config deployment contract (P7) — source-controlled
+// canonical bytes vs live deployed copies:
+//
+//   node scripts/comfyui-workflow-check.js --deployment-status <host>   # read-only expected-vs-live compare
+//   node scripts/comfyui-workflow-check.js --deployment-apply <host>    # EXPLICIT supervised install (backup +
+//                                                                       #   atomic replace + post-write verify;
+//                                                                       #   zero writes when already matching;
+//                                                                       #   NEVER restarts ComfyUI)
+//   node scripts/comfyui-workflow-check.js --deployment-rollback <host> --event <deployment-id>
+//
 // Static checks never touch the network. --live, --upgrade-status, all
-// upgrade-session commands and --inventory-status/-verify perform read-only
-// calls — they never queue a render and never hash model files. ONLY
-// --qualify-render submits GPU work; ONLY --inventory-strong hashes models.
+// upgrade-session commands, --inventory-status/-verify and
+// --deployment-status perform read-only calls — they never queue a render,
+// never hash models, never write. ONLY --qualify-render submits GPU work;
+// ONLY --inventory-strong hashes models; ONLY --deployment-apply/-rollback
+// write the approved deployment destinations.
 const gateway = require('../comfyui-gateway');
 
 function fmtStatus(s) {
@@ -296,12 +308,44 @@ async function inventoryStrong(host) {
 
 async function main() {
   const args = process.argv.slice(2);
-  const id = args.find((a, i) => !a.startsWith('--') && (i === 0 || !['--fixture', '--session'].includes(args[i - 1])));
+  const id = args.find((a, i) => !a.startsWith('--') && (i === 0 || !['--fixture', '--session', '--event'].includes(args[i - 1])));
   const fixtureFlagIdx = args.indexOf('--fixture');
   const fixtureId = fixtureFlagIdx >= 0 ? args[fixtureFlagIdx + 1] : null;
   const sessionFlagIdx = args.indexOf('--session');
   const sessionId = sessionFlagIdx >= 0 ? args[sessionFlagIdx + 1] : null;
 
+  if (args.includes('--deployment-status')) {
+    if (!id) { console.error('usage: --deployment-status <host>'); process.exit(1); }
+    const result = await gateway.deployment.verifyDeployment(id);
+    console.log(`${result.host} COMFYUI DEPLOYMENT`);
+    for (const f of result.files) {
+      console.log(`  ${f.id}: ${f.status}`);
+      console.log(`    expected: ${f.expected_sha256.slice(0, 16)}…   live: ${f.live_sha256 ? f.live_sha256.slice(0, 16) + '…' : '(missing)'}   → ${f.destination}`);
+      if (f.error) console.log(`    error: ${f.error}`);
+    }
+    console.log(result.all_match ? `Deployment: CURRENT (${result.files.length}/${result.files.length} MATCH)` : 'Deployment: NOT CURRENT — no change performed (use --deployment-apply to install the source-controlled config)');
+    process.exit(result.all_match ? 0 : 1);
+  }
+  if (args.includes('--deployment-apply')) {
+    if (!id) { console.error('usage: --deployment-apply <host>'); process.exit(1); }
+    const event = await gateway.deployment.applyDeployment(id, { allowApply: true });
+    console.log(`DEPLOYMENT ${event.result} — ${event.deployment_id} (${event.writes} file(s) written)`);
+    for (const f of event.files) {
+      console.log(`  ${f.id}: ${f.status}${f.backup ? `  (backup: ${f.backup})` : ''}`);
+    }
+    if (event.result === 'NO_CHANGE_REQUIRED') console.log('all live files already match the source-controlled bytes — 0 writes');
+    if (event.comfyui_restart_required) console.log('FILES INSTALLED — COMFYUI RESTART REQUIRED (manual operator step; never automatic)');
+    return;
+  }
+  if (args.includes('--deployment-rollback')) {
+    const eventIdx = args.indexOf('--event');
+    const eventId = eventIdx >= 0 ? args[eventIdx + 1] : null;
+    if (!id || !eventId) { console.error('usage: --deployment-rollback <host> --event <deployment-id>'); process.exit(1); }
+    const record = await gateway.deployment.rollbackDeployment(id, eventId, { allowApply: true });
+    console.log(`ROLLED_BACK — ${record.rolled_back_event}: ${record.writes} file(s) restored to their pre-deployment bytes`);
+    record.files.forEach((f) => console.log(`  ${f.id}: restored sha ${f.restored_sha256.slice(0, 16)}…`));
+    return;
+  }
   if (args.includes('--inventory-status') || args.includes('--inventory-verify')) {
     if (!id) { console.error('usage: --inventory-status <host> | --inventory-verify <host>'); process.exit(1); }
     return inventoryStatus(id, { exitNonCurrent: args.includes('--inventory-verify') });

@@ -142,11 +142,17 @@ function effectiveSourceSha256({ commit, trackedPatchSha, entries }) {
 }
 
 // Assemble the manifest's comfyui source section from raw executor output.
-function buildSourceIdentity(raw) {
+// `managed` maps comfyui-root-relative paths to their deployment-contract
+// expected sha (P7): matching files classify as managed_operational_config
+// with an explicit deployment_status, and a fully managed+matching tree
+// earns REPRODUCIBLE_MANAGED. Live bytes ALWAYS drive the effective identity
+// — the expected sha is policy, the live sha is reality.
+function buildSourceIdentity(raw, { managed = {} } = {}) {
   const entries = (raw.source_entries || []).map((e) => {
-    const cls = classifySourceEntry(e.path);
-    return {
-      path: String(e.path).replace(/\\/g, '/'),
+    const rel = String(e.path).replace(/\\/g, '/');
+    const cls = classifySourceEntry(rel);
+    const entry = {
+      path: rel,
       status: e.status || '??',
       tracked: Boolean(e.tracked),
       bytes: e.bytes != null ? e.bytes : null,
@@ -154,9 +160,21 @@ function buildSourceIdentity(raw) {
       execution_relevant: cls.execution_relevant,
       sha256: e.sha256 || null,
     };
+    if (managed[rel]) {
+      entry.category = 'managed_operational_config';
+      entry.execution_relevant = true;
+      entry.expected_sha256 = managed[rel];
+      entry.deployment_status = entry.sha256 ? (entry.sha256 === managed[rel] ? 'MATCH' : 'DRIFT') : 'UNVERIFIED';
+    }
+    return entry;
   }).sort((a, b) => a.path.localeCompare(b.path));
   const trackedPatchSha = raw.tracked_patch_sha256 || null;
-  const state = sourceState({ trackedPatchSha, entries });
+  let state = sourceState({ trackedPatchSha, entries });
+  const relevant = entries.filter((e) => e.execution_relevant);
+  if (state === 'KNOWN_PATCHED' && !trackedPatchSha && relevant.length
+      && relevant.every((e) => e.category === 'managed_operational_config' && e.deployment_status === 'MATCH')) {
+    state = 'REPRODUCIBLE_MANAGED';
+  }
   const effective = effectiveSourceSha256({ commit: raw.git_commit, trackedPatchSha, entries });
   return {
     git_branch: raw.git_branch || null,
@@ -164,7 +182,7 @@ function buildSourceIdentity(raw) {
     source_state: state,
     effective_source_sha256: effective,
     identity_level: raw.git_commit
-      ? (state === 'CLEAN' ? 'git_commit' : state === 'DIRTY_UNCLASSIFIED' ? 'git_commit_dirty_unfingerprinted' : 'git_commit_plus_patch')
+      ? ((state === 'CLEAN') ? 'git_commit' : state === 'DIRTY_UNCLASSIFIED' ? 'git_commit_dirty_unfingerprinted' : 'git_commit_plus_patch')
       : 'unknown',
   };
 }
@@ -500,13 +518,15 @@ async function runStrongInventory(host, options = {}) {
   }
   const workflowsByFilename = new Map(plan.models.map((m) => [m.filename, m.workflows]));
   // core source integrity: classify + fingerprint the working tree into a
-  // reproducible effective source identity (P6)
+  // reproducible effective source identity (P6); deployment-contract expected
+  // hashes (P7) upgrade matching files to managed_operational_config
+  const deployment = require('./deployment.js');
   const sourceIdentity = buildSourceIdentity({
     git_commit: (executorResult.comfyui || {}).git_commit,
     git_branch: executorResult.git_branch,
     tracked_patch_sha256: executorResult.tracked_patch_sha256,
     source_entries: executorResult.source_entries,
-  });
+  }, { managed: deployment.expectedShaByRelPath(plan.host, options) });
   const manifest = {
     schema_version: MANIFEST_SCHEMA_VERSION,
     host: plan.host,

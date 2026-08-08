@@ -1,0 +1,4 @@
+
+# PRESTO ComfyUI deployment bundle: canonical DEPLOYED bytes — git must never
+# rewrite line endings (the deployment SHA contract hashes these exact bytes).
+config/presto/comfyui/** -text

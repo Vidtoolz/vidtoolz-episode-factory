@@ -1,0 +1,37 @@
+{
+  "_comment": "PRESTO ComfyUI operational-config deployment contract. Source-controlled canonical bytes (frozen via .gitattributes -text) vs live deployed copies. Verified read-only by --deployment-status; installed ONLY by explicit --deployment-apply (backup + atomic replace + post-write SHA verify); never restarts ComfyUI. The scheduled task 'Presto ComfyUI Server' (boot + 10-min self-heal) executes the task launcher — see wiki/presto-comfyui-server.md.",
+  "schema_version": 1,
+  "host": "PRESTO",
+  "files": [
+    {
+      "id": "task-launcher",
+      "source": "config/presto/comfyui/start-presto-comfyui-task.ps1",
+      "destination": "C:/Users/presto/Desktop/Claude local/presto-ops/start-presto-comfyui-task.ps1",
+      "sha256": "a19190552f838dcdb7190a91f289fc55a84e9cdf5256f5d736597be5b2698aa4",
+      "classification": "managed_operational_config",
+      "required": true,
+      "restart_impact": "comfyui_restart_required_on_change",
+      "notes": "THE production launcher — executed by scheduled task 'Presto ComfyUI Server' (startup + 10-min self-heal, duplicate-protected, log-rotating)."
+    },
+    {
+      "id": "manual-launcher",
+      "source": "config/presto/comfyui/start-presto-comfyui-server.ps1",
+      "destination": "D:/AI/ComfyUI/start-presto-comfyui-server.ps1",
+      "sha256": "3c75695627a0b213100bd30d4824ac0c8f50c5939dfcf34f5cdaf4572c1d8517",
+      "classification": "managed_operational_config",
+      "required": false,
+      "restart_impact": "none_unless_manually_invoked",
+      "notes": "Legacy/manual convenience launcher (2026-07-22), superseded for production by the task launcher on 2026-07-30; kept managed because it remains on disk and executable."
+    },
+    {
+      "id": "extra-model-paths",
+      "source": "config/presto/comfyui/extra_model_paths.yaml",
+      "destination": "D:/AI/ComfyUI/extra_model_paths.yaml",
+      "sha256": "81a6867b0385fd09fe9af52ba2a259c120198bfa4d8df1c9cabecd8081d7880c",
+      "classification": "managed_operational_config",
+      "required": true,
+      "restart_impact": "comfyui_restart_required_on_change",
+      "notes": "Maps the legacy C:/Users/presto/Documents/ComfyUI model tree into the D: install (the second model root). git-ignored upstream, hence invisible to git status."
+    }
+  ]
+}

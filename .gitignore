@@ -42,3 +42,8 @@ package-runs/2026-08-07-earth-studio-v04-acceptance/earth-studio/renders/
 # inventories — local evidence, never committed (config/comfyui/
 # environments.json config IS committed).
 /state/comfyui-environments/
+
+# ComfyUI deployment events (supervised installs/rollbacks + backup records):
+# local evidence — never committed (the deployment CONTRACT under
+# config/presto/comfyui/ IS committed).
+/state/comfyui-deployments/

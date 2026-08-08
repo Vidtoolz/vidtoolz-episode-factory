@@ -1551,3 +1551,195 @@ test("comfyui-source safety: no mutation verbs against hosts; source scan confin
   // source roots come only from committed environments config
   assert.throws(() => gateway.environment.hostConfig("unconfigured-host", fx.options), /not configured/);
 });
+
+// ---- P7: PRESTO deployment contract ---------------------------------------------------------
+
+// Local-transport deployment fixture: temp repo-root with a committed-style
+// config tree, temp destination root, host "env-test".
+function deploymentFixture() {
+  const work = tmpDir("comfyui-deploy-");
+  const repoRoot = path.join(work, "repo");
+  const destRoot = path.join(work, "deployed");
+  fs.mkdirSync(path.join(repoRoot, "config", "hosttest", "comfyui"), { recursive: true });
+  fs.mkdirSync(destRoot, { recursive: true });
+  const files = [
+    { id: "launcher", name: "launch.ps1", content: "Write-Output 'launch v1'\n" },
+    { id: "paths", name: "extra_model_paths.yaml", content: "legacy:\n  base_path: /x\n" },
+  ];
+  const manifestFiles = [];
+  for (const f of files) {
+    const src = path.join(repoRoot, "config", "hosttest", "comfyui", f.name);
+    fs.writeFileSync(src, f.content);
+    manifestFiles.push({
+      id: f.id,
+      source: `config/hosttest/comfyui/${f.name}`,
+      destination: `${destRoot}/${f.name}`,
+      sha256: require("node:crypto").createHash("sha256").update(f.content).digest("hex"),
+      classification: "managed_operational_config",
+      required: true,
+      restart_impact: "comfyui_restart_required_on_change",
+    });
+  }
+  fs.writeFileSync(path.join(repoRoot, "config", "hosttest", "comfyui", "deployment.json"),
+    JSON.stringify({ schema_version: 1, host: "env-test", files: manifestFiles }));
+  const environmentsPath = path.join(work, "environments.json");
+  fs.writeFileSync(environmentsPath, JSON.stringify({
+    schema_version: 1,
+    hosts: { "env-test": {
+      transport: "local", comfyui_root: destRoot, model_roots: [path.join(work, "models")],
+      deployment_manifest: "config/hosttest/comfyui/deployment.json",
+      approved_deployment_roots: [destRoot],
+    } },
+  }));
+  const options = { repoRoot, environmentsPath, deployStateRoot: path.join(work, "deploy-state") };
+  const deploy = () => { for (const f of files) fs.writeFileSync(path.join(destRoot, f.name), f.content); };
+  return { work, repoRoot, destRoot, files, manifestFiles, options, deploy };
+}
+
+test("comfyui-deployment manifest: canonical hashes enforced, destinations confined, duplicates rejected", () => {
+  const fx = deploymentFixture();
+  const { manifest } = gateway.deployment.loadDeploymentManifest("env-test", fx.options);
+  assert.equal(manifest.files.length, 2);
+  // canonical file edited without manifest update → fails closed
+  fs.appendFileSync(path.join(fx.repoRoot, "config", "hosttest", "comfyui", "launch.ps1"), "# sneaky edit\n");
+  assert.throws(() => gateway.deployment.loadDeploymentManifest("env-test", fx.options), /do not match manifest sha/);
+  // destination escape rejected
+  const fx2 = deploymentFixture();
+  const mPath = path.join(fx2.repoRoot, "config", "hosttest", "comfyui", "deployment.json");
+  const m = JSON.parse(fs.readFileSync(mPath, "utf8"));
+  m.files[0].destination = "/etc/passwd";
+  fs.writeFileSync(mPath, JSON.stringify(m));
+  assert.throws(() => gateway.deployment.loadDeploymentManifest("env-test", fx2.options), /outside approved deployment roots/);
+  // duplicate destination rejected
+  const fx3 = deploymentFixture();
+  const m3Path = path.join(fx3.repoRoot, "config", "hosttest", "comfyui", "deployment.json");
+  const m3 = JSON.parse(fs.readFileSync(m3Path, "utf8"));
+  m3.files[1].destination = m3.files[0].destination;
+  fs.writeFileSync(m3Path, JSON.stringify(m3));
+  assert.throws(() => gateway.deployment.loadDeploymentManifest("env-test", fx3.options), /duplicate destination/);
+  // traversal helper
+  assert.equal(gateway.deployment.destinationApproved("D:/AI/ComfyUI/../secrets.txt", ["D:/AI/ComfyUI"]), false);
+});
+
+test("comfyui-deployment status: MATCH / DRIFT / MISSING / UNREADABLE without any write", async () => {
+  const fx = deploymentFixture();
+  // missing
+  let result = await gateway.deployment.verifyDeployment("env-test", fx.options);
+  assert.ok(result.files.every((f) => f.status === "MISSING"));
+  assert.equal(result.all_match, false);
+  // match
+  fx.deploy();
+  result = await gateway.deployment.verifyDeployment("env-test", fx.options);
+  assert.ok(result.files.every((f) => f.status === "MATCH"));
+  assert.equal(result.all_match, true);
+  // drift
+  fs.appendFileSync(path.join(fx.destRoot, "launch.ps1"), "# local hack\n");
+  result = await gateway.deployment.verifyDeployment("env-test", fx.options);
+  assert.equal(result.files.find((f) => f.id === "launcher").status, "DRIFT");
+  assert.equal(result.files.find((f) => f.id === "paths").status, "MATCH");
+  // unreadable via injected reader
+  const unreadable = await gateway.deployment.verifyDeployment("env-test", {
+    ...fx.options, reader: async () => ({ exists: true, error: "EACCES simulated" }),
+  });
+  assert.ok(unreadable.files.every((f) => f.status === "UNREADABLE"));
+});
+
+test("comfyui-deployment apply: explicit-only, backup + atomic + post-verify; matching files never rewritten", async () => {
+  const fx = deploymentFixture();
+  fx.deploy();
+  // explicit authorization required
+  await assert.rejects(gateway.deployment.applyDeployment("env-test", fx.options), (e) => e.code === "comfyui_deployment_not_authorized");
+  // all matching → zero writes (write spy)
+  let writes = 0;
+  const spyWriter = (config) => async (dest, content) => { writes += 1; fs.writeFileSync(dest, content); return { sha256: require("node:crypto").createHash("sha256").update(content).digest("hex") }; };
+  const noop = await gateway.deployment.applyDeployment("env-test", { ...fx.options, allowApply: true, writer: spyWriter() });
+  assert.equal(noop.result, "NO_CHANGE_REQUIRED");
+  assert.equal(noop.writes, 0);
+  assert.equal(writes, 0, "matching files must never be rewritten");
+  // drift → backup + replace + verify + event
+  fs.writeFileSync(path.join(fx.destRoot, "launch.ps1"), "Write-Output 'LOCAL DRIFT'\n");
+  const driftSha = require("node:crypto").createHash("sha256").update("Write-Output 'LOCAL DRIFT'\n").digest("hex");
+  const applied = await gateway.deployment.applyDeployment("env-test", { ...fx.options, allowApply: true });
+  assert.equal(applied.result, "APPLIED");
+  assert.equal(applied.writes, 1);
+  const launched = applied.files.find((f) => f.id === "launcher");
+  assert.equal(launched.status, "REPLACED");
+  assert.equal(launched.before_sha256, driftSha);
+  assert.ok(launched.backup, "pre-write backup captured");
+  assert.equal(fs.readFileSync(launched.backup, "utf8"), "Write-Output 'LOCAL DRIFT'\n", "backup holds the exact pre-install bytes");
+  assert.equal(fs.readFileSync(path.join(fx.destRoot, "launch.ps1"), "utf8"), "Write-Output 'launch v1'\n");
+  assert.equal(applied.comfyui_restart_required, true, "restart requirement reported, never executed");
+  // event persisted
+  const event = gateway.deployment.readEvent("env-test", applied.deployment_id, fx.options);
+  assert.equal(event.result, "APPLIED");
+  // interrupted write: failure before rename preserves the original
+  fs.writeFileSync(path.join(fx.destRoot, "launch.ps1"), "Write-Output 'DRIFT 2'\n");
+  await assert.rejects(gateway.deployment.applyDeployment("env-test", {
+    ...fx.options, allowApply: true,
+    writer: async () => { throw new Error("ssh dropped mid-write"); },
+  }), /ssh dropped/);
+  assert.equal(fs.readFileSync(path.join(fx.destRoot, "launch.ps1"), "utf8"), "Write-Output 'DRIFT 2'\n", "original preserved on interruption");
+  // post-write corruption → FAILED, no success claim (backups stay honest —
+  // only the destination write corrupts)
+  await assert.rejects(gateway.deployment.applyDeployment("env-test", {
+    ...fx.options, allowApply: true,
+    writer: async (dest, content) => {
+      if (dest.includes(".backup-")) { fs.writeFileSync(dest, content); return { sha256: require("node:crypto").createHash("sha256").update(content).digest("hex") }; }
+      fs.writeFileSync(dest, "corrupted"); return { sha256: "f".repeat(64) };
+    },
+  }), (e) => e.code === "comfyui_deployment_verify_failed");
+});
+
+test("comfyui-deployment rollback: exact bytes restored, hash-verified, foreign events rejected", async () => {
+  const fx = deploymentFixture();
+  fx.deploy();
+  fs.writeFileSync(path.join(fx.destRoot, "launch.ps1"), "Write-Output 'operator local version'\n");
+  const applied = await gateway.deployment.applyDeployment("env-test", { ...fx.options, allowApply: true });
+  assert.equal(applied.result, "APPLIED");
+  // rollback requires explicit intent
+  await assert.rejects(gateway.deployment.rollbackDeployment("env-test", applied.deployment_id, fx.options), (e) => e.code === "comfyui_deployment_not_authorized");
+  const record = await gateway.deployment.rollbackDeployment("env-test", applied.deployment_id, { ...fx.options, allowApply: true });
+  assert.equal(record.result, "ROLLED_BACK");
+  assert.equal(fs.readFileSync(path.join(fx.destRoot, "launch.ps1"), "utf8"), "Write-Output 'operator local version'\n", "exact original bytes restored");
+  // unknown event refused
+  await assert.rejects(gateway.deployment.rollbackDeployment("env-test", "deploy-nonsense", { ...fx.options, allowApply: true }), (e) => e.code === "comfyui_deployment_event_unknown");
+  // an event whose destination is no longer in the manifest cannot write
+  const evPath = path.join(fx.options.deployStateRoot, "env-test", `${applied.deployment_id}.json`);
+  const tampered = JSON.parse(fs.readFileSync(evPath, "utf8"));
+  tampered.files[0].destination = path.join(fx.work, "unrelated.txt");
+  fs.writeFileSync(evPath, JSON.stringify(tampered));
+  await assert.rejects(gateway.deployment.rollbackDeployment("env-test", applied.deployment_id, { ...fx.options, allowApply: true }), /not in the current deployment manifest/);
+});
+
+test("comfyui-deployment managed classification: MATCH → REPRODUCIBLE_MANAGED, drift visible, live sha stays authoritative; no restart verbs", async () => {
+  // hermetic: managed map drives classification; live sha drives identity
+  const raw = (sha) => ({
+    git_commit: "c".repeat(40), git_branch: "master", tracked_patch_sha256: null,
+    source_entries: [
+      { path: "start.ps1", status: "??", tracked: false, bytes: 10, sha256: sha },
+      { path: "logs/x.log.prev", status: "??", tracked: false, bytes: 5, sha256: null },
+    ],
+  });
+  const managed = { "start.ps1": "a".repeat(64) };
+  const match = gateway.environment.buildSourceIdentity(raw("a".repeat(64)), { managed });
+  assert.equal(match.source_state, "REPRODUCIBLE_MANAGED");
+  const entry = match.working_tree.entries.find((e) => e.path === "start.ps1");
+  assert.equal(entry.category, "managed_operational_config");
+  assert.equal(entry.deployment_status, "MATCH");
+  assert.equal(entry.expected_sha256, "a".repeat(64));
+  // drift: live sha differs → DRIFT, state falls back, and the LIVE sha (not
+  // the expected one) drives effective identity
+  const drift = gateway.environment.buildSourceIdentity(raw("b".repeat(64)), { managed });
+  assert.equal(drift.working_tree.entries.find((e) => e.path === "start.ps1").deployment_status, "DRIFT");
+  assert.equal(drift.source_state, "KNOWN_PATCHED");
+  assert.notEqual(drift.effective_source_sha256, match.effective_source_sha256, "live bytes drive identity — expected sha never masks drift");
+  // deployment implementation never restarts anything
+  const src = fs.readFileSync(path.join(REPO, "comfyui-gateway", "deployment.js"), "utf8");
+  for (const banned of ["Restart-Service", "Stop-Process", "systemctl", "reboot", "shutdown", "Restart-Computer"]) {
+    assert.ok(!src.includes(banned), `deployment.js must not contain "${banned}"`);
+  }
+  // real committed contract: canonical bytes match the committed manifest
+  const real = gateway.deployment.loadDeploymentManifest("PRESTO");
+  assert.equal(real.manifest.files.length, 3);
+  assert.ok(real.manifest.files.every((f) => /^[0-9a-f]{64}$/.test(f.sha256)));
+});

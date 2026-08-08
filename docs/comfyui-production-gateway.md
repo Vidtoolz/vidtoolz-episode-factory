@@ -391,6 +391,58 @@ requests never run git or ssh. Cleanup of a dirty tree remains a manual
 operator decision outside the gateway: this layer observes and fingerprints,
 it never restores, resets, cleans, stashes, applies, or pulls.
 
+### PRESTO deployment contract (P7)
+
+The intentional PRESTO operational files are source-controlled under
+`config/presto/comfyui/` (bytes frozen with `.gitattributes -text` so the
+committed bytes ARE the deployed bytes — no line-ending false drift):
+
+- `start-presto-comfyui-task.ps1` — **the production launcher**, executed by
+  the scheduled task 'Presto ComfyUI Server' (boot + 10-min self-heal,
+  duplicate-protected, log-rotating; see `wiki/presto-comfyui-server.md`).
+  The Task Scheduler registration itself stays outside the gateway.
+- `start-presto-comfyui-server.ps1` — legacy/manual convenience launcher
+  (superseded for production 2026-07-30, still on disk and executable).
+- `extra_model_paths.yaml` — maps the legacy Documents model tree into the
+  D: install (the second model root); git-ignored upstream, hence invisible
+  to `git status`, but execution-relevant.
+
+`config/presto/comfyui/deployment.json` is the committed contract (id,
+source, destination, sha256, restart impact per file); destinations must sit
+inside the host's committed `approved_deployment_roots` and canonical bytes
+are re-verified against the manifest sha on every load (an edited canonical
+file without a deliberate manifest update fails closed).
+
+```bash
+node scripts/comfyui-workflow-check.js --deployment-status PRESTO   # read-only expected-vs-live (MATCH/DRIFT/MISSING)
+node scripts/comfyui-workflow-check.js --deployment-apply PRESTO    # EXPLICIT install: hashed pre-write backup +
+                                                                    #   atomic replace + post-write SHA verify;
+                                                                    #   zero writes when already matching
+node scripts/comfyui-workflow-check.js --deployment-rollback PRESTO --event <deployment-id>
+```
+
+Apply/rollback record gitignored deployment events under
+`state/comfyui-deployments/` (before/after shas + backup paths). Changing
+the launcher or model-path config requires a **manual** ComfyUI restart —
+the command reports `COMFYUI RESTART REQUIRED` and never performs it.
+
+Strong inventories classify matching managed files as
+`managed_operational_config` / `MATCH` and a tree whose only
+execution-relevant local files are managed-and-matching earns
+`REPRODUCIBLE_MANAGED`. **Live bytes always drive the effective source
+identity** — the expected sha is policy, the live sha is reality, so
+unmanaged drift stays visible to qualification and the upgrade guard (a
+managed-config drift changes the effective source identity →
+REQUALIFICATION_REQUIRED for the host's workflows). The P6 noise entries
+(`_diagnostics/`, `logs/*.prev`, the yaml backup) remain intentionally
+unmanaged local artifacts.
+
+Fresh-PRESTO bootstrap (config layer only — ComfyUI/models install stays
+manual): checkout ComfyUI at the qualified commit → verify base source →
+ensure the model layout → `--deployment-apply PRESTO` → `--deployment-status`
+→ start via the managed launcher's scheduled task → `<id> --live` preflight →
+`--inventory-strong PRESTO` → requalify workflows.
+
 ### Supervised upgrade sessions (P4)
 
 An upgrade session is the safety system *around* a maintenance event — the

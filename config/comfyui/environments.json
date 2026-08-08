@@ -9,6 +9,11 @@
       "model_roots": [
         "D:/AI/ComfyUI/models",
         "C:/Users/presto/Documents/ComfyUI/models"
+      ],
+      "deployment_manifest": "config/presto/comfyui/deployment.json",
+      "approved_deployment_roots": [
+        "D:/AI/ComfyUI",
+        "C:/Users/presto/Desktop/Claude local/presto-ops"
       ]
     },
     "vidnux": {
