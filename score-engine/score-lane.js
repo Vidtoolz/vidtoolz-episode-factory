@@ -282,6 +282,7 @@ function getProject(projectId, options = {}) {
   // computes truth client-side, and deep verification stays a CLI concern.
   const readinessLib = require("./score-readiness.js");
   const readiness = readinessLib.assessReadiness({ project, cueSheet, musicPlan, candidates, approved, dir, settings });
+  const productionMixCandidates = listProductionMixes(projectId, options);
   const narration = assessNarrationAuthority(dir, project);
   readiness.narration = narration;
   readiness.narration_review_ready = narration.review_ready;
@@ -305,6 +306,8 @@ function getProject(projectId, options = {}) {
     reaper_ready: candidates.some((c) => c.reaper_built),
     analysis: readiness.analysis,
     readiness,
+    production_mix_candidates: productionMixCandidates,
+    active_production_mix_id: (productionMixCandidates.find((item) => item.active) || {}).production_mix_id || null,
     narration,
     daw_configuration: { reaper_template_folder: templateFolderState },
   };
@@ -1208,6 +1211,7 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
 // preparation are separate transitions bound to that exact file and authority.
 const PRODUCTION_SCHEMA_VERSION = 1;
 const PRODUCTION_IMPORT_MAX_BYTES = 192 * 1024 * 1024;
+const PRODUCTION_HISTORY_MAX_RECORDS = 100;
 
 // Narration is an external editorial authority, not score audio. It is kept in
 // its own content-addressed namespace and never changes music verification or
@@ -2003,19 +2007,187 @@ function validateProductionMedia(probe, contract) {
   }
 }
 
+function productionRecordById(dir, productionMixId) {
+  const id = String(productionMixId || "");
+  if (!/^production-[a-f0-9]{20}$/.test(id)) return null;
+  const expectedProvenancePath = `production/imports/${id}/provenance.json`;
+  let provenancePath;
+  try { provenancePath = provenanceLib.resolveManifestPath(dir, expectedProvenancePath).target; }
+  catch { return null; }
+  const provenance = readJson(provenancePath);
+  if (!provenance || provenance.schema_version !== PRODUCTION_SCHEMA_VERSION
+    || provenance.production_mix_id !== id
+    || provenance.relative_path !== `production/imports/${id}/mix.wav`) return null;
+  return { provenance, provenancePath, importDir: path.dirname(provenancePath) };
+}
+
 function currentProductionRecord(dir) {
   const pointer = readJson(path.join(dir, "production", "current.json"));
   if (!pointer || pointer.schema_version !== PRODUCTION_SCHEMA_VERSION || !/^production-[a-f0-9]{20}$/.test(String(pointer.production_mix_id || ""))) return null;
   const expectedProvenancePath = `production/imports/${pointer.production_mix_id}/provenance.json`;
   if (pointer.provenance_path !== expectedProvenancePath) return null;
-  let provenancePath;
-  try { provenancePath = provenanceLib.resolveManifestPath(dir, pointer.provenance_path).target; }
-  catch { return null; }
-  const provenance = readJson(provenancePath);
-  if (!provenance || provenance.schema_version !== PRODUCTION_SCHEMA_VERSION
-    || provenance.production_mix_id !== pointer.production_mix_id
-    || provenance.relative_path !== `production/imports/${pointer.production_mix_id}/mix.wav`) return null;
-  return { pointer, provenance, provenancePath, importDir: path.dirname(provenancePath) };
+  const record = productionRecordById(dir, pointer.production_mix_id);
+  return record ? { ...record, pointer } : null;
+}
+
+function selectedProductionRecord(dir) {
+  const selection = readJson(path.join(dir, "production", "selected.json"));
+  if (!selection || selection.schema_version !== PRODUCTION_SCHEMA_VERSION) return null;
+  const record = productionRecordById(dir, selection.production_mix_id);
+  return record ? { ...record, selection } : null;
+}
+
+function requireProductionRecord(dir, productionMixId) {
+  if (!/^production-[a-f0-9]{20}$/.test(String(productionMixId || ""))) {
+    throw httpError("A valid production_mix_id is required.", 400);
+  }
+  const record = productionRecordById(dir, productionMixId);
+  if (!record) throw httpError(`Production mix ${productionMixId} was not found or its immutable provenance is invalid.`, 404);
+  return record;
+}
+
+function recordedVerificationIdentity(record, verification) {
+  try {
+    const expected = provenanceLib.productionVerificationIdentity({
+      productionMixSha256: verification.production_mix_sha256,
+      approvedCandidateContentHash: verification.approved_candidate_content_hash,
+      renderContractHash: verification.render_contract_hash,
+      detectedMedia: verification.detected_media,
+      technicalAnalysis: verification.technical_analysis,
+      handoffContractHash: verification.daw_handoff_contract_hash,
+      approvedIdentityHash: verification.approved_identity_hash,
+      renderPurpose: verification.render_purpose,
+      realizationProfileId: verification.realization_profile_id,
+    });
+    return verification.verified === true
+      && verification.production_mix_id === record.production_mix_id
+      && verification.production_mix_sha256 === record.imported_file_sha256
+      && verification.approved_candidate_content_hash === record.approved_candidate_content_hash
+      && verification.render_contract_hash === record.render_contract_hash
+      && verification.daw_handoff_contract_hash === record.daw_handoff_contract_hash
+      && verification.approved_identity_hash === record.approved_identity_hash
+      && verification.render_purpose === record.render_purpose
+      && verification.realization_profile_id === record.realization_profile_id
+      && verification.technical_analysis && verification.technical_analysis.audible === true
+      && verification.technical_analysis.clipping_detected === false
+      && verification.verification_identity === expected;
+  } catch { return false; }
+}
+
+function recordedReviewIdentity(record, verification, review) {
+  if (!recordedVerificationIdentity(record, verification) || !review) return false;
+  try {
+    return review.production_mix_id === record.production_mix_id
+      && review.production_mix_sha256 === record.imported_file_sha256
+      && review.verification_identity === verification.verification_identity
+      && review.review_identity === provenanceLib.productionListeningReviewIdentity({
+        productionMixSha256: review.production_mix_sha256,
+        verificationIdentity: review.verification_identity,
+        decision: review.decision,
+        authorityBasis: review.authority_basis,
+      });
+  } catch { return false; }
+}
+
+function recordedSelectionIdentity(record, verification, review, selection) {
+  if (!recordedReviewIdentity(record, verification, review) || review.decision !== "approved" || !selection) return false;
+  try {
+    return selection.production_mix_id === record.production_mix_id
+      && selection.production_mix_sha256 === record.imported_file_sha256
+      && selection.verification_identity === verification.verification_identity
+      && selection.listening_review_identity === review.review_identity
+      && selection.approved_identity_hash === record.approved_identity_hash
+      && selection.daw_handoff_contract_hash === record.daw_handoff_contract_hash
+      && selection.selection_identity === provenanceLib.productionSelectionIdentity({
+        productionMixId: selection.production_mix_id,
+        productionMixSha256: selection.production_mix_sha256,
+        verificationIdentity: selection.verification_identity,
+        listeningReviewIdentity: selection.listening_review_identity,
+        approvedIdentityHash: selection.approved_identity_hash,
+        handoffContractHash: selection.daw_handoff_contract_hash,
+      });
+  } catch { return false; }
+}
+
+function listProductionMixes(projectId, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  const importsRoot = path.join(dir, "production", "imports");
+  if (!fs.existsSync(importsRoot)) return [];
+  const ids = fs.readdirSync(importsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && /^production-[a-f0-9]{20}$/.test(entry.name))
+    .map((entry) => entry.name).sort();
+  if (ids.length > PRODUCTION_HISTORY_MAX_RECORDS) {
+    throw httpError(`Production history contains ${ids.length} records; the safe UI limit is ${PRODUCTION_HISTORY_MAX_RECORDS}. Archive deliberately before continuing.`, 503);
+  }
+  const active = currentProductionRecord(dir);
+  const selected = selectedProductionRecord(dir);
+  const records = ids.map((id) => {
+    const loaded = productionRecordById(dir, id);
+    if (!loaded) throw httpError(`Production history record ${id} is invalid; history cannot be represented safely.`, 409);
+    const record = loaded.provenance;
+    const revisionIdentityCurrent = !record.revision_identity || record.revision_identity === provenanceLib.productionRevisionIdentity({
+      productionMixId: record.production_mix_id,
+      parentProductionMixId: record.parent_production_mix_id || null,
+      approvedIdentityHash: record.approved_identity_hash,
+      handoffContractHash: record.daw_handoff_contract_hash,
+    });
+    const verification = readJson(path.join(loaded.importDir, "verification.json"));
+    const review = readJson(path.join(loaded.importDir, "listening-review.json"));
+    const technicalRecorded = recordedVerificationIdentity(record, verification);
+    const reviewRecorded = recordedReviewIdentity(record, verification, review);
+    let reviewHistoryCount = 0;
+    const reviewsDir = path.join(loaded.importDir, "reviews");
+    if (fs.existsSync(reviewsDir) && !fs.lstatSync(reviewsDir).isSymbolicLink() && fs.lstatSync(reviewsDir).isDirectory()) {
+      reviewHistoryCount = fs.readdirSync(reviewsDir).filter((name) => /^[a-f0-9]{64}\.json$/.test(name)).slice(0, PRODUCTION_HISTORY_MAX_RECORDS + 1).length;
+      if (reviewHistoryCount > PRODUCTION_HISTORY_MAX_RECORDS) throw httpError(`Listening-review history for ${id} exceeds the safe limit.`, 503);
+    }
+    return {
+      production_mix_id: id,
+      production_mix_sha256: record.imported_file_sha256,
+      original_filename: record.original_filename,
+      relative_path: record.relative_path,
+      imported_at: record.imported_at,
+      byte_size: record.byte_size,
+      detected_media: record.detected_media,
+      render_purpose: record.render_purpose,
+      realization_profile_id: record.realization_profile_id,
+      daw_handoff_type: record.daw_handoff_type,
+      daw_handoff_contract_hash: record.daw_handoff_contract_hash,
+      approved_candidate_id: record.approved_candidate_id,
+      approved_identity_hash: record.approved_identity_hash,
+      parent_production_mix_id: record.parent_production_mix_id || null,
+      revision_note: record.revision_note || "",
+      revision_identity: record.revision_identity || null,
+      revision_status: revisionIdentityCurrent ? "current" : "invalid",
+      technical_status: technicalRecorded ? "passed_recorded" : "pending",
+      verification_identity: technicalRecorded ? verification.verification_identity : null,
+      technical_analysis: technicalRecorded ? verification.technical_analysis : null,
+      listening_status: record.render_purpose === "reference" ? "not_applicable"
+        : reviewRecorded ? review.decision : "pending",
+      listening_review_identity: reviewRecorded ? review.review_identity : null,
+      listening_authority_basis: reviewRecorded ? review.authority_basis : null,
+      review_history_count: reviewHistoryCount,
+      selection_eligible_recorded: record.render_purpose === "production"
+        && technicalRecorded && reviewRecorded && review.decision === "approved",
+      active: Boolean(active && active.provenance.production_mix_id === id),
+      selected: Boolean(selected && selected.provenance.production_mix_id === id
+        && recordedSelectionIdentity(record, verification, review, selected.selection)),
+    };
+  }).sort((a, b) => String(a.imported_at || "").localeCompare(String(b.imported_at || ""))
+    || a.production_mix_id.localeCompare(b.production_mix_id));
+  const byId = new Map(records.map((item) => [item.production_mix_id, item]));
+  const revisionNumber = (item, seen = new Set()) => {
+    if (!item.parent_production_mix_id || !byId.has(item.parent_production_mix_id)) return 1;
+    if (seen.has(item.production_mix_id)) return 1;
+    seen.add(item.production_mix_id);
+    return revisionNumber(byId.get(item.parent_production_mix_id), seen) + 1;
+  };
+  records.forEach((item, index) => {
+    item.revision_number = index + 1; // deterministic display label only; never authority
+    item.revision_depth = revisionNumber(item);
+  });
+  return records;
 }
 
 function sameApprovalBinding(first, second) {
@@ -2106,6 +2278,52 @@ function productionRealizationSelection(handoff, input) {
   return { render_purpose: renderPurpose, realization_profile_id: requestedProfile };
 }
 
+function productionRevisionMetadata(dir, productionMixId, handoff, realization, input = {}) {
+  const parentId = input.parent_production_mix_id === undefined || input.parent_production_mix_id === null || input.parent_production_mix_id === ""
+    ? null : String(input.parent_production_mix_id);
+  const revisionNote = String(input.revision_note || "").trim();
+  if (revisionNote.length > 500) throw httpError("Production revision note must be 500 characters or fewer.", 400);
+  if (!parentId) return {
+    parent_production_mix_id: null,
+    revision_note: revisionNote,
+    revision_identity: provenanceLib.productionRevisionIdentity({
+      productionMixId, parentProductionMixId: null,
+      approvedIdentityHash: handoff.approved_identity_hash,
+      handoffContractHash: handoff.handoff_contract_hash,
+    }),
+  };
+  if (realization.render_purpose !== "production") throw httpError("Technical reference renders cannot participate in production revision lineage.", 409);
+  if (parentId === productionMixId) throw httpError("A production mix cannot be its own revision parent.", 400);
+  const parent = requireProductionRecord(dir, parentId).provenance;
+  if (parent.render_purpose !== "production"
+    || parent.approved_identity_hash !== handoff.approved_identity_hash
+    || parent.daw_handoff_contract_hash !== handoff.handoff_contract_hash
+    || parent.daw_handoff_artifact_manifest_hash !== handoff.handoff_artifact_manifest_hash
+    || parent.approved_candidate_id === undefined
+    || parent.realization_profile_id !== realization.realization_profile_id) {
+    throw httpError("Production revision parent belongs to a different candidate, handoff, or realization authority.", 409);
+  }
+  const seen = new Set([productionMixId]);
+  let cursor = parent;
+  for (let depth = 0; cursor && cursor.parent_production_mix_id; depth += 1) {
+    if (depth >= PRODUCTION_HISTORY_MAX_RECORDS) throw httpError("Production revision lineage exceeds the safe history bound.", 503);
+    if (seen.has(cursor.production_mix_id)) throw httpError("Production revision lineage contains a cycle.", 409);
+    seen.add(cursor.production_mix_id);
+    const next = productionRecordById(dir, cursor.parent_production_mix_id);
+    if (!next) throw httpError("Production revision lineage references a missing parent.", 409);
+    cursor = next.provenance;
+  }
+  return {
+    parent_production_mix_id: parentId,
+    revision_note: revisionNote,
+    revision_identity: provenanceLib.productionRevisionIdentity({
+      productionMixId, parentProductionMixId: parentId,
+      approvedIdentityHash: handoff.approved_identity_hash,
+      handoffContractHash: handoff.handoff_contract_hash,
+    }),
+  };
+}
+
 function importProductionMix(projectId, input = {}, options = {}) {
   const settings = loadSettings(options);
   const { dir } = resolveProjectDir(settings, projectId);
@@ -2139,6 +2357,7 @@ function importProductionMix(projectId, input = {}, options = {}) {
     render_purpose: realization.render_purpose,
     realization_profile_id: realization.realization_profile_id,
   }).slice(0, 20)}`;
+  const revision = productionRevisionMetadata(dir, productionMixId, handoff, realization, input);
   const importDir = path.join(importsRoot, productionMixId);
   const relativeDir = path.relative(dir, importDir).split(path.sep).join("/");
   const provenancePath = `${relativeDir}/provenance.json`;
@@ -2164,6 +2383,7 @@ function importProductionMix(projectId, input = {}, options = {}) {
       || existing.approved_identity_hash !== handoff.approved_identity_hash
       || existing.render_purpose !== realization.render_purpose
       || existing.realization_profile_id !== realization.realization_profile_id
+      || (input.parent_production_mix_id !== undefined && (existing.parent_production_mix_id || null) !== revision.parent_production_mix_id)
       || !fs.existsSync(mixPath) || fs.statSync(mixPath).size !== input.bytes.length
       || provenanceLib.sha256File(mixPath) !== mixHash) {
       throw httpError(`Existing immutable production import ${productionMixId} does not match its content identity.`, 409);
@@ -2210,6 +2430,9 @@ function importProductionMix(projectId, input = {}, options = {}) {
       approved_identity_hash: handoff.approved_identity_hash,
       render_purpose: realization.render_purpose,
       realization_profile_id: realization.realization_profile_id,
+      parent_production_mix_id: revision.parent_production_mix_id,
+      revision_note: revision.revision_note,
+      revision_identity: revision.revision_identity,
     };
     writeJson(path.join(buildDir, "provenance.json"), record);
     const latestApproval = requireCurrentSketchApproval(dir, readJson(path.join(dir, "score-project.json")), settings).approved;
@@ -2233,7 +2456,10 @@ function verifyProductionMix(projectId, options = {}) {
   const { dir } = resolveProjectDir(settings, projectId);
   const project = readJson(path.join(dir, "score-project.json"));
   const { approved } = requireCurrentSketchApproval(dir, project, settings);
-  const current = currentProductionRecord(dir);
+  const requestedProductionMixId = options.productionMixId || options.production_mix_id || null;
+  const current = requestedProductionMixId
+    ? requireProductionRecord(dir, requestedProductionMixId)
+    : currentProductionRecord(dir);
   if (!current) throw httpError("No current production mix has been imported.", 409);
   const record = current.provenance;
   if (record.approved_candidate_content_hash !== approved.identity.candidate_content_hash
@@ -2393,7 +2619,9 @@ function reviewProductionMix(projectId, input = {}, options = {}) {
   const { dir } = resolveProjectDir(settings, projectId);
   const project = readJson(path.join(dir, "score-project.json"));
   const { approved } = requireCurrentSketchApproval(dir, project, settings);
-  const current = currentProductionRecord(dir);
+  const current = input.production_mix_id
+    ? requireProductionRecord(dir, input.production_mix_id)
+    : currentProductionRecord(dir);
   const context = requireCurrentProductionVerification(dir, project, approved, current);
   if (context.record.render_purpose !== "production") {
     throw httpError("A technical reference render cannot receive production listening approval.", 409);
@@ -2428,11 +2656,29 @@ function reviewProductionMix(projectId, input = {}, options = {}) {
     throw httpError("The current immutable Resolve package is bound to a different listening review. Keep that exact review or import a new production render.", 409);
   }
   const reviewPath = path.join(current.importDir, "listening-review.json");
+  const reviewsDir = path.join(current.importDir, "reviews");
+  const immutableReviewPath = path.join(reviewsDir, `${result.review_identity}.json`);
+  if (fs.existsSync(reviewsDir)) {
+    const stat = fs.lstatSync(reviewsDir);
+    if (stat.isSymbolicLink() || !stat.isDirectory()) throw httpError("Listening-review history path is unsafe.", 409);
+  } else fs.mkdirSync(reviewsDir);
+  if (fs.existsSync(immutableReviewPath) && (fs.lstatSync(immutableReviewPath).isSymbolicLink()
+    || !fs.lstatSync(immutableReviewPath).isFile())) throw httpError("Listening-review history record is unsafe.", 409);
   const previousReview = readJson(reviewPath);
+  const existingImmutableReview = readJson(immutableReviewPath);
+  if (existingImmutableReview && (existingImmutableReview.review_identity !== result.review_identity
+    || existingImmutableReview.production_mix_id !== result.production_mix_id
+    || existingImmutableReview.production_mix_sha256 !== result.production_mix_sha256
+    || existingImmutableReview.verification_identity !== result.verification_identity
+    || existingImmutableReview.decision !== result.decision
+    || existingImmutableReview.authority_basis !== result.authority_basis)) {
+    throw httpError("An immutable listening-review history record with this identity is inconsistent.", 409);
+  }
+  if (!existingImmutableReview) writeJsonAtomic(immutableReviewPath, result);
   writeJsonAtomic(reviewPath, result);
   try {
-    const latestCurrent = currentProductionRecord(dir);
-    if (!latestCurrent || latestCurrent.provenance.production_mix_id !== context.record.production_mix_id
+    const latestCurrent = productionRecordById(dir, context.record.production_mix_id);
+    if (!latestCurrent
       || !fs.existsSync(context.mixPath) || fs.statSync(context.mixPath).size !== context.record.byte_size
       || provenanceLib.sha256File(context.mixPath) !== expectedHash) {
       throw httpError("The production mix changed while publishing listening review; no review was recorded.", 409);
@@ -2443,6 +2689,108 @@ function reviewProductionMix(projectId, input = {}, options = {}) {
   } catch (error) {
     if (previousReview) writeJsonAtomic(reviewPath, previousReview);
     else { try { fs.unlinkSync(reviewPath); } catch {} }
+    if (!existingImmutableReview) { try { fs.unlinkSync(immutableReviewPath); } catch {} }
+    throw error;
+  }
+  return result;
+}
+
+function requireApprovedListeningReview(context) {
+  const listeningReview = readJson(path.join(context.current.importDir, "listening-review.json"));
+  let expectedReviewIdentity = null;
+  try {
+    expectedReviewIdentity = listeningReview && provenanceLib.productionListeningReviewIdentity({
+      productionMixSha256: listeningReview.production_mix_sha256,
+      verificationIdentity: listeningReview.verification_identity,
+      decision: listeningReview.decision,
+      authorityBasis: listeningReview.authority_basis,
+    });
+  } catch {}
+  if (!listeningReview || listeningReview.decision !== "approved"
+    || listeningReview.production_mix_id !== context.record.production_mix_id
+    || listeningReview.production_mix_sha256 !== context.mixHash
+    || listeningReview.verification_identity !== context.verification.verification_identity
+    || listeningReview.review_identity !== expectedReviewIdentity) {
+    throw httpError("Human listening approval of the exact technically verified production mix is required.", 409);
+  }
+  return listeningReview;
+}
+
+function selectProductionMix(projectId, input = {}, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  const project = readJson(path.join(dir, "score-project.json"));
+  const { approved } = requireCurrentSketchApproval(dir, project, settings);
+  const current = requireProductionRecord(dir, input.production_mix_id);
+  const context = { ...requireCurrentProductionVerification(dir, project, approved, current), current };
+  if (context.record.render_purpose !== "production") throw httpError("A technical reference render cannot be selected as the final production mix.", 409);
+  const listeningReview = requireApprovedListeningReview(context);
+  const expectedHash = String(input.expected_production_mix_sha256 || "");
+  const expectedVerification = String(input.expected_verification_identity || "");
+  const expectedReview = String(input.expected_listening_review_identity || "");
+  if (!/^[a-f0-9]{64}$/.test(expectedHash)
+    || !/^[a-f0-9]{64}$/.test(expectedVerification)
+    || !/^[a-f0-9]{64}$/.test(expectedReview)) {
+    throw httpError("Final selection requires the expected render, verification, and listening-review identities.", 400);
+  }
+  if (expectedHash !== context.mixHash
+    || expectedVerification !== context.verification.verification_identity
+    || expectedReview !== listeningReview.review_identity) {
+    throw httpError("The production candidate changed after it was displayed; reload before selecting it as final.", 409);
+  }
+  const result = {
+    schema_version: PRODUCTION_SCHEMA_VERSION,
+    role: "final_production_selection",
+    production_mix_id: context.record.production_mix_id,
+    production_mix_sha256: context.mixHash,
+    verification_identity: context.verification.verification_identity,
+    listening_review_identity: listeningReview.review_identity,
+    approved_identity_hash: context.record.approved_identity_hash,
+    daw_handoff_contract_hash: context.record.daw_handoff_contract_hash,
+    selected_at: nowIso(),
+  };
+  result.selection_identity = provenanceLib.productionSelectionIdentity({
+    productionMixId: result.production_mix_id,
+    productionMixSha256: result.production_mix_sha256,
+    verificationIdentity: result.verification_identity,
+    listeningReviewIdentity: result.listening_review_identity,
+    approvedIdentityHash: result.approved_identity_hash,
+    handoffContractHash: result.daw_handoff_contract_hash,
+  });
+  const selectionPath = path.join(dir, "production", "selected.json");
+  const previousSelection = readJson(selectionPath);
+  writeJsonAtomic(selectionPath, result);
+  try {
+    const latest = requireProductionRecord(dir, result.production_mix_id);
+    const latestApproval = requireCurrentSketchApproval(
+      dir, readJson(path.join(dir, "score-project.json")), loadSettings(options),
+    ).approved;
+    const latestContext = {
+      ...requireCurrentProductionVerification(
+        dir, readJson(path.join(dir, "score-project.json")), latestApproval, latest,
+      ),
+      current: latest,
+    };
+    const latestReview = requireApprovedListeningReview(latestContext);
+    const published = readJson(selectionPath);
+    if (!sameApprovalBinding(approved, latestApproval)
+      || latestContext.mixHash !== result.production_mix_sha256
+      || latestContext.verification.verification_identity !== result.verification_identity
+      || latestReview.review_identity !== result.listening_review_identity
+      || !published || published.selection_identity !== result.selection_identity
+      || provenanceLib.productionSelectionIdentity({
+        productionMixId: published.production_mix_id,
+        productionMixSha256: published.production_mix_sha256,
+        verificationIdentity: published.verification_identity,
+        listeningReviewIdentity: published.listening_review_identity,
+        approvedIdentityHash: published.approved_identity_hash,
+        handoffContractHash: published.daw_handoff_contract_hash,
+      }) !== result.selection_identity) {
+      throw httpError("Production authority changed while publishing final selection; no selection was recorded.", 409);
+    }
+  } catch (error) {
+    if (previousSelection) writeJsonAtomic(selectionPath, previousSelection);
+    else { try { fs.unlinkSync(selectionPath); } catch {} }
     throw error;
   }
   return result;
@@ -2453,8 +2801,8 @@ function prepareProductionResolvePackage(projectId, options = {}) {
   const { dir } = resolveProjectDir(settings, projectId);
   const project = readJson(path.join(dir, "score-project.json"));
   const { approved } = requireCurrentSketchApproval(dir, project, settings);
-  const current = currentProductionRecord(dir);
-  if (!current) throw httpError("A current verified production mix is required before preparing Resolve.", 409);
+  const current = selectedProductionRecord(dir);
+  if (!current) throw httpError("An explicitly selected final production mix is required before preparing Resolve.", 409);
   const handoff = requireIssuedDawHandoff(dir, project, approved, {
     handoff_type: current.provenance.daw_handoff_type,
     handoff_contract_hash: current.provenance.daw_handoff_contract_hash,
@@ -2512,6 +2860,27 @@ function prepareProductionResolvePackage(projectId, options = {}) {
     || listeningReview.review_identity !== expectedReviewIdentity) {
     throw httpError("Human listening approval of the exact technically verified production mix is required before preparing Resolve.", 409);
   }
+  const selection = current.selection;
+  let expectedSelectionIdentity = null;
+  try {
+    expectedSelectionIdentity = selection && provenanceLib.productionSelectionIdentity({
+      productionMixId: selection.production_mix_id,
+      productionMixSha256: selection.production_mix_sha256,
+      verificationIdentity: selection.verification_identity,
+      listeningReviewIdentity: selection.listening_review_identity,
+      approvedIdentityHash: selection.approved_identity_hash,
+      handoffContractHash: selection.daw_handoff_contract_hash,
+    });
+  } catch {}
+  if (!selection || selection.production_mix_id !== current.provenance.production_mix_id
+    || selection.production_mix_sha256 !== mixHash
+    || selection.verification_identity !== verification.verification_identity
+    || selection.listening_review_identity !== listeningReview.review_identity
+    || selection.approved_identity_hash !== current.provenance.approved_identity_hash
+    || selection.daw_handoff_contract_hash !== current.provenance.daw_handoff_contract_hash
+    || selection.selection_identity !== expectedSelectionIdentity) {
+    throw httpError("The explicit final production selection is stale or invalid.", 409);
+  }
   const markerEntry = approved.artifact_manifest && approved.artifact_manifest.entries
     .filter((entry) => entry.logical_role === "cue_markers");
   if (!markerEntry || markerEntry.length !== 1) throw httpError("Approved cue-marker provenance is incomplete; Resolve package cannot be prepared.", 409);
@@ -2535,6 +2904,8 @@ function prepareProductionResolvePackage(projectId, options = {}) {
       || existing.daw_handoff_contract_hash !== verification.daw_handoff_contract_hash
       || existing.approved_identity_hash !== verification.approved_identity_hash
       || existing.listening_review_identity !== listeningReview.review_identity
+      || (existing.final_selection_identity !== undefined
+        && existing.final_selection_identity !== selection.selection_identity)
       || existing.approved_cue_markers_sha256 !== approvedMarkers.sha256
       || existing.artifact_manifest_hash !== provenanceLib.artifactManifestHash(existing.artifact_manifest)) {
       throw httpError(`Existing immutable Resolve package ${current.provenance.production_mix_id} failed provenance verification; it will not be overwritten.`, 409);
@@ -2551,7 +2922,7 @@ function prepareProductionResolvePackage(projectId, options = {}) {
         || fs.statSync(path.join(buildDir, "cue-markers.csv")).size !== approvedMarkers.byte_size) {
         throw httpError("Approved cue markers changed while preparing Resolve; no package was published.", 409);
       }
-      fs.writeFileSync(path.join(buildDir, "README.md"), `# Resolve production import — ${project.name}\n\n- Production mix: mix.wav\n- Cue markers: cue-markers.csv\n- Source production mix: ${current.provenance.production_mix_id}\n- Verified against sketch candidate: ${approved.approved_candidate}\n- Technical verification: ${verification.verification_identity}\n- Exact-byte listening approval: ${listeningReview.review_identity}\n`);
+      fs.writeFileSync(path.join(buildDir, "README.md"), `# Resolve production import — ${project.name}\n\n- Production mix: mix.wav\n- Cue markers: cue-markers.csv\n- Source production mix: ${current.provenance.production_mix_id}\n- Verified against sketch candidate: ${approved.approved_candidate}\n- Technical verification: ${verification.verification_identity}\n- Exact-byte listening approval: ${listeningReview.review_identity}\n- Explicit final selection: ${selection.selection_identity}\n`);
       const manifest = provenanceLib.buildArtifactManifest(buildDir, [
         { logical_role: "production_mix", relative_path: "mix.wav", media: current.provenance.detected_media },
         { logical_role: "cue_markers", relative_path: "cue-markers.csv" },
@@ -2566,6 +2937,7 @@ function prepareProductionResolvePackage(projectId, options = {}) {
         daw_handoff_contract_hash: verification.daw_handoff_contract_hash,
         approved_identity_hash: verification.approved_identity_hash,
         listening_review_identity: listeningReview.review_identity,
+        final_selection_identity: selection.selection_identity,
         approved_candidate_content_hash: approved.identity.candidate_content_hash,
         render_contract_hash: approved.identity.render_contract_hash,
         approved_cue_markers_sha256: approvedMarkers.sha256,
@@ -2605,6 +2977,8 @@ function prepareProductionResolvePackage(projectId, options = {}) {
       || publishedProvenance.daw_handoff_contract_hash !== verification.daw_handoff_contract_hash
       || publishedProvenance.approved_identity_hash !== verification.approved_identity_hash
       || publishedProvenance.listening_review_identity !== listeningReview.review_identity
+      || (publishedProvenance.final_selection_identity !== undefined
+        && publishedProvenance.final_selection_identity !== selection.selection_identity)
       || publishedProvenance.approved_cue_markers_sha256 !== approvedMarkers.sha256
       || publishedProvenance.artifact_manifest_hash !== provenanceLib.artifactManifestHash(publishedManifest)
       || provenanceLib.sha256File(mixPath) !== mixHash || !markersCurrent()) {
@@ -2618,6 +2992,11 @@ function prepareProductionResolvePackage(projectId, options = {}) {
       throw httpError("The sketch approval or render contract changed while preparing Resolve; the package was not made current.", 409);
     }
     requireIssuedDawHandoff(dir, readJson(path.join(dir, "score-project.json")), publishedApproval, handoff);
+    const publishedSelection = readJson(path.join(dir, "production", "selected.json"));
+    if (!publishedSelection || publishedSelection.selection_identity !== selection.selection_identity
+      || publishedSelection.production_mix_id !== current.provenance.production_mix_id) {
+      throw httpError("The final production selection changed while preparing Resolve; the package was not made current.", 409);
+    }
   } catch (error) {
     const livePointer = readJson(resolvePointerPath);
     if (livePointer && livePointer.schema_version === publishedResolvePointer.schema_version
@@ -2688,8 +3067,10 @@ module.exports = {
   buildAbletonHandoff,
   approveCandidate,
   importProductionMix,
+  listProductionMixes,
   verifyProductionMix,
   reviewProductionMix,
+  selectProductionMix,
   prepareProductionResolvePackage,
   registerCanonicalNarration,
   verifyCanonicalNarration,

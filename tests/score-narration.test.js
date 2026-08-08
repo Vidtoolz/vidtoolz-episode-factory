@@ -67,12 +67,20 @@ function narrationOptions(options, extra = {}) {
 }
 
 function approveProductionListening(projectId, options) {
-  const production = lane.getProject(projectId, options).readiness.production;
-  return lane.reviewProductionMix(projectId, {
+  const candidate = lane.getProject(projectId, options).production_mix_candidates.find((item) => item.active);
+  const review = lane.reviewProductionMix(projectId, {
+    production_mix_id: candidate.production_mix_id,
     decision: "approved",
-    expected_production_mix_sha256: production.production_mix_sha256,
+    expected_production_mix_sha256: candidate.production_mix_sha256,
     authority_basis: "Test operator listened to the exact imported render.",
   }, options);
+  lane.selectProductionMix(projectId, {
+    production_mix_id: candidate.production_mix_id,
+    expected_production_mix_sha256: candidate.production_mix_sha256,
+    expected_verification_identity: candidate.verification_identity,
+    expected_listening_review_identity: review.review_identity,
+  }, options);
+  return review;
 }
 
 function withMusicHashSpy(projectDir, operation) {

@@ -284,11 +284,51 @@ and `handoff-contract.json`. A real operator pass is:
    `pending`. Audition the exact WAV/SHA shown in Scorecraft, then approve or
    reject it. The review receipt binds the exact WAV SHA and technical
    verification identity; changed/replaced bytes invalidate it.
-6. Resolve preparation requires both technical verification and exact-byte
-   human listening approval. Any approval/package/audio mutation subsequently
+6. Resolve preparation requires technical verification, exact-byte human
+   listening approval, and explicit final selection. Any approval/package/audio mutation subsequently
    changes readiness to stale. Legacy imports and v1 handoffs remain on disk
    but require a fresh handoff/reverification; location or filename never
    upgrades them.
+
+### Versioned production-mix revisions
+
+Every returned production WAV is an immutable production candidate under
+`production/imports/<production-id>/`; the id is content- and authority-bound.
+`production/current.json` identifies only the working candidate selected by the
+most recent import for convenient verification and review. It is not final
+authority. `production/selected.json` is the canonical final-selection record
+and binds the exact WAV SHA-256, technical verification, listening approval,
+approved score identity, and DAW handoff identity.
+
+Importing Mix 2 never displaces selected Mix 1. Mix 1 remains production-ready
+while Mix 2 is verified and reviewed. A rejected Mix 2 preserves its WAV,
+diagnosis, technical receipt, and immutable review history without changing
+Mix 1. Once Mix 2 is approved, **Select approved mix as final** is a separate
+operator action. Multiple historically approved mixes may coexist, but only
+the explicitly selected one can authorize Resolve. An unchanged, still-current
+older approved mix can be selected again without copying or renaming its WAV.
+
+An optional revision parent and concise operator note connect a new mix to the
+earlier production id it intends to improve. Parent links must remain within
+the same approved candidate, issued handoff, and production realization.
+Revision notes are editorial memory and do not change the rendered artifact
+identity. Display labels such as Mix 1/Mix 2 are derived conveniences, never
+authority. Exact duplicate bytes under identical authority reuse the existing
+production candidate rather than inventing another version.
+
+The production list exposes exact ids, short hashes, recorded QC metrics,
+listening state, selection state, revision diagnosis, playback, and a simple
+A/B audition pair. Scorecraft does not rank artistic preference. Review and
+selection requests carry immutable ids and expected hashes; publication
+revalidates bytes, review, approval, and handoff state before becoming current.
+Resolve provenance identifies the exact selected production id and selection
+identity, while older Resolve packages remain immutable historical evidence.
+
+Scorecraft does not capture arbitrary operator `.rpp` projects in P5. Such
+projects can contain licensed plug-ins, private absolute paths, and large sample
+dependencies, and an `.rpp` hash would still not prove that a WAV was rendered
+from it. The returned WAV, issued handoff, technical receipt, human review, and
+explicit selection remain the honest authority chain.
 
 The production receipt proves bytes, contract, and objective audio properties;
 it does not prove taste. Human listening approval is a separate exact-byte
@@ -311,6 +351,17 @@ audible return, and requires technical QC to pass. `--keep` leaves the isolated
 `/tmp/scorecraft-reaper-sound-*` evidence folder for audition; without it the
 fixture is removed. This command never approves human listening.
 
+Run the disposable real-REAPER production-revision workflow gate with:
+
+```bash
+node scripts/verify-scorecraft-reaper-revisions.js --keep
+```
+
+It renders two genuinely different audible ReaSynth fixtures in real REAPER,
+imports both as disposable operator-realization production candidates, verifies
+revision lineage and explicit A→B selection, and proves Resolve uses B. Its
+review decisions are test-state simulation only, not human artistic approval.
+
 ## Troubleshooting
 
 | Symptom | Fix |
@@ -322,7 +373,7 @@ fixture is removed. This command never approves human listening.
 | "A current sketch approval is required" | The approval is missing, legacy, or stale. Regenerate/reapprove from current inputs. |
 | "No issued DAW handoff" | Approve the sketch, then rebuild the intended REAPER/Ableton handoff so its contract is issued. |
 | Production WAV rejected | Select the matching issued handoff/purpose and export stereo PCM WAV at its rate/bit depth/duration contract. Silence, hard clipping, and gross DC offset also fail technical QC. |
-| Technical QC passed but Resolve is blocked | Listen to the exact SHA shown in step 5, then approve or reject that production mix. Reference renders intentionally cannot become Resolve-ready. |
+| Technical QC passed but Resolve is blocked | Listen to the exact SHA, approve or reject that production candidate, then explicitly select an approved production mix as final. Reference renders intentionally cannot become Resolve-ready. |
 | Production or Resolve state is stale | Read the listed reason; do not overwrite history. Restore exact bytes/inputs or import and verify a new render. |
 | Narration context review is blocked | Register the exact operator-approved narration with an explicit timeline start, then verify it. A plausible filename or duration is not authority. |
 | "A score project already exists for this package" | One score project per package; open it from the home list. |

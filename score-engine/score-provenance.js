@@ -333,6 +333,45 @@ function productionListeningReviewIdentity({ productionMixSha256, verificationId
   });
 }
 
+function productionRevisionIdentity({ productionMixId, parentProductionMixId, approvedIdentityHash, handoffContractHash }) {
+  if (!/^production-[a-f0-9]{20}$/.test(String(productionMixId || ""))) throw new Error("Production mix identity is required for revision identity.");
+  if (parentProductionMixId !== null && parentProductionMixId !== undefined
+    && !/^production-[a-f0-9]{20}$/.test(String(parentProductionMixId))) throw new Error("Revision parent production identity is invalid.");
+  if (!/^[a-f0-9]{64}$/.test(String(approvedIdentityHash || ""))) throw new Error("Approved identity is required for revision identity.");
+  if (!/^[a-f0-9]{64}$/.test(String(handoffContractHash || ""))) throw new Error("DAW handoff identity is required for revision identity.");
+  return hashCanonical({
+    schema_version: PROVENANCE_SCHEMA_VERSION,
+    role: "scorecraft_production_revision",
+    production_mix_id: productionMixId,
+    parent_production_mix_id: parentProductionMixId || null,
+    approved_identity_hash: approvedIdentityHash,
+    daw_handoff_contract_hash: handoffContractHash,
+  });
+}
+
+function productionSelectionIdentity({ productionMixId, productionMixSha256, verificationIdentity, listeningReviewIdentity, approvedIdentityHash, handoffContractHash }) {
+  if (!/^production-[a-f0-9]{20}$/.test(String(productionMixId || ""))) throw new Error("Production mix identity is required for final selection.");
+  for (const [label, value] of Object.entries({
+    production_mix_sha256: productionMixSha256,
+    verification_identity: verificationIdentity,
+    listening_review_identity: listeningReviewIdentity,
+    approved_identity_hash: approvedIdentityHash,
+    daw_handoff_contract_hash: handoffContractHash,
+  })) {
+    if (!/^[a-f0-9]{64}$/.test(String(value || ""))) throw new Error(`${label} must be a canonical SHA-256 identity.`);
+  }
+  return hashCanonical({
+    schema_version: PROVENANCE_SCHEMA_VERSION,
+    role: "scorecraft_final_production_selection",
+    production_mix_id: productionMixId,
+    production_mix_sha256: productionMixSha256,
+    verification_identity: verificationIdentity,
+    listening_review_identity: listeningReviewIdentity,
+    approved_identity_hash: approvedIdentityHash,
+    daw_handoff_contract_hash: handoffContractHash,
+  });
+}
+
 function resolveManifestPath(root, relativePath) {
   const rel = String(relativePath || "").replace(/\\/g, "/");
   if (!rel || path.isAbsolute(rel) || rel.split("/").includes("..")) throw new Error(`Unsafe artifact path: ${relativePath}`);
@@ -542,6 +581,8 @@ module.exports = {
   dawHandoffIdentity,
   productionVerificationIdentity,
   productionListeningReviewIdentity,
+  productionRevisionIdentity,
+  productionSelectionIdentity,
   buildArtifactManifest,
   artifactManifestHash,
   verifyArtifactManifest,

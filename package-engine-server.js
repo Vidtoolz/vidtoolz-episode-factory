@@ -259,6 +259,7 @@ const SCORE_VERIFY_API = '/api/score/verify';
 const SCORE_PRODUCTION_IMPORT_API = '/api/score/production/import';
 const SCORE_PRODUCTION_VERIFY_API = '/api/score/production/verify';
 const SCORE_PRODUCTION_REVIEW_API = '/api/score/production/review';
+const SCORE_PRODUCTION_SELECT_API = '/api/score/production/select';
 const SCORE_PRODUCTION_RESOLVE_API = '/api/score/production/resolve';
 const SCORE_NARRATION_API = '/api/score/narration';
 const SCORE_NARRATION_REGISTER_API = '/api/score/narration/register';
@@ -16719,6 +16720,8 @@ function createServer(options = {}) {
             handoff_contract_hash: payload.handoff_contract_hash,
             render_purpose: payload.render_purpose,
             realization_profile_id: payload.realization_profile_id,
+            parent_production_mix_id: payload.parent_production_mix_id,
+            revision_note: payload.revision_note,
           }, scoreOptions()));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-production-import-error'));
@@ -16779,7 +16782,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Score production verify API' });
-          sendJSON(res, 200, scoreLane.verifyProductionMix(payload.project_id || '', scoreOptions()));
+          sendJSON(res, 200, scoreLane.verifyProductionMix(payload.project_id || '', {
+            ...scoreOptions(), productionMixId: payload.production_mix_id,
+          }));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-production-verify-error'));
       return;
@@ -16789,12 +16794,27 @@ function createServer(options = {}) {
         .then((payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Score production listening review API' });
           sendJSON(res, 200, scoreLane.reviewProductionMix(payload.project_id || '', {
+            production_mix_id: payload.production_mix_id,
             decision: payload.decision,
             expected_production_mix_sha256: payload.expected_production_mix_sha256,
             authority_basis: payload.authority_basis,
           }, scoreOptions()));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-production-review-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_PRODUCTION_SELECT_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score final production selection API' });
+          sendJSON(res, 200, scoreLane.selectProductionMix(payload.project_id || '', {
+            production_mix_id: payload.production_mix_id,
+            expected_production_mix_sha256: payload.expected_production_mix_sha256,
+            expected_verification_identity: payload.expected_verification_identity,
+            expected_listening_review_identity: payload.expected_listening_review_identity,
+          }, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-production-select-error'));
       return;
     }
     if (req.method === 'POST' && url.pathname === SCORE_PRODUCTION_RESOLVE_API) {

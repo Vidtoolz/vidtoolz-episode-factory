@@ -137,13 +137,21 @@
         <div style="margin-top:8px;">
           <select id="production-handoff" aria-label="Issued DAW handoff"><option value="">Build an approved DAW handoff first</option></select>
           <select id="production-purpose" aria-label="Render purpose"><option value="production">Production · operator patched</option><option value="reference">Reference · ReaSynth technical test</option></select>
+          <select id="production-parent" aria-label="Revision parent"><option value="">New production lineage</option></select>
+          <input id="production-revision-note" maxlength="500" placeholder="Revision diagnosis / what changed (optional)" style="min-width:300px;">
           <input type="file" id="production-file" accept="audio/wav,.wav">
           <button class="btn" id="production-import">Import production render</button>
+          <select id="production-candidate" aria-label="Production mix candidate"><option value="">No production candidates</option></select>
           <button class="btn" id="production-verify">Verify production mix</button>
           <button class="btn btn-go" id="production-listen-approve">Approve exact mix after listening</button>
           <button class="btn" id="production-listen-reject">Reject / needs revision</button>
+          <button class="btn btn-go" id="production-select-final">Select approved mix as final</button>
           <button class="btn btn-go" id="production-resolve">Prepare Resolve package</button>
         </div>
+        <div id="production-history" style="margin-top:10px;"></div>
+        <details id="production-ab-wrap" style="margin-top:8px;display:none;"><summary class="meta">A/B production mixes — human comparison only</summary>
+          <div class="ab"><div><select id="production-ab-a"></select><audio id="production-ab-audio-a" controls preload="metadata"></audio></div><div><select id="production-ab-b"></select><audio id="production-ab-audio-b" controls preload="metadata"></audio></div></div>
+        </details>
       </div>
 
       <div class="step" id="step-narration">
@@ -175,6 +183,7 @@
       const SCORE_PRODUCTION_IMPORT_API = '/api/score/production/import';
       const SCORE_PRODUCTION_VERIFY_API = '/api/score/production/verify';
       const SCORE_PRODUCTION_REVIEW_API = '/api/score/production/review';
+      const SCORE_PRODUCTION_SELECT_API = '/api/score/production/select';
       const SCORE_PRODUCTION_RESOLVE_API = '/api/score/production/resolve';
       const SCORE_NARRATION_REGISTER_API = '/api/score/narration/register';
       const SCORE_NARRATION_VERIFY_API = '/api/score/narration/verify';
@@ -440,38 +449,34 @@
       }
 
       function renderProduction(){
-        const R=ST.readiness||{}, P=R.production||{state:'not_imported',reasons:[],resolve_ready:false};
+        const R=ST.readiness||{}, P=R.production||{state:'not_imported',reasons:[],resolve_ready:false}, mixes=ST.production_mix_candidates||[];
         const badge=document.getElementById('production-badge');
-        badge.className='badge '+(P.resolve_ready?'done':'todo');
-        badge.textContent=P.resolve_ready?'Resolve-ready':P.state.replace(/_/g,' ');
+        badge.className='badge '+(P.resolve_ready?'done':'todo');badge.textContent=P.resolve_ready?'Resolve-ready':P.state.replace(/_/g,' ');
         document.getElementById('step-production').className='step'+(P.resolve_ready?' done':'');
-        const handoffSelect=document.getElementById('production-handoff');
-        const previousHandoff=handoffSelect.value;
-        const handoffs=Object.entries((ST.approved&&ST.approved.daw_handoffs)||{})
-          .filter(([,record])=>record&&record.status==='issued'&&record.handoff_contract_hash);
-        handoffSelect.innerHTML=handoffs.length
-          ?handoffs.map(([type,record])=>{const realization=record.realization_contract||{},production=realization.production_profile||{},reference=realization.reference_profile||{};return `<option value="${esc(type)}" data-contract="${esc(record.handoff_contract_hash)}" data-production-profile="${esc(production.profile_id||'operator_patched_production_v1')}" data-reference-profile="${esc(reference.profile_id||'')}">${esc(type.toUpperCase())} · ${esc(record.handoff_contract_hash.slice(0,12))}</option>`;}).join('')
-          :'<option value="">Build an approved DAW handoff first</option>';
+        const handoffSelect=document.getElementById('production-handoff'),previousHandoff=handoffSelect.value;
+        const handoffs=Object.entries((ST.approved&&ST.approved.daw_handoffs)||{}).filter(([,record])=>record&&record.status==='issued'&&record.handoff_contract_hash);
+        handoffSelect.innerHTML=handoffs.length?handoffs.map(([type,record])=>{const realization=record.realization_contract||{},production=realization.production_profile||{},reference=realization.reference_profile||{};return `<option value="${esc(type)}" data-contract="${esc(record.handoff_contract_hash)}" data-production-profile="${esc(production.profile_id||'operator_patched_production_v1')}" data-reference-profile="${esc(reference.profile_id||'')}">${esc(type.toUpperCase())} · ${esc(record.handoff_contract_hash.slice(0,12))}</option>`;}).join(''):'<option value="">Build an approved DAW handoff first</option>';
         if(handoffs.some(([type])=>type===previousHandoff)) handoffSelect.value=previousHandoff;
-        const reasons=(P.reasons||[]).length?`<div class="err">Stale: ${esc(P.reasons.join(', '))}</div>`:'';
-        const id=P.production_mix_id?`<span class="chip">${esc(P.production_mix_id)}</span>`:'';
-        const identity=P.production_mix_sha256?`<span class="chip">SHA-256 ${esc(P.production_mix_sha256.slice(0,12))}…</span>`:'';
-        const analysis=P.technical_analysis?`<span class="chip">${esc(P.technical_analysis.peak_dbfs)} dBFS peak · ${esc(P.technical_analysis.rms_dbfs)} dBFS RMS · audible</span>`:'';
-        const listening=P.listening_status?`<span class="chip">listening: ${esc(P.listening_status)}</span>`:'';
-        const audio=P.relative_path?`<audio controls preload="metadata" src="${fileUrl(P.relative_path)}" style="display:block;width:100%;margin:8px 0"></audio>`:'';
-        document.getElementById('production-body').innerHTML = `${id}${identity}${analysis}${listening}${audio}${reasons}`+
-          (P.resolve_ready?'Technically verified and listening-approved production mix is hash-checked in the prepared Resolve package.'
-            :P.state==='production_ready'?'Technical QC and exact-byte listening approval passed. Prepare the immutable Resolve delivery copy.'
-              :P.state==='technical_verified'?'Technical QC passed. Listen to this exact SHA-256, then approve or reject it.'
-                :P.state==='reference_verified'?'Reference realization is audible and technically valid. It cannot authorize Resolve or production listening approval.'
-              :P.state==='imported'?'Production WAV imported but not verified.'
-                :P.state==='stale'?'The historical import remains on disk, but cannot authorize Resolve delivery.'
-                  :'Select the completed stereo WAV exported from your DAW. Import does not imply verification.');
-        document.getElementById('production-verify').disabled=P.state!=='imported';
-        document.getElementById('production-listen-approve').disabled=!(P.technical_verified&&P.render_purpose==='production'&&P.listening_status!=='approved');
-        document.getElementById('production-listen-reject').disabled=!(P.technical_verified&&P.render_purpose==='production');
+        const candidateSelect=document.getElementById('production-candidate'),previousCandidate=candidateSelect.value;
+        candidateSelect.innerHTML=mixes.length?mixes.map((mix)=>`<option value="${esc(mix.production_mix_id)}">Mix ${esc(mix.revision_number)} · ${esc(mix.listening_status)} · ${esc(mix.production_mix_sha256.slice(0,12))}${mix.selected?' · SELECTED':''}</option>`).join(''):'<option value="">No production candidates</option>';
+        if(mixes.some((mix)=>mix.production_mix_id===previousCandidate)) candidateSelect.value=previousCandidate;else if(ST.active_production_mix_id)candidateSelect.value=ST.active_production_mix_id;else if(P.selected_production_mix_id)candidateSelect.value=P.selected_production_mix_id;
+        const chosen=mixes.find((mix)=>mix.production_mix_id===candidateSelect.value)||null;
+        const parentSelect=document.getElementById('production-parent'),previousParent=parentSelect.value,productionMixes=mixes.filter((mix)=>mix.render_purpose==='production');
+        parentSelect.innerHTML='<option value="">New production lineage</option>'+productionMixes.map((mix)=>`<option value="${esc(mix.production_mix_id)}">Revise Mix ${esc(mix.revision_number)} · ${esc(mix.production_mix_sha256.slice(0,12))}</option>`).join('');
+        if(productionMixes.some((mix)=>mix.production_mix_id===previousParent))parentSelect.value=previousParent;else if(chosen&&chosen.render_purpose==='production')parentSelect.value=chosen.production_mix_id;
+        const reasons=(P.reasons||[]).length?`<div class="err">Stale: ${esc(P.reasons.join(', '))}</div>`:'',id=P.production_mix_id?`<span class="chip">${esc(P.production_mix_id)}</span>`:'',identity=P.production_mix_sha256?`<span class="chip">SHA-256 ${esc(P.production_mix_sha256.slice(0,12))}…</span>`:'',analysis=P.technical_analysis?`<span class="chip">${esc(P.technical_analysis.peak_dbfs)} dBFS peak · ${esc(P.technical_analysis.rms_dbfs)} dBFS RMS · audible</span>`:'',listening=P.listening_status?`<span class="chip">listening: ${esc(P.listening_status)}</span>`:'',audio=P.relative_path?`<audio controls preload="metadata" src="${fileUrl(P.relative_path)}" style="display:block;width:100%;margin:8px 0"></audio>`:'';
+        document.getElementById('production-body').innerHTML=`${id}${identity}${analysis}${listening}${audio}${reasons}`+(P.resolve_ready?'Selected final mix is hash-checked in the prepared Resolve package.':P.state==='production_ready'?'Technical QC, exact-byte listening approval, and explicit final selection passed.':P.state==='approved_unselected'?'Listening approved; explicitly select this exact mix before Resolve.':P.state==='technical_verified'?'Technical QC passed; listening decision pending.':P.state==='reference_verified'?'Reference realization passed but cannot be selected for production.':P.state==='imported'?'Working candidate imported; verification pending.':P.state==='stale'?'Selected production authority is stale; history remains preserved.':'Import an operator production render. Import never selects final authority.');
+        document.getElementById('production-verify').disabled=!(chosen&&chosen.technical_status!=='passed_recorded');
+        document.getElementById('production-listen-approve').disabled=!(chosen&&chosen.technical_status==='passed_recorded'&&chosen.render_purpose==='production'&&chosen.listening_status!=='approved');
+        document.getElementById('production-listen-reject').disabled=!(chosen&&chosen.technical_status==='passed_recorded'&&chosen.render_purpose==='production');
+        document.getElementById('production-select-final').disabled=!(chosen&&chosen.selection_eligible_recorded&&!chosen.selected);
         document.getElementById('production-resolve').disabled=P.state!=='production_ready';
+        document.getElementById('production-history').innerHTML=mixes.length?mixes.map((mix)=>{const status=mix.selected?'Selected final':mix.listening_status==='approved'?'Approved · not selected':mix.listening_status==='rejected'?'Rejected':mix.technical_status==='passed_recorded'?'Technical PASS · listening pending':'Imported · verification pending',parent=mix.parent_production_mix_id?`<div class="meta">Revision of ${esc(mix.parent_production_mix_id)}${mix.revision_note?` — ${esc(mix.revision_note)}`:''}</div>`:'<div class="meta">Root production render</div>',metrics=mix.technical_analysis?` · ${esc(mix.technical_analysis.peak_dbfs)} dBFS peak · ${esc(mix.technical_analysis.rms_dbfs)} dBFS RMS`:'';return `<div class="card" style="margin-top:6px"><strong>Mix ${esc(mix.revision_number)}</strong> <span class="chip">${esc(mix.production_mix_id)}</span> <span class="chip">SHA ${esc(mix.production_mix_sha256.slice(0,12))}…</span> <span class="chip">${esc(status)}</span>${mix.active?'<span class="chip">working candidate</span>':''}<div class="meta">${esc(mix.original_filename)} · ${esc(mix.technical_status)}${metrics}</div>${parent}<audio controls preload="none" src="${fileUrl(mix.relative_path)}" style="width:100%;margin-top:5px"></audio></div>`;}).join(''):'<div class="meta">No production renders imported yet.</div>';
+        const abWrap=document.getElementById('production-ab-wrap'),abA=document.getElementById('production-ab-a'),abB=document.getElementById('production-ab-b');abWrap.style.display=mixes.length>1?'block':'none';
+        if(mixes.length>1){const opts=mixes.map((mix)=>`<option value="${esc(mix.production_mix_id)}">Mix ${esc(mix.revision_number)} · ${esc(mix.production_mix_sha256.slice(0,12))}</option>`).join(''),oldA=abA.value,oldB=abB.value;abA.innerHTML=opts;abB.innerHTML=opts;abA.value=mixes.some((mix)=>mix.production_mix_id===oldA)?oldA:mixes[0].production_mix_id;abB.value=mixes.some((mix)=>mix.production_mix_id===oldB)?oldB:mixes[mixes.length-1].production_mix_id;updateProductionAb();}
       }
+
+      function updateProductionAb(){const mixes=ST.production_mix_candidates||[];for(const side of ['a','b']){const id=document.getElementById(`production-ab-${side}`).value,mix=mixes.find((item)=>item.production_mix_id===id);document.getElementById(`production-ab-audio-${side}`).src=mix?fileUrl(mix.relative_path):'';}}
 
       function renderNarration(){
         const N=ST.narration||{state:'not_registered',reasons:[],review_ready:false};
@@ -564,30 +569,41 @@
           const purpose=document.getElementById('production-purpose').value;
           const profile=purpose==='reference'?handoff.dataset.referenceProfile:handoff.dataset.productionProfile;
           if(!profile) throw new Error(`${handoffSelect.value.toUpperCase()} does not offer the selected realization purpose`);
-          await post(SCORE_PRODUCTION_IMPORT_API,{project_id:ID,original_filename:file.name,data_base64:bytesToBase64(bytes),handoff_type:handoffSelect.value,handoff_contract_hash:handoff.dataset.contract,render_purpose:purpose,realization_profile_id:profile});
+          const parent=purpose==='production'?document.getElementById('production-parent').value:'';
+          const revisionNote=document.getElementById('production-revision-note').value.trim();
+          await post(SCORE_PRODUCTION_IMPORT_API,{project_id:ID,original_filename:file.name,data_base64:bytesToBase64(bytes),handoff_type:handoffSelect.value,handoff_contract_hash:handoff.dataset.contract,render_purpose:purpose,realization_profile_id:profile,parent_production_mix_id:parent||null,revision_note:revisionNote});
           toast('Production render imported — verification still required'); await load();
         }catch(e){ toast(e.message,false); showErr(e.message); }
         finally{ btn.disabled=false; btn.textContent='Import production render'; }
       };
       document.getElementById('production-verify').onclick = async ()=>{
         const btn=document.getElementById('production-verify'); if(btn.disabled) return;
+        const productionMixId=document.getElementById('production-candidate').value;if(!productionMixId)return toast('Choose a production candidate',false);
         btn.disabled=true; btn.textContent='Verifying…';
-        try{ await post(SCORE_PRODUCTION_VERIFY_API,{project_id:ID}); toast('Production mix verified'); await load(); }
+        try{ await post(SCORE_PRODUCTION_VERIFY_API,{project_id:ID,production_mix_id:productionMixId}); toast('Exact production candidate verified'); await load(); }
         catch(e){ toast(e.message,false); showErr(e.message); }
         finally{ btn.disabled=false; btn.textContent='Verify production mix'; }
       };
       async function submitListeningReview(decision){
-        const P=(ST.readiness&&ST.readiness.production)||{};
-        if(!P.production_mix_sha256) return toast('No current production mix identity to review',false);
+        const productionMixId=document.getElementById('production-candidate').value,mix=(ST.production_mix_candidates||[]).find((item)=>item.production_mix_id===productionMixId);
+        if(!mix) return toast('Choose an exact production candidate to review',false);
         const verb=decision==='approved'?'approve':'reject';
-        if(!confirm(`${verb[0].toUpperCase()+verb.slice(1)} the exact production mix SHA-256 ${P.production_mix_sha256.slice(0,12)}… after listening?`)) return;
+        if(!confirm(`${verb[0].toUpperCase()+verb.slice(1)} Mix ${mix.revision_number}, exact SHA-256 ${mix.production_mix_sha256.slice(0,12)}… after listening?`)) return;
         const basis=prompt('Brief listening basis / revision note:','Listened to the exact imported production render.');
         if(!basis||basis.trim().length<3) return toast('Listening review needs a brief basis',false);
-        await post(SCORE_PRODUCTION_REVIEW_API,{project_id:ID,decision,expected_production_mix_sha256:P.production_mix_sha256,authority_basis:basis.trim()});
+        await post(SCORE_PRODUCTION_REVIEW_API,{project_id:ID,production_mix_id:mix.production_mix_id,decision,expected_production_mix_sha256:mix.production_mix_sha256,authority_basis:basis.trim()});
         toast(decision==='approved'?'Exact production mix listening-approved':'Exact production mix rejected'); await load();
       }
       document.getElementById('production-listen-approve').onclick=async()=>{try{await submitListeningReview('approved');}catch(e){toast(e.message,false);showErr(e.message);}};
       document.getElementById('production-listen-reject').onclick=async()=>{try{await submitListeningReview('rejected');}catch(e){toast(e.message,false);showErr(e.message);}};
+      document.getElementById('production-select-final').onclick=async()=>{
+        const id=document.getElementById('production-candidate').value,mix=(ST.production_mix_candidates||[]).find((item)=>item.production_mix_id===id);if(!mix)return toast('Choose an approved production candidate',false);
+        if(!confirm(`Select Mix ${mix.revision_number}, SHA-256 ${mix.production_mix_sha256.slice(0,12)}… as the one final Resolve source?`))return;
+        try{await post(SCORE_PRODUCTION_SELECT_API,{project_id:ID,production_mix_id:mix.production_mix_id,expected_production_mix_sha256:mix.production_mix_sha256,expected_verification_identity:mix.verification_identity,expected_listening_review_identity:mix.listening_review_identity});toast('Exact approved mix selected as final');await load();}catch(e){toast(e.message,false);showErr(e.message);}
+      };
+      document.getElementById('production-candidate').onchange=renderProduction;
+      document.getElementById('production-ab-a').onchange=updateProductionAb;
+      document.getElementById('production-ab-b').onchange=updateProductionAb;
       document.getElementById('production-resolve').onclick = async ()=>{
         const btn=document.getElementById('production-resolve'); if(btn.disabled) return;
         btn.disabled=true; btn.textContent='Preparing…';

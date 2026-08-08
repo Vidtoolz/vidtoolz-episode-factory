@@ -75,6 +75,42 @@ test("score provenance P3: DAW handoff identity is semantic, stable, and approva
   );
 });
 
+test("score provenance P5: revision and final-selection identities exclude display notes and timestamps", () => {
+  const material = {
+    productionMixId: "production-0123456789abcdefabcd",
+    parentProductionMixId: "production-abcdef0123456789abcd",
+    approvedIdentityHash: "a".repeat(64),
+    handoffContractHash: "b".repeat(64),
+  };
+  const revision = provenance.productionRevisionIdentity(material);
+  assert.equal(revision, provenance.productionRevisionIdentity({ ...material, revisionNote: "Non-authoritative typo fix", importedAt: "2040-01-01" }));
+  const selection = provenance.productionSelectionIdentity({
+    productionMixId: material.productionMixId,
+    productionMixSha256: "c".repeat(64),
+    verificationIdentity: "d".repeat(64),
+    listeningReviewIdentity: "e".repeat(64),
+    approvedIdentityHash: material.approvedIdentityHash,
+    handoffContractHash: material.handoffContractHash,
+  });
+  assert.equal(selection, provenance.productionSelectionIdentity({
+    productionMixId: material.productionMixId,
+    productionMixSha256: "c".repeat(64),
+    verificationIdentity: "d".repeat(64),
+    listeningReviewIdentity: "e".repeat(64),
+    approvedIdentityHash: material.approvedIdentityHash,
+    handoffContractHash: material.handoffContractHash,
+    selectedAt: "2040-01-01",
+  }));
+  assert.notEqual(selection, provenance.productionSelectionIdentity({
+    productionMixId: "production-ffffffffffffffffffff",
+    productionMixSha256: "c".repeat(64),
+    verificationIdentity: "d".repeat(64),
+    listeningReviewIdentity: "e".repeat(64),
+    approvedIdentityHash: material.approvedIdentityHash,
+    handoffContractHash: material.handoffContractHash,
+  }));
+});
+
 test("score provenance: canonical identity rejects omissions and preserves distinct finite numbers", () => {
   assert.throws(() => provenance.canonicalStringify({ material: undefined }), /undefined/);
   assert.throws(() => provenance.canonicalStringify(new Array(1)), /sparse/);

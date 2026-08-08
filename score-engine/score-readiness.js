@@ -108,10 +108,16 @@ function assessDawHandoffAuthority({ dir, approved, production }) {
 
 function assessProductionAuthority({ dir, approvalAuthority, approved }) {
   const productionRoot = path.join(dir, "production");
-  const pointerFile = path.join(productionRoot, "current.json");
-  if (!fs.existsSync(pointerFile)) return { state: "not_imported", current: false, verified: false, reasons: [], production_mix_id: null, resolve_ready: false };
+  const activePointer = readJson(path.join(productionRoot, "current.json"));
+  const selection = readJson(path.join(productionRoot, "selected.json"));
+  const hasSelection = Boolean(selection);
+  const pointer = hasSelection ? {
+    schema_version: selection.schema_version,
+    production_mix_id: selection.production_mix_id,
+    provenance_path: `production/imports/${selection.production_mix_id}/provenance.json`,
+  } : activePointer;
+  if (!pointer) return { state: "not_imported", current: false, verified: false, reasons: [], production_mix_id: null, selected_production_mix_id: null, active_production_mix_id: null, resolve_ready: false };
   const reasons = [];
-  const pointer = readJson(pointerFile);
   if (!pointer || pointer.schema_version !== 1 || !/^production-[a-f0-9]{20}$/.test(String(pointer.production_mix_id || "")) || !pointer.provenance_path) {
     return { state: "stale", current: false, verified: false, reasons: ["production_provenance_missing"], production_mix_id: null, resolve_ready: false };
   }
@@ -217,7 +223,30 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
     }
   }
   const productionReady = productionCurrent && verified
-    && production.render_purpose === "production" && listeningStatus === "approved";
+    && production.render_purpose === "production" && listeningStatus === "approved" && hasSelection;
+  let selectionIdentity = null;
+  let selectionCurrent = false;
+  if (hasSelection && productionReady) {
+    try {
+      selectionIdentity = provenanceLib.productionSelectionIdentity({
+        productionMixId: selection.production_mix_id,
+        productionMixSha256: selection.production_mix_sha256,
+        verificationIdentity: selection.verification_identity,
+        listeningReviewIdentity: selection.listening_review_identity,
+        approvedIdentityHash: selection.approved_identity_hash,
+        handoffContractHash: selection.daw_handoff_contract_hash,
+      });
+      selectionCurrent = selection.production_mix_id === production.production_mix_id
+        && selection.production_mix_sha256 === actualHash
+        && verification && selection.verification_identity === verification.verification_identity
+        && selection.listening_review_identity === listeningReviewIdentity
+        && selection.approved_identity_hash === production.approved_identity_hash
+        && selection.daw_handoff_contract_hash === production.daw_handoff_contract_hash
+        && selection.selection_identity === selectionIdentity;
+    } catch {}
+  }
+  if (hasSelection && !selectionCurrent) reasons.push("final_selection_invalid");
+  const finalProductionReady = productionReady && selectionCurrent;
 
   let resolveReady = false;
   const resolvePointer = readJson(path.join(productionRoot, "resolve", "current.json"));
@@ -236,7 +265,7 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
         ? resolveProvenance.artifact_manifest.entries.map((entry) => entry.logical_role).sort().join(",") : "";
       if (resolveProvenance && resolveProvenance.schema_version === 1
         && resolveProvenance.production_mix_id === production.production_mix_id
-        && productionReady
+        && finalProductionReady
         && resolveProvenance.source_production_mix_sha256 === actualHash
         && resolveProvenance.verification_identity === verification.verification_identity
         && resolveProvenance.daw_handoff_type === verification.daw_handoff_type
@@ -245,6 +274,8 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
         && resolveProvenance.approved_candidate_content_hash === approved.identity.candidate_content_hash
         && resolveProvenance.render_contract_hash === approved.identity.render_contract_hash
         && resolveProvenance.listening_review_identity === listeningReviewIdentity
+        && (resolveProvenance.final_selection_identity === undefined
+          || resolveProvenance.final_selection_identity === selectionIdentity)
         && approvedMarkerEntries.length === 1
         && resolveProvenance.approved_cue_markers_sha256 === approvedMarkerEntries[0].sha256
         && resolveProvenance.approved_cue_markers_byte_size === approvedMarkerEntries[0].byte_size
@@ -272,14 +303,15 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
 
   const uniqueReasons = [...new Set(reasons)];
   return {
-    state: !productionCurrent ? "stale"
+    state: !productionCurrent || (hasSelection && !selectionCurrent) ? "stale"
       : verified && production.render_purpose === "reference" ? "reference_verified"
-        : productionReady ? "production_ready"
+        : finalProductionReady ? "production_ready"
+          : verified && listeningStatus === "approved" ? "approved_unselected"
           : verified ? "technical_verified" : "imported",
-    current: productionCurrent,
+    current: productionCurrent && (!hasSelection || selectionCurrent),
     verified: productionCurrent && verified,
     technical_verified: productionCurrent && verified,
-    production_ready: productionReady,
+    production_ready: finalProductionReady,
     listening_status: listeningStatus,
     listening_review_identity: listeningReviewIdentity,
     render_purpose: production.render_purpose,
@@ -289,7 +321,10 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
     technical_analysis: verification && verification.technical_analysis || null,
     reasons: uniqueReasons,
     production_mix_id: production.production_mix_id,
-    resolve_ready: productionReady && resolveReady,
+    selected_production_mix_id: hasSelection ? selection.production_mix_id : null,
+    active_production_mix_id: activePointer && activePointer.production_mix_id || null,
+    final_selection_identity: selectionCurrent ? selectionIdentity : null,
+    resolve_ready: finalProductionReady && resolveReady,
   };
 }
 
@@ -335,9 +370,10 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
     },
     {
       id: "production", label: "DAW production mix",
-      state: production.production_ready ? "done" : ["imported", "technical_verified", "reference_verified", "stale"].includes(production.state) ? "draft" : "todo",
+      state: production.production_ready ? "done" : ["imported", "technical_verified", "approved_unselected", "reference_verified", "stale"].includes(production.state) ? "draft" : "todo",
       detail: production.state === "production_ready" ? "technical QC and exact-byte human listening approval are current"
         : production.state === "technical_verified" ? "technical QC passed; human listening approval is pending"
+          : production.state === "approved_unselected" ? "technical QC and listening approval passed; explicitly select the final production mix"
           : production.state === "reference_verified" ? "technical reference realization passed; it is not a production mix"
         : production.state === "imported" ? "production mix imported; run verification"
           : production.state === "stale" ? `stale: ${production.reasons.join(", ")}`
@@ -362,7 +398,8 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
             : production.state === "not_imported" ? "Import a DAW production mix bound to this current sketch approval."
               : production.state === "imported" ? "Verify the imported production mix."
                 : production.state === "stale" ? `Repair stale production state: ${production.reasons.join(", ")}.`
-                  : production.state === "reference_verified" ? "Import the operator-patched production render; the reference render cannot authorize Resolve."
+                : production.state === "reference_verified" ? "Import the operator-patched production render; the reference render cannot authorize Resolve."
+                  : production.state === "approved_unselected" ? "Select the exact approved production mix as final."
                     : production.state === "technical_verified" ? "Listen to the exact technically verified production mix, then approve or reject it."
                       : !production.resolve_ready ? "Prepare the approved production mix for Resolve."
                     : "Production score package is verified and Resolve-ready.";
@@ -377,7 +414,7 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
     approval_authority: approvalAuthority,
     production,
     resolve_ready: production.resolve_ready,
-    resolve_ready_requires: "current hash-bound sketch approval + technical audio QC + exact-byte human listening approval + hash-checked Resolve copy",
+    resolve_ready_requires: "current hash-bound sketch approval + technical audio QC + exact-byte human listening approval + explicit final selection + hash-checked Resolve copy",
     dialogue_risk_count: dialogueRisks.length,
     missing,
     warnings: analysis.warnings,
