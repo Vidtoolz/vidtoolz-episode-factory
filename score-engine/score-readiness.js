@@ -79,6 +79,9 @@ function assessDawHandoffAuthority({ dir, approved, production }) {
     });
     const expectedContractHash = provenanceLib.dawHandoffIdentity(expectedContract);
     const manifestCheck = provenanceLib.verifyArtifactManifest(candidateDir, record.artifact_manifest);
+    const realization = expectedContract.realization_contract || {};
+    const selectedProfile = production.render_purpose === "reference"
+      ? realization.reference_profile : realization.production_profile;
     const current = record.schema_version === provenanceLib.DAW_HANDOFF_SCHEMA_VERSION
       && record.handoff_type === handoffType
       && record.project_id === project.project_id
@@ -91,7 +94,10 @@ function assessDawHandoffAuthority({ dir, approved, production }) {
       && manifestCheck.valid
       && production.daw_handoff_contract_hash === expectedContractHash
       && production.daw_handoff_artifact_manifest_hash === artifactManifestHash
-      && production.approved_identity_hash === expectedContract.approved_identity_hash;
+      && production.approved_identity_hash === expectedContract.approved_identity_hash
+      && ["production", "reference"].includes(production.render_purpose)
+      && selectedProfile && selectedProfile.render_purpose === production.render_purpose
+      && production.realization_profile_id === selectedProfile.profile_id;
     return current
       ? { current: true, handoffType, handoffContractHash: expectedContractHash }
       : { current: false, reason: "daw_handoff_stale" };
@@ -153,8 +159,11 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
         approvedCandidateContentHash: verification.approved_candidate_content_hash,
         renderContractHash: verification.render_contract_hash,
         detectedMedia: verification.detected_media,
+        technicalAnalysis: verification.technical_analysis,
         handoffContractHash: verification.daw_handoff_contract_hash,
         approvedIdentityHash: verification.approved_identity_hash,
+        renderPurpose: verification.render_purpose,
+        realizationProfileId: verification.realization_profile_id,
       });
     } catch {}
     verified = verification.schema_version === 1
@@ -168,6 +177,10 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
       && verification.daw_handoff_contract_hash === production.daw_handoff_contract_hash
       && verification.daw_handoff_artifact_manifest_hash === production.daw_handoff_artifact_manifest_hash
       && verification.approved_identity_hash === production.approved_identity_hash
+      && verification.render_purpose === production.render_purpose
+      && verification.realization_profile_id === production.realization_profile_id
+      && verification.technical_analysis && verification.technical_analysis.audible === true
+      && verification.technical_analysis.clipping_detected === false
       && verification.verification_identity === expectedVerificationIdentity
       && reasons.length === 0;
     if (!verified && !reasons.includes("production_mix_hash_mismatch")) reasons.push("verification_outdated");
@@ -178,6 +191,33 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
   // current verification of the imported production bytes themselves. Keep
   // the production-authority verdict before appending Resolve-only reasons.
   const productionCurrent = reasons.length === 0;
+
+  let listeningStatus = production.render_purpose === "reference" ? "not_applicable" : "pending";
+  let listeningReviewIdentity = null;
+  if (production.render_purpose === "production") {
+    const review = readJson(path.join(path.dirname(provenancePath), "listening-review.json"));
+    if (review) {
+      let expectedReviewIdentity = null;
+      try {
+        expectedReviewIdentity = provenanceLib.productionListeningReviewIdentity({
+          productionMixSha256: review.production_mix_sha256,
+          verificationIdentity: review.verification_identity,
+          decision: review.decision,
+          authorityBasis: review.authority_basis,
+        });
+      } catch {}
+      if (review.production_mix_id === production.production_mix_id
+        && review.production_mix_sha256 === actualHash
+        && verification && review.verification_identity === verification.verification_identity
+        && review.review_identity === expectedReviewIdentity
+        && ["approved", "rejected"].includes(review.decision)) {
+        listeningStatus = review.decision;
+        listeningReviewIdentity = review.review_identity;
+      }
+    }
+  }
+  const productionReady = productionCurrent && verified
+    && production.render_purpose === "production" && listeningStatus === "approved";
 
   let resolveReady = false;
   const resolvePointer = readJson(path.join(productionRoot, "resolve", "current.json"));
@@ -196,7 +236,7 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
         ? resolveProvenance.artifact_manifest.entries.map((entry) => entry.logical_role).sort().join(",") : "";
       if (resolveProvenance && resolveProvenance.schema_version === 1
         && resolveProvenance.production_mix_id === production.production_mix_id
-        && verified
+        && productionReady
         && resolveProvenance.source_production_mix_sha256 === actualHash
         && resolveProvenance.verification_identity === verification.verification_identity
         && resolveProvenance.daw_handoff_type === verification.daw_handoff_type
@@ -204,6 +244,7 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
         && resolveProvenance.approved_identity_hash === verification.approved_identity_hash
         && resolveProvenance.approved_candidate_content_hash === approved.identity.candidate_content_hash
         && resolveProvenance.render_contract_hash === approved.identity.render_contract_hash
+        && resolveProvenance.listening_review_identity === listeningReviewIdentity
         && approvedMarkerEntries.length === 1
         && resolveProvenance.approved_cue_markers_sha256 === approvedMarkerEntries[0].sha256
         && resolveProvenance.approved_cue_markers_byte_size === approvedMarkerEntries[0].byte_size
@@ -231,12 +272,24 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
 
   const uniqueReasons = [...new Set(reasons)];
   return {
-    state: !productionCurrent ? "stale" : verified ? "verified" : "imported",
+    state: !productionCurrent ? "stale"
+      : verified && production.render_purpose === "reference" ? "reference_verified"
+        : productionReady ? "production_ready"
+          : verified ? "technical_verified" : "imported",
     current: productionCurrent,
     verified: productionCurrent && verified,
+    technical_verified: productionCurrent && verified,
+    production_ready: productionReady,
+    listening_status: listeningStatus,
+    listening_review_identity: listeningReviewIdentity,
+    render_purpose: production.render_purpose,
+    realization_profile_id: production.realization_profile_id,
+    production_mix_sha256: actualHash,
+    relative_path: production.relative_path,
+    technical_analysis: verification && verification.technical_analysis || null,
     reasons: uniqueReasons,
     production_mix_id: production.production_mix_id,
-    resolve_ready: productionCurrent && verified && resolveReady,
+    resolve_ready: productionReady && resolveReady,
   };
 }
 
@@ -282,8 +335,10 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
     },
     {
       id: "production", label: "DAW production mix",
-      state: production.verified ? "done" : production.state === "imported" ? "draft" : production.state === "stale" ? "draft" : "todo",
-      detail: production.state === "verified" ? "production mix is hash-bound and verified"
+      state: production.production_ready ? "done" : ["imported", "technical_verified", "reference_verified", "stale"].includes(production.state) ? "draft" : "todo",
+      detail: production.state === "production_ready" ? "technical QC and exact-byte human listening approval are current"
+        : production.state === "technical_verified" ? "technical QC passed; human listening approval is pending"
+          : production.state === "reference_verified" ? "technical reference realization passed; it is not a production mix"
         : production.state === "imported" ? "production mix imported; run verification"
           : production.state === "stale" ? `stale: ${production.reasons.join(", ")}`
             : "import a completed DAW WAV after sketch approval",
@@ -307,7 +362,9 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
             : production.state === "not_imported" ? "Import a DAW production mix bound to this current sketch approval."
               : production.state === "imported" ? "Verify the imported production mix."
                 : production.state === "stale" ? `Repair stale production state: ${production.reasons.join(", ")}.`
-                  : !production.resolve_ready ? "Prepare the verified production mix for Resolve."
+                  : production.state === "reference_verified" ? "Import the operator-patched production render; the reference render cannot authorize Resolve."
+                    : production.state === "technical_verified" ? "Listen to the exact technically verified production mix, then approve or reject it."
+                      : !production.resolve_ready ? "Prepare the approved production mix for Resolve."
                     : "Production score package is verified and Resolve-ready.";
 
   return {
@@ -320,7 +377,7 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
     approval_authority: approvalAuthority,
     production,
     resolve_ready: production.resolve_ready,
-    resolve_ready_requires: "current hash-bound sketch approval + verified production WAV + hash-checked Resolve copy",
+    resolve_ready_requires: "current hash-bound sketch approval + technical audio QC + exact-byte human listening approval + hash-checked Resolve copy",
     dialogue_risk_count: dialogueRisks.length,
     missing,
     warnings: analysis.warnings,

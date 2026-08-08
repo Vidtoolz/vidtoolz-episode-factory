@@ -112,15 +112,28 @@ preset hint, optional REAPER track template path). Manage them on the Score
 Engine home page (add/edit/duplicate by loading a row into the editor and
 changing the id). Orchestration profiles reference instrument profiles by id.
 
+Sound realization is a deliberate hybrid. Candidate identity owns musical
+intent (cues, notes, timing, palette); final production instrumentation remains
+DAW/operator-authoritative through owned track templates. REAPER handoffs also
+carry the fixed `scorecraft_reasynth_reference_v1` profile for technical
+acceptance. That bundled ReaSynth route is reference-only: it proves MIDI,
+routing, render range, and audible output without claiming final timbre or
+artistic approval.
+
 ## REAPER integration
 
 "Build REAPER project" writes `candidates/<id>/reaper/` with:
 - `project.rpp` — six role tracks, embedded MIDI items per lane×cue, cue
-  markers, and **pre-seeded render settings** (48 kHz/24-bit stereo WAV, entire
-  project → `renders/scorecraft-mix.wav`), so after patching instruments,
+  markers, and **pre-seeded render settings** (48 kHz/24-bit stereo WAV,
+  approved contract range → `renders/scorecraft-mix.wav`), so after patching instruments,
   File → Render → Render is one click.
 - `render-scorecraft-mix.lua` — a safe one-click render action (versioned
   output, exact project bounds). Validated against real REAPER 7.67.
+- `build-scorecraft-reference.lua` — inserts bundled ReaSynth on every
+  MIDI-bearing role, validates the fixed parameter/routing contract, saves a
+  separate project, and renders `renders/scorecraft-reference.wav`. Missing or
+  changed plug-in semantics fail explicitly. This is technical reference audio,
+  never the production default.
 - `build-scorecraft-from-templates.lua` — **the repeatable-patching route**:
   builds a NEW project where each role track comes from your own
   .RTrackTemplate (instruments loaded), MIDI written in via the REAPER API,
@@ -161,6 +174,9 @@ files, `cue-sheet.json`, legacy-named `palette.json`,
 `suggested-track-layout.json`, the
 sketch preview, and a README describing the drag-import into your template.
 No `.als` generation, no Max for Live bridge yet (planned Phase C).
+Its handoff therefore declares only `operator_patched_production_v1` with
+`requires_manual_patching`; it has no Scorecraft reference-instrument profile.
+P4 real sound execution is verified for REAPER only, not Ableton.
 
 ## Provenance, staleness, and state
 
@@ -254,17 +270,46 @@ and `handoff-contract.json`. A real operator pass is:
    record says `issued` (a pre-approval build is deliberately only a draft).
 2. Open the generated REAPER project or import the Ableton MIDI package, patch
    instruments, and export using the documented PCM settings.
-3. In Scorecraft step 5 select that issued handoff, upload the returned WAV,
-   then click **Verify production mix**.
-4. PASS means readiness reports `verified`; prepare Resolve and confirm
-   `Resolve-ready`. Any approval/package/audio mutation subsequently changes
-   readiness to stale. Legacy imports lacking a DAW contract remain on disk but
-   are `daw_handoff_unverified`; location or filename never upgrades them.
+3. In Scorecraft step 5 select that issued handoff, choose **Production ·
+   operator patched**, upload the returned WAV, then click **Verify production
+   mix**. Use **Reference · ReaSynth technical test** only for the generated
+   reference render; reference imports can never authorize Resolve.
+4. Technical verification recomputes the SHA-256, validates 48 kHz/24-bit
+   stereo and duration, then runs bounded ffmpeg `astats` analysis on that one
+   immutable snapshot. Peak at or below -80 dBFS or RMS at or below -90 dBFS
+   is treated as silent/broken routing; sample peak at or above -0.01 dBFS is
+   treated as hard clipping; absolute DC offset above 0.25 is rejected. These
+   are technical failure thresholds, not mastering or LUFS targets.
+5. A production render that passes QC is `technical_verified` with listening
+   `pending`. Audition the exact WAV/SHA shown in Scorecraft, then approve or
+   reject it. The review receipt binds the exact WAV SHA and technical
+   verification identity; changed/replaced bytes invalidate it.
+6. Resolve preparation requires both technical verification and exact-byte
+   human listening approval. Any approval/package/audio mutation subsequently
+   changes readiness to stale. Legacy imports and v1 handoffs remain on disk
+   but require a fresh handoff/reverification; location or filename never
+   upgrades them.
 
-This is a deterministic integrity and authorization receipt, not proof that a
-particular DAW process or human actually performed the creative work. Real DAW
-opening, instrument playback, rendering, and listening remain operator
-acceptance and must not be inferred from synthetic test WAVs.
+The production receipt proves bytes, contract, and objective audio properties;
+it does not prove taste. Human listening approval is a separate exact-byte
+assertion. The ReaSynth reference route is reproducible enough for local
+technical acceptance but does not claim portability across arbitrary plug-in
+versions or replace owned production instrumentation. REAPER stamps render
+date/time metadata into WAV containers, so repeated reference renders can have
+different file SHA-256 values even when decoded PCM is identical; Scorecraft
+still records and reviews the exact returned container bytes each time.
+
+Run the disposable real-REAPER sound gate with:
+
+```bash
+node scripts/verify-scorecraft-reaper-sound.js --keep
+```
+
+It first renders the MIDI-only control and requires Scorecraft to reject it as
+silent, then uses the real REAPER binary and fixed ReaSynth profile, imports the
+audible return, and requires technical QC to pass. `--keep` leaves the isolated
+`/tmp/scorecraft-reaper-sound-*` evidence folder for audition; without it the
+fixture is removed. This command never approves human listening.
 
 ## Troubleshooting
 
@@ -276,7 +321,8 @@ acceptance and must not be inferred from synthetic test WAVs.
 | "Approve the cue sheet first" | Candidates only generate from an approved cue sheet — that's the human gate. |
 | "A current sketch approval is required" | The approval is missing, legacy, or stale. Regenerate/reapprove from current inputs. |
 | "No issued DAW handoff" | Approve the sketch, then rebuild the intended REAPER/Ableton handoff so its contract is issued. |
-| Production WAV rejected | Select the matching issued handoff and export stereo PCM WAV at its rate/bit depth/duration contract. |
+| Production WAV rejected | Select the matching issued handoff/purpose and export stereo PCM WAV at its rate/bit depth/duration contract. Silence, hard clipping, and gross DC offset also fail technical QC. |
+| Technical QC passed but Resolve is blocked | Listen to the exact SHA shown in step 5, then approve or reject that production mix. Reference renders intentionally cannot become Resolve-ready. |
 | Production or Resolve state is stale | Read the listed reason; do not overwrite history. Restore exact bytes/inputs or import and verify a new render. |
 | Narration context review is blocked | Register the exact operator-approved narration with an explicit timeline start, then verify it. A plausible filename or duration is not authority. |
 | "A score project already exists for this package" | One score project per package; open it from the home list. |

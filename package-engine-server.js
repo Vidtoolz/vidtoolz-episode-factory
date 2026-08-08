@@ -258,6 +258,7 @@ const SCORE_AI_CALL_API = '/api/score/cues/ai-call';
 const SCORE_VERIFY_API = '/api/score/verify';
 const SCORE_PRODUCTION_IMPORT_API = '/api/score/production/import';
 const SCORE_PRODUCTION_VERIFY_API = '/api/score/production/verify';
+const SCORE_PRODUCTION_REVIEW_API = '/api/score/production/review';
 const SCORE_PRODUCTION_RESOLVE_API = '/api/score/production/resolve';
 const SCORE_NARRATION_API = '/api/score/narration';
 const SCORE_NARRATION_REGISTER_API = '/api/score/narration/register';
@@ -16691,6 +16692,8 @@ function createServer(options = {}) {
             bytes,
             handoff_type: payload.handoff_type,
             handoff_contract_hash: payload.handoff_contract_hash,
+            render_purpose: payload.render_purpose,
+            realization_profile_id: payload.realization_profile_id,
           }, scoreOptions()));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-production-import-error'));
@@ -16754,6 +16757,19 @@ function createServer(options = {}) {
           sendJSON(res, 200, scoreLane.verifyProductionMix(payload.project_id || '', scoreOptions()));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-production-verify-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_PRODUCTION_REVIEW_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score production listening review API' });
+          sendJSON(res, 200, scoreLane.reviewProductionMix(payload.project_id || '', {
+            decision: payload.decision,
+            expected_production_mix_sha256: payload.expected_production_mix_sha256,
+            authority_basis: payload.authority_basis,
+          }, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-production-review-error'));
       return;
     }
     if (req.method === 'POST' && url.pathname === SCORE_PRODUCTION_RESOLVE_API) {

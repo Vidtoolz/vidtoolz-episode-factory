@@ -66,6 +66,15 @@ function narrationOptions(options, extra = {}) {
   return { ...options, narrationProbeImpl: wavProbe, narrationSignalProbeImpl: signalProbe, ...extra };
 }
 
+function approveProductionListening(projectId, options) {
+  const production = lane.getProject(projectId, options).readiness.production;
+  return lane.reviewProductionMix(projectId, {
+    decision: "approved",
+    expected_production_mix_sha256: production.production_mix_sha256,
+    authority_basis: "Test operator listened to the exact imported render.",
+  }, options);
+}
+
 function withMusicHashSpy(projectDir, operation) {
   const original = provenance.sha256File;
   const calls = [];
@@ -239,6 +248,7 @@ test("score narration F4: production import and Resolve provenance authorize sem
   const productionBytes = makeWav(5, 48000, 24, 0.37);
   const imported = lane.importProductionMix(project.project_id, { original_filename: "production.wav", bytes: productionBytes }, { ...options, probeImpl: wavProbe });
   lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  approveProductionListening(project.project_id, options);
   lane.prepareProductionResolvePackage(project.project_id, options);
   const state = lane.getProject(project.project_id, options);
   fs.rmSync(path.join(state.dir, "approved"), { recursive: true });
@@ -344,6 +354,7 @@ test("score narration: registration and staleness never alter music production p
   const productionBytes = makeWav(3);
   lane.importProductionMix(project.project_id, { original_filename: "production.wav", bytes: productionBytes }, { ...options, probeImpl: wavProbe });
   lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  approveProductionListening(project.project_id, options);
   lane.prepareProductionResolvePackage(project.project_id, options);
   const before = lane.getProject(project.project_id, options);
   const productionPointer = fs.readFileSync(path.join(before.dir, "production", "current.json"));

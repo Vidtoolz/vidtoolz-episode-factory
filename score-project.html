@@ -136,9 +136,12 @@
         <div id="production-body" class="meta">A current sketch approval is required before importing a production WAV.</div>
         <div style="margin-top:8px;">
           <select id="production-handoff" aria-label="Issued DAW handoff"><option value="">Build an approved DAW handoff first</option></select>
+          <select id="production-purpose" aria-label="Render purpose"><option value="production">Production · operator patched</option><option value="reference">Reference · ReaSynth technical test</option></select>
           <input type="file" id="production-file" accept="audio/wav,.wav">
           <button class="btn" id="production-import">Import production render</button>
           <button class="btn" id="production-verify">Verify production mix</button>
+          <button class="btn btn-go" id="production-listen-approve">Approve exact mix after listening</button>
+          <button class="btn" id="production-listen-reject">Reject / needs revision</button>
           <button class="btn btn-go" id="production-resolve">Prepare Resolve package</button>
         </div>
       </div>
@@ -171,6 +174,7 @@
       const SCORE_VERIFY_API = '/api/score/verify';
       const SCORE_PRODUCTION_IMPORT_API = '/api/score/production/import';
       const SCORE_PRODUCTION_VERIFY_API = '/api/score/production/verify';
+      const SCORE_PRODUCTION_REVIEW_API = '/api/score/production/review';
       const SCORE_PRODUCTION_RESOLVE_API = '/api/score/production/resolve';
       const SCORE_NARRATION_REGISTER_API = '/api/score/narration/register';
       const SCORE_NARRATION_VERIFY_API = '/api/score/narration/verify';
@@ -446,19 +450,27 @@
         const handoffs=Object.entries((ST.approved&&ST.approved.daw_handoffs)||{})
           .filter(([,record])=>record&&record.status==='issued'&&record.handoff_contract_hash);
         handoffSelect.innerHTML=handoffs.length
-          ?handoffs.map(([type,record])=>`<option value="${esc(type)}" data-contract="${esc(record.handoff_contract_hash)}">${esc(type.toUpperCase())} · ${esc(record.handoff_contract_hash.slice(0,12))}</option>`).join('')
+          ?handoffs.map(([type,record])=>{const realization=record.realization_contract||{},production=realization.production_profile||{},reference=realization.reference_profile||{};return `<option value="${esc(type)}" data-contract="${esc(record.handoff_contract_hash)}" data-production-profile="${esc(production.profile_id||'operator_patched_production_v1')}" data-reference-profile="${esc(reference.profile_id||'')}">${esc(type.toUpperCase())} · ${esc(record.handoff_contract_hash.slice(0,12))}</option>`;}).join('')
           :'<option value="">Build an approved DAW handoff first</option>';
         if(handoffs.some(([type])=>type===previousHandoff)) handoffSelect.value=previousHandoff;
         const reasons=(P.reasons||[]).length?`<div class="err">Stale: ${esc(P.reasons.join(', '))}</div>`:'';
         const id=P.production_mix_id?`<span class="chip">${esc(P.production_mix_id)}</span>`:'';
-        document.getElementById('production-body').innerHTML = `${id}${reasons}`+
-          (P.resolve_ready?'Verified production mix is hash-checked in the prepared Resolve package.'
-            :P.state==='verified'?'Production WAV verified. Prepare the immutable Resolve delivery copy.'
+        const identity=P.production_mix_sha256?`<span class="chip">SHA-256 ${esc(P.production_mix_sha256.slice(0,12))}…</span>`:'';
+        const analysis=P.technical_analysis?`<span class="chip">${esc(P.technical_analysis.peak_dbfs)} dBFS peak · ${esc(P.technical_analysis.rms_dbfs)} dBFS RMS · audible</span>`:'';
+        const listening=P.listening_status?`<span class="chip">listening: ${esc(P.listening_status)}</span>`:'';
+        const audio=P.relative_path?`<audio controls preload="metadata" src="${fileUrl(P.relative_path)}" style="display:block;width:100%;margin:8px 0"></audio>`:'';
+        document.getElementById('production-body').innerHTML = `${id}${identity}${analysis}${listening}${audio}${reasons}`+
+          (P.resolve_ready?'Technically verified and listening-approved production mix is hash-checked in the prepared Resolve package.'
+            :P.state==='production_ready'?'Technical QC and exact-byte listening approval passed. Prepare the immutable Resolve delivery copy.'
+              :P.state==='technical_verified'?'Technical QC passed. Listen to this exact SHA-256, then approve or reject it.'
+                :P.state==='reference_verified'?'Reference realization is audible and technically valid. It cannot authorize Resolve or production listening approval.'
               :P.state==='imported'?'Production WAV imported but not verified.'
                 :P.state==='stale'?'The historical import remains on disk, but cannot authorize Resolve delivery.'
                   :'Select the completed stereo WAV exported from your DAW. Import does not imply verification.');
         document.getElementById('production-verify').disabled=P.state!=='imported';
-        document.getElementById('production-resolve').disabled=P.state!=='verified';
+        document.getElementById('production-listen-approve').disabled=!(P.technical_verified&&P.render_purpose==='production'&&P.listening_status!=='approved');
+        document.getElementById('production-listen-reject').disabled=!(P.technical_verified&&P.render_purpose==='production');
+        document.getElementById('production-resolve').disabled=P.state!=='production_ready';
       }
 
       function renderNarration(){
@@ -549,7 +561,10 @@
         btn.disabled=true; btn.textContent='Importing…';
         try{
           const bytes=new Uint8Array(await file.arrayBuffer());
-          await post(SCORE_PRODUCTION_IMPORT_API,{project_id:ID,original_filename:file.name,data_base64:bytesToBase64(bytes),handoff_type:handoffSelect.value,handoff_contract_hash:handoff.dataset.contract});
+          const purpose=document.getElementById('production-purpose').value;
+          const profile=purpose==='reference'?handoff.dataset.referenceProfile:handoff.dataset.productionProfile;
+          if(!profile) throw new Error(`${handoffSelect.value.toUpperCase()} does not offer the selected realization purpose`);
+          await post(SCORE_PRODUCTION_IMPORT_API,{project_id:ID,original_filename:file.name,data_base64:bytesToBase64(bytes),handoff_type:handoffSelect.value,handoff_contract_hash:handoff.dataset.contract,render_purpose:purpose,realization_profile_id:profile});
           toast('Production render imported — verification still required'); await load();
         }catch(e){ toast(e.message,false); showErr(e.message); }
         finally{ btn.disabled=false; btn.textContent='Import production render'; }
@@ -561,6 +576,18 @@
         catch(e){ toast(e.message,false); showErr(e.message); }
         finally{ btn.disabled=false; btn.textContent='Verify production mix'; }
       };
+      async function submitListeningReview(decision){
+        const P=(ST.readiness&&ST.readiness.production)||{};
+        if(!P.production_mix_sha256) return toast('No current production mix identity to review',false);
+        const verb=decision==='approved'?'approve':'reject';
+        if(!confirm(`${verb[0].toUpperCase()+verb.slice(1)} the exact production mix SHA-256 ${P.production_mix_sha256.slice(0,12)}… after listening?`)) return;
+        const basis=prompt('Brief listening basis / revision note:','Listened to the exact imported production render.');
+        if(!basis||basis.trim().length<3) return toast('Listening review needs a brief basis',false);
+        await post(SCORE_PRODUCTION_REVIEW_API,{project_id:ID,decision,expected_production_mix_sha256:P.production_mix_sha256,authority_basis:basis.trim()});
+        toast(decision==='approved'?'Exact production mix listening-approved':'Exact production mix rejected'); await load();
+      }
+      document.getElementById('production-listen-approve').onclick=async()=>{try{await submitListeningReview('approved');}catch(e){toast(e.message,false);showErr(e.message);}};
+      document.getElementById('production-listen-reject').onclick=async()=>{try{await submitListeningReview('rejected');}catch(e){toast(e.message,false);showErr(e.message);}};
       document.getElementById('production-resolve').onclick = async ()=>{
         const btn=document.getElementById('production-resolve'); if(btn.disabled) return;
         btn.disabled=true; btn.textContent='Preparing…';

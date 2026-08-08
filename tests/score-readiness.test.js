@@ -136,7 +136,7 @@ test("readiness: approved plan without candidates is ready-to-render, not Resolv
   assert.equal(st.readiness.approved_export_exists, false);
   assert.match(st.readiness.next_action, /Generate music candidates/);
   assert.ok(st.analysis && st.analysis.cues.length > 0, "analysis rides along on the project GET");
-  assert.match(st.readiness.resolve_ready_requires, /verified production WAV \+ hash-checked Resolve copy/, "Resolve readiness requires the production gate");
+  assert.match(st.readiness.resolve_ready_requires, /technical audio QC \+ exact-byte human listening approval \+ hash-checked Resolve copy/, "Resolve readiness requires the production and listening gates");
 });
 
 test("readiness: approved export flips the stage but still points at verification", () => {

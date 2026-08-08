@@ -789,6 +789,7 @@ function persistDawHandoffRecord(dir, project, meta, handoffType, artifactManife
     handoff_contract_hash: record.handoff_contract_hash || null,
     approved_identity_hash: record.approved_identity_hash || null,
     artifact_manifest_hash: artifactManifestHash,
+    realization_contract: record.handoff_contract && record.handoff_contract.realization_contract || null,
   } };
   if (issued) {
     liveApproval.daw_handoffs = { ...(liveApproval.daw_handoffs || {}), [handoffType]: meta.daw_handoffs[handoffType] };
@@ -823,8 +824,21 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
   }));
 
   const { templates, warnings } = resolveTrackTemplates(settings, musicPlan);
+  const realizationContract = provenanceLib.dawRealizationContract("reaper");
+  const referenceRealization = realizationContract.reference_profile;
+  const activeRoles = reaper.LANE_TRACKS
+    .filter((track) => composition.notes.some((note) => note.lane === track.lane))
+    .map((track) => track.lane);
   fs.writeFileSync(path.join(reaperDir, "render-scorecraft-mix.lua"), reaper.buildRenderScript({
     rendersDir, durationSeconds: handoffRenderDuration, sampleRate: settings.default_export_sample_rate,
+  }));
+  fs.writeFileSync(path.join(reaperDir, "build-scorecraft-reference.lua"), reaper.buildReferenceRealizationScript({
+    realization: referenceRealization,
+    activeRoles,
+    savePath: path.join(reaperDir, "scorecraft-reference.rpp"),
+    rendersDir,
+    durationSeconds: handoffRenderDuration,
+    sampleRate: settings.default_export_sample_rate,
   }));
   fs.writeFileSync(path.join(reaperDir, "build-scorecraft-from-templates.lua"), reaper.buildTemplateScript({
     projectName: `${project.name} ${candidateId}`,
@@ -848,6 +862,7 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
   }));
   fs.writeFileSync(path.join(reaperDir, "README-reaper.md"), reaper.buildReaperReadme({
     projectName: project.name, cues, musicPlan, settings, templates, templateWarnings: warnings,
+    realization: referenceRealization,
   }));
 
   // The handoff is derived from an approved candidate, but it is still an
@@ -860,6 +875,7 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
   const handoffArtifactManifest = provenanceLib.buildArtifactManifest(candidateDir, [
     { logical_role: "reaper_project", relative_path: "reaper/project.rpp" },
     { logical_role: "reaper_render_script", relative_path: "reaper/render-scorecraft-mix.lua" },
+    { logical_role: "reaper_reference_realization_script", relative_path: "reaper/build-scorecraft-reference.lua" },
     { logical_role: "reaper_template_script", relative_path: "reaper/build-scorecraft-from-templates.lua" },
     { logical_role: "reaper_readme", relative_path: "reaper/README-reaper.md" },
   ]);
@@ -891,6 +907,8 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
     readme: path.join(reaperDir, "README-reaper.md"),
     render_script: path.join(reaperDir, "render-scorecraft-mix.lua"),
     template_script: path.join(reaperDir, "build-scorecraft-from-templates.lua"),
+    reference_realization_script: path.join(reaperDir, "build-scorecraft-reference.lua"),
+    realization: realizationContract,
     templates_used: templates,
     template_warnings: warnings,
     handoff_artifact_manifest_hash: handoffArtifactManifestHash,
@@ -1898,6 +1916,74 @@ function productionProbe(file, settings, options = {}) {
   }
 }
 
+const PRODUCTION_SILENCE_PEAK_DBFS = -80;
+const PRODUCTION_SILENCE_RMS_DBFS = -90;
+const PRODUCTION_CLIPPING_PEAK_DBFS = -0.01;
+const PRODUCTION_MAX_ABS_DC_OFFSET = 0.25;
+
+function productionSignalProbe(file, settings, options = {}) {
+  if (typeof options.productionSignalProbeImpl === "function") return options.productionSignalProbeImpl(file);
+  const spawnSync = options.spawnSyncImpl || childProcess.spawnSync;
+  const result = spawnSync(settings.ffmpeg_path || "ffmpeg", [
+    "-nostdin", "-v", "info", "-i", file, "-map", "0:a:0", "-vn",
+    "-af", "astats=metadata=0:reset=0:measure_perchannel=none:measure_overall=DC_offset+Peak_level+RMS_level+Peak_count+Number_of_samples",
+    "-f", "null", "-",
+  ], { encoding: "utf8", timeout: 120000, maxBuffer: 1024 * 1024 });
+  if (result.error || result.status !== 0) {
+    return { ok: false, reason: `ffmpeg technical audio analysis failed: ${(result.error ? result.error.message : result.stderr || "").toString().slice(0, 300)}` };
+  }
+  const output = String(result.stderr || "");
+  const metric = (label) => {
+    const matches = [...output.matchAll(new RegExp(`${label}:\\s+(-?inf|[-+]?\\d+(?:\\.\\d+)?)`, "gi"))];
+    if (!matches.length) return null;
+    return /^-inf$/i.test(matches[matches.length - 1][1]) ? -Infinity : Number(matches[matches.length - 1][1]);
+  };
+  return {
+    ok: true,
+    analyzer: "ffmpeg_astats_v1",
+    peak_dbfs: metric("Peak level dB"),
+    rms_dbfs: metric("RMS level dB"),
+    dc_offset: metric("DC offset"),
+    sample_count: metric("Number of samples"),
+  };
+}
+
+function validateProductionSignal(signal) {
+  if (!signal || !signal.ok) {
+    throw httpError(`Production technical audio analysis could not complete${signal && signal.reason ? `: ${signal.reason}` : "."}`, 503);
+  }
+  const peak = Number(signal.peak_dbfs);
+  const rms = Number(signal.rms_dbfs);
+  const dcOffset = Number(signal.dc_offset);
+  const sampleCount = Number(signal.sample_count);
+  const digitalSilence = signal.peak_dbfs === -Infinity || signal.rms_dbfs === -Infinity;
+  if (digitalSilence || !Number.isFinite(peak) || !Number.isFinite(rms)
+    || peak <= PRODUCTION_SILENCE_PEAK_DBFS || rms <= PRODUCTION_SILENCE_RMS_DBFS) {
+    throw httpError(`Production render is silent or effectively silent (peak ${signal.peak_dbfs} dBFS, RMS ${signal.rms_dbfs} dBFS); verify instrument and master routing.`, 422);
+  }
+  if (peak >= PRODUCTION_CLIPPING_PEAK_DBFS) {
+    throw httpError(`Production render is hard clipping (sample peak ${peak} dBFS); lower the DAW output and render again.`, 422);
+  }
+  if (Number.isFinite(dcOffset) && Math.abs(dcOffset) > PRODUCTION_MAX_ABS_DC_OFFSET) {
+    throw httpError(`Production render has excessive DC offset (${dcOffset}); repair the signal path and render again.`, 422);
+  }
+  if (!Number.isFinite(sampleCount) || sampleCount <= 0) {
+    throw httpError("Production technical audio analysis returned no decoded samples.", 503);
+  }
+  return {
+    analyzer: String(signal.analyzer || "ffmpeg_astats_v1"),
+    audible: true,
+    clipping_detected: false,
+    peak_dbfs: Math.round(peak * 1000) / 1000,
+    rms_dbfs: Math.round(rms * 1000) / 1000,
+    dc_offset: Number.isFinite(dcOffset) ? Math.round(dcOffset * 1000000) / 1000000 : null,
+    sample_count: Math.round(sampleCount),
+    silence_peak_threshold_dbfs: PRODUCTION_SILENCE_PEAK_DBFS,
+    silence_rms_threshold_dbfs: PRODUCTION_SILENCE_RMS_DBFS,
+    clipping_peak_threshold_dbfs: PRODUCTION_CLIPPING_PEAK_DBFS,
+  };
+}
+
 function validateProductionMedia(probe, contract) {
   if (!probe || !probe.ok) throw httpError(`Production render is not decodable as a valid WAV${probe && probe.reason ? `: ${probe.reason}` : "."}`, 400);
   if (probe.sample_rate !== contract.sample_rate) throw httpError(`Production render sample rate must be ${contract.sample_rate} Hz (got ${probe.sample_rate}).`, 400);
@@ -2000,7 +2086,24 @@ function requireIssuedDawHandoff(dir, project, approved, requested = {}) {
     handoff_contract_hash: expectedContractHash,
     handoff_artifact_manifest_hash: manifestHash,
     approved_identity_hash: expectedContract.approved_identity_hash,
+    realization_contract: expectedContract.realization_contract,
   };
+}
+
+function productionRealizationSelection(handoff, input) {
+  const renderPurpose = input.render_purpose === undefined ? "production" : String(input.render_purpose);
+  if (!["production", "reference"].includes(renderPurpose)) {
+    throw httpError("render_purpose must be production or reference.", 400);
+  }
+  const contract = handoff.realization_contract || {};
+  const profile = renderPurpose === "reference" ? contract.reference_profile : contract.production_profile;
+  if (!profile) throw httpError(`${handoff.handoff_type.toUpperCase()} does not support a ${renderPurpose} realization.`, 400);
+  const requestedProfile = input.realization_profile_id === undefined
+    ? profile.profile_id : String(input.realization_profile_id);
+  if (requestedProfile !== profile.profile_id || profile.render_purpose !== renderPurpose) {
+    throw httpError(`Realization profile ${requestedProfile} is not authorized for ${renderPurpose} renders by this DAW handoff.`, 409);
+  }
+  return { render_purpose: renderPurpose, realization_profile_id: requestedProfile };
 }
 
 function importProductionMix(projectId, input = {}, options = {}) {
@@ -2020,6 +2123,7 @@ function importProductionMix(projectId, input = {}, options = {}) {
     throw httpError("Production render is not a valid WAV container.", 400);
   }
   const handoff = requireIssuedDawHandoff(dir, project, approved, input);
+  const realization = productionRealizationSelection(handoff, input);
 
   const productionRoot = path.join(dir, "production");
   const importsRoot = path.join(productionRoot, "imports");
@@ -2032,6 +2136,8 @@ function importProductionMix(projectId, input = {}, options = {}) {
     candidate_content_hash: approved.identity.candidate_content_hash,
     render_contract_hash: approved.identity.render_contract_hash,
     daw_handoff_contract_hash: handoff.handoff_contract_hash,
+    render_purpose: realization.render_purpose,
+    realization_profile_id: realization.realization_profile_id,
   }).slice(0, 20)}`;
   const importDir = path.join(importsRoot, productionMixId);
   const relativeDir = path.relative(dir, importDir).split(path.sep).join("/");
@@ -2056,6 +2162,8 @@ function importProductionMix(projectId, input = {}, options = {}) {
       || existing.daw_handoff_contract_hash !== handoff.handoff_contract_hash
       || existing.daw_handoff_artifact_manifest_hash !== handoff.handoff_artifact_manifest_hash
       || existing.approved_identity_hash !== handoff.approved_identity_hash
+      || existing.render_purpose !== realization.render_purpose
+      || existing.realization_profile_id !== realization.realization_profile_id
       || !fs.existsSync(mixPath) || fs.statSync(mixPath).size !== input.bytes.length
       || provenanceLib.sha256File(mixPath) !== mixHash) {
       throw httpError(`Existing immutable production import ${productionMixId} does not match its content identity.`, 409);
@@ -2100,6 +2208,8 @@ function importProductionMix(projectId, input = {}, options = {}) {
       daw_handoff_contract_hash: handoff.handoff_contract_hash,
       daw_handoff_artifact_manifest_hash: handoff.handoff_artifact_manifest_hash,
       approved_identity_hash: handoff.approved_identity_hash,
+      render_purpose: realization.render_purpose,
+      realization_profile_id: realization.realization_profile_id,
     };
     writeJson(path.join(buildDir, "provenance.json"), record);
     const latestApproval = requireCurrentSketchApproval(dir, readJson(path.join(dir, "score-project.json")), settings).approved;
@@ -2147,6 +2257,7 @@ function verifyProductionMix(projectId, options = {}) {
   const contract = approved.render_contract;
   const verificationBuildDir = fs.mkdtempSync(path.join(current.importDir, ".verify-build-"));
   let detected;
+  let technicalAnalysis;
   let postProbeHash;
   try {
     const snapshotPath = path.join(verificationBuildDir, "mix.wav");
@@ -2156,6 +2267,7 @@ function verifyProductionMix(projectId, options = {}) {
     }
     detected = productionProbe(snapshotPath, settings, options);
     validateProductionMedia(detected, contract);
+    technicalAnalysis = validateProductionSignal(productionSignalProbe(snapshotPath, settings, options));
     postProbeHash = provenanceLib.sha256File(snapshotPath);
     if (postProbeHash !== actualHash || fs.statSync(snapshotPath).size !== record.byte_size) {
       throw httpError("The production mix changed during verification; no verification was recorded.", 409);
@@ -2174,8 +2286,11 @@ function verifyProductionMix(projectId, options = {}) {
     approvedCandidateContentHash: approved.identity.candidate_content_hash,
     renderContractHash: approved.identity.render_contract_hash,
     detectedMedia: detected,
+    technicalAnalysis,
     handoffContractHash: handoff.handoff_contract_hash,
     approvedIdentityHash: handoff.approved_identity_hash,
+    renderPurpose: record.render_purpose,
+    realizationProfileId: record.realization_profile_id,
   });
   const result = {
     schema_version: PRODUCTION_SCHEMA_VERSION,
@@ -2187,10 +2302,13 @@ function verifyProductionMix(projectId, options = {}) {
     render_contract_hash: approved.identity.render_contract_hash,
     verification_identity: verificationIdentity,
     detected_media: detected,
+    technical_analysis: technicalAnalysis,
     daw_handoff_type: handoff.handoff_type,
     daw_handoff_contract_hash: handoff.handoff_contract_hash,
     daw_handoff_artifact_manifest_hash: handoff.handoff_artifact_manifest_hash,
     approved_identity_hash: handoff.approved_identity_hash,
+    render_purpose: record.render_purpose,
+    realization_profile_id: record.realization_profile_id,
   };
   const verificationPath = path.join(current.importDir, "verification.json");
   writeJsonAtomic(verificationPath, result);
@@ -2224,6 +2342,112 @@ function verifyProductionMix(projectId, options = {}) {
   return result;
 }
 
+function requireCurrentProductionVerification(dir, project, approved, current) {
+  const record = current && current.provenance;
+  if (!record) throw httpError("A current technically verified production mix is required.", 409);
+  const handoff = requireIssuedDawHandoff(dir, project, approved, {
+    handoff_type: record.daw_handoff_type,
+    handoff_contract_hash: record.daw_handoff_contract_hash,
+  });
+  productionRealizationSelection(handoff, record);
+  const verification = readJson(path.join(current.importDir, "verification.json"));
+  let mixPath;
+  try { mixPath = provenanceLib.resolveManifestPath(dir, record.relative_path).target; }
+  catch { throw httpError("The imported production mix path is unsafe or missing.", 409); }
+  const mixHash = fs.existsSync(mixPath) && fs.statSync(mixPath).isFile()
+    ? provenanceLib.sha256File(mixPath) : null;
+  let expectedVerificationIdentity = null;
+  try {
+    expectedVerificationIdentity = verification && provenanceLib.productionVerificationIdentity({
+      productionMixSha256: verification.production_mix_sha256,
+      approvedCandidateContentHash: verification.approved_candidate_content_hash,
+      renderContractHash: verification.render_contract_hash,
+      detectedMedia: verification.detected_media,
+      technicalAnalysis: verification.technical_analysis,
+      handoffContractHash: verification.daw_handoff_contract_hash,
+      approvedIdentityHash: verification.approved_identity_hash,
+      renderPurpose: verification.render_purpose,
+      realizationProfileId: verification.realization_profile_id,
+    });
+  } catch {}
+  const valid = verification && verification.verified === true
+    && verification.production_mix_id === record.production_mix_id
+    && verification.production_mix_sha256 === mixHash
+    && verification.approved_candidate_content_hash === approved.identity.candidate_content_hash
+    && verification.render_contract_hash === approved.identity.render_contract_hash
+    && verification.daw_handoff_type === record.daw_handoff_type
+    && verification.daw_handoff_contract_hash === record.daw_handoff_contract_hash
+    && verification.daw_handoff_artifact_manifest_hash === record.daw_handoff_artifact_manifest_hash
+    && verification.approved_identity_hash === record.approved_identity_hash
+    && verification.render_purpose === record.render_purpose
+    && verification.realization_profile_id === record.realization_profile_id
+    && verification.technical_analysis && verification.technical_analysis.audible === true
+    && verification.technical_analysis.clipping_detected === false
+    && verification.verification_identity === expectedVerificationIdentity;
+  if (!valid) throw httpError("A current technically verified production mix is required.", 409);
+  return { record, handoff, verification, mixPath, mixHash };
+}
+
+function reviewProductionMix(projectId, input = {}, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  const project = readJson(path.join(dir, "score-project.json"));
+  const { approved } = requireCurrentSketchApproval(dir, project, settings);
+  const current = currentProductionRecord(dir);
+  const context = requireCurrentProductionVerification(dir, project, approved, current);
+  if (context.record.render_purpose !== "production") {
+    throw httpError("A technical reference render cannot receive production listening approval.", 409);
+  }
+  const decision = String(input.decision || "");
+  if (!["approved", "rejected"].includes(decision)) throw httpError("Listening review decision must be approved or rejected.", 400);
+  const expectedHash = String(input.expected_production_mix_sha256 || "");
+  if (!/^[a-f0-9]{64}$/.test(expectedHash)) throw httpError("Listening review requires the expected production mix SHA-256.", 400);
+  if (expectedHash !== context.mixHash) throw httpError("The production mix changed from the artifact selected for listening; review the current bytes before deciding.", 409);
+  const authorityBasis = String(input.authority_basis || "").trim();
+  if (authorityBasis.length < 3 || authorityBasis.length > 500) throw httpError("Listening review requires a concise authority basis (3-500 characters).", 400);
+  const result = {
+    schema_version: PRODUCTION_SCHEMA_VERSION,
+    role: "production_listening_review",
+    decision,
+    reviewed_at: nowIso(),
+    production_mix_id: context.record.production_mix_id,
+    production_mix_sha256: context.mixHash,
+    verification_identity: context.verification.verification_identity,
+    authority_basis: authorityBasis,
+  };
+  result.review_identity = provenanceLib.productionListeningReviewIdentity({
+    productionMixSha256: result.production_mix_sha256,
+    verificationIdentity: result.verification_identity,
+    decision: result.decision,
+    authorityBasis: result.authority_basis,
+  });
+  const existingResolve = readJson(path.join(
+    dir, "production", "resolve", context.record.production_mix_id, "resolve-provenance.json",
+  ));
+  if (existingResolve && existingResolve.listening_review_identity !== result.review_identity) {
+    throw httpError("The current immutable Resolve package is bound to a different listening review. Keep that exact review or import a new production render.", 409);
+  }
+  const reviewPath = path.join(current.importDir, "listening-review.json");
+  const previousReview = readJson(reviewPath);
+  writeJsonAtomic(reviewPath, result);
+  try {
+    const latestCurrent = currentProductionRecord(dir);
+    if (!latestCurrent || latestCurrent.provenance.production_mix_id !== context.record.production_mix_id
+      || !fs.existsSync(context.mixPath) || fs.statSync(context.mixPath).size !== context.record.byte_size
+      || provenanceLib.sha256File(context.mixPath) !== expectedHash) {
+      throw httpError("The production mix changed while publishing listening review; no review was recorded.", 409);
+    }
+    const latestApproval = requireCurrentSketchApproval(dir, readJson(path.join(dir, "score-project.json")), loadSettings(options)).approved;
+    if (!sameApprovalBinding(approved, latestApproval)) throw httpError("The approved score changed while publishing listening review; no review was recorded.", 409);
+    requireCurrentProductionVerification(dir, readJson(path.join(dir, "score-project.json")), latestApproval, latestCurrent);
+  } catch (error) {
+    if (previousReview) writeJsonAtomic(reviewPath, previousReview);
+    else { try { fs.unlinkSync(reviewPath); } catch {} }
+    throw error;
+  }
+  return result;
+}
+
 function prepareProductionResolvePackage(projectId, options = {}) {
   const settings = loadSettings(options);
   const { dir } = resolveProjectDir(settings, projectId);
@@ -2248,8 +2472,11 @@ function prepareProductionResolvePackage(projectId, options = {}) {
     approvedCandidateContentHash: verification.approved_candidate_content_hash,
     renderContractHash: verification.render_contract_hash,
     detectedMedia: verification.detected_media,
+    technicalAnalysis: verification.technical_analysis,
     handoffContractHash: verification.daw_handoff_contract_hash,
     approvedIdentityHash: verification.approved_identity_hash,
+    renderPurpose: verification.render_purpose,
+    realizationProfileId: verification.realization_profile_id,
   });
   if (!verification || !verification.verified || verification.production_mix_sha256 !== mixHash
     || verification.approved_candidate_content_hash !== approved.identity.candidate_content_hash
@@ -2258,8 +2485,32 @@ function prepareProductionResolvePackage(projectId, options = {}) {
     || verification.daw_handoff_contract_hash !== current.provenance.daw_handoff_contract_hash
     || verification.daw_handoff_artifact_manifest_hash !== current.provenance.daw_handoff_artifact_manifest_hash
     || verification.approved_identity_hash !== current.provenance.approved_identity_hash
+    || verification.render_purpose !== current.provenance.render_purpose
+    || verification.realization_profile_id !== current.provenance.realization_profile_id
+    || !verification.technical_analysis || verification.technical_analysis.audible !== true
+    || verification.technical_analysis.clipping_detected !== false
     || verification.verification_identity !== expectedVerificationIdentity) {
     throw httpError("A current verified production mix is required before preparing Resolve.", 409);
+  }
+  if (current.provenance.render_purpose !== "production") {
+    throw httpError("A technical reference render cannot be prepared as a Resolve production mix.", 409);
+  }
+  const listeningReview = readJson(path.join(current.importDir, "listening-review.json"));
+  let expectedReviewIdentity = null;
+  try {
+    expectedReviewIdentity = listeningReview && provenanceLib.productionListeningReviewIdentity({
+      productionMixSha256: listeningReview.production_mix_sha256,
+      verificationIdentity: listeningReview.verification_identity,
+      decision: listeningReview.decision,
+      authorityBasis: listeningReview.authority_basis,
+    });
+  } catch {}
+  if (!listeningReview || listeningReview.decision !== "approved"
+    || listeningReview.production_mix_id !== current.provenance.production_mix_id
+    || listeningReview.production_mix_sha256 !== mixHash
+    || listeningReview.verification_identity !== verification.verification_identity
+    || listeningReview.review_identity !== expectedReviewIdentity) {
+    throw httpError("Human listening approval of the exact technically verified production mix is required before preparing Resolve.", 409);
   }
   const markerEntry = approved.artifact_manifest && approved.artifact_manifest.entries
     .filter((entry) => entry.logical_role === "cue_markers");
@@ -2283,6 +2534,7 @@ function prepareProductionResolvePackage(projectId, options = {}) {
       || existing.verification_identity !== verification.verification_identity
       || existing.daw_handoff_contract_hash !== verification.daw_handoff_contract_hash
       || existing.approved_identity_hash !== verification.approved_identity_hash
+      || existing.listening_review_identity !== listeningReview.review_identity
       || existing.approved_cue_markers_sha256 !== approvedMarkers.sha256
       || existing.artifact_manifest_hash !== provenanceLib.artifactManifestHash(existing.artifact_manifest)) {
       throw httpError(`Existing immutable Resolve package ${current.provenance.production_mix_id} failed provenance verification; it will not be overwritten.`, 409);
@@ -2299,7 +2551,7 @@ function prepareProductionResolvePackage(projectId, options = {}) {
         || fs.statSync(path.join(buildDir, "cue-markers.csv")).size !== approvedMarkers.byte_size) {
         throw httpError("Approved cue markers changed while preparing Resolve; no package was published.", 409);
       }
-      fs.writeFileSync(path.join(buildDir, "README.md"), `# Resolve production import — ${project.name}\n\n- Production mix: mix.wav\n- Cue markers: cue-markers.csv\n- Source production mix: ${current.provenance.production_mix_id}\n- Verified against sketch candidate: ${approved.approved_candidate}\n`);
+      fs.writeFileSync(path.join(buildDir, "README.md"), `# Resolve production import — ${project.name}\n\n- Production mix: mix.wav\n- Cue markers: cue-markers.csv\n- Source production mix: ${current.provenance.production_mix_id}\n- Verified against sketch candidate: ${approved.approved_candidate}\n- Technical verification: ${verification.verification_identity}\n- Exact-byte listening approval: ${listeningReview.review_identity}\n`);
       const manifest = provenanceLib.buildArtifactManifest(buildDir, [
         { logical_role: "production_mix", relative_path: "mix.wav", media: current.provenance.detected_media },
         { logical_role: "cue_markers", relative_path: "cue-markers.csv" },
@@ -2313,6 +2565,7 @@ function prepareProductionResolvePackage(projectId, options = {}) {
         daw_handoff_type: verification.daw_handoff_type,
         daw_handoff_contract_hash: verification.daw_handoff_contract_hash,
         approved_identity_hash: verification.approved_identity_hash,
+        listening_review_identity: listeningReview.review_identity,
         approved_candidate_content_hash: approved.identity.candidate_content_hash,
         render_contract_hash: approved.identity.render_contract_hash,
         approved_cue_markers_sha256: approvedMarkers.sha256,
@@ -2351,6 +2604,7 @@ function prepareProductionResolvePackage(projectId, options = {}) {
       || publishedProvenance.verification_identity !== verification.verification_identity
       || publishedProvenance.daw_handoff_contract_hash !== verification.daw_handoff_contract_hash
       || publishedProvenance.approved_identity_hash !== verification.approved_identity_hash
+      || publishedProvenance.listening_review_identity !== listeningReview.review_identity
       || publishedProvenance.approved_cue_markers_sha256 !== approvedMarkers.sha256
       || publishedProvenance.artifact_manifest_hash !== provenanceLib.artifactManifestHash(publishedManifest)
       || provenanceLib.sha256File(mixPath) !== mixHash || !markersCurrent()) {
@@ -2435,6 +2689,7 @@ module.exports = {
   approveCandidate,
   importProductionMix,
   verifyProductionMix,
+  reviewProductionMix,
   prepareProductionResolvePackage,
   registerCanonicalNarration,
   verifyCanonicalNarration,

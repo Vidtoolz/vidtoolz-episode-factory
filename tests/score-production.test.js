@@ -7,7 +7,21 @@ const synth = require("../score-engine/preview-synth.js");
 
 function tmpEnv() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "score-production-"));
-  return { root, options: { settingsPath: path.join(root, "settings.json"), musicRoot: path.join(root, "music") } };
+  return {
+    root,
+    options: {
+      settingsPath: path.join(root, "settings.json"),
+      musicRoot: path.join(root, "music"),
+      productionSignalProbeImpl: () => ({
+        ok: true,
+        analyzer: "ffmpeg_astats_v1",
+        peak_dbfs: -12,
+        rms_dbfs: -24,
+        dc_offset: 0,
+        sample_count: 144000,
+      }),
+    },
+  };
 }
 
 function makeWav(duration = 3, sampleRate = 48000, bitDepth = 24, amplitude = 0.1) {
@@ -38,6 +52,15 @@ function approvedProject(options, duration = 3, { issueHandoff = true, durationE
     durationExact === undefined ? {} : { durationExact });
   if (issueHandoff) lane.buildReaperHandoff(project.project_id, "candidate-001", options);
   return project;
+}
+
+function approveListening(projectId, options, authorityBasis = "Test operator listened to the exact imported render.") {
+  const production = lane.getProject(projectId, options).readiness.production;
+  return lane.reviewProductionMix(projectId, {
+    decision: "approved",
+    expected_production_mix_sha256: production.production_mix_sha256,
+    authority_basis: authorityBasis,
+  }, options);
 }
 
 test("score production P3: a DAW return requires an issued handoff contract", () => {
@@ -88,7 +111,8 @@ test("score production P3: correct return receipt binds exact bytes through read
   assert.equal(receipt.daw_handoff_contract_hash, issued.handoff_contract_hash);
   assert.equal(receipt.imported_file_sha256, provenance.sha256(bytes));
   const verification = lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
-  assert.equal(lane.getProject(project.project_id, options).readiness.production.state, "verified");
+  assert.equal(lane.getProject(project.project_id, options).readiness.production.state, "technical_verified");
+  approveListening(project.project_id, options);
   lane.prepareProductionResolvePackage(project.project_id, options);
   const resolveReceipt = JSON.parse(fs.readFileSync(path.join(
     importedState.dir, "production", "resolve", imported.production_mix_id, "resolve-provenance.json",
@@ -278,6 +302,191 @@ test("score production P3: REAPER and Ableton builders issue semantic handoff id
   }
 });
 
+test("score production P4: REAPER handoff binds a deterministic playable reference realization", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const first = lane.buildReaperHandoff(project.project_id, "candidate-001", options);
+  const state = lane.getProject(project.project_id, options);
+  const handoffDir = path.join(state.dir, "candidates", "candidate-001", "reaper");
+  const receipt = JSON.parse(fs.readFileSync(path.join(handoffDir, "handoff-contract.json"), "utf8"));
+  const realization = receipt.handoff_contract.realization_contract;
+  assert.equal(realization.mode, "hybrid");
+  assert.equal(realization.reference_profile.profile_id, "scorecraft_reasynth_reference_v1");
+  assert.equal(realization.reference_profile.playability, "playable");
+  assert.equal(realization.reference_profile.render_purpose, "reference");
+  assert.equal(realization.reference_profile.plugin.identifier, "ReaSynth (Cockos)");
+  assert.equal(realization.production_profile.playability, "requires_manual_patching");
+  const script = fs.readFileSync(path.join(handoffDir, "build-scorecraft-reference.lua"), "utf8");
+  assert.match(script, /TrackFX_AddByName\(track, PLUGIN_IDENTIFIER/);
+  assert.match(script, /TrackFX_SetParamNormalized/);
+  assert.match(script, /B_MAINSEND/);
+  assert.match(script, /CountTrackMediaItems/);
+  assert.match(script, /required plugin unavailable/);
+  assert.match(script, /expected musical role has no playable MIDI path/);
+  const second = lane.buildReaperHandoff(project.project_id, "candidate-001", options);
+  assert.equal(second.handoff_contract_hash, first.handoff_contract_hash);
+  assert.equal(second.realization.reference_profile.profile_id, "scorecraft_reasynth_reference_v1");
+});
+
+test("score production P4: technical QC rejects silence and hard clipping, then records healthy metrics", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe });
+  assert.throws(
+    () => lane.verifyProductionMix(project.project_id, {
+      ...options,
+      probeImpl: wavProbe,
+      productionSignalProbeImpl: () => ({ ok: true, analyzer: "ffmpeg_astats_v1", peak_dbfs: -Infinity, rms_dbfs: -Infinity, dc_offset: 0, sample_count: 144000 }),
+    }),
+    (error) => error.statusCode === 422 && /silent|audible/i.test(error.message),
+  );
+  assert.throws(
+    () => lane.verifyProductionMix(project.project_id, {
+      ...options,
+      probeImpl: wavProbe,
+      productionSignalProbeImpl: () => ({ ok: true, analyzer: "ffmpeg_astats_v1", peak_dbfs: 0, rms_dbfs: -4, dc_offset: 0, sample_count: 144000 }),
+    }),
+    (error) => error.statusCode === 422 && /clipp/i.test(error.message),
+  );
+  assert.throws(
+    () => lane.verifyProductionMix(project.project_id, {
+      ...options,
+      probeImpl: wavProbe,
+      productionSignalProbeImpl: () => ({ ok: true, analyzer: "ffmpeg_astats_v1", peak_dbfs: -12, rms_dbfs: -24, dc_offset: 0.3, sample_count: 144000 }),
+    }),
+    (error) => error.statusCode === 422 && /DC offset/i.test(error.message),
+  );
+  assert.throws(
+    () => lane.verifyProductionMix(project.project_id, {
+      ...options,
+      probeImpl: wavProbe,
+      productionSignalProbeImpl: () => ({ ok: false, reason: "analyzer unavailable" }),
+    }),
+    (error) => error.statusCode === 503 && /could not complete/i.test(error.message),
+  );
+  const verified = lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  assert.equal(verified.technical_analysis.audible, true);
+  assert.equal(verified.technical_analysis.clipping_detected, false);
+  assert.equal(verified.technical_analysis.peak_dbfs, -12);
+  assert.equal(verified.technical_analysis.rms_dbfs, -24);
+});
+
+test("score production P4: listening approval is exact-byte bound and gates Resolve", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const imported = lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe });
+  const verified = lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  let production = lane.getProject(project.project_id, options).readiness.production;
+  assert.equal(production.state, "technical_verified");
+  assert.equal(production.technical_verified, true);
+  assert.equal(production.listening_status, "pending");
+  assert.equal(production.production_ready, false);
+  assert.throws(
+    () => lane.prepareProductionResolvePackage(project.project_id, options),
+    (error) => error.statusCode === 409 && /listening approval/i.test(error.message),
+  );
+  assert.throws(
+    () => lane.reviewProductionMix(project.project_id, {
+      decision: "approved", expected_production_mix_sha256: "f".repeat(64), authority_basis: "Listened to the exact imported render.",
+    }, options),
+    (error) => error.statusCode === 409 && /changed|expected|stale/i.test(error.message),
+  );
+  const review = lane.reviewProductionMix(project.project_id, {
+    decision: "approved",
+    expected_production_mix_sha256: verified.production_mix_sha256,
+    authority_basis: "Listened to the exact imported render.",
+  }, options);
+  assert.equal(review.production_mix_id, imported.production_mix_id);
+  assert.equal(review.production_mix_sha256, verified.production_mix_sha256);
+  assert.match(review.review_identity, /^[a-f0-9]{64}$/);
+  production = lane.getProject(project.project_id, options).readiness.production;
+  assert.equal(production.state, "production_ready");
+  assert.equal(production.listening_status, "approved");
+  assert.equal(production.production_ready, true);
+  lane.prepareProductionResolvePackage(project.project_id, options);
+
+  const state = lane.getProject(project.project_id, options);
+  const reviewPath = path.join(state.dir, "production", "imports", imported.production_mix_id, "listening-review.json");
+  const tamperedReview = JSON.parse(fs.readFileSync(reviewPath, "utf8"));
+  tamperedReview.authority_basis = "Copied approval text without a matching receipt identity.";
+  fs.writeFileSync(reviewPath, JSON.stringify(tamperedReview, null, 2) + "\n");
+  production = lane.getProject(project.project_id, options).readiness.production;
+  assert.equal(production.production_ready, false);
+  assert.equal(production.listening_status, "pending");
+  assert.equal(production.resolve_ready, false);
+  fs.appendFileSync(path.join(state.dir, "production", "imports", imported.production_mix_id, "mix.wav"), "mutated");
+  production = lane.getProject(project.project_id, options).readiness.production;
+  assert.equal(production.production_ready, false);
+  assert.notEqual(production.listening_status, "approved");
+});
+
+test("score production P4: rejection is distinct from technical QC and review publication fails stale on a byte race", () => {
+  const rejectedEnv = tmpEnv();
+  const rejectedProject = approvedProject(rejectedEnv.options);
+  lane.importProductionMix(rejectedProject.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...rejectedEnv.options, probeImpl: wavProbe });
+  const rejectedVerification = lane.verifyProductionMix(rejectedProject.project_id, { ...rejectedEnv.options, probeImpl: wavProbe });
+  lane.reviewProductionMix(rejectedProject.project_id, {
+    decision: "rejected",
+    expected_production_mix_sha256: rejectedVerification.production_mix_sha256,
+    authority_basis: "Routing is valid, but this realization needs revision.",
+  }, rejectedEnv.options);
+  const rejected = lane.getProject(rejectedProject.project_id, rejectedEnv.options).readiness.production;
+  assert.equal(rejected.technical_verified, true);
+  assert.equal(rejected.listening_status, "rejected");
+  assert.equal(rejected.production_ready, false);
+
+  const racedEnv = tmpEnv();
+  const racedProject = approvedProject(racedEnv.options);
+  const imported = lane.importProductionMix(racedProject.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...racedEnv.options, probeImpl: wavProbe });
+  const verified = lane.verifyProductionMix(racedProject.project_id, { ...racedEnv.options, probeImpl: wavProbe });
+  const state = lane.getProject(racedProject.project_id, racedEnv.options);
+  const mixPath = path.join(state.dir, "production", "imports", imported.production_mix_id, "mix.wav");
+  const originalWrite = fs.writeFileSync;
+  let raced = false;
+  fs.writeFileSync = function mutateBeforeListeningReviewWrite(file, ...args) {
+    if (!raced && String(file).includes("listening-review.json.tmp-")) {
+      raced = true;
+      fs.appendFileSync(mixPath, "changed-after-listening");
+    }
+    return originalWrite.call(fs, file, ...args);
+  };
+  try {
+    assert.throws(() => lane.reviewProductionMix(racedProject.project_id, {
+      decision: "approved",
+      expected_production_mix_sha256: verified.production_mix_sha256,
+      authority_basis: "Listened before the race.",
+    }, racedEnv.options), (error) => error.statusCode === 409 && /changed/i.test(error.message));
+  } finally {
+    fs.writeFileSync = originalWrite;
+  }
+  assert.equal(raced, true);
+  assert.equal(fs.existsSync(path.join(path.dirname(mixPath), "listening-review.json")), false);
+});
+
+test("score production P4: reference realization can pass technical QC but cannot masquerade as production", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const issued = lane.getProject(project.project_id, options).approved.daw_handoffs.reaper;
+  lane.importProductionMix(project.project_id, {
+    original_filename: "reference.wav",
+    bytes: makeWav(),
+    handoff_type: "reaper",
+    handoff_contract_hash: issued.handoff_contract_hash,
+    render_purpose: "reference",
+    realization_profile_id: "scorecraft_reasynth_reference_v1",
+  }, { ...options, probeImpl: wavProbe });
+  lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  const production = lane.getProject(project.project_id, options).readiness.production;
+  assert.equal(production.state, "reference_verified");
+  assert.equal(production.render_purpose, "reference");
+  assert.equal(production.technical_verified, true);
+  assert.equal(production.production_ready, false);
+  assert.throws(
+    () => lane.prepareProductionResolvePackage(project.project_id, options),
+    (error) => error.statusCode === 409 && /reference|production/i.test(error.message),
+  );
+});
+
 test("score production: valid WAV imports atomically and identical content is idempotent", () => {
   const { options } = tmpEnv();
   const project = approvedProject(options);
@@ -342,7 +551,7 @@ test("score production: verification binds exact audio and upstream authority", 
   const verified = lane.verifyProductionMix(project.project_id, { ...first.options, probeImpl: wavProbe });
   assert.equal(verified.verified, true);
   let state = lane.getProject(project.project_id, first.options);
-  assert.equal(state.readiness.production.state, "verified");
+  assert.equal(state.readiness.production.state, "technical_verified");
   const mixPath = path.join(state.dir, "production", "imports", imported.production_mix_id, "mix.wav");
   fs.appendFileSync(mixPath, "tamper");
   state = lane.getProject(project.project_id, first.options);
@@ -371,6 +580,7 @@ test("score production: a verified replacement remains current while the prior R
   const project = approvedProject(options);
   lane.importProductionMix(project.project_id, { original_filename: "v1.wav", bytes: makeWav(3, 48000, 24, 0.1) }, { ...options, probeImpl: wavProbe });
   lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  approveListening(project.project_id, options);
   lane.prepareProductionResolvePackage(project.project_id, options);
 
   const replacement = lane.importProductionMix(project.project_id, { original_filename: "v2.wav", bytes: makeWav(3, 48000, 24, 0.2) }, { ...options, probeImpl: wavProbe });
@@ -378,7 +588,7 @@ test("score production: a verified replacement remains current while the prior R
 
   const state = lane.getProject(project.project_id, options);
   assert.equal(state.readiness.production.production_mix_id, replacement.production_mix_id);
-  assert.equal(state.readiness.production.state, "verified");
+  assert.equal(state.readiness.production.state, "technical_verified");
   assert.equal(state.readiness.production.current, true);
   assert.equal(state.readiness.production.verified, true);
   assert.equal(state.readiness.production.resolve_ready, false);
@@ -521,6 +731,7 @@ test("score production: Resolve package requires current verification and copy h
   lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe });
   assert.throws(() => lane.prepareProductionResolvePackage(project.project_id, options), /verified production mix/);
   lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  approveListening(project.project_id, options);
   const prepared = lane.prepareProductionResolvePackage(project.project_id, options);
   let state = lane.getProject(project.project_id, options);
   assert.equal(state.readiness.resolve_ready, true);
@@ -548,10 +759,14 @@ test("score production: verification identities and Resolve pointers are self-au
     approvedCandidateContentHash: verification.approved_candidate_content_hash,
     renderContractHash: verification.render_contract_hash,
     detectedMedia: verification.detected_media,
+    technicalAnalysis: verification.technical_analysis,
     handoffContractHash: verification.daw_handoff_contract_hash,
     approvedIdentityHash: verification.approved_identity_hash,
+    renderPurpose: verification.render_purpose,
+    realizationProfileId: verification.realization_profile_id,
   });
   fs.writeFileSync(verificationPath, JSON.stringify(verification, null, 2) + "\n");
+  approveListening(project.project_id, options);
   const prepared = lane.prepareProductionResolvePackage(project.project_id, options);
   const pointerPath = path.join(state.dir, "production", "resolve", "current.json");
   const pointer = JSON.parse(fs.readFileSync(pointerPath, "utf8"));
@@ -565,6 +780,7 @@ test("score production: Resolve markers are bound to the approved marker bytes a
   const project = approvedProject(options);
   lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe });
   lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  approveListening(project.project_id, options);
   const state = lane.getProject(project.project_id, options);
   const markerPath = path.join(state.dir, "approved", "resolve-import", "cue-markers.csv");
   const originalMarkers = fs.readFileSync(markerPath);
@@ -593,6 +809,7 @@ test("score production: Resolve destination corruption before pointer publicatio
   const project = approvedProject(options);
   const imported = lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe });
   lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  approveListening(project.project_id, options);
   const state = lane.getProject(project.project_id, options);
   const destinationMix = path.join(state.dir, "production", "resolve", imported.production_mix_id, "mix.wav");
   const originalWrite = fs.writeFileSync;
@@ -679,11 +896,59 @@ test("score production API: import rejects non-JSON content types and unsafe fil
   }
 });
 
+test("score production P4 API: technical verification and exact-hash listening review use the public boundary", async () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const oldSettings = process.env.SCORE_ENGINE_SETTINGS_PATH;
+  const oldRoot = process.env.SCORE_ENGINE_MUSIC_ROOT;
+  process.env.SCORE_ENGINE_SETTINGS_PATH = options.settingsPath;
+  process.env.SCORE_ENGINE_MUSIC_ROOT = options.musicRoot;
+  const server = packageEngineServer.createServer({ scoreEngine: {
+    probeImpl: wavProbe,
+    productionSignalProbeImpl: options.productionSignalProbeImpl,
+  } });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const post = (pathname, body) => new Promise((resolve, reject) => {
+    const bytes = Buffer.from(JSON.stringify(body));
+    const req = http.request({ hostname: "127.0.0.1", port: server.address().port, path: pathname, method: "POST", headers: { Host: "127.0.0.1:8010", "Content-Type": "application/json", "Content-Length": bytes.length, "x-vidtoolz-local-write-nonce": packageEngineServer.localWriteNonce() } }, (res) => { let raw = ""; res.on("data", (chunk) => { raw += chunk; }); res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(raw) })); });
+    req.on("error", reject); req.end(bytes);
+  });
+  try {
+    const issued = lane.getProject(project.project_id, options).approved.daw_handoffs.reaper;
+    assert.equal((await post("/api/score/production/import", {
+      project_id: project.project_id, original_filename: "mix.wav", data_base64: makeWav().toString("base64"),
+      handoff_type: "reaper", handoff_contract_hash: issued.handoff_contract_hash,
+      render_purpose: "production", realization_profile_id: "operator_patched_production_v1",
+      technical_analysis: { caller_claim: "must be ignored" },
+    })).status, 200);
+    const verified = await post("/api/score/production/verify", { project_id: project.project_id });
+    assert.equal(verified.status, 200, JSON.stringify(verified.body));
+    const verificationResult = verified.body.data || verified.body;
+    assert.equal((await post("/api/score/production/review", {
+      project_id: project.project_id, decision: "approved", expected_production_mix_sha256: "f".repeat(64), authority_basis: "Wrong bytes.",
+    })).status, 409);
+    const reviewed = await post("/api/score/production/review", {
+      project_id: project.project_id, decision: "approved", expected_production_mix_sha256: verificationResult.production_mix_sha256,
+      authority_basis: "Listened through the public Scorecraft production route.",
+    });
+    assert.equal(reviewed.status, 200, JSON.stringify(reviewed.body));
+    assert.equal(lane.getProject(project.project_id, options).readiness.production.production_ready, true);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    if (oldSettings === undefined) delete process.env.SCORE_ENGINE_SETTINGS_PATH; else process.env.SCORE_ENGINE_SETTINGS_PATH = oldSettings;
+    if (oldRoot === undefined) delete process.env.SCORE_ENGINE_MUSIC_ROOT; else process.env.SCORE_ENGINE_MUSIC_ROOT = oldRoot;
+  }
+});
+
 test("score production UI keeps sketch approval, production verification, and Resolve delivery distinct", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "score-project.html"), "utf8");
   assert.match(html, />Approve sketch</);
   assert.match(html, />Import production render</);
   assert.match(html, />Verify production mix</);
+  assert.match(html, />Approve exact mix after listening</);
+  assert.match(html, /SCORE_PRODUCTION_REVIEW_API/);
+  assert.match(html, /expected_production_mix_sha256:P\.production_mix_sha256/);
+  assert.match(html, /reference_verified/);
   assert.match(html, />Prepare Resolve package</);
   assert.match(html, /id="production-handoff"/);
   assert.match(html, /handoff_contract_hash:handoff\.dataset\.contract/);

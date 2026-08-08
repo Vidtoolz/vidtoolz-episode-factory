@@ -56,6 +56,12 @@ test("score provenance P3: DAW handoff identity is semantic, stable, and approva
     handoffType: "reaper", artifactManifestHash: "a".repeat(64),
   };
   const first = provenance.dawHandoffIdentity(provenance.dawHandoffContract(args));
+  const realizationBound = provenance.dawHandoffContract(args);
+  assert.equal(realizationBound.realization_contract.reference_profile.profile_id, "scorecraft_reasynth_reference_v1");
+  const changedRealization = structuredClone(realizationBound);
+  changedRealization.realization_contract.reference_profile.parameters[5].normalized = 0.09;
+  assert.notEqual(provenance.dawHandoffIdentity(changedRealization), first,
+    "sound-producing reference parameter changes must invalidate the handoff identity");
   const timestampOnly = provenance.dawHandoffIdentity(provenance.dawHandoffContract({
     ...args, approved: { ...approved, approved_at: "2030-02-02T00:00:00.000Z" },
   }));

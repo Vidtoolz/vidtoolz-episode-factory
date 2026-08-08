@@ -10,8 +10,63 @@ const path = require("node:path");
 const PROVENANCE_SCHEMA_VERSION = 2;
 const HASH_SCHEMA_VERSION = 1;
 const ARTIFACT_MANIFEST_VERSION = 1;
-const DAW_HANDOFF_SCHEMA_VERSION = 1;
+const DAW_HANDOFF_SCHEMA_VERSION = 2;
 const DAW_HANDOFF_TYPES = new Set(["reaper", "ableton"]);
+
+// Sound realization is deliberately distinct from musical/candidate identity.
+// REAPER supports a deterministic, local ReaSynth profile for technical
+// reference renders while final production timbre remains operator-authored.
+// Ableton currently exposes only the honest manual-patching contract.
+function dawRealizationContract(handoffType) {
+  if (!DAW_HANDOFF_TYPES.has(handoffType)) throw new Error(`Unsupported DAW handoff type: ${handoffType}`);
+  const productionProfile = {
+    profile_id: "operator_patched_production_v1",
+    render_purpose: "production",
+    authority: "daw_operator",
+    playability: "requires_manual_patching",
+  };
+  if (handoffType === "ableton") {
+    return { schema_version: 1, mode: "daw_operator_authoritative", production_profile: productionProfile };
+  }
+  return {
+    schema_version: 1,
+    mode: "hybrid",
+    production_profile: productionProfile,
+    reference_profile: {
+      profile_id: "scorecraft_reasynth_reference_v1",
+      render_purpose: "reference",
+      authority: "scorecraft_reference",
+      playability: "playable",
+      reference_only: true,
+      midi_channel: 0,
+      plugin: {
+        identifier: "ReaSynth (Cockos)",
+        format: "VSTi",
+        unique_id: 1919251321,
+      },
+      parameters: [
+        { index: 0, name: "Attack", normalized: 0.002 },
+        { index: 1, name: "Release", normalized: 0.02 },
+        { index: 2, name: "Square mix", normalized: 0.1 },
+        { index: 3, name: "Saw mix", normalized: 0.05 },
+        { index: 4, name: "Triangle mix", normalized: 0.15 },
+        { index: 5, name: "Volume", normalized: 0.08 },
+        { index: 6, name: "Decay", normalized: 0.08 },
+        { index: 7, name: "Extra sine mix", normalized: 0.05 },
+        { index: 8, name: "Extra sine tuning", normalized: 0.5 },
+        { index: 9, name: "Sustain", normalized: 0.65 },
+        { index: 10, name: "Pulse Width", normalized: 0.5 },
+        { index: 11, name: "Global detune", normalized: 0.5 },
+        { index: 12, name: "Legacy oscillator mode", normalized: 0 },
+        { index: 13, name: "Portamento", normalized: 0 },
+        { index: 14, name: "Broken portamento extra sine oscillator", normalized: 0 },
+        { index: 15, name: "Bypass", normalized: 0 },
+        { index: 16, name: "Wet", normalized: 1 },
+        { index: 17, name: "Delta", normalized: 0 },
+      ],
+    },
+  };
+}
 
 function normalizeForCanonical(value) {
   if (value === null || typeof value === "boolean" || typeof value === "string") return value;
@@ -230,6 +285,7 @@ function dawHandoffContract({ project = {}, candidate = {}, approved = {}, hando
     render_contract_hash: identity.render_contract_hash,
     candidate_artifact_manifest_hash: identity.candidate_artifact_manifest_hash,
     handoff_artifact_manifest_hash: artifactManifestHash,
+    realization_contract: dawRealizationContract(handoffType),
     audio_contract: {
       sample_rate: render.sample_rate,
       bit_depth: render.bit_depth,
@@ -246,7 +302,7 @@ function dawHandoffIdentity(contract) {
   return hashCanonical(contract);
 }
 
-function productionVerificationIdentity({ productionMixSha256, approvedCandidateContentHash, renderContractHash, detectedMedia, handoffContractHash, approvedIdentityHash }) {
+function productionVerificationIdentity({ productionMixSha256, approvedCandidateContentHash, renderContractHash, detectedMedia, technicalAnalysis, handoffContractHash, approvedIdentityHash, renderPurpose, realizationProfileId }) {
   const material = {
     schema_version: PROVENANCE_SCHEMA_VERSION,
     production_mix_sha256: productionMixSha256,
@@ -254,9 +310,27 @@ function productionVerificationIdentity({ productionMixSha256, approvedCandidate
     render_contract_hash: renderContractHash,
     detected_media: detectedMedia,
   };
+  if (technicalAnalysis !== undefined) material.technical_analysis = technicalAnalysis;
   if (handoffContractHash !== undefined) material.daw_handoff_contract_hash = handoffContractHash;
   if (approvedIdentityHash !== undefined) material.approved_identity_hash = approvedIdentityHash;
+  if (renderPurpose !== undefined) material.render_purpose = renderPurpose;
+  if (realizationProfileId !== undefined) material.realization_profile_id = realizationProfileId;
   return hashCanonical(material);
+}
+
+function productionListeningReviewIdentity({ productionMixSha256, verificationIdentity, decision, authorityBasis }) {
+  if (!/^[a-f0-9]{64}$/.test(String(productionMixSha256 || ""))) throw new Error("Production mix SHA-256 is required for listening review identity.");
+  if (!/^[a-f0-9]{64}$/.test(String(verificationIdentity || ""))) throw new Error("Technical verification identity is required for listening review identity.");
+  if (!["approved", "rejected"].includes(decision)) throw new Error("Listening review decision must be approved or rejected.");
+  if (typeof authorityBasis !== "string" || !authorityBasis.trim()) throw new Error("Listening review authority basis is required.");
+  return hashCanonical({
+    schema_version: PROVENANCE_SCHEMA_VERSION,
+    role: "scorecraft_production_listening_review",
+    production_mix_sha256: productionMixSha256,
+    verification_identity: verificationIdentity,
+    decision,
+    authority_basis: authorityBasis.trim(),
+  });
 }
 
 function resolveManifestPath(root, relativePath) {
@@ -463,9 +537,11 @@ module.exports = {
   candidateContentHash,
   approvedStateIdentity,
   approvedStateHash,
+  dawRealizationContract,
   dawHandoffContract,
   dawHandoffIdentity,
   productionVerificationIdentity,
+  productionListeningReviewIdentity,
   buildArtifactManifest,
   artifactManifestHash,
   verifyArtifactManifest,
