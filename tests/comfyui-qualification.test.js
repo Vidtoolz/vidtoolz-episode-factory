@@ -1360,3 +1360,194 @@ test("comfyui-environment fingerprint/qualification integration: strong identity
   await gateway.fingerprint.collectFingerprint(hq, spyOptions);
   gateway.preflight.preflightSync(hq.id, { ...spyOptions, driftOverride: false });
 });
+
+// ---- P6: ComfyUI core source integrity ------------------------------------------------------
+
+const { execFileSync: p6git } = require("node:child_process");
+function gitIn(dir, args) {
+  return p6git("git", args, { cwd: dir, encoding: "utf8", env: { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" } });
+}
+function sourceFixture() {
+  const fx = environmentFixture();
+  gitIn(fx.comfyRoot, ["init", "-q"]);
+  fs.writeFileSync(path.join(fx.comfyRoot, "main.py"), "print('comfy')\n");
+  fs.mkdirSync(path.join(fx.comfyRoot, "comfy"), { recursive: true });
+  fs.writeFileSync(path.join(fx.comfyRoot, "comfy", "model_management.py"), "VRAM = 'auto'\n");
+  fs.writeFileSync(path.join(fx.comfyRoot, "blob.bin"), Buffer.from([0, 1, 2, 3, 250]));
+  gitIn(fx.comfyRoot, ["add", "."]);
+  gitIn(fx.comfyRoot, ["commit", "-qm", "base"]);
+  return fx;
+}
+async function sourceOf(fx) {
+  const { manifest } = await gateway.environment.runStrongInventory("env-test", fx.options);
+  return manifest.comfyui;
+}
+
+test("comfyui-source clean identity: deterministic effective source for a clean checkout", async () => {
+  const fx = sourceFixture();
+  const a = await sourceOf(fx);
+  const b = await sourceOf(fx);
+  assert.equal(a.source_state, "CLEAN");
+  assert.equal(a.identity_level, "git_commit");
+  assert.equal(a.working_tree.tracked_patch_sha256, null);
+  assert.ok(/^[0-9a-f]{64}$/.test(a.effective_source_sha256));
+  assert.equal(a.effective_source_sha256, b.effective_source_sha256, "repeated refresh yields the same identity");
+  assert.equal(a.git_branch, gitIn(fx.comfyRoot, ["branch", "--show-current"]).trim());
+});
+
+test("comfyui-source tracked patch: deterministic patch identity; one byte changes it; same commit + different patch differ", async () => {
+  const fx = sourceFixture();
+  const clean = await sourceOf(fx);
+  // patch A (unstaged tracked modification)
+  fs.writeFileSync(path.join(fx.comfyRoot, "comfy", "model_management.py"), "VRAM = 'patched-A'\n");
+  const a1 = await sourceOf(fx);
+  const a2 = await sourceOf(fx);
+  assert.equal(a1.source_state, "KNOWN_PATCHED");
+  assert.equal(a1.identity_level, "git_commit_plus_patch");
+  assert.ok(a1.working_tree.tracked_patch_sha256);
+  assert.equal(a1.working_tree.tracked_patch_sha256, a2.working_tree.tracked_patch_sha256, "same patch → same patch sha");
+  assert.equal(a1.effective_source_sha256, a2.effective_source_sha256);
+  assert.notEqual(a1.effective_source_sha256, clean.effective_source_sha256, "clean → dirty is a source change");
+  const entry = a1.working_tree.entries.find((e) => e.path === "comfy/model_management.py");
+  assert.equal(entry.tracked, true);
+  assert.equal(entry.execution_relevant, true);
+  assert.ok(entry.sha256);
+  // patch B: one byte different → different identity (dirty_count identical!)
+  fs.writeFileSync(path.join(fx.comfyRoot, "comfy", "model_management.py"), "VRAM = 'patched-B'\n");
+  const b = await sourceOf(fx);
+  assert.notEqual(b.working_tree.tracked_patch_sha256, a1.working_tree.tracked_patch_sha256);
+  assert.notEqual(b.effective_source_sha256, a1.effective_source_sha256, "same commit + patch A ≠ same commit + patch B");
+  // staged-only change is still captured (diff HEAD covers the index)
+  gitIn(fx.comfyRoot, ["add", "comfy/model_management.py"]);
+  const staged = await sourceOf(fx);
+  assert.ok(staged.working_tree.tracked_patch_sha256, "staged tracked change remains part of the patch identity");
+  assert.equal(staged.effective_source_sha256, b.effective_source_sha256, "staging without content change keeps the same executed source");
+  // binary tracked change is represented (git diff --binary)
+  fs.writeFileSync(path.join(fx.comfyRoot, "blob.bin"), Buffer.from([9, 9, 9, 9, 9]));
+  const bin = await sourceOf(fx);
+  assert.notEqual(bin.working_tree.tracked_patch_sha256, staged.working_tree.tracked_patch_sha256, "binary modification changes the patch identity");
+});
+
+test("comfyui-source untracked: execution-relevant files enter identity; logs/cache/noise never do", async () => {
+  const fx = sourceFixture();
+  const clean = await sourceOf(fx);
+  // noise: logs, bytecode, outputs, diagnostics → identity unchanged
+  fs.mkdirSync(path.join(fx.comfyRoot, "logs"), { recursive: true });
+  fs.writeFileSync(path.join(fx.comfyRoot, "logs", "server.out.log.prev"), "log line");
+  fs.mkdirSync(path.join(fx.comfyRoot, "__pycache__"), { recursive: true });
+  fs.writeFileSync(path.join(fx.comfyRoot, "__pycache__", "main.cpython-310.pyc"), "bytecode");
+  fs.mkdirSync(path.join(fx.comfyRoot, "_diagnostics"), { recursive: true });
+  fs.writeFileSync(path.join(fx.comfyRoot, "_diagnostics", "note.md"), "diag");
+  fs.writeFileSync(path.join(fx.comfyRoot, "config.yaml.backup-old"), "backup");
+  const noisy = await sourceOf(fx);
+  assert.equal(noisy.effective_source_sha256, clean.effective_source_sha256, "noise must not churn source identity");
+  assert.equal(noisy.source_state, "DIRTY_NON_EXECUTION");
+  const cats = Object.fromEntries(noisy.working_tree.entries.map((e) => [e.path, e.category]));
+  assert.equal(cats["logs/server.out.log.prev"], "generated_runtime");
+  assert.equal(cats["_diagnostics/note.md"], "generated_diagnostic");
+  assert.equal(cats["config.yaml.backup-old"], "local_config_backup");
+  // execution-relevant untracked source enters the identity
+  fs.writeFileSync(path.join(fx.comfyRoot, "new_node.py"), "def custom(): pass\n");
+  const withNode = await sourceOf(fx);
+  assert.equal(withNode.source_state, "KNOWN_PATCHED");
+  assert.notEqual(withNode.effective_source_sha256, clean.effective_source_sha256);
+  const nodeEntry = withNode.working_tree.entries.find((e) => e.path === "new_node.py");
+  assert.equal(nodeEntry.execution_relevant, true);
+  assert.ok(nodeEntry.sha256);
+  // same filename + same size, different content → different identity via SHA
+  fs.writeFileSync(path.join(fx.comfyRoot, "new_node.py"), "def custom(): loss\n");
+  const swapped = await sourceOf(fx);
+  assert.notEqual(swapped.effective_source_sha256, withNode.effective_source_sha256);
+  // known execution-relevant IGNORED config (extra_model_paths.yaml) is captured
+  fs.writeFileSync(path.join(fx.comfyRoot, ".gitignore"), "extra_model_paths.yaml\n");
+  gitIn(fx.comfyRoot, ["add", ".gitignore"]); gitIn(fx.comfyRoot, ["commit", "-qm", "ignore"]);
+  fs.writeFileSync(path.join(fx.comfyRoot, "extra_model_paths.yaml"), "legacy:\n  base_path: /x\n");
+  const withYaml = await sourceOf(fx);
+  const yamlEntry = withYaml.working_tree.entries.find((e) => e.path === "extra_model_paths.yaml");
+  assert.equal(yamlEntry.status, "ignored-active");
+  assert.equal(yamlEntry.execution_relevant, true);
+  assert.ok(yamlEntry.sha256, "git-ignored but execution-relevant config is fingerprinted");
+});
+
+test("comfyui-source comparison: patch change = real drift; weak historical identity = strength change; models independent", async () => {
+  const { entry } = syntheticRegistry("wan22-i2v-hq");
+  const src = (sha) => wanFingerprint(entry, { comfyui: { version: "0.22.0", git_commit: "cd45f42a", identity_level: "git_commit", effective_source_sha256: sha, source_state: "KNOWN_PATCHED" } });
+  // same commit + same effective source → SAME at effective_source level
+  const same = gateway.qualification.compareFingerprints(src("a".repeat(64)), src("a".repeat(64)));
+  assert.equal(same.status, "current");
+  assert.equal(same.components.find((c) => c.name === "effective_source").classification, "verified_same");
+  // same commit + different patch → REAL source drift → requalification
+  const drift = gateway.qualification.compareFingerprints(src("a".repeat(64)), src("b".repeat(64)));
+  assert.equal(drift.status, "stale");
+  assert.ok(drift.reasons.some((r) => r.includes("effective_source")));
+  // models stay independent: only source changed, model components remain SAME
+  assert.equal(drift.components.find((c) => c.component === "model").classification, "verified_same");
+  // historical weak identity (commit + dirty boolean only) vs new strong → strength change, not drift
+  const weakOld = wanFingerprint(entry, { comfyui: { version: "0.22.0", git_commit: "cd45f42a", identity_level: "git_commit" } });
+  const strengthened = gateway.qualification.compareFingerprints(weakOld, src("a".repeat(64)));
+  assert.equal(strengthened.status, "current", "a stronger observer is not proof of drift");
+  assert.equal(strengthened.components.find((c) => c.name === "effective_source").classification, "identity_strength_changed");
+  // base commit change remains its own authoritative drift
+  const commitChanged = gateway.qualification.compareFingerprints(src("a".repeat(64)),
+    wanFingerprint(entry, { comfyui: { version: "0.22.0", git_commit: "deadbeef", identity_level: "git_commit", effective_source_sha256: "c".repeat(64), source_state: "CLEAN" } }));
+  assert.equal(commitChanged.status, "stale");
+});
+
+test("comfyui-source qualification + upgrade-session integration: patched source identity flows into evidence and baselines", async () => {
+  const fx = sourceFixture();
+  fs.writeFileSync(path.join(fx.comfyRoot, "comfy", "model_management.py"), "VRAM = 'production-patch'\n");
+  await gateway.environment.runStrongInventory("env-test", fx.options);
+  const hq = fx.entries.find((e) => e.id === "wan22-i2v-hq");
+  const modelFolders = {};
+  for (const name of fx.allModels) {
+    const folder = name.includes("lora") ? "loras" : name.includes("umt5") ? "text_encoders" : name.includes("vae") ? "vae" : "diffusion_models";
+    const st = fs.statSync(path.join(fx.modelRoot, folder, name));
+    (modelFolders[folder] = modelFolders[folder] || []).push({ name, size: st.size, modified: st.mtimeMs / 1000 });
+  }
+  const fetchImpl = fakeComfyFetch({ objectInfo: WAN_OBJECT_INFO, version: "0.22.0", gpu: "RTX 4090", modelFolders });
+  const fp = await gateway.fingerprint.collectFingerprint(hq, { ...fx.options, fetchImpl });
+  assert.ok(/^[0-9a-f]{64}$/.test(fp.comfyui.effective_source_sha256), "fingerprint carries effective source identity");
+  assert.equal(fp.comfyui.source_state, "KNOWN_PATCHED");
+  assert.ok(fp.comfyui.source_observed_at, "as-of-inventory freshness is explicit");
+  // qualification evidence preserves the exact patched source state
+  const runsRoot = tmpDir("comfyui-src-runs-");
+  const runDir = writeWanRunDir(runsRoot, "run-src-1");
+  gateway.provenance.buildWanRunProvenance(runDir, { entry: hq });
+  const captured = gateway.qualification.captureProductionQualification({ entry: hq, runDir, fingerprint: fp }, fx.options);
+  assert.equal(captured.captured, true, JSON.stringify(captured.reasons));
+  assert.equal(captured.record.environment_fingerprint.comfyui.effective_source_sha256, fp.comfyui.effective_source_sha256);
+  // upgrade session baseline captures it; a patch change marks host workflows affected
+  const upgOptions = { ...fx.options, upgradeRoot: path.join(fx.work, "upg"), fetchImpl };
+  const { session } = await gateway.upgrade.beginUpgradeSession("env-test", upgOptions);
+  assert.ok(session.baseline.workflows.every((w) => w.fingerprint.comfyui.effective_source_sha256 === fp.comfyui.effective_source_sha256));
+  fs.writeFileSync(path.join(fx.comfyRoot, "comfy", "model_management.py"), "VRAM = 'different-patch'\n");
+  await gateway.environment.runStrongInventory("env-test", fx.options);
+  const obs = await gateway.upgrade.observeUpgradeSession(session.upgrade_session_id, upgOptions);
+  assert.equal(obs.verdict, "CHANGES_DETECTED");
+  assert.deepEqual(obs.affected.sort(), ["wan22-i2v-fast", "wan22-i2v-hq"], "core source change affects every workflow on the host");
+  assert.ok(obs.results.every((r) => r.reasons.some((x) => x.includes("effective_source"))));
+  // rollback evidence includes the patched source identity
+  const manifest = gateway.upgrade.rollbackManifest(session.upgrade_session_id, upgOptions);
+  assert.equal(manifest.known_good[0].comfyui.effective_source_sha256, fp.comfyui.effective_source_sha256);
+  // restoring patch A proves BASELINE_MATCH
+  fs.writeFileSync(path.join(fx.comfyRoot, "comfy", "model_management.py"), "VRAM = 'production-patch'\n");
+  await gateway.environment.runStrongInventory("env-test", fx.options);
+  const back = await gateway.upgrade.observeUpgradeSession(session.upgrade_session_id, { ...upgOptions, rollbackCheck: true });
+  assert.equal(back.verdict, "BASELINE_MATCH");
+});
+
+test("comfyui-source safety: no mutation verbs against hosts; source scan confined to configured root; routine paths unaffected", async () => {
+  const src = fs.readFileSync(path.join(REPO, "comfyui-gateway", "environment.js"), "utf8");
+  // observation only: no git mutation subcommand may appear as an executed command
+  for (const verb of ["'reset'", "'checkout'", "'restore'", "'clean'", "'stash'", "'apply'", "'pull'", "'fetch'"]) {
+    assert.ok(!src.includes(verb), `environment.js must never execute git ${verb}`);
+  }
+  // fingerprint source augmentation is manifest-read only — no git/ssh on routine path
+  const fx = sourceFixture();
+  const hq = fx.entries.find((e) => e.id === "wan22-i2v-hq");
+  const fetchImpl = fakeComfyFetch({ objectInfo: WAN_OBJECT_INFO, version: "0.22.0", gpu: "RTX 4090" });
+  const fp = await gateway.fingerprint.collectFingerprint(hq, { ...fx.options, fetchImpl, hashImpl: () => { throw new Error("HASH ON ROUTINE PATH"); } });
+  assert.equal(fp.comfyui.effective_source_sha256, undefined, "no manifest → no source claim, no probing");
+  // source roots come only from committed environments config
+  assert.throws(() => gateway.environment.hostConfig("unconfigured-host", fx.options), /not configured/);
+});

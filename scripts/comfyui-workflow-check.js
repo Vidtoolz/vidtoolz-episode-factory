@@ -260,6 +260,14 @@ async function inventoryStatus(host, { exitNonCurrent }) {
   const m = verify.manifest;
   console.log(`STRONG MANIFEST: OK — ${host} (generated ${m.generated_at}, manifest sha ${m.manifest_sha256.slice(0, 16)}…)`);
   console.log(`  ComfyUI: ${m.comfyui.git_commit ? `git ${m.comfyui.git_commit.slice(0, 12)}${m.comfyui.git_dirty ? ` DIRTY(${m.comfyui.git_dirty_count})` : ' clean'}` : `identity ${m.comfyui.identity_level}`}`);
+  if (m.comfyui.effective_source_sha256) {
+    console.log(`  SOURCE: ${m.comfyui.source_state}  effective sha ${m.comfyui.effective_source_sha256.slice(0, 16)}…  (${m.comfyui.identity_level})`);
+    const wt = m.comfyui.working_tree || {};
+    if (wt.tracked_patch_sha256) console.log(`    tracked patch sha: ${wt.tracked_patch_sha256.slice(0, 16)}…`);
+    for (const e of wt.entries || []) {
+      console.log(`    ${e.status.padEnd(2)} ${e.path}  [${e.category}${e.execution_relevant ? ', EXECUTION_RELEVANT' : ''}]${e.sha256 ? ` sha ${e.sha256.slice(0, 12)}…` : ''}`);
+    }
+  }
   for (const row of verify.models) {
     console.log(`  ${row.filename}: sha ${row.sha256.slice(0, 16)}…  authority:${row.sha_authority}  (${row.workflows.join(',')})`);
   }

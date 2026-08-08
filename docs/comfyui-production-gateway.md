@@ -345,6 +345,52 @@ the explicit inventory/verify commands fall back to a read-only filesystem
 stat probe on the host; routine fingerprints degrade honestly (visible as
 `IDENTITY STRENGTH CHANGED` in comparisons, never a false SAME).
 
+### ComfyUI core source identity (P6)
+
+"Commit + dirty boolean" is not reproducible — two hosts can both report
+`cd45f42, dirty(4)` while executing different code. The strong inventory now
+fingerprints WHAT is locally different and folds it into one reproducible
+**effective source identity**:
+
+```text
+effective_source_sha256 = SHA256(canonical({
+  commit,                       — base git commit
+  tracked_patch,                — SHA256 of `git diff --binary --no-ext-diff HEAD`
+                                  (covers staged AND unstaged, text AND binary)
+  untracked: [{path, sha256}]   — execution-relevant untracked/config files
+}))
+```
+
+Working-tree entries are classified (`untracked_source`, `local_config`,
+`local_config_backup`, `generated_runtime`, `generated_diagnostic`,
+`unknown`) with an execution-relevance verdict; noise (logs, caches,
+outputs, bytecode, diagnostics, backups) is listed but never lets the
+identity churn. Known execution-relevant **git-ignored** configs
+(`extra_model_paths.yaml` — it shapes model discovery yet never shows as
+dirty) are explicitly fingerprinted. Overall source states:
+
+```text
+CLEAN                 no local changes at all             → identity git_commit
+KNOWN_PATCHED         every execution-relevant change is
+                      fully fingerprinted                 → git_commit_plus_patch
+                      (dirty ≠ unverifiable — a precisely identified patch
+                       set remains reproducible and production-valid)
+DIRTY_NON_EXECUTION   only noise/backup entries
+DIRTY_UNCLASSIFIED    an execution-relevant change could not be fingerprinted
+```
+
+Fingerprints copy the manifest's source identity as-of-inventory-time
+(`source_observed_at` makes freshness explicit); qualification records and
+P4 upgrade baselines/rollback manifests inherit it. Comparisons: same commit
++ same patch → SAME; same commit + **different patch** → real source drift →
+REQUALIFICATION_REQUIRED (clean↔dirty transitions included); historical
+commit-only evidence vs new effective identity → IDENTITY_STRENGTH_CHANGED,
+never false drift; model SHA authority stays fully independent. Refresh is
+explicit (`--inventory-strong`; displayed by `--inventory-status`) — routine
+requests never run git or ssh. Cleanup of a dirty tree remains a manual
+operator decision outside the gateway: this layer observes and fingerprints,
+it never restores, resets, cleans, stashes, applies, or pulls.
+
 ### Supervised upgrade sessions (P4)
 
 An upgrade session is the safety system *around* a maintenance event — the

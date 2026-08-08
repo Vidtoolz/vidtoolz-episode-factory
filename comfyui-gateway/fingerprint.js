@@ -208,6 +208,22 @@ async function collectFingerprint(entry, options = {}) {
     const commit = gitCommitOf(comfyRoot);
     if (commit) { comfyui.git_commit = commit; comfyui.identity_level = 'git_commit'; comfyui.source = 'local_git'; }
   }
+  // core source integrity (P6): the strong environment manifest carries the
+  // reproducible effective source identity (base commit + tracked patch +
+  // execution-relevant untracked files). Copied as-of-inventory-time —
+  // source_observed_at makes the freshness explicit, never implied.
+  if (options.environmentManifests !== false) {
+    const environment = require('./environment.js');
+    const rm = environment.readManifest(hostNameFor(endpoint), options);
+    if (rm.status === 'ok' && rm.manifest.comfyui && rm.manifest.comfyui.effective_source_sha256) {
+      const mc = rm.manifest.comfyui;
+      if (!comfyui.git_commit && mc.git_commit) comfyui.git_commit = mc.git_commit;
+      comfyui.effective_source_sha256 = mc.effective_source_sha256;
+      comfyui.source_state = mc.source_state;
+      comfyui.source_identity_level = mc.identity_level;
+      comfyui.source_observed_at = rm.manifest.generated_at;
+    }
+  }
 
   // model enumeration via /object_info — the same authoritative source
   // preflight uses. One fetch per distinct loader class.

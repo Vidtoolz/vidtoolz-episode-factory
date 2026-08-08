@@ -79,6 +79,96 @@ function previousManifestPath(host, options = {}) {
   return path.join(manifestDir(host, options), 'manifest.previous.json');
 }
 
+// ---- core source integrity (P6) -------------------------------------------------------
+//
+// "commit + dirty boolean" is not reproducible: two hosts can both say
+// "cd45f42, dirty(4)" while executing different code. Source integrity
+// fingerprints WHAT is actually different: a deterministic SHA-256 over the
+// tracked working-tree patch (git diff --binary --no-ext-diff HEAD — covers
+// staged AND unstaged modifications, text and binary), plus content hashes of
+// execution-relevant untracked/config files, combined into one
+// effective_source_sha256. Noise (logs, caches, outputs, diagnostics,
+// bytecode) is classified and listed but never lets the identity churn.
+//
+// This layer observes and fingerprints only — it never restores, resets,
+// cleans, stashes, applies, or pulls anything on any host.
+
+const SOURCE_NOISE_DIR_RE = /^(logs|output|temp|input|user|models|_diagnostics|venv|\.git)\//i;
+const SOURCE_NOISE_FILE_RE = /(\.log(\.[A-Za-z0-9]+)?$|\.prev$|\.pyc$|__pycache__|\.(png|jpg|jpeg|webp|mp4|safetensors|gguf)$)/i;
+const SOURCE_BACKUP_RE = /\.(bak|backup)(-|\.|$)/i;
+const SOURCE_EXEC_FILE_RE = /(\.py$|^[^/\\]+\.(ps1|bat|sh|cmd)$)/i;
+// execution-relevant configs that git IGNORES (so they never even show as
+// dirty) but that materially shape production — e.g. model-path mapping.
+const KNOWN_EXEC_RELEVANT_IGNORED = ['extra_model_paths.yaml'];
+const SOURCE_HASH_MAX_BYTES = 5 * 1024 * 1024;
+
+// Classify one untracked/config path (repo-relative, forward slashes).
+function classifySourceEntry(relPath) {
+  const p = String(relPath).replace(/\\/g, '/');
+  if (SOURCE_NOISE_DIR_RE.test(p) || SOURCE_NOISE_FILE_RE.test(p)) {
+    return { category: p.toLowerCase().startsWith('_diagnostics/') ? 'generated_diagnostic' : 'generated_runtime', execution_relevant: false };
+  }
+  if (SOURCE_BACKUP_RE.test(p)) return { category: 'local_config_backup', execution_relevant: false };
+  if (KNOWN_EXEC_RELEVANT_IGNORED.includes(p)) return { category: 'local_config', execution_relevant: true };
+  if (/\.py$/i.test(p)) return { category: 'untracked_source', execution_relevant: true };
+  if (SOURCE_EXEC_FILE_RE.test(p)) return { category: 'local_config', execution_relevant: true };
+  if (/\.(ya?ml|json|ini|toml)$/i.test(p) && !p.includes('/')) return { category: 'local_config', execution_relevant: true };
+  return { category: 'unknown', execution_relevant: false };
+}
+
+// Overall source state:
+//   CLEAN                 no tracked patch, no local entries at all
+//   KNOWN_PATCHED         every execution-relevant local change is fingerprinted
+//   DIRTY_NON_EXECUTION   local entries exist, none execution-relevant
+//   DIRTY_UNCLASSIFIED    an execution-relevant change could not be fingerprinted
+function sourceState({ trackedPatchSha, entries }) {
+  const relevant = (entries || []).filter((e) => e.execution_relevant);
+  if (!trackedPatchSha && !(entries || []).length) return 'CLEAN';
+  if (relevant.some((e) => !e.sha256)) return 'DIRTY_UNCLASSIFIED';
+  if (trackedPatchSha || relevant.length) return 'KNOWN_PATCHED';
+  return 'DIRTY_NON_EXECUTION';
+}
+
+// The reproducible identity of what actually executes: base commit + the
+// tracked patch + every execution-relevant untracked/config file's content.
+function effectiveSourceSha256({ commit, trackedPatchSha, entries }) {
+  const untracked = (entries || [])
+    .filter((e) => e.execution_relevant && e.sha256)
+    .map((e) => ({ path: e.path, sha256: e.sha256 }))
+    .sort((a, b) => a.path.localeCompare(b.path));
+  return crypto.createHash('sha256')
+    .update(canonicalJson({ commit: commit || null, tracked_patch: trackedPatchSha || 'none', untracked }))
+    .digest('hex');
+}
+
+// Assemble the manifest's comfyui source section from raw executor output.
+function buildSourceIdentity(raw) {
+  const entries = (raw.source_entries || []).map((e) => {
+    const cls = classifySourceEntry(e.path);
+    return {
+      path: String(e.path).replace(/\\/g, '/'),
+      status: e.status || '??',
+      tracked: Boolean(e.tracked),
+      bytes: e.bytes != null ? e.bytes : null,
+      category: cls.category,
+      execution_relevant: cls.execution_relevant,
+      sha256: e.sha256 || null,
+    };
+  }).sort((a, b) => a.path.localeCompare(b.path));
+  const trackedPatchSha = raw.tracked_patch_sha256 || null;
+  const state = sourceState({ trackedPatchSha, entries });
+  const effective = effectiveSourceSha256({ commit: raw.git_commit, trackedPatchSha, entries });
+  return {
+    git_branch: raw.git_branch || null,
+    working_tree: { tracked_patch_sha256: trackedPatchSha, entries },
+    source_state: state,
+    effective_source_sha256: effective,
+    identity_level: raw.git_commit
+      ? (state === 'CLEAN' ? 'git_commit' : state === 'DIRTY_UNCLASSIFIED' ? 'git_commit_dirty_unfingerprinted' : 'git_commit_plus_patch')
+      : 'unknown',
+  };
+}
+
 // ---- canonical identity -------------------------------------------------------------
 
 function canonicalJson(value) {
@@ -169,12 +259,43 @@ function localInventoryExecutor(plan, options = {}) {
       files.push({ filename: model.filename, path: resolved, bytes: st.size, mtime: st.mtime.toISOString(), sha256: hashedByPath.get(resolved) });
     }
     let comfyui = { root: plan.config.comfyui_root, git_commit: null, git_dirty: null, identity_level: 'unknown' };
+    let gitBranch = null;
+    let trackedPatchSha = null;
+    const sourceEntries = [];
+    const root = plan.config.comfyui_root;
+    const gitRO = (args, opts = {}) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 15000, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024, ...opts });
+    const smallHash = (p) => {
+      try {
+        const st = fs.statSync(p);
+        if (st.size > SOURCE_HASH_MAX_BYTES) return { bytes: st.size, sha256: null };
+        return { bytes: st.size, sha256: crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex') };
+      } catch (_) { return { bytes: null, sha256: null }; }
+    };
     try {
-      const commit = execFileSync('git', ['-C', plan.config.comfyui_root, 'rev-parse', 'HEAD'], { encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-      const dirtyCount = execFileSync('git', ['-C', plan.config.comfyui_root, 'status', '--porcelain'], { encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'ignore'] }).split('\n').filter(Boolean).length;
-      comfyui = { root: plan.config.comfyui_root, git_commit: commit, git_dirty: dirtyCount > 0, git_dirty_count: dirtyCount, identity_level: 'git_commit' };
+      const commit = gitRO(['rev-parse', 'HEAD']).trim();
+      const dirtyCount = gitRO(['status', '--porcelain']).split('\n').filter(Boolean).length;
+      comfyui = { root, git_commit: commit, git_dirty: dirtyCount > 0, git_dirty_count: dirtyCount, identity_level: 'git_commit' };
+      try { gitBranch = gitRO(['branch', '--show-current']).trim() || null; } catch (_) { gitBranch = null; }
+      // deterministic tracked-patch identity: staged + unstaged, text + binary
+      const patch = gitRO(['diff', '--binary', '--no-ext-diff', 'HEAD']);
+      if (patch.trim()) trackedPatchSha = crypto.createHash('sha256').update(patch).digest('hex');
+      for (const line of gitRO(['diff', '--name-status', 'HEAD']).split('\n').filter(Boolean)) {
+        const [status, ...rest] = line.split('\t');
+        const rel = rest.join('\t');
+        sourceEntries.push({ path: rel, status: status.trim(), tracked: true, ...smallHash(path.join(root, rel)) });
+      }
+      for (const line of gitRO(['status', '--porcelain=v1', '--untracked-files=all']).split('\n').filter(Boolean)) {
+        if (!line.startsWith('?? ')) continue;
+        const rel = line.slice(3);
+        const cls = classifySourceEntry(rel);
+        sourceEntries.push({ path: rel, status: '??', tracked: false, ...(cls.execution_relevant ? smallHash(path.join(root, rel)) : (() => { try { return { bytes: fs.statSync(path.join(root, rel)).size, sha256: null }; } catch (_) { return { bytes: null, sha256: null }; } })()) });
+      }
+      for (const rel of KNOWN_EXEC_RELEVANT_IGNORED) {
+        const abs = path.join(root, rel);
+        if (fs.existsSync(abs)) sourceEntries.push({ path: rel, status: 'ignored-active', tracked: false, ...smallHash(abs) });
+      }
     } catch (_) { /* not git-managed — honest unknown */ }
-    return { comfyui, files, missing };
+    return { comfyui, files, missing, git_branch: gitBranch, tracked_patch_sha256: trackedPatchSha, source_entries: sourceEntries };
   })();
 }
 
@@ -213,11 +334,48 @@ foreach ($m in $models) {
   }`}
   $files += [pscustomobject]@{ filename = $m.filename; path = $resolved; bytes = $item.Length; mtime = $item.LastWriteTimeUtc.ToString('o'); sha256 = $sha }
 }
-$commit = $null; $dirty = $null
+$commit = $null; $dirty = $null; $branch = $null; $patchSha = $null; $sourceEntries = @()
+function Get-SmallSha([string]$p) {
+  try {
+    $it = Get-Item -LiteralPath $p -ErrorAction Stop
+    if ($it.Length -gt 5242880) { return @{ bytes = $it.Length; sha = $null } }
+    return @{ bytes = $it.Length; sha = (Get-FileHash -Algorithm SHA256 -LiteralPath $p).Hash.ToLower() }
+  } catch { return @{ bytes = $null; sha = $null } }
+}
 try {
   $commit = (git -C '${comfyRoot}' rev-parse HEAD 2>&1).Trim()
   if ($commit -notmatch '^[0-9a-f]{40}$') { $commit = $null }
-  if ($commit) { $dirty = @(git -C '${comfyRoot}' status --porcelain).Count }
+  if ($commit) {
+    $dirty = @(git -C '${comfyRoot}' status --porcelain).Count
+    $branch = (git -C '${comfyRoot}' branch --show-current 2>&1).Trim()
+    $patchText = (git -C '${comfyRoot}' diff --binary --no-ext-diff HEAD | Out-String)
+    if ($patchText.Trim().Length -gt 0) {
+      $sha = [System.Security.Cryptography.SHA256]::Create()
+      $patchSha = ([System.BitConverter]::ToString($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($patchText)))).Replace('-','').ToLower()
+    }
+    foreach ($line in @(git -C '${comfyRoot}' diff --name-status HEAD)) {
+      if (-not $line) { continue }
+      $parts = $line -split "\`t"
+      $rel = ($parts[1..($parts.Count-1)] -join "\`t")
+      $h = Get-SmallSha (Join-Path '${comfyRoot}' $rel)
+      $sourceEntries += [pscustomobject]@{ path = $rel; status = $parts[0].Trim(); tracked = $true; bytes = $h.bytes; sha256 = $h.sha }
+    }
+    foreach ($line in @(git -C '${comfyRoot}' status --porcelain=v1 --untracked-files=all)) {
+      if (-not $line.StartsWith('?? ')) { continue }
+      $rel = $line.Substring(3)
+      $execCandidate = ($rel -match '\\.(py|ps1|bat|sh|cmd|ya?ml|json|ini|toml)$')
+      if ($execCandidate) { $h = Get-SmallSha (Join-Path '${comfyRoot}' $rel) }
+      else { try { $h = @{ bytes = (Get-Item -LiteralPath (Join-Path '${comfyRoot}' $rel) -ErrorAction Stop).Length; sha = $null } } catch { $h = @{ bytes = $null; sha = $null } } }
+      $sourceEntries += [pscustomobject]@{ path = $rel; status = '??'; tracked = $false; bytes = $h.bytes; sha256 = $h.sha }
+    }
+    foreach ($rel in @('extra_model_paths.yaml')) {
+      $abs = Join-Path '${comfyRoot}' $rel
+      if (Test-Path -LiteralPath $abs -PathType Leaf) {
+        $h = Get-SmallSha $abs
+        $sourceEntries += [pscustomobject]@{ path = $rel; status = 'ignored-active'; tracked = $false; bytes = $h.bytes; sha256 = $h.sha }
+      }
+    }
+  }
 } catch { }
 if (-not $commit) {
   try {
@@ -228,6 +386,9 @@ if (-not $commit) {
 }
 $result = [pscustomobject]@{
   comfyui = [pscustomobject]@{ root = '${comfyRoot}'; git_commit = $commit; git_dirty = $(if ($dirty -ne $null) { $dirty -gt 0 } else { $null }); git_dirty_count = $dirty; identity_level = $(if ($commit) { 'git_commit' } else { 'unknown' }) }
+  git_branch = $branch
+  tracked_patch_sha256 = $patchSha
+  source_entries = $sourceEntries
   files = $files
   missing = $missing
 }
@@ -264,6 +425,9 @@ function sshPowershellExecutor(plan, options = {}) {
   const asArray = (v) => (Array.isArray(v) ? v : v == null ? [] : [v]); // ConvertTo-Json unwraps single-element arrays
   return {
     comfyui: parsed.comfyui,
+    git_branch: parsed.git_branch || null,
+    tracked_patch_sha256: parsed.tracked_patch_sha256 || null,
+    source_entries: asArray(parsed.source_entries).map((e) => ({ ...e, sha256: e.sha256 ? String(e.sha256).toLowerCase() : null })),
     files: asArray(parsed.files).map((f) => ({ ...f, sha256: f.sha256 ? String(f.sha256).toLowerCase() : f.sha256 })),
     missing: asArray(parsed.missing),
   };
@@ -335,12 +499,20 @@ async function runStrongInventory(host, options = {}) {
     throw e;
   }
   const workflowsByFilename = new Map(plan.models.map((m) => [m.filename, m.workflows]));
+  // core source integrity: classify + fingerprint the working tree into a
+  // reproducible effective source identity (P6)
+  const sourceIdentity = buildSourceIdentity({
+    git_commit: (executorResult.comfyui || {}).git_commit,
+    git_branch: executorResult.git_branch,
+    tracked_patch_sha256: executorResult.tracked_patch_sha256,
+    source_entries: executorResult.source_entries,
+  });
   const manifest = {
     schema_version: MANIFEST_SCHEMA_VERSION,
     host: plan.host,
     transport: plan.config.transport,
     generated_at: new Date().toISOString(),
-    comfyui: executorResult.comfyui,
+    comfyui: { ...executorResult.comfyui, ...sourceIdentity },
     models: executorResult.files.map((f) => ({
       filename: f.filename,
       path: f.path,
@@ -420,6 +592,11 @@ function verifyManifest(host, currentMetaByFilename, options = {}) {
 module.exports = {
   MANIFEST_SCHEMA_VERSION,
   SAFE_FILENAME_RE,
+  KNOWN_EXEC_RELEVANT_IGNORED,
+  classifySourceEntry,
+  sourceState,
+  effectiveSourceSha256,
+  buildSourceIdentity,
   ENVIRONMENTS_PATH,
   DEFAULT_ENVIRONMENT_ROOT,
   loadEnvironments,

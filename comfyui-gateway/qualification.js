@@ -218,6 +218,23 @@ function compareFingerprints(qualified, current) {
       { classification: compareScalar(qualified.comfyui.git_commit, current.comfyui.git_commit), level: 'git_commit' },
       qualified.comfyui.git_commit.slice(0, 8), current.comfyui.git_commit.slice(0, 8));
   }
+  // effective source identity (P6): commit + tracked patch + execution-
+  // relevant untracked files. Same commit with a different local patch is a
+  // REAL source change; historical evidence without the field compares as an
+  // identity-strength change, never as false drift.
+  {
+    const qSrc = (qualified.comfyui || {}).effective_source_sha256;
+    const cSrc = (current.comfyui || {}).effective_source_sha256;
+    if (qSrc && cSrc) {
+      push('comfyui', 'effective_source',
+        { classification: qSrc === cSrc ? SAME : CHANGED, level: 'effective_source_sha256' },
+        qSrc.slice(0, 16), cSrc.slice(0, 16));
+    } else if (qSrc || cSrc) {
+      push('comfyui', 'effective_source',
+        { classification: STRENGTH_CHANGED, level: `${qSrc ? 'effective_source_sha256' : 'git_commit'} → ${cSrc ? 'effective_source_sha256' : 'git_commit'}` },
+        qSrc ? qSrc.slice(0, 16) : 'commit-only', cSrc ? cSrc.slice(0, 16) : 'commit-only');
+    }
+  }
   push('gpu', 'name',
     { classification: compareScalar((qualified.gpu || {}).name, (current.gpu || {}).name) },
     (qualified.gpu || {}).name, (current.gpu || {}).name);
