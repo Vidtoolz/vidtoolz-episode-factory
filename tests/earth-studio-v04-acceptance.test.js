@@ -68,7 +68,7 @@ function fakeChild() {
 
 // ---- generate + pre-import semantic assertions ----
 
-test("es-v04-acceptance: generate builds the full diagnostic package and all 29 semantic assertions pass", () => {
+test("es-v04-acceptance: generate builds the full diagnostic package and all semantic assertions pass (incl. v0.8 fly→orbit zero-slide continuity)", () => {
   withTmpRoot((pkg) => {
     const out = acceptance.generate(pkg);
     assert.equal(out.ok, true);

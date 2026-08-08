@@ -16,12 +16,18 @@ First sanity-check the timeline itself: it must read **2130 frames
 (71s @ 30 fps)** — anything shorter means Earth Studio
 reinterpreted the project duration and pacing will be wrong; report that.
 - **A Flight** (frames 0–690): starts high over Helsinki, descends; then flies
-  Helsinki → Paris rising in a high arc (never skimming ground); ends over
+  Helsinki → Paris rising in a high arc (never skimming ground); ends near
   Paris at ~2 km, tilted ~35° from straight-down; no backwards jumps.
+  **v0.8 geometry: the flight lands ALREADY ON the orbit circle** (slightly
+  offset from the city center, camera facing Paris) — not on the center itself.
 - **B Orbit** (frames 690–1770): camera physically circles Paris TWICE with
   Paris staying centered (not a stationary heading spin); second revolution
   continues from the first (no reset). Direction note: the generator's
   "counterclockwise" = pan DECREASING — record the direction you actually see.
+  **v0.8 fly→orbit boundary: the orbit must begin exactly from the flight's
+  final pose as ONE continuous move — PASS: no sideways slide/snap onto the
+  circle, no abrupt reframe of Paris, no altitude/tilt jump at the boundary.
+  FAIL: any visible lateral correction when the orbit starts.**
 - **C Zoom-out** (frames 1770–2130): starts from the final orbit position with
   no static pause or snap, pulls smoothly away to a space-scale globe view.
 - **D Composition**: the project/viewport is genuinely vertical 9:16

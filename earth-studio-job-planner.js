@@ -2,7 +2,7 @@
   "use strict";
 
   const DEFAULT_OUTPUT_DIR = "/home/vidtoolz/Videos/vidtoolz-earth-studio-jobs";
-  const VERSION = "0.7.0"; // v0.7.0 correctness pass: hover holds the previous camera (altitude/tilt carry-over with provenance), orbit modifiers scoped to orbit segments (place names like "French Quarter" survive), modifier-only comma fragments merge into the previous segment, "tilt N degrees" grammar, global duration strip, antimeridian short-arc longitude with in-contract ±180 seam pairs
+  const VERSION = "0.8.0"; // v0.8.0 fly→orbit geometry: a fly/zoom immediately followed by an orbit around the same resolved target terminates at the orbit's ring entry (plan-annotated lookahead, ends_at_orbit_entry), so the pair plays as one continuous move — no sideways slide onto the ring. (v0.7.0: hover holds camera, orbit-scoped modifiers, fragment merge, "tilt N degrees", global duration strip, antimeridian seam pairs.)
   const FRAME_RATE = 30;
   const DEFAULT_ALTITUDE_M = 2500;
   const MIN_ALTITUDE_M = 150;
@@ -551,6 +551,10 @@
     // A hover is a hold: when it stays at the previous location and gives no
     // explicit altitude/tilt, the camera keeps the previous segment's terminal
     // state instead of drifting to generic defaults. Explicit values always win.
+    // The same condition also marks the segment as a CAMERA-POSITION hold for
+    // the keyframe engine (`holds_camera`): after an orbit the camera sits on
+    // the orbit ring, and a hover must stay there — not slide back to the
+    // target center. Explicit altitude/tilt changes still apply during a hold.
     const holdsPreviousCamera = actionInfo.action === "hover"
       && previousLocation
       && location
@@ -641,6 +645,7 @@
       warnings,
       notes,
     };
+    if (holdsPreviousCamera) segment.holds_camera = true;
     if (actionInfo.action === "orbit") {
       segment.orbit_degrees = typeof orbitSpec.orbit_degrees === "number" ? orbitSpec.orbit_degrees : 360;
       segment.orbit_direction = orbitSpec.orbit_direction || 1;
@@ -693,6 +698,26 @@
         lastTilt = parsed.segment.tilt_deg;
       }
     });
+
+    // Successor-orbit lookahead: a moving segment (fly/zoom) immediately
+    // followed by an orbit around the SAME resolved target terminates at the
+    // orbit's ring entry instead of the target center — otherwise the camera
+    // arrives at the center and visibly slides sideways onto the ring when
+    // the orbit begins. Matching uses resolved coordinates (aliases hit the
+    // same gazetteer point); a different successor target keeps normal fly
+    // behavior. Hover is excluded: a hover HOLDS the camera where it is.
+    const sameResolvedTarget = (a, b) => a && b
+      && Math.abs(a.latitude - b.latitude) < 1e-6
+      && Math.abs(a.longitude - b.longitude) < 1e-6;
+    for (let i = 0; i < segments.length - 1; i += 1) {
+      const seg = segments[i];
+      const next = segments[i + 1];
+      if (!["fly_to", "zoom_in", "zoom_out"].includes(seg.action)) continue;
+      if (next.action !== "orbit" || seg.duration_seconds <= 0 || next.duration_seconds <= 0) continue;
+      if (!sameResolvedTarget(seg.location, next.location)) continue;
+      seg.ends_at_orbit_entry = next.segment_id;
+      notes.push(`segment ${seg.segment_id}: endpoint set to segment ${next.segment_id}'s orbit ring entry (same target — the move lands on the ring the orbit starts from).`);
+    }
 
     return {
       source_description: cleanString(description),
@@ -1091,7 +1116,7 @@ This checklist is technical planning support only. It is not creative approval, 
     if (!resolved.length) return tracks;
 
     let state = null;
-    resolved.forEach((segment) => {
+    resolved.forEach((segment, idx) => {
       const location = segment.location;
       const minAlt = location.min_altitude_m || 0;
       const endAltitude = clampAltitude(segment.altitude_m || DEFAULT_ALTITUDE_M, minAlt);
@@ -1151,10 +1176,35 @@ This checklist is technical planning support only. It is not creative approval, 
         });
         put("alt", ef, endAltitude);
       }
-      change("lng", sf, ef, targetLng);
-      change("lat", sf, ef, location.latitude);
+      // Successor-orbit ring entry (plan-annotated lookahead): land the move
+      // exactly where the following orbit begins — its ring point at the
+      // bearing the camera already faces away from (state.pan − 180, the
+      // orbit's own accepted entry convention), at the radius the orbit will
+      // use (its altitude·tan(tilt)). Position becomes continuous through the
+      // boundary; altitude/tilt keep their existing in-orbit transitions.
+      let destLat = location.latitude;
+      let destLng = targetLng;
+      // A camera-position hold (hover at the same target) stays exactly where
+      // the camera is — after an orbit that is the ring, not the center.
+      if (segment.holds_camera) {
+        destLat = state.latitude;
+        destLng = state.longitude;
+      }
+      const next = resolved[idx + 1];
+      if (segment.ends_at_orbit_entry && next
+          && next.segment_id === segment.ends_at_orbit_entry && next.action === "orbit") {
+        const nextMinAlt = (next.location && next.location.min_altitude_m) || 0;
+        const nextAlt = clampAltitude(next.altitude_m || DEFAULT_ALTITUDE_M, nextMinAlt);
+        const nextTilt = typeof next.tilt_deg === "number" ? next.tilt_deg : 45;
+        const entry = offsetPoint({ latitude: location.latitude, longitude: targetLng },
+          state.pan - 180, orbitRadiusMeters(nextAlt, nextTilt));
+        destLat = entry.latitude;
+        destLng = entry.longitude;
+      }
+      change("lng", sf, ef, destLng);
+      change("lat", sf, ef, destLat);
       change("tilt", sf, ef, tilt);
-      state = { latitude: location.latitude, longitude: targetLng, altitude: endAltitude, pan: state.pan, tilt };
+      state = { latitude: destLat, longitude: destLng, altitude: endAltitude, pan: state.pan, tilt };
     });
     // Emit-time wrap: the state machine runs unwrapped; the exported track
     // stays inside the ±180 contract, with seam pairs at crossings.

@@ -24,6 +24,7 @@ Frame convention: start_frame inclusive, end_frame exclusive
 
 - segment 3: location carried over: Paris.
 - segment 4: location carried over: Paris.
+- segment 2: endpoint set to segment 3's orbit ring entry (same target — the move lands on the ring the orbit starts from).
 
 ## Unresolved Warnings
 

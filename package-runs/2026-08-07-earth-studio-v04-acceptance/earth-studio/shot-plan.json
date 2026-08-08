@@ -1,7 +1,7 @@
 {
   "job_name": "v0.4 Real Import Paris",
-  "version": "0.7.0",
-  "generated_at": "2026-08-08T06:29:15.705Z",
+  "version": "0.8.0",
+  "generated_at": "2026-08-08T07:07:56.968Z",
   "source_description": "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 36 seconds, then zoom out to space in 12 seconds",
   "parser_strategy": "offline_regex_with_manual_review_fallback",
   "frame_rate": 30,
@@ -81,7 +81,8 @@
       "end_frame": 690,
       "resolution_status": "resolved",
       "warnings": [],
-      "notes": []
+      "notes": [],
+      "ends_at_orbit_entry": 3
     },
     {
       "segment_id": 3,
@@ -145,7 +146,8 @@
   "unresolved_items": [],
   "notes": [
     "segment 3: location carried over: Paris.",
-    "segment 4: location carried over: Paris."
+    "segment 4: location carried over: Paris.",
+    "segment 2: endpoint set to segment 3's orbit ring entry (same target — the move lands on the ring the orbit starts from)."
   ],
   "manual_earth_studio_steps": [
     "Open Google Earth Studio manually.",

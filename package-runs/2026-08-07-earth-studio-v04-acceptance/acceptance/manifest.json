@@ -1,9 +1,9 @@
 {
   "proof_id": "2026-08-07-earth-studio-v04-acceptance",
   "purpose": "Real Google Earth Studio import/playback acceptance of the v0.4 camera engine + real-frame render seam",
-  "planner_version": "0.7.0",
-  "git_head": "a372afc50bb7ba8597eaf3d02ef9ec7bf7bcb9af",
-  "generated_at": "2026-08-08T06:29:15.705Z",
+  "planner_version": "0.8.0",
+  "git_head": "a02aecd343a37a4282f48f2973bced84eef3da8b",
+  "generated_at": "2026-08-08T07:07:56.968Z",
   "job_name": "v0.4 Real Import Paris",
   "instruction": "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 36 seconds, then zoom out to space in 12 seconds",
   "aspect": "9:16",
@@ -18,7 +18,7 @@
     "start": 1710,
     "end": 1799
   },
-  "esp_sha256": "fb9d9134d98e5ea844d57291e41dec7bd065b9463341419e21eb995e1fa5be0b",
+  "esp_sha256": "3d54a01543610415f14f7285756ab672da670838d44fe283c67ebfbe6dd1472a",
   "segment_boundaries": [
     {
       "segment_id": 1,

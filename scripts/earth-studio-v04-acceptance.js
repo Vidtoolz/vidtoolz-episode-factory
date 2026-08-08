@@ -303,12 +303,18 @@ First sanity-check the timeline itself: it must read **${plan.total_frames} fram
 (${plan.total_duration_seconds}s @ ${plan.frame_rate} fps)** — anything shorter means Earth Studio
 reinterpreted the project duration and pacing will be wrong; report that.
 - **A Flight** (frames 0–${plan.segments[1].end_frame}): starts high over Helsinki, descends; then flies
-  Helsinki → Paris rising in a high arc (never skimming ground); ends over
+  Helsinki → Paris rising in a high arc (never skimming ground); ends near
   Paris at ~2 km, tilted ~35° from straight-down; no backwards jumps.
+  **v0.8 geometry: the flight lands ALREADY ON the orbit circle** (slightly
+  offset from the city center, camera facing Paris) — not on the center itself.
 - **B Orbit** (frames ${plan.segments[2].start_frame}–${plan.segments[2].end_frame}): camera physically circles Paris TWICE with
   Paris staying centered (not a stationary heading spin); second revolution
   continues from the first (no reset). Direction note: the generator's
   "counterclockwise" = pan DECREASING — record the direction you actually see.
+  **v0.8 fly→orbit boundary: the orbit must begin exactly from the flight's
+  final pose as ONE continuous move — PASS: no sideways slide/snap onto the
+  circle, no abrupt reframe of Paris, no altitude/tilt jump at the boundary.
+  FAIL: any visible lateral correction when the orbit starts.**
 - **C Zoom-out** (frames ${plan.segments[3].start_frame}–${plan.segments[3].end_frame}): starts from the final orbit position with
   no static pause or snap, pulls smoothly away to a space-scale globe view.
 - **D Composition**: the project/viewport is genuinely vertical 9:16
@@ -523,11 +529,25 @@ function runSemanticChecks(packageDir) {
     zoomAlt.map((k) => Math.round(k.value)).join(" → "));
   record("zoom: interpolation has non-static intermediate states", zoomAlt.length >= 4, `${zoomAlt.length} keyframes`);
 
-  // continuity
-  const orbitAnchorLat = tracks.lat.find((k) => k.time === orbit.start_frame);
-  record("continuity: orbit starts from the flight's resolved end position",
-    Boolean(orbitAnchorLat) && Math.abs(orbitAnchorLat.value - flight.location.latitude) < 1e-6,
-    `anchor ${orbitAnchorLat && orbitAnchorLat.value} vs Paris ${flight.location.latitude}`);
+  // continuity — v0.8 fly→orbit contract: the flight TERMINATES ON THE ORBIT
+  // RING (its plan segment carries ends_at_orbit_entry), so the orbit begins
+  // exactly where the flight lands with zero lateral slide at the boundary.
+  const boundaryPose = {
+    latitude: trackValueAt(tracks.lat, orbit.start_frame),
+    longitude: trackValueAt(tracks.lng, orbit.start_frame),
+  };
+  record("continuity: flight is plan-annotated to terminate at the orbit's ring entry",
+    flight.ends_at_orbit_entry === orbit.segment_id,
+    `ends_at_orbit_entry=${flight.ends_at_orbit_entry}`);
+  const boundaryRadiusError = Math.abs(planner.haversineMeters(boundaryPose, center) - expectedRadius) / expectedRadius;
+  record("continuity: flight terminal pose sits ON the orbit ring (±1%, zero-slide boundary)",
+    boundaryRadiusError < 0.01,
+    `boundary→center ${Math.round(planner.haversineMeters(boundaryPose, center))} m vs ring ${Math.round(expectedRadius)} m`);
+  const entryBearing = ((trackValueAt(tracks.pan, orbit.start_frame) - 180) % 360 + 360) % 360;
+  const boundaryBearing = ((initialBearing(center, boundaryPose)) % 360 + 360) % 360;
+  record("continuity: ring entry sits at the orbit's entry bearing (camera faces the target)",
+    angleDelta(entryBearing, boundaryBearing) < 2.5,
+    `entry bearing ${entryBearing.toFixed(1)}° vs boundary bearing ${boundaryBearing.toFixed(1)}°`);
   const panAnchor = tracks.pan.find((k) => k.time === orbit.start_frame);
   record("continuity: pan change is anchored at the orbit start (no backward bleed)", Boolean(panAnchor), "no pan keyframe at orbit start");
 

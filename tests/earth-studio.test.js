@@ -734,3 +734,150 @@ test("project-earth-studio.html v0.7: unsaved edits survive polling regardless o
   assert.match(html, /jobEl\.value !== \(ST\.job\?ST\.job\.jobName:''\)/);
   assert.match(html, /never the edited fields/);
 });
+
+// ---- v0.8 fly→orbit geometry (ring-entry lookahead, zero-slide boundary) ----
+
+// Camera state at a frame from the emitted tracks (step-holds before the
+// first keyframe, linear between keyframes) — test-side continuity probe.
+function trackAt(track, frame) {
+  let prev = null;
+  for (const k of track) {
+    if (k.time <= frame) prev = k;
+    else return prev ? prev.value + (k.value - prev.value) * ((frame - prev.time) / (k.time - prev.time)) : k.value;
+  }
+  return prev ? prev.value : null;
+}
+function boundaryDelta(desc) {
+  const plan = planner.buildShotPlan("T", desc);
+  const segs = plan.segments.filter((s) => s.location && s.duration_seconds > 0);
+  const iOrbit = segs.findIndex((s) => s.action === "orbit");
+  const orbit = segs[iOrbit];
+  const mover = segs[iOrbit - 1];
+  const tracks = planner.buildEspKeyframes(plan);
+  const bf = orbit.start_frame;
+  const pose = { latitude: trackAt(tracks.lat, bf), longitude: trackAt(tracks.lng, bf) };
+  const center = { latitude: orbit.location.latitude, longitude: orbit.location.longitude };
+  const radius = planner.orbitRadiusMeters(orbit.altitude_m, orbit.tilt_deg);
+  return {
+    plan, mover, orbit, tracks,
+    ringError: Math.abs(planner.haversineMeters(pose, center) - radius),
+    radius,
+    altAtBoundary: trackAt(tracks.alt, bf),
+    tiltAtBoundary: trackAt(tracks.tilt, bf),
+    panAtBoundary: trackAt(tracks.pan, bf),
+  };
+}
+
+test("earth-studio v0.8: same-target fly→orbit lands ON the ring — cw, ccw, quarter, multi-rev", () => {
+  for (const desc of [
+    "fly to Paris, then orbit Paris clockwise",
+    "fly to Paris, then orbit Paris counterclockwise",
+    "fly to Paris, then orbit Paris a quarter",
+    "fly to Paris, then orbit Paris 3 times",
+  ]) {
+    const d = boundaryDelta(desc);
+    assert.ok(d.ringError < d.radius * 0.01, `${desc}: boundary sits ${Math.round(d.ringError)}m off the ${Math.round(d.radius)}m ring`);
+    assert.equal(d.mover.ends_at_orbit_entry, d.orbit.segment_id, `${desc}: plan annotation present`);
+  }
+  const notes = planner.buildShotPlan("T", "fly to Paris, then orbit Paris").notes.join("\n");
+  assert.match(notes, /orbit ring entry/);
+});
+
+test("earth-studio v0.8: aliases coordinate; different targets and hover predecessors do not", () => {
+  const alias = planner.buildShotPlan("T", "fly to the Eiffel Tower, then orbit Eiffel Tower");
+  assert.equal(alias.segments[0].ends_at_orbit_entry, alias.segments[1].segment_id);
+  // Different targets: the fly keeps its own destination (target center).
+  const diff = boundaryDelta("fly to Paris, then orbit London");
+  assert.equal(diff.mover.ends_at_orbit_entry, undefined);
+  const parisEnd = { latitude: trackAt(diff.tracks.lat, diff.mover.end_frame), longitude: trackAt(diff.tracks.lng, diff.mover.end_frame) };
+  assert.ok(planner.haversineMeters(parisEnd, { latitude: 48.8566, longitude: 2.3522 }) < 1, "fly A still ends at A's center");
+  // Hover predecessor: a hold is never rewritten onto the ring.
+  const hov = planner.buildShotPlan("T", "hover over Paris for 2 seconds, then orbit Paris");
+  assert.equal(hov.segments[0].ends_at_orbit_entry, undefined);
+  assert.ok(hov.segments.every((s) => s.resolution_status === "resolved"));
+});
+
+test("earth-studio v0.8: explicit orbit altitude/tilt define the ring the fly lands on", () => {
+  const d = boundaryDelta("fly to Paris, then orbit Paris at 1000m tilted 30 degrees");
+  assert.ok(Math.abs(d.radius - planner.orbitRadiusMeters(1000, 30)) < 1);
+  assert.ok(d.ringError < d.radius * 0.01, `boundary ${Math.round(d.ringError)}m off a ${Math.round(d.radius)}m ring`);
+  // The fly's own explicit altitude stays respected on its plan segment.
+  const plan = planner.buildShotPlan("T", "fly to Paris at 1500m, then orbit Paris");
+  assert.equal(plan.segments[0].altitude_m, 1500);
+  assert.equal(plan.segments[0].altitude_source, "explicit");
+  assert.equal(plan.segments[0].ends_at_orbit_entry, plan.segments[1].segment_id);
+});
+
+test("earth-studio v0.8: zoom→orbit coordinates like fly→orbit", () => {
+  const d = boundaryDelta("zoom in on Eiffel Tower, then orbit Eiffel Tower");
+  assert.equal(d.mover.ends_at_orbit_entry, d.orbit.segment_id);
+  assert.ok(d.ringError < d.radius * 0.01);
+});
+
+test("earth-studio v0.8: fly→orbit→hover holds the ring pose; fly→orbit→fly resumes normal targeting", () => {
+  // hover after orbit: NO position/altitude/tilt keyframes during the hover —
+  // the camera stays exactly where the orbit ended (on the ring).
+  const a = planner.buildShotPlan("T", "fly to Paris, then orbit Paris, then hover for 3 seconds");
+  const ta = planner.buildEspKeyframes(a);
+  const orbitEnd = a.segments[1].end_frame;
+  ["lat", "lng", "alt", "tilt", "pan"].forEach((k) => {
+    assert.equal(ta[k].filter((x) => x.time > orbitEnd).length, 0, `${k} moves during post-orbit hover`);
+  });
+  assert.equal(a.segments[2].holds_camera, true);
+  // explicit hover altitude still transitions while the position holds
+  const b = planner.buildShotPlan("T", "fly to Paris, then orbit Paris, then hover at 5000m for 3 seconds");
+  const tb = planner.buildEspKeyframes(b);
+  assert.equal(tb.lat.filter((x) => x.time > orbitEnd).length, 0);
+  assert.ok(tb.alt.filter((x) => x.time > orbitEnd).length > 0);
+  assert.equal(tb.alt[tb.alt.length - 1].value, 5000);
+  // fly after orbit: targets its own location normally (no stale ring semantics)
+  const c = planner.buildShotPlan("T", "fly to Paris, then orbit Paris, then fly to London");
+  const tc = planner.buildEspKeyframes(c);
+  const final = { latitude: tc.lat[tc.lat.length - 1].value, longitude: tc.lng[tc.lng.length - 1].value };
+  assert.ok(planner.haversineMeters(final, { latitude: 51.5074, longitude: -0.1278 }) < 1);
+});
+
+test("earth-studio v0.8: orbit-only and orbit→orbit behavior unchanged; boundary alt/tilt/pan continuous", () => {
+  // first-segment orbit still starts on the ring facing the target
+  const solo = planner.buildEspKeyframes(planner.buildShotPlan("T", "orbit Tokyo"));
+  assert.ok(solo.lat.length >= 12);
+  assert.equal(solo.pan[0].value, 180);
+  // consecutive orbits still accumulate pan
+  const twin = planner.buildEspKeyframes(planner.buildShotPlan("T", "fly to Paris, then orbit Paris, then orbit Paris"));
+  const panEnd = twin.pan[twin.pan.length - 1].value;
+  assert.equal(panEnd, 720);
+  // boundary continuity of the other camera properties: fly terminal == orbit initial
+  const d = boundaryDelta("fly to Paris, then orbit Paris");
+  const justBefore = { alt: trackAt(d.tracks.alt, d.orbit.start_frame - 1), tilt: trackAt(d.tracks.tilt, d.orbit.start_frame - 1), pan: trackAt(d.tracks.pan, d.orbit.start_frame - 1) };
+  assert.ok(Math.abs(d.altAtBoundary - justBefore.alt) < d.altAtBoundary * 0.02, "no altitude snap at the boundary");
+  assert.ok(Math.abs(d.tiltAtBoundary - justBefore.tilt) < 1.5, "no tilt snap at the boundary");
+  assert.ok(Math.abs(d.panAtBoundary - justBefore.pan) < 1.5, "no pan snap at the boundary");
+});
+
+test("earth-studio v0.8: emitted .esp preserves the continuous fly→orbit boundary", () => {
+  const plan = planner.buildShotPlan("T", "fly to Eiffel Tower, then orbit Eiffel Tower clockwise", "2026-08-08T00:00:00.000Z");
+  const esp = planner.buildEsp(plan);
+  const pos = esp.scenes[0].attributes[0].attributes.find((a) => a.type === "cameraPositionGroup").attributes;
+  const lat = pos.find((a) => a.type === "latitude");
+  const lng = pos.find((a) => a.type === "longitude");
+  const denorm = (k, min, span) => min + k.value * span;
+  const latMin = lat.value.minValueRange; const lngMin = lng.value.minValueRange;
+  const total = plan.total_frames;
+  const bf = plan.segments[1].start_frame / total;
+  // reconstruct real coordinates around the boundary from the .esp itself
+  const points = lat.keyframes.map((k, i) => ({
+    t: k.time,
+    latitude: denorm(k, latMin, 90 - latMin),
+    longitude: denorm(lng.keyframes[i], lngMin, 180 - lngMin),
+  }));
+  const before = points.filter((p) => p.t <= bf + 1e-9).pop();
+  const after = points.find((p) => p.t > bf + 1e-9);
+  const center = { latitude: 48.8584, longitude: 2.2945 };
+  const radius = planner.orbitRadiusMeters(plan.segments[1].altitude_m, plan.segments[1].tilt_deg);
+  // the .esp keyframe AT the boundary sits on the ring; the next .esp keyframe
+  // is an orbit sample one ~30° step along the SAME ring — no radius-sized jump
+  assert.ok(Math.abs(planner.haversineMeters(before, center) - radius) < radius * 0.01,
+    ".esp boundary keyframe sits on the ring");
+  const step = planner.haversineMeters(before, after);
+  assert.ok(step < radius * 0.6, `.esp first orbit step is a smooth arc chord (${Math.round(step)}m on a ${Math.round(radius)}m ring)`);
+});
