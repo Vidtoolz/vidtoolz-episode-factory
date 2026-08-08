@@ -302,16 +302,85 @@ workflow-level verdict: `NO_RELEVANT_DRIFT`, `REQUALIFICATION_REQUIRED`, or
 `PRODUCTION_BLOCKED_DEPENDENCY_MISSING`. The guard rail only — it performs
 zero updates, installs, restarts, or rollbacks.
 
-Runbook — before a ComfyUI/custom-node/model update:
+### Supervised upgrade sessions (P4)
 
-1. `node scripts/comfyui-workflow-check.js --upgrade-status` (record it).
-2. Note current qualification state (`GET /api/comfyui/workflows`).
-3. Perform the update manually (never automated by this system).
-4. `node scripts/comfyui-workflow-check.js <id> --live` per workflow.
-5. Re-run `--upgrade-status` and read what changed.
-6. Requalify affected production workflows (`--qualify-render` for FLUX; a
-   supervised production run for Wan).
-7. Only then resume production.
+An upgrade session is the safety system *around* a maintenance event — the
+gateway records and evaluates, the human performs the update. Sessions live
+under `state/comfyui-upgrades/` (local, never committed), host-scoped from
+the registry's own endpoint authority (a PRESTO session never implicates
+vidnux FLUX), written atomically with a full transition audit trail. States:
+`BASELINE_CAPTURED → VERIFIED_NO_CHANGE | REQUALIFICATION_REQUIRED →
+PASSED | ROLLED_BACK | CANCELLED`. An open session is evidence, never a
+lock — production gating stays with per-workflow qualification/drift
+semantics, so a forgotten session cannot become a maintenance-mode footgun.
+
+**Before upgrading** (all read-only):
+
+```bash
+# 1. queues idle?  2. capture the known-good baseline:
+node scripts/comfyui-workflow-check.js --upgrade-begin PRESTO
+```
+
+Baseline capture REFUSES a demonstrably broken environment (workflow drift,
+missing runtime copies) — broken state is never blessed as known-good; weak
+identity is allowed but reported. Captured per workflow: sha, lifecycle,
+qualification evidence + id, and the full environment fingerprint.
+
+**Human performs the update** — entirely outside the gateway.
+
+**After the update:**
+
+```bash
+node scripts/comfyui-workflow-check.js --upgrade-check --session <id>
+```
+
+classifies every workflow: `NO_IMPACT` / `REQUALIFICATION_REQUIRED` /
+`PRODUCTION_BLOCKED`, plus `EVIDENCE_WEAK` when the observer's identity
+strength changed (a stronger or weaker observer is never itself reported as
+drift). Shared dependencies map naturally: a lightx2v LoRA change affects
+only wan-fast; a shared UNET affects both Wan lanes; a core ComfyUI change
+affects every workflow on that host. Then preflight each affected workflow
+(`<id> --live`) and requalify deliberately: FLUX via `--qualify-render`
+(cheap); Wan via the next real production render (automatic capture).
+
+**Requalification permits** — the one sanctioned staleness escape. When a
+workflow graph was deliberately revised, the old LIVE_PASSED record pins the
+old sha and the dispatch gate blocks with `QUALIFICATION_STALE` — which would
+also block the very Wan production render needed to requalify. The scoped
+permit resolves exactly that:
+
+```bash
+node scripts/comfyui-workflow-check.js wan22-i2v-hq --issue-requalification-permit --session <id>
+```
+
+Permit scope is exact (workflow id + version + canonical sha — a wan-hq
+permit can never authorize wan-fast or a different graph), limited to 2
+dispatches, logged loudly on use, persisted atomically (survives the
+~50-minute render and cockpit restarts), consumed permanently by the first
+successful qualification capture, and it bypasses ONLY qualification
+staleness — workflow drift, missing models/nodes, render contracts, and
+output validation stay fully enforced. This is not
+`SUPER_FOCUS_COMFYUI_DRIFT_OVERRIDE` (which weakens every gate and remains
+supervised-development-only).
+
+**Completion / failure / rollback:**
+
+```bash
+node scripts/comfyui-workflow-check.js --upgrade-complete --session <id>   # PASSED only when every affected workflow is LIVE_PASSED + current
+node scripts/comfyui-workflow-check.js --upgrade-rollback-plan --session <id>   # known-good identities + manual procedure
+node scripts/comfyui-workflow-check.js --upgrade-rollback-check --session <id>  # proves the manual rollback restored the baseline → ROLLED_BACK
+node scripts/comfyui-workflow-check.js --upgrade-cancel --session <id>
+```
+
+If requalification fails: production stays blocked for the affected workflow
+by the existing gates, the last known-good qualification record is retained
+untouched, and the rollback manifest describes the exact prior identities —
+the gateway never executes the rollback itself.
+
+Legacy runbook (still valid for quick checks without a session):
+
+1. `--upgrade-status` before; manual update; `<id> --live` after;
+   `--upgrade-status` again; requalify affected workflows; resume.
 
 ## Boundaries
 

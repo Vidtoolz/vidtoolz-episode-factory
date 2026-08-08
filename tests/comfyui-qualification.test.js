@@ -857,3 +857,259 @@ test("comfyui-qualification server wiring: the PRESTO close hook captures produc
   assert.ok(closeHook.includes("qualification_capture_error"), "capture failure is surfaced, not swallowed");
   assert.ok(src.indexOf("captureProductionQualificationForResults") > src.indexOf("buildWanProvenanceForRunsSince"), "qualification is evaluated only after provenance/validation");
 });
+
+// ---- P4: supervised upgrade sessions -------------------------------------------------------
+
+// Two-host synthetic registry: wan hq+fast on "presto-test", flux on
+// "flux-test" — host names derived from endpoint authority, so scoping is
+// deterministic regardless of the machine running the tests.
+function upgradeFixture({ modelFolders } = {}) {
+  const work = tmpDir("comfyui-upg-");
+  const entries = [];
+  for (const [wf, endpoint] of [["wan22-i2v-hq", "http://presto-test:8188"], ["wan22-i2v-fast", "http://presto-test:8188"], ["flux-gguf-1080x1920", "http://flux-test:8188"]]) {
+    const real = gateway.registry.getWorkflow(wf);
+    const runtimeCopy = path.join(work, `${wf}-runtime.json`);
+    fs.copyFileSync(gateway.registry.canonicalAbsolutePath(real), runtimeCopy);
+    entries.push({ ...JSON.parse(JSON.stringify(real)), runtime_copies: [runtimeCopy], comfyui: { endpoint_default: endpoint, endpoint_env: [] } });
+  }
+  const registryPath = path.join(work, "registry.json");
+  fs.writeFileSync(registryPath, JSON.stringify({ registry_version: 1, workflows: entries }));
+  const folders = modelFolders !== undefined ? modelFolders : wanModelFolders();
+  const options = {
+    registryPath,
+    upgradeRoot: path.join(work, "upgrades"),
+    permitRoot: path.join(work, "permits"),
+    qualificationRoot: path.join(work, "qual"),
+    local: false,
+    fetchImpl: fakeComfyFetch({ objectInfo: { ...WAN_OBJECT_INFO, ...FLUX_OBJECT_INFO }, version: "0.22.0", gpu: "RTX 4090", modelFolders: folders }),
+  };
+  return { work, entries, registryPath, options };
+}
+
+function wanModelFolders(mutate) {
+  const folders = {
+    diffusion_models: [
+      { name: "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors", size: 14294742832, modified: 1780670022.69 },
+      { name: "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors", size: 14294742832, modified: 1780670026.0 },
+    ],
+    text_encoders: [{ name: "umt5_xxl_fp8_e4m3fn_scaled.safetensors", size: 6735906897, modified: 1780259374.0 }],
+    vae: [{ name: "wan_2.1_vae.safetensors", size: 253815318, modified: 1780669752.0 }],
+    loras: [
+      { name: "wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors", size: 1226977424, modified: 1780670100.0 },
+      { name: "wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors", size: 1226977424, modified: 1780670101.0 },
+    ],
+    unet: [{ name: "flux1-dev-Q8_0.gguf", size: 12708281504, modified: 1780671022.0 }],
+    clip: [
+      { name: "t5-v1_1-xxl-encoder-Q5_K_M.gguf", size: 3386856640, modified: 1780671023.0 },
+      { name: "clip_l.safetensors", size: 246144152, modified: 1780671024.0 },
+    ],
+  };
+  if (mutate) mutate(folders);
+  return folders;
+}
+
+test("comfyui-upgrade baseline: host-scoped capture with qualification state; dirty environment refused", async () => {
+  const { options } = upgradeFixture();
+  const { session, warnings } = await gateway.upgrade.beginUpgradeSession("presto-test", options);
+  assert.equal(session.status, "BASELINE_CAPTURED");
+  assert.equal(session.baseline.workflows.length, 2, "PRESTO session must not implicate flux");
+  assert.ok(!session.baseline.workflows.some((w) => w.id === "flux-gguf-1080x1920"));
+  for (const w of session.baseline.workflows) {
+    assert.ok(/^[0-9a-f]{64}$/.test(w.sha256));
+    assert.ok(["PRODUCTION", "QUALIFIED"].includes(w.lifecycle));
+    assert.equal(w.evidence_state, "NONE");
+    assert.equal(w.fingerprint.comfyui.version, "0.22.0");
+    assert.ok(w.fingerprint.models.every((m) => m.identity.level === "filename_size_mtime"));
+  }
+  assert.equal(warnings.length, 0, "strong identity baseline carries no weak warnings");
+  // persisted atomically
+  const onDisk = gateway.upgrade.readSession(session.upgrade_session_id, options);
+  assert.deepEqual(onDisk, session);
+  assert.ok(!fs.readdirSync(gateway.upgrade.upgradeRoot(options)).some((n) => n.includes(".tmp-")));
+  // unknown host refused with the known list
+  await assert.rejects(gateway.upgrade.beginUpgradeSession("nonsense-host", options), /known hosts.*presto-test/s);
+  // weak identity (no models API) is allowed but reported honestly
+  const weak = upgradeFixture({ modelFolders: {} });
+  const weakResult = await gateway.upgrade.beginUpgradeSession("presto-test", weak.options);
+  assert.ok(weakResult.warnings.some((w) => w.includes("filename_only")));
+  // demonstrably broken environment cannot be blessed as known-good
+  const dirty = upgradeFixture();
+  fs.writeFileSync(dirty.entries[0].runtime_copies[0], "{}");
+  await assert.rejects(gateway.upgrade.beginUpgradeSession("presto-test", dirty.options), (e) => e.code === "comfyui_upgrade_baseline_dirty");
+});
+
+test("comfyui-upgrade observe: unchanged env verifies clean; changes classify per workflow with shared-dependency impact", async () => {
+  // unchanged → VERIFIED_NO_CHANGE and no maintenance lock left behind
+  const same = upgradeFixture();
+  const { session } = await gateway.upgrade.beginUpgradeSession("presto-test", same.options);
+  const clean = await gateway.upgrade.observeUpgradeSession(session.upgrade_session_id, same.options);
+  assert.equal(clean.verdict, "NO_RELEVANT_CHANGES");
+  assert.equal(clean.session.status, "VERIFIED_NO_CHANGE");
+  assert.deepEqual(clean.affected, []);
+
+  // ComfyUI core changed → every workflow on the host requires requalification
+  const core = upgradeFixture();
+  const s2 = (await gateway.upgrade.beginUpgradeSession("presto-test", core.options)).session;
+  core.options.fetchImpl = fakeComfyFetch({ objectInfo: WAN_OBJECT_INFO, version: "0.23.0", gpu: "RTX 4090", modelFolders: wanModelFolders() });
+  const coreObs = await gateway.upgrade.observeUpgradeSession(s2.upgrade_session_id, core.options);
+  assert.equal(coreObs.verdict, "CHANGES_DETECTED");
+  assert.equal(coreObs.session.status, "REQUALIFICATION_REQUIRED");
+  assert.deepEqual(coreObs.affected.sort(), ["wan22-i2v-fast", "wan22-i2v-hq"]);
+  assert.ok(coreObs.results.every((r) => r.severity === "REQUALIFICATION_REQUIRED"));
+
+  // a LoRA only wan-fast requires changed → fast affected, hq NOT
+  const lora = upgradeFixture();
+  const s3 = (await gateway.upgrade.beginUpgradeSession("presto-test", lora.options)).session;
+  lora.options.fetchImpl = fakeComfyFetch({ objectInfo: WAN_OBJECT_INFO, version: "0.22.0", gpu: "RTX 4090",
+    modelFolders: wanModelFolders((f) => { f.loras[0].size = 99; }) });
+  const loraObs = await gateway.upgrade.observeUpgradeSession(s3.upgrade_session_id, lora.options);
+  assert.deepEqual(loraObs.affected, ["wan22-i2v-fast"], "hq does not depend on the lightx2v lora");
+  assert.equal(loraObs.results.find((r) => r.id === "wan22-i2v-hq").severity, "NO_IMPACT");
+
+  // a model shared by BOTH (high-noise unet) missing → both PRODUCTION_BLOCKED
+  const missing = upgradeFixture();
+  const s4 = (await gateway.upgrade.beginUpgradeSession("presto-test", missing.options)).session;
+  const brokenInfo = JSON.parse(JSON.stringify(WAN_OBJECT_INFO));
+  brokenInfo.UNETLoader.input.required.unet_name = [["wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors"]];
+  missing.options.fetchImpl = fakeComfyFetch({ objectInfo: brokenInfo, version: "0.22.0", gpu: "RTX 4090",
+    modelFolders: wanModelFolders((f) => { f.diffusion_models = f.diffusion_models.slice(1); }) });
+  const missObs = await gateway.upgrade.observeUpgradeSession(s4.upgrade_session_id, missing.options);
+  assert.ok(missObs.results.every((r) => r.severity === "PRODUCTION_BLOCKED"), "shared missing model blocks both wan lanes");
+
+  // identity got WEAKER (models API gone) → EVIDENCE_WEAK, never a false CHANGED
+  const weaker = upgradeFixture();
+  const s5 = (await gateway.upgrade.beginUpgradeSession("presto-test", weaker.options)).session;
+  weaker.options.fetchImpl = fakeComfyFetch({ objectInfo: WAN_OBJECT_INFO, version: "0.22.0", gpu: "RTX 4090", modelFolders: {} });
+  const weakObs = await gateway.upgrade.observeUpgradeSession(s5.upgrade_session_id, weaker.options);
+  assert.deepEqual(weakObs.affected, [], "strength degradation alone is not drift");
+  assert.ok(weakObs.results.every((r) => r.evidence_weak === true));
+  assert.equal(weakObs.session.status, "VERIFIED_NO_CHANGE");
+});
+
+test("comfyui-upgrade rollback: observation proves a manual rollback restored the baseline", async () => {
+  const fx = upgradeFixture();
+  const { session } = await gateway.upgrade.beginUpgradeSession("presto-test", fx.options);
+  // simulated update happened
+  fx.options.fetchImpl = fakeComfyFetch({ objectInfo: WAN_OBJECT_INFO, version: "0.23.0", gpu: "RTX 4090", modelFolders: wanModelFolders() });
+  const changed = await gateway.upgrade.observeUpgradeSession(session.upgrade_session_id, fx.options);
+  assert.equal(changed.session.status, "REQUALIFICATION_REQUIRED");
+  // rollback incomplete → mismatch, session NOT rolled back
+  const still = await gateway.upgrade.observeUpgradeSession(session.upgrade_session_id, { ...fx.options, rollbackCheck: true });
+  assert.equal(still.verdict, "BASELINE_MISMATCH");
+  assert.notEqual(still.session.status, "ROLLED_BACK");
+  // human rolls back (env returns to baseline) → BASELINE_MATCH → ROLLED_BACK
+  fx.options.fetchImpl = fakeComfyFetch({ objectInfo: WAN_OBJECT_INFO, version: "0.22.0", gpu: "RTX 4090", modelFolders: wanModelFolders() });
+  const back = await gateway.upgrade.observeUpgradeSession(session.upgrade_session_id, { ...fx.options, rollbackCheck: true });
+  assert.equal(back.verdict, "BASELINE_MATCH");
+  assert.equal(back.session.status, "ROLLED_BACK");
+  // rollback manifest carries the known-good identities, and execution stays manual
+  const manifest = gateway.upgrade.rollbackManifest(session.upgrade_session_id, fx.options);
+  assert.equal(manifest.known_good.length, 2);
+  assert.ok(manifest.known_good[0].models.every((m) => m.identity.bytes));
+  assert.ok(manifest.procedure[0].includes("MANUAL"));
+  // audit trail recorded every transition
+  const events = gateway.upgrade.readSession(session.upgrade_session_id, fx.options).events;
+  assert.ok(events.length >= 3);
+  assert.ok(events.every((e) => e.at && e.to && e.reason));
+});
+
+test("comfyui-upgrade permits: exact-scope staleness bypass that never weakens drift or dependency gates", () => {
+  const fx = upgradeFixture();
+  const hq = fx.entries.find((e) => e.id === "wan22-i2v-hq");
+  const fast = fx.entries.find((e) => e.id === "wan22-i2v-fast");
+  // stale qualification: last passed pins an older graph sha
+  gateway.qualification.writeQualificationRecord(
+    passedRecord(hq, wanFingerprint(hq), { workflow: { id: hq.id, version: hq.version, sha256: "d".repeat(64) } }),
+    { qualificationRoot: fx.options.qualificationRoot });
+  const gate = () => gateway.preflight.preflightSync(hq.id, { ...fx.options, driftOverride: false });
+  assert.throws(gate, /QUALIFICATION_STALE/, "stale qualification blocks dispatch (the deadlock)");
+  // permit for the WRONG workflow does not help
+  gateway.permits.issuePermit({ entry: fast, upgradeSessionId: "upgrade-test-1" }, fx.options);
+  assert.throws(gate, /QUALIFICATION_STALE/, "a wan-fast permit cannot authorize wan-hq");
+  // exact permit lets the qualifying dispatch through, loudly, with counted uses
+  gateway.permits.issuePermit({ entry: hq, upgradeSessionId: "upgrade-test-1" }, fx.options);
+  const first = gate();
+  assert.ok(first.warnings.some((w) => w.includes("REQUALIFICATION PERMIT ACTIVE")));
+  assert.equal(gateway.permits.readPermit(hq.id, fx.options).uses_remaining, 1);
+  const second = gate();
+  assert.ok(second.warnings.some((w) => w.includes("uses remaining: 0")));
+  assert.equal(gateway.permits.readPermit(hq.id, fx.options).status, "EXHAUSTED");
+  assert.throws(gate, /QUALIFICATION_STALE/, "exhausted permit no longer bypasses");
+  // a permit never bypasses workflow drift: corrupt the runtime copy
+  gateway.permits.issuePermit({ entry: hq, upgradeSessionId: "upgrade-test-1" }, fx.options);
+  fs.writeFileSync(hq.runtime_copies[0], "{}");
+  assert.throws(gate, (e) => e.code === "comfyui_workflow_drift", "drift gate stays enforced with an active permit");
+  // permit pinned to a sha stops matching if the registry graph changes again
+  const rescoped = { ...hq, canonical_sha256: hq.canonical_sha256 };
+  const otherSha = { ...hq, canonical_sha256: "e".repeat(64) };
+  assert.equal(gateway.permits.findActivePermit(otherSha, fx.options), null);
+  assert.ok(gateway.permits.findActivePermit(rescoped, fx.options));
+});
+
+test("comfyui-upgrade requalification: stale + permit + real-shaped production render = fresh LIVE_PASSED, permit consumed, session PASSED", async () => {
+  const fx = upgradeFixture();
+  const hq = fx.entries.find((e) => e.id === "wan22-i2v-hq");
+  const qroot = fx.options.qualificationRoot;
+  // stale evidence from before the (simulated) workflow revision
+  gateway.qualification.writeQualificationRecord(
+    passedRecord(hq, wanFingerprint(hq), { workflow: { id: hq.id, version: hq.version, sha256: "d".repeat(64) } }),
+    { qualificationRoot: qroot });
+  // an upgrade session that observed the change
+  const { session } = await gateway.upgrade.beginUpgradeSession("presto-test", fx.options);
+  session.affected_workflows = ["wan22-i2v-hq"];
+  session.status = "REQUALIFICATION_REQUIRED";
+  gateway.upgrade.readSession(session.upgrade_session_id, fx.options); // ensure persisted form exists
+  require("../comfyui-gateway/provenance.js").writeJsonAtomic(
+    gateway.upgrade.sessionPath(session.upgrade_session_id, fx.options), session);
+  // permit issued for the exact current workflow revision
+  gateway.permits.issuePermit({ entry: hq, upgradeSessionId: session.upgrade_session_id }, fx.options);
+  const gateResult = gateway.preflight.preflightSync(hq.id, { ...fx.options, driftOverride: false });
+  assert.ok(gateResult.warnings.some((w) => w.includes("PERMIT")));
+  // the authorized real-shaped production render completes and captures
+  const runsRoot = tmpDir("comfyui-upg-runs-");
+  const runDir = writeWanRunDir(runsRoot, "run-post-upgrade-1");
+  gateway.provenance.buildWanRunProvenance(runDir, { entry: hq });
+  const currentFp = await gateway.fingerprint.collectFingerprint(hq, fx.options);
+  const captured = gateway.qualification.captureProductionQualification(
+    { entry: hq, runDir, fingerprint: currentFp }, fx.options);
+  assert.equal(captured.captured, true, JSON.stringify(captured.reasons));
+  assert.ok(captured.permit_consumed, "successful qualification consumes the permit");
+  assert.equal(gateway.permits.readPermit(hq.id, fx.options).status, "CONSUMED");
+  // evidence is fresh, gate passes naturally, upgrade guard is CURRENT
+  const ev = gateway.qualification.evaluateQualification(hq, { ...fx.options, currentFingerprint: currentFp });
+  assert.equal(ev.evidence_state, "LIVE_PASSED");
+  assert.equal(ev.evidence_source, "production_render");
+  const clean = gateway.preflight.preflightSync(hq.id, { ...fx.options, driftOverride: false });
+  assert.deepEqual(clean.warnings, []);
+  const report = gateway.qualification.buildUpgradeReport([hq], { [hq.id]: currentFp }, fx.options);
+  assert.equal(report.workflows[0].status, "NO_RELEVANT_DRIFT");
+  // and the session can now complete as PASSED
+  const done = await gateway.upgrade.completeUpgradeSession(session.upgrade_session_id, fx.options);
+  assert.equal(done.status, "PASSED");
+});
+
+test("comfyui-upgrade safety: no session = P3 behavior; sessions cannot lock production; module contains no updater", () => {
+  const fx = upgradeFixture();
+  const hq = fx.entries.find((e) => e.id === "wan22-i2v-hq");
+  // no session, no permit, no records → exactly the P3 bootstrap warning, nothing else
+  const gate = gateway.preflight.preflightSync(hq.id, { ...fx.options, driftOverride: false });
+  assert.equal(gate.warnings.length, 1);
+  assert.ok(gate.warnings[0].includes("QUALIFICATION_PENDING"));
+  // an abandoned open session imposes nothing on dispatch (gating never reads sessions)
+  const qualificationSrc = fs.readFileSync(path.join(REPO, "comfyui-gateway", "qualification.js"), "utf8");
+  assert.ok(!qualificationSrc.includes("upgrade.js"), "dispatch gating must not depend on upgrade sessions");
+  // the maintenance system performs zero environment mutation
+  const upgradeSrc = fs.readFileSync(path.join(REPO, "comfyui-gateway", "upgrade.js"), "utf8");
+  const permitsSrc = fs.readFileSync(path.join(REPO, "comfyui-gateway", "permits.js"), "utf8");
+  for (const banned of ["child_process", "spawn", "execFile", "git pull", "pip install", "download"]) {
+    assert.ok(!upgradeSrc.includes(banned), `upgrade.js must not contain "${banned}"`);
+    assert.ok(!permitsSrc.includes(banned), `permits.js must not contain "${banned}"`);
+  }
+  // cancel semantics: cancelled sessions are terminal and cannot be observed
+  return (async () => {
+    const { session } = await gateway.upgrade.beginUpgradeSession("presto-test", fx.options);
+    gateway.upgrade.cancelUpgradeSession(session.upgrade_session_id, "test", fx.options);
+    await assert.rejects(gateway.upgrade.observeUpgradeSession(session.upgrade_session_id, fx.options), /CANCELLED/);
+    assert.throws(() => gateway.upgrade.cancelUpgradeSession(session.upgrade_session_id, "again", fx.options), /already/);
+  })();
+});

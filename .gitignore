@@ -33,3 +33,7 @@ package-runs/2026-08-07-earth-studio-v04-acceptance/earth-studio/renders/
 # fingerprints, render evidence) — never committed; fixtures ARE committed
 # under config/comfyui/.
 /state/comfyui-qualification/
+
+# ComfyUI supervised-upgrade sessions + requalification permits: local live
+# maintenance records — never committed (schemas/code/docs are).
+/state/comfyui-upgrades/

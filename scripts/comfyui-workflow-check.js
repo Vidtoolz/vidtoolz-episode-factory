@@ -16,10 +16,26 @@
 //                                                               # EXPLICIT GPU WORK: run the canonical
 //                                                               #   qualification fixture and record evidence
 //
-// Static checks never touch the network. --live and --upgrade-status perform
-// read-only ComfyUI API calls (system_stats, object_info, queue) — they never
-// queue a render. ONLY --qualify-render submits GPU work, and it refuses to
-// start unless the target ComfyUI queue is idle.
+// Supervised upgrade sessions (the gateway records and evaluates — the HUMAN
+// performs the actual update externally; nothing here mutates ComfyUI):
+//
+//   node scripts/comfyui-workflow-check.js --upgrade-begin <host>          # capture known-good baseline (read-only)
+//   node scripts/comfyui-workflow-check.js --upgrade-check --session <id>  # observe current env vs baseline (read-only)
+//   node scripts/comfyui-workflow-check.js --upgrade-rollback-check --session <id>  # prove manual rollback restored baseline
+//   node scripts/comfyui-workflow-check.js --upgrade-rollback-plan --session <id>   # print known-good rollback manifest
+//   node scripts/comfyui-workflow-check.js --upgrade-complete --session <id>        # mark PASSED (all affected LIVE_PASSED + current)
+//   node scripts/comfyui-workflow-check.js --upgrade-cancel --session <id>
+//   node scripts/comfyui-workflow-check.js --upgrade-sessions               # list sessions
+//   node scripts/comfyui-workflow-check.js <id> --issue-requalification-permit --session <id>
+//                                            # scoped permit: lets ONE workflow's qualifying render through a
+//                                            # QUALIFICATION_STALE block (exact id+version+sha, limited uses;
+//                                            # never bypasses drift/dependency gates)
+//
+// Static checks never touch the network. --live, --upgrade-status and all
+// upgrade-session commands perform read-only ComfyUI API calls (system_stats,
+// object_info, queue, model metadata) — they never queue a render. ONLY
+// --qualify-render submits GPU work, and it refuses to start unless the
+// target ComfyUI queue is idle.
 const gateway = require('../comfyui-gateway');
 
 function fmtStatus(s) {
@@ -130,11 +146,91 @@ async function recordStatic(id) {
   process.exit(0);
 }
 
+function printObservation(result) {
+  const s = result.session;
+  console.log(`COMFYUI UPGRADE SESSION ${s.upgrade_session_id}`);
+  console.log(`  host: ${s.host}   status: ${s.status}   verdict: ${result.verdict}`);
+  for (const row of result.results) {
+    console.log(`  ${row.id}@${row.version}: ${row.severity}${row.evidence_weak ? '  [EVIDENCE_WEAK / IDENTITY_STRENGTH_CHANGED]' : ''}`);
+    row.reasons.forEach((r) => console.log(`      ! ${r}`));
+    for (const c of row.components) {
+      if (c.classification !== 'verified_same') {
+        console.log(`      ${c.component} ${c.name}: ${c.classification}${c.classification === 'verified_changed' ? ` (${c.qualified} → ${c.current})` : ''}`);
+      }
+    }
+  }
+  if (result.affected.length) {
+    console.log(`  affected: ${result.affected.join(', ')}`);
+    console.log('  next: read-only preflight each affected workflow, then requalify deliberately');
+    console.log('        (FLUX: --qualify-render; Wan: next real production render, with');
+    console.log('        --issue-requalification-permit only if the dispatch gate reports QUALIFICATION_STALE)');
+  }
+}
+
+async function upgradeCommands(args, id, sessionId) {
+  if (args.includes('--upgrade-sessions')) {
+    const sessions = gateway.upgrade.listSessions();
+    if (!sessions.length) { console.log('no upgrade sessions recorded'); return; }
+    sessions.forEach((s) => console.log(`${s.upgrade_session_id}  ${s.host}  ${s.status}  (created ${s.created_at}${s.affected_workflows.length ? `, affected: ${s.affected_workflows.join(',')}` : ''})`));
+    return;
+  }
+  if (args.includes('--upgrade-begin')) {
+    if (!id) { console.error(`usage: --upgrade-begin <host>   (hosts: ${gateway.upgrade.knownHosts().join(', ')})`); process.exit(1); }
+    const { session, warnings } = await gateway.upgrade.beginUpgradeSession(id);
+    console.log(`BASELINE CAPTURED — ${session.upgrade_session_id}`);
+    for (const w of session.baseline.workflows) {
+      console.log(`  ${w.id}@${w.version}  ${w.lifecycle}  evidence:${w.evidence_state}  sha:${w.sha256.slice(0, 16)}…  ComfyUI ${w.fingerprint.comfyui.version}`);
+    }
+    warnings.forEach((w) => console.log(`  ~ ${w}`));
+    console.log(`next: perform the update manually, then: node scripts/comfyui-workflow-check.js --upgrade-check --session ${session.upgrade_session_id}`);
+    return;
+  }
+  if (!sessionId) { console.error('this upgrade command requires --session <upgrade-session-id>'); process.exit(1); }
+  if (args.includes('--upgrade-check')) {
+    printObservation(await gateway.upgrade.observeUpgradeSession(sessionId, {}));
+    return;
+  }
+  if (args.includes('--upgrade-rollback-check')) {
+    const result = await gateway.upgrade.observeUpgradeSession(sessionId, { rollbackCheck: true });
+    printObservation(result);
+    console.log(result.verdict === 'BASELINE_MATCH' ? 'ROLLED_BACK — environment matches the captured baseline' : 'BASELINE MISMATCH — rollback incomplete, see components above');
+    process.exit(result.verdict === 'BASELINE_MATCH' ? 0 : 1);
+  }
+  if (args.includes('--upgrade-rollback-plan')) {
+    console.log(JSON.stringify(gateway.upgrade.rollbackManifest(sessionId), null, 2));
+    return;
+  }
+  if (args.includes('--upgrade-complete')) {
+    const session = await gateway.upgrade.completeUpgradeSession(sessionId, {});
+    console.log(`PASSED — ${session.upgrade_session_id}: all affected workflows re-proven LIVE_PASSED against the current environment`);
+    return;
+  }
+  if (args.includes('--upgrade-cancel')) {
+    const session = gateway.upgrade.cancelUpgradeSession(sessionId, 'operator cancelled via CLI', {});
+    console.log(`CANCELLED — ${session.upgrade_session_id}`);
+    return;
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
-  const id = args.find((a) => !a.startsWith('--'));
+  const id = args.find((a, i) => !a.startsWith('--') && (i === 0 || !['--fixture', '--session'].includes(args[i - 1])));
   const fixtureFlagIdx = args.indexOf('--fixture');
   const fixtureId = fixtureFlagIdx >= 0 ? args[fixtureFlagIdx + 1] : null;
+  const sessionFlagIdx = args.indexOf('--session');
+  const sessionId = sessionFlagIdx >= 0 ? args[sessionFlagIdx + 1] : null;
+
+  if (args.some((a) => a.startsWith('--upgrade-') && a !== '--upgrade-status')) return upgradeCommands(args, id, sessionId);
+  if (args.includes('--issue-requalification-permit')) {
+    if (!id) { console.error('usage: <workflow-id> --issue-requalification-permit --session <upgrade-session-id>'); process.exit(1); }
+    const entry = gateway.registry.getWorkflow(id);
+    const permit = gateway.permits.issuePermit({ entry, upgradeSessionId: sessionId });
+    console.log(`PERMIT ISSUED — ${permit.permit_id}`);
+    console.log(`  scope: ${permit.workflow.id}@${permit.workflow.version} sha ${permit.workflow.sha256.slice(0, 16)}… ONLY`);
+    console.log(`  uses:  ${permit.uses_remaining} dispatch(es); consumed permanently by the first successful qualification`);
+    console.log('  bypasses ONLY qualification staleness — drift, missing models/nodes, contracts and output validation stay enforced');
+    return;
+  }
 
   if (args.includes('--upgrade-status')) return upgradeStatus();
   if (args.includes('--qualify-render')) {

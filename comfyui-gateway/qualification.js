@@ -25,6 +25,7 @@
 const fs = require('fs');
 const path = require('path');
 const provenance = require('./provenance.js');
+const permits = require('./permits.js');
 
 const QUALIFICATION_SCHEMA_VERSION = 1;
 const EVIDENCE_STATES = ['NONE', 'STATIC_VERIFIED', 'LIVE_PASSED', 'STALE', 'FAILED'];
@@ -320,6 +321,16 @@ function qualifySyncGate(entry, options = {}) {
   }
   if (passed.workflow.sha256 !== entry.canonical_sha256) {
     const msg = `QUALIFICATION_STALE: ${entry.id}@${entry.version} was last qualified against workflow sha ${passed.workflow.sha256.slice(0, 16)}… but the registry now pins ${String(entry.canonical_sha256).slice(0, 16)}… — requalify (node scripts/comfyui-workflow-check.js ${entry.id} --qualify-render). No production render was submitted.`;
+    // scoped requalification permit: bypasses ONLY this staleness block (the
+    // drift/dependency gates already ran above and stay enforced), for the
+    // exact workflow id+version+sha, with limited dispatches. This is how
+    // the qualifying render itself gets through after a supervised upgrade.
+    const permit = permits.findActivePermit(entry, options);
+    if (permit) {
+      const spent = permits.recordPermitDispatch(entry, options);
+      warnings.push(`REQUALIFICATION PERMIT ACTIVE (${permit.permit_id}, session ${permit.upgrade_session_id || 'none'}): qualification staleness bypassed for this dispatch only — drift and dependency gates remain enforced (uses remaining: ${spent ? spent.uses_remaining : 0})`);
+      return { warnings, permit: permit.permit_id };
+    }
     if (!override) {
       const e = new Error(msg);
       e.statusCode = 409;
@@ -453,7 +464,9 @@ function captureProductionQualification({ entry, runDir, provenancePath, fingerp
     generated_by: 'comfyui-gateway/qualification.js (production capture)',
   };
   const written = writeQualificationRecord(record, options);
-  return { captured: true, qualification_id: qualificationId, record, written };
+  // a successful qualification retires any scoped requalification permit
+  const consumedPermit = permits.consumePermit(entry, { qualificationId }, options);
+  return { captured: true, qualification_id: qualificationId, record, written, permit_consumed: consumedPermit ? consumedPermit.permit_id : null };
 }
 
 // Capture across the provenance results a completed PRESTO job produced
