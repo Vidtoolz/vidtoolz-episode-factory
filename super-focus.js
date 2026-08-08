@@ -132,6 +132,11 @@ function emptyState(fields = {}) {
     // object image prompts are derived from. null = not created (legacy
     // projects open unchanged and simply show "not created").
     visual_plan: null,
+    // Bidirectional identity bridge to the VIDTOOLZ Production Kanban: the
+    // kanban card id (metadata.ef_project_id on the card points back here).
+    // null = not linked. Additive and nullable so pre-bridge projects load
+    // unchanged; the EF server is the only writer (via setKanbanCardId).
+    kanban_card_id: fields.kanban_card_id || null,
     created_at: created,
     updated_at: fields.updated_at || created,
   };
@@ -265,9 +270,13 @@ function readStateDir(dir) {
     e.statusCode = 422;
     throw e;
   }
-  // Normalize so missing/older fields never crash a reader.
+  // Normalize so missing/older fields never crash a reader. kanban_card_id is
+  // normalized too: pre-bridge projects (and hand-edited states) load as null.
   return Object.assign(emptyState(), parsed, {
     approval: Object.assign(emptyApproval(), parsed.approval || {}),
+    kanban_card_id: typeof parsed.kanban_card_id === 'string' && parsed.kanban_card_id
+      ? parsed.kanban_card_id
+      : null,
   });
 }
 
@@ -332,6 +341,7 @@ function scanProjectsRoot(root) {
       stage: state.stage || 'title',
       created_at: state.created_at || '',
       updated_at: state.updated_at || '',
+      kanban_card_id: state.kanban_card_id || null,
     });
   }
   projects.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
@@ -1069,6 +1079,58 @@ function clearUnlinkedImagePrompts(projectId, indexes, options = {}) {
   };
 }
 
+// ── Kanban bridge identity ─────────────────────────────────────────────────
+// Link an EF Super Focus project to a Kanban card (one-to-one, both ways).
+// setKanbanCardId is a plain setter with a single integrity rule: a project
+// already linked to a DIFFERENT card refuses re-linking (409) — the caller
+// must resolve the conflict explicitly rather than silently stealing the link.
+// findProjectByKanbanCardId is the reverse lookup used by the bridge route for
+// idempotent retries and to honor EF-side links even when the card lost its
+// half. It matches ONLY on the kanban_card_id field — never title/slug.
+function setKanbanCardId(projectId, cardId, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  const next = typeof cardId === 'string' && cardId ? cardId : null;
+  if (
+    typeof state.kanban_card_id === 'string' &&
+    state.kanban_card_id &&
+    state.kanban_card_id !== next
+  ) {
+    const e = new Error(
+      `Super Focus project "${state.project_id || projectId}" is already linked to a different Kanban card (${state.kanban_card_id}); refusing to re-link to "${next}".`
+    );
+    e.statusCode = 409;
+    throw e;
+  }
+  state.kanban_card_id = next;
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
+function findProjectByKanbanCardId(cardId, options = {}) {
+  if (typeof cardId !== 'string' || !cardId) return null;
+  const root = resolveRoot(options);
+  if (!fs.existsSync(root)) return null;
+  const entries = fs.readdirSync(root, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    if (!PROJECT_ID_RE.test(entry.name)) continue;
+    const dir = path.join(root, entry.name);
+    if (!fs.existsSync(path.join(dir, STATE_FILENAME))) continue;
+    let state;
+    try {
+      state = readStateDir(dir);
+    } catch (_) {
+      continue; // Skip corrupt/unreadable entries safely — never fail the scan.
+    }
+    if (state.kanban_card_id === cardId) {
+      return state.project_id || entry.name;
+    }
+  }
+  return null;
+}
+
 module.exports = {
   SCHEMA_VERSION,
   STATE_FILENAME,
@@ -1119,4 +1181,6 @@ module.exports = {
   clearUnlinkedImagePrompts,
   setImageReview,
   setVideoReview,
+  setKanbanCardId,
+  findProjectByKanbanCardId,
 };

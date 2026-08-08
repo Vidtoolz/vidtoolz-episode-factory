@@ -122,6 +122,7 @@ const PROJECT_MEDIA_KIT_API = '/api/project/media-kit';
 const PROJECT_YOUTUBE_DRAFT_API = '/api/project/youtube-draft';
 const PROJECT_YOUTUBE_DRAFT_SAVE_API = '/api/project/youtube-draft/save';
 const SUPER_FOCUS_PROJECTS_API = '/api/super-focus/projects';
+const SUPER_FOCUS_BRIDGE_LINK_API = '/api/super-focus/bridge/link';
 const SUPER_FOCUS_ARCHIVED_PROJECTS_API = '/api/super-focus/archived-projects';
 const SUPER_FOCUS_ARCHIVE_PROJECT_API = '/api/super-focus/archive-project';
 const SUPER_FOCUS_RESTORE_PROJECT_API = '/api/super-focus/restore-project';
@@ -978,6 +979,59 @@ function sendError(res, statusCode, message, code, extra) {
 
 function sendJSON(res, statusCode, data) {
   send(res, statusCode, { ok: true, data: data });
+}
+
+// ── Kanban bridge: loopback HTTP client ────────────────────────────────────
+// Minimal JSON-in/JSON-out client for the VIDTOOLZ Production Kanban server
+// (loopback-only, zero-dep, no auth — same trust model as this server). Any
+// non-2xx response rejects with an Error carrying .statusCode and the Kanban
+// error .code/message so the bridge route can map failures precisely.
+const KANBAN_PORT = Number(process.env.KANBAN_PORT) || 8070;
+function kanbanRequest(method, apiPath, body) {
+  return new Promise((resolve, reject) => {
+    const payload = body === undefined ? '' : JSON.stringify(body);
+    const req = http.request(
+      {
+        hostname: '127.0.0.1',
+        port: KANBAN_PORT,
+        path: apiPath,
+        method,
+        headers: payload
+          ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+          : {},
+        timeout: 5000,
+      },
+      (response) => {
+        let raw = '';
+        response.setEncoding('utf8');
+        response.on('data', (chunk) => { raw += chunk; });
+        response.on('end', () => {
+          let parsed = null;
+          try { parsed = raw ? JSON.parse(raw) : null; } catch (_) { /* non-JSON */ }
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            resolve(parsed);
+            return;
+          }
+          const message = parsed && (parsed.message || parsed.error)
+            ? (parsed.message || parsed.error)
+            : `Kanban request failed (HTTP ${response.statusCode}).`;
+          const error = new Error(message);
+          error.statusCode = response.statusCode;
+          error.code = parsed && parsed.error ? parsed.error : null;
+          reject(error);
+        });
+      }
+    );
+    req.on('timeout', () => { req.destroy(new Error('Kanban request timed out.')); });
+    req.on('error', (err) => {
+      const error = new Error(`Kanban server unreachable: ${err.message}`);
+      error.statusCode = 502;
+      error.code = 'kanban_unreachable';
+      reject(error);
+    });
+    if (payload) req.write(payload);
+    req.end();
+  });
 }
 
 function safeJoin(root, requestPath) {
@@ -13641,6 +13695,185 @@ function createServer(options = {}) {
       } catch (error) {
         sendError(res, error.statusCode || 500, error.message, 'super-focus-load-error');
       }
+      return;
+    }
+
+    // ── Kanban ↔ EF identity bridge ──────────────────────────────────────
+    // POST /api/super-focus/bridge/link — orchestrates the one-to-one link
+    // between a Kanban card (card.metadata.ef_project_id) and a Super Focus
+    // project (state.kanban_card_id). Both directions must agree.
+    //
+    // HONEST LIMITATION: the two writes (EF state file, Kanban board) are NOT
+    // atomic — there is no shared transaction across the two servers. The
+    // strategy instead:
+    //   1. Resolve/repair/create the EF side FIRST (cheap, local, atomic per
+    //      file), with full conflict detection so retries are safe.
+    //   2. Write the Kanban side LAST, with one revision-refetch retry on a
+    //      409 stale_revision race.
+    //   3. If the Kanban write still fails and this call CREATED the project,
+    //      best-effort roll back the new project directory so we never leave
+    //      a half-linked new project. A pre-existing project is NEVER rolled
+    //      back — its state predates this call.
+    //   4. Idempotent retry: a repeat call with the same card id finds the
+    //      existing link (either direction) and converges instead of
+    //      duplicating.
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_BRIDGE_LINK_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Kanban bridge link API' });
+          const kanban = serverOptions.kanbanRequest || kanbanRequest;
+          const kanbanCardId = payload && typeof payload.kanban_card_id === 'string' && payload.kanban_card_id
+            ? payload.kanban_card_id
+            : null;
+          if (!kanbanCardId) {
+            const error = new Error('Kanban bridge link API requires a non-empty string kanban_card_id.');
+            error.statusCode = 400;
+            error.code = 'kanban_card_id_required';
+            throw error;
+          }
+          const kanbanState = await kanban('GET', '/api/state');
+          const cards = kanbanState && Array.isArray(kanbanState.cards) ? kanbanState.cards : [];
+          const card = cards.find((c) => c && c.id === kanbanCardId);
+          if (!card) {
+            const error = new Error(`No Kanban card with id ${JSON.stringify(kanbanCardId)}.`);
+            error.statusCode = 404;
+            error.code = 'kanban_card_not_found';
+            throw error;
+          }
+          const existing = card.metadata && typeof card.metadata.ef_project_id === 'string' && card.metadata.ef_project_id
+            ? card.metadata.ef_project_id
+            : null;
+
+          let projectId = null;
+          let linked = null;
+          let createdNew = false;
+          if (existing) {
+            // Card already points at an EF project: reuse it, never create.
+            let project;
+            try {
+              project = superFocus.loadProject(existing, { root: sfRoot });
+            } catch (loadError) {
+              if (loadError && loadError.statusCode === 404) {
+                // Dangling reference — report, do NOT auto-create over it.
+                const error = new Error(
+                  `Kanban card references EF project "${existing}" which does not exist (broken_link). Repair the card metadata or the project directory explicitly.`
+                );
+                error.statusCode = 409;
+                error.code = 'broken_link';
+                throw error;
+              }
+              throw loadError;
+            }
+            const projectCardId = project.kanban_card_id;
+            if (typeof projectCardId === 'string' && projectCardId && projectCardId !== card.id) {
+              // Bilateral mismatch: card -> A but A -> B. Integrity conflict,
+              // never silently repaired.
+              const error = new Error(
+                `Link integrity conflict: Kanban card points at EF project "${existing}", but that project is linked to a different card (${projectCardId}). Resolve explicitly; nothing was changed.`
+              );
+              error.statusCode = 409;
+              error.code = 'kanban_bridge_conflict';
+              throw error;
+            }
+            if (!projectCardId) {
+              // Card knows the project but the project lost its half — heal
+              // the EF side so both directions agree before the card rewrite.
+              superFocus.setKanbanCardId(existing, card.id, { root: sfRoot });
+            }
+            projectId = existing;
+            linked = 'existing';
+          } else {
+            // Card unlinked: honor an EF-side link first (idempotent retry /
+            // card lost its half), else create a fresh project.
+            const previous = superFocus.findProjectByKanbanCardId(card.id, { root: sfRoot });
+            if (previous) {
+              projectId = previous;
+              linked = 'existing';
+            } else {
+              const created = superFocus.createProject(
+                { title: payload && typeof payload.title === 'string' ? payload.title : '' },
+                { root: sfRoot }
+              );
+              superFocus.setKanbanCardId(created.project_id, card.id, { root: sfRoot });
+              projectId = created.project_id;
+              linked = 'created';
+              createdNew = true;
+            }
+          }
+
+          // Kanban write LAST. One retry on a 409 revision race: re-GET the
+          // state, recompute the merged metadata from the fresh card, retry
+          // once with the fresh revision.
+          const mergedMetadata = (sourceCard) =>
+            Object.assign({}, (sourceCard && sourceCard.metadata) || {}, { ef_project_id: projectId });
+          let patchError = null;
+          try {
+            await kanban('PATCH', `/api/cards/${encodeURIComponent(card.id)}`, {
+              metadata: mergedMetadata(card),
+              revision: kanbanState.revision,
+            });
+          } catch (firstError) {
+            if (firstError && firstError.statusCode === 409) {
+              try {
+                const freshState = await kanban('GET', '/api/state');
+                const freshCards = freshState && Array.isArray(freshState.cards) ? freshState.cards : [];
+                const freshCard = freshCards.find((c) => c && c.id === card.id);
+                if (!freshCard) {
+                  const error = new Error(`No Kanban card with id ${JSON.stringify(card.id)}.`);
+                  error.statusCode = 404;
+                  error.code = 'kanban_card_not_found';
+                  throw error;
+                }
+                await kanban('PATCH', `/api/cards/${encodeURIComponent(card.id)}`, {
+                  metadata: mergedMetadata(freshCard),
+                  revision: freshState.revision,
+                });
+              } catch (retryError) {
+                patchError = retryError;
+              }
+            } else {
+              patchError = firstError;
+            }
+          }
+          if (patchError) {
+            if (createdNew) {
+              // Roll back ONLY the project this call created — never a
+              // pre-existing one — so a failed Kanban write leaves no
+              // half-linked new project behind. Best-effort: a rollback
+              // failure is logged, not thrown over the original error.
+              try {
+                superFocus.deleteProject(projectId, { root: sfRoot });
+              } catch (rollbackError) {
+                console.error(`[kanban-bridge] rollback of new project ${projectId} failed: ${rollbackError.message}`);
+              }
+            }
+            const status = patchError.statusCode === 409 ? 409 : 502;
+            const error = new Error(
+              `Kanban metadata write failed: ${patchError.message}` +
+              (createdNew
+                ? ' The newly created EF project was rolled back; retrying is safe.'
+                : ' The pre-existing EF project was left unchanged; retrying is safe.')
+            );
+            error.statusCode = status;
+            error.code = patchError.code || 'kanban_write_failed';
+            throw error;
+          }
+
+          // Final verification: the EF side must point back at this card.
+          const finalState = superFocus.loadProject(projectId, { root: sfRoot });
+          if (finalState.kanban_card_id !== card.id) {
+            const error = new Error('Kanban bridge verification failed: EF project does not reference the card after linking.');
+            error.statusCode = 500;
+            error.code = 'kanban_bridge_verify_failed';
+            throw error;
+          }
+          sendJSON(res, 200, {
+            project_id: projectId,
+            kanban_card_id: card.id,
+            linked,
+          });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'kanban-bridge-link-error'));
       return;
     }
 
