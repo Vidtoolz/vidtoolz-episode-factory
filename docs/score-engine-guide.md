@@ -178,6 +178,83 @@ and technical-QC path, and the disposable Resolve project is deleted by exact
 generated name. `--keep` preserves only temp filesystem evidence/media for
 inspection; it does not preserve the Resolve project.
 
+### Production Resolve activation
+
+P7's empty-timeline acceptance profile remains strict. Real editorial work uses
+the separate `scorecraft_resolve_production_v1` profile, which tolerates
+unrelated picture, audio, and editorial markers while remaining exact about the
+selected music, canonical narration, cue frames, rate, start timecode, duration,
+and 100% clip speed.
+
+Production automation never searches or navigates a Resolve project library.
+The operator opens the intended project and source timeline, then enters their
+exact names plus the narration and dedicated Scorecraft-music track names and
+indices. **Read-only preflight** checks that exact current target and binds the
+Resolve project/timeline unique IDs returned by the official API. There is no
+"current/latest wins" fallback and no project-listing UI.
+
+Preflight compares actual Resolve readback with the current P6 integration and
+publishes an immutable dry-run plan under
+`production/resolve-production-plans/`. Its Scorecraft-relevant precondition
+contains the rate, start, duration, exact narration track/source/placement,
+explicit music track contents, and Scorecraft-owned markers. Unrelated picture
+cuts and markers are excluded from the stale fingerprint; a relevant target
+change makes Apply fail with `STALE_PLAN` before any mutation.
+
+Apply is deliberately non-destructive: the official API duplicates the exact
+source timeline to the operator-named destination and changes only that copy.
+The allowlist is limited to:
+
+- add the exact selected Scorecraft music to the explicit empty music track;
+- replace one exact, recognized historical Scorecraft production mix;
+- add/update markers whose custom data begins `scorecraft:cue:v1:`.
+
+Narration is verify-only. Unknown audio, duplicate/complex target-track audio,
+retiming, track locks, narration mismatch, frame-rate mismatch, duration drift,
+or an unrelated marker occupying a required cue frame are conflicts. Unknown
+clips and non-Scorecraft markers are never deleted. A timeline that already
+matches is a first-class **Verify already-correct timeline** result and needs no
+duplicate or write.
+
+Every successful apply or verify performs another official-API readback, hashes
+the music and narration source paths incrementally, and records production-
+profile semantic evidence through the same
+`production/resolve-timeline-evidence/` authority used by P7. The source
+timeline remains untouched; a partial duplicate failure is reported rather
+than hidden or "undone" with brittle GUI automation.
+
+The production operator sequence is:
+
+```text
+open exact Resolve project/source timeline
+→ enter exact target and role tracks in Scorecraft
+→ Read-only preflight
+→ inspect conflicts and immutable plan identity
+→ Apply to new timeline OR Verify already-correct timeline
+→ continue editorial work
+→ optionally render in Resolve
+→ register exact returned program
+→ technical program QC
+→ human picture/sound review
+```
+
+`contract_only` remains valid for manual Resolve workflows.
+`resolve_timeline_verified` means the official API proved the exact relevant
+sources and placements; it is not an artistic approval. Applying does not
+automatically render, and neither mode changes the final human picture/sound
+gate.
+
+Run the real Resolve production-workflow fixture with:
+
+```bash
+node scripts/verify-scorecraft-resolve-production.js --keep
+```
+
+It uses the same production lane/driver against a disposable isolated library
+and a non-empty three-clip edit. It proves add, verify-only, unknown-audio
+conflict/no-write, stale-plan/no-write, preservation of unrelated audio/video/
+markers, and exact cleanup. It never opens a real production project.
+
 ## Instrument profiles
 
 Score Engine is template-first: it never pretends to remote-control

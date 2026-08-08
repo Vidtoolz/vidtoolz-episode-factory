@@ -262,6 +262,9 @@ const SCORE_PRODUCTION_REVIEW_API = '/api/score/production/review';
 const SCORE_PRODUCTION_SELECT_API = '/api/score/production/select';
 const SCORE_PRODUCTION_RESOLVE_API = '/api/score/production/resolve';
 const SCORE_RESOLVE_INTEGRATION_API = '/api/score/resolve/integration';
+const SCORE_RESOLVE_PRODUCTION_PREFLIGHT_API = '/api/score/resolve/production/preflight';
+const SCORE_RESOLVE_PRODUCTION_APPLY_API = '/api/score/resolve/production/apply';
+const SCORE_RESOLVE_PRODUCTION_VERIFY_API = '/api/score/resolve/production/verify';
 const SCORE_RESOLVE_RETURN_REGISTER_API = '/api/score/resolve/return/register';
 const SCORE_RESOLVE_RETURN_VERIFY_API = '/api/score/resolve/return/verify';
 const SCORE_RESOLVE_RETURN_REVIEW_API = '/api/score/resolve/return/review';
@@ -16840,6 +16843,44 @@ function createServer(options = {}) {
           }, scoreOptions()));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-resolve-integration-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_RESOLVE_PRODUCTION_PREFLIGHT_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score Resolve production preflight API' });
+          sendJSON(res, 200, scoreLane.preflightResolveProduction(payload.project_id || '', {
+            project_name: payload.resolve_project_name, timeline_name: payload.resolve_timeline_name,
+            destination_timeline_name: payload.destination_timeline_name,
+            narration_track_index: payload.narration_track_index, narration_track_name: payload.narration_track_name,
+            music_track_index: payload.music_track_index, music_track_name: payload.music_track_name,
+          }, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-resolve-production-preflight-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_RESOLVE_PRODUCTION_APPLY_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score Resolve production apply API' });
+          sendJSON(res, 200, scoreLane.applyResolveProductionPlan(payload.project_id || '', {
+            resolve_production_plan_id: payload.resolve_production_plan_id,
+            expected_plan_identity: payload.expected_plan_identity,
+          }, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-resolve-production-apply-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_RESOLVE_PRODUCTION_VERIFY_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score Resolve production verify API' });
+          sendJSON(res, 200, scoreLane.verifyResolveProductionTarget(payload.project_id || '', {
+            resolve_production_plan_id: payload.resolve_production_plan_id,
+            expected_plan_identity: payload.expected_plan_identity,
+          }, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-resolve-production-verify-error'));
       return;
     }
     if (req.method === 'POST' && url.pathname === SCORE_RESOLVE_RETURN_REGISTER_API) {

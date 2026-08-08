@@ -5,6 +5,7 @@ const lane = require("../score-engine/score-lane.js");
 const provenance = require("../score-engine/score-provenance.js");
 const synth = require("../score-engine/preview-synth.js");
 const timelineEvidence = require("../score-engine/resolve-timeline-evidence.js");
+const resolveProduction = require("../score-engine/resolve-production-integration.js");
 
 function tmpEnv() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "score-resolve-roundtrip-"));
@@ -170,6 +171,99 @@ test("score Resolve P7: timeline evidence is durable, current, semantic, and non
   assert.equal(state.resolve_timeline_evidence.current, true);
   assert.equal(state.resolve_timeline_evidence.evidence_level, "resolve_timeline_verified");
   assert.equal(state.resolve_roundtrip.state, "not_registered");
+});
+
+function productionReadback(contract, target, musicClips = [], timelineName = target.timeline_name, timelineId = target.timeline_unique_id) {
+  return {
+    schema_version: 1, role: "scorecraft_resolve_production_readback",
+    resolve_integration_identity: provenance.resolveIntegrationIdentity(contract),
+    project: { name: target.project_name, unique_id: target.project_unique_id },
+    timeline: {
+      name: timelineName, unique_id: timelineId, frame_rate: contract.timeline.frame_rate,
+      timeline_start_timecode: contract.timeline.timeline_start_timecode,
+      duration_frames: contract.timeline.expected_program_duration_frames,
+      tracks: [
+        { media_type: "audio", index: 1, name: "Narration", enabled: true, locked: false, clips: [{ source_sha256: contract.narration.source_sha256, start_frame: contract.timeline.narration_start_frame, duration_frames: contract.timeline.narration_end_frame - contract.timeline.narration_start_frame, speed_percent: 100 }] },
+        { media_type: "audio", index: 4, name: "Scorecraft Music", enabled: true, locked: false, clips: musicClips },
+      ],
+      markers: musicClips.length ? resolveProduction.expectedProductionMarkers(contract) : [{ frame: 12, name: "Editorial", duration_frames: 1, custom_data: "editor:keep" }],
+    },
+  };
+}
+
+test("score Resolve P8: public lane preflight persists exact target plan, applies only to a duplicate, and records production evidence", () => {
+  const { options } = tmpEnv(); const { project } = projectFixture(options);
+  registerNarration(project.project_id, options); prepare(project.project_id, options);
+  const fixture = timelineFixture(project.project_id, options); const contract = fixture.contract;
+  const target = { project_name: "Explicit Project", project_unique_id: "project-id", timeline_name: "Main Edit", timeline_unique_id: "timeline-id", destination_timeline_name: "Main Edit — Scorecraft 001", narration_track_index: 1, narration_track_name: "Narration", music_track_index: 4, music_track_name: "Scorecraft Music" };
+  let calls = 0;
+  const driver = (spec) => {
+    calls += 1;
+    if (spec.operation === "inspect") return { schema_version: 1, role: "scorecraft_resolve_production_driver_result", operation: "inspect", product: "Resolve", version: "21", readback: productionReadback(contract, target) };
+    assert.equal(spec.plan.operations[0].op, "add_selected_music");
+    const selected = { source_sha256: contract.production.production_mix_sha256, start_frame: 0, duration_frames: contract.timeline.expected_program_duration_frames, speed_percent: 100 };
+    return { schema_version: 1, role: "scorecraft_resolve_production_driver_result", operation: "apply", product: "Resolve", version: "21", source_timeline_untouched: true, after: productionReadback(contract, target, [selected], target.destination_timeline_name, "duplicate-id") };
+  };
+  const preflight = lane.preflightResolveProduction(project.project_id, {
+    project_name: target.project_name, timeline_name: target.timeline_name, destination_timeline_name: target.destination_timeline_name,
+    narration_track_index: 1, narration_track_name: "Narration", music_track_index: 4, music_track_name: "Scorecraft Music",
+  }, { ...options, resolveProductionDriverImpl: driver });
+  assert.equal(preflight.status, "ready_to_apply");
+  assert.equal(preflight.target.project_unique_id, "project-id");
+  const applied = lane.applyResolveProductionPlan(project.project_id, { resolve_production_plan_id: preflight.resolve_production_plan_id, expected_plan_identity: preflight.plan_identity }, { ...options, resolveProductionDriverImpl: driver });
+  assert.equal(applied.source_timeline_untouched, true);
+  assert.equal(applied.applied_timeline_name, target.destination_timeline_name);
+  const state = lane.getProject(project.project_id, options);
+  assert.equal(state.resolve_timeline_evidence.current, true);
+  assert.equal(state.resolve_timeline_evidence.evidence_level, "resolve_timeline_verified");
+  assert.equal(state.resolve_production_plan.current, true);
+  assert.equal(calls, 2);
+});
+
+test("score Resolve P8: already-correct explicit target verifies without apply and stale plan identity fails", () => {
+  const { options } = tmpEnv(); const { project } = projectFixture(options);
+  registerNarration(project.project_id, options); prepare(project.project_id, options);
+  const contract = timelineFixture(project.project_id, options).contract;
+  const target = { project_name: "Explicit Project", project_unique_id: "project-id", timeline_name: "Integrated Edit", timeline_unique_id: "timeline-id", destination_timeline_name: "Unused Duplicate", narration_track_index: 1, narration_track_name: "Narration", music_track_index: 4, music_track_name: "Scorecraft Music" };
+  const selected = { source_sha256: contract.production.production_mix_sha256, start_frame: 0, duration_frames: contract.timeline.expected_program_duration_frames, speed_percent: 100 };
+  const driver = () => ({ schema_version: 1, role: "scorecraft_resolve_production_driver_result", operation: "inspect", product: "Resolve", version: "21", readback: productionReadback(contract, target, [selected]) });
+  const plan = lane.preflightResolveProduction(project.project_id, { project_name: target.project_name, timeline_name: target.timeline_name, destination_timeline_name: target.destination_timeline_name, narration_track_index: 1, narration_track_name: "Narration", music_track_index: 4, music_track_name: "Scorecraft Music" }, { ...options, resolveProductionDriverImpl: driver });
+  assert.equal(plan.status, "verify_only");
+  assert.throws(() => lane.verifyResolveProductionTarget(project.project_id, { resolve_production_plan_id: plan.resolve_production_plan_id, expected_plan_identity: "0".repeat(64) }, { ...options, resolveProductionDriverImpl: driver }), (error) => error.statusCode === 409);
+  const verified = lane.verifyResolveProductionTarget(project.project_id, { resolve_production_plan_id: plan.resolve_production_plan_id, expected_plan_identity: plan.plan_identity }, { ...options, resolveProductionDriverImpl: driver });
+  assert.equal(verified.current, true);
+});
+
+test("score Resolve P8 API: nonce-protected preflight and verify use the exact public production target", async () => {
+  const { options } = tmpEnv(); const { project } = projectFixture(options);
+  registerNarration(project.project_id, options); prepare(project.project_id, options);
+  const contract = timelineFixture(project.project_id, options).contract;
+  const target = { project_name: "Explicit API Project", project_unique_id: "api-project-id", timeline_name: "Integrated API Edit", timeline_unique_id: "api-timeline-id", destination_timeline_name: "API Duplicate", narration_track_index: 1, narration_track_name: "Narration", music_track_index: 4, music_track_name: "Scorecraft Music" };
+  const selected = { source_sha256: contract.production.production_mix_sha256, start_frame: 0, duration_frames: contract.timeline.expected_program_duration_frames, speed_percent: 100 };
+  const driver = () => ({ schema_version: 1, role: "scorecraft_resolve_production_driver_result", operation: "inspect", product: "Resolve", version: "21", readback: productionReadback(contract, target, [selected]) });
+  const oldSettings = process.env.SCORE_ENGINE_SETTINGS_PATH; const oldRoot = process.env.SCORE_ENGINE_MUSIC_ROOT;
+  process.env.SCORE_ENGINE_SETTINGS_PATH = options.settingsPath; process.env.SCORE_ENGINE_MUSIC_ROOT = options.musicRoot;
+  const server = packageEngineServer.createServer({ scoreEngine: { ...options, resolveProductionDriverImpl: driver } });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const request = (route, body, nonce = "") => new Promise((resolve, reject) => {
+    const bytes = Buffer.from(JSON.stringify(body));
+    const req = http.request({ hostname: "127.0.0.1", port: server.address().port, path: route, method: "POST", headers: { Host: "127.0.0.1:8010", "Content-Type": "application/json", "Content-Length": bytes.length, ...(nonce ? { "x-vidtoolz-local-write-nonce": nonce } : {}) } }, (res) => { let raw = ""; res.on("data", (chunk) => { raw += chunk; }); res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(raw) })); });
+    req.on("error", reject); req.end(bytes);
+  });
+  try {
+    const payload = { project_id: project.project_id, resolve_project_name: target.project_name, resolve_timeline_name: target.timeline_name, destination_timeline_name: target.destination_timeline_name, narration_track_index: 1, narration_track_name: "Narration", music_track_index: 4, music_track_name: "Scorecraft Music" };
+    assert.equal((await request("/api/score/resolve/production/preflight", payload)).status, 403);
+    const preflightResponse = await request("/api/score/resolve/production/preflight", payload, packageEngineServer.localWriteNonce());
+    assert.equal(preflightResponse.status, 200, JSON.stringify(preflightResponse.body));
+    const plan = preflightResponse.body.data || preflightResponse.body;
+    assert.equal(plan.status, "verify_only");
+    const verifyResponse = await request("/api/score/resolve/production/verify", { project_id: project.project_id, resolve_production_plan_id: plan.resolve_production_plan_id, expected_plan_identity: plan.plan_identity }, packageEngineServer.localWriteNonce());
+    assert.equal(verifyResponse.status, 200, JSON.stringify(verifyResponse.body));
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    if (oldSettings === undefined) delete process.env.SCORE_ENGINE_SETTINGS_PATH; else process.env.SCORE_ENGINE_SETTINGS_PATH = oldSettings;
+    if (oldRoot === undefined) delete process.env.SCORE_ENGINE_MUSIC_ROOT; else process.env.SCORE_ENGINE_MUSIC_ROOT = oldRoot;
+  }
 });
 
 test("score Resolve P6: integration requires current narration and binds deterministic timing authority", () => {

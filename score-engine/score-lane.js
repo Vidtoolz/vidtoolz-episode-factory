@@ -18,6 +18,7 @@ const synth = require("./preview-synth.js");
 const reaper = require("./reaper-backend.js");
 const provenanceLib = require("./score-provenance.js");
 const resolveTimelineEvidence = require("./resolve-timeline-evidence.js");
+const resolveProduction = require("./resolve-production-integration.js");
 
 const ENGINE_VERSION = "1.3.0";
 const PULSE_REGISTERS = ["low_mid", "mid_high", "high"];
@@ -289,9 +290,11 @@ function getProject(projectId, options = {}) {
   readiness.narration_review_ready = narration.review_ready;
   const resolveIntegration = assessResolveIntegration(dir, project, settings);
   const timelineEvidence = assessResolveTimelineEvidence(dir, resolveIntegration);
+  const productionResolvePlan = assessResolveProductionPlan(dir, resolveIntegration);
   const resolveRoundtrip = assessResolveRoundtrip(dir, project, settings, resolveIntegration);
   readiness.resolve_integration = resolveIntegration;
   readiness.resolve_timeline_evidence = timelineEvidence;
+  readiness.resolve_production_plan = productionResolvePlan;
   readiness.resolve_roundtrip = resolveRoundtrip;
   const configuredTemplateFolder = String(settings.reaper_track_template_folder || "").trim();
   let templateFolderAvailable = false;
@@ -318,6 +321,7 @@ function getProject(projectId, options = {}) {
     narration,
     resolve_integration: resolveIntegration,
     resolve_timeline_evidence: timelineEvidence,
+    resolve_production_plan: productionResolvePlan,
     resolve_roundtrip: resolveRoundtrip,
     resolve_programs: listResolveProgramsByDir(dir),
     daw_configuration: { reaper_template_folder: templateFolderState },
@@ -3366,6 +3370,127 @@ function recordResolveTimelineEvidence(projectId, input = {}, options = {}) {
   return current;
 }
 
+function runResolveProductionDriver(spec, options = {}) {
+  if (typeof options.resolveProductionDriverImpl === "function") return options.resolveProductionDriverImpl(spec);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "scorecraft-resolve-production-"));
+  const input = path.join(root, "input.json"); const output = path.join(root, "output.json");
+  try {
+    writeJson(input, spec);
+    const script = path.join(__dirname, "..", "scripts", "scorecraft-resolve-production-driver.py");
+    const result = (options.spawnSyncImpl || childProcess.spawnSync)(options.pythonPath || "python3", [script, input, output], {
+      encoding: "utf8", timeout: 120000, maxBuffer: 4 * 1024 * 1024,
+      env: options.resolveEnv || process.env,
+    });
+    if (result.error || result.status !== 0) {
+      const detail = String(result.error ? result.error.message : result.stderr || result.stdout || "Resolve production driver failed").trim().slice(0, 1200);
+      throw httpError(detail, /STALE_PLAN/.test(detail) ? 409 : 422);
+    }
+    const parsed = readJson(output);
+    if (!parsed || parsed.schema_version !== 1 || parsed.role !== "scorecraft_resolve_production_driver_result") throw httpError("Resolve production driver returned malformed data.", 502);
+    return parsed;
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function resolveProductionPlanRecord(dir, planId, relativePath) {
+  if (!/^resolve-plan-[a-f0-9]{20}$/.test(String(planId || ""))) return null;
+  if (!new RegExp(`^production/resolve-production-plans/resolve-[a-f0-9]{20}/${planId}\\.json$`).test(String(relativePath || ""))) return null;
+  try {
+    const record = readJson(provenanceLib.resolveManifestPath(dir, relativePath).target);
+    return record ? { record, relativePath } : null;
+  } catch { return null; }
+}
+
+function assessResolveProductionPlan(dir, integration) {
+  const pointer = readJson(path.join(dir, "production", "resolve-production-plans", "current.json"));
+  if (!pointer) return { state: "not_planned", current: false };
+  const loaded = resolveProductionPlanRecord(dir, pointer.resolve_production_plan_id, pointer.relative_path);
+  const reasons = [];
+  if (!loaded || !loaded.record || loaded.record.role !== "scorecraft_resolve_production_plan_receipt") reasons.push("resolve_production_plan_invalid");
+  else {
+    const record = loaded.record;
+    let identity = null;
+    try { identity = provenanceLib.resolveProductionPlanIdentity(record.plan); } catch {}
+    if (identity !== record.resolve_production_plan_identity || identity !== pointer.resolve_production_plan_identity) reasons.push("resolve_production_plan_identity_invalid");
+    if (!integration.current || record.resolve_integration_identity !== integration.resolve_integration_identity) reasons.push("resolve_production_plan_integration_stale");
+  }
+  return {
+    state: reasons.length ? "stale" : loaded.record.plan.status,
+    current: reasons.length === 0,
+    reasons,
+    resolve_production_plan_id: loaded && loaded.record.resolve_production_plan_id,
+    resolve_production_plan_identity: loaded && loaded.record.resolve_production_plan_identity,
+    plan: loaded && loaded.record.plan,
+  };
+}
+
+function preflightResolveProduction(projectId, input = {}, options = {}) {
+  const settings = loadSettings(options); const { dir } = resolveProjectDir(settings, projectId);
+  const project = readJson(path.join(dir, "score-project.json")); const integration = currentResolveIntegration(dir, project, settings);
+  if (!integration.current) throw httpError("A current P6 Resolve integration contract is required before production preflight.", 409);
+  const targetRequest = {
+    project_name: String(input.project_name || "").trim(), project_unique_id: String(input.project_unique_id || "").trim(),
+    timeline_name: String(input.timeline_name || "").trim(), timeline_unique_id: String(input.timeline_unique_id || "").trim(),
+    destination_timeline_name: String(input.destination_timeline_name || "").trim(),
+    narration_track_index: input.narration_track_index, narration_track_name: input.narration_track_name,
+    music_track_index: input.music_track_index, music_track_name: input.music_track_name,
+  };
+  if (!targetRequest.project_name || !targetRequest.timeline_name) throw httpError("Explicit open Resolve project and timeline names are required; current/latest is never inferred.", 400);
+  const inspected = runResolveProductionDriver({ operation: "inspect", resolve_integration_identity: integration.resolve_integration_identity, frame_rate: integration.record.integration_contract.timeline.frame_rate, target: targetRequest }, options);
+  const observed = resolveProduction.normalizeReadback(inspected.readback);
+  const boundTarget = { ...targetRequest, project_unique_id: observed.project.unique_id, timeline_unique_id: observed.timeline.unique_id };
+  const knownMixShas = listProductionMixes(projectId, options).map((item) => item.production_mix_sha256).filter(Boolean);
+  const plan = resolveProduction.buildProductionPlan(integration.record.integration_contract, boundTarget, observed, knownMixShas);
+  const planId = `resolve-plan-${plan.plan_identity.slice(0, 20)}`;
+  const relativePath = `production/resolve-production-plans/${integration.resolve_integration_id}/${planId}.json`;
+  const file = provenanceLib.resolveManifestPath(dir, relativePath).target;
+  const receipt = { schema_version: 1, role: "scorecraft_resolve_production_plan_receipt", resolve_production_plan_id: planId, resolve_production_plan_identity: plan.plan_identity, resolve_integration_id: integration.resolve_integration_id, resolve_integration_identity: integration.resolve_integration_identity, plan, created_at: nowIso() };
+  const existing = readJson(file);
+  if (existing && provenanceLib.hashCanonical(existing.plan) !== provenanceLib.hashCanonical(plan)) throw httpError(`Existing immutable Resolve production plan ${planId} is invalid.`, 409);
+  if (!existing) writeJsonAtomic(file, receipt);
+  writeJsonAtomic(path.join(dir, "production", "resolve-production-plans", "current.json"), { schema_version: 1, resolve_production_plan_id: planId, resolve_production_plan_identity: plan.plan_identity, relative_path: relativePath });
+  return { resolve_production_plan_id: planId, ...plan, resolve_product: inspected.product, resolve_version: inspected.version };
+}
+
+function loadCurrentResolveProductionPlan(dir, integration, input) {
+  const pointer = readJson(path.join(dir, "production", "resolve-production-plans", "current.json"));
+  if (!pointer || pointer.resolve_production_plan_id !== input.resolve_production_plan_id) throw httpError("Resolve production plan is not the explicit current plan.", 409);
+  const loaded = resolveProductionPlanRecord(dir, input.resolve_production_plan_id, pointer.relative_path);
+  if (!loaded || loaded.record.resolve_production_plan_identity !== input.expected_plan_identity) throw httpError("Resolve production plan is missing or stale.", 409);
+  const plan = loaded.record.plan;
+  if (provenanceLib.resolveProductionPlanIdentity(plan) !== input.expected_plan_identity) throw httpError("Resolve production plan identity is invalid.", 409);
+  if (!integration.current || loaded.record.resolve_integration_identity !== integration.resolve_integration_identity) throw httpError("Resolve production plan belongs to stale Scorecraft authority.", 409);
+  return plan;
+}
+
+function recordProductionEvidence(projectId, integration, plan, observed, execution, options) {
+  const checked = resolveProduction.validateProductionTimelineEvidence(integration.record.integration_contract, plan.target, observed);
+  return recordResolveTimelineEvidence(projectId, { evidence: checked.evidence, execution }, options);
+}
+
+function verifyResolveProductionTarget(projectId, input = {}, options = {}) {
+  const settings = loadSettings(options); const { dir } = resolveProjectDir(settings, projectId);
+  const project = readJson(path.join(dir, "score-project.json")); const integration = currentResolveIntegration(dir, project, settings);
+  const plan = loadCurrentResolveProductionPlan(dir, integration, input);
+  if (plan.status !== "verify_only") throw httpError("Only an already-correct production plan can be verified without applying changes.", 409);
+  const inspected = runResolveProductionDriver({ operation: "inspect", resolve_integration_identity: integration.resolve_integration_identity, frame_rate: integration.record.integration_contract.timeline.frame_rate, target: plan.target }, options);
+  if (resolveProduction.productionPreconditionIdentity(integration.record.integration_contract, plan.target, inspected.readback) !== plan.precondition_identity) throw httpError("Resolve timeline changed after preflight; run preflight again.", 409);
+  return recordProductionEvidence(projectId, integration, plan, inspected.readback, { product: inspected.product, version: inspected.version, automation: "official_python_api_production_verify", project_name: plan.target.project_name, timeline_name: plan.target.timeline_name, database_type: "operator_selected" }, options);
+}
+
+function applyResolveProductionPlan(projectId, input = {}, options = {}) {
+  const settings = loadSettings(options); const { dir } = resolveProjectDir(settings, projectId);
+  const project = readJson(path.join(dir, "score-project.json")); const integration = currentResolveIntegration(dir, project, settings);
+  const plan = loadCurrentResolveProductionPlan(dir, integration, input);
+  if (plan.status !== "ready_to_apply") throw httpError("Resolve production plan is not eligible for apply.", 409);
+  const musicPath = provenanceLib.resolveManifestPath(dir, `${integration.relative_dir}/music.wav`).target;
+  if (provenanceLib.sha256File(musicPath) !== integration.record.integration_contract.production.production_mix_sha256) throw httpError("Selected Resolve music bytes changed before apply.", 409);
+  const applied = runResolveProductionDriver({ operation: "apply", resolve_integration_identity: integration.resolve_integration_identity, frame_rate: integration.record.integration_contract.timeline.frame_rate, target: plan.target, plan, selected_music_path: musicPath, selected_music_sha256: integration.record.integration_contract.production.production_mix_sha256, allowed_scorecraft_root: dir }, options);
+  const result = recordProductionEvidence(projectId, integration, plan, applied.after, { product: applied.product, version: applied.version, automation: "official_python_api_non_destructive_production_apply", project_name: applied.after.project.name, timeline_name: applied.after.timeline.name, database_type: "operator_selected" }, options);
+  return { ...result, source_timeline_untouched: applied.source_timeline_untouched === true, applied_timeline_name: applied.after.timeline.name, applied_timeline_unique_id: applied.after.timeline.unique_id };
+}
+
 function programProbe(file, settings, options = {}) {
   if (typeof options.programProbeImpl === "function") return options.programProbeImpl(file);
   const spawnSync = options.spawnSyncImpl || childProcess.spawnSync;
@@ -3777,6 +3902,9 @@ module.exports = {
   prepareProductionResolvePackage,
   prepareResolveIntegration,
   recordResolveTimelineEvidence,
+  preflightResolveProduction,
+  verifyResolveProductionTarget,
+  applyResolveProductionPlan,
   registerResolveProgram,
   verifyResolveProgram,
   reviewResolveProgram,

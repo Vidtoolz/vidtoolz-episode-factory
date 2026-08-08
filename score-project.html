@@ -178,6 +178,24 @@
           <button class="btn btn-go" id="resolve-integration-prepare">Prepare score-in-picture handoff</button>
           <button class="btn" data-open="production/resolve-return-inbox">Open return inbox</button>
         </div>
+        <details style="margin-top:8px;" id="resolve-production-wrap"><summary class="meta">Production Resolve target · explicit non-destructive integration</summary>
+          <div class="meta" style="margin:6px 0;">Open the exact project and source timeline in Resolve first. Scorecraft never lists, loads, or guesses a project. Apply always creates a new duplicated timeline.</div>
+          <div>
+            <input id="resolve-target-project" maxlength="200" placeholder="Exact open Resolve project name">
+            <input id="resolve-target-timeline" maxlength="200" placeholder="Exact open source timeline name">
+            <input id="resolve-target-destination" maxlength="200" placeholder="New integration timeline name">
+          </div>
+          <div style="margin-top:6px;">
+            <label class="meta">Narration track <input id="resolve-narration-track-index" type="number" min="1" placeholder="#" style="width:54px"></label>
+            <input id="resolve-narration-track-name" maxlength="100" placeholder="Exact narration track name">
+            <label class="meta">Music track <input id="resolve-music-track-index" type="number" min="1" placeholder="#" style="width:54px"></label>
+            <input id="resolve-music-track-name" maxlength="100" placeholder="Exact music track name">
+            <button class="btn" id="resolve-production-preflight">Read-only preflight</button>
+            <button class="btn btn-go" id="resolve-production-apply">Apply to new timeline</button>
+            <button class="btn" id="resolve-production-verify">Verify already-correct timeline</button>
+          </div>
+          <pre id="resolve-production-plan" class="meta" style="white-space:pre-wrap;margin-top:8px"></pre>
+        </details>
         <div style="margin-top:8px;">
           <input id="resolve-return-filename" placeholder="Returned basename, e.g. episode.mov" style="min-width:260px;">
           <input id="resolve-return-authority" maxlength="1000" placeholder="Why this exact export belongs to this handoff" style="min-width:340px;">
@@ -201,6 +219,9 @@
       const PALETTES = ['tech_noir_pulse','broadcast_explainer','ai_lab','dry_comedy_underscore','serious_system_builder'];
       const CUE_COLORS = ['#3fb950','#58a6ff','#d29922','#a371f7','#f85149','#79c0ff','#ffa657','#7ee787'];
       const SCORE_VERIFY_API = '/api/score/verify';
+      const SCORE_RESOLVE_PRODUCTION_PREFLIGHT_API='/api/score/resolve/production/preflight';
+      const SCORE_RESOLVE_PRODUCTION_APPLY_API='/api/score/resolve/production/apply';
+      const SCORE_RESOLVE_PRODUCTION_VERIFY_API='/api/score/resolve/production/verify';
       const SCORE_PRODUCTION_IMPORT_API = '/api/score/production/import';
       const SCORE_PRODUCTION_VERIFY_API = '/api/score/production/verify';
       const SCORE_PRODUCTION_REVIEW_API = '/api/score/production/review';
@@ -527,7 +548,7 @@
       }
 
       function renderResolveRoundtrip(){
-        const I=ST.resolve_integration||{state:'not_prepared',reasons:[]},R=ST.resolve_roundtrip||{state:'not_registered',reasons:[]},programs=ST.resolve_programs||[];
+        const I=ST.resolve_integration||{state:'not_prepared',reasons:[]},P=ST.resolve_production_plan||{state:'not_planned',current:false},R=ST.resolve_roundtrip||{state:'not_registered',reasons:[]},programs=ST.resolve_programs||[];
         const badge=document.getElementById('resolve-roundtrip-badge');
         badge.className='badge '+(R.editorially_accepted?'done':'todo');
         badge.textContent=R.editorially_accepted?'integrated render approved':R.state==='technical_verified'?'program QC PASS · review pending':I.current?'handoff ready · return pending':String(I.state||'not_prepared').replace(/_/g,' ');
@@ -548,6 +569,20 @@
         document.getElementById('resolve-return-verify').disabled=!chosen;
         document.getElementById('resolve-return-approve').disabled=!(R.current&&R.technical_status==='passed');
         document.getElementById('resolve-return-reject').disabled=!(R.current&&R.technical_status==='passed');
+        const plan=P.plan||null,planBox=document.getElementById('resolve-production-plan');
+        planBox.textContent=!plan?'No production preflight recorded.':[
+          `State: ${P.current?plan.status:'stale'}`,
+          `Target: ${plan.target.project_name} / ${plan.target.timeline_name}`,
+          `Target IDs: ${plan.target.project_unique_id} / ${plan.target.timeline_unique_id}`,
+          `Destination: ${plan.target.destination_timeline_name}`,
+          `Selected music: ${String(ST.production_selection&&ST.production_selection.production_mix_sha256||'').slice(0,12)||'current P6 authority'}…`,
+          `Plan: ${plan.plan_identity.slice(0,12)}…`,
+          plan.conflicts.length?`Conflicts: ${plan.conflicts.join(', ')}`:`Operations: ${plan.operations.length?plan.operations.map((op)=>op.op).join(', '):'none — already correct'}`,
+          'Apply never edits the source timeline and never deletes unknown media.'
+        ].join('\n');
+        document.getElementById('resolve-production-preflight').disabled=!I.current;
+        document.getElementById('resolve-production-apply').disabled=!(P.current&&plan&&plan.status==='ready_to_apply');
+        document.getElementById('resolve-production-verify').disabled=!(P.current&&plan&&plan.status==='verify_only');
       }
 
       function bytesToBase64(bytes){
@@ -697,6 +732,20 @@
       document.getElementById('resolve-integration-prepare').onclick=async()=>{
         try{await post(SCORE_RESOLVE_INTEGRATION_API,{project_id:ID,frame_rate:document.getElementById('resolve-frame-rate').value.trim(),timeline_start_timecode:document.getElementById('resolve-start-timecode').value.trim()});toast('Narration-bound Resolve handoff prepared');await load();}catch(e){toast(e.message,false);showErr(e.message);}
       };
+      document.getElementById('resolve-production-preflight').onclick=async()=>{
+        const payload={project_id:ID,resolve_project_name:document.getElementById('resolve-target-project').value.trim(),resolve_timeline_name:document.getElementById('resolve-target-timeline').value.trim(),destination_timeline_name:document.getElementById('resolve-target-destination').value.trim(),narration_track_index:Number(document.getElementById('resolve-narration-track-index').value),narration_track_name:document.getElementById('resolve-narration-track-name').value.trim(),music_track_index:Number(document.getElementById('resolve-music-track-index').value),music_track_name:document.getElementById('resolve-music-track-name').value.trim()};
+        if(!payload.resolve_project_name||!payload.resolve_timeline_name||!payload.destination_timeline_name||!payload.narration_track_name||!payload.music_track_name||!Number.isInteger(payload.narration_track_index)||payload.narration_track_index<1||!Number.isInteger(payload.music_track_index)||payload.music_track_index<1)return toast('Enter exact project, timeline, destination, and both role-track names and numbers',false);
+        try{const result=await post(SCORE_RESOLVE_PRODUCTION_PREFLIGHT_API,payload);toast(result.status==='conflict'?'Preflight found a conflict; nothing changed':result.status==='verify_only'?'Timeline already matches; verify it without mutation':'Dry-run ready; inspect the plan before Apply',result.status!=='conflict');await load();}catch(e){toast(e.message,false);showErr(e.message);}
+      };
+      async function submitResolveProductionPlan(mode){
+        const P=ST.resolve_production_plan||{},plan=P.plan;if(!P.current||!plan)return toast('Run a current preflight first',false);
+        const verb=mode==='apply'?'create a new duplicated integration timeline and apply only the listed Scorecraft changes':'record exact readback evidence without changing Resolve';
+        if(!confirm(`Plan ${plan.plan_identity.slice(0,12)}… will ${verb}. Continue?`))return;
+        const endpoint=mode==='apply'?SCORE_RESOLVE_PRODUCTION_APPLY_API:SCORE_RESOLVE_PRODUCTION_VERIFY_API;
+        try{await post(endpoint,{project_id:ID,resolve_production_plan_id:P.resolve_production_plan_id,expected_plan_identity:P.resolve_production_plan_identity});toast(mode==='apply'?'New integration timeline applied and read back; source timeline untouched':'Already-correct timeline read back and verified');await load();}catch(e){toast(e.message,false);showErr(e.message);}
+      }
+      document.getElementById('resolve-production-apply').onclick=()=>submitResolveProductionPlan('apply');
+      document.getElementById('resolve-production-verify').onclick=()=>submitResolveProductionPlan('verify');
       document.getElementById('resolve-return-register').onclick=async()=>{
         const filename=document.getElementById('resolve-return-filename').value.trim(),basis=document.getElementById('resolve-return-authority').value.trim(),identity=ST.resolve_integration&&ST.resolve_integration.resolve_integration_identity;
         if(!filename||!basis)return toast('Enter the exact return-inbox basename and authority basis',false);

@@ -4,6 +4,7 @@
 // integration contract. Resolve object IDs, absolute paths, timestamps, and
 // other volatile application metadata never participate in this identity.
 const provenance = require("./score-provenance.js");
+const production = require("./resolve-production-integration.js");
 
 function fail(message) { throw new Error(`Resolve timeline evidence invalid: ${message}`); }
 function integer(value, label) {
@@ -69,6 +70,7 @@ function normalizeResolveTimelineEvidence(observed) {
 }
 
 function validateResolveTimelineEvidence(integrationContract, observed) {
+  if (observed && observed.profile === production.PROFILE) return production.validateStoredProductionEvidence(integrationContract, observed);
   if (!integrationContract || integrationContract.role !== "scorecraft_resolve_integration") fail("P6 integration contract is required");
   const normalized = normalizeResolveTimelineEvidence(observed);
   const expectedIdentity = provenance.resolveIntegrationIdentity(integrationContract);

@@ -386,6 +386,21 @@ function resolveTimelineEvidenceIdentity(evidence) {
   return hashCanonical(evidence);
 }
 
+function resolveProductionPreconditionIdentity(precondition) {
+  if (!precondition || precondition.role !== "scorecraft_resolve_production_precondition" || precondition.schema_version !== 1) {
+    throw new Error("Supported Resolve production precondition is required.");
+  }
+  return hashCanonical(precondition);
+}
+
+function resolveProductionPlanIdentity(plan) {
+  if (!plan || plan.role !== "scorecraft_resolve_production_plan" || plan.schema_version !== 1) {
+    throw new Error("Supported Resolve production plan is required.");
+  }
+  const { plan_identity: _selfIdentity, ...semanticPlan } = plan;
+  return hashCanonical(semanticPlan);
+}
+
 function resolveProgramVerificationIdentity({ programSha256, resolveIntegrationIdentity: integrationIdentity, detectedMedia, technicalAnalysis }) {
   if (!/^[a-f0-9]{64}$/.test(String(programSha256 || ""))) throw new Error("Program render SHA-256 is required.");
   if (!/^[a-f0-9]{64}$/.test(String(integrationIdentity || ""))) throw new Error("Resolve integration identity is required.");
@@ -627,6 +642,8 @@ module.exports = {
   productionSelectionIdentity,
   resolveIntegrationIdentity,
   resolveTimelineEvidenceIdentity,
+  resolveProductionPreconditionIdentity,
+  resolveProductionPlanIdentity,
   resolveProgramVerificationIdentity,
   resolveProgramReviewIdentity,
   buildArtifactManifest,
