@@ -372,6 +372,41 @@ function productionSelectionIdentity({ productionMixId, productionMixSha256, ver
   });
 }
 
+function resolveIntegrationIdentity(contract) {
+  if (!contract || contract.role !== "scorecraft_resolve_integration" || contract.schema_version !== 1) {
+    throw new Error("A supported Resolve integration contract is required.");
+  }
+  return hashCanonical(contract);
+}
+
+function resolveProgramVerificationIdentity({ programSha256, resolveIntegrationIdentity: integrationIdentity, detectedMedia, technicalAnalysis }) {
+  if (!/^[a-f0-9]{64}$/.test(String(programSha256 || ""))) throw new Error("Program render SHA-256 is required.");
+  if (!/^[a-f0-9]{64}$/.test(String(integrationIdentity || ""))) throw new Error("Resolve integration identity is required.");
+  return hashCanonical({
+    schema_version: 1,
+    role: "scorecraft_resolve_program_verification",
+    program_sha256: programSha256,
+    resolve_integration_identity: integrationIdentity,
+    detected_media: detectedMedia,
+    technical_analysis: technicalAnalysis,
+  });
+}
+
+function resolveProgramReviewIdentity({ programSha256, verificationIdentity, decision, authorityBasis }) {
+  if (!/^[a-f0-9]{64}$/.test(String(programSha256 || ""))) throw new Error("Program render SHA-256 is required.");
+  if (!/^[a-f0-9]{64}$/.test(String(verificationIdentity || ""))) throw new Error("Program verification identity is required.");
+  if (!["approved", "rejected"].includes(decision)) throw new Error("Picture/sound review decision must be approved or rejected.");
+  if (typeof authorityBasis !== "string" || !authorityBasis.trim()) throw new Error("Picture/sound review authority basis is required.");
+  return hashCanonical({
+    schema_version: 1,
+    role: "scorecraft_resolve_program_review",
+    program_sha256: programSha256,
+    verification_identity: verificationIdentity,
+    decision,
+    authority_basis: authorityBasis.trim(),
+  });
+}
+
 function resolveManifestPath(root, relativePath) {
   const rel = String(relativePath || "").replace(/\\/g, "/");
   if (!rel || path.isAbsolute(rel) || rel.split("/").includes("..")) throw new Error(`Unsafe artifact path: ${relativePath}`);
@@ -583,6 +618,9 @@ module.exports = {
   productionListeningReviewIdentity,
   productionRevisionIdentity,
   productionSelectionIdentity,
+  resolveIntegrationIdentity,
+  resolveProgramVerificationIdentity,
+  resolveProgramReviewIdentity,
   buildArtifactManifest,
   artifactManifestHash,
   verifyArtifactManifest,

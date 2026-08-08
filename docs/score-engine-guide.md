@@ -21,10 +21,10 @@ Hard rules baked in:
 - **Approval is exact.** Current inputs, candidates, approvals, production WAVs,
   verification records, and Resolve copies are SHA-256-bound. A material edit
   makes downstream state stale without deleting historical artifacts.
-- **Narration authority is separate.** A canonical voiceover must be explicitly
-  selected, hash-bound, timeline-aligned, and verified before a voiceover-context
-  review. This does not alter music verification, Resolve music readiness, or
-  human artistic approval.
+- **Narration authority is separate until picture integration.** A canonical
+  voiceover must be explicitly selected, hash-bound, timeline-aligned, and
+  verified. It does not alter standalone music verification or approval, but
+  the downstream score-in-picture contract binds it explicitly.
 
 ## First setup (once)
 
@@ -81,6 +81,22 @@ Hard rules baked in:
    supporting artifacts.
 6. **Prepare Resolve package** atomically copies only the verified production
    mix and cue markers. Resolve-ready remains false if that copy is changed.
+7. After canonical narration is verified, enter the actual Resolve timeline
+   rate and start timecode, then **Prepare score-in-picture handoff**. This
+   immutable package binds the selected music, narration bytes and offset, cue
+   marker bytes, and explicit frame conversion contract. Music is placed at
+   relative program time zero; Resolve start timecode is display/editorial
+   authority, not an offset added to source placement.
+8. Render the integrated program in Resolve, copy the returned MOV/MP4/MKV/MXF
+   into `production/resolve-return-inbox/`, and register its exact basename.
+   **Run program QC** verifies exact bytes, video/audio stream presence, frame
+   rate, one-frame duration tolerance, silence, clipping, and gross DC offset.
+   It records resolution/codecs without imposing one repository-wide delivery
+   codec or raster, because Episode Factory has both 24 and 30 fps workflows.
+9. A human must separately approve or reject the exact returned audiovisual
+   bytes. Standalone music listening approval is never reused as picture/sound
+   approval. Changed bytes or changed selected music/narration/timing authority
+   make the current round trip stale while preserving historical records.
 
 ### Canonical narration for context review
 
@@ -103,6 +119,35 @@ The file must be decodable, non-silent, and end within the score timeline at
 the explicit offset. Scorecraft rejects bytes identical to its own sketch or
 production music artifacts. It cannot infer that an arbitrary recording is the
 approved narration; operator authority remains mandatory.
+
+### Resolve round-trip acceptance
+
+`production/resolve-integrations/<identity>/` is the operator package. Its
+`timeline-contract.json` expresses Scorecraft time in seconds and maps cues to
+the nearest frame at the explicitly supplied rational rate (for example
+`24/1` or `30000/1001`). `music.wav` starts at relative frame zero. Narration
+uses its registered offset. The final program is trimmed to the score project
+duration, so a permitted DAW release tail does not silently extend the video.
+
+Returned programs are immutable records under
+`production/resolve-returns/<identity>/`. Registration means only that the
+operator associated those exact bytes with the issued handoff; Scorecraft does
+not claim cryptographic proof that a GUI process created them. Objective QC and
+exact-byte human picture/sound review are independent subsequent gates.
+
+Run the disposable internal integration gate with:
+
+```bash
+node scripts/verify-scorecraft-resolve-roundtrip.js --keep
+```
+
+It uses ffmpeg, not Resolve, to prove the internal timebase, source binding,
+returned-media QC, and review-pending state. `--keep` leaves a complete operator
+package under `/tmp/scorecraft-resolve-roundtrip-*`. Open that package in a
+disposable Resolve project, use the exact settings and placements in its README
+and timeline contract, render into the project's return inbox, then register,
+verify, and review it from Scorecraft. Until that real external step occurs,
+status is **internal contract verified — external Resolve execution pending**.
 
 ## Instrument profiles
 

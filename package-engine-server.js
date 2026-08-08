@@ -261,6 +261,10 @@ const SCORE_PRODUCTION_VERIFY_API = '/api/score/production/verify';
 const SCORE_PRODUCTION_REVIEW_API = '/api/score/production/review';
 const SCORE_PRODUCTION_SELECT_API = '/api/score/production/select';
 const SCORE_PRODUCTION_RESOLVE_API = '/api/score/production/resolve';
+const SCORE_RESOLVE_INTEGRATION_API = '/api/score/resolve/integration';
+const SCORE_RESOLVE_RETURN_REGISTER_API = '/api/score/resolve/return/register';
+const SCORE_RESOLVE_RETURN_VERIFY_API = '/api/score/resolve/return/verify';
+const SCORE_RESOLVE_RETURN_REVIEW_API = '/api/score/resolve/return/review';
 const SCORE_NARRATION_API = '/api/score/narration';
 const SCORE_NARRATION_REGISTER_API = '/api/score/narration/register';
 const SCORE_NARRATION_VERIFY_API = '/api/score/narration/verify';
@@ -16826,6 +16830,60 @@ function createServer(options = {}) {
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-production-resolve-error'));
       return;
     }
+    if (req.method === 'POST' && url.pathname === SCORE_RESOLVE_INTEGRATION_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score Resolve integration API' });
+          sendJSON(res, 200, scoreLane.prepareResolveIntegration(payload.project_id || '', {
+            frame_rate: payload.frame_rate,
+            timeline_start_timecode: payload.timeline_start_timecode,
+          }, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-resolve-integration-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_RESOLVE_RETURN_REGISTER_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score Resolve return registration API' });
+          if (Object.prototype.hasOwnProperty.call(payload, 'path') || Object.prototype.hasOwnProperty.call(payload, 'source_path')) {
+            throw Object.assign(new Error('Server filesystem paths are not accepted. Use the fixed project return inbox and an exact basename.'), { statusCode: 400 });
+          }
+          sendJSON(res, 200, scoreLane.registerResolveProgram(payload.project_id || '', {
+            inbox_filename: payload.inbox_filename,
+            resolve_integration_identity: payload.resolve_integration_identity,
+            authority_basis: payload.authority_basis,
+          }, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-resolve-return-register-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_RESOLVE_RETURN_VERIFY_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score Resolve return verify API' });
+          sendJSON(res, 200, scoreLane.verifyResolveProgram(payload.project_id || '', {
+            resolve_program_id: payload.resolve_program_id,
+          }, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-resolve-return-verify-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_RESOLVE_RETURN_REVIEW_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score Resolve picture and sound review API' });
+          sendJSON(res, 200, scoreLane.reviewResolveProgram(payload.project_id || '', {
+            resolve_program_id: payload.resolve_program_id,
+            decision: payload.decision,
+            expected_program_sha256: payload.expected_program_sha256,
+            expected_verification_identity: payload.expected_verification_identity,
+            authority_basis: payload.authority_basis,
+          }, scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-resolve-return-review-error'));
+      return;
+    }
     if (req.method === 'POST' && url.pathname === SCORE_REAPER_BUILD_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -16943,7 +17001,7 @@ function createServer(options = {}) {
         const settings = scoreLane.loadSettings(scoreOptions());
         const filePath = scoreLane.resolveProjectFile(settings, url.searchParams.get('id') || '', url.searchParams.get('path') || '');
         const ext = require('node:path').extname(filePath).toLowerCase();
-        const types = { '.wav': 'audio/wav', '.mid': 'audio/midi', '.json': 'application/json', '.md': 'text/markdown; charset=utf-8', '.rpp': 'text/plain; charset=utf-8', '.csv': 'text/csv; charset=utf-8', '.txt': 'text/plain; charset=utf-8' };
+        const types = { '.wav': 'audio/wav', '.mid': 'audio/midi', '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.mkv': 'video/x-matroska', '.mxf': 'application/mxf', '.json': 'application/json', '.md': 'text/markdown; charset=utf-8', '.rpp': 'text/plain; charset=utf-8', '.csv': 'text/csv; charset=utf-8', '.txt': 'text/plain; charset=utf-8' };
         res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream', 'Content-Length': fs.statSync(filePath).size, 'Cache-Control': 'no-store' });
         // Guarded like the other media routes: the file can vanish between the
         // stat and the stream open — an unguarded error leaves the response

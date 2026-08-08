@@ -54,6 +54,7 @@ require("./score-engine.test.js");
 require("./score-provenance.test.js");
 require("./score-production.test.js");
 require("./score-narration.test.js");
+require("./score-resolve-roundtrip.test.js");
 require("./score-editor.test.js");
 require("./score-readiness.test.js");
 require("./score-verify.test.js");

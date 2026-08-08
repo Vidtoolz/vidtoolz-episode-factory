@@ -286,6 +286,10 @@ function getProject(projectId, options = {}) {
   const narration = assessNarrationAuthority(dir, project);
   readiness.narration = narration;
   readiness.narration_review_ready = narration.review_ready;
+  const resolveIntegration = assessResolveIntegration(dir, project, settings);
+  const resolveRoundtrip = assessResolveRoundtrip(dir, project, settings, resolveIntegration);
+  readiness.resolve_integration = resolveIntegration;
+  readiness.resolve_roundtrip = resolveRoundtrip;
   const configuredTemplateFolder = String(settings.reaper_track_template_folder || "").trim();
   let templateFolderAvailable = false;
   try { templateFolderAvailable = Boolean(configuredTemplateFolder) && fs.statSync(configuredTemplateFolder).isDirectory(); } catch {}
@@ -309,6 +313,9 @@ function getProject(projectId, options = {}) {
     production_mix_candidates: productionMixCandidates,
     active_production_mix_id: (productionMixCandidates.find((item) => item.active) || {}).production_mix_id || null,
     narration,
+    resolve_integration: resolveIntegration,
+    resolve_roundtrip: resolveRoundtrip,
+    resolve_programs: listResolveProgramsByDir(dir),
     daw_configuration: { reaper_template_folder: templateFolderState },
   };
 }
@@ -1212,6 +1219,9 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
 const PRODUCTION_SCHEMA_VERSION = 1;
 const PRODUCTION_IMPORT_MAX_BYTES = 192 * 1024 * 1024;
 const PRODUCTION_HISTORY_MAX_RECORDS = 100;
+const RESOLVE_INTEGRATION_SCHEMA_VERSION = 1;
+const RESOLVE_PROGRAM_HISTORY_MAX_RECORDS = 100;
+const RESOLVE_PROGRAM_EXTENSIONS = new Set([".mov", ".mp4", ".mkv", ".mxf"]);
 
 // Narration is an external editorial authority, not score audio. It is kept in
 // its own content-addressed namespace and never changes music verification or
@@ -3010,6 +3020,607 @@ function prepareProductionResolvePackage(projectId, options = {}) {
   return { production_mix_id: current.provenance.production_mix_id, relative_dir: relativeDir };
 }
 
+// ── Resolve score-in-picture round trip ──
+// The P5 Resolve folder is a source-delivery package. This downstream contract
+// binds that exact selected music to one verified narration/timing state and an
+// explicit Resolve timebase. Returned program renders remain separate immutable
+// artifacts with their own objective QC and human picture/sound review.
+function parseResolveFrameRate(value) {
+  const text = String(value || "").trim();
+  const match = /^(\d{1,6})(?:\/(\d{1,6}))?$/.exec(text);
+  if (!match) throw httpError("Resolve frame_rate must be an explicit positive integer or rational such as 24/1 or 30000/1001.", 400);
+  const numerator = Number(match[1]);
+  const denominator = Number(match[2] || 1);
+  const rate = numerator / denominator;
+  if (!Number.isInteger(numerator) || !Number.isInteger(denominator) || denominator < 1 || rate < 1 || rate > 120) {
+    throw httpError("Resolve frame_rate must be between 1 and 120 frames per second.", 400);
+  }
+  return { numerator, denominator };
+}
+
+function resolveRateNumber(rate) { return rate.numerator / rate.denominator; }
+
+function validateResolveTimecode(value, rate) {
+  const text = String(value || "").trim();
+  const match = /^(\d{2}):(\d{2}):(\d{2}):(\d{2})$/.exec(text);
+  const nominal = Math.ceil(resolveRateNumber(rate));
+  if (!match || Number(match[2]) > 59 || Number(match[3]) > 59 || Number(match[4]) >= nominal) {
+    throw httpError(`Resolve timeline_start_timecode must be HH:MM:SS:FF with FF below ${nominal}.`, 400);
+  }
+  return text;
+}
+
+function currentResolveIntegration(dir, project, settings) {
+  const pointer = readJson(path.join(dir, "production", "resolve-integrations", "current.json"));
+  if (!pointer) return { state: "not_prepared", current: false, reasons: [] };
+  const id = String(pointer.resolve_integration_id || "");
+  if (pointer.schema_version !== RESOLVE_INTEGRATION_SCHEMA_VERSION || !/^resolve-[a-f0-9]{20}$/.test(id)
+    || pointer.relative_dir !== `production/resolve-integrations/${id}`
+    || !/^[a-f0-9]{64}$/.test(String(pointer.resolve_integration_identity || ""))) {
+    return { state: "stale", current: false, reasons: ["resolve_integration_pointer_invalid"] };
+  }
+  let recordPath;
+  try { recordPath = provenanceLib.resolveManifestPath(dir, `${pointer.relative_dir}/resolve-integration.json`).target; }
+  catch { return { state: "stale", current: false, reasons: ["resolve_integration_path_unsafe"] }; }
+  const record = readJson(recordPath);
+  let identity = null;
+  let semanticDuplicatesMatch = false;
+  try {
+    identity = record && provenanceLib.resolveIntegrationIdentity(record.integration_contract);
+    const contract = record.integration_contract;
+    semanticDuplicatesMatch = provenanceLib.hashCanonical(record.timeline_contract) === provenanceLib.hashCanonical(contract.timeline)
+      && record.production_mix_id === contract.production.production_mix_id
+      && record.narration_id === contract.narration.narration_id
+      && record.narration_source_sha256 === contract.narration.source_sha256
+      && record.narration_registration_identity === contract.narration.registration_identity
+      && record.narration_verification_identity === contract.narration.verification_identity;
+  } catch {}
+  if (!record || record.schema_version !== RESOLVE_INTEGRATION_SCHEMA_VERSION || record.resolve_integration_id !== id
+    || record.resolve_integration_identity !== pointer.resolve_integration_identity || identity !== record.resolve_integration_identity
+    || !semanticDuplicatesMatch) {
+    return { state: "stale", current: false, reasons: ["resolve_integration_provenance_invalid"] };
+  }
+  const reasons = [];
+  let approved;
+  try { approved = requireCurrentSketchApproval(dir, project, settings).approved; }
+  catch { reasons.push("resolve_score_authority_changed"); }
+  const manifestCheck = provenanceLib.verifyArtifactManifest(path.dirname(recordPath), record.artifact_manifest);
+  if (!manifestCheck.valid || record.artifact_manifest_hash !== provenanceLib.artifactManifestHash(record.artifact_manifest)) reasons.push("resolve_integration_artifact_changed");
+  const narration = assessNarrationAuthority(dir, project);
+  const narrationContract = record.integration_contract.narration || {};
+  if (!narration.review_ready || narration.narration_id !== narrationContract.narration_id
+    || narration.source_sha256 !== narrationContract.source_sha256
+    || narration.registration_identity !== narrationContract.registration_identity
+    || narration.verification_identity !== narrationContract.verification_identity) reasons.push("resolve_narration_changed");
+  const selection = readJson(path.join(dir, "production", "selected.json"));
+  const productionContract = record.integration_contract.production || {};
+  const packageEntries = record.artifact_manifest && Array.isArray(record.artifact_manifest.entries) ? record.artifact_manifest.entries : [];
+  const packagedMusic = packageEntries.find((entry) => entry.logical_role === "selected_production_music");
+  const packagedNarration = packageEntries.find((entry) => entry.logical_role === "canonical_narration");
+  const packagedMarkers = packageEntries.find((entry) => entry.logical_role === "cue_markers");
+  if (!packagedMusic || packagedMusic.sha256 !== productionContract.production_mix_sha256
+    || !packagedNarration || packagedNarration.sha256 !== narrationContract.source_sha256
+    || !packagedMarkers || packagedMarkers.sha256 !== record.integration_contract.cue_markers.sha256) reasons.push("resolve_integration_semantic_artifact_mismatch");
+  if (!selection || selection.selection_identity !== productionContract.final_selection_identity
+    || selection.production_mix_id !== productionContract.production_mix_id
+    || selection.production_mix_sha256 !== productionContract.production_mix_sha256) reasons.push("resolve_selected_mix_changed");
+  if (approved && approved.identity && approved.identity.cue_sheet_hash !== record.integration_contract.cue_markers.cue_sheet_identity) reasons.push("resolve_cue_timing_changed");
+  const resolvePointer = readJson(path.join(dir, "production", "resolve", "current.json"));
+  if (!resolvePointer || resolvePointer.production_mix_id !== productionContract.production_mix_id
+    || resolvePointer.relative_dir !== `production/resolve/${productionContract.production_mix_id}`) reasons.push("resolve_source_package_stale");
+  else {
+    let sourceProvenance = null;
+    try { sourceProvenance = readJson(provenanceLib.resolveManifestPath(dir, `${resolvePointer.relative_dir}/resolve-provenance.json`).target); } catch {}
+    let sourceManifestValid = false;
+    try { sourceManifestValid = sourceProvenance && provenanceLib.verifyArtifactManifest(path.join(dir, resolvePointer.relative_dir), sourceProvenance.artifact_manifest).valid; } catch {}
+    if (!sourceProvenance || !sourceManifestValid || sourceProvenance.artifact_manifest_hash !== productionContract.resolve_source_manifest_identity
+      || sourceProvenance.source_production_mix_sha256 !== productionContract.production_mix_sha256) reasons.push("resolve_source_package_stale");
+  }
+  return {
+    state: reasons.length ? "stale" : "ready",
+    current: reasons.length === 0,
+    reasons: [...new Set(reasons)],
+    resolve_integration_id: id,
+    resolve_integration_identity: record.resolve_integration_identity,
+    production_mix_id: record.integration_contract.production.production_mix_id,
+    narration_id: record.integration_contract.narration.narration_id,
+    relative_dir: pointer.relative_dir,
+    timeline_contract: record.integration_contract.timeline,
+    record,
+    packageDir: path.dirname(recordPath),
+  };
+}
+
+function assessResolveIntegration(dir, project, settings) {
+  const current = currentResolveIntegration(dir, project, settings);
+  const result = { ...current };
+  delete result.record;
+  delete result.packageDir;
+  return result;
+}
+
+function prepareResolveIntegration(projectId, input = {}, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  const project = readJson(path.join(dir, "score-project.json"));
+  const narration = assessNarrationAuthority(dir, project);
+  if (!narration.review_ready) throw httpError(`A current verified narration is required before preparing score-in-picture integration${narration.reasons.length ? ` (${narration.reasons.join(", ")})` : "."}`, 409);
+  const narrationCurrent = currentNarrationRecord(dir);
+  if (!narrationCurrent.record) throw httpError("Current narration provenance is unavailable.", 409);
+  const frameRate = parseResolveFrameRate(input.frame_rate);
+  const timelineStart = validateResolveTimecode(input.timeline_start_timecode, frameRate);
+  const source = prepareProductionResolvePackage(projectId, options);
+  const sourceProvenance = readJson(path.join(dir, source.relative_dir, "resolve-provenance.json"));
+  if (!sourceProvenance || !sourceProvenance.artifact_manifest_hash) throw httpError("The selected production Resolve source package is invalid.", 409);
+  const approvedProvenance = readJson(path.join(dir, "approved", "provenance.json"));
+  if (!approvedProvenance || !approvedProvenance.identity) throw httpError("Approved score timing identity is unavailable.", 409);
+  const selection = readJson(path.join(dir, "production", "selected.json"));
+  const cueSheet = readJson(path.join(dir, "cue-sheet.json"));
+  const cueEntry = sourceProvenance.artifact_manifest.entries.find((entry) => entry.logical_role === "cue_markers");
+  if (!selection || !cueSheet || !Array.isArray(cueSheet.cues) || !cueEntry) throw httpError("Resolve timing authority is incomplete.", 409);
+  const rate = resolveRateNumber(frameRate);
+  const cues = cueSheet.cues.map((cue) => ({
+    cue_id: cue.cue_id,
+    name: cue.name,
+    start_seconds: cue.start_seconds,
+    end_seconds: cue.end_seconds,
+    start_frame: Math.round(Number(cue.start_seconds) * rate),
+    end_frame: Math.round(Number(cue.end_seconds) * rate),
+  }));
+  const timelineContract = {
+    timebase: "scorecraft_seconds_to_nearest_resolve_frame_v1",
+    frame_rate: frameRate,
+    timeline_start_timecode: timelineStart,
+    project_duration_seconds: Number(project.duration_seconds),
+    expected_program_duration_frames: Math.round(Number(project.duration_seconds) * rate),
+    duration_tolerance_frames: 1,
+    music_start_seconds: 0,
+    music_start_frame: 0,
+    music_tail_policy: "trim_program_at_project_duration",
+    narration_start_seconds: narration.timeline_start_seconds,
+    narration_start_frame: Math.round(Number(narration.timeline_start_seconds) * rate),
+    narration_end_seconds: narration.timeline_end_seconds,
+    narration_end_frame: Math.round(Number(narration.timeline_end_seconds) * rate),
+    cue_markers: cues,
+  };
+  const integrationContract = {
+    schema_version: RESOLVE_INTEGRATION_SCHEMA_VERSION,
+    role: "scorecraft_resolve_integration",
+    project_id: project.project_id,
+    production: {
+      production_mix_id: selection.production_mix_id,
+      production_mix_sha256: selection.production_mix_sha256,
+      verification_identity: selection.verification_identity,
+      listening_review_identity: selection.listening_review_identity,
+      final_selection_identity: selection.selection_identity,
+      resolve_source_manifest_identity: sourceProvenance.artifact_manifest_hash,
+    },
+    narration: {
+      narration_id: narration.narration_id,
+      source_sha256: narration.source_sha256,
+      registration_identity: narration.registration_identity,
+      verification_identity: narration.verification_identity,
+    },
+    cue_markers: { sha256: cueEntry.sha256, byte_size: cueEntry.byte_size, cue_sheet_identity: approvedProvenance.identity.cue_sheet_hash },
+    timeline: timelineContract,
+  };
+  const integrationIdentity = provenanceLib.resolveIntegrationIdentity(integrationContract);
+  const integrationId = `resolve-${integrationIdentity.slice(0, 20)}`;
+  const root = path.join(dir, "production", "resolve-integrations");
+  const packageDir = path.join(root, integrationId);
+  const relativeDir = `production/resolve-integrations/${integrationId}`;
+  fs.mkdirSync(root, { recursive: true });
+  const existing = readJson(path.join(packageDir, "resolve-integration.json"));
+  if (existing) {
+    const check = provenanceLib.verifyArtifactManifest(packageDir, existing.artifact_manifest);
+    if (!check.valid || existing.resolve_integration_identity !== integrationIdentity
+      || provenanceLib.resolveIntegrationIdentity(existing.integration_contract) !== integrationIdentity) {
+      throw httpError(`Existing immutable Resolve integration ${integrationId} is invalid and will not be overwritten.`, 409);
+    }
+  } else {
+    const buildDir = fs.mkdtempSync(path.join(root, ".integration-build-"));
+    try {
+      const narrationExtension = path.extname(narrationCurrent.record.relative_path).toLowerCase();
+      const narrationName = `narration${narrationExtension}`;
+      const narrationSource = provenanceLib.resolveManifestPath(dir, narrationCurrent.record.relative_path).target;
+      fs.copyFileSync(path.join(dir, source.relative_dir, "mix.wav"), path.join(buildDir, "music.wav"), fs.constants.COPYFILE_EXCL);
+      fs.copyFileSync(path.join(dir, source.relative_dir, "cue-markers.csv"), path.join(buildDir, "cue-markers.csv"), fs.constants.COPYFILE_EXCL);
+      fs.copyFileSync(narrationSource, path.join(buildDir, narrationName), fs.constants.COPYFILE_EXCL);
+      writeJson(path.join(buildDir, "timeline-contract.json"), timelineContract);
+      fs.writeFileSync(path.join(buildDir, "README.md"), `# Scorecraft Resolve score-in-picture handoff\n\nThis package binds exact immutable sources; filenames alone grant no authority.\n\n- Integration identity: ${integrationIdentity}\n- Selected production mix: ${selection.production_mix_id}\n- Music placement: ${timelineContract.music_start_seconds}s (relative program time)\n- Narration placement: ${timelineContract.narration_start_seconds}s\n- Timeline rate: ${frameRate.numerator}/${frameRate.denominator} fps\n- Timeline start timecode: ${timelineStart}\n- Program duration: ${timelineContract.project_duration_seconds}s; trim any music release tail at program end\n\nImport music.wav and ${narrationName}, apply timeline-contract.json and cue-markers.csv, render a program with video and audio, copy it into the project's production/resolve-return-inbox folder, then register and verify it in Scorecraft. Registration is operator evidence; exact output bytes, objective QC, and picture/sound review are separate gates.\n`);
+      const manifest = provenanceLib.buildArtifactManifest(buildDir, [
+        { logical_role: "selected_production_music", relative_path: "music.wav" },
+        { logical_role: "canonical_narration", relative_path: narrationName },
+        { logical_role: "cue_markers", relative_path: "cue-markers.csv" },
+        { logical_role: "timeline_contract", relative_path: "timeline-contract.json" },
+        { logical_role: "operator_instructions", relative_path: "README.md" },
+      ]);
+      const record = {
+        schema_version: RESOLVE_INTEGRATION_SCHEMA_VERSION,
+        role: "scorecraft_resolve_integration_handoff",
+        resolve_integration_id: integrationId,
+        resolve_integration_identity: integrationIdentity,
+        production_mix_id: selection.production_mix_id,
+        narration_id: narration.narration_id,
+        narration_source_sha256: narration.source_sha256,
+        narration_registration_identity: narration.registration_identity,
+        narration_verification_identity: narration.verification_identity,
+        timeline_contract: timelineContract,
+        integration_contract: integrationContract,
+        prepared_at: nowIso(),
+        artifact_manifest: manifest,
+        artifact_manifest_hash: provenanceLib.artifactManifestHash(manifest),
+      };
+      writeJson(path.join(buildDir, "resolve-integration.json"), record);
+      fs.renameSync(buildDir, packageDir);
+    } catch (error) {
+      fs.rmSync(buildDir, { recursive: true, force: true });
+      throw error;
+    }
+  }
+  const inbox = path.join(dir, "production", "resolve-return-inbox");
+  fs.mkdirSync(inbox, { recursive: true });
+  const pointerPath = path.join(root, "current.json");
+  const previousPointer = readJson(pointerPath);
+  writeJsonAtomic(pointerPath, { schema_version: RESOLVE_INTEGRATION_SCHEMA_VERSION, resolve_integration_id: integrationId, resolve_integration_identity: integrationIdentity, relative_dir: relativeDir });
+  try {
+    const current = currentResolveIntegration(dir, readJson(path.join(dir, "score-project.json")), loadSettings(options));
+    if (!current.current || current.resolve_integration_identity !== integrationIdentity) throw httpError("Resolve integration authority changed during publication; the handoff was not made current.", 409);
+  } catch (error) {
+    if (previousPointer) writeJsonAtomic(pointerPath, previousPointer);
+    else { try { fs.unlinkSync(pointerPath); } catch {} }
+    throw error;
+  }
+  return { resolve_integration_id: integrationId, resolve_integration_identity: integrationIdentity, relative_dir: relativeDir, return_inbox: "production/resolve-return-inbox" };
+}
+
+function programProbe(file, settings, options = {}) {
+  if (typeof options.programProbeImpl === "function") return options.programProbeImpl(file);
+  const spawnSync = options.spawnSyncImpl || childProcess.spawnSync;
+  const result = spawnSync(settings.ffprobe_path || "ffprobe", ["-v", "quiet", "-print_format", "json", "-show_streams", "-show_format", file], { encoding: "utf8", timeout: 120000, maxBuffer: 2 * 1024 * 1024 });
+  if (result.error || result.status !== 0) return { ok: false, reason: `ffprobe failed: ${(result.error ? result.error.message : result.stderr || "").slice(0, 240)}` };
+  try {
+    const data = JSON.parse(result.stdout);
+    const video = (data.streams || []).find((stream) => stream.codec_type === "video");
+    const audio = (data.streams || []).find((stream) => stream.codec_type === "audio");
+    return {
+      ok: true,
+      container: String(data.format && data.format.format_name || "").split(",")[0],
+      duration: Number(data.format && data.format.duration) || Number(video && video.duration) || Number(audio && audio.duration) || null,
+      video: video ? { codec: video.codec_name, width: Number(video.width), height: Number(video.height), frame_rate: String(video.avg_frame_rate || video.r_frame_rate || "") } : null,
+      audio: audio ? { codec: audio.codec_name, sample_rate: Number(audio.sample_rate), channels: Number(audio.channels) } : null,
+    };
+  } catch (error) { return { ok: false, reason: `ffprobe returned malformed JSON: ${error.message}` }; }
+}
+
+function normalizedProgramMedia(probe) {
+  return {
+    container: String(probe.container || "").toLowerCase(),
+    duration: Math.round(Number(probe.duration) * 1000000) / 1000000,
+    video: probe.video && { codec: String(probe.video.codec || "").toLowerCase(), width: Number(probe.video.width), height: Number(probe.video.height), frame_rate: String(probe.video.frame_rate || "") },
+    audio: probe.audio && { codec: String(probe.audio.codec || "").toLowerCase(), sample_rate: Number(probe.audio.sample_rate), channels: Number(probe.audio.channels) },
+  };
+}
+
+function validateProgramMedia(probe, timeline) {
+  if (!probe || !probe.ok) throw httpError(`Returned program is not decodable media${probe && probe.reason ? `: ${probe.reason}` : "."}`, 422);
+  if (!probe.video) throw httpError("Returned program has no video stream.", 422);
+  if (!probe.audio) throw httpError("Returned program has no audio stream.", 422);
+  const actualRate = parseResolveFrameRate(probe.video.frame_rate);
+  if (actualRate.numerator * timeline.frame_rate.denominator !== timeline.frame_rate.numerator * actualRate.denominator) {
+    throw httpError(`Returned program frame rate ${probe.video.frame_rate} does not match the Resolve contract ${timeline.frame_rate.numerator}/${timeline.frame_rate.denominator}.`, 422);
+  }
+  const tolerance = timeline.duration_tolerance_frames / resolveRateNumber(timeline.frame_rate);
+  if (!Number.isFinite(Number(probe.duration)) || Math.abs(Number(probe.duration) - timeline.project_duration_seconds) > tolerance + 1e-6) {
+    throw httpError(`Returned program duration ${probe.duration}s does not match ${timeline.project_duration_seconds}s within ${timeline.duration_tolerance_frames} frame.`, 422);
+  }
+  if (!Number.isInteger(Number(probe.video.width)) || !Number.isInteger(Number(probe.video.height)) || probe.video.width <= 0 || probe.video.height <= 0) throw httpError("Returned program video dimensions are invalid.", 422);
+  if (!Number.isInteger(Number(probe.audio.sample_rate)) || !Number.isInteger(Number(probe.audio.channels)) || probe.audio.sample_rate <= 0 || probe.audio.channels <= 0) throw httpError("Returned program audio properties are invalid.", 422);
+  return normalizedProgramMedia(probe);
+}
+
+function resolveProgramRecordById(dir, id) {
+  if (!/^program-[a-f0-9]{20}$/.test(String(id || ""))) return null;
+  const relative = `production/resolve-returns/${id}/provenance.json`;
+  let file;
+  try { file = provenanceLib.resolveManifestPath(dir, relative).target; } catch { return null; }
+  const record = readJson(file);
+  const extension = record && path.extname(String(record.relative_path || "")).toLowerCase();
+  let expectedId = null;
+  let manifestHash = null;
+  try {
+    expectedId = record && `program-${provenanceLib.hashCanonical({ schema_version: 1, role: "scorecraft_resolve_program", resolve_integration_identity: record.resolve_integration_identity, program_sha256: record.program_sha256 }).slice(0, 20)}`;
+    manifestHash = record && provenanceLib.artifactManifestHash(record.artifact_manifest);
+  } catch {}
+  const artifacts = record && record.artifact_manifest && Array.isArray(record.artifact_manifest.entries) ? record.artifact_manifest.entries : [];
+  const artifact = artifacts.length === 1 ? artifacts[0] : null;
+  if (!record || record.schema_version !== RESOLVE_INTEGRATION_SCHEMA_VERSION || record.resolve_program_id !== id || expectedId !== id
+    || !/^[a-f0-9]{64}$/.test(String(record.resolve_integration_identity || ""))
+    || !/^[a-f0-9]{64}$/.test(String(record.program_sha256 || "")) || !Number.isInteger(record.byte_size) || record.byte_size <= 0
+    || !RESOLVE_PROGRAM_EXTENSIONS.has(extension) || record.relative_path !== `production/resolve-returns/${id}/program${extension}`
+    || record.artifact_manifest_hash !== manifestHash || !artifact || artifact.logical_role !== "returned_program"
+    || artifact.relative_path !== `program${extension}` || artifact.sha256 !== record.program_sha256 || artifact.byte_size !== record.byte_size) return null;
+  return { record, file, importDir: path.dirname(file) };
+}
+
+function storedResolveProgramVerification(loaded) {
+  const verification = readJson(path.join(loaded.importDir, "verification.json"));
+  let expectedIdentity = null;
+  try {
+    expectedIdentity = verification && provenanceLib.resolveProgramVerificationIdentity({
+      programSha256: verification.program_sha256,
+      resolveIntegrationIdentity: verification.resolve_integration_identity,
+      detectedMedia: verification.detected_media,
+      technicalAnalysis: verification.technical_analysis,
+    });
+  } catch {}
+  if (!verification || verification.schema_version !== RESOLVE_INTEGRATION_SCHEMA_VERSION
+    || verification.role !== "scorecraft_resolve_program_verification"
+    || verification.resolve_program_id !== loaded.record.resolve_program_id
+    || verification.program_sha256 !== loaded.record.program_sha256
+    || verification.resolve_integration_identity !== loaded.record.resolve_integration_identity
+    || verification.verified !== true || verification.verification_identity !== expectedIdentity) return null;
+  return verification;
+}
+
+function storedResolveProgramReview(loaded, verification) {
+  const review = readJson(path.join(loaded.importDir, "picture-sound-review.json"));
+  let expectedIdentity = null;
+  try {
+    expectedIdentity = review && provenanceLib.resolveProgramReviewIdentity({
+      programSha256: review.program_sha256,
+      verificationIdentity: review.verification_identity,
+      decision: review.decision,
+      authorityBasis: review.authority_basis,
+    });
+  } catch {}
+  if (!review || !verification || review.schema_version !== RESOLVE_INTEGRATION_SCHEMA_VERSION
+    || review.role !== "scorecraft_resolve_program_review"
+    || review.resolve_program_id !== loaded.record.resolve_program_id
+    || review.program_sha256 !== loaded.record.program_sha256
+    || review.verification_identity !== verification.verification_identity
+    || !["approved", "rejected"].includes(review.decision) || review.review_identity !== expectedIdentity) return null;
+  return review;
+}
+
+function registerResolveProgram(projectId, input = {}, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  const project = readJson(path.join(dir, "score-project.json"));
+  const integration = currentResolveIntegration(dir, project, settings);
+  if (!integration.current) throw httpError("A current Resolve score-in-picture integration handoff is required before registering a returned program.", 409);
+  if (String(input.resolve_integration_identity || "") !== integration.resolve_integration_identity) throw httpError("The returned program names a stale or different Resolve integration handoff.", 409);
+  const filename = String(input.inbox_filename || "");
+  const extension = path.extname(filename).toLowerCase();
+  if (!filename || filename.length > 255 || /[\x00-\x1f\x7f/\\]/.test(filename) || path.basename(filename) !== filename || !RESOLVE_PROGRAM_EXTENSIONS.has(extension)) {
+    throw httpError("Returned program inbox_filename must be a safe MOV, MP4, MKV, or MXF basename.", 400);
+  }
+  const authorityBasis = String(input.authority_basis || "").trim();
+  if (!authorityBasis || authorityBasis.length > 1000) throw httpError("A concise operator authority basis is required for Resolve return registration.", 400);
+  let source;
+  try { source = provenanceLib.resolveManifestPath(dir, `production/resolve-return-inbox/${filename}`).target; }
+  catch (error) { throw httpError(`Returned program path is unsafe: ${error.message}`, 400); }
+  let stat;
+  try { stat = fs.lstatSync(source); } catch { throw httpError(`Returned program ${filename} was not found in the project return inbox.`, 404); }
+  if (stat.isSymbolicLink()) throw httpError("Returned program symbolic links are not accepted.", 400);
+  if (!stat.isFile() || stat.size <= 0) throw httpError("Returned program must be a non-empty regular file.", 400);
+  const sourceHash = provenanceLib.sha256File(source);
+  const idMaterial = provenanceLib.hashCanonical({ schema_version: 1, role: "scorecraft_resolve_program", resolve_integration_identity: integration.resolve_integration_identity, program_sha256: sourceHash });
+  const id = `program-${idMaterial.slice(0, 20)}`;
+  const root = path.join(dir, "production", "resolve-returns");
+  const importDir = path.join(root, id);
+  const programName = `program${extension}`;
+  const relativePath = `production/resolve-returns/${id}/${programName}`;
+  fs.mkdirSync(root, { recursive: true });
+  const existing = resolveProgramRecordById(dir, id);
+  if (existing) {
+    const existingPath = provenanceLib.resolveManifestPath(dir, existing.record.relative_path).target;
+    if (existing.record.program_sha256 !== sourceHash || !fs.existsSync(existingPath) || provenanceLib.sha256File(existingPath) !== sourceHash) throw httpError(`Existing immutable Resolve return ${id} is invalid.`, 409);
+    writeJsonAtomic(path.join(root, "current.json"), { schema_version: 1, resolve_program_id: id, provenance_path: `production/resolve-returns/${id}/provenance.json` });
+    return { resolve_program_id: id, program_sha256: sourceHash, relative_path: existing.record.relative_path, idempotent: true };
+  }
+  const buildDir = fs.mkdtempSync(path.join(root, ".return-build-"));
+  try {
+    const destination = path.join(buildDir, programName);
+    fs.copyFileSync(source, destination, fs.constants.COPYFILE_EXCL);
+    if (fs.lstatSync(source).isSymbolicLink() || fs.statSync(source).size !== stat.size || provenanceLib.sha256File(source) !== sourceHash || provenanceLib.sha256File(destination) !== sourceHash) {
+      throw httpError("Returned program changed while being registered; no immutable receipt was published.", 409);
+    }
+    const manifest = provenanceLib.buildArtifactManifest(buildDir, [{ logical_role: "returned_program", relative_path: programName }]);
+    writeJson(path.join(buildDir, "provenance.json"), {
+      schema_version: 1,
+      role: "scorecraft_resolve_program_return",
+      resolve_program_id: id,
+      project_id: project.project_id,
+      resolve_integration_id: integration.resolve_integration_id,
+      resolve_integration_identity: integration.resolve_integration_identity,
+      production_mix_id: integration.production_mix_id,
+      narration_id: integration.narration_id,
+      program_sha256: sourceHash,
+      byte_size: stat.size,
+      relative_path: relativePath,
+      original_filename: filename,
+      authority_basis: authorityBasis,
+      registration_semantics: "operator_registered_exact_export_against_issued_handoff",
+      registered_at: nowIso(),
+      artifact_manifest: manifest,
+      artifact_manifest_hash: provenanceLib.artifactManifestHash(manifest),
+    });
+    fs.renameSync(buildDir, importDir);
+  } catch (error) {
+    fs.rmSync(buildDir, { recursive: true, force: true });
+    throw error;
+  }
+  const pointerPath = path.join(root, "current.json");
+  const previousPointer = readJson(pointerPath);
+  writeJsonAtomic(pointerPath, { schema_version: 1, resolve_program_id: id, provenance_path: `production/resolve-returns/${id}/provenance.json` });
+  try {
+    const current = assessResolveRoundtrip(dir, readJson(path.join(dir, "score-project.json")), loadSettings(options));
+    if (!current.current || current.resolve_program_id !== id || current.program_sha256 !== sourceHash) throw httpError("Resolve return authority changed during publication; the return was not made current.", 409);
+  } catch (error) {
+    if (previousPointer) writeJsonAtomic(pointerPath, previousPointer);
+    else { try { fs.unlinkSync(pointerPath); } catch {} }
+    throw error;
+  }
+  return { resolve_program_id: id, program_sha256: sourceHash, relative_path: relativePath, idempotent: false };
+}
+
+function verifyResolveProgram(projectId, input = {}, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  const project = readJson(path.join(dir, "score-project.json"));
+  const integration = currentResolveIntegration(dir, project, settings);
+  if (!integration.current) throw httpError("The Resolve integration handoff is stale; returned program verification cannot continue.", 409);
+  const loaded = resolveProgramRecordById(dir, input.resolve_program_id);
+  if (!loaded) throw httpError("The requested Resolve returned program was not found.", 404);
+  if (loaded.record.resolve_integration_identity !== integration.resolve_integration_identity) throw httpError("The returned program belongs to a different or stale Resolve integration handoff.", 409);
+  const programPath = provenanceLib.resolveManifestPath(dir, loaded.record.relative_path).target;
+  if (!fs.existsSync(programPath) || fs.lstatSync(programPath).isSymbolicLink()) throw httpError("The returned program is missing or unsafe.", 409);
+  const before = provenanceLib.sha256File(programPath);
+  if (before !== loaded.record.program_sha256 || fs.statSync(programPath).size !== loaded.record.byte_size) throw httpError("The returned program bytes changed after registration.", 409);
+  const media = validateProgramMedia(programProbe(programPath, settings, options), integration.timeline_contract);
+  const technical = validateProductionSignal(productionSignalProbe(programPath, settings, { ...options, productionSignalProbeImpl: options.programSignalProbeImpl }));
+  const after = provenanceLib.sha256File(programPath);
+  if (after !== before) throw httpError("The returned program changed during technical verification; no receipt was published.", 409);
+  const result = {
+    schema_version: 1,
+    role: "scorecraft_resolve_program_verification",
+    resolve_program_id: loaded.record.resolve_program_id,
+    program_sha256: after,
+    resolve_integration_identity: integration.resolve_integration_identity,
+    detected_media: media,
+    technical_analysis: technical,
+    verified: true,
+    verified_at: nowIso(),
+  };
+  result.verification_identity = provenanceLib.resolveProgramVerificationIdentity({ programSha256: result.program_sha256, resolveIntegrationIdentity: result.resolve_integration_identity, detectedMedia: result.detected_media, technicalAnalysis: result.technical_analysis });
+  writeJsonAtomic(path.join(loaded.importDir, "verification.json"), result);
+  if (provenanceLib.sha256File(programPath) !== after) {
+    try { fs.unlinkSync(path.join(loaded.importDir, "verification.json")); } catch {}
+    throw httpError("The returned program changed before verification publication.", 409);
+  }
+  return result;
+}
+
+function reviewResolveProgram(projectId, input = {}, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  const project = readJson(path.join(dir, "score-project.json"));
+  const integration = currentResolveIntegration(dir, project, settings);
+  if (!integration.current) throw httpError("The Resolve integration handoff is stale; picture/sound review cannot be published.", 409);
+  const loaded = resolveProgramRecordById(dir, input.resolve_program_id);
+  if (!loaded || loaded.record.resolve_integration_identity !== integration.resolve_integration_identity) throw httpError("The returned program is missing or belongs to a stale integration.", 409);
+  const decision = String(input.decision || "");
+  if (!["approved", "rejected"].includes(decision)) throw httpError("Picture/sound review decision must be approved or rejected.", 400);
+  const authorityBasis = String(input.authority_basis || "").trim();
+  if (!authorityBasis || authorityBasis.length > 1000) throw httpError("Picture/sound review requires a concise human authority basis.", 400);
+  const verification = storedResolveProgramVerification(loaded);
+  const programPath = provenanceLib.resolveManifestPath(dir, loaded.record.relative_path).target;
+  const actualHash = fs.existsSync(programPath) ? provenanceLib.sha256File(programPath) : null;
+  if (!verification || verification.verified !== true || verification.program_sha256 !== actualHash
+    || verification.resolve_integration_identity !== integration.resolve_integration_identity) throw httpError("Current technical program verification is required before picture/sound review.", 409);
+  if (String(input.expected_program_sha256 || "") !== actualHash || String(input.expected_verification_identity || "") !== verification.verification_identity) {
+    throw httpError("The integrated render changed after it was displayed; reload and review the exact current bytes.", 409);
+  }
+  const result = {
+    schema_version: 1,
+    role: "scorecraft_resolve_program_review",
+    resolve_program_id: loaded.record.resolve_program_id,
+    program_sha256: actualHash,
+    verification_identity: verification.verification_identity,
+    decision,
+    authority_basis: authorityBasis,
+    reviewed_at: nowIso(),
+  };
+  result.review_identity = provenanceLib.resolveProgramReviewIdentity({ programSha256: result.program_sha256, verificationIdentity: result.verification_identity, decision, authorityBasis });
+  const historyDir = path.join(loaded.importDir, "reviews");
+  fs.mkdirSync(historyDir, { recursive: true });
+  writeJsonAtomic(path.join(historyDir, `${result.review_identity}.json`), result);
+  writeJsonAtomic(path.join(loaded.importDir, "picture-sound-review.json"), result);
+  if (provenanceLib.sha256File(programPath) !== actualHash) {
+    try { fs.unlinkSync(path.join(loaded.importDir, "picture-sound-review.json")); } catch {}
+    throw httpError("The integrated render changed before picture/sound review publication.", 409);
+  }
+  return result;
+}
+
+function assessResolveRoundtrip(dir, project, settings, integrationStatus = null) {
+  const integration = integrationStatus && integrationStatus.record ? integrationStatus : currentResolveIntegration(dir, project, settings);
+  const pointer = readJson(path.join(dir, "production", "resolve-returns", "current.json"));
+  if (!pointer) return { state: "not_registered", current: false, technical_status: "pending", picture_sound_review_status: "pending", reasons: [] };
+  const loaded = resolveProgramRecordById(dir, pointer.resolve_program_id);
+  if (pointer.schema_version !== RESOLVE_INTEGRATION_SCHEMA_VERSION || !loaded || pointer.provenance_path !== `production/resolve-returns/${pointer.resolve_program_id}/provenance.json`) return { state: "stale", current: false, technical_status: "pending", picture_sound_review_status: "pending", reasons: ["resolve_program_provenance_invalid"] };
+  const reasons = [];
+  if (!integration.current || loaded.record.resolve_integration_identity !== integration.resolve_integration_identity) reasons.push("resolve_integration_stale");
+  let programPath;
+  try { programPath = provenanceLib.resolveManifestPath(dir, loaded.record.relative_path).target; } catch { reasons.push("resolve_program_path_unsafe"); }
+  let hash = null;
+  if (programPath) {
+    try { hash = provenanceLib.sha256File(programPath); } catch { reasons.push("resolve_program_missing"); }
+    if (hash !== loaded.record.program_sha256) reasons.push("resolve_program_hash_mismatch");
+  }
+  const verification = storedResolveProgramVerification(loaded);
+  const verified = reasons.length === 0 && verification && verification.verified === true
+    && verification.program_sha256 === hash && verification.resolve_integration_identity === integration.resolve_integration_identity;
+  if (!verified && fs.existsSync(path.join(loaded.importDir, "verification.json"))) reasons.push("resolve_program_verification_outdated");
+  const review = storedResolveProgramReview(loaded, verification);
+  const reviewed = verified && review && review.program_sha256 === hash && review.verification_identity === verification.verification_identity
+    && ["approved", "rejected"].includes(review.decision);
+  return {
+    state: reasons.length ? "stale" : reviewed && review.decision === "approved" ? "approved" : verified ? "technical_verified" : "registered",
+    current: reasons.length === 0,
+    reasons: [...new Set(reasons)],
+    resolve_program_id: loaded.record.resolve_program_id,
+    program_sha256: hash,
+    relative_path: loaded.record.relative_path,
+    resolve_integration_identity: loaded.record.resolve_integration_identity,
+    technical_status: verified ? "passed" : "pending",
+    verification_identity: verified ? verification.verification_identity : null,
+    technical_analysis: verified ? verification.technical_analysis : null,
+    detected_media: verified ? verification.detected_media : null,
+    picture_sound_review_status: reviewed ? review.decision : "pending",
+    picture_sound_review_identity: reviewed ? review.review_identity : null,
+    editorially_accepted: Boolean(reviewed && review.decision === "approved" && reasons.length === 0),
+  };
+}
+
+function listResolveProgramsByDir(dir) {
+  const root = path.join(dir, "production", "resolve-returns");
+  if (!fs.existsSync(root)) return [];
+  const ids = [];
+  const handle = fs.opendirSync(root);
+  try {
+    let entry;
+    while ((entry = handle.readSync()) !== null) {
+      if (!entry.isDirectory() || !/^program-[a-f0-9]{20}$/.test(entry.name)) continue;
+      ids.push(entry.name);
+      if (ids.length > RESOLVE_PROGRAM_HISTORY_MAX_RECORDS) throw httpError(`Resolve return history exceeds the safe limit of ${RESOLVE_PROGRAM_HISTORY_MAX_RECORDS}.`, 503);
+    }
+  } finally { handle.closeSync(); }
+  ids.sort();
+  return ids.map((id) => {
+    const loaded = resolveProgramRecordById(dir, id);
+    if (!loaded) return { resolve_program_id: id, state: "invalid" };
+    const verification = storedResolveProgramVerification(loaded);
+    const review = storedResolveProgramReview(loaded, verification);
+    return {
+      resolve_program_id: id,
+      program_sha256: loaded.record.program_sha256,
+      relative_path: loaded.record.relative_path,
+      original_filename: loaded.record.original_filename,
+      resolve_integration_identity: loaded.record.resolve_integration_identity,
+      registered_at: loaded.record.registered_at,
+      technical_status: verification && verification.verified === true ? "passed_recorded" : "pending",
+      picture_sound_review_status: review && ["approved", "rejected"].includes(review.decision) ? review.decision : "pending",
+    };
+  });
+}
+
+function listResolvePrograms(projectId, options = {}) {
+  const settings = loadSettings(options);
+  return listResolveProgramsByDir(resolveProjectDir(settings, projectId).dir);
+}
+
 // ── media probing + folder opening (injectable spawns) ──
 function probeDuration(filePath, options = {}) {
   const settings = loadSettings(options);
@@ -3072,6 +3683,11 @@ module.exports = {
   reviewProductionMix,
   selectProductionMix,
   prepareProductionResolvePackage,
+  prepareResolveIntegration,
+  registerResolveProgram,
+  verifyResolveProgram,
+  reviewResolveProgram,
+  listResolvePrograms,
   registerCanonicalNarration,
   verifyCanonicalNarration,
   clearCanonicalNarration,

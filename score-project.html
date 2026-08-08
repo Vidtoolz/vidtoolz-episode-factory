@@ -168,6 +168,27 @@
         </div>
         <div class="meta" style="margin-top:6px;">Registration is hash-bound operator authority, not voiceover-context acceptance or human artistic approval. Narration remains separate from sketch and production music.</div>
       </div>
+
+      <div class="step" id="step-resolve-roundtrip">
+        <div class="step-head">6 · Resolve score in picture <span class="badge todo" id="resolve-roundtrip-badge">handoff pending</span></div>
+        <div id="resolve-roundtrip-body" class="meta">Prepare a narration-bound timeline handoff after the exact production mix is selected.</div>
+        <div style="margin-top:8px;">
+          <label class="meta">Timeline rate <input id="resolve-frame-rate" value="24/1" placeholder="24/1 or 30000/1001" style="width:125px;"></label>
+          <label class="meta">Start timecode <input id="resolve-start-timecode" value="01:00:00:00" placeholder="HH:MM:SS:FF" style="width:125px;"></label>
+          <button class="btn btn-go" id="resolve-integration-prepare">Prepare score-in-picture handoff</button>
+          <button class="btn" data-open="production/resolve-return-inbox">Open return inbox</button>
+        </div>
+        <div style="margin-top:8px;">
+          <input id="resolve-return-filename" placeholder="Returned basename, e.g. episode.mov" style="min-width:260px;">
+          <input id="resolve-return-authority" maxlength="1000" placeholder="Why this exact export belongs to this handoff" style="min-width:340px;">
+          <button class="btn" id="resolve-return-register">Register returned program</button>
+          <select id="resolve-program-candidate" aria-label="Returned program"><option value="">No returned programs</option></select>
+          <button class="btn" id="resolve-return-verify">Run program QC</button>
+          <button class="btn btn-go" id="resolve-return-approve">Approve exact picture + sound</button>
+          <button class="btn" id="resolve-return-reject">Reject picture + sound</button>
+        </div>
+        <div class="meta" style="margin-top:6px;">Program QC is objective. Picture/sound approval is a separate human judgment bound to the exact returned bytes; standalone music approval is not reused.</div>
+      </div>
     </div>
     <div id="copy-status"></div>
     <script src="score-engine/cue-analysis.js"></script>
@@ -185,6 +206,10 @@
       const SCORE_PRODUCTION_REVIEW_API = '/api/score/production/review';
       const SCORE_PRODUCTION_SELECT_API = '/api/score/production/select';
       const SCORE_PRODUCTION_RESOLVE_API = '/api/score/production/resolve';
+      const SCORE_RESOLVE_INTEGRATION_API = '/api/score/resolve/integration';
+      const SCORE_RESOLVE_RETURN_REGISTER_API = '/api/score/resolve/return/register';
+      const SCORE_RESOLVE_RETURN_VERIFY_API = '/api/score/resolve/return/verify';
+      const SCORE_RESOLVE_RETURN_REVIEW_API = '/api/score/resolve/return/review';
       const SCORE_NARRATION_REGISTER_API = '/api/score/narration/register';
       const SCORE_NARRATION_VERIFY_API = '/api/score/narration/verify';
       const SCORE_NARRATION_CLEAR_API = '/api/score/narration/clear';
@@ -222,7 +247,7 @@
         document.getElementById('title').textContent = '🎼 ' + (p.name || p.project_id);
         document.getElementById('subtitle').textContent = `${p.duration_seconds}s · ${p.target_platform} · ${p.music_role} · dialogue ${p.dialogue_density} · seed ${p.seed}`;
         CUES = (ST.cue_sheet && ST.cue_sheet.cues) ? JSON.parse(JSON.stringify(ST.cue_sheet.cues)) : [];
-        renderReadiness(); renderCues(); renderPalette(); renderCandidates(); renderExport(); renderProduction(); renderNarration();
+        renderReadiness(); renderCues(); renderPalette(); renderCandidates(); renderExport(); renderProduction(); renderNarration(); renderResolveRoundtrip();
       }
 
       const FN_COLOR = {hook:'#3fb950',setup:'#79c0ff',explanation:'#58a6ff',turn:'#d29922',reveal:'#a371f7',climax:'#f85149',button:'#ffa657',outro:'#7ee787'};
@@ -501,6 +526,30 @@
         document.getElementById('narration-clear').disabled=!N.narration_id;
       }
 
+      function renderResolveRoundtrip(){
+        const I=ST.resolve_integration||{state:'not_prepared',reasons:[]},R=ST.resolve_roundtrip||{state:'not_registered',reasons:[]},programs=ST.resolve_programs||[];
+        const badge=document.getElementById('resolve-roundtrip-badge');
+        badge.className='badge '+(R.editorially_accepted?'done':'todo');
+        badge.textContent=R.editorially_accepted?'integrated render approved':R.state==='technical_verified'?'program QC PASS · review pending':I.current?'handoff ready · return pending':String(I.state||'not_prepared').replace(/_/g,' ');
+        document.getElementById('step-resolve-roundtrip').className='step'+(R.editorially_accepted?' done':'');
+        const integration=I.resolve_integration_identity?`<span class="chip">handoff ${esc(I.resolve_integration_identity.slice(0,12))}…</span>`:'';
+        const program=R.program_sha256?`<span class="chip">program SHA ${esc(R.program_sha256.slice(0,12))}…</span>`:'';
+        const qc=R.technical_status==='passed'?`<span class="chip">program QC PASS · ${esc(R.detected_media.video.width)}×${esc(R.detected_media.video.height)} · ${esc(R.detected_media.video.frame_rate)} fps · peak ${esc(R.technical_analysis.peak_dbfs)} dBFS</span>`:'';
+        const review=`<span class="chip">picture/sound review: ${esc(R.picture_sound_review_status||'pending')}</span>`;
+        const reasons=[...(I.reasons||[]),...(R.reasons||[])];
+        const media=R.relative_path?`<video controls preload="metadata" src="${fileUrl(R.relative_path)}" style="display:block;max-width:100%;max-height:360px;margin-top:8px"></video>`:'';
+        document.getElementById('resolve-roundtrip-body').innerHTML=integration+program+qc+review+media+(reasons.length?`<div class="warn">${esc([...new Set(reasons)].join(', '))}</div>`:'');
+        const select=document.getElementById('resolve-program-candidate'),old=select.value;
+        select.innerHTML=programs.length?programs.map((item)=>`<option value="${esc(item.resolve_program_id)}">${esc(item.resolve_program_id)} · ${esc(item.technical_status)} · review ${esc(item.picture_sound_review_status)} · ${esc(item.program_sha256.slice(0,12))}</option>`).join(''):'<option value="">No returned programs</option>';
+        if(programs.some((item)=>item.resolve_program_id===old))select.value=old;else if(R.resolve_program_id)select.value=R.resolve_program_id;
+        const chosen=programs.find((item)=>item.resolve_program_id===select.value);
+        document.getElementById('resolve-integration-prepare').disabled=!(ST.readiness&&ST.readiness.resolve_ready&&ST.narration&&ST.narration.review_ready);
+        document.getElementById('resolve-return-register').disabled=!I.current;
+        document.getElementById('resolve-return-verify').disabled=!chosen;
+        document.getElementById('resolve-return-approve').disabled=!(R.current&&R.technical_status==='passed');
+        document.getElementById('resolve-return-reject').disabled=!(R.current&&R.technical_status==='passed');
+      }
+
       function bytesToBase64(bytes){
         let binary=''; const chunk=0x8000;
         for(let i=0;i<bytes.length;i+=chunk) binary+=String.fromCharCode(...bytes.subarray(i,Math.min(i+chunk,bytes.length)));
@@ -645,6 +694,27 @@
         try{ await post(SCORE_NARRATION_CLEAR_API,{project_id:ID,confirm_clear:true}); toast('Current narration binding cleared; immutable evidence preserved'); await load(); }
         catch(e){ toast(e.message,false); showErr(e.message); }
       };
+      document.getElementById('resolve-integration-prepare').onclick=async()=>{
+        try{await post(SCORE_RESOLVE_INTEGRATION_API,{project_id:ID,frame_rate:document.getElementById('resolve-frame-rate').value.trim(),timeline_start_timecode:document.getElementById('resolve-start-timecode').value.trim()});toast('Narration-bound Resolve handoff prepared');await load();}catch(e){toast(e.message,false);showErr(e.message);}
+      };
+      document.getElementById('resolve-return-register').onclick=async()=>{
+        const filename=document.getElementById('resolve-return-filename').value.trim(),basis=document.getElementById('resolve-return-authority').value.trim(),identity=ST.resolve_integration&&ST.resolve_integration.resolve_integration_identity;
+        if(!filename||!basis)return toast('Enter the exact return-inbox basename and authority basis',false);
+        try{await post(SCORE_RESOLVE_RETURN_REGISTER_API,{project_id:ID,inbox_filename:filename,resolve_integration_identity:identity,authority_basis:basis});toast('Exact returned program registered; QC still required');await load();}catch(e){toast(e.message,false);showErr(e.message);}
+      };
+      document.getElementById('resolve-return-verify').onclick=async()=>{
+        const id=document.getElementById('resolve-program-candidate').value;if(!id)return;
+        try{await post(SCORE_RESOLVE_RETURN_VERIFY_API,{project_id:ID,resolve_program_id:id});toast('Program technical QC passed; picture/sound review pending');await load();}catch(e){toast(e.message,false);showErr(e.message);}
+      };
+      async function submitProgramReview(decision){
+        const R=ST.resolve_roundtrip||{};if(!R.resolve_program_id||R.technical_status!=='passed')return toast('Verify the exact current program first',false);
+        const verb=decision==='approved'?'approve':'reject';if(!confirm(`${verb[0].toUpperCase()+verb.slice(1)} exact integrated program SHA ${R.program_sha256.slice(0,12)}…?`))return;
+        const basis=prompt('Brief picture/sound review basis:',decision==='approved'?'Watched and listened to the exact integrated render.':'Integrated render needs revision.');if(!basis)return;
+        await post(SCORE_RESOLVE_RETURN_REVIEW_API,{project_id:ID,resolve_program_id:R.resolve_program_id,decision,expected_program_sha256:R.program_sha256,expected_verification_identity:R.verification_identity,authority_basis:basis.trim()});toast(decision==='approved'?'Exact integrated render approved':'Integrated render rejected');await load();
+      }
+      document.getElementById('resolve-return-approve').onclick=async()=>{try{await submitProgramReview('approved');}catch(e){toast(e.message,false);showErr(e.message);}};
+      document.getElementById('resolve-return-reject').onclick=async()=>{try{await submitProgramReview('rejected');}catch(e){toast(e.message,false);showErr(e.message);}};
+      document.getElementById('resolve-program-candidate').onchange=()=>{const item=(ST.resolve_programs||[]).find((entry)=>entry.resolve_program_id===document.getElementById('resolve-program-candidate').value);if(item&&item.relative_path){const R=ST.resolve_roundtrip||{};if(item.resolve_program_id!==R.resolve_program_id)toast('Historical return selected for identity inspection; current authority is unchanged.');}};
 
       document.addEventListener('click', async (ev)=>{
         const t=ev.target;
