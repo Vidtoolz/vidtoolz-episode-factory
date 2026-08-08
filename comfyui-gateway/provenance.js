@@ -53,6 +53,22 @@ function summarizeFfprobe(ffprobe) {
   };
 }
 
+// Did this render genuinely execute on the GPU, or could ComfyUI have served
+// it from its execution cache? Conservative: 'executed' only with a ComfyUI
+// prompt id AND a verified run AND wall-clock evidence a real render takes
+// (a cache-served result completes in seconds); anything less is 'unknown' —
+// never 'executed' by assumption. Qualification treats non-executed renders
+// as ineligible evidence.
+const MIN_EXECUTED_ELAPSED_SECONDS = 10;
+function classifyExecutionMode(runLog) {
+  const promptId = runLog.prompt_id || runLog.comfyui_prompt_id || null;
+  const elapsed = Number(runLog.elapsed);
+  if (!promptId) return 'unknown';
+  if (!Number.isFinite(elapsed)) return 'unknown';
+  if (elapsed < MIN_EXECUTED_ELAPSED_SECONDS) return 'unknown'; // plausibly cache-served
+  return runLog.status === 'verified' ? 'executed' : 'unknown';
+}
+
 // Consolidate one Wan-lane run directory (source.png + output.mp4 +
 // ffprobe.json + run.log, written by run-production.py) into a gateway
 // provenance manifest INSIDE the run dir. Existing manifests are not
@@ -95,6 +111,11 @@ function buildWanRunProvenance(runDir, options = {}) {
       created_at: runLog.created_at || null,
       completed_at: options.completedAt || null,
       lane: runLog.lane || 'wan22-81f',
+      // genuine-execution evidence from the run record (run-production.py
+      // polls ComfyUI history to completion and stores elapsed + verdict):
+      elapsed_seconds: Number.isFinite(Number(runLog.elapsed)) ? Math.round(Number(runLog.elapsed) * 100) / 100 : null,
+      run_status: runLog.status || null,
+      execution_mode: classifyExecutionMode(runLog),
     },
     output: {
       path: outputPath,
@@ -169,6 +190,8 @@ module.exports = {
   PROVENANCE_SCHEMA_VERSION,
   WAN_PROVENANCE_FILENAME,
   FLUX_PROVENANCE_FILENAME,
+  MIN_EXECUTED_ELAPSED_SECONDS,
+  classifyExecutionMode,
   buildWanRunProvenance,
   buildWanProvenanceForRunsSince,
   buildFluxProvenance,

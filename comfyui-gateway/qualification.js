@@ -57,7 +57,14 @@ function validateRecord(record) {
     problems.push('environment_fingerprint required');
   }
   if (record.result === 'LIVE_PASSED') {
-    if (!record.fixture || !record.fixture.id) problems.push('LIVE_PASSED requires fixture identity');
+    // two evidence sources: a canonical fixture render, or a real production
+    // render backed by its immutable render-provenance manifest
+    const isProduction = record.evidence_source === 'production_render';
+    if (isProduction) {
+      if (!record.render_provenance || !record.render_provenance.path) problems.push('production_render evidence requires a render_provenance reference');
+    } else if (!record.fixture || !record.fixture.id) {
+      problems.push('LIVE_PASSED requires fixture identity (or evidence_source: production_render with provenance)');
+    }
     if (!record.execution || !record.execution.job_id) problems.push('LIVE_PASSED requires execution.job_id');
     if (!record.output || !/^[0-9a-f]{64}$/.test(record.output.sha256 || '')) problems.push('LIVE_PASSED requires output sha256');
     if (!record.output || record.output.technical_validation !== 'passed') problems.push('LIVE_PASSED requires technical_validation: passed');
@@ -80,9 +87,14 @@ function writeQualificationRecord(record, options = {}) {
   const dir = workflowDir(record.workflow.id, options);
   const attemptsDir = path.join(dir, 'attempts');
   fs.mkdirSync(attemptsDir, { recursive: true });
+  // production-derived records use their deterministic qualification_id as
+  // the attempt filename — re-finalizing the same run is naturally idempotent
   const stampSource = record.execution && (record.execution.completed_at || record.execution.started_at);
   const stamp = (stampSource || new Date().toISOString()).replace(/[:.]/g, '-');
-  const attemptPath = path.join(attemptsDir, `${stamp}-${record.result}.json`);
+  const attemptBase = record.evidence_source === 'production_render' && record.qualification_id
+    ? record.qualification_id
+    : stamp;
+  const attemptPath = path.join(attemptsDir, `${attemptBase}-${record.result}.json`);
   provenance.writeJsonAtomic(attemptPath, record);
   const written = { attempt: attemptPath };
   if (record.result === 'LIVE_PASSED') {
@@ -108,19 +120,30 @@ function readLatestStatic(workflowId, options = {}) {
 function readLatestAttempt(workflowId, options = {}) {
   const attemptsDir = path.join(workflowDir(workflowId, options), 'attempts');
   let names = [];
-  try { names = fs.readdirSync(attemptsDir).filter((n) => n.endsWith('.json')).sort(); } catch (_) { return null; }
+  try { names = fs.readdirSync(attemptsDir).filter((n) => n.endsWith('.json')); } catch (_) { return null; }
   if (!names.length) return null;
-  return readJsonSafe(path.join(attemptsDir, names[names.length - 1]));
+  // recency by file mtime — attempt basenames mix timestamps and
+  // deterministic production qualification ids, so names don't sort by time
+  const newest = names
+    .map((n) => path.join(attemptsDir, n))
+    .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)[0];
+  return readJsonSafe(newest);
 }
 
 // ---- fingerprint comparison ------------------------------------------------
 
 // Per-component change classification. Identity strength is respected: a
 // component whose only identity is class/filename presence can never claim
-// verified_same at version level — it is present_but_identity_weak.
+// verified_same at version level — it is present_but_identity_weak. And when
+// the OBSERVER got stronger (historical evidence was filename_only, the
+// current probe returns filename_size_mtime), the identities are not
+// comparable: that is identity_strength_changed — a stronger observer is not
+// itself proof of drift, so it never marks the environment stale; it is a
+// requalification recommendation.
 const SAME = 'verified_same';
 const CHANGED = 'verified_changed';
 const WEAK = 'present_but_identity_weak';
+const STRENGTH_CHANGED = 'identity_strength_changed';
 const MISSING = 'missing';
 const UNAVAILABLE = 'unavailable';
 
@@ -139,6 +162,9 @@ function compareModel(q, c) {
     const same = ql.bytes === cl.bytes && ql.mtime === cl.mtime;
     return { classification: same ? SAME : CHANGED, level: 'filename_size_mtime' };
   }
+  if (ql.level !== cl.level) {
+    return { classification: STRENGTH_CHANGED, level: `${ql.level || 'unknown'} → ${cl.level || 'unknown'}` };
+  }
   // strongest COMMON identity is the bare filename — its presence proves
   // nothing about content, so this can never report verified_same
   return { classification: WEAK, level: 'filename_only' };
@@ -152,6 +178,9 @@ function compareCustomNode(q, c) {
   }
   if (ql.package_version && cl.package_version) {
     return { classification: ql.package_version === cl.package_version ? SAME : CHANGED, level: 'package_version' };
+  }
+  if ((ql.level || 'class_presence_only') !== (cl.level || 'class_presence_only')) {
+    return { classification: STRENGTH_CHANGED, level: `${ql.level || 'unknown'} → ${cl.level || 'unknown'}` };
   }
   return { classification: WEAK, level: 'class_presence_only' };
 }
@@ -171,6 +200,7 @@ function compareFingerprints(qualified, current) {
     if (result.classification === CHANGED) reasons.push(`${component} ${name}: ${qualifiedValue} → ${currentValue}`);
     if (result.classification === MISSING) reasons.push(`${component} ${name}: missing from current environment`);
     if (result.classification === WEAK) notes.push(`${component} ${name}: identity ${result.level || 'weak'} — version-level change would be invisible (VERSION_NOT_AUTHORITATIVE)`);
+    if (result.classification === STRENGTH_CHANGED) notes.push(`${component} ${name}: identity strength changed (${result.level}) — not comparable, NOT proof of drift; requalification recommended to establish a strong baseline (EVIDENCE_WEAK)`);
   }
 
   push('workflow', qualified.workflow.id,
@@ -242,6 +272,8 @@ function evaluateQualification(entry, options = {}) {
     return out;
   }
   out.last_qualified_at = (passed.execution || {}).completed_at || null;
+  out.evidence_source = passed.evidence_source || 'canonical_fixture';
+  out.execution_mode = (passed.execution || {}).execution_mode || null;
   out.qualified_environment = {
     host: ((passed.environment_fingerprint || {}).host || {}).name || null,
     comfyui_version: ((passed.environment_fingerprint || {}).comfyui || {}).version || null,
@@ -299,6 +331,147 @@ function qualifySyncGate(entry, options = {}) {
   return { warnings };
 }
 
+// ---- production-derived qualification ---------------------------------------
+//
+// A real production render can double as qualification evidence if and only
+// if it satisfies the qualification contract — no dedicated smoke render
+// needed. Eligibility is decided HERE, centrally, from the immutable render
+// provenance manifest; nothing else in the codebase makes this call.
+
+// Does a provenance output block satisfy the registry's technical contract?
+function outputMeetsContract(output, expected) {
+  const problems = [];
+  if (!output || !/^[0-9a-f]{64}$/.test(output.sha256 || '')) problems.push('output sha256 missing');
+  if (!expected) return { ok: problems.length === 0, problems };
+  if (expected.width != null && output.width !== expected.width) problems.push(`width ${output.width} ≠ ${expected.width}`);
+  if (expected.height != null && output.height !== expected.height) problems.push(`height ${output.height} ≠ ${expected.height}`);
+  if (expected.fps != null && output.fps != null && Math.abs(output.fps - expected.fps) > 0.5) problems.push(`fps ${output.fps} ≠ ${expected.fps}`);
+  if (expected.frames != null && output.frames != null && output.frames !== expected.frames) problems.push(`frames ${output.frames} ≠ ${expected.frames}`);
+  if (expected.duration_seconds != null && output.duration_seconds != null) {
+    const tol = expected.duration_tolerance_seconds || 0.25;
+    if (Math.abs(output.duration_seconds - expected.duration_seconds) > tol) problems.push(`duration ${output.duration_seconds}s outside ${expected.duration_seconds}±${tol}s`);
+  }
+  return { ok: problems.length === 0, problems };
+}
+
+// Central eligibility evaluator: can this render provenance serve as
+// LIVE_PASSED qualification evidence for this registry entry?
+// Conservative by design — every requirement that fails adds a named reason,
+// and a render that "merely produced an MP4" does not qualify.
+function evaluateRenderForQualification({ entry, provenanceManifest, fingerprint }) {
+  const reasons = [];
+  if (!entry) reasons.push('registry_entry_missing');
+  if (!provenanceManifest) {
+    return { eligible: false, state: 'LIVE_RENDER_PENDING', reasons: ['render_provenance_missing'], execution_mode: 'unknown' };
+  }
+  const wf = provenanceManifest.workflow || {};
+  if (entry && wf.sha256 !== entry.canonical_sha256) reasons.push('workflow_sha_mismatch');
+  if (entry && wf.id !== entry.id) reasons.push('workflow_id_mismatch');
+  if (entry && wf.version !== entry.version) reasons.push('workflow_version_mismatch');
+  if (entry && !['QUALIFIED', 'PRODUCTION'].includes(entry.qualification)) reasons.push('workflow_lifecycle_not_production_allowed');
+
+  const execution = provenanceManifest.execution || {};
+  const executionMode = execution.execution_mode || 'unknown';
+  if (!provenanceManifest.comfyui_prompt_id) reasons.push('comfyui_prompt_id_missing');
+  if (executionMode !== 'executed') reasons.push(`execution_not_proven_live (mode: ${executionMode})`);
+  if (execution.run_status !== 'verified') reasons.push(`run_not_verified (status: ${execution.run_status || 'unknown'})`);
+
+  const contract = outputMeetsContract(provenanceManifest.output || {}, entry && entry.expected_output);
+  if (!contract.ok) reasons.push(...contract.problems.map((p) => `output_contract: ${p}`));
+
+  if (!fingerprint || !fingerprint.workflow) {
+    reasons.push('environment_fingerprint_missing');
+  } else {
+    if (entry && fingerprint.workflow.sha256 !== entry.canonical_sha256) reasons.push('fingerprint_workflow_sha_mismatch');
+    const missingDeps = [
+      ...(fingerprint.models || []).filter((m) => m.present === false).map((m) => `model ${m.name}`),
+      ...(fingerprint.custom_nodes || []).filter((n) => n.present === false).map((n) => `custom node ${n.class}`),
+    ];
+    if (missingDeps.length) reasons.push(`environment_dependency_missing: ${missingDeps.join(', ')}`);
+  }
+
+  return {
+    eligible: reasons.length === 0,
+    state: reasons.length === 0 ? 'LIVE_PASSED' : 'LIVE_RENDER_PENDING',
+    reasons,
+    execution_mode: executionMode,
+  };
+}
+
+// Deterministic qualification identity for a production-derived record — the
+// same run can never spawn duplicate evidence.
+function productionQualificationId(entry, provenanceManifest) {
+  return `qual-prod-${entry.id}-${provenanceManifest.job_id}`;
+}
+
+// Capture qualification evidence from one accepted production run dir.
+// Idempotent; never throws for ineligibility (returns reasons); qualification
+// persistence failure must never fail the render — callers log loudly.
+function captureProductionQualification({ entry, runDir, provenancePath, fingerprint }, options = {}) {
+  const manifestPath = provenancePath || path.join(runDir, provenance.WAN_PROVENANCE_FILENAME);
+  const provenanceManifest = readJsonSafe(manifestPath);
+  const verdict = evaluateRenderForQualification({ entry, provenanceManifest, fingerprint });
+  if (!verdict.eligible) {
+    return { captured: false, state: verdict.state, reasons: verdict.reasons, execution_mode: verdict.execution_mode };
+  }
+  const qualificationId = productionQualificationId(entry, provenanceManifest);
+  const attemptPath = path.join(workflowDir(entry.id, options), 'attempts', `${qualificationId}-LIVE_PASSED.json`);
+  if (fs.existsSync(attemptPath)) {
+    return { captured: false, already_captured: true, qualification_id: qualificationId, record: readJsonSafe(attemptPath) };
+  }
+  const record = {
+    schema_version: QUALIFICATION_SCHEMA_VERSION,
+    qualification_id: qualificationId,
+    result: 'LIVE_PASSED',
+    evidence_source: 'production_render',
+    workflow: { id: entry.id, version: entry.version, sha256: entry.canonical_sha256 },
+    environment_fingerprint: fingerprint,
+    fixture: null,
+    production: {
+      run_id: provenanceManifest.job_id,
+      package_id: provenanceManifest.package_id || null,
+      lane: (provenanceManifest.execution || {}).lane || null,
+    },
+    execution: {
+      job_id: provenanceManifest.job_id,
+      comfyui_prompt_id: provenanceManifest.comfyui_prompt_id || null,
+      started_at: (provenanceManifest.execution || {}).created_at || null,
+      completed_at: (provenanceManifest.execution || {}).completed_at || new Date().toISOString(),
+      elapsed_seconds: (provenanceManifest.execution || {}).elapsed_seconds || null,
+      execution_mode: verdict.execution_mode,
+    },
+    output: {
+      path: (provenanceManifest.output || {}).path || null,
+      sha256: (provenanceManifest.output || {}).sha256,
+      bytes: (provenanceManifest.output || {}).bytes || null,
+      width: (provenanceManifest.output || {}).width || null,
+      height: (provenanceManifest.output || {}).height || null,
+      media_type: entry.media_type,
+      technical_validation: 'passed',
+    },
+    render_provenance: { path: manifestPath, sha256: provenance.sha256File(manifestPath) },
+    generated_by: 'comfyui-gateway/qualification.js (production capture)',
+  };
+  const written = writeQualificationRecord(record, options);
+  return { captured: true, qualification_id: qualificationId, record, written };
+}
+
+// Capture across the provenance results a completed PRESTO job produced
+// (the close hook's buildWanProvenanceForRunsSince outcome). Best-effort per
+// run; failures are collected, never thrown.
+function captureProductionQualificationForResults(results, { entry, fingerprint }, options = {}) {
+  const captures = [];
+  for (const r of results || []) {
+    if (!r.path) continue;
+    try {
+      captures.push({ run: r.run || null, ...captureProductionQualification({ entry, provenancePath: r.path, fingerprint }, options) });
+    } catch (err) {
+      captures.push({ run: r.run || null, captured: false, error: String(err.message || err) });
+    }
+  }
+  return captures;
+}
+
 // ---- upgrade guard ----------------------------------------------------------
 
 // "If I update ComfyUI/custom nodes/models, which qualified workflows could be
@@ -308,10 +481,16 @@ function qualifySyncGate(entry, options = {}) {
 function buildUpgradeReport(entries, currentFingerprintsById, options = {}) {
   const workflows = [];
   for (const entry of entries) {
+    // comparison baseline: live-passed evidence preferred; a STATIC_VERIFIED
+    // record still gives the guard an environment to compare against (its
+    // weaker provenance is labeled, never hidden)
     const passed = readLatestPassed(entry.id, options);
+    const staticRec = passed ? null : readLatestStatic(entry.id, options);
+    const baseline = passed || staticRec;
     const current = currentFingerprintsById[entry.id] || null;
     const row = { workflow: `${entry.id}@${entry.version}`, lifecycle: entry.qualification };
-    if (!passed) {
+    if (baseline) row.baseline = passed ? 'live_passed' : 'static_verified';
+    if (!baseline) {
       row.status = 'NO_QUALIFICATION_EVIDENCE';
       row.detail = 'nothing to compare — qualify first';
       workflows.push(row);
@@ -323,11 +502,11 @@ function buildUpgradeReport(entries, currentFingerprintsById, options = {}) {
       workflows.push(row);
       continue;
     }
-    const cmp = compareFingerprints(passed.environment_fingerprint, current);
+    const cmp = compareFingerprints(baseline.environment_fingerprint, current);
     row.status = cmp.status === 'current' ? 'NO_RELEVANT_DRIFT'
       : cmp.status === 'stale' ? 'REQUALIFICATION_REQUIRED'
         : 'PRODUCTION_BLOCKED_DEPENDENCY_MISSING';
-    row.qualified_at = (passed.execution || {}).completed_at || null;
+    row.qualified_at = (baseline.execution || {}).completed_at || null;
     row.components = cmp.components;
     row.reasons = cmp.reasons;
     row.notes = cmp.notes;
@@ -352,4 +531,9 @@ module.exports = {
   evaluateQualification,
   qualifySyncGate,
   buildUpgradeReport,
+  outputMeetsContract,
+  evaluateRenderForQualification,
+  productionQualificationId,
+  captureProductionQualification,
+  captureProductionQualificationForResults,
 };

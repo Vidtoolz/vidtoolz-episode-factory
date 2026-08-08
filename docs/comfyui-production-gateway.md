@@ -143,11 +143,29 @@ What each level means is honest by construction: `/object_info` enumeration
 proves `filename_only` (the loader can see the name — nothing about content);
 local files add `filename_size_mtime` cheaply; `sha256` for multi-GB models
 is collected only on explicit qualification (`hashModels`), never per render.
-Remote hosts (PRESTO) get `class_presence_only` for custom nodes — seeing the
-class again cannot prove its version is unchanged, and the comparison layer
-reports that as `present_but_identity_weak` / VERSION_NOT_AUTHORITATIVE
-rather than a false "no drift". The fingerprint hash is deterministic
-(recursively key-sorted JSON, volatile `collected_at` excluded).
+Every identity records its `source` (`local_filesystem`, `comfyui_models_api`,
+`comfyui_object_info`, `local_git`, `local_pyproject`, `comfyui_system_stats`)
+for auditability. The fingerprint hash is deterministic (recursively
+key-sorted JSON, volatile `collected_at` excluded).
+
+**PRESTO identity (since P2):** remote model identity is collected from the
+read-only `/api/experiment/models/<folder>` endpoint (name + bytes + mtime
+straight from PRESTO's filesystem, plain HTTP, no probe agent) —
+`filename_size_mtime` for every required Wan model. A same-filename model
+replacement is therefore detectable whenever size or mtime differs; a
+replacement that preserves filename+size+mtime remains invisible without
+cryptographic identity — stated honestly, not claimed. PRESTO's ComfyUI core
+stays version-level (`comfyui_system_stats`); its git commit is not exposed
+over HTTP. Both production Wan graphs use only core ComfyUI node classes, so
+remote custom-node identity is not currently a live concern; custom packages
+on remote hosts would report `class_presence_only`.
+
+**Identity strengthening is not drift:** when historical evidence holds a
+weaker level than the current probe (e.g. pre-P2 `filename_only` vs current
+`filename_size_mtime`), the comparison reports
+`identity_strength_changed` — EVIDENCE_WEAK / requalification recommended —
+never a false `CHANGED` and never stale. The next qualification (typically
+the next eligible production render) establishes the strong baseline.
 
 ### Qualification records
 
@@ -169,6 +187,45 @@ LIVE_PASSED record pins: workflow id/version/sha256, the full environment
 fingerprint, fixture identity (id, parameter sha256, seed, source-image
 sha256), job + ComfyUI prompt ids, output sha256 + dimensions, technical
 validation result, and a reference to the render-provenance manifest.
+
+### Production-derived qualification (no dedicated smoke render)
+
+A **real production Wan render doubles as qualification evidence** when it
+satisfies the qualification contract — VIDTOOLZ never needs to spend ~50 GPU
+minutes on an artificial smoke render. The PRESTO job close hook runs, in
+order: output located → ffprobe validation → render provenance written →
+central eligibility evaluation (`qualification.evaluateRenderForQualification`)
+→ LIVE_PASSED record if eligible. Capture failure is loud (job field +
+warning log) but never alters the render's success.
+
+Eligibility is conservative — ALL of: exact workflow id/version/sha256 match
+between provenance and registry; lifecycle QUALIFIED/PRODUCTION; ComfyUI
+prompt id present; run `verified` by the lane; genuine execution proven
+(`execution_mode: executed` — see below); output meets the technical contract
+(dimensions/fps/frames/duration tolerance); environment fingerprint captured
+with no missing required dependency. A render that merely produced an MP4
+does not qualify, and historical outputs are never backfilled.
+
+Two evidence sources, recorded as `evidence_source`:
+
+- `canonical_fixture` — a controlled `--qualify-render` of the pinned fixture.
+- `production_render` — a real production run; the record links the
+  production run id, the immutable render-provenance manifest (path +
+  sha256), and the output sha256 rather than duplicating the manifest.
+
+Capture is **idempotent**: production records use the deterministic id
+`qual-prod-<workflow>-<run-id>`, so re-finalizing a job never duplicates
+evidence, while distinct runs remain distinct evidence.
+
+### Execution evidence (cached vs executed)
+
+ComfyUI can serve identical prompts from its execution cache, and a
+cache-served result does not prove GPU execution after an environment change.
+The provenance manifest classifies `execution_mode` from the run record:
+`executed` requires a prompt id AND a `verified` run AND wall-clock evidence a
+real render takes (≥10 s); anything less is `unknown` — never assumed. Only
+`executed` renders are eligible for production-derived LIVE_PASSED; fixture
+records store their measured mode honestly too.
 
 ### Canonical fixtures
 
@@ -217,11 +274,18 @@ node scripts/comfyui-workflow-check.js flux-gguf-1080x1920 --qualify-render
 ```
 
 Explicit GPU work; refuses to start unless the target ComfyUI queue is idle.
-Wan workflows have **no CLI render path** — their qualification render runs
-through the existing PRESTO production lane under operator supervision
-(evidence stays LIVE_RENDER_PENDING until then); the full Wan harness
-(fixture → contract → gate → fingerprint → preflight → validation → record)
-is in place with only the GPU step external.
+Wan workflows have **no CLI render path** — the normal sequence is simply the
+next real production job:
+
+```text
+Production Wan job arrives → preflight → render → technical validation
+  → provenance → if eligible, LIVE_PASSED captured automatically
+```
+
+No special second render. Until that first eligible run, Wan evidence stays
+STATIC_VERIFIED / LIVE_RENDER_PENDING; the fixture harness (fixture →
+contract → gate → fingerprint → preflight → validation → record) also exists
+with only the GPU step external.
 
 ### Upgrade guard
 

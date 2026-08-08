@@ -54,6 +54,29 @@ function loaderOptions(classInfo, inputKey) {
   return spec[0];
 }
 
+// GET /api/experiment/models/<folder> — per-file model metadata (name, bytes,
+// mtime) straight from the serving host's filesystem, over plain read-only
+// HTTP. This is what upgrades REMOTE model identity from filename_only to
+// filename_size_mtime without any probe agent (verified live on PRESTO
+// ComfyUI 0.22 and vidnux 0.27). Returns null when the endpoint or folder is
+// unavailable — callers fall back to /object_info enumeration honestly.
+async function getModelFolderEntries(baseUrl, folder, options = {}) {
+  try {
+    const entries = await getJson(baseUrl, `/api/experiment/models/${encodeURIComponent(folder)}`, options);
+    if (!Array.isArray(entries)) return null;
+    return entries
+      .filter((e) => e && typeof e.name === 'string')
+      .map((e) => ({
+        name: e.name,
+        bytes: Number.isFinite(e.size) ? e.size : null,
+        mtime: Number.isFinite(e.modified) ? new Date(e.modified * 1000).toISOString() : null,
+      }));
+  } catch (err) {
+    if (err.statusCode === 404 || err.statusCode === 405) return null;
+    throw err;
+  }
+}
+
 // Environment identity for provenance: best-effort, honestly partial.
 function summarizeEnvironment(systemStats) {
   if (!systemStats || typeof systemStats !== 'object') return null;
@@ -70,4 +93,4 @@ function summarizeEnvironment(systemStats) {
   };
 }
 
-module.exports = { getSystemStats, getQueue, getNodeClassInfo, loaderOptions, summarizeEnvironment, DEFAULT_TIMEOUT_MS };
+module.exports = { getSystemStats, getQueue, getNodeClassInfo, loaderOptions, getModelFolderEntries, summarizeEnvironment, DEFAULT_TIMEOUT_MS };

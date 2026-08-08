@@ -28,7 +28,7 @@ function fmtStatus(s) {
 
 function printEvidence(entry) {
   const ev = gateway.qualification.evaluateQualification(entry);
-  console.log(`  evidence:  ${ev.evidence_state}${ev.last_qualified_at ? ` (qualified ${ev.last_qualified_at})` : ''}`);
+  console.log(`  evidence:  ${ev.evidence_state}${ev.last_qualified_at ? ` (qualified ${ev.last_qualified_at})` : ''}${ev.evidence_source ? ` [source: ${ev.evidence_source}${ev.execution_mode ? `, execution: ${ev.execution_mode}` : ''}]` : ''}`);
   if (ev.qualified_environment) {
     console.log(`             qualified on ${ev.qualified_environment.host}, ComfyUI ${ev.qualified_environment.comfyui_version}`);
   }
@@ -56,14 +56,17 @@ async function upgradeStatus() {
   let requalNeeded = false;
   for (const row of report.workflows) {
     console.log(`${row.workflow}  (${row.lifecycle})`);
-    console.log(`  status: ${row.status}${row.qualified_at ? `  (last qualified ${row.qualified_at})` : ''}`);
+    console.log(`  status: ${row.status}${row.qualified_at ? `  (last qualified ${row.qualified_at})` : ''}${row.baseline ? `  [baseline: ${row.baseline}]` : ''}`);
     if (row.detail) console.log(`  ${row.detail}`);
     for (const c of row.components || []) {
-      const mark = c.classification === 'verified_same' ? 'SAME'
+      const mark = c.classification === 'verified_same' ? `SAME (${c.level || 'value'})`
         : c.classification === 'verified_changed' ? 'CHANGED'
           : c.classification === 'present_but_identity_weak' ? 'IDENTITY WEAK'
-            : c.classification === 'missing' ? 'MISSING' : 'UNAVAILABLE';
-      console.log(`    ${c.component} ${c.name}: ${mark}${c.classification === 'verified_changed' ? ` (${c.qualified} → ${c.current})` : ''}`);
+            : c.classification === 'identity_strength_changed' ? 'IDENTITY STRENGTH CHANGED — requalify to set a strong baseline'
+              : c.classification === 'missing' ? 'MISSING' : 'UNAVAILABLE';
+      const delta = c.classification === 'verified_changed' || c.classification === 'identity_strength_changed'
+        ? ` (${c.qualified} → ${c.current})` : '';
+      console.log(`    ${c.component} ${c.name}: ${mark}${delta}`);
     }
     if (row.status === 'REQUALIFICATION_REQUIRED' || row.status === 'PRODUCTION_BLOCKED_DEPENDENCY_MISSING') requalNeeded = true;
     console.log('');

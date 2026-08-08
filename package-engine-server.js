@@ -9390,6 +9390,29 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
         const written = (outcome.results || []).filter((r) => r.written).length;
         job.render_provenance = { written, results: (outcome.results || []).map((r) => ({ run: r.run, written: r.written, path: r.path || null })) };
         if (written) console.log(`[comfyui-gateway] provenance written for ${written} run(s) (job ${job.jobId || config.packageId})`);
+        // Production-derived qualification capture: a technically valid real
+        // render doubles as LIVE_PASSED qualification evidence when it meets
+        // the qualification contract (evaluated centrally from the provenance
+        // manifest). Runs AFTER output validation + provenance; idempotent;
+        // capture failure is loud but never alters the render's success.
+        if (entry) {
+          (async () => {
+            const fingerprint = await comfyuiGateway.fingerprint.collectFingerprint(entry, options.gateway || {});
+            const captures = comfyuiGateway.qualification.captureProductionQualificationForResults(
+              outcome.results, { entry, fingerprint }, options.gateway || {});
+            job.qualification_capture = captures.map((c) => ({
+              run: c.run, captured: c.captured, already_captured: c.already_captured || false,
+              qualification_id: c.qualification_id || null, reasons: c.reasons || null, error: c.error || null,
+            }));
+            for (const c of captures) {
+              if (c.captured) console.log(`[comfyui-gateway] production render qualified ${entry.id}@${entry.version} as LIVE_PASSED (${c.qualification_id})`);
+              else if (!c.already_captured) console.warn(`[comfyui-gateway] qualification capture skipped for run ${c.run}: ${(c.reasons || [c.error || 'unknown']).join('; ')}`);
+            }
+          })().catch((error) => {
+            job.qualification_capture_error = String(error.message || error);
+            console.warn(`[comfyui-gateway] qualification capture failed (render unaffected): ${job.qualification_capture_error}`);
+          });
+        }
       } catch (error) {
         job.render_provenance_error = String(error.message || error);
         console.warn(`[comfyui-gateway] provenance failed: ${job.render_provenance_error}`);
@@ -16390,6 +16413,8 @@ function createServer(options = {}) {
             const ev = comfyuiGateway.qualification.evaluateQualification(entry);
             return {
               evidence_state: ev.evidence_state,
+              evidence_source: ev.evidence_source || null,
+              execution_mode: ev.execution_mode || null,
               last_qualified_at: ev.last_qualified_at,
               qualified_environment: ev.qualified_environment || null,
               latest_attempt: ev.latest_attempt,

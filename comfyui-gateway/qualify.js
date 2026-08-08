@@ -258,6 +258,7 @@ async function runFluxQualification(options = {}) {
     const workflowPath = path.join(evidenceDir, 'patched-workflow.json');
     fs.writeFileSync(workflowPath, JSON.stringify(patched, null, 2));
 
+    const execStartMs = Date.now();
     const execution = await executor({
       workflowPath,
       timeoutSeconds: options.timeoutSeconds || DEFAULT_RENDER_TIMEOUT_SECONDS,
@@ -266,6 +267,7 @@ async function runFluxQualification(options = {}) {
       startedAtMs: Date.parse(startedAt),
       entry, fixture, endpoint,
     });
+    const execElapsedSeconds = Math.round((Date.now() - execStartMs) / 10) / 100;
 
     const validation = validateImageOutput(execution.outputPath, fixture.expected);
     if (!validation.ok) {
@@ -299,6 +301,7 @@ async function runFluxQualification(options = {}) {
       schema_version: qualification.QUALIFICATION_SCHEMA_VERSION,
       qualification_id: qualificationId,
       result: 'LIVE_PASSED',
+      evidence_source: 'canonical_fixture',
       workflow: { id: entry.id, version: entry.version, sha256: entry.canonical_sha256 },
       environment_fingerprint: fingerprint,
       fixture: {
@@ -312,6 +315,10 @@ async function runFluxQualification(options = {}) {
         comfyui_prompt_id: execution.promptId || null,
         started_at: startedAt,
         completed_at: new Date().toISOString(),
+        elapsed_seconds: execElapsedSeconds,
+        // honest: a sub-threshold wall clock means ComfyUI may have served
+        // its execution cache — that is 'unknown', never claimed 'executed'
+        execution_mode: execElapsedSeconds >= 10 ? 'executed' : 'unknown',
       },
       output: {
         path: keptOutput,
@@ -392,6 +399,7 @@ async function runWanQualification(options = {}) {
       schema_version: qualification.QUALIFICATION_SCHEMA_VERSION,
       qualification_id: qualificationId,
       result: 'LIVE_PASSED',
+      evidence_source: 'canonical_fixture',
       workflow: { id: entry.id, version: entry.version, sha256: entry.canonical_sha256 },
       environment_fingerprint: fingerprint,
       fixture: {
@@ -405,6 +413,7 @@ async function runWanQualification(options = {}) {
         comfyui_prompt_id: execution.promptId || null,
         started_at: startedAt,
         completed_at: new Date().toISOString(),
+        execution_mode: execution.executionMode || 'unknown',
       },
       output: {
         path: execution.outputPath,

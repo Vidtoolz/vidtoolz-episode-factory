@@ -30,7 +30,9 @@ const WAN_OBJECT_INFO = {
 // A fake fetch implementing the read-only ComfyUI API surface. Records every
 // request; THROWS on anything that is not a GET-shaped gateway call — proof
 // the qualification chain never submits a prompt from tests.
-function fakeComfyFetch({ objectInfo = FLUX_OBJECT_INFO, version = "0.27.0", gpu = "NVIDIA TEST GPU" } = {}) {
+// `modelFolders` fakes /api/experiment/models/<folder>; unconfigured folders
+// return 404 like a host without the endpoint.
+function fakeComfyFetch({ objectInfo = FLUX_OBJECT_INFO, version = "0.27.0", gpu = "NVIDIA TEST GPU", modelFolders = {} } = {}) {
   const calls = [];
   const impl = async (url, init = {}) => {
     calls.push({ url: String(url), method: (init && init.method) || "GET" });
@@ -43,6 +45,12 @@ function fakeComfyFetch({ objectInfo = FLUX_OBJECT_INFO, version = "0.27.0", gpu
       return json({ system: { comfyui_version: version, os: "test", python_version: "3.12 x", pytorch_version: "2.0" }, devices: [{ name: gpu, vram_total: 1, vram_free: 1 }] });
     }
     if (u.endsWith("/queue")) return json({ queue_running: [], queue_pending: [] });
+    const folderMatch = u.match(/\/api\/experiment\/models\/([^/]+)$/);
+    if (folderMatch) {
+      const folder = decodeURIComponent(folderMatch[1]);
+      if (modelFolders[folder]) return json(modelFolders[folder]);
+      return json({ error: "not found" }, false, 404);
+    }
     const m = u.match(/\/object_info\/([^/]+)$/);
     if (m) {
       const cls = decodeURIComponent(m[1]);
@@ -53,6 +61,50 @@ function fakeComfyFetch({ objectInfo = FLUX_OBJECT_INFO, version = "0.27.0", gpu
   };
   impl.calls = calls;
   return impl;
+}
+
+// A fake accepted Wan production run directory, shaped exactly like the ones
+// run-production.py writes (source.png + output.mp4 + ffprobe.json + run.log).
+function writeWanRunDir(runsRoot, runId, overrides = {}) {
+  const dir = path.join(runsRoot, runId);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "source.png"), "fake-source-image");
+  if (overrides.noOutput !== true) fs.writeFileSync(path.join(dir, "output.mp4"), `fake-mp4-${runId}`);
+  const ffprobe = overrides.ffprobe || {
+    streams: [{ codec_type: "video", width: 720, height: 1280, r_frame_rate: "24/1", nb_frames: "97", codec_name: "h264" }],
+    format: { duration: "4.04" },
+  };
+  fs.writeFileSync(path.join(dir, "ffprobe.json"), JSON.stringify(ffprobe));
+  const runLog = {
+    run_id: runId,
+    prompt: "real production prompt",
+    seed: "1771480165",
+    status: "verified",
+    created_at: "2026-08-08T12:00:00+00:00",
+    prompt_id: "2a6a112c-0c5d-456a-a388-52e79f424845",
+    elapsed: "3038.56",
+    ...overrides.runLog,
+  };
+  fs.writeFileSync(path.join(dir, "run.log"), JSON.stringify(runLog));
+  return dir;
+}
+
+function wanFingerprint(entry, overrides = {}) {
+  const fp = {
+    schema_version: 1,
+    host: { name: "PRESTO", endpoint: "http://192.168.50.187:8188" },
+    comfyui: { version: "0.22.0", identity_level: "package_version", source: "comfyui_system_stats" },
+    gpu: { name: "NVIDIA GeForce RTX 4090" },
+    workflow: { id: entry.id, version: entry.version, sha256: entry.canonical_sha256 },
+    models: [
+      { class_type: "UNETLoader", input_key: "unet_name", name: "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors", present: true, identity: { level: "filename_size_mtime", source: "comfyui_models_api", filename: "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors", bytes: 15000, mtime: "2026-06-05T10:00:00.000Z" } },
+    ],
+    custom_nodes: [],
+    collected_at: "2026-08-08T12:55:00.000Z",
+    ...overrides,
+  };
+  fp.fingerprint_sha256 = gateway.fingerprint.fingerprintSha256(fp);
+  return fp;
 }
 
 // Real registry entry re-rooted onto a temp runtime copy (so tests never
@@ -544,4 +596,264 @@ test("comfyui-qualification safety: no gateway module can submit GPU work implic
   const junk = path.join(tmpDir("comfyui-png-"), "junk.png");
   fs.writeFileSync(junk, "not a png at all............");
   assert.throws(() => gateway.qualify.readPngDimensions(junk), /not a PNG/);
+});
+
+// ---- P2: production-derived qualification ------------------------------------------------
+
+test("comfyui-qualification production capture: an accepted real Wan render becomes LIVE_PASSED evidence", () => {
+  const root = tmpDir("comfyui-prod-");
+  const { entry } = syntheticRegistry("wan22-i2v-hq");
+  const runsRoot = tmpDir("comfyui-runs-");
+  const runDir = writeWanRunDir(runsRoot, "2026-08-08-120000-flux-031-abcd1234");
+  const prov = gateway.provenance.buildWanRunProvenance(runDir, { entry, packageId: "pkg-1", completedAtOverride: undefined });
+  assert.equal(prov.written, true);
+  // the provenance manifest now carries genuine-execution evidence
+  assert.equal(prov.manifest.execution.execution_mode, "executed");
+  assert.equal(prov.manifest.execution.run_status, "verified");
+  assert.equal(prov.manifest.execution.elapsed_seconds, 3038.56);
+
+  const fp = wanFingerprint(entry);
+  const result = gateway.qualification.captureProductionQualification(
+    { entry, runDir, fingerprint: fp }, { qualificationRoot: root });
+  assert.equal(result.captured, true, JSON.stringify(result.reasons));
+  const rec = result.record;
+  assert.equal(rec.result, "LIVE_PASSED");
+  assert.equal(rec.evidence_source, "production_render");
+  assert.equal(rec.workflow.sha256, entry.canonical_sha256);
+  assert.equal(rec.production.run_id, "2026-08-08-120000-flux-031-abcd1234");
+  assert.equal(rec.execution.job_id, "2026-08-08-120000-flux-031-abcd1234");
+  assert.equal(rec.execution.comfyui_prompt_id, "2a6a112c-0c5d-456a-a388-52e79f424845");
+  assert.equal(rec.execution.execution_mode, "executed");
+  assert.ok(/^[0-9a-f]{64}$/.test(rec.output.sha256));
+  assert.equal(rec.output.sha256, prov.manifest.output.sha256, "output identity comes from the immutable provenance");
+  assert.equal(rec.render_provenance.path, prov.path);
+  assert.ok(/^[0-9a-f]{64}$/.test(rec.render_provenance.sha256));
+  assert.equal(rec.fixture, null);
+  // evidence surfaces through evaluation with the new additive fields
+  const ev = gateway.qualification.evaluateQualification(entry, { qualificationRoot: root });
+  assert.equal(ev.evidence_state, "LIVE_PASSED");
+  assert.equal(ev.evidence_source, "production_render");
+  assert.equal(ev.execution_mode, "executed");
+  assert.equal(ev.last_qualified_at !== null, true);
+});
+
+test("comfyui-qualification production capture: idempotent — re-finalizing the same run never duplicates evidence", () => {
+  const root = tmpDir("comfyui-prod-");
+  const { entry } = syntheticRegistry("wan22-i2v-hq");
+  const runsRoot = tmpDir("comfyui-runs-");
+  const runDir = writeWanRunDir(runsRoot, "run-idem-1");
+  gateway.provenance.buildWanRunProvenance(runDir, { entry });
+  const fp = wanFingerprint(entry);
+  const first = gateway.qualification.captureProductionQualification({ entry, runDir, fingerprint: fp }, { qualificationRoot: root });
+  assert.equal(first.captured, true);
+  const second = gateway.qualification.captureProductionQualification({ entry, runDir, fingerprint: fp }, { qualificationRoot: root });
+  assert.equal(second.captured, false);
+  assert.equal(second.already_captured, true);
+  assert.equal(second.qualification_id, first.qualification_id);
+  const attempts = fs.readdirSync(path.join(root, entry.id, "attempts")).filter((n) => n.includes("qual-prod-"));
+  assert.equal(attempts.length, 1, "one deterministic attempt file per run");
+  // a DIFFERENT run is materially distinct evidence and is not discarded
+  const runDir2 = writeWanRunDir(runsRoot, "run-idem-2");
+  gateway.provenance.buildWanRunProvenance(runDir2, { entry });
+  const third = gateway.qualification.captureProductionQualification({ entry, runDir: runDir2, fingerprint: fp }, { qualificationRoot: root });
+  assert.equal(third.captured, true);
+  assert.notEqual(third.qualification_id, first.qualification_id);
+});
+
+test("comfyui-qualification production capture: ineligible renders are refused with named reasons", () => {
+  const root = tmpDir("comfyui-prod-");
+  const { entry } = syntheticRegistry("wan22-i2v-hq");
+  const runsRoot = tmpDir("comfyui-runs-");
+  const fp = wanFingerprint(entry);
+
+  // missing prompt id → execution evidence missing → cannot qualify
+  const noPrompt = writeWanRunDir(runsRoot, "run-noprompt", { runLog: { prompt_id: null } });
+  gateway.provenance.buildWanRunProvenance(noPrompt, { entry });
+  const r1 = gateway.qualification.captureProductionQualification({ entry, runDir: noPrompt, fingerprint: fp }, { qualificationRoot: root });
+  assert.equal(r1.captured, false);
+  assert.ok(r1.reasons.includes("comfyui_prompt_id_missing"));
+
+  // suspiciously fast completion → plausibly cache-served → conservative refusal
+  const fast = writeWanRunDir(runsRoot, "run-cached", { runLog: { elapsed: "2.1" } });
+  gateway.provenance.buildWanRunProvenance(fast, { entry });
+  const r2 = gateway.qualification.captureProductionQualification({ entry, runDir: fast, fingerprint: fp }, { qualificationRoot: root });
+  assert.equal(r2.captured, false);
+  assert.ok(r2.reasons.some((x) => x.includes("execution_not_proven_live")));
+
+  // run not verified by the lane → refuse
+  const unverified = writeWanRunDir(runsRoot, "run-unverified", { runLog: { status: "failed_verification" } });
+  gateway.provenance.buildWanRunProvenance(unverified, { entry });
+  const r3 = gateway.qualification.captureProductionQualification({ entry, runDir: unverified, fingerprint: fp }, { qualificationRoot: root });
+  assert.equal(r3.captured, false);
+  assert.ok(r3.reasons.some((x) => x.includes("run_not_verified")));
+
+  // wrong output geometry → technical contract failure → refuse
+  const wrongDims = writeWanRunDir(runsRoot, "run-wrongdims", {
+    ffprobe: { streams: [{ codec_type: "video", width: 480, height: 854, r_frame_rate: "24/1", nb_frames: "97" }], format: { duration: "4.04" } },
+  });
+  gateway.provenance.buildWanRunProvenance(wrongDims, { entry });
+  const r4 = gateway.qualification.captureProductionQualification({ entry, runDir: wrongDims, fingerprint: fp }, { qualificationRoot: root });
+  assert.equal(r4.captured, false);
+  assert.ok(r4.reasons.some((x) => x.includes("output_contract")));
+
+  // workflow sha mismatch (provenance from a different graph) → refuse
+  const drifted = writeWanRunDir(runsRoot, "run-drifted");
+  gateway.provenance.buildWanRunProvenance(drifted, { entry: { ...entry, canonical_sha256: "e".repeat(64) } });
+  const r5 = gateway.qualification.captureProductionQualification({ entry, runDir: drifted, fingerprint: fp }, { qualificationRoot: root });
+  assert.equal(r5.captured, false);
+  assert.ok(r5.reasons.includes("workflow_sha_mismatch"));
+
+  // no render provenance at all → refuse
+  const bare = writeWanRunDir(runsRoot, "run-noprov");
+  const r6 = gateway.qualification.captureProductionQualification({ entry, runDir: bare, fingerprint: fp }, { qualificationRoot: root });
+  assert.equal(r6.captured, false);
+  assert.ok(r6.reasons.includes("render_provenance_missing"));
+
+  // environment missing a required dependency → refuse
+  const goodRun = writeWanRunDir(runsRoot, "run-depmissing");
+  gateway.provenance.buildWanRunProvenance(goodRun, { entry });
+  const brokenFp = wanFingerprint(entry, { models: [{ class_type: "UNETLoader", input_key: "unet_name", name: "wan-model", present: false, identity: { level: "unknown" } }] });
+  const r7 = gateway.qualification.captureProductionQualification({ entry, runDir: goodRun, fingerprint: brokenFp }, { qualificationRoot: root });
+  assert.equal(r7.captured, false);
+  assert.ok(r7.reasons.some((x) => x.includes("environment_dependency_missing")));
+
+  // and none of the refusals wrote any evidence
+  assert.ok(!fs.existsSync(path.join(root, entry.id, "latest-passed.json")));
+});
+
+test("comfyui-qualification production capture: a failed render preserves the last success; unrelated failure does not stale it", () => {
+  const root = tmpDir("comfyui-prod-");
+  const { entry } = syntheticRegistry("wan22-i2v-hq");
+  const runsRoot = tmpDir("comfyui-runs-");
+  const good = writeWanRunDir(runsRoot, "run-good");
+  gateway.provenance.buildWanRunProvenance(good, { entry });
+  const fp = wanFingerprint(entry);
+  const captured = gateway.qualification.captureProductionQualification({ entry, runDir: good, fingerprint: fp }, { qualificationRoot: root });
+  assert.equal(captured.captured, true);
+
+  // a later failed run produces no output.mp4 → provenance skips it → nothing captured
+  const failed = writeWanRunDir(runsRoot, "run-failed", { noOutput: true });
+  const provFailed = gateway.provenance.buildWanRunProvenance(failed, { entry });
+  assert.equal(provFailed.written, false);
+  const captures = gateway.qualification.captureProductionQualificationForResults(
+    [{ run: "run-failed", path: provFailed.path }], { entry, fingerprint: fp }, { qualificationRoot: root });
+  assert.equal(captures[0].captured, false);
+  assert.deepEqual(gateway.qualification.readLatestPassed(entry.id, { qualificationRoot: root }), captured.record, "last success preserved");
+
+  // an unrelated INPUT_MISSING failure attempt does not stale prior qualification
+  gateway.qualification.writeQualificationRecord({
+    schema_version: 1, qualification_id: "qual-fail-1", result: "FAILED",
+    workflow: { id: entry.id, version: entry.version, sha256: entry.canonical_sha256 },
+    environment_fingerprint: fp,
+    execution: { job_id: "j-f", started_at: "2026-08-09T10:00:00.000Z", completed_at: "2026-08-09T10:00:01.000Z" },
+    failure: { class: "INPUT_MISSING", raw: "source image missing" },
+    generated_by: "test",
+  }, { qualificationRoot: root });
+  const ev = gateway.qualification.evaluateQualification(entry, { qualificationRoot: root });
+  assert.equal(ev.evidence_state, "LIVE_PASSED", "unrelated failure must not invalidate environment qualification");
+  assert.ok(ev.notes.some((n) => n.includes("FAILED")), "but the failed attempt stays visible");
+});
+
+// ---- P2: stronger PRESTO identity ---------------------------------------------------------
+
+test("comfyui-qualification remote identity: /api/experiment/models upgrades models to filename_size_mtime with source", async () => {
+  const { entry, registryPath } = syntheticRegistry("wan22-i2v-fast");
+  const names = entry.required_models.map((m) => m.name);
+  const folderOf = { UNETLoader: "diffusion_models", CLIPLoader: "text_encoders", VAELoader: "vae", LoraLoaderModelOnly: "loras" };
+  const modelFolders = {};
+  for (const m of entry.required_models) {
+    const folder = folderOf[m.class_type];
+    (modelFolders[folder] = modelFolders[folder] || []).push({ name: m.name, size: 1000 + names.indexOf(m.name), modified: 1780670022.69 });
+  }
+  const fp = await gateway.fingerprint.collectFingerprint(entry, {
+    registryPath, local: false, fetchImpl: fakeComfyFetch({ objectInfo: WAN_OBJECT_INFO, version: "0.22.0", gpu: "RTX 4090", modelFolders }),
+  });
+  assert.equal(fp.models.length, 6);
+  for (const m of fp.models) {
+    assert.equal(m.present, true, m.name);
+    assert.equal(m.identity.level, "filename_size_mtime", m.name);
+    assert.equal(m.identity.source, "comfyui_models_api");
+    assert.ok(Number.isFinite(m.identity.bytes));
+    assert.ok(m.identity.mtime.startsWith("2026-"));
+  }
+  // host without the endpoint falls back honestly to filename_only
+  const weak = await gateway.fingerprint.collectFingerprint(entry, {
+    registryPath, local: false, fetchImpl: fakeComfyFetch({ objectInfo: WAN_OBJECT_INFO, version: "0.22.0" }),
+  });
+  assert.ok(weak.models.every((m) => m.identity.level === "filename_only" && m.identity.source === "comfyui_object_info"));
+});
+
+test("comfyui-qualification remote identity: same-filename model replacement detected via size or mtime", () => {
+  const { entry } = syntheticRegistry("wan22-i2v-hq");
+  const base = wanFingerprint(entry);
+  const model = base.models[0];
+  const clone = (identity) => wanFingerprint(entry, { models: [{ ...model, identity: { ...model.identity, ...identity } }] });
+
+  assert.equal(gateway.qualification.compareFingerprints(base, clone({})).status, "current");
+  const sizeChanged = gateway.qualification.compareFingerprints(base, clone({ bytes: 99999 }));
+  assert.equal(sizeChanged.status, "stale");
+  assert.ok(sizeChanged.reasons.length > 0);
+  const mtimeChanged = gateway.qualification.compareFingerprints(base, clone({ mtime: "2026-08-09T00:00:00.000Z" }));
+  assert.equal(mtimeChanged.status, "stale");
+  // no cryptographic claim is ever made at this level
+  const same = gateway.qualification.compareFingerprints(base, clone({}));
+  const comp = same.components.find((c) => c.component === "model");
+  assert.equal(comp.level, "filename_size_mtime");
+  assert.notEqual(comp.level, "sha256");
+  // missing file → blocked
+  const gone = wanFingerprint(entry, { models: [{ ...model, present: false, identity: { level: "unknown" } }] });
+  assert.equal(gateway.qualification.compareFingerprints(base, gone).status, "blocked");
+});
+
+test("comfyui-qualification identity strength: a stronger observer is not proof of drift", () => {
+  const { entry } = syntheticRegistry("wan22-i2v-hq");
+  const model = { class_type: "UNETLoader", input_key: "unet_name", name: "wan-model.safetensors" };
+  // historical evidence was filename_only (pre-P2); current probe returns size+mtime
+  const weakHistoric = wanFingerprint(entry, { models: [{ ...model, present: true, identity: { level: "filename_only", source: "comfyui_object_info", filename: model.name } }] });
+  const strongCurrent = wanFingerprint(entry, { models: [{ ...model, present: true, identity: { level: "filename_size_mtime", source: "comfyui_models_api", filename: model.name, bytes: 5000, mtime: "2026-08-08T00:00:00.000Z" } }] });
+  const cmp = gateway.qualification.compareFingerprints(weakHistoric, strongCurrent);
+  assert.equal(cmp.status, "current", "MODEL_CHANGED must not be claimed from an identity-level upgrade");
+  const comp = cmp.components.find((c) => c.component === "model");
+  assert.equal(comp.classification, "identity_strength_changed");
+  assert.ok(cmp.notes.some((n) => n.includes("requalification recommended")));
+  // same for custom nodes: presence-only history vs git-commit present
+  const weakNode = wanFingerprint(entry, { custom_nodes: [{ class: "X", package: null, present: true, identity: { level: "class_presence_only" } }] });
+  const strongNode = wanFingerprint(entry, { custom_nodes: [{ class: "X", package: "pkg", present: true, identity: { level: "git_commit", git_commit: "abc1234" } }] });
+  const nodeCmp = gateway.qualification.compareFingerprints(weakNode, strongNode);
+  assert.equal(nodeCmp.status, "current");
+  assert.equal(nodeCmp.components.find((c) => c.component === "custom_node").classification, "identity_strength_changed");
+  // and qualification evidence stays LIVE_PASSED, not STALE
+  const root = tmpDir("comfyui-strength-");
+  gateway.qualification.writeQualificationRecord(passedRecord(entry, weakHistoric, { workflow: { id: entry.id, version: entry.version, sha256: entry.canonical_sha256 } }), { qualificationRoot: root });
+  const ev = gateway.qualification.evaluateQualification(entry, { qualificationRoot: root, currentFingerprint: strongCurrent });
+  assert.equal(ev.evidence_state, "LIVE_PASSED");
+});
+
+test("comfyui-qualification upgrade guard: STATIC_VERIFIED records provide a labeled comparison baseline", () => {
+  const root = tmpDir("comfyui-static-base-");
+  const { entry } = syntheticRegistry("wan22-i2v-hq");
+  const fp = wanFingerprint(entry);
+  gateway.qualification.writeQualificationRecord({
+    schema_version: 1, qualification_id: "static-1", result: "STATIC_VERIFIED",
+    workflow: { id: entry.id, version: entry.version, sha256: entry.canonical_sha256 },
+    environment_fingerprint: fp,
+    execution: { job_id: null, started_at: "2026-08-08T10:00:00.000Z", completed_at: "2026-08-08T10:00:00.000Z" },
+    generated_by: "test",
+  }, { qualificationRoot: root });
+  const report = gateway.qualification.buildUpgradeReport([entry], { [entry.id]: wanFingerprint(entry) }, { qualificationRoot: root });
+  assert.equal(report.workflows[0].baseline, "static_verified");
+  assert.equal(report.workflows[0].status, "NO_RELEVANT_DRIFT");
+  const changed = gateway.qualification.buildUpgradeReport([entry], {
+    [entry.id]: wanFingerprint(entry, { comfyui: { version: "0.23.0", identity_level: "package_version", source: "comfyui_system_stats" } }),
+  }, { qualificationRoot: root });
+  assert.equal(changed.workflows[0].status, "REQUALIFICATION_REQUIRED");
+});
+
+test("comfyui-qualification server wiring: the PRESTO close hook captures production qualification after provenance", () => {
+  const src = fs.readFileSync(path.join(REPO, "package-engine-server.js"), "utf8");
+  const closeHook = src.slice(src.indexOf("buildWanProvenanceForRunsSince"), src.indexOf("buildWanProvenanceForRunsSince") + 3000);
+  assert.ok(closeHook.includes("captureProductionQualificationForResults"), "close hook wires production capture");
+  assert.ok(closeHook.includes("collectFingerprint"), "capture uses a live environment fingerprint");
+  assert.ok(closeHook.includes("qualification_capture_error"), "capture failure is surfaced, not swallowed");
+  assert.ok(src.indexOf("captureProductionQualificationForResults") > src.indexOf("buildWanProvenanceForRunsSince"), "qualification is evaluated only after provenance/validation");
 });

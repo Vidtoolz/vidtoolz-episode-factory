@@ -38,8 +38,9 @@ const IDENTITY_LEVELS = [
 const KNOWN_HOSTS = { '192.168.50.187': 'PRESTO' };
 const LOCAL_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '::1']);
 
-// Where each loader class looks for files under <ComfyUI>/models/ — used only
-// for LOCAL endpoints where the model directory is directly readable.
+// Where each loader class looks for files under <ComfyUI>/models/ — used for
+// LOCAL endpoints (direct fs reads) and as the folder names queried on the
+// read-only /api/experiment/models/<folder> endpoint for REMOTE endpoints.
 const MODEL_DIRS_BY_CLASS = {
   UnetLoaderGGUF: ['unet', 'diffusion_models'],
   UNETLoader: ['diffusion_models', 'unet'],
@@ -106,19 +107,22 @@ function findLocalModelFile(comfyRoot, classType, name) {
   return null;
 }
 
-// Model identity at the strongest honestly-available level.
+// Model identity at the strongest honestly-available level. Every identity
+// records its `source` so evidence is auditable.
 //  local file + options.hashModels → sha256 (explicit qualification only —
 //    hashing multi-GB models is never done on the routine path)
-//  local file                     → filename_size_mtime
-//  loader enumerates the name     → filename_only
-//  otherwise                      → { level: unknown, present: false }
-function modelIdentity(model, { local, comfyRoot, enumerated, hashModels }) {
+//  local file                      → filename_size_mtime (local_filesystem)
+//  /api/experiment/models metadata → filename_size_mtime (comfyui_models_api)
+//  loader enumerates the name      → filename_only (comfyui_object_info)
+//  otherwise                       → { level: unknown, present: false }
+function modelIdentity(model, { local, comfyRoot, enumerated, folderEntry, hashModels }) {
   if (local && comfyRoot) {
     const file = findLocalModelFile(comfyRoot, model.class_type, model.name);
     if (file) {
       const st = fs.statSync(file);
       const identity = {
         level: hashModels ? 'sha256' : 'filename_size_mtime',
+        source: 'local_filesystem',
         filename: model.name,
         bytes: st.size,
         mtime: st.mtime.toISOString(),
@@ -129,8 +133,20 @@ function modelIdentity(model, { local, comfyRoot, enumerated, hashModels }) {
       return { present: true, identity };
     }
   }
+  if (folderEntry && folderEntry.bytes != null) {
+    return {
+      present: true,
+      identity: {
+        level: 'filename_size_mtime',
+        source: 'comfyui_models_api',
+        filename: model.name,
+        bytes: folderEntry.bytes,
+        mtime: folderEntry.mtime,
+      },
+    };
+  }
   if (enumerated === true) {
-    return { present: true, identity: { level: 'filename_only', filename: model.name } };
+    return { present: true, identity: { level: 'filename_only', source: 'comfyui_object_info', filename: model.name } };
   }
   if (enumerated === false) {
     return { present: false, identity: { level: 'unknown', filename: model.name } };
@@ -144,11 +160,11 @@ function modelIdentity(model, { local, comfyRoot, enumerated, hashModels }) {
 // Local packages upgrade to git_commit / package_version; remote hosts stay
 // class_presence_only — seeing the class again cannot prove its version.
 function customNodeIdentity(classType, pythonModule, { local, comfyRoot }) {
-  const record = { class: classType, package: null, identity: { level: 'class_presence_only' } };
+  const record = { class: classType, package: null, identity: { level: 'class_presence_only', source: 'comfyui_object_info' } };
   if (!pythonModule) return record;
   if (!String(pythonModule).startsWith('custom_nodes.')) {
     record.package = 'comfyui-core';
-    record.identity = { level: 'package_version', note: 'core class — identity rides the comfyui core version' };
+    record.identity = { level: 'package_version', source: 'comfyui_system_stats', note: 'core class — identity rides the comfyui core version' };
     return record;
   }
   const pkg = String(pythonModule).slice('custom_nodes.'.length).split('.')[0];
@@ -158,12 +174,12 @@ function customNodeIdentity(classType, pythonModule, { local, comfyRoot }) {
     const commit = gitCommitOf(pkgDir);
     const version = pyprojectVersionOf(pkgDir);
     if (commit) {
-      record.identity = { level: 'git_commit', git_commit: commit };
+      record.identity = { level: 'git_commit', source: 'local_git', git_commit: commit };
       if (version) record.identity.package_version = version;
       return record;
     }
     if (version) {
-      record.identity = { level: 'package_version', package_version: version };
+      record.identity = { level: 'package_version', source: 'local_pyproject', package_version: version };
       return record;
     }
   }
@@ -186,10 +202,11 @@ async function collectFingerprint(entry, options = {}) {
   const comfyui = {
     version: env.comfyui_version || null,
     identity_level: env.comfyui_version ? 'package_version' : 'unknown',
+    source: env.comfyui_version ? 'comfyui_system_stats' : null,
   };
   if (local && comfyRoot) {
     const commit = gitCommitOf(comfyRoot);
-    if (commit) { comfyui.git_commit = commit; comfyui.identity_level = 'git_commit'; }
+    if (commit) { comfyui.git_commit = commit; comfyui.identity_level = 'git_commit'; comfyui.source = 'local_git'; }
   }
 
   // model enumeration via /object_info — the same authoritative source
@@ -202,13 +219,35 @@ async function collectFingerprint(entry, options = {}) {
     return classCache.get(classType);
   }
 
+  // per-file metadata (bytes + mtime) via /api/experiment/models/<folder> —
+  // one read-only fetch per distinct folder; null when the host lacks the
+  // endpoint (fall back to enumeration honestly).
+  const folderCache = new Map();
+  async function folderEntries(folder) {
+    if (!folderCache.has(folder)) {
+      let entries = null;
+      try { entries = await client.getModelFolderEntries(endpoint, folder, options); } catch (_) { entries = null; }
+      folderCache.set(folder, entries);
+    }
+    return folderCache.get(folder);
+  }
+  async function findFolderEntry(classType, name) {
+    for (const folder of MODEL_DIRS_BY_CLASS[classType] || []) {
+      const entries = await folderEntries(folder);
+      const hit = entries && entries.find((e) => e.name === name);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
   const models = [];
   for (const model of entry.required_models || []) {
     const info = await classInfo(model.class_type);
     const opts = info ? client.loaderOptions(info, model.input_key) : null;
     const enumerated = opts ? opts.includes(model.name) : (info === null ? false : null);
+    const folderEntry = (local && comfyRoot) ? null : await findFolderEntry(model.class_type, model.name);
     const { present, identity } = modelIdentity(model, {
-      local, comfyRoot, enumerated, hashModels: Boolean(options.hashModels),
+      local, comfyRoot, enumerated, folderEntry, hashModels: Boolean(options.hashModels),
     });
     models.push({ class_type: model.class_type, input_key: model.input_key, name: model.name, present, identity });
   }
