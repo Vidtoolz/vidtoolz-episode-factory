@@ -142,26 +142,47 @@ function countFrames(packageDir) {
   } catch (_) { return 0; }
 }
 
+// Pick the frame set to render. ffmpeg's glob input takes ONE extension, so a
+// mixed export (e.g. stray .png beside the .jpeg sequence) renders the
+// majority extension — reported honestly via `mixed`/`counts` so startRender
+// can warn with exact numbers instead of silently rendering a subset.
 function frameGlob(packageDir) {
   const framesDir = path.join(laneDir(packageDir), 'frames');
-  for (const ext of FRAME_EXTENSIONS) {
-    try {
-      if (fs.readdirSync(framesDir).some((f) => path.extname(f).slice(1).toLowerCase() === ext)) {
-        return { dir: framesDir, ext, glob: path.join(framesDir, `*.${ext}`) };
-      }
-    } catch (_) { return null; }
-  }
-  return null;
+  let names;
+  try { names = fs.readdirSync(framesDir); } catch (_) { return null; }
+  const counts = {};
+  names.forEach((f) => {
+    const ext = path.extname(f).slice(1).toLowerCase();
+    if (FRAME_EXTENSIONS.includes(ext)) counts[ext] = (counts[ext] || 0) + 1;
+  });
+  const present = Object.keys(counts);
+  if (!present.length) return null;
+  const ext = present.sort((a, b) => counts[b] - counts[a]
+    || FRAME_EXTENSIONS.indexOf(a) - FRAME_EXTENSIONS.indexOf(b))[0];
+  return {
+    dir: framesDir, ext, glob: path.join(framesDir, `*.${ext}`),
+    count: counts[ext], mixed: present.length > 1, counts,
+  };
 }
 
 // Frames exported BEFORE the current plan was generated likely belong to an
-// older camera move: regenerating a plan never touches frames/, so the frames
-// dir mtime staying older than job.created_at is the staleness signal (one
-// stat — no per-frame scanning on the NAS mount).
+// older camera move: regenerating a plan never touches frames/. The frames
+// dir mtime is the cheap first signal, but an in-place re-export that
+// overwrites the same filenames never touches the dir mtime — so when the dir
+// looks stale, ONE more stat on the lexicographically-last frame (sequential
+// exports rewrite it last) decides. Bounded at two stats + one readdir; never
+// a per-frame scan on the NAS mount.
 function framesStale(packageDir, job, frameCount) {
   if (!frameCount || !job || !job.created_at) return false;
+  const framesDir = path.join(laneDir(packageDir), 'frames');
   try {
-    return fs.statSync(path.join(laneDir(packageDir), 'frames')).mtimeMs < Date.parse(job.created_at);
+    const createdAt = Date.parse(job.created_at);
+    if (fs.statSync(framesDir).mtimeMs >= createdAt) return false;
+    const names = fs.readdirSync(framesDir)
+      .filter((f) => FRAME_EXTENSIONS.includes(path.extname(f).slice(1).toLowerCase()))
+      .sort();
+    if (!names.length) return false;
+    return fs.statSync(path.join(framesDir, names[names.length - 1])).mtimeMs < createdAt;
   } catch (_) { return false; }
 }
 
@@ -229,8 +250,12 @@ function startRender(packageDir, projectId, options = {}) {
   // Earth Studio, so a count mismatch or stale export warns but never blocks.
   const frameCount = countFrames(packageDir);
   const warnings = [];
-  if (job.total_frames && frameCount !== job.total_frames) {
-    warnings.push(`Exported frame count (${frameCount}) differs from the plan (${job.total_frames} frames) — the render uses exactly what is in frames/.`);
+  if (frames.mixed) {
+    const perExt = Object.entries(frames.counts).map(([e, n]) => `${n} .${e}`).join(', ');
+    warnings.push(`frames/ mixes image types (${perExt}) — this render uses only the ${frames.count} .${frames.ext} frame(s); remove the others or re-export one format.`);
+  }
+  if (job.total_frames && frames.count !== job.total_frames) {
+    warnings.push(`Rendered frame count (${frames.count} .${frames.ext}) differs from the plan (${job.total_frames} frames).`);
   }
   if (framesStale(packageDir, job, frameCount)) {
     warnings.push('Frames were exported before the current plan was generated — they may belong to an older camera move. Re-export from Earth Studio if unsure.');
@@ -256,7 +281,7 @@ function startRender(packageDir, projectId, options = {}) {
     child.on('error', (e) => { rec.stderr = tail(rec.stderr + `${e.message}\n`, 8192); rec.exitCode = 1; rec.exitState = 'failed'; rec.completedAt = rec.completedAt || new Date().toISOString(); });
     child.on('close', (code) => { rec.exitCode = code; if (rec.exitState !== 'cancelled') rec.exitState = code === 0 ? 'completed' : 'failed'; rec.completedAt = rec.completedAt || new Date().toISOString(); });
   }
-  return { ok: true, job_id: rec.jobId, project_id: projectId, frame_glob: frames.glob, fps, output: rec.output, frame_count: frameCount, frames_expected: job.total_frames || null, warnings };
+  return { ok: true, job_id: rec.jobId, project_id: projectId, frame_glob: frames.glob, fps, output: rec.output, frame_count: frameCount, rendered_frame_count: frames.count, frames_expected: job.total_frames || null, warnings };
 }
 
 function cancelRender(options = {}) {

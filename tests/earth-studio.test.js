@@ -326,10 +326,13 @@ test("earth-studio lane: frames exported after the plan are not stale; regenerat
   const framesDir = path.join(lane.laneDir(pkg), "frames");
   fs.writeFileSync(path.join(framesDir, "Frame_0000.jpeg"), "x");
   assert.equal(lane.status(pkg, "p").frames_stale, false);
-  // plan regenerated now, frames dir mtime forced into the past -> stale
+  // plan regenerated now, frames dir AND file mtimes forced into the past ->
+  // stale (an old export means old file mtimes too; a fresh in-place
+  // re-export is covered by the v0.7 staleness test below)
   lane.writeJob(pkg, { jobName: "J", description: "fly to Paris in 4 seconds" });
   const past = new Date(Date.now() - 3600000);
   fs.utimesSync(framesDir, past, past);
+  fs.utimesSync(path.join(framesDir, "Frame_0000.jpeg"), past, past);
   const st = lane.status(pkg, "p");
   assert.equal(st.frames_stale, true);
   assert.equal(st.frame_count, 1);
@@ -342,7 +345,8 @@ test("earth-studio lane: startRender warns on frame-count mismatch and stale fra
   const framesDir = path.join(lane.laneDir(pkg), "frames");
   fs.writeFileSync(path.join(framesDir, "Frame_0000.jpeg"), "x");
   const past = new Date(Date.now() - 3600000);
-  fs.utimesSync(framesDir, past, past); // also stale
+  fs.utimesSync(framesDir, past, past); // also stale (dir + file both old)
+  fs.utimesSync(path.join(framesDir, "Frame_0000.jpeg"), past, past);
   lane.STATE.activeJob = null;
   const out = lane.startRender(pkg, "p", { spawn: () => fakeChild() });
   assert.equal(out.ok, true);
@@ -586,4 +590,147 @@ test("project-earth-studio.html v0.4: presets, place search, aspect selector, an
   assert.match(html, /pathSvg/); // camera ground-track preview
   assert.match(html, /LOCATION_ALIASES/); // aliases searchable too
   assert.match(html, /aspect:\s*ASPECT/); // aspect is sent to the plan route
+});
+
+// ---- v0.7 correctness pass (hover hold, orbit-scoped parsing, seam-safe lng) ----
+
+test("earth-studio planner v0.7: hover holds the previous camera (altitude + tilt carry-over)", () => {
+  const plan = planner.buildShotPlan("T", "fly to Paris at 600 meters, tilt 45 degrees, then hover for 4 seconds");
+  assert.equal(plan.segments.length, 2); // ", tilt 45 degrees" merges into the fly segment
+  const fly = plan.segments[0];
+  const hover = plan.segments[1];
+  assert.equal(fly.altitude_m, 600);
+  assert.equal(fly.tilt_deg, 45);
+  assert.equal(fly.tilt_source, "explicit");
+  assert.equal(hover.action, "hover");
+  assert.equal(hover.altitude_m, 600);
+  assert.equal(hover.altitude_source, "carried_over");
+  assert.equal(hover.tilt_deg, 45);
+  assert.equal(hover.tilt_source, "carried_over");
+  assert.match(plan.notes.join("\n"), /hover holds the previous camera/);
+  // Engine: a true hold — no altitude or tilt keyframes during the hover.
+  const tracks = planner.buildEspKeyframes(plan);
+  assert.ok(tracks.alt.every((k) => k.time <= fly.end_frame), "no altitude movement during hover");
+  assert.ok(tracks.tilt.every((k) => k.time <= fly.end_frame), "no tilt movement during hover");
+  assert.equal(tracks.alt[tracks.alt.length - 1].value, 600);
+});
+
+test("earth-studio planner v0.7: explicit hover values beat carry-over; first-segment hover keeps defaults", () => {
+  const hover = planner.buildShotPlan("T", "fly to Paris at 600m, then hover at 900m tilted 20 degrees for 3 seconds").segments[1];
+  assert.equal(hover.altitude_m, 900);
+  assert.equal(hover.altitude_source, "explicit");
+  assert.equal(hover.tilt_deg, 20);
+  assert.equal(hover.tilt_source, "explicit");
+  const first = planner.buildShotPlan("T", "hover over Helsinki for 3 seconds").segments[0];
+  assert.equal(first.altitude_m, planner.DEFAULT_ALTITUDE_M);
+  assert.equal(first.altitude_source, "action_default");
+  assert.equal(first.tilt_deg, planner.DEFAULT_TILT_DEG.hover);
+  assert.equal(first.tilt_source, "action_default");
+});
+
+test("earth-studio planner v0.7: orbit vocabulary no longer corrupts non-orbit place names", () => {
+  const hover = planner.parseDescription("hover over the French Quarter for 5 seconds").segments[0];
+  assert.equal(hover.location_name, "the French Quarter"); // full name retained (honest unknown-fixture warning)
+  const fly = planner.parseDescription("fly to the French Quarter").segments[0];
+  assert.equal(fly.location_name, "the French Quarter");
+  const bay = planner.parseDescription("hover over Half Moon Bay for 3 seconds").segments[0];
+  assert.equal(bay.location_name, "Half Moon Bay");
+  // Real orbit syntax keeps all its modifiers.
+  const orbit = planner.parseDescription("orbit Paris twice counterclockwise for 20 seconds").segments[0];
+  assert.equal(orbit.orbit_degrees, 720);
+  assert.equal(orbit.orbit_direction, -1);
+  const quarter = planner.parseDescription("circle Big Ben a quarter clockwise").segments[0];
+  assert.equal(quarter.orbit_degrees, 90);
+  assert.equal(quarter.orbit_direction, 1);
+});
+
+test("earth-studio planner v0.7: modifier-only comma fragments merge; location fragments stay segments", () => {
+  const merged = planner.parseDescription("fly to Paris at 600 meters, tilt 45 degrees, then hover for 4 seconds");
+  assert.equal(merged.segments.length, 2);
+  assert.equal(merged.unresolved_items.length, 0);
+  // A fragment with its own action is never merged.
+  const kept = planner.parseDescription("fly to Paris, orbit Paris");
+  assert.equal(kept.segments.length, 2);
+  assert.equal(kept.segments[1].action, "orbit");
+});
+
+test("earth-studio planner v0.7: doubled duration phrases do not leak into the location", () => {
+  const seg = planner.parseDescription("fly to Paris for 5 seconds for 3 seconds").segments[0];
+  assert.equal(seg.location_name, "Paris");
+  assert.equal(seg.duration_seconds, 5); // the first duration is the effective one
+  assert.equal(seg.resolution_status, "resolved");
+});
+
+test("earth-studio esp v0.7: antimeridian flights take the short arc with an in-contract seam pair", () => {
+  const plan = planner.buildShotPlan("T", "fly to Tokyo, then fly to Los Angeles in 12 seconds");
+  const lng = planner.buildEspKeyframes(plan).lng;
+  assert.ok(lng.every((k) => k.value >= -180 && k.value <= 180), "every exported longitude stays inside ±180");
+  // The eastward crossing emits +180 / -180 on ADJACENT integer frames: the
+  // same physical meridian, and no frame is ever rendered between them.
+  const i = lng.findIndex((k) => k.value === 180);
+  assert.ok(i >= 0, "crossing emits a +180 keyframe");
+  assert.equal(lng[i + 1].value, -180);
+  assert.equal(lng[i + 1].time, lng[i].time + 1);
+  // Net sweep (seam jump contributes 0) = the short eastward Pacific route.
+  let sweep = 0;
+  for (let j = 1; j < lng.length; j += 1) {
+    let d = lng[j].value - lng[j - 1].value;
+    if (d > 180) d -= 360;
+    if (d < -180) d += 360;
+    sweep += d;
+  }
+  assert.ok(sweep > 90 && sweep < 115, `expected ~+102° short-arc sweep, got ${sweep}`);
+  // Exported .esp normalization contract intact (values in [0,1] against minValueRange).
+  const esp = planner.buildEsp(plan);
+  const lon = esp.scenes[0].attributes[0].attributes[0].attributes[0];
+  assert.equal(lon.type, "longitude");
+  assert.ok(lon.keyframes.every((k) => k.value >= 0 && k.value <= 1));
+  // Non-crossing plans are unaffected: plain short-range longitudes, no seam keyframes.
+  const london = planner.buildEspKeyframes(planner.buildShotPlan("T", "fly to London in 7 seconds, then orbit London for 10 seconds"));
+  assert.ok(london.lng.every((k) => Math.abs(k.value) < 1));
+});
+
+test("earth-studio lane v0.7: mixed frame extensions render the majority set with an honest warning", () => {
+  const { root, pkg } = tmpPackage();
+  lane.writeJob(pkg, { jobName: "J", description: "fly to Paris in 3 seconds" });
+  const framesDir = path.join(lane.laneDir(pkg), "frames");
+  fs.writeFileSync(path.join(framesDir, "f1.jpeg"), "x");
+  fs.writeFileSync(path.join(framesDir, "f2.jpeg"), "x");
+  fs.writeFileSync(path.join(framesDir, "stray.png"), "x");
+  lane.STATE.activeJob = null;
+  const out = lane.startRender(pkg, "p", { spawn: () => fakeChild() });
+  assert.match(out.frame_glob, /\*\.jpeg$/);
+  assert.equal(out.rendered_frame_count, 2);
+  assert.equal(out.frame_count, 3);
+  assert.match(out.warnings.join("\n"), /mixes image types \(2 \.jpeg, 1 \.png\)/);
+  lane.STATE.activeJob = null;
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("earth-studio lane v0.7: in-place re-export (fresh file mtimes) is not stale; genuinely old exports are", () => {
+  const { root, pkg } = tmpPackage();
+  lane.writeJob(pkg, { jobName: "J", description: "fly to Paris in 3 seconds" }, { now: new Date(Date.now() - 60000).toISOString() });
+  const framesDir = path.join(lane.laneDir(pkg), "frames");
+  const frame = path.join(framesDir, "Frame_0000.jpeg");
+  fs.writeFileSync(frame, "x");
+  // Regenerate the plan NOW, then simulate an in-place re-export: overwriting
+  // the same filenames leaves the DIR mtime old while the FILE mtime is new.
+  lane.writeJob(pkg, { jobName: "J", description: "fly to Paris in 4 seconds" });
+  const past = new Date(Date.now() - 3600000);
+  const fresh = new Date(Date.now() + 5000);
+  fs.utimesSync(framesDir, past, past);
+  fs.utimesSync(frame, fresh, fresh);
+  assert.equal(lane.status(pkg, "p").frames_stale, false, "in-place re-export must not read as stale");
+  // Both the dir AND the files predate the plan -> genuinely stale.
+  fs.utimesSync(frame, past, past);
+  assert.equal(lane.status(pkg, "p").frames_stale, true);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("project-earth-studio.html v0.7: unsaved edits survive polling regardless of focus", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "project-earth-studio.html"), "utf8");
+  assert.ok(!html.includes("document.activeElement===descEl"), "focus-only guard removed");
+  assert.match(html, /descEl\.value !== \(ST\.job\?ST\.job\.description:''\)/);
+  assert.match(html, /jobEl\.value !== \(ST\.job\?ST\.job\.jobName:''\)/);
+  assert.match(html, /never the edited fields/);
 });

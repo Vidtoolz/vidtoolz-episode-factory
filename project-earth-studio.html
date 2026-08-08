@@ -285,10 +285,16 @@
       async function refresh(){
         try{ ST = await fetchJson('/api/earth-studio/status?id='+encodeURIComponent(ID)); }catch(e){ document.getElementById('es-meta').innerHTML='<span class="blk">Could not load: '+esc(e.message||e)+'</span>'; return; }
         if (!aspectTouched && ST.job && ST.job.aspect && planner.ASPECTS[ST.job.aspect]) ASPECT = ST.job.aspect;
-        // preserve in-progress typing across refreshes
+        // Preserve unsaved local edits across refreshes: the fields are dirty
+        // whenever their value differs from the server-synchronized job —
+        // focused OR blurred. Polling never overwrites a dirty field; a
+        // successful Generate makes server text == local text, which clears
+        // dirtiness naturally and resumes full re-renders.
         const descEl=document.getElementById('es-desc');
-        const typing = descEl && (descEl.value !== (ST.job?ST.job.description:'')) && document.activeElement===descEl;
-        if (typing){ // update only the dynamic bits
+        const jobEl=document.getElementById('es-job');
+        const dirty = (descEl && descEl.value !== (ST.job?ST.job.description:''))
+          || (jobEl && jobEl.value !== (ST.job?ST.job.jobName:''));
+        if (dirty){ // update only the dynamic bits, never the edited fields
           const fc=document.getElementById('es-frame-count'); if(fc) fc.textContent=ST.frame_count||0;
           return;
         }

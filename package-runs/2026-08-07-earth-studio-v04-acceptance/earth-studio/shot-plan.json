@@ -1,7 +1,7 @@
 {
   "job_name": "v0.4 Real Import Paris",
-  "version": "0.6.1",
-  "generated_at": "2026-08-07T12:18:45.179Z",
+  "version": "0.7.0",
+  "generated_at": "2026-08-08T06:29:15.705Z",
   "source_description": "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 36 seconds, then zoom out to space in 12 seconds",
   "parser_strategy": "offline_regex_with_manual_review_fallback",
   "frame_rate": 30,

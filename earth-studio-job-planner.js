@@ -2,7 +2,7 @@
   "use strict";
 
   const DEFAULT_OUTPUT_DIR = "/home/vidtoolz/Videos/vidtoolz-earth-studio-jobs";
-  const VERSION = "0.6.1"; // v0.6.1: proximity-aware orbit pacing (round-3 real playback: geometry right, orbit "too fast compared to how close the camera was") — s/rev stretches by tan(tilt), advisory threshold relative to the tilt-suggested rate
+  const VERSION = "0.7.0"; // v0.7.0 correctness pass: hover holds the previous camera (altitude/tilt carry-over with provenance), orbit modifiers scoped to orbit segments (place names like "French Quarter" survive), modifier-only comma fragments merge into the previous segment, "tilt N degrees" grammar, global duration strip, antimeridian short-arc longitude with in-contract ±180 seam pairs
   const FRAME_RATE = 30;
   const DEFAULT_ALTITUDE_M = 2500;
   const MIN_ALTITUDE_M = 150;
@@ -347,8 +347,12 @@
   }
 
   function removeDurationPhrase(text) {
+    // Global: a doubled duration phrase ("for 5 seconds for 3 seconds") must
+    // not leak into the location phrase — extractDurationSeconds still takes
+    // the FIRST duration as the effective one.
     return cleanString(text)
-      .replace(/\b(?:for|in)?\s*\d+(?:\.\d+)?\s*(?:seconds?|secs?|sec|s)\b/i, "")
+      .replace(/\b(?:for|in)?\s*\d+(?:\.\d+)?\s*(?:seconds?|secs?|sec|s)\b/gi, "")
+      .replace(/\s{2,}/g, " ")
       .trim();
   }
 
@@ -380,7 +384,9 @@
     let t = cleanString(text);
     const topDown = t.match(/\b(?:top[- ]?down|straight down|overhead|bird'?s[- ]?eye)\b/i);
     if (topDown) return { tilt_deg: 0, text: t.replace(topDown[0], " ").replace(/\s{2,}/g, " ").trim() };
-    const degrees = t.match(/\btilted?(?:\s+(?:at|by))?\s+(\d+(?:\.\d+)?)\s*degrees?\b/i);
+    // "tilt 45 degrees", "tilted 45 degrees", "tilted at 45 degrees" — the
+    // bare imperative "tilt" only counts with an explicit number after it.
+    const degrees = t.match(/\btilt(?:ed)?(?:\s+(?:at|by))?\s+(\d+(?:\.\d+)?)\s*degrees?\b/i);
     if (degrees) return { tilt_deg: Math.min(85, Math.max(0, Number(degrees[1]))), text: t.replace(degrees[0], " ").replace(/\s{2,}/g, " ").trim() };
     const tilted = t.match(/\b(?:tilted|angled)\b/i);
     if (tilted) return { tilt_deg: 60, text: t.replace(tilted[0], " ").replace(/\s{2,}/g, " ").trim() };
@@ -509,7 +515,7 @@
     return DEFAULT_DURATION_S[action] || 4;
   }
 
-  function parseSegment(text, segmentId, currentSeconds, frameRate = FRAME_RATE, previousLocation = null, previousAltitudeM = DEFAULT_ALTITUDE_M) {
+  function parseSegment(text, segmentId, currentSeconds, frameRate = FRAME_RATE, previousLocation = null, previousAltitudeM = DEFAULT_ALTITUDE_M, previousTiltDeg = null) {
     const warnings = [];
     const notes = [];
     const actionInfo = detectAction(text);
@@ -519,7 +525,13 @@
     let working = removeDurationPhrase(text);
     const tiltSpec = extractTiltSpec(working);
     working = tiltSpec.text;
-    const orbitSpec = extractOrbitSpec(working);
+    // Orbit modifiers ("twice", "a quarter", "clockwise"…) are orbit
+    // vocabulary. Extracting them from other actions corrupts place names —
+    // "hover over the French Quarter" lost its "Quarter" — so only orbit
+    // segments get the extraction.
+    const orbitSpec = actionInfo.action === "orbit"
+      ? extractOrbitSpec(working)
+      : { orbit_degrees: null, orbit_direction: 1, text: working };
     working = orbitSpec.text;
     const altitudeSpec = extractAltitudeSpec(working);
     working = altitudeSpec.text;
@@ -536,13 +548,38 @@
       }
     }
 
+    // A hover is a hold: when it stays at the previous location and gives no
+    // explicit altitude/tilt, the camera keeps the previous segment's terminal
+    // state instead of drifting to generic defaults. Explicit values always win.
+    const holdsPreviousCamera = actionInfo.action === "hover"
+      && previousLocation
+      && location
+      && (!locationPhrase || location.name === previousLocation.name);
+
     // Duration: explicit wins; otherwise scale to the move's magnitude.
-    const altitude = targetAltitude(actionInfo.action, altitudeSpec, location);
+    let altitude = targetAltitude(actionInfo.action, altitudeSpec, location);
+    let tiltDeg = typeof tiltSpec.tilt_deg === "number" ? tiltSpec.tilt_deg
+      : (DEFAULT_TILT_DEG[actionInfo.action] != null ? DEFAULT_TILT_DEG[actionInfo.action] : 45);
+    let tiltSource = typeof tiltSpec.tilt_deg === "number" ? "explicit" : "action_default";
+    if (holdsPreviousCamera) {
+      const minAlt = (location && location.min_altitude_m) || 0;
+      const held = [];
+      if (typeof altitudeSpec.altitude_m !== "number" && typeof previousAltitudeM === "number") {
+        altitude = { value: clampAltitude(previousAltitudeM, minAlt), source: "carried_over" };
+        held.push(`altitude ${altitude.value}m`);
+      }
+      if (typeof tiltSpec.tilt_deg !== "number" && typeof previousTiltDeg === "number") {
+        tiltDeg = previousTiltDeg;
+        tiltSource = "carried_over";
+        held.push(`tilt ${tiltDeg}°`);
+      }
+      if (held.length) notes.push(`hover holds the previous camera (${held.join(", ")}).`);
+    }
     const distanceM = location && previousLocation ? haversineMeters(previousLocation, location) : null;
     const magnitude = {
       distanceM,
       orbitDegrees: typeof orbitSpec.orbit_degrees === "number" ? orbitSpec.orbit_degrees : 360,
-      tiltDeg: typeof tiltSpec.tilt_deg === "number" ? tiltSpec.tilt_deg : (DEFAULT_TILT_DEG[actionInfo.action] != null ? DEFAULT_TILT_DEG[actionInfo.action] : 45),
+      tiltDeg,
       fromAltitudeM: previousAltitudeM,
       toAltitudeM: altitude.value,
     };
@@ -592,8 +629,8 @@
       location,
       altitude_m: altitude.value,
       altitude_source: altitude.source,
-      tilt_deg: typeof tiltSpec.tilt_deg === "number" ? tiltSpec.tilt_deg : (DEFAULT_TILT_DEG[actionInfo.action] != null ? DEFAULT_TILT_DEG[actionInfo.action] : 45),
-      tilt_source: typeof tiltSpec.tilt_deg === "number" ? "explicit" : "action_default",
+      tilt_deg: tiltDeg,
+      tilt_source: tiltSource,
       duration_source: durationSource,
       start_seconds: startSeconds,
       end_seconds: endSeconds,
@@ -611,20 +648,41 @@
     return { segment, nextSeconds: endSeconds, warnings, notes };
   }
 
+  // A comma-separated fragment with no camera action and nothing but modifier
+  // vocabulary ("…, tilted 45 degrees, …") is a continuation of the previous
+  // segment, not a new (unresolvable) segment — commas both chain segments AND
+  // separate spoken-style modifiers, so only fragments that fully reduce to
+  // modifiers get merged.
+  function isModifierOnlyFragment(part) {
+    if (detectAction(part).action !== "unresolved") return false;
+    let t = removeDurationPhrase(part);
+    t = extractTiltSpec(t).text;
+    t = extractOrbitSpec(t).text;
+    t = extractAltitudeSpec(t).text;
+    t = t.replace(/\b(?:at|from|to|in|on|over|for|the|a|an|and|with)\b/gi, " ").replace(/[^a-zA-Z0-9]+/g, " ").trim();
+    return t === "";
+  }
+
   function parseDescription(description, options = {}) {
     const frameRate = options.frameRate || FRAME_RATE;
-    const parts = splitSegments(description);
+    const rawParts = splitSegments(description);
+    const parts = [];
+    rawParts.forEach((part) => {
+      if (parts.length && isModifierOnlyFragment(part)) parts[parts.length - 1] += ` ${part}`;
+      else parts.push(part);
+    });
     const warnings = [];
     const notes = [];
     const segments = [];
     let currentSeconds = 0;
     let lastLocation = null;
     let lastAltitude = DEFAULT_ALTITUDE_M;
+    let lastTilt = null;
 
     if (!parts.length) warnings.push("description did not contain any parseable segments.");
 
     parts.forEach((part, index) => {
-      const parsed = parseSegment(part, index + 1, currentSeconds, frameRate, lastLocation, lastAltitude);
+      const parsed = parseSegment(part, index + 1, currentSeconds, frameRate, lastLocation, lastAltitude, lastTilt);
       segments.push(parsed.segment);
       warnings.push(...parsed.warnings.map((warning) => `segment ${index + 1}: ${warning}`));
       notes.push(...parsed.notes.map((note) => `segment ${index + 1}: ${note}`));
@@ -632,6 +690,7 @@
       if (parsed.segment.location) {
         lastLocation = parsed.segment.location;
         lastAltitude = parsed.segment.altitude_m;
+        lastTilt = parsed.segment.tilt_deg;
       }
     });
 
@@ -911,6 +970,61 @@ This checklist is technical planning support only. It is not creative approval, 
     return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
   }
 
+  // Signed shortest-arc longitude delta from -> to, in (-180, 180]. The camera
+  // state machine keeps longitude UNWRAPPED (continuous, may exceed ±180) so a
+  // Tokyo -> Los Angeles flight crosses the Pacific instead of sweeping the
+  // long way around; values are wrapped back into ±180 only at emit time.
+  function shortestLngDelta(fromLng, toLng) {
+    const d = (((toLng - fromLng) % 360) + 540) % 360 - 180;
+    return d === -180 ? 180 : d;
+  }
+
+  function wrapLng(value) {
+    return ((((value + 180) % 360) + 360) % 360) - 180;
+  }
+
+  // Re-emit an UNWRAPPED piecewise-linear longitude track as wrapped [-180,180]
+  // keyframes. At each antimeridian crossing a one-frame keyframe pair is
+  // inserted (+180 then -180, or the reverse): both sides name the same
+  // physical meridian and no frame is rendered between two adjacent integer
+  // frames, so the wrap is visually seamless while every exported value stays
+  // inside the ±180 contract real Earth Studio has already accepted.
+  function wrapLngTrack(track) {
+    if (track.length < 2) {
+      return track.map((k) => espKeyframe(k.time, round6(wrapLng(k.value))));
+    }
+    const out = [];
+    const push = (frame, value) => {
+      const kf = espKeyframe(frame, round6(value));
+      if (out.length && out[out.length - 1].time === kf.time) out[out.length - 1] = kf;
+      else if (!out.length || out[out.length - 1].time < kf.time) out.push(kf);
+    };
+    for (let i = 0; i < track.length; i += 1) {
+      const cur = track[i];
+      if (i > 0) {
+        const prev = track[i - 1];
+        const lo = Math.min(prev.value, cur.value);
+        const hi = Math.max(prev.value, cur.value);
+        // Seam values s = 180 + k*360 strictly inside (lo, hi). A single
+        // interval spans at most 180° (flights) or ~30° (orbit samples), so at
+        // most one seam — the loop stays for safety.
+        let s = 180 + Math.ceil((lo - 180) / 360) * 360;
+        if (s <= lo) s += 360;
+        for (; s < hi; s += 360) {
+          const t = (s - prev.value) / (cur.value - prev.value);
+          const f = prev.time + (cur.time - prev.time) * t;
+          if (cur.time - prev.time < 2) break; // sub-frame interval: wrap lands within one frame anyway
+          const before = Math.min(Math.max(Math.floor(f), prev.time), cur.time - 1);
+          const eastward = cur.value > prev.value;
+          push(before, eastward ? 180 : -180);
+          push(before + 1, eastward ? -180 : 180);
+        }
+      }
+      push(cur.time, wrapLng(cur.value));
+    }
+    return out;
+  }
+
   // Ground offset of a point at bearing/radius from a center (equirectangular
   // approximation — fine at orbit radii of a few km).
   function offsetPoint(center, bearingDeg, radiusM) {
@@ -994,6 +1108,12 @@ This checklist is technical planning support only. It is not creative approval, 
         put("tilt", sf, state.tilt);
       }
 
+      // The segment's target longitude expressed in the camera's UNWRAPPED
+      // frame: continue along the shortest arc from wherever the camera is
+      // (state.longitude may legitimately sit outside ±180 after a crossing).
+      const targetLng = state.longitude + shortestLngDelta(state.longitude, location.longitude);
+      const locRef = { ...location, longitude: targetLng };
+
       if (segment.action === "orbit") {
         const sweep = (segment.orbit_degrees || 360) * (segment.orbit_direction || 1);
         const radius = orbitRadiusMeters(endAltitude, tilt);
@@ -1007,7 +1127,7 @@ This checklist is technical planning support only. It is not creative approval, 
         let lastPoint = { latitude: state.latitude, longitude: state.longitude };
         for (let i = 1; i <= sampleCount; i += 1) {
           const t = i / sampleCount;
-          lastPoint = offsetPoint(location, theta0 + sweep * t, radius);
+          lastPoint = offsetPoint(locRef, theta0 + sweep * t, radius);
           const frame = sf + (ef - sf) * t;
           put("lat", frame, lastPoint.latitude);
           put("lng", frame, lastPoint.longitude);
@@ -1031,11 +1151,14 @@ This checklist is technical planning support only. It is not creative approval, 
         });
         put("alt", ef, endAltitude);
       }
-      change("lng", sf, ef, location.longitude);
+      change("lng", sf, ef, targetLng);
       change("lat", sf, ef, location.latitude);
       change("tilt", sf, ef, tilt);
-      state = { latitude: location.latitude, longitude: location.longitude, altitude: endAltitude, pan: state.pan, tilt };
+      state = { latitude: location.latitude, longitude: targetLng, altitude: endAltitude, pan: state.pan, tilt };
     });
+    // Emit-time wrap: the state machine runs unwrapped; the exported track
+    // stays inside the ±180 contract, with seam pairs at crossings.
+    tracks.lng = wrapLngTrack(tracks.lng);
     return tracks;
   }
 
