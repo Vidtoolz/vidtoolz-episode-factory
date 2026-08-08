@@ -734,6 +734,69 @@ function resolveTrackTemplates(settings, musicPlan) {
   return { templates, warnings };
 }
 
+function currentApprovalForDawHandoff(dir, project, candidateId, settings) {
+  try {
+    const { approved } = requireCurrentSketchApproval(dir, project, settings);
+    return approved.approved_candidate === candidateId ? approved : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistDawHandoffRecord(dir, project, meta, handoffType, artifactManifest, approvedAtStart) {
+  const handoffDir = path.join(dir, "candidates", meta.candidate_id, handoffType);
+  const artifactManifestHash = provenanceLib.artifactManifestHash(artifactManifest);
+  const approvalPath = path.join(dir, "approved", "provenance.json");
+  const liveApproval = readJson(approvalPath);
+  const issued = Boolean(approvedAtStart && liveApproval
+    && sameApprovalBinding(approvedAtStart, liveApproval)
+    && liveApproval.approved_candidate === meta.candidate_id);
+  let record;
+  if (issued) {
+    const contract = provenanceLib.dawHandoffContract({
+      project, candidate: meta, approved: liveApproval, handoffType,
+      artifactManifestHash,
+    });
+    record = {
+      schema_version: provenanceLib.DAW_HANDOFF_SCHEMA_VERSION,
+      status: "issued",
+      issued_at: nowIso(),
+      handoff_type: handoffType,
+      project_id: project.project_id,
+      candidate_id: meta.candidate_id,
+      approved_identity_hash: contract.approved_identity_hash,
+      handoff_contract: contract,
+      handoff_contract_hash: provenanceLib.dawHandoffIdentity(contract),
+      artifact_manifest: artifactManifest,
+      artifact_manifest_hash: artifactManifestHash,
+    };
+  } else {
+    record = {
+      schema_version: provenanceLib.DAW_HANDOFF_SCHEMA_VERSION,
+      status: "draft_unapproved",
+      generated_at: nowIso(),
+      handoff_type: handoffType,
+      project_id: project.project_id,
+      candidate_id: meta.candidate_id,
+      artifact_manifest: artifactManifest,
+      artifact_manifest_hash: artifactManifestHash,
+    };
+  }
+  writeJsonAtomic(path.join(handoffDir, "handoff-contract.json"), record);
+  meta.daw_handoffs = { ...(meta.daw_handoffs || {}), [handoffType]: {
+    status: record.status,
+    relative_path: `candidates/${meta.candidate_id}/${handoffType}/handoff-contract.json`,
+    handoff_contract_hash: record.handoff_contract_hash || null,
+    approved_identity_hash: record.approved_identity_hash || null,
+    artifact_manifest_hash: artifactManifestHash,
+  } };
+  if (issued) {
+    liveApproval.daw_handoffs = { ...(liveApproval.daw_handoffs || {}), [handoffType]: meta.daw_handoffs[handoffType] };
+    writeJsonAtomic(approvalPath, liveApproval);
+  }
+  return record;
+}
+
 function buildReaperHandoff(projectId, candidateId, options = {}) {
   const settings = loadSettings(options);
   const { dir } = resolveProjectDir(settings, projectId);
@@ -742,6 +805,10 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
   const musicPlan = readJson(path.join(candidateDir, "music-plan-used.json")) || readJson(path.join(dir, "music-plan.json"));
   const meta = requireCandidateMeta(candidateDir, candidateId);
   const cues = requireCandidateCues(candidateDir, candidateId);
+  const approvedAtStart = currentApprovalForDawHandoff(dir, project, candidateId, settings);
+  const renderTailSeconds = approvedAtStart && approvedAtStart.render_contract
+    && approvedAtStart.render_contract.duration_exact === false ? 1 : 0;
+  const handoffRenderDuration = project.duration_seconds + renderTailSeconds;
   const composition = composerEngine.compose({ cues }, compositionOptionsFromMeta(project, meta));
 
   const reaperDir = path.join(candidateDir, "reaper");
@@ -752,11 +819,12 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
   fs.writeFileSync(rppPath, reaper.buildRppText({
     projectName: `${project.name} ${candidateId}`, cues, composition,
     sampleRate: settings.default_export_sample_rate, rendersDir,
+    durationSeconds: handoffRenderDuration,
   }));
 
   const { templates, warnings } = resolveTrackTemplates(settings, musicPlan);
   fs.writeFileSync(path.join(reaperDir, "render-scorecraft-mix.lua"), reaper.buildRenderScript({
-    rendersDir, durationSeconds: project.duration_seconds, sampleRate: settings.default_export_sample_rate,
+    rendersDir, durationSeconds: handoffRenderDuration, sampleRate: settings.default_export_sample_rate,
   }));
   fs.writeFileSync(path.join(reaperDir, "build-scorecraft-from-templates.lua"), reaper.buildTemplateScript({
     projectName: `${project.name} ${candidateId}`,
@@ -796,6 +864,9 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
     { logical_role: "reaper_readme", relative_path: "reaper/README-reaper.md" },
   ]);
   const handoffArtifactManifestHash = provenanceLib.artifactManifestHash(handoffArtifactManifest);
+  const handoffRecord = persistDawHandoffRecord(
+    dir, project, meta, "reaper", handoffArtifactManifest, approvedAtStart,
+  );
   meta.handoff_artifact_manifest = handoffArtifactManifest;
   meta.identity = { ...(meta.identity || {}), handoff_artifact_manifest_hash: handoffArtifactManifestHash };
   meta.status = meta.status === "approved" ? "approved" : "daw_built";
@@ -805,6 +876,7 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
   if (candidateProvenance) {
     candidateProvenance.identity = meta.identity;
     candidateProvenance.handoff_artifact_manifest = handoffArtifactManifest;
+    candidateProvenance.daw_handoffs = meta.daw_handoffs;
     writeJsonAtomic(candidateProvenancePath, candidateProvenance);
   }
   const approvalPath = path.join(dir, "approved", "provenance.json");
@@ -822,6 +894,9 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
     templates_used: templates,
     template_warnings: warnings,
     handoff_artifact_manifest_hash: handoffArtifactManifestHash,
+    handoff_contract_hash: handoffRecord.handoff_contract_hash || null,
+    approved_identity_hash: handoffRecord.approved_identity_hash || null,
+    authoritative: handoffRecord.status === "issued",
     midi_only: Object.keys(templates).length === 0,
     open_command: reaper.openInReaperCommand(settings, rppPath),
   };
@@ -850,6 +925,7 @@ function buildAbletonHandoff(projectId, candidateId, options = {}) {
   const musicPlan = readJson(path.join(candidateDir, "music-plan-used.json")) || readJson(path.join(dir, "music-plan.json"));
   const meta = requireCandidateMeta(candidateDir, candidateId);
   const cues = requireCandidateCues(candidateDir, candidateId);
+  const approvedAtStart = currentApprovalForDawHandoff(dir, project, candidateId, settings);
 
   const abletonDir = path.join(candidateDir, "ableton");
   fs.mkdirSync(path.join(abletonDir, "midi"), { recursive: true });
@@ -869,7 +945,31 @@ function buildAbletonHandoff(projectId, candidateId, options = {}) {
     template_set_path: settings.ableton_template_path || null,
   });
   fs.writeFileSync(path.join(abletonDir, "README.md"), buildAbletonReadme(project, meta, cues, settings));
-  return { dir: abletonDir };
+  const handoffArtifactManifest = provenanceLib.buildArtifactManifest(candidateDir, [
+    ...meta.lanes.map((lane) => ({ logical_role: `ableton_midi_lane_${lane}`, relative_path: `ableton/midi/${lane}.mid` })),
+    { logical_role: "ableton_audio_preview", relative_path: "ableton/audio-preview/preview-mix.wav" },
+    { logical_role: "ableton_cue_sheet", relative_path: "ableton/cue-sheet.json" },
+    { logical_role: "ableton_palette", relative_path: "ableton/palette.json" },
+    { logical_role: "ableton_track_layout", relative_path: "ableton/suggested-track-layout.json" },
+    { logical_role: "ableton_readme", relative_path: "ableton/README.md" },
+  ]);
+  const handoffRecord = persistDawHandoffRecord(
+    dir, project, meta, "ableton", handoffArtifactManifest, approvedAtStart,
+  );
+  writeJsonAtomic(path.join(candidateDir, "candidate.json"), meta);
+  const candidateProvenancePath = path.join(candidateDir, "provenance.json");
+  const candidateProvenance = readJson(candidateProvenancePath);
+  if (candidateProvenance) {
+    candidateProvenance.daw_handoffs = meta.daw_handoffs;
+    writeJsonAtomic(candidateProvenancePath, candidateProvenance);
+  }
+  return {
+    dir: abletonDir,
+    handoff_artifact_manifest_hash: handoffRecord.artifact_manifest_hash,
+    handoff_contract_hash: handoffRecord.handoff_contract_hash || null,
+    approved_identity_hash: handoffRecord.approved_identity_hash || null,
+    authoritative: handoffRecord.status === "issued",
+  };
 }
 
 function buildAbletonReadme(project, meta, cues, settings) {
@@ -886,6 +986,15 @@ automatic Live Set generation yet — see suggested-track-layout.json.
 4. Cue boundaries (add locators at these times): ${cues.map((c) => `${c.cue_id}=${c.start_seconds}s`).join(", ")}.
 5. \`audio-preview/preview-mix.wav\` is the sketch mockup for reference only.
 6. Project tempo: ${meta.tempo_bpm} BPM, key ${meta.key}. The .mid files carry the tempo map.
+
+## Return and verify the DAW render
+This folder is authoritative only when \`handoff-contract.json\` says
+\`status: issued\`; build it again after sketch approval if it says
+\`draft_unapproved\`. Export one stereo PCM WAV matching the contract. In
+Scorecraft step 5 select this Ableton handoff, choose the rendered WAV, click
+**Import production render**, then **Verify production mix**. Scorecraft hashes
+the bytes itself and rechecks this package; names and directory placement are
+not authority.
 
 Max for Live bridge: not implemented in this version (planned Phase C) — this
 handoff keeps you fully productive without it.
@@ -1375,13 +1484,21 @@ function authoritativeMusicArtifactHasHash(dir, targetHash) {
         if (record.schema_version !== PRODUCTION_SCHEMA_VERSION || record.production_mix_id !== entry.name) return false;
         if (layout.kind === "import") {
           const relativePath = `production/imports/${entry.name}/mix.wav`;
-          const expectedId = `production-${provenanceLib.hashCanonical({
+          const identityMaterial = {
             schema_version: PRODUCTION_SCHEMA_VERSION,
             mix_sha256: record.imported_file_sha256,
             approved_candidate: record.approved_candidate_id,
             candidate_content_hash: record.approved_candidate_content_hash,
             render_contract_hash: record.render_contract_hash,
-          }).slice(0, 20)}`;
+          };
+          // P3 imports bind to an issued external-DAW contract. Preserve the
+          // historical identity calculation only for legacy provenance that
+          // predates that field, so authoritative narration lookup remains
+          // compatible without treating legacy records as DAW-verified.
+          if (record.daw_handoff_contract_hash !== undefined) {
+            identityMaterial.daw_handoff_contract_hash = record.daw_handoff_contract_hash;
+          }
+          const expectedId = `production-${provenanceLib.hashCanonical(identityMaterial).slice(0, 20)}`;
           return record.relative_path === relativePath && record.production_mix_id === expectedId
             && /^[a-f0-9]{64}$/.test(String(record.imported_file_sha256 || ""))
             && Number.isInteger(record.byte_size) && record.byte_size > 0
@@ -1788,8 +1905,15 @@ function validateProductionMedia(probe, contract) {
   const expectedCodec = contract.bit_depth === 24 ? "pcm_s24le" : "pcm_s16le";
   if (probe.codec !== expectedCodec) throw httpError(`Production render bit depth must be ${contract.bit_depth}-bit PCM (got ${probe.codec || "unknown"}).`, 400);
   const tolerance = Number(contract.duration_tolerance_seconds) || 0.05;
-  if (!Number.isFinite(probe.duration) || Math.abs(probe.duration - contract.target_duration_seconds) > tolerance) {
-    throw httpError(`Production render duration must be ${contract.target_duration_seconds}s ±${tolerance}s (got ${probe.duration}).`, 400);
+  const exact = contract.duration_exact !== false;
+  const maximumTail = exact ? 0 : 1;
+  const tooShort = !Number.isFinite(probe.duration) || probe.duration < contract.target_duration_seconds - tolerance;
+  const tooLong = !Number.isFinite(probe.duration) || probe.duration > contract.target_duration_seconds + maximumTail + tolerance;
+  if (tooShort || tooLong) {
+    const expected = exact
+      ? `${contract.target_duration_seconds}s ±${tolerance}s`
+      : `${contract.target_duration_seconds}s through ${contract.target_duration_seconds + maximumTail}s (with ±${tolerance}s tolerance)`;
+    throw httpError(`Production render duration must be ${expected} (got ${probe.duration}).`, 400);
   }
 }
 
@@ -1814,6 +1938,71 @@ function sameApprovalBinding(first, second) {
     .every((key) => first.identity[key] === second.identity[key]);
 }
 
+function requireIssuedDawHandoff(dir, project, approved, requested = {}) {
+  const candidateId = approved.approved_candidate;
+  const candidateDir = candidateDirOf(dir, candidateId);
+  const candidate = requireCandidateMeta(candidateDir, candidateId);
+  const requestedType = requested.handoff_type === undefined ? null : String(requested.handoff_type);
+  if (requestedType && !["reaper", "ableton"].includes(requestedType)) {
+    throw httpError(`Unsupported DAW handoff type: ${requestedType}. Expected reaper or ableton.`, 400);
+  }
+  const load = (handoffType) => {
+    const relativePath = `candidates/${candidateId}/${handoffType}/handoff-contract.json`;
+    let recordPath;
+    try { recordPath = provenanceLib.resolveManifestPath(dir, relativePath).target; }
+    catch { return null; }
+    const record = readJson(recordPath);
+    return record ? { handoffType, record, recordPath } : null;
+  };
+  let selected;
+  if (requestedType) selected = load(requestedType);
+  else {
+    const issued = ["reaper", "ableton"].map(load).filter((item) => item && item.record.status === "issued");
+    if (issued.length > 1) throw httpError("More than one current DAW handoff is issued; select reaper or ableton explicitly.", 400);
+    selected = issued[0] || null;
+  }
+  if (!selected || selected.record.status !== "issued") {
+    throw httpError(`No issued ${requestedType ? `${requestedType.toUpperCase()} ` : ""}DAW handoff exists for the current approved candidate. Build the handoff after approval before importing its return.`, 409);
+  }
+  const { handoffType, record } = selected;
+  let manifestHash = null;
+  let recordContractHash = null;
+  let recordContractCanonical = null;
+  try {
+    manifestHash = provenanceLib.artifactManifestHash(record.artifact_manifest);
+    recordContractHash = provenanceLib.dawHandoffIdentity(record.handoff_contract);
+    recordContractCanonical = provenanceLib.canonicalStringify(record.handoff_contract);
+  } catch {}
+  let expectedContract = null;
+  let expectedContractHash = null;
+  try {
+    expectedContract = provenanceLib.dawHandoffContract({
+      project, candidate, approved, handoffType, artifactManifestHash: manifestHash,
+    });
+    expectedContractHash = provenanceLib.dawHandoffIdentity(expectedContract);
+  } catch {}
+  const requestedHash = requested.handoff_contract_hash === undefined
+    ? expectedContractHash : String(requested.handoff_contract_hash);
+  const manifestCheck = provenanceLib.verifyArtifactManifest(candidateDir, record.artifact_manifest);
+  if (record.schema_version !== provenanceLib.DAW_HANDOFF_SCHEMA_VERSION
+    || record.handoff_type !== handoffType || record.project_id !== project.project_id
+    || record.candidate_id !== candidateId
+    || !expectedContract || record.approved_identity_hash !== expectedContract.approved_identity_hash
+    || record.handoff_contract_hash !== expectedContractHash
+    || requestedHash !== expectedContractHash
+    || recordContractHash !== expectedContractHash
+    || recordContractCanonical !== provenanceLib.canonicalStringify(expectedContract)
+    || record.artifact_manifest_hash !== manifestHash || !manifestCheck.valid) {
+    throw httpError(`The ${handoffType.toUpperCase()} DAW handoff is stale, modified, or does not match the current approved Scorecraft candidate. Rebuild it before importing a render.`, 409);
+  }
+  return {
+    handoff_type: handoffType,
+    handoff_contract_hash: expectedContractHash,
+    handoff_artifact_manifest_hash: manifestHash,
+    approved_identity_hash: expectedContract.approved_identity_hash,
+  };
+}
+
 function importProductionMix(projectId, input = {}, options = {}) {
   const settings = loadSettings(options);
   const { dir } = resolveProjectDir(settings, projectId);
@@ -1830,6 +2019,7 @@ function importProductionMix(projectId, input = {}, options = {}) {
   if (input.bytes.length < 44 || input.bytes.toString("ascii", 0, 4) !== "RIFF" || input.bytes.toString("ascii", 8, 12) !== "WAVE") {
     throw httpError("Production render is not a valid WAV container.", 400);
   }
+  const handoff = requireIssuedDawHandoff(dir, project, approved, input);
 
   const productionRoot = path.join(dir, "production");
   const importsRoot = path.join(productionRoot, "imports");
@@ -1841,6 +2031,7 @@ function importProductionMix(projectId, input = {}, options = {}) {
     approved_candidate: approved.approved_candidate,
     candidate_content_hash: approved.identity.candidate_content_hash,
     render_contract_hash: approved.identity.render_contract_hash,
+    daw_handoff_contract_hash: handoff.handoff_contract_hash,
   }).slice(0, 20)}`;
   const importDir = path.join(importsRoot, productionMixId);
   const relativeDir = path.relative(dir, importDir).split(path.sep).join("/");
@@ -1860,6 +2051,11 @@ function importProductionMix(projectId, input = {}, options = {}) {
       || existing.music_plan_hash !== approved.identity.music_plan_hash
       || existing.composer_contract_hash !== approved.identity.composer_contract_hash
       || existing.render_contract_hash !== approved.identity.render_contract_hash
+      || existing.source_type !== "external_daw_return"
+      || existing.daw_handoff_type !== handoff.handoff_type
+      || existing.daw_handoff_contract_hash !== handoff.handoff_contract_hash
+      || existing.daw_handoff_artifact_manifest_hash !== handoff.handoff_artifact_manifest_hash
+      || existing.approved_identity_hash !== handoff.approved_identity_hash
       || !fs.existsSync(mixPath) || fs.statSync(mixPath).size !== input.bytes.length
       || provenanceLib.sha256File(mixPath) !== mixHash) {
       throw httpError(`Existing immutable production import ${productionMixId} does not match its content identity.`, 409);
@@ -1899,10 +2095,20 @@ function importProductionMix(projectId, input = {}, options = {}) {
       imported_at: nowIso(),
       import_tool: `vidtoolz-score-engine ${ENGINE_VERSION}`,
       verification_status: "not_verified",
+      source_type: "external_daw_return",
+      daw_handoff_type: handoff.handoff_type,
+      daw_handoff_contract_hash: handoff.handoff_contract_hash,
+      daw_handoff_artifact_manifest_hash: handoff.handoff_artifact_manifest_hash,
+      approved_identity_hash: handoff.approved_identity_hash,
     };
     writeJson(path.join(buildDir, "provenance.json"), record);
     const latestApproval = requireCurrentSketchApproval(dir, readJson(path.join(dir, "score-project.json")), settings).approved;
     if (!sameApprovalBinding(approved, latestApproval)) throw httpError("The sketch approval changed during production import; no import was published.", 409);
+    const latestHandoff = requireIssuedDawHandoff(dir, readJson(path.join(dir, "score-project.json")), latestApproval, handoff);
+    if (latestHandoff.handoff_contract_hash !== handoff.handoff_contract_hash
+      || latestHandoff.handoff_artifact_manifest_hash !== handoff.handoff_artifact_manifest_hash) {
+      throw httpError("The DAW handoff changed during production import; no import was published.", 409);
+    }
     fs.renameSync(buildDir, importDir);
     writeJsonAtomic(path.join(productionRoot, "current.json"), { schema_version: PRODUCTION_SCHEMA_VERSION, production_mix_id: productionMixId, provenance_path: provenancePath });
     return { production_mix_id: productionMixId, relative_dir: relativeDir, idempotent: false, media: detected };
@@ -1924,6 +2130,15 @@ function verifyProductionMix(projectId, options = {}) {
     || record.render_contract_hash !== approved.identity.render_contract_hash
     || record.approved_candidate_id !== approved.approved_candidate) {
     throw httpError("The imported production mix is stale against the current sketch approval or render contract.", 409);
+  }
+  const handoff = requireIssuedDawHandoff(dir, project, approved, {
+    handoff_type: record.daw_handoff_type,
+    handoff_contract_hash: record.daw_handoff_contract_hash,
+  });
+  if (record.source_type !== "external_daw_return"
+    || record.daw_handoff_artifact_manifest_hash !== handoff.handoff_artifact_manifest_hash
+    || record.approved_identity_hash !== handoff.approved_identity_hash) {
+    throw httpError("The production mix is not bound to the current issued DAW handoff.", 409);
   }
   const mixPath = provenanceLib.resolveManifestPath(dir, record.relative_path).target;
   if (!fs.existsSync(mixPath) || !fs.statSync(mixPath).isFile()) throw httpError("The imported production mix is missing.", 409);
@@ -1959,6 +2174,8 @@ function verifyProductionMix(projectId, options = {}) {
     approvedCandidateContentHash: approved.identity.candidate_content_hash,
     renderContractHash: approved.identity.render_contract_hash,
     detectedMedia: detected,
+    handoffContractHash: handoff.handoff_contract_hash,
+    approvedIdentityHash: handoff.approved_identity_hash,
   });
   const result = {
     schema_version: PRODUCTION_SCHEMA_VERSION,
@@ -1970,6 +2187,10 @@ function verifyProductionMix(projectId, options = {}) {
     render_contract_hash: approved.identity.render_contract_hash,
     verification_identity: verificationIdentity,
     detected_media: detected,
+    daw_handoff_type: handoff.handoff_type,
+    daw_handoff_contract_hash: handoff.handoff_contract_hash,
+    daw_handoff_artifact_manifest_hash: handoff.handoff_artifact_manifest_hash,
+    approved_identity_hash: handoff.approved_identity_hash,
   };
   const verificationPath = path.join(current.importDir, "verification.json");
   writeJsonAtomic(verificationPath, result);
@@ -1989,6 +2210,13 @@ function verifyProductionMix(projectId, options = {}) {
     if (!sameApprovalBinding(approved, publishedApproval)) {
       throw httpError("The sketch approval or render contract changed during production verification; no verification was recorded.", 409);
     }
+    const publishedHandoff = requireIssuedDawHandoff(
+      dir, readJson(path.join(dir, "score-project.json")), publishedApproval, handoff,
+    );
+    if (publishedHandoff.handoff_contract_hash !== handoff.handoff_contract_hash
+      || publishedHandoff.handoff_artifact_manifest_hash !== handoff.handoff_artifact_manifest_hash) {
+      throw httpError("The DAW handoff changed during production verification; no verification was recorded.", 409);
+    }
   } catch (error) {
     try { fs.unlinkSync(verificationPath); } catch {}
     throw error;
@@ -2003,6 +2231,15 @@ function prepareProductionResolvePackage(projectId, options = {}) {
   const { approved } = requireCurrentSketchApproval(dir, project, settings);
   const current = currentProductionRecord(dir);
   if (!current) throw httpError("A current verified production mix is required before preparing Resolve.", 409);
+  const handoff = requireIssuedDawHandoff(dir, project, approved, {
+    handoff_type: current.provenance.daw_handoff_type,
+    handoff_contract_hash: current.provenance.daw_handoff_contract_hash,
+  });
+  if (current.provenance.source_type !== "external_daw_return"
+    || current.provenance.daw_handoff_artifact_manifest_hash !== handoff.handoff_artifact_manifest_hash
+    || current.provenance.approved_identity_hash !== handoff.approved_identity_hash) {
+    throw httpError("The production mix is not bound to the current issued DAW handoff.", 409);
+  }
   const verification = readJson(path.join(current.importDir, "verification.json"));
   const mixPath = provenanceLib.resolveManifestPath(dir, current.provenance.relative_path).target;
   const mixHash = fs.existsSync(mixPath) ? provenanceLib.sha256File(mixPath) : null;
@@ -2011,10 +2248,16 @@ function prepareProductionResolvePackage(projectId, options = {}) {
     approvedCandidateContentHash: verification.approved_candidate_content_hash,
     renderContractHash: verification.render_contract_hash,
     detectedMedia: verification.detected_media,
+    handoffContractHash: verification.daw_handoff_contract_hash,
+    approvedIdentityHash: verification.approved_identity_hash,
   });
   if (!verification || !verification.verified || verification.production_mix_sha256 !== mixHash
     || verification.approved_candidate_content_hash !== approved.identity.candidate_content_hash
     || verification.render_contract_hash !== approved.identity.render_contract_hash
+    || verification.daw_handoff_type !== current.provenance.daw_handoff_type
+    || verification.daw_handoff_contract_hash !== current.provenance.daw_handoff_contract_hash
+    || verification.daw_handoff_artifact_manifest_hash !== current.provenance.daw_handoff_artifact_manifest_hash
+    || verification.approved_identity_hash !== current.provenance.approved_identity_hash
     || verification.verification_identity !== expectedVerificationIdentity) {
     throw httpError("A current verified production mix is required before preparing Resolve.", 409);
   }
@@ -2038,6 +2281,8 @@ function prepareProductionResolvePackage(projectId, options = {}) {
     const manifestCheck = provenanceLib.verifyArtifactManifest(packageDir, existing.artifact_manifest);
     if (!manifestCheck.valid || existing.source_production_mix_sha256 !== mixHash
       || existing.verification_identity !== verification.verification_identity
+      || existing.daw_handoff_contract_hash !== verification.daw_handoff_contract_hash
+      || existing.approved_identity_hash !== verification.approved_identity_hash
       || existing.approved_cue_markers_sha256 !== approvedMarkers.sha256
       || existing.artifact_manifest_hash !== provenanceLib.artifactManifestHash(existing.artifact_manifest)) {
       throw httpError(`Existing immutable Resolve package ${current.provenance.production_mix_id} failed provenance verification; it will not be overwritten.`, 409);
@@ -2065,6 +2310,9 @@ function prepareProductionResolvePackage(projectId, options = {}) {
         production_mix_id: current.provenance.production_mix_id,
         source_production_mix_sha256: mixHash,
         verification_identity: verification.verification_identity,
+        daw_handoff_type: verification.daw_handoff_type,
+        daw_handoff_contract_hash: verification.daw_handoff_contract_hash,
+        approved_identity_hash: verification.approved_identity_hash,
         approved_candidate_content_hash: approved.identity.candidate_content_hash,
         render_contract_hash: approved.identity.render_contract_hash,
         approved_cue_markers_sha256: approvedMarkers.sha256,
@@ -2085,6 +2333,7 @@ function prepareProductionResolvePackage(projectId, options = {}) {
   const latestSettings = loadSettings(options);
   const latestApproval = requireCurrentSketchApproval(dir, readJson(path.join(dir, "score-project.json")), latestSettings).approved;
   if (!sameApprovalBinding(approved, latestApproval)) throw httpError("The sketch approval changed while preparing Resolve; the package was not made current.", 409);
+  requireIssuedDawHandoff(dir, readJson(path.join(dir, "score-project.json")), latestApproval, handoff);
   const resolvePointerPath = path.join(resolveRoot, "current.json");
   const previousResolvePointer = readJson(resolvePointerPath);
   const publishedResolvePointer = {
@@ -2100,6 +2349,8 @@ function prepareProductionResolvePackage(projectId, options = {}) {
     if (!publishedProvenance || !publishedManifestCheck.valid
       || publishedProvenance.source_production_mix_sha256 !== mixHash
       || publishedProvenance.verification_identity !== verification.verification_identity
+      || publishedProvenance.daw_handoff_contract_hash !== verification.daw_handoff_contract_hash
+      || publishedProvenance.approved_identity_hash !== verification.approved_identity_hash
       || publishedProvenance.approved_cue_markers_sha256 !== approvedMarkers.sha256
       || publishedProvenance.artifact_manifest_hash !== provenanceLib.artifactManifestHash(publishedManifest)
       || provenanceLib.sha256File(mixPath) !== mixHash || !markersCurrent()) {
@@ -2112,6 +2363,7 @@ function prepareProductionResolvePackage(projectId, options = {}) {
     if (!sameApprovalBinding(approved, publishedApproval)) {
       throw httpError("The sketch approval or render contract changed while preparing Resolve; the package was not made current.", 409);
     }
+    requireIssuedDawHandoff(dir, readJson(path.join(dir, "score-project.json")), publishedApproval, handoff);
   } catch (error) {
     const livePointer = readJson(resolvePointerPath);
     if (livePointer && livePointer.schema_version === publishedResolvePointer.schema_version

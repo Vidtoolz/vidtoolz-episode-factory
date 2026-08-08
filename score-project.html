@@ -135,6 +135,7 @@
         <div class="step-head">5 · DAW production mix &amp; Resolve <span class="badge todo" id="production-badge">not imported</span></div>
         <div id="production-body" class="meta">A current sketch approval is required before importing a production WAV.</div>
         <div style="margin-top:8px;">
+          <select id="production-handoff" aria-label="Issued DAW handoff"><option value="">Build an approved DAW handoff first</option></select>
           <input type="file" id="production-file" accept="audio/wav,.wav">
           <button class="btn" id="production-import">Import production render</button>
           <button class="btn" id="production-verify">Verify production mix</button>
@@ -440,6 +441,14 @@
         badge.className='badge '+(P.resolve_ready?'done':'todo');
         badge.textContent=P.resolve_ready?'Resolve-ready':P.state.replace(/_/g,' ');
         document.getElementById('step-production').className='step'+(P.resolve_ready?' done':'');
+        const handoffSelect=document.getElementById('production-handoff');
+        const previousHandoff=handoffSelect.value;
+        const handoffs=Object.entries((ST.approved&&ST.approved.daw_handoffs)||{})
+          .filter(([,record])=>record&&record.status==='issued'&&record.handoff_contract_hash);
+        handoffSelect.innerHTML=handoffs.length
+          ?handoffs.map(([type,record])=>`<option value="${esc(type)}" data-contract="${esc(record.handoff_contract_hash)}">${esc(type.toUpperCase())} · ${esc(record.handoff_contract_hash.slice(0,12))}</option>`).join('')
+          :'<option value="">Build an approved DAW handoff first</option>';
+        if(handoffs.some(([type])=>type===previousHandoff)) handoffSelect.value=previousHandoff;
         const reasons=(P.reasons||[]).length?`<div class="err">Stale: ${esc(P.reasons.join(', '))}</div>`:'';
         const id=P.production_mix_id?`<span class="chip">${esc(P.production_mix_id)}</span>`:'';
         document.getElementById('production-body').innerHTML = `${id}${reasons}`+
@@ -532,13 +541,15 @@
 
       document.getElementById('production-import').onclick = async ()=>{
         const input=document.getElementById('production-file'), file=input.files&&input.files[0];
+        const handoffSelect=document.getElementById('production-handoff'), handoff=handoffSelect.selectedOptions[0];
         if(!file) return toast('Select a production WAV first',false);
+        if(!handoffSelect.value||!handoff||!handoff.dataset.contract) return toast('Build and select an issued DAW handoff first',false);
         if(!/\.wav$/i.test(file.name)) return toast('Production import currently accepts WAV only',false);
         const btn=document.getElementById('production-import'); if(btn.disabled) return;
         btn.disabled=true; btn.textContent='Importing…';
         try{
           const bytes=new Uint8Array(await file.arrayBuffer());
-          await post(SCORE_PRODUCTION_IMPORT_API,{project_id:ID,original_filename:file.name,data_base64:bytesToBase64(bytes)});
+          await post(SCORE_PRODUCTION_IMPORT_API,{project_id:ID,original_filename:file.name,data_base64:bytesToBase64(bytes),handoff_type:handoffSelect.value,handoff_contract_hash:handoff.dataset.contract});
           toast('Production render imported — verification still required'); await load();
         }catch(e){ toast(e.message,false); showErr(e.message); }
         finally{ btn.disabled=false; btn.textContent='Import production render'; }

@@ -934,6 +934,8 @@ test("score-engine v1.1: .rpp pre-seeds render defaults and the render script is
   const rpp = fs.readFileSync(built.rpp, "utf8");
   assert.match(rpp, /RENDER_FILE ".*\/reaper\/renders"/);
   assert.match(rpp, /RENDER_PATTERN "scorecraft-mix"/);
+  assert.match(rpp, /RENDER_FMT 0 2 48000/, "render output rate/channels are persisted, not inherited from REAPER preferences");
+  assert.match(rpp, /RENDER_RANGE 0 0 20 18 1000/, "render uses explicit approved duration instead of release-tail project bounds");
   assert.match(rpp, /<RENDER_CFG\n\s+ZXZhdxgAAA==/, "24-bit WAV render config seeded");
   assert.ok(fs.existsSync(built.render_script));
   const script = fs.readFileSync(built.render_script, "utf8");

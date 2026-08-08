@@ -66,10 +66,16 @@ Hard rules baked in:
    `mix.wav`, `mix-dialogue-safe.wav`, `stems/`, `midi/`, `resolve-import/`
    (a clearly labeled sketch reference with `cue-markers.csv`), plus
    `provenance.json` + `provenance.md`.
-4. Finish the score in REAPER or Ableton and export one stereo PCM WAV matching
-   the approved render contract. **Import production render** copies uploaded
-   bytes into project-owned immutable storage; arbitrary server paths are not
-   accepted. Import does not imply verification.
+4. After approval, build the REAPER or Ableton handoff again so its
+   `handoff-contract.json` has `status: issued`. The deterministic handoff hash
+   binds the current approved candidate, musical/render identities, DAW target,
+   and audio contract; its artifact manifest binds the exact generated package.
+   Finish the score in that DAW package and export one stereo PCM WAV matching
+   the contract. In step 5 select the issued handoff and **Import production
+   render**. Scorecraft copies the uploaded bytes into project-owned immutable
+   storage, computes their SHA-256 itself, and records the approval + handoff +
+   returned-render chain. Arbitrary server paths are not accepted. Import does
+   not imply verification.
 5. **Verify production mix** rechecks decode, SHA-256, duration, sample rate,
    channels, bit depth, current sketch approval, render contract, and required
    supporting artifacts.
@@ -164,14 +170,21 @@ fail, and Unicode strings are preserved byte-for-byte without normalization.
 Absolute project/template paths and timestamps are excluded from identity.
 Candidate provenance binds cue sheet, music plan, composer contract, render
 contract, candidate content, and a per-file manifest. Approval binds that exact
-candidate. Production verification probes a project-owned immutable byte
-snapshot, then binds the imported file hash plus current approval/render
-hashes. Resolve provenance binds both its audio copy and approved cue-marker
-bytes back to verification.
+candidate. An issued DAW contract uses the approved-state hash plus the
+candidate, cue-sheet, music-plan, composer, render-contract,
+candidate-manifest, DAW type, and audio-contract identities. Timestamps,
+absolute paths, filenames, and operator notes are excluded. Production import
+accepts only an explicit issued contract (or the sole unambiguous issued
+contract), hashes the returned bytes, and records that distinct returned-render
+identity. Production verification probes a project-owned immutable byte
+snapshot and rechecks the current approval, handoff contract, handoff artifact
+manifest, render hash, and exact returned bytes. Resolve provenance carries
+that handoff identity forward while binding its audio copy and approved
+cue-marker bytes back to verification.
 
 State flow:
 
-`cue sheet current → candidate generated → sketch approved → production mix imported → production mix verified → Resolve package prepared`
+`cue sheet current → candidate generated → sketch approved → issued DAW handoff → production mix imported → production mix verified → Resolve package prepared`
 
 Independent narration flow:
 
@@ -185,6 +198,7 @@ Invalidation:
 
 - cue/music-plan/composer/render-contract change → candidate and downstream approval/production state stale
 - imported file mutation or deletion → production verification stale
+- handoff contract/package mutation or approval change → DAW return stale
 - Resolve copy mutation or deletion → Resolve-ready false
 - narration source/script/package/offset/pointer change → narration review-ready false
 
@@ -192,7 +206,8 @@ Typical stale reasons include `cue_sheet_changed`, `music_plan_changed`,
 `composer_contract_changed`, `render_contract_changed`,
 `approved_candidate_hash_mismatch`, `production_mix_missing`,
 `production_mix_hash_mismatch`, `artifact_manifest_incomplete`,
-`verification_outdated`, and `resolve_copy_hash_mismatch`.
+`daw_handoff_unverified`, `daw_handoff_stale`, `verification_outdated`, and
+`resolve_copy_hash_mismatch`.
 
 Legacy candidates/approvals without hashes remain visible as
 `legacy_unverified`, `legacy_approval_unverified`, or
@@ -211,8 +226,8 @@ Unsupported values are rejected before composition; there is no fallback key.
 ## Production storage
 
 - `approved/` — approved sketch reference package, never production-certified.
-- `production/imports/<content-id>/` — immutable imported WAV + provenance and
-  verification.
+- `production/imports/<content-id>/` — immutable imported WAV + verification
+  receipt, including approved, handoff, and returned-byte hashes.
 - `production/current.json` — atomic pointer to the selected import.
 - `production/resolve/<content-id>/` — verified production mix, cue markers,
   manifest, and README.
@@ -220,10 +235,36 @@ Unsupported values are rejected before composition; there is no fallback key.
   provenance, and verification; never production music.
 - `narration/current.json` — atomic pointer to the operator-selected narration.
 
-Production import currently accepts stereo PCM WAV only. Sample rate, bit depth,
-and duration must match the approved render contract (default 48 kHz / 24-bit,
-duration within 0.05 seconds). Production stems are not required by the current
-stereo-mix contract.
+Production import currently accepts stereo PCM WAV only. Sample rate and bit
+depth must match the approved render contract (default 48 kHz / 24-bit). Exact
+exports must match target duration within 0.05 seconds. A deliberately
+tail-preserving approval may run from the target through one additional second,
+with the same tolerance; shorter and excessive-tail returns fail. Production
+stems are not required by the current stereo-mix contract. The browser upload
+is complete before ingestion starts; malformed/truncated audio fails decoding
+and cannot receive verification.
+
+### Deterministic external-DAW acceptance
+
+Each generated `candidates/<id>/<reaper|ableton>/` folder is the operator
+acceptance package: source artifacts, DAW-specific README, artifact manifest,
+and `handoff-contract.json`. A real operator pass is:
+
+1. Approve the candidate, build the chosen handoff, and confirm the contract
+   record says `issued` (a pre-approval build is deliberately only a draft).
+2. Open the generated REAPER project or import the Ableton MIDI package, patch
+   instruments, and export using the documented PCM settings.
+3. In Scorecraft step 5 select that issued handoff, upload the returned WAV,
+   then click **Verify production mix**.
+4. PASS means readiness reports `verified`; prepare Resolve and confirm
+   `Resolve-ready`. Any approval/package/audio mutation subsequently changes
+   readiness to stale. Legacy imports lacking a DAW contract remain on disk but
+   are `daw_handoff_unverified`; location or filename never upgrades them.
+
+This is a deterministic integrity and authorization receipt, not proof that a
+particular DAW process or human actually performed the creative work. Real DAW
+opening, instrument playback, rendering, and listening remain operator
+acceptance and must not be inferred from synthetic test WAVs.
 
 ## Troubleshooting
 
@@ -234,7 +275,8 @@ stereo-mix contract.
 | "AI provider is set to manual" | Use Copy prompt + paste, or pick a provider in Settings (env key must exist). |
 | "Approve the cue sheet first" | Candidates only generate from an approved cue sheet — that's the human gate. |
 | "A current sketch approval is required" | The approval is missing, legacy, or stale. Regenerate/reapprove from current inputs. |
-| Production WAV rejected | Export stereo PCM WAV at the contract rate/bit depth and exact target duration. |
+| "No issued DAW handoff" | Approve the sketch, then rebuild the intended REAPER/Ableton handoff so its contract is issued. |
+| Production WAV rejected | Select the matching issued handoff and export stereo PCM WAV at its rate/bit depth/duration contract. |
 | Production or Resolve state is stale | Read the listed reason; do not overwrite history. Restore exact bytes/inputs or import and verify a new render. |
 | Narration context review is blocked | Register the exact operator-approved narration with an explicit timeline start, then verify it. A plausible filename or duration is not authority. |
 | "A score project already exists for this package" | One score project per package; open it from the home list. |

@@ -16672,7 +16672,12 @@ function createServer(options = {}) {
           if (!encoded || encoded.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) throw Object.assign(new Error('data_base64 must contain a valid base64 WAV upload.'), { statusCode: 400 });
           const bytes = Buffer.from(encoded, 'base64');
           if (bytes.toString('base64') !== encoded) throw Object.assign(new Error('data_base64 is not canonical base64.'), { statusCode: 400 });
-          sendJSON(res, 200, scoreLane.importProductionMix(payload.project_id || '', { original_filename: payload.original_filename, bytes }, scoreOptions()));
+          sendJSON(res, 200, scoreLane.importProductionMix(payload.project_id || '', {
+            original_filename: payload.original_filename,
+            bytes,
+            handoff_type: payload.handoff_type,
+            handoff_contract_hash: payload.handoff_contract_hash,
+          }, scoreOptions()));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-production-import-error'));
       return;

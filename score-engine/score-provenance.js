@@ -10,6 +10,8 @@ const path = require("node:path");
 const PROVENANCE_SCHEMA_VERSION = 2;
 const HASH_SCHEMA_VERSION = 1;
 const ARTIFACT_MANIFEST_VERSION = 1;
+const DAW_HANDOFF_SCHEMA_VERSION = 1;
+const DAW_HANDOFF_TYPES = new Set(["reaper", "ableton"]);
 
 function normalizeForCanonical(value) {
   if (value === null || typeof value === "boolean" || typeof value === "string") return value;
@@ -187,14 +189,74 @@ function candidateContentHash(candidateInputHash, manifestHash) {
   });
 }
 
-function productionVerificationIdentity({ productionMixSha256, approvedCandidateContentHash, renderContractHash, detectedMedia }) {
-  return hashCanonical({
+function approvedStateIdentity(approved = {}) {
+  const identity = approved.identity || {};
+  return {
+    schema_version: HASH_SCHEMA_VERSION,
+    role: "approved_scorecraft_state",
+    approved_candidate: approved.approved_candidate,
+    candidate_input_hash: identity.candidate_input_hash,
+    candidate_content_hash: identity.candidate_content_hash,
+    cue_sheet_hash: identity.cue_sheet_hash,
+    music_plan_hash: identity.music_plan_hash,
+    composer_contract_hash: identity.composer_contract_hash,
+    render_contract_hash: identity.render_contract_hash,
+    candidate_artifact_manifest_hash: identity.candidate_artifact_manifest_hash,
+    approval_artifact_manifest_hash: identity.approval_artifact_manifest_hash,
+  };
+}
+
+function approvedStateHash(approved) {
+  return hashCanonical(approvedStateIdentity(approved));
+}
+
+function dawHandoffContract({ project = {}, candidate = {}, approved = {}, handoffType, artifactManifestHash } = {}) {
+  if (!DAW_HANDOFF_TYPES.has(handoffType)) throw new Error(`Unsupported DAW handoff type: ${handoffType}`);
+  if (!/^[a-f0-9]{64}$/.test(String(artifactManifestHash || ""))) throw new Error("DAW handoff artifact manifest hash is required.");
+  const identity = approved.identity || {};
+  const render = approved.render_contract || {};
+  return {
+    schema_version: DAW_HANDOFF_SCHEMA_VERSION,
+    role: "scorecraft_daw_handoff",
+    handoff_type: handoffType,
+    project_id: project.project_id,
+    candidate_id: candidate.candidate_id,
+    approved_identity_hash: approvedStateHash(approved),
+    candidate_input_hash: identity.candidate_input_hash,
+    candidate_content_hash: identity.candidate_content_hash,
+    cue_sheet_hash: identity.cue_sheet_hash,
+    music_plan_hash: identity.music_plan_hash,
+    composer_contract_hash: identity.composer_contract_hash,
+    render_contract_hash: identity.render_contract_hash,
+    candidate_artifact_manifest_hash: identity.candidate_artifact_manifest_hash,
+    handoff_artifact_manifest_hash: artifactManifestHash,
+    audio_contract: {
+      sample_rate: render.sample_rate,
+      bit_depth: render.bit_depth,
+      channels: render.channels,
+      target_duration_seconds: render.target_duration_seconds,
+      duration_exact: render.duration_exact,
+      duration_tolerance_seconds: render.duration_tolerance_seconds,
+      maximum_tail_seconds: render.duration_exact === false ? 1 : 0,
+    },
+  };
+}
+
+function dawHandoffIdentity(contract) {
+  return hashCanonical(contract);
+}
+
+function productionVerificationIdentity({ productionMixSha256, approvedCandidateContentHash, renderContractHash, detectedMedia, handoffContractHash, approvedIdentityHash }) {
+  const material = {
     schema_version: PROVENANCE_SCHEMA_VERSION,
     production_mix_sha256: productionMixSha256,
     approved_candidate_content_hash: approvedCandidateContentHash,
     render_contract_hash: renderContractHash,
     detected_media: detectedMedia,
-  });
+  };
+  if (handoffContractHash !== undefined) material.daw_handoff_contract_hash = handoffContractHash;
+  if (approvedIdentityHash !== undefined) material.approved_identity_hash = approvedIdentityHash;
+  return hashCanonical(material);
 }
 
 function resolveManifestPath(root, relativePath) {
@@ -388,6 +450,7 @@ module.exports = {
   PROVENANCE_SCHEMA_VERSION,
   HASH_SCHEMA_VERSION,
   ARTIFACT_MANIFEST_VERSION,
+  DAW_HANDOFF_SCHEMA_VERSION,
   canonicalStringify,
   hashCanonical,
   sha256,
@@ -398,6 +461,10 @@ module.exports = {
   renderContract,
   candidateIdentity,
   candidateContentHash,
+  approvedStateIdentity,
+  approvedStateHash,
+  dawHandoffContract,
+  dawHandoffIdentity,
   productionVerificationIdentity,
   buildArtifactManifest,
   artifactManifestHash,

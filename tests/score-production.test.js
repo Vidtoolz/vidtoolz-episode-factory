@@ -2,6 +2,7 @@
 // probes are injected and no DAW, ffprobe binary, or real project is touched.
 const { assert, fs, http, os, path, packageEngineServer, test } = require("./_helpers.js");
 const lane = require("../score-engine/score-lane.js");
+const provenance = require("../score-engine/score-provenance.js");
 const synth = require("../score-engine/preview-synth.js");
 
 function tmpEnv() {
@@ -27,15 +28,255 @@ function wavProbe(file) {
   return { ok: true, sample_rate: sampleRate, channels, codec: bitDepth === 24 ? "pcm_s24le" : "pcm_s16le", duration: dataBytes / (sampleRate * channels * (bitDepth / 8)) };
 }
 
-function approvedProject(options, duration = 3) {
+function approvedProject(options, duration = 3, { issueHandoff = true, durationExact } = {}) {
   const { project } = lane.createScoreProject({ name: "Production Gate", duration_seconds: duration }, options);
   lane.generateCuesForProject(project.project_id, {}, options);
   lane.approveCueSheet(project.project_id, options);
   lane.setPalette(project.project_id, "tech_noir_pulse", options);
   lane.generateCandidates(project.project_id, { count: 1 }, options);
-  lane.approveCandidate(project.project_id, "candidate-001", options);
+  lane.approveCandidate(project.project_id, "candidate-001", options,
+    durationExact === undefined ? {} : { durationExact });
+  if (issueHandoff) lane.buildReaperHandoff(project.project_id, "candidate-001", options);
   return project;
 }
+
+test("score production P3: a DAW return requires an issued handoff contract", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options, 3, { issueHandoff: false });
+  const state = lane.getProject(project.project_id, options);
+  fs.writeFileSync(path.join(state.dir, "candidates", "candidate-001", "untrusted.json"), JSON.stringify({
+    claimed_handoff: { hash: "a".repeat(64), filename: `${"a".repeat(64)}.wav` },
+  }));
+  assert.throws(
+    () => lane.importProductionMix(project.project_id, { original_filename: "unbound.wav", bytes: makeWav() }, { ...options, probeImpl: wavProbe }),
+    (error) => error.statusCode === 409 && /DAW handoff/i.test(error.message),
+  );
+});
+
+test("score production P3: a symlink cannot substitute the issued handoff receipt", () => {
+  const { root, options } = tmpEnv();
+  const project = approvedProject(options);
+  const state = lane.getProject(project.project_id, options);
+  const issued = state.approved.daw_handoffs.reaper;
+  const recordPath = path.join(state.dir, "candidates", "candidate-001", "reaper", "handoff-contract.json");
+  const external = path.join(root, "external-handoff.json");
+  fs.renameSync(recordPath, external);
+  fs.symlinkSync(external, recordPath);
+  assert.throws(
+    () => lane.importProductionMix(project.project_id, {
+      original_filename: "mix.wav", bytes: makeWav(), handoff_type: "reaper",
+      handoff_contract_hash: issued.handoff_contract_hash,
+    }, { ...options, probeImpl: wavProbe }),
+    (error) => error.statusCode === 409 && /No issued|handoff/i.test(error.message),
+  );
+});
+
+test("score production P3: correct return receipt binds exact bytes through readiness and Resolve", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const state = lane.getProject(project.project_id, options);
+  const issued = state.approved.daw_handoffs.reaper;
+  const bytes = makeWav();
+  const imported = lane.importProductionMix(project.project_id, {
+    original_filename: "arbitrary-operator-name.wav", bytes,
+    handoff_type: "reaper", handoff_contract_hash: issued.handoff_contract_hash,
+  }, { ...options, probeImpl: wavProbe });
+  const importedState = lane.getProject(project.project_id, options);
+  const importDir = path.join(importedState.dir, "production", "imports", imported.production_mix_id);
+  const receipt = JSON.parse(fs.readFileSync(path.join(importDir, "provenance.json"), "utf8"));
+  assert.equal(receipt.source_type, "external_daw_return");
+  assert.equal(receipt.daw_handoff_contract_hash, issued.handoff_contract_hash);
+  assert.equal(receipt.imported_file_sha256, provenance.sha256(bytes));
+  const verification = lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  assert.equal(lane.getProject(project.project_id, options).readiness.production.state, "verified");
+  lane.prepareProductionResolvePackage(project.project_id, options);
+  const resolveReceipt = JSON.parse(fs.readFileSync(path.join(
+    importedState.dir, "production", "resolve", imported.production_mix_id, "resolve-provenance.json",
+  ), "utf8"));
+  assert.equal(resolveReceipt.daw_handoff_contract_hash, verification.daw_handoff_contract_hash);
+  assert.equal(resolveReceipt.source_production_mix_sha256, receipt.imported_file_sha256);
+});
+
+test("score production P3: wrong or ambiguous handoff identity is rejected explicitly", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const reaper = lane.getProject(project.project_id, options).approved.daw_handoffs.reaper;
+  const ableton = lane.buildAbletonHandoff(project.project_id, "candidate-001", options);
+  const input = { original_filename: "mix.wav", bytes: makeWav() };
+  assert.throws(
+    () => lane.importProductionMix(project.project_id, input, { ...options, probeImpl: wavProbe }),
+    (error) => error.statusCode === 400 && /select reaper or ableton/i.test(error.message),
+  );
+  assert.throws(
+    () => lane.importProductionMix(project.project_id, {
+      ...input, handoff_type: "reaper", handoff_contract_hash: ableton.handoff_contract_hash,
+    }, { ...options, probeImpl: wavProbe }),
+    (error) => error.statusCode === 409 && /stale|modified|does not match/i.test(error.message),
+  );
+  assert.notEqual(reaper.handoff_contract_hash, ableton.handoff_contract_hash);
+});
+
+test("score production P3: an old candidate handoff cannot authorize the current candidate", () => {
+  const { options } = tmpEnv();
+  const { project } = lane.createScoreProject({ name: "Candidate switch", duration_seconds: 3 }, options);
+  lane.generateCuesForProject(project.project_id, {}, options);
+  lane.approveCueSheet(project.project_id, options);
+  lane.setPalette(project.project_id, "tech_noir_pulse", options);
+  lane.generateCandidates(project.project_id, { count: 2 }, options);
+  lane.approveCandidate(project.project_id, "candidate-001", options);
+  const old = lane.buildReaperHandoff(project.project_id, "candidate-001", options);
+  lane.approveCandidate(project.project_id, "candidate-002", options);
+  assert.throws(
+    () => lane.importProductionMix(project.project_id, {
+      original_filename: "old.wav", bytes: makeWav(), handoff_type: "reaper",
+      handoff_contract_hash: old.handoff_contract_hash,
+    }, { ...options, probeImpl: wavProbe }),
+    (error) => error.statusCode === 409 && /current approved candidate|no issued/i.test(error.message),
+  );
+});
+
+test("score production P3: handoff bytes and semantic receipt fields fail closed when tampered", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options, 3, { issueHandoff: false });
+  const ableton = lane.buildAbletonHandoff(project.project_id, "candidate-001", options);
+  const state = lane.getProject(project.project_id, options);
+  const recordPath = path.join(state.dir, "candidates", "candidate-001", "ableton", "handoff-contract.json");
+  const record = JSON.parse(fs.readFileSync(recordPath, "utf8"));
+  record.untrusted = { copied_hash: ableton.handoff_contract_hash };
+  record.handoff_contract.untrusted = { copied_hash: ableton.handoff_contract_hash };
+  fs.writeFileSync(recordPath, JSON.stringify(record, null, 2) + "\n");
+  assert.throws(
+    () => lane.importProductionMix(project.project_id, {
+      original_filename: "mix.wav", bytes: makeWav(), handoff_type: "ableton",
+      handoff_contract_hash: ableton.handoff_contract_hash,
+    }, { ...options, probeImpl: wavProbe }),
+    (error) => error.statusCode === 409 && /stale|modified/i.test(error.message),
+  );
+
+  const fresh = lane.buildAbletonHandoff(project.project_id, "candidate-001", options);
+  fs.appendFileSync(path.join(state.dir, "candidates", "candidate-001", "ableton", "README.md"), "tamper");
+  assert.throws(
+    () => lane.importProductionMix(project.project_id, {
+      original_filename: `${fresh.handoff_contract_hash}.wav`, bytes: makeWav(), handoff_type: "ableton",
+      handoff_contract_hash: fresh.handoff_contract_hash,
+    }, { ...options, probeImpl: wavProbe }),
+    (error) => error.statusCode === 409 && /stale|modified/i.test(error.message),
+  );
+});
+
+test("score production P3: exact and tail-preserving duration contracts are enforced", () => {
+  const exactEnv = tmpEnv();
+  const exact = approvedProject(exactEnv.options);
+  assert.throws(
+    () => lane.importProductionMix(exact.project_id, { original_filename: "long.wav", bytes: makeWav() }, {
+      ...exactEnv.options, probeImpl: () => ({ ok: true, sample_rate: 48000, channels: 2, codec: "pcm_s24le", duration: 3.2 }),
+    }), /duration/,
+  );
+
+  const tailEnv = tmpEnv();
+  const tail = approvedProject(tailEnv.options, 3, { durationExact: false });
+  const tailState = lane.getProject(tail.project_id, tailEnv.options);
+  const tailContract = JSON.parse(fs.readFileSync(path.join(
+    tailState.dir, "candidates", "candidate-001", "reaper", "handoff-contract.json",
+  ), "utf8"));
+  assert.equal(tailContract.handoff_contract.audio_contract.maximum_tail_seconds, 1);
+  assert.match(fs.readFileSync(path.join(
+    tailState.dir, "candidates", "candidate-001", "reaper", "project.rpp",
+  ), "utf8"), /RENDER_RANGE 0 0 4 18 1000/);
+  const validTail = lane.importProductionMix(tail.project_id, { original_filename: "tail.wav", bytes: makeWav(3.8) }, {
+    ...tailEnv.options, probeImpl: () => ({ ok: true, sample_rate: 48000, channels: 2, codec: "pcm_s24le", duration: 3.8 }),
+  });
+  assert.match(validTail.production_mix_id, /^production-/);
+  assert.throws(
+    () => lane.importProductionMix(tail.project_id, { original_filename: "short.wav", bytes: makeWav() }, {
+      ...tailEnv.options, probeImpl: () => ({ ok: true, sample_rate: 48000, channels: 2, codec: "pcm_s24le", duration: 2.8 }),
+    }), /duration/,
+  );
+  assert.throws(
+    () => lane.importProductionMix(tail.project_id, { original_filename: "excessive-tail.wav", bytes: makeWav() }, {
+      ...tailEnv.options, probeImpl: () => ({ ok: true, sample_rate: 48000, channels: 2, codec: "pcm_s24le", duration: 4.2 }),
+    }), /duration/,
+  );
+});
+
+test("score production P3: verification hashes returned audio through the streamed file path", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const bytes = makeWav(24);
+  const imported = lane.importProductionMix(project.project_id, { original_filename: "large.wav", bytes }, {
+    ...options, probeImpl: () => ({ ok: true, sample_rate: 48000, channels: 2, codec: "pcm_s24le", duration: 3 }),
+  });
+  const state = lane.getProject(project.project_id, options);
+  const sourcePath = path.join(state.dir, "production", "imports", imported.production_mix_id, "mix.wav");
+  assert.ok(fs.statSync(sourcePath).size > 5 * 1024 * 1024);
+  const originalRead = fs.readFileSync;
+  fs.readFileSync = function rejectWholeAudioRead(file, ...args) {
+    if (path.basename(String(file)) === "mix.wav") throw new Error("whole audio read forbidden");
+    return originalRead.call(fs, file, ...args);
+  };
+  try {
+    const verified = lane.verifyProductionMix(project.project_id, {
+      ...options, probeImpl: () => ({ ok: true, sample_rate: 48000, channels: 2, codec: "pcm_s24le", duration: 3 }),
+    });
+    assert.equal(verified.verified, true);
+  } finally {
+    fs.readFileSync = originalRead;
+  }
+});
+
+test("score production P3: receipt tampering revokes readiness even when audio bytes are unchanged", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options);
+  const imported = lane.importProductionMix(project.project_id, { original_filename: "mix.wav", bytes: makeWav() }, {
+    ...options, probeImpl: wavProbe,
+  });
+  lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  const state = lane.getProject(project.project_id, options);
+  const receiptPath = path.join(state.dir, "production", "imports", imported.production_mix_id, "provenance.json");
+  const receipt = JSON.parse(fs.readFileSync(receiptPath, "utf8"));
+  receipt.daw_handoff_contract_hash = "f".repeat(64);
+  fs.writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + "\n");
+  const tampered = lane.getProject(project.project_id, options).readiness.production;
+  assert.equal(tampered.state, "stale");
+  assert.ok(tampered.reasons.includes("daw_handoff_stale"));
+});
+
+test("score production P3: handoff mutation after verification blocks readiness and Resolve", () => {
+  const { options } = tmpEnv();
+  const project = approvedProject(options, 3, { issueHandoff: false });
+  const ableton = lane.buildAbletonHandoff(project.project_id, "candidate-001", options);
+  lane.importProductionMix(project.project_id, {
+    original_filename: "mix.wav", bytes: makeWav(), handoff_type: "ableton",
+    handoff_contract_hash: ableton.handoff_contract_hash,
+  }, { ...options, probeImpl: wavProbe });
+  lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  const state = lane.getProject(project.project_id, options);
+  fs.appendFileSync(path.join(state.dir, "candidates", "candidate-001", "ableton", "README.md"), "changed after verification");
+  const stale = lane.getProject(project.project_id, options).readiness.production;
+  assert.equal(stale.state, "stale");
+  assert.ok(stale.reasons.includes("daw_handoff_stale"));
+  assert.throws(
+    () => lane.prepareProductionResolvePackage(project.project_id, options),
+    (error) => error.statusCode === 409 && /handoff|stale|modified/i.test(error.message),
+  );
+});
+
+test("score production P3: REAPER and Ableton builders issue semantic handoff identities", () => {
+  for (const handoffType of ["reaper", "ableton"]) {
+    const { options } = tmpEnv();
+    const project = approvedProject(options);
+    const built = handoffType === "reaper"
+      ? lane.buildReaperHandoff(project.project_id, "candidate-001", options)
+      : lane.buildAbletonHandoff(project.project_id, "candidate-001", options);
+    assert.match(built.handoff_contract_hash, /^[a-f0-9]{64}$/, `${handoffType} contract identity`);
+    assert.match(built.approved_identity_hash, /^[a-f0-9]{64}$/, `${handoffType} approval binding`);
+    const rebuilt = handoffType === "reaper"
+      ? lane.buildReaperHandoff(project.project_id, "candidate-001", options)
+      : lane.buildAbletonHandoff(project.project_id, "candidate-001", options);
+    assert.equal(rebuilt.handoff_contract_hash, built.handoff_contract_hash,
+      `${handoffType} semantic state must regenerate the same contract identity`);
+  }
+});
 
 test("score production: valid WAV imports atomically and identical content is idempotent", () => {
   const { options } = tmpEnv();
@@ -307,6 +548,8 @@ test("score production: verification identities and Resolve pointers are self-au
     approvedCandidateContentHash: verification.approved_candidate_content_hash,
     renderContractHash: verification.render_contract_hash,
     detectedMedia: verification.detected_media,
+    handoffContractHash: verification.daw_handoff_contract_hash,
+    approvedIdentityHash: verification.approved_identity_hash,
   });
   fs.writeFileSync(verificationPath, JSON.stringify(verification, null, 2) + "\n");
   const prepared = lane.prepareProductionResolvePackage(project.project_id, options);
@@ -393,7 +636,14 @@ test("score production API: nonce-gated base64 upload accepts bytes and never ac
     });
     const denied = await request({ project_id: project.project_id, original_filename: "mix.wav", path: "/tmp/mix.wav" });
     assert.notEqual(denied.status, 200);
-    const accepted = await request({ project_id: project.project_id, original_filename: "mix.wav", data_base64: makeWav().toString("base64") });
+    const issued = lane.getProject(project.project_id, options).approved.daw_handoffs.reaper;
+    const accepted = await request({
+      project_id: project.project_id,
+      original_filename: "mix.wav",
+      data_base64: makeWav().toString("base64"),
+      handoff_type: "reaper",
+      handoff_contract_hash: issued.handoff_contract_hash,
+    });
     assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
   } finally {
     await new Promise((resolve) => server.close(resolve));
@@ -435,5 +685,7 @@ test("score production UI keeps sketch approval, production verification, and Re
   assert.match(html, />Import production render</);
   assert.match(html, />Verify production mix</);
   assert.match(html, />Prepare Resolve package</);
+  assert.match(html, /id="production-handoff"/);
+  assert.match(html, /handoff_contract_hash:handoff\.dataset\.contract/);
   assert.match(html, /Sketch audio is never promoted to Resolve-ready/);
 });

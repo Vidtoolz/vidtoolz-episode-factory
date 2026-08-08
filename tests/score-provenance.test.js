@@ -35,6 +35,40 @@ test("score provenance: canonical serialization and aggregate hashes are determi
   assert.deepEqual(identity(), identity());
 });
 
+test("score provenance P3: DAW handoff identity is semantic, stable, and approval-bound", () => {
+  const hashes = ["1", "2", "3", "4", "5", "6", "7", "8"].map((digit) => digit.repeat(64));
+  const approved = {
+    approved_candidate: "candidate-001",
+    approved_at: "2026-01-01T00:00:00.000Z",
+    identity: {
+      candidate_input_hash: hashes[0], candidate_content_hash: hashes[1],
+      cue_sheet_hash: hashes[2], music_plan_hash: hashes[3],
+      composer_contract_hash: hashes[4], render_contract_hash: hashes[5],
+      candidate_artifact_manifest_hash: hashes[6], approval_artifact_manifest_hash: hashes[7],
+    },
+    render_contract: {
+      sample_rate: 48000, bit_depth: 24, channels: 2,
+      target_duration_seconds: 10, duration_exact: true, duration_tolerance_seconds: 0.05,
+    },
+  };
+  const args = {
+    project: { project_id: "score-1" }, candidate: { candidate_id: "candidate-001" }, approved,
+    handoffType: "reaper", artifactManifestHash: "a".repeat(64),
+  };
+  const first = provenance.dawHandoffIdentity(provenance.dawHandoffContract(args));
+  const timestampOnly = provenance.dawHandoffIdentity(provenance.dawHandoffContract({
+    ...args, approved: { ...approved, approved_at: "2030-02-02T00:00:00.000Z" },
+  }));
+  assert.equal(timestampOnly, first, "descriptive timestamps are not handoff authority");
+  const changedApproval = structuredClone(approved);
+  changedApproval.identity.cue_sheet_hash = "9".repeat(64);
+  assert.notEqual(
+    provenance.dawHandoffIdentity(provenance.dawHandoffContract({ ...args, approved: changedApproval })),
+    first,
+    "contract-relevant approved identity changes must invalidate the handoff",
+  );
+});
+
 test("score provenance: canonical identity rejects omissions and preserves distinct finite numbers", () => {
   assert.throws(() => provenance.canonicalStringify({ material: undefined }), /undefined/);
   assert.throws(() => provenance.canonicalStringify(new Array(1)), /sparse/);

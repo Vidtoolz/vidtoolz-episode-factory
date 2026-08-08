@@ -46,6 +46,60 @@ function filesByteIdentical(a, b) {
   }
 }
 
+function assessDawHandoffAuthority({ dir, approved, production }) {
+  const handoffType = production && production.daw_handoff_type;
+  if (!production || production.source_type !== "external_daw_return"
+    || !["reaper", "ableton"].includes(handoffType)
+    || !/^[a-f0-9]{64}$/.test(String(production.daw_handoff_contract_hash || ""))
+    || !/^[a-f0-9]{64}$/.test(String(production.daw_handoff_artifact_manifest_hash || ""))
+    || !/^[a-f0-9]{64}$/.test(String(production.approved_identity_hash || ""))) {
+    return { current: false, reason: "daw_handoff_unverified" };
+  }
+  if (!approved || !approved.identity || production.approved_candidate_id !== approved.approved_candidate) {
+    return { current: false, reason: "daw_handoff_stale" };
+  }
+  const candidateDir = path.join(dir, "candidates", approved.approved_candidate);
+  const project = readJson(path.join(dir, "score-project.json"));
+  const candidate = readJson(path.join(candidateDir, "candidate.json"));
+  const relativeRecord = `candidates/${approved.approved_candidate}/${handoffType}/handoff-contract.json`;
+  let record;
+  try {
+    const recordPath = provenanceLib.resolveManifestPath(dir, relativeRecord).target;
+    record = readJson(recordPath);
+  } catch {
+    return { current: false, reason: "daw_handoff_stale" };
+  }
+  if (!project || !candidate || !record || record.status !== "issued") {
+    return { current: false, reason: "daw_handoff_stale" };
+  }
+  try {
+    const artifactManifestHash = provenanceLib.artifactManifestHash(record.artifact_manifest);
+    const expectedContract = provenanceLib.dawHandoffContract({
+      project, candidate, approved, handoffType, artifactManifestHash,
+    });
+    const expectedContractHash = provenanceLib.dawHandoffIdentity(expectedContract);
+    const manifestCheck = provenanceLib.verifyArtifactManifest(candidateDir, record.artifact_manifest);
+    const current = record.schema_version === provenanceLib.DAW_HANDOFF_SCHEMA_VERSION
+      && record.handoff_type === handoffType
+      && record.project_id === project.project_id
+      && record.candidate_id === approved.approved_candidate
+      && record.approved_identity_hash === expectedContract.approved_identity_hash
+      && record.handoff_contract_hash === expectedContractHash
+      && provenanceLib.dawHandoffIdentity(record.handoff_contract) === expectedContractHash
+      && provenanceLib.canonicalStringify(record.handoff_contract) === provenanceLib.canonicalStringify(expectedContract)
+      && record.artifact_manifest_hash === artifactManifestHash
+      && manifestCheck.valid
+      && production.daw_handoff_contract_hash === expectedContractHash
+      && production.daw_handoff_artifact_manifest_hash === artifactManifestHash
+      && production.approved_identity_hash === expectedContract.approved_identity_hash;
+    return current
+      ? { current: true, handoffType, handoffContractHash: expectedContractHash }
+      : { current: false, reason: "daw_handoff_stale" };
+  } catch {
+    return { current: false, reason: "daw_handoff_stale" };
+  }
+}
+
 function assessProductionAuthority({ dir, approvalAuthority, approved }) {
   const productionRoot = path.join(dir, "production");
   const pointerFile = path.join(productionRoot, "current.json");
@@ -77,6 +131,8 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
     if (production.composer_contract_hash !== approved.identity.composer_contract_hash) reasons.push("composer_contract_changed");
     if (production.render_contract_hash !== approved.identity.render_contract_hash) reasons.push("render_contract_changed");
   }
+  const handoffAuthority = assessDawHandoffAuthority({ dir, approved, production });
+  if (!handoffAuthority.current) reasons.push(handoffAuthority.reason);
   let mixPath = null;
   try { mixPath = provenanceLib.resolveManifestPath(dir, production.relative_path).target; }
   catch { reasons.push("production_mix_missing"); }
@@ -97,6 +153,8 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
         approvedCandidateContentHash: verification.approved_candidate_content_hash,
         renderContractHash: verification.render_contract_hash,
         detectedMedia: verification.detected_media,
+        handoffContractHash: verification.daw_handoff_contract_hash,
+        approvedIdentityHash: verification.approved_identity_hash,
       });
     } catch {}
     verified = verification.schema_version === 1
@@ -106,6 +164,10 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
       && approved && approved.identity
       && verification.approved_candidate_content_hash === approved.identity.candidate_content_hash
       && verification.render_contract_hash === approved.identity.render_contract_hash
+      && verification.daw_handoff_type === production.daw_handoff_type
+      && verification.daw_handoff_contract_hash === production.daw_handoff_contract_hash
+      && verification.daw_handoff_artifact_manifest_hash === production.daw_handoff_artifact_manifest_hash
+      && verification.approved_identity_hash === production.approved_identity_hash
       && verification.verification_identity === expectedVerificationIdentity
       && reasons.length === 0;
     if (!verified && !reasons.includes("production_mix_hash_mismatch")) reasons.push("verification_outdated");
@@ -137,6 +199,9 @@ function assessProductionAuthority({ dir, approvalAuthority, approved }) {
         && verified
         && resolveProvenance.source_production_mix_sha256 === actualHash
         && resolveProvenance.verification_identity === verification.verification_identity
+        && resolveProvenance.daw_handoff_type === verification.daw_handoff_type
+        && resolveProvenance.daw_handoff_contract_hash === verification.daw_handoff_contract_hash
+        && resolveProvenance.approved_identity_hash === verification.approved_identity_hash
         && resolveProvenance.approved_candidate_content_hash === approved.identity.candidate_content_hash
         && resolveProvenance.render_contract_hash === approved.identity.render_contract_hash
         && approvedMarkerEntries.length === 1

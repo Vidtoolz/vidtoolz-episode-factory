@@ -84,6 +84,7 @@ function approveProject(projectId, options) {
   lane.setPalette(projectId, "tech_noir_pulse", options);
   lane.generateCandidates(projectId, { count: 1 }, options);
   lane.approveCandidate(projectId, "candidate-001", options);
+  lane.buildReaperHandoff(projectId, "candidate-001", options);
 }
 
 test("score narration: valid operator-bound narration registers then verifies separately", () => {
