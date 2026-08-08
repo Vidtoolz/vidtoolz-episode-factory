@@ -2,7 +2,7 @@
   "use strict";
 
   const DEFAULT_OUTPUT_DIR = "/home/vidtoolz/Videos/vidtoolz-earth-studio-jobs";
-  const VERSION = "0.9.2"; // v0.9.2 corpus-rebuilt profile v3: deterministic derivation (scripts/rebuild-earth-studio-motion-profile.js) over 4 approved internet references; family-aware arrivals — APPROACH finals use the Google Zoom-To template full-gap deceleration (x 0.99·gap, influence 0.99, via 2 independent template exports), others the multi-reference 0.31/0.4. // v0.9.1 internet-reference motion profile v2: gap-relative eased handles + final settle-hold, derived ONLY from internet-sourced human-authored .esp references (config/earth-studio-motion/, operator directive: local/generated files do not qualify) — ES preserves unadorned keyframes as hard-linear, so easing must be authored. (v0.8.0 fly→orbit geometry: a fly/zoom immediately followed by an orbit around the same resolved target terminates at the orbit's ring entry (plan-annotated lookahead, ends_at_orbit_entry), so the pair plays as one continuous move — no sideways slide onto the ring. (v0.7.0: hover holds camera, orbit-scoped modifiers, fragment merge, "tilt N degrees", global duration strip, antimeridian seam pairs.)
+  const VERSION = "0.9.3"; // v0.9.3 evidence-integrity hardening (profile v4): role-correct easing — the Google-template heavy deceleration lands on SEGMENT-BOUNDARY keyframes (positional 0.99·gap/0.99, altitude 2.5·gap/1.0 — the template authors it on the keyframe ENDING the big move, an interior keyframe, NOT the track final), track finals get the gentle multi-reference arrival (0.25/0.29, infl 0.4), interior influence is corpus-DERIVED (0.43; darien-gap 0.35 participates). // v0.9.2 corpus-rebuilt profile v3: deterministic derivation (scripts/rebuild-earth-studio-motion-profile.js) over 4 approved internet references; family-aware arrivals — APPROACH finals use the Google Zoom-To template full-gap deceleration (x 0.99·gap, influence 0.99, via 2 independent template exports), others the multi-reference 0.31/0.4. // v0.9.1 internet-reference motion profile v2: gap-relative eased handles + final settle-hold, derived ONLY from internet-sourced human-authored .esp references (config/earth-studio-motion/, operator directive: local/generated files do not qualify) — ES preserves unadorned keyframes as hard-linear, so easing must be authored. (v0.8.0 fly→orbit geometry: a fly/zoom immediately followed by an orbit around the same resolved target terminates at the orbit's ring entry (plan-annotated lookahead, ends_at_orbit_entry), so the pair plays as one continuous move — no sideways slide onto the ring. (v0.7.0: hover holds camera, orbit-scoped modifiers, fragment merge, "tilt N degrees", global duration strip, antimeridian seam pairs.)
   const FRAME_RATE = 30;
   const DEFAULT_ALTITUDE_M = 2500;
   const MIN_ALTITUDE_M = 150;
@@ -783,11 +783,11 @@
         profile_version: MOTION_PROFILE_VERSION,
         source: "config/earth-studio-motion/motion-profile.json",
         references: ["darien-gap", "mountkinabalu", "radiator-untitled", "servyx"],
-        rule: "gap-relative eased handles (easeOut departure · auto interior · custom arrival) + final settle-hold",
+        rule: "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold",
       },
       notes: [...parsed.notes,
         "camera motion: internet-reference profile v" + MOTION_PROFILE_VERSION
-        + " (gap-relative easing on every keyframe; approach finals land with the Google-template full-gap deceleration; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."],
+        + " (easeOut departures, auto interiors, Google-template deceleration on move-ending boundaries — altitude hardest, gentle terminal arrivals; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."],
       manual_earth_studio_steps: [
         "Open Google Earth Studio manually.",
         "Create or open the project manually; this planner does not log in, automate a browser, or control Earth Studio.",
@@ -1258,15 +1258,19 @@ This checklist is technical planning support only. It is not creative approval, 
   // proves unadorned keyframes stay hard-linear. Transition x = handle span on
   // the shot-normalized time axis (in: negative, out: positive) — handles are
   // therefore computed per keyframe as a FRACTION OF THE GAP to the neighbor.
-  const MOTION_PROFILE_VERSION = 3;
+  const MOTION_PROFILE_VERSION = 4;
   const MOTION_EASING = {
     departure_fraction: 0.25,
     interior_fraction: 0.3,
-    interior_influence: 0.5,
-    arrival_approach_fraction: 0.99,
-    arrival_approach_influence: 0.99,
-    arrival_other_fraction: 0.31,
-    arrival_other_influence: 0.4,
+    interior_influence: 0.43,
+    segment_arrival: {
+      positional: { fraction: 0.99, influence: 0.99 },
+      altitude: { fraction: 2.5, influence: 1 },
+    },
+    terminal_arrival: {
+      positional: { fraction: 0.25, influence: 0.4 },
+      altitude: { fraction: 0.29, influence: 0.4 },
+    },
   };
   // Final positional move ends early and HOLDS (mountkinabalu t=0.80; capped
   // so long shots keep a settle, not a freeze-frame).
@@ -1299,24 +1303,40 @@ This checklist is technical planning support only. It is not creative approval, 
     // Reference-informed easing (see MOTION_EASING): handles span a fraction of
     // the gap to the neighbor keyframe — easeOut departure, auto interiors,
     // custom decelerating arrival. Single-keyframe tracks stay untouched.
-    // Family-aware arrival: when the shot's final positional move is an
-    // approach (fly/zoom), track-final keyframes use the Google Zoom-To
-    // template's full-gap deceleration; orbit/hover-final shots use the
-    // gentler multi-reference arrival.
+    // Role-correct easing (profile v4):
+    //   departure        — first keyframe eases out (0.25 x gap)
+    //   interior         — auto both sides (0.30 x gap, derived influence)
+    //   segment arrival  — the keyframe ENDING a fly/zoom move mid-track gets
+    //                      the Google-template deceleration (positional
+    //                      0.99 x gap, altitude 2.5 x gap; out-side LINEAR,
+    //                      exactly as the template authors it). Boundaries
+    //                      flagged ends_at_orbit_entry are excluded — the
+    //                      fly->orbit transition must stay continuous.
+    //   terminal arrival — the track's last keyframe eases in gently
+    //                      (multi-reference 0.25/0.29, influence 0.4).
     const legacy = Boolean(options.compareLegacyMotion);
-    const finalMove = [...plan.segments].reverse().find((sg) => sg.location && sg.duration_seconds > 0);
-    const approachFinal = finalMove && ["fly_to", "zoom_in", "zoom_out"].includes(finalMove.action);
-    const arrivalFraction = approachFinal ? MOTION_EASING.arrival_approach_fraction : MOTION_EASING.arrival_other_fraction;
-    const arrivalInfluence = approachFinal ? MOTION_EASING.arrival_approach_influence : MOTION_EASING.arrival_other_influence;
-    const kfs = (arr, mapValue) => arr.map((k, i) => {
+    const finalSeg = [...plan.segments].reverse().find((sg) => sg.location && sg.duration_seconds > 0);
+    const boundaryFracs = new Set(plan.segments
+      .filter((sg) => sg.location && sg.duration_seconds > 0
+        && ["fly_to", "zoom_in", "zoom_out"].includes(sg.action)
+        && !sg.ends_at_orbit_entry
+        && (!finalSeg || sg.segment_id !== finalSeg.segment_id))
+      .map((sg) => frac(sg.end_frame)));
+    const kfs = (arr, mapValue, kind) => arr.map((k, i) => {
       const kf = { time: frac(k.time), value: mapValue(k.value) };
       if (!legacy && arr.length >= 2) {
         const gapPrev = i > 0 ? frac(k.time) - frac(arr[i - 1].time) : 0;
         const gapNext = i < arr.length - 1 ? frac(arr[i + 1].time) - frac(k.time) : 0;
+        const cls = kind === "altitude" ? "altitude" : "positional";
         if (i === 0) {
           kf.transitionOut = { x: round6(MOTION_EASING.departure_fraction * gapNext), y: 0, type: "easeOut" };
         } else if (i === arr.length - 1) {
-          kf.transitionIn = { x: round6(-arrivalFraction * gapPrev), y: 0, influence: arrivalInfluence, type: "custom" };
+          const t = MOTION_EASING.terminal_arrival[cls];
+          kf.transitionIn = { x: round6(-t.fraction * gapPrev), y: 0, influence: t.influence, type: "custom" };
+        } else if (boundaryFracs.has(kf.time)) {
+          const sa = MOTION_EASING.segment_arrival[cls];
+          kf.transitionIn = { x: round6(-sa.fraction * gapPrev), y: 0, influence: sa.influence, type: "custom" };
+          kf.transitionOut = { x: 0, y: 0, type: "linear" };
         } else {
           kf.transitionIn = { x: round6(-MOTION_EASING.interior_fraction * gapPrev), y: 0, influence: MOTION_EASING.interior_influence, type: "auto" };
           kf.transitionOut = { x: round6(MOTION_EASING.interior_fraction * gapNext), y: 0, influence: MOTION_EASING.interior_influence, type: "auto" };
@@ -1361,7 +1381,7 @@ This checklist is technical planning support only. It is not creative approval, 
                   attributes: [
                     espLeaf("longitude", kfs(tracks.lng, (v) => (v - lonMin) / lonSpan), { minValueRange: lonMin }),
                     espLeaf("latitude", kfs(tracks.lat, (v) => (v - latMin) / latSpan), { minValueRange: latMin }),
-                    espLeaf("altitude", kfs(tracks.alt, (v) => v * ESP_ALTITUDE_SCALE), { logarithmic: false }),
+                    espLeaf("altitude", kfs(tracks.alt, (v) => v * ESP_ALTITUDE_SCALE, "altitude"), { logarithmic: false }),
                   ],
                 },
                 {

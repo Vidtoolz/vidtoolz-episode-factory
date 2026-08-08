@@ -1,7 +1,7 @@
 {
-  "profile_version": 3,
+  "profile_version": 4,
   "corpus_version": 3,
-  "analysis_schema_version": 1,
+  "analysis_schema_version": 2,
   "rebuilt_by": "scripts/rebuild-earth-studio-motion-profile.js",
   "derived_from": [
     "darien-gap",
@@ -9,23 +9,40 @@
     "radiator-untitled",
     "servyx"
   ],
-  "rule": "gap-relative eased handles on every moving keyframe (easeOut departure, auto interiors, custom decelerating arrivals — APPROACH arrivals use the Google-template near-full-gap deceleration) + final settle-hold for eligible fly/zoom finals",
+  "rule": "gap-relative eased handles on every moving keyframe — easeOut departure, auto interiors (derived influence), custom terminal arrivals split by motion family AND property class (altitude decelerates far harder than position in the Google template) + final settle-hold for eligible fly/zoom finals",
   "evidence_levels": {
     "easing_topology": "cross_source_supported (4 approved references)",
-    "interior_auto_fraction": "cross_source_supported (google template exports + mountkinabalu)",
     "departure_fraction": "multi_reference (3 sources, range 0.2-0.31)",
-    "approach_arrival": "google_authored (Zoom-To template values via 2 independent internet exports)",
-    "other_arrival": "multi_reference (mountkinabalu + radiator)",
+    "interior_fraction": "cross_source_supported (google template export + mountkinabalu + darien-gap)",
+    "interior_influence": "multi_reference (servyx 0.5 x6, darien-gap 0.35 x2 — derived median, no longer hardcoded)",
+    "segment_arrival": "google_authored (Zoom-To template dominant-axis deceleration into the move-ending INTERIOR keyframe: positional 0.99x gap, altitude 2.5x gap — handles legitimately exceed one keyframe gap; flyover easeIns at 0.31 corroborate the boundary-deceleration concept at lower magnitude)",
+    "terminal_arrival": "multi_reference (mountkinabalu terminal autos + radiator custom; the template itself ends tracks LINEAR after its drift)",
     "settle_hold": "single_reference (mountkinabalu CAMERA_SETTLE; darien-gap EDITORIAL_HOLD corroborates the principle only)"
   },
   "easing": {
     "departure_fraction": 0.25,
     "interior_fraction": 0.3,
-    "interior_influence": 0.5,
-    "arrival_approach_fraction": 0.99,
-    "arrival_approach_influence": 0.99,
-    "arrival_other_fraction": 0.31,
-    "arrival_other_influence": 0.4
+    "interior_influence": 0.43,
+    "segment_arrival": {
+      "positional": {
+        "fraction": 0.99,
+        "influence": 0.99
+      },
+      "altitude": {
+        "fraction": 2.5,
+        "influence": 1
+      }
+    },
+    "terminal_arrival": {
+      "positional": {
+        "fraction": 0.25,
+        "influence": 0.4
+      },
+      "altitude": {
+        "fraction": 0.29,
+        "influence": 0.4
+      }
+    }
   },
   "settle_hold": {
     "fraction": 0.2,
@@ -37,7 +54,8 @@
   "not_adopted_weak_evidence": [
     "POI target-lock rotation authoring (present in 2 approved refs + format evidence; replacing validated rotationX/rotationY needs its own acceptance round)",
     "extreme front-loading (darien-gap 10%-move/90%-hold = EDITORIAL_HOLD, excluded from settle aggregation)",
-    "named motion archetypes (no family has >=2 independent members beyond APPROACH_DRIFT easing; timing archetypes premature)",
+    "named motion archetypes (no family has >=2 independent members; timing archetypes premature)",
+    "interior_arrival easeIns as a distinct authored role (mountkinabalu mid-keyframe decelerations, n=1 reference — tracked separately in the report, not adopted as a production role)",
     "shared cross-property keyframe grids (observed in 3 refs; approximated by per-segment keyframing already)"
   ]
 }

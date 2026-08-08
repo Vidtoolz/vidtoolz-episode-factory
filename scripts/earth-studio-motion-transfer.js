@@ -16,7 +16,7 @@
 // not yet enforced — the grammar has no explicit start-altitude modifier.
 //
 // Usage:
-//   node scripts/earth-studio-motion-transfer.js <signature.json> --target "Rovaniemi" [--duration 40] [--out <dir>] [--dry-run]
+//   node scripts/earth-studio-motion-transfer.js <signature.json> --target "Rovaniemi" [--duration 40] [--aspect 9:16] [--out <dir>] [--dry-run]
 const fs = require("node:fs");
 const path = require("node:path");
 const planner = require("../earth-studio-job-planner.js");
@@ -24,17 +24,19 @@ const planner = require("../earth-studio-job-planner.js");
 function fail(m) { console.error(`[motion-transfer] ${m}`); process.exit(1); }
 
 function parseArgs(argv) {
-  const a = { signature: null, target: null, duration: null, out: null, dryRun: false };
+  const a = { signature: null, target: null, duration: null, aspect: null, out: null, dryRun: false };
   for (let i = 0; i < argv.length; i += 1) {
     const x = argv[i];
     if (x === "--target") a.target = argv[++i];
+    else if (x === "--aspect") a.aspect = argv[++i];
     else if (x === "--duration") a.duration = Number(argv[++i]);
     else if (x === "--out") a.out = argv[++i];
     else if (x === "--dry-run") a.dryRun = true;
     else if (!x.startsWith("--") && !a.signature) a.signature = x;
     else fail(`unknown argument ${x}`);
   }
-  if (!a.signature || !a.target) fail('usage: <signature.json> --target "Place" [--duration S] [--out dir] [--dry-run]');
+  if (!a.signature || !a.target) fail('usage: <signature.json> --target "Place" [--duration S] [--aspect R] [--out dir] [--dry-run]');
+  if (a.aspect && !planner.ASPECTS[a.aspect]) fail(`unknown aspect "${a.aspect}" — use one of: ${Object.keys(planner.ASPECTS).join(", ")}`);
   return a;
 }
 
@@ -66,6 +68,7 @@ function main() {
     transferred: {
       phase_fractions: { approach: approachFraction, drift: Math.round((1 - approachFraction) * 100) / 100 },
       duration_seconds: duration,
+      aspect: args.aspect || planner.DEFAULT_ASPECT,
       easing: "planner motion profile v" + planner.MOTION_PROFILE_VERSION + " (applied to every keyframe)",
     },
     not_transferred: ["literal coordinates/headings", "absolute altitudes", "start/end altitude ratio (grammar lacks a start-altitude modifier — reported only)"],
@@ -77,7 +80,7 @@ function main() {
   const outRoot = args.out || planner.DEFAULT_OUTPUT_DIR;
   const dir = path.join(outRoot, planner.slugify(jobName));
   fs.mkdirSync(dir, { recursive: true });
-  const artifacts = planner.buildArtifacts(jobName, description, new Date().toISOString());
+  const artifacts = planner.buildArtifacts(jobName, description, new Date().toISOString(), { aspect: args.aspect || planner.DEFAULT_ASPECT });
   for (const [file, content] of Object.entries(artifacts)) fs.writeFileSync(path.join(dir, file), content);
   fs.writeFileSync(path.join(dir, "motion-transfer.json"), `${JSON.stringify(report, null, 2)}\n`);
   console.log(`\nwrote ${Object.keys(artifacts).length + 1} files to ${dir}`);

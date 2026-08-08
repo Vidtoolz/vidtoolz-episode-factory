@@ -44,29 +44,61 @@ function median(values) {
   return Math.round(m * 100) / 100;
 }
 
-// Extract gap-relative authored easing samples from one parsed reference.
-// Returns { departures: [], interiors: [], arrivals: [] } fractions, where
-// arrival entries carry { fraction, influence }.
+// Extract gap-relative authored easing samples from one parsed reference,
+// labeled by PROPERTY CLASS and SEMANTIC ROLE — unlike properties and unlike
+// roles must never share a pool (audit 2026-08-08 findings 1-2):
+//   property class: positional (lat/lng/pan/tilt) | altitude
+//   role: departure          — first keyframe's outgoing ease into motion
+//         interior           — auto eases at mid keyframes
+//         interior_arrival   — easeIn/custom decelerations INTO a mid keyframe
+//                              (NOT terminal; mountkinabalu authors these)
+//         terminal_arrival   — the track's final keyframe's incoming ease
+// Translation terminal arrivals use the reference's DOMINANT axis (the axis
+// that actually moves most) — the Zoom-To template eases the dominant axis at
+// ~0.99×gap while the minor axis gets a lighter handle; our writer authors
+// the same handle on both axes, so the dominant sample is the honest model.
+// Handles MAY legitimately exceed one keyframe gap (template altitude arrival
+// = 2.5×gap) — no cap is applied.
 function easingSamples(parsed) {
-  const out = { departures: [], interiors: [], arrivals: [] };
-  for (const track of Object.values(parsed.tracks)) {
+  const out = { departures: [], interiors: [], interior_influences: [], interior_arrivals: [], terminal_arrivals: [] };
+  const classOf = (name) => (name === "altitude" ? "altitude" : "positional");
+  const trackDelta = (track) => track.reduce((acc, k, i) => (i ? acc + Math.abs(k.value - track[i - 1].value) : 0), 0);
+  // dominant translation axis for terminal-arrival sampling
+  const latDelta = parsed.tracks.latitude ? trackDelta(parsed.tracks.latitude) : 0;
+  const lonDelta = parsed.tracks.longitude ? trackDelta(parsed.tracks.longitude) : 0;
+  const dominantAxis = lonDelta >= latDelta ? "longitude" : "latitude";
+  for (const [name, track] of Object.entries(parsed.tracks)) {
     if (!track || track.length < 2) continue;
-    // Only spans where the value actually moves are "authored motion".
+    const cls = classOf(name);
     track.forEach((k, i) => {
       const gapNext = i < track.length - 1 ? track[i + 1].time - k.time : 0;
       const gapPrev = i > 0 ? k.time - track[i - 1].time : 0;
       const movesNext = i < track.length - 1 && Math.abs(track[i + 1].value - k.value) > 1e-9;
       const movesPrev = i > 0 && Math.abs(k.value - track[i - 1].value) > 1e-9;
+      const frac = (x, gap) => Math.round((x / gap) * 100) / 100;
       if (i === 0 && k.transitionOut && k.transitionOut.type !== "linear" && movesNext && gapNext > 0) {
-        out.departures.push(Math.round((k.transitionOut.x / gapNext) * 100) / 100);
-      } else if (i > 0 && i < track.length - 1) {
-        if (k.transitionIn && k.transitionIn.type === "auto" && gapPrev > 0 && movesPrev) {
-          out.interiors.push(Math.round((-k.transitionIn.x / gapPrev) * 100) / 100);
+        out.departures.push({ property: cls, track: name, fraction: frac(k.transitionOut.x, gapNext) });
+      } else if (i > 0 && i < track.length - 1 && k.transitionIn && movesPrev && gapPrev > 0) {
+        if (k.transitionIn.type === "auto") {
+          out.interiors.push({ property: cls, track: name, fraction: frac(-k.transitionIn.x, gapPrev) });
+          if (typeof k.transitionIn.influence === "number") {
+            out.interior_influences.push(Math.round(k.transitionIn.influence * 100) / 100);
+          }
+        } else if (k.transitionIn.type === "custom" || k.transitionIn.type === "easeIn") {
+          if (!(cls === "positional" && (name === "latitude" || name === "longitude") && name !== dominantAxis)) {
+            out.interior_arrivals.push({
+              property: cls, track: name, fraction: frac(-k.transitionIn.x, gapPrev),
+              influence: typeof k.transitionIn.influence === "number" ? Math.round(k.transitionIn.influence * 100) / 100 : null,
+            });
+          }
         }
       }
-      if (i > 0 && k.transitionIn && (k.transitionIn.type === "custom" || k.transitionIn.type === "easeIn") && movesPrev && gapPrev > 0) {
-        out.arrivals.push({
-          fraction: Math.round((-k.transitionIn.x / gapPrev) * 100) / 100,
+      if (i === track.length - 1 && k.transitionIn && k.transitionIn.type !== "linear" && movesPrev && gapPrev > 0) {
+        if (cls === "positional" && (name === "latitude" || name === "longitude") && name !== dominantAxis) return;
+        out.terminal_arrivals.push({
+          property: cls,
+          track: name,
+          fraction: frac(-k.transitionIn.x, gapPrev),
           influence: typeof k.transitionIn.influence === "number" ? Math.round(k.transitionIn.influence * 100) / 100 : null,
         });
       }
@@ -83,7 +115,13 @@ function main() {
     .sort((a, b) => a.id.localeCompare(b.id));
   const errors = [];
   const perReference = {};
-  const pools = { departures: [], interiors: [], arrivalsByFamily: {} };
+  const pools = {
+    departures: [],
+    interiors: [],
+    interior_influences: [],
+    interior_arrivals_by_family_property: {},
+    terminal_by_family_property: {},
+  };
   const holdSamples = [];
   const seenHashes = new Map();
 
@@ -102,10 +140,21 @@ function main() {
     const samples = easingSamples(parsed);
     const family = ref.motion_family || "UNCLASSIFIED";
     perReference[ref.id] = { family, tier: ref.quality_tier || null, hold_type: ref.hold_type || null, samples };
-    pools.departures.push(...samples.departures);
-    pools.interiors.push(...samples.interiors);
-    if (!pools.arrivalsByFamily[family]) pools.arrivalsByFamily[family] = [];
-    pools.arrivalsByFamily[family].push(...samples.arrivals);
+    pools.departures.push(...samples.departures.map((x) => x.fraction));
+    pools.interiors.push(...samples.interiors.map((x) => x.fraction));
+    pools.interior_influences.push(...samples.interior_influences);
+    for (const ia of samples.interior_arrivals) {
+      const familyGroup = family === "APPROACH_DRIFT" ? "approach" : "other";
+      const key = `${familyGroup}.${ia.property}`;
+      if (!pools.interior_arrivals_by_family_property[key]) pools.interior_arrivals_by_family_property[key] = [];
+      pools.interior_arrivals_by_family_property[key].push({ fraction: ia.fraction, influence: ia.influence, ref: ref.id, track: ia.track });
+    }
+    for (const t of samples.terminal_arrivals) {
+      const familyGroup = family === "APPROACH_DRIFT" ? "approach" : "other";
+      const key = `${familyGroup}.${t.property}`;
+      if (!pools.terminal_by_family_property[key]) pools.terminal_by_family_property[key] = [];
+      pools.terminal_by_family_property[key].push({ fraction: t.fraction, influence: t.influence, ref: ref.id, track: t.track });
+    }
     if (ref.hold_type === "CAMERA_SETTLE" && ref.settle_fraction_observed != null) {
       holdSamples.push(ref.settle_fraction_observed);
     }
@@ -117,52 +166,70 @@ function main() {
     process.exit(1);
   }
 
-  // Family-aware arrival: the APPROACH family (Google Zoom-To template shape,
-  // two independent exports) uses a near-full-gap deceleration; other families
-  // use the gentler multi-reference arrival.
-  const approachArrivals = pools.arrivalsByFamily.APPROACH_DRIFT || [];
-  const otherArrivals = Object.entries(pools.arrivalsByFamily)
-    .filter(([fam]) => fam !== "APPROACH_DRIFT")
-    .flatMap(([, v]) => v);
-
+  // Family × property terminal arrivals; influence falls back to the OTHER
+  // pool's derived value only when a pool has no authored influences at all
+  // (kinabalu's auto-typed finals carry none) — never to a magic constant.
+  const arrivalPool = (key) => pools.terminal_by_family_property[key] || [];
+  const arrivalStat = (key, fallbackInfluence) => {
+    const pool = arrivalPool(key);
+    const influences = pool.map((x) => x.influence).filter((x) => x != null);
+    return {
+      fraction: median(pool.map((x) => x.fraction)),
+      influence: influences.length ? median(influences) : fallbackInfluence,
+      sample_count: pool.length,
+    };
+  };
+  const iaPool = (key) => pools.interior_arrivals_by_family_property[key] || [];
+  const iaStat = (key) => {
+    const pool = iaPool(key);
+    const influences = pool.map((x) => x.influence).filter((x) => x != null);
+    return { fraction: median(pool.map((x) => x.fraction)), influence: influences.length ? median(influences) : null, sample_count: pool.length };
+  };
+  const otherPositional = arrivalStat("other.positional", null);
   const derived = {
-    handle_fraction_departure: median(pools.departures),
-    handle_fraction_interior: median(pools.interiors),
-    interior_influence: 0.5, // constant in every authored auto transition observed
-    arrival_approach: {
-      fraction: median(approachArrivals.map((a) => a.fraction)),
-      influence: median(approachArrivals.map((a) => a.influence).filter((x) => x != null)),
-    },
-    arrival_other: {
-      fraction: median(otherArrivals.map((a) => a.fraction)),
-      influence: median(otherArrivals.map((a) => a.influence).filter((x) => x != null)) || 0.4,
-    },
+    departure_fraction: median(pools.departures),
+    interior_fraction: median(pools.interiors),
+    interior_influence: median(pools.interior_influences),
+    // Segment-boundary arrivals: the Google Zoom-To template's signature
+    // deceleration lands on the keyframe that ENDS the big move (an interior
+    // keyframe of the track), with altitude eased far harder than position.
+    segment_arrival_positional: iaStat("approach.positional"),
+    segment_arrival_altitude: iaStat("approach.altitude"),
+    // Track-final (terminal) arrivals: gentle multi-reference values — the
+    // template itself ends its tracks LINEAR after the drift.
+    terminal_arrival_positional: otherPositional,
+    terminal_arrival_altitude: arrivalStat("other.altitude", otherPositional.influence),
     settle_hold_fraction: median(holdSamples),
   };
 
   const profile = {
-    profile_version: 3,
+    profile_version: 4,
     corpus_version: corpus.corpus_version,
-    analysis_schema_version: 1,
+    analysis_schema_version: 2,
     rebuilt_by: "scripts/rebuild-earth-studio-motion-profile.js",
     derived_from: approved.map((r) => r.id),
-    rule: "gap-relative eased handles on every moving keyframe (easeOut departure, auto interiors, custom decelerating arrivals — APPROACH arrivals use the Google-template near-full-gap deceleration) + final settle-hold for eligible fly/zoom finals",
+    rule: "gap-relative eased handles on every moving keyframe — easeOut departure, auto interiors (derived influence), custom terminal arrivals split by motion family AND property class (altitude decelerates far harder than position in the Google template) + final settle-hold for eligible fly/zoom finals",
     evidence_levels: {
       easing_topology: "cross_source_supported (4 approved references)",
-      interior_auto_fraction: "cross_source_supported (google template exports + mountkinabalu)",
       departure_fraction: "multi_reference (3 sources, range 0.2-0.31)",
-      approach_arrival: "google_authored (Zoom-To template values via 2 independent internet exports)",
-      other_arrival: "multi_reference (mountkinabalu + radiator)",
+      interior_fraction: "cross_source_supported (google template export + mountkinabalu + darien-gap)",
+      interior_influence: "multi_reference (servyx 0.5 x6, darien-gap 0.35 x2 — derived median, no longer hardcoded)",
+      segment_arrival: "google_authored (Zoom-To template dominant-axis deceleration into the move-ending INTERIOR keyframe: positional 0.99x gap, altitude 2.5x gap — handles legitimately exceed one keyframe gap; flyover easeIns at 0.31 corroborate the boundary-deceleration concept at lower magnitude)",
+      terminal_arrival: "multi_reference (mountkinabalu terminal autos + radiator custom; the template itself ends tracks LINEAR after its drift)",
       settle_hold: "single_reference (mountkinabalu CAMERA_SETTLE; darien-gap EDITORIAL_HOLD corroborates the principle only)",
     },
     easing: {
-      departure_fraction: derived.handle_fraction_departure,
-      interior_fraction: derived.handle_fraction_interior,
+      departure_fraction: derived.departure_fraction,
+      interior_fraction: derived.interior_fraction,
       interior_influence: derived.interior_influence,
-      arrival_approach_fraction: derived.arrival_approach.fraction,
-      arrival_approach_influence: derived.arrival_approach.influence,
-      arrival_other_fraction: derived.arrival_other.fraction,
-      arrival_other_influence: derived.arrival_other.influence,
+      segment_arrival: {
+        positional: { fraction: derived.segment_arrival_positional.fraction, influence: derived.segment_arrival_positional.influence },
+        altitude: { fraction: derived.segment_arrival_altitude.fraction, influence: derived.segment_arrival_altitude.influence },
+      },
+      terminal_arrival: {
+        positional: { fraction: derived.terminal_arrival_positional.fraction, influence: derived.terminal_arrival_positional.influence },
+        altitude: { fraction: derived.terminal_arrival_altitude.fraction, influence: derived.terminal_arrival_altitude.influence },
+      },
     },
     settle_hold: {
       fraction: derived.settle_hold_fraction != null ? derived.settle_hold_fraction : 0.2,
@@ -174,7 +241,8 @@ function main() {
     not_adopted_weak_evidence: [
       "POI target-lock rotation authoring (present in 2 approved refs + format evidence; replacing validated rotationX/rotationY needs its own acceptance round)",
       "extreme front-loading (darien-gap 10%-move/90%-hold = EDITORIAL_HOLD, excluded from settle aggregation)",
-      "named motion archetypes (no family has >=2 independent members beyond APPROACH_DRIFT easing; timing archetypes premature)",
+      "named motion archetypes (no family has >=2 independent members; timing archetypes premature)",
+      "interior_arrival easeIns as a distinct authored role (mountkinabalu mid-keyframe decelerations, n=1 reference — tracked separately in the report, not adopted as a production role)",
       "shared cross-property keyframe grids (observed in 3 refs; approximated by per-segment keyframing already)",
     ],
   };
@@ -185,9 +253,11 @@ function main() {
     approved_references: approved.map((r) => ({ id: r.id, family: r.motion_family, tier: r.quality_tier, hold_type: r.hold_type || null })),
     raw_samples: perReference,
     pooled: {
-      departures: pools.departures.sort((a, b) => a - b),
-      interiors: pools.interiors.sort((a, b) => a - b),
-      arrivals_by_family: pools.arrivalsByFamily,
+      departures: [...pools.departures].sort((a, b) => a - b),
+      interiors: [...pools.interiors].sort((a, b) => a - b),
+      interior_influences: [...pools.interior_influences].sort((a, b) => a - b),
+      interior_arrivals_by_family_property: pools.interior_arrivals_by_family_property,
+      terminal_arrivals_by_family_property: pools.terminal_by_family_property,
       camera_settle_fractions: holdSamples,
     },
     derived,

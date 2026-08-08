@@ -64,11 +64,15 @@ Runs locally on vidnux; uses system `ffmpeg`. Does not log into Google, automate
 browser, advance package-run state, or write approved media. PRESTO is not contacted.
 
 ## Verification states — internal green is NOT external proof
-Everything above proves the tool against **our own model** of Earth Studio. The `.esp` format now
-follows a community-reverse-engineered schema known to import, but the camera semantics
-(rotationX = pan/heading, rotationY = tilt-from-nadir, the empirical altitude scale,
-counterclockwise = pan decreasing) remain unproven for OUR generated moves until real Earth
-Studio validates them. `scripts/earth-studio-v04-acceptance.js` formalizes this as a state machine:
+Everything above proves the tool against **our own model** of Earth Studio, and the core camera
+semantics have since been **externally validated in real Google Earth Studio** (acceptance rounds
+1–4, 2026-08-07): the `.esp` format imports (round 2), duration/9:16 dimensions are honored, the
+frames→MP4 render seam works on a real export (round 3), and rotationX = pan / rotationY =
+tilt-from-nadir, target-facing orbits, accumulated revolutions, and **counterclockwise = pan
+decreasing (on-screen direction confirmed by the operator, round 4)** all behaved as generated.
+Still awaiting external confirmation: the v0.9 corpus-informed easing/settle-hold and the v0.8
+fly→orbit ring-entry geometry (internally verified; the next import round's checklist covers
+them). `scripts/earth-studio-v04-acceptance.js` formalizes this as a state machine:
 
 - **INTERNAL_VERIFIED** — parser/generator/renderer tests pass and the pre-import semantic
   assertions pass (29 checks: 9:16 dimensions, real Helsinki→Paris distance, cinematic arc,

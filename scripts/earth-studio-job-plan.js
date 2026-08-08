@@ -6,7 +6,7 @@ const path = require("node:path");
 
 const planner = require("../earth-studio-job-planner.js");
 
-const HELP_TEXT = `Usage: node scripts/earth-studio-job-plan.js --job <name> --description <text> [--aspect <ratio>] [--out <dir>] [--dry-run | --write]
+const HELP_TEXT = `Usage: node scripts/earth-studio-job-plan.js --job <name> --description <text> [--aspect <ratio>] [--out <dir>] [--dry-run | --write [--force]]
        node scripts/earth-studio-job-plan.js --job <name> [--out <dir>] --verify
 
 Create or verify local Google Earth Studio planning artifacts.
@@ -17,7 +17,14 @@ Options:
   --aspect <ratio>         Render aspect: ${Object.keys(planner.ASPECTS).join(", ")}. Default: ${planner.DEFAULT_ASPECT}
   --out <dir>              Output root. Default: ${planner.DEFAULT_OUTPUT_DIR}
   --dry-run                Print the output plan without writing files.
-  --write                  Write the job folder and artifacts.
+  --write                  Write the job folder and artifacts. Refuses to touch
+                           a folder whose artifacts diverge (older planner
+                           version or manual edits) — exit 2, zero writes.
+  --force                  With --write: deliberately regenerate ALL planning
+                           artifacts in the job folder (replaces the full
+                           generated set; never touches other files). Refused
+                           inside repo package-runs (acceptance/proof packages
+                           are managed by their own tooling).
   --verify                 Verify the generated job folder.
   --help                   Show this help message.
 
@@ -32,6 +39,7 @@ function parseArgs(argv = []) {
     aspect: planner.DEFAULT_ASPECT,
     outDir: planner.DEFAULT_OUTPUT_DIR,
     mode: "",
+    force: false,
     help: false,
     error: "",
   };
@@ -49,6 +57,7 @@ function parseArgs(argv = []) {
       }
     }
     else if (item === "--out") options.outDir = args.shift() || "";
+    else if (item === "--force") options.force = true;
     else if (item === "--dry-run" || item === "--write" || item === "--verify") {
       if (options.mode) {
         options.error = "Choose only one mode: --dry-run, --write, or --verify.";
@@ -109,17 +118,47 @@ function runDryRun(options) {
   return 0;
 }
 
+// Repo package-runs (incl. the pinned London proof and the acceptance
+// package) are managed by their own tooling — the planning CLI must never
+// write there, with or without --force.
+function isProtectedTarget(jobDir) {
+  const protectedRoot = path.resolve(__dirname, "..", "package-runs");
+  const resolved = path.resolve(jobDir);
+  return resolved === protectedRoot || resolved.startsWith(protectedRoot + path.sep);
+}
+
 function runWrite(options) {
   const jobDir = jobDirFor(options);
-  fs.mkdirSync(jobDir, { recursive: true });
+  if (isProtectedTarget(jobDir)) {
+    console.error(`Refused: ${jobDir} is inside the repository's package-runs — acceptance/proof packages are managed by their own tooling (--force does not override this).`);
+    return 2;
+  }
   const artifacts = planner.buildArtifacts(options.job, options.description, undefined, { aspect: options.aspect });
-  const results = Object.entries(artifacts).map(([filename, content]) => {
-    const status = writeFileIfSafe(path.join(jobDir, filename), content);
-    return [filename, status];
+  // Plan first, write second: a divergent folder is refused ATOMICALLY (zero
+  // writes) so a stale mixed-version job folder can never be created.
+  const statuses = Object.entries(artifacts).map(([filename, content]) => {
+    const filePath = path.join(jobDir, filename);
+    if (!fs.existsSync(filePath)) return [filename, "create", content];
+    const existing = fs.readFileSync(filePath);
+    return [filename, existing.equals(Buffer.from(content, "utf8")) ? "unchanged" : "divergent", content];
   });
-  console.log(`Created Earth Studio job planning files in: ${jobDir}`);
+  const divergent = statuses.filter(([, status]) => status === "divergent");
+  if (divergent.length && !options.force) {
+    console.error(`Refused: ${divergent.length} existing file(s) in ${jobDir} differ from the current generator's output (older planner version or manual edits). Nothing was written.`);
+    divergent.forEach(([filename]) => console.error(`  divergent: ${path.join(jobDir, filename)}`));
+    console.error("Use --force to deliberately regenerate the full planning-artifact set.");
+    return 2;
+  }
+  fs.mkdirSync(jobDir, { recursive: true });
+  const results = statuses.map(([filename, status, content]) => {
+    const filePath = path.join(jobDir, filename);
+    if (status === "unchanged") return [filename, "unchanged"];
+    fs.writeFileSync(filePath, content);
+    return [filename, status === "divergent" ? "replaced" : "created"];
+  });
+  console.log(`${options.force && divergent.length ? "Regenerated" : "Created"} Earth Studio job planning files in: ${jobDir}`);
   results.forEach(([filename, status]) => console.log(`${status}: ${path.join(jobDir, filename)}`));
-  return results.some(([_filename, status]) => status === "skipped") ? 2 : 0;
+  return 0;
 }
 
 function runVerify(options) {

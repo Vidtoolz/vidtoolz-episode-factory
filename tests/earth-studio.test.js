@@ -922,23 +922,34 @@ test("earth-studio v0.9: inspector parses VIDTOOLZ import-shape output and rejec
   fs.unlinkSync(bad);
 });
 
-test("earth-studio v0.9.2: baked motion profile stays in sync with the corpus-rebuilt motion-profile.json (internet references only)", () => {
+test("earth-studio v0.9.3: baked motion profile stays in sync with the corpus-rebuilt motion-profile.json (internet references only)", () => {
   const profile = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config", "earth-studio-motion", "motion-profile.json"), "utf8"));
   assert.equal(planner.MOTION_PROFILE_VERSION, profile.profile_version);
-  assert.deepEqual(planner.MOTION_EASING, {
-    departure_fraction: profile.easing.departure_fraction,
-    interior_fraction: profile.easing.interior_fraction,
-    interior_influence: profile.easing.interior_influence,
-    arrival_approach_fraction: profile.easing.arrival_approach_fraction,
-    arrival_approach_influence: profile.easing.arrival_approach_influence,
-    arrival_other_fraction: profile.easing.arrival_other_fraction,
-    arrival_other_influence: profile.easing.arrival_other_influence,
-  });
+  assert.deepEqual(planner.MOTION_EASING, profile.easing);
   assert.deepEqual(planner.MOTION_SETTLE, profile.settle_hold);
   assert.deepEqual([...profile.derived_from].sort(), ["darien-gap", "mountkinabalu", "radiator-untitled", "servyx"]);
   // a rejected reference must never appear in the derivation
   assert.ok(!profile.derived_from.includes("ekayle1"));
   assert.ok(!profile.derived_from.some((id) => id.startsWith("jio-")));
+  // interior influence is CORPUS-DERIVED, not hardcoded: the darien-gap 0.35
+  // samples participate in the pool and pull the median below servyx's 0.5.
+  const report = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config", "earth-studio-motion", "reports", "derivation-report.json"), "utf8"));
+  assert.ok(report.pooled.interior_influences.includes(0.35), "darien-gap influence evidence present");
+  assert.ok(report.pooled.interior_influences.includes(0.5), "servyx influence evidence present");
+  assert.equal(profile.easing.interior_influence, 0.43);
+  // property separation: altitude segment-arrival evidence (2.5x gap) must not
+  // pollute the positional pool, and vice versa.
+  const ia = report.pooled.interior_arrivals_by_family_property;
+  assert.deepEqual(ia["approach.altitude"].map((x) => x.fraction), [2.5]);
+  assert.deepEqual(ia["approach.positional"].map((x) => x.fraction), [0.99]); // dominant axis only
+  // classification: mountkinabalu mid-keyframe easeIns are interior arrivals,
+  // NOT terminal arrivals; its real terminal arrivals (auto 0.25) are captured.
+  const kin = report.raw_samples.mountkinabalu;
+  assert.ok(kin.samples.interior_arrivals.every((x) => x.fraction === 0.31));
+  assert.ok(kin.samples.terminal_arrivals.every((x) => x.fraction === 0.25));
+  const term = report.pooled.terminal_arrivals_by_family_property;
+  assert.ok(term["other.positional"].some((x) => x.ref === "mountkinabalu" && x.fraction === 0.25));
+  assert.ok(!("approach.positional" in term), "template track finals are LINEAR — no approach terminal pool");
   // the corpus records the operator's disqualification of local/generated files
   const corpus = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config", "earth-studio-motion", "corpus.json"), "utf8"));
   const ek = corpus.references.find((r) => r.id === "ekayle1");
@@ -951,44 +962,83 @@ test("earth-studio v0.9.2: baked motion profile stays in sync with the corpus-re
   });
 });
 
-test("earth-studio v0.9.1: generated .esp keyframes carry gap-relative easing from the internet-reference profile", () => {
-  const plan = planner.buildShotPlan("T", "fly to Helsinki in 8 seconds, then orbit Helsinki for 12 seconds", "2026-08-08T00:00:00.000Z");
+test("earth-studio v0.9.3: generated .esp keyframes carry role-correct corpus easing (incl. legitimate >1-gap handles)", () => {
+  const plan = planner.buildShotPlan("T", "fly to Helsinki in 4 seconds, then fly to Tampere in 6 seconds, then orbit Tampere for 12 seconds", "2026-08-08T00:00:00.000Z");
   assert.equal(plan.motion_profile.profile_version, planner.MOTION_PROFILE_VERSION);
   assert.deepEqual(plan.motion_profile.references, ["darien-gap", "mountkinabalu", "radiator-untitled", "servyx"]);
-  assert.match(plan.notes.join("\n"), /internet-reference profile v3/);
+  assert.match(plan.notes.join("\n"), /internet-reference profile v4/);
   const esp = planner.buildEsp(plan);
   const pos = esp.scenes[0].attributes[0].attributes.find((a) => a.type === "cameraPositionGroup").attributes;
   const lng = pos.find((a) => a.type === "longitude").keyframes;
-  // departure: easeOut whose handle spans 30% of the gap to the next keyframe
+  const alt = pos.find((a) => a.type === "altitude").keyframes;
+  const total = plan.total_frames;
+  // departure: easeOut, 25% of the gap to the next keyframe
   assert.equal(lng[0].transitionOut.type, "easeOut");
-  const gap0 = lng[1].time - lng[0].time;
-  assert.ok(Math.abs(lng[0].transitionOut.x - 0.25 * gap0) < 1e-6);
-  assert.equal(lng[0].transitionIn, undefined);
-  // orbit-final shot -> the gentler multi-reference arrival (0.31 / 0.4)
-  const last = lng[lng.length - 1];
-  const gapN = last.time - lng[lng.length - 2].time;
-  assert.equal(last.transitionIn.type, "custom");
-  assert.equal(last.transitionIn.influence, 0.4);
-  assert.ok(Math.abs(last.transitionIn.x + 0.31 * gapN) < 1e-6);
-  // approach-final shot -> Google Zoom-To template full-gap deceleration
-  const ap = planner.buildShotPlan("T", "fly to Helsinki in 4 seconds, then fly to Tampere in 6 seconds", "2026-08-08T00:00:00.000Z");
-  const apEsp = planner.buildEsp(ap);
-  const apLng = apEsp.scenes[0].attributes[0].attributes.find((a) => a.type === "cameraPositionGroup").attributes.find((a) => a.type === "longitude").keyframes;
-  const apLast = apLng[apLng.length - 1];
-  const apGap = apLast.time - apLng[apLng.length - 2].time;
-  assert.equal(apLast.transitionIn.influence, 0.99);
-  assert.ok(Math.abs(apLast.transitionIn.x + 0.99 * apGap) < 1e-6);
-  // handles never cross their segment (fraction <= 0.99 of the gap)
-  apLng.concat(lng).forEach((k, i, arr2) => {
-    if (k.transitionIn) assert.ok(Math.abs(k.transitionIn.x) <= (k.time) + 1e-9);
-  });
-  // interiors: auto both sides
-  lng.slice(1, -1).forEach((k) => {
-    assert.equal(k.transitionIn.type, "auto");
-    assert.equal(k.transitionOut.type, "auto");
+  assert.ok(Math.abs(lng[0].transitionOut.x - 0.25 * (lng[1].time - lng[0].time)) < 1e-6);
+  // segment boundary (fly-1 end, different next target): template deceleration
+  const b1 = plan.segments[0].end_frame / total;
+  const bLng = lng.find((k) => Math.abs(k.time - b1) < 1e-9);
+  assert.ok(bLng, "boundary keyframe exists");
+  assert.equal(bLng.transitionIn.type, "custom");
+  assert.equal(bLng.transitionIn.influence, 0.99);
+  assert.deepEqual(bLng.transitionOut, { x: 0, y: 0, type: "linear" }); // template authors linear out after the landing
+  // altitude at the same boundary: 2.5 x gap — a legitimate handle LONGER than
+  // one keyframe gap (Google template evidence); must be accepted, finite,
+  // correctly signed.
+  const bAlt = alt.find((k) => Math.abs(k.time - b1) < 1e-9);
+  const bAltGap = bAlt.time - alt[alt.indexOf(bAlt) - 1].time;
+  assert.ok(Math.abs(bAlt.transitionIn.x + 2.5 * bAltGap) < 1e-6, `altitude boundary handle spans 2.5 gaps (${bAlt.transitionIn.x})`);
+  assert.ok(Math.abs(bAlt.transitionIn.x) > bAltGap, "handle legitimately exceeds one keyframe gap");
+  assert.equal(bAlt.transitionIn.influence, 1);
+  assert.ok(Number.isFinite(bAlt.transitionIn.x));
+  // fly->orbit boundary (same target, ends_at_orbit_entry): NO deceleration —
+  // stays auto so the v0.8 continuous ring entry is preserved
+  const b2 = plan.segments[1].end_frame / total;
+  const entryKf = lng.find((k) => Math.abs(k.time - b2) < 1e-9);
+  assert.ok(entryKf && entryKf.transitionIn.type === "auto", "orbit-entry boundary keeps auto easing");
+  // interiors: auto with the DERIVED influence
+  lng.filter((k, i) => i > 0 && i < lng.length - 1 && ![b1, b2].some((b) => Math.abs(k.time - b) < 1e-9))
+    .forEach((k) => {
+      assert.equal(k.transitionIn.type, "auto");
+      assert.equal(k.transitionIn.influence, 0.43);
+    });
+  // terminal arrival: gentle multi-reference custom (0.25 positional / 0.29 altitude, influence 0.4)
+  const lastLng = lng[lng.length - 1];
+  assert.equal(lastLng.transitionIn.type, "custom");
+  assert.equal(lastLng.transitionIn.influence, 0.4);
+  assert.ok(Math.abs(lastLng.transitionIn.x + 0.25 * (lastLng.time - lng[lng.length - 2].time)) < 1e-6);
+  const lastAlt = alt[alt.length - 1];
+  assert.ok(Math.abs(lastAlt.transitionIn.x + 0.29 * (lastAlt.time - alt[alt.length - 2].time)) < 1e-6);
+  // every emitted handle is finite with the intended sign
+  [...lng, ...alt].forEach((k) => {
+    if (k.transitionIn) { assert.ok(Number.isFinite(k.transitionIn.x)); assert.ok(k.transitionIn.x <= 0); }
+    if (k.transitionOut) { assert.ok(Number.isFinite(k.transitionOut.x)); assert.ok(k.transitionOut.x >= 0); }
   });
   // deterministic
   assert.equal(JSON.stringify(planner.buildEsp(plan)), JSON.stringify(esp));
+});
+
+test("earth-studio v0.9.3: compareLegacyMotion emits pre-v0.9 motion for A/B comparison only", () => {
+  const plan = planner.buildShotPlan("T", "fly to Helsinki in 4 seconds, then fly to Tampere in 6 seconds", "2026-08-08T00:00:00.000Z");
+  const current = planner.buildEsp(plan);
+  const legacy = planner.buildEsp(plan, { compareLegacyMotion: true });
+  const kfsOf = (esp, prop) => esp.scenes[0].attributes[0].attributes.find((a) => a.type === "cameraPositionGroup").attributes.find((a) => a.type === prop).keyframes;
+  // legacy: NO authored transitions anywhere
+  ["longitude", "latitude", "altitude"].forEach((prop) => {
+    kfsOf(legacy, prop).forEach((k) => {
+      assert.equal(k.transitionIn, undefined);
+      assert.equal(k.transitionOut, undefined);
+    });
+  });
+  // legacy: NO settle-hold — motion runs to the segment end
+  const lastLegacy = kfsOf(legacy, "latitude").slice(-1)[0];
+  assert.ok(Math.abs(lastLegacy.time - plan.segments[1].end_frame / plan.total_frames) < 1e-9);
+  // current output is unaffected by the flag's existence and stays eased + settled
+  const lastCurrent = kfsOf(current, "latitude").slice(-1)[0];
+  assert.ok(lastCurrent.time < lastLegacy.time, "current settles before the end");
+  assert.ok(kfsOf(current, "longitude")[0].transitionOut, "current keeps authored easing");
+  // both are deterministic
+  assert.equal(JSON.stringify(planner.buildEsp(plan, { compareLegacyMotion: true })), JSON.stringify(legacy));
 });
 
 test("earth-studio v0.9.1: the final positional move settles early and holds (mountkinabalu pattern)", () => {
@@ -1049,4 +1099,86 @@ test("earth-studio v0.9.2: profile rebuild is deterministic and the corpus passe
   const hashes = corpus.references.filter((r) => r.state === "APPROVED").map((r) =>
     cryptoES.createHash("sha256").update(fs.readFileSync(path.join(__dirname, "..", "config", "earth-studio-motion", r.corpus_copy))).digest("hex"));
   assert.equal(new Set(hashes).size, hashes.length, "duplicate reference content");
+});
+
+// ---- v0.9.3 hardening: CLI --force, writeJob provenance, transfer aspect ----
+
+test("earth-studio v0.9.3: planning CLI refuses divergent folders atomically and --force regenerates them", () => {
+  const cli = path.join(__dirname, "..", "scripts", "earth-studio-job-plan.js");
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), "es-cli-force-"));
+  const run = (...extra) => childProcessES.spawnSync("node", [cli, "--job", "T1", "--description", "fly to Paris in 3 seconds", "--out", out, "--write", ...extra], { encoding: "utf8" });
+  // fresh create
+  const fresh = run();
+  assert.equal(fresh.status, 0);
+  assert.match(fresh.stdout, /Created Earth Studio job planning files/);
+  // divergent refusal: honest wording, exit 2, ZERO writes (no mixed-version folder)
+  fs.writeFileSync(path.join(out, "T1", "shot-plan.json"), '{"tampered":true}');
+  fs.writeFileSync(path.join(out, "T1", "route.kml"), "tampered-kml");
+  const refused = run();
+  assert.equal(refused.status, 2);
+  assert.match(refused.stderr, /Refused: 2 existing file\(s\)/);
+  assert.match(refused.stderr, /Nothing was written/);
+  assert.ok(!refused.stdout.includes("Created Earth Studio job planning files"), "no misleading Created header");
+  assert.equal(fs.readFileSync(path.join(out, "T1", "shot-plan.json"), "utf8"), '{"tampered":true}');
+  // forced regeneration replaces the full divergent set and reports it
+  const forced = run("--force");
+  assert.equal(forced.status, 0);
+  assert.match(forced.stdout, /Regenerated Earth Studio job planning files/);
+  assert.match(forced.stdout, /replaced: .*shot-plan\.json/);
+  assert.match(forced.stdout, /replaced: .*route\.kml/);
+  const regenerated = JSON.parse(fs.readFileSync(path.join(out, "T1", "shot-plan.json"), "utf8"));
+  assert.equal(regenerated.version, planner.VERSION); // no stale mixed-version artifacts
+  // protected proof packages refuse even with --force
+  const protectedRun = childProcessES.spawnSync("node", [cli, "--job", "X", "--description", "fly to Paris", "--out", path.join(__dirname, "..", "package-runs"), "--write", "--force"], { encoding: "utf8" });
+  assert.equal(protectedRun.status, 2);
+  assert.match(protectedRun.stderr, /package-runs/);
+  assert.ok(!fs.existsSync(path.join(__dirname, "..", "package-runs", "X")));
+  fs.rmSync(out, { recursive: true, force: true });
+});
+
+test("earth-studio v0.9.3: writeJob returns plan notes + motion provenance (additive) and persists them in job.json", () => {
+  const { root, pkg } = tmpPackage();
+  const out = lane.writeJob(pkg, { jobName: "J", description: "fly to Paris, then hover for 3 seconds" });
+  // additive fields for the GUI
+  assert.ok(Array.isArray(out.notes) && out.notes.length > 0);
+  assert.match(out.notes.join("\n"), /internet-reference profile v4/);
+  assert.match(out.notes.join("\n"), /hover holds the previous camera/);
+  assert.equal(out.motion_profile.profile_version, planner.MOTION_PROFILE_VERSION);
+  assert.equal(out.planner_version, planner.VERSION);
+  // existing consumers keep their fields
+  ["ok", "jobName", "slug", "total_frames", "warnings", "unresolved_items", "files", "lane_dir"].forEach((k) => assert.ok(k in out, `missing ${k}`));
+  // provenance persists for later status/GUI reads
+  const job = lane.readJob(pkg);
+  assert.equal(job.motion_profile.profile_version, planner.MOTION_PROFILE_VERSION);
+  assert.deepEqual(job.motion_profile.references, ["darien-gap", "mountkinabalu", "radiator-untitled", "servyx"]);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("project-earth-studio.html v0.9.3: surfaces motion-profile provenance and generate-time plan notes", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "project-earth-studio.html"), "utf8");
+  assert.match(html, /motion profile v\$\{esc\(String\(job\.motion_profile\.profile_version\)\)\} \(corpus\)/);
+  assert.match(html, /r\.notes\.map\(\(n\)=>'ℹ '\+esc\(n\)\)/);
+});
+
+test("earth-studio v0.9.3: motion transfer propagates aspect (9:16 stays vertical, 16:9 stays horizontal)", () => {
+  const vertical = planner.buildShotPlan("T", "zoom in on Rovaniemi in 5 seconds, then orbit Rovaniemi 90 degrees for 5 seconds", "2026-08-08T00:00:00.000Z", { aspect: "9:16" });
+  assert.deepEqual(vertical.render_dimensions, { width: 1080, height: 1920 });
+  assert.deepEqual(planner.buildEsp(vertical).settings.dimensions, { width: 1080, height: 1920 });
+  // the transfer CLI validates and forwards --aspect into buildArtifacts
+  const src = fs.readFileSync(path.join(__dirname, "..", "scripts", "earth-studio-motion-transfer.js"), "utf8");
+  assert.match(src, /aspect: args\.aspect \|\| planner\.DEFAULT_ASPECT/);
+  assert.match(src, /planner\.ASPECTS\[a\.aspect\]/);
+  const sigPath = path.join(__dirname, "..", "config", "earth-studio-motion", "references", "mountkinabalu.signature.json");
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "es-transfer-aspect-"));
+  const r = childProcessES.spawnSync("node", [path.join(__dirname, "..", "scripts", "earth-studio-motion-transfer.js"), sigPath, "--target", "Rovaniemi", "--aspect", "9:16", "--out", outDir], { encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+  const jobDir = fs.readdirSync(outDir)[0];
+  const esp = JSON.parse(fs.readFileSync(path.join(outDir, jobDir, "earth-studio.esp"), "utf8"));
+  assert.deepEqual(esp.settings.dimensions, { width: 1080, height: 1920 });
+  const wide = childProcessES.spawnSync("node", [path.join(__dirname, "..", "scripts", "earth-studio-motion-transfer.js"), sigPath, "--target", "Tampere", "--aspect", "16:9", "--out", outDir], { encoding: "utf8" });
+  assert.equal(wide.status, 0, wide.stderr);
+  const wideDir = fs.readdirSync(outDir).find((d) => d.includes("tampere"));
+  const wideEsp = JSON.parse(fs.readFileSync(path.join(outDir, wideDir, "earth-studio.esp"), "utf8"));
+  assert.deepEqual(wideEsp.settings.dimensions, { width: 1920, height: 1080 });
+  fs.rmSync(outDir, { recursive: true, force: true });
 });

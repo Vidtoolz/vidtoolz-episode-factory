@@ -116,6 +116,9 @@ function writeJob(packageDir, payload = {}, options = {}) {
     total_frames: plan.total_frames,
     total_duration_seconds: plan.total_duration_seconds,
     unresolved_count: plan.unresolved_items.length,
+    planner_version: plan.version,
+    // Camera-direction provenance: which corpus profile authored the motion.
+    motion_profile: plan.motion_profile || null,
     created_at: createdAt,
   };
   fs.writeFileSync(path.join(dir, 'job.json'), `${JSON.stringify(meta, null, 2)}\n`);
@@ -123,6 +126,9 @@ function writeJob(packageDir, payload = {}, options = {}) {
     ok: true,
     ...meta,
     warnings: plan.warnings,
+    // Plan-level informational notes (applied defaults, carry-over, easing/
+    // settle provenance) — additive so the GUI can show them.
+    notes: plan.notes || [],
     unresolved_items: plan.unresolved_items,
     files: Object.keys(artifacts).concat('job.json'),
     lane_dir: dir,

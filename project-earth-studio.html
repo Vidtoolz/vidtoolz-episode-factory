@@ -166,7 +166,7 @@
         const active = !s.has_plan ? 1 : !hasFrames ? (s.has_esp ? 3 : 2) : !rendered ? 4 : 5;
 
         document.getElementById('es-meta').innerHTML =
-          `Project <code>${esc(ID)}</code>${job ? ` · job <b>${esc(job.jobName)}</b> · ${job.total_frames} frames planned${job.aspect?` · ${esc(job.aspect)}`:''}` : ' · no map-animation job yet'}`;
+          `Project <code>${esc(ID)}</code>${job ? ` · job <b>${esc(job.jobName)}</b> · ${job.total_frames} frames planned${job.aspect?` · ${esc(job.aspect)}`:''}${job.motion_profile?` · <span title="Camera easing/settle derived from the approved Earth Studio reference corpus (${esc((job.motion_profile.references||[]).join(', '))})">motion profile v${esc(String(job.motion_profile.profile_version))} (corpus)</span>`:''}` : ' · no map-animation job yet'}`;
 
         document.getElementById('es-steps').innerHTML = `
           <div class="step ${s.has_plan?'done':''} ${active===1?'active':''}">
@@ -254,6 +254,11 @@
           const r = await post('/api/earth-studio/plan', { id: ID, jobName: document.getElementById('es-job').value || 'Map Animation', description: document.getElementById('es-desc').value, aspect: ASPECT });
           toast('Plan + .esp generated');
           if (r.unresolved_count) st.textContent = r.unresolved_count + ' unresolved segment(s) — fix the description or adjust manually in Earth Studio.';
+          // Plan-level notes (applied defaults + motion provenance) below the preview.
+          if (r.notes && r.notes.length) {
+            const box = document.getElementById('es-preview');
+            if (box) box.insertAdjacentHTML('beforeend', `<div class="meta" style="margin-top:6px;">${r.notes.map((n)=>'ℹ '+esc(n)).join('<br>')}</div>`);
+          }
           await refresh();
         }catch(e){ st.textContent='Failed: '+(e.message||e); toast('Generate failed', false); }
       }

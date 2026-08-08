@@ -1,7 +1,7 @@
 {
   "job_name": "v0.4 Real Import Paris",
-  "version": "0.9.2",
-  "generated_at": "2026-08-08T08:24:41.170Z",
+  "version": "0.9.3",
+  "generated_at": "2026-08-08T09:18:08.979Z",
   "source_description": "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 36 seconds, then zoom out to space in 12 seconds",
   "parser_strategy": "offline_regex_with_manual_review_fallback",
   "frame_rate": 30,
@@ -145,7 +145,7 @@
   ],
   "unresolved_items": [],
   "motion_profile": {
-    "profile_version": 3,
+    "profile_version": 4,
     "source": "config/earth-studio-motion/motion-profile.json",
     "references": [
       "darien-gap",
@@ -153,13 +153,13 @@
       "radiator-untitled",
       "servyx"
     ],
-    "rule": "gap-relative eased handles (easeOut departure · auto interior · custom arrival) + final settle-hold"
+    "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold"
   },
   "notes": [
     "segment 3: location carried over: Paris.",
     "segment 4: location carried over: Paris.",
     "segment 2: endpoint set to segment 3's orbit ring entry (same target — the move lands on the ring the orbit starts from).",
-    "camera motion: internet-reference profile v3 (gap-relative easing on every keyframe; approach finals land with the Google-template full-gap deceleration; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."
+    "camera motion: internet-reference profile v4 (easeOut departures, auto interiors, Google-template deceleration on move-ending boundaries — altitude hardest, gentle terminal arrivals; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."
   ],
   "manual_earth_studio_steps": [
     "Open Google Earth Studio manually.",

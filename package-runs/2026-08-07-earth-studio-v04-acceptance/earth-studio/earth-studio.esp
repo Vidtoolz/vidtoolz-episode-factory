@@ -50,16 +50,15 @@
                       "time": 0.07042253521126761,
                       "value": 0.12743071569750913,
                       "transitionIn": {
-                        "x": -0.021127,
+                        "x": -0.069718,
                         "y": 0,
-                        "influence": 0.5,
-                        "type": "auto"
+                        "influence": 0.99,
+                        "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.076056,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.5,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
@@ -68,13 +67,13 @@
                       "transitionIn": {
                         "x": -0.076056,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -84,13 +83,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -100,13 +99,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -116,13 +115,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -132,13 +131,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -148,13 +147,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -164,13 +163,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -180,13 +179,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -196,13 +195,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -212,13 +211,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -228,13 +227,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -244,13 +243,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -260,13 +259,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -276,13 +275,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -292,13 +291,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -308,13 +307,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -324,13 +323,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -340,13 +339,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -356,13 +355,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -372,13 +371,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -388,13 +387,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -404,13 +403,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -420,13 +419,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -436,13 +435,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -450,9 +449,9 @@
                       "time": 0.8309859154929577,
                       "value": 0.0003326825989668836,
                       "transitionIn": {
-                        "x": -0.020915,
+                        "x": -0.005282,
                         "y": 0,
-                        "influence": 0.99,
+                        "influence": 0.4,
                         "type": "custom"
                       }
                     }
@@ -479,16 +478,15 @@
                       "time": 0.07042253521126761,
                       "value": 0.2756572253447343,
                       "transitionIn": {
-                        "x": -0.021127,
+                        "x": -0.069718,
                         "y": 0,
-                        "influence": 0.5,
-                        "type": "auto"
+                        "influence": 0.99,
+                        "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.076056,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.5,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
@@ -497,13 +495,13 @@
                       "transitionIn": {
                         "x": -0.076056,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -513,13 +511,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -529,13 +527,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -545,13 +543,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -561,13 +559,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -577,13 +575,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -593,13 +591,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -609,13 +607,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -625,13 +623,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -641,13 +639,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -657,13 +655,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -673,13 +671,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -689,13 +687,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -705,13 +703,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -721,13 +719,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -737,13 +735,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -753,13 +751,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -769,13 +767,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -785,13 +783,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -801,13 +799,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -817,13 +815,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -833,13 +831,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -849,13 +847,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -865,13 +863,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -881,13 +879,13 @@
                       "transitionIn": {
                         "x": -0.006338,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.040563,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -895,9 +893,9 @@
                       "time": 0.9661971830985916,
                       "value": 0.0009445320414126284,
                       "transitionIn": {
-                        "x": -0.133859,
+                        "x": -0.033803,
                         "y": 0,
-                        "influence": 0.99,
+                        "influence": 0.4,
                         "type": "custom"
                       }
                     }
@@ -926,13 +924,13 @@
                       "transitionIn": {
                         "x": -0.005352,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.005211,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -942,13 +940,13 @@
                       "transitionIn": {
                         "x": -0.005211,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.005352,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -958,13 +956,13 @@
                       "transitionIn": {
                         "x": -0.005352,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.005211,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -972,16 +970,15 @@
                       "time": 0.07042253521126761,
                       "value": 0.00003839176587474802,
                       "transitionIn": {
-                        "x": -0.005211,
+                        "x": -0.043427,
                         "y": 0,
-                        "influence": 0.5,
-                        "type": "auto"
+                        "influence": 1,
+                        "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.019014,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.5,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
@@ -990,13 +987,13 @@
                       "transitionIn": {
                         "x": -0.019014,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.019014,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -1006,13 +1003,13 @@
                       "transitionIn": {
                         "x": -0.019014,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.019014,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -1022,13 +1019,13 @@
                       "transitionIn": {
                         "x": -0.019014,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.019014,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -1038,13 +1035,13 @@
                       "transitionIn": {
                         "x": -0.019014,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.152113,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -1054,13 +1051,13 @@
                       "transitionIn": {
                         "x": -0.152113,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.010141,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -1070,13 +1067,13 @@
                       "transitionIn": {
                         "x": -0.010141,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.010141,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -1086,13 +1083,13 @@
                       "transitionIn": {
                         "x": -0.010141,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.010141,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -1102,13 +1099,13 @@
                       "transitionIn": {
                         "x": -0.010141,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.010141,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -1116,9 +1113,9 @@
                       "time": 0.9661971830985916,
                       "value": 0.18428047619879048,
                       "transitionIn": {
-                        "x": -0.033465,
+                        "x": -0.009803,
                         "y": 0,
-                        "influence": 0.99,
+                        "influence": 0.4,
                         "type": "custom"
                       }
                     }
@@ -1186,13 +1183,13 @@
                       "transitionIn": {
                         "x": -0.097183,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.152113,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -1200,9 +1197,9 @@
                       "time": 0.8309859154929577,
                       "value": 0,
                       "transitionIn": {
-                        "x": -0.501972,
+                        "x": -0.126761,
                         "y": 0,
-                        "influence": 0.99,
+                        "influence": 0.4,
                         "type": "custom"
                       }
                     }
@@ -1228,16 +1225,15 @@
                       "time": 0.07042253521126761,
                       "value": 0.25,
                       "transitionIn": {
-                        "x": -0.021127,
+                        "x": -0.069718,
                         "y": 0,
-                        "influence": 0.5,
-                        "type": "auto"
+                        "influence": 0.99,
+                        "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.076056,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.5,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
@@ -1246,13 +1242,13 @@
                       "transitionIn": {
                         "x": -0.076056,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.152113,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -1262,13 +1258,13 @@
                       "transitionIn": {
                         "x": -0.152113,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
                         "x": 0.040563,
                         "y": 0,
-                        "influence": 0.5,
+                        "influence": 0.43,
                         "type": "auto"
                       }
                     },
@@ -1276,9 +1272,9 @@
                       "time": 0.9661971830985916,
                       "value": 0.19444444444444445,
                       "transitionIn": {
-                        "x": -0.133859,
+                        "x": -0.033803,
                         "y": 0,
-                        "influence": 0.99,
+                        "influence": 0.4,
                         "type": "custom"
                       }
                     }

@@ -35,11 +35,29 @@
       "samples": {
         "departures": [],
         "interiors": [
-          0.26,
-          0.26,
-          0.26
+          {
+            "property": "positional",
+            "track": "longitude",
+            "fraction": 0.26
+          },
+          {
+            "property": "positional",
+            "track": "latitude",
+            "fraction": 0.26
+          },
+          {
+            "property": "altitude",
+            "track": "altitude",
+            "fraction": 0.26
+          }
         ],
-        "arrivals": []
+        "interior_influences": [
+          0.35,
+          0.35,
+          0.35
+        ],
+        "interior_arrivals": [],
+        "terminal_arrivals": []
       }
     },
     "mountkinabalu": {
@@ -48,32 +66,83 @@
       "hold_type": "CAMERA_SETTLE",
       "samples": {
         "departures": [
-          0.31,
-          0.31,
-          0.31,
-          0.31,
-          0.31
+          {
+            "property": "positional",
+            "track": "longitude",
+            "fraction": 0.31
+          },
+          {
+            "property": "positional",
+            "track": "latitude",
+            "fraction": 0.31
+          },
+          {
+            "property": "altitude",
+            "track": "altitude",
+            "fraction": 0.31
+          },
+          {
+            "property": "positional",
+            "track": "pan",
+            "fraction": 0.31
+          },
+          {
+            "property": "positional",
+            "track": "tilt",
+            "fraction": 0.31
+          }
         ],
         "interiors": [],
-        "arrivals": [
+        "interior_influences": [],
+        "interior_arrivals": [
           {
+            "property": "positional",
+            "track": "longitude",
             "fraction": 0.31,
             "influence": null
           },
           {
+            "property": "altitude",
+            "track": "altitude",
             "fraction": 0.31,
             "influence": null
           },
           {
+            "property": "positional",
+            "track": "pan",
             "fraction": 0.31,
             "influence": null
           },
           {
+            "property": "positional",
+            "track": "tilt",
             "fraction": 0.31,
+            "influence": null
+          }
+        ],
+        "terminal_arrivals": [
+          {
+            "property": "positional",
+            "track": "longitude",
+            "fraction": 0.25,
             "influence": null
           },
           {
-            "fraction": 0.31,
+            "property": "altitude",
+            "track": "altitude",
+            "fraction": 0.25,
+            "influence": null
+          },
+          {
+            "property": "positional",
+            "track": "pan",
+            "fraction": 0.25,
+            "influence": null
+          },
+          {
+            "property": "positional",
+            "track": "tilt",
+            "fraction": 0.25,
             "influence": null
           }
         ]
@@ -85,21 +154,35 @@
       "hold_type": null,
       "samples": {
         "departures": [
-          0.2,
-          0.2,
-          0.2
+          {
+            "property": "positional",
+            "track": "longitude",
+            "fraction": 0.2
+          },
+          {
+            "property": "positional",
+            "track": "latitude",
+            "fraction": 0.2
+          },
+          {
+            "property": "altitude",
+            "track": "altitude",
+            "fraction": 0.2
+          }
         ],
         "interiors": [],
-        "arrivals": [
+        "interior_influences": [],
+        "interior_arrivals": [],
+        "terminal_arrivals": [
           {
+            "property": "positional",
+            "track": "longitude",
             "fraction": 0.32,
             "influence": 0.4
           },
           {
-            "fraction": 0.32,
-            "influence": 0.4
-          },
-          {
+            "property": "altitude",
+            "track": "altitude",
             "fraction": 0.32,
             "influence": 0.4
           }
@@ -112,29 +195,59 @@
       "hold_type": null,
       "samples": {
         "departures": [
-          0.25,
-          0.25,
-          0.25
+          {
+            "property": "positional",
+            "track": "longitude",
+            "fraction": 0.25
+          },
+          {
+            "property": "positional",
+            "track": "latitude",
+            "fraction": 0.25
+          },
+          {
+            "property": "altitude",
+            "track": "altitude",
+            "fraction": 0.25
+          }
         ],
         "interiors": [
-          0.33,
-          0.33,
-          0.33
-        ],
-        "arrivals": [
           {
+            "property": "positional",
+            "track": "longitude",
+            "fraction": 0.33
+          },
+          {
+            "property": "positional",
+            "track": "longitude",
+            "fraction": 0.33
+          },
+          {
+            "property": "positional",
+            "track": "latitude",
+            "fraction": 0.33
+          }
+        ],
+        "interior_influences": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "interior_arrivals": [
+          {
+            "property": "positional",
+            "track": "longitude",
             "fraction": 0.99,
             "influence": 0.99
           },
           {
-            "fraction": 0.5,
-            "influence": 0.5
-          },
-          {
+            "property": "altitude",
+            "track": "altitude",
             "fraction": 2.5,
             "influence": 1
           }
-        ]
+        ],
+        "terminal_arrivals": []
       }
     }
   },
@@ -160,56 +273,99 @@
       0.33,
       0.33
     ],
-    "arrivals_by_family": {
-      "LONG_DISTANCE_BLAST": [],
-      "FLYOVER": [
+    "interior_influences": [
+      0.35,
+      0.35,
+      0.35,
+      0.5,
+      0.5,
+      0.5
+    ],
+    "interior_arrivals_by_family_property": {
+      "other.positional": [
         {
           "fraction": 0.31,
-          "influence": null
+          "influence": null,
+          "ref": "mountkinabalu",
+          "track": "longitude"
         },
         {
           "fraction": 0.31,
-          "influence": null
+          "influence": null,
+          "ref": "mountkinabalu",
+          "track": "pan"
         },
         {
           "fraction": 0.31,
-          "influence": null
-        },
-        {
-          "fraction": 0.31,
-          "influence": null
-        },
-        {
-          "fraction": 0.31,
-          "influence": null
+          "influence": null,
+          "ref": "mountkinabalu",
+          "track": "tilt"
         }
       ],
-      "PULLBACK": [
+      "other.altitude": [
         {
-          "fraction": 0.32,
-          "influence": 0.4
-        },
-        {
-          "fraction": 0.32,
-          "influence": 0.4
-        },
-        {
-          "fraction": 0.32,
-          "influence": 0.4
+          "fraction": 0.31,
+          "influence": null,
+          "ref": "mountkinabalu",
+          "track": "altitude"
         }
       ],
-      "APPROACH_DRIFT": [
+      "approach.positional": [
         {
           "fraction": 0.99,
-          "influence": 0.99
-        },
-        {
-          "fraction": 0.5,
-          "influence": 0.5
-        },
+          "influence": 0.99,
+          "ref": "servyx",
+          "track": "longitude"
+        }
+      ],
+      "approach.altitude": [
         {
           "fraction": 2.5,
-          "influence": 1
+          "influence": 1,
+          "ref": "servyx",
+          "track": "altitude"
+        }
+      ]
+    },
+    "terminal_arrivals_by_family_property": {
+      "other.positional": [
+        {
+          "fraction": 0.25,
+          "influence": null,
+          "ref": "mountkinabalu",
+          "track": "longitude"
+        },
+        {
+          "fraction": 0.25,
+          "influence": null,
+          "ref": "mountkinabalu",
+          "track": "pan"
+        },
+        {
+          "fraction": 0.25,
+          "influence": null,
+          "ref": "mountkinabalu",
+          "track": "tilt"
+        },
+        {
+          "fraction": 0.32,
+          "influence": 0.4,
+          "ref": "radiator-untitled",
+          "track": "longitude"
+        }
+      ],
+      "other.altitude": [
+        {
+          "fraction": 0.25,
+          "influence": null,
+          "ref": "mountkinabalu",
+          "track": "altitude"
+        },
+        {
+          "fraction": 0.32,
+          "influence": 0.4,
+          "ref": "radiator-untitled",
+          "track": "altitude"
         }
       ]
     },
@@ -218,16 +374,28 @@
     ]
   },
   "derived": {
-    "handle_fraction_departure": 0.25,
-    "handle_fraction_interior": 0.3,
-    "interior_influence": 0.5,
-    "arrival_approach": {
+    "departure_fraction": 0.25,
+    "interior_fraction": 0.3,
+    "interior_influence": 0.43,
+    "segment_arrival_positional": {
       "fraction": 0.99,
-      "influence": 0.99
+      "influence": 0.99,
+      "sample_count": 1
     },
-    "arrival_other": {
-      "fraction": 0.31,
-      "influence": 0.4
+    "segment_arrival_altitude": {
+      "fraction": 2.5,
+      "influence": 1,
+      "sample_count": 1
+    },
+    "terminal_arrival_positional": {
+      "fraction": 0.25,
+      "influence": 0.4,
+      "sample_count": 4
+    },
+    "terminal_arrival_altitude": {
+      "fraction": 0.29,
+      "influence": 0.4,
+      "sample_count": 2
     },
     "settle_hold_fraction": 0.2
   }
