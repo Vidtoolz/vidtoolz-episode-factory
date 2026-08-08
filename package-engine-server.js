@@ -231,6 +231,10 @@ const EARTH_STUDIO_RENDER_API = '/api/earth-studio/render';
 const EARTH_STUDIO_JOB_STATUS_API = '/api/earth-studio/job-status';
 const EARTH_STUDIO_CANCEL_API = '/api/earth-studio/cancel';
 const EARTH_STUDIO_STAGE_API = '/api/earth-studio/stage';
+// ComfyUI Production Gateway (read-only introspection; production dispatch is
+// gated inline in the FLUX/PRESTO start paths — see comfyui-gateway/).
+const COMFYUI_WORKFLOWS_API = '/api/comfyui/workflows';
+const COMFYUI_PREFLIGHT_API = '/api/comfyui/preflight';
 const SCORE_SETTINGS_API = '/api/score/settings';
 const SCORE_PROJECTS_API = '/api/score/projects';
 const SCORE_PROJECT_API = '/api/score/project';
@@ -623,6 +627,7 @@ const { resolveProjectState } = require('./project-state-resolver.js');
 const { chooseNextTask } = require('./next-task-engine.js');
 const projectDiscovery = require('./project-discovery.js');
 const earthStudioLane = require('./earth-studio-lane.js');
+const comfyuiGateway = require('./comfyui-gateway');
 const scoreLane = require('./score-engine/score-lane.js');
 const { verifyApprovedExports, formatVerifierReport } = require('./score-engine/score-readiness.js');
 const scorePlanner = require('./score-engine/cue-planner.js');
@@ -9250,12 +9255,20 @@ function startPrestoPackageJob(payload = {}, options = {}) {
     error.code = eligibility.code;
     throw error;
   }
+  // ComfyUI production gate: the profile must map to a registered, qualified
+  // workflow whose canonical graph AND runtime (VIDNAS) copy match the
+  // qualified hash — unreviewed workflow drift refuses dispatch here, before
+  // any spawn (SUPER_FOCUS_COMFYUI_DRIFT_OVERRIDE=1 downgrades to a warning).
+  const gatewayEntry = comfyuiGateway.registry.getWorkflowForPrestoProfile(config.profile, options.gateway || {});
+  const gatewayGate = comfyuiGateway.preflight.preflightSync(gatewayEntry.id, { entry: gatewayEntry, ...(options.gateway || {}) });
+  gatewayGate.warnings.forEach((w) => console.warn(`[comfyui-gateway] ${w}`));
   return launchPrestoProductionJob({
     productionScript: config.productionScript,
     pythonBin: config.pythonBin,
     packageArg: config.packageId,
     packageId: config.packageId,
     profile: config.profile,
+    workflowIdentity: { id: gatewayEntry.id, version: gatewayEntry.version, sha256: gatewayEntry.canonical_sha256 },
     comfyuiUrl: config.comfyuiUrl,
     computeReceipt: options.computeReceipt || null,
     authorityIndexes: eligibility.eligible,
@@ -9360,6 +9373,27 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
   child.on('close', (code, signal) => {
     job.exitCode = code;
     job.signal = signal || null;
+    // Render provenance (comfyui-gateway): consolidate every run directory this
+    // job produced into an immutable manifest (workflow identity + input/output
+    // hashes + ffprobe metadata). Best-effort — provenance failure never alters
+    // job state, it is logged and surfaced on the job object.
+    if (code === 0) {
+      try {
+        const entry = config.workflowIdentity
+          ? comfyuiGateway.registry.getWorkflow(config.workflowIdentity.id, { version: config.workflowIdentity.version })
+          : null;
+        const since = Date.parse(job.startedAt) || (Date.now() - 24 * 3600 * 1000);
+        const outcome = comfyuiGateway.provenance.buildWanProvenanceForRunsSince(
+          options.runsDir || PRESTO_STATE.runsDir, since,
+          { entry, packageId: config.packageId, completedAt: new Date().toISOString() });
+        const written = (outcome.results || []).filter((r) => r.written).length;
+        job.render_provenance = { written, results: (outcome.results || []).map((r) => ({ run: r.run, written: r.written, path: r.path || null })) };
+        if (written) console.log(`[comfyui-gateway] provenance written for ${written} run(s) (job ${job.jobId || config.packageId})`);
+      } catch (error) {
+        job.render_provenance_error = String(error.message || error);
+        console.warn(`[comfyui-gateway] provenance failed: ${job.render_provenance_error}`);
+      }
+    }
     if (code === 0 && config.lane !== 'super-focus' && Array.isArray(config.authorityIndexes) && config.authorityIndexes.length) {
       try {
         const { packageDir } = resolveAigenPackageDir(config.packageId, options);
@@ -10766,6 +10800,12 @@ function startFluxPackageJob(payload = {}, options = {}) {
   const { packageDir } = resolveAigenPackageDir(config.packageId, options);
   aigenAuthority.assertStageFresh(packageDir, 'image_prompts');
   if (!comfyCliResolvable(options)) throw comfyCliBlockedError();
+  // ComfyUI production gate (see comfyui-gateway/): registered workflow,
+  // qualified, canonical hash intact, live user-dir copy not drifted.
+  {
+    const gatewayGate = comfyuiGateway.preflight.preflightSync('flux-gguf-1080x1920', options.gateway || {});
+    gatewayGate.warnings.forEach((w) => console.warn(`[comfyui-gateway] ${w}`));
+  }
   return launchFluxHandoffJob({
     fluxScript: config.fluxScript,
     pythonBin: config.pythonBin,
@@ -10844,6 +10884,22 @@ function launchFluxHandoffJob(config, payload = {}, options = {}) {
     job.signal = signal || null;
     if (job.exitState !== 'cancelled') job.exitState = code === 0 ? 'completed' : 'failed';
     job.completedAt = job.completedAt || new Date().toISOString();
+    // FLUX render provenance (comfyui-gateway): workflow identity + per-image
+    // hashes beside the aigen manifest. Best-effort, never alters job state.
+    if (code === 0) {
+      try {
+        const dir = path.isAbsolute(String(config.packageArg || ''))
+          ? String(config.packageArg)
+          : resolveAigenPackageDir(config.packageId, options).packageDir;
+        const entry = comfyuiGateway.registry.getWorkflow('flux-gguf-1080x1920');
+        const outcome = comfyuiGateway.provenance.buildFluxProvenance(dir, { entry, packageId: config.packageId });
+        job.render_provenance = { written: outcome.written, path: outcome.path || null, reason: outcome.reason || null };
+        if (outcome.written) console.log(`[comfyui-gateway] FLUX provenance written: ${outcome.path}`);
+      } catch (error) {
+        job.render_provenance_error = String(error.message || error);
+        console.warn(`[comfyui-gateway] FLUX provenance failed: ${job.render_provenance_error}`);
+      }
+    }
   });
   return {
     ok: true,
@@ -10873,6 +10929,11 @@ function startSuperFocusImageJob(mediaDir, options = {}) {
   }
   // Pre-flight: the dispatch chain needs the `comfy` CLI (see comfyCliResolvable).
   if (!comfyCliResolvable(options)) throw comfyCliBlockedError();
+  // ComfyUI production gate (same graph as the aigen FLUX lane).
+  {
+    const gatewayGate = comfyuiGateway.preflight.preflightSync('flux-gguf-1080x1920', options.gateway || {});
+    gatewayGate.warnings.forEach((w) => console.warn(`[comfyui-gateway] ${w}`));
+  }
   return launchFluxHandoffJob({
     fluxScript,
     pythonBin: options.pythonBin || 'python3',
@@ -16303,6 +16364,44 @@ function createServer(options = {}) {
     // earthStudioLane.probeMount() (bounded async stat + down-latch) BEFORE any
     // sync fs work, so a downed autofs mount returns 503 fast instead of
     // blocking the event loop per request (2026-08-03 cockpit-wedge class).
+    // ── ComfyUI Production Gateway (read-only introspection) ───────────────
+    // Registry + drift status for every registered production workflow.
+    if (req.method === 'GET' && url.pathname === COMFYUI_WORKFLOWS_API) {
+      try {
+        const reg = comfyuiGateway.registry.loadRegistry();
+        const workflows = reg.workflows.map((entry) => ({
+          id: entry.id,
+          version: entry.version,
+          description: entry.description,
+          media_type: entry.media_type,
+          lane: entry.lane,
+          qualification: entry.qualification,
+          canonical_path: entry.canonical_path,
+          canonical_sha256: entry.canonical_sha256,
+          presto_profile: entry.presto_profile || null,
+          canonical_hash: comfyuiGateway.registry.verifyCanonicalHash(entry).status,
+          runtime_copies: comfyuiGateway.registry.verifyRuntimeCopies(entry).map((r) => ({ path: r.path, status: r.status })),
+          expected_output: entry.expected_output,
+        }));
+        sendJSON(res, 200, { ok: true, workflows });
+      } catch (error) {
+        sendError(res, error.statusCode || 500, error.message, 'comfyui-workflows-error');
+      }
+      return;
+    }
+
+    // Full asynchronous preflight for one workflow (never mutates state).
+    if (req.method === 'POST' && url.pathname === COMFYUI_PREFLIGHT_API) {
+      readJsonBody(req)
+        .then((payload) => comfyuiGateway.preflight.runPreflight(String(payload.workflow || ''), {
+          params: payload.params || undefined,
+          outputRoot: payload.output_root || undefined,
+        }))
+        .then((result) => sendJSON(res, 200, result))
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'comfyui-preflight-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === EARTH_STUDIO_STATUS_API) {
       const id = url.searchParams.get('id') || url.searchParams.get('package_id') || url.searchParams.get('package') || '';
       earthStudioLane.probeMount(aigenPaths({ root: serverOptions.root || ROOT }).scriptPackages)
