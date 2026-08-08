@@ -47,6 +47,7 @@ require("./presto-video-profile.test.js");
 require("./project-media-kit.test.js");
 require("./earth-studio.test.js");
 require("./comfyui-gateway.test.js");
+require("./comfyui-qualification.test.js");
 require("./earth-studio-proof.test.js");
 require("./earth-studio-v04-acceptance.test.js");
 require("./score-engine.test.js");

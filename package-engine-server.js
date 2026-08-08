@@ -16382,6 +16382,20 @@ function createServer(options = {}) {
           canonical_hash: comfyuiGateway.registry.verifyCanonicalHash(entry).status,
           runtime_copies: comfyuiGateway.registry.verifyRuntimeCopies(entry).map((r) => ({ path: r.path, status: r.status })),
           expected_output: entry.expected_output,
+          // qualification EVIDENCE (local records — cheap sync read), distinct
+          // from the registry lifecycle label above: NONE means legacy
+          // production pending its first recorded qualification, never a block.
+          qualification_evidence: (() => {
+            const ev = comfyuiGateway.qualification.evaluateQualification(entry);
+            return {
+              evidence_state: ev.evidence_state,
+              last_qualified_at: ev.last_qualified_at,
+              qualified_environment: ev.qualified_environment || null,
+              latest_attempt: ev.latest_attempt,
+              reasons: ev.reasons,
+              notes: ev.notes,
+            };
+          })(),
         }));
         sendJSON(res, 200, { ok: true, workflows });
       } catch (error) {

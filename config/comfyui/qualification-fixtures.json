@@ -1,0 +1,40 @@
+{
+  "_comment": "Canonical ComfyUI qualification fixtures — the repeatable render definitions used by explicit qualification runs (scripts/comfyui-workflow-check.js <id> --qualify-render). Source-controlled so qualification is reproducible: fixed prompt, fixed seed, pinned source-image hash, and the exact technical output contract the render must satisfy. Qualification proves technical validity only — never editorial quality.",
+  "fixtures_version": 1,
+  "fixtures": [
+    {
+      "id": "flux-production-smoke-v1",
+      "workflow": "flux-gguf-1080x1920",
+      "workflow_version": 1,
+      "params": {
+        "prompt": "photorealistic macro shot of a brushed aluminium slider control on a dark video editing desk, shallow depth of field, cinematic key light from camera-left, no text"
+      },
+      "seed": 424242,
+      "expected": { "media_type": "image", "extension": "png", "width": 1080, "height": 1920 }
+    },
+    {
+      "id": "wan22-hq-smoke-v1",
+      "workflow": "wan22-i2v-hq",
+      "workflow_version": 1,
+      "params": {
+        "prompt": "slow smooth camera push-in on a glowing abstract disc over a color gradient background, subtle parallax, photorealistic lighting, no people, no human figures, no text",
+        "source_image": "config/comfyui/fixtures/qualification-source-720x1280.png"
+      },
+      "source_sha256": "8a0b40f5b3e21b63704c32c80903be4b82392d0b8ea954fc3dd6ce706c8549b3",
+      "seed": 424242,
+      "expected": { "media_type": "video", "extension": "mp4", "width": 720, "height": 1280, "fps": 24, "frames": 97, "duration_seconds": 4.04, "duration_tolerance_seconds": 0.25 }
+    },
+    {
+      "id": "wan22-fast-smoke-v1",
+      "workflow": "wan22-i2v-fast",
+      "workflow_version": 1,
+      "params": {
+        "prompt": "slow smooth camera push-in on a glowing abstract disc over a color gradient background, subtle parallax, photorealistic lighting, no people, no human figures, no text",
+        "source_image": "config/comfyui/fixtures/qualification-source-720x1280.png"
+      },
+      "source_sha256": "8a0b40f5b3e21b63704c32c80903be4b82392d0b8ea954fc3dd6ce706c8549b3",
+      "seed": 424242,
+      "expected": { "media_type": "video", "extension": "mp4", "width": 1080, "height": 1920, "fps": 30, "frames": 81, "duration_seconds": 2.7, "duration_tolerance_seconds": 0.25 }
+    }
+  ]
+}

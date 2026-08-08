@@ -14,6 +14,8 @@ const FAILURE_CLASSES = [
   'WORKFLOW_DRIFT',
   'WORKFLOW_SCHEMA_DRIFT',
   'WORKFLOW_UNQUALIFIED',
+  'QUALIFICATION_STALE',
+  'ENVIRONMENT_DRIFT',
   'MODEL_MISSING',
   'CUSTOM_NODE_MISSING',
   'INPUT_MISSING',
@@ -37,7 +39,12 @@ const CODE_MAP = {
   comfyui_workflow_runtime_missing: 'WORKFLOW_MISSING',
   comfyui_workflow_unqualified: 'WORKFLOW_UNQUALIFIED',
   comfyui_workflow_schema_drift: 'WORKFLOW_SCHEMA_DRIFT',
+  // graph unchanged but the execution environment no longer matches the last
+  // successful qualification — a different remediation path than WORKFLOW_DRIFT
+  comfyui_qualification_stale: 'QUALIFICATION_STALE',
+  comfyui_environment_drift: 'ENVIRONMENT_DRIFT',
   image_lane_blocked_cli_missing: 'COMFY_CLI_MISSING',
+  comfyui_output_invalid: 'OUTPUT_CONTRACT_MISMATCH',
 };
 
 // Demonstrated textual signatures, checked in order. Sources: Node fetch/net

@@ -14,25 +14,79 @@
       "runtime_copies": [
         "/home/vidtoolz/comfy/ComfyUI/user/default/workflows/flux-gguf-1080x1920.json"
       ],
-      "comfyui": { "endpoint_default": "http://127.0.0.1:8188", "endpoint_env": ["AIGEN_COMFYUI_URL"] },
+      "comfyui": {
+        "endpoint_default": "http://127.0.0.1:8188",
+        "endpoint_env": [
+          "AIGEN_COMFYUI_URL"
+        ]
+      },
       "qualification": "PRODUCTION",
       "required_models": [
-        { "class_type": "UnetLoaderGGUF", "input_key": "unet_name", "name": "flux1-dev-Q8_0.gguf" },
-        { "class_type": "DualCLIPLoaderGGUF", "input_key": "clip_name1", "name": "t5-v1_1-xxl-encoder-Q5_K_M.gguf" },
-        { "class_type": "DualCLIPLoaderGGUF", "input_key": "clip_name2", "name": "clip_l.safetensors" },
-        { "class_type": "VAELoader", "input_key": "vae_name", "name": "ae.safetensors" }
+        {
+          "class_type": "UnetLoaderGGUF",
+          "input_key": "unet_name",
+          "name": "flux1-dev-Q8_0.gguf"
+        },
+        {
+          "class_type": "DualCLIPLoaderGGUF",
+          "input_key": "clip_name1",
+          "name": "t5-v1_1-xxl-encoder-Q5_K_M.gguf"
+        },
+        {
+          "class_type": "DualCLIPLoaderGGUF",
+          "input_key": "clip_name2",
+          "name": "clip_l.safetensors"
+        },
+        {
+          "class_type": "VAELoader",
+          "input_key": "vae_name",
+          "name": "ae.safetensors"
+        }
       ],
-      "required_custom_node_classes": ["UnetLoaderGGUF", "DualCLIPLoaderGGUF"],
+      "required_custom_node_classes": [
+        "UnetLoaderGGUF",
+        "DualCLIPLoaderGGUF"
+      ],
       "graph_bindings": {
         "_comment": "Owned by aigen image-generation/flux-gguf/run-handoff.py (UI-format graph; comfy-cli converts on run). Node-ID coupled — verified against the canonical graph by the gateway.",
-        "prompt": { "node_id": 7, "node_type": "CLIPTextEncode", "target": "widgets_values[0]" },
-        "filename_prefix": { "node_id": 17, "node_type": "SaveImage", "target": "widgets_values[0]" }
+        "prompt": {
+          "node_id": 7,
+          "node_type": "CLIPTextEncode",
+          "target": "widgets_values[0]"
+        },
+        "filename_prefix": {
+          "node_id": 17,
+          "node_type": "SaveImage",
+          "target": "widgets_values[0]"
+        },
+        "seed": {
+          "node_id": 13,
+          "node_type": "RandomNoise",
+          "target": "widgets_values[0] (+[1]='fixed')",
+          "_comment": "used by qualification renders only — production dispatch (run-handoff.py) leaves noise randomized"
+        }
       },
       "parameter_schema": {
-        "required": { "prompt": { "type": "string", "min_length": 1, "max_length": 4000 } },
-        "optional": { "filename_prefix": { "type": "string", "max_length": 200 } }
+        "required": {
+          "prompt": {
+            "type": "string",
+            "min_length": 1,
+            "max_length": 4000
+          }
+        },
+        "optional": {
+          "filename_prefix": {
+            "type": "string",
+            "max_length": 200
+          }
+        }
       },
-      "expected_output": { "media_type": "image", "extension": "png", "width": 1080, "height": 1920 }
+      "expected_output": {
+        "media_type": "image",
+        "extension": "png",
+        "width": 1080,
+        "height": 1920
+      }
     },
     {
       "id": "wan22-i2v-hq",
@@ -46,36 +100,91 @@
       "runtime_copies": [
         "/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/image-to-video/workflows/wan22_i2v_vertical_720x1280_24fps_97f_hq_no_lightx2v_api.json"
       ],
-      "comfyui": { "endpoint_default": "http://192.168.50.187:8188", "endpoint_env": ["SUPER_FOCUS_PRESTO_COMFYUI_URL"] },
+      "comfyui": {
+        "endpoint_default": "http://192.168.50.187:8188",
+        "endpoint_env": [
+          "SUPER_FOCUS_PRESTO_COMFYUI_URL"
+        ]
+      },
       "presto_profile": "wan22_hq_720p_5s_no_lightx2v",
       "qualification": "PRODUCTION",
       "required_models": [
-        { "class_type": "UNETLoader", "input_key": "unet_name", "name": "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors" },
-        { "class_type": "UNETLoader", "input_key": "unet_name", "name": "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors" },
-        { "class_type": "CLIPLoader", "input_key": "clip_name", "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors" },
-        { "class_type": "VAELoader", "input_key": "vae_name", "name": "wan_2.1_vae.safetensors" }
+        {
+          "class_type": "UNETLoader",
+          "input_key": "unet_name",
+          "name": "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors"
+        },
+        {
+          "class_type": "UNETLoader",
+          "input_key": "unet_name",
+          "name": "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors"
+        },
+        {
+          "class_type": "CLIPLoader",
+          "input_key": "clip_name",
+          "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+        },
+        {
+          "class_type": "VAELoader",
+          "input_key": "vae_name",
+          "name": "wan_2.1_vae.safetensors"
+        }
       ],
       "required_custom_node_classes": [],
       "graph_bindings": {
         "_comment": "Owned by aigen image-to-video/production/wan22-81f/run-production.py — SEMANTIC patching by class_type/_meta.title, not node IDs: positive prompt -> CLIPTextEncode titled 'positive' (fallback: first CLIPTextEncode); negative prompt -> CLIPTextEncode titled 'negative'; seed -> every KSampler/KSamplerAdvanced (seed/noise_seed); source image -> LoadImage; output prefix -> video save node.",
-        "prompt": { "class_type": "CLIPTextEncode", "title_contains": "positive", "input_key": "text" },
-        "negative_prompt": { "class_type": "CLIPTextEncode", "title_contains": "negative", "input_key": "text" },
-        "seed": { "class_type": "KSampler|KSamplerAdvanced", "input_key": "seed|noise_seed" },
-        "source_image": { "class_type": "LoadImage", "input_key": "image" }
+        "prompt": {
+          "class_type": "CLIPTextEncode",
+          "title_contains": "positive",
+          "input_key": "text"
+        },
+        "negative_prompt": {
+          "class_type": "CLIPTextEncode",
+          "title_contains": "negative",
+          "input_key": "text"
+        },
+        "seed": {
+          "class_type": "KSampler|KSamplerAdvanced",
+          "input_key": "seed|noise_seed"
+        },
+        "source_image": {
+          "class_type": "LoadImage",
+          "input_key": "image"
+        }
       },
       "parameter_schema": {
         "required": {
-          "prompt": { "type": "string", "min_length": 1, "max_length": 4000 },
-          "source_image": { "type": "path" }
+          "prompt": {
+            "type": "string",
+            "min_length": 1,
+            "max_length": 4000
+          },
+          "source_image": {
+            "type": "path"
+          }
         },
         "optional": {
-          "negative_prompt": { "type": "string", "max_length": 4000 },
-          "seed": { "type": "integer", "min": 1, "max": 2147483647, "default": "random" }
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 4000
+          },
+          "seed": {
+            "type": "integer",
+            "min": 1,
+            "max": 2147483647,
+            "default": "random"
+          }
         }
       },
       "expected_output": {
-        "media_type": "video", "extension": "mp4", "width": 720, "height": 1280,
-        "fps": 24, "frames": 97, "duration_seconds": 4.04, "duration_tolerance_seconds": 0.25
+        "media_type": "video",
+        "extension": "mp4",
+        "width": 720,
+        "height": 1280,
+        "fps": 24,
+        "frames": 97,
+        "duration_seconds": 4.04,
+        "duration_tolerance_seconds": 0.25
       }
     },
     {
@@ -90,27 +199,82 @@
       "runtime_copies": [
         "/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/image-to-video/workflows/wan22_i2v_a14b_vertical_1080x1920_30fps_api.json"
       ],
-      "comfyui": { "endpoint_default": "http://192.168.50.187:8188", "endpoint_env": ["SUPER_FOCUS_PRESTO_COMFYUI_URL"] },
+      "comfyui": {
+        "endpoint_default": "http://192.168.50.187:8188",
+        "endpoint_env": [
+          "SUPER_FOCUS_PRESTO_COMFYUI_URL"
+        ]
+      },
       "presto_profile": "fast_current",
       "qualification": "QUALIFIED",
-      "required_models": [],
+      "required_models": [
+        {
+          "class_type": "UNETLoader",
+          "input_key": "unet_name",
+          "name": "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors"
+        },
+        {
+          "class_type": "UNETLoader",
+          "input_key": "unet_name",
+          "name": "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors"
+        },
+        {
+          "class_type": "CLIPLoader",
+          "input_key": "clip_name",
+          "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+        },
+        {
+          "class_type": "VAELoader",
+          "input_key": "vae_name",
+          "name": "wan_2.1_vae.safetensors"
+        },
+        {
+          "class_type": "LoraLoaderModelOnly",
+          "input_key": "lora_name",
+          "name": "wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors"
+        },
+        {
+          "class_type": "LoraLoaderModelOnly",
+          "input_key": "lora_name",
+          "name": "wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors"
+        }
+      ],
       "required_custom_node_classes": [],
       "graph_bindings": {
-        "_comment": "Same semantic patching as wan22-i2v-hq (run-production.py). required_models intentionally empty until extracted and verified for this legacy graph — the gateway reports model checks for it as not-authoritative rather than guessing."
+        "_comment": "Same semantic patching as wan22-i2v-hq (run-production.py). required_models extracted 2026-08-08 from the canonical graph's loader nodes (2x UNETLoader, CLIPLoader, VAELoader, 2x LoraLoaderModelOnly incl. the lightx2v 4-step loras) and verified live against PRESTO /object_info enumeration — model preflight for this workflow is now authoritative."
       },
       "parameter_schema": {
         "required": {
-          "prompt": { "type": "string", "min_length": 1, "max_length": 4000 },
-          "source_image": { "type": "path" }
+          "prompt": {
+            "type": "string",
+            "min_length": 1,
+            "max_length": 4000
+          },
+          "source_image": {
+            "type": "path"
+          }
         },
         "optional": {
-          "negative_prompt": { "type": "string", "max_length": 4000 },
-          "seed": { "type": "integer", "min": 1, "max": 2147483647 }
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 4000
+          },
+          "seed": {
+            "type": "integer",
+            "min": 1,
+            "max": 2147483647
+          }
         }
       },
       "expected_output": {
-        "media_type": "video", "extension": "mp4", "width": 1080, "height": 1920,
-        "fps": 30, "frames": 81, "duration_seconds": 2.7, "duration_tolerance_seconds": 0.25
+        "media_type": "video",
+        "extension": "mp4",
+        "width": 1080,
+        "height": 1920,
+        "fps": 30,
+        "frames": 81,
+        "duration_seconds": 2.7,
+        "duration_tolerance_seconds": 0.25
       }
     }
   ]

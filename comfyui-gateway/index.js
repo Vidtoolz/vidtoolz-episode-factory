@@ -7,5 +7,9 @@ const client = require('./client.js');
 const preflight = require('./preflight.js');
 const failures = require('./failures.js');
 const provenance = require('./provenance.js');
+const fingerprint = require('./fingerprint.js');
+const qualification = require('./qualification.js');
+const fixtures = require('./fixtures.js');
+const qualify = require('./qualify.js');
 
-module.exports = { registry, contracts, client, preflight, failures, provenance };
+module.exports = { registry, contracts, client, preflight, failures, provenance, fingerprint, qualification, fixtures, qualify };

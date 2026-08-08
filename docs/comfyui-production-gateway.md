@@ -96,6 +96,159 @@ Manifests never serialize environment variables or credentials.
 from demonstrated shapes only (aigen error kinds, Node network codes, CUDA
 wording); anything else is honestly `UNKNOWN`.
 
+## Qualification (evidence, not metadata)
+
+The registry's lifecycle label (`EXPERIMENTAL`/`TESTED`/`QUALIFIED`/
+`PRODUCTION`/`DEPRECATED`) is a curated editorial decision in git. Since P1,
+it is backed by a second, separate axis — **qualification evidence** derived
+from records on disk:
+
+```text
+NONE             no evidence yet (bootstrap / legacy production)
+STATIC_VERIFIED  static checks + read-only live preflight recorded, no render
+LIVE_PASSED      a canonical fixture rendered and passed technical validation
+STALE            evidence exists but the workflow or environment changed since
+FAILED           latest attempt failed and no successful evidence exists
+```
+
+Qualification proves **technical validity only**: this workflow version
+(exact sha256) executed against a known environment and produced an artifact
+satisfying its output contract. It is never editorial approval.
+
+### Static vs live verification
+
+- *Static*: registry entry, canonical hash, runtime copies, graph bindings,
+  contract — no network (`comfyui-workflow-check.js <id>`).
+- *Live preflight*: + reachability, model/custom-node inventory — read-only
+  API calls, never a render (`--live`). Can be persisted as a
+  `STATIC_VERIFIED` record via `--record-static` (explicitly NOT render
+  evidence — `LIVE_RENDER_PENDING`).
+- *Live qualification*: an actual GPU render of a canonical fixture —
+  requires the explicit `--qualify-render` flag. Nothing in the test suite or
+  ordinary preflight can trigger GPU work.
+
+### Environment fingerprints
+
+`comfyui-gateway/fingerprint.js` records only the dimensions relevant to one
+workflow: host, ComfyUI core (version; git commit when locally readable),
+GPU, the entry's `required_models`, and `required_custom_node_classes`. Every
+component carries an explicit `identity.level`:
+
+```text
+sha256 > git_commit > package_version > filename_size_mtime
+       > filename_only > class_presence_only > unknown
+```
+
+What each level means is honest by construction: `/object_info` enumeration
+proves `filename_only` (the loader can see the name — nothing about content);
+local files add `filename_size_mtime` cheaply; `sha256` for multi-GB models
+is collected only on explicit qualification (`hashModels`), never per render.
+Remote hosts (PRESTO) get `class_presence_only` for custom nodes — seeing the
+class again cannot prove its version is unchanged, and the comparison layer
+reports that as `present_but_identity_weak` / VERSION_NOT_AUTHORITATIVE
+rather than a false "no drift". The fingerprint hash is deterministic
+(recursively key-sorted JSON, volatile `collected_at` excluded).
+
+### Qualification records
+
+`state/comfyui-qualification/<workflow-id>/` (local machine evidence, never
+committed — see .gitignore):
+
+```text
+latest-passed.json   most recent LIVE_PASSED record
+latest-static.json   most recent STATIC_VERIFIED record
+attempts/            every attempt, including FAILED, timestamped
+evidence/<qual-id>/  patched workflow, retained artifact, render provenance
+```
+
+Records are written with the same atomic temp+rename infrastructure as render
+provenance and never serialize environment variables or credentials. A FAILED
+attempt stores its failure class + raw diagnostics in `attempts/` and **never
+overwrites** `latest-passed.json` — known-good evidence survives bad days. A
+LIVE_PASSED record pins: workflow id/version/sha256, the full environment
+fingerprint, fixture identity (id, parameter sha256, seed, source-image
+sha256), job + ComfyUI prompt ids, output sha256 + dimensions, technical
+validation result, and a reference to the render-provenance manifest.
+
+### Canonical fixtures
+
+`config/comfyui/qualification-fixtures.json` (source-controlled, one per
+workflow): byte-exact prompt, fixed seed, pinned source-image hash
+(`config/comfyui/fixtures/qualification-source-720x1280.png`, deterministic,
+117 KB), and the expected technical output contract. Malformed fixtures fail
+validation before any GPU work.
+
+### Drift and staleness
+
+Qualification becomes stale because **relevant evidence changed** — never
+because a calendar date passed:
+
+```text
+workflow sha changed          → WORKFLOW_DRIFT (blocks, as before P1)
+record sha ≠ registry sha     → QUALIFICATION_STALE (blocks dispatch, 409)
+ComfyUI core version changed  → stale (authoritative) — requalify
+custom-node commit/version ≠  → stale when identity is authoritative
+model bytes/mtime changed     → stale when identity is authoritative
+required model/node missing   → blocked (production would fail anyway)
+identity weak on both sides   → NOT stale — reported VERSION_NOT_AUTHORITATIVE
+```
+
+`WORKFLOW_DRIFT` means the graph changed; `ENVIRONMENT_DRIFT` /
+`QUALIFICATION_STALE` mean the graph is fine but the execution environment no
+longer matches the evidence. Different remediation paths, never collapsed.
+
+### Production gating & bootstrap
+
+The synchronous dispatch gate (`preflightSync`, all three production paths)
+adds a local-records check next to the drift gate — zero live calls, zero
+latency: no record → loud `QUALIFICATION_PENDING` **warning** (legacy
+production keeps running; nothing is silently grandfathered — the warning
+names the exact requalification command); record for an older workflow sha →
+`QUALIFICATION_STALE` **block** (the drift override env applies for
+supervised work). Live environment comparison runs on the async surfaces:
+`POST /api/comfyui/preflight` (new `qualification_evidence` check),
+`GET /api/comfyui/workflows` (`qualification_evidence` summary), the CLI, and
+the upgrade guard.
+
+### Requalification
+
+```bash
+node scripts/comfyui-workflow-check.js flux-gguf-1080x1920 --qualify-render
+```
+
+Explicit GPU work; refuses to start unless the target ComfyUI queue is idle.
+Wan workflows have **no CLI render path** — their qualification render runs
+through the existing PRESTO production lane under operator supervision
+(evidence stays LIVE_RENDER_PENDING until then); the full Wan harness
+(fixture → contract → gate → fingerprint → preflight → validation → record)
+is in place with only the GPU step external.
+
+### Upgrade guard
+
+Before updating ComfyUI, custom nodes, or models:
+
+```bash
+node scripts/comfyui-workflow-check.js --upgrade-status
+```
+
+compares every workflow's last qualified fingerprint against the currently
+observed environment (read-only) and reports per component: `SAME` /
+`CHANGED (qualified → current)` / `IDENTITY WEAK` / `MISSING`, with a
+workflow-level verdict: `NO_RELEVANT_DRIFT`, `REQUALIFICATION_REQUIRED`, or
+`PRODUCTION_BLOCKED_DEPENDENCY_MISSING`. The guard rail only — it performs
+zero updates, installs, restarts, or rollbacks.
+
+Runbook — before a ComfyUI/custom-node/model update:
+
+1. `node scripts/comfyui-workflow-check.js --upgrade-status` (record it).
+2. Note current qualification state (`GET /api/comfyui/workflows`).
+3. Perform the update manually (never automated by this system).
+4. `node scripts/comfyui-workflow-check.js <id> --live` per workflow.
+5. Re-run `--upgrade-status` and read what changed.
+6. Requalify affected production workflows (`--qualify-render` for FLUX; a
+   supervised production run for Wan).
+7. Only then resume production.
+
 ## Boundaries
 
 - Gateway `ok` = *technically valid render contract*, never editorial

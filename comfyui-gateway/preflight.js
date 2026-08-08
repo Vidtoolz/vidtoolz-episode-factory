@@ -39,9 +39,13 @@ function endpointFor(entry) {
   return (entry.comfyui && entry.comfyui.endpoint_default) || 'http://127.0.0.1:8188';
 }
 
-// Synchronous production gate (registry + drift). Throws a coded error when
-// blocked so dispatch handlers surface a clear 4xx/5xx.
+// Synchronous production gate (registry + drift + qualification evidence).
+// Throws a coded error when blocked so dispatch handlers surface a clear
+// 4xx/5xx. Qualification checks stay local-fs-only here (bootstrap: a legacy
+// PRODUCTION workflow with no evidence yet warns, never blocks — see
+// qualification.qualifySyncGate).
 function preflightSync(workflowId, options = {}) {
+  const qualification = require('./qualification.js');
   const entry = options.entry || registry.getWorkflow(workflowId, options);
   const verdict = registry.assertProductionAllowed(entry, options);
   if (!verdict.ok) {
@@ -51,7 +55,8 @@ function preflightSync(workflowId, options = {}) {
     e.gateway = verdict;
     throw e;
   }
-  return { entry, warnings: verdict.warnings };
+  const qual = qualification.qualifySyncGate(entry, options); // throws comfyui_qualification_stale
+  return { entry, warnings: [...verdict.warnings, ...qual.warnings] };
 }
 
 // Full asynchronous preflight. Never throws for check failures — returns the
@@ -159,6 +164,25 @@ async function runPreflight(workflowId, options = {}) {
     checks.push(missingClasses.length
       ? { name: 'required_custom_nodes', status: 'failed', missing: missingClasses }
       : check('required_custom_nodes', 'ok', requiredClasses.join(', ')));
+  }
+
+  // qualification evidence vs the live environment (records are local; the
+  // fingerprint reuses the same read-only API calls made above)
+  try {
+    const qualification = require('./qualification.js');
+    const fingerprintMod = require('./fingerprint.js');
+    const currentFingerprint = await fingerprintMod.collectFingerprint(entry, { ...options, endpoint });
+    const evidence = qualification.evaluateQualification(entry, { ...options, currentFingerprint });
+    const detailParts = [evidence.evidence_state];
+    if (evidence.last_qualified_at) detailParts.push(`qualified ${evidence.last_qualified_at}`);
+    if (evidence.reasons.length) detailParts.push(evidence.reasons.join('; '));
+    if (evidence.notes.length) detailParts.push(evidence.notes.join('; '));
+    const status = evidence.evidence_state === 'LIVE_PASSED' ? 'ok'
+      : evidence.evidence_state === 'STALE' ? 'failed'
+        : 'not_authoritative'; // NONE (bootstrap) / STATIC_VERIFIED / FAILED-attempt-only
+    checks.push(check('qualification_evidence', status, detailParts.join(' — ')));
+  } catch (err) {
+    checks.push(check('qualification_evidence', 'not_authoritative', `evidence unavailable: ${err.message}`));
   }
 
   const ok = checks.every((c) => c.status === 'ok' || c.status === 'not_authoritative');

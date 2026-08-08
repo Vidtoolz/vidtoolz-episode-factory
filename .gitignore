@@ -28,3 +28,8 @@ package-runs/stale-runs/
 # untracked (like all package-run media); acceptance/hashes.sha256 pins them.
 package-runs/2026-08-07-earth-studio-v04-acceptance/earth-studio/frames/
 package-runs/2026-08-07-earth-studio-v04-acceptance/earth-studio/renders/
+
+# ComfyUI qualification evidence: local, file-backed machine state (records,
+# fingerprints, render evidence) — never committed; fixtures ARE committed
+# under config/comfyui/.
+/state/comfyui-qualification/
