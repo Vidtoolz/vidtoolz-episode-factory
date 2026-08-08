@@ -66,6 +66,18 @@ function narrationOptions(options, extra = {}) {
   return { ...options, narrationProbeImpl: wavProbe, narrationSignalProbeImpl: signalProbe, ...extra };
 }
 
+function withMusicHashSpy(projectDir, operation) {
+  const original = provenance.sha256File;
+  const calls = [];
+  provenance.sha256File = (file) => {
+    const relative = path.relative(projectDir, file).split(path.sep).join("/");
+    if (/^(approved|candidates|production)(\/|$)/.test(relative)) calls.push(relative);
+    return original(file);
+  };
+  try { return operation(calls); }
+  finally { provenance.sha256File = original; }
+}
+
 function approveProject(projectId, options) {
   lane.generateCuesForProject(projectId, {}, options);
   lane.approveCueSheet(projectId, options);
@@ -133,7 +145,135 @@ test("score narration: silent, undecodable, and music-artifact bytes are rejecte
   approveProject(approved.project.project_id, second.options);
   const state = lane.getProject(approved.project.project_id, second.options);
   const sketchBytes = fs.readFileSync(path.join(state.dir, "approved", "mix.wav"));
-  assert.throws(() => lane.registerCanonicalNarration(approved.project.project_id, registrationInput({ bytes: sketchBytes }), narrationOptions(second.options, { narrationProbeImpl: () => ({ ok: true, container: "wav", sample_rate: 48000, channels: 2, codec: "pcm_s24le", bit_depth: 24, duration: 2 }) })), /music artifact/i);
+  withMusicHashSpy(state.dir, (hashCalls) => {
+    assert.throws(() => lane.registerCanonicalNarration(approved.project.project_id, registrationInput({ bytes: sketchBytes }), narrationOptions(second.options, { narrationProbeImpl: () => ({ ok: true, container: "wav", sample_rate: 48000, channels: 2, codec: "pcm_s24le", bit_depth: 24, duration: 2 }) })), /music artifact/i);
+    assert.deepEqual(hashCalls, [], "authoritative approved provenance must avoid raw audio hashing");
+  });
+});
+
+test("score narration F4: legacy unmanifested audio remains authorized by bounded fallback", () => {
+  const { options } = tmpEnv();
+  const { project } = packageProject(options);
+  const state = lane.getProject(project.project_id, options);
+  const legacyBytes = makeWav(2, 48000, 24, 0.2);
+  fs.mkdirSync(path.join(state.dir, "approved"), { recursive: true });
+  fs.writeFileSync(path.join(state.dir, "approved", "legacy-manual.wav"), legacyBytes);
+  assert.throws(
+    () => lane.registerCanonicalNarration(project.project_id, registrationInput({ bytes: legacyBytes }), narrationOptions(options)),
+    /music artifact/i,
+  );
+});
+
+test("score narration F4: unknown hash returns clean negative and non-audio files are never hashed", () => {
+  const { options } = tmpEnv();
+  const { project } = packageProject(options);
+  const state = lane.getProject(project.project_id, options);
+  const narrationBytes = makeWav(2, 48000, 24, 0.23);
+  fs.mkdirSync(path.join(state.dir, "approved"), { recursive: true });
+  fs.writeFileSync(path.join(state.dir, "approved", "other.wav"), makeWav(2, 48000, 24, 0.11));
+  for (const name of ["metadata.json", "notes.txt", "music.mid", "payload.bin"]) {
+    fs.writeFileSync(path.join(state.dir, "approved", name), narrationBytes);
+  }
+  withMusicHashSpy(state.dir, (hashCalls) => {
+    const registered = lane.registerCanonicalNarration(project.project_id, registrationInput({ bytes: narrationBytes }), narrationOptions(options));
+    assert.match(registered.narration_id, /^narration-[a-f0-9]{20}$/);
+    assert.deepEqual(hashCalls, ["approved/other.wav"]);
+  });
+});
+
+test("score narration F4: deterministic early raw match stops further hashing", () => {
+  const { options } = tmpEnv();
+  const { project } = packageProject(options);
+  const state = lane.getProject(project.project_id, options);
+  const matching = makeWav(2, 48000, 24, 0.27);
+  fs.mkdirSync(path.join(state.dir, "approved"), { recursive: true });
+  fs.writeFileSync(path.join(state.dir, "approved", "000-match.wav"), matching);
+  for (let index = 1; index <= 12; index += 1) {
+    fs.writeFileSync(path.join(state.dir, "approved", `${String(index).padStart(3, "0")}-later.wav`), Buffer.from(`later-${index}`));
+  }
+  withMusicHashSpy(state.dir, (hashCalls) => {
+    assert.throws(
+      () => lane.registerCanonicalNarration(project.project_id, registrationInput({ bytes: matching }), narrationOptions(options)),
+      /music artifact/i,
+    );
+    assert.deepEqual(hashCalls, ["approved/000-match.wav"]);
+  });
+});
+
+test("score narration F4: raw fallback safety exhaustion is an explicit 503", () => {
+  const { options } = tmpEnv();
+  const { project } = packageProject(options);
+  const state = lane.getProject(project.project_id, options);
+  fs.mkdirSync(path.join(state.dir, "approved"), { recursive: true });
+  for (let index = 0; index <= 256; index += 1) {
+    fs.writeFileSync(path.join(state.dir, "approved", `${String(index).padStart(3, "0")}.wav`), Buffer.from(`legacy-${index}`));
+  }
+  assert.throws(
+    () => lane.registerCanonicalNarration(project.project_id, registrationInput({ bytes: makeWav(2, 48000, 24, 0.31) }), narrationOptions(options)),
+    (error) => {
+      assert.equal(error.statusCode, 503);
+      assert.match(error.message, /verification exceeded.*safe raw audio file limit.*aborted.*not reported as hash-not-found/i);
+      return true;
+    },
+  );
+});
+
+test("score narration F4: symlinked audio cannot escape legitimate artifact roots", () => {
+  const { root, options } = tmpEnv();
+  const { project } = packageProject(options);
+  const state = lane.getProject(project.project_id, options);
+  const externalBytes = makeWav(2, 48000, 24, 0.33);
+  const external = path.join(root, "external-music.wav");
+  fs.writeFileSync(external, externalBytes);
+  fs.mkdirSync(path.join(state.dir, "approved"), { recursive: true });
+  fs.symlinkSync(external, path.join(state.dir, "approved", "escape.wav"));
+  const registered = lane.registerCanonicalNarration(project.project_id, registrationInput({ bytes: externalBytes }), narrationOptions(options));
+  assert.match(registered.narration_id, /^narration-[a-f0-9]{20}$/);
+});
+
+test("score narration F4: production import and Resolve provenance authorize semantic hashes without raw hashing", () => {
+  const { options } = tmpEnv();
+  const { project } = packageProject(options, 5);
+  approveProject(project.project_id, options);
+  const productionBytes = makeWav(5, 48000, 24, 0.37);
+  const imported = lane.importProductionMix(project.project_id, { original_filename: "production.wav", bytes: productionBytes }, { ...options, probeImpl: wavProbe });
+  lane.verifyProductionMix(project.project_id, { ...options, probeImpl: wavProbe });
+  lane.prepareProductionResolvePackage(project.project_id, options);
+  const state = lane.getProject(project.project_id, options);
+  fs.rmSync(path.join(state.dir, "approved"), { recursive: true });
+  fs.rmSync(path.join(state.dir, "candidates"), { recursive: true });
+
+  withMusicHashSpy(state.dir, (hashCalls) => {
+    assert.throws(
+      () => lane.registerCanonicalNarration(project.project_id, registrationInput({ bytes: productionBytes, timeline_start_seconds: 0 }), narrationOptions(options)),
+      /music artifact/i,
+    );
+    assert.deepEqual(hashCalls, [], "production/imports provenance is authoritative");
+  });
+
+  const importProvenance = path.join(state.dir, "production", "imports", imported.production_mix_id, "provenance.json");
+  fs.renameSync(importProvenance, `${importProvenance}.disabled`);
+  withMusicHashSpy(state.dir, (hashCalls) => {
+    assert.throws(
+      () => lane.registerCanonicalNarration(project.project_id, registrationInput({ bytes: productionBytes, timeline_start_seconds: 0 }), narrationOptions(options)),
+      /music artifact/i,
+    );
+    assert.deepEqual(hashCalls, [], "production/resolve provenance is authoritative");
+  });
+});
+
+test("score narration F4: arbitrary JSON hash strings cannot authorize music", () => {
+  const { options } = tmpEnv();
+  const { project } = packageProject(options);
+  const state = lane.getProject(project.project_id, options);
+  const narrationBytes = makeWav(2, 48000, 24, 0.41);
+  fs.mkdirSync(path.join(state.dir, "approved"), { recursive: true });
+  fs.writeFileSync(path.join(state.dir, "approved", "provenance.json"), JSON.stringify({
+    notes: provenance.sha256(narrationBytes),
+    nested: { arbitrary_hash: provenance.sha256(narrationBytes) },
+  }));
+  const registered = lane.registerCanonicalNarration(project.project_id, registrationInput({ bytes: narrationBytes }), narrationOptions(options));
+  assert.match(registered.narration_id, /^narration-[a-f0-9]{20}$/);
 });
 
 test("score narration: shorter narration with explicit offset is valid and identity is deterministic", () => {

@@ -19,6 +19,33 @@ function readJson(file, fallback = null) {
   try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return fallback; }
 }
 
+// Byte-compare two files in bounded chunks rather than loading both whole WAVs
+// into memory (a 100 MB approved mix must not be buffered twice for one check).
+function filesByteIdentical(a, b) {
+  const sizeA = fs.statSync(a).size;
+  if (sizeA !== fs.statSync(b).size) return false;
+  const CHUNK = 1024 * 1024;
+  const bufA = Buffer.allocUnsafe(CHUNK);
+  const bufB = Buffer.allocUnsafe(CHUNK);
+  const fdA = fs.openSync(a, "r");
+  const fdB = fs.openSync(b, "r");
+  try {
+    let offset = 0;
+    while (offset < sizeA) {
+      const readA = fs.readSync(fdA, bufA, 0, CHUNK, offset);
+      const readB = fs.readSync(fdB, bufB, 0, CHUNK, offset);
+      if (readA !== readB) return false;
+      if (readA === 0) break;
+      if (!bufA.subarray(0, readA).equals(bufB.subarray(0, readB))) return false;
+      offset += readA;
+    }
+    return true;
+  } finally {
+    fs.closeSync(fdA);
+    fs.closeSync(fdB);
+  }
+}
+
 function assessProductionAuthority({ dir, approvalAuthority, approved }) {
   const productionRoot = path.join(dir, "production");
   const pointerFile = path.join(productionRoot, "current.json");
@@ -382,7 +409,7 @@ function verifyApprovedExports(dir, options = {}) {
     const a = path.join(approvedDir, rel);
     const b = path.join(approvedDir, "resolve-import", rel);
     if (fs.existsSync(a) && fs.existsSync(b)) {
-      check(`resolve mirror byte-identical: ${rel}`, fs.statSync(a).size === fs.statSync(b).size && fs.readFileSync(a).equals(fs.readFileSync(b)), "differs from approved original");
+      check(`resolve mirror byte-identical: ${rel}`, filesByteIdentical(a, b), "differs from approved original");
     } else if (fs.existsSync(a)) {
       check(`resolve mirror present: ${rel}`, false, "missing in resolve-import/");
     }

@@ -56,11 +56,25 @@ function hashCanonical(value) {
 }
 
 function sha256File(file) {
-  return sha256(fs.readFileSync(file));
+  // Stream in bounded chunks: an approved 100 MB WAV must not be loaded into a
+  // single Buffer (memory spike on verify). 1 MiB blocks keep peak usage flat.
+  const hash = crypto.createHash("sha256");
+  const CHUNK = 1024 * 1024;
+  const buffer = Buffer.allocUnsafe(CHUNK);
+  const fd = fs.openSync(file, "r");
+  try {
+    let bytesRead;
+    while ((bytesRead = fs.readSync(fd, buffer, 0, CHUNK, null)) > 0) {
+      hash.update(buffer.subarray(0, bytesRead));
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  return hash.digest("hex");
 }
 
 function materialCue(cue = {}) {
-  return {
+  const material = {
     cue_id: cue.cue_id,
     name: cue.name,
     start_seconds: cue.start_seconds,
@@ -77,6 +91,14 @@ function materialCue(cue = {}) {
     hit_points: cue.hit_points || [],
     dialogue_safe: cue.dialogue_safe,
   };
+  // Drop keys whose value is undefined (an optional field that was never set).
+  // JSON.stringify does the same, so a cue that round-trips through disk keeps
+  // a stable identity hash instead of crashing canonicalStringify with
+  // "Canonical identity cannot contain undefined." Explicit null is preserved.
+  for (const key of Object.keys(material)) {
+    if (material[key] === undefined) delete material[key];
+  }
+  return material;
 }
 
 function cueSheetIdentity(cues = []) {

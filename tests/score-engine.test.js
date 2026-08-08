@@ -463,6 +463,80 @@ test("score-engine lane: revision request derives a new candidate with structure
   assert.equal(lane.getProject(project.project_id, options).candidates.length, 2);
 });
 
+// Regression (Scorecraft audit P2 finding 1): a candidate whose persisted
+// cue-sheet-used.json / music-plan-used.json snapshot is corrupted must fail
+// with a clean HTTP 409, not a raw TypeError. Before the fix,
+// requireCandidateMeta read the snapshot via a throwing readJson and then
+// dereferenced `.cues`/`.roles` on the null result, so a missing/corrupt
+// snapshot crashed reviseCandidate / buildReaperHandoff / buildAbletonHandoff
+// / approveCandidate with "Cannot read properties of null".
+test("score-engine lane: corrupt cue-sheet-used.json fails 409 not a null-deref", () => {
+  const { options } = tmpEnv();
+  const project = readyProject(options, { duration_seconds: 30 });
+  lane.generateCandidates(project.project_id, { count: 1 }, options);
+  const dir = lane.getProject(project.project_id, options).dir;
+  const snap = path.join(dir, "candidates", "candidate-001", "cue-sheet-used.json");
+  fs.writeFileSync(snap, "this is not json", "utf8"); // corrupt the persisted snapshot
+  for (const run of [
+    () => lane.reviseCandidate(project.project_id, "candidate-001", "less busy", options),
+    () => lane.buildReaperHandoff(project.project_id, "candidate-001", options),
+    () => lane.buildAbletonHandoff(project.project_id, "candidate-001", options),
+    () => lane.approveCandidate(project.project_id, "candidate-001", options),
+  ]) {
+    assert.throws(run, (error) => {
+      assert.equal(error.statusCode, 409, `expected HTTP 409, got ${error && error.statusCode}: ${error && error.message}`);
+      assert.ok(!/Cannot read properties of null/.test(String(error && error.message)), "must not surface a raw null-deref");
+      return true;
+    });
+  }
+});
+
+// Regression (Scorecraft audit P2 finding 3): setPalette persisted any
+// paletteId string without checking it against DEFAULT_PALETTES, so a typo
+// silently poisoned every downstream buildMusicPlan call. It must reject an
+// unknown palette with HTTP 400.
+test("score-engine lane: setPalette rejects an unknown palette with 400", () => {
+  const { options } = tmpEnv();
+  const project = readyProject(options, { duration_seconds: 30 });
+  assert.throws(
+    () => lane.setPalette(project.project_id, "no_such_palette", options),
+    (error) => {
+      assert.equal(error.statusCode, 400, `expected HTTP 400, got ${error && error.statusCode}: ${error && error.message}`);
+      return true;
+    },
+  );
+  // The stored palette is unchanged after the rejection.
+  const state = lane.getProject(project.project_id, options);
+  const plan = JSON.parse(fs.readFileSync(path.join(state.dir, "music-plan.json"), "utf8"));
+  assert.equal(plan.palette_id, "tech_noir_pulse");
+});
+
+// Regression (Scorecraft audit P2 finding 4): the staleness render contract in
+// approveCandidate must be built with the same durationExact as the approval
+// contract (line ~957). The staleness check at line ~899 previously omitted the
+// durationExact argument, so a project approved with duration_exact_export=false
+// produced a different contract on the staleness re-check than at approval and
+// was wrongly judged stale (render_contract_changed). Assert the call site
+// forwards durationExact.
+test("score-engine lane: staleness render contract forwards durationExact", () => {
+  const src = fs.readFileSync(path.join(__dirname, "..", "score-engine", "score-lane.js"), "utf8");
+  const staleCheck = src.match(/const currentContract = provenanceLib\.renderContract\(([^;]*)\);/);
+  assert.ok(staleCheck, "staleness renderContract call found");
+  assert.ok(
+    /durationExact/.test(staleCheck[1]),
+    `staleness contract must pass durationExact to match the approval contract; got renderContract(${staleCheck[1].trim()})`,
+  );
+  // And semantically: a contract with durationExact=false must differ from one
+  // with durationExact=true, so omitting it genuinely changes the hash.
+  const provenance = require("../score-engine/score-provenance.js");
+  const project = { duration_seconds: 30 };
+  const candidate = { lanes: ["pulse", "bass"] };
+  const settings = { default_export_sample_rate: 48000, default_export_bit_depth: 24, duration_exact_export: true };
+  const exact = provenance.renderContract({ project, candidate, settings, durationExact: true });
+  const tail = provenance.renderContract({ project, candidate, settings, durationExact: false });
+  assert.notEqual(exact.duration_exact, tail.duration_exact, "durationExact changes the contract");
+});
+
 // ── REAPER backend ──
 function parseRppTiming(rpp) {
   const tempos = [];
@@ -787,6 +861,8 @@ test("score-engine v1.1: tail-preserving export is an explicit option and record
   const provenance = JSON.parse(fs.readFileSync(path.join(result.approved_dir, "provenance.json"), "utf8"));
   assert.equal(provenance.render.duration_exact, false);
   assert.match(provenance.render.export_mode, /tail_preserving/);
+  assert.equal(lane.getProject(project.project_id, options).readiness.sketch_approval_current, true,
+    "the selected duration mode must remain current after approval");
 });
 
 test("score-engine v1.1: mid_high pulse register clears the D3-A3 narration band; default preserves v1.0 output", () => {

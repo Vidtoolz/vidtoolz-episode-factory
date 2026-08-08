@@ -107,3 +107,41 @@ test("score provenance: manifest files cannot be symlinks outside the authority 
     /symbolic link|symlink/i,
   );
 });
+
+// Regression (Scorecraft audit P2 finding 2): sha256File must hash in bounded
+// chunks, not load the whole file into memory with a single readFileSync.
+// Verifying an approved 100 MB WAV must not spike memory.
+test("score provenance: sha256File hashes large files without whole-file reads", () => {
+  const src = fs.readFileSync(path.join(__dirname, "..", "score-engine", "score-provenance.js"), "utf8");
+  const body = src.slice(src.indexOf("function sha256File"));
+  assert.ok(
+    !/readFileSync/.test(body.slice(0, body.indexOf("\n}"))),
+    "sha256File must stream/chunk reads, not readFileSync the whole file",
+  );
+  // And it still produces the correct digest.
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "score-sha-"));
+  const file = path.join(root, "blob.bin");
+  const bytes = Buffer.alloc(5 * 1024 * 1024 + 7, 0xab); // spans multiple 1 MB chunks
+  fs.writeFileSync(file, bytes);
+  assert.equal(provenance.sha256File(file), provenance.sha256(bytes));
+});
+
+// Regression (Scorecraft audit P2 finding 5): cueSheetIdentity must tolerate a
+// cue whose optional fields are absent (undefined) by omitting those keys —
+// matching JSON round-trip semantics — instead of crashing hashCanonical with
+// "Canonical identity cannot contain undefined." The strict top-level
+// canonicalStringify contract (throw on explicit undefined) is preserved.
+test("score provenance: cue identity skips absent optional fields instead of throwing", () => {
+  const sparse = { cue_id: "C1" }; // every optional field undefined
+  const hash = provenance.hashCanonical(provenance.cueSheetIdentity([sparse]));
+  assert.ok(/^[a-f0-9]{64}$/.test(hash), "sparse cue hashes instead of throwing");
+  // A round-tripped (JSON-parsed) cue with the same material content hashes identically.
+  const roundTripped = JSON.parse(JSON.stringify(provenance.cueSheetIdentity([sparse]))).cues[0];
+  assert.equal(
+    provenance.hashCanonical(provenance.cueSheetIdentity([sparse])),
+    provenance.hashCanonical(provenance.cueSheetIdentity([roundTripped])),
+    "undefined-vs-absent is identity-neutral",
+  );
+  // The strict serializer still rejects an explicit undefined at the top level.
+  assert.throws(() => provenance.canonicalStringify({ material: undefined }), /undefined/);
+});

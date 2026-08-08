@@ -85,6 +85,17 @@ function requireCandidateMeta(candidateDir, candidateId) {
   return meta;
 }
 
+// A candidate whose persisted cue-sheet snapshot is missing or corrupt is
+// incomplete — fail with a clean 409 rather than a null-deref TypeError
+// downstream (`readJson(...).cues` on a null snapshot).
+function requireCandidateCues(candidateDir, candidateId) {
+  const snapshot = readJson(path.join(candidateDir, "cue-sheet-used.json"));
+  if (!snapshot || !Array.isArray(snapshot.cues) || snapshot.cues.length === 0) {
+    throw httpError(`Candidate ${candidateId} is incomplete (no usable cue-sheet-used.json — likely a failed build). Delete the folder ${candidateDir} and regenerate.`, 409);
+  }
+  return snapshot.cues;
+}
+
 // ── settings ──
 function loadSettings(options = {}) {
   const settingsPath = options.settingsPath || DEFAULT_SETTINGS_PATH;
@@ -412,6 +423,11 @@ function setPalette(projectId, paletteId, options = {}) {
   const { dir } = resolveProjectDir(settings, projectId);
   const project = readJson(path.join(dir, "score-project.json"));
   const profiles = loadProfiles(settings);
+  // Validate BEFORE any state mutation: an unknown palette must be a clean 400,
+  // not a raw Error from the planner (which maps to HTTP 500).
+  if (!schemas.DEFAULT_PALETTES[paletteId]) {
+    throw httpError(`Unknown orchestration profile (palette_id alias): ${paletteId}. Available: ${Object.keys(schemas.DEFAULT_PALETTES).join(", ")}`, 400);
+  }
   const plan = planner.buildMusicPlan({ cues: project.cues }, paletteId, profiles);
   archiveIfExists(dir, "music-plan.json");
   writeJson(path.join(dir, "music-plan.json"), { ...plan, generated_at: nowIso() });
@@ -657,6 +673,9 @@ function reviseCandidate(projectId, candidateId, requestText, options = {}) {
   const candidateDir = candidateDirOf(dir, candidateId);
   const meta = requireCandidateMeta(candidateDir, candidateId);
   const cueSheetUsed = readJson(path.join(candidateDir, "cue-sheet-used.json"));
+  if (!cueSheetUsed || !Array.isArray(cueSheetUsed.cues) || cueSheetUsed.cues.length === 0) {
+    throw httpError(`Candidate ${candidateId} is incomplete (no usable cue-sheet-used.json — likely a failed build). Delete the folder ${candidateDir} and regenerate.`, 409);
+  }
   const plan = planner.planRevision(requestText);
   const revised = planner.applyRevision(cueSheetUsed, { seed: meta.seed, palette_id: meta.palette_id, lane_gains: meta.lane_gains || {} }, plan);
   const project = readJson(path.join(dir, "score-project.json"));
@@ -721,8 +740,8 @@ function buildReaperHandoff(projectId, candidateId, options = {}) {
   const candidateDir = candidateDirOf(dir, candidateId);
   const project = readJson(path.join(dir, "score-project.json"));
   const musicPlan = readJson(path.join(candidateDir, "music-plan-used.json")) || readJson(path.join(dir, "music-plan.json"));
-  const cues = readJson(path.join(candidateDir, "cue-sheet-used.json")).cues;
   const meta = requireCandidateMeta(candidateDir, candidateId);
+  const cues = requireCandidateCues(candidateDir, candidateId);
   const composition = composerEngine.compose({ cues }, compositionOptionsFromMeta(project, meta));
 
   const reaperDir = path.join(candidateDir, "reaper");
@@ -829,8 +848,8 @@ function buildAbletonHandoff(projectId, candidateId, options = {}) {
   const candidateDir = candidateDirOf(dir, candidateId);
   const project = readJson(path.join(dir, "score-project.json"));
   const musicPlan = readJson(path.join(candidateDir, "music-plan-used.json")) || readJson(path.join(dir, "music-plan.json"));
-  const cues = readJson(path.join(candidateDir, "cue-sheet-used.json")).cues;
   const meta = requireCandidateMeta(candidateDir, candidateId);
+  const cues = requireCandidateCues(candidateDir, candidateId);
 
   const abletonDir = path.join(candidateDir, "ableton");
   fs.mkdirSync(path.join(abletonDir, "midi"), { recursive: true });
@@ -884,7 +903,7 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
   const candidateDir = candidateDirOf(dir, candidateId);
   const project = readJson(path.join(dir, "score-project.json"));
   const meta = requireCandidateMeta(candidateDir, candidateId);
-  const cues = readJson(path.join(candidateDir, "cue-sheet-used.json")).cues;
+  const cues = requireCandidateCues(candidateDir, candidateId);
   const musicPlan = readJson(path.join(candidateDir, "music-plan-used.json")) || readJson(path.join(dir, "music-plan.json"));
   const durationExact = exportOptions.durationExact !== undefined
     ? Boolean(exportOptions.durationExact)
@@ -896,14 +915,26 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
   // explicitly classified legacy/unverified by readiness.
   if (meta.provenance_schema_version === provenanceLib.PROVENANCE_SCHEMA_VERSION && meta.identity) {
     const currentPlan = readJson(path.join(dir, "music-plan.json"));
-    const currentContract = provenanceLib.renderContract({ project, candidate: meta, settings });
+    // Staleness contract must be built with the SAME durationExact as the
+    // approval contract (see the approval renderContract call below); omitting
+    // it makes a tail-preserving approval look render_contract_changed.
+    const currentContract = provenanceLib.renderContract({ project, candidate: meta, settings, durationExact });
+    // The candidate identity was sealed when the preview was generated. An
+    // explicit approval export-mode override is allowed to differ, so validate
+    // all current contract fields against that sealed identity while retaining
+    // its persisted duration mode. The approval below remains bound to the
+    // requested currentContract/durationExact value.
+    const candidateIdentityContract = meta.render_contract
+      && typeof meta.render_contract.duration_exact === "boolean"
+      ? { ...currentContract, duration_exact: meta.render_contract.duration_exact }
+      : currentContract;
     const currentIdentity = provenanceLib.candidateIdentity({
       project,
       cues: project.cues || [],
       musicPlan: currentPlan,
       candidate: meta,
       composerContract: composerEngine.COMPOSER_CONTRACT,
-      contract: currentContract,
+      contract: candidateIdentityContract,
     });
     const stale = [];
     if (currentIdentity.cue_sheet_hash !== meta.identity.cue_sheet_hash) stale.push("cue_sheet_changed");
@@ -922,6 +953,8 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
   // step failed — while listProjects still claimed approved:true.
   const buildDir = uniquePath(path.join(dir, `approved-build-${stamp()}`));
   let provenance; // assigned inside the build block, referenced after the swap
+  let approvedCandidateIdentity;
+  let approvedCandidateRenderContract;
   fs.mkdirSync(path.join(buildDir, "stems"), { recursive: true });
   fs.mkdirSync(path.join(buildDir, "resolve-import", "stems"), { recursive: true });
   fs.mkdirSync(path.join(buildDir, "midi"), { recursive: true });
@@ -963,6 +996,16 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
       composerContract: composerEngine.COMPOSER_CONTRACT,
       contract: approvalContract,
     }) : null;
+    approvedCandidateRenderContract = approvalContract;
+    approvedCandidateIdentity = approvalIdentityBase ? {
+      ...approvalIdentityBase,
+      artifact_manifest_hash: meta.identity.artifact_manifest_hash,
+      candidate_content_hash: provenanceLib.candidateContentHash(
+        approvalIdentityBase.candidate_input_hash, meta.identity.artifact_manifest_hash,
+      ),
+      ...(meta.identity.handoff_artifact_manifest_hash
+        ? { handoff_artifact_manifest_hash: meta.identity.handoff_artifact_manifest_hash } : {}),
+    } : null;
     const approvalManifest = provenanceLib.buildArtifactManifest(buildDir, [
       { logical_role: "sketch_mix", relative_path: "mix.wav", media: { sample_rate: sampleRate, bit_depth: bitDepth, channels: 2 } },
       { logical_role: "sketch_dialogue_safe_mix", relative_path: "mix-dialogue-safe.wav", media: { sample_rate: sampleRate, bit_depth: bitDepth, channels: 2 } },
@@ -984,9 +1027,8 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
       approved_at: nowIso(),
       approved_candidate: candidateId,
       render_contract: approvalContract,
-      identity: approvalIdentityBase ? {
-        ...approvalIdentityBase,
-        candidate_content_hash: meta.identity.candidate_content_hash,
+      identity: approvedCandidateIdentity ? {
+        ...approvedCandidateIdentity,
         candidate_artifact_manifest_hash: meta.identity.artifact_manifest_hash,
         candidate_handoff_artifact_manifest_hash: meta.identity.handoff_artifact_manifest_hash || null,
         approval_artifact_manifest_hash: approvalManifestHash,
@@ -1016,6 +1058,17 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
   fs.renameSync(buildDir, approvedDir);
 
   meta.status = "approved";
+  if (approvedCandidateIdentity) {
+    meta.render_contract = approvedCandidateRenderContract;
+    meta.identity = approvedCandidateIdentity;
+    const candidateProvenance = readJson(path.join(candidateDir, "provenance.json"));
+    if (candidateProvenance) {
+      candidateProvenance.render_contract = approvedCandidateRenderContract;
+      candidateProvenance.identity = approvedCandidateIdentity;
+      candidateProvenance.approval_status = "approved";
+      writeJson(path.join(candidateDir, "provenance.json"), candidateProvenance);
+    }
+  }
   writeJson(path.join(candidateDir, "candidate.json"), meta);
   project.approved_candidate = candidateId;
   saveProject(dir, project);
@@ -1187,21 +1240,204 @@ function validateNarrationMedia(probe, signal, project, timelineStart) {
   return { media, timelineEnd };
 }
 
-function musicArtifactHasHash(dir, hash) {
-  const roots = ["approved", "candidates", "production"];
-  const audioExtensions = new Set([".wav", ".flac", ".mp3", ".m4a", ".aac"]);
-  const visit = (absolute) => {
-    if (!fs.existsSync(absolute)) return false;
-    for (const entry of fs.readdirSync(absolute, { withFileTypes: true })) {
+const MUSIC_ARTIFACT_AUDIO_EXTENSIONS = new Set([".wav", ".flac", ".mp3", ".m4a", ".aac"]);
+const MUSIC_PROVENANCE_MAX_RECORDS = 1024;
+const MUSIC_PROVENANCE_MAX_ENTRIES = 16384;
+const MUSIC_PROVENANCE_MAX_BYTES = 2 * 1024 * 1024;
+const MUSIC_RAW_SCAN_MAX_ENTRIES = 4096;
+const MUSIC_RAW_SCAN_MAX_DIRECTORIES = 512;
+const MUSIC_RAW_SCAN_MAX_DEPTH = 8;
+const MUSIC_RAW_SCAN_MAX_AUDIO_FILES = 256;
+
+function musicArtifactVerificationLimit(kind, limit) {
+  throw httpError(`Scorecraft music artifact verification exceeded its safe ${kind} limit (${limit}); verification was aborted, not reported as hash-not-found.`, 503);
+}
+
+function safeDirectoryEntries(absolute, state, kind) {
+  let handle;
+  try {
+    const stat = fs.lstatSync(absolute);
+    if (stat.isSymbolicLink() || !stat.isDirectory()) return [];
+    handle = fs.opendirSync(absolute);
+  } catch (error) {
+    if (error && error.code === "ENOENT") return [];
+    throw error;
+  }
+  const entries = [];
+  try {
+    let entry;
+    while ((entry = handle.readSync()) !== null) {
+      state.entries += 1;
+      if (state.entries > state.maxEntries) musicArtifactVerificationLimit(`${kind} entry`, state.maxEntries);
+      entries.push(entry);
+    }
+  } finally {
+    handle.closeSync();
+  }
+  return entries.sort((a, b) => (a.name === b.name ? 0 : a.name < b.name ? -1 : 1));
+}
+
+function readMusicProvenance(file) {
+  try {
+    const stat = fs.lstatSync(file);
+    if (stat.isSymbolicLink() || !stat.isFile() || stat.size > MUSIC_PROVENANCE_MAX_BYTES) return null;
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function isSafeMusicArtifactDirectory(absolute) {
+  try {
+    const stat = fs.lstatSync(absolute);
+    return stat.isDirectory() && !stat.isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
+function manifestHasMusicHash(root, manifest, expectedManifestHash, targetHash, state) {
+  if (!manifest || manifest.schema_version !== provenanceLib.ARTIFACT_MANIFEST_VERSION
+    || !Array.isArray(manifest.entries) || !/^[a-f0-9]{64}$/.test(String(expectedManifestHash || ""))) return false;
+  let actualManifestHash;
+  try { actualManifestHash = provenanceLib.artifactManifestHash(manifest); } catch { return false; }
+  if (actualManifestHash !== expectedManifestHash) return false;
+  const roles = new Set();
+  const paths = new Set();
+  let found = false;
+  for (const entry of manifest.entries) {
+    state.manifestEntries += 1;
+    if (state.manifestEntries > MUSIC_PROVENANCE_MAX_ENTRIES) {
+      musicArtifactVerificationLimit("provenance manifest entry", MUSIC_PROVENANCE_MAX_ENTRIES);
+    }
+    const role = typeof entry.logical_role === "string" ? entry.logical_role.trim() : "";
+    const relativePath = typeof entry.relative_path === "string" ? entry.relative_path : "";
+    const casePath = relativePath.toLowerCase();
+    if (!role || roles.has(role) || !relativePath || paths.has(casePath)
+      || !Number.isInteger(entry.byte_size) || entry.byte_size < 0
+      || !/^[a-f0-9]{64}$/.test(String(entry.sha256 || ""))) return false;
+    roles.add(role);
+    paths.add(casePath);
+    if (!MUSIC_ARTIFACT_AUDIO_EXTENSIONS.has(path.extname(relativePath).toLowerCase())) continue;
+    try { provenanceLib.resolveManifestPath(root, relativePath); } catch { return false; }
+    if (entry.sha256 === targetHash) found = true;
+  }
+  return found;
+}
+
+function authoritativeMusicArtifactHasHash(dir, targetHash) {
+  const state = { entries: 0, maxEntries: MUSIC_PROVENANCE_MAX_RECORDS, manifestEntries: 0 };
+  const inspectRecord = (file, inspect) => {
+    state.entries += 1;
+    if (state.entries > state.maxEntries) musicArtifactVerificationLimit("provenance record", state.maxEntries);
+    const record = readMusicProvenance(file);
+    if (!record) return false;
+    try { return inspect(record); } catch (error) {
+      if (error && error.statusCode === 503) throw error;
+      return false;
+    }
+  };
+
+  const approvedDir = path.join(dir, "approved");
+  if (isSafeMusicArtifactDirectory(approvedDir)
+    && inspectRecord(path.join(approvedDir, "provenance.json"), (record) => (
+    record.provenance_schema_version === provenanceLib.PROVENANCE_SCHEMA_VERSION
+    && record.approval_status === "approved"
+    && record.identity
+    && manifestHasMusicHash(approvedDir, record.artifact_manifest,
+      record.identity.approval_artifact_manifest_hash, targetHash, state)
+    ))) return true;
+
+  const candidatesDir = path.join(dir, "candidates");
+  const candidateEntries = safeDirectoryEntries(candidatesDir, state, "provenance directory");
+  for (const entry of candidateEntries) {
+    if (entry.isSymbolicLink() || !entry.isDirectory() || !/^candidate-\d{3}$/.test(entry.name)) continue;
+    const candidateDir = path.join(candidatesDir, entry.name);
+    if (inspectRecord(path.join(candidateDir, "candidate.json"), (record) => (
+      record.provenance_schema_version === provenanceLib.PROVENANCE_SCHEMA_VERSION
+      && record.candidate_id === entry.name
+      && record.identity
+      && manifestHasMusicHash(candidateDir, record.artifact_manifest,
+        record.identity.artifact_manifest_hash, targetHash, state)
+    ))) return true;
+  }
+
+  const productionLayouts = [
+    { root: path.join(dir, "production", "imports"), recordName: "provenance.json", kind: "import" },
+    { root: path.join(dir, "production", "resolve"), recordName: "resolve-provenance.json", kind: "resolve" },
+  ];
+  for (const layout of productionLayouts) {
+    const entries = safeDirectoryEntries(layout.root, state, "provenance directory");
+    for (const entry of entries) {
+      if (entry.isSymbolicLink() || !entry.isDirectory() || !/^production-[a-f0-9]{20}$/.test(entry.name)) continue;
+      const recordRoot = path.join(layout.root, entry.name);
+      if (inspectRecord(path.join(recordRoot, layout.recordName), (record) => {
+        if (record.schema_version !== PRODUCTION_SCHEMA_VERSION || record.production_mix_id !== entry.name) return false;
+        if (layout.kind === "import") {
+          const relativePath = `production/imports/${entry.name}/mix.wav`;
+          const expectedId = `production-${provenanceLib.hashCanonical({
+            schema_version: PRODUCTION_SCHEMA_VERSION,
+            mix_sha256: record.imported_file_sha256,
+            approved_candidate: record.approved_candidate_id,
+            candidate_content_hash: record.approved_candidate_content_hash,
+            render_contract_hash: record.render_contract_hash,
+          }).slice(0, 20)}`;
+          return record.relative_path === relativePath && record.production_mix_id === expectedId
+            && /^[a-f0-9]{64}$/.test(String(record.imported_file_sha256 || ""))
+            && Number.isInteger(record.byte_size) && record.byte_size > 0
+            && record.imported_file_sha256 === targetHash;
+        }
+        if (!record.artifact_manifest_hash || record.source_production_mix_sha256 !== targetHash
+          || !manifestHasMusicHash(recordRoot, record.artifact_manifest,
+            record.artifact_manifest_hash, targetHash, state)) return false;
+        const productionMix = record.artifact_manifest.entries.filter((artifact) => (
+          artifact.logical_role === "production_mix" && artifact.relative_path === "mix.wav"
+          && artifact.sha256 === targetHash
+        ));
+        return productionMix.length === 1;
+      })) return true;
+    }
+  }
+  return false;
+}
+
+function rawMusicArtifactHasHash(dir, targetHash) {
+  const state = { entries: 0, maxEntries: MUSIC_RAW_SCAN_MAX_ENTRIES, directories: 0, audioFiles: 0 };
+  const visit = (absolute, depth) => {
+    state.directories += 1;
+    if (state.directories > MUSIC_RAW_SCAN_MAX_DIRECTORIES) {
+      musicArtifactVerificationLimit("raw-scan directory", MUSIC_RAW_SCAN_MAX_DIRECTORIES);
+    }
+    for (const entry of safeDirectoryEntries(absolute, state, "raw-scan")) {
       const target = path.join(absolute, entry.name);
-      if (entry.isSymbolicLink()) continue;
-      if (entry.isDirectory()) { if (visit(target)) return true; }
-      else if (entry.isFile() && audioExtensions.has(path.extname(entry.name).toLowerCase())
-        && provenanceLib.sha256File(target) === hash) return true;
+      let stat;
+      try { stat = fs.lstatSync(target); } catch (error) {
+        if (error && error.code === "ENOENT") continue;
+        throw error;
+      }
+      if (stat.isSymbolicLink()) continue;
+      if (stat.isDirectory()) {
+        if (depth >= MUSIC_RAW_SCAN_MAX_DEPTH) {
+          musicArtifactVerificationLimit("raw-scan depth", MUSIC_RAW_SCAN_MAX_DEPTH);
+        }
+        if (visit(target, depth + 1)) return true;
+      } else if (stat.isFile() && MUSIC_ARTIFACT_AUDIO_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
+        state.audioFiles += 1;
+        if (state.audioFiles > MUSIC_RAW_SCAN_MAX_AUDIO_FILES) {
+          musicArtifactVerificationLimit("raw audio file", MUSIC_RAW_SCAN_MAX_AUDIO_FILES);
+        }
+        if (provenanceLib.sha256File(target) === targetHash) return true;
+      }
     }
     return false;
   };
-  return roots.some((root) => visit(path.join(dir, root)));
+  return ["approved", "candidates", "production"].some((root) => visit(path.join(dir, root), 0));
+}
+
+function musicArtifactHasHash(dir, hash) {
+  if (!/^[a-f0-9]{64}$/i.test(String(hash || ""))) return false;
+  const targetHash = String(hash).toLowerCase();
+  return authoritativeMusicArtifactHasHash(dir, targetHash) || rawMusicArtifactHasHash(dir, targetHash);
 }
 
 function currentNarrationRecord(dir) {

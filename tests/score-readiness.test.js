@@ -393,6 +393,17 @@ test("verifier: probe failure blocks Resolve readiness; no approved export is NO
   assert.match(formatVerifierReport(none, dir), /NOT a pass/);
 });
 
+// Regression (Scorecraft audit P2 finding 6): the Resolve mirror check must
+// not load both whole WAV files into memory with `readFileSync(...).equals(...)`.
+// The verifier source must compare in bounded chunks instead.
+test("verifier: Resolve mirror byte-compare does not whole-file read WAVs", () => {
+  const src = fs.readFileSync(path.join(__dirname, "..", "score-engine", "score-readiness.js"), "utf8");
+  assert.ok(
+    !/readFileSync\([^)]*\)\.equals\(/.test(src),
+    "mirror compare must be chunked, not readFileSync(a).equals(readFileSync(b))",
+  );
+});
+
 // ── UI (grep-based like the other page tests) ──
 
 test("ui: score workspace has the Score Map, readiness panel, and honest empty state", () => {
