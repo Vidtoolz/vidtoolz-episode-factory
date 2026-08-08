@@ -266,6 +266,13 @@ function compose(cueSheet, options = {}) {
 
   cues.forEach((cue, cueIndex) => {
     const key = parseKey(cue.key);
+    // Timing must be validated before any math: `end_seconds - start_seconds`
+    // with a missing/non-finite bound yields NaN, which then flows through the
+    // grid (whose NaN comparisons fail open) into note seconds/durations and a
+    // corrupt-but-plausible MIDI file. Fail loudly here instead.
+    if (!Number.isFinite(cue.start_seconds) || !Number.isFinite(cue.end_seconds) || cue.end_seconds <= cue.start_seconds) {
+      throw new Error(`Invalid cue timing for ${cue.cue_id || `cue ${cueIndex + 1}`}: start_seconds=${cue.start_seconds}, end_seconds=${cue.end_seconds} (need finite numbers with end > start)`);
+    }
     if (!Number.isFinite(cue.tempo_bpm) || cue.tempo_bpm < 40 || cue.tempo_bpm > 220) throw new Error(`Unsupported tempo_bpm for ${cue.cue_id || `cue ${cueIndex + 1}`}: ${cue.tempo_bpm}`);
     if (!SUPPORTED_TIME_SIGNATURES.includes(cue.time_signature)) throw new Error(`Unsupported time_signature for ${cue.cue_id || `cue ${cueIndex + 1}`}: ${cue.time_signature}`);
     const eff = effectiveCueSettings(cue, options);
@@ -297,6 +304,9 @@ function compose(cueSheet, options = {}) {
       event(lane, beat, durBeats, note, velocity) {
         const startSec = cue.start_seconds + beat * beatSeconds;
         let endSec = startSec + durBeats * beatSeconds;
+        // Never emit a non-finite note — NaN/Infinity seconds or durations would
+        // be coerced into the MIDI bytes and surface as corruption in the DAW.
+        if (!Number.isFinite(startSec) || !Number.isFinite(endSec) || endSec <= startSec) return null;
         if (startSec >= cue.end_seconds - 1e-6) return null;
         if (endSec > cue.end_seconds) endSec = cue.end_seconds; // duration-locked: never loop past cue boundary
         const tick = cueStartTick + beat * PPQ;

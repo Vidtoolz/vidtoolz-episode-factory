@@ -158,6 +158,32 @@ test("score-engine composer: identical input + seed reproduces identical MIDI no
   assert.notDeepEqual(a.notes.map((n) => `${n.tick}:${n.note}`).join(","), c.notes.map((n) => `${n.tick}:${n.note}`).join(","));
 });
 
+// Regression: a cue with missing/invalid timing must fail loudly at compose
+// entry. Before the fix, compose() computed `beats = NaN`, emitted notes with
+// non-finite seconds/durations, and buildMidiFile coerced them into a corrupt
+// but plausible-looking MIDI file (the corruption only surfaced inside the DAW).
+test("score-engine composer: invalid cue timing throws instead of emitting NaN notes", () => {
+  const base = scoreCue("C1", 0, 8);
+  const cases = [
+    { ...base, start_seconds: undefined },
+    { ...base, end_seconds: undefined },
+    { ...base, start_seconds: NaN, end_seconds: 8 },
+    { ...base, end_seconds: "8" },          // wrong type
+    { ...base, start_seconds: 8, end_seconds: 8 },   // zero-length
+    { ...base, start_seconds: 9, end_seconds: 8 },   // inverted
+  ];
+  for (const cue of cases) {
+    assert.throws(
+      () => composer.compose({ cues: [cue] }, { seed: 1 }),
+      /timing|start_seconds|end_seconds/i,
+      `expected a timing validation error for ${JSON.stringify({ s: cue.start_seconds, e: cue.end_seconds })}`
+    );
+  }
+  // A valid cue still composes.
+  const ok = composer.compose({ cues: [scoreCue("C1", 0, 8)] }, { seed: 1 });
+  assert.ok(ok.notes.every((n) => Number.isFinite(n.seconds) && Number.isFinite(n.dur_seconds)));
+});
+
 test("score-engine composer: no note starts outside its cue or crosses a cue boundary", () => {
   const sheet = planner.generateCueSheet({ duration_seconds: 90 });
   const result = composer.compose(sheet, { seed: 7 });
