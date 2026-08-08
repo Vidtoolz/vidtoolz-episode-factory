@@ -241,14 +241,28 @@ async function collectFingerprint(entry, options = {}) {
   }
 
   const models = [];
+  const hostName = hostNameFor(endpoint);
   for (const model of entry.required_models || []) {
     const info = await classInfo(model.class_type);
     const opts = info ? client.loaderOptions(info, model.input_key) : null;
     const enumerated = opts ? opts.includes(model.name) : (info === null ? false : null);
     const folderEntry = (local && comfyRoot) ? null : await findFolderEntry(model.class_type, model.name);
-    const { present, identity } = modelIdentity(model, {
+    let { present, identity } = modelIdentity(model, {
       local, comfyRoot, enumerated, folderEntry, hashModels: Boolean(options.hashModels),
     });
+    // strong environment manifest (P5): upgrade to sha256 identity ONLY when
+    // current cheap metadata still matches the metadata recorded next to the
+    // hash — a stale or unverifiable SHA is never presented as current.
+    // Metadata-only lookup: routine fingerprints never hash model files.
+    if (present && options.environmentManifests !== false) {
+      const environment = require('./environment.js');
+      const strong = environment.strongModelIdentity(hostName, model.name,
+        identity.level === 'filename_size_mtime' ? { bytes: identity.bytes, mtime: identity.mtime } : null, options);
+      if (strong && strong.level === 'sha256') identity = strong;
+      else if (strong && strong.stale) identity = { ...identity, manifest_sha_status: 'stale' };
+      else if (strong && strong.unverifiable) identity = { ...identity, manifest_sha_status: 'unverifiable' };
+      else if (strong && strong.manifest_invalid) identity = { ...identity, manifest_sha_status: strong.status };
+    }
     models.push({ class_type: model.class_type, input_key: model.input_key, name: model.name, present, identity });
   }
 

@@ -37,3 +37,8 @@ package-runs/2026-08-07-earth-studio-v04-acceptance/earth-studio/renders/
 # ComfyUI supervised-upgrade sessions + requalification permits: local live
 # maintenance records — never committed (schemas/code/docs are).
 /state/comfyui-upgrades/
+
+# ComfyUI strong environment manifests: machine-specific cryptographic
+# inventories — local evidence, never committed (config/comfyui/
+# environments.json config IS committed).
+/state/comfyui-environments/

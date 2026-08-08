@@ -1,0 +1,22 @@
+{
+  "_comment": "ComfyUI environment inventory configuration — the ONLY approved roots the strong-inventory machinery may resolve model files or core identity from. Hashing always runs locally on the host that stores the files (PRESTO via read-only ssh+powershell, vidnux via local streaming). Registry-required filenames are the only allowed targets; arbitrary paths are rejected at generation time. Live manifests land in gitignored state/comfyui-environments/<host>/.",
+  "schema_version": 1,
+  "hosts": {
+    "PRESTO": {
+      "transport": "ssh-powershell",
+      "ssh_host": "presto",
+      "comfyui_root": "D:/AI/ComfyUI",
+      "model_roots": [
+        "D:/AI/ComfyUI/models",
+        "C:/Users/presto/Documents/ComfyUI/models"
+      ]
+    },
+    "vidnux": {
+      "transport": "local",
+      "comfyui_root": "/home/vidtoolz/comfy/ComfyUI",
+      "model_roots": [
+        "/home/vidtoolz/comfy/ComfyUI/models"
+      ]
+    }
+  }
+}

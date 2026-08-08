@@ -1113,3 +1113,250 @@ test("comfyui-upgrade safety: no session = P3 behavior; sessions cannot lock pro
     assert.throws(() => gateway.upgrade.cancelUpgradeSession(session.upgrade_session_id, "again", fx.options), /already/);
   })();
 });
+
+// ---- P5: cryptographic environment manifests -----------------------------------------------
+
+// Local-transport inventory fixture: temp environments config + temp model
+// roots holding small real files for the wan-hq registry dependencies.
+function environmentFixture({ withFiles = true } = {}) {
+  const work = tmpDir("comfyui-env-");
+  const modelRoot = path.join(work, "models");
+  const comfyRoot = path.join(work, "comfy");
+  fs.mkdirSync(comfyRoot, { recursive: true });
+  const { registryPath, entries } = (() => {
+    // wan hq + fast re-rooted onto host "env-test" (local transport)
+    const list = [];
+    for (const wf of ["wan22-i2v-hq", "wan22-i2v-fast"]) {
+      const real = gateway.registry.getWorkflow(wf);
+      const runtimeCopy = path.join(work, `${wf}-rt.json`);
+      fs.copyFileSync(gateway.registry.canonicalAbsolutePath(real), runtimeCopy);
+      list.push({ ...JSON.parse(JSON.stringify(real)), runtime_copies: [runtimeCopy], comfyui: { endpoint_default: "http://env-test:8188", endpoint_env: [] } });
+    }
+    const rp = path.join(work, "registry.json");
+    fs.writeFileSync(rp, JSON.stringify({ registry_version: 1, workflows: list }));
+    return { registryPath: rp, entries: list };
+  })();
+  const allModels = [...new Set(entries.flatMap((e) => e.required_models.map((m) => m.name)))];
+  if (withFiles) {
+    for (const name of allModels) {
+      const folder = name.includes("lora") ? "loras" : name.includes("umt5") ? "text_encoders" : name.includes("vae") ? "vae" : "diffusion_models";
+      fs.mkdirSync(path.join(modelRoot, folder), { recursive: true });
+      fs.writeFileSync(path.join(modelRoot, folder, name), `contents-of-${name}`);
+    }
+  }
+  const environmentsPath = path.join(work, "environments.json");
+  fs.writeFileSync(environmentsPath, JSON.stringify({
+    schema_version: 1,
+    hosts: { "env-test": { transport: "local", comfyui_root: comfyRoot, model_roots: [modelRoot] } },
+  }));
+  const options = {
+    registryPath, environmentsPath,
+    environmentRoot: path.join(work, "env-state"),
+    qualificationRoot: path.join(work, "qual"),
+    local: false,
+  };
+  return { work, modelRoot, comfyRoot, entries, options, allModels };
+}
+
+test("comfyui-environment manifest: deterministic self-hash, atomic publish, validation rejects malformed evidence", async () => {
+  const fx = environmentFixture();
+  const { manifest, path: outPath } = await gateway.environment.runStrongInventory("env-test", fx.options);
+  assert.equal(manifest.schema_version, 1);
+  assert.equal(manifest.host, "env-test");
+  assert.equal(manifest.models.length, 6);
+  assert.ok(manifest.models.every((m) => /^[0-9a-f]{64}$/.test(m.sha256)));
+  assert.ok(fs.existsSync(outPath));
+  assert.ok(!fs.readdirSync(path.dirname(outPath)).some((n) => n.includes(".tmp-")), "atomic write");
+  // deterministic self-hash: key order + generated_at excluded
+  const reordered = JSON.parse(gateway.environment.canonicalJson(manifest));
+  reordered.generated_at = "2030-01-01T00:00:00.000Z";
+  assert.equal(gateway.environment.manifestSha256(manifest), gateway.environment.manifestSha256(reordered));
+  // malformed sha rejected by validation
+  const bad = JSON.parse(JSON.stringify(manifest));
+  bad.models[0].sha256 = "nope";
+  bad.manifest_sha256 = gateway.environment.manifestSha256(bad);
+  assert.equal(gateway.environment.validateManifest(bad, { host: "env-test" }).ok, false);
+  // tampering breaks the self-hash → manifest not trusted
+  const tampered = JSON.parse(fs.readFileSync(outPath, "utf8"));
+  tampered.models[0].sha256 = "a".repeat(64);
+  fs.writeFileSync(outPath, JSON.stringify(tampered));
+  const rm = gateway.environment.readManifest("env-test", fx.options);
+  assert.equal(rm.status, "invalid");
+  assert.ok(rm.problems.some((p) => p.includes("self-hash")));
+});
+
+test("comfyui-environment strong identity: SHA authority is conditional on matching cheap metadata", async () => {
+  const fx = environmentFixture();
+  await gateway.environment.runStrongInventory("env-test", fx.options);
+  const name = "wan_2.1_vae.safetensors";
+  const file = path.join(fx.modelRoot, "vae", name);
+  const st = fs.statSync(file);
+  // matching metadata → sha256 identity from the manifest
+  const strong = gateway.environment.strongModelIdentity("env-test", name, { bytes: st.size, mtime: st.mtime.toISOString() }, fx.options);
+  assert.equal(strong.level, "sha256");
+  assert.equal(strong.source, "environment_manifest");
+  assert.equal(strong.manifest_status, "current");
+  // size mismatch → STALE, the recorded sha is NOT presented as current
+  const staleSize = gateway.environment.strongModelIdentity("env-test", name, { bytes: st.size + 1, mtime: st.mtime.toISOString() }, fx.options);
+  assert.deepEqual(staleSize, { stale: true });
+  // mtime mismatch (outside tolerance) → STALE
+  const staleTime = gateway.environment.strongModelIdentity("env-test", name, { bytes: st.size, mtime: "2030-01-01T00:00:00.000Z" }, fx.options);
+  assert.deepEqual(staleTime, { stale: true });
+  // no current metadata → UNVERIFIABLE, never inflated
+  assert.deepEqual(gateway.environment.strongModelIdentity("env-test", name, null, fx.options), { unverifiable: true });
+  // absent manifest → null; corrupt manifest → visible, no strong authority
+  const empty = environmentFixture();
+  assert.equal(gateway.environment.strongModelIdentity("env-test", name, { bytes: 1, mtime: st.mtime.toISOString() }, empty.options), null);
+  fs.mkdirSync(gateway.environment.manifestDir("env-test", empty.options), { recursive: true });
+  fs.writeFileSync(gateway.environment.manifestPath("env-test", empty.options), "{truncated");
+  const corrupt = gateway.environment.strongModelIdentity("env-test", name, { bytes: 1, mtime: st.mtime.toISOString() }, empty.options);
+  assert.equal(corrupt.manifest_invalid, true);
+  assert.equal(corrupt.status, "corrupt");
+});
+
+test("comfyui-environment replacement: same-name/same-size/same-mtime content swap is caught by explicit re-inventory", async () => {
+  const fx = environmentFixture();
+  const first = await gateway.environment.runStrongInventory("env-test", fx.options);
+  const name = "wan_2.1_vae.safetensors";
+  const file = path.join(fx.modelRoot, "vae", name);
+  const st = fs.statSync(file);
+  const before = first.manifest.models.find((m) => m.filename === name).sha256;
+  // malicious replacement: same length, same name, same mtime — different bytes
+  const original = fs.readFileSync(file);
+  const swapped = Buffer.from(original); swapped[0] = swapped[0] ^ 0xff;
+  fs.writeFileSync(file, swapped);
+  fs.utimesSync(file, st.atime, st.mtime);
+  const st2 = fs.statSync(file);
+  assert.equal(st2.size, st.size);
+  assert.equal(st2.mtime.toISOString(), st.mtime.toISOString());
+  // routine metadata-only check CANNOT see it (the documented limitation)…
+  const routine = gateway.environment.strongModelIdentity("env-test", name, { bytes: st2.size, mtime: st2.mtime.toISOString() }, fx.options);
+  assert.equal(routine.level, "sha256", "metadata-only check is blind to the swap by design");
+  // …but the explicit re-inventory catches it
+  const second = await gateway.environment.runStrongInventory("env-test", fx.options);
+  const after = second.manifest.models.find((m) => m.filename === name).sha256;
+  assert.notEqual(after, before, "content change must change the SHA");
+  // and Upgrade Guard comparing sha-vs-sha reports the model as CHANGED
+  const mkFp = (sha) => wanFingerprint(fx.entries[0], {
+    models: [{ class_type: "VAELoader", input_key: "vae_name", name, present: true, identity: { level: "sha256", source: "environment_manifest", filename: name, bytes: st.size, mtime: st.mtime.toISOString(), sha256: sha } }],
+  });
+  const cmp = gateway.qualification.compareFingerprints(mkFp(before), mkFp(after));
+  assert.equal(cmp.status, "stale");
+  assert.equal(cmp.components.find((c) => c.component === "model").level, "sha256");
+  // previous manifest retained as backup
+  assert.ok(fs.existsSync(gateway.environment.previousManifestPath("env-test", fx.options)));
+  assert.equal(JSON.parse(fs.readFileSync(gateway.environment.previousManifestPath("env-test", fx.options), "utf8")).models.find((m) => m.filename === name).sha256, before);
+});
+
+test("comfyui-environment inventory: shared models hashed once, interruption never publishes, path safety enforced", async () => {
+  const fx = environmentFixture();
+  // dedupe: hq and fast share 4 model files — count actual hash invocations
+  let hashCalls = 0;
+  await gateway.environment.runStrongInventory("env-test", {
+    ...fx.options,
+    hashImpl: async (p) => { hashCalls += 1; return crypto().createHash("sha256").update(fs.readFileSync(p)).digest("hex"); },
+  });
+  function crypto() { return require("node:crypto"); }
+  assert.equal(hashCalls, 6, "6 unique files hashed exactly once despite shared references");
+  const good = gateway.environment.readManifest("env-test", fx.options);
+  assert.equal(good.status, "ok");
+  // interruption mid-hash: no new manifest published, previous preserved
+  const goodSha = good.manifest.manifest_sha256;
+  let n = 0;
+  await assert.rejects(gateway.environment.runStrongInventory("env-test", {
+    ...fx.options,
+    hashImpl: async () => { n += 1; if (n >= 3) throw new Error("disk error simulated"); return "b".repeat(64); },
+  }), /disk error/);
+  const after = gateway.environment.readManifest("env-test", fx.options);
+  assert.equal(after.status, "ok");
+  assert.equal(after.manifest.manifest_sha256, goodSha, "failed run must not replace the valid manifest");
+  // a required-but-missing model refuses to publish a partial manifest
+  const partial = environmentFixture();
+  fs.rmSync(path.join(partial.modelRoot, "vae", "wan_2.1_vae.safetensors"));
+  await assert.rejects(gateway.environment.runStrongInventory("env-test", partial.options), (e) => e.code === "comfyui_environment_inventory_incomplete");
+  assert.equal(gateway.environment.readManifest("env-test", partial.options).status, "absent");
+  // path safety: traversal/separator filenames can never reach an executor
+  assert.equal(gateway.environment.SAFE_FILENAME_RE.test("../../../etc/passwd"), false);
+  assert.equal(gateway.environment.SAFE_FILENAME_RE.test("a\\b.safetensors"), false);
+  assert.equal(gateway.environment.SAFE_FILENAME_RE.test("a/b.safetensors"), false);
+  assert.equal(gateway.environment.SAFE_FILENAME_RE.test(".hidden"), false);
+  assert.throws(() => gateway.environment.buildPowershellInventoryScript({
+    config: { model_roots: ["C:/x"], comfyui_root: "C:/y" },
+    models: [{ filename: "../escape", folders: ["vae"] }],
+  }), /unsafe filename/);
+  // remote transport refuses without explicit authorization (tests can never ssh)
+  const remoteFx = environmentFixture();
+  fs.writeFileSync(remoteFx.options.environmentsPath, JSON.stringify({
+    schema_version: 1, hosts: { "env-test": { transport: "ssh-powershell", ssh_host: "nowhere", comfyui_root: "C:/x", model_roots: ["C:/x/models"] } },
+  }));
+  await assert.rejects(gateway.environment.runStrongInventory("env-test", remoteFx.options), (e) => e.code === "comfyui_environment_inventory_not_authorized");
+});
+
+test("comfyui-environment core identity: git commit + dirty state captured; non-git honest fallback", async () => {
+  const fx = environmentFixture();
+  // non-git comfyui root → identity unknown, no invented commit
+  const plain = await gateway.environment.runStrongInventory("env-test", fx.options);
+  assert.equal(plain.manifest.comfyui.identity_level, "unknown");
+  assert.equal(plain.manifest.comfyui.git_commit, null);
+  // git-managed root → commit recorded; dirty tree highly visible
+  const { execFileSync } = require("node:child_process");
+  const git = (args) => execFileSync("git", args, { cwd: fx.comfyRoot, encoding: "utf8", env: { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" } });
+  git(["init", "-q"]);
+  fs.writeFileSync(path.join(fx.comfyRoot, "main.py"), "print()");
+  git(["add", "."]); git(["commit", "-qm", "init"]);
+  const clean = await gateway.environment.runStrongInventory("env-test", fx.options);
+  assert.equal(clean.manifest.comfyui.identity_level, "git_commit");
+  assert.ok(/^[0-9a-f]{40}$/.test(clean.manifest.comfyui.git_commit));
+  assert.equal(clean.manifest.comfyui.git_dirty, false);
+  fs.writeFileSync(path.join(fx.comfyRoot, "main.py"), "print('local hack')");
+  const dirty = await gateway.environment.runStrongInventory("env-test", fx.options);
+  assert.equal(dirty.manifest.comfyui.git_dirty, true);
+  assert.ok(dirty.manifest.comfyui.git_dirty_count >= 1);
+});
+
+test("comfyui-environment fingerprint/qualification integration: strong identity flows in; normal paths never hash", async () => {
+  const fx = environmentFixture();
+  await gateway.environment.runStrongInventory("env-test", fx.options);
+  const hq = fx.entries.find((e) => e.id === "wan22-i2v-hq");
+  // fake models API serving the REAL current metadata of the fixture files
+  const modelFolders = {};
+  for (const name of fx.allModels) {
+    const folder = name.includes("lora") ? "loras" : name.includes("umt5") ? "text_encoders" : name.includes("vae") ? "vae" : "diffusion_models";
+    const st = fs.statSync(path.join(fx.modelRoot, folder, name));
+    (modelFolders[folder] = modelFolders[folder] || []).push({ name, size: st.size, modified: st.mtimeMs / 1000 });
+  }
+  const fetchImpl = fakeComfyFetch({ objectInfo: WAN_OBJECT_INFO, version: "0.22.0", gpu: "RTX 4090", modelFolders });
+  // fingerprint host is "env-test" (from the entry endpoint) → manifest applies
+  const fp = await gateway.fingerprint.collectFingerprint(hq, { ...fx.options, fetchImpl });
+  for (const m of fp.models) {
+    assert.equal(m.identity.level, "sha256", `${m.name} should carry manifest sha`);
+    assert.equal(m.identity.source, "environment_manifest");
+    assert.equal(m.identity.manifest_status, "current");
+  }
+  // qualification capture inherits the strong identity
+  const runsRoot = tmpDir("comfyui-env-runs-");
+  const runDir = writeWanRunDir(runsRoot, "run-env-1");
+  gateway.provenance.buildWanRunProvenance(runDir, { entry: hq });
+  const captured = gateway.qualification.captureProductionQualification({ entry: hq, runDir, fingerprint: fp }, fx.options);
+  assert.equal(captured.captured, true, JSON.stringify(captured.reasons));
+  assert.ok(captured.record.environment_fingerprint.models.every((m) => m.identity.level === "sha256"));
+  // stale manifest metadata → fingerprint falls back to fsm and flags it
+  const vae = path.join(fx.modelRoot, "vae", "wan_2.1_vae.safetensors");
+  fs.appendFileSync(vae, "-grown");
+  const st2 = fs.statSync(vae);
+  modelFolders.vae[0].size = st2.size; modelFolders.vae[0].modified = st2.mtimeMs / 1000;
+  const fp2 = await gateway.fingerprint.collectFingerprint(hq, { ...fx.options, fetchImpl: fakeComfyFetch({ objectInfo: WAN_OBJECT_INFO, version: "0.22.0", gpu: "RTX 4090", modelFolders }) });
+  const vaeId = fp2.models.find((m) => m.name === "wan_2.1_vae.safetensors").identity;
+  assert.equal(vaeId.level, "filename_size_mtime", "stale SHA must never masquerade as current identity");
+  assert.equal(vaeId.manifest_sha_status, "stale");
+  // weak(P4)→strong(P5) comparison stays IDENTITY_STRENGTH_CHANGED, not MODEL_CHANGED
+  const weakBase = wanFingerprint(hq);
+  const strongNow = wanFingerprint(hq, { models: [{ ...weakBase.models[0], identity: { level: "sha256", source: "environment_manifest", filename: weakBase.models[0].name, bytes: 15000, mtime: "2026-06-05T10:00:00.000Z", sha256: "c".repeat(64), manifest_status: "current" } }] });
+  const cmp = gateway.qualification.compareFingerprints(weakBase, strongNow);
+  assert.equal(cmp.status, "current");
+  assert.equal(cmp.components.find((c) => c.component === "model").classification, "identity_strength_changed");
+  // normal fingerprint/preflight path performs ZERO hashing (spy would throw)
+  const spyOptions = { ...fx.options, fetchImpl, hashImpl: () => { throw new Error("HASH CALLED ON NORMAL PATH"); } };
+  await gateway.fingerprint.collectFingerprint(hq, spyOptions);
+  gateway.preflight.preflightSync(hq.id, { ...spyOptions, driftOverride: false });
+});

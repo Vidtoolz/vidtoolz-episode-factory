@@ -302,6 +302,49 @@ workflow-level verdict: `NO_RELEVANT_DRIFT`, `REQUALIFICATION_REQUIRED`, or
 `PRODUCTION_BLOCKED_DEPENDENCY_MISSING`. The guard rail only — it performs
 zero updates, installs, restarts, or rollbacks.
 
+### Cryptographic environment manifests (P5)
+
+A strong environment manifest records the exact **SHA-256** of every
+registry-required model file on one host, plus the ComfyUI core git identity
+(commit + dirty state), captured by an explicit operator inventory that
+**hashes locally on the machine storing the files** (PRESTO via read-only
+ssh+powershell — only the compact JSON result crosses the network; vidnux via
+local streaming). Approved roots come solely from committed
+`config/comfyui/environments.json`; hashable targets come solely from the
+registry's `required_models` (filename-safety enforced, traversal rejected);
+shared files are hashed once. Manifests live in gitignored
+`state/comfyui-environments/<host>/manifest.json` (atomic publish; a failed
+or partial run never replaces the previous valid manifest, which is kept as
+`manifest.previous.json`), self-hashed deterministically — tampering or
+corruption makes the manifest visibly `invalid`/`corrupt` and strong
+authority simply disappears (production falls back to weaker identity, never
+crashes, never silently trusts).
+
+**SHA authority is conditional.** A recorded sha describes the current file
+only while current cheap metadata (bytes + mtime) still matches the values
+recorded next to it. Metadata change → `manifest_sha_status: stale` →
+fingerprints fall back to `filename_size_mtime` and an explicit re-inventory
+is required. A stale sha is never presented as current identity.
+
+**Exact guarantee:** a same-name/same-size/same-mtime content replacement is
+detectable at the **next explicit strong inventory** (`--inventory-strong`),
+never by routine metadata-only checks. Routine renders, preflight, and API
+calls perform **zero** model hashing (tested with a hashing spy).
+
+```bash
+node scripts/comfyui-workflow-check.js --inventory-status PRESTO   # manifest + SHA-authority state (no hashing)
+node scripts/comfyui-workflow-check.js --inventory-verify PRESTO   # same; exit 1 unless all authorities current
+node scripts/comfyui-workflow-check.js --inventory-strong PRESTO   # EXPLICIT: hash all required models on the host
+```
+
+When a manifest is valid and its metadata matches, fingerprints (and
+therefore qualification records and P4 upgrade baselines) automatically carry
+`level: sha256, source: environment_manifest`. Historical evidence is never
+rewritten. If the experimental `/api/experiment/models` endpoint disappears,
+the explicit inventory/verify commands fall back to a read-only filesystem
+stat probe on the host; routine fingerprints degrade honestly (visible as
+`IDENTITY STRENGTH CHANGED` in comparisons, never a false SAME).
+
 ### Supervised upgrade sessions (P4)
 
 An upgrade session is the safety system *around* a maintenance event — the
@@ -317,7 +360,10 @@ semantics, so a forgotten session cannot become a maintenance-mode footgun.
 **Before upgrading** (all read-only):
 
 ```bash
-# 1. queues idle?  2. capture the known-good baseline:
+# 1. queues idle?
+# 2. strong baseline present and current? (run --inventory-strong first if absent)
+node scripts/comfyui-workflow-check.js --inventory-status PRESTO
+# 3. capture the known-good maintenance baseline:
 node scripts/comfyui-workflow-check.js --upgrade-begin PRESTO
 ```
 
@@ -331,7 +377,10 @@ qualification evidence + id, and the full environment fingerprint.
 **After the update:**
 
 ```bash
+node scripts/comfyui-workflow-check.js --inventory-verify PRESTO      # did model metadata move? (SHA authority)
 node scripts/comfyui-workflow-check.js --upgrade-check --session <id>
+# if relevant model metadata changed: re-establish SHA authority first:
+node scripts/comfyui-workflow-check.js --inventory-strong PRESTO
 ```
 
 classifies every workflow: `NO_IMPACT` / `REQUALIFICATION_REQUIRED` /

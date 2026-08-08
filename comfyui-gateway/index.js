@@ -13,5 +13,6 @@ const fixtures = require('./fixtures.js');
 const qualify = require('./qualify.js');
 const permits = require('./permits.js');
 const upgrade = require('./upgrade.js');
+const environment = require('./environment.js');
 
-module.exports = { registry, contracts, client, preflight, failures, provenance, fingerprint, qualification, fixtures, qualify, permits, upgrade };
+module.exports = { registry, contracts, client, preflight, failures, provenance, fingerprint, qualification, fixtures, qualify, permits, upgrade, environment };

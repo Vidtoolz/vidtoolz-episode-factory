@@ -31,11 +31,19 @@
 //                                            # QUALIFICATION_STALE block (exact id+version+sha, limited uses;
 //                                            # never bypasses drift/dependency gates)
 //
-// Static checks never touch the network. --live, --upgrade-status and all
-// upgrade-session commands perform read-only ComfyUI API calls (system_stats,
-// object_info, queue, model metadata) — they never queue a render. ONLY
-// --qualify-render submits GPU work, and it refuses to start unless the
-// target ComfyUI queue is idle.
+// Cryptographic environment manifests (P5) — strong SHA-256 identity for the
+// registry-required model files on one host, hashed LOCALLY on that host:
+//
+//   node scripts/comfyui-workflow-check.js --inventory-status <host>   # manifest state + cheap SHA-authority check (no hashing)
+//   node scripts/comfyui-workflow-check.js --inventory-verify <host>   # same, exit 1 unless every SHA authority is current
+//   node scripts/comfyui-workflow-check.js --inventory-strong <host>   # EXPLICIT: hash every required model on the host
+//                                                                      #   (may read tens of GB on the remote disk — the
+//                                                                      #    command itself is the authorization)
+//
+// Static checks never touch the network. --live, --upgrade-status, all
+// upgrade-session commands and --inventory-status/-verify perform read-only
+// calls — they never queue a render and never hash model files. ONLY
+// --qualify-render submits GPU work; ONLY --inventory-strong hashes models.
 const gateway = require('../comfyui-gateway');
 
 function fmtStatus(s) {
@@ -212,6 +220,72 @@ async function upgradeCommands(args, id, sessionId) {
   }
 }
 
+// Current cheap metadata (bytes+mtime) per required filename on a host —
+// via the ComfyUI models API when available, via a read-only remote stat
+// probe otherwise (explicit inventory commands only; never hashes).
+async function currentMetadataForHost(host) {
+  const plan = gateway.environment.inventoryPlan(host);
+  const meta = {};
+  const endpoint = gateway.preflight.endpointFor(plan.entries[0]);
+  const folders = [...new Set(plan.models.flatMap((m) => m.folders))];
+  let anyHttp = false;
+  for (const folder of folders) {
+    let entries = null;
+    try { entries = await gateway.client.getModelFolderEntries(endpoint, folder); } catch (_) { entries = null; }
+    if (!entries) continue;
+    anyHttp = true;
+    for (const e of entries) { if (!meta[e.name]) meta[e.name] = { bytes: e.bytes, mtime: e.mtime, source: 'comfyui_models_api' }; }
+  }
+  if (!anyHttp) {
+    // models endpoint unavailable — stable read-only fallback: stat on the host
+    const result = plan.config.transport === 'local'
+      ? await gateway.environment.localInventoryExecutor(plan, { hashImpl: async () => null })
+      : gateway.environment.sshPowershellExecutor(plan, { statOnly: true });
+    for (const f of result.files) meta[f.filename] = { bytes: f.bytes, mtime: f.mtime, source: 'filesystem_stat_probe' };
+  }
+  return meta;
+}
+
+async function inventoryStatus(host, { exitNonCurrent }) {
+  const meta = await currentMetadataForHost(host).catch((err) => {
+    console.log(`  (current metadata unavailable: ${err.message})`);
+    return null;
+  });
+  const verify = gateway.environment.verifyManifest(host, meta || undefined);
+  if (verify.status !== 'ok') {
+    console.log(`STRONG MANIFEST: ${verify.status.toUpperCase()}${verify.problems && verify.problems.length ? ` — ${verify.problems.join('; ')}` : ''}`);
+    console.log(`  no cryptographic model baseline for ${host} — establish one: node scripts/comfyui-workflow-check.js --inventory-strong ${host}`);
+    process.exit(exitNonCurrent ? 1 : 0);
+  }
+  const m = verify.manifest;
+  console.log(`STRONG MANIFEST: OK — ${host} (generated ${m.generated_at}, manifest sha ${m.manifest_sha256.slice(0, 16)}…)`);
+  console.log(`  ComfyUI: ${m.comfyui.git_commit ? `git ${m.comfyui.git_commit.slice(0, 12)}${m.comfyui.git_dirty ? ` DIRTY(${m.comfyui.git_dirty_count})` : ' clean'}` : `identity ${m.comfyui.identity_level}`}`);
+  for (const row of verify.models) {
+    console.log(`  ${row.filename}: sha ${row.sha256.slice(0, 16)}…  authority:${row.sha_authority}  (${row.workflows.join(',')})`);
+  }
+  console.log(verify.all_current
+    ? `SHA authority CURRENT for all ${verify.models.length} model(s)`
+    : 'SHA authority NOT fully current — metadata changed or unavailable; rehash with --inventory-strong before trusting strong identity');
+  process.exit(exitNonCurrent && !verify.all_current ? 1 : 0);
+}
+
+async function inventoryStrong(host) {
+  const plan = gateway.environment.inventoryPlan(host);
+  console.log(`STRONG INVENTORY: ${host} — ${plan.models.length} registry-required unique model file(s)`);
+  console.log('  this hashes the files LOCALLY on the host and may read tens of gigabytes');
+  const started = Date.now();
+  const { manifest, path: outPath } = await gateway.environment.runStrongInventory(host, {
+    allowRemoteInventory: true,
+    onProgress: (line) => console.log(`  ${line}`),
+  });
+  const totalBytes = manifest.models.reduce((s, m) => s + m.bytes, 0);
+  console.log(`COMPLETE in ${Math.round((Date.now() - started) / 1000)}s — ${manifest.models.length} file(s), ${(totalBytes / 1e9).toFixed(1)} GB hashed`);
+  manifest.models.forEach((m) => console.log(`  ${m.filename}: ${m.sha256}`));
+  console.log(`  ComfyUI: ${manifest.comfyui.git_commit ? `git ${manifest.comfyui.git_commit.slice(0, 12)}${manifest.comfyui.git_dirty ? ` DIRTY(${manifest.comfyui.git_dirty_count} local change(s) — visible in every fingerprint until resolved)` : ' clean'}` : `identity ${manifest.comfyui.identity_level}`}`);
+  console.log(`  manifest: ${outPath}`);
+  console.log(`  manifest sha256: ${manifest.manifest_sha256}`);
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const id = args.find((a, i) => !a.startsWith('--') && (i === 0 || !['--fixture', '--session'].includes(args[i - 1])));
@@ -220,6 +294,14 @@ async function main() {
   const sessionFlagIdx = args.indexOf('--session');
   const sessionId = sessionFlagIdx >= 0 ? args[sessionFlagIdx + 1] : null;
 
+  if (args.includes('--inventory-status') || args.includes('--inventory-verify')) {
+    if (!id) { console.error('usage: --inventory-status <host> | --inventory-verify <host>'); process.exit(1); }
+    return inventoryStatus(id, { exitNonCurrent: args.includes('--inventory-verify') });
+  }
+  if (args.includes('--inventory-strong')) {
+    if (!id) { console.error('usage: --inventory-strong <host>'); process.exit(1); }
+    return inventoryStrong(id);
+  }
   if (args.some((a) => a.startsWith('--upgrade-') && a !== '--upgrade-status')) return upgradeCommands(args, id, sessionId);
   if (args.includes('--issue-requalification-permit')) {
     if (!id) { console.error('usage: <workflow-id> --issue-requalification-permit --session <upgrade-session-id>'); process.exit(1); }
