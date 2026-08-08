@@ -25,6 +25,7 @@ Frame convention: start_frame inclusive, end_frame exclusive
 - segment 3: location carried over: Paris.
 - segment 4: location carried over: Paris.
 - segment 2: endpoint set to segment 3's orbit ring entry (same target — the move lands on the ring the orbit starts from).
+- camera motion: internet-reference profile v3 (gap-relative easing on every keyframe; approach finals land with the Google-template full-gap deceleration; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus.
 
 ## Unresolved Warnings
 

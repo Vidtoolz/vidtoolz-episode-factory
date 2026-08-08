@@ -1,0 +1,156 @@
+{
+  "corpus_version": 3,
+  "created_at": "2026-08-08",
+  "purpose": "Reference library of real Google Earth Studio camera authoring used to inform VIDTOOLZ planner defaults. Operator directives (Mikko, 2026-08-08): (1) the Google Earth Studio template moves define good camera motion; (2) locally-present or VIDTOOLZ-generated .esp files do NOT qualify as motion-quality examples — qualifying references must come from the internet. Only APPROVED references influence production defaults.",
+  "evidence_hierarchy": "original .esp > .esp + render > exported project data > video > description",
+  "references": [
+    {
+      "id": "mountkinabalu",
+      "state": "APPROVED",
+      "classification": "EXTERNAL / HUMAN-AUTHORED (internet)",
+      "source_url": "https://github.com/thelouisgan/mountkinabalu (KK/KK.esp)",
+      "corpus_copy": "references/mountkinabalu.esp",
+      "signature": "references/mountkinabalu.signature.json",
+      "esp_sha256_prefix": "74a16521d4208d97",
+      "shot": "10 s 4K Mount Kinabalu flyover — 23.3 km route, 6222→5044 m",
+      "suitability": "STRONG REFERENCE",
+      "approval_basis": "operator directive (internet-sourced) + deliberate multi-property authoring: every keyframe eased, all five camera properties keyed on a shared grid, explicit final hold",
+      "what_it_teaches": [
+        "every keyframe side is eased: easeIn arrivals, easeOut departures, auto elsewhere",
+        "transition handle spans ≈ 25–31% of the gap to the neighbor keyframe (x 0.125 on 0.4 spacing; x 0.1 on 0.4)",
+        "ALL motion (position, altitude, pan, tilt) completes at t=0.80 — the final 20% of the shot is a hold",
+        "properties are keyed together on a shared time grid (0 / 0.4 / 0.8)"
+      ],
+      "retrieval_date": "2026-08-08",
+      "quality_tier": "TIER_B_PRODUCED_HUMAN_PROJECT",
+      "motion_family": "FLYOVER",
+      "hold_type": "CAMERA_SETTLE",
+      "settle_fraction_observed": 0.2,
+      "targeting_mode": "explicit_rotation_keyframed"
+    },
+    {
+      "id": "darien-gap",
+      "state": "APPROVED",
+      "classification": "EXTERNAL / HUMAN-AUTHORED (internet — b-roll for a published video essay)",
+      "source_url": "https://github.com/LiquidZulu/youtube-scripts (scripts/essays/environmentalism/b-roll/Darien Gap/Darien Gap.esp)",
+      "corpus_copy": "references/darien-gap.esp",
+      "signature": "references/darien-gap.signature.json",
+      "esp_sha256_prefix": "638f70529d9bf880",
+      "shot": "16.7 s 60 fps space-to-region blast: 65,117 km → 179 km in the first 10%, then a 90% hold",
+      "suitability": "USEFUL REFERENCE",
+      "approval_basis": "operator directive (internet-sourced) + real production b-roll",
+      "what_it_teaches": [
+        "motion can be extremely front-loaded: the entire move fits the first ~10%, the rest is a framing hold",
+        "mid-move keyframe uses ES auto easing with influence 0.35 and true y-handle components",
+        "holds are authored by simply ending keyframes early — value persists"
+      ],
+      "retrieval_date": "2026-08-08",
+      "quality_tier": "TIER_B_PRODUCED_HUMAN_PROJECT",
+      "motion_family": "LONG_DISTANCE_BLAST",
+      "hold_type": "EDITORIAL_HOLD",
+      "targeting_mode": "static_rotation"
+    },
+    {
+      "id": "radiator-untitled",
+      "state": "APPROVED",
+      "classification": "EXTERNAL / ORIGIN UNKNOWN (internet)",
+      "source_url": "https://github.com/cryptiama/radiator (contact/Untitled.esp)",
+      "corpus_copy": "references/radiator-untitled.esp",
+      "signature": "references/radiator-untitled.signature.json",
+      "esp_sha256_prefix": "47e83bcfd43c8a90",
+      "shot": "5 s space pullback, 828 km ground path",
+      "suitability": "LIMITED REFERENCE (simple, but cleanly eased)",
+      "approval_basis": "operator directive (internet-sourced); corroborates easing shapes on a minimal 2-keyframe move",
+      "what_it_teaches": [
+        "departure: auto ease, handle x = 0.2 of the segment",
+        "arrival: custom ease-in, handle x = −0.32 of the segment, influence 0.4"
+      ],
+      "retrieval_date": "2026-08-08",
+      "quality_tier": "TIER_C_USEFUL_EXTERNAL_EXAMPLE",
+      "motion_family": "PULLBACK",
+      "hold_type": null,
+      "targeting_mode": "explicit_rotation_keyframed"
+    },
+    {
+      "id": "servyx",
+      "state": "APPROVED",
+      "classification": "EXTERNAL / HUMAN-AUTHORED via the Google Zoom-To Quick Start template (internet)",
+      "source_url": "https://github.com/jagannath-p-s/servyx (Untitled/Untitled.esp)",
+      "retrieval_date": "2026-08-08",
+      "corpus_copy": "references/servyx.esp",
+      "signature": "references/servyx.signature.json",
+      "esp_sha256_prefix": "d3db9995eea22618",
+      "shot": "25 s descent 20,747→747 m completing at t=0.20, then POI-locked drift (21.8 km route)",
+      "suitability": "STRONG REFERENCE",
+      "quality_tier": "TIER_A_GOOGLE_AUTHORED (template-generated transitions, independently exported)",
+      "motion_family": "APPROACH_DRIFT",
+      "hold_type": null,
+      "targeting_mode": "poi_target_lock",
+      "approval_basis": "operator directives (internet-sourced + templates define good moves): its transitions are BYTE-SIMILAR to the disqualified local ekayle1 — two independent authors converge exactly on easeOut x0.05 departure / custom x-0.198 infl 0.99 arrival / auto ±0.066 / 0.2 grid / POI lock, identifying these as the Google Zoom-To template’s own authored values",
+      "what_it_teaches": [
+        "the Google Zoom-To template shape: 6 keyframes on a 0.2 grid, descent completes at t=0.20, drift for the remainder",
+        "template arrival = custom ease-in spanning ~0.99 of the gap, influence 0.99 (a full-segment deceleration)",
+        "template interiors = auto ±0.33 of gap, influence 0.5; departure easeOut 0.25 of gap",
+        "POI target lock instead of rotation keyframes"
+      ]
+    },
+    {
+      "id": "ekayle1",
+      "state": "REJECTED (as a motion-quality reference) — retained as FORMAT/PARSER evidence only",
+      "classification": "LOCAL / OPERATOR-AUTHORED — disqualified by operator verdict 2026-08-08 (\"the .esp files that I have or have generated do not qualify as examples of good camera movements\")",
+      "source_path": "/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/stills/legacy_0_STILLIT/ekayle1/ekayle1.esp",
+      "corpus_copy": "references/ekayle1.esp",
+      "signature": "references/ekayle1.signature.json",
+      "esp_sha256_prefix": "c7c7a8484d0fb1bf",
+      "suitability": "FORMAT EVIDENCE ONLY (native v18 shape, POI target lock, transition structure) — its motion values no longer feed the profile",
+      "what_it_teaches": [
+        "native-save format details and POI target-lock authoring (structure, not quality)",
+        "NOW EXPLAINED: its transitions match the servyx internet export exactly — ekayle1 was itself a Google Zoom-To template export; the template values entered the corpus via servyx instead"
+      ]
+    },
+    {
+      "id": "tetheredring-sample2",
+      "state": "REJECTED",
+      "classification": "EXTERNAL (internet) — trivial 2-keyframe all-linear point-to-point at 960x540",
+      "source_url": "https://github.com/philipswan/TetheredRing (components/CameraControl/googleEarthStudioSampleProjectFile2.esp)",
+      "suitability": "NOT SUITABLE (no easing, uniform speed — a test asset despite the name)"
+    },
+    {
+      "id": "drone",
+      "state": "REJECTED",
+      "classification": "EXTERNAL (internet) — no camera keyframes at all",
+      "source_url": "https://github.com/ricardo8santana/paginas-filmes-app (src/img/Riccardo/Drone/Drone.esp)",
+      "suitability": "NOT SUITABLE"
+    },
+    {
+      "id": "bungeenerf",
+      "state": "REJECTED",
+      "classification": "EXTERNAL / SYNTHETIC (internet) — BungeeNeRF multi-scale data-capture spiral, mechanically generated",
+      "source_url": "https://github.com/1212wuhu/BungeeNeRF_re (begin (3).esp)",
+      "suitability": "NOT SUITABLE (data capture, not camera direction)"
+    },
+    {
+      "id": "vidtoolz-generated-set",
+      "state": "REJECTED",
+      "classification": "VIDTOOLZ GENERATED (10 files) — disqualified by both self-reference and operator verdict",
+      "suitability": "NOT SUITABLE"
+    },
+    {
+      "id": "google-quick-start-templates",
+      "state": "CANDIDATE",
+      "classification": "EXTERNAL / GOOGLE-AUTHORED (in-app Quick Start templates; no .esp obtainable outside the app)",
+      "source_url": "https://earth.google.com/studio/docs/the-basics/quick-starts/",
+      "suitability": "USEFUL REFERENCE (documented semantics only — exporting one from the browser would upgrade this to a parsed reference)"
+    },
+    {
+      "id": "jio-242-sample",
+      "state": "REJECTED",
+      "classification": "EXTERNAL / MACHINE-GENERATED (internet) — sampled from the ~200-file huangjiale2002/jio- batch",
+      "source_url": "https://github.com/huangjiale2002/jio- (video/esp/242.esp)",
+      "retrieval_date": "2026-08-08",
+      "esp_sha256_prefix": "db8180953ba25d52",
+      "suitability": "NOT SUITABLE (201 keyframes per property over 10 s ≈ per-frame path sampling, constant altitude — a data-capture sweep, not camera direction; disqualifies the whole numbered batch)"
+    }
+  ],
+  "analysis_schema_version": 1
+}

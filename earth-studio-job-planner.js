@@ -2,7 +2,7 @@
   "use strict";
 
   const DEFAULT_OUTPUT_DIR = "/home/vidtoolz/Videos/vidtoolz-earth-studio-jobs";
-  const VERSION = "0.8.0"; // v0.8.0 fly→orbit geometry: a fly/zoom immediately followed by an orbit around the same resolved target terminates at the orbit's ring entry (plan-annotated lookahead, ends_at_orbit_entry), so the pair plays as one continuous move — no sideways slide onto the ring. (v0.7.0: hover holds camera, orbit-scoped modifiers, fragment merge, "tilt N degrees", global duration strip, antimeridian seam pairs.)
+  const VERSION = "0.9.2"; // v0.9.2 corpus-rebuilt profile v3: deterministic derivation (scripts/rebuild-earth-studio-motion-profile.js) over 4 approved internet references; family-aware arrivals — APPROACH finals use the Google Zoom-To template full-gap deceleration (x 0.99·gap, influence 0.99, via 2 independent template exports), others the multi-reference 0.31/0.4. // v0.9.1 internet-reference motion profile v2: gap-relative eased handles + final settle-hold, derived ONLY from internet-sourced human-authored .esp references (config/earth-studio-motion/, operator directive: local/generated files do not qualify) — ES preserves unadorned keyframes as hard-linear, so easing must be authored. (v0.8.0 fly→orbit geometry: a fly/zoom immediately followed by an orbit around the same resolved target terminates at the orbit's ring entry (plan-annotated lookahead, ends_at_orbit_entry), so the pair plays as one continuous move — no sideways slide onto the ring. (v0.7.0: hover holds camera, orbit-scoped modifiers, fragment merge, "tilt N degrees", global duration strip, antimeridian seam pairs.)
   const FRAME_RATE = 30;
   const DEFAULT_ALTITUDE_M = 2500;
   const MIN_ALTITUDE_M = 150;
@@ -778,7 +778,16 @@
       locations: uniqueResolvedLocations(parsed.segments),
       segments: parsed.segments,
       unresolved_items: parsed.unresolved_items,
-      notes: parsed.notes,
+      // Camera-direction provenance: which motion evidence shaped the easing.
+      motion_profile: {
+        profile_version: MOTION_PROFILE_VERSION,
+        source: "config/earth-studio-motion/motion-profile.json",
+        references: ["darien-gap", "mountkinabalu", "radiator-untitled", "servyx"],
+        rule: "gap-relative eased handles (easeOut departure · auto interior · custom arrival) + final settle-hold",
+      },
+      notes: [...parsed.notes,
+        "camera motion: internet-reference profile v" + MOTION_PROFILE_VERSION
+        + " (gap-relative easing on every keyframe; approach finals land with the Google-template full-gap deceleration; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."],
       manual_earth_studio_steps: [
         "Open Google Earth Studio manually.",
         "Create or open the project manually; this planner does not log in, automate a browser, or control Earth Studio.",
@@ -1090,7 +1099,7 @@ This checklist is technical planning support only. It is not creative approval, 
     return Math.min(altitude * Math.tan(toRadians(tilt)), 80000);
   }
 
-  function buildEspKeyframes(plan) {
+  function buildEspKeyframes(plan, options = {}) {
     const tracks = { lng: [], lat: [], alt: [], pan: [], tilt: [] };
     const put = (trackName, frame, value) => {
       const track = tracks[trackName];
@@ -1166,15 +1175,25 @@ This checklist is technical planning support only. It is not creative approval, 
 
       // fly_to / hover / zoom_in / zoom_out: move (or hold) position, with an
       // eased altitude profile and a cinematic arc on long flights.
+      // Settle-hold (motion profile v2): the shot's FINAL positional move
+      // completes early and holds — approved internet references end all
+      // motion before the last frame (mountkinabalu t=0.80) instead of moving
+      // into a hard final-frame stop.
+      let em = ef;
+      if (!options.compareLegacyMotion && idx === resolved.length - 1 && segment.action !== "hover" && segment.duration_seconds >= MOTION_SETTLE.min_segment_seconds) {
+        const fpsFrames = (plan.frame_rate || FRAME_RATE);
+        const hold = Math.min(Math.round((ef - sf) * MOTION_SETTLE.fraction), Math.round(MOTION_SETTLE.max_seconds * fpsFrames));
+        if (hold >= Math.round(MOTION_SETTLE.min_hold_seconds * fpsFrames)) em = ef - hold;
+      }
       const distance = haversineMeters(state, location);
       const arcBump = segment.action === "fly_to" && distance > 30000 ? Math.min(distance * 0.35, 2500000) : 0;
       if (arcBump || state.altitude !== endAltitude) {
         anchor("alt", sf);
         [0.25, 0.5, 0.75].forEach((t) => {
           const eased = state.altitude + (endAltitude - state.altitude) * smoothstep(t);
-          put("alt", sf + (ef - sf) * t, Math.round(clampAltitude(eased + arcBump * Math.sin(Math.PI * t), minAlt)));
+          put("alt", sf + (em - sf) * t, Math.round(clampAltitude(eased + arcBump * Math.sin(Math.PI * t), minAlt)));
         });
-        put("alt", ef, endAltitude);
+        put("alt", em, endAltitude);
       }
       // Successor-orbit ring entry (plan-annotated lookahead): land the move
       // exactly where the following orbit begins — its ring point at the
@@ -1201,9 +1220,9 @@ This checklist is technical planning support only. It is not creative approval, 
         destLat = entry.latitude;
         destLng = entry.longitude;
       }
-      change("lng", sf, ef, destLng);
-      change("lat", sf, ef, destLat);
-      change("tilt", sf, ef, tilt);
+      change("lng", sf, em, destLng);
+      change("lat", sf, em, destLat);
+      change("tilt", sf, em, tilt);
       state = { latitude: destLat, longitude: destLng, altitude: endAltitude, pan: state.pan, tilt };
     });
     // Emit-time wrap: the state machine runs unwrapped; the exported track
@@ -1229,6 +1248,36 @@ This checklist is technical planning support only. It is not creative approval, 
   //   - rotationX = PAN/heading, rotationY = TILT (0 = straight down) — the
   //     opposite of the v0.4 guess
   //   - attributes with no keyframes are static: { type, value: {} }
+  // Camera motion profile v2 — derived ONLY from the APPROVED internet-sourced
+  // references (config/earth-studio-motion/motion-profile.json; sync-guarded
+  // by a test; local/VIDTOOLZ-generated projects are disqualified by operator
+  // directive). Evidence: mountkinabalu (every keyframe eased, handles ≈ 25–31%
+  // of the gap to the neighbor keyframe, ALL motion completes at t=0.80 with a
+  // 20% hold), radiator (arrival = custom ease-in x −0.32/influence 0.4),
+  // darien-gap (early-completing move + long hold). The ES re-export sidecar
+  // proves unadorned keyframes stay hard-linear. Transition x = handle span on
+  // the shot-normalized time axis (in: negative, out: positive) — handles are
+  // therefore computed per keyframe as a FRACTION OF THE GAP to the neighbor.
+  const MOTION_PROFILE_VERSION = 3;
+  const MOTION_EASING = {
+    departure_fraction: 0.25,
+    interior_fraction: 0.3,
+    interior_influence: 0.5,
+    arrival_approach_fraction: 0.99,
+    arrival_approach_influence: 0.99,
+    arrival_other_fraction: 0.31,
+    arrival_other_influence: 0.4,
+  };
+  // Final positional move ends early and HOLDS (mountkinabalu t=0.80; capped
+  // so long shots keep a settle, not a freeze-frame).
+  const MOTION_SETTLE = {
+    fraction: 0.2,
+    max_seconds: 2.5,
+    min_hold_seconds: 0.4,
+    min_segment_seconds: 2,
+    bounds_note: "caps/minimums are safety bounds, not corpus statistics (n=1 for hold duration)",
+  };
+
   const ESP_MODEL_VERSION = 17;
   const ESP_ALTITUDE_SCALE = 1.5356706349899208e-08; // meters → ES altitude value (empirical)
 
@@ -1237,14 +1286,44 @@ This checklist is technical planning support only. It is not creative approval, 
     return { type, value: { relative: 0, ...valueMeta }, keyframes, intimeline: true };
   }
 
+  // options.compareLegacyMotion (COMPARISON ONLY — never production): emit the
+  // pre-v0.9 motion — no authored transitions, no settle-hold — so a real
+  // Earth Studio import can A/B the corpus-informed easing against legacy.
   function buildEsp(plan, options = {}) {
     const dims = plan.render_dimensions || ASPECTS[plan.aspect] || ASPECTS[DEFAULT_ASPECT];
     const width = options.width || dims.width;
     const height = options.height || dims.height;
     const totalFrames = Math.max(1, plan.total_frames || 1);
-    const tracks = buildEspKeyframes(plan);
+    const tracks = buildEspKeyframes(plan, options.compareLegacyMotion ? { compareLegacyMotion: true } : {});
     const frac = (frame) => Math.min(1, Math.max(0, frame / totalFrames));
-    const kfs = (arr, mapValue) => arr.map((k) => ({ time: frac(k.time), value: mapValue(k.value) }));
+    // Reference-informed easing (see MOTION_EASING): handles span a fraction of
+    // the gap to the neighbor keyframe — easeOut departure, auto interiors,
+    // custom decelerating arrival. Single-keyframe tracks stay untouched.
+    // Family-aware arrival: when the shot's final positional move is an
+    // approach (fly/zoom), track-final keyframes use the Google Zoom-To
+    // template's full-gap deceleration; orbit/hover-final shots use the
+    // gentler multi-reference arrival.
+    const legacy = Boolean(options.compareLegacyMotion);
+    const finalMove = [...plan.segments].reverse().find((sg) => sg.location && sg.duration_seconds > 0);
+    const approachFinal = finalMove && ["fly_to", "zoom_in", "zoom_out"].includes(finalMove.action);
+    const arrivalFraction = approachFinal ? MOTION_EASING.arrival_approach_fraction : MOTION_EASING.arrival_other_fraction;
+    const arrivalInfluence = approachFinal ? MOTION_EASING.arrival_approach_influence : MOTION_EASING.arrival_other_influence;
+    const kfs = (arr, mapValue) => arr.map((k, i) => {
+      const kf = { time: frac(k.time), value: mapValue(k.value) };
+      if (!legacy && arr.length >= 2) {
+        const gapPrev = i > 0 ? frac(k.time) - frac(arr[i - 1].time) : 0;
+        const gapNext = i < arr.length - 1 ? frac(arr[i + 1].time) - frac(k.time) : 0;
+        if (i === 0) {
+          kf.transitionOut = { x: round6(MOTION_EASING.departure_fraction * gapNext), y: 0, type: "easeOut" };
+        } else if (i === arr.length - 1) {
+          kf.transitionIn = { x: round6(-arrivalFraction * gapPrev), y: 0, influence: arrivalInfluence, type: "custom" };
+        } else {
+          kf.transitionIn = { x: round6(-MOTION_EASING.interior_fraction * gapPrev), y: 0, influence: MOTION_EASING.interior_influence, type: "auto" };
+          kf.transitionOut = { x: round6(MOTION_EASING.interior_fraction * gapNext), y: 0, influence: MOTION_EASING.interior_influence, type: "auto" };
+        }
+      }
+      return kf;
+    });
     const values = (arr) => arr.map((k) => k.value);
 
     const lngVals = values(tracks.lng);
@@ -1421,6 +1500,9 @@ This checklist is technical planning support only. It is not creative approval, 
   const api = {
     DEFAULT_OUTPUT_DIR,
     VERSION,
+    MOTION_PROFILE_VERSION,
+    MOTION_EASING,
+    MOTION_SETTLE,
     FRAME_RATE,
     DEFAULT_ALTITUDE_M,
     MIN_ALTITUDE_M,

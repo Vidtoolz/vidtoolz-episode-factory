@@ -1,0 +1,140 @@
+{
+  "signature_version": 1,
+  "source_file": "darien-gap.esp",
+  "name": "Darien Gap",
+  "duration_seconds": 16.67,
+  "fps": 60,
+  "rotation_authoring": "keyframed_rotation",
+  "poi_target_lock": false,
+  "keyframe_counts": {
+    "longitude": 3,
+    "latitude": 3,
+    "altitude": 3,
+    "pan": 3,
+    "tilt": 3
+  },
+  "route_distance_m": 8620082.460825622,
+  "translation": {
+    "window": {
+      "onset": 0,
+      "completion": 0.095
+    },
+    "progress_curve": [
+      {
+        "t": 0,
+        "progress": 0
+      },
+      {
+        "t": 0.1,
+        "progress": 1
+      },
+      {
+        "t": 0.2,
+        "progress": 1
+      },
+      {
+        "t": 0.3,
+        "progress": 1
+      },
+      {
+        "t": 0.4,
+        "progress": 1
+      },
+      {
+        "t": 0.5,
+        "progress": 1
+      },
+      {
+        "t": 0.6,
+        "progress": 1
+      },
+      {
+        "t": 0.7,
+        "progress": 1
+      },
+      {
+        "t": 0.8,
+        "progress": 1
+      },
+      {
+        "t": 0.9,
+        "progress": 1
+      },
+      {
+        "t": 1,
+        "progress": 1
+      }
+    ]
+  },
+  "altitude": {
+    "start_m": 65117481,
+    "end_m": 178703,
+    "ratio_end_over_start": 0.0027,
+    "window": {
+      "onset": 0,
+      "completion": 0.095
+    },
+    "curve": [
+      {
+        "t": 0,
+        "altitude_m": 65117481
+      },
+      {
+        "t": 0.1,
+        "altitude_m": 178702.76810163673
+      },
+      {
+        "t": 0.2,
+        "altitude_m": 178702.76810163673
+      },
+      {
+        "t": 0.3,
+        "altitude_m": 178702.76810163673
+      },
+      {
+        "t": 0.4,
+        "altitude_m": 178702.76810163673
+      },
+      {
+        "t": 0.5,
+        "altitude_m": 178702.76810163673
+      },
+      {
+        "t": 0.6,
+        "altitude_m": 178702.76810163673
+      },
+      {
+        "t": 0.7,
+        "altitude_m": 178702.76810163673
+      },
+      {
+        "t": 0.8,
+        "altitude_m": 178702.76810163673
+      },
+      {
+        "t": 0.9,
+        "altitude_m": 178702.76810163673
+      },
+      {
+        "t": 1,
+        "altitude_m": 178702.76810163673
+      }
+    ]
+  },
+  "easing": {
+    "longitude": {
+      "none": 4,
+      "auto": 2
+    },
+    "latitude": {
+      "none": 4,
+      "auto": 2
+    },
+    "altitude": {
+      "none": 4,
+      "auto": 2
+    },
+    "departure": null,
+    "arrival_examples": []
+  }
+}

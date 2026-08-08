@@ -1,0 +1,43 @@
+{
+  "profile_version": 3,
+  "corpus_version": 3,
+  "analysis_schema_version": 1,
+  "rebuilt_by": "scripts/rebuild-earth-studio-motion-profile.js",
+  "derived_from": [
+    "darien-gap",
+    "mountkinabalu",
+    "radiator-untitled",
+    "servyx"
+  ],
+  "rule": "gap-relative eased handles on every moving keyframe (easeOut departure, auto interiors, custom decelerating arrivals — APPROACH arrivals use the Google-template near-full-gap deceleration) + final settle-hold for eligible fly/zoom finals",
+  "evidence_levels": {
+    "easing_topology": "cross_source_supported (4 approved references)",
+    "interior_auto_fraction": "cross_source_supported (google template exports + mountkinabalu)",
+    "departure_fraction": "multi_reference (3 sources, range 0.2-0.31)",
+    "approach_arrival": "google_authored (Zoom-To template values via 2 independent internet exports)",
+    "other_arrival": "multi_reference (mountkinabalu + radiator)",
+    "settle_hold": "single_reference (mountkinabalu CAMERA_SETTLE; darien-gap EDITORIAL_HOLD corroborates the principle only)"
+  },
+  "easing": {
+    "departure_fraction": 0.25,
+    "interior_fraction": 0.3,
+    "interior_influence": 0.5,
+    "arrival_approach_fraction": 0.99,
+    "arrival_approach_influence": 0.99,
+    "arrival_other_fraction": 0.31,
+    "arrival_other_influence": 0.4
+  },
+  "settle_hold": {
+    "fraction": 0.2,
+    "max_seconds": 2.5,
+    "min_hold_seconds": 0.4,
+    "min_segment_seconds": 2,
+    "bounds_note": "caps/minimums are safety bounds, not corpus statistics (n=1 for hold duration)"
+  },
+  "not_adopted_weak_evidence": [
+    "POI target-lock rotation authoring (present in 2 approved refs + format evidence; replacing validated rotationX/rotationY needs its own acceptance round)",
+    "extreme front-loading (darien-gap 10%-move/90%-hold = EDITORIAL_HOLD, excluded from settle aggregation)",
+    "named motion archetypes (no family has >=2 independent members beyond APPROACH_DRIFT easing; timing archetypes premature)",
+    "shared cross-property keyframe grids (observed in 3 refs; approximated by per-segment keyframing already)"
+  ]
+}

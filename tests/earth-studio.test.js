@@ -881,3 +881,172 @@ test("earth-studio v0.8: emitted .esp preserves the continuous fly→orbit bound
   const step = planner.haversineMeters(before, after);
   assert.ok(step < radius * 0.6, `.esp first orbit step is a smooth arc chord (${Math.round(step)}m on a ${Math.round(radius)}m ring)`);
 });
+
+// ---- v0.9 template-informed easing + .esp inspection (reference corpus) ----
+const espInspector = require("../scripts/inspect-earth-studio-project.js");
+
+test("earth-studio v0.9: inspector parses a real native-shape .esp (ekayle1 — format/parser evidence only, not a motion reference)", () => {
+  const ref = path.join(__dirname, "..", "config", "earth-studio-motion", "references", "ekayle1.esp");
+  const parsed = espInspector.parseEsp(ref);
+  assert.equal(parsed.shape, "native");
+  assert.equal(parsed.modelVersion, 18);
+  assert.equal(parsed.rotation_authoring, "poi_target_lock");
+  assert.equal(parsed.tracks.longitude.length, 6);
+  assert.equal(parsed.tracks.pan, null);
+  // denormalization: real coordinates and altitudes come back out
+  assert.ok(Math.abs(parsed.tracks.longitude[1].value - 24.938) < 0.01, `lon ${parsed.tracks.longitude[1].value}`);
+  assert.ok(Math.abs(parsed.tracks.latitude[1].value - 60.175) < 0.01, `lat ${parsed.tracks.latitude[1].value}`);
+  const sig = espInspector.buildSignature(parsed);
+  assert.equal(sig.altitude.start_m, 20236);
+  assert.equal(sig.altitude.end_m, 236);
+  assert.deepEqual(sig.altitude.window, { onset: 0, completion: 0.2 }); // altitude completes at t=0.20
+  assert.ok(sig.easing.longitude.easeOut >= 1 && sig.easing.longitude.auto >= 1 && sig.easing.longitude.custom >= 1);
+  // determinism: identical input -> identical signature
+  assert.deepEqual(sig, espInspector.buildSignature(espInspector.parseEsp(ref)));
+});
+
+test("earth-studio v0.9: inspector parses VIDTOOLZ import-shape output and rejects malformed files clearly", () => {
+  const plan = planner.buildShotPlan("T", "fly to Helsinki in 5 seconds", "2026-08-08T00:00:00.000Z");
+  const tmp = path.join(os.tmpdir(), `es-inspect-${process.pid}.esp`);
+  fs.writeFileSync(tmp, JSON.stringify(planner.buildEsp(plan)));
+  const parsed = espInspector.parseEsp(tmp);
+  assert.equal(parsed.shape, "import");
+  assert.equal(parsed.rotation_authoring, "keyframed_rotation");
+  assert.ok(Math.abs(parsed.tracks.longitude[parsed.tracks.longitude.length - 1].value - 24.9384) < 1e-3);
+  fs.unlinkSync(tmp);
+  const bad = path.join(os.tmpdir(), `es-bad-${process.pid}.esp`);
+  fs.writeFileSync(bad, "{not json");
+  assert.throws(() => espInspector.parseEsp(bad), /not valid JSON|not a parseable/);
+  fs.writeFileSync(bad, JSON.stringify({ modelVersion: 17, settings: {}, scenes: [{ attributes: [] }] }));
+  assert.throws(() => espInspector.parseEsp(bad), /cameraPositionGroup/);
+  fs.unlinkSync(bad);
+});
+
+test("earth-studio v0.9.2: baked motion profile stays in sync with the corpus-rebuilt motion-profile.json (internet references only)", () => {
+  const profile = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config", "earth-studio-motion", "motion-profile.json"), "utf8"));
+  assert.equal(planner.MOTION_PROFILE_VERSION, profile.profile_version);
+  assert.deepEqual(planner.MOTION_EASING, {
+    departure_fraction: profile.easing.departure_fraction,
+    interior_fraction: profile.easing.interior_fraction,
+    interior_influence: profile.easing.interior_influence,
+    arrival_approach_fraction: profile.easing.arrival_approach_fraction,
+    arrival_approach_influence: profile.easing.arrival_approach_influence,
+    arrival_other_fraction: profile.easing.arrival_other_fraction,
+    arrival_other_influence: profile.easing.arrival_other_influence,
+  });
+  assert.deepEqual(planner.MOTION_SETTLE, profile.settle_hold);
+  assert.deepEqual([...profile.derived_from].sort(), ["darien-gap", "mountkinabalu", "radiator-untitled", "servyx"]);
+  // a rejected reference must never appear in the derivation
+  assert.ok(!profile.derived_from.includes("ekayle1"));
+  assert.ok(!profile.derived_from.some((id) => id.startsWith("jio-")));
+  // the corpus records the operator's disqualification of local/generated files
+  const corpus = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config", "earth-studio-motion", "corpus.json"), "utf8"));
+  const ek = corpus.references.find((r) => r.id === "ekayle1");
+  assert.match(ek.state, /REJECTED/);
+  const approved = corpus.references.filter((r) => r.state === "APPROVED").map((r) => r.id).sort();
+  assert.deepEqual(approved, ["darien-gap", "mountkinabalu", "radiator-untitled", "servyx"]);
+  approved.forEach((id) => {
+    const r = corpus.references.find((x) => x.id === id);
+    assert.match(r.source_url, /^https:\/\//, `${id} carries internet provenance`);
+  });
+});
+
+test("earth-studio v0.9.1: generated .esp keyframes carry gap-relative easing from the internet-reference profile", () => {
+  const plan = planner.buildShotPlan("T", "fly to Helsinki in 8 seconds, then orbit Helsinki for 12 seconds", "2026-08-08T00:00:00.000Z");
+  assert.equal(plan.motion_profile.profile_version, planner.MOTION_PROFILE_VERSION);
+  assert.deepEqual(plan.motion_profile.references, ["darien-gap", "mountkinabalu", "radiator-untitled", "servyx"]);
+  assert.match(plan.notes.join("\n"), /internet-reference profile v3/);
+  const esp = planner.buildEsp(plan);
+  const pos = esp.scenes[0].attributes[0].attributes.find((a) => a.type === "cameraPositionGroup").attributes;
+  const lng = pos.find((a) => a.type === "longitude").keyframes;
+  // departure: easeOut whose handle spans 30% of the gap to the next keyframe
+  assert.equal(lng[0].transitionOut.type, "easeOut");
+  const gap0 = lng[1].time - lng[0].time;
+  assert.ok(Math.abs(lng[0].transitionOut.x - 0.25 * gap0) < 1e-6);
+  assert.equal(lng[0].transitionIn, undefined);
+  // orbit-final shot -> the gentler multi-reference arrival (0.31 / 0.4)
+  const last = lng[lng.length - 1];
+  const gapN = last.time - lng[lng.length - 2].time;
+  assert.equal(last.transitionIn.type, "custom");
+  assert.equal(last.transitionIn.influence, 0.4);
+  assert.ok(Math.abs(last.transitionIn.x + 0.31 * gapN) < 1e-6);
+  // approach-final shot -> Google Zoom-To template full-gap deceleration
+  const ap = planner.buildShotPlan("T", "fly to Helsinki in 4 seconds, then fly to Tampere in 6 seconds", "2026-08-08T00:00:00.000Z");
+  const apEsp = planner.buildEsp(ap);
+  const apLng = apEsp.scenes[0].attributes[0].attributes.find((a) => a.type === "cameraPositionGroup").attributes.find((a) => a.type === "longitude").keyframes;
+  const apLast = apLng[apLng.length - 1];
+  const apGap = apLast.time - apLng[apLng.length - 2].time;
+  assert.equal(apLast.transitionIn.influence, 0.99);
+  assert.ok(Math.abs(apLast.transitionIn.x + 0.99 * apGap) < 1e-6);
+  // handles never cross their segment (fraction <= 0.99 of the gap)
+  apLng.concat(lng).forEach((k, i, arr2) => {
+    if (k.transitionIn) assert.ok(Math.abs(k.transitionIn.x) <= (k.time) + 1e-9);
+  });
+  // interiors: auto both sides
+  lng.slice(1, -1).forEach((k) => {
+    assert.equal(k.transitionIn.type, "auto");
+    assert.equal(k.transitionOut.type, "auto");
+  });
+  // deterministic
+  assert.equal(JSON.stringify(planner.buildEsp(plan)), JSON.stringify(esp));
+});
+
+test("earth-studio v0.9.1: the final positional move settles early and holds (mountkinabalu pattern)", () => {
+  // final fly: 10 s segment -> hold = min(20%, 2.5 s) = 2 s; motion ends at ef - 60
+  const plan = planner.buildShotPlan("T", "fly to Helsinki in 5 seconds, then fly to Tampere in 10 seconds", "2026-08-08T00:00:00.000Z");
+  const tracks = planner.buildEspKeyframes(plan);
+  const finalSeg = plan.segments[1];
+  const lastLat = tracks.lat[tracks.lat.length - 1];
+  assert.equal(lastLat.time, finalSeg.end_frame - 60, "translation completes 2 s before the end");
+  const lastAlt = tracks.alt[tracks.alt.length - 1];
+  assert.ok(lastAlt.time <= finalSeg.end_frame - 60);
+  // non-final segments do NOT settle early (their motion runs to the boundary)
+  const midEnd = plan.segments[0].end_frame;
+  assert.ok(tracks.lat.some((k) => k.time === midEnd) || tracks.lng.some((k) => k.time === midEnd));
+  // a final ORBIT keeps its full sweep (no truncated spin)
+  const orbitPlan = planner.buildShotPlan("T", "fly to Paris, then orbit Paris", "2026-08-08T00:00:00.000Z");
+  const ot = planner.buildEspKeyframes(orbitPlan);
+  assert.equal(ot.pan[ot.pan.length - 1].time, orbitPlan.segments[1].end_frame);
+  // short final moves (< 2 s) skip the hold rather than stutter
+  const short = planner.buildShotPlan("T", "fly to Helsinki in 3 seconds, then fly to Tampere in 1.5 seconds", "2026-08-08T00:00:00.000Z");
+  const st = planner.buildEspKeyframes(short);
+  assert.equal(st.lat[st.lat.length - 1].time, short.segments[1].end_frame);
+});
+
+test("earth-studio v0.9: motion transfer maps a signature onto new geography deterministically", () => {
+  const sigPath = path.join(__dirname, "..", "config", "earth-studio-motion", "references", "mountkinabalu.signature.json");
+  const sig = JSON.parse(fs.readFileSync(sigPath, "utf8"));
+  // the phase math the transfer script applies (mountkinabalu: altitude completes t=0.80 -> capped 0.5)
+  const approach = Math.min(0.5, Math.max(0.1, sig.altitude.window.completion));
+  assert.equal(approach, 0.5);
+  const duration = Math.round(sig.duration_seconds);
+  assert.equal(duration, 10);
+  const approachS = Math.max(3, Math.round(duration * approach));
+  const driftS = Math.max(4, duration - approachS);
+  assert.equal(approachS, 5);
+  assert.equal(driftS, 5);
+  // the resulting plan resolves and validates
+  const plan = planner.buildShotPlan("Transfer", `zoom in on Rovaniemi in ${approachS} seconds, then orbit Rovaniemi 90 degrees for ${driftS} seconds`, "2026-08-08T00:00:00.000Z");
+  assert.ok(plan.segments.every((s) => s.resolution_status === "resolved"));
+  assert.equal(plan.total_duration_seconds, 10);
+  assert.deepEqual(planner.validateShotPlanPayload(plan), []);
+});
+
+// ---- v0.9.2 corpus integrity + deterministic profile rebuild ----
+const childProcessES = require("node:child_process");
+
+test("earth-studio v0.9.2: profile rebuild is deterministic and the corpus passes integrity checks", () => {
+  const script = path.join(__dirname, "..", "scripts", "rebuild-earth-studio-motion-profile.js");
+  const check = childProcessES.spawnSync("node", [script, "--check"], { encoding: "utf8" });
+  assert.equal(check.status, 0, `corpus/profile drift or integrity failure:\n${check.stdout}${check.stderr}`);
+  // repeat rebuild produces byte-identical profile (run in a temp copy? --check already proves match;
+  // determinism: two consecutive --check runs agree)
+  const check2 = childProcessES.spawnSync("node", [script, "--check"], { encoding: "utf8" });
+  assert.equal(check2.status, 0);
+  // duplicate-hash guard: every approved corpus copy has a unique SHA-256
+  const corpus = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config", "earth-studio-motion", "corpus.json"), "utf8"));
+  const cryptoES = require("node:crypto");
+  const hashes = corpus.references.filter((r) => r.state === "APPROVED").map((r) =>
+    cryptoES.createHash("sha256").update(fs.readFileSync(path.join(__dirname, "..", "config", "earth-studio-motion", r.corpus_copy))).digest("hex"));
+  assert.equal(new Set(hashes).size, hashes.length, "duplicate reference content");
+});

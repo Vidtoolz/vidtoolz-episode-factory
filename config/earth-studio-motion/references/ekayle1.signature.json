@@ -1,0 +1,158 @@
+{
+  "signature_version": 1,
+  "source_file": "ekayle1.esp",
+  "name": "ekayle1",
+  "duration_seconds": 45.6,
+  "fps": 30,
+  "rotation_authoring": "poi_target_lock",
+  "poi_target_lock": true,
+  "keyframe_counts": {
+    "longitude": 6,
+    "latitude": 6,
+    "altitude": 6,
+    "pan": 0,
+    "tilt": 0
+  },
+  "route_distance_m": 23855.748799558212,
+  "translation": {
+    "window": {
+      "onset": 0,
+      "completion": 1
+    },
+    "progress_curve": [
+      {
+        "t": 0,
+        "progress": 0
+      },
+      {
+        "t": 0.1,
+        "progress": 0.43109204042825655
+      },
+      {
+        "t": 0.2,
+        "progress": 0.8621464003892937
+      },
+      {
+        "t": 0.3,
+        "progress": 0.8793777575569137
+      },
+      {
+        "t": 0.4,
+        "progress": 0.8966098002953357
+      },
+      {
+        "t": 0.5,
+        "progress": 0.9138411574775015
+      },
+      {
+        "t": 0.6,
+        "progress": 0.9310732001946003
+      },
+      {
+        "t": 0.7,
+        "progress": 0.9483052429117224
+      },
+      {
+        "t": 0.8,
+        "progress": 0.9655366000939115
+      },
+      {
+        "t": 0.9,
+        "progress": 0.9827686428323568
+      },
+      {
+        "t": 1,
+        "progress": 1
+      }
+    ]
+  },
+  "altitude": {
+    "start_m": 20236,
+    "end_m": 236,
+    "ratio_end_over_start": 0.0117,
+    "window": {
+      "onset": 0,
+      "completion": 0.2
+    },
+    "curve": [
+      {
+        "t": 0,
+        "altitude_m": 20236
+      },
+      {
+        "t": 0.1,
+        "altitude_m": 10236
+      },
+      {
+        "t": 0.2,
+        "altitude_m": 236
+      },
+      {
+        "t": 0.3,
+        "altitude_m": 236
+      },
+      {
+        "t": 0.4,
+        "altitude_m": 236
+      },
+      {
+        "t": 0.5,
+        "altitude_m": 236
+      },
+      {
+        "t": 0.6,
+        "altitude_m": 236
+      },
+      {
+        "t": 0.7,
+        "altitude_m": 236
+      },
+      {
+        "t": 0.8,
+        "altitude_m": 236
+      },
+      {
+        "t": 0.9,
+        "altitude_m": 236
+      },
+      {
+        "t": 1,
+        "altitude_m": 236
+      }
+    ]
+  },
+  "easing": {
+    "longitude": {
+      "none": 1,
+      "easeOut": 1,
+      "custom": 1,
+      "linear": 5,
+      "auto": 4
+    },
+    "latitude": {
+      "none": 1,
+      "easeOut": 1,
+      "custom": 1,
+      "auto": 5,
+      "linear": 4
+    },
+    "altitude": {
+      "none": 10,
+      "easeOut": 1,
+      "custom": 1
+    },
+    "departure": {
+      "x": 0.05,
+      "y": 0,
+      "type": "easeOut"
+    },
+    "arrival_examples": [
+      {
+        "x": -0.5,
+        "y": 0,
+        "influence": 1,
+        "type": "custom"
+      }
+    ]
+  }
+}

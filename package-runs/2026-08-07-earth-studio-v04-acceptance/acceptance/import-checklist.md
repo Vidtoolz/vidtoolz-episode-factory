@@ -32,6 +32,18 @@ reinterpreted the project duration and pacing will be wrong; report that.
   no static pause or snap, pulls smoothly away to a space-scale globe view.
 - **D Composition**: the project/viewport is genuinely vertical 9:16
   (1080×1920) and Paris framing is usable vertically.
+- **E Motion quality (v0.9 corpus-informed easing — record PASS / PASS_WITH_NOTE / FAIL each):**
+  1. departure: motion starts smoothly, no hard linear start;
+  2. mid-move: no abrupt velocity changes at interior keyframes;
+  3. arrival: the final zoom decelerates into a controlled landing (Google
+     Zoom-To-template-style long deceleration), no hard stop;
+  4. settle-hold: the ~2.4 s motionless tail after the zoom reads as a
+     deliberate held framing, not a stalled animation, and is not too long;
+  5. orbit: entry stays smooth (no speed discontinuity) and the orbit's sweep
+     is complete — settle logic must NOT truncate or slow the orbit itself.
+  Compare against `acceptance/motion-comparison/legacy-linear.esp` (same
+  shot, easing stripped) to judge whether the authored motion is visibly
+  better — that comparison import is optional but decisive.
 
 ## 3 · Record
 Copy `acceptance/import-observation.template.json` →

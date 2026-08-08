@@ -1,6 +1,6 @@
 {
   "proof_id": "2026-08-07-earth-studio-v04-acceptance",
-  "planner_version": "0.8.0",
+  "planner_version": "0.9.2",
   "instruction": "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 36 seconds, then zoom out to space in 12 seconds",
   "aspect": "9:16",
   "render_dimensions": {

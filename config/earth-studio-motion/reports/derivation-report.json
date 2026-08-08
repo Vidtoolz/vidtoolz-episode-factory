@@ -1,0 +1,234 @@
+{
+  "generated_by": "scripts/rebuild-earth-studio-motion-profile.js",
+  "corpus_version": 3,
+  "approved_references": [
+    {
+      "id": "darien-gap",
+      "family": "LONG_DISTANCE_BLAST",
+      "tier": "TIER_B_PRODUCED_HUMAN_PROJECT",
+      "hold_type": "EDITORIAL_HOLD"
+    },
+    {
+      "id": "mountkinabalu",
+      "family": "FLYOVER",
+      "tier": "TIER_B_PRODUCED_HUMAN_PROJECT",
+      "hold_type": "CAMERA_SETTLE"
+    },
+    {
+      "id": "radiator-untitled",
+      "family": "PULLBACK",
+      "tier": "TIER_C_USEFUL_EXTERNAL_EXAMPLE",
+      "hold_type": null
+    },
+    {
+      "id": "servyx",
+      "family": "APPROACH_DRIFT",
+      "tier": "TIER_A_GOOGLE_AUTHORED (template-generated transitions, independently exported)",
+      "hold_type": null
+    }
+  ],
+  "raw_samples": {
+    "darien-gap": {
+      "family": "LONG_DISTANCE_BLAST",
+      "tier": "TIER_B_PRODUCED_HUMAN_PROJECT",
+      "hold_type": "EDITORIAL_HOLD",
+      "samples": {
+        "departures": [],
+        "interiors": [
+          0.26,
+          0.26,
+          0.26
+        ],
+        "arrivals": []
+      }
+    },
+    "mountkinabalu": {
+      "family": "FLYOVER",
+      "tier": "TIER_B_PRODUCED_HUMAN_PROJECT",
+      "hold_type": "CAMERA_SETTLE",
+      "samples": {
+        "departures": [
+          0.31,
+          0.31,
+          0.31,
+          0.31,
+          0.31
+        ],
+        "interiors": [],
+        "arrivals": [
+          {
+            "fraction": 0.31,
+            "influence": null
+          },
+          {
+            "fraction": 0.31,
+            "influence": null
+          },
+          {
+            "fraction": 0.31,
+            "influence": null
+          },
+          {
+            "fraction": 0.31,
+            "influence": null
+          },
+          {
+            "fraction": 0.31,
+            "influence": null
+          }
+        ]
+      }
+    },
+    "radiator-untitled": {
+      "family": "PULLBACK",
+      "tier": "TIER_C_USEFUL_EXTERNAL_EXAMPLE",
+      "hold_type": null,
+      "samples": {
+        "departures": [
+          0.2,
+          0.2,
+          0.2
+        ],
+        "interiors": [],
+        "arrivals": [
+          {
+            "fraction": 0.32,
+            "influence": 0.4
+          },
+          {
+            "fraction": 0.32,
+            "influence": 0.4
+          },
+          {
+            "fraction": 0.32,
+            "influence": 0.4
+          }
+        ]
+      }
+    },
+    "servyx": {
+      "family": "APPROACH_DRIFT",
+      "tier": "TIER_A_GOOGLE_AUTHORED (template-generated transitions, independently exported)",
+      "hold_type": null,
+      "samples": {
+        "departures": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "interiors": [
+          0.33,
+          0.33,
+          0.33
+        ],
+        "arrivals": [
+          {
+            "fraction": 0.99,
+            "influence": 0.99
+          },
+          {
+            "fraction": 0.5,
+            "influence": 0.5
+          },
+          {
+            "fraction": 2.5,
+            "influence": 1
+          }
+        ]
+      }
+    }
+  },
+  "pooled": {
+    "departures": [
+      0.2,
+      0.2,
+      0.2,
+      0.25,
+      0.25,
+      0.25,
+      0.31,
+      0.31,
+      0.31,
+      0.31,
+      0.31
+    ],
+    "interiors": [
+      0.26,
+      0.26,
+      0.26,
+      0.33,
+      0.33,
+      0.33
+    ],
+    "arrivals_by_family": {
+      "LONG_DISTANCE_BLAST": [],
+      "FLYOVER": [
+        {
+          "fraction": 0.31,
+          "influence": null
+        },
+        {
+          "fraction": 0.31,
+          "influence": null
+        },
+        {
+          "fraction": 0.31,
+          "influence": null
+        },
+        {
+          "fraction": 0.31,
+          "influence": null
+        },
+        {
+          "fraction": 0.31,
+          "influence": null
+        }
+      ],
+      "PULLBACK": [
+        {
+          "fraction": 0.32,
+          "influence": 0.4
+        },
+        {
+          "fraction": 0.32,
+          "influence": 0.4
+        },
+        {
+          "fraction": 0.32,
+          "influence": 0.4
+        }
+      ],
+      "APPROACH_DRIFT": [
+        {
+          "fraction": 0.99,
+          "influence": 0.99
+        },
+        {
+          "fraction": 0.5,
+          "influence": 0.5
+        },
+        {
+          "fraction": 2.5,
+          "influence": 1
+        }
+      ]
+    },
+    "camera_settle_fractions": [
+      0.2
+    ]
+  },
+  "derived": {
+    "handle_fraction_departure": 0.25,
+    "handle_fraction_interior": 0.3,
+    "interior_influence": 0.5,
+    "arrival_approach": {
+      "fraction": 0.99,
+      "influence": 0.99
+    },
+    "arrival_other": {
+      "fraction": 0.31,
+      "influence": 0.4
+    },
+    "settle_hold_fraction": 0.2
+  }
+}
