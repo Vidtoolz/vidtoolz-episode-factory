@@ -9,10 +9,27 @@
 // tests (options.fetchImpl).
 const DEFAULT_TIMEOUT_MS = 8000;
 
+// Test isolation (P10): the ONLY place this client can reach a machine other
+// than this one. A test that forgets to inject fetchImpl was silently talking
+// to the real GPU host (observed: presto-batch-control's completion hook
+// fetching 192.168.50.187 through collectFingerprint, with the rejection
+// swallowed into qualification_capture_error). Loopback stays allowed so
+// local-ComfyUI fixtures keep working; anything else fails loudly.
+function assertRemoteEndpointAllowedInTests(url) {
+  if (String(process.env.VIDTOOLZ_TEST_NO_REMOTE_HOSTS || '') !== '1') return;
+  let host;
+  try { host = new URL(url).hostname; } catch (_) { return; }
+  if (host === '127.0.0.1' || host === 'localhost' || host === '::1' || host === '[::1]') return;
+  const e = new Error(`refusing ComfyUI call to ${host}: remote host contact is disabled in tests (VIDTOOLZ_TEST_NO_REMOTE_HOSTS=1). Inject options.fetchImpl instead of reaching a real host.`);
+  e.code = 'comfyui_remote_host_contact_blocked_in_tests';
+  throw e;
+}
+
 async function getJson(baseUrl, pathName, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const timeoutMs = options.timeoutMs || DEFAULT_TIMEOUT_MS;
   const url = `${String(baseUrl).replace(/\/+$/, '')}${pathName}`;
+  if (!options.fetchImpl) assertRemoteEndpointAllowedInTests(url);
   const res = await fetchImpl(url, { signal: AbortSignal.timeout(timeoutMs) });
   if (!res.ok) {
     const e = new Error(`ComfyUI ${pathName} returned HTTP ${res.status}`);
@@ -93,4 +110,4 @@ function summarizeEnvironment(systemStats) {
   };
 }
 
-module.exports = { getSystemStats, getQueue, getNodeClassInfo, loaderOptions, getModelFolderEntries, summarizeEnvironment, DEFAULT_TIMEOUT_MS };
+module.exports = { getSystemStats, getQueue, getNodeClassInfo, loaderOptions, getModelFolderEntries, summarizeEnvironment, assertRemoteEndpointAllowedInTests, DEFAULT_TIMEOUT_MS };

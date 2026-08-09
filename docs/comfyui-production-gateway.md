@@ -420,6 +420,80 @@ promoted to an executable-surface MATCH. Custom-node drift feeds the existing
 P8 qualification gate (code `CUSTOM_NODE_SOURCE_DRIFTED_FROM_MANIFEST`);
 evidence is still captured and flagged, never discarded.
 
+### Verification freshness (P10)
+
+A stored verdict says what was true when we last looked. Production needs what
+is true now, so a verdict has a shelf life, derived from
+`(record + clock + policy)` and never persisted — a stored `fresh: true` would
+itself go stale.
+
+```text
+window   COMFYUI_SOURCE_VERIFICATION_MAX_AGE_SECONDS (default 900 = 15 min)
+         0 = always re-verify; negative/NaN/Infinity are rejected loudly
+clock    Episode Factory's own clock; `verified_at` is when EF completed the
+         verification. A timestamp more than 60 s in the future is UNUSABLE,
+         never "very fresh" — that is the fail-open direction.
+boundary conservative: age >= window is STALE
+```
+
+States, and what `ensureFreshSourceVerification(host)` does with each:
+
+```text
+FRESH         MATCH inside the window   -> reuse; no host contact, no rewrite
+STALE         MATCH older than window   -> re-verify now
+NOT_VERIFIED  no record                 -> re-verify now
+UNUSABLE      missing/bad/future stamp  -> re-verify now (never trusted)
+INCOMPLETE    executable surface unverified (e.g. pre-P9 manifest) -> re-verify;
+                                           the fresh result decides
+DRIFT         a known finding           -> refuse WITHOUT re-scanning (looking
+                                           again does not cure a finding, and
+                                           re-scanning on every rejected job
+                                           would hammer the host)
+```
+
+A stale MATCH means **"we no longer know"** — deliberately a different state
+from **"drift occurred"**.
+
+Concurrency: one in-flight verification per host. Ten queued clips against a
+stale record produce ONE ssh round trip and ten consumers of its result; two
+different hosts never block each other. Every consumer inspects the actual
+returned verdict — a waiter never dispatches merely because someone else
+verified.
+
+Freshness inherently needs a NEW observation timestamp, so an automatic
+re-verification legitimately rewrites `source-verification.json` even when the
+observed identity is byte-identical. That is a new observation event, not
+identity churn: `verified_at` is excluded from every identity-bearing digest,
+so a refreshed identical MATCH leaves fingerprints unchanged (regression-tested).
+
+Failure vocabulary: `SOURCE_DRIFT`, `CUSTOM_NODES_DRIFT`,
+`VERIFICATION_INCOMPLETE`, `SOURCE_UNOBSERVABLE`, `HOST_UNREACHABLE`,
+`VERIFICATION_FAILED`. Refusal reasons never include the ssh command line or
+host configuration.
+
+**Enforcement status — read this before relying on it.** The freshness gate is
+implemented, unit-tested and exported, but it is **not yet wired into the
+production dispatch path**. Wiring is deliberately deferred because a dispatch
+trace found three blockers that must be resolved first, in this order:
+
+1. The Super Focus PRESTO video lane (`startSuperFocusVideoJob`) reaches
+   `launchPrestoProductionJob` with **no gateway gate at all** — no
+   `preflightSync`, no workflow identity, and therefore no Wan provenance or
+   qualification capture either. It is the highest-volume Wan path. Gating the
+   other lanes while this one stays open would give a gate that looks enforced
+   and is not.
+2. PRESTO's recorded manifest predates P9, so its verification is
+   `INCOMPLETE`. Enforcing today would refuse every PRESTO dispatch until an
+   operator runs `--inventory-strong PRESTO` (which hashes tens of GB). That
+   is an operator decision, not an automatic one.
+3. Adding an `await` inside `startPrestoPackageJob` re-opens the
+   concurrent-submit race that the single-GPU lock comment there says is
+   currently closed; the lock must be re-checked after the await, as the Super
+   Focus queue pump already does.
+
+Until wiring lands, D6 (freshness is not enforced before dispatch) remains
+open, and the gate is available to callers and to the CLI.
+
 **What is still NOT verified by this layer**: the Python interpreter and
 installed site-packages, native/binary dependencies, GPU drivers, model files
 (covered separately by the strong model manifest), and anything outside the

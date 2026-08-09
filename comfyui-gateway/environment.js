@@ -535,9 +535,24 @@ Write-Output 'SOURCE_JSON_END'
 `;
 }
 
+// Absolute test-isolation guard. P10 puts source verification on the
+// PRODUCTION DISPATCH path, so any test that exercises dispatch could
+// otherwise SSH into a real GPU host. tests/run-tests.js sets this flag, and
+// these are the only two functions in the gateway that open a remote
+// connection — so a test reaching a live host fails loudly here instead of
+// silently succeeding. (Same class of defect as the earlier Kanban test leak.)
+function assertRemoteHostContactAllowed(what) {
+  if (String(process.env.VIDTOOLZ_TEST_NO_REMOTE_HOSTS || '') === '1') {
+    const e = new Error(`refusing ${what}: remote host contact is disabled in tests (VIDTOOLZ_TEST_NO_REMOTE_HOSTS=1). Inject a collector/verifier instead of reaching a real host.`);
+    e.code = 'comfyui_remote_host_contact_blocked_in_tests';
+    throw e;
+  }
+}
+
 // Remote source-only observation (PRESTO): read-only ssh + powershell, same
 // transport as the inventory but touching git state and small files only.
 function sshSourceStateExecutor(config, options = {}) {
+  assertRemoteHostContactAllowed('remote source observation');
   const script = buildPowershellSourceScript(config);
   const encoded = Buffer.from(script, 'utf16le').toString('base64');
   const result = spawnSync('ssh', ['-o', 'BatchMode=yes', config.ssh_host, 'powershell', '-NoProfile', '-EncodedCommand', encoded], {
@@ -582,6 +597,7 @@ function sshSourceStateExecutor(config, options = {}) {
 // Remote (PRESTO): read-only ssh + powershell, hashing on the remote disk —
 // only the compact JSON result crosses the network, never model bytes.
 function sshPowershellExecutor(plan, options = {}) {
+  assertRemoteHostContactAllowed('remote strong inventory');
   const script = buildPowershellInventoryScript(plan, { statOnly: options.statOnly });
   const encoded = Buffer.from(script, 'utf16le').toString('base64');
   const result = spawnSync('ssh', ['-o', 'BatchMode=yes', plan.config.ssh_host, 'powershell', '-NoProfile', '-EncodedCommand', encoded], {
@@ -779,6 +795,94 @@ function verifyManifest(host, currentMetaByFilename, options = {}) {
   });
   const allCurrent = models.length > 0 && models.every((m) => m.sha_authority === 'current');
   return { status: 'ok', manifest: rm.manifest, models, all_current: allCurrent };
+}
+
+// ---- the pre-dispatch freshness gate (P10) --------------------------------------------------
+//
+// One in-flight verification per host. Ten queued clips arriving against a
+// stale record must produce ONE ssh round trip and ten consumers of its
+// result — not ten simultaneous scans of the same machine. Keyed by host, so
+// two different hosts never block each other.
+const inFlightSourceVerification = new Map();
+
+// Ensure the host has a source verification that is good enough to authorize a
+// production dispatch, re-observing (read-only) when it is not.
+//
+//   FRESH        -> reuse, no host contact, no record rewrite
+//   STALE        -> re-verify now
+//   NOT_VERIFIED -> re-verify now (no record at all)
+//   UNUSABLE     -> re-verify now (malformed metadata is never trusted)
+//   INCOMPLETE   -> re-verify now (e.g. a pre-P9 record); the fresh result decides
+//   DRIFT        -> refuse immediately WITHOUT re-verifying: a known finding is
+//                   not cured by looking again, and re-scanning on every rejected
+//                   job would hammer the host
+//
+// Returns { allowed, state, freshness, verification?, reason, code }. Never
+// throws for an operational failure — an unreachable host is a refusal with
+// evidence, not a crash.
+async function ensureFreshSourceVerification(host, options = {}) {
+  const freshnessBefore = assessSourceVerificationFreshness(readSourceVerification(host, options), options);
+  if (freshnessBefore.state === 'FRESH') {
+    return { allowed: true, state: 'FRESH', freshness: freshnessBefore, refreshed: false,
+      reason: `reusing source verification from ${freshnessBefore.verified_at} (${Math.round(freshnessBefore.age_ms / 1000)}s old)` };
+  }
+  if (freshnessBefore.state === 'DRIFT') {
+    return { allowed: false, state: 'DRIFT', freshness: freshnessBefore, refreshed: false,
+      code: 'SOURCE_DRIFT',
+      reason: 'the last source verification found executable-source drift — re-inventory (--inventory-strong) and requalify before dispatching' };
+  }
+
+  // coalesce: first caller runs the verification, everyone else awaits it
+  let pending = inFlightSourceVerification.get(host);
+  let leader = false;
+  if (!pending) {
+    leader = true;
+    const verifier = options.sourceVerifier || verifySourceIdentity;
+    pending = Promise.resolve()
+      .then(() => verifier(host, options))
+      .then((result) => ({ ok: true, result }), (error) => ({ ok: false, error }))
+      .finally(() => { inFlightSourceVerification.delete(host); });
+    inFlightSourceVerification.set(host, pending);
+  }
+  const outcome = await pending;
+
+  if (!outcome.ok) {
+    const err = outcome.error || {};
+    return { allowed: false, state: 'VERIFICATION_FAILED', refreshed: leader, freshness: freshnessBefore,
+      code: err.code === 'comfyui_environment_source_observation_failed' ? 'HOST_UNREACHABLE' : 'VERIFICATION_FAILED',
+      // message only — never the ssh command line or host configuration
+      reason: `source verification could not be completed: ${err.message || String(err)}` };
+  }
+  const verification = outcome.result || {};
+  if (verification.status !== 'ok') {
+    return { allowed: false, state: 'SOURCE_UNOBSERVABLE', refreshed: leader, freshness: freshnessBefore,
+      code: verification.status === 'source_unobservable' ? 'SOURCE_UNOBSERVABLE' : 'VERIFICATION_INCOMPLETE',
+      reason: `source verification did not produce a comparison (${verification.status})${(verification.problems || []).length ? `: ${verification.problems.join('; ')}` : ''}` };
+  }
+  // TOCTOU guard: never dispatch on "someone else verified"; inspect the
+  // ACTUAL result that came back.
+  const effective = verification.effectiveVerdict;
+  if (effective === 'MATCH') {
+    return { allowed: true, state: 'REFRESHED_MATCH', refreshed: leader, verification,
+      freshness: assessSourceVerificationFreshness(verification.record, options),
+      reason: 'source verification refreshed: executable source matches the recorded manifest' };
+  }
+  const criticals = (verification.record && verification.record.findings || [])
+    .filter((f) => f.severity === 'CRITICAL').map((f) => `${f.kind}${f.path ? ` ${f.path}` : ''}`);
+  return {
+    allowed: false,
+    state: effective === 'INCOMPLETE' ? 'INCOMPLETE' : 'DRIFT',
+    refreshed: leader,
+    verification,
+    code: effective === 'INCOMPLETE'
+      ? 'VERIFICATION_INCOMPLETE'
+      : (verification.customNodes && verification.customNodes.verdict === 'DRIFT' && verification.comparison.verdict === 'MATCH')
+        ? 'CUSTOM_NODES_DRIFT' : 'SOURCE_DRIFT',
+    reason: effective === 'INCOMPLETE'
+      ? 'the executable surface is not fully verified (the recorded manifest predates custom-node identity) — re-inventory (--inventory-strong) before dispatching'
+      : `executable source drifted from the recorded manifest: ${criticals.slice(0, 5).join('; ') || 'see verification record'}`,
+    critical_findings: criticals,
+  };
 }
 
 // ---- custom-node executable identity (P9) ---------------------------------------------------
@@ -1061,6 +1165,84 @@ function readSourceVerification(host, options = {}) {
   try { return JSON.parse(fs.readFileSync(sourceVerificationPath(host, options), 'utf8')); } catch (_) { return null; }
 }
 
+// ---- verification freshness (P10) -----------------------------------------------------------
+//
+// A stored verdict answers "what was true when we last looked". Production
+// needs "what is true now", so a verdict has a shelf life. Freshness is
+// DERIVED from (record + clock + policy) and never persisted — a stored
+// `fresh: true` would itself go stale.
+//
+// Default window: 15 minutes. Chosen from measurement, not taste — a live
+// PRESTO source verification round-trips in ~1.7s, so re-observing costs far
+// less than a wrong render, while a window this size still collapses a burst
+// of clip dispatches in one production run into a single scan. Override with
+// COMFYUI_SOURCE_VERIFICATION_MAX_AGE_SECONDS; 0 means "always re-verify".
+const SOURCE_VERIFICATION_MAX_AGE_SECONDS_DEFAULT = 15 * 60;
+// Clock skew allowance for a verified_at slightly ahead of us. Beyond this a
+// future timestamp is treated as untrustworthy metadata, never as "very
+// fresh" — that is the direction that would fail OPEN.
+const SOURCE_VERIFICATION_FUTURE_TOLERANCE_MS = 60 * 1000;
+
+function sourceVerificationMaxAgeSeconds(options = {}) {
+  const raw = options.sourceVerificationMaxAgeSeconds !== undefined
+    ? options.sourceVerificationMaxAgeSeconds
+    : process.env.COMFYUI_SOURCE_VERIFICATION_MAX_AGE_SECONDS;
+  if (raw === undefined || raw === null || raw === '') return SOURCE_VERIFICATION_MAX_AGE_SECONDS_DEFAULT;
+  const n = typeof raw === 'number' ? raw : Number(String(raw).trim());
+  // Reject nonsense loudly rather than silently widening the window.
+  if (!Number.isFinite(n) || n < 0) {
+    const e = new Error(`invalid source-verification max age ${JSON.stringify(String(raw))} — must be a finite number of seconds >= 0 (0 = always re-verify)`);
+    e.code = 'comfyui_source_verification_max_age_invalid';
+    throw e;
+  }
+  return n;
+}
+
+// Freshness states, all of which are "not usable for dispatch" except FRESH:
+//   FRESH          a MATCH verdict inside the window
+//   STALE          a MATCH verdict older than the window — we no longer know
+//   NOT_VERIFIED   no record, or no usable timestamp
+//   DRIFT          a verdict of DRIFT (staleness irrelevant — it is a finding)
+//   INCOMPLETE     executable surface not fully verified (e.g. pre-P9 manifest)
+//   UNUSABLE       malformed record / unparseable or implausible timestamp
+// A stale MATCH means "we no longer know", NOT "drift occurred" — the two are
+// deliberately different states.
+function assessSourceVerificationFreshness(record, options = {}) {
+  const maxAgeSeconds = sourceVerificationMaxAgeSeconds(options);
+  const maxAgeMs = maxAgeSeconds * 1000;
+  const now = options.now !== undefined ? options.now : Date.now();
+  const base = { max_age_ms: maxAgeMs, age_ms: null, verified_at: null };
+  if (!record || typeof record !== 'object') return { ...base, state: 'NOT_VERIFIED', reason: 'no stored source verification for this host' };
+  const verifiedAt = record.verified_at;
+  if (typeof verifiedAt !== 'string' || !verifiedAt) {
+    return { ...base, state: 'UNUSABLE', reason: 'stored verification has no verified_at timestamp' };
+  }
+  const ts = Date.parse(verifiedAt);
+  if (!Number.isFinite(ts)) {
+    return { ...base, state: 'UNUSABLE', verified_at: verifiedAt, reason: `stored verification has an unparseable verified_at (${verifiedAt})` };
+  }
+  const ageMs = now - ts;
+  if (ageMs < -SOURCE_VERIFICATION_FUTURE_TOLERANCE_MS) {
+    // never treat "in the future" as fresh: that is the fail-open direction
+    return { ...base, state: 'UNUSABLE', verified_at: verifiedAt, age_ms: ageMs, reason: 'stored verification is dated in the future beyond clock-skew tolerance' };
+  }
+  const effective = record.effective_verdict
+    || (record.verdict === 'MATCH' ? 'INCOMPLETE' : record.verdict)   // pre-P9 record: core-only MATCH is not an executable MATCH
+    || null;
+  const out = { ...base, verified_at: verifiedAt, age_ms: Math.max(0, ageMs), effective_verdict: effective };
+  if (effective === 'DRIFT') return { ...out, state: 'DRIFT', reason: 'last verification found executable-source drift' };
+  if (effective === 'INCOMPLETE') {
+    return { ...out, state: 'INCOMPLETE', reason: record.custom_nodes_verdict === 'NOT_VERIFIED'
+      ? 'recorded manifest predates custom-node identity — the executable surface has never been verified'
+      : 'executable surface not fully verified' };
+  }
+  if (effective !== 'MATCH') return { ...out, state: 'UNUSABLE', reason: `unrecognized effective verdict ${JSON.stringify(String(effective))}` };
+  // Boundary is conservative: age >= maxAge is STALE, so a window of 0 means
+  // "always re-verify".
+  if (out.age_ms >= maxAgeMs) return { ...out, state: 'STALE', reason: `last MATCH is ${Math.round(out.age_ms / 1000)}s old (window ${maxAgeSeconds}s)` };
+  return { ...out, state: 'FRESH' };
+}
+
 // Raw source-state observation for one host (transport-dispatched, read-only).
 // Injectable via options.sourceCollector so tests and fixtures never reach ssh.
 async function collectSourceState(host, options = {}) {
@@ -1258,6 +1440,11 @@ module.exports = {
   collectSourceState,
   compareSourceIdentity,
   verifySourceIdentity,
+  assertRemoteHostContactAllowed,
+  SOURCE_VERIFICATION_MAX_AGE_SECONDS_DEFAULT,
+  sourceVerificationMaxAgeSeconds,
+  assessSourceVerificationFreshness,
+  ensureFreshSourceVerification,
   CUSTOM_NODES_MAX_FILES,
   CUSTOM_NODES_MAX_TOTAL_BYTES,
   classifyCustomNodeEntry,

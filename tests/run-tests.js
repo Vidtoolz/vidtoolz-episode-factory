@@ -1,5 +1,10 @@
 const { tests } = require("./_helpers.js");
 
+// Hard isolation: no test may contact a real GPU host. P10 puts source
+// verification on the production dispatch path, so this must be set BEFORE
+// any test module loads. The gateway's two remote executors refuse outright.
+process.env.VIDTOOLZ_TEST_NO_REMOTE_HOSTS = "1";
+
 require("./proposal-loop.test.js");
 require("./episode-model.test.js");
 require("./storage-adapter.test.js");

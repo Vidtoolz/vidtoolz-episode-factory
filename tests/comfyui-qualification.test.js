@@ -2328,3 +2328,274 @@ test("comfyui-p9 CLI: --source-verify exit codes are real (0 only on executable 
   const unknown = run("no-such-host-p9", emptyRoot);
   assert.notEqual(unknown.code, 0, "an unknown host must exit non-zero");
 });
+
+// ---- P10: verification freshness --------------------------------------------
+// A stored verdict says what WAS true. Production needs what IS true, so a
+// verdict has a shelf life. Every non-FRESH state must fail closed.
+
+const T0 = Date.parse("2026-08-09T12:00:00.000Z");
+const at = (iso, extra = {}) => ({ verified_at: iso, effective_verdict: "MATCH", ...extra });
+const freshnessOf = (rec, opts = {}) => environment.assessSourceVerificationFreshness(rec, { now: T0, ...opts });
+
+test("comfyui-p10 freshness: TTL boundary is conservative (age >= window is stale)", () => {
+  const ttl = 900; // seconds
+  const justInside = new Date(T0 - (ttl * 1000 - 1)).toISOString();
+  const exactly = new Date(T0 - ttl * 1000).toISOString();
+  const older = new Date(T0 - (ttl * 1000 + 1)).toISOString();
+  assert.equal(freshnessOf(at(justInside), { sourceVerificationMaxAgeSeconds: ttl }).state, "FRESH");
+  assert.equal(freshnessOf(at(exactly), { sourceVerificationMaxAgeSeconds: ttl }).state, "STALE", "age == TTL is stale, deliberately");
+  assert.equal(freshnessOf(at(older), { sourceVerificationMaxAgeSeconds: ttl }).state, "STALE");
+  // 0 means "always re-verify"
+  assert.equal(freshnessOf(at(new Date(T0).toISOString()), { sourceVerificationMaxAgeSeconds: 0 }).state, "STALE");
+});
+
+test("comfyui-p10 freshness: missing, invalid and future timestamps never read as fresh", () => {
+  assert.equal(freshnessOf(null).state, "NOT_VERIFIED");
+  assert.equal(freshnessOf(undefined).state, "NOT_VERIFIED");
+  assert.equal(freshnessOf({ effective_verdict: "MATCH" }).state, "UNUSABLE", "no verified_at");
+  assert.equal(freshnessOf(at("not-a-timestamp")).state, "UNUSABLE");
+  assert.equal(freshnessOf(at("")).state, "UNUSABLE");
+  assert.equal(freshnessOf(at(new Date(T0 + 3600 * 1000).toISOString())).state, "UNUSABLE", "far-future must not be 'very fresh'");
+  // modest clock skew inside tolerance is still usable
+  assert.equal(freshnessOf(at(new Date(T0 + 5 * 1000).toISOString())).state, "FRESH", "5s skew tolerated");
+});
+
+test("comfyui-p10 freshness: drift and incomplete are never fresh; a pre-P9 record cannot authorize dispatch", () => {
+  assert.equal(freshnessOf(at(new Date(T0).toISOString(), { effective_verdict: "DRIFT" })).state, "DRIFT");
+  assert.equal(freshnessOf(at(new Date(T0).toISOString(), { effective_verdict: "INCOMPLETE" })).state, "INCOMPLETE");
+  // a P8-era record has only `verdict` — a core MATCH is NOT an executable MATCH
+  const preP9 = { verified_at: new Date(T0).toISOString(), verdict: "MATCH" };
+  const assessed = freshnessOf(preP9);
+  assert.equal(assessed.state, "INCOMPLETE", "a stale-format MATCH must never authorize production");
+  assert.notEqual(assessed.state, "FRESH");
+  // unknown verdict values fail closed rather than defaulting to usable
+  assert.equal(freshnessOf(at(new Date(T0).toISOString(), { effective_verdict: "WEIRD" })).state, "UNUSABLE");
+});
+
+test("comfyui-p10 freshness: the window is centrally configured and rejects nonsense", () => {
+  assert.equal(environment.SOURCE_VERIFICATION_MAX_AGE_SECONDS_DEFAULT, 900);
+  assert.equal(environment.sourceVerificationMaxAgeSeconds({}), 900, "default applies with no override");
+  assert.equal(environment.sourceVerificationMaxAgeSeconds({ sourceVerificationMaxAgeSeconds: 30 }), 30);
+  assert.equal(environment.sourceVerificationMaxAgeSeconds({ sourceVerificationMaxAgeSeconds: 0 }), 0);
+  for (const bad of [-1, "abc", Infinity, NaN]) {
+    assert.throws(() => environment.sourceVerificationMaxAgeSeconds({ sourceVerificationMaxAgeSeconds: bad }),
+      /invalid source-verification max age/, `${bad} must be rejected`);
+  }
+});
+
+test("comfyui-p10 isolation: the test harness can NEVER contact a real GPU host", async () => {
+  // P10 puts source verification on the production dispatch path. Any test that
+  // exercises dispatch must be structurally incapable of SSHing into PRESTO.
+  assert.equal(process.env.VIDTOOLZ_TEST_NO_REMOTE_HOSTS, "1", "the runner must set the isolation flag before any test loads");
+  assert.throws(() => environment.assertRemoteHostContactAllowed("probe"),
+    /remote host contact is disabled in tests/, "the guard must refuse loudly");
+  // the two remote executors are the only functions that can reach a host
+  assert.throws(() => environment.sshSourceStateExecutor({ comfyui_root: "D:/AI/ComfyUI", ssh_host: "presto" }),
+    /remote host contact is disabled in tests/, "remote source observation must be blocked");
+  // and a real configured host cannot be observed through the normal entry point
+  await assert.rejects(
+    () => environment.collectSourceState("PRESTO", {}),
+    /remote host contact is disabled in tests/,
+    "collectSourceState against the real PRESTO config must be blocked, not attempted");
+});
+
+// ---- P10 gate behaviour (stubbed verifier — never a real host) --------------
+function verifierStub(results) {
+  const calls = [];
+  const seq = Array.isArray(results) ? [...results] : [results];
+  const fn = async (host) => {
+    calls.push(host);
+    const next = seq.length > 1 ? seq.shift() : seq[0];
+    if (next instanceof Error) throw next;
+    if (typeof next === "function") return next(host);
+    return next;
+  };
+  fn.calls = calls;
+  return fn;
+}
+const okVerification = (effective = "MATCH", extra = {}) => ({
+  status: "ok",
+  effectiveVerdict: effective,
+  comparison: { verdict: effective === "DRIFT" ? "DRIFT" : "MATCH" },
+  customNodes: { verdict: effective === "MATCH" ? "MATCH" : effective === "DRIFT" ? "DRIFT" : "NOT_VERIFIED" },
+  record: { verified_at: new Date().toISOString(), effective_verdict: effective, findings: extra.findings || [] },
+  ...extra,
+});
+const gateRoot = () => { const d = mkdtemp("comfyui-p10-gate-"); return d; };
+function writeRecord(envRoot, host, record) {
+  fs.mkdirSync(path.join(envRoot, host), { recursive: true });
+  fs.writeFileSync(path.join(envRoot, host, "source-verification.json"), JSON.stringify(record));
+}
+
+test("comfyui-p10 gate: a fresh MATCH is reused with NO host contact and no record rewrite", async () => {
+  const envRoot = gateRoot();
+  const rec = { verified_at: new Date().toISOString(), effective_verdict: "MATCH", verdict: "MATCH", custom_nodes_verdict: "MATCH" };
+  writeRecord(envRoot, "PRESTO", rec);
+  const file = path.join(envRoot, "PRESTO", "source-verification.json");
+  const before = { mtime: fs.statSync(file).mtimeMs, text: fs.readFileSync(file, "utf8") };
+  const verifier = verifierStub(okVerification());
+  const gate = await environment.ensureFreshSourceVerification("PRESTO", { environmentRoot: envRoot, sourceVerifier: verifier });
+  assert.equal(gate.allowed, true);
+  assert.equal(gate.state, "FRESH");
+  assert.equal(verifier.calls.length, 0, "a fresh record must not trigger a host scan");
+  assert.equal(fs.statSync(file).mtimeMs, before.mtime, "and must not rewrite the record");
+  assert.equal(fs.readFileSync(file, "utf8"), before.text);
+});
+
+test("comfyui-p10 gate: stale MATCH refreshes once and then permits; DRIFT and INCOMPLETE refuse", async () => {
+  const envRoot = gateRoot();
+  const stale = { verified_at: new Date(Date.now() - 3600 * 1000).toISOString(), effective_verdict: "MATCH" };
+  writeRecord(envRoot, "PRESTO", stale);
+  const okv = verifierStub(okVerification("MATCH"));
+  const refreshed = await environment.ensureFreshSourceVerification("PRESTO", { environmentRoot: envRoot, sourceVerifier: okv });
+  assert.equal(okv.calls.length, 1, "stale must trigger exactly one verification");
+  assert.equal(refreshed.allowed, true);
+  assert.equal(refreshed.state, "REFRESHED_MATCH");
+
+  writeRecord(envRoot, "PRESTO", stale);
+  const driftv = verifierStub(okVerification("DRIFT", { findings: [{ severity: "CRITICAL", kind: "tracked_file_modified", path: "comfy/model_management.py" }] }));
+  const drifted = await environment.ensureFreshSourceVerification("PRESTO", { environmentRoot: envRoot, sourceVerifier: driftv });
+  assert.equal(drifted.allowed, false, "drift must block dispatch");
+  assert.equal(drifted.code, "SOURCE_DRIFT");
+  assert.ok(drifted.reason.includes("tracked_file_modified"));
+
+  writeRecord(envRoot, "PRESTO", stale);
+  const incv = verifierStub(okVerification("INCOMPLETE"));
+  const incomplete = await environment.ensureFreshSourceVerification("PRESTO", { environmentRoot: envRoot, sourceVerifier: incv });
+  assert.equal(incomplete.allowed, false, "an unverified executable surface must block dispatch");
+  assert.equal(incomplete.code, "VERIFICATION_INCOMPLETE");
+});
+
+test("comfyui-p10 gate: a fresh DRIFT blocks immediately without re-scanning the host", async () => {
+  const envRoot = gateRoot();
+  writeRecord(envRoot, "PRESTO", { verified_at: new Date().toISOString(), effective_verdict: "DRIFT" });
+  const verifier = verifierStub(okVerification("MATCH"));
+  const gate = await environment.ensureFreshSourceVerification("PRESTO", { environmentRoot: envRoot, sourceVerifier: verifier });
+  assert.equal(gate.allowed, false);
+  assert.equal(gate.state, "DRIFT");
+  assert.equal(verifier.calls.length, 0, "a known drift must not hammer the host on every rejected job");
+});
+
+test("comfyui-p10 gate: no record and pre-P9 records both force a fresh verification", async () => {
+  const envRoot = gateRoot();
+  const v1 = verifierStub(okVerification("MATCH"));
+  const none = await environment.ensureFreshSourceVerification("PRESTO", { environmentRoot: envRoot, sourceVerifier: v1 });
+  assert.equal(v1.calls.length, 1, "no record => verify");
+  assert.equal(none.allowed, true);
+  // pre-P9: core MATCH only, no effective_verdict
+  writeRecord(envRoot, "PRESTO", { verified_at: new Date().toISOString(), verdict: "MATCH" });
+  const v2 = verifierStub(okVerification("MATCH"));
+  const legacy = await environment.ensureFreshSourceVerification("PRESTO", { environmentRoot: envRoot, sourceVerifier: v2 });
+  assert.equal(v2.calls.length, 1, "a P8-only record must be re-verified, never trusted as-is");
+  assert.equal(legacy.allowed, true);
+});
+
+test("comfyui-p10 gate: host unreachable and unobservable both fail closed with evidence", async () => {
+  const envRoot = gateRoot();
+  const boom = new Error("ssh: connect to host presto port 22: No route to host");
+  boom.code = "comfyui_environment_source_observation_failed";
+  const v1 = verifierStub(boom);
+  const unreachable = await environment.ensureFreshSourceVerification("PRESTO", { environmentRoot: envRoot, sourceVerifier: v1 });
+  assert.equal(unreachable.allowed, false);
+  assert.equal(unreachable.code, "HOST_UNREACHABLE");
+  assert.ok(!/EncodedCommand|powershell -/i.test(unreachable.reason), "must not leak the remote command line");
+  const v2 = verifierStub({ status: "source_unobservable", problems: ["not a git checkout"] });
+  const unobservable = await environment.ensureFreshSourceVerification("PRESTO", { environmentRoot: envRoot, sourceVerifier: v2 });
+  assert.equal(unobservable.allowed, false);
+  assert.equal(unobservable.code, "SOURCE_UNOBSERVABLE");
+});
+
+test("comfyui-p10 gate: concurrent stale requests coalesce into ONE host scan, per host", async () => {
+  const envRoot = gateRoot();
+  const stale = { verified_at: new Date(Date.now() - 3600 * 1000).toISOString(), effective_verdict: "MATCH" };
+  writeRecord(envRoot, "PRESTO", stale);
+  writeRecord(envRoot, "vidnux", stale);
+  let inFlight = 0; let maxConcurrent = 0;
+  const byHost = { PRESTO: 0, vidnux: 0 };
+  const slowVerifier = async (host) => {
+    byHost[host] += 1; inFlight += 1; maxConcurrent = Math.max(maxConcurrent, inFlight);
+    await new Promise((r) => setTimeout(r, 25));
+    inFlight -= 1;
+    return okVerification("MATCH");
+  };
+  const five = await Promise.all(Array.from({ length: 5 }, () =>
+    environment.ensureFreshSourceVerification("PRESTO", { environmentRoot: envRoot, sourceVerifier: slowVerifier })));
+  assert.equal(byHost.PRESTO, 1, "five simultaneous stale dispatches => exactly one PRESTO scan");
+  assert.equal(five.filter((r) => r.allowed).length, 5, "all five consumers get the same allowing result");
+  assert.equal(five.filter((r) => r.refreshed).length, 1, "exactly one of them performed the refresh");
+  // a second host must not be blocked behind the first
+  const both = await Promise.all([
+    environment.ensureFreshSourceVerification("PRESTO", { environmentRoot: envRoot, sourceVerifier: slowVerifier }),
+    environment.ensureFreshSourceVerification("vidnux", { environmentRoot: envRoot, sourceVerifier: slowVerifier }),
+  ]);
+  assert.equal(byHost.vidnux, 1, "the second host verifies independently");
+  assert.ok(both.every((r) => r.allowed));
+});
+
+test("comfyui-p10 gate: coalesced consumers inspect the ACTUAL result (no TOCTOU pass-through)", async () => {
+  const envRoot = gateRoot();
+  writeRecord(envRoot, "PRESTO", { verified_at: new Date(Date.now() - 3600 * 1000).toISOString(), effective_verdict: "MATCH" });
+  const driftVerifier = async () => { await new Promise((r) => setTimeout(r, 15)); return okVerification("DRIFT"); };
+  const results = await Promise.all(Array.from({ length: 4 }, () =>
+    environment.ensureFreshSourceVerification("PRESTO", { environmentRoot: envRoot, sourceVerifier: driftVerifier })));
+  assert.equal(results.filter((r) => r.allowed).length, 0, "every waiter must see the drift, not just the leader");
+  assert.ok(results.every((r) => r.code === "SOURCE_DRIFT"));
+});
+
+test("comfyui-p10 gate: a queued job re-checks at dispatch time once its window expires", async () => {
+  const envRoot = gateRoot();
+  const t0 = Date.now();
+  writeRecord(envRoot, "PRESTO", { verified_at: new Date(t0).toISOString(), effective_verdict: "MATCH" });
+  const verifier = verifierStub(okVerification("MATCH"));
+  const opts = { environmentRoot: envRoot, sourceVerifier: verifier, sourceVerificationMaxAgeSeconds: 60 };
+  // admission: fresh, no scan
+  const admit = await environment.ensureFreshSourceVerification("PRESTO", { ...opts, now: t0 });
+  assert.equal(admit.state, "FRESH");
+  assert.equal(verifier.calls.length, 0);
+  // the job sits in the queue past the window, then dispatches
+  const dispatch = await environment.ensureFreshSourceVerification("PRESTO", { ...opts, now: t0 + 120 * 1000 });
+  assert.equal(verifier.calls.length, 1, "freshness must be re-assessed at dispatch, not only at admission");
+  assert.equal(dispatch.state, "REFRESHED_MATCH");
+  // a retry later re-assesses again rather than trusting the first pass forever
+  writeRecord(envRoot, "PRESTO", { verified_at: new Date(t0).toISOString(), effective_verdict: "MATCH" });
+  const retry = await environment.ensureFreshSourceVerification("PRESTO", { ...opts, now: t0 + 600 * 1000 });
+  assert.equal(verifier.calls.length, 2, "a later retry re-verifies");
+  assert.equal(retry.allowed, true);
+});
+
+test("comfyui-p10 fingerprint stability: a refreshed identical verification does not move identity", () => {
+  // The gate re-verifies on a schedule, so an unchanged host will produce many
+  // records that differ ONLY in verified_at. That must never churn the
+  // identity-bearing fingerprint hash (it would look like environment drift).
+  const base = {
+    host: { name: "PRESTO" },
+    comfyui: {
+      version: "0.22.0",
+      effective_source_sha256: "e".repeat(64),
+      source_drift_check: { verdict: "MATCH", custom_nodes_verdict: "MATCH", effective_verdict: "MATCH" },
+    },
+    models: [],
+  };
+  const earlier = { ...base, collected_at: "2026-08-09T08:00:00.000Z" };
+  const later = { ...base, collected_at: "2026-08-09T12:00:00.000Z" };
+  assert.equal(gateway.fingerprint.fingerprintSha256(earlier), gateway.fingerprint.fingerprintSha256(later),
+    "observation time must not participate in identity");
+  // the attached verdict carries no timestamp at all
+  const attached = JSON.stringify(base.comfyui.source_drift_check);
+  assert.ok(!/verified_at|\d{4}-\d{2}-\d{2}T/.test(attached), "no timestamp may ride inside the identity-bearing verdict");
+  // but a genuine verdict change DOES move identity
+  const drifted = { ...base, comfyui: { ...base.comfyui, source_drift_check: { verdict: "MATCH", custom_nodes_verdict: "DRIFT", effective_verdict: "DRIFT" } }, collected_at: earlier.collected_at };
+  assert.notEqual(gateway.fingerprint.fingerprintSha256(earlier), gateway.fingerprint.fingerprintSha256(drifted),
+    "a real verdict change must change identity");
+});
+
+test("comfyui-p10 isolation: the ComfyUI client cannot reach a remote host during tests", () => {
+  // Pre-existing leak found during the P10 dispatch trace: a dispatch test's
+  // completion hook fetched the real PRESTO through collectFingerprint, with
+  // the rejection swallowed. Loopback fixtures must still work.
+  assert.throws(() => gateway.client.assertRemoteEndpointAllowedInTests("http://192.168.50.187:8188/system_stats"),
+    /remote host contact is disabled in tests/, "a LAN GPU host must be refused");
+  assert.doesNotThrow(() => gateway.client.assertRemoteEndpointAllowedInTests("http://127.0.0.1:8188/system_stats"),
+    "loopback must stay allowed");
+  assert.doesNotThrow(() => gateway.client.assertRemoteEndpointAllowedInTests("http://localhost:8188/system_stats"));
+});
