@@ -75,6 +75,12 @@ function evaluationQualifies(evaluation) {
 // deliberately NOT part of the card metadata so a byte-identical re-sync is a
 // true no-op on the Kanban side (updatedAt stays put).
 function buildUpsertPayload(state, evaluation, evaluationHash) {
+  const sourceProvenance = state.editorial_source
+    ? Object.fromEntries(Object.entries(state.editorial_source).filter(([key, value]) => key !== 'editorial' && value !== undefined))
+    : null;
+  const exactSourceEditorial = state.editorial_source && state.editorial_source.editorial
+    && state.editorial_source.source_script_hash === evaluation.script_hash
+    ? state.editorial_source.editorial : null;
   const payload = {
     sourceApp: KANBAN_SOURCE_APP,
     sourceType: KANBAN_SOURCE_TYPE,
@@ -92,6 +98,10 @@ function buildUpsertPayload(state, evaluation, evaluationHash) {
         verdict: evaluation.verdict,
         evaluated_at: evaluation.evaluated_at || null,
         evaluator_model: evaluation.model && evaluation.model.model ? evaluation.model.model : null,
+        ...(sourceProvenance ? {
+          source_provenance: sourceProvenance,
+          ...(exactSourceEditorial ? { editorial: Object.assign({}, exactSourceEditorial) } : {}),
+        } : {}),
       },
     },
   };

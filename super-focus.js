@@ -138,6 +138,9 @@ function emptyState(fields = {}) {
     // null = not linked. Additive and nullable so pre-bridge projects load
     // unchanged; the EF server is the only writer (via setKanbanCardId).
     kanban_card_id: fields.kanban_card_id || null,
+    // Immutable editorial-source identity received from the authoritative
+    // Kanban card. This is transport provenance, not EF-owned classification.
+    editorial_source: fields.editorial_source || null,
     created_at: created,
     updated_at: fields.updated_at || created,
   };
@@ -278,6 +281,8 @@ function readStateDir(dir) {
     kanban_card_id: typeof parsed.kanban_card_id === 'string' && parsed.kanban_card_id
       ? parsed.kanban_card_id
       : null,
+    editorial_source: parsed.editorial_source && typeof parsed.editorial_source === 'object'
+      && !Array.isArray(parsed.editorial_source) ? parsed.editorial_source : null,
   });
 }
 
@@ -1109,6 +1114,77 @@ function setKanbanCardId(projectId, cardId, options = {}) {
   return state;
 }
 
+const EDITORIAL_SOURCE_FIELDS = Object.freeze([
+  'system', 'kind', 'source_id', 'claim_id', 'topic_id', 'category_id',
+  'category_taxonomy', 'source_script_label',
+  'source_script_hash',
+]);
+
+function editorialSourceFromKanbanCard(card) {
+  if (!card || card.sourceApp !== 'vidtoolz-mindmap'
+      || (card.sourceType !== 'mindmap' && card.sourceType !== 'mindmap-topic')
+      || typeof card.sourceId !== 'string' || !card.sourceId) return null;
+  const metadata = card.metadata && typeof card.metadata === 'object' ? card.metadata : {};
+  const source = {
+    system: 'mindmap',
+    kind: card.sourceType === 'mindmap-topic' ? 'topic' : 'claim',
+    source_id: card.sourceId,
+    claim_id: typeof metadata.claimId === 'string' && metadata.claimId ? metadata.claimId : null,
+    topic_id: typeof metadata.topicId === 'string' && metadata.topicId ? metadata.topicId : null,
+    category_id: typeof metadata.categoryId === 'string' && metadata.categoryId ? metadata.categoryId : null,
+    category_taxonomy: typeof metadata.categoryTaxonomy === 'string' && metadata.categoryTaxonomy
+      ? metadata.categoryTaxonomy : null,
+    source_script_label: typeof metadata.sourceScriptLabel === 'string' && metadata.sourceScriptLabel
+      ? metadata.sourceScriptLabel : null,
+    source_script_hash: typeof metadata.sourceScriptHash === 'string' && /^[a-f0-9]{40}$/.test(metadata.sourceScriptHash)
+      ? metadata.sourceScriptHash : null,
+    status: 'verified',
+  };
+  const editorial = metadata.editorial && typeof metadata.editorial === 'object' && !Array.isArray(metadata.editorial)
+    && metadata.editorial.source === 'mindmap' ? metadata.editorial : null;
+  if (editorial) source.editorial = Object.assign({}, editorial);
+  return Object.fromEntries(Object.entries(source).filter(([, value]) => value !== null));
+}
+
+function setEditorialSource(projectId, incoming, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  if (!incoming) return state;
+  if (typeof incoming !== 'object' || Array.isArray(incoming)) {
+    const e = new Error('Editorial source provenance must be an object.');
+    e.statusCode = 400;
+    throw e;
+  }
+  const next = Object.fromEntries(Object.entries(incoming).filter(([, value]) => value !== null && value !== undefined));
+  if (!next.system || !next.kind || !next.source_id) {
+    const e = new Error('Editorial source provenance requires system, kind, and source_id.');
+    e.statusCode = 400;
+    throw e;
+  }
+  const existing = state.editorial_source;
+  if (existing) {
+    const conflicts = EDITORIAL_SOURCE_FIELDS.filter((field) => existing[field] && next[field] && existing[field] !== next[field]);
+    for (const field of ['claim_type', 'narrative_spine', 'opening_type']) {
+      if (existing.editorial?.[field] && next.editorial?.[field]
+          && existing.editorial[field] !== next.editorial[field]) conflicts.push(`editorial.${field}`);
+    }
+    if (conflicts.length) {
+      const e = new Error(`Editorial source conflict for ${conflicts.join(', ')}; existing provenance was preserved.`);
+      e.statusCode = 409;
+      e.code = 'editorial_source_conflict';
+      throw e;
+    }
+    const merged = Object.assign({}, next, existing);
+    if (isDeepStrictEqual(existing, merged)) return state;
+    state.editorial_source = merged;
+  } else {
+    state.editorial_source = next;
+  }
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
 // Record the outcome of a Super Focus → Kanban evaluation sync on the project
 // (durable, atomic; read back verbatim — readStateDir preserves unknown keys).
 // Card-id reconciliation: unlike setKanbanCardId (which 409s on re-link), a
@@ -1229,6 +1305,8 @@ module.exports = {
   setImageReview,
   setVideoReview,
   setKanbanCardId,
+  editorialSourceFromKanbanCard,
+  setEditorialSource,
   recordKanbanSync,
   findProjectByKanbanCardId,
 };

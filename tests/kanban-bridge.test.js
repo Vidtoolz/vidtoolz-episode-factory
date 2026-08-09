@@ -53,6 +53,7 @@ function makeKanbanStub(cards, options = {}) {
   const state = {
     revision: 7,
     cards: cards.map((c) => ({
+      ...c,
       id: c.id,
       title: c.title || 'Card',
       stage: c.stage || 'idea_claim',
@@ -154,6 +155,68 @@ test('kanban bridge: fresh link creates project, links both sides, preserves car
   } finally {
     await close(server);
   }
+});
+
+test('kanban bridge: authoritative Mindmap source survives project creation and reload', async () => {
+  const stub = makeKanbanStub([{
+    id: 'card-source', title: 'Sourced idea', sourceApp: 'vidtoolz-mindmap',
+    sourceType: 'mindmap', sourceId: 'claim-1.2', metadata: {
+      claimId: '1.2', topicId: 'topic-042', categoryId: 'cat-01', sourceScriptLabel: 'A', sourceScriptHash: 'a'.repeat(40),
+      editorial: { source: 'mindmap', narrative_spine: 'contradiction_diagnosis_reframe_action' },
+    },
+  }]);
+  const { server, root } = await bridgeServer(stub);
+  try {
+    const data = unwrap(await link(server, { kanban_card_id: 'card-source', title: 'Sourced idea' }));
+    const project = superFocus.loadProject(data.project_id, { root });
+    assert.deepEqual(project.editorial_source, {
+      system: 'mindmap', kind: 'claim', source_id: 'claim-1.2', claim_id: '1.2',
+      topic_id: 'topic-042', category_id: 'cat-01', source_script_label: 'A', source_script_hash: 'a'.repeat(40), status: 'verified',
+      editorial: { source: 'mindmap', narrative_spine: 'contradiction_diagnosis_reframe_action' },
+    });
+  } finally {
+    await close(server);
+  }
+});
+
+test('kanban bridge: contradictory durable source fails closed and preserves the original', async () => {
+  const root = mkdirTmp('kanban-bridge-root-');
+  const mediaRoot = mkdirTmp('kanban-bridge-media-');
+  const project = superFocus.createProject({ title: 'Existing' }, { root });
+  superFocus.setKanbanCardId(project.project_id, 'card-1', { root });
+  superFocus.setEditorialSource(project.project_id, {
+    system: 'mindmap', kind: 'claim', source_id: 'claim-A', claim_id: 'A', status: 'verified',
+  }, { root });
+  const stub = makeKanbanStub([{
+    id: 'card-1', sourceApp: 'vidtoolz-mindmap', sourceType: 'mindmap', sourceId: 'claim-B',
+    metadata: { ef_project_id: project.project_id, claimId: 'B' },
+  }]);
+  const server = packageEngineServer.createServer({ superFocusRoot: root, superFocusMediaRoot: mediaRoot, kanbanRequest: stub.fn });
+  await listen(server);
+  try {
+    const response = await link(server, { kanban_card_id: 'card-1' });
+    assert.equal(response.statusCode, 409);
+    assert.equal(response.body.code, 'editorial_source_conflict');
+    assert.equal(superFocus.loadProject(project.project_id, { root }).editorial_source.source_id, 'claim-A');
+    assert.equal(stub.calls.filter((call) => call.method === 'PATCH').length, 0);
+  } finally {
+    await close(server);
+  }
+});
+
+test('kanban bridge: contradictory explicit editorial taxonomy cannot overwrite project provenance', () => {
+  const root = mkdirTmp('kanban-bridge-root-');
+  const project = superFocus.createProject({ title: 'Editorial conflict' }, { root });
+  superFocus.setEditorialSource(project.project_id, {
+    system: 'mindmap', kind: 'claim', source_id: 'claim-A', status: 'verified',
+    editorial: { source: 'mindmap', narrative_spine: 'contradiction_diagnosis_reframe_action' },
+  }, { root });
+  assert.throws(() => superFocus.setEditorialSource(project.project_id, {
+    system: 'mindmap', kind: 'claim', source_id: 'claim-A', status: 'verified',
+    editorial: { source: 'mindmap', narrative_spine: 'mistake_consequence_root_cause_better_system' },
+  }, { root }), (error) => error.statusCode === 409 && error.code === 'editorial_source_conflict');
+  assert.equal(superFocus.loadProject(project.project_id, { root }).editorial_source.editorial.narrative_spine,
+    'contradiction_diagnosis_reframe_action');
 });
 
 test('kanban bridge: repeat link is idempotent — same project, no duplicate', async () => {

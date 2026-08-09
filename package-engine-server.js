@@ -13837,6 +13837,7 @@ function createServer(options = {}) {
           const existing = card.metadata && typeof card.metadata.ef_project_id === 'string' && card.metadata.ef_project_id
             ? card.metadata.ef_project_id
             : null;
+          const editorialSource = superFocus.editorialSourceFromKanbanCard(card);
 
           let projectId = null;
           let linked = null;
@@ -13893,6 +13894,13 @@ function createServer(options = {}) {
               linked = 'created';
               createdNew = true;
             }
+          }
+
+          // Preserve the authoritative source identity fetched from Kanban in
+          // durable EF project state. Replays enrich omitted fields, while a
+          // contradictory durable identity fails closed before card mutation.
+          if (editorialSource) {
+            superFocus.setEditorialSource(projectId, editorialSource, { root: sfRoot });
           }
 
           // Kanban write LAST. One retry on a 409 revision race: re-GET the

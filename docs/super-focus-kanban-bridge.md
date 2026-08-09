@@ -44,6 +44,22 @@ value wins).
   score_band, verdict, evaluated_at, evaluator_model).
 - Card titles on EXISTING cards are never touched — the operator owns the board.
 
+## Editorial source continuity
+
+The Kanban link endpoint fetches the canonical card and, for Mindmap-sourced
+cards, snapshots its source system/kind/ID plus any explicit claim, topic,
+category, taxonomy, and selected-script identity into
+`super-focus.json.editorial_source`. The snapshot survives reload and travels
+with every qualifying exact-script evaluation as
+`metadata.super_focus_eval.source_provenance`.
+
+An explicit controlled Mindmap classification travels separately as
+`metadata.super_focus_eval.editorial` only when the current evaluator script
+hash equals the selected Mindmap source script hash. Episode Factory never infers claim
+type, hook type, or narrative spine from script text. Omitted fields do not
+erase stored identity; contradictory durable identity returns a conflict
+instead of overwriting the project.
+
 ## Failure and recovery
 
 A Kanban outage never fails the evaluation: the eval response stays 200 and

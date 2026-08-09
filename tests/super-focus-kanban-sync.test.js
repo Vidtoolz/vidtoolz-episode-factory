@@ -174,6 +174,30 @@ test('sync: qualifying project upserts once with full provenance and records the
   assert.equal(state.kanban_sync.evaluation_hash, evMeta.evaluation_hash);
 });
 
+test('sync: exact evaluation transports durable source identity and explicit editorial taxonomy', async () => {
+  const root = mkdirTmp('sf-kanban-sync-');
+  const id = projectWithEval(root);
+  superFocus.setEditorialSource(id, {
+    system: 'mindmap', kind: 'claim', source_id: 'claim-1.2', claim_id: '1.2',
+    topic_id: 'topic-042', category_id: 'cat-01', source_script_hash: scriptEval.hashScriptText(SCRIPT), status: 'verified',
+    editorial: { source: 'mindmap', narrative_spine: 'contradiction_diagnosis_reframe_action' },
+  }, { root });
+  const stub = makeUpsertStub();
+  await bridge.syncProjectToKanban(id, { root, requestFn: stub.fn });
+  const exact = stub.calls[0].body.metadata.super_focus_eval;
+  assert.deepEqual(exact.source_provenance, {
+    system: 'mindmap', kind: 'claim', source_id: 'claim-1.2', claim_id: '1.2',
+    topic_id: 'topic-042', category_id: 'cat-01', source_script_hash: scriptEval.hashScriptText(SCRIPT), status: 'verified',
+  });
+  assert.deepEqual(exact.editorial, {
+    source: 'mindmap', narrative_spine: 'contradiction_diagnosis_reframe_action',
+  });
+  const rewritten = bridge.buildUpsertPayload(superFocus.loadProject(id, { root }),
+    producedEvaluation('A structurally different exact script.'), 'f'.repeat(64));
+  assert.equal(rewritten.metadata.super_focus_eval.editorial, undefined,
+    'source-script spine cannot label a later rewritten script hash');
+});
+
 test('sync: existing kanban_card_id travels as the cardId hint; changed card id is recorded as relink', async () => {
   const root = mkdirTmp('sf-kanban-sync-');
   const id = projectWithEval(root);
