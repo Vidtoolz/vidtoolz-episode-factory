@@ -14,6 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { isDeepStrictEqual } = require('util');
 // Shared hash so stale detection here matches the hash the evaluator stores.
 // (script-evaluator.js depends only on `crypto` — no import cycle.)
 const scriptEvaluator = require('./script-evaluator.js');
@@ -1116,16 +1117,38 @@ function setKanbanCardId(projectId, cardId, options = {}) {
 // was deleted and the triple matched/created another), the new id is adopted
 // and the old one is kept as relinked_from instead of wedging every future
 // sync behind a conflict.
+// Two sync outcomes are semantically identical when everything except the
+// attempt timestamp matches — `attempted_at` is the volatile field and carries
+// no state meaning on its own.
+function sameKanbanSync(a, b) {
+  if (!a || !b) return false;
+  const strip = (record) => {
+    const copy = Object.assign({}, record);
+    delete copy.attempted_at;
+    return copy;
+  };
+  return isDeepStrictEqual(strip(a), strip(b));
+}
+
 function recordKanbanSync(projectId, sync, options = {}) {
   const dir = stateDir(projectId, options);
   const state = loadProject(projectId, options);
   const record = Object.assign({}, sync || {});
+  let nextCardId = state.kanban_card_id;
   if (record.status === 'synced' && typeof record.card_id === 'string' && record.card_id) {
     if (state.kanban_card_id && state.kanban_card_id !== record.card_id) {
       record.relinked_from = state.kanban_card_id;
     }
-    state.kanban_card_id = record.card_id;
+    nextCardId = record.card_id;
   }
+  // A replay that changes nothing must not rewrite the project. `updated_at`
+  // orders the operator's project list (listProjects sorts by it), so an
+  // idempotent reconciliation pass would otherwise reshuffle Super Focus
+  // purely because it re-confirmed state that was already true.
+  if (nextCardId === state.kanban_card_id && sameKanbanSync(state.kanban_sync, record)) {
+    return state;
+  }
+  state.kanban_card_id = nextCardId;
   state.kanban_sync = record;
   state.updated_at = nowIso();
   writeStateAtomic(dir, state);

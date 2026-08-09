@@ -187,6 +187,30 @@ test('sync: existing kanban_card_id travels as the cardId hint; changed card id 
   assert.equal(state.kanban_sync.relinked_from, 'old-card');
 });
 
+test('sync: identical replay does not rewrite the project (updated_at / list order preserved)', async () => {
+  const root = mkdirTmp('sf-kanban-sync-');
+  const id = projectWithEval(root);
+  const stub = makeUpsertStub({ cardId: 'card-stable', existing: true });
+  await bridge.syncProjectToKanban(id, { root, requestFn: stub.fn });
+  const file = path.join(root, id, 'super-focus.json');
+  const before = { mtimeMs: fs.statSync(file).mtimeMs, text: fs.readFileSync(file, 'utf8') };
+  const updatedAtBefore = superFocus.loadProject(id, { root }).updated_at;
+
+  const replay = await bridge.syncProjectToKanban(id, { root, requestFn: stub.fn });
+  assert.equal(replay.status, 'synced');
+  const after = { mtimeMs: fs.statSync(file).mtimeMs, text: fs.readFileSync(file, 'utf8') };
+  assert.equal(after.mtimeMs, before.mtimeMs, 'project state file not rewritten by an identical replay');
+  assert.equal(after.text, before.text, 'project state bytes unchanged');
+  assert.equal(superFocus.loadProject(id, { root }).updated_at, updatedAtBefore,
+    'updated_at unchanged — reconciliation must not reorder the project list');
+
+  // A genuinely different outcome still records (card relink here).
+  const moved = makeUpsertStub({ cardId: 'card-moved', existing: true });
+  await bridge.syncProjectToKanban(id, { root, requestFn: moved.fn });
+  assert.notEqual(fs.readFileSync(file, 'utf8'), before.text, 'a real change still persists');
+  assert.equal(superFocus.loadProject(id, { root }).kanban_card_id, 'card-moved');
+});
+
 test('sync: non-PRODUCE verdict never reaches Kanban and writes no sync state', async () => {
   const root = mkdirTmp('sf-kanban-sync-');
   const id = projectWithEval(root, { evaluation: Object.assign(producedEvaluation(SCRIPT), { verdict: 'REVISE', score_band: 'REVISE' }) });
