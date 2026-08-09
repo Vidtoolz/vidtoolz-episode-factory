@@ -657,6 +657,7 @@ const superFocusPrompts = require('./super-focus-prompts.js');
 const superFocusMedia = require('./super-focus-media.js');
 const superFocusRouter = require('./super-focus-router.js');
 const scriptEvaluator = require('./script-evaluator.js');
+const superFocusKanbanBridge = require('./super-focus-kanban-bridge.js');
 const motionGraphicsState = require('./motion-graphics-state.js');
 const motionGraphicsTemplates = require('./motion-graphics-templates.js');
 const motionGraphicsRenderers = require('./motion-graphics-renderers.js');
@@ -14110,8 +14111,28 @@ function createServer(options = {}) {
               host: gen.provider ? gen.provider.id : null,
             },
           });
+          // Deterministic evaluation identity, stamped BEFORE persist: sha256
+          // over the canonical result (script_hash + scored output + evaluator
+          // model; timestamps/host excluded). Binds this exact script content
+          // to this exact evaluation — see super-focus-kanban-bridge.js.
+          evaluation.evaluation_hash = superFocusKanbanBridge.computeEvaluationHash(evaluation);
           const saved = superFocus.saveScriptEvaluation(id, evaluation, { root: sfRoot });
-          sendJSON(res, 200, { project_id: id, script_evaluation: saved.script_evaluation, provider: gen.provider });
+          // Super Focus → Production Kanban bridge: a fresh PRODUCE verdict
+          // upserts the project's production card (idempotent, advance-only,
+          // metadata-merging). The gate is re-derived from the just-persisted
+          // state inside the bridge — never from request input. A Kanban
+          // outage NEVER fails the evaluation: the outcome is recorded on the
+          // project (state.kanban_sync) for replay via
+          // scripts/super-focus-kanban-sync.js and surfaced in the response.
+          let kanbanSync = null;
+          if (superFocusKanbanBridge.evaluationQualifies(saved.script_evaluation)) {
+            kanbanSync = await superFocusKanbanBridge.syncProjectToKanban(id, {
+              root: sfRoot,
+              requestFn: serverOptions.kanbanRequest || kanbanRequest,
+              log: (msg) => console.error(`[super-focus-kanban-sync] ${msg}`),
+            });
+          }
+          sendJSON(res, 200, { project_id: id, script_evaluation: saved.script_evaluation, provider: gen.provider, kanban_sync: kanbanSync });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-evaluate-script-error'));
       return;

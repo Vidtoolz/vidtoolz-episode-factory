@@ -1108,6 +1108,30 @@ function setKanbanCardId(projectId, cardId, options = {}) {
   return state;
 }
 
+// Record the outcome of a Super Focus → Kanban evaluation sync on the project
+// (durable, atomic; read back verbatim — readStateDir preserves unknown keys).
+// Card-id reconciliation: unlike setKanbanCardId (which 409s on re-link), a
+// bridge sync treats the Kanban upsert's deterministic identity match as
+// authoritative — if the upsert resolved a different card (e.g. the old card
+// was deleted and the triple matched/created another), the new id is adopted
+// and the old one is kept as relinked_from instead of wedging every future
+// sync behind a conflict.
+function recordKanbanSync(projectId, sync, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  const record = Object.assign({}, sync || {});
+  if (record.status === 'synced' && typeof record.card_id === 'string' && record.card_id) {
+    if (state.kanban_card_id && state.kanban_card_id !== record.card_id) {
+      record.relinked_from = state.kanban_card_id;
+    }
+    state.kanban_card_id = record.card_id;
+  }
+  state.kanban_sync = record;
+  state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
 function findProjectByKanbanCardId(cardId, options = {}) {
   if (typeof cardId !== 'string' || !cardId) return null;
   const root = resolveRoot(options);
@@ -1182,5 +1206,6 @@ module.exports = {
   setImageReview,
   setVideoReview,
   setKanbanCardId,
+  recordKanbanSync,
   findProjectByKanbanCardId,
 };

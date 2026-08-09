@@ -84,6 +84,7 @@ require("./super-focus-compute-gate.test.js");
 require("./super-focus-media-viewer.test.js");
 require("./super-focus-media-mount-guard.test.js");
 require("./kanban-bridge.test.js");
+require("./super-focus-kanban-sync.test.js");
 require("./image-prompt-full-screen.test.js");
 require("./super-focus-visual-required.test.js");
 require("./super-focus-visual-plan-authority.test.js");
