@@ -50,12 +50,24 @@
 //                                                                       #   NEVER restarts ComfyUI)
 //   node scripts/comfyui-workflow-check.js --deployment-rollback <host> --event <deployment-id>
 //
+// ComfyUI core-source drift gate (P8) — re-observes the host's git/source
+// state (read-only; never model files) and compares it against the recorded
+// strong manifest's effective source identity:
+//
+//   node scripts/comfyui-workflow-check.js --source-verify <host>   # exit 0 when the core source still
+//                                                                   #   matches the recorded manifest;
+//                                                                   #   exit 1 on CRITICAL drift (tracked
+//                                                                   #   file modified, commit moved, exec-
+//                                                                   #   relevant untracked change); litter
+//                                                                   #   (diagnostics/logs) reports as
+//                                                                   #   INFORMATIONAL, never drift
+//
 // Static checks never touch the network. --live, --upgrade-status, all
-// upgrade-session commands, --inventory-status/-verify and
-// --deployment-status perform read-only calls — they never queue a render,
-// never hash models, never write. ONLY --qualify-render submits GPU work;
-// ONLY --inventory-strong hashes models; ONLY --deployment-apply/-rollback
-// write the approved deployment destinations.
+// upgrade-session commands, --inventory-status/-verify, --deployment-status
+// and --source-verify perform read-only calls — they never queue a render,
+// never hash models, never write to any host. ONLY --qualify-render submits
+// GPU work; ONLY --inventory-strong hashes models; ONLY
+// --deployment-apply/-rollback write the approved deployment destinations.
 const gateway = require('../comfyui-gateway');
 
 function fmtStatus(s) {
@@ -345,6 +357,27 @@ async function main() {
     console.log(`ROLLED_BACK — ${record.rolled_back_event}: ${record.writes} file(s) restored to their pre-deployment bytes`);
     record.files.forEach((f) => console.log(`  ${f.id}: restored sha ${f.restored_sha256.slice(0, 16)}…`));
     return;
+  }
+  if (args.includes('--source-verify')) {
+    if (!id) { console.error('usage: --source-verify <host>'); process.exit(1); }
+    const result = await gateway.environment.verifySourceIdentity(id);
+    if (result.status !== 'ok') {
+      console.log(`CORE SOURCE: NO BASELINE — strong manifest ${result.status}${(result.problems || []).length ? ` (${result.problems.join('; ')})` : ''}`);
+      console.log(`  establish one first: node scripts/comfyui-workflow-check.js --inventory-strong ${id}`);
+      process.exit(1);
+    }
+    const c = result.comparison;
+    console.log(`${result.manifest.host} COMFYUI CORE SOURCE`);
+    console.log(`  recorded: commit ${c.recorded.git_commit ? c.recorded.git_commit.slice(0, 12) : '(none)'}  effective ${c.recorded.effective_source_sha256.slice(0, 16)}…  ${c.recorded.source_state} (${c.recorded.identity_level})  [inventoried ${result.manifest.generated_at}]`);
+    console.log(`  live:     commit ${c.live.git_commit ? c.live.git_commit.slice(0, 12) : '(none)'}  effective ${c.live.effective_source_sha256.slice(0, 16)}…  ${c.live.source_state} (${c.live.identity_level})`);
+    for (const f of c.findings) {
+      console.log(`  ${f.severity.padEnd(13)} ${f.kind}${f.path ? `  ${f.path}` : ''} — ${f.detail}`);
+    }
+    console.log(c.verdict === 'MATCH'
+      ? `Core source: MATCH — core checkout identical to the recorded manifest (${c.counts.WARNING} warning(s), ${c.counts.INFORMATIONAL} informational)\n`
+        + '  scope: tracked core tree + fingerprinted local files. git-IGNORED trees (custom_nodes/, venv/, models/, user/, input/, output/) are NOT covered.'
+      : `Core source: DRIFT — ${c.counts.CRITICAL} CRITICAL finding(s); execution identity no longer matches the recorded manifest. No change performed — re-inventory (--inventory-strong ${id}) and requalify deliberately.`);
+    process.exit(c.verdict === 'MATCH' ? 0 : 1);
   }
   if (args.includes('--inventory-status') || args.includes('--inventory-verify')) {
     if (!id) { console.error('usage: --inventory-status <host> | --inventory-verify <host>'); process.exit(1); }

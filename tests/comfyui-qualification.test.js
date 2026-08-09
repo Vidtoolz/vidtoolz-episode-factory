@@ -1743,3 +1743,329 @@ test("comfyui-deployment managed classification: MATCH → REPRODUCIBLE_MANAGED,
   assert.equal(real.manifest.files.length, 3);
   assert.ok(real.manifest.files.every((f) => /^[0-9a-f]{64}$/.test(f.sha256)));
 });
+
+// ---- P8: core-source drift verification ------------------------------------------------------
+
+// PRESTO-shaped raw source state: clean tracked tree at one commit, managed
+// operational configs, diagnostic/log/backup litter — the live 2026-08 shape.
+function p8Raw(overrides = {}) {
+  return {
+    git_commit: "c".repeat(40),
+    git_branch: "master",
+    tracked_patch_sha256: null,
+    source_entries: [
+      { path: "_diagnostics/hunyuan_a.md", status: "??", tracked: false, bytes: 3749, sha256: null },
+      { path: "extra_model_paths.yaml", status: "ignored-active", tracked: false, bytes: 926, sha256: "1".repeat(64) },
+      { path: "extra_model_paths.yaml.backup-old", status: "??", tracked: false, bytes: 428, sha256: null },
+      { path: "logs/comfyui-server.err.log.prev", status: "??", tracked: false, bytes: 6935, sha256: null },
+      { path: "start-presto-comfyui-server.ps1", status: "??", tracked: false, bytes: 452, sha256: "2".repeat(64) },
+    ],
+    ...overrides,
+  };
+}
+const P8_MANAGED = { "extra_model_paths.yaml": "1".repeat(64), "start-presto-comfyui-server.ps1": "2".repeat(64) };
+function p8Identity(raw) {
+  return { git_commit: raw.git_commit, ...gateway.environment.buildSourceIdentity(raw, { managed: P8_MANAGED }) };
+}
+
+test("comfyui-source taxonomy: a clean tracked tree is explicit (git_commit_exact), never an overloaded null patch", () => {
+  // clean tracked tree + fingerprinted managed configs + litter → exact
+  const exact = p8Identity(p8Raw());
+  assert.equal(exact.source_state, "REPRODUCIBLE_MANAGED");
+  assert.equal(exact.identity_level, "git_commit_exact");
+  assert.equal(exact.working_tree.tracked_clean, true);
+  assert.equal(exact.working_tree.tracked_patch_sha256, null);
+  // tracked patch material → git_commit_plus_patch, tracked_clean false
+  const patched = p8Identity(p8Raw({
+    tracked_patch_sha256: "d".repeat(64),
+    source_entries: [...p8Raw().source_entries, { path: "comfy/model_management.py", status: "M", tracked: true, bytes: 20, sha256: "e".repeat(64) }],
+  }));
+  assert.equal(patched.identity_level, "git_commit_plus_patch");
+  assert.equal(patched.working_tree.tracked_clean, false);
+  // a tracked entry alone (even without a patch sha) forfeits exactness
+  const trackedNoPatch = p8Identity(p8Raw({
+    source_entries: [{ path: "comfy/model_management.py", status: "M", tracked: true, bytes: 20, sha256: "e".repeat(64) }],
+  }));
+  assert.equal(trackedNoPatch.working_tree.tracked_clean, false);
+  assert.notEqual(trackedNoPatch.identity_level, "git_commit_exact");
+  // litter-only tree stays exact about the tracked source
+  const litter = p8Identity({ git_commit: "c".repeat(40), tracked_patch_sha256: null, source_entries: [{ path: "logs/a.log.prev", status: "??", tracked: false, bytes: 3, sha256: null }] });
+  assert.equal(litter.source_state, "DIRTY_NON_EXECUTION");
+  assert.equal(litter.identity_level, "git_commit_exact");
+  // a fully clean checkout keeps the strongest historical label
+  const clean = p8Identity({ git_commit: "c".repeat(40), tracked_patch_sha256: null, source_entries: [] });
+  assert.equal(clean.source_state, "CLEAN");
+  assert.equal(clean.identity_level, "git_commit");
+  assert.equal(clean.working_tree.tracked_clean, true);
+  // unfingerprintable execution-relevant change stays loudly unclassified
+  const unclassified = p8Identity(p8Raw({ source_entries: [{ path: "mystery_node.py", status: "??", tracked: false, bytes: 99, sha256: null }] }));
+  assert.equal(unclassified.identity_level, "git_commit_dirty_unfingerprinted");
+  // cryptographic binding: the no-patch state hashes an explicit marker — a
+  // real 64-hex patch hash can never collide with "no patch material"
+  const none = gateway.environment.effectiveSourceSha256({ commit: "c".repeat(40), trackedPatchSha: null, entries: [] });
+  const noneUndefined = gateway.environment.effectiveSourceSha256({ commit: "c".repeat(40), entries: [] });
+  const withPatch = gateway.environment.effectiveSourceSha256({ commit: "c".repeat(40), trackedPatchSha: "d".repeat(64), entries: [] });
+  assert.equal(none, noneUndefined, "null and absent patch are the same explicit no-patch state");
+  assert.notEqual(none, withPatch, "no-patch marker never collides with a real patch identity");
+});
+
+test("comfyui-source drift comparator: tracked modification / exec-relevant change = CRITICAL, litter = INFORMATIONAL", () => {
+  const recorded = p8Identity(p8Raw());
+  // identical live state → MATCH with zero findings
+  const same = gateway.environment.compareSourceIdentity(recorded, p8Identity(p8Raw()));
+  assert.equal(same.verdict, "MATCH");
+  assert.equal(same.findings.length, 0);
+  // new diagnostic litter + a rotated log → MATCH, reported INFORMATIONAL only (R3)
+  const litterRaw = p8Raw();
+  litterRaw.source_entries = [
+    ...litterRaw.source_entries.map((e) => (e.path.startsWith("logs/") ? { ...e, bytes: 9999 } : e)),
+    { path: "_diagnostics/hunyuan_new_probe.md", status: "??", tracked: false, bytes: 55, sha256: null },
+  ];
+  const litter = gateway.environment.compareSourceIdentity(recorded, p8Identity(litterRaw));
+  assert.equal(litter.verdict, "MATCH", "diagnostic litter must never fail the drift gate");
+  assert.equal(litter.counts.CRITICAL, 0);
+  assert.ok(litter.findings.length >= 2);
+  assert.ok(litter.findings.every((f) => f.severity === "INFORMATIONAL"));
+  assert.ok(litter.findings.some((f) => f.path === "_diagnostics/hunyuan_new_probe.md"));
+  // R4: a TRACKED core file modified in future → CRITICAL with the file path
+  const hackedRaw = p8Raw({
+    tracked_patch_sha256: "d".repeat(64),
+    source_entries: [...p8Raw().source_entries, { path: "comfy/model_management.py", status: "M", tracked: true, bytes: 31, sha256: "e".repeat(64) }],
+  });
+  const hacked = gateway.environment.compareSourceIdentity(recorded, p8Identity(hackedRaw));
+  assert.equal(hacked.verdict, "DRIFT");
+  assert.ok(hacked.findings.some((f) => f.severity === "CRITICAL" && f.path === "comfy/model_management.py"));
+  assert.ok(hacked.findings.some((f) => f.kind === "tracked_patch_changed" && f.severity === "CRITICAL"));
+  // new execution-relevant untracked file → CRITICAL with the file path
+  const nodeRaw = p8Raw();
+  nodeRaw.source_entries = [...nodeRaw.source_entries, { path: "evil_node.py", status: "??", tracked: false, bytes: 12, sha256: "f".repeat(64) }];
+  const node = gateway.environment.compareSourceIdentity(recorded, p8Identity(nodeRaw));
+  assert.equal(node.verdict, "DRIFT");
+  assert.ok(node.findings.some((f) => f.severity === "CRITICAL" && f.path === "evil_node.py"));
+  // managed operational config content change → CRITICAL (execution identity moved)
+  const cfgRaw = p8Raw();
+  cfgRaw.source_entries = cfgRaw.source_entries.map((e) => (e.path === "extra_model_paths.yaml" ? { ...e, sha256: "9".repeat(64) } : e));
+  const cfg = gateway.environment.compareSourceIdentity(recorded, p8Identity(cfgRaw));
+  assert.equal(cfg.verdict, "DRIFT");
+  assert.ok(cfg.findings.some((f) => f.severity === "CRITICAL" && f.path === "extra_model_paths.yaml"));
+  // execution-relevant file REMOVED → CRITICAL (identity changed, even if "cleaner")
+  const goneRaw = p8Raw();
+  goneRaw.source_entries = goneRaw.source_entries.filter((e) => e.path !== "extra_model_paths.yaml");
+  const gone = gateway.environment.compareSourceIdentity(recorded, p8Identity(goneRaw));
+  assert.equal(gone.verdict, "DRIFT");
+  assert.ok(gone.findings.some((f) => f.severity === "CRITICAL" && f.path === "extra_model_paths.yaml"));
+  // base commit moved → CRITICAL
+  const moved = gateway.environment.compareSourceIdentity(recorded, p8Identity(p8Raw({ git_commit: "a".repeat(40) })));
+  assert.equal(moved.verdict, "DRIFT");
+  assert.ok(moved.findings.some((f) => f.kind === "base_commit_changed" && f.severity === "CRITICAL"));
+  // unclassifiable new file → WARNING, visible but not (yet) identity drift
+  const weirdRaw = p8Raw();
+  weirdRaw.source_entries = [...weirdRaw.source_entries, { path: "weird/artifact.xyz", status: "??", tracked: false, bytes: 7, sha256: null }];
+  const weird = gateway.environment.compareSourceIdentity(recorded, p8Identity(weirdRaw));
+  assert.equal(weird.verdict, "MATCH");
+  assert.equal(weird.counts.WARNING, 1);
+  assert.ok(weird.findings.some((f) => f.severity === "WARNING" && f.path === "weird/artifact.xyz"));
+  // taxonomy honesty: an old manifest label (git_commit_plus_patch over a null
+  // patch) against the same structure is a label update, never drift
+  const oldLabel = { ...recorded, identity_level: "git_commit_plus_patch" };
+  const relabel = gateway.environment.compareSourceIdentity(oldLabel, p8Identity(p8Raw()));
+  assert.equal(relabel.verdict, "MATCH");
+  assert.ok(relabel.findings.some((f) => f.kind === "identity_level_label_changed" && f.severity === "INFORMATIONAL"));
+});
+
+test("comfyui-source drift verify: read-only re-observation vs recorded manifest — clean MATCH, tracked hack CRITICAL", async () => {
+  const fx = sourceFixture();
+  await gateway.environment.runStrongInventory("env-test", fx.options);
+  // no drift right after inventory
+  const v1 = await gateway.environment.verifySourceIdentity("env-test", fx.options);
+  assert.equal(v1.status, "ok");
+  assert.equal(v1.comparison.verdict, "MATCH");
+  assert.equal(v1.comparison.counts.CRITICAL, 0);
+  // verification evidence persists locally (never on the host)
+  const persisted = gateway.environment.readSourceVerification("env-test", fx.options);
+  assert.equal(persisted.verdict, "MATCH");
+  assert.equal(persisted.recorded_effective_source_sha256, v1.manifest.comfyui.effective_source_sha256);
+  // diagnostic/log litter appears → still MATCH, reported INFORMATIONAL
+  fs.mkdirSync(path.join(fx.comfyRoot, "_diagnostics"), { recursive: true });
+  fs.writeFileSync(path.join(fx.comfyRoot, "_diagnostics", "hunyuan_probe.md"), "diag");
+  fs.mkdirSync(path.join(fx.comfyRoot, "logs"), { recursive: true });
+  fs.writeFileSync(path.join(fx.comfyRoot, "logs", "server.out.log.prev"), "rotated");
+  const v2 = await gateway.environment.verifySourceIdentity("env-test", fx.options);
+  assert.equal(v2.comparison.verdict, "MATCH");
+  assert.ok(v2.comparison.findings.some((f) => f.severity === "INFORMATIONAL" && f.path === "_diagnostics/hunyuan_probe.md"));
+  // R4: tracked core file modified → CRITICAL drift naming the exact file
+  fs.writeFileSync(path.join(fx.comfyRoot, "comfy", "model_management.py"), "VRAM = 'hacked'\n");
+  const v3 = await gateway.environment.verifySourceIdentity("env-test", fx.options);
+  assert.equal(v3.comparison.verdict, "DRIFT");
+  assert.ok(v3.comparison.findings.some((f) => f.severity === "CRITICAL" && f.path === "comfy/model_management.py"));
+  assert.equal(gateway.environment.readSourceVerification("env-test", fx.options).verdict, "DRIFT");
+  // reverting the hack restores MATCH (litter still present, still informational)
+  fs.writeFileSync(path.join(fx.comfyRoot, "comfy", "model_management.py"), "VRAM = 'auto'\n");
+  const v4 = await gateway.environment.verifySourceIdentity("env-test", fx.options);
+  assert.equal(v4.comparison.verdict, "MATCH");
+  // new execution-relevant untracked file → CRITICAL
+  fs.writeFileSync(path.join(fx.comfyRoot, "sneaky_node.py"), "def n(): pass\n");
+  const v5 = await gateway.environment.verifySourceIdentity("env-test", fx.options);
+  assert.equal(v5.comparison.verdict, "DRIFT");
+  assert.ok(v5.comparison.findings.some((f) => f.severity === "CRITICAL" && f.path === "sneaky_node.py"));
+  fs.rmSync(path.join(fx.comfyRoot, "sneaky_node.py"));
+  // base commit moves → CRITICAL
+  fs.writeFileSync(path.join(fx.comfyRoot, "main.py"), "print('upstream update')\n");
+  gitIn(fx.comfyRoot, ["add", "main.py"]);
+  gitIn(fx.comfyRoot, ["commit", "-qm", "upstream"]);
+  const v6 = await gateway.environment.verifySourceIdentity("env-test", fx.options);
+  assert.equal(v6.comparison.verdict, "DRIFT");
+  assert.ok(v6.comparison.findings.some((f) => f.kind === "base_commit_changed" && f.severity === "CRITICAL"));
+  // no manifest → no baseline to verify against, reported honestly
+  const empty = environmentFixture();
+  const missing = await gateway.environment.verifySourceIdentity("env-test", empty.options);
+  assert.equal(missing.status, "absent");
+});
+
+test("comfyui-source drift → provenance: fingerprints carry the verdict; drifted evidence is flagged, never discarded", async () => {
+  const fx = sourceFixture();
+  await gateway.environment.runStrongInventory("env-test", fx.options);
+  await gateway.environment.verifySourceIdentity("env-test", fx.options);
+  const hq = fx.entries.find((e) => e.id === "wan22-i2v-hq");
+  const modelFolders = {};
+  for (const name of fx.allModels) {
+    const folder = name.includes("lora") ? "loras" : name.includes("umt5") ? "text_encoders" : name.includes("vae") ? "vae" : "diffusion_models";
+    const st = fs.statSync(path.join(fx.modelRoot, folder, name));
+    (modelFolders[folder] = modelFolders[folder] || []).push({ name, size: st.size, modified: st.mtimeMs / 1000 });
+  }
+  const fetchImpl = fakeComfyFetch({ objectInfo: WAN_OBJECT_INFO, version: "0.22.0", gpu: "RTX 4090", modelFolders });
+  const fp = await gateway.fingerprint.collectFingerprint(hq, { ...fx.options, fetchImpl });
+  assert.equal(fp.comfyui.source_drift_check.verdict, "MATCH");
+  // repeated MATCH verification never churns the fingerprint identity hash
+  await gateway.environment.verifySourceIdentity("env-test", fx.options);
+  const fpAgain = await gateway.fingerprint.collectFingerprint(hq, { ...fx.options, fetchImpl });
+  assert.equal(fpAgain.fingerprint_sha256, fp.fingerprint_sha256, "re-verification of an unchanged env is not an identity change");
+  // hack a tracked file, re-verify → DRIFT flows into the fingerprint
+  fs.writeFileSync(path.join(fx.comfyRoot, "comfy", "model_management.py"), "VRAM = 'hacked'\n");
+  await gateway.environment.verifySourceIdentity("env-test", fx.options);
+  const fp2 = await gateway.fingerprint.collectFingerprint(hq, { ...fx.options, fetchImpl });
+  assert.equal(fp2.comfyui.source_drift_check.verdict, "DRIFT");
+  assert.ok(fp2.comfyui.source_drift_check.critical_findings.some((f) => f.includes("comfy/model_management.py")));
+  // production capture under drift: evidence kept (real render) but flagged loudly
+  const runsRoot = tmpDir("comfyui-drift-runs-");
+  const runDir = writeWanRunDir(runsRoot, "run-drift-1");
+  gateway.provenance.buildWanRunProvenance(runDir, { entry: hq });
+  const captured = gateway.qualification.captureProductionQualification({ entry: hq, runDir, fingerprint: fp2 }, fx.options);
+  assert.equal(captured.captured, true, JSON.stringify(captured.reasons));
+  assert.equal(captured.record.source_integrity_warning.code, "CORE_SOURCE_DRIFTED_FROM_MANIFEST");
+  assert.ok(captured.source_integrity_warning, "capture result surfaces the warning to callers");
+  const ev = gateway.qualification.evaluateQualification(hq, fx.options);
+  assert.equal(ev.evidence_state, "LIVE_PASSED", "flag + warn — never silently discard real production evidence");
+  assert.ok(ev.notes.some((n) => /CORE-SOURCE DRIFT/.test(n)));
+  // a verification of an OLDER inventory is never presented as current: after
+  // re-inventory the recorded identity changed → stale verdict not attached
+  await gateway.environment.runStrongInventory("env-test", fx.options);
+  const fp3 = await gateway.fingerprint.collectFingerprint(hq, { ...fx.options, fetchImpl });
+  assert.equal(fp3.comfyui.source_drift_check, undefined, "verification of a superseded manifest must not be attached");
+  // clean captures stay unflagged
+  const runDir2 = writeWanRunDir(runsRoot, "run-drift-2");
+  gateway.provenance.buildWanRunProvenance(runDir2, { entry: hq });
+  const captured2 = gateway.qualification.captureProductionQualification({ entry: hq, runDir: runDir2, fingerprint: fp3 }, fx.options);
+  assert.equal(captured2.captured, true, JSON.stringify(captured2.reasons));
+  assert.equal(captured2.record.source_integrity_warning, undefined);
+});
+
+test("comfyui-source drift safety: observation is read-only — no write/mutation verbs, no model hashing, CLI wired", async () => {
+  // the remote source-observation script contains no write or git-mutation verbs
+  const script = gateway.environment.buildPowershellSourceScript({ comfyui_root: "D:/AI/ComfyUI" });
+  for (const banned of ["Set-Content", "Out-File", "Remove-Item", "Move-Item", "WriteAllBytes", "New-Item", "git reset", "git checkout", "git clean", "git stash", "git pull"]) {
+    assert.ok(!script.includes(banned), `source script must not contain "${banned}"`);
+  }
+  assert.ok(script.includes("SOURCE_JSON_BEGIN"));
+  // verify never hashes model files (spy would throw) and never writes to the tree
+  const fx = sourceFixture();
+  await gateway.environment.runStrongInventory("env-test", fx.options);
+  const before = fs.readdirSync(fx.comfyRoot).sort();
+  await gateway.environment.verifySourceIdentity("env-test", { ...fx.options, hashImpl: () => { throw new Error("MODEL HASH ON DRIFT PATH"); } });
+  assert.deepEqual(fs.readdirSync(fx.comfyRoot).sort(), before, "drift verify leaves the tree untouched");
+  // injectable collector: tests/fixtures can never reach ssh
+  const injected = await gateway.environment.verifySourceIdentity("env-test", {
+    ...fx.options,
+    sourceCollector: async () => ({ comfyui: { git_commit: "0".repeat(40) }, git_branch: "x", tracked_patch_sha256: null, source_entries: [] }),
+  });
+  assert.equal(injected.comparison.verdict, "DRIFT", "injected collector drives the comparison");
+  // operator entry point exists and stays read-only-labeled
+  const cli = fs.readFileSync(path.join(REPO, "scripts", "comfyui-workflow-check.js"), "utf8");
+  assert.ok(cli.includes("--source-verify"), "CLI must expose the core-source drift gate");
+});
+
+// ---- P8 hardening: every path that could report a FALSE "MATCH" ------------
+// Each case below was demonstrated against the pre-hardening implementation.
+const environment = gateway.environment;
+const { execFileSync } = require("node:child_process");
+const mkdtemp = (prefix) => fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+
+test("comfyui-source hardening: a name git has to quote still counts as executable code", () => {
+  const root = mkdtemp("comfyui-quotepath-");
+  const git = (...a) => execFileSync("git", ["-C", root, ...a], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  git("init", "-q");
+  git("config", "user.email", "t@t"); git("config", "user.name", "t");
+  fs.writeFileSync(path.join(root, "main.py"), "print(1)\n");
+  git("add", "-A"); git("commit", "-qm", "base");
+  // non-ASCII name: git C-quotes this in --porcelain unless quotePath=false
+  fs.writeFileSync(path.join(root, "näyttö_node.py"), "import os\n");
+  const observed = environment.collectLocalSourceState(root);
+  const entry = observed.source_entries.find((e) => /node\.py$/.test(e.path));
+  assert.ok(entry, "the quoted path must survive observation");
+  assert.equal(entry.path, "näyttö_node.py", "path must be unquoted, not C-escaped");
+  const cls = environment.classifySourceEntry(entry.path);
+  assert.equal(cls.execution_relevant, true, "an executable .py must never be demoted by its name");
+  assert.ok(entry.sha256, "and it must actually be content-hashed");
+});
+
+test("comfyui-source hardening: noise-looking names never demote real code", () => {
+  for (const p of ["evil.log.py", "node__pycache__helper.py", "ComfyUI.bak-node.py", "hook.pyw", "tools/launch.ps1"]) {
+    assert.equal(environment.classifySourceEntry(p).execution_relevant, true, `${p} must stay execution-relevant`);
+  }
+  // genuine noise stays noise
+  for (const p of ["logs/server.log", "run.log.prev", "__pycache__/x.pyc", "extra_model_paths.yaml.backup-20260531", "venv/Scripts/activate.bat", "models/a.safetensors"]) {
+    assert.equal(environment.classifySourceEntry(p).execution_relevant, false, `${p} must stay noise`);
+  }
+});
+
+test("comfyui-source hardening: an unobservable tree yields no identity and never a MATCH", async () => {
+  const notGit = mkdtemp("comfyui-notgit-");
+  fs.writeFileSync(path.join(notGit, "main.py"), "print(1)\n");
+  const observed = environment.collectLocalSourceState(notGit);
+  assert.equal(observed.source_observed, false, "a non-git root is an incomplete observation");
+  const identity = environment.buildSourceIdentity({ git_commit: observed.comfyui.git_commit, source_entries: observed.source_entries });
+  assert.equal(identity.effective_source_sha256, null, "no anchor => no identity (never a constant hash)");
+  assert.equal(identity.identity_level, "unknown");
+  // two different unanchored trees must NOT compare equal
+  const a = { git_commit: null, identity_level: "unknown", effective_source_sha256: null, working_tree: { entries: [] } };
+  const cmp = environment.compareSourceIdentity(a, a);
+  assert.equal(cmp.verdict, "DRIFT", "unverifiable source must fail closed");
+  assert.ok(cmp.findings.some((f) => f.kind === "unverifiable_source_observation"), "and say why");
+  // verifySourceIdentity refuses rather than reporting MATCH
+  const host = "PRESTO";
+  const envRoot = mkdtemp("comfyui-verifyroot-");
+  fs.mkdirSync(path.join(envRoot, host), { recursive: true });
+  const manifest = { schema_version: 1, host, generated_at: new Date().toISOString(), comfyui: { git_commit: "c".repeat(40), effective_source_sha256: "e".repeat(64), working_tree: { entries: [] }, identity_level: "git_commit_exact", source_state: "CLEAN" }, models: [] };
+  manifest.manifest_sha256 = environment.manifestSha256 ? environment.manifestSha256(manifest) : undefined;
+  fs.writeFileSync(path.join(envRoot, host, "manifest.json"), JSON.stringify(manifest));
+  const res = await environment.verifySourceIdentity(host, {
+    environmentRoot: envRoot,
+    managed: {},
+    sourceCollector: () => environment.collectLocalSourceState(notGit),
+  });
+  assert.notEqual(res.status, "ok", "an unobservable live source must not produce a comparison");
+  assert.ok(["source_unobservable", "invalid", "missing"].includes(res.status), `unexpected status ${res.status}`);
+});
+
+test("comfyui-source hardening: a duplicate-path entry cannot move the identity", () => {
+  const base = { commit: "a".repeat(40), trackedPatchSha: null };
+  const one = environment.effectiveSourceSha256({ ...base, entries: [{ path: "extra_model_paths.yaml", execution_relevant: true, sha256: "1".repeat(64) }] });
+  const dupA = environment.effectiveSourceSha256({ ...base, entries: [
+    { path: "extra_model_paths.yaml", execution_relevant: true, sha256: "1".repeat(64) },
+    { path: "extra_model_paths.yaml", execution_relevant: true, sha256: "2".repeat(64) }] });
+  const dupB = environment.effectiveSourceSha256({ ...base, entries: [
+    { path: "extra_model_paths.yaml", execution_relevant: true, sha256: "2".repeat(64) },
+    { path: "extra_model_paths.yaml", execution_relevant: true, sha256: "1".repeat(64) }] });
+  assert.equal(dupA, dupB, "duplicate paths must sort totally — observation order cannot change identity");
+  assert.notEqual(one, dupA, "and a duplicate is still a different fact set");
+});

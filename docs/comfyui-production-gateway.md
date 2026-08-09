@@ -354,10 +354,16 @@ fingerprints WHAT is locally different and folds it into one reproducible
 
 ```text
 effective_source_sha256 = SHA256(canonical({
-  commit,                       — base git commit
+  commit,                       — base git commit (40-hex) or null
   tracked_patch,                — SHA256 of `git diff --binary --no-ext-diff HEAD`
-                                  (covers staged AND unstaged, text AND binary)
-  untracked: [{path, sha256}]   — execution-relevant untracked/config files
+                                  (covers staged AND unstaged, text AND binary);
+                                  the explicit marker string 'none' when there is
+                                  zero tracked patch material — a real 64-hex
+                                  patch hash can never collide with it, so the
+                                  clean-tracked-tree state is cryptographically
+                                  bound, never inferred from an absent field
+  untracked: [{path, sha256}]   — every execution-relevant working-tree entry
+                                  with a content hash, sorted by path
 }))
 ```
 
@@ -367,17 +373,54 @@ Working-tree entries are classified (`untracked_source`, `local_config`,
 outputs, bytecode, diagnostics, backups) is listed but never lets the
 identity churn. Known execution-relevant **git-ignored** configs
 (`extra_model_paths.yaml` — it shapes model discovery yet never shows as
-dirty) are explicitly fingerprinted. Overall source states:
+dirty) are explicitly fingerprinted.
+
+**Scope boundary (exact, and deliberately narrow).** The entry set comes from
+git's own view of the core checkout (`git status`/`git diff` against HEAD)
+plus the single-item ignored-config allowlist above. Everything ComfyUI's
+`.gitignore` excludes is therefore **outside** this identity — most
+importantly `custom_nodes/`, and also `models/`, `user/`, `input/`,
+`output/`, `venv*/`. Swapping a custom node's Python does **not** change
+`effective_source_sha256` and does **not** raise drift. Custom nodes carry
+only the weaker per-package identity in the fingerprint layer
+(`git_commit`/`package_version` locally, `class_presence_only` remotely).
+"Core source" here means the ComfyUI **core tree**, never the whole
+executable surface — read `MATCH` as "the core checkout is unchanged", not
+as "nothing that executes has changed". Extending coverage to a bounded
+`custom_nodes/**` walk is tracked as follow-up work, not implemented here.
+
+Overall source states:
 
 ```text
-CLEAN                 no local changes at all             → identity git_commit
-KNOWN_PATCHED         every execution-relevant change is
-                      fully fingerprinted                 → git_commit_plus_patch
+CLEAN                 no local changes at all
+KNOWN_PATCHED         every execution-relevant change is fully fingerprinted
                       (dirty ≠ unverifiable — a precisely identified patch
                        set remains reproducible and production-valid)
+REPRODUCIBLE_MANAGED  the only execution-relevant local files are deployment-
+                      contract managed AND matching (P7)
 DIRTY_NON_EXECUTION   only noise/backup entries
 DIRTY_UNCLASSIFIED    an execution-relevant change could not be fingerprinted
 ```
+
+The **identity level** speaks about the tracked core tree, decoupled from
+untracked litter (`working_tree.tracked_clean` records the verdict — any
+tracked entry, even one without hashable patch text, forfeits exactness):
+
+```text
+git_commit                        CLEAN — no local entries at all
+git_commit_exact                  tracked tree byte-identical to the base
+                                  commit (zero tracked modifications, explicit
+                                  no-patch marker); execution-relevant
+                                  untracked/config files, if any, are each
+                                  content-hashed into the effective identity
+git_commit_plus_patch             tracked patch material present and hashed
+git_commit_dirty_unfingerprinted  an exec-relevant change could not be hashed
+unknown                           not a git checkout
+```
+
+(Manifests generated before this taxonomy labeled the clean-tracked-tree
+state `git_commit_plus_patch` with a null patch hash; the drift verifier
+reports that as an INFORMATIONAL label update, never as drift.)
 
 Fingerprints copy the manifest's source identity as-of-inventory-time
 (`source_observed_at` makes freshness explicit); qualification records and
@@ -442,6 +485,48 @@ manual): checkout ComfyUI at the qualified commit → verify base source →
 ensure the model layout → `--deployment-apply PRESTO` → `--deployment-status`
 → start via the managed launcher's scheduled task → `<id> --live` preflight →
 `--inventory-strong PRESTO` → requalify workflows.
+
+### Core-source drift verification (P8)
+
+P6 records which bytes constituted the core source *at inventory time*; P8
+answers, on demand: **is that still what is on the host right now?**
+
+```bash
+node scripts/comfyui-workflow-check.js --source-verify PRESTO   # read-only; exit 0 MATCH / exit 1 DRIFT
+```
+
+Re-observes the host's git/source state over the same read-only transport as
+the inventory (ssh+powershell for PRESTO, direct reads locally) — git
+status/diff plus small-file content hashes only, **model files are never
+touched** — and compares it structurally against the recorded manifest: same
+base commit, same tracked-tree state, same execution-relevant untracked set +
+hashes, same effective source identity. Per-file findings carry a severity:
+
+```text
+CRITICAL       execution identity changed → exit 1
+               (tracked core file modified, base commit moved, execution-
+                relevant untracked/config file added/changed/removed, or an
+                exec-relevant change that cannot be content-hashed)
+WARNING        needs eyes, does not (yet) change execution identity
+               (unclassifiable new file; recorded hash that no longer
+                reproduces under the current formula → re-inventory)
+INFORMATIONAL  expected litter churn — diagnostics, runtime logs, backups —
+               listed, never drift, never exit 1
+```
+
+The verdict persists locally in gitignored
+`state/comfyui-environments/<host>/source-verification.json`. Fingerprints
+attach it as `comfyui.source_drift_check` **only while it verified the
+current manifest** (matching recorded effective sha — a verification of a
+superseded inventory is history, not a current claim), and without a
+timestamp so repeated MATCH verifications of an unchanged environment never
+churn the fingerprint identity hash. Production qualification capture under a
+DRIFT verdict stays conservative: the LIVE_PASSED evidence is **captured and
+permanently flagged** (`source_integrity_warning`, surfaced as a note by
+evidence evaluation) — real production evidence is never silently discarded;
+remediation is an explicit re-inventory + requalification. Like every P6/P7
+surface, this command observes only: it never cleans, deletes, resets, or
+writes anything on any host, and never restarts ComfyUI.
 
 ### Supervised upgrade sessions (P4)
 

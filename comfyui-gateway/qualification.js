@@ -292,6 +292,9 @@ function evaluateQualification(entry, options = {}) {
   out.last_qualified_at = (passed.execution || {}).completed_at || null;
   out.evidence_source = passed.evidence_source || 'canonical_fixture';
   out.execution_mode = (passed.execution || {}).execution_mode || null;
+  if (passed.source_integrity_warning) {
+    out.notes.push(`evidence captured under CORE-SOURCE DRIFT (${passed.source_integrity_warning.code}) — live core source did not match the recorded environment manifest; re-inventory and requalify before trusting`);
+  }
   out.qualified_environment = {
     host: ((passed.environment_fingerprint || {}).host || {}).name || null,
     comfyui_version: ((passed.environment_fingerprint || {}).comfyui || {}).version || null,
@@ -447,6 +450,19 @@ function captureProductionQualification({ entry, runDir, provenancePath, fingerp
   if (fs.existsSync(attemptPath)) {
     return { captured: false, already_captured: true, qualification_id: qualificationId, record: readJsonSafe(attemptPath) };
   }
+  // core-source drift gate (P8), conservative by design: a CRITICAL drift
+  // between the live core source and the recorded environment manifest never
+  // discards real production evidence — the record is captured AND permanently
+  // flagged, so downstream evaluation shows the taint until re-inventory +
+  // requalification.
+  const driftCheck = fingerprint && fingerprint.comfyui && fingerprint.comfyui.source_drift_check;
+  const sourceIntegrityWarning = driftCheck && driftCheck.verdict === 'DRIFT' ? {
+    code: 'CORE_SOURCE_DRIFTED_FROM_MANIFEST',
+    detail: 'live ComfyUI core source no longer matches the recorded environment manifest — re-inventory (--inventory-strong) and requalify before trusting this evidence',
+    recorded_effective_source_sha256: fingerprint.comfyui.effective_source_sha256 || null,
+    live_effective_source_sha256: driftCheck.live_effective_source_sha256 || null,
+    critical_findings: driftCheck.critical_findings || [],
+  } : null;
   const record = {
     schema_version: QUALIFICATION_SCHEMA_VERSION,
     qualification_id: qualificationId,
@@ -480,10 +496,13 @@ function captureProductionQualification({ entry, runDir, provenancePath, fingerp
     render_provenance: { path: manifestPath, sha256: provenance.sha256File(manifestPath) },
     generated_by: 'comfyui-gateway/qualification.js (production capture)',
   };
+  if (sourceIntegrityWarning) record.source_integrity_warning = sourceIntegrityWarning;
   const written = writeQualificationRecord(record, options);
   // a successful qualification retires any scoped requalification permit
   const consumedPermit = permits.consumePermit(entry, { qualificationId }, options);
-  return { captured: true, qualification_id: qualificationId, record, written, permit_consumed: consumedPermit ? consumedPermit.permit_id : null };
+  const result = { captured: true, qualification_id: qualificationId, record, written, permit_consumed: consumedPermit ? consumedPermit.permit_id : null };
+  if (sourceIntegrityWarning) result.source_integrity_warning = sourceIntegrityWarning;
+  return result;
 }
 
 // Capture across the provenance results a completed PRESTO job produced

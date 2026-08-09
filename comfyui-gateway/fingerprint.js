@@ -222,6 +222,22 @@ async function collectFingerprint(entry, options = {}) {
       comfyui.source_state = mc.source_state;
       comfyui.source_identity_level = mc.identity_level;
       comfyui.source_observed_at = rm.manifest.generated_at;
+      // core-source drift verdict (P8): attached only when the persisted
+      // verification checked THIS manifest (matching recorded effective sha) —
+      // a verification of a superseded inventory is history, never a current
+      // claim. No timestamp inside: repeated MATCH verifications of an
+      // unchanged environment must not churn the fingerprint identity hash
+      // (the full timestamped record lives in source-verification.json).
+      const sv = environment.readSourceVerification(hostNameFor(endpoint), options);
+      if (sv && sv.recorded_effective_source_sha256 === mc.effective_source_sha256) {
+        comfyui.source_drift_check = { verdict: sv.verdict };
+        if (sv.verdict === 'DRIFT') {
+          comfyui.source_drift_check.live_effective_source_sha256 = sv.live_effective_source_sha256 || null;
+          comfyui.source_drift_check.critical_findings = (sv.findings || [])
+            .filter((f) => f.severity === 'CRITICAL')
+            .map((f) => `${f.kind}${f.path ? ` ${f.path}` : ''}`);
+        }
+      }
     }
   }
 

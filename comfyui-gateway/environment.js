@@ -94,9 +94,13 @@ function previousManifestPath(host, options = {}) {
 // cleans, stashes, applies, or pulls anything on any host.
 
 const SOURCE_NOISE_DIR_RE = /^(logs|output|temp|input|user|models|_diagnostics|venv|\.git)\//i;
-const SOURCE_NOISE_FILE_RE = /(\.log(\.[A-Za-z0-9]+)?$|\.prev$|\.pyc$|__pycache__|\.(png|jpg|jpeg|webp|mp4|safetensors|gguf)$)/i;
+const SOURCE_NOISE_FILE_RE = /(\.log(\.[A-Za-z0-9]+)?$|\.prev$|\.pyc$|(^|\/)__pycache__\/|\.(png|jpg|jpeg|webp|mp4|safetensors|gguf)$)/i;
 const SOURCE_BACKUP_RE = /\.(bak|backup)(-|\.|$)/i;
-const SOURCE_EXEC_FILE_RE = /(\.py$|^[^/\\]+\.(ps1|bat|sh|cmd)$)/i;
+// Executable code anywhere under the root (nested launchers execute too).
+// Noise DIRECTORIES (venv/, models/, user/, output/…) are still excluded
+// first, so this never drags a virtualenv's thousands of scripts in.
+const SOURCE_EXEC_FILE_RE = /(\.py$|\.(ps1|bat|sh|cmd)$)/i;
+const SOURCE_CODE_FILE_RE = /\.(py|pyw)$/i;
 // execution-relevant configs that git IGNORES (so they never even show as
 // dirty) but that materially shape production — e.g. model-path mapping.
 const KNOWN_EXEC_RELEVANT_IGNORED = ['extra_model_paths.yaml'];
@@ -105,13 +109,22 @@ const SOURCE_HASH_MAX_BYTES = 5 * 1024 * 1024;
 // Classify one untracked/config path (repo-relative, forward slashes).
 function classifySourceEntry(relPath) {
   const p = String(relPath).replace(/\\/g, '/');
-  if (SOURCE_NOISE_DIR_RE.test(p) || SOURCE_NOISE_FILE_RE.test(p)) {
+  // Noise DIRECTORIES win first: a virtualenv / model / output tree is not
+  // core source no matter what it contains.
+  if (SOURCE_NOISE_DIR_RE.test(p)) {
+    return { category: p.toLowerCase().startsWith('_diagnostics/') ? 'generated_diagnostic' : 'generated_runtime', execution_relevant: false };
+  }
+  // Executable code is classified BEFORE the file-level noise/backup patterns.
+  // Those patterns match unanchored substrings, so evaluating them first let a
+  // file name alone demote real code out of the identity ("evil.log.py",
+  // "ComfyUI.bak-node.py", "node__pycache__helper.py" all read as noise).
+  if (KNOWN_EXEC_RELEVANT_IGNORED.includes(p)) return { category: 'local_config', execution_relevant: true };
+  if (SOURCE_CODE_FILE_RE.test(p)) return { category: 'untracked_source', execution_relevant: true };
+  if (SOURCE_EXEC_FILE_RE.test(p)) return { category: 'local_config', execution_relevant: true };
+  if (SOURCE_NOISE_FILE_RE.test(p)) {
     return { category: p.toLowerCase().startsWith('_diagnostics/') ? 'generated_diagnostic' : 'generated_runtime', execution_relevant: false };
   }
   if (SOURCE_BACKUP_RE.test(p)) return { category: 'local_config_backup', execution_relevant: false };
-  if (KNOWN_EXEC_RELEVANT_IGNORED.includes(p)) return { category: 'local_config', execution_relevant: true };
-  if (/\.py$/i.test(p)) return { category: 'untracked_source', execution_relevant: true };
-  if (SOURCE_EXEC_FILE_RE.test(p)) return { category: 'local_config', execution_relevant: true };
   if (/\.(ya?ml|json|ini|toml)$/i.test(p) && !p.includes('/')) return { category: 'local_config', execution_relevant: true };
   return { category: 'unknown', execution_relevant: false };
 }
@@ -129,15 +142,36 @@ function sourceState({ trackedPatchSha, entries }) {
   return 'DIRTY_NON_EXECUTION';
 }
 
-// The reproducible identity of what actually executes: base commit + the
-// tracked patch + every execution-relevant untracked/config file's content.
+// The reproducible identity of what actually executes. Exact inputs, in
+// canonical (key-sorted) order inside one JSON document:
+//   commit         — base git commit (40-hex) or null
+//   tracked_patch  — SHA-256 of `git diff --binary --no-ext-diff HEAD`
+//                    when tracked patch material exists, else the explicit
+//                    marker string 'none'. A real patch hash is 64-hex and
+//                    can therefore NEVER collide with the no-patch marker —
+//                    "clean tracked tree" is cryptographically bound, not
+//                    inferred from an absent field.
+//   untracked      — every execution-relevant working-tree entry that has a
+//                    content hash, as {path, sha256}, sorted by path.
+//                    (Tracked modifications appear here too when hashed —
+//                    their content is already covered by tracked_patch; the
+//                    duplication is deterministic and harmless.)
+// effective_source_sha256 = SHA-256(canonicalJson({commit, tracked_patch, untracked}))
 function effectiveSourceSha256({ commit, trackedPatchSha, entries }) {
+  // No base commit means the observation produced no anchor at all (not a git
+  // checkout, or the observation failed). Returning a hash here would mint a
+  // real-looking identity for an unknown tree — and every such tree would
+  // share the SAME constant, so two entirely different roots would compare
+  // MATCH. Absent an anchor the honest answer is "no identity".
+  if (!commit) return null;
   const untracked = (entries || [])
     .filter((e) => e.execution_relevant && e.sha256)
     .map((e) => ({ path: e.path, sha256: e.sha256 }))
-    .sort((a, b) => a.path.localeCompare(b.path));
+    // total order: path, then sha — duplicate paths can never make the
+    // identity depend on observation order.
+    .sort((a, b) => a.path.localeCompare(b.path) || String(a.sha256).localeCompare(String(b.sha256)));
   return crypto.createHash('sha256')
-    .update(canonicalJson({ commit: commit || null, tracked_patch: trackedPatchSha || 'none', untracked }))
+    .update(canonicalJson({ commit, tracked_patch: trackedPatchSha || 'none', untracked }))
     .digest('hex');
 }
 
@@ -176,15 +210,37 @@ function buildSourceIdentity(raw, { managed = {} } = {}) {
     state = 'REPRODUCIBLE_MANAGED';
   }
   const effective = effectiveSourceSha256({ commit: raw.git_commit, trackedPatchSha, entries });
+  // an explicit tracked-tree verdict: exactly the commit's bytes, or not.
+  // Never inferred from a null patch hash alone — any tracked entry (even a
+  // mode-only change that produced no hashable patch) forfeits exactness.
+  const trackedClean = !trackedPatchSha && !entries.some((e) => e.tracked);
   return {
     git_branch: raw.git_branch || null,
-    working_tree: { tracked_patch_sha256: trackedPatchSha, entries },
+    working_tree: { tracked_patch_sha256: trackedPatchSha, tracked_clean: trackedClean, entries },
     source_state: state,
     effective_source_sha256: effective,
-    identity_level: raw.git_commit
-      ? ((state === 'CLEAN') ? 'git_commit' : state === 'DIRTY_UNCLASSIFIED' ? 'git_commit_dirty_unfingerprinted' : 'git_commit_plus_patch')
-      : 'unknown',
+    identity_level: sourceIdentityLevel({ commit: raw.git_commit, state, trackedClean }),
   };
+}
+
+// Identity taxonomy — "clean tracked tree" is its own unambiguous level, no
+// longer an overloaded git_commit_plus_patch with a null patch hash:
+//   git_commit                        CLEAN — no local entries at all
+//   git_commit_exact                  tracked tree byte-identical to the base
+//                                     commit (zero tracked modifications, the
+//                                     explicit no-patch marker); any
+//                                     execution-relevant untracked/config
+//                                     files are individually content-hashed
+//                                     into effective_source_sha256
+//   git_commit_plus_patch             tracked patch material present + hashed
+//   git_commit_dirty_unfingerprinted  an execution-relevant change could not
+//                                     be content-hashed
+//   unknown                           not a git checkout
+function sourceIdentityLevel({ commit, state, trackedClean }) {
+  if (!commit) return 'unknown';
+  if (state === 'CLEAN') return 'git_commit';
+  if (state === 'DIRTY_UNCLASSIFIED') return 'git_commit_dirty_unfingerprinted';
+  return trackedClean ? 'git_commit_exact' : 'git_commit_plus_patch';
 }
 
 // ---- canonical identity -------------------------------------------------------------
@@ -276,45 +332,73 @@ function localInventoryExecutor(plan, options = {}) {
       }
       files.push({ filename: model.filename, path: resolved, bytes: st.size, mtime: st.mtime.toISOString(), sha256: hashedByPath.get(resolved) });
     }
-    let comfyui = { root: plan.config.comfyui_root, git_commit: null, git_dirty: null, identity_level: 'unknown' };
-    let gitBranch = null;
-    let trackedPatchSha = null;
-    const sourceEntries = [];
-    const root = plan.config.comfyui_root;
-    const gitRO = (args, opts = {}) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 15000, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024, ...opts });
-    const smallHash = (p) => {
-      try {
-        const st = fs.statSync(p);
-        if (st.size > SOURCE_HASH_MAX_BYTES) return { bytes: st.size, sha256: null };
-        return { bytes: st.size, sha256: crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex') };
-      } catch (_) { return { bytes: null, sha256: null }; }
-    };
-    try {
-      const commit = gitRO(['rev-parse', 'HEAD']).trim();
-      const dirtyCount = gitRO(['status', '--porcelain']).split('\n').filter(Boolean).length;
-      comfyui = { root, git_commit: commit, git_dirty: dirtyCount > 0, git_dirty_count: dirtyCount, identity_level: 'git_commit' };
-      try { gitBranch = gitRO(['branch', '--show-current']).trim() || null; } catch (_) { gitBranch = null; }
-      // deterministic tracked-patch identity: staged + unstaged, text + binary
-      const patch = gitRO(['diff', '--binary', '--no-ext-diff', 'HEAD']);
-      if (patch.trim()) trackedPatchSha = crypto.createHash('sha256').update(patch).digest('hex');
-      for (const line of gitRO(['diff', '--name-status', 'HEAD']).split('\n').filter(Boolean)) {
-        const [status, ...rest] = line.split('\t');
-        const rel = rest.join('\t');
-        sourceEntries.push({ path: rel, status: status.trim(), tracked: true, ...smallHash(path.join(root, rel)) });
-      }
-      for (const line of gitRO(['status', '--porcelain=v1', '--untracked-files=all']).split('\n').filter(Boolean)) {
-        if (!line.startsWith('?? ')) continue;
-        const rel = line.slice(3);
-        const cls = classifySourceEntry(rel);
-        sourceEntries.push({ path: rel, status: '??', tracked: false, ...(cls.execution_relevant ? smallHash(path.join(root, rel)) : (() => { try { return { bytes: fs.statSync(path.join(root, rel)).size, sha256: null }; } catch (_) { return { bytes: null, sha256: null }; } })()) });
-      }
-      for (const rel of KNOWN_EXEC_RELEVANT_IGNORED) {
-        const abs = path.join(root, rel);
-        if (fs.existsSync(abs)) sourceEntries.push({ path: rel, status: 'ignored-active', tracked: false, ...smallHash(abs) });
-      }
-    } catch (_) { /* not git-managed — honest unknown */ }
-    return { comfyui, files, missing, git_branch: gitBranch, tracked_patch_sha256: trackedPatchSha, source_entries: sourceEntries };
+    const source = collectLocalSourceState(plan.config.comfyui_root);
+    return { comfyui: source.comfyui, files, missing, git_branch: source.git_branch, tracked_patch_sha256: source.tracked_patch_sha256, source_entries: source.source_entries };
   })();
+}
+
+// Read-only local git/source observation for one ComfyUI root — shared by the
+// strong inventory and the core-source drift verify. Reads git state and
+// hashes only small execution-relevant files; never touches models, never
+// mutates the tree.
+function collectLocalSourceState(root) {
+  let comfyui = { root, git_commit: null, git_dirty: null, identity_level: 'unknown' };
+  let gitBranch = null;
+  let trackedPatchSha = null;
+  const sourceEntries = [];
+  let observed = false;
+  let observationError = null;
+  // core.quotePath=false: git otherwise C-quotes any non-ASCII/special path
+  // ("n\303\266de.py"), and the surrounding quotes defeat every extension
+  // rule in classifySourceEntry — an executable file would classify as
+  // "unknown / not execution-relevant" purely because of its name.
+  const gitRO = (args, opts = {}) => execFileSync('git', ['-c', 'core.quotePath=false', '-C', root, ...args], { encoding: 'utf8', timeout: 15000, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024, ...opts });
+  const smallHash = (p) => {
+    try {
+      const st = fs.statSync(p);
+      if (st.size > SOURCE_HASH_MAX_BYTES) return { bytes: st.size, sha256: null };
+      return { bytes: st.size, sha256: crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex') };
+    } catch (_) { return { bytes: null, sha256: null }; }
+  };
+  try {
+    const commit = gitRO(['rev-parse', 'HEAD']).trim();
+    const dirtyCount = gitRO(['status', '--porcelain']).split('\n').filter(Boolean).length;
+    comfyui = { root, git_commit: commit, git_dirty: dirtyCount > 0, git_dirty_count: dirtyCount, identity_level: 'git_commit' };
+    try { gitBranch = gitRO(['branch', '--show-current']).trim() || null; } catch (_) { gitBranch = null; }
+    // deterministic tracked-patch identity: staged + unstaged, text + binary
+    const patch = gitRO(['diff', '--binary', '--no-ext-diff', 'HEAD']);
+    if (patch.trim()) trackedPatchSha = crypto.createHash('sha256').update(patch).digest('hex');
+    for (const line of gitRO(['diff', '--name-status', 'HEAD']).split('\n').filter(Boolean)) {
+      const [status, ...rest] = line.split('\t');
+      const rel = rest.join('\t');
+      sourceEntries.push({ path: rel, status: status.trim(), tracked: true, ...smallHash(path.join(root, rel)) });
+    }
+    for (const line of gitRO(['status', '--porcelain=v1', '--untracked-files=all']).split('\n').filter(Boolean)) {
+      if (!line.startsWith('?? ')) continue;
+      const rel = line.slice(3);
+      const cls = classifySourceEntry(rel);
+      sourceEntries.push({ path: rel, status: '??', tracked: false, ...(cls.execution_relevant ? smallHash(path.join(root, rel)) : (() => { try { return { bytes: fs.statSync(path.join(root, rel)).size, sha256: null }; } catch (_) { return { bytes: null, sha256: null }; } })()) });
+    }
+    for (const rel of KNOWN_EXEC_RELEVANT_IGNORED) {
+      const abs = path.join(root, rel);
+      // skip when the untracked scan already enumerated it (it is only
+      // git-IGNORED on some checkouts): a duplicate entry would be hashed
+      // twice, so merely adding the .gitignore line would move the identity
+      // with no byte change on the host.
+      if (sourceEntries.some((e) => e.path === rel)) continue;
+      if (fs.existsSync(abs)) sourceEntries.push({ path: rel, status: 'ignored-active', tracked: false, ...smallHash(abs) });
+    }
+    observed = true;   // reached only when the whole observation completed
+  } catch (err) {
+    // Not a git checkout, or the observation failed part-way (timeout,
+    // maxBuffer, permissions). Either way the entry set is absent or PARTIAL
+    // — it must never be presented as a clean tree.
+    observationError = err && err.message ? err.message : String(err);
+  }
+  return {
+    comfyui, git_branch: gitBranch, tracked_patch_sha256: trackedPatchSha, source_entries: sourceEntries,
+    source_observed: observed, source_observation_error: observationError,
+  };
 }
 
 // PowerShell inventory script for a remote Windows host. Everything embedded
@@ -352,7 +436,27 @@ foreach ($m in $models) {
   }`}
   $files += [pscustomobject]@{ filename = $m.filename; path = $resolved; bytes = $item.Length; mtime = $item.LastWriteTimeUtc.ToString('o'); sha256 = $sha }
 }
-$commit = $null; $dirty = $null; $branch = $null; $patchSha = $null; $sourceEntries = @()
+${powershellSourceStateBlock(comfyRoot)}
+$result = [pscustomobject]@{
+  comfyui = [pscustomobject]@{ root = '${comfyRoot}'; git_commit = $commit; git_dirty = $(if ($dirty -ne $null) { $dirty -gt 0 } else { $null }); git_dirty_count = $dirty; identity_level = $(if ($commit) { 'git_commit' } else { 'unknown' }) }
+  git_branch = $branch
+  tracked_patch_sha256 = $patchSha
+  source_entries = $sourceEntries
+  files = $files
+  missing = $missing
+}
+Write-Output 'INVENTORY_JSON_BEGIN'
+$result | ConvertTo-Json -Depth 6
+Write-Output 'INVENTORY_JSON_END'
+`;
+}
+
+// The read-only git/source portion of the remote observation — shared by the
+// full inventory script and the source-only drift script. Populates $commit,
+// $dirty, $branch, $patchSha, $sourceEntries. Reads only: git status/diff and
+// small-file hashes; contains no write, move, delete, or git-mutation verbs.
+function powershellSourceStateBlock(comfyRoot) {
+  return `$commit = $null; $dirty = $null; $branch = $null; $patchSha = $null; $sourceEntries = @()
 function Get-SmallSha([string]$p) {
   try {
     $it = Get-Item -LiteralPath $p -ErrorAction Stop
@@ -361,24 +465,24 @@ function Get-SmallSha([string]$p) {
   } catch { return @{ bytes = $null; sha = $null } }
 }
 try {
-  $commit = (git -C '${comfyRoot}' rev-parse HEAD 2>&1).Trim()
+  $commit = (git -c core.quotePath=false -C '${comfyRoot}' rev-parse HEAD 2>&1).Trim()
   if ($commit -notmatch '^[0-9a-f]{40}$') { $commit = $null }
   if ($commit) {
-    $dirty = @(git -C '${comfyRoot}' status --porcelain).Count
-    $branch = (git -C '${comfyRoot}' branch --show-current 2>&1).Trim()
-    $patchText = (git -C '${comfyRoot}' diff --binary --no-ext-diff HEAD | Out-String)
+    $dirty = @(git -c core.quotePath=false -C '${comfyRoot}' status --porcelain).Count
+    $branch = (git -c core.quotePath=false -C '${comfyRoot}' branch --show-current 2>&1).Trim()
+    $patchText = (git -c core.quotePath=false -C '${comfyRoot}' diff --binary --no-ext-diff HEAD | Out-String)
     if ($patchText.Trim().Length -gt 0) {
       $sha = [System.Security.Cryptography.SHA256]::Create()
       $patchSha = ([System.BitConverter]::ToString($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($patchText)))).Replace('-','').ToLower()
     }
-    foreach ($line in @(git -C '${comfyRoot}' diff --name-status HEAD)) {
+    foreach ($line in @(git -c core.quotePath=false -C '${comfyRoot}' diff --name-status HEAD)) {
       if (-not $line) { continue }
       $parts = $line -split "\`t"
       $rel = ($parts[1..($parts.Count-1)] -join "\`t")
       $h = Get-SmallSha (Join-Path '${comfyRoot}' $rel)
       $sourceEntries += [pscustomobject]@{ path = $rel; status = $parts[0].Trim(); tracked = $true; bytes = $h.bytes; sha256 = $h.sha }
     }
-    foreach ($line in @(git -C '${comfyRoot}' status --porcelain=v1 --untracked-files=all)) {
+    foreach ($line in @(git -c core.quotePath=false -C '${comfyRoot}' status --porcelain=v1 --untracked-files=all)) {
       if (-not $line.StartsWith('?? ')) { continue }
       $rel = $line.Substring(3)
       $execCandidate = ($rel -match '\\.(py|ps1|bat|sh|cmd|ya?ml|json|ini|toml)$')
@@ -401,19 +505,56 @@ if (-not $commit) {
     if ($head -match '^ref: (.+)$') { $commit = (Get-Content -LiteralPath (Join-Path '${comfyRoot}' ('.git\\' + $Matches[1].Replace('/','\\')))).Trim() }
     elseif ($head -match '^[0-9a-f]{40}$') { $commit = $head }
   } catch { }
+}`;
 }
+
+// Source-only observation script: the git/source portion of the inventory
+// WITHOUT the model walk — cheap enough for a routine drift check. Model
+// files are never stat'd, read, or hashed.
+function buildPowershellSourceScript(config) {
+  const comfyRoot = String(config.comfyui_root).replace(/\//g, '\\');
+  return `
+$ErrorActionPreference = 'Stop'
+${powershellSourceStateBlock(comfyRoot)}
 $result = [pscustomobject]@{
   comfyui = [pscustomobject]@{ root = '${comfyRoot}'; git_commit = $commit; git_dirty = $(if ($dirty -ne $null) { $dirty -gt 0 } else { $null }); git_dirty_count = $dirty; identity_level = $(if ($commit) { 'git_commit' } else { 'unknown' }) }
   git_branch = $branch
   tracked_patch_sha256 = $patchSha
   source_entries = $sourceEntries
-  files = $files
-  missing = $missing
 }
-Write-Output 'INVENTORY_JSON_BEGIN'
+Write-Output 'SOURCE_JSON_BEGIN'
 $result | ConvertTo-Json -Depth 6
-Write-Output 'INVENTORY_JSON_END'
+Write-Output 'SOURCE_JSON_END'
 `;
+}
+
+// Remote source-only observation (PRESTO): read-only ssh + powershell, same
+// transport as the inventory but touching git state and small files only.
+function sshSourceStateExecutor(config, options = {}) {
+  const script = buildPowershellSourceScript(config);
+  const encoded = Buffer.from(script, 'utf16le').toString('base64');
+  const result = spawnSync('ssh', ['-o', 'BatchMode=yes', config.ssh_host, 'powershell', '-NoProfile', '-EncodedCommand', encoded], {
+    encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: (options.remoteTimeoutSeconds || 180) * 1000,
+  });
+  if (result.status !== 0) {
+    const e = new Error(`remote source observation failed (ssh exit ${result.status}): ${(result.stderr || result.stdout || '').slice(-800)}`);
+    e.code = 'comfyui_environment_source_observation_failed';
+    throw e;
+  }
+  const m = (result.stdout || '').match(/SOURCE_JSON_BEGIN\s*\n([\s\S]*?)\nSOURCE_JSON_END/);
+  if (!m) {
+    const e = new Error(`remote source observation produced no parseable result: ${(result.stdout || '').slice(-800)}`);
+    e.code = 'comfyui_environment_source_observation_failed';
+    throw e;
+  }
+  const parsed = JSON.parse(m[1]);
+  const asArray = (v) => (Array.isArray(v) ? v : v == null ? [] : [v]);
+  return {
+    comfyui: parsed.comfyui,
+    git_branch: parsed.git_branch || null,
+    tracked_patch_sha256: parsed.tracked_patch_sha256 || null,
+    source_entries: asArray(parsed.source_entries).map((e) => ({ ...e, sha256: e.sha256 ? String(e.sha256).toLowerCase() : null })),
+  };
 }
 
 // Remote (PRESTO): read-only ssh + powershell, hashing on the remote disk —
@@ -609,14 +750,215 @@ function verifyManifest(host, currentMetaByFilename, options = {}) {
   return { status: 'ok', manifest: rm.manifest, models, all_current: allCurrent };
 }
 
+// ---- core-source drift verification (P8) ----------------------------------------------------
+//
+// The strong manifest records which bytes constituted the ComfyUI core source
+// at inventory time. This layer answers the follow-up question on demand:
+// "is that still what is on the host RIGHT NOW?" — a read-only re-observation
+// of the git/source state (never the model files) compared structurally
+// against the recorded manifest. Findings carry a severity:
+//   CRITICAL       execution identity changed — tracked core file modified,
+//                  base commit moved, execution-relevant untracked/config
+//                  file added/changed/removed, or an execution-relevant
+//                  change that cannot be content-hashed
+//   WARNING        needs eyes but does not (yet) change the execution
+//                  identity — unclassifiable new file, or a recorded
+//                  effective hash that no longer reproduces under the
+//                  current formula (re-inventory required)
+//   INFORMATIONAL  expected litter churn (diagnostics, runtime logs,
+//                  backups) — listed, never drift
+// Verdict: DRIFT iff any CRITICAL finding, else MATCH. This module observes
+// only — it never cleans, deletes, resets, or writes anything on any host.
+
+function sourceVerificationPath(host, options = {}) {
+  return path.join(manifestDir(host, options), 'source-verification.json');
+}
+
+// Latest persisted drift-verification record for a host, or null. Consumers
+// (fingerprint attach) must check recorded_effective_source_sha256 against
+// the current manifest — a verification of a superseded inventory is history,
+// not a current verdict.
+function readSourceVerification(host, options = {}) {
+  try { return JSON.parse(fs.readFileSync(sourceVerificationPath(host, options), 'utf8')); } catch (_) { return null; }
+}
+
+// Raw source-state observation for one host (transport-dispatched, read-only).
+// Injectable via options.sourceCollector so tests and fixtures never reach ssh.
+async function collectSourceState(host, options = {}) {
+  const config = hostConfig(host, options);
+  if (options.sourceCollector) return options.sourceCollector(config, options);
+  if (config.transport === 'local') return collectLocalSourceState(config.comfyui_root);
+  if (config.transport === 'ssh-powershell') return sshSourceStateExecutor(config, options);
+  throw new Error(`unsupported source-state transport: ${config.transport}`);
+}
+
+// Structural comparison of a recorded source identity (manifest.comfyui) vs a
+// freshly observed one (buildSourceIdentity output + git_commit). Pure.
+function compareSourceIdentity(recorded, live) {
+  const findings = [];
+  const add = (severity, kind, entryPath, detail) => findings.push({ severity, kind, path: entryPath || null, detail });
+  const short = (sha) => (sha ? `${String(sha).slice(0, 16)}…` : '(none)');
+  const rWt = recorded.working_tree || {};
+  const lWt = live.working_tree || {};
+  const rPatch = rWt.tracked_patch_sha256 || null;
+  const lPatch = lWt.tracked_patch_sha256 || null;
+
+  // An unanchored side (no commit / no effective identity) is never a MATCH:
+  // without an anchor there is nothing to compare, and silence would read as
+  // "unchanged".
+  if (!recorded.effective_source_sha256 || !live.effective_source_sha256
+      || (recorded.identity_level === 'unknown') || (live.identity_level === 'unknown')) {
+    add('CRITICAL', 'unverifiable_source_observation', null,
+      `core source identity is unavailable on ${!live.effective_source_sha256 || live.identity_level === 'unknown' ? 'the live host' : 'the recorded manifest'} — not a git checkout, or the observation failed; re-inventory (--inventory-strong) before trusting`);
+  }
+  if ((recorded.git_commit || null) !== (live.git_commit || null)) {
+    add('CRITICAL', 'base_commit_changed', null, `recorded ${recorded.git_commit || '(none)'} → live ${live.git_commit || '(none)'}`);
+  }
+  if (rPatch !== lPatch) {
+    add('CRITICAL', 'tracked_patch_changed', null,
+      `tracked patch ${rPatch ? short(rPatch) : '(none — clean tracked tree)'} → ${lPatch ? short(lPatch) : '(none — clean tracked tree)'}`);
+  }
+  // formula self-consistency: the recorded hash must reproduce from the
+  // recorded raw facts — otherwise the hash formula changed since inventory
+  // and only the structural comparison below is authoritative.
+  const recomputedRecorded = effectiveSourceSha256({ commit: recorded.git_commit || null, trackedPatchSha: rPatch, entries: rWt.entries || [] });
+  if ((recorded.effective_source_sha256 || null) !== recomputedRecorded) {
+    add('WARNING', 'manifest_hash_formula_mismatch', null,
+      'recorded effective_source_sha256 does not reproduce from the recorded facts under the current formula — re-inventory to refresh (structural comparison stays authoritative)');
+  }
+  // per-file diff over the union of working-tree entries
+  const byPath = new Map();
+  for (const e of rWt.entries || []) byPath.set(e.path, { rec: e });
+  for (const e of lWt.entries || []) byPath.set(e.path, { ...(byPath.get(e.path) || {}), liv: e });
+  const noiseCategories = new Set(['generated_diagnostic', 'generated_runtime', 'local_config_backup']);
+  for (const [entryPath, { rec, liv }] of [...byPath.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const tracked = Boolean((rec && rec.tracked) || (liv && liv.tracked));
+    const exec = Boolean((rec && rec.execution_relevant) || (liv && liv.execution_relevant));
+    const category = (liv || rec).category;
+    const severity = (tracked || exec) ? 'CRITICAL' : noiseCategories.has(category) ? 'INFORMATIONAL' : 'WARNING';
+    if (rec && !liv) {
+      add(severity, tracked ? 'tracked_modification_gone' : 'entry_removed', entryPath,
+        `${rec.category}${exec ? ' (EXECUTION_RELEVANT)' : ''} recorded at inventory time, no longer present`);
+    } else if (!rec && liv) {
+      add(severity, tracked ? 'tracked_file_modified' : 'entry_appeared', entryPath,
+        `new ${liv.category}${exec ? ' (EXECUTION_RELEVANT)' : ''}${liv.sha256 ? ` sha ${short(liv.sha256)}` : ''}`);
+    } else if (tracked || exec) {
+      if ((rec.sha256 || null) !== (liv.sha256 || null)) {
+        add('CRITICAL', tracked ? 'tracked_file_modified' : 'exec_file_changed', entryPath,
+          `content changed: sha ${rec.sha256 ? short(rec.sha256) : '(unhashed)'} → ${liv.sha256 ? short(liv.sha256) : '(unhashed)'}`);
+      } else if (!liv.sha256) {
+        add('CRITICAL', 'exec_file_unfingerprintable', entryPath,
+          'execution-relevant but not content-hashed on either side — identity cannot be proven');
+      }
+    } else if ((rec.bytes != null ? rec.bytes : -1) !== (liv.bytes != null ? liv.bytes : -1)) {
+      add('INFORMATIONAL', 'noise_size_changed', entryPath,
+        `${category} ${rec.bytes} → ${liv.bytes} bytes (excluded from execution identity)`);
+    }
+  }
+  const hasCritical = () => findings.some((f) => f.severity === 'CRITICAL');
+  // catch-all: identity moved with no per-file explanation (should not happen
+  // when the structural diff above is complete — fail closed if it does)
+  if (recomputedRecorded !== (live.effective_source_sha256 || null) && !hasCritical()) {
+    add('CRITICAL', 'effective_source_mismatch', null,
+      `effective source identity changed (${short(recomputedRecorded)} → ${short(live.effective_source_sha256)}) without a per-file explanation — re-inventory required`);
+  }
+  // taxonomy honesty: a label difference alone (e.g. a manifest that predates
+  // git_commit_exact) is a labeling update, never source drift
+  if ((recorded.identity_level || null) !== (live.identity_level || null) && !hasCritical()) {
+    add('INFORMATIONAL', 'identity_level_label_changed', null,
+      `recorded "${recorded.identity_level}" → live "${live.identity_level}" (identity taxonomy update; structural facts unchanged)`);
+  }
+  const counts = { CRITICAL: 0, WARNING: 0, INFORMATIONAL: 0 };
+  findings.forEach((f) => { counts[f.severity] += 1; });
+  return {
+    verdict: counts.CRITICAL > 0 ? 'DRIFT' : 'MATCH',
+    findings,
+    counts,
+    recorded: {
+      git_commit: recorded.git_commit || null,
+      effective_source_sha256: recorded.effective_source_sha256 || null,
+      source_state: recorded.source_state || null,
+      identity_level: recorded.identity_level || null,
+    },
+    live: {
+      git_commit: live.git_commit || null,
+      effective_source_sha256: live.effective_source_sha256 || null,
+      source_state: live.source_state || null,
+      identity_level: live.identity_level || null,
+    },
+  };
+}
+
+// The R2 drift gate: re-observe the host's core source (read-only) and compare
+// against the recorded strong manifest. Persists the verdict locally
+// (source-verification.json, next to the manifest) so fingerprints and
+// qualification capture can see the latest known source-drift state. Never
+// writes to the host, never restarts anything, never hashes model files.
+async function verifySourceIdentity(host, options = {}) {
+  const rm = readManifest(host, options);
+  if (rm.status !== 'ok') return { status: rm.status, problems: rm.problems || [], host };
+  if (!rm.manifest.comfyui || !rm.manifest.comfyui.effective_source_sha256) {
+    return { status: 'no_source_identity', problems: ['manifest predates core-source identity — re-inventory with --inventory-strong'], host };
+  }
+  const raw = await collectSourceState(host, options);
+  // Fail closed: an observation that did not complete (not a git checkout,
+  // git unavailable, timeout, permissions) can never be compared — a partial
+  // or empty entry set would otherwise read as "nothing changed".
+  if (raw.source_observed === false || !(raw.comfyui || {}).git_commit) {
+    return {
+      status: 'source_unobservable',
+      host,
+      problems: [raw.source_observation_error
+        ? `live core source could not be observed: ${raw.source_observation_error}`
+        : 'live core source produced no base commit — not a git checkout, or the observation failed'],
+    };
+  }
+  const deployment = require('./deployment.js');
+  const managed = options.managed || deployment.expectedShaByRelPath(host, options);
+  const live = {
+    ...(raw.comfyui || {}),
+    ...buildSourceIdentity({
+      git_commit: (raw.comfyui || {}).git_commit,
+      git_branch: raw.git_branch,
+      tracked_patch_sha256: raw.tracked_patch_sha256,
+      source_entries: raw.source_entries,
+    }, { managed }),
+  };
+  const comparison = compareSourceIdentity(rm.manifest.comfyui, live);
+  const record = {
+    schema_version: 1,
+    host: rm.manifest.host,
+    verified_at: new Date().toISOString(),
+    manifest_generated_at: rm.manifest.generated_at,
+    manifest_sha256: rm.manifest.manifest_sha256,
+    verdict: comparison.verdict,
+    counts: comparison.counts,
+    recorded_effective_source_sha256: comparison.recorded.effective_source_sha256,
+    live_effective_source_sha256: comparison.live.effective_source_sha256,
+    findings: comparison.findings,
+  };
+  fs.mkdirSync(manifestDir(host, options), { recursive: true });
+  provenance.writeJsonAtomic(sourceVerificationPath(host, options), record);
+  return { status: 'ok', comparison, record, live, manifest: rm.manifest };
+}
+
 module.exports = {
   MANIFEST_SCHEMA_VERSION,
   SAFE_FILENAME_RE,
   KNOWN_EXEC_RELEVANT_IGNORED,
   classifySourceEntry,
   sourceState,
+  sourceIdentityLevel,
   effectiveSourceSha256,
   buildSourceIdentity,
+  collectLocalSourceState,
+  buildPowershellSourceScript,
+  sshSourceStateExecutor,
+  collectSourceState,
+  compareSourceIdentity,
+  verifySourceIdentity,
+  sourceVerificationPath,
+  readSourceVerification,
   ENVIRONMENTS_PATH,
   DEFAULT_ENVIRONMENT_ROOT,
   loadEnvironments,
