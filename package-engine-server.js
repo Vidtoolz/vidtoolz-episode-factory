@@ -9400,6 +9400,66 @@ function gateProductionDispatch({ workflowId, prestoProfile, lane, endpoint = nu
   return permit;
 }
 
+// ── source-freshness enforcement (rollout-gated) ────────────────────────────
+// P10's ensureFreshSourceVerification is authoritative for freshness policy;
+// this is only the production wiring around it.
+//
+// Default is DISABLED because PRESTO's strong manifest still predates
+// custom-node identity, so its executable source verifies INCOMPLETE — enabling
+// enforcement before that manifest is refreshed would refuse every PRESTO
+// dispatch. Deploying this code must not change production behavior; flipping
+// the switch is a deliberate operator act.
+function sourceFreshnessEnforcementMode(options = {}) {
+  const raw = options.enforceSourceFreshness !== undefined
+    ? options.enforceSourceFreshness
+    : process.env.COMFYUI_ENFORCE_SOURCE_FRESHNESS;
+  if (raw === undefined || raw === null || raw === '') return 'disabled';
+  const v = String(raw).trim().toLowerCase();
+  if (['1', 'true', 'enforce', 'enabled', 'yes'].includes(v)) return 'enforce';
+  if (['0', 'false', 'disabled', 'no'].includes(v)) return 'disabled';
+  const e = new Error(`invalid COMFYUI_ENFORCE_SOURCE_FRESHNESS ${JSON.stringify(String(raw))} — expected enforce|disabled`);
+  e.code = 'comfyui_freshness_mode_invalid';
+  throw e;
+}
+
+// The async production gate. Ordering is deliberate:
+//   freshness refresh -> qualification -> ownership re-check -> permit
+// Freshness runs FIRST so qualification consumes the refreshed verification
+// record rather than the stale one it would otherwise read. The ownership
+// re-check runs AFTER every await, immediately before the permit is minted, so
+// a slot lost or released during remote verification cannot still dispatch.
+async function gateProductionDispatchAsync(spec, options = {}) {
+  const mode = sourceFreshnessEnforcementMode(options);
+  if (mode === 'enforce') {
+    const gatewayOptions = options.gateway || {};
+    const entry = spec.prestoProfile
+      ? comfyuiGateway.registry.getWorkflowForPrestoProfile(spec.prestoProfile, gatewayOptions)
+      : comfyuiGateway.registry.getWorkflow(spec.workflowId, gatewayOptions);
+    const target = comfyuiGateway.registry.resolveProductionTarget({
+      lane: spec.lane, entry, endpoint: spec.endpoint || null,
+    });
+    const verifier = options.ensureFreshSourceVerification
+      || comfyuiGateway.environment.ensureFreshSourceVerification;
+    const outcome = await verifier(target.hostName || comfyuiGateway.fingerprint.hostNameFor(target.endpoint), gatewayOptions);
+    if (!outcome || !outcome.allowed) {
+      const error = new Error(`Refusing ${spec.lane} dispatch: ${(outcome && outcome.reason) || 'executable-source verification did not pass'}`);
+      error.statusCode = 409;
+      error.code = (outcome && outcome.code) || 'SOURCE_VERIFICATION_REQUIRED';
+      error.source_verification = outcome || null;
+      throw error;
+    }
+  }
+  // Post-await ownership re-check: the pre-dispatch state observed before the
+  // remote call may no longer hold.
+  if (spec.reservation && !prestoReservationStillOwned(spec.reservation)) {
+    const error = new Error('Refusing dispatch: the PRESTO dispatch reservation was lost or released during pre-dispatch verification.');
+    error.statusCode = 409;
+    error.code = 'comfyui_dispatch_reservation_lost';
+    throw error;
+  }
+  return gateProductionDispatch(spec, options);
+}
+
 // Transport-side assertion. Refuses before any spawn.
 function assertDispatchPermit(permit, lane) {
   if (!permit || typeof permit !== 'object' || !DISPATCH_PERMITS.has(permit)) {
@@ -19159,6 +19219,8 @@ module.exports = {
   startSuperFocusImageJob,
   startSuperFocusVideoJob,
   gateProductionDispatch,
+  gateProductionDispatchAsync,
+  sourceFreshnessEnforcementMode,
   reservePrestoDispatchSync,
   prestoReservationStillOwned,
   releasePrestoReservation,

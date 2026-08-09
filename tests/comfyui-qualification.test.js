@@ -3064,3 +3064,89 @@ test("presto reservation: successful spawn hands the slot to the running job wit
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ---- source-freshness enforcement at the dispatch gate ---------------------
+
+const freshOk = { allowed: true, state: "FRESH", reason: "reused" };
+const refuse = (code, reason) => ({ allowed: false, state: code, code, reason });
+function verifierSpy(result) {
+  const calls = [];
+  const fn = async (host) => { calls.push(host); return typeof result === "function" ? result(host) : result; };
+  fn.calls = calls;
+  return fn;
+}
+
+test("freshness gate: disabled by default — no remote verification, behavior unchanged", async () => {
+  const pes = require("../package-engine-server.js");
+  assert.equal(pes.sourceFreshnessEnforcementMode({}), "disabled", "deploying the code must not enable enforcement");
+  const spy = verifierSpy(freshOk);
+  const permit = await pes.gateProductionDispatchAsync(
+    { prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" },
+    { ensureFreshSourceVerification: spy });
+  assert.equal(spy.calls.length, 0, "disabled mode must NOT contact the host");
+  assert.equal(permit.workflowIdentity.id, "wan22-i2v-hq");
+  assert.ok(permit.endpoint, "a normal permit is still minted");
+  for (const bad of ["maybe", "2"]) {
+    assert.throws(() => pes.sourceFreshnessEnforcementMode({ enforceSourceFreshness: bad }),
+      (e) => e.code === "comfyui_freshness_mode_invalid", `${bad} must be rejected, not silently treated as a mode`);
+  }
+});
+
+test("freshness gate: enforce verifies the canonical host and permits on MATCH", async () => {
+  const pes = require("../package-engine-server.js");
+  const spy = verifierSpy(freshOk);
+  const permit = await pes.gateProductionDispatchAsync(
+    { prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" },
+    { enforceSourceFreshness: "enforce", ensureFreshSourceVerification: spy });
+  assert.equal(spy.calls.length, 1, "exactly one verification");
+  assert.equal(spy.calls[0], "PRESTO", "it verifies the host the job will actually reach");
+  assert.equal(permit.hostName, "PRESTO", "permit and verification name the same machine");
+});
+
+test("freshness gate: every refusal state blocks the permit with its own code", async () => {
+  const pes = require("../package-engine-server.js");
+  for (const [code, reason] of [
+    ["SOURCE_DRIFT", "executable source drifted"],
+    ["VERIFICATION_INCOMPLETE", "custom-node surface never verified"],
+    ["SOURCE_UNOBSERVABLE", "not a git checkout"],
+    ["HOST_UNREACHABLE", "no route to host"],
+  ]) {
+    const spy = verifierSpy(refuse(code, reason));
+    let err = null;
+    try {
+      await pes.gateProductionDispatchAsync(
+        { prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto" },
+        { enforceSourceFreshness: true, ensureFreshSourceVerification: spy });
+    } catch (e) { err = e; }
+    assert.ok(err, `${code} must refuse`);
+    assert.equal(err.code, code, "the underlying reason survives, not a generic failure");
+    assert.equal(err.statusCode, 409);
+    assert.ok(String(err.message).includes(reason), "operator-facing reason preserved");
+  }
+});
+
+test("freshness gate: a reservation lost during verification cannot dispatch", async () => {
+  const pes = require("../package-engine-server.js");
+  try {
+    const reservation = pes.reservePrestoDispatchSync({ lane: "aigen-presto", jobKey: "A" });
+    // the verifier resolves only after the slot has been taken away from A
+    const spy = verifierSpy(async () => { pes.releasePrestoReservation(reservation); return freshOk; });
+    let err = null;
+    try {
+      await pes.gateProductionDispatchAsync(
+        { prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto", reservation },
+        { enforceSourceFreshness: "enforce", ensureFreshSourceVerification: spy });
+    } catch (e) { err = e; }
+    assert.ok(err, "a lost reservation must not mint a permit");
+    assert.equal(err.code, "comfyui_dispatch_reservation_lost");
+    // and a still-owned reservation proceeds normally
+    const kept = pes.reservePrestoDispatchSync({ lane: "aigen-presto", jobKey: "B" });
+    const permit = await pes.gateProductionDispatchAsync(
+      { prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto", reservation: kept },
+      { enforceSourceFreshness: "enforce", ensureFreshSourceVerification: verifierSpy(freshOk) });
+    assert.ok(permit.workflowIdentity.id, "an owned reservation still dispatches");
+  } finally {
+    pes.PRESTO_STATE.reservation = null;
+    pes.PRESTO_STATE.activeJob = null;
+  }
+});
