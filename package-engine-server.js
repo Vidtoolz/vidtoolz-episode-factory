@@ -9308,7 +9308,7 @@ const DISPATCH_PERMITS = new WeakSet();
 // canonical registry entry (by workflow id or PRESTO profile), runs the
 // gateway qualification gate, and returns a permit carrying the canonical
 // target — the same endpoint/host that must then be used for transport.
-function gateProductionDispatch({ workflowId, prestoProfile, lane }, options = {}) {
+function gateProductionDispatch({ workflowId, prestoProfile, lane, endpoint = null }, options = {}) {
   const gatewayOptions = options.gateway || {};
   const entry = prestoProfile
     ? comfyuiGateway.registry.getWorkflowForPrestoProfile(prestoProfile, gatewayOptions)
@@ -9320,13 +9320,17 @@ function gateProductionDispatch({ workflowId, prestoProfile, lane }, options = {
   // Lane matters: aigen and Super Focus may redirect the same Wan entry to
   // different machines via different variables (see registry.js for the
   // measured per-lane precedence).
-  const target = comfyuiGateway.registry.resolveProductionTarget({ lane, entry });
-  const endpoint = target.endpoint;
+  // An explicit endpoint is a deliberate routing decision by the lane (e.g. the
+  // Super Focus image lane failing FLUX work over to PRESTO when vidnux is
+  // down). It belongs in the canonical target so provenance records the machine
+  // that actually runs the job, rather than being a divergence discovered later.
+  const target = comfyuiGateway.registry.resolveProductionTarget({ lane, entry, endpoint });
+  const canonicalEndpoint = target.endpoint;
   const permit = Object.freeze({
     lane: lane || null,
     workflowIdentity: { id: entry.id, version: entry.version, sha256: entry.canonical_sha256 },
-    endpoint,
-    hostName: comfyuiGateway.fingerprint.hostNameFor(endpoint),
+    endpoint: canonicalEndpoint,
+    hostName: comfyuiGateway.fingerprint.hostNameFor(canonicalEndpoint),
     qualification: verdict,
     granted_at: new Date().toISOString(),
   });
@@ -9345,12 +9349,33 @@ function assertDispatchPermit(permit, lane) {
   return permit;
 }
 
+// Transport endpoint binding. The permit already carries the lane-resolved
+// canonical endpoint — the machine whose identity was qualified and recorded in
+// provenance. The dispatcher must reach THAT machine, so the permit is the
+// authority here and a legacy caller URL is validation input only. A genuine
+// disagreement means we would qualify one host and render on another, so it is
+// refused before any spawn rather than silently resolved in either direction.
+// Trailing-slash differences are not a disagreement (shared normalization).
+function transportEndpointFor(config, lane) {
+  const normalize = (u) => comfyuiGateway.registry.normalizeEndpoint(u);
+  const canonical = normalize(config.dispatchPermit && config.dispatchPermit.endpoint);
+  const caller = normalize(config.comfyuiUrl);
+  if (caller && canonical && caller !== canonical) {
+    const error = new Error(`Refusing ${lane} dispatch: caller endpoint ${caller} disagrees with the permit's canonical endpoint ${canonical} for ${config.dispatchPermit.workflowIdentity.id}. The qualified host and the transport host must be the same machine.`);
+    error.statusCode = 409;
+    error.code = 'comfyui_endpoint_mismatch';
+    throw error;
+  }
+  return canonical || caller || null;
+}
+
 // Shared PRESTO Wan2.2 spawn + job tracking. Callers MUST check
 // currentPrestoJobStatus() first (single-GPU lock). config.packageArg is the
 // literal --package value (absolute dir for Super Focus, or a script-packages
 // id for the aigen lane). Sets PRESTO_STATE.activeJob.
 function launchPrestoProductionJob(config, payload = {}, options = {}) {
   assertDispatchPermit(config.dispatchPermit, 'PRESTO');
+  const transportEndpoint = transportEndpointFor(config, 'PRESTO');
   // Default must clear the HQ profile's per-clip runtime with real margin:
   // measured HQ render = 54m51s, so 3600 left only ~5 min of headroom and a
   // slow clip would be killed at minute 60 after wasting the whole render.
@@ -9366,7 +9391,7 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
     '--profile',
     config.profile,
     '--comfyui-url',
-    config.comfyuiUrl,
+    transportEndpoint,
     '--timeout',
     String(prestoTimeoutSeconds),
   ];
@@ -10921,6 +10946,7 @@ function startFluxPackageJob(payload = {}, options = {}) {
 // a script-packages id (aigen lane). Sets FLUX_STATE.activeJob.
 function launchFluxHandoffJob(config, payload = {}, options = {}) {
   assertDispatchPermit(config.dispatchPermit, 'FLUX');
+  const transportEndpoint = transportEndpointFor(config, 'FLUX');
   const args = [
     config.fluxScript,
     '--package',
@@ -10931,7 +10957,9 @@ function launchFluxHandoffJob(config, payload = {}, options = {}) {
   if (config.dryRun) args.push('--dry-run');
   // Only present for a routed-to-PRESTO image job; the default vidnux run omits
   // it and generates in-place. run-handoff.py must honor --comfyui-url (Patch 2).
-  if (config.comfyuiUrl) args.push('--comfyui-url', String(config.comfyuiUrl));
+  // Preserve the prior arg shape: this lane only ever passed --comfyui-url when
+  // a caller supplied one. The VALUE is now the permit's canonical endpoint.
+  if (config.comfyuiUrl && transportEndpoint) args.push('--comfyui-url', String(transportEndpoint));
   // Only set by explicit regeneration when the handoff advertises seed support;
   // forces a fresh sample so a rerun is not byte-identical. Normal batch runs
   // never pass it (deterministic behavior preserved).
@@ -11029,7 +11057,7 @@ function startSuperFocusImageJob(mediaDir, options = {}) {
   // Pre-flight: the dispatch chain needs the `comfy` CLI (see comfyCliResolvable).
   if (!comfyCliResolvable(options)) throw comfyCliBlockedError();
   // ComfyUI production gate (same graph as the aigen FLUX lane).
-  const permit = gateProductionDispatch({ workflowId: 'flux-gguf-1080x1920', lane: 'super-focus-flux' }, options);
+  const permit = gateProductionDispatch({ workflowId: 'flux-gguf-1080x1920', lane: 'super-focus-flux', endpoint: options.comfyuiUrl || null }, options);
   return launchFluxHandoffJob({
     dispatchPermit: permit,
     workflowIdentity: permit.workflowIdentity,

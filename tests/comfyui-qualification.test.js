@@ -2872,3 +2872,107 @@ test("comfyui endpoint authority: the permit carries the lane-resolved target", 
     if (saved === undefined) delete process.env.AIGEN_PRESTO_BASE_URL; else process.env.AIGEN_PRESTO_BASE_URL = saved;
   }
 });
+
+// ---- transport endpoint closure --------------------------------------------
+// The permit carries the lane-resolved canonical endpoint; the dispatcher must
+// reach THAT machine. A genuine disagreement is refused before spawn.
+
+function captureSpawn() {
+  const calls = [];
+  const fn = (_bin, args) => {
+    calls.push(args);
+    const { EventEmitter } = require("node:events");
+    const c = new EventEmitter();
+    c.stdout = new EventEmitter(); c.stderr = new EventEmitter();
+    c.kill = () => {}; c.pid = 909;
+    return c;   // never closes: no completion hook
+  };
+  fn.calls = calls;
+  return fn;
+}
+const urlArg = (args) => { const i = args.indexOf("--comfyui-url"); return i >= 0 ? args[i + 1] : null; };
+
+test("comfyui transport closure: PRESTO dispatcher receives the permit endpoint", () => {
+  const pes = require("../package-engine-server.js");
+  const dir = mkdtemp("comfyui-tx-");
+  const script = path.join(dir, "run-production.py");
+  fs.writeFileSync(script, "#!/usr/bin/env python3\n");
+  const permit = pes.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" });
+  const base = { productionScript: script, pythonBin: "python3", packageArg: dir, packageId: "x",
+    profile: "wan22_hq_720p_5s_no_lightx2v", dispatchPermit: permit };
+  try {
+    // match, and trailing-slash equivalence is not a disagreement
+    const s1 = captureSpawn();
+    pes.launchPrestoProductionJob({ ...base, comfyuiUrl: `${permit.endpoint}/` }, {}, { spawn: s1 });
+    assert.equal(s1.calls.length, 1);
+    assert.equal(urlArg(s1.calls[0]), permit.endpoint, "dispatcher gets the canonical endpoint, not the caller string");
+    pes.PRESTO_STATE.activeJob = null;
+
+    // no caller URL at all → still the permit endpoint
+    const s2 = captureSpawn();
+    pes.launchPrestoProductionJob({ ...base }, {}, { spawn: s2 });
+    assert.equal(urlArg(s2.calls[0]), permit.endpoint);
+    pes.PRESTO_STATE.activeJob = null;
+
+    // genuine disagreement → refused before spawn
+    const s3 = captureSpawn();
+    assert.throws(() => pes.launchPrestoProductionJob({ ...base, comfyuiUrl: "http://10.9.9.9:8188" }, {}, { spawn: s3 }),
+      (e) => e.code === "comfyui_endpoint_mismatch" && e.statusCode === 409);
+    assert.equal(s3.calls.length, 0, "no spawn may occur on endpoint mismatch");
+  } finally {
+    pes.PRESTO_STATE.activeJob = null;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("comfyui transport closure: lane override reaches the wire, and SF stays isolated", () => {
+  const pes = require("../package-engine-server.js");
+  const dir = mkdtemp("comfyui-tx2-");
+  const script = path.join(dir, "run-production.py");
+  fs.writeFileSync(script, "#!/usr/bin/env python3\n");
+  const saved = process.env.AIGEN_PRESTO_BASE_URL;
+  try {
+    process.env.AIGEN_PRESTO_BASE_URL = "http://10.0.0.9:8188";
+    const aigen = pes.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto" });
+    const sf = pes.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" });
+    assert.equal(aigen.endpoint, "http://10.0.0.9:8188");
+    assert.equal(sf.endpoint, "http://192.168.50.187:8188", "SF lane unaffected by the aigen variable");
+
+    const s1 = captureSpawn();
+    pes.launchPrestoProductionJob({ productionScript: script, pythonBin: "python3", packageArg: dir, packageId: "x",
+      profile: "wan22_hq_720p_5s_no_lightx2v", dispatchPermit: aigen }, {}, { spawn: s1 });
+    assert.equal(urlArg(s1.calls[0]), "http://10.0.0.9:8188", "override reaches the dispatcher");
+    pes.PRESTO_STATE.activeJob = null;
+
+    const s2 = captureSpawn();
+    pes.launchPrestoProductionJob({ productionScript: script, pythonBin: "python3", packageArg: dir, packageId: "x",
+      profile: "wan22_hq_720p_5s_no_lightx2v", dispatchPermit: sf }, {}, { spawn: s2 });
+    assert.equal(urlArg(s2.calls[0]), "http://192.168.50.187:8188", "SF transport stays on its own host");
+    // permit host and transport host describe the same machine
+    assert.equal(sf.hostName, gateway.fingerprint.hostNameFor(urlArg(s2.calls[0])));
+  } finally {
+    pes.PRESTO_STATE.activeJob = null;
+    if (saved === undefined) delete process.env.AIGEN_PRESTO_BASE_URL; else process.env.AIGEN_PRESTO_BASE_URL = saved;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("comfyui transport closure: FLUX binds to the permit and refuses divergence", () => {
+  const pes = require("../package-engine-server.js");
+  const dir = mkdtemp("comfyui-tx3-");
+  const script = path.join(dir, "run-handoff.py");
+  fs.writeFileSync(script, "#!/usr/bin/env python3\n");
+  const permit = pes.gateProductionDispatch({ workflowId: "flux-gguf-1080x1920", lane: "super-focus-flux" });
+  const base = { fluxScript: script, pythonBin: "python3", packageArg: dir, packageId: "x", dispatchPermit: permit };
+  try {
+    const s1 = captureSpawn();
+    pes.launchFluxHandoffJob({ ...base, comfyuiUrl: `${permit.endpoint}/` }, {}, { spawn: s1 });
+    assert.equal(urlArg(s1.calls[0]), permit.endpoint, "FLUX dispatcher gets the canonical endpoint");
+    const s2 = captureSpawn();
+    assert.throws(() => pes.launchFluxHandoffJob({ ...base, comfyuiUrl: "http://10.9.9.9:8188" }, {}, { spawn: s2 }),
+      (e) => e.code === "comfyui_endpoint_mismatch");
+    assert.equal(s2.calls.length, 0);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
