@@ -1,6 +1,7 @@
 const { test, assert, packageEngineServer, fs, os, path, http } = require('./_helpers.js');
 const superFocus = require('../super-focus.js');
 const vp = require('../super-focus-visual-plan.js');
+const scriptEvaluator = require('../script-evaluator.js');
 
 // ---- local helpers (mirror tests/super-focus.test.js patterns) ----
 function mkRoot() { return fs.mkdtempSync(path.join(os.tmpdir(), 'sf-vp-test-')); }
@@ -70,7 +71,7 @@ function brokenFakeFetch() {
   return async () => ({ ok: true, json: async () => ({ message: { content: 'not json at all' } }) });
 }
 
-async function projectServer(fetchImpl, { script = SCRIPT } = {}) {
+async function projectServer(fetchImpl, { script = SCRIPT, approve = true } = {}) {
   const root = mkRoot();
   // Local tmp media root: the VIDNAS mount guard skips non-/mnt roots, so the
   // guarded media routes (e.g. image-prompt) are not 503-gated when the NAS is
@@ -80,7 +81,10 @@ async function projectServer(fetchImpl, { script = SCRIPT } = {}) {
     : { superFocusRoot: root, superFocusMediaRoot: mkRoot() });
   await listen(server);
   const created = superFocus.createProject({ title: 'VP Test' }, { root });
-  if (script != null) superFocus.saveScript(created.project_id, script, { root });
+  if (script != null) {
+    superFocus.saveScript(created.project_id, script, { root });
+    if (approve) superFocus.approveScript(created.project_id, scriptEvaluator.hashScriptText(script), { root });
+  }
   return { server, root, id: created.project_id };
 }
 
@@ -126,6 +130,7 @@ test('vp-routes: create-beats uses the SAVED script and keeps versions whole', a
     const res = await post(server, 'create-beats', { id });
     assert.equal(res.statusCode, 200);
     const d = unwrap(res);
+    assert.equal(d.visual_plan.script_version_hash, scriptEvaluator.hashScriptText(SCRIPT));
     assert.ok(d.visual_plan.beats.length >= 3);
     const texts = d.visual_plan.beats.map((b) => b.script_text);
     assert.ok(texts.some((t) => t.includes('Wan 2.2 renders fast.')));
@@ -136,6 +141,24 @@ test('vp-routes: create-beats uses the SAVED script and keeps versions whole', a
     superFocus.saveScript(id, '', { root });
     const empty = await post(server, 'create-beats', { id, replace: true });
     assert.equal(empty.statusCode, 400);
+  } finally { await close(server); }
+});
+
+test('vp-routes: Visual Plan creation requires the current exact script approval', async () => {
+  const { server, id, root } = await projectServer(null, { approve: false });
+  try {
+    const blocked = await post(server, 'create-beats', { id });
+    assert.equal(blocked.statusCode, 409);
+    assert.match(blocked.raw, /Approve the current saved script/i);
+
+    const script = superFocus.loadProject(id, { root }).script;
+    superFocus.approveScript(id, scriptEvaluator.hashScriptText(script), { root });
+    assert.equal((await post(server, 'create-beats', { id })).statusCode, 200);
+
+    superFocus.saveScript(id, `${script}\nChanged after approval.`, { root });
+    const staleApproval = await post(server, 'generate-assignments', { id, batch: 1 });
+    assert.equal(staleApproval.statusCode, 409);
+    assert.match(staleApproval.raw, /Approve the current saved script/i);
   } finally { await close(server); }
 });
 
@@ -317,13 +340,16 @@ test('vp-routes: script change stales the plan, blocks mutation routes, reanchor
     assert.match(d.readiness.next_action, /Re-anchor/);
     const plan = d.visual_plan;
     const blocked = await post(server, 'save-assignment', Object.assign({ id, beat_id: plan.beats[0].beat_id }, FAKE_ASSIGNMENT));
-    assert.equal(blocked.statusCode, 409, 'mutations blocked on a stale plan');
+    assert.equal(blocked.statusCode, 409, 'mutations blocked after script approval is invalidated');
+    const changedScript = `A new opening line.\n${SCRIPT}`;
+    superFocus.approveScript(id, scriptEvaluator.hashScriptText(changedScript), { root });
     const re = await post(server, 'reanchor', { id });
     assert.equal(re.statusCode, 200);
     const rd = unwrap(re);
     assert.equal(rd.visual_plan.stale, false, 'all beats matched → fresh');
+    assert.equal(rd.visual_plan.script_version_hash, scriptEvaluator.hashScriptText(changedScript));
     rd.visual_plan.beats.forEach((b) => {
-      assert.equal(`A new opening line.\n${SCRIPT}`.slice(b.start_char, b.end_char), b.script_text);
+      assert.equal(changedScript.slice(b.start_char, b.end_char), b.script_text);
     });
   } finally { await close(server); }
 });

@@ -1,6 +1,7 @@
 const { test, assert, packageEngineServer, fs, os, path, http } = require('./_helpers.js');
 const superFocus = require('../super-focus.js');
 const superFocusMedia = require('../super-focus-media.js');
+const scriptEvaluator = require('../script-evaluator.js');
 
 // ── Render-time source-image provenance (generation attempts) ───────────────
 // The honesty gap these tests pin down: before the attempts layer, the lane
@@ -130,6 +131,7 @@ async function attemptServer(behavior = {}) {
   const proj = superFocus.createProject({ title: 'VA' }, { root });
   const id = proj.project_id;
   superFocus.saveScript(id, SCRIPT, { root });
+  superFocus.approveScript(id, scriptEvaluator.hashScriptText(SCRIPT), { root });
   const vpPost = (action, body) => request(server, `/api/super-focus/visual-plan/${action}`, { method: 'POST', headers: writeHeaders(), body: Object.assign({ id }, body) });
   await vpPost('create-beats', {});
   let plan = unwrap(await request(server, `/api/super-focus/visual-plan?id=${id}`)).visual_plan;

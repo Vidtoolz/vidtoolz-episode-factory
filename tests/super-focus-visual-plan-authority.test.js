@@ -2,6 +2,7 @@ const { test, assert, packageEngineServer, fs, os, path, http } = require('./_he
 const superFocus = require('../super-focus.js');
 const vp = require('../super-focus-visual-plan.js');
 const superFocusMedia = require('../super-focus-media.js');
+const scriptEvaluator = require('../script-evaluator.js');
 
 // Visual Plan authority + unlinked-prompt recovery + image-dispatch pre-flight.
 //
@@ -85,6 +86,7 @@ async function projectServer(fetchImpl, extraOptions = {}) {
   await listen(server);
   const created = superFocus.createProject({ title: 'Authority Test' }, { root });
   superFocus.saveScript(created.project_id, SCRIPT, { root });
+  superFocus.approveScript(created.project_id, scriptEvaluator.hashScriptText(SCRIPT), { root });
   return { server, root, mediaRoot, id: created.project_id };
 }
 

@@ -3,6 +3,7 @@ const crypto = require('node:crypto');
 const superFocus = require('../super-focus.js');
 const superFocusMedia = require('../super-focus-media.js');
 const ir = require('../super-focus-image-review.js');
+const scriptEvaluator = require('../script-evaluator.js');
 
 // ── Image Review Workbench ───────────────────────────────────────────────────
 // These tests pin the workbench contract:
@@ -103,7 +104,9 @@ function wbFixture(rowCount = 3, { queued = [] } = {}) {
   });
   const proj = superFocus.createProject({ title: 'WB' }, { root });
   const id = proj.project_id;
-  superFocus.saveScript(id, 'Claim one.\nClaim two.', { root });
+  const script = 'Claim one.\nClaim two.';
+  superFocus.saveScript(id, script, { root });
+  superFocus.approveScript(id, scriptEvaluator.hashScriptText(script), { root });
   superFocus.saveImagePrompts(id, Array.from({ length: rowCount }, (_, i) => `prompt ${i + 1}`), { root });
   const imageBytes = {};
   for (let i = 1; i <= rowCount; i++) {

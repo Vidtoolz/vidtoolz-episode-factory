@@ -29,6 +29,7 @@
 // keep the two local-first modules independently deployable.
 
 const crypto = require('crypto');
+const scriptEvaluator = require('./script-evaluator.js');
 
 const VISUAL_PLAN_SCHEMA_VERSION = 1;
 
@@ -380,6 +381,10 @@ function emptyPlan(scriptText, options = {}) {
   const created = options.now || nowIso();
   return {
     schema_version: VISUAL_PLAN_SCHEMA_VERSION,
+    // Canonical cross-system script identity (Episode Factory / Kanban /
+    // retention). source_script_hash remains the plan module's SHA-256 content
+    // guard for backward compatibility and local staleness checks.
+    script_version_hash: scriptEvaluator.hashScriptText(scriptText),
     source_script_hash: sha256(scriptText),
     created_at: created,
     updated_at: created,
@@ -394,6 +399,9 @@ function validatePlan(plan, scriptText) {
   if (!plan || typeof plan !== 'object' || Array.isArray(plan)) fail('Visual plan must be an object.', 422);
   if (plan.schema_version !== VISUAL_PLAN_SCHEMA_VERSION) fail('Unknown visual plan schema version.', 422);
   if (!Array.isArray(plan.beats) || !Array.isArray(plan.assignments)) fail('Visual plan is malformed.', 422);
+  if (plan.script_version_hash != null && !/^[a-f0-9]{40}$/.test(String(plan.script_version_hash))) {
+    fail('Visual plan script_version_hash is malformed.', 422);
+  }
   if (plan.beats.length > BOUNDS.beats_max) fail('Visual plan has too many beats.', 422);
   assertUniqueIds(plan.beats, 'beat_id', 'beat');
   assertUniqueIds(plan.assignments, 'assignment_id', 'assignment');
@@ -410,6 +418,10 @@ function validatePlan(plan, scriptText) {
   // Beat ranges only checked against the script when the plan is fresh — a
   // stale plan legitimately references the OLD script's offsets.
   if (typeof scriptText === 'string' && sha256(scriptText) === plan.source_script_hash) {
+    if (plan.script_version_hash != null
+        && plan.script_version_hash !== scriptEvaluator.hashScriptText(scriptText)) {
+      fail('Visual plan canonical script identity disagrees with its source content.', 422);
+    }
     plan.beats.forEach((b) => {
       if (b.start_char < 0 || b.end_char > scriptText.length || b.start_char >= b.end_char) {
         fail(`Beat ${b.beat_id} range is outside the saved script.`, 422);
@@ -838,6 +850,9 @@ function reanchorPlan(plan, scriptText, options = {}) {
   const out = Object.assign({}, plan, {
     beats: sortPlanBeats(rebased),
     assignments,
+    script_version_hash: anyUnmatched
+      ? plan.script_version_hash
+      : scriptEvaluator.hashScriptText(text),
     source_script_hash: anyUnmatched ? plan.source_script_hash : scriptHash,
     stale: anyUnmatched,
     updated_at: options.now || nowIso(),

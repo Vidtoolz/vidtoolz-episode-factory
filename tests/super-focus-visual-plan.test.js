@@ -1,5 +1,6 @@
 const { test, assert } = require('./_helpers.js');
 const vp = require('../super-focus-visual-plan.js');
+const scriptEvaluator = require('../script-evaluator.js');
 
 const SCRIPT = [
   'More AI tools can make you less productive. Every tool adds an interface.',
@@ -78,6 +79,14 @@ test('visual-plan: abbreviations and quoted punctuation do not shatter beats', (
 
 test('visual-plan: empty script is rejected', () => {
   assert.throws(() => vp.createBeats('   ', null), (e) => e.statusCode === 400);
+});
+
+test('visual-plan: canonical script identity is the exact Episode Factory SHA-1', () => {
+  const plan = planFor(SCRIPT);
+  assert.equal(plan.script_version_hash, scriptEvaluator.hashScriptText(SCRIPT));
+  assert.match(plan.source_script_hash, /^[a-f0-9]{64}$/);
+  const corrupt = Object.assign({}, plan, { script_version_hash: '0'.repeat(40) });
+  assert.throws(() => vp.validatePlan(corrupt, SCRIPT), /canonical script identity disagrees/i);
 });
 
 // ── data model validation ────────────────────────────────────────────────────

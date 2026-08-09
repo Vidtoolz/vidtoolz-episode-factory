@@ -1,6 +1,7 @@
 const { test, assert, packageEngineServer, fs, os, path, http } = require('./_helpers.js');
 const superFocus = require('../super-focus.js');
 const ir = require('../super-focus-image-review.js');
+const scriptEvaluator = require('../script-evaluator.js');
 
 // ---- helpers (mirror the established endpoint-test pattern) ----
 function mkdirTmp(prefix) { return fs.mkdtempSync(path.join(os.tmpdir(), prefix)); }
@@ -72,6 +73,7 @@ async function reviewServer() {
   const proj = superFocus.createProject({ title: 'IR Routes' }, { root });
   const id = proj.project_id;
   superFocus.saveScript(id, SCRIPT, { root });
+  superFocus.approveScript(id, scriptEvaluator.hashScriptText(SCRIPT), { root });
   // Visual plan: beats + one approved assignment on beat 1.
   const vpPost = (action, body) => request(server, `/api/super-focus/visual-plan/${action}`, { method: 'POST', headers: writeHeaders(), body: Object.assign({ id }, body) });
   await vpPost('create-beats', {});
@@ -248,7 +250,9 @@ test('image-review routes: slot refill does not inherit approval; re-anchor keep
     assert.notEqual(row.effective_status, 'approved', 'refilled slot must not inherit approval');
     // Re-anchor the plan after a script shift: review binding is by
     // assignment_id + hashes, so an approved review elsewhere stays put.
-    superFocus.saveScript(id, `New opening line.\n${SCRIPT}`, { root });
+    const changedScript = `New opening line.\n${SCRIPT}`;
+    superFocus.saveScript(id, changedScript, { root });
+    superFocus.approveScript(id, scriptEvaluator.hashScriptText(changedScript), { root });
     const re = await request(server, '/api/super-focus/visual-plan/reanchor', { method: 'POST', headers: writeHeaders(), body: { id } });
     assert.equal(re.statusCode, 200);
   } finally { await close(server); }

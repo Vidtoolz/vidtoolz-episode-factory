@@ -859,6 +859,7 @@
       if (approved) setStatus(status, 'Approved for ' + currentScriptApproval.script_hash.slice(0, 8) + '…');
       else if (currentScriptApproval && currentScriptApproval.status === 'stale') setStatus(status, 'Previous approval invalidated by a script change', true);
       else setStatus(status, '');
+      updatePrereqButtons();
     }
     var lastSavedTitle = '';  // the PERSISTED title — prerequisite gating reads this, not the input
 
@@ -1464,6 +1465,13 @@
       if (imgpGen) {
         imgpGen.disabled = !scriptReady;
         imgpGen.title = scriptReady ? '' : 'Save a script first — image prompts are created from it.';
+      }
+      var vpCreate = document.getElementById('vp-create-beats');
+      if (vpCreate) {
+        var scriptApproved = Boolean(currentScriptApproval && currentScriptApproval.status === 'approved');
+        vpCreate.disabled = !scriptReady || !scriptApproved;
+        vpCreate.title = !scriptReady ? 'Save a script first.'
+          : !scriptApproved ? 'Approve the exact saved script before creating its Visual Plan.' : '';
       }
       var imggen = document.getElementById('imggen-generate');
       if (imggen) {
@@ -2806,6 +2814,7 @@
         // only in "Next:" (no duplicate "N to review" chip), and zero-count
         // chips are dropped as noise.
         var chipTexts = [r.total_beats + ' beats', r.assignments_approved + '/' + r.assignments_required + ' approved'];
+        if (plan.script_version_hash) chipTexts.push('Script ' + plan.script_version_hash.slice(0, 8) + '…');
         if (r.assignments_rejected) chipTexts.push(r.assignments_rejected + ' rejected');
         if (r.uncovered_beats) chipTexts.push(r.uncovered_beats + ' without assignment');
         chipTexts.forEach(function (t) {

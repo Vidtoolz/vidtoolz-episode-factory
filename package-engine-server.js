@@ -14280,6 +14280,22 @@ function createServer(options = {}) {
           validateLocalWriteRequest(req, payload, { label: `Super Focus visual-plan ${action} API` });
           const id = payload.id || payload.project_id || '';
           const state = superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown id
+          // A Visual Plan is production work derived from human-approved exact
+          // bytes. Never let script presence, project identity, or a stale
+          // browser substitute for the current hash-bound approval record.
+          const currentScriptHash = scriptEvaluator.hashScriptText(state.script || '');
+          if (!state.script || !state.script.trim()) {
+            const e = new Error('Save a non-empty script before creating or editing a Visual Plan.');
+            e.statusCode = 400;
+            throw e;
+          }
+          if (!state.approval || state.approval.script !== 'approved'
+              || !state.script_approval || state.script_approval.status !== 'approved'
+              || state.script_approval.script_hash !== currentScriptHash) {
+            const e = new Error('Approve the current saved script before creating or editing its Visual Plan.');
+            e.statusCode = 409;
+            throw e;
+          }
           const vpApi = superFocusVisualPlan;
           const existing = superFocus.readVisualPlan(id, { root: sfRoot });
           const requirePlan = () => {

@@ -20,7 +20,12 @@ A project is one linear sheet, in order:
    SHA-1 of those exact saved bytes. Unsaved edits cannot be approved, and a
    later saved change invalidates the approval instead of transferring it to
    the new version. The advisory evaluator remains separate from approval.
-3. **Visual Plan** — beats + visual assignments, created from the **saved** script.
+3. **Visual Plan** — beats + visual assignments, created only from the current
+   **operator-approved saved script**. The server checks the approval's exact
+   SHA-1 before every plan mutation, and each new plan snapshots that canonical
+   `script_version_hash` alongside its internal SHA-256 staleness guard. A
+   later saved script change invalidates approval and makes the old plan stale;
+   it cannot silently become the plan for the revision.
    The central rule: *a prompt says what to generate; a visual assignment says
    what job the visual must perform in the argument.* Create beats (version
    numbers like `Wan 2.2` never split a beat). Every script beat is assumed to
