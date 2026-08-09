@@ -54,7 +54,7 @@
 // state (read-only; never model files) and compares it against the recorded
 // strong manifest's effective source identity:
 //
-//   node scripts/comfyui-workflow-check.js --source-verify <host>   # exit 0 when the core source still
+//   node scripts/comfyui-workflow-check.js --source-verify <host>   # exit 0 only when BOTH the core source
 //                                                                   #   matches the recorded manifest;
 //                                                                   #   exit 1 on CRITICAL drift (tracked
 //                                                                   #   file modified, commit moved, exec-
@@ -370,14 +370,23 @@ async function main() {
     console.log(`${result.manifest.host} COMFYUI CORE SOURCE`);
     console.log(`  recorded: commit ${c.recorded.git_commit ? c.recorded.git_commit.slice(0, 12) : '(none)'}  effective ${c.recorded.effective_source_sha256.slice(0, 16)}…  ${c.recorded.source_state} (${c.recorded.identity_level})  [inventoried ${result.manifest.generated_at}]`);
     console.log(`  live:     commit ${c.live.git_commit ? c.live.git_commit.slice(0, 12) : '(none)'}  effective ${c.live.effective_source_sha256.slice(0, 16)}…  ${c.live.source_state} (${c.live.identity_level})`);
-    for (const f of c.findings) {
+    const cn = result.liveCustomNodes || {};
+    console.log(`  custom nodes: ${cn.observed ? `${cn.counts.packages} package(s), ${cn.counts.files} executable file(s), ${cn.counts.unverifiable || 0} unverifiable` : 'UNOBSERVABLE'}`
+      + `  ${result.record.live_custom_nodes_sha256 ? `${result.record.live_custom_nodes_sha256.slice(0, 16)}…` : '(none)'}`);
+    for (const f of result.record.findings) {
       console.log(`  ${f.severity.padEnd(13)} ${f.kind}${f.path ? `  ${f.path}` : ''} — ${f.detail}`);
     }
-    console.log(c.verdict === 'MATCH'
-      ? `Core source: MATCH — core checkout identical to the recorded manifest (${c.counts.WARNING} warning(s), ${c.counts.INFORMATIONAL} informational)\n`
-        + '  scope: tracked core tree + fingerprinted local files. git-IGNORED trees (custom_nodes/, venv/, models/, user/, input/, output/) are NOT covered.'
-      : `Core source: DRIFT — ${c.counts.CRITICAL} CRITICAL finding(s); execution identity no longer matches the recorded manifest. No change performed — re-inventory (--inventory-strong ${id}) and requalify deliberately.`);
-    process.exit(c.verdict === 'MATCH' ? 0 : 1);
+    const eff = result.effectiveVerdict;
+    console.log(`CORE             ${c.verdict}`);
+    console.log(`CUSTOM NODES     ${result.customNodes.verdict}`);
+    console.log(`EXECUTABLE STATE ${eff}`);
+    console.log(eff === 'MATCH'
+      ? `Executable source: MATCH — core checkout AND custom-node code identical to the recorded manifest (${result.record.counts.WARNING} warning(s), ${result.record.counts.INFORMATIONAL} informational)\n`
+        + '  scope: core tree + fingerprinted local files + executable custom-node code. Python env, installed packages, models and drivers are qualified separately.'
+      : eff === 'INCOMPLETE'
+        ? `Executable source: INCOMPLETE — the core checkout matches, but the recorded manifest predates custom-node identity, so the executable surface is NOT verified. Re-inventory (--inventory-strong ${id}) to establish it.`
+        : `Executable source: DRIFT — ${result.record.counts.CRITICAL} CRITICAL finding(s); the executable identity no longer matches the recorded manifest. No change performed — re-inventory (--inventory-strong ${id}) and requalify deliberately.`);
+    process.exit(eff === 'MATCH' ? 0 : 1);
   }
   if (args.includes('--inventory-status') || args.includes('--inventory-verify')) {
     if (!id) { console.error('usage: --inventory-status <host> | --inventory-verify <host>'); process.exit(1); }

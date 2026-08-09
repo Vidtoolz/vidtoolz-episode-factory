@@ -375,19 +375,57 @@ identity churn. Known execution-relevant **git-ignored** configs
 (`extra_model_paths.yaml` — it shapes model discovery yet never shows as
 dirty) are explicitly fingerprinted.
 
-**Scope boundary (exact, and deliberately narrow).** The entry set comes from
-git's own view of the core checkout (`git status`/`git diff` against HEAD)
-plus the single-item ignored-config allowlist above. Everything ComfyUI's
-`.gitignore` excludes is therefore **outside** this identity — most
-importantly `custom_nodes/`, and also `models/`, `user/`, `input/`,
-`output/`, `venv*/`. Swapping a custom node's Python does **not** change
-`effective_source_sha256` and does **not** raise drift. Custom nodes carry
-only the weaker per-package identity in the fingerprint layer
-(`git_commit`/`package_version` locally, `class_presence_only` remotely).
-"Core source" here means the ComfyUI **core tree**, never the whole
-executable surface — read `MATCH` as "the core checkout is unchanged", not
-as "nothing that executes has changed". Extending coverage to a bounded
-`custom_nodes/**` walk is tracked as follow-up work, not implemented here.
+**Scope boundary (exact).** The core entry set comes from git's own view of
+the core checkout (`git status`/`git diff` against HEAD) plus the
+ignored-config allowlist above. Everything ComfyUI's `.gitignore` excludes is
+outside the CORE identity — `models/`, `user/`, `input/`, `output/`,
+`venv*/` — and, until P9, that included `custom_nodes/`.
+
+**P9 — executable custom-node identity.** The git-invisible code that runs
+inside the ComfyUI process is now inventoried directly from the filesystem as
+a SECOND, independent identity:
+
+```text
+custom_nodes_sha256          = SHA256(canonical({custom_nodes: [{path, sha256}]}))
+effective_executable_sha256  = SHA256(canonical({core_source, custom_nodes}))
+```
+
+Classification is an **include-list**, never an exclude-list: a file counts
+because of what it is (`.py .pyw .js .mjs .cjs .ps1 .sh .bat .cmd`, plus
+`requirements.txt` / `pyproject.toml` / `setup.cfg`), so no filename trick can
+demote real code, and irrelevant churn (README, `.pyc`, screenshots, caches)
+is excluded by construction. Directory segments `.git/`, `__pycache__/`,
+`node_modules/`, `venv/`, `site-packages/`, caches are never walked. Paths are
+relative to `custom_nodes/`, forward-slashed, sorted by (path, sha) — no
+mtimes, no absolute paths, no timestamps enter the identity. Symlinks are
+followed (the target's content is what executes) with a visited-realpath loop
+guard; a broken link with an executable name, an unreadable file, or a file
+over the 5 MB hash limit becomes an explicit **unverifiable** entry, never a
+silent skip. Bounds (4000 files / 128 MB / depth 12) fail **closed**: a breach
+sets `observed: false`, which yields no identity and can never read as MATCH.
+
+The three verdicts stay independently inspectable so an operator can tell WHAT
+drifted:
+
+```text
+CORE             MATCH | DRIFT
+CUSTOM NODES     MATCH | DRIFT | NOT_VERIFIED
+EXECUTABLE STATE MATCH | DRIFT | INCOMPLETE
+```
+
+`EXECUTABLE STATE` is MATCH only when both components match; custom-node drift
+is DRIFT even with a byte-identical core checkout; and a manifest that predates
+P9 yields `NOT_VERIFIED` / `INCOMPLETE` — a stale P8 MATCH is **never**
+promoted to an executable-surface MATCH. Custom-node drift feeds the existing
+P8 qualification gate (code `CUSTOM_NODE_SOURCE_DRIFTED_FROM_MANIFEST`);
+evidence is still captured and flagged, never discarded.
+
+**What is still NOT verified by this layer**: the Python interpreter and
+installed site-packages, native/binary dependencies, GPU drivers, model files
+(covered separately by the strong model manifest), and anything outside the
+ComfyUI root. Verification freshness is also not enforced — a stored verdict
+is metadata with a `verified_at`, and nothing triggers re-verification
+automatically before a render.
 
 Overall source states:
 

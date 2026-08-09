@@ -33,7 +33,11 @@ const provenance = require('./provenance.js');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const ENVIRONMENTS_PATH = path.join(REPO_ROOT, 'config', 'comfyui', 'environments.json');
-const DEFAULT_ENVIRONMENT_ROOT = path.join(REPO_ROOT, 'state', 'comfyui-environments');
+// Overridable so the CLI's real exit codes can be exercised against an
+// isolated manifest root (and so an operator can point at an alternate
+// evidence store). Defaults to the in-repo state dir.
+const DEFAULT_ENVIRONMENT_ROOT = process.env.COMFYUI_ENVIRONMENT_ROOT
+  || path.join(REPO_ROOT, 'state', 'comfyui-environments');
 const MANIFEST_SCHEMA_VERSION = 1;
 // registry-required filenames only — never path fragments. Rejects anything
 // with separators, traversal, or a leading dot before it can reach a host.
@@ -333,7 +337,7 @@ function localInventoryExecutor(plan, options = {}) {
       files.push({ filename: model.filename, path: resolved, bytes: st.size, mtime: st.mtime.toISOString(), sha256: hashedByPath.get(resolved) });
     }
     const source = collectLocalSourceState(plan.config.comfyui_root);
-    return { comfyui: source.comfyui, files, missing, git_branch: source.git_branch, tracked_patch_sha256: source.tracked_patch_sha256, source_entries: source.source_entries };
+    return { comfyui: source.comfyui, files, missing, git_branch: source.git_branch, tracked_patch_sha256: source.tracked_patch_sha256, source_entries: source.source_entries, custom_nodes: source.custom_nodes };
   })();
 }
 
@@ -398,6 +402,7 @@ function collectLocalSourceState(root) {
   return {
     comfyui, git_branch: gitBranch, tracked_patch_sha256: trackedPatchSha, source_entries: sourceEntries,
     source_observed: observed, source_observation_error: observationError,
+    custom_nodes: collectLocalCustomNodes(root),
   };
 }
 
@@ -516,11 +521,13 @@ function buildPowershellSourceScript(config) {
   return `
 $ErrorActionPreference = 'Stop'
 ${powershellSourceStateBlock(comfyRoot)}
+${powershellCustomNodesBlock(comfyRoot)}
 $result = [pscustomobject]@{
   comfyui = [pscustomobject]@{ root = '${comfyRoot}'; git_commit = $commit; git_dirty = $(if ($dirty -ne $null) { $dirty -gt 0 } else { $null }); git_dirty_count = $dirty; identity_level = $(if ($commit) { 'git_commit' } else { 'unknown' }) }
   git_branch = $branch
   tracked_patch_sha256 = $patchSha
   source_entries = $sourceEntries
+  custom_nodes = $customNodes
 }
 Write-Output 'SOURCE_JSON_BEGIN'
 $result | ConvertTo-Json -Depth 6
@@ -549,11 +556,26 @@ function sshSourceStateExecutor(config, options = {}) {
   }
   const parsed = JSON.parse(m[1]);
   const asArray = (v) => (Array.isArray(v) ? v : v == null ? [] : [v]);
+  const cn = parsed.custom_nodes || null;
   return {
     comfyui: parsed.comfyui,
     git_branch: parsed.git_branch || null,
     tracked_patch_sha256: parsed.tracked_patch_sha256 || null,
     source_entries: asArray(parsed.source_entries).map((e) => ({ ...e, sha256: e.sha256 ? String(e.sha256).toLowerCase() : null })),
+    // normalize to the exact schema the local walk produces
+    source_observed: true,
+    custom_nodes: cn ? {
+      observed: Boolean(cn.observed),
+      error: cn.error || null,
+      entries: asArray(cn.entries).map((e) => ({
+        path: String(e.path).replace(/\\/g, '/'),
+        package: e.package,
+        sha256: e.sha256 ? String(e.sha256).toLowerCase() : null,
+        bytes: e.bytes != null ? e.bytes : null,
+        ...(e.unverifiable ? { unverifiable: true } : {}),
+      })).sort((a, b) => a.path.localeCompare(b.path) || String(a.sha256).localeCompare(String(b.sha256))),
+      counts: cn.counts || { files: 0, bytes: 0, packages: 0, unverifiable: 0 },
+    } : { observed: false, error: 'remote host returned no custom-node inventory', entries: [], counts: { files: 0, bytes: 0, packages: 0, unverifiable: 0 } },
   };
 }
 
@@ -668,11 +690,20 @@ async function runStrongInventory(host, options = {}) {
     tracked_patch_sha256: executorResult.tracked_patch_sha256,
     source_entries: executorResult.source_entries,
   }, { managed: deployment.expectedShaByRelPath(plan.host, options) });
+  // P9: the executable custom-node surface (git-invisible) alongside core
+  // identity. A pre-P9 manifest simply lacks this key — never mistaken for
+  // an empty surface, because `observed` is absent rather than true.
+  const customNodesIdentity = buildCustomNodesIdentity(executorResult.custom_nodes);
   const manifest = {
     schema_version: MANIFEST_SCHEMA_VERSION,
     host: plan.host,
     transport: plan.config.transport,
     generated_at: new Date().toISOString(),
+    custom_nodes: customNodesIdentity,
+    effective_executable_sha256: effectiveExecutableSha256({
+      coreSha: sourceIdentity.effective_source_sha256,
+      customNodesSha: customNodesIdentity.custom_nodes_sha256,
+    }),
     comfyui: { ...executorResult.comfyui, ...sourceIdentity },
     models: executorResult.files.map((f) => ({
       filename: f.filename,
@@ -748,6 +779,254 @@ function verifyManifest(host, currentMetaByFilename, options = {}) {
   });
   const allCurrent = models.length > 0 && models.every((m) => m.sha_authority === 'current');
   return { status: 'ok', manifest: rm.manifest, models, all_current: allCurrent };
+}
+
+// ---- custom-node executable identity (P9) ---------------------------------------------------
+//
+// The core-source layer (P6-P8) sees only what git sees, and ComfyUI's own
+// .gitignore excludes custom_nodes/ — so executable Python that runs INSIDE
+// the ComfyUI process was outside the identity entirely. P9 inventories that
+// surface directly from the filesystem.
+//
+// Classification is an INCLUDE-LIST over file extensions/basenames, never an
+// exclude-list: a file is execution-relevant because of what it IS, so no
+// filename trick ("log_parser.py", "node__pycache__helper.py") can demote it,
+// and irrelevant churn (README, .pyc, screenshots, caches) is excluded by
+// construction rather than by pattern-matching. Directory segments are
+// skipped only to avoid walking storage that never executes (.git objects,
+// __pycache__, node_modules).
+//
+// Read-only: stats and hashes files. Never writes, never installs, never
+// touches git in a node package.
+
+const CUSTOM_NODES_DIRNAME = 'custom_nodes';
+// Executable/behavioural file classes. Python and JS execute; install and
+// dependency manifests determine what will execute.
+const CUSTOM_NODE_EXEC_EXT_RE = /\.(py|pyw|js|mjs|cjs|ps1|sh|bat|cmd)$/i;
+const CUSTOM_NODE_EXEC_BASENAMES = new Set(['requirements.txt', 'pyproject.toml', 'setup.cfg']);
+// Directory SEGMENTS never walked (storage/caches, not execution surface).
+const CUSTOM_NODE_SKIP_DIRS = new Set(['.git', '__pycache__', 'node_modules', '.venv', 'venv', 'site-packages', '.cache', 'cache', '.mypy_cache', '.pytest_cache', '.ipynb_checkpoints']);
+// Bounds — exceeded means "cannot observe", never "nothing to see".
+const CUSTOM_NODES_MAX_FILES = 4000;
+const CUSTOM_NODES_MAX_TOTAL_BYTES = 128 * 1024 * 1024;
+const CUSTOM_NODES_MAX_DEPTH = 12;
+
+// Is this custom-node-relative path execution-relevant? Path is
+// forward-slashed and relative to custom_nodes/.
+function classifyCustomNodeEntry(relPath) {
+  const p = String(relPath).replace(/\\/g, '/');
+  const segments = p.split('/');
+  const base = segments[segments.length - 1];
+  if (segments.slice(0, -1).some((seg) => CUSTOM_NODE_SKIP_DIRS.has(seg))) {
+    return { execution_relevant: false, category: 'skipped_storage' };
+  }
+  if (CUSTOM_NODE_EXEC_BASENAMES.has(base.toLowerCase())) return { execution_relevant: true, category: 'dependency_manifest' };
+  if (CUSTOM_NODE_EXEC_EXT_RE.test(base)) return { execution_relevant: true, category: 'custom_node_code' };
+  return { execution_relevant: false, category: 'non_executable' };
+}
+
+// The package a custom-node path belongs to: the first path segment
+// (a node directory, or a standalone file acting as its own package).
+function customNodePackageOf(relPath) {
+  return String(relPath).replace(/\\/g, '/').split('/')[0];
+}
+
+// Bounded, deterministic, read-only walk of <comfyRoot>/custom_nodes.
+// Returns the normalized schema BOTH transports must produce:
+//   { observed, error, entries: [{path, package, sha256, bytes, symlink, unverifiable}], counts }
+// Symlinks: followed (what executes is the target's content), with a visited
+// real-path set so loops terminate; a broken link whose name is
+// execution-relevant becomes an explicit unverifiable entry, never a silent
+// skip. Any bound breach or unreadable directory sets observed=false.
+function collectLocalCustomNodes(comfyRoot) {
+  const root = path.join(comfyRoot, CUSTOM_NODES_DIRNAME);
+  const out = { observed: false, error: null, entries: [], counts: { files: 0, bytes: 0, packages: 0, unverifiable: 0 } };
+  if (!fs.existsSync(root)) {
+    // An absent custom_nodes directory is a legitimate, fully-observed empty
+    // surface — distinct from "could not look".
+    out.observed = true;
+    return out;
+  }
+  const visited = new Set();
+  let totalBytes = 0;
+  try {
+    const walk = (absDir, relDir, depth) => {
+      if (depth > CUSTOM_NODES_MAX_DEPTH) throw new Error(`custom_nodes traversal exceeded depth ${CUSTOM_NODES_MAX_DEPTH} at ${relDir}`);
+      let realDir;
+      try { realDir = fs.realpathSync(absDir); } catch (err) { throw new Error(`unreadable custom-node directory ${relDir || '.'}: ${err.message}`); }
+      if (visited.has(realDir)) return;            // symlink loop / alias
+      visited.add(realDir);
+      for (const dirent of fs.readdirSync(absDir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+        const rel = relDir ? `${relDir}/${dirent.name}` : dirent.name;
+        const abs = path.join(absDir, dirent.name);
+        if (dirent.isDirectory()) {
+          if (CUSTOM_NODE_SKIP_DIRS.has(dirent.name)) continue;
+          walk(abs, rel, depth + 1);
+          continue;
+        }
+        let st = null;
+        let broken = false;
+        try { st = fs.statSync(abs); } catch (_) { broken = true; }   // stat follows symlinks
+        if (st && st.isDirectory()) {                                  // symlinked directory
+          if (CUSTOM_NODE_SKIP_DIRS.has(dirent.name)) continue;
+          walk(abs, rel, depth + 1);
+          continue;
+        }
+        const cls = classifyCustomNodeEntry(rel);
+        if (!cls.execution_relevant) continue;
+        const entry = { path: rel, package: customNodePackageOf(rel), sha256: null, bytes: st ? st.size : null };
+        if (dirent.isSymbolicLink()) entry.symlink = true;
+        if (broken) {
+          // an execution-relevant name that cannot be resolved is unverifiable
+          entry.unverifiable = true;
+          out.counts.unverifiable += 1;
+        } else if (st.size > SOURCE_HASH_MAX_BYTES) {
+          // never silently skipped — an unhashable executable file is an
+          // explicit hole in the identity
+          entry.unverifiable = true;
+          out.counts.unverifiable += 1;
+        } else {
+          entry.sha256 = crypto.createHash('sha256').update(fs.readFileSync(abs)).digest('hex');
+          totalBytes += st.size;
+          if (totalBytes > CUSTOM_NODES_MAX_TOTAL_BYTES) throw new Error(`custom_nodes hashed bytes exceeded ${CUSTOM_NODES_MAX_TOTAL_BYTES}`);
+        }
+        out.entries.push(entry);
+        if (out.entries.length > CUSTOM_NODES_MAX_FILES) throw new Error(`custom_nodes file count exceeded ${CUSTOM_NODES_MAX_FILES}`);
+      }
+    };
+    walk(root, '', 0);
+    out.entries.sort((a, b) => a.path.localeCompare(b.path) || String(a.sha256).localeCompare(String(b.sha256)));
+    out.counts.files = out.entries.length;
+    out.counts.bytes = totalBytes;
+    out.counts.packages = new Set(out.entries.map((e) => e.package)).size;
+    out.observed = true;
+  } catch (err) {
+    out.observed = false;
+    out.error = err && err.message ? err.message : String(err);
+  }
+  return out;
+}
+
+// Identity over the executable custom-node surface. Only path+sha material —
+// no mtimes, no absolute paths, no counts, no timestamps. An unverifiable
+// entry contributes an explicit marker so it can never look like absence.
+// Returns null when the surface could not be observed: no observation, no
+// identity (same fail-closed rule the core layer uses).
+function customNodesSha256(inventory) {
+  if (!inventory || inventory.observed !== true) return null;
+  const entries = (inventory.entries || [])
+    .map((e) => ({ path: e.path, sha256: e.unverifiable ? 'unverifiable' : (e.sha256 || 'unverifiable') }))
+    .sort((a, b) => a.path.localeCompare(b.path) || a.sha256.localeCompare(b.sha256));
+  return crypto.createHash('sha256').update(canonicalJson({ custom_nodes: entries })).digest('hex');
+}
+
+// The combined executable identity. Deliberately a separate digest over the
+// two component identities, so "what drifted" stays answerable: core and
+// custom nodes remain independently inspectable.
+function effectiveExecutableSha256({ coreSha, customNodesSha }) {
+  if (!coreSha || !customNodesSha) return null;
+  return crypto.createHash('sha256')
+    .update(canonicalJson({ core_source: coreSha, custom_nodes: customNodesSha }))
+    .digest('hex');
+}
+
+// Assemble the manifest/verification section from a raw inventory.
+function buildCustomNodesIdentity(inventory) {
+  const observed = Boolean(inventory && inventory.observed);
+  return {
+    observed,
+    error: (inventory && inventory.error) || null,
+    custom_nodes_sha256: customNodesSha256(inventory),
+    counts: (inventory && inventory.counts) || { files: 0, bytes: 0, packages: 0, unverifiable: 0 },
+    entries: observed ? (inventory.entries || []) : [],
+  };
+}
+
+// Structural comparison of recorded vs live custom-node surfaces. Pure.
+// Executable add/remove/change is CRITICAL; an unobservable surface on either
+// side is CRITICAL (never silence); a recorded surface that predates P9 is
+// reported as NOT_VERIFIED by the caller, never as a MATCH.
+function compareCustomNodes(recorded, live) {
+  const findings = [];
+  const add = (severity, kind, entryPath, detail) => findings.push({ severity, kind, path: entryPath || null, detail });
+  const short = (sha) => (sha ? `${String(sha).slice(0, 16)}…` : '(none)');
+  if (!live || live.observed !== true) {
+    add('CRITICAL', 'custom_nodes_unobservable', null,
+      `live custom-node surface could not be observed${live && live.error ? `: ${live.error}` : ''} — identity cannot be proven`);
+    return { verdict: 'DRIFT', findings };
+  }
+  if (!recorded || recorded.observed !== true || !recorded.custom_nodes_sha256) {
+    add('CRITICAL', 'custom_nodes_not_recorded', null,
+      'the recorded manifest carries no custom-node identity (pre-P9 inventory) — re-inventory (--inventory-strong) before trusting an executable-surface verdict');
+    return { verdict: 'NOT_VERIFIED', findings };
+  }
+  const byPath = new Map();
+  for (const e of recorded.entries || []) byPath.set(e.path, { rec: e });
+  for (const e of live.entries || []) byPath.set(e.path, { ...(byPath.get(e.path) || {}), liv: e });
+  const recordedPkgs = new Set((recorded.entries || []).map((e) => e.package));
+  const livePkgs = new Set((live.entries || []).map((e) => e.package));
+  for (const pkg of [...recordedPkgs].sort()) {
+    if (!livePkgs.has(pkg)) add('CRITICAL', 'custom_node_removed', pkg, 'custom-node package present at inventory time is gone');
+  }
+  for (const pkg of [...livePkgs].sort()) {
+    if (!recordedPkgs.has(pkg)) add('CRITICAL', 'custom_node_added', pkg, 'custom-node package not present at inventory time');
+  }
+  for (const [entryPath, { rec, liv }] of [...byPath.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    if (rec && !liv) {
+      add('CRITICAL', 'custom_node_file_removed', entryPath, 'executable file recorded at inventory time is gone');
+    } else if (!rec && liv) {
+      add('CRITICAL', 'custom_node_file_added', entryPath, `new executable file${liv.sha256 ? ` sha ${short(liv.sha256)}` : ''}`);
+    } else if (liv.unverifiable || rec.unverifiable || !liv.sha256 || !rec.sha256) {
+      add('CRITICAL', 'custom_node_file_unverifiable', entryPath,
+        'executable file could not be content-hashed on one or both sides (unreadable, broken link, or over the size limit) — identity cannot be proven');
+    } else if (rec.sha256 !== liv.sha256) {
+      add('CRITICAL', 'custom_node_file_changed', entryPath, `content changed: sha ${short(rec.sha256)} → ${short(liv.sha256)}`);
+    }
+  }
+  const critical = findings.filter((f) => f.severity === 'CRITICAL').length;
+  // catch-all: identity moved with no per-file explanation
+  if (!critical && recorded.custom_nodes_sha256 !== live.custom_nodes_sha256) {
+    add('CRITICAL', 'custom_nodes_identity_mismatch', null,
+      `custom-node identity changed (${short(recorded.custom_nodes_sha256)} → ${short(live.custom_nodes_sha256)}) without a per-file explanation`);
+  }
+  return { verdict: findings.some((f) => f.severity === 'CRITICAL') ? 'DRIFT' : 'MATCH', findings };
+}
+
+
+// Remote custom-node inventory (PowerShell). Same normalized schema and the
+// same include-list as the local walk. READ-ONLY: Get-ChildItem + Get-FileHash
+// only — no Set-*, no Out-File, no redirection, no New-Item, no Remove-*, no
+// git invocation of any kind.
+function powershellCustomNodesBlock(comfyRoot) {
+  return `$cnRoot = Join-Path '${comfyRoot}' 'custom_nodes'
+$cnEntries = @(); $cnObserved = $false; $cnError = $null; $cnBytes = 0; $cnUnverifiable = 0
+$skipDirs = @('.git','__pycache__','node_modules','.venv','venv','site-packages','.cache','cache','.mypy_cache','.pytest_cache','.ipynb_checkpoints')
+$execExt = @('.py','.pyw','.js','.mjs','.cjs','.ps1','.sh','.bat','.cmd')
+$execBase = @('requirements.txt','pyproject.toml','setup.cfg')
+try {
+  if (Test-Path -LiteralPath $cnRoot) {
+    $all = Get-ChildItem -LiteralPath $cnRoot -Recurse -File -Force -ErrorAction Stop
+    foreach ($f in $all) {
+      $rel = $f.FullName.Substring($cnRoot.Length).TrimStart('\\','/') -replace '\\\\','/'
+      $segs = $rel.Split('/')
+      $skip = $false
+      for ($i = 0; $i -lt $segs.Length - 1; $i++) { if ($skipDirs -contains $segs[$i]) { $skip = $true } }
+      if ($skip) { continue }
+      $base = $segs[$segs.Length - 1]
+      $isExec = ($execBase -contains $base.ToLower()) -or ($execExt -contains ([IO.Path]::GetExtension($base).ToLower()))
+      if (-not $isExec) { continue }
+      $sha = $null; $unver = $false
+      if ($f.Length -gt 5242880) { $unver = $true; $cnUnverifiable++ }
+      else {
+        try { $sha = (Get-FileHash -Algorithm SHA256 -LiteralPath $f.FullName -ErrorAction Stop).Hash.ToLower(); $cnBytes += $f.Length }
+        catch { $unver = $true; $cnUnverifiable++ }
+      }
+      $cnEntries += [pscustomobject]@{ path = $rel; package = $segs[0]; sha256 = $sha; bytes = $f.Length; unverifiable = $unver }
+    }
+  }
+  $cnObserved = $true
+} catch { $cnObserved = $false; $cnError = $_.Exception.Message }
+$customNodes = [pscustomobject]@{ observed = $cnObserved; error = $cnError; entries = $cnEntries; counts = [pscustomobject]@{ files = $cnEntries.Count; bytes = $cnBytes; packages = (@($cnEntries | ForEach-Object { $_.package } | Sort-Object -Unique)).Count; unverifiable = $cnUnverifiable } }`;
 }
 
 // ---- core-source drift verification (P8) ----------------------------------------------------
@@ -925,21 +1204,43 @@ async function verifySourceIdentity(host, options = {}) {
     }, { managed }),
   };
   const comparison = compareSourceIdentity(rm.manifest.comfyui, live);
+  // P9: the executable custom-node surface. Its verdict is independent, so an
+  // operator can tell WHAT drifted; the effective verdict is the conservative
+  // combination. A pre-P9 manifest yields NOT_VERIFIED — never MATCH.
+  const liveCustomNodes = buildCustomNodesIdentity(raw.custom_nodes);
+  const customNodes = compareCustomNodes(rm.manifest.custom_nodes, liveCustomNodes);
+  const effectiveVerdict = (comparison.verdict === 'MATCH' && customNodes.verdict === 'MATCH')
+    ? 'MATCH'
+    : (comparison.verdict === 'MATCH' && customNodes.verdict === 'NOT_VERIFIED') ? 'INCOMPLETE' : 'DRIFT';
+  const allFindings = [...comparison.findings, ...customNodes.findings];
+  const counts = { CRITICAL: 0, WARNING: 0, INFORMATIONAL: 0 };
+  allFindings.forEach((f) => { counts[f.severity] += 1; });
   const record = {
-    schema_version: 1,
+    schema_version: 2,
     host: rm.manifest.host,
     verified_at: new Date().toISOString(),
     manifest_generated_at: rm.manifest.generated_at,
     manifest_sha256: rm.manifest.manifest_sha256,
     verdict: comparison.verdict,
-    counts: comparison.counts,
+    custom_nodes_verdict: customNodes.verdict,
+    effective_verdict: effectiveVerdict,
+    counts,
+    core_counts: comparison.counts,
     recorded_effective_source_sha256: comparison.recorded.effective_source_sha256,
     live_effective_source_sha256: comparison.live.effective_source_sha256,
-    findings: comparison.findings,
+    recorded_custom_nodes_sha256: (rm.manifest.custom_nodes || {}).custom_nodes_sha256 || null,
+    live_custom_nodes_sha256: liveCustomNodes.custom_nodes_sha256,
+    recorded_effective_executable_sha256: rm.manifest.effective_executable_sha256 || null,
+    live_effective_executable_sha256: effectiveExecutableSha256({
+      coreSha: comparison.live.effective_source_sha256,
+      customNodesSha: liveCustomNodes.custom_nodes_sha256,
+    }),
+    custom_nodes_counts: liveCustomNodes.counts,
+    findings: allFindings,
   };
   fs.mkdirSync(manifestDir(host, options), { recursive: true });
   provenance.writeJsonAtomic(sourceVerificationPath(host, options), record);
-  return { status: 'ok', comparison, record, live, manifest: rm.manifest };
+  return { status: 'ok', comparison, customNodes, effectiveVerdict, record, live, liveCustomNodes, manifest: rm.manifest };
 }
 
 module.exports = {
@@ -957,6 +1258,15 @@ module.exports = {
   collectSourceState,
   compareSourceIdentity,
   verifySourceIdentity,
+  CUSTOM_NODES_MAX_FILES,
+  CUSTOM_NODES_MAX_TOTAL_BYTES,
+  classifyCustomNodeEntry,
+  collectLocalCustomNodes,
+  customNodesSha256,
+  effectiveExecutableSha256,
+  buildCustomNodesIdentity,
+  compareCustomNodes,
+  powershellCustomNodesBlock,
   sourceVerificationPath,
   readSourceVerification,
   ENVIRONMENTS_PATH,

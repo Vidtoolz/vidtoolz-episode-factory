@@ -456,12 +456,20 @@ function captureProductionQualification({ entry, runDir, provenancePath, fingerp
   // flagged, so downstream evaluation shows the taint until re-inventory +
   // requalification.
   const driftCheck = fingerprint && fingerprint.comfyui && fingerprint.comfyui.source_drift_check;
-  const sourceIntegrityWarning = driftCheck && driftCheck.verdict === 'DRIFT' ? {
-    code: 'CORE_SOURCE_DRIFTED_FROM_MANIFEST',
-    detail: 'live ComfyUI core source no longer matches the recorded environment manifest — re-inventory (--inventory-strong) and requalify before trusting this evidence',
+  // P9 extends the SAME gate to the executable surface: custom-node drift is
+  // source drift. There is no second policy — evidence is still captured and
+  // permanently flagged, never discarded.
+  const customNodesDrifted = driftCheck && driftCheck.custom_nodes_verdict === 'DRIFT';
+  const sourceIntegrityWarning = driftCheck && (driftCheck.verdict === 'DRIFT' || customNodesDrifted) ? {
+    code: customNodesDrifted && driftCheck.verdict !== 'DRIFT'
+      ? 'CUSTOM_NODE_SOURCE_DRIFTED_FROM_MANIFEST'
+      : 'CORE_SOURCE_DRIFTED_FROM_MANIFEST',
+    detail: customNodesDrifted && driftCheck.verdict !== 'DRIFT'
+      ? 'live ComfyUI custom-node code no longer matches the recorded environment manifest — executable behaviour may differ even though the core checkout is unchanged; re-inventory (--inventory-strong) and requalify before trusting this evidence'
+      : 'live ComfyUI core source no longer matches the recorded environment manifest — re-inventory (--inventory-strong) and requalify before trusting this evidence',
     recorded_effective_source_sha256: fingerprint.comfyui.effective_source_sha256 || null,
     live_effective_source_sha256: driftCheck.live_effective_source_sha256 || null,
-    critical_findings: driftCheck.critical_findings || [],
+    critical_findings: [...(driftCheck.critical_findings || []), ...(driftCheck.custom_nodes_findings || [])],
   } : null;
   const record = {
     schema_version: QUALIFICATION_SCHEMA_VERSION,

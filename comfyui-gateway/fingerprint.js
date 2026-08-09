@@ -230,7 +230,21 @@ async function collectFingerprint(entry, options = {}) {
       // (the full timestamped record lives in source-verification.json).
       const sv = environment.readSourceVerification(hostNameFor(endpoint), options);
       if (sv && sv.recorded_effective_source_sha256 === mc.effective_source_sha256) {
-        comfyui.source_drift_check = { verdict: sv.verdict };
+        // P9: the executable verdict combines core + custom nodes. Pre-P9
+        // records carry neither field; they are reported as their core verdict
+        // with an explicit custom_nodes: 'not_verified' so a stale P8 MATCH can
+        // never read as a full executable-surface MATCH. Still no timestamp
+        // here — freshness is metadata in the record, not identity.
+        comfyui.source_drift_check = {
+          verdict: sv.verdict,
+          custom_nodes_verdict: sv.custom_nodes_verdict || 'not_verified',
+          effective_verdict: sv.effective_verdict || (sv.verdict === 'MATCH' ? 'INCOMPLETE' : sv.verdict),
+        };
+        if (sv.custom_nodes_verdict && sv.custom_nodes_verdict !== 'MATCH') {
+          comfyui.source_drift_check.custom_nodes_findings = (sv.findings || [])
+            .filter((f) => f.severity === 'CRITICAL' && String(f.kind).startsWith('custom_node'))
+            .map((f) => `${f.kind}${f.path ? ` ${f.path}` : ''}`);
+        }
         if (sv.verdict === 'DRIFT') {
           comfyui.source_drift_check.live_effective_source_sha256 = sv.live_effective_source_sha256 || null;
           comfyui.source_drift_check.critical_findings = (sv.findings || [])

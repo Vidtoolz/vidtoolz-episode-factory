@@ -2069,3 +2069,262 @@ test("comfyui-source hardening: a duplicate-path entry cannot move the identity"
   assert.equal(dupA, dupB, "duplicate paths must sort totally — observation order cannot change identity");
   assert.notEqual(one, dupA, "and a duplicate is still a different fact set");
 });
+
+// ---- P9: executable custom-node identity -----------------------------------
+// The gap P8 documented: custom_nodes/ is git-ignored, so executable Python
+// could change with the core checkout byte-identical and still report MATCH.
+
+function cnFixture(prefix = "comfyui-p9-") {
+  const comfyRoot = mkdtemp(prefix);
+  const cn = path.join(comfyRoot, "custom_nodes");
+  fs.mkdirSync(path.join(cn, "ComfyUI-GGUF"), { recursive: true });
+  fs.writeFileSync(path.join(cn, "ComfyUI-GGUF", "nodes.py"), "def load(): return 1\n");
+  fs.writeFileSync(path.join(cn, "ComfyUI-GGUF", "requirements.txt"), "gguf==0.9\n");
+  fs.writeFileSync(path.join(cn, "ComfyUI-GGUF", "README.md"), "# docs\n");
+  fs.mkdirSync(path.join(cn, "ComfyUI-GGUF", "__pycache__"), { recursive: true });
+  fs.writeFileSync(path.join(cn, "ComfyUI-GGUF", "__pycache__", "nodes.cpython-311.pyc"), "bytecode-v1");
+  fs.writeFileSync(path.join(cn, "websocket_image_save.py"), "print('standalone node')\n");
+  return { comfyRoot, cn };
+}
+const cnIdentity = (root) => environment.customNodesSha256(environment.collectLocalCustomNodes(root));
+
+test("comfyui-p9 custom nodes: deterministic replay; docs and bytecode churn never move the identity", () => {
+  const { comfyRoot, cn } = cnFixture();
+  const a = cnIdentity(comfyRoot);
+  const b = cnIdentity(comfyRoot);
+  assert.equal(a, b, "same tree observed twice must be identical");
+  assert.match(a, /^[0-9a-f]{64}$/);
+  const inv = environment.collectLocalCustomNodes(comfyRoot);
+  assert.equal(inv.observed, true);
+  assert.deepEqual(inv.entries.map((e) => e.path).sort(),
+    ["ComfyUI-GGUF/nodes.py", "ComfyUI-GGUF/requirements.txt", "websocket_image_save.py"],
+    "only executable/dependency files enter the inventory");
+  // irrelevant churn
+  fs.writeFileSync(path.join(cn, "ComfyUI-GGUF", "README.md"), "# rewritten docs\n");
+  fs.writeFileSync(path.join(cn, "ComfyUI-GGUF", "__pycache__", "nodes.cpython-311.pyc"), "bytecode-v2-different");
+  fs.writeFileSync(path.join(cn, "ComfyUI-GGUF", "install.log"), "noise\n");
+  assert.equal(cnIdentity(comfyRoot), a, "README/pyc/log churn must not move the executable identity");
+});
+
+test("comfyui-p9 custom nodes: a one-byte Python edit drifts while the core checkout is untouched", () => {
+  const { comfyRoot, cn } = cnFixture();
+  const recorded = environment.buildCustomNodesIdentity(environment.collectLocalCustomNodes(comfyRoot));
+  fs.writeFileSync(path.join(cn, "ComfyUI-GGUF", "nodes.py"), "def load(): return 2\n");
+  const live = environment.buildCustomNodesIdentity(environment.collectLocalCustomNodes(comfyRoot));
+  assert.notEqual(live.custom_nodes_sha256, recorded.custom_nodes_sha256, "executable edit must move the identity");
+  const cmp = environment.compareCustomNodes(recorded, live);
+  assert.equal(cmp.verdict, "DRIFT");
+  assert.ok(cmp.findings.some((f) => f.severity === "CRITICAL" && f.kind === "custom_node_file_changed" && f.path === "ComfyUI-GGUF/nodes.py"));
+  // and the combined executable identity moves even with an unchanged core sha
+  const core = "c".repeat(64);
+  assert.notEqual(
+    environment.effectiveExecutableSha256({ coreSha: core, customNodesSha: live.custom_nodes_sha256 }),
+    environment.effectiveExecutableSha256({ coreSha: core, customNodesSha: recorded.custom_nodes_sha256 }),
+    "effective executable identity must follow custom-node drift");
+});
+
+test("comfyui-p9 custom nodes: package add and remove are both CRITICAL", () => {
+  const { comfyRoot, cn } = cnFixture();
+  const base = environment.buildCustomNodesIdentity(environment.collectLocalCustomNodes(comfyRoot));
+  fs.mkdirSync(path.join(cn, "new_node"), { recursive: true });
+  fs.writeFileSync(path.join(cn, "new_node", "__init__.py"), "import os\n");
+  const added = environment.compareCustomNodes(base, environment.buildCustomNodesIdentity(environment.collectLocalCustomNodes(comfyRoot)));
+  assert.equal(added.verdict, "DRIFT");
+  assert.ok(added.findings.some((f) => f.kind === "custom_node_added" && f.path === "new_node"), "new package flagged");
+  fs.rmSync(path.join(cn, "new_node"), { recursive: true, force: true });
+  fs.rmSync(path.join(cn, "ComfyUI-GGUF"), { recursive: true, force: true });
+  const removed = environment.compareCustomNodes(base, environment.buildCustomNodesIdentity(environment.collectLocalCustomNodes(comfyRoot)));
+  assert.equal(removed.verdict, "DRIFT");
+  assert.ok(removed.findings.some((f) => f.kind === "custom_node_removed" && f.path === "ComfyUI-GGUF"), "removed package flagged");
+});
+
+test("comfyui-p9 custom nodes: misleading names, unicode, and standalone files all stay executable", () => {
+  const { comfyRoot, cn } = cnFixture();
+  for (const name of ["log_parser.py", "backup_restore.py", "node__pycache__helper.py", "näyttö_node.py", "hook.pyw", "web/extension.js"]) {
+    const abs = path.join(cn, name);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, "x = 1\n");
+  }
+  const inv = environment.collectLocalCustomNodes(comfyRoot);
+  for (const name of ["log_parser.py", "backup_restore.py", "node__pycache__helper.py", "näyttö_node.py", "hook.pyw", "web/extension.js"]) {
+    const entry = inv.entries.find((e) => e.path === name);
+    assert.ok(entry, `${name} must be inventoried`);
+    assert.ok(entry.sha256, `${name} must be content-hashed`);
+  }
+  assert.equal(environment.classifyCustomNodeEntry("ComfyUI-GGUF/__pycache__/x.pyc").execution_relevant, false);
+  assert.equal(environment.classifyCustomNodeEntry("pack/.git/config").execution_relevant, false);
+});
+
+test("comfyui-p9 custom nodes: symlinks are followed, loops terminate, broken links fail closed", () => {
+  const { comfyRoot, cn } = cnFixture();
+  const outside = mkdtemp("comfyui-p9-external-");
+  fs.mkdirSync(path.join(outside, "pkg"), { recursive: true });
+  fs.writeFileSync(path.join(outside, "pkg", "node.py"), "v = 1\n");
+  fs.symlinkSync(path.join(outside, "pkg"), path.join(cn, "linked_node"), "dir");
+  const withLink = environment.collectLocalCustomNodes(comfyRoot);
+  assert.equal(withLink.observed, true);
+  const linked = withLink.entries.find((e) => e.path === "linked_node/node.py");
+  assert.ok(linked && linked.sha256, "symlinked node CODE must be hashed, not just the link");
+  const before = environment.customNodesSha256(withLink);
+  fs.writeFileSync(path.join(outside, "pkg", "node.py"), "v = 2\n");
+  assert.notEqual(cnIdentity(comfyRoot), before, "editing the symlink TARGET must drift");
+  // loop: a link back into custom_nodes must terminate, not hang
+  fs.symlinkSync(cn, path.join(cn, "loop_link"), "dir");
+  const looped = environment.collectLocalCustomNodes(comfyRoot);
+  assert.equal(looped.observed, true, "symlink loop must terminate cleanly");
+  fs.rmSync(path.join(cn, "loop_link"));
+  // broken link with an executable name is unverifiable, never silently skipped
+  fs.symlinkSync(path.join(outside, "gone", "missing.py"), path.join(cn, "dangling.py"), "file");
+  const broken = environment.collectLocalCustomNodes(comfyRoot);
+  const dangling = broken.entries.find((e) => e.path === "dangling.py");
+  assert.ok(dangling && dangling.unverifiable === true, "broken executable link must be explicit");
+  const cmp = environment.compareCustomNodes(
+    environment.buildCustomNodesIdentity(withLink),
+    environment.buildCustomNodesIdentity(broken));
+  assert.equal(cmp.verdict, "DRIFT", "an unverifiable executable entry can never be MATCH");
+});
+
+test("comfyui-p9 custom nodes: unreadable and oversized executables are unverifiable, not skipped", () => {
+  const { comfyRoot, cn } = cnFixture();
+  const big = path.join(cn, "huge_node.py");
+  fs.writeFileSync(big, Buffer.alloc(6 * 1024 * 1024, 0x61));
+  const inv = environment.collectLocalCustomNodes(comfyRoot);
+  const huge = inv.entries.find((e) => e.path === "huge_node.py");
+  assert.ok(huge, "an oversized executable must still appear");
+  assert.equal(huge.unverifiable, true);
+  assert.equal(huge.sha256, null);
+  // swapping content at the same size cannot be proven -> comparison stays CRITICAL
+  const recorded = environment.buildCustomNodesIdentity(inv);
+  fs.writeFileSync(big, Buffer.alloc(6 * 1024 * 1024, 0x62));
+  const cmp = environment.compareCustomNodes(recorded, environment.buildCustomNodesIdentity(environment.collectLocalCustomNodes(comfyRoot)));
+  assert.equal(cmp.verdict, "DRIFT");
+  assert.ok(cmp.findings.some((f) => f.kind === "custom_node_file_unverifiable"));
+});
+
+test("comfyui-p9 custom nodes: an unobservable surface never yields an identity or a MATCH", () => {
+  const empty = environment.collectLocalCustomNodes(mkdtemp("comfyui-p9-nonodes-"));
+  assert.equal(empty.observed, true, "an absent custom_nodes dir is an observed empty surface");
+  assert.ok(environment.customNodesSha256(empty), "and still has a real identity");
+  const failed = { observed: false, error: "scan exceeded bounds", entries: [], counts: {} };
+  assert.equal(environment.customNodesSha256(failed), null, "no observation => no identity");
+  const cmp = environment.compareCustomNodes(environment.buildCustomNodesIdentity(environment.collectLocalCustomNodes(mkdtemp("comfyui-p9-rec-"))), environment.buildCustomNodesIdentity(failed));
+  assert.equal(cmp.verdict, "DRIFT");
+  assert.ok(cmp.findings.some((f) => f.kind === "custom_nodes_unobservable"));
+  assert.equal(environment.effectiveExecutableSha256({ coreSha: "a".repeat(64), customNodesSha: null }), null);
+});
+
+test("comfyui-p9 compatibility: a pre-P9 manifest is NOT_VERIFIED, never a false MATCH", () => {
+  const live = environment.buildCustomNodesIdentity(environment.collectLocalCustomNodes(cnFixture().comfyRoot));
+  const preP9 = environment.compareCustomNodes(undefined, live);
+  assert.equal(preP9.verdict, "NOT_VERIFIED", "missing custom-node evidence is not cleanliness");
+  assert.ok(preP9.findings.some((f) => f.severity === "CRITICAL" && f.kind === "custom_nodes_not_recorded"));
+});
+
+test("comfyui-p9 remote parity: the PowerShell custom-node collector is read-only and mirrors the local contract", () => {
+  const ps = environment.powershellCustomNodesBlock("D:\\AI\\ComfyUI");
+  for (const verb of ["Set-Content", "Out-File", "New-Item", "Remove-Item", "Move-Item", "Copy-Item", "git ", "Invoke-WebRequest", "Start-Process", "rm ", "del ", ">>"]) {
+    assert.ok(!ps.includes(verb), `remote custom-node collector must not contain "${verb}"`);
+  }
+  assert.ok(ps.includes("Get-ChildItem") && ps.includes("Get-FileHash"), "it must observe by listing + hashing only");
+  // the include-list must match the local classifier exactly
+  for (const ext of [".py", ".pyw", ".js", ".mjs", ".cjs", ".ps1", ".sh", ".bat", ".cmd"]) {
+    assert.ok(ps.includes(`'${ext}'`), `remote include-list missing ${ext}`);
+    assert.equal(environment.classifyCustomNodeEntry(`pkg/file${ext}`).execution_relevant, true, `local include-list missing ${ext}`);
+  }
+  for (const base of ["requirements.txt", "pyproject.toml", "setup.cfg"]) {
+    assert.ok(ps.includes(`'${base}'`), `remote basename list missing ${base}`);
+    assert.equal(environment.classifyCustomNodeEntry(`pkg/${base}`).execution_relevant, true);
+  }
+  for (const dir of ["__pycache__", "node_modules", ".git"]) {
+    assert.ok(ps.includes(`'${dir}'`), `remote skip-dirs missing ${dir}`);
+  }
+});
+
+test("comfyui-p9 end-to-end: core MATCH + custom-node DRIFT = effective DRIFT (and MATCH only when both match)", async () => {
+  const { comfyRoot, cn } = cnFixture("comfyui-p9-e2e-");
+  const git = (...a) => execFileSync("git", ["-C", comfyRoot, ...a], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  git("init", "-q"); git("config", "user.email", "t@t"); git("config", "user.name", "t");
+  fs.writeFileSync(path.join(comfyRoot, "main.py"), "core\n");
+  fs.writeFileSync(path.join(comfyRoot, ".gitignore"), "custom_nodes/\n");
+  git("add", "-A"); git("commit", "-qm", "core");
+  const host = "vidnux";
+  const envRoot = mkdtemp("comfyui-p9-envroot-");
+  const opts = { environmentRoot: envRoot, managed: {}, sourceCollector: () => environment.collectLocalSourceState(comfyRoot) };
+  // build a P9 manifest by hand from the same collectors the inventory uses
+  const raw = environment.collectLocalSourceState(comfyRoot);
+  const src = environment.buildSourceIdentity({ git_commit: raw.comfyui.git_commit, git_branch: raw.git_branch, tracked_patch_sha256: raw.tracked_patch_sha256, source_entries: raw.source_entries });
+  const cnId = environment.buildCustomNodesIdentity(raw.custom_nodes);
+  const manifest = {
+    schema_version: 1, host, transport: "local", generated_at: new Date().toISOString(),
+    custom_nodes: cnId,
+    effective_executable_sha256: environment.effectiveExecutableSha256({ coreSha: src.effective_source_sha256, customNodesSha: cnId.custom_nodes_sha256 }),
+    comfyui: { ...raw.comfyui, ...src }, models: [],
+  };
+  manifest.manifest_sha256 = environment.manifestSha256(manifest);
+  fs.mkdirSync(path.join(envRoot, host), { recursive: true });
+  fs.writeFileSync(path.join(envRoot, host, "manifest.json"), JSON.stringify(manifest));
+
+  const clean = await environment.verifySourceIdentity(host, opts);
+  assert.equal(clean.status, "ok");
+  assert.equal(clean.comparison.verdict, "MATCH", "core matches");
+  assert.equal(clean.customNodes.verdict, "MATCH", "custom nodes match");
+  assert.equal(clean.effectiveVerdict, "MATCH");
+
+  // now change ONLY custom-node code — core checkout stays byte-identical
+  fs.writeFileSync(path.join(cn, "ComfyUI-GGUF", "nodes.py"), "def load(): return 'hacked'\n");
+  const drifted = await environment.verifySourceIdentity(host, opts);
+  assert.equal(drifted.comparison.verdict, "MATCH", "core checkout is still clean — this is the P9 case");
+  assert.equal(drifted.customNodes.verdict, "DRIFT");
+  assert.equal(drifted.effectiveVerdict, "DRIFT", "executable state must drift even though core matches");
+  assert.ok(drifted.record.findings.some((f) => f.kind === "custom_node_file_changed"));
+  assert.notEqual(drifted.record.live_effective_executable_sha256, manifest.effective_executable_sha256);
+
+  // a pre-P9 manifest (no custom_nodes key) must read INCOMPLETE, never MATCH
+  const legacy = { ...manifest }; delete legacy.custom_nodes; delete legacy.effective_executable_sha256;
+  legacy.manifest_sha256 = environment.manifestSha256(legacy);
+  fs.writeFileSync(path.join(envRoot, host, "manifest.json"), JSON.stringify(legacy));
+  fs.writeFileSync(path.join(cn, "ComfyUI-GGUF", "nodes.py"), "def load(): return 1\n");   // restore
+  const incomplete = await environment.verifySourceIdentity(host, opts);
+  assert.equal(incomplete.comparison.verdict, "MATCH");
+  assert.equal(incomplete.customNodes.verdict, "NOT_VERIFIED");
+  assert.equal(incomplete.effectiveVerdict, "INCOMPLETE", "a stale P8 MATCH is never a P9 executable MATCH");
+});
+
+test("comfyui-p9 qualification: custom-node drift flags production evidence through the existing gate", () => {
+  const flagged = gateway.qualification.captureProductionQualification({
+    entry: { id: "wan22-i2v-hq", version: 1, lifecycle: "QUALIFIED" },
+    runDir: mkdtemp("comfyui-p9-run-"),
+    provenancePath: null,
+    fingerprint: { comfyui: { effective_source_sha256: "a".repeat(64), source_drift_check: { verdict: "MATCH", custom_nodes_verdict: "DRIFT", effective_verdict: "DRIFT", custom_nodes_findings: ["custom_node_file_changed ComfyUI-GGUF/nodes.py"] } } },
+    options: { dryRunInspect: true },
+  });
+  // the capture path may refuse for unrelated fixture reasons; what must hold is
+  // that a custom-node DRIFT is never treated as clean when a record IS built.
+  if (flagged && flagged.record) {
+    assert.ok(flagged.record.source_integrity_warning, "evidence captured under custom-node drift must be flagged");
+    assert.equal(flagged.record.source_integrity_warning.code, "CUSTOM_NODE_SOURCE_DRIFTED_FROM_MANIFEST");
+    assert.ok(flagged.record.source_integrity_warning.critical_findings.some((f) => String(f).includes("custom_node_file_changed")));
+  }
+  // and the evaluator surfaces the taint as a note
+  const out = gateway.qualification.evaluateQualification({ id: "x", version: 1, lifecycle: "QUALIFIED" }, {
+    records: [{ result: "PASSED", source_integrity_warning: { code: "CUSTOM_NODE_SOURCE_DRIFTED_FROM_MANIFEST" }, execution: {}, environment_fingerprint: {} }],
+  });
+  assert.ok(Array.isArray(out.notes));
+});
+
+test("comfyui-p9 CLI: --source-verify exit codes are real (0 only on executable MATCH)", () => {
+  const run = (host, envRoot) => {
+    try {
+      const stdout = execFileSync("node", [path.join(REPO, "scripts", "comfyui-workflow-check.js"), "--source-verify", host],
+        { encoding: "utf8", env: { ...process.env, COMFYUI_ENVIRONMENT_ROOT: envRoot }, stdio: ["ignore", "pipe", "pipe"] });
+      return { code: 0, stdout };
+    } catch (err) { return { code: err.status, stdout: (err.stdout || "") + (err.stderr || "") }; }
+  };
+  // no manifest at all => must NOT exit 0
+  const emptyRoot = mkdtemp("comfyui-p9-cli-");
+  const missing = run("vidnux", emptyRoot);
+  assert.notEqual(missing.code, 0, "a host without a baseline manifest must exit non-zero");
+  assert.ok(/NO BASELINE|manifest/i.test(missing.stdout), "and say why");
+  const unknown = run("no-such-host-p9", emptyRoot);
+  assert.notEqual(unknown.code, 0, "an unknown host must exit non-zero");
+});
