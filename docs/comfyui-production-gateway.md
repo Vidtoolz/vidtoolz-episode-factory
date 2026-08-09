@@ -486,18 +486,34 @@ PRESTO, aigen FLUX, Super Focus FLUX images) now pass the gateway gate before
 dispatch. A regression test asserts the SF Wan lane calls the gate exactly once
 and that a completed job carries capture evidence.
 
+*Closed (P13):* **structural dispatch boundary.** The raw transport functions
+(`launchPrestoProductionJob`, `launchFluxHandoffJob`) now refuse to run without
+a *dispatch permit*, and permits are minted only by `gateProductionDispatch()`
+and held in a module-private `WeakSet`. Membership — not shape — is what
+counts, so a hand-built `{ preflightPassed: true }` or even a structural copy
+of a real permit is refused. All four production lanes obtain their permit from
+that one gate, which resolves the canonical registry entry (by workflow id or
+PRESTO profile), runs `preflightSync`, and stamps the canonical
+endpoint/host onto the permit. A comment saying "callers MUST preflight first"
+was what allowed the P11 bypass; a future lane that forgets now fails closed at
+the transport boundary instead of rendering ungated.
+
 *Still open:* the P10 **freshness** gate (`ensureFreshSourceVerification`) is
-implemented and unit-tested but is **not yet called from the dispatch path**,
-so D6 remains open. Three prerequisites remain:
+implemented and unit-tested but is **not yet called from `gateProductionDispatch`**,
+so D6 remains open. The gate is now the single place it must be added — one
+call site rather than four. What blocks it:
 
 1. PRESTO's recorded manifest predates P9, so its verification is
    `INCOMPLETE`. Enforcing freshness today would refuse every PRESTO dispatch
    until an operator runs `--inventory-strong PRESTO` (which hashes tens of
    GB). That is an operator decision, not an automatic one.
-2. Adding an `await` inside the PRESTO dispatch functions re-opens the
-   concurrent-submit race that the single-GPU lock comment there says is
-   currently closed; the lock must be re-checked after the await, as the Super
-   Focus queue pump already does for its other gates.
+2. `gateProductionDispatch` is synchronous, and the lane entry points it
+   serves (`startPrestoPackageJob`, `startFluxPackageJob`, …) are called
+   **synchronously by tests and callers** — `presto-eligibility` asserts a
+   synchronous 409 to prove the single-GPU race is closed. Making the gate
+   async therefore reopens that race and invalidates the test guarding it. The
+   fix is to reserve the GPU slot synchronously before awaiting verification
+   and release it on refusal, then re-check ownership before transport.
 *Closed (P12):* **canonical host resolution.** `registry.endpointFor(entry)` is
 now the single rule for "which ComfyUI does this workflow actually talk to":
 `endpoint_env` names take precedence over `endpoint_default`, trailing slashes

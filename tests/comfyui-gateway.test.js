@@ -348,8 +348,17 @@ test("comfyui-gateway provenance: flux manifest enrichment hashes outputs and re
 
 test("comfyui-gateway server wiring: PRESTO and FLUX dispatch are gated, routes registered", () => {
   const src = fs.readFileSync(path.join(REPO, "package-engine-server.js"), "utf8");
-  assert.match(src, /getWorkflowForPrestoProfile\(config\.profile/);
-  assert.match(src, /preflightSync\('flux-gguf-1080x1920'/);
+  // Gating is now structural rather than per-call-site (P13): every lane mints
+  // a permit through the one gate, and the raw transport refuses without it.
+  // Assert the boundary itself, not the old per-lane call shapes.
+  assert.match(src, /function gateProductionDispatch\(/);
+  assert.match(src, /assertDispatchPermit\(config\.dispatchPermit, 'PRESTO'\)/);
+  assert.match(src, /assertDispatchPermit\(config\.dispatchPermit, 'FLUX'\)/);
+  // all four production lanes obtain a permit from that gate
+  const gated = src.match(/gateProductionDispatch\(\{/g) || [];
+  assert.ok(gated.length >= 4, `all four production lanes must be gated (found ${gated.length})`);
+  assert.match(src, /prestoProfile: config\.profile/);
+  assert.match(src, /workflowId: 'flux-gguf-1080x1920'/);
   assert.match(src, /COMFYUI_WORKFLOWS_API = '\/api\/comfyui\/workflows'/);
   assert.match(src, /COMFYUI_PREFLIGHT_API = '\/api\/comfyui\/preflight'/);
   assert.match(src, /buildWanProvenanceForRunsSince/);

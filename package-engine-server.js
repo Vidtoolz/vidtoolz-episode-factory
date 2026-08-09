@@ -9269,16 +9269,15 @@ function startPrestoPackageJob(payload = {}, options = {}) {
   // workflow whose canonical graph AND runtime (VIDNAS) copy match the
   // qualified hash — unreviewed workflow drift refuses dispatch here, before
   // any spawn (SUPER_FOCUS_COMFYUI_DRIFT_OVERRIDE=1 downgrades to a warning).
-  const gatewayEntry = comfyuiGateway.registry.getWorkflowForPrestoProfile(config.profile, options.gateway || {});
-  const gatewayGate = comfyuiGateway.preflight.preflightSync(gatewayEntry.id, { entry: gatewayEntry, ...(options.gateway || {}) });
-  gatewayGate.warnings.forEach((w) => console.warn(`[comfyui-gateway] ${w}`));
+  const permit = gateProductionDispatch({ prestoProfile: config.profile, lane: 'aigen-presto' }, options);
   return launchPrestoProductionJob({
     productionScript: config.productionScript,
     pythonBin: config.pythonBin,
     packageArg: config.packageId,
     packageId: config.packageId,
     profile: config.profile,
-    workflowIdentity: { id: gatewayEntry.id, version: gatewayEntry.version, sha256: gatewayEntry.canonical_sha256 },
+    dispatchPermit: permit,
+    workflowIdentity: permit.workflowIdentity,
     comfyuiUrl: config.comfyuiUrl,
     computeReceipt: options.computeReceipt || null,
     authorityIndexes: eligibility.eligible,
@@ -9290,11 +9289,63 @@ function startPrestoPackageJob(payload = {}, options = {}) {
   }, payload, options);
 }
 
+// ── Structural production-dispatch boundary ─────────────────────────────────
+// The raw transport functions below spawn a real ComfyUI render. Historically
+// they were callable directly, and that is exactly how the Super Focus Wan
+// lane ended up dispatching with no gateway gate at all (P11). A comment
+// saying "callers MUST preflight first" is not an enforcement mechanism.
+//
+// A permit is minted ONLY by gateProductionDispatch() and tracked in a
+// module-private set, so it cannot be forged from outside this module: an
+// object literal like { preflightPassed: true } is not in the set and is
+// refused. Every production caller therefore has to go through the gate to
+// obtain transport, and a future lane that forgets fails closed at the
+// transport boundary instead of silently rendering ungated.
+const DISPATCH_PERMITS = new WeakSet();
+
+// The one place production dispatch evidence is created. Resolves the
+// canonical registry entry (by workflow id or PRESTO profile), runs the
+// gateway qualification gate, and returns a permit carrying the canonical
+// target — the same endpoint/host that must then be used for transport.
+function gateProductionDispatch({ workflowId, prestoProfile, lane }, options = {}) {
+  const gatewayOptions = options.gateway || {};
+  const entry = prestoProfile
+    ? comfyuiGateway.registry.getWorkflowForPrestoProfile(prestoProfile, gatewayOptions)
+    : comfyuiGateway.registry.getWorkflow(workflowId, gatewayOptions);
+  const verdict = comfyuiGateway.preflight.preflightSync(entry.id, { entry, ...gatewayOptions });
+  verdict.warnings.forEach((w) => console.warn(`[comfyui-gateway] ${w}`));
+  // Canonical target — one resolution, reused by transport and provenance so
+  // the verified host can never differ from the dispatched one (P12).
+  const endpoint = comfyuiGateway.registry.endpointFor(entry);
+  const permit = Object.freeze({
+    lane: lane || null,
+    workflowIdentity: { id: entry.id, version: entry.version, sha256: entry.canonical_sha256 },
+    endpoint,
+    hostName: comfyuiGateway.fingerprint.hostNameFor(endpoint),
+    qualification: verdict,
+    granted_at: new Date().toISOString(),
+  });
+  DISPATCH_PERMITS.add(permit);
+  return permit;
+}
+
+// Transport-side assertion. Refuses before any spawn.
+function assertDispatchPermit(permit, lane) {
+  if (!permit || typeof permit !== 'object' || !DISPATCH_PERMITS.has(permit)) {
+    const error = new Error(`Refusing ${lane} dispatch: no valid production dispatch permit. Production callers must obtain one from gateProductionDispatch() — the gateway gate is not optional.`);
+    error.statusCode = 500;
+    error.code = 'comfyui_dispatch_permit_missing';
+    throw error;
+  }
+  return permit;
+}
+
 // Shared PRESTO Wan2.2 spawn + job tracking. Callers MUST check
 // currentPrestoJobStatus() first (single-GPU lock). config.packageArg is the
 // literal --package value (absolute dir for Super Focus, or a script-packages
 // id for the aigen lane). Sets PRESTO_STATE.activeJob.
 function launchPrestoProductionJob(config, payload = {}, options = {}) {
+  assertDispatchPermit(config.dispatchPermit, 'PRESTO');
   // Default must clear the HQ profile's per-clip runtime with real margin:
   // measured HQ render = 54m51s, so 3600 left only ~5 min of headroom and a
   // slow clip would be killed at minute 60 after wasting the whole render.
@@ -9487,16 +9538,15 @@ function startSuperFocusVideoJob(mediaDir, options = {}) {
   // It is the highest-volume Wan path, so gating the other lanes while this
   // one stayed open would have made the gate look enforced without being so.
   const profile = normalizePrestoProfile(options.profile);
-  const gatewayEntry = comfyuiGateway.registry.getWorkflowForPrestoProfile(profile, options.gateway || {});
-  const gatewayGate = comfyuiGateway.preflight.preflightSync(gatewayEntry.id, { entry: gatewayEntry, ...(options.gateway || {}) });
-  gatewayGate.warnings.forEach((w) => console.warn(`[comfyui-gateway] ${w}`));
+  const permit = gateProductionDispatch({ prestoProfile: profile, lane: 'super-focus-presto' }, options);
   return launchPrestoProductionJob({
+    dispatchPermit: permit,
     productionScript,
     pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN || 'python3',
     packageArg: mediaDir,
     packageId: options.projectId || mediaDir,
     profile,
-    workflowIdentity: { id: gatewayEntry.id, version: gatewayEntry.version, sha256: gatewayEntry.canonical_sha256 },
+    workflowIdentity: permit.workflowIdentity,
     comfyuiUrl: options.comfyuiUrl || PRESTO_STATE.defaultUrl,
     indexes: options.indexes,
     limit: options.limit,
@@ -10846,11 +10896,10 @@ function startFluxPackageJob(payload = {}, options = {}) {
   if (!comfyCliResolvable(options)) throw comfyCliBlockedError();
   // ComfyUI production gate (see comfyui-gateway/): registered workflow,
   // qualified, canonical hash intact, live user-dir copy not drifted.
-  {
-    const gatewayGate = comfyuiGateway.preflight.preflightSync('flux-gguf-1080x1920', options.gateway || {});
-    gatewayGate.warnings.forEach((w) => console.warn(`[comfyui-gateway] ${w}`));
-  }
+  const permit = gateProductionDispatch({ workflowId: 'flux-gguf-1080x1920', lane: 'aigen-flux' }, options);
   return launchFluxHandoffJob({
+    dispatchPermit: permit,
+    workflowIdentity: permit.workflowIdentity,
     fluxScript: config.fluxScript,
     pythonBin: config.pythonBin,
     packageArg: config.packageId,
@@ -10866,6 +10915,7 @@ function startFluxPackageJob(payload = {}, options = {}) {
 // --package value; run-handoff.py accepts an absolute dir (Super Focus lane) or
 // a script-packages id (aigen lane). Sets FLUX_STATE.activeJob.
 function launchFluxHandoffJob(config, payload = {}, options = {}) {
+  assertDispatchPermit(config.dispatchPermit, 'FLUX');
   const args = [
     config.fluxScript,
     '--package',
@@ -10974,11 +11024,10 @@ function startSuperFocusImageJob(mediaDir, options = {}) {
   // Pre-flight: the dispatch chain needs the `comfy` CLI (see comfyCliResolvable).
   if (!comfyCliResolvable(options)) throw comfyCliBlockedError();
   // ComfyUI production gate (same graph as the aigen FLUX lane).
-  {
-    const gatewayGate = comfyuiGateway.preflight.preflightSync('flux-gguf-1080x1920', options.gateway || {});
-    gatewayGate.warnings.forEach((w) => console.warn(`[comfyui-gateway] ${w}`));
-  }
+  const permit = gateProductionDispatch({ workflowId: 'flux-gguf-1080x1920', lane: 'super-focus-flux' }, options);
   return launchFluxHandoffJob({
+    dispatchPermit: permit,
+    workflowIdentity: permit.workflowIdentity,
     fluxScript,
     pythonBin: options.pythonBin || 'python3',
     packageArg: mediaDir,
@@ -18978,6 +19027,7 @@ module.exports = {
   superFocusOllamaTimeoutMs,
   startSuperFocusImageJob,
   startSuperFocusVideoJob,
+  gateProductionDispatch,
   launchFluxHandoffJob,
   fluxDispatchPath,
   comfyCliResolvable,

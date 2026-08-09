@@ -2700,3 +2700,66 @@ test("comfyui-p12 FLUX refusals keep their structured code", async () => {
     "handleFluxSubmit must not discard error.code");
   assert.ok(/error\.code \|\| null/.test(handler), "it must forward error.code");
 });
+
+// ---- P13: structural dispatch boundary -------------------------------------
+
+test("comfyui-p13 structural gate: raw transport refuses without a permit minted by the gateway", () => {
+  // P11 showed that "callers MUST preflight first" is not an enforcement
+  // mechanism — the SF Wan lane simply didn't. Transport now requires a permit
+  // held in a module-private set, so a future lane that forgets fails closed
+  // at the transport boundary instead of rendering ungated.
+  const packageEngineServer = require("../package-engine-server.js");
+  const mediaDir = mkdtemp("comfyui-p13-");
+  const script = path.join(mediaDir, "run-production.py");
+  fs.writeFileSync(script, "#!/usr/bin/env python3\n");
+  let spawned = 0;
+  const spawnStub = () => { spawned += 1; throw new Error("transport must never be reached"); };
+  try {
+    // no permit at all
+    assert.throws(
+      () => packageEngineServer.launchPrestoProductionJob(
+        { productionScript: script, pythonBin: "python3", packageArg: mediaDir, packageId: "x" }, {}, { spawn: spawnStub }),
+      /no valid production dispatch permit/, "PRESTO transport must refuse without a permit");
+    // a FORGED permit-shaped object must not work
+    assert.throws(
+      () => packageEngineServer.launchPrestoProductionJob(
+        { productionScript: script, pythonBin: "python3", packageArg: mediaDir, packageId: "x",
+          dispatchPermit: { preflightPassed: true, workflowIdentity: { id: "wan22-i2v-hq" } } }, {}, { spawn: spawnStub }),
+      /no valid production dispatch permit/, "a forged permit object must be refused");
+    assert.throws(
+      () => packageEngineServer.launchFluxHandoffJob(
+        { fluxScript: script, pythonBin: "python3", packageArg: mediaDir, packageId: "x" }, {}, { spawn: spawnStub }),
+      /no valid production dispatch permit/, "FLUX transport must refuse without a permit");
+    assert.equal(spawned, 0, "no spawn may occur for an unpermitted dispatch");
+  } finally {
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+    fs.rmSync(mediaDir, { recursive: true, force: true });
+  }
+});
+
+test("comfyui-p13 structural gate: the permit carries the canonical target and only the gate mints it", () => {
+  const packageEngineServer = require("../package-engine-server.js");
+  const permit = packageEngineServer.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "test" });
+  assert.equal(permit.workflowIdentity.id, "wan22-i2v-hq");
+  assert.ok(permit.workflowIdentity.sha256, "permit carries the canonical graph hash");
+  // canonical target: the endpoint/host the transport must use (P12 rule)
+  const entry = gateway.registry.getWorkflow("wan22-i2v-hq");
+  assert.equal(permit.endpoint, gateway.registry.endpointFor(entry), "permit endpoint is the canonical one");
+  assert.equal(permit.hostName, gateway.fingerprint.hostNameFor(permit.endpoint), "permit host derives from that endpoint");
+  assert.ok(Object.isFrozen(permit), "a permit must not be mutable after minting");
+  // a structurally identical clone is NOT a valid permit — membership, not shape
+  const clone = Object.freeze({ ...permit });
+  const mediaDir = mkdtemp("comfyui-p13b-");
+  const script = path.join(mediaDir, "run-production.py");
+  fs.writeFileSync(script, "#!/usr/bin/env python3\n");
+  try {
+    assert.throws(
+      () => packageEngineServer.launchPrestoProductionJob(
+        { productionScript: script, pythonBin: "python3", packageArg: mediaDir, packageId: "x", dispatchPermit: clone },
+        {}, { spawn: () => { throw new Error("unreachable"); } }),
+      /no valid production dispatch permit/, "a copy of a real permit must not pass");
+  } finally {
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+    fs.rmSync(mediaDir, { recursive: true, force: true });
+  }
+});
