@@ -11098,11 +11098,15 @@ function handleFluxSubmit(req, res, options = {}) {
       sendJSON(res, 200, result);
     })
     .catch((error) => {
+      // Preserve the structured gateway code. It was dropped here, so a
+      // production-gate refusal (workflow drift, unqualified workflow, and —
+      // once the freshness gate is wired — source drift) reached the FLUX
+      // UI/API as an unclassifiable generic failure.
       if (error.statusCode === 409) {
-        sendError(res, 409, error.message, null, { active: error.active });
+        sendError(res, 409, error.message, error.code || null, { active: error.active });
         return;
       }
-      sendError(res, error.statusCode === 404 ? 400 : error.statusCode || 500, error.message, null);
+      sendError(res, error.statusCode === 404 ? 400 : error.statusCode || 500, error.message, error.code || null);
     });
 }
 

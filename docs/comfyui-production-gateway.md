@@ -498,10 +498,18 @@ so D6 remains open. Three prerequisites remain:
    concurrent-submit race that the single-GPU lock comment there says is
    currently closed; the lock must be re-checked after the await, as the Super
    Focus queue pump already does for its other gates.
-3. Host resolution must be unified first: `preflight.endpointFor` honors
-   `endpoint_env` while `fingerprint.collectFingerprint` does not, so a
-   freshness gate built on the wrong one could verify a different host than
-   the job reaches.
+*Closed (P12):* **canonical host resolution.** `registry.endpointFor(entry)` is
+now the single rule for "which ComfyUI does this workflow actually talk to":
+`endpoint_env` names take precedence over `endpoint_default`, trailing slashes
+are normalized, and a missing entry falls back to loopback. Preflight/dispatch
+and fingerprint/provenance both delegate to it — previously fingerprint used
+`endpoint_default` only, so an operator override made the system fingerprint
+one host while dispatching to another, producing provenance describing a
+machine the render never touched. Any future consumer (including the freshness
+gate) must use the same function.
+
+*Closed (P12):* FLUX submit refusals now forward `error.code`, so a gateway
+refusal stays classifiable instead of arriving as a generic failure.
 
 **What is still NOT verified by this layer**: the Python interpreter and
 installed site-packages, native/binary dependencies, GPU drivers, model files

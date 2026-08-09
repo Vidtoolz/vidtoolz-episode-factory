@@ -177,7 +177,23 @@ function getWorkflowForPrestoProfile(profileName, options = {}) {
   return entry;
 }
 
+// The ONE canonical rule for "which ComfyUI does this workflow actually talk
+// to". An entry's endpoint_env names take precedence over endpoint_default, so
+// an operator override redirects the real transport. Every consumer —
+// preflight, fingerprint/provenance, source verification, dispatch — must use
+// THIS function: resolving the endpoint two different ways lets the system
+// verify one host while the job runs on another, i.e. provenance that
+// describes a machine the render never touched.
+function endpointFor(entry) {
+  for (const envName of (entry && entry.comfyui && entry.comfyui.endpoint_env) || []) {
+    const v = String(process.env[envName] || '').trim();
+    if (v) return v.replace(/\/+$/, '');
+  }
+  return (entry && entry.comfyui && entry.comfyui.endpoint_default) || 'http://127.0.0.1:8188';
+}
+
 module.exports = {
+  endpointFor,
   REGISTRY_PATH,
   QUALIFICATION_STATES,
   loadRegistry,

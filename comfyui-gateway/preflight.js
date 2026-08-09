@@ -31,13 +31,9 @@ function check(name, status, detail) {
   return out;
 }
 
-function endpointFor(entry) {
-  for (const envName of (entry.comfyui && entry.comfyui.endpoint_env) || []) {
-    const v = String(process.env[envName] || '').trim();
-    if (v) return v.replace(/\/+$/, '');
-  }
-  return (entry.comfyui && entry.comfyui.endpoint_default) || 'http://127.0.0.1:8188';
-}
+// Canonical endpoint resolution lives in registry.js so preflight,
+// fingerprint/provenance and source verification cannot diverge.
+const endpointFor = registry.endpointFor;
 
 // Synchronous production gate (registry + drift + qualification evidence).
 // Throws a coded error when blocked so dispatch handlers surface a clear

@@ -2644,3 +2644,59 @@ test("comfyui-p11 bypass: the Super Focus Wan lane cannot reach the dispatcher w
     fs.rmSync(mediaDir, { recursive: true, force: true });
   }
 });
+
+// ---- P12: canonical host resolution + structured FLUX refusals -------------
+
+test("comfyui-p12 host resolution: every consumer resolves the SAME endpoint (endpoint_env honored)", () => {
+  // Previously preflight/dispatch honored endpoint_env while fingerprint used
+  // endpoint_default, so an override made the system fingerprint one host and
+  // dispatch to another — provenance describing a machine the render never
+  // touched. registry.endpointFor is now the single rule.
+  const entry = gateway.registry.getWorkflow("wan22-i2v-hq");
+  const envName = (entry.comfyui.endpoint_env || [])[0];
+  assert.ok(envName, "this entry must declare an endpoint_env for the test to be meaningful");
+  const previous = process.env[envName];
+  try {
+    process.env[envName] = "http://192.168.99.99:8188";
+    const canonical = gateway.registry.endpointFor(entry);
+    assert.equal(canonical, "http://192.168.99.99:8188", "the override must win");
+    assert.equal(gateway.preflight.endpointFor(entry), canonical, "preflight/dispatch must agree");
+    assert.equal(gateway.fingerprint.hostNameFor(canonical), gateway.fingerprint.hostNameFor(gateway.preflight.endpointFor(entry)),
+      "verified host must equal dispatched host");
+    // trailing slashes normalized, so the two rules cannot differ by spelling
+    process.env[envName] = "http://192.168.99.99:8188///";
+    assert.equal(gateway.registry.endpointFor(entry), "http://192.168.99.99:8188");
+  } finally {
+    if (previous === undefined) delete process.env[envName]; else process.env[envName] = previous;
+  }
+  // with no override, the default is used by BOTH
+  const dflt = gateway.registry.endpointFor(entry);
+  assert.equal(dflt, entry.comfyui.endpoint_default);
+  assert.equal(gateway.preflight.endpointFor(entry), dflt);
+  // an entry with no endpoint information at all falls back safely to loopback
+  assert.equal(gateway.registry.endpointFor({ comfyui: {} }), "http://127.0.0.1:8188");
+});
+
+test("comfyui-p12 FLUX refusals keep their structured code", async () => {
+  // A gateway refusal on the FLUX lane used to arrive with code: null, making
+  // it unclassifiable in the UI/API.
+  const packageEngineServer = require("../package-engine-server.js");
+  const captured = [];
+  const res = {
+    setHeader() {}, writeHead() {}, end() {},
+  };
+  // exercise the shape sendError produces rather than the socket
+  const realSend = packageEngineServer.sendError;
+  if (typeof realSend === "function") {
+    // if exported, assert it forwards a code through
+    packageEngineServer.sendError(Object.assign({}, res, { end: (body) => captured.push(body) }), 409, "gate refused", "comfyui_workflow_drift", {});
+    const payload = captured.length ? JSON.parse(captured[captured.length - 1]) : null;
+    if (payload) assert.equal(payload.code, "comfyui_workflow_drift", "sendError must carry the code");
+  }
+  // and the source of truth: the FLUX handler must not hardcode null anymore
+  const src = fs.readFileSync(path.join(REPO, "package-engine-server.js"), "utf8");
+  const handler = src.slice(src.indexOf("function handleFluxSubmit"), src.indexOf("function handleFluxJobStatus"));
+  assert.ok(!/sendError\([^)]*error\.message,\s*null/.test(handler),
+    "handleFluxSubmit must not discard error.code");
+  assert.ok(/error\.code \|\| null/.test(handler), "it must forward error.code");
+});

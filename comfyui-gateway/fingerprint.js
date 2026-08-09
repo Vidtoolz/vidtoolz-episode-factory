@@ -17,6 +17,7 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const client = require('./client.js');
+const registry = require('./registry.js');
 
 const FINGERPRINT_SCHEMA_VERSION = 1;
 
@@ -191,8 +192,10 @@ function customNodeIdentity(classType, pythonModule, { local, comfyRoot }) {
 // the endpoint is this machine. Injectable for tests via options.fetchImpl,
 // options.localComfyRoot, options.local.
 async function collectFingerprint(entry, options = {}) {
-  const endpoint = options.endpoint
-    || (entry.comfyui && entry.comfyui.endpoint_default) || 'http://127.0.0.1:8188';
+  // Same canonical rule as preflight/dispatch. Using endpoint_default here
+  // meant an endpoint_env override produced provenance for a DIFFERENT host
+  // than the job actually reached.
+  const endpoint = options.endpoint || registry.endpointFor(entry);
   const local = options.local != null ? options.local : isLocalEndpoint(endpoint);
   const comfyRoot = options.localComfyRoot || (local ? DEFAULT_LOCAL_COMFY_ROOT : null);
 
