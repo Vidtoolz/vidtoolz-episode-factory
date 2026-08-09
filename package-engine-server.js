@@ -9480,12 +9480,23 @@ function startSuperFocusVideoJob(mediaDir, options = {}) {
     error.statusCode = 500;
     throw error;
   }
+  // ComfyUI production gate — identical to the aigen PRESTO lane. This lane
+  // previously reached the dispatcher with NO gate and NO workflow identity,
+  // which also meant it silently produced no Wan provenance and no
+  // qualification capture (the close hook keys off config.workflowIdentity).
+  // It is the highest-volume Wan path, so gating the other lanes while this
+  // one stayed open would have made the gate look enforced without being so.
+  const profile = normalizePrestoProfile(options.profile);
+  const gatewayEntry = comfyuiGateway.registry.getWorkflowForPrestoProfile(profile, options.gateway || {});
+  const gatewayGate = comfyuiGateway.preflight.preflightSync(gatewayEntry.id, { entry: gatewayEntry, ...(options.gateway || {}) });
+  gatewayGate.warnings.forEach((w) => console.warn(`[comfyui-gateway] ${w}`));
   return launchPrestoProductionJob({
     productionScript,
     pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN || 'python3',
     packageArg: mediaDir,
     packageId: options.projectId || mediaDir,
-    profile: normalizePrestoProfile(options.profile),
+    profile,
+    workflowIdentity: { id: gatewayEntry.id, version: gatewayEntry.version, sha256: gatewayEntry.canonical_sha256 },
     comfyuiUrl: options.comfyuiUrl || PRESTO_STATE.defaultUrl,
     indexes: options.indexes,
     limit: options.limit,

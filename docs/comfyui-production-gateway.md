@@ -471,28 +471,37 @@ Failure vocabulary: `SOURCE_DRIFT`, `CUSTOM_NODES_DRIFT`,
 `VERIFICATION_FAILED`. Refusal reasons never include the ssh command line or
 host configuration.
 
-**Enforcement status — read this before relying on it.** The freshness gate is
-implemented, unit-tested and exported, but it is **not yet wired into the
-production dispatch path**. Wiring is deliberately deferred because a dispatch
-trace found three blockers that must be resolved first, in this order:
+**Enforcement status — read this before relying on it.**
 
-1. The Super Focus PRESTO video lane (`startSuperFocusVideoJob`) reaches
-   `launchPrestoProductionJob` with **no gateway gate at all** — no
-   `preflightSync`, no workflow identity, and therefore no Wan provenance or
-   qualification capture either. It is the highest-volume Wan path. Gating the
-   other lanes while this one stays open would give a gate that looks enforced
-   and is not.
-2. PRESTO's recorded manifest predates P9, so its verification is
-   `INCOMPLETE`. Enforcing today would refuse every PRESTO dispatch until an
-   operator runs `--inventory-strong PRESTO` (which hashes tens of GB). That
-   is an operator decision, not an automatic one.
-3. Adding an `await` inside `startPrestoPackageJob` re-opens the
+*Closed (P11):* the Super Focus PRESTO video lane used to reach
+`launchPrestoProductionJob` with **no gateway gate at all** — no
+`preflightSync`, no workflow identity, and therefore no Wan provenance and no
+qualification capture. It is the highest-volume Wan path, so gating the other
+lanes while it stayed open would have made the gate look enforced without
+being so. `startSuperFocusVideoJob` now resolves the registry entry from its
+PRESTO profile and runs the same `preflightSync` as the aigen lane, and passes
+`workflowIdentity`, which also restores the completion hook's provenance and
+qualification capture. All four production lanes (aigen PRESTO, Super Focus
+PRESTO, aigen FLUX, Super Focus FLUX images) now pass the gateway gate before
+dispatch. A regression test asserts the SF Wan lane calls the gate exactly once
+and that a completed job carries capture evidence.
+
+*Still open:* the P10 **freshness** gate (`ensureFreshSourceVerification`) is
+implemented and unit-tested but is **not yet called from the dispatch path**,
+so D6 remains open. Three prerequisites remain:
+
+1. PRESTO's recorded manifest predates P9, so its verification is
+   `INCOMPLETE`. Enforcing freshness today would refuse every PRESTO dispatch
+   until an operator runs `--inventory-strong PRESTO` (which hashes tens of
+   GB). That is an operator decision, not an automatic one.
+2. Adding an `await` inside the PRESTO dispatch functions re-opens the
    concurrent-submit race that the single-GPU lock comment there says is
    currently closed; the lock must be re-checked after the await, as the Super
-   Focus queue pump already does.
-
-Until wiring lands, D6 (freshness is not enforced before dispatch) remains
-open, and the gate is available to callers and to the CLI.
+   Focus queue pump already does for its other gates.
+3. Host resolution must be unified first: `preflight.endpointFor` honors
+   `endpoint_env` while `fingerprint.collectFingerprint` does not, so a
+   freshness gate built on the wrong one could verify a different host than
+   the job reaches.
 
 **What is still NOT verified by this layer**: the Python interpreter and
 installed site-packages, native/binary dependencies, GPU drivers, model files

@@ -2599,3 +2599,48 @@ test("comfyui-p10 isolation: the ComfyUI client cannot reach a remote host durin
     "loopback must stay allowed");
   assert.doesNotThrow(() => gateway.client.assertRemoteEndpointAllowedInTests("http://localhost:8188/system_stats"));
 });
+
+// ---- P11: no production Wan path may bypass the gateway --------------------
+test("comfyui-p11 bypass: the Super Focus Wan lane cannot reach the dispatcher without the gateway gate", async () => {
+  // Regression for a real bypass: startSuperFocusVideoJob reached
+  // launchPrestoProductionJob with ZERO preflightSync calls and no workflow
+  // identity — which also silently disabled Wan provenance and qualification
+  // capture (the close hook keys off config.workflowIdentity). It is the
+  // highest-volume Wan path. If this test fails, the gate is theatre.
+  const packageEngineServer = require("../package-engine-server.js");
+  const { EventEmitter } = require("node:events");
+  const mediaDir = mkdtemp("comfyui-p11-sf-");
+  const script = path.join(mediaDir, "run-production.py");
+  fs.writeFileSync(script, "#!/usr/bin/env python3\n");
+  const realPreflight = gateway.preflight.preflightSync;
+  let preflightCalls = 0;
+  gateway.preflight.preflightSync = function (...args) { preflightCalls += 1; return realPreflight.apply(this, args); };
+  let child = null;
+  const spawnStub = () => {
+    child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.kill = () => {}; child.pid = 4242;
+    return child;
+  };
+  try {
+    packageEngineServer.startSuperFocusVideoJob(mediaDir, {
+      productionScript: script, pythonBin: "python3",
+      profile: "wan22_hq_720p_5s_no_lightx2v", projectId: "p11-gate-probe",
+      spawn: spawnStub,
+    });
+    assert.equal(preflightCalls, 1, "the SF Wan lane MUST run the gateway gate exactly once before dispatch");
+    const job = packageEngineServer.PRESTO_STATE.activeJob;
+    assert.ok(job, "a job must be tracked");
+    // Completing the job must ATTEMPT qualification capture — that path only
+    // runs when workflow identity was attached. Before the fix it did nothing.
+    child.emit("close", 0);
+    await new Promise((r) => setTimeout(r, 60));
+    const captured = Boolean(job.qualification_capture_error) || Boolean(job.qualification_capture) || Boolean(job.render_provenance);
+    assert.ok(captured,
+      "the completed SF Wan job must carry qualification/provenance capture evidence — its absence means workflow identity never reached the dispatcher");
+  } finally {
+    gateway.preflight.preflightSync = realPreflight;
+    packageEngineServer.PRESTO_STATE.activeJob = null;
+    fs.rmSync(mediaDir, { recursive: true, force: true });
+  }
+});
