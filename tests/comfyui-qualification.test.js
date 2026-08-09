@@ -740,12 +740,20 @@ test("comfyui-qualification production capture: a failed render preserves the la
   assert.equal(captures[0].captured, false);
   assert.deepEqual(gateway.qualification.readLatestPassed(entry.id, { qualificationRoot: root }), captured.record, "last success preserved");
 
-  // an unrelated INPUT_MISSING failure attempt does not stale prior qualification
+  // an unrelated INPUT_MISSING failure attempt does not stale prior qualification.
+  // The note under test fires only when the attempt is LATER than the last
+  // success (qualification.js: "a LATER qualification attempt FAILED"), and the
+  // success above is stamped at run time — so this timestamp must be derived
+  // FROM that success, never hardcoded. A fixed wall-clock date silently
+  // inverted the relationship once the day advanced past it.
+  const passedAt = Date.parse((captured.record.execution || {}).completed_at || Date.now());
+  const failedStart = new Date(passedAt + 60_000).toISOString();
+  const failedEnd = new Date(passedAt + 61_000).toISOString();
   gateway.qualification.writeQualificationRecord({
     schema_version: 1, qualification_id: "qual-fail-1", result: "FAILED",
     workflow: { id: entry.id, version: entry.version, sha256: entry.canonical_sha256 },
     environment_fingerprint: fp,
-    execution: { job_id: "j-f", started_at: "2026-08-09T10:00:00.000Z", completed_at: "2026-08-09T10:00:01.000Z" },
+    execution: { job_id: "j-f", started_at: failedStart, completed_at: failedEnd },
     failure: { class: "INPUT_MISSING", raw: "source image missing" },
     generated_by: "test",
   }, { qualificationRoot: root });
