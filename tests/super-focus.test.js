@@ -332,7 +332,21 @@ async function makeProjectServer(fetchImpl, { title, script, serverOptions } = {
   // (fine on vidnux, 503 from the mount guard in CI where there is no mount).
   // A local root is skipped by the mount probe, so these tests exercise their
   // handlers. serverOptions can still override for tests that want a /mnt root.
-  const baseOptions = { superFocusRoot: root, superFocusMediaRoot: mkRoot() };
+  const baseOptions = {
+    superFocusRoot: root,
+    superFocusMediaRoot: mkRoot(),
+    // Test hermeticity: a PRODUCE evaluation triggers the Super Focus →
+    // Kanban bridge, and without an explicit stub the server falls back to
+    // the REAL loopback Kanban client — test runs then write real cards onto
+    // the live production board (defect found 2026-08-09 during live
+    // activation). Default to a refusing stub; bridge tests inject their own.
+    kanbanRequest: async () => {
+      const e = new Error("kanban stubbed out in tests");
+      e.statusCode = 502;
+      e.code = "kanban_stubbed";
+      throw e;
+    },
+  };
   if (fetchImpl) {
     baseOptions.fetchImpl = fetchImpl;
     baseOptions.localOllamaProbe = async () => ({ reachable: true, model_ready: true });
@@ -3756,6 +3770,19 @@ test("evaluate-script: empty script returns 400 and writes nothing", async () =>
     assert.equal(res.statusCode, 400);
     const ev = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_EVALUATION_API + "?id=" + encodeURIComponent(id)));
     assert.equal(ev.script_evaluation, null);
+  } finally { await close(server); }
+});
+
+test("evaluate-script: default test harness never reaches a real Kanban (bridge stubbed)", async () => {
+  const { server, id } = await makeProjectServer(fakeOllama(fullScriptEvalJson(EVAL_SCRIPT)), { script: EVAL_SCRIPT });
+  try {
+    const res = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_EVALUATE_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id } }));
+    assert.equal(res.script_evaluation.verdict, "PRODUCE");
+    // The PRODUCE verdict fires the bridge; the harness stub must intercept it
+    // so no test run can ever write cards onto the live production board.
+    assert.equal(res.kanban_sync.status, "failed");
+    assert.equal(res.kanban_sync.error.code, "kanban_stubbed");
   } finally { await close(server); }
 });
 
