@@ -192,8 +192,93 @@ function endpointFor(entry) {
   return (entry && entry.comfyui && entry.comfyui.endpoint_default) || 'http://127.0.0.1:8188';
 }
 
+// ---- lane-scoped production target (endpoint authority) --------------------
+//
+// `endpointFor(entry)` answers "where does this WORKFLOW live" from the
+// registry alone. That is not sufficient for production: the aigen and Super
+// Focus lanes may legitimately redirect the SAME Wan entry to different
+// machines, via different environment variables, and historically each lane
+// consulted its own chain — which is how provenance could describe one host
+// while transport reached another.
+//
+// Lane precedence, measured from the pre-existing code and preserved verbatim:
+//
+//   aigen-presto        AIGEN_PRESTO_BASE_URL        -> registry (endpoint_env/default)
+//   super-focus-presto  registry (SUPER_FOCUS_PRESTO_COMFYUI_URL / default)
+//   aigen-flux          registry (AIGEN_COMFYUI_URL / default)
+//   super-focus-flux    registry (AIGEN_COMFYUI_URL / default)
+//
+// NOTE on PRESTO_COMFYUI_BASE_URL: it belongs to the Super Focus IMAGE-provider
+// chain (routing FLUX image work to PRESTO), not to any of the four dispatch
+// lanes below. It is deliberately NOT folded in here — doing so would give it
+// global reach it has never had. Its scope stays where it is.
+const PRODUCTION_LANES = Object.freeze([
+  'aigen-presto', 'super-focus-presto', 'aigen-flux', 'super-focus-flux',
+]);
+
+// Lane-specific environment overrides consulted BEFORE the registry entry's
+// own endpoint_env/default. Registry resolution remains the fallback, so an
+// entry's declared endpoint_env keeps working unchanged.
+const LANE_ENDPOINT_ENV = Object.freeze({
+  'aigen-presto': Object.freeze(['AIGEN_PRESTO_BASE_URL']),
+  'super-focus-presto': Object.freeze([]),
+  'aigen-flux': Object.freeze([]),
+  'super-focus-flux': Object.freeze([]),
+});
+
+function normalizeEndpoint(value, { strict = false } = {}) {
+  const raw = String(value == null ? '' : value).trim();
+  if (!raw) return null;                       // empty override = absent
+  const trimmed = raw.replace(/\/+$/, '');      // trailing slashes are not identity
+  if (strict) {
+    let parsed;
+    try { parsed = new URL(trimmed); } catch (_) { parsed = null; }
+    if (!parsed || !/^https?:$/.test(parsed.protocol)) {
+      const e = new Error(`invalid ComfyUI endpoint ${JSON.stringify(raw)} — expected an http(s) URL`);
+      e.code = 'comfyui_endpoint_invalid';
+      e.statusCode = 400;
+      throw e;
+    }
+  }
+  return trimmed;
+}
+
+// The one production endpoint authority. An explicit caller override wins (it
+// is a deliberate operator act), then the lane's own variables, then the
+// registry entry. Returns the canonical target every downstream consumer —
+// preflight, fingerprint/provenance, permit and transport — must share.
+function resolveProductionTarget({ lane, entry, endpoint = null } = {}) {
+  if (!entry) {
+    const e = new Error('resolveProductionTarget requires a registry entry');
+    e.code = 'comfyui_target_entry_missing';
+    throw e;
+  }
+  if (lane && !PRODUCTION_LANES.includes(lane)) {
+    const e = new Error(`unknown production lane ${JSON.stringify(String(lane))} (known: ${PRODUCTION_LANES.join(', ')})`);
+    e.code = 'comfyui_production_lane_unknown';
+    throw e;
+  }
+  let resolved = normalizeEndpoint(endpoint, { strict: true });   // explicit caller override
+  if (!resolved) {
+    for (const name of LANE_ENDPOINT_ENV[lane] || []) {
+      const fromEnv = normalizeEndpoint(process.env[name], { strict: true });
+      if (fromEnv) { resolved = fromEnv; break; }
+    }
+  }
+  if (!resolved) resolved = normalizeEndpoint(endpointFor(entry)) || endpointFor(entry);
+  return {
+    lane: lane || null,
+    entry,
+    workflowIdentity: { id: entry.id, version: entry.version, sha256: entry.canonical_sha256 },
+    endpoint: resolved,
+  };
+}
+
 module.exports = {
   endpointFor,
+  PRODUCTION_LANES,
+  normalizeEndpoint,
+  resolveProductionTarget,
   REGISTRY_PATH,
   QUALIFICATION_STATES,
   loadRegistry,

@@ -9315,9 +9315,13 @@ function gateProductionDispatch({ workflowId, prestoProfile, lane }, options = {
     : comfyuiGateway.registry.getWorkflow(workflowId, gatewayOptions);
   const verdict = comfyuiGateway.preflight.preflightSync(entry.id, { entry, ...gatewayOptions });
   verdict.warnings.forEach((w) => console.warn(`[comfyui-gateway] ${w}`));
-  // Canonical target — one resolution, reused by transport and provenance so
-  // the verified host can never differ from the dispatched one (P12).
-  const endpoint = comfyuiGateway.registry.endpointFor(entry);
+  // Canonical target — ONE lane-scoped resolution, reused by transport and
+  // provenance so the verified host can never differ from the dispatched one.
+  // Lane matters: aigen and Super Focus may redirect the same Wan entry to
+  // different machines via different variables (see registry.js for the
+  // measured per-lane precedence).
+  const target = comfyuiGateway.registry.resolveProductionTarget({ lane, entry });
+  const endpoint = target.endpoint;
   const permit = Object.freeze({
     lane: lane || null,
     workflowIdentity: { id: entry.id, version: entry.version, sha256: entry.canonical_sha256 },

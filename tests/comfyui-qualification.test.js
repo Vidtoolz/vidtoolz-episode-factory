@@ -2747,7 +2747,7 @@ test("comfyui-p13 structural gate: raw transport refuses without a permit minted
 
 test("comfyui-p13 structural gate: the permit carries the canonical target and only the gate mints it", () => {
   const packageEngineServer = require("../package-engine-server.js");
-  const permit = packageEngineServer.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "test" });
+  const permit = packageEngineServer.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto" });
   assert.equal(permit.workflowIdentity.id, "wan22-i2v-hq");
   assert.ok(permit.workflowIdentity.sha256, "permit carries the canonical graph hash");
   // canonical target: the endpoint/host the transport must use (P12 rule)
@@ -2769,5 +2769,106 @@ test("comfyui-p13 structural gate: the permit carries the canonical target and o
   } finally {
     packageEngineServer.PRESTO_STATE.activeJob = null;
     fs.rmSync(mediaDir, { recursive: true, force: true });
+  }
+});
+
+// ---- lane-scoped production endpoint authority ------------------------------
+// Provenance and transport must never resolve different machines. Lane matters:
+// aigen and Super Focus may redirect the SAME Wan entry differently.
+
+test("comfyui endpoint authority: per-lane defaults and lane-scoped overrides", () => {
+  const wan = gateway.registry.getWorkflow("wan22-i2v-hq");
+  const flux = gateway.registry.getWorkflow("flux-gguf-1080x1920");
+  const at = (lane, entry) => gateway.registry.resolveProductionTarget({ lane, entry }).endpoint;
+  const saved = {};
+  for (const k of ["AIGEN_PRESTO_BASE_URL", "SUPER_FOCUS_PRESTO_COMFYUI_URL", "AIGEN_COMFYUI_URL", "PRESTO_COMFYUI_BASE_URL"]) saved[k] = process.env[k];
+  const clearAll = () => { for (const k of Object.keys(saved)) delete process.env[k]; };
+  try {
+    clearAll();
+    // defaults
+    assert.equal(at("aigen-presto", wan), "http://192.168.50.187:8188");
+    assert.equal(at("super-focus-presto", wan), "http://192.168.50.187:8188");
+    assert.equal(at("aigen-flux", flux), "http://127.0.0.1:8188");
+    assert.equal(at("super-focus-flux", flux), "http://127.0.0.1:8188");
+
+    // AIGEN_PRESTO_BASE_URL is aigen-scoped — it must NOT redirect Super Focus
+    clearAll(); process.env.AIGEN_PRESTO_BASE_URL = "http://10.0.0.9:8188";
+    assert.equal(at("aigen-presto", wan), "http://10.0.0.9:8188");
+    assert.equal(at("super-focus-presto", wan), "http://192.168.50.187:8188",
+      "an aigen-only override must not move the Super Focus lane");
+
+    // SUPER_FOCUS_PRESTO_COMFYUI_URL comes from the registry entry's endpoint_env
+    clearAll(); process.env.SUPER_FOCUS_PRESTO_COMFYUI_URL = "http://10.0.0.7:8188";
+    assert.equal(at("super-focus-presto", wan), "http://10.0.0.7:8188");
+    assert.equal(at("aigen-presto", wan), "http://10.0.0.7:8188",
+      "registry endpoint_env remains the shared fallback for both PRESTO lanes");
+
+    // aigen's own variable outranks the registry entry for the aigen lane only
+    clearAll();
+    process.env.SUPER_FOCUS_PRESTO_COMFYUI_URL = "http://10.0.0.7:8188";
+    process.env.AIGEN_PRESTO_BASE_URL = "http://10.0.0.9:8188";
+    assert.equal(at("aigen-presto", wan), "http://10.0.0.9:8188", "lane variable wins for its own lane");
+    assert.equal(at("super-focus-presto", wan), "http://10.0.0.7:8188", "SF keeps the registry value");
+
+    // FLUX lanes follow the flux entry's endpoint_env
+    clearAll(); process.env.AIGEN_COMFYUI_URL = "http://127.0.0.1:9999";
+    assert.equal(at("aigen-flux", flux), "http://127.0.0.1:9999");
+    assert.equal(at("super-focus-flux", flux), "http://127.0.0.1:9999");
+
+    // PRESTO_COMFYUI_BASE_URL belongs to the SF image-provider chain, NOT to
+    // these dispatch lanes — it must not silently gain global reach.
+    clearAll(); process.env.PRESTO_COMFYUI_BASE_URL = "http://10.0.0.5:8188";
+    assert.equal(at("aigen-presto", wan), "http://192.168.50.187:8188");
+    assert.equal(at("super-focus-presto", wan), "http://192.168.50.187:8188");
+  } finally {
+    for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+  }
+});
+
+test("comfyui endpoint authority: normalization, explicit override, and invalid input", () => {
+  const wan = gateway.registry.getWorkflow("wan22-i2v-hq");
+  const saved = process.env.AIGEN_PRESTO_BASE_URL;
+  try {
+    // trailing slashes are not identity
+    process.env.AIGEN_PRESTO_BASE_URL = "http://10.0.0.9:8188///";
+    assert.equal(gateway.registry.resolveProductionTarget({ lane: "aigen-presto", entry: wan }).endpoint,
+      "http://10.0.0.9:8188");
+    // an empty override is absent, not an endpoint
+    process.env.AIGEN_PRESTO_BASE_URL = "   ";
+    assert.equal(gateway.registry.resolveProductionTarget({ lane: "aigen-presto", entry: wan }).endpoint,
+      "http://192.168.50.187:8188");
+    // a malformed explicit override fails loudly rather than routing elsewhere
+    process.env.AIGEN_PRESTO_BASE_URL = "not-a-url";
+    assert.throws(() => gateway.registry.resolveProductionTarget({ lane: "aigen-presto", entry: wan }),
+      /comfyui_endpoint_invalid|invalid ComfyUI endpoint/);
+    delete process.env.AIGEN_PRESTO_BASE_URL;
+    // an explicit caller endpoint wins over everything
+    assert.equal(gateway.registry.resolveProductionTarget({ lane: "aigen-presto", entry: wan, endpoint: "http://10.1.1.1:8188/" }).endpoint,
+      "http://10.1.1.1:8188");
+    // unknown lane fails closed
+    assert.throws(() => gateway.registry.resolveProductionTarget({ lane: "no-such-lane", entry: wan }),
+      /comfyui_production_lane_unknown|unknown production lane/);
+    assert.deepEqual([...gateway.registry.PRODUCTION_LANES].sort(),
+      ["aigen-flux", "aigen-presto", "super-focus-flux", "super-focus-presto"]);
+  } finally {
+    if (saved === undefined) delete process.env.AIGEN_PRESTO_BASE_URL; else process.env.AIGEN_PRESTO_BASE_URL = saved;
+  }
+});
+
+test("comfyui endpoint authority: the permit carries the lane-resolved target", () => {
+  const packageEngineServer = require("../package-engine-server.js");
+  const saved = process.env.AIGEN_PRESTO_BASE_URL;
+  try {
+    process.env.AIGEN_PRESTO_BASE_URL = "http://10.0.0.9:8188";
+    const aigen = packageEngineServer.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto" });
+    const sf = packageEngineServer.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" });
+    assert.equal(aigen.endpoint, "http://10.0.0.9:8188", "aigen permit follows its lane variable");
+    assert.equal(sf.endpoint, "http://192.168.50.187:8188", "SF permit is unaffected by the aigen variable");
+    // host on the permit derives from that same endpoint — one target, not two
+    assert.equal(aigen.hostName, gateway.fingerprint.hostNameFor(aigen.endpoint));
+    assert.equal(sf.hostName, gateway.fingerprint.hostNameFor(sf.endpoint));
+    assert.equal(sf.hostName, "PRESTO");
+  } finally {
+    if (saved === undefined) delete process.env.AIGEN_PRESTO_BASE_URL; else process.env.AIGEN_PRESTO_BASE_URL = saved;
   }
 });
