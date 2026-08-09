@@ -479,8 +479,10 @@
         <div class="row">
           <button class="btn" id="script-generate">Generate</button>
           <button class="btn primary" id="script-save">Save</button>
+          <button class="btn" id="script-approve">Approve final script</button>
           <button type="button" class="link-btn" id="script-eval-jump">Check script →</button>
           <span class="save-state" id="script-status"></span>
+          <span class="save-state" id="script-approval-status" role="status" aria-live="polite"></span>
         </div>
         <div class="later-note">Generate writes a local-Ollama (vidnux) script from the saved title — click Save to keep it.</div>
       </div>
@@ -705,6 +707,7 @@
     var OLLAMA_BENCHMARK_API = '/api/super-focus/ollama-benchmark';
     var TITLE_API = '/api/super-focus/title';
     var SCRIPT_API = '/api/super-focus/script';
+    var SCRIPT_APPROVE_API = '/api/super-focus/script/approve';
     var EVALUATE_SCRIPT_API = '/api/super-focus/evaluate-script';
     var SCRIPT_EVALUATION_API = '/api/super-focus/script-evaluation';
     var GEN_TOPIC_API = '/api/super-focus/generate-topic';
@@ -828,6 +831,35 @@
     var SECTION_KEYS = ['title', 'script', 'script-eval', 'visual-plan', 'image-prompts', 'images', 'infographics', 'i2v', 'videos', 'continue'];
     var lastEvalSummary = ''; // set by renderScriptEvaluation for the collapsed summary
     var lastSavedScript = ''; // the PERSISTED script — the evaluator reads this, not the textarea
+    var currentScriptApproval = null; // exact-hash human approval, never inferred from script presence
+
+    function sha1Hex(text) {
+      var bytes = new TextEncoder().encode(String(text || ''));
+      return window.crypto.subtle.digest('SHA-1', bytes).then(function (buffer) {
+        return Array.prototype.map.call(new Uint8Array(buffer), function (b) {
+          return b.toString(16).padStart(2, '0');
+        }).join('');
+      });
+    }
+
+    function updateScriptApproval(project) {
+      if (project) currentScriptApproval = project.script_approval || null;
+      var btn = document.getElementById('script-approve');
+      var status = document.getElementById('script-approval-status');
+      if (!btn || !status) return;
+      var textarea = document.getElementById('script-input');
+      var saved = Boolean(lastSavedScript && lastSavedScript.trim());
+      var hasUnsaved = Boolean(textarea) && textarea.value !== lastSavedScript;
+      var approved = currentScriptApproval && currentScriptApproval.status === 'approved';
+      btn.disabled = !saved || hasUnsaved || approved;
+      btn.textContent = approved ? 'Final script approved ✓' : 'Approve final script';
+      btn.title = !saved ? 'Save a non-empty script first.'
+        : hasUnsaved ? 'Save or discard the current edits before approval.'
+        : approved ? 'This exact saved script version is approved.' : '';
+      if (approved) setStatus(status, 'Approved for ' + currentScriptApproval.script_hash.slice(0, 8) + '…');
+      else if (currentScriptApproval && currentScriptApproval.status === 'stale') setStatus(status, 'Previous approval invalidated by a script change', true);
+      else setStatus(status, '');
+    }
     var lastSavedTitle = '';  // the PERSISTED title — prerequisite gating reads this, not the input
 
     // One-time DOM transform: give each project .section a header row with a
@@ -1689,9 +1721,11 @@
       document.getElementById('title-input').value = proj.title || '';
       document.getElementById('script-input').value = proj.script || '';
       lastSavedScript = proj.script || '';
+      currentScriptApproval = proj.script_approval || null;
       lastSavedTitle = proj.title || '';
       setStatus(document.getElementById('title-status'), '');
       setStatus(document.getElementById('script-status'), '');
+      updateScriptApproval(proj);
       setStatus(document.getElementById('imgp-status'),
         (proj.image_prompts && proj.image_prompts.length) ? (proj.image_prompts.length + ' saved') : '');
       setStatus(document.getElementById('infp-status'),
@@ -2200,6 +2234,7 @@
         if (!res.ok) { setStatus(el, 'Save failed', true); return; }
         var proj = unwrap(res.body).project;
         lastSavedScript = proj.script || val;
+        updateScriptApproval(proj);
         // Saving the script may flag existing prompt sets as possibly stale.
         updateStaleBanner('imgp-stale', proj.stale && proj.stale.image_prompts);
         updateStaleBanner('infp-stale', proj.stale && proj.stale.infographic_prompts);
@@ -2246,6 +2281,33 @@
     document.getElementById('script-input').addEventListener('input', function () {
       fitScriptHeight();
       updateSectionSummary('script');
+      updateScriptApproval();
+    });
+
+    document.getElementById('script-approve').addEventListener('click', function () {
+      if (!currentId || !lastSavedScript.trim()) return;
+      var btn = this;
+      var status = document.getElementById('script-approval-status');
+      if (document.getElementById('script-input').value !== lastSavedScript) {
+        setStatus(status, 'Save or discard edits before approval', true);
+        updateScriptApproval();
+        return;
+      }
+      btn.disabled = true;
+      setStatus(status, 'Recording approval…');
+      sha1Hex(lastSavedScript).then(function (hash) {
+        return apiPost(SCRIPT_APPROVE_API, { id: currentId, expected_script_hash: hash });
+      }).then(function (res) {
+        if (!res.ok) {
+          setStatus(status, (res.body && res.body.error) || 'Approval failed', true);
+          updateScriptApproval();
+          return;
+        }
+        updateScriptApproval(unwrap(res.body).project);
+      }).catch(function () {
+        setStatus(status, 'Approval failed', true);
+        updateScriptApproval();
+      });
     });
 
     // ---- Script evaluation (advisory; local Ollama on vidnux) ----

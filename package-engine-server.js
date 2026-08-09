@@ -145,6 +145,7 @@ const SUPER_FOCUS_VIDEO_QUEUE_AUDIT_API = '/api/super-focus/video-queue-audit';
 const SUPER_FOCUS_VIDEO_REVIEW_ACTION_PREFIX = '/api/super-focus/video-review/';
 const SUPER_FOCUS_TITLE_API = '/api/super-focus/title';
 const SUPER_FOCUS_SCRIPT_API = '/api/super-focus/script';
+const SUPER_FOCUS_SCRIPT_APPROVE_API = '/api/super-focus/script/approve';
 const SUPER_FOCUS_GENERATE_TOPIC_API = '/api/super-focus/generate-topic';
 const SUPER_FOCUS_GENERATE_SCRIPT_API = '/api/super-focus/generate-script';
 const SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API = '/api/super-focus/generate-image-prompts';
@@ -14761,6 +14762,18 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === SUPER_FOCUS_SCRIPT_APPROVE_API) {
+      readJsonBody(req, 1024 * 256)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Super Focus script approval API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.approveScript(id, payload.expected_script_hash, { root: sfRoot });
+          sendJSON(res, 200, { project: state, script_approval: state.script_approval });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-script-approval-error'));
+      return;
+    }
+
     // Generate a VIDTOOLZ topic via local Ollama (vidnux lane). Returns the text
     // only; the operator explicitly Saves to persist it. No fallback to cloud.
     if (req.method === 'POST' && url.pathname === SUPER_FOCUS_GENERATE_TOPIC_API) {
@@ -18986,6 +18999,7 @@ module.exports = {
   SUPER_FOCUS_VIDEO_QUEUE_AUDIT_API,
   SUPER_FOCUS_TITLE_API,
   SUPER_FOCUS_SCRIPT_API,
+  SUPER_FOCUS_SCRIPT_APPROVE_API,
   SUPER_FOCUS_GENERATE_TOPIC_API,
   SUPER_FOCUS_GENERATE_SCRIPT_API,
   SUPER_FOCUS_GENERATE_IMAGE_PROMPTS_API,

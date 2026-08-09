@@ -523,8 +523,64 @@ function saveScript(projectId, script, options = {}) {
   if (state.visual_plan) {
     state.visual_plan = visualPlan.refreshPlanStaleness(state.visual_plan, state.script);
   }
+  // Script approval belongs to exact bytes. Editing the saved script never
+  // transfers a human decision to the new version; retain the old record as
+  // audit evidence and return the live approval gate to draft.
+  if (state.script_approval && state.script_approval.script_hash
+      && state.script_approval.script_hash !== scriptEvaluator.hashScriptText(state.script)) {
+    state.approval = Object.assign(emptyApproval(), state.approval || {}, { script: 'draft' });
+    state.script_approval = Object.assign({}, state.script_approval, {
+      status: 'stale',
+      invalidated_at: nowIso(),
+      invalidation_reason: 'Saved script changed after approval.',
+    });
+  }
   state.stage = inferStage(state);
   state.updated_at = nowIso();
+  writeStateAtomic(dir, state);
+  return state;
+}
+
+// Record the operator's explicit approval against the exact saved script.
+// The expected hash is an optimistic-concurrency guard: a stale browser tab
+// cannot approve bytes that are no longer current. Replays for the same exact
+// version are idempotent and do not rewrite timestamps or reorder projects.
+function approveScript(projectId, expectedScriptHash, options = {}) {
+  const dir = stateDir(projectId, options);
+  const state = loadProject(projectId, options);
+  if (!state.script || !state.script.trim()) {
+    const error = new Error('Save a script before approving it.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const expected = typeof expectedScriptHash === 'string'
+    ? expectedScriptHash.trim().toLowerCase()
+    : '';
+  if (!/^[a-f0-9]{40}$/.test(expected)) {
+    const error = new Error('Script approval requires the complete expected SHA-1 script hash.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const actual = scriptEvaluator.hashScriptText(state.script);
+  if (expected !== actual) {
+    const error = new Error('The saved script changed. Reload it before approving the current version.');
+    error.statusCode = 409;
+    throw error;
+  }
+  if (state.approval && state.approval.script === 'approved'
+      && state.script_approval && state.script_approval.status === 'approved'
+      && state.script_approval.script_hash === actual) {
+    return state;
+  }
+  const approvedAt = nowIso();
+  state.approval = Object.assign(emptyApproval(), state.approval || {}, { script: 'approved' });
+  state.script_approval = {
+    status: 'approved',
+    script_hash: actual,
+    source: 'operator',
+    approved_at: approvedAt,
+  };
+  state.updated_at = approvedAt;
   writeStateAtomic(dir, state);
   return state;
 }
@@ -1279,6 +1335,7 @@ module.exports = {
   deleteProject,
   saveTitle,
   saveScript,
+  approveScript,
   IMAGE_PROMPT_CAPACITY,
   INFOGRAPHIC_PROMPT_CAPACITY,
   generatedPromptHash,

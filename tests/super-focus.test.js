@@ -273,6 +273,91 @@ test("save script persists and advances stage to script", async () => {
   }
 });
 
+test("script approval is exact-hash bound, idempotent, and persists", async () => {
+  const root = mkRoot();
+  const server = packageEngineServer.createServer({ superFocusRoot: root });
+  await listen(server);
+  try {
+    const proj = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_PROJECTS_API, {
+      method: "POST", headers: writeHeaders(), body: { title: "T" },
+    })).project;
+    const script = "The exact operator-approved script.";
+    await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id: proj.project_id, script },
+    });
+    const hash = crypto.createHash("sha1").update(script).digest("hex");
+
+    const approved = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_APPROVE_API, {
+      method: "POST", headers: writeHeaders(), body: { id: proj.project_id, expected_script_hash: hash },
+    })).project;
+    assert.equal(approved.approval.script, "approved");
+    assert.deepEqual(approved.script_approval, {
+      status: "approved", script_hash: hash, source: "operator", approved_at: approved.script_approval.approved_at,
+    });
+
+    const replay = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_APPROVE_API, {
+      method: "POST", headers: writeHeaders(), body: { id: proj.project_id, expected_script_hash: hash },
+    })).project;
+    assert.equal(replay.script_approval.approved_at, approved.script_approval.approved_at);
+    assert.equal(replay.updated_at, approved.updated_at);
+
+    const reload = unwrap(await request(
+      server, packageEngineServer.SUPER_FOCUS_PROJECT_API + "?id=" + encodeURIComponent(proj.project_id)
+    )).project;
+    assert.equal(reload.approval.script, "approved");
+    assert.equal(reload.script_approval.script_hash, hash);
+  } finally {
+    await close(server);
+  }
+});
+
+test("script approval rejects stale hashes and editing invalidates prior approval", async () => {
+  const root = mkRoot();
+  const server = packageEngineServer.createServer({ superFocusRoot: root });
+  await listen(server);
+  try {
+    const proj = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_PROJECTS_API, {
+      method: "POST", headers: writeHeaders(), body: { title: "T" },
+    })).project;
+    const script = "Version one.";
+    const hash = crypto.createHash("sha1").update(script).digest("hex");
+    await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id: proj.project_id, script },
+    });
+    const stale = await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_APPROVE_API, {
+      method: "POST", headers: writeHeaders(), body: { id: proj.project_id, expected_script_hash: "0".repeat(40) },
+    });
+    assert.equal(stale.statusCode, 409);
+
+    assert.equal((await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_APPROVE_API, {
+      method: "POST", headers: writeHeaders(), body: { id: proj.project_id, expected_script_hash: hash },
+    })).statusCode, 200);
+    const edited = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_SCRIPT_API, {
+      method: "POST", headers: writeHeaders(), body: { id: proj.project_id, script: "Version two." },
+    })).project;
+    assert.equal(edited.approval.script, "draft");
+    assert.equal(edited.script_approval.status, "stale");
+    assert.equal(edited.script_approval.script_hash, hash);
+    assert.match(edited.script_approval.invalidation_reason, /changed after approval/i);
+  } finally {
+    await close(server);
+  }
+});
+
+test("super-focus UI exposes explicit final-script approval", async () => {
+  const server = packageEngineServer.createServer({ superFocusRoot: mkRoot() });
+  await listen(server);
+  try {
+    const res = await request(server, "/super-focus.html");
+    assert.equal(res.statusCode, 200);
+    assert.match(res.raw, /id="script-approve"/);
+    assert.match(res.raw, /\/api\/super-focus\/script\/approve/);
+    assert.match(res.raw, /expected_script_hash/);
+  } finally {
+    await close(server);
+  }
+});
+
 // ---- id safety (path traversal) ----
 test("invalid / traversal project ids are rejected", async () => {
   const server = packageEngineServer.createServer({ superFocusRoot: mkRoot() });

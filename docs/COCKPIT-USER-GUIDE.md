@@ -193,8 +193,10 @@ Open **★ Super Focus**. Work top to bottom; each section has its own buttons.
 1. **Providers (optional first check):** *Check providers*, *Test Ollama model* —
    confirm local text generation is reachable before you start.
 2. **Title:** *Generate a topic for VIDTOOLZ* → edit → **Save**.
-3. **Script:** *Generate* (or type your own) → **Save**. *Expand script* gives a
-   full-height editor.
+3. **Script:** *Generate* (or type your own) → **Save** → review → **Approve
+   final script**. Approval belongs to the exact saved script hash; unsaved
+   edits block approval and any later saved change invalidates it. *Expand
+   script* gives a full-height editor.
 4. **Evaluate:** *Evaluate script* — **advisory only**. It reads the *saved*
    script and returns a verdict. It never approves, advances, or generates media.
    Unsaved edits are ignored.

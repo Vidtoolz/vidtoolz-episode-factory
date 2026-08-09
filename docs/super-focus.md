@@ -14,7 +14,12 @@ Focus** desktop shortcut). The landing screen shows exactly two options:
 A project is one linear sheet, in order:
 
 1. **Title** — type one, or **Generate a topic for VIDTOOLZ** (local Ollama). Save to keep.
-2. **Script / voiceover** — write one, or **Generate** from the saved title (local Ollama). Save to keep.
+2. **Script / voiceover** — write one, or **Generate** from the saved title
+   (local Ollama). Save to keep, review the saved text, then **Approve final
+   script**. Approval is an explicit operator decision bound to the complete
+   SHA-1 of those exact saved bytes. Unsaved edits cannot be approved, and a
+   later saved change invalidates the approval instead of transferring it to
+   the new version. The advisory evaluator remains separate from approval.
 3. **Visual Plan** — beats + visual assignments, created from the **saved** script.
    The central rule: *a prompt says what to generate; a visual assignment says
    what job the visual must perform in the argument.* Create beats (version
