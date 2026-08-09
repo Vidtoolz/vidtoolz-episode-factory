@@ -545,6 +545,10 @@ const PRESTO_OUTPUT_TAIL_BYTES = 4 * 1024;
 const PRESTO_COMPLETED_TTL_MS = 10 * 60 * 1000;
 const PRESTO_STATE = {
   activeJob: null,
+  // In-flight dispatch reservation (process-local). Claimed synchronously at the
+  // contention decision so the single-GPU slot is unavailable to a second
+  // contender during pre-dispatch work; retired at activeJob handoff.
+  reservation: null,
   defaultUrl: PRESTO_BASE_URL,
   productionScript: path.join(VIDNAS_WAN_LANE, 'run-production.py'),
   runsDir: path.join(VIDNAS_WAN_LANE, 'runs'),
@@ -9173,6 +9177,60 @@ function formatEta(seconds) {
   return min > 0 ? `${min}m ${sec}s` : `${sec}s`;
 }
 
+// ── PRESTO dispatch reservation ─────────────────────────────────────────────
+// The exclusive resource is the single PRESTO GPU, represented by
+// PRESTO_STATE.activeJob — but activeJob is only set AFTER the child spawns, so
+// historically the window between "is PRESTO free?" and that assignment was
+// bridged only by there being no await in between (see the comment in
+// startPrestoPackageJob). That is true today and would silently stop being true
+// the moment any asynchronous pre-dispatch work is added.
+//
+// A reservation closes that window: it is claimed SYNCHRONOUSLY at the contention
+// decision, so a second contender is refused immediately even while the first is
+// still doing pre-dispatch work. Ownership is explicit, so a continuation can ask
+// "do I still own the slot?" after an await instead of trusting a stale check.
+// Process-local by design — it describes an in-flight dispatch, not durable state.
+let prestoReservationCounter = 0;
+
+function prestoSlotBusyError(active) {
+  const error = new Error('A PRESTO video job is already running. Wait for it to finish.');
+  error.statusCode = 409;
+  if (active) error.active = active;
+  return error;
+}
+
+// Claim the slot. Throws the existing 409 if a job is active OR another
+// dispatch is already in flight. No await may precede this call.
+function reservePrestoDispatchSync({ lane = null, jobKey = null } = {}) {
+  const current = currentPrestoJobStatus();
+  if (current.active) throw prestoSlotBusyError(current.active);
+  if (PRESTO_STATE.reservation) throw prestoSlotBusyError(null);
+  const reservation = {
+    reservation_id: `presto-res-${++prestoReservationCounter}-${Date.now()}`,
+    lane,
+    job_key: jobKey,
+    reserved_at: new Date().toISOString(),
+  };
+  PRESTO_STATE.reservation = reservation;
+  return reservation;
+}
+
+// Does this exact reservation still hold the slot? False once it has been
+// released, replaced, or handed off to a running job.
+function prestoReservationStillOwned(reservation) {
+  return Boolean(reservation && PRESTO_STATE.reservation
+    && PRESTO_STATE.reservation.reservation_id === reservation.reservation_id);
+}
+
+// Release ONLY if still owned — a stale owner must never clear a newer holder.
+function releasePrestoReservation(reservation) {
+  if (prestoReservationStillOwned(reservation)) {
+    PRESTO_STATE.reservation = null;
+    return true;
+  }
+  return false;
+}
+
 function currentPrestoJobStatus(now = Date.now()) {
   const job = PRESTO_STATE.activeJob;
   if (!job) {
@@ -9246,13 +9304,17 @@ function validatePrestoSubmitPayload(payload = {}, options = {}) {
 }
 
 function startPrestoPackageJob(payload = {}, options = {}) {
-  const current = currentPrestoJobStatus();
-  if (current.active) {
-    const error = new Error('Job already active');
-    error.statusCode = 409;
-    error.active = current.active;
+  // Synchronous contention decision — nothing may await before this line.
+  const reservation = reservePrestoDispatchSync({ lane: 'aigen-presto', jobKey: payload && payload.package_id });
+  try {
+    return startPrestoPackageJobReserved(payload, options, reservation);
+  } catch (error) {
+    releasePrestoReservation(reservation);   // never wedge the slot on refusal
     throw error;
   }
+}
+
+function startPrestoPackageJobReserved(payload = {}, options = {}, reservation = null) {
   const config = validatePrestoSubmitPayload(payload, options);
   // Authoritative eligibility re-check INSIDE the locked check-and-spawn boundary
   // (single-threaded: no await between the lock check above and the synchronous
@@ -9450,6 +9512,9 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
     job.compute_receipt = receipt;
   }
   PRESTO_STATE.activeJob = job;
+  // Handoff: the running job now owns the slot, so the pre-dispatch reservation
+  // retires. Ordered activeJob-then-reservation so the slot is never unmarked.
+  PRESTO_STATE.reservation = null;
   if (child.stdout && child.stdout.on) {
     child.stdout.on('data', (chunk) => { job.stdout = appendCappedOutput(job.stdout, chunk); });
   }
@@ -9548,13 +9613,17 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
 // selected-images.json / video-prompts.json). Reuses the single PRESTO lock.
 // No PRESTO auto-start; a dead worker surfaces as the caller's 503.
 function startSuperFocusVideoJob(mediaDir, options = {}) {
-  const current = currentPrestoJobStatus();
-  if (current.active) {
-    const error = new Error('A PRESTO video job is already running. Wait for it to finish.');
-    error.statusCode = 409;
-    error.active = current.active;
+  // Synchronous contention decision — nothing may await before this line.
+  const reservation = reservePrestoDispatchSync({ lane: 'super-focus-presto', jobKey: options.projectId || mediaDir });
+  try {
+    return startSuperFocusVideoJobReserved(mediaDir, options, reservation);
+  } catch (error) {
+    releasePrestoReservation(reservation);
     throw error;
   }
+}
+
+function startSuperFocusVideoJobReserved(mediaDir, options = {}, reservation = null) {
   const productionScript = options.productionScript || process.env.SUPER_FOCUS_PRODUCTION_SCRIPT || PRESTO_STATE.productionScript;
   if (!fs.existsSync(productionScript)) {
     const error = new Error(`PRESTO run-production.py not found: ${productionScript}`);
@@ -19090,6 +19159,9 @@ module.exports = {
   startSuperFocusImageJob,
   startSuperFocusVideoJob,
   gateProductionDispatch,
+  reservePrestoDispatchSync,
+  prestoReservationStillOwned,
+  releasePrestoReservation,
   launchFluxHandoffJob,
   fluxDispatchPath,
   comfyCliResolvable,

@@ -2976,3 +2976,91 @@ test("comfyui transport closure: FLUX binds to the permit and refuses divergence
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ---- PRESTO dispatch reservation -------------------------------------------
+// The slot must become unavailable to a second contender at the CONTENTION
+// DECISION, not only once the child spawns — otherwise any future await in
+// pre-dispatch work reopens the race.
+
+test("presto reservation: claimed synchronously; a second contender is refused immediately", () => {
+  const pes = require("../package-engine-server.js");
+  try {
+    const a = pes.reservePrestoDispatchSync({ lane: "aigen-presto", jobKey: "job-A" });
+    assert.ok(a.reservation_id, "reservation carries an identity");
+    assert.equal(pes.PRESTO_STATE.reservation.reservation_id, a.reservation_id);
+    assert.equal(pes.PRESTO_STATE.activeJob, null, "no job has spawned yet — the slot is held by the reservation alone");
+    // B arrives during A's pre-dispatch window
+    let err = null;
+    try { pes.reservePrestoDispatchSync({ lane: "super-focus-presto", jobKey: "job-B" }); } catch (e) { err = e; }
+    assert.ok(err, "second contender must be refused");
+    assert.equal(err.statusCode, 409, "existing busy semantics preserved");
+    assert.ok(pes.prestoReservationStillOwned(a), "A still owns the slot");
+  } finally {
+    pes.PRESTO_STATE.reservation = null;
+    pes.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("presto reservation: ownership is identity-based, and a stale owner cannot release a newer one", () => {
+  const pes = require("../package-engine-server.js");
+  try {
+    const a = pes.reservePrestoDispatchSync({ jobKey: "A" });
+    assert.equal(pes.prestoReservationStillOwned(a), true);
+    // released → no longer owned
+    assert.equal(pes.releasePrestoReservation(a), true);
+    assert.equal(pes.prestoReservationStillOwned(a), false, "a released reservation authorizes nothing");
+    // replaced → the old owner must not be authorized, and must not clear the new holder
+    const b = pes.reservePrestoDispatchSync({ jobKey: "B" });
+    assert.equal(pes.prestoReservationStillOwned(a), false, "a replaced reservation authorizes nothing");
+    assert.equal(pes.releasePrestoReservation(a), false, "a stale owner cannot release the current holder");
+    assert.equal(pes.prestoReservationStillOwned(b), true, "the current holder is untouched");
+  } finally {
+    pes.PRESTO_STATE.reservation = null;
+  }
+});
+
+test("presto reservation: a refused dispatch releases the slot instead of wedging it", () => {
+  const pes = require("../package-engine-server.js");
+  try {
+    // a missing production script fails AFTER the reservation is claimed
+    assert.throws(() => pes.startSuperFocusVideoJob(mkdtemp("presto-res-"), {
+      productionScript: "/nonexistent/run-production.py", profile: "wan22_hq_720p_5s_no_lightx2v",
+    }), /not found/);
+    assert.equal(pes.PRESTO_STATE.reservation, null, "a failed dispatch must not leave PRESTO reserved");
+    // the slot is genuinely reusable afterwards
+    const next = pes.reservePrestoDispatchSync({ jobKey: "next" });
+    assert.ok(next.reservation_id);
+  } finally {
+    pes.PRESTO_STATE.reservation = null;
+    pes.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("presto reservation: successful spawn hands the slot to the running job with no gap", () => {
+  const pes = require("../package-engine-server.js");
+  const dir = mkdtemp("presto-res2-");
+  const script = path.join(dir, "run-production.py");
+  fs.writeFileSync(script, "#!/usr/bin/env python3\n");
+  const { EventEmitter } = require("node:events");
+  let child = null;
+  const spawnStub = () => {
+    child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.kill = () => {}; child.pid = 4321;
+    return child;
+  };
+  try {
+    pes.startSuperFocusVideoJob(dir, { productionScript: script, pythonBin: "python3",
+      profile: "wan22_hq_720p_5s_no_lightx2v", projectId: "handoff", spawn: spawnStub });
+    // handoff: the running job now holds the slot, the reservation has retired,
+    // and the slot was never unmarked in between
+    assert.ok(pes.PRESTO_STATE.activeJob, "the running job owns the slot");
+    assert.equal(pes.PRESTO_STATE.reservation, null, "the reservation retired at handoff");
+    // a contender during the running job is still refused by the existing check
+    assert.throws(() => pes.reservePrestoDispatchSync({ jobKey: "B" }), (e) => e.statusCode === 409);
+  } finally {
+    pes.PRESTO_STATE.activeJob = null;
+    pes.PRESTO_STATE.reservation = null;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
