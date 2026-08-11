@@ -1196,6 +1196,49 @@ test("project-earth-studio.html: Windows UNC copy button emits a valid UNC path"
   assert.ok(captured.endsWith("\\earth-studio\\frames"), `ends at the frames folder: ${captured.slice(-30)}`);
 });
 
+test("earth-studio parser: durations accept minutes (unit conversion + full parse)", () => {
+  // extractDurationSeconds: minutes/mins/min convert to seconds; the seconds
+  // grammar keeps exact precedence (a bare "s" never reads as minutes).
+  assert.equal(planner.extractDurationSeconds("orbit Helsinki for 2 minutes"), 120);
+  assert.equal(planner.extractDurationSeconds("orbit Helsinki for 1 minute"), 60);
+  assert.equal(planner.extractDurationSeconds("hover for 2.5 min"), 150);
+  assert.equal(planner.extractDurationSeconds("hover for 30 seconds"), 30);
+  assert.equal(planner.extractDurationSeconds("hover for 5 sec"), 5);
+  assert.equal(planner.extractDurationSeconds("hover for 3s"), 3);
+  assert.equal(planner.extractDurationSeconds("hover"), null);
+  // Full parse: minute durations land as explicit values with no warnings and
+  // accumulate into the plan total.
+  const r = planner.parseDescription("hover over Helsinki for 1 minute, then orbit Helsinki for 2 minutes");
+  assert.equal(r.segments[0].duration_seconds, 60);
+  assert.equal(r.segments[0].duration_source, "explicit");
+  assert.equal(r.segments[1].duration_seconds, 120);
+  assert.equal(r.total_duration_seconds, 180);
+  assert.equal(r.segments[0].resolution_status, "resolved");
+  assert.equal(r.segments[1].resolution_status, "resolved");
+  assert.equal(r.warnings.length, 0);
+});
+
+test("earth-studio parser: an explicit zero duration is invalid, never a silent default", () => {
+  // A written "for 0 seconds"/"for 0 minutes" is ambiguous input: the segment
+  // keeps zero duration (contributes nothing), goes to manual_review with a
+  // named warning, and is listed in unresolved_items — the parser must NOT
+  // fall back to the magnitude-scaled default as if no duration was given.
+  for (const desc of ["hover over Helsinki for 0 seconds", "orbit Helsinki for 0 minutes"]) {
+    const r = planner.parseDescription(desc);
+    assert.equal(r.segments.length, 1);
+    const seg = r.segments[0];
+    assert.equal(seg.duration_seconds, 0, desc);
+    assert.equal(seg.resolution_status, "manual_review", desc);
+    assert.equal(seg.duration_source, "invalid_zero", desc);
+    assert.ok(seg.warnings.some((w) => /zero duration/i.test(w)), `${desc} warns: ${seg.warnings.join("; ")}`);
+    assert.equal(r.unresolved_items.length, 1, desc);
+    assert.equal(r.unresolved_items[0].segment_id, 1);
+  }
+  // Zero still parses as a number for extraction — the invalidation happens in
+  // the segment, so other callers see the honest value.
+  assert.equal(planner.extractDurationSeconds("orbit for 0 seconds"), 0);
+});
+
 test("earth-studio v0.9.3: motion transfer propagates aspect (9:16 stays vertical, 16:9 stays horizontal)", () => {
   const vertical = planner.buildShotPlan("T", "zoom in on Rovaniemi in 5 seconds, then orbit Rovaniemi 90 degrees for 5 seconds", "2026-08-08T00:00:00.000Z", { aspect: "9:16" });
   assert.deepEqual(vertical.render_dimensions, { width: 1080, height: 1920 });

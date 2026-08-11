@@ -341,9 +341,17 @@
 
   function extractDurationSeconds(text) {
     const match = cleanString(text).match(/\b(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|sec|s)\b/i);
-    if (!match) return null;
-    const duration = Number(match[1]);
-    return Number.isFinite(duration) && duration > 0 ? duration : null;
+    if (match) {
+      const duration = Number(match[1]);
+      return Number.isFinite(duration) && duration >= 0 ? duration : null;
+    }
+    // Minutes grammar: "for 2 minutes" / "1 minute" / "2.5 min" → seconds.
+    // The bare "s" seconds unit above cannot swallow minutes ("m" is not in
+    // [sec]), so the two grammars never compete.
+    const minutes = cleanString(text).match(/\b(\d+(?:\.\d+)?)\s*(?:minutes?|mins?|min)\b/i);
+    if (!minutes) return null;
+    const seconds = Number(minutes[1]) * 60;
+    return Number.isFinite(seconds) ? seconds : null;
   }
 
   function removeDurationPhrase(text) {
@@ -352,6 +360,7 @@
     // the FIRST duration as the effective one.
     return cleanString(text)
       .replace(/\b(?:for|in)?\s*\d+(?:\.\d+)?\s*(?:seconds?|secs?|sec|s)\b/gi, "")
+      .replace(/\b(?:for|in)?\s*\d+(?:\.\d+)?\s*(?:minutes?|mins?|min)\b/gi, "")
       .replace(/\s{2,}/g, " ")
       .trim();
   }
@@ -598,6 +607,13 @@
         durationSource = "missing";
         warnings.push("missing duration.");
       }
+    } else if (durationSeconds === 0) {
+      // An EXPLICIT zero ("for 0 seconds" / "for 0 minutes") is ambiguous
+      // input, never silently replaced by the magnitude-scaled default: the
+      // segment keeps zero duration, goes to manual_review, and is listed in
+      // unresolved_items so the author fixes the description deliberately.
+      durationSource = "invalid_zero";
+      warnings.push("zero duration is invalid — give a positive duration (e.g. \"for 5 seconds\").");
     } else if (durationSeconds > 0) {
       // Advisory pacing notes: real Earth Studio playback proved absurd camera
       // speeds unintelligible. Never blocks — the author may want speed.
@@ -836,7 +852,7 @@ This folder converts a constrained text description into reviewable planning fil
 ## Description grammar
 
 Actions: fly to / hover over / orbit / zoom in on / zoom out from a place.
-Chain with "then". Modifiers per segment: a duration ("for 5 seconds"),
+Chain with "then". Modifiers per segment: a duration ("for 5 seconds", "for 2 minutes"),
 an altitude ("at 800m", "from space", "low", "high"), a tilt ("top-down",
 "tilted", "toward the horizon"), and for orbits an amount and direction
 ("twice", "180 degrees", "counterclockwise"). Segments without a location

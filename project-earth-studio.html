@@ -171,7 +171,7 @@
         document.getElementById('es-steps').innerHTML = `
           <div class="step ${s.has_plan?'done':''} ${active===1?'active':''}">
             <div class="step-head">1 · Describe the camera move ${stepBadge(s.has_plan,false)}</div>
-            <div class="meta" style="margin:6px 0;">Plain words: <b>fly to</b> / <b>hover over</b> / <b>orbit</b> / <b>zoom in on</b> / <b>zoom out from</b> a place. Chain with "then". Optional per segment: duration ("for 5 seconds"), altitude ("at 800m", "from space", "low", "high"), tilt ("top-down", "tilted", "toward the horizon"), orbit amount + direction ("twice", "180 degrees", "counterclockwise"). Skip the location to reuse the previous one; skip the duration for a sensible default.</div>
+            <div class="meta" style="margin:6px 0;">Plain words: <b>fly to</b> / <b>hover over</b> / <b>orbit</b> / <b>zoom in on</b> / <b>zoom out from</b> a place. Chain with "then". Optional per segment: duration ("for 5 seconds" or "for 2 minutes"), altitude ("at 800m", "from space", "low", "high"), tilt ("top-down", "tilted", "toward the horizon"), orbit amount + direction ("twice", "180 degrees", "counterclockwise"). Skip the location to reuse the previous one; skip the duration for a sensible default.</div>
             <div style="margin:4px 0;">${presetRow()}</div>
             <div style="margin:4px 0 8px;"><input id="es-loc-search" type="text" placeholder="Search ${Object.keys(planner.LOCATION_FIXTURES).length} known places…"><span id="es-loc-chips">${locChips('')}</span></div>
             <input id="es-job" type="text" placeholder="Job name (e.g. Helsinki Flyover)" value="${esc(job?job.jobName:'')}">

@@ -8,8 +8,8 @@ Google Earth Studio is a **browser-only** Google product with **no API / no head
 frame export itself is always a manual in-browser step. Everything around it is automated here:
 
 1. **Plan** — a plain-language sentence → camera shot plan + keyframes.
-   `earth-studio-job-planner.js` (v0.4): actions `hover`, `fly_to`, `orbit`, `zoom_in`, `zoom_out`
-   with per-segment modifiers — duration (`for 5 seconds`), altitude (`at 800m`, `from space`,
+   `earth-studio-job-planner.js` (v0.9.3): actions `hover`, `fly_to`, `orbit`, `zoom_in`, `zoom_out`
+   with per-segment modifiers — duration (`for 5 seconds`, `for 2 minutes`), altitude (`at 800m`, `from space`,
    `low`, `high`), tilt (`top-down`, `tilted 30 degrees`, `toward the horizon`), and orbit amount +
    direction (`twice`, `180 degrees`, `counterclockwise`). Segments chain with `then`; a segment
    without a location reuses the previous one, and a missing duration gets a **magnitude-scaled**
