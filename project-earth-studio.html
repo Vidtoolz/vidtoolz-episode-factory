@@ -44,7 +44,7 @@
         <div class="page-guide-body">
           <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Guided Google Earth Studio map-animation workspace for one project. Describe a camera move in plain words, get an importable .esp, export frames from Earth Studio into the project folder, and render them to MP4 — step by step, with each step lighting up when it's done.</span></div>
           <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Follow the steps top to bottom. Only the frame export inside Earth Studio is manual (it's browser-only, no API) — everything else runs here. Nothing publishes; renders stay in the project (and optionally a VIDNAS sandbox).</span></div>
-          <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Live parse preview + camera-path map while you type, one-click preset moves, searchable known-place list (~150 places incl. landmarks), aspect selector (9:16 Shorts default), copyable paths, live frame counter, render log, MP4 preview.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">Live parse preview + camera-path map while you type, one-click preset moves, searchable known-place list (180+ places incl. landmarks), aspect selector (9:16 Shorts default), copyable paths, live frame counter, render log, MP4 preview.</span></div>
         </div>
       </details>
       <div class="meta"><a href="projects.html">← Projects</a> · <a id="link-workspace" href="#">Workspace</a> · <a id="link-mediakit" href="#">Media kit</a> · <a href="production-pipeline.html">Pipeline</a></div>
@@ -194,7 +194,7 @@
           <div class="step ${hasFrames?'done':''} ${active===3?'active':''}">
             <div class="step-head">3 · Export frames into the project ${stepBadge(hasFrames,false)}</div>
             <div class="meta" style="margin:6px 0;">In Earth Studio: Render → image sequence, and save the frames into this folder (reachable from any machine via VIDNAS):</div>
-            ${framesDir?`<div>${cbtn(framesDir,'frames folder (Linux)')}${cbtn('\\\\\\\\192.168.61.186\\\\Public\\\\VIDTOOLZ\\\\03_SHARED_MEDIA_LIBRARY\\\\aigen\\\\script-packages\\\\'+ID+'\\\\earth-studio\\\\frames','frames folder (Windows UNC)')}</div>`:''}
+            ${framesDir?`<div>${cbtn(framesDir,'frames folder (Linux)')}${cbtn('\\\\192.168.61.186\\Public\\VIDTOOLZ\\03_SHARED_MEDIA_LIBRARY\\aigen\\script-packages\\'+ID+'\\earth-studio\\frames','frames folder (Windows UNC)')}</div>`:''}
             <div class="meta" style="margin-top:6px;">Exported frames detected: <b id="es-frame-count" class="${hasFrames?'ok':''}">${s.frame_count||0}</b>${job&&job.total_frames?` <span class="meta">of ${job.total_frames} planned</span>`:''}
               <button type="button" class="btn" id="es-refresh">Refresh</button>
               ${!hasFrames&&s.has_plan?'<span class="meta">(auto-checking every few seconds…)</span>':''}</div>

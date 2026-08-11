@@ -1160,6 +1160,42 @@ test("project-earth-studio.html v0.9.3: surfaces motion-profile provenance and g
   assert.match(html, /r\.notes\.map\(\(n\)=>'ℹ '\+esc\(n\)\)/);
 });
 
+test("project-earth-studio.html: Windows UNC copy button emits a valid UNC path", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "project-earth-studio.html"), "utf8");
+  // Extract the render() step template and evaluate it exactly like the browser
+  // would, capturing the first argument cbtn() receives for the UNC button —
+  // that string is what the click handler copies to the clipboard (esc() does
+  // not touch backslashes, and getAttribute returns the value verbatim).
+  const anchor = "document.getElementById('es-steps').innerHTML = `";
+  const start = html.indexOf(anchor);
+  assert.ok(start >= 0, "render() step template found");
+  const body = html.slice(start + anchor.length - 1, html.indexOf("`;", start) + 1);
+  let captured = null;
+  const evalRender = new Function(
+    "ID", "PKG_PATH", "ST", "esc", "cbtn", "stepBadge", "presetRow", "locChips", "aspectRow", "planner",
+    `const s = ST; const framesDir = s.frames_dir; const hasFrames = (s.frame_count || 0) > 0;
+     const rendered = false; const renderedUrl = ''; const active = 1; const job = s.job;
+     const renderJob = s.render_job || {}; const laneDirPath = PKG_PATH + '/earth-studio';
+     const espPath = laneDirPath + '/earth-studio.esp';
+     return ${body};`
+  );
+  evalRender(
+    "TESTPKG", "/pkg", { frames_dir: "/pkg/earth-studio/frames", frame_count: 0, job: null, render_job: {} },
+    (x) => String(x == null ? "" : x),
+    (text) => { if (text && String(text).includes("192.168.61.186")) captured = text; return ""; },
+    () => "", () => "", () => "", () => "",
+    { LOCATION_FIXTURES: { x: { name: "x" } }, ASPECTS: { "16:9": { width: 1920, height: 1080 }, "9:16": { width: 1080, height: 1920 }, "1:1": { width: 1080, height: 1080 } } }
+  );
+  assert.ok(captured, "UNC copy button rendered");
+  const leading = captured.match(/^\\+/);
+  assert.ok(leading, "path starts with backslashes");
+  assert.equal(leading[0].length, 2, `a UNC path starts with exactly 2 backslashes, clipboard would get ${leading[0].length}: ${captured.slice(0, 40)}`);
+  assert.ok(!/\\\\/.test(captured.slice(2)), `UNC separators are single backslashes: ${captured.slice(0, 60)}`);
+  assert.ok(captured.includes("192.168.61.186") && captured.includes("VIDTOOLZ"), "server and share survive");
+  assert.ok(captured.includes("TESTPKG"), "project id interpolated");
+  assert.ok(captured.endsWith("\\earth-studio\\frames"), `ends at the frames folder: ${captured.slice(-30)}`);
+});
+
 test("earth-studio v0.9.3: motion transfer propagates aspect (9:16 stays vertical, 16:9 stays horizontal)", () => {
   const vertical = planner.buildShotPlan("T", "zoom in on Rovaniemi in 5 seconds, then orbit Rovaniemi 90 degrees for 5 seconds", "2026-08-08T00:00:00.000Z", { aspect: "9:16" });
   assert.deepEqual(vertical.render_dimensions, { width: 1080, height: 1920 });

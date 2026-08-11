@@ -16,7 +16,7 @@ frame export itself is always a manual in-browser step. Everything around it is 
    default — flight distance (~150 km/s cruise, capped 4–25 s), orbit revolutions (10 s each),
    zoom altitude ratio (log-scaled 3–12 s) — recorded as a note, never silently. Explicit
    durations always win, but physically absurd speeds draw advisory pacing notes (real Earth
-   Studio playback of acceptance round 2 was "too fast to be intelligible"). ~150-place worldwide gazetteer with aliases (`NYC`,
+   Studio playback of acceptance round 2 was "too fast to be intelligible"). 180+-place worldwide gazetteer with aliases (`NYC`,
    `Everest`), diacritic/punctuation-tolerant lookup, per-place default altitudes for landmarks,
    and terrain floors (`min_altitude_m`) so zooms over high ground never target below the surface.
    Explicit `lat,lng` coordinates still reach anywhere offline (no geocoding API). Aspect ratios:
