@@ -1,0 +1,31 @@
+{
+  "_instructions": "Recorded after importing the corrected v0.9.4 candidate into the REAL Google Earth Studio application on PRESTO. The failed v0.9.3 observation remains preserved in the earlier package run.",
+  "observedAt": "2026-08-12T06:50:47.7464418+03:00",
+  "observer": "Codex on PRESTO (real Google Earth Studio session)",
+  "importSucceeded": true,
+  "earthStudioWarnings": [],
+  "flight": {
+    "correct": true,
+    "notes": "The candidate retained the accepted Helsinki-to-Paris flight. Real-app frame stepping showed the same monotonic arrival into the orbit ring: frame 675 altitude 10,190 m and tilt 35.014 degrees; frame 684 altitude 3,286 m and tilt 35.002 degrees; frame 689 altitude 2,036 m and tilt 35 degrees; frame 690 altitude 2,001 m and tilt 35 degrees. Playback through the boundary remained smooth."
+  },
+  "orbit": {
+    "correct": true,
+    "directionCorrect": true,
+    "targetFacing": true,
+    "revolutionsObserved": 2,
+    "notes": "The candidate is unchanged before the space-zoom segment. Real frame stepping at 689-705 showed no position, altitude, or tilt snap at fly-to-orbit ring entry, and playback through frames 660-790 was continuous. At orbit completion frames 1768-1770 remained at the same ring pose while pan advanced continuously from -1x 359.995 through -2x 0 degrees, preserving both counterclockwise revolutions and the accepted terminal orbit state."
+  },
+  "zoom": {
+    "correct": true,
+    "notes": "The corrected semantic space zoom passed in the real 9:16 Camera view. Earth was broadly and intentionally framed at frame 1844 (1,973 km, tilt 44.419 degrees), frame 1852 (2,373 km, tilt 40.706 degrees), and the exact former black-frame boundary at frame 1856 (2,577 km, tilt 38.732 degrees). Real playback samples at frames 1825, 1887, and 1979 showed a continuous widening globe composition with no black interval. At frame 1950 (8,204 km, tilt 19.920 degrees), frame 2000 (10,732 km, tilt 15.761 degrees), frame 2058 (12,000 km, tilt 14.292 degrees), and frame 2130, Earth remained meaningfully framed rather than reduced to an accidental sliver."
+  },
+  "tilt": {
+    "correct": true,
+    "notes": "Earth Studio preserved the authored altitude-aware derived tilt track. Tilt remained continuous from 60 degrees at frame 1770 through 59.998 at frame 1771, 44.419 at frame 1844, 38.732 at frame 1856, 19.920 at frame 1950, and 14.292 at frames 2058 and 2130. No abrupt tilt, pan, position, altitude, or easing discontinuity was observed."
+  },
+  "aspectRatio": {
+    "correct": true,
+    "notes": "Earth Studio Project Settings showed width 1080, height 1920, duration 2130 Frames, and 30 FPS. Camera position and rotation tracks were populated, and no parser, repair, corruption, or structure warning appeared."
+  },
+  "rawNotes": "MACHINE ASSERTIONS: corrected candidate planner v0.9.4; SHA-256 d732a6169edacbfbf6129740c4007478ba5131f74c91713658926255604c4bf6; generated from implementation commit 1f04979ef9c4bee025ba1060a70db5f9accafce8; 2130 frames at 30 FPS and 1080x1920; focused Earth Studio suite PASS 71/71; candidate semantic acceptance PASS 33/33; full repository gate PASS 2890/2890 plus production-spec synchronization and doc-authority checks. REAL EARTH STUDIO OBSERVATIONS: corrected candidate imported explicitly and opened without warning; project settings and camera tracks matched the candidate; former failure frames 1844/1852/1856 all showed a broad Earth composition; sampled high-altitude frames through 12000 km retained useful globe footage; frames 2058 and 2130 were numerically and visually identical, proving a stable terminal settle/hold; playback through the corrected zoom was continuous; fly arrival, fly-to-orbit ring entry, orbit completion, motion-profile v4 continuity, and the orbit-to-zoom start remained accepted. HISTORICAL CHAIN: the frozen failed v0.9.3 fixture and its rejected real-app observation remain unchanged under the 2026-08-07 package run. COVERAGE LIMITS: this fixture still does not promote antimeridian or dedicated hover behavior beyond internal verification. No Earth Studio frame export or render was submitted; real import, frame stepping, and playback were sufficient for this defect reacceptance."
+}

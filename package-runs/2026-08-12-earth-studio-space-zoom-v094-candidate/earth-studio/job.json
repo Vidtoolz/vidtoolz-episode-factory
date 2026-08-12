@@ -1,0 +1,27 @@
+{
+  "jobName": "v0.4 Real Import Paris",
+  "slug": "v0-4-real-import-paris",
+  "description": "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 36 seconds, then zoom out to space in 12 seconds",
+  "aspect": "9:16",
+  "render_dimensions": {
+    "width": 1080,
+    "height": 1920
+  },
+  "frame_rate": 30,
+  "total_frames": 2130,
+  "total_duration_seconds": 71,
+  "unresolved_count": 0,
+  "planner_version": "0.9.4",
+  "motion_profile": {
+    "profile_version": 4,
+    "source": "config/earth-studio-motion/motion-profile.json",
+    "references": [
+      "darien-gap",
+      "mountkinabalu",
+      "radiator-untitled",
+      "servyx"
+    ],
+    "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold"
+  },
+  "created_at": "2026-08-12T03:42:20.516Z"
+}

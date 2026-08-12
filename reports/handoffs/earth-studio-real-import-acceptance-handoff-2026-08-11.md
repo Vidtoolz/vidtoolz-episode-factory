@@ -132,3 +132,69 @@ Coverage note: this frozen Helsinki-to-Paris fixture contains neither an
 antimeridian crossing nor a dedicated semantic hover action. Those behaviors
 remain internally verified only; the terminal settle-hold was observed, but
 it is not a substitute for a dedicated hover import.
+
+## Space-zoom correction and real-app reacceptance — 2026-08-12 PRESTO
+
+The failed v0.9.3 fixture remains frozen at SHA-256
+`7754a178b63c60a9f7ccdf3c5313200501a0ac6463016b850fe628da667c3e41`.
+Its rejected real-import observation and `zoom.correct` / `tilt.correct`
+discrepancies remain intact as the causal baseline.
+
+Planner diagnosis and correction:
+
+- The defect was planner-owned composition, not `.esp` serialization or Earth
+  Studio reinterpretation. At high altitude the old derived tilt exceeded the
+  globe's apparent angular radius plus the useful vertical framing envelope,
+  moving the entire Earth below the 20-degree Camera field of view.
+- Planner v0.9.4 now constrains only planner-derived semantic space-zoom tilt
+  as altitude increases. It targets a six-degree upper-limb inset and asserts
+  a conservative minimum five-degree inset, using a spherical-Earth angular
+  radius model. Explicit operator-authored tilt remains authoritative.
+- The correction is sampled across the zoom so altitude, tilt, position, pan,
+  and motion-profile v4 easing remain continuous. Implementation commit:
+  `1f04979ef9c4bee025ba1060a70db5f9accafce8`.
+- Focused Earth Studio tests passed 71/71; the canonical historical harness
+  remained 33/33; the new candidate passed 33/33; the full repository gate
+  passed 2890/2890 plus production-spec synchronization and doc-authority
+  checks.
+
+Corrected candidate:
+
+- Path:
+  `package-runs/2026-08-12-earth-studio-space-zoom-v094-candidate/earth-studio/earth-studio.esp`
+- SHA-256:
+  `d732a6169edacbfbf6129740c4007478ba5131f74c91713658926255604c4bf6`
+- Planner v0.9.4; 2130 frames; 30 FPS; 1080x1920 (9:16).
+
+Real Google Earth Studio reimport succeeded without parser, repair, corruption,
+or structural warnings. Project Settings reported 1080x1920, 2130 frames, and
+30 FPS; camera position and rotation tracks remained populated.
+
+Real Camera-view observations:
+
+- Frame 1844: 1973 km / 44.419 degrees; a broad Earth limb and surface filled
+  the composition.
+- Frame 1852: 2373 km / 40.706 degrees; Earth remained deliberately framed.
+- Frame 1856: 2577 km / 38.732 degrees; the former fully black frame now showed
+  a broad globe view.
+- Frame 1950: 8204 km / 19.920 degrees; space-scale globe framing remained
+  useful.
+- Frame 2000: 10732 km / 15.761 degrees; no later framing failure appeared.
+- Frames 2058 and 2130: 12000 km / 14.292 degrees, longitude 2.352, latitude
+  48.857, pan `-2x 0`; the Camera view remained intentionally composed and was
+  visually and numerically stable through the terminal hold.
+
+Playback and frame stepping also preserved the accepted collateral motion:
+the Helsinki-to-Paris arrival remained smooth; frames 689-705 retained a
+continuous fly-to-orbit ring entry; pan reached `-2x 0` at frame 1770 after two
+counterclockwise revolutions; frames 1769-1771 showed a continuous
+orbit-to-space-zoom start; motion-profile v4 remained coherent.
+
+Evidence classification: `REAL_IMPORT_FIX_VERIFIED`.
+
+The structured corrected observation is in the new candidate package at
+`acceptance/import-observation.json`. The earlier failed observation was not
+erased or rewritten. No Earth Studio frame export or render was submitted for
+this reacceptance; import, Camera-view inspection, frame stepping, and playback
+provided the required downstream evidence. Antimeridian and dedicated hover
+real-import promotion remain outside this fixture's scope.

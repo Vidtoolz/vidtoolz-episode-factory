@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>v0.4 Real Import Paris route reference</name>
+    <description>KML reference asset only. This does not create a finished Google Earth Studio camera animation.</description>
+    <Placemark>
+      <name>Helsinki</name>
+      <Point><coordinates>24.9384,60.1699,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>Paris</name>
+      <Point><coordinates>2.3522,48.8566,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>v0.4 Real Import Paris route path reference</name>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+        24.9384,60.1699,0
+        2.3522,48.8566,0
+        2.3522,48.8566,0
+        2.3522,48.8566,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>
