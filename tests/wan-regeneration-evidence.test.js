@@ -55,7 +55,11 @@ test('wan regeneration reporter: readiness boundary requires 20 events, 3 projec
     const count = p === 0 ? 10 : 5;
     for (let i = 0; i < count; i += 1) {
       const id = `p${p}-${i}`;
-      attempts[id] = attempt(id, i + 1, { schema_version: 1, reason_code: reasons[i % reasons.length], previous_attempt_id: `old-${id}`, previous_output_sha256: `hash-${id}`, previous_output_path: `old-${id}.mp4` });
+      const oldId = `old-${id}`;
+      attempts[oldId] = attempt(oldId, i + 1, null, '2026-08-12T08:00:00Z');
+      attempts[id] = attempt(id, i + 1, { schema_version: 1, reason_code: reasons[i % reasons.length], previous_attempt_id: oldId, previous_output_sha256: `hash-${id}`, previous_output_path: `old-${id}.mp4` });
+      const predecessor = path.join(r, 'sf', `p${p}`, `old-${id}.mp4`);
+      fs.mkdirSync(path.dirname(predecessor), { recursive: true }); fs.writeFileSync(predecessor, 'old');
     }
     write(path.join(r, 'sf', `p${p}`, 'video-attempts.json'), { version: 1, active: {}, attempts });
   }
@@ -64,11 +68,11 @@ test('wan regeneration reporter: readiness boundary requires 20 events, 3 projec
   assert.equal(result.readiness, 'READY_FOR_PARETO_REVIEW');
 });
 
-test('wan regeneration reporter: broken current lineage is surfaced without mutating evidence', () => {
+test('wan regeneration reporter: missing/broken predecessor and absent referenced output are surfaced without mutating evidence', () => {
   const r = root(); const file = path.join(r, 'sf', 'p1', 'video-attempts.json');
-  write(file, { version: 1, active: {}, attempts: { x: attempt('x', 1, { schema_version: 1, reason_code: 'other', note: 'known operator note' }) } });
+  write(file, { version: 1, active: {}, attempts: { x: attempt('x', 1, { schema_version: 1, reason_code: 'other', note: 'known operator note', previous_attempt_id: 'ghost', previous_output_sha256: 'known-hash', previous_output_path: 'superseded/missing.mp4' }) } });
   const before = fs.readFileSync(file, 'utf8');
   const result = evidence.analyze({ aigenRoot: path.join(r, 'aigen'), superFocusRoot: path.join(r, 'sf') });
-  assert.ok(result.lineage_integrity.issues.some((x) => x.predecessor === 'missing_predecessor_attempt'));
+  assert.ok(result.lineage_integrity.issues.some((x) => x.broken_attempt_link && x.referenced_output_absent));
   assert.equal(fs.readFileSync(file, 'utf8'), before);
 });

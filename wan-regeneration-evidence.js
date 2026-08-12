@@ -99,7 +99,13 @@ function analyze(options = {}) {
     const seen = new Map();
     for (const attempt of attempts) {
       const prior = seen.get(String(attempt.index));
-      if (attempt.regeneration) events.push(normalizedSuperFocusEvent(file, attempt));
+      if (attempt.regeneration) {
+        const event = normalizedSuperFocusEvent(file, attempt);
+        if (event.previous_attempt_id && !data.attempts[event.previous_attempt_id]) event.broken_attempt_link = true;
+        if (event.previous_output_path
+            && !fs.existsSync(path.resolve(path.dirname(file), event.previous_output_path))) event.referenced_output_absent = true;
+        events.push(event);
+      }
       else if (prior) legacyUninstrumented.push({ surface: 'super_focus', project: path.basename(path.dirname(file)), slot: attempt.index, new_attempt_id: attempt.attempt_id, previous_attempt_id: prior.attempt_id, historical_objective_delta: { source_changed: prior.source && attempt.source ? prior.source.sha256 !== attempt.source.sha256 : null, prompt_changed: prior.i2v && attempt.i2v ? prior.i2v.sha256 !== attempt.i2v.sha256 : null, profile_changed: prior.profile != null && attempt.profile != null ? prior.profile !== attempt.profile : null } });
       if (attempt.evidence_schema_version === 1 && attempt.generation_semantics !== 'first_generation' && !attempt.regeneration) schemaInvalid.push({ source_file: file, attempt_id: attempt.attempt_id, issue: 'current_regeneration_missing_diagnosis' });
       seen.set(String(attempt.index), attempt);
@@ -121,7 +127,7 @@ function analyze(options = {}) {
         const crypto = require('crypto');
         outputSha = crypto.createHash('sha256').update(fs.readFileSync(run.output_file)).digest('hex');
       }
-      events.push({
+      const event = {
         ...raw,
         new_attempt_id: raw.new_attempt_id || (run && run.run_id) || null,
         new_output_sha256: outputSha,
@@ -129,7 +135,14 @@ function analyze(options = {}) {
         gpu_duration_hours: Number.isFinite(raw.gpu_duration_hours) ? raw.gpu_duration_hours
           : (run && Number.isFinite(run.elapsed) ? run.elapsed / 3600 : null),
         source_file: file,
-      });
+      };
+      if (event.previous_attempt_id && !runs.some((candidate) => candidate.run_id === event.previous_attempt_id)) event.broken_attempt_link = true;
+      if (event.previous_output_path) {
+        const previousPath = path.isAbsolute(event.previous_output_path)
+          ? event.previous_output_path : path.resolve(path.dirname(path.dirname(file)), event.previous_output_path);
+        if (!fs.existsSync(previousPath)) event.referenced_output_absent = true;
+      }
+      events.push(event);
     }
   }
 
@@ -157,6 +170,7 @@ function analyze(options = {}) {
   for (const reason of reasons.keys()) byReasonGpu[reason] = stats(diagnosed.filter((e) => e.reason === reason).map((e) => e.gpu_duration_hours));
   const largestPackage = packages.size ? Math.max(...Array.from(packages).map((p) => diagnosed.filter((e) => (e.project || e.package) === p).length)) / diagnosed.length : null;
   const concentration = reasons.size === 1 && diagnosed.length >= 20;
+  const lineageIssues = schemaInvalid.concat(events.filter((e) => e.lineage_issue || e.output_lineage_issue || e.broken_attempt_link || e.referenced_output_absent).map((e) => ({ event_id: e.event_id, predecessor: e.lineage_issue || null, output: e.output_lineage_issue || null, broken_attempt_link: Boolean(e.broken_attempt_link), referenced_output_absent: Boolean(e.referenced_output_absent) })));
   const requirements = {
     complete_coverage: coverage === 1 && schemaInvalid.filter((x) => x.issue === 'current_regeneration_missing_diagnosis').length === 0,
     diagnosed_events: diagnosed.length >= 20,
@@ -164,6 +178,7 @@ function analyze(options = {}) {
     categories: reasons.size >= 3 || concentration,
     gpu_duration_events: durationEvents.length >= 10,
     package_concentration: largestPackage != null && largestPackage <= 0.70,
+    lineage_integrity: lineageIssues.length === 0,
   };
   const ready = Object.values(requirements).every(Boolean);
   return {
@@ -173,7 +188,7 @@ function analyze(options = {}) {
     surfaces: Object.fromEntries(surfaces), reasons: Object.fromEntries(reasons), objective_deltas: Object.fromEntries(deltas),
     gpu_attribution: { events_with_duration: durationEvents.length, total_gpu_hours: durationEvents.reduce((sum, e) => sum + e.gpu_duration_hours, 0), by_reason: byReasonGpu },
     sample: { packages_represented: packages.size, categories_represented: reasons.size, largest_package_share_percent: largestPackage == null ? null : largestPackage * 100 },
-    lineage_integrity: { issues: schemaInvalid.concat(events.filter((e) => e.lineage_issue || e.output_lineage_issue).map((e) => ({ event_id: e.event_id, predecessor: e.lineage_issue || null, output: e.output_lineage_issue || null }))) },
+    lineage_integrity: { issues: lineageIssues },
     legacy_uninstrumented: legacyUninstrumented,
     events,
   };
