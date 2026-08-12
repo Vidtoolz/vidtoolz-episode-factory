@@ -247,25 +247,30 @@ async function upgradeCommands(args, id, sessionId) {
 // Current cheap metadata (bytes+mtime) per required filename on a host —
 // via the ComfyUI models API when available, via a read-only remote stat
 // probe otherwise (explicit inventory commands only; never hashes).
-async function currentMetadataForHost(host) {
-  const plan = gateway.environment.inventoryPlan(host);
+async function currentMetadataForHost(host, options = {}) {
+  const plan = gateway.environment.inventoryPlan(host, options);
   const meta = {};
   const endpoint = gateway.preflight.endpointFor(plan.entries[0]);
   const folders = [...new Set(plan.models.flatMap((m) => m.folders))];
-  let anyHttp = false;
   for (const folder of folders) {
     let entries = null;
-    try { entries = await gateway.client.getModelFolderEntries(endpoint, folder); } catch (_) { entries = null; }
+    try {
+      const getEntries = options.getModelFolderEntries || gateway.client.getModelFolderEntries;
+      entries = await getEntries(endpoint, folder);
+    } catch (_) { entries = null; }
     if (!entries) continue;
-    anyHttp = true;
     for (const e of entries) { if (!meta[e.name]) meta[e.name] = { bytes: e.bytes, mtime: e.mtime, source: 'comfyui_models_api' }; }
   }
-  if (!anyHttp) {
-    // models endpoint unavailable — stable read-only fallback: stat on the host
+  const missingMetadata = plan.models.some((model) => !meta[model.filename]);
+  if (missingMetadata) {
+    // The experimental models API may be absent OR only expose some folders.
+    // Fill only missing rows from a stable read-only filesystem stat probe.
     const result = plan.config.transport === 'local'
-      ? await gateway.environment.localInventoryExecutor(plan, { hashImpl: async () => null })
-      : gateway.environment.sshPowershellExecutor(plan, { statOnly: true });
-    for (const f of result.files) meta[f.filename] = { bytes: f.bytes, mtime: f.mtime, source: 'filesystem_stat_probe' };
+      ? await (options.localInventoryExecutor || gateway.environment.localInventoryExecutor)(plan, { ...options, hashImpl: async () => null })
+      : (options.sshPowershellExecutor || gateway.environment.sshPowershellExecutor)(plan, { ...options, statOnly: true });
+    for (const f of result.files) {
+      if (!meta[f.filename]) meta[f.filename] = { bytes: f.bytes, mtime: f.mtime, source: 'filesystem_stat_probe' };
+    }
   }
   return meta;
 }
@@ -456,4 +461,8 @@ async function main() {
   process.exit(gate.ok && canonical.ok && bindings.ok ? 0 : 1);
 }
 
-main().catch((err) => { console.error(`[comfyui-workflow-check] ${err.message}`); process.exit(1); });
+if (require.main === module) {
+  main().catch((err) => { console.error(`[comfyui-workflow-check] ${err.message}`); process.exit(1); });
+}
+
+module.exports = { currentMetadataForHost };

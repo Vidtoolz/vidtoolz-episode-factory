@@ -1207,6 +1207,26 @@ test("comfyui-environment remote inventory includes the custom-node executable s
     "the inventory must execute the bounded custom-node walk, not emit an empty placeholder");
 });
 
+test("comfyui-environment metadata: a partial models API response falls back to stat for missing files", async () => {
+  const fx = environmentFixture();
+  const cli = require("../scripts/comfyui-workflow-check.js");
+  const plan = gateway.environment.inventoryPlan("env-test", fx.options);
+  const first = plan.models[0].filename;
+  let fallbackCalls = 0;
+  const meta = await cli.currentMetadataForHost("env-test", {
+    ...fx.options,
+    getModelFolderEntries: async () => [{ name: first, bytes: 1, mtime: "2026-08-12T00:00:00.000Z" }],
+    localInventoryExecutor: async (p) => {
+      fallbackCalls += 1;
+      return { files: p.models.map((m) => ({ filename: m.filename, bytes: 2, mtime: "2026-08-12T00:00:00.000Z" })) };
+    },
+  });
+  assert.equal(fallbackCalls, 1, "one bounded stat fallback fills the partial API response");
+  assert.equal(Object.keys(meta).length, plan.models.length, "every required model receives current metadata");
+  assert.equal(meta[first].source, "comfyui_models_api", "API authority wins where it is available");
+  assert.ok(Object.entries(meta).filter(([name]) => name !== first).every(([, row]) => row.source === "filesystem_stat_probe"));
+});
+
 test("comfyui-environment strong identity: SHA authority is conditional on matching cheap metadata", async () => {
   const fx = environmentFixture();
   await gateway.environment.runStrongInventory("env-test", fx.options);
