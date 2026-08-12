@@ -394,16 +394,63 @@ test("video-review save: writes video-review.json, merges, and tallies", async (
   try {
     await withEnv(fx, async () => {
       await listen(server);
+      const read = await requestJson(server, `${packageEngineServer.PROJECT_VIDEO_REVIEW_API}?id=${fx.packageId}`);
+      const targets = new Map(read.body.data.clips.map((c) => [c.prompt_index, c.review_target]));
       const res = await requestJson(server, packageEngineServer.PROJECT_VIDEO_REVIEW_SAVE_API, {
         method: "POST", headers: localWriteHeaders(),
-        body: { id: fx.packageId, reviews: [{ prompt_index: 2, decision: "keep", notes: "usable" }, { prompt_index: 9, decision: "reject" }] },
+        body: {
+          id: fx.packageId,
+          video_variant: read.body.data.video_variant,
+          reviews: [
+            { prompt_index: 2, decision: "keep", notes: "usable", review_target: targets.get(2) },
+            { prompt_index: 9, decision: "reject", review_target: targets.get(9) },
+          ],
+        },
       });
       assert.equal(res.statusCode, 200);
       assert.equal(res.body.data.review_count, 2);
       assert.equal(res.body.data.counts.keep, 1);
       const saved = JSON.parse(fs.readFileSync(path.join(fx.pkg, "video-review.json"), "utf8"));
       assert.equal(saved.reviews.length, 2);
-      assert.equal(saved.reviews.find((r) => r.prompt_index === 2).decision, "keep");
+      const kept = saved.reviews.find((r) => r.prompt_index === 2);
+      assert.equal(kept.decision, "keep");
+      assert.equal(kept.reviewed_video_sha256, targets.get(2).video_sha256);
+      assert.equal(kept.reviewed_video_path, "videos/mp4/002.mp4");
+      assert.equal(kept.video_variant, "mp4");
+      assert.match(kept.reviewed_at, /^\d{4}-\d{2}-\d{2}T/);
+
+      fs.writeFileSync(path.join(fx.pkg, "videos", "mp4", "002.mp4"), "later replacement");
+      const afterReplacement = await requestJson(server, `${packageEngineServer.PROJECT_VIDEO_REVIEW_API}?id=${fx.packageId}`);
+      const stale = afterReplacement.body.data.clips.find((c) => c.prompt_index === 2);
+      assert.equal(stale.review.identity_status, "stale");
+      assert.equal(stale.review.historical_decision, "keep");
+      assert.equal(stale.review.decision, "unreviewed", "a decision for old bytes must not apply to replacement bytes");
+    });
+  } finally { await close(server); fs.rmSync(fx.root, { recursive: true, force: true }); }
+});
+
+test("video-review save: binds decisions to the displayed bytes and rejects a stale target before mutation", async () => {
+  const fx = createPackage({ indices: [2], realFirst: false });
+  const server = packageEngineServer.createServer();
+  try {
+    await withEnv(fx, async () => {
+      await listen(server);
+      const before = await requestJson(server, `${packageEngineServer.PROJECT_VIDEO_REVIEW_API}?id=${fx.packageId}`);
+      const displayed = before.body.data.clips[0];
+      assert.match(displayed.review_target && displayed.review_target.video_sha256, /^[a-f0-9]{64}$/);
+
+      fs.writeFileSync(path.join(fx.pkg, displayed.mp4_path), "replacement bytes");
+      const stale = await requestJson(server, packageEngineServer.PROJECT_VIDEO_REVIEW_SAVE_API, {
+        method: "POST", headers: localWriteHeaders(),
+        body: {
+          id: fx.packageId,
+          video_variant: before.body.data.video_variant,
+          reviews: [{ prompt_index: 2, decision: "keep", notes: "judged old bytes", review_target: displayed.review_target }],
+        },
+      });
+      assert.equal(stale.statusCode, 409);
+      assert.match(stale.body.error, /REVIEW_TARGET_STALE/);
+      assert.equal(fs.existsSync(path.join(fx.pkg, "video-review.json")), false, "stale rejection must happen before mutation");
     });
   } finally { await close(server); fs.rmSync(fx.root, { recursive: true, force: true }); }
 });
@@ -418,6 +465,12 @@ test("video-review save: rejects invalid decision (400), traversal (400), and mi
         method: "POST", headers: localWriteHeaders(), body: { id: fx.packageId, reviews: [{ prompt_index: 2, decision: "delete" }] },
       });
       assert.equal(badDecision.statusCode, 400);
+      const unbound = await requestJson(server, packageEngineServer.PROJECT_VIDEO_REVIEW_SAVE_API, {
+        method: "POST", headers: localWriteHeaders(), body: { id: fx.packageId, reviews: [{ prompt_index: 2, decision: "keep" }] },
+      });
+      assert.equal(unbound.statusCode, 400);
+      assert.match(unbound.body.error, /review_target is required/);
+      assert.equal(fs.existsSync(path.join(fx.pkg, "video-review.json")), false);
       const traversal = await requestJson(server, packageEngineServer.PROJECT_VIDEO_REVIEW_SAVE_API, {
         method: "POST", headers: localWriteHeaders(), body: { id: "../escape", reviews: [{ prompt_index: 2, decision: "keep" }] },
       });
@@ -447,6 +500,8 @@ test("video-review page: project-video-review.html has players, decisions, links
   assert.match(html, /data-decision="keep"/);
   assert.match(html, /data-decision="flag"/);
   assert.match(html, /data-decision="reject"/);
+  assert.match(html, /review_target/);
+  assert.match(html, /REVIEW_TARGET_STALE/);
   assert.match(html, /project-workspace\.html\?id=/);
   assert.match(html, /project-focus\.html\?id=/);
   assert.doesNotMatch(html, /8099/); // no legacy review-view dependency

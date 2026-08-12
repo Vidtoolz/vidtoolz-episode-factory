@@ -98,7 +98,7 @@ function usability(counts) {
 
 // Validate + normalize operator-submitted review rows for the save endpoint.
 // Throws 400 (nothing written) on a malformed batch or an unknown decision.
-function normalizeReviewSave(reviews) {
+function normalizeReviewSave(reviews, options = {}) {
   if (!Array.isArray(reviews)) {
     const e = new Error('reviews must be an array.'); e.statusCode = 400; throw e;
   }
@@ -115,7 +115,31 @@ function normalizeReviewSave(reviews) {
     }
     if (seen.has(idx)) { const e = new Error(`Duplicate prompt_index ${idx} in reviews.`); e.statusCode = 400; throw e; }
     seen.add(idx);
-    out.push({ prompt_index: idx, decision, notes: String(r.notes == null ? '' : r.notes).slice(0, 2000) });
+    let reviewTarget = null;
+    if (r.review_target != null) {
+      const t = r.review_target;
+      if (!t || typeof t !== 'object' || Array.isArray(t)
+          || !/^[a-f0-9]{64}$/i.test(String(t.video_sha256 || ''))
+          || !String(t.video_variant || '').trim()
+          || !String(t.mp4_path || '').trim()) {
+        const e = new Error(`review_target for prompt_index ${idx} must identify the displayed video hash, variant, and path.`);
+        e.statusCode = 400; throw e;
+      }
+      reviewTarget = {
+        video_sha256: String(t.video_sha256).toLowerCase(),
+        video_variant: String(t.video_variant).trim(),
+        mp4_path: String(t.mp4_path).trim(),
+      };
+    } else if (options.requireTarget) {
+      const e = new Error(`review_target is required for prompt_index ${idx}. Reload the review page and try again.`);
+      e.statusCode = 400; throw e;
+    }
+    out.push({
+      prompt_index: idx,
+      decision,
+      notes: String(r.notes == null ? '' : r.notes).slice(0, 2000),
+      ...(reviewTarget ? { review_target: reviewTarget } : {}),
+    });
   }
   return out;
 }
@@ -125,7 +149,15 @@ function mergeReviews(existing, incoming) {
   const byIndex = new Map();
   (Array.isArray(existing) ? existing : []).forEach((r) => {
     const i = Number(r && r.prompt_index);
-    if (Number.isInteger(i)) byIndex.set(i, { prompt_index: i, decision: normalizeDecision(r.decision), notes: String(r.notes || '') });
+    if (Number.isInteger(i)) byIndex.set(i, {
+      prompt_index: i,
+      decision: normalizeDecision(r.decision),
+      notes: String(r.notes || ''),
+      ...(r.reviewed_video_sha256 ? { reviewed_video_sha256: String(r.reviewed_video_sha256) } : {}),
+      ...(r.reviewed_video_path ? { reviewed_video_path: String(r.reviewed_video_path) } : {}),
+      ...(r.video_variant ? { video_variant: String(r.video_variant) } : {}),
+      ...(r.reviewed_at ? { reviewed_at: String(r.reviewed_at) } : {}),
+    });
   });
   for (const r of incoming) byIndex.set(r.prompt_index, r);
   return Array.from(byIndex.values()).sort((a, b) => a.prompt_index - b.prompt_index);
@@ -133,7 +165,7 @@ function mergeReviews(existing, incoming) {
 
 function buildReviewFile(reviews, ctx = {}) {
   return {
-    version: 1,
+    version: 2,
     kind: 'project-video-review',
     project_id: ctx.projectId || '',
     updated_at: ctx.nowIso || new Date().toISOString(),

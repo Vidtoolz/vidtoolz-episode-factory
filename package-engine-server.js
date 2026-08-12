@@ -7132,6 +7132,17 @@ function readProjectVideoReviewFile(packageDir) {
   return j && Array.isArray(j.reviews) ? j.reviews : [];
 }
 
+function projectVideoReviewTarget(mp4Abs, mp4Rel, videoVariant) {
+  if (!fs.existsSync(mp4Abs)) return null;
+  const videoSha256 = superFocusMedia.hashFileSha256(mp4Abs);
+  if (!videoSha256) return null;
+  return {
+    video_sha256: videoSha256,
+    video_variant: videoVariant,
+    mp4_path: mp4Rel,
+  };
+}
+
 // Assemble the project's clips: one per selected image (prompt_index), paired with
 // its source image, I2V prompt, ffprobe validation, and any saved review decision.
 function readProjectVideoReview(packageId, options = {}) {
@@ -7162,6 +7173,16 @@ function readProjectVideoReview(packageId, options = {}) {
     const srcRel = String(s.selected_path || s.path || '');
     const vp = vpByIndex.get(promptIndex) || null;
     const rev = reviewByIndex.get(promptIndex) || null;
+    const reviewTarget = projectVideoReviewTarget(mp4Abs, mp4Rel, videoVariant);
+    const reviewIdentity = !rev ? 'not_reviewed'
+      : !rev.reviewed_video_sha256 ? 'legacy_unbound'
+      : (reviewTarget
+          && rev.reviewed_video_sha256 === reviewTarget.video_sha256
+          && rev.reviewed_video_path === reviewTarget.mp4_path
+          && rev.video_variant === reviewTarget.video_variant) ? 'current' : 'stale';
+    const effectiveDecision = reviewIdentity === 'stale'
+      ? 'unreviewed'
+      : (rev ? projectVideoReview.normalizeDecision(rev.decision) : 'unreviewed');
     return {
       prompt_index: promptIndex,
       label: String(s.label || labelFromSelectedPath(srcRel) || `clip-${promptIndex}`),
@@ -7173,9 +7194,13 @@ function readProjectVideoReview(packageId, options = {}) {
       source_image_exists: srcRel ? fs.existsSync(path.join(packageDir, srcRel)) : false,
       i2v_prompt: vp ? String(vp.prompt || vp.i2v_prompt || '') : '',
       validation,
+      review_target: reviewTarget,
       review: {
-        decision: rev ? projectVideoReview.normalizeDecision(rev.decision) : 'unreviewed',
+        decision: effectiveDecision,
         notes: rev ? String(rev.notes || '') : '',
+        identity_status: reviewIdentity,
+        historical_decision: reviewIdentity === 'stale' ? projectVideoReview.normalizeDecision(rev.decision) : null,
+        reviewed_video_sha256: rev ? String(rev.reviewed_video_sha256 || '') : '',
       },
     };
   });
@@ -7516,9 +7541,37 @@ function readProjectMediaKit(packageId, options = {}) {
 function saveProjectVideoReview(payload = {}, options = {}) {
   const opt = { root: options.root || ROOT };
   const { packageId: id, packageDir } = resolveAigenPackageDir(payload.id || payload.package_id || payload.package || '', opt);
-  const incoming = projectVideoReview.normalizeReviewSave(payload.reviews);
-  const merged = projectVideoReview.mergeReviews(readProjectVideoReviewFile(packageDir), incoming);
   const nowIso = new Date().toISOString();
+  const videoVariant = payload.video_variant
+    ? assertValidVideoVariant(payload.video_variant)
+    : packageBestStagedWanStatus(packageDir).videoVariant;
+  const normalized = projectVideoReview.normalizeReviewSave(payload.reviews, { requireTarget: true });
+  // Validate the entire batch against the exact bytes shown to the operator
+  // before writing anything. A slot name is not a version identity: another
+  // generation may replace the file while the review page is open.
+  const incoming = normalized.map((row) => {
+    const mp4Rel = projectVideoReview.mp4RelPath(row.prompt_index, videoVariant);
+    const current = projectVideoReviewTarget(path.join(packageDir, mp4Rel), mp4Rel, videoVariant);
+    const shown = row.review_target;
+    if (!current
+        || shown.video_sha256 !== current.video_sha256
+        || shown.video_variant !== current.video_variant
+        || shown.mp4_path !== current.mp4_path) {
+      const e = new Error(`REVIEW_TARGET_STALE: clip #${row.prompt_index} changed after it was displayed. Reload the review page before recording a decision.`);
+      e.statusCode = 409;
+      throw e;
+    }
+    return {
+      prompt_index: row.prompt_index,
+      decision: row.decision,
+      notes: row.notes,
+      reviewed_video_sha256: current.video_sha256,
+      reviewed_video_path: current.mp4_path,
+      video_variant: current.video_variant,
+      reviewed_at: nowIso,
+    };
+  });
+  const merged = projectVideoReview.mergeReviews(readProjectVideoReviewFile(packageDir), incoming);
   const fileObj = projectVideoReview.buildReviewFile(merged, { projectId: id, nowIso });
   const outPath = path.join(packageDir, 'video-review.json');
   const tmpPath = `${outPath}.tmp`;

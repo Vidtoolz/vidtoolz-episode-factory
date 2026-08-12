@@ -40,7 +40,7 @@
     <summary>Page Guide — What is this?</summary>
     <div class="page-guide-body">
       <div class="page-guide-row"><span class="page-guide-label">What</span><span class="page-guide-text">Cockpit-native review of this project's generated PRESTO Wan2.2 clips — each clip with its source image, I2V prompt, and spec validation. Mark Keep / Flag / Reject.</span></div>
-      <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Review clips, Save decisions, then Prepare Resolve handoff. Decisions are recorded in video-review.json.</span></div>
+      <div class="page-guide-row"><span class="page-guide-label">Next</span><span class="page-guide-text">Review clips, Save decisions, then Prepare Resolve handoff. Each decision is bound to the exact displayed video hash; if a clip changes while this page is open, saving is refused until you reload.</span></div>
       <div class="page-guide-row"><span class="page-guide-label">Elements</span><span class="page-guide-text">One card per clip: video player, source image, prompt, validation badges, decision buttons, notes.</span></div>
     </div>
   </details>
@@ -86,6 +86,7 @@
     const projectId = params.get("id") || params.get("package_id") || params.get("package") || "";
 
     let clips = [];
+    let videoVariant = "";
     let projectStage = "";
     let dirty = false;
     let localWriteNonce = "";
@@ -153,6 +154,15 @@
             ? `<span class="badge warn">spec unknown</span>`
             : `<span class="badge warn">missing clip</span>`);
         const warns = (v.warnings || []).length ? `<div class="warnmsg vr-meta">⚠ ${esc((v.warnings || []).join(" "))}</div>` : "";
+        const target = clip.review_target || null;
+        const identity = clip.review && clip.review.identity_status;
+        const identityBadge = target
+          ? `<span class="badge ok" title="${esc(target.video_sha256)}">version ${esc(target.video_sha256.slice(0, 10))}…</span>`
+          : `<span class="badge warn">no immutable video identity</span>`;
+        const staleWarning = identity === "stale"
+          ? `<div class="warnmsg vr-meta">⚠ A saved ${esc(clip.review.historical_decision || "review")} decision belongs to older video bytes. Review this version again.</div>`
+          : identity === "legacy_unbound"
+            ? `<div class="warnmsg vr-meta">⚠ Legacy review decision has no immutable video binding.</div>` : "";
         const card = document.createElement("div");
         card.className = "vr-card";
         const videoCell = clip.mp4_url
@@ -166,7 +176,7 @@
           `<div>${srcCell}</div>` +
           `<div>` +
             `<div class="vr-meta"><b>#${clip.prompt_index}</b> · ${esc(clip.label)} · <span class="vr-meta">${esc(clip.mp4_path)}</span></div>` +
-            `<div style="margin:4px 0;">${specBadges}</div>${warns}` +
+            `<div style="margin:4px 0;">${specBadges}${identityBadge}</div>${warns}${staleWarning}` +
             `<div class="vr-prompt"><b>I2V:</b> ${esc(clip.i2v_prompt) || "(none)"}</div>` +
             `<div class="decisions">${decisionButtons(clip)}</div>` +
             `<textarea placeholder="Notes (optional)…">${esc(clip.review.notes || "")}</textarea>` +
@@ -177,15 +187,18 @@
           `</div>`;
         // wire decision buttons
         card.querySelectorAll(".decisions button").forEach((btn) => {
+          btn.disabled = !target;
+          if (!target) btn.title = "This clip has no immutable review target. Reload after the clip is available.";
           btn.addEventListener("click", () => {
             const d = btn.getAttribute("data-decision");
             clip.review.decision = (clip.review.decision === d) ? "unreviewed" : d;
             card.querySelectorAll(".decisions button").forEach((b) => b.classList.toggle("active", b.getAttribute("data-decision") === clip.review.decision));
-            setDirty(true); recompute();
+            clip._dirty = true; setDirty(true); recompute();
           });
         });
         const ta = card.querySelector("textarea");
-        ta.addEventListener("input", () => { clip.review.notes = ta.value; setDirty(true); });
+        ta.disabled = !target;
+        ta.addEventListener("input", () => { clip.review.notes = ta.value; clip._dirty = true; setDirty(true); });
         card.querySelector('[data-act="copy-mp4"]').addEventListener("click", (e) => { copyText(clip.mp4_path || ""); flash(e.target); });
         card.querySelector('[data-act="copy-prompt"]').addEventListener("click", (e) => { copyText(clip.i2v_prompt || ""); flash(e.target); });
         root.appendChild(card);
@@ -212,13 +225,14 @@
       }
       const p = data.project || {};
       projectStage = String(p.stage || "");
+      videoVariant = String(data.video_variant || "");
       setText("title", `Video Review — ${p.title || projectId}`);
       const ex = data.expected || {};
       const lane = data.video_variant
         ? ` · lane videos/${data.video_variant}/ (${ex.width || "?"}x${ex.height || "?"} @ ${ex.fps || "?"}fps)`
         : "";
       setText("meta", `${p.id} · stage ${p.stage} · status ${p.status} · ${data.counts.clips} clip(s)${lane}`);
-      clips = (data.clips || []).map((c) => Object.assign({}, c, { review: Object.assign({ decision: "unreviewed", notes: "" }, c.review || {}) }));
+      clips = (data.clips || []).map((c) => Object.assign({}, c, { _dirty: false, review: Object.assign({ decision: "unreviewed", notes: "" }, c.review || {}) }));
       setHtml("handoff-note", data.handoff_consumes_review
         ? "Rejected clips will be excluded from the Resolve handoff."
         : "Note: review decisions are recorded, but the Resolve handoff still includes all verified clips until handoff filtering is implemented.");
@@ -252,11 +266,23 @@
         if (!localWriteNonce) await fetchNonce();
         if (!localWriteNonce) { setText("save-status", "missing write nonce — reload the page."); return; }
         const headers = { "Content-Type": "application/json" }; headers[nonceHeader] = localWriteNonce;
-        const reviews = clips.map((c) => ({ prompt_index: c.prompt_index, decision: c.review.decision || "unreviewed", notes: c.review.notes || "" }));
-        const r = await fetch(SAVE_API, { method: "POST", headers, body: JSON.stringify({ id: projectId, reviews, localWriteNonce }) });
+        const reviews = clips.filter((c) => c._dirty).map((c) => ({
+          prompt_index: c.prompt_index,
+          decision: c.review.decision || "unreviewed",
+          notes: c.review.notes || "",
+          review_target: c.review_target,
+        }));
+        const r = await fetch(SAVE_API, { method: "POST", headers, body: JSON.stringify({ id: projectId, video_variant: videoVariant, reviews, localWriteNonce }) });
         const data = await r.json();
-        if (!r.ok) { setText("save-status", "Error: " + ((data && data.error) || ("HTTP " + r.status))); return; }
+        if (!r.ok) {
+          const message = (data && data.error) || ("HTTP " + r.status);
+          setText("save-status", r.status === 409 && /REVIEW_TARGET_STALE/.test(message)
+            ? "Clip changed while this page was open — reload before saving the decision."
+            : "Error: " + message);
+          return;
+        }
         setText("save-status", "Saved review decisions.");
+        clips.forEach((c) => { c._dirty = false; });
         setDirty(false);
       } catch (e) { setText("save-status", "Error: " + (e.message || e)); }
     }
