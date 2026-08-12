@@ -7214,8 +7214,8 @@ function readProjectVideoReview(packageId, options = {}) {
     clips,
     counts,
     usability: projectVideoReview.usability(counts),
-    // The handoff builder does not yet filter on these decisions.
-    handoff_consumes_review: false,
+    handoff_consumes_review: true,
+    handoff_review_policy: projectVideoReview.HANDOFF_REVIEW_POLICY,
     reviews_path: 'video-review.json',
   };
 }
@@ -8509,8 +8509,67 @@ function stampManifestVariant(packageDir, info) {
   manifest.included_indexes = info.included_indexes;
   manifest.excluded_indexes = info.excluded_indexes;
   manifest.missing_indexes = info.missing_indexes;
+  manifest.video_review_policy = info.video_review_policy;
+  manifest.video_review_eligibility = info.video_review_eligibility;
+  manifest.review_excluded = info.review_excluded;
+  const eligibilityByIndex = new Map(info.video_review_eligibility.map((row) => [row.prompt_index, row]));
+  if (Array.isArray(manifest.clips)) {
+    manifest.clips.forEach((clip) => {
+      const review = eligibilityByIndex.get(Number(clip.prompt_index == null ? clip.index : clip.prompt_index));
+      if (!review) return;
+      clip.video_sha256 = review.video_sha256;
+      clip.video_review = {
+        policy: review.policy,
+        status: review.review_status,
+        current: review.review_current,
+        reason: review.reason,
+        reviewed_at: review.reviewed_at || null,
+        reviewed_sha256: review.review_current ? review.video_sha256 : null,
+        handoff_sha256: review.video_sha256,
+      };
+    });
+  }
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   return true;
+}
+
+function resolveHandoffVideoReviews(packageDir, variant, staged) {
+  const reviewPath = path.join(packageDir, 'video-review.json');
+  const reviewBytes = fs.existsSync(reviewPath) ? fs.readFileSync(reviewPath) : null;
+  let parsed = null;
+  try { parsed = reviewBytes ? JSON.parse(reviewBytes.toString('utf8')) : null; } catch (_) { parsed = null; }
+  const rows = parsed && Array.isArray(parsed.reviews) ? parsed.reviews : [];
+  const reviews = new Map(rows.map((row) => [Number(row.prompt_index), row]));
+  const eligibility = staged.selections.map((clip) => {
+    const target = clip.mp4_exists
+      ? projectVideoReviewTarget(path.join(packageDir, clip.mp4_rel), clip.mp4_rel, variant)
+      : null;
+    const eligibility = projectVideoReview.resolveVideoHandoffEligibility(target || {}, reviews.get(clip.prompt_index));
+    return {
+      prompt_index: clip.prompt_index,
+      video_sha256: target ? target.video_sha256 : null,
+      video_variant: variant,
+      mp4_path: clip.mp4_rel,
+      ...eligibility,
+    };
+  });
+  return {
+    eligibility,
+    review_file_sha256: reviewBytes ? crypto.createHash('sha256').update(reviewBytes).digest('hex') : null,
+  };
+}
+
+function restoreResolveHandoffSnapshot(resolveDir, snapshot) {
+  fs.mkdirSync(resolveDir, { recursive: true });
+  for (const filename of RESOLVE_HANDOFF_FILES) {
+    const target = path.join(resolveDir, filename);
+    const previous = snapshot.get(filename);
+    if (previous == null) {
+      if (fs.existsSync(target)) fs.unlinkSync(target);
+    } else {
+      fs.writeFileSync(target, previous);
+    }
+  }
 }
 
 function runResolveAssemblyCreate(packageId, options = {}) {
@@ -8518,11 +8577,16 @@ function runResolveAssemblyCreate(packageId, options = {}) {
   // traversal (e.g. "../../etc") is rejected up front with a 400.
   const variant = assertValidVideoVariant(options.videoVariant);
   const dryRun = Boolean(options.dryRun);
-  const excludeIndexes = normalizeExcludeIndexes(options.excludeIndexes);
+  const requestedExcludeIndexes = normalizeExcludeIndexes(options.excludeIndexes);
   const { packageId: id, packageDir, paths } = resolveAigenPackageDir(packageId, options);
 
   const videoDir = path.posix.join('videos', variant);
   const staged = packageStagedWanStatus(packageDir, variant);
+  const reviewSnapshot = resolveHandoffVideoReviews(packageDir, variant, staged);
+  const reviewEligibility = reviewSnapshot.eligibility;
+  const reviewExcluded = reviewEligibility.filter((row) => !row.eligible && ['FLAG_CURRENT', 'REJECT_CURRENT'].includes(row.reason));
+  const reviewExcludedIndexes = reviewExcluded.map((row) => row.prompt_index);
+  const excludeIndexes = [...new Set([...requestedExcludeIndexes, ...reviewExcludedIndexes])].sort((a, b) => a - b);
   // Inclusion/exclusion mirrors the NAS assembler exactly: an explicitly
   // excluded index is excluded whether or not its clip exists in the variant
   // folder (excluded > staged), so the manifest fields Node stamps can never
@@ -8549,9 +8613,15 @@ function runResolveAssemblyCreate(packageId, options = {}) {
       video_dir: videoDir,
       selection_count: staged.selectionCount,
       included_count: includedClips.length,
+      included_indexes: includedIndexes,
       included_clips: includedClips,
       missing_clips: missingClips,
       excluded_clips: excludedClips,
+      explicitly_excluded_indexes: requestedExcludeIndexes,
+      review_excluded_indexes: reviewExcludedIndexes,
+      review_excluded: reviewExcluded,
+      review_eligibility: reviewEligibility,
+      video_review_policy: projectVideoReview.HANDOFF_REVIEW_POLICY,
       authority_ready: videoAuthority.ok,
       authority: videoAuthority,
       would_write: RESOLVE_HANDOFF_FILES,
@@ -8588,6 +8658,19 @@ function runResolveAssemblyCreate(packageId, options = {}) {
       exit_code: 1,
     });
   }
+  if (includedClips.length === 0) {
+    return Promise.resolve({
+      ok: false,
+      package_id: id,
+      video_variant: variant,
+      video_dir: videoDir,
+      error: 'Resolve assembly blocked: review/exclusion policy leaves no eligible clips. Record Keep for an exact current video or adjust explicit exclusions.',
+      excluded_indexes: excludedIndexes,
+      review_excluded_indexes: reviewExcludedIndexes,
+      review_excluded: reviewExcluded,
+      exit_code: 1,
+    });
+  }
   // All physical clips exist; now require proof that each exact slot was
   // rendered from the current selected-image and I2V authority.  This is still
   // before Python is spawned or any handoff file is written.
@@ -8595,6 +8678,9 @@ function runResolveAssemblyCreate(packageId, options = {}) {
     variant,
     indexes: includedIndexes,
   });
+  const includedByteAuthority = new Map(reviewEligibility
+    .filter((row) => includedIndexes.includes(row.prompt_index))
+    .map((row) => [row.prompt_index, row.video_sha256]));
   if (!fs.existsSync(paths.topicToPackageScript)) {
     return Promise.resolve({
       ok: false,
@@ -8622,6 +8708,11 @@ function runResolveAssemblyCreate(packageId, options = {}) {
   if (excludedIndexes.length > 0) {
     args.push('--exclude', excludedIndexes.join(','));
   }
+  const resolveDir = path.join(packageDir, 'resolve-handoff');
+  const handoffSnapshot = new Map(RESOLVE_HANDOFF_FILES.map((filename) => {
+    const target = path.join(resolveDir, filename);
+    return [filename, fs.existsSync(target) ? fs.readFileSync(target) : null];
+  }));
   return new Promise((resolve) => {
     const child = childProcess.spawn(paths.pythonBin, args, {
       cwd: paths.aigenRoot,
@@ -8644,7 +8735,43 @@ function runResolveAssemblyCreate(packageId, options = {}) {
     });
     child.on('close', (code) => {
       if (code === 0) {
-        const resolveDir = path.join(packageDir, 'resolve-handoff');
+        const currentReviewPath = path.join(packageDir, 'video-review.json');
+        const currentReviewBytes = fs.existsSync(currentReviewPath) ? fs.readFileSync(currentReviewPath) : null;
+        const currentReviewSha = currentReviewBytes ? crypto.createHash('sha256').update(currentReviewBytes).digest('hex') : null;
+        if (currentReviewSha !== reviewSnapshot.review_file_sha256) {
+          restoreResolveHandoffSnapshot(resolveDir, handoffSnapshot);
+          resolve({
+            ok: false,
+            package_id: id,
+            video_variant: variant,
+            error: 'Resolve assembly blocked: video review state changed while the handoff was being built. No new handoff was committed; retry from current review authority.',
+            code: 'RESOLVE_VIDEO_REVIEW_CHANGED',
+            statusCode: 409,
+            exit_code: 409,
+            stdout,
+            stderr,
+          });
+          return;
+        }
+        const changed = includedClips.find((clip) => {
+          const current = projectVideoReviewTarget(path.join(packageDir, clip.mp4_rel), clip.mp4_rel, variant);
+          return !current || current.video_sha256 !== includedByteAuthority.get(clip.prompt_index);
+        });
+        if (changed) {
+          restoreResolveHandoffSnapshot(resolveDir, handoffSnapshot);
+          resolve({
+            ok: false,
+            package_id: id,
+            video_variant: variant,
+            error: `Resolve assembly blocked: video slot ${changed.prompt_index} changed while the handoff was being built. No new handoff was committed; retry from current authority.`,
+            code: 'RESOLVE_VIDEO_BYTES_CHANGED',
+            statusCode: 409,
+            exit_code: 409,
+            stdout,
+            stderr,
+          });
+          return;
+        }
         const existingFiles = RESOLVE_HANDOFF_FILES.filter((filename) => fs.existsSync(path.join(resolveDir, filename)));
         // The re-stamp is belt-and-braces: the assembler already writes the
         // variant fields itself. If the re-stamp fails AFTER the handoff files
@@ -8661,6 +8788,9 @@ function runResolveAssemblyCreate(packageId, options = {}) {
             included_indexes: includedIndexes,
             excluded_indexes: excludedIndexes,
             missing_indexes: [], // a real run only reaches here with no un-excluded missing clips
+            video_review_policy: projectVideoReview.HANDOFF_REVIEW_POLICY,
+            video_review_eligibility: reviewEligibility.filter((row) => includedIndexes.includes(row.prompt_index)),
+            review_excluded: reviewExcluded,
           });
         } catch (error) {
           stampWarning = `Handoff files were written, but re-stamping media-manifest.json failed: ${error.message}. `
@@ -8686,6 +8816,11 @@ function runResolveAssemblyCreate(packageId, options = {}) {
           existing_files: existingFiles,
           included_indexes: includedIndexes,
           excluded_indexes: excludedIndexes,
+          explicitly_excluded_indexes: requestedExcludeIndexes,
+          review_excluded_indexes: reviewExcludedIndexes,
+          review_excluded: reviewExcluded,
+          review_eligibility: reviewEligibility,
+          video_review_policy: projectVideoReview.HANDOFF_REVIEW_POLICY,
           manifest_variant_recorded: manifestVariantRecorded,
           manifest_authority_recorded: manifestAuthorityRecorded,
           warning: stampWarning,

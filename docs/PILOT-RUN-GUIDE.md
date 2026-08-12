@@ -158,8 +158,13 @@ The proven lane is `image-to-video/production/wan22-81f/` ("verified Wan2.2 81-f
 The cockpit generates a **handoff package**; building the timeline is manual (next state after `WAN_VIDEOS_STAGED` is literally `resolve-assembly-handoff` → `manual Resolve edit`).
 
 ### 4a. Generate the handoff
-- [ ] CLI: `python3 scripts/topic-to-package.py resolve-assembly-handoff --package $PKG`
-      or cockpit `production-pipeline.html` → **"Create Resolve Assembly"** (`POST /api/aigen/resolve-assembly/create`).
+- [ ] CLI: from Episode Factory use
+      `node scripts/resolve-handoff.js --package $PKG`, or use cockpit
+      `production-pipeline.html` → **"Create Resolve Assembly"**
+      (`POST /api/aigen/resolve-assembly/create`). Both apply exact-byte video
+      review authority. The underlying AIGEN
+      `topic-to-package.py resolve-assembly-handoff` command applies the same
+      Keep/Flag/Reject and stale-review policy when invoked directly.
 - [ ] Outputs in `$PKG/resolve-handoff/` (already present for this package):
       - [ ] `assembly-plan.md` (clip list + usage)
       - [ ] `assembly-plan.csv` (order, prompt_index, paths, codec, dims, fps, frames, duration, size)

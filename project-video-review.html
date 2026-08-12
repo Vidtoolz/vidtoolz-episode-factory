@@ -127,7 +127,7 @@
       const handoffDone = projectStage === "resolve_handoff";
       const msg = !usable
         ? (handoffDone
-          ? "Handoff already built — Keep/Flag/Reject here is advisory for the edit and for future handoff rebuilds."
+          ? "Handoff already built — saved decisions control the next handoff rebuild for these exact video bytes."
           : "No clips kept yet — mark usable clips Keep before the Resolve handoff.")
         : !recommended ? `Only ${c.keep} clip(s) kept (recommended 5+). You can still proceed.`
         : `${c.keep} clips kept${handoffDone ? "." : " — ready for the Resolve handoff."}`;
@@ -234,8 +234,8 @@
       setText("meta", `${p.id} · stage ${p.stage} · status ${p.status} · ${data.counts.clips} clip(s)${lane}`);
       clips = (data.clips || []).map((c) => Object.assign({}, c, { _dirty: false, review: Object.assign({ decision: "unreviewed", notes: "" }, c.review || {}) }));
       setHtml("handoff-note", data.handoff_consumes_review
-        ? "Rejected clips will be excluded from the Resolve handoff."
-        : "Note: review decisions are recorded, but the Resolve handoff still includes all verified clips until handoff filtering is implemented.");
+        ? "Keep is Resolve-eligible. Flag and Reject are excluded. Unreviewed or stale-review clips remain eligible under the explicit legacy-compatible policy and are identified in the manifest."
+        : "Review decisions are not available to the Resolve handoff.");
       show("summary-panel", true); show("links-panel", true);
       const e = encodeURIComponent(projectId);
       setHref("link-workspace", `project-workspace.html?id=${e}`);

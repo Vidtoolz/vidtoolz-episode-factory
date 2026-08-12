@@ -8,6 +8,15 @@ The chain is:
 
 Controlled Cockpit writes record each transition. Replacing the final script, prompt set, selection, I2V prompt set, or clip invalidates downstream authority without deleting the old evidence. FLUX and PRESTO dispatches refuse stale or unbound inputs before service probing or process spawn. Resolve handoff creation refuses clips that are not bound to the current selection and I2V prompt authority.
 
+Resolve handoff also consumes `video-review.json` under policy
+`legacy-compatible-v1`. A current exact **Keep** is eligible; current exact
+**Flag** and **Reject** decisions are excluded. Missing, legacy-unbound, and stale
+decisions are treated as unreviewed and remain eligible for historical-project
+compatibility, with that status recorded in `media-manifest.json`. A review
+decision applies only when its path, variant, and SHA-256 equal the bytes handed
+off. The builder re-hashes included clips after assembly and restores the prior
+handoff on a concurrent byte change.
+
 ## Inspect a package
 
 Inspection is read-only:

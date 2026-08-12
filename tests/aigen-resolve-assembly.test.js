@@ -8,6 +8,7 @@ const {
   test,
 } = require("./_helpers.js");
 const aigenAuthority = require("../aigen-authority-chain.js");
+const crypto = require("crypto");
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -83,13 +84,17 @@ function createAigenFixture(options = {}) {
   fs.writeFileSync(
     topicToPackageScript,
     [
-      "import pathlib, sys",
+      "import json, pathlib, sys",
       "pkg = pathlib.Path(sys.argv[sys.argv.index('--package') + 1])",
       "out = pkg / 'resolve-handoff'",
       "out.mkdir(parents=True, exist_ok=True)",
       "(out / 'assembly-plan.md').write_text('# Assembly\\n', encoding='utf-8')",
       "(out / 'assembly-plan.csv').write_text('order,prompt_index\\n', encoding='utf-8')",
-      "(out / 'media-manifest.json').write_text('{\"items\":[]}\\n', encoding='utf-8')",
+      "excluded = set(int(x) for x in (sys.argv[sys.argv.index('--exclude') + 1].split(',') if '--exclude' in sys.argv else []) if x)",
+      "clips = [{'prompt_index': i} for i in (6, 8) if i not in excluded]",
+      "(out / 'media-manifest.json').write_text(json.dumps({'clips': clips}) + '\\n', encoding='utf-8')",
+      ...(options.mutateDuringAssembly ? ["(pkg / 'videos' / 'mp4' / '006.mp4').write_text('replacement bytes', encoding='utf-8')"] : []),
+      ...(options.mutateReviewDuringAssembly ? ["(pkg / 'video-review.json').write_text('{\\\"reviews\\\": []}', encoding='utf-8')"] : []),
     ].join("\n"),
     "utf8"
   );
@@ -298,6 +303,160 @@ function readManifest(fixture) {
     fs.readFileSync(path.join(fixture.packageDir, "resolve-handoff", "media-manifest.json"), "utf8")
   );
 }
+
+function sha256File(filePath) {
+  return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+}
+
+function writeCurrentVideoReview(fixture, rows, variant = "mp4") {
+  writeJson(path.join(fixture.packageDir, "video-review.json"), {
+    version: 2,
+    kind: "project-video-review",
+    project_id: fixture.packageId,
+    updated_at: "2026-08-12T12:00:00.000Z",
+    reviews: rows.map((row) => {
+      const mp4Path = `videos/${variant}/${String(row.prompt_index).padStart(3, "0")}.mp4`;
+      return {
+        prompt_index: row.prompt_index,
+        decision: row.decision,
+        notes: row.notes || "",
+        reviewed_video_sha256: sha256File(path.join(fixture.packageDir, mp4Path)),
+        reviewed_video_path: mp4Path,
+        video_variant: variant,
+        reviewed_at: "2026-08-12T12:00:00.000Z",
+      };
+    }),
+  });
+}
+
+test("resolve-assembly excludes an exact current video reviewed Reject", async () => {
+  const fixture = createAigenFixture();
+  writeCurrentVideoReview(fixture, [{ prompt_index: 6, decision: "reject" }]);
+  try {
+    await withAigenEnv(fixture, async () => {
+      const result = await packageEngineServer.runResolveAssemblyCreate(fixture.packageId, { dryRun: true });
+      assert.deepEqual(result.included_indexes, [8]);
+      assert.deepEqual(result.review_excluded_indexes, [6]);
+      assert.equal(result.review_eligibility.find((row) => row.prompt_index === 6).reason, "REJECT_CURRENT");
+    });
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-assembly applies exact review policy and treats stale decisions as unreviewed", async () => {
+  const fixture = createAigenFixture();
+  writeCurrentVideoReview(fixture, [
+    { prompt_index: 6, decision: "keep" },
+    { prompt_index: 8, decision: "flag" },
+  ]);
+  try {
+    await withAigenEnv(fixture, async () => {
+      let result = await packageEngineServer.runResolveAssemblyCreate(fixture.packageId, { dryRun: true });
+      assert.deepEqual(result.included_indexes, [6]);
+      assert.deepEqual(result.review_excluded_indexes, [8]);
+      assert.equal(result.review_eligibility.find((row) => row.prompt_index === 6).reason, "KEEP_CURRENT");
+      assert.equal(result.review_eligibility.find((row) => row.prompt_index === 8).reason, "FLAG_CURRENT");
+
+      fs.writeFileSync(path.join(fixture.packageDir, "videos", "mp4", "008.mp4"), "new variant bytes", "utf8");
+      result = await packageEngineServer.runResolveAssemblyCreate(fixture.packageId, { dryRun: true });
+      const stale = result.review_eligibility.find((row) => row.prompt_index === 8);
+      assert.equal(stale.reason, "REVIEW_STALE");
+      assert.equal(stale.review_current, false);
+      assert.equal(stale.eligible, true);
+      assert.deepEqual(result.included_indexes, [6, 8]);
+    });
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-assembly keeps legacy unreviewed projects eligible with explicit provenance", async () => {
+  const fixture = createAigenFixture();
+  try {
+    await withAigenEnv(fixture, async () => {
+      const result = await packageEngineServer.runResolveAssemblyCreate(fixture.packageId, {});
+      assert.equal(result.ok, true);
+      assert.equal(result.video_review_policy, "legacy-compatible-v1");
+      assert.deepEqual(result.included_indexes, [6, 8]);
+      assert.equal(result.review_eligibility.every((row) => row.reason === "UNREVIEWED"), true);
+      const manifest = readManifest(fixture);
+      assert.equal(manifest.video_review_policy, "legacy-compatible-v1");
+      assert.deepEqual(manifest.review_excluded, []);
+      assert.equal(manifest.video_review_eligibility.length, 2);
+    });
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-assembly records exact Keep provenance and Reject exclusion in manifest", async () => {
+  const fixture = createAigenFixture();
+  writeCurrentVideoReview(fixture, [
+    { prompt_index: 6, decision: "keep" },
+    { prompt_index: 8, decision: "reject" },
+  ]);
+  try {
+    await withAigenEnv(fixture, async () => {
+      const result = await packageEngineServer.runResolveAssemblyCreate(fixture.packageId, {});
+      assert.equal(result.ok, true);
+      assert.deepEqual(result.included_indexes, [6]);
+      assert.deepEqual(result.review_excluded_indexes, [8]);
+      const manifest = readManifest(fixture);
+      assert.equal(manifest.video_review_eligibility[0].reason, "KEEP_CURRENT");
+      assert.equal(manifest.video_review_eligibility[0].video_sha256, sha256File(path.join(fixture.packageDir, "videos/mp4/006.mp4")));
+      assert.equal(manifest.review_excluded[0].reason, "REJECT_CURRENT");
+      assert.equal(manifest.clips.length, 1);
+      assert.equal(manifest.clips[0].video_sha256, manifest.video_review_eligibility[0].video_sha256);
+      assert.equal(manifest.clips[0].video_review.reason, "KEEP_CURRENT");
+    });
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-assembly restores the prior handoff when video bytes race the build", async () => {
+  const fixture = createAigenFixture({ mutateDuringAssembly: true });
+  const resolveDir = path.join(fixture.packageDir, "resolve-handoff");
+  fs.mkdirSync(resolveDir, { recursive: true });
+  for (const filename of ["assembly-plan.md", "assembly-plan.csv", "media-manifest.json"]) {
+    fs.writeFileSync(path.join(resolveDir, filename), `prior ${filename}\n`, "utf8");
+  }
+  try {
+    await withAigenEnv(fixture, async () => {
+      const result = await packageEngineServer.runResolveAssemblyCreate(fixture.packageId, {});
+      assert.equal(result.ok, false);
+      assert.equal(result.code, "RESOLVE_VIDEO_BYTES_CHANGED");
+      for (const filename of ["assembly-plan.md", "assembly-plan.csv", "media-manifest.json"]) {
+        assert.equal(fs.readFileSync(path.join(resolveDir, filename), "utf8"), `prior ${filename}\n`);
+      }
+    });
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-assembly restores the prior handoff when review authority races the build", async () => {
+  const fixture = createAigenFixture({ mutateReviewDuringAssembly: true });
+  writeCurrentVideoReview(fixture, [{ prompt_index: 6, decision: "keep" }]);
+  const resolveDir = path.join(fixture.packageDir, "resolve-handoff");
+  fs.mkdirSync(resolveDir, { recursive: true });
+  for (const filename of ["assembly-plan.md", "assembly-plan.csv", "media-manifest.json"]) {
+    fs.writeFileSync(path.join(resolveDir, filename), `prior ${filename}\n`, "utf8");
+  }
+  try {
+    await withAigenEnv(fixture, async () => {
+      const result = await packageEngineServer.runResolveAssemblyCreate(fixture.packageId, {});
+      assert.equal(result.ok, false);
+      assert.equal(result.code, "RESOLVE_VIDEO_REVIEW_CHANGED");
+      for (const filename of ["assembly-plan.md", "assembly-plan.csv", "media-manifest.json"]) {
+        assert.equal(fs.readFileSync(path.join(resolveDir, filename), "utf8"), `prior ${filename}\n`);
+      }
+    });
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
 
 test("resolve-assembly dry-run defaults to the mp4 variant and writes nothing", async () => {
   const fixture = createAigenFixture(); // stages videos/mp4/ for [6, 8]

@@ -175,6 +175,39 @@ test("pvr: mergeReviews lets a new batch override prior decisions", () => {
   assert.equal(merged.find((r) => r.prompt_index === 2).decision, "keep");
 });
 
+test("pvr: Resolve eligibility applies decisions only to exact immutable video identity", () => {
+  const target = {
+    video_sha256: "a".repeat(64),
+    video_variant: "mp4",
+    mp4_path: "videos/mp4/002.mp4",
+  };
+  const review = {
+    decision: "reject",
+    reviewed_video_sha256: target.video_sha256,
+    video_variant: target.video_variant,
+    reviewed_video_path: target.mp4_path,
+    reviewed_at: "2026-08-12T12:00:00.000Z",
+  };
+  assert.deepEqual(
+    pvr.resolveVideoHandoffEligibility(target, review),
+    {
+      eligible: false,
+      review_status: "reject",
+      review_current: true,
+      reason: "REJECT_CURRENT",
+      review_target: target,
+      reviewed_at: review.reviewed_at,
+      policy: "legacy-compatible-v1",
+    },
+  );
+  const replacement = { ...target, video_sha256: "b".repeat(64) };
+  const stale = pvr.resolveVideoHandoffEligibility(replacement, review);
+  assert.equal(stale.eligible, true);
+  assert.equal(stale.review_status, "unreviewed");
+  assert.equal(stale.reason, "REVIEW_STALE");
+  assert.equal(stale.review_current, false);
+});
+
 // ── GET endpoint ────────────────────────────────────────────────────────────────
 
 test("video-review GET: returns one clip per selection mapped to mp4 + source + prompt", async () => {
@@ -196,7 +229,8 @@ test("video-review GET: returns one clip per selection mapped to mp4 + source + 
       assert.match(c0.source_image_url, /\/aigen-assets\/script-packages\/.*flux-002\.png$/);
       assert.equal(c0.i2v_prompt, "motion prompt 2");
       assert.equal(c0.review.decision, "unreviewed");
-      assert.equal(d.handoff_consumes_review, false);
+      assert.equal(d.handoff_consumes_review, true);
+      assert.equal(d.handoff_review_policy, "legacy-compatible-v1");
     });
   } finally { await close(server); fs.rmSync(fx.root, { recursive: true, force: true }); }
 });

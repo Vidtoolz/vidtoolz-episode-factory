@@ -7,8 +7,8 @@
  * ffprobe + package reads (see readProjectVideoReview / saveProjectVideoReview)
  * and never mutates the video files.
  *
- * Review decisions are recorded in <package>/video-review.json. They do NOT yet
- * filter the Resolve handoff (that builder still includes all verified clips).
+ * Review decisions are recorded in <package>/video-review.json and consumed by
+ * the Resolve handoff through exact video identity matching.
  */
 
 // The Wan2.2 i2v contract every clip is checked against, per video variant
@@ -25,6 +25,7 @@ const DURATION_TOLERANCE = 0.5; // seconds
 const VALID_DECISIONS = Object.freeze(['unreviewed', 'keep', 'flag', 'reject']);
 // Below this many kept clips the UI nudges the operator to review more first.
 const RECOMMENDED_KEEP = 5;
+const HANDOFF_REVIEW_POLICY = 'legacy-compatible-v1';
 
 function zeroPad3(n) {
   return String(n).padStart(3, '0');
@@ -73,6 +74,44 @@ function buildValidation(probe, expected = EXPECTED, fileExists = false) {
 function normalizeDecision(value) {
   const v = String(value == null ? '' : value).trim().toLowerCase();
   return VALID_DECISIONS.includes(v) ? v : 'unreviewed';
+}
+
+// Resolve eligibility is bound to immutable bytes, never merely a slot/path.
+// Explicit review decisions apply only when all three recorded target fields
+// match the candidate. Legacy, missing, and stale decisions are treated as
+// unreviewed and remain eligible for backward compatibility; an exact Flag or
+// Reject is deliberately excluded until the operator records Keep.
+function resolveVideoHandoffEligibility(candidate = {}, review = null) {
+  const target = {
+    video_sha256: String(candidate.video_sha256 || '').toLowerCase(),
+    video_variant: String(candidate.video_variant || '').trim(),
+    mp4_path: String(candidate.mp4_path || '').trim(),
+  };
+  const hasTarget = /^[a-f0-9]{64}$/.test(target.video_sha256)
+    && Boolean(target.video_variant) && Boolean(target.mp4_path);
+  const hasReview = Boolean(review && typeof review === 'object' && !Array.isArray(review));
+  const reviewBound = hasReview && /^[a-f0-9]{64}$/i.test(String(review.reviewed_video_sha256 || ''));
+  const reviewCurrent = hasTarget && reviewBound
+    && String(review.reviewed_video_sha256).toLowerCase() === target.video_sha256
+    && String(review.video_variant || '') === target.video_variant
+    && String(review.reviewed_video_path || '') === target.mp4_path;
+  const decision = reviewCurrent ? normalizeDecision(review.decision) : 'unreviewed';
+  let reason = 'UNREVIEWED';
+  if (!hasTarget) reason = 'TECHNICAL_INVALID';
+  else if (hasReview && !reviewBound) reason = 'REVIEW_LEGACY_UNBOUND';
+  else if (reviewBound && !reviewCurrent) reason = 'REVIEW_STALE';
+  else if (decision === 'keep') reason = 'KEEP_CURRENT';
+  else if (decision === 'flag') reason = 'FLAG_CURRENT';
+  else if (decision === 'reject') reason = 'REJECT_CURRENT';
+  return {
+    eligible: hasTarget && !['flag', 'reject'].includes(decision),
+    review_status: decision,
+    review_current: reviewCurrent,
+    reason,
+    review_target: hasTarget ? target : null,
+    reviewed_at: reviewCurrent ? String(review.reviewed_at || '') : '',
+    policy: HANDOFF_REVIEW_POLICY,
+  };
 }
 
 // Tally keep/flag/reject/unreviewed across the assembled clips.
@@ -180,10 +219,12 @@ module.exports = {
   DURATION_TOLERANCE,
   VALID_DECISIONS,
   RECOMMENDED_KEEP,
+  HANDOFF_REVIEW_POLICY,
   zeroPad3,
   mp4RelPath,
   buildValidation,
   normalizeDecision,
+  resolveVideoHandoffEligibility,
   summarizeCounts,
   usability,
   normalizeReviewSave,

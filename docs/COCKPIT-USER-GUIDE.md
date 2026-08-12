@@ -172,14 +172,20 @@ or manual Kling import.
   GPT/Kling → manual import. If a local service is down the task **blocks** — it is
   never silently rerouted.
 
-### Stage 8 — Review clips  ·  `aigen-review.html`
-Review AI-generated clips before they enter the timeline — check quality, rename,
-approve or reject.
+### Stage 8 — Review clips  ·  `project-video-review.html`
+Review the exact generated video bytes before Resolve handoff. **Keep** makes the
+current immutable variant eligible; **Flag** and **Reject** exclude that exact
+variant. A replacement never inherits an earlier decision. For compatibility,
+unreviewed and stale-review clips remain eligible but are identified explicitly
+in the handoff manifest; this avoids silently emptying historical projects.
 
 ### Stage 9 — Resolve handoff  ·  `project-resolve-handoff.html`
 The **edit-start view**: what the handoff contains, which clip lane it uses, where
 the files live on VIDNAS, and how to import into DaVinci Resolve. **The cockpit's
-scope ends here** — editing happens in Resolve.
+scope ends here** — editing happens in Resolve. The manifest records each
+included clip's SHA-256 and current review provenance, and reports exact Flag or
+Reject exclusions. If bytes change during handoff construction, the build fails
+closed and restores the previous handoff files.
 
 ### Stage 10 — Publish gate  ·  `publish-gate.html`
 Five gates before publishing (see §9).
