@@ -93,7 +93,15 @@ function archiveImage(projectId, index, options = {}) {
 function archiveVideo(projectId, subdir, index, options = {}) {
   const mediaDir = mediaDirFor(projectId, options);
   const sub = String(subdir || 'mp4');
-  return archiveAsset(mediaDir, 'video', Math.round(Number(index)), videoFilePath(mediaDir, sub, index), '.mp4', { subdir: sub }, options);
+  const extra = { subdir: sub };
+  if (options.regeneration) {
+    extra.regeneration = {
+      reason_code: String(options.regeneration.reason_code || ''),
+      note: String(options.regeneration.note || ''),
+      recorded_at: nowStamp(options),
+    };
+  }
+  return archiveAsset(mediaDir, 'video', Math.round(Number(index)), videoFilePath(mediaDir, sub, index), '.mp4', extra, options);
 }
 
 // Per-index outcome of the last explicit regeneration ({image:{}, video:{}}).
@@ -724,13 +732,48 @@ function createVideoAttempt(projectId, row, options = {}) {
   const subdir = String(options.subdir || 'mp4');
   const now = new Date().toISOString();
   const prevId = data.active[String(idx)];
+  const previous = prevId && data.attempts[prevId] ? data.attempts[prevId] : null;
   if (prevId && data.attempts[prevId] && data.attempts[prevId].status === 'dispatched') {
     data.attempts[prevId].status = 'superseded';
     data.attempts[prevId].reason = 'superseded_by_new_dispatch';
     data.attempts[prevId].finished_at = now;
     attemptEvent(data.attempts[prevId], 'superseded', `by ${attemptId}`);
   }
+  let regeneration = options.regeneration || null;
+  // A failed/interrupted render has an unambiguous system diagnosis. A retry
+  // must retain that predecessor without asking the operator to restate it.
+  if (!regeneration && previous && (previous.status === 'failed'
+      || (previous.status === 'cancelled' && previous.reason === 'stopped_by_operator'))) {
+    regeneration = {
+      reason_code: 'technical_retry',
+      note: '',
+      technical_failure_predecessor: true,
+      technical_failure_code: previous.reason || previous.status,
+    };
+  }
+  // Clear-and-generate is an intentional replacement even though the current
+  // slot is empty at dispatch. The clear route records the operator diagnosis
+  // on the archive; consume it only when it is newer than the prior attempt.
+  if (!regeneration) {
+    const entries = readSupersededManifest(mediaDir).entries || [];
+    const archived = entries.slice().reverse().find((entry) => entry && entry.kind === 'video'
+      && Number(entry.index) === idx && String(entry.subdir || 'mp4') === subdir
+      && entry.regeneration && entry.archived_at
+      && (!previous || String(entry.archived_at) > String(previous.dispatched_at || '')));
+    if (archived) regeneration = {
+      ...archived.regeneration,
+      previous_archived_path: archived.archived_path || null,
+      previous_output_sha256: archived.sha256 || null,
+    };
+  }
+  const previousSource = previous && previous.source ? previous.source.sha256 || null : null;
+  const previousPrompt = previous && previous.i2v ? previous.i2v.sha256 || null : null;
+  const previousProfile = previous ? previous.profile || null : null;
   const record = {
+    evidence_schema_version: 1,
+    generation_semantics: regeneration
+      ? (regeneration.reason_code === 'technical_retry' ? 'technical_retry' : 'intentional_regeneration')
+      : 'first_generation',
     attempt_id: attemptId,
     index: idx,
     item_id: options.itemId || null,
@@ -758,12 +801,25 @@ function createVideoAttempt(projectId, row, options = {}) {
     output_rel: path.join('videos', subdir, videoFileName(idx)),
     source_verified: null,
     output: null,
-    regeneration: options.regeneration ? {
-      reason_code: String(options.regeneration.reason_code || ''),
-      note: String(options.regeneration.note || ''),
+    regeneration: regeneration ? {
+      schema_version: 1,
+      reason_code: String(regeneration.reason_code || ''),
+      note: String(regeneration.note || ''),
       previous_attempt_id: prevId || null,
-      previous_archived_path: options.regeneration.previous_archived_path || null,
-      previous_output_sha256: options.regeneration.previous_output_sha256 || null,
+      previous_output_path: regeneration.previous_archived_path || (previous && previous.output_rel) || null,
+      previous_archived_path: regeneration.previous_archived_path || null,
+      previous_output_sha256: regeneration.previous_output_sha256 || (previous && previous.output && previous.output.sha256) || null,
+      previous_profile: previousProfile,
+      new_profile: options.profile || null,
+      previous_source_sha256: previousSource,
+      new_source_sha256: sha,
+      previous_prompt_sha256: previousPrompt,
+      new_prompt_sha256: crypto.createHash('sha256').update(text, 'utf8').digest('hex'),
+      source_changed: previousSource == null ? null : previousSource !== sha,
+      prompt_changed: previousPrompt == null ? null : previousPrompt !== crypto.createHash('sha256').update(text, 'utf8').digest('hex'),
+      profile_changed: previousProfile == null ? null : previousProfile !== (options.profile || null),
+      technical_failure_predecessor: Boolean(regeneration.technical_failure_predecessor),
+      technical_failure_code: regeneration.technical_failure_code || null,
       recorded_at: now,
     } : null,
     events: [],

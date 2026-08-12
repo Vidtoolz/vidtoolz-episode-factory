@@ -9382,6 +9382,22 @@ function normalizePrestoProfile(value) {
   return PRESTO_PROFILES.includes(v) ? v : DEFAULT_PRESTO_PROFILE;
 }
 
+const AIGEN_WAN_REGENERATION_EVENTS = 'wan-regeneration-events.json';
+
+function writeAigenRegenerationEvents(packageDir, additions, options = {}) {
+  if (!Array.isArray(additions) || additions.length === 0) return [];
+  const outPath = path.join(packageDir, 'videos', AIGEN_WAN_REGENERATION_EVENTS);
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  let current = { version: 1, surface: 'aigen', events: [] };
+  if (fs.existsSync(outPath)) current = JSON.parse(fs.readFileSync(outPath, 'utf8'));
+  if (!current || !Array.isArray(current.events)) throw new Error(`Malformed AIGEN Wan regeneration ledger: ${outPath}`);
+  current.events.push(...additions);
+  const tmp = `${outPath}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(current, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmp, outPath);
+  return additions;
+}
+
 function validatePrestoSubmitPayload(payload = {}, options = {}) {
   const { packageId, paths } = resolveAigenPackageDir(payload.package_id, options);
   const productionScript = options.productionScript || paths.productionScript;
@@ -9427,6 +9443,12 @@ async function startPrestoPackageJobReserved(payload = {}, options = {}, reserva
     error.code = eligibility.code;
     throw error;
   }
+  const predecessors = eligibility.replacement_predecessors || [];
+  const regenerationFeedback = predecessors.length
+    ? (predecessors.some((item) => item.requires_diagnosis !== false)
+      ? normalizeVideoRegenerationFeedback(payload)
+      : { reason_code: 'technical_retry', note: '' })
+    : null;
   // ComfyUI production gate: the profile must map to a registered, qualified
   // workflow whose canonical graph AND runtime (VIDNAS) copy match the
   // qualified hash — unreviewed workflow drift refuses dispatch here, before
@@ -9449,6 +9471,8 @@ async function startPrestoPackageJobReserved(payload = {}, options = {}, reserva
       resolveAigenPackageDir(config.packageId, options).packageDir,
       'videos',
     ),
+    regenerationFeedback,
+    replacementPredecessors: eligibility.replacement_predecessors || [],
   }, payload, options);
 }
 
@@ -9622,6 +9646,40 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
   }
   if (Number(config.limit) > 0) args.push('--limit', String(config.limit));
   const genEnv = workflowGenerationEnv(payload);
+  const jobId = `pjob-${crypto.randomBytes(4).toString('hex')}`;
+  const startedAt = new Date().toISOString();
+  let regenerationEventIds = [];
+  if (config.regenerationFeedback && Array.isArray(config.replacementPredecessors)
+      && config.replacementPredecessors.length) {
+    const { packageDir } = resolveAigenPackageDir(config.packageId, options);
+    const events = config.replacementPredecessors.map((previous) => ({
+      event_id: `${jobId}:${previous.index}`,
+      project: config.packageId, package: config.packageId, slot: previous.index,
+      lane: 'aigen-presto', surface: 'aigen', timestamp: startedAt,
+      reason: config.regenerationFeedback.reason_code, note: config.regenerationFeedback.note,
+      previous_attempt_id: previous.previous_attempt_id || null,
+      previous_output_sha256: previous.previous_output_sha256 || null,
+      previous_output_path: previous.previous_output_path || null,
+      previous_profile: previous.previous_profile || null,
+      new_attempt_id: `${jobId}:${previous.index}`, new_profile: config.profile,
+      previous_source_sha256: previous.previous_source_sha256 || null,
+      new_source_sha256: previous.new_source_sha256 || null,
+      previous_prompt_sha256: previous.previous_prompt_sha256 || null,
+      new_prompt_sha256: previous.new_prompt_sha256 || null,
+      source_changed: previous.previous_source_sha256 ? previous.previous_source_sha256 !== previous.new_source_sha256 : null,
+      prompt_changed: previous.previous_prompt_sha256 ? previous.previous_prompt_sha256 !== previous.new_prompt_sha256 : null,
+      profile_changed: previous.previous_profile ? previous.previous_profile !== config.profile : null,
+      technical_failure_predecessor: Boolean(previous.technical_failure_predecessor),
+      technical_failure_code: previous.technical_failure_code || null,
+      new_output_sha256: null,
+      new_output_path: path.join('videos', config.authorityVariant, `${String(previous.index).padStart(3, '0')}.mp4`),
+      final_disposition: null, gpu_duration: null,
+    }));
+    // Evidence is durable before GPU dispatch. A corrupt/unwritable ledger
+    // rejects here, while the predecessor remains untouched and no child exists.
+    writeAigenRegenerationEvents(packageDir, events, options);
+    regenerationEventIds = events.map((event) => event.event_id);
+  }
   const spawnFn = options.spawn || childProcess.spawn;
   const child = spawnFn(config.pythonBin, args, {
     cwd: path.dirname(config.productionScript),
@@ -9630,7 +9688,7 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
   });
   const job = {
     process: child,
-    job_id: `pjob-${crypto.randomBytes(4).toString('hex')}`,
+    job_id: jobId,
     packageId: config.packageId,
     lane: config.lane || 'aigen',
     comfyuiUrl: config.comfyuiUrl,
@@ -9638,7 +9696,7 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
     workflowPath: genEnv.workflowPath,
     orientation: genEnv.orientation,
     targetResolution: genEnv.targetResolution,
-    startedAt: new Date().toISOString(),
+    startedAt,
     completedAt: null,
     exitCode: null,
     signal: null,
@@ -9646,6 +9704,7 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
     stderr: '',
     authority_binding: null,
     authority_binding_error: null,
+    regeneration_events: regenerationEventIds,
   };
   // Finalize + record the compute dispatch receipt (if this dispatch was
   // compute-gated). Dynamic provenance is stamped here: the job id, the spawn
@@ -10781,6 +10840,22 @@ function evaluatePrestoSubmitEligibility(packageId, options = {}) {
   const eligible = [];
   const occupied = [];
   const skipped = [];
+  const replacementPredecessors = [];
+  let completionRecords = [];
+  const completedFile = options.completedFile || path.join(VIDNAS_WAN_LANE, 'completed.txt');
+  if (fs.existsSync(completedFile)) {
+    completionRecords = fs.readFileSync(completedFile, 'utf8').split(/\r?\n/).filter(Boolean).map((line) => {
+      try { return JSON.parse(line); } catch (_) { return null; }
+    }).filter(Boolean);
+  }
+  let failedRecords = [];
+  const failedFile = options.failedFile || path.join(VIDNAS_WAN_LANE, 'failed.jsonl');
+  if (fs.existsSync(failedFile)) {
+    failedRecords = fs.readFileSync(failedFile, 'utf8').split(/\r?\n/).filter(Boolean).map((line) => {
+      try { return JSON.parse(line); } catch (_) { return null; }
+    }).filter(Boolean);
+  }
+  const runsDir = options.runsDir || path.join(VIDNAS_WAN_LANE, 'runs');
   for (const entry of prep.entries) {
     const idx = entry.prompt_index;
     // Path containment: never trust the persisted selected_path. A record that
@@ -10796,6 +10871,63 @@ function evaluatePrestoSubmitEligibility(packageId, options = {}) {
     const staged = idx != null && clipSet.has(`${String(idx).padStart(3, '0')}.mp4`);
     if (staged) { occupied.push({ index: idx, reason: 'VIDEO_SLOT_OCCUPIED' }); continue; }
     eligible.push(idx);
+    // A profile switch can replace a valid fast/HQ variant while leaving both
+    // files on disk. It is still an intentional regeneration and must carry
+    // diagnosis plus objective predecessor identity.
+    let validPredecessor = false;
+    for (const [otherProfile, otherVariant] of Object.entries(PRESTO_PROFILE_OUTPUT_SUBDIRS)) {
+      if (otherProfile === profile) continue;
+      const otherPath = path.join(packageDir, 'videos', otherVariant, `${String(idx).padStart(3, '0')}.mp4`);
+      if (!fs.existsSync(otherPath)) continue;
+      replacementPredecessors.push({
+        index: idx,
+        previous_attempt_id: (completionRecords.slice().reverse().find((record) => record
+          && record.profile === otherProfile
+          && String(record.label || '').endsWith(`-${String(idx).padStart(3, '0')}`)
+          && path.resolve(String(record.source || '')).startsWith(resolvedRoot + path.sep)) || {}).run_id || null,
+        previous_output_path: path.relative(packageDir, otherPath),
+        previous_output_sha256: superFocusMedia.hashFileSha256(otherPath),
+        previous_profile: otherProfile,
+        previous_source_sha256: null,
+        previous_prompt_sha256: null,
+        new_source_sha256: superFocusMedia.hashFileSha256(abs),
+        new_prompt_sha256: crypto.createHash('sha256').update(entry.prompt_text.trim(), 'utf8').digest('hex'),
+        requires_diagnosis: true,
+        technical_failure_predecessor: false,
+        technical_failure_code: null,
+      });
+      validPredecessor = true;
+      break;
+    }
+    if (!validPredecessor) {
+      const failure = failedRecords.slice().reverse().find((record) => record
+        && String(record.label || '').endsWith(`-${String(idx).padStart(3, '0')}`)
+        && record.run_id);
+      let runLog = null;
+      if (failure) {
+        try { runLog = readJsonFile(path.join(runsDir, failure.run_id, 'run.log')); } catch (_) { runLog = null; }
+      }
+      if (failure && runLog && runLog.profile === profile
+          && path.resolve(String(runLog.source || '')).startsWith(resolvedRoot + path.sep)) {
+        const priorSource = fs.existsSync(runLog.source) ? superFocusMedia.hashFileSha256(runLog.source) : null;
+        const priorPrompt = typeof runLog.prompt === 'string'
+          ? crypto.createHash('sha256').update(runLog.prompt, 'utf8').digest('hex') : null;
+        replacementPredecessors.push({
+          index: idx,
+          previous_attempt_id: failure.run_id,
+          previous_output_path: runLog.output || null,
+          previous_output_sha256: runLog.output && fs.existsSync(runLog.output) ? superFocusMedia.hashFileSha256(runLog.output) : null,
+          previous_profile: profile,
+          previous_source_sha256: priorSource,
+          previous_prompt_sha256: priorPrompt,
+          new_source_sha256: superFocusMedia.hashFileSha256(abs),
+          new_prompt_sha256: crypto.createHash('sha256').update(entry.prompt_text.trim(), 'utf8').digest('hex'),
+          requires_diagnosis: false,
+          technical_failure_predecessor: true,
+          technical_failure_code: String(failure.error || 'wan_generation_failed').slice(0, 500),
+        });
+      }
+    }
   }
   if (eligible.length === 0) {
     const allOccupied = occupied.length > 0 && skipped.length === 0;
@@ -10814,7 +10946,11 @@ function evaluatePrestoSubmitEligibility(packageId, options = {}) {
   // content-bound script → selection → I2V authority before the caller probes
   // PRESTO or starts a process.
   aigenAuthority.assertStageFresh(packageDir, 'i2v_prompts');
-  return { ok: true, code: 'ELIGIBLE', project_id: id, profile, video_variant: variant, eligible, eligible_count: eligible.length, occupied, skipped };
+  return {
+    ok: true, code: 'ELIGIBLE', project_id: id, profile, video_variant: variant,
+    eligible, eligible_count: eligible.length, occupied, skipped,
+    replacement_predecessors: replacementPredecessors,
+  };
 }
 
 // Map an eligibility reason code to the HTTP status used when a submission is
@@ -10850,6 +10986,13 @@ function handlePrestoSubmit(req, res, options = {}) {
           skipped: eligibility.skipped,
         });
         return null;
+      }
+      // Profile replacement is regeneration even though the target profile's
+      // slot is empty. Enforce diagnosis at the server before any network gate,
+      // reservation, ledger mutation, or worker spawn.
+      if (eligibility.replacement_predecessors
+          && eligibility.replacement_predecessors.some((item) => item.requires_diagnosis !== false)) {
+        normalizeVideoRegenerationFeedback(payload);
       }
       // Pre-flight: confirm PRESTO ComfyUI is reachable before spawning, so a dead worker
       // fails fast with a clear message instead of a job that silently times out.
@@ -16037,9 +16180,17 @@ function createServer(options = {}) {
           superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown project
           const idx = Math.round(Number(payload.index));
           if (!Number.isInteger(idx) || idx < 1) { const e = new Error('index must be a positive integer.'); e.statusCode = 400; throw e; }
+          const regenerationFeedback = normalizeVideoRegenerationFeedback(payload);
           const subdir = PRESTO_PROFILE_OUTPUT_SUBDIRS[DEFAULT_PRESTO_PROFILE] || 'mp4';
-          const result = superFocusMedia.archiveVideo(id, subdir, idx, { mediaRoot: sfMediaRoot });
-          sendJSON(res, 200, { ok: true, index: idx, archived: result.archived, archived_path: result.archived_path || null, subdir });
+          const result = superFocusMedia.archiveVideo(id, subdir, idx, {
+            mediaRoot: sfMediaRoot,
+            regeneration: regenerationFeedback,
+          });
+          sendJSON(res, 200, {
+            ok: true, index: idx, archived: result.archived,
+            archived_path: result.archived_path || null, subdir,
+            regeneration_reason: regenerationFeedback.reason_code,
+          });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'super-focus-clear-video-error'));
       return;

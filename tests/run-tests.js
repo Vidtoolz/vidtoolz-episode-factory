@@ -83,6 +83,7 @@ require("./super-focus-image-review-workbench.test.js");
 require("./super-focus-video-review.test.js");
 require("./super-focus-video-review-routes.test.js");
 require("./super-focus-video-attempts.test.js");
+require("./wan-regeneration-evidence.test.js");
 require("./super-focus-video-queue-audit.test.js");
 require("./super-focus-slot-density.test.js");
 require("./super-focus-compute-gate.test.js");

@@ -29,6 +29,18 @@ existing dispatchers (run-handoff.py / run-production.py)
 ComfyUI  (vidnux RTX 5070 Ti / PRESTO RTX 4090)
 ```
 
+`run-production.py` is the transport worker, not a supported bypass around the
+gateway. Real Wan production is initiated by the cockpit's AIGEN or Super Focus
+server routes so endpoint/source enforcement, reservation, regeneration
+diagnosis, and lineage are authoritative. Historical direct CLI runs remain
+readable legacy evidence but are not promoted to current diagnosed events.
+
+When AIGEN targets a different profile while a valid variant already exists,
+the server requires structured regeneration diagnosis and writes
+`videos/wan-regeneration-events.json`. Super Focus writes the equivalent record
+inside `video-attempts.json`; known failed/interrupted retries are classified
+automatically as `technical_retry`.
+
 ## Authority & drift
 
 `config/comfyui/registry.json` is the git-tracked authority. Every entry pins

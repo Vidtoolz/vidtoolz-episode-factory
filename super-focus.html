@@ -1432,8 +1432,17 @@
       });
       clearBtn.addEventListener('click', function () {
         if (!confirm('Clear (archive) the video for row ' + index + '? It is moved aside, not deleted, and the row can render again.')) return;
+        var reason = prompt(
+          'Why is this valid Wan clip being cleared for replacement? Enter one code:\n' +
+          'source_image_revision\nmotion_prompt_revision\nprofile_or_configuration\nmodel_artifact\n' +
+          'camera_or_composition\neditorial_mismatch\nstochastic_alternate\ntechnical_retry\nother'
+        );
+        if (reason === null) return;
+        reason = String(reason).trim();
+        var note = prompt('Optional diagnosis note (required for "other", max 500 characters):', '');
+        if (note === null) return;
         clearBtn.disabled = true;
-        apiPost(CLEAR_VIDEO_API, { id: currentId, index: index }).then(function (res) {
+        apiPost(CLEAR_VIDEO_API, { id: currentId, index: index, regeneration_reason: reason, regeneration_note: String(note).trim() }).then(function (res) {
           clearBtn.disabled = false;
           if (!res.ok) { setRowStatus(st, 'Clear failed', 'dirty'); return; }
           var trig = wrap.querySelector('.media-open-video');

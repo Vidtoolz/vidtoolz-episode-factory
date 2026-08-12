@@ -2703,7 +2703,7 @@ test("invariant: clear-video archives the clip and re-opens the row", async () =
       method: "POST", headers: writeHeaders(), body: { id } });
     assert.equal(none.statusCode, 400);
     const cleared = await request(server, packageEngineServer.SUPER_FOCUS_CLEAR_VIDEO_API, {
-      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+      method: "POST", headers: writeHeaders(), body: { id, index: 1, regeneration_reason: "editorial_mismatch" } });
     assert.equal(cleared.statusCode, 200);
     assert.equal(unwrap(cleared).archived, true);
     assert.ok(!fs.existsSync(path.join(dir, "001.mp4")), "canonical clip moved");

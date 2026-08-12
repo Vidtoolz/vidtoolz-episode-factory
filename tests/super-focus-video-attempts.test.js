@@ -291,14 +291,13 @@ test('video-attempts: regenerate mints a new attempt; a non-active attempt refus
     const all1 = Object.values(data.attempts).filter((a) => a.index === 1);
     assert.ok(all1.length >= 2, 'retry created a distinct attempt identity');
     const a2 = all1.find((a) => a.attempt_id !== a1.attempt_id);
-    assert.deepEqual(a2.regeneration, {
-      reason_code: 'motion_prompt_revision',
-      note: 'Motion intent was clarified after review.',
-      previous_attempt_id: a1.attempt_id,
-      previous_archived_path: a2.regeneration.previous_archived_path,
-      previous_output_sha256: a1.output.sha256,
-      recorded_at: a2.regeneration.recorded_at,
-    });
+    assert.equal(a2.regeneration.reason_code, 'motion_prompt_revision');
+    assert.equal(a2.regeneration.note, 'Motion intent was clarified after review.');
+    assert.equal(a2.regeneration.previous_attempt_id, a1.attempt_id);
+    assert.equal(a2.regeneration.previous_output_sha256, a1.output.sha256);
+    assert.equal(a2.regeneration.source_changed, false);
+    assert.equal(a2.regeneration.prompt_changed, false);
+    assert.equal(a2.regeneration.profile_changed, false);
     assert.match(a2.regeneration.previous_archived_path, /^superseded[/\\]/, 'previous clip path is retained in lineage');
     assert.equal(data.attempts[a1.attempt_id].source.sha256, a1.source.sha256, 'historical attempt provenance untouched');
     // Completion ownership: the earlier attempt is no longer the slot's active
@@ -696,6 +695,46 @@ test('video-attempts: storage audit reports statuses, bytes, evidence locks, and
     assert.equal(fs.statSync(path.join(mediaRoot, id, 'video-attempts.json')).mtimeMs, before, 'audit never writes the attempts file');
     assert.ok(fs.existsSync(path.join(mediaRoot, id, ghost.source.staged_rel)), 'candidate staging is NOT deleted');
   } finally { await close(server); }
+});
+
+test('video-attempts: clear-and-rerun requires diagnosis before archive and carries it into the replacement attempt', async () => {
+  const fx = await attemptServer();
+  try {
+    await queueAndFinish(fx.server, fx.id, fx.mediaRoot, 1);
+    const before = videoOut(fx.mediaRoot, fx.id, 1);
+    assert.ok(fs.existsSync(before));
+    const blocked = await request(fx.server, '/api/super-focus/clear-video', {
+      method: 'POST', headers: writeHeaders(), body: { id: fx.id, index: 1 },
+    });
+    assert.equal(blocked.statusCode, 400);
+    assert.ok(fs.existsSync(before), 'missing diagnosis rejects before archive mutation');
+    const cleared = await request(fx.server, '/api/super-focus/clear-video', {
+      method: 'POST', headers: writeHeaders(), body: { id: fx.id, index: 1, regeneration_reason: 'editorial_mismatch' },
+    });
+    assert.equal(cleared.statusCode, 200);
+    assert.ok(!fs.existsSync(before));
+    await queueAndFinish(fx.server, fx.id, fx.mediaRoot, 1);
+    const attempts = Object.values(superFocusMedia.readVideoAttempts(fx.id, { mediaRoot: fx.mediaRoot }).attempts).filter((a) => a.index === 1);
+    const replacement = attempts.sort((a, b) => String(a.dispatched_at).localeCompare(String(b.dispatched_at))).pop();
+    assert.equal(replacement.generation_semantics, 'intentional_regeneration');
+    assert.equal(replacement.regeneration.reason_code, 'editorial_mismatch');
+    assert.ok(replacement.regeneration.previous_output_sha256);
+    assert.equal(replacement.regeneration.previous_attempt_id, attempts[0].attempt_id);
+  } finally { await close(fx.server); }
+});
+
+test('video-attempts: failed attempt retry is automatically diagnosed as technical_retry with lineage', () => {
+  const mediaRoot = mkdirTmp('sf-va-retry-'); const id = 'retry-project';
+  writeImage(mediaRoot, id, 1, IMG_ONE);
+  const row = { index: 1, assignment_id: 'assignment-1', i2v_prompt: { text: I2V_ONE } };
+  const first = superFocusMedia.createVideoAttempt(id, row, { mediaRoot, subdir: VIDEO_SUBDIR, profile: 'hq' });
+  superFocusMedia.markVideoAttempt(id, first.attempt_id, 'failed', 'render_failed', { mediaRoot });
+  const retry = superFocusMedia.createVideoAttempt(id, row, { mediaRoot, subdir: VIDEO_SUBDIR, profile: 'hq' });
+  assert.equal(retry.generation_semantics, 'technical_retry');
+  assert.equal(retry.regeneration.reason_code, 'technical_retry');
+  assert.equal(retry.regeneration.previous_attempt_id, first.attempt_id);
+  assert.equal(retry.regeneration.technical_failure_predecessor, true);
+  assert.equal(retry.regeneration.technical_failure_code, 'render_failed');
 });
 
 test('video-attempts: storage audit locks staging referenced by a review render binding', async () => {

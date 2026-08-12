@@ -131,8 +131,8 @@ The proven lane is `image-to-video/production/wan22-81f/` ("verified Wan2.2 81-f
 - [ ] Dry-run / status (run from `$AIGEN`):
       `python3 image-to-video/production/wan22-81f/run-production.py --package $PKG --status`
       `… run-production.py --package $PKG --comfyui-url http://<presto>:8188 --dry-run`
-- [ ] Real submit (CLI): `… run-production.py --package $PKG --comfyui-url http://<presto>:8188 --limit <N>`
-- [ ] Or cockpit: `http://localhost:8010/production-pipeline.html` → **"Submit N to PRESTO"** (`POST /api/presto/submit`); live panel polls `GET /api/presto/job-status`; per-item via `GET /api/presto/results`.
+- [ ] Real production submit: cockpit `http://localhost:8010/production-pipeline.html` → **"Submit N to PRESTO"** (`POST /api/presto/submit`); live panel polls `GET /api/presto/job-status`; per-item via `GET /api/presto/results`. The server route is mandatory for enforcement, reservation, and regeneration lineage.
+- [ ] `run-production.py --dry-run` / `--status` remain useful read-only diagnostics. Direct real CLI submission is legacy/unsupported because it bypasses the production gateway and cannot create authoritative regeneration diagnosis.
 - [ ] **Human decision:** retry only what you choose — failures are **not** auto-retried.
 
 ### 3c. Outputs & staging

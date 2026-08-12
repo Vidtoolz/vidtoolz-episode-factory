@@ -394,6 +394,18 @@ duplicate titles stay unambiguous.
   dispatches, and cleanup *candidates* (terminal non-completed, unlocked).
   No cleanup route exists by design; deleting staging is an explicit
   operator action outside the cockpit.
+- **Regeneration diagnosis:** a first generation needs no reason. Replacing a
+  valid clip (including clear-then-render) requires one of the shared structured
+  reason codes before the old clip is archived. A retry of a conclusively
+  failed/interrupted attempt is recorded automatically as `technical_retry`.
+  Each current attempt records predecessor/output identity, old/new source,
+  prompt and profile identities, and objective changed flags; those facts do
+  not override the operator's stated reason or imply rejection/waste.
+- `node scripts/wan-regeneration-report.js --json` is a read-only cross-surface
+  evidence report. It separates legacy objective deltas from operator reasons
+  and emits `NOT_READY` until the diagnosed sample reaches the documented
+  multi-project, duration-backed Pareto threshold. It never recommends a
+  creative-quality block.
 - A present but malformed `video-attempts.json` or `video-provenance.json`
   fails closed with HTTP 409. It is never coerced to an empty legacy record,
   and generation/review writes refuse to overwrite it; preserve and inspect

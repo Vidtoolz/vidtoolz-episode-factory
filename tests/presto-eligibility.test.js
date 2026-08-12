@@ -158,6 +158,31 @@ test("eligibility: an occupied slot in a DIFFERENT profile variant does not bloc
   const r = packageEngineServer.evaluatePrestoSubmitEligibility(fx.id, { scriptPackages: fx.scriptPackages });
   assert.equal(r.ok, true, "HQ slot is still empty");
   assert.deepEqual(r.eligible, [6]);
+  assert.equal(r.replacement_predecessors.length, 1, "cross-profile render is classified as replacement");
+  assert.equal(r.replacement_predecessors[0].previous_profile, "fast_current");
+  assert.ok(r.replacement_predecessors[0].previous_output_sha256);
+  fs.rmSync(fx.root, { recursive: true, force: true });
+});
+
+test("eligibility: a matching recorded Wan failure is an automatic technical-retry predecessor", () => {
+  const fx = makePkg();
+  const failedFile = path.join(fx.root, 'failed.jsonl');
+  const runsDir = path.join(fx.root, 'runs');
+  const runId = 'failed-run-006';
+  fs.mkdirSync(path.join(runsDir, runId), { recursive: true });
+  fs.writeFileSync(failedFile, JSON.stringify({ label: 'flux-006', run_id: runId, error: 'timeout waiting for ComfyUI' }) + '\n');
+  writeJson(path.join(runsDir, runId, 'run.log'), {
+    run_id: runId, label: 'flux-006', profile: 'wan22_hq_720p_5s_no_lightx2v',
+    source: path.join(fx.dir, 'images/flux-local/flux-006.png'), prompt: 'slow push-in', status: 'failed',
+  });
+  const r = packageEngineServer.evaluatePrestoSubmitEligibility(fx.id, {
+    scriptPackages: fx.scriptPackages, failedFile, runsDir, completedFile: path.join(fx.root, 'none'),
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.replacement_predecessors.length, 1);
+  assert.equal(r.replacement_predecessors[0].previous_attempt_id, runId);
+  assert.equal(r.replacement_predecessors[0].technical_failure_predecessor, true);
+  assert.equal(r.replacement_predecessors[0].requires_diagnosis, false);
   fs.rmSync(fx.root, { recursive: true, force: true });
 });
 
@@ -216,14 +241,20 @@ function postSubmit(server, body) {
 
 // Run fn with a temp package wired via env + a production script that exists,
 // PRESTO forced reachable, spawn stubbed. Restores env + clears the job lock.
-async function withSubmitServer(fx, spawnFn, fn, { reachable = true } = {}) {
+async function withSubmitServer(fx, spawnFn, fn, config = {}) {
+  const reachable = config.reachable !== false;
   const prev = { sp: process.env.AIGEN_SCRIPT_PACKAGES, ps: process.env.AIGEN_PRODUCTION_SCRIPT };
   const productionScript = path.join(fx.root, "run-production.py");
   fs.writeFileSync(productionScript, "print('fake')\n", "utf8");
   process.env.AIGEN_SCRIPT_PACKAGES = fx.scriptPackages;
   process.env.AIGEN_PRODUCTION_SCRIPT = productionScript;
   packageEngineServer.PRESTO_STATE.activeJob = null;
-  const server = packageEngineServer.createServer({ prestoReachableCheck: async () => reachable, computeGateFn: async () => ({ ok: true, decision: "ROUTE", selected_host: "presto", checks: {} }), spawn: spawnFn });
+  const server = packageEngineServer.createServer({
+    ...(config.serverOptions || {}),
+    prestoReachableCheck: async () => reachable,
+    computeGateFn: async () => ({ ok: true, decision: "ROUTE", selected_host: "presto", checks: {} }),
+    spawn: spawnFn,
+  });
   try {
     await listen(server);
     await fn(server);
@@ -267,6 +298,60 @@ test("route: occupied slot → 409 ALL_SLOTS_OCCUPIED, no spawn", async () => {
     assert.equal(res.body.code, "ALL_SLOTS_OCCUPIED");
     assert.equal(captured.count, undefined);
   });
+});
+
+test("route: cross-profile replacement requires diagnosis before reachability or spawn", async () => {
+  const fx = makePkg({ staged: { mp4: [6] } });
+  const captured = {};
+  await withSubmitServer(fx, captureSpawn(captured), async (server) => {
+    const res = await postSubmit(server, { package_id: fx.id });
+    assert.equal(res.statusCode, 400);
+    assert.match(String(res.body.error), /regeneration_reason/);
+    assert.equal(captured.count, undefined);
+    assert.ok(fs.existsSync(path.join(fx.dir, 'videos', 'mp4', '006.mp4')), 'predecessor remains untouched');
+    assert.ok(!fs.existsSync(path.join(fx.dir, 'videos', 'wan-regeneration-events.json')), 'rejection creates no evidence mutation');
+  });
+});
+
+test("route: diagnosed cross-profile replacement records normalized AIGEN lineage and spawns once", async () => {
+  const fx = makePkg({ staged: { mp4: [6] } });
+  const captured = {};
+  await withSubmitServer(fx, captureSpawn(captured), async (server) => {
+    const res = await postSubmit(server, { package_id: fx.id, regeneration_reason: 'profile_or_configuration' });
+    assert.equal(res.statusCode, 200);
+    assert.equal(captured.count, 1);
+    const ledger = JSON.parse(fs.readFileSync(path.join(fx.dir, 'videos', 'wan-regeneration-events.json'), 'utf8'));
+    assert.equal(ledger.events.length, 1);
+    assert.equal(ledger.events[0].reason, 'profile_or_configuration');
+    assert.equal(ledger.events[0].previous_profile, 'fast_current');
+    assert.equal(ledger.events[0].new_profile, 'wan22_hq_720p_5s_no_lightx2v');
+    assert.equal(ledger.events[0].profile_changed, true);
+    assert.ok(ledger.events[0].previous_output_sha256);
+  });
+});
+
+test("route: known AIGEN technical failure retry auto-records diagnosis without operator friction", async () => {
+  const fx = makePkg();
+  const failedFile = path.join(fx.root, 'failed.jsonl');
+  const runsDir = path.join(fx.root, 'runs');
+  const runId = 'failed-run-006';
+  fs.mkdirSync(path.join(runsDir, runId), { recursive: true });
+  fs.writeFileSync(failedFile, JSON.stringify({ label: 'flux-006', run_id: runId, error: 'timeout waiting for ComfyUI' }) + '\n');
+  writeJson(path.join(runsDir, runId, 'run.log'), {
+    run_id: runId, label: 'flux-006', profile: 'wan22_hq_720p_5s_no_lightx2v',
+    source: path.join(fx.dir, 'images/flux-local/flux-006.png'), prompt: 'slow push-in', status: 'failed',
+  });
+  const captured = {};
+  await withSubmitServer(fx, captureSpawn(captured), async (server) => {
+    const res = await postSubmit(server, { package_id: fx.id });
+    assert.equal(res.statusCode, 200);
+    assert.equal(captured.count, 1);
+    const ledger = JSON.parse(fs.readFileSync(path.join(fx.dir, 'videos', 'wan-regeneration-events.json'), 'utf8'));
+    assert.equal(ledger.events[0].reason, 'technical_retry');
+    assert.equal(ledger.events[0].previous_attempt_id, runId);
+    assert.equal(ledger.events[0].technical_failure_predecessor, true);
+    assert.match(ledger.events[0].technical_failure_code, /timeout/);
+  }, { serverOptions: { failedFile, runsDir, completedFile: path.join(fx.root, 'none') } });
 });
 
 test("route: missing source image → 409 NO_ELIGIBLE_ITEMS, no spawn", async () => {
