@@ -34,6 +34,9 @@ gateway. Real Wan production is initiated by the cockpit's AIGEN or Super Focus
 server routes so endpoint/source enforcement, reservation, regeneration
 diagnosis, and lineage are authoritative. Historical direct CLI runs remain
 readable legacy evidence but are not promoted to current diagnosed events.
+The deployed worker also refuses every non-status/non-dry-run invocation unless
+the gateway dispatch environment is present, so this is enforced behavior—not
+only an operator convention.
 
 When AIGEN targets a different profile while a valid variant already exists,
 the server requires structured regeneration diagnosis and writes

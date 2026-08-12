@@ -212,9 +212,10 @@ test("eligibility: a selected-image byte disappearance blocks the whole mixed ba
 // ── Route: /api/presto/submit dispositions ──────────────────────────────────
 
 function captureSpawn(captured) {
-  return (bin, args) => {
+  return (bin, args, options) => {
     captured.count = (captured.count || 0) + 1;
     captured.bin = bin; captured.args = args;
+    captured.options = options;
     const child = new EventEmitter();
     child.stdout = new EventEmitter();
     child.stderr = new EventEmitter();
@@ -275,6 +276,7 @@ test("route: eligible package → 200 and spawns exactly one job", async () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.ok, true);
     assert.equal(captured.count, 1);
+    assert.equal(captured.options.env.VIDTOOLZ_WAN_GATEWAY_DISPATCH, '1');
   });
 });
 

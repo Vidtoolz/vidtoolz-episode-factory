@@ -9646,6 +9646,7 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
   }
   if (Number(config.limit) > 0) args.push('--limit', String(config.limit));
   const genEnv = workflowGenerationEnv(payload);
+  genEnv.env.VIDTOOLZ_WAN_GATEWAY_DISPATCH = '1';
   const jobId = `pjob-${crypto.randomBytes(4).toString('hex')}`;
   const startedAt = new Date().toISOString();
   let regenerationEventIds = [];
