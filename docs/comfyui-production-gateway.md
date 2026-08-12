@@ -256,9 +256,9 @@ longer matches the evidence. Different remediation paths, never collapsed.
 
 ### Production gating & bootstrap
 
-The synchronous dispatch gate (`preflightSync`, all three production paths)
-adds a local-records check next to the drift gate — zero live calls, zero
-latency: no record → loud `QUALIFICATION_PENDING` **warning** (legacy
+The permit-minting gate runs `preflightSync` on all four production lanes.
+With source-freshness enforcement disabled, this remains a zero-live-call
+local-records check: no record → loud `QUALIFICATION_PENDING` **warning** (legacy
 production keeps running; nothing is silently grandfathered — the warning
 names the exact requalification command); record for an older workflow sha →
 `QUALIFICATION_STALE` **block** (the drift override env applies for
@@ -488,8 +488,10 @@ and that a completed job carries capture evidence.
 
 *Closed (P13):* **structural dispatch boundary.** The raw transport functions
 (`launchPrestoProductionJob`, `launchFluxHandoffJob`) now refuse to run without
-a *dispatch permit*, and permits are minted only by `gateProductionDispatch()`
-and held in a module-private `WeakSet`. Membership — not shape — is what
+a *dispatch permit*, and permits are minted only through
+`gateProductionDispatchAsync()` and its private synchronous
+`gateProductionDispatch()` boundary, then held in a module-private `WeakSet`.
+Membership — not shape — is what
 counts, so a hand-built `{ preflightPassed: true }` or even a structural copy
 of a real permit is refused. All four production lanes obtain their permit from
 that one gate, which resolves the canonical registry entry (by workflow id or
@@ -498,22 +500,22 @@ endpoint/host onto the permit. A comment saying "callers MUST preflight first"
 was what allowed the P11 bypass; a future lane that forgets now fails closed at
 the transport boundary instead of rendering ungated.
 
-*Still open:* the P10 **freshness** gate (`ensureFreshSourceVerification`) is
-implemented and unit-tested but is **not yet called from `gateProductionDispatch`**,
-so D6 remains open. The gate is now the single place it must be added — one
-call site rather than four. What blocks it:
+*Closed (P14):* the P10 **freshness** gate is now the mandatory permit path for
+all four production lanes. Each single-GPU resource is reserved synchronously
+before the first await; `ensureFreshSourceVerification` evaluates the canonical
+target; ownership is rechecked after the await; synchronous qualification runs;
+transport validates the permit endpoint; and only then may one child spawn.
+Rejection, verifier exception, endpoint mismatch, or spawn failure releases the
+exact owned reservation. Successful spawn hands ownership directly to
+`activeJob`, with no unowned interval.
 
-1. PRESTO's recorded manifest predates P9, so its verification is
-   `INCOMPLETE`. Enforcing freshness today would refuse every PRESTO dispatch
-   until an operator runs `--inventory-strong PRESTO` (which hashes tens of
-   GB). That is an operator decision, not an automatic one.
-2. `gateProductionDispatch` is synchronous, and the lane entry points it
-   serves (`startPrestoPackageJob`, `startFluxPackageJob`, …) are called
-   **synchronously by tests and callers** — `presto-eligibility` asserts a
-   synchronous 409 to prove the single-GPU race is closed. Making the gate
-   async therefore reopens that race and invalidates the test guarding it. The
-   fix is to reserve the GPU slot synchronously before awaiting verification
-   and release it on refusal, then re-check ownership before transport.
+`COMFYUI_ENFORCE_SOURCE_FRESHNESS=enforce` activates live freshness enforcement;
+the default remains `disabled`, so deployment alone never changes runtime policy.
+Invalid values fail loudly. Activation requires a current strong manifest with
+both core and custom-node identity, a current MATCH source verification, current
+deployment identity, green tests, and a read-only live preflight. PRESTO and
+FLUX expose an in-flight reservation as busy, so concurrent API/queue callers
+cannot enter the asynchronous verification window.
 *Closed (P12):* **canonical host resolution.** `registry.endpointFor(entry)` is
 now the single rule for "which ComfyUI does this workflow actually talk to":
 `endpoint_env` names take precedence over `endpoint_default`, trailing slashes
@@ -530,9 +532,9 @@ refusal stays classifiable instead of arriving as a generic failure.
 **What is still NOT verified by this layer**: the Python interpreter and
 installed site-packages, native/binary dependencies, GPU drivers, model files
 (covered separately by the strong model manifest), and anything outside the
-ComfyUI root. Verification freshness is also not enforced — a stored verdict
-is metadata with a `verified_at`, and nothing triggers re-verification
-automatically before a render.
+ComfyUI root. With enforcement disabled, freshness is informational; with mode
+`enforce`, every production permit evaluates the P10 freshness policy before a
+render may spawn.
 
 Overall source states:
 

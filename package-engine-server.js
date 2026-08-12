@@ -555,6 +555,8 @@ const PRESTO_STATE = {
 };
 const FLUX_STATE = {
   activeJob: null,
+  // In-flight single-GPU reservation, held across asynchronous gate work.
+  reservation: null,
   script: path.join(VIDNAS_AIGEN_ROOT, 'image-generation', 'flux-gguf', 'run-handoff.py'),
 };
 // The FLUX dispatch chain shells out to the ComfyUI CLI (`comfy run`) from
@@ -9191,6 +9193,7 @@ function formatEta(seconds) {
 // "do I still own the slot?" after an await instead of trusting a stale check.
 // Process-local by design — it describes an in-flight dispatch, not durable state.
 let prestoReservationCounter = 0;
+let fluxReservationCounter = 0;
 
 function prestoSlotBusyError(active) {
   const error = new Error('A PRESTO video job is already running. Wait for it to finish.');
@@ -9207,6 +9210,7 @@ function reservePrestoDispatchSync({ lane = null, jobKey = null } = {}) {
   if (PRESTO_STATE.reservation) throw prestoSlotBusyError(null);
   const reservation = {
     reservation_id: `presto-res-${++prestoReservationCounter}-${Date.now()}`,
+    resource: 'presto',
     lane,
     job_key: jobKey,
     reserved_at: new Date().toISOString(),
@@ -9231,8 +9235,68 @@ function releasePrestoReservation(reservation) {
   return false;
 }
 
+function fluxSlotBusyError(active, lane = null) {
+  const error = new Error(lane === 'aigen-flux'
+    ? 'FLUX job already active'
+    : 'A FLUX image job is already running. Wait for it to finish.');
+  error.statusCode = 409;
+  if (active) error.active = active;
+  return error;
+}
+
+// FLUX is also a single-GPU lane. Claim its slot synchronously before the
+// async freshness boundary, exactly as PRESTO does.
+function reserveFluxDispatchSync({ lane = null, jobKey = null } = {}) {
+  const current = currentFluxJobStatus();
+  if (current.active) throw fluxSlotBusyError(current, lane);
+  if (FLUX_STATE.reservation) throw fluxSlotBusyError(null, lane);
+  const reservation = {
+    reservation_id: `flux-res-${++fluxReservationCounter}-${Date.now()}`,
+    resource: 'flux',
+    lane,
+    job_key: jobKey,
+    reserved_at: new Date().toISOString(),
+  };
+  FLUX_STATE.reservation = reservation;
+  return reservation;
+}
+
+function fluxReservationStillOwned(reservation) {
+  return Boolean(reservation && FLUX_STATE.reservation
+    && FLUX_STATE.reservation.reservation_id === reservation.reservation_id);
+}
+
+function releaseFluxReservation(reservation) {
+  if (fluxReservationStillOwned(reservation)) {
+    FLUX_STATE.reservation = null;
+    return true;
+  }
+  return false;
+}
+
+function dispatchReservationStillOwned(reservation) {
+  if (!reservation) return true;
+  return reservation.resource === 'flux'
+    ? fluxReservationStillOwned(reservation)
+    : prestoReservationStillOwned(reservation);
+}
+
 function currentPrestoJobStatus(now = Date.now()) {
   const job = PRESTO_STATE.activeJob;
+  if (PRESTO_STATE.reservation && (!job || job.completedAt)) {
+    const r = PRESTO_STATE.reservation;
+    const pending = {
+      packageId: r.job_key,
+      comfyuiUrl: PRESTO_STATE.defaultUrl,
+      startedAt: r.reserved_at,
+      completedAt: null,
+      exitCode: null,
+      signal: null,
+      stdout: '',
+      stderr: '',
+    };
+    return { ok: true, active: { ...serializePrestoJob(pending, true, now), dispatch_state: 'reserving' }, completed: null };
+  }
   if (!job) {
     return { ok: true, active: null, completed: null };
   }
@@ -9307,18 +9371,21 @@ function startPrestoPackageJob(payload = {}, options = {}) {
   // Synchronous contention decision — nothing may await before this line.
   const reservation = reservePrestoDispatchSync({ lane: 'aigen-presto', jobKey: payload && payload.package_id });
   try {
-    return startPrestoPackageJobReserved(payload, options, reservation);
+    return Promise.resolve(startPrestoPackageJobReserved(payload, options, reservation)).catch((error) => {
+      releasePrestoReservation(reservation);
+      throw error;
+    });
   } catch (error) {
     releasePrestoReservation(reservation);   // never wedge the slot on refusal
     throw error;
   }
 }
 
-function startPrestoPackageJobReserved(payload = {}, options = {}, reservation = null) {
+async function startPrestoPackageJobReserved(payload = {}, options = {}, reservation = null) {
   const config = validatePrestoSubmitPayload(payload, options);
   // Authoritative eligibility re-check INSIDE the locked check-and-spawn boundary
-  // (single-threaded: no await between the lock check above and the synchronous
-  // spawn below, so this is atomic against a concurrent submit). Protects every
+  // (the synchronous reservation above remains owned across every await and is
+  // rechecked immediately before permit minting). Protects every
   // caller — not just the HTTP handler — from spawning a render for a package
   // with no renderable work.
   const eligibility = evaluatePrestoSubmitEligibility(config.packageId, { ...options, profile: config.profile });
@@ -9332,9 +9399,10 @@ function startPrestoPackageJobReserved(payload = {}, options = {}, reservation =
   // workflow whose canonical graph AND runtime (VIDNAS) copy match the
   // qualified hash — unreviewed workflow drift refuses dispatch here, before
   // any spawn (SUPER_FOCUS_COMFYUI_DRIFT_OVERRIDE=1 downgrades to a warning).
-  const permit = gateProductionDispatch({ prestoProfile: config.profile, lane: 'aigen-presto' }, options);
+  const permit = await gateProductionDispatchAsync({ prestoProfile: config.profile, lane: 'aigen-presto', reservation }, options);
   return launchPrestoProductionJob({
     productionScript: config.productionScript,
+    reservation,
     pythonBin: config.pythonBin,
     packageArg: config.packageId,
     packageId: config.packageId,
@@ -9423,7 +9491,7 @@ function sourceFreshnessEnforcementMode(options = {}) {
 }
 
 // The async production gate. Ordering is deliberate:
-//   freshness refresh -> qualification -> ownership re-check -> permit
+//   freshness refresh -> ownership re-check -> qualification -> permit
 // Freshness runs FIRST so qualification consumes the refreshed verification
 // record rather than the stale one it would otherwise read. The ownership
 // re-check runs AFTER every await, immediately before the permit is minted, so
@@ -9451,8 +9519,8 @@ async function gateProductionDispatchAsync(spec, options = {}) {
   }
   // Post-await ownership re-check: the pre-dispatch state observed before the
   // remote call may no longer hold.
-  if (spec.reservation && !prestoReservationStillOwned(spec.reservation)) {
-    const error = new Error('Refusing dispatch: the PRESTO dispatch reservation was lost or released during pre-dispatch verification.');
+  if (spec.reservation && !dispatchReservationStillOwned(spec.reservation)) {
+    const error = new Error('Refusing dispatch: the dispatch reservation was lost or released during pre-dispatch verification.');
     error.statusCode = 409;
     error.code = 'comfyui_dispatch_reservation_lost';
     throw error;
@@ -9574,7 +9642,7 @@ function launchPrestoProductionJob(config, payload = {}, options = {}) {
   PRESTO_STATE.activeJob = job;
   // Handoff: the running job now owns the slot, so the pre-dispatch reservation
   // retires. Ordered activeJob-then-reservation so the slot is never unmarked.
-  PRESTO_STATE.reservation = null;
+  releasePrestoReservation(config.reservation);
   if (child.stdout && child.stdout.on) {
     child.stdout.on('data', (chunk) => { job.stdout = appendCappedOutput(job.stdout, chunk); });
   }
@@ -9676,14 +9744,17 @@ function startSuperFocusVideoJob(mediaDir, options = {}) {
   // Synchronous contention decision — nothing may await before this line.
   const reservation = reservePrestoDispatchSync({ lane: 'super-focus-presto', jobKey: options.projectId || mediaDir });
   try {
-    return startSuperFocusVideoJobReserved(mediaDir, options, reservation);
+    return Promise.resolve(startSuperFocusVideoJobReserved(mediaDir, options, reservation)).catch((error) => {
+      releasePrestoReservation(reservation);
+      throw error;
+    });
   } catch (error) {
     releasePrestoReservation(reservation);
     throw error;
   }
 }
 
-function startSuperFocusVideoJobReserved(mediaDir, options = {}, reservation = null) {
+async function startSuperFocusVideoJobReserved(mediaDir, options = {}, reservation = null) {
   const productionScript = options.productionScript || process.env.SUPER_FOCUS_PRODUCTION_SCRIPT || PRESTO_STATE.productionScript;
   if (!fs.existsSync(productionScript)) {
     const error = new Error(`PRESTO run-production.py not found: ${productionScript}`);
@@ -9697,9 +9768,10 @@ function startSuperFocusVideoJobReserved(mediaDir, options = {}, reservation = n
   // It is the highest-volume Wan path, so gating the other lanes while this
   // one stayed open would have made the gate look enforced without being so.
   const profile = normalizePrestoProfile(options.profile);
-  const permit = gateProductionDispatch({ prestoProfile: profile, lane: 'super-focus-presto' }, options);
+  const permit = await gateProductionDispatchAsync({ prestoProfile: profile, lane: 'super-focus-presto', reservation }, options);
   return launchPrestoProductionJob({
     dispatchPermit: permit,
+    reservation,
     productionScript,
     pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN || 'python3',
     packageArg: mediaDir,
@@ -10449,7 +10521,7 @@ async function pumpSuperFocusVideoQueue(id, ctx) {
   });
   let job;
   try {
-    job = startSuperFocusVideoJob(materialized.mediaDir, {
+    job = await startSuperFocusVideoJob(materialized.mediaDir, {
       projectId: id,
       profile: DEFAULT_PRESTO_PROFILE,
       comfyuiUrl: PRESTO_BASE_URL,
@@ -10776,7 +10848,7 @@ function handlePrestoSubmit(req, res, options = {}) {
           return;
         }
         const reachableCheck = options.prestoReachableCheck || prestoComfyuiReachable;
-        return Promise.resolve(reachableCheck(config.comfyuiUrl, options)).then((reachable) => {
+        return Promise.resolve(reachableCheck(config.comfyuiUrl, options)).then(async (reachable) => {
           if (!reachable) {
             sendError(
               res,
@@ -10790,7 +10862,7 @@ function handlePrestoSubmit(req, res, options = {}) {
           // gate's authorizing ROUTE) so a rendered clip can be traced back to the
           // lane/host/endpoint/selector reason that produced it.
           const receipt = buildComputeDispatchReceipt({ lane, gateResult, verdict, profile: config.profile, comfyuiUrl: config.comfyuiUrl });
-          const result = startPrestoPackageJob(payload, { ...options, computeReceipt: receipt });
+          const result = await startPrestoPackageJob(payload, { ...options, computeReceipt: receipt });
           sendJSON(res, 200, result);
         });
       });
@@ -10958,6 +11030,21 @@ function serializeFluxJob(job, active, now = Date.now()) {
 
 function currentFluxJobStatus(now = Date.now()) {
   const job = FLUX_STATE.activeJob;
+  if (FLUX_STATE.reservation && (!job || job.completedAt)) {
+    const r = FLUX_STATE.reservation;
+    return serializeFluxJob({
+      jobId: r.reservation_id,
+      packageId: r.job_key,
+      mode: 'reserving',
+      pid: null,
+      startedAt: r.reserved_at,
+      completedAt: null,
+      exitCode: null,
+      exitState: 'reserving',
+      stdout: '',
+      stderr: '',
+    }, true, now);
+  }
   if (!job) return serializeFluxJob(null, false, now);
   if (!job.completedAt) return serializeFluxJob(job, true, now);
   const completedAt = Date.parse(job.completedAt);
@@ -11037,13 +11124,19 @@ function validateFluxSubmitPayload(payload = {}, options = {}) {
 }
 
 function startFluxPackageJob(payload = {}, options = {}) {
-  const current = currentFluxJobStatus();
-  if (current.active) {
-    const error = new Error('FLUX job already active');
-    error.statusCode = 409;
-    error.active = current;
+  const reservation = reserveFluxDispatchSync({ lane: 'aigen-flux', jobKey: payload && payload.package_id });
+  try {
+    return Promise.resolve(startFluxPackageJobReserved(payload, options, reservation)).catch((error) => {
+      releaseFluxReservation(reservation);
+      throw error;
+    });
+  } catch (error) {
+    releaseFluxReservation(reservation);
     throw error;
   }
+}
+
+async function startFluxPackageJobReserved(payload = {}, options = {}, reservation = null) {
   // Validate the request FIRST (bad input is 400 whatever the lane state),
   // THEN pre-flight the lane: run-handoff.py drives generation through the
   // `comfy` CLI, and a missing CLI must refuse here (clear 503) before any
@@ -11055,9 +11148,10 @@ function startFluxPackageJob(payload = {}, options = {}) {
   if (!comfyCliResolvable(options)) throw comfyCliBlockedError();
   // ComfyUI production gate (see comfyui-gateway/): registered workflow,
   // qualified, canonical hash intact, live user-dir copy not drifted.
-  const permit = gateProductionDispatch({ workflowId: 'flux-gguf-1080x1920', lane: 'aigen-flux' }, options);
+  const permit = await gateProductionDispatchAsync({ workflowId: 'flux-gguf-1080x1920', lane: 'aigen-flux', reservation }, options);
   return launchFluxHandoffJob({
     dispatchPermit: permit,
+    reservation,
     workflowIdentity: permit.workflowIdentity,
     fluxScript: config.fluxScript,
     pythonBin: config.pythonBin,
@@ -11069,8 +11163,8 @@ function startFluxPackageJob(payload = {}, options = {}) {
   }, payload, options);
 }
 
-// Shared FLUX spawn + job tracking. Callers MUST check currentFluxJobStatus()
-// for an active job first (single-GPU lock). config.packageArg is the literal
+// Shared FLUX spawn + job tracking. Callers arrive with the synchronous FLUX
+// reservation held. config.packageArg is the literal
 // --package value; run-handoff.py accepts an absolute dir (Super Focus lane) or
 // a script-packages id (aigen lane). Sets FLUX_STATE.activeJob.
 function launchFluxHandoffJob(config, payload = {}, options = {}) {
@@ -11122,6 +11216,8 @@ function launchFluxHandoffJob(config, payload = {}, options = {}) {
     args,
   };
   FLUX_STATE.activeJob = job;
+  // Handoff to activeJob without exposing an unowned slot.
+  releaseFluxReservation(config.reservation);
   const appendFluxOutput = (currentOutput, chunk) => tailOutput(appendCappedOutput(currentOutput, chunk), 8192);
   if (child.stdout && child.stdout.on) {
     child.stdout.on('data', (chunk) => { job.stdout = appendFluxOutput(job.stdout, chunk); });
@@ -11170,13 +11266,19 @@ function launchFluxHandoffJob(config, payload = {}, options = {}) {
 // media dir, then dispatch run-handoff.py against that absolute dir. Reuses the
 // single global FLUX lock (GPU-safe). No ComfyUI auto-start; no cloud fallback.
 function startSuperFocusImageJob(mediaDir, options = {}) {
-  const current = currentFluxJobStatus();
-  if (current.active) {
-    const error = new Error('A FLUX image job is already running. Wait for it to finish.');
-    error.statusCode = 409;
-    error.active = current;
+  const reservation = reserveFluxDispatchSync({ lane: 'super-focus-flux', jobKey: options.projectId || mediaDir });
+  try {
+    return Promise.resolve(startSuperFocusImageJobReserved(mediaDir, options, reservation)).catch((error) => {
+      releaseFluxReservation(reservation);
+      throw error;
+    });
+  } catch (error) {
+    releaseFluxReservation(reservation);
     throw error;
   }
+}
+
+async function startSuperFocusImageJobReserved(mediaDir, options = {}, reservation = null) {
   const fluxScript = options.fluxScript || FLUX_STATE.script;
   if (!fs.existsSync(fluxScript)) {
     const error = new Error(`FLUX run-handoff.py not found: ${fluxScript}`);
@@ -11186,9 +11288,10 @@ function startSuperFocusImageJob(mediaDir, options = {}) {
   // Pre-flight: the dispatch chain needs the `comfy` CLI (see comfyCliResolvable).
   if (!comfyCliResolvable(options)) throw comfyCliBlockedError();
   // ComfyUI production gate (same graph as the aigen FLUX lane).
-  const permit = gateProductionDispatch({ workflowId: 'flux-gguf-1080x1920', lane: 'super-focus-flux', endpoint: options.comfyuiUrl || null }, options);
+  const permit = await gateProductionDispatchAsync({ workflowId: 'flux-gguf-1080x1920', lane: 'super-focus-flux', endpoint: options.comfyuiUrl || null, reservation }, options);
   return launchFluxHandoffJob({
     dispatchPermit: permit,
+    reservation,
     workflowIdentity: permit.workflowIdentity,
     fluxScript,
     pythonBin: options.pythonBin || 'python3',
@@ -11303,9 +11406,9 @@ function readFluxResults(packageId, options = {}) {
 
 function handleFluxSubmit(req, res, options = {}) {
   readJsonBody(req)
-    .then((payload) => {
+    .then(async (payload) => {
       validateLocalWriteRequest(req, payload);
-      const result = startFluxPackageJob(payload, options);
+      const result = await startFluxPackageJob(payload, options);
       sendJSON(res, 200, result);
     })
     .catch((error) => {
@@ -15356,7 +15459,7 @@ function createServer(options = {}) {
           // Materialize ONLY the target rows so run-handoff.py generates exactly
           // those indexes — empty and already-imaged rows are never enqueued.
           const materialized = superFocusMedia.materializeImagePrompts(id, targetRows, { mediaRoot: sfMediaRoot });
-          const job = startSuperFocusImageJob(materialized.mediaDir, {
+          const job = await startSuperFocusImageJob(materialized.mediaDir, {
             projectId: id,
             limit: 0, // the materialized file already contains exactly the target set
             skipExisting: payload.skip_existing !== false,
@@ -15671,7 +15774,7 @@ function createServer(options = {}) {
           let job;
           try {
             materialized = superFocusMedia.materializeImagePrompts(id, [row], { mediaRoot: sfMediaRoot });
-            job = startSuperFocusImageJob(materialized.mediaDir, {
+            job = await startSuperFocusImageJob(materialized.mediaDir, {
               projectId: id,
               limit: 0,
               skipExisting: false, // forced: the canonical slot was just archived empty
@@ -15844,7 +15947,7 @@ function createServer(options = {}) {
           const materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, { mediaRoot: sfMediaRoot, rows: targetRows, selectedPathByIndex });
           let job;
           try {
-            job = startSuperFocusVideoJob(materialized.mediaDir, {
+            job = await startSuperFocusVideoJob(materialized.mediaDir, {
               projectId: id,
               profile: DEFAULT_PRESTO_PROFILE,
               comfyuiUrl: PRESTO_BASE_URL,
@@ -15979,7 +16082,7 @@ function createServer(options = {}) {
               mediaRoot: sfMediaRoot, rows: [row],
               selectedPathByIndex: { [idx]: attempt.source.staged_rel },
             });
-            job = startSuperFocusVideoJob(materialized.mediaDir, {
+            job = await startSuperFocusVideoJob(materialized.mediaDir, {
               projectId: id,
               profile: DEFAULT_PRESTO_PROFILE,
               comfyuiUrl: PRESTO_BASE_URL,
@@ -19224,6 +19327,9 @@ module.exports = {
   reservePrestoDispatchSync,
   prestoReservationStillOwned,
   releasePrestoReservation,
+  reserveFluxDispatchSync,
+  fluxReservationStillOwned,
+  releaseFluxReservation,
   launchFluxHandoffJob,
   fluxDispatchPath,
   comfyCliResolvable,

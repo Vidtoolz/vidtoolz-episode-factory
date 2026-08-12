@@ -491,7 +491,7 @@ test('dispatch: a missing comfy CLI is a clear 503 blocked state, not a spawned 
   } finally { await close(server); }
 });
 
-test('dispatch: startFluxPackageJob pre-flights the CLI too (aigen lane)', () => {
+test('dispatch: startFluxPackageJob pre-flights the CLI too (aigen lane)', async () => {
   // A VALID request (real package + script) so payload validation passes and
   // the CLI pre-flight is what refuses (input errors stay 400s; the lane gate
   // fires only for otherwise-dispatchable requests).
@@ -503,8 +503,8 @@ test('dispatch: startFluxPackageJob pre-flights the CLI too (aigen lane)', () =>
   }));
   require('./aigen-authority-test-helper.js').bindImagePrompts(packageDir);
   try {
-    assert.throws(
-      () => packageEngineServer.startFluxPackageJob({ package_id: 'pkg-x' }, {
+    await assert.rejects(
+      packageEngineServer.startFluxPackageJob({ package_id: 'pkg-x' }, {
         comfyCliCheck: () => false,
         scriptPackages,
         fluxScript: __filename, // exists; validation passes to the CLI gate
@@ -513,6 +513,7 @@ test('dispatch: startFluxPackageJob pre-flights the CLI too (aigen lane)', () =>
       (e) => e.statusCode === 503 && /Text-to-image lane blocked/i.test(e.message)
     );
   } finally {
+    packageEngineServer.FLUX_STATE.reservation = null;
     fs.rmSync(scriptPackages, { recursive: true, force: true });
   }
 });

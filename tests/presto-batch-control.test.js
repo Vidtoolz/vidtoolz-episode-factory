@@ -404,7 +404,7 @@ test("startPrestoPackageJob honors AIGEN_PRESTO_TIMEOUT_SECONDS override", async
   try {
     await withPrestoEnv(fixture, async () => {
       process.env.AIGEN_PRESTO_TIMEOUT_SECONDS = "1200";
-      packageEngineServer.startPrestoPackageJob(
+      await packageEngineServer.startPrestoPackageJob(
         { package_id: fixture.packageId },
         { spawn: captureSpawn(captured) }
       );
@@ -423,7 +423,7 @@ test("startPrestoPackageJob defaults to the recommended HQ profile", async () =>
   const captured = {};
   try {
     await withPrestoEnv(fixture, async () => {
-      packageEngineServer.startPrestoPackageJob(
+      await packageEngineServer.startPrestoPackageJob(
         { package_id: fixture.packageId },
         { spawn: captureSpawn(captured) }
       );
@@ -442,7 +442,7 @@ test("startPrestoPackageJob honors an explicit profile and rejects unknown ones"
   const captured = {};
   try {
     await withPrestoEnv(fixture, async () => {
-      packageEngineServer.startPrestoPackageJob(
+      await packageEngineServer.startPrestoPackageJob(
         { package_id: fixture.packageId, profile: "fast_current" },
         { spawn: captureSpawn(captured) }
       );

@@ -102,10 +102,12 @@ function withFluxEnv(fixture, fn) {
   process.env.AIGEN_SCRIPT_PACKAGES = path.join(fixture.aigenRoot, "script-packages");
   process.env.AIGEN_FLUX_SCRIPT = fixture.fluxScript;
   packageEngineServer.FLUX_STATE.activeJob = null;
+  packageEngineServer.FLUX_STATE.reservation = null;
   return Promise.resolve()
     .then(fn)
     .finally(() => {
       packageEngineServer.FLUX_STATE.activeJob = null;
+      packageEngineServer.FLUX_STATE.reservation = null;
       if (previous.root === undefined) delete process.env.AIGEN_VIDNAS_ROOT; else process.env.AIGEN_VIDNAS_ROOT = previous.root;
       if (previous.scriptPackages === undefined) delete process.env.AIGEN_SCRIPT_PACKAGES; else process.env.AIGEN_SCRIPT_PACKAGES = previous.scriptPackages;
       if (previous.fluxScript === undefined) delete process.env.AIGEN_FLUX_SCRIPT; else process.env.AIGEN_FLUX_SCRIPT = previous.fluxScript;
@@ -250,10 +252,10 @@ test("FLUX submit succeeds and returns job id and pid", async () => {
 test("FLUX submit dry_run true appends dry-run flag and records mode", async () => {
   const fixture = createFluxFixture();
   try {
-    await withFluxEnv(fixture, () => {
+    await withFluxEnv(fixture, async () => {
       let spawnedArgs = null;
       const child = fakeFluxChild();
-      const result = packageEngineServer.startFluxPackageJob(
+      const result = await packageEngineServer.startFluxPackageJob(
         { package_id: fixture.packageId, dry_run: true },
         {
           comfyCliCheck: () => true, // host CLI state is not what this test measures
@@ -276,10 +278,10 @@ test("FLUX submit dry_run true appends dry-run flag and records mode", async () 
 test("FLUX submit limit and skip_existing flags build expected CLI args", async () => {
   const fixture = createFluxFixture();
   try {
-    await withFluxEnv(fixture, () => {
+    await withFluxEnv(fixture, async () => {
       let spawnedArgs = null;
       const child = fakeFluxChild();
-      packageEngineServer.startFluxPackageJob(
+      await packageEngineServer.startFluxPackageJob(
         { package_id: fixture.packageId, limit: 2, skip_existing: false },
         {
           comfyCliCheck: () => true, // host CLI state is not what this test measures

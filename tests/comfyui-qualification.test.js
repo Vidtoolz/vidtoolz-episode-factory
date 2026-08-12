@@ -1173,6 +1173,9 @@ test("comfyui-environment manifest: deterministic self-hash, atomic publish, val
   assert.equal(manifest.host, "env-test");
   assert.equal(manifest.models.length, 6);
   assert.ok(manifest.models.every((m) => /^[0-9a-f]{64}$/.test(m.sha256)));
+  assert.equal(manifest.custom_nodes.observed, true, "strong inventory must persist an observed custom-node identity");
+  assert.match(manifest.custom_nodes.custom_nodes_sha256, /^[0-9a-f]{64}$/,
+    "raw inventory data must not overwrite the identity-bearing custom-node manifest section");
   assert.ok(fs.existsSync(outPath));
   assert.ok(!fs.readdirSync(path.dirname(outPath)).some((n) => n.includes(".tmp-")), "atomic write");
   // deterministic self-hash: key order + generated_at excluded
@@ -1191,6 +1194,17 @@ test("comfyui-environment manifest: deterministic self-hash, atomic publish, val
   const rm = gateway.environment.readManifest("env-test", fx.options);
   assert.equal(rm.status, "invalid");
   assert.ok(rm.problems.some((p) => p.includes("self-hash")));
+});
+
+test("comfyui-environment remote inventory includes the custom-node executable surface", () => {
+  const script = gateway.environment.buildPowershellInventoryScript({
+    config: { comfyui_root: "D:/AI/ComfyUI", model_roots: ["D:/AI/ComfyUI/models"] },
+    models: [],
+  });
+  assert.match(script, /custom_nodes = \$customNodes/,
+    "the strong remote manifest must observe the same custom-node surface as source verification");
+  assert.match(script, /\$cnRoot = Join-Path/,
+    "the inventory must execute the bounded custom-node walk, not emit an empty placeholder");
 });
 
 test("comfyui-environment strong identity: SHA authority is conditional on matching cheap metadata", async () => {
@@ -2631,7 +2645,7 @@ test("comfyui-p11 bypass: the Super Focus Wan lane cannot reach the dispatcher w
     return child;
   };
   try {
-    packageEngineServer.startSuperFocusVideoJob(mediaDir, {
+    await packageEngineServer.startSuperFocusVideoJob(mediaDir, {
       productionScript: script, pythonBin: "python3",
       profile: "wan22_hq_720p_5s_no_lightx2v", projectId: "p11-gate-probe",
       spawn: spawnStub,
@@ -3019,11 +3033,11 @@ test("presto reservation: ownership is identity-based, and a stale owner cannot 
   }
 });
 
-test("presto reservation: a refused dispatch releases the slot instead of wedging it", () => {
+test("presto reservation: a refused dispatch releases the slot instead of wedging it", async () => {
   const pes = require("../package-engine-server.js");
   try {
     // a missing production script fails AFTER the reservation is claimed
-    assert.throws(() => pes.startSuperFocusVideoJob(mkdtemp("presto-res-"), {
+    await assert.rejects(pes.startSuperFocusVideoJob(mkdtemp("presto-res-"), {
       productionScript: "/nonexistent/run-production.py", profile: "wan22_hq_720p_5s_no_lightx2v",
     }), /not found/);
     assert.equal(pes.PRESTO_STATE.reservation, null, "a failed dispatch must not leave PRESTO reserved");
@@ -3036,7 +3050,7 @@ test("presto reservation: a refused dispatch releases the slot instead of wedgin
   }
 });
 
-test("presto reservation: successful spawn hands the slot to the running job with no gap", () => {
+test("presto reservation: successful spawn hands the slot to the running job with no gap", async () => {
   const pes = require("../package-engine-server.js");
   const dir = mkdtemp("presto-res2-");
   const script = path.join(dir, "run-production.py");
@@ -3050,7 +3064,7 @@ test("presto reservation: successful spawn hands the slot to the running job wit
     return child;
   };
   try {
-    pes.startSuperFocusVideoJob(dir, { productionScript: script, pythonBin: "python3",
+    await pes.startSuperFocusVideoJob(dir, { productionScript: script, pythonBin: "python3",
       profile: "wan22_hq_720p_5s_no_lightx2v", projectId: "handoff", spawn: spawnStub });
     // handoff: the running job now holds the slot, the reservation has retired,
     // and the slot was never unmarked in between
@@ -3148,5 +3162,108 @@ test("freshness gate: a reservation lost during verification cannot dispatch", a
   } finally {
     pes.PRESTO_STATE.reservation = null;
     pes.PRESTO_STATE.activeJob = null;
+  }
+});
+
+test("freshness enforcement: a real PRESTO starter cannot spawn before the async gate resolves", async () => {
+  const pes = require("../package-engine-server.js");
+  const { EventEmitter } = require("node:events");
+  const dir = mkdtemp("freshness-live-start-");
+  const script = path.join(dir, "run-production.py");
+  fs.writeFileSync(script, "#!/usr/bin/env python3\n");
+  let settleVerification;
+  const verification = new Promise((resolve) => { settleVerification = resolve; });
+  let spawnCalls = 0;
+  const spawnStub = () => {
+    spawnCalls += 1;
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.kill = () => {}; child.pid = 9876;
+    return child;
+  };
+  try {
+    const dispatch = pes.startSuperFocusVideoJob(dir, {
+      productionScript: script, pythonBin: "python3",
+      profile: "wan22_hq_720p_5s_no_lightx2v", projectId: "async-ordering",
+      spawn: spawnStub, enforceSourceFreshness: "enforce",
+      ensureFreshSourceVerification: async () => verification,
+    });
+    assert.equal(spawnCalls, 0, "transport must remain untouched while freshness is unresolved");
+    settleVerification(refuse("SOURCE_DRIFT", "controlled drift refusal"));
+    await assert.rejects(dispatch, (error) => error.code === "SOURCE_DRIFT");
+    assert.equal(spawnCalls, 0, "a rejected async decision must suppress spawn completely");
+    assert.equal(pes.PRESTO_STATE.reservation, null, "async refusal must release the reservation");
+  } finally {
+    pes.PRESTO_STATE.activeJob = null;
+    pes.PRESTO_STATE.reservation = null;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("freshness enforcement: FLUX holds a synchronous reservation across the async gate", async () => {
+  const pes = require("../package-engine-server.js");
+  const { EventEmitter } = require("node:events");
+  const dir = mkdtemp("freshness-flux-start-");
+  const script = path.join(dir, "run-handoff.py");
+  fs.writeFileSync(script, "#!/usr/bin/env python3\n");
+  pes.FLUX_STATE.activeJob = null;
+  pes.FLUX_STATE.reservation = null;
+  let settleVerification;
+  const verification = new Promise((resolve) => { settleVerification = resolve; });
+  let spawnCalls = 0;
+  const spawnStub = () => {
+    spawnCalls += 1;
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    child.kill = () => {}; child.pid = 9877;
+    return child;
+  };
+  try {
+    const first = pes.startSuperFocusImageJob(dir, {
+      fluxScript: script, pythonBin: "python3", projectId: "flux-ordering",
+      comfyCliCheck: () => true, spawn: spawnStub,
+      enforceSourceFreshness: "enforce",
+      ensureFreshSourceVerification: async () => verification,
+    });
+    assert.ok(pes.FLUX_STATE.reservation, "the FLUX slot is reserved before the first await");
+    assert.equal(spawnCalls, 0);
+    assert.throws(() => pes.startSuperFocusImageJob(dir, {
+      fluxScript: script, comfyCliCheck: () => true, spawn: spawnStub,
+    }), (error) => error.statusCode === 409, "a contender cannot enter the async window");
+    settleVerification(freshOk);
+    await first;
+    assert.equal(spawnCalls, 1, "exactly one FLUX transport starts");
+    assert.equal(pes.FLUX_STATE.reservation, null, "reservation retires at active-job handoff");
+  } finally {
+    pes.FLUX_STATE.activeJob = null;
+    pes.FLUX_STATE.reservation = null;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("async dispatch cleanup: spawn failure releases PRESTO and FLUX reservations", async () => {
+  const pes = require("../package-engine-server.js");
+  const dir = mkdtemp("async-spawn-cleanup-");
+  const prestoScript = path.join(dir, "run-production.py");
+  const fluxScript = path.join(dir, "run-handoff.py");
+  fs.writeFileSync(prestoScript, "#!/usr/bin/env python3\n");
+  fs.writeFileSync(fluxScript, "#!/usr/bin/env python3\n");
+  const spawnFailure = () => { throw new Error("controlled spawn failure"); };
+  try {
+    await assert.rejects(pes.startSuperFocusVideoJob(dir, {
+      productionScript: prestoScript, pythonBin: "python3", spawn: spawnFailure,
+      profile: "wan22_hq_720p_5s_no_lightx2v",
+    }), /controlled spawn failure/);
+    assert.equal(pes.PRESTO_STATE.reservation, null);
+    assert.equal(pes.PRESTO_STATE.activeJob, null);
+    await assert.rejects(pes.startSuperFocusImageJob(dir, {
+      fluxScript, pythonBin: "python3", comfyCliCheck: () => true, spawn: spawnFailure,
+    }), /controlled spawn failure/);
+    assert.equal(pes.FLUX_STATE.reservation, null);
+    assert.equal(pes.FLUX_STATE.activeJob, null);
+  } finally {
+    pes.PRESTO_STATE.activeJob = null; pes.PRESTO_STATE.reservation = null;
+    pes.FLUX_STATE.activeJob = null; pes.FLUX_STATE.reservation = null;
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });

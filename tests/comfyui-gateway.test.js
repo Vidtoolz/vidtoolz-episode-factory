@@ -355,7 +355,7 @@ test("comfyui-gateway server wiring: PRESTO and FLUX dispatch are gated, routes 
   assert.match(src, /assertDispatchPermit\(config\.dispatchPermit, 'PRESTO'\)/);
   assert.match(src, /assertDispatchPermit\(config\.dispatchPermit, 'FLUX'\)/);
   // all four production lanes obtain a permit from that gate
-  const gated = src.match(/gateProductionDispatch\(\{/g) || [];
+  const gated = src.match(/gateProductionDispatchAsync\(\{/g) || [];
   assert.ok(gated.length >= 4, `all four production lanes must be gated (found ${gated.length})`);
   assert.match(src, /prestoProfile: config\.profile/);
   assert.match(src, /workflowId: 'flux-gguf-1080x1920'/);

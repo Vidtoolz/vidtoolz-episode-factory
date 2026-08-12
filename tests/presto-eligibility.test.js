@@ -319,7 +319,7 @@ test("concurrency: two near-simultaneous submits cannot both spawn (second → 4
   });
 });
 
-test("concurrency (direct): startPrestoPackageJob throws 409 while a job is active; only one spawn", () => {
+test("concurrency (direct): startPrestoPackageJob throws 409 while a job is active; only one spawn", async () => {
   const fx = makePkg();
   const prev = { sp: process.env.AIGEN_SCRIPT_PACKAGES, ps: process.env.AIGEN_PRODUCTION_SCRIPT };
   const productionScript = path.join(fx.root, "run-production.py");
@@ -329,7 +329,7 @@ test("concurrency (direct): startPrestoPackageJob throws 409 while a job is acti
   packageEngineServer.PRESTO_STATE.activeJob = null;
   const captured = {};
   try {
-    packageEngineServer.startPrestoPackageJob({ package_id: fx.id }, { spawn: captureSpawn(captured) });
+    await packageEngineServer.startPrestoPackageJob({ package_id: fx.id }, { spawn: captureSpawn(captured) });
     let err;
     try { packageEngineServer.startPrestoPackageJob({ package_id: fx.id }, { spawn: captureSpawn(captured) }); } catch (e) { err = e; }
     assert.ok(err); assert.equal(err.statusCode, 409);

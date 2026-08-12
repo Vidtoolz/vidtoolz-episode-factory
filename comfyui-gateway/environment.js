@@ -442,11 +442,13 @@ foreach ($m in $models) {
   $files += [pscustomobject]@{ filename = $m.filename; path = $resolved; bytes = $item.Length; mtime = $item.LastWriteTimeUtc.ToString('o'); sha256 = $sha }
 }
 ${powershellSourceStateBlock(comfyRoot)}
+${powershellCustomNodesBlock(comfyRoot)}
 $result = [pscustomobject]@{
   comfyui = [pscustomobject]@{ root = '${comfyRoot}'; git_commit = $commit; git_dirty = $(if ($dirty -ne $null) { $dirty -gt 0 } else { $null }); git_dirty_count = $dirty; identity_level = $(if ($commit) { 'git_commit' } else { 'unknown' }) }
   git_branch = $branch
   tracked_patch_sha256 = $patchSha
   source_entries = $sourceEntries
+  custom_nodes = $customNodes
   files = $files
   missing = $missing
 }
@@ -620,11 +622,24 @@ function sshPowershellExecutor(plan, options = {}) {
   }
   const parsed = JSON.parse(m[1]);
   const asArray = (v) => (Array.isArray(v) ? v : v == null ? [] : [v]); // ConvertTo-Json unwraps single-element arrays
+  const cn = parsed.custom_nodes || null;
   return {
     comfyui: parsed.comfyui,
     git_branch: parsed.git_branch || null,
     tracked_patch_sha256: parsed.tracked_patch_sha256 || null,
     source_entries: asArray(parsed.source_entries).map((e) => ({ ...e, sha256: e.sha256 ? String(e.sha256).toLowerCase() : null })),
+    custom_nodes: cn ? {
+      observed: Boolean(cn.observed),
+      error: cn.error || null,
+      entries: asArray(cn.entries).map((e) => ({
+        path: String(e.path).replace(/\\/g, '/'),
+        package: e.package,
+        sha256: e.sha256 ? String(e.sha256).toLowerCase() : null,
+        bytes: e.bytes != null ? e.bytes : null,
+        ...(e.unverifiable ? { unverifiable: true } : {}),
+      })).sort((a, b) => a.path.localeCompare(b.path) || String(a.sha256).localeCompare(String(b.sha256))),
+      counts: cn.counts || { files: 0, bytes: 0, packages: 0, unverifiable: 0 },
+    } : { observed: false, error: 'remote host returned no custom-node inventory', entries: [], counts: { files: 0, bytes: 0, packages: 0, unverifiable: 0 } },
     files: asArray(parsed.files).map((f) => ({ ...f, sha256: f.sha256 ? String(f.sha256).toLowerCase() : f.sha256 })),
     missing: asArray(parsed.missing),
   };
@@ -730,7 +745,6 @@ async function runStrongInventory(host, options = {}) {
       identity_level: 'sha256',
       workflows: workflowsByFilename.get(f.filename) || [],
     })),
-    custom_nodes: executorResult.custom_nodes || [],
   };
   manifest.manifest_sha256 = manifestSha256(manifest);
   const validation = validateManifest(manifest, { host: plan.host });
