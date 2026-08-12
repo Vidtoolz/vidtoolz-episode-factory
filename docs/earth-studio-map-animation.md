@@ -8,7 +8,7 @@ Google Earth Studio is a **browser-only** Google product with **no API / no head
 frame export itself is always a manual in-browser step. Everything around it is automated here:
 
 1. **Plan** — a plain-language sentence → camera shot plan + keyframes.
-   `earth-studio-job-planner.js` (v0.9.3): actions `hover`, `fly_to`, `orbit`, `zoom_in`, `zoom_out`
+   `earth-studio-job-planner.js` (v0.9.4): actions `hover`, `fly_to`, `orbit`, `zoom_in`, `zoom_out`
    with per-segment modifiers — duration (`for 5 seconds`, `for 2 minutes`), altitude (`at 800m`, `from space`,
    `low`, `high`), tilt (`top-down`, `tilted 30 degrees`, `toward the horizon`), and orbit amount +
    direction (`twice`, `180 degrees`, `counterclockwise`). Segments chain with `then`; a segment
@@ -26,6 +26,10 @@ frame export itself is always a manual in-browser step. Everything around it is 
    target, heading facing center, cumulative pan across consecutive orbits), smoothstep-eased
    zooms, a cinematic altitude arc on flights longer than ~30 km, an establishing start state for
    the first segment (a zoom-in begins wide, a fly-to begins high), and per-action camera tilt.
+   Planner-derived `zoom out to space` moves apply a high-altitude composition constraint based
+   on Earth's apparent angular radius and Earth Studio's default 20° field of view. The upper
+   globe limb stays inside a conservative vertical safe envelope as altitude increases; an
+   explicit operator-authored tilt remains authoritative and is never silently constrained.
    Since v0.5 the serialization follows the **real reverse-engineered Earth Studio project format**
    (modelVersion 17, per `mkatzef/google-studio-utils`): keyframe times as duration fractions,
    normalized values (`minValueRange` offsets, altitude × 1.5356706349899208e-08, tilt ÷ 180), and

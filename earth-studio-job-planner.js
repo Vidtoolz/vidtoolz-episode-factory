@@ -2,12 +2,17 @@
   "use strict";
 
   const DEFAULT_OUTPUT_DIR = "/home/vidtoolz/Videos/vidtoolz-earth-studio-jobs";
-  const VERSION = "0.9.3"; // v0.9.3 evidence-integrity hardening (profile v4): role-correct easing — the Google-template heavy deceleration lands on SEGMENT-BOUNDARY keyframes (positional 0.99·gap/0.99, altitude 2.5·gap/1.0 — the template authors it on the keyframe ENDING the big move, an interior keyframe, NOT the track final), track finals get the gentle multi-reference arrival (0.25/0.29, infl 0.4), interior influence is corpus-DERIVED (0.43; darien-gap 0.35 participates). // v0.9.2 corpus-rebuilt profile v3: deterministic derivation (scripts/rebuild-earth-studio-motion-profile.js) over 4 approved internet references; family-aware arrivals — APPROACH finals use the Google Zoom-To template full-gap deceleration (x 0.99·gap, influence 0.99, via 2 independent template exports), others the multi-reference 0.31/0.4. // v0.9.1 internet-reference motion profile v2: gap-relative eased handles + final settle-hold, derived ONLY from internet-sourced human-authored .esp references (config/earth-studio-motion/, operator directive: local/generated files do not qualify) — ES preserves unadorned keyframes as hard-linear, so easing must be authored. (v0.8.0 fly→orbit geometry: a fly/zoom immediately followed by an orbit around the same resolved target terminates at the orbit's ring entry (plan-annotated lookahead, ends_at_orbit_entry), so the pair plays as one continuous move — no sideways slide onto the ring. (v0.7.0: hover holds camera, orbit-scoped modifiers, fragment merge, "tilt N degrees", global duration strip, antimeridian seam pairs.)
+  const VERSION = "0.9.4"; // v0.9.4 semantic-space composition constraint; explicit tilt remains authoritative. v0.9.3 evidence-integrity hardening (profile v4): role-correct easing — the Google-template heavy deceleration lands on SEGMENT-BOUNDARY keyframes (positional 0.99·gap/0.99, altitude 2.5·gap/1.0 — the template authors it on the keyframe ENDING the big move, an interior keyframe, NOT the track final), track finals get the gentle multi-reference arrival (0.25/0.29, infl 0.4), interior influence is corpus-DERIVED (0.43; darien-gap 0.35 participates). // v0.9.2 corpus-rebuilt profile v3: deterministic derivation (scripts/rebuild-earth-studio-motion-profile.js) over 4 approved internet references; family-aware arrivals — APPROACH finals use the Google Zoom-To template full-gap deceleration (x 0.99·gap, influence 0.99, via 2 independent template exports), others the multi-reference 0.31/0.4. // v0.9.1 internet-reference motion profile v2: gap-relative eased handles + final settle-hold, derived ONLY from internet-sourced human-authored .esp references (config/earth-studio-motion/, operator directive: local/generated files do not qualify) — ES preserves unadorned keyframes as hard-linear, so easing must be authored. (v0.8.0 fly→orbit geometry: a fly/zoom immediately followed by an orbit around the same resolved target terminates at the orbit's ring entry (plan-annotated lookahead, ends_at_orbit_entry), so the pair plays as one continuous move — no sideways slide onto the ring. (v0.7.0: hover holds camera, orbit-scoped modifiers, fragment merge, "tilt N degrees", global duration strip, antimeridian seam pairs.)
   const FRAME_RATE = 30;
   const DEFAULT_ALTITUDE_M = 2500;
   const MIN_ALTITUDE_M = 150;
   const MAX_ALTITUDE_M = 63170000; // Earth Studio's documented altitude ceiling
   const SPACE_ALTITUDE_M = 12000000; // "from space": whole-globe view
+  const EARTH_RADIUS_M = 6371000;
+  const EARTH_STUDIO_DEFAULT_FOV_DEG = 20;
+  const SPACE_ZOOM_MIN_LIMB_INSET_FRACTION = 0.25;
+  const SPACE_ZOOM_TARGET_LIMB_INSET_FRACTION = 0.30;
+  const SPACE_ZOOM_COMPOSITION_SAMPLES = 16;
   const EXPECTED_FILES = [
     "README.md",
     "shot-plan.json",
@@ -480,6 +485,35 @@
     return Math.min(MAX_ALTITUDE_M, Math.max(floor, value));
   }
 
+  // Earth Studio's default FOV is 20°. At camera altitude h, a spherical
+  // Earth subtends angular radius asin(R/(R+h)) around nadir. Tilt moves that
+  // disk down the vertical frame; once tilt exceeds angular radius + FOV/2,
+  // the globe is completely off-screen (the real 9:16 failure at ~2584 km).
+  // Derived semantic-space shots instead keep the upper globe limb at least
+  // 25% of the FOV above frame center. We author 30% for interpolation
+  // headroom, leaving a deliberate band of space while most of Earth remains
+  // visible. This is a composition rule, not a destination/altitude special case.
+  function globeAngularRadiusDeg(altitudeM) {
+    const altitude = Math.max(0, Number(altitudeM) || 0);
+    return (Math.asin(EARTH_RADIUS_M / (EARTH_RADIUS_M + altitude)) * 180) / Math.PI;
+  }
+
+  function spaceZoomComposition(altitudeM, tiltDeg, fovDeg = EARTH_STUDIO_DEFAULT_FOV_DEG) {
+    const angularRadiusDeg = globeAngularRadiusDeg(altitudeM);
+    const limbInsetDeg = angularRadiusDeg - tiltDeg;
+    const minimumLimbInsetDeg = fovDeg * SPACE_ZOOM_MIN_LIMB_INSET_FRACTION;
+    return {
+      angular_radius_deg: angularRadiusDeg,
+      limb_inset_deg: limbInsetDeg,
+      minimum_limb_inset_deg: minimumLimbInsetDeg,
+      safe: limbInsetDeg >= minimumLimbInsetDeg,
+    };
+  }
+
+  function maxDerivedSpaceZoomTiltDeg(altitudeM, fovDeg = EARTH_STUDIO_DEFAULT_FOV_DEG) {
+    return Math.max(0, globeAngularRadiusDeg(altitudeM) - fovDeg * SPACE_ZOOM_TARGET_LIMB_INSET_FRACTION);
+  }
+
   // The segment's END/target camera altitude: explicit spec beats the
   // gazetteer's per-place altitude, which beats the per-action default —
   // always floored by the place's terrain minimum. Returns the value plus its
@@ -574,6 +608,13 @@
     let tiltDeg = typeof tiltSpec.tilt_deg === "number" ? tiltSpec.tilt_deg
       : (DEFAULT_TILT_DEG[actionInfo.action] != null ? DEFAULT_TILT_DEG[actionInfo.action] : 45);
     let tiltSource = typeof tiltSpec.tilt_deg === "number" ? "explicit" : "action_default";
+    let unconstrainedTiltDeg = null;
+    if (actionInfo.action === "zoom_out" && altitude.source === "semantic_space" && tiltSource !== "explicit") {
+      unconstrainedTiltDeg = tiltDeg;
+      tiltDeg = Math.min(tiltDeg, maxDerivedSpaceZoomTiltDeg(altitude.value));
+      tiltSource = "semantic_space_composition";
+      notes.push(`semantic space composition constrains derived terminal tilt from ${unconstrainedTiltDeg}° to ${round6(tiltDeg)}°; explicit tilt would remain authoritative.`);
+    }
     if (holdsPreviousCamera) {
       const minAlt = (location && location.min_altitude_m) || 0;
       const held = [];
@@ -661,6 +702,16 @@
       warnings,
       notes,
     };
+    if (unconstrainedTiltDeg !== null) {
+      segment.unconstrained_tilt_deg = unconstrainedTiltDeg;
+      segment.space_zoom_composition = {
+        earth_radius_m: EARTH_RADIUS_M,
+        earth_studio_default_fov_deg: EARTH_STUDIO_DEFAULT_FOV_DEG,
+        minimum_limb_inset_fraction: SPACE_ZOOM_MIN_LIMB_INSET_FRACTION,
+        target_limb_inset_fraction: SPACE_ZOOM_TARGET_LIMB_INSET_FRACTION,
+        sample_count: SPACE_ZOOM_COMPOSITION_SAMPLES,
+      };
+    }
     if (holdsPreviousCamera) segment.holds_camera = true;
     if (actionInfo.action === "orbit") {
       segment.orbit_degrees = typeof orbitSpec.orbit_degrees === "number" ? orbitSpec.orbit_degrees : 360;
@@ -1203,13 +1254,24 @@ This checklist is technical planning support only. It is not creative approval, 
       }
       const distance = haversineMeters(state, location);
       const arcBump = segment.action === "fly_to" && distance > 30000 ? Math.min(distance * 0.35, 2500000) : 0;
+      const constrainedSpaceZoom = segment.action === "zoom_out"
+        && segment.tilt_source === "semantic_space_composition";
       if (arcBump || state.altitude !== endAltitude) {
         anchor("alt", sf);
-        [0.25, 0.5, 0.75].forEach((t) => {
+        const altitudeFractions = constrainedSpaceZoom
+          ? Array.from({ length: SPACE_ZOOM_COMPOSITION_SAMPLES }, (_, i) => (i + 1) / SPACE_ZOOM_COMPOSITION_SAMPLES)
+          : [0.25, 0.5, 0.75, 1];
+        altitudeFractions.forEach((t) => {
           const eased = state.altitude + (endAltitude - state.altitude) * smoothstep(t);
-          put("alt", sf + (em - sf) * t, Math.round(clampAltitude(eased + arcBump * Math.sin(Math.PI * t), minAlt)));
+          const sampledAltitude = Math.round(clampAltitude(eased + arcBump * Math.sin(Math.PI * t), minAlt));
+          put("alt", sf + (em - sf) * t, sampledAltitude);
+          if (constrainedSpaceZoom) {
+            const authoredTilt = state.tilt
+              + (segment.unconstrained_tilt_deg - state.tilt) * smoothstep(t);
+            put("tilt", sf + (em - sf) * t,
+              round6(Math.min(authoredTilt, maxDerivedSpaceZoomTiltDeg(sampledAltitude))));
+          }
         });
-        put("alt", em, endAltitude);
       }
       // Successor-orbit ring entry (plan-annotated lookahead): land the move
       // exactly where the following orbit begins — its ring point at the
@@ -1238,7 +1300,7 @@ This checklist is technical planning support only. It is not creative approval, 
       }
       change("lng", sf, em, destLng);
       change("lat", sf, em, destLat);
-      change("tilt", sf, em, tilt);
+      if (!constrainedSpaceZoom) change("tilt", sf, em, tilt);
       state = { latitude: destLat, longitude: destLng, altitude: endAltitude, pan: state.pan, tilt };
     });
     // Emit-time wrap: the state machine runs unwrapped; the exported track
@@ -1544,6 +1606,10 @@ This checklist is technical planning support only. It is not creative approval, 
     MIN_ALTITUDE_M,
     MAX_ALTITUDE_M,
     SPACE_ALTITUDE_M,
+    EARTH_RADIUS_M,
+    EARTH_STUDIO_DEFAULT_FOV_DEG,
+    SPACE_ZOOM_MIN_LIMB_INSET_FRACTION,
+    SPACE_ZOOM_TARGET_LIMB_INSET_FRACTION,
     DEFAULT_DURATION_S,
     DEFAULT_TILT_DEG,
     ASPECTS,
@@ -1573,6 +1639,9 @@ This checklist is technical planning support only. It is not creative approval, 
     validateShotPlanPayload,
     haversineMeters,
     orbitRadiusMeters,
+    globeAngularRadiusDeg,
+    spaceZoomComposition,
+    maxDerivedSpaceZoomTiltDeg,
     slugify,
   };
 

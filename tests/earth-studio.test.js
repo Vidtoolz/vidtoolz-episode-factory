@@ -450,6 +450,49 @@ test("earth-studio planner v0.4: altitude modifiers (numeric, km, space, low/hig
   assert.ok(p6.segments[0].altitude_m >= 2600, `Denver zoom target ${p6.segments[0].altitude_m} below terrain floor`);
 });
 
+test("earth-studio planner v0.9.4: derived space zoom keeps the globe inside a safe vertical composition envelope", () => {
+  const plan = planner.buildShotPlan(
+    "Space composition",
+    "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 36 seconds, then zoom out to space in 12 seconds",
+    "2026-08-12T00:00:00.000Z",
+    { aspect: "9:16" },
+  );
+  const tracks = planner.buildEspKeyframes(plan);
+  const at = (track, frame) => {
+    if (frame <= track[0].time) return track[0].value;
+    for (let i = 1; i < track.length; i += 1) {
+      if (frame <= track[i].time) {
+        const a = track[i - 1];
+        const b = track[i];
+        const t = (frame - a.time) / (b.time - a.time);
+        return a.value + (b.value - a.value) * t;
+      }
+    }
+    return track[track.length - 1].value;
+  };
+  const earthRadiusM = 6371000;
+  const defaultVerticalFovDeg = 20;
+  const minimumLimbInsetDeg = defaultVerticalFovDeg * 0.25;
+  const margin = (frame) => {
+    const altitude = at(tracks.alt, frame);
+    const tilt = at(tracks.tilt, frame);
+    const angularRadius = Math.asin(earthRadiusM / (earthRadiusM + altitude)) * 180 / Math.PI;
+    return { frame, altitude, tilt, angularRadius, inset: angularRadius - tilt };
+  };
+
+  [1770, 1844, 1852, 1856, 1950, 2060, 2130].map(margin).forEach((sample) => {
+    assert.ok(sample.inset >= minimumLimbInsetDeg,
+      `frame ${sample.frame}: globe limb inset ${sample.inset.toFixed(3)}° is below ${minimumLimbInsetDeg}° `
+      + `(altitude ${Math.round(sample.altitude)}m, tilt ${sample.tilt.toFixed(3)}°)`);
+  });
+
+  const explicit = planner.buildShotPlan("Explicit", "zoom out from Paris to space tilted 55 degrees in 12 seconds", "2026-08-12T00:00:00.000Z", { aspect: "9:16" });
+  const explicitTracks = planner.buildEspKeyframes(explicit);
+  assert.equal(explicit.segments[0].tilt_source, "explicit");
+  assert.equal(explicitTracks.tilt[explicitTracks.tilt.length - 1].value, 55,
+    "an explicit operator tilt remains authoritative even when it is compositionally risky");
+});
+
 test("earth-studio planner v0.4: orbit amount + direction modifiers", () => {
   const p1 = planner.buildShotPlan("T", "orbit Paris twice for 8 seconds");
   assert.equal(p1.segments[0].orbit_degrees, 720);
