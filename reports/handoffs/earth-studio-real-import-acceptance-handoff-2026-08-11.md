@@ -85,3 +85,50 @@ Follow `acceptance/import-checklist.md` steps 1–5 verbatim:
 - Any VERSION bump (the acceptance manifest pins planner_version).
 - Package-run state/approval markers anywhere outside this acceptance run.
 - Pushing or publishing anything from the acceptance fixture.
+
+## Real-import observation — 2026-08-12 PRESTO
+
+The frozen fixture was imported into the real authenticated Google Earth
+Studio application on PRESTO. Import succeeded without a parser, repair, or
+corruption warning. Earth Studio Project Settings reported 1080x1920, 2130
+frames, and 30 FPS. The frozen SHA-256 was reverified before import and the
+focused pre-import gate remained `PASS — 33/33`.
+
+Observed PASS evidence:
+
+- The Helsinki-to-Paris flight and its arrival easing were coherent.
+- Frame 690 matched the planned ring-entry state (display rounding:
+  longitude 2.352 degrees, latitude 48.818 degrees, altitude 2001 m, tilt 35
+  degrees).
+- Frames 687-700 showed no position, altitude, or tilt discontinuity at the
+  fly-to-orbit boundary; the orbit began by smoothly changing position and
+  decreasing pan.
+- The ring position repeated at frames 690, 1230, and 1770, and pan reached
+  `-2x 0 degrees`, demonstrating two continuous counterclockwise revolutions.
+- The orbit-to-zoom boundary was structurally continuous, and the terminal
+  imported values held from frame 2060 through frame 2130.
+
+Material discrepancy:
+
+- The real 9:16 Camera view loses Earth during the authored space zoom. A
+  small Earth limb remains at frame 1852 (2368 km, tilt 55.999 degrees); the
+  Camera view is fully black by frame 1856 (2584 km, tilt 55.591 degrees) and
+  remains black through the terminal 12000 km / 35 degree hold at frame 2130.
+- Earth Studio preserved the authored position, altitude, pan, tilt, timing,
+  and keyframe structure. The discrepancy therefore belongs to the planner's
+  space-zoom composition, not `.esp` serialization or import reinterpretation.
+- The checklist expectation of a usable space-scale globe view is not met.
+  Classification: `REAL_IMPORT_DEFECT_CONFIRMED` / `PLANNER DEFECT`.
+
+The structured evidence is in
+`package-runs/2026-08-07-earth-studio-v04-acceptance/acceptance/import-observation.json`.
+`ingest-observation --json` reports a complete but rejected observation with
+discrepancies `zoom.correct` and `tilt.correct`. No frames were exported and
+no render was submitted because playback was not acceptable. Source code and
+the frozen fixture remain unchanged. The pre-existing unstaged
+`acceptance/acceptance-report.md` change remains untouched.
+
+Coverage note: this frozen Helsinki-to-Paris fixture contains neither an
+antimeridian crossing nor a dedicated semantic hover action. Those behaviors
+remain internally verified only; the terminal settle-hold was observed, but
+it is not a substitute for a dedicated hover import.

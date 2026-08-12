@@ -1,0 +1,31 @@
+{
+  "_instructions": "Recorded after the REAL Google Earth Studio import on PRESTO. Booleans are real application observations; raw notes preserve the observed discrepancy.",
+  "observedAt": "2026-08-12T06:15:32.8381031+03:00",
+  "observer": "Codex on PRESTO (real Google Earth Studio session)",
+  "importSucceeded": true,
+  "earthStudioWarnings": [],
+  "flight": {
+    "correct": true,
+    "notes": "Real Earth Studio opened the frozen fixture without repair/parser warnings. Frames 0-690 retained the intended Helsinki-to-Paris track. The arrival decelerated monotonically: altitude displayed 35,657 m at frame 660, 16,705 m at 670, 5,602 m at 680, and 2,001 m at 690; frame 690 longitude/latitude displayed 2.352/48.818 and tilt 35 degrees."
+  },
+  "orbit": {
+    "correct": true,
+    "directionCorrect": true,
+    "targetFacing": true,
+    "revolutionsObserved": 2,
+    "notes": "Real playback and frame stepping showed a continuous ring entry. Frames 687-690 decelerated into the ring; frames 691-700 began the orbit with no position, altitude, or tilt discontinuity. Ring positions repeated at frames 690, 1230, and 1770; pan completed two decreasing rotations and displayed -2x 0 degrees at frame 1770."
+  },
+  "zoom": {
+    "correct": false,
+    "notes": "MATERIAL REAL-IMPORT DISCREPANCY. The orbit-to-zoom boundary at frame 1770 is structurally continuous, and Earth Studio imports the planned numeric terminal state (12,000 km, longitude 2.352, latitude 48.857, pan -2x 0 degrees, tilt 35 degrees). However, the 9:16 Camera view loses the Earth during the zoom: a small limb remains at frame 1852 (2,368 km, tilt 55.999 degrees), the view is fully black by frame 1856 (2,584 km, tilt 55.591 degrees), and it stays black through frames 2060-2130. This contradicts the checklist expectation of a usable space-scale globe view."
+  },
+  "tilt": {
+    "correct": false,
+    "notes": "Earth Studio preserved the authored tilt values, but the authored 60-to-35-degree space-zoom tilt/rotation composition points the vertical Camera view away from Earth before the zoom completes. This is planner/composition ownership, not import reinterpretation."
+  },
+  "aspectRatio": {
+    "correct": true,
+    "notes": "Earth Studio Project Settings showed width 1080, height 1920, duration 2130 Frames, and 30 FPS."
+  },
+  "rawNotes": "MACHINE ASSERTIONS: frozen SHA-256 7754a178b63c60a9f7ccdf3c5313200501a0ac6463016b850fe628da667c3e41; planner v0.9.3; node scripts/earth-studio-v04-acceptance.js check => PASS 33/33. REAL EARTH STUDIO OBSERVATIONS: authenticated/import-capable Chrome session; import succeeded; populated camera position/rotation tracks; no import or repair warning; 2130 frames at 30 FPS and 1080x1920; flight arrival and fly-to-orbit ring entry passed; two counterclockwise orbit revolutions passed; orbit-to-zoom continuity passed; terminal settle values held from frame 2060 through 2130. MATERIAL DEFECT: the Camera viewport becomes completely black between frames 1852 and 1856 and remains black to frame 2130, so the intended final globe view is absent even though imported numeric values match the frozen plan. COVERAGE LIMITS: this Helsinki-to-Paris fixture contains no antimeridian crossing and no dedicated semantic hover action; those claims remain internal-only and were not promoted as real-import observations. No frame export or render was submitted because playback was not acceptable."
+}
