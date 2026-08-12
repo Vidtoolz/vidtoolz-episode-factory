@@ -1414,8 +1414,17 @@
       });
       regenBtn.addEventListener('click', function () {
         if (!confirm('Regenerate the video for row ' + index + '? The current clip is archived (not deleted) and a fresh render starts on PRESTO (slow).')) return;
+        var reason = prompt(
+          'Why regenerate this expensive Wan clip? Enter one code:\n' +
+          'source_image_revision\nmotion_prompt_revision\nprofile_or_configuration\nmodel_artifact\n' +
+          'camera_or_composition\neditorial_mismatch\nstochastic_alternate\ntechnical_retry\nother'
+        );
+        if (reason === null) return;
+        reason = String(reason).trim();
+        var note = prompt('Optional diagnosis note (required for "other", max 500 characters):', '');
+        if (note === null) return;
         regenBtn.classList.add('busy'); regenBtn.disabled = true; setRowStatus(st, 'Starting regen on PRESTO…', '');
-        apiPost(REGEN_VIDEO_API, { id: currentId, index: index }).then(function (res) {
+        apiPost(REGEN_VIDEO_API, { id: currentId, index: index, regeneration_reason: reason, regeneration_note: String(note).trim() }).then(function (res) {
           regenBtn.classList.remove('busy'); regenBtn.disabled = false;
           if (!res.ok) { setRowStatus(st, (res.body && res.body.error) || 'failed', 'dirty'); return; }
           setRowStatus(st, 'regen queued on PRESTO', 'ok'); startVideosPolling(); refreshVideosStatus();

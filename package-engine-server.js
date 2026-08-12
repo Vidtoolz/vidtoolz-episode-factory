@@ -169,6 +169,17 @@ const SUPER_FOCUS_REGENERATE_IMAGE_API = '/api/super-focus/regenerate-image';
 const SUPER_FOCUS_GENERATE_VIDEOS_API = '/api/super-focus/generate-videos';
 const SUPER_FOCUS_CLEAR_VIDEO_API = '/api/super-focus/clear-video';
 const SUPER_FOCUS_REGENERATE_VIDEO_API = '/api/super-focus/regenerate-video';
+const SUPER_FOCUS_VIDEO_REGENERATION_REASONS = Object.freeze([
+  'source_image_revision',
+  'motion_prompt_revision',
+  'profile_or_configuration',
+  'model_artifact',
+  'camera_or_composition',
+  'editorial_mismatch',
+  'stochastic_alternate',
+  'technical_retry',
+  'other',
+]);
 const SUPER_FOCUS_VIDEOS_STATUS_API = '/api/super-focus/videos-status';
 const SUPER_FOCUS_VIDEOS_CANCEL_API = '/api/super-focus/videos-cancel';
 const SUPER_FOCUS_QUEUE_VIDEO_API = '/api/super-focus/queue-video';
@@ -179,6 +190,27 @@ const SUPER_FOCUS_VIDEO_QUEUE_RESUME_API = '/api/super-focus/video-queue/resume'
 const SUPER_FOCUS_VIDEO_QUEUE_STOP_CURRENT_API = '/api/super-focus/video-queue/stop-current';
 const SUPER_FOCUS_CANCEL_QUEUED_VIDEO_API = '/api/super-focus/cancel-queued-video';
 const SUPER_FOCUS_VIDEO_FILE_API = '/api/super-focus/video';
+
+function normalizeVideoRegenerationFeedback(payload) {
+  const reasonCode = String(payload && payload.regeneration_reason || '').trim();
+  if (!SUPER_FOCUS_VIDEO_REGENERATION_REASONS.includes(reasonCode)) {
+    const error = new Error(`regeneration_reason must be one of: ${SUPER_FOCUS_VIDEO_REGENERATION_REASONS.join(', ')}.`);
+    error.statusCode = 400;
+    throw error;
+  }
+  const note = String(payload && payload.regeneration_note || '').trim();
+  if (note.length > 500) {
+    const error = new Error('regeneration_note is too long (max 500 characters).');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (reasonCode === 'other' && !note) {
+    const error = new Error('regeneration_note is required when regeneration_reason is other.');
+    error.statusCode = 400;
+    throw error;
+  }
+  return { reason_code: reasonCode, note };
+}
 
 // Super Focus routes that do sync filesystem work against the media root
 // (VIDNAS on vidnux). These — and ONLY these — are gated by the mount probe
@@ -16023,6 +16055,7 @@ function createServer(options = {}) {
           const id = payload.id || payload.project_id || '';
           const state = superFocus.loadProject(id, { root: sfRoot });
           const idx = Math.round(Number(payload.index));
+          const regenerationFeedback = normalizeVideoRegenerationFeedback(payload);
           const row = (state.image_prompts || []).find((r) => r.index === idx);
           const imgPath = superFocusMedia.safeImageFilePath(id, idx, { mediaRoot: sfMediaRoot });
           const hasImage = imgPath && fs.existsSync(imgPath);
@@ -16077,6 +16110,11 @@ function createServer(options = {}) {
             // bytes). See the attempts note in super-focus-media.js.
             attempt = superFocusMedia.createVideoAttempt(id, row, {
               mediaRoot: sfMediaRoot, subdir, profile: DEFAULT_PRESTO_PROFILE,
+              regeneration: {
+                ...regenerationFeedback,
+                previous_archived_path: archived.archived_path || null,
+                previous_output_sha256: archived.sha256 || null,
+              },
             });
             materialized = superFocusMedia.materializeVideoInputs(id, state.image_prompts, {
               mediaRoot: sfMediaRoot, rows: [row],
@@ -16131,6 +16169,8 @@ function createServer(options = {}) {
             job, index: idx, regenerated: true,
             superseded: archived.archived,
             superseded_path: archived.archived_path || null,
+            regeneration_reason: regenerationFeedback.reason_code,
+            regeneration_note_recorded: Boolean(regenerationFeedback.note),
             duplicate_check: archived.archived ? 'on-completion' : 'none',
             subdir, media_dir: materialized.mediaDir,
           });

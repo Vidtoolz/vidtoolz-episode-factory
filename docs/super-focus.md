@@ -185,7 +185,14 @@ A project is one linear sheet, in order:
    `run-production.py` uploads to PRESTO, and a still edited after dispatch
    can no longer silently change what a render used. The attempt also
    captures the dispatched I2V text verbatim (plus its canonical hash),
-   assignment id, profile, and output path. **Completion ownership**: only
+   assignment id, profile, and output path. An explicit **Regenerate video**
+   requires a structured diagnosis (`source_image_revision`,
+   `motion_prompt_revision`, `profile_or_configuration`, `model_artifact`,
+   `camera_or_composition`, `editorial_mismatch`, `stochastic_alternate`,
+   `technical_retry`, or `other`; `other` requires a note). The new attempt
+   stores that diagnosis plus the previous attempt/output identity. First
+   generation is unchanged and needs no diagnosis; these facts support later
+   waste analysis and do not automate creative approval. **Completion ownership**: only
    the slot's active dispatched attempt may complete; cancelled, superseded,
    and failed attempts refuse completion (the refusal is recorded), so a
    late-arriving file never inherits another dispatch's provenance.

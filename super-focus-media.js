@@ -758,6 +758,14 @@ function createVideoAttempt(projectId, row, options = {}) {
     output_rel: path.join('videos', subdir, videoFileName(idx)),
     source_verified: null,
     output: null,
+    regeneration: options.regeneration ? {
+      reason_code: String(options.regeneration.reason_code || ''),
+      note: String(options.regeneration.note || ''),
+      previous_attempt_id: prevId || null,
+      previous_archived_path: options.regeneration.previous_archived_path || null,
+      previous_output_sha256: options.regeneration.previous_output_sha256 || null,
+      recorded_at: now,
+    } : null,
     events: [],
   };
   data.attempts[attemptId] = record;

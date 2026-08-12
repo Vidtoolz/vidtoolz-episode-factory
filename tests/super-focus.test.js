@@ -1592,7 +1592,7 @@ test("regenerate-video refreshes provenance so the replaced clip reconciles curr
     assert.equal(d.videos.find((v) => v.index === 1).video_stale, true);
     // Explicit regeneration re-renders from the CURRENT text and re-stamps provenance.
     const regen = await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_VIDEO_API, {
-      method: "POST", headers: writeHeaders(), body: { id, index: 1 },
+      method: "POST", headers: writeHeaders(), body: { id, index: 1, regeneration_reason: "motion_prompt_revision" },
     });
     assert.equal(regen.statusCode, 200);
     await delay(40);
@@ -2624,7 +2624,7 @@ test("invariant: regenerate-video rejects a byte-identical clip and keeps the pr
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "001.mp4"), Buffer.from([0, 0, 0, 0])); // same bytes fakePrestoSpawn writes
     await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_VIDEO_API, {
-      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+      method: "POST", headers: writeHeaders(), body: { id, index: 1, regeneration_reason: "stochastic_alternate" } });
     await delay(40);
     assert.ok(fs.existsSync(path.join(dir, "001.mp4")), "previous clip kept active");
     const sup = path.join(mediaRoot, id, "superseded");
@@ -2645,7 +2645,7 @@ test("invariant: regenerate-video promotes a NEW distinct clip and supersedes th
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "001.mp4"), Buffer.from([7, 7, 7])); // distinct previous
     await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_VIDEO_API, {
-      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+      method: "POST", headers: writeHeaders(), body: { id, index: 1, regeneration_reason: "stochastic_alternate" } });
     await delay(40);
     assert.deepEqual([...fs.readFileSync(path.join(dir, "001.mp4"))], [0, 0, 0, 0], "new distinct clip promoted");
     const st = unwrap(await request(server, packageEngineServer.SUPER_FOCUS_VIDEOS_STATUS_API + "?id=" + encodeURIComponent(id)));
@@ -2723,7 +2723,7 @@ test("invariant: regenerate-video supersedes the old clip and dispatches a fresh
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "001.mp4"), Buffer.from([5, 5, 5]));
     const res = await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_VIDEO_API, {
-      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+      method: "POST", headers: writeHeaders(), body: { id, index: 1, regeneration_reason: "stochastic_alternate" } });
     assert.equal(res.statusCode, 200);
     assert.equal(unwrap(res).regenerated, true);
     assert.equal(unwrap(res).superseded, true);
@@ -4960,7 +4960,7 @@ test("regenerate-video restores the archived clip when dispatch fails (slot neve
     const clip = path.join(dir, "001.mp4");
     fs.writeFileSync(clip, Buffer.from([5, 5, 5]));
     const res = await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_VIDEO_API, {
-      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+      method: "POST", headers: writeHeaders(), body: { id, index: 1, regeneration_reason: "technical_retry" } });
     assert.equal(res.statusCode, 500, "dispatch failure surfaces (missing run-production.py)");
     assert.ok(fs.existsSync(clip), "clip restored to canonical after the failed dispatch");
     assert.deepEqual([...fs.readFileSync(clip)], [5, 5, 5], "restored bytes are the original clip");
@@ -5059,7 +5059,7 @@ test("regenerate-video refuses while the queue is paused (regenerate is also a n
     fs.writeFileSync(clip, Buffer.from([9, 9]));
     sfMedia.writeVideoQueue(id, { version: 1, paused: true, items: [] }, { mediaRoot });
     const res = await request(server, packageEngineServer.SUPER_FOCUS_REGENERATE_VIDEO_API, {
-      method: "POST", headers: writeHeaders(), body: { id, index: 1 } });
+      method: "POST", headers: writeHeaders(), body: { id, index: 1, regeneration_reason: "technical_retry" } });
     assert.equal(res.statusCode, 409);
     assert.match(String(res.body && res.body.error), /paused/i);
     assert.ok(fs.existsSync(clip), "clip was NOT archived by the refused regenerate");

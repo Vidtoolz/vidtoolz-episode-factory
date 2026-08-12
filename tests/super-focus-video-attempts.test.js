@@ -268,8 +268,19 @@ test('video-attempts: regenerate mints a new attempt; a non-active attempt refus
   try {
     await queueAndFinish(server, id, mediaRoot, 1);
     const a1 = completedAttemptFor(mediaRoot, id, 1);
-    const rq = await request(server, '/api/super-focus/regenerate-video', {
+    const blocked = await request(server, '/api/super-focus/regenerate-video', {
       method: 'POST', headers: writeHeaders(), body: { id, index: 1 },
+    });
+    assert.equal(blocked.statusCode, 400, 'regeneration needs an explicit diagnosis before any expensive dispatch');
+    assert.match(String(blocked.body && blocked.body.error), /regeneration_reason/);
+    assert.equal(Object.values(superFocusMedia.readVideoAttempts(id, { mediaRoot }).attempts).length, 1, 'blocked request created no attempt');
+    assert.ok(fs.existsSync(videoOut(mediaRoot, id, 1)), 'blocked request preserved the current clip');
+    const rq = await request(server, '/api/super-focus/regenerate-video', {
+      method: 'POST', headers: writeHeaders(), body: {
+        id, index: 1,
+        regeneration_reason: 'motion_prompt_revision',
+        regeneration_note: 'Motion intent was clarified after review.',
+      },
     });
     assert.equal(rq.statusCode, 200);
     await waitFor(() => {
@@ -279,6 +290,16 @@ test('video-attempts: regenerate mints a new attempt; a non-active attempt refus
     const data = superFocusMedia.readVideoAttempts(id, { mediaRoot });
     const all1 = Object.values(data.attempts).filter((a) => a.index === 1);
     assert.ok(all1.length >= 2, 'retry created a distinct attempt identity');
+    const a2 = all1.find((a) => a.attempt_id !== a1.attempt_id);
+    assert.deepEqual(a2.regeneration, {
+      reason_code: 'motion_prompt_revision',
+      note: 'Motion intent was clarified after review.',
+      previous_attempt_id: a1.attempt_id,
+      previous_archived_path: a2.regeneration.previous_archived_path,
+      previous_output_sha256: a1.output.sha256,
+      recorded_at: a2.regeneration.recorded_at,
+    });
+    assert.match(a2.regeneration.previous_archived_path, /^superseded[/\\]/, 'previous clip path is retained in lineage');
     assert.equal(data.attempts[a1.attempt_id].source.sha256, a1.source.sha256, 'historical attempt provenance untouched');
     // Completion ownership: the earlier attempt is no longer the slot's active
     // dispatched attempt — completing it must refuse and record the refusal.
@@ -509,7 +530,7 @@ test('video-attempts: stale upstream authority blocks batch and regenerate befor
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, existing);
     const regen = await request(server, '/api/super-focus/regenerate-video', {
-      method: 'POST', headers: writeHeaders(), body: { id, index: 1 },
+      method: 'POST', headers: writeHeaders(), body: { id, index: 1, regeneration_reason: 'technical_retry' },
     });
     assert.equal(regen.statusCode, 409);
     assert.match(regen.raw, /stale|regenerate/i);
@@ -527,6 +548,8 @@ test('video-attempts: super-focus.html surfaces the three render-source states (
   assert.ok(page.includes('differs from the image that produced this clip'), 'changed-since-render state copy');
   assert.ok(page.includes('Render source: unknown — no render-time record'), 'legacy unknown state copy');
   assert.ok(page.includes('Source image changed since this clip was rendered'), 'pre-review drift head warning');
+  assert.ok(page.includes('regeneration_reason: reason'), 'regenerate request carries structured diagnosis');
+  assert.ok(page.includes('stochastic_alternate'), 'UI offers an explicit creative-alternate intent');
 });
 
 test('video-attempts: attempt-storage UI is read-only — GET only, no nonce, textContent rendering', () => {
@@ -549,6 +572,7 @@ test('video-attempts: docs describe attempts, staged sources, and completion own
   assert.ok(/attempts\/<attempt_id>\//.test(doc));
   assert.ok(doc.includes('Completion ownership'));
   assert.ok(doc.includes('reviewed_source_binding'));
+  assert.ok(doc.includes('requires a structured diagnosis'));
 });
 
 // ── Dispatch races around the awaited PRESTO reach probe ─────────────────────
@@ -572,7 +596,7 @@ test('video-attempts: regenerate landing in the reach window never rewrites a ru
   try {
     // (1) Regenerate row 2 enters its reach await (lock free at its checks).
     const regenPromise = request(server, '/api/super-focus/regenerate-video', {
-      method: 'POST', headers: writeHeaders(), body: { id, index: 2 },
+      method: 'POST', headers: writeHeaders(), body: { id, index: 2, regeneration_reason: 'technical_retry' },
     });
     await waitFor(() => reachCalls >= 1);
     // (2) A queue dispatch for row 1 grabs the PRESTO lock inside the window.
@@ -619,7 +643,7 @@ test('video-attempts: a pause landing in the regenerate reach window wins — no
   const { server, mediaRoot, id } = await attemptServer({ delayMs: 40, reach });
   try {
     const regenPromise = request(server, '/api/super-focus/regenerate-video', {
-      method: 'POST', headers: writeHeaders(), body: { id, index: 1 },
+      method: 'POST', headers: writeHeaders(), body: { id, index: 1, regeneration_reason: 'technical_retry' },
     });
     await waitFor(() => reachCalls >= 1);
     const paused = await request(server, '/api/super-focus/video-queue/pause', {
