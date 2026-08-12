@@ -1,0 +1,29 @@
+{
+  "verified_at": "2026-08-12T07:03:06.0594567+03:00",
+  "result": "PASS",
+  "planner_version": "0.9.4",
+  "git_head": "a455e1a106e4a14f1ad873165dc5b4ae0c3ace86",
+  "focused_tests": "5/5 hover/antimeridian tests passed",
+  "earth_studio_tests": "71/71 passed",
+  "contract": {
+    "interval_frames": [180, 360],
+    "latitude": 48.8566,
+    "longitude": 2.3522,
+    "altitude_m": 1500,
+    "tilt_deg": 45,
+    "pan_deg": 0,
+    "translation_tolerance_deg": 0,
+    "altitude_tolerance_m": 0,
+    "rotation_tolerance_deg": 0
+  },
+  "track_evidence": {
+    "longitude": [{ "frame": 0, "value": 2.3522 }, { "frame": 360, "value": 2.3522 }],
+    "latitude": [{ "frame": 0, "value": 48.8566 }, { "frame": 360, "value": 48.8566 }],
+    "altitude": [{ "frame": 180, "value": 1500 }, { "frame": 360, "value": 1500 }],
+    "pan": [{ "frame": 0, "value": 0 }],
+    "tilt": [{ "frame": 0, "value": 45 }, { "frame": 360, "value": 45 }]
+  },
+  "sampled_frames": [180, 181, 225, 270, 315, 359, 360],
+  "sample_result": "All sampled frames resolve to longitude 2.3522, latitude 48.8566, altitude 1500m, pan 0 degrees, and tilt 45 degrees.",
+  "boundary_result": "Frame 179 is still arriving (approximately 1529.5m); frame 180 is the exact hold state. Frame 360 remains identical; frame 361 begins the intended London departure. No authored interpolation can creep inside the anchored interval."
+}

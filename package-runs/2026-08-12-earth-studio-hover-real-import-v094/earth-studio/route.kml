@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Earth Studio v0.9.4 Hover Real Import route reference</name>
+    <description>KML reference asset only. This does not create a finished Google Earth Studio camera animation.</description>
+    <Placemark>
+      <name>Paris</name>
+      <Point><coordinates>2.3522,48.8566,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>London</name>
+      <Point><coordinates>-0.1278,51.5074,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>Earth Studio v0.9.4 Hover Real Import route path reference</name>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+        2.3522,48.8566,0
+        2.3522,48.8566,0
+        -0.1278,51.5074,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

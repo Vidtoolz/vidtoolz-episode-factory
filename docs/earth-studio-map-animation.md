@@ -74,9 +74,11 @@ semantics have since been **externally validated in real Google Earth Studio** (
 frames→MP4 render seam works on a real export (round 3), and rotationX = pan / rotationY =
 tilt-from-nadir, target-facing orbits, accumulated revolutions, and **counterclockwise = pan
 decreasing (on-screen direction confirmed by the operator, round 4)** all behaved as generated.
-Still awaiting external confirmation: the v0.9 corpus-informed easing/settle-hold and the v0.8
-fly→orbit ring-entry geometry (internally verified; the next import round's checklist covers
-them). `scripts/earth-studio-v04-acceptance.js` formalizes this as a state machine:
+Later PRESTO real-import rounds confirmed the v0.9 motion-profile v4 easing/settle-hold,
+the v0.8 fly→orbit ring-entry geometry, the corrected v0.9.4 space-zoom composition,
+the carried-over hover hold, and the adjacent-keyframe antimeridian seam. The dedicated
+hover and antimeridian fixtures are preserved under `package-runs/2026-08-12-earth-studio-*`.
+`scripts/earth-studio-v04-acceptance.js` formalizes the canonical acceptance state machine:
 
 - **INTERNAL_VERIFIED** — parser/generator/renderer tests pass and the pre-import semantic
   assertions pass (29 checks: 9:16 dimensions, real Helsinki→Paris distance, cinematic arc,
@@ -92,6 +94,22 @@ them). `scripts/earth-studio-v04-acceptance.js` formalizes this as a state machi
 Failure states: `INTERNAL_CHECKS_FAILED`, `IMPORT_DISCREPANCY_REPORTED` (observed Earth Studio
 behavior wins — diagnose narrowly, add a regression test, fix, regenerate a NEW proof round;
 never edit evidence in place).
+
+### Current Earth Studio evidence matrix (2026-08-12)
+
+| Behavior | Internal verification | Real Earth Studio |
+| --- | --- | --- |
+| Fly arrival | PASS | PASS |
+| Fly → orbit | PASS | PASS |
+| Orbit continuity | PASS | PASS |
+| Motion-profile v4 | PASS | PASS |
+| Space zoom composition v0.9.4 | PASS | PASS |
+| Hover hold | PASS | PASS |
+| Antimeridian crossing | PASS | PASS |
+
+The v0.9.3 space-zoom failure remains preserved as a rejected real-import
+observation. Planner v0.9.4 and its separately hashed corrected import remain the
+accepted replacement; later hover/antimeridian evidence does not rewrite that history.
 
 ## v0.4 acceptance procedure
 Canonical fixture: `package-runs/2026-08-07-earth-studio-v04-acceptance/` — instruction

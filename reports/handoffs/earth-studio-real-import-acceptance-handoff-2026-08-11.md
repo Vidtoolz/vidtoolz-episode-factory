@@ -198,3 +198,66 @@ erased or rewritten. No Earth Studio frame export or render was submitted for
 this reacceptance; import, Camera-view inspection, frame stepping, and playback
 provided the required downstream evidence. Antimeridian and dedicated hover
 real-import promotion remain outside this fixture's scope.
+
+## Hover and antimeridian dedicated real-app acceptance — 2026-08-12 PRESTO
+
+The two remaining fixture-coverage gaps were closed without planner or test
+changes. Both projects were generated through `earth-studio-lane.writeJob`
+using planner v0.9.4 at git
+`a455e1a106e4a14f1ad873165dc5b4ae0c3ace86`, hashed before transfer to
+PRESTO, imported into the real Google Earth Studio application, and inspected
+through both Camera view and numerical camera properties.
+
+### Hover hold
+
+- Package:
+  `package-runs/2026-08-12-earth-studio-hover-real-import-v094/`
+- `.esp` SHA-256:
+  `360e9ab184672abcc5a773650807a7e5ac8248c838de12aedbea5454f98dffce`
+- Identity: 540 frames, 30 FPS, 1080x1920.
+- The six-second hover spans frames 180-360 at Paris. Frames 180, 181, 225,
+  270, 315, 359, and 360 all displayed longitude 2.352 degrees, latitude
+  48.857 degrees, altitude 1501 m, pan 0 degrees, and tilt 45 degrees.
+- Camera views at the hold start, midpoint, and end were compositionally
+  identical. Playback remained fixed until the intended London departure
+  began after frame 360; no entry/exit snap or interpolation creep appeared.
+- Classification: `HOVER_REAL_IMPORT_VERIFIED`.
+
+### Antimeridian crossing
+
+- Package:
+  `package-runs/2026-08-12-earth-studio-antimeridian-real-import-v094/`
+- `.esp` SHA-256:
+  `d93376594e5cfdf995513f090a442404714adf7d7f81c1ce6d799dcc826f63c9`
+- Identity: 720 frames, 30 FPS, 1080x1920.
+- The route holds latitude 20 degrees and moves eastward from longitude +170
+  to -170. The raw delta is -340 degrees; the planner-authored and observed
+  physical route is the normalized +20-degree short arc.
+- Frame stepping showed +176.286 degrees at frame 240, the +180/-180 seam at
+  frames 390/391, -174.595 degrees at frame 540, and -170 degrees at arrival.
+- Camera views at frames 389-392 advanced continuously over the same Pacific
+  seabed area. Live playback showed no positional snap, near-global travel,
+  heading reversal, altitude discontinuity, tilt drift, or easing break.
+- Earth Studio's turn-multiplier display at the exact seam is numerical only;
+  it did not alter the physical Camera path.
+- Classification: `ANTIMERIDIAN_REAL_IMPORT_VERIFIED`.
+
+Focused hover/antimeridian tests passed 5/5 and the Earth Studio test file
+passed 71/71 before import. The structured machine and real-app observations
+are retained inside each package's `acceptance/` directory. No Earth Studio
+render/export, ComfyUI job, Wan job, or unrelated generation was submitted.
+
+### Evidence matrix
+
+| Behavior | Internal verification | Real Earth Studio |
+| --- | --- | --- |
+| Fly arrival | PASS | PASS |
+| Fly → orbit | PASS | PASS |
+| Orbit continuity | PASS | PASS |
+| Motion-profile v4 | PASS | PASS |
+| Space zoom composition v0.9.4 | PASS | PASS |
+| Hover hold | PASS | PASS |
+| Antimeridian crossing | PASS | PASS |
+
+The rejected v0.9.3 space-zoom fixture, its real-app discrepancy, the v0.9.4
+fix, and the corrected real-app acceptance remain preserved unchanged.

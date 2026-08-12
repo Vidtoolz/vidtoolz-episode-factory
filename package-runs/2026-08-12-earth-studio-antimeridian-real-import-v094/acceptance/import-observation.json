@@ -1,0 +1,35 @@
+{
+  "observed_at": "2026-08-12T07:16:57.6718556+03:00",
+  "observer": "Codex on PRESTO (real Google Earth Studio session)",
+  "fixture_sha256": "d93376594e5cfdf995513f090a442404714adf7d7f81c1ce6d799dcc826f63c9",
+  "import_succeeded": true,
+  "warnings": [],
+  "project_identity_correct": true,
+  "project_identity": {
+    "title": "antimeridian-v094-d9337659",
+    "width": 1080,
+    "height": 1920,
+    "frame_rate": 30,
+    "total_frames": 720
+  },
+  "short_path_correct": true,
+  "seam_continuous": true,
+  "altitude_tilt_easing_coherent": true,
+  "classification": "ANTIMERIDIAN_REAL_IMPORT_VERIFIED",
+  "frame_observations": [
+    { "frame": 119, "longitude": 170, "latitude": 20, "altitude_km": 500, "pan_deg": 0, "tilt_deg": 30, "note": "departure pose" },
+    { "frame": 120, "longitude": 170, "latitude": 20, "altitude_km": 500, "pan_deg": 0, "tilt_deg": 30, "note": "crossing flight begins" },
+    { "frame": 240, "longitude": 176.286, "latitude": 20, "altitude_km": 972, "pan_deg": 0, "tilt_deg": 30, "note": "eastward approach toward +180" },
+    { "frame": 389, "longitude": 180, "latitude": 20, "altitude_km": 1231, "pan_deg": 0, "tilt_deg": 30, "note": "immediately before seam" },
+    { "frame": 390, "longitude_display": "1x 180 degrees", "latitude": 20, "altitude_km": 1231, "pan_deg": 0, "tilt_deg": 30, "note": "positive seam representation" },
+    { "frame": 391, "longitude_display": "-1x -180 degrees", "latitude": 20, "altitude_km": 1231, "pan_deg": 0, "tilt_deg": 30, "note": "negative seam representation; same physical meridian" },
+    { "frame": 392, "longitude": -180, "latitude": 20, "altitude_km": 1230, "pan_deg": 0, "tilt_deg": 30, "note": "immediately after seam" },
+    { "frame": 540, "longitude": -174.595, "latitude": 20, "altitude_km": 967, "pan_deg": 0, "tilt_deg": 30, "note": "eastward continuation toward destination" },
+    { "frame": 659, "longitude": -170, "latitude": 20, "altitude_km": 500, "pan_deg": 0, "tilt_deg": 30, "note": "arrival" },
+    { "frame": 660, "longitude": -170, "latitude": 20, "altitude_km": 500, "pan_deg": 0, "tilt_deg": 30, "note": "arrival/hold boundary" },
+    { "frame": 719, "longitude": -170, "latitude": 20, "altitude_km": 500, "pan_deg": 0, "tilt_deg": 30, "note": "terminal hold" }
+  ],
+  "playback_observations": "Real Earth Studio playback moved eastward from +170 through +180/-180 to -170. Playback sampling observed 179.991 degrees before the seam and -179.999, -179.989, -179.962, and -179.928 degrees immediately afterward. There was no near-global movement, position snap, heading reversal, altitude discontinuity, tilt drift, or easing discontinuity.",
+  "camera_view_observations": "Frame-stepped Camera views at frames 389, 390, 391, and 392 showed the same Pacific seabed area advancing continuously by a tiny amount. No visible jump occurred across the adjacent seam keyframes.",
+  "notes": "Earth Studio displayed turn multipliers at the exact +180/-180 seam. This is a non-material numerical representation of the same physical meridian, not a Camera discontinuity. The imported route physically followed the intended 20-degree short arc rather than the raw 340-degree alternative."
+}

@@ -1,0 +1,28 @@
+{
+  "proof_id": "2026-08-12-earth-studio-hover-real-import-v094",
+  "purpose": "Real Google Earth Studio acceptance of the v0.9.4 carried-over hover hold",
+  "planner_version": "0.9.4",
+  "git_head": "a455e1a106e4a14f1ad873165dc5b4ae0c3ace86",
+  "generated_at": "2026-08-12T04:10:00.000Z",
+  "instruction": "fly to Paris at 1500 meters tilted 45 degrees in 6 seconds, then hover for 6 seconds, then fly to London at 1800 meters tilted 35 degrees in 6 seconds",
+  "aspect": "9:16",
+  "render_dimensions": { "width": 1080, "height": 1920 },
+  "frame_rate": 30,
+  "total_frames": 540,
+  "total_duration_seconds": 18,
+  "hover": {
+    "start_frame": 180,
+    "end_frame": 360,
+    "latitude": 48.8566,
+    "longitude": 2.3522,
+    "altitude_m": 1500,
+    "tilt_deg": 45,
+    "pan_deg": 0,
+    "location_source": "carried_over",
+    "altitude_source": "carried_over",
+    "tilt_source": "carried_over",
+    "holds_camera": true
+  },
+  "esp_bytes": 14827,
+  "esp_sha256": "360e9ab184672abcc5a773650807a7e5ac8248c838de12aedbea5454f98dffce"
+}

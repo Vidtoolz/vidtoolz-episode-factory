@@ -1,0 +1,148 @@
+{
+  "job_name": "Earth Studio v0.9.4 Hover Real Import",
+  "version": "0.9.4",
+  "generated_at": "2026-08-12T04:10:00.000Z",
+  "source_description": "fly to Paris at 1500 meters tilted 45 degrees in 6 seconds, then hover for 6 seconds, then fly to London at 1800 meters tilted 35 degrees in 6 seconds",
+  "parser_strategy": "offline_regex_with_manual_review_fallback",
+  "frame_rate": 30,
+  "frame_convention": {
+    "start_frame": "inclusive",
+    "end_frame": "exclusive"
+  },
+  "aspect": "9:16",
+  "render_dimensions": {
+    "width": 1080,
+    "height": 1920
+  },
+  "total_duration_seconds": 18,
+  "total_frames": 540,
+  "locations": [
+    {
+      "name": "Paris",
+      "latitude": 48.8566,
+      "longitude": 2.3522,
+      "resolution_status": "resolved_fixture"
+    },
+    {
+      "name": "London",
+      "latitude": 51.5074,
+      "longitude": -0.1278,
+      "resolution_status": "resolved_fixture"
+    }
+  ],
+  "segments": [
+    {
+      "segment_id": 1,
+      "source_text": "fly to Paris at 1500 meters tilted 45 degrees in 6 seconds",
+      "action": "fly_to",
+      "requested_action": "fly_to",
+      "location_name": "Paris",
+      "location": {
+        "name": "Paris",
+        "latitude": 48.8566,
+        "longitude": 2.3522,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 1500,
+      "altitude_source": "explicit",
+      "tilt_deg": 45,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 0,
+      "end_seconds": 6,
+      "duration_seconds": 6,
+      "start_frame": 0,
+      "end_frame": 180,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 2,
+      "source_text": "hover for 6 seconds",
+      "action": "hover",
+      "requested_action": "hover",
+      "location_name": "Paris",
+      "location": {
+        "name": "Paris",
+        "latitude": 48.8566,
+        "longitude": 2.3522,
+        "source": "carried_over"
+      },
+      "altitude_m": 1500,
+      "altitude_source": "carried_over",
+      "tilt_deg": 45,
+      "tilt_source": "carried_over",
+      "duration_source": "explicit",
+      "start_seconds": 6,
+      "end_seconds": 12,
+      "duration_seconds": 6,
+      "start_frame": 180,
+      "end_frame": 360,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": [
+        "location carried over: Paris.",
+        "hover holds the previous camera (altitude 1500m, tilt 45°)."
+      ],
+      "holds_camera": true
+    },
+    {
+      "segment_id": 3,
+      "source_text": "fly to London at 1800 meters tilted 35 degrees in 6 seconds",
+      "action": "fly_to",
+      "requested_action": "fly_to",
+      "location_name": "London",
+      "location": {
+        "name": "London",
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 1800,
+      "altitude_source": "explicit",
+      "tilt_deg": 35,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 12,
+      "end_seconds": 18,
+      "duration_seconds": 6,
+      "start_frame": 360,
+      "end_frame": 540,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    }
+  ],
+  "unresolved_items": [],
+  "motion_profile": {
+    "profile_version": 4,
+    "source": "config/earth-studio-motion/motion-profile.json",
+    "references": [
+      "darien-gap",
+      "mountkinabalu",
+      "radiator-untitled",
+      "servyx"
+    ],
+    "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold"
+  },
+  "notes": [
+    "segment 2: location carried over: Paris.",
+    "segment 2: hover holds the previous camera (altitude 1500m, tilt 45°).",
+    "camera motion: internet-reference profile v4 (easeOut departures, auto interiors, Google-template deceleration on move-ending boundaries — altitude hardest, gentle terminal arrivals; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."
+  ],
+  "manual_earth_studio_steps": [
+    "Open Google Earth Studio manually.",
+    "Create or open the project manually; this planner does not log in, automate a browser, or control Earth Studio.",
+    "Use shot-plan.json coordinates as manual camera/search references.",
+    "Use route.kml only as a placemark/path reference asset.",
+    "Manually create, review, and adjust all camera keyframes.",
+    "Render manually only after Mikko reviews the camera move."
+  ],
+  "warnings": [
+    "KML is a reference asset only and does not create a finished Google Earth Studio camera animation.",
+    "Placemark use as camera targets is unverified in v1; manually search or set camera targets from shot-plan.json if needed.",
+    "This planner does not render video, manipulate .esp files, control Google Earth Studio, or approve footage.",
+    "Technical planning artifacts are not creative approval, rights clearance, or package-run evidence approval."
+  ]
+}

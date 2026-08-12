@@ -1,0 +1,33 @@
+{
+  "observed_at": "2026-08-12T07:11:56.7328634+03:00",
+  "observer": "Codex on PRESTO (real Google Earth Studio session)",
+  "fixture_sha256": "360e9ab184672abcc5a773650807a7e5ac8248c838de12aedbea5454f98dffce",
+  "import_succeeded": true,
+  "warnings": [],
+  "project_identity_correct": true,
+  "project_identity": {
+    "title": "hover-v094-360e9ab1",
+    "width": 1080,
+    "height": 1920,
+    "frame_rate": 30,
+    "total_frames": 540
+  },
+  "camera_hold_correct": true,
+  "entry_continuous": true,
+  "exit_continuous": true,
+  "classification": "HOVER_REAL_IMPORT_VERIFIED",
+  "frame_observations": [
+    { "frame": 179, "longitude": 2.352, "latitude": 48.857, "altitude_m": 1502, "pan_deg": 0, "tilt_deg": 45, "note": "final arrival frame before the hold" },
+    { "frame": 180, "longitude": 2.352, "latitude": 48.857, "altitude_m": 1501, "pan_deg": 0, "tilt_deg": 45, "note": "hover start" },
+    { "frame": 181, "longitude": 2.352, "latitude": 48.857, "altitude_m": 1501, "pan_deg": 0, "tilt_deg": 45 },
+    { "frame": 225, "longitude": 2.352, "latitude": 48.857, "altitude_m": 1501, "pan_deg": 0, "tilt_deg": 45 },
+    { "frame": 270, "longitude": 2.352, "latitude": 48.857, "altitude_m": 1501, "pan_deg": 0, "tilt_deg": 45, "note": "midpoint" },
+    { "frame": 315, "longitude": 2.352, "latitude": 48.857, "altitude_m": 1501, "pan_deg": 0, "tilt_deg": 45 },
+    { "frame": 359, "longitude": 2.352, "latitude": 48.857, "altitude_m": 1501, "pan_deg": 0, "tilt_deg": 45 },
+    { "frame": 360, "longitude": 2.352, "latitude": 48.857, "altitude_m": 1501, "pan_deg": 0, "tilt_deg": 45, "note": "hover end" },
+    { "frame": 361, "longitude": 2.352, "latitude": 48.857, "altitude_m": 1591, "pan_deg": 0, "tilt_deg": 44.999, "note": "intentional London departure begins" }
+  ],
+  "playback_observations": "Live playback through the hold remained numerically and visually static at sampled frames 182, 225, 271, 316, and 359. By frame 369 the intended London departure was visibly underway. No interpolation creep, altitude climb/sink, tilt drift, pan drift, entry snap, or exit snap was observed.",
+  "camera_view_observations": "The Camera view at frames 180, 270, and 360 showed the same Paris composition. Minor screenshot-byte differences were limited to dynamic map rendering/UI pixels; camera geometry and visible composition were unchanged.",
+  "notes": "Earth Studio displayed the planner's 1500m authored value as 1501m, consistent with its established one-metre display offset/rounding. The value remained exactly stable throughout the entire hold, so this is not drift or a material discrepancy."
+}

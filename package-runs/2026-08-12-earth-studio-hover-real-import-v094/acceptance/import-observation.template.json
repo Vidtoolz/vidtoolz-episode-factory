@@ -1,0 +1,14 @@
+{
+  "observed_at": null,
+  "observer": "Codex on PRESTO (real Google Earth Studio session)",
+  "fixture_sha256": "360e9ab184672abcc5a773650807a7e5ac8248c838de12aedbea5454f98dffce",
+  "import_succeeded": null,
+  "warnings": [],
+  "project_identity_correct": null,
+  "camera_hold_correct": null,
+  "entry_continuous": null,
+  "exit_continuous": null,
+  "classification": null,
+  "frame_observations": [],
+  "notes": ""
+}

@@ -1,0 +1,28 @@
+{
+  "proof_id": "2026-08-12-earth-studio-antimeridian-real-import-v094",
+  "purpose": "Real Google Earth Studio acceptance of the v0.9.4 short antimeridian crossing",
+  "planner_version": "0.9.4",
+  "git_head": "a455e1a106e4a14f1ad873165dc5b4ae0c3ace86",
+  "generated_at": "2026-08-12T04:10:01.000Z",
+  "instruction": "fly to 20,170 at 500 km tilted 30 degrees in 4 seconds, then fly to 20,-170 at 500 km tilted 30 degrees in 18 seconds, then hover for 2 seconds",
+  "aspect": "9:16",
+  "render_dimensions": { "width": 1080, "height": 1920 },
+  "frame_rate": 30,
+  "total_frames": 720,
+  "total_duration_seconds": 24,
+  "crossing": {
+    "start_frame": 120,
+    "end_frame": 660,
+    "start_latitude": 20,
+    "start_longitude": 170,
+    "destination_latitude": 20,
+    "destination_longitude": -170,
+    "raw_longitude_delta_deg": -340,
+    "normalized_longitude_delta_deg": 20,
+    "expected_direction": "eastward through +180/-180",
+    "expected_longitudinal_travel_deg": 20,
+    "seam_frames": [390, 391]
+  },
+  "esp_bytes": 13186,
+  "esp_sha256": "d93376594e5cfdf995513f090a442404714adf7d7f81c1ce6d799dcc826f63c9"
+}
