@@ -415,6 +415,44 @@ or filesystem access) and renders the MiniMax structured caption
 deterministically. MiniMax Music 3 is not production-approved (human audible
 approval pending); nothing routes to it automatically.
 
+## Music generation bridge (`music_generation` lane)
+
+`POST /api/score/music/generate` (`{project_id, candidate_count?, seed?,
+prepare_only?}`) runs the full execution path:
+
+```text
+approved cue sheet → MusicRenderBrief v1 (exporter, approval-gated)
+  → EXPERIMENTAL MiniMax adapter (caption)
+  → canonical `music_generation` compute lane (vidtoolz-compute selector)
+  → fail-closed admission (Resolve priority, GPU/VRAM/RAM floors,
+    manual-start runtime probe — all owned by compute, never duplicated here)
+  → per-candidate MiniMax execution + provenance
+```
+
+Rules encoded in `score-engine/music-dispatch.js`:
+
+- **The lane owns host choice.** Scorecraft never names the worker machine;
+  today the compute authority resolves to VIDLAP2. PRESTO is not an active
+  fallback and the bridge has no fallback path at all.
+- **Fail-closed**: any non-ROUTE lane decision answers 503 with the
+  admission's specific reason. The MiniMax runtime is manual-start-only —
+  a closed port is an ordinary NOT_READY and **Scorecraft never auto-starts
+  it** (the error says to start it on the worker and retry).
+- Candidates: default 3 (max 5), stable `music-candidates/music-candidate-NNN/`
+  identities and `seed = base + i` recorded BEFORE dispatch; one shared brief
+  per request; execution provenance (brief hash, workflow hash, models,
+  sampler, host, prompt id, outputs, terminal state) lives in
+  `music-candidate.json` — never inside the frozen MusicRenderBrief.
+- Proven configuration is pinned: FP16 DiT, pruned INT8 encoder, DAV VAE,
+  tiled decode OFF, 30 steps / CFG 1.7 / euler / simple; the bridge fails
+  rather than adapting quality settings. Audio truth: ComfyUI saves lossless
+  FLAC at native 44.1 kHz; the 16-bit PCM WAV deliverable is a separate
+  lossless ffmpeg step on the worker; never resampled.
+- One music request runs at a time per cockpit; MiniMax remains EXPERIMENTAL
+  pending human editorial approval, and no production flow calls this
+  endpoint automatically. No production render was made while building this
+  bridge.
+
 ## Production storage
 
 - `approved/` — approved sketch reference package, never production-certified.

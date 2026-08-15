@@ -277,6 +277,7 @@ const SCORE_CUES_GENERATE_API = '/api/score/cues/generate';
 const SCORE_CUES_SAVE_API = '/api/score/cues/save';
 const SCORE_CUES_APPROVE_API = '/api/score/cues/approve';
 const SCORE_BRIEF_EXPORT_API = '/api/score/brief/export';
+const SCORE_MUSIC_GENERATE_API = '/api/score/music/generate';
 const SCORE_PALETTE_API = '/api/score/palette';
 const SCORE_CANDIDATES_GENERATE_API = '/api/score/candidates/generate';
 const SCORE_CANDIDATE_STATUS_API = '/api/score/candidates/status';
@@ -678,6 +679,7 @@ const projectDiscovery = require('./project-discovery.js');
 const earthStudioLane = require('./earth-studio-lane.js');
 const comfyuiGateway = require('./comfyui-gateway');
 const scoreLane = require('./score-engine/score-lane.js');
+const musicDispatch = require('./score-engine/music-dispatch.js');
 const { verifyApprovedExports, formatVerifierReport } = require('./score-engine/score-readiness.js');
 const scorePlanner = require('./score-engine/cue-planner.js');
 const ideaPromotion = require('./idea-promotion.js');
@@ -17423,6 +17425,22 @@ function createServer(options = {}) {
           sendJSON(res, 200, scoreLane.exportMusicRenderBrief(payload.project_id || '', scoreOptions()));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-brief-export-error'));
+      return;
+    }
+    // Music generation bridge: approved cue sheet → MusicRenderBrief →
+    // EXPERIMENTAL MiniMax adapter → canonical music_generation admission →
+    // candidate dispatch. Fail-closed: non-ROUTE admission (incl. the
+    // manual-start runtime being down) answers 503 with the truthful reason;
+    // nothing is auto-started. No production flow calls this automatically —
+    // MiniMax remains editorially unapproved.
+    if (req.method === 'POST' && url.pathname === SCORE_MUSIC_GENERATE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score music generate API' });
+          return musicDispatch.requestMusicGeneration(payload.project_id || '', payload, scoreOptions());
+        })
+        .then((result) => sendJSON(res, 200, result))
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-music-generate-error'));
       return;
     }
     if (req.method === 'POST' && url.pathname === SCORE_PALETTE_API) {
