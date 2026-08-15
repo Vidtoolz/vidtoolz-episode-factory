@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz:MusicRenderBrief-v1",
+  "title": "MusicRenderBrief v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["brief_id", "brief_version", "purpose", "target_duration_s",
+               "energy_curve", "sections", "ending", "mix_role"],
+  "properties": {
+    "brief_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,79}$"},
+    "brief_version": {"type": "integer", "minimum": 1},
+    "purpose": {"type": "string", "minLength": 8, "maxLength": 400},
+    "target_duration_s": {"type": "number", "exclusiveMinimum": 0, "maximum": 600},
+    "tempo": {"type": "string", "pattern": "^(free|[0-9]{2,3}(-[0-9]{2,3})?)$"},
+    "key_mode": {"type": "string", "maxLength": 40},
+    "energy_curve": {"enum": ["flat-low", "slow-build", "build-release", "two-peak", "flat-high"]},
+    "emotion_curve": {"type": "array", "items": {"type": "string", "maxLength": 60}, "maxItems": 12},
+    "instrumentation": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "required": {"type": "array", "items": {"type": "string", "maxLength": 60}},
+        "allowed": {"type": "array", "items": {"type": "string", "maxLength": 60}}
+      }
+    },
+    "avoid": {"type": "array", "items": {"type": "string", "maxLength": 60}},
+    "sections": {
+      "type": "array", "minItems": 1, "maxItems": 16,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["name", "start_s", "end_s"],
+        "properties": {
+          "name": {"type": "string", "maxLength": 40},
+          "start_s": {"type": "number", "minimum": 0},
+          "end_s": {"type": "number", "exclusiveMinimum": 0},
+          "notes": {"type": "string", "maxLength": 300}
+        }
+      }
+    },
+    "narration_density": {
+      "type": "array", "maxItems": 16,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["start_s", "end_s", "density"],
+        "properties": {
+          "start_s": {"type": "number", "minimum": 0},
+          "end_s": {"type": "number", "exclusiveMinimum": 0},
+          "density": {"enum": ["high", "medium", "low"]}
+        }
+      }
+    },
+    "ending": {"enum": ["clear-button", "fade", "sting", "loop-ready-tail"]},
+    "loopability": {"type": "boolean"},
+    "mix_role": {"enum": ["underlay", "feature", "transition"]}
+  }
+}

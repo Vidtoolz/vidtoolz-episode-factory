@@ -64,6 +64,8 @@ require("./score-resolve-production.test.js");
 require("./score-editor.test.js");
 require("./score-readiness.test.js");
 require("./score-verify.test.js");
+require("./score-brief-exporter.test.js");
+require("./score-minimax-adapter.test.js");
 require("./workflow-path.test.js");
 require("./script-commitment-check.test.js");
 require("./resolve-handoff-readiness.test.js");

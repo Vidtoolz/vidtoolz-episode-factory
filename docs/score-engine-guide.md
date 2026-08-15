@@ -390,6 +390,31 @@ Regenerate/reapprove deliberately when production authority is required.
 
 Unsupported values are rejected before composition; there is no fallback key.
 
+## MusicRenderBrief v1 export (generator-neutral musical intent)
+
+`POST /api/score/brief/export` (`{project_id}`) turns the **approved** cue
+sheet into `music-render-brief.json` in the project directory — a frozen,
+generator-neutral MusicRenderBrief v1 artifact (canonical schema:
+`score-engine/MusicRenderBrief-v1.schema.json`, copied byte-for-byte from the
+music worker's contract; `additionalProperties: false`, never extended here).
+Re-export archives the previous brief into `history/` and writes atomically.
+
+The exporter (`score-engine/brief-exporter.js`) is the ONLY place that
+interprets cue semantics for music generation: it aggregates cues into 1–16
+musical regions by trajectory (cue boundaries are not automatically musical
+boundaries), classifies the energy curve, derives narration-density spans
+from `dialogue_safe` + project dialogue density, compacts the emotion curve,
+maps `music_role` → mix role through an explicit table, and reuses the
+orchestration profile's role characters verbatim as the allowed palette.
+All rules are deterministic — no LLM, no invention; cue IDs/functions appear
+only as readable provenance inside section notes.
+
+`score-engine/adapters/minimax-caption-reference.js` is an EXPERIMENTAL
+reference adapter: it consumes a validated brief ONLY (no project, cue-sheet,
+or filesystem access) and renders the MiniMax structured caption
+deterministically. MiniMax Music 3 is not production-approved (human audible
+approval pending); nothing routes to it automatically.
+
 ## Production storage
 
 - `approved/` — approved sketch reference package, never production-certified.

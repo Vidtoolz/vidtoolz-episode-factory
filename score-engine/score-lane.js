@@ -436,6 +436,35 @@ function approveCueSheet(projectId, options = {}) {
   return { approved: true };
 }
 
+// ── MusicRenderBrief v1 export ──
+// Turns the APPROVED cue sheet into the frozen generator-neutral
+// MusicRenderBrief v1 artifact (score-engine/MusicRenderBrief-v1.schema.json).
+// The artifact file is EXACTLY the schema-valid brief — provenance stays in
+// the response and the history/ archive, never inside the frozen contract.
+function exportMusicRenderBrief(projectId, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  const project = readJson(path.join(dir, "score-project.json"));
+  if (!project) throw httpError(`score-project.json unreadable in ${dir}`, 500);
+  if (!project.cues || !project.cues.length) throw httpError("Generate and approve a cue sheet before exporting a music brief.", 400);
+  if (!project.cue_sheet_approved) throw httpError("Approve the cue sheet first (Cue Sheet tab) — the music brief is exported from the approved structure.", 400);
+  const briefExporter = require("./brief-exporter.js");
+  const brief = briefExporter.deriveMusicRenderBrief(
+    project, project.cues, schemas.DEFAULT_PALETTES, schemas.INSTRUMENT_ROLES);
+  const archived = archiveIfExists(dir, "music-render-brief.json");
+  const file = path.join(dir, "music-render-brief.json");
+  writeJsonAtomic(file, brief);
+  return {
+    brief,
+    file,
+    brief_id: brief.brief_id,
+    archived_previous: Boolean(archived),
+    archived_path: archived || null,
+    exported_at: nowIso(),
+    engine_version: ENGINE_VERSION,
+  };
+}
+
 function setPalette(projectId, paletteId, options = {}) {
   const settings = loadSettings(options);
   const { dir } = resolveProjectDir(settings, projectId);
@@ -3886,6 +3915,7 @@ module.exports = {
   generateCuesForProject,
   saveCueSheetEdits,
   approveCueSheet,
+  exportMusicRenderBrief,
   setPalette,
   generateCandidates,
   setCandidateStatus,

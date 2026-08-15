@@ -1,0 +1,62 @@
+{
+  "brief_id": "vidtoolz-narration-bed-calm-01",
+  "brief_version": 1,
+  "purpose": "Low ambient bed under continuous narration for a systems-explainer vertical; must never compete with the voice.",
+  "target_duration_s": 60,
+  "tempo": "76",
+  "key_mode": "D minor",
+  "energy_curve": "flat-low",
+  "emotion_curve": [
+    "calm focus",
+    "quiet confidence",
+    "settled resolution"
+  ],
+  "instrumentation": {
+    "required": [
+      "soft electric piano",
+      "warm sub bass"
+    ],
+    "allowed": [
+      "light vinyl texture",
+      "muted pad",
+      "sparse rim clicks"
+    ]
+  },
+  "avoid": [
+    "vocals",
+    "lead melody",
+    "brass",
+    "risers",
+    "trap hi-hats",
+    "sidechain pumping"
+  ],
+  "sections": [
+    {
+      "name": "bed",
+      "start_s": 0,
+      "end_s": 48,
+      "notes": "static harmonic loop, minimal movement, no fills"
+    },
+    {
+      "name": "settle",
+      "start_s": 48,
+      "end_s": 60,
+      "notes": "thin out, resolve harmonically, leave air"
+    }
+  ],
+  "narration_density": [
+    {
+      "start_s": 0,
+      "end_s": 55,
+      "density": "high"
+    },
+    {
+      "start_s": 55,
+      "end_s": 60,
+      "density": "low"
+    }
+  ],
+  "ending": "clear-button",
+  "loopability": false,
+  "mix_role": "underlay"
+}

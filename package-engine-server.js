@@ -276,6 +276,7 @@ const SCORE_PROFILE_DELETE_API = '/api/score/profiles/delete';
 const SCORE_CUES_GENERATE_API = '/api/score/cues/generate';
 const SCORE_CUES_SAVE_API = '/api/score/cues/save';
 const SCORE_CUES_APPROVE_API = '/api/score/cues/approve';
+const SCORE_BRIEF_EXPORT_API = '/api/score/brief/export';
 const SCORE_PALETTE_API = '/api/score/palette';
 const SCORE_CANDIDATES_GENERATE_API = '/api/score/candidates/generate';
 const SCORE_CANDIDATE_STATUS_API = '/api/score/candidates/status';
@@ -17411,6 +17412,17 @@ function createServer(options = {}) {
           sendJSON(res, 200, scoreLane.approveCueSheet(payload.project_id || '', scoreOptions()));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-cues-approve-error'));
+      return;
+    }
+    // MusicRenderBrief v1 export: approved cue sheet → frozen generator-neutral
+    // brief artifact (music-render-brief.json, archived + atomically written).
+    if (req.method === 'POST' && url.pathname === SCORE_BRIEF_EXPORT_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score brief export API' });
+          sendJSON(res, 200, scoreLane.exportMusicRenderBrief(payload.project_id || '', scoreOptions()));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-brief-export-error'));
       return;
     }
     if (req.method === 'POST' && url.pathname === SCORE_PALETTE_API) {
