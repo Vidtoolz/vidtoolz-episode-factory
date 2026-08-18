@@ -23,7 +23,11 @@
 // Usage: node scripts/compare-earth-studio-template-reconstruction.js <generated.esp> <frozen-reference.esp> [--json]
 const fs = require("node:fs");
 
-const NUM_ABS_TOL = 1e-9;
+// 5e-9 normalized ≈ 10 cm ground / 0.3 m altitude. The frozen corpus itself
+// carries ~2.6 cm wiggle between the fly-orbit start-distance law and the
+// observed start keyframes, so sub-centimeter tolerances would fail on
+// native-internal noise, not on reconstruction error.
+const NUM_ABS_TOL = 5e-9;
 
 function isInertTarget(project) {
   // target is inert when its influence attribute is pinned to 0 (value node

@@ -263,6 +263,145 @@ test("gate3D orbit: default camera-altitude law, direction topology, and non-car
   assert.ok(diag.provenance.extrapolations.some((e) => /non-cardinal/.test(e)));
 });
 
+// ---- Gate 3D: Spiral (semantic) + Fly-To-and-Orbit reconstruction ----
+
+const bearingDeg = (t, p) => {
+  const rad = (d) => (d * Math.PI) / 180;
+  const y = Math.sin(rad(p.lonDeg - t.lonDeg)) * Math.cos(rad(p.latDeg));
+  const x = Math.cos(rad(t.latDeg)) * Math.sin(rad(p.latDeg)) - Math.sin(rad(t.latDeg)) * Math.cos(rad(p.latDeg)) * Math.cos(rad(p.lonDeg - t.lonDeg));
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+};
+const targetOf = (raw) => ({
+  lonDeg: native.nativeNormToLon(findNode(raw, "longitudePOI").keyframes[0].value),
+  latDeg: native.nativeNormToLat(findNode(raw, "latitudePOI").keyframes[0].value),
+  altitudeM: native.nativeNormToAltitudeMeters(findNode(raw, "altitudePOI").keyframes[0].value),
+});
+const camAt = (raw, i) => ({
+  lonDeg: native.nativeNormToLon(findNode(raw, "longitude").keyframes[i].value),
+  latDeg: native.nativeNormToLat(findNode(raw, "latitude").keyframes[i].value),
+});
+
+test("gate3D spiral: values exact, arc-length timing within the documented residual, easing family correct (semantic vs frozen refs)", () => {
+  for (const ref of ["ref-a", "ref-b"]) {
+    const raw = loadEsp(`spiral/${ref}/export/VIDTOOLZ-TPL-SPIRAL-${ref.slice(-1).toUpperCase()}.esp`);
+    const target = targetOf(raw);
+    const lon = findNode(raw, "longitude").keyframes, lat = findNode(raw, "latitude").keyframes, alt = findNode(raw, "altitude").keyframes;
+    const n = lon.length - 1;
+    const { project, provenance } = native.buildSpiralProject({
+      name: raw.settings.name, durationS: raw.settings.duration / raw.settings.frameRate, target,
+      radiusStartM: native.haversineNativeMeters(target, camAt(raw, 0)),
+      radiusEndM: native.haversineNativeMeters(target, camAt(raw, n)),
+      angleTotalDeg: n * 90,
+      altitudeStartM: native.nativeNormToAltitudeMeters(alt[0].value),
+      altitudeEndM: native.nativeNormToAltitudeMeters(alt[n].value),
+      worldTimeMs: worldTimeOf(raw),
+    });
+    const glon = findNode(project, "longitude").keyframes, glat = findNode(project, "latitude").keyframes, galt = findNode(project, "altitude").keyframes;
+    assert.equal(glon.length, n + 1, `${ref} keyframe count`);
+    for (let i = 0; i <= n; i++) {
+      assert.ok(Math.abs(glon[i].time - lon[i].time) < 0.006, `${ref} kf${i} time ${glon[i].time} vs ${lon[i].time}`);
+      assert.ok(Math.abs(glon[i].value - lon[i].value) < 5e-10, `${ref} kf${i} lon`);
+      assert.ok(Math.abs(glat[i].value - lat[i].value) < 5e-10, `${ref} kf${i} lat`);
+      assert.ok(Math.abs(galt[i].value - alt[i].value) < 1e-9, `${ref} kf${i} alt`);
+    }
+    // easing family: extreme keyframes carry the exact orbit auto(0.066/0.5);
+    // interior center-crossings carry 0.16-influence autos with x within 2%
+    assert.deepEqual(glat[0].transitionOut, { x: 0.066, y: 0, influence: 0.5, type: "auto" }, `${ref} lat kf0 extreme auto`);
+    assert.deepEqual(glon[0].transitionIn, { x: 0, y: 0, type: "linear" }, `${ref} lon kf0 endpoint linear`);
+    const gIn = glon[2].transitionIn, rIn = lon[2].transitionIn;
+    assert.equal(gIn.type, "auto");
+    assert.ok(Math.abs(gIn.x - rIn.x) / Math.abs(rIn.x) < 0.02, `${ref} 0.16-handle x`);
+    assert.ok(gIn.y * rIn.y > 0 && Math.abs(gIn.y) > Math.abs(rIn.y) / 2.5 && Math.abs(gIn.y) < Math.abs(rIn.y) * 2.5, `${ref} 0.16-handle y same sign/order`);
+    assert.ok(Math.abs(gIn.influence - 0.16) < 1e-9);
+    // locked target byte-equal
+    assert.equal(JSON.stringify(findNode(project, "cameraTargetEffect")), JSON.stringify(findNode(raw, "cameraTargetEffect")), `${ref} target subtree`);
+    assert.ok(provenance.confidence_notes.some((x) => /APPROXIMAT/.test(x)), "timing/handle approximation must be flagged");
+  }
+  // ref-c (720°): kf0 is contaminated (Gate 1 manifest); verify grid + laws on clean interior keyframes
+  const rawC = loadEsp("spiral/ref-c/export/VIDTOOLZ-TPL-SPIRAL-C.esp");
+  const targetC = targetOf(rawC);
+  const lonC = findNode(rawC, "longitude").keyframes, altC = findNode(rawC, "altitude").keyframes;
+  assert.equal(lonC.length, 9, "720° -> 9 keyframes");
+  const { project: projC } = native.buildSpiralProject({
+    name: "C", durationS: rawC.settings.duration / rawC.settings.frameRate, target: targetC,
+    radiusStartM: 1997.76, radiusEndM: 499.44, angleTotalDeg: 720, // A-derived constants (Gate 2)
+    altitudeStartM: targetC.altitudeM + 978.56, altitudeEndM: targetC.altitudeM + 78.90,
+    worldTimeMs: worldTimeOf(rawC),
+  });
+  const gC = findNode(projC, "longitude").keyframes;
+  assert.equal(gC.length, 9);
+  for (let i = 1; i <= 8; i++) { // skip contaminated kf0
+    assert.ok(Math.abs(gC[i].time - lonC[i].time) < 0.008, `ref-c kf${i} time`);
+    // inputs are A-derived rounded constants, so tolerance reflects the
+    // Gate 2 law residual (~0.1% of radius), not reconstruction precision
+    assert.ok(Math.abs(gC[i].value - lonC[i].value) < 1.5e-7, `ref-c kf${i} lon ${gC[i].value} vs ${lonC[i].value}`);
+  }
+});
+
+function flyOrbitInputsFrom(raw) {
+  const target = targetOf(raw);
+  const alt = findNode(raw, "altitude").keyframes;
+  const entryAz = Math.round(bearingDeg(target, camAt(raw, 1))) % 360;
+  const az2 = bearingDeg(target, camAt(raw, 2));
+  return {
+    name: raw.settings.name, durationS: raw.settings.duration / raw.settings.frameRate, target,
+    endAltitudeM: native.nativeNormToAltitudeMeters(alt[1].value),
+    orbitRadiusM: native.haversineNativeMeters(target, camAt(raw, 1)),
+    approachAngleDeg: entryAz,
+    clockwise: (((az2 - entryAz + 540) % 360) - 180) > 0,
+    worldTimeMs: worldTimeOf(raw),
+  };
+}
+// entry in-handles on lon/lat jitter between native captures (influence
+// 0.52-0.54, center y ratio ~0.036-0.039) — stripped for the structural
+// comparison and asserted semantically below
+const stripEntryIn = (p) => {
+  const c = JSON.parse(JSON.stringify(p));
+  for (const prop of ["longitude", "latitude"]) delete findNode(c, prop).keyframes[1].transitionIn;
+  return c;
+};
+
+test("gate3D fly-to-and-orbit: reconstruction structurally exact vs all four refs incl. sup-e (CW, 90°)", () => {
+  for (const [ref, file] of [["ref-a", "VIDTOOLZ-TPL-FLY-ORBIT-A"], ["ref-b", "VIDTOOLZ-TPL-FLY-ORBIT-B"], ["ref-c", "VIDTOOLZ-TPL-FLY-ORBIT-C2"], ["sup-e", "VIDTOOLZ-TPL-FLY-ORBIT-SUP-E"]]) {
+    const raw = loadEsp(`fly-to-and-orbit/${ref}/export/${file}.esp`);
+    const inputs = flyOrbitInputsFrom(raw);
+    const { project, provenance } = native.buildFlyToAndOrbitProject(inputs);
+    const report = comparator.compareProjects(stripEntryIn(project), stripEntryIn(raw));
+    assert.equal(report.verdict, "RECONSTRUCTED_EXACT",
+      `${ref}: ${JSON.stringify(report.diffs.filter((d) => d.severity !== "META").slice(0, 5))}`);
+    // entry in-handles: exact altitude law, semantic lon/lat (x = influence x 0.2)
+    const altIn = findNode(project, "altitude").keyframes[1].transitionIn;
+    assert.deepEqual(altIn, { x: -0.5, y: 0, influence: 1, type: "custom" }, `${ref} altitude entry flat-in`);
+    for (const prop of ["longitude", "latitude"]) {
+      const gen = findNode(project, prop).keyframes[1].transitionIn;
+      const obs = findNode(raw, prop).keyframes[1].transitionIn;
+      assert.equal(gen.type, "custom");
+      assert.ok(Math.abs(gen.x - obs.x) <= 0.006, `${ref} ${prop} entry x ${gen.x} vs ${obs.x}`);
+      assert.ok(Math.abs(gen.influence - obs.influence) <= 0.03, `${ref} ${prop} entry influence`);
+      assert.ok(Math.abs(gen.x + gen.influence * 0.2) < 1e-9, `${ref} ${prop} x = -influence x 0.2`);
+    }
+    assert.equal(provenance.template_id, "ges_fly_to_and_orbit_derived_v1");
+  }
+  // sup-e semantics pinned: CW + entry due east
+  const supe = flyOrbitInputsFrom(loadEsp("fly-to-and-orbit/sup-e/export/VIDTOOLZ-TPL-FLY-ORBIT-SUP-E.esp"));
+  assert.equal(supe.approachAngleDeg, 90);
+  assert.equal(supe.clockwise, true);
+});
+
+test("gate3D fly-to-and-orbit: synthetic 225° approach is generated and labeled EXTRAPOLATED", () => {
+  const base = flyOrbitInputsFrom(loadEsp("fly-to-and-orbit/ref-a/export/VIDTOOLZ-TPL-FLY-ORBIT-A.esp"));
+  const built = native.buildFlyToAndOrbitProject({ ...base, approachAngleDeg: 225 });
+  assert.ok(built.provenance.extrapolations.some((e) => /non-cardinal.*EXTRAPOLATED/.test(e)));
+  // geometry still holds: start azimuth 225 - 90x(-1) = 315, entry at 225
+  const target = base.target;
+  const p = built.project;
+  const entry = { lonDeg: native.nativeNormToLon(findNode(p, "longitude").keyframes[1].value), latDeg: native.nativeNormToLat(findNode(p, "latitude").keyframes[1].value) };
+  const start = { lonDeg: native.nativeNormToLon(findNode(p, "longitude").keyframes[0].value), latDeg: native.nativeNormToLat(findNode(p, "latitude").keyframes[0].value) };
+  assert.ok(Math.abs(bearingDeg(target, entry) - 225) < 0.01, "entry azimuth 225");
+  assert.ok(Math.abs(bearingDeg(target, start) - 315) < 0.01, "start azimuth 315 (ccw)");
+  assert.ok(Math.abs(native.haversineNativeMeters(target, start) - (base.orbitRadiusM + 20000)) < 0.5, "start distance radius+20km");
+});
+
 // ---- Gate 3C: real-import proof evidence (frozen) ----
 const G3_EVIDENCE = path.join(ROOT, "package-runs/2026-08-18-earth-studio-native-template-implementation");
 

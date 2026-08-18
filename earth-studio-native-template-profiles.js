@@ -462,6 +462,180 @@ function buildOrbitProject({
   return { project, provenance: baseProvenance("ges_orbit_derived_v1", notes, extrapolations), camera_altitude_m: camAltM };
 }
 
+// ---------------------------------------------------------------------------
+// Spiral (ges_spiral_derived_v1)
+// ---------------------------------------------------------------------------
+// Keyframe per 90° of swept angle + endpoint; radius cubic and altitude
+// quadratic in angle-fraction; ARC_LENGTH_UNIFORM timing (numeric integration
+// of the closed-form 3D path; Gate 2 measured <0.5% residual vs native, so
+// spiral reconstruction is verified SEMANTICALLY, not byte-exactly).
+// Natively CLOCKWISE with no toggle.
+function buildSpiralProject({
+  name, fps = 30, width = 3840, height = 2160, durationS = 25,
+  target, radiusStartM = 2000, radiusEndM = 500, angleTotalDeg = 360,
+  altitudeStartM, altitudeEndM, startAzimuthDeg = 0, worldTimeMs,
+} = {}) {
+  if (!name) throw new Error("name is required");
+  if (!target || !Number.isFinite(target.lonDeg) || !Number.isFinite(target.latDeg) || !Number.isFinite(target.altitudeM)) {
+    throw new Error("target {lonDeg, latDeg, altitudeM} is a required explicit input");
+  }
+  if (!Number.isFinite(altitudeStartM) || !Number.isFinite(altitudeEndM)) {
+    throw new Error("altitudeStartM/altitudeEndM are required explicit inputs (Earth-Studio-derived in the native wizard; not invented here)");
+  }
+  if (!(angleTotalDeg >= 90) || angleTotalDeg % 90 !== 0) {
+    throw new Error(`angleTotalDeg must be a positive multiple of 90 (native keyframe grid): ${angleTotalDeg}`);
+  }
+  const notes = ["grammar HIGH (Gate 2); timing = numeric arc-length-uniform APPROXIMATION (<0.5% residual vs native); interior 0.16-influence handle geometry APPROXIMATED (few-percent save-state jitter in the native corpus)"];
+  const extrapolations = [];
+  if (startAzimuthDeg !== 0) extrapolations.push(`start azimuth ${startAzimuthDeg}° — native angle_start>0 behavior is uncaptured (Gate 2 unresolved); EXTRAPOLATED`);
+  const steps = angleTotalDeg / 90;
+  const radiusAt = (f) => radiusEndM + (radiusStartM - radiusEndM) * Math.pow(1 - f, 3);
+  const altAt = (f) => altitudeEndM + (altitudeStartM - altitudeEndM) * Math.pow(1 - f, 2);
+  const posAt = (f) => destinationFromTarget(target, radiusAt(f), startAzimuthDeg + f * angleTotalDeg); // clockwise: bearing increasing
+  // numeric 3D arc length over fine samples
+  const N = 2000;
+  const cum = [0];
+  let prev = { ...posAt(0), altM: altAt(0) };
+  for (let i = 1; i <= N; i++) {
+    const f = i / N;
+    const cur = { ...posAt(f), altM: altAt(f) };
+    const dh = haversineNativeMeters(prev, cur);
+    cum.push(cum[i - 1] + Math.sqrt(dh * dh + (cur.altM - prev.altM) ** 2));
+    prev = cur;
+  }
+  const frames = Math.round(durationS * fps);
+  const tOf = (f) => Math.round((cum[Math.round(f * N)] / cum[N]) * frames) / frames; // frame-quantized like native
+  const kfData = [];
+  for (let k = 0; k <= steps; k++) {
+    const f = k / steps;
+    const p = posAt(f);
+    kfData.push({
+      f, t: tOf(f), az: startAzimuthDeg + f * angleTotalDeg,
+      lonNorm: lonToNativeNorm(p.lonDeg), latNorm: latToNativeNorm(p.latDeg),
+      altNorm: altitudeMetersToNativeNorm(altAt(f)),
+    });
+  }
+  // numeric dv/dt for the 0.16-influence handle slopes (per property)
+  const valOf = { lon: (f) => lonToNativeNorm(posAt(f).lonDeg), lat: (f) => latToNativeNorm(posAt(f).latDeg), alt: (f) => altitudeMetersToNativeNorm(altAt(f)) };
+  const slopeAt = (prop, f) => {
+    const df = 1e-4;
+    const f0 = Math.max(0, f - df), f1 = Math.min(1, f + df);
+    const dt = tOf(f1) - tOf(f0) || (f1 - f0); // guard frame-quantization collapse
+    return (valOf[prop](f1) - valOf[prop](f0)) / dt;
+  };
+  const auto16 = (prop, k, side) => {
+    const dt = side < 0 ? kfData[k].t - kfData[k - 1].t : kfData[k + 1].t - kfData[k].t;
+    const x = 0.16 * dt * side;
+    return { x, y: slopeAt(prop, kfData[k].f) * x, influence: 0.16, type: "auto" };
+  };
+  const custom16 = (prop, k, side) => ({ ...auto16(prop, k, side), type: "custom" });
+  const track = (prop) => kfData.map((d, k) => {
+    const isEnd = k === 0 || k === steps;
+    if (prop !== "alt") {
+      const v = prop === "lon" ? d.lonNorm : d.latNorm;
+      const cls = orbitEasingClass(d.az)[prop];
+      // property at its extreme: auto(0.066) on both sides, endpoints included
+      if (cls === "auto") return kf(d.t, v, ORBIT_AUTO(-1), ORBIT_AUTO(1));
+      // center-crossing: endpoints linear (both sides), interiors 0.16-auto
+      if (isEnd) return kf(d.t, v, ORBIT_LINEAR(), ORBIT_LINEAR());
+      return kf(d.t, v, auto16(prop, k, -1), auto16(prop, k, 1), false);
+    }
+    // altitude: endpoint customs (out-only / in-only), interior 0.16-autos
+    if (k === 0) return kf(d.t, d.altNorm, null, custom16(prop, k, 1), false);
+    if (k === steps) return kf(d.t, d.altNorm, custom16(prop, k, -1), null, false);
+    return kf(d.t, d.altNorm, auto16(prop, k, -1), auto16(prop, k, 1), false);
+  });
+  const cameraGroup = group("cameraGroup", [
+    group("cameraPositionGroup", [group("position", [
+      attr("longitude", { relative: kfData[0].lonNorm }, track("lon"), true),
+      attr("latitude", { relative: kfData[0].latNorm }, track("lat"), true),
+      attr("altitude", altValueNode({ relative: kfData[0].altNorm, logarithmic: false }), track("alt"), true),
+    ], true)], true),
+    buildLockedCameraTarget({
+      lonNorm: lonToNativeNorm(target.lonDeg),
+      latNorm: latToNativeNorm(target.latDeg),
+      altNorm: altitudeMetersToNativeNorm(target.altitudeM),
+    }),
+    ROTATION_GROUP_STATIC(),
+    LENS_GROUP(),
+  ], true);
+  const project = projectEnvelope({ name, fps, width, height, frames, logarithmic: false, cameraGroup, worldTimeMs });
+  return { project, provenance: baseProvenance("ges_spiral_derived_v1", notes, extrapolations) };
+}
+
+// ---------------------------------------------------------------------------
+// Fly-To and Orbit (ges_fly_to_and_orbit_derived_v1)
+// ---------------------------------------------------------------------------
+// APPROACH t=[0,0.2]: start at azimuth = approach_angle − 90°·orbit_sign,
+// horizontal distance orbit_radius + 20,000 m, altitude end_altitude +
+// 20,000 m (both EXACT), sweeping 90° into the entry. ORBIT t=[0.2,1]:
+// SHARED_GRAMMAR with the standalone Orbit (entry azimuth = approach angle).
+const FLY_EASE_OUT = () => ({ x: 0.05, y: 0, type: "easeOut" });
+// Entry in-handles: x = influence × 0.2 (the approach's normalized span).
+// Center-crossing property: influence 0.99 constant across all captures;
+// extreme property: influence jittered 0.52–0.54 in the native corpus —
+// ref-a literals used. Center y observed ≈ 0.0385 × (v_start − v_entry).
+const FLY_ENTRY_CENTER = (v0, v1) => ({ x: -0.198, y: 0.0385 * (v0 - v1), influence: 0.99, type: "custom" });
+const FLY_ENTRY_EXTREME = () => ({ x: -0.108, y: 0, influence: 0.54, type: "custom" });
+
+function buildFlyToAndOrbitProject({
+  name, fps = 30, width = 3840, height = 2160, durationS = 25,
+  target, endAltitudeM, orbitRadiusM = 400, approachAngleDeg = 0, clockwise = false, worldTimeMs,
+} = {}) {
+  if (!name) throw new Error("name is required");
+  if (!target || !Number.isFinite(target.lonDeg) || !Number.isFinite(target.latDeg) || !Number.isFinite(target.altitudeM)) {
+    throw new Error("target {lonDeg, latDeg, altitudeM} is a required explicit input");
+  }
+  if (!Number.isFinite(endAltitudeM)) throw new Error("endAltitudeM is a required explicit input (Earth-Studio-derived default is target terrain + 200)");
+  if (!(orbitRadiusM > 0)) throw new Error(`orbitRadiusM must be positive: ${orbitRadiusM}`);
+  const notes = [
+    "grammar HIGH (Gate 2, incl. sup-e approach-angle semantics)",
+    "entry in-handle geometry uses ref-a literals (extreme-property influence jitters 0.52-0.54 across native captures; center y APPROXIMATED as 0.0385x span)",
+  ];
+  const extrapolations = [];
+  const sign = clockwise ? 1 : -1;
+  const endAltM = Math.floor(endAltitudeM); // native stores the integer-floored display value
+  const startAz = approachAngleDeg - 90 * sign;
+  const orbit = orbitPositionKeyframes({ target, radiusM: orbitRadiusM, startAzimuthDeg: approachAngleDeg, sweepSignedDeg: 360 * sign, tStart: 0.2, tEnd: 1 });
+  if (orbit.some((s) => s.easing.extrapolated)) extrapolations.push(`approach angle ${approachAngleDeg}° is non-cardinal — easing assignment EXTRAPOLATED (evidence covers 0°/90°)`);
+  const startPos = destinationFromTarget(target, orbitRadiusM + 20000, startAz);
+  const start = { lonNorm: lonToNativeNorm(startPos.lonDeg), latNorm: latToNativeNorm(startPos.latDeg) };
+  const altN = altitudeMetersToNativeNorm(endAltM);
+  const startAltN = altitudeMetersToNativeNorm(endAltM + 20000);
+  const trans = (cls, side) => cls === "linear" ? ORBIT_LINEAR() : ORBIT_AUTO(side);
+  const posTrack = (prop) => {
+    const v = (s) => prop === "lon" ? s.lonNorm : s.latNorm;
+    const v0 = prop === "lon" ? start.lonNorm : start.latNorm;
+    const entryCls = orbit[0].easing[prop];
+    const entryIn = entryCls === "linear" ? FLY_ENTRY_CENTER(v0, v(orbit[0])) : FLY_ENTRY_EXTREME();
+    return [
+      kf(0, v0, null, FLY_EASE_OUT()),
+      kf(orbit[0].tNorm, v(orbit[0]), entryIn, trans(entryCls, 1), false),
+      ...orbit.slice(1).map((s) => kf(s.tNorm, v(s), trans(s.easing[prop], -1), trans(s.easing[prop], 1))),
+    ];
+  };
+  const cameraGroup = group("cameraGroup", [
+    group("cameraPositionGroup", [group("position", [
+      attr("longitude", { relative: start.lonNorm }, posTrack("lon"), true),
+      attr("latitude", { relative: start.latNorm }, posTrack("lat"), true),
+      attr("altitude", altValueNode({ relative: startAltN, logarithmic: false }), [
+        kf(0, startAltN, null, FLY_EASE_OUT()),
+        kf(0.2, altN, { x: -0.5, y: 0, influence: 1, type: "custom" }, null),
+        ...orbit.slice(1).map((s) => kf(s.tNorm, altN)),
+      ], true),
+    ], true)], true),
+    buildLockedCameraTarget({
+      lonNorm: lonToNativeNorm(target.lonDeg),
+      latNorm: latToNativeNorm(target.latDeg),
+      altNorm: altitudeMetersToNativeNorm(target.altitudeM),
+    }),
+    ROTATION_GROUP_STATIC(),
+    LENS_GROUP(),
+  ], true);
+  const project = projectEnvelope({ name, fps, width, height, frames: Math.round(durationS * fps), logarithmic: false, cameraGroup, worldTimeMs });
+  return { project, provenance: baseProvenance("ges_fly_to_and_orbit_derived_v1", notes, extrapolations), end_altitude_m: endAltM };
+}
+
 // Haversine on the native sphere (R = 6,378,137 m — the basis that makes the
 // template constants exact; note the generic planner uses R = 6,371,000).
 function haversineNativeMeters(a, b) {
@@ -490,6 +664,8 @@ module.exports = {
   buildZoomToProject,
   buildPointToPointProject,
   buildOrbitProject,
+  buildSpiralProject,
+  buildFlyToAndOrbitProject,
   P2P_EVIDENCE_DOMAIN_M,
   P2P_DEFAULT_PEAK_K,
 };
