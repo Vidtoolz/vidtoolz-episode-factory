@@ -1,0 +1,18 @@
+{
+ "created": "2026-08-18",
+ "gate": "Gate 3 — native template implementation evidence",
+ "template_profile_version": "ges-native-derived-v1",
+ "gate2_spec_sha256": "56ddf51d113a23295ef4fe2f2dfb555ee9151f9badde14f4d156aa9d8b0911b0",
+ "frozen_native_evidence_root": "package-runs/2026-08-18-earth-studio-native-templates (NOT modified by Gate 3)",
+ "import_proof": "comparison/gate3c-import-proof.json — CAMERA_TARGET_SERIALIZATION=IMPORT_VERIFIED (orbit + zoom-to real GES round-trips)",
+ "reconstruction_matrix": "comparison/reconstruction-matrix.json — 15 rows, all EXACT/inert-variance/semantic-match",
+ "gate4": "gate4-candidates/ + reconstructions/ + visual-observation.json (unpopulated; Mikko owns all verdicts)",
+ "directories": {
+  "imports": "module-generated fixtures + real-import screenshots",
+  "roundtrips": "real GES re-exports",
+  "reconstructions": "per-template Gate 4 reconstructions with input manifests",
+  "gate4-candidates": "flagship Eiffel 9:16 + 16:9 control + visual-observation skeleton",
+  "comparison": "frozen comparison reports"
+ },
+ "file_count": 26
+}

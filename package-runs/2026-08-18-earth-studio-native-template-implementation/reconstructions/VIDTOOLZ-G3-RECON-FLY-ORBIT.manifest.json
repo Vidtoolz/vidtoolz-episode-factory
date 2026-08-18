@@ -1,0 +1,33 @@
+{
+ "name": "VIDTOOLZ-G3-RECON-FLY-ORBIT",
+ "native_reference": "fly-to-and-orbit/ref-a",
+ "aspect": "16:9 3840x2160",
+ "frames": 750,
+ "inputs": {
+  "name": "VIDTOOLZ-G3-RECON-FLY-ORBIT",
+  "durationS": 25,
+  "target": {
+   "lonDeg": -0.119344027482299,
+   "latDeg": 51.503076722408565,
+   "altitudeM": 34.342567920684814
+  },
+  "endAltitudeM": 234,
+  "orbitRadiusM": 400.0004444468957,
+  "approachAngleDeg": 0,
+  "clockwise": false,
+  "worldTimeMs": 1787048263260
+ },
+ "provenance": {
+  "template_id": "ges_fly_to_and_orbit_derived_v1",
+  "template_profile_version": "ges-native-derived-v1",
+  "gate2_spec_sha256": "56ddf51d113a23295ef4fe2f2dfb555ee9151f9badde14f4d156aa9d8b0911b0",
+  "import_status": "COMPONENTS_IMPORT_VERIFIED (shape not directly imported; linear model + locked camera target proven via the Gate 3C orbit round-trip)",
+  "confidence_notes": [
+   "grammar HIGH (Gate 2, incl. sup-e approach-angle semantics)",
+   "entry in-handle geometry uses ref-a literals (extreme-property influence jitters 0.52-0.54 across native captures; center y APPROXIMATED as 0.0385x span)"
+  ],
+  "extrapolations": []
+ },
+ "esp_sha256": "78a456c07c0649f261fbc80e25914470895b9b9ba1301dcb96f759ac7e732ac1",
+ "visual_status": "VISUAL ACCEPTANCE PENDING (Gate 4, Mikko)"
+}

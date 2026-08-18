@@ -1,0 +1,32 @@
+{
+ "name": "VIDTOOLZ-G3-RECON-ORBIT",
+ "native_reference": "orbit/ref-a",
+ "aspect": "16:9 3840x2160",
+ "frames": 1500,
+ "inputs": {
+  "name": "VIDTOOLZ-G3-RECON-ORBIT",
+  "durationS": 50,
+  "target": {
+   "lonDeg": -0.119344027482299,
+   "latDeg": 51.503076722408565,
+   "altitudeM": 34.342567920684814
+  },
+  "radiusM": 624.0006933362714,
+  "cameraAltitudeM": 346,
+  "startAzimuthDeg": 0,
+  "direction": "ccw",
+  "worldTimeMs": 1787048623212
+ },
+ "provenance": {
+  "template_id": "ges_orbit_derived_v1",
+  "template_profile_version": "ges-native-derived-v1",
+  "gate2_spec_sha256": "56ddf51d113a23295ef4fe2f2dfb555ee9151f9badde14f4d156aa9d8b0911b0",
+  "import_status": "IMPORT_VERIFIED (Gate 3C 2026-08-18: real GES import + re-export round-trip; locked camera target live-verified)",
+  "confidence_notes": [
+   "grammar HIGH (Gate 2)"
+  ],
+  "extrapolations": []
+ },
+ "esp_sha256": "2827a3096ae5c9a27db60f132fdd0c26662acd91334042f8fb842fff329e1898",
+ "visual_status": "VISUAL ACCEPTANCE PENDING (Gate 4, Mikko)"
+}

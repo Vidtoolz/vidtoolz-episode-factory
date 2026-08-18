@@ -1,0 +1,110 @@
+{
+ "contract": "Gate 4 visual acceptance record. Mikko fills every field; the model must never populate a verdict. null = not yet observed.",
+ "observer": null,
+ "observed_at": null,
+ "templates": {
+  "zoom-to": {
+   "candidate": "reconstructions/VIDTOOLZ-G3-RECON-ZOOM.esp",
+   "native_reference": "…native-templates/zoom-to/ref-a",
+   "observations": {
+    "overall_pass_fail": null,
+    "departure": null,
+    "acceleration": null,
+    "altitude": null,
+    "framing": null,
+    "target_acquisition": null,
+    "orbit": null,
+    "handoff": null,
+    "settle": null,
+    "notes": null
+   }
+  },
+  "orbit": {
+   "candidate": "reconstructions/VIDTOOLZ-G3-RECON-ORBIT.esp",
+   "native_reference": "…native-templates/orbit/ref-a",
+   "observations": {
+    "overall_pass_fail": null,
+    "departure": null,
+    "acceleration": null,
+    "altitude": null,
+    "framing": null,
+    "target_acquisition": null,
+    "orbit": null,
+    "handoff": null,
+    "settle": null,
+    "notes": null
+   }
+  },
+  "point-to-point": {
+   "candidate": "reconstructions/VIDTOOLZ-G3-RECON-P2P.esp",
+   "native_reference": "…native-templates/point-to-point/ref-a",
+   "observations": {
+    "overall_pass_fail": null,
+    "departure": null,
+    "acceleration": null,
+    "altitude": null,
+    "framing": null,
+    "target_acquisition": null,
+    "orbit": null,
+    "handoff": null,
+    "settle": null,
+    "notes": null
+   }
+  },
+  "spiral": {
+   "candidate": "reconstructions/VIDTOOLZ-G3-RECON-SPIRAL.esp",
+   "native_reference": "…native-templates/spiral/ref-a",
+   "observations": {
+    "overall_pass_fail": null,
+    "departure": null,
+    "acceleration": null,
+    "altitude": null,
+    "framing": null,
+    "target_acquisition": null,
+    "orbit": null,
+    "handoff": null,
+    "settle": null,
+    "notes": null
+   }
+  },
+  "fly-to-and-orbit-169": {
+   "candidate": "reconstructions/VIDTOOLZ-G3-RECON-FLY-ORBIT.esp",
+   "native_reference": "…native-templates/fly-to-and-orbit/ref-a",
+   "observations": {
+    "overall_pass_fail": null,
+    "departure": null,
+    "acceleration": null,
+    "altitude": null,
+    "framing": null,
+    "target_acquisition": null,
+    "orbit": null,
+    "handoff": null,
+    "settle": null,
+    "notes": null,
+    "approach_native_like": null,
+    "t02_handoff_native_like": null,
+    "orbit_radius_native_like": null
+   }
+  },
+  "fly-to-and-orbit-916-flagship": {
+   "candidate": "gate4-candidates/VIDTOOLZ-G3-FLY-ORBIT-916.esp",
+   "native_reference": "grammar-only (no native 9:16 capture exists)",
+   "observations": {
+    "overall_pass_fail": null,
+    "departure": null,
+    "acceleration": null,
+    "altitude": null,
+    "framing": null,
+    "target_acquisition": null,
+    "orbit": null,
+    "handoff": null,
+    "settle": null,
+    "notes": null,
+    "approach_native_like": null,
+    "t02_handoff_native_like": null,
+    "orbit_radius_native_like": null,
+    "vertical_framing_acceptable": null
+   }
+  }
+ }
+}
