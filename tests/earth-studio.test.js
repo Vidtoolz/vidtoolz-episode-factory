@@ -1215,7 +1215,7 @@ test("project-earth-studio.html: Windows UNC copy button emits a valid UNC path"
   const body = html.slice(start + anchor.length - 1, html.indexOf("`;", start) + 1);
   let captured = null;
   const evalRender = new Function(
-    "ID", "PKG_PATH", "ST", "esc", "cbtn", "stepBadge", "presetRow", "locChips", "aspectRow", "planner",
+    "ID", "PKG_PATH", "ST", "esc", "cbtn", "stepBadge", "presetRow", "locChips", "aspectRow", "templateRow", "templateParamsBlock", "planner",
     `const s = ST; const framesDir = s.frames_dir; const hasFrames = (s.frame_count || 0) > 0;
      const rendered = false; const renderedUrl = ''; const active = 1; const job = s.job;
      const renderJob = s.render_job || {}; const laneDirPath = PKG_PATH + '/earth-studio';
@@ -1226,7 +1226,7 @@ test("project-earth-studio.html: Windows UNC copy button emits a valid UNC path"
     "TESTPKG", "/pkg", { frames_dir: "/pkg/earth-studio/frames", frame_count: 0, job: null, render_job: {} },
     (x) => String(x == null ? "" : x),
     (text) => { if (text && String(text).includes("192.168.61.186")) captured = text; return ""; },
-    () => "", () => "", () => "", () => "",
+    () => "", () => "", () => "", () => "", () => "", () => "",
     { LOCATION_FIXTURES: { x: { name: "x" } }, ASPECTS: { "16:9": { width: 1920, height: 1080 }, "9:16": { width: 1080, height: 1920 }, "1:1": { width: 1080, height: 1080 } } }
   );
   assert.ok(captured, "UNC copy button rendered");

@@ -61,6 +61,8 @@
       let PKG_PATH = '';       // absolute package path (from media-kit project info)
       let ASPECT = '9:16';     // Shorts-first default; seeded from the stored job
       let aspectTouched = false; // once the user picks, background refreshes stop reseeding
+      let TEMPLATE = '';       // native Quick Start template key ('' = generic planner); seeded from the stored job
+      let templateTouched = false;
       let nonce = '', nonceHeader = 'x-vidtoolz-local-write-nonce';
       let pollTimer = null;
 
@@ -153,6 +155,33 @@
 
       function stepBadge(done, manual){ return done ? '<span class="badge done">done</span>' : manual ? '<span class="badge manual">manual step</span>' : '<span class="badge todo">to do</span>'; }
 
+      // ── Native Quick Start templates (Gate 3, ges-native-derived-v1).
+      // '' = generic planner (byte-frozen v0.9.4 path). A selection only
+      // records explicit intent + provenance; the native .esp is generated
+      // when the optional explicit parameters are supplied (framing/target
+      // inputs are Earth-Studio-derived and never invented).
+      const TEMPLATES = ['', 'zoom-to', 'orbit', 'point-to-point', 'spiral', 'fly-to-and-orbit'];
+      function templateRow(){
+        return TEMPLATES.map((t)=>`<span class="chip ${t===TEMPLATE?'sel':''}" data-template="${esc(t)}" title="${t?('Native Earth Studio Quick Start '+t+' reconstruction'):'Generic description-driven planner (default)'}">${t?esc(t):'none (generic)'}</span>`).join('');
+      }
+      function templateParamsBlock(job){
+        if (!TEMPLATE) return '';
+        const stored = job && job.template ? job.template : null;
+        const hint = {
+          'zoom-to': '{"framing":{"lonDeg":…,"latDeg":…,"altitudeM":…},"poi":{"lonDeg":…,"latDeg":…,"altitudeM":…},"durationS":5}',
+          'orbit': '{"target":{"lonDeg":…,"latDeg":…,"altitudeM":…},"radiusM":624,"durationS":50}',
+          'point-to-point': '{"points":[{"framing":{…},"poi":{…},"holdS":2},{…}],"transitS":5}',
+          'spiral': '{"target":{…},"radiusStartM":2000,"radiusEndM":500,"angleTotalDeg":360,"altitudeStartM":…,"altitudeEndM":…}',
+          'fly-to-and-orbit': '{"target":{…},"endAltitudeM":…,"orbitRadiusM":400,"approachAngleDeg":0,"clockwise":false,"durationS":25}',
+        }[TEMPLATE] || '{}';
+        return `<div style="margin-top:6px;">
+          <div class="meta">Native template parameters (optional JSON — leave empty to record intent only; framing/target values come from Earth Studio and are never invented):</div>
+          <textarea id="es-template-params" rows="2" placeholder='${esc(hint)}'></textarea>
+          ${stored&&stored.native_esp?`<div class="ok" style="font-size:12px;margin-top:4px;">✓ native .esp generated: <code>${esc(stored.native_esp)}</code> (${esc(stored.import_status||'')})</div>`:''}
+          ${stored&&!stored.native_esp&&stored.note?`<div class="meta" style="margin-top:4px;">ℹ ${esc(stored.note)}</div>`:''}
+        </div>`;
+      }
+
       function render(){
         const s = ST;
         const framesDir = s.frames_dir || '';
@@ -177,6 +206,8 @@
             <input id="es-job" type="text" placeholder="Job name (e.g. Helsinki Flyover)" value="${esc(job?job.jobName:'')}">
             <textarea id="es-desc" rows="2" style="margin-top:6px;" placeholder="fly to Helsinki in 4 seconds, then orbit Helsinki for 5 seconds">${esc(job?job.description:'')}</textarea>
             <div style="margin:6px 0 0;"><span class="meta">Aspect:</span> ${aspectRow()}</div>
+            <div style="margin:6px 0 0;"><span class="meta" title="Reconstructions of the five native Earth Studio Quick Start templates (ges-native-derived-v1). Only an explicit choice here (or an explicit phrase like 'template: orbit') activates one — plain descriptions always use the generic planner.">Native template:</span> ${templateRow()}</div>
+            <div id="es-template-params-box">${templateParamsBlock(job)}</div>
             <div id="es-preview" style="margin-top:8px;"><div class="meta">Preview appears here while you type.</div></div>
             <div style="margin-top:8px;"><button type="button" class="btn btn-go" id="es-generate">${s.has_plan?'Regenerate plan + .esp':'Generate plan + .esp'}</button>
             <span class="meta" id="es-gen-status"></span></div>
@@ -236,6 +267,11 @@
           document.querySelectorAll('[data-aspect]').forEach((x)=>x.classList.toggle('sel',x===c));
           parsePreview();
         }));
+        document.querySelectorAll('[data-template]').forEach((c)=>c.addEventListener('click',()=>{
+          TEMPLATE=c.getAttribute('data-template'); templateTouched=true;
+          document.querySelectorAll('[data-template]').forEach((x)=>x.classList.toggle('sel',x===c));
+          document.getElementById('es-template-params-box').innerHTML=templateParamsBlock(ST&&ST.job);
+        }));
         parsePreview();
         document.getElementById('es-generate').onclick = generate;
         document.getElementById('es-refresh').onclick = refresh;
@@ -251,7 +287,16 @@
       async function generate(){
         const st = document.getElementById('es-gen-status'); st.textContent='Generating…';
         try{
-          const r = await post('/api/earth-studio/plan', { id: ID, jobName: document.getElementById('es-job').value || 'Map Animation', description: document.getElementById('es-desc').value, aspect: ASPECT });
+          const body = { id: ID, jobName: document.getElementById('es-job').value || 'Map Animation', description: document.getElementById('es-desc').value, aspect: ASPECT };
+          if (TEMPLATE) {
+            body.template = TEMPLATE;
+            const paramsEl = document.getElementById('es-template-params');
+            if (paramsEl && paramsEl.value.trim()) {
+              try { body.template_params = JSON.parse(paramsEl.value); }
+              catch(e){ st.textContent='Template parameters are not valid JSON: '+e.message; return; }
+            }
+          }
+          const r = await post('/api/earth-studio/plan', body);
           toast('Plan + .esp generated');
           if (r.unresolved_count) st.textContent = r.unresolved_count + ' unresolved segment(s) — fix the description or adjust manually in Earth Studio.';
           // Plan-level notes (applied defaults + motion provenance) below the preview.
@@ -290,6 +335,7 @@
       async function refresh(){
         try{ ST = await fetchJson('/api/earth-studio/status?id='+encodeURIComponent(ID)); }catch(e){ document.getElementById('es-meta').innerHTML='<span class="blk">Could not load: '+esc(e.message||e)+'</span>'; return; }
         if (!aspectTouched && ST.job && ST.job.aspect && planner.ASPECTS[ST.job.aspect]) ASPECT = ST.job.aspect;
+        if (!templateTouched && ST.job) TEMPLATE = (ST.job.template && ST.job.template.template_key) || '';
         // Preserve unsaved local edits across refreshes: the fields are dirty
         // whenever their value differs from the server-synchronized job —
         // focused OR blurred. Polling never overwrites a dirty field; a

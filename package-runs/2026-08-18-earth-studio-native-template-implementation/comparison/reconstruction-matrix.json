@@ -1,0 +1,142 @@
+{
+ "generated_by": "scripts/earth-studio-reconstruction-matrix.js",
+ "template_profile_version": "ges-native-derived-v1",
+ "gate2_spec_sha256": "56ddf51d113a23295ef4fe2f2dfb555ee9151f9badde14f4d156aa9d8b0911b0",
+ "note": "fly-to-and-orbit rows compare with the jittered lon/lat entry in-handles stripped on both sides (asserted semantically in tests); spiral rows are semantic per the documented <0.5% native timing residual",
+ "rows": [
+  {
+   "template": "zoom-to",
+   "reference": "ref-a",
+   "mode": "structural",
+   "verdict": "RECONSTRUCTED_EXACT",
+   "fail": 0,
+   "warn": 0,
+   "meta": 0
+  },
+  {
+   "template": "zoom-to",
+   "reference": "ref-b",
+   "mode": "structural",
+   "verdict": "RECONSTRUCTED_EXACT",
+   "fail": 0,
+   "warn": 0,
+   "meta": 0
+  },
+  {
+   "template": "zoom-to",
+   "reference": "ref-c",
+   "mode": "structural",
+   "verdict": "RECONSTRUCTED_EXACT",
+   "fail": 0,
+   "warn": 0,
+   "meta": 0
+  },
+  {
+   "template": "point-to-point",
+   "reference": "ref-a",
+   "mode": "structural",
+   "verdict": "RECONSTRUCTED_EXACT",
+   "fail": 0,
+   "warn": 0,
+   "meta": 0
+  },
+  {
+   "template": "point-to-point",
+   "reference": "ref-b",
+   "mode": "structural",
+   "verdict": "RECONSTRUCTED_WITH_INERT_VARIANCE",
+   "fail": 0,
+   "warn": 15,
+   "meta": 12
+  },
+  {
+   "template": "point-to-point",
+   "reference": "ref-c",
+   "mode": "structural",
+   "verdict": "RECONSTRUCTED_EXACT",
+   "fail": 0,
+   "warn": 0,
+   "meta": 0
+  },
+  {
+   "template": "orbit",
+   "reference": "ref-a",
+   "mode": "structural",
+   "verdict": "RECONSTRUCTED_EXACT",
+   "fail": 0,
+   "warn": 0,
+   "meta": 0
+  },
+  {
+   "template": "orbit",
+   "reference": "ref-b",
+   "mode": "structural",
+   "verdict": "RECONSTRUCTED_EXACT",
+   "fail": 0,
+   "warn": 0,
+   "meta": 0
+  },
+  {
+   "template": "orbit",
+   "reference": "ref-c",
+   "mode": "structural",
+   "verdict": "RECONSTRUCTED_EXACT",
+   "fail": 0,
+   "warn": 0,
+   "meta": 0
+  },
+  {
+   "template": "spiral",
+   "reference": "ref-a",
+   "mode": "semantic",
+   "verdict": "SEMANTIC_MATCH",
+   "max_time_delta": 0.0040000000000000036,
+   "max_lon_norm_delta": 1.0748324452691804e-10
+  },
+  {
+   "template": "spiral",
+   "reference": "ref-b",
+   "mode": "semantic",
+   "verdict": "SEMANTIC_MATCH",
+   "max_time_delta": 0.0040000000000000036,
+   "max_lon_norm_delta": 9.433498426858478e-11
+  },
+  {
+   "template": "fly-to-and-orbit",
+   "reference": "ref-a",
+   "mode": "structural-entry-stripped",
+   "verdict": "RECONSTRUCTED_EXACT",
+   "fail": 0,
+   "warn": 0,
+   "meta": 0
+  },
+  {
+   "template": "fly-to-and-orbit",
+   "reference": "ref-b",
+   "mode": "structural-entry-stripped",
+   "verdict": "RECONSTRUCTED_EXACT",
+   "fail": 0,
+   "warn": 0,
+   "meta": 0
+  },
+  {
+   "template": "fly-to-and-orbit",
+   "reference": "ref-c",
+   "mode": "structural-entry-stripped",
+   "verdict": "RECONSTRUCTED_EXACT",
+   "fail": 0,
+   "warn": 0,
+   "meta": 0
+  },
+  {
+   "template": "fly-to-and-orbit",
+   "reference": "sup-e",
+   "mode": "structural-entry-stripped",
+   "verdict": "RECONSTRUCTED_EXACT",
+   "fail": 0,
+   "warn": 0,
+   "meta": 2
+  }
+ ],
+ "rows_sha256": "74f9508cb27c985f1a87d302d57827a6f5376605b6ccdf15f87e1bd85dfe48b8"
+}

@@ -645,12 +645,58 @@ function haversineNativeMeters(a, b) {
   return 2 * NATIVE.SPHERE_RADIUS_M * Math.asin(Math.sqrt(s));
 }
 
+// ---------------------------------------------------------------------------
+// Explicit template intent (Gate 3E)
+// ---------------------------------------------------------------------------
+// Templates activate ONLY on explicit request. Generic motion words
+// ("orbit around X", "fly to X") must never trigger a template — the
+// untemplated planner path stays byte-identical.
+const TEMPLATE_KEYS = Object.freeze({
+  "zoom-to": "ges_zoom_to_derived_v1",
+  "orbit": "ges_orbit_derived_v1",
+  "point-to-point": "ges_point_to_point_derived_v1",
+  "spiral": "ges_spiral_derived_v1",
+  "fly-to-and-orbit": "ges_fly_to_and_orbit_derived_v1",
+});
+const TEMPLATE_BUILDERS = () => ({
+  "zoom-to": buildZoomToProject,
+  "orbit": buildOrbitProject,
+  "point-to-point": buildPointToPointProject,
+  "spiral": buildSpiralProject,
+  "fly-to-and-orbit": buildFlyToAndOrbitProject,
+});
+const TEMPLATE_NAME_PATTERN = "(zoom[- ]to|orbit|point[- ]to[- ]point|spiral|fly[- ]to[- ]and[- ]orbit)";
+const INTENT_PATTERNS = [
+  new RegExp(`\\btemplate\\s*:\\s*${TEMPLATE_NAME_PATTERN}\\b`, "i"),
+  new RegExp(`\\bearth\\s+studio\\s+${TEMPLATE_NAME_PATTERN}\\s+template\\b`, "i"),
+  new RegExp(`\\bquick\\s*start\\s+${TEMPLATE_NAME_PATTERN}\\b`, "i"),
+];
+function detectExplicitTemplateIntent(description) {
+  const text = String(description || "");
+  for (const re of INTENT_PATTERNS) {
+    const m = re.exec(text);
+    if (m) {
+      const key = m[1].toLowerCase().replace(/\s+/g, "-");
+      return { template_key: key, template_id: TEMPLATE_KEYS[key], matched: m[0] };
+    }
+  }
+  return null;
+}
+function buildTemplateProject(templateKey, params) {
+  const builder = TEMPLATE_BUILDERS()[templateKey];
+  if (!builder) throw new Error(`unknown template "${templateKey}" — one of: ${Object.keys(TEMPLATE_KEYS).join(", ")}`);
+  return builder(params);
+}
+
 module.exports = {
   TEMPLATE_PROFILE_VERSION,
   GATE2_SPEC_SHA256,
   GATE2_SPEC_PATH,
   NATIVE,
   IMPORT_STATUS,
+  TEMPLATE_KEYS,
+  detectExplicitTemplateIntent,
+  buildTemplateProject,
   altitudeMetersToNativeNorm,
   nativeNormToAltitudeMeters,
   lonToNativeNorm,

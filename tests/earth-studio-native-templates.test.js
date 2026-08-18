@@ -427,6 +427,102 @@ test("gate3C import proof: frozen fixtures and real GES re-exports round-trip wi
   assert.equal(shaStr(JSON.stringify(rebuilt.project)), gen.esp_sha256, "orbit fixture regenerates byte-identically from recorded inputs");
 });
 
+// ---- Gate 3E: explicit intent, lane integration, frozen matrix, negatives ----
+const lane = require("../earth-studio-lane.js");
+const os = require("node:os");
+
+test("gate3E intent: explicit phrases activate templates; generic motion words never do", () => {
+  const hit = (s) => native.detectExplicitTemplateIntent(s);
+  assert.equal(hit("template: fly-to-and-orbit around the Eiffel Tower").template_id, "ges_fly_to_and_orbit_derived_v1");
+  assert.equal(hit("Template: Zoom To Paris").template_id, "ges_zoom_to_derived_v1");
+  assert.equal(hit("use the Earth Studio Orbit template on the London Eye").template_id, "ges_orbit_derived_v1");
+  assert.equal(hit("use Quick Start Spiral over Tokyo").template_id, "ges_spiral_derived_v1");
+  assert.equal(hit("quickstart point-to-point London to Paris").template_id, "ges_point_to_point_derived_v1");
+  // negative controls: the generic planner vocabulary must never match
+  for (const s of [
+    "orbit around the Eiffel Tower twice for 10 seconds",
+    "fly to Helsinki in 5 seconds, then orbit Helsinki",
+    "zoom out from London to space",
+    "spiral staircase visible from above", // mentions a template word without explicit framing
+    "hover over the point to point out the bridge",
+  ]) assert.equal(hit(s), null, `false positive: ${s}`);
+});
+
+test("gate3E lane: template selection persists provenance in job.json; untemplated job.json format unchanged", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "es-native-lane-"));
+  const pkg = path.join(root, "pkg"); fs.mkdirSync(pkg);
+  // untemplated: no template key in job.json (byte-frozen v0.9.4 field set)
+  lane.writeJob(pkg, { jobName: "Plain", description: "fly to London in 5 seconds" });
+  const plainJob = JSON.parse(fs.readFileSync(path.join(pkg, "earth-studio/job.json")));
+  assert.ok(!("template" in plainJob), "untemplated job.json must not gain fields");
+  // selector request without params: intent + provenance recorded, no native esp
+  const out = lane.writeJob(pkg, { jobName: "Tpl", description: "fly to London in 5 seconds", template: "orbit" });
+  assert.equal(out.template.template_id, "ges_orbit_derived_v1");
+  assert.equal(out.template.template_profile_version, "ges-native-derived-v1");
+  assert.equal(out.template.gate2_spec_sha256, native.GATE2_SPEC_SHA256);
+  assert.equal(out.template.native_esp, null);
+  assert.match(out.template.note, /never invented/);
+  const job = JSON.parse(fs.readFileSync(path.join(pkg, "earth-studio/job.json")));
+  assert.equal(job.template.requested_via, "selector");
+  // description intent alone also records provenance
+  const out2 = lane.writeJob(pkg, { jobName: "Tpl2", description: "template: spiral over the Eiffel Tower" });
+  assert.equal(out2.template.template_id, "ges_spiral_derived_v1");
+  assert.equal(out2.template.requested_via, "description");
+  // full params: native .esp is generated beside the generic one
+  const out3 = lane.writeJob(pkg, {
+    jobName: "TplFull", description: "template: orbit the London Eye", template: "orbit",
+    template_params: { target: { lonDeg: -0.119344, latDeg: 51.503077, altitudeM: 34.34 }, radiusM: 624, cameraAltitudeM: 346, durationS: 50 },
+  });
+  assert.equal(out3.template.native_esp, "earth-studio-native-template.esp");
+  const nativeEsp = JSON.parse(fs.readFileSync(path.join(pkg, "earth-studio/earth-studio-native-template.esp")));
+  assert.equal(nativeEsp.type, "quickstart");
+  assert.equal(nativeEsp.modelVersion, 18);
+  assert.ok(fs.existsSync(path.join(pkg, "earth-studio/earth-studio.esp")), "generic .esp still written");
+  // bad template / bad params -> 400s
+  assert.throws(() => lane.writeJob(pkg, { jobName: "X", description: "fly to London in 5 seconds", template: "corkscrew" }), /unknown template/);
+  assert.throws(() => lane.writeJob(pkg, { jobName: "X", description: "d", template: "orbit", template_params: { radiusM: 624 } }), /required explicit input/);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("gate3E matrix: regenerated reconstruction matrix matches the frozen verdicts", () => {
+  const frozen = JSON.parse(fs.readFileSync(path.join(G3_EVIDENCE, "comparison/reconstruction-matrix.json")));
+  assert.equal(frozen.gate2_spec_sha256, native.GATE2_SPEC_SHA256);
+  assert.equal(frozen.rows.length, 15);
+  assert.ok(frozen.rows.every((r) => /RECONSTRUCTED_EXACT|RECONSTRUCTED_WITH_INERT_VARIANCE|SEMANTIC_MATCH/.test(r.verdict)));
+  const matrix = require("../scripts/earth-studio-reconstruction-matrix.js");
+  const { compareProjects } = comparator;
+  for (const [i, r] of matrix.RECONSTRUCTIONS.entries()) {
+    const { project, raw } = r.run();
+    const verdict = r.mode === "semantic" ? matrix.semanticVerdict(project, raw).verdict : compareProjects(project, raw).verdict;
+    assert.equal(verdict, frozen.rows[i].verdict, `${r.template}/${r.ref}`);
+  }
+});
+
+test("gate3E negatives: untemplated planner output has no cameraTargetEffect; inspector handles modelVersion 17 and 18", () => {
+  // the generic v0.9.4 serializer carries only the empty default
+  // cameraTargetEffect scaffold — it must never AUTHOR a target (no
+  // keyframes, no POI values, no enabled/influence values) even for orbit
+  // descriptions; only explicit native templates author targets
+  const esp = planner.buildEsp(planner.buildShotPlan("T", "orbit the Eiffel Tower twice for 10 seconds", "2026-08-08T00:00:00.000Z"));
+  const tgt = findNode(esp, "cameraTargetEffect");
+  assert.ok(tgt, "default scaffold present (frozen v0.9.4 shape)");
+  const subtree = JSON.stringify(tgt);
+  assert.equal(subtree.includes("keyframes"), false, "generic target scaffold has no keyframes");
+  assert.equal(subtree.includes("relative"), false, "generic target scaffold has no authored values");
+  // template builders on modelVersion 18; inspector parses both 17 and 18
+  const mv18 = loadEsp("orbit/ref-a/export/VIDTOOLZ-TPL-ORBIT-A.esp");
+  const mv17 = JSON.parse(JSON.stringify(mv18));
+  mv17.modelVersion = 17;
+  const tmp = path.join(os.tmpdir(), `es-mv17-${process.pid}.esp`);
+  fs.writeFileSync(tmp, JSON.stringify(mv17));
+  const p17 = inspector.parseEsp(tmp);
+  fs.unlinkSync(tmp);
+  assert.equal(p17.modelVersion, 17);
+  assert.equal(p17.shape, "native");
+  const p18 = inspector.parseEsp(path.join(EVIDENCE, "orbit/ref-a/export/VIDTOOLZ-TPL-ORBIT-A.esp"));
+  assert.deepEqual(p17.tracks, p18.tracks, "mv17/18 parse identically");
+});
+
 test("gate3 inspector fix: logarithmic-model altitude now decodes to real meters (both models regression)", () => {
   // logarithmic project (zoom-to ref-a): previously decoded to ~32,000 km
   const zoom = inspector.parseEsp(path.join(EVIDENCE, "zoom-to/ref-a/export/VIDTOOLZ-TPL-ZOOM-A.esp"));

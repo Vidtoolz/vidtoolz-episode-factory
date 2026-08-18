@@ -18,6 +18,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const planner = require('./earth-studio-job-planner.js');
+const nativeTemplates = require('./earth-studio-native-template-profiles.js');
 
 const LANE_DIR = 'earth-studio';
 const VIDNAS_STAGE_DIR = '/mnt/vidnas_public/VIDTOOLZ/99_SANDBOX/earth-studio-pilot';
@@ -98,6 +99,23 @@ function writeJob(packageDir, payload = {}, options = {}) {
     const e = new Error(`unknown aspect "${aspect}" — use one of: ${Object.keys(planner.ASPECTS).join(', ')}.`);
     e.statusCode = 400; throw e;
   }
+  // Native Quick Start templates (Gate 3) activate ONLY on explicit intent:
+  // a GUI selector choice (payload.template) or an explicit phrase in the
+  // description ("template: orbit", "Earth Studio Spiral template",
+  // "use Quick Start Fly-To-and-Orbit"). Untemplated jobs take the byte-frozen
+  // v0.9.4 path below unchanged.
+  let templateRequest = null;
+  if (payload.template) {
+    const key = String(payload.template).toLowerCase();
+    if (!nativeTemplates.TEMPLATE_KEYS[key]) {
+      const e = new Error(`unknown template "${key}" — use one of: ${Object.keys(nativeTemplates.TEMPLATE_KEYS).join(', ')} (or omit for the generic planner).`);
+      e.statusCode = 400; throw e;
+    }
+    templateRequest = { template_key: key, requested_via: 'selector' };
+  } else {
+    const detected = nativeTemplates.detectExplicitTemplateIntent(description);
+    if (detected) templateRequest = { template_key: detected.template_key, requested_via: 'description', matched: detected.matched };
+  }
   const dir = laneDir(packageDir);
   fs.mkdirSync(dir, { recursive: true });
   fs.mkdirSync(path.join(dir, 'frames'), { recursive: true });
@@ -106,6 +124,41 @@ function writeJob(packageDir, payload = {}, options = {}) {
   const artifacts = planner.buildArtifacts(jobName, description, createdAt, { aspect });
   Object.entries(artifacts).forEach(([file, content]) => fs.writeFileSync(path.join(dir, file), content));
   const plan = planner.buildShotPlan(jobName, description, createdAt, { aspect });
+  // When a template is requested AND the caller supplied its explicit native
+  // parameters, generate the additional native-shape .esp beside the generic
+  // one. Framing/target inputs are never invented (Gate 3 policy) — without
+  // template_params the intent is recorded but no native .esp is written.
+  let templateMeta = null;
+  if (templateRequest) {
+    const key = templateRequest.template_key;
+    templateMeta = {
+      ...templateRequest,
+      template_id: nativeTemplates.TEMPLATE_KEYS[key],
+      template_profile_version: nativeTemplates.TEMPLATE_PROFILE_VERSION,
+      gate2_spec_sha256: nativeTemplates.GATE2_SPEC_SHA256,
+      import_status: nativeTemplates.IMPORT_STATUS[nativeTemplates.TEMPLATE_KEYS[key]],
+      native_esp: null,
+    };
+    if (payload.template_params && typeof payload.template_params === 'object') {
+      let built;
+      try {
+        built = nativeTemplates.buildTemplateProject(key, {
+          name: jobName,
+          worldTimeMs: Date.parse(createdAt),
+          ...payload.template_params,
+        });
+      } catch (err) {
+        const e = new Error(`native template "${key}": ${err.message}`);
+        e.statusCode = 400; throw e;
+      }
+      const nativeName = 'earth-studio-native-template.esp';
+      fs.writeFileSync(path.join(dir, nativeName), JSON.stringify(built.project));
+      templateMeta.native_esp = nativeName;
+      templateMeta.provenance = built.provenance;
+    } else {
+      templateMeta.note = 'template intent recorded; native .esp generation needs explicit template_params (framing/target inputs are Earth-Studio-derived and never invented here)';
+    }
+  }
   const meta = {
     jobName,
     slug: planner.slugify(jobName),
@@ -120,6 +173,9 @@ function writeJob(packageDir, payload = {}, options = {}) {
     // Camera-direction provenance: which corpus profile authored the motion.
     motion_profile: plan.motion_profile || null,
     created_at: createdAt,
+    // Native-template provenance ONLY when explicitly requested — untemplated
+    // job.json keeps the exact v0.9.4 field set.
+    ...(templateMeta ? { template: templateMeta } : {}),
   };
   fs.writeFileSync(path.join(dir, 'job.json'), `${JSON.stringify(meta, null, 2)}\n`);
   return {
