@@ -133,7 +133,7 @@ test("gate3B zoom-to: reconstruction from frozen-ref inputs is structurally exac
       `${ref}: ${JSON.stringify(report.diffs.filter((d) => d.severity !== "META").slice(0, 5))}`);
     assert.equal(provenance.template_id, "ges_zoom_to_derived_v1");
     assert.equal(provenance.template_profile_version, "ges-native-derived-v1");
-    assert.equal(provenance.import_status, "NOT_IMPORT_VERIFIED");
+    assert.match(provenance.import_status, /^IMPORT_VERIFIED \(Gate 3C/);
   }
 });
 
@@ -195,6 +195,97 @@ test("gate3B guards: required explicit inputs, 2-point scope, evidence-domain ex
   assert.ok(built.provenance.extrapolations.some((e) => /EXTRAPOLATED/.test(e)), JSON.stringify(built.provenance.extrapolations));
   // in-domain legs carry no extrapolation flag
   assert.equal(native.buildPointToPointProject(base).provenance.extrapolations.length, 0);
+});
+
+// ---- Gate 3C/3D: Orbit + locked Camera Target serialization ----
+
+function orbitInputsFrom(raw) {
+  const lon = findNode(raw, "longitude").keyframes, lat = findNode(raw, "latitude").keyframes, alt = findNode(raw, "altitude").keyframes;
+  const target = {
+    lonDeg: native.nativeNormToLon(findNode(raw, "longitudePOI").keyframes[0].value),
+    latDeg: native.nativeNormToLat(findNode(raw, "latitudePOI").keyframes[0].value),
+    altitudeM: native.nativeNormToAltitudeMeters(findNode(raw, "altitudePOI").keyframes[0].value),
+  };
+  const cam0 = { lonDeg: native.nativeNormToLon(lon[0].value), latDeg: native.nativeNormToLat(lat[0].value) };
+  return {
+    name: raw.settings.name,
+    durationS: raw.settings.duration / raw.settings.frameRate,
+    target,
+    radiusM: native.haversineNativeMeters(target, cam0),
+    cameraAltitudeM: native.nativeNormToAltitudeMeters(alt[0].value),
+    startAzimuthDeg: 0, // all standalone refs start due north (Gate 2)
+    direction: "ccw",
+    worldTimeMs: worldTimeOf(raw),
+  };
+}
+
+test("gate3C camera-target serializer: locked subtree is byte-equal to the frozen native Orbit subtree", () => {
+  const raw = loadEsp("orbit/ref-a/export/VIDTOOLZ-TPL-ORBIT-A.esp");
+  const frozen = findNode(raw, "cameraTargetEffect");
+  const built = native.buildLockedCameraTarget({
+    lonNorm: findNode(raw, "longitudePOI").keyframes[0].value,
+    latNorm: findNode(raw, "latitudePOI").keyframes[0].value,
+    altNorm: findNode(raw, "altitudePOI").keyframes[0].value,
+  });
+  assert.equal(JSON.stringify(built), JSON.stringify(frozen), "locked camera-target subtree must match the native shape exactly (keys, order, flags)");
+});
+
+test("gate3D orbit: reconstruction from frozen-ref inputs is structurally exact for all three references", () => {
+  for (const ref of ["ref-a", "ref-b", "ref-c"]) {
+    const raw = loadEsp(`orbit/${ref}/export/VIDTOOLZ-TPL-ORBIT-${ref.slice(-1).toUpperCase()}.esp`);
+    const { project, provenance } = native.buildOrbitProject(orbitInputsFrom(raw));
+    const report = comparator.compareProjects(project, raw);
+    assert.equal(report.verdict, "RECONSTRUCTED_EXACT",
+      `${ref}: ${JSON.stringify(report.diffs.filter((d) => d.severity !== "META").slice(0, 6))}`);
+    assert.equal(provenance.template_id, "ges_orbit_derived_v1");
+    assert.match(provenance.import_status, /^IMPORT_VERIFIED \(Gate 3C/);
+  }
+});
+
+test("gate3D orbit: default camera-altitude law, direction topology, and non-cardinal extrapolation flag", () => {
+  const base = orbitInputsFrom(loadEsp("orbit/ref-a/export/VIDTOOLZ-TPL-ORBIT-A.esp"));
+  // default law round(target_alt + 312) reproduces the frozen default within 0.5 m
+  const defaults = { ...base };
+  delete defaults.cameraAltitudeM;
+  const built = native.buildOrbitProject(defaults);
+  assert.ok(Math.abs(built.camera_altitude_m - base.cameraAltitudeM) < 0.5, `default alt ${built.camera_altitude_m} vs frozen ${base.cameraAltitudeM}`);
+  assert.ok(built.provenance.confidence_notes.some((n) => /MEDIUM/.test(n)));
+  // ccw bearing decreases; cw increases (inferred, flagged MEDIUM)
+  const az = (p) => {
+    const lon = findNode(p, "longitude").keyframes.map((k) => k.value);
+    return lon[1] - lon[0]; // first quarter step: west negative for ccw from north
+  };
+  assert.ok(az(native.buildOrbitProject(base).project) < 0, "ccw first step heads west");
+  const cw = native.buildOrbitProject({ ...base, direction: "cw" });
+  assert.ok(az(cw.project) > 0, "cw first step heads east");
+  assert.ok(cw.provenance.confidence_notes.some((n) => /clockwise.*MEDIUM|MEDIUM.*clockwise/i.test(n)));
+  const diag = native.buildOrbitProject({ ...base, startAzimuthDeg: 225 });
+  assert.ok(diag.provenance.extrapolations.some((e) => /non-cardinal/.test(e)));
+});
+
+// ---- Gate 3C: real-import proof evidence (frozen) ----
+const G3_EVIDENCE = path.join(ROOT, "package-runs/2026-08-18-earth-studio-native-template-implementation");
+
+test("gate3C import proof: frozen fixtures and real GES re-exports round-trip with zero structural differences", () => {
+  const record = JSON.parse(fs.readFileSync(path.join(G3_EVIDENCE, "comparison/gate3c-import-proof.json")));
+  assert.equal(record.gate, "CAMERA_TARGET_SERIALIZATION=IMPORT_VERIFIED");
+  for (const tpl of ["orbit", "zoom-to"]) {
+    const r = record.results[tpl];
+    // evidence files are frozen at their recorded hashes
+    for (const side of ["fixture", "roundtrip"]) {
+      assert.equal(shaFile(path.join(G3_EVIDENCE, r[side].file)), r[side].sha256, `${tpl} ${side} drifted`);
+    }
+    // the round-trip comparison reproduces: no FAIL, no WARN (only META:
+    // Save-As name + scrub-position value.relative snapshots)
+    const fixture = JSON.parse(fs.readFileSync(path.join(G3_EVIDENCE, r.fixture.file)));
+    const roundtrip = JSON.parse(fs.readFileSync(path.join(G3_EVIDENCE, r.roundtrip.file)));
+    const rep = comparator.compareProjects(roundtrip, fixture, { valueRelativeAsMeta: true });
+    assert.equal(rep.verdict, "RECONSTRUCTED_EXACT", `${tpl}: ${JSON.stringify(rep.diffs.filter((d) => d.severity !== "META"))}`);
+  }
+  // the orbit fixture was generated from this module's builder — regenerable
+  const gen = JSON.parse(fs.readFileSync(path.join(G3_EVIDENCE, "imports/VIDTOOLZ-G3C-ORBIT-IMPORT.generation.json")));
+  const rebuilt = native.buildOrbitProject(gen.inputs);
+  assert.equal(shaStr(JSON.stringify(rebuilt.project)), gen.esp_sha256, "orbit fixture regenerates byte-identically from recorded inputs");
 });
 
 test("gate3 inspector fix: logarithmic-model altitude now decodes to real meters (both models regression)", () => {

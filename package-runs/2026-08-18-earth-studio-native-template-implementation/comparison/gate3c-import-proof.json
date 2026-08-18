@@ -1,0 +1,44 @@
+{
+ "date": "2026-08-18",
+ "method": "CDP-driven real Google Earth Studio import (File > Import > Earth Studio Project) of module-generated fixtures, live behavior check at frame 0 and t=0.25, Save As, Ctrl+E re-export, deep structural comparison",
+ "gate": "CAMERA_TARGET_SERIALIZATION=IMPORT_VERIFIED",
+ "live_observations": {
+  "orbit_frame0": "camera 346 m due north of London Eye, Camera Target enabled influence 100%, pan 180 tilt 63.432 (= atan(624/312) look-at law)",
+  "orbit_t025": "camera due west (lon -0.128), pan 89.993 auto-aimed at target, tilt constant 63.432",
+  "zoom_frame0": "camera 65,117 km above framing point, pan/tilt 0/0, inert target panel hidden (native zoom-to behavior)"
+ },
+ "raw_difference_census": {
+  "orbit": "6 total: settings.name (Save As), 2x value.relative (scrub-position save-state), 3x latitude keyframe values re-rounded at 1 ulp (~1e-16)",
+  "zoom": "3 total: settings.name, altitudePOI value.relative + keyframe re-rounded at ~9e-13"
+ },
+ "results": {
+  "orbit": {
+   "fixture": {
+    "file": "imports/VIDTOOLZ-G3C-ORBIT-IMPORT.esp",
+    "sha256": "9deb8b431be35464f24ed92409d159b00b6eb7c6343fac002b53463baeb46c8e"
+   },
+   "roundtrip": {
+    "file": "roundtrips/VIDTOOLZ-G3C-ORBIT-ROUNDTRIP.esp",
+    "sha256": "50996ae17d9b213326ff8f40114228ab116d342f7a0ec2fae10ee04c1969444d"
+   },
+   "verdict": "RECONSTRUCTED_EXACT",
+   "fail": 0,
+   "warn": 0,
+   "meta": 3
+  },
+  "zoom-to": {
+   "fixture": {
+    "file": "imports/VIDTOOLZ-G3C-ZOOM-IMPORT.esp",
+    "sha256": "4a0f839ea8cd5764ceb719a642f8b693f6bd600a138ffa03f69fbbd72c7af277"
+   },
+   "roundtrip": {
+    "file": "roundtrips/VIDTOOLZ-G3C-ZOOM-ROUNDTRIP.esp",
+    "sha256": "afe7bc3d8d39642caee841dc7767b3884f31f542f24e93d0706dad319481cf47"
+   },
+   "verdict": "RECONSTRUCTED_EXACT",
+   "fail": 0,
+   "warn": 0,
+   "meta": 1
+  }
+ }
+}

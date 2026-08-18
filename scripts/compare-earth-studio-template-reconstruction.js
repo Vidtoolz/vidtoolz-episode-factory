@@ -45,10 +45,14 @@ function isInertTarget(project) {
   return inert;
 }
 
-function classify(path, targetInert) {
+function classify(path, targetInert, opts) {
   if (/settings\.name$/.test(path)) return "META";
   if (/worldTime/.test(path) || /clouddate/.test(path)) return "META";
   if (/\.logarithmicMode$/.test(path)) return "META";
+  // value.relative is the editor's current-value snapshot (scrub position at
+  // save time), proven save-state by the Gate 3C round-trip. Only downgraded
+  // when the caller opts in (round-trip comparisons).
+  if (opts && opts.valueRelativeAsMeta && /\.value\.relative$/.test(path)) return "META";
   if (targetInert && (/cameraTargetEffect/.test(path) || /cameraRotationGroup/.test(path))) return "WARN";
   return "FAIL";
 }
@@ -90,11 +94,11 @@ function diffTrees(a, b, path, out) {
   if (a !== b) out.push({ path, kind: "value", generated: a, reference: b });
 }
 
-function compareProjects(generated, reference) {
+function compareProjects(generated, reference, opts) {
   const raw = [];
   diffTrees(generated, reference, "$", raw);
   const targetInert = isInertTarget(reference);
-  const diffs = raw.map((d) => ({ severity: classify(d.path, targetInert), ...d }));
+  const diffs = raw.map((d) => ({ severity: classify(d.path, targetInert, opts), ...d }));
   const fails = diffs.filter((d) => d.severity === "FAIL");
   const warns = diffs.filter((d) => d.severity === "WARN");
   const verdict = fails.length ? "STRUCTURAL_MISMATCH"

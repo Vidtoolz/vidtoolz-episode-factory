@@ -1,0 +1,30 @@
+{
+ "generated_by": "buildZoomToProject",
+ "inputs": {
+  "name": "VIDTOOLZ-G3C-ZOOM-IMPORT",
+  "durationS": 5,
+  "framing": {
+   "lonDeg": -0.11934210000001144,
+   "latDeg": 51.503073825637586,
+   "altitudeM": 1028.3425678949295
+  },
+  "poi": {
+   "lonDeg": -0.11934072349635017,
+   "latDeg": 51.503076864253785,
+   "altitudeM": 25.510119291516844
+  },
+  "worldTimeMs": 1787049125077
+ },
+ "provenance": {
+  "template_id": "ges_zoom_to_derived_v1",
+  "template_profile_version": "ges-native-derived-v1",
+  "gate2_spec_sha256": "56ddf51d113a23295ef4fe2f2dfb555ee9151f9badde14f4d156aa9d8b0911b0",
+  "import_status": "NOT_IMPORT_VERIFIED",
+  "confidence_notes": [
+   "grammar HIGH (Gate 2); end framing is a required explicit input (Google-derived in native wizard)"
+  ],
+  "extrapolations": []
+ },
+ "esp_sha256": "4a0f839ea8cd5764ceb719a642f8b693f6bd600a138ffa03f69fbbd72c7af277",
+ "source_reference": "zoom-to/ref-a — inputs decoded from the frozen native export"
+}

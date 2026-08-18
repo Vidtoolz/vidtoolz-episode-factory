@@ -1,0 +1,29 @@
+{
+ "generated_by": "earth-studio-native-template-profiles.js buildOrbitProject",
+ "inputs": {
+  "name": "VIDTOOLZ-G3C-ORBIT-IMPORT",
+  "durationS": 50,
+  "target": {
+   "lonDeg": -0.119344027482299,
+   "latDeg": 51.503076722408565,
+   "altitudeM": 34.342567920684814
+  },
+  "radiusM": 624.0006933362714,
+  "cameraAltitudeM": 346,
+  "startAzimuthDeg": 0,
+  "direction": "ccw",
+  "worldTimeMs": 1787048623212
+ },
+ "provenance": {
+  "template_id": "ges_orbit_derived_v1",
+  "template_profile_version": "ges-native-derived-v1",
+  "gate2_spec_sha256": "56ddf51d113a23295ef4fe2f2dfb555ee9151f9badde14f4d156aa9d8b0911b0",
+  "import_status": "NOT_IMPORT_VERIFIED",
+  "confidence_notes": [
+   "grammar HIGH (Gate 2)"
+  ],
+  "extrapolations": []
+ },
+ "esp_sha256": "9deb8b431be35464f24ed92409d159b00b6eb7c6343fac002b53463baeb46c8e",
+ "source_reference": "orbit/ref-a (London Eye) — inputs decoded from the frozen native export"
+}
