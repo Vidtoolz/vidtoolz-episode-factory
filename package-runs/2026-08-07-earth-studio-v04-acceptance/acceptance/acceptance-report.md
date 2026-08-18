@@ -4,11 +4,11 @@
 
 parser/generator/.esp structure verified internally — real Earth Studio import NOT yet observed; camera semantics remain best-effort assumptions
 
-- Planner version: 0.9.1
-- Generated at: 2026-08-08T07:57:54.467Z (git a4d9ff7fa9ae)
+- Planner version: 0.9.3
+- Generated at: 2026-08-08T09:18:08.979Z (git 6a48cfc760c7)
 - Instruction: `fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 36 seconds, then zoom out to space in 12 seconds`
 - Aspect: 9:16 (1080x1920) · 2130 frames @ 30 fps
-- .esp sha256: `665a09c3873d42e9360cc150111b8ed636a3221a312179a4e4362ea64bda7291`
+- .esp sha256: `7754a178b63c60a9f7ccdf3c5313200501a0ac6463016b850fe628da667c3e41`
 
 ## Gates
 - Internal semantic checks: PASS (33 assertions)
@@ -20,4 +20,4 @@ parser/generator/.esp structure verified internally — real Earth Studio import
 Internal green is NOT external proof: only the real Earth Studio import
 observation and real exported frames advance the state past INTERNAL_VERIFIED.
 
-_Report regenerated 2026-08-08T08:12:40.630Z by scripts/earth-studio-v04-acceptance.js status._
+_Report regenerated 2026-08-10T05:31:05.847Z by scripts/earth-studio-v04-acceptance.js status._
