@@ -1,0 +1,41 @@
+{
+  "gate": 2,
+  "date": "2026-08-18",
+  "verdict": "GATE 2 COMPLETE",
+  "determinism": "SEMANTICALLY_DETERMINISTIC — motion bit-identical; only name + sunGroup.worldTime wall-clock differ",
+  "acceptance_criteria": {
+    "A_hashes": "PASS 51/51 + 11 controls + 2 pinned",
+    "B_determinism": "PASS",
+    "C_topology": "PASS all 5",
+    "D_timing": "PASS all 5",
+    "E_easing": "PASS per-property/per-role",
+    "F_orbit": "PASS (altitude-default rounding AMBIGUOUS noted)",
+    "G_p2p": "PASS (peak-altitude law bounded MEDIUM)",
+    "H_spiral": "PASS cubic/quadratic/arc-length laws",
+    "I_flyorbit": "PASS full phase grammar",
+    "J_approach_angle": "RESOLVED via sup-e (entry azimuth; start=entry−90·sign)",
+    "K_duration": "PASS all 5 models",
+    "L_target_lock": "DOCUMENTED not implemented",
+    "M_machine_spec": "derivation/native-template-motion-v1.json",
+    "N_human_spec": "docs/earth-studio-native-template-motion.md",
+    "O_controls": "BYTE-INTACT",
+    "P_no_behavior_change": "CONFIRMED"
+  },
+  "supplements": {
+    "acquired": 2,
+    "budget": 3,
+    "notes": "sup-d CONTAMINATED (wizard desync), sup-e clean and decisive"
+  },
+  "anomalies": [
+    "spiral ref-c first keyframe end-state contaminated (excluded; interior samples valid)",
+    "inspector linear-denorm defect for logarithmic-model projects (Gate 3 must handle)"
+  ],
+  "open_questions": [
+    "P2P transit peak-altitude functional form (k≈1.6·distance vs FOV-fit; one ~30 km supplemental leg would resolve)",
+    "orbit camera-altitude default rounding law (round vs floor+.5)",
+    "standalone-orbit clockwise sign (inferred from fly-orbit)",
+    "non-cardinal approach angles (0°/90° captured)",
+    "3-6 point P2P interior topology",
+    "spiral angle_start>0 behavior"
+  ]
+}

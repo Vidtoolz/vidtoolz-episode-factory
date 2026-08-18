@@ -134,6 +134,17 @@
         "controls/determinism-flyorbit-25s-repeat = second identical-input FLY-ORBIT run for keyframe-determinism analysis",
         "probe project name carries stale prefix, token preserved"
       ]
+    },
+    "gate2": {
+      "status": "DERIVATION_COMPLETE",
+      "date": "2026-08-18",
+      "inspector_defect_noted": "inspector-full.json altitude meters are linear-denormalized; projects with animationModel.logarithmic=true (zoom-to, point-to-point) require alt = -500 + 65117981·norm^15 — Gate 1 raw dumps remain frozen as captured; derivation decodes from raw .esp",
+      "outputs": [
+        "derivation/diagnostics/topology-and-determinism.json",
+        "derivation/native-template-motion-v1.json",
+        "derivation/gate2-summary.json",
+        "docs/earth-studio-native-template-motion.md"
+      ]
     }
   },
   "resume_rules": [
@@ -721,7 +732,7 @@
       },
       "parser_status": "PARSED",
       "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
-      "notes": null,
+      "notes": "ANOMALY (Gate 2 finding): first keyframe exported with end-state radius/altitude (499.44 m / +78.9 m instead of 2000 m / +978 m) — wizard state desync from programmatic angle-slider set, same failure mode as gate2 supplement sup-d. Interior and end keyframes (f=0.125..1.0) are law-consistent and remain valid derivation evidence; the f=0 sample must be excluded.",
       "blocking_issue": null,
       "template_observed_behavior": {
         "wizard": "step1 POI search; step2 Radius Start/End (2000/500m), Angle Start/End (0/360°, ranges 0-900/360-1080), Altitude Start/End (terrain-derived, London 1004/104m); step3 duration (default 25s)",
@@ -911,5 +922,39 @@
     "Derivation must use PER-PROPERTY + PER-ROLE pooling (v0.9.3 discipline); no silent cross-property pooling",
     "Gate 2/3 must additionally test Fly-To and Orbit at 9:16 (user production format); primary matrix is 16:9",
     "Gate 4 visual verdict belongs to Mikko (visual-observation.json); agent never self-certifies fidelity"
+  ],
+  "gate2_supplements": [
+    {
+      "id": "sup-d",
+      "template": "fly-to-and-orbit",
+      "project_name": "VIDTOOLZ-TPL-FLY-ORBIT-SUP-D",
+      "status": "CONTAMINATED",
+      "reason": "resolve Approach Angle / Clockwise convention (H0: angle = start bearing vs H1: angle = orbit entry azimuth)",
+      "inputs": {
+        "poi": "London Eye Ticket Office",
+        "approach_angle_deg": 90,
+        "clockwise": true,
+        "others": "DEFAULT"
+      },
+      "contamination": "approach-angle slider was set via programmatic value injection; wizard state desynced — exported orbit contains a degenerate first segment (path through target center) with non-monotonic bearings. Retained as evidence of the failure mode; superseded by sup-e.",
+      "raw_esp": "fly-to-and-orbit/sup-d/export/VIDTOOLZ-TPL-FLY-ORBIT-SUP-D.esp",
+      "sha256": "12d032ffcd5f6b0f8c4fff3c27d40fa494122ca1741cab6e1a53f546754b5475"
+    },
+    {
+      "id": "sup-e",
+      "template": "fly-to-and-orbit",
+      "project_name": "VIDTOOLZ-TPL-FLY-ORBIT-SUP-E",
+      "status": "EVIDENCE_READY",
+      "reason": "same ambiguity as sup-d, re-acquired with real mouse drag + verified wizard display before creation",
+      "inputs": {
+        "poi": "London Eye Ticket Office",
+        "approach_angle_deg": 90,
+        "clockwise": true,
+        "others": "DEFAULT"
+      },
+      "finding": "entry azimuth = Approach Angle (90°=east); Clockwise=ON sweeps bearing +360°; start = entry − 90°·orbit_sign; approach quarter-turn rotates in orbit direction",
+      "raw_esp": "fly-to-and-orbit/sup-e/export/VIDTOOLZ-TPL-FLY-ORBIT-SUP-E.esp",
+      "sha256": "7ef26918882a84e828003ad6fdbd0066a33025716a044900e41315860a41ea91"
+    }
   ]
 }

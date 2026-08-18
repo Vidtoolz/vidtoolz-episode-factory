@@ -1,0 +1,267 @@
+{
+  "file": "package-runs/2026-08-18-earth-studio-native-templates/fly-to-and-orbit/sup-d/export/VIDTOOLZ-TPL-FLY-ORBIT-SUP-D.esp",
+  "name": "VIDTOOLZ-TPL-FLY-ORBIT-SUP-D",
+  "modelVersion": 18,
+  "shape": "native",
+  "fps": 30,
+  "duration_frames": 750,
+  "duration_seconds": 25,
+  "dimensions": {
+    "width": 3840,
+    "height": 2160
+  },
+  "tracks": {
+    "longitude": [
+      {
+        "time": 0,
+        "value": -0.119344027482299,
+        "transitionIn": null,
+        "transitionOut": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+        }
+      },
+      {
+        "time": 0.2,
+        "value": -0.11357147370881648,
+        "transitionIn": {
+          "x": -0.124,
+          "y": 0.00003941973999999071,
+          "influence": 0.6200000313289488,
+          "type": "custom"
+        },
+        "transitionOut": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        }
+      },
+      {
+        "time": 0.4,
+        "value": -0.1251165812557815,
+        "transitionIn": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 0.6,
+        "value": -0.119344027482299,
+        "transitionIn": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        },
+        "transitionOut": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        }
+      },
+      {
+        "time": 0.8,
+        "value": -0.11357147370881648,
+        "transitionIn": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 1,
+        "value": -0.119344027482299,
+        "transitionIn": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        },
+        "transitionOut": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        }
+      }
+    ],
+    "latitude": [
+      {
+        "time": 0,
+        "value": 51.68633324398729,
+        "transitionIn": null,
+        "transitionOut": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+        }
+      },
+      {
+        "time": 0.2,
+        "value": 51.50307658074209,
+        "transitionIn": {
+          "x": -0.198,
+          "y": 0,
+          "influence": 0.99,
+          "type": "custom"
+        },
+        "transitionOut": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 0.4,
+        "value": 51.50307658074209,
+        "transitionIn": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        },
+        "transitionOut": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        }
+      },
+      {
+        "time": 0.6,
+        "value": 51.49948345727958,
+        "transitionIn": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 0.8,
+        "value": 51.50307658074209,
+        "transitionIn": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        },
+        "transitionOut": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        }
+      },
+      {
+        "time": 1,
+        "value": 51.50666998753758,
+        "transitionIn": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        }
+      }
+    ],
+    "altitude": [
+      {
+        "time": 0,
+        "value": 20234,
+        "transitionIn": null,
+        "transitionOut": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+        }
+      },
+      {
+        "time": 0.2,
+        "value": 234,
+        "transitionIn": {
+          "x": -0.5,
+          "y": 0,
+          "influence": 1,
+          "type": "custom"
+        },
+        "transitionOut": null
+      },
+      {
+        "time": 0.4,
+        "value": 234,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.6,
+        "value": 234,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.8,
+        "value": 234,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 1,
+        "value": 234,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ],
+    "pan": null,
+    "tilt": null
+  },
+  "poi_target_lock": true,
+  "poi": {
+    "longitude": [
+      {
+        "time": 0,
+        "value": -0.119344027482299,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ],
+    "latitude": [
+      {
+        "time": 0,
+        "value": 51.503076722408565,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ],
+    "altitude": [
+      {
+        "time": 0,
+        "value": 34.342567920684814,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ]
+  },
+  "rotation_authoring": "poi_target_lock"
+}

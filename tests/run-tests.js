@@ -55,6 +55,7 @@ require("./comfyui-gateway.test.js");
 require("./comfyui-qualification.test.js");
 require("./earth-studio-proof.test.js");
 require("./earth-studio-v04-acceptance.test.js");
+require("./earth-studio-template-derivation.test.js");
 require("./score-engine.test.js");
 require("./score-provenance.test.js");
 require("./score-production.test.js");

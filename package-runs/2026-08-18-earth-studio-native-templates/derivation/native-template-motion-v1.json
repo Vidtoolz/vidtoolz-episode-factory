@@ -1,0 +1,188 @@
+{
+  "schema": "ges-native-template-motion-derivation",
+  "version": 1,
+  "derived": "2026-08-18",
+  "status": "SPECIFICATION_ONLY — Gate 2 derivation. NOT runtime profiles. Gate 3 implements after review; Gate 4 visual acceptance by Mikko is mandatory before any VERIFIED_NATIVE_MATCH claim.",
+  "evidence_root": "package-runs/2026-08-18-earth-studio-native-templates",
+  "global_findings": {
+    "determinism": {
+      "classification": "SEMANTICALLY_DETERMINISTIC",
+      "detail": "Identical-input Fly-To-and-Orbit runs differ ONLY in settings.name and environmentGroup.sunGroup.worldTime min/maxValueRange (wall-clock epoch ms). Every camera keyframe time/value/transition is bit-identical. Exact fitting is licensed.",
+      "evidence": ["fly-to-and-orbit/ref-a", "controls/determinism-flyorbit-25s-repeat"],
+      "confidence": "HIGH"
+    },
+    "geodesic_basis": {
+      "rule": "Template distances are exact on a sphere of radius 6378137 m (WGS84 equatorial). Haversine on R=6371000 reproduces all constants with a uniform 0.11% deficit; on R=6378137 the constants are exact (624.0, 2000.0, 20000.0).",
+      "status": "DERIVED_GEOMETRIC",
+      "confidence": "HIGH"
+    },
+    "altitude_encoding": {
+      "linear_model": "animationModel.logarithmic=false (orbit, spiral, fly-to-and-orbit): stored keyframe value = (alt_m + 500) / 65117981; interpolation in that linear space.",
+      "logarithmic_model": "animationModel.logarithmic=true (zoom-to, point-to-point): stored keyframe value = ((alt_m + 500) / 65117981)^(1/15); alt_m = -500 + 65117981 * norm^15. Exponent 15 verified to 0.3 m over the full 65,117 km span (EXACT_NATIVE_CONSTANT). Interpolation and transition handles operate in the power-15 space — this IS the perceptual zoom curve.",
+      "confidence": "HIGH"
+    },
+    "rotation_authoring": "Templates author camera rotation exclusively through cameraTargetEffect look-at (orbit/spiral/fly-orbit, influence 1) or leave pan/tilt untouched at 0/0 with influence 0 (zoom-to, point-to-point). No template writes pan/tilt keyframes.",
+    "inspector_defect": "scripts/inspect-earth-studio-project.js linear-denormalizes altitude regardless of animationModel.logarithmic; zoom-to/point-to-point dump altitudes are wrong in meters (raw norms correct). Gate 3 must fix or account for this. Frozen Gate 1 dumps intentionally left as captured."
+  },
+  "templates": {
+    "ges_zoom_to_derived_v1": {
+      "ui_inputs": {
+        "poi": "USER_INPUT (search; resolved framing is EARTH_STUDIO_DERIVED)",
+        "starting_altitude_m": "EARTH_STUDIO_DEFAULT 65117481 (slider max, 'space'); user-adjustable",
+        "duration_s": "EARTH_STUDIO_DEFAULT 5"
+      },
+      "keyframes": {
+        "count_per_property": 2,
+        "normalized_times": [0, 0.8],
+        "timing_model": "NORMALIZED_INVARIANT (identical at 5 s and 15 s); final 20% of timeline is an implicit hold (no keyframe, value persists)"
+      },
+      "properties": {
+        "longitude_latitude": { "rule": "constant at end-framing position for the whole animation (both keyframes identical; ~0.35 m from POI marker)", "status": "EXACT_NATIVE_CONSTANT", "confidence": "HIGH" },
+        "altitude": {
+          "value_rule": "start = starting_altitude (default 65,117,481); end = camera altitude of the post-search framing (EARTH_STUDIO_DERIVED, e.g. 1028.3 m London Eye, 530.5 m Empire State)",
+          "interpolation_space": "logarithmic model: power-15 normalized space",
+          "easing": "kf0 out = auto(x=0.2, y=0); kf1 in = custom(x=-0.32, y=0, influence=0.4)",
+          "confidence": "HIGH"
+        },
+        "pan_tilt": { "rule": "no keyframes; static 0/0 (straight down)", "confidence": "HIGH" },
+        "camera_target": { "rule": "cameraTargetEffect present, enabled=1, influence keyframed at 0 (t=0 and t=0.5333, auto handles) — scaffolding only, inert", "confidence": "HIGH" }
+      },
+      "duration_model": "FULL_NORMALIZED_SCALING",
+      "unresolved": ["end-framing altitude derivation from search result (Google-side, not reconstructable; treat as user/derived input in Gate 3)"]
+    },
+    "ges_orbit_derived_v1": {
+      "ui_inputs": {
+        "poi": "USER_INPUT",
+        "radius_m": "EARTH_STUDIO_DEFAULT 624 (site-independent; slider 10% of a 0-100 UI range; display 624 = exact 624.0 on R=6378137)",
+        "camera_altitude_m": "EARTH_STUDIO_DEFAULT ≈ round(target_alt + 312) (346 @ target 34.34; 376 @ target 64.49; fits both; AMBIGUOUS rounding law)",
+        "target_altitude_m": "EARTH_STUDIO_DERIVED terrain altitude at POI",
+        "start_heading_deg": "EARTH_STUDIO_DEFAULT 0 (0 = camera starts due NORTH of target)",
+        "clockwise": "EARTH_STUDIO_DEFAULT false",
+        "duration_s": "EARTH_STUDIO_DEFAULT 50"
+      },
+      "keyframes": {
+        "count_per_property": 5,
+        "normalized_times": [0, 0.25, 0.5, 0.75, 1],
+        "timing_model": "NORMALIZED_INVARIANT (identical at 50 s and 25 s)"
+      },
+      "geometry": {
+        "position_rule": "camera on circle of constant radius about target at constant altitude; azimuth(t) = start_heading + sweep(t); sweep total = -360° (counterclockwise, bearing decreasing) when clockwise=false, +360° when true (sign law from fly-orbit sup-e; standalone orbit CW uncaptured -> MEDIUM)",
+        "keyframe_placement": "exact 90° azimuth increments; first/last positions coincide",
+        "radius_stability": "constant to <0.01 m across all keyframes",
+        "altitude_stability": "constant (exact integer meters as displayed in wizard)",
+        "tilt_rule": "no tilt keyframes; look-at via cameraTargetEffect influence 1 yields tilt = atan(radius / (camera_alt - target_alt)); verified: atan(624/312)=63.435° vs observed 63.432-63.444; atan(2497/311.7)=82.88° vs observed 82.875",
+        "status": "DERIVED_GEOMETRIC",
+        "confidence": "HIGH"
+      },
+      "easing": "endpoint keyframes linear/linear; interior keyframes auto (x=±0.066, y=0, influence 0.5) — constant angular velocity with auto spatial smoothing",
+      "duration_model": "FULL_NORMALIZED_SCALING (angular velocity = 360°/duration)",
+      "unresolved": ["camera-altitude default exact rounding law (round vs floor+0.5; 2 data points)", "UI %->meters slider mapping for non-default radius/altitude (Gate 3 should expose meters directly, mapping not needed)", "standalone-orbit clockwise sign (inferred from fly-orbit sup-e; one CW orbit reference would confirm)"]
+    },
+    "ges_point_to_point_derived_v1": {
+      "ui_inputs": {
+        "points": "USER_INPUT (2..6, searched; each resolves to framing position+altitude EARTH_STUDIO_DERIVED)",
+        "hold_s_per_point": "EARTH_STUDIO_DEFAULT 2 (editable per point)",
+        "transit_s_per_leg": "EARTH_STUDIO_DEFAULT 5 (editable per leg)"
+      },
+      "keyframes": {
+        "per_leg_structure": "[hold-start, departure, transit-mid CURVE_SUPPORT, arrival, hold-end]; 2-point refs = 5 keyframes",
+        "timing_model": "ABSOLUTE_SEGMENTS — total = sum(holds)+sum(transits); keyframe times = cumulative seconds / total (verified: 2/5/2 -> 0,0.2222,0.5,0.7778,1; 2/12/2 -> 0,0.125,0.5,0.875,1); transit-mid sits at the transit temporal midpoint"
+      },
+      "properties": {
+        "longitude_latitude": { "rule": "property-space interpolation (per-channel), NOT great-circle: transit-mid lon/lat = arithmetic mean of endpoints (verified at 3 km and 341 km)", "status": "DIRECTLY_OBSERVED", "confidence": "HIGH" },
+        "altitude": {
+          "encoding": "logarithmic model (power-15 space)",
+          "holds": "point framing altitude (≈1.03 km for searched London POIs)",
+          "transit_peak": "explicit keyframe at transit midpoint; peak_above_hold ≈ 1.57-1.63 × leg distance (5.09 km @ 3.12 km; 533.96 km @ 340.95 km). Functional form AMBIGUOUS: candidates (a) k·distance with k≈1.6, (b) FOV-fit geometry distance/(2·tan(fov/2)). Two samples cannot distinguish.",
+          "confidence": "MEDIUM"
+        },
+        "pan_tilt": { "rule": "no keyframes; 0/0 top-down for the entire animation", "confidence": "HIGH" },
+        "camera_target": { "rule": "cameraTargetEffect enabled=1 with influence keyframed 0 at every hold boundary (custom x=±1 transitions) — inert scaffolding", "confidence": "HIGH" }
+      },
+      "easing": "hold-exit out = custom(x=1, y=0, influence 0.2) slow-out; arrival in = custom(x=-1, y=0, influence 0.2) slow-in; transit-mid auto(influence 0.35, logarithmicMode:false)",
+      "duration_model": "ABSOLUTE_SEGMENTS (edit per hold/transit; no global normalized scaling)",
+      "unresolved": ["transit peak-altitude law (needs one mid-distance supplemental, e.g. ~30 km leg)", "3-6 point interior-point topology (holds at interior points presumed symmetric; unverified)"]
+    },
+    "ges_spiral_derived_v1": {
+      "ui_inputs": {
+        "poi": "USER_INPUT",
+        "radius_start_m": "EARTH_STUDIO_DEFAULT 2000", "radius_end_m": "EARTH_STUDIO_DEFAULT 500",
+        "angle_start_deg": "EARTH_STUDIO_DEFAULT 0 (range 0-900)", "angle_end_deg": "EARTH_STUDIO_DEFAULT 360 (range 360-1080)",
+        "altitude_start_m": "EARTH_STUDIO_DERIVED terrain+~979/900 (site-dependent base)", "altitude_end_m": "EARTH_STUDIO_DERIVED (UI shows exact values; keyframes store them)",
+        "duration_s": "EARTH_STUDIO_DEFAULT 25"
+      },
+      "keyframes": {
+        "placement": "one keyframe per 90° of swept angle + endpoint: 360°->5, 720°->9 (VERIFIED exact)",
+        "timing_model": "ARC_LENGTH_UNIFORM — keyframe times follow constant 3D path speed along the spiral (predicted 0.4437/0.6985/0.8627 vs observed 0.4413/0.6947/0.8613; residual <0.5%, planar approximation)",
+        "confidence": "HIGH (placement) / MEDIUM (exact arc-length definition)"
+      },
+      "value_laws": {
+        "radius": "radius(f) = end + (start-end)·(1-f)^3 where f = swept_angle/total_angle (cubic; verified across A/B/C including C's independent f=0.125 sample, residual ≈0.1%)",
+        "altitude": "altitude(f) = end + (start-end)·(1-f)^2 (quadratic; residuals <0.1%, C f=0.125 predicted 767.7 observed 767.70)",
+        "azimuth_sign": "positive/clockwise (bearing increasing) with NO UI toggle — spiral natively rotates clockwise; note opposite of orbit default",
+        "status": "DERIVED_GEOMETRIC",
+        "confidence": "HIGH"
+      },
+      "target_lock": "cameraTargetEffect influence 1; tilt fully derived look-at",
+      "easing": "endpoint keyframes linear; interior keyframes auto with spacing-derived influence (0.5 uniform; 0.16 at compressed segments)",
+      "duration_model": "FULL_NORMALIZED_SCALING of the arc-length-uniform schedule",
+      "unresolved": ["exact native arc-length metric (3D vs horizontal; <0.5% effect)", "whether angle_start>0 shifts phase or geometry (uncaptured)"]
+    },
+    "ges_fly_to_and_orbit_derived_v1": {
+      "ui_inputs": {
+        "poi": "USER_INPUT",
+        "end_altitude_m": "EARTH_STUDIO_DERIVED default target_terrain+200; user-adjustable (exported keyframe = integer-floored display value)",
+        "target_altitude_m": "EARTH_STUDIO_DERIVED terrain (slider min)",
+        "orbit_radius_m": "EARTH_STUDIO_DEFAULT 400 (range 100-3000)",
+        "approach_angle_deg": "EARTH_STUDIO_DEFAULT 0; SEMANTICS RESOLVED: azimuth of the ORBIT ENTRY point (0°=entry due north of target)",
+        "clockwise": "EARTH_STUDIO_DEFAULT false",
+        "duration_s": "EARTH_STUDIO_DEFAULT 25"
+      },
+      "phase_grammar": {
+        "phases": [
+          { "role": "APPROACH", "t": [0, 0.2], "description": "single eased segment from start to orbit entry: descends exactly 20,000 m, closes horizontal distance from orbit_radius+20,000 m to orbit_radius, sweeps 90° of azimuth in the orbit's rotational direction" },
+          { "role": "ORBIT", "t": [0.2, 1.0], "description": "full 360° revolution at constant radius/altitude; 4 quarter segments of 0.2 each; grammar identical to standalone Orbit template" }
+        ],
+        "timing_model": "NORMALIZED_INVARIANT (identical keyframe times at 25 s and 50 s; approach always 20%, orbit 80%)",
+        "confidence": "HIGH"
+      },
+      "start_position_law": {
+        "horizontal": "start at azimuth = approach_angle − 90°·orbit_sign (orbit_sign=+1 clockwise, −1 counterclockwise); distance = orbit_radius + 20,000 m (EXACT on R=6378137; verified radius 400->20,400 and radius 800->20,800)",
+        "vertical": "start_altitude = end_altitude + 20,000 m (EXACT, residual 0.0 m across probe/A/B/C)",
+        "geometry_note": "equal 20,000 m horizontal and vertical offsets give the observed ≈45° initial look-at tilt: atan((radius+20000)/20000) = 45.25° @ r=400 (observed 45.205), 46.1°... B: atan(20800/20736)=45.09° (observed 45.01); tilt is pure look-at DERIVED_GEOMETRIC",
+        "evidence": ["gate0/probe", "ref-a", "ref-b", "ref-c", "sup-e"],
+        "confidence": "HIGH"
+      },
+      "orbit_phase": {
+        "entry_azimuth": "= approach_angle (sup-e: 90° -> entry due east)",
+        "sweep": "360° in orbit_sign direction; keyframes every 90° at t = 0.2,0.4,0.6,0.8,1.0",
+        "radius": "= orbit_radius UI value (constant)",
+        "altitude": "= end_altitude (constant; integer-floored)",
+        "easing": "entry keyframe out=linear; interior auto(±0.066, influence 0.5); final in=linear — identical to standalone Orbit",
+        "confidence": "HIGH"
+      },
+      "approach_easing": {
+        "position": "kf0 out = easeOut(x=0.05, y=0); entry in = custom(x=-0.198, y≈3.1e-5, influence 0.99) — near-complete horizontal deceleration into entry",
+        "altitude": "kf0 out = easeOut(x=0.05, y=0); entry in = custom(x=-0.5, y=0, influence 1) — full flat-in, vertical speed exactly 0 at entry; altitude constant thereafter",
+        "confidence": "HIGH"
+      },
+      "duration_model": "FULL_NORMALIZED_SCALING",
+      "vs_standalone_orbit": "SHARED_GRAMMAR for the orbit phase (placement/easing/geometry identical); parameter sources differ: radius 400 vs 624 default, altitude = end_altitude vs target+312, phase occupies 80% vs 100%",
+      "unresolved": ["whether approach_angle shifts also rotate the approach's 90° swing plane at non-cardinal angles (only 0° and 90° captured; law is consistent, MEDIUM->HIGH with any third angle)", "clockwise=true full-project keyframe topology confirmed only via sup-e (single reference)"]
+    }
+  },
+  "camera_target_serialization": {
+    "shape": "scenes[0].attributes[cameraGroup].attributes[] contains { type:'cameraTargetEffect', inTimeline:true, attributes:[ {type:'enabled', value:{relative:0|1}}, {type:'poi', attributes:[{type:'longitudePOI', value:{relative:n}, keyframes:[{time,value}]}, latitudePOI, altitudePOI]}, {type:'influence', value:{}|{relative:0}, keyframes?} ] }",
+    "normalization": "longitudePOI: v*360-180; latitudePOI: v*180-90; altitudePOI: v*65117981-500 (linear in all observed projects)",
+    "influence_semantics": "value {} = default 1 (orbit/spiral/fly-orbit, editor shows 100%); value {relative:0} + zero-valued keyframes = inert (p2p, zoom-to)",
+    "current_vidtoolz_serializer": { "cameraTargetEffect_authoring": "NOT_SUPPORTED (historical evidence treated Placemark-as-camera-target as unverified)", "constraint": "Gate 3 authoring of cameraTargetEffect/POI values remains EXPERIMENTAL until at least one real Earth Studio import observation validates the exact generated shape" }
+  },
+  "model_version_notes": "All native template evidence is modelVersion 18 with groupedPosition:true and per-project animationModel.logarithmic flag. Accepted VIDTOOLZ output (import shape, modelVersion 17-era conventions) uses flat cameraPositionGroup and linear altitude scale. Template motion itself uses no 18-only construct except cameraTargetEffect + logarithmic altitude flag; Gate 3 risk: serializer must decide import-shape compatibility per template.",
+  "gate3_constraints": [
+    "untemplated plans must remain byte-identical to v0.9.4 controls (controls/v094-byte-control-manifest.json)",
+    "templates activate only on explicit template intent; provenance must record template_id + template_profile_version",
+    "cameraTargetEffect authoring = EXPERIMENTAL until real-import validation",
+    "no VERIFIED_NATIVE_MATCH claim before Mikko's Gate 4 visual acceptance",
+    "9:16 Fly-To-and-Orbit validation mandatory before production use (no aspect-dependent camera parameters observed in .esp, but visual confirmation required)"
+  ]
+}

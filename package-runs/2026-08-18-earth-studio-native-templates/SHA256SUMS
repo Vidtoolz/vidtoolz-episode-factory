@@ -1,5 +1,8 @@
 6f6a751b0c3d31423490f1b6455a56a02cae465ce4d1be14ed33f2fadd508d01  controls/determinism-flyorbit-25s-repeat/export/VIDTOOLZ-TPL-FLY-ORBIT-C.esp
 de98cffe846ed940209d0d0f7f1dae30212e3bc4745cd9a21d0e8f4e30a5ee37  controls/v094-byte-control-manifest.json
+a139b0f7ffc353f5b1d24f3ba8fc6502a7e634ecc5c9947e804d647d356d440f  derivation/diagnostics/topology-and-determinism.json
+24a4814a5804470fe7b595b95d2ca884675481a3cbc28c01a0a8a7eeaaf26d0f  derivation/gate2-summary.json
+56ddf51d113a23295ef4fe2f2dfb555ee9151f9badde14f4d156aa9d8b0911b0  derivation/native-template-motion-v1.json
 1ad5e335da8c348837cbc95a7f1aa03c7bba320e2e72176cca5d02247a5389c7  fly-to-and-orbit/ref-a/export/VIDTOOLZ-TPL-FLY-ORBIT-A.esp
 0d40bf1ae1f3112a7c24cdc1490359d8c1d589ea83b1ab81296ff044c7a41818  fly-to-and-orbit/ref-a/inspector-full.json
 be7259a30af7d211b6ac79d9ddd3ce6f5ea65cb2d756c70fa7f8b39484290b41  fly-to-and-orbit/ref-a/motion-signature.json
@@ -9,10 +12,14 @@ f91cfede4df7866ae18080bc2994e680cd255275c43335893816d311293c060b  fly-to-and-orb
 ae5ecf4eb5e34d5f1990ea1c2558c46909237cc085a5d87156a2414433189496  fly-to-and-orbit/ref-c/export/VIDTOOLZ-TPL-FLY-ORBIT-C2.esp
 3d5aff82466de0cca3ad446acbc191a427d682f74459419deb4e1d6554eeafbf  fly-to-and-orbit/ref-c/inspector-full.json
 050714947dd3535e490fda248651fc3b77db7cdb0d1f611f7854695cc0384f47  fly-to-and-orbit/ref-c/motion-signature.json
+12d032ffcd5f6b0f8c4fff3c27d40fa494122ca1741cab6e1a53f546754b5475  fly-to-and-orbit/sup-d/export/VIDTOOLZ-TPL-FLY-ORBIT-SUP-D.esp
+8c01fab80912ced76708f232c52ffe8f134b6625a19b38f37698aabec6e7bfdd  fly-to-and-orbit/sup-d/inspector-full.json
+7ef26918882a84e828003ad6fdbd0066a33025716a044900e41315860a41ea91  fly-to-and-orbit/sup-e/export/VIDTOOLZ-TPL-FLY-ORBIT-SUP-E.esp
+28b3ca045700fcd7d0a722228392589bab410fa404740e6af489d33abbe26e1c  fly-to-and-orbit/sup-e/inspector-full.json
 7404d8f29ec85da8df9352ea8af006aec98a9e8d9fda4285032e5b81e675c65f  gate0/export/ekayle1 (2)VIDTOOLZ-TPL-FLY-ORBIT-PROBE.esp
 9b8959cae472ce71bc12bc44bd75df06ef7c4dd18eb91ba4f24615dd0d09a82b  gate0/probe-inspector-full.json
 bcc39e698de381ac7d8219977adc52025c9766dbf80d87daad2efe96439caf46  gate0/probe-motion-signature.json
-001e2fb1700385f0ed1689f1ebfc93800f17451517483c3cd336c92e43f932fc  manifest.json
+579338055afd9f1bea667565560d5468558140d484948327e4636175ff465a69  manifest.json
 1ed6cac1eec179fbc611b61d6132dac85729a0376078d7694cbc76ee445215dc  orbit/ref-a/export/VIDTOOLZ-TPL-ORBIT-A.esp
 39f70b874083cb776c96ecde5fb9308b0d17109dcc8e7cb0fd77c54faf193f50  orbit/ref-a/inspector-full.json
 9a44c04c9429682bde051b26b7d86b9478de001fa8e5b5c6cc7c43e3969e118b  orbit/ref-a/motion-signature.json

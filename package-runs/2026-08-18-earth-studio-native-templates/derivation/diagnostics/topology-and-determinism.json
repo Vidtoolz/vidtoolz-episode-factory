@@ -1,0 +1,5517 @@
+{
+ "generated_from": "frozen Gate 1 evidence",
+ "evidence_root": "package-runs/2026-08-18-earth-studio-native-templates",
+ "determinism": {
+  "files": [
+   "fly-to-and-orbit/ref-a/export/VIDTOOLZ-TPL-FLY-ORBIT-A.esp",
+   "controls/determinism-flyorbit-25s-repeat/export/VIDTOOLZ-TPL-FLY-ORBIT-C.esp"
+  ],
+  "byteIdentical": false,
+  "structuralIdenticalIgnoringName": false,
+  "comparedValues": 21,
+  "mismatchedTracks": 0,
+  "maxAbsDelta": 0,
+  "classification": "PARAMETER_STABLE_WITH_NONDETERMINISTIC_METADATA"
+ },
+ "templates": {
+  "zoom-to": {
+   "references": {
+    "zoom-to/ref-a": {
+     "sha256": "f487aec69f349a891589c0378c666e6cce3cde978dd596d4559853b75951b91e",
+     "topology": {
+      "poi": {
+       "lon": -0.11934072349635017,
+       "lat": 51.503076864253785,
+       "alt": 29795612.39221926
+      },
+      "frames": 150,
+      "fps": 30,
+      "seconds": 5,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": -0.11934210000001144,
+         "in": {
+          "x": -0.2,
+          "y": 0,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.8,
+         "frame": 120,
+         "value": -0.11934210000001144,
+         "in": {
+          "x": -0.32000000000000006,
+          "y": 0,
+          "influence": 0.4000000000000001,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 51.503073825637586,
+         "in": {
+          "x": -0.2,
+          "y": 0,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.8,
+         "frame": 120,
+         "value": 51.503073825637586,
+         "in": {
+          "x": -0.32000000000000006,
+          "y": 0,
+          "influence": 0.4000000000000001,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 65117481,
+         "in": {
+          "x": -0.2,
+          "y": 0,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.8,
+         "frame": 120,
+         "value": 31993527.384287253,
+         "in": {
+          "x": -0.32000000000000006,
+          "y": 0,
+          "influence": 0.4000000000000001,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": -0.11934210000001144,
+        "lat": 51.503073825637586,
+        "alt": 65117481,
+        "radius_m": 0.35105483561325956,
+        "bearing_from_target_deg": 195.74751071189354,
+        "alt_above_target_m": 35321868.60778074,
+        "azimuth_unwrapped_deg": 195.74751071189354
+       },
+       {
+        "t_norm": 0.8,
+        "lon": -0.11934210000001144,
+        "lat": 51.503073825637586,
+        "alt": 31993527.384287253,
+        "radius_m": 0.35105483561325956,
+        "bearing_from_target_deg": 195.74751071189354,
+        "alt_above_target_m": 2197914.9920679927,
+        "azimuth_unwrapped_deg": 195.74751071189354
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {
+       "relative": 0
+      },
+      "influence_keyframes": [
+       {
+        "time": 0,
+        "value": 0,
+        "transitionOut": {
+         "x": 0.2,
+         "y": 0,
+         "type": "auto"
+        }
+       },
+       {
+        "time": 0.5333328,
+        "value": 0,
+        "transitionIn": {
+         "x": -0.2,
+         "y": 0,
+         "type": "auto"
+        }
+       }
+      ],
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": -0.11934072349635017
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 51.503076864253785
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 29795612.39221926
+        }
+       ]
+      }
+     }
+    },
+    "zoom-to/ref-b": {
+     "sha256": "5650693ea9ef63cee081869e8dde7e9064d1d800e21c9980fecbd241b38a2fd5",
+     "topology": {
+      "poi": {
+       "lon": -73.98566593938604,
+       "lat": 40.748488815010205,
+       "alt": 30987701.086501643
+      },
+      "frames": 150,
+      "fps": 30,
+      "seconds": 5,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": -73.98566439999999,
+         "in": {
+          "x": -0.2,
+          "y": 0,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.8,
+         "frame": 120,
+         "value": -73.98566439999999,
+         "in": {
+          "x": -0.32000000000000006,
+          "y": 0,
+          "influence": 0.4000000000000001,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 40.74848577609529,
+         "in": {
+          "x": -0.2,
+          "y": 0,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.8,
+         "frame": 120,
+         "value": 40.74848577609529,
+         "in": {
+          "x": -0.32000000000000006,
+          "y": 0,
+          "influence": 0.4000000000000001,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 65117481,
+         "in": {
+          "x": -0.2,
+          "y": 0,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.8,
+         "frame": 120,
+         "value": 31163869.18552445,
+         "in": {
+          "x": -0.32000000000000006,
+          "y": 0,
+          "influence": 0.4000000000000001,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": -73.98566439999999,
+        "lat": 40.74848577609529,
+        "alt": 65117481,
+        "radius_m": 0.3619399661188442,
+        "bearing_from_target_deg": 159.0052358672408,
+        "alt_above_target_m": 34129779.91349836,
+        "azimuth_unwrapped_deg": 159.0052358672408
+       },
+       {
+        "t_norm": 0.8,
+        "lon": -73.98566439999999,
+        "lat": 40.74848577609529,
+        "alt": 31163869.18552445,
+        "radius_m": 0.3619399661188442,
+        "bearing_from_target_deg": 159.0052358672408,
+        "alt_above_target_m": 176168.0990228057,
+        "azimuth_unwrapped_deg": 159.0052358672408
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {
+       "relative": 0
+      },
+      "influence_keyframes": [
+       {
+        "time": 0,
+        "value": 0,
+        "transitionOut": {
+         "x": 0.2,
+         "y": 0,
+         "type": "auto"
+        }
+       },
+       {
+        "time": 0.5333328,
+        "value": 0,
+        "transitionIn": {
+         "x": -0.2,
+         "y": 0,
+         "type": "auto"
+        }
+       }
+      ],
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": -73.98566593938604
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 40.748488815010205
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 30987701.086501643
+        }
+       ]
+      }
+     }
+    },
+    "zoom-to/ref-c": {
+     "sha256": "21082afcfa3ac8b004a4fa15e7424adfb759088b033528c800df5a1fe148d678",
+     "topology": {
+      "poi": {
+       "lon": -0.119344027482299,
+       "lat": 51.503076722408565,
+       "alt": 29795356.91859344
+      },
+      "frames": 450,
+      "fps": 30,
+      "seconds": 15,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": -0.11934210000001144,
+         "in": {
+          "x": -0.2,
+          "y": 0,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.8,
+         "frame": 360,
+         "value": -0.11934210000001144,
+         "in": {
+          "x": -0.32000000000000006,
+          "y": 0,
+          "influence": 0.4000000000000001,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 51.503073825637586,
+         "in": {
+          "x": -0.2,
+          "y": 0,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.8,
+         "frame": 360,
+         "value": 51.503073825637586,
+         "in": {
+          "x": -0.32000000000000006,
+          "y": 0,
+          "influence": 0.4000000000000001,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 65117481,
+         "in": {
+          "x": -0.2,
+          "y": 0,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.8,
+         "frame": 360,
+         "value": 31993527.384287253,
+         "in": {
+          "x": -0.32000000000000006,
+          "y": 0,
+          "influence": 0.4000000000000001,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+         }
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": -0.11934210000001144,
+        "lat": 51.503073825637586,
+        "alt": 65117481,
+        "radius_m": 0.3486420077518824,
+        "bearing_from_target_deg": 157.5012968222179,
+        "alt_above_target_m": 35322124.08140656,
+        "azimuth_unwrapped_deg": 157.5012968222179
+       },
+       {
+        "t_norm": 0.8,
+        "lon": -0.11934210000001144,
+        "lat": 51.503073825637586,
+        "alt": 31993527.384287253,
+        "radius_m": 0.3486420077518824,
+        "bearing_from_target_deg": 157.5012968222179,
+        "alt_above_target_m": 2198170.465693813,
+        "azimuth_unwrapped_deg": 157.5012968222179
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {
+       "relative": 0
+      },
+      "influence_keyframes": [
+       {
+        "time": 0,
+        "value": 0,
+        "transitionOut": {
+         "x": 0.2,
+         "y": 0,
+         "type": "auto"
+        }
+       },
+       {
+        "time": 0.5333328,
+        "value": 0,
+        "transitionIn": {
+         "x": -0.2,
+         "y": 0,
+         "type": "auto"
+        }
+       }
+      ],
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": -0.119344027482299
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 51.503076722408565
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 29795356.91859344
+        }
+       ]
+      }
+     }
+    }
+   },
+   "timing": {
+    "per_ref": [
+     {
+      "name": "zoom-to/ref-a",
+      "frames": 150,
+      "times": [
+       0,
+       0.8
+      ]
+     },
+     {
+      "name": "zoom-to/ref-b",
+      "frames": 150,
+      "times": [
+       0,
+       0.8
+      ]
+     },
+     {
+      "name": "zoom-to/ref-c",
+      "frames": 450,
+      "times": [
+       0,
+       0.8
+      ]
+     }
+    ],
+    "identical_normalized_times": true
+   }
+  },
+  "orbit": {
+   "references": {
+    "orbit/ref-a": {
+     "sha256": "1ed6cac1eec179fbc611b61d6132dac85729a0376078d7694cbc76ee445215dc",
+     "topology": {
+      "poi": {
+       "lon": -0.119344027482299,
+       "lat": 51.503076722408565,
+       "alt": 34.342567920684814
+      },
+      "frames": 1500,
+      "fps": 30,
+      "seconds": 50,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.25,
+         "frame": 375,
+         "value": -0.12834921134219712,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 750,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.75,
+         "frame": 1125,
+         "value": -0.11033884362240087,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 1500,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 51.50868221600982,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.25,
+         "frame": 375,
+         "value": 51.503076377648966,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 750,
+         "value": 51.49747122880734,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.75,
+         "frame": 1125,
+         "value": 51.503076377648966,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 1500,
+         "value": 51.50868221600982,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 346,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.25,
+         "frame": 375,
+         "value": 346,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 750,
+         "value": 346,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.75,
+         "frame": 1125,
+         "value": 346,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 1500,
+         "value": 346,
+         "in": null,
+         "out": null
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": -0.119344027482299,
+        "lat": 51.50868221600982,
+        "alt": 346,
+        "radius_m": 623.3024497977051,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 311.6574320793152,
+        "azimuth_unwrapped_deg": 0
+       },
+       {
+        "t_norm": 0.25,
+        "lon": -0.12834921134219712,
+        "lat": 51.503076377648966,
+        "alt": 346,
+        "radius_m": 623.3009745140708,
+        "bearing_from_target_deg": 269.9999999945709,
+        "alt_above_target_m": 311.6574320793152,
+        "azimuth_unwrapped_deg": -90.00000000542911
+       },
+       {
+        "t_norm": 0.5,
+        "lon": -0.119344027482299,
+        "lat": 51.49747122880734,
+        "alt": 346,
+        "radius_m": 623.3024497945447,
+        "bearing_from_target_deg": 180,
+        "alt_above_target_m": 311.6574320793152,
+        "azimuth_unwrapped_deg": -180
+       },
+       {
+        "t_norm": 0.75,
+        "lon": -0.11033884362240087,
+        "lat": 51.503076377648966,
+        "alt": 346,
+        "radius_m": 623.3009745140708,
+        "bearing_from_target_deg": 90.00000000542911,
+        "alt_above_target_m": 311.6574320793152,
+        "azimuth_unwrapped_deg": -269.9999999945709
+       },
+       {
+        "t_norm": 1,
+        "lon": -0.119344027482299,
+        "lat": 51.50868221600982,
+        "alt": 346,
+        "radius_m": 623.3024497977051,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 311.6574320793152,
+        "azimuth_unwrapped_deg": -360
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {},
+      "influence_keyframes": null,
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": -0.119344027482299
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 51.503076722408565
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 34.342567920684814
+        }
+       ]
+      }
+     }
+    },
+    "orbit/ref-b": {
+     "sha256": "ffaa6cd703fc6a3067dcbc2a5172d1f645ba0017b09cb1aa827b84789e8722a8",
+     "topology": {
+      "poi": {
+       "lon": 2.2944803918431944,
+       "lat": 48.858426792669434,
+       "alt": 64.49358749389648
+      },
+      "frames": 1500,
+      "fps": 30,
+      "seconds": 50,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 2.2944803918431944,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.25,
+         "frame": 375,
+         "value": 2.285960411441522,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 750,
+         "value": 2.2944803918431944,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.75,
+         "frame": 1125,
+         "value": 2.303000372244867,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 1500,
+         "value": 2.2944803918431944,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 48.864032286270685,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.25,
+         "frame": 375,
+         "value": 48.85842647880352,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 750,
+         "value": 48.85282129906824,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.75,
+         "frame": 1125,
+         "value": 48.85842647880352,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 1500,
+         "value": 48.864032286270685,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 376,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.25,
+         "frame": 375,
+         "value": 376,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 750,
+         "value": 376,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.75,
+         "frame": 1125,
+         "value": 376,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 1500,
+         "value": 376,
+         "in": null,
+         "out": null
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": 2.2944803918431944,
+        "lat": 48.864032286270685,
+        "alt": 376,
+        "radius_m": 623.3024497977051,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 311.5064125061035,
+        "azimuth_unwrapped_deg": 0
+       },
+       {
+        "t_norm": 0.25,
+        "lon": 2.285960411441522,
+        "lat": 48.85842647880352,
+        "alt": 376,
+        "radius_m": 623.3010812449926,
+        "bearing_from_target_deg": 269.99999999574123,
+        "alt_above_target_m": 311.5064125061035,
+        "azimuth_unwrapped_deg": -90.00000000425877
+       },
+       {
+        "t_norm": 0.5,
+        "lon": 2.2944803918431944,
+        "lat": 48.85282129906824,
+        "alt": 376,
+        "radius_m": 623.3024497913843,
+        "bearing_from_target_deg": 180,
+        "alt_above_target_m": 311.5064125061035,
+        "azimuth_unwrapped_deg": -180
+       },
+       {
+        "t_norm": 0.75,
+        "lon": 2.303000372244867,
+        "lat": 48.85842647880352,
+        "alt": 376,
+        "radius_m": 623.3010812449926,
+        "bearing_from_target_deg": 90.00000000425877,
+        "alt_above_target_m": 311.5064125061035,
+        "azimuth_unwrapped_deg": -269.99999999574123
+       },
+       {
+        "t_norm": 1,
+        "lon": 2.2944803918431944,
+        "lat": 48.864032286270685,
+        "alt": 376,
+        "radius_m": 623.3024497977051,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 311.5064125061035,
+        "azimuth_unwrapped_deg": -360
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {},
+      "influence_keyframes": null,
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": 2.2944803918431944
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 48.858426792669434
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 64.49358749389648
+        }
+       ]
+      }
+     }
+    },
+    "orbit/ref-c": {
+     "sha256": "33a0598468e7e9a33e4aac46d53272649a4bfff3a3de73b9b1cf3c381a4f03e7",
+     "topology": {
+      "poi": {
+       "lon": -0.119344027482299,
+       "lat": 51.503076722408565,
+       "alt": 34.342567920684814
+      },
+      "frames": 750,
+      "fps": 30,
+      "seconds": 25,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.25,
+         "frame": 188,
+         "value": -0.15542248572060657,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 375,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.75,
+         "frame": 563,
+         "value": -0.08326556924399142,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 750,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 51.5255346294648,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.25,
+         "frame": 188,
+         "value": 51.50307118856091,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 375,
+         "value": 51.48061881535236,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.75,
+         "frame": 563,
+         "value": 51.50307118856091,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 51.5255346294648,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 346,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.25,
+         "frame": 188,
+         "value": 346,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 375,
+         "value": 346,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.75,
+         "frame": 563,
+         "value": 346,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 346,
+         "in": null,
+         "out": null
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": -0.119344027482299,
+        "lat": 51.5255346294648,
+        "alt": 346,
+        "radius_m": 2497.2053277084383,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 311.6574320793152,
+        "azimuth_unwrapped_deg": 0
+       },
+       {
+        "t_norm": 0.25,
+        "lon": -0.15542248572060657,
+        "lat": 51.50307118856091,
+        "alt": 346,
+        "radius_m": 2497.1994171237393,
+        "bearing_from_target_deg": 269.9999999778071,
+        "alt_above_target_m": 311.6574320793152,
+        "azimuth_unwrapped_deg": -90.00000002219292
+       },
+       {
+        "t_norm": 0.5,
+        "lon": -0.119344027482299,
+        "lat": 51.48061881535236,
+        "alt": 346,
+        "radius_m": 2497.2053277052783,
+        "bearing_from_target_deg": 180,
+        "alt_above_target_m": 311.6574320793152,
+        "azimuth_unwrapped_deg": -180
+       },
+       {
+        "t_norm": 0.75,
+        "lon": -0.08326556924399142,
+        "lat": 51.50307118856091,
+        "alt": 346,
+        "radius_m": 2497.1994171237393,
+        "bearing_from_target_deg": 90.00000002219292,
+        "alt_above_target_m": 311.6574320793152,
+        "azimuth_unwrapped_deg": -269.9999999778071
+       },
+       {
+        "t_norm": 1,
+        "lon": -0.119344027482299,
+        "lat": 51.5255346294648,
+        "alt": 346,
+        "radius_m": 2497.2053277084383,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 311.6574320793152,
+        "azimuth_unwrapped_deg": -360
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {},
+      "influence_keyframes": null,
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": -0.119344027482299
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 51.503076722408565
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 34.342567920684814
+        }
+       ]
+      }
+     }
+    }
+   },
+   "timing": {
+    "per_ref": [
+     {
+      "name": "orbit/ref-a",
+      "frames": 1500,
+      "times": [
+       0,
+       0.25,
+       0.5,
+       0.75,
+       1
+      ]
+     },
+     {
+      "name": "orbit/ref-b",
+      "frames": 1500,
+      "times": [
+       0,
+       0.25,
+       0.5,
+       0.75,
+       1
+      ]
+     },
+     {
+      "name": "orbit/ref-c",
+      "frames": 750,
+      "times": [
+       0,
+       0.25,
+       0.5,
+       0.75,
+       1
+      ]
+     }
+    ],
+    "identical_normalized_times": true
+   }
+  },
+  "point-to-point": {
+   "references": {
+    "point-to-point/ref-a": {
+     "sha256": "f18c669f6884b0a5a81996c48c7e49af4062d294d209110126114e823fe2e5f4",
+     "topology": {
+      "poi": {
+       "lon": -0.119344027482299,
+       "lat": 51.503076722408565,
+       "alt": 29795356.91859344
+      },
+      "frames": 270,
+      "fps": 30,
+      "seconds": 9,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": -0.11934210000001144,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2222222222222222,
+         "frame": 60,
+         "value": -0.11934210000001144,
+         "in": null,
+         "out": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 135,
+         "value": -0.09699290001458394,
+         "in": {
+          "x": -0.09259259259259256,
+          "y": -0.000020693703690177756,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": false
+         },
+         "out": {
+          "x": 0.09259259259259256,
+          "y": 0.000020693703690177756,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": false
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.7777777777777778,
+         "frame": 210,
+         "value": -0.07464370002918486,
+         "in": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+         },
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 270,
+         "value": -0.07464370002918486,
+         "in": null,
+         "out": null
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 51.503073825637586,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2222222222222222,
+         "frame": 60,
+         "value": 51.503073825637586,
+         "in": null,
+         "out": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 135,
+         "value": 51.50484202755251,
+         "in": {
+          "x": -0.09259259259259256,
+          "y": -0.0000032744479906421375,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": false
+         },
+         "out": {
+          "x": 0.09259259259259256,
+          "y": 0.0000032744479906421375,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": false
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.7777777777777778,
+         "frame": 210,
+         "value": 51.5066102294675,
+         "in": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+         },
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 270,
+         "value": 51.5066102294675,
+         "in": null,
+         "out": null
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 31993527.384287253,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2222222222222222,
+         "frame": 60,
+         "value": 31993527.384287253,
+         "in": null,
+         "out": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 135,
+         "value": 35278256.04296209,
+         "in": {
+          "x": -0.09259259259259256,
+          "y": -0.00000452063167144523,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": false
+         },
+         "out": {
+          "x": 0.09259259259259256,
+          "y": 0.00000452063167144523,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": false
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.7777777777777778,
+         "frame": 210,
+         "value": 31995293.63073101,
+         "in": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+         },
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 270,
+         "value": 31995293.63073101,
+         "in": null,
+         "out": null
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": -0.11934210000001144,
+        "lat": 51.503073825637586,
+        "alt": 31993527.384287253,
+        "radius_m": 0.3486420077518824,
+        "bearing_from_target_deg": 157.5012968222179,
+        "alt_above_target_m": 2198170.465693813,
+        "azimuth_unwrapped_deg": 157.5012968222179
+       },
+       {
+        "t_norm": 0.2222222222222222,
+        "lon": -0.11934210000001144,
+        "lat": 51.503073825637586,
+        "alt": 31993527.384287253,
+        "radius_m": 0.3486420077518824,
+        "bearing_from_target_deg": 157.5012968222179,
+        "alt_above_target_m": 2198170.465693813,
+        "azimuth_unwrapped_deg": 157.5012968222179
+       },
+       {
+        "t_norm": 0.5,
+        "lon": -0.09699290001458394,
+        "lat": 51.50484202755251,
+        "alt": 35278256.04296209,
+        "radius_m": 1559.4246561223706,
+        "bearing_from_target_deg": 82.75995011080659,
+        "alt_above_target_m": 5482899.124368649,
+        "azimuth_unwrapped_deg": 82.75995011080659
+       },
+       {
+        "t_norm": 0.7777777777777778,
+        "lon": -0.07464370002918486,
+        "lat": 51.5066102294675,
+        "alt": 31995293.63073101,
+        "radius_m": 3118.6979406099554,
+        "bearing_from_target_deg": 82.74488645479852,
+        "alt_above_target_m": 2199936.7121375687,
+        "azimuth_unwrapped_deg": 82.74488645479852
+       },
+       {
+        "t_norm": 1,
+        "lon": -0.07464370002918486,
+        "lat": 51.5066102294675,
+        "alt": 31995293.63073101,
+        "radius_m": 3118.6979406099554,
+        "bearing_from_target_deg": 82.74488645479852,
+        "alt_above_target_m": 2199936.7121375687,
+        "azimuth_unwrapped_deg": 82.74488645479852
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {
+       "relative": 0
+      },
+      "influence_keyframes": [
+       {
+        "time": 0,
+        "value": 0
+       },
+       {
+        "time": 0.2222222222222222,
+        "value": 0,
+        "transitionOut": {
+         "x": 1,
+         "y": 0,
+         "influence": 0.2,
+         "type": "custom"
+        }
+       },
+       {
+        "time": 0.5,
+        "value": 0,
+        "transitionIn": {
+         "x": -1,
+         "y": 0,
+         "influence": 0.5,
+         "type": "custom"
+        },
+        "transitionOut": {
+         "x": 1,
+         "y": 0,
+         "influence": 0.5,
+         "type": "custom"
+        }
+       },
+       {
+        "time": 0.7777777777777778,
+        "value": 0,
+        "transitionIn": {
+         "x": -1,
+         "y": 0,
+         "influence": 0.2,
+         "type": "custom"
+        }
+       },
+       {
+        "time": 1,
+        "value": 0
+       }
+      ],
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": -0.119344027482299
+        },
+        {
+         "time": 0.2222222222222222,
+         "value": -0.119344027482299
+        },
+        {
+         "time": 0.7777777777777778,
+         "value": -0.07464370001534348
+        },
+        {
+         "time": 1,
+         "value": -0.07464370001534348
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 51.503076722408565
+        },
+        {
+         "time": 0.2222222222222222,
+         "value": 51.503076722408565
+        },
+        {
+         "time": 0.7777777777777778,
+         "value": 51.50661329242055
+        },
+        {
+         "time": 1,
+         "value": 51.50661329242055
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 29795356.91859344
+        },
+        {
+         "time": 0.2222222222222222,
+         "value": 29795356.91859344
+        },
+        {
+         "time": 0.7777777777777778,
+         "value": 29739197.98123891
+        },
+        {
+         "time": 1,
+         "value": 29739197.98123891
+        }
+       ]
+      }
+     }
+    },
+    "point-to-point/ref-b": {
+     "sha256": "59b310e68f0ae65102d4d047c7dbbe75740f8bb8fd6d031dcdd81b8ebb2f0635",
+     "topology": {
+      "poi": {
+       "lon": -0.119344027482299,
+       "lat": 51.503076722408565,
+       "alt": 29795356.91859344
+      },
+      "frames": 270,
+      "fps": 30,
+      "seconds": 9,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": -0.11934210000001144,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2222222222222222,
+         "frame": 60,
+         "value": -0.11934210000001144,
+         "in": null,
+         "out": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom",
+          "logarithmicMode": true
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 135,
+         "value": 1.0875695999829134,
+         "in": {
+          "x": -0.09259259259259256,
+          "y": -0.0011175108333174588,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": true
+         },
+         "out": {
+          "x": 0.09259259259259256,
+          "y": 0.0011175108333174588,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": true
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.7777777777777778,
+         "frame": 210,
+         "value": 2.2944812999658097,
+         "in": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom",
+          "logarithmicMode": true
+         },
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 270,
+         "value": 2.2944812999658097,
+         "in": null,
+         "out": null
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 51.503073825637586,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2222222222222222,
+         "frame": 60,
+         "value": 51.503073825637586,
+         "in": null,
+         "out": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom",
+          "logarithmicMode": true
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 135,
+         "value": 50.18074910643989,
+         "in": {
+          "x": -0.09259259259259256,
+          "y": 0.0024487494799957377,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": true
+         },
+         "out": {
+          "x": 0.09259259259259256,
+          "y": -0.0024487494799957377,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": true
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.7777777777777778,
+         "frame": 210,
+         "value": 48.858424387242195,
+         "in": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom",
+          "logarithmicMode": true
+         },
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 270,
+         "value": 48.858424387242195,
+         "in": null,
+         "out": null
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 31993527.384287253,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2222222222222222,
+         "frame": 60,
+         "value": 31993527.384287253,
+         "in": null,
+         "out": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom",
+          "logarithmicMode": true
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 135,
+         "value": 47282437.39518628,
+         "in": {
+          "x": -0.09259259259259256,
+          "y": -0.00010671899658987183,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": true
+         },
+         "out": {
+          "x": 0.09259259259259256,
+          "y": 0.00010671899658987183,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": true
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.7777777777777778,
+         "frame": 210,
+         "value": 32035223.337840907,
+         "in": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom",
+          "logarithmicMode": true
+         },
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 270,
+         "value": 32035223.337840907,
+         "in": null,
+         "out": null
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": -0.11934210000001144,
+        "lat": 51.503073825637586,
+        "alt": 31993527.384287253,
+        "radius_m": 0.3486420077518824,
+        "bearing_from_target_deg": 157.5012968222179,
+        "alt_above_target_m": 2198170.465693813,
+        "azimuth_unwrapped_deg": 157.5012968222179
+       },
+       {
+        "t_norm": 0.2222222222222222,
+        "lon": -0.11934210000001144,
+        "lat": 51.503073825637586,
+        "alt": 31993527.384287253,
+        "radius_m": 0.3486420077518824,
+        "bearing_from_target_deg": 157.5012968222179,
+        "alt_above_target_m": 2198170.465693813,
+        "azimuth_unwrapped_deg": 157.5012968222179
+       },
+       {
+        "t_norm": 0.5,
+        "lon": 1.0875695999829134,
+        "lat": 50.18074910643989,
+        "alt": 47282437.39518628,
+        "radius_m": 169703.36756687,
+        "bearing_from_target_deg": 149.57367458937784,
+        "alt_above_target_m": 17487080.476592842,
+        "azimuth_unwrapped_deg": 149.57367458937784
+       },
+       {
+        "t_norm": 0.7777777777777778,
+        "lon": 2.2944812999658097,
+        "lat": 48.858424387242195,
+        "alt": 32035223.337840907,
+        "radius_m": 340572.86862564355,
+        "bearing_from_target_deg": 148.76153350511385,
+        "alt_above_target_m": 2239866.419247467,
+        "azimuth_unwrapped_deg": 148.76153350511385
+       },
+       {
+        "t_norm": 1,
+        "lon": 2.2944812999658097,
+        "lat": 48.858424387242195,
+        "alt": 32035223.337840907,
+        "radius_m": 340572.86862564355,
+        "bearing_from_target_deg": 148.76153350511385,
+        "alt_above_target_m": 2239866.419247467,
+        "azimuth_unwrapped_deg": 148.76153350511385
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {
+       "relative": 0
+      },
+      "influence_keyframes": [
+       {
+        "time": 0,
+        "value": 0
+       },
+       {
+        "time": 0.3333333333333333,
+        "value": 0,
+        "transitionOut": {
+         "x": 1,
+         "y": 0,
+         "influence": 0.2,
+         "type": "custom"
+        }
+       },
+       {
+        "time": 0.5,
+        "value": 0,
+        "transitionIn": {
+         "x": -1,
+         "y": 0,
+         "influence": 0.5,
+         "type": "custom"
+        },
+        "transitionOut": {
+         "x": 1,
+         "y": 0,
+         "influence": 0.5,
+         "type": "custom"
+        }
+       },
+       {
+        "time": 0.6666666666666666,
+        "value": 0,
+        "transitionIn": {
+         "x": -1,
+         "y": 0,
+         "influence": 0.2,
+         "type": "custom"
+        }
+       },
+       {
+        "time": 1,
+        "value": 0
+       }
+      ],
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": -0.119344027482299
+        },
+        {
+         "time": 0.3333333333333333,
+         "value": -0.119344027482299
+        },
+        {
+         "time": 0.6666666666666666,
+         "value": 2.2944812999794806
+        },
+        {
+         "time": 1,
+         "value": 2.2944812999794806
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 51.503076722408565
+        },
+        {
+         "time": 0.3333333333333333,
+         "value": 51.503076722408565
+        },
+        {
+         "time": 0.6666666666666666,
+         "value": 48.858426923978016
+        },
+        {
+         "time": 1,
+         "value": 48.858426923978016
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 29795356.91859344
+        },
+        {
+         "time": 0.3333333333333333,
+         "value": 29795356.91859344
+        },
+        {
+         "time": 0.6666666666666666,
+         "value": 30412337.657754675
+        },
+        {
+         "time": 1,
+         "value": 30412337.657754675
+        }
+       ]
+      }
+     }
+    },
+    "point-to-point/ref-c": {
+     "sha256": "58ed714d29c4299a291cd3c348c65864d18b0721cbafb2b001d0cded08f8ea02",
+     "topology": {
+      "poi": {
+       "lon": -0.119344027482299,
+       "lat": 51.503076722408565,
+       "alt": 29795356.91859344
+      },
+      "frames": 480,
+      "fps": 30,
+      "seconds": 16,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": -0.11934210000001144,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.125,
+         "frame": 60,
+         "value": -0.11934210000001144,
+         "in": null,
+         "out": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 240,
+         "value": -0.09699290001458394,
+         "in": {
+          "x": -0.09259259259259256,
+          "y": -0.000020693703690177756,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": false
+         },
+         "out": {
+          "x": 0.09259259259259256,
+          "y": 0.000020693703690177756,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": false
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.875,
+         "frame": 420,
+         "value": -0.07464370002918486,
+         "in": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+         },
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 480,
+         "value": -0.07464370002918486,
+         "in": null,
+         "out": null
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 51.503073825637586,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.125,
+         "frame": 60,
+         "value": 51.503073825637586,
+         "in": null,
+         "out": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 240,
+         "value": 51.50484202755251,
+         "in": {
+          "x": -0.09259259259259256,
+          "y": -0.0000032744479906421375,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": false
+         },
+         "out": {
+          "x": 0.09259259259259256,
+          "y": 0.0000032744479906421375,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": false
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.875,
+         "frame": 420,
+         "value": 51.5066102294675,
+         "in": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+         },
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 480,
+         "value": 51.5066102294675,
+         "in": null,
+         "out": null
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 31993527.384287253,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.125,
+         "frame": 60,
+         "value": 31993527.384287253,
+         "in": null,
+         "out": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.5,
+         "frame": 240,
+         "value": 35278256.04296209,
+         "in": {
+          "x": -0.09259259259259256,
+          "y": -0.00000452063167144523,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": false
+         },
+         "out": {
+          "x": 0.09259259259259256,
+          "y": 0.00000452063167144523,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": false
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.875,
+         "frame": 420,
+         "value": 31995293.63073101,
+         "in": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+         },
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 480,
+         "value": 31995293.63073101,
+         "in": null,
+         "out": null
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": -0.11934210000001144,
+        "lat": 51.503073825637586,
+        "alt": 31993527.384287253,
+        "radius_m": 0.3486420077518824,
+        "bearing_from_target_deg": 157.5012968222179,
+        "alt_above_target_m": 2198170.465693813,
+        "azimuth_unwrapped_deg": 157.5012968222179
+       },
+       {
+        "t_norm": 0.125,
+        "lon": -0.11934210000001144,
+        "lat": 51.503073825637586,
+        "alt": 31993527.384287253,
+        "radius_m": 0.3486420077518824,
+        "bearing_from_target_deg": 157.5012968222179,
+        "alt_above_target_m": 2198170.465693813,
+        "azimuth_unwrapped_deg": 157.5012968222179
+       },
+       {
+        "t_norm": 0.5,
+        "lon": -0.09699290001458394,
+        "lat": 51.50484202755251,
+        "alt": 35278256.04296209,
+        "radius_m": 1559.4246561223706,
+        "bearing_from_target_deg": 82.75995011080659,
+        "alt_above_target_m": 5482899.124368649,
+        "azimuth_unwrapped_deg": 82.75995011080659
+       },
+       {
+        "t_norm": 0.875,
+        "lon": -0.07464370002918486,
+        "lat": 51.5066102294675,
+        "alt": 31995293.63073101,
+        "radius_m": 3118.6979406099554,
+        "bearing_from_target_deg": 82.74488645479852,
+        "alt_above_target_m": 2199936.7121375687,
+        "azimuth_unwrapped_deg": 82.74488645479852
+       },
+       {
+        "t_norm": 1,
+        "lon": -0.07464370002918486,
+        "lat": 51.5066102294675,
+        "alt": 31995293.63073101,
+        "radius_m": 3118.6979406099554,
+        "bearing_from_target_deg": 82.74488645479852,
+        "alt_above_target_m": 2199936.7121375687,
+        "azimuth_unwrapped_deg": 82.74488645479852
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {
+       "relative": 0
+      },
+      "influence_keyframes": [
+       {
+        "time": 0,
+        "value": 0
+       },
+       {
+        "time": 0.125,
+        "value": 0,
+        "transitionOut": {
+         "x": 1,
+         "y": 0,
+         "influence": 0.2,
+         "type": "custom"
+        }
+       },
+       {
+        "time": 0.5,
+        "value": 0,
+        "transitionIn": {
+         "x": -1,
+         "y": 0,
+         "influence": 0.5,
+         "type": "custom"
+        },
+        "transitionOut": {
+         "x": 1,
+         "y": 0,
+         "influence": 0.5,
+         "type": "custom"
+        }
+       },
+       {
+        "time": 0.875,
+        "value": 0,
+        "transitionIn": {
+         "x": -1,
+         "y": 0,
+         "influence": 0.2,
+         "type": "custom"
+        }
+       },
+       {
+        "time": 1,
+        "value": 0
+       }
+      ],
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": -0.119344027482299
+        },
+        {
+         "time": 0.125,
+         "value": -0.119344027482299
+        },
+        {
+         "time": 0.875,
+         "value": -0.07464370001534348
+        },
+        {
+         "time": 1,
+         "value": -0.07464370001534348
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 51.503076722408565
+        },
+        {
+         "time": 0.125,
+         "value": 51.503076722408565
+        },
+        {
+         "time": 0.875,
+         "value": 51.50661329242055
+        },
+        {
+         "time": 1,
+         "value": 51.50661329242055
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 29795356.91859344
+        },
+        {
+         "time": 0.125,
+         "value": 29795356.91859344
+        },
+        {
+         "time": 0.875,
+         "value": 29739197.98123891
+        },
+        {
+         "time": 1,
+         "value": 29739197.98123891
+        }
+       ]
+      }
+     }
+    }
+   },
+   "timing": {
+    "per_ref": [
+     {
+      "name": "point-to-point/ref-a",
+      "frames": 270,
+      "times": [
+       0,
+       0.222222,
+       0.5,
+       0.777778,
+       1
+      ]
+     },
+     {
+      "name": "point-to-point/ref-b",
+      "frames": 270,
+      "times": [
+       0,
+       0.222222,
+       0.5,
+       0.777778,
+       1
+      ]
+     },
+     {
+      "name": "point-to-point/ref-c",
+      "frames": 480,
+      "times": [
+       0,
+       0.125,
+       0.5,
+       0.875,
+       1
+      ]
+     }
+    ],
+    "identical_normalized_times": false
+   }
+  },
+  "spiral": {
+   "references": {
+    "spiral/ref-a": {
+     "sha256": "ae08222fd001908d33dcffbff7f7c0ddcfa5d4f5aad08e9bc11820229d5c9fa3",
+     "topology": {
+      "poi": {
+       "lon": -0.119344027482299,
+       "lat": 51.503076722408565,
+       "alt": 25.442537026214836
+      },
+      "frames": 750,
+      "fps": 30,
+      "seconds": 25,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.44133333333333336,
+         "frame": 331,
+         "value": -0.10299597504132407,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.6946666666666667,
+         "frame": 521,
+         "value": -0.119344027482299,
+         "in": {
+          "x": -0.0408888888888889,
+          "y": 0.000012398554116543893,
+          "influence": 0.16000000735565656,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.026311111111111105,
+          "y": -0.000007942823730910931,
+          "influence": 0.16000000729056943,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.8613333333333333,
+         "frame": 646,
+         "value": -0.12689795526068792,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 750,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 51.52104304805354,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.44133333333333336,
+         "frame": 331,
+         "value": 51.503075586186355,
+         "in": {
+          "x": -0.0704,
+          "y": 0.00002525491459515195,
+          "influence": 0.16000001029523972,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.0408888888888889,
+          "y": -0.000014693768491724771,
+          "influence": 0.1600000103310804,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.6946666666666667,
+         "frame": 521,
+         "value": 51.496900797968124,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.8613333333333333,
+         "frame": 646,
+         "value": 51.50307647981634,
+         "in": {
+          "x": -0.026311111111111105,
+          "y": -0.000010050273979977932,
+          "influence": 0.16000001167259445,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.022400000000000003,
+          "y": 0.00000857950217802994,
+          "influence": 0.16000001173594627,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 51.50756830381982,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 1004,
+         "in": null,
+         "out": {
+          "x": 0.0704,
+          "y": -9.671064624308236e-7,
+          "influence": 0.1600000000150971,
+          "type": "custom"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.44133333333333336,
+         "frame": 331,
+         "value": 610.3998734652996,
+         "in": {
+          "x": -0.0704,
+          "y": 0.0000010782336025244286,
+          "influence": 0.16000000001876594,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.0408888888888889,
+          "y": -6.27335914196031e-7,
+          "influence": 0.16000000001883127,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.6946666666666667,
+         "frame": 521,
+         "value": 329.2569259405136,
+         "in": {
+          "x": -0.0408888888888889,
+          "y": 6.746243716986012e-7,
+          "influence": 0.1600000000217773,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.026311111111111105,
+          "y": -4.3218123811941644e-7,
+          "influence": 0.16000000002158457,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.8613333333333333,
+         "frame": 646,
+         "value": 160.571157425642,
+         "in": {
+          "x": -0.026311111111111105,
+          "y": 2.859312849545336e-7,
+          "influence": 0.1600000000094479,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.022400000000000003,
+          "y": -2.440876822782604e-7,
+          "influence": 0.16000000000949918,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 104.34256792068481,
+         "in": {
+          "x": -0.022400000000000003,
+          "y": 1.3815806606143775e-7,
+          "influence": 0.16000000000304332,
+          "type": "custom"
+         },
+         "out": null
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": -0.119344027482299,
+        "lat": 51.52104304805354,
+        "alt": 1004,
+        "radius_m": 1997.7642621654866,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 978.5574629737852,
+        "azimuth_unwrapped_deg": 0
+       },
+       {
+        "t_norm": 0.44133333333333336,
+        "lon": -0.10299597504132407,
+        "lat": 51.503075586186355,
+        "alt": 610.3998734652996,
+        "radius_m": 1131.5434858834903,
+        "bearing_from_target_deg": 90.00000001006413,
+        "alt_above_target_m": 584.9573364390848,
+        "azimuth_unwrapped_deg": 90.00000001006413
+       },
+       {
+        "t_norm": 0.6946666666666667,
+        "lon": -0.119344027482299,
+        "lat": 51.496900797968124,
+        "alt": 329.2569259405136,
+        "radius_m": 686.7314651172132,
+        "bearing_from_target_deg": 180,
+        "alt_above_target_m": 303.8143889142988,
+        "azimuth_unwrapped_deg": 180
+       },
+       {
+        "t_norm": 0.8613333333333333,
+        "lon": -0.12689795526068792,
+        "lat": 51.50307647981634,
+        "alt": 160.571157425642,
+        "radius_m": 522.8511279607118,
+        "bearing_from_target_deg": 269.99999999542683,
+        "alt_above_target_m": 135.12862039942718,
+        "azimuth_unwrapped_deg": 269.99999999542683
+       },
+       {
+        "t_norm": 1,
+        "lon": -0.119344027482299,
+        "lat": 51.50756830381982,
+        "alt": 104.34256792068481,
+        "radius_m": 499.44106554295183,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 78.90003089446998,
+        "azimuth_unwrapped_deg": 360
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {},
+      "influence_keyframes": null,
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": -0.119344027482299
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 51.503076722408565
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 25.442537026214836
+        }
+       ]
+      }
+     }
+    },
+    "spiral/ref-b": {
+     "sha256": "6e904bcd461ee990f46e045608aedb7e10515a7408147dac8c1bc28b352ab35e",
+     "topology": {
+      "poi": {
+       "lon": 2.2944803918431944,
+       "lat": 48.858426792669434,
+       "alt": 134.49358749389648
+      },
+      "frames": 750,
+      "fps": 30,
+      "seconds": 25,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 2.2944803918431944,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.44133333333333336,
+         "frame": 331,
+         "value": 2.309947603712004,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.6946666666666667,
+         "frame": 521,
+         "value": 2.2944803918431944,
+         "in": {
+          "x": -0.0408888888888889,
+          "y": 0.000011730514313512685,
+          "influence": 0.16000000658435848,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.026311111111111105,
+          "y": -0.000007514860732094065,
+          "influence": 0.16000000652609625,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.8613333333333333,
+         "frame": 646,
+         "value": 2.2873334731781085,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 2.2944803918431944,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 48.87639311831441,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.44133333333333336,
+         "frame": 331,
+         "value": 48.858425758263394,
+         "in": {
+          "x": -0.0704,
+          "y": 0.000025254979252764546,
+          "influence": 0.16000001029529243,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.0408888888888889,
+          "y": -0.00001469380611069937,
+          "influence": 0.1600000103311333,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.6946666666666667,
+         "frame": 521,
+         "value": 48.85225086822899,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.8613333333333333,
+         "frame": 646,
+         "value": 48.858426571815784,
+         "in": {
+          "x": -0.026311111111111105,
+          "y": -0.000010050270658901184,
+          "influence": 0.16000001167258673,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.022400000000000003,
+          "y": 0.000008579499342964425,
+          "influence": 0.16000001173593853,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 48.862918374080664,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 1034,
+         "in": null,
+         "out": {
+          "x": 0.0704,
+          "y": -9.66944120632941e-7,
+          "influence": 0.16000000001509204,
+          "type": "custom"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.44133333333333336,
+         "frame": 331,
+         "value": 640.4659445285797,
+         "in": {
+          "x": -0.0704,
+          "y": 0.0000010780526065440723,
+          "influence": 0.16000000001875966,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.0408888888888889,
+          "y": -6.272306074438239e-7,
+          "influence": 0.16000000001882494,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.6946666666666667,
+         "frame": 521,
+         "value": 359.37019062042236,
+         "in": {
+          "x": -0.0408888888888889,
+          "y": 6.745111269444022e-7,
+          "influence": 0.16000000002176995,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.026311111111111105,
+          "y": -4.3210869069875754e-7,
+          "influence": 0.16000000002157733,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.8613333333333333,
+         "frame": 646,
+         "value": 190.71273827552795,
+         "in": {
+          "x": -0.026311111111111105,
+          "y": 2.8588328755128936e-7,
+          "influence": 0.16000000000944473,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.022400000000000003,
+          "y": -2.44046708885247e-7,
+          "influence": 0.16000000000949602,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 134.49358749389648,
+         "in": {
+          "x": -0.022400000000000003,
+          "y": 1.381348743763474e-7,
+          "influence": 0.1600000000030423,
+          "type": "custom"
+         },
+         "out": null
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": 2.2944803918431944,
+        "lat": 48.87639311831441,
+        "alt": 1034,
+        "radius_m": 1997.7642621654866,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 899.5064125061035,
+        "azimuth_unwrapped_deg": 0
+       },
+       {
+        "t_norm": 0.44133333333333336,
+        "lon": 2.309947603712004,
+        "lat": 48.858425758263394,
+        "alt": 640.4659445285797,
+        "radius_m": 1131.5436796427066,
+        "bearing_from_target_deg": 90.00000000796894,
+        "alt_above_target_m": 505.9723570346832,
+        "azimuth_unwrapped_deg": 90.00000000796894
+       },
+       {
+        "t_norm": 0.6946666666666667,
+        "lon": 2.2944803918431944,
+        "lat": 48.85225086822899,
+        "alt": 359.37019062042236,
+        "radius_m": 686.7314651172132,
+        "bearing_from_target_deg": 180,
+        "alt_above_target_m": 224.87660312652588,
+        "azimuth_unwrapped_deg": 180
+       },
+       {
+        "t_norm": 0.8613333333333333,
+        "lon": 2.2873334731781085,
+        "lat": 48.858426571815784,
+        "alt": 190.71273827552795,
+        "radius_m": 522.8512174893259,
+        "bearing_from_target_deg": 269.99999999682205,
+        "alt_above_target_m": 56.21915078163147,
+        "azimuth_unwrapped_deg": 269.99999999682205
+       },
+       {
+        "t_norm": 1,
+        "lon": 2.2944803918431944,
+        "lat": 48.862918374080664,
+        "alt": 134.49358749389648,
+        "radius_m": 499.44106553979145,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 0,
+        "azimuth_unwrapped_deg": 360
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {},
+      "influence_keyframes": null,
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": 2.2944803918431944
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 48.858426792669434
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 134.49358749389648
+        }
+       ]
+      }
+     }
+    },
+    "spiral/ref-c": {
+     "sha256": "358c6e0c61f41c24be53282986bca8c34d87ee50b67923c0bcbb14a50ab0ea24",
+     "topology": {
+      "poi": {
+       "lon": -0.119344027482299,
+       "lat": 51.503076722408565,
+       "alt": 25.442537026214836
+      },
+      "frames": 1500,
+      "fps": 30,
+      "seconds": 50,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.24933333333333332,
+         "frame": 374,
+         "value": -0.09762648567945575,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.43733333333333335,
+         "frame": 656,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.58,
+         "frame": 870,
+         "value": -0.13184465042647275,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.6893333333333334,
+         "frame": 1034,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 0.7786666666666666,
+         "frame": 1168,
+         "value": -0.11098679022666147,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 6,
+         "t_norm": 0.8573333333333333,
+         "frame": 1286,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 7,
+         "t_norm": 0.9293333333333333,
+         "frame": 1394,
+         "value": -0.12660199913702286,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 8,
+         "t_norm": 1,
+         "frame": 1500,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 51.50756830381982,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.24933333333333332,
+         "frame": 374,
+         "value": 51.503074717232266,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.43733333333333335,
+         "frame": 656,
+         "value": 51.49290048327376,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.58,
+         "frame": 870,
+         "value": 51.50307605806225,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.6893333333333334,
+         "frame": 1034,
+         "value": 51.509252646849035,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 0.7786666666666666,
+         "frame": 1168,
+         "value": 51.50307642547679,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 6,
+         "t_norm": 0.8573333333333333,
+         "frame": 1286,
+         "value": 51.49837459811866,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 7,
+         "t_norm": 0.9293333333333333,
+         "frame": 1394,
+         "value": 51.503076498453055,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 8,
+         "t_norm": 1,
+         "frame": 1500,
+         "value": 51.50756830381982,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 104.34256792068481,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.24933333333333332,
+         "frame": 374,
+         "value": 793.1427893564105,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.43733333333333335,
+         "frame": 656,
+         "value": 610.3998734652996,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.58,
+         "frame": 870,
+         "value": 455.7712523266673,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.6893333333333334,
+         "frame": 1034,
+         "value": 329.2569259405136,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 0.7786666666666666,
+         "frame": 1168,
+         "value": 230.8568943068385,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 6,
+         "t_norm": 0.8573333333333333,
+         "frame": 1286,
+         "value": 160.571157425642,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 7,
+         "t_norm": 0.9293333333333333,
+         "frame": 1394,
+         "value": 118.39971529692411,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 8,
+         "t_norm": 1,
+         "frame": 1500,
+         "value": 104.34256792068481,
+         "in": null,
+         "out": null
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": -0.119344027482299,
+        "lat": 51.50756830381982,
+        "alt": 104.34256792068481,
+        "radius_m": 499.44106554295183,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 78.90003089446998,
+        "azimuth_unwrapped_deg": 0
+       },
+       {
+        "t_norm": 0.24933333333333332,
+        "lon": -0.09762648567945575,
+        "lat": 51.503074717232266,
+        "alt": 793.1427893564105,
+        "radius_m": 1503.1969928854646,
+        "bearing_from_target_deg": 90.00000001327794,
+        "alt_above_target_m": 767.7002523301957,
+        "azimuth_unwrapped_deg": 90.00000001327794
+       },
+       {
+        "t_norm": 0.43733333333333335,
+        "lon": -0.119344027482299,
+        "lat": 51.49290048327376,
+        "alt": 610.3998734652996,
+        "radius_m": 1131.546164112405,
+        "bearing_from_target_deg": 180,
+        "alt_above_target_m": 584.9573364390848,
+        "azimuth_unwrapped_deg": 180
+       },
+       {
+        "t_norm": 0.58,
+        "lon": -0.13184465042647275,
+        "lat": 51.50307605806225,
+        "alt": 455.7712523266673,
+        "radius_m": 865.2405792915822,
+        "bearing_from_target_deg": 269.99999999241214,
+        "alt_above_target_m": 430.3287153004525,
+        "azimuth_unwrapped_deg": 269.99999999241214
+       },
+       {
+        "t_norm": 0.6893333333333334,
+        "lon": -0.119344027482299,
+        "lat": 51.509252646849035,
+        "alt": 329.2569259405136,
+        "radius_m": 686.7314651203736,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 303.8143889142988,
+        "azimuth_unwrapped_deg": 360
+       },
+       {
+        "t_norm": 0.7786666666666666,
+        "lon": -0.11098679022666147,
+        "lat": 51.50307642547679,
+        "alt": 230.8568943068385,
+        "radius_m": 578.4528337324064,
+        "bearing_from_target_deg": 90.00000000507941,
+        "alt_above_target_m": 205.41435728062368,
+        "azimuth_unwrapped_deg": 450.0000000050794
+       },
+       {
+        "t_norm": 0.8573333333333333,
+        "lon": -0.119344027482299,
+        "lat": 51.49837459811866,
+        "alt": 160.571157425642,
+        "radius_m": 522.8523654897346,
+        "bearing_from_target_deg": 180,
+        "alt_above_target_m": 135.12862039942718,
+        "azimuth_unwrapped_deg": 540
+       },
+       {
+        "t_norm": 0.9293333333333333,
+        "lon": -0.12660199913702286,
+        "lat": 51.503076498453055,
+        "alt": 118.39971529692411,
+        "radius_m": 502.3662889922347,
+        "bearing_from_target_deg": 269.99999999548237,
+        "alt_above_target_m": 92.95717827070928,
+        "azimuth_unwrapped_deg": 629.9999999954823
+       },
+       {
+        "t_norm": 1,
+        "lon": -0.119344027482299,
+        "lat": 51.50756830381982,
+        "alt": 104.34256792068481,
+        "radius_m": 499.44106554295183,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 78.90003089446998,
+        "azimuth_unwrapped_deg": 720
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {},
+      "influence_keyframes": null,
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": -0.119344027482299
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 51.503076722408565
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 25.442537026214836
+        }
+       ]
+      }
+     }
+    }
+   },
+   "timing": {
+    "per_ref": [
+     {
+      "name": "spiral/ref-a",
+      "frames": 750,
+      "times": [
+       0,
+       0.441333,
+       0.694667,
+       0.861333,
+       1
+      ]
+     },
+     {
+      "name": "spiral/ref-b",
+      "frames": 750,
+      "times": [
+       0,
+       0.441333,
+       0.694667,
+       0.861333,
+       1
+      ]
+     },
+     {
+      "name": "spiral/ref-c",
+      "frames": 1500,
+      "times": [
+       0,
+       0.249333,
+       0.437333,
+       0.58,
+       0.689333,
+       0.778667,
+       0.857333,
+       0.929333,
+       1
+      ]
+     }
+    ],
+    "identical_normalized_times": false
+   }
+  },
+  "fly-to-and-orbit": {
+   "references": {
+    "fly-to-and-orbit/ref-a": {
+     "sha256": "1ad5e335da8c348837cbc95a7f1aa03c7bba320e2e72176cca5d02247a5389c7",
+     "topology": {
+      "poi": {
+       "lon": -0.119344027482299,
+       "lat": 51.503076722408565,
+       "alt": 34.342567920684814
+      },
+      "frames": 750,
+      "fps": 30,
+      "seconds": 25,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 0.1750546286085921,
+         "in": null,
+         "out": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2,
+         "frame": 150,
+         "value": -0.119344027482299,
+         "in": {
+          "x": -0.198,
+          "y": 0.00003147221180166415,
+          "influence": 0.9900000125063144,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.4,
+         "frame": 300,
+         "value": -0.1251165812557815,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.6,
+         "frame": 450,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.8,
+         "frame": 600,
+         "value": -0.11357147370881648,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 1,
+         "frame": 750,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 51.50270824961788,
+         "in": null,
+         "out": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2,
+         "frame": 150,
+         "value": 51.50666998753758,
+         "in": {
+          "x": -0.10800000000000001,
+          "y": 1.4367267375803294e-8,
+          "influence": 0.5400000000000048,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.4,
+         "frame": 300,
+         "value": 51.50307658074209,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.6,
+         "frame": 450,
+         "value": 51.49948345727958,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.8,
+         "frame": 600,
+         "value": 51.50307658074209,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 51.50666998753758,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 20234,
+         "in": null,
+         "out": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2,
+         "frame": 150,
+         "value": 234,
+         "in": {
+          "x": -0.5,
+          "y": 0,
+          "influence": 1,
+          "type": "custom"
+         },
+         "out": null
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.4,
+         "frame": 300,
+         "value": 234,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.6,
+         "frame": 450,
+         "value": 234,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.8,
+         "frame": 600,
+         "value": 234,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 234,
+         "in": null,
+         "out": null
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": 0.1750546286085921,
+        "lat": 51.50270824961788,
+        "alt": 20234,
+        "radius_m": 20377.147244155738,
+        "bearing_from_target_deg": 90.00000018115861,
+        "alt_above_target_m": 20199.657432079315,
+        "azimuth_unwrapped_deg": 90.00000018115861
+       },
+       {
+        "t_norm": 0.2,
+        "lon": -0.119344027482299,
+        "lat": 51.50666998753758,
+        "alt": 234,
+        "radius_m": 399.55285243499355,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 199.65743207931519,
+        "azimuth_unwrapped_deg": 0
+       },
+       {
+        "t_norm": 0.4,
+        "lon": -0.1251165812557815,
+        "lat": 51.50307658074209,
+        "alt": 234,
+        "radius_m": 399.5519067388509,
+        "bearing_from_target_deg": 269.9999999970585,
+        "alt_above_target_m": 199.65743207931519,
+        "azimuth_unwrapped_deg": -90.00000000294148
+       },
+       {
+        "t_norm": 0.6,
+        "lon": -0.119344027482299,
+        "lat": 51.49948345727958,
+        "alt": 234,
+        "radius_m": 399.55285243183323,
+        "bearing_from_target_deg": 180,
+        "alt_above_target_m": 199.65743207931519,
+        "azimuth_unwrapped_deg": -180
+       },
+       {
+        "t_norm": 0.8,
+        "lon": -0.11357147370881648,
+        "lat": 51.50307658074209,
+        "alt": 234,
+        "radius_m": 399.5519067388509,
+        "bearing_from_target_deg": 90.00000000294148,
+        "alt_above_target_m": 199.65743207931519,
+        "azimuth_unwrapped_deg": -269.9999999970585
+       },
+       {
+        "t_norm": 1,
+        "lon": -0.119344027482299,
+        "lat": 51.50666998753758,
+        "alt": 234,
+        "radius_m": 399.55285243499355,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 199.65743207931519,
+        "azimuth_unwrapped_deg": -360
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {},
+      "influence_keyframes": null,
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": -0.119344027482299
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 51.503076722408565
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 34.342567920684814
+        }
+       ]
+      }
+     }
+    },
+    "fly-to-and-orbit/ref-b": {
+     "sha256": "d197e8a97ec61df7db47ea7516f3c254ff39f7b827578c1a69a0099bffdcbe55",
+     "topology": {
+      "poi": {
+       "lon": 2.2944803918431944,
+       "lat": 48.858426792669434,
+       "alt": 64.49358749389648
+      },
+      "frames": 750,
+      "fps": 30,
+      "seconds": 25,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 2.578478420676902,
+         "in": null,
+         "out": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2,
+         "frame": 150,
+         "value": 2.2944803918431944,
+         "in": {
+          "x": -0.198,
+          "y": 0.000059552948672436656,
+          "influence": 0.9900000447797175,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.4,
+         "frame": 300,
+         "value": 2.283557340075589,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.6,
+         "frame": 450,
+         "value": 2.2944803918431944,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.8,
+         "frame": 600,
+         "value": 2.3054034436107997,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 2.2944803918431944,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 48.85807805427896,
+         "in": null,
+         "out": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2,
+         "frame": 150,
+         "value": 48.86561332292746,
+         "in": {
+          "x": -0.10600000000000001,
+          "y": 2.8203296364992528e-8,
+          "influence": 0.5300000000000188,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.4,
+         "frame": 300,
+         "value": 48.85842627678204,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.6,
+         "frame": 450,
+         "value": 48.851240262411466,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.8,
+         "frame": 600,
+         "value": 48.85842627678204,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 48.86561332292746,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 20800,
+         "in": null,
+         "out": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2,
+         "frame": 150,
+         "value": 800,
+         "in": {
+          "x": -0.5,
+          "y": 0,
+          "influence": 1,
+          "type": "custom"
+         },
+         "out": null
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.4,
+         "frame": 300,
+         "value": 800,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.6,
+         "frame": 450,
+         "value": 800,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.8,
+         "frame": 600,
+         "value": 800,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 800,
+         "in": null,
+         "out": null
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": 2.578478420676902,
+        "lat": 48.85807805427896,
+        "alt": 20800,
+        "radius_m": 20776.702708489065,
+        "bearing_from_target_deg": 90.00000014626846,
+        "alt_above_target_m": 20735.506412506104,
+        "azimuth_unwrapped_deg": 90.00000014626846
+       },
+       {
+        "t_norm": 0.2,
+        "lon": 2.2944803918431944,
+        "lat": 48.86561332292746,
+        "alt": 800,
+        "radius_m": 799.1057048699871,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 735.5064125061035,
+        "azimuth_unwrapped_deg": 0
+       },
+       {
+        "t_norm": 0.4,
+        "lon": 2.283557340075589,
+        "lat": 48.85842627678204,
+        "alt": 800,
+        "radius_m": 799.1039503125768,
+        "bearing_from_target_deg": 269.99999999475097,
+        "alt_above_target_m": 735.5064125061035,
+        "azimuth_unwrapped_deg": -90.00000000524903
+       },
+       {
+        "t_norm": 0.6,
+        "lon": 2.2944803918431944,
+        "lat": 48.851240262411466,
+        "alt": 800,
+        "radius_m": 799.1057048636665,
+        "bearing_from_target_deg": 180,
+        "alt_above_target_m": 735.5064125061035,
+        "azimuth_unwrapped_deg": -180
+       },
+       {
+        "t_norm": 0.8,
+        "lon": 2.3054034436107997,
+        "lat": 48.85842627678204,
+        "alt": 800,
+        "radius_m": 799.1039503125768,
+        "bearing_from_target_deg": 90.00000000524903,
+        "alt_above_target_m": 735.5064125061035,
+        "azimuth_unwrapped_deg": -269.99999999475097
+       },
+       {
+        "t_norm": 1,
+        "lon": 2.2944803918431944,
+        "lat": 48.86561332292746,
+        "alt": 800,
+        "radius_m": 799.1057048699871,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 735.5064125061035,
+        "azimuth_unwrapped_deg": -360
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {},
+      "influence_keyframes": null,
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": 2.2944803918431944
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 48.858426792669434
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 64.49358749389648
+        }
+       ]
+      }
+     }
+    },
+    "fly-to-and-orbit/ref-c": {
+     "sha256": "ae5ecf4eb5e34d5f1990ea1c2558c46909237cc085a5d87156a2414433189496",
+     "topology": {
+      "poi": {
+       "lon": -0.119344027482299,
+       "lat": 51.503076722408565,
+       "alt": 34.342567920684814
+      },
+      "frames": 1500,
+      "fps": 30,
+      "seconds": 50,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 0.1750546286085921,
+         "in": null,
+         "out": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2,
+         "frame": 300,
+         "value": -0.119344027482299,
+         "in": {
+          "x": -0.198,
+          "y": 0.00003147221180166415,
+          "influence": 0.9900000125063144,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.4,
+         "frame": 600,
+         "value": -0.1251165812557815,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.6,
+         "frame": 900,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.8,
+         "frame": 1200,
+         "value": -0.11357147370881648,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 1,
+         "frame": 1500,
+         "value": -0.119344027482299,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 51.50270824961788,
+         "in": null,
+         "out": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2,
+         "frame": 300,
+         "value": 51.50666998753758,
+         "in": {
+          "x": -0.10800000000000001,
+          "y": 1.4367267375803294e-8,
+          "influence": 0.5400000000000048,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.4,
+         "frame": 600,
+         "value": 51.50307658074209,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.6,
+         "frame": 900,
+         "value": 51.49948345727958,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.8,
+         "frame": 1200,
+         "value": 51.50307658074209,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 1,
+         "frame": 1500,
+         "value": 51.50666998753758,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 20234,
+         "in": null,
+         "out": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2,
+         "frame": 300,
+         "value": 234,
+         "in": {
+          "x": -0.5,
+          "y": 0,
+          "influence": 1,
+          "type": "custom"
+         },
+         "out": null
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.4,
+         "frame": 600,
+         "value": 234,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.6,
+         "frame": 900,
+         "value": 234,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.8,
+         "frame": 1200,
+         "value": 234,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 1,
+         "frame": 1500,
+         "value": 234,
+         "in": null,
+         "out": null
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": 0.1750546286085921,
+        "lat": 51.50270824961788,
+        "alt": 20234,
+        "radius_m": 20377.147244155738,
+        "bearing_from_target_deg": 90.00000018115861,
+        "alt_above_target_m": 20199.657432079315,
+        "azimuth_unwrapped_deg": 90.00000018115861
+       },
+       {
+        "t_norm": 0.2,
+        "lon": -0.119344027482299,
+        "lat": 51.50666998753758,
+        "alt": 234,
+        "radius_m": 399.55285243499355,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 199.65743207931519,
+        "azimuth_unwrapped_deg": 0
+       },
+       {
+        "t_norm": 0.4,
+        "lon": -0.1251165812557815,
+        "lat": 51.50307658074209,
+        "alt": 234,
+        "radius_m": 399.5519067388509,
+        "bearing_from_target_deg": 269.9999999970585,
+        "alt_above_target_m": 199.65743207931519,
+        "azimuth_unwrapped_deg": -90.00000000294148
+       },
+       {
+        "t_norm": 0.6,
+        "lon": -0.119344027482299,
+        "lat": 51.49948345727958,
+        "alt": 234,
+        "radius_m": 399.55285243183323,
+        "bearing_from_target_deg": 180,
+        "alt_above_target_m": 199.65743207931519,
+        "azimuth_unwrapped_deg": -180
+       },
+       {
+        "t_norm": 0.8,
+        "lon": -0.11357147370881648,
+        "lat": 51.50307658074209,
+        "alt": 234,
+        "radius_m": 399.5519067388509,
+        "bearing_from_target_deg": 90.00000000294148,
+        "alt_above_target_m": 199.65743207931519,
+        "azimuth_unwrapped_deg": -269.9999999970585
+       },
+       {
+        "t_norm": 1,
+        "lon": -0.119344027482299,
+        "lat": 51.50666998753758,
+        "alt": 234,
+        "radius_m": 399.55285243499355,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 199.65743207931519,
+        "azimuth_unwrapped_deg": -360
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {},
+      "influence_keyframes": null,
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": -0.119344027482299
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 51.503076722408565
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 34.342567920684814
+        }
+       ]
+      }
+     }
+    },
+    "gate0/probe": {
+     "sha256": "7404d8f29ec85da8df9352ea8af006aec98a9e8d9fda4285032e5b81e675c65f",
+     "topology": {
+      "poi": {
+       "lon": 2.2944803918431944,
+       "lat": 48.858426792669434,
+       "alt": 64.49358749389648
+      },
+      "frames": 750,
+      "fps": 30,
+      "seconds": 25,
+      "props": {
+       "longitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 2.573016969401465,
+         "in": null,
+         "out": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2,
+         "frame": 150,
+         "value": 2.2944803918431944,
+         "in": {
+          "x": -0.198,
+          "y": 0.000029776474446130408,
+          "influence": 0.9900000111949295,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.4,
+         "frame": 300,
+         "value": 2.2890188659312116,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.6,
+         "frame": 450,
+         "value": 2.2944803918431944,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.8,
+         "frame": 600,
+         "value": 2.299941917755149,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 2.2944803918431944,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        }
+       ],
+       "latitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 48.85809133826683,
+         "in": null,
+         "out": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2,
+         "frame": 150,
+         "value": 48.862020057798446,
+         "in": {
+          "x": -0.10800000000000001,
+          "y": 1.4367207423759966e-8,
+          "influence": 0.5400000000000048,
+          "type": "custom"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.4,
+         "frame": 300,
+         "value": 48.8584266636976,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.6,
+         "frame": 450,
+         "value": 48.85483352754045,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.8,
+         "frame": 600,
+         "value": 48.8584266636976,
+         "in": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         },
+         "out": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+         }
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 48.862020057798446,
+         "in": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         },
+         "out": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+         }
+        }
+       ],
+       "altitude": [
+        {
+         "ordinal": 0,
+         "t_norm": 0,
+         "frame": 0,
+         "value": 20264,
+         "in": null,
+         "out": {
+          "x": 0.05,
+          "y": 0,
+          "type": "easeOut"
+         }
+        },
+        {
+         "ordinal": 1,
+         "t_norm": 0.2,
+         "frame": 150,
+         "value": 264,
+         "in": {
+          "x": -0.5,
+          "y": 0,
+          "influence": 1,
+          "type": "custom"
+         },
+         "out": null
+        },
+        {
+         "ordinal": 2,
+         "t_norm": 0.4,
+         "frame": 300,
+         "value": 264,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 3,
+         "t_norm": 0.6,
+         "frame": 450,
+         "value": 264,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 4,
+         "t_norm": 0.8,
+         "frame": 600,
+         "value": 264,
+         "in": null,
+         "out": null
+        },
+        {
+         "ordinal": 5,
+         "t_norm": 1,
+         "frame": 750,
+         "value": 264,
+         "in": null,
+         "out": null
+        }
+       ]
+      },
+      "samples": [
+       {
+        "t_norm": 0,
+        "lon": 2.573016969401465,
+        "lat": 48.85809133826683,
+        "alt": 20264,
+        "radius_m": 20377.150733310616,
+        "bearing_from_target_deg": 90.00000014346034,
+        "alt_above_target_m": 20199.506412506104,
+        "azimuth_unwrapped_deg": 90.00000014346034
+       },
+       {
+        "t_norm": 0.2,
+        "lon": 2.2944803918431944,
+        "lat": 48.862020057798446,
+        "alt": 264,
+        "radius_m": 399.55285243499355,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 199.50641250610352,
+        "azimuth_unwrapped_deg": 0
+       },
+       {
+        "t_norm": 0.4,
+        "lon": 2.2890188659312116,
+        "lat": 48.8584266636976,
+        "alt": 264,
+        "radius_m": 399.5519751589258,
+        "bearing_from_target_deg": 269.999999997515,
+        "alt_above_target_m": 199.50641250610352,
+        "azimuth_unwrapped_deg": -90.00000000248502
+       },
+       {
+        "t_norm": 0.6,
+        "lon": 2.2944803918431944,
+        "lat": 48.85483352754045,
+        "alt": 264,
+        "radius_m": 399.55285243183323,
+        "bearing_from_target_deg": 180,
+        "alt_above_target_m": 199.50641250610352,
+        "azimuth_unwrapped_deg": -180
+       },
+       {
+        "t_norm": 0.8,
+        "lon": 2.299941917755149,
+        "lat": 48.8584266636976,
+        "alt": 264,
+        "radius_m": 399.55197515684654,
+        "bearing_from_target_deg": 90.00000000248502,
+        "alt_above_target_m": 199.50641250610352,
+        "azimuth_unwrapped_deg": -269.999999997515
+       },
+       {
+        "t_norm": 1,
+        "lon": 2.2944803918431944,
+        "lat": 48.862020057798446,
+        "alt": 264,
+        "radius_m": 399.55285243499355,
+        "bearing_from_target_deg": 0,
+        "alt_above_target_m": 199.50641250610352,
+        "azimuth_unwrapped_deg": -360
+       }
+      ]
+     },
+     "target_effect": {
+      "enabled": {
+       "relative": 1
+      },
+      "influence_value": {},
+      "influence_keyframes": null,
+      "poi": {
+       "longitudePOI": [
+        {
+         "time": 0,
+         "value": 2.2944803918431944
+        }
+       ],
+       "latitudePOI": [
+        {
+         "time": 0,
+         "value": 48.858426792669434
+        }
+       ],
+       "altitudePOI": [
+        {
+         "time": 0,
+         "value": 64.49358749389648
+        }
+       ]
+      }
+     }
+    }
+   },
+   "timing": {
+    "per_ref": [
+     {
+      "name": "fly-to-and-orbit/ref-a",
+      "frames": 750,
+      "times": [
+       0,
+       0.2,
+       0.4,
+       0.6,
+       0.8,
+       1
+      ]
+     },
+     {
+      "name": "fly-to-and-orbit/ref-b",
+      "frames": 750,
+      "times": [
+       0,
+       0.2,
+       0.4,
+       0.6,
+       0.8,
+       1
+      ]
+     },
+     {
+      "name": "fly-to-and-orbit/ref-c",
+      "frames": 1500,
+      "times": [
+       0,
+       0.2,
+       0.4,
+       0.6,
+       0.8,
+       1
+      ]
+     }
+    ],
+    "identical_normalized_times": true
+   }
+  }
+ }
+}
