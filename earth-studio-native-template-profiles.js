@@ -62,6 +62,290 @@ function latToNativeNorm(latDeg) {
 }
 function nativeNormToLat(norm) { return norm * 180 - 90; }
 
+// ---------------------------------------------------------------------------
+// Native .esp serialization (shape modeled 1:1 on the frozen Gate 1 exports)
+// ---------------------------------------------------------------------------
+// Key order and flag placement follow the frozen references exactly, including
+// per-template quirks (e.g. Zoom-To's cameraTargetEffect subtree carries no
+// inTimeline flags while Point-to-Point's does; Zoom-To's camera altitude value
+// node omits `relative`). Structural fidelity is validated by the Gate 3
+// reconstruction comparator against every frozen reference.
+
+// Keyframe with native key order {time, value, transitionIn?, transitionOut?,
+// transitionLinked?}. Pass null to skip a side.
+function kf(time, value, tIn, tOut, linked) {
+  const k = { time, value };
+  if (tIn) k.transitionIn = tIn;
+  if (tOut) k.transitionOut = tOut;
+  if (linked !== undefined) k.transitionLinked = linked;
+  return k;
+}
+// Attribute node with native key order {type, value, keyframes?, inTimeline?}.
+function attr(type, value, keyframes, inTimeline) {
+  const a = { type, value };
+  if (keyframes) a.keyframes = keyframes;
+  if (inTimeline) a.inTimeline = true;
+  return a;
+}
+function group(type, attributes, inTimeline) {
+  return inTimeline ? { type, inTimeline: true, attributes } : { type, attributes };
+}
+const altValueNode = ({ relative, logarithmic }) => {
+  const v = { maxValueRange: NATIVE.ALT_MAX_M, minValueRange: NATIVE.ALT_MIN_M };
+  if (relative !== undefined) v.relative = relative;
+  v.logarithmic = logarithmic;
+  return v;
+};
+
+const ROTATION_GROUP_STATIC = () => group("cameraRotationGroup", [
+  attr("rotationX", {}, null, true),
+  attr("rotationY", {}, null, true),
+  attr("rotationZ", {}),
+], true);
+const LENS_GROUP = () => group("cameraLensGroup", [
+  attr("fov", {}), attr("exposure", {}), attr("aperture", {}), attr("minFocusLength", {}),
+]);
+// environmentGroup: worldTime brackets the provided wall-clock ±24 h at
+// relative 0.5 (native capture behavior); clouddate literals are the
+// capture-day values observed identically across all Gate 1 references.
+function environmentGroup(worldTimeMs) {
+  if (!Number.isFinite(worldTimeMs)) throw new Error("worldTimeMs is required (native worldTime is wall-clock; pass it explicitly for determinism)");
+  return group("environmentGroup", [
+    group("sunGroup", [
+      attr("sunVisibility", {}),
+      attr("worldTime", { relative: 0.5, minValueRange: worldTimeMs - 86400000, maxValueRange: worldTimeMs + 86400000 }),
+    ]),
+    group("cloudGroup", [
+      attr("cloudVisibility", {}), attr("cloudopacity", {}), attr("cloudheight", {}),
+      attr("clouddate", { minValueRange: 1775588040000, relative: 0.0003457923359844079, maxValueRange: 1787040000000 }),
+    ]),
+    group("starsPlanetsGroup", [attr("starsEnabled", {})]),
+    group("seawaterGroup", [attr("seawater", {}), attr("influence", { relative: 1 })]),
+    attr("buildingsEnabled", {}),
+  ]);
+}
+
+function projectEnvelope({ name, fps, width, height, frames, logarithmic, cameraGroup, worldTimeMs }) {
+  return {
+    type: "quickstart",
+    modelVersion: NATIVE.MODEL_VERSION,
+    settings: { name, frameRate: fps, dimensions: { width, height }, duration: frames, timeFormat: "frames" },
+    scenes: [{
+      animationModel: { roving: false, logarithmic, groupedPosition: true },
+      duration: frames,
+      attributes: [cameraGroup, environmentGroup(worldTimeMs)],
+      cameraExport: { logarithmic, modelVersion: 2 },
+    }],
+    has_started: true,
+    has_finished: true,
+    playbackManager: { range: { start: 0, end: frames } },
+  };
+}
+
+function baseProvenance(templateId, notes, extrapolations) {
+  return {
+    template_id: templateId,
+    template_profile_version: TEMPLATE_PROFILE_VERSION,
+    gate2_spec_sha256: GATE2_SPEC_SHA256,
+    import_status: "NOT_IMPORT_VERIFIED",
+    confidence_notes: notes,
+    extrapolations,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Zoom-To (ges_zoom_to_derived_v1)
+// ---------------------------------------------------------------------------
+// 2 keyframes per camera property at t=0 and t=0.8 (final 20% implicit hold),
+// lon/lat constant at the end framing, altitude start->end in power-15 space.
+// The end framing (lon/lat/altitude) is Google-derived in the native wizard —
+// here it is a REQUIRED explicit input; this module never invents it.
+function buildZoomToProject({
+  name, fps = 30, width = 3840, height = 2160, durationS = 5,
+  framing, poi, startAltitudeM = NATIVE.ALT_MAX_M, worldTimeMs,
+} = {}) {
+  if (!name) throw new Error("name is required");
+  for (const [label, p] of [["framing", framing], ["poi", poi]]) {
+    if (!p || !Number.isFinite(p.lonDeg) || !Number.isFinite(p.latDeg) || !Number.isFinite(p.altitudeM)) {
+      throw new Error(`${label} {lonDeg, latDeg, altitudeM} is a required explicit input (Earth-Studio-derived; not invented here)`);
+    }
+  }
+  if (!(durationS > 0)) throw new Error(`durationS must be positive: ${durationS}`);
+  const LOG = { logarithmic: true };
+  const frames = Math.round(durationS * fps);
+  // native literals (frozen zoom-to refs, invariant across POIs and durations)
+  const autoIn = { x: -0.2, y: 0, type: "auto" };
+  const autoOut = { x: 0.2, y: 0, type: "auto" };
+  const endIn = { x: -0.32000000000000006, y: 0, influence: 0.4000000000000001, type: "custom" };
+  const track = (v0, v1) => [kf(0, v0, autoIn, autoOut), kf(0.8, v1, endIn, autoOut, false)];
+  const lonN = lonToNativeNorm(framing.lonDeg), latN = latToNativeNorm(framing.latDeg);
+  const startN = altitudeMetersToNativeNorm(startAltitudeM, LOG);
+  const endN = altitudeMetersToNativeNorm(framing.altitudeM, LOG);
+  const cameraGroup = group("cameraGroup", [
+    group("cameraPositionGroup", [group("position", [
+      attr("longitude", { relative: lonN }, track(lonN, lonN), true),
+      attr("latitude", { relative: latN }, track(latN, latN), true),
+      attr("altitude", altValueNode(LOG), track(startN, endN), true),
+    ], true)], true),
+    // inert scaffolding target: enabled=1 but influence keyframed at 0
+    // (native zoom-to shape carries no inTimeline flags in this subtree)
+    group("cameraTargetEffect", [
+      attr("enabled", { relative: 1 }),
+      group("poi", [
+        attr("longitudePOI", { relative: lonToNativeNorm(poi.lonDeg) }, [kf(0, lonToNativeNorm(poi.lonDeg))]),
+        attr("latitudePOI", { relative: latToNativeNorm(poi.latDeg) }, [kf(0, latToNativeNorm(poi.latDeg))]),
+        attr("altitudePOI", altValueNode({ relative: altitudeMetersToNativeNorm(poi.altitudeM, LOG), ...LOG }),
+          [kf(0, altitudeMetersToNativeNorm(poi.altitudeM, LOG))]),
+      ]),
+      attr("influence", { relative: 0 }, [
+        kf(0, 0, null, autoOut),
+        kf(0.5333328, 0, autoIn, null), // native literal, duration-invariant
+      ]),
+    ]),
+    group("cameraRotationGroup", [
+      attr("rotationX", {}, [kf(0, 0, null, autoOut), kf(0.8, 0, autoIn, null)], true),
+      attr("rotationY", {}, [
+        kf(0, 0, null, { x: 0.68, y: 0, influence: 0.85, type: "custom" }, false),
+        kf(0.8, 0, { x: -0.24, y: 0, influence: 0.3, type: "custom" }, null, false),
+      ], true),
+      attr("rotationZ", {}),
+    ], true),
+    LENS_GROUP(),
+  ], true);
+  const project = projectEnvelope({ name, fps, width, height, frames, logarithmic: true, cameraGroup, worldTimeMs });
+  return {
+    project,
+    provenance: baseProvenance("ges_zoom_to_derived_v1",
+      ["grammar HIGH (Gate 2); end framing is a required explicit input (Google-derived in native wizard)"],
+      startAltitudeM !== NATIVE.ALT_MAX_M ? ["non-default starting altitude (evidence captured only the 65,117,481 m default)"] : []),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Point-to-Point (ges_point_to_point_derived_v1) — 2-point scope
+// ---------------------------------------------------------------------------
+// ABSOLUTE_SEGMENTS timing: total = holdA + transit + holdB; camera keyframes
+// [hold-start, departure, transit-mid, arrival, hold-end]; per-channel lon/lat
+// interpolation (transit-mid = arithmetic mean, NOT great-circle); logarithmic
+// altitude with an explicit transit peak.
+const P2P_EVIDENCE_DOMAIN_M = Object.freeze({ min: 3000, max: 341000 });
+const P2P_DEFAULT_PEAK_K = 1.6; // observed 1.57–1.63 × leg distance (Gate 2, MEDIUM)
+
+function buildPointToPointProject({
+  name, fps = 30, width = 3840, height = 2160,
+  points, transitS = 5, transitPeakAltitudeM, worldTimeMs,
+} = {}) {
+  if (!name) throw new Error("name is required");
+  if (!Array.isArray(points) || points.length !== 2) {
+    throw new Error("points must have exactly 2 entries (3–6 point topology is unobserved in the Gate 2 evidence; not implemented)");
+  }
+  for (const [i, p] of points.entries()) {
+    for (const [label, q] of [["framing", p.framing], ["poi", p.poi]]) {
+      if (!q || !Number.isFinite(q.lonDeg) || !Number.isFinite(q.latDeg) || !Number.isFinite(q.altitudeM)) {
+        throw new Error(`points[${i}].${label} {lonDeg, latDeg, altitudeM} is a required explicit input`);
+      }
+    }
+  }
+  if (!(transitS > 0)) throw new Error(`transitS must be positive: ${transitS}`);
+  const LOG = { logarithmic: true };
+  const holdA = points[0].holdS ?? 2, holdB = points[1].holdS ?? 2;
+  if (!(holdA > 0) || !(holdB > 0)) throw new Error("hold seconds must be positive");
+  const totalS = holdA + transitS + holdB;
+  const frames = Math.round(totalS * fps);
+  const t1 = holdA / totalS, tMid = (holdA + transitS / 2) / totalS, t3 = (holdA + transitS) / totalS;
+
+  const A = points[0].framing, B = points[1].framing;
+  const legM = haversineNativeMeters(A, B);
+  const extrapolations = [];
+  if (legM < P2P_EVIDENCE_DOMAIN_M.min || legM > P2P_EVIDENCE_DOMAIN_M.max) {
+    extrapolations.push(`leg distance ${Math.round(legM)} m is outside the observed evidence domain [${P2P_EVIDENCE_DOMAIN_M.min}, ${P2P_EVIDENCE_DOMAIN_M.max}] m — EXTRAPOLATED`);
+  }
+  let peakM = transitPeakAltitudeM;
+  const notes = ["grammar HIGH (Gate 2); per-point framing is a required explicit input"];
+  if (peakM === undefined) {
+    peakM = Math.min((A.altitudeM + B.altitudeM) / 2 + P2P_DEFAULT_PEAK_K * legM, NATIVE.ALT_MAX_M);
+    notes.push(`transit peak from default law mean(holds) + ${P2P_DEFAULT_PEAK_K}×distance (Gate 2 confidence MEDIUM; observed k 1.57–1.63; pass transitPeakAltitudeM to override)`);
+  }
+
+  // native transition literals (frozen P2P refs)
+  const holdExit = { x: 1, y: 0, influence: 0.2, type: "custom" };
+  const arrive = { x: -1, y: 0, influence: 0.2, type: "custom" };
+  const midAuto = (x, y) => ({ x, y, influence: 0.35, type: "auto", logarithmicMode: false });
+  // Mid-keyframe auto handle x is the default-layout constant (2s/5s/2s ->
+  // (7/9 - 2/9)/6), NOT rescaled when holds/transits change: observed
+  // identical at 2/5/2 and 2/12/2 in the frozen refs. y = (v_end - v_start)/6.
+  const P2P_MID_AUTO_X = 0.09259259259259256;
+  const camTrack = (v0, vMid, v4) => {
+    const hx = P2P_MID_AUTO_X, hy = (v4 - v0) / 6;
+    return [
+      kf(0, v0),
+      kf(t1, v0, null, holdExit),
+      kf(tMid, vMid, midAuto(-hx, -hy), midAuto(hx, hy)),
+      kf(t3, v4, arrive, null),
+      kf(1, v4),
+    ];
+  };
+  const lonA = lonToNativeNorm(A.lonDeg), lonB = lonToNativeNorm(B.lonDeg);
+  const latA = latToNativeNorm(A.latDeg), latB = latToNativeNorm(B.latDeg);
+  const altA = altitudeMetersToNativeNorm(A.altitudeM, LOG), altB = altitudeMetersToNativeNorm(B.altitudeM, LOG);
+  const altPeak = altitudeMetersToNativeNorm(peakM, LOG);
+
+  // inert POI scaffolding: 4 keyframes [0, t1, t3, 1], influence pinned to 0
+  const poiOut = { x: 1, y: 0, influence: 0.5, type: "custom" };
+  const poiIn = { x: -1, y: 0, influence: 0.5, type: "custom" };
+  const poiTrack = (vA, vB) => [
+    kf(0, vA),
+    kf(t1, vA, null, poiOut),
+    // trailing auto x is likewise the default-layout constant ((1 - 2/9)/6)
+    kf(t3, vB, poiIn, { x: 0.12962962962962965, y: 0, influence: 0.35, type: "auto" }),
+    kf(1, vB),
+  ];
+  const pa = points[0].poi, pb = points[1].poi;
+  const inflInner = (x) => ({ x, y: 0, influence: 0.5, type: "custom" });
+  const rotTrack = () => [kf(0, 0), kf(t1, 0, null, holdExit), kf(t3, 0, arrive, null), kf(1, 0)];
+
+  const cameraGroup = group("cameraGroup", [
+    group("cameraPositionGroup", [group("position", [
+      attr("longitude", { relative: lonA }, camTrack(lonA, (lonA + lonB) / 2, lonB), true),
+      attr("latitude", { relative: latA }, camTrack(latA, (latA + latB) / 2, latB), true),
+      attr("altitude", altValueNode({ relative: altA, ...LOG }), camTrack(altA, altPeak, altB), true),
+    ], true)], true),
+    group("cameraTargetEffect", [
+      attr("enabled", { relative: 1 }, null, true),
+      group("poi", [
+        attr("longitudePOI", { relative: lonToNativeNorm(pa.lonDeg) }, poiTrack(lonToNativeNorm(pa.lonDeg), lonToNativeNorm(pb.lonDeg)), true),
+        attr("latitudePOI", { relative: latToNativeNorm(pa.latDeg) }, poiTrack(latToNativeNorm(pa.latDeg), latToNativeNorm(pb.latDeg)), true),
+        attr("altitudePOI", altValueNode({ relative: altitudeMetersToNativeNorm(pa.altitudeM, LOG), ...LOG }),
+          poiTrack(altitudeMetersToNativeNorm(pa.altitudeM, LOG), altitudeMetersToNativeNorm(pb.altitudeM, LOG)), true),
+      ], true),
+      attr("influence", { relative: 0 }, [
+        kf(0, 0),
+        kf(t1, 0, null, holdExit),
+        kf(tMid, 0, inflInner(-1), inflInner(1)),
+        kf(t3, 0, arrive, null),
+        kf(1, 0),
+      ], true),
+    ], true),
+    group("cameraRotationGroup", [
+      attr("rotationX", {}, rotTrack(), true),
+      attr("rotationY", {}, rotTrack(), true),
+      attr("rotationZ", {}),
+    ], true),
+    LENS_GROUP(),
+  ], true);
+  const project = projectEnvelope({ name, fps, width, height, frames, logarithmic: true, cameraGroup, worldTimeMs });
+  return { project, provenance: baseProvenance("ges_point_to_point_derived_v1", notes, extrapolations), leg_distance_m: legM, transit_peak_m: peakM };
+}
+
+// Haversine on the native sphere (R = 6,378,137 m — the basis that makes the
+// template constants exact; note the generic planner uses R = 6,371,000).
+function haversineNativeMeters(a, b) {
+  const rad = (d) => (d * Math.PI) / 180;
+  const dLat = rad(b.latDeg - a.latDeg), dLon = rad(b.lonDeg - a.lonDeg);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latDeg)) * Math.cos(rad(b.latDeg)) * Math.sin(dLon / 2) ** 2;
+  return 2 * NATIVE.SPHERE_RADIUS_M * Math.asin(Math.sqrt(s));
+}
+
 module.exports = {
   TEMPLATE_PROFILE_VERSION,
   GATE2_SPEC_SHA256,
@@ -73,4 +357,9 @@ module.exports = {
   nativeNormToLon,
   latToNativeNorm,
   nativeNormToLat,
+  haversineNativeMeters,
+  buildZoomToProject,
+  buildPointToPointProject,
+  P2P_EVIDENCE_DOMAIN_M,
+  P2P_DEFAULT_PEAK_K,
 };

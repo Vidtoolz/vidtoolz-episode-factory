@@ -96,6 +96,107 @@ test("gate3 lon/lat codec: round-trips and matches frozen orbit ref-a normalizat
   assert.throws(() => native.latToNativeNorm(-91), /latitude out of range/);
 });
 
+// ---- Gate 3B: Zoom-To + Point-to-Point reconstruction vs frozen natives ----
+const comparator = require("../scripts/compare-earth-studio-template-reconstruction.js");
+
+const loadEsp = (rel) => JSON.parse(fs.readFileSync(path.join(EVIDENCE, rel)));
+const findNode = (raw, type) => {
+  let hit = null;
+  (function w(o) { if (o && typeof o === "object") { if (o.type === type && !hit) hit = o; for (const k in o) if (typeof o[k] === "object") w(o[k]); } })(raw);
+  return hit;
+};
+const worldTimeOf = (raw) => findNode(raw, "worldTime").value.minValueRange + 86400000;
+const LOG = { logarithmic: true };
+
+function zoomInputsFrom(raw) {
+  const lon = findNode(raw, "longitude").keyframes, lat = findNode(raw, "latitude").keyframes, alt = findNode(raw, "altitude").keyframes;
+  return {
+    name: raw.settings.name,
+    durationS: raw.settings.duration / raw.settings.frameRate,
+    framing: { lonDeg: native.nativeNormToLon(lon[0].value), latDeg: native.nativeNormToLat(lat[0].value), altitudeM: native.nativeNormToAltitudeMeters(alt[1].value, LOG) },
+    poi: {
+      lonDeg: native.nativeNormToLon(findNode(raw, "longitudePOI").keyframes[0].value),
+      latDeg: native.nativeNormToLat(findNode(raw, "latitudePOI").keyframes[0].value),
+      altitudeM: native.nativeNormToAltitudeMeters(findNode(raw, "altitudePOI").keyframes[0].value, LOG),
+    },
+    startAltitudeM: native.nativeNormToAltitudeMeters(alt[0].value, LOG),
+    worldTimeMs: worldTimeOf(raw),
+  };
+}
+
+test("gate3B zoom-to: reconstruction from frozen-ref inputs is structurally exact for all three references", () => {
+  for (const ref of ["ref-a", "ref-b", "ref-c"]) {
+    const raw = loadEsp(`zoom-to/${ref}/export/VIDTOOLZ-TPL-ZOOM-${ref.slice(-1).toUpperCase()}.esp`);
+    const { project, provenance } = native.buildZoomToProject(zoomInputsFrom(raw));
+    const report = comparator.compareProjects(project, raw);
+    assert.equal(report.verdict, "RECONSTRUCTED_EXACT",
+      `${ref}: ${JSON.stringify(report.diffs.filter((d) => d.severity !== "META").slice(0, 5))}`);
+    assert.equal(provenance.template_id, "ges_zoom_to_derived_v1");
+    assert.equal(provenance.template_profile_version, "ges-native-derived-v1");
+    assert.equal(provenance.import_status, "NOT_IMPORT_VERIFIED");
+  }
+});
+
+function p2pInputsFrom(raw) {
+  const fps = raw.settings.frameRate, totalS = raw.settings.duration / fps;
+  const lon = findNode(raw, "longitude").keyframes, lat = findNode(raw, "latitude").keyframes, alt = findNode(raw, "altitude").keyframes;
+  const t1 = lon[1].time, t3 = lon[3].time;
+  const plon = findNode(raw, "longitudePOI").keyframes, plat = findNode(raw, "latitudePOI").keyframes, palt = findNode(raw, "altitudePOI").keyframes;
+  const point = (i, pi) => ({
+    framing: { lonDeg: native.nativeNormToLon(lon[i].value), latDeg: native.nativeNormToLat(lat[i].value), altitudeM: native.nativeNormToAltitudeMeters(alt[i].value, LOG) },
+    poi: { lonDeg: native.nativeNormToLon(plon[pi].value), latDeg: native.nativeNormToLat(plat[pi].value), altitudeM: native.nativeNormToAltitudeMeters(palt[pi].value, LOG) },
+    holdS: pi === 0 ? t1 * totalS : (1 - t3) * totalS,
+  });
+  return {
+    name: raw.settings.name,
+    points: [point(0, 0), point(4, 2)],
+    transitS: (t3 - t1) * totalS,
+    transitPeakAltitudeM: native.nativeNormToAltitudeMeters(alt[2].value, LOG),
+    worldTimeMs: worldTimeOf(raw),
+  };
+}
+
+test("gate3B point-to-point: reconstruction matches frozen refs (exact motion; inert-scaffolding variance tolerated where natives themselves vary)", () => {
+  const expected = { "ref-a": ["RECONSTRUCTED_EXACT"], "ref-b": ["RECONSTRUCTED_WITH_INERT_VARIANCE"], "ref-c": ["RECONSTRUCTED_EXACT", "RECONSTRUCTED_WITH_INERT_VARIANCE"] };
+  for (const [ref, allowed] of Object.entries(expected)) {
+    const raw = loadEsp(`point-to-point/${ref}/export/VIDTOOLZ-TPL-POINT-${ref.slice(-1).toUpperCase()}.esp`);
+    const { project } = native.buildPointToPointProject(p2pInputsFrom(raw));
+    const report = comparator.compareProjects(project, raw);
+    assert.ok(allowed.includes(report.verdict),
+      `${ref}: got ${report.verdict}: ${JSON.stringify(report.diffs.filter((d) => d.severity === "FAIL").slice(0, 5))}`);
+    assert.equal(report.fail_count, 0, `${ref} has FAIL diffs`);
+  }
+});
+
+test("gate3B point-to-point: default transit-peak law lands within 5% of both frozen observations", () => {
+  for (const ref of ["ref-a", "ref-b"]) {
+    const raw = loadEsp(`point-to-point/${ref}/export/VIDTOOLZ-TPL-POINT-${ref.slice(-1).toUpperCase()}.esp`);
+    const inputs = p2pInputsFrom(raw);
+    const observedPeak = inputs.transitPeakAltitudeM;
+    delete inputs.transitPeakAltitudeM;
+    const built = native.buildPointToPointProject(inputs);
+    const meanHold = (inputs.points[0].framing.altitudeM + inputs.points[1].framing.altitudeM) / 2;
+    const relErr = Math.abs((built.transit_peak_m - meanHold) - (observedPeak - meanHold)) / (observedPeak - meanHold);
+    assert.ok(relErr < 0.05, `${ref}: default peak-above-hold off by ${(relErr * 100).toFixed(1)}%`);
+    assert.ok(built.provenance.confidence_notes.some((n) => /MEDIUM/.test(n)), "default-law use must be flagged MEDIUM in provenance");
+  }
+});
+
+test("gate3B guards: required explicit inputs, 2-point scope, evidence-domain extrapolation flag", () => {
+  const base = p2pInputsFrom(loadEsp("point-to-point/ref-a/export/VIDTOOLZ-TPL-POINT-A.esp"));
+  assert.throws(() => native.buildZoomToProject({ name: "x", poi: { lonDeg: 0, latDeg: 0, altitudeM: 0 }, worldTimeMs: 1786962725077 }), /framing.*required explicit input/);
+  assert.throws(() => native.buildPointToPointProject({ ...base, points: [...base.points, base.points[0]] }), /exactly 2 entries/);
+  assert.throws(() => native.buildPointToPointProject({ ...base, points: [{ framing: base.points[0].framing }, base.points[1]] }), /poi.*required/);
+  // 1 km leg is below the 3 km evidence floor -> flagged EXTRAPOLATED, not an error
+  const close = JSON.parse(JSON.stringify(base));
+  close.points[1].framing.latDeg = close.points[0].framing.latDeg + 0.009;
+  close.points[1].framing.lonDeg = close.points[0].framing.lonDeg;
+  const built = native.buildPointToPointProject(close);
+  assert.ok(built.provenance.extrapolations.some((e) => /EXTRAPOLATED/.test(e)), JSON.stringify(built.provenance.extrapolations));
+  // in-domain legs carry no extrapolation flag
+  assert.equal(native.buildPointToPointProject(base).provenance.extrapolations.length, 0);
+});
+
 test("gate3 inspector fix: logarithmic-model altitude now decodes to real meters (both models regression)", () => {
   // logarithmic project (zoom-to ref-a): previously decoded to ~32,000 km
   const zoom = inspector.parseEsp(path.join(EVIDENCE, "zoom-to/ref-a/export/VIDTOOLZ-TPL-ZOOM-A.esp"));
