@@ -1,6 +1,23 @@
 # Earth Studio native Quick Start motion — Gate 2 derivation authority
 
-**Status: IMPLEMENTED (Gate 3, 2026-08-18) — Gate 4 visual acceptance pending.**
+**Status: VISUAL ACCEPTED (Gate 4, 2026-08-18) — all five templates
+`VERIFIED_NATIVE_MATCH` by Mikko's explicit visual verdicts; the 9:16
+Fly-To-and-Orbit flagship additionally `FLY_TO_AND_ORBIT_9_16_VISUAL_ACCEPTED`.**
+Acceptance evidence:
+`package-runs/2026-08-18-earth-studio-native-template-visual-acceptance/`
+(direct real imports of all five templates, SEMANTICALLY_STABLE round-trips,
+matched native/reconstruction contact sheets, native 9:16 control, operator
+verdicts verbatim in `operator/visual-observation.json`).
+
+Product claim (exact wording; do not overstate): VIDTOOLZ implements Google
+Earth Studio Quick Start-compatible camera motion for Zoom-To, Orbit,
+Point-to-Point (within the tested 2-point scope), Spiral, and Fly-To and
+Orbit, backed by native-reference reconstruction, real Earth Studio
+import/round-trip validation, and Mikko's human visual acceptance. The 9:16
+Fly-To and Orbit profile is additionally accepted for the tested vertical
+Shorts workflow. This is native-template compatibility within the
+evidence-supported domain — not pixel-perfect renderer identity.
+
 Derived from the frozen Gate 1 native evidence corpus
 (`package-runs/2026-08-18-earth-studio-native-templates/`,
 15 references + gate-0 probe + determinism repeat + 2 Gate 2 supplements).
@@ -19,11 +36,13 @@ Status vocabulary (do not collapse these):
   re-export round-trip (Gate 3C, 2026-08-18): Orbit (active Camera Target,
   linear altitude) and Zoom-To (logarithmic altitude, inert target) fixtures
   imported cleanly, behaved correctly live, and re-exported with only
-  Save-As name / scrub-state / ≤1e-12 rounding differences. Point-to-Point,
-  Spiral and Fly-To-and-Orbit share those exact serialization shapes and are
-  COMPONENTS_IMPORT_VERIFIED (not directly imported).
-- **VISUAL ACCEPTED** — Gate 4, Mikko's verdict only. **No template is
-  `VERIFIED_NATIVE_MATCH` yet.**
+  Save-As name / scrub-state / ≤1e-12 rounding differences. Gate 4
+  (2026-08-18) additionally DIRECT-imported Point-to-Point, Spiral and
+  Fly-To-and-Orbit with SEMANTICALLY_STABLE round-trips — all five templates
+  are directly IMPORT_VERIFIED.
+- **VISUAL ACCEPTED** — Gate 4, Mikko's verdict only. Issued 2026-08-18:
+  all six verdicts PASS (five templates + the 9:16 flagship), recorded
+  verbatim in the Gate 4 evidence.
 
 ## Gate 3 implementation summary
 
@@ -177,17 +196,25 @@ pan/tilt live exactly per the look-at law and re-exported byte-faithfully.
 The generic (untemplated) serializer still authors no target (empty default
 scaffold only).
 
-## Per-template Gate 3 status
+## Per-template status (final, Gate 4 closed 2026-08-18)
 
-| Template | Reconstruction vs frozen refs | Import status | Gate 3 status |
-|---|---|---|---|
-| Zoom-To | RECONSTRUCTED_EXACT (all 3 refs) | IMPORT_VERIFIED (real round-trip) | IMPLEMENTED_IMPORT_VERIFIED_VISUAL_PENDING |
-| Orbit | RECONSTRUCTED_EXACT (all 3 refs) | IMPORT_VERIFIED (real round-trip, live target lock) | IMPLEMENTED_IMPORT_VERIFIED_VISUAL_PENDING |
-| Point-to-Point | EXACT (ref-a/c), inert-scaffolding variance only (ref-b) | COMPONENTS_IMPORT_VERIFIED | IMPLEMENTED_EXPERIMENTAL_VISUAL_PENDING |
-| Spiral | SEMANTIC_MATCH (values exact; timing within the documented <0.5% native residual) | COMPONENTS_IMPORT_VERIFIED | IMPLEMENTED_EXPERIMENTAL_VISUAL_PENDING |
-| Fly-To-and-Orbit | RECONSTRUCTED_EXACT (all 4 refs incl. sup-e) modulo jittered entry in-handles (asserted semantically) | COMPONENTS_IMPORT_VERIFIED | IMPLEMENTED_EXPERIMENTAL_VISUAL_PENDING |
+| Template | Reconstruction vs frozen refs | Import status | Human visual verdict (Mikko) | Final status |
+|---|---|---|---|---|
+| Zoom-To | RECONSTRUCTED_EXACT (all 3 refs) | IMPORT_VERIFIED (Gate 3C round-trip + Gate 4 re-import) | PASS | **VERIFIED_NATIVE_MATCH** |
+| Orbit | RECONSTRUCTED_EXACT (all 3 refs) | IMPORT_VERIFIED (Gate 3C round-trip, live target lock + Gate 4 re-import) | PASS | **VERIFIED_NATIVE_MATCH** |
+| Point-to-Point | EXACT (ref-a/c), inert-scaffolding variance only (ref-b) | IMPORT_VERIFIED (Gate 4 direct import, SEMANTICALLY_STABLE) | PASS | **VERIFIED_NATIVE_MATCH** (within the documented 2-point evidence scope) |
+| Spiral | SEMANTIC_MATCH (values exact; timing within the documented <0.5% native residual) | IMPORT_VERIFIED (Gate 4 direct import, SEMANTICALLY_STABLE) | PASS | **VERIFIED_NATIVE_MATCH** |
+| Fly-To-and-Orbit | RECONSTRUCTED_EXACT (all 4 refs incl. sup-e) modulo jittered entry in-handles (asserted semantically) | IMPORT_VERIFIED (Gate 4 direct import, SEMANTICALLY_STABLE) | PASS | **VERIFIED_NATIVE_MATCH** |
 
-## Retained Gate 2 MEDIUM/UNKNOWN items (implementation does not erase these)
+Vertical validation: the 9:16 flagship (Eiffel Tower, 1080×1920) is
+**FLY_TO_AND_ORBIT_9_16_VISUAL_ACCEPTED** (Mikko PASS) against a native 9:16
+control created in Gate 4 (`VIDTOOLZ-TPL-FLY-ORBIT-916-G4`); the control
+proved **ASPECT_MOTION_INVARIANT** (aspect changes `settings.dimensions`
+only — the 16:9-derived grammar reconstructs the native 9:16 export exactly).
+This authorizes the movement for the vertical Shorts workflow within the
+tested parameter domain; it does not generalize to untested aspects/distances.
+
+## Retained Gate 2 MEDIUM/UNKNOWN items (neither implementation nor the Gate 4 human PASS erases these — acceptance does not expand the evidence domain)
 
 - P2P transit-peak functional form (k·distance with k≈1.6 implemented as the
   default; observed 1.57–1.63; explicit override supported).

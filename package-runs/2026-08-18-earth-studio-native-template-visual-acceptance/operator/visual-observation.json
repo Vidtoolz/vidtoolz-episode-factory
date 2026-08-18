@@ -1,0 +1,249 @@
+{
+ "contract": "Gate 4 human visual acceptance. Only Mikko fills verdict fields. PENDING_OPERATOR must never be replaced by the model.",
+ "operator": "Mikko",
+ "observed_at": "2026-08-18",
+ "templates": {
+  "zoom-to": {
+   "template_id": "ges_zoom_to_derived_v1",
+   "native_reference": "cloud VIDTOOLZ-TPL-ZOOM-A / frozen zoom-to/ref-a",
+   "reconstruction": "cloud VIDTOOLZ-G4-IMPORT-ZOOM (= VIDTOOLZ-G3-RECON-ZOOM.esp)",
+   "aspect": "16:9 3840x2160",
+   "duration_s": 5,
+   "structural_import": "PASS",
+   "roundtrip": "SEMANTICALLY_STABLE",
+   "comparison": "comparisons/zoom-to/zoom-to-contact-sheet.png",
+   "overall_verdict": "PASS",
+   "dimensions": {
+    "departure": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "acceleration": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "altitude": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "framing": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "settle": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    }
+   },
+   "operator_notes": "",
+   "final_status": "VERIFIED_NATIVE_MATCH"
+  },
+  "orbit": {
+   "template_id": "ges_orbit_derived_v1",
+   "native_reference": "cloud VIDTOOLZ-TPL-ORBIT-A / frozen orbit/ref-a",
+   "reconstruction": "cloud VIDTOOLZ-G4-IMPORT-ORBIT (= VIDTOOLZ-G3-RECON-ORBIT.esp)",
+   "aspect": "16:9 3840x2160",
+   "duration_s": 50,
+   "structural_import": "PASS",
+   "roundtrip": "SEMANTICALLY_STABLE",
+   "comparison": "comparisons/orbit/orbit-contact-sheet.png",
+   "overall_verdict": "PASS",
+   "dimensions": {
+    "departure": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "orbit": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "framing": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "target_acquisition": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "settle": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    }
+   },
+   "operator_notes": "",
+   "final_status": "VERIFIED_NATIVE_MATCH"
+  },
+  "point-to-point": {
+   "template_id": "ges_point_to_point_derived_v1",
+   "native_reference": "cloud VIDTOOLZ-TPL-POINT-A / frozen point-to-point/ref-a",
+   "reconstruction": "cloud VIDTOOLZ-G4-IMPORT-P2P (= VIDTOOLZ-G3-RECON-P2P.esp)",
+   "aspect": "16:9 3840x2160",
+   "duration_s": 9,
+   "structural_import": "PASS",
+   "roundtrip": "SEMANTICALLY_STABLE",
+   "comparison": "comparisons/point-to-point/point-to-point-contact-sheet.png",
+   "overall_verdict": "PASS",
+   "dimensions": {
+    "departure": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "acceleration": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "altitude": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "framing": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "settle": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    }
+   },
+   "operator_notes": "",
+   "final_status": "VERIFIED_NATIVE_MATCH (within the documented 2-point evidence scope)"
+  },
+  "spiral": {
+   "template_id": "ges_spiral_derived_v1",
+   "native_reference": "cloud VIDTOOLZ-TPL-SPIRAL-A / frozen spiral/ref-a",
+   "reconstruction": "cloud VIDTOOLZ-G4-IMPORT-SPIRAL (= VIDTOOLZ-G3-RECON-SPIRAL.esp)",
+   "aspect": "16:9 3840x2160",
+   "duration_s": 25,
+   "structural_import": "PASS",
+   "roundtrip": "SEMANTICALLY_STABLE",
+   "comparison": "comparisons/spiral/spiral-contact-sheet.png",
+   "overall_verdict": "PASS",
+   "dimensions": {
+    "orbit": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "altitude": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "framing": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "target_acquisition": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "settle": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    }
+   },
+   "operator_notes": "",
+   "final_status": "VERIFIED_NATIVE_MATCH"
+  },
+  "fly-to-and-orbit-169": {
+   "template_id": "ges_fly_to_and_orbit_derived_v1",
+   "native_reference": "cloud VIDTOOLZ-TPL-FLY-ORBIT-A / frozen fly-to-and-orbit/ref-a",
+   "reconstruction": "cloud VIDTOOLZ-G4-IMPORT-FLY-ORBIT (= VIDTOOLZ-G3-RECON-FLY-ORBIT.esp)",
+   "aspect": "16:9 3840x2160",
+   "duration_s": 25,
+   "structural_import": "PASS",
+   "roundtrip": "SEMANTICALLY_STABLE",
+   "comparison": "comparisons/fly-to-and-orbit/fly-to-and-orbit-contact-sheet.png",
+   "overall_verdict": "PASS",
+   "dimensions": {
+    "departure": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "acceleration": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "altitude": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "target_acquisition": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "handoff": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "orbit": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "settle": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    }
+   },
+   "operator_notes": "",
+   "final_status": "VERIFIED_NATIVE_MATCH"
+  },
+  "fly-to-and-orbit-916-flagship": {
+   "template_id": "ges_fly_to_and_orbit_derived_v1",
+   "native_reference": "cloud VIDTOOLZ-TPL-FLY-ORBIT-916-G4 (created Gate 4; GES-derived target alt 64 m)",
+   "reconstruction": "cloud VIDTOOLZ-G4-IMPORT-FLY-ORBIT-916 (= VIDTOOLZ-G3-FLY-ORBIT-916.esp; explicit target alt 33.5 m)",
+   "aspect": "9:16 1080x1920",
+   "duration_s": 25,
+   "structural_import": "PASS",
+   "roundtrip": "SEMANTICALLY_STABLE",
+   "aspect_motion": "ASPECT_MOTION_INVARIANT",
+   "comparison": "vertical/fly-orbit-916-contact-sheet.png",
+   "input_difference_note": "target altitude differs (GES-derived 64 m vs explicit 33.5 m -> end 264 vs 233 m); grammar congruent, small absolute-framing offset visible",
+   "overall_verdict": "PASS",
+   "dimensions": {
+    "departure": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "acceleration": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "altitude": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "target_acquisition": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "handoff": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "orbit": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "vertical_framing": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    },
+    "settle": {
+     "verdict": "NOT_INDIVIDUALLY_SCORED (overall PASS)",
+     "notes": ""
+    }
+   },
+   "operator_notes": "",
+   "final_status": "FLY_TO_AND_ORBIT_9_16_VISUAL_ACCEPTED"
+  }
+ },
+ "verdict_source": "Mikko, explicit operator response at the Gate 4 checkpoint, recorded verbatim",
+ "operator_verdicts_verbatim": [
+  "Zoom-To: PASS",
+  "Orbit: PASS",
+  "Point-to-Point: PASS",
+  "Spiral: PASS",
+  "Fly-To and Orbit 16:9: PASS",
+  "Fly-To and Orbit 9:16: PASS"
+ ],
+ "dimension_note": "Mikko issued overall per-template verdicts only; dimension-level fields were not individually scored and are recorded as such."
+}

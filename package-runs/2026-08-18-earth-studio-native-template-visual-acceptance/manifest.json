@@ -1,0 +1,49 @@
+{
+ "created": "2026-08-18",
+ "gate": "Gate 4 — native template visual acceptance evidence",
+ "status": "GATE 4 COMPLETE — ALL FIVE NATIVE TEMPLATE PROFILES VISUALLY ACCEPTED (Mikko, 2026-08-18); 9:16 flagship additionally accepted",
+ "gate4a_direct_imports": {
+  "point-to-point": {
+   "source": "VIDTOOLZ-G3-RECON-P2P.esp",
+   "roundtrip": "roundtrips/point-to-point/VIDTOOLZ-G4-IMPORT-P2P.esp",
+   "verdict": "SEMANTICALLY_STABLE",
+   "live": "inert target influence 0%, top-down, transit altitude arc live (6120 m at t=0.5)"
+  },
+  "spiral": {
+   "source": "VIDTOOLZ-G3-RECON-SPIRAL.esp",
+   "roundtrip": "roundtrips/spiral/VIDTOOLZ-G4-IMPORT-SPIRAL.esp",
+   "verdict": "SEMANTICALLY_STABLE",
+   "live": "target lock 100%, radius contracting, altitude descending"
+  },
+  "fly-to-and-orbit": {
+   "source": "VIDTOOLZ-G3-RECON-FLY-ORBIT.esp",
+   "roundtrip": "roundtrips/fly-to-and-orbit/VIDTOOLZ-G4-IMPORT-FLY-ORBIT.esp",
+   "verdict": "SEMANTICALLY_STABLE",
+   "live": "start az90/20234m/tilt45.2; entry at t=0.2 due north 234 m"
+  },
+  "zoom-to": {
+   "source": "VIDTOOLZ-G3-RECON-ZOOM.esp",
+   "roundtrip": "roundtrips/zoom-to/VIDTOOLZ-G4-IMPORT-ZOOM.esp",
+   "verdict": "SEMANTICALLY_STABLE",
+   "note": "re-import today on top of the Gate 3C proof"
+  },
+  "orbit": {
+   "source": "VIDTOOLZ-G3-RECON-ORBIT.esp",
+   "roundtrip": "roundtrips/orbit/VIDTOOLZ-G4-IMPORT-ORBIT.esp",
+   "verdict": "SEMANTICALLY_STABLE",
+   "note": "re-import today on top of the Gate 3C proof"
+  }
+ },
+ "vertical": {
+  "native_control": "vertical/native-fly-orbit-916/VIDTOOLZ-TPL-FLY-ORBIT-916-G4.esp (real wizard, Eiffel defaults, 1080x1920)",
+  "classification": "ASPECT_MOTION_INVARIANT",
+  "comparison": "comparisons/vertical-916-structural-comparison.json"
+ },
+ "operator": {
+  "checklist": "operator/operator-checklist.md",
+  "observation": "operator/visual-observation.json — ALL verdicts PENDING_OPERATOR"
+ },
+ "frozen_upstream": "Gate 1 natives + Gate 3 implementation evidence untouched",
+ "acceptance_matrix": "comparisons/gate4-acceptance-matrix.json",
+ "operator_verdicts": "operator/visual-observation.json (verbatim)"
+}

@@ -1,0 +1,52 @@
+{
+ "date": "2026-08-18",
+ "aspect_motion_classification": "ASPECT_MOTION_INVARIANT",
+ "basis": "the native 9:16 export (VIDTOOLZ-TPL-FLY-ORBIT-916-G4, created via the real wizard with Eiffel Tower + all defaults, project set to 1080x1920) is RECONSTRUCTED_EXACT (0 FAIL / 0 WARN) by the 16:9-derived Gate 3 grammar from its own decoded inputs — aspect changes settings.dimensions only, camera grammar unchanged; entry-handle literals matched ref-a exactly",
+ "native_916": {
+  "file": "vertical/native-fly-orbit-916/VIDTOOLZ-TPL-FLY-ORBIT-916-G4.esp",
+  "sha256": "2ed283152b1efefa6c121bf5816efc3f7af23be5203121f9b8b31c24607887c3",
+  "inputs_observed": {
+   "target": {
+    "lonDeg": 2.2944803918431944,
+    "latDeg": 48.858426792669434,
+    "altitudeM": 64.49358749389648
+   },
+   "endAltitudeM": 264,
+   "orbitRadiusM": 400,
+   "approachAngleDeg": 0,
+   "clockwise": false,
+   "durationS": 25,
+   "dims": "1080x1920"
+  }
+ },
+ "flagship": {
+  "file": "../2026-08-18-earth-studio-native-template-implementation/gate4-candidates/VIDTOOLZ-G3-FLY-ORBIT-916.esp",
+  "inputs": {
+   "target": {
+    "lonDeg": 2.2945,
+    "latDeg": 48.8584,
+    "altitudeM": 33.5
+   },
+   "endAltitudeM": 233,
+   "orbitRadiusM": 400,
+   "approachAngleDeg": 0,
+   "clockwise": false,
+   "durationS": 25,
+   "dims": "1080x1920"
+  }
+ },
+ "flagship_vs_native_916": {
+  "grammar": "GRAMMAR_CONGRUENT — keyframe times identical (true), transition structure identical, both satisfy end+200 / +20000 / entry-azimuth laws",
+  "input_differences": [
+   "target lon/lat: GES POI marker (2.29448/48.85843) vs flagship explicit (2.2945/48.8584) — ~4 m ground offset",
+   "target altitude: GES-derived terrain 64.49 m vs flagship explicit 33.5 m -> end altitude 264 m vs 233 m (both = target+200 law); relative orbit geometry congruent (tilt atan(400/200)=63.43 deg both)"
+  ],
+  "note": "GES derives the Eiffel target altitude itself (64 m); the flagship used the documented Champ-de-Mars 33.5 m. This is an INPUT difference recorded per task section 21, not a grammar difference."
+ },
+ "flagship_roundtrip": {
+  "verdict": "RECONSTRUCTED_EXACT",
+  "fail": 0,
+  "warn": 0,
+  "reexport_sha256": "1e2290cfbb5bd70dac04892f540ce450ee4969c940087df49bfb7607438acd46"
+ }
+}

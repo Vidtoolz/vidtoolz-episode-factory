@@ -149,12 +149,24 @@ function projectEnvelope({ name, fps, width, height, frames, logarithmic, camera
 // scrub-position value.relative snapshots, and <=1e-12 renormalization
 // rounding). Evidence: package-runs/2026-08-18-earth-studio-native-template-
 // implementation/{imports,roundtrips,comparison}/.
+// Gate 4 (2026-08-18) additionally DIRECT-imported Point-to-Point, Spiral and
+// Fly-To-and-Orbit with SEMANTICALLY_STABLE round-trips, and Mikko issued
+// visual PASS for all five templates plus the 9:16 flagship (evidence:
+// package-runs/2026-08-18-earth-studio-native-template-visual-acceptance/).
 const IMPORT_STATUS = Object.freeze({
   ges_zoom_to_derived_v1: "IMPORT_VERIFIED (Gate 3C 2026-08-18: real GES import + re-export round-trip; logarithmic model + inert keyframed target)",
   ges_orbit_derived_v1: "IMPORT_VERIFIED (Gate 3C 2026-08-18: real GES import + re-export round-trip; locked camera target live-verified)",
-  ges_point_to_point_derived_v1: "COMPONENTS_IMPORT_VERIFIED (shape not directly imported; logarithmic model + inert keyframed target proven via the Gate 3C zoom-to/orbit round-trips)",
-  ges_spiral_derived_v1: "COMPONENTS_IMPORT_VERIFIED (shape not directly imported; linear model + locked camera target proven via the Gate 3C orbit round-trip)",
-  ges_fly_to_and_orbit_derived_v1: "COMPONENTS_IMPORT_VERIFIED (shape not directly imported; linear model + locked camera target proven via the Gate 3C orbit round-trip)",
+  ges_point_to_point_derived_v1: "IMPORT_VERIFIED (Gate 4 2026-08-18: direct real GES import + re-export round-trip, SEMANTICALLY_STABLE)",
+  ges_spiral_derived_v1: "IMPORT_VERIFIED (Gate 4 2026-08-18: direct real GES import + re-export round-trip, SEMANTICALLY_STABLE)",
+  ges_fly_to_and_orbit_derived_v1: "IMPORT_VERIFIED (Gate 4 2026-08-18: direct real GES import + re-export round-trip, SEMANTICALLY_STABLE)",
+});
+// Human visual acceptance (Gate 4, Mikko, 2026-08-18) — recorded per template.
+const VISUAL_STATUS = Object.freeze({
+  ges_zoom_to_derived_v1: "VERIFIED_NATIVE_MATCH",
+  ges_orbit_derived_v1: "VERIFIED_NATIVE_MATCH",
+  ges_point_to_point_derived_v1: "VERIFIED_NATIVE_MATCH (within the documented 2-point evidence scope)",
+  ges_spiral_derived_v1: "VERIFIED_NATIVE_MATCH",
+  ges_fly_to_and_orbit_derived_v1: "VERIFIED_NATIVE_MATCH (9:16 flagship additionally FLY_TO_AND_ORBIT_9_16_VISUAL_ACCEPTED)",
 });
 
 function baseProvenance(templateId, notes, extrapolations) {
@@ -163,6 +175,7 @@ function baseProvenance(templateId, notes, extrapolations) {
     template_profile_version: TEMPLATE_PROFILE_VERSION,
     gate2_spec_sha256: GATE2_SPEC_SHA256,
     import_status: IMPORT_STATUS[templateId] || "NOT_IMPORT_VERIFIED",
+    visual_status: VISUAL_STATUS[templateId] || "VISUAL_ACCEPTANCE_PENDING",
     confidence_notes: notes,
     extrapolations,
   };
@@ -694,6 +707,7 @@ module.exports = {
   GATE2_SPEC_PATH,
   NATIVE,
   IMPORT_STATUS,
+  VISUAL_STATUS,
   TEMPLATE_KEYS,
   detectExplicitTemplateIntent,
   buildTemplateProject,

@@ -1,0 +1,56 @@
+{
+ "date": "2026-08-18",
+ "operator": "Mikko",
+ "templates": [
+  {
+   "template": "Zoom-To",
+   "direct_real_import": "PASS (Gate 3C + Gate 4 re-import)",
+   "roundtrip": "SEMANTICALLY_STABLE",
+   "structural_match": "RECONSTRUCTED_EXACT 3/3 refs",
+   "human_visual_verdict": "PASS",
+   "final_status": "VERIFIED_NATIVE_MATCH"
+  },
+  {
+   "template": "Orbit",
+   "direct_real_import": "PASS (Gate 3C + Gate 4 re-import)",
+   "roundtrip": "SEMANTICALLY_STABLE",
+   "structural_match": "RECONSTRUCTED_EXACT 3/3 refs",
+   "human_visual_verdict": "PASS",
+   "final_status": "VERIFIED_NATIVE_MATCH"
+  },
+  {
+   "template": "Point-to-Point",
+   "direct_real_import": "PASS (Gate 4 direct)",
+   "roundtrip": "SEMANTICALLY_STABLE",
+   "structural_match": "EXACT ref-a/c; inert-scaffolding variance ref-b",
+   "human_visual_verdict": "PASS",
+   "final_status": "VERIFIED_NATIVE_MATCH (within the documented 2-point evidence scope)"
+  },
+  {
+   "template": "Spiral",
+   "direct_real_import": "PASS (Gate 4 direct)",
+   "roundtrip": "SEMANTICALLY_STABLE",
+   "structural_match": "SEMANTIC_MATCH (values exact; timing within documented <0.5% native residual)",
+   "human_visual_verdict": "PASS",
+   "final_status": "VERIFIED_NATIVE_MATCH"
+  },
+  {
+   "template": "Fly-To and Orbit",
+   "direct_real_import": "PASS (Gate 4 direct)",
+   "roundtrip": "SEMANTICALLY_STABLE",
+   "structural_match": "RECONSTRUCTED_EXACT 4/4 refs (entry handles semantic)",
+   "human_visual_verdict": "PASS",
+   "final_status": "VERIFIED_NATIVE_MATCH"
+  }
+ ],
+ "vertical": [
+  {
+   "validation": "Fly-To and Orbit 9:16",
+   "native_reference": "VIDTOOLZ-TPL-FLY-ORBIT-916-G4 (created Gate 4, real wizard, 1080x1920)",
+   "structural_comparison": "ASPECT_MOTION_INVARIANT + GRAMMAR_CONGRUENT (input deltas recorded: GES target alt 64 m vs explicit 33.5 m)",
+   "human_verdict": "PASS",
+   "status": "FLY_TO_AND_ORBIT_9_16_VISUAL_ACCEPTED"
+  }
+ ],
+ "evidence_scope_note": "Human PASS does not expand the evidence domain. All Gate 2/3 documented limits remain in force (P2P 2-point + 3-341 km domain, transit-peak law MEDIUM, orbit default-altitude rounding MEDIUM, standalone-orbit CW sign inferred, non-cardinal azimuths EXTRAPOLATED, spiral angle_start>0 EXTRAPOLATED, spiral timing <0.5% modeled, native handle jitter, hidden Google framing derivations remain explicit inputs)."
+}

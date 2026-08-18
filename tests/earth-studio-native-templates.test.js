@@ -523,6 +523,61 @@ test("gate3E negatives: untemplated planner output has no cameraTargetEffect; in
   assert.deepEqual(p17.tracks, p18.tracks, "mv17/18 parse identically");
 });
 
+// ---- Gate 4: human visual acceptance evidence (frozen) ----
+const G4_EVIDENCE = path.join(ROOT, "package-runs/2026-08-18-earth-studio-native-template-visual-acceptance");
+
+test("gate4 acceptance: Mikko's six PASS verdicts are recorded, statuses final, and the evidence is hash-frozen", () => {
+  const obs = JSON.parse(fs.readFileSync(path.join(G4_EVIDENCE, "operator/visual-observation.json")));
+  assert.deepEqual(obs.operator_verdicts_verbatim, [
+    "Zoom-To: PASS", "Orbit: PASS", "Point-to-Point: PASS", "Spiral: PASS",
+    "Fly-To and Orbit 16:9: PASS", "Fly-To and Orbit 9:16: PASS",
+  ]);
+  for (const t of Object.values(obs.templates)) assert.equal(t.overall_verdict, "PASS");
+  assert.equal(obs.templates["zoom-to"].final_status, "VERIFIED_NATIVE_MATCH");
+  assert.match(obs.templates["point-to-point"].final_status, /^VERIFIED_NATIVE_MATCH \(within the documented 2-point/);
+  assert.equal(obs.templates["fly-to-and-orbit-916-flagship"].final_status, "FLY_TO_AND_ORBIT_9_16_VISUAL_ACCEPTED");
+  // module status map agrees and flows into provenance
+  for (const id of Object.keys(native.TEMPLATE_KEYS).map((k) => native.TEMPLATE_KEYS[k])) {
+    assert.match(native.VISUAL_STATUS[id], /VERIFIED_NATIVE_MATCH/);
+    assert.match(native.IMPORT_STATUS[id], /^IMPORT_VERIFIED/);
+  }
+  const built = native.buildOrbitProject({
+    name: "t", target: { lonDeg: 0, latDeg: 0, altitudeM: 10 }, worldTimeMs: 1786962725077,
+  });
+  assert.equal(built.provenance.visual_status, "VERIFIED_NATIVE_MATCH");
+  // direct-import round-trips remain SEMANTICALLY_STABLE on the frozen files
+  for (const [tpl, src, rt] of [
+    ["point-to-point", "VIDTOOLZ-G3-RECON-P2P", "roundtrips/point-to-point/VIDTOOLZ-G4-IMPORT-P2P"],
+    ["spiral", "VIDTOOLZ-G3-RECON-SPIRAL", "roundtrips/spiral/VIDTOOLZ-G4-IMPORT-SPIRAL"],
+    ["fly-to-and-orbit", "VIDTOOLZ-G3-RECON-FLY-ORBIT", "roundtrips/fly-to-and-orbit/VIDTOOLZ-G4-IMPORT-FLY-ORBIT"],
+  ]) {
+    const a = JSON.parse(fs.readFileSync(path.join(G3_EVIDENCE, "reconstructions", src + ".esp")));
+    const b = JSON.parse(fs.readFileSync(path.join(G4_EVIDENCE, rt + ".esp")));
+    const rep = comparator.compareProjects(b, a, { valueRelativeAsMeta: true });
+    assert.equal(rep.verdict, "RECONSTRUCTED_EXACT", `${tpl} round-trip drifted`);
+  }
+  // frozen evidence hashes. SHA256SUMS covers the whole Gate 4 root; the raw
+  // per-checkpoint viewport captures are local-only evidence (repo policy:
+  // bulk screenshots stay untracked, like the Gate 1 corpus) — they are
+  // hash-pinned here but tolerated as absent on fresh clones. Everything
+  // else (esp/json/md/contact sheets/import proofs) must exist and match.
+  const sums = fs.readFileSync(path.join(G4_EVIDENCE, "SHA256SUMS"), "utf8").trim().split("\n");
+  assert.ok(sums.length >= 90, `Gate 4 SHA256SUMS entries: ${sums.length}`);
+  const localOnly = /(native|recon)[0-9]*-t\d+-f\d+\.png$/;
+  let verified = 0;
+  for (const line of sums) {
+    const [expected, rel] = line.split(/\s+/);
+    const abs = path.join(G4_EVIDENCE, rel);
+    if (!fs.existsSync(abs)) {
+      assert.ok(localOnly.test(rel), `committed Gate 4 evidence missing: ${rel}`);
+      continue;
+    }
+    assert.equal(shaFile(abs), expected, `Gate 4 evidence drifted: ${rel}`);
+    verified++;
+  }
+  assert.ok(verified >= 25, `verified Gate 4 files: ${verified}`);
+});
+
 test("gate3 inspector fix: logarithmic-model altitude now decodes to real meters (both models regression)", () => {
   // logarithmic project (zoom-to ref-a): previously decoded to ~32,000 km
   const zoom = inspector.parseEsp(path.join(EVIDENCE, "zoom-to/ref-a/export/VIDTOOLZ-TPL-ZOOM-A.esp"));
