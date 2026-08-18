@@ -10,6 +10,7 @@ const {
   test,
 } = require("./_helpers.js");
 const { bindI2vPrompts } = require("./aigen-authority-test-helper.js");
+const { dispatchGateway } = require("./comfyui-dispatch-fixture.js");
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -370,10 +371,12 @@ test("PRESTO submit returns 503 when ComfyUI is unreachable (no job spawned)", a
 test("PRESTO submit spawns with --timeout 5400 when ComfyUI is reachable", async () => {
   const fixture = createPrestoFixture({ eligible: true });
   const captured = {};
+  const gw = dispatchGateway();
   const server = packageEngineServer.createServer({
     prestoReachableCheck: async () => true,
     computeGateFn: async () => ({ ok: true, decision: "ROUTE", selected_host: "presto", checks: {} }),
     spawn: captureSpawn(captured),
+    gateway: gw.gateway,
   });
   try {
     await withPrestoEnv(fixture, async () => {
@@ -395,18 +398,20 @@ test("PRESTO submit spawns with --timeout 5400 when ComfyUI is reachable", async
     packageEngineServer.PRESTO_STATE.activeJob = null;
     await close(server);
     fs.rmSync(fixture.root, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
 test("startPrestoPackageJob honors AIGEN_PRESTO_TIMEOUT_SECONDS override", async () => {
   const fixture = createPrestoFixture({ eligible: true });
   const captured = {};
+  const gw = dispatchGateway();
   try {
     await withPrestoEnv(fixture, async () => {
       process.env.AIGEN_PRESTO_TIMEOUT_SECONDS = "1200";
       await packageEngineServer.startPrestoPackageJob(
         { package_id: fixture.packageId },
-        { spawn: captureSpawn(captured) }
+        { spawn: captureSpawn(captured), gateway: gw.gateway }
       );
       const idx = captured.args.indexOf("--timeout");
       assert.equal(captured.args[idx + 1], "1200");
@@ -415,17 +420,19 @@ test("startPrestoPackageJob honors AIGEN_PRESTO_TIMEOUT_SECONDS override", async
   } finally {
     packageEngineServer.PRESTO_STATE.activeJob = null;
     fs.rmSync(fixture.root, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
 test("startPrestoPackageJob defaults to the recommended HQ profile", async () => {
   const fixture = createPrestoFixture({ eligible: true });
   const captured = {};
+  const gw = dispatchGateway();
   try {
     await withPrestoEnv(fixture, async () => {
       await packageEngineServer.startPrestoPackageJob(
         { package_id: fixture.packageId },
-        { spawn: captureSpawn(captured) }
+        { spawn: captureSpawn(captured), gateway: gw.gateway }
       );
       const idx = captured.args.indexOf("--profile");
       assert.ok(idx >= 0, "--profile flag passed to runner");
@@ -434,17 +441,19 @@ test("startPrestoPackageJob defaults to the recommended HQ profile", async () =>
   } finally {
     packageEngineServer.PRESTO_STATE.activeJob = null;
     fs.rmSync(fixture.root, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
 test("startPrestoPackageJob honors an explicit profile and rejects unknown ones", async () => {
   const fixture = createPrestoFixture({ eligible: true });
   const captured = {};
+  const gw = dispatchGateway();
   try {
     await withPrestoEnv(fixture, async () => {
       await packageEngineServer.startPrestoPackageJob(
         { package_id: fixture.packageId, profile: "fast_current" },
-        { spawn: captureSpawn(captured) }
+        { spawn: captureSpawn(captured), gateway: gw.gateway }
       );
       assert.equal(captured.args[captured.args.indexOf("--profile") + 1], "fast_current");
     });
@@ -454,6 +463,7 @@ test("startPrestoPackageJob honors an explicit profile and rejects unknown ones"
   } finally {
     packageEngineServer.PRESTO_STATE.activeJob = null;
     fs.rmSync(fixture.root, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 

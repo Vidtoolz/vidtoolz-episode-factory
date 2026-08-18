@@ -10812,6 +10812,7 @@ async function pumpSuperFocusVideoQueue(id, ctx) {
       spawn: ctx.options.spawn,
       productionScript: ctx.options.productionScript,
       pythonBin: ctx.options.pythonBin,
+      gateway: ctx.options.gateway,
       payload: {},
     });
   } catch (e) {
@@ -16322,6 +16323,7 @@ function createServer(options = {}) {
               spawn: options.spawn,
               productionScript: options.productionScript,
               pythonBin: options.pythonBin,
+              gateway: options.gateway,
               payload,
               computeReceipt: buildComputeDispatchReceipt({ lane: 'wan_i2v', gateResult: laneGate.gateResult, verdict: laneGate.verdict, profile: DEFAULT_PRESTO_PROFILE, comfyuiUrl: PRESTO_BASE_URL }),
             });
@@ -16471,6 +16473,7 @@ function createServer(options = {}) {
               spawn: options.spawn,
               productionScript: options.productionScript,
               pythonBin: options.pythonBin,
+              gateway: options.gateway,
               computeReceipt: buildComputeDispatchReceipt({ lane: 'wan_i2v', gateResult: laneGate.gateResult, verdict: laneGate.verdict, profile: DEFAULT_PRESTO_PROFILE, comfyuiUrl: PRESTO_BASE_URL }),
               payload,
             });

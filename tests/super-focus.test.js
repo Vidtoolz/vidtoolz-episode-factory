@@ -4,6 +4,20 @@ const crypto = require("node:crypto");
 const superFocus = require("../super-focus.js");
 const sfPrompts = require("../super-focus-prompts.js");
 const sfMedia = require("../super-focus-media.js");
+const { createDispatchFixture } = require("./comfyui-dispatch-fixture.js");
+
+// One shared hermetic workflow-runtime registry for every dispatch-gate test
+// in this file (built lazily on first use): its runtime_copies live in a temp
+// dir, so these tests never depend on /mnt/vidnas_public being mounted.
+let _videoDispatchGw = null;
+function videoDispatchGateway() {
+  if (!_videoDispatchGw) {
+    const { registryPath, workDir } = createDispatchFixture({ prefix: "sf-dispatch-gw-" });
+    _videoDispatchGw = { registryPath, workDir };
+    process.on("exit", () => { try { fs.rmSync(workDir, { recursive: true, force: true }); } catch (_) {} });
+  }
+  return _videoDispatchGw;
+}
 
 // Fake Ollama chat: returns a fixed assistant message content, no network.
 function fakeOllama(content) {
@@ -1492,6 +1506,8 @@ function videoServer(spawnImpl, opts = {}) {
   const server = packageEngineServer.createServer({
     superFocusRoot: root, superFocusMediaRoot: mediaRoot,
     productionScript: fakeScript(), pythonBin: "python3", spawn: spawnImpl,
+    // Hermetic workflow runtime: temp registry, no live VIDNAS dependency.
+    gateway: videoDispatchGateway(),
     prestoReachableCheck: opts.reach || (async () => true),
     // Inject a deterministic compute gate so the SF render pump never touches the
     // real ~/vidtoolz-compute selector. Default: a consistent Wan I2V ROUTE to

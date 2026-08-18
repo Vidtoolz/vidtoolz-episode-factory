@@ -2,6 +2,20 @@ const { test, assert, packageEngineServer, fs, os, path, http } = require('./_he
 const superFocus = require('../super-focus.js');
 const superFocusMedia = require('../super-focus-media.js');
 const scriptEvaluator = require('../script-evaluator.js');
+const { createDispatchFixture } = require('./comfyui-dispatch-fixture.js');
+
+// One shared hermetic workflow-runtime registry for every dispatch in this
+// file: runtime_copies live in a temp dir, so the attempts scenarios never
+// depend on /mnt/vidnas_public being mounted.
+let _attemptsDispatchGw = null;
+function attemptsDispatchGateway() {
+  if (!_attemptsDispatchGw) {
+    const { registryPath, workDir } = createDispatchFixture({ prefix: 'sf-attempts-gw-' });
+    _attemptsDispatchGw = { registryPath, workDir };
+    process.on('exit', () => { try { fs.rmSync(workDir, { recursive: true, force: true }); } catch (_) {} });
+  }
+  return _attemptsDispatchGw;
+}
 
 // ── Render-time source-image provenance (generation attempts) ───────────────
 // The honesty gap these tests pin down: before the attempts layer, the lane
@@ -122,6 +136,8 @@ async function attemptServer(behavior = {}) {
     superFocusMediaRoot: mediaRoot,
     spawn: fakeProductionSpawn(behavior),
     productionScript: __filename, // must exist; the fake spawn ignores it
+    // Hermetic workflow runtime: temp registry, no live VIDNAS dependency.
+    gateway: attemptsDispatchGateway(),
     prestoReachableCheck: behavior.reach || (async () => true),
     // Deterministic compute gate so the render pump never touches the real
     // ~/vidtoolz-compute selector (default: a consistent Wan I2V ROUTE to PRESTO).

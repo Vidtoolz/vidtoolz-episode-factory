@@ -5,6 +5,7 @@
 // No network, no render, no live PRESTO.
 const { assert, fs, os, path, test } = require("./_helpers.js");
 const gateway = require("../comfyui-gateway");
+const { dispatchGateway } = require("./comfyui-dispatch-fixture.js");
 
 const REPO = path.join(__dirname, "..");
 
@@ -2654,6 +2655,7 @@ test("comfyui-p11 bypass: the Super Focus Wan lane cannot reach the dispatcher w
   const mediaDir = mkdtemp("comfyui-p11-sf-");
   const script = path.join(mediaDir, "run-production.py");
   fs.writeFileSync(script, "#!/usr/bin/env python3\n");
+  const gw = dispatchGateway();
   const realPreflight = gateway.preflight.preflightSync;
   let preflightCalls = 0;
   gateway.preflight.preflightSync = function (...args) { preflightCalls += 1; return realPreflight.apply(this, args); };
@@ -2668,7 +2670,7 @@ test("comfyui-p11 bypass: the Super Focus Wan lane cannot reach the dispatcher w
     await packageEngineServer.startSuperFocusVideoJob(mediaDir, {
       productionScript: script, pythonBin: "python3",
       profile: "wan22_hq_720p_5s_no_lightx2v", projectId: "p11-gate-probe",
-      spawn: spawnStub,
+      spawn: spawnStub, gateway: gw.gateway,
     });
     assert.equal(preflightCalls, 1, "the SF Wan lane MUST run the gateway gate exactly once before dispatch");
     const job = packageEngineServer.PRESTO_STATE.activeJob;
@@ -2684,6 +2686,7 @@ test("comfyui-p11 bypass: the Super Focus Wan lane cannot reach the dispatcher w
     gateway.preflight.preflightSync = realPreflight;
     packageEngineServer.PRESTO_STATE.activeJob = null;
     fs.rmSync(mediaDir, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
@@ -2781,7 +2784,9 @@ test("comfyui-p13 structural gate: raw transport refuses without a permit minted
 
 test("comfyui-p13 structural gate: the permit carries the canonical target and only the gate mints it", () => {
   const packageEngineServer = require("../package-engine-server.js");
-  const permit = packageEngineServer.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto" });
+  const gw = dispatchGateway();
+  try {
+  const permit = packageEngineServer.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto" }, { gateway: gw.gateway });
   assert.equal(permit.workflowIdentity.id, "wan22-i2v-hq");
   assert.ok(permit.workflowIdentity.sha256, "permit carries the canonical graph hash");
   // canonical target: the endpoint/host the transport must use (P12 rule)
@@ -2803,6 +2808,9 @@ test("comfyui-p13 structural gate: the permit carries the canonical target and o
   } finally {
     packageEngineServer.PRESTO_STATE.activeJob = null;
     fs.rmSync(mediaDir, { recursive: true, force: true });
+  }
+  } finally {
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
@@ -2891,11 +2899,12 @@ test("comfyui endpoint authority: normalization, explicit override, and invalid 
 
 test("comfyui endpoint authority: the permit carries the lane-resolved target", () => {
   const packageEngineServer = require("../package-engine-server.js");
+  const gw = dispatchGateway();
   const saved = process.env.AIGEN_PRESTO_BASE_URL;
   try {
     process.env.AIGEN_PRESTO_BASE_URL = "http://10.0.0.9:8188";
-    const aigen = packageEngineServer.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto" });
-    const sf = packageEngineServer.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" });
+    const aigen = packageEngineServer.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto" }, { gateway: gw.gateway });
+    const sf = packageEngineServer.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" }, { gateway: gw.gateway });
     assert.equal(aigen.endpoint, "http://10.0.0.9:8188", "aigen permit follows its lane variable");
     assert.equal(sf.endpoint, "http://192.168.50.187:8188", "SF permit is unaffected by the aigen variable");
     // host on the permit derives from that same endpoint — one target, not two
@@ -2904,6 +2913,7 @@ test("comfyui endpoint authority: the permit carries the lane-resolved target", 
     assert.equal(sf.hostName, "PRESTO");
   } finally {
     if (saved === undefined) delete process.env.AIGEN_PRESTO_BASE_URL; else process.env.AIGEN_PRESTO_BASE_URL = saved;
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
@@ -2931,7 +2941,8 @@ test("comfyui transport closure: PRESTO dispatcher receives the permit endpoint"
   const dir = mkdtemp("comfyui-tx-");
   const script = path.join(dir, "run-production.py");
   fs.writeFileSync(script, "#!/usr/bin/env python3\n");
-  const permit = pes.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" });
+  const gw = dispatchGateway();
+  const permit = pes.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" }, { gateway: gw.gateway });
   const base = { productionScript: script, pythonBin: "python3", packageArg: dir, packageId: "x",
     profile: "wan22_hq_720p_5s_no_lightx2v", dispatchPermit: permit };
   try {
@@ -2956,6 +2967,7 @@ test("comfyui transport closure: PRESTO dispatcher receives the permit endpoint"
   } finally {
     pes.PRESTO_STATE.activeJob = null;
     fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
@@ -2964,11 +2976,12 @@ test("comfyui transport closure: lane override reaches the wire, and SF stays is
   const dir = mkdtemp("comfyui-tx2-");
   const script = path.join(dir, "run-production.py");
   fs.writeFileSync(script, "#!/usr/bin/env python3\n");
+  const gw = dispatchGateway();
   const saved = process.env.AIGEN_PRESTO_BASE_URL;
   try {
     process.env.AIGEN_PRESTO_BASE_URL = "http://10.0.0.9:8188";
-    const aigen = pes.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto" });
-    const sf = pes.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" });
+    const aigen = pes.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto" }, { gateway: gw.gateway });
+    const sf = pes.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" }, { gateway: gw.gateway });
     assert.equal(aigen.endpoint, "http://10.0.0.9:8188");
     assert.equal(sf.endpoint, "http://192.168.50.187:8188", "SF lane unaffected by the aigen variable");
 
@@ -2988,6 +3001,7 @@ test("comfyui transport closure: lane override reaches the wire, and SF stays is
     pes.PRESTO_STATE.activeJob = null;
     if (saved === undefined) delete process.env.AIGEN_PRESTO_BASE_URL; else process.env.AIGEN_PRESTO_BASE_URL = saved;
     fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
@@ -3075,6 +3089,7 @@ test("presto reservation: successful spawn hands the slot to the running job wit
   const dir = mkdtemp("presto-res2-");
   const script = path.join(dir, "run-production.py");
   fs.writeFileSync(script, "#!/usr/bin/env python3\n");
+  const gw = dispatchGateway();
   const { EventEmitter } = require("node:events");
   let child = null;
   const spawnStub = () => {
@@ -3085,7 +3100,7 @@ test("presto reservation: successful spawn hands the slot to the running job wit
   };
   try {
     await pes.startSuperFocusVideoJob(dir, { productionScript: script, pythonBin: "python3",
-      profile: "wan22_hq_720p_5s_no_lightx2v", projectId: "handoff", spawn: spawnStub });
+      profile: "wan22_hq_720p_5s_no_lightx2v", projectId: "handoff", spawn: spawnStub, gateway: gw.gateway });
     // handoff: the running job now holds the slot, the reservation has retired,
     // and the slot was never unmarked in between
     assert.ok(pes.PRESTO_STATE.activeJob, "the running job owns the slot");
@@ -3096,6 +3111,7 @@ test("presto reservation: successful spawn hands the slot to the running job wit
     pes.PRESTO_STATE.activeJob = null;
     pes.PRESTO_STATE.reservation = null;
     fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
@@ -3112,55 +3128,71 @@ function verifierSpy(result) {
 
 test("freshness gate: disabled by default — no remote verification, behavior unchanged", async () => {
   const pes = require("../package-engine-server.js");
-  assert.equal(pes.sourceFreshnessEnforcementMode({}), "disabled", "deploying the code must not enable enforcement");
-  const spy = verifierSpy(freshOk);
-  const permit = await pes.gateProductionDispatchAsync(
-    { prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" },
-    { ensureFreshSourceVerification: spy });
-  assert.equal(spy.calls.length, 0, "disabled mode must NOT contact the host");
-  assert.equal(permit.workflowIdentity.id, "wan22-i2v-hq");
-  assert.ok(permit.endpoint, "a normal permit is still minted");
-  for (const bad of ["maybe", "2"]) {
-    assert.throws(() => pes.sourceFreshnessEnforcementMode({ enforceSourceFreshness: bad }),
-      (e) => e.code === "comfyui_freshness_mode_invalid", `${bad} must be rejected, not silently treated as a mode`);
+  const gw = dispatchGateway();
+  try {
+    assert.equal(pes.sourceFreshnessEnforcementMode({}), "disabled", "deploying the code must not enable enforcement");
+    const spy = verifierSpy(freshOk);
+    const permit = await pes.gateProductionDispatchAsync(
+      { prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" },
+      { ensureFreshSourceVerification: spy, gateway: gw.gateway });
+    assert.equal(spy.calls.length, 0, "disabled mode must NOT contact the host");
+    assert.equal(permit.workflowIdentity.id, "wan22-i2v-hq");
+    assert.ok(permit.endpoint, "a normal permit is still minted");
+    for (const bad of ["maybe", "2"]) {
+      assert.throws(() => pes.sourceFreshnessEnforcementMode({ enforceSourceFreshness: bad }),
+        (e) => e.code === "comfyui_freshness_mode_invalid", `${bad} must be rejected, not silently treated as a mode`);
+    }
+  } finally {
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
 test("freshness gate: enforce verifies the canonical host and permits on MATCH", async () => {
   const pes = require("../package-engine-server.js");
-  const spy = verifierSpy(freshOk);
-  const permit = await pes.gateProductionDispatchAsync(
-    { prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" },
-    { enforceSourceFreshness: "enforce", ensureFreshSourceVerification: spy });
-  assert.equal(spy.calls.length, 1, "exactly one verification");
-  assert.equal(spy.calls[0], "PRESTO", "it verifies the host the job will actually reach");
-  assert.equal(permit.hostName, "PRESTO", "permit and verification name the same machine");
+  const gw = dispatchGateway();
+  try {
+    const spy = verifierSpy(freshOk);
+    const permit = await pes.gateProductionDispatchAsync(
+      { prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "super-focus-presto" },
+      { enforceSourceFreshness: "enforce", ensureFreshSourceVerification: spy, gateway: gw.gateway });
+    assert.equal(spy.calls.length, 1, "exactly one verification");
+    assert.equal(spy.calls[0], "PRESTO", "it verifies the host the job will actually reach");
+    assert.equal(permit.hostName, "PRESTO", "permit and verification name the same machine");
+  } finally {
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
+  }
 });
 
 test("freshness gate: every refusal state blocks the permit with its own code", async () => {
   const pes = require("../package-engine-server.js");
-  for (const [code, reason] of [
-    ["SOURCE_DRIFT", "executable source drifted"],
-    ["VERIFICATION_INCOMPLETE", "custom-node surface never verified"],
-    ["SOURCE_UNOBSERVABLE", "not a git checkout"],
-    ["HOST_UNREACHABLE", "no route to host"],
-  ]) {
-    const spy = verifierSpy(refuse(code, reason));
-    let err = null;
-    try {
-      await pes.gateProductionDispatchAsync(
-        { prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto" },
-        { enforceSourceFreshness: true, ensureFreshSourceVerification: spy });
-    } catch (e) { err = e; }
-    assert.ok(err, `${code} must refuse`);
-    assert.equal(err.code, code, "the underlying reason survives, not a generic failure");
-    assert.equal(err.statusCode, 409);
-    assert.ok(String(err.message).includes(reason), "operator-facing reason preserved");
+  const gw = dispatchGateway();
+  try {
+    for (const [code, reason] of [
+      ["SOURCE_DRIFT", "executable source drifted"],
+      ["VERIFICATION_INCOMPLETE", "custom-node surface never verified"],
+      ["SOURCE_UNOBSERVABLE", "not a git checkout"],
+      ["HOST_UNREACHABLE", "no route to host"],
+    ]) {
+      const spy = verifierSpy(refuse(code, reason));
+      let err = null;
+      try {
+        await pes.gateProductionDispatchAsync(
+          { prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto" },
+          { enforceSourceFreshness: true, ensureFreshSourceVerification: spy, gateway: gw.gateway });
+      } catch (e) { err = e; }
+      assert.ok(err, `${code} must refuse`);
+      assert.equal(err.code, code, "the underlying reason survives, not a generic failure");
+      assert.equal(err.statusCode, 409);
+      assert.ok(String(err.message).includes(reason), "operator-facing reason preserved");
+    }
+  } finally {
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
 test("freshness gate: a reservation lost during verification cannot dispatch", async () => {
   const pes = require("../package-engine-server.js");
+  const gw = dispatchGateway();
   try {
     const reservation = pes.reservePrestoDispatchSync({ lane: "aigen-presto", jobKey: "A" });
     // the verifier resolves only after the slot has been taken away from A
@@ -3169,7 +3201,7 @@ test("freshness gate: a reservation lost during verification cannot dispatch", a
     try {
       await pes.gateProductionDispatchAsync(
         { prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto", reservation },
-        { enforceSourceFreshness: "enforce", ensureFreshSourceVerification: spy });
+        { enforceSourceFreshness: "enforce", ensureFreshSourceVerification: spy, gateway: gw.gateway });
     } catch (e) { err = e; }
     assert.ok(err, "a lost reservation must not mint a permit");
     assert.equal(err.code, "comfyui_dispatch_reservation_lost");
@@ -3177,11 +3209,12 @@ test("freshness gate: a reservation lost during verification cannot dispatch", a
     const kept = pes.reservePrestoDispatchSync({ lane: "aigen-presto", jobKey: "B" });
     const permit = await pes.gateProductionDispatchAsync(
       { prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto", reservation: kept },
-      { enforceSourceFreshness: "enforce", ensureFreshSourceVerification: verifierSpy(freshOk) });
+      { enforceSourceFreshness: "enforce", ensureFreshSourceVerification: verifierSpy(freshOk), gateway: gw.gateway });
     assert.ok(permit.workflowIdentity.id, "an owned reservation still dispatches");
   } finally {
     pes.PRESTO_STATE.reservation = null;
     pes.PRESTO_STATE.activeJob = null;
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
@@ -3191,6 +3224,7 @@ test("freshness enforcement: a real PRESTO starter cannot spawn before the async
   const dir = mkdtemp("freshness-live-start-");
   const script = path.join(dir, "run-production.py");
   fs.writeFileSync(script, "#!/usr/bin/env python3\n");
+  const gw = dispatchGateway();
   let settleVerification;
   const verification = new Promise((resolve) => { settleVerification = resolve; });
   let spawnCalls = 0;
@@ -3207,6 +3241,7 @@ test("freshness enforcement: a real PRESTO starter cannot spawn before the async
       profile: "wan22_hq_720p_5s_no_lightx2v", projectId: "async-ordering",
       spawn: spawnStub, enforceSourceFreshness: "enforce",
       ensureFreshSourceVerification: async () => verification,
+      gateway: gw.gateway,
     });
     assert.equal(spawnCalls, 0, "transport must remain untouched while freshness is unresolved");
     settleVerification(refuse("SOURCE_DRIFT", "controlled drift refusal"));
@@ -3217,6 +3252,7 @@ test("freshness enforcement: a real PRESTO starter cannot spawn before the async
     pes.PRESTO_STATE.activeJob = null;
     pes.PRESTO_STATE.reservation = null;
     fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
@@ -3268,16 +3304,17 @@ test("async dispatch cleanup: spawn failure releases PRESTO and FLUX reservation
   const fluxScript = path.join(dir, "run-handoff.py");
   fs.writeFileSync(prestoScript, "#!/usr/bin/env python3\n");
   fs.writeFileSync(fluxScript, "#!/usr/bin/env python3\n");
+  const gw = dispatchGateway();
   const spawnFailure = () => { throw new Error("controlled spawn failure"); };
   try {
     await assert.rejects(pes.startSuperFocusVideoJob(dir, {
       productionScript: prestoScript, pythonBin: "python3", spawn: spawnFailure,
-      profile: "wan22_hq_720p_5s_no_lightx2v",
+      profile: "wan22_hq_720p_5s_no_lightx2v", gateway: gw.gateway,
     }), /controlled spawn failure/);
     assert.equal(pes.PRESTO_STATE.reservation, null);
     assert.equal(pes.PRESTO_STATE.activeJob, null);
     await assert.rejects(pes.startSuperFocusImageJob(dir, {
-      fluxScript, pythonBin: "python3", comfyCliCheck: () => true, spawn: spawnFailure,
+      fluxScript, pythonBin: "python3", comfyCliCheck: () => true, spawn: spawnFailure, gateway: gw.gateway,
     }), /controlled spawn failure/);
     assert.equal(pes.FLUX_STATE.reservation, null);
     assert.equal(pes.FLUX_STATE.activeJob, null);
@@ -3285,5 +3322,62 @@ test("async dispatch cleanup: spawn failure releases PRESTO and FLUX reservation
     pes.PRESTO_STATE.activeJob = null; pes.PRESTO_STATE.reservation = null;
     pes.FLUX_STATE.activeJob = null; pes.FLUX_STATE.reservation = null;
     fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
+  }
+});
+
+// ---- dispatch test isolation: the runtime gate stays fail-closed and
+// ---- hermetic fixtures make tests independent of the live VIDNAS mount -----
+
+test("dispatch isolation: a missing runtime copy in the INJECTED registry still fails closed", () => {
+  const pes = require("../package-engine-server.js");
+  const gw = dispatchGateway();
+  try {
+    // Break the fixture's wan22-i2v-hq runtime copy: point it at a file that
+    // does not exist. The injected registry is the gate's only authority, so
+    // the gate must refuse with the exact runtime-missing contract.
+    const registryJson = JSON.parse(fs.readFileSync(gw.gateway.registryPath, "utf8"));
+    const entry = registryJson.workflows.find((w) => w.id === "wan22-i2v-hq");
+    entry.runtime_copies = [path.join(gw.workDir, "never-deployed.json")];
+    fs.writeFileSync(gw.gateway.registryPath, JSON.stringify(registryJson, null, 2));
+    let err = null;
+    try {
+      pes.gateProductionDispatch({ prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto" }, { gateway: gw.gateway });
+    } catch (e) { err = e; }
+    assert.ok(err, "a missing runtime copy must refuse the dispatch");
+    assert.equal(err.code, "comfyui_workflow_runtime_missing");
+    assert.equal(err.statusCode, 409);
+    assert.match(err.message, /runtime copy missing/);
+    assert.match(err.message, /never-deployed\.json/);
+  } finally {
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
+  }
+});
+
+test("dispatch isolation: the injected fixture dispatches while live VIDNAS reads are provably impossible", () => {
+  const pes = require("../package-engine-server.js");
+  const gw = dispatchGateway();
+  // Instrument fs: ANY read under the live VIDNAS mount throws. If the gate
+  // (registry load, canonical hash, runtime copies) touched the real mount
+  // during this dispatch, the test fails loudly instead of passing by luck.
+  const realExistsSync = fs.existsSync;
+  const realReadFileSync = fs.readFileSync;
+  const guard = (p) => {
+    if (String(p).startsWith("/mnt/vidnas_public")) {
+      throw new Error("LIVE VIDNAS READ ATTEMPTED IN HERMETIC TEST: " + p);
+    }
+  };
+  fs.existsSync = (p, ...rest) => { guard(p); return realExistsSync(p, ...rest); };
+  fs.readFileSync = (p, ...rest) => { guard(p); return realReadFileSync(p, ...rest); };
+  try {
+    const permit = pes.gateProductionDispatch(
+      { prestoProfile: "wan22_hq_720p_5s_no_lightx2v", lane: "aigen-presto" },
+      { gateway: gw.gateway });
+    assert.equal(permit.workflowIdentity.id, "wan22-i2v-hq");
+    assert.ok(permit.endpoint, "a real permit is minted from the injected fixture alone");
+  } finally {
+    fs.existsSync = realExistsSync;
+    fs.readFileSync = realReadFileSync;
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
