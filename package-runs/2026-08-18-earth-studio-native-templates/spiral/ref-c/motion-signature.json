@@ -1,0 +1,143 @@
+{
+  "signature_version": 1,
+  "source_file": "VIDTOOLZ-TPL-SPIRAL-C.esp",
+  "name": "VIDTOOLZ-TPL-SPIRAL-C",
+  "duration_seconds": 50,
+  "fps": 30,
+  "rotation_authoring": "poi_target_lock",
+  "poi_target_lock": true,
+  "keyframe_counts": {
+    "longitude": 9,
+    "latitude": 9,
+    "altitude": 9,
+    "pan": 0,
+    "tilt": 0
+  },
+  "route_distance_m": 9105.666865528685,
+  "translation": {
+    "window": {
+      "onset": 0,
+      "completion": 1
+    },
+    "progress_curve": [
+      {
+        "t": 0,
+        "progress": 0
+      },
+      {
+        "t": 0.1,
+        "progress": 0.08492402430426779
+      },
+      {
+        "t": 0.2,
+        "progress": 0.1698510733834388
+      },
+      {
+        "t": 0.3,
+        "progress": 0.22571294943186332
+      },
+      {
+        "t": 0.4,
+        "progress": 0.3595000653414948
+      },
+      {
+        "t": 0.5,
+        "progress": 0.45725727387398757
+      },
+      {
+        "t": 0.6,
+        "progress": 0.5678684878605713
+      },
+      {
+        "t": 0.7,
+        "progress": 0.6897852238631038
+      },
+      {
+        "t": 0.8,
+        "progress": 0.8001494034901732
+      },
+      {
+        "t": 0.9,
+        "progress": 0.8967770457350778
+      },
+      {
+        "t": 1,
+        "progress": 1
+      }
+    ]
+  },
+  "altitude": {
+    "start_m": 104,
+    "end_m": 104,
+    "ratio_end_over_start": 1,
+    "window": {
+      "onset": 0,
+      "completion": 1
+    },
+    "curve": [
+      {
+        "t": 0,
+        "altitude_m": 104.34256792068481
+      },
+      {
+        "t": 0.1,
+        "altitude_m": 380.59934122378337
+      },
+      {
+        "t": 0.2,
+        "altitude_m": 656.8561145268819
+      },
+      {
+        "t": 0.3,
+        "altitude_m": 743.8929254992316
+      },
+      {
+        "t": 0.4,
+        "altitude_m": 646.6892468337471
+      },
+      {
+        "t": 0.5,
+        "altitude_m": 542.4788903483303
+      },
+      {
+        "t": 0.6,
+        "altitude_m": 432.6283877438343
+      },
+      {
+        "t": 0.7,
+        "altitude_m": 317.5076684320152
+      },
+      {
+        "t": 0.8,
+        "altitude_m": 211.7963554915987
+      },
+      {
+        "t": 0.9,
+        "altitude_m": 135.58067320121657
+      },
+      {
+        "t": 1,
+        "altitude_m": 104.34256792068481
+      }
+    ]
+  },
+  "easing": {
+    "longitude": {
+      "linear": 10,
+      "auto": 8
+    },
+    "latitude": {
+      "auto": 10,
+      "linear": 8
+    },
+    "altitude": {
+      "none": 18
+    },
+    "departure": {
+      "x": 0,
+      "y": 0,
+      "type": "linear"
+    },
+    "arrival_examples": []
+  }
+}

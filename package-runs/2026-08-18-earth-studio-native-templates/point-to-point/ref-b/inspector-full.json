@@ -1,0 +1,382 @@
+{
+  "file": "package-runs/2026-08-18-earth-studio-native-templates/point-to-point/ref-b/export/VIDTOOLZ-TPL-POINT-B.esp",
+  "name": "VIDTOOLZ-TPL-POINT-B",
+  "modelVersion": 18,
+  "shape": "native",
+  "fps": 30,
+  "duration_frames": 270,
+  "duration_seconds": 9,
+  "dimensions": {
+    "width": 3840,
+    "height": 2160
+  },
+  "tracks": {
+    "longitude": [
+      {
+        "time": 0,
+        "value": -0.11934210000001144,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.2222222222222222,
+        "value": -0.11934210000001144,
+        "transitionIn": null,
+        "transitionOut": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom",
+          "logarithmicMode": true
+        }
+      },
+      {
+        "time": 0.5,
+        "value": 1.0875695999829134,
+        "transitionIn": {
+          "x": -0.09259259259259256,
+          "y": -0.0011175108333174588,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": true
+        },
+        "transitionOut": {
+          "x": 0.09259259259259256,
+          "y": 0.0011175108333174588,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": true
+        }
+      },
+      {
+        "time": 0.7777777777777778,
+        "value": 2.2944812999658097,
+        "transitionIn": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom",
+          "logarithmicMode": true
+        },
+        "transitionOut": null
+      },
+      {
+        "time": 1,
+        "value": 2.2944812999658097,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ],
+    "latitude": [
+      {
+        "time": 0,
+        "value": 51.503073825637586,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.2222222222222222,
+        "value": 51.503073825637586,
+        "transitionIn": null,
+        "transitionOut": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom",
+          "logarithmicMode": true
+        }
+      },
+      {
+        "time": 0.5,
+        "value": 50.18074910643989,
+        "transitionIn": {
+          "x": -0.09259259259259256,
+          "y": 0.0024487494799957377,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": true
+        },
+        "transitionOut": {
+          "x": 0.09259259259259256,
+          "y": -0.0024487494799957377,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": true
+        }
+      },
+      {
+        "time": 0.7777777777777778,
+        "value": 48.858424387242195,
+        "transitionIn": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom",
+          "logarithmicMode": true
+        },
+        "transitionOut": null
+      },
+      {
+        "time": 1,
+        "value": 48.858424387242195,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ],
+    "altitude": [
+      {
+        "time": 0,
+        "value": 31993527.384287253,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.2222222222222222,
+        "value": 31993527.384287253,
+        "transitionIn": null,
+        "transitionOut": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom",
+          "logarithmicMode": true
+        }
+      },
+      {
+        "time": 0.5,
+        "value": 47282437.39518628,
+        "transitionIn": {
+          "x": -0.09259259259259256,
+          "y": -0.00010671899658987183,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": true
+        },
+        "transitionOut": {
+          "x": 0.09259259259259256,
+          "y": 0.00010671899658987183,
+          "influence": 0.35,
+          "type": "auto",
+          "logarithmicMode": true
+        }
+      },
+      {
+        "time": 0.7777777777777778,
+        "value": 32035223.337840907,
+        "transitionIn": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom",
+          "logarithmicMode": true
+        },
+        "transitionOut": null
+      },
+      {
+        "time": 1,
+        "value": 32035223.337840907,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ],
+    "pan": [
+      {
+        "time": 0,
+        "value": 0,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.3333333333333333,
+        "value": 0,
+        "transitionIn": null,
+        "transitionOut": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+        }
+      },
+      {
+        "time": 0.6666666666666666,
+        "value": 0,
+        "transitionIn": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+        },
+        "transitionOut": null
+      },
+      {
+        "time": 1,
+        "value": 0,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ],
+    "tilt": [
+      {
+        "time": 0,
+        "value": 0,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.3333333333333333,
+        "value": 0,
+        "transitionIn": null,
+        "transitionOut": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+        }
+      },
+      {
+        "time": 0.6666666666666666,
+        "value": 0,
+        "transitionIn": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.2,
+          "type": "custom"
+        },
+        "transitionOut": null
+      },
+      {
+        "time": 1,
+        "value": 0,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ]
+  },
+  "poi_target_lock": true,
+  "poi": {
+    "longitude": [
+      {
+        "time": 0,
+        "value": -0.119344027482299,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.3333333333333333,
+        "value": -0.119344027482299,
+        "transitionIn": null,
+        "transitionOut": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.5,
+          "type": "custom"
+        }
+      },
+      {
+        "time": 0.6666666666666666,
+        "value": 2.2944812999794806,
+        "transitionIn": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.7,
+          "type": "custom"
+        },
+        "transitionOut": {
+          "x": 0.12962962962962965,
+          "y": 1.1102230246251565e-16,
+          "influence": 0.35,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 1,
+        "value": 2.2944812999794806,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ],
+    "latitude": [
+      {
+        "time": 0,
+        "value": 51.503076722408565,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.3333333333333333,
+        "value": 51.503076722408565,
+        "transitionIn": null,
+        "transitionOut": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.5,
+          "type": "custom"
+        }
+      },
+      {
+        "time": 0.6666666666666666,
+        "value": 48.858426923978016,
+        "transitionIn": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.7,
+          "type": "custom"
+        },
+        "transitionOut": {
+          "x": 0.12962962962962965,
+          "y": 0,
+          "influence": 0.35,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 1,
+        "value": 48.858426923978016,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ],
+    "altitude": [
+      {
+        "time": 0,
+        "value": 29795356.91859344,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.3333333333333333,
+        "value": 29795356.91859344,
+        "transitionIn": null,
+        "transitionOut": {
+          "x": 1,
+          "y": 0,
+          "influence": 0.5,
+          "type": "custom"
+        }
+      },
+      {
+        "time": 0.6666666666666666,
+        "value": 30412337.657754675,
+        "transitionIn": {
+          "x": -1,
+          "y": 0,
+          "influence": 0.7,
+          "type": "custom"
+        },
+        "transitionOut": {
+          "x": 0.12962962962962965,
+          "y": -2.396971510165713e-13,
+          "influence": 0.35,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 1,
+        "value": 30412337.657754675,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ]
+  },
+  "rotation_authoring": "keyframed_rotation"
+}

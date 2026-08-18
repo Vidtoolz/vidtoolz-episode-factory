@@ -1,0 +1,375 @@
+{
+  "file": "package-runs/2026-08-18-earth-studio-native-templates/spiral/ref-c/export/VIDTOOLZ-TPL-SPIRAL-C.esp",
+  "name": "VIDTOOLZ-TPL-SPIRAL-C",
+  "modelVersion": 18,
+  "shape": "native",
+  "fps": 30,
+  "duration_frames": 1500,
+  "duration_seconds": 50,
+  "dimensions": {
+    "width": 3840,
+    "height": 2160
+  },
+  "tracks": {
+    "longitude": [
+      {
+        "time": 0,
+        "value": -0.119344027482299,
+        "transitionIn": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        },
+        "transitionOut": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        }
+      },
+      {
+        "time": 0.24933333333333332,
+        "value": -0.09762648567945575,
+        "transitionIn": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 0.43733333333333335,
+        "value": -0.119344027482299,
+        "transitionIn": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        },
+        "transitionOut": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        }
+      },
+      {
+        "time": 0.58,
+        "value": -0.13184465042647275,
+        "transitionIn": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 0.6893333333333334,
+        "value": -0.119344027482299,
+        "transitionIn": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        },
+        "transitionOut": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        }
+      },
+      {
+        "time": 0.7786666666666666,
+        "value": -0.11098679022666147,
+        "transitionIn": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 0.8573333333333333,
+        "value": -0.119344027482299,
+        "transitionIn": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        },
+        "transitionOut": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        }
+      },
+      {
+        "time": 0.9293333333333333,
+        "value": -0.12660199913702286,
+        "transitionIn": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 1,
+        "value": -0.119344027482299,
+        "transitionIn": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        },
+        "transitionOut": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        }
+      }
+    ],
+    "latitude": [
+      {
+        "time": 0,
+        "value": 51.50756830381982,
+        "transitionIn": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 0.24933333333333332,
+        "value": 51.503074717232266,
+        "transitionIn": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        },
+        "transitionOut": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        }
+      },
+      {
+        "time": 0.43733333333333335,
+        "value": 51.49290048327376,
+        "transitionIn": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 0.58,
+        "value": 51.50307605806225,
+        "transitionIn": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        },
+        "transitionOut": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        }
+      },
+      {
+        "time": 0.6893333333333334,
+        "value": 51.509252646849035,
+        "transitionIn": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 0.7786666666666666,
+        "value": 51.50307642547679,
+        "transitionIn": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        },
+        "transitionOut": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        }
+      },
+      {
+        "time": 0.8573333333333333,
+        "value": 51.49837459811866,
+        "transitionIn": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 0.9293333333333333,
+        "value": 51.503076498453055,
+        "transitionIn": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        },
+        "transitionOut": {
+          "x": 0,
+          "y": 0,
+          "type": "linear"
+        }
+      },
+      {
+        "time": 1,
+        "value": 51.50756830381982,
+        "transitionIn": {
+          "x": -0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.066,
+          "y": 0,
+          "influence": 0.5,
+          "type": "auto"
+        }
+      }
+    ],
+    "altitude": [
+      {
+        "time": 0,
+        "value": 104.34256792068481,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.24933333333333332,
+        "value": 793.1427893564105,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.43733333333333335,
+        "value": 610.3998734652996,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.58,
+        "value": 455.7712523266673,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.6893333333333334,
+        "value": 329.2569259405136,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.7786666666666666,
+        "value": 230.8568943068385,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.8573333333333333,
+        "value": 160.571157425642,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 0.9293333333333333,
+        "value": 118.39971529692411,
+        "transitionIn": null,
+        "transitionOut": null
+      },
+      {
+        "time": 1,
+        "value": 104.34256792068481,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ],
+    "pan": null,
+    "tilt": null
+  },
+  "poi_target_lock": true,
+  "poi": {
+    "longitude": [
+      {
+        "time": 0,
+        "value": -0.119344027482299,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ],
+    "latitude": [
+      {
+        "time": 0,
+        "value": 51.503076722408565,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ],
+    "altitude": [
+      {
+        "time": 0,
+        "value": 25.442537026214836,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ]
+  },
+  "rotation_authoring": "poi_target_lock"
+}

@@ -1,0 +1,76 @@
+{
+  "created": "2026-08-18",
+  "purpose": "BYTE-FROZEN CONTROL for native-template research",
+  "rule": "Plans generated WITHOUT an explicit native-template request must remain byte-identical to these v0.9.4 artifacts in all future implementation work. Later regression tests must compare exact artifact hashes, not semantic equivalence.",
+  "planner_version": "v0.9.4",
+  "motion_profile": "v4",
+  "accepted_head": "607c9f8",
+  "controls": [
+    {
+      "plan": "2026-08-12-earth-studio-hover-real-import-v094",
+      "artifact": "earth-studio.esp",
+      "path": "package-runs/2026-08-12-earth-studio-hover-real-import-v094/earth-studio/earth-studio.esp",
+      "sha256": "360e9ab184672abcc5a773650807a7e5ac8248c838de12aedbea5454f98dffce"
+    },
+    {
+      "plan": "2026-08-12-earth-studio-hover-real-import-v094",
+      "artifact": "shot-plan.json",
+      "path": "package-runs/2026-08-12-earth-studio-hover-real-import-v094/earth-studio/shot-plan.json",
+      "sha256": "c72227f3945102700f3e96b09ec8dfcea903162a4fa19faf0655b0bc3593d0e6"
+    },
+    {
+      "plan": "2026-08-12-earth-studio-hover-real-import-v094",
+      "artifact": "job.json",
+      "path": "package-runs/2026-08-12-earth-studio-hover-real-import-v094/earth-studio/job.json",
+      "sha256": "11269c92f8f50c65b2285946c1f0d3f6a722370e40ab9fe1f10b96ae7a65df20"
+    },
+    {
+      "plan": "2026-08-12-earth-studio-antimeridian-real-import-v094",
+      "artifact": "earth-studio.esp",
+      "path": "package-runs/2026-08-12-earth-studio-antimeridian-real-import-v094/earth-studio/earth-studio.esp",
+      "sha256": "d93376594e5cfdf995513f090a442404714adf7d7f81c1ce6d799dcc826f63c9"
+    },
+    {
+      "plan": "2026-08-12-earth-studio-antimeridian-real-import-v094",
+      "artifact": "shot-plan.json",
+      "path": "package-runs/2026-08-12-earth-studio-antimeridian-real-import-v094/earth-studio/shot-plan.json",
+      "sha256": "3efa4bd9a51fa54e274745caeb003ec8131d8e2f62c51848c700104d580e9500"
+    },
+    {
+      "plan": "2026-08-12-earth-studio-antimeridian-real-import-v094",
+      "artifact": "job.json",
+      "path": "package-runs/2026-08-12-earth-studio-antimeridian-real-import-v094/earth-studio/job.json",
+      "sha256": "0350cbf0126a5ca4a5b0343bd05a32884b21cf8349bba98cf7826402961bae4e"
+    },
+    {
+      "plan": "2026-08-12-earth-studio-space-zoom-v094-candidate",
+      "artifact": "earth-studio.esp",
+      "path": "package-runs/2026-08-12-earth-studio-space-zoom-v094-candidate/earth-studio/earth-studio.esp",
+      "sha256": "d732a6169edacbfbf6129740c4007478ba5131f74c91713658926255604c4bf6"
+    },
+    {
+      "plan": "2026-08-12-earth-studio-space-zoom-v094-candidate",
+      "artifact": "shot-plan.json",
+      "path": "package-runs/2026-08-12-earth-studio-space-zoom-v094-candidate/earth-studio/shot-plan.json",
+      "sha256": "d4df7dd8ef139347337505c4ee639d0d1780b05ead13ac2e8159046eefdc644d"
+    },
+    {
+      "plan": "2026-08-12-earth-studio-space-zoom-v094-candidate",
+      "artifact": "job.json",
+      "path": "package-runs/2026-08-12-earth-studio-space-zoom-v094-candidate/earth-studio/job.json",
+      "sha256": "f78a2784ef151579a3e9b6787a4405e5621fbb5711b29f9c0a8b00be91507000"
+    },
+    {
+      "plan": "2026-08-07-earth-studio-v04-acceptance",
+      "artifact": "earth-studio.esp (pinned acceptance)",
+      "path": "package-runs/2026-08-07-earth-studio-v04-acceptance/earth-studio/earth-studio.esp",
+      "sha256": "7754a178b63c60a9f7ccdf3c5313200501a0ac6463016b850fe628da667c3e41"
+    },
+    {
+      "plan": "2026-06-27-london-proof",
+      "artifact": "earth-studio.esp (pinned historical)",
+      "path": "package-runs/2026-06-27-london-proof/earth-studio/earth-studio.esp",
+      "sha256": "33eab695b82e60fefd6d52aa8c06ddcd630aa92c3d10a9aba9a0433eed9d58d6"
+    }
+  ]
+}

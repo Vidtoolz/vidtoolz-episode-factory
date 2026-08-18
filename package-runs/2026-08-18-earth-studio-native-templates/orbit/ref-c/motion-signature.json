@@ -1,0 +1,140 @@
+{
+  "signature_version": 1,
+  "source_file": "VIDTOOLZ-TPL-ORBIT-C.esp",
+  "name": "VIDTOOLZ-TPL-ORBIT-C",
+  "duration_seconds": 25,
+  "fps": 30,
+  "rotation_authoring": "poi_target_lock",
+  "poi_target_lock": true,
+  "keyframe_counts": {
+    "longitude": 5,
+    "latitude": 5,
+    "altitude": 5,
+    "pan": 0,
+    "tilt": 0
+  },
+  "route_distance_m": 14126.309671390982,
+  "translation": {
+    "window": {
+      "onset": 0,
+      "completion": 1
+    },
+    "progress_curve": [
+      {
+        "t": 0,
+        "progress": 0
+      },
+      {
+        "t": 0.1,
+        "progress": 0.10621448995552249
+      },
+      {
+        "t": 0.2,
+        "progress": 0.2124394513066771
+      },
+      {
+        "t": 0.3,
+        "progress": 0.28755007908498526
+      },
+      {
+        "t": 0.4,
+        "progress": 0.39376980554502666
+      },
+      {
+        "t": 0.5,
+        "progress": 0.5000000000000001
+      },
+      {
+        "t": 0.6,
+        "progress": 0.6062301944549734
+      },
+      {
+        "t": 0.7,
+        "progress": 0.7124499209150148
+      },
+      {
+        "t": 0.8,
+        "progress": 0.7875605486933229
+      },
+      {
+        "t": 0.9,
+        "progress": 0.8937855100444775
+      },
+      {
+        "t": 1,
+        "progress": 1
+      }
+    ]
+  },
+  "altitude": {
+    "start_m": 346,
+    "end_m": 346,
+    "ratio_end_over_start": 1,
+    "window": null,
+    "curve": [
+      {
+        "t": 0,
+        "altitude_m": 346
+      },
+      {
+        "t": 0.1,
+        "altitude_m": 346
+      },
+      {
+        "t": 0.2,
+        "altitude_m": 346
+      },
+      {
+        "t": 0.3,
+        "altitude_m": 346
+      },
+      {
+        "t": 0.4,
+        "altitude_m": 346
+      },
+      {
+        "t": 0.5,
+        "altitude_m": 346
+      },
+      {
+        "t": 0.6,
+        "altitude_m": 346
+      },
+      {
+        "t": 0.7,
+        "altitude_m": 346
+      },
+      {
+        "t": 0.8,
+        "altitude_m": 346
+      },
+      {
+        "t": 0.9,
+        "altitude_m": 346
+      },
+      {
+        "t": 1,
+        "altitude_m": 346
+      }
+    ]
+  },
+  "easing": {
+    "longitude": {
+      "linear": 6,
+      "auto": 4
+    },
+    "latitude": {
+      "auto": 6,
+      "linear": 4
+    },
+    "altitude": {
+      "none": 10
+    },
+    "departure": {
+      "x": 0,
+      "y": 0,
+      "type": "linear"
+    },
+    "arrival_examples": []
+  }
+}

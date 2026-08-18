@@ -1,0 +1,915 @@
+{
+  "schema_version": 1,
+  "created": "2026-08-18",
+  "task": "earth-studio native quick-start template evidence",
+  "gates": {
+    "gate0": {
+      "status": "EVIDENCE_READY",
+      "branch": "A",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "probe_project": "ekayle1 (2)VIDTOOLZ-TPL-FLY-ORBIT-PROBE",
+      "probe_project_note": "intended name VIDTOOLZ-TPL-FLY-ORBIT-PROBE; Save As appended to a stale default — token preserved for bulk identification",
+      "browser_control": "AVAILABLE — CDP attach via puppeteer-core to operator-launched debug-profile Chrome 151 on 127.0.0.1:9222; single Earth Studio tab; no credentials touched",
+      "export_command": "File > Export > \"Earth Studio Project (.esp, .esb)…\" (Ctrl+E)",
+      "earth_studio_inputs": {
+        "template": "Fly-To and Orbit",
+        "ui_description": "Moves the camera down and then rotates around a point of interest",
+        "poi": {
+          "search": "Eiffel Tower",
+          "selected": "Eiffel Tower, Avenue Gustave Eiffel, Paris, France",
+          "resolved_marker": "Av. Gustave Eiffel, 75007 Paris, France",
+          "target_lon": 2.294,
+          "target_lat": 48.858,
+          "target_alt_m": 64,
+          "classification": "USER_SET(poi)/EARTH_STUDIO_DERIVED(coords)"
+        },
+        "wizard_step2": {
+          "end_altitude_m": {
+            "value": 264.493587493896,
+            "slider_min": 64.49358749389648,
+            "slider_max": 1864.4935874938965,
+            "classification": "DEFAULT/EARTH_STUDIO_DERIVED"
+          },
+          "target_altitude_m": {
+            "value": 64.4935874938965,
+            "note": "equals slider min (terrain-derived)",
+            "classification": "DEFAULT/EARTH_STUDIO_DERIVED"
+          },
+          "orbit_radius_m": {
+            "value": 400,
+            "slider_min": 100,
+            "slider_max": 3000,
+            "classification": "DEFAULT"
+          },
+          "approach_angle_deg": {
+            "value": 0,
+            "range": [
+              0,
+              360
+            ],
+            "label": "Approach Angle (0° = North)",
+            "classification": "DEFAULT"
+          },
+          "clockwise": {
+            "value": false,
+            "classification": "DEFAULT"
+          }
+        },
+        "wizard_step3": {
+          "duration_s": {
+            "value": 25,
+            "classification": "DEFAULT"
+          }
+        },
+        "project_settings": {
+          "dimensions": "3840x2160",
+          "frame_rate_fps": 30,
+          "duration_frames": 750,
+          "world": "Earth",
+          "scale_keyframes_toggle": "present (unchecked)",
+          "classification": "DEFAULT"
+        },
+        "frame0_editor_state": {
+          "camera": {
+            "lon": 2.573,
+            "lat": 48.858,
+            "alt_m": 20264,
+            "pan_deg": -89.79,
+            "tilt_deg": 45.205
+          },
+          "camera_target": {
+            "enabled": "On",
+            "lon": 2.294,
+            "lat": 48.858,
+            "alt_m": 64,
+            "influence_pct": 100
+          }
+        }
+      },
+      "evidence": {
+        "raw_esp": "gate0/export/ekayle1 (2)VIDTOOLZ-TPL-FLY-ORBIT-PROBE.esp",
+        "sha256": "7404d8f29ec85da8df9352ea8af006aec98a9e8d9fda4285032e5b81e675c65f",
+        "derived": [
+          "gate0/probe-inspector-full.json",
+          "gate0/probe-motion-signature.json"
+        ],
+        "screenshots": [
+          "gate0/browser-control-proof.png",
+          "gate0/step1-blank-dropdown.png",
+          "gate0/step2-quickstart-picker.png",
+          "gate0/step3-quickstart-page2.png",
+          "gate0/step5-wizard-initial.png",
+          "gate0/step6-poi-suggestions.png",
+          "gate0/step7-poi-set.png",
+          "gate0/step8-wizard-step2.png",
+          "gate0/step9-wizard-step3.png",
+          "gate0/step10-project-created.png",
+          "gate0/step13-project-settings.png",
+          "gate0/step16-export-dialog.png"
+        ]
+      },
+      "inspector_summary": {
+        "model_version": 18,
+        "type": "quickstart",
+        "rotation_authoring": "poi_target_lock",
+        "keyframes": {
+          "longitude": 6,
+          "latitude": 6,
+          "altitude": 6,
+          "pan": 0,
+          "tilt": 0
+        },
+        "altitude_m": "20264→264 (moves t=0.00–0.20)",
+        "route_distance_m": 22641
+      }
+    },
+    "gate1": {
+      "status": "EVIDENCE_READY",
+      "completed": "2026-08-18",
+      "references_ready": 15,
+      "notes": [
+        "spiral evidence acquired — SPIRAL no longer BLOCKED_NO_NATIVE_REFERENCE",
+        "all templates Branch A KEYFRAMED_ESP",
+        "fly-to-and-orbit/ref-a has 5-point contact frames (0/25/50/75/100%)",
+        "controls/determinism-flyorbit-25s-repeat = second identical-input FLY-ORBIT run for keyframe-determinism analysis",
+        "probe project name carries stale prefix, token preserved"
+      ]
+    }
+  },
+  "resume_rules": [
+    "load this manifest",
+    "verify hashes of every CAPTURED/EVIDENCE_READY reference",
+    "continue with first unfinished reference",
+    "never reacquire EVIDENCE_READY evidence without documented corruption"
+  ],
+  "controls_manifest": "controls/v094-byte-control-manifest.json",
+  "naming": "VIDTOOLZ-TPL-<TEMPLATE>-<REF>",
+  "references": [
+    {
+      "template": "zoom-to",
+      "reference_id": "ref-a",
+      "project_name": "VIDTOOLZ-TPL-ZOOM-A",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "normal case",
+      "planned_inputs": {
+        "target": "LONDON_EYE",
+        "lat": 51.503324,
+        "lon": -0.119543,
+        "settings": "native defaults"
+      },
+      "earth_studio_inputs": {
+        "poi": "London Eye Ticket Office, London, UK",
+        "duration_s": 5,
+        "all": "DEFAULT"
+      },
+      "evidence_paths": [
+        "zoom-to/ref-a/export/VIDTOOLZ-TPL-ZOOM-A.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "01-wizard-step1.png",
+        "02-poi-set.png",
+        "03-step2-defaults.png",
+        "04-step3.png",
+        "05-created.png"
+      ],
+      "hashes": {
+        "raw_esp": "f487aec69f349a891589c0378c666e6cce3cde978dd596d4559853b75951b91e",
+        "inspector_full": "298e0c0e6c7396c61f75f9ec0b92851fa3612a64eff270f17c67da8bdfdbd9c7",
+        "motion_signature": "d066a722f816e9eb5517dfaad4e6f7797c3bd7f270ef72f4a1a32c9e0c79fcf9"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 POI search + fine-tune framing; step2 Starting Altitude (display km, slider 0-1, default max=65117km/space); step3 duration (default 5s)",
+        "defaults": {
+          "starting_altitude": "65117km (slider max)",
+          "duration_s": 5
+        },
+        "target_lock": "NONE — no Camera Target group; camera straight down (pan 0, tilt 0) above POI"
+      }
+    },
+    {
+      "template": "zoom-to",
+      "reference_id": "ref-b",
+      "project_name": "VIDTOOLZ-TPL-ZOOM-B",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "scale variation",
+      "planned_inputs": {
+        "target": "EMPIRE_STATE",
+        "lat": 40.74844,
+        "lon": -73.985664,
+        "settings": "native defaults"
+      },
+      "earth_studio_inputs": {
+        "poi": "Empire State Building, West 34th Street, New York, NY, USA (20 W 34th St resolved)",
+        "duration_s": 5,
+        "all": "DEFAULT"
+      },
+      "evidence_paths": [
+        "zoom-to/ref-b/export/VIDTOOLZ-TPL-ZOOM-B.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "02-poi-set.png",
+        "03-step2-defaults.png"
+      ],
+      "hashes": {
+        "raw_esp": "5650693ea9ef63cee081869e8dde7e9064d1d800e21c9980fecbd241b38a2fd5",
+        "inspector_full": "1a2ac03661a9d5d4998188cbf746ec94b5071ae549bf7f3b3d2b326fd2b6980e",
+        "motion_signature": "da5fb30fa1a0c58ed2828ca0feb6e6397946c3a95df3fde415d52336766f8b10"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 POI search + fine-tune framing; step2 Starting Altitude (display km, slider 0-1, default max=65117km/space); step3 duration (default 5s)",
+        "defaults": {
+          "starting_altitude": "65117km (slider max)",
+          "duration_s": 5
+        },
+        "target_lock": "NONE — no Camera Target group; camera straight down (pan 0, tilt 0) above POI"
+      }
+    },
+    {
+      "template": "zoom-to",
+      "reference_id": "ref-c",
+      "project_name": "VIDTOOLZ-TPL-ZOOM-C",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "duration variation",
+      "planned_inputs": {
+        "target": "LONDON_EYE",
+        "lat": 51.503324,
+        "lon": -0.119543,
+        "settings": "materially different duration IF template exposes duration; otherwise record native behavior"
+      },
+      "earth_studio_inputs": {
+        "poi": "London Eye Ticket Office, London, UK",
+        "duration_s": 15,
+        "duration": "USER_SET"
+      },
+      "evidence_paths": [
+        "zoom-to/ref-c/export/VIDTOOLZ-TPL-ZOOM-C.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "04-step3-15s.png"
+      ],
+      "hashes": {
+        "raw_esp": "21082afcfa3ac8b004a4fa15e7424adfb759088b033528c800df5a1fe148d678",
+        "inspector_full": "283748ff8ceadd8586922e317c6efbb3e98a3aecb7e507ee97a310c82cb9fa84",
+        "motion_signature": "b8e23f8130a0abe116bf3b75f522b0e02c536f136c1c472d1a04a6e52a559f5f"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 POI search + fine-tune framing; step2 Starting Altitude (display km, slider 0-1, default max=65117km/space); step3 duration (default 5s)",
+        "defaults": {
+          "starting_altitude": "65117km (slider max)",
+          "duration_s": 5
+        },
+        "target_lock": "NONE — no Camera Target group; camera straight down (pan 0, tilt 0) above POI"
+      }
+    },
+    {
+      "template": "orbit",
+      "reference_id": "ref-a",
+      "project_name": "VIDTOOLZ-TPL-ORBIT-A",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "normal case",
+      "planned_inputs": {
+        "target": "LONDON_EYE",
+        "lat": 51.503324,
+        "lon": -0.119543,
+        "settings": "native defaults"
+      },
+      "earth_studio_inputs": {
+        "poi": "London Eye Ticket Office",
+        "radius_m": 624,
+        "altitude_m": 346,
+        "target_alt_m": 34,
+        "start_heading": 0,
+        "clockwise": false,
+        "duration_s": 50,
+        "all": "DEFAULT"
+      },
+      "evidence_paths": [
+        "orbit/ref-a/export/VIDTOOLZ-TPL-ORBIT-A.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "01-wizard-step1.png",
+        "03-step2-defaults.png",
+        "04-step3.png",
+        "05-created.png"
+      ],
+      "hashes": {
+        "raw_esp": "1ed6cac1eec179fbc611b61d6132dac85729a0376078d7694cbc76ee445215dc",
+        "inspector_full": "39f70b874083cb776c96ecde5fb9308b0d17109dcc8e7cb0fd77c54faf193f50",
+        "motion_signature": "9a44c04c9429682bde051b26b7d86b9478de001fa8e5b5c6cc7c43e3969e118b"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 POI search; step2 Radius/Altitude/Target Altitude (percent sliders with derived meter display; defaults radius 10%→624m both sites, altitude 25%→target+312m), Start Heading (0°=north start), Clockwise (default off); step3 duration (default 50s)",
+        "defaults": {
+          "radius_m": 624,
+          "altitude": "target_alt+312m",
+          "start_heading_deg": 0,
+          "clockwise": false,
+          "duration_s": 50
+        },
+        "target_lock": "Camera Target enabled, influence 100%"
+      }
+    },
+    {
+      "template": "orbit",
+      "reference_id": "ref-b",
+      "project_name": "VIDTOOLZ-TPL-ORBIT-B",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "target geometry variation",
+      "planned_inputs": {
+        "target": "EIFFEL_TOWER",
+        "lat": 48.85837,
+        "lon": 2.294481,
+        "settings": "native defaults"
+      },
+      "earth_studio_inputs": {
+        "poi": "Eiffel Tower, Avenue Gustave Eiffel, Paris",
+        "radius_m": 624,
+        "altitude_m": 376,
+        "target_alt_m": 64,
+        "start_heading": 0,
+        "clockwise": false,
+        "duration_s": 50,
+        "all": "DEFAULT"
+      },
+      "evidence_paths": [
+        "orbit/ref-b/export/VIDTOOLZ-TPL-ORBIT-B.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "03-step2-defaults.png",
+        "04-step3.png"
+      ],
+      "hashes": {
+        "raw_esp": "ffaa6cd703fc6a3067dcbc2a5172d1f645ba0017b09cb1aa827b84789e8722a8",
+        "inspector_full": "95c07e74c52bb7e65aec8f42e54bd4c7a8fe2a23d67114c5c4b411040f8283b4",
+        "motion_signature": "65bdd77819c03aedb3bff8adbf8d60fe918f98d532ca306ed8a0b9701558192a"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 POI search; step2 Radius/Altitude/Target Altitude (percent sliders with derived meter display; defaults radius 10%→624m both sites, altitude 25%→target+312m), Start Heading (0°=north start), Clockwise (default off); step3 duration (default 50s)",
+        "defaults": {
+          "radius_m": 624,
+          "altitude": "target_alt+312m",
+          "start_heading_deg": 0,
+          "clockwise": false,
+          "duration_s": 50
+        },
+        "target_lock": "Camera Target enabled, influence 100%"
+      }
+    },
+    {
+      "template": "orbit",
+      "reference_id": "ref-c",
+      "project_name": "VIDTOOLZ-TPL-ORBIT-C",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "duration/radius variation",
+      "planned_inputs": {
+        "target": "LONDON_EYE",
+        "lat": 51.503324,
+        "lon": -0.119543,
+        "settings": "different duration/radius IF exposed"
+      },
+      "earth_studio_inputs": {
+        "poi": "London Eye Ticket Office",
+        "radius_display_m": 2500,
+        "radius_slider": "USER_SET 40%",
+        "duration_s": 25,
+        "duration": "USER_SET"
+      },
+      "evidence_paths": [
+        "orbit/ref-c/export/VIDTOOLZ-TPL-ORBIT-C.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "03-step2-userset.png",
+        "04-step3-25s.png"
+      ],
+      "hashes": {
+        "raw_esp": "33a0598468e7e9a33e4aac46d53272649a4bfff3a3de73b9b1cf3c381a4f03e7",
+        "inspector_full": "9eabeb52855e9007a61f2d446734451c650f6fa5c49b9714211a1ddea010e449",
+        "motion_signature": "52b5a5883fc1392d5a33682e61d901eb9265ec00fa4c587ab7ea4a49a2f27d04"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 POI search; step2 Radius/Altitude/Target Altitude (percent sliders with derived meter display; defaults radius 10%→624m both sites, altitude 25%→target+312m), Start Heading (0°=north start), Clockwise (default off); step3 duration (default 50s)",
+        "defaults": {
+          "radius_m": 624,
+          "altitude": "target_alt+312m",
+          "start_heading_deg": 0,
+          "clockwise": false,
+          "duration_s": 50
+        },
+        "target_lock": "Camera Target enabled, influence 100%"
+      }
+    },
+    {
+      "template": "point-to-point",
+      "reference_id": "ref-a",
+      "project_name": "VIDTOOLZ-TPL-POINT-A",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "normal case",
+      "planned_inputs": {
+        "from": "LONDON_EYE",
+        "to": "TOWER_BRIDGE",
+        "from_coords": {
+          "lat": 51.503324,
+          "lon": -0.119543
+        },
+        "to_coords": {
+          "lat": 51.505456,
+          "lon": -0.075356
+        },
+        "settings": "native defaults"
+      },
+      "earth_studio_inputs": {
+        "p1": "London Eye Ticket Office",
+        "p2": "Tower Bridge, London, UK",
+        "hold_s": 2,
+        "transit_s": 5,
+        "all": "DEFAULT"
+      },
+      "evidence_paths": [
+        "point-to-point/ref-a/export/VIDTOOLZ-TPL-POINT-A.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "01-wizard-step1.png",
+        "02-p1-set.png",
+        "03-step2-state.png",
+        "04-p2-set.png",
+        "05-step3.png",
+        "06-created.png"
+      ],
+      "hashes": {
+        "raw_esp": "f18c669f6884b0a5a81996c48c7e49af4062d294d209110126114e823fe2e5f4",
+        "inspector_full": "d27e3cc419e39639fabef3bc33ab5939da639c54d7885a03b9d7f1343d90e9b2",
+        "motion_signature": "28b533a26e8c465b17a35982da1a087d424bad41a0549b592846cb8b7acf26ce"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 first-point search; step2 per-point searches (up to 6, + button); step3 per-point hold (default 2s) and transit (default 5s) timings",
+        "defaults": {
+          "hold_s": 2,
+          "transit_s": 5
+        },
+        "target_lock": "Camera Target group PRESENT but influence 0% at frame 0"
+      }
+    },
+    {
+      "template": "point-to-point",
+      "reference_id": "ref-b",
+      "project_name": "VIDTOOLZ-TPL-POINT-B",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "scale variation",
+      "planned_inputs": {
+        "from": "LONDON_EYE",
+        "to": "EIFFEL_TOWER",
+        "from_coords": {
+          "lat": 51.503324,
+          "lon": -0.119543
+        },
+        "to_coords": {
+          "lat": 48.85837,
+          "lon": 2.294481
+        },
+        "settings": "London→Paris scale IF template permits"
+      },
+      "earth_studio_inputs": {
+        "p1": "London Eye Ticket Office",
+        "p2": "Eiffel Tower, Paris (London→Paris scale permitted)",
+        "hold_s": 2,
+        "transit_s": 5,
+        "all": "DEFAULT"
+      },
+      "evidence_paths": [
+        "point-to-point/ref-b/export/VIDTOOLZ-TPL-POINT-B.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "04-p2-set.png",
+        "05-step3.png"
+      ],
+      "hashes": {
+        "raw_esp": "59b310e68f0ae65102d4d047c7dbbe75740f8bb8fd6d031dcdd81b8ebb2f0635",
+        "inspector_full": "46f5879f0e3fc00794dfe8f23786fd418beefd9a5e9722130e04a5d562107a16",
+        "motion_signature": "2c107f7dc39ff9e65ace2cad8e40cde41af1dc96524b9b7887cc6c0706478569"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 first-point search; step2 per-point searches (up to 6, + button); step3 per-point hold (default 2s) and transit (default 5s) timings",
+        "defaults": {
+          "hold_s": 2,
+          "transit_s": 5
+        },
+        "target_lock": "Camera Target group PRESENT but influence 0% at frame 0"
+      }
+    },
+    {
+      "template": "point-to-point",
+      "reference_id": "ref-c",
+      "project_name": "VIDTOOLZ-TPL-POINT-C",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "duration variation",
+      "planned_inputs": {
+        "from": "LONDON_EYE",
+        "to": "TOWER_BRIDGE",
+        "from_coords": {
+          "lat": 51.503324,
+          "lon": -0.119543
+        },
+        "to_coords": {
+          "lat": 51.505456,
+          "lon": -0.075356
+        },
+        "settings": "different duration IF supported"
+      },
+      "earth_studio_inputs": {
+        "p1": "London Eye Ticket Office",
+        "p2": "Tower Bridge",
+        "hold_s": 2,
+        "transit_s": 12,
+        "transit": "USER_SET"
+      },
+      "evidence_paths": [
+        "point-to-point/ref-c/export/VIDTOOLZ-TPL-POINT-C.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "05-step3-12s.png"
+      ],
+      "hashes": {
+        "raw_esp": "58ed714d29c4299a291cd3c348c65864d18b0721cbafb2b001d0cded08f8ea02",
+        "inspector_full": "e9992ca7737a66491e755427951af3a109bd0190c34cc6ca211d8f7e7799bc6d",
+        "motion_signature": "6ddcd4293fde296e035f12084658e7f5c0c2f21235e13e8dda7aea39fe96f390"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 first-point search; step2 per-point searches (up to 6, + button); step3 per-point hold (default 2s) and transit (default 5s) timings",
+        "defaults": {
+          "hold_s": 2,
+          "transit_s": 5
+        },
+        "target_lock": "Camera Target group PRESENT but influence 0% at frame 0"
+      }
+    },
+    {
+      "template": "spiral",
+      "reference_id": "ref-a",
+      "project_name": "VIDTOOLZ-TPL-SPIRAL-A",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "normal case",
+      "planned_inputs": {
+        "target": "LONDON_EYE",
+        "lat": 51.503324,
+        "lon": -0.119543,
+        "settings": "native defaults"
+      },
+      "earth_studio_inputs": {
+        "poi": "London Eye Ticket Office",
+        "radius": "2000→500m",
+        "angle": "0→360°",
+        "altitude": "1004→104m",
+        "duration_s": 25,
+        "all": "DEFAULT"
+      },
+      "evidence_paths": [
+        "spiral/ref-a/export/VIDTOOLZ-TPL-SPIRAL-A.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "01-wizard-step1.png",
+        "03-step2-defaults.png",
+        "04-step3.png",
+        "05-created.png"
+      ],
+      "hashes": {
+        "raw_esp": "ae08222fd001908d33dcffbff7f7c0ddcfa5d4f5aad08e9bc11820229d5c9fa3",
+        "inspector_full": "dfb0ccedd2cf44dd860d52bcd8468566bd7f31608480c2557bb16b0bdd20ba8b",
+        "motion_signature": "bdfb09a89b374cf439ac9d27abb48b262cddcee62921a37701bf7d9364dc54e3"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 POI search; step2 Radius Start/End (2000/500m), Angle Start/End (0/360°, ranges 0-900/360-1080), Altitude Start/End (terrain-derived, London 1004/104m); step3 duration (default 25s)",
+        "defaults": {
+          "radius_start_m": 2000,
+          "radius_end_m": 500,
+          "angle_start": 0,
+          "angle_end": 360,
+          "duration_s": 25
+        },
+        "target_lock": "Camera Target enabled, influence 100%"
+      }
+    },
+    {
+      "template": "spiral",
+      "reference_id": "ref-b",
+      "project_name": "VIDTOOLZ-TPL-SPIRAL-B",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "target variation",
+      "planned_inputs": {
+        "target": "EIFFEL_TOWER",
+        "lat": 48.85837,
+        "lon": 2.294481,
+        "settings": "native defaults"
+      },
+      "earth_studio_inputs": {
+        "poi": "Eiffel Tower, Paris",
+        "radius": "2000→500m",
+        "angle": "0→360°",
+        "altitude": "1034→134m",
+        "duration_s": 25,
+        "all": "DEFAULT"
+      },
+      "evidence_paths": [
+        "spiral/ref-b/export/VIDTOOLZ-TPL-SPIRAL-B.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "03-step2-defaults.png"
+      ],
+      "hashes": {
+        "raw_esp": "6e904bcd461ee990f46e045608aedb7e10515a7408147dac8c1bc28b352ab35e",
+        "inspector_full": "a8455d882590093c1c66affbcaad7290197280038fd8d0276279fce7a1d56742",
+        "motion_signature": "84b8ba28957b1985392ef5aa46c667d8a221567ee9302430c44634efc691332f"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 POI search; step2 Radius Start/End (2000/500m), Angle Start/End (0/360°, ranges 0-900/360-1080), Altitude Start/End (terrain-derived, London 1004/104m); step3 duration (default 25s)",
+        "defaults": {
+          "radius_start_m": 2000,
+          "radius_end_m": 500,
+          "angle_start": 0,
+          "angle_end": 360,
+          "duration_s": 25
+        },
+        "target_lock": "Camera Target enabled, influence 100%"
+      }
+    },
+    {
+      "template": "spiral",
+      "reference_id": "ref-c",
+      "project_name": "VIDTOOLZ-TPL-SPIRAL-C",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "duration/radius variation",
+      "planned_inputs": {
+        "target": "LONDON_EYE",
+        "lat": 51.503324,
+        "lon": -0.119543,
+        "settings": "variation IF exposed"
+      },
+      "earth_studio_inputs": {
+        "poi": "London Eye Ticket Office",
+        "radius": "2000→500m",
+        "angle": "0→720° USER_SET",
+        "altitude": "1004→104m",
+        "duration_s": 50,
+        "duration": "USER_SET"
+      },
+      "evidence_paths": [
+        "spiral/ref-c/export/VIDTOOLZ-TPL-SPIRAL-C.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "03-step2-userset.png",
+        "04-step3-50s.png"
+      ],
+      "hashes": {
+        "raw_esp": "358c6e0c61f41c24be53282986bca8c34d87ee50b67923c0bcbb14a50ab0ea24",
+        "inspector_full": "c8b1f10a86529fd39c4a59572638aac4481d155490f14c29aa336981b9f31d56",
+        "motion_signature": "17099e9dc576cfed5e2c38234595fe8d12722d271c13ca9d503c2e12a83eb9a3"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 POI search; step2 Radius Start/End (2000/500m), Angle Start/End (0/360°, ranges 0-900/360-1080), Altitude Start/End (terrain-derived, London 1004/104m); step3 duration (default 25s)",
+        "defaults": {
+          "radius_start_m": 2000,
+          "radius_end_m": 500,
+          "angle_start": 0,
+          "angle_end": 360,
+          "duration_s": 25
+        },
+        "target_lock": "Camera Target enabled, influence 100%"
+      }
+    },
+    {
+      "template": "fly-to-and-orbit",
+      "reference_id": "ref-a",
+      "project_name": "VIDTOOLZ-TPL-FLY-ORBIT-A",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "normal case (richest evidence)",
+      "planned_inputs": {
+        "approach": "London area",
+        "target": "LONDON_EYE",
+        "lat": 51.503324,
+        "lon": -0.119543,
+        "settings": "native defaults"
+      },
+      "earth_studio_inputs": {
+        "poi": "London Eye Ticket Office (51.503,-0.119,34m)",
+        "end_alt_m": 234.34,
+        "target_alt_m": 34.34,
+        "radius_m": 400,
+        "approach_deg": 0,
+        "clockwise": false,
+        "duration_s": 25,
+        "all": "DEFAULT"
+      },
+      "evidence_paths": [
+        "fly-to-and-orbit/ref-a/export/VIDTOOLZ-TPL-FLY-ORBIT-A.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "01-wizard-step1.png",
+        "02-poi-set.png",
+        "03-step2-defaults.png",
+        "04-step3-duration.png",
+        "05-project-created.png",
+        "frame-000pct.png",
+        "frame-025pct.png",
+        "frame-050pct.png",
+        "frame-075pct.png",
+        "frame-100pct.png"
+      ],
+      "hashes": {
+        "raw_esp": "1ad5e335da8c348837cbc95a7f1aa03c7bba320e2e72176cca5d02247a5389c7",
+        "inspector_full": "0d40bf1ae1f3112a7c24cdc1490359d8c1d589ea83b1ab81296ff044c7a41818",
+        "motion_signature": "be7259a30af7d211b6ac79d9ddd3ce6f5ea65cb2d756c70fa7f8b39484290b41"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 POI search; step2 End Altitude (terrain-derived default target+200m), Target Altitude (terrain min), Orbit Radius (default 400m, 100-3000), Approach Angle (0°=North), Clockwise (default off); step3 duration (default 25s)",
+        "defaults": {
+          "end_altitude": "target_terrain+200m",
+          "orbit_radius_m": 400,
+          "approach_angle_deg": 0,
+          "clockwise": false,
+          "duration_s": 25
+        },
+        "target_lock": "Camera Target enabled, influence 100%; DERIVED: start altitude = 20000m + end_altitude"
+      }
+    },
+    {
+      "template": "fly-to-and-orbit",
+      "reference_id": "ref-b",
+      "project_name": "VIDTOOLZ-TPL-FLY-ORBIT-B",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "long approach",
+      "planned_inputs": {
+        "approach": "materially longer",
+        "target": "EIFFEL_TOWER",
+        "lat": 48.85837,
+        "lon": 2.294481,
+        "settings": "native defaults"
+      },
+      "earth_studio_inputs": {
+        "poi": "Eiffel Tower (48.858,2.294,64m)",
+        "end_alt_m": 800.49,
+        "radius_m": 800,
+        "end_alt": "USER_SET",
+        "radius": "USER_SET",
+        "approach_deg": 0,
+        "clockwise": false,
+        "duration_s": 25
+      },
+      "evidence_paths": [
+        "fly-to-and-orbit/ref-b/export/VIDTOOLZ-TPL-FLY-ORBIT-B.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "03-step2-userset.png",
+        "04-step3.png",
+        "05-created.png"
+      ],
+      "hashes": {
+        "raw_esp": "d197e8a97ec61df7db47ea7516f3c254ff39f7b827578c1a69a0099bffdcbe55",
+        "inspector_full": "23e008c19fc29c30131946489a9f4531110bca212764a6746213fff618d2ebc3",
+        "motion_signature": "f91cfede4df7866ae18080bc2994e680cd255275c43335893816d311293c060b"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 POI search; step2 End Altitude (terrain-derived default target+200m), Target Altitude (terrain min), Orbit Radius (default 400m, 100-3000), Approach Angle (0°=North), Clockwise (default off); step3 duration (default 25s)",
+        "defaults": {
+          "end_altitude": "target_terrain+200m",
+          "orbit_radius_m": 400,
+          "approach_angle_deg": 0,
+          "clockwise": false,
+          "duration_s": 25
+        },
+        "target_lock": "Camera Target enabled, influence 100%; DERIVED: start altitude = 20000m + end_altitude"
+      }
+    },
+    {
+      "template": "fly-to-and-orbit",
+      "reference_id": "ref-c",
+      "project_name": "VIDTOOLZ-TPL-FLY-ORBIT-C2",
+      "status": "EVIDENCE_READY",
+      "acquisition_mode": "KEYFRAMED_ESP",
+      "intent": "duration variation",
+      "planned_inputs": {
+        "approach": "same as ref-a",
+        "target": "LONDON_EYE",
+        "lat": 51.503324,
+        "lon": -0.119543,
+        "settings": "different duration IF supported"
+      },
+      "earth_studio_inputs": {
+        "poi": "London Eye Ticket Office",
+        "end_alt_m": 234.34,
+        "radius_m": 400,
+        "duration_s": 50,
+        "duration": "USER_SET"
+      },
+      "evidence_paths": [
+        "fly-to-and-orbit/ref-c/export/VIDTOOLZ-TPL-FLY-ORBIT-C2.esp",
+        "inspector-full.json",
+        "motion-signature.json",
+        "04-step3-50s.png"
+      ],
+      "hashes": {
+        "raw_esp": "ae5ecf4eb5e34d5f1990ea1c2558c46909237cc085a5d87156a2414433189496",
+        "inspector_full": "3d5aff82466de0cca3ad446acbc191a427d682f74459419deb4e1d6554eeafbf",
+        "motion_signature": "050714947dd3535e490fda248651fc3b77db7cdb0d1f611f7854695cc0384f47"
+      },
+      "parser_status": "PARSED",
+      "direct_observation_status": "DIRECTLY_OBSERVED wizard inputs + frame-0 editor state + keyframed export",
+      "notes": null,
+      "blocking_issue": null,
+      "template_observed_behavior": {
+        "wizard": "step1 POI search; step2 End Altitude (terrain-derived default target+200m), Target Altitude (terrain min), Orbit Radius (default 400m, 100-3000), Approach Angle (0°=North), Clockwise (default off); step3 duration (default 25s)",
+        "defaults": {
+          "end_altitude": "target_terrain+200m",
+          "orbit_radius_m": 400,
+          "approach_angle_deg": 0,
+          "clockwise": false,
+          "duration_s": 25
+        },
+        "target_lock": "Camera Target enabled, influence 100%; DERIVED: start altitude = 20000m + end_altitude"
+      }
+    }
+  ],
+  "evidence_classification": [
+    "DIRECTLY_OBSERVED",
+    "DERIVED",
+    "INFERRED",
+    "UNKNOWN"
+  ],
+  "gate3_constraints": [
+    "Byte-stability: untemplated plans must remain byte-identical to v0.9.4 controls (exact hash comparison)",
+    "Any new cameraTargetEffect/POI serialization shape remains EXPERIMENTAL until validated by at least one real Earth Studio import observation",
+    "Template plans must record template_id + template_profile_version in provenance; untemplated plans record neither",
+    "SPIRAL implementation only from real native evidence — never from generic animation mathematics",
+    "Derivation must use PER-PROPERTY + PER-ROLE pooling (v0.9.3 discipline); no silent cross-property pooling",
+    "Gate 2/3 must additionally test Fly-To and Orbit at 9:16 (user production format); primary matrix is 16:9",
+    "Gate 4 visual verdict belongs to Mikko (visual-observation.json); agent never self-certifies fidelity"
+  ]
+}

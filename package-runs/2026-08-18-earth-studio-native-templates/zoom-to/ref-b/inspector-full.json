@@ -1,0 +1,182 @@
+{
+  "file": "package-runs/2026-08-18-earth-studio-native-templates/zoom-to/ref-b/export/VIDTOOLZ-TPL-ZOOM-B.esp",
+  "name": "VIDTOOLZ-TPL-ZOOM-B",
+  "modelVersion": 18,
+  "shape": "native",
+  "fps": 30,
+  "duration_frames": 150,
+  "duration_seconds": 5,
+  "dimensions": {
+    "width": 3840,
+    "height": 2160
+  },
+  "tracks": {
+    "longitude": [
+      {
+        "time": 0,
+        "value": -73.98566439999999,
+        "transitionIn": {
+          "x": -0.2,
+          "y": 0,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 0.8,
+        "value": -73.98566439999999,
+        "transitionIn": {
+          "x": -0.32000000000000006,
+          "y": 0,
+          "influence": 0.4000000000000001,
+          "type": "custom"
+        },
+        "transitionOut": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+        }
+      }
+    ],
+    "latitude": [
+      {
+        "time": 0,
+        "value": 40.74848577609529,
+        "transitionIn": {
+          "x": -0.2,
+          "y": 0,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 0.8,
+        "value": 40.74848577609529,
+        "transitionIn": {
+          "x": -0.32000000000000006,
+          "y": 0,
+          "influence": 0.4000000000000001,
+          "type": "custom"
+        },
+        "transitionOut": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+        }
+      }
+    ],
+    "altitude": [
+      {
+        "time": 0,
+        "value": 65117481,
+        "transitionIn": {
+          "x": -0.2,
+          "y": 0,
+          "type": "auto"
+        },
+        "transitionOut": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 0.8,
+        "value": 31163869.18552445,
+        "transitionIn": {
+          "x": -0.32000000000000006,
+          "y": 0,
+          "influence": 0.4000000000000001,
+          "type": "custom"
+        },
+        "transitionOut": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+        }
+      }
+    ],
+    "pan": [
+      {
+        "time": 0,
+        "value": 0,
+        "transitionIn": null,
+        "transitionOut": {
+          "x": 0.2,
+          "y": 0,
+          "type": "auto"
+        }
+      },
+      {
+        "time": 0.8,
+        "value": 0,
+        "transitionIn": {
+          "x": -0.2,
+          "y": 0,
+          "type": "auto"
+        },
+        "transitionOut": null
+      }
+    ],
+    "tilt": [
+      {
+        "time": 0,
+        "value": 0,
+        "transitionIn": null,
+        "transitionOut": {
+          "x": 0.68,
+          "y": 0,
+          "influence": 0.85,
+          "type": "custom"
+        }
+      },
+      {
+        "time": 0.8,
+        "value": 0,
+        "transitionIn": {
+          "x": -0.24,
+          "y": 0,
+          "influence": 0.3,
+          "type": "custom"
+        },
+        "transitionOut": null
+      }
+    ]
+  },
+  "poi_target_lock": true,
+  "poi": {
+    "longitude": [
+      {
+        "time": 0,
+        "value": -73.98566593938604,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ],
+    "latitude": [
+      {
+        "time": 0,
+        "value": 40.748488815010205,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ],
+    "altitude": [
+      {
+        "time": 0,
+        "value": 30987701.086501643,
+        "transitionIn": null,
+        "transitionOut": null
+      }
+    ]
+  },
+  "rotation_authoring": "keyframed_rotation"
+}
