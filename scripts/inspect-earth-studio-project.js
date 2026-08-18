@@ -46,16 +46,22 @@ function findAttr(attrs, type) {
 
 // Denormalize one camera property's keyframes to real units. `time` stays a
 // [0,1] duration fraction. Bezier transition handles are preserved verbatim.
+// Altitude in logarithmic-model native projects (value.logarithmic === true)
+// is stored as the 15th root of the linear normalization — decode with the
+// exact native exponent 15 (Gate 2 derivation) before scaling to meters.
+const LOG_ALT_EXPONENT = 15;
 function denormTrack(node, kind) {
   if (!node || !Array.isArray(node.keyframes) || !node.keyframes.length) return null;
   const min = node.value && typeof node.value.minValueRange === "number" ? node.value.minValueRange : null;
   const max = node.value && typeof node.value.maxValueRange === "number" ? node.value.maxValueRange : null;
+  const logarithmic = Boolean(node.value && node.value.logarithmic === true);
   const denorm = (v) => {
     if (kind === "longitude") return min !== null ? min + v * (180 - min) : v * 360 - 180;
     if (kind === "latitude") return min !== null ? min + v * (90 - min) : v * 180 - 90;
     if (kind === "altitude") {
-      if (min !== null && max !== null) return min + v * (max - min);
-      return v / IMPORT_ALT_SCALE; // import-format empirical scale (≈ same family, min −500 folded)
+      const linear = logarithmic ? Math.pow(v, LOG_ALT_EXPONENT) : v;
+      if (min !== null && max !== null) return min + linear * (max - min);
+      return linear / IMPORT_ALT_SCALE; // import-format empirical scale (≈ same family, min −500 folded)
     }
     if (kind === "pan") return min !== null && max !== null ? min + v * (max - min) : v * 360;
     if (kind === "tilt") return v * 180;
@@ -104,6 +110,7 @@ function parseEsp(filePath) {
     name: doc.settings && doc.settings.name,
     modelVersion: doc.modelVersion,
     shape,
+    animation_model: scene.animationModel || null,
     fps,
     duration_frames: durationFrames,
     duration_seconds: durationFrames / fps,
