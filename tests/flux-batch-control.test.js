@@ -10,6 +10,7 @@ const {
   test,
 } = require("./_helpers.js");
 const { bindImagePrompts } = require("./aigen-authority-test-helper.js");
+const { dispatchGateway } = require("./comfyui-dispatch-fixture.js");
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -222,9 +223,12 @@ test("FLUX submit rejects when a job is already active", async () => {
 
 test("FLUX submit succeeds and returns job id and pid", async () => {
   const fixture = createFluxFixture();
-  // comfy CLI resolvability is host state (absent on CI runners); inject the
-  // pre-flight so this test exercises the submit path deterministically.
-  const server = packageEngineServer.createServer({ comfyCliCheck: () => true });
+  const gw = dispatchGateway();
+  // comfy CLI resolvability AND the ComfyUI production gate's runtime copies
+  // are host state (absent on CI runners); inject the pre-flight and the
+  // hermetic registry fixture so this test exercises the submit path
+  // deterministically. Production default is unchanged (live registry).
+  const server = packageEngineServer.createServer({ comfyCliCheck: () => true, gateway: gw.gateway });
   try {
     await withFluxEnv(fixture, async () => {
       await listen(server);
@@ -246,11 +250,13 @@ test("FLUX submit succeeds and returns job id and pid", async () => {
   } finally {
     await close(server);
     fs.rmSync(fixture.root, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
 test("FLUX submit dry_run true appends dry-run flag and records mode", async () => {
   const fixture = createFluxFixture();
+  const gw = dispatchGateway();
   try {
     await withFluxEnv(fixture, async () => {
       let spawnedArgs = null;
@@ -259,6 +265,7 @@ test("FLUX submit dry_run true appends dry-run flag and records mode", async () 
         { package_id: fixture.packageId, dry_run: true },
         {
           comfyCliCheck: () => true, // host CLI state is not what this test measures
+          gateway: gw.gateway, // hermetic registry: runtime copies are host state (absent on CI)
           spawn: (_bin, args) => {
             spawnedArgs = args;
             return child;
@@ -272,11 +279,13 @@ test("FLUX submit dry_run true appends dry-run flag and records mode", async () 
   } finally {
     packageEngineServer.FLUX_STATE.activeJob = null;
     fs.rmSync(fixture.root, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
 test("FLUX submit limit and skip_existing flags build expected CLI args", async () => {
   const fixture = createFluxFixture();
+  const gw = dispatchGateway();
   try {
     await withFluxEnv(fixture, async () => {
       let spawnedArgs = null;
@@ -285,6 +294,7 @@ test("FLUX submit limit and skip_existing flags build expected CLI args", async 
         { package_id: fixture.packageId, limit: 2, skip_existing: false },
         {
           comfyCliCheck: () => true, // host CLI state is not what this test measures
+          gateway: gw.gateway, // hermetic registry: runtime copies are host state (absent on CI)
           spawn: (_bin, args) => {
             spawnedArgs = args;
             return child;
@@ -298,6 +308,7 @@ test("FLUX submit limit and skip_existing flags build expected CLI args", async 
   } finally {
     packageEngineServer.FLUX_STATE.activeJob = null;
     fs.rmSync(fixture.root, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
