@@ -9,6 +9,21 @@
 const { EventEmitter } = require("node:events");
 const { assert, fs, http, os, path, packageEngineServer, test } = require("./_helpers.js");
 const { bindI2vPrompts } = require("./aigen-authority-test-helper.js");
+const { createDispatchFixture } = require("./comfyui-dispatch-fixture.js");
+
+// One shared hermetic workflow-runtime registry (built lazily on first use):
+// the ComfyUI production gate's runtime_copies are host state (present on
+// vidnux, absent on CI runners); this re-roots them onto temp files so the
+// PRESTO submit-path tests never depend on the live deploys.
+let _dispatchGw = null;
+function hermeticDispatchGateway() {
+  if (!_dispatchGw) {
+    const { registryPath, workDir } = createDispatchFixture({ prefix: "presto-elig-gw-" });
+    _dispatchGw = { gateway: { registryPath }, workDir };
+    process.on("exit", () => { try { fs.rmSync(workDir, { recursive: true, force: true }); } catch (_) {} });
+  }
+  return _dispatchGw;
+}
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -255,6 +270,8 @@ async function withSubmitServer(fx, spawnFn, fn, config = {}) {
     prestoReachableCheck: async () => reachable,
     computeGateFn: async () => ({ ok: true, decision: "ROUTE", selected_host: "presto", checks: {} }),
     spawn: spawnFn,
+    // The production gate's runtime copies are host state (absent on CI).
+    gateway: hermeticDispatchGateway().gateway,
   });
   try {
     await listen(server);
@@ -416,9 +433,9 @@ test("concurrency (direct): startPrestoPackageJob throws 409 while a job is acti
   packageEngineServer.PRESTO_STATE.activeJob = null;
   const captured = {};
   try {
-    await packageEngineServer.startPrestoPackageJob({ package_id: fx.id }, { spawn: captureSpawn(captured) });
+    await packageEngineServer.startPrestoPackageJob({ package_id: fx.id }, { spawn: captureSpawn(captured), gateway: hermeticDispatchGateway().gateway });
     let err;
-    try { packageEngineServer.startPrestoPackageJob({ package_id: fx.id }, { spawn: captureSpawn(captured) }); } catch (e) { err = e; }
+    try { packageEngineServer.startPrestoPackageJob({ package_id: fx.id }, { spawn: captureSpawn(captured), gateway: hermeticDispatchGateway().gateway }); } catch (e) { err = e; }
     assert.ok(err); assert.equal(err.statusCode, 409);
     assert.equal(captured.count, 1);
   } finally {

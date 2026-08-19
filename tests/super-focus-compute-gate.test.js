@@ -17,6 +17,21 @@ const { test, assert, fs, os, path, http, packageEngineServer } = require("./_he
 const superFocus = require("../super-focus.js");
 const superFocusMedia = require("../super-focus-media.js");
 const { EventEmitter } = require("node:events");
+const { createDispatchFixture } = require("./comfyui-dispatch-fixture.js");
+
+// One shared hermetic workflow-runtime registry (built lazily on first use):
+// the ComfyUI production gate's runtime_copies are host state (present on
+// vidnux, absent on CI runners); this re-roots them onto temp files so the
+// dispatch-path tests never depend on the live deploys.
+let _dispatchGw = null;
+function hermeticDispatchGateway() {
+  if (!_dispatchGw) {
+    const { registryPath, workDir } = createDispatchFixture({ prefix: "sf-cg-gw-" });
+    _dispatchGw = { gateway: { registryPath }, workDir };
+    process.on("exit", () => { try { fs.rmSync(workDir, { recursive: true, force: true }); } catch (_) {} });
+  }
+  return _dispatchGw;
+}
 
 const GENERATE = packageEngineServer.SUPER_FOCUS_GENERATE_VIDEOS_API || "/api/super-focus/generate-videos";
 const QUEUE_VIDEO = "/api/super-focus/queue-video";
@@ -65,6 +80,8 @@ function makeServer(gate, captured, { reach = true } = {}) {
     superFocusRoot: root, superFocusMediaRoot: mediaRoot,
     productionScript: fakeScript(), pythonBin: "python3",
     spawn: fakeSpawn(captured), prestoReachableCheck: async () => reach, computeGateFn: gate,
+    // The production gate's runtime copies are host state (absent on CI).
+    gateway: hermeticDispatchGateway().gateway,
   });
   return { server, root, mediaRoot, id };
 }

@@ -13,6 +13,21 @@ const {
   test,
 } = require("./_helpers.js");
 const { bindI2vPrompts } = require("./aigen-authority-test-helper.js");
+const { createDispatchFixture } = require("./comfyui-dispatch-fixture.js");
+
+// One shared hermetic workflow-runtime registry (built lazily on first use):
+// the ComfyUI production gate's runtime_copies are host state (present on
+// vidnux, absent on CI runners); this re-roots them onto temp files so the
+// submit-path tests never depend on the live deploys.
+let _dispatchGw = null;
+function hermeticDispatchGateway() {
+  if (!_dispatchGw) {
+    const { registryPath, workDir } = createDispatchFixture({ prefix: "compute-gate-gw-" });
+    _dispatchGw = { gateway: { registryPath }, workDir };
+    process.on("exit", () => { try { fs.rmSync(workDir, { recursive: true, force: true }); } catch (_) {} });
+  }
+  return _dispatchGw;
+}
 
 const {
   createServer,
@@ -212,6 +227,8 @@ async function withGateSubmit(fx, { gate, reachable = true }, fn) {
     computeGateFn: gate,
     prestoReachableCheck: async () => reachable,
     spawn: captureSpawn(captured),
+    // The production gate's runtime copies are host state (absent on CI).
+    gateway: hermeticDispatchGateway().gateway,
   });
   try {
     await listen(server);
