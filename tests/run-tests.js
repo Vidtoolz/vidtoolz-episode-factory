@@ -117,6 +117,7 @@ require("./idea-engine-status.test.js");
 require("./idea-engine-provenance.test.js");
 require("./module-nav.test.js");
 require("./worker-capacity-lock.test.js");
+require("./super-focus-routing-integration.test.js");
 
 // Diagnostic run-all mode (opt-in): pass `--all` or `--continue`, or set
 // RUN_ALL=1, to keep running after failures and list every failing test in a

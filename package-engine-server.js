@@ -28,6 +28,7 @@ const scriptCommitmentModel = require('./script-commitment-check.js');
 const resolveReadinessModel = require('./resolve-handoff-readiness.js');
 const aigenAuthorityReview = require('./aigen-authority-review.js');
 const { acquireOllamaLock, releaseOllamaLock } = require('./worker-capacity-lock.js');
+const routingIntegration = require('./routing-integration.js');
 const { slugify, escapeXml, markdownCell, markdownText, lineValue } = require('./package-engine-text-utils.js');
 
 const ROOT = __dirname;
@@ -5258,6 +5259,25 @@ async function probeOllamaTags(baseUrl, model, options = {}) {
 // Gather live signals + run the pure router. Read-only. Probes PRESTO Ollama
 // only when it might actually be used (auto+local-busy, or forced presto).
 async function resolveSuperFocusOllamaProvider(task, options = {}) {
+  // Authoritative LOCAL_AUTO router override: when the evaluate-script path has
+  // already run the vidtoolz-compute router (flag on) and selected a host, its
+  // base_url/model/provider_id win outright — no mode re-derivation, no silent
+  // fallback to the default local config. The router's gates (residency, role,
+  // readiness, shared lock) have already passed for this exact request.
+  if (options.superFocusRoutingProviderId && options.superFocusRoutingBaseUrl && options.superFocusEvalModel) {
+    const decision = {
+      provider_id: options.superFocusRoutingProviderId,
+      label: `${options.superFocusRoutingProviderId.replace(/_ollama$/, '')} Ollama (LOCAL_AUTO router)`,
+      base_url: options.superFocusRoutingBaseUrl,
+      model: options.superFocusEvalModel,
+      reason: 'selected by vidtoolz-compute LOCAL_AUTO router (gates passed)',
+      warnings: [],
+      task: task || null,
+      local_busy: false,
+      routing_authoritative: true,
+    };
+    return decision;
+  }
   const cfg = superFocusProviderConfig(options);
   const localBusy = options.superFocusLocalBusy != null
     ? Boolean(options.superFocusLocalBusy)
@@ -14789,6 +14809,79 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Super Focus script-evaluation API' });
+          const id = payload.id || payload.project_id || '';
+          const state = superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown id
+          if (!state.script || !state.script.trim()) {
+            const e = new Error('Save a script first, then evaluate it.'); e.statusCode = 400; throw e;
+          }
+          const scriptHash = scriptEvaluator.hashScriptText(state.script);
+
+          // ── LOCAL_AUTO routing integration (feature-flagged) ─────────────
+          // When enabled, the vidtoolz-compute router is authoritative:
+          // descriptor → adopt check → residency/role/readiness/lock gates →
+          // host selection → provider override. No direct bypass, no fallback,
+          // no frontier. When disabled, the legacy direct path runs unchanged.
+          let routingOverride = null;
+          let routingProvenance = null;
+          if (routingIntegration.routingEnabled(serverOptions)) {
+            const descriptor = routingIntegration.buildScriptEvaluationTaskDescriptor({
+              scriptText: state.script,
+              scriptHash,
+              sentencesCount: scriptEvaluator.splitScriptIntoSentences(state.script).length,
+              projectId: id,
+            });
+            const decision = routingIntegration.callRouter(descriptor, serverOptions);
+            routingProvenance = decision;
+            // Adopt identity model: the router-selected chat tag when the
+            // decision carries one, else the configured evaluator model.
+            const adoptModel = (decision.selected && decision.selected.chat_tag)
+              || process.env.SUPER_FOCUS_EVAL_MODEL || 'qwen38-27b-ud-q3-k-xl:chat';
+            const adopted = routingIntegration.findAdoptableEvaluation(
+              scriptHash,
+              adoptModel,
+              () => superFocus.readScriptEvaluation(id, { root: sfRoot }),
+              { root: sfRoot }
+            );
+            if (decision.final_state === 'ADOPTED' || adopted) {
+              // Task-level adopt-before-submit: identical fresh evaluation
+              // exists for this exact script+model within the window. Reuse it;
+              // never re-execute. (ADOPTED from router OR fresh prior eval.)
+              const prior = adopted ? adopted.evaluation : superFocus.readScriptEvaluation(id, { root: sfRoot });
+              if (!prior) {
+                // Router says an identical job is active elsewhere but no saved
+                // result exists yet: the correct state is 503-in-flight, never a
+                // null evaluation and never a duplicate execution.
+                send(res, 503, {
+                  error: 'identical evaluation in flight',
+                  reason: 'an identical script_evaluation job is already running; adoption will complete when it persists its result',
+                  routing_state: 'ADOPTED',
+                });
+                return;
+              }
+              sendJSON(res, 200, {
+                project_id: id,
+                script_evaluation: prior,
+                provider: prior && prior.model ? {
+                  id: prior.model.host || 'vidnux_ollama',
+                  label: 'adopted prior evaluation (identical script+model)',
+                  model: prior.model.model || null,
+                  reason: 'ADOPTED: identical fresh evaluation reused',
+                } : null,
+                kanban_sync: null,
+                routing: { state: 'ADOPTED', adopted: true },
+              });
+              return;
+            }
+            const mapped = routingIntegration.providerFromDecision(decision, serverOptions);
+            routingOverride = {
+              superFocusEvalModel: mapped.provider.model,
+              superFocusRoutingBaseUrl: mapped.provider.base_url,
+              superFocusRoutingProviderId: mapped.provider.provider_id,
+              superFocusRoutingProvenance: decision,
+            };
+          }
+          const evalOptions = Object.assign({}, options, routingOverride || {});
+
           let workerLock = null;
           try {
             workerLock = acquireOllamaLock({
@@ -14798,18 +14891,13 @@ function createServer(options = {}) {
               workload: 'script_evaluation',
               note: 'EF script evaluator — Ollama num_ctx 16384',
             });
-            const id = payload.id || payload.project_id || '';
-            const state = superFocus.loadProject(id, { root: sfRoot }); // 404 for unknown id
-            if (!state.script || !state.script.trim()) {
-              const e = new Error('Save a script first, then evaluate it.'); e.statusCode = 400; throw e;
-            }
             const sentences = scriptEvaluator.splitScriptIntoSentences(state.script);
             const prompt = scriptEvaluator.buildScriptEvaluationPrompt(state.script, sentences, {});
             // Route through the existing load-aware local-Ollama path (no fallback).
             // Throws 503 (unreachable) / enriched errors before any write.
             const gen = await superFocusGenerate(
               { system: prompt.system, user: prompt.user, schema: prompt.schema, task: 'script_evaluation' },
-              options
+              evalOptions
             );
             // Parser throws 502 on unusable output -> nothing is persisted.
             const parsed = scriptEvaluator.parseScriptEvaluationOutput(gen.content);
@@ -14831,6 +14919,19 @@ function createServer(options = {}) {
             // model; timestamps/host excluded). Binds this exact script content
             // to this exact evaluation — see super-focus-kanban-bridge.js.
             evaluation.evaluation_hash = superFocusKanbanBridge.computeEvaluationHash(evaluation);
+            // Routing provenance (when the LOCAL_AUTO router ran): full gate
+            // record per host + selection reason — answers "why this host /
+            // why not the others" without reading three machines' logs.
+            if (routingProvenance) {
+              evaluation.routing = {
+                engine: 'vidtoolz-compute/routing_canary',
+                state: routingProvenance.final_state,
+                evaluated_at: routingProvenance.evaluated_at,
+                selected: routingProvenance.selected || null,
+                candidates: routingProvenance.candidates || null,
+                local_only: true,
+              };
+            }
             const saved = superFocus.saveScriptEvaluation(id, evaluation, { root: sfRoot });
             // Super Focus → Production Kanban bridge: a fresh PRODUCE verdict
             // upserts the project's production card (idempotent, advance-only,
@@ -14847,7 +14948,18 @@ function createServer(options = {}) {
                 log: (msg) => console.error(`[super-focus-kanban-sync] ${msg}`),
               });
             }
-            sendJSON(res, 200, { project_id: id, script_evaluation: saved.script_evaluation, provider: gen.provider, kanban_sync: kanbanSync });
+            sendJSON(res, 200, {
+              project_id: id,
+              script_evaluation: saved.script_evaluation,
+              provider: gen.provider,
+              kanban_sync: kanbanSync,
+              ...(routingProvenance ? { routing: {
+                state: routingProvenance.final_state,
+                selected: routingProvenance.selected || null,
+                candidates: routingProvenance.candidates || null,
+                local_only: true,
+              } } : {}),
+            });
           } finally {
             releaseOllamaLock(workerLock);
           }
@@ -14855,6 +14967,18 @@ function createServer(options = {}) {
         .catch((error) => {
           if (error && error.code === 'WORKER_LOCK_HELD') {
             send(res, 503, { error: 'evaluator busy', detail: error.detail });
+            return;
+          }
+          // Routing-state failures (LOCAL_NOT_READY / router unavailable /
+          // policy violation): explicit structured 503 with the router state.
+          // Never a silent direct fallback, never a frontier call, never a
+          // context downgrade.
+          if (error && error.routing_state) {
+            send(res, 503, {
+              error: 'local evaluator not ready',
+              reason: error.message,
+              routing_state: error.routing_state,
+            });
             return;
           }
           sendError(res, error.statusCode || 500, error.message, 'super-focus-evaluate-script-error');
