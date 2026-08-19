@@ -3010,7 +3010,9 @@ test("comfyui transport closure: FLUX binds to the permit and refuses divergence
   const dir = mkdtemp("comfyui-tx3-");
   const script = path.join(dir, "run-handoff.py");
   fs.writeFileSync(script, "#!/usr/bin/env python3\n");
-  const permit = pes.gateProductionDispatch({ workflowId: "flux-gguf-1080x1920", lane: "super-focus-flux" });
+  const gw = dispatchGateway();
+  // The gate's runtime copies are host state (absent on CI); hermetic fixture.
+  const permit = pes.gateProductionDispatch({ workflowId: "flux-gguf-1080x1920", lane: "super-focus-flux" }, { gateway: gw.gateway });
   const base = { fluxScript: script, pythonBin: "python3", packageArg: dir, packageId: "x", dispatchPermit: permit };
   try {
     const s1 = captureSpawn();
@@ -3022,6 +3024,7 @@ test("comfyui transport closure: FLUX binds to the permit and refuses divergence
     assert.equal(s2.calls.length, 0);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 
@@ -3262,6 +3265,7 @@ test("freshness enforcement: FLUX holds a synchronous reservation across the asy
   const dir = mkdtemp("freshness-flux-start-");
   const script = path.join(dir, "run-handoff.py");
   fs.writeFileSync(script, "#!/usr/bin/env python3\n");
+  const gw = dispatchGateway();
   pes.FLUX_STATE.activeJob = null;
   pes.FLUX_STATE.reservation = null;
   let settleVerification;
@@ -3278,6 +3282,8 @@ test("freshness enforcement: FLUX holds a synchronous reservation across the asy
     const first = pes.startSuperFocusImageJob(dir, {
       fluxScript: script, pythonBin: "python3", projectId: "flux-ordering",
       comfyCliCheck: () => true, spawn: spawnStub,
+      // runtime copies are host state (absent on CI); hermetic registry fixture
+      gateway: gw.gateway,
       enforceSourceFreshness: "enforce",
       ensureFreshSourceVerification: async () => verification,
     });
@@ -3285,6 +3291,7 @@ test("freshness enforcement: FLUX holds a synchronous reservation across the asy
     assert.equal(spawnCalls, 0);
     assert.throws(() => pes.startSuperFocusImageJob(dir, {
       fluxScript: script, comfyCliCheck: () => true, spawn: spawnStub,
+      gateway: gw.gateway,
     }), (error) => error.statusCode === 409, "a contender cannot enter the async window");
     settleVerification(freshOk);
     await first;
@@ -3294,6 +3301,7 @@ test("freshness enforcement: FLUX holds a synchronous reservation across the asy
     pes.FLUX_STATE.activeJob = null;
     pes.FLUX_STATE.reservation = null;
     fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(gw.workDir, { recursive: true, force: true });
   }
 });
 

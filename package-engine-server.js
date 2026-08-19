@@ -15834,6 +15834,9 @@ function createServer(options = {}) {
             dryRun: Boolean(payload.dry_run),
             spawn: options.spawn,
             comfyCliCheck: options.comfyCliCheck,
+            // Hermetic registry for tests (see 607c9f8 for the video lanes);
+            // production default is unchanged: live registry authority.
+            gateway: options.gateway,
             // Dispatch script/python are env-overridable so the lane can follow
             // the real host (or a stub) without code edits; falls back to the
             // canonical vidnux run-handoff.py.
@@ -16149,6 +16152,8 @@ function createServer(options = {}) {
               dryRun: Boolean(payload.dry_run),
               spawn: options.spawn,
               comfyCliCheck: options.comfyCliCheck,
+              // Hermetic registry for tests (see 607c9f8); production default unchanged.
+              gateway: options.gateway,
               fluxScript: options.fluxScript || process.env.SUPER_FOCUS_FLUX_SCRIPT,
               pythonBin: options.pythonBin || process.env.SUPER_FOCUS_PYTHON_BIN,
               seed,

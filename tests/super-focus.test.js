@@ -1153,6 +1153,9 @@ function imageServer(spawnImpl, { promptCount = 3 } = {}, extra = {}) {
     // comfy CLI resolvability is host state (absent on CI); tests that verify
     // the blocked lane override this with () => false via `extra`.
     comfyCliCheck: () => true,
+    // The production gate's runtime copies are host state (absent on CI);
+    // the hermetic registry fixture re-roots them onto temp files.
+    gateway: { registryPath: videoDispatchGateway().registryPath },
   }, extra));
   return { server, root, mediaRoot, id: created.project_id };
 }
@@ -1214,6 +1217,8 @@ test("generate-images treats prompt_changed image rows as eligible without clear
     spawn: fakeFluxSpawn(),
     fluxReachableCheck: async () => true,
     comfyCliCheck: () => true, // host CLI state is not what this test measures
+    // runtime copies are host state (absent on CI); hermetic registry fixture
+    gateway: { registryPath: videoDispatchGateway().registryPath },
   });
   await listen(server);
   try {
@@ -2304,6 +2309,8 @@ test("generate-images never targets empty prompt slots (scattered gaps)", async 
     superFocusRoot: root, superFocusMediaRoot: mediaRoot,
     fluxScript: fakeScript(), pythonBin: "python3", spawn: spy.fn, fluxReachableCheck: async () => true,
     comfyCliCheck: () => true, // host CLI state is not what this test measures
+    // runtime copies are host state (absent on CI); hermetic registry fixture
+    gateway: { registryPath: videoDispatchGateway().registryPath },
   });
   await listen(server);
   try {
@@ -3222,6 +3229,9 @@ function imageRoutingServer(spawnImpl, serverOpts = {}, projOpts = {}) {
     // comfy CLI resolvability is host state (absent on CI); override via
     // serverOpts when a test verifies the blocked lane.
     comfyCliCheck: () => true,
+    // The production gate's runtime copies are host state (absent on CI);
+    // the hermetic registry fixture re-roots them onto temp files.
+    gateway: { registryPath: videoDispatchGateway().registryPath },
   }, serverOpts));
   return { server, root, mediaRoot, id: created.project_id };
 }
