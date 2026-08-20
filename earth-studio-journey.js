@@ -257,7 +257,8 @@
     const fov = options.fovDeg || planner.EARTH_STUDIO_DEFAULT_FOV_DEG;
     const tilt = Math.min(80, Math.max(0, Number.isFinite(tiltDeg) ? tiltDeg : 45));
     const rad = (d) => (d * Math.PI) / 180;
-    const raw = (scale.span_m * Math.cos(rad(tilt))) / (2 * Math.tan(rad(fov / 2)));
+    const spanM = Number.isFinite(options.spanM) && options.spanM > 0 ? options.spanM : scale.span_m;
+    const raw = (spanM * Math.cos(rad(tilt))) / (2 * Math.tan(rad(fov / 2)));
     const floor = Math.max(planner.MIN_ALTITUDE_M, options.minAltitudeM || 0);
     return Math.round(Math.min(planner.MAX_ALTITUDE_M, Math.max(floor, raw)));
   }
@@ -689,7 +690,11 @@
       // planner path (altitude_source stays "gazetteer").
       altitude = calibrated; source = "gazetteer_calibrated";
     } else {
-      altitude = framingAltitudeM(scale, tiltDeg, { planner, minAltitudeM }); source = "derived_optical";
+      const extent = place.framing === "auto" && resolvedInfo.resolved
+        && Number.isFinite(resolvedInfo.resolved.frame_span_m)
+        ? resolvedInfo.resolved.frame_span_m : null;
+      altitude = framingAltitudeM(scale, tiltDeg, { planner, minAltitudeM, spanM: extent });
+      source = extent ? "derived_optical_extent" : "derived_optical";
     }
     return {
       scale, scale_label: (scaleOf(scale) || {}).label || scale,
@@ -801,19 +806,97 @@
       && Math.abs(a.resolved.latitude - b.resolved.latitude) < 1e-6
       && Math.abs(a.resolved.longitude - b.resolved.longitude) < 1e-6;
 
-    function emit(step, slot, targetInfo, targetPlace, context, next) {
+    function emit(step, slot, targetInfo, targetPlace, context, next, after, prev) {
       const def = MOVEMENTS[step.type] || MOVEMENTS[slot === "travel" ? "fly" : "hold"];
       const action = def.primitive;
       // A fly/zoom immediately followed by an orbit around the SAME target lands
       // on that orbit's ring entry, so it is correctly framed and must keep the
       // orbit's tilt for a continuous boundary (the v0.8 zero-slide property).
       const nextDef = next ? (MOVEMENTS[next.step.type] || null) : null;
-      const endsAtOrbitEntry = !!(nextDef && nextDef.primitive === "orbit"
+      const afterDef = after ? (MOVEMENTS[after.step.type] || null) : null;
+      const prevDef = prev ? (MOVEMENTS[prev.step.type] || null) : null;
+      // MID-JOURNEY STAGING: the same lookahead, one movement further, for when
+      // a plain hold sits between the arrival and the orbit.
+      //
+      // `fly -> hold -> orbit` on one subject is the ordinary sequence and it
+      // was the last place the camera still corrected itself in public. The fly
+      // framed the target from above, the hold faithfully held that top-down
+      // 1,418 m composition at the ring's dead CENTRE, and the orbit then spent
+      // 143 of its 480 frames -- 29.8% -- descending to 709 m and sliding
+      // 1,228 m outward before it could sweep. The adjacent `fly -> orbit` case
+      // already lands on the ring at 0.0%, so the ring geometry was never the
+      // problem: the lookahead simply stopped one movement short.
+      //
+      // The fix stages the ARRIVAL; it does not reposition the hold. A hold
+      // holds the previous camera by definition and that contract is kept
+      // exactly -- the hold still holds whatever the fly delivered, we only
+      // change where the fly delivers it. That is why this reads THROUGH the
+      // hold rather than restaging it.
+      //
+      // "Transparent" means the hold carries no composition of its own. An
+      // explicit tilt, altitude or framing is the operator asking for a
+      // particular hold, and those keep the bounded ring acquisition.
+      const holdReadsThrough = !!(nextDef && nextDef.holdsCamera
+        && afterDef && afterDef.primitive === "orbit"
+        && sameResolved(targetInfo, next.targetInfo)
+        && sameResolved(targetInfo, after.targetInfo)
+        && !Number.isFinite(next.step.tilt_deg)
+        && !Number.isFinite(next.targetPlace && next.targetPlace.tilt_deg)
+        && !Number.isFinite(next.step.altitude_m)
+        && !next.step.framing);
+      // The orbit this movement stages for, whether it is the next movement or
+      // sits just past a transparent hold. One reference, so the flag below and
+      // the tilt derivation cannot disagree.
+      const orbitAhead = (nextDef && nextDef.primitive === "orbit") ? next
+        : holdReadsThrough ? after : null;
+      const endsAtOrbitEntry = !!(orbitAhead
         && ["fly_to", "zoom_in", "zoom_out"].includes(action)
-        && sameResolved(targetInfo, next.targetInfo));
-      const successorOrbitTilt = endsAtOrbitEntry
-        ? (Number.isFinite(next.step.tilt_deg) ? next.step.tilt_deg
-          : Number.isFinite(next.targetPlace && next.targetPlace.tilt_deg) ? next.targetPlace.tilt_deg
+        && sameResolved(targetInfo, orbitAhead.targetInfo));
+      // The transparent hold seen from its own side. The camera it inherits was
+      // staged for the orbit, so it must KEEP that ring geometry instead of
+      // flattening to a target-framing tilt -- the flattening is precisely what
+      // put the held camera at the ring's centre. Inheritance already carries
+      // the right value, so this only has to stop the flatten; it never forces
+      // a tilt of its own, and it never moves the camera.
+      //
+      // Deliberately emits NO plan annotation. The planner's consent check is
+      // that the hold's altitude and tilt match the orbit's, so carrying the
+      // geometry here IS the signal and no new schema field is needed.
+      const holdsOrbitEntryGeometry = !!(orbitAhead && orbitAhead === next
+        && !!def.holdsCamera && cursor.started
+        && prevDef && ["fly_to", "zoom_in", "zoom_out"].includes(prevDef.primitive)
+        && sameResolved(targetInfo, prev.targetInfo)
+        && !Number.isFinite(step.tilt_deg)
+        && !Number.isFinite(targetPlace && targetPlace.tilt_deg)
+        && !Number.isFinite(step.altitude_m)
+        && !step.framing);
+      // DIRECTORIAL STAGING: an opening hold whose next movement is an orbit
+      // around the SAME subject should establish from the orbit's own geometry,
+      // not from a generic top-down framing.
+      //
+      // Measured on case K in real Earth Studio: a top-down establishing hold
+      // put the camera at the CENTRE of the orbit's 1,228 m ring, so the orbit
+      // then spent frames 90-238 of a 510-frame shot climbing 1,419 m -> 710 m
+      // and travelling 0 m -> 1,229 m outward before it could start sweeping —
+      // 35% of the shot correcting a state the director could simply have
+      // staged. A skilled operator frames the establishing shot where the orbit
+      // begins and then starts moving.
+      //
+      // Only the OPENING hold qualifies: a later hold holds the previous camera
+      // by definition, and repositioning it would break that contract, so those
+      // keep the bounded ring-acquisition fallback. Explicit operator geometry
+      // and continuation state both outrank this (see the guards below and the
+      // seeded-opening guard in the planner).
+      const stagesOrbitEntry = !!(nextDef && nextDef.primitive === "orbit"
+        && !!def.holdsCamera && !cursor.started
+        && sameResolved(targetInfo, next.targetInfo)
+        && !Number.isFinite(step.tilt_deg)
+        && !Number.isFinite(targetPlace && targetPlace.tilt_deg)
+        && !Number.isFinite(step.altitude_m)
+        && !step.framing);
+      const successorOrbitTilt = (endsAtOrbitEntry || stagesOrbitEntry)
+        ? (Number.isFinite(orbitAhead.step.tilt_deg) ? orbitAhead.step.tilt_deg
+          : Number.isFinite(orbitAhead.targetPlace && orbitAhead.targetPlace.tilt_deg) ? orbitAhead.targetPlace.tilt_deg
           // matches the orbit's own derivation below: a flattened carried tilt is
           // not inheritable by an orbit, so it takes the oblique orbit default.
           : (Number.isFinite(cursor.tilt_deg) && !cursor.tilt_capped) ? cursor.tilt_deg
@@ -828,16 +911,41 @@
       // its target. An orbit rides a ring and faces the target, so it must fall
       // back to its own oblique default rather than inherit the flattened value —
       // otherwise picking "Orbit" silently produced a top-down spin-in-place.
+      //
+      // The same reasoning has to apply to a tilt the operator asked for
+      // EXPLICITLY, and for a while it did not. `tilt_capped` is only set when a
+      // tilt was DERIVED and then clamped (`!tiltIntentional`), so an explicit
+      // "hold tilted 0 degrees" sailed through and the following orbit inherited
+      // 0. An orbit rides a ring of radius `altitude · tan(tilt)`, so at tilt 0
+      // it has no ring: measured in real Earth Studio, the camera held position
+      // to fourteen decimal places for all 480 frames while pan swept the full
+      // 180 deg. A dead nadir spin — the map turning under a static camera —
+      // presented as an orbit.
+      //
+      // An explicit tilt governs the shot it was given to. It is not an
+      // instruction about the NEXT shot. So the refusal to inherit now depends
+      // on whether the carried tilt leaves the orbit a usable ring, not on how
+      // that tilt came about. The threshold is the existing calibrated
+      // "camera is essentially above its target" limit — the same one the
+      // derived-cap path uses — rather than a new constant.
+      //
+      // An explicit tilt on the ORBIT ITSELF still wins: it is the first branch
+      // of `baseTilt` below, and asking for a top-down orbit is the operator's
+      // own choice to make.
+      const carriedTiltLeavesNoRing = action === "orbit"
+        && Number.isFinite(cursor.tilt_deg)
+        && cursor.tilt_deg <= maxTargetFramingTiltDeg({ planner });
       const inheritable = Number.isFinite(cursor.tilt_deg)
-        && !(action === "orbit" && cursor.tilt_capped);
+        && !(action === "orbit" && (cursor.tilt_capped || carriedTiltLeavesNoRing));
       let baseTilt = Number.isFinite(step.tilt_deg) ? step.tilt_deg
         : Number.isFinite(def.tiltDeg) ? def.tiltDeg
         : Number.isFinite(targetPlace && targetPlace.tilt_deg) ? targetPlace.tilt_deg
-        : endsAtOrbitEntry ? successorOrbitTilt
+        : (endsAtOrbitEntry || stagesOrbitEntry) ? successorOrbitTilt
         : inheritable ? cursor.tilt_deg
         : (planner.DEFAULT_TILT_DEG[action] != null ? planner.DEFAULT_TILT_DEG[action] : 45);
       // Cap a DERIVED tilt so the requested place is actually in shot.
-      const framesTargetFromAbove = action !== "orbit" && !endsAtOrbitEntry;
+      const framesTargetFromAbove = action !== "orbit" && !endsAtOrbitEntry && !stagesOrbitEntry
+        && !holdsOrbitEntryGeometry;
       if (framesTargetFromAbove && !tiltIntentional && baseTilt > TARGET_FRAMING_TILT_DEG) {
         baseTilt = TARGET_FRAMING_TILT_DEG;
       }
@@ -866,9 +974,58 @@
           altitude = framingAltitudeM(scale, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m });
           altitudeSource = "derived_optical_shifted";
         }
-        // else: the ladder is already at its end, so there is no closer/wider
-        // framing to move to. Keep the base framing — which may be a place's
-        // hand-validated gazetteer altitude — instead of re-deriving it.
+        else {
+          // The NAMED ladder has no rung left in this direction, but the MOVE
+          // still has to happen. Keeping the base framing here is what made
+          // "push in on Helsinki Cathedral" play as a static shot: landmark is
+          // rung 0, so the push clamped to its own starting altitude and
+          // produced 1418m -> 1418m with a single position keyframe. A
+          // requested approach that silently becomes a hover is a defect.
+          //
+          // Continue past the end of the ladder using the SAME geometric step
+          // the ladder itself uses at that boundary, so "one step closer" keeps
+          // the meaning it has everywhere else, then clamp to what Earth Studio
+          // actually allows. Named rungs are unchanged; this only fills in the
+          // open ends.
+          // A place's hand-validated gazetteer altitude is NOT overridden here.
+          // That guard came from real playback ("the camera can be too close to
+          // a building": a Spiral In on the Eiffel Tower re-derived 709 m
+          // instead of the validated 1,000 m), and Mikko's calibrated distance
+          // outranks a derived one. Only a framing this code derived itself is
+          // continued past the ladder.
+          // Only an AT-slot framing movement (Push In / Pull Back / Reveal)
+          // continues past the ladder. A TRAVEL step is already going somewhere
+          // and its arrival framing is what matters, so pushing it below the
+          // last rung just drives the camera at the ground: `fly_low` carries an
+          // oblique 72 deg tilt, and continuing it past `landmark` put the
+          // Eiffel approach at 196 m before the orbit pulled back to 438 m — an
+          // altitude reversal in the middle of the transition that is supposed
+          // to be the smoothest thing in the shot.
+          const framingMove = slot === "at";
+          const calibrated = frameBase.altitude_source === "gazetteer_calibrated";
+          const i = SCALE_LADDER.indexOf(frameBase.scale);
+          const inward = shift < 0;
+          const neighbour = SCALE_LADDER[inward
+            ? Math.min(SCALE_LADDER.length - 1, i + 1)
+            : Math.max(0, i - 1)];
+          const here = framingAltitudeM(frameBase.scale, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m });
+          const there = framingAltitudeM(neighbour, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m });
+          const ratio = here > 0 && there > 0 ? Math.max(here, there) / Math.min(here, there) : 1;
+          if (framingMove && !calibrated && ratio > 1.0001 && neighbour !== frameBase.scale) {
+            // HALF a rung per shift, not a whole one. Past the end of the ladder
+            // there is no calibrated rung to land on, and the same playback
+            // feedback says erring closer is the dangerous direction — so take
+            // the conservative step that still reads as a real move.
+            const factor = Math.pow(Math.sqrt(ratio), Math.abs(shift));
+            const floor = Math.max(planner.MIN_ALTITUDE_M, frameBase.min_altitude_m || 0);
+            const raw = inward ? altitude / factor : altitude * factor;
+            const next = Math.min(planner.MAX_ALTITUDE_M, Math.max(floor, raw));
+            if (Math.abs(next - altitude) > 1) {
+              altitude = next;
+              altitudeSource = "derived_optical_beyond_ladder";
+            }
+          }
+        }
       }
       if (def.holdAltitude && !Number.isFinite(step.altitude_m)) {
         altitude = cursor.altitude_m;
@@ -880,6 +1037,29 @@
         altitude = transitAltitudeM(dist, baseTilt, Math.max(cursor.altitude_m, frameBase.altitude_m), { planner });
         altitudeSource = "derived_transit";
         scale = "transit";
+      }
+      // LEGIBILITY FLOOR on a travelling leg's climb.
+      //
+      // The `cinematic` style climbs with `pull_back`, a fixed one-rung shift,
+      // so Helsinki -> Stockholm (400 km) and Helsinki -> New York (6,600 km)
+      // both cruised at the metro rung — the same travel geometry for a journey
+      // 16x longer. At 155,960 m the New York crossing sweeps the ground past at
+      // 1.14 frame-widths/second, over this module's own readable limit of
+      // READABLE_SCREEN_SPEED_FW_PER_S, so the surface just smears.
+      //
+      // The limit was already defined and already produced an advisory warning;
+      // this enforces it. RAISE ONLY: for short legs the readable altitude is
+      // far below the framing rung, so those are untouched and keep their
+      // hand-tuned look. A manual altitude still wins (set below).
+      if (slot === "travel" && Number.isFinite(def.scaleShift) && def.scaleShift > 0
+          && !def.holdAltitude && !def.useTransitAltitude
+          && context && Number.isFinite(context.distanceM) && context.distanceM > 0
+          && Number.isFinite(context.transitSeconds) && context.transitSeconds > 0) {
+        const readable = readableTransitAltitudeM(context.distanceM, context.transitSeconds, baseTilt, { planner });
+        if (Number.isFinite(readable) && readable > altitude + 1) {
+          altitude = Math.min(planner.SPACE_ALTITUDE_M, Math.round(readable));
+          altitudeSource = "derived_transit_legibility";
+        }
       }
       if (Number.isFinite(step.altitude_m)) { altitude = step.altitude_m; altitudeSource = "manual_altitude"; }
 
@@ -966,10 +1146,11 @@
         altitude_from_m: Math.round(cursor.altitude_m),
         holds_camera: isHold && !openingHold,
         ends_at_orbit_entry: endsAtOrbitEntry,
+        stages_orbit_entry: stagesOrbitEntry ? (next && next.step ? next.step.id : true) : false,
         tilt_intentional: tiltIntentional,
         tilt_capped: tiltCapped,
         orbit_flattened: orbitFlattened,
-        target_offset_half_frames: action === "orbit" || endsAtOrbitEntry
+        target_offset_half_frames: action === "orbit" || endsAtOrbitEntry || stagesOrbitEntry
           ? 0 : Math.round(targetOffsetHalfFrames(baseTilt, { planner }) * 100) / 100,
       };
       // An authoritative tilt that puts the place out of shot is the operator's
@@ -1011,18 +1192,27 @@
       const destInfo = legInfos[i];
       const distanceM = destInfo.resolved && walkInfo && walkInfo.resolved
         ? planner.haversineMeters(walkInfo.resolved, destInfo.resolved) : null;
+      // How long the camera actually spends CROSSING, which is what decides
+      // whether the ground is legible on the way. transitAltitudeM has to guess
+      // this from the generator's baseline duration; here the real number is
+      // known, so the legibility floor below can use it.
+      const transitSeconds = leg.travel.reduce((sum, st) => {
+        const d = MOVEMENTS[st.type] || MOVEMENTS.fly;
+        return sum + (d.travelsToDestination && Number.isFinite(st.duration_seconds) ? st.duration_seconds : 0);
+      }, 0);
       leg.travel.forEach((step) => {
         const def = MOVEMENTS[step.type] || MOVEMENTS.fly;
         const targetsDestination = !!(def.travelsToDestination || def.atDestination);
         const info = targetsDestination ? destInfo : walkInfo;
         const place = targetsDestination ? leg.destination : walkPlace;
-        planned.push({ step, slot: "travel", targetInfo: info, targetPlace: place, context: { distanceM } });
+        planned.push({ step, slot: "travel", targetInfo: info, targetPlace: place, context: { distanceM, transitSeconds } });
         if (targetsDestination) { walkInfo = destInfo; walkPlace = leg.destination; }
       });
       leg.movements.forEach((step) => planned.push({ step, slot: "at", targetInfo: destInfo, targetPlace: leg.destination, context: null }));
       walkInfo = destInfo; walkPlace = leg.destination;
     });
-    planned.forEach((p, i) => emit(p.step, p.slot, p.targetInfo, p.targetPlace, p.context, planned[i + 1] || null));
+    planned.forEach((p, i) => emit(p.step, p.slot, p.targetInfo, p.targetPlace, p.context,
+      planned[i + 1] || null, planned[i + 2] || null, planned[i - 1] || null));
 
     const description = steps.map((s) => s.phrase).join(" then ");
     const total = steps.reduce((sum, s) => sum + s.duration_seconds, 0);
@@ -1058,11 +1248,36 @@
     // annotated to terminate on the ring entry — so this only needs saying when a
     // hold or pause sits directly in front of the orbit. Advisory only: the move
     // is legal and reads as a swoop, it is just not a clean circle from frame one.
+    //
+    // The SAME place is not automatically safe, which is what this check used to
+    // assume. An orbit rides a ring of radius altitude*tan(tilt) around its
+    // target, while a hold sits wherever it already was — and a hold framed
+    // top-down (tilt 0) sits at the ring's CENTRE. Generating "hold the
+    // Colosseum, then half-orbit it" produced exactly that: the hold held at
+    // tilt 0 / radius 0, then the orbit had to travel 1,228 m out to its ring
+    // while already circling, measured as 103% radius breathing, 180 degrees of
+    // look-direction drift and a 60 degree pitch swing mid-circle. So the test
+    // is whether the hold actually SITS on the ring, not whether the place
+    // matches.
     steps.forEach((s, i) => {
       const prev = steps[i - 1];
-      if (!prev || s.action !== "orbit" || !prev.holds_camera) return;
-      if (prev.location_name === s.location_name) return;
-      warnings.push(`${prev.movement_label} at ${prev.location_name} is immediately followed by ${s.movement_label} around ${s.location_name}. A hold leaves the camera where it is, so the orbit glides onto its circle during its first revolution rather than starting on it. Put a travel movement between them (Fly To or Cruise) for a clean orbit, or accept the swoop.`);
+      // What matters is whether the previous step leaves the camera ON the
+      // orbit's ring. Two ways it does not: a hold keeps the camera wherever it
+      // already was, and a hover — including the OPENING hover of a shot — puts
+      // the camera directly above its target, i.e. at the ring's centre. The
+      // opening hover does not set holds_camera (it is establishing, not
+      // holding), which is why keying on that flag alone missed the case.
+      if (!prev || s.action !== "orbit") return;
+      const leavesCameraOffRing = prev.holds_camera || prev.action === "hover";
+      if (!leavesCameraOffRing) return;
+      const ringRadiusM = planner.orbitRadiusMeters(s.altitude_m, s.tilt_deg);
+      const samePlace = prev.location_name === s.location_name;
+      // Same place AND no ring to travel to (a top-down spin in place) is fine.
+      if (samePlace && ringRadiusM < 1) return;
+      const geometry = samePlace
+        ? `The hold sits at the centre of the orbit's ${Math.round(ringRadiusM)} m ring, not on it, so the camera travels outward while it is already circling`
+        : "A hold leaves the camera where it is, so the orbit glides onto its circle during its first revolution rather than starting on it";
+      warnings.push(`${prev.movement_label} at ${prev.location_name} is immediately followed by ${s.movement_label} around ${s.location_name}. ${geometry}. Put a travel movement between them (Fly To or Cruise) for a clean orbit, or accept the swoop.`);
     });
 
     return {

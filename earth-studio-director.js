@@ -35,6 +35,12 @@
     if (typeof require === "function") return require("./earth-studio-job-planner.js");
     throw new Error("earth-studio-director: planner module unavailable");
   }
+  function loadComposition(injected) {
+    if (injected) return injected;
+    if (globalScope && globalScope.EarthStudioOpeningComposition) return globalScope.EarthStudioOpeningComposition;
+    if (typeof require === "function") return require("./earth-studio-opening-composition.js");
+    throw new Error("earth-studio-director: opening-composition module unavailable");
+  }
 
   // ── Shot purpose — why does this shot exist? ───────────────────────────────
   // `angle` is the viewing angle the purpose WANTS. Whether it can be delivered
@@ -1362,6 +1368,43 @@
       }
       : { location: first.location, framing: first.framing };
 
+    // ── Subject-aware opening composition ──────────────────────────────────
+    // The first frame should feel chosen, not defaulted. The composition
+    // module decides whether the opening may deviate from the planner's
+    // proven default (pan 0 / facing north) and records WHY. It only ever
+    // emits a PARTIAL seed (pan/tilt) for the planner's existing initialCamera
+    // mechanism — position, altitude and every orbit-ring rule stay with the
+    // planner, and continuation/explicit/orbit-staging/comparison cases are
+    // hard exceptions. See earth-studio-opening-composition.js.
+    const OC = loadComposition(options.composition);
+    const P = loadPlanner(options.planner);
+    const firstLeg = legs[0] || null;
+    // The first genuine travel leg's destination: resolved from the STOPS
+    // (autoDirect's own resolution), not the raw leg object.
+    const nextStop = stops[1] || null;
+    const firstTravelDest = firstLeg && (firstLeg.travel || []).length && nextStop
+      ? nextStop.resolved || null : null;
+    const openingComposition = OC.planOpening({
+      subject: {
+        name: first.location,
+        latitude: first.resolved ? first.resolved.latitude : null,
+        longitude: first.resolved ? first.resolved.longitude : null,
+        span_m: (J.FRAMING_SCALES[first.scale] || {}).span_m || null,
+        scale: first.scale || null,
+      },
+      opening_beat: openDec ? openDec.movement : null,
+      next_beat: firstLeg && !(firstLeg.travel || []).length && (firstLeg.movements || [])[0]
+        ? firstLeg.movements[0].type : null,
+      first_travel: firstTravelDest && first.resolved ? {
+        to: { name: firstLeg.destination.location, latitude: firstTravelDest.latitude, longitude: firstTravelDest.longitude },
+        distance_m: P.haversineMeters(first.resolved, firstTravelDest),
+      } : null,
+      continuation: !!continuationState,
+      explicit: intent.opening || null,
+      compare: compareMatch && (compareMatch.stops || []).includes(first.location)
+        ? { matched: true } : null,
+    });
+
     const journey = J.normalizeJourney({
       pace: intent.pace || J.DEFAULT_PACE,
       aspect: intent.aspect || null,
@@ -1373,6 +1416,9 @@
         : [],
       legs,
     });
+    // Provenance rides inside the journey artifact so every generated package
+    // can answer "why did the system start from THIS angle?".
+    journey.opening_composition = openingComposition.composition;
 
     const notes = [];
     notes.push(`Flourish budget for this sequence: ${flourishBudgetFor(stops)} (from ${stops.length} stop${stops.length === 1 ? "" : "s"}; ${stops.filter((s) => s.importance === "HERO").length} hero, ${stops.filter((s) => s.importance === "HIGH").length} high).`);
@@ -1383,6 +1429,22 @@
       : "No selective or special moves were used — nothing in this sequence earned one.");
     if (compareMatch) notes.push(`Matched framing: ${compareMatch.stops.join(" / ")} are all filmed at ${compareMatch.scale} scale so they compare honestly.`);
     if (continuationState) notes.push("This animation begins from the exact terminal camera state of a previous animation — no hidden reset.");
+    const comp = openingComposition.composition;
+    notes.push(`Opening composition [${comp.strategy}]: ${comp.reason}`);
+    if (openingComposition.opening_camera) {
+      journey.opening_camera = openingComposition.opening_camera;
+    }
+    // Opening-to-first-motion continuity: does the opening heading flow into
+    // the first travel vector, or does playback begin with a visible swing?
+    const openingHeading = (journey.opening_camera && Number.isFinite(journey.opening_camera.pan_deg))
+      ? journey.opening_camera.pan_deg : 0;
+    const firstTravelBearing = firstTravelDest && first.resolved
+      ? OC.bearingDeg(first.resolved, firstTravelDest) : null;
+    const continuityAudit = OC.auditOpeningContinuity({
+      opening_heading_deg: openingHeading,
+      first_travel_bearing_deg: firstTravelBearing,
+    });
+    continuityAudit.warnings.forEach((w) => notes.push(w));
 
     const result = { journey, decisions, globe, notes, span_m: Math.round(spanM), stops };
     result.summary = J.summarizeJourney(journey);
@@ -1473,6 +1535,8 @@
       source_text: intent.source_text || null,
       beats,
       globe: result.globe,
+      opening_composition: (result.journey && result.journey.opening_composition) || null,
+      opening_camera: (result.journey && result.journey.opening_camera) || null,
       compare_match: options.compare_match || null,
       continuation: options.continuation ? {
         source_animation: options.continuation.source_animation || null,
@@ -1535,6 +1599,50 @@
     atDecisions.forEach((d) => {
       if (!d.decision || !d.decision.key) warn("orphan_at_beat", `${d.place}: an at-location beat has no camera grammar.`);
     });
+
+    // Sequence-level pacing diagnostics are deliberately warnings, not policy
+    // vetoes. Travel can be the subject of a journey story; the warning only
+    // asks for an editorial explanation when connective-looking travel owns
+    // most of the runtime.
+    const beats = (result.plan && result.plan.beats) || [];
+    const totalSeconds = beats.reduce((sum, b) => sum + (Number(b.duration_seconds) || 0), 0);
+    const travelBeats = beats.filter((b) => b.beat === "TRAVEL");
+    const travelSeconds = travelBeats.reduce((sum, b) => sum + (Number(b.duration_seconds) || 0), 0);
+    const travelPurposes = new Set(travelBeats.flatMap((b) => [b.purpose, ...(b.viewer_should_understand ? [] : [])]));
+    const explanatoryTravel = ["SHOW_ROUTE", "SHOW_SCALE", "RELATE", "REVEAL", "COMPARE"]
+      .some((purpose) => travelPurposes.has(purpose));
+    if (totalSeconds > 0 && travelSeconds / totalSeconds >= 0.65 && !explanatoryTravel) {
+      warn("travel_dominance",
+        `${Math.round(travelSeconds / totalSeconds * 100)}% of runtime is travel (${Math.round(travelSeconds * 10) / 10}s of ${Math.round(totalSeconds * 10) / 10}s) without an explicit route/scale/relationship purpose; review whether the connective movement earns that time.`);
+    }
+
+    // Matched comparisons often mirror grammar intentionally. Two long,
+    // equivalent moving beats are still worth showing to a human because
+    // parity does not require maximal duration or identical motion.
+    const comparisonBeats = beats.filter((b) => b.beat === "COMPARISON_LOCATION");
+    if (comparisonBeats.length >= 2) {
+      const equivalent = comparisonBeats.length >= 2
+        && comparisonBeats.every((b) => b.grammar === comparisonBeats[0].grammar
+          && Number(b.duration_seconds) === Number(comparisonBeats[0].duration_seconds));
+      if (equivalent && Number(comparisonBeats[0].duration_seconds) >= 10) {
+        warn("repeated_equivalent_grammar",
+          `matched comparison beats repeat ${comparisonBeats[0].grammar} for ${comparisonBeats[0].duration_seconds}s each; parity is preserved, but review whether the repeated movement earns its full duration.`);
+      }
+    }
+
+    // A conclusion should be terminal and meaningful. This compares it with
+    // the sequence's own subject-view beats rather than imposing a universal
+    // number of seconds.
+    const finalBeat = beats[beats.length - 1];
+    const subjectView = beats.filter((b) => b.beat !== "TRAVEL" && b.purpose !== "CONCLUDE");
+    const longestSubject = Math.max(0, ...subjectView.map((b) => Number(b.duration_seconds) || 0));
+    if (finalBeat && finalBeat.purpose === "CONCLUDE"
+        && Number(finalBeat.duration_seconds) > 0
+        && longestSubject > 0
+        && Number(finalBeat.duration_seconds) < longestSubject * 0.5) {
+      warn("weak_conclusion_emphasis",
+        `the terminal conclusion is ${finalBeat.duration_seconds}s versus a ${longestSubject}s subject beat; review whether the final synthesis has enough authority.`);
+    }
 
     return {
       findings,
@@ -1624,6 +1732,55 @@
     [/\bno\s+(high\s+)?transit\b|\bdon'?t\s+climb\b/i, "high_transit"],
   ];
   const LEVEL_HORIZON_PHRASE = /\bkeep\s+the\s+horizon\s+level\b|\blevel\s+horizon\b/i;
+  // Explicit OPENING-ORIENTATION language. The operator names the direction
+  // the opening camera should take; it is authoritative and outranks every
+  // automatic composition policy (see the USER_SPECIFIED branch in the
+  // opening-composition module).
+  //
+  // Convention: a compass bearing is the camera's HEADING (the direction it
+  // looks). "view/approach from the south" places the camera ON the south
+  // side, i.e. looking north — the heading is the OPPOSITE of the side.
+  const COMPASS_WORDS = {
+    north: 0, northeast: 45, east: 90, southeast: 135,
+    south: 180, southwest: 225, west: 270, northwest: 315,
+  };
+  const COMPASS_ALTERNATION = "north(?:east|west)?|south(?:east|west)?|east|west";
+  const OPENING_HEADING_PHRASES = [
+    // camera side: "view from the south", "approach the Colosseum from the northwest"
+    [new RegExp(`\\b(?:approach|come|view(?:ed)?|seen|shot|open(?:ing)?|start(?:ing)?)(?:\\s+[a-z][a-z'\\- ]*?)?\\s+from\\s+the\\s+(${COMPASS_ALTERNATION})\\b`, "i"), "side"],
+    // camera facing: "face north", "start looking east"
+    [new RegExp(`\\b(?:face|facing|look(?:ing)?|start\\s+looking)\\s+(?:to\\s+the\\s+)?(${COMPASS_ALTERNATION})\\b`, "i"), "facing"],
+    // numeric: "heading 220", "open at bearing 45 degrees"
+    [/\b(?:heading|bearing)\s+(?:of\s+)?(\d{1,3})\s*(?:°|deg(?:rees)?)?\b/i, "numeric"],
+  ];
+  const OPENING_TOPDOWN_PHRASE = /\btop-?\s?down\s+open(?:ing)?\b|\bopen(?:ing)?\s+top-?\s?down\b|\bstart\s+top-?\s?down\b/i;
+
+  // Parse explicit opening direction out of raw intent text. Returns
+  // { heading_deg?, tilt_deg?, source_text } or null. Deterministic, and
+  // deliberately literal: what the operator says is what gets recorded.
+  function parseExplicitOpening(text) {
+    for (const [re, kind] of OPENING_HEADING_PHRASES) {
+      const m = String(text).match(re);
+      if (!m) continue;
+      if (kind === "numeric") {
+        const h = Number(m[1]);
+        if (Number.isFinite(h) && h >= 0 && h <= 360) {
+          return { heading_deg: ((h % 360) + 360) % 360, source_text: m[0].trim() };
+        }
+        continue;
+      }
+      const base = COMPASS_WORDS[m[1].toLowerCase()];
+      if (typeof base === "number") {
+        // camera ON the south side looks north: the heading is opposite.
+        const heading = kind === "side" ? (base + 180) % 360 : base;
+        return { heading_deg: heading, source_text: m[0].trim() };
+      }
+    }
+    if (OPENING_TOPDOWN_PHRASE.test(String(text))) {
+      return { tilt_deg: 0, source_text: "top-down opening" };
+    }
+    return null;
+  }
 
   // Split intent text into sentences, then into CLAUSES, and attribute each
   // clause's purposes/roles to the places actually named in THAT clause.
@@ -1731,6 +1888,9 @@
       aspect: options.aspect || null,
       negatives: negatives.length ? negatives : undefined,
       level_horizon: LEVEL_HORIZON_PHRASE.test(raw) || undefined,
+      // Explicit opening orientation ("approach from the south", "face north",
+      // "heading 220", "start top-down"). Authoritative for the opening frame.
+      opening: parseExplicitOpening(raw) || undefined,
       source_text: raw,
     };
   }
@@ -1780,6 +1940,7 @@
     flourishBudgetFor,
     autoDirect,
     parseIntent,
+    parseExplicitOpening,
     explainDirection,
     decisionOf,
     scoreCandidate,

@@ -148,6 +148,17 @@ function writeJob(packageDir, payload = {}, options = {}) {
   // untouched by the seed.
   const planOptions = { aspect };
   if (journeyCompiled && journeyCompiled.initial_camera) planOptions.initialCamera = journeyCompiled.initial_camera;
+  // Subject-aware opening composition (Director): a PARTIAL camera seed
+  // (pan_deg / tilt_deg only) that re-orients the opening frame; every field
+  // not seeded falls back to the planner-derived default, so position,
+  // altitude and orbit-ring rules stay exactly as proven. A continuation
+  // seed ALWAYS wins — an exact hand-off is never re-composed.
+  const openingSeed = (payload.openingCamera && typeof payload.openingCamera === 'object')
+    ? payload.openingCamera
+    : (payload.direction && typeof payload.direction === 'object'
+      ? (payload.direction.opening_camera || (payload.direction.plan && payload.direction.plan.opening_camera) || null)
+      : null);
+  if (openingSeed && !planOptions.initialCamera) planOptions.initialCamera = openingSeed;
   // A journey-built animation asks the generator for a single coherent camera
   // trajectory (no wobble inside a movement) and for keyframes that change
   // nothing to be dropped when the animation is finished. Freeform description

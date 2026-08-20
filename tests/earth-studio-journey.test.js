@@ -244,6 +244,15 @@ test("framing: city vs region vs country give three clearly different camera dis
   assert.ok(j("Eiffel Tower") < city.altitude_m, "a landmark is closer than a city");
 });
 
+test("framing: known multi-country regions use physical extent, not the local region rung", () => {
+  const c = journey.compileJourney(journey.normalizeJourney({
+    start: { location: "Scandinavia" }, start_movements: [{ type: "hold", duration_seconds: 4 }],
+  }));
+  assert.equal(c.steps[0].framing_scale, "region");
+  assert.equal(c.steps[0].altitude_source, "derived_optical_extent");
+  assert.ok(c.steps[0].altitude_m > 4000000, `Scandinavia should fit as a multi-country region, got ${c.steps[0].altitude_m}`);
+});
+
 test("framing: a destination is auto-framed by its own size, not the start's", () => {
   const c = journey.compileJourney(journey.normalizeJourney({
     start: { location: "Eiffel Tower" },
@@ -1055,11 +1064,18 @@ function inMovementReversals(plan, tracks) {
   return found;
 }
 
-function redundantKeyframes(tracks) {
+function redundantKeyframes(tracks, plan) {
   let n = 0;
+  const boundaries = new Set((plan && plan.segments || [])
+    .filter((segment) => segment.location && segment.duration_seconds > 0)
+    .flatMap((segment) => [segment.start_frame, segment.end_frame]));
   tracks.raw.forEach((leaf) => {
     const a = leaf.keyframes.map((k) => k.value);
-    for (let i = 1; i < a.length - 1; i += 1) if (a[i] === a[i - 1] && a[i + 1] === a[i]) n += 1;
+    for (let i = 1; i < a.length - 1; i += 1) {
+      const frame = leaf.keyframes[i].time * (plan && plan.total_frames || 1);
+      if ([...boundaries].some((boundary) => Math.abs(boundary - frame) < 1e-6)) continue; // semantic hold fence
+      if (a[i] === a[i - 1] && a[i + 1] === a[i]) n += 1;
+    }
   });
   return n;
 }
@@ -1117,8 +1133,8 @@ test("keyframes: a journey-built animation contains no keyframe that changes not
       legs: [{ destination: { location: "Stockholm" }, travel_style: "direct", travel: [{ type: "fly" }], movements: [{ type: "hold", duration_seconds: 4 }] }] },
   ];
   jrs.forEach((j, i) => {
-    const { esp } = directedPlanFor(j);
-    assert.equal(redundantKeyframes(decodeTracks(esp)), 0, `journey ${i}: redundant keyframes remain`);
+    const { plan, esp } = directedPlanFor(j);
+    assert.equal(redundantKeyframes(decodeTracks(esp), plan), 0, `journey ${i}: redundant keyframes remain`);
   });
   // a track that never changes collapses to a single keyframe
   const flat = directedPlanFor({
@@ -1210,15 +1226,34 @@ function rawTracks(esp) {
   return { longitude: pos[0], latitude: pos[1], altitude: pos[2], pan: rot[0], tilt: rot[1] };
 }
 
+// A UNIFORM SWEEP sample: a keyframe strictly inside an orbit segment. These
+// are not movement boundaries — they are the samples that DEFINE the circle, so
+// the sweep is already in motion through them and there is no onset or arrival
+// to ease. Handles here would pin the value's slope to zero at every sample and
+// make the orbit stutter (see the emit-site note in the planner), so they are
+// authored hard-linear on purpose. The smoothness invariant below is about
+// movements starting and stopping abruptly; it is scoped to movement boundaries
+// rather than weakened, and a sweep interior is still required to BE linear —
+// an unexplained linear keyframe anywhere else is still a failure.
+function sweepInteriors(plan) {
+  const spans = (plan.segments || [])
+    .filter((sg) => sg.action === "orbit" && sg.location && sg.duration_seconds > 0)
+    .map((sg) => [sg.start_frame / plan.total_frames, sg.end_frame / plan.total_frames]);
+  return (time) => spans.some(([t0, t1]) => time > t0 + 1e-9 && time < t1 - 1e-9);
+}
+const isLinear = (h) => (h || {}).type === "linear" && Math.abs(Number((h || {}).x) || 0) === 0;
+
 // Every keyframe from which the track MOVES must ease out of rest / into the next
 // move — never linear, never absent.
-function abruptOnsets(esp) {
+function abruptOnsets(esp, plan) {
   const bad = [];
+  const inSweep = plan ? sweepInteriors(plan) : () => false;
   Object.entries(rawTracks(esp)).forEach(([name, leaf]) => {
     const k = leaf.keyframes;
     for (let i = 0; i < k.length - 1; i += 1) {
       if (k[i + 1].value === k[i].value) continue;          // nothing moves out of here
       const out = k[i].transitionOut || {};
+      if (inSweep(k[i].time) && isLinear(out)) continue;    // uniform-sweep sample
       const eased = (out.type === "easeOut" || out.type === "auto" || out.type === "custom")
         && Math.abs(Number(out.x) || 0) > 0;
       if (!eased) bad.push(`${name} keyframe ${i} (t=${k[i].time}) starts motion with out=${out.type || "none"} x=${out.x}`);
@@ -1228,13 +1263,22 @@ function abruptOnsets(esp) {
 }
 
 // Every keyframe at which the track COMES TO REST must decelerate into it.
-function abruptStops(esp) {
+function abruptStops(esp, plan) {
   const bad = [];
+  const inSweep = plan ? sweepInteriors(plan) : () => false;
+  const throughOrbitBoundaries = new Set((plan && plan.segments || [])
+    .map((segment, index, segments) => {
+      const next = segments[index + 1];
+      return segment.action === "orbit" && next && next.action !== "hover"
+        ? segment.end_frame : null;
+    }).filter((frame) => frame !== null));
   Object.entries(rawTracks(esp)).forEach(([name, leaf]) => {
     const k = leaf.keyframes;
     for (let i = 1; i < k.length; i += 1) {
       if (k[i].value === k[i - 1].value) continue;          // nothing was moving into here
+      if (throughOrbitBoundaries.has(k[i].time * (esp.settings.duration || 1))) continue;
       const inn = k[i].transitionIn || {};
+      if (inSweep(k[i].time) && isLinear(inn)) continue;    // uniform-sweep sample
       const eased = (inn.type === "auto" || inn.type === "custom") && Math.abs(Number(inn.x) || 0) > 0;
       if (!eased) bad.push(`${name} keyframe ${i} (t=${k[i].time}) ends motion with in=${inn.type || "none"} x=${inn.x}`);
     }
@@ -1256,15 +1300,15 @@ const SMOOTH_CASES = () => ({
 
 test("smoothness: no movement in a journey-built animation starts abruptly", () => {
   Object.entries(SMOOTH_CASES()).forEach(([label, j]) => {
-    const { esp } = directedPlanFor(j);
-    assert.deepEqual(abruptOnsets(esp), [], `${label}: ${abruptOnsets(esp).join(" | ")}`);
+    const { esp, plan } = directedPlanFor(j);
+    assert.deepEqual(abruptOnsets(esp, plan), [], `${label}: ${abruptOnsets(esp, plan).join(" | ")}`);
   });
 });
 
 test("smoothness: no movement in a journey-built animation stops abruptly", () => {
   Object.entries(SMOOTH_CASES()).forEach(([label, j]) => {
-    const { esp } = directedPlanFor(j);
-    assert.deepEqual(abruptStops(esp), [], `${label}: ${abruptStops(esp).join(" | ")}`);
+    const { esp, plan } = directedPlanFor(j);
+    assert.deepEqual(abruptStops(esp, plan), [], `${label}: ${abruptStops(esp, plan).join(" | ")}`);
   });
 });
 

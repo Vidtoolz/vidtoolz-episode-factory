@@ -133,6 +133,29 @@ movement — except where the legibility doctrine outranks it (a shape that cann
 readable in editorial time is declined, and the override is recorded in the decision
 evidence, never silent).
 
+**Opening composition (subject-aware first frame).** A fresh opening used to be the
+planner's subject-blind default: camera due south of the target, facing north,
+regardless of where the shot goes. `earth-studio-opening-composition.js` now decides
+whether the opening may deviate, at three confidence levels, and records the decision
+(`opening_composition` on the journey and the plan; the seed itself rides on
+`direction.opening_camera` and reaches the planner's existing per-field
+`initialCamera` mechanism — pan/tilt only, position/altitude/orbit-ring rules stay
+planner-owned). Hard exceptions, in order: **continuation** (exact hand-off is never
+re-framed), **explicit operator direction** ("approach from the south", "face north",
+"heading 220", "start top-down" — authoritative), **orbit-family openings** (the
+planner stages the ring and its exit-aligned phase; composition defers), **matched
+comparisons** (one neutral policy for both cities — no per-city glamour angles).
+Level A evidence: when the first real action is travel to a destination outside the
+opening frame (beyond the gazetteer framing span, floor 1.5 km), the opening faces the
+departure direction, so frame one flows into the first movement instead of correcting
+toward it. Level C: anything weaker retains the proven default and says so honestly
+(confidence `low`) — the system never invents a photogenic angle from nothing. An
+opening-to-first-motion audit flags openings whose heading diverges more than 90° from
+the first travel vector. A/B evidence lives in
+`package-runs/2026-08-20-earth-studio-opening-composition-ab` (review:
+`node scripts/earth-studio-opening-ab-review.js`); `changed=false` pairs are
+byte-identical on purpose.
+
 **Directorial Plan.** `buildPlan()` returns the beat sequence as an explicit artifact:
 per-beat purpose, subject, role, importance, grammar, why, and duration taken from the
 journey's own compiled timeline; provenance per field (USER_SPECIFIED /

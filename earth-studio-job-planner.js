@@ -35,6 +35,49 @@
   // from its travelling angle into the orbit's angle. Concentrating the tip near
   // the ring entry keeps the earlier part of the move a single clean intention.
   const ORBIT_ENTRY_TILT_MAX_RATE_DEG_PER_S = 12;
+  // Orbit circle fidelity. The exported ground path is a POLYGON through the
+  // orbit samples, so between two samples the radius dips to R·cos(step/2):
+  // the legacy 30° step breathes 3.4% of the radius (measured 41 m on a 1185 m
+  // orbit) — a visible in-out pulse 12× per revolution. 10° steps breathe
+  // 0.38%, below the visual threshold at orbit distances. Orbit geometry is
+  // precisely the case where interior keyframes earn their place: they ARE the
+  // circle, not decoration.
+  const ORBIT_SAMPLE_STEP_DEG = 10;
+  // Ring acquisition (orbit Phase B). An orbit rides a ring of
+  // altitude*tan(tilt) around its subject and faces it. A camera arriving from a
+  // hover, a hold or the wrong pitch is NOT yet in that geometry, and letting it
+  // reach the geometry while the sweep is already running is what produced the
+  // visible slide. Acquisition gets its own bounded phase so the sweep can hold
+  // radius, altitude and pitch.
+  const ORBIT_ENTRY_MIN_SECONDS = 0.5;
+  const ORBIT_ENTRY_MAX_FRACTION = 0.35; // never eat more than this of the orbit
+  const ORBIT_ENTRY_RING_TOLERANCE_FRACTION = 0.02;
+  const ORBIT_ENTRY_RING_TOLERANCE_M = 25;
+  const ORBIT_ENTRY_TILT_TOLERANCE_DEG = 0.5;
+  // ── Long-crossing cruise ───────────────────────────────────────────────────
+  // A cubic Bezier segment has exactly ONE velocity extremum, so a move built
+  // from two keyframes can only ever read as accelerate -> peak -> decelerate.
+  // No handle tuning changes that; it is the shape of the curve family. Measured
+  // in real Earth Studio on a 105 s Helsinki -> New York crossing: speed reached
+  // its peak at t=0.60 and was within 90% of peak for only about 15% of the
+  // shot. That is one enormous ease, not a journey.
+  //
+  // A trapezoidal profile needs THREE segments, so the cruise gets its own two
+  // keyframes. With the accel fraction a and decel fraction d, holding total
+  // distance at 1 gives cruise speed v = 1 / (1 - (a+d)/2), and the cruise
+  // boundaries sit at progress v*a/2 and 1 - v*d/2.
+  //
+  // Scoped to moves LONGER than the motion corpus evidences (its longest
+  // reference is 45.6 s), so every short and mid-length move keeps the derived
+  // profile byte-for-byte.
+  const CRUISE_MIN_SECONDS = 45.6;
+  const CRUISE_MIN_DISTANCE_M = 200000;
+  const CRUISE_PROFILES = {
+    balanced: { accel: 0.20, decel: 0.20 },
+    late_settle: { accel: 0.15, decel: 0.25 },
+  };
+  const CRUISE_DEFAULT_PROFILE = null; // null = not in force; set by option/policy
+  const ORBIT_LEGACY_SAMPLE_STEP_DEG = 30;
   const ZOOM_IN_ALTITUDE_M = 800;
   const ZOOM_OUT_ALTITUDE_M = 6000;
 
@@ -92,7 +135,10 @@
     "new zealand": { name: "New Zealand", latitude: -41.3, longitude: 173.2, scale: "country" },
     // Regions
     "lapland": { name: "Lapland", latitude: 67.9, longitude: 26.5, scale: "region" },
-    "scandinavia": { name: "Scandinavia", latitude: 63, longitude: 15, scale: "region" },
+    // The generic region rung is appropriate for local regions, but Scandinavia
+    // is a multi-country geographic subject. Its physical north/south extent
+    // must drive AUTO framing or a vertical shot only shows central Sweden.
+    "scandinavia": { name: "Scandinavia", latitude: 63, longitude: 15, scale: "region", frame_span_m: 1600000 },
     "the alps": { name: "The Alps", latitude: 46.6, longitude: 10.2, scale: "region" },
     "the sahara": { name: "The Sahara", latitude: 23.4, longitude: 12.6, scale: "region" },
     "the himalayas": { name: "The Himalayas", latitude: 29.3, longitude: 84.5, scale: "region" },
@@ -106,6 +152,17 @@
     "the north sea": { name: "The North Sea", latitude: 56.2, longitude: 3.4, scale: "region" },
     "the gulf of finland": { name: "The Gulf of Finland", latitude: 59.9, longitude: 25.4, scale: "region" },
     "the red sea": { name: "The Red Sea", latitude: 20.4, longitude: 38.4, scale: "region" },
+    "the pacific": { name: "The Pacific", latitude: 0, longitude: -160, scale: "continent" },
+    // Large-area political geography
+    "russia": { name: "Russia", latitude: 61, longitude: 100, scale: "country" },
+    "canada": { name: "Canada", latitude: 58, longitude: -106, scale: "country" },
+    "united states": { name: "United States", latitude: 39.8, longitude: -98.6, scale: "country" },
+    "china": { name: "China", latitude: 35, longitude: 104, scale: "country" },
+    "india": { name: "India", latitude: 22.5, longitude: 79.5, scale: "country" },
+    "brazil": { name: "Brazil", latitude: -11, longitude: -53, scale: "country" },
+    "taiwan": { name: "Taiwan", latitude: 23.7, longitude: 121, scale: "country" },
+    // Sub-continental regions
+    "southeast asia": { name: "Southeast Asia", latitude: 12, longitude: 105, scale: "subcontinent" },
     // Continents
     "europe": { name: "Europe", latitude: 52, longitude: 15, scale: "continent" },
     "africa": { name: "Africa", latitude: 2, longitude: 19, scale: "continent" },
@@ -359,6 +416,16 @@
     "kiev": "kyiv",
     "yosemite valley": "yosemite",
     "helsinki cathedral church": "helsinki cathedral",
+    "usa": "united states",
+    "us": "united states",
+    "united states of america": "united states",
+    "america": "united states",
+    "formosa": "taiwan",
+    "pacific ocean": "the pacific",
+    "pacific": "the pacific",
+    "the pacific ocean": "the pacific",
+    "south east asia": "southeast asia",
+    "se asia": "southeast asia",
   };
 
   // Parse an explicit coordinate phrase like "42.3555,-71.0565" or "lat 42.3 lng -71".
@@ -860,14 +927,70 @@
     const sameResolvedTarget = (a, b) => a && b
       && Math.abs(a.latitude - b.latitude) < 1e-6
       && Math.abs(a.longitude - b.longitude) < 1e-6;
+    // The orbit is either the NEXT movement, or sits just past a hold that
+    // carries the orbit's own geometry. Reading through the hold is what fixes
+    // `fly -> hold -> orbit`, the ordinary same-subject sequence: without it the
+    // fly framed the target from above, the hold held that top-down composition
+    // at the ring's dead CENTRE, and the orbit spent 29.8% of itself descending
+    // and sliding outward before it could sweep — while the adjacent
+    // `fly -> orbit` case already landed on the ring at 0.0%.
+    //
+    // The hold is NOT repositioned; it still holds whatever the fly delivers.
+    // Only the fly's endpoint moves.
+    //
+    // The altitude/tilt match IS the consent check, the same one the
+    // opening-hold staging below relies on: a hold the operator gave its own
+    // framing does not read through, and the bounded ring acquisition keeps
+    // handling it as before. This is a one-step extension of an existing
+    // lookahead, not a general multi-shot planner.
+    const orbitStagedFor = (i) => {
+      const next = segments[i + 1];
+      if (!next || next.duration_seconds <= 0) return null;
+      if (next.action === "orbit") return next;
+      if (next.action !== "hover") return null;
+      const third = segments[i + 2];
+      if (!third || third.action !== "orbit" || third.duration_seconds <= 0) return null;
+      if (!sameResolvedTarget(next.location, third.location)) return null;
+      if (Math.abs((next.altitude_m || 0) - (third.altitude_m || 0)) > 1) return null;
+      if (Math.abs((next.tilt_deg || 0) - (third.tilt_deg || 0)) > 0.5) return null;
+      return third;
+    };
+    for (let i = 0; i < segments.length - 1; i += 1) {
+      const seg = segments[i];
+      if (!["fly_to", "zoom_in", "zoom_out"].includes(seg.action)) continue;
+      if (seg.duration_seconds <= 0) continue;
+      const orbit = orbitStagedFor(i);
+      if (!orbit) continue;
+      if (!sameResolvedTarget(seg.location, orbit.location)) continue;
+      seg.ends_at_orbit_entry = orbit.segment_id;
+      const through = segments[i + 1] !== orbit
+        ? ` through the held segment ${segments[i + 1].segment_id}` : "";
+      notes.push(`segment ${seg.segment_id}: endpoint set to segment ${orbit.segment_id}'s orbit ring entry${through} (same target — the move lands on the ring the orbit starts from).`);
+    }
+
+    // OPENING-HOLD STAGING: the shot's first movement is a hover whose next
+    // movement orbits the SAME target at the SAME altitude and tilt. That is the
+    // directorial layer saying "establish from where the orbit begins", so the
+    // opening camera belongs ON the orbit ring rather than above the target.
+    //
+    // Without this, a top-down establishing hold sits at the ring's CENTRE and
+    // the orbit spends a bounded but large slice of itself correcting: measured
+    // in real Earth Studio on case K, frames 90-238 of 510 climbing 1,419 -> 710 m
+    // and travelling 0 -> 1,229 m before the sweep could start.
+    //
+    // The altitude/tilt match IS the consent check. If the operator asked for a
+    // top-down hold before an oblique orbit, the values disagree, nothing is
+    // restaged, and the bounded ring acquisition handles it as before.
     for (let i = 0; i < segments.length - 1; i += 1) {
       const seg = segments[i];
       const next = segments[i + 1];
-      if (!["fly_to", "zoom_in", "zoom_out"].includes(seg.action)) continue;
+      if (i !== 0 || seg.action !== "hover") continue;
       if (next.action !== "orbit" || seg.duration_seconds <= 0 || next.duration_seconds <= 0) continue;
       if (!sameResolvedTarget(seg.location, next.location)) continue;
-      seg.ends_at_orbit_entry = next.segment_id;
-      notes.push(`segment ${seg.segment_id}: endpoint set to segment ${next.segment_id}'s orbit ring entry (same target — the move lands on the ring the orbit starts from).`);
+      if (Math.abs((seg.altitude_m || 0) - (next.altitude_m || 0)) > 1) continue;
+      if (Math.abs((seg.tilt_deg || 0) - (next.tilt_deg || 0)) > 0.5) continue;
+      seg.stages_orbit_entry = next.segment_id;
+      notes.push(`segment ${seg.segment_id}: opening hold staged on segment ${next.segment_id}'s orbit ring (same target, same framing — the orbit starts sweeping immediately instead of moving onto the ring).`);
     }
 
     return {
@@ -1239,8 +1362,10 @@ This checklist is technical planning support only. It is not creative approval, 
       return track.map((k) => espKeyframe(k.time, round6(wrapLng(k.value))));
     }
     const out = [];
-    const push = (frame, value) => {
+    const push = (frame, value, sampledInterior = false) => {
       const kf = espKeyframe(frame, round6(value));
+      if (sampledInterior) kf.sampledInterior = sampledInterior === "in" ? "in"
+        : sampledInterior === "out" ? "out" : true;
       if (out.length && out[out.length - 1].time === kf.time) out[out.length - 1] = kf;
       else if (!out.length || out[out.length - 1].time < kf.time) out.push(kf);
     };
@@ -1261,22 +1386,87 @@ This checklist is technical planning support only. It is not creative approval, 
           if (cur.time - prev.time < 2) break; // sub-frame interval: wrap lands within one frame anyway
           const before = Math.min(Math.max(Math.floor(f), prev.time), cur.time - 1);
           const eastward = cur.value > prev.value;
-          push(before, eastward ? 180 : -180);
-          push(before + 1, eastward ? -180 : 180);
+          push(before, eastward ? 180 : -180, cur.sampledInterior);
+          push(before + 1, eastward ? -180 : 180, cur.sampledInterior);
         }
       }
-      push(cur.time, wrapLng(cur.value));
+      push(cur.time, wrapLng(cur.value), cur.sampledInterior);
     }
     return out;
   }
 
-  // Ground offset of a point at bearing/radius from a center (equirectangular
-  // approximation — fine at orbit radii of a few km).
+  // Ground offset of a point at bearing/radius from a center. Use a spherical
+  // destination rather than an equirectangular longitude delta: the latter
+  // divides by cos(latitude), amplifying error near the poles and can emit
+  // non-finite longitudes at ±90°. Earth Studio receives the resulting points
+  // as camera positions, so a small ring-geometry error is visible as orbit
+  // breathing and a non-finite point is unrecoverable.
   function offsetPoint(center, bearingDeg, radiusM) {
-    const bearing = toRadians(bearingDeg);
-    const latitude = center.latitude + (radiusM / 111320) * Math.cos(bearing);
-    const longitude = center.longitude + (radiusM / (111320 * Math.cos(toRadians(center.latitude)))) * Math.sin(bearing);
-    return { latitude: round6(latitude), longitude: round6(longitude) };
+    const lat1 = toRadians(Number(center.latitude));
+    const lon1 = toRadians(Number(center.longitude));
+    const bearing = toRadians(Number(bearingDeg));
+    const angularDistance = Math.max(0, Number(radiusM)) / EARTH_RADIUS_M;
+    const sinLat1 = Math.sin(lat1);
+    const cosLat1 = Math.cos(lat1);
+    const sinD = Math.sin(angularDistance);
+    const cosD = Math.cos(angularDistance);
+    const sinLat2 = sinLat1 * cosD + cosLat1 * sinD * Math.cos(bearing);
+    const lat2 = Math.asin(Math.max(-1, Math.min(1, sinLat2)));
+    const lon2 = lon1 + Math.atan2(
+      Math.sin(bearing) * sinD * cosLat1,
+      cosD - sinLat1 * Math.sin(lat2),
+    );
+    return {
+      latitude: round6((lat2 * 180) / Math.PI),
+      longitude: round6(wrapLng((lon2 * 180) / Math.PI)),
+    };
+  }
+
+  // Initial bearing from a to b, in degrees clockwise from north. This is used
+  // only for local orbit-exit phase selection; the main travel path continues
+  // to use the planner's existing shortest-arc longitude state machine.
+  function bearingDeg(a, b) {
+    const lat1 = toRadians(Number(a.latitude));
+    const lat2 = toRadians(Number(b.latitude));
+    const dLng = toRadians(Number(b.longitude) - Number(a.longitude));
+    return ((Math.atan2(
+      Math.sin(dLng) * Math.cos(lat2),
+      Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng),
+    ) * 180 / Math.PI) + 360) % 360;
+  }
+
+  // Choose the free phase of an orbit whose NEXT segment is travel. The orbit
+  // tangent at theta is theta + 90° for a clockwise sweep and theta - 90° for
+  // a counterclockwise sweep. A few fixed-point iterations are enough to solve
+  // the small dependency between the exit point and its bearing to the next
+  // destination. This is deliberately used only when the orbit has no prior
+  // positional handoff to preserve: an orbit entered from travel keeps its
+  // exact ring-entry pose.
+  function orbitExitTheta(center, radiusM, sweepDeg, destination) {
+    const direction = sweepDeg >= 0 ? 1 : -1;
+    const angularError = (theta) => {
+      const point = offsetPoint(center, theta, radiusM);
+      const desired = bearingDeg(point, destination);
+      return Math.abs((((theta + direction * 90) - desired + 540) % 360) - 180);
+    };
+    // The bearing-to-destination function is not globally contractive for
+    // long legs, so fixed-point iteration can settle on a poor phase. A small
+    // deterministic coarse search followed by a local refinement is safer and
+    // remains negligible beside trajectory generation.
+    let bestTheta = 0;
+    let bestError = Infinity;
+    for (let i = 0; i < 720; i += 1) {
+      const theta = i * 0.5;
+      const error = angularError(theta);
+      if (error < bestError) { bestError = error; bestTheta = theta; }
+    }
+    for (let step = 0.25; step >= 0.01; step /= 2) {
+      for (const candidate of [bestTheta - step, bestTheta + step]) {
+        const error = angularError(candidate);
+        if (error < bestError) { bestError = error; bestTheta = candidate; }
+      }
+    }
+    return bestTheta;
   }
 
   // Where the camera starts when the plan opens with this segment.
@@ -1317,6 +1507,15 @@ This checklist is technical planning support only. It is not creative approval, 
       state.latitude = start.latitude;
       state.longitude = start.longitude;
       state.pan = 180;
+    } else if (segment.action === "hover" && segment.stages_orbit_entry) {
+      // A staged establishing hold opens ON the ring the following orbit will
+      // ride, facing the subject — the same opening geometry an orbit-first shot
+      // gets, so the orbit that follows has nothing left to acquire.
+      const radius = orbitRadiusMeters(endAltitude, tilt);
+      const start = offsetPoint(location, 0, radius);
+      state.latitude = start.latitude;
+      state.longitude = start.longitude;
+      state.pan = 180;
     }
     return state;
   }
@@ -1325,8 +1524,9 @@ This checklist is technical planning support only. It is not creative approval, 
   // A*tan(tilt) away on the ground. Top-down (tilt 0) degenerates to a
   // spin-in-place, which is exactly the top-down orbit look.
   function orbitRadiusMeters(altitude, tiltDeg) {
-    const tilt = Math.min(Math.max(tiltDeg, 0), 80);
-    return Math.min(altitude * Math.tan(toRadians(tilt)), 80000);
+    const safeAltitude = Number.isFinite(Number(altitude)) ? Math.max(0, Number(altitude)) : 0;
+    const tilt = Math.min(Math.max(Number(tiltDeg) || 0, 0), 80);
+    return Math.min(safeAltitude * Math.tan(toRadians(tilt)), 80000);
   }
 
   // Operator directive (2026-08-19): "the camera movement must always follow a
@@ -1353,7 +1553,8 @@ This checklist is technical planning support only. It is not creative approval, 
     for (let pass = 0; pass < 64; pass += 1) {
       const next = out.filter((kf, i) => {
         if (i === 0 || i === out.length - 1) return true;
-        return !(same(kf.value, out[i - 1].value) && same(out[i + 1].value, kf.value));
+        return kf.semanticBoundary
+          || !(same(kf.value, out[i - 1].value) && same(out[i + 1].value, kf.value));
       });
       if (next.length === out.length) return next;
       out = next;
@@ -1361,14 +1562,87 @@ This checklist is technical planning support only. It is not creative approval, 
     return out;
   }
 
+  // Requested versus delivered orbit sweep rate. Runs the real keyframe path, so
+  // the acquisition duration it reports is the one the .esp actually contains.
+  function orbitTimingReport(plan, options = {}) {
+    const orbitTiming = [];
+    buildEspKeyframes(plan, { ...options, orbitTiming });
+    return orbitTiming.map((row) => {
+      const sweepSeconds = row.sweep_frames / (row.frame_rate || FRAME_RATE);
+      const requestedRate = row.requested_seconds > 0 ? row.requested_arc_deg / row.requested_seconds : null;
+      const deliveredRate = sweepSeconds > 0 ? row.requested_arc_deg / sweepSeconds : null;
+      return {
+        ...row,
+        acquisition_seconds: row.acquisition_frames / (row.frame_rate || FRAME_RATE),
+        sweep_seconds: sweepSeconds,
+        requested_rate_deg_per_s: requestedRate,
+        delivered_rate_deg_per_s: deliveredRate,
+        rate_error_fraction: requestedRate && deliveredRate ? (deliveredRate / requestedRate) - 1 : null,
+        // What the segment would have to be for the sweep to run at the rate the
+        // operator asked for. Reported, not applied.
+        //
+        // NOT `requested + acquisition`. The acquisition is sized from the orbit's
+        // OWN ground speed — `offRing / (radius·sweep / orbitSeconds)` — so it is a
+        // fixed FRACTION of the segment and grows with it. Lengthening the segment
+        // by the measured acquisition therefore falls short: 16 s + 5.1 s = 21.1 s
+        // was measured delivering a 14.4 s sweep, still 47% fast. Holding the rate
+        // is a fixed point, `T = requested / (1 - k)`: 23.49 s for k = 0.319.
+        segment_seconds_for_requested_rate: (() => {
+          const segmentSeconds = row.segment_frames / (row.frame_rate || FRAME_RATE);
+          if (!(segmentSeconds > 0)) return null;
+          const k = row.acquisition_frames / row.segment_frames;
+          return k >= 1 ? null : row.requested_seconds / (1 - k);
+        })(),
+        acquisition_fraction: row.segment_frames > 0
+          ? row.acquisition_frames / row.segment_frames : null,
+      };
+    });
+  }
+
   function buildEspKeyframes(plan, options = {}) {
     const policy = motionPolicy(plan, options);
     const tracks = { lng: [], lat: [], alt: [], pan: [], tilt: [] };
-    const put = (trackName, frame, value) => {
+    // `sampledInterior` marks a keyframe that is an INTERIOR SAMPLE of a curve
+    // this code is describing point-by-point — an orbit's ring, a space zoom's
+    // composition-constrained climb. The serializer emits those hard-linear;
+    // see the note at the emit site for why ease handles are actively harmful
+    // on a sampled curve.
+    //
+    // `true` means BOTH sides are linear. `"in"` means only the incoming side
+    // is: the keyframe closes a sampled curve but then departs into something
+    // else, so the curve must be protected on the way in while the departure
+    // is still allowed to ease. `"out"` is the mirror image: the keyframe keeps
+    // its own eased arrival but the span LEAVING it must be exactly flat, which
+    // is what fences a static hold from the movements on either side of it.
+    const put = (trackName, frame, value, sampledInterior = false, semanticBoundary = false) => {
       const track = tracks[trackName];
       const kf = espKeyframe(frame, value);
+      // Preserve the VARIANT: "in" must not collapse to true, or a closing
+      // sample is treated as an interior one and loses its arrival easing.
+      if (sampledInterior) kf.sampledInterior = sampledInterior === "in" ? "in"
+        : sampledInterior === "out" ? "out" : true;
+      // Same-valued boundary keys fence a preceding hold from the following
+      // movement. Keep the marker internal; the serializer ignores it.
+      if (semanticBoundary) kf.semanticBoundary = true;
       if (track.length && track[track.length - 1].time === kf.time) track[track.length - 1] = kf;
       else if (!track.length || track[track.length - 1].time < kf.time) track.push(kf);
+    };
+    // Attach an analytic slope (value units per FRAME) to the most recent
+    // keyframe on a track. The serializer turns it into a handle whose y
+    // actually carries that slope, instead of the default horizontal y = 0.
+    const setRate = (trackName, side, ratePerFrame) => {
+      const kf = tracks[trackName][tracks[trackName].length - 1];
+      if (!kf || !Number.isFinite(ratePerFrame)) return;
+      if (side === "in" || side === "both") kf.rateIn = ratePerFrame;
+      if (side === "out" || side === "both") kf.rateOut = ratePerFrame;
+    };
+    // Pin the OUT side of the newest keyframe hard-linear without disturbing the
+    // easing it already carries on the way IN. A keyframe already protected on
+    // the way in becomes linear on both sides.
+    const pinOut = (trackName) => {
+      const kf = tracks[trackName][tracks[trackName].length - 1];
+      if (!kf) return;
+      kf.sampledInterior = (kf.sampledInterior === "in" || kf.sampledInterior === true) ? true : "out";
     };
     const last = (trackName) => (tracks[trackName].length ? tracks[trackName][tracks[trackName].length - 1] : null);
     // Move a track to `value` across [startFrame, endFrame], anchoring the old
@@ -1376,18 +1650,21 @@ This checklist is technical planning support only. It is not creative approval, 
     const change = (trackName, startFrame, endFrame, value) => {
       const previous = last(trackName);
       if (previous && previous.value === value) return;
-      if (previous && previous.time < startFrame) put(trackName, startFrame, previous.value);
+      if (previous && previous.time < startFrame) put(trackName, startFrame, previous.value, false, true);
       put(trackName, endFrame, value);
     };
     const anchor = (trackName, startFrame) => {
       const previous = last(trackName);
-      if (previous && previous.time < startFrame) put(trackName, startFrame, previous.value);
+      if (previous && previous.time < startFrame) put(trackName, startFrame, previous.value, false, true);
     };
 
     const resolved = plan.segments.filter((s) => s.location && s.duration_seconds > 0);
     if (!resolved.length) return tracks;
 
     let state = null;
+    // Did the opening camera come from a continuation seed? A seeded opening is
+    // the previous animation's exact final frame and must never be re-placed.
+    let openedFromSeed = false;
     resolved.forEach((segment, idx) => {
       const location = segment.location;
       const minAlt = location.min_altitude_m || 0;
@@ -1400,9 +1677,49 @@ This checklist is technical planning support only. It is not creative approval, 
         // A continuation seed replaces ONLY the opening state; every downstream
         // rule (easing, arcs, settle-hold, orbit ring entry) is untouched.
         const seed = options.initialCamera;
-        state = seed && typeof seed === "object"
+        openedFromSeed = !!(seed && typeof seed === "object");
+        state = openedFromSeed
           ? seededCameraState(seed, segment, endAltitude, tilt)
           : initialCameraState(segment, endAltitude, tilt);
+        // STAGE THE OPENING HOLD AT THE ORBIT'S EXIT-ALIGNED BEARING.
+        //
+        // A staged hold is free to choose WHERE on the ring it establishes from,
+        // and that choice also fixes where the following orbit ENDS — the sweep
+        // runs from the staged bearing. `orbitExitTheta` can solve for an exit
+        // where the orbit's tangential motion already points at the next
+        // destination, but it was only allowed to when the orbit opened the shot.
+        // A staged hold makes the same freedom available one movement earlier:
+        // measured on "hold the Colosseum, half-orbit it, then travel to Paris",
+        // the orbit exited 176 deg away from the destination; solving the phase
+        // backwards from the exit brings it in line, and costs nothing because
+        // the hold had to pick some bearing anyway.
+        //
+        // A continuation seed is never restaged (frame 0 belongs to the previous
+        // animation), and if no later destination qualifies this does nothing.
+        if (policy.coherentTrajectory && !openedFromSeed && segment.stages_orbit_entry) {
+          const orbitSeg = resolved[idx + 1];
+          if (orbitSeg && orbitSeg.action === "orbit" && orbitSeg.segment_id === segment.stages_orbit_entry) {
+            const orbitRadius = orbitRadiusMeters(
+              clampAltitude(orbitSeg.altitude_m || DEFAULT_ALTITUDE_M, (orbitSeg.location && orbitSeg.location.min_altitude_m) || 0),
+              typeof orbitSeg.tilt_deg === "number" ? orbitSeg.tilt_deg : 45,
+            );
+            const orbitSweep = (orbitSeg.orbit_degrees || 360) * (orbitSeg.orbit_direction || 1);
+            let dest = null;
+            for (let j = idx + 2; j < resolved.length; j += 1) {
+              const cand = resolved[j];
+              if (!cand.location) continue;
+              if (cand.action === "orbit") break;
+              if (!["fly_to", "zoom_in", "zoom_out"].includes(cand.action)) continue;
+              if (haversineMeters(orbitSeg.location, cand.location) > Math.max(orbitRadius * 2, 1000)) { dest = cand; break; }
+            }
+            if (dest && orbitRadius > 1) {
+              const thetaEndStaged = orbitExitTheta(orbitSeg.location, orbitRadius, orbitSweep, dest.location);
+              const theta0Staged = thetaEndStaged - orbitSweep;
+              const staged = offsetPoint(orbitSeg.location, theta0Staged, orbitRadius);
+              state = { ...state, latitude: staged.latitude, longitude: staged.longitude, pan: theta0Staged + 180 };
+            }
+          }
+        }
         put("lng", sf, state.longitude);
         put("lat", sf, state.latitude);
         put("alt", sf, state.altitude);
@@ -1422,22 +1739,287 @@ This checklist is technical planning support only. It is not creative approval, 
         // Enter the circle at the bearing the camera is already facing away
         // from, so the pan track stays continuous (fixes the orbit-after-orbit
         // static bug: each orbit adds its sweep to the accumulated pan).
-        const theta0 = state.pan - 180;
-        const sampleCount = Math.max(4, Math.ceil(Math.abs(sweep) / 30));
+        // Where is this orbit actually leaving TO?
+        //
+        // The immediate successor is not always the answer. The `cinematic`
+        // travel style opens with a same-place pull-back, so an orbit followed
+        // by a real crossing had an immediate successor sitting on its own
+        // subject: the exit-alignment gate saw zero distance and never fired.
+        // Measured on "orbit the Colosseum then fly to Paris": with a direct
+        // fly the orbit exits 5 deg off the travel direction; with the cinematic
+        // style, which is what the GUI actually builds, it exited 142 deg off.
+        // Look past same-place preparatory moves to the first successor that
+        // genuinely travels somewhere else.
+        const exitTarget = (() => {
+          for (let j = idx + 1; j < resolved.length; j += 1) {
+            const cand = resolved[j];
+            if (!cand.location) continue;
+            if (!["fly_to", "zoom_in", "zoom_out"].includes(cand.action)) {
+              if (cand.action === "orbit") return null; // another orbit owns its own phase
+              continue;
+            }
+            if (haversineMeters(location, cand.location) > Math.max(radius * 2, 1000)) return cand;
+          }
+          return null;
+        })();
+        const canChooseInitialPhase = policy.coherentTrajectory
+          && idx === 0
+          && exitTarget;
+        const thetaEnd = canChooseInitialPhase
+          ? orbitExitTheta(locRef, radius, sweep, exitTarget.location)
+          : null;
+        // Where does the sweep start from?
+        //
+        // `state.pan - 180` is the camera's own facing, which is the right entry
+        // bearing whenever the camera is already looking at the target from the
+        // ring. It is NOT right for a camera that arrived from somewhere else —
+        // a continuation seed, or any prior movement that left pan unrelated to
+        // where the camera actually sits. Measured with a seeded opening 1,106 m
+        // from the Colosseum: pan said the ring entry was at -180 deg while the
+        // camera physically sat at -9.5 deg, so acquisition flew it 170.5 deg
+        // AROUND the ring, losing the subject by up to 170 deg on the way.
+        //
+        // When the camera is already off-centre and no exit constraint applies,
+        // enter the ring at the bearing it is ALREADY on. Acquisition then only
+        // has to close the radius and turn to face the subject — it never
+        // travels around a circle it is already standing on.
+        const preCosLat = Math.cos(toRadians(locRef.latitude)) || 1e-6;
+        const preRadiusM = Math.hypot(
+          (state.latitude - locRef.latitude) * 111320,
+          (state.longitude - locRef.longitude) * 111320 * preCosLat,
+        );
+        const preBearingDeg = (Math.atan2(
+          (state.longitude - locRef.longitude) * 111320 * preCosLat,
+          (state.latitude - locRef.latitude) * 111320,
+        ) * 180) / Math.PI;
+        // "Already facing the target" means pan agrees with the geometry; then
+        // pan is authoritative and this changes nothing.
+        const panAgreesWithPosition = preRadiusM > 1
+          && Math.abs(shortestLngDelta(state.pan - 180, preBearingDeg)) < 1;
+        const enterWhereItStands = policy.coherentTrajectory
+          && thetaEnd === null
+          && preRadiusM > 1
+          && !panAgreesWithPosition;
+        const theta0 = thetaEnd !== null ? thetaEnd - sweep
+          : enterWhereItStands ? preBearingDeg
+          : state.pan - 180;
+        const orbitStartPan = thetaEnd === null && !enterWhereItStands ? state.pan : theta0 + 180;
+        // OPENING ORBIT: place frame 0 ON the ring at the bearing the sweep
+        // actually starts from. initialCameraState puts an opening orbit at
+        // bearing 0 with pan 180, which was right while theta0 was always 0 —
+        // but the exit-phase lookahead back-solves theta0 from where the orbit
+        // needs to END, and the opening position was left behind. Measured on
+        // "orbit the Colosseum, then fly to Paris": frame 0 sat at bearing 0
+        // with pan 47.9°, a 132° aim error, and the camera then slid 122° around
+        // the ring inside the first 0.57 s.
+        //
+        // Frame 0 is the shot's own first frame, so placing it is composition,
+        // not a jump — nothing precedes it. A CONTINUATION seed is different:
+        // that frame belongs to the previous animation and is never re-placed.
+        // With theta0 === 0 this reproduces the old values exactly.
+        if (idx === 0 && !openedFromSeed) {
+          const opening = offsetPoint(locRef, theta0, radius);
+          state = { ...state, latitude: opening.latitude, longitude: opening.longitude, pan: orbitStartPan };
+          put("lng", sf, opening.longitude);
+          put("lat", sf, opening.latitude);
+          put("pan", sf, orbitStartPan);
+        }
+        const stepDeg = policy.coherentTrajectory ? ORBIT_SAMPLE_STEP_DEG : ORBIT_LEGACY_SAMPLE_STEP_DEG;
+        const sampleCount = Math.max(4, Math.ceil(Math.abs(sweep) / stepDeg));
         anchor("lng", sf);
         anchor("lat", sf);
+        if (policy.coherentTrajectory) anchor("pan", sf);
         let lastPoint = { latitude: state.latitude, longitude: state.longitude };
-        for (let i = 1; i <= sampleCount; i += 1) {
-          const t = i / sampleCount;
-          lastPoint = offsetPoint(locRef, theta0 + sweep * t, radius);
-          const frame = sf + (ef - sf) * t;
-          put("lat", frame, lastPoint.latitude);
-          put("lng", frame, lastPoint.longitude);
+        // ── Phase B: RING ACQUISITION ──────────────────────────────────────
+        // Where is the camera relative to the geometry this orbit needs?
+        const fps = plan.frame_rate || FRAME_RATE;
+        const orbitSeconds = Math.max(1e-6, (ef - sf) / fps);
+        const cosLat = Math.cos(toRadians(locRef.latitude)) || 1e-6;
+        const radialM = (pt) => Math.hypot(
+          (pt.latitude - locRef.latitude) * 111320,
+          (pt.longitude - locRef.longitude) * 111320 * cosLat,
+        );
+        const bearingOf = (pt) => (Math.atan2(
+          (pt.longitude - locRef.longitude) * 111320 * cosLat,
+          (pt.latitude - locRef.latitude) * 111320,
+        ) * 180) / Math.PI;
+        const ringEntry = offsetPoint(locRef, theta0, radius);
+        const startRadius = radialM(state);
+        const offRingM = haversineMeters(state, ringEntry);
+        const ringTolM = Math.max(radius * ORBIT_ENTRY_RING_TOLERANCE_FRACTION, ORBIT_ENTRY_RING_TOLERANCE_M);
+        const tiltDeltaDeg = Math.abs(tilt - state.tilt);
+        const needsRing = offRingM > ringTolM;
+        const needsTilt = tiltDeltaDeg > ORBIT_ENTRY_TILT_TOLERANCE_DEG;
+        // Entry duration is DERIVED, not picked: the pitch change gets the calm
+        // rotation rate this module already uses for orbit entry, and the lateral
+        // move gets the orbit's OWN ground speed, so acquisition and sweep travel
+        // at the same pace and read as one continuous camera performance. Bounded
+        // so a long acquisition can never eat the shot.
+        const sweepGroundSpeed = (radius * Math.abs(toRadians(sweep))) / orbitSeconds;
+        const lateralSeconds = sweepGroundSpeed > 1e-6 ? offRingM / sweepGroundSpeed : 0;
+        const tiltSeconds = tiltDeltaDeg / ORBIT_ENTRY_TILT_MAX_RATE_DEG_PER_S;
+        // The HEADING turn is work too. A camera arriving from elsewhere may not
+        // be facing the subject at all — a continuation seed measured 170.5 deg
+        // off — and sizing the phase from pitch and distance alone whipped that
+        // turn through in about 0.7 s. Heading gets the same calm rotation rate
+        // as pitch.
+        const panDeltaDeg = Math.abs(shortestLngDelta(state.pan, theta0 + 180));
+        const panSeconds = panDeltaDeg / ORBIT_ENTRY_TILT_MAX_RATE_DEG_PER_S;
+        const needsPan = panDeltaDeg > 1;
+        let entryFrames = 0;
+        if (policy.coherentTrajectory && (needsRing || needsTilt || needsPan)) {
+          const wanted = Math.max(
+            ORBIT_ENTRY_MIN_SECONDS,
+            needsRing ? lateralSeconds : 0,
+            needsTilt ? tiltSeconds : 0,
+            needsPan ? panSeconds : 0,
+          );
+          const capped = Math.min(wanted, orbitSeconds * ORBIT_ENTRY_MAX_FRACTION);
+          entryFrames = Math.round(capped * fps);
+          if (entryFrames < 1) entryFrames = 0;
         }
-        change("alt", sf, ef, endAltitude);
-        change("tilt", sf, ef, tilt);
-        change("pan", sf, ef, state.pan + sweep);
-        state = { latitude: lastPoint.latitude, longitude: lastPoint.longitude, altitude: endAltitude, pan: state.pan + sweep, tilt };
+        const sweepStart = sf + entryFrames;
+        // Acquisition duration is DERIVED here, during keyframe generation, from
+        // the camera state this walk has built up — the plan layer cannot know it.
+        // That is exactly why the cost of it was invisible: the segment keeps its
+        // requested duration and the sweep quietly gets whatever is left, so a
+        // requested 180 deg over 16 s can be delivered as 180 deg over 11.2 s.
+        // Nothing was wrong with the frames; the ANGULAR RATE silently stopped
+        // matching the operator's own number.
+        //
+        // An opt-in out-parameter so a caller can report that instead of having to
+        // re-derive it. Pure observation: no behaviour depends on it.
+        if (Array.isArray(options.orbitTiming)) {
+          options.orbitTiming.push({
+            segment_id: segment.segment_id,
+            requested_seconds: segment.duration_seconds,
+            requested_arc_deg: Math.abs(Number(segment.orbit_degrees) || 0),
+            segment_frames: ef - sf,
+            acquisition_frames: entryFrames,
+            sweep_frames: ef - sweepStart,
+            frame_rate: fps,
+          });
+        }
+        if (entryFrames > 0) {
+          // Bearing runs from wherever the camera actually is to the sweep's
+          // starting bearing, along the shortest arc; radius converges
+          // monotonically to the ring. At the ring's CENTRE the bearing is
+          // undefined, so the camera moves straight out along theta0 — a purely
+          // radial acquisition, which is also the shortest way onto the ring.
+          const startBearing = startRadius > 1 ? bearingOf(state) : theta0;
+          const bearingDelta = shortestLngDelta(startBearing, theta0);
+          // Heading turns with the camera so it keeps facing the subject. Near
+          // the centre at a top-down pitch heading is not visually meaningful,
+          // so a smooth turn beats snapping to the ring's aim.
+          const panTarget = state.pan + shortestLngDelta(state.pan, theta0 + 180);
+          const entrySamples = Math.max(2, Math.ceil(Math.abs(bearingDelta) / stepDeg));
+          // Anchor pitch and altitude at the boundary FIRST. Without this the
+          // acquisition's tilt keyframe is the track's next keyframe after the
+          // opening one, so the change interpolates from frame 0 and the pitch
+          // creeps upward through the whole PRECEDING movement: a fly->orbit
+          // measured 45 deg at t=0 drifting to 51.8 deg by the time the orbit
+          // even started. Acquisition must be confined to its own window.
+          anchor("tilt", sf);
+          anchor("alt", sf);
+          for (let i = 1; i <= entrySamples; i += 1) {
+            const u = i / entrySamples;
+            const pt = offsetPoint(locRef, startBearing + bearingDelta * u, startRadius + (radius - startRadius) * u);
+            const frame = sf + entryFrames * u;
+            const interior = i < entrySamples;
+            // Only emit what actually has to be acquired. When the camera is
+            // already on the ring (a fly/zoom annotated to land on the ring
+            // entry) and only the pitch has to settle, re-placing position adds
+            // keyframes that move the camera by ~1 m of rounding noise and
+            // nothing else.
+            if (needsRing) {
+              put("lat", frame, pt.latitude, interior);
+              put("lng", frame, pt.longitude, interior);
+            }
+            if (needsRing || needsPan) {
+              put("pan", frame, state.pan + (panTarget - state.pan) * u, interior);
+            }
+            if (needsTilt) put("tilt", frame, round6(state.tilt + (tilt - state.tilt) * u), interior);
+          }
+          // Altitude also finishes here, so the sweep holds it.
+          if (state.altitude !== endAltitude) change("alt", sf, sweepStart, endAltitude);
+          if (needsRing) {
+            lastPoint = offsetPoint(locRef, theta0, radius);
+            state = { ...state, latitude: lastPoint.latitude, longitude: lastPoint.longitude, pan: theta0 + 180 };
+          }
+          state = { ...state, altitude: endAltitude, tilt };
+        }
+        // Snap to the sweep's opening heading ONLY when no acquisition phase is
+        // going to interpolate pan itself. Doing both put a spurious keyframe at
+        // the boundary and the heading dipped and came back (measured 170.5 ->
+        // 85.3 -> 170.5 within 15 frames) — a pan wobble at the very moment the
+        // orbit starts.
+        if (policy.coherentTrajectory && entryFrames === 0 && orbitStartPan !== state.pan) {
+          put("pan", sf, orbitStartPan);
+        }
+        // After an acquisition the sweep continues from the pan the entry left.
+        const sweepPanBase = entryFrames > 0 ? theta0 + 180 : orbitStartPan;
+        const spanFrames = ef - sweepStart;
+        for (let i = 1; i <= sampleCount; i += 1) {
+          // TIME-QUANTIZED SAMPLING: take the ANGLE at the frame this sample
+          // actually lands on, not at the ideal fractional time.
+          //
+          // Every keyframe is rounded to an integer frame. When the sweep's frame
+          // span does not divide by the sample count the intervals alternate —
+          // 27,26,27,27,26,... for 480 frames over 18 samples — and that
+          // distribution is already optimal: they differ by exactly one frame and
+          // alternate regularly, which is what a Bresenham-style redistribution
+          // would produce anyway. Redistributing the rounding therefore cannot
+          // help, and 480/18 simply has no integer answer.
+          //
+          // The ripple came from a MISMATCH rather than from the rounding. The
+          // angle was taken at the ideal time while the keyframe landed at the
+          // rounded one, so every chord subtended an identical angle but was
+          // given a different number of frames to cross. Angular rate alternated
+          // by the same 1/26 the frames did: 3.85% measured on a 180 deg / 16 s
+          // orbit, an order of magnitude above the 0.38% the 10 deg chord
+          // geometry contributes.
+          //
+          // Taking the angle at the ACTUAL frame makes each chord proportional to
+          // the frames available to cross it, so the rate is uniform by
+          // construction. Same sample count, same keyframes, same 10 deg
+          // geometry, exact first and last frame, exact swept arc — only the
+          // sample times and the angles that match them change.
+          // Gated with every other motion improvement in this file, so the
+          // byte-frozen freeform path stays byte-frozen by construction rather
+          // than by luck. (It happens to be a no-op on the current frozen
+          // control — its legacy 30 deg sampling gives 1080 frames over 24
+          // samples, exactly 45 each — but a freeform orbit whose span did not
+          // divide would have moved, and that is not a thing to leave to chance.)
+          const frame = sweepStart + (policy.coherentTrajectory
+            ? Math.round((spanFrames * i) / sampleCount)
+            : (spanFrames * i) / sampleCount);
+          const t = policy.coherentTrajectory && spanFrames > 0
+            ? (frame - sweepStart) / spanFrames
+            : i / sampleCount;
+          lastPoint = offsetPoint(locRef, theta0 + sweep * t, radius);
+          // Interior samples sweep at a constant rate; the closing sample keeps
+          // its normal arrival easing so the orbit settles rather than stopping
+          // dead.
+          const closing = i === sampleCount;
+          const interior = policy.coherentTrajectory
+            ? (closing ? (resolved[idx + 1] ? "in" : false) : true)
+            : false;
+          put("lat", frame, lastPoint.latitude, interior);
+          put("lng", frame, lastPoint.longitude, interior);
+          // Heading is CO-SAMPLED with position: the camera faces the target
+          // from wherever it actually is, on the same time base and with the
+          // same transition shape. A 2-keyframe eased pan against a ~uniform
+          // multi-sample ground path gives look direction and position two
+          // different velocity profiles, and the subject slides across frame
+          // through the middle of the orbit (measured: 28 deg off-target).
+          if (policy.coherentTrajectory) put("pan", frame, sweepPanBase + sweep * t, interior);
+        }
+        // Phase C holds radius, altitude and pitch — acquisition already put the
+        // camera in orbit geometry, so these are no-ops after a real entry.
+        change("alt", sweepStart, ef, endAltitude);
+        change("tilt", sweepStart, ef, tilt);
+        if (!policy.coherentTrajectory) change("pan", sf, ef, orbitStartPan + sweep);
+        state = { latitude: lastPoint.latitude, longitude: lastPoint.longitude, altitude: endAltitude, pan: sweepPanBase + sweep, tilt };
         return;
       }
 
@@ -1463,20 +2045,45 @@ This checklist is technical planning support only. It is not creative approval, 
         ? Math.min(distance * 0.35, 2500000) : 0;
       const constrainedSpaceZoom = segment.action === "zoom_out"
         && segment.tilt_source === "semantic_space_composition";
-      if (arcBump || state.altitude !== endAltitude) {
+      // A MONOTONIC altitude change needs exactly two keyframes. Sampling a
+      // smoothstep at 0.25/0.5/0.75/1 and then letting the serializer ease each
+      // sample shapes the same move twice, and because a default handle has
+      // y = 0 (horizontal, slope pinned to zero) every interior sample becomes
+      // a dead stop: measured 3 interior stalls on every altitude change, so a
+      // simple climb or push played as four little lurches. The easing profile
+      // already supplies the ease-out departure and decelerating arrival, so
+      // dropping the interior samples is both smoother AND fewer keyframes.
+      //
+      // Two cases keep their samples because the samples carry real
+      // information rather than a re-shaped ease:
+      //   arcBump            — the legacy sine hump is not monotonic.
+      //   constrainedSpaceZoom — each sample enforces the globe-limb
+      //                          composition bound at that altitude.
+      const monotonicAltitude = policy.coherentTrajectory && !arcBump && !constrainedSpaceZoom;
+      if (monotonicAltitude) {
+        if (state.altitude !== endAltitude) {
+          change("alt", sf, em, Math.round(clampAltitude(endAltitude, minAlt)));
+        }
+      } else if (arcBump || state.altitude !== endAltitude) {
         anchor("alt", sf);
         const altitudeFractions = constrainedSpaceZoom
           ? Array.from({ length: SPACE_ZOOM_COMPOSITION_SAMPLES }, (_, i) => (i + 1) / SPACE_ZOOM_COMPOSITION_SAMPLES)
           : [0.25, 0.5, 0.75, 1];
-        altitudeFractions.forEach((t) => {
+        altitudeFractions.forEach((t, sampleIndex) => {
           const eased = state.altitude + (endAltitude - state.altitude) * smoothstep(t);
           const sampledAltitude = Math.round(clampAltitude(eased + arcBump * Math.sin(Math.PI * t), minAlt));
-          put("alt", sf + (em - sf) * t, sampledAltitude);
+          // A constrained space zoom NEEDS all 16 samples — each one pins the
+          // globe-limb composition bound at that altitude — but their ease
+          // handles were pinning the climb rate to zero 14 times on the way up.
+          // Keep the samples, drop the handles.
+          const interior = policy.coherentTrajectory && constrainedSpaceZoom
+            && sampleIndex < altitudeFractions.length - 1;
+          put("alt", sf + (em - sf) * t, sampledAltitude, interior);
           if (constrainedSpaceZoom) {
             const authoredTilt = state.tilt
               + (segment.unconstrained_tilt_deg - state.tilt) * smoothstep(t);
             put("tilt", sf + (em - sf) * t,
-              round6(Math.min(authoredTilt, maxDerivedSpaceZoomTiltDeg(sampledAltitude))));
+              round6(Math.min(authoredTilt, maxDerivedSpaceZoomTiltDeg(sampledAltitude))), interior);
           }
         });
       }
@@ -1488,25 +2095,131 @@ This checklist is technical planning support only. It is not creative approval, 
       // boundary; altitude/tilt keep their existing in-orbit transitions.
       let destLat = location.latitude;
       let destLng = targetLng;
+      let orbitEntryApproach = null;
       // A camera-position hold (hover at the same target) stays exactly where
       // the camera is — after an orbit that is the ring, not the center.
-      if (segment.holds_camera) {
+      // A STAGED opening hold also holds: it was deliberately placed on the
+      // following orbit's ring, and an opening hover does not set holds_camera
+      // (there is no previous camera to hold), so without this it would spend
+      // its whole duration sliding from the ring back to the target centre and
+      // undo the staging.
+      if (segment.holds_camera || segment.stages_orbit_entry) {
         destLat = state.latitude;
         destLng = state.longitude;
       }
+      // A hold sitting between a staged arrival and its orbit must be EXACTLY
+      // static, and equal-valued keyframes alone do not guarantee that: Earth
+      // Studio derives an `auto` tangent from the keyframes on either SIDE of
+      // the hold, so the fly's approach-shaping point and the orbit's first ring
+      // sample together bow the flat span between them. Measured at 27.7 m of
+      // position drift inside a hold that must not move at all, first violation
+      // one frame in.
+      //
+      // Hard-linear between two equal values is exactly flat, and it is the one
+      // transition semantics this repo has proven Earth Studio preserves
+      // verbatim. Only the hold-facing sides are pinned, so the fly keeps its
+      // eased arrival and the orbit keeps its own departure.
+      const stagedThroughHold = !!(segment.holds_camera && idx > 0
+        && resolved[idx - 1] && resolved[idx - 1].ends_at_orbit_entry
+        && resolved[idx - 1].ends_at_orbit_entry !== segment.segment_id
+        && resolved.some((s) => s && s.segment_id === resolved[idx - 1].ends_at_orbit_entry
+          && s.action === "orbit"));
       const next = resolved[idx + 1];
-      if (segment.ends_at_orbit_entry && next
-          && next.segment_id === segment.ends_at_orbit_entry && next.action === "orbit") {
-        const nextMinAlt = (next.location && next.location.min_altitude_m) || 0;
-        const nextAlt = clampAltitude(next.altitude_m || DEFAULT_ALTITUDE_M, nextMinAlt);
-        const nextTilt = typeof next.tilt_deg === "number" ? next.tilt_deg : 45;
+      // `ends_at_orbit_entry` names a segment BY ID, and since the mid-journey
+      // staging reads through a held segment that orbit is not always the very
+      // next one. Resolve it by id: assuming adjacency here silently dropped the
+      // staging for `fly -> hold -> orbit`.
+      const orbitEntrySeg = segment.ends_at_orbit_entry
+        ? resolved.find((s) => s && s.segment_id === segment.ends_at_orbit_entry) : null;
+      if (orbitEntrySeg && orbitEntrySeg.action === "orbit") {
+        const nextMinAlt = (orbitEntrySeg.location && orbitEntrySeg.location.min_altitude_m) || 0;
+        const nextAlt = clampAltitude(orbitEntrySeg.altitude_m || DEFAULT_ALTITUDE_M, nextMinAlt);
+        const nextTilt = typeof orbitEntrySeg.tilt_deg === "number" ? orbitEntrySeg.tilt_deg : 45;
         const entry = offsetPoint({ latitude: location.latitude, longitude: targetLng },
           state.pan - 180, orbitRadiusMeters(nextAlt, nextTilt));
         destLat = entry.latitude;
         destLng = entry.longitude;
+        if (policy.coherentTrajectory) {
+          const entryRadius = orbitRadiusMeters(nextAlt, nextTilt);
+          const entryBearing = state.pan - 180;
+          const orbitTangent = entryBearing + 90 * (orbitEntrySeg.orbit_direction || 1);
+          const approachDistance = Math.min(
+            haversineMeters(state, entry) * 0.25,
+            entryRadius * 0.75,
+            50000,
+          );
+          if (approachDistance > 100) {
+            // Approach from behind the first orbital tangent. This adds only a
+            // final shaping point; the endpoint remains the exact ring entry.
+            orbitEntryApproach = offsetPoint(entry, orbitTangent + 180, approachDistance);
+          }
+        }
       }
-      change("lng", sf, em, destLng);
-      change("lat", sf, em, destLat);
+      if (orbitEntryApproach && em - sf >= 4) {
+        // The approach key is emitted before the endpoint change below. Fence
+        // every position channel at the segment boundary first, otherwise the
+        // later key becomes the first neighbour and Earth Studio starts the
+        // orbit approach inside the preceding hold.
+        anchor("lng", sf);
+        anchor("lat", sf);
+        const approachFrame = sf + Math.max(1, Math.round((em - sf) * 0.8));
+        const approachLng = state.longitude + shortestLngDelta(state.longitude, orbitEntryApproach.longitude);
+        put("lng", approachFrame, approachLng);
+        put("lat", approachFrame, orbitEntryApproach.latitude);
+      }
+      // ── Long-crossing cruise (see CRUISE_* constants) ──────────────────
+      // Three segments instead of one: ease up to a travel speed, hold it, ease
+      // down. The cruise boundaries carry the cruise SLOPE as a real handle, so
+      // the accelerating segment ARRIVES at travel speed instead of stalling
+      // against a horizontal y = 0 handle, and the cruise itself is
+      // linear-to-linear — the one interpolation this repo has proven Earth
+      // Studio reproduces verbatim.
+      const cruiseProfile = CRUISE_PROFILES[options.cruiseProfile || CRUISE_DEFAULT_PROFILE] || null;
+      const cruiseMoveSeconds = (em - sf) / (plan.frame_rate || FRAME_RATE);
+      const cruiseApplies = policy.coherentTrajectory
+        && cruiseProfile
+        && segment.action === "fly_to"
+        && !segment.holds_camera
+        && !segment.ends_at_orbit_entry
+        && cruiseMoveSeconds > CRUISE_MIN_SECONDS
+        && distance > CRUISE_MIN_DISTANCE_M
+        && (destLat !== state.latitude || destLng !== state.longitude);
+      if (cruiseApplies) {
+        const { accel, decel } = cruiseProfile;
+        const v = 1 / (1 - (accel + decel) / 2);
+        const spanF = em - sf;
+        const fromLat = state.latitude;
+        const fromLng = state.longitude;
+        const dLat = destLat - fromLat;
+        const dLng = destLng - fromLng;
+        const pA = (v * accel) / 2;
+        const pB = 1 - (v * decel) / 2;
+        const frameA = sf + spanF * accel;
+        const frameB = sf + spanF * (1 - decel);
+        const rateLat = (dLat * v) / spanF;
+        const rateLng = (dLng * v) / spanF;
+        anchor("lng", sf);
+        anchor("lat", sf);
+        put("lat", frameA, fromLat + dLat * pA, true);
+        setRate("lat", "in", rateLat);
+        put("lng", frameA, fromLng + dLng * pA, true);
+        setRate("lng", "in", rateLng);
+        put("lat", frameB, fromLat + dLat * pB, true);
+        setRate("lat", "out", rateLat);
+        put("lng", frameB, fromLng + dLng * pB, true);
+        setRate("lng", "out", rateLng);
+        put("lat", em, destLat);
+        put("lng", em, destLng);
+      } else {
+        change("lng", sf, em, destLng);
+        change("lat", sf, em, destLat);
+      }
+      if (stagedThroughHold) {
+        pinOut("lng");
+        pinOut("lat");
+        put("lng", em, destLng, "in", true);
+        put("lat", em, destLat, "in", true);
+      }
       if (!constrainedSpaceZoom) {
         const enteringOrbit = policy.coherentTrajectory && segment.ends_at_orbit_entry
           && last("tilt") && last("tilt").value !== tilt;
@@ -1566,6 +2279,25 @@ This checklist is technical planning support only. It is not creative approval, 
   // proves unadorned keyframes stay hard-linear. Transition x = handle span on
   // the shot-normalized time axis (in: negative, out: positive) — handles are
   // therefore computed per keyframe as a FRACTION OF THE GAP to the neighbor.
+  // TRIED AND REVERTED (2026-08-20): bounding the ramp in absolute time.
+  //
+  // The easing fractions below are GAP-RELATIVE, so on a very long move they
+  // scale past anything the reference corpus evidences (its longest shot is
+  // 45.6 s). Scaling them down beyond that range measured as a clear win —
+  // a 105 s crossing went from 41% to 67% of its duration at travel speed.
+  //
+  // That measurement was taken against a bezier model that treated an `auto`
+  // handle's y=0 as a zero tangent. earth-studio-motion-continuity.js then
+  // calibrated `auto` against a real authenticated import: Earth Studio derives
+  // the tangent from ADJACENT VALUES instead, and the `custom` arrival places
+  // its control point beyond the endpoint via `influence`. Under that model the
+  // bound shrinks the handle's x while the influence-driven y overshoot stays
+  // put, and the 105 s crossing degrades to 0% cruise with a 102 s monotonic
+  // ramp — far worse than the 37% / 26 s it has without the bound.
+  //
+  // So the bound is NOT in force. Re-attempting it means scaling the influence
+  // term coherently with x, which is tuning against an approximation of Earth
+  // Studio rather than against evidence, and needs a real import to settle.
   const MOTION_PROFILE_VERSION = 4;
   const MOTION_EASING = {
     departure_fraction: 0.25,
@@ -1608,6 +2340,11 @@ This checklist is technical planning support only. It is not creative approval, 
     const totalFrames = Math.max(1, plan.total_frames || 1);
     const policy = motionPolicy(plan, options);
     const keyframeOptions = options.compareLegacyMotion ? { compareLegacyMotion: true } : {};
+    // Long-crossing cruise profile is an EXPERIMENT SWITCH, not a default: the
+    // calibration round decides whether it becomes one.
+    if (options.cruiseProfile) keyframeOptions.cruiseProfile = options.cruiseProfile;
+    // Opt-in observation out-parameter (see the note at its emit site).
+    if (Array.isArray(options.orbitTiming)) keyframeOptions.orbitTiming = options.orbitTiming;
     // A plan carrying an initial_camera (continuation) seeds the opening state.
     if (plan.initial_camera && typeof plan.initial_camera === "object") {
       keyframeOptions.initialCamera = plan.initial_camera;
@@ -1638,6 +2375,50 @@ This checklist is technical planning support only. It is not creative approval, 
       .map((sg) => frac(sg.end_frame)));
     const kfs = (arr, mapValue, kind) => arr.map((k, i) => {
       const kf = { time: frac(k.time), value: mapValue(k.value) };
+      // Interior sample of a described curve (orbit ring, space-zoom climb):
+      // hard-linear on BOTH sides.
+      //
+      // A default handle has y = 0, i.e. it is horizontal, which pins the
+      // value's slope to zero at that keyframe. Correct for a departure or an
+      // arrival; ruinous on a sampled circle, where it makes the camera
+      // decelerate to a standstill at every sample (measured: 142% swing in
+      // cruise angular velocity — a visibly stuttering orbit).
+      //
+      // Two ways out: author the circle's true tangent as a non-zero handle y
+      // (what the human-authored reference darien-gap.esp does), or drop the
+      // handles so the segment is straight. Tangent handles model the circle
+      // better in theory, but their playback depends on how Earth Studio weighs
+      // `influence`, which cannot be verified without a real import; hard-linear
+      // is the one transition semantics this repo has already PROVEN Earth
+      // Studio preserves verbatim. Measured on a 20 s / 360 deg orbit, linear
+      // interiors give 6.8% cruise ripple against 13.8% for modelled tangent
+      // handles, so the proven option is also the better-measuring one.
+      // Residual ripple is pure polygonization and shrinks with sample density.
+      //
+      // The opening and closing keyframes are NOT flagged, so the move still
+      // eases out of rest and settles at the end.
+      if (!legacy && k.sampledInterior === true) {
+        kf.transitionIn = { x: 0, y: 0, type: "linear" };
+        kf.transitionOut = { x: 0, y: 0, type: "linear" };
+        // A CRUISE BOUNDARY is a sampled interior with an analytic slope on one
+        // side. The cruise side stays hard-linear (constant speed); the side
+        // facing the eased departure or arrival carries the cruise slope as a
+        // real handle, so that neighbouring segment meets travel speed instead
+        // of the zero slope a default y = 0 handle would force. mapValue is
+        // affine for every track, so its scale is recovered with a probe wide
+        // enough to survive the round6 inside the mapper.
+        const rateSide = (rate, gap, sign) => {
+          const vScale = (mapValue(1000) - mapValue(0)) / 1000;
+          const x = sign * gap / 3;
+          const slope = rate * vScale * totalFrames;
+          return { x: round6(x), y: round6(slope * x), type: "auto", influence: MOTION_EASING.interior_influence };
+        };
+        const gapPrevC = i > 0 ? frac(k.time) - frac(arr[i - 1].time) : 0;
+        const gapNextC = i < arr.length - 1 ? frac(arr[i + 1].time) - frac(k.time) : 0;
+        if (Number.isFinite(k.rateIn) && gapPrevC > 0) kf.transitionIn = rateSide(k.rateIn, gapPrevC, -1);
+        if (Number.isFinite(k.rateOut) && gapNextC > 0) kf.transitionOut = rateSide(k.rateOut, gapNextC, 1);
+        return kf;
+      }
       if (!legacy && arr.length >= 2) {
         const gapPrev = i > 0 ? frac(k.time) - frac(arr[i - 1].time) : 0;
         const gapNext = i < arr.length - 1 ? frac(arr[i + 1].time) - frac(k.time) : 0;
@@ -1675,6 +2456,47 @@ This checklist is technical planning support only. It is not creative approval, 
             kf.transitionOut = { x: round6(MOTION_EASING.interior_fraction * gapNext), y: 0, influence: MOTION_EASING.interior_influence, type: "auto" };
           }
         }
+      }
+      // Closing sample of a sampled curve: protect the curve on the way IN.
+      //
+      // An `auto` handle is NOT a zero-value tangent in real Earth Studio — it
+      // derives a tangent from the NEIGHBOURING keyframes. The keyframe that
+      // ends an orbit is also the keyframe that departs toward the next place,
+      // so its incoming tangent was being derived against that destination.
+      // Measured on "orbit the Colosseum, then fly to Paris": the ring bulged
+      // from 1,214 m out to 3,745 m inside the last 0.57 s of the orbit,
+      // because the incoming tangent pointed at Paris, 7 degrees of latitude
+      // away.
+      //
+      // The fix is an explicit arrival handle rather than a derived one. A
+      // `custom` handle's y is authored, not inferred from neighbours, so the
+      // ring survives — and unlike a hard-linear in-side it also DECELERATES
+      // the sweep into the boundary instead of arriving at full rate and then
+      // dropping to the departure's zero slope, which is a hard stop.
+      // Mirror of the "in" variant: protect only the span LEAVING this keyframe.
+      // Used to fence a static hold, where the arrival easing must survive but
+      // the hold itself must not bow.
+      if (!legacy && k.sampledInterior === "out") {
+        kf.transitionOut = { x: 0, y: 0, type: "linear" };
+        return kf;
+      }
+      if (!legacy && k.sampledInterior === "in") {
+        const arrival = MOTION_EASING.terminal_arrival[kind === "altitude" ? "altitude" : "positional"];
+        const gap = i > 0 ? frac(k.time) - frac(arr[i - 1].time) : 0;
+        // A closing orbit sample that is followed by another movement is a
+        // through-boundary tangent, not a terminal settle. Arrival easing here
+        // brakes the orbit into the boundary, then the next segment launches
+        // again; real playback exposed that as a speed dip and pan-rate pulse.
+        const continues = (i < arr.length - 1 && arr[i + 1].value !== k.value)
+          // Orbit exit currently keeps pan fixed during the following travel;
+          // its closing pan sample therefore has no later pan keyframe to
+          // prove continuation, but it is still a through-boundary channel.
+          || kind === "pan";
+        kf.transitionIn = continues
+          ? { x: 0, y: 0, type: "linear" }
+          : (gap > 0
+            ? { x: round6(-arrival.fraction * gap), y: 0, influence: arrival.influence, type: "custom" }
+            : { x: 0, y: 0, type: "linear" });
       }
       return kf;
     });
@@ -1737,9 +2559,9 @@ This checklist is technical planning support only. It is not creative approval, 
                   type: "cameraRotationGroup",
                   inTimeline: true,
                   attributes: [
-                    espLeaf("rotationX", kfs(tracks.pan, (v) => (v - panMin) / panSpan),
+                    espLeaf("rotationX", kfs(tracks.pan, (v) => (v - panMin) / panSpan, "pan"),
                       tracks.pan.length ? { minValueRange: panMin, maxValueRange: panMin + panSpan } : {}),
-                    espLeaf("rotationY", kfs(tracks.tilt, (v) => v / 180)),
+                    espLeaf("rotationY", kfs(tracks.tilt, (v) => v / 180, "tilt")),
                     { type: "rotationZ", value: {} },
                   ],
                 },
@@ -1792,15 +2614,64 @@ This checklist is technical planning support only. It is not creative approval, 
     };
   }
 
+  // ORBIT SWEEP RATE, MADE VISIBLE.
+  //
+  // When a ring acquisition is unavoidable it takes its frames out of the orbit
+  // segment, and the sweep is then compressed to still cover the requested arc.
+  // A requested 180 deg over 16 s was measured delivering 180 deg over 10.9 s —
+  // 16.5 deg/s against the 11.25 deg/s the operator asked for, 47% fast. Real
+  // Earth Studio measured the same 1.47x.
+  //
+  // The frames are not lost from the shot: total duration still equals the sum of
+  // the segment durations, which is the accounting both the map-animation and
+  // time-allocation docs use. What silently stopped matching is the RATE.
+  //
+  // Which way to resolve that is a directorial choice — hold the segment and let
+  // the sweep run fast, or lengthen the segment and hold the rate — so this note
+  // states the mismatch and the segment length that would remove it, and changes
+  // nothing. See docs/earth-studio-map-animation.md and the S-A/S-B evaluation
+  // package.
+  const ORBIT_RATE_NOTE_TOLERANCE = 0.05;
+  function annotateOrbitTiming(plan, orbitTiming) {
+    if (!Array.isArray(orbitTiming) || !orbitTiming.length) return;
+    if (!Array.isArray(plan.notes)) return;
+    for (const row of orbitTiming) {
+      const sweepSeconds = row.sweep_frames / (row.frame_rate || FRAME_RATE);
+      if (!(row.requested_seconds > 0) || !(sweepSeconds > 0)) continue;
+      const requested = row.requested_arc_deg / row.requested_seconds;
+      const delivered = row.requested_arc_deg / sweepSeconds;
+      if (!(requested > 0) || !(delivered > 0)) continue;
+      if (delivered / requested - 1 <= ORBIT_RATE_NOTE_TOLERANCE) continue;
+      const acqSeconds = row.acquisition_frames / (row.frame_rate || FRAME_RATE);
+      const k = row.segment_frames > 0 ? row.acquisition_frames / row.segment_frames : null;
+      // The acquisition is a fraction of the segment, not a fixed cost, so the
+      // remedy is a fixed point rather than an addition. See the report above.
+      const remedy = k != null && k < 1 ? row.requested_seconds / (1 - k) : null;
+      plan.notes.push(`segment ${row.segment_id}: ring acquisition takes ${acqSeconds.toFixed(2)}s of the `
+        + `${row.requested_seconds}s orbit, so its ${Math.round(row.requested_arc_deg)}\u00b0 sweep runs in `
+        + `${sweepSeconds.toFixed(2)}s at ${delivered.toFixed(2)}\u00b0/s instead of the requested `
+        + `${requested.toFixed(2)}\u00b0/s (${Math.round((delivered / requested - 1) * 100)}% faster). `
+        + (remedy ? `A ${remedy.toFixed(2)}s segment would hold the requested rate — the acquisition is `
+          + `${Math.round(k * 100)}% of the segment and grows with it, so adding ${acqSeconds.toFixed(2)}s is not enough. ` : '')
+        + `Staging the arrival removes the acquisition entirely.`);
+    }
+  }
+
   function buildArtifacts(jobName, description, generatedAt, options = {}) {
     const plan = buildShotPlan(jobName, description, generatedAt, options);
+    // The .esp is built FIRST so the derived acquisition is known before the plan
+    // is serialised — it is only knowable from the keyframe walk, and the operator
+    // reading shot-plan.json is exactly who needs to see its cost.
+    const orbitTiming = [];
+    const esp = buildEsp(plan, { ...options, orbitTiming });
+    annotateOrbitTiming(plan, orbitTiming);
     return {
       "README.md": buildReadme(plan),
       "shot-plan.json": `${JSON.stringify(plan, null, 2)}\n`,
       "shot-plan.md": buildShotPlanMarkdown(plan),
       "route.kml": buildKml(plan),
       "earth-studio-build-checklist.md": buildChecklist(plan),
-      "earth-studio.esp": `${JSON.stringify(buildEsp(plan), null, 2)}\n`,
+      "earth-studio.esp": `${JSON.stringify(esp, null, 2)}\n`,
     };
   }
 
@@ -1890,9 +2761,11 @@ This checklist is technical planning support only. It is not creative approval, 
     buildKml,
     buildShotPlanMarkdown,
     buildEspKeyframes,
+    orbitTimingReport,
     buildEsp,
     normalizeInitialCamera,
     finalCameraState,
+    offsetPoint,
     motionPolicy,
     dropRedundantKeyframes,
     expectedFiles,

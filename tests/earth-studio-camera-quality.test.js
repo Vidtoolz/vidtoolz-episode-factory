@@ -1,6 +1,10 @@
 const { assert, fs, os, path, test } = require('./_helpers.js');
 const quality = require('../earth-studio-camera-quality.js');
 const lane = require('../earth-studio-lane.js');
+const planner = require('../earth-studio-job-planner.js');
+const continuity = require('../earth-studio-motion-continuity.js');
+const journeyModule = require('../earth-studio-journey.js');
+const plannerModule = planner;
 
 function tmpPkg() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'es-camera-quality-'));
@@ -41,4 +45,323 @@ test('camera quality gate rejects missing camera tracks', () => {
   });
   assert.equal(report.verdict, 'FAIL');
   assert.ok(report.errors.some((error) => error.includes('camera tracks missing')));
+});
+
+test('motion kernel: orbit offsets stay finite and preserve ground radius at the pole', () => {
+  const point = plannerOffsetPoint({ latitude: 90, longitude: 179.9 }, 90, 80000);
+  assert.ok(Number.isFinite(point.latitude));
+  assert.ok(Number.isFinite(point.longitude));
+  assert.ok(point.latitude <= 90 && point.latitude >= -90);
+  assert.ok(point.longitude <= 180 && point.longitude >= -180);
+
+  const pole = { latitude: 89.999, longitude: 12 };
+  const radius = 80000;
+  const points = [0, 90, 180, 270].map((bearing) => plannerOffsetPoint(pole, bearing, radius));
+  const distances = points.map((p) => plannerHaversine(pole, p));
+  distances.forEach((distance) => assert.ok(Math.abs(distance - radius) < 2, `${distance}m != ${radius}m`));
+});
+
+function plannerOffsetPoint(center, bearing, radius) {
+  return require('../earth-studio-job-planner.js').offsetPoint(center, bearing, radius);
+}
+
+function plannerHaversine(a, b) {
+  return require('../earth-studio-job-planner.js').haversineMeters(a, b);
+}
+
+test('motion continuity analyzer reports one-sided speed and direction at a boundary', () => {
+  const report = continuity.boundaryReport({
+    boundaryFrame: 10,
+    frameRate: 30,
+    tracks: {
+      lat: [{ time: 0, value: 0 }, { time: 10, value: 0 }, { time: 20, value: 1 }],
+      lng: [{ time: 0, value: 0 }, { time: 10, value: 1 }, { time: 20, value: 1 }],
+      alt: [{ time: 0, value: 100 }, { time: 10, value: 100 }, { time: 20, value: 200 }],
+      pan: [{ time: 0, value: 0 }, { time: 10, value: 0 }, { time: 20, value: 30 }],
+      tilt: [{ time: 0, value: 0 }, { time: 10, value: 0 }, { time: 20, value: 5 }],
+    },
+  });
+  assert.ok(report.position.speed_before_mps > 0);
+  assert.ok(report.position.speed_after_mps > 0);
+  assert.ok(report.position.direction_jump_deg > 80 && report.position.direction_jump_deg < 100);
+  assert.equal(report.pan_rate_before_dps, 0);
+  assert.equal(report.pan_rate_after_dps, 90);
+  assert.equal(report.tilt_rate_after_dps, 15);
+});
+
+test('playback evaluator preserves linear rate and unwraps longitude seams', () => {
+  const trace = continuity.samplePlaybackTrack([
+    { time: 0, value: 179, transitionOut: { type: 'linear' } },
+    { time: 1, value: -179, transitionIn: { type: 'linear' } },
+  ], 30, 30, true);
+  assert.equal(trace.values[0], 179);
+  assert.equal(trace.values[30], 181);
+  assert.ok(Math.abs(trace.rates[15] - 2) < 1e-9);
+});
+
+test('playback evaluator models eased endpoints and linear sampled interiors', () => {
+  const eased = continuity.samplePlaybackTrack([
+    { time: 0, value: 0, transitionOut: { x: 0.25, y: 0, type: 'easeOut' } },
+    { time: 1, value: 1, transitionIn: { x: -0.25, y: 0, type: 'custom' } },
+  ], 60, 30);
+  assert.ok(Math.abs(eased.rates[1]) < 1.5, `unexpected eased start ${eased.rates[1]}`);
+  assert.ok(Math.abs(eased.rates[59]) < 1.5, `unexpected eased end ${eased.rates[59]}`);
+  assert.ok(eased.rates[30] > eased.rates[1]);
+
+  const linear = continuity.samplePlaybackTrack([
+    { time: 0, value: 0, transitionOut: { x: 0, y: 0, type: 'linear' } },
+    { time: 1, value: 1, transitionIn: { x: 0, y: 0, type: 'linear' } },
+  ], 30, 30);
+  linear.rates.slice(1).forEach((rate) => assert.ok(Math.abs(rate - 1) < 1e-9));
+});
+
+test('serialized Earth Studio camera leaves decode into playback tracks', () => {
+  const plan = planner.buildShotPlan('playback-adapter', 'hold Helsinki for 1 seconds, then fly to Stockholm for 8 seconds', '2026-08-20T00:00:00.000Z', {
+    motionPolicy: { coherent_trajectory: true, dedupe_keyframes: true, source: 'journey' },
+  });
+  const esp = planner.buildEsp(plan);
+  const tracks = continuity.extractEspCameraTracks(esp);
+  const trace = continuity.playbackPositionTrace(tracks, plan.total_frames, plan.frame_rate);
+  assert.equal(trace.frames.length, plan.total_frames + 1);
+  assert.ok(trace.speed.some((value) => Number.isFinite(value) && value > 0));
+  assert.ok(trace.alt.values.every((value) => Number.isFinite(value)));
+});
+
+test('motion kernel: declared holds remain stationary before movement launch', () => {
+  const cases = [
+    'hover over Paris at 34028m tilted 0 degrees for 3 seconds, then fly to Eiffel Tower at 438m tilted 72 degrees for 7 seconds',
+    'hover over Helsinki for 3 seconds, then orbit Helsinki half clockwise at 900m tilted 45 degrees for 8 seconds',
+    'hover over Helsinki for 3 seconds, then zoom in on Helsinki for 8 seconds',
+  ];
+  cases.forEach((description) => {
+    const plan = planner.buildShotPlan('hold-integrity', description, '2026-08-20T00:00:00.000Z', {
+      motionPolicy: { coherent_trajectory: true, dedupe_keyframes: true, source: 'journey' },
+    });
+    const esp = planner.buildEsp(plan);
+    const tracks = continuity.extractEspCameraTracks(esp);
+    const hold = plan.segments.find((segment) => segment.action === 'hover');
+    const report = continuity.holdIntegrityReport({
+      tracks,
+      startFrame: hold.start_frame,
+      endFrame: hold.end_frame,
+      totalFrames: plan.total_frames,
+      frameRate: plan.frame_rate,
+    });
+    assert.equal(report.stationary, true, `${description}: ${JSON.stringify(report)}`);
+  });
+});
+
+test('motion kernel: movement settles into a stationary terminal hold', () => {
+  const description = 'fly to Stockholm for 8 seconds, then hold Stockholm for 3 seconds';
+  const plan = planner.buildShotPlan('terminal-hold-integrity', description, '2026-08-20T00:00:00.000Z', {
+    motionPolicy: { coherent_trajectory: true, dedupe_keyframes: true, source: 'journey' },
+  });
+  const esp = planner.buildEsp(plan);
+  const tracks = continuity.extractEspCameraTracks(esp);
+  const hold = plan.segments[plan.segments.length - 1];
+  const report = continuity.holdIntegrityReport({
+    tracks,
+    startFrame: hold.start_frame,
+    endFrame: hold.end_frame,
+    totalFrames: plan.total_frames,
+    frameRate: plan.frame_rate,
+  });
+  assert.equal(hold.action, 'hover');
+  assert.equal(report.stationary, true, JSON.stringify(report));
+});
+
+test('playback boundary diagnostics distinguish a smooth settle from a raw chord change', () => {
+  const tracks = {
+    lat: [{ time: 0, value: 0 }, { time: 0.8, value: 0 }, { time: 1, value: 0 }],
+    lng: [
+      { time: 0, value: 0, transitionOut: { x: 0.25, y: 0, type: 'easeOut' } },
+      { time: 0.8, value: 0.00001, transitionIn: { x: -0.2, y: 0, type: 'custom' }, transitionOut: { x: 0.06, y: 0, type: 'auto' } },
+      { time: 1, value: 0.00001 },
+    ],
+    alt: [{ time: 0, value: 100 }, { time: 1, value: 100 }],
+    pan: [{ time: 0, value: 0 }, { time: 1, value: 0 }],
+    tilt: [{ time: 0, value: 0 }, { time: 1, value: 0 }],
+  };
+  const report = continuity.playbackBoundaryReport({ tracks, boundaryFrame: 24, totalFrames: 30, frameRate: 30 });
+  assert.ok(report.playback.speed_before_mps < 1, `expected settled incoming rate, got ${report.playback.speed_before_mps}`);
+  assert.ok(report.playback.speed_after_mps < 1, `expected settled outgoing rate, got ${report.playback.speed_after_mps}`);
+  assert.equal(report.classification, 'GOOD');
+});
+
+test('motion continuity: free orbit phase improves the orbit-to-travel tangent', () => {
+  const description = 'orbit Helsinki once for 12 seconds then fly to Stockholm for 10 seconds';
+  const options = { motionPolicy: { coherent_trajectory: true, dedupe_keyframes: true, source: 'journey' } };
+  const plan = planner.buildShotPlan('continuity', description, '2026-08-20T00:00:00.000Z', options);
+  const current = planner.buildEspKeyframes(plan);
+  const legacy = planner.buildEspKeyframes(plan, { compareLegacyMotion: true });
+  const mismatch = (tracks) => {
+    const unwrap = (values) => {
+      const out = [values[0]];
+      for (let i = 1; i < values.length; i += 1) {
+        let value = values[i];
+        while (value - out[i - 1] > 180) value -= 360;
+        while (value - out[i - 1] < -180) value += 360;
+        out.push(value);
+      }
+      return out;
+    };
+    const bearing = (a, b) => {
+      const lat1 = a.latitude * Math.PI / 180;
+      const lat2 = b.latitude * Math.PI / 180;
+      const dLng = (b.longitude - a.longitude) * Math.PI / 180;
+      return (Math.atan2(
+        Math.sin(dLng) * Math.cos(lat2),
+        Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng),
+      ) * 180 / Math.PI + 360) % 360;
+    };
+    const segment = plan.segments[0];
+    const frame = segment.end_frame;
+    const lng = unwrap(tracks.lng.map((k) => k.value));
+    const lat = tracks.lat.map((k) => k.value);
+    const end = tracks.lat.findIndex((k) => k.time === frame);
+    const incoming = bearing({ latitude: lat[end - 1], longitude: lng[end - 1] }, { latitude: lat[end], longitude: lng[end] });
+    const destination = plan.segments[1].location;
+    const outgoing = bearing({ latitude: lat[end], longitude: lng[end] }, destination);
+    return Math.abs(continuity.angleDeltaDeg(incoming, outgoing));
+  };
+  const before = mismatch(legacy);
+  const after = mismatch(current);
+  assert.ok(before > 150, `expected a large legacy mismatch, got ${before}`);
+  assert.ok(after < 15, `expected a tangent-compatible exit, got ${after}`);
+});
+
+// ── GENERAL DEAD-SHOT LAW ───────────────────────────────────────────────────
+//
+// "A requested movement must materially perform the movement it names."
+//
+// The orbit case was the first instance found in the wild (a requested 180 deg
+// orbit whose camera never moved). The same class of failure exists for any
+// movement whose name is a promise, and "push in on Helsinki Cathedral" really did
+// once produce 1418 m -> 1418 m with a single position keyframe.
+//
+// Bands are set from measurement, not taste. Across the 14-case acceptance set the
+// weakest real push ends at 0.447x its starting framing altitude, the weakest real
+// reveal at 1.923x, and the shortest real fly travels 100 m — so a 0.5% degenerate
+// band and a 5% weak band sit 20-100x below anything the generator produces.
+
+const ALTITUDE_SCALE_FOR_TEST = 1.5356706349899208e-08;
+
+// Minimal normalized .esp-shaped leaves, matching what cameraTracks() returns.
+function syntheticCameraTracks({ camLat0 = 41.9, camLat1 = 41.9, alt0 = 1000, alt1 = 1000 }) {
+  const leaf = (pairs) => ({ keyframes: pairs.map(([time, value]) => ({ time, value })), value: {} });
+  return {
+    latitude: leaf([[0.1, camLat0 / 90], [1.0, camLat1 / 90]]),
+    longitude: leaf([[0.1, 0], [1.0, 0]]),
+    altitude: leaf([[0.1, alt0 * ALTITUDE_SCALE_FOR_TEST], [1.0, alt1 * ALTITUDE_SCALE_FOR_TEST]]),
+  };
+}
+
+function syntheticPlan(action, targetLat, previousTargetLat, targetName) {
+  return {
+    total_frames: 100,
+    frame_rate: 30,
+    segments: [
+      { segment_id: 1, action: 'hover', duration_seconds: 1, start_frame: 0, end_frame: 10,
+        location: { name: 'previous', latitude: previousTargetLat, longitude: 0 } },
+      { segment_id: 2, action, duration_seconds: 3, start_frame: 10, end_frame: 100,
+        location: { name: targetName || 'target', latitude: targetLat, longitude: 0 },
+        altitude_m: 1000, tilt_deg: 45 },
+    ],
+  };
+}
+
+const deadMove = (action, opts) => quality.deadMovementReport({
+  plan: syntheticPlan(action, opts.targetLat !== undefined ? opts.targetLat : opts.camLat1,
+    opts.previousTargetLat !== undefined ? opts.previousTargetLat : opts.camLat0, opts.targetName),
+  tracks: syntheticCameraTracks(opts),
+});
+
+test('dead-shot: a push that does not move closer is an error', () => {
+  const r = deadMove('zoom_in', { alt0: 1418, alt1: 1418 });
+  assert.equal(r.errors.length, 1, 'a 1418 -> 1418 push must be reported');
+  assert.match(r.errors[0], /1418 m -> 1418 m/, 'the finding must state the real altitudes in metres');
+  assert.equal(r.warnings.length, 0);
+});
+
+test('dead-shot: a push that moves the WRONG way is an error', () => {
+  const r = deadMove('zoom_in', { alt0: 1000, alt1: 1400 });
+  assert.equal(r.errors.length, 1, 'a push that retreats must be reported');
+});
+
+test('dead-shot: a reveal that does not widen is an error', () => {
+  const r = deadMove('zoom_out', { alt0: 1418, alt1: 1418 });
+  assert.equal(r.errors.length, 1, 'a reveal that does not widen must be reported');
+});
+
+test('dead-shot: a fly naming a different subject that never leaves is an error', () => {
+  const r = deadMove('fly_to', {
+    alt0: 1000, alt1: 1000, camLat0: 41.9, camLat1: 41.9,
+    targetLat: 48.8, previousTargetLat: 41.9, targetName: 'Paris',
+  });
+  assert.equal(r.errors.length, 1, 'a flight to another subject that never moves must be reported');
+  assert.match(r.errors[0], /Paris/);
+});
+
+test('dead-shot: a same-place preparatory fly is exempt', () => {
+  // A climb-out before a crossing names the place it is already at. Legitimate.
+  const r = deadMove('fly_to', {
+    alt0: 1000, alt1: 1000, camLat0: 41.9, camLat1: 41.9,
+    targetLat: 41.9, previousTargetLat: 41.9,
+  });
+  assert.equal(r.errors.length, 0, 'travel is only promised when the subject changes');
+  assert.equal(r.warnings.length, 0);
+});
+
+test('dead-shot: a hold is exempt — its purpose is to not move', () => {
+  const r = deadMove('hover', { alt0: 1000, alt1: 1000 });
+  assert.equal(r.errors.length, 0);
+  assert.equal(r.warnings.length, 0);
+});
+
+test('dead-shot: weak-but-real movement warns rather than failing', () => {
+  const r = deadMove('zoom_in', { alt0: 1000, alt1: 970 });
+  assert.equal(r.errors.length, 0, 'a real 3% push is not degenerate');
+  assert.equal(r.warnings.length, 1, 'but it is weak enough to mention');
+});
+
+test('dead-shot: the weakest movements the generator really produces stay silent', () => {
+  // Measured floors from the acceptance set: push 0.447x, reveal 1.923x, fly 100 m.
+  const push = deadMove('zoom_in', { alt0: 1418, alt1: 634 });
+  const reveal = deadMove('zoom_out', { alt0: 1000, alt1: 1923 });
+  const fly = deadMove('fly_to', {
+    alt0: 1000, alt1: 1000, camLat0: 41.9, camLat1: 41.9009,
+    targetLat: 48.8, previousTargetLat: 41.9,
+  });
+  for (const [label, r] of [['push', push], ['reveal', reveal], ['fly', fly]]) {
+    assert.equal(r.errors.length, 0, `${label}: must not be flagged`);
+    assert.equal(r.warnings.length, 0, `${label}: must not even warn`);
+  }
+});
+
+test('dead-shot: the existing acceptance set produces no movement-intent findings', () => {
+  // A gate that fires on correct output teaches the operator to ignore the gate.
+  const root = path.join(__dirname, '..');
+  const base = path.join(root, 'package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2');
+  if (!fs.existsSync(base)) return;
+  const found = [];
+  (function walkDir(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walkDir(full);
+      else if (entry.name === 'journey.json') found.push(full);
+    }
+  }(base));
+  assert.ok(found.length >= 10, 'acceptance set should be present');
+  for (const file of found) {
+    const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const compiled = journeyModule.compileJourney(journeyModule.normalizeJourney(raw));
+    const artifacts = plannerModule.buildArtifacts('qa', compiled.description, '2026-08-20T16:00:00.000Z',
+      { aspect: raw.aspect || '16:9', motionPolicy: { coherent_trajectory: true, dedupe_keyframes: true, source: 'journey' } });
+    const report = quality.evaluate({
+      plan: JSON.parse(artifacts['shot-plan.json']),
+      esp: JSON.parse(artifacts['earth-studio.esp']),
+    });
+    const intent = report.errors.concat(report.warnings).filter((m) => /movement intent/.test(m));
+    assert.equal(intent.length, 0, `${path.basename(path.dirname(path.dirname(file)))}: ${intent.join('; ')}`);
+  }
 });
